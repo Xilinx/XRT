@@ -340,7 +340,8 @@ DSAInfo::DSAInfo(const std::string& filename, std::string &pr_board, std::string
     partition_family_name = pr_family;
     partition_name = pr_name;
 
-    name = "xilinx_" + board + "_" + pr_family + "_" + pr_name;
+    if (name.empty())
+        name = "xilinx_" + board + "_" + pr_family + "_" + pr_name;
 }
 
 DSAInfo::~DSAInfo()
@@ -356,7 +357,7 @@ bool DSAInfo::matchId(const std::string &id) const
     if (uuids.size() > 0)
     {
         std::string uuid(id.length(), 0);
-        // std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
+        std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
         std::string::size_type i = uuid.find("0x");
         if (i == 0)
             uuid.erase(0, 2);
@@ -374,7 +375,7 @@ bool DSAInfo::matchIntId(std::string &id) const
     if (uuids.size() > 1)
     {
         std::string uuid(id.length(), 0);
-        // std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
+        std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
         std::string::size_type i = uuid.find("0x");
         if (i == 0)
             uuid.erase(0, 2);
@@ -383,7 +384,7 @@ bool DSAInfo::matchIntId(std::string &id) const
             if (!strncmp(uuids[j].c_str(), uuid.c_str(), uuid.length()))
                 return true;
             uint64_t int_ts = 0;
-            uuid2ts(id, int_ts);
+            uuid2ts(uuids[j], int_ts);
 	    if (int_ts == ts)
                 return true;
         }

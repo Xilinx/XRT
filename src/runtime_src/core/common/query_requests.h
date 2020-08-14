@@ -169,6 +169,7 @@ enum class key_type
   board_name,
   interface_uuids,
   logic_uuids,
+  rp_program_status,
 
   aie_metadata,
   noop
@@ -1721,6 +1722,21 @@ struct flash_address : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct rp_program_status : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::rp_program_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
 };
 
 struct noop : request

@@ -264,6 +264,7 @@ initialize_query_table()
   emplace_sysfs_request<query::board_name>                ("", "board_name");
   emplace_sysfs_request<query::logic_uuids>               ("", "logic_uuids");
   emplace_sysfs_request<query::interface_uuids>           ("", "interface_uuids");
+  emplace_sysfs_request<query::rp_program_status>         ("", "rp_program");
 
   emplace_func0_request<query::pcie_bdf,                  bdf>();
 }

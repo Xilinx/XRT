@@ -51,6 +51,7 @@ namespace po = boost::program_options;
 #include <chrono>
 #include <ctime>
 #include <locale>
+#include <fcntl.h>
 
 #ifdef _WIN32
 #pragma warning(disable : 4996) //std::asctime
@@ -390,6 +391,39 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   }
 }
 
+static void
+program_plp(std::shared_ptr<xrt_core::device> dev, const std::string& partition)
+{
+  std::ifstream stream(partition.c_str(), std::ios_base::binary);
+  if (!stream.is_open())
+    throw xrt_core::error(boost::str(boost::format("Cannot open %s") % partition));
+
+  stream.seekg(0, stream.end);
+  int total_size = static_cast<int>(stream.tellg());
+  stream.seekg(0, stream.beg);
+
+  xrt_core::scope_value_guard<int, std::function<void()>> fd { 0, nullptr };
+  try {
+      fd = dev->file_open("icap", O_WRONLY); 
+  } catch (const std::exception& e) {
+      xrt_core::send_exception_message(e.what(), "XBMGMT");
+  }
+
+  std::vector<char> buffer(total_size);
+  stream.read(buffer.data(), total_size);
+  std::cout << "size: " << total_size <<std::endl;
+
+	ssize_t ret = total_size;
+	ret = write(fd.get(), buffer.data(), total_size);
+  std::cout << "ret: " << ret << std::endl;
+
+  if (ret != total_size)
+    throw xrt_core::error("Write plp to icap subdev failed");
+
+  std::cout << "Programmed PLP successfully" << std::endl;
+
+}
+
 }
 //end anonymous namespace
 
@@ -436,7 +470,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
     ("plp", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
-                                                                "  Name (and path) of the partiaion.\n"
+                                                                "  Name (and path) of the partition.\n"
                                                                 "  Parition's UUID")
     ("update", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images.  Value values:\n"
                                                                          "  ALL   - All images will be updated"
@@ -573,6 +607,57 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     std::cout << "Cold reboot machine to load the new image on card(s).\n";
     std::cout << "****************************************************\n";
     return;
+  }
+
+  // -- process "plp" option ---------------------------------------
+  if(!plp.empty()) {
+    XBU::verbose(boost::str(boost::format("  plp: %s") % plp));
+    //only 1 card and name
+    if(deviceCollection.size() > 1)
+      throw xrt_core::error("Please specify a single device");
+    auto dev = deviceCollection.front();
+
+    Flasher flasher(dev->get_device_id());
+    if(!flasher.isValid())
+      throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % dev->get_device_id()));
+
+    if(xrt_core::device_query<xrt_core::query::interface_uuids>(dev).empty())
+      throw xrt_core::error("Can not get BLP interface uuid. Please make sure corresponding BLP package is installed.");
+
+    std::vector<DSAInfo> available_partitions;
+    auto installedDSAs = firmwareImage::getIntalledDSAs();
+    for (const auto& dsa : installedDSAs) {
+      if (dsa.uuids.size() != 0) {
+        if(dsa.name.compare(plp) == 0)
+          available_partitions.push_back(dsa);
+        else if (dsa.matchIntId(plp)) {
+          available_partitions.push_back(dsa);
+        }
+          
+      }
+    }
+
+    if (available_partitions.size() > 1) {
+      std::stringstream err;
+      err << "Found duplicated partitions, please specify the entire uuid\n";
+      for (const auto& d : available_partitions)
+        err << boost::format("  - %s [0x%x]\n") % d.name % d.timestamp;
+      throw xrt_core::error(err.str());
+    } else if (available_partitions.size() == 0)
+        throw xrt_core::error("No matching partition found");
+
+    DSAInfo dsa(available_partitions.front());
+    //TO_DO: add a report for plp before asking permission to proceed. Replace following 2 lines
+    std::cout << "Programming PLP on Card [" << flasher.sGetDBDF() << "]..." << std::endl;
+    std::cout << "Partition file: " << dsa.file << std::endl;
+    //ask user's permission
+    for (std::string uuid : dsa.uuids) {
+      if (xrt_core::device_query<xrt_core::query::interface_uuids>(dev).front().compare(uuid) == 0) {
+        program_plp(dev, dsa.file);
+        return;
+      }
+    }
+    throw xrt_core::error("uuid does not match BLP");
   }
 
   std::cout << "\nERROR: Missing flash operation.  No action taken.\n\n";
