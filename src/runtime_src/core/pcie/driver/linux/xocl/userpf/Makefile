@@ -83,6 +83,7 @@ xocl-y := \
 	../subdev/p2p.o \
 	../subdev/intc.o \
 	../subdev/version_ctrl.o \
+	../subdev/msix_xdma.o \
 	../subdev/ert_user.o \
 	$(xocl_lib-y)	\
 	$(drv_common-y) \

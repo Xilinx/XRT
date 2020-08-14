@@ -73,6 +73,7 @@
 #define NODE_ERT_SCHED "ep_ert_sched_00"
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
+#define NODE_MSIX_USER "ep_msix_user_00"
 #define NODE_MSIX_MGMT "ep_msix_mgmt_00"
 #define NODE_QDMA "ep_qdma_00"
 #define NODE_QDMA4 "ep_qdma4_00"

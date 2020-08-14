@@ -161,15 +161,32 @@ void xocl_update_mig_cache(struct xocl_dev *xdev)
 
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
-	return xocl_dma_intr_config(xdev_hdl, intr, en);
+	int ret;
+
+	ret = xocl_dma_intr_config(xdev_hdl, intr, en);
+	if (ret != -ENODEV)
+		return ret;
+
+	return xocl_msix_intr_config(xdev_hdl, intr, en);
 }
 
 static int userpf_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 		irq_handler_t handler, void *arg)
 {
-	return handler ?
+	int ret;
+
+	pr_info("REGISTER INTERRUPT \n");
+	ret = handler ?
 		xocl_dma_intr_register(xdev_hdl, intr, handler, arg, -1) :
 		xocl_dma_intr_unreg(xdev_hdl, intr);
+	if (ret != -ENODEV)
+		return ret;
+
+	pr_info("REGISTER MSIX \n");
+
+	return handler ?
+		xocl_msix_intr_register(xdev_hdl, intr, handler, arg, -1) :
+		xocl_msix_intr_unreg(xdev_hdl, intr);
 }
 
 struct xocl_pci_funcs userpf_pci_ops = {
@@ -1539,6 +1556,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_p2p,
 	xocl_init_spc,
 	xocl_init_lapc,
+	xocl_init_msix_xdma,
 	xocl_init_ert_user,
 };
 
@@ -1574,6 +1592,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_p2p,
 	xocl_fini_spc,
 	xocl_fini_lapc,
+	xocl_fini_msix_xdma,
 	xocl_fini_ert_user,
 };
 

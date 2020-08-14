@@ -314,7 +314,19 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
-       	},
+	},
+	{
+		.id = XOCL_SUBDEV_MSIX,
+		.dev_name = XOCL_MSIX_XDMA,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_MSIX_USER},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
+		.build_priv_data = NULL,
+		.devinfo_cb = devinfo_cb_xdma,
+	},
 	{
 		.id = XOCL_SUBDEV_INTC,
 		.dev_name = XOCL_INTC,
