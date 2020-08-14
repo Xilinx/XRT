@@ -301,14 +301,14 @@ struct shim : public DeviceType
   unmgd_pread(void* buffer, size_t size, uint64_t offset)
   {
     if (auto ret = xclUnmgdPread(DeviceType::get_device_handle(), 0, buffer, size, offset))
-      throw error(ret, "failed to read at address (" + std::to_string(offset) + ")");
+      throw error(static_cast<int>(ret), "failed to read at address (" + std::to_string(offset) + ")");
   }
 
   virtual void
   unmgd_pwrite(const void* buffer, size_t size, uint64_t offset)
   {
     if (auto ret = xclUnmgdPwrite(DeviceType::get_device_handle(), 0, buffer, size, offset))
-      throw error(ret, "failed to write to address (" + std::to_string(offset) + ")");
+      throw error(static_cast<int>(ret), "failed to write to address (" + std::to_string(offset) + ")");
   }
 
   virtual void

@@ -37,6 +37,10 @@ namespace po = boost::program_options;
 #include <iostream>
 #include <cctype>
 
+#ifdef _WIN32
+# pragma warning(disable : 4245)
+#endif
+
 namespace {
 
 enum class action_type { enable, disable, validate };
@@ -45,7 +49,7 @@ action_type
 string2action(std::string str)
 {
   std::transform(str.begin(), str.end(), str.begin(),
-                 [](auto c) { return std::tolower(c); });
+                 [](auto c) { return static_cast<char>(std::tolower(c)); });
 
   if (str == "enable")
     return action_type::enable;
@@ -68,7 +72,7 @@ p2p_config(xrt_core::device* device)
     throw xrt_core::system_error(ENOTSUP, "p2p is not supported");
   }
 }
-  
+
 static void
 p2p_enabled_or_error(xrt_core::device* device)
 {
@@ -146,11 +150,10 @@ chunk(xrt_core::device* device, char* boptr, uint64_t dev_addr, uint64_t size)
   try {
     device->unmgd_pwrite(buf, size, dev_addr);
   }
-  catch (const std::exception& ex) {
+  catch (const std::exception&) {
     std::ostringstream ostr;
-    ostr << "Error (" << strerror (errno) << ") writing 0x"
-         << std::hex << size << " bytes to 0x" << std::hex << dev_addr
-         << std::dec;
+    ostr << "Error writing 0x" << std::hex << size
+         << " bytes to 0x" << dev_addr << std::dec;
     throw xrt_core::system_error(EIO, ostr.str());
   }
   cmp_with_stride(boptr, boptr+size, patternA);
@@ -159,11 +162,10 @@ chunk(xrt_core::device* device, char* boptr, uint64_t dev_addr, uint64_t size)
   try {
     device->unmgd_pread(buf, size, dev_addr);
   }
-  catch (const std::exception& ex) {
+  catch (const std::exception&) {
     std::ostringstream ostr;
-    ostr << "Error (" << strerror (errno) << ") reading 0x"
-         << std::hex << size << " bytes from 0x" << std::hex << dev_addr
-         << std::dec;
+    ostr << "Error reading 0x" << std::hex << size
+         << " bytes from 0x" << dev_addr << std::dec;
     throw xrt_core::system_error(EIO, ostr.str());
   }
   cmp_with_stride(buf, buf+size, patternB);
@@ -305,4 +307,3 @@ OO_P2P::execute(const SubCmdOptions& _options) const
   for (auto& device : XBU::collect_devices(m_device, true))
     p2p(device.get(), string2action(m_action), false);
 }
-
