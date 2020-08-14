@@ -58,6 +58,14 @@ public:
   {}
 };
 
+class generic_error : public std::system_error
+{
+public:
+  generic_error(int ec, const std::string& what = "")
+    : std::system_error(ec, std::generic_category(), what)
+  {}
+};
+
 XRT_CORE_COMMON_EXPORT
 void
 send_exception_message(const char* msg, const char* tag="XRT");
