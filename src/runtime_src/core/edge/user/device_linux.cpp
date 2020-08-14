@@ -180,8 +180,7 @@ initialize_query_table()
   emplace_func0_request<query::clock_freqs_mhz, devInfo>();
  
   emplace_sysfs_request<query::xclbin_uuid>               ("xclbinid");
-  emplace_sysfs_request<query::mem_topology>              ("mem_topology");
-  emplace_sysfs_request<query::mem_topology_raw>          ("mem_topology_raw");
+  emplace_sysfs_request<query::mem_topology_raw>          ("mem_topology");
   emplace_sysfs_request<query::ip_layout_raw>             ("ip_layout");
   emplace_sysfs_request<query::aie_metadata>              ("aie_metadata");
   emplace_sysfs_request<query::memstat>                   ("memstat");

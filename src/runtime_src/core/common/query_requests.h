@@ -66,7 +66,6 @@ enum class key_type
   rom_time_since_epoch,
 
   xclbin_uuid,
-  mem_topology,
   group_topology,
   memstat,
   memstat_raw,
@@ -546,15 +545,6 @@ struct group_topology : request
 {
   using result_type = std::vector<char>;
   static const key_type key = key_type::group_topology;
-
-  virtual boost::any
-  get(const device*) const = 0;
-};
-
-struct mem_topology : request
-{
-  using result_type = std::vector<char>;
-  static const key_type key = key_type::mem_topology;
 
   virtual boost::any
   get(const device*) const = 0;

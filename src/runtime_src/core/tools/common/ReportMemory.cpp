@@ -71,8 +71,8 @@ static int eccStatus2Str(unsigned int status, std::string& str)
     return -EINVAL;
   }    
 
-    if (status == 0) { 
-      str = "(None)";
+  if (status == 0) { 
+    str = "(None)";
     return 0;
   }    
 
@@ -87,6 +87,7 @@ static int eccStatus2Str(unsigned int status, std::string& str)
 
 void getChannelinfo(const xrt_core::device * device, boost::property_tree::ptree& pt) {
   std::vector<std::string> dma_threads;
+  boost::property_tree::ptree pt_dma_array;
   pt.put( "board.pcie_dma.transfer_metrics.chan_is_present", "false" );
   try {
     dma_threads = xrt_core::device_query<qr::dma_threads_raw>(device);
@@ -96,14 +97,16 @@ void getChannelinfo(const xrt_core::device * device, boost::property_tree::ptree
   uint64_t h2c[8];
   uint64_t c2h[8];
   for (unsigned i = 0; i < dma_threads.size(); i++) {
-      boost::property_tree::ptree pt_dma;
-      std::stringstream ss(dma_threads[i]);
-      ss >> c2h[i] >> h2c[i];
-      pt_dma.put( "h2c", xrt_core::utils::unit_convert(h2c[i]));
-      pt_dma.put( "c2h", xrt_core::utils::unit_convert(c2h[i]));
-      pt.add_child( std::string("board.pcie_dma.transfer_metrics.chan." + std::to_string(i)), pt_dma );
-      pt.put( "board.pcie_dma.transfer_metrics.chan_is_present", "true" );
+    boost::property_tree::ptree pt_dma;
+    std::stringstream ss(dma_threads[i]);
+    ss >> c2h[i] >> h2c[i];
+    pt_dma.put( "h2c", xrt_core::utils::unit_convert(h2c[i]));
+    pt_dma.put( "c2h", xrt_core::utils::unit_convert(c2h[i]));
+    //pt.add_child( std::string("board.pcie_dma.transfer_metrics.chan." + std::to_string(i)), pt_dma );
+    pt_dma_array.push_back(std::make_pair("",pt_dma));
+    pt.put( "board.pcie_dma.transfer_metrics.chan_is_present", "true" );
   }
+  pt.add_child( std::string("board.pcie_dma.transfer_metrics.chan"), pt_dma_array );
 }
 
 boost::property_tree::ptree
@@ -120,7 +123,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   pt.put("description", desc);
   getChannelinfo(device, pt);
   try {
-    buf = xrt_core::device_query<qr::mem_topology>(device);
+    buf = xrt_core::device_query<qr::mem_topology_raw>(device);
     mm_buf = xrt_core::device_query<qr::memstat_raw>(device);
     temp_buf = xrt_core::device_query<qr::temp_by_mem_topology>(device);
   } catch (const std::exception& ex){
@@ -133,8 +136,8 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   const mem_topology *map = (mem_topology *)buf.data();
   const uint32_t *temp = (uint32_t *)temp_buf.data();
 
-  int j = 0; // stream index
-  int m = 0; // mem index
+  //int j = 0; // stream index
+  //int m = 0; // mem index
 
   try {
     boost::any a = std::string("1");
@@ -143,6 +146,9 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
     pt.put("error_msg", ex.what());
   }
   
+  boost::property_tree::ptree ptMem_array;
+  boost::property_tree::ptree ptStream_array;
+  boost::property_tree::ptree ptGrp_array;
   for (int i = 0; i < map->m_count; i++) {
     if (map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION) {
       std::string lname, status = "Inactive", total = "N/A", pending = "N/A";
@@ -168,7 +174,8 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
 
         total = stat_map[std::string("complete_bytes")] + "/" + stat_map[std::string("complete_requests")];
         pending = stat_map[std::string("pending_bytes")] + "/" + stat_map[std::string("pending_requests")];
-      } catch (const std::exception& ex){
+      //} catch (const std::exception& ex){
+      } catch (const std::exception& ){
         // eat the exception, probably bad path
       }
   
@@ -178,9 +185,10 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
       ptStream.put( "status", status );
       ptStream.put( "total", total );
       ptStream.put( "pending", pending );
-      pt.add_child( std::string("board.memory.stream." + std::to_string(j)), ptStream);
+      ptStream_array.push_back(std::make_pair("",ptStream));
+      //pt.add_child( std::string("board.memory.stream." + std::to_string(j)), ptStream);
       pt.put( "board.memory.stream_is_present", "true" );
-      j++;
+      //j++;
       continue;
     }
 
@@ -210,8 +218,8 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
         ue_ffa = xrt_core::device_query<qr::mig_ecc_ue_ffa>(device, val);
 
         ptMem.put("ecc_status", ecc_st_str);
-        ptMem.put("ecc_ce_cnt", ce_cnt);
-        ptMem.put("ecc_ue_cnt", ue_cnt);
+        ptMem.put("ecc_ce_count", ce_cnt);
+        ptMem.put("ecc_ue_count", ue_cnt);
         ptMem.put("ecc_ce_ffa", ce_ffa);
         ptMem.put("ecc_ue_ffa", ue_ffa);
         pt.put( "board.memory.ecc_is_present", "true" );
@@ -220,19 +228,22 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
     std::stringstream ss(mm_buf[i]);
     ss >> memoryUsage >> boCount;
 
-    ptMem.put( "type",      str );
-    ptMem.put( "temp",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
-    ptMem.put( "tag",       map->m_mem_data[i].m_tag );
-    ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
-    ptMem.put( "size",      xrt_core::utils::unit_convert(map->m_mem_data[i].m_size << 10) );
-    ptMem.put( "size_raw",  map->m_mem_data[i].m_size << 10 );
-    ptMem.put( "mem_usage", xrt_core::utils::unit_convert(memoryUsage));
-    ptMem.put( "mem_usage_raw", memoryUsage);
-    ptMem.put( "bo_count",  boCount);
-    pt.add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
+    ptMem.put("type", str );
+    ptMem.put("temp_in_C",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
+    ptMem.put("tag",       map->m_mem_data[i].m_tag);
+    ptMem.put("enabled",   map->m_mem_data[i].m_used ? true : false);
+    ptMem.put("size_in_bytes", map->m_mem_data[i].m_size << 10);
+    //ptMem.put("size_raw", map->m_mem_data[i].m_size << 10 );
+    ptMem.put("mem_usage_in_bytes", memoryUsage);
+    //ptMem.put("mem_usage_raw", memoryUsage);
+    ptMem.put("bo_count", boCount);
+    //pt.add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
+    ptMem_array.push_back(std::make_pair("",ptMem));
     pt.put( "board.memory.mem_is_present", "true" );
-    m++;
+    //m++;
   }
+  pt.add_child( std::string("board.memory.stream"), ptStream_array);
+  pt.add_child( std::string("board.memory.mem"), ptMem_array );
 
   try {
     mm_buf = xrt_core::device_query<qr::memstat_raw>(device);
@@ -246,7 +257,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
 
   const mem_topology *grp_map = (mem_topology *)gbuf.data();
 
-  int gid = 0; // group index
+  //int gid = 0; // group index
   for (int i = 0; i < grp_map->m_count; i++) {
     if (grp_map->m_mem_data[i].m_used != 0) {
       boost::property_tree::ptree ptGrp;
@@ -254,17 +265,19 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
       std::string str = search->second;
       std::stringstream ss(mm_buf[i]);
       ss >> memoryUsage >> boCount;
-      ptGrp.put( "type",          str);
-      ptGrp.put( "tag",           grp_map->m_mem_data[i].m_tag);
-      ptGrp.put( "size",          xrt_core::utils::unit_convert(grp_map->m_mem_data[i].m_size << 10) );
-      ptGrp.put( "size_raw",      grp_map->m_mem_data[i].m_size << 10 );
-      ptGrp.put( "mem_usage_raw", memoryUsage);
-      ptGrp.put( "bo_count",      boCount);
-      pt.add_child(std::string("board.memory.grp." + std::to_string(gid)), ptGrp);
+      ptGrp.put("type", str);
+      ptGrp.put("tag", grp_map->m_mem_data[i].m_tag);
+      //ptGrp.put("size", xrt_core::utils::unit_convert(grp_map->m_mem_data[i].m_size << 10) );
+      ptGrp.put("size_in_bytes", grp_map->m_mem_data[i].m_size << 10);
+      ptGrp.put("mem_usage_in_bytes", memoryUsage);
+      ptGrp.put("bo_count", boCount);
+      ptGrp_array.push_back(std::make_pair("",ptGrp));
+      //pt.add_child(std::string("board.memory.grp." + std::to_string(gid)), ptGrp);
       pt.put( "board.memory.grp_is_present", "true" );
-      gid++;
+      //gid++;
     }
   }
+  pt.add_child(std::string("board.memory.grp"), ptGrp_array);
   return pt;
 }
 
@@ -282,6 +295,11 @@ ReportMemory::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   _pt.add_child("mem_topology", populate_memtopology(_pDevice, "Memory Information"));
+//  boost::property_tree::ptree fan_array;
+//  fan_array.push_back(std::make_pair("", populate_memtopology(_pDevice, "Memory Information")));
+
+  // There can only be 1 root node
+//  _pt.add_child("mem_topology", fan_array);
 }
 
 void 
@@ -297,6 +315,7 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
 
   bool ecc_is_present = _pt.get<bool>("mem_topology.board.memory.ecc_is_present");
   if (ecc_is_present) {
+    int index = 0;
     _output << std::endl;
     _output << "  ECC Error Status\n";
     _output << boost::format("    %-8s%-12s%-10s%-10s%-20s%-20s\n") % "Tag" % "Errors"
@@ -304,73 +323,71 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
 
     try {
       for (auto& v : _pt.get_child("mem_topology.board.memory.mem")) {
-        int index = std::stoi(v.first);
-        if (index >= 0) {
-          std::string tag, st;
-          unsigned int ce_cnt = 0, ue_cnt = 0;
-          uint64_t ce_ffa = 0, ue_ffa = 0;
-          for (auto& subv : v.second) {
-            if (subv.first == "tag") {
-              tag = subv.second.get_value<std::string>();
-            } else if (subv.first == "ecc_status") {
-              st = subv.second.get_value<std::string>();
-            } else if (subv.first == "ecc_ce_cnt") {
-              ce_cnt = subv.second.get_value<unsigned int>();
-            } else if (subv.first == "ecc_ue_cnt") {
-              ue_cnt = subv.second.get_value<unsigned int>();
-            } else if (subv.first == "ecc_ce_ffa") {
-              ce_ffa = subv.second.get_value<uint64_t>();
-            } else if (subv.first == "ecc_ue_ffa") {
-              ue_ffa = subv.second.get_value<uint64_t>();
-            }
+        std::string tag, st;
+        unsigned int ce_cnt = 0, ue_cnt = 0;
+        uint64_t ce_ffa = 0, ue_ffa = 0;
+        for (auto& subv : v.second) {
+          if (subv.first == "tag") {
+            tag = subv.second.get_value<std::string>();
+          } else if (subv.first == "ecc_status") {
+            st = subv.second.get_value<std::string>();
+          } else if (subv.first == "ecc_ce_count") {
+            ce_cnt = subv.second.get_value<unsigned int>();
+          } else if (subv.first == "ecc_ue_count") {
+            ue_cnt = subv.second.get_value<unsigned int>();
+          } else if (subv.first == "ecc_ce_ffa") {
+            ce_ffa = subv.second.get_value<uint64_t>();
+          } else if (subv.first == "ecc_ue_ffa") {
+            ue_ffa = subv.second.get_value<uint64_t>();
           }
-          if (!st.empty()) {
-            _output << boost::format("    %-8s%-12s%-10d%-10d0x%-20x0x%-20x\n") % tag
-               % st % ce_cnt % ue_cnt % ce_ffa % ue_ffa;
-          }
+        }
+        if (!st.empty()) {
+          _output << boost::format("    %-8s%-12s%-10d%-10d0x%-20x0x%-20x\n") % tag
+             % st % ce_cnt % ue_cnt % ce_ffa % ue_ffa;
+          index++;
         }
       }
     }
-    catch( std::exception const& e) {
+    catch( std::exception const&) {
       // eat the exception, probably bad path
     }
   }
 
   bool mem_is_present = _pt.get<bool>("mem_topology.board.memory.mem_is_present");
   if (mem_is_present) {
+    int index = 0;
     _output << std::endl;
     _output << "  Memory Topology" << std::endl;
     _output << boost::format("    %-17s%-12s%-9s%-8s\n") % "     Tag" % "Type"
         % "Temp(C)" % "Size";
     try {
       for (auto& v : _pt.get_child("mem_topology.board.memory.mem")) {
-        int index = std::stoi(v.first);
-        if (index >= 0) {
-          std::string tag, size, type, temp;
-          for (auto& subv : v.second) {
-            if (subv.first == "type") {
-              type = subv.second.get_value<std::string>();
-            } else if (subv.first == "tag") {
-              tag = subv.second.get_value<std::string>();
-            } else if (subv.first == "temp") {
-              unsigned int t = subv.second.get_value<unsigned int>();
-              temp = pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
-            } else if (subv.first == "size") {
-              size = subv.second.get_value<std::string>();
-            }
+        std::string tag, size, type, temp;
+        for (auto& subv : v.second) {
+          if (subv.first == "type") {
+            type = subv.second.get_value<std::string>();
+          } else if (subv.first == "tag") {
+            tag = subv.second.get_value<std::string>();
+          } else if (subv.first == "temp_in_C") {
+            unsigned int t = subv.second.get_value<unsigned int>();
+            temp = pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
+          } else if (subv.first == "size_in_bytes") {
+            size = xrt_core::utils::unit_convert(subv.second.get_value<size_t>());
           }
-          _output << boost::format("    [%2d] %-12s%-12s%-9s%-8s\n") % index
-              % tag % type % temp % size;
         }
+        _output << boost::format("    [%2d] %-12s%-12s%-9s%-8s\n") % index
+            % tag % type % temp % size;
+        index++;
       }
     }
-    catch( std::exception const& e) {
+    catch( std::exception const&) {
         // eat the exception, probably bad path
     }
   }
 
   bool grp_is_present = _pt.get<bool>("mem_topology.board.memory.grp_is_present");
   if (grp_is_present) {
+    int index = 0;
     _output << std::endl;
     _output << "  Memory Status" << std::endl;
     _output << boost::format("    %-17s%-12s%-8s%-16s%-8s\n") % "     Tag" % "Type" % "Size" % "Mem Usage"
@@ -378,97 +395,92 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
 
     try {
       for (auto& v : _pt.get_child("mem_topology.board.memory.grp")) {
-        int index = std::stoi(v.first);
-        if (index >= 0) {
-          std::string mem_usage, tag, size, type;
-          unsigned bo_count = 0;
-          for (auto& subv : v.second) {
-            if (subv.first == "type") {
-              type = subv.second.get_value<std::string>();
-            } else if (subv.first == "tag") {
-              tag = subv.second.get_value<std::string>();
-            } else if (subv.first == "bo_count") {
-              bo_count = subv.second.get_value<unsigned>();
-            } else if (subv.first == "mem_usage") {
-              mem_usage = subv.second.get_value<std::string>();
-            } else if (subv.first == "size") {
-              size = subv.second.get_value<std::string>();
-            }
+        std::string mem_usage, tag, size, type;
+        unsigned bo_count = 0;
+        for (auto& subv : v.second) {
+          if (subv.first == "type") {
+            type = subv.second.get_value<std::string>();
+          } else if (subv.first == "tag") {
+            tag = subv.second.get_value<std::string>();
+          } else if (subv.first == "bo_count") {
+            bo_count = subv.second.get_value<unsigned>();
+          } else if (subv.first == "mem_usage_in_bytes") {
+            //mem_usage = xrt_core::utils::unit_convert(subv.second.get_value<std::string>());
+            mem_usage = xrt_core::utils::unit_convert(subv.second.get_value<size_t>());
+          } else if (subv.first == "size_in_bytes") {
+            //size = xrt_core::utils::unit_convert(subv.second.get_value<std::string>());
+            size = xrt_core::utils::unit_convert(subv.second.get_value<size_t>());
           }
-          _output << boost::format("    [%2d] %-12s%-12s%-8s%-16s%-8u\n") % index % tag % type
-              % size % mem_usage % bo_count;
         }
+        _output << boost::format("    [%2d] %-12s%-12s%-8s%-16s%-8u\n") % index % tag % type
+            % size % mem_usage % bo_count;
+        index++;
       }
     }
-    catch( std::exception const& e) {
+    catch( std::exception const&) {
       // eat the exception, probably bad path
     }
   }
 
   bool dma_is_present = _pt.get<bool>("mem_topology.board.pcie_dma.transfer_metrics.chan_is_present");
   if (dma_is_present) {
+    int index = 0;
     _output << std::endl;
     _output << "  DMA Transfer Metrics" << std::endl;
     try {
       for (auto& v : _pt.get_child("mem_topology.board.pcie_dma.transfer_metrics.chan")) {
-        int index = std::stoi(v.first);
-        if (index >= 0) {
-          std::string chan_h2c, chan_c2h, chan_val = "N/A";
-          for (auto& subv : v.second) {
-            chan_val = subv.second.get_value<std::string>();
-            if (subv.first == "h2c")
-              chan_h2c = chan_val;
-            else if (subv.first == "c2h")
-              chan_c2h = chan_val;
-          }
-          _output << boost::format("    Chan[%2d].h2c:  %lu\n") % index % chan_h2c;
-          _output << boost::format("    Chan[%2d].c2h:  %lu\n") % index % chan_c2h;
+        std::string chan_h2c, chan_c2h, chan_val = "N/A";
+        for (auto& subv : v.second) {
+          chan_val = subv.second.get_value<std::string>();
+          if (subv.first == "h2c")
+            chan_h2c = chan_val;
+          else if (subv.first == "c2h")
+            chan_c2h = chan_val;
         }
+        _output << boost::format("    Chan[%2d].h2c:  %lu\n") % index % chan_h2c;
+        _output << boost::format("    Chan[%2d].c2h:  %lu\n") % index % chan_c2h;
+        index++;
       }
     }
-    catch( std::exception const& e) {
+    catch( std::exception const&) {
       // eat the exception, probably bad path
     }
   }
 
   bool stream_is_present = _pt.get<bool>("mem_topology.board.memory.stream_is_present");
   if (stream_is_present) {
+    int index = 0;
     _output << std::endl;
     _output << "  Streams" << std::endl;
     _output << boost::format("    %-17s%-9s%-9s%-9s%-16s%-16s\n") % "     Tag" % "Flow ID"
         % "Route ID" % "Status" % "Total (B/#)" % "Pending (B/#)";
     try {
-      int index = 0;
       for (auto& v : _pt.get_child("mem_topology.board.memory.stream")) {
-        int stream_index = std::stoi(v.first);
-        if (stream_index >= 0) {
-          std::string status, tag, total, pending;
-          unsigned int flow_id = 0, route_id = 0;
-          for (auto& subv : v.second) {
-            if (subv.first == "tag") {
-              tag = subv.second.get_value<std::string>();
-            } else if (subv.first == "flow_id") {
-              flow_id = subv.second.get_value<unsigned int>();
-            } else if (subv.first == "route_id") {
-              route_id = subv.second.get_value<unsigned int>();
-            } else if (subv.first == "status") {
-              status = subv.second.get_value<std::string>();
-            } else if (subv.first == "total") {
-              total = subv.second.get_value<std::string>();
-            } else if (subv.first == "pending") {
-              pending = subv.second.get_value<std::string>();
-            }
+        std::string status, tag, total, pending;
+        unsigned int flow_id = 0, route_id = 0;
+        for (auto& subv : v.second) {
+          if (subv.first == "tag") {
+            tag = subv.second.get_value<std::string>();
+          } else if (subv.first == "flow_id") {
+            flow_id = subv.second.get_value<unsigned int>();
+          } else if (subv.first == "route_id") {
+            route_id = subv.second.get_value<unsigned int>();
+          } else if (subv.first == "status") {
+            status = subv.second.get_value<std::string>();
+          } else if (subv.first == "total") {
+            total = subv.second.get_value<std::string>();
+          } else if (subv.first == "pending") {
+            pending = subv.second.get_value<std::string>();
           }
-          _output << boost::format("    [%2d] %-12s%-9u%-9u%-9s%-16s%-16s\n") % index
-              % tag % flow_id % route_id % status % total % pending;
-          index++;
         }
+        _output << boost::format("    [%2d] %-12s%-9u%-9u%-9s%-16s%-16s\n") % index
+           % tag % flow_id % route_id % status % total % pending;
+        index++;
       }
     }
-    catch( std::exception const& e) {
+    catch( std::exception const& ) {
       // eat the exception, probably bad path
     }
   }
   _output << std::endl;
-  
 }
