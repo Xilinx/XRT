@@ -217,6 +217,13 @@ get_xrt_profile()
 }
 
 inline bool
+get_aie_trace()
+{
+  static bool value = detail::get_bool_value("Debug.aie_trace", false);
+  return value;
+}
+
+inline bool
 get_lop_trace()
 {
   static bool value = detail::get_bool_value("Debug.lop_trace", false);
