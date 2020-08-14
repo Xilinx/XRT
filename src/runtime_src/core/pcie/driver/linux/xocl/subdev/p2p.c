@@ -190,7 +190,7 @@ static void p2p_percpu_ref_kill(void *data)
 {
 	struct percpu_ref *ref = data;
 #if defined(RHEL_RELEASE_CODE)
-	#if (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6))
+	#if ((RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)) && (RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 1)))
 	unsigned long __percpu *percpu_count = (unsigned long __percpu *)
 		(ref->percpu_count_ptr & ~__PERCPU_REF_ATOMIC_DEAD);
 	unsigned long count = 0;
@@ -332,14 +332,14 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 		chk->xpmc_pgmap.type = MEMORY_DEVICE_PCI_P2PDMA;
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2) && \
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0) && \
 	LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
 		chk->xpmc_pgmap.kill = p2p_percpu_ref_kill_noop;
 #endif
 		chk->xpmc_va = devm_memremap_pages(dev, &chk->xpmc_pgmap);
 		ret = devm_add_action_or_reset(dev, p2p_percpu_ref_kill, pref);
 		if (ret) {
-			p2p_err(p2p, "add kill action failed");
+			p2p_err(p2p, "add kill action failed, err: %d", ret);
 			percpu_ref_kill(pref);
 		}
 	}
@@ -352,8 +352,9 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 		if (IS_ERR(chk->xpmc_va)) {
 			ret = PTR_ERR(chk->xpmc_va);
 			chk->xpmc_va = NULL;
+			p2p_err(p2p, "devm_memremap_pages() call failed, err: %d ", ret );
 		}
-		p2p_err(p2p, "reserve p2p chunk failed, releasing");
+		p2p_err(p2p, "reserve p2p chunk failed, releasing, err: %d", ret);
 		p2p_mem_chunk_release(p2p, chk);
 		ret = ret ? ret : -ENOMEM;
 	}
