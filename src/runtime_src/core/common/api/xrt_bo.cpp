@@ -22,6 +22,7 @@
 #include "core/include/experimental/xrt_bo.h"
 
 #include "bo.h"
+#include "device_int.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/memalign.h"
@@ -483,6 +484,12 @@ sub_buffer(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offs
   return std::make_shared<xrt::buffer_sub>(parent, size, offset);
 }
 
+static xclDeviceHandle
+get_xcl_device_handle(xrtDeviceHandle dhdl)
+{
+  return xrt_core::device_int::get_xcl_device_handle(dhdl);
+}
+
 } // namespace
 
 ////////////////////////////////////////////////////////////////
@@ -580,10 +587,10 @@ read(void* dst, size_t size, size_t skip)
 // xrt_bo API implmentations (xrt_bo.h)
 ////////////////////////////////////////////////////////////////
 xrtBufferHandle
-xrtBOAllocUserPtr(xclDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
+xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   try {
-    auto boh = alloc(dhdl, userptr, size, flags, grp);
+    auto boh = alloc(get_xcl_device_handle(dhdl), userptr, size, flags, grp);
     bo_cache[boh.get()] = boh;
     return boh.get();
   }
@@ -599,10 +606,10 @@ xrtBOAllocUserPtr(xclDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
 }
 
 xrtBufferHandle
-xrtBOAlloc(xclDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
+xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   try {
-    auto boh = alloc(dhdl, size, flags, grp);
+    auto boh = alloc(get_xcl_device_handle(dhdl), size, flags, grp);
     bo_cache[boh.get()] = boh;
     return boh.get();
   }

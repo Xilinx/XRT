@@ -22,6 +22,7 @@
 #include "ert.h"
 #include "experimental/xrt_uuid.h"
 #include "experimental/xrt_bo.h"
+#include "experimental/xrt_device.h"
 
 #ifdef __cplusplus
 # include "experimental/xrt_enqueue.h"
@@ -302,7 +303,7 @@ public:
   /**
    * kernel() - Constructor from a device and xclbin
    *
-   * @dhdl:  Device handle on which the kernel should execute
+   * @device: Device on which the kernel should execute
    * @xclbin_id: UUID of the xclbin with the kernel
    * @name:  Name of kernel to construct
    * @exclusive: Open the kernel instances with exclusive access (default shared)
@@ -315,6 +316,12 @@ public:
    * other kernels and other process will have shared access to same
    * compute units.  If exclusive access is needed then set @exclusive
    * argument to true.
+   */
+  XCL_DRIVER_DLLESPEC
+  kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
+
+  /**
+   * Obsoleted construction from xclDeviceHandle
    */
   XCL_DRIVER_DLLESPEC
   kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
@@ -426,7 +433,7 @@ extern "C" {
  */
 XCL_DRIVER_DLLESPEC
 xrtKernelHandle
-xrtPLKernelOpen(xclDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
+xrtPLKernelOpen(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
 
 /**
  * xrtPLKernelOpenExclusive() - Open a PL kernel and obtain its handle.
@@ -437,7 +444,7 @@ xrtPLKernelOpen(xclDeviceHandle deviceHandle, const xuid_t xclbinId, const char 
  */
 XCL_DRIVER_DLLESPEC
 xrtKernelHandle
-xrtPLKernelOpenExclusive(xclDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
+xrtPLKernelOpenExclusive(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
 
 /**
  * xrtKernelClose() - Close an opened kernel

@@ -85,6 +85,24 @@ send_exception_message(const char* msg)
 
 } // unnamed namespace
 
+namespace xrt_core { namespace device_int {
+
+std::shared_ptr<xrt_core::device>
+get_core_device(xrtDeviceHandle dhdl)
+{
+  return get_device(dhdl); // handle check
+}
+
+xclDeviceHandle
+get_xcl_device_handle(xrtDeviceHandle dhdl)
+{
+  auto device = get_device(dhdl); // handle check
+  return device->get_device_handle();  // shim handle
+}
+
+}} // device_int, xrt_core
+
+
 namespace xrt {
 
 ////////////////////////////////////////////////////////////////
@@ -254,5 +272,23 @@ xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
     send_exception_message(ex.what());
     errno = 0;
   }
-
 }
+
+xclDeviceHandle
+xrtDeviceToXclDevice(xrtDeviceHandle dhdl)
+{
+  try {
+    auto device = get_device(dhdl);
+    return device->get_device_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
+}
+

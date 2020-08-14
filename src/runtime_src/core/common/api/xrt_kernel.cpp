@@ -24,6 +24,7 @@
 #include "command.h"
 #include "exec.h"
 #include "bo.h"
+#include "device_int.h"
 #include "enqueue.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -143,9 +144,14 @@ struct device_type
   std::shared_ptr<xrt_core::device> core_device;
   xrt_core::bo_cache exec_buffer_cache;
 
-  device_type(xclDeviceHandle dhdl)
-    : core_device(xrt_core::get_userpf_device(dhdl))
-    , exec_buffer_cache(dhdl, 128)
+  device_type(xrtDeviceHandle dhdl)
+    : core_device(xrt_core::device_int::get_core_device(dhdl))
+    , exec_buffer_cache(core_device->get_device_handle(), 128)
+  {}
+
+  device_type(const std::shared_ptr<xrt_core::device>& cdev)
+    : core_device(cdev)
+    , exec_buffer_cache(core_device->get_device_handle(), 128)
   {}
 
   template <typename CommandType>
@@ -1142,7 +1148,7 @@ namespace {
 // weak_ptr, the cache would hold on to the device until static global
 // destruction and long after application calls xclClose on the
 // xrtDeviceHandle.
-static std::map<xclDeviceHandle, std::weak_ptr<device_type>> devices;
+static std::map<xrtDeviceHandle, std::weak_ptr<device_type>> devices;
 
 // Active kernels per xrtKernelOpen/Close.  This is a mapping from
 // xrtKernelHandle to the corresponding kernel object.  The
@@ -1162,14 +1168,21 @@ static std::map<void*, std::unique_ptr<xrt::run_impl>> runs;
 // when run is closed.
 static std::map<const xrt::run_impl*, std::unique_ptr<xrt::run_update_type>> run_updates;
 
-// get_device() - get a device object from an xclDeviceHandle
+// Mutex to protect access to maps
+static std::mutex map_mutex;
+
+// get_device() - get a device object from an xrtDeviceHandle
 //
 // The lifetime of the device object is shared ownership. The object
-// is cached so that subsequent look-ups from same xclDeviceHandle
+// is cached so that subsequent look-ups from same xrtDeviceHandle
 // result in same device object if it exists already.
+//
+// Refactor to share, or better get rid of device_type and fold
+// extension into xrt_core::device  
 static std::shared_ptr<device_type>
-get_device(xclDeviceHandle dhdl)
+get_device(xrtDeviceHandle dhdl)
 {
+  std::lock_guard<std::mutex> lk(map_mutex);
   auto itr = devices.find(dhdl);
   std::shared_ptr<device_type> device = (itr != devices.end())
     ? (*itr).second.lock()
@@ -1180,6 +1193,30 @@ get_device(xclDeviceHandle dhdl)
     devices.emplace(std::make_pair(dhdl, device));
   }
   return device;
+}
+
+static std::shared_ptr<device_type>
+get_device(const std::shared_ptr<xrt_core::device>& core_device)
+{
+  auto dhdl = core_device.get();
+
+  std::lock_guard<std::mutex> lk(map_mutex);
+  auto itr = devices.find(dhdl);
+  std::shared_ptr<device_type> device = (itr != devices.end())
+    ? (*itr).second.lock()
+    : nullptr;
+  if (!device) {
+    device = std::shared_ptr<device_type>(new device_type(core_device));
+    xrt_core::exec::init(device->get_core_device());
+    devices.emplace(std::make_pair(dhdl, device));
+  }
+  return device;
+}
+
+static std::shared_ptr<device_type>
+get_device(const xrt::device& xdev)
+{
+  return get_device(xdev.get_handle());
 }
 
 // get_kernel() - get a kernel object from an xrtKernelHandle
@@ -1231,7 +1268,7 @@ get_run_update(xrtRunHandle rhdl)
 namespace api {
 
 xrtKernelHandle
-xrtKernelOpen(xclDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, ip_context::access_mode am)
+xrtKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, ip_context::access_mode am)
 {
   auto device = get_device(dhdl);
   auto kernel = std::make_shared<xrt::kernel_impl>(device, xclbin_uuid, name, am);
@@ -1394,9 +1431,16 @@ set_event(const std::shared_ptr<event_impl>& event) const
 }
   
 kernel::
+kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive)
+  : handle(std::make_shared<kernel_impl>
+     (get_device(xdev), xclbin_id, name,
+      exclusive ? ip_context::access_mode::exclusive : ip_context::access_mode::shared))
+{}
+
+kernel::
 kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive)
   : handle(std::make_shared<kernel_impl>
-     (get_device(dhdl), xclbin_id, name,
+      (get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name,
       exclusive ? ip_context::access_mode::exclusive : ip_context::access_mode::shared))
 {}
 
@@ -1428,7 +1472,7 @@ group_id(int argno) const
 // xrt_kernel API implmentations (xrt_kernel.h)
 ////////////////////////////////////////////////////////////////
 xrtKernelHandle
-xrtPLKernelOpen(xclDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
+xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
   try {
     return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::shared);
@@ -1440,7 +1484,7 @@ xrtPLKernelOpen(xclDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name
 }
 
 xrtKernelHandle
-xrtPLKernelOpenExclusive(xclDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
+xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
   try {
     return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::exclusive);
