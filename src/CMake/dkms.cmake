@@ -231,6 +231,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/version_ctrl.c
   xocl/subdev/msix_xdma.c
   xocl/subdev/ert_user.c
+  xocl/subdev/ert_30.c
   xocl/Makefile
   )
 

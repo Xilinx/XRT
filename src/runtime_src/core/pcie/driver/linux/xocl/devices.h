@@ -250,6 +250,7 @@ enum {
 #define	XOCL_VERSION_CTRL	"version_control"
 #define	XOCL_MSIX_XDMA		"msix_xdma"
 #define	XOCL_ERT_USER		"ert_user"
+#define	XOCL_ERT_30		"ert_30"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -298,6 +299,7 @@ enum subdev_id {
 	XOCL_SUBDEV_INTC,
 	XOCL_SUBDEV_ICAP_CNTRL,
 	XOCL_SUBDEV_ERT_USER,
+	XOCL_SUBDEV_ERT_30,
 	XOCL_SUBDEV_NUM
 };
 

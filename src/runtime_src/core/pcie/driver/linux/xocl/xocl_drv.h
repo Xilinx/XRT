@@ -1571,6 +1571,14 @@ struct xocl_intc_funcs {
 	 INTC_OPS(xdev)->csr_write32(INTC_DEV(xdev), val, off) : \
 	 -ENODEV)
 
+enum ert_gpio_cfg {
+	INTR_TO_ERT,
+	INTR_TO_CU,
+	MB_WAKEUP,
+	MB_SLEEP,
+	MB_STATUS,
+};
+
 struct xocl_ert_user_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (* configured)(struct platform_device *pdev);
@@ -1582,6 +1590,32 @@ struct xocl_ert_user_funcs {
 #define xocl_ert_user_configured(xdev) \
 	( ERT_USER_OPS(xdev)->configured(ERT_USER_DEV(xdev)) : \
 	 -ENODEV)
+
+struct xocl_ert_30_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (* configured)(struct platform_device *pdev);
+	uint32_t (* gpio_cfg)(struct platform_device *pdev, enum ert_gpio_cfg type);
+};
+#define	ERT_30_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_30).pldev
+#define ERT_30_OPS(xdev)  \
+	((struct xocl_ert_30_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ERT_30).ops)
+
+#define xocl_ert_30_configured(xdev) \
+	( ERT_30_OPS(xdev)->configured(ERT_30_DEV(xdev)) : \
+	 -ENODEV)
+#define xocl_ert_30_mb_wakeup(xdev) \
+	( ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), MB_WAKEUP) : \
+	 -ENODEV)
+#define xocl_ert_30_mb_sleep(xdev) \
+	( ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), MB_SLEEP) : \
+	 -ENODEV)
+#define xocl_ert_30_cu_intr_cfg(xdev) \
+	( ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), INTR_TO_CU) : \
+	 -ENODEV)
+#define xocl_ert_30_ert_int_cfg(xdev) \
+	( ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), INTR_TO_ERT) : \
+	 -ENODEV)
+
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -2027,5 +2061,8 @@ void xocl_fini_msix_xdma(void);
 
 int __init xocl_init_ert_user(void);
 void xocl_fini_ert_user(void);
+
+int __init xocl_init_ert_30(void);
+void xocl_fini_ert_30(void);
 
 #endif
