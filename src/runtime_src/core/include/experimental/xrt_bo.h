@@ -26,10 +26,8 @@
 
 /**
  * typedef xrtDeviceHandle - opaque device handle
- *
- * Typedef alias from xrt.h
  */
-typedef xclDeviceHandle xrtDeviceHandle;
+typedef void* xrtDeviceHandle;
 
 /**
  * typedef xrtBufferHandle - opaque buffer handle
@@ -249,7 +247,7 @@ extern "C" {
  */
 XCL_DRIVER_DLLESPEC
 xrtBufferHandle
-xrtBOAllocUserPtr(xclDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp);
+xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp);
 
 /**
  * xrtBOAlloc() - Allocate a BO of requested size with appropriate flags
@@ -262,7 +260,7 @@ xrtBOAllocUserPtr(xclDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
  */
 XCL_DRIVER_DLLESPEC
 xrtBufferHandle
-xrtBOAlloc(xclDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp);
+xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp);
 
 /**
  * xrtBOImport() - Allocate a BO imported from another device
@@ -275,7 +273,7 @@ xrtBOAlloc(xclDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGro
  */  
 XCL_DRIVER_DLLESPEC
 xrtBufferHandle
-xrtBOImport(xclDeviceHandle dhdl, xclBufferExportHandle ehdl);
+xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl);
 
 /**
  * xrtBOExport() - Export this buffer
@@ -344,8 +342,8 @@ xrtBOSync(xrtBufferHandle handle, enum xclBOSyncDirection dir, size_t size, size
  * @handle:     Buffer handle
  * Return:      Memory mapped buffer, or NULL on error with errno set
  *
- * Map the contents of the buffer object into host memory
- * To unmap the buffer call xclUnmapBO().
+ * Map the contents of the buffer object into host memory.  The buffer
+ * object is unmapped when freed.
  */
 XCL_DRIVER_DLLESPEC
 void*

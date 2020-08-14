@@ -38,13 +38,10 @@
 #pragma comment(lib, "Ws2_32.lib")
 /* need to link the lib for the following to work */
 #define be32toh ntohl
-#define PALIGN(p, a) (const char*)NULL
 #endif
 
-#ifdef __GNUC__
 #define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
-#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long)(p), (a))))
-#endif
+#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long long)(p), (a))))
 #define GET_CELL(p)     (p += 4, *((const uint32_t *)(p-4)))
 
 // ------ C O N S T A N T   V A R I A B L E S ---------------------------------
@@ -53,6 +50,14 @@ static const uint32_t FDT_PROP = 0x3;
 static const uint32_t FDT_END = 0x9;
 
 // ------ L O C A L  F U N C T I O N S  A N D  S T R U C T S ------------------
+enum class p2p_config {
+  disabled,
+  enabled,
+  error,
+  reboot,
+  not_supported
+};
+
 struct fdt_header {
   uint32_t magic;
   uint32_t totalsize;
@@ -494,6 +499,48 @@ XBUtilities::get_uuids(const void *dtbuf)
     p = PALIGN(p + sz, 4);
   }
   return uuids;  
+}
+
+int
+XBUtilities::check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std::string &msg)
+{
+  auto config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
+  int64_t bar = -1;
+  int64_t rbar = -1;
+  int64_t remap = -1;
+  int64_t exp_bar = -1;
+
+  //parse the query
+  for(const auto& val : config) {
+    auto pos = val.find(':') + 1;
+    if(val.find("rbar") == 0)
+      rbar = std::stoll(val.substr(pos));
+    else if(val.find("exp_bar") == 0)
+      exp_bar = std::stoll(val.substr(pos));
+    else if(val.find("bar") == 0)
+      bar = std::stoll(val.substr(pos));
+    else if(val.find("remap") == 0)
+      remap = std::stoll(val.substr(pos));
+  }
+
+  //return the config with a message
+  if (bar == -1) {
+    msg = "Error:P2P is not supported. Can't find P2P BAR.";
+    return static_cast<int>(p2p_config::not_supported);
+  }
+  else if (rbar != -1 && rbar > bar) {
+    msg = "Warning:Please WARM reboot to enable p2p now.";
+    return static_cast<int>(p2p_config::reboot);
+  }
+  else if (remap > 0 && remap != bar) {
+    msg = "Error:P2P remapper is not set correctly";
+    return static_cast<int>(p2p_config::error);
+  }
+  else if (bar == exp_bar) {
+    return static_cast<int>(p2p_config::enabled);
+  }
+  msg = "P2P bar is not enabled";
+  return static_cast<int>(p2p_config::disabled);
 }
 
 static const std::map<std::string, reset_type> reset_map = {
