@@ -77,7 +77,7 @@ ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
  *
  * Returns CU index if found. Returns an out of range number if not found.
  */
-static int
+static __attribute__((unused)) int
 get_cu_by_addr(struct kds_cu_mgmt *cu_mgmt, u32 addr)
 {
 	int i;
@@ -95,51 +95,21 @@ static int
 kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
 	struct kds_client *client = xcmd->client;
-	u32 *cus_addr = (u32 *)xcmd->info;
-	size_t num_cus = xcmd->isize / sizeof(u32);
-	struct xrt_cu *tmp;
-	int i, j;
 	int ret = 0;
 
-	mutex_lock(&cu_mgmt->lock);
-	/* I don't care if the configure command claim less number of cus */
-	if (unlikely(num_cus > cu_mgmt->num_cus)) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	/* If the configure command is sent by xclLoadXclbin(), the command
-	 * content should be the same and it is okay to let it go through.
+	/* This is no-op. The new KDS doesn't need configure command.
+	 * But ERT 2.0 flow still need configure command.
 	 *
-	 * But it still has chance that user would manually construct a config
-	 * command, which could be wrong.
-	 *
-	 * So, do not allow reconfigure. This is still not totally safe, since
-	 * configure command and load xclbin are not atomic.
-	 *
-	 * The configured flag would be reset once the last one client finished.
+	 * KDS could construct ERT configure command but not sure when.
+	 * Before figure this out, keep this function.
 	 */
+	mutex_lock(&cu_mgmt->lock);
+
 	if (cu_mgmt->configured) {
 		kds_info(client, "CU already configured in KDS\n");
 		goto out;
 	}
 
-	/* Now we need to make CU index right */
-	for (i = 0; i < num_cus; i++) {
-		j = get_cu_by_addr(cu_mgmt, cus_addr[i]);
-		if (j == cu_mgmt->num_cus) {
-			ret = -EINVAL;
-			goto out;
-		}
-
-		/* Ordering CU index */
-		if (j != i) {
-			tmp = cu_mgmt->xcus[i];
-			cu_mgmt->xcus[i] = cu_mgmt->xcus[j];
-			cu_mgmt->xcus[j] = tmp;
-		}
-		cu_mgmt->xcus[i]->info.cu_idx = i;
-	}
 	cu_mgmt->configured = 1;
 
 out:
@@ -617,20 +587,70 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 	return 0;
 }
 
+static inline void
+insert_cu(struct kds_cu_mgmt *cu_mgmt, int i, struct xrt_cu *xcu)
+{
+	cu_mgmt->xcus[i] = xcu;
+	xcu->info.cu_idx = i;
+}
+
 int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	struct xrt_cu *prev_cu;
 	int i;
 
 	if (cu_mgmt->num_cus >= MAX_CUS)
 		return -ENOMEM;
 
-	/* Find a slot xcus[] */
-	for (i = 0; i < MAX_CUS; i++) {
-		if (cu_mgmt->xcus[i] != NULL)
-			continue;
+	/* Determin CUs ordering:
+	 * Sort CU in interrupt ID increase order.
+	 * If interrupt ID is the same, sort CU in address
+	 * increase order.
+	 * This strategy is good for both legacy xclbin and latest xclbin.
+	 *
+	 * - For legacy xclbin, all of the interrupt IDs are 0. The
+	 * interrupt is wiring by CU address increase order.
+	 * - For latest xclbin, the interrupt ID is from 0 ~ 127.
+	 *   -- One exception is if only 1 CU, the interrupt ID would be 1.
+	 *
+	 * Do NOT add code in KDS to check if xclbin is legacy. We don't
+	 * want to coupling KDS and xclbin parsing.
+	 */
+	if (cu_mgmt->num_cus == 0) {
+		insert_cu(cu_mgmt, 0, xcu);
+		++cu_mgmt->num_cus;
+		return 0;
+	}
 
-		cu_mgmt->xcus[i] = xcu;
+	/* Insertion sort */
+	for (i = cu_mgmt->num_cus; i > 0; i--) {
+		prev_cu = cu_mgmt->xcus[i-1];
+		if (prev_cu->info.intr_id < xcu->info.intr_id) {
+			insert_cu(cu_mgmt, i, xcu);
+			++cu_mgmt->num_cus;
+			return 0;
+		} else if (prev_cu->info.intr_id > xcu->info.intr_id) {
+			insert_cu(cu_mgmt, i, prev_cu);
+			continue;
+		}
+
+		// Same intr ID.
+		if (prev_cu->info.addr < xcu->info.addr) {
+			insert_cu(cu_mgmt, i, xcu);
+			++cu_mgmt->num_cus;
+			return 0;
+		} else if (prev_cu->info.addr > xcu->info.addr) {
+			insert_cu(cu_mgmt, i, prev_cu);
+			continue;
+		}
+
+		/* Same CU address? Something wrong */
+		break;
+	}
+
+	if (i == 0) {
+		insert_cu(cu_mgmt, 0, xcu);
 		++cu_mgmt->num_cus;
 		return 0;
 	}

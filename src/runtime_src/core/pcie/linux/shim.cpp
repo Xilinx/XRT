@@ -1372,12 +1372,72 @@ int shim::xclLoadXclBin(const xclBin *buffer)
 int shim::xclLoadAxlf(const axlf *buffer)
 {
     xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
+    drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer), 0};
+    int off = 0;
 
-    drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer)};
+    auto kernels = xrt_core::xclbin::get_kernels(buffer);
+    /* Calculate size of kernels */
+    for (auto kernel : kernels) {
+        axlf_obj.ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
+
+    /* To enhance CU subdevice and KDS/ERT, driver needs all details about kernels
+     * while load xclbin.
+     *
+     * Why we extract data from XML metadata?
+     *  1. Kernel is NOT a good place to parse xml. It prefers binary.
+     *  2. All kernel details are in the xml today.
+     *
+     * What would happen in the future?
+     *  XCLBIN would contain fdt as metadata. At that time, this
+     *  could be removed.
+     *
+     * Binary format:
+     * +-----------------------+
+     * | Kernel[0]             |
+     * |   name[64]            |
+     * |   anums               |
+     * |   argument[0]         |
+     * |   argument[1]         |
+     * |   argument[...]       |
+     * |-----------------------|
+     * | Kernel[1]             |
+     * |   name[64]            |
+     * |   anums               |
+     * |   argument[0]         |
+     * |   argument[1]         |
+     * |   argument[...]       |
+     * |-----------------------|
+     * | Kernel[...]           |
+     * |   ...                 |
+     * +-----------------------+
+     */
+    axlf_obj.kernels = (char *)malloc(axlf_obj.ksize);
+    for (auto kernel : kernels) {
+        auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.kernels + off);
+        strcpy(krnl->name, kernel.name.c_str());
+        krnl->anums = kernel.args.size();
+
+        int ai = 0;
+        for (auto arg : kernel.args) {
+            strcpy(krnl->args[ai].name, arg.name.c_str());
+            krnl->args[ai].offset = arg.offset;
+            krnl->args[ai].size   = arg.size;
+            // XCLBIN doesn't define argument direction yet and it only support
+            // input arguments.
+            // Driver use 1 for input argument and 2 for output.
+            // Let's refine this line later.
+            krnl->args[ai].dir    = 1;
+            ai++;
+        }
+        off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
+
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
     if(ret)
         return -errno;
 
+    free(axlf_obj.kernels);
     // If it is an XPR DSA, zero out the DDR again as downloading the XCLBIN
     // reinitializes the DDR and results in ECC error.
     if(isXPR())
