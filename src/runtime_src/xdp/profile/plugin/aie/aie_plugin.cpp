@@ -115,13 +115,14 @@ namespace xdp {
           values.push_back(aie->endEvent);
           values.push_back(aie->resetEvent);
 
-          // Get tile instance from AIE array
-          auto pos = aieArray->getTilePos(aie->column, aie->row);
-          auto tileInst = aieArray->tileArray.at(pos);
+          // TODO Comment out for now. Will need to move to use V2 API.
+          // auto pos = aieArray->getTilePos(aie->column, aie->row);
+          // auto tileInst = aieArray->tileArray.at(pos);
       
           // Read counter value from device
           // TODO: Below uses v1 of the AIE driver; eventually switch to v2
-          auto counterValue = XAieTileCore_PerfCounterGet(&tileInst, aie->counterNumber);
+          // auto counterValue = XAieTileCore_PerfCounterGet(&tileInst, aie->counterNumber);
+	  u32 counterValue = 0;
           values.push_back(counterValue);
 
           // Get timestamp in milliseconds
