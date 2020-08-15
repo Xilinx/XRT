@@ -1556,7 +1556,7 @@ xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf, size
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnmgdPwrite()");
   auto shim = get_shim_object(handle);
-  return shim->unmgd_pwrite(flags, buf, count, offset);
+  return shim->unmgd_pwrite(flags, buf, count, offset) ? 0 : 1;
 }
 
 ssize_t
@@ -1565,7 +1565,7 @@ xclUnmgdPread(xclDeviceHandle handle, unsigned int flags, void *buf, size_t coun
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnmgdPread()");
   auto shim = get_shim_object(handle);
-  return shim->unmgd_pread(flags, buf, count, offset);
+  return shim->unmgd_pread(flags, buf, count, offset) ? 0 : 1;
 }
 
 size_t xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
@@ -1697,8 +1697,15 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
   return size;
 }
 
-int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
-                        uint32_t idx, char* path, size_t size)
+int
+xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
+                 uint32_t idx, char* path, size_t size)
 {
   return 0;
+}
+
+int
+xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
+{
+  return 1; // -ENOSYS;
 }
