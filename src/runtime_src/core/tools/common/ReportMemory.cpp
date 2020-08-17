@@ -191,7 +191,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
     if (map->m_mem_data[i].m_used != 0) {
       auto search = memtype_map.find((MEM_TYPE)map->m_mem_data[i].m_type );
       str = search->second;
-      uint64_t ecc_st = -1;
+      uint64_t ecc_st = 0xffffffffffffffff;
       std::string ecc_st_str;
       std::string tag(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
       boost::any val = std::make_pair("subdev", tag.c_str());
@@ -201,9 +201,9 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
         pt.put("error_msg", ex.what());
       }
       if (eccStatus2Str(ecc_st, ecc_st_str) == 0) {
-        unsigned ce_cnt = 0;
+        uint64_t ce_cnt = 0;
         ce_cnt = xrt_core::device_query<qr::mig_ecc_ce_cnt>(device, val);
-        unsigned ue_cnt = 0;
+        uint64_t ue_cnt = 0;
         ue_cnt = xrt_core::device_query<qr::mig_ecc_ue_cnt>(device, val);
         uint64_t ce_ffa = 0;
         ce_ffa = xrt_core::device_query<qr::mig_ecc_ce_ffa>(device, val);
