@@ -62,15 +62,6 @@ same_sc(const std::string& sc, const DSAInfo& installed)
   return ((sc.empty()) || (installed.bmcVer == sc));
 }
 
-/* 
- * standard format for text output
- */
-// static std::string 
-// basic_format(const std::string& label, const std::string& value)
-// {
-//   return boost::str(boost::format("  %-20s : %s\n") % label % value);
-// }
-
 void 
 ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
                                       boost::property_tree::ptree &pt) const
