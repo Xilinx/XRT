@@ -476,7 +476,7 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   }
 
   //bandwidth
-  size_t total_Mb = bo_size / (1024 * 1024); //convert to MB
+  double total_Mb = static_cast<double>(bo_size) / static_cast<double>(1024 * 1024); //convert to MB
   return static_cast<double>(total_Mb / timer_duration_sec);
 }
 
