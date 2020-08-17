@@ -101,16 +101,18 @@ struct xdma_async_context {
 	u32 channel;
 };
 
-static void xdma_async_migrate_done(unsigned long data, int ret)
+static void xdma_async_migrate_done(unsigned long data, int err)
 {
 	struct xdma_async_context *async_ctx = (struct xdma_async_context *)data;
 	//pr_info("%s: async_ctx %llx, ", __func__, (u64)async_ctx);
 
-	if (ret > 0)
+	if (!err) {
 		async_ctx->xdma->channel_usage
-			[async_ctx->dir][async_ctx->channel] += ret;
+			[async_ctx->dir][async_ctx->channel] += 
+						async_ctx->iocb->done_bytes;
+	}
 	
-	async_ctx->callback_fn(async_ctx->callback_data, ret);
+	async_ctx->callback_fn(async_ctx->callback_data, err);
 	kfree(async_ctx->iocb);
 	kfree(async_ctx);
 }
