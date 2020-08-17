@@ -431,14 +431,14 @@ m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, 
 /* 
  * helper function for M2M test
  */ 
-static int 
+static double 
 m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int bank_a, int bank_b, size_t bo_size)
 {
   xclBufferHandle bo_src = NULLBO;
   xclBufferHandle bo_tgt = NULLBO;
   char *bo_src_ptr = nullptr;
   char *bo_tgt_ptr = nullptr;
-  int bandwidth = 0;
+  double bandwidth = 0;
 
   //Allocate and init bo_src
   if(m2m_alloc_init_bo(handle, _ptTest, bo_src, bo_src_ptr, bo_size, bank_a, 'A'))
@@ -453,7 +453,7 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   XBU::Timer timer;
   if (xclCopyBO(handle, bo_tgt, bo_src, bo_size, 0, 0))
     return bandwidth;
-  double timer_stop = timer.stop().count();
+  double timer_duration_sec = timer.stop().count();
 
   if(xclSyncBO(handle, bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
     free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
@@ -476,8 +476,8 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   }
 
   //bandwidth
-  size_t total = bo_size / (1024 * 1024); //convert to MB
-  return static_cast<int>(total / timer_stop);
+  size_t total_Mb = bo_size / (1024 * 1024); //convert to MB
+  return static_cast<double>(total_Mb / timer_duration_sec);
 }
 
 /*
