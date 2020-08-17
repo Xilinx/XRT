@@ -58,7 +58,7 @@ inline std::string pretty( const T &val, const std::string &default_val = "N/A",
     return boost::lexical_cast<std::string>(val);
 }
 
-static int eccStatus2Str(unsigned int status, std::string& str) 
+static int eccStatus2Str(uint64_t status, std::string& str) 
 {    
   const int ce_mask = (0x1 << 1);
   const int ue_mask = (0x1 << 0);
