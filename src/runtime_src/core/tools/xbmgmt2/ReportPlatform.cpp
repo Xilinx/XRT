@@ -27,6 +27,8 @@ namespace XBU = XBUtilities;
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
 
+static boost::format fmtBasic("  %-20s : %s\n");
+
 void 
 ReportPlatform::getPropertyTreeInternal( const xrt_core::device * device,
                                          boost::property_tree::ptree &pt) const
@@ -63,11 +65,11 @@ same_sc(const std::string& sc, const DSAInfo& installed)
 /* 
  * standard format for text output
  */
-static std::string 
-basic_format(const std::string& label, const std::string& value)
-{
-  return boost::str(boost::format("  %-20s : %s\n") % label % value);
-}
+// static std::string 
+// basic_format(const std::string& label, const std::string& value)
+// {
+//   return boost::str(boost::format("  %-20s : %s\n") % label % value);
+// }
 
 void 
 ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
@@ -177,22 +179,22 @@ ReportPlatform::writeReport( const xrt_core::device * device,
   output << std::endl;
 
   output << "Flash properties\n";
-  output << basic_format("Type", pt.get<std::string>("platform.flash_type", "N/A"));
-  output << basic_format("Serial Number", pt.get<std::string>("platform.hardware.serial_num", "N/A"));
+  output << fmtBasic % "Type" % pt.get<std::string>("platform.flash_type", "N/A");
+  output << fmtBasic % "Serial Number" % pt.get<std::string>("platform.hardware.serial_num", "N/A");
   output << std::endl;
 
   output << "Flashable partition running on FPGA\n";
-  output << basic_format("Platform", pt.get<std::string>("platform.current_shell.vbnv", "N/A"));
-  output << basic_format("SC Version", pt.get<std::string>("platform.current_shell.sc_version", "N/A"));
+  output << fmtBasic % "Platform" % pt.get<std::string>("platform.current_shell.vbnv", "N/A");
+  output << fmtBasic % "SC Version" % pt.get<std::string>("platform.current_shell.sc_version", "N/A");
   
   // print platform ID, for 2RP, platform ID = logic UUID 
   auto logic_uuid = pt.get<std::string>("platform.current_shell.logic-uuid", "");
   auto interface_uuid = pt.get<std::string>("platform.current_shell.interface-uuid", "");
   if (!logic_uuid.empty() && !interface_uuid.empty()) {
-    output << basic_format("Platform ID", logic_uuid);
-    output << basic_format("Interface UUID", interface_uuid);
+    output << fmtBasic % "Platform ID" % logic_uuid;
+    output << fmtBasic % "Interface UUID" % interface_uuid;
   } else {
-    output << basic_format("Platform ID", pt.get<std::string>("platform.current_shell.id", "N/A"));
+    output << fmtBasic % "Platform ID" % pt.get<std::string>("platform.current_shell.id", "N/A");
   }
   output << std::endl;
 
@@ -200,9 +202,9 @@ ReportPlatform::writeReport( const xrt_core::device * device,
   boost::property_tree::ptree& available_shells = pt.get_child("platform.available_shells");
   for(auto& kv : available_shells) {
     boost::property_tree::ptree& available_shell = kv.second;
-    output << basic_format("Platform", available_shell.get<std::string>("vbnv", "N/A"));
-    output << basic_format("SC Version", available_shell.get<std::string>("sc_version", "N/A"));
-    output << basic_format("Platform ID", available_shell.get<std::string>("id", "N/A"));
+    output << fmtBasic % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
+    output << fmtBasic % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
+    output << fmtBasic % "Platform ID" % available_shell.get<std::string>("id", "N/A");
     output << std::endl;
   }
 
