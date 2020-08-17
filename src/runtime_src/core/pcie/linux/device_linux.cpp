@@ -66,6 +66,15 @@ struct sysfs_fcn
       throw std::runtime_error(err);
     return value;
   }
+
+  static void
+  put(const pdev& dev, const char* subdev, const char* entry, ValueType value)
+  {
+    std::string err;
+    dev->sysfs_put(subdev, entry, err, value);
+    if (!err.empty())
+      throw std::runtime_error(err);
+  }
 };
 
 template <>
@@ -82,6 +91,15 @@ struct sysfs_fcn<std::string>
     if (!err.empty())
       throw std::runtime_error(err);
     return value;
+  }
+
+  static void
+  put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
+  {
+    std::string err;
+    dev->sysfs_put(subdev, entry, err, value);
+    if (!err.empty())
+      throw std::runtime_error(err);
   }
 };
 
@@ -104,12 +122,12 @@ struct sysfs_fcn<std::vector<VectorValueType>>
 };
 
 template <typename QueryRequestType>
-struct sysfs_getter : QueryRequestType
+struct sysfs_get : virtual QueryRequestType
 {
   const char* subdev;
   const char* entry;
 
-  sysfs_getter(const char* s, const char* e)
+  sysfs_get(const char* s, const char* e)
     : subdev(s), entry(e)
   {}
 
@@ -121,8 +139,35 @@ struct sysfs_getter : QueryRequestType
   }
 };
 
+template <typename QueryRequestType>
+struct sysfs_put : virtual QueryRequestType
+{
+  const char* subdev;
+  const char* entry;
+
+  sysfs_put(const char* s, const char* e)
+    : subdev(s), entry(e)
+  {}
+
+  void
+  put(const xrt_core::device* device, const boost::any& any) const
+  {
+    auto value = boost::any_cast<typename QueryRequestType::value_type>(any);
+    sysfs_fcn<typename QueryRequestType::value_type>
+      ::put(get_pcidev(device), this->subdev, this->entry, value);
+  }
+};
+
+template <typename QueryRequestType>
+struct sysfs_getput : sysfs_get<QueryRequestType>, sysfs_put<QueryRequestType>
+{
+  sysfs_getput(const char* s, const char* e)
+    : sysfs_get<QueryRequestType>(s, e), sysfs_put<QueryRequestType>(s, e)
+  {}
+};
+
 template <typename QueryRequestType, typename Getter>
-struct function0_getter : QueryRequestType
+struct function0_get : virtual QueryRequestType
 {
   boost::any
   get(const xrt_core::device* device) const
@@ -136,10 +181,10 @@ static std::map<xrt_core::query::key_type, std::unique_ptr<query::request>> quer
 
 template <typename QueryRequestType>
 static void
-emplace_sysfs_request(const char* subdev, const char* entry)
+emplace_sysfs_get(const char* subdev, const char* entry)
 {
   auto x = QueryRequestType::key;
-  query_tbl.emplace(x, std::make_unique<sysfs_getter<QueryRequestType>>(subdev, entry));
+  query_tbl.emplace(x, std::make_unique<sysfs_get<QueryRequestType>>(subdev, entry));
 }
 
 template <typename QueryRequestType, typename Getter>
@@ -147,125 +192,145 @@ static void
 emplace_func0_request()
 {
   auto k = QueryRequestType::key;
-  query_tbl.emplace(k, std::make_unique<function0_getter<QueryRequestType, Getter>>());
+  query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType>
+static void
+emplace_sysfs_put(const char* subdev, const char* entry)
+{
+  auto x = QueryRequestType::key;
+  query_tbl.emplace(x, std::make_unique<sysfs_put<QueryRequestType>>(subdev, entry));
+}
+
+template <typename QueryRequestType>
+static void
+emplace_sysfs_getput(const char* subdev, const char* entry)
+{
+  auto x = QueryRequestType::key;
+  query_tbl.emplace(x, std::make_unique<sysfs_getput<QueryRequestType>>(subdev, entry));
 }
 
 static void
 initialize_query_table()
 {
-  emplace_sysfs_request<query::pcie_vendor>                 ("", "vendor");
-  emplace_sysfs_request<query::pcie_device>                 ("", "device");
-  emplace_sysfs_request<query::pcie_subsystem_vendor>       ("", "subsystem_vendor");
-  emplace_sysfs_request<query::pcie_subsystem_id>           ("", "subsystem_device");
-  emplace_sysfs_request<query::pcie_link_speed>             ("", "link_speed");
-  emplace_sysfs_request<query::pcie_link_speed_max>         ("", "link_speed_max");
-  emplace_sysfs_request<query::pcie_express_lane_width>     ("", "link_width");
-  emplace_sysfs_request<query::pcie_express_lane_width_max> ("", "link_width_max");
-  emplace_sysfs_request<query::dma_threads_raw>             ("dma", "channel_stat_raw");
-  emplace_sysfs_request<query::rom_vbnv>                    ("rom", "VBNV");
-  emplace_sysfs_request<query::rom_ddr_bank_size_gb>        ("rom", "ddr_bank_size");
-  emplace_sysfs_request<query::rom_ddr_bank_count_max>      ("rom", "ddr_bank_count_max");
-  emplace_sysfs_request<query::rom_fpga_name>               ("rom", "FPGA");
-  emplace_sysfs_request<query::rom_raw>                     ("rom", "raw");
-  emplace_sysfs_request<query::rom_uuid>                    ("rom", "uuid");
-  emplace_sysfs_request<query::rom_time_since_epoch>        ("rom", "timestamp");
-  emplace_sysfs_request<query::xclbin_uuid>                 ("", "xclbinuuid");
-  emplace_sysfs_request<query::mem_topology_raw>            ("icap", "mem_topology");
-  emplace_sysfs_request<query::ip_layout_raw>               ("icap", "ip_layout");
-  emplace_sysfs_request<query::clock_freq_topology_raw>     ("icap", "clock_freq_topology");
-  emplace_sysfs_request<query::clock_freqs_mhz>             ("icap", "clock_freqs");
-  emplace_sysfs_request<query::idcode>                      ("icap", "idcode");
-  emplace_sysfs_request<query::data_retention>              ("icap", "data_retention");
-  emplace_sysfs_request<query::status_mig_calibrated>       ("", "mig_calibration");
-  emplace_sysfs_request<query::xmc_version>                 ("xmc", "version");
-  emplace_sysfs_request<query::xmc_board_name>              ("xmc", "bd_name");
-  emplace_sysfs_request<query::xmc_serial_num>              ("xmc", "serial_num");
-  emplace_sysfs_request<query::xmc_max_power>               ("xmc", "max_power");
-  emplace_sysfs_request<query::xmc_bmc_version>             ("xmc", "bmc_ver");
-  emplace_sysfs_request<query::expected_bmc_version>        ("xmc", "exp_bmc_ver");
-  emplace_sysfs_request<query::xmc_status>                  ("xmc", "status");
-  emplace_sysfs_request<query::xmc_reg_base>                ("xmc", "reg_base");
-  emplace_sysfs_request<query::dna_serial_num>              ("dna", "dna");
-  emplace_sysfs_request<query::p2p_config>                  ("p2p", "config");
-  emplace_sysfs_request<query::temp_card_top_front>         ("xmc", "xmc_se98_temp0");
-  emplace_sysfs_request<query::temp_card_top_rear>          ("xmc", "xmc_se98_temp1");
-  emplace_sysfs_request<query::temp_card_bottom_front>      ("xmc", "xmc_se98_temp2");
-  emplace_sysfs_request<query::temp_fpga>                   ("xmc", "xmc_fpga_temp");
-  emplace_sysfs_request<query::fan_trigger_critical_temp>   ("xmc", "xmc_fan_temp");
-  emplace_sysfs_request<query::fan_fan_presence>            ("xmc", "fan_presence");
-  emplace_sysfs_request<query::fan_speed_rpm>               ("xmc", "xmc_fan_rpm");
-  emplace_sysfs_request<query::ddr_temp_0>                  ("xmc", "xmc_ddr_temp0");
-  emplace_sysfs_request<query::ddr_temp_1>                  ("xmc", "xmc_ddr_temp1");
-  emplace_sysfs_request<query::ddr_temp_2>                  ("xmc", "xmc_ddr_temp2");
-  emplace_sysfs_request<query::ddr_temp_3>                  ("xmc", "xmc_ddr_temp3");
-  emplace_sysfs_request<query::hbm_temp>                    ("xmc", "xmc_hbm_temp");
-  emplace_sysfs_request<query::cage_temp_0>                 ("xmc", "xmc_cage_temp0");
-  emplace_sysfs_request<query::cage_temp_1>                 ("xmc", "xmc_cage_temp1");
-  emplace_sysfs_request<query::cage_temp_2>                 ("xmc", "xmc_cage_temp2");
-  emplace_sysfs_request<query::cage_temp_3>                 ("xmc", "xmc_cage_temp3");
-  emplace_sysfs_request<query::v12v_pex_millivolts>         ("xmc", "xmc_12v_pex_vol");
-  emplace_sysfs_request<query::v12v_pex_milliamps>          ("xmc", "xmc_12v_pex_curr");
-  emplace_sysfs_request<query::v12v_aux_millivolts>         ("xmc", "xmc_12v_aux_vol");
-  emplace_sysfs_request<query::v12v_aux_milliamps>          ("xmc", "xmc_12v_aux_curr");
-  emplace_sysfs_request<query::v3v3_pex_millivolts>         ("xmc", "xmc_3v3_pex_vol");
-  emplace_sysfs_request<query::v3v3_aux_millivolts>         ("xmc", "xmc_3v3_aux_vol");
-  emplace_sysfs_request<query::v3v3_aux_milliamps>          ("xmc", "xmc_3v3_aux_cur");
-  emplace_sysfs_request<query::ddr_vpp_bottom_millivolts>   ("xmc", "xmc_ddr_vpp_btm");
-  emplace_sysfs_request<query::ddr_vpp_top_millivolts>      ("xmc", "xmc_ddr_vpp_top");
+  emplace_sysfs_get<query::pcie_vendor>                 ("", "vendor");
+  emplace_sysfs_get<query::pcie_device>                 ("", "device");
+  emplace_sysfs_get<query::pcie_subsystem_vendor>       ("", "subsystem_vendor");
+  emplace_sysfs_get<query::pcie_subsystem_id>           ("", "subsystem_device");
+  emplace_sysfs_get<query::pcie_link_speed>             ("", "link_speed");
+  emplace_sysfs_get<query::pcie_link_speed_max>         ("", "link_speed_max");
+  emplace_sysfs_get<query::pcie_express_lane_width>     ("", "link_width");
+  emplace_sysfs_get<query::pcie_express_lane_width_max> ("", "link_width_max");
+  emplace_sysfs_get<query::dma_threads_raw>             ("dma", "channel_stat_raw");
+  emplace_sysfs_get<query::rom_vbnv>                    ("rom", "VBNV");
+  emplace_sysfs_get<query::rom_ddr_bank_size_gb>        ("rom", "ddr_bank_size");
+  emplace_sysfs_get<query::rom_ddr_bank_count_max>      ("rom", "ddr_bank_count_max");
+  emplace_sysfs_get<query::rom_fpga_name>               ("rom", "FPGA");
+  emplace_sysfs_get<query::rom_raw>                     ("rom", "raw");
+  emplace_sysfs_get<query::rom_uuid>                    ("rom", "uuid");
+  emplace_sysfs_get<query::rom_time_since_epoch>        ("rom", "timestamp");
+  emplace_sysfs_get<query::xclbin_uuid>                 ("", "xclbinuuid");
+  emplace_sysfs_get<query::mem_topology_raw>            ("icap", "mem_topology");
+  emplace_sysfs_get<query::ip_layout_raw>               ("icap", "ip_layout");
+  emplace_sysfs_get<query::clock_freq_topology_raw>     ("icap", "clock_freq_topology");
+  emplace_sysfs_get<query::clock_freqs_mhz>             ("icap", "clock_freqs");
+  emplace_sysfs_get<query::idcode>                      ("icap", "idcode");
+  emplace_sysfs_getput<query::data_retention>           ("icap", "data_retention");
+  emplace_sysfs_getput<query::sec_level>                ("icap", "sec_level");
+  emplace_sysfs_get<query::status_mig_calibrated>       ("", "mig_calibration");
+  emplace_sysfs_get<query::xmc_version>                 ("xmc", "version");
+  emplace_sysfs_get<query::xmc_board_name>              ("xmc", "bd_name");
+  emplace_sysfs_get<query::xmc_serial_num>              ("xmc", "serial_num");
+  emplace_sysfs_get<query::xmc_max_power>               ("xmc", "max_power");
+  emplace_sysfs_get<query::xmc_bmc_version>             ("xmc", "bmc_ver");
+  emplace_sysfs_get<query::expected_bmc_version>        ("xmc", "exp_bmc_ver");
+  emplace_sysfs_get<query::xmc_status>                  ("xmc", "status");
+  emplace_sysfs_get<query::xmc_reg_base>                ("xmc", "reg_base");
+  emplace_sysfs_getput<query::xmc_scaling_enabled>      ("xmc", "scaling_enabled");
+  emplace_sysfs_getput<query::xmc_scaling_override>     ("xmc", "scaling_threshold_power_override");
+  emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
+  emplace_sysfs_get<query::dna_serial_num>              ("dna", "dna");
+  emplace_sysfs_get<query::p2p_config>                  ("p2p", "config");
+  emplace_sysfs_get<query::temp_card_top_front>         ("xmc", "xmc_se98_temp0");
+  emplace_sysfs_get<query::temp_card_top_rear>          ("xmc", "xmc_se98_temp1");
+  emplace_sysfs_get<query::temp_card_bottom_front>      ("xmc", "xmc_se98_temp2");
+  emplace_sysfs_get<query::temp_fpga>                   ("xmc", "xmc_fpga_temp");
+  emplace_sysfs_get<query::fan_trigger_critical_temp>   ("xmc", "xmc_fan_temp");
+  emplace_sysfs_get<query::fan_fan_presence>            ("xmc", "fan_presence");
+  emplace_sysfs_get<query::fan_speed_rpm>               ("xmc", "xmc_fan_rpm");
+  emplace_sysfs_get<query::ddr_temp_0>                  ("xmc", "xmc_ddr_temp0");
+  emplace_sysfs_get<query::ddr_temp_1>                  ("xmc", "xmc_ddr_temp1");
+  emplace_sysfs_get<query::ddr_temp_2>                  ("xmc", "xmc_ddr_temp2");
+  emplace_sysfs_get<query::ddr_temp_3>                  ("xmc", "xmc_ddr_temp3");
+  emplace_sysfs_get<query::hbm_temp>                    ("xmc", "xmc_hbm_temp");
+  emplace_sysfs_get<query::cage_temp_0>                 ("xmc", "xmc_cage_temp0");
+  emplace_sysfs_get<query::cage_temp_1>                 ("xmc", "xmc_cage_temp1");
+  emplace_sysfs_get<query::cage_temp_2>                 ("xmc", "xmc_cage_temp2");
+  emplace_sysfs_get<query::cage_temp_3>                 ("xmc", "xmc_cage_temp3");
+  emplace_sysfs_get<query::v12v_pex_millivolts>         ("xmc", "xmc_12v_pex_vol");
+  emplace_sysfs_get<query::v12v_pex_milliamps>          ("xmc", "xmc_12v_pex_curr");
+  emplace_sysfs_get<query::v12v_aux_millivolts>         ("xmc", "xmc_12v_aux_vol");
+  emplace_sysfs_get<query::v12v_aux_milliamps>          ("xmc", "xmc_12v_aux_curr");
+  emplace_sysfs_get<query::v3v3_pex_millivolts>         ("xmc", "xmc_3v3_pex_vol");
+  emplace_sysfs_get<query::v3v3_aux_millivolts>         ("xmc", "xmc_3v3_aux_vol");
+  emplace_sysfs_get<query::v3v3_aux_milliamps>          ("xmc", "xmc_3v3_aux_cur");
+  emplace_sysfs_get<query::ddr_vpp_bottom_millivolts>   ("xmc", "xmc_ddr_vpp_btm");
+  emplace_sysfs_get<query::ddr_vpp_top_millivolts>      ("xmc", "xmc_ddr_vpp_top");
 
-  emplace_sysfs_request<query::v5v5_system_millivolts>    ("xmc", "xmc_sys_5v5");
-  emplace_sysfs_request<query::v1v2_vcc_top_millivolts>   ("xmc", "xmc_1v2_top");
-  emplace_sysfs_request<query::v1v2_vcc_bottom_millivolts>("xmc", "xmc_vcc1v2_btm");
-  emplace_sysfs_request<query::v1v8_millivolts>           ("xmc", "xmc_1v8");
-  emplace_sysfs_request<query::v0v85_millivolts>          ("xmc", "xmc_0v85");
-  emplace_sysfs_request<query::v0v9_vcc_millivolts>       ("xmc", "xmc_mgt0v9avcc");
-  emplace_sysfs_request<query::v12v_sw_millivolts>        ("xmc", "xmc_12v_sw");
-  emplace_sysfs_request<query::mgt_vtt_millivolts>        ("xmc", "xmc_mgtavtt");
-  emplace_sysfs_request<query::int_vcc_millivolts>        ("xmc", "xmc_vccint_vol");
-  emplace_sysfs_request<query::int_vcc_milliamps>         ("xmc", "xmc_vccint_curr");
-  emplace_sysfs_request<query::int_vcc_temp>              ("xmc", "xmc_vccint_temp");
+  emplace_sysfs_get<query::v5v5_system_millivolts>      ("xmc", "xmc_sys_5v5");
+  emplace_sysfs_get<query::v1v2_vcc_top_millivolts>     ("xmc", "xmc_1v2_top");
+  emplace_sysfs_get<query::v1v2_vcc_bottom_millivolts>  ("xmc", "xmc_vcc1v2_btm");
+  emplace_sysfs_get<query::v1v8_millivolts>             ("xmc", "xmc_1v8");
+  emplace_sysfs_get<query::v0v85_millivolts>            ("xmc", "xmc_0v85");
+  emplace_sysfs_get<query::v0v9_vcc_millivolts>         ("xmc", "xmc_mgt0v9avcc");
+  emplace_sysfs_get<query::v12v_sw_millivolts>          ("xmc", "xmc_12v_sw");
+  emplace_sysfs_get<query::mgt_vtt_millivolts>          ("xmc", "xmc_mgtavtt");
+  emplace_sysfs_get<query::int_vcc_millivolts>          ("xmc", "xmc_vccint_vol");
+  emplace_sysfs_get<query::int_vcc_milliamps>           ("xmc", "xmc_vccint_curr");
+  emplace_sysfs_get<query::int_vcc_temp>                ("xmc", "xmc_vccint_temp");
 
-  emplace_sysfs_request<query::v12_aux1_millivolts>      ("xmc", "xmc_12v_aux1");
-  emplace_sysfs_request<query::vcc1v2_i_milliamps>        ("xmc", "xmc_vcc1v2_i");
-  emplace_sysfs_request<query::v12_in_i_milliamps>        ("xmc", "xmc_v12_in_i");
-  emplace_sysfs_request<query::v12_in_aux0_i_milliamps>   ("xmc", "xmc_v12_in_aux0_i");
-  emplace_sysfs_request<query::v12_in_aux1_i_milliamps>   ("xmc", "xmc_v12_in_aux1_i");
-  emplace_sysfs_request<query::vcc_aux_millivolts>        ("xmc", "xmc_vccaux");
-  emplace_sysfs_request<query::vcc_aux_pmc_millivolts>    ("xmc", "xmc_vccaux_pmc");
-  emplace_sysfs_request<query::vcc_ram_millivolts>        ("xmc", "xmc_vccram");
+  emplace_sysfs_get<query::v12_aux1_millivolts>         ("xmc", "xmc_12v_aux1");
+  emplace_sysfs_get<query::vcc1v2_i_milliamps>          ("xmc", "xmc_vcc1v2_i");
+  emplace_sysfs_get<query::v12_in_i_milliamps>          ("xmc", "xmc_v12_in_i");
+  emplace_sysfs_get<query::v12_in_aux0_i_milliamps>     ("xmc", "xmc_v12_in_aux0_i");
+  emplace_sysfs_get<query::v12_in_aux1_i_milliamps>     ("xmc", "xmc_v12_in_aux1_i");
+  emplace_sysfs_get<query::vcc_aux_millivolts>          ("xmc", "xmc_vccaux");
+  emplace_sysfs_get<query::vcc_aux_pmc_millivolts>      ("xmc", "xmc_vccaux_pmc");
+  emplace_sysfs_get<query::vcc_ram_millivolts>          ("xmc", "xmc_vccram");
 
-  emplace_sysfs_request<query::v3v3_pex_milliamps>        ("xmc", "xmc_3v3_pex_curr");
-  emplace_sysfs_request<query::v3v3_aux_milliamps>        ("xmc", "xmc_3v3_aux_cur");
-  emplace_sysfs_request<query::int_vcc_io_milliamps>      ("xmc", "xmc_0v85_curr");
-  emplace_sysfs_request<query::v3v3_vcc_millivolts>       ("xmc", "xmc_3v3_vcc_vol");
-  emplace_sysfs_request<query::hbm_1v2_millivolts>        ("xmc", "xmc_hbm_1v2_vol");
-  emplace_sysfs_request<query::v2v5_vpp_millivolts>       ("xmc", "xmc_vpp2v5_vol");
-  emplace_sysfs_request<query::int_vcc_io_millivolts>     ("xmc", "xmc_vccint_bram_vol");
+  emplace_sysfs_get<query::v3v3_pex_milliamps>          ("xmc", "xmc_3v3_pex_curr");
+  emplace_sysfs_get<query::v3v3_aux_milliamps>          ("xmc", "xmc_3v3_aux_cur");
+  emplace_sysfs_get<query::int_vcc_io_milliamps>        ("xmc", "xmc_0v85_curr");
+  emplace_sysfs_get<query::v3v3_vcc_millivolts>         ("xmc", "xmc_3v3_vcc_vol");
+  emplace_sysfs_get<query::hbm_1v2_millivolts>          ("xmc", "xmc_hbm_1v2_vol");
+  emplace_sysfs_get<query::v2v5_vpp_millivolts>         ("xmc", "xmc_vpp2v5_vol");
+  emplace_sysfs_get<query::int_vcc_io_millivolts>       ("xmc", "xmc_vccint_bram_vol");
 
-  emplace_sysfs_request<query::firewall_detect_level>     ("firewall", "detected_level");
-  emplace_sysfs_request<query::firewall_status>           ("firewall", "detected_status");
-  emplace_sysfs_request<query::firewall_time_sec>         ("firewall", "detected_time");
+  emplace_sysfs_get<query::firewall_detect_level>       ("firewall", "detected_level");
+  emplace_sysfs_get<query::firewall_status>             ("firewall", "detected_status");
+  emplace_sysfs_get<query::firewall_time_sec>           ("firewall", "detected_time");
 
-  emplace_sysfs_request<query::power_microwatts>          ("xmc", "xmc_power");
-  emplace_sysfs_request<query::host_mem_size>             ("address_translator", "host_mem_size");
-  emplace_sysfs_request<query::kds_numcdmas>              ("mb_scheduler", "kds_numcdmas");
+  emplace_sysfs_get<query::power_microwatts>            ("xmc", "xmc_power");
+  emplace_sysfs_get<query::host_mem_size>               ("address_translator", "host_mem_size");
+  emplace_sysfs_get<query::kds_numcdmas>                ("mb_scheduler", "kds_numcdmas");
 
-  //emplace_sysfs_request<query::mig_ecc_enabled,         sp::_4, "ecc_enabled");
-  //emplace_sysfs_request<query::mig_ecc_status,          sp::_4, "ecc_status");
-  //emplace_sysfs_request<query::mig_ecc_ce_cnt,          sp::_4, "ecc_ce_cnt");
-  //emplace_sysfs_request<query::mig_ecc_ue_cnt,          sp::_4, "ecc_ue_cnt");
-  //emplace_sysfs_request<query::mig_ecc_ce_ffa,          sp::_4, "ecc_ce_ffa");
-  //emplace_sysfs_request<query::mig_ecc_ue_ffa,          sp::_4, "ecc_ue_ffa");
+  //emplace_sysfs_get<query::mig_ecc_enabled,         sp::_4, "ecc_enabled");
+  //emplace_sysfs_get<query::mig_ecc_status,          sp::_4, "ecc_status");
+  //emplace_sysfs_get<query::mig_ecc_ce_cnt,          sp::_4, "ecc_ce_cnt");
+  //emplace_sysfs_get<query::mig_ecc_ue_cnt,          sp::_4, "ecc_ue_cnt");
+  //emplace_sysfs_get<query::mig_ecc_ce_ffa,          sp::_4, "ecc_ce_ffa");
+  //emplace_sysfs_get<query::mig_ecc_ue_ffa,          sp::_4, "ecc_ue_ffa");
 
-  emplace_sysfs_request<query::flash_bar_offset>          ("flash", "bar_off");
-  emplace_sysfs_request<query::is_mfg>                    ("", "mfg");
-  emplace_sysfs_request<query::f_flash_type>              ("flash", "flash_type");
-  emplace_sysfs_request<query::flash_type>                ("", "flash_type");
-  emplace_sysfs_request<query::board_name>                ("", "board_name");
-  emplace_sysfs_request<query::logic_uuids>               ("", "logic_uuids");
-  emplace_sysfs_request<query::interface_uuids>           ("", "interface_uuids");
+  emplace_sysfs_get<query::flash_bar_offset>            ("flash", "bar_off");
+  emplace_sysfs_get<query::is_mfg>                      ("", "mfg");
+  emplace_sysfs_get<query::f_flash_type>                ("flash", "flash_type");
+  emplace_sysfs_get<query::flash_type>                  ("", "flash_type");
+  emplace_sysfs_get<query::board_name>                  ("", "board_name");
+  emplace_sysfs_get<query::logic_uuids>                 ("", "logic_uuids");
+  emplace_sysfs_get<query::interface_uuids>             ("", "interface_uuids");
 
-  emplace_func0_request<query::pcie_bdf,                  bdf>();
+  emplace_func0_request<query::pcie_bdf,                 bdf>();
 }
 
 struct X { X() { initialize_query_table(); }};

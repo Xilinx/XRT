@@ -197,9 +197,9 @@ test(xrt_core::device* device)
 {
   // lock xclbin
   auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
+  device->open_context(uuid.get(), -1, true);
   auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), -1); };
   xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
-  device->open_context(uuid.get(), -1, true);
 
   // p2p must be enabled
   p2p_enabled_or_error(device);
