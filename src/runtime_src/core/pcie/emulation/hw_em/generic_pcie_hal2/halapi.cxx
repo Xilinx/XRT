@@ -519,3 +519,8 @@ int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint3
   return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
 }
 
+int
+xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
+{
+  return -ENOSYS;
+}

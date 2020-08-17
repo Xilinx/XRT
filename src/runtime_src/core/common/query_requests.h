@@ -68,6 +68,7 @@ enum class key_type
   xclbin_uuid,
   mem_topology_raw,
   ip_layout_raw,
+  clock_freq_topology_raw,
 
   xmc_version,
   xmc_board_name,
@@ -81,9 +82,9 @@ enum class key_type
   dna_serial_num,
   clock_freqs_mhz,
   idcode,
+  data_retention,
 
   status_mig_calibrated,
-  status_p2p_enabled,
   p2p_config,
 
   temp_card_top_front,
@@ -555,6 +556,15 @@ struct ip_layout_raw : request
   get(const device*) const = 0;
 };
 
+struct clock_freq_topology_raw : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::clock_freq_topology_raw;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct xmc_version : request
 {
   using result_type = std::string;
@@ -718,6 +728,15 @@ struct idcode : request
   }
 };
 
+struct data_retention : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::data_retention;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct status_mig_calibrated : request
 {
   using result_type = bool;
@@ -728,22 +747,6 @@ struct status_mig_calibrated : request
   get(const device*) const = 0;
 
   static std::string
-  to_string(result_type value)
-  {
-    return value ? "true" : "false";
-  }
-};
-
-struct status_p2p_enabled : request
-{
-  using result_type = bool;
-  static const key_type key = key_type::status_p2p_enabled;
-  static const char* name() { return "p2p_enabled"; }
-
-  virtual boost::any
-  get(const device*) const = 0;
-
-  static result_type
   to_string(result_type value)
   {
     return value ? "true" : "false";

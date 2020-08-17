@@ -843,9 +843,9 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 
 	XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
-    /* Initialize with max and min possible value */
-    mm_start_addr = 0xffffFFFFffffFFFF;
-    mm_end_addr = 0;
+	/* Initialize with max and min possible value */
+	mm_start_addr = 0xffffFFFFffffFFFF;
+	mm_end_addr = 0;
 
 	/* Initialize the used banks and their sizes */
 	/* Currently only fixed sizes are supported */

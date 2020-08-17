@@ -590,6 +590,9 @@ struct xdma_dev {
 	/* SD_Accel specific */
 	enum dev_capabilities capabilities;
 	u64 feature_id;
+
+	/* no dma platform */
+	bool no_dma;
 };
 
 static inline int xdma_device_flag_check(struct xdma_dev *xdev, unsigned int f)

@@ -68,6 +68,9 @@ read_xclbin(const std::string& fnm)
 
   // load the file
   std::ifstream stream(fnm);
+  if (!stream)
+    throw std::runtime_error("Failed to open file '" + fnm + "' for reading");
+
   stream.seekg(0, stream.end);
   size_t size = stream.tellg();
   stream.seekg(0, stream.beg);
