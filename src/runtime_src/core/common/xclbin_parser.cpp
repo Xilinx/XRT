@@ -615,7 +615,7 @@ get_kernels(const axlf* top)
   std::vector<kernel_object> kernels;
 
   auto knames = get_kernel_names(xml.first, xml.second);
-  for (auto kname : knames) {
+  for (auto& kname : knames) {
     kernels.emplace_back(kernel_object{
        kname
       ,get_kernel_arguments(xml.first, xml.second, kname)

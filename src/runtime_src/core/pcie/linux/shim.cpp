@@ -1377,7 +1377,7 @@ int shim::xclLoadAxlf(const axlf *buffer)
 
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
     /* Calculate size of kernels */
-    for (auto kernel : kernels) {
+    for (auto& kernel : kernels) {
         axlf_obj.ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
     }
 
@@ -1412,14 +1412,15 @@ int shim::xclLoadAxlf(const axlf *buffer)
      * |   ...                 |
      * +-----------------------+
      */
-    axlf_obj.kernels = (char *)malloc(axlf_obj.ksize);
-    for (auto kernel : kernels) {
+    std::vector<char> krnl_binary(axlf_obj.ksize);
+    axlf_obj.kernels = krnl_binary.data();
+    for (auto& kernel : kernels) {
         auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.kernels + off);
         strcpy(krnl->name, kernel.name.c_str());
         krnl->anums = kernel.args.size();
 
         int ai = 0;
-        for (auto arg : kernel.args) {
+        for (auto& arg : kernel.args) {
             strcpy(krnl->args[ai].name, arg.name.c_str());
             krnl->args[ai].offset = arg.offset;
             krnl->args[ai].size   = arg.size;
@@ -1437,7 +1438,6 @@ int shim::xclLoadAxlf(const axlf *buffer)
     if(ret)
         return -errno;
 
-    free(axlf_obj.kernels);
     // If it is an XPR DSA, zero out the DDR again as downloading the XCLBIN
     // reinitializes the DDR and results in ECC error.
     if(isXPR())

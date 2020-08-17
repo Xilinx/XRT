@@ -515,19 +515,20 @@ xclLoadAxlf(const axlf *buffer)
 
   auto kernels = xrt_core::xclbin::get_kernels(buffer);
   /* Calculate size of kernels */
-  for (auto kernel : kernels) {
+  for (auto& kernel : kernels) {
       axlf_obj.za_ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
   }
 
   /* Check PCIe's shim.cpp for details of kernels binary */
-  axlf_obj.za_kernels = (char *)malloc(axlf_obj.za_ksize);
-  for (auto kernel : kernels) {
+  std::vector<char> krnl_binary(axlf_obj.za_ksize);
+  axlf_obj.za_kernels = krnl_binary.data();
+  for (auto& kernel : kernels) {
       auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.za_kernels + off);
       strcpy(krnl->name, kernel.name.c_str());
       krnl->anums = kernel.args.size();
 
       int ai = 0;
-      for (auto arg : kernel.args) {
+      for (auto& arg : kernel.args) {
           strcpy(krnl->args[ai].name, arg.name.c_str());
           krnl->args[ai].offset = arg.offset;
           krnl->args[ai].size   = arg.size;
