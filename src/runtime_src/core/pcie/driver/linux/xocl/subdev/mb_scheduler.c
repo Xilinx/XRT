@@ -4291,24 +4291,26 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	return 0;
 }
 
+static
 void xocl_execbuf_completion (struct work_struct* work)
 {
 	struct drm_xocl_exec_metadata *xobj_metadata = container_of(work, 
 				struct drm_xocl_exec_metadata, compltn_work);
 	struct drm_xocl_bo *xobj = container_of(xobj_metadata, 
 				struct drm_xocl_bo, metadata);
-	struct ert_start_kernel_cmd *ecmd = 
-				(struct ert_start_kernel_cmd *)xobj->vmapping;
+	struct ert_packet *ecmd = (struct ert_packet *)xobj->vmapping; 
+	int error = (ecmd->state == ERT_CMD_STATE_COMPLETED) ? 0 : -EFAULT;
 
 	if (xobj->metadata.execbuf_cb_fn)
 		xobj->metadata.execbuf_cb_fn(
 			(unsigned long) xobj->metadata.execbuf_cb_data, 
-			ecmd->state);
+			error);
 }
 
 static int
 client_ioctl_execbuf(struct platform_device *pdev,
-		     struct client_ctx *client, void *data, struct drm_file *filp, bool async)
+		     struct client_ctx *client, void *data, struct drm_file *filp, 
+		     bool inkernel)
 {
 	struct drm_xocl_execbuf *args = data;
 	struct drm_xocl_bo *xobj;
@@ -4372,7 +4374,7 @@ client_ioctl_execbuf(struct platform_device *pdev,
 		deps[numdeps] = xbo;
 	}
 
-	if (async) {
+	if (inkernel) {
 		struct drm_xocl_execbuf_cb *args_cb = 
 					(struct drm_xocl_execbuf_cb *)args;
 		if (args_cb->cb_func) {
@@ -4422,10 +4424,10 @@ int client_ioctl(struct platform_device *pdev,
 		ret = client_ioctl_ctx(pdev, client, data);
 		break;
 	case DRM_XOCL_EXECBUF:
-		ret = client_ioctl_execbuf(pdev, client, data, drm_filp, 0);
+		ret = client_ioctl_execbuf(pdev, client, data, drm_filp, false);
 		break;
 	case DRM_XOCL_EXECBUF_CB:
-		ret = client_ioctl_execbuf(pdev, client, data, drm_filp, 1);
+		ret = client_ioctl_execbuf(pdev, client, data, drm_filp, true);
 		break;
 	default:
 		ret = -EINVAL;

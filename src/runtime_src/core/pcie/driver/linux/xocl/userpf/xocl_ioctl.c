@@ -73,8 +73,16 @@ int xocl_execbuf_callback_ioctl(struct drm_device *dev,
                        struct drm_file *filp)
 {
 	struct xocl_drm *drm_p = dev->dev_private;
-	return xocl_exec_client_ioctl(drm_p->xdev,
-				     DRM_XOCL_EXECBUF_CB, data, filp);
+	int ret = 0;
+
+	if (kds_mode == 1)
+		ret = xocl_client_ioctl(drm_p->xdev,
+					DRM_XOCL_EXECBUF_CB, data, filp);
+	else
+		ret = xocl_exec_client_ioctl(drm_p->xdev,
+					     DRM_XOCL_EXECBUF_CB, data, filp);
+
+	return ret;
 }
 
 /*
