@@ -79,6 +79,7 @@ namespace xrt_core {
 			       std::function<void ()> warningFunction,
 			       std::function<int ()> errorFunction)
   {
+#ifdef XRT_CORE_BUILD_WITH_DL
     if (errorFunction) 
     {
       // Check prerequirements for this particular plugin.  If they are not
@@ -116,6 +117,7 @@ namespace xrt_core {
 
     // Explicitly do not close the handle.  We need these dynamic
     //  symbols to remain open and linked through the rest of the execution
+#endif
   }
 
   module_loader::~module_loader()

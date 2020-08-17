@@ -248,7 +248,9 @@ enum {
 #define	XOCL_INTC		"intc"
 #define	XOCL_ICAP_CNTRL		"icap_controller"
 #define	XOCL_VERSION_CTRL	"version_control"
+#define	XOCL_MSIX_XDMA		"msix_xdma"
 #define	XOCL_ERT_USER		"ert_user"
+#define	XOCL_ERT_30		"ert_30"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -256,6 +258,7 @@ enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
 	XOCL_SUBDEV_VERSION_CTRL,
 	XOCL_SUBDEV_AXIGATE,
+	XOCL_SUBDEV_MSIX,
 	XOCL_SUBDEV_DMA,
 	XOCL_SUBDEV_IORES,
 	XOCL_SUBDEV_FLASH,
@@ -296,6 +299,7 @@ enum subdev_id {
 	XOCL_SUBDEV_INTC,
 	XOCL_SUBDEV_ICAP_CNTRL,
 	XOCL_SUBDEV_ERT_USER,
+	XOCL_SUBDEV_ERT_30,
 	XOCL_SUBDEV_NUM
 };
 

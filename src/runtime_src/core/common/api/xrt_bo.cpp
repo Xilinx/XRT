@@ -49,25 +49,7 @@ is_nodma()
 // Exposed for Cardano as extensions to xrt_bo.h
 // Revisit post 2020.1
 ////////////////////////////////////////////////////////////////
-/**
- * xrtBOAddress() - Get the address of device side of buffer
- *
- * @bo:      Buffer object
- * Return:   Address of device side buffer
- */
-XCL_DRIVER_DLLESPEC
-uint64_t
-xrtBOAddress(const xrt::bo& bo);
-
-/**
- * xrtBOAddress() - Get the address of device side of buffer
- *
- * @handle:  Buffer handle
- * Return:   Address of device side buffer
- */
-XCL_DRIVER_DLLESPEC
-uint64_t
-xrtBOAddress(xrtBufferHandle bhdl);
+// Removed as address was exposed through public API per request
 ///////////////////////////////////////////////////////////////
 
 namespace {
@@ -175,7 +157,7 @@ public:
   }
 
   virtual uint64_t
-  address() const
+  get_address() const
   {
     xclBOProperties prop;
     device->get_bo_properties(handle, &prop);
@@ -348,9 +330,9 @@ public:
   }
 
   virtual uint64_t
-  address() const
+  get_address() const
   {
-    return bo_impl::address() + offset;
+    return bo_impl::get_address() + offset;
   }
 };
 
@@ -501,14 +483,14 @@ uint64_t
 address(const xrt::bo& bo)
 {
   auto boh = bo.get_handle();
-  return boh->address();
+  return boh->get_address();
 }
 
 uint64_t
 address(xrtBufferHandle handle)
 {
   auto boh = get_boh(handle);
-  return boh->address();
+  return boh->get_address();
 }
 
 }} // namespace bo, xrt_core
@@ -544,6 +526,13 @@ bo::
 size() const
 {
   return handle->get_size();
+}
+
+uint64_t
+bo::
+address() const
+{
+  return handle->get_address();
 }
 
 xclBufferExportHandle
@@ -794,7 +783,8 @@ uint64_t
 xrtBOAddress(xrtBufferHandle bhdl)
 {
   try {
-    return xrt_core::bo::address(bhdl);
+    auto boh = get_boh(bhdl);
+    return boh->get_address();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -804,10 +794,4 @@ xrtBOAddress(xrtBufferHandle bhdl)
     send_exception_message(ex.what());
     return errno = 0;
   }
-}
-
-uint64_t
-xrtBOAddress(const xrt::bo& bo)
-{
-  return xrt_core::bo::address(bo);
 }

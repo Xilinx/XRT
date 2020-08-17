@@ -172,8 +172,10 @@ initialize_query_table()
   emplace_sysfs_request<query::xclbin_uuid>                 ("", "xclbinuuid");
   emplace_sysfs_request<query::mem_topology_raw>            ("icap", "mem_topology");
   emplace_sysfs_request<query::ip_layout_raw>               ("icap", "ip_layout");
+  emplace_sysfs_request<query::clock_freq_topology_raw>     ("icap", "clock_freq_topology");
   emplace_sysfs_request<query::clock_freqs_mhz>             ("icap", "clock_freqs");
   emplace_sysfs_request<query::idcode>                      ("icap", "idcode");
+  emplace_sysfs_request<query::data_retention>              ("icap", "data_retention");
   emplace_sysfs_request<query::status_mig_calibrated>       ("", "mig_calibration");
   emplace_sysfs_request<query::xmc_version>                 ("xmc", "version");
   emplace_sysfs_request<query::xmc_board_name>              ("xmc", "bd_name");

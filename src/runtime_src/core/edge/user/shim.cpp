@@ -1905,7 +1905,7 @@ ssize_t
 xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf,
                size_t size, uint64_t offset)
 {
-  return 0;
+  return -ENOSYS;
 }
 
 int
@@ -2075,8 +2075,15 @@ xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size
   return;
 }
 
-int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
-                        uint32_t idx, char* path, size_t size)
+int
+xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
+                 uint32_t idx, char* path, size_t size)
 {
   return 0;
+}
+
+int
+xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
+{
+  return 1; // -ENOSYS;
 }
