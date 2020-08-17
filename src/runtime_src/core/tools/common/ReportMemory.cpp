@@ -163,7 +163,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
         status = "Active";
         for (unsigned k = 0; k < stream_stat.size(); k++) {
           char key[50];
-          int64_t value;
+          long int value;
           std::sscanf(stream_stat[k].c_str(), "%[^:]:%ld", key, &value);
           stat_map[std::string(key)] = std::to_string(value);
         }
