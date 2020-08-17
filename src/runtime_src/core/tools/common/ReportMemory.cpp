@@ -115,11 +115,11 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   std::vector<std::string> mm_buf, stream_stat;
   std::vector<char> buf, temp_buf, gbuf;
   uint64_t memoryUsage, boCount;
+  pt.put("description", desc);
   pt.put("board.memory.mem_is_present", "false");
   pt.put("board.memory.stream_is_present", "false");
   pt.put("board.memory.grp_is_present", "false");
   pt.put("board.memory.ecc_is_present", "false");
-  pt.put("description", desc);
   getChannelinfo(device, pt);
   try {
     buf = xrt_core::device_query<qr::mem_topology_raw>(device);
@@ -222,7 +222,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
     ss >> memoryUsage >> boCount;
 
     ptMem.put("type", str);
-    ptMem.put("temp_in_C", temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
+    ptMem.put("temperature_C", temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
     ptMem.put("tag", map->m_mem_data[i].m_tag);
     ptMem.put("enabled", map->m_mem_data[i].m_used ? true : false);
     ptMem.put("size_in_bytes", map->m_mem_data[i].m_size << 10);
@@ -348,7 +348,7 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
             type = subv.second.get_value<std::string>();
           } else if (subv.first == "tag") {
             tag = subv.second.get_value<std::string>();
-          } else if (subv.first == "temp_in_C") {
+          } else if (subv.first == "temperature_C") {
             unsigned int t = subv.second.get_value<unsigned int>();
             temp = pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
           } else if (subv.first == "size_in_bytes") {
