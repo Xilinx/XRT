@@ -1,0 +1,37 @@
+/**
+ * Copyright (C) 2020 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+#include "plugin/xdp/aie_trace.h"
+#include "core/common/module_loader.h"
+
+namespace xdpaietrace {
+
+  void load_xdp_aie_trace_plugin()
+  {
+    static xrt_core::module_loader xdp_aie_trace_loader("xdp_aie_trace_plugin",
+                                                        register_aie_trace_callbacks,
+                                                        warning_aie_trace_callbacks);
+  }
+
+  void register_aie_trace_callbacks(void* /*handle*/)
+  {
+  }
+
+  void warning_aie_trace_callbacks()
+  {
+  }
+
+} // end namespace xdpaietrace
