@@ -20,12 +20,14 @@ namespace xdphaldeviceoffload {
  
   void register_hal_device_offload_functions(void* handle) 
   {
+#ifdef XRT_CORE_BUILD_WITH_DL
     typedef void (*ftype)(void*) ;
     update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateDeviceHAL")) ;
     if (xrt_core::dlerror() != NULL) update_device_cb = nullptr ;
 
     flush_device_cb = (ftype)(xrt_core::dlsym(handle, "flushDeviceHAL")) ;
     if (xrt_core::dlerror() != NULL) flush_device_cb = nullptr ;
+#endif
   }
 
   void hal_device_offload_warning_function()
