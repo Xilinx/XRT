@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "ReportMemory.h"
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
 #include "core/common/utils.h"
@@ -162,10 +163,10 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
         stream_stat = xrt_core::device_query<qr::dma_stream>(device, a);
         status = "Active";
         for (unsigned k = 0; k < stream_stat.size(); k++) {
-          char key[50];
-          long int value;
-          std::sscanf(stream_stat[k].c_str(), "%[^:]:%ld", key, &value);
-          stat_map[std::string(key)] = std::to_string(value);
+          std::vector<std::string> strs;
+          boost::split(strs, stream_stat[k],boost::is_any_of(":"));
+          if (strs.size() > 1)
+            stat_map[strs[0]] = strs[1];
         }
 
         total = stat_map[std::string("complete_bytes")] + "/" + stat_map[std::string("complete_requests")];
