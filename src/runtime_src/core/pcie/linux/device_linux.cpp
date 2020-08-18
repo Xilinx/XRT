@@ -66,6 +66,15 @@ struct sysfs_fcn
       throw std::runtime_error(err);
     return value;
   }
+
+  static void
+  put(const pdev& dev, const char* subdev, const char* entry, ValueType value)
+  {
+    std::string err;
+    dev->sysfs_put(subdev, entry, err, value);
+    if (!err.empty())
+      throw std::runtime_error(err);
+  }
 };
 
 template <>
@@ -82,6 +91,15 @@ struct sysfs_fcn<std::string>
     if (!err.empty())
       throw std::runtime_error(err);
     return value;
+  }
+
+  static void
+  put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
+  {
+    std::string err;
+    dev->sysfs_put(subdev, entry, err, value);
+    if (!err.empty())
+      throw std::runtime_error(err);
   }
 };
 
@@ -104,12 +122,12 @@ struct sysfs_fcn<std::vector<VectorValueType>>
 };
 
 template <typename QueryRequestType>
-struct sysfs_getter : QueryRequestType
+struct sysfs_get : virtual QueryRequestType
 {
   const char* subdev;
   const char* entry;
 
-  sysfs_getter(const char* s, const char* e)
+  sysfs_get(const char* s, const char* e)
     : subdev(s), entry(e)
   {}
 
@@ -121,8 +139,35 @@ struct sysfs_getter : QueryRequestType
   }
 };
 
+template <typename QueryRequestType>
+struct sysfs_put : virtual QueryRequestType
+{
+  const char* subdev;
+  const char* entry;
+
+  sysfs_put(const char* s, const char* e)
+    : subdev(s), entry(e)
+  {}
+
+  void
+  put(const xrt_core::device* device, const boost::any& any) const
+  {
+    auto value = boost::any_cast<typename QueryRequestType::value_type>(any);
+    sysfs_fcn<typename QueryRequestType::value_type>
+      ::put(get_pcidev(device), this->subdev, this->entry, value);
+  }
+};
+
+template <typename QueryRequestType>
+struct sysfs_getput : sysfs_get<QueryRequestType>, sysfs_put<QueryRequestType>
+{
+  sysfs_getput(const char* s, const char* e)
+    : sysfs_get<QueryRequestType>(s, e), sysfs_put<QueryRequestType>(s, e)
+  {}
+};
+
 template <typename QueryRequestType, typename Getter>
-struct function0_getter : QueryRequestType
+struct function0_get : virtual QueryRequestType
 {
   boost::any
   get(const xrt_core::device* device) const
@@ -136,10 +181,10 @@ static std::map<xrt_core::query::key_type, std::unique_ptr<query::request>> quer
 
 template <typename QueryRequestType>
 static void
-emplace_sysfs_request(const char* subdev, const char* entry)
+emplace_sysfs_get(const char* subdev, const char* entry)
 {
   auto x = QueryRequestType::key;
-  query_tbl.emplace(x, std::make_unique<sysfs_getter<QueryRequestType>>(subdev, entry));
+  query_tbl.emplace(x, std::make_unique<sysfs_get<QueryRequestType>>(subdev, entry));
 }
 
 template <typename QueryRequestType, typename Getter>
@@ -147,7 +192,23 @@ static void
 emplace_func0_request()
 {
   auto k = QueryRequestType::key;
-  query_tbl.emplace(k, std::make_unique<function0_getter<QueryRequestType, Getter>>());
+  query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType>
+static void
+emplace_sysfs_put(const char* subdev, const char* entry)
+{
+  auto x = QueryRequestType::key;
+  query_tbl.emplace(x, std::make_unique<sysfs_put<QueryRequestType>>(subdev, entry));
+}
+
+template <typename QueryRequestType>
+static void
+emplace_sysfs_getput(const char* subdev, const char* entry)
+{
+  auto x = QueryRequestType::key;
+  query_tbl.emplace(x, std::make_unique<sysfs_getput<QueryRequestType>>(subdev, entry));
 }
 
 static void
@@ -174,6 +235,8 @@ initialize_query_table()
   emplace_sysfs_request<query::ip_layout_raw>               ("icap", "ip_layout");
   emplace_sysfs_request<query::clock_freqs_mhz>             ("icap", "clock_freqs");
   emplace_sysfs_request<query::idcode>                      ("icap", "idcode");
+  emplace_sysfs_getput<query::data_retention>               ("icap", "data_retention");
+  emplace_sysfs_getput<query::sec_level>                    ("icap", "sec_level");
   emplace_sysfs_request<query::status_mig_calibrated>       ("", "mig_calibration");
   emplace_sysfs_request<query::xmc_version>                 ("xmc", "version");
   emplace_sysfs_request<query::xmc_board_name>              ("xmc", "bd_name");
@@ -184,6 +247,9 @@ initialize_query_table()
   emplace_sysfs_request<query::xmc_status>                  ("xmc", "status");
   emplace_sysfs_request<query::xmc_reg_base>                ("xmc", "reg_base");
   emplace_sysfs_request<query::dna_serial_num>              ("dna", "dna");
+  emplace_sysfs_getput<query::xmc_scaling_enabled>          ("xmc", "scaling_enabled");
+  emplace_sysfs_getput<query::xmc_scaling_override>         ("xmc", "scaling_threshold_power_override");
+  emplace_sysfs_put<query::xmc_scaling_reset>               ("xmc", "scaling_reset");
   emplace_sysfs_request<query::p2p_config>                  ("p2p", "config");
   emplace_sysfs_request<query::temp_card_top_front>         ("xmc", "xmc_se98_temp0");
   emplace_sysfs_request<query::temp_card_top_rear>          ("xmc", "xmc_se98_temp1");

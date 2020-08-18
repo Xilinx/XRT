@@ -37,6 +37,7 @@ class Options(object):
         self.cu_index = 0
         self.verbose = False
         self.handle = None
+        self.xcl_handle = None
         self.first_mem = -1
         self.cu_base_addr = -1
         self.xuuid = uuid.uuid4()
@@ -93,9 +94,10 @@ def initXRT(opt):
     if opt.index >= xclProbe():
         raise RuntimeError("Incorrect device index")
 
-    opt.handle = xclOpen(opt.index, None, xclVerbosityLevel.XCL_INFO)
+    opt.handle = xrtDeviceOpen(opt.index)
+    opt.xcl_handle = xrtDeviceToXclDevice(opt.handle)
 
-    xclGetDeviceInfo2(opt.handle, ctypes.byref(deviceInfo))
+    xclGetDeviceInfo2(opt.xcl_handle, ctypes.byref(deviceInfo))
 
     if sys.version_info[0] == 3:
         print("Shell = %s" % deviceInfo.mName)
@@ -125,7 +127,7 @@ def initXRT(opt):
         if xbinary.m_magic.decode("utf-8") != "xclbin2":
             raise RuntimeError("Invalid Bitsream")
 
-        xclLoadXclBin(opt.handle, blob)
+        xclLoadXclBin(opt.xcl_handle, blob)
         print("Finished downloading bitstream %s" % opt.bitstreamFile)
 
         myuuid = memoryview(xbinary.m_header.u2.uuid)[:]

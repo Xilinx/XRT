@@ -11,6 +11,11 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core/include
   )
 
+find_package(Boost EXACT REQUIRED)
+if(Boost_VERSION_STRING VERSION_LESS 1.64.0)
+  add_definitions (-DBOOST_PRE_1_64=1)
+endif()
+
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

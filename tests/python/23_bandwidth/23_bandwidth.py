@@ -85,7 +85,7 @@ def runKernel(opt):
     input_bo2, input_buf2 = getInputOutputBuffer(opt.handle, khandle2, 1, True)
 
     typesize = 512
-    threshold = getThreshold(opt.handle)
+    threshold = getThreshold(opt.xcl_handle)
     globalbuffersizeinbeats = globalbuffersize/(typesize>>3)
     tests= int(math.log(globalbuffersizeinbeats, 2.0))+1
     beats = 16
@@ -185,7 +185,7 @@ def main(args):
         print("FAILED TEST")
         sys.exit(1)
     finally:
-        xclClose(opt.handle)
+        xrtDeviceClose(opt.handle)
 
 if __name__ == "__main__":
     main(sys.argv)

@@ -24,6 +24,7 @@
 #include "command.h"
 #include "exec.h"
 #include "bo.h"
+#include "device_int.h"
 #include "enqueue.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -75,6 +76,29 @@ using namespace std::chrono_literals;
 XCL_DRIVER_DLLESPEC
 int
 xrtRunSetArgV(xrtRunHandle runHandle, int index, const void* value, size_t bytes);
+
+/**
+ * xrtRunGetArgV() - Asynchronous get a specific kernel argument for this run
+ *
+ * @runHandle:  Handle to the run object to modify
+ * @index:      Index of kernel argument to read
+ * @value:      Destination data pointer where argument value is written
+ * @size:       The size of value in bytes.
+ * Return:      0 on success, -1 on error
+ *
+ * Use this API to asynchronously access a specific kernel argument while
+ * kernel is running.  This function reads the register map for the compute
+ * unit associated with this run.  It is an error to read from a run object
+ * associated with multiple compute units.
+ */
+XCL_DRIVER_DLLESPEC
+int
+xrtRunGetArgV(xrtRunHandle runHandle, int index, void* value, size_t bytes);
+
+// C++ run object variant
+XCL_DRIVER_DLLESPEC
+void
+xrtRunGetArgVPP(xrt::run run, int index, void* value, size_t bytes);
 
 /**
  * xrtRunUpdateArgV() - Asynchronous update of kernel argument
@@ -143,9 +167,14 @@ struct device_type
   std::shared_ptr<xrt_core::device> core_device;
   xrt_core::bo_cache exec_buffer_cache;
 
-  device_type(xclDeviceHandle dhdl)
-    : core_device(xrt_core::get_userpf_device(dhdl))
-    , exec_buffer_cache(dhdl, 128)
+  device_type(xrtDeviceHandle dhdl)
+    : core_device(xrt_core::device_int::get_core_device(dhdl))
+    , exec_buffer_cache(core_device->get_device_handle(), 128)
+  {}
+
+  device_type(const std::shared_ptr<xrt_core::device>& cdev)
+    : core_device(cdev)
+    , exec_buffer_cache(core_device->get_device_handle(), 128)
   {}
 
   template <typename CommandType>
@@ -722,13 +751,13 @@ class kernel_impl
   }
 
   unsigned int
-  get_ipidx_or_error(size_t offset) const
+  get_ipidx_or_error(size_t offset, bool force=false) const
   {
     if (ipctxs.size() != 1)
       throw std::runtime_error("Cannot read or write kernel with multiple compute units");
     auto& ipctx = ipctxs.back();
     auto mode = ipctx->get_access_mode();
-    if (mode != ip_context::access_mode::exclusive)
+    if (!force && mode != ip_context::access_mode::exclusive)
       throw std::runtime_error("Cannot read or write kernel with shared access");
 
     if ((offset + sizeof(uint32_t)) > ipctx->get_size())
@@ -802,9 +831,9 @@ public:
   }
 
   uint32_t
-  read_register(uint32_t offset) const
+  read_register(uint32_t offset, bool force=false) const
   {
-    auto idx = get_ipidx_or_error(offset);
+    auto idx = get_ipidx_or_error(offset, force);
     uint32_t value = 0;
     if (has_reg_read_write())
       device->core_device->reg_read(idx, offset, &value);
@@ -821,6 +850,15 @@ public:
       device->core_device->reg_write(idx, offset, data);
     else
       device->core_device->xwrite(ipctxs.back()->get_address() + offset, &data, 4);
+  }
+
+  // Read 'count' 4 byte registers starting at offset
+  // This API is internal and allows reading from shared IPs
+  void
+  read_register_n(uint32_t offset, size_t count, uint32_t* out)
+  {
+    for (size_t n = 0; n < count; ++n)
+      out[n] = read_register(offset + n * 4, true);
   }
 
   device_type*
@@ -992,6 +1030,14 @@ public:
   }
 
   void
+  get_arg_at_index(size_t index, uint32_t* out, size_t bytes)
+  {
+    auto& arg = kernel->get_arg(index);
+    arg.valid_or_error(bytes);
+    kernel->read_register_n(arg.offset(), bytes / sizeof(uint32_t), out);
+  }
+
+  void
   set_all_args(std::va_list* args)
   {
     for (auto& arg : kernel->get_args()) {
@@ -1142,7 +1188,7 @@ namespace {
 // weak_ptr, the cache would hold on to the device until static global
 // destruction and long after application calls xclClose on the
 // xrtDeviceHandle.
-static std::map<xclDeviceHandle, std::weak_ptr<device_type>> devices;
+static std::map<xrtDeviceHandle, std::weak_ptr<device_type>> devices;
 
 // Active kernels per xrtKernelOpen/Close.  This is a mapping from
 // xrtKernelHandle to the corresponding kernel object.  The
@@ -1162,14 +1208,21 @@ static std::map<void*, std::unique_ptr<xrt::run_impl>> runs;
 // when run is closed.
 static std::map<const xrt::run_impl*, std::unique_ptr<xrt::run_update_type>> run_updates;
 
-// get_device() - get a device object from an xclDeviceHandle
+// Mutex to protect access to maps
+static std::mutex map_mutex;
+
+// get_device() - get a device object from an xrtDeviceHandle
 //
 // The lifetime of the device object is shared ownership. The object
-// is cached so that subsequent look-ups from same xclDeviceHandle
+// is cached so that subsequent look-ups from same xrtDeviceHandle
 // result in same device object if it exists already.
+//
+// Refactor to share, or better get rid of device_type and fold
+// extension into xrt_core::device  
 static std::shared_ptr<device_type>
-get_device(xclDeviceHandle dhdl)
+get_device(xrtDeviceHandle dhdl)
 {
+  std::lock_guard<std::mutex> lk(map_mutex);
   auto itr = devices.find(dhdl);
   std::shared_ptr<device_type> device = (itr != devices.end())
     ? (*itr).second.lock()
@@ -1180,6 +1233,30 @@ get_device(xclDeviceHandle dhdl)
     devices.emplace(std::make_pair(dhdl, device));
   }
   return device;
+}
+
+static std::shared_ptr<device_type>
+get_device(const std::shared_ptr<xrt_core::device>& core_device)
+{
+  auto dhdl = core_device.get();
+
+  std::lock_guard<std::mutex> lk(map_mutex);
+  auto itr = devices.find(dhdl);
+  std::shared_ptr<device_type> device = (itr != devices.end())
+    ? (*itr).second.lock()
+    : nullptr;
+  if (!device) {
+    device = std::shared_ptr<device_type>(new device_type(core_device));
+    xrt_core::exec::init(device->get_core_device());
+    devices.emplace(std::make_pair(dhdl, device));
+  }
+  return device;
+}
+
+static std::shared_ptr<device_type>
+get_device(const xrt::device& xdev)
+{
+  return get_device(xdev.get_handle());
 }
 
 // get_kernel() - get a kernel object from an xrtKernelHandle
@@ -1231,7 +1308,7 @@ get_run_update(xrtRunHandle rhdl)
 namespace api {
 
 xrtKernelHandle
-xrtKernelOpen(xclDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, ip_context::access_mode am)
+xrtKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, ip_context::access_mode am)
 {
   auto device = get_device(dhdl);
   auto kernel = std::make_shared<xrt::kernel_impl>(device, xclbin_uuid, name, am);
@@ -1394,9 +1471,16 @@ set_event(const std::shared_ptr<event_impl>& event) const
 }
   
 kernel::
+kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive)
+  : handle(std::make_shared<kernel_impl>
+     (get_device(xdev), xclbin_id, name,
+      exclusive ? ip_context::access_mode::exclusive : ip_context::access_mode::shared))
+{}
+
+kernel::
 kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive)
   : handle(std::make_shared<kernel_impl>
-     (get_device(dhdl), xclbin_id, name,
+      (get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name,
       exclusive ? ip_context::access_mode::exclusive : ip_context::access_mode::shared))
 {}
 
@@ -1428,7 +1512,7 @@ group_id(int argno) const
 // xrt_kernel API implmentations (xrt_kernel.h)
 ////////////////////////////////////////////////////////////////
 xrtKernelHandle
-xrtPLKernelOpen(xclDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
+xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
   try {
     return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::shared);
@@ -1440,7 +1524,7 @@ xrtPLKernelOpen(xclDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name
 }
 
 xrtKernelHandle
-xrtPLKernelOpenExclusive(xclDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
+xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
   try {
     return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::exclusive);
@@ -1724,4 +1808,30 @@ xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
     send_exception_message(ex.what());
     return -1;
   }
+}
+
+int
+xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
+{
+  try {
+    auto run = get_run(rhdl);
+    run->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+  
+}
+  
+void
+xrtRunGetArgVPP(xrt::run run, int index, void* value, size_t bytes)
+{
+  auto rimpl = run.get_handle();
+  rimpl->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
 }

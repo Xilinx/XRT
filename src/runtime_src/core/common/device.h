@@ -171,6 +171,20 @@ public:
   }
 
   /**
+   * update() - Update a given property for this device
+   *
+   * @QueryRequestType: Template parameter identifying a specific query request
+   * @args:  Variadic arguments forwarded to the QueryRequestType
+   */
+  template <typename QueryRequestType, typename ...Args>
+  void
+  update(Args&&... args) const
+  {
+    auto& qr = lookup_query(QueryRequestType::key);
+    return qr.put(this, std::forward<Args>(args)...);
+  }
+
+  /**
    * register_axlf() - Callback from shim after AXLF has been loaded.
    *
    * This function extracts meta data sections as needed.
@@ -295,7 +309,15 @@ template <typename QueryRequestType, typename ...Args>
 inline typename QueryRequestType::result_type
 device_query(const std::shared_ptr<device>& device, Args&&... args)
 {
-  return device_query<QueryRequestType>(device.get(), std::forward<Args>(args)...);
+  auto ret = device->query<QueryRequestType>(std::forward<Args>(args)...);
+  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+}
+
+template <typename QueryRequestType, typename ...Args>
+inline void
+device_update(const device* device, Args&&... args)
+{
+  device->update<QueryRequestType>(std::forward<Args>(args)...);
 }
 
 template <typename QueryRequestType>

@@ -68,22 +68,27 @@ enum class key_type
   xclbin_uuid,
   mem_topology_raw,
   ip_layout_raw,
+  clock_freq_topology_raw,
 
   xmc_version,
   xmc_board_name,
   xmc_serial_num,
   xmc_max_power,
   xmc_bmc_version,
+  expected_bmc_version,
   xmc_status,
   xmc_reg_base,
-  expected_bmc_version,
+  xmc_scaling_enabled,
+  xmc_scaling_override,
+  xmc_scaling_reset,
 
   dna_serial_num,
   clock_freqs_mhz,
   idcode,
+  data_retention,
+  sec_level,
 
   status_mig_calibrated,
-  status_p2p_enabled,
   p2p_config,
 
   temp_card_top_front,
@@ -555,6 +560,15 @@ struct ip_layout_raw : request
   get(const device*) const = 0;
 };
 
+struct clock_freq_topology_raw : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::clock_freq_topology_raw;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct xmc_version : request
 {
   using result_type = std::string;
@@ -669,6 +683,42 @@ struct xmc_reg_base : request
   get(const device*) const = 0;
 };
 
+struct xmc_scaling_enabled : request
+{
+  using result_type = bool;       // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xmc_scaling_enabled;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct xmc_scaling_override: request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+  static const key_type key = key_type::xmc_scaling_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+};
+
+struct xmc_scaling_reset : request
+{
+  using value_type = std::string;   // put value type
+  static const key_type key = key_type::xmc_scaling_reset;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
 struct dna_serial_num : request
 {
   using result_type = std::string;
@@ -718,6 +768,40 @@ struct idcode : request
   }
 };
 
+struct data_retention : request
+{
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::data_retention;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+  static bool
+  to_bool(const result_type& value)
+  {
+    return (value == std::numeric_limits<uint32_t>::max())
+      ? false : value;
+  }
+};
+
+struct sec_level : request
+{
+  using result_type = uint16_t;   // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::sec_level;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
 struct status_mig_calibrated : request
 {
   using result_type = bool;
@@ -728,22 +812,6 @@ struct status_mig_calibrated : request
   get(const device*) const = 0;
 
   static std::string
-  to_string(result_type value)
-  {
-    return value ? "true" : "false";
-  }
-};
-
-struct status_p2p_enabled : request
-{
-  using result_type = bool;
-  static const key_type key = key_type::status_p2p_enabled;
-  static const char* name() { return "p2p_enabled"; }
-
-  virtual boost::any
-  get(const device*) const = 0;
-
-  static result_type
   to_string(result_type value)
   {
     return value ? "true" : "false";

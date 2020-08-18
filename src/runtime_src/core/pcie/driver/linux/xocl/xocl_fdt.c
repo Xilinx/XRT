@@ -314,7 +314,19 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
-       	},
+	},
+	{
+		.id = XOCL_SUBDEV_MSIX,
+		.dev_name = XOCL_MSIX_XDMA,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_MSIX_USER},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
+		.build_priv_data = NULL,
+		.devinfo_cb = devinfo_cb_xdma,
+	},
 	{
 		.id = XOCL_SUBDEV_INTC,
 		.dev_name = XOCL_INTC,
@@ -332,6 +344,18 @@ static struct xocl_subdev_map subdev_map[] = {
 		.dev_name = XOCL_ERT_USER,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_ERT_CQ_USER},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
+		.build_priv_data = ert_build_priv,
+		.devinfo_cb = NULL,
+ 	},
+	{
+		.id = XOCL_SUBDEV_ERT_30,
+		.dev_name = XOCL_ERT_30,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_CFG_GPIO},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -637,6 +661,18 @@ static struct xocl_subdev_map subdev_map[] = {
 		.required_ip = 1,
 		.flags = 0,
 		.build_priv_data = p2p_build_priv,
+		.devinfo_cb = NULL,
+	},
+	{
+		.id = XOCL_SUBDEV_UARTLITE,
+		.dev_name = XOCL_UARTLITE,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_UARTLITE},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
 	},
 };

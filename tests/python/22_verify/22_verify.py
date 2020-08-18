@@ -36,16 +36,16 @@ def runKernel(opt):
     name = list(filter(lambda val: rule.match, opt.kernels))[0]
     khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, name)
 
-    boHandle1 = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
-    bo1 = xclMapBO(opt.handle, boHandle1, True)
+    boHandle1 = xclAllocBO(opt.xcl_handle, opt.DATA_SIZE, 0, opt.first_mem)
+    bo1 = xclMapBO(opt.xcl_handle, boHandle1, True)
     ctypes.memset(bo1, 0, opt.DATA_SIZE)
 
-    boHandle2 = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
-    bo2 = xclMapBO(opt.handle, boHandle2, True)
+    boHandle2 = xclAllocBO(opt.xcl_handle, opt.DATA_SIZE, 0, opt.first_mem)
+    bo2 = xclMapBO(opt.xcl_handle, boHandle2, True)
     ctypes.memset(bo2, 0, opt.DATA_SIZE)
 
-    xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
-    xclSyncBO(opt.handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
+    xclSyncBO(opt.xcl_handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
+    xclSyncBO(opt.xcl_handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
 
     print("Original string = [%s]" % bo1[:64].decode("utf-8"))
     print("Original string = [%s]" % bo2[:64].decode("utf-8"))
@@ -60,8 +60,8 @@ def runKernel(opt):
     xrtRunWait(rhandle2)
 
     print("Get the output data produced by the 2 kernel runs from the device")
-    xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
-    xclSyncBO(opt.handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
+    xclSyncBO(opt.xcl_handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
+    xclSyncBO(opt.xcl_handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
     result1 = bo1[:len("Hello World")]
     result2 = bo2[:len("Hello World")]
     print("Result string = [%s]" % result1.decode("utf-8"))
@@ -72,10 +72,10 @@ def runKernel(opt):
     xrtRunClose(rhandle2)
     xrtRunClose(rhandle1)
     xrtKernelClose(khandle)
-    xclUnmapBO(opt.handle, boHandle2, bo2)
-    xclFreeBO(opt.handle, boHandle2)
-    xclUnmapBO(opt.handle, boHandle1, bo1)
-    xclFreeBO(opt.handle, boHandle1)
+    xclUnmapBO(opt.xcl_handle, boHandle2, bo2)
+    xclFreeBO(opt.xcl_handle, boHandle2)
+    xclUnmapBO(opt.xcl_handle, boHandle1, bo1)
+    xclFreeBO(opt.xcl_handle, boHandle1)
 
 def main(args):
     opt = Options()
@@ -101,7 +101,7 @@ def main(args):
         print("FAILED TEST")
         sys.exit(1)
     finally:
-        xclClose(opt.handle)
+        xrtDeviceClose(opt.handle)
 
 if __name__ == "__main__":
     os.environ["Runtime.xrt_bo"] = "false"

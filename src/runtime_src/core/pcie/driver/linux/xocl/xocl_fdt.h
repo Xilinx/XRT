@@ -73,6 +73,7 @@
 #define NODE_ERT_SCHED "ep_ert_sched_00"
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
+#define NODE_MSIX_USER "ep_msix_user_00"
 #define NODE_MSIX_MGMT "ep_msix_mgmt_00"
 #define NODE_QDMA "ep_qdma_00"
 #define NODE_QDMA4 "ep_qdma4_00"
@@ -94,6 +95,8 @@
 #define NODE_MAILBOX_XRT "ep_mailbox_user_to_ert_00"
 #define NODE_PMC_INTR	"ep_pmc_intr_00"
 #define NODE_PMC_MUX	"ep_pmc_mux_00"
+#define NODE_ERT_UARTLITE "ep_ert_debug_uart_00"
+#define NODE_ERT_CFG_GPIO "ep_ert_config_00"
 
 #define PROP_HWICAP "axi_hwicap"
 #define PROP_PDI_CONFIG "pdi_config_mem"

@@ -22,6 +22,7 @@
 #include "core/include/experimental/xrt_bo.h"
 
 #include "bo.h"
+#include "device_int.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/memalign.h"
@@ -48,25 +49,7 @@ is_nodma()
 // Exposed for Cardano as extensions to xrt_bo.h
 // Revisit post 2020.1
 ////////////////////////////////////////////////////////////////
-/**
- * xrtBOAddress() - Get the address of device side of buffer
- *
- * @bo:      Buffer object
- * Return:   Address of device side buffer
- */
-XCL_DRIVER_DLLESPEC
-uint64_t
-xrtBOAddress(const xrt::bo& bo);
-
-/**
- * xrtBOAddress() - Get the address of device side of buffer
- *
- * @handle:  Buffer handle
- * Return:   Address of device side buffer
- */
-XCL_DRIVER_DLLESPEC
-uint64_t
-xrtBOAddress(xrtBufferHandle bhdl);
+// Removed as address was exposed through public API per request
 ///////////////////////////////////////////////////////////////
 
 namespace {
@@ -174,7 +157,7 @@ public:
   }
 
   virtual uint64_t
-  address() const
+  get_address() const
   {
     xclBOProperties prop;
     device->get_bo_properties(handle, &prop);
@@ -347,9 +330,9 @@ public:
   }
 
   virtual uint64_t
-  address() const
+  get_address() const
   {
-    return bo_impl::address() + offset;
+    return bo_impl::get_address() + offset;
   }
 };
 
@@ -483,6 +466,12 @@ sub_buffer(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offs
   return std::make_shared<xrt::buffer_sub>(parent, size, offset);
 }
 
+static xclDeviceHandle
+get_xcl_device_handle(xrtDeviceHandle dhdl)
+{
+  return xrt_core::device_int::get_xcl_device_handle(dhdl);
+}
+
 } // namespace
 
 ////////////////////////////////////////////////////////////////
@@ -494,14 +483,14 @@ uint64_t
 address(const xrt::bo& bo)
 {
   auto boh = bo.get_handle();
-  return boh->address();
+  return boh->get_address();
 }
 
 uint64_t
 address(xrtBufferHandle handle)
 {
   auto boh = get_boh(handle);
-  return boh->address();
+  return boh->get_address();
 }
 
 }} // namespace bo, xrt_core
@@ -537,6 +526,13 @@ bo::
 size() const
 {
   return handle->get_size();
+}
+
+uint64_t
+bo::
+address() const
+{
+  return handle->get_address();
 }
 
 xclBufferExportHandle
@@ -580,10 +576,10 @@ read(void* dst, size_t size, size_t skip)
 // xrt_bo API implmentations (xrt_bo.h)
 ////////////////////////////////////////////////////////////////
 xrtBufferHandle
-xrtBOAllocUserPtr(xclDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
+xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   try {
-    auto boh = alloc(dhdl, userptr, size, flags, grp);
+    auto boh = alloc(get_xcl_device_handle(dhdl), userptr, size, flags, grp);
     bo_cache[boh.get()] = boh;
     return boh.get();
   }
@@ -599,10 +595,10 @@ xrtBOAllocUserPtr(xclDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
 }
 
 xrtBufferHandle
-xrtBOAlloc(xclDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
+xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   try {
-    auto boh = alloc(dhdl, size, flags, grp);
+    auto boh = alloc(get_xcl_device_handle(dhdl), size, flags, grp);
     bo_cache[boh.get()] = boh;
     return boh.get();
   }
@@ -787,7 +783,8 @@ uint64_t
 xrtBOAddress(xrtBufferHandle bhdl)
 {
   try {
-    return xrt_core::bo::address(bhdl);
+    auto boh = get_boh(bhdl);
+    return boh->get_address();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -797,10 +794,4 @@ xrtBOAddress(xrtBufferHandle bhdl)
     send_exception_message(ex.what());
     return errno = 0;
   }
-}
-
-uint64_t
-xrtBOAddress(const xrt::bo& bo)
-{
-  return xrt_core::bo::address(bo);
 }

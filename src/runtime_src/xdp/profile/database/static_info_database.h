@@ -132,11 +132,37 @@ namespace xdp {
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
     std::map<int32_t, ComputeUnitInstance*> cus;
-    //uuid        loadedXclbinUUID;
     std::map<int32_t, Memory*>   memoryInfo;
     std::vector<Monitor*> aimList;
     std::vector<Monitor*> amList;
     std::vector<Monitor*> asmList;
+
+    bool hasFloatingAIM = false;
+    bool hasFloatingASM = false;
+
+    ~DeviceInfo()
+    {
+      for(auto i : cus) {
+        delete i.second;
+      }
+      cus.clear();
+      for(auto i : memoryInfo) {
+        delete i.second;
+      }
+      memoryInfo.clear();
+      for(auto i : aimList) {
+        delete i;
+      }
+      aimList.clear();
+      for(auto i : amList) {
+        delete i;
+      }
+      amList.clear();
+      for(auto i : asmList) {
+        delete i;
+      }
+      asmList.clear();
+    }
   };
 
   class VPStaticDatabase
@@ -301,6 +327,13 @@ namespace xdp {
       return deviceInfo[deviceId]->aimList[idx];
     }
 
+    inline std::vector<Monitor*>* getAIMonitors(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return &(deviceInfo[deviceId]->aimList);
+    }
+
     inline Monitor* getAMonitor(uint64_t deviceId, uint64_t idx)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -313,6 +346,13 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->asmList[idx];
+    }
+
+    inline std::vector<Monitor*>* getASMonitors(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return &(deviceInfo[deviceId]->asmList);
     }
 
     inline void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size)
@@ -328,6 +368,20 @@ namespace xdp {
         config[count] = cu->dataflowEnabled();
         ++count;
       }
+    }
+
+    inline bool hasFloatingAIM(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false;
+      return deviceInfo[deviceId]->hasFloatingAIM;
+    }
+
+    inline bool hasFloatingASM(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false;
+      return deviceInfo[deviceId]->hasFloatingASM;
     }
 
     // Reseting device information whenever a new xclbin is added

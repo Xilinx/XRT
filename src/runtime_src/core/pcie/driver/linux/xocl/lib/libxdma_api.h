@@ -99,7 +99,8 @@ struct xdma_io_cb {
  *	NULL, in case of error  
  */
 void *xdma_device_open(const char *mod_name, struct pci_dev *pdev,
-		 int *user_max, int *h2c_channel_max, int *c2h_channel_max);
+		 int *user_max, int *h2c_channel_max, int *c2h_channel_max,
+		 bool no_dma);
 
 /* 
  * xdma_device_close - prepare fpga for removal: disable all interrupts (users
