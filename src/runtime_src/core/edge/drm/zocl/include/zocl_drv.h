@@ -215,6 +215,11 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
 
+int zocl_inject_error(struct drm_zocl_dev *zdev, void *data,
+		struct drm_file *filp);
+int zocl_init_error(struct drm_zocl_dev *zdev);
+void zocl_fini_error(struct drm_zocl_dev *zdev);
+
 /* zocl_kds.c */
 int zocl_init_sched(struct drm_zocl_dev *zdev);
 void zocl_fini_sched(struct drm_zocl_dev *zdev);

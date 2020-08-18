@@ -276,6 +276,35 @@ XCL_DRIVER_DLLESPEC int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_
  */
 XCL_DRIVER_DLLESPEC int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd);
 
+/**
+ * xclErrorInject() - Inject an asynchronous error record into driver
+ *
+ * @handle:     Device handle
+ * @num:        error number
+ * @driver:     driver to inject
+ * @severity:   error severity
+ * @module:     module to inject
+ * @eclass:     error class
+ * Return:      0 or appropriate error number
+ *
+ * Note: this API needs root privilege
+ */
+XCL_DRIVER_DLLESPEC
+int
+xclErrorInject(xclDeviceHandle handle, uint16_t num, uint16_t driver, uint16_t severity, uint16_t module, uint16_t eclass);
+
+/**
+ * xclErrorClear() - Clear all asynchronous error records in driver
+ *
+ * @handle:     Device handle
+ * Return:      0 or appropriate error number
+ *
+ * Note: this API needs root privilege
+ */
+XCL_DRIVER_DLLESPEC
+int
+xclErrorClear(xclDeviceHandle handle);
+
 #ifdef __cplusplus
 }
 #endif
