@@ -20,6 +20,7 @@
 #include "xrt/config.h"
 #include "xrt/device/hal.h"
 #include "xrt/util/range.h"
+#include "core/common/device.h"
 #include "xclbin.h"
 #include "ert.h"
 
@@ -78,6 +79,18 @@ public:
   device(const device &dev) = delete;
   device& operator=(const device &dev) = delete;
 
+  // Transisition to xrt_core::device and eliminate
+  // this class, but until done, provide access to
+  // the core device.
+  //
+  // Function throws if core device is not loaded, which
+  // is the case before the shim library is loaded
+  std::shared_ptr<xrt_core::device>
+  get_core_device() const
+  {
+    return m_hal->get_core_device();
+  }
+
   /**
    * Prepare a device for actual use.
    * For devices that support DMA threads, this function
@@ -100,12 +113,6 @@ public:
   getName() const
   {
     return m_hal->getName();
-  }
-
-  std::string
-  get_bdf() const
-  {
-    return m_hal->get_bdf();
   }
 
   unsigned int
