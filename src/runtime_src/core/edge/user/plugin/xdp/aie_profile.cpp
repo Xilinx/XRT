@@ -21,9 +21,11 @@ namespace xdpaieprofile {
 
   void load_xdp_aie_plugin()
   {
+#ifdef XRT_ENABLE_AIE
     static xrt_core::module_loader xdp_aie_loader("xdp_aie_plugin",
 						    register_aie_callbacks,
 						    warning_aie_callbacks);
+#endif
   }
 
   void register_aie_callbacks(void* /*handle*/)
