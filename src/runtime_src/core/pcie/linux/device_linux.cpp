@@ -250,6 +250,7 @@ initialize_query_table()
   emplace_sysfs_getput<query::xmc_scaling_enabled>      ("xmc", "scaling_enabled");
   emplace_sysfs_getput<query::xmc_scaling_override>     ("xmc", "scaling_threshold_power_override");
   emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
+  emplace_sysfs_get<query::m2m>                         ("", "m2m");
   emplace_sysfs_get<query::dna_serial_num>              ("dna", "dna");
   emplace_sysfs_get<query::p2p_config>                  ("p2p", "config");
   emplace_sysfs_get<query::temp_card_top_front>         ("xmc", "xmc_se98_temp0");
