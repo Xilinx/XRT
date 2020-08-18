@@ -25,17 +25,37 @@ namespace xdp {
   {
     db->registerPlugin(this);
 
+#if 0
+    writers.push_back(new HALHostTraceWriter("aie_trace.csv",
+                            "" /*version*/,
+                            0  /*creationTime*/,
+                            "" /*xrtVersion*/,
+                            "" /*toolVersion*/));
+#endif
     (db->getStaticInfo()).addOpenedFile("aie_trace.csv", "VP_TRACE");
   }
 
   AieTracePlugin::~AieTracePlugin()
   {
     if(VPDatabase::alive()) {
+      try {
+        writeAll(false);
+      }
+      catch(...) {
+      }
       db->unregisterPlugin(this);
     }
 
     // If the database is dead, then we must have already forced a 
     //  write at the database destructor so we can just move on
   }
+
+  void AieTracePlugin::writeAll(bool openNewFiles)
+  {
+    for(auto w : writers) {
+      w->write(openNewFiles);
+    }
+  }
+
 }
 

@@ -6,6 +6,7 @@
 #include "hal_profile.h"
 #include "hal_device_offload.h"
 //#include "power_profile.h"
+#include "aie_trace.h"
 #include "vart_profile.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"

@@ -14,27 +14,24 @@
  * under the License.
  */
 
-#ifndef AIE_TRACE_PLUGIN_H
-#define AIE_TRACE_PLUGIN_H
+#include "aie_trace.h"
+#include "core/common/module_loader.h"
 
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+namespace xdpaietrace {
 
-namespace xdp {
-
-  class AieTracePlugin : public XDPPlugin
+  void load_xdp_aie_trace_plugin()
   {
+    static xrt_core::module_loader xdp_aie_trace_loader("xdp_aie_trace_plugin",
+                                                        register_aie_trace_callbacks,
+                                                        warning_aie_trace_callbacks);
+  }
 
-    public:
-      XDP_EXPORT
-      AieTracePlugin();
+  void register_aie_trace_callbacks(void* /*handle*/)
+  {
+  }
 
-      XDP_EXPORT
-      ~AieTracePlugin();
+  void warning_aie_trace_callbacks()
+  {
+  }
 
-      XDP_EXPORT
-      virtual void writeAll(bool openNewFiles);
-  };
-    
-}   
-    
-#endif
+} // end namespace xdpaietrace
