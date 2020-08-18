@@ -75,14 +75,18 @@ enum class key_type
   xmc_serial_num,
   xmc_max_power,
   xmc_bmc_version,
+  expected_bmc_version,
   xmc_status,
   xmc_reg_base,
-  expected_bmc_version,
+  xmc_scaling_enabled,
+  xmc_scaling_override,
+  xmc_scaling_reset,
 
   dna_serial_num,
   clock_freqs_mhz,
   idcode,
   data_retention,
+  sec_level,
 
   status_mig_calibrated,
   p2p_config,
@@ -679,6 +683,42 @@ struct xmc_reg_base : request
   get(const device*) const = 0;
 };
 
+struct xmc_scaling_enabled : request
+{
+  using result_type = bool;       // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xmc_scaling_enabled;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct xmc_scaling_override: request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+  static const key_type key = key_type::xmc_scaling_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+};
+
+struct xmc_scaling_reset : request
+{
+  using value_type = std::string;   // put value type
+  static const key_type key = key_type::xmc_scaling_reset;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
 struct dna_serial_num : request
 {
   using result_type = std::string;
@@ -730,11 +770,36 @@ struct idcode : request
 
 struct data_retention : request
 {
-  using result_type = bool;
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
   static const key_type key = key_type::data_retention;
 
   virtual boost::any
   get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+  static bool
+  to_bool(const result_type& value)
+  {
+    return (value == std::numeric_limits<uint32_t>::max())
+      ? false : value;
+  }
+};
+
+struct sec_level : request
+{
+  using result_type = uint16_t;   // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::sec_level;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
 };
 
 struct status_mig_calibrated : request
