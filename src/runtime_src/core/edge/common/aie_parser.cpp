@@ -162,14 +162,14 @@ get_profile_counter(const pt::ptree& aie_meta)
 {
   // First grab clock frequency
   double clockFreqMhz;
-  for (auto& clock_node : aie_meta.get_child("aie_trace_profile_metadata.DeviceData")) {
+  for (auto& clock_node : aie_meta.get_child("aie_metadata.DeviceData")) {
     clockFreqMhz = clock_node.second.get<double>("AIEFrequency");
   }
 
   // Now parse all counters
   std::vector<counter_type> counters;
 
-  for (auto& counter_node : aie_meta.get_child("aie_trace_profile_metadata.PerformanceCounter")) {
+  for (auto& counter_node : aie_meta.get_child("aie_metadata.PerformanceCounter")) {
     counter_type counter;
 
     counter.id = counter_node.second.get<uint32_t>("id");
@@ -195,7 +195,7 @@ get_trace_gmio(const pt::ptree& aie_meta)
 {
   std::vector<gmio_type> gmios;
 
-  for (auto& gmio_node : aie_meta.get_child("aie_trace_profile_metadata.TraceGMIOs")) {
+  for (auto& gmio_node : aie_meta.get_child("aie_metadata.TraceGMIOs")) {
     gmio_type gmio;
 
     gmio.id = gmio_node.second.get<uint32_t>("id");
