@@ -125,17 +125,16 @@ out:
 static void cu_hls_enable_intr(void *core, u32 intr_type)
 {
 	struct xrt_cu_hls *cu_hls = core;
-	u32 *base_addr = cu_hls->vaddr;
 	u32 intr_mask = intr_type & CU_INTR_DONE;
 
 	/* 0x04 and 0x08 -- Interrupt Enable Registers */
-	iowrite32(0x1, base_addr + 1);
+	iowrite32(0x1, cu_hls->vaddr + 0x4);
 	/*
 	 * bit 0 is ap_done, bit 1 is ap_ready
 	 * only enable ap_done before dataflow support, interrupts are handled
 	 * in sched_exec_isr, please see dataflow comments for more information.
 	 */
-	iowrite32(intr_mask, base_addr + 2);
+	iowrite32(intr_mask, cu_hls->vaddr + 0x8);
 }
 
 static void cu_hls_disable_intr(void *core, u32 intr_type)
