@@ -1737,8 +1737,8 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define	ERT_CSR_ADDR_VERSAL		0x6040000
-#define	ERT_CQ_BASE_ADDR_VERSAL		0x4000000
+#define	ERT_CSR_ADDR_VERSAL		0x2040000
+#define	ERT_CQ_BASE_ADDR_VERSAL		0x6000000
 
 #define XOCL_RES_INTC_VERSAL				\
 	((struct resource []) {				\
