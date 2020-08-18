@@ -162,7 +162,7 @@ get_profile_counter(const pt::ptree& aie_meta)
 {
   // First grab clock frequency
   double clockFreqMhz;
-  for (auto& clock_node : aie_meta.get_child("aie_trace_profile_metadata.PerformanceCounter.DeviceData")) {
+  for (auto& clock_node : aie_meta.get_child("aie_trace_profile_metadata.DeviceData")) {
     clockFreqMhz = clock_node.second.get<double>("AIEFrequency");
   }
 
