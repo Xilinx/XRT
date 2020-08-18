@@ -1,0 +1,286 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Xilinx CU driver for memory to memory BO copy
+ *
+ * Copyright (C) 2020 Xilinx, Inc.
+ *
+ * Authors: David Zhang <davidzha@xilinx.com>
+ */
+
+#include <linux/types.h>
+#include <linux/uaccess.h>
+#include <linux/vmalloc.h>
+#include <linux/slab.h>
+#include <linux/cdev.h>
+#include <linux/fs.h>
+#include <linux/device.h>
+#include <linux/io.h>
+#include <linux/ioctl.h>
+
+#include "../xocl_drv.h"
+#include "../userpf/common.h"
+#include "xrt_cu.h"
+
+/* IOCTL interfaces */
+#define XOCL_M2M_MAGIC 0x4d324d // "M2M"
+
+#define	M2M_ERR(m2m, fmt, arg...)	\
+	xocl_err(&(m2m)->m2m_pdev->dev, fmt "\n", ##arg)
+#define	M2M_WARN(m2m, fmt, arg...)	\
+	xocl_warn(&(m2m)->m2m_pdev->dev, fmt "\n", ##arg)
+#define	M2M_INFO(m2m, fmt, arg...)	\
+	xocl_info(&(m2m)->m2m_pdev->dev, fmt "\n", ##arg)
+#define	M2M_DBG(m2m, fmt, arg...)	\
+	xocl_dbg(&(m2m)->m2m_pdev->dev, fmt "\n", ##arg)
+
+/* This is the real register map for the copy bo CU */
+struct start_copybo_cu_cmd {
+  uint32_t src_addr_lo;      /* low 32 bit of src addr */
+  uint32_t src_addr_hi;      /* high 32 bit of src addr */
+  uint32_t src_bo_hdl;       /* src bo handle */
+  uint32_t dst_addr_lo;      /* low 32 bit of dst addr */
+  uint32_t dst_addr_hi;      /* high 32 bit of dst addr */
+  uint32_t dst_bo_hdl;       /* dst bo handle */
+  uint32_t size;             /* size of bus width in bytes */
+};
+
+struct xocl_m2m {
+	struct platform_device 	*m2m_pdev;
+	struct xrt_cu 		m2m_cu;
+	struct mutex 		m2m_lock;
+	struct completion	m2m_irq_complete;
+	int 			m2m_polling;
+};
+
+static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,
+	uint64_t dst_paddr, uint32_t src_bo_hdl, uint32_t dst_bo_hdl,
+	uint32_t size)
+{
+	struct xocl_m2m *m2m = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &m2m->m2m_cu;
+	struct start_copybo_cu_cmd cmd;
+
+	/* Note: dst_paddr has been adjusted with offset */
+	if ((dst_paddr % KDMA_BLOCK_SIZE) ||
+	    (src_paddr % KDMA_BLOCK_SIZE) ||
+	    (size % KDMA_BLOCK_SIZE)) {
+		M2M_ERR(m2m, "cannot use KDMA. dst: %s, src: %s, size: %s",
+		    (dst_paddr % KDMA_BLOCK_SIZE) ? "not aligned" : "aligned",
+		    (src_paddr % KDMA_BLOCK_SIZE) ? "not aligned" : "aligned",
+		    (size % KDMA_BLOCK_SIZE) ? "not aligned" : "aligned");
+		return -EINVAL;
+	}
+
+	cmd.src_addr_lo = (uint32_t)src_paddr;
+	cmd.src_addr_hi = (src_paddr >> 32) & 0xFFFFFFFF;
+	cmd.dst_addr_lo = (uint32_t)dst_paddr;
+	cmd.dst_addr_hi = (dst_paddr >> 32) & 0xFFFFFFFF;
+	cmd.src_bo_hdl = src_bo_hdl;
+	cmd.dst_bo_hdl = dst_bo_hdl;
+	cmd.size = size / KDMA_BLOCK_SIZE;
+
+	if (!xrt_cu_get_credit(xcu)) {
+		return -EBUSY;
+	}
+
+	xrt_cu_config(xcu, (u32 *)&cmd, sizeof(cmd), 0);
+	xrt_cu_start(xcu);
+
+	while (true) {
+		xrt_cu_check(xcu);
+	
+		if (xcu->done_cnt || xcu->ready_cnt) {
+			xrt_cu_put_credit(xcu, xcu->ready_cnt);
+			xcu->ready_cnt = 0;
+			xcu->done_cnt = 0;
+			break;
+		}
+
+		if (m2m->m2m_polling) {
+			ndelay(100);
+		} else {
+			wait_for_completion_interruptible(
+			    &m2m->m2m_irq_complete);
+		}
+	}
+
+	return 0;
+}
+
+/* Interrupt handler for m2m subdev */
+static irqreturn_t m2m_irq_handler(int irq, void *arg)
+{
+	struct xocl_m2m *m2m = (struct xocl_m2m *)arg;
+
+	/* notify pending thread continue */
+	if (m2m && !m2m->m2m_polling) {
+		/* clear intr for enabling next intr */
+		(void) xrt_cu_clear_intr(&m2m->m2m_cu);
+		complete(&m2m->m2m_irq_complete);
+	} else if (m2m) {
+		M2M_INFO(m2m, "unhandled irq %d", irq);
+	}
+
+	return IRQ_HANDLED;
+}
+
+/* sysfs for m2m subdev */
+static ssize_t polling_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct xocl_m2m *m2m = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+
+	mutex_lock(&m2m->m2m_lock);
+	m2m->m2m_polling = val ? 1 : 0;
+	mutex_unlock(&m2m->m2m_lock);
+
+	return count;
+}
+
+static ssize_t polling_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_m2m *m2m = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	mutex_lock(&m2m->m2m_lock);
+	cnt += sprintf(buf + cnt, "%d\n", m2m->m2m_polling);
+	mutex_unlock(&m2m->m2m_lock);
+
+	return cnt;
+}
+static DEVICE_ATTR(polling, 0644, polling_show, polling_store);
+
+static struct attribute *m2m_attrs[] = {
+	&dev_attr_polling.attr,
+	NULL,
+};
+
+static struct attribute_group m2m_attr_group = {
+	.attrs = m2m_attrs,
+};
+
+static struct xocl_m2m_funcs m2m_ops = {
+	.copy_bo = copy_bo,
+};
+
+struct xocl_drv_private m2m_priv = {
+	.ops = &m2m_ops,
+};
+
+struct platform_device_id m2m_id_table[] = {
+	{ XOCL_DEVNAME(XOCL_M2M), (kernel_ulong_t)&m2m_priv },
+	{ },
+};
+
+static int m2m_remove(struct platform_device *pdev)
+{
+	struct xocl_m2m	*m2m;
+
+	m2m = platform_get_drvdata(pdev);
+	if (!m2m) {
+		xocl_err(&pdev->dev, "driver data is NULL");
+		return -EINVAL;
+	}
+	
+	xrt_cu_hls_fini(&m2m->m2m_cu);
+
+	if (m2m->m2m_cu.res)
+		vfree(m2m->m2m_cu.res);
+
+	sysfs_remove_group(&pdev->dev.kobj, &m2m_attr_group);
+	mutex_destroy(&m2m->m2m_lock);
+
+	platform_set_drvdata(pdev, NULL);
+	devm_kfree(&pdev->dev, m2m);
+
+	M2M_INFO(m2m, "successfully removed M2M subdev");
+	return 0;
+}
+
+static int m2m_probe(struct platform_device *pdev)
+{
+	struct xocl_m2m *m2m = NULL;
+	struct resource *res;
+	int ret = 0, i = 0;
+	struct xocl_dev *xdev = xocl_get_xdev(pdev);
+	u32 intr_base, intr_num;
+
+	m2m = devm_kzalloc(&pdev->dev, sizeof(*m2m), GFP_KERNEL);
+	if (!m2m)
+		return -ENOMEM;
+
+	platform_set_drvdata(pdev, m2m);
+	m2m->m2m_pdev = pdev;
+	mutex_init(&m2m->m2m_lock);
+
+	/* init m2m cu based on iores of kdma */
+	m2m->m2m_cu.res = vzalloc(sizeof (struct resource *) * 1);
+	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
+	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
+		if (!strncmp(res->name, NODE_KDMA_CTRL, strlen(NODE_KDMA_CTRL))) {
+			M2M_INFO(m2m, "CU start 0x%llx\n", res->start);
+			m2m->m2m_cu.res[0] = res;
+			break;
+		}
+	}
+	xrt_cu_hls_init(&m2m->m2m_cu);
+
+	/* init condition veriable */
+	init_completion(&m2m->m2m_irq_complete);
+
+	m2m->m2m_polling = 1;
+	/* init interrupt vector number based on iores of kdma */
+	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (res) {
+		intr_base = res->start;
+		intr_num = res->end - res->start + 1;
+		m2m->m2m_polling = 0;
+	}
+
+	for (i = 0; i < intr_num; i++) {
+		xocl_user_interrupt_reg(xdev, intr_base + i, m2m_irq_handler, m2m);
+		xocl_user_interrupt_config(xdev, intr_base + i, true);
+	}
+
+	ret = sysfs_create_group(&pdev->dev.kobj, &m2m_attr_group);
+	if (ret) {
+		M2M_ERR(m2m, "create m2m attrs failed: %d", ret);
+		goto failed;
+	}
+
+	if (m2m->m2m_polling)
+		xrt_cu_disable_intr(&m2m->m2m_cu, CU_INTR_DONE);
+	else
+		xrt_cu_enable_intr(&m2m->m2m_cu, CU_INTR_DONE);
+
+	M2M_INFO(m2m, "Initialized M2M subdev, polling (%d)", m2m->m2m_polling);
+	return 0;
+
+failed:
+	(void) m2m_remove(pdev);
+	return ret;
+}
+
+static struct platform_driver	m2m_driver = {
+	.probe		= m2m_probe,
+	.remove		= m2m_remove,
+	.driver		= {
+		.name = XOCL_DEVNAME(XOCL_M2M),
+	},
+	.id_table = m2m_id_table,
+};
+
+int __init xocl_init_m2m(void)
+{
+	return platform_driver_register(&m2m_driver);
+}
+
+void xocl_fini_m2m(void)
+{
+	platform_driver_unregister(&m2m_driver);
+}
