@@ -35,8 +35,8 @@
 
 #define ZOCL_DRIVER_NAME        "zocl"
 #define ZOCL_DRIVER_DESC        "Zynq BO manager"
-#define ZOCL_DRIVER_DATE        "20180313"
-#define ZOCL_DRIVER_MAJOR       2018
+#define ZOCL_DRIVER_DATE        "20200818"
+#define ZOCL_DRIVER_MAJOR       2020
 #define ZOCL_DRIVER_MINOR       2
 #define ZOCL_DRIVER_PATCHLEVEL  1
 
