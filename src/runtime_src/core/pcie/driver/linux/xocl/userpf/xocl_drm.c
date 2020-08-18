@@ -360,6 +360,8 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_EXECBUF, xocl_execbuf_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_COPY_BO, xocl_copy_bo_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_HOT_RESET, xocl_hot_reset_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_RECLOCK, xocl_reclock_ioctl,
@@ -805,12 +807,17 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 	/* Initialize memory stats based on Group topology */
 	err = XOCL_GET_GROUP_TOPOLOGY(drm_p->xdev, group_topo);
-	if (err)
+	if (err) {
+		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+		mutex_unlock(&drm_p->mm_lock);
 		return err;
+	}
 
 	if (group_topo == NULL) {
 		err = -ENODEV;
+		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 		XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
+		mutex_unlock(&drm_p->mm_lock);
 		return err;
 	}
 
@@ -818,6 +825,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	drm_p->mm_usage_stat = vzalloc(size);
 	if (!drm_p->mm_usage_stat) {
 		err = -ENOMEM;
+		XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
 		goto done;
 	}
 
@@ -831,14 +839,15 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		drm_p->mm_usage_stat[i] = vzalloc(mm_stat_size);
 		if (!drm_p->mm_usage_stat[i]) {
 			err = -ENOMEM;
+			XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
 			goto done;
 		}
 	}
 
 	XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
-    /* Initialize with max and min possible value */
-    mm_start_addr = 0xffffFFFFffffFFFF;
-    mm_end_addr = 0;
+	/* Initialize with max and min possible value */
+	mm_start_addr = 0xffffFFFFffffFFFF;
+	mm_end_addr = 0;
 
 	/* Initialize the used banks and their sizes */
 	/* Currently only fixed sizes are supported */

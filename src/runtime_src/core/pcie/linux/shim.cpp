@@ -885,10 +885,7 @@ int shim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, 
     return ret ? -errno : ret;
 }
 
-/*
- * xclCopyBO()
- */
-int shim::xclCopyBO(unsigned int dst_bo_handle,
+int shim::execbufCopyBO(unsigned int dst_bo_handle,
     unsigned int src_bo_handle, size_t size, size_t dst_offset,
     size_t src_offset)
 {
@@ -898,7 +895,7 @@ int shim::xclCopyBO(unsigned int dst_bo_handle,
 
     int ret = xclExecBuf(bo.first);
     if (ret) {
-        mCmdBOCache->release(bo);
+        mCmdBOCache->release<ert_start_copybo_cmd>(bo);
         return ret;
     }
 
@@ -912,8 +909,36 @@ int shim::xclCopyBO(unsigned int dst_bo_handle,
     ret = (ret == -1) ? -errno : 0;
     if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
         ret = -EINVAL;
+
     mCmdBOCache->release<ert_start_copybo_cmd>(bo);
     return ret;
+}
+
+int shim::m2mCopyBO(unsigned int dst_bo_handle,
+    unsigned int src_bo_handle, size_t size, size_t dst_offset,
+    size_t src_offset)
+{
+    drm_xocl_copy_bo m2m = {
+	    .dst_handle = dst_bo_handle,
+	    .src_handle = src_bo_handle,
+	    .size = size,
+	    .dst_offset = dst_offset,
+	    .src_offset = src_offset,
+    };
+
+    return mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_COPY_BO, &m2m);
+}
+
+/*
+ * xclCopyBO()
+ */
+int shim::xclCopyBO(unsigned int dst_bo_handle,
+    unsigned int src_bo_handle, size_t size, size_t dst_offset,
+    size_t src_offset)
+{
+    return (!mDev->get_sysfs_path("m2m", "").empty()) ?
+        m2mCopyBO(dst_bo_handle, src_bo_handle, size, dst_offset, src_offset) :
+        execbufCopyBO(dst_bo_handle, src_bo_handle, size, dst_offset, src_offset);
 }
 
 int shim::xclUpdateSchedulerStat()

@@ -540,9 +540,20 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-  return 0;
+  return -ENOSYS;
 }
 
+ssize_t
+xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf, size_t size, uint64_t offset)
+{
+  return -ENOSYS;
+}
+
+int
+xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
+{
+  return -ENOSYS;
+}
 
 /*
  * API to get number of live processes.

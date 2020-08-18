@@ -161,6 +161,8 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_copy_bo_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 
 struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj);
 struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,

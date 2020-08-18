@@ -24,6 +24,11 @@
 #include <unistd.h>
 #endif
 
+#ifdef _WIN32
+#pragma warning (disable : 4996 4267)
+/* 4267 : Disable warning for conversion of size_t to int32_t */
+#endif
+
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/xml_parser.hpp>
@@ -338,6 +343,9 @@ namespace xdp {
         if(cuObj) {
           cuObj->addMonitor(mon);
           cuObj->setDataTransferEnabled(true);
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
+          devInfo->hasFloatingAIM = true;
         }
         devInfo->aimList.push_back(mon);
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
@@ -358,7 +366,10 @@ namespace xdp {
         }
         if(cuObj) {
           cuObj->addMonitor(mon);
-          cuObj->setDataTransferEnabled(true);
+          cuObj->setStreamEnabled(true);
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
+          devInfo->hasFloatingASM = true;
         }
         devInfo->asmList.push_back(mon);
       } else if(debugIpData->m_type == AXI_NOC) {
