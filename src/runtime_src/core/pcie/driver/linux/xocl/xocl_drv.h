@@ -1763,6 +1763,19 @@ struct xocl_p2p_funcs {
 #define XOCL_P2P_CHUNK_SHIFT		28
 #define XOCL_P2P_CHUNK_SIZE		(1UL << XOCL_P2P_CHUNK_SHIFT)
 
+struct xocl_m2m_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*copy_bo)(struct platform_device *pdev, uint64_t src_paddr,
+		uint64_t dst_paddr, uint32_t src_handle, uint32_t dst_handle,
+		uint32_t size);
+};
+#define	M2M_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_M2M).pldev
+#define	M2M_OPS(xdev)	\
+	((struct xocl_m2m_funcs *)SUBDEV(xdev, XOCL_SUBDEV_M2M).ops)
+#define	M2M_CB(xdev)	(M2M_DEV(xdev) && M2M_OPS(xdev))
+#define	xocl_m2m_copy_bo(xdev, src_paddr, dst_paddr, src_handle, dst_handle, size) \
+	(M2M_CB(xdev) ? M2M_OPS(xdev)->copy_bo(M2M_DEV(xdev), src_paddr, dst_paddr, \
+	src_handle, dst_handle, size) : -ENODEV)
 
 /* subdev functions */
 int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
@@ -2061,6 +2074,9 @@ void xocl_fini_intc(void);
 
 int __init xocl_init_icap_controller(void);
 void xocl_fini_icap_controller(void);
+
+int __init xocl_init_m2m(void);
+void xocl_fini_m2m(void);
 
 int __init xocl_init_version_control(void);
 void xocl_fini_version_control(void);

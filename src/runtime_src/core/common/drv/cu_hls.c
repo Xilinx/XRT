@@ -122,6 +122,78 @@ out:
 	status->num_ready = ready_reg;
 }
 
+static void cu_hls_enable_intr(void *core, u32 intr_type)
+{
+	struct xrt_cu_hls *cu_hls = core;
+	u32 intr_mask = intr_type & CU_INTR_DONE;
+
+	/* 0x04 and 0x08 -- Interrupt Enable Registers */
+	iowrite32(0x1, cu_hls->vaddr + 0x4);
+	/*
+	 * bit 0 is ap_done, bit 1 is ap_ready
+	 * only enable ap_done before dataflow support, interrupts are handled
+	 * in sched_exec_isr, please see dataflow comments for more information.
+	 */
+	iowrite32(intr_mask, cu_hls->vaddr + 0x8);
+}
+
+static void cu_hls_disable_intr(void *core, u32 intr_type)
+{
+	struct xrt_cu_hls *cu_hls = core;
+
+	u32 intr_mask = intr_type & ioread32(cu_hls->vaddr + 0x8);
+
+	/* 0x04 and 0x08 -- Interrupt Enable Registers */
+	iowrite32(0x0, cu_hls->vaddr + 0x4);
+	/* bit 0 is ap_done, bit 1 is ap_ready, disable both of interrupts */
+	iowrite32(intr_mask, cu_hls->vaddr + 0x8);
+}
+
+static u32 cu_hls_clear_intr(void *core)
+{
+	struct xrt_cu_hls *cu_hls = core;
+
+	/* Clear all interrupts of the CU
+	 *
+	 * HLS style kernel has Interrupt Status Register at offset 0x0C
+	 * It has two interrupt bits, bit[0] is ap_done, bit[1] is ap_ready.
+	 *
+	 * The ap_done interrupt means this CU is complete.
+	 * The ap_ready interrupt means all inputs have been read.
+	 */
+	if (cu_hls->max_credits == 1) {
+		u32 isr;
+
+		/*
+		 * The old HLS adapter.
+		 *
+		 * The Interrupt Status Register is Toggle On Write
+		 * RegData = RegData ^ WriteData
+		 *
+		 * So, the reliable way to clear this register is read
+		 * then write the same value back.
+		 *
+		 * Do not write 1 to this register.  If, somehow, the
+		 * status register is 0, write 1 to this register will
+		 * trigger interrupt.
+		 */
+		isr = ioread32(cu_hls->vaddr + 0xc);
+		iowrite32(isr, cu_hls->vaddr + 0xc);
+		return isr;
+	}
+
+	/*
+	 * The new HLS adapter with queue.
+	 *
+	 * The Interrupt Status Register is Clear on Read.
+	 *
+	 * For debug purpose, This register is toggle on write.
+	 * Write 1 to this register will trigger interrupt.
+	 */
+	return ioread32(cu_hls->vaddr + 0xc);
+}
+
+
 static struct xcu_funcs xrt_cu_hls_funcs = {
 	.alloc_credit	= cu_hls_alloc_credit,
 	.free_credit	= cu_hls_free_credit,
@@ -129,6 +201,9 @@ static struct xcu_funcs xrt_cu_hls_funcs = {
 	.configure	= cu_hls_configure,
 	.start		= cu_hls_start,
 	.check		= cu_hls_check,
+	.enable_intr	= cu_hls_enable_intr,
+	.disable_intr	= cu_hls_disable_intr,
+	.clear_intr	= cu_hls_clear_intr,
 };
 
 int xrt_cu_hls_init(struct xrt_cu *xcu)
@@ -145,6 +220,7 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 	}
 
 	/* map CU register */
+	/* TODO: add comment why uses res[0] */
 	res = xcu->res[0];
 	size = res->end - res->start + 1;
 	core->vaddr = ioremap_nocache(res->start, size);

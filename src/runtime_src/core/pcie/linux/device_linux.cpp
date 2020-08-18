@@ -235,8 +235,8 @@ initialize_query_table()
   emplace_sysfs_get<query::ip_layout_raw>               ("icap", "ip_layout");
   emplace_sysfs_get<query::clock_freqs_mhz>             ("icap", "clock_freqs");
   emplace_sysfs_get<query::idcode>                      ("icap", "idcode");
-  emplace_sysfs_getput<query::data_retention>               ("icap", "data_retention");
-  emplace_sysfs_getput<query::sec_level>                    ("icap", "sec_level");
+  emplace_sysfs_getput<query::data_retention>           ("icap", "data_retention");
+  emplace_sysfs_getput<query::sec_level>                ("icap", "sec_level");
   emplace_sysfs_get<query::status_mig_calibrated>       ("", "mig_calibration");
   emplace_sysfs_get<query::xmc_version>                 ("xmc", "version");
   emplace_sysfs_get<query::xmc_board_name>              ("xmc", "bd_name");
@@ -246,10 +246,14 @@ initialize_query_table()
   emplace_sysfs_get<query::expected_bmc_version>        ("xmc", "exp_bmc_ver");
   emplace_sysfs_get<query::xmc_status>                  ("xmc", "status");
   emplace_sysfs_get<query::xmc_reg_base>                ("xmc", "reg_base");
+  emplace_sysfs_getput<query::xmc_scaling_enabled>      ("xmc", "scaling_enabled");
+  emplace_sysfs_getput<query::xmc_scaling_override>     ("xmc", "scaling_threshold_power_override");
+  emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
+  emplace_sysfs_get<query::m2m>                         ("", "m2m");
   emplace_sysfs_get<query::dna_serial_num>              ("dna", "dna");
-  emplace_sysfs_getput<query::xmc_scaling_enabled>          ("xmc", "scaling_enabled");
-  emplace_sysfs_getput<query::xmc_scaling_override>         ("xmc", "scaling_threshold_power_override");
-  emplace_sysfs_put<query::xmc_scaling_reset>               ("xmc", "scaling_reset");
+  emplace_sysfs_getput<query::xmc_scaling_enabled>      ("xmc", "scaling_enabled");
+  emplace_sysfs_getput<query::xmc_scaling_override>     ("xmc", "scaling_threshold_power_override");
+  emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
   emplace_sysfs_get<query::p2p_config>                  ("p2p", "config");
   emplace_sysfs_get<query::temp_card_top_front>         ("xmc", "xmc_se98_temp0");
   emplace_sysfs_get<query::temp_card_top_rear>          ("xmc", "xmc_se98_temp1");

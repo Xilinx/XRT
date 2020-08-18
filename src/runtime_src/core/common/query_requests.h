@@ -82,6 +82,8 @@ enum class key_type
   xmc_scaling_override,
   xmc_scaling_reset,
 
+  m2m,
+
   dna_serial_num,
   clock_freqs_mhz,
   idcode,
@@ -717,6 +719,22 @@ struct xmc_scaling_reset : request
 
   virtual void
   put(const device*, const boost::any&) const = 0;
+};
+
+struct m2m : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::m2m;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static bool
+  to_bool(const result_type& value)
+  {
+    return (value == std::numeric_limits<uint32_t>::max())
+      ? false : value;
+  }
 };
 
 struct dna_serial_num : request

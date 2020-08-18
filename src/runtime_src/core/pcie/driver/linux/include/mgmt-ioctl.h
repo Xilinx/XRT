@@ -175,5 +175,4 @@ struct xclmgmt_ioc_freqscaling {
 #define XCLMGMT_IOCFREQSCALE		_IOW(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_FREQ_SCALE, struct xclmgmt_ioc_freqscaling)
 #define XCLMGMT_IOCREBOOT		_IO(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_REBOOT)
 #define XCLMGMT_IOCERRINFO		_IOR(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_ERR_INFO, struct xclErrorStatus)
-
 #endif

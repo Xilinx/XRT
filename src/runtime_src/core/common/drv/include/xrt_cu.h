@@ -40,6 +40,10 @@
 #define CU_AP_CONTINUE	(0x1 << 4)
 #define CU_AP_RESET	(0x1 << 5)
 
+#define CU_INTR_DONE  0x1
+#define CU_INTR_READY 0x2
+
+
 /* PLRAM CU macros */
 
 enum xcu_model {
@@ -220,9 +224,23 @@ struct xrt_cu {
 
 void xrt_cu_reset(struct xrt_cu *xcu);
 int  xrt_cu_reset_done(struct xrt_cu *xcu);
-void xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type);
-void xrt_cu_disable_intr(struct xrt_cu *xcu, u32 intr_type);
-u32  xrt_cu_clear_intr(struct xrt_cu *xcu);
+
+static void inline xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type)
+{
+	if (xcu->funcs)
+		xcu->funcs->enable_intr(xcu->core, intr_type);
+}
+
+static void inline xrt_cu_disable_intr(struct xrt_cu *xcu, u32 intr_type)
+{
+	if (xcu->funcs)
+		xcu->funcs->disable_intr(xcu->core, intr_type);
+}
+
+static u32 inline xrt_cu_clear_intr(struct xrt_cu *xcu)
+{
+	return xcu->funcs ? xcu->funcs->clear_intr(xcu->core) : 0;
+}
 
 static inline void xrt_cu_config(struct xrt_cu *xcu, u32 *data, size_t sz, int type)
 {

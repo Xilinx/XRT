@@ -692,7 +692,6 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	}
 
 	if (xocl_bo_cma(xobj)) {
-
 		if (dir) {
 			dma_sync_single_for_device(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
 				sg->length, DMA_TO_DEVICE);
@@ -707,11 +706,13 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	//We should do sync directly using the other device which this bo locally.
 	//So that txfer is: HOST->PCIE->DDR; Else it will be HOST->PCIE->ARE->DDR
 	paddr = xocl_bo_physical_addr(xobj);
-
-	if (paddr == 0xffffffffffffffffull)
+	if (paddr == 0xffffffffffffffffull) {
+		DRM_ERROR("BO %d physical address is invalid.\n", args->handle);
 		return -EINVAL;
+	}
 
 	if ((args->offset + args->size) > gem_obj->size) {
+		DRM_ERROR("BO %d request is out of range.\n", args->handle);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -733,14 +734,15 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 		sgt = alloc_onetime_sg_table(xobj->pages, args->offset, args->size);
 		if (IS_ERR(sgt)) {
 			ret = PTR_ERR(sgt);
+			DRM_ERROR("BO %d request err: %ld.\n", args->handle, ret);
 			goto out;
 		}
 	}
 
 	//drm_clflush_sg(sgt);
 	channel = xocl_acquire_channel(xdev, dir);
-
 	if (channel < 0) {
+		DRM_ERROR("BO %d request cannot find channel.\n", args->handle);
 		ret = -EINVAL;
 		goto clear;
 	}
@@ -1328,4 +1330,71 @@ int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 	}
 
 	return 0;
+}
+
+static int get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
+	uint32_t bo_hdl, size_t off, size_t size, uint64_t *paddrp)
+{
+	struct drm_device *ddev = filp->minor->dev;
+	struct drm_gem_object *obj;
+	struct drm_xocl_bo *xobj;
+
+	obj = xocl_gem_object_lookup(ddev, filp, bo_hdl);
+	if (!obj) {
+		userpf_err(xdev, "Failed to look up GEM BO 0x%x\n", bo_hdl);
+		return -ENOENT;
+	}
+
+	xobj = to_xocl_bo(obj);
+	if (!xobj->mm_node) {
+		/* Not a local BO */
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+		return -EADDRNOTAVAIL;
+	}
+
+	if (obj->size <= off || obj->size < off + size) {
+		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+		return -EINVAL;
+	}
+
+	*paddrp = xobj->mm_node->start + off;
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+	return 0;
+}
+
+int xocl_copy_bo_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp)
+{
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+	struct drm_xocl_copy_bo *args = data;
+	uint64_t dst_paddr, src_paddr;
+	int ret_src, ret_dst;
+
+	/* Look up gem obj */
+	ret_src = get_bo_paddr(xdev, filp, args->src_handle, args->src_offset,
+	    args->size, &src_paddr);
+	if (ret_src != 0 && ret_src != -EADDRNOTAVAIL)
+		return ret_src;
+
+	ret_dst = get_bo_paddr(xdev, filp, args->dst_handle, args->dst_offset,
+	    args->size, &dst_paddr);
+	if (ret_dst != 0 && ret_dst != -EADDRNOTAVAIL)
+		return ret_dst;
+
+	/* We need at least one local BO for copy */
+	if (ret_src == -EADDRNOTAVAIL && ret_dst == -EADDRNOTAVAIL) {
+		return -EINVAL;
+	} else if (ret_src == -EADDRNOTAVAIL || ret_dst == -EADDRNOTAVAIL) {
+		struct ert_start_copybo_cmd scmd;
+
+		/* One of them is not local BO, perform P2P copy */
+		ert_fill_copybo_cmd(&scmd, args->src_handle, args->dst_handle,
+		    args->src_offset, args->dst_offset, args->size);
+		return xocl_copy_import_bo(dev, filp, &scmd);
+	}
+
+	return xocl_m2m_copy_bo(xdev, src_paddr, dst_paddr, args->src_handle,
+	    args->dst_handle, args->size);
 }
