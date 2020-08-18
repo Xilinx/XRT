@@ -172,6 +172,24 @@ namespace xdp {
     }
   }
 
+  void VPDynamicDatabase::addAIETraceData(uint64_t deviceId,
+                             void* buffer, uint64_t bufferSz) 
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    if(aieTraceData.find(deviceId) == aieTraceData.end()) {
+      aieTraceData[deviceId] = std::make_pair(buffer, bufferSz);
+    }
+    // if entry already exists, make a vector for the data ?
+  }
+
+  AIETraceDataType VPDynamicDatabase::getAIETraceData(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    return aieTraceData[deviceId] ;
+  }
+
   void VPDynamicDatabase::addPowerSample(uint64_t deviceId, double timestamp,
 					 const std::vector<uint64_t>& values)
   {

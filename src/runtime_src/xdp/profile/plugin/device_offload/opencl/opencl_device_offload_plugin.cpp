@@ -78,6 +78,8 @@ namespace xdp {
       db->unregisterPlugin(this) ;
     }
 
+    clearOffloaders();
+#if 0
     for (auto o : offloaders)
     {
       auto offloader = std::get<0>(o.second) ;
@@ -88,6 +90,7 @@ namespace xdp {
       delete logger ;
       delete intf ;
     }
+#endif
 
   }
 
@@ -142,6 +145,8 @@ namespace xdp {
 
     deviceId = db->addDevice(path) ;
 
+    clearOffloader(deviceId);
+#if 0
     if (offloaders.find(deviceId) != offloaders.end())
     {
       // Clean up the old offloader.  It has already been flushed.
@@ -155,6 +160,7 @@ namespace xdp {
       delete logger ;
       delete intf ;
     }
+#endif
 
     // Update the static database with all the information that will
     //  be needed later.

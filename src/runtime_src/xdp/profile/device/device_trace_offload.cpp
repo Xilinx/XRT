@@ -25,13 +25,11 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
                                        DeviceTraceLogger* dTraceLogger,
                                        uint64_t sleep_interval_ms,
                                        uint64_t trbuf_sz,
-                                       bool start_thread,
-                                       bool is_aie_trace)
+                                       bool start_thread)
                    : sleep_interval_ms(sleep_interval_ms),
                      m_trbuf_alloc_sz(trbuf_sz),
                      dev_intf(dInt),
-                     deviceTraceLogger(dTraceLogger),
-                     m_aie_trace(is_aie_trace)
+                     deviceTraceLogger(dTraceLogger)
 {
   // Select appropriate reader
   if(has_fifo()) {
@@ -176,7 +174,7 @@ void DeviceTraceOffload::read_trace_end()
   // for pending events
   m_trace_vector = {};
   deviceTraceLogger->endProcessTraceData(m_trace_vector);
-  if (dev_intf->hasTs2mm(m_aie_trace)) {
+  if (dev_intf->hasTs2mm()) {
     reset_s2mm();
     m_initialized = false;
   }
@@ -187,7 +185,7 @@ void DeviceTraceOffload::read_trace_s2mm()
   debug_stream
     << "DeviceTraceOffload::read_trace_s2mm " << std::endl;
 
-  config_s2mm_reader(dev_intf->getWordCountTs2mm(m_aie_trace));
+  config_s2mm_reader(dev_intf->getWordCountTs2mm());
   while (1) {
     auto bytes = read_trace_s2mm_partial();
     deviceTraceLogger->processTraceData(m_trace_vector);
@@ -319,7 +317,7 @@ void DeviceTraceOffload::reset_s2mm()
   debug_stream << "DeviceTraceOffload::reset_s2mm" << std::endl;
   if (!m_trbuf)
     return;
-  dev_intf->resetTS2MM(m_aie_trace);
+  dev_intf->resetTS2MM();
   dev_intf->freeTraceBuf(m_trbuf);
   m_trbuf = 0;
 }

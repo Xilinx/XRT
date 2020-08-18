@@ -24,6 +24,8 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
 #include "xdp/profile/database/events/creator/device_event_trace_logger.h"
+#include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
+#include "xdp/profile/device/aie_trace_offload.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
@@ -107,12 +109,32 @@ namespace xdp {
     TraceLoggerCreatingDeviceEvents* logger = 
       new TraceLoggerCreatingDeviceEvents(deviceId) ;
 
-     DeviceTraceOffload* offloader = 
-      new DeviceTraceOffload(devInterface,
-			     logger,
-			     continuous_trace_interval_ms, // offload_sleep_ms,
-			     trace_buffer_size,            // trbuf_size,
-			     continuous_trace) ;           // start_thread
+    DeviceTraceOffload* offloader = nullptr;
+
+    if(devInterface->hasTs2mm(true /*isAIETrace*/)) {
+
+      uint64_t aie_trace_buffer_size = GetTS2MMBufSize(true /*isAIETrace*/);
+      uint64_t aie_memorySz = ((db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex(true, 0))->size) * 1024 ;
+      if (aie_memorySz > 0 && aie_trace_buffer_size > aie_memorySz) {
+	aie_trace_buffer_size = aie_memorySz;
+	std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(aie_memorySz) + " instead." ;
+	xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+      }
+      AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
+
+      offloader = new AIETraceOffload(devInterface, logger,
+                         continuous_trace_interval_ms, // offload_sleep_ms,
+                         trace_buffer_size,            // trbuf_size,
+                         continuous_trace,             // start_thread
+                         aie_trace_buffer_size,        // aie_trbuf_sz
+                         aieTraceLogger);
+    } else {
+
+      offloader = new DeviceTraceOffload(devInterface, logger,
+                         continuous_trace_interval_ms, // offload_sleep_ms,
+                         trace_buffer_size,            // trbuf_size,
+                         continuous_trace);            // start_thread
+    }
 
      bool init_successful = offloader->read_trace_init() ;
      if (!init_successful)
@@ -173,6 +195,45 @@ namespace xdp {
     for (auto w : writers)
     {
       w->write(openNewFiles) ;
+    }
+  }
+
+  void DeviceOffloadPlugin::clearOffloader(uint32_t deviceId)
+  {
+    if(offloaders.find(deviceId) == offloaders.end()) {
+      return;
+    }
+    auto entry = offloaders[deviceId];
+    auto offloader = std::get<0>(entry) ;
+    auto logger    = std::get<1>(entry) ;
+    auto intf      = std::get<2>(entry) ;
+
+    if(dynamic_cast<AIETraceOffload*>(offloader)) {
+      AIETraceLogger* aieLogger = dynamic_cast<AIETraceOffload*>(offloader)->getAIETraceLogger();
+      delete aieLogger;
+    }
+
+    delete offloader ;
+    delete logger ;
+    delete intf ;
+  }
+
+  void DeviceOffloadPlugin::clearOffloaders()
+  {
+    for (auto o : offloaders)
+    {
+      auto offloader = std::get<0>(o.second) ;
+      auto logger    = std::get<1>(o.second) ;
+      auto intf      = std::get<2>(o.second) ;
+
+      if(dynamic_cast<AIETraceOffload*>(offloader)) {
+        AIETraceLogger* aieLogger = dynamic_cast<AIETraceOffload*>(offloader)->getAIETraceLogger();
+        delete aieLogger;
+      }
+
+      delete offloader ;
+      delete logger ;
+      delete intf ;
     }
   }
   

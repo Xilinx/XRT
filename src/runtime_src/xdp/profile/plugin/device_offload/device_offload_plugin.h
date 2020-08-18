@@ -75,6 +75,9 @@ namespace xdp {
 
     virtual void flushDevice(void* device) = 0 ;
     virtual void updateDevice(void* device) = 0 ;
+
+    void clearOffloader(uint32_t deviceId);
+    void clearOffloaders();
   } ;
 
 } // end namespace xdp

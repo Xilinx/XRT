@@ -17,6 +17,7 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/plugin/aie_trace/aie_trace_plugin.h"
+#include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 
 namespace xdp {
 
@@ -28,7 +29,7 @@ namespace xdp {
 #if 0
     writers.push_back(new HALHostTraceWriter("aie_trace.csv",
                             "" /*version*/,
-                            0  /*creationTime*/,
+                            ""  /*creationTime*/,
                             "" /*xrtVersion*/,
                             "" /*toolVersion*/));
 #endif

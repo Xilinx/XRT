@@ -102,8 +102,8 @@ uint32_t GetDeviceTraceBufferSize(uint32_t property)
 uint64_t GetTS2MMBufSize(bool isAIETrace)
 {
   std::string size_str = isAIETrace ?
-      xrt_core::config::get_aie_trace_buffer_size() :
-      xrt_core::config::get_trace_buffer_size();
+                         xrt_core::config::get_aie_trace_buffer_size() :
+                         xrt_core::config::get_trace_buffer_size();
   std::smatch pieces_match;
   
   // Default is 1M
@@ -151,8 +151,8 @@ DeviceIntf::~DeviceIntf()
     for(auto mon : mAsmList) {
       delete mon;
     }
-    for(auto mon : mAieTraceDmaList) {
-      delete mon;
+    for(auto aieTraceDma : mAieTraceDmaList) {
+      delete aieTraceDma;
     }
     mAimList.clear();
     mAmList.clear();
@@ -449,8 +449,8 @@ DeviceIntf::~DeviceIntf()
       mPlTraceDma->setTraceFormat(traceVersion);
 
     // TODO: is this correct?
-    for (auto mon : mAieTraceDmaList) {
-      mon->setTraceFormat(traceVersion);
+    for (auto aieTraceDma : mAieTraceDmaList) {
+      aieTraceDma->setTraceFormat(traceVersion);
     }
 
     return size;
@@ -877,13 +877,13 @@ DeviceIntf::~DeviceIntf()
   // Reset all trace data movers of a given type
   void DeviceIntf::resetTS2MM(bool isAIETrace)
   {
-    if (!isAIETrace) {
-      if (mPlTraceDma)
+    if(!isAIETrace) {
+      if(mPlTraceDma)
         mPlTraceDma->reset();
       return;
     }
 
-    for (auto aieTraceDma : mAieTraceDmaList)
+    for(auto aieTraceDma : mAieTraceDmaList)
       aieTraceDma->reset();
   }
 
@@ -891,8 +891,10 @@ DeviceIntf::~DeviceIntf()
   void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr, bool circular,
                              bool isAIETrace, uint32_t numTS2MM)
   {
-    if (!isAIETrace && mPlTraceDma) {
-      mPlTraceDma->init(bufSz, bufAddr, circular);
+    if(!isAIETrace) {
+      if(mPlTraceDma) {
+        mPlTraceDma->init(bufSz, bufAddr, circular);
+      }
       return;
     }
 
@@ -906,13 +908,13 @@ DeviceIntf::~DeviceIntf()
   // Get word count written by trace data mover
   uint64_t DeviceIntf::getWordCountTs2mm(bool isAIETrace, uint32_t numTS2MM)
   {
-    if (!isAIETrace) {
-      if (!mPlTraceDma)
+    if(!isAIETrace) {
+      if(!mPlTraceDma)
         return 0;
       return mPlTraceDma->getWordCount();
     }
 
-    if (mAieTraceDmaList.empty() || (numTS2MM >= mAieTraceDmaList.size()))
+    if(mAieTraceDmaList.empty() || (numTS2MM >= mAieTraceDmaList.size()))
       return 0;
 
     auto aieTraceDma = mAieTraceDmaList.at(numTS2MM);
@@ -922,13 +924,13 @@ DeviceIntf::~DeviceIntf()
   // Get memory index of trace data mover
   uint8_t DeviceIntf::getTS2MmMemIndex(bool isAIETrace, uint32_t numTS2MM)
   {
-    if (!isAIETrace) {
-      if (!mPlTraceDma)
+    if(!isAIETrace) {
+      if(!mPlTraceDma)
         return 0;
       return mPlTraceDma->getMemIndex();
     }
 
-    if (mAieTraceDmaList.empty() || (numTS2MM >= mAieTraceDmaList.size()))
+    if(mAieTraceDmaList.empty() || (numTS2MM >= mAieTraceDmaList.size()))
       return 0;
 
     auto aieTraceDma = mAieTraceDmaList.at(numTS2MM);
@@ -939,16 +941,17 @@ DeviceIntf::~DeviceIntf()
   void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector, 
                                   bool isAIETrace, uint32_t numTS2MM)
   {
-    if (!isAIETrace) {
+    if(!isAIETrace) {
       if (mPlTraceDma)
         mPlTraceDma->parseTraceBuf(traceData, bytes, traceVector);
       return;
     }
 
-    if (mAieTraceDmaList.empty() || (numTS2MM >= mAieTraceDmaList.size()))
+    if(mAieTraceDmaList.empty() || (numTS2MM >= mAieTraceDmaList.size()))
       return;
 
     auto aieTraceDma = mAieTraceDmaList.at(numTS2MM);
+    // empty for now, may even skip
     aieTraceDma->parseTraceBuf(traceData, bytes, traceVector);
   }
 
