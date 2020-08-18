@@ -62,7 +62,7 @@ namespace xdp {
     std::string module;
     std::string name;
 
-    AIECounter(uint32_t i, uint32_t col, uint32_t r, uint8_t num, 
+    AIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num, 
                uint8_t start, uint8_t end, uint8_t reset,
                double freq, std::string mod, std::string aieName)
       : id(i),
