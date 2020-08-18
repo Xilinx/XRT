@@ -208,7 +208,7 @@ static int m2m_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret = 0, i = 0;
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-	u32 intr_base, intr_num;
+	u32 intr_base = 0, intr_num = 0;
 
 	m2m = devm_kzalloc(&pdev->dev, sizeof(*m2m), GFP_KERNEL);
 	if (!m2m)
