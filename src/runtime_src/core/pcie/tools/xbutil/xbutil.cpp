@@ -2069,8 +2069,9 @@ static int m2m_alloc_init_bo(xclDeviceHandle handle, unsigned &boh,
         return -EINVAL;
     }
     memset(boptr, pattern, boSize);
-    if(xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, boSize, 0)) {
-        std::cout << "ERROR: Unable to sync BO" << std::endl;
+    int err = xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, boSize, 0);
+    if (err) {
+        std::cout << "ERROR: Unable to sync BO, err: " << err << std::endl;
         m2m_free_unmap_bo(handle, boh, boptr, boSize);
         return -EINVAL;
     }
