@@ -50,6 +50,8 @@ struct xocl_m2m {
 	struct mutex 		m2m_lock;
 	struct completion	m2m_irq_complete;
 	int 			m2m_polling;
+	u32			m2m_intr_base;
+	u32			m2m_intr_num;
 };
 
 static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,
@@ -179,7 +181,9 @@ struct platform_device_id m2m_id_table[] = {
 
 static int m2m_remove(struct platform_device *pdev)
 {
+	struct xocl_dev *xdev = xocl_get_xdev(pdev);
 	struct xocl_m2m	*m2m;
+	int i;
 
 	m2m = platform_get_drvdata(pdev);
 	if (!m2m) {
@@ -187,6 +191,15 @@ static int m2m_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 	
+	if (!m2m->m2m_polling)
+		xrt_cu_disable_intr(&m2m->m2m_cu, CU_INTR_DONE);
+
+	/* disable intr */
+	for (i = 0; i < m2m->m2m_intr_num; i++) {
+		xocl_user_interrupt_config(xdev, m2m->m2m_intr_base + i, false);
+		xocl_user_interrupt_reg(xdev, m2m->m2m_intr_base + i, NULL, NULL);
+	}
+
 	xrt_cu_hls_fini(&m2m->m2m_cu);
 
 	if (m2m->m2m_cu.res)
@@ -204,11 +217,10 @@ static int m2m_remove(struct platform_device *pdev)
 
 static int m2m_probe(struct platform_device *pdev)
 {
+	struct xocl_dev *xdev = xocl_get_xdev(pdev);
 	struct xocl_m2m *m2m = NULL;
 	struct resource *res;
 	int ret = 0, i = 0;
-	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-	u32 intr_base = 0, intr_num = 0;
 
 	m2m = devm_kzalloc(&pdev->dev, sizeof(*m2m), GFP_KERNEL);
 	if (!m2m)
@@ -237,14 +249,14 @@ static int m2m_probe(struct platform_device *pdev)
 	/* init interrupt vector number based on iores of kdma */
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (res) {
-		intr_base = res->start;
-		intr_num = res->end - res->start + 1;
+		m2m->m2m_intr_base = res->start;
+		m2m->m2m_intr_num = res->end - res->start + 1;
 		m2m->m2m_polling = 0;
 	}
 
-	for (i = 0; i < intr_num; i++) {
-		xocl_user_interrupt_reg(xdev, intr_base + i, m2m_irq_handler, m2m);
-		xocl_user_interrupt_config(xdev, intr_base + i, true);
+	for (i = 0; i < m2m->m2m_intr_num; i++) {
+		xocl_user_interrupt_reg(xdev, m2m->m2m_intr_base + i, m2m_irq_handler, m2m);
+		xocl_user_interrupt_config(xdev, m2m->m2m_intr_base + i, true);
 	}
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &m2m_attr_group);
