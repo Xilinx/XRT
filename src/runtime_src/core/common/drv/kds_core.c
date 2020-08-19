@@ -176,36 +176,32 @@ out:
 	return index;
 }
 
-static void
+static int
 kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
 	int cu_idx;
 
 	cu_idx = acquire_cu_idx(cu_mgmt, xcmd);
-	if (cu_idx < 0) {
-		xcmd->cb.notify_host(xcmd, KDS_ERROR);
-		xcmd->cb.free(xcmd);
-		return;
-	}
+	if (cu_idx < 0)
+		return cu_idx;
 
 	xrt_cu_submit(cu_mgmt->xcus[cu_idx], xcmd);
+	return 0;
 }
 
 static int
 kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
 	int ret = 0;
-	u32 status = KDS_COMPLETED;
 
 	if (xcmd->opcode != OP_CONFIG)
-		kds_cu_dispatch(cu_mgmt, xcmd);
+		ret = kds_cu_dispatch(cu_mgmt, xcmd);
 	else {
 		ret = kds_cu_config(cu_mgmt, xcmd);
-		if (ret)
-			status = KDS_ERROR;
-
-		xcmd->cb.notify_host(xcmd, status);
-		xcmd->cb.free(xcmd);
+		if (ret == 0) {
+			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+			xcmd->cb.free(xcmd);
+		}
 	}
 
 	return ret;
@@ -224,7 +220,7 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		/* KDS should select a CU and set it in cu_mask */
 		cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
 		if (cu_idx < 0)
-			goto err;
+			return cu_idx;
 		/* write kds selected cu index in the first cumask
 		 * (first word after header of execbuf)
 		 * TODO: I dislike modify the content of the execbuf
@@ -235,16 +231,11 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		/* Configure command define CU index */
 		ret = kds_cu_config(&kds->cu_mgmt, xcmd);
 		if (ret)
-			goto err;
+			return ret;
 	}
 
 	ert->submit(ert, xcmd);
 	return 0;
-
-err:
-	xcmd->cb.notify_host(xcmd, KDS_ERROR);
-	xcmd->cb.free(xcmd);
-	return ret;
 }
 
 static int
@@ -428,10 +419,8 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 	struct kds_client *client = xcmd->client;
 	int err = 0;
 
-	if (!xcmd->cb.notify_host || !xcmd->cb.free) {
-		kds_dbg(client, "Command callback empty");
-		return -EINVAL;
-	}
+	BUG_ON(!xcmd->cb.notify_host);
+	BUG_ON(!xcmd->cb.free);
 
 	/* TODO: Check if command is blocked */
 
@@ -445,11 +434,13 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 		break;
 	default:
 		kds_err(client, "Unknown type");
-		xcmd->cb.notify_host(xcmd, KDS_ERROR);
-		xcmd->cb.free(xcmd);
 		err = -EINVAL;
 	}
 
+	if (err) {
+		xcmd->cb.notify_host(xcmd, KDS_ERROR);
+		xcmd->cb.free(xcmd);
+	}
 	return err;
 }
 
