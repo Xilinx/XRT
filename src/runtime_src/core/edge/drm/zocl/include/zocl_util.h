@@ -141,6 +141,8 @@ struct drm_zocl_dev {
 	struct zocl_xclbin	*zdev_xclbin;
 	struct mutex		zdev_xclbin_lock;
 	struct generic_cu	*generic_cu;
+	int			 ksize;
+	char			*kernels;
 };
 
 #endif

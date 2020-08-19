@@ -453,6 +453,13 @@ struct xocl_dev_core {
 	int			api_call_cnt;
 
 	struct xocl_xclbin 	*xdev_xclbin;
+
+	/*
+	 * To cache user space pass down kernel metadata when load xclbin.
+	 * Maybe we would have a better place, like fdt. Before that, keep this.
+	 */
+	int			ksize;
+	char			*kernels;
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -1661,6 +1668,27 @@ static inline void xocl_queue_destroy(xdev_handle_t xdev_hdl)
 		xdev->wq = NULL;
 	}
 	mutex_unlock(&xdev->wq_lock);
+}
+
+static inline struct kernel_info *
+xocl_query_kernel(xdev_handle_t xdev_hdl, const char *name)
+{
+	struct xocl_dev_core *xdev = XDEV(xdev_hdl);
+	struct kernel_info *kernel;
+	int off = 0;
+
+	while (off < xdev->ksize) {
+		kernel = (struct kernel_info *)(xdev->kernels + off);
+		if (!strcmp(kernel->name, name))
+			break;
+		off += sizeof(struct kernel_info);
+		off += sizeof(struct argument_info) * kernel->anums;
+	}
+
+	if (off < xdev->ksize)
+		return kernel;
+
+	return NULL;
 }
 
 struct xocl_flash_funcs {

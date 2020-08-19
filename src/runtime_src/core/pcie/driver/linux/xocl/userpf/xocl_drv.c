@@ -1357,7 +1357,6 @@ unlock:
 	return err;
 }
 
-
 int xocl_userpf_probe(struct pci_dev *pdev,
 		const struct pci_device_id *ent)
 {

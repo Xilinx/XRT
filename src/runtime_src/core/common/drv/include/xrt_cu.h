@@ -149,6 +149,19 @@ struct xcu_funcs {
 	u32 (*clear_intr)(void *core);
 };
 
+enum arg_dir {
+	NONE = 0,
+	INPUT,
+	OUTPUT
+};
+
+struct xrt_cu_arg {
+	char	name[32];
+	u32	offset;
+	u32	size;
+	u32	dir;
+};
+
 enum CU_PROTOCOL {
 	CTRL_HS = 0,
 	CTRL_CHAIN = 1,
@@ -158,14 +171,18 @@ enum CU_PROTOCOL {
 };
 
 struct xrt_cu_info {
-	u32	model;
-	int	cu_idx;
-	int	inst_idx;
-	u64	addr;
-	u32	protocol;
-	u32	intr_id;
-	u32	num_res;
-	bool	intr_enable;
+	u32			 model;
+	int			 cu_idx;
+	int			 inst_idx;
+	u64			 addr;
+	u32			 protocol;
+	u32			 intr_id;
+	u32			 num_res;
+	bool			 intr_enable;
+	struct xrt_cu_arg	*args;
+	u32			 num_args;
+	char			 iname[32];
+	char			 kname[32];
 };
 
 #define CU_STATE_GOOD  0x1
@@ -221,6 +238,18 @@ struct xrt_cu {
 	 */
 	struct task_struct	  *thread;
 };
+
+static inline char *prot2str(enum CU_PROTOCOL prot)
+{
+	switch (prot) {
+	case CTRL_HS:		return "CTRL_HS";
+	case CTRL_CHAIN:	return "CTRL_CHAIN";
+	case CTRL_NONE:		return "CTRL_NONE";
+	case CTRL_ME:		return "CTRL_ME";
+	case CTRL_ACC:		return "CTRL_ACC";
+	default:		return "UNKNOWN";
+	}
+}
 
 void xrt_cu_reset(struct xrt_cu *xcu);
 int  xrt_cu_reset_done(struct xrt_cu *xcu);

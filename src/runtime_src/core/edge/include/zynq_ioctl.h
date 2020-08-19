@@ -333,14 +333,47 @@ enum drm_zocl_axlf_flags {
 };
 
 /**
+ * struct argument_info - Kernel argument information
+ *
+ * @name:	argument name
+ * @offset:	argument offset in CU
+ * @size:	argument size in bytes
+ * @dir:	input or output argument for a CU
+ */
+struct argument_info {
+	char		name[32];
+	uint32_t	offset;
+	uint32_t	size;
+	uint32_t	dir;
+};
+
+/**
+ * struct kernel_info - Kernel information
+ *
+ * @name:	kernel name
+ * @anums:	number of argument
+ * @args:	argument array
+ */
+struct kernel_info {
+	char                     name[64];
+	int		                 anums;
+	struct argument_info	 args[];
+};
+
+/**
  * struct drm_zocl_axlf - Read xclbin (AXLF) device image and map CUs (experimental)
  * used with DRM_IOCTL_ZOCL_READ_AXLF ioctl
  *
- * @axlf  : Pointer to xclbin (AXLF) object
+ * @za_xclbin_ptr: Pointer to xclbin (AXLF) object
+ * @za_flags:   platform flags
+ * @za_ksize:	size of kernels in bytes
+ * @za_kernels:	pointer of argument array
  **/
 struct drm_zocl_axlf {
 	struct axlf 	*za_xclbin_ptr;
-	uint32_t 	za_flags;
+	uint32_t         za_flags;
+	int	             za_ksize;
+	char			*za_kernels;
 };
 
 #define	ZOCL_MAX_NAME_LENGTH		32

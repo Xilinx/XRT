@@ -1560,6 +1560,8 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct ip_layout *ip_layout = icap->ip_layout;
 	struct xrt_cu_info info;
+	char kname[64];
+	char *kname_p;
 	int err = 0, i;
 
 	/* Let CU controller know the dynamic resources */
@@ -1581,11 +1583,14 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		info.model = XCU_HLS;
 		info.num_res = subdev_info.num_res;
 
-		/* TODO: Consider where should we determine CU index in
-		 * the driver.. Right now, user space determine it and let
-		 * driver known by configure command.
+		/* ip_data->m_name format "<kernel name>:<instance name>",
+		 * where instance name is so called CU name.
 		 */
-		info.cu_idx = -1;
+		strcpy(kname, ip->m_name);
+		kname_p = &kname[0];
+		strcpy(info.kname, strsep(&kname_p, ":"));
+		strcpy(info.iname, strsep(&kname_p, ":"));
+
 		info.inst_idx = i;
 		info.addr = ip->m_base_address;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;

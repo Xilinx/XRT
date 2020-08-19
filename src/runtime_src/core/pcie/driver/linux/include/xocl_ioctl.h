@@ -284,14 +284,46 @@ struct drm_xocl_copy_bo {
 };
 
 /**
+ * struct argument_info - Kernel argument information
+ *
+ * @name:	argument name
+ * @offset:	argument offset in CU
+ * @size:	argument size in bytes
+ * @dir:	input or output argument for a CU
+ */
+struct argument_info {
+	char		name[32];
+	uint32_t	offset;
+	uint32_t	size;
+	uint32_t	dir;
+};
+
+/**
+ * struct kernel_info - Kernel information
+ *
+ * @name:	kernel name
+ * @anums:	number of argument
+ * @args:	argument array
+ */
+struct kernel_info {
+	char			 name[64];
+	int			 anums;
+	struct argument_info	 args[];
+};
+
+/**
  * struct drm_xocl_axlf - load xclbin (AXLF) device image
  * used with DRM_IOCTL_XOCL_READ_AXLF ioctl
  * NOTE: This ioctl will be removed in next release
  *
  * @xclbin:	Pointer to user's xclbin structure in memory
+ * @ksize:	size of kernels in bytes
+ * @kernels:	pointer of argument array
  */
 struct drm_xocl_axlf {
-	struct axlf *xclbin;
+	struct axlf		*xclbin;
+	int			 ksize;
+	char			*kernels;
 };
 
 /**
