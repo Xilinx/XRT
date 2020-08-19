@@ -354,7 +354,7 @@ public:
   //
   // Event notification is used when a kernel/run is enqueued in an
   // event graph.  When cmd completes, the event must be notified.
-  // 
+  //
   // The event (stored in the event graph) participates in lifetime
   // of the object that holds on to cmd object.
   void
@@ -774,7 +774,7 @@ class kernel_impl
     // assert ( ips.size() >= 1);
     auto ctrl = IP_CONTROL((ips[0]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
     for (size_t idx = 1; idx < ips.size(); ++idx)
-      if (((ips[0]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) != ctrl)
+      if (IP_CONTROL((ips[0]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) != ctrl)
         throw std::runtime_error("CU control protocol mismatch");
 
     return ctrl;
@@ -785,7 +785,7 @@ class kernel_impl
   {
     auto ecmd = cmd->get_ert_cmd<ert_packet*>();
     std::fill(ecmd->data, ecmd->data + num_cumasks, 0);
-    
+
     for (size_t cu_idx = 0; cu_idx < 128; ++cu_idx) {
       if (!cumask.test(cu_idx))
         continue;
@@ -983,7 +983,7 @@ public:
   //
   // Event notification is used when a kernel/run is enqueued in an
   // event graph.  When run completes, the event must be notified.
-  // 
+  //
   // The event (stored in the event graph) participates in lifetime
   // of the run object.
   void
@@ -1247,7 +1247,7 @@ static std::mutex map_mutex;
 // result in same device object if it exists already.
 //
 // Refactor to share, or better get rid of device_type and fold
-// extension into xrt_core::device  
+// extension into xrt_core::device
 static std::shared_ptr<device_type>
 get_device(xrtDeviceHandle dhdl)
 {
@@ -1498,7 +1498,7 @@ set_event(const std::shared_ptr<event_impl>& event) const
 {
   handle->set_event(event);
 }
-  
+
 kernel::
 kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive)
   : handle(std::make_shared<kernel_impl>
@@ -1855,9 +1855,9 @@ xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
     send_exception_message(ex.what());
     return -1;
   }
-  
+
 }
-  
+
 void
 xrtRunGetArgVPP(xrt::run run, int index, void* value, size_t bytes)
 {
