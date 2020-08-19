@@ -180,6 +180,26 @@ unit_convert(size_t size)
   return ret+" "+unit[i-1];
 }
 
+std::string
+num_to_hexstring(uint64_t size)
+{
+  std::stringstream sstream;
+  sstream << std::hex << size;
+  std::string result = sstream.str();
+  //return result;
+  return "0x"+result;
+}
+
+uint64_t
+hexstring_to_num(std::string str)
+{
+  uint64_t size;
+  std::stringstream sstream(str); 
+  sstream >> std::hex;
+  sstream >> size;
+  return size;
+}
+
 uint16_t
 bdf2index(const std::string& bdfstr, bool _inUserDomain)
 {
