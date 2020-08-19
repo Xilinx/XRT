@@ -403,8 +403,16 @@ namespace xdp {
           gmio.stream_id, gmio.burst_len);
       devInfo->gmioList.push_back(traceGmio);
     }
-#endif
     return true;
+#else
+  // Need to use arguments so it compiles on Windows
+  auto aieMetadata = device->get_axlf_section(AIE_METADATA);
+  if (!aieMetadata.first || !aieMetadata.second)
+    return true;
+
+  devInfo->aieList.clear();
+  return true;
+#endif
   }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
