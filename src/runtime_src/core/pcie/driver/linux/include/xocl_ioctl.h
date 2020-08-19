@@ -158,7 +158,7 @@ enum drm_xocl_ops {
 	/* Free allocated CMA chunk through userpf*/
 	DRM_XOCL_FREE_CMA,
 
-	/* The foloowing IOCTLs can only be called from linux kernel space
+	/* The following IOCTLs can only be called from linux kernel space
 	 * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
 	 */
 	DRM_XOCL_KINFO_BO,
@@ -225,7 +225,7 @@ struct drm_xocl_userptr_bo {
 
 /**
  * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
- * For use with Linux kernel space specfic IOCTLs.
+ * For use with Linux kernel space specific IOCTLs.
  * struct drm_xocl_map_kern_mem - Used for map a buffer object to linux kernel
  * memory (sgl or vurtual address) with DRM_IOCTL_XOCL_MAP_KERN_MEM ioctl.
  *
@@ -235,10 +235,10 @@ struct drm_xocl_userptr_bo {
  * @flags:      DRM_XOCL_BO_XXX flags
  */
 struct drm_xocl_map_kern_mem {
-        uint32_t handle;
-        uint64_t addr;
-        uint64_t size;
-        uint32_t flags;
+	uint32_t handle;
+	uint64_t addr;
+	uint64_t size;
+	uint32_t flags;
 };
 
 /**
@@ -276,7 +276,7 @@ struct drm_xocl_sync_bo {
 
 /**
  * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
- * For use with Linux kernel space specfic IOCTLs.
+ * For use with Linux kernel space specific IOCTLs.
  * struct drm_xocl_sync_bo_cb - Synchronize the buffer in the requested direction
  * between device and host
  * used with DRM_IOCTL_XOCL_SYNC_BO_CB ioctl (linux kernel only)
@@ -315,7 +315,7 @@ struct drm_xocl_info_bo {
 
 /**
  * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
- * For use with Linux kernel space specfic IOCTLs.
+ * For use with Linux kernel space specific IOCTLs.
  * struct drm_xocl_kinfo_bo - Used to get a buffer object's kernel virtual address
  * with DRM_IOCTL_XOCL_KINFO_BO ioctl.
  *
@@ -521,7 +521,7 @@ struct drm_xocl_execbuf {
 
 /**
  * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
- * For use with Linux kernel space specfic IOCTLs.
+ * For use with Linux kernel space specific IOCTLs.
  * struct drm_xocl_execbuf_cb - Submit a command buffer for execution on a compute unit
  * used with DRM_IOCTL_XOCL_EXECBUF_CB ioctl with a callback (linux kernel only)
  *

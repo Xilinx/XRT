@@ -34,7 +34,7 @@ typedef void (*xocl_execbuf_callback)(unsigned long data, int error);
 struct drm_xocl_exec_metadata {
 	enum drm_xocl_execbuf_state state;
 	struct xocl_cmd            *active;
-	struct work_struct          compltn_work;
+	struct work_struct	    compltn_work;
 	xocl_execbuf_callback	    execbuf_cb_fn;
 	void			   *execbuf_cb_data;
 };

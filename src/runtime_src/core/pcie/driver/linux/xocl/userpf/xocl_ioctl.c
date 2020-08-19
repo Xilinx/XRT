@@ -69,8 +69,8 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 }
 
 int xocl_execbuf_callback_ioctl(struct drm_device *dev,
-                       void *data,
-                       struct drm_file *filp)
+			  void *data,
+			  struct drm_file *filp)
 {
 	struct xocl_drm *drm_p = dev->dev_private;
 	int ret = 0;

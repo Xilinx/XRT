@@ -108,11 +108,12 @@ static void xdma_async_migrate_done(unsigned long data, int err)
 
 	if (!err) {
 		async_ctx->xdma->channel_usage
-			[async_ctx->dir][async_ctx->channel] += 
+			[async_ctx->dir][async_ctx->channel] +=
 						async_ctx->iocb->done_bytes;
 	}
-	
-	async_ctx->callback_fn(async_ctx->callback_data, err);
+
+	if (async_ctx->callback_fn)
+		async_ctx->callback_fn(async_ctx->callback_data, err);
 	kfree(async_ctx->iocb);
 	kfree(async_ctx);
 }
@@ -121,7 +122,7 @@ static void xdma_async_migrate_done(unsigned long data, int err)
 atomic_t async_dma_count;
 
 static ssize_t xdma_async_migrate_bo(struct platform_device *pdev,
-	struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 len, 
+	struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 len,
 	void (*callback_fn)(unsigned long cb_hndl, int err), void *tx_ctx)
 {
 	struct xocl_xdma *xdma;
@@ -140,9 +141,9 @@ static ssize_t xdma_async_migrate_bo(struct platform_device *pdev,
 		pid, channel, paddr, dir);
 
 
-	if (tx_ctx) {
-		//channel = (atomic_add_return(1, &async_dma_count)/MAX_REQS_ON_CHANNEL) % xdma->channel; 
-		channel = atomic_add_return(1, &async_dma_count) % xdma->channel; 
+	if (callback_fn && tx_ctx) {
+		//channel = (atomic_add_return(1, &async_dma_count)/MAX_REQS_ON_CHANNEL) % xdma->channel;
+		channel = atomic_add_return(1, &async_dma_count) % xdma->channel;
 		io_cb = kzalloc(sizeof(struct xdma_io_cb), GFP_KERNEL);
 		if (!io_cb) {
 			xocl_err(&pdev->dev, "alloc xdma dev failed");
@@ -152,7 +153,6 @@ static ssize_t xdma_async_migrate_bo(struct platform_device *pdev,
 
 		async_ctx = kzalloc(sizeof(struct xdma_async_context), GFP_KERNEL);
 		if (!async_ctx) {
-			xocl_err(&pdev->dev, "alloc async_ctx failed");
 			ret = -ENOMEM;
 			goto failed;
 		}
@@ -167,9 +167,8 @@ static ssize_t xdma_async_migrate_bo(struct platform_device *pdev,
 		//pr_info("%s: %llx %llx %llx\n", __func__, (u64)io_cb, (u64)callback_fn, (u64)tx_ctx);
 
 		io_cb->io_done = xdma_async_migrate_done;
-		io_cb->private = async_ctx;	
-	}
-	else {
+		io_cb->private = async_ctx;
+	} else {
 		io_cb = NULL;
 	}
 
@@ -183,8 +182,8 @@ static ssize_t xdma_async_migrate_bo(struct platform_device *pdev,
 
 	xocl_err(&pdev->dev, "DMA failed, Dumping SG Page Table");
 	for (i = 0; i < nents; i++, sg = sg_next(sg)) {
-        if (!sg)
-            break;
+		if (!sg)
+			break;
 		pg = sg_page(sg);
 		if (!pg)
 			continue;

@@ -2316,7 +2316,8 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	}
 
 	init_waitqueue_head(&exec->poll_wait_queue);
-	exec->completion_wq = alloc_workqueue("xsched-compltn", WQ_HIGHPRI | WQ_MEM_RECLAIM | WQ_UNBOUND, num_online_cpus());
+	exec->completion_wq = alloc_workqueue("xsched-compltn", WQ_HIGHPRI |
+				WQ_MEM_RECLAIM | WQ_UNBOUND, num_online_cpus());
 
 	exec->scheduler = xs;
 	exec->uid = count++;
@@ -2450,7 +2451,7 @@ exec_notify_host(struct exec_core *exec, struct xocl_cmd* xcmd)
 	mutex_unlock(&xdev->dev_lock); // eliminate ?
 	wake_up_interruptible(&exec->poll_wait_queue);
 	if (xcmd->bo->metadata.compltn_work.func)
-		queue_work(exec->completion_wq, 
+		queue_work(exec->completion_wq,
 			&xcmd->bo->metadata.compltn_work);
 
 	SCHED_DEBUGF("<- %s\n", __func__);
@@ -4292,24 +4293,24 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 }
 
 static
-void xocl_execbuf_completion (struct work_struct* work)
+void xocl_execbuf_completion(struct work_struct *work)
 {
-	struct drm_xocl_exec_metadata *xobj_metadata = container_of(work, 
+	struct drm_xocl_exec_metadata *xobj_metadata = container_of(work,
 				struct drm_xocl_exec_metadata, compltn_work);
-	struct drm_xocl_bo *xobj = container_of(xobj_metadata, 
+	struct drm_xocl_bo *xobj = container_of(xobj_metadata,
 				struct drm_xocl_bo, metadata);
-	struct ert_packet *ecmd = (struct ert_packet *)xobj->vmapping; 
+	struct ert_packet *ecmd = (struct ert_packet *)xobj->vmapping;
 	int error = (ecmd->state == ERT_CMD_STATE_COMPLETED) ? 0 : -EFAULT;
 
 	if (xobj->metadata.execbuf_cb_fn)
 		xobj->metadata.execbuf_cb_fn(
-			(unsigned long) xobj->metadata.execbuf_cb_data, 
+			(unsigned long) xobj->metadata.execbuf_cb_data,
 			error);
 }
 
 static int
 client_ioctl_execbuf(struct platform_device *pdev,
-		     struct client_ctx *client, void *data, struct drm_file *filp, 
+		     struct client_ctx *client, void *data, struct drm_file *filp,
 		     bool inkernel)
 {
 	struct drm_xocl_execbuf *args = data;
@@ -4375,12 +4376,12 @@ client_ioctl_execbuf(struct platform_device *pdev,
 	}
 
 	if (inkernel) {
-		struct drm_xocl_execbuf_cb *args_cb = 
+		struct drm_xocl_execbuf_cb *args_cb =
 					(struct drm_xocl_execbuf_cb *)args;
 		if (args_cb->cb_func) {
-			xobj->metadata.execbuf_cb_fn   = 
+			xobj->metadata.execbuf_cb_fn   =
 					(xocl_execbuf_callback)args_cb->cb_func;
-			xobj->metadata.execbuf_cb_data = 
+			xobj->metadata.execbuf_cb_data =
 					(void *)args_cb->cb_data;
 		}
 		INIT_WORK(&xobj->metadata.compltn_work, xocl_execbuf_completion);

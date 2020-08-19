@@ -165,13 +165,13 @@ int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 
 int xocl_kinfo_bo_ioctl(struct drm_device *dev, void *data,
-        struct drm_file *filp);
+	struct drm_file *filp);
 int xocl_map_kern_mem_ioctl(struct drm_device *dev, void *data,
-        struct drm_file *filp);
+	struct drm_file *filp);
 int xocl_execbuf_callback_ioctl(struct drm_device *dev, void *data,
-        struct drm_file *filp);
+	struct drm_file *filp);
 int xocl_sync_bo_callback_ioctl(struct drm_device *dev, void *data,
-        struct drm_file *filp);
+	struct drm_file *filp);
 
 struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj);
 struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,

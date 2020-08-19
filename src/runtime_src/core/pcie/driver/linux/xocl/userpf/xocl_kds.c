@@ -249,20 +249,19 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 
 	if (xcmd->inkern_cb) {
 		schedule_work(&xcmd->inkern_cb->work);
-	}
-	else {
+	} else {
 		atomic_inc(&client->event);
 		wake_up_interruptible(&client->waitq);
 	}
 }
 
-static void xocl_execbuf_completion (struct work_struct* work)
+static void xocl_execbuf_completion(struct work_struct *work)
 {
-	struct in_kernel_cb *inkern_cb = container_of(work, 
+	struct in_kernel_cb *inkern_cb = container_of(work,
 						struct in_kernel_cb, work);
-	int error = (inkern_cb->cmd_state == ERT_CMD_STATE_COMPLETED) ? 
+	int error = (inkern_cb->cmd_state == ERT_CMD_STATE_COMPLETED) ?
 			0 : -EFAULT;
-	
+
 	if (inkern_cb->func)
 		inkern_cb->func((unsigned long)inkern_cb->data, error);
 }
@@ -333,23 +332,21 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	xcmd->gem_obj = obj;
 
 	if (in_kernel) {
-		struct drm_xocl_execbuf_cb *args_cb = 
+		struct drm_xocl_execbuf_cb *args_cb =
 					(struct drm_xocl_execbuf_cb *)data;
-		
+
 		if (args_cb->cb_func) {
-			xcmd->inkern_cb = kzalloc(sizeof(struct in_kernel_cb), 
+			xcmd->inkern_cb = kzalloc(sizeof(struct in_kernel_cb),
 								GFP_KERNEL);
 			if (!xcmd->inkern_cb) {
-				userpf_err(xdev, "Failed to alloc inkernel" 
-						"context\n");
 				kfree(xcmd);
 				ret = -ENOMEM;
 				goto out;
 			}
-			xcmd->inkern_cb->func = (void (*)(unsigned long, int)) 
+			xcmd->inkern_cb->func = (void (*)(unsigned long, int))
 						args_cb->cb_func;
 			xcmd->inkern_cb->data = (void *)args_cb->cb_data;
-			INIT_WORK(&xcmd->inkern_cb->work, 
+			INIT_WORK(&xcmd->inkern_cb->work,
 						xocl_execbuf_completion);
 		}
 	}
