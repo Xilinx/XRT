@@ -23,7 +23,7 @@ zocl_insert_error_record(struct drm_zocl_dev *zdev,
 {
 	struct zocl_error *zer = &zdev->zdev_error;
 	u64 timestamp = ktime_to_ns(ktime_get());
-	xrtErrorCode err_code = XRT_BUILD_ERROR_CODE(
+	xrtErrorCode err_code = XRT_ERROR_CODE_BUILD(
 	    args->err_num,
 	    args->err_driver,
 	    args->err_severity,

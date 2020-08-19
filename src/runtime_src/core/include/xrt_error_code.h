@@ -76,7 +76,7 @@ typedef uint64_t xrtErrorCode;
 #define XRT_ERROR_CLASS_MASK		0xFUL
 #define XRT_ERROR_CLASS_SHIFT		40
 
-#define	XRT_BUILD_ERROR_CODE(num, driver, severity, module, eclass) \
+#define	XRT_ERROR_CODE_BUILD(num, driver, severity, module, eclass) \
 	((((num) & XRT_ERROR_NUM_MASK) << XRT_ERROR_NUM_SHIFT) | \
 	(((driver) & XRT_ERROR_DRIVER_MASK) << XRT_ERROR_DRIVER_SHIFT) | \
 	(((severity) & XRT_ERROR_SEVERITY_MASK) << XRT_ERROR_SEVERITY_SHIFT) | \
@@ -120,7 +120,7 @@ enum xrtErrorModule {
   XRT_ERROR_MODULE_AIE_SHIM
 };
 
-enum xrtErorClass {
+enum xrtErrorClass {
   XRT_ERROR_CLASS_FIRST_ENTRY = 0,
   XRT_ERROR_CLASS_SYSTEM = XRT_ERROR_CLASS_FIRST_ENTRY,
   XRT_ERROR_CLASS_AIE,
