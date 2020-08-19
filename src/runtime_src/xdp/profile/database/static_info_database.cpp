@@ -41,7 +41,10 @@
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #include "core/include/xclbin.h"
+
+#ifdef XRT_ENABLE_AIE
 #include "core/edge/common/aie_parser.h"
+#endif
 
 #define XAM_STALL_PROPERTY_MASK        0x4
 
