@@ -1222,6 +1222,22 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidancePLRAMSizeBytes(OpenCLSummaryWriter* t)
   {
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : deviceInfos)
+    {
+      for (auto memory : device->memoryInfo)
+      {
+	if ((memory.second)->name.find("PLRAM") != std::string::npos)
+	{
+	  (t->fout) << "PLRAM_SIZE_BYTES" << ","
+		    << (memory.second)->name << ","
+		    << (memory.second)->size << std::endl ;
+	}
+      }
+    }
+
+
   }
 
   void OpenCLSummaryWriter::guidanceKernelBufferInfo(OpenCLSummaryWriter* t)
