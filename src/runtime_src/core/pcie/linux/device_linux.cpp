@@ -233,7 +233,6 @@ initialize_query_table()
   emplace_sysfs_get<query::xclbin_uuid>                 ("", "xclbinuuid");
   emplace_sysfs_get<query::mem_topology_raw>            ("icap", "mem_topology");
   emplace_sysfs_get<query::ip_layout_raw>               ("icap", "ip_layout");
-  emplace_sysfs_get<query::clock_freq_topology_raw>     ("icap", "clock_freq_topology");
   emplace_sysfs_get<query::clock_freqs_mhz>             ("icap", "clock_freqs");
   emplace_sysfs_get<query::idcode>                      ("icap", "idcode");
   emplace_sysfs_getput<query::data_retention>           ("icap", "data_retention");
@@ -252,6 +251,9 @@ initialize_query_table()
   emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
   emplace_sysfs_get<query::m2m>                         ("", "m2m");
   emplace_sysfs_get<query::dna_serial_num>              ("dna", "dna");
+  emplace_sysfs_getput<query::xmc_scaling_enabled>      ("xmc", "scaling_enabled");
+  emplace_sysfs_getput<query::xmc_scaling_override>     ("xmc", "scaling_threshold_power_override");
+  emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
   emplace_sysfs_get<query::p2p_config>                  ("p2p", "config");
   emplace_sysfs_get<query::temp_card_top_front>         ("xmc", "xmc_se98_temp0");
   emplace_sysfs_get<query::temp_card_top_rear>          ("xmc", "xmc_se98_temp1");
@@ -316,22 +318,16 @@ initialize_query_table()
   emplace_sysfs_get<query::host_mem_size>               ("address_translator", "host_mem_size");
   emplace_sysfs_get<query::kds_numcdmas>                ("mb_scheduler", "kds_numcdmas");
 
-  //emplace_sysfs_get<query::mig_ecc_enabled,         sp::_4, "ecc_enabled");
-  //emplace_sysfs_get<query::mig_ecc_status,          sp::_4, "ecc_status");
-  //emplace_sysfs_get<query::mig_ecc_ce_cnt,          sp::_4, "ecc_ce_cnt");
-  //emplace_sysfs_get<query::mig_ecc_ue_cnt,          sp::_4, "ecc_ue_cnt");
-  //emplace_sysfs_get<query::mig_ecc_ce_ffa,          sp::_4, "ecc_ce_ffa");
-  //emplace_sysfs_get<query::mig_ecc_ue_ffa,          sp::_4, "ecc_ue_ffa");
-
   emplace_sysfs_get<query::flash_bar_offset>            ("flash", "bar_off");
   emplace_sysfs_get<query::is_mfg>                      ("", "mfg");
+  emplace_sysfs_get<query::is_ready>                    ("", "ready");
   emplace_sysfs_get<query::f_flash_type>                ("flash", "flash_type");
   emplace_sysfs_get<query::flash_type>                  ("", "flash_type");
   emplace_sysfs_get<query::board_name>                  ("", "board_name");
   emplace_sysfs_get<query::logic_uuids>                 ("", "logic_uuids");
   emplace_sysfs_get<query::interface_uuids>             ("", "interface_uuids");
 
-  emplace_func0_request<query::pcie_bdf,                 bdf>();
+  emplace_func0_request<query::pcie_bdf,                bdf>();
 }
 
 struct X { X() { initialize_query_table(); }};

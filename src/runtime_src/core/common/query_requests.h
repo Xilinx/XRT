@@ -168,9 +168,9 @@ enum class key_type
 
   flash_bar_offset,
   is_mfg,
+  is_ready,
   f_flash_type,
   flash_type,
-  flash_address,
   board_name,
   interface_uuids,
   logic_uuids,
@@ -1728,19 +1728,19 @@ struct mig_ecc_ue_ffa : request
   get(const device*, const boost::any&) const = 0;
 };
 
-struct flash_bar_offset : request
+struct is_mfg : request
 {
-  using result_type = uint64_t;
-  static const key_type key = key_type::flash_bar_offset;
+  using result_type = bool;
+  static const key_type key = key_type::is_mfg;
 
   virtual boost::any
   get(const device*) const = 0;
 };
 
-struct is_mfg : request
+struct is_ready : request
 {
   using result_type = bool;
-  static const key_type key = key_type::is_mfg;
+  static const key_type key = key_type::is_ready;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1780,10 +1780,10 @@ struct board_name : request
   get(const device*) const = 0;
 };
 
-struct flash_address : request
+struct flash_bar_offset : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::flash_address;
+  static const key_type key = key_type::flash_bar_offset;
 
   virtual boost::any
   get(const device*) const = 0;
