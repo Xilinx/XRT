@@ -173,7 +173,7 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addPowerSample(uint64_t deviceId, double timestamp,
-					 const std::vector<uint64_t>& values)
+          const std::vector<uint64_t>& values)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
@@ -195,7 +195,7 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addAIESample(uint64_t deviceId, double timestamp,
-					 const std::vector<uint64_t>& values)
+          const std::vector<uint64_t>& values)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
@@ -217,7 +217,7 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addNOCSample(uint64_t deviceId, double timestamp,
-					 std::string name, const std::vector<uint64_t>& values)
+          std::string name, const std::vector<uint64_t>& values)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 

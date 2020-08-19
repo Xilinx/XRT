@@ -46,8 +46,8 @@ namespace xdp {
 
       std::string outputFile = "noc_profile_" + deviceName + ".csv"; 
       writers.push_back(new NOCProfilingWriter(outputFile.c_str(),
-			    deviceName.c_str(), index));
-      (db->getStaticInfo()).addOpenedFile(outputFile.c_str(), "NOC_PROFILE") ;
+          deviceName.c_str(), index));
+      db->getStaticInfo().addOpenedFile(outputFile.c_str(), "NOC_PROFILE") ;
 
       // Move on to next device
       xclClose(handle);
@@ -89,9 +89,9 @@ namespace xdp {
       // Iterate over all devices
       for (auto device : mDevices) {
         // Iterate over all NOC NMUs
-        auto numNOC = (db->getStaticInfo()).getNumNOC(index);
+        auto numNOC = db->getStaticInfo().getNumNOC(index);
         for (uint64_t n=0; n < numNOC; n++) {
-          auto noc = (db->getStaticInfo()).getNOC(index, n);
+          auto noc = db->getStaticInfo().getNOC(index, n);
 
           // Name = <master>-<NMU cell>-<read QoS>-<write QoS>-<NPI freq>-<AIE freq>
           std::vector<std::string> result; 
@@ -126,7 +126,7 @@ namespace xdp {
           values.push_back(writeMaxLatency);
 
           // Add sample to dynamic database
-	        (db->getDynamicInfo()).addNOCSample(index, timestamp, cellName, values);
+	        db->getDynamicInfo().addNOCSample(index, timestamp, cellName, values);
 	        ++index;
         }
       }

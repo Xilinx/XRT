@@ -41,7 +41,7 @@ namespace xdp {
 class AIECounter : public ProfileIP {
 public:
     /**
-     * The constructor takes a device handle and a ip index
+     * The constructor takes a device handle and an ip index
      * means that the instance of this class has a one-to-one
      * association with one specific IP on one specific device.
      * During the construction, the exclusive access to this
@@ -72,7 +72,7 @@ public:
     virtual std::string getModule()     {return mModule;}
     virtual std::string getName()       {return mName;}
    
-    virtual uint64_t readCounter();
+    //virtual uint64_t readCounter();
 
 private:
     uint8_t mMajorVersion;

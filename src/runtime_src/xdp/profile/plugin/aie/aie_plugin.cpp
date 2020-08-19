@@ -55,7 +55,7 @@ namespace xdp {
       std::string outputFile = "aie_profile_" + deviceName + ".csv"; 
       writers.push_back(new AIEProfilingWriter(outputFile.c_str(),
 			    deviceName.c_str(), index));
-      (db->getStaticInfo()).addOpenedFile(outputFile.c_str(), "AIE_PROFILE");
+      db->getStaticInfo().addOpenedFile(outputFile.c_str(), "AIE_PROFILE");
 
       // Move on to next device
       xclClose(handle);
@@ -110,9 +110,9 @@ namespace xdp {
         }
 
         // Iterate over all AIE Counters
-        auto numCounters = (db->getStaticInfo()).getNumAIECounter(index);
+        auto numCounters = db->getStaticInfo().getNumAIECounter(index);
         for (uint64_t c=0; c < numCounters; c++) {
-          auto aie = (db->getStaticInfo()).getAIECounter(index, c);
+          auto aie = db->getStaticInfo().getAIECounter(index, c);
 
           std::vector<uint64_t> values;
           values.push_back(aie->column);
@@ -133,7 +133,7 @@ namespace xdp {
           // Get timestamp in milliseconds
           double timestamp = xrt_core::time_ns() / 1.0e6;
 
-	        (db->getDynamicInfo()).addAIESample(index, timestamp, values);
+	        db->getDynamicInfo().addAIESample(index, timestamp, values);
         }
         ++index;
       }

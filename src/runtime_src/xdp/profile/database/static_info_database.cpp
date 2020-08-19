@@ -388,6 +388,7 @@ namespace xdp {
 
   bool VPStaticDatabase::initializeAIECounters(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
+#ifdef XRT_ENABLE_AIE
     // Record all counters listed in AIE metadata (if available)
     for (auto& counter : xrt_core::edge::aie::get_profile_counters(device.get())) {
       AIECounter* aie = new AIECounter(counter.id, counter.column, counter.row, 
@@ -403,6 +404,7 @@ namespace xdp {
       devInfo->gmioList.push_back(traceGmio);
     }
     return true;
+#endif
   }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)

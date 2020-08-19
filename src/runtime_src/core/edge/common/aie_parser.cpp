@@ -255,7 +255,6 @@ get_gmios(const xrt_core::device* device)
 std::vector<counter_type>
 get_profile_counters(const xrt_core::device* device)
 {
-  //auto data = device->get_axlf_section(AIE_TRACE_PROFILE_METADATA);
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
     return std::vector<counter_type>();
@@ -268,7 +267,6 @@ get_profile_counters(const xrt_core::device* device)
 std::vector<gmio_type>
 get_trace_gmios(const xrt_core::device* device)
 {
-  //auto data = device->get_axlf_section(AIE_TRACE_PROFILE_METADATA);
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
     return std::vector<gmio_type>();
