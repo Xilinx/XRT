@@ -1172,8 +1172,21 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceTraceMemory(OpenCLSummaryWriter* t)
   {
+    std::string memType = "FIFO" ;
+
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    
+    for (auto device : deviceInfos)
+    {
+      if (device->usesTs2mm)
+      {
+	memType = "TS2MM" ;
+	break ;
+      }
+    }
+
     (t->fout) << "TRACE_MEMORY" << ","
-	      << std::endl ;
+	      << memType << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceMaxParallelKernelEnqueues(OpenCLSummaryWriter* t)

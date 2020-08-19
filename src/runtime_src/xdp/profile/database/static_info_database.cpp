@@ -143,6 +143,7 @@ namespace xdp {
     devInfo->maxReadBW = 0 ;
     devInfo->maxWriteBW = 0 ;
     devInfo->clockRateMHz = 300;
+    devInfo->usesTs2mm = false ;
     devInfo->platformInfo.kdmaCount = 0;
 
     deviceInfo[deviceId] = devInfo;
@@ -344,6 +345,8 @@ namespace xdp {
           cuObj->setDataTransferEnabled(true);
         }
         devInfo->asmList.push_back(mon);
+      } else if (debugIpData->m_type == TRACE_S2MM) {
+	devInfo->usesTs2mm = true ;
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }

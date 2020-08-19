@@ -133,6 +133,7 @@ namespace xdp {
     double maxReadBW ;
     double maxWriteBW ;
     double clockRateMHz;
+    bool usesTs2mm ;
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
     std::map<int32_t, ComputeUnitInstance*> cus;
