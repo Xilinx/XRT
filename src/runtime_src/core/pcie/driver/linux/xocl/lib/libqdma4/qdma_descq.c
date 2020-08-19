@@ -1406,7 +1406,10 @@ void qdma4_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 		}
 		cb->status = error;
 		cb->done = 1;
-		req->fp_done(req, cb->offset, error);
+		if (descq->conf.st && descq->conf.q_type == Q_C2H)
+			req->fp_done(req, req->count - cb->left, error);
+		else
+			req->fp_done(req, cb->offset, error);
 	} else {
 		pr_debug("req 0x%p, cb 0x%p, wake up.\n", req, cb);
 		cb->status = error;

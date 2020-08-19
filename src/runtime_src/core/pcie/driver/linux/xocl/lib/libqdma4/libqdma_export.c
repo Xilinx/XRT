@@ -1249,16 +1249,16 @@ static int is_usable_queue(struct xlnx_dma_dev *xdev, int qidx,
 		if (st && (refmask & Q_PRESENT_C2H_MASK)
 				&& (refmask & c2hq_chkmask)
 					 == Q_PRESENT_C2H_MASK) {
-			pr_err("Q_H2C: MM mode c2h q present.\n");
+			pr_debug("Q_H2C: MM mode c2h q present.\n");
 			goto q_reject; /* MM mode c2h q present*/
 		}
 		if (!st && (refmask & Q_PRESENT_C2H_MASK)
 				&& (refmask & c2hq_chkmask) == c2hq_chkmask) {
-			pr_err("Q_H2C: ST mode c2h q present.\n");
+			pr_debug("Q_H2C: ST mode c2h q present.\n");
 			goto q_reject; /* ST mode c2h q present*/
 		}
 		if (refmask & Q_PRESENT_H2C_MASK) {
-			pr_err("Q_H2C: h2c q already present.\n");
+			pr_debug("Q_H2C: h2c q already present.\n");
 			goto q_reject; /* h2c q already present */
 		}
 	} else {
@@ -1270,16 +1270,16 @@ static int is_usable_queue(struct xlnx_dma_dev *xdev, int qidx,
 		if (st && (refmask & Q_PRESENT_H2C_MASK)
 				&& (refmask & h2cq_chkmask)
 						== Q_PRESENT_H2C_MASK) {
-			pr_err("!Q_H2C: MM mode h2c q present.\n");
+			pr_debug("!Q_H2C: MM mode h2c q present.\n");
 			goto q_reject; /* MM mode h2c q present*/
 		}
 		if (!st && (refmask & Q_PRESENT_H2C_MASK)
 				&& (refmask & h2cq_chkmask) == h2cq_chkmask) {
-			pr_err("!Q_H2C: ST mode h2c q present.\n");
+			pr_debug("!Q_H2C: ST mode h2c q present.\n");
 			goto q_reject; /* ST mode h2c q present*/
 		}
 		if (refmask & Q_PRESENT_C2H_MASK) {
-			pr_err("!Q_H2C: c2h q already present.\n");
+			pr_debug("!Q_H2C: c2h q already present.\n");
 			goto q_reject; /* c2h q already present */
 		}
 	}
