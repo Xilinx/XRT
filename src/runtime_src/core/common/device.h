@@ -33,6 +33,10 @@
 #include <boost/any.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+#define XILINX_ID  0x10ee
+#define ARISTA_ID  0x3475
+#define INVALID_ID 0xffff
+
 namespace xrt_core {
 
 using device_collection = std::vector<std::shared_ptr<xrt_core::device>>;
@@ -248,7 +252,7 @@ public:
   XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
   get_ert_slots() const;
-  
+
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
   /**
