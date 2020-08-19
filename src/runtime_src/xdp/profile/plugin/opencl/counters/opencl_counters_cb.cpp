@@ -15,6 +15,7 @@
  */
 
 #include <map>
+#include <queue>
 //#include <iostream>
 
 #include "xdp/profile/database/database.h"
@@ -46,7 +47,7 @@ namespace xdp {
 
   static void log_kernel_execution(const char* kernelName, bool isStart)
   {
-    static std::map<std::string, uint64_t> storedTimestamps ;
+    static std::map<std::string, std::queue<uint64_t> > storedTimestamps ;
 
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
@@ -59,12 +60,16 @@ namespace xdp {
 
     if (isStart)
     {
-      storedTimestamps[kernelName] = timestamp ;
+      (storedTimestamps[kernelName]).push(timestamp) ;
+      
+      // Also, for guidance, keep track of the total number of concurrent
+      (db->getStats()).logMaxExecutions(kernelName,
+					storedTimestamps[kernelName].size()) ;
     }
     else
     {
-      auto executionTime = timestamp - storedTimestamps[kernelName] ;
-      storedTimestamps.erase(kernelName) ;
+      auto executionTime = timestamp-(storedTimestamps[kernelName]).front();
+      (storedTimestamps[kernelName]).pop() ;
 
       (db->getStats()).logKernelExecution(kernelName, executionTime) ;
     }

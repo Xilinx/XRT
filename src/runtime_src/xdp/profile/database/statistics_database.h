@@ -149,6 +149,7 @@ namespace xdp {
     // **** OpenCL Statistics ****
     // Statistics on kernel enqueues and executions
     std::map<std::string, TimeStatistics> kernelExecutionStats ;
+    std::map<std::string, uint64_t> maxExecutions ; // per kernel
     
     // Statistics on compute unit enqueues and executions
     //  The tuple is cuName, localWorkGroupConfig, globalWorkgroupConfig
@@ -200,6 +201,17 @@ namespace xdp {
     inline void addOpenCLObjectReleased()    { ++numObjectsReleased ; }
     inline bool getContextEnabled()          { return contextEnabled ; }
     inline void setContextEnabled()          { contextEnabled = true ; }
+    inline uint64_t getMaxExecutions(const std::string& kernelName)
+      { return maxExecutions[kernelName] ; }
+    inline void logMaxExecutions(const std::string& kernelName, uint64_t num)
+    { 
+      if (maxExecutions.find(kernelName) == maxExecutions.end())
+      {
+	maxExecutions[kernelName] = num ;
+	return ;
+      }
+      if (num > maxExecutions[kernelName]) maxExecutions[kernelName] = num ;
+    }
 
     // Functions specific to compute unit executions
     std::vector<std::pair<std::string, TimeStatistics>> 

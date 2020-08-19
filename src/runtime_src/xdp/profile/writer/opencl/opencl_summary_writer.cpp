@@ -1191,6 +1191,21 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceMaxParallelKernelEnqueues(OpenCLSummaryWriter* t)
   {
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : deviceInfos)
+    {
+      for (auto cuInfo : device->cus)
+      {
+	std::string kernelName = (cuInfo.second)->getKernelName() ;
+	uint64_t maxExecutions = 
+	  (t->db->getStats()).getMaxExecutions(kernelName) ;
+
+	(t->fout) << "MAX_PARALLEL_KERNEL_ENQUEUES" << ","
+		  << kernelName << ","
+		  << maxExecutions << std::endl ;
+      }
+    }
   }
 
   void OpenCLSummaryWriter::guidanceCommandQueueOOO(OpenCLSummaryWriter* t)
