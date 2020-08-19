@@ -393,6 +393,7 @@ enum ert_cmd_opcode {
   ERT_SK_START      = 9,
   ERT_SK_UNCONFIG   = 10,
   ERT_INIT_CU       = 11,
+  ERT_START_FA      = 12,
 };
 
 /**
