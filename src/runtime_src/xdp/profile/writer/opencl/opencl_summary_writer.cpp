@@ -1211,7 +1211,7 @@ namespace xdp {
   void OpenCLSummaryWriter::guidanceCommandQueueOOO(OpenCLSummaryWriter* t)
   {
     auto commandQueueInfo = (t->db->getStats()).getCommandQueuesAreOOO() ;
-    // TODO: Actually make the connection when loggind
+    // TODO: Actually make the connection when logging
     for (auto cq : commandQueueInfo)
     {
       (t->fout) << "COMMAND_QUEUE_OOO" << "," 
@@ -1236,43 +1236,74 @@ namespace xdp {
 	}
       }
     }
-
-
   }
 
   void OpenCLSummaryWriter::guidanceKernelBufferInfo(OpenCLSummaryWriter* t)
   {
+    // This reports the memory bank, argument, alignment, and size of 
+    //  each buffer.
+
+    // TODO
+
+    // uint64_t -> std::vector<std::string>
+    (t->fout) << "KERNEL_BUFFER_INFO" << ","
+	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceTraceBufferFull(OpenCLSummaryWriter* t)
   {
+    // TODO
+    (t->fout) << "TRACE_BUFFER_FULL" << ","
+	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceMemoryTypeBitWidth(OpenCLSummaryWriter* t)
   {
+    // TODO
+    (t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
+	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceXrtIniSetting(OpenCLSummaryWriter* t)
   {
+    // TODO
+    (t->fout) << "XRT_INI_SETTING" << "," 
+	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceBufferRdActiveTimeMs(OpenCLSummaryWriter* t)
   {
+    // TODO
+    (t->fout) << "BUFFER_RD_ACTIVE_TIME_MS" << ","
+	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceBufferWrActiveTimeMs(OpenCLSummaryWriter* t)
   {
+    // TODO
+    (t->fout) << "BUFFER_WR_ACTIVE_TIME_MS" << ","
+	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceBufferTxActiveTimeMs(OpenCLSummaryWriter* t)
   {
+    // TODO
+    (t->fout) << "BUFFER_TX_ACTIVE_TIME_MS" << ","
+	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceApplicationRunTimeMs(OpenCLSummaryWriter* t)
   {
+    // TODO
+    (t->fout) << "APPLICATION_RUN_TIME_MS" << ","
+	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceTotalKernelRunTimeMs(OpenCLSummaryWriter* t)
   {
+    // TODO
+    (t->fout) << "TOTAL_KERNEL_RUN_TIME_MS" << ","
+	      << std::endl ;
   }
+
 } // end namespace xdp
