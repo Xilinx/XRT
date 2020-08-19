@@ -169,13 +169,10 @@ struct sysfs_fcn<std::vector<VectorValueType>>
   }
 
   static void 
-  put(const pdev& dev, const char* subdev, const char* entry, const boost::any& v)
+  put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
   {
     std::string err;
-    ValueType value;
-    std::string value1;
-    value1 = boost::any_cast<std::string>(v);
-    dev->sysfs_put(subdev, entry, err, value1);
+    dev->sysfs_put(subdev, entry, err, value);
     if (!err.empty())
       throw std::runtime_error(err);
   }
@@ -205,12 +202,6 @@ struct sysfs_get : virtual QueryRequestType
       ::get(get_pcidev(device), subdev, entry, v);
   }
 
-  void 
-  put(const xrt_core::device* device, const boost::any& v) const
-  {
-    sysfs_fcn<typename QueryRequestType::result_type>
-      ::put(get_pcidev(device), subdev, entry, v);
-  }
 };
 
 template <typename QueryRequestType>

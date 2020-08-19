@@ -1731,6 +1731,7 @@ struct kds_numcdmas : request
 struct mig_cache_update : request
 {
   using result_type = std::string;
+  using value_type = std::string;   // put value type
   static const key_type key = key_type::mig_cache_update;
 
   virtual boost::any
