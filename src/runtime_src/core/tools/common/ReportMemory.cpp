@@ -289,9 +289,9 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
 
   _output << boost::format("%s\n") % _pt.get<std::string>("mem_topology.description");
 
-  int index = 0;
 
   try {
+    int index = 0;
     for (auto& v : _pt.get_child("mem_topology.board.memory.memories",empty_ptree)) {
       std::string tag, st;
       unsigned int ce_cnt = 0, ue_cnt = 0;
@@ -353,8 +353,7 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
         index++;
       }
     }
-    catch( std::exception const& e) {
-      std::cout << e.what();
+    catch( std::exception const&) {
         // eat the exception, probably bad path
     }
   }
