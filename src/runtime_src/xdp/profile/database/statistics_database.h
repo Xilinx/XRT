@@ -162,6 +162,9 @@ namespace xdp {
     uint64_t numObjectsReleased ;
     bool contextEnabled ;
 
+    // Statistics on OpenCL constructs
+    std::map<uint64_t, bool> commandQueuesAreOOO ;
+
     // Statistics on buffer transfers
     //  Keep track of reads and writes for every context+device pair
     std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostReads ;
@@ -212,6 +215,10 @@ namespace xdp {
       }
       if (num > maxExecutions[kernelName]) maxExecutions[kernelName] = num ;
     }
+    inline std::map<uint64_t, bool>& getCommandQueuesAreOOO()
+      { return commandQueuesAreOOO ; }
+    inline void setCommandQueueOOO(uint64_t cq, bool value)
+      { commandQueuesAreOOO[cq] = value ; }
 
     // Functions specific to compute unit executions
     std::vector<std::pair<std::string, TimeStatistics>> 

@@ -1210,6 +1210,14 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceCommandQueueOOO(OpenCLSummaryWriter* t)
   {
+    auto commandQueueInfo = (t->db->getStats()).getCommandQueuesAreOOO() ;
+    // TODO: Actually make the connection when loggind
+    for (auto cq : commandQueueInfo)
+    {
+      (t->fout) << "COMMAND_QUEUE_OOO" << "," 
+		<< "0x" << std::hex << cq.first << "," << std::dec
+		<< cq.second << std::endl ;
+    }
   }
 
   void OpenCLSummaryWriter::guidancePLRAMSizeBytes(OpenCLSummaryWriter* t)
