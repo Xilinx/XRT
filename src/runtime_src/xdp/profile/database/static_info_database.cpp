@@ -403,8 +403,8 @@ namespace xdp {
           gmio.stream_id, gmio.burst_len);
       devInfo->gmioList.push_back(traceGmio);
     }
-    return true;
 #endif
+    return true;
   }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
