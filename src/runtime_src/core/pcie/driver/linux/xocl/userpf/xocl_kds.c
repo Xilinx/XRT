@@ -317,8 +317,6 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 
 	/* Now, we could forget execbuf */
 	ret = kds_add_command(&XDEV(xdev)->kds, xcmd);
-	if (ret)
-		kds_free_command(xcmd);
 
 out:
 	return ret;

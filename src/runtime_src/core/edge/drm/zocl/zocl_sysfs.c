@@ -181,12 +181,45 @@ static ssize_t memstat_raw_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(memstat_raw);
 
+static ssize_t errors_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	ssize_t size = 0;
+	xrtErrorCode error_code;
+	u64 timestamp;
+	int i;
+
+	if (!zdev)
+		return 0;
+
+	read_lock(&zdev->attr_rwlock);
+
+	if (!zdev->zdev_error.ze_err) {
+		read_unlock(&zdev->attr_rwlock);
+		return 0;
+	}
+
+	for (i = 0; i < zdev->zdev_error.ze_num; i++) {
+		error_code = zdev->zdev_error.ze_err[i].zer_err_code;
+		timestamp = zdev->zdev_error.ze_err[i].zer_ts;
+		size += sprintf(buf + size, "%llu%20llu\n",
+		    error_code, timestamp);
+	}
+
+	read_unlock(&zdev->attr_rwlock);
+
+	return size;
+}
+static DEVICE_ATTR_RO(errors);
+
 static struct attribute *zocl_attrs[] = {
 	&dev_attr_xclbinid.attr,
 	&dev_attr_kds_numcus.attr,
 	&dev_attr_kds_custat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
+	&dev_attr_errors.attr,
 	NULL,
 };
 

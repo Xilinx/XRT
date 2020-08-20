@@ -386,13 +386,24 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 }
 
 xrt_core::device_collection
-XBUtilities::collect_devices( const std::string& _devices, // comma separated no space
-                              bool _inUserDomain )
+XBUtilities::
+collect_devices(const std::vector<std::string>& _devices, bool _inUserDomain)
 {
-  std::set<std::string> deviceSet;
-  boost::split(deviceSet, _devices, boost::is_any_of(","));
+  std::set<std::string> device_set(_devices.begin(), _devices.end());
   xrt_core::device_collection core_devices;
-  collect_devices(deviceSet, _inUserDomain, core_devices);
+  collect_devices(device_set, _inUserDomain, core_devices);
+  return core_devices;
+}
+
+xrt_core::device_collection
+XBUtilities::
+collect_devices( const std::string& _devices, // comma separated no space
+                 bool _inUserDomain )
+{
+  std::set<std::string> device_set;
+  boost::split(device_set, _devices, boost::is_any_of(","));
+  xrt_core::device_collection core_devices;
+  collect_devices(device_set, _inUserDomain, core_devices);
   return core_devices;
 }
 
@@ -445,9 +456,15 @@ XBUtilities::get_available_devices(bool inUserDomain)
   for (const auto & device : deviceCollection) {
     boost::property_tree::ptree pt_dev;
     pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
-    pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
-    pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-    pt_dev.put("is_ready", "true"); //to-do: sysfs node but on windows?
+    pt_dev.put("board", xrt_core::device_query<xrt_core::query::board_name>(device));
+
+    // The following only works for 1RP. Golden and 2RP don't have rom info.
+    // As the technologies mature, try getting the vbnv and ID of the shell on device
+    // It doesn't make sense to add ad-hoc code right now. 
+    // pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+    // pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+    
+    pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
     pt.push_back(std::make_pair("", pt_dev));
   }
   return pt;

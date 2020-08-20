@@ -75,13 +75,23 @@ static int versal_xclbin_post_download(xdev_handle_t xdev, void *args)
 	int i, ret = 0;
 
 	if (arg->num_dev) {
+		const struct axlf_section_header *hdr =
+		    xrt_xclbin_get_section_hdr(arg->xclbin, CLOCK_FREQ_TOPOLOGY);
+		struct clock_freq_topology *topo;
+
 		for (i = 0; i < arg->num_dev; i++)
 			(void) xocl_subdev_create(xdev, &(arg->urpdevs[i].info));
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+
+		if (hdr) {
+			/* after download, update clock freq */
+			topo = (struct clock_freq_topology *)
+			    (((char *)(arg->xclbin)) + hdr->m_sectionOffset);
+			ret = xocl_clock_freq_scaling_by_topo(xdev, topo, 0);
+		}
 	}
 
 	return ret;
-
 }
 
 static struct xocl_xclbin_ops versal_ops = {

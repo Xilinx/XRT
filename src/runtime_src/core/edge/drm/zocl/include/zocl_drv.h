@@ -160,6 +160,26 @@ zocl_bo_execbuf(const struct drm_zocl_bo *bo)
 	return (bo->flags & ZOCL_BO_FLAGS_EXECBUF);
 }
 
+static inline struct kernel_info *
+zocl_query_kernel(struct drm_zocl_dev *zdev, const char *name)
+{
+	struct kernel_info *kernel;
+	int off = 0;
+
+	while (off < zdev->ksize) {
+		kernel = (struct kernel_info *)(zdev->kernels + off);
+		if (!strcmp(kernel->name, name))
+			break;
+		off += sizeof(struct kernel_info);
+		off += sizeof(struct argument_info) * kernel->anums;
+	}
+
+	if (off < zdev->ksize)
+		return kernel;
+
+	return NULL;
+}
+
 static inline int
 zocl_kds_add_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 {
@@ -194,6 +214,11 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 		int count, uint32_t bank);
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
+
+int zocl_inject_error(struct drm_zocl_dev *zdev, void *data,
+		struct drm_file *filp);
+int zocl_init_error(struct drm_zocl_dev *zdev);
+void zocl_fini_error(struct drm_zocl_dev *zdev);
 
 /* zocl_kds.c */
 int zocl_init_sched(struct drm_zocl_dev *zdev);

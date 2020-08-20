@@ -411,17 +411,42 @@ program_plp(std::shared_ptr<xrt_core::device> dev, const std::string& partition)
 
   std::vector<char> buffer(total_size);
   stream.read(buffer.data(), total_size);
+  //DEBUG-----
   std::cout << "size: " << total_size <<std::endl;
+  for(int i=0; i<10; i++)
+    std::cout << buffer[i];
+  std::cout << std::endl;
+  //----------
 
 	ssize_t ret = total_size;
 	ret = write(fd.get(), buffer.data(), total_size);
+  //DEBUG-----
   std::cout << "ret: " << ret << std::endl;
+  //----------
 
   if (ret != total_size)
     throw xrt_core::error("Write plp to icap subdev failed");
 
-  std::cout << "Programmed PLP successfully" << std::endl;
+  try {
+    auto value = xrt_core::query::rp_program_status::value_type(1);
+    xrt_core::device_update<xrt_core::query::rp_program_status>(dev.get(), value);
+  } catch (const xrt_core::error& e) {
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+  }
 
+  // asynchronously check if the download is complete
+  const static int program_timeout = 60;
+  bool is_pending = true;
+  int retry = 0;
+  while (is_pending && retry < program_timeout) {
+    is_pending = xrt_core::query::rp_program_status::to_bool(xrt_core::device_query<xrt_core::query::rp_program_status>(dev));
+    if (retry == program_timeout)
+      throw xrt_core::error("PLP programmming timed out");
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    retry++;
+  }
+  std::cout << "Programmed PLP successfully" << std::endl;
 }
 
 }
@@ -525,7 +550,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
     for(auto& kd : available_devices) {
       boost::property_tree::ptree& dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
+      std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("board");
     }
     std::cout << std::endl;
     return;
@@ -628,12 +653,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     auto installedDSAs = firmwareImage::getIntalledDSAs();
     for (const auto& dsa : installedDSAs) {
       if (dsa.uuids.size() != 0) {
-        if(dsa.name.compare(plp) == 0)
+        if (dsa.name.compare(plp) == 0 || dsa.matchIntId(plp))
           available_partitions.push_back(dsa);
-        else if (dsa.matchIntId(plp)) {
-          available_partitions.push_back(dsa);
-        }
-          
       }
     }
 

@@ -4,6 +4,8 @@
 
 
 #include "hal_profile.h"
+#include "aie_profile.h"
+#include "noc_profile.h"
 #include "hal_device_offload.h"
 //#include "power_profile.h"
 #include "vart_profile.h"
@@ -39,6 +41,14 @@ CallLogger::CallLogger(uint64_t id)
   if (xrt_core::config::get_data_transfer_trace() != "off")
   {
     xdphaldeviceoffload::load_xdp_hal_device_offload() ;
+  }
+  if (xrt_core::config::get_aie_profile())
+  {
+    xdpaieprofile::load_xdp_aie_plugin() ;
+  }
+  if (xrt_core::config::get_noc_profile()) 
+  {
+    xdpnocprofile::load_xdp_noc_plugin() ;
   }
 #if 0
   if (xrt_core::config::get_power_profile())
@@ -484,7 +494,7 @@ LoadXclbinCallLogger::~LoadXclbinCallLogger()
 // The registration function
 void register_hal_callbacks(void* handle)
 {
-#ifdef XRT_LOAD_XDP_HAL_PLUGIN
+#ifdef XRT_CORE_BUILD_WITH_DL
   typedef void(*ftype)(unsigned, void*) ;
   cb = (ftype)(xrt_core::dlsym(handle, "hal_level_xdp_cb_func")) ;
   if (xrt_core::dlerror() != NULL) cb = nullptr ;
@@ -505,7 +515,7 @@ void warning_hal_callbacks()
 
 void load_xdp_plugin_library(HalPluginConfig* )
 {
-#ifdef XRT_LOAD_XDP_HAL_PLUGIN
+#ifdef XRT_CORE_BUILD_WITH_DL
   static xrt_core::module_loader xdp_hal_loader("xdp_hal_plugin",
 						register_hal_callbacks,
 						warning_hal_callbacks) ;

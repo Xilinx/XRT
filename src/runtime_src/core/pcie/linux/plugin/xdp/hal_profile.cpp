@@ -1,6 +1,8 @@
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_device_offload.h"
 #include "plugin/xdp/power_profile.h"
+#include "plugin/xdp/aie_profile.h"
+#include "plugin/xdp/noc_profile.h"
 #include "plugin/xdp/vart_profile.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
@@ -38,6 +40,14 @@ CallLogger::CallLogger(uint64_t id)
   if (xrt_core::config::get_power_profile())
   {
     xdppowerprofile::load_xdp_power_plugin() ;
+  }
+  if (xrt_core::config::get_aie_profile())
+  {
+    xdpaieprofile::load_xdp_aie_plugin() ;
+  }
+  if (xrt_core::config::get_noc_profile()) 
+  {
+    xdpnocprofile::load_xdp_noc_plugin() ;
   }
   if (xrt_core::config::get_vitis_ai_profile())
   {

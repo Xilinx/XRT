@@ -1561,11 +1561,22 @@ public:
         for(int32_t i = 0; i < map->m_count; i++) {
             if(map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
-
+            
             if(!strncmp((const char*)map->m_mem_data[i].m_tag, "HOST", 4))
                 continue;
 
             if(map->m_mem_data[i].m_used) {
+                // check if the bank has enough memory to allocate
+                // m_size is in KB so convert blockSize (bytes) to KB for comparision
+                if(map->m_mem_data[i].m_size < (blockSize/1024)) {
+                    if (verbose)
+                        std::cout << "WARNING: unable to perform DMA Test on " << map->m_mem_data[i].m_tag
+                            << ". Cannot allocate " << blockSize << " on " << map->m_mem_data[i].m_size 
+                            << " sized bank." << std::endl;
+                    result = -EOPNOTSUPP;
+                    continue;
+                }
+
                 if (verbose) {
                     std::cout << "Data Validity & DMA Test on "
                         << map->m_mem_data[i].m_tag << "\n";

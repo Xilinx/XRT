@@ -273,6 +273,8 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 {
 	struct ip_data *ip;
 	struct xrt_cu_info info;
+	char kname[64];
+	char *kname_p;
 	int err;
 	int i;
 
@@ -299,12 +301,14 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 		info.protocol = xclbin_protocol(ip->properties);
 		info.intr_id = xclbin_intr_id(ip->properties);
 
-		/* TODO: Consider where should we determine CU index in
-		 * the driver.. Right now, user space determine it and let
-		 * driver known by configure command
-		 */
-		info.cu_idx = -1;
 		info.inst_idx = i;
+		/* ip_data->m_name format "<kernel name>:<instance name>",
+		 * where instance name is so called CU name.
+		 */
+		strcpy(kname, ip->m_name);
+		kname_p = &kname[0];
+		strcpy(info.kname, strsep(&kname_p, ":"));
+		strcpy(info.iname, strsep(&kname_p, ":"));
 
 		/* CU sub device is a virtual device, which means there is no
 		 * device tree nodes
@@ -468,6 +472,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	char __user *xclbin = NULL;
 	size_t size_of_header;
 	size_t num_of_sections;
+	void *kernels;
 	uint64_t size = 0;
 	int ret = 0;
 
@@ -604,6 +609,23 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	ret = zocl_update_apertures(zdev);
 	if (ret)
 		goto out0;
+
+	if (zdev->kernels != NULL) {
+		vfree(zdev->kernels);
+		zdev->kernels = NULL;
+	}
+
+	kernels = vmalloc(axlf_obj->za_ksize);
+	if (!kernels) {
+		ret = -ENOMEM;
+		goto out0;
+	}
+	if (copy_from_user(kernels, axlf_obj->za_kernels, axlf_obj->za_ksize)) {
+		ret = -EFAULT;
+		goto out0;
+	}
+	zdev->ksize = axlf_obj->za_ksize;
+	zdev->kernels = kernels;
 
 	if (kds_mode == 1) {
 		subdev_destroy_cu(zdev);

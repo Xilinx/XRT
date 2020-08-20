@@ -656,7 +656,7 @@ static int ulp_clock_update(struct icap *icap, unsigned short *freqs,
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
-	err = xocl_clock_update_freq(xdev, freqs, num_freqs, verify);
+	err = xocl_clock_freq_scaling_by_request(xdev, freqs, num_freqs, verify);
 
 	ICAP_INFO(icap, "returns: %d", err);
 	return err;
@@ -1294,82 +1294,11 @@ end:
 
 static long axlf_set_freqscaling(struct icap *icap)
 {
-	struct clock_freq_topology *freqs = NULL;
-	int clock_type_count = 0;
-	int i = 0;
-	struct clock_freq *freq = NULL;
-	int data_clk_count = 0;
-	int kernel_clk_count = 0;
-	int system_clk_count = 0;
-	unsigned short target_freqs[4] = {0};
-
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
-	if (!icap->xclbin_clock_freq_topology)
-		return 0;
-
-	freqs = icap->xclbin_clock_freq_topology;
-	if (freqs->m_count > 4) {
-		ICAP_ERR(icap, "More than 4 clocks found in clock topology");
-		return -EDOM;
-	}
-
-	/* Error checks - we support 1 data clk (reqd), 1 kernel clock(reqd) and
-	 * at most 2 system clocks (optional/reqd for aws).
-	 * Data clk needs to be the first entry, followed by kernel clock
-	 * and then system clocks
-	 */
-
-	for (i = 0; i < freqs->m_count; i++) {
-		freq = &(freqs->m_clock_freq[i]);
-		if (freq->m_type == CT_DATA)
-			data_clk_count++;
-		if (freq->m_type == CT_KERNEL)
-			kernel_clk_count++;
-		if (freq->m_type == CT_SYSTEM)
-			system_clk_count++;
-	}
-
-	if (data_clk_count != 1) {
-		ICAP_ERR(icap, "Data clock not found in clock topology");
-		return -EDOM;
-	}
-	if (kernel_clk_count != 1) {
-		ICAP_ERR(icap, "Kernel clock not found in clock topology");
-		return -EDOM;
-	}
-	if (system_clk_count > 2) {
-		ICAP_ERR(icap,
-			"More than 2 system clocks found in clock topology");
-		return -EDOM;
-	}
-
-	for (i = 0; i < freqs->m_count; i++) {
-		freq = &(freqs->m_clock_freq[i]);
-		if (freq->m_type == CT_DATA)
-			target_freqs[0] = freq->m_freq_Mhz;
-	}
-
-	for (i = 0; i < freqs->m_count; i++) {
-		freq = &(freqs->m_clock_freq[i]);
-		if (freq->m_type == CT_KERNEL)
-			target_freqs[1] = freq->m_freq_Mhz;
-	}
-
-	clock_type_count = 2;
-	for (i = 0; i < freqs->m_count; i++) {
-		freq = &(freqs->m_clock_freq[i]);
-		if (freq->m_type == CT_SYSTEM)
-			target_freqs[clock_type_count++] = freq->m_freq_Mhz;
-	}
-
-	ICAP_INFO(icap, "set %lu freq, data: %d, kernel: %d, sys: %d, sys1: %d",
-		ARRAY_SIZE(target_freqs), target_freqs[0], target_freqs[1],
-		target_freqs[2], target_freqs[3]);
-	//return set_freqs(icap, target_freqs, ARRAY_SIZE(target_freqs));
-	return ulp_clock_update(icap, target_freqs, ARRAY_SIZE(target_freqs), 0);
+	return xocl_clock_freq_scaling_by_topo(xocl_get_xdev(icap->icap_pdev),
+	    icap->xclbin_clock_freq_topology, 0);
 }
-
 
 static int icap_download_bitstream(struct icap *icap, const struct axlf *axlf)
 {
@@ -1386,7 +1315,7 @@ static int icap_download_bitstream(struct icap *icap, const struct axlf *axlf)
 	 * changed.
 	 */
 	if (!err) {
-		err = xocl_clock_freqscaling(xocl_get_xdev(icap->icap_pdev), true);
+		err = xocl_clock_freq_rescaling(xocl_get_xdev(icap->icap_pdev), true);
 		err = (err == -ENODEV) ? 0 : err;
 	}
 
@@ -1631,6 +1560,8 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct ip_layout *ip_layout = icap->ip_layout;
 	struct xrt_cu_info info;
+	char kname[64];
+	char *kname_p;
 	int err = 0, i;
 
 	/* Let CU controller know the dynamic resources */
@@ -1652,11 +1583,14 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		info.model = XCU_HLS;
 		info.num_res = subdev_info.num_res;
 
-		/* TODO: Consider where should we determine CU index in
-		 * the driver.. Right now, user space determine it and let
-		 * driver known by configure command.
+		/* ip_data->m_name format "<kernel name>:<instance name>",
+		 * where instance name is so called CU name.
 		 */
-		info.cu_idx = -1;
+		strcpy(kname, ip->m_name);
+		kname_p = &kname[0];
+		strcpy(info.kname, strsep(&kname_p, ":"));
+		strcpy(info.iname, strsep(&kname_p, ":"));
+
 		info.inst_idx = i;
 		info.addr = ip->m_base_address;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;

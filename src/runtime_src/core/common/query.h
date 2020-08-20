@@ -48,15 +48,19 @@ struct request
   
   virtual boost::any
   get(const device*) const
-  { throw std::runtime_error("query request requires arguments"); };
+  { throw std::runtime_error("query request requires arguments"); }
 
   virtual boost::any
   get(const device*, const boost::any&) const
-  { throw std::runtime_error("query request does not support one argument"); };
+  { throw std::runtime_error("query request does not support one argument"); }
 
   virtual boost::any
   get(const device*, const boost::any&, const boost::any&) const
-  { throw std::runtime_error("query does not support two arguments"); };
+  { throw std::runtime_error("query does not support two arguments"); }
+
+  virtual void
+  put(const device*, const boost::any&) const
+  { throw std::runtime_error("query update does not support one argument"); }
 };
 
 } // query

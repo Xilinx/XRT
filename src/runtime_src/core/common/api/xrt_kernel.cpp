@@ -36,6 +36,7 @@
 #include "core/common/debug.h"
 #include "core/include/xclbin.h"
 #include "core/include/ert.h"
+#include "core/include/ert_fa.h"
 #include <memory>
 #include <map>
 #include <bitset>
@@ -76,6 +77,29 @@ using namespace std::chrono_literals;
 XCL_DRIVER_DLLESPEC
 int
 xrtRunSetArgV(xrtRunHandle runHandle, int index, const void* value, size_t bytes);
+
+/**
+ * xrtRunGetArgV() - Asynchronous get a specific kernel argument for this run
+ *
+ * @runHandle:  Handle to the run object to modify
+ * @index:      Index of kernel argument to read
+ * @value:      Destination data pointer where argument value is written
+ * @size:       The size of value in bytes.
+ * Return:      0 on success, -1 on error
+ *
+ * Use this API to asynchronously access a specific kernel argument while
+ * kernel is running.  This function reads the register map for the compute
+ * unit associated with this run.  It is an error to read from a run object
+ * associated with multiple compute units.
+ */
+XCL_DRIVER_DLLESPEC
+int
+xrtRunGetArgV(xrtRunHandle runHandle, int index, void* value, size_t bytes);
+
+// C++ run object variant
+XCL_DRIVER_DLLESPEC
+void
+xrtRunGetArgVPP(xrt::run run, int index, void* value, size_t bytes);
 
 /**
  * xrtRunUpdateArgV() - Asynchronous update of kernel argument
@@ -330,7 +354,7 @@ public:
   //
   // Event notification is used when a kernel/run is enqueued in an
   // event graph.  When cmd completes, the event must be notified.
-  // 
+  //
   // The event (stored in the event graph) participates in lifetime
   // of the object that holds on to cmd object.
   void
@@ -698,6 +722,7 @@ class kernel_impl
   std::bitset<128> cumask;             // cumask for command execution
   size_t regmap_size = 0;              // CU register map size
   size_t num_cumasks = 1;              // Required number of command cu masks
+  uint32_t protocol = 0;               // Default opcode
 
   // Traverse xclbin connectivity section and find
   int32_t
@@ -728,13 +753,13 @@ class kernel_impl
   }
 
   unsigned int
-  get_ipidx_or_error(size_t offset) const
+  get_ipidx_or_error(size_t offset, bool force=false) const
   {
     if (ipctxs.size() != 1)
       throw std::runtime_error("Cannot read or write kernel with multiple compute units");
     auto& ipctx = ipctxs.back();
     auto mode = ipctx->get_access_mode();
-    if (mode != ip_context::access_mode::exclusive)
+    if (!force && mode != ip_context::access_mode::exclusive)
       throw std::runtime_error("Cannot read or write kernel with shared access");
 
     if ((offset + sizeof(uint32_t)) > ipctx->get_size())
@@ -742,6 +767,54 @@ class kernel_impl
 
     return ipctx->get_index();
   }
+
+  IP_CONTROL
+  get_ip_control(const std::vector<const ip_data*>& ips)
+  {
+    // assert ( ips.size() >= 1);
+    auto ctrl = IP_CONTROL((ips[0]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+    for (size_t idx = 1; idx < ips.size(); ++idx)
+      if (IP_CONTROL((ips[0]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) != ctrl)
+        throw std::runtime_error("CU control protocol mismatch");
+
+    return ctrl;
+  }
+
+  void
+  encode_compute_units(kernel_command* cmd)
+  {
+    auto ecmd = cmd->get_ert_cmd<ert_packet*>();
+    std::fill(ecmd->data, ecmd->data + num_cumasks, 0);
+
+    for (size_t cu_idx = 0; cu_idx < 128; ++cu_idx) {
+      if (!cumask.test(cu_idx))
+        continue;
+      auto mask_idx = cu_idx / 32;
+      auto idx_in_mask = cu_idx - mask_idx * 32;
+      ecmd->data[mask_idx] |= (1 << idx_in_mask);
+    }
+  }
+
+  void
+  initialize_command_header(ert_start_kernel_cmd* kcmd)
+  {
+    kcmd->extra_cu_masks = num_cumasks - 1;  //  -1 for mandatory mask
+    kcmd->count = num_cumasks + regmap_size;
+    kcmd->opcode = (protocol == FAST_ADAPTER) ? ERT_START_FA : ERT_START_CU;
+    kcmd->type = ERT_CU;
+  }
+
+  void
+  initialize_fadesc(uint32_t* data)
+  {
+    auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
+    desc->status = ERT_FA_UNDEFINED;
+    desc->num_input_entries = 0;
+    desc->input_entry_bytes = 0;
+    desc->num_output_entries = 0;
+    desc->output_entry_bytes = 0;
+  }
+
 
 public:
   // kernel_type - constructor
@@ -774,6 +847,9 @@ public:
     if (ips.empty())
       throw std::runtime_error("No compute units matching '" + nm + "'");
 
+    // set kernel protocol
+    protocol = get_ip_control(ips);
+
     auto cus = xrt_core::xclbin::get_cus(ip_layout);  // sort order
     for (const ip_data* cu : ips) {
       auto itr = std::find(cus.begin(), cus.end(), cu->m_base_address);
@@ -801,6 +877,22 @@ public:
 
   }
 
+  // Initialize kernel command and return pointer to payload
+  // after mandatory static data.
+  uint32_t*
+  initialize_command(kernel_command* cmd)
+  {
+    auto kcmd = cmd->get_ert_cmd<ert_start_kernel_cmd*>();
+    initialize_command_header(kcmd);
+    encode_compute_units(cmd);
+    auto data = kcmd->data + kcmd->extra_cu_masks;
+
+    if (kcmd->opcode == ERT_START_FA)
+      initialize_fadesc(data);
+
+    return data;
+  }
+
   int
   group_id(int argno)
   {
@@ -808,9 +900,9 @@ public:
   }
 
   uint32_t
-  read_register(uint32_t offset) const
+  read_register(uint32_t offset, bool force=false) const
   {
-    auto idx = get_ipidx_or_error(offset);
+    auto idx = get_ipidx_or_error(offset, force);
     uint32_t value = 0;
     if (has_reg_read_write())
       device->core_device->reg_read(idx, offset, &value);
@@ -829,6 +921,15 @@ public:
       device->core_device->xwrite(ipctxs.back()->get_address() + offset, &data, 4);
   }
 
+  // Read 'count' 4 byte registers starting at offset
+  // This API is internal and allows reading from shared IPs
+  void
+  read_register_n(uint32_t offset, size_t count, uint32_t* out)
+  {
+    for (size_t n = 0; n < count; ++n)
+      out[n] = read_register(offset + n * 4, true);
+  }
+
   device_type*
   get_device() const
   {
@@ -839,24 +940,6 @@ public:
   get_core_device() const
   {
     return device->get_core_device();
-  }
-
-  size_t
-  get_regmap_size() const
-  {
-    return regmap_size;
-  }
-
-  size_t
-  get_num_cumasks() const
-  {
-    return num_cumasks;
-  }
-
-  const std::bitset<128>&
-  get_cumask() const
-  {
-    return cumask;
   }
 
   const std::vector<argument>&
@@ -885,21 +968,7 @@ class run_impl
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
-
-  void
-  encode_compute_units(const std::bitset<128>& cus, size_t num_cumasks)
-  {
-    auto ecmd = cmd->get_ert_cmd<ert_packet*>();
-    std::fill(ecmd->data, ecmd->data + num_cumasks, 0);
-    
-    for (size_t cu_idx = 0; cu_idx < 128; ++cu_idx) {
-      if (!cus.test(cu_idx))
-        continue;
-      auto mask_idx = cu_idx / 32;
-      auto idx_in_mask = cu_idx - mask_idx * 32;
-      ecmd->data[mask_idx] |= (1 << idx_in_mask);
-    }
-  }
+  uint32_t* data;                         // command argument data payload @0x0
 
 public:
   void
@@ -914,7 +983,7 @@ public:
   //
   // Event notification is used when a kernel/run is enqueued in an
   // event graph.  When run completes, the event must be notified.
-  // 
+  //
   // The event (stored in the event graph) participates in lifetime
   // of the run object.
   void
@@ -927,18 +996,11 @@ public:
   //
   // @krnl:  kernel object to run
   run_impl(std::shared_ptr<kernel_impl> k)
-    : kernel(std::move(k))                           // share ownership
+    : kernel(std::move(k))                   // share ownership
     , core_device(kernel->get_core_device()) // cache core device
     , cmd(std::make_shared<kernel_command>(kernel->get_device()))
-  {
-    // TODO: consider if execbuf is cleared on return from cache
-    auto kcmd = cmd->get_ert_cmd<ert_start_kernel_cmd*>();
-    kcmd->extra_cu_masks = kernel->get_num_cumasks() - 1;
-    kcmd->count = kernel->get_num_cumasks() + kernel->get_regmap_size();
-    kcmd->opcode = ERT_START_CU;
-    kcmd->type = ERT_CU;
-    encode_compute_units(kernel->get_cumask(), kernel->get_num_cumasks());
-  }
+    , data(kernel->initialize_command(cmd.get()))
+  {}
 
   kernel_impl*
   get_kernel() const
@@ -956,9 +1018,8 @@ public:
   void
   set_arg_value(const argument& arg, const std::vector<uint32_t>& value)
   {
-    auto kcmd = cmd->get_ert_cmd<ert_start_kernel_cmd*>();
     auto cmdidx = arg.offset() / 4;
-    std::copy(value.begin(), value.end(), kcmd->data + cmdidx);
+    std::copy(value.begin(), value.end(), data + cmdidx);
   }
 
   void
@@ -995,6 +1056,14 @@ public:
     auto& arg = kernel->get_arg(index);
     arg.valid_or_error(bytes);
     set_arg_value(arg, value_to_uint32_vector(value, bytes));
+  }
+
+  void
+  get_arg_at_index(size_t index, uint32_t* out, size_t bytes)
+  {
+    auto& arg = kernel->get_arg(index);
+    arg.valid_or_error(bytes);
+    kernel->read_register_n(arg.offset(), bytes / sizeof(uint32_t), out);
   }
 
   void
@@ -1178,7 +1247,7 @@ static std::mutex map_mutex;
 // result in same device object if it exists already.
 //
 // Refactor to share, or better get rid of device_type and fold
-// extension into xrt_core::device  
+// extension into xrt_core::device
 static std::shared_ptr<device_type>
 get_device(xrtDeviceHandle dhdl)
 {
@@ -1429,7 +1498,7 @@ set_event(const std::shared_ptr<event_impl>& event) const
 {
   handle->set_event(event);
 }
-  
+
 kernel::
 kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive)
   : handle(std::make_shared<kernel_impl>
@@ -1768,4 +1837,30 @@ xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
     send_exception_message(ex.what());
     return -1;
   }
+}
+
+int
+xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
+{
+  try {
+    auto run = get_run(rhdl);
+    run->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+
+}
+
+void
+xrtRunGetArgVPP(xrt::run run, int index, void* value, size_t bytes)
+{
+  auto rimpl = run.get_handle();
+  rimpl->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
 }

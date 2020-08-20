@@ -143,6 +143,15 @@ public:
   size() const;
 
   /**
+   * address() - Get the device address of this buffer
+   *
+   * Return: device address of buffer
+   */
+  XCL_DRIVER_DLLESPEC
+  uint64_t
+  address() const;
+
+  /**
    * buffer_export() - Export this buffer
    *
    * Return:  exported buffer handle
@@ -318,6 +327,15 @@ xrtBOFree(xrtBufferHandle handle);
 XCL_DRIVER_DLLESPEC
 size_t
 xrtBOSize(xrtBufferHandle handle);
+
+/**
+ * xrtBOAddr() - Get the physical address of this buffer
+ * @handle:       Buffer handle
+ * Return:        Device address of this BO
+ */
+XCL_DRIVER_DLLESPEC
+uint64_t
+xrtBOAddress(xrtBufferHandle handle);
 
 /**
  * xrtBOSync() - Synchronize buffer contents in requested direction

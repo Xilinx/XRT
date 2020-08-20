@@ -167,6 +167,34 @@ get_power_profile_interval_ms()
   return value ;
 }
 
+inline bool
+get_aie_profile()
+{
+  static bool value = detail::get_bool_value("Debug.aie_profile",false);
+  return value;
+}
+
+inline unsigned int
+get_aie_profile_interval_ms()
+{
+  static unsigned int value = detail::get_uint_value("Debug.aie_profile_interval_ms", 20) ;
+  return value ;
+}
+
+inline bool
+get_noc_profile()
+{
+  static bool value = detail::get_bool_value("Debug.noc_profile",false);
+  return value;
+}
+
+inline unsigned int
+get_noc_profile_interval_ms()
+{
+  static unsigned int value = detail::get_uint_value("Debug.noc_profile_interval_ms", 20);
+  return value;
+}
+
 inline std::string
 get_stall_trace()
 {

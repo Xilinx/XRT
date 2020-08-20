@@ -127,6 +127,9 @@ public:
   int cmpMonVersions(unsigned int major1, unsigned int minor1,
 		     unsigned int major2, unsigned int minor2);
 
+  int xclErrorInject(uint16_t num, uint16_t driver, uint16_t  severity, uint16_t module, uint16_t eclass);
+  int xclErrorClear();
+
 #ifdef XRT_ENABLE_AIE
   zynqaie::Aie *getAieArray();
   void setAieArray(zynqaie::Aie *aie);
