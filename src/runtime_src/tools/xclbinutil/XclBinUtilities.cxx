@@ -700,6 +700,54 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
   }
 }
 
+static void const 
+validateMemoryBankGroupEntries( const unsigned int startGroupMemIndex,
+                                const std::vector<boost::property_tree::ptree> & groupTopology, 
+                                const std::vector<boost::property_tree::ptree> & groupConnectivity)
+{
+  // Were there any memory groups added
+  if (startGroupMemIndex >= groupTopology.size())
+    return;
+
+  // Validate a 1-to-1 relation between group connectivity to group topology group entry
+  for (unsigned int index = 0; index < groupConnectivity.size(); ++index) {
+    const unsigned int argIndex = groupConnectivity[index].get<unsigned int>("arg_index");
+    const unsigned int ipLayoutIndex = groupConnectivity[index].get<unsigned int>("m_ip_layout_index");
+    const unsigned int memIndex = groupConnectivity[index].get<unsigned int>("mem_data_index");
+
+    // If the memory being examined is a group entry, then validate that there
+    // are no other entries associated with connection
+    if (memIndex >= startGroupMemIndex) {
+      for (unsigned int searchIndex = 0; searchIndex < groupConnectivity.size(); ++searchIndex) {
+        // Don't examine the reference entry
+        if (searchIndex == index)
+          continue;
+
+        // We are looking for common IP and argument indexes 
+        if ((groupConnectivity[searchIndex].get<unsigned int>("arg_index") != argIndex) ||
+            (groupConnectivity[searchIndex].get<unsigned int>("m_ip_layout_index") != ipLayoutIndex))
+          continue;
+
+        // Do we have a duplicate entry
+        const unsigned int searchMemIndex = groupConnectivity[searchIndex].get<unsigned int>("mem_data_index");
+        if (searchMemIndex == memIndex) {
+          std::string errMsg = XUtil::format("ERROR: Connection indexes at %d and %d in the GROUP_CONNECTIVITY section are are duplicates of each other.", index, searchIndex);
+          throw std::runtime_error(errMsg);
+        }
+
+        // Memory connectivity is not continuous (when using grouped memories)
+        std::string errMsg = XUtil::format("ERROR: Invalid memory grouping (not continuous).\n"
+                                           "       Connection:\n"
+                                           "           arg_index       : %d\n"
+                                           "           ip_layout_index : %d\n"
+                                           "           mem_data_index  : %d (group)\n"
+                                           "       is also connected to mem_data_index %d.\n", argIndex, ipLayoutIndex, memIndex, searchMemIndex);
+	throw std::runtime_error(errMsg);
+      }
+    }
+  }
+}
+
 static void
 transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::ptree> & connectivity,
                                        std::vector<boost::property_tree::ptree> & groupTopology, 
@@ -747,18 +795,6 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
 
   // Group the memories
   createMemoryBankGroupEntries(possibleGroupConnections, groupTopology, groupConnectivity);
-
-  // Sort our collection by: IP Layout Index, Arugment Index, and Memory Index
-  std::sort(groupConnectivity.begin(), groupConnectivity.end(),
-	    [](boost::property_tree::ptree &a, boost::property_tree::ptree &b) { 
-	    if (a.get<unsigned int>("m_ip_layout_index") != b.get<unsigned int>("m_ip_layout_index"))	// Level 1: Assending order IP Layout Index
-	      return a.get<unsigned int>("m_ip_layout_index") < b.get<unsigned int>("m_ip_layout_index");
-
-	    if (a.get<unsigned int>("arg_index") != b.get<unsigned int>("arg_index"))			// Level 2: Assending order Argument Index 
-	      return a.get<unsigned int>("arg_index") < b.get<unsigned int>("arg_index");
-
-	    return a.get<unsigned int>("mem_data_index") > b.get<unsigned int>("mem_data_index");	// Level 3: Decending order Memory Index
-	    });
 }
 
 
@@ -808,10 +844,16 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
         }
       }
 
-      groupConnectivity = connectivity;
-
       // Transform and group the memories
       transformMemoryBankGroupingCollections(connectivity, groupTopology, groupConnectivity);
+
+      // Perform some DRC checks on the memory grouping and connectivity produced
+      validateMemoryBankGroupEntries((unsigned int) memTopology.size(), groupTopology, groupConnectivity);
+
+      // Merge connectivity information into the group connectivity
+      for (auto & connection : connectivity) {
+	groupConnectivity.push_back(connection);
+      }
 
       // Re-create the property tree, create and re-populate the Group Connectivity section, and add it.
       {
