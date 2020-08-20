@@ -1,5 +1,9 @@
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_device_offload.h"
+#include "plugin/xdp/power_profile.h"
+#include "plugin/xdp/aie_profile.h"
+#include "plugin/xdp/noc_profile.h"
+#include "plugin/xdp/vart_profile.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 #include "core/common/config_reader.h"
@@ -23,7 +27,8 @@ CallLogger::CallLogger(uint64_t id)
 {
   if (hal_plugins_loaded) return ;
   hal_plugins_loaded = true ;
-  
+
+  // This hook is responsible for loading all of the HAL level plugins
   if (xrt_core::config::get_xrt_profile())
   {
     load_xdp_plugin_library(nullptr) ;
@@ -31,6 +36,22 @@ CallLogger::CallLogger(uint64_t id)
   if (xrt_core::config::get_data_transfer_trace() != "off")
   {
     xdphaldeviceoffload::load_xdp_hal_device_offload() ;
+  }
+  if (xrt_core::config::get_power_profile())
+  {
+    xdppowerprofile::load_xdp_power_plugin() ;
+  }
+  if (xrt_core::config::get_aie_profile())
+  {
+    xdpaieprofile::load_xdp_aie_plugin() ;
+  }
+  if (xrt_core::config::get_noc_profile()) 
+  {
+    xdpnocprofile::load_xdp_noc_plugin() ;
+  }
+  if (xrt_core::config::get_vitis_ai_profile())
+  {
+    xdpvartprofile::load_xdp_vart_plugin() ;
   }
 }
 
@@ -176,6 +197,54 @@ CopyBOCallLogger::~CopyBOCallLogger() {
     if (!cb_valid()) return;
     CBPayload payload = {m_local_idcode, 0};
     cb(HalCallbackType::COPY_BO_END, &payload);
+}
+
+GetBOPropCallLogger::GetBOPropCallLogger(xclDeviceHandle handle)
+    : CallLogger()
+{
+    if (!cb_valid()) return;
+    m_local_idcode = xrt_core::utils::issue_id() ;
+
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::GET_BO_PROP_START, &payload);
+}
+
+GetBOPropCallLogger::~GetBOPropCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::GET_BO_PROP_END, &payload);
+}
+
+ExecBufCallLogger::ExecBufCallLogger(xclDeviceHandle handle)
+    : CallLogger()
+{
+    if (!cb_valid()) return;
+    m_local_idcode = xrt_core::utils::issue_id() ;
+
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::EXEC_BUF_START, &payload);
+}
+
+ExecBufCallLogger::~ExecBufCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::EXEC_BUF_END, &payload);
+}
+
+ExecWaitCallLogger::ExecWaitCallLogger(xclDeviceHandle handle)
+    : CallLogger()
+{
+    if (!cb_valid()) return;
+    m_local_idcode = xrt_core::utils::issue_id() ;
+
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::EXEC_WAIT_START, &payload);
+}
+
+ExecWaitCallLogger::~ExecWaitCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::EXEC_WAIT_END, &payload);
 }
 
 UnmgdPwriteCallLogger::UnmgdPwriteCallLogger(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset) 

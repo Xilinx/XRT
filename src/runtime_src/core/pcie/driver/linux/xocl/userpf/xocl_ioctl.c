@@ -319,6 +319,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	struct xocl_dev *xdev = drm_p->xdev;
 	const struct axlf_section_header * dtbHeader = NULL;
 	void *ulp_blob;
+	void *kernels;
 	int rc;
 
 	if (!xocl_is_unified(xdev)) {
@@ -483,6 +484,25 @@ skip1:
 		if (err)
 			goto done;
 	}
+
+	if (XDEV(xdev)->kernels != NULL) {
+		vfree(XDEV(xdev)->kernels);
+		XDEV(xdev)->kernels = NULL;
+	}
+
+	kernels = vmalloc(axlf_ptr->ksize);
+	if (!kernels) {
+		userpf_err(xdev, "Unable to alloc mem for kernels, size=%u\n",
+			   axlf_ptr->ksize);
+		err = -ENOMEM;
+		goto done;
+	}
+	if (copy_from_user(kernels, axlf_ptr->kernels, axlf_ptr->ksize)) {
+		err = -EFAULT;
+		goto done;
+	}
+	XDEV(xdev)->ksize = axlf_ptr->ksize;
+	XDEV(xdev)->kernels = kernels;
 
 	err = xocl_icap_download_axlf(xdev, axlf);
 	if (err) {

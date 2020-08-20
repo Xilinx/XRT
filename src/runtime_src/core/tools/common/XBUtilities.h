@@ -77,6 +77,9 @@ namespace XBUtilities {
                         const boost::property_tree::ptree & _pt);
 
   bool can_proceed();
+  void can_proceed_or_throw(const std::string& info, const std::string& error);
+
+  void sudo_or_throw(const std::string& msg);
   // ---------
   void wrap_paragraph( const std::string & _unformattedString, 
                        unsigned int _indentWidth, 
@@ -92,6 +95,13 @@ namespace XBUtilities {
   void collect_devices( const std::set<std::string>  &_deviceBDFs,
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
+
+  xrt_core::device_collection
+  collect_devices(const std::vector<std::string>& _devices, bool _inUserDomain);
+              
+  xrt_core::device_collection
+  collect_devices(const std::string& _devices, bool _inUserDomain);
+
   boost::property_tree::ptree
   get_available_devices(bool inUserDomain);
   std::string format_base10_shiftdown3(uint64_t value);
@@ -116,7 +126,16 @@ namespace XBUtilities {
    */
   std::vector<std::string> get_uuids(const void *dtbuf);
 
+  int check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std::string &err);
+
   reset_type str_to_enum_reset(const std::string& str);
+
+  /**
+   * string_to_UUID(): convert a string to hyphen formatted UUID
+   * 
+   * Returns: 00000000-0000-0000-0000-000000000000 formatted uuid
+   */
+  std::string string_to_UUID(std::string str);
 };
 
 #endif

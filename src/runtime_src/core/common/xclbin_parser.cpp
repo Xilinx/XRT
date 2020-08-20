@@ -581,11 +581,48 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
   return args;
 }
 
+std::vector<std::string>
+get_kernel_names(const char *xml_data, size_t xml_size)
+{
+  std::vector<std::string> names;
+
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
+    if (xml_kernel.first != "kernel")
+      continue;
+
+    names.push_back(xml_kernel.second.get<std::string>("<xmlattr>.name"));
+  }
+
+  return names;
+}
+
 std::vector<kernel_argument>
 get_kernel_arguments(const axlf* top, const std::string& kname)
 {
   auto xml = get_xml_section(top);
   return get_kernel_arguments(xml.first, xml.second, kname);
+}
+
+std::vector<kernel_object>
+get_kernels(const axlf* top)
+{
+  auto xml = get_xml_section(top);
+  std::vector<kernel_object> kernels;
+
+  auto knames = get_kernel_names(xml.first, xml.second);
+  for (auto& kname : knames) {
+    kernels.emplace_back(kernel_object{
+       kname
+      ,get_kernel_arguments(xml.first, xml.second, kname)
+    });
+  }
+
+  return kernels;
 }
 
 bool

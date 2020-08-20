@@ -36,6 +36,7 @@ class OO_Config : public OptionOptions {
   std::string m_security;
   std::string m_clk_scale;
   std::string m_power_override;
+  std::string m_cs_reset;
   bool m_show;
   bool m_ddr;
   bool m_hbm;

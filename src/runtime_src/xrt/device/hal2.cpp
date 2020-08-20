@@ -217,13 +217,11 @@ get_device_info() const
   return get_device_info_nolock();
 }
 
-std::string
+std::shared_ptr<xrt_core::device>
 device::
-get_bdf() const
+get_core_device() const
 {
-  auto device = xrt_core::get_userpf_device(m_idx);
-  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-  return xrt_core::query::pcie_bdf::to_string(bdf);
+  return xrt_core::get_userpf_device(m_idx);
 }
 
 void

@@ -859,8 +859,8 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 		ret = xocl_icap_ocl_update_clock_freq_topology(lro, clk);
 		if (ret == -ENODEV)
-		    ret = xocl_clock_update_freq(lro, clk->ocl_target_freq,
-		        ARRAY_SIZE(clk->ocl_target_freq), 1);
+			ret = xocl_clock_freq_scaling_by_request(lro,
+			    clk->ocl_target_freq, ARRAY_SIZE(clk->ocl_target_freq), 1);
 
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
@@ -1385,6 +1385,7 @@ static struct pci_driver xclmgmt_driver = {
 
 static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_version_control,
 	xocl_init_iores,
 	xocl_init_flash,
 	xocl_init_mgmt_msix,
@@ -1410,10 +1411,12 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_ulite,
 	xocl_init_calib_storage,
 	xocl_init_pmc,
+	xocl_init_icap_controller,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_version_control,
 	xocl_fini_iores,
 	xocl_fini_flash,
 	xocl_fini_mgmt_msix,
@@ -1439,6 +1442,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_ulite,
 	xocl_fini_calib_storage,
 	xocl_fini_pmc,
+	xocl_fini_icap_controller,
 };
 
 static int __init xclmgmt_init(void)

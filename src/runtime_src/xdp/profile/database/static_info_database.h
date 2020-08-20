@@ -54,6 +54,51 @@ namespace xdp {
     {}
   };
 
+  struct AIECounter {
+    uint32_t id;
+    uint16_t column;
+    uint16_t row;
+    uint8_t counterNumber;
+    uint8_t startEvent;
+    uint8_t endEvent;
+    uint8_t resetEvent;
+    double clockFreqMhz;
+    std::string module;
+    std::string name;
+
+    AIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num, 
+               uint8_t start, uint8_t end, uint8_t reset,
+               double freq, std::string mod, std::string aieName)
+      : id(i),
+        column(col),
+        row(r),
+        counterNumber(num),
+        startEvent(start),
+        endEvent(end),
+        resetEvent(reset),
+        clockFreqMhz(freq),
+        module(mod),
+        name(aieName)
+    {}
+  };
+
+  struct TraceGMIO {
+    uint32_t id;
+    uint16_t shimColumn;
+    uint16_t channelNumber;
+    uint16_t streamId;
+    uint16_t burstLength;
+
+    TraceGMIO(uint32_t i, uint16_t col, uint16_t num, 
+              uint16_t stream, uint16_t len)
+      : id(i),
+        shimColumn(col),
+        channelNumber(num),
+        streamId(stream),
+        burstLength(len)
+    {}
+  };
+
   class ComputeUnitInstance
   {
   private:
@@ -64,7 +109,7 @@ namespace xdp {
     std::string kernelName ;
 
     // In OpenCL, each compute unit is set up with a static workgroup size
-    int dim[3] ;
+    int32_t dim[3] ;
 
     // A mapping of arguments to memory resources
     std::map<int32_t, std::vector<int32_t>> connections ;
@@ -82,9 +127,12 @@ namespace xdp {
     // Getters and setters
     inline const std::string& getName() { return name ; }
     inline const std::string& getKernelName() { return kernelName ; }
+
     inline int32_t getIndex() { return index ; }
     inline std::vector<Monitor*>& getMonitors() { return monitors ; }
+    inline void setDim(int32_t x, int32_t y, int32_t z) { dim[0] = x; dim[1] = y; dim[2] = z; }
     XDP_EXPORT std::string getDim() ;
+
     XDP_EXPORT void addConnection(int32_t, int32_t);
     std::map<int32_t, std::vector<int32_t>>* getConnections()
     {  return &connections; }
@@ -132,16 +180,59 @@ namespace xdp {
     uint64_t deviceId ;
     double maxReadBW ;
     double maxWriteBW ;
+    bool isReady;
     double clockRateMHz;
     bool usesTs2mm ;
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
     std::map<int32_t, ComputeUnitInstance*> cus;
     //uuid        loadedXclbinUUID;
-    std::map<int32_t, Memory*>   memoryInfo;
-    std::vector<Monitor*> aimList;
-    std::vector<Monitor*> amList;
-    std::vector<Monitor*> asmList;
+    std::map<int32_t, Memory*> memoryInfo;
+    std::vector<Monitor*>      aimList;
+    std::vector<Monitor*>      amList;
+    std::vector<Monitor*>      asmList;
+    std::vector<Monitor*>      nocList;
+    std::vector<AIECounter*>   aieList;
+    std::vector<TraceGMIO*>    gmioList;
+
+    bool hasFloatingAIM = false;
+    bool hasFloatingASM = false;
+
+    ~DeviceInfo()
+    {
+      for(auto i : cus) {
+        delete i.second;
+      }
+      cus.clear();
+      for(auto i : memoryInfo) {
+        delete i.second;
+      }
+      memoryInfo.clear();
+      for(auto i : aimList) {
+        delete i;
+      }
+      aimList.clear();
+      for(auto i : amList) {
+        delete i;
+      }
+      amList.clear();
+      for(auto i : asmList) {
+        delete i;
+      }
+      asmList.clear();
+      for(auto i : nocList) {
+        delete i;
+      }
+      nocList.clear();
+      for(auto i : aieList) {
+        delete i;
+      }
+      aieList.clear();
+      for(auto i : gmioList) {
+        delete i;
+      }
+      gmioList.clear();
+    }
   };
 
   class VPStaticDatabase
@@ -187,6 +278,7 @@ namespace xdp {
     bool setXclbinName(DeviceInfo*, const std::shared_ptr<xrt_core::device>& device);
     bool initializeComputeUnits(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
     bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
+    bool initializeAIECounters(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -216,6 +308,13 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId];
+    }
+
+    bool isDeviceReady(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false; 
+      return deviceInfo[deviceId]->isReady;
     }
 
     double getClockRateMHz(uint64_t deviceId)
@@ -338,11 +437,39 @@ namespace xdp {
       return deviceInfo[deviceId]->asmList.size();
     }
 
+    inline uint64_t getNumNOC(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->nocList.size();
+    }
+
+    inline uint64_t getNumAIECounter(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->aieList.size();
+    }
+
+    inline uint64_t getNumTraceGMIO(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->gmioList.size();
+    }
+
     inline Monitor* getAIMonitor(uint64_t deviceId, uint64_t idx)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->aimList[idx];
+    }
+
+    inline std::vector<Monitor*>* getAIMonitors(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return &(deviceInfo[deviceId]->aimList);
     }
 
     inline Monitor* getAMonitor(uint64_t deviceId, uint64_t idx)
@@ -357,6 +484,34 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->asmList[idx];
+    }
+
+    inline Monitor* getNOC(uint64_t deviceId, uint64_t idx)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId]->nocList[idx];
+    }
+
+    inline AIECounter* getAIECounter(uint64_t deviceId, uint64_t idx)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId]->aieList[idx];
+    }
+
+    inline TraceGMIO* getTraceGMIO(uint64_t deviceId, uint64_t idx)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId]->gmioList[idx];
+    }
+    
+    inline std::vector<Monitor*>* getASMonitors(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return &(deviceInfo[deviceId]->asmList);
     }
 
     inline void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size)
@@ -380,6 +535,19 @@ namespace xdp {
     XDP_EXPORT std::vector<std::string> getDeviceNames() ;
     XDP_EXPORT std::vector<DeviceInfo*> getDeviceInfos() ;
     XDP_EXPORT bool hasStallInfo() ;
+    inline bool hasFloatingAIM(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false;
+      return deviceInfo[deviceId]->hasFloatingAIM;
+    }
+
+    inline bool hasFloatingASM(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false;
+      return deviceInfo[deviceId]->hasFloatingASM;
+    }
 
     // Reseting device information whenever a new xclbin is added
     XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;

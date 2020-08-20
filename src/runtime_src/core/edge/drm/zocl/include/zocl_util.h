@@ -13,6 +13,7 @@
 #define _ZOCL_UTIL_H_
 
 #include "kds_core.h"
+#include "zocl_error.h"
 
 #define zocl_err(dev, fmt, args...)     \
 	dev_err(dev, "%s: "fmt, __func__, ##args)
@@ -89,6 +90,11 @@ struct zdev_data {
 	char fpga_driver_name[64];
 };
 
+struct aie_metadata {
+	size_t size;
+	void *data;
+};
+
 struct drm_zocl_dev {
 	struct drm_device       *ddev;
 	struct fpga_manager     *fpga_mgr;
@@ -112,6 +118,7 @@ struct drm_zocl_dev {
 	struct debug_ip_layout	*debug_ip;
 	struct connectivity	*connectivity;
 	struct addr_aperture	*apertures;
+	struct aie_metadata	 aie_data;
 	unsigned int		 num_apts;
 
 	struct kds_sched	 kds;
@@ -135,6 +142,9 @@ struct drm_zocl_dev {
 	struct zocl_xclbin	*zdev_xclbin;
 	struct mutex		zdev_xclbin_lock;
 	struct generic_cu	*generic_cu;
+	int			 ksize;
+	char			*kernels;
+	struct zocl_error	zdev_error;
 };
 
 #endif

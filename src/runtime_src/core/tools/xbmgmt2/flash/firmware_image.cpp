@@ -38,7 +38,6 @@
 #ifdef _WIN32
 # pragma warning( disable : 4189 )
 #define be32toh ntohl
-#define PALIGN(p, a) (const char*)NULL //to-do
 #endif
 
 #define hex_digit "([0-9a-fA-F]+)"
@@ -51,10 +50,8 @@
 #define FDT_NOP         0x4
 #define FDT_END         0x9
 
-#ifdef __GNUC__
 #define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
-#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long)(p), (a))))
-#endif
+#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long long)(p), (a))))
 #define GET_CELL(p)     (p += 4, *((const uint32_t *)(p-4)))
 
 struct fdt_header {
@@ -307,7 +304,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
             dtbbuf = std::shared_ptr<char>(new char[dtbSection->m_sectionSize]);
             in.seekg(dtbSection->m_sectionOffset);
             in.read(dtbbuf.get(), dtbSection->m_sectionSize);
-	    getUUIDFromDTB(dtbbuf.get(), timestamp, uuids);
+            getUUIDFromDTB(dtbbuf.get(), timestamp, uuids);
         }
         // For 2RP platform, only UUIDs are provided
         //timestamp = ap->m_header.m_featureRomTimeStamp;

@@ -108,9 +108,9 @@ static bool
 is_supported_kernel_version(std::ostream &ostr)
 {
     std::vector<std::string> ubuntu_kernel_versions =
-        { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0" };
+        { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0", "5.4.0" };
     std::vector<std::string> centos_rh_kernel_versions =
-        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062", "3.10.0-1127", "4.18.0-147" };
+        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062", "3.10.0-1127", "4.18.0-147", "4.18.0-193" };
     const std::string os = sensor_tree::get<std::string>("system.linux", "N/A");
 
     if(os.find("Ubuntu") != std::string::npos)
@@ -2069,8 +2069,9 @@ static int m2m_alloc_init_bo(xclDeviceHandle handle, unsigned &boh,
         return -EINVAL;
     }
     memset(boptr, pattern, boSize);
-    if(xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, boSize, 0)) {
-        std::cout << "ERROR: Unable to sync BO" << std::endl;
+    int err = xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, boSize, 0);
+    if (err) {
+        std::cout << "ERROR: Unable to sync BO, err: " << err << std::endl;
         m2m_free_unmap_bo(handle, boh, boptr, boSize);
         return -EINVAL;
     }

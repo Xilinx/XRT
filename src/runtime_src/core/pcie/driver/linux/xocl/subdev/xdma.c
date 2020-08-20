@@ -79,7 +79,8 @@ static ssize_t xdma_migrate_bo(struct platform_device *pdev,
 		return ret;
 	}
 
-	xocl_err(&pdev->dev, "DMA failed, Dumping SG Page Table");
+	xocl_err(&pdev->dev, "DMA failed, Dumping SG Page Table, ep addr %llx",
+		paddr);
 	for (i = 0; i < nents; i++, sg = sg_next(sg)) {
         if (!sg)
             break;
@@ -369,7 +370,7 @@ static int xdma_probe(struct platform_device *pdev)
 
 	xdma->dma_handle = xdma_device_open(XOCL_MODULE_NAME, XDEV(xdev)->pdev,
 			&xdma->max_user_intr,
-			&xdma->channel, &xdma->channel);
+			&xdma->channel, &xdma->channel, false);
 	if (xdma->dma_handle == NULL) {
 		xocl_err(&pdev->dev, "XDMA Device Open failed");
 		ret = -EIO;

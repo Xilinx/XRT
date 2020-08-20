@@ -460,6 +460,7 @@ public:
     ssize_t queue_submit_io(xclQueueRequest *wr, aio_context_t *mAioCtx)
     {
         ssize_t rc = 0;
+        int error = 0;
         bool aio = (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) ? true : false;
 
         if (qAioBatchEn) {
@@ -494,27 +495,32 @@ public:
 
                 prepare_io(&cb, iov, &header, wr->bufs[i].va, wr->bufs[i].len,
 			 (uint64_t)wr->priv_data);
-                int rv = io_submit(*aio_ctx, 1, cbs);
-                if (rv <= 0)
+                error = io_submit(*aio_ctx, 1, cbs);
+                if (error <= 0)
                     break;
-                rc++;
+                rc += wr->bufs[i].len;
             }
             std::lock_guard<std::mutex> lk(reqLock);
-            cbSubmitCnt += rc;
+            cbSubmitCnt += wr->buf_num;
         } else {
             for (unsigned int i = 0; i < wr->buf_num; i++) {
                 struct iovec iov[2];
+		ssize_t rv;
+
                 prepare_io(nullptr, iov, &header, wr->bufs[i].va, wr->bufs[i].len, 0);
                 if (h2c)
-                    rc = writev((int)qhndl, iov, 2);
+                    rv = writev((int)qhndl, iov, 2);
                 else
-                    rc = readv((int)qhndl, iov, 2);
+                    rv = readv((int)qhndl, iov, 2);
 
-                if (rc < 0 || (size_t)rc != wr->bufs[i].len)
-                    return rc;
+                if (rv < 0) {
+			error = rv;
+			break;
+		}
+		rc += rv;
             }
         }
-        return rc;
+        return (rc > 0) ? rc : error;
     }
 
 }; /* queue_cb */
@@ -575,6 +581,8 @@ int shim::dev_init()
     mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
 
     mStreamHandle = mDev->open("dma.qdma", O_RDWR | O_SYNC);
+    if (mStreamHandle <= 0)
+       mStreamHandle = mDev->open("dma.qdma4", O_RDWR | O_SYNC);
     memset(&mAioContext, 0, sizeof(mAioContext));
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
 
@@ -883,10 +891,7 @@ int shim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, 
     return ret ? -errno : ret;
 }
 
-/*
- * xclCopyBO()
- */
-int shim::xclCopyBO(unsigned int dst_bo_handle,
+int shim::execbufCopyBO(unsigned int dst_bo_handle,
     unsigned int src_bo_handle, size_t size, size_t dst_offset,
     size_t src_offset)
 {
@@ -896,7 +901,7 @@ int shim::xclCopyBO(unsigned int dst_bo_handle,
 
     int ret = xclExecBuf(bo.first);
     if (ret) {
-        mCmdBOCache->release(bo);
+        mCmdBOCache->release<ert_start_copybo_cmd>(bo);
         return ret;
     }
 
@@ -910,8 +915,36 @@ int shim::xclCopyBO(unsigned int dst_bo_handle,
     ret = (ret == -1) ? -errno : 0;
     if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
         ret = -EINVAL;
+
     mCmdBOCache->release<ert_start_copybo_cmd>(bo);
     return ret;
+}
+
+int shim::m2mCopyBO(unsigned int dst_bo_handle,
+    unsigned int src_bo_handle, size_t size, size_t dst_offset,
+    size_t src_offset)
+{
+    drm_xocl_copy_bo m2m = {
+	    .dst_handle = dst_bo_handle,
+	    .src_handle = src_bo_handle,
+	    .size = size,
+	    .dst_offset = dst_offset,
+	    .src_offset = src_offset,
+    };
+
+    return mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_COPY_BO, &m2m);
+}
+
+/*
+ * xclCopyBO()
+ */
+int shim::xclCopyBO(unsigned int dst_bo_handle,
+    unsigned int src_bo_handle, size_t size, size_t dst_offset,
+    size_t src_offset)
+{
+    return (!mDev->get_sysfs_path("m2m", "").empty()) ?
+        m2mCopyBO(dst_bo_handle, src_bo_handle, size, dst_offset, src_offset) :
+        execbufCopyBO(dst_bo_handle, src_bo_handle, size, dst_offset, src_offset);
 }
 
 int shim::xclUpdateSchedulerStat()
@@ -1137,17 +1170,13 @@ int shim::p2pEnable(bool enable, bool force)
 
     /* write 0 to config for default bar size */
     if (enable) {
-        mDev->sysfs_put("p2p", "config", err, "0");
-        if (!err.empty()) { 
-            throw std::runtime_error("P2P is not supported");
-        }
-     } else {
-        mDev->sysfs_put("p2p", "config", err, "-1");
-        if (!err.empty()) { 
-            throw std::runtime_error("P2P is not supported");
-        }
-     }
-
+        mDev->sysfs_put("p2p", "p2p_enable", err, "1");
+    } else {
+        mDev->sysfs_put("p2p", "p2p_enable", err, "0");
+    }
+    if (!err.empty()) {
+        throw std::runtime_error("P2P is not supported");
+    }
 
     if (force) {
         dev_fini();
@@ -1349,8 +1378,68 @@ int shim::xclLoadXclBin(const xclBin *buffer)
 int shim::xclLoadAxlf(const axlf *buffer)
 {
     xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
+    drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer), 0};
+    int off = 0;
 
-    drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer)};
+    auto kernels = xrt_core::xclbin::get_kernels(buffer);
+    /* Calculate size of kernels */
+    for (auto& kernel : kernels) {
+        axlf_obj.ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
+
+    /* To enhance CU subdevice and KDS/ERT, driver needs all details about kernels
+     * while load xclbin.
+     *
+     * Why we extract data from XML metadata?
+     *  1. Kernel is NOT a good place to parse xml. It prefers binary.
+     *  2. All kernel details are in the xml today.
+     *
+     * What would happen in the future?
+     *  XCLBIN would contain fdt as metadata. At that time, this
+     *  could be removed.
+     *
+     * Binary format:
+     * +-----------------------+
+     * | Kernel[0]             |
+     * |   name[64]            |
+     * |   anums               |
+     * |   argument[0]         |
+     * |   argument[1]         |
+     * |   argument[...]       |
+     * |-----------------------|
+     * | Kernel[1]             |
+     * |   name[64]            |
+     * |   anums               |
+     * |   argument[0]         |
+     * |   argument[1]         |
+     * |   argument[...]       |
+     * |-----------------------|
+     * | Kernel[...]           |
+     * |   ...                 |
+     * +-----------------------+
+     */
+    std::vector<char> krnl_binary(axlf_obj.ksize);
+    axlf_obj.kernels = krnl_binary.data();
+    for (auto& kernel : kernels) {
+        auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.kernels + off);
+        strcpy(krnl->name, kernel.name.c_str());
+        krnl->anums = kernel.args.size();
+
+        int ai = 0;
+        for (auto& arg : kernel.args) {
+            strcpy(krnl->args[ai].name, arg.name.c_str());
+            krnl->args[ai].offset = arg.offset;
+            krnl->args[ai].size   = arg.size;
+            // XCLBIN doesn't define argument direction yet and it only support
+            // input arguments.
+            // Driver use 1 for input argument and 2 for output.
+            // Let's refine this line later.
+            krnl->args[ai].dir    = 1;
+            ai++;
+        }
+        off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
+
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
     if(ret)
         return -errno;
@@ -2505,6 +2594,9 @@ ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t 
 
 int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)
 {
+#ifdef ENABLE_HAL_PROFILING
+  GET_BO_PROP_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclGetBOProperties(boHandle, properties) : -ENODEV;
 }
@@ -2524,6 +2616,9 @@ int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * secti
 
 int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 {
+#ifdef ENABLE_HAL_PROFILING
+  EXEC_BUF_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
 }
@@ -2542,11 +2637,14 @@ int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, i
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
+#ifdef ENABLE_HAL_PROFILING
+  EXEC_WAIT_CB;
+#endif
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
 }
 
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;
@@ -2559,10 +2657,14 @@ int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;
+#endif
+
+#ifdef ENABLE_HAL_PROFILING
+  CLOSE_CONTEXT_CB;
 #endif
 
   xocl::shim *drv = xocl::shim::handleCheck(handle);

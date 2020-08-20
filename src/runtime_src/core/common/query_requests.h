@@ -66,24 +66,37 @@ enum class key_type
   rom_time_since_epoch,
 
   xclbin_uuid,
+  group_topology,
+  memstat,
+  memstat_raw,
+  temp_by_mem_topology,
   mem_topology_raw,
   ip_layout_raw,
+  clock_freq_topology_raw,
+  dma_stream,
 
   xmc_version,
   xmc_board_name,
   xmc_serial_num,
   xmc_max_power,
   xmc_bmc_version,
+  expected_bmc_version,
   xmc_status,
   xmc_reg_base,
-  expected_bmc_version,
+  xmc_scaling_enabled,
+  xmc_scaling_override,
+  xmc_scaling_reset,
+
+  m2m,
 
   dna_serial_num,
   clock_freqs_mhz,
   idcode,
+  data_retention,
+  sec_level,
 
   status_mig_calibrated,
-  status_p2p_enabled,
+  p2p_config,
 
   temp_card_top_front,
   temp_card_top_rear,
@@ -148,7 +161,10 @@ enum class key_type
   firewall_status,
   firewall_time_sec,
   power_microwatts,
+  host_mem_size, 
+  kds_numcdmas,
 
+  mig_cache_update,
   mig_ecc_enabled,
   mig_ecc_status,
   mig_ecc_ce_cnt,
@@ -158,11 +174,14 @@ enum class key_type
 
   flash_bar_offset,
   is_mfg,
+  is_ready,
   f_flash_type,
   flash_type,
   board_name,
   interface_uuids,
   logic_uuids,
+
+  aie_metadata,
   noop
 
 };
@@ -522,6 +541,54 @@ struct xclbin_uuid : request
   get(const device*) const = 0;
 };
 
+struct group_topology : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::group_topology;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct temp_by_mem_topology : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::temp_by_mem_topology;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct memstat : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::memstat;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct memstat_raw : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::memstat_raw;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct dma_stream : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::dma_stream;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual boost::any
+  get(const device*, const boost::any&) const = 0;
+};
+
 struct mem_topology_raw : request
 {
   using result_type = std::vector<char>;
@@ -531,10 +598,28 @@ struct mem_topology_raw : request
   get(const device*) const = 0;
 };
 
+struct aie_metadata : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::aie_metadata;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct ip_layout_raw : request
 {
   using result_type = std::vector<char>;
   static const key_type key = key_type::ip_layout_raw;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct clock_freq_topology_raw : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::clock_freq_topology_raw;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -654,6 +739,58 @@ struct xmc_reg_base : request
   get(const device*) const = 0;
 };
 
+struct xmc_scaling_enabled : request
+{
+  using result_type = bool;       // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xmc_scaling_enabled;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct xmc_scaling_override: request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+  static const key_type key = key_type::xmc_scaling_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+};
+
+struct xmc_scaling_reset : request
+{
+  using value_type = std::string;   // put value type
+  static const key_type key = key_type::xmc_scaling_reset;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct m2m : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::m2m;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static bool
+  to_bool(const result_type& value)
+  {
+    return (value == std::numeric_limits<uint32_t>::max())
+      ? false : value;
+  }
+};
+
 struct dna_serial_num : request
 {
   using result_type = std::string;
@@ -703,6 +840,40 @@ struct idcode : request
   }
 };
 
+struct data_retention : request
+{
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::data_retention;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+  static bool
+  to_bool(const result_type& value)
+  {
+    return (value == std::numeric_limits<uint32_t>::max())
+      ? false : value;
+  }
+};
+
+struct sec_level : request
+{
+  using result_type = uint16_t;   // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::sec_level;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
 struct status_mig_calibrated : request
 {
   using result_type = bool;
@@ -719,19 +890,20 @@ struct status_mig_calibrated : request
   }
 };
 
-struct status_p2p_enabled : request
+struct p2p_config : request
 {
-  using result_type = bool;
-  static const key_type key = key_type::status_p2p_enabled;
-  static const char* name() { return "p2p_enabled"; }
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::p2p_config;
+  static const char* name() { return "p2p_config"; }
 
   virtual boost::any
   get(const device*) const = 0;
 
-  static result_type
-  to_string(result_type value)
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
   {
-    return value ? "true" : "false";
+    return value;
   }
 };
 
@@ -1524,6 +1696,51 @@ struct power_microwatts : request
   }
 };
 
+struct host_mem_size : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::host_mem_size;
+  static const char* name() { return "host_mem_size"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
+};
+
+struct kds_numcdmas : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::kds_numcdmas;
+  static const char* name() { return "kds_numcdmas"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
+};
+
+struct mig_cache_update : request
+{
+  using result_type = std::string;
+  using value_type = std::string;   // put value type
+  static const key_type key = key_type::mig_cache_update;
+
+  virtual boost::any
+  get(const device*, const boost::any&) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
 struct mig_ecc_enabled : request
 {
   using result_type = bool;
@@ -1578,19 +1795,19 @@ struct mig_ecc_ue_ffa : request
   get(const device*, const boost::any&) const = 0;
 };
 
-struct flash_bar_offset : request
+struct is_mfg : request
 {
-  using result_type = uint64_t;
-  static const key_type key = key_type::flash_bar_offset;
+  using result_type = bool;
+  static const key_type key = key_type::is_mfg;
 
   virtual boost::any
   get(const device*) const = 0;
 };
 
-struct is_mfg : request
+struct is_ready : request
 {
   using result_type = bool;
-  static const key_type key = key_type::is_mfg;
+  static const key_type key = key_type::is_ready;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1625,6 +1842,15 @@ struct board_name : request
 {
   using result_type = std::string;
   static const key_type key = key_type::board_name;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct flash_bar_offset : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::flash_bar_offset;
 
   virtual boost::any
   get(const device*) const = 0;

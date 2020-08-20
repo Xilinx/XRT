@@ -154,7 +154,6 @@ def runKernel(opt):
 
 
 def main(args):
-    os.environ["Runtime.xrt_bo"] = "true"
     opt = Options()
     Options.getOptions(opt, args)
 
@@ -178,7 +177,7 @@ def main(args):
         print("FAILED TEST")
         sys.exit(1)
     finally:
-        xclClose(opt.handle)
+        xrtDeviceClose(opt.handle)
 
 if __name__ == "__main__":
     main(sys.argv)

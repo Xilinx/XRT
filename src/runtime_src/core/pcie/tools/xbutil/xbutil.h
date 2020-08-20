@@ -464,7 +464,7 @@ public:
               std::string str = std::to_string(percentage).substr(0, 4) + "%";
 
               ss << " [" << index << "] "
-                 << std::setw(16 - (std::to_string(index).length()) - 4)
+                 << std::setw(24 - (std::to_string(index).length()) - 4)
                  << std::left << tag
                  << "[ " << std::right << std::setw(nums_fiftieth)
                  << std::setfill('|') << (nums_fiftieth ? " ":"")
@@ -516,12 +516,13 @@ public:
         uint64_t memoryUsage, boCount;
         auto dev = pcidev::get_dev(m_idx);
 
-        dev->sysfs_get("icap", "mem_topology", errmsg, buf);
+        dev->sysfs_get("icap", "group_topology", errmsg, buf);
         dev->sysfs_get("", "memstat_raw", errmsg, mm_buf);
         dev->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
-
+ 
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
+        const int temp_size = (uint32_t)temp_buf.size()/sizeof(uint32_t);
 
         if(buf.empty() || mm_buf.empty())
             return;
@@ -600,7 +601,7 @@ public:
             ss >> memoryUsage >> boCount;
 
             ptMem.put( "type",      str );
-            ptMem.put( "temp",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
+            ptMem.put( "temp",      (i >= temp_size) ? XCL_NO_SENSOR_DEV : temp[i]);
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",      xrt_core::utils::unit_convert(map->m_mem_data[i].m_size << 10) );
@@ -617,7 +618,7 @@ public:
     {
         std::stringstream ss;
 
-        ss << std::left << std::setw(48) << "Mem Topology"
+        ss << std::left << std::setw(54) << "Mem Topology"
             << std::setw(32) << "Device Memory Usage" << "\n";
         auto dev = pcidev::get_dev(m_idx);
         if(!dev){
@@ -627,7 +628,7 @@ public:
         }
 
         try {
-           ss << std::setw(17) << "Tag"  << std::setw(12) << "Type"
+           ss << std::setw(23) << "Tag"  << std::setw(12) << "Type"
               << std::setw(9) << "Temp" << std::setw(10) << "Size";
            ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
               << "\n";
@@ -659,7 +660,7 @@ public:
                 continue;
 
               ss   << " [" << std::right << index << "] "
-                   << std::setw(17 - (std::to_string(index).length()) - 4)
+                   << std::setw(23 - (std::to_string(index).length()) - 4)
                    << std::left << tag
                    << std::setw(12) << type
                    << std::setw(9) << temp
@@ -1259,7 +1260,7 @@ public:
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::left << "Memory Status" << std::endl;
-        ostr << std::setw(17) << "     Tag"  << std::setw(12) << "Type"
+        ostr << std::setw(25) << "     Tag"  << std::setw(12) << "Type"
              << std::setw(9)  << "Temp(C)"   << std::setw(8)  << "Size";
         ostr << std::setw(16) << "Mem Usage" << std::setw(8)  << "BO count" << std::endl;
 
@@ -1287,7 +1288,7 @@ public:
               }
               ostr << std::left
                    << "[" << std::right << std::setw(2) << index << "] " << std::left
-                   << std::setw(12) << tag
+                   << std::setw(20) << tag
                    << std::setw(12) << type
                    << std::setw(9) << temp
                    << std::setw(8) << size
@@ -1560,8 +1561,22 @@ public:
         for(int32_t i = 0; i < map->m_count; i++) {
             if(map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
+            
+            if(!strncmp((const char*)map->m_mem_data[i].m_tag, "HOST", 4))
+                continue;
 
             if(map->m_mem_data[i].m_used) {
+                // check if the bank has enough memory to allocate
+                // m_size is in KB so convert blockSize (bytes) to KB for comparision
+                if(map->m_mem_data[i].m_size < (blockSize/1024)) {
+                    if (verbose)
+                        std::cout << "WARNING: unable to perform DMA Test on " << map->m_mem_data[i].m_tag
+                            << ". Cannot allocate " << blockSize << " on " << map->m_mem_data[i].m_size 
+                            << " sized bank." << std::endl;
+                    result = -EOPNOTSUPP;
+                    continue;
+                }
+
                 if (verbose) {
                     std::cout << "Data Validity & DMA Test on "
                         << map->m_mem_data[i].m_tag << "\n";

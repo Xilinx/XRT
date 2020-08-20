@@ -161,15 +161,32 @@ void xocl_update_mig_cache(struct xocl_dev *xdev)
 
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
-	return xocl_dma_intr_config(xdev_hdl, intr, en);
+	int ret;
+
+	ret = xocl_dma_intr_config(xdev_hdl, intr, en);
+	if (ret != -ENODEV)
+		return ret;
+
+	return xocl_msix_intr_config(xdev_hdl, intr, en);
 }
 
 static int userpf_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 		irq_handler_t handler, void *arg)
 {
-	return handler ?
+	int ret;
+
+	pr_info("REGISTER INTERRUPT \n");
+	ret = handler ?
 		xocl_dma_intr_register(xdev_hdl, intr, handler, arg, -1) :
 		xocl_dma_intr_unreg(xdev_hdl, intr);
+	if (ret != -ENODEV)
+		return ret;
+
+	pr_info("REGISTER MSIX \n");
+
+	return handler ?
+		xocl_msix_intr_register(xdev_hdl, intr, handler, arg, -1) :
+		xocl_msix_intr_unreg(xdev_hdl, intr);
 }
 
 struct xocl_pci_funcs userpf_pci_ops = {
@@ -1340,7 +1357,6 @@ unlock:
 	return err;
 }
 
-
 int xocl_userpf_probe(struct pci_dev *pdev,
 		const struct pci_device_id *ent)
 {
@@ -1509,6 +1525,7 @@ static struct pci_driver userpf_driver = {
 /* INIT */
 static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_version_control,
 	xocl_init_iores,
 	xocl_init_xdma,
 	xocl_init_qdma,
@@ -1531,15 +1548,22 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_trace_funnel,
 	xocl_init_trace_s2mm,
 	xocl_init_mem_hbm,
+	/* Initial intc sub-device before CU/ERT sub-devices */
+	xocl_init_intc,
 	xocl_init_cu,
 	xocl_init_addr_translator,
 	xocl_init_p2p,
 	xocl_init_spc,
 	xocl_init_lapc,
+	xocl_init_msix_xdma,
+	xocl_init_ert_user,
+	xocl_init_ert_30,
+	xocl_init_m2m,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_version_control,
 	xocl_fini_iores,
 	xocl_fini_xdma,
 	xocl_fini_qdma,
@@ -1563,10 +1587,16 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_trace_s2mm,
 	xocl_fini_mem_hbm,
 	xocl_fini_cu,
+	/* Remove intc sub-device after CU/ERT sub-devices */
+	xocl_fini_intc,
 	xocl_fini_addr_translator,
 	xocl_fini_p2p,
 	xocl_fini_spc,
 	xocl_fini_lapc,
+	xocl_fini_msix_xdma,
+	xocl_fini_ert_user,
+	xocl_fini_ert_30,
+	xocl_fini_m2m,
 };
 
 static int __init xocl_init(void)

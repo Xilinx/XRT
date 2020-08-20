@@ -72,6 +72,23 @@ struct mfg
   }
 };
 
+struct ready
+{
+  using result_type = bool;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return true;
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return true;
+  }
+};
+
 struct board_name
 {
   using result_type = std::string;
@@ -86,40 +103,6 @@ struct board_name
   mgmt(const xrt_core::device* device, key_type key)
   {
     return "TO-DO";
-  }
-};
-
-struct logic_uuids
-{
-  using result_type = std::vector<std::string>;
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return std::vector<std::string>{"TO-DO"};
-  }
-
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return std::vector<std::string>{"TO-DO"};
-  }
-};
-
-struct interface_uuids
-{
-  using result_type = std::vector<std::string>;
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return std::vector<std::string>{"TO-DO"};
-  }
-
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return std::vector<std::string>{"TO-DO"};
   }
 };
 
@@ -611,7 +594,7 @@ struct bdf
 
 struct info
 {
-  using result_type = uint16_t;
+  using result_type = boost::any;
 
   static result_type
   user(const xrt_core::device* device, key_type key)
@@ -635,13 +618,13 @@ struct info
 
     switch (key) {
     case key_type::pcie_vendor:
-      return info.Vendor;
+      return static_cast<query::pcie_vendor::result_type>(info.Vendor);
     case key_type::pcie_device:
-      return info.Device;
+      return static_cast<query::pcie_device::result_type>(info.Device);
     case key_type::pcie_subsystem_vendor:
-      return info.SubsystemVendor;
+      return static_cast<query::pcie_subsystem_vendor::result_type>(info.SubsystemVendor);
     case key_type::pcie_subsystem_id:
-      return info.SubsystemDevice;
+      return static_cast<query::pcie_subsystem_id::result_type>(info.SubsystemDevice);
     default:
       throw std::runtime_error("device_windows::info_user() unexpected qr");
     }
@@ -669,16 +652,54 @@ struct info
 
     switch (key) {
     case key_type::pcie_vendor:
-      return info.pcie_info.vendor;
+      return static_cast<query::pcie_vendor::result_type>(info.pcie_info.vendor);
     case key_type::pcie_device:
-      return info.pcie_info.device;
+      return static_cast<query::pcie_device::result_type>(info.pcie_info.device);
     case key_type::pcie_subsystem_vendor:
-      return info.pcie_info.subsystem_vendor;
+      return static_cast<query::pcie_subsystem_vendor::result_type>(info.pcie_info.subsystem_vendor);
     case key_type::pcie_subsystem_id:
-      return info.pcie_info.subsystem_device;
+      return static_cast<query::pcie_subsystem_id::result_type>(info.pcie_info.subsystem_device);
+    case key_type::interface_uuids:
+      return std::vector<std::string>{ std::string(info.interface_uuid) };
+    case key_type::logic_uuids:
+      return std::vector<std::string>{ std::string(info.logic_uuid) };
+    case key_type::xmc_reg_base:
+      return info.xmc_offset;
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
+  }
+};
+
+struct flash_bar_offset
+{
+  using result_type = uint64_t;
+
+  static result_type
+  user(const xrt_core::device* device, key_type)
+  {
+	  return 0;
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type)
+  {
+    auto init_addr = [](const xrt_core::device* dev) {
+      uint64_t addr;
+      mgmtpf::get_flash_addr(dev->get_mgmt_handle(), addr);
+      return addr;
+    };
+
+    static std::map<const xrt_core::device*, uint64_t> info_map;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = info_map.find(device);
+    if (it == info_map.end()) {
+      auto ret = info_map.emplace(device,init_addr(device));
+      it = ret.first;
+    }
+
+    return (*it).second;
   }
 };
 
@@ -818,6 +839,9 @@ initialize_query_table()
   emplace_function0_getter<query::pcie_device,               info>();
   emplace_function0_getter<query::pcie_subsystem_vendor,     info>();
   emplace_function0_getter<query::pcie_subsystem_id,         info>();
+  emplace_function0_getter<query::interface_uuids,           info>();
+  emplace_function0_getter<query::logic_uuids,               info>();
+  emplace_function0_getter<query::xmc_reg_base,              info>();
   emplace_function0_getter<query::pcie_bdf,                  bdf>();
   emplace_function0_getter<query::rom_vbnv,                  rom>();
   emplace_function0_getter<query::rom_ddr_bank_size_gb,      rom>();
@@ -856,7 +880,7 @@ initialize_query_table()
   emplace_function0_getter<query::v3v3_vcc_millivolts,       sensor>();
   emplace_function0_getter<query::hbm_1v2_millivolts,        sensor>();
   emplace_function0_getter<query::v2v5_vpp_millivolts,       sensor>();
-  emplace_function0_getter<query::int_vcc_io_millivolts,   sensor>();
+  emplace_function0_getter<query::int_vcc_io_millivolts,     sensor>();
   emplace_function0_getter<query::temp_card_top_front,       sensor>();
   emplace_function0_getter<query::temp_card_top_rear,        sensor>();
   emplace_function0_getter<query::temp_card_bottom_front,    sensor>();
@@ -890,7 +914,9 @@ initialize_query_table()
   emplace_function0_getter<query::f_flash_type,              flash>();
   emplace_function0_getter<query::flash_type,                flash>();
   emplace_function0_getter<query::is_mfg,                    mfg>();
+  emplace_function0_getter<query::is_ready,                  ready>();
   emplace_function0_getter<query::board_name,                board_name>();
+  emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
 }
 
 struct X { X() { initialize_query_table(); }};

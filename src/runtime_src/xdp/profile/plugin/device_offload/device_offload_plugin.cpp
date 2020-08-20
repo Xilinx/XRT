@@ -27,6 +27,7 @@
 #include "xdp/profile/database/events/creator/device_event_trace_logger.h"
 
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 
 // Anonymous namespace for helper functions
 namespace {
