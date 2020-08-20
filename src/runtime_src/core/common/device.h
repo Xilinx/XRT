@@ -298,6 +298,14 @@ device_query(const device* device)
   return boost::any_cast<typename QueryRequestType::result_type>(ret);
 }
 
+template <typename QueryRequestType, typename ...Args>
+inline typename QueryRequestType::result_type
+device_query(const device* device, Args&&... args)
+{
+  auto ret = device->query<QueryRequestType>(std::forward<Args>(args)...);
+  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+}
+
 template <typename QueryRequestType>
 inline typename QueryRequestType::result_type
 device_query(const std::shared_ptr<device>& device)
