@@ -276,6 +276,18 @@ XCL_DRIVER_DLLESPEC int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_
  */
 XCL_DRIVER_DLLESPEC int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd);
 
+/**
+ * xclErrorClear() - Clear all asynchronous error records in driver
+ *
+ * @handle:     Device handle
+ * Return:      0 or appropriate error number
+ *
+ * Note: this API needs root privilege
+ */
+XCL_DRIVER_DLLESPEC
+int
+xclErrorClear(xclDeviceHandle handle);
+
 #ifdef __cplusplus
 }
 #endif

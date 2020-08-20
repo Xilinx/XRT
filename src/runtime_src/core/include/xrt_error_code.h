@@ -53,7 +53,7 @@
  * implementation where it is translated into an actual error / info /
  * warning that is propagated to the end user.
  *
- * 63 - 48  47 - 40   39 - 32   31 - 24   16 - 23    15 - 0
+ * 63 - 48  47 - 40   39 - 32   31 - 24   23 - 16    15 - 0
  * --------------------------------------------------------
  * |    |    |    |    |    |    |    |    |    |    |----| xrtErrorNum
  * |    |    |    |    |    |    |    |    |----|---------- xrtErrorDriver
@@ -64,7 +64,25 @@
  *
  */
 typedef uint64_t xrtErrorCode;
- 
+
+#define XRT_ERROR_NUM_MASK		0xFFFFUL
+#define XRT_ERROR_NUM_SHIFT		0
+#define XRT_ERROR_DRIVER_MASK		0xFUL
+#define XRT_ERROR_DRIVER_SHIFT		16
+#define XRT_ERROR_SEVERITY_MASK		0xFUL
+#define XRT_ERROR_SEVERITY_SHIFT	24
+#define XRT_ERROR_MODULE_MASK		0xFUL
+#define XRT_ERROR_MODULE_SHIFT		32
+#define XRT_ERROR_CLASS_MASK		0xFUL
+#define XRT_ERROR_CLASS_SHIFT		40
+
+#define	XRT_ERROR_CODE_BUILD(num, driver, severity, module, eclass) \
+	((((num) & XRT_ERROR_NUM_MASK) << XRT_ERROR_NUM_SHIFT) | \
+	(((driver) & XRT_ERROR_DRIVER_MASK) << XRT_ERROR_DRIVER_SHIFT) | \
+	(((severity) & XRT_ERROR_SEVERITY_MASK) << XRT_ERROR_SEVERITY_SHIFT) | \
+	(((module) & XRT_ERROR_MODULE_MASK) << XRT_ERROR_MODULE_SHIFT) | \
+	(((eclass) & XRT_ERROR_CLASS_MASK) << XRT_ERROR_CLASS_SHIFT))
+
 /**
  * xrt_error_num - XRT specific error numbers
  */
@@ -75,23 +93,14 @@ enum xrtErrorNum {
   XRT_ERROR_NUM_DM_ECC,
   XRT_ERROR_DMA_S2MM_0
 };
- 
-enum xrtErorClass {
-  XRT_ERROR_CLASS_FIRST_ENTRY = 0,
-  XRT_ERROR_CLASS_SYSTEM = XRT_ERROR_CLASS_FIRST_ENTRY,
-  XRT_ERROR_CLASS_AIE,
-  XRT_ERROR_CLASS_HARDWARE,
-  XRT_ERROR_CLASS_LAST_ENTRY,
+
+enum xrtErrorDriver {
+  XRT_ERROR_DRIVER_XOCL,
+  XRT_ERROR_DRIVER_XCLMGMT,
+  XRT_ERROR_DRIVER_ZOCL,
+  XRT_ERROR_DRIVER_AIE
 };
- 
-enum xrtErrorModule {
-  XRT_ERROR_MODULE_FIREWALL = 0,
-  XRT_ERROR_MODULE_CMC,
-  XRT_ERROR_MODULE_AIE_CORE,
-  XRT_ERROR_MODULE_AIE_MEMORY,
-  XRT_ERROR_MODULE_AIE_SHIM
-};
- 
+
 enum xrtErrorSeverity {
   XRT_ERROR_SEVERITY_EMERGENCY = 0,
   XRT_ERROR_SEVERITY_ALERT,
@@ -102,12 +111,21 @@ enum xrtErrorSeverity {
   XRT_ERROR_SEVERITY_INFO,
   XRT_ERROR_SEVERITY_DEBUG
 };
- 
-enum xrtErrorDriver {
-  XRT_ERROR_DRIVER_XOCL,
-  XRT_ERROR_DRIVER_XCLMGMT,
-  XRT_ERROR_DRIVER_ZOCL,
-  XRT_ERROR_DRIVER_AIE
+
+enum xrtErrorModule {
+  XRT_ERROR_MODULE_FIREWALL = 0,
+  XRT_ERROR_MODULE_CMC,
+  XRT_ERROR_MODULE_AIE_CORE,
+  XRT_ERROR_MODULE_AIE_MEMORY,
+  XRT_ERROR_MODULE_AIE_SHIM
+};
+
+enum xrtErrorClass {
+  XRT_ERROR_CLASS_FIRST_ENTRY = 0,
+  XRT_ERROR_CLASS_SYSTEM = XRT_ERROR_CLASS_FIRST_ENTRY,
+  XRT_ERROR_CLASS_AIE,
+  XRT_ERROR_CLASS_HARDWARE,
+  XRT_ERROR_CLASS_LAST_ENTRY,
 };
 
 #endif

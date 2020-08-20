@@ -1388,6 +1388,28 @@ xclGetDeviceClockFreqMHz()
   return (double)clockFreq;
 }
 
+int
+shim::
+xclErrorInject(uint16_t num, uint16_t driver, uint16_t  severity, uint16_t module, uint16_t eclass)
+{
+  int ret;
+  drm_zocl_error_inject ecmd = {ZOCL_ERROR_OP_INJECT, num, driver, severity, module, eclass};
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_ERROR_INJECT, &ecmd);
+  return ret;
+}
+
+int
+shim::
+xclErrorClear()
+{
+  int ret;
+  drm_zocl_error_inject ecmd = {ZOCL_ERROR_OP_CLEAR_ALL};
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_ERROR_INJECT, &ecmd);
+  return ret;
+}
+
 #ifdef XRT_ENABLE_AIE
 zynqaie::Aie *
 shim::
@@ -2119,4 +2141,24 @@ int
 xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
   return 1; // -ENOSYS;
+}
+
+int
+xclErrorInject(xclDeviceHandle handle, uint16_t num, uint16_t driver, uint16_t severity, uint16_t module, uint16_t eclass)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+
+  return drv->xclErrorInject(num, driver, severity, module, eclass);
+}
+
+int
+xclErrorClear(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+
+  return drv->xclErrorClear();
 }
