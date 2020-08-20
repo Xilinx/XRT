@@ -713,7 +713,7 @@ get_cu_memidx() const
         mask &= cu->get_memidx_intersect();
 
       // select max common memory bank index if any
-      for (int idx=0; idx<mask.size(); ++idx) {
+      for (int idx=mask.size() - 1; idx>=0; --idx) {
         if (mask.test(idx)) {
           m_cu_memidx = idx;
           break;
