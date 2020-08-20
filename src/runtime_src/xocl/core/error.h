@@ -38,11 +38,9 @@ using error = xrt::error;
 inline void
 send_exception_message(const char* msg)
 {
-  xrt::message::send(xrt::message::severity_level::ERROR, msg);
+  xrt::message::send(xrt::message::severity_level::XRT_ERROR, msg);
 }
 
 } // xocl
 
 #endif
-
-
