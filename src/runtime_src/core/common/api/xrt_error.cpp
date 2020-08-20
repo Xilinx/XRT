@@ -31,9 +31,10 @@
 #include <boost/format.hpp>
 #include <string>
 #include <map>
+#include <cstring>
 
 #ifdef _WIN32
-//# pragma warning( disable : 4244 4267 4996)
+# pragma warning( disable : 4996)
 #endif
 
 namespace {
@@ -89,7 +90,7 @@ error_severity_to_string(xrtErrorSeverity err)
 
   return code_to_string(map, err, "Unknown error severity");
 }
-  
+
 static std::string
 error_module_to_string(xrtErrorModule err)
 {
@@ -130,7 +131,7 @@ error_code_to_string(xrtErrorCode ecode)
     % XRT_ERROR_SEVERITY(ecode) % error_severity_to_string(xrtErrorSeverity(XRT_ERROR_SEVERITY(ecode)))
     % XRT_ERROR_MODULE(ecode) % error_module_to_string(xrtErrorModule(XRT_ERROR_MODULE(ecode)))
     % XRT_ERROR_CLASS(ecode) % error_class_to_string(xrtErrorClass(XRT_ERROR_CLASS(ecode)));
-  
+
   return fmt.str();
 }
 
@@ -142,7 +143,7 @@ error_time_to_string(xrtErrorTime time)
 
 
 } // namespace
-  
+
 
 namespace xrt {
 
@@ -195,7 +196,7 @@ public:
 
     return fmt.str();
   }
-  
+
 };
 
 } //namespace
@@ -228,14 +229,14 @@ to_string() const
 {
   return handle->to_string();
 }
-  
+
 
 } // namespace xrt
 
 ////////////////////////////////////////////////////////////////
 // xrt_xclbin C API implmentations (xrt_xclbin.h)
 ////////////////////////////////////////////////////////////////
-int 
+int
 xrtErrorGetLast(xrtDeviceHandle dhdl, xrtErrorClass ecl, xrtErrorCode* error, uint64_t* timestamp)
 {
   try {
@@ -263,7 +264,7 @@ xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, si
 
     if (out_len)
       *out_len = str.size() + 1;
-    
+
     if (!out)
       return 0;
 
@@ -283,4 +284,3 @@ xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, si
   }
   return errno;
 }
-
