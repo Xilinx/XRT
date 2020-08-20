@@ -13,6 +13,7 @@
 #define _ZOCL_UTIL_H_
 
 #include "kds_core.h"
+#include "zocl_error.h"
 
 #define zocl_err(dev, fmt, args...)     \
 	dev_err(dev, "%s: "fmt, __func__, ##args)
@@ -141,6 +142,9 @@ struct drm_zocl_dev {
 	struct zocl_xclbin	*zdev_xclbin;
 	struct mutex		zdev_xclbin_lock;
 	struct generic_cu	*generic_cu;
+	int			 ksize;
+	char			*kernels;
+	struct zocl_error	zdev_error;
 };
 
 #endif

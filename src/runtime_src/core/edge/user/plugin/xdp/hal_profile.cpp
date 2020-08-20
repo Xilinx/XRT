@@ -5,6 +5,8 @@
 
 #include "hal_profile.h"
 #include "hal_device_offload.h"
+#include "aie_profile.h"
+#include "noc_profile.h"
 //#include "power_profile.h"
 #include "aie_trace.h"
 #include "vart_profile.h"
@@ -39,6 +41,14 @@ CallLogger::CallLogger(uint64_t id)
 
   if (xrt_core::config::get_data_transfer_trace() != "off") {
     xdphaldeviceoffload::load_xdp_hal_device_offload() ;
+  }
+
+  if (xrt_core::config::get_aie_profile()) {
+    xdpaieprofile::load_xdp_aie_plugin() ;
+  }
+
+  if (xrt_core::config::get_noc_profile()) {
+    xdpnocprofile::load_xdp_noc_plugin() ;
   }
 
 #if 0

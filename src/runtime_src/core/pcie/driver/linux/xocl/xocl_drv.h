@@ -453,6 +453,13 @@ struct xocl_dev_core {
 	int			api_call_cnt;
 
 	struct xocl_xclbin 	*xdev_xclbin;
+
+	/*
+	 * To cache user space pass down kernel metadata when load xclbin.
+	 * Maybe we would have a better place, like fdt. Before that, keep this.
+	 */
+	int			ksize;
+	char			*kernels;
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -1072,15 +1079,17 @@ struct xocl_mailbox_funcs {
 
 struct xocl_clock_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	int (*freq_scaling)(struct platform_device *pdev, bool force);
 	int (*get_freq)(struct platform_device *pdev, unsigned int region,
 		unsigned short *freqs, int num_freqs);
 	int (*get_freq_by_id)(struct platform_device *pdev, unsigned int region,
 		unsigned short *freq, int id);
 	int (*get_freq_counter_khz)(struct platform_device *pdev,
 		unsigned int *value, int id);
-	int (*update_freq)(struct platform_device *pdev,
+	int (*freq_rescaling)(struct platform_device *pdev, bool force);
+	int (*freq_scaling_by_request)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
+	int (*freq_scaling_by_topo)(struct platform_device *pdev,
+		struct clock_freq_topology *topo, int verify);
 	int (*clock_status)(struct platform_device *pdev, bool *latched);
 	uint64_t (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
@@ -1110,11 +1119,11 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	(__idx >= 0 ? (CLOCK_DEV_INFO(xdev, __idx).level) : -ENODEV); 	\
 })
 
-#define	xocl_clock_freqscaling(xdev, force)					\
+#define	xocl_clock_freq_rescaling(xdev, force)					\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);					\
-	(CLOCK_CB(xdev, __idx, freq_scaling) ?					\
-	CLOCK_OPS(xdev, __idx)->freq_scaling(CLOCK_DEV(xdev, __idx), force) :	\
+	(CLOCK_CB(xdev, __idx, freq_rescaling) ?				\
+	CLOCK_OPS(xdev, __idx)->freq_rescaling(CLOCK_DEV(xdev, __idx), force) :	\
 	-ENODEV); \
 })
 #define	xocl_clock_get_freq(xdev, region, freqs, num_freqs)		\
@@ -1138,12 +1147,19 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	CLOCK_OPS(xdev, __idx)->get_freq_counter_khz(CLOCK_DEV(xdev, __idx), value, id) : \
 	-ENODEV); \
 })
-#define	xocl_clock_update_freq(xdev, freqs, num_freqs, verify) \
+#define	xocl_clock_freq_scaling_by_request(xdev, freqs, num_freqs, verify) \
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, update_freq) ?				\
-	CLOCK_OPS(xdev, __idx)->update_freq(CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify) : \
-	-ENODEV); \
+	(CLOCK_CB(xdev, __idx, freq_scaling_by_request) ?		\
+	CLOCK_OPS(xdev, __idx)->freq_scaling_by_request(		\
+	    CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify) : -ENODEV); \
+})
+#define	xocl_clock_freq_scaling_by_topo(xdev, topo, verify) \
+({ \
+	int __idx = xocl_clock_ops_level(xdev);				\
+	(CLOCK_CB(xdev, __idx, freq_scaling_by_topo) ?		\
+	CLOCK_OPS(xdev, __idx)->freq_scaling_by_topo(		\
+	    CLOCK_DEV(xdev, __idx), topo, verify) : -ENODEV); \
 })
 #define	xocl_clock_status(xdev, latched)				\
 ({ \
@@ -1654,6 +1670,27 @@ static inline void xocl_queue_destroy(xdev_handle_t xdev_hdl)
 	mutex_unlock(&xdev->wq_lock);
 }
 
+static inline struct kernel_info *
+xocl_query_kernel(xdev_handle_t xdev_hdl, const char *name)
+{
+	struct xocl_dev_core *xdev = XDEV(xdev_hdl);
+	struct kernel_info *kernel;
+	int off = 0;
+
+	while (off < xdev->ksize) {
+		kernel = (struct kernel_info *)(xdev->kernels + off);
+		if (!strcmp(kernel->name, name))
+			break;
+		off += sizeof(struct kernel_info);
+		off += sizeof(struct argument_info) * kernel->anums;
+	}
+
+	if (off < xdev->ksize)
+		return kernel;
+
+	return NULL;
+}
+
 struct xocl_flash_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*read)(struct platform_device *pdev,
@@ -1754,6 +1791,19 @@ struct xocl_p2p_funcs {
 #define XOCL_P2P_CHUNK_SHIFT		28
 #define XOCL_P2P_CHUNK_SIZE		(1UL << XOCL_P2P_CHUNK_SHIFT)
 
+struct xocl_m2m_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*copy_bo)(struct platform_device *pdev, uint64_t src_paddr,
+		uint64_t dst_paddr, uint32_t src_handle, uint32_t dst_handle,
+		uint32_t size);
+};
+#define	M2M_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_M2M).pldev
+#define	M2M_OPS(xdev)	\
+	((struct xocl_m2m_funcs *)SUBDEV(xdev, XOCL_SUBDEV_M2M).ops)
+#define	M2M_CB(xdev)	(M2M_DEV(xdev) && M2M_OPS(xdev))
+#define	xocl_m2m_copy_bo(xdev, src_paddr, dst_paddr, src_handle, dst_handle, size) \
+	(M2M_CB(xdev) ? M2M_OPS(xdev)->copy_bo(M2M_DEV(xdev), src_paddr, dst_paddr, \
+	src_handle, dst_handle, size) : -ENODEV)
 
 /* subdev functions */
 int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
@@ -2052,6 +2102,9 @@ void xocl_fini_intc(void);
 
 int __init xocl_init_icap_controller(void);
 void xocl_fini_icap_controller(void);
+
+int __init xocl_init_m2m(void);
+void xocl_fini_m2m(void);
 
 int __init xocl_init_version_control(void);
 void xocl_fini_version_control(void);

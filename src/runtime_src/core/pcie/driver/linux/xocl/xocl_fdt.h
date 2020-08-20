@@ -100,6 +100,7 @@
 
 #define PROP_HWICAP "axi_hwicap"
 #define PROP_PDI_CONFIG "pdi_config_mem"
+#define PROP_SHELL_KDMA "shell_utils_kdma"
 
 #define RESNAME_GATEPLP		NODE_GATE_PLP
 #define RESNAME_PCIEMON		NODE_PCIE_MON

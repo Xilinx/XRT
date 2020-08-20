@@ -1357,7 +1357,6 @@ unlock:
 	return err;
 }
 
-
 int xocl_userpf_probe(struct pci_dev *pdev,
 		const struct pci_device_id *ent)
 {
@@ -1559,6 +1558,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_msix_xdma,
 	xocl_init_ert_user,
 	xocl_init_ert_30,
+	xocl_init_m2m,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1596,6 +1596,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_msix_xdma,
 	xocl_fini_ert_user,
 	xocl_fini_ert_30,
+	xocl_fini_m2m,
 };
 
 static int __init xocl_init(void)

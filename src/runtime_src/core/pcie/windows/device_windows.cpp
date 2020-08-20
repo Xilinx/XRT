@@ -72,6 +72,23 @@ struct mfg
   }
 };
 
+struct ready
+{
+  using result_type = bool;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return true;
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return true;
+  }
+};
+
 struct board_name
 {
   using result_type = std::string;
@@ -654,7 +671,7 @@ struct info
   }
 };
 
-struct flash_address
+struct flash_bar_offset
 {
   using result_type = uint64_t;
 
@@ -863,7 +880,7 @@ initialize_query_table()
   emplace_function0_getter<query::v3v3_vcc_millivolts,       sensor>();
   emplace_function0_getter<query::hbm_1v2_millivolts,        sensor>();
   emplace_function0_getter<query::v2v5_vpp_millivolts,       sensor>();
-  emplace_function0_getter<query::int_vcc_io_millivolts,   sensor>();
+  emplace_function0_getter<query::int_vcc_io_millivolts,     sensor>();
   emplace_function0_getter<query::temp_card_top_front,       sensor>();
   emplace_function0_getter<query::temp_card_top_rear,        sensor>();
   emplace_function0_getter<query::temp_card_bottom_front,    sensor>();
@@ -897,8 +914,9 @@ initialize_query_table()
   emplace_function0_getter<query::f_flash_type,              flash>();
   emplace_function0_getter<query::flash_type,                flash>();
   emplace_function0_getter<query::is_mfg,                    mfg>();
+  emplace_function0_getter<query::is_ready,                  ready>();
   emplace_function0_getter<query::board_name,                board_name>();
-  emplace_function0_getter<query::flash_address,             flash_address>();
+  emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
 }
 
 struct X { X() { initialize_query_table(); }};

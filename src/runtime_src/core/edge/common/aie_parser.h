@@ -88,6 +88,7 @@ struct gmio_type
   uint16_t        type;
   uint16_t        shim_col;
   uint16_t        channel_number;
+  uint16_t        stream_id;
   uint16_t        burst_len;
 };
 
@@ -98,6 +99,36 @@ struct gmio_type
  */
 std::vector<gmio_type>
 get_gmios(const xrt_core::device* device);
+
+struct counter_type
+{
+  uint32_t        id;
+  uint16_t        column;
+  uint16_t        row;
+  uint8_t         counterNumber;
+  uint8_t         startEvent;
+  uint8_t         endEvent;
+  uint8_t         resetEvent;
+  double          clockFreqMhz;
+  std::string     module;
+  std::string     name;
+};
+
+/**
+ * get_profile_counters() - get counter data from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+std::vector<counter_type>
+get_profile_counters(const xrt_core::device* device);
+
+/**
+ * get_trace_gmios() - get trace gmio data from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+std::vector<gmio_type>
+get_trace_gmios(const xrt_core::device* device);
 
 }}} // aie, edge, xrt_core
 

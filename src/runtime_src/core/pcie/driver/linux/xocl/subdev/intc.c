@@ -68,6 +68,7 @@ struct intr_metadata {
 	u32			 intr;
 	u32 __iomem		*isr;
 	struct intr_info	*info[INTR_SRCS];
+	u32			 enabled_cnt;
 };
 
 /* The details for intc sub-device.
@@ -155,6 +156,7 @@ static int request_intr(struct platform_device *pdev, int intr_id,
 static int config_intr(struct platform_device *pdev, int intr_id, bool en)
 {
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct intr_metadata *data;
 	struct intr_info *info;
 	int data_idx = intr_id / INTR_SRCS;
@@ -171,7 +173,17 @@ static int config_intr(struct platform_device *pdev, int intr_id, bool en)
 	if (!info)
 		return -EINVAL;
 
+	if (info->enabled == en)
+		return 0;
+
 	info->enabled = en;
+
+	if (en && data->enabled_cnt == 0)
+		xocl_user_interrupt_config(xdev, data->intr, true);
+	else if (!en && data->enabled_cnt == 1)
+		xocl_user_interrupt_config(xdev, data->intr, false);
+
+	(en)? data->enabled_cnt++ : data->enabled_cnt--;
 
 	return 0;
 }
@@ -180,14 +192,18 @@ static int csr_read32(struct platform_device *pdev, u32 off)
 {
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
 
-	return ioread32(intc->csr_base + off - ERT_CSR_ADDR);
+	WARN_ON(intc->data[off>>2].enabled_cnt > 0);
+
+	return ioread32(intc->csr_base + off);
 }
 
 static void csr_write32(struct platform_device *pdev, u32 val, u32 off)
 {
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
 
-	iowrite32(val, intc->csr_base + off - ERT_CSR_ADDR);
+	WARN_ON(intc->data[off>>2].enabled_cnt > 0);
+
+	iowrite32(val, intc->csr_base + off);
 }
 
 static int intc_probe(struct platform_device *pdev)
@@ -239,8 +255,9 @@ static int intc_probe(struct platform_device *pdev)
 		data->intr = irq;
 		data->isr = intc->csr_base + eisr[i];
 		xocl_user_interrupt_reg(xdev, irq, intc_csr_isr, data);
-		/* enable interrupt */
-		xocl_user_interrupt_config(xdev, irq, true);
+		/* disable interrupt */
+		xocl_user_interrupt_config(xdev, irq, false);
+		data->enabled_cnt = 0;
 	}
 out:
 	return 0;

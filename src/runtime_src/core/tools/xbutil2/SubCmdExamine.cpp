@@ -44,6 +44,7 @@ namespace po = boost::program_options;
 #include "tools/common/ReportElectrical.h"
 #include "tools/common/ReportFan.h"
 #include "tools/common/ReportAie.h"
+#include "tools/common/ReportMemory.h"
 #include "tools/common/ReportThermal.h"
 // #include "tools/common/ReportPlatform.h"
 
@@ -52,6 +53,7 @@ static const ReportCollection fullReportCollection = {
   std::make_shared<ReportElectrical>(),
   std::make_shared<ReportFan>(),
   std::make_shared<ReportAie>(),
+  std::make_shared<ReportMemory>(),
   std::make_shared<ReportFirewall>(),
   std::make_shared<ReportHost>(),
   std::make_shared<ReportHostInterface>(),

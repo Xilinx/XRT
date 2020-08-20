@@ -193,7 +193,7 @@ def main(args):
         print("FAILED TEST")
         sys.exit(1)
     finally:
-        xclClose(opt.handle)
+        xrtDeviceClose(opt.handle)
 
 if __name__ == "__main__":
     main(sys.argv)

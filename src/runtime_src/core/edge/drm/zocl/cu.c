@@ -69,6 +69,8 @@ static int cu_probe(struct platform_device *pdev)
 	struct resource **res;
 	struct xrt_cu_info *info;
 	struct drm_zocl_dev *zdev;
+	struct kernel_info *krnl_info;
+	struct xrt_cu_arg *args = NULL;
 	int err = 0;
 	int i;
 
@@ -98,6 +100,28 @@ static int cu_probe(struct platform_device *pdev)
 	zcu->base.res = res;
 
 	zdev = platform_get_drvdata(to_platform_device(pdev->dev.parent));
+
+	krnl_info = zocl_query_kernel(zdev, info->kname);
+	if (!krnl_info) {
+		err = -EFAULT;
+		goto err1;
+	}
+
+	args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
+	if (!args) {
+		err = -ENOMEM;
+		goto err1;
+	}
+
+	for (i = 0; i < krnl_info->anums; i++) {
+		strcpy(args[i].name, krnl_info->args[i].name);
+		args[i].offset = krnl_info->args[i].offset;
+		args[i].size = krnl_info->args[i].size;
+		args[i].dir = krnl_info->args[i].dir;
+	}
+	zcu->base.info.num_args = krnl_info->anums;
+	zcu->base.info.args = args;
+
 	err = zocl_kds_add_cu(zdev, &zcu->base);
 	if (err) {
 		DRM_ERROR("Not able to add CU %p to KDS", zcu);
@@ -126,6 +150,7 @@ static int cu_probe(struct platform_device *pdev)
 err2:
 	zocl_kds_del_cu(zdev, &zcu->base);
 err1:
+	vfree(args);
 	vfree(res);
 err:
 	kfree(zcu);
@@ -154,6 +179,9 @@ static int cu_remove(struct platform_device *pdev)
 
 	if (zcu->base.res)
 		vfree(zcu->base.res);
+
+	if (info->args)
+		vfree(info->args);
 
 	sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
 
