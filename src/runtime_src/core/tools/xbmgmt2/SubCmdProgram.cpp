@@ -284,11 +284,17 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
   if (!current.name.empty()) {
     same_dsa = (candidate.name == current.name &&
       candidate.matchId(current));
-    same_bmc = (candidate.bmcVer == current.bmcVer);
 
     // Always update Arista devices
     if (candidate.vendor_id == ARISTA_ID)
         same_dsa = false;
+
+    // getOnBoardDSA() returns an empty bmcVer in the case there is no SC,
+    // so do not update
+    if (current.bmcVer.empty())
+        same_bmc = true;
+    else
+        same_bmc = (candidate.bmcVer == current.bmcVer);
   }
   if (same_dsa && same_bmc) {
     std::cout << "update not needed" << std::endl;

@@ -213,7 +213,7 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
             sc_flash.update(counter);
             counter++;
         }
-        
+
         if(ret == 0) {
             sc_flash.finish(true, "SC successfully updated");
             break;
@@ -259,6 +259,9 @@ int XMC_Flasher::erase()
 int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
 {
     int ret = 0;
+
+    if (!hasSC())
+        return -EOPNOTSUPP;
 
     if (!isXMCReady() || !isBMCReady())
         return -EINVAL;
@@ -454,7 +457,7 @@ int XMC_Flasher::waitTillIdle()
     std::cout << "INFO: Waiting until idle" << std::endl;
 #endif
     while ((retry-- > 0) && (readReg(XMC_REG_OFF_CTL) & XMC_PKT_OWNER_MASK)){
-        std::this_thread::sleep_for(std::chrono::milliseconds(10)); 
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     if (retry == 0) {
@@ -483,7 +486,7 @@ unsigned int XMC_Flasher::readReg(unsigned int RegOffset) {
 }
 
 int XMC_Flasher::writeReg(unsigned int RegOffset, unsigned int value) {
-    value = value; 
+    value = value;
     m_device->write(mRegBase + RegOffset, &value, 4);
     return 0;
 }
@@ -510,4 +513,9 @@ bool XMC_Flasher::isBMCReady()
                   << BMC_MODE() << std::endl;
     }
     return bmcReady;
+}
+
+bool XMC_Flasher::hasSC()
+{
+    return xrt_core::device_query<xrt_core::query::xmc_sc_presence>(m_device);
 }
