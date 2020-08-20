@@ -149,8 +149,6 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
       std::map<std::string, std::string> stat_map;
       lname = std::string((char *)map->m_mem_data[i].m_tag);
       ptStream.put("tag", map->m_mem_data[i].m_tag);
-      ptStream.put("usage.flow_id", map->m_mem_data[i].flow_id);
-      ptStream.put("usage.route_id", map->m_mem_data[i].route_id);
       if (lname.back() == 'w')
         lname = "route" + std::to_string(map->m_mem_data[i].route_id) + "/stat";
       else if (lname.back() == 'r')
@@ -422,25 +420,22 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
     int index = 0;
     _output << std::endl;
     _output << "  Streams" << std::endl;
-    _output << boost::format("    %-17s%-9s%-9s%-9s%-16s%-16s\n") % "     Tag" % "Flow ID"
-        % "Route ID" % "Status" % "Total (B/#)" % "Pending (B/#)";
+    _output << boost::format("    %-17s%-9s%-16s%-16s\n") % "     Tag" 
+        % "Status" % "Total (B/#)" % "Pending (B/#)";
     try {
       for (auto& v : _pt.get_child("mem_topology.board.memory.data_streams",empty_ptree)) {
         std::string status = "N/A", tag, total = "N/A" , pending = "N/A";
-        unsigned int flow_id = 0, route_id = 0;
         for (auto& subv : v.second) {
           if (subv.first == "tag") {
             tag = subv.second.get_value<std::string>();
           } else if (subv.first == "usage") {
-            flow_id = subv.second.get<unsigned int>("flow_id");
-            route_id = subv.second.get<unsigned int>("route_id");
             status = subv.second.get<std::string>("status", "N/A");
             total = subv.second.get<std::string>("total", "N/A");
             pending = subv.second.get<std::string>("pending", "N/A");
           }
         }
-        _output << boost::format("    [%2d] %-12s%-9u%-9u%-9s%-16s%-16s\n") % index
-           % tag % flow_id % route_id % status % total % pending;
+        _output << boost::format("    [%2d] %-12s%-9s%-16s%-16s\n") % index
+           % tag % status % total % pending;
         index++;
       }
     }
