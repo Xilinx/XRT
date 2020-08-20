@@ -104,11 +104,6 @@ shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
-
-#ifdef XRT_ENABLE_AIE
-  /* TODO is this necessary? We may want to initialize it when loading xclbin */
-  aieArray = NULL;
-#endif
 }
 
 #ifndef __HWEM__
@@ -1389,7 +1384,7 @@ xclGetDeviceClockFreqMHz()
 }
 
 #ifdef XRT_ENABLE_AIE
-zynqaie::Aie *
+std::shared_ptr<zynqaie::Aie>
 shim::
 getAieArray()
 {
@@ -1398,11 +1393,17 @@ getAieArray()
 
 void
 shim::
-setAieArray(zynqaie::Aie *aie)
+registAieArray()
 {
-  aieArray = aie;
+  aieArray = std::make_shared<zynqaie::Aie>(mCoreDevice);
 }
 
+bool
+shim::
+isAieRegisted()
+{
+  return !(aieArray.get() == nullptr);
+}
 #endif
 
 } // end namespace ZYNQ
@@ -1620,11 +1621,16 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     }
     auto core_device = xrt_core::get_userpf_device(handle);
 
+    core_device->register_axlf(buffer);
+
+#ifdef XRT_ENABLE_AIE
+    drv->registAieArray();
+#endif
+
     /* If PDI is the only section, return here */
     if (xrt_core::xclbin::is_pdi_only(buffer))
         return 0;
 
-    core_device->register_axlf(buffer);
 
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
