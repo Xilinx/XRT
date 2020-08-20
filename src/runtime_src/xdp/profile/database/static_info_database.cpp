@@ -38,11 +38,15 @@
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
-#include "core/include/xclbin.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
-#define XAM_STALL_PROPERTY_MASK        0x4
+#include "core/include/xclbin.h"
 
+#ifdef XRT_ENABLE_AIE
+#include "core/edge/common/aie_parser.h"
+#endif
+
+#define XAM_STALL_PROPERTY_MASK        0x4
 
 
 namespace xdp {
@@ -138,6 +142,8 @@ namespace xdp {
     if (!setXclbinName(devInfo, device)) return;
     if (!initializeComputeUnits(devInfo, device)) return ;
     if (!initializeProfileMonitors(devInfo, device)) return ;
+    if (!initializeAIECounters(devInfo, device)) return ;
+    devInfo->isReady = true;
   }
 
   void VPStaticDatabase::resetDeviceInfo(uint64_t deviceId)
@@ -349,6 +355,7 @@ namespace xdp {
         // associate with the first CU
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
+        
         for(auto cu : devInfo->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
@@ -368,11 +375,47 @@ namespace xdp {
           devInfo->hasFloatingASM = true;
         }
         devInfo->asmList.push_back(mon);
+      } else if(debugIpData->m_type == AXI_NOC) {
+        uint8_t readTrafficClass  = debugIpData->m_properties >> 2;
+        uint8_t writeTrafficClass = debugIpData->m_properties & 0x3;
+
+        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
+                          readTrafficClass, writeTrafficClass);
+        devInfo->nocList.push_back(mon);
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }
     }
     return true; 
+  }
+
+  bool VPStaticDatabase::initializeAIECounters(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
+  {
+#ifdef XRT_ENABLE_AIE
+    // Record all counters listed in AIE metadata (if available)
+    for (auto& counter : xrt_core::edge::aie::get_profile_counters(device.get())) {
+      AIECounter* aie = new AIECounter(counter.id, counter.column, counter.row, 
+          counter.counterNumber, counter.startEvent, counter.endEvent, 
+          counter.resetEvent, counter.clockFreqMhz, counter.module, counter.name);
+      devInfo->aieList.push_back(aie);
+    }
+
+    // Record all trace GMIOs listed in AIE metadata (if available)
+    for (auto& gmio : xrt_core::edge::aie::get_trace_gmios(device.get())) {
+      TraceGMIO* traceGmio = new TraceGMIO(gmio.id, gmio.shim_col, gmio.channel_number, 
+          gmio.stream_id, gmio.burst_len);
+      devInfo->gmioList.push_back(traceGmio);
+    }
+    return true;
+#else
+  // Need to use arguments so it compiles on Windows
+  auto aieMetadata = device->get_axlf_section(AIE_METADATA);
+  if (!aieMetadata.first || !aieMetadata.second)
+    return true;
+
+  devInfo->aieList.clear();
+  return true;
+#endif
   }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)

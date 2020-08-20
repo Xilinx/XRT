@@ -142,9 +142,13 @@ DeviceIntf::~DeviceIntf()
     for(auto mon : asmList) {
         delete mon;
     }
+    for(auto noc : nocList) {
+        delete noc;
+    }
     aimList.clear();
     amList.clear();
     asmList.clear();
+    nocList.clear();
 
     delete fifoCtrl;
     delete fifoRead;
@@ -202,6 +206,8 @@ DeviceIntf::~DeviceIntf()
       return amList.size();
     if (type == XCL_PERF_MON_STR)
       return asmList.size();
+    if (type == XCL_PERF_MON_NOC)
+      return nocList.size();
 
     if(type == XCL_PERF_MON_STALL) {
       uint32_t count = 0;
@@ -237,6 +243,7 @@ DeviceIntf::~DeviceIntf()
     if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { str = aimList[index]->getName(); }
     if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { str = amList[index]->getName(); }
     if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { str = asmList[index]->getName(); }
+    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size())) { str = nocList[index]->getName(); }
     strncpy(name, str.c_str(), length);
     if(str.length() >= length) name[length-1] = '\0'; // required ??
   }
@@ -246,6 +253,7 @@ DeviceIntf::~DeviceIntf()
     if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getName(); }
     if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getName(); }
     if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getName(); }
+    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size())) { return nocList[index]->getName(); }
     return std::string("");
   }
 
@@ -300,6 +308,7 @@ DeviceIntf::~DeviceIntf()
     if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }
     if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getProperties(); }
     if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getProperties(); }
+    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size())) { return nocList[index]->getProperties(); }
     if((type == XCL_PERF_MON_FIFO)   && (fifoRead != nullptr))    { return fifoRead->getProperties(); }
     return 0;
   }
@@ -590,6 +599,8 @@ DeviceIntf::~DeviceIntf()
                                          break;
             case TRACE_S2MM :            traceDMA = new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i]));
                                          break;
+            case AXI_NOC :               nocList.push_back(new NOC(mDevice, i, &(map->m_debug_ip_data[i])));
+                                         break;
             default : break;
             // case AXI_STREAM_PROTOCOL_CHECKER
           }
@@ -668,6 +679,17 @@ DeviceIntf::~DeviceIntf()
               }
               break;
             }
+            //case AXI_NOC :
+            //{
+            //  MMappedNOC* pNoc = new MMappedNOC(mDevice, i, nocList.size(), &(map->m_debug_ip_data[i]));
+            //  if(pNoc->isMMapped()) {
+            //    nocList.push_back(pNoc);
+            //  } else {
+            //    delete pNoc;
+            //    pNoc = nullptr;
+            //  }
+            //  break;
+            //}
             default : break;
           }
         }
@@ -746,6 +768,7 @@ DeviceIntf::~DeviceIntf()
             }
             default : break;
             // case AXI_STREAM_PROTOCOL_CHECKER
+            // case AXI_NOC
           }
         }
       }
@@ -763,18 +786,20 @@ DeviceIntf::~DeviceIntf()
     std::sort(aimList.begin(), aimList.end(), sorter);
     std::sort(amList.begin(), amList.end(), sorter);
     std::sort(asmList.begin(), asmList.end(), sorter);
-
+    std::sort(nocList.begin(), nocList.end(), sorter);
+    
 #if 0
     for(auto mon : aimList) {
         mon->showProperties();
     }
-
     for(auto mon : amList) {
         mon->showProperties();
     }
-
     for(auto mon : asmList) {
         mon->showProperties();
+    }
+    for(auto noc : nocList) {
+        noc->showProperties();
     }
     if(fifoCtrl) fifoCtrl->showProperties();
     if(fifoRead) fifoRead->showProperties();
