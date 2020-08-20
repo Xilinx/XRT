@@ -51,7 +51,7 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::strin
 #ifndef __AIESIM__
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-    if (!drv->isAieRegisted())
+    if (!drv->isAieRegistered())
       throw xrt_core::error(-EINVAL, "No AIE presented");
     aieArray = drv->getAieArray();
 #else
@@ -679,7 +679,7 @@ xclSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
   auto device = xrt_core::get_userpf_device(handle);
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-  if (!drv->isAieRegisted())
+  if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
   auto aieArray = drv->getAieArray();
 #else
@@ -702,7 +702,7 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioNa
   auto device = xrt_core::get_userpf_device(handle);
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-  if (!drv->isAieRegisted())
+  if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
   auto aieArray = drv->getAieArray();
 #else
@@ -725,7 +725,7 @@ xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
   auto device = xrt_core::get_userpf_device(handle);
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-  if (!drv->isAieRegisted())
+  if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
   auto aieArray = drv->getAieArray();
 #else

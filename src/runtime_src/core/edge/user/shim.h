@@ -128,10 +128,10 @@ public:
 		     unsigned int major2, unsigned int minor2);
 
 #ifdef XRT_ENABLE_AIE
-  std::shared_ptr<zynqaie::Aie> getAieArray();
+  zynqaie::Aie* getAieArray();
   int getBOInfo(drm_zocl_info_bo &info);
-  void registAieArray();
-  bool isAieRegisted();
+  void registerAieArray();
+  bool isAieRegistered();
 #endif
 
 private:
@@ -157,7 +157,7 @@ private:
   int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
 
 #ifdef XRT_ENABLE_AIE
-  std::shared_ptr<zynqaie::Aie> aieArray;
+  std::unique_ptr<zynqaie::Aie> aieArray;
 #endif
 };
 

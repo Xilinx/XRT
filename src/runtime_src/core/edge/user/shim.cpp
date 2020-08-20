@@ -1384,25 +1384,25 @@ xclGetDeviceClockFreqMHz()
 }
 
 #ifdef XRT_ENABLE_AIE
-std::shared_ptr<zynqaie::Aie>
+zynqaie::Aie*
 shim::
 getAieArray()
 {
-  return aieArray;
+  return aieArray.get();
 }
 
 void
 shim::
-registAieArray()
+registerAieArray()
 {
-  aieArray = std::make_shared<zynqaie::Aie>(mCoreDevice);
+  aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
 }
 
 bool
 shim::
-isAieRegisted()
+isAieRegistered()
 {
-  return !(aieArray.get() == nullptr);
+  return (aieArray != nullptr);
 }
 #endif
 
@@ -1624,7 +1624,7 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     core_device->register_axlf(buffer);
 
 #ifdef XRT_ENABLE_AIE
-    drv->registAieArray();
+    drv->registerAieArray();
 #endif
 
     /* If PDI is the only section, return here */

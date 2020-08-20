@@ -106,7 +106,7 @@ private:
      * AIE resources, configurations etc.
      * TODO it should be initialized when we load XCLBIN?
      */
-    std::shared_ptr<Aie> aieArray;
+    Aie* aieArray;
 
     /**
      * This is the collections of tiles that this graph uses.
