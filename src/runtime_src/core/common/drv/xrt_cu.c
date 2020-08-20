@@ -378,13 +378,35 @@ void xrt_cu_fini(struct xrt_cu *xcu)
 
 ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
 {
+	struct xrt_cu_info *info = &xcu->info;
 	ssize_t sz = 0;
+	char dir[10];
+	int i;
 
-	sz += sprintf(buf+sz, "CU index: %d\n", xcu->info.cu_idx);
-	sz += sprintf(buf+sz, "  protocol code: %d\n", xcu->info.protocol);
-	sz += sprintf(buf+sz, "  interrupt cap: %d\n", xcu->info.intr_enable);
-	sz += sprintf(buf+sz, "  interrupt ID:  %d\n", xcu->info.intr_id);
-	sz += sprintf(buf+sz, "  bad state:     %d\n", xcu->bad_state);
+	sz += sprintf(buf+sz, "Kernel name: %s\n", info->kname);
+	sz += sprintf(buf+sz, "Instance(CU) name: %s\n", info->iname);
+	sz += sprintf(buf+sz, "CU address: 0x%llx\n", info->addr);
+	sz += sprintf(buf+sz, "CU index: %d\n", info->cu_idx);
+	sz += sprintf(buf+sz, "Protocol: %s\n", prot2str(info->protocol));
+	sz += sprintf(buf+sz, "Interrupt cap: %d\n", info->intr_enable);
+	sz += sprintf(buf+sz, "Interrupt ID:  %d\n", info->intr_id);
+	sz += sprintf(buf+sz, "Bad state:     %d\n", xcu->bad_state);
+
+	sz += sprintf(buf+sz, "--- Arguments ---\n");
+	sz += sprintf(buf+sz, "Number of arguments: %d\n", info->num_args);
+	for (i = 0; i < info->num_args; i++) {
+		if (info->args[i].dir == INPUT)
+			strcpy(dir, "input");
+		else if (info->args[i].dir == OUTPUT)
+			strcpy(dir, "output");
+		else
+			strcpy(dir, "unknown");
+
+		sz += sprintf(buf+sz, "arg name: %s\n", info->args[i].name);
+		sz += sprintf(buf+sz, "  size: %d\n", info->args[i].size);
+		sz += sprintf(buf+sz, "  offset: 0x%x\n", info->args[i].offset);
+		sz += sprintf(buf+sz, "  direction: %s\n", dir);
+	}
 
 	if (sz)
 		buf[sz++] = 0;

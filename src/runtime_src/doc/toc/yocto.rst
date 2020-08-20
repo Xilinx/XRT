@@ -10,14 +10,14 @@ Please read PetaLinux document before you read the rest of this page.
 
 *NOTE* The purpose of this page is only for easy to get started.
 If you are interested in details about creating software images for embedded platform.
-Please read the Software Platform section of Xilinx® Document UG1146.
+Please read the Software Platform section of Xilinx® Document `UG1393 <https://www.xilinx.com/html_docs/xilinx2020_1/vitis_doc/tsf1596051751964.html>`_.
 
 Prerequisite
 ~~~~~~~~~~~~
 
 Before start to build Linux image, make sure your have:
         1. PetaLinux tool installed and setup;
-        2. Hardware Definithion File(.hdf) for your platform;
+        2. Vivado exported expandable XSA for your platform;
 
 The PetaLinux tool can be downloaded from xilinx.com.
 
@@ -29,10 +29,10 @@ Create PetaLinux Project with XRT
         # Replace <name> in below commands
         $ petalinux-create -t project -n <name> --template zynqMP
 
-        # Get HDF file, which is exported by Vivado
+        # Get XSA file, which is exported by Vivado
         # A menu will show up for configuration, use below config to avoid password for login.
         #       menu -> "Yocto Setting" -> "Enable Debug Tweaks"
-        $ petalinux-config -p <name> --get-hw-description=<HDF>
+        $ petalinux-config -p <name> --get-hw-description=<XSA>
 
         #Now we can configure Linux kernel and rootfs.
 

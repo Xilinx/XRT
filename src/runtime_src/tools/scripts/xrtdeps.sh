@@ -12,12 +12,15 @@ usage()
     echo "[-help]                    List this help"
     echo "[-validate]                Validate that required packages are installed"
     echo "[-docker]                  Indicate that script is run within a docker container, disables select packages"
+    echo "[-sysroot]                 Indicate that script is run to prepare sysroot, disables select packages"
 
     exit 1
 }
 
 validate=0
 docker=0
+sysroot=0
+ds9=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -32,15 +35,20 @@ while [ $# -gt 0 ]; do
             docker=1
             shift
             ;;
+        -sysroot)
+            sysroot=1
+            shift
+            ;;
+        -ds9)
+            ds9=1
+            shift
+            ;;
         *)
             echo "unknown option"
             usage
             ;;
     esac
 done
-
-#UB_LIST=()
-#RH_LIST=()
 
 rh_package_list()
 {
@@ -68,7 +76,6 @@ rh_package_list()
      libstdc++-static \
      libtiff-devel \
      libuuid-devel \
-     libxml2-devel \
      libyaml-devel \
      lm_sensors \
      make \
@@ -105,11 +112,14 @@ rh_package_list()
     # Centos8
     if [ $MAJOR == 8 ]; then
 
-        RH_LIST+=(\
-         systemd-devel \
-         kernel-devel-$(uname -r) \
-         kernel-headers-$(uname -r) \
-        )
+        RH_LIST+=(systemd-devel)
+
+        if [ $docker == 0 ]; then
+            RH_LIST+=(\
+             kernel-devel-$(uname -r) \
+             kernel-headers-$(uname -r) \
+            )
+        fi
 
     else
 
@@ -155,7 +165,6 @@ ub_package_list()
      libprotoc-dev \
      libssl-dev \
      libtiff5-dev \
-     libxml2-dev \
      libyaml-dev \
      linux-libc-dev \
      lm-sensors \
@@ -182,7 +191,7 @@ ub_package_list()
      python3-sphinx-rtd-theme \
     )
 
-    if [[ $docker == 0 ]]; then
+    if [ $docker == 0 ] && [ $sysroot == 0 ]; then
         UB_LIST+=(linux-headers-$(uname -r))
     fi
 
@@ -225,7 +234,6 @@ fd_package_list()
      libstdc++-static \
      libtiff-devel \
      libuuid-devel \
-     libxml2-devel \
      libyaml-devel \
      lm_sensors \
      make \
@@ -332,13 +340,11 @@ prep_rhel7()
     echo "Enabling RHEL SCL repository..."
     yum-config-manager --enable rhel-server-rhscl-7-rpms
 
-    MINOR=`echo ${VERSION} | awk -F. '{print $2}'`
-    if [ "$MINOR" != "" ] && [ $MINOR -gt 6 ]; then
-      echo "Enabling repository 'rhel-7-server-optional-rpms'"
-      subscription-manager repos --enable "rhel-7-server-optional-rpms"
-      echo "Enabling repository 'rhel-7-server-e4s-optional-rpms"
-      subscription-manager repos --enable "rhel-7-server-e4s-optional-rpms"
-    fi
+    echo "Enabling repository 'rhel-7-server-e4s-optional-rpms"
+    subscription-manager repos --enable "rhel-7-server-e4s-optional-rpms"
+
+    echo "Enabling repository 'rhel-7-server-optional-rpms'"
+    subscription-manager repos --enable "rhel-7-server-optional-rpms"
 }
 
 prep_rhel8()
@@ -422,10 +428,16 @@ install()
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then
         echo "Installing RHEL/CentOS packages..."
         yum install -y "${RH_LIST[@]}"
-	if [ $ARCH == "ppc64le" ]; then
+        if [ $ds9 == 1 ]; then
+            yum install -y devtoolset-9
+	elif [ $ARCH == "ppc64le" ]; then
             yum install -y devtoolset-7
 	elif [ $MAJOR -lt "8" ]  && [ $FLAVOR != "amzn" ]; then
-            yum install -y devtoolset-6
+            if [ $FLAVOR == "centos" ]; then
+                yum --enablerepo=base install -y devtoolset-9
+            else
+                yum install -y devtoolset-9
+            fi
 	fi
     fi
 
@@ -433,6 +445,9 @@ install()
         echo "Installing Fedora packages..."
         yum install -y "${FD_LIST[@]}"
     fi
+
+    # Install pybind11 for building the XRT python bindings
+    pip3 install pybind11
 }
 
 update_package_list

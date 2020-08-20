@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,9 +17,10 @@
 #ifndef core_common_util_error_h
 #define core_common_util_error_h
 
-#include "message.h"
+#include "core/common/config.h"
 #include <stdexcept>
 #include <string>
+#include <system_error>
 
 namespace xrt_core {
 
@@ -49,17 +50,29 @@ public:
   }
 };
 
-inline void
-send_exception_message(const char* msg, const char* tag="XRT")
+class system_error : public std::system_error
 {
-  message::send(message::severity_level::XRT_ERROR, tag, msg);
-}
+public:
+  system_error(int ec, const std::string& what = "")
+    : std::system_error(ec, std::system_category(), what)
+  {}
+};
 
-inline void
-send_exception_message(const std::string& msg, const char* tag="XRT")
+class generic_error : public std::system_error
 {
-  message::send(message::severity_level::XRT_ERROR, tag, msg);
-}
+public:
+  generic_error(int ec, const std::string& what = "")
+    : std::system_error(ec, std::generic_category(), what)
+  {}
+};
+
+XRT_CORE_COMMON_EXPORT
+void
+send_exception_message(const char* msg, const char* tag="XRT");
+
+XRT_CORE_COMMON_EXPORT
+void
+send_exception_message(const std::string& msg, const char* tag="XRT");
 
 } // xrt_core
 

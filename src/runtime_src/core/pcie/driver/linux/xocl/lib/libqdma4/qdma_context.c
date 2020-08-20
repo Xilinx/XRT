@@ -207,7 +207,7 @@ static int make_cmpt_context(struct qdma_descq *descq,
 
 	cmpt_ctxt->bs_addr = descq->desc_cmpt_bus;
 	cmpt_ctxt->desc_sz = descq->conf.cmpl_desc_sz;
-	cmpt_ctxt->full_upd = descq->xdev->conf.intr_moderation;
+	cmpt_ctxt->full_upd = descq->conf.adaptive_rx;
 
 	cmpt_ctxt->valid = 1;
 
@@ -430,8 +430,10 @@ int qdma4_descq_context_setup(struct qdma_descq *descq)
 			else if (descq->conf.q_type)  {/* st c2h */
 				descq_conf.desc_sz = DESC_SZ_8B;
 				descq_conf.forced_en = descq->conf.fetch_credit;
-			} else /* st h2c */
+			} else { /* st h2c */
 				descq_conf.desc_sz = DESC_SZ_16B;
+				descq_conf.forced_en = descq->conf.fetch_credit;
+			}
 		}
 	}
 	descq_conf.cmpt_desc_sz = descq->conf.cmpl_desc_sz;

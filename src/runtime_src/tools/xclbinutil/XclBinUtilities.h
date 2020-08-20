@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,9 +25,11 @@
 #include <fstream>
 #include <boost/property_tree/ptree.hpp>
 
-
 #include <iostream>
 #include <stdint.h>
+#include <vector>
+
+class XclBin;
 
 // Custom exception with payloads
 typedef enum {
@@ -35,9 +37,8 @@ typedef enum {
   XET_MISSING_SECTION = 100, // Section is missing
 } XclBinExceptionType;
 
-
 namespace XclBinUtilities {
-//
+
 template<typename ... Args>
 
 std::string format(const std::string& format, Args ... args) {
@@ -47,6 +48,23 @@ std::string format(const std::string& format, Args ... args) {
 
   return std::string(buf.get(), buf.get() + size);
 }
+
+template <typename T>
+std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
+                         boost::property_tree::ptree::key_type const& key)
+{
+    std::vector<T> r;
+
+    boost::property_tree::ptree::const_assoc_iterator it = pt.find(key);
+
+    if( it != pt.not_found()) {
+      for (auto& item : pt.get_child(key)) {
+        r.push_back(item.second);
+      }
+    }
+    return r;
+}
+
 
 class XclBinUtilException : public std::runtime_error {
   private:
@@ -130,6 +148,8 @@ void printKinds();
 std::string getUUIDAsString( const unsigned char (&_uuid)[16] );
 
 void write_htonl(std::ostream & _buf, uint32_t _word32);
+
+void createMemoryBankGrouping(XclBin & xclbin);
 };
 
 #endif

@@ -20,9 +20,12 @@
 
 #include "xrt.h"
 #include "ert.h"
+#include "experimental/xrt_uuid.h"
 #include "experimental/xrt_bo.h"
+#include "experimental/xrt_device.h"
 
 #ifdef __cplusplus
+# include "experimental/xrt_enqueue.h"
 # include <memory>
 # include <vector>
 # include <functional>
@@ -51,6 +54,7 @@ typedef void * xrtRunHandle;
 namespace xrt {
 
 class kernel;
+class event_impl;
 
 /**
  * class run - xrt::run represents one execution of a kernel
@@ -132,6 +136,19 @@ class run
   add_callback(ert_cmd_state state,
                std::function<void(const run&, ert_cmd_state, void*)>,
                void* data);
+
+
+  /**
+   * set_event() - Add event for enqueued operations
+   *
+   * @event:      Opaque implementation object
+   *
+   * This function is used when a run object is enqueued in an event
+   * graph.  The event must be notified upon completion of the run.
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  set_event(const std::shared_ptr<event_impl>& event) const;
 
   /**
    * operator bool() - Check if run handle is valid
@@ -233,6 +250,13 @@ class run
     start();
   }
 
+public:
+  std::shared_ptr<run_impl>
+  get_handle() const
+  {
+    return handle;
+  }
+
 private:
   std::shared_ptr<run_impl> handle;
 
@@ -286,7 +310,7 @@ public:
   /**
    * kernel() - Constructor from a device and xclbin
    *
-   * @dhdl:  Device handle on which the kernel should execute
+   * @device: Device on which the kernel should execute
    * @xclbin_id: UUID of the xclbin with the kernel
    * @name:  Name of kernel to construct
    * @exclusive: Open the kernel instances with exclusive access (default shared)
@@ -301,7 +325,13 @@ public:
    * argument to true.
    */
   XCL_DRIVER_DLLESPEC
-  kernel(xclDeviceHandle dhdl, const xuid_t xclbin_id, const std::string& name, bool exclusive=false);
+  kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
+
+  /**
+   * Obsoleted construction from xclDeviceHandle
+   */
+  XCL_DRIVER_DLLESPEC
+  kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
 
   /**
    * operator() - Invoke the kernel function
@@ -373,6 +403,13 @@ private:
   std::shared_ptr<kernel_impl> handle;
 };
 
+// Specialization from xrt_enqueue.h for run objects, which
+// are asynchronous waitable objects.
+template <>
+struct callable_traits<run>
+{
+  enum { is_async = true };
+};
 
 } // namespace xrt
 
@@ -403,7 +440,7 @@ extern "C" {
  */
 XCL_DRIVER_DLLESPEC
 xrtKernelHandle
-xrtPLKernelOpen(xclDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
+xrtPLKernelOpen(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
 
 /**
  * xrtPLKernelOpenExclusive() - Open a PL kernel and obtain its handle.
@@ -414,7 +451,7 @@ xrtPLKernelOpen(xclDeviceHandle deviceHandle, const xuid_t xclbinId, const char 
  */
 XCL_DRIVER_DLLESPEC
 xrtKernelHandle
-xrtPLKernelOpenExclusive(xclDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
+xrtPLKernelOpenExclusive(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
 
 /**
  * xrtKernelClose() - Close an opened kernel
@@ -558,7 +595,7 @@ xrtRunStart(xrtRunHandle runHandle);
  * Blocks current thread until job has completed
  */
 XCL_DRIVER_DLLESPEC
-ert_cmd_state
+enum ert_cmd_state
 xrtRunWait(xrtRunHandle runHandle);
 
 /**
@@ -572,7 +609,7 @@ xrtRunWait(xrtRunHandle runHandle);
  * Blocks current thread until job has completed
  */
 XCL_DRIVER_DLLESPEC
-ert_cmd_state
+enum ert_cmd_state
 xrtRunWaitFor(xrtRunHandle runHandle, unsigned int timeout_ms);
 
 /**
@@ -582,7 +619,7 @@ xrtRunWaitFor(xrtRunHandle runHandle, unsigned int timeout_ms);
  * Return:      The underlying command execution state per ert.h
  */
 XCL_DRIVER_DLLESPEC
-ert_cmd_state
+enum ert_cmd_state
 xrtRunState(xrtRunHandle runHandle);
 
 /**
@@ -599,8 +636,8 @@ xrtRunState(xrtRunHandle runHandle);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtRunSetCallback(xrtRunHandle runHandle, ert_cmd_state state,
-                  void (* pfn_state_notify)(xrtRunHandle, ert_cmd_state, void*),
+xrtRunSetCallback(xrtRunHandle runHandle, enum ert_cmd_state state,
+                  void (* pfn_state_notify)(xrtRunHandle, enum ert_cmd_state, void*),
                   void* data);
 
 /**

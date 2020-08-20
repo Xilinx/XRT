@@ -279,6 +279,7 @@ static void isSameShellOrSC(DSAInfo& candidate, DSAInfo& current,
 static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
 {
     reboot = false;
+    int ret = 0;
 
     Flasher flasher(boardIdx);
     if(!flasher.isValid()) {
@@ -297,7 +298,7 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     if (!same_bmc) {
         std::cout << "Updating SC firmware on card[" << flasher.sGetDBDF() <<
             "]" << std::endl;
-        int ret = updateSC(boardIdx, candidate.file.c_str());
+        ret = updateSC(boardIdx, candidate.file.c_str());
         if (ret != 0) {
             std::cout << "WARNING: Failed to update SC firmware on card ["
                 << flasher.sGetDBDF() << "]" << std::endl;
@@ -307,7 +308,7 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     if (!same_dsa) {
         std::cout << "Updating shell on card[" << flasher.sGetDBDF() <<
             "]" << std::endl;
-        int ret = updateShell(boardIdx, "", candidate.file.c_str(),
+        ret = updateShell(boardIdx, "", candidate.file.c_str(),
             candidate.file.c_str());
         if (ret != 0) {
             std::cout << "ERROR: Failed to update shell on card["
@@ -320,7 +321,7 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     if (!same_dsa && !reboot)
         return -EINVAL;
 
-    return 0;
+    return ret;
 }
 
 static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id, bool& multi_shell)

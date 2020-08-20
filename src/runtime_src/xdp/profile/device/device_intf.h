@@ -30,6 +30,7 @@
 #include "aim.h"
 #include "am.h"
 #include "asm.h"
+#include "noc.h"
 #include "traceFifoLite.h"
 #include "traceFifoFull.h"
 #include "traceFunnel.h"
@@ -173,6 +174,7 @@ class DeviceIntf {
     std::vector<AIM*> aimList;
     std::vector<AM*>  amList;
     std::vector<ASM*> asmList;
+    std::vector<NOC*> nocList;
 
     TraceFifoLite* fifoCtrl  = nullptr;
     TraceFifoFull* fifoRead  = nullptr;

@@ -213,6 +213,23 @@ struct mgmt
                      });
   }
 
+  void
+  get_flash_addr(uint64_t& value)
+  {
+    DWORD bytes = 0;
+    auto status = DeviceIoControl
+		(m_hdl,
+		XCLMGMT_OID_GET_QSPI_INFO,
+		NULL,
+		0,
+		&value,
+		sizeof(uint64_t),
+		&bytes,
+		NULL);
+
+    if (!status)
+      throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_QSPI_INFO failed");
+  }
 
 }; // struct mgmt
 
@@ -346,6 +363,15 @@ get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_bdf_info()");
   auto mgmt = get_mgmt_object(hdl);
   mgmt->get_bdf_info(bdf);
+}
+
+void
+get_flash_addr(xclDeviceHandle hdl, uint64_t& addr)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_flash_addr()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->get_flash_addr(addr);
 }
 
 } // mgmt

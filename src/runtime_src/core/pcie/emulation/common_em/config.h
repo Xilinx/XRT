@@ -167,6 +167,7 @@ namespace xclemulation{
       inline void setSimDir( std::string& simDir)               { mSimDir           = simDir;        }
       inline void setUserPreSimScript( std::string& userPreSimScript) {mUserPreSimScript = userPreSimScript; }
 	    inline void setUserPostSimScript( std::string& userPostSimScript) {mUserPostSimScript = userPostSimScript; }
+      inline void setWcfgFilePath(std::string& wcfgFilePath) { mWcfgFilePath = wcfgFilePath; }      
       inline void setLaunchWaveform( DEBUG_MODE lWaveform)  { mLaunchWaveform   = lWaveform;     }
       inline void suppressInfo( bool suppress)                  { mSuppressInfo     = suppress;      }
       inline void suppressWarnings( bool suppress)              { mSuppressWarnings = suppress;      }
@@ -192,6 +193,7 @@ namespace xclemulation{
       inline std::string getSimDir()            const { return mSimDir;         }
       inline std::string getUserPreSimScript()  const { return mUserPreSimScript;}
   	  inline std::string getUserPostSimScript()  const { return mUserPostSimScript;}
+      inline std::string getWcfgFilePath()  const { return mWcfgFilePath; }
       inline DEBUG_MODE getLaunchWaveform() const { return mLaunchWaveform; }
       inline bool isInfoSuppressed()            const { return mSuppressInfo;    }
       inline bool isWarningsuppressed()         const { return mSuppressWarnings;}
@@ -221,6 +223,7 @@ namespace xclemulation{
       std::string mSimDir;
       std::string mUserPreSimScript;
 	    std::string mUserPostSimScript;
+      std::string mWcfgFilePath;
       unsigned int mPacketSize;
       unsigned int mMaxTraceCount;
       unsigned int mPaddingFactor;

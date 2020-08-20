@@ -399,6 +399,7 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 
 	pidx = descq->pidx;
 	desc = (struct qdma_h2c_desc *)descq->desc + pidx;
+
 	while (!list_empty(&descq->work_list)) {
 		struct qdma_sgt_req_cb *cb = list_first_entry(&descq->work_list,
 						struct qdma_sgt_req_cb, list);
@@ -527,11 +528,12 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 update_pidx:
 		if (!desc_cnt)
 			break;
+
 		desc_written += desc_cnt;
 
-		pr_debug("descq %s, +%u,%u, avail %u, 0x%x(%u), cb off %u.\n",
-			descq->conf.name, desc_cnt, pidx, descq->avail,
-			data_cnt, data_cnt, cb->offset);
+		pr_debug("descq %s, +%u/%u, pidx %u, avail %u, 0x%x(%u), cb off %u.\n",
+			descq->conf.name, desc_cnt, desc_written, descq->pidx,
+			descq->avail, data_cnt, data_cnt, cb->offset);
 
 		descq->pend_req_desc -= desc_cnt;
 	}
@@ -550,7 +552,6 @@ update_pidx:
 			} else
 				pr_err("Err: Tx Time Offset is NULL\n");
 		}
-
 
 		ret = queue_pidx_update(descq->xdev, descq->conf.qidx,
 				descq->conf.q_type, &descq->pidx_info);
@@ -762,8 +763,7 @@ static int descq_mm_n_h2c_cmpl_status(struct qdma_descq *descq)
 	 * dma transfer by resuming the thread here.
 	 */
 
-
-	return 1;
+	return 0;
 }
 
 /* ************** public function definitions ******************************* */
@@ -789,6 +789,13 @@ void qdma4_descq_init(struct qdma_descq *descq, struct xlnx_dma_dev *xdev,
 	descq->conf.qidx = idx_sw;
 }
 
+unsigned int qdma_q_desc_avail_count(void *q_hndl)
+{
+	struct qdma_descq *descq = (struct qdma_descq *)q_hndl;
+
+	return descq->avail;
+}
+
 int qdma_q_desc_get(void *q_hndl, const unsigned int desc_cnt,
 		    struct qdma_q_desc_list **desc_list)
 {
@@ -798,6 +805,16 @@ int qdma_q_desc_get(void *q_hndl, const unsigned int desc_cnt,
 		pr_err("Invalid desc queue index");
 		return -EINVAL; /* not possible to give so many desc */
 	}
+
+	 /*
+	  * it is very unlikely that below condition hits in MM or ST H2C as
+	  * one packet is submitted at once. But It is ibserved that HW is not
+	  * giving writeback and sometimes its corresponding interrupt. For this
+	  * reason a polling logic is introduced as below
+	  **/
+	if (descq->avail < desc_cnt)
+		descq_mm_n_h2c_cmpl_status(descq);
+
 	if (descq->avail < desc_cnt) {
 		pr_err("No entries available to read");
 		return -EBUSY; /* curently not available */
@@ -811,13 +828,31 @@ int qdma_q_desc_get(void *q_hndl, const unsigned int desc_cnt,
 	return 0;
 }
 
-int qdma_q_init_pointers(void *q_hndl)
+int qdma_q_init_pointers(unsigned long dev_hndl, unsigned long id)
 {
-	struct qdma_descq *descq = (struct qdma_descq *)q_hndl;
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
+	struct qdma_descq *descq;
 	int rv;
 
+	/** make sure that the dev_hndl passed is Valid */
+	if (!xdev) {
+		pr_err("dev_hndl is NULL");
+		return -EINVAL;
+	}
+
+	if (qdma4_xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0) {
+		pr_err("Invalid dev_hndl passed");
+		return -EINVAL;
+	}
+
+	descq = qdma4_device_get_descq_by_id(xdev, id, NULL, 0, 1);
+	if (!descq) {
+		pr_err("%s, Invalid qid(%lu)", xdev->conf.name, id);
+		return -EINVAL;
+	}
+
 	if ((descq->conf.st && (descq->conf.q_type == Q_C2H)) ||
-			(!descq->conf.st && (descq->conf.q_type == Q_CMPT))) {
+	    (!descq->conf.st && (descq->conf.q_type == Q_CMPT))) {
 		if (descq->conf.init_pidx_dis) {
 			/* use qdma_q_init_pointers
 			 *for updating the pidx and cidx later
@@ -855,36 +890,61 @@ int qdma_q_init_pointers(void *q_hndl)
 	return 0;
 }
 
-void qdma4_queue_update_pointers(unsigned long dev_hndl, unsigned long qhndl)
+int qdma4_queue_update_pointers(unsigned long dev_hndl, unsigned long qhndl)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	struct qdma_descq *descq = qdma4_device_get_descq_by_id(xdev, qhndl,
 							NULL, 0, 0);
-	int ret;
+	int ret = 0;
 
-	if (descq) {
-		if (descq->conf.st && (descq->conf.q_type == Q_C2H)) {
+	if (!descq) {
+		pr_err("%s descq is null\n", __func__);
+		return -EINVAL;
+	}
+	if (descq->conf.st && (descq->conf.q_type == Q_C2H)) {
+		lock_descq(descq);
+		if (descq->q_state == Q_STATE_ONLINE) {
 			ret = queue_cmpt_cidx_update(descq->xdev,
 					descq->conf.qidx,
 					&descq->cmpt_cidx_info);
 			if (ret < 0) {
 				pr_err("%s: Failed to update cmpt cidx\n",
-						descq->conf.name);
-				return;
+					descq->conf.name);
+				ret = -EBUSY;
+				goto func_exit;
 			}
+		
 			ret = queue_pidx_update(descq->xdev,
 					descq->conf.qidx,
 					descq->conf.q_type,
 					&descq->pidx_info);
 			if (ret < 0) {
 				pr_err("%s: Failed to update pidx\n",
-						descq->conf.name);
-				return;
+					descq->conf.name);
+				ret = -EBUSY;
+				goto func_exit;
 			}
+			/*
+			 * Memory barrier in update pointers
+			 */
+			wmb();
+		} else {
+			pr_debug("Pointer update for offline queue for %s\n",
+				descq->conf.name);
+			ret = -ENODEV;
 		}
+	} else {
+		pr_debug("Pointer update for invalid queue for %s\n",
+			descq->conf.name);
+		
+		ret = -EINVAL;
 	}
 
+func_exit:
+	unlock_descq(descq);
+	return ret;
 }
+
 int qdma4_descq_alloc_resource(struct qdma_descq *descq)
 {
 	struct xlnx_dma_dev *xdev = descq->xdev;
@@ -916,16 +976,21 @@ int qdma4_descq_alloc_resource(struct qdma_descq *descq)
 
 		flq->desc = (struct qdma_c2h_desc *)descq->desc;
 		flq->size = descq->conf.rngsz;
-		flq->pg_shift = fls(descq->conf.c2h_bufsz) - 1;
+		flq->buf_pg_shift = fls(descq->conf.c2h_bufsz) - 1;
+		flq->buf_pg_mask = (1 << flq->buf_pg_shift) - 1;
+
+		flq->desc_buf_size = get_next_powof2(descq->conf.c2h_bufsz);
+		flq->desc_pg_shift = fls(flq->desc_buf_size) - 1;
 
 		/* These code changes are to accomodate buf_sz
 		 *  of less than 4096
 		 */
-		if (flq->pg_shift < PAGE_SHIFT)
-			flq->pg_order = 0;
+		if (flq->buf_pg_shift < PAGE_SHIFT)
+			flq->desc_pg_order = 0;
 		else
-			flq->pg_order = flq->pg_shift - PAGE_SHIFT;
+			flq->desc_pg_order = flq->buf_pg_shift - PAGE_SHIFT;
 
+		flq->max_pg_offset = (PAGE_SIZE << flq->desc_pg_order);
 		/* freelist / rx buffers */
 		rv = qdma4_descq_flq_alloc_resource(descq);
 		if (rv < 0)
@@ -1016,7 +1081,7 @@ void qdma4_descq_free_resource(struct qdma_descq *descq)
 			descq->conf.name, descq->desc, descq->desc_cmpt);
 
 		if (descq->conf.st && (descq->conf.q_type == Q_C2H))
-			qdma4_descq_flq_free_resource(descq);
+			descq_flq_free_page_resource(descq);
 		else
 			kfree(descq->desc_list);
 
@@ -1249,35 +1314,39 @@ int qdma4_descq_prog_hw(struct qdma_descq *descq)
 	return rv;
 }
 
-void qdma4_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
+int qdma4_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
 				bool c2h_upd_cmpl)
 {
+	int rv = 0;
+
 	if (descq->conf.st && (descq->conf.q_type == Q_C2H)) {
 		lock_descq(descq);
-		if (descq->q_state == Q_STATE_ONLINE)
-			qdma4_descq_process_completion_st_c2h(descq, budget,
-						c2h_upd_cmpl);
+		if (descq->q_state == Q_STATE_ONLINE) {
+			rv = qdma4_descq_process_completion_st_c2h(descq,
+						budget, c2h_upd_cmpl);
+			if (rv && (rv != -ENODATA))
+				pr_err("Error detected in %s.\n",
+					descq->conf.name);
+		} else {
+			pr_debug("Invalid q state of %s.\n", descq->conf.name);
+			rv = -EINVAL;
+		}
 		unlock_descq(descq);
 	} else if ((descq->xdev->conf.qdma_drv_mode == POLL_MODE) ||
 			(descq->xdev->conf.qdma_drv_mode == AUTO_MODE)) {
-		lock_descq(descq);
-		if (!descq->proc_req_running) {
-			unlock_descq(descq);
-			qdma4_descq_proc_sgt_request(descq);
-		} else {
-			pr_err("Processing previous request\n");
-			unlock_descq(descq);
-		}
+		if (!descq->proc_req_running)
+			rv = qdma4_descq_proc_sgt_request(descq);
 	} else {
 		lock_descq(descq);
 		descq_mm_n_h2c_cmpl_status(descq);
 		if (descq->pend_req_desc) {
 			unlock_descq(descq);
-			qdma4_descq_proc_sgt_request(descq);
-			return;
+			return (int)qdma4_descq_proc_sgt_request(descq);
 		}
 		unlock_descq(descq);
 	}
+
+	return rv;
 }
 
 ssize_t qdma4_descq_proc_sgt_request(struct qdma_descq *descq)
@@ -1337,7 +1406,10 @@ void qdma4_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 		}
 		cb->status = error;
 		cb->done = 1;
-		req->fp_done(req, cb->offset, error);
+		if (descq->conf.st && descq->conf.q_type == Q_C2H)
+			req->fp_done(req, req->count - cb->left, error);
+		else
+			req->fp_done(req, cb->offset, error);
 	} else {
 		pr_debug("req 0x%p, cb 0x%p, wake up.\n", req, cb);
 		cb->status = error;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +21,7 @@
 #include "shim.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "xrt_graph.h"
  
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
@@ -539,9 +540,20 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-  return 0;
+  return -ENOSYS;
 }
 
+ssize_t
+xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf, size_t size, uint64_t offset)
+{
+  return -ENOSYS;
+}
+
+int
+xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
+{
+  return -ENOSYS;
+}
 
 /*
  * API to get number of live processes.
@@ -580,7 +592,7 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 }
 
 //Added below calls as a fix for CR-1034151
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
@@ -598,7 +610,7 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
   return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
@@ -640,6 +652,103 @@ xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size
 
 int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
                         uint32_t idx, char* path, size_t size)
+{
+  return 0;
+}
+
+// Temporary place holder for XRT shim level Graph APIs
+
+void*
+xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph)
+{
+  return nullptr;
+}
+
+void
+xclGraphClose(xclGraphHandle ghl)
+{
+}
+
+int
+xclGraphReset(xclGraphHandle ghl)
+{
+  return 0;
+}
+
+uint64_t
+xclGraphTimeStamp(xclGraphHandle ghl)
+{
+  return 0;
+}
+
+int
+xclGraphRun(xclGraphHandle gh, int iterations)
+{
+  return 0;
+}
+
+int
+xclGraphWaitDone(xclGraphHandle gh, int timeoutMilliSec)
+{
+  return 0;
+}
+
+int
+xclGraphWait(xclGraphHandle gh, uint64_t cycle)
+{
+  return 0;
+}
+
+int
+xclGraphSuspend(xclGraphHandle gh)
+{
+  return 0;
+}
+
+int
+xclGraphResume(xclGraphHandle gh)
+{
+  return 0;
+}
+
+int
+xclGraphEnd(xclGraphHandle gh, uint64_t cycle)
+{
+  return 0;
+}
+
+int
+xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, size_t size)
+{
+  return 0;
+}
+
+int
+xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size)
+{
+  return 0;
+}
+
+int
+xclSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  return 0;
+}
+
+int
+xclResetAIEArray(xclDeviceHandle handle)
+{
+  return 0;
+}
+
+int
+xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  return 0;
+}
+
+int
+xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 {
   return 0;
 }
