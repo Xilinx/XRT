@@ -66,20 +66,6 @@ std::string
 unit_convert(size_t size);
 
 /**
- * num_to_hexstring() -
- */
-XRT_CORE_COMMON_EXPORT
-std::string
-num_to_hexstring(uint64_t size);
-
-/**
- * hexstring_to_num() -
- */
-XRT_CORE_COMMON_EXPORT
-uint64_t
-hexstring_to_num(std::string str);
-
-/**
  * bdf2index() - convert bdf to device index
  *
  * @bdf:   BDF string in [domain:]bus:device.function format

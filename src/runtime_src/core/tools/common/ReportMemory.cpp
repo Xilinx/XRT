@@ -101,8 +101,8 @@ void getChannelinfo(const xrt_core::device * device, boost::property_tree::ptree
     std::stringstream ss(dma_threads[i]);
     ss >> c2h[i] >> h2c[i];
     pt_dma.put("channel_id", i);
-    pt_dma.put("host_to_card_bytes", xrt_core::utils::num_to_hexstring(h2c[i]));
-    pt_dma.put("card_to_host_bytes", xrt_core::utils::num_to_hexstring(c2h[i]));
+    pt_dma.put("host_to_card_bytes", boost::format("0x%x") % h2c[i]);
+    pt_dma.put("card_to_host_bytes", boost::format("0x%x") % c2h[i]);
     pt_dma_array.push_back(std::make_pair("",pt_dma));
   }
   pt.put(std::string("board.direct_memory_accesses.type"), "pcie xdma");
@@ -206,9 +206,9 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
 
         ptMem.put("extended_info.ecc.status", ecc_st_str);
         ptMem.put("extended_info.ecc.error.correctable.count", ce_cnt);
-        ptMem.put("extended_info.ecc.error.correctable.first_failure_address", xrt_core::utils::num_to_hexstring(ce_ffa));
+        ptMem.put("extended_info.ecc.error.correctable.first_failure_address", boost::format("0x%x") % ce_ffa);
         ptMem.put("extended_info.ecc.error.uncorrectable.count", ue_cnt);
-        ptMem.put("extended_info.ecc.error.uncorrectable.first_failure_address", xrt_core::utils::num_to_hexstring(ue_ffa));
+        ptMem.put("extended_info.ecc.error.uncorrectable.first_failure_address", boost::format("0x%x") % ue_ffa);
       }
     }
     std::stringstream ss(mm_buf[i]);
@@ -217,8 +217,8 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
     ptMem.put("type", str);
     ptMem.put("tag", map->m_mem_data[i].m_tag);
     ptMem.put("enabled", map->m_mem_data[i].m_used ? true : false);
-    ptMem.put("base_address", xrt_core::utils::num_to_hexstring(map->m_mem_data[i].m_base_address));
-    ptMem.put("range_bytes", xrt_core::utils::num_to_hexstring(map->m_mem_data[i].m_size << 10));
+    ptMem.put("base_address", boost::format("0x%x") % map->m_mem_data[i].m_base_address);
+    ptMem.put("range_bytes", boost::format("0x%x") % (map->m_mem_data[i].m_size << 10));
     if (!temp_buf.empty() && temp[i] != XCL_INVALID_SENSOR_VAL)
       ptMem.put("extended_info.temperature_C", temp[i]);
     ptMem.put("extended_info.usage.allocated_bytes", memoryUsage);
@@ -249,8 +249,8 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
       ss >> memoryUsage >> boCount;
       ptGrp.put("type", str);
       ptGrp.put("tag", grp_map->m_mem_data[i].m_tag);
-      ptGrp.put("base_address", xrt_core::utils::num_to_hexstring(map->m_mem_data[i].m_base_address));
-      ptGrp.put("range_bytes", xrt_core::utils::num_to_hexstring(grp_map->m_mem_data[i].m_size << 10));
+      ptGrp.put("base_address", boost::format("0x%x") % map->m_mem_data[i].m_base_address);
+      ptGrp.put("range_bytes", boost::format("0x%x") % (grp_map->m_mem_data[i].m_size << 10));
       ptGrp.put("extended_info.usage.allocated_bytes", memoryUsage);
       ptGrp.put("extended_info.usage.buffer_objects_count", boCount);
       ptGrp_array.push_back(std::make_pair("",ptGrp));
@@ -301,9 +301,9 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
           st = subv.second.get<std::string>("ecc.status","");
           if (!st.empty()) {
             ce_cnt = subv.second.get<unsigned int>("ecc.error.correctable.count");
-            ce_ffa = xrt_core::utils::hexstring_to_num(subv.second.get<std::string>("ecc.error.correctable.first_failure_address"));
+            ce_ffa = std::stoll(subv.second.get<std::string>("ecc.error.correctable.first_failure_address"), 0, 16);
             ue_cnt = subv.second.get<unsigned int>("ecc.error.uncorrectable.count");
-            ue_ffa = xrt_core::utils::hexstring_to_num(subv.second.get<std::string>("ecc.error.uncorrectable.first_failure_address"));
+            ue_ffa = std::stoll(subv.second.get<std::string>("ecc.error.uncorrectable.first_failure_address"), 0, 16);
           }
         }
       }
@@ -343,7 +343,7 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
             unsigned int t = subv.second.get<unsigned int>("temperature_C",XCL_INVALID_SENSOR_VAL);
             temp = pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
           } else if (subv.first == "range_bytes") {
-            size = xrt_core::utils::unit_convert(xrt_core::utils::hexstring_to_num(subv.second.get_value<std::string>()));
+            size = xrt_core::utils::unit_convert(std::stoll(subv.second.get_value<std::string>(), 0, 16));
           }
         }
         _output << boost::format("    [%2d] %-12s%-12s%-9s%-8s\n") % index
@@ -377,7 +377,7 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
             bo_count = subv.second.get<unsigned>("usage.buffer_objects_count",0);
             mem_usage = xrt_core::utils::unit_convert(subv.second.get<size_t>("usage.allocated_bytes",0));
           } else if (subv.first == "range_bytes") {
-            size = xrt_core::utils::unit_convert(xrt_core::utils::hexstring_to_num(subv.second.get_value<std::string>()));
+            size = xrt_core::utils::unit_convert(std::stoll(subv.second.get_value<std::string>(), 0, 16));
           }
         }
         _output << boost::format("    [%2d] %-12s%-12s%-8s%-16s%-8u\n") % index % tag % type
@@ -399,7 +399,7 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
       for (auto& v : _pt.get_child("mem_topology.board.direct_memory_accesses.metrics",empty_ptree)) {
         std::string chan_h2c, chan_c2h, chan_val = "N/A";
         for (auto& subv : v.second) {
-          chan_val = xrt_core::utils::unit_convert(xrt_core::utils::hexstring_to_num(subv.second.get_value<std::string>()));
+          chan_val = xrt_core::utils::unit_convert(std::stoll(subv.second.get_value<std::string>(), 0, 16));
           if (subv.first == "host_to_card_bytes")
             chan_h2c = chan_val;
           else if (subv.first == "card_to_host_bytes")
