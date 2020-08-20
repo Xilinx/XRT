@@ -460,6 +460,7 @@ public:
     ssize_t queue_submit_io(xclQueueRequest *wr, aio_context_t *mAioCtx)
     {
         ssize_t rc = 0;
+        int error = 0;
         bool aio = (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) ? true : false;
 
         if (qAioBatchEn) {
@@ -494,27 +495,32 @@ public:
 
                 prepare_io(&cb, iov, &header, wr->bufs[i].va, wr->bufs[i].len,
 			 (uint64_t)wr->priv_data);
-                int rv = io_submit(*aio_ctx, 1, cbs);
-                if (rv <= 0)
+                error = io_submit(*aio_ctx, 1, cbs);
+                if (error <= 0)
                     break;
-                rc++;
+                rc += wr->bufs[i].len;
             }
             std::lock_guard<std::mutex> lk(reqLock);
-            cbSubmitCnt += rc;
+            cbSubmitCnt += wr->buf_num;
         } else {
             for (unsigned int i = 0; i < wr->buf_num; i++) {
                 struct iovec iov[2];
+		ssize_t rv;
+
                 prepare_io(nullptr, iov, &header, wr->bufs[i].va, wr->bufs[i].len, 0);
                 if (h2c)
-                    rc = writev((int)qhndl, iov, 2);
+                    rv = writev((int)qhndl, iov, 2);
                 else
-                    rc = readv((int)qhndl, iov, 2);
+                    rv = readv((int)qhndl, iov, 2);
 
-                if (rc < 0 || (size_t)rc != wr->bufs[i].len)
-                    return rc;
+                if (rv < 0) {
+			error = rv;
+			break;
+		}
+		rc += rv;
             }
         }
-        return rc;
+        return (rc > 0) ? rc : error;
     }
 
 }; /* queue_cb */

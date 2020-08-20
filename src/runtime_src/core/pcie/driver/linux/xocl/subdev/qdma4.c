@@ -968,11 +968,10 @@ static int queue_req_complete(struct qdma_request *req, unsigned int done_bytes,
 	bool free_req = false;
 
 	xocl_dbg(&queue->qdma->pdev->dev,
-		"%s, q 0x%lx, reqcb 0x%p,err %d, %u,%u, %u,%u, pend %u.\n",
-		__func__, queue->queue, reqcb, error,
-		queue->req_submit_cnt, queue->req_cmpl_cnt,
-		queue->req_cancel_cnt, queue->req_cancel_cmpl_cnt,
-		queue->req_pend_cnt);
+		"q 0x%lx, reqcb 0x%p,err %d, %u,%u, %u,%u, pend %u.\n",
+		queue->queue, reqcb, error, queue->req_submit_cnt,
+		queue->req_cmpl_cnt, queue->req_cancel_cnt,
+		queue->req_cancel_cmpl_cnt, queue->req_pend_cnt);
 
 	queue_req_release_resource(queue, reqcb);
 
@@ -1190,7 +1189,7 @@ if (nents != 1) {
 
 error_out:
 	if (ret < 0 || !kiocb) {
-		xocl_warn(&qdma->pdev->dev, "%s ret %ld, kiocb 0x%p.\n",
+		xocl_dbg(&qdma->pdev->dev, "%s ret %ld, kiocb 0x%p.\n",
 			  __func__, ret, (void *)kiocb);
 
 		for (i = 0, reqcb = iocb->reqcb; i < reqcnt; i++, reqcb++)
