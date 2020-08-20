@@ -742,7 +742,7 @@ validateMemoryBankGroupEntries( const unsigned int startGroupMemIndex,
                                            "           ip_layout_index : %d\n"
                                            "           mem_data_index  : %d (group)\n"
                                            "       is also connected to mem_data_index %d.\n", argIndex, ipLayoutIndex, memIndex, searchMemIndex);
-	throw std::runtime_error(errMsg);
+        throw std::runtime_error(errMsg);
       }
     }
   }
@@ -796,6 +796,7 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
   // Group the memories
   createMemoryBankGroupEntries(possibleGroupConnections, groupTopology, groupConnectivity);
 }
+
 
 
 void 
@@ -852,7 +853,7 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 
       // Merge connectivity information into the group connectivity
       for (auto & connection : connectivity) {
-	groupConnectivity.push_back(connection);
+        groupConnectivity.push_back(connection);
       }
 
       // Re-create the property tree, create and re-populate the Group Connectivity section, and add it.
