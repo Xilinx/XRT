@@ -223,6 +223,12 @@ private:
     // QDMA AIO
     aio_context_t mAioContext;
     bool mAioEnabled;
+
+    /* CopyBO helpers */
+    int execbufCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
+                  size_t dst_offset, size_t src_offset);
+    int m2mCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
+                  size_t dst_offset, size_t src_offset);
 }; /* shim */
 
 } /* xocl */

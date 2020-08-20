@@ -4238,6 +4238,12 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	if (scmd->opcode != ERT_START_COPYBO)
 		return 0;
 
+	/* If SSV3 M2M subdev is enabled, execbuf API should not be called for copybo */
+	if (M2M_CB(xdev)) {
+		userpf_err(xdev,"This is SSV3 with m2m enabled, cannot use execbuf.");
+		return -EINVAL;
+	}
+
 	sz = ert_copybo_size(scmd);
 
 	src_off = ert_copybo_src_offset(scmd);

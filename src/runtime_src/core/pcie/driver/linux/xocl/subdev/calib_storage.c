@@ -41,6 +41,11 @@ static int calib_storage_save_by_idx(struct platform_device *pdev, uint32_t idx)
 
 	BUG_ON(!calib_storage->cache);
 
+	if (calib_storage->cache[idx]) {
+		xocl_info(&pdev->dev, "Already have bank %d calib data, skip", idx);
+		return 0;
+	}
+
 	calib_storage->cache[idx] = vzalloc(sizeof(struct calib_cache));
 	if (!calib_storage->cache[idx]) {
 		err = -ENOMEM;
@@ -104,8 +109,6 @@ static int calib_storage_save(struct platform_device *pdev)
 	struct calib_storage *calib_storage = platform_get_drvdata(pdev);
 	int err = 0;
 	uint32_t i = 0;
-
-	calib_cache_clean(pdev);
 
 	mutex_lock(&calib_storage->lock);
 

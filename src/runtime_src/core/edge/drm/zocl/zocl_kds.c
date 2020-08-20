@@ -282,8 +282,6 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 
 	/* Now, we could forget execbuf */
 	ret = kds_add_command(&zdev->kds, xcmd);
-	if (ret)
-		kds_free_command(xcmd);
 
 out:
 	return ret;

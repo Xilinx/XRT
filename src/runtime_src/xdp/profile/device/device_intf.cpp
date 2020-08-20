@@ -154,10 +154,14 @@ DeviceIntf::~DeviceIntf()
     for(auto aieTraceDma : mAieTraceDmaList) {
       delete aieTraceDma;
     }
+    for(auto noc : nocList) {
+        delete noc;
+    }
     mAimList.clear();
     mAmList.clear();
     mAsmList.clear();
     mAieTraceDmaList.clear();
+    nocList.clear();
 
     delete mFifoCtrl;
     delete mFifoRead;
@@ -188,6 +192,8 @@ DeviceIntf::~DeviceIntf()
       return mAmList.size();
     if (type == XCL_PERF_MON_STR)
       return mAsmList.size();
+    if (type == XCL_PERF_MON_NOC)
+      return nocList.size();
 
     if (type == XCL_PERF_MON_STALL) {
       uint32_t count = 0;
@@ -225,6 +231,7 @@ DeviceIntf::~DeviceIntf()
     if((type == XCL_PERF_MON_MEMORY) && (index < mAimList.size())) { str = mAimList[index]->getName(); }
     if((type == XCL_PERF_MON_ACCEL)  && (index < mAmList.size()))  { str = mAmList[index]->getName(); }
     if((type == XCL_PERF_MON_STR)    && (index < mAsmList.size())) { str = mAsmList[index]->getName(); }
+    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size()))  { str = nocList[index]->getName(); }
     strncpy(name, str.c_str(), length);
     if(str.length() >= length) name[length-1] = '\0'; // required ??
   }
@@ -234,6 +241,7 @@ DeviceIntf::~DeviceIntf()
     if((type == XCL_PERF_MON_MEMORY) && (index < mAimList.size())) { return mAimList[index]->getName(); }
     if((type == XCL_PERF_MON_ACCEL)  && (index < mAmList.size()))  { return mAmList[index]->getName(); }
     if((type == XCL_PERF_MON_STR)    && (index < mAsmList.size())) { return mAsmList[index]->getName(); }
+    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size()))  { return nocList[index]->getName(); }
     return std::string("");
   }
 
@@ -288,6 +296,7 @@ DeviceIntf::~DeviceIntf()
     if((type == XCL_PERF_MON_MEMORY) && (index < mAimList.size())) { return mAimList[index]->getProperties(); }
     if((type == XCL_PERF_MON_ACCEL)  && (index < mAmList.size()))  { return mAmList[index]->getProperties(); }
     if((type == XCL_PERF_MON_STR)    && (index < mAsmList.size())) { return mAsmList[index]->getProperties(); }
+    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size()))  { return nocList[index]->getProperties(); }
     if((type == XCL_PERF_MON_FIFO)   && (mFifoRead != nullptr))    { return mFifoRead->getProperties(); }
     return 0;
   }
@@ -594,6 +603,8 @@ DeviceIntf::~DeviceIntf()
               else
                 mPlTraceDma = new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i]));
               break;
+            case AXI_NOC :               nocList.push_back(new NOC(mDevice, i, &(map->m_debug_ip_data[i])));
+                                         break;
             default : break;
             // case AXI_STREAM_PROTOCOL_CHECKER
           }
@@ -685,6 +696,17 @@ DeviceIntf::~DeviceIntf()
               }
               break;
             }
+            //case AXI_NOC :
+            //{
+            //  MMappedNOC* pNoc = new MMappedNOC(mDevice, i, nocList.size(), &(map->m_debug_ip_data[i]));
+            //  if(pNoc->isMMapped()) {
+            //    nocList.push_back(pNoc);
+            //  } else {
+            //    delete pNoc;
+            //    pNoc = nullptr;
+            //  }
+            //  break;
+            //}
             default : break;
           }
         }
@@ -775,6 +797,7 @@ DeviceIntf::~DeviceIntf()
             }
             default : break;
             // case AXI_STREAM_PROTOCOL_CHECKER
+            // case AXI_NOC
           }
         }
       }
@@ -792,6 +815,7 @@ DeviceIntf::~DeviceIntf()
     std::sort(mAimList.begin(), mAimList.end(), sorter);
     std::sort(mAmList.begin(), mAmList.end(), sorter);
     std::sort(mAsmList.begin(), mAsmList.end(), sorter);
+    std::sort(nocList.begin(), nocList.end(), sorter);
 
 #if 0
     for(auto mon : mAimList) {
@@ -808,6 +832,10 @@ DeviceIntf::~DeviceIntf()
 
     for(auto mon : mAieTraceDmaList) {
         mon->showProperties();
+    }
+
+    for(auto noc : nocList) {
+        noc->showProperties();
     }
 
     if(mFifoCtrl) mFifoCtrl->showProperties();

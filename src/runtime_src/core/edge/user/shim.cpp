@@ -488,6 +488,7 @@ xclLoadAxlf(const axlf *buffer)
 {
   int ret = 0;
   unsigned int flags = DRM_ZOCL_PLATFORM_BASE;
+  int off = 0;
 
   /*
    * If platform is a non-PR-platform, Following check will fail. Dont download
@@ -508,7 +509,39 @@ xclLoadAxlf(const axlf *buffer)
   drm_zocl_axlf axlf_obj = {
     .za_xclbin_ptr = const_cast<axlf *>(buffer),
     .za_flags = flags,
+    .za_ksize = 0,
+    .za_kernels = NULL,
   };
+
+  auto kernels = xrt_core::xclbin::get_kernels(buffer);
+  /* Calculate size of kernels */
+  for (auto& kernel : kernels) {
+      axlf_obj.za_ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+  }
+
+  /* Check PCIe's shim.cpp for details of kernels binary */
+  std::vector<char> krnl_binary(axlf_obj.za_ksize);
+  axlf_obj.za_kernels = krnl_binary.data();
+  for (auto& kernel : kernels) {
+      auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.za_kernels + off);
+      strcpy(krnl->name, kernel.name.c_str());
+      krnl->anums = kernel.args.size();
+
+      int ai = 0;
+      for (auto& arg : kernel.args) {
+          strcpy(krnl->args[ai].name, arg.name.c_str());
+          krnl->args[ai].offset = arg.offset;
+          krnl->args[ai].size   = arg.size;
+          // XCLBIN doesn't define argument direction yet and it only support
+          // input arguments.
+          // Driver use 1 for input argument and 2 for output.
+          // Let's refine this line later.
+          krnl->args[ai].dir    = 1;
+          ai++;
+      }
+      off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+  }
+
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
   xclLog(XRT_INFO, "XRT", "%s: flags 0x%x, return %d", __func__, flags, ret);
@@ -1355,6 +1388,28 @@ xclGetDeviceClockFreqMHz()
   return (double)clockFreq;
 }
 
+int
+shim::
+xclErrorInject(uint16_t num, uint16_t driver, uint16_t  severity, uint16_t module, uint16_t eclass)
+{
+  int ret;
+  drm_zocl_error_inject ecmd = {ZOCL_ERROR_OP_INJECT, num, driver, severity, module, eclass};
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_ERROR_INJECT, &ecmd);
+  return ret;
+}
+
+int
+shim::
+xclErrorClear()
+{
+  int ret;
+  drm_zocl_error_inject ecmd = {ZOCL_ERROR_OP_CLEAR_ALL};
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_ERROR_INJECT, &ecmd);
+  return ret;
+}
+
 #ifdef XRT_ENABLE_AIE
 zynqaie::Aie *
 shim::
@@ -2086,4 +2141,24 @@ int
 xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
   return 1; // -ENOSYS;
+}
+
+int
+xclErrorInject(xclDeviceHandle handle, uint16_t num, uint16_t driver, uint16_t severity, uint16_t module, uint16_t eclass)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+
+  return drv->xclErrorInject(num, driver, severity, module, eclass);
+}
+
+int
+xclErrorClear(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+
+  return drv->xclErrorClear();
 }

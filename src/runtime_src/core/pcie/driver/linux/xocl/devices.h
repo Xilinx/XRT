@@ -251,6 +251,7 @@ enum {
 #define	XOCL_MSIX_XDMA		"msix_xdma"
 #define	XOCL_ERT_USER		"ert_user"
 #define	XOCL_ERT_30		"ert_30"
+#define	XOCL_M2M		"m2m"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -260,6 +261,7 @@ enum subdev_id {
 	XOCL_SUBDEV_AXIGATE,
 	XOCL_SUBDEV_MSIX,
 	XOCL_SUBDEV_DMA,
+	XOCL_SUBDEV_M2M,
 	XOCL_SUBDEV_IORES,
 	XOCL_SUBDEV_FLASH,
 	XOCL_SUBDEV_P2P,
@@ -1735,8 +1737,8 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define	ERT_CSR_ADDR_VERSAL		0x6040000
-#define	ERT_CQ_BASE_ADDR_VERSAL		0x4000000
+#define	ERT_CSR_ADDR_VERSAL		0x2040000
+#define	ERT_CQ_BASE_ADDR_VERSAL		0x6000000
 
 #define XOCL_RES_INTC_VERSAL				\
 	((struct resource []) {				\

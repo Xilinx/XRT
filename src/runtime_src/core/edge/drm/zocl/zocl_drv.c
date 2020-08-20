@@ -32,6 +32,7 @@
 #include "zocl_bo.h"
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
+#include "zocl_error.h"
 
 #define ZOCL_DRIVER_NAME        "zocl"
 #define ZOCL_DRIVER_DESC        "Zynq BO manager"
@@ -732,6 +733,8 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_CTX, zocl_ctx_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_ERROR_INJECT, zocl_error_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations zocl_driver_fops = {
@@ -920,11 +923,15 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	drm->dev_private = zdev;
 	zdev->ddev       = drm;
 
+	ret = zocl_init_error(zdev);
+	if (ret)
+		goto err_sysfs;
+
 	/* Initial sysfs */
 	rwlock_init(&zdev->attr_rwlock);
 	ret = zocl_init_sysfs(drm->dev);
 	if (ret)
-		goto err_sysfs;
+		goto err_err;
 
 	/* Now initial kds */
 	if (kds_mode == 1) {
@@ -942,6 +949,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 /* error out in exact reverse order of init */
 err_sched:
 	zocl_fini_sysfs(drm->dev);
+err_err:
+	zocl_fini_error(zdev);
 err_sysfs:
 	zocl_xclbin_fini(zdev);
 	mutex_destroy(&zdev->zdev_xclbin_lock);
@@ -979,6 +988,7 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	zocl_xclbin_fini(zdev);
 	mutex_destroy(&zdev->zdev_xclbin_lock);
 	zocl_fini_sysfs(drm->dev);
+	zocl_fini_error(zdev);
 
 	if (kds_mode == 1)
 		zocl_fini_sched(zdev);
