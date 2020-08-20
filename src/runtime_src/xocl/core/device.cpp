@@ -712,8 +712,8 @@ get_cu_memidx() const
       for (auto& cu : get_cu_range())
         mask &= cu->get_memidx_intersect();
 
-      // select first common memory bank index if any
-      for (size_t idx=mask.size() - 1; idx>=0; --idx) {
+      // select max common memory bank index if any
+      for (int idx=0; idx<mask.size(); ++idx) {
         if (mask.test(idx)) {
           m_cu_memidx = idx;
           break;

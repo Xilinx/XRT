@@ -848,7 +848,7 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
       // Transform and group the memories
       transformMemoryBankGroupingCollections(connectivity, groupTopology, groupConnectivity);
 
-      // Perform some DRC checks on the memory grouping and connectivity produced
+      // Perform some DRC checks on the memory grouping and connectivity produced before marging to group connectivity
       validateMemoryBankGroupEntries((unsigned int) memTopology.size(), groupTopology, groupConnectivity);
 
       // Merge connectivity information into the group connectivity
