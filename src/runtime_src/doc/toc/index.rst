@@ -19,6 +19,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    platforms.rst
    system_requirements.rst
    build.rst
+   install.rst
    test.rst
 
 

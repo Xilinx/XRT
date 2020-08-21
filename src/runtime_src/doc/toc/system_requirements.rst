@@ -18,13 +18,8 @@ Software Platform for PCIe Accelerator Cards
 
 XRT and OpenCL runtime require Linux kernel 3.10+ and GCC with C++14 features. 
 
-The stack has been tested on the following OS distributions
+The stack is tested on RHEL/CentOS and Ubuntu. For the detailed list of supported OS, please refer to the specific version of `UG1451 XRT Release Notes <https://www.xilinx.com/search/site-keyword-search.html#q=ug1451>`_. 
 
-1. RHEL/CentOS 7.4 
-2. RHEL/CentOS 7.5 
-3. RHEL/CentOS 7.6 
-4. Ubuntu 16.04.4 LTS
-5. Ubuntu 18.04.1 LTS 
 
    CentOS/RHEL 7.4, 7.5, 7.6 require additional steps to install C++14 tool set and a few dependent libraries. Please use the provided script ``src/runtime_src/tools/scripts/xrtdeps.sh`` to install the dependencies for both CentOS/RHEL and Ubuntu distributions. Additional information for RHEL/CentOS is below.
    

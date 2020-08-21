@@ -1,6 +1,6 @@
 .. _build.rst:
 
-Building and Installing Software Stack
+Building the XRT Software Stack
 --------------------------------------
 
 XRT
