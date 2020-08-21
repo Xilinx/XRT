@@ -1422,12 +1422,18 @@ int shim::xclLoadAxlf(const axlf *buffer)
     axlf_obj.kernels = krnl_binary.data();
     for (auto& kernel : kernels) {
         auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.kernels + off);
-        strcpy(krnl->name, kernel.name.c_str());
+        if (kernel.name.size() > sizeof(krnl->name))
+            return -EINVAL;
+        std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
+        krnl->name[sizeof(krnl->name)-1] = '\0';
         krnl->anums = kernel.args.size();
 
         int ai = 0;
         for (auto& arg : kernel.args) {
-            strcpy(krnl->args[ai].name, arg.name.c_str());
+            if (arg.name.size() > sizeof(krnl->args[ai].name))
+                return -EINVAL;
+            std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+            krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
             krnl->args[ai].offset = arg.offset;
             krnl->args[ai].size   = arg.size;
             // XCLBIN doesn't define argument direction yet and it only support
