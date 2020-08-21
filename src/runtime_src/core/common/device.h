@@ -129,21 +129,6 @@ public:
   virtual const query::request&
   lookup_query(query::key_type query_key) const = 0;
 
-  /**
-   * open() - opens a device with an fd which can be used for non pcie read/write
-   * xospiversal and xspi use this
-   */
-  virtual int
-  open(const std::string&, int) const
-  { throw std::runtime_error("Not implemented"); }
-
-  /**
-   * close() - close the fd
-   */
-  virtual void
-  close(int) const
-  { throw std::runtime_error("Not implemented"); }
-
 public:
   /**
    * query() - Query the device for specific property
@@ -267,6 +252,21 @@ public:
   virtual void write(uint64_t, const void*, uint64_t) const {}
 
   virtual void reset(const char*, const char*, const char*) const {}
+
+  /**
+   * open() - opens a device with an fd which can be used for non pcie read/write
+   * xospiversal and xspi use this
+   */
+  virtual int
+  open(const std::string&, int) const
+  { throw std::runtime_error("Not implemented"); }
+
+  /**
+   * close() - close the fd
+   */
+  virtual void
+  close(int) const
+  { throw std::runtime_error("Not implemented"); }
 
   /**
    * file_open() - Opens a scoped fd

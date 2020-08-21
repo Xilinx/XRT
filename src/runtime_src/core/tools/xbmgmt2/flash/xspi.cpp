@@ -324,9 +324,9 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
     mFlashDev = nullptr;
 #ifdef __GNUC__
     if (std::getenv("FLASH_VIA_USER") == NULL) {
-        auto fd = mDev->file_open("flash", O_RDWR);
-        if (fd.get() >= 0)
-            mFlashDev = fdopen(fd.get(), "r+");
+        int fd = mDev->open("flash", O_RDWR);
+        if (fd >= 0)
+            mFlashDev = fdopen(fd, "r+");
         if (mFlashDev == NULL)
             std::cout << "Failed to open flash device on card" << std::endl;
     }
