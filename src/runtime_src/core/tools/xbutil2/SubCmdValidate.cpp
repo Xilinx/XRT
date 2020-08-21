@@ -266,7 +266,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   // log testcase path for debugging purposes
   logger(_ptTest, "Testcase", xrtTestCasePath);
 
-  std::vector<std::string> args = { " -k ", xclbinPath, " -d ", std::to_string(_dev.get()->get_device_id()) };
+  std::vector<std::string> args = { "-k", xclbinPath, "-d", std::to_string(_dev.get()->get_device_id()) };
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
   int exit_code = XBU::runPythonScript(xrtTestCasePath, args, os_stdout, os_stderr);
