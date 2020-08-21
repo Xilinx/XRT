@@ -32,10 +32,11 @@ C++14 capable GCC.
 
    scl enable devtoolset-9 bash
 
-XRT includes source code for ERT firmware, which must compiled using the MicroBlaze GCC compiler, 
-which is available in Xilinx Vitis. 
-To compile the complete XRT package, please install Vitis Software Stack and set XILINX_VITIS environment. 
-If Vitis is not available in the build system, ERT building will be skipped. XRT will use ERT firmware in ``/lib/firmware/xilinx`` on the deployment system. 
+XRT includes source code for ERT firmware. 
+It needs to be compiled with the MicroBlaze GCC compiler, which is available in `Xilinx Vitis™ Software Platform <https://www.xilinx.com/products/design-tools/vitis.html>`_. 
+To generate a complete XRT package, please install Vitis™ Software Platform and setup XILINX_VITIS environment variable. 
+If XILINX_VITIS is not available in the build system, the building and packaging steps for ERT will be skipped. 
+On the deployment system, XRT will try to find the ERT firmware in ``/lib/firmware/xilinx`` directory. 
 If it's not available, errors will be reported. 
 
 
