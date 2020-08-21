@@ -46,7 +46,7 @@ is_nodma()
 }
 
 ////////////////////////////////////////////////////////////////
-// Exposed for Cardano as extensions to xrt_bo.h
+// Exposed for Vitis aietools as extensions to xrt_bo.h
 // Revisit post 2020.1
 ////////////////////////////////////////////////////////////////
 // Removed as address was exposed through public API per request

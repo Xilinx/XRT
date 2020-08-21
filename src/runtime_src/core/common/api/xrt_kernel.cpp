@@ -58,7 +58,7 @@ using namespace std::chrono_literals;
 #endif
 
 ////////////////////////////////////////////////////////////////
-// Exposed for Cardano as extensions to xrt_kernel.h
+// Exposed for Vitis aietools as extensions to xrt_kernel.h
 // Revisit post 2020.1
 ////////////////////////////////////////////////////////////////
 /**

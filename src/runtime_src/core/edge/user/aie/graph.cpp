@@ -49,16 +49,11 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::strin
   : device(std::move(dev)), name(graph_name)
 {
 #ifndef __AIESIM__
-    // TODO
-    // this is not the right place for creating Aie instance. Should
-    // we move this to loadXclbin when detect Aie Array?
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
+    if (!drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
     aieArray = drv->getAieArray();
-    if (!aieArray) {
-      aieArray = new Aie(device);
-      drv->setAieArray(aieArray);
-    }
 #else
     aieArray = getAieArray();
 #endif
@@ -66,7 +61,7 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::strin
     /* Initialize graph tile metadata */
     for (auto& tile : xrt_core::edge::aie::get_tiles(device.get(), name)) {
       /*
-       * Since row 0 is shim row, according to Cardano, row data in
+       * Since row 0 is shim row, according to Vitis aietools, row data in
        * xclbin is off-by-one. To talk to AIE driver, we need to add
        * shim row back.
        */
@@ -90,11 +85,6 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::strin
 graph_type::
 ~graph_type()
 {
-#ifndef __AIESIM__
-    /* TODO move this to ZYNQShim destructor or use smart pointer */
-    if (aieArray)
-        delete aieArray;
-#endif
 }
 
 void
@@ -685,15 +675,15 @@ xclGraphReadRTP(xclGraphHandle ghdl, const char* port, char* buffer, size_t size
 void
 xclSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  zynqaie::Aie *aieArray = nullptr;
-
 #ifndef __AIESIM__
   auto device = xrt_core::get_userpf_device(handle);
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-  aieArray = drv->getAieArray();
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+  auto aieArray = drv->getAieArray();
 #else
-  aieArray = getAieArray();
+  auto aieArray = getAieArray();
 #endif
 
   auto paddr = xrtBOAddress(bohdl);
@@ -708,15 +698,15 @@ xclSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
 void
 xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  zynqaie::Aie *aieArray = nullptr;
-
 #ifndef __AIESIM__
   auto device = xrt_core::get_userpf_device(handle);
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-  aieArray = drv->getAieArray();
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+  auto aieArray = drv->getAieArray();
 #else
-  aieArray = getAieArray();
+  auto aieArray = getAieArray();
 #endif
 
   auto paddr = xrtBOAddress(bohdl);
@@ -731,15 +721,15 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioNa
 void
 xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 {
-  zynqaie::Aie *aieArray = nullptr;
-
 #ifndef __AIESIM__
   auto device = xrt_core::get_userpf_device(handle);
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-  aieArray = drv->getAieArray();
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+  auto aieArray = drv->getAieArray();
 #else
-  aieArray = getAieArray();
+  auto aieArray = getAieArray();
 #endif
 
   aieArray->wait_gmio(gmioName);
@@ -980,10 +970,10 @@ xclResetAIEArray(xclDeviceHandle handle)
 }
 
 ////////////////////////////////////////////////////////////////
-// Exposed for Cardano as extensions to xrt_aie.h
+// Exposed for Vitis aietools as extensions to xrt_aie.h
 ////////////////////////////////////////////////////////////////
 /**
- * xrtSyncBOAIENB() - Transfer data between DDR and Shim DMA channel
+ * xclSyncBOAIENB() - Transfer data between DDR and Shim DMA channel
  *
  * @handle:          Handle to the device
  * @bohdl:           BO handle.
@@ -1015,7 +1005,7 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioNa
 }
 
 /**
- * xrtGMIOWait() - Wait a shim DMA channel to be idle for a given GMIO port
+ * xclGMIOWait() - Wait a shim DMA channel to be idle for a given GMIO port
  *
  * @handle:          Handle to the device
  * @gmioName:        GMIO port name
