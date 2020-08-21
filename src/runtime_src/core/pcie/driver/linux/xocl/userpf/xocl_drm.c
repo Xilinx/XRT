@@ -258,6 +258,9 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 	}
 
+	if (ret > 0)
+		return ret;
+
 	switch (ret) {
 	case -EAGAIN:
 	case 0:
