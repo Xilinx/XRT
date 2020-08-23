@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <cstdlib>
 
 #include "experimental/xrt_device.h"
 #include "experimental/xrt_kernel.h"
@@ -39,6 +40,38 @@ static void usage()
     std::cout << "";
     std::cout << "* Bitstream is required\n";
     std::cout << "* Name of compute unit from loaded xclbin is required\n";
+}
+
+static void
+sync_test(const xrt::device& device, int32_t grpidx)
+{
+  std::string testVector =  "hello\nthis is Xilinx sync BO read write test\n:-)\n";
+  const size_t data_size = testVector.size();
+
+  auto bo = xrt::bo(device, data_size, 0, grpidx);
+  auto bo_data = bo.map<char*>();
+  std::copy_n(testVector.begin(), data_size, bo_data);
+  bo.sync(XCL_BO_SYNC_BO_TO_DEVICE , data_size , 0);
+  bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE , data_size, 0);
+  if (!std::equal(testVector.begin(), testVector.end(), bo_data))
+    throw std::runtime_error("Value read back from sync bo does not match value written");
+}
+
+static void
+copy_test(const xrt::device& device, size_t bytes, int32_t grpidx)
+{
+  auto bo1 = xrt::bo(device, bytes, 0, grpidx);
+  auto bo1_data = bo1.map<char*>();
+  std::generate_n(bo1_data, bytes, []() { return std::rand() % 256; });
+  
+  bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE , bytes , 0);
+
+  auto bo2 = xrt::bo(device, bytes, 0, grpidx);
+  bo2.copy(bo1, bytes);
+  bo2.sync(XCL_BO_SYNC_BO_FROM_DEVICE , bytes, 0);
+  auto bo2_data = bo2.map<char*>();
+  if (!std::equal(bo1_data, bo1_data + bytes, bo2_data))
+    throw std::runtime_error("Value read back from copy bo does not match value written");
 }
 
 int run(int argc, char** argv)
@@ -88,18 +121,14 @@ int run(int argc, char** argv)
 
   auto device = xrt::device(device_index);
   auto uuid = device.load_xclbin(xclbin_fnm);
+  auto kernel = xrt::kernel(device, uuid, cu_name);
+  auto grpidx = kernel.group_id(0);
 
-  std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
-  const size_t data_size = testVector.size();
+  sync_test(device, grpidx);
+  copy_test(device, 4096, grpidx);
 
-  auto kernel = xrt::kernel(device, uuid.get(), cu_name);
-  auto bo = xrt::bo(device, data_size, 0, kernel.group_id(0));
-  auto bo_data = bo.map<char*>();
-  std::copy_n(testVector.begin(), data_size, bo_data);
-  bo.sync(XCL_BO_SYNC_BO_TO_DEVICE , data_size , 0);
-  bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE , data_size, 0);
-  if (!std::equal(testVector.begin(), testVector.end(), bo_data))
-    throw std::runtime_error("Value read back does not match value written");
+  // Copy through host not 64 byte aligned
+  copy_test(device, 40, grpidx);
 
   return 0;
 }
