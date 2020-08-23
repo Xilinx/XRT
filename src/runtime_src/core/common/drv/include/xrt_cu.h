@@ -150,9 +150,9 @@ struct xcu_funcs {
 };
 
 enum arg_dir {
-	NONE = 0,
-	INPUT,
-	OUTPUT
+	DIR_NONE = 0,
+	DIR_INPUT,
+	DIR_OUTPUT
 };
 
 struct xrt_cu_arg {
