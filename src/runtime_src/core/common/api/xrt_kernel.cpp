@@ -54,7 +54,7 @@ using namespace std::chrono_literals;
 #include <boost/detail/endian.hpp>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4267 4996)
+# pragma warning( disable : 4244 4267 4996 4100)
 #endif
 
 ////////////////////////////////////////////////////////////////
@@ -207,6 +207,7 @@ class ip_context
 {
 public:
   enum class access_mode : bool { exclusive = false, shared = true };
+  constexpr static unsigned int virtual_cu_idx = std::numeric_limits<unsigned int>::max();
 
   static std::shared_ptr<ip_context>
   open(xrt_core::device* device, const xrt::uuid& xclbin_id, const ip_data* ip, unsigned int ipidx, access_mode am)
@@ -221,6 +222,16 @@ public:
     if (ipctx->access != am)
       throw std::runtime_error("Conflicting access mode for IP(" + std::to_string(ipidx) + ")");
 
+    return ipctx;
+  }
+
+  static std::shared_ptr<ip_context>
+  open_virtual_cu(xrt_core::device* device, const xrt::uuid& xclbin_id)
+  {
+    static std::weak_ptr<ip_context> vctx;
+    auto ipctx = vctx.lock();
+    if (!ipctx)
+      vctx = ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id));
     return ipctx;
   }
 
@@ -264,6 +275,13 @@ private:
     : device(dev), xid(xclbin_id), idx(ipidx), address(ip->m_base_address), size(64_kb), access(am)
   {
     device->open_context(xid.get(), idx, std::underlying_type<access_mode>::type(am));
+  }
+
+  // virtual CU
+  ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id)
+    : device(dev), xid(xclbin_id), idx(virtual_cu_idx), address(0), size(0), access(access_mode::shared)
+  {
+    device->open_context(xid.get(), idx, std::underlying_type<access_mode>::type(access));
   }
 
   xrt_core::device* device;
@@ -719,6 +737,7 @@ class kernel_impl
   std::vector<int32_t> arg2grp;        // argidx to memory group index
   std::vector<argument> args;          // kernel args sorted by argument index
   std::vector<ipctx> ipctxs;           // CU context locks
+  ipctx vctx;                          // virtual CU context
   std::bitset<128> cumask;             // cumask for command execution
   size_t regmap_size = 0;              // CU register map size
   size_t num_cumasks = 1;              // Required number of command cu masks
@@ -826,6 +845,7 @@ public:
   kernel_impl(std::shared_ptr<device_type> dev, const xrt::uuid& xclbin_id, const std::string& nm, ip_context::access_mode am)
     : device(std::move(dev))                                   // share ownership
     , name(nm.substr(0,nm.find(":")))                          // filter instance names
+    , vctx(ip_context::open_virtual_cu(device->core_device.get(), xclbin_id))
   {
     // ip_layout section for collecting CUs
     auto ip_section = device->core_device->get_axlf_section(IP_LAYOUT, xclbin_id);
@@ -847,9 +867,6 @@ public:
     if (ips.empty())
       throw std::runtime_error("No compute units matching '" + nm + "'");
 
-    // set kernel protocol
-    protocol = get_ip_control(ips);
-
     auto cus = xrt_core::xclbin::get_cus(ip_layout);  // sort order
     for (const ip_data* cu : ips) {
       auto itr = std::find(cus.begin(), cus.end(), cu->m_base_address);
@@ -860,6 +877,9 @@ public:
       cumask.set(idx);
       num_cumasks = std::max<size_t>(num_cumasks, (idx / 32) + 1);
     }
+
+    // set kernel protocol
+    protocol = get_ip_control(ips);
 
     // Collect ip_layout index of the selected CUs so that xclbin
     // connectivity section can be used to gather memory group index
@@ -1418,6 +1438,37 @@ send_exception_message(const char* msg)
 }
 
 } // namespace
+
+////////////////////////////////////////////////////////////////
+// XRT implmentation access to internal kernel APIs
+////////////////////////////////////////////////////////////////
+namespace xrt_core { namespace kernel_int {
+
+void
+copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
+                  size_t sz,
+                  xclBufferHandle dst_bo, size_t dst_offset,
+                  xclBufferHandle src_bo, size_t src_offset)
+{
+#ifndef _WIN32
+  // Construct a kernel command to copy bo.  Kernel commands
+  // must be shared ptrs
+  auto dev = get_device(core_device);
+  auto cmd = std::make_shared<kernel_command>(dev.get());
+
+  // Get and fill the underlying packet
+  auto pkt = cmd->get_ert_cmd<ert_start_copybo_cmd*>();
+  ert_fill_copybo_cmd(pkt, src_bo, dst_bo, src_offset, dst_offset, sz);
+
+  // Run the command and wait for completion
+  cmd->run();
+  cmd->wait();
+#else
+  throw std::runtime_error("KDMA not supported on windows");
+#endif
+}
+
+}} // kernel_int, xrt_core
 
 
 ////////////////////////////////////////////////////////////////
