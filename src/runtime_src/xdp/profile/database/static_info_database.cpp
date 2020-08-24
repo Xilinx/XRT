@@ -97,6 +97,7 @@ namespace xdp {
 #else
     pid = static_cast<int>(getpid()) ;
 #endif
+    applicationStartTime = 0 ;
   }
 
   VPStaticDatabase::~VPStaticDatabase()

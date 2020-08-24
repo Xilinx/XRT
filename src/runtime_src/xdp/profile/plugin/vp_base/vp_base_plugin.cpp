@@ -22,6 +22,8 @@
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 #include "xdp/profile/database/database.h"
 
+#include "core/common/time.h"
+
 #ifdef _WIN32
 #pragma warning(disable : 4996)
 /* Disable warning for use of "getenv" */
@@ -31,6 +33,8 @@ namespace xdp {
 
   XDPPlugin::XDPPlugin() : db(VPDatabase::Instance())
   {
+    if ((db->getStaticInfo()).getApplicationStartTime() == 0)
+      (db->getStaticInfo()).setApplicationStartTime(xrt_core::time_ns()) ;
   }
 
   XDPPlugin::~XDPPlugin()

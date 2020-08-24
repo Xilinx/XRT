@@ -246,6 +246,7 @@ namespace xdp {
   private:
     // ********* Information specific to each host execution **********
     int pid ;
+    uint64_t applicationStartTime ;
     
     // The files that need to be included in the run summary for
     //  consumption by Vitis_Analyzer
@@ -286,6 +287,9 @@ namespace xdp {
 
     // Getters and setters
     inline int getPid() { return pid ; }
+    inline uint64_t getApplicationStartTime() { return applicationStartTime ; }
+    inline void setApplicationStartTime(uint64_t t)
+      { applicationStartTime = t ; }
     inline std::vector<std::pair<std::string, std::string>>& getOpenedFiles() 
       { return openedFiles ; }
     inline std::set<uint64_t>& getCommandQueueAddresses() 
