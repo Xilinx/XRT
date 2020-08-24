@@ -639,7 +639,7 @@ namespace xclhwemhal2 {
         systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
 
         simulatorType = getSimulatorType(binaryDirectory);
-		std::transform(simulatorType.begin(), simulatorType.end(), simulatorType.begin(), ::tolower);
+	std::transform(simulatorType.begin(), simulatorType.end(), simulatorType.begin(), ::tolower);
       }
 
       if (lWaveform == xclemulation::DEBUG_MODE::GUI)
@@ -652,13 +652,11 @@ namespace xclhwemhal2 {
 
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
-          if (simulatorType == "xsim") {
+          if (simulatorType == "xsim") 
             cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
               << " --protoinst " << protoFileName;
-          }
-          else {
+          else 
             writeNewSimulateScript(sim_path, simulatorType);
-          }
           launcherArgs = launcherArgs + cmdLineOption.str();
         }
         

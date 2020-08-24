@@ -187,9 +187,9 @@ using addr_type = uint64_t;
       void saveWaveDataBase();
       void extractEmuData(const std::string& simPath, int binaryCounter, bitStreamArg args);
       void writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName );
-	  std::string loadFileContentsToString(const std::string& path);
-	  std::string modifyContent(const std::string& simulatorName, std::string& content);
-	  void writeStringIntoFile(const std::string& path, const std::string& content);
+      std::string loadFileContentsToString(const std::string& path);
+      std::string modifyContent(const std::string& simulatorName, std::string& content);
+      void writeStringIntoFile(const std::string& path, const std::string& content);
       // Sanity checks
       static HwEmShim *handleCheck(void *handle);
       uint32_t getAddressSpace (uint32_t topology);
