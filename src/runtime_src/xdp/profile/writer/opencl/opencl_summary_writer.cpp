@@ -754,6 +754,8 @@ namespace xdp {
 	 << "Total Time (ms)"          << ","
 	 << "Average Size (KB)"        << ","
 	 << "Average Latency (ns)"     << std::endl ;
+
+    // TODO
   }
 
   void OpenCLSummaryWriter::writeDataTransferDMABypass()
@@ -773,6 +775,8 @@ namespace xdp {
 	 << "Total Time (ms)"          << ","
 	 << "Average Size (KB)"        << ","
 	 << "Average Latency (ns)"     << std::endl ;
+
+    // TODO
   }
 
   void OpenCLSummaryWriter::writeDataTransferGlobalMemoryToGlobalMemory()
@@ -792,6 +796,8 @@ namespace xdp {
 	 << "Total Time (ms)"          << ","
 	 << "Average Size (KB)"        << ","
 	 << "Average Latency (ns)"     << std::endl ;
+
+    // TODO
   }
 
   void OpenCLSummaryWriter::writeTopDataTransferKernelAndGlobal()
@@ -809,6 +815,8 @@ namespace xdp {
 	 << "Total Write (MB)"           << ","
 	 << "Total Read (MB)"            << ","
 	 << "Total Transfer Rate (MB/s)" << std::endl ;
+
+    // TODO
   }
 
   void OpenCLSummaryWriter::writeTopKernelExecution()
@@ -826,6 +834,8 @@ namespace xdp {
 	 << "Duration (ms)"           << ","
 	 << "Global Work Size"        << ","
 	 << "Local Work Size"         << std::endl ;
+
+    // TODO
   }
 
   void OpenCLSummaryWriter::writeTopMemoryWrites()
@@ -841,6 +851,8 @@ namespace xdp {
 	 << "Duration (ms)"      << ","
 	 << "Buffer Size (KB)"   << ","
 	 << "Writing Rate(MB/s)" << std::endl ;
+
+    // TODO
   }
 
   void OpenCLSummaryWriter::writeTopMemoryReads()
@@ -856,6 +868,8 @@ namespace xdp {
 	 << "Duration (ms)"      << ","
 	 << "Buffer Size (KB)"   << ","
 	 << "Reading Rate(MB/s)" << std::endl ;
+
+    // TODO
   }
 
   void OpenCLSummaryWriter::writeGuidance()
