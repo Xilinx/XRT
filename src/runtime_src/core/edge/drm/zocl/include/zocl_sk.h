@@ -21,6 +21,7 @@
 
 struct soft_cu {
 	void			*sc_vregs;
+	struct drm_gem_object	*gem_obj;
 
 	/*
 	 * This semaphore is used for each soft kernel
@@ -53,5 +54,6 @@ struct soft_krnl_cmd {
 };
 
 int zocl_init_soft_kernel(struct drm_device *drm);
+void zocl_fini_soft_kernel(struct drm_device *drm);
 
 #endif
