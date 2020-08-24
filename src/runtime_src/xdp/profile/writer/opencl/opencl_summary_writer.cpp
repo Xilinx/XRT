@@ -816,7 +816,85 @@ namespace xdp {
 	 << "Total Read (MB)"            << ","
 	 << "Total Transfer Rate (MB/s)" << std::endl ;
 
-    // TODO
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    uint64_t i = 0 ;
+    for (auto device : infos)
+    {
+      // For this device, find the monitor that has the most total number of
+      //  read/write transactions
+      xclCounterResults values = (db->getDynamicInfo()).getCounterResults(i) ;
+
+      std::string computeUnitName = "" ;
+      uint64_t numTransfers = 0 ;
+      double aveBytesPerTransfer = 0 ;
+      double transferEfficiency = 0 ;
+      uint64_t totalDataTransfer = 0 ;
+      uint64_t totalWrite = 0 ;
+      uint64_t totalRead = 0 ;
+      double totalTransferRate = 0 ;
+
+      uint64_t maxNumTranx = 0 ;
+      for (auto cu : device->cus)
+      {
+	std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
+
+	uint64_t totalTranx = 0 ;
+	uint64_t totalReadBytes = 0 ;
+	uint64_t totalWriteBytes = 0 ;
+	uint64_t totalBusyCycles = 0 ;
+
+	uint64_t AIMIndex = 0 ;
+	for (auto monitor : monitors)
+	{
+	  if (monitor->type != AXI_MM_MONITOR) continue ;
+
+	  auto writeTranx = values.WriteTranx[AIMIndex] ;
+	  auto readTranx = values.ReadTranx[AIMIndex] ;
+	  
+	  totalTranx += writeTranx + readTranx ;
+	  totalReadBytes += values.ReadBytes[AIMIndex] ;
+	  totalWriteBytes += values.WriteBytes[AIMIndex] ;
+
+	  totalBusyCycles += values.ReadBusyCycles[AIMIndex] ;
+	  totalBusyCycles += values.WriteBusyCycles[AIMIndex] ;
+
+	  ++AIMIndex ;
+	}
+
+	if (totalTranx > maxNumTranx)
+	{
+	  // For now, this CU has the most transactions that we monitored,
+	  //  so update our information
+	  computeUnitName = (cu.second)->getName() ;
+	  numTransfers = totalTranx ;
+	  aveBytesPerTransfer =
+	    (double)(totalReadBytes + totalWriteBytes)/(double)(numTransfers) ;
+	  // TODO: Fix bit width calculation here
+	  transferEfficiency = (100.0 * aveBytesPerTransfer) / 4096 ; 
+	  totalDataTransfer = totalReadBytes + totalWriteBytes ;
+	  totalRead = totalReadBytes ;
+	  totalWrite = totalWriteBytes ;	  
+	  double totalTimeMSec = 
+	    (double)(totalBusyCycles) /(1000.0 * device->clockRateMHz) ;
+	  totalTransferRate =
+	    (totalTimeMSec == 0) ? 0.0 :
+	    (double)(totalDataTransfer) / (1000.0 * totalTimeMSec) ;
+	}
+      }
+      
+      fout << device->platformInfo.deviceName << ","
+	   << computeUnitName << "," 
+	   << numTransfers << ","
+	   << aveBytesPerTransfer << ","
+	   << transferEfficiency << ","
+	   << (double)(totalDataTransfer) / 1.0e6 << ","
+	   << (double)(totalWrite) / 1.0e6 << ","
+	   << (double)(totalRead) / 1.0e6 << ","
+	   << totalTransferRate << std::endl ;
+
+      ++i ;
+    }
   }
 
   void OpenCLSummaryWriter::writeTopKernelExecution()
