@@ -124,62 +124,42 @@ namespace xclhwemhal2 {
     return buf_size;
   }
 
-  void HwEmShim::writeNewSimulateScript(std::string simPath, std::string simName, std::string simCmd, std::string guiOrBatch, std::string guiEnableOption)
-  {
+  std::string HwEmShim::loadFileContentsToString(const std::string& path) {
+    std::ifstream file(path);
+    return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  }
 
-    std::stringstream ss;
-    ss << simPath << "/simulate.sh";
-    std::string filePth = ss.str();
+  void HwEmShim::writeStringIntoFile(const std::string& path, const std::string& content) {
+	std::ofstream out(path);
+	out << content << std::endl;
+    out.close();
+  }
 
-    std::ifstream seek1;
-    std::ofstream temp1;
-    seek1.open(filePth);
-    temp1.open(simPath + "/temp.sh");
-    std::string temp;
-
-    while (getline(seek1, temp))
-    {
-      if (temp.find(simCmd) != std::string::npos)
-      {
-        if (boost::iequals(simName, "xcelium")) {
-          //for xcelium, append -gui to the command in simulate.sh to run in GUI mode if it doesnt exist
-          if (temp.find(guiOrBatch) == std::string::npos) {
-            temp.append(guiEnableOption);
-          }
-        }
-        else if (boost::iequals(simName, "questa")) {
-          //for questa, replace -c with  -gui to the command in simulate.sh to run in GUI mode
-          if (temp.find(guiOrBatch) != std::string::npos) {
-            temp = std::regex_replace(temp, std::regex(guiOrBatch), guiEnableOption);
-          }
-        }
-
+  std::string HwEmShim::modifyContent(const std::string& simulatorName, std::string& content) {
+    if (simulatorName == "xcelium") {
+      // Append "-gui " to  xmsim command line if not already present
+      if (content.find("-gui ") == std::string::npos) {
+        content.replace(content.find("xmsim "), 6, "xmsim -gui ");
       }
-      temp1 << temp << std::endl;
+    } else if (simulatorName == "questa") {
+	  // Questa always generates simulate.sh with "-c " which is batch mode. Replace "-c " with "-gui " to run in GUI mode
+      if (content.find("-c ") != std::string::npos) {
+        content.replace(content.find("-c "), 3, "-gui ");
+      }
     }
-
-    std::remove((simPath + "/simulate.sh").c_str());
-    std::rename((simPath + "/temp.sh").c_str(), (simPath + "/simulate.sh").c_str());
-    systemUtil::makeSystemCall(filePth, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
-
+    return content;
   }
 
-  void HwEmShim::writeNewSimulateScriptForXcelium(std::string simPath)
-  {
-    //append gui option , if not there already
-    std::string xceliumCmd = "bin_path/xmsim";
-    std::string isGui = "gui";
-    std::string guiOption = " -gui";
-    writeNewSimulateScript(simPath, "xcelium", xceliumCmd, isGui, guiOption);
-  }
-
-  void HwEmShim::writeNewSimulateScriptForQuesta(std::string simPath)
-  {
-    //replace batch option with GUI option
-    std::string questaCmd = "vsim";
-    std::string batchOption = "-c";
-    std::string guiOption = "-gui";
-    writeNewSimulateScript(simPath, "questa", questaCmd, batchOption, guiOption);
+  void HwEmShim::writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName ) { 
+    // Write the contents of this file into a string  
+    std::string content = loadFileContentsToString(simPath + "/simulate.sh");
+    // Modify as per simulator name
+    content = modifyContent(simulatorName, content);
+    // overwrite the file with modified string
+    writeStringIntoFile(simPath + "/simulate.sh", content);
+    // give permissions
+    std::string filePath = simPath + "/simulate.sh";
+    systemUtil::makeSystemCall(filePath, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
   }
 
 
@@ -659,6 +639,7 @@ namespace xclhwemhal2 {
         systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
 
         simulatorType = getSimulatorType(binaryDirectory);
+		std::transform(simulatorType.begin(), simulatorType.end(), simulatorType.begin(), ::tolower);
       }
 
       if (lWaveform == xclemulation::DEBUG_MODE::GUI)
@@ -671,15 +652,12 @@ namespace xclhwemhal2 {
 
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
-          if (boost::iequals(simulatorType, "xsim")) {
+          if (simulatorType == "xsim") {
             cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
               << " --protoinst " << protoFileName;
           }
-          else if (boost::iequals(simulatorType, "xcelium")) {
-            writeNewSimulateScriptForXcelium(sim_path);
-          }
-          else if (boost::iequals(simulatorType, "questa")) {
-            writeNewSimulateScriptForQuesta(sim_path);
+          else {
+            writeNewSimulateScript(sim_path, simulatorType);
           }
           launcherArgs = launcherArgs + cmdLineOption.str();
         }

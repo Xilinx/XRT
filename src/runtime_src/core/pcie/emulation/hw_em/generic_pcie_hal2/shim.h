@@ -186,9 +186,10 @@ using addr_type = uint64_t;
       void fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src);
       void saveWaveDataBase();
       void extractEmuData(const std::string& simPath, int binaryCounter, bitStreamArg args);
-      void writeNewSimulateScriptForXcelium(std::string simPath);
-      void writeNewSimulateScriptForQuesta(std::string simPath);
-      void writeNewSimulateScript(std::string simPath, std::string simName, std::string simCmd, std::string guiOrBatch, std::string guiEnableOption);
+      void writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName );
+	  std::string loadFileContentsToString(const std::string& path);
+	  std::string modifyContent(const std::string& simulatorName, std::string& content);
+	  void writeStringIntoFile(const std::string& path, const std::string& content);
       // Sanity checks
       static HwEmShim *handleCheck(void *handle);
       uint32_t getAddressSpace (uint32_t topology);
