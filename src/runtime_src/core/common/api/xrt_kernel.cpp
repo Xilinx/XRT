@@ -54,7 +54,7 @@ using namespace std::chrono_literals;
 #include <boost/detail/endian.hpp>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4267 4996)
+# pragma warning( disable : 4244 4267 4996 4100)
 #endif
 
 ////////////////////////////////////////////////////////////////
@@ -1459,7 +1459,7 @@ copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
   // Get and fill the underlying packet
   auto pkt = cmd->get_ert_cmd<ert_start_copybo_cmd*>();
   ert_fill_copybo_cmd(pkt, src_bo, dst_bo, src_offset, dst_offset, sz);
-    
+
   // Run the command and wait for completion
   cmd->run();
   cmd->wait();

@@ -180,7 +180,7 @@ public:
         return;
       }
     }
-    catch (const std::exception& ex) {
+    catch (const std::exception&) {
     }
 
     // try copying with kdma
