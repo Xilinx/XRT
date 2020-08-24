@@ -27,6 +27,9 @@
 #include <functional>
 #include <boost/format.hpp>
 
+/* exposed by shim */
+int xclUpdateSchedulerStat(xclDeviceHandle);
+
 namespace {
 
 namespace query = xrt_core::query;
@@ -51,6 +54,16 @@ struct bdf
   }
 };
 
+struct sched_update_stat
+{
+  using result_type = query::scheduler_update_stat::result_type;
+  static int
+  get(const xrt_core::device* device, key_type)
+  {
+    auto hdl = device->get_device_handle();
+    return xclUpdateSchedulerStat(hdl);
+  }
+};
 
 // Specialize for other value types.
 template <typename ValueType>
@@ -404,8 +417,10 @@ initialize_query_table()
   emplace_sysfs_get<query::board_name>                  ("", "board_name");
   emplace_sysfs_get<query::logic_uuids>                 ("", "logic_uuids");
   emplace_sysfs_get<query::interface_uuids>             ("", "interface_uuids");
+  emplace_sysfs_get<query::kds_custat>              ("mb_scheduler", "kds_custat");
 
   emplace_func0_request<query::pcie_bdf,                bdf>();
+  emplace_func0_request<query::scheduler_update_stat,   sched_update_stat>();
 }
 
 struct X { X() { initialize_query_table(); }};
