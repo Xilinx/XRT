@@ -17,8 +17,6 @@ dependencies using the provided ``xrtdeps.sh``.
 
    sudo <XRT>/src/runtime_src/tools/scripts/xrtdeps.sh
 
-.. warning:: If ``xrtdeps.sh`` fails when installing devtoolset-6, then please manually install a later devtoolset, for example ``devtoolset-9``.
-             
 The ``xrtdeps.sh`` script installs the standard distribution packages
 for the tools and libraries XRT depends on. If any system libraries
 XRT depends on (for example Boost libraries) are updated to non

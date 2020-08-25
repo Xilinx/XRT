@@ -52,7 +52,7 @@ struct ishim
   free_bo(xclBufferHandle boh) = 0;
 
   virtual xclBufferExportHandle
-  export_bo(xclBufferHandle boh) = 0;
+  export_bo(xclBufferHandle boh) const = 0;
 
   virtual xclBufferHandle
   import_bo(xclBufferExportHandle ehdl) = 0;
@@ -210,7 +210,7 @@ struct shim : public DeviceType
   }
 
   virtual xclBufferExportHandle
-  export_bo(xclBufferHandle bo)
+  export_bo(xclBufferHandle bo) const
   {
     auto ehdl = xclExportBO(DeviceType::get_device_handle(), bo);
     if (ehdl == XRT_NULL_BO_EXPORT)

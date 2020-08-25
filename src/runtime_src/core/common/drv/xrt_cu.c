@@ -363,6 +363,10 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	xcu->run_timeout = 0;
 	sema_init(&xcu->sem, 0);
 	xcu->thread = kthread_run(xrt_cu_thread, xcu, "xrt_thread");
+	if (IS_ERR(xcu->thread)) {
+		err = IS_ERR(xcu->thread);
+		xcu_err(xcu, "Create CU thread failed, err %d\n", err);
+	}
 
 	return err;
 }
@@ -371,7 +375,8 @@ void xrt_cu_fini(struct xrt_cu *xcu)
 {
 	xcu->stop = 1;
 	up(&xcu->sem);
-	(void) kthread_stop(xcu->thread);
+	if (!IS_ERR(xcu->thread))
+		(void) kthread_stop(xcu->thread);
 
 	return;
 }
@@ -395,9 +400,9 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
 	sz += sprintf(buf+sz, "--- Arguments ---\n");
 	sz += sprintf(buf+sz, "Number of arguments: %d\n", info->num_args);
 	for (i = 0; i < info->num_args; i++) {
-		if (info->args[i].dir == INPUT)
+		if (info->args[i].dir == DIR_INPUT)
 			strcpy(dir, "input");
-		else if (info->args[i].dir == OUTPUT)
+		else if (info->args[i].dir == DIR_OUTPUT)
 			strcpy(dir, "output");
 		else
 			strcpy(dir, "unknown");

@@ -104,11 +104,6 @@ shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
-
-#ifdef XRT_ENABLE_AIE
-  /* TODO is this necessary? We may want to initialize it when loading xclbin */
-  aieArray = NULL;
-#endif
 }
 
 #ifndef __HWEM__
@@ -524,12 +519,18 @@ xclLoadAxlf(const axlf *buffer)
   axlf_obj.za_kernels = krnl_binary.data();
   for (auto& kernel : kernels) {
       auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.za_kernels + off);
-      strcpy(krnl->name, kernel.name.c_str());
+      if (kernel.name.size() > sizeof(krnl->name))
+          return -EINVAL;
+      std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
+      krnl->name[sizeof(krnl->name)-1] = '\0';
       krnl->anums = kernel.args.size();
 
       int ai = 0;
       for (auto& arg : kernel.args) {
-          strcpy(krnl->args[ai].name, arg.name.c_str());
+          if (arg.name.size() > sizeof(krnl->args[ai].name))
+              return -EINVAL;
+          std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+          krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
           krnl->args[ai].offset = arg.offset;
           krnl->args[ai].size   = arg.size;
           // XCLBIN doesn't define argument direction yet and it only support
@@ -1411,20 +1412,26 @@ xclErrorClear()
 }
 
 #ifdef XRT_ENABLE_AIE
-zynqaie::Aie *
+zynqaie::Aie*
 shim::
 getAieArray()
 {
-  return aieArray;
+  return aieArray.get();
 }
 
 void
 shim::
-setAieArray(zynqaie::Aie *aie)
+registerAieArray()
 {
-  aieArray = aie;
+  aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
 }
 
+bool
+shim::
+isAieRegistered()
+{
+  return (aieArray != nullptr);
+}
 #endif
 
 } // end namespace ZYNQ
@@ -1642,11 +1649,16 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     }
     auto core_device = xrt_core::get_userpf_device(handle);
 
+    core_device->register_axlf(buffer);
+
+#ifdef XRT_ENABLE_AIE
+    drv->registerAieArray();
+#endif
+
     /* If PDI is the only section, return here */
     if (xrt_core::xclbin::is_pdi_only(buffer))
         return 0;
 
-    core_device->register_axlf(buffer);
 
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING

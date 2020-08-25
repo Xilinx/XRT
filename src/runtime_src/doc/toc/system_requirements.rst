@@ -22,10 +22,10 @@ The XRT software stack is tested on RHEL/CentOS and Ubuntu.
 For the detailed list of supported OS, please refer to the specific release versions of `UG1451 XRT Release Notes <https://www.xilinx.com/search/site-keyword-search.html#q=ug1451>`_. 
 
 XRT is needed on both application development and deployment environments. 
+
 To install XRT on the host, please refer to page :ref:`install.rst` for dependencies installation steps and XRT installation steps.
 
 To build a custom XRT package, please refer to page :ref:`build.rst` for dependencies installation steps and building steps.
-
 
 XRT Software Stack for Embedded Platforms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

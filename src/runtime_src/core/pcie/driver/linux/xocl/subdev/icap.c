@@ -1586,10 +1586,13 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		/* ip_data->m_name format "<kernel name>:<instance name>",
 		 * where instance name is so called CU name.
 		 */
-		strcpy(kname, ip->m_name);
+		strncpy(kname, ip->m_name, sizeof(kname));
+		kname[sizeof(kname)-1] = '\0';
 		kname_p = &kname[0];
-		strcpy(info.kname, strsep(&kname_p, ":"));
-		strcpy(info.iname, strsep(&kname_p, ":"));
+		strncpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
+		info.kname[sizeof(info.kname)-1] = '\0';
+		strncpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
+		info.kname[sizeof(info.kname)-1] = '\0';
 
 		info.inst_idx = i;
 		info.addr = ip->m_base_address;

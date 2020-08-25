@@ -498,6 +498,7 @@ skip1:
 		goto done;
 	}
 	if (copy_from_user(kernels, axlf_ptr->kernels, axlf_ptr->ksize)) {
+		vfree(kernels);
 		err = -EFAULT;
 		goto done;
 	}
