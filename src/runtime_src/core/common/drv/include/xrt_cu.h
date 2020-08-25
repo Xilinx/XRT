@@ -285,6 +285,8 @@ static inline void xrt_cu_check(struct xrt_cu *xcu)
 {
 	struct xcu_status status;
 
+	status.num_done = 0;
+	status.num_ready = 0;
 	xcu->funcs->check(xcu->core, &status);
 	/* XRT CU assume command finished in order
 	 */
@@ -321,6 +323,7 @@ int  xrt_cu_init(struct xrt_cu *xcu);
 void xrt_cu_fini(struct xrt_cu *xcu);
 
 ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf);
+ssize_t show_cu_info(struct xrt_cu *xcu, char *buf);
 
 /* CU Implementations */
 struct xrt_cu_hls {
