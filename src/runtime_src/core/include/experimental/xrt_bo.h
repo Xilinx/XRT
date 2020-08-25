@@ -229,6 +229,21 @@ public:
   void
   read(void* dst, size_t size, size_t skip);
 
+  /**
+   * copy() - Deep copy BO content from another buffer
+   *
+   * @src:          Source BO to copy from
+   * @sz:           Size of data to copy
+   * @src_offset:   Offset into src buffer copy from
+   * @dst_offset:   Offset in this buffer to copy to
+   *
+   * A copy size equal to 0 indicates copying complete src bo
+   * to this bo.
+   */
+  XCL_DRIVER_DLLESPEC
+  void    
+  copy(const bo& src, size_t sz=0, size_t src_offset=0, size_t dst_offset=0);
+
 public:
   std::shared_ptr<bo_impl>
   get_handle() const

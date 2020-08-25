@@ -39,6 +39,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   zocl/include/zocl_cu.h
   zocl/include/zocl_dma.h
   zocl/include/zocl_drv.h
+  zocl/include/zocl_error.h
   zocl/include/zocl_ert.h
   zocl/include/zocl_generic_cu.h
   zocl/include/zocl_ioctl.h
@@ -56,6 +57,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   zocl/zocl_cu.c
   zocl/zocl_dma.c
   zocl/zocl_drv.c
+  zocl/zocl_error.c
   zocl/zocl_ert.c
   zocl/zocl_generic_cu.c
   zocl/zocl_ioctl.c

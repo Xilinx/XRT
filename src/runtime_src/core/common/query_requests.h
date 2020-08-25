@@ -88,6 +88,7 @@ enum class key_type
   xmc_scaling_reset,
 
   m2m,
+  error,
 
   dna_serial_num,
   clock_freqs_mhz,
@@ -788,6 +789,26 @@ struct m2m : request
   {
     return (value == std::numeric_limits<uint32_t>::max())
       ? false : value;
+  }
+};
+
+// Retrieve asynchronous errors from driver
+struct error : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::error;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  // Parse sysfs line and split into error code and timestamp
+  static std::pair<uint64_t, uint64_t>
+  to_value(const std::string& line)
+  {
+    std::size_t pos = 0;
+    auto code = std::stoul(line, &pos);
+    auto time = std::stoul(line.substr(pos));
+    return std::make_pair(code, time);
   }
 };
 

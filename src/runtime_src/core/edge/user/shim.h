@@ -131,9 +131,10 @@ public:
   int xclErrorClear();
 
 #ifdef XRT_ENABLE_AIE
-  zynqaie::Aie *getAieArray();
-  void setAieArray(zynqaie::Aie *aie);
+  zynqaie::Aie* getAieArray();
   int getBOInfo(drm_zocl_info_bo &info);
+  void registerAieArray();
+  bool isAieRegistered();
 #endif
 
 private:
@@ -159,7 +160,7 @@ private:
   int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
 
 #ifdef XRT_ENABLE_AIE
-  zynqaie::Aie *aieArray;
+  std::unique_ptr<zynqaie::Aie> aieArray;
 #endif
 };
 
