@@ -170,7 +170,12 @@ devfs_exists(pcidev::pf_type type, uint32_t instance, std::string& sysfsname)
   struct stat buf;
   std::string devfs = get_devfs_path(type, instance, sysfsname);
 
-  return (stat(devfs.c_str(), &buf) == 0);
+  if (stat(devfs.c_str(), &buf) == 0)
+    return true;
+
+  // For xoclv2 golden image, there will only be a flash devfs node
+  std::string flash_devfs = "/dev/xfpga/flash." + sysfsname;
+  return (stat(flash_devfs.c_str(), &buf) == 0);
 }
 
 /*
@@ -1148,6 +1153,8 @@ operator<<(std::ostream& stream, const std::shared_ptr<pcidev::pci_device>& dev)
     dev->sysfs_get<uint64_t>("rom", "timestamp", err, ts, static_cast<uint64_t>(-1));
   } else {
     dev->sysfs_get("xmgmt_main", "VBNV", err, shell_name);
+    if (!err.empty())
+    	dev->sysfs_get("xocl_vsec_golden", "VBNV", err, shell_name);
   }
   stream << " " << shell_name;
   if (ts != 0)
