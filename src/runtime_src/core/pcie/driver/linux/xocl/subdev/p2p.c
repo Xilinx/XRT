@@ -1305,6 +1305,7 @@ static int p2p_probe(struct platform_device *pdev)
 	if (p2p->p2p_bar_len < XOCL_P2P_CHUNK_SIZE) {
 		xocl_err(&pdev->dev, "p2p bar len is 0");
 		p2p->p2p_bar_idx = -1;
+		ret = -ENOMEM;
 		goto failed;
 	}
 
