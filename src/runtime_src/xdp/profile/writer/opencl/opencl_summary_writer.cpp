@@ -1406,7 +1406,8 @@ namespace xdp {
     uint64_t endTime = xrt_core::time_ns() ;
     
     (t->fout) << "APPLICATION_RUN_TIME_MS" << ","
-	      << (endTime - startTime)
+	      << "all" << ","
+	      << ((double)(endTime - startTime) / 1.0e6)
 	      << std::endl ;
     
   }
