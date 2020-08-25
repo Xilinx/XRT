@@ -402,30 +402,19 @@ program_plp(std::shared_ptr<xrt_core::device> dev, const std::string& partition)
   int total_size = static_cast<int>(stream.tellg());
   stream.seekg(0, stream.beg);
 
-  xrt_core::scope_value_guard<int, std::function<void()>> fd { 0, nullptr };
-  try {
-      fd = dev->file_open("icap", O_WRONLY); 
-  } catch (const std::exception& e) {
-      xrt_core::send_exception_message(e.what(), "XBMGMT");
-  }
-
   std::vector<char> buffer(total_size);
   stream.read(buffer.data(), total_size);
-  //DEBUG-----
-  std::cout << "size: " << total_size <<std::endl;
-  for(int i=0; i<10; i++)
-    std::cout << buffer[i];
-  std::cout << std::endl;
-  //----------
+  ssize_t ret = total_size;
+  
+  try {
+    xrt_core::scope_value_guard<int, std::function<void()>> fd = dev->file_open("icap", O_WRONLY);
+    ret = write(fd.get(), buffer.data(), total_size);
+    if (ret != total_size)
+      throw xrt_core::error("Write plp to icap subdev failed");
 
-	ssize_t ret = total_size;
-	ret = write(fd.get(), buffer.data(), total_size);
-  //DEBUG-----
-  std::cout << "ret: " << ret << std::endl;
-  //----------
-
-  if (ret != total_size)
-    throw xrt_core::error("Write plp to icap subdev failed");
+  } catch (const std::exception& e) {
+    xrt_core::send_exception_message(e.what(), "XBMGMT");
+  }
 
   try {
     auto value = xrt_core::query::rp_program_status::value_type(1);
@@ -436,10 +425,10 @@ program_plp(std::shared_ptr<xrt_core::device> dev, const std::string& partition)
 
   // asynchronously check if the download is complete
   const static int program_timeout = 60;
-  bool is_pending = true;
+  bool is_complete = false;
   int retry = 0;
-  while (is_pending && retry < program_timeout) {
-    is_pending = xrt_core::query::rp_program_status::to_bool(xrt_core::device_query<xrt_core::query::rp_program_status>(dev));
+  while (!is_complete && retry < program_timeout) {
+    is_complete = xrt_core::query::rp_program_status::to_bool(xrt_core::device_query<xrt_core::query::rp_program_status>(dev));
     if (retry == program_timeout)
       throw xrt_core::error("PLP programmming timed out");
 
