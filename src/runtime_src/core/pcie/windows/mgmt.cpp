@@ -17,6 +17,7 @@
 #include "mgmt.h"
 #include "xclfeatures.h"
 #include "core/common/message.h"
+#include <boost/format.hpp>
 
 #define NOMINMAX
 #include <windows.h>
@@ -231,6 +232,27 @@ struct mgmt
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_QSPI_INFO failed");
   }
 
+  void
+  plp_program(const struct axlf* buffer)
+  {
+    DWORD buffSize = (DWORD) buffer->m_header.m_length;
+    DWORD bytes = 0;
+    ULONG return_status = 0;
+
+    auto status = DeviceIoControl
+		(m_hdl,
+		XCLMGMT_OID_PRP_ICAPPROGRAM_AXLF,
+		(PUCHAR)buffer,
+		buffSize,
+    &return_status,
+		sizeof(ULONG),
+		&bytes,
+		nullptr);
+
+    if (!status)
+      throw std::runtime_error("DeviceIoControl XCLMGMT_OID_PRP_ICAPPROGRAM_AXLF failed");
+  }
+
 }; // struct mgmt
 
 mgmt*
@@ -372,6 +394,15 @@ get_flash_addr(xclDeviceHandle hdl, uint64_t& addr)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_flash_addr()");
   auto mgmt = get_mgmt_object(hdl);
   mgmt->get_flash_addr(addr);
+}
+
+void
+plp_program(xclDeviceHandle hdl, const struct axlf *buffer)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "plp_program()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->plp_program(buffer);
 }
 
 } // mgmt

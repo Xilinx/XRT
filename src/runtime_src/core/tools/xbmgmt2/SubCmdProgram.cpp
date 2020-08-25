@@ -402,50 +402,10 @@ program_plp(std::shared_ptr<xrt_core::device> dev, const std::string& partition)
   int total_size = static_cast<int>(stream.tellg());
   stream.seekg(0, stream.beg);
 
-  xrt_core::scope_value_guard<int, std::function<void()>> fd { 0, nullptr };
-  try {
-      fd = dev->file_open("icap", O_WRONLY); 
-  } catch (const std::exception& e) {
-      xrt_core::send_exception_message(e.what(), "XBMGMT");
-  }
-
   std::vector<char> buffer(total_size);
   stream.read(buffer.data(), total_size);
-  //DEBUG-----
-  std::cout << "size: " << total_size <<std::endl;
-  for(int i=0; i<10; i++)
-    std::cout << buffer[i];
-  std::cout << std::endl;
-  //----------
 
-	ssize_t ret = total_size;
-	ret = write(fd.get(), buffer.data(), total_size);
-  //DEBUG-----
-  std::cout << "ret: " << ret << std::endl;
-  //----------
-
-  if (ret != total_size)
-    throw xrt_core::error("Write plp to icap subdev failed");
-
-  try {
-    auto value = xrt_core::query::rp_program_status::value_type(1);
-    xrt_core::device_update<xrt_core::query::rp_program_status>(dev.get(), value);
-  } catch (const xrt_core::error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-  }
-
-  // asynchronously check if the download is complete
-  const static int program_timeout = 60;
-  bool is_pending = true;
-  int retry = 0;
-  while (is_pending && retry < program_timeout) {
-    is_pending = xrt_core::query::rp_program_status::to_bool(xrt_core::device_query<xrt_core::query::rp_program_status>(dev));
-    if (retry == program_timeout)
-      throw xrt_core::error("PLP programmming timed out");
-
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    retry++;
-  }
+  xrt_core::program_plp(dev, buffer);
   std::cout << "Programmed PLP successfully" << std::endl;
 }
 

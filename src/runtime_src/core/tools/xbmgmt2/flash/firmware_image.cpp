@@ -28,6 +28,7 @@
 #include <vector>
 #include <locale>
 
+#include <boost/algorithm/string.hpp>
 #include "boost/filesystem.hpp"
 #include <boost/tokenizer.hpp>
 #include "xclbin.h"
@@ -356,8 +357,7 @@ bool DSAInfo::matchId(const std::string &id) const
 
     if (uuids.size() > 0)
     {
-        std::string uuid(id.length(), 0);
-        std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
+        std::string uuid = boost::algorithm::to_lower_copy(id);
         std::string::size_type i = uuid.find("0x");
         if (i == 0)
             uuid.erase(0, 2);
@@ -374,8 +374,7 @@ bool DSAInfo::matchIntId(std::string &id) const
 
     if (uuids.size() > 1)
     {
-        std::string uuid(id.length(), 0);
-        std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
+        std::string uuid = boost::algorithm::to_lower_copy(id);
         std::string::size_type i = uuid.find("0x");
         if (i == 0)
             uuid.erase(0, 2);
@@ -410,6 +409,16 @@ bool DSAInfo::matchId(DSAInfo& dsa) const
 
 
 
+static bool
+is_duplicate(const std::vector<DSAInfo>& dsa_list, const DSAInfo& dsa)
+{
+    for(auto const& x : dsa_list) {
+        if(x.file.compare(dsa.file) == 0)
+            return true;
+    }
+    return false;
+}
+
 std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
 {
     std::vector<DSAInfo> installedDSA;
@@ -430,37 +439,34 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
     }
 
     // for 2RP
-    p = FORMATTED_FW_DIR;
-	if (!boost::filesystem::is_directory(p))
-        return installedDSA;
+    boost::filesystem::path lin_2rp(FORMATTED_FW_DIR);
+    boost::filesystem::path win_2rp(FORMATTED_FW_WIN_DIR);
+	boost::filesystem::path formatted_fw_dir;
+	if (boost::filesystem::is_directory(lin_2rp)) {
+		formatted_fw_dir = lin_2rp;
+	} else if (boost::filesystem::is_directory(win_2rp)) {
+		formatted_fw_dir = win_2rp;
+	} else {
+		return installedDSA;
+	}
 
-    boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
+    for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, 
+        boost::filesystem::symlink_option::recurse), recursive_end; iter != recursive_end;) {
+            
+        std::string name = iter->path().string();
+        std::vector<std::string> tokens;
+        boost::split(tokens, name, boost::is_any_of("\\/."));
 
-    for (const std::string& t : { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX }) {
-
-        std::regex e("^" FORMATTED_FW_DIR "/([^/]+)/([^/]+)/([^/]+)/.+\\." + t);
-        std::smatch cm;
-
-        for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, 
-            boost::filesystem::symlink_option::recurse), recursive_end; iter != recursive_end;) {
-            std::string name = iter->path().string();
-            std::regex_match(name, cm, e);
-            if (cm.size() > 0) {
-                std::string pr_board = cm.str(1);
-                std::string pr_family = cm.str(2);
-                std::string pr_name = cm.str(3);
-                DSAInfo dsa(name, pr_board, pr_family, pr_name);
+        if ((tokens.back().compare(XSABIN_FILE_SUFFIX) == 0)
+            || (tokens.back().compare(DSABIN_FILE_SUFFIX) == 0)) {
+            DSAInfo dsa(name);
+            if(!is_duplicate(installedDSA, dsa))
                 installedDSA.push_back(dsa);
-                while (iter != recursive_end && iter.level() > 2)
-                    iter.pop();
-            } else if (iter.level() > 4)
-                iter.pop();
-            else {
-                if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str())))
-                    iter.no_push();
-                ++iter;
-            }
         }
+        else if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str()))) {
+            iter.no_push();
+        }
+        ++iter;
     }
 
     return installedDSA;

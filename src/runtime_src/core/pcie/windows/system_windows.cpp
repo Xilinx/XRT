@@ -170,4 +170,11 @@ get_mgmtpf_device(device::id_type id) const
   return std::shared_ptr<device_windows>(new device_windows(mgmtpf::open(id), id, false));
 }
 
+void
+system_windows::
+program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const 
+{
+  mgmtpf::plp_program(dev->get_mgmt_handle(), reinterpret_cast<const axlf*>(buffer.data()));
+}
+
 } // xrt_core

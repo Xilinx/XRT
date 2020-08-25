@@ -67,6 +67,9 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_flash_addr(xclDeviceHandle hdl, uint64_t& value);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+plp_program(xclDeviceHandle hdl, const struct axlf *buffer);
 } // mgmtpf
 
 #endif

@@ -35,6 +35,9 @@ public:
 
   std::shared_ptr<xrt_core::device>
   get_mgmtpf_device(device::id_type id) const;
+
+  void
+  program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const;
 };
 
 /**
