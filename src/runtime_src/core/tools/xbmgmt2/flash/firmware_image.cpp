@@ -30,6 +30,8 @@
 
 #include "boost/filesystem.hpp"
 #include <boost/tokenizer.hpp>
+#include <boost/algorithm/string.hpp>
+
 #include "xclbin.h"
 #include "core/common/utils.h"
 #include "firmware_image.h"
@@ -356,8 +358,7 @@ bool DSAInfo::matchId(const std::string &id) const
 
     if (uuids.size() > 0)
     {
-        std::string uuid(id.length(), 0);
-        std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
+        std::string uuid = boost::algorithm::to_lower_copy(id);
         std::string::size_type i = uuid.find("0x");
         if (i == 0)
             uuid.erase(0, 2);
@@ -374,8 +375,7 @@ bool DSAInfo::matchIntId(std::string &id) const
 
     if (uuids.size() > 1)
     {
-        std::string uuid(id.length(), 0);
-        std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
+        std::string uuid = boost::algorithm::to_lower_copy(id);
         std::string::size_type i = uuid.find("0x");
         if (i == 0)
             uuid.erase(0, 2);
