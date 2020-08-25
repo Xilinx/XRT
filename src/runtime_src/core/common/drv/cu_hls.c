@@ -67,33 +67,72 @@ static void cu_hls_start(void *core)
 
 	/* Bit 0 -- The CU start control bit.
 	 * Write 0 to this bit will be ignored.
-	 * Until the CU is ready to take next task, this bit will reamin 1.
-	 * Once ths CU is ready, it will clear this bit.
-	 * So, if this bit is 1, it means the CU is running.
+	 *
+	 * In ap_ctrl_chain, start bit will keep as 1 until ap_ready assert.
+	 * This bit would be clear by hardware.
 	 */
 	iowrite32(CU_AP_START, cu_hls->vaddr);
 }
 
-static void cu_hls_check(void *core, struct xcu_status *status)
+/*
+ * In ap_ctrl_hs protocol, HLS CU can run one task at a time. Once CU is
+ * started, software should wait for CU done before configure/start CU again.
+ * The done bit is clear on read. So, the software just need to read control
+ * register.
+ */
+static inline void
+cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 {
-	struct xrt_cu_hls *cu_hls = core;
 	u32 ctrl_reg;
 	u32 done_reg = 0;
 	u32 ready_reg = 0;
-	u32 submitted;
 
-	if (kds_echo) {
-		done_reg = 1;
+	/* ioread32/iowrite32 is expensive!
+	 * Avoid access CU register unless we do have running commands.
+	 * This has a huge impact on performance.
+	 */
+	if (!cu_hls->run_cnts)
+		return;
+
+	/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
+	 * but not by AP_IDLE itself.  Since b10 | (b10 | b100) = b110
+	 * checking for b10 is sufficient.
+	 */
+	ctrl_reg = ioread32(cu_hls->vaddr);
+	/* ap_ready and ap_done would assert at the same cycle */
+	if (ctrl_reg & CU_AP_DONE) {
+		done_reg  = 1;
 		ready_reg = 1;
 		cu_hls->run_cnts--;
-		goto out;
 	}
 
-	submitted = cu_hls->max_credits - cu_hls->credits;
+	status->num_done  = done_reg;
+	status->num_ready = ready_reg;
+}
 
-	/* ioread32/iowrite32 is expensive! */
-	if (!submitted && !cu_hls->run_cnts)
-		goto out;
+/*
+ * In ap_ctrl_check protocol, HLS CU can setup next task before CU is done.
+ * After CU started, the start bit will keep high until CU assert ap_ready.
+ * Once a CU is ready, it means CU is ready to be configured.
+ * If CU is done, it means the previous task is completed. But the CU would
+ * stall until ap_continue bit is set.
+ */
+static inline void
+cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
+{
+	u32 ctrl_reg;
+	u32 done_reg = 0;
+	u32 ready_reg = 0;
+	u32 used_credit;
+
+	used_credit = cu_hls->max_credits - cu_hls->credits;
+
+	/* ioread32/iowrite32 is expensive!
+	 * Access CU when there are unsed credits or running commands
+	 * This has a huge impact on performance.
+	 */
+	if (!used_credit && !cu_hls->run_cnts)
+		return;
 
 	/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
 	 * but not by AP_IDLE itself.  Since b10 | (b10 | b100) = b110
@@ -104,22 +143,34 @@ static void cu_hls_check(void *core, struct xcu_status *status)
 	/* if there is submitted tasks, then check if ap_start bit is clear
 	 * See comments in cu_hls_start().
 	 */
-	if (submitted && !(ctrl_reg & CU_AP_START))
+	if (used_credit && !(ctrl_reg & CU_AP_START))
 		ready_reg = 1;
 
-	/* For AP_CTRL_HS, ap_ready and ap_done would assert at the same cycle.
-	 * For AP_CTRL_CHAIN, ap_done and ap_ready have NO dependency.
-	 */
 	if (ctrl_reg & CU_AP_DONE) {
 		done_reg = 1;
 		cu_hls->run_cnts--;
-		if (cu_hls->ctrl_chain)
-			iowrite32(CU_AP_CONTINUE, cu_hls->vaddr);
+		iowrite32(CU_AP_CONTINUE, cu_hls->vaddr);
 	}
 
-out:
-	status->num_done = done_reg;
+	status->num_done  = done_reg;
 	status->num_ready = ready_reg;
+}
+
+static void cu_hls_check(void *core, struct xcu_status *status)
+{
+	struct xrt_cu_hls *cu_hls = core;
+
+	if (kds_echo) {
+		cu_hls->run_cnts--;
+		status->num_done = 1;
+		status->num_ready = 1;
+		return;
+	}
+
+	if (cu_hls->ctrl_chain)
+		cu_hls_ctrl_chain_check(cu_hls, status);
+	else
+		cu_hls_ctrl_hs_check(cu_hls, status);
 }
 
 static void cu_hls_enable_intr(void *core, u32 intr_type)
