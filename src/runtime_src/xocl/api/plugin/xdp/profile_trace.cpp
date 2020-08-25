@@ -244,7 +244,16 @@ namespace xocl {
 
       // Log the stats for this function
       if (counter_function_start_cb)
-	counter_function_start_cb(m_name) ;
+      {
+	bool isOOO = false ;
+	if (address != 0)
+	{
+	  auto command_queue = reinterpret_cast<cl_command_queue>(address) ;
+	  auto xqueue = xocl::xocl(command_queue) ;
+	  isOOO = xqueue->get_properties() & CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE ;
+	}
+	counter_function_start_cb(m_name, address, isOOO) ;
+      }
     }
 
     OpenCLAPILogger::~OpenCLAPILogger()

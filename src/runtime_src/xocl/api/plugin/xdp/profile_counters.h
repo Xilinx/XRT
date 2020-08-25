@@ -56,7 +56,7 @@ namespace xocl {
     void load_xdp_opencl_counters() ;
 
     // Extern definitions of objects needed in the API callback hooks
-    extern std::function<void (const char*)> counter_function_start_cb ;
+    extern std::function<void (const char*, unsigned long int, bool)> counter_function_start_cb ;
     extern std::function<void (const char*)> counter_function_end_cb ;
 
   } // end namespace profile

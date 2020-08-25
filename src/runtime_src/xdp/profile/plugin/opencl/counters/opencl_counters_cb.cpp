@@ -29,12 +29,14 @@ namespace xdp {
 
   static OpenCLCountersProfilingPlugin openclCountersPluginInstance ;
 
-  static void log_function_call_start(const char* functionName)
+  static void log_function_call_start(const char* functionName, uint64_t queueAddress, bool isOOO)
   {
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     auto timestamp = xrt_core::time_ns() ;
 
     (db->getStats()).logFunctionCallStart(functionName, timestamp) ;
+    if (queueAddress != 0)
+      (db->getStats()).setCommandQueueOOO(queueAddress, isOOO) ;
   }
 
   static void log_function_call_end(const char* functionName)
@@ -174,9 +176,9 @@ namespace xdp {
 } // end namespace xdp
 
 extern "C"
-void log_function_call_start(const char* functionName)
+void log_function_call_start(const char* functionName, unsigned long int queueAddress, bool isOOO)
 {
-  xdp::log_function_call_start(functionName) ;
+  xdp::log_function_call_start(functionName, queueAddress, isOOO) ;
 }
 
 extern "C"

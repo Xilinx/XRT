@@ -21,7 +21,7 @@
 //  linked in.  XRT should call them directly.
 
 extern "C"
-void log_function_call_start(const char* functionName) ;
+void log_function_call_start(const char* functionName, unsigned long int queueAddress, bool isOOO) ;
 
 extern "C"
 void log_function_call_end(const char* functionName) ;

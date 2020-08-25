@@ -33,7 +33,7 @@ namespace xocl {
 
     // All of the function pointers that will be dynamically linked to
     //  callback functions on the XDP plugin side
-    std::function<void (const char*)> counter_function_start_cb ;
+    std::function<void (const char*, unsigned long int, bool)> counter_function_start_cb ;
     std::function<void (const char*)> counter_function_end_cb ;
     std::function<void (const char*, bool)> counter_kernel_execution_cb ;
     std::function<void (const char*, const char*, const char*, bool)> 
@@ -45,13 +45,14 @@ namespace xocl {
 
     void register_opencl_counters_functions(void* handle)
     {
-      typedef void (*ctype)(const char*) ;
+      typedef void (*stype)(const char*, unsigned long int, bool) ;
       counter_function_start_cb = 
-	(ctype)(xrt_core::dlsym(handle, "log_function_call_start")) ;
+	(stype)(xrt_core::dlsym(handle, "log_function_call_start")) ;
       if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
       
+      typedef void (*etype)(const char*) ;
       counter_function_end_cb = 
-	(ctype)(xrt_core::dlsym(handle, "log_function_call_end")) ;
+	(etype)(xrt_core::dlsym(handle, "log_function_call_end")) ;
       if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
       
       typedef void (*ktype)(const char*, bool) ;

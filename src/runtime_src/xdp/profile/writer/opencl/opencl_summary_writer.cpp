@@ -1304,7 +1304,7 @@ namespace xdp {
   void OpenCLSummaryWriter::guidanceCommandQueueOOO(OpenCLSummaryWriter* t)
   {
     auto commandQueueInfo = (t->db->getStats()).getCommandQueuesAreOOO() ;
-    // TODO: Actually make the connection when logging
+
     for (auto cq : commandQueueInfo)
     {
       (t->fout) << "COMMAND_QUEUE_OOO" << "," 
