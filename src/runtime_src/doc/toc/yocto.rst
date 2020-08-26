@@ -43,6 +43,9 @@ Here's an example to install XRT 2020.1 PU1 and its development packages to sysr
         # Download XRT RPM
         wget http://petalinux.xilinx.com/sswreleases/rel-v2020/generic-updates/rpm/aarch64/xrt-202010.2.7.0-r0.0.aarch64.rpm
         wget http://petalinux.xilinx.com/sswreleases/rel-v2020/generic-updates/rpm/aarch64/xrt-dev-202010.2.7.0-r0.0.aarch64.rpm
+        wget http://petalinux.xilinx.com/sswreleases/rel-v2020/generic-updates/rpm/aarch64/xrt-dbg-202010.2.7.0-r0.0.aarch64.rpm
+        wget http://petalinux.xilinx.com/sswreleases/rel-v2020/generic-updates/rpm/aarch64/xrt-lic-202010.2.7.0-r0.0.aarch64.rpm
+        wget http://petalinux.xilinx.com/sswreleases/rel-v2020/generic-updates/rpm/aarch64/xrt-src-202010.2.7.0-r0.0.aarch64.rpm
         # Download sysroot overlay scripts
         wget https://raw.githubusercontent.com/Xilinx/XRT/master/src/runtime_src/tools/scripts/sysroots_overlay.sh
         # Generate RPM list file
@@ -97,10 +100,10 @@ Before start to build Linux image, make sure your have:
 1. PetaLinux tool installed and setup;
 2. Vivado exported expandable XSA for your platform;
 
-The PetaLinux tool can be downloaded from xilinx.com.
+The PetaLinux tool can be downloaded from `Xilinx Download Center <https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/embedded-design-tools.html>`_.
 
 Create PetaLinux Project with XRT
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -140,6 +143,30 @@ These files can be used when creating an embedded platform.
 - ``fsbl.elf``
 - ``pmufw.elf``
 - ``u-boot.elf``
+
+Use an Asynchronous Version of XRT for PetaLinux Project
+********************************************************
+
+The PetaLinux built-in XRT version is verified by Xilinx. If in any case user would like to use a different version of XRT in PetaLinux project, here's the procedure.
+
+Please note the intermediate versions of XRT are not tested by Xilinx.
+
+1. Create the following files in `project-spec/meta-user` directory.
+
+        - recipes-xrt/xrt/xrt_git.bbappend
+        - recipes-xrt/zocl/zocl_git.bbappend
+
+2. Add the following contents to the above two files.
+
+.. code-block:: python
+
+        BRANCH = "master"
+        SRCREV = "<commit ID>"
+
+The `BRANCH` parameter should match XRT branch name and `SRCREV` should match the commit ID of XRT git history in `XRT github repo <https://github.com/Xilinx/XRT/commits/master>`_.
+
+3. Build PetaLinux with `petalinux-build` command.
+
 
 Build XRT C/C++ applications through PetaLinux tool flow
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
