@@ -172,6 +172,7 @@ namespace xdp {
 
     // Information used by trace parser
     double firstKernelStartTime ;
+    double lastKernelEndTime ;
 
     // Since the host code can be multithreaded, we must protect 
     //  the data
@@ -252,6 +253,9 @@ namespace xdp {
 
     // Getters and setters on statistical information
     XDP_EXPORT void setFirstKernelStartTime(double startTime) ;
+    inline double getFirstKernelStartTime() { return firstKernelStartTime ; }
+    inline void setLastKernelEndTime(double endTime) { lastKernelEndTime = endTime ; }
+    inline double getLastKernelEndTime() { return lastKernelEndTime ; }
 
     // Helper functions for printing out summary information temporarily
     XDP_EXPORT void dumpCallCount(std::ofstream& fout) ;

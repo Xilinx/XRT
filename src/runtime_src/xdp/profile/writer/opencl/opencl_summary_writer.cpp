@@ -1401,7 +1401,6 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceApplicationRunTimeMs(OpenCLSummaryWriter* t)
   {
-    // TODO
     uint64_t startTime = (t->db->getStaticInfo()).getApplicationStartTime() ;
     uint64_t endTime = xrt_core::time_ns() ;
     
@@ -1414,11 +1413,15 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceTotalKernelRunTimeMs(OpenCLSummaryWriter* t)
   {
-    // TODO
-    /*
+    double firstKernelStartTime =
+      (t->db->getStats()).getFirstKernelStartTime() ;
+    double lastKernelEndTime =
+      (t->db->getStats()).getLastKernelEndTime() ;
+
     (t->fout) << "TOTAL_KERNEL_RUN_TIME_MS" << ","
+	      << "all" << ","
+	      << ((lastKernelEndTime - firstKernelStartTime) / 1.0e06)
 	      << std::endl ;
-    */
   }
 
 } // end namespace xdp

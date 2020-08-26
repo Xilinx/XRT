@@ -93,6 +93,7 @@ namespace xdp {
             event = new KernelEvent(e->getEventId(), hostTimestamp, KERNEL, deviceId, s, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
+	    (db->getStats()).setLastKernelEndTime(hostTimestamp) ;
           } else {
             // start event
             event = new KernelEvent(0, hostTimestamp, KERNEL, deviceId, s, cuId);
@@ -103,6 +104,8 @@ namespace xdp {
             if(1 == cuStarts[s].size()) {
               traceIDs[s] = 0;	// When current CU starts, reset stall status
             }
+	    if (db->getStats().getFirstKernelStartTime() == 0.0)
+	      (db->getStats()).setFirstKernelStartTime(hostTimestamp) ;
           }
         }
  
