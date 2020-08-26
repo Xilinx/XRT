@@ -587,7 +587,7 @@ struct dma_stream : request
   get(const device*) const = 0;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct mem_topology_raw : request
@@ -1756,7 +1756,7 @@ struct mig_cache_update : request
   static const key_type key = key_type::mig_cache_update;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier m, const std::string&) const = 0;
 
   virtual void
   put(const device*, const boost::any&) const = 0;
@@ -1777,7 +1777,7 @@ struct mig_ecc_status : request
   static const key_type key = key_type::mig_ecc_status;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct mig_ecc_ce_cnt : request
@@ -1786,7 +1786,7 @@ struct mig_ecc_ce_cnt : request
   static const key_type key = key_type::mig_ecc_ce_cnt;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct mig_ecc_ue_cnt : request
@@ -1795,7 +1795,7 @@ struct mig_ecc_ue_cnt : request
   static const key_type key = key_type::mig_ecc_ue_cnt;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct mig_ecc_ce_ffa : request
@@ -1804,7 +1804,7 @@ struct mig_ecc_ce_ffa : request
   static const key_type key = key_type::mig_ecc_ce_ffa;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct mig_ecc_ue_ffa : request
@@ -1813,7 +1813,7 @@ struct mig_ecc_ue_ffa : request
   static const key_type key = key_type::mig_ecc_ue_ffa;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct is_mfg : request

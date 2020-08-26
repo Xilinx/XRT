@@ -67,22 +67,6 @@ struct sysfs_fcn
     return value;
   }
 
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry, const boost::any& v)
-  {
-    std::string err;
-    ValueType value;
-    std::pair <const char*,const char*> p = boost::any_cast<std::pair <const char*,const char*>>(v);
-    if (!strcmp(p.first,"subdev"))
-      subdev = p.second;
-    else if (!strcmp(p.first,"entry"))
-      entry = p.second;
-    dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
-    if (!err.empty())
-      throw std::runtime_error(err);
-    return value;
-  }
-
   static void
   put(const pdev& dev, const char* subdev, const char* entry, ValueType value)
   {
@@ -103,22 +87,6 @@ struct sysfs_fcn<std::string>
   {
     std::string err;
     ValueType value;
-    dev->sysfs_get(subdev, entry, err, value);
-    if (!err.empty())
-      throw std::runtime_error(err);
-    return value;
-  }
-
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry, const boost::any& v)
-  {
-    std::string err;
-    ValueType value;
-    std::pair <const char*,const char*> p = boost::any_cast<std::pair <const char*,const char*>>(v);
-    if (!strcmp(p.first,"subdev"))
-      subdev = p.second;
-    else if (!strcmp(p.first,"entry"))
-      entry = p.second;
     dev->sysfs_get(subdev, entry, err, value);
     if (!err.empty())
       throw std::runtime_error(err);
@@ -146,22 +114,6 @@ struct sysfs_fcn<std::vector<VectorValueType>>
   {
     std::string err;
     ValueType value;
-    dev->sysfs_get(subdev, entry, err, value);
-    if (!err.empty())
-      throw std::runtime_error(err);
-    return value;
-  }
-
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry, const boost::any& v)
-  {
-    std::string err;
-    ValueType value;
-    std::pair <const char*,const char*> p = boost::any_cast<std::pair <const char*,const char*>>(v);
-    if (!strcmp(p.first,"subdev"))
-      subdev = p.second;
-    else if (!strcmp(p.first,"entry"))
-      entry = p.second;
     dev->sysfs_get(subdev, entry, err, value);
     if (!err.empty())
       throw std::runtime_error(err);
@@ -196,12 +148,13 @@ struct sysfs_get : virtual QueryRequestType
   }
 
   boost::any
-  get(const xrt_core::device* device, const boost::any& v) const
+  get(const xrt_core::device* device, query::request::modifier m, const std::string& v) const
   {
+    auto ms = (m == query::request::modifier::subdev) ? v.c_str() : subdev;
+    auto me = (m == query::request::modifier::entry) ? v.c_str() : entry;
     return sysfs_fcn<typename QueryRequestType::result_type>
-      ::get(get_pcidev(device), subdev, entry, v);
+      ::get(get_pcidev(device), ms, me);
   }
-
 };
 
 template <typename QueryRequestType>
@@ -390,7 +343,7 @@ initialize_query_table()
   emplace_sysfs_get<query::host_mem_size>               ("address_translator", "host_mem_size");
   emplace_sysfs_get<query::kds_numcdmas>                ("mb_scheduler", "kds_numcdmas");
 
-  emplace_sysfs_get<query::mig_ecc_enabled>             ("mig", "ecc_enabled");
+  //emplace_sysfs_get<query::mig_ecc_enabled>             ("mig", "ecc_enabled");
   emplace_sysfs_get<query::mig_ecc_status>              ("mig", "ecc_status");
   emplace_sysfs_get<query::mig_ecc_ce_cnt>              ("mig", "ecc_ce_cnt");
   emplace_sysfs_get<query::mig_ecc_ue_cnt>              ("mig", "ecc_ue_cnt");
