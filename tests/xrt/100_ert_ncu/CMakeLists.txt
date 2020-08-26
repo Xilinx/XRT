@@ -4,10 +4,10 @@ add_executable(xrt xrt.cpp)
 target_link_libraries(xrt PRIVATE ${xrt_core_LIBRARY})
 
 add_executable(xrtx xrtx.cpp)
-target_link_libraries(xrtx PRIVATE ${xrt_coreutil_LIBRARY} ${xrt_core_LIBRARY})
+target_link_libraries(xrtx PRIVATE ${xrt_coreutil_LIBRARY})
 
 add_executable(xrtxx xrtxx.cpp)
-target_link_libraries(xrtxx PRIVATE ${xrt_coreutil_LIBRARY} ${xrt_core_LIBRARY})
+target_link_libraries(xrtxx PRIVATE ${xrt_coreutil_LIBRARY})
 
 add_executable(ocl ocl.cpp)
 target_link_libraries(ocl PRIVATE ${xrt_xilinxopencl_LIBRARY})
