@@ -39,6 +39,8 @@ file(GLOB XRT_CORE_COMMON_OBJ_FILES
   "scheduler.*"
   )
 
+add_compile_options("-DXRT_VERSION_MAJOR=\"${XRT_VERSION_MAJOR}\"")
+
 add_library(xrt_coreutil SHARED ${XRT_CORE_COMMON_LIB_FILES})
 add_library(xrt_coreutil_static STATIC ${XRT_CORE_COMMON_LIB_FILES})
 

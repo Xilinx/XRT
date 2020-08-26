@@ -185,7 +185,7 @@ initialize_query_table()
   emplace_sysfs_get<query::memstat>                   ("memstat");
   emplace_sysfs_get<query::memstat_raw>               ("memstat_raw");
   emplace_sysfs_get<query::error>                     ("error");
-  emplace_sysfs_get<query::kds_custat>		      ("kds_custat");
+  emplace_sysfs_get<query::kds_custat>		      	  ("kds_custat");
 }
 
 struct X { X() { initialize_query_table(); } };

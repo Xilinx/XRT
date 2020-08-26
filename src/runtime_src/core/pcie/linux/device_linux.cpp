@@ -417,7 +417,7 @@ initialize_query_table()
   emplace_sysfs_get<query::board_name>                  ("", "board_name");
   emplace_sysfs_get<query::logic_uuids>                 ("", "logic_uuids");
   emplace_sysfs_get<query::interface_uuids>             ("", "interface_uuids");
-  emplace_sysfs_get<query::kds_custat>			("mb_scheduler", "kds_custat");
+  emplace_sysfs_get<query::kds_custat>				    ("mb_scheduler", "kds_custat");
 
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::scheduler_update_stat,   sched_update_stat>();

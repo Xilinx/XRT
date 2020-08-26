@@ -13,115 +13,168 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#define XRT_CORE_COMMON_SOURCE
+#include "core/common/module_loader.h"
+
+#include "core/common/dlfcn.h"
+#include "core/common/config_reader.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
-#define XRT_CORE_COMMON_SOURCE
-
-#include "core/common/module_loader.h"
-#include "core/common/dlfcn.h"
 
 #ifdef _WIN32
-#pragma warning (disable : 4996)
-/* Disable warning for use of getenv */
+# pragma warning (disable : 4996)
 #endif
+
+namespace bfs = boost::filesystem;
 
 namespace {
 
-  static const char* emptyOrValue(const char* cstr)
-  {
-    return cstr ? cstr : "" ;
+static const char*
+value_or_empty(const char* cstr)
+{
+  return cstr ? cstr : "" ;
+}
+
+static bool
+is_emulation()
+{
+  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
+  return val;
+}
+
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
+  return swem;
+}
+
+static bool
+is_hw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool hwem = xem ? (std::strcmp(xem,"hw_emu")==0) : false;
+  return hwem;
+}
+
+static std::string
+shim_name()
+{
+  if (!is_emulation())
+    return "xrt_core";
+
+  if (is_hw_emulation()) {
+    auto hw_em_driver_path = xrt_core::config::get_hw_em_driver();
+    return hw_em_driver_path == "null"
+      ? "xrt_hwemu"
+      : hw_em_driver_path;
   }
 
-  static boost::filesystem::path& dllExt()
-  {
+  if (is_sw_emulation()) {
+    auto sw_em_driver_path = xrt_core::config::get_sw_em_driver();
+    return sw_em_driver_path == "null"
+      ? "xrt_swemu"
+      : sw_em_driver_path;
+  }
+
+  throw std::runtime_error("Unexected error creating shim library name");
+}
+
+static bfs::path
+xilinx_xrt()
+{
+  bfs::path xrt(value_or_empty(getenv("XILINX_XRT")));
+  if (xrt.empty()) 
+    throw std::runtime_error("XILINX_XRT not set");
+
+  return xrt;
+}
+
+static bfs::path
+module_path(const std::string& module)
+{
+  auto path = xilinx_xrt();
 #ifdef _WIN32
-    static boost::filesystem::path sDllExt(".dll") ;
+  path /= "bin/" + module + ".dll";
 #else
-    static boost::filesystem::path sDllExt(".so") ;
+  path /= "lib/xrt/module/lib" + module + ".so";
 #endif
-    return sDllExt ;
-  }
 
-  static bool isDLL(const boost::filesystem::path& path)
-  {
-    return (boost::filesystem::exists(path)          &&
-	    boost::filesystem::is_regular_file(path) &&
-	    path.extension() == dllExt()) ;
-  }
+  if (!bfs::exists(path) || !bfs::is_regular_file(path))
+    throw std::runtime_error("No such library '" + path.string() + "'");
 
-  static boost::filesystem::path modulePath(const boost::filesystem::path& root,
-					    const std::string& libname)
-  {
+  return path;
+}
+
+  
+static bfs::path
+shim_path()
+{
+  auto path = xilinx_xrt();
+  auto name = shim_name();
+
 #ifdef _WIN32
-    return root / "bin" / (libname + ".dll") ;
+  path /= "bin/" + name + ".dll";
 #else
-    return root / "lib" / "xrt" / "module" / ("lib" + libname + ".so") ;
+  path /= "lib/lib" + name + ".so." + XRT_VERSION_MAJOR;
 #endif
-  }
 
-  static boost::filesystem::path moduleDir(const boost::filesystem::path& root)
-  {
-#ifdef _WIN32
-    return root / "bin" ;
-#else
-    return root / "lib" / "xrt" / "module" ;
-#endif
-  }
+  if (!bfs::exists(path) || !bfs::is_regular_file(path))
+    throw std::runtime_error("No such library '" + path.string() + "'");
+
+  return path;
+}
+
+static void*
+load_library(const std::string& path)
+{
+  if (auto handle = xrt_core::dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL))
+    return handle;
+
+  throw std::runtime_error("Failed to open library '" + path + "'\n" + xrt_core::dlerror());
+}
 
 } // end anonymous namespace
 
 namespace xrt_core {
 
-  module_loader::module_loader(const char* pluginName,
-			       std::function<void (void*)> registerFunction,
-			       std::function<void ()> warningFunction,
-			       std::function<int ()> errorFunction)
-  {
+module_loader::
+module_loader(const std::string& module_name,
+              std::function<void (void*)> register_function,
+              std::function<void ()> warning_function,
+              std::function<int ()> error_function)
+{
 #ifdef XRT_CORE_BUILD_WITH_DL
-    if (errorFunction) 
-    {
-      // Check prerequirements for this particular plugin.  If they are not
-      //  met, then return before we do any linking
-      if (errorFunction()) 
-	return ;
-    }
+  if (error_function)
+    // Check prerequirements for this particular plugin.  If they are
+    // not met, then return before we do any linking
+    if (error_function()) 
+      return;
 
-    // Check XILINX_XRT existence
-    boost::filesystem::path xrt(emptyOrValue(getenv("XILINX_XRT"))) ;
-    if (xrt.empty()) 
-      throw std::runtime_error("XILINX_XRT not set") ;
-    
-    // Check library directory existence
-    boost::filesystem::path xrtlib = moduleDir(xrt) ;
-    if (!boost::filesystem::is_directory(xrtlib))
-      throw std::runtime_error("No such directory '" + xrtlib.string() + "'") ;
-    
-    // Check library existence
-    boost::filesystem::path libpath = modulePath(xrt, pluginName) ;
-    if (!isDLL(libpath))
-      throw std::runtime_error("Library " + libpath.string() + " not found!") ;
+  auto path = module_path(module_name);
+  auto handle = load_library(path.string());
 
-    // Do the actual linking
-    void* handle = xrt_core::dlopen(libpath.string().c_str(), 
-				    RTLD_NOW | RTLD_GLOBAL) ;
-    if (!handle)
-      throw std::runtime_error("Failed to open plugin library '" + 
-			       libpath.string() + "'\n"       + 
-			       xrt_core::dlerror()) ;
+  // Do the plugin specific functionality
+  if (register_function)
+    register_function(handle);
 
-    // Do the plugin specific functionality
-    if (registerFunction) registerFunction(handle) ;
-    if (warningFunction)  warningFunction() ;
+  if (warning_function)
+    warning_function();
 
-    // Explicitly do not close the handle.  We need these dynamic
-    //  symbols to remain open and linked through the rest of the execution
+  // Explicitly do not close the handle.  We need these dynamic
+  // symbols to remain open and linked through the rest of the
+  // execution
 #endif
-  }
+}
 
-  module_loader::~module_loader()
-  {
-  }
+shim_loader::
+shim_loader()
+{
+  auto path = shim_path();
+  load_library(path.string());
+}
 
-} // end namespace xdputil
+} // xrt_core
