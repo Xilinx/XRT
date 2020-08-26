@@ -101,13 +101,12 @@ namespace xdp {
         auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
         if (!drv)
           continue;
-        auto aieArray = drv->getAieArray();
 
         // TEMPORARY: Larry is making AIE array available when xclbin gets loaded  
-        if (!aieArray) {
-          aieArray = new zynqaie::Aie(device);
-          drv->setAieArray(aieArray);
+        if (!drv->isAieRegistered()) {
+          drv->registerAieArray();
         }
+        auto aieArray = drv->getAieArray();
 
         // Iterate over all AIE Counters
         auto numCounters = db->getStaticInfo().getNumAIECounter(index);
