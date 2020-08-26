@@ -363,6 +363,10 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	xcu->run_timeout = 0;
 	sema_init(&xcu->sem, 0);
 	xcu->thread = kthread_run(xrt_cu_thread, xcu, "xrt_thread");
+	if (IS_ERR(xcu->thread)) {
+		err = IS_ERR(xcu->thread);
+		xcu_err(xcu, "Create CU thread failed, err %d\n", err);
+	}
 
 	return err;
 }
@@ -371,18 +375,39 @@ void xrt_cu_fini(struct xrt_cu *xcu)
 {
 	xcu->stop = 1;
 	up(&xcu->sem);
-	(void) kthread_stop(xcu->thread);
+	if (!IS_ERR(xcu->thread))
+		(void) kthread_stop(xcu->thread);
 
 	return;
 }
 
 ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
 {
+	ssize_t sz = 0;
+
+	/* Add CU dynamic statistic information in below */
+	sz += sprintf(buf+sz, "Pending queue:    %d\n", xcu->num_pq);
+	sz += sprintf(buf+sz, "Running queue:    %d\n", xcu->num_rq);
+	sz += sprintf(buf+sz, "Submitted queue:  %d\n", xcu->num_sq);
+	sz += sprintf(buf+sz, "Completed queue:  %d\n", xcu->num_cq);
+	sz += sprintf(buf+sz, "Bad state:	%d\n", xcu->bad_state);
+	sz += sprintf(buf+sz, "Current credit:  %d\n",
+		      xcu->funcs->peek_credit(xcu->core));
+
+	if (sz)
+		buf[sz++] = 0;
+
+	return sz;
+}
+
+ssize_t show_cu_info(struct xrt_cu *xcu, char *buf)
+{
 	struct xrt_cu_info *info = &xcu->info;
 	ssize_t sz = 0;
 	char dir[10];
 	int i;
 
+	/* Add any CU static information in below */
 	sz += sprintf(buf+sz, "Kernel name: %s\n", info->kname);
 	sz += sprintf(buf+sz, "Instance(CU) name: %s\n", info->iname);
 	sz += sprintf(buf+sz, "CU address: 0x%llx\n", info->addr);
@@ -390,14 +415,13 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
 	sz += sprintf(buf+sz, "Protocol: %s\n", prot2str(info->protocol));
 	sz += sprintf(buf+sz, "Interrupt cap: %d\n", info->intr_enable);
 	sz += sprintf(buf+sz, "Interrupt ID:  %d\n", info->intr_id);
-	sz += sprintf(buf+sz, "Bad state:     %d\n", xcu->bad_state);
 
 	sz += sprintf(buf+sz, "--- Arguments ---\n");
 	sz += sprintf(buf+sz, "Number of arguments: %d\n", info->num_args);
 	for (i = 0; i < info->num_args; i++) {
-		if (info->args[i].dir == INPUT)
+		if (info->args[i].dir == DIR_INPUT)
 			strcpy(dir, "input");
-		else if (info->args[i].dir == OUTPUT)
+		else if (info->args[i].dir == DIR_OUTPUT)
 			strcpy(dir, "output");
 		else
 			strcpy(dir, "unknown");

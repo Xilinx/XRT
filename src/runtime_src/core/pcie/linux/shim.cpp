@@ -1032,7 +1032,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get<unsigned long long>("rom", "timestamp", errmsg, info->mTimeStamp, static_cast<unsigned long long>(-1));
     mDev->sysfs_get<unsigned short>("rom", "ddr_bank_count_max", errmsg, info->mDDRBankCount, static_cast<unsigned short>(-1));
     info->mDDRSize *= info->mDDRBankCount;
-
+    info->mPciSlot = (mDev->domain<<16) + (mDev->bus<<8) + (mDev->dev<<3) + mDev->func;
     info->mNumClocks = numClocks(info->mName);
 
     mDev->sysfs_get<unsigned short>("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA, static_cast<unsigned short>(-1));
@@ -1422,12 +1422,18 @@ int shim::xclLoadAxlf(const axlf *buffer)
     axlf_obj.kernels = krnl_binary.data();
     for (auto& kernel : kernels) {
         auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.kernels + off);
-        strcpy(krnl->name, kernel.name.c_str());
+        if (kernel.name.size() > sizeof(krnl->name))
+            return -EINVAL;
+        std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
+        krnl->name[sizeof(krnl->name)-1] = '\0';
         krnl->anums = kernel.args.size();
 
         int ai = 0;
         for (auto& arg : kernel.args) {
-            strcpy(krnl->args[ai].name, arg.name.c_str());
+            if (arg.name.size() > sizeof(krnl->args[ai].name))
+                return -EINVAL;
+            std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+            krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
             krnl->args[ai].offset = arg.offset;
             krnl->args[ai].size   = arg.size;
             // XCLBIN doesn't define argument direction yet and it only support

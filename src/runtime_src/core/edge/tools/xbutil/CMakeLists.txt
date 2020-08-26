@@ -17,6 +17,7 @@ if (DEFINED XRT_AIE_BUILD)
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     pthread
+    dl
     rt
     uuid
     ${CURSES_LIBRARIES}
@@ -30,6 +31,7 @@ else()
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     pthread
+    dl
     rt
     uuid
     ${CURSES_LIBRARIES}

@@ -103,12 +103,6 @@ namespace xdp {
           continue;
         auto aieArray = drv->getAieArray();
 
-        // TEMPORARY: Larry is making AIE array available when xclbin gets loaded  
-        if (!aieArray) {
-          aieArray = new zynqaie::Aie(device);
-          drv->setAieArray(aieArray);
-        }
-
         // Iterate over all AIE Counters
         auto numCounters = db->getStaticInfo().getNumAIECounter(index);
         for (uint64_t c=0; c < numCounters; c++) {

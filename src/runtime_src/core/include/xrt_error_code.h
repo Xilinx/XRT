@@ -64,6 +64,7 @@
  *
  */
 typedef uint64_t xrtErrorCode;
+typedef uint64_t xrtErrorTime;
 
 #define XRT_ERROR_NUM_MASK		0xFFFFUL
 #define XRT_ERROR_NUM_SHIFT		0
@@ -82,6 +83,12 @@ typedef uint64_t xrtErrorCode;
 	(((severity) & XRT_ERROR_SEVERITY_MASK) << XRT_ERROR_SEVERITY_SHIFT) | \
 	(((module) & XRT_ERROR_MODULE_MASK) << XRT_ERROR_MODULE_SHIFT) | \
 	(((eclass) & XRT_ERROR_CLASS_MASK) << XRT_ERROR_CLASS_SHIFT))
+
+#define XRT_ERROR_NUM(code) (((code) >> XRT_ERROR_NUM_SHIFT) & XRT_ERROR_NUM_MASK)
+#define XRT_ERROR_DRIVER(code) (((code) >> XRT_ERROR_DRIVER_SHIFT) & XRT_ERROR_DRIVER_MASK)
+#define XRT_ERROR_SEVERITY(code) (((code) >> XRT_ERROR_SEVERITY_SHIFT) & XRT_ERROR_SEVERITY_MASK)
+#define XRT_ERROR_MODULE(code) (((code) >> XRT_ERROR_MODULE_SHIFT) & XRT_ERROR_MODULE_MASK)
+#define XRT_ERROR_CLASS(code) (((code) >> XRT_ERROR_CLASS_SHIFT) & XRT_ERROR_CLASS_MASK)
 
 /**
  * xrt_error_num - XRT specific error numbers
