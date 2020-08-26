@@ -166,13 +166,15 @@ namespace xdp {
     uint64_t    baseAddress;
     uint64_t    size;
     std::string name;
+    bool used ;
 
-    Memory(uint8_t ty, int32_t idx, uint64_t baseAddr, uint64_t sz, const char* n)
+  Memory(uint8_t ty, int32_t idx, uint64_t baseAddr, uint64_t sz, const char* n, bool u)
       : type(ty),
         index(idx),
         baseAddress(baseAddr),
         size(sz),
-        name(n)
+        name(n),
+        used(u)
     {}
   };
 

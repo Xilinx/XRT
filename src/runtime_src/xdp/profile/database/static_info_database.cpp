@@ -259,7 +259,7 @@ namespace xdp {
     for(int32_t i = 0; i < memTopologySection->m_count; i++) {
       const struct mem_data* memData = &(memTopologySection->m_mem_data[i]);
       devInfo->memoryInfo[i] = new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
-                                          reinterpret_cast<const char*>(memData->m_tag));
+                                          reinterpret_cast<const char*>(memData->m_tag), memData->m_used);
     }
 
     // Look into the connectivity section and load information about Compute Units and their Memory connections
@@ -290,7 +290,7 @@ namespace xdp {
         const struct mem_data* memData = &(memTopologySection->m_mem_data[connctn->mem_data_index]);
         devInfo->memoryInfo[connctn->mem_data_index]
                  = new Memory(memData->m_type, connctn->mem_data_index,
-                              memData->m_base_address, memData->m_size, reinterpret_cast<const char*>(memData->m_tag));
+                              memData->m_base_address, memData->m_size, reinterpret_cast<const char*>(memData->m_tag), memData->m_used);
       }
       cu->addConnection(connctn->arg_index, connctn->mem_data_index);
     }

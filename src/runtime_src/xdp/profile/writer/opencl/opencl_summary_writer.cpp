@@ -1140,10 +1140,19 @@ namespace xdp {
 
     for (auto device : deviceInfos)
     {
-      (t->fout) << "MEMORY_USAGE" << ","
-		<< (device->platformInfo.deviceName) << ","
-		<< 0 // TODO: Fill in memory usage
-		<< std::endl ;
+      for (auto memory : device->memoryInfo)
+      {
+	std::string memName = (memory.second)->name ;
+	if (memName.rfind("bank", 0) == 0)
+	  memName = "DDR[" + memName.substr(4,4) + "]" ;
+
+	(t->fout) << "MEMORY_USAGE" << ","
+		  << (device->platformInfo.deviceName) << "|"
+		  << memName
+		  << ","
+		  << (memory.second)->used
+		  << std::endl ;
+      }
     }
   }
 
