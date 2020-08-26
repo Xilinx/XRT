@@ -221,7 +221,7 @@ std::shared_ptr<xrt_core::device>
 device::
 get_core_device() const
 {
-  return xrt_core::get_userpf_device(m_idx);
+  return xrt_core::get_userpf_device(m_handle);
 }
 
 void
