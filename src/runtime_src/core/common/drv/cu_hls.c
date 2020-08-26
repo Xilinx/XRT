@@ -67,9 +67,9 @@ static void cu_hls_start(void *core)
 
 	/* Bit 0 -- The CU start control bit.
 	 * Write 0 to this bit will be ignored.
-	 * Until the CU is ready to take next task, this bit will reamin 1.
-	 * Once ths CU is ready, it will clear this bit.
-	 * So, if this bit is 1, it means the CU is running.
+	 *
+	 * In ap_ctrl_chain, start bit will keep as 1 until ap_ready assert.
+	 * This bit would be clear by hardware.
 	 */
 	iowrite32(CU_AP_START, cu_hls->vaddr);
 }
