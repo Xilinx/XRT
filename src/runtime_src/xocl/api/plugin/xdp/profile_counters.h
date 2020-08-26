@@ -49,6 +49,7 @@ namespace xocl {
 			  const xocl::execution_context* ctx) ;
     void log_kernel_end(const xrt::command* cmd, 
 			const xocl::execution_context* ctx) ;
+    void mark_objects_released() ;
 
     // Functions for loading the counters plugin
     void register_opencl_counters_functions(void* handle) ;

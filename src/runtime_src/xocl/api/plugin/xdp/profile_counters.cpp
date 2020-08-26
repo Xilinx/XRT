@@ -39,9 +39,10 @@ namespace xocl {
     std::function<void (const char*, const char*, const char*, bool)> 
       counter_cu_execution_cb ;
     std::function<void (unsigned long int, unsigned long int, const char*, unsigned long int, bool)>
-      counters_action_read_cb ;
+      counter_action_read_cb ;
     std::function<void (unsigned long int, const char*, unsigned long int, bool)>
-      counters_action_write_cb ;
+      counter_action_write_cb ;
+    std::function<void ()> counter_mark_objects_released_cb ;
 
     void register_opencl_counters_functions(void* handle)
     {
@@ -66,15 +67,20 @@ namespace xocl {
       if (xrt_core::dlerror() != NULL) counter_cu_execution_cb = nullptr ;
       
       typedef void (*atype)(unsigned long int, unsigned long int, const char*, unsigned long int, bool) ;
-      counters_action_read_cb =
+      counter_action_read_cb =
 	(atype)(xrt_core::dlsym(handle, "counter_action_read")) ;
-      if (xrt_core::dlerror() != NULL) counters_action_read_cb = nullptr ;
+      if (xrt_core::dlerror() != NULL) counter_action_read_cb = nullptr ;
       
       typedef void (*wtype)(unsigned long int, const char*, unsigned long int, bool) ;
-      counters_action_write_cb =
+      counter_action_write_cb =
 	(wtype)(xrt_core::dlsym(handle, "counter_action_write")) ;
-      if (xrt_core::dlerror() != NULL) counters_action_write_cb = nullptr ;
-      
+      if (xrt_core::dlerror() != NULL) counter_action_write_cb = nullptr ;
+
+      typedef void (*vtype)() ;
+      counter_mark_objects_released_cb =
+	(vtype)(xrt_core::dlsym(handle, "counter_mark_objects_released")) ;
+      if (xrt_core::dlerror() != NULL) counter_mark_objects_released_cb = nullptr ;
+
       // For logging counter information for kernel executions
       xocl::add_command_start_callback(xocl::profile::log_kernel_start) ;
       xocl::add_command_done_callback(xocl::profile::log_kernel_end) ;
@@ -208,12 +214,18 @@ namespace xocl {
       counter_kernel_execution_cb(kernelName.c_str(), false) ;
     }
 
+    void mark_objects_released()
+    {
+      if (counter_mark_objects_released_cb)
+	counter_mark_objects_released_cb() ;
+    }
+
     std::function<void (xocl::event*, cl_int, const std::string&)>
     counter_action_read(cl_mem buffer)
     {
       return [buffer](xocl::event* e, cl_int status, const std::string&) 
 	     {
-	       if (!counters_action_read_cb) return ;
+	       if (!counter_action_read_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 	       auto queue = e->get_command_queue() ;
@@ -226,7 +238,7 @@ namespace xocl {
 
 	       if (status == CL_RUNNING)
 	       {
-		 counters_action_read_cb(contextId,
+		 counter_action_read_cb(contextId,
 					 numDevices,
 					 deviceName.c_str(),
 					 0,
@@ -234,7 +246,7 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 counters_action_read_cb(contextId,
+		 counter_action_read_cb(contextId,
 					 numDevices,
 					 deviceName.c_str(),
 					 xocl::xocl(buffer)->get_size(),
@@ -248,7 +260,7 @@ namespace xocl {
     {
       return [buffer](xocl::event* e, cl_int status, const std::string&) 
 	     {
-	       if (!counters_action_write_cb) return ;
+	       if (!counter_action_write_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 	       auto queue = e->get_command_queue() ;
@@ -257,14 +269,14 @@ namespace xocl {
 
 	       if (status == CL_RUNNING)
 	       {
-		 counters_action_write_cb(contextId,
+		 counter_action_write_cb(contextId,
 					  deviceName.c_str(),
 					  0,
 					  true);
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 counters_action_write_cb(contextId,
+		 counter_action_write_cb(contextId,
 					  deviceName.c_str(),
 					  xocl::xocl(buffer)->get_size(),
 					  false) ;
@@ -287,7 +299,7 @@ namespace xocl {
 	// Read
 	return [buffer](xocl::event* e, cl_int status, const std::string&)
 	       {
-		 if (!counters_action_read_cb) return ;
+		 if (!counter_action_read_cb) return ;
 		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 		 auto queue = e->get_command_queue() ;
@@ -297,7 +309,7 @@ namespace xocl {
 
 		 if (status == CL_RUNNING)
 		 {
-		   counters_action_read_cb(contextId,
+		   counter_action_read_cb(contextId,
 					   numDevices,
 					   deviceName.c_str(),
 					   0,
@@ -305,7 +317,7 @@ namespace xocl {
 		 }
 		 else if (status == CL_COMPLETE)
 		 {
-		   counters_action_read_cb(contextId,
+		   counter_action_read_cb(contextId,
 					   numDevices,
 					   deviceName.c_str(),
 					   xocl::xocl(buffer)->get_size(),
@@ -318,7 +330,7 @@ namespace xocl {
 	// Write
 	return [buffer](xocl::event* e, cl_int status, const std::string&)
 	       {
-		 if (!counters_action_write_cb) return ;
+		 if (!counter_action_write_cb) return ;
 		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 		 auto queue = e->get_command_queue() ;
@@ -327,14 +339,14 @@ namespace xocl {
 
 		 if (status == CL_RUNNING)
 		 {
-		   counters_action_write_cb(contextId,
+		   counter_action_write_cb(contextId,
 					    deviceName.c_str(),
 					    0,
 					    true);
 		 }
 		 else if (status == CL_COMPLETE)
 		 {
-		   counters_action_write_cb(contextId,
+		   counter_action_write_cb(contextId,
 					    deviceName.c_str(),
 					    xocl::xocl(buffer)->get_size(),
 					    false) ;
@@ -418,7 +430,7 @@ namespace xocl {
 
       return [mem0](xocl::event* e, cl_int status, const std::string&) 
 	     {
-	       if (!counters_action_write_cb) return ;
+	       if (!counter_action_write_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 	       auto queue = e->get_command_queue() ;
@@ -427,14 +439,14 @@ namespace xocl {
 
 	       if (status == CL_RUNNING)
 	       {
-		 counters_action_write_cb(contextId,
+		 counter_action_write_cb(contextId,
 					  deviceName.c_str(),
 					  0,
 					  true);
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 counters_action_write_cb(contextId,
+		 counter_action_write_cb(contextId,
 					  deviceName.c_str(),
 					  xocl::xocl(mem0)->get_size(),
 					  false) ;

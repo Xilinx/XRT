@@ -48,4 +48,7 @@ void counter_action_write(unsigned long int contextId,
 			  unsigned long int size,
 			  bool isStart) ;
 
+extern "C"
+void counter_mark_objects_released() ;
+
 #endif

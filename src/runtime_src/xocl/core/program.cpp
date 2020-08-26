@@ -77,6 +77,7 @@ program::
     // Before deleting program, do a final read of counters
     // and force flush of trace buffers
     //xocl::profile::end_device_profiling();
+    xocl::profile::mark_objects_released() ;
 
     for(auto d : get_device_range())
     {

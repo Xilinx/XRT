@@ -183,6 +183,12 @@ namespace xdp {
     }
   }
 
+  static void counter_mark_objects_released()
+  {
+    VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
+    (db->getStats()).addOpenCLObjectReleased() ;
+  }
+
 } // end namespace xdp
 
 extern "C"
@@ -232,4 +238,10 @@ void counter_action_write(unsigned long int contextId,
 			  bool isStart)
 {
   xdp::counter_action_write(contextId, deviceName, size, isStart);
+}
+
+extern "C"
+void counter_mark_objects_released()
+{
+  xdp::counter_mark_objects_released() ;
 }

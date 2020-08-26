@@ -1320,7 +1320,7 @@ namespace xdp {
 
     (t->fout) << "OBJECTS_RELEASED" << ","
 	      << "all" << ","
-	      << numReleased // TODO: Make the connection
+	      << numReleased
 	      << std::endl ;
   }
 
