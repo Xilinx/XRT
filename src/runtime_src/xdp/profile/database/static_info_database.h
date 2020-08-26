@@ -197,6 +197,7 @@ namespace xdp {
 
     bool hasFloatingAIM = false;
     bool hasFloatingASM = false;
+    bool isEdgeDevice = false ;
 
     ~DeviceInfo()
     {

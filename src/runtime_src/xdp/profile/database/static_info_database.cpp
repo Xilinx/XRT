@@ -39,6 +39,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 #include "core/include/xclbin.h"
 
@@ -156,6 +157,8 @@ namespace xdp {
     devInfo->clockRateMHz = 300;
     devInfo->usesTs2mm = false ;
     devInfo->platformInfo.kdmaCount = 0;
+
+    if (isEdge()) devInfo->isEdgeDevice = true ;
 
     deviceInfo[deviceId] = devInfo;
 

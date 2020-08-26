@@ -1427,11 +1427,30 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceMemoryTypeBitWidth(OpenCLSummaryWriter* t)
   {
-    // TODO
-    /*
-    (t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
-	      << std::endl ;
-    */
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : deviceInfos)
+    {
+      if (device->isEdgeDevice)
+      {
+	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
+		  << device->platformInfo.deviceName << "|DDR" << ","
+		  << 64 << std::endl ;
+      }
+      else
+      {
+	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
+		  << device->platformInfo.deviceName << "|HBM" << ","
+		  << 256 << std::endl ;
+	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
+		  << device->platformInfo.deviceName << "|DDR" << ","
+		  << 512 << std::endl ;
+	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
+		  << device->platformInfo.deviceName << "|PLRAM" << ","
+		  << 512 << std::endl ;
+	  
+      }
+    }
   }
 
   void OpenCLSummaryWriter::guidanceXrtIniSetting(OpenCLSummaryWriter* t)
