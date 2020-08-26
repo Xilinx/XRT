@@ -16,7 +16,9 @@
 #define XRT_CORE_COMMON_SOURCE
 #include "system.h"
 #include "device.h"
+#include "module_loader.h"
 #include "gen/version.h"
+
 
 #include <vector>
 #include <map>
@@ -45,15 +47,31 @@ system::
 system()
 {
   if (singleton)
-    throw std::runtime_error("singleton ctor error");
+    throw std::runtime_error
+      ("Multiple instances of XRT core shim library detected, only one\n"
+       "can be loaded at any given time.  Please check if application is\n"
+       "explicity linked with XRT core library (xrt_core, xrt_hwemu, or\n"
+       "xrt_swemu) and remove this linking. Use XCL_EMULATION_MODE set to\n"
+       "either hw_emu or sw_emu if running in emulation mode.");
+
   singleton = this;
+}
+
+static void
+load_shim()
+{
+  static xrt_core::shim_loader shim;
 }
 
 inline system&
 instance()
 {
+  if (!singleton)
+    load_shim();
+
   if (singleton)
     return *singleton;
+
   throw std::runtime_error("system singleton is not loaded");
 }
 
@@ -93,7 +111,7 @@ get_userpf_device(device::id_type id)
   auto device = instance().get_userpf_device(id);
 
   if (!device)
-    throw std::runtime_error("Could not open device");
+    throw std::runtime_error("Could not open device with index '"+ std::to_string(id) + "'");
 
   // Repackage raw ptr in new shared ptr with deleter that calls xclClose,
   // but leaves device object alone. The returned device is managed in that

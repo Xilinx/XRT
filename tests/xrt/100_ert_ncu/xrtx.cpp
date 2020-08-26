@@ -274,10 +274,6 @@ int run(int argc, char** argv)
       throw std::runtime_error("bad argument '" + cur + " " + arg + "'");
   }
 
-  auto probe = xclProbe();
-  if (probe < device_index)
-    throw std::runtime_error("Bad device index '" + std::to_string(device_index) + "'");
-
   auto device = xrtDeviceOpen(device_index);
 
   auto header = load_xclbin(device, xclbin_fnm);
