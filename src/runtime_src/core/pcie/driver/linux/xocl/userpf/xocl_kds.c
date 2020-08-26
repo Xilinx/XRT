@@ -339,7 +339,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			xcmd->inkern_cb = kzalloc(sizeof(struct in_kernel_cb),
 								GFP_KERNEL);
 			if (!xcmd->inkern_cb) {
-				kfree(xcmd);
+				xcmd->cb.free(xcmd);
 				ret = -ENOMEM;
 				goto out;
 			}

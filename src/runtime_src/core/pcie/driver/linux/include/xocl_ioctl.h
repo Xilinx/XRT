@@ -286,6 +286,8 @@ struct drm_xocl_sync_bo {
  * @size:	Number of bytes to synchronize
  * @offset:	Offset into the object to synchronize
  * @dir:	DRM_XOCL_SYNC_DIR_XXX
+ * @cb_func:	Pointer to callback function(void (*fn)(long,int))
+ * @cb_data:	Pointer to context that callback needs to be invoked with
  */
 struct drm_xocl_sync_bo_cb {
 	uint32_t handle;
@@ -319,9 +321,11 @@ struct drm_xocl_info_bo {
  * struct drm_xocl_kinfo_bo - Used to get a buffer object's kernel virtual address
  * with DRM_IOCTL_XOCL_KINFO_BO ioctl.
  *
- * @handle:     bo handle whose virtual address is required
- * @flags:      DRM_XOCL_BO_XXX flags
- * @type:       The type of bo
+ * @handle:     bo handle of BO whose info is required
+ * @flags:      Unused
+ * @size:	Size of buffer object
+ * @paddr:	Physical address (BO's Device address)
+ * @vaddr:	Kernel Virtual address of BO
  */
 struct drm_xocl_kinfo_bo {
 	uint32_t handle;
@@ -529,6 +533,8 @@ struct drm_xocl_execbuf {
  * @exec_bo_handle: BO handle of command buffer formatted as ERT command
  * @deps:	    Upto 8 dependency command BO handles this command is dependent on
  *                  for automatic event dependency handling by ERT
+ * @cb_func:	    Pointer to callback function(void (*fn)(long,int)) upon exec completion
+ * @cb_data:	    Pointer to context that callback needs to be invoked with
  */
 struct drm_xocl_execbuf_cb {
 	uint32_t ctx_id;

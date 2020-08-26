@@ -368,6 +368,13 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_FREE_CMA, xocl_free_cma_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+
+/* LINUX KERNEL-SPACE IOCTLS - The following entries are meant to be 
+ * accessible only from Linux Kernel and need be grouped to at the end 
+ * of this array.
+ * New IOCTLS meant for Userspace access needs to be defined above these
+ * comments.
+ **/
 #define NUM_KERNEL_IOCTLS 4
 	DRM_IOCTL_DEF_DRV(XOCL_KINFO_BO, xocl_kinfo_bo_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
@@ -377,7 +384,6 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_SYNC_BO_CB, xocl_sync_bo_callback_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
-
 };
 
 static long xocl_drm_ioctl(struct file *filp,
