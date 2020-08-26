@@ -121,6 +121,10 @@ enum drm_zocl_ops {
 	DRM_ZOCL_AIE_FD,
 	/* Reset AIE Array */
 	DRM_ZOCL_AIE_RESET,
+	/* Get the aie info command */
+	DRM_ZOCL_AIE_GETCMD,
+	/* Put the aie info command */
+	DRM_ZOCL_AIE_PUTCMD,
 	DRM_ZOCL_NUM_IOCTLS
 };
 
@@ -394,6 +398,7 @@ struct drm_zocl_axlf {
 
 #define	ZOCL_MAX_NAME_LENGTH		32
 #define	ZOCL_MAX_PATH_LENGTH		255
+#define AIE_INFO_SIZE			4096
 
 /**
  * struct drm_zocl_sk_getcmd - Get the soft kernel command  (experimental)
@@ -413,6 +418,24 @@ struct drm_zocl_sk_getcmd {
 	size_t		size;
 	uint64_t	paddr;
 	char		name[ZOCL_MAX_NAME_LENGTH];
+};
+
+enum aie_info_code {
+	GRAPH_STATUS = 1,
+};
+
+/**
+ * struct drm_zocl_aie_cmd - Get the aie command
+ * used with DRM_IOCTL_ZOCL_AIE_GETCMD and DRM_IOCTL_ZOCL_AIE_PUTCMD ioctl
+ *
+ * @opcode       : opcode for the Aie Command Packet
+ * @size         : size in bytes of info data
+ * @info         : information to transfer
+ */
+struct drm_zocl_aie_cmd {
+	uint32_t	opcode;
+	uint32_t	size;
+	char		info[AIE_INFO_SIZE];
 };
 
 /**
@@ -500,4 +523,8 @@ struct drm_zocl_error_inject {
                                        DRM_ZOCL_AIE_FD, struct drm_zocl_aie_fd)
 #define DRM_IOCTL_ZOCL_AIE_RESET       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_AIE_RESET, struct drm_zocl_aie_reset)
+#define DRM_IOCTL_ZOCL_AIE_GETCMD      DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_AIE_GETCMD, struct drm_zocl_aie_cmd)
+#define DRM_IOCTL_ZOCL_AIE_PUTCMD      DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_AIE_PUTCMD, struct drm_zocl_aie_cmd)
 #endif

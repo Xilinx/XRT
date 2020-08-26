@@ -4,6 +4,7 @@
  *
  * Authors:
  *    Larry Liu <yliu@xilinx.com>
+ *    Himanshu Choudhary <hchoudha@xilinx.com>
  *
  * This file is dual-licensed; you may select either the GNU General Public
  * License version 2 or Apache License, Version 2.0.
@@ -12,6 +13,7 @@
 #ifndef _ZOCL_AIE_H_
 #define _ZOCL_AIE_H_
 
+#include "zynq_ioctl.h"
 
 /* Wait 100 * 1 ms before AIE parition is availabe after reset */
 #define	ZOCL_AIE_RESET_TIMEOUT_INTERVAL	1
@@ -63,5 +65,27 @@ aie_partition_is_available(struct aie_partition_req *req)
 }
 
 #endif
+
+
+struct aie_info {
+	struct list_head	aie_cmd_list;
+	struct list_head	aie_cmd_result_list;
+	struct mutex		aie_lock;
+	wait_queue_head_t	aie_wait_queue;
+	wait_queue_head_t	aie_wait_result_queue;
+};
+
+struct aie_info_packet {
+	enum aie_info_code	opcode;
+	uint32_t		size;
+	char			info[AIE_INFO_SIZE];
+};
+
+struct aie_info_cmd {
+	struct list_head	aiec_list;
+	struct aie_info_packet	*aiec_packet;
+};
+
+int zocl_init_aie(struct drm_device *drm);
 
 #endif /* _ZOCL_AIE_H_ */

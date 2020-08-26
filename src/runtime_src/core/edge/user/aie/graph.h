@@ -66,6 +66,12 @@ public:
     void
     resume();
 
+    std::string
+    getname();
+
+    unsigned short
+    getstatus();
+
     void
     end();
 

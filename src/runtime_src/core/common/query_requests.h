@@ -187,6 +187,7 @@ enum class key_type
   rp_program_status,
 
   aie_metadata,
+  graph_status,
   noop
 
 };
@@ -607,6 +608,15 @@ struct aie_metadata : request
 {
   using result_type = std::string;
   static const key_type key = key_type::aie_metadata;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct graph_status : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::graph_status;
 
   virtual boost::any
   get(const device*) const = 0;

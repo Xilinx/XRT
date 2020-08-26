@@ -7,6 +7,7 @@
  *
  * Authors:
  *    Larry Liu <yliu@xilinc.com>
+ *    Himanshu Choudhary <hchoudha@xilinx.com>
  *
  * This file is dual-licensed; you may select either the GNU General Public
  * License version 2 or Apache License, Version 2.0.
@@ -16,6 +17,9 @@
 #include "zocl_aie.h"
 #include "xrt_xclbin.h"
 #include "xclbin.h"
+//#include "ert.h"
+//#include "sched_exec.h"
+
 
 #ifndef __NONE_PETALINUX__
 #include <linux/xlnx-ai-engine.h>
@@ -247,6 +251,91 @@ zocl_aie_reset(struct drm_zocl_dev *zdev)
 	zdev->aie->aie_reset = true;
 
 	mutex_unlock(&zdev->aie_lock);
+
+	return 0;
+}
+
+int
+zocl_aie_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct aie_info *aie = zdev->aie_information;
+	struct aie_info_cmd *acmd;
+	struct drm_zocl_aie_cmd *kdata = data;
+
+	// If no command, the process who calls this ioctl will block here
+	mutex_lock(&aie->aie_lock);
+	while (list_empty(&aie->aie_cmd_list)) {
+		mutex_unlock(&aie->aie_lock);
+		if (wait_event_interruptible(aie->aie_wait_queue,
+		    !list_empty(&aie->aie_cmd_list))) {
+			return -ERESTARTSYS;
+                }
+		mutex_lock(&aie->aie_lock);
+	}
+
+	acmd = list_first_entry(&aie->aie_cmd_list, struct aie_info_cmd,
+	    aiec_list);
+	list_del(&acmd->aiec_list);
+	mutex_unlock(&aie->aie_lock);
+
+	kdata->opcode = acmd->aiec_packet->opcode;
+	kfree(acmd->aiec_packet);
+	kfree(acmd);
+	return 0;
+}
+int
+zocl_aie_putcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct aie_info *aie = zdev->aie_information;
+	struct aie_info_cmd *acmd;
+	struct drm_zocl_aie_cmd *kdata = data;
+	struct aie_info_packet *aiec_packet;
+
+	acmd = kmalloc(sizeof(struct aie_info_cmd), GFP_KERNEL);
+	if (!acmd) {
+		return -ENOMEM;
+	}
+
+	aiec_packet = kmalloc(sizeof(struct aie_info_packet), GFP_KERNEL);
+	if (!aiec_packet) {
+		return -ENOMEM;
+	}
+
+	aiec_packet->opcode = kdata->opcode;
+	acmd->aiec_packet = aiec_packet;
+	struct aie_info_packet *cmd;
+	cmd = acmd->aiec_packet;
+	cmd->size = kdata->size;
+	snprintf(cmd->info, (cmd->size < AIE_INFO_SIZE) ? cmd->size:AIE_INFO_SIZE
+		, "%s", (char *)kdata->info);
+	
+	mutex_lock(&aie->aie_lock);
+	list_add_tail(&acmd->aiec_list, &aie->aie_cmd_result_list);
+	mutex_unlock(&aie->aie_lock);
+
+	wake_up_interruptible(&aie->aie_wait_result_queue);
+
+	return 0;
+}
+
+int
+zocl_init_aie(struct drm_device *drm)
+{
+	struct drm_zocl_dev *zdev = drm->dev_private;
+	struct aie_info *aie;
+
+	aie = devm_kzalloc(drm->dev, sizeof (*aie), GFP_KERNEL);
+	if (!aie)
+		return -ENOMEM;
+
+	zdev->aie_information = aie;
+	mutex_init(&aie->aie_lock);
+	INIT_LIST_HEAD(&aie->aie_cmd_list);
+	init_waitqueue_head(&aie->aie_wait_queue);
+	INIT_LIST_HEAD(&aie->aie_cmd_result_list);
+	init_waitqueue_head(&aie->aie_wait_result_queue);
 
 	return 0;
 }
