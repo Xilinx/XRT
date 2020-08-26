@@ -2,7 +2,7 @@
 
 
 XRT and Vitis™ Platform Overview
-*************************
+********************************
 
 XRT exports a common stack across PCIe based datacenter platforms and ZYNQ and ZYNQ UltraScale+ MPSoC based embedded platforms.
 It would require minimal porting efforts when migrating an application from one class of platform to another from the user perspective.
