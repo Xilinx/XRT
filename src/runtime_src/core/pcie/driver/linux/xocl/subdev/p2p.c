@@ -708,6 +708,9 @@ static void p2p_bar_unmap(struct p2p *p2p, ulong bar_off)
 
 	idx = bar_off / XOCL_P2P_CHUNK_SIZE;
 	chunk = p2p->p2p_mem_chunks;
+	if (!chunk)
+		return;
+
 	num = chunk[idx].map_chunk_num;
 	for (i = chunk[idx].map_head_chunk; i < num; i++) {
 		chunk[i].remap_ref--;
