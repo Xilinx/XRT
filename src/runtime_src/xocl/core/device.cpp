@@ -246,6 +246,17 @@ get_bdf() const
   return xrt_core::query::pcie_bdf::to_string(bdf);
 }
 
+bool
+device::
+is_nodma() const 
+{
+  if (!m_xdevice)
+    throw xocl::error(CL_INVALID_DEVICE, "Can't check for nodma");
+
+  auto core_device = m_xdevice->get_core_device();
+  return core_device->is_nodma();
+}
+
 void*
 device::
 get_handle() const
