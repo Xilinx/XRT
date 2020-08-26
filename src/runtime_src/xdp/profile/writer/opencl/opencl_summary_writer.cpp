@@ -1131,7 +1131,7 @@ namespace xdp {
 
     (t->fout) << "MIGRATE_MEM" << ","
 	      << "host" << ","
-	      << numCalls << std::endl ; // TODO: Make the connection
+	      << numCalls << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceMemoryUsage(OpenCLSummaryWriter* t)

@@ -71,6 +71,9 @@ namespace xdp {
     {
       callCount[key].push_back(value) ;
     }
+
+    // OpenCL specific information 
+    if (name == "clEnqueueMigrateMemObjects") addMigrateMemCall() ;
   }
 
   void VPStatisticsDatabase::logFunctionCallEnd(const std::string& name,
