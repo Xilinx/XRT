@@ -22,6 +22,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/XBHelpMenus.cpp"
   "../common/Report*.cpp"
   "../common/ProgressBar.cpp"
+  "../common/Process.cpp"
 )
 
 # Collect local directory files

@@ -23,8 +23,10 @@
 
 #include "bo.h"
 #include "device_int.h"
+#include "kernel_int.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/query_requests.h"
 #include "core/common/memalign.h"
 #include "core/common/unistd.h"
 #include "core/common/message.h"
@@ -46,28 +48,10 @@ is_nodma()
 }
 
 ////////////////////////////////////////////////////////////////
-// Exposed for Cardano as extensions to xrt_bo.h
+// Exposed for Vitis aietools as extensions to xrt_bo.h
 // Revisit post 2020.1
 ////////////////////////////////////////////////////////////////
-/**
- * xrtBOAddress() - Get the address of device side of buffer
- *
- * @bo:      Buffer object
- * Return:   Address of device side buffer
- */
-XCL_DRIVER_DLLESPEC
-uint64_t
-xrtBOAddress(const xrt::bo& bo);
-
-/**
- * xrtBOAddress() - Get the address of device side of buffer
- *
- * @handle:  Buffer handle
- * Return:   Address of device side buffer
- */
-XCL_DRIVER_DLLESPEC
-uint64_t
-xrtBOAddress(xrtBufferHandle bhdl);
+// Removed as address was exposed through public API per request
 ///////////////////////////////////////////////////////////////
 
 namespace {
@@ -144,8 +128,14 @@ public:
     return handle;
   }
 
+  const xrt_core::device*
+  get_device() const
+  {
+    return device.get();
+  }
+
   xclBufferExportHandle
-  export_buffer()
+  export_buffer() const
   {
     return device->export_bo(handle);
   }
@@ -168,6 +158,73 @@ public:
     std::memcpy(dst, hbuf, sz);
   }
 
+  void
+  copy(const bo_impl* src, size_t sz, size_t src_offset, size_t dst_offset)
+  {
+    // Check size and offset of dst and src
+    if (sz + dst_offset > size)
+      throw xrt_core::system_error(EINVAL, "copying past destination buffer size");
+    if (src->get_size() < sz + src_offset)
+      throw xrt_core::system_error(EINVAL, "copying past source buffer size");
+
+    if (get_device() != src->get_device()) {
+      copy_with_export(src, sz, src_offset, dst_offset);
+      return;
+    }
+
+    // try copying with m2m
+    try {
+      auto m2m = xrt_core::device_query<xrt_core::query::m2m>(get_device());
+      if (xrt_core::query::m2m::to_bool(m2m)) {
+        device->copy_bo(get_handle(), src->get_handle(), sz, dst_offset, src_offset);
+        return;
+      }
+    }
+    catch (const std::exception&) {
+    }
+
+    // try copying with kdma
+    try {
+      xrt_core::kernel_int::copy_bo_with_kdma
+        (device, sz, get_handle(), dst_offset, src->get_handle(), src_offset);
+      return;
+    }
+    catch (const std::exception& ex) {
+      auto fmt = boost::format("Reverting to host copy of buffers (%s)") % ex.what();
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT",  fmt.str());
+    }
+
+    // revert to copying through host
+    copy_through_host(src, sz, src_offset, dst_offset);
+  }
+
+  void
+  copy_with_export(const bo_impl* src, size_t sz, size_t src_offset, size_t dst_offset)
+  {
+    // export bo from other device and create an import bo to copy from
+    auto src_export_handle = src->export_buffer();
+    auto src_import_bo = xrt::bo(device->get_user_handle(), src_export_handle);
+    copy(src_import_bo.get_handle().get(), sz, src_offset, dst_offset);
+  }
+
+  void
+  copy_through_host(const bo_impl* src, size_t sz, size_t src_offset, size_t dst_offset)
+  {
+    auto src_hbuf = static_cast<const char*>(src->get_hbuf());
+    if (!src_hbuf)
+      throw xrt_core::system_error(EINVAL, "No host side buffer in source buffer");
+
+    auto dst_hbuf = static_cast<char*>(get_hbuf());
+    if (!dst_hbuf)
+      throw xrt_core::system_error(EINVAL, "No host side buffer in destination buffer");
+
+    // copy host side buffer
+    std::memcpy(dst_hbuf + dst_offset, src_hbuf + src_offset, sz);
+
+    // sync modified host buffer to device
+    sync(XCL_BO_SYNC_BO_TO_DEVICE, sz, dst_offset);
+  }
+
   virtual void
   sync(xclBOSyncDirection dir, size_t sz, size_t offset)
   {
@@ -175,7 +232,7 @@ public:
   }
 
   virtual uint64_t
-  address() const
+  get_address() const
   {
     xclBOProperties prop;
     device->get_bo_properties(handle, &prop);
@@ -185,6 +242,7 @@ public:
   virtual size_t get_size()      const { return size;    }
   virtual void*  get_hbuf()      const { return nullptr; }
   virtual bool   is_sub_buffer() const { return false;   }
+  virtual bool   is_imported()   const { return false;   }
   virtual size_t get_offset()    const { return 0;       }
 };
 
@@ -273,6 +331,12 @@ public:
     device->unmap_bo(handle, hbuf);
   }
 
+  virtual bool
+  is_imported() const
+  {
+    return true;
+  }
+
   virtual void*
   get_hbuf() const
   {
@@ -297,6 +361,7 @@ public:
   }
 
   // sync is M2M copy between host and device bo
+  // nodma is guaranteed to have M2M
   void
   sync(xclBOSyncDirection dir, size_t sz, size_t offset)
   {
@@ -348,9 +413,9 @@ public:
   }
 
   virtual uint64_t
-  address() const
+  get_address() const
   {
-    return bo_impl::address() + offset;
+    return bo_impl::get_address() + offset;
   }
 };
 
@@ -501,14 +566,14 @@ uint64_t
 address(const xrt::bo& bo)
 {
   auto boh = bo.get_handle();
-  return boh->address();
+  return boh->get_address();
 }
 
 uint64_t
 address(xrtBufferHandle handle)
 {
   auto boh = get_boh(handle);
-  return boh->address();
+  return boh->get_address();
 }
 
 }} // namespace bo, xrt_core
@@ -546,6 +611,13 @@ size() const
   return handle->get_size();
 }
 
+uint64_t
+bo::
+address() const
+{
+  return handle->get_address();
+}
+
 xclBufferExportHandle
 bo::
 export_buffer()
@@ -579,6 +651,13 @@ bo::
 read(void* dst, size_t size, size_t skip)
 {
   handle->read(dst, size, skip);
+}
+
+void
+bo::
+copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
+{
+  handle->copy(src.handle.get(), sz ? sz : src.size(), src_offset, dst_offset);
 }
 
 } // xrt
@@ -794,7 +873,8 @@ uint64_t
 xrtBOAddress(xrtBufferHandle bhdl)
 {
   try {
-    return xrt_core::bo::address(bhdl);
+    auto boh = get_boh(bhdl);
+    return boh->get_address();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -804,10 +884,4 @@ xrtBOAddress(xrtBufferHandle bhdl)
     send_exception_message(ex.what());
     return errno = 0;
   }
-}
-
-uint64_t
-xrtBOAddress(const xrt::bo& bo)
-{
-  return xrt_core::bo::address(bo);
 }

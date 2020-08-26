@@ -16,6 +16,7 @@
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_generic_cu.h"
+#include "zocl_error.h"
 
 extern int kds_mode;
 
@@ -125,6 +126,20 @@ zocl_execbuf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		ret = zocl_command_ioctl(zdev, data, filp);
 	else
 		ret = zocl_execbuf_exec(dev, data, filp);
+
+	return ret;
+}
+
+int
+zocl_error_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	int ret;
+
+	if (!capable(CAP_SYS_ADMIN))
+		return -EACCES;
+
+	ret = zocl_inject_error(zdev, data, filp);
 
 	return ret;
 }

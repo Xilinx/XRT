@@ -27,13 +27,15 @@ namespace XBU = XBUtilities;
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
 
+static boost::format fmtBasic("  %-20s : %s\n");
+
 void 
-ReportPlatform::getPropertyTreeInternal( const xrt_core::device * _pDevice,
-                                         boost::property_tree::ptree &_pt) const
+ReportPlatform::getPropertyTreeInternal( const xrt_core::device * device,
+                                         boost::property_tree::ptree &pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data, 
   // Then update this method to do so.
-  getPropertyTree20202(_pDevice, _pt);
+  getPropertyTree20202(device, pt);
 }
 
 /*
@@ -61,77 +63,87 @@ same_sc(const std::string& sc, const DSAInfo& installed)
 }
 
 void 
-ReportPlatform::getPropertyTree20202( const xrt_core::device * _pDevice,
-                                      boost::property_tree::ptree &_pt) const
+ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
+                                      boost::property_tree::ptree &pt) const
 {
-  boost::property_tree::ptree pt;
+  boost::property_tree::ptree pt_platform;
 
-  // There can only be 1 root node
-  _pt.add_child("platform", pt);
-
-  Flasher f(_pDevice->get_device_id());
-  std::vector<DSAInfo> availableDSAs = f.getInstalledDSA();
+  Flasher f(device->get_device_id());
 
   BoardInfo info;
   f.getBoardInfo(info);
   //create information tree for a device
-  _pt.put("platform.bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_pDevice)));
-  _pt.put("platform.flash_type", xrt_core::device_query<xrt_core::query::flash_type>(_pDevice));
-  _pt.put("platform.hardware.serial_num", info.mSerialNum);
+  pt_platform.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
+  pt_platform.put("flash_type", xrt_core::device_query<xrt_core::query::flash_type>(device)); 
+  pt_platform.put("hardware.serial_num", info.mSerialNum);
+
   //Flashable partition running on FPGA
   std::vector<std::string> logic_uuids, interface_uuids;
   // the vectors are being populated by empty strings when uuids are not available on windows
   // this needs to be fixed when the concept of multiple uuids comes into play
   // Workaround: if the uuid is empty, remove clear the vector
   try {
-    logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(_pDevice);
-    if (logic_uuids.front().empty())
+    logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
+    if (!logic_uuids.empty() && logic_uuids.front().empty())
       logic_uuids.clear();
     } catch (...) {}
   try {
-    interface_uuids = xrt_core::device_query<xrt_core::query::interface_uuids>(_pDevice);
-    if (interface_uuids.front().empty())
+    interface_uuids = xrt_core::device_query<xrt_core::query::interface_uuids>(device);
+    if (!interface_uuids.empty() && interface_uuids.front().empty())
       interface_uuids.clear();
     } catch (...) {}
   
-  //check if 2RP
-  if(!logic_uuids.empty() && !interface_uuids.empty()) {
+  
+  boost::property_tree::ptree pt_current_shell;
+  if(xrt_core::device_query<xrt_core::query::is_mfg>(device)) { // golden
+    std::string board_name = xrt_core::device_query<xrt_core::query::board_name>(device);
+    std::string vbnv = "xilinx_" + board_name + "_GOLDEN";
+    pt_current_shell.put("vbnv", vbnv);
+  } else if(!logic_uuids.empty() && !interface_uuids.empty()) { // 2RP
     for(unsigned int i = 0; i < logic_uuids.size(); i++) {
       DSAInfo part("", NULL_TIMESTAMP, logic_uuids[i], ""); 
-      _pt.put("platform.current_shell.vbnv", part.name);
-      _pt.put("platform.current_shell.logic-uuid", XBU::string_to_UUID(logic_uuids[i]));
-      _pt.put("platform.current_shell.interface-uuid", XBU::string_to_UUID(interface_uuids[i]));
-      _pt.put("platform.current_shell.id", (boost::format("0x%x") % part.timestamp));
+      pt_current_shell.put("vbnv", part.name);
+      pt_current_shell.put("logic-uuid", XBU::string_to_UUID(logic_uuids[i]));
+      pt_current_shell.put("interface-uuid", XBU::string_to_UUID(interface_uuids[i]));
+      pt_current_shell.put("id", (boost::format("0x%x") % part.timestamp));
     }
   } else { //1RP
-    _pt.put("platform.current_shell.vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(_pDevice));
-    _pt.put("platform.current_shell.id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(_pDevice)));
+    pt_current_shell.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+    pt_current_shell.put("id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
   }
 
-  std::string _scVer;
+  std::string sc_ver;
   try {
-    _scVer = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_pDevice);
+    sc_ver = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(device);
   } catch (...) {}
-  if(_scVer.empty())
-    _scVer = info.mBMCVer;
-  _pt.put("platform.current_shell.sc_version", _scVer);
+  if(sc_ver.empty())
+    sc_ver = info.mBMCVer;
+  pt_current_shell.put("sc_version", sc_ver);
+  pt_platform.add_child("current_shell", pt_current_shell);
 
   //Flashable partitions installed in system
-  boost::property_tree::ptree _ptAvailableShells;
+  std::vector<DSAInfo> availableDSAs = f.getInstalledDSA();
+  boost::property_tree::ptree pt_available_shells;
   for(unsigned int i = 0; i < availableDSAs.size(); i++) {
-    boost::property_tree::ptree _ptAvailableShell;
+    boost::property_tree::ptree pt_available_shell;
     DSAInfo installedDSA = availableDSAs[i];
-    _ptAvailableShell.put("vbnv", installedDSA.name);
-    _ptAvailableShell.put("sc_version", installedDSA.bmcVer);
-    _ptAvailableShell.put("id", (boost::format("0x%x") % installedDSA.timestamp));
-    _ptAvailableShell.put("file", installedDSA.file);
-    _pt.put("platform.status.shell", same_shell( _pt.get<std::string>("platform.current_shell.vbnv", ""), 
-              _pt.get<std::string>("platform.current_shell.id", ""), installedDSA));
-    _pt.put("platform.status.sc", same_sc( _pt.get<std::string>("platform.current_shell.sc_version", ""), 
-             installedDSA));
-     _ptAvailableShells.push_back( std::make_pair("", _ptAvailableShell) );
+    pt_available_shell.put("vbnv", installedDSA.name);
+    pt_available_shell.put("sc_version", installedDSA.bmcVer);
+    pt_available_shell.put("id", (boost::format("0x%x") % installedDSA.timestamp));
+    pt_available_shell.put("file", installedDSA.file);
+
+    boost::property_tree::ptree pt_status;
+    pt_status.put("shell", same_shell( pt_current_shell.get<std::string>("vbnv", ""), 
+              pt_current_shell.get<std::string>("id", ""), installedDSA));
+    pt_status.put("sc", same_sc( pt_current_shell.get<std::string>("sc_version", ""), installedDSA));
+    pt_platform.add_child("status", pt_status);
+
+    pt_available_shells.push_back( std::make_pair("", pt_available_shell) );
   }
-_pt.put_child("platform.available_shells", _ptAvailableShells);
+  pt_platform.put_child("available_shells", pt_available_shells);
+
+  // There can only be 1 root node
+  pt.add_child("platform", pt_platform);
 }
 
 static const std::string
@@ -147,45 +159,47 @@ shell_status(bool shell_status, bool sc_status, int multiDSA)
 }
 
 void 
-ReportPlatform::writeReport( const xrt_core::device * _pDevice, 
+ReportPlatform::writeReport( const xrt_core::device * device, 
                              const std::vector<std::string> & /*_elementsFilter*/, 
-                             std::iostream & _output) const
+                             std::iostream & output) const
 {
-  boost::property_tree::ptree _pt;
-  getPropertyTreeInternal(_pDevice, _pt);
+  boost::property_tree::ptree pt;
+  getPropertyTreeInternal(device, pt);
 
-  _output << boost::format("%s : [%s]\n") % "Device" % _pt.get<std::string>("platform.bdf");
-  _output << std::endl;
-  _output << "Flash properties\n";
-  _output << boost::format("  %-20s : %s\n") % "Type" % _pt.get<std::string>("platform.flash_type", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "Serial Number" % _pt.get<std::string>("platform.hardware.serial_num", "N/A");
-  _output << std::endl;
-  _output << "Flashable partition running on FPGA\n";
-  _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.current_shell.vbnv", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.current_shell.sc_version", "N/A");
+  output << boost::format("%s : [%s]\n") % "Device" % pt.get<std::string>("platform.bdf");
+  output << std::endl;
+
+  output << "Flash properties\n";
+  output << fmtBasic % "Type" % pt.get<std::string>("platform.flash_type", "N/A");
+  output << fmtBasic % "Serial Number" % pt.get<std::string>("platform.hardware.serial_num", "N/A");
+  output << std::endl;
+
+  output << "Flashable partition running on FPGA\n";
+  output << fmtBasic % "Platform" % pt.get<std::string>("platform.current_shell.vbnv", "N/A");
+  output << fmtBasic % "SC Version" % pt.get<std::string>("platform.current_shell.sc_version", "N/A");
   
-  auto logic_uuid = _pt.get<std::string>("platform.current_shell.logic-uuid", "");
-  auto interface_uuid = _pt.get<std::string>("platform.current_shell.interface-uuid", "");
+  // print platform ID, for 2RP, platform ID = logic UUID 
+  auto logic_uuid = pt.get<std::string>("platform.current_shell.logic-uuid", "");
+  auto interface_uuid = pt.get<std::string>("platform.current_shell.interface-uuid", "");
   if (!logic_uuid.empty() && !interface_uuid.empty()) {
-    _output << boost::format("  %-20s : %s\n") % "Platform ID" % logic_uuid;
-    _output << boost::format("  %-20s : %s\n") % "Interface UUID" % interface_uuid;
+    output << fmtBasic % "Platform ID" % logic_uuid;
+    output << fmtBasic % "Interface UUID" % interface_uuid;
   } else {
-    _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.current_shell.id", "N/A");
+    output << fmtBasic % "Platform ID" % pt.get<std::string>("platform.current_shell.id", "N/A");
   }
-  
-  _output << std::endl;
-  _output << "Flashable partitions installed in system\n"; 
-  boost::property_tree::ptree& available_shells = _pt.get_child("platform.available_shells");
+  output << std::endl;
+
+  output << "Flashable partitions installed in system\n"; 
+  boost::property_tree::ptree& available_shells = pt.get_child("platform.available_shells");
   for(auto& kv : available_shells) {
-    // std::string prefix = "platform.available_shells." + std::to_string(i);
     boost::property_tree::ptree& available_shell = kv.second;
-    _output << boost::format("  %-20s : %s\n") % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
-    _output << boost::format("  %-20s : %s\n") % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
-    _output << boost::format("  %-20s : %s\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A") << "\n";
+    output << fmtBasic % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
+    output << fmtBasic % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
+    output << fmtBasic % "Platform ID" % available_shell.get<std::string>("id", "N/A");
+    output << std::endl;
   }
 
-
-  _output << "----------------------------------------------------\n"
-          << shell_status(_pt.get<bool>("platform.status.shell"), 
-                          _pt.get<bool>("platform.status.sc"),  static_cast<int>(available_shells.size()));
+  output << "----------------------------------------------------\n"
+         << shell_status(pt.get<bool>("platform.status.shell"), 
+                         pt.get<bool>("platform.status.sc"),  static_cast<int>(available_shells.size()));
 }

@@ -88,9 +88,6 @@ register_axlf(const axlf* top)
     std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
     m_axlf_sections.emplace(kind , std::move(data));
   }
-
-  // Build modified CONNECTIVITY and MEM_TOPOLOGY section based on memory group ids
-  // Base groups off data from driver
 }
 
 std::pair<const char*, size_t>

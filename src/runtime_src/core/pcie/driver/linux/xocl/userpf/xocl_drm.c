@@ -258,6 +258,9 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 	}
 
+	if (ret > 0)
+		return ret;
+
 	switch (ret) {
 	case -EAGAIN:
 	case 0:
@@ -359,6 +362,8 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(XOCL_USER_INTR, xocl_user_intr_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_EXECBUF, xocl_execbuf_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_COPY_BO, xocl_copy_bo_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_HOT_RESET, xocl_hot_reset_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
@@ -859,9 +864,9 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 
 	XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
-    /* Initialize with max and min possible value */
-    mm_start_addr = 0xffffFFFFffffFFFF;
-    mm_end_addr = 0;
+	/* Initialize with max and min possible value */
+	mm_start_addr = 0xffffFFFFffffFFFF;
+	mm_end_addr = 0;
 
 	/* Initialize the used banks and their sizes */
 	/* Currently only fixed sizes are supported */

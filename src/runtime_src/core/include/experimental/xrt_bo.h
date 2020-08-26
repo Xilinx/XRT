@@ -143,6 +143,15 @@ public:
   size() const;
 
   /**
+   * address() - Get the device address of this buffer
+   *
+   * Return: device address of buffer
+   */
+  XCL_DRIVER_DLLESPEC
+  uint64_t
+  address() const;
+
+  /**
    * buffer_export() - Export this buffer
    *
    * Return:  exported buffer handle
@@ -219,6 +228,21 @@ public:
   XCL_DRIVER_DLLESPEC
   void
   read(void* dst, size_t size, size_t skip);
+
+  /**
+   * copy() - Deep copy BO content from another buffer
+   *
+   * @src:          Source BO to copy from
+   * @sz:           Size of data to copy
+   * @src_offset:   Offset into src buffer copy from
+   * @dst_offset:   Offset in this buffer to copy to
+   *
+   * A copy size equal to 0 indicates copying complete src bo
+   * to this bo.
+   */
+  XCL_DRIVER_DLLESPEC
+  void    
+  copy(const bo& src, size_t sz=0, size_t src_offset=0, size_t dst_offset=0);
 
 public:
   std::shared_ptr<bo_impl>
@@ -318,6 +342,15 @@ xrtBOFree(xrtBufferHandle handle);
 XCL_DRIVER_DLLESPEC
 size_t
 xrtBOSize(xrtBufferHandle handle);
+
+/**
+ * xrtBOAddr() - Get the physical address of this buffer
+ * @handle:       Buffer handle
+ * Return:        Device address of this BO
+ */
+XCL_DRIVER_DLLESPEC
+uint64_t
+xrtBOAddress(xrtBufferHandle handle);
 
 /**
  * xrtBOSync() - Synchronize buffer contents in requested direction

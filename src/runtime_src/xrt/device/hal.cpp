@@ -17,6 +17,7 @@
 #include "hal.h"
 
 #include "core/common/dlfcn.h"
+#include "core/common/device.h"
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 

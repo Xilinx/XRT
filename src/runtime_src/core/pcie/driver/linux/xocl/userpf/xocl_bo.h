@@ -163,6 +163,8 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_copy_bo_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 
 int xocl_kinfo_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);

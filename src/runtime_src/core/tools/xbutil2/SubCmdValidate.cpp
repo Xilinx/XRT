@@ -22,6 +22,7 @@
 #include "tools/common/XBHelpMenus.h"
 #include "core/tools/common/ProgressBar.h"
 #include "core/tools/common/EscapeCodes.h"
+#include "core/tools/common/Process.h"
 #include "core/common/query_requests.h"
 #include "core/pcie/common/dmatest.h"
 namespace XBU = XBUtilities;
@@ -36,17 +37,13 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include <sstream>
 #include <thread>
 #include <regex>
 #ifdef __GNUC__
 #include <sys/mman.h> //munmap
 #endif
-#ifdef _WIN32
-#pragma warning (disable : 4996)
-/* Disable warning for use of getenv */
-#pragma warning (disable : 4996 4100 4505)
-/* disable unrefenced params and local functions - Remove these warnings asap*/
-#endif
+
 
 // =============================================================================
 
@@ -105,159 +102,10 @@ void logger(boost::property_tree::ptree& _ptTest, const std::string& tag, const 
 }
 
 /*
- * progarm an xclbin
- */
-void
-programXclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
-{
-  std::ifstream stream(xclbin, std::ios::binary);
-  if (!stream) {
-    logger(_ptTest, "Error", boost::str(boost::format("Could not open %s for reading") % xclbin));
-    _ptTest.put("status", "failed");
-    return;
-  }
-
-  stream.seekg(0,stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
-  std::vector<char> raw(size);
-  stream.read(raw.data(),size);
-
-  std::string ver(raw.data(),raw.data()+7);
-  if (ver != "xclbin2") {
-    logger(_ptTest, "Error", boost::str(boost::format("Bad binary version '%s' for xclbin") % ver));
-    _ptTest.put("status", "failed");
-    return;
-  }
-
-  auto hdl = _dev->get_device_handle();
-  if (xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data()))) {
-    logger(_ptTest, "Error", "Could not load xclbin");
-    _ptTest.put("status", "failed");
-    return;
-  }
-}
-
-inline const char* 
-getenv_or_empty(const char* path)
-{
-  return getenv(path) ? getenv(path) : "";
-}
-
-static void 
-setShellPathEnv(const std::string& var_name, const std::string& trailing_path)
-{
-  std::string xrt_path(getenv_or_empty("XILINX_XRT"));
-  std::string new_path(getenv_or_empty(var_name.c_str()));
-  xrt_path += trailing_path + ":";
-  new_path = xrt_path + new_path;
-#ifdef __GNUC__
-  setenv(var_name.c_str(), new_path.c_str(), 1);
-#endif
-}
-
-static void 
-testCaseProgressReporter(std::shared_ptr<XBU::ProgressBar> run_test, bool& is_done)
-{
-  int counter = 0;
-  while(counter < 60 && !is_done) {
-    run_test.get()->update(counter);
-    counter++;
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-}
-
-/*
- * run standalone testcases in a fork
- */
-void
-runShellCmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
-{
-#ifdef __GNUC__
-  // Fix environment variables before running test case
-  setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-  setShellPathEnv("PYTHONPATH", "/python");
-  setShellPathEnv("LD_LIBRARY_PATH", "/lib");
-  setShellPathEnv("PATH", "/bin");
-  unsetenv("XCL_EMULATION_MODE");
-
-  int stderr_fds[2];
-  if (pipe(stderr_fds)== -1) {
-    logger(_ptTest, "Error", "Unable to create pipe");
-    _ptTest.put("status", "failed");
-    return;
-  }
-
-  // Save stderr
-  int stderr_save = dup(STDERR_FILENO);
-  if (stderr_save == -1) {
-    logger(_ptTest, "Error", "Unable to duplicate stderr");
-    _ptTest.put("status", "failed");
-    return;
-  }
-
-  // Kick off progress reporter
-  bool is_done = false;
-  //bandwidth testcase takes up-to a min to run
-  auto run_test = std::make_shared<XBU::ProgressBar>("Running Test", 60, XBU::is_esc_enabled(), std::cout); 
-  std::thread t(testCaseProgressReporter, run_test, std::ref(is_done));
-
-  // Close existing stderr and set it to be the write end of the pipe.
-  // After fork below, our child process's stderr will point to the same fd.
-  dup2(stderr_fds[1], STDERR_FILENO);
-  close(stderr_fds[1]);
-  std::shared_ptr<FILE> stderr_child(fdopen(stderr_fds[0], "r"), fclose);
-  std::shared_ptr<FILE> stdout_child(popen(cmd.c_str(), "r"), pclose);
-  // Restore our normal stderr
-  dup2(stderr_save, STDERR_FILENO);
-  close(stderr_save);
-
-  if (stdout_child == nullptr) {
-    logger(_ptTest, "Error", boost::str(boost::format("Failed to run %s") % cmd));
-    _ptTest.put("status", "failed");
-    return;
-  }
-
-  std::string output = "\n\n";
-  // Read child's stdout and stderr without parsing the content
-  char buf[1024];
-  while (!feof(stdout_child.get())) {
-    if (fgets(buf, sizeof (buf), stdout_child.get()) != nullptr) {
-      output += buf;
-    }
-  }
-  while (stderr_child && !feof(stderr_child.get())) {
-    if (fgets(buf, sizeof (buf), stderr_child.get()) != nullptr) {
-      output += buf;
-    }
-  }
-  is_done = true;
-  if (output.find("PASS") == std::string::npos) {
-    run_test.get()->finish(false, "");
-    logger(_ptTest, "Error", output);
-    _ptTest.put("status", "failed");
-  } 
-  else {
-    run_test.get()->finish(true, "");
-    _ptTest.put("status", "passed");
-  }
-  std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
-  t.join();
-
-  // Get out max thruput for bandwidth testcase
-  size_t st = output.find("Maximum");
-  if (st != std::string::npos) {
-    size_t end = output.find("\n", st);
-    logger(_ptTest, "Details", output.substr(st, end - st));
-  }
-#endif
-}
-
-/*
  * search for xclbin for an SSV2 platform
  */
 std::string
-searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::string& logic_uuid, 
+searchSSV2Xclbin(const std::string& logic_uuid, 
                   const std::string& xclbin, boost::property_tree::ptree& _ptTest)
 {
   std::string formatted_fw_path("/opt/xilinx/firmware/");
@@ -286,7 +134,6 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
 
       std::regex_match(name, cm, e);
       if (cm.size() > 0) {
-#ifdef __GNUC__
         auto dtbbuf = XBUtilities::get_axlf_section(name, PARTITION_METADATA);
         if (dtbbuf.empty()) {
           ++iter;
@@ -299,7 +146,6 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
         else if (uuids[0].compare(logic_uuid) == 0) {
           return cm.str(1) + "test/" + xclbin;
         }
-#endif
       }
       else if (iter.level() > 4) {
         iter.pop();
@@ -343,63 +189,84 @@ searchLegacyXclbin(const std::string& dev_name, const std::string& xclbin, boost
 
 /* 
  * helper funtion for kernel and bandwidth test cases
+ * Steps:
+ * 1. Find xclbin after determining if the shell is 1RP or 2RP
+ * 2. Find testcase
+ * 3. Spawn a testcase process
+ * 4. Check results
  */
 void 
 runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py, const std::string& xclbin, 
             boost::property_tree::ptree& _ptTest)
 {
-    std::string name;
-    try{
-      name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
-    } catch(...) {
-      logger(_ptTest, "Error", "Unable to find device VBNV");
+  std::string name;
+  try {
+    name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
+  } catch(...) {
+    logger(_ptTest, "Error", "Unable to find device VBNV");
 
-      _ptTest.put("status", "failed");
-      return;
+    _ptTest.put("status", "failed");
+    return;
+  }
+
+  //check if a 2RP platform
+  std::vector<std::string> logic_uuid;
+  try{
+    logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(_dev);
+  } catch(...) { }
+
+  std::string xclbinPath;
+  if(!logic_uuid.empty()) {
+    xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, _ptTest);
+  } else {
+    xclbinPath = searchLegacyXclbin(name, xclbin, _ptTest);
     }
 
-    //check if a 2RP platform
-    std::vector<std::string> logic_uuid;
-    try{
-      logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(_dev);
-    } catch(...) { }
-
-    std::string xclbinPath;
-    if(!logic_uuid.empty()) {
-      xclbinPath = searchSSV2Xclbin(_dev, logic_uuid.front(), xclbin, _ptTest);
-    } else {
-      xclbinPath = searchLegacyXclbin(name, xclbin, _ptTest);
+  //check if xclbin is present
+  if(xclbinPath.empty()) {
+    if(xclbin.compare("bandwidth.xclbin") == 0) {
+      //if bandwidth xclbin isn't present, skip the test
+      logger(_ptTest, "Details", "Bandwidth xclbin not available. Skipping validation.");
+      _ptTest.put("status", "skipped");
     }
+    return;
+  }
+  // log xclbin path for debugging purposes
+  logger(_ptTest, "Xclbin", xclbinPath);
 
-    //check if xclbin is present
-    if(xclbinPath.empty()) {
-      if(xclbin.compare("bandwidth.xclbin") == 0) {
-        //if bandwidth xclbin isn't present, skip the test
-        logger(_ptTest, "Details", "Bandwidth xclbin not available. Skipping validation.");
-        _ptTest.put("status", "skipped");
-      }
-      return;
-    }
-
-    //check if testcase is present
-    std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
-    boost::filesystem::path xrt_path(xrtTestCasePath);
-    if (!boost::filesystem::exists(xrt_path)) {
-      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
-      logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-      _ptTest.put("status", "failed");
-      return;
-    }
-
-    // Program xclbin first.
-    programXclbin(_dev, xclbinPath, _ptTest);
-    if (_ptTest.get<std::string>("status", "N/A").compare("failed") == 0) 
-      return;
+  //check if testcase is present
+  std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
+  boost::filesystem::path xrt_path(xrtTestCasePath);
+  if (!boost::filesystem::exists(xrt_path)) {
+    logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+    _ptTest.put("status", "failed");
+    return;
+  }
+  // log testcase path for debugging purposes
+  logger(_ptTest, "Testcase", xrtTestCasePath);
     
-    //run testcase in a fork
-    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + 
-                        std::to_string(_dev.get()->get_device_id());
-    runShellCmd(cmd, _ptTest);
+  std::vector<std::string> args = { " -k ", xclbinPath, " -d ", std::to_string(_dev.get()->get_device_id()) };
+  std::ostringstream os_stdout;
+  std::ostringstream os_stderr;
+  int exit_code = XBU::runPythonScript(xrtTestCasePath, args, os_stdout, os_stderr);
+  if (exit_code != 0) {
+    logger(_ptTest, "Error", os_stdout.str());
+    logger(_ptTest, "Error", os_stderr.str());
+    _ptTest.put("status", "failed");
+  } 
+  else {
+    _ptTest.put("status", "passed");
+  }
+
+  // Get out max thruput for bandwidth testcase
+  if(xclbin.compare("bandwidth.xclbin") == 0) {
+    size_t st = os_stdout.str().find("Maximum");
+    if (st != std::string::npos) {
+      size_t end = os_stdout.str().find("\n", st);
+      logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
+    }
+  }
 }
 
 /*
@@ -564,14 +431,14 @@ m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, 
 /* 
  * helper function for M2M test
  */ 
-static int 
+static double 
 m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int bank_a, int bank_b, size_t bo_size)
 {
   xclBufferHandle bo_src = NULLBO;
   xclBufferHandle bo_tgt = NULLBO;
   char *bo_src_ptr = nullptr;
   char *bo_tgt_ptr = nullptr;
-  int bandwidth = 0;
+  double bandwidth = 0;
 
   //Allocate and init bo_src
   if(m2m_alloc_init_bo(handle, _ptTest, bo_src, bo_src_ptr, bo_size, bank_a, 'A'))
@@ -586,7 +453,7 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   XBU::Timer timer;
   if (xclCopyBO(handle, bo_tgt, bo_src, bo_size, 0, 0))
     return bandwidth;
-  double timer_stop = timer.stop().count();
+  double timer_duration_sec = timer.stop().count();
 
   if(xclSyncBO(handle, bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
     free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
@@ -609,10 +476,8 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   }
 
   //bandwidth
-  size_t total = bo_size;
-  total *= 1000000; // convert us to s
-  total /= (1024 * 1024); //convert to MB
-  return static_cast<int>(total / timer_stop);
+  double total_Mb = static_cast<double>(bo_size) / static_cast<double>(1024 * 1024); //convert to MB
+  return static_cast<double>(total_Mb / timer_duration_sec);
 }
 
 /*
@@ -772,7 +637,7 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
     return;
   }
   std::string testcase = (name.find("vck5000") != std::string::npos) ? "versal_23_bandwidth.py" : "23_bandwidth.py";
-  runTestCase(_dev, testcase, "bandwidth.xclbin", _ptTest);
+  runTestCase(_dev, testcase, std::string("bandwidth.xclbin"), _ptTest);
 }
 
 /*
@@ -854,12 +719,11 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
   for(unsigned int i = 0; i < used_banks.size()-1; i++) {
     for(unsigned int j = i+1; j < used_banks.size(); j++) {
-      std::cout << used_banks[i].m_tag << " -> " << used_banks[j].m_tag << " M2M bandwidth: ";
       if(!used_banks[i].m_size || !used_banks[j].m_size)
         continue;
       
       double m2m_bandwidth = m2mtest_bank(_dev->get_device_handle(), _ptTest, i, j, bo_size);
-      logger(_ptTest, "Details", boost::str(boost::format("%s -> %s M2M bandwidth: %f MB/s") % used_banks[i].m_tag 
+      logger(_ptTest, "Details", boost::str(boost::format("%s -> %s M2M bandwidth: %.2f MB/s") % used_banks[i].m_tag
                   %used_banks[j].m_tag % m2m_bandwidth));
       
       if(m2m_bandwidth == 0) //test failed, exit

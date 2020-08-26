@@ -423,6 +423,16 @@ static ssize_t mig_cache_update_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(mig_cache_update);
 
+static ssize_t nodma_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	/* A shell without dma subdev and with m2m subdev is nodma shell */
+	return sprintf(buf, "%d\n", (!DMA_DEV(xdev) && M2M_DEV(xdev)));
+}
+static DEVICE_ATTR_RO(nodma);
+
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
@@ -444,6 +454,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
 	&dev_attr_mig_cache_update.attr,
+	&dev_attr_nodma.attr,
 	NULL,
 };
 

@@ -49,6 +49,11 @@ set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR "${XRT_INSTALL_DIR}/include/xrt")
 set (XRT_INSTALL_LIB_DIR     "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
 
+#Setting RPATH variable for cross compilation
+if (DEFINED CROSS_COMPILE)
+  set(CMAKE_INSTALL_RPATH "${sysroot}/usr/lib:${sysroot}/lib:${sysroot}/usr/lib/aarch64-linux-gnu")
+endif()
+
 # Release OpenCL extension headers
 set(XRT_CL_EXT_SRC
   include/1_2/CL/cl_ext_xilinx.h

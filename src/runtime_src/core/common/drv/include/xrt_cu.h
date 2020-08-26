@@ -40,6 +40,10 @@
 #define CU_AP_CONTINUE	(0x1 << 4)
 #define CU_AP_RESET	(0x1 << 5)
 
+#define CU_INTR_DONE  0x1
+#define CU_INTR_READY 0x2
+
+
 /* PLRAM CU macros */
 
 enum xcu_model {
@@ -145,6 +149,19 @@ struct xcu_funcs {
 	u32 (*clear_intr)(void *core);
 };
 
+enum arg_dir {
+	DIR_NONE = 0,
+	DIR_INPUT,
+	DIR_OUTPUT
+};
+
+struct xrt_cu_arg {
+	char	name[32];
+	u32	offset;
+	u32	size;
+	u32	dir;
+};
+
 enum CU_PROTOCOL {
 	CTRL_HS = 0,
 	CTRL_CHAIN = 1,
@@ -154,14 +171,18 @@ enum CU_PROTOCOL {
 };
 
 struct xrt_cu_info {
-	u32	model;
-	int	cu_idx;
-	int	inst_idx;
-	u64	addr;
-	u32	protocol;
-	u32	intr_id;
-	u32	num_res;
-	bool	intr_enable;
+	u32			 model;
+	int			 cu_idx;
+	int			 inst_idx;
+	u64			 addr;
+	u32			 protocol;
+	u32			 intr_id;
+	u32			 num_res;
+	bool			 intr_enable;
+	struct xrt_cu_arg	*args;
+	u32			 num_args;
+	char			 iname[32];
+	char			 kname[32];
 };
 
 #define CU_STATE_GOOD  0x1
@@ -218,11 +239,37 @@ struct xrt_cu {
 	struct task_struct	  *thread;
 };
 
+static inline char *prot2str(enum CU_PROTOCOL prot)
+{
+	switch (prot) {
+	case CTRL_HS:		return "CTRL_HS";
+	case CTRL_CHAIN:	return "CTRL_CHAIN";
+	case CTRL_NONE:		return "CTRL_NONE";
+	case CTRL_ME:		return "CTRL_ME";
+	case CTRL_ACC:		return "CTRL_ACC";
+	default:		return "UNKNOWN";
+	}
+}
+
 void xrt_cu_reset(struct xrt_cu *xcu);
 int  xrt_cu_reset_done(struct xrt_cu *xcu);
-void xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type);
-void xrt_cu_disable_intr(struct xrt_cu *xcu, u32 intr_type);
-u32  xrt_cu_clear_intr(struct xrt_cu *xcu);
+
+static void inline xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type)
+{
+	if (xcu->funcs)
+		xcu->funcs->enable_intr(xcu->core, intr_type);
+}
+
+static void inline xrt_cu_disable_intr(struct xrt_cu *xcu, u32 intr_type)
+{
+	if (xcu->funcs)
+		xcu->funcs->disable_intr(xcu->core, intr_type);
+}
+
+static u32 inline xrt_cu_clear_intr(struct xrt_cu *xcu)
+{
+	return xcu->funcs ? xcu->funcs->clear_intr(xcu->core) : 0;
+}
 
 static inline void xrt_cu_config(struct xrt_cu *xcu, u32 *data, size_t sz, int type)
 {
@@ -238,6 +285,8 @@ static inline void xrt_cu_check(struct xrt_cu *xcu)
 {
 	struct xcu_status status;
 
+	status.num_done = 0;
+	status.num_ready = 0;
 	xcu->funcs->check(xcu->core, &status);
 	/* XRT CU assume command finished in order
 	 */
@@ -274,6 +323,7 @@ int  xrt_cu_init(struct xrt_cu *xcu);
 void xrt_cu_fini(struct xrt_cu *xcu);
 
 ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf);
+ssize_t show_cu_info(struct xrt_cu *xcu, char *buf);
 
 /* CU Implementations */
 struct xrt_cu_hls {

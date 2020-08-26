@@ -173,7 +173,7 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addPowerSample(uint64_t deviceId, double timestamp,
-					 const std::vector<uint64_t>& values)
+          const std::vector<uint64_t>& values)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
@@ -192,5 +192,67 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
     return powerSamples[deviceId] ;
+  }
+
+  void VPDynamicDatabase::addAIESample(uint64_t deviceId, double timestamp,
+          const std::vector<uint64_t>& values)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    if (aieSamples.find(deviceId) == aieSamples.end())
+    {
+      std::vector<CounterSample> blank ;
+      aieSamples[deviceId] = blank ;
+    }
+
+    aieSamples[deviceId].push_back(std::make_pair(timestamp, values)) ;
+  }
+
+  std::vector<VPDynamicDatabase::CounterSample>
+  VPDynamicDatabase::getAIESamples(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    return aieSamples[deviceId] ;
+  }
+
+  void VPDynamicDatabase::addNOCSample(uint64_t deviceId, double timestamp,
+          std::string name, const std::vector<uint64_t>& values)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    // Store name
+    if (nocNames.find(deviceId) == nocNames.end())
+    {
+      CounterNames blank ;
+      nocNames[deviceId] = blank ;
+    }
+
+    nocNames[deviceId][timestamp] = name ;
+
+    // Store vector of values
+    if (nocSamples.find(deviceId) == nocSamples.end())
+    {
+      std::vector<CounterSample> blank ;
+      nocSamples[deviceId] = blank ;
+    }
+
+    nocSamples[deviceId].push_back(std::make_pair(timestamp, values)) ;
+  }
+
+  std::vector<VPDynamicDatabase::CounterSample>
+  VPDynamicDatabase::getNOCSamples(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    return nocSamples[deviceId] ;
+  }
+
+  VPDynamicDatabase::CounterNames
+  VPDynamicDatabase::getNOCNames(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    return nocNames[deviceId] ;
   }
 }

@@ -52,7 +52,7 @@ struct ishim
   free_bo(xclBufferHandle boh) = 0;
 
   virtual xclBufferExportHandle
-  export_bo(xclBufferHandle boh) = 0;
+  export_bo(xclBufferHandle boh) const = 0;
 
   virtual xclBufferHandle
   import_bo(xclBufferExportHandle ehdl) = 0;
@@ -85,6 +85,12 @@ struct ishim
   xwrite(uint64_t offset, const void* buffer, size_t size) = 0;
 
   virtual void
+  unmgd_pread(void* buffer, size_t size, uint64_t offset) = 0;
+
+  virtual void
+  unmgd_pwrite(const void* buffer, size_t size, uint64_t offset) = 0;
+
+  virtual void
   exec_buf(xclBufferHandle boh) = 0;
 
   virtual int
@@ -92,6 +98,15 @@ struct ishim
 
   virtual void
   load_xclbin(const struct axlf*) = 0;
+
+  virtual void
+  reclock(const uint16_t* target_freq_mhz) = 0;
+
+  virtual void
+  p2p_enable(bool force) = 0;
+
+  virtual void
+  p2p_disable(bool force) = 0;
 
 #ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
@@ -195,7 +210,7 @@ struct shim : public DeviceType
   }
 
   virtual xclBufferExportHandle
-  export_bo(xclBufferHandle bo)
+  export_bo(xclBufferHandle bo) const
   {
     auto ehdl = xclExportBO(DeviceType::get_device_handle(), bo);
     if (ehdl == XRT_NULL_BO_EXPORT)
@@ -276,12 +291,25 @@ struct shim : public DeviceType
   xwrite(uint64_t offset, const void* buffer, size_t size)
   {
     if (size != xclWrite(DeviceType::get_device_handle(), XCL_ADDR_KERNEL_CTRL, offset, buffer, size))
-      throw error(1, "failed to write at address (" + std::to_string(offset) + ")");
+      throw error(1, "failed to write to address (" + std::to_string(offset) + ")");
   }
 #ifdef __GNUC__
 # pragma GCC diagnostic pop
 #endif
 
+  virtual void
+  unmgd_pread(void* buffer, size_t size, uint64_t offset)
+  {
+    if (auto ret = xclUnmgdPread(DeviceType::get_device_handle(), 0, buffer, size, offset))
+      throw error(static_cast<int>(ret), "failed to read at address (" + std::to_string(offset) + ")");
+  }
+
+  virtual void
+  unmgd_pwrite(const void* buffer, size_t size, uint64_t offset)
+  {
+    if (auto ret = xclUnmgdPwrite(DeviceType::get_device_handle(), 0, buffer, size, offset))
+      throw error(static_cast<int>(ret), "failed to write to address (" + std::to_string(offset) + ")");
+  }
 
   virtual void
   exec_buf(xclBufferHandle bo)
@@ -301,6 +329,27 @@ struct shim : public DeviceType
   {
     if (auto ret = xclLoadXclBin(DeviceType::get_device_handle(), buffer))
       throw error(ret, "failed to load xclbin");
+  }
+
+  virtual void
+  reclock(const uint16_t* target_freq_mhz)
+  {
+    if (auto ret = xclReClock2(DeviceType::get_device_handle(), 0, target_freq_mhz))
+      throw error(ret, "failed to reclock specified clock");
+  }
+
+  virtual void
+  p2p_enable(bool force)
+  {
+    if (auto ret = xclP2pEnable(DeviceType::get_device_handle(), true, force))
+      throw error(ret, "failed to enable p2p");
+  }
+
+  virtual void
+  p2p_disable(bool force)
+  {
+    if (auto ret = xclP2pEnable(DeviceType::get_device_handle(), false, force))
+      throw error(ret, "failed to disable p2p");
   }
 
 #ifdef XRT_ENABLE_AIE

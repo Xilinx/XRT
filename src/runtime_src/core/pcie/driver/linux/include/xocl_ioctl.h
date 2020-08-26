@@ -157,6 +157,8 @@ enum drm_xocl_ops {
 	DRM_XOCL_ALLOC_CMA,
 	/* Free allocated CMA chunk through userpf*/
 	DRM_XOCL_FREE_CMA,
+	/* Memory to Memory BO copy */
+	DRM_XOCL_COPY_BO,
 
 	/* The following IOCTLs can only be called from linux kernel space
 	 * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
@@ -165,7 +167,6 @@ enum drm_xocl_ops {
 	DRM_XOCL_MAP_KERN_MEM,
 	DRM_XOCL_EXECBUF_CB,
 	DRM_XOCL_SYNC_BO_CB,
-
 	DRM_XOCL_NUM_IOCTLS
 };
 
@@ -316,6 +317,52 @@ struct drm_xocl_info_bo {
 };
 
 /**
+ * struct drm_xocl_copy_bo - device memory to memory copy bo
+ * used with DRM_IOCTL_XOCL_COPY_BO IOCTL
+ *
+ * @dst_handle:	dst bo handle
+ * @src_handle:	src bo handle
+ * @size:       bo size in bytes
+ * @dst_offset: dst offset
+ * @src_offset: src offset
+ */
+struct drm_xocl_copy_bo {
+	uint32_t dst_handle;
+	uint32_t src_handle;
+	uint64_t size;
+	uint64_t dst_offset;
+	uint64_t src_offset;
+};
+
+/**
+ * struct argument_info - Kernel argument information
+ *
+ * @name:	argument name
+ * @offset:	argument offset in CU
+ * @size:	argument size in bytes
+ * @dir:	input or output argument for a CU
+ */
+struct argument_info {
+	char		name[32];
+	uint32_t	offset;
+	uint32_t	size;
+	uint32_t	dir;
+};
+
+/**
+ * struct kernel_info - Kernel information
+ *
+ * @name:	kernel name
+ * @anums:	number of argument
+ * @args:	argument array
+ */
+struct kernel_info {
+	char			 name[64];
+	int			 anums;
+	struct argument_info	 args[];
+};
+
+/**
  * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
  * For use with Linux kernel space specific IOCTLs.
  * struct drm_xocl_kinfo_bo - Used to get a buffer object's kernel virtual address
@@ -335,17 +382,19 @@ struct drm_xocl_kinfo_bo {
 	uint64_t vaddr;
 };
 
-
-
 /**
  * struct drm_xocl_axlf - load xclbin (AXLF) device image
  * used with DRM_IOCTL_XOCL_READ_AXLF ioctl
  * NOTE: This ioctl will be removed in next release
  *
  * @xclbin:	Pointer to user's xclbin structure in memory
+ * @ksize:	size of kernels in bytes
+ * @kernels:	pointer of argument array
  */
 struct drm_xocl_axlf {
-	struct axlf *xclbin;
+	struct axlf		*xclbin;
+	int			 ksize;
+	char			*kernels;
 };
 
 /**
@@ -569,6 +618,7 @@ struct drm_xocl_alloc_cma_info {
 	uint64_t	entry_num;
 	uint64_t	*user_addr;
 };
+
 /*
  * Core ioctls numbers
  */
@@ -597,6 +647,7 @@ struct drm_xocl_alloc_cma_info {
 #define	DRM_IOCTL_XOCL_RECLOCK		XOCL_IOC_ARG(RECLOCK, reclock_info)
 #define	DRM_IOCTL_XOCL_ALLOC_CMA	XOCL_IOC_ARG(ALLOC_CMA, alloc_cma_info)
 #define	DRM_IOCTL_XOCL_FREE_CMA		XOCL_IOC(FREE_CMA)
+#define	DRM_IOCTL_XOCL_COPY_BO		XOCL_IOC_ARG(COPY_BO, copy_bo)
 
 #define	DRM_IOCTL_XOCL_KINFO_BO		XOCL_IOC_ARG(KINFO_BO, kinfo_bo)
 #define	DRM_IOCTL_XOCL_MAP_KERN_MEM	XOCL_IOC_ARG(MAP_KERN_MEM, map_kern_mem)

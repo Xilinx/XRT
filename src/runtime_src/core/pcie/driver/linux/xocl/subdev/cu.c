@@ -58,9 +58,20 @@ cu_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(cu_stat);
 
+static ssize_t
+cu_info_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+
+	return show_cu_info(&cu->base, buf);
+}
+static DEVICE_ATTR_RO(cu_info);
+
 static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
+	&dev_attr_cu_info.attr,
 	NULL,
 };
 
@@ -74,6 +85,8 @@ static int cu_probe(struct platform_device *pdev)
 	struct xocl_cu *xcu;
 	struct resource **res;
 	struct xrt_cu_info *info;
+	struct kernel_info *krnl_info;
+	struct xrt_cu_arg *args = NULL;
 	int err = 0;
 	void *hdl;
 	int i;
@@ -87,6 +100,27 @@ static int cu_probe(struct platform_device *pdev)
 
 	info = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 	memcpy(&xcu->base.info, info, sizeof(struct xrt_cu_info));
+
+	krnl_info = xocl_query_kernel(xdev, info->kname);
+	if (!krnl_info) {
+		err = -EFAULT;
+		goto err;
+	}
+
+	/* Populate kernel argument information */
+	args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
+	if (!args) {
+		err = -ENOMEM;
+		goto err;
+	}
+	for (i = 0; i < krnl_info->anums; i++) {
+		strcpy(args[i].name, krnl_info->args[i].name);
+		args[i].offset = krnl_info->args[i].offset;
+		args[i].size = krnl_info->args[i].size;
+		args[i].dir = krnl_info->args[i].dir;
+	}
+	xcu->base.info.num_args = krnl_info->anums;
+	xcu->base.info.args = args;
 
 	res = vzalloc(sizeof(struct resource *) * xcu->base.info.num_res);
 	if (!res) {
@@ -137,6 +171,7 @@ err2:
 err1:
 	vfree(res);
 err:
+	vfree(args);
 	xocl_drvinst_release(xcu, &hdl);
 	xocl_drvinst_free(hdl);
 	return err;
@@ -169,6 +204,9 @@ static int cu_remove(struct platform_device *pdev)
 
 	if (xcu->base.res)
 		vfree(xcu->base.res);
+
+	if (info->args)
+		vfree(info->args);
 
 	xocl_drvinst_release(xcu, &hdl);
 

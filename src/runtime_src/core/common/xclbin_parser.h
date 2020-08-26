@@ -32,13 +32,19 @@ struct kernel_argument
   static constexpr size_t no_index { std::numeric_limits<size_t>::max() };
   // numbering must match that of meta data addressQualifier
   enum class argtype { scalar = 0, global = 1, stream = 4 };
-  
+
   std::string name;
   std::string hosttype;
   size_t index;
   size_t offset;
   size_t size;
   argtype type;
+};
+
+struct kernel_object
+{
+    std::string name;
+    std::vector<kernel_argument> args;
 };
 
 /**
@@ -236,6 +242,15 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
 XRT_CORE_COMMON_EXPORT
 std::vector<kernel_argument>
 get_kernel_arguments(const axlf* top, const std::string& kname);
+
+/**
+ * get_kernels() - Get meta data for all kernels
+ *
+ * Return: List of struct kernel_object
+ */
+XRT_CORE_COMMON_EXPORT
+std::vector<kernel_object>
+get_kernels(const axlf* top);
 
 /**
  * is_pdi_only() - If the xclbin has only one section and is PDI
