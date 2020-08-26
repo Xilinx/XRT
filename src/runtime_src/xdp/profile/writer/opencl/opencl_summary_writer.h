@@ -29,6 +29,9 @@ namespace xdp {
   private:
     OpenCLSummaryWriter() = delete ;
 
+    // For the one guidance rule that needs xrt.ini options
+    std::vector<std::string> iniSettings ;
+
     // Guidance Rules
     std::vector<std::function<void (OpenCLSummaryWriter*)>> guidanceRules ;
 

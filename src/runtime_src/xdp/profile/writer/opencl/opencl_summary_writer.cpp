@@ -23,6 +23,7 @@
 #include <map>
 #include <tuple>
 #include <limits>
+#include <sstream>
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/statistics_database.h"
@@ -32,6 +33,7 @@
 
 #include "core/common/system.h"
 #include "core/common/time.h"
+#include "core/common/config_reader.h"
 
 namespace xdp {
 
@@ -71,6 +73,75 @@ namespace xdp {
     guidanceRules.push_back(guidanceBufferTxActiveTimeMs) ;
     guidanceRules.push_back(guidanceApplicationRunTimeMs) ;
     guidanceRules.push_back(guidanceTotalKernelRunTimeMs) ;
+
+    // One of our guidance rules requires us to output the xrt.ini settings.
+    //  Since they rely on static variables that may be destroyed by
+    //  the time our destructor is called, we need to initialize them here
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,profile," << xrt_core::config::get_profile() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,timeline_trace," 
+	      << xrt_core::config::get_timeline_trace() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,data_transfer_trace,"
+	      << xrt_core::config::get_data_transfer_trace() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,power_profile,"
+	      << xrt_core::config::get_power_profile() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,stall_trace,"
+	      << xrt_core::config::get_stall_trace() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,trace_buffer_size,"
+	      << xrt_core::config::get_trace_buffer_size() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,verbosity,"
+	      << xrt_core::config::get_verbosity() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,continuous_trace,"
+	      << xrt_core::config::get_continuous_trace() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,continuous_trace_interval_ms,"
+	      << xrt_core::config::get_continuous_trace_interval_ms() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,lop_trace,"
+	      << xrt_core::config::get_lop_trace() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,launch_waveform,"
+	      << xrt_core::config::get_launch_waveform() ;
+      iniSettings.push_back(setting.str()) ;
+    }
   }
 
   OpenCLSummaryWriter::~OpenCLSummaryWriter()
@@ -1365,11 +1436,10 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceXrtIniSetting(OpenCLSummaryWriter* t)
   {
-    // TODO
-    /*
-    (t->fout) << "XRT_INI_SETTING" << "," 
-	      << std::endl ;
-    */
+    for (auto setting : t->iniSettings)
+    {
+      (t->fout) << setting << std::endl ;
+    }
   }
 
   void OpenCLSummaryWriter::guidanceBufferRdActiveTimeMs(OpenCLSummaryWriter* t)
@@ -1395,6 +1465,7 @@ namespace xdp {
     // TODO
     /*
     (t->fout) << "BUFFER_TX_ACTIVE_TIME_MS" << ","
+	      << "all" << ","
 	      << std::endl ;
     */
   }
