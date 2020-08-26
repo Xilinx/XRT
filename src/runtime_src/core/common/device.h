@@ -129,6 +129,7 @@ public:
    * This function is added to avoid sysfs access in
    * critical path.
    */
+  XRT_CORE_COMMON_EXPORT
   bool
   is_nodma() const;
 
@@ -260,7 +261,7 @@ public:
   XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
   get_ert_slots() const;
-  
+
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
   /**
