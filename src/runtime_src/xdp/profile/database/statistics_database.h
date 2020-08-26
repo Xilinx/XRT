@@ -171,6 +171,8 @@ namespace xdp {
     std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostWrites ;
     uint64_t totalHostReadTime ;
     uint64_t totalHostWriteTime ;
+    uint64_t totalBufferStartTime ;
+    uint64_t totalBufferEndTime ;
 
     // Information used by trace parser
     double firstKernelStartTime ;
@@ -199,6 +201,10 @@ namespace xdp {
     inline std::map<std::pair<uint64_t, uint64_t>, BufferStatistics>& getHostWrites() { return hostWrites ; }
     inline uint64_t getTotalHostReadTime() { return totalHostReadTime ; }
     inline uint64_t getTotalHostWriteTime() { return totalHostWriteTime ; }
+    inline uint64_t getTotalBufferStartTime() { return totalBufferStartTime ; }
+    inline void setTotalBufferStartTime(uint64_t t) { totalBufferStartTime = t;}
+    inline void setTotalBufferEndTime(uint64_t t) { totalBufferEndTime = t ; }
+    inline uint64_t getTotalBufferTxTime() { return totalBufferEndTime - totalBufferStartTime ; }
 
     // Functions specific to guidance statistics
     inline uint64_t getNumMigrateMemCalls()  { return numMigrateMemCalls ; } 

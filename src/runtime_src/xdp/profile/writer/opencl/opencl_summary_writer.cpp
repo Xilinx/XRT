@@ -1474,18 +1474,16 @@ namespace xdp {
   {
     (t->fout) << "BUFFER_WR_ACTIVE_TIME_MS" << ","
 	      << "all" << ","
-	      << (double)((t->db->getStats()).getTotalHostWriteTime()) / 1e06
+	      << ((double)((t->db->getStats()).getTotalHostWriteTime())) / 1e06
 	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceBufferTxActiveTimeMs(OpenCLSummaryWriter* t)
   {
-    // TODO
-    /*
     (t->fout) << "BUFFER_TX_ACTIVE_TIME_MS" << ","
 	      << "all" << ","
+	      << ((double)(t->db->getStats()).getTotalBufferTxTime()) / 1e06
 	      << std::endl ;
-    */
   }
 
   void OpenCLSummaryWriter::guidanceApplicationRunTimeMs(OpenCLSummaryWriter* t)

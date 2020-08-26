@@ -26,8 +26,8 @@ namespace xdp {
   VPStatisticsDatabase::VPStatisticsDatabase(VPDatabase* d) :
     db(d), numMigrateMemCalls(0), numHostP2PTransfers(0),
     numObjectsReleased(0), contextEnabled(false),
-    totalHostReadTime(0), totalHostWriteTime(0), firstKernelStartTime(0.0),
-    lastKernelEndTime(0.0)
+    totalHostReadTime(0), totalHostWriteTime(0), totalBufferStartTime(0),
+    totalBufferEndTime(0), firstKernelStartTime(0.0), lastKernelEndTime(0.0)
   {
   }
 

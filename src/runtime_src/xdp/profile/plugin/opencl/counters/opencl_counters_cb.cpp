@@ -125,6 +125,11 @@ namespace xdp {
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
 
+    // For total active buffer transfer time
+    if (db->getStats().getTotalBufferStartTime() == 0)
+      (db->getStats()).setTotalBufferStartTime(timestamp) ;
+    (db->getStats()).setTotalBufferEndTime(timestamp) ;
+
     std::pair<uint64_t, std::string> identifier =
       std::make_pair(contextId, std::string(deviceName)) ;
 
@@ -154,6 +159,11 @@ namespace xdp {
 
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
+
+    // For total active buffer transfer time
+    if (db->getStats().getTotalBufferStartTime() == 0)
+      (db->getStats()).setTotalBufferStartTime(timestamp) ;
+    (db->getStats()).setTotalBufferEndTime(timestamp) ;
 
     std::pair<uint64_t, std::string> identifier =
       std::make_pair(contextId, std::string(deviceName)) ;
