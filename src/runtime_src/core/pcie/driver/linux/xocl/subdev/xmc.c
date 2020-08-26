@@ -1575,7 +1575,7 @@ static bool scaling_condition_check(struct xocl_xmc *xmc)
 	bool sc_no_cs = false;
 
 	if (!XMC_PRIVILEGED(xmc)) {
-		xocl_warn(&xmc->pdev->dev, "Runtime clock scaling is not supported in non privileged mode\n");
+		xocl_dbg(&xmc->pdev->dev, "Runtime clock scaling is not supported in non privileged mode\n");
 		return false;
 	}
 
@@ -1595,12 +1595,12 @@ static bool scaling_condition_check(struct xocl_xmc *xmc)
 	}
 
 	if (sc_no_cs) {
-		xocl_warn(&xmc->pdev->dev, "Loaded SC fw does not support Runtime clock scalling, cs_on_ptfm: %d\n", cs_on_ptfm);
+		xocl_dbg(&xmc->pdev->dev, "Loaded SC fw does not support Runtime clock scalling, cs_on_ptfm: %d\n", cs_on_ptfm);
 	} else if (cs_on_ptfm) {
-		xocl_warn(&xmc->pdev->dev, "Runtime clock scaling is supported\n");
+		xocl_dbg(&xmc->pdev->dev, "Runtime clock scaling is supported\n");
 		return true;
 	} else {
-		xocl_warn(&xmc->pdev->dev, "Runtime clock scaling is not supported\n");
+		xocl_dbg(&xmc->pdev->dev, "Runtime clock scaling is not supported\n");
 	}
 
 	return false;
