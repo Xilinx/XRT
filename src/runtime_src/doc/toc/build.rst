@@ -1,10 +1,10 @@
 .. _build.rst:
 
 Building the XRT Software Stack
---------------------------------------
+-------------------------------
 
 Building the XRT Installation Package
-~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Installing Building Dependencies
 ................................
@@ -58,7 +58,7 @@ Please check ERT firmware is built properly at ``build/Release/opt/xilinx/xrt/sh
 
 
 Packaging RPM on RHEL/CentOS or DEB on Ubuntu
-.........................................................
+.............................................
 
 The package is automatically built for the ``Release``
 version but not for the ``Debug`` version::

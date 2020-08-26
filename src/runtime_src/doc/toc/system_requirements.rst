@@ -14,7 +14,7 @@ Supported Xilinx® Accelerator Cards are listed in :ref:`platforms.rst`.
 
 
 XRT Software Stack for PCIe Accelerator Cards
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 XRT and OpenCL runtime require Linux kernel 3.10+ and GCC with C++14 features. 
 
@@ -28,7 +28,7 @@ To build a custom XRT package, please refer to page :ref:`build.rst` for depende
 
 
 XRT Software Stack for Embedded Platforms
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 XRT needs to be installed on both development environment and deployment environment.
 
