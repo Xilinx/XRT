@@ -25,7 +25,8 @@ namespace xdp {
 
   VPStatisticsDatabase::VPStatisticsDatabase(VPDatabase* d) :
     db(d), numMigrateMemCalls(0), numHostP2PTransfers(0),
-    numObjectsReleased(0), contextEnabled(false), firstKernelStartTime(0.0),
+    numObjectsReleased(0), contextEnabled(false),
+    totalHostReadTime(0), totalHostWriteTime(0), firstKernelStartTime(0.0),
     lastKernelEndTime(0.0)
   {
   }
@@ -139,6 +140,8 @@ namespace xdp {
     }
 
     hostReads[identifier].update(size, transferTime) ;
+
+    totalHostReadTime += transferTime ;
   }
 
   void VPStatisticsDatabase::logHostWrite(uint64_t contextId, uint64_t deviceId,
@@ -154,6 +157,8 @@ namespace xdp {
     }
 
     hostWrites[identifier].update(size, transferTime) ;
+
+    totalHostWriteTime += transferTime ;
   }
 
   void VPStatisticsDatabase::updateCounters(uint64_t /*deviceId*/,

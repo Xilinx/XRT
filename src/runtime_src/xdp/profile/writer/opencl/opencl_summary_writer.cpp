@@ -1419,6 +1419,8 @@ namespace xdp {
   void OpenCLSummaryWriter::guidanceTraceBufferFull(OpenCLSummaryWriter* t)
   {
     // TODO
+    // This has a race condition.  If we are dumping profile summary 
+    //  before trace, then we will not see this guidance rule.
     /*
     (t->fout) << "TRACE_BUFFER_FULL" << ","
 	      << std::endl ;
@@ -1447,8 +1449,7 @@ namespace xdp {
 		  << 512 << std::endl ;
 	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
 		  << device->platformInfo.deviceName << "|PLRAM" << ","
-		  << 512 << std::endl ;
-	  
+		  << 512 << std::endl ;	  
       }
     }
   }
@@ -1463,20 +1464,18 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceBufferRdActiveTimeMs(OpenCLSummaryWriter* t)
   {
-    // TODO
-    /*
     (t->fout) << "BUFFER_RD_ACTIVE_TIME_MS" << ","
+	      << "all" << ","
+	      << (double)((t->db->getStats()).getTotalHostReadTime()) / 1e06
 	      << std::endl ;
-    */
   }
 
   void OpenCLSummaryWriter::guidanceBufferWrActiveTimeMs(OpenCLSummaryWriter* t)
   {
-    // TODO
-    /*
     (t->fout) << "BUFFER_WR_ACTIVE_TIME_MS" << ","
+	      << "all" << ","
+	      << (double)((t->db->getStats()).getTotalHostWriteTime()) / 1e06
 	      << std::endl ;
-    */
   }
 
   void OpenCLSummaryWriter::guidanceBufferTxActiveTimeMs(OpenCLSummaryWriter* t)

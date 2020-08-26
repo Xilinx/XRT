@@ -169,6 +169,8 @@ namespace xdp {
     //  Keep track of reads and writes for every context+device pair
     std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostReads ;
     std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostWrites ;
+    uint64_t totalHostReadTime ;
+    uint64_t totalHostWriteTime ;
 
     // Information used by trace parser
     double firstKernelStartTime ;
@@ -195,6 +197,8 @@ namespace xdp {
       { return computeUnitExecutionStats ; }
     inline std::map<std::pair<uint64_t, uint64_t>, BufferStatistics>& getHostReads() { return hostReads ; }
     inline std::map<std::pair<uint64_t, uint64_t>, BufferStatistics>& getHostWrites() { return hostWrites ; }
+    inline uint64_t getTotalHostReadTime() { return totalHostReadTime ; }
+    inline uint64_t getTotalHostWriteTime() { return totalHostWriteTime ; }
 
     // Functions specific to guidance statistics
     inline uint64_t getNumMigrateMemCalls()  { return numMigrateMemCalls ; } 
