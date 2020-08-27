@@ -1141,7 +1141,7 @@ operator<<(std::ostream& stream, const std::shared_ptr<pcidev::pci_device>& dev)
     std::string nm;
 
     dev->sysfs_get("", "board_name", err, nm);
-    dev->pcieBarRead(MFG_REV_OFFSET, &ver, sizeof(ver));
+    dev->sysfs_get<unsigned>("", "mfg_ver", err, ver, 0);
     shell_name += "xilinx_";
     shell_name += nm;
     shell_name += "_GOLDEN_";
