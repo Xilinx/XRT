@@ -49,7 +49,8 @@ struct bdf
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    return std::make_tuple(0,0,0);
+    //return std::make_tuple(0,0,0);
+    return {0,0,0};
   }
 
 };
@@ -62,8 +63,7 @@ struct board_name
   get(const xrt_core::device* device, key_type)
   {
     result_type deviceName("edge");
-    std::ifstream VBNV;
-    VBNV.open("/etc/xocl.txt");
+    std::ifstream VBNV("/etc/xocl.txt");
     if (VBNV.is_open()) {
       VBNV >> deviceName;
     }
@@ -295,16 +295,12 @@ reset(const char* subdev, const char* key, const char* value) const
   switch(val) {
   case 1:
     throw error(-ENODEV, "Hot reset not supported");
-    break;
   case 2:
     throw error(-ENODEV, "OCL dynamic region reset not supported");
-    break;
   case 3:
     throw error(-ENODEV, "ERT reset not supported");
-    break;
   case 4:
     throw error(-ENODEV, "Soft Kernel reset not supported");
-    break;
   case 5:
     if (auto ret = xclResetAIEArray(get_device_handle()))
       throw error(ret, "fail to reset aie array");
