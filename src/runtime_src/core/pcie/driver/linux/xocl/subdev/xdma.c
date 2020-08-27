@@ -93,6 +93,109 @@ static ssize_t xdma_migrate_bo(struct platform_device *pdev,
 	return ret;
 }
 
+struct xdma_async_context {
+	void (*callback_fn)(unsigned long data, int err);
+	unsigned long callback_data;
+	struct xdma_io_cb *iocb;
+	struct xocl_xdma *xdma;
+	u32 dir;
+	u32 channel;
+};
+
+static void xdma_async_migrate_done(unsigned long data, int err)
+{
+	struct xdma_async_context *async_ctx = (struct xdma_async_context *)data;
+	//pr_info("%s: async_ctx %llx, ", __func__, (u64)async_ctx);
+
+	if (!err) {
+		async_ctx->xdma->channel_usage
+			[async_ctx->dir][async_ctx->channel] +=
+						async_ctx->iocb->done_bytes;
+	}
+
+	if (async_ctx->callback_fn)
+		async_ctx->callback_fn(async_ctx->callback_data, err);
+	kfree(async_ctx->iocb);
+	kfree(async_ctx);
+}
+
+#define MAX_REQS_ON_CHANNEL 32
+atomic_t async_dma_count;
+
+static ssize_t xdma_async_migrate_bo(struct platform_device *pdev,
+	struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 len,
+	void (*callback_fn)(unsigned long cb_hndl, int err), void *tx_ctx)
+{
+	struct xocl_xdma *xdma;
+	struct page *pg;
+	struct scatterlist *sg = sgt->sgl;
+	int nents = sgt->orig_nents;
+	pid_t pid = current->pid;
+	int i = 0;
+	ssize_t ret;
+	unsigned long long pgaddr;
+	struct xdma_io_cb *io_cb;
+	struct xdma_async_context *async_ctx;
+
+	xdma = platform_get_drvdata(pdev);
+	xocl_dbg(&pdev->dev, "TID %d, Channel:%d, Offset: 0x%llx, Dir: %d",
+		pid, channel, paddr, dir);
+
+
+	if (callback_fn && tx_ctx) {
+		//channel = (atomic_add_return(1, &async_dma_count)/MAX_REQS_ON_CHANNEL) % xdma->channel;
+		channel = atomic_add_return(1, &async_dma_count) % xdma->channel;
+		io_cb = kzalloc(sizeof(struct xdma_io_cb), GFP_KERNEL);
+		if (!io_cb) {
+			xocl_err(&pdev->dev, "alloc xdma dev failed");
+			ret = -ENOMEM;
+			goto failed;
+		}
+
+		async_ctx = kzalloc(sizeof(struct xdma_async_context), GFP_KERNEL);
+		if (!async_ctx) {
+			ret = -ENOMEM;
+			goto failed;
+		}
+
+		async_ctx->dir = dir;
+		async_ctx->xdma = xdma;
+		async_ctx->channel = channel;
+		async_ctx->iocb = io_cb;
+		async_ctx->callback_fn = callback_fn;
+		async_ctx->callback_data = (unsigned long)tx_ctx;
+
+		//pr_info("%s: %llx %llx %llx\n", __func__, (u64)io_cb, (u64)callback_fn, (u64)tx_ctx);
+
+		io_cb->io_done = xdma_async_migrate_done;
+		io_cb->private = async_ctx;
+	} else {
+		io_cb = NULL;
+	}
+
+	//pr_info("%s: iocb:%llx ",__func__, (u64)io_cb);
+	ret = xdma_xfer_submit(xdma->dma_handle, channel, dir,
+		paddr, sgt, false, 10000, io_cb);
+	if (ret >= 0) {
+		xdma->channel_usage[dir][channel] += ret;
+		return ret;
+	}
+
+	xocl_err(&pdev->dev, "DMA failed, Dumping SG Page Table");
+	for (i = 0; i < nents; i++, sg = sg_next(sg)) {
+		if (!sg)
+			break;
+		pg = sg_page(sg);
+		if (!pg)
+			continue;
+		pgaddr = page_to_phys(pg);
+		xocl_err(&pdev->dev, "%i, 0x%llx\n", i, pgaddr);
+	}
+
+failed:
+	return ret;
+}
+
 static int acquire_channel(struct platform_device *pdev, u32 dir)
 {
 	struct xocl_xdma *xdma;
@@ -294,6 +397,7 @@ failed:
 
 static struct xocl_dma_funcs xdma_ops = {
 	.migrate_bo = xdma_migrate_bo,
+	.async_migrate_bo = xdma_async_migrate_bo,
 	.ac_chan = acquire_channel,
 	.rel_chan = release_channel,
 	.get_chan_count = get_channel_count,

@@ -66,6 +66,8 @@ struct xdma_io_cb {
 	struct page **pages;
 	/** total data size */
 	unsigned int count;
+	/** completed transfer size */
+	unsigned int done_bytes;
 	/** MM only, DDR/BRAM memory addr */
 	u64 ep_addr;
 	/** write: if write to the device */

@@ -144,13 +144,21 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 			drm_free_large(xobj->pages);
 		} else if (xocl_bo_p2p(xobj) || xocl_bo_import(xobj) || xocl_bo_cma(xobj)) {
 			drm_free_large(xobj->pages);
+		} else if ((xobj->flags & XOCL_KERN_BUF) || (xobj->flags & XOCL_SGL)) {
+			drm_free_large(xobj->pages);
 		} else {
 			drm_gem_put_pages(obj, xobj->pages, false, false);
 		}
 	}
 	xobj->pages = NULL;
 
-	if (!xocl_bo_import(xobj)) {
+	if (xobj->flags & XOCL_SGL) {
+		DRM_DEBUG("Freeing kernel buffer\n");
+		kfree(xobj->sgt);
+
+		xobj->sgt = NULL;
+		xocl_free_mm_node(xobj);
+	} else if (!xocl_bo_import(xobj)) {
 		DRM_DEBUG("Freeing regular buffer\n");
 		if (xobj->sgt) {
 			sg_free_table(xobj->sgt);
@@ -1406,4 +1414,310 @@ int xocl_copy_bo_ioctl(struct drm_device *dev, void *data,
 
 	return xocl_m2m_copy_bo(xdev, src_paddr, dst_paddr, args->src_handle,
 	    args->dst_handle, args->size);
+}
+
+struct free_sgt_cb {
+	struct sg_table *sgt;
+	void *orig_func;
+	void *orig_data;
+};
+
+static void xocl_free_sgt_callback(unsigned long cb_hndl, int err)
+{
+	struct free_sgt_cb *cb_data = (struct free_sgt_cb *)cb_hndl;
+	void (*cb_func)(unsigned long cb_hndl, int err) = cb_data->orig_func;
+
+	sg_free_table(cb_data->sgt);
+	kfree(cb_data->sgt);
+	if (cb_func)
+		cb_func((unsigned long)cb_data->orig_data, err);
+
+}
+
+int xocl_sync_bo_callback_ioctl(struct drm_device *dev,
+		       void *data,
+		       struct drm_file *filp)
+{
+	const struct drm_xocl_bo *xobj;
+	struct sg_table *sgt;
+	u64 paddr = 0;
+	ssize_t ret = 0;
+	const struct drm_xocl_sync_bo_cb *args = data;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+	struct scatterlist *sg;
+	void (*cb_func)(unsigned long cb_hndl, int err) = NULL;
+	void *cb_data = NULL;
+
+	u32 dir = (args->dir == DRM_XOCL_SYNC_BO_TO_DEVICE) ? 1 : 0;
+	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
+							       args->handle);
+	if (!gem_obj) {
+		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
+		return -ENOENT;
+	}
+
+	xobj = to_xocl_bo(gem_obj);
+	BO_ENTER("xobj %p", xobj);
+	sgt = xobj->sgt;
+	sg = sgt->sgl;
+
+	if (!xocl_bo_sync_able(xobj->flags)) {
+		DRM_ERROR("BO %d doesn't support sync_bo\n", args->handle);
+		ret = -EOPNOTSUPP;
+		goto out;
+	}
+
+	if (xocl_bo_cma(xobj)) {
+
+		if (dir) {
+			dma_sync_single_for_device(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
+				sg->length, DMA_TO_DEVICE);
+		} else {
+			dma_sync_single_for_cpu(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
+				sg->length, DMA_FROM_DEVICE);
+		}
+		goto out;
+	}
+
+	//Sarab: If it is a remote BO then why do sync over ARE.
+	//We should do sync directly using the other device which this bo locally.
+	//So that txfer is: HOST->PCIE->DDR; Else it will be HOST->PCIE->ARE->DDR
+	paddr = xocl_bo_physical_addr(xobj);
+
+	if (paddr == 0xffffffffffffffffull)
+		return -EINVAL;
+
+	if ((args->offset + args->size) > gem_obj->size) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* only invalidate the range of addresses requested by the user */
+#if 0
+	if (args->dir == DRM_XOCL_SYNC_BO_TO_DEVICE)
+		flush_kernel_vmap_range(kaddr, args->size);
+	else if (args->dir == DRM_XOCL_SYNC_BO_FROM_DEVICE)
+		invalidate_kernel_vmap_range(kaddr, args->size);
+	else {
+		ret = -EINVAL;
+		goto out;
+	}
+#endif
+	paddr += args->offset;
+
+	if (args->offset || (args->size != xobj->base.size)) {
+		sgt = alloc_onetime_sg_table(xobj->pages, args->offset, args->size);
+		if (IS_ERR(sgt)) {
+			ret = PTR_ERR(sgt);
+			goto out;
+		}
+		if (args->cb_data) {
+			cb_data = kzalloc(sizeof(struct free_sgt_cb), GFP_KERNEL);
+			if (cb_data) {
+				ret = -ENOMEM;
+				goto out;
+			}
+			cb_func = xocl_free_sgt_callback;
+			((struct free_sgt_cb *)cb_data)->sgt = sgt;
+			((struct free_sgt_cb *)cb_data)->orig_func = (void *)args->cb_func;
+			((struct free_sgt_cb *)cb_data)->orig_data = (void *)args->cb_data;
+		}
+	} else if (args->cb_data) {
+		cb_func = (void (*)(unsigned long cb_hndl, int err))args->cb_func;
+		cb_data = (void *)args->cb_data;
+	}
+
+	//drm_clflush_sg(sgt);
+	//pr_info("%s: %llx, %llx, %d, %llx %llx", __func__, paddr, args->size, dir, (u64)cb_func, (u64)cb_data);
+
+	if (args->cb_data)
+		/* Now perform DMA */
+		ret = xocl_async_migrate_bo(xdev, sgt, dir, paddr, 0, args->size, cb_func, cb_data);
+	else {
+		int channel;
+		//drm_clflush_sg(sgt);
+		channel = xocl_acquire_channel(xdev, dir);
+
+		if (channel < 0) {
+			ret = -EINVAL;
+			goto clear;
+		}
+		/* Now perform DMA */
+		ret = xocl_async_migrate_bo(xdev, sgt, dir, paddr, channel, args->size, cb_func, cb_data);
+		if (ret >= 0)
+			ret = (ret == args->size) ? 0 : -EIO;
+		xocl_release_channel(xdev, dir, channel);
+clear:
+		if (args->offset || (args->size != xobj->base.size)) {
+			sg_free_table(sgt);
+			kfree(sgt);
+		}
+	}
+
+out:
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
+	return ret;
+}
+
+int xocl_kinfo_bo_ioctl(struct drm_device *dev,
+		       void *data,
+		       struct drm_file *filp)
+{
+	const struct drm_xocl_bo *xobj;
+	struct drm_xocl_kinfo_bo *args = data;
+	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
+								args->handle);
+
+	if (!gem_obj) {
+		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
+		return -ENOENT;
+	}
+
+	xobj = to_xocl_bo(gem_obj);
+	BO_ENTER("xobj %p", xobj);
+
+	args->size = xobj->base.size;
+
+	args->paddr = xocl_bo_physical_addr(xobj);
+
+	if (xobj->flags & XOCL_P2P_MEM)
+		args->vaddr = (u64)page_address(xobj->pages[0]);
+	else
+		args->vaddr = (u64)xobj->vmapping;
+
+	xocl_describe(xobj);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
+
+	return 0;
+}
+
+
+
+int xocl_map_kern_mem_ioctl(struct drm_device *dev,
+		       void *data,
+		       struct drm_file *filp)
+{
+	int i;
+	int ret = 0;
+	unsigned int page_count;
+	struct scatterlist *sg;
+	const struct drm_xocl_map_kern_mem *args = data;
+
+	struct drm_xocl_bo *xobj;
+	struct drm_gem_object *gem_obj;
+
+	/* This ioctl should only be called to map to kernel memory */
+	if ((args->flags != XCL_BO_FLAGS_KERNBUF) &&
+					(args->flags != XCL_BO_FLAGS_SGL)) {
+		return -EINVAL;
+	}
+
+	gem_obj = xocl_gem_object_lookup(dev, filp, args->handle);
+	if (!gem_obj) {
+		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
+		return -ENOENT;
+	}
+
+	xobj = to_xocl_bo(gem_obj);
+
+	/* This ioctl should only be called to map to kernel memory to BOs
+	 * with Device Memory only.
+	 */
+	if (!(xobj->flags & XOCL_DEVICE_MEM)) {
+		ret = -EINVAL;
+		goto out1;
+	}
+
+	/* The host memory being mapped must be equal to the buffer object's size
+	 * on the device
+	 */
+	//if (args->size != xobj->base.size)
+	//       return -EINVAL;
+
+	/* Use the page rounded size so we can accurately account for number of pages */
+	page_count = xobj->base.size >> PAGE_SHIFT;
+
+	if (args->flags == XCL_BO_FLAGS_SGL) {
+		int nents = sg_nents((struct scatterlist *)args->addr);
+
+		//pr_info("%s: 1 bo_type: %x", __func__, xobj->flags);
+		/* error out if SGL being mapped is bigger than BO size*/
+		if (nents > page_count) {
+			ret = -EINVAL;
+			goto out1;
+		}
+
+		/* SGL_BO starts as a normal BO, which then gets mapped to a SGL
+		 * In case its not been mapped yet, allocate a SGT.
+		 * In case its been already been mapped, the same SGT can be used map
+		 * to the new host SGL.
+		 */
+		if (!xobj->sgt) {
+			xobj->sgt = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
+			if (!xobj->sgt) {
+				ret = -ENOMEM;
+				goto out1;
+			}
+
+		}
+
+		xobj->sgt->sgl = (struct scatterlist *)args->addr;
+		xobj->sgt->nents = xobj->sgt->orig_nents = nents;
+
+		/* pages need to point to SGL pages, in case partial sync is needed. */
+		if (!xobj->pages) {
+			page_count = nents;
+			xobj->pages = drm_malloc_ab(page_count, sizeof(*xobj->pages));
+			if (!xobj->pages) {
+				ret = -ENOMEM;
+				goto out1;
+			}
+		}
+
+		for_each_sg((struct scatterlist *)args->addr, sg, nents, i) {
+			xobj->pages[i] = sg_page(sg);
+		}
+		xobj->flags |= (XOCL_HOST_MEM | XOCL_SGL);
+	} else if (args->flags == XCL_BO_FLAGS_KERNBUF) {
+		//pr_info("%s: 2 bo_type: %x", __func__, xobj->flags);
+		/* If KERNBUF buffer oject is already mapped to a kernel buffer
+		 * free up previosly allocated pages and SGT so that they can be
+		 * allocatd again.
+		 */
+		if (xobj->pages) {
+			drm_free_large(xobj->pages);
+			xobj->pages = NULL;
+		}
+
+		if (xobj->sgt) {
+			sg_free_table(xobj->sgt);
+			kfree(xobj->sgt);
+		}
+
+		xobj->pages = drm_malloc_ab(page_count, sizeof(*xobj->pages));
+		if (!xobj->pages) {
+			ret = -ENOMEM;
+			goto out1;
+		}
+
+		for (i = 0; i < page_count; i++)
+			xobj->pages[i] = virt_to_page(args->addr+i*PAGE_SIZE);
+
+		xobj->sgt = drm_prime_pages_to_sg(xobj->pages, page_count);
+		if (IS_ERR(xobj->sgt)) {
+			ret = PTR_ERR(xobj->sgt);
+			goto out0;
+		}
+		xobj->flags |= (XOCL_HOST_MEM | XOCL_KERN_BUF);
+	}
+
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
+	return ret;
+out0:
+	drm_free_large(xobj->pages);
+	xobj->pages = NULL;
+out1:
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
+	return ret;
 }

@@ -27,6 +27,8 @@
 #define XRT_DRV_BO_USER_ALLOC	(1 << 25)
 #define XRT_DRV_BO_CMA		(1 << 24)
 #define XRT_DRV_BO_CACHEABLE	(1 << 23)
+#define XRT_DRV_BO_SGL		(1 << 22)
+#define XRT_DRV_BO_KERN_BUF	(1 << 21)
 
 /* Versal transfer cache packet definition */
 
