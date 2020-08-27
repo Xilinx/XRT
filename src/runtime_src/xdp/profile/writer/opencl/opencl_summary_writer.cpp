@@ -1591,6 +1591,9 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceKernelCount(OpenCLSummaryWriter* t)
   {
+    // This guidance rule is actually stating how many compute units
+    //  on each device correspond to kernels
+
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
     std::map<std::string, uint64_t> kernelCounts ;
     
@@ -1598,25 +1601,22 @@ namespace xdp {
     {
       for (auto cu : device->cus)
       {
-	uint64_t totalExecutions = 0 ;
-	std::vector<std::pair<std::string, TimeStatistics>> cuCalls = 
-	  (t->db->getStats()).getComputeUnitExecutionStats((cu.second)->getName());
-	for (auto cuCall : cuCalls)
+	if (kernelCounts.find((cu.second)->getKernelName()) == kernelCounts.end())
 	{
-	  totalExecutions += (cuCall.second).numExecutions ;
+	  kernelCounts[(cu.second)->getKernelName()] = 1 ;
 	}
-
-	// TODO: Set up the compute unit executions
-	kernelCounts[(cu.second)->getName()] += totalExecutions ; 
+	else
+	{
+	  kernelCounts[(cu.second)->getKernelName()] += 1 ;
+	}
       }
     }
 
     for (auto kernel : kernelCounts)
     {
       (t->fout) << "KERNEL_COUNT" << ","
-		<< (kernel.first) << "," // Name
-		<< (kernel.second) << "," // Count
-		<< std::endl ;
+		<< (kernel.first) << "," 
+		<< (kernel.second) << std::endl ;
     }
   }
 
