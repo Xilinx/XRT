@@ -22,10 +22,8 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
-#define ULITE_NAME		"ttyUL"
-#define ULITE_MAJOR		204
-#define ULITE_MINOR		187
-#define ULITE_NR_UARTS		64
+#define ULITE_NAME		"ttyXRTUL"
+#define ULITE_NR_UARTS		8
 
 /* ---------------------------------------------------------------------
  * Register definitions
@@ -438,8 +436,6 @@ static struct uart_driver xcl_ulite_driver = {
 	.owner		= THIS_MODULE,
 	.driver_name	= XOCL_DEVNAME(XOCL_UARTLITE),
 	.dev_name	= ULITE_NAME,
-	.major		= ULITE_MAJOR,
-	.minor		= ULITE_MINOR,
 	.nr		= ULITE_NR_UARTS,
 };
 
