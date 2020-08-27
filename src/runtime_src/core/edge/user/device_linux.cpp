@@ -49,7 +49,6 @@ struct bdf
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    //return std::make_tuple(0,0,0);
     return {0,0,0};
   }
 
