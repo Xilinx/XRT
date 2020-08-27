@@ -32,6 +32,7 @@
 #include <map>
 #include <boost/any.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/optional/optional.hpp>
 
 namespace xrt_core {
 
@@ -119,6 +120,18 @@ public:
   {
     return false;
   }
+
+  /**
+   * is_nodma() - Is this device a NODMA device
+   *
+   * Return: true if device is nodma
+   *
+   * This function is added to avoid sysfs access in
+   * critical path.
+   */
+  XRT_CORE_COMMON_EXPORT
+  bool
+  is_nodma() const;
 
  private:
   // Private look up function for concrete query::request
@@ -248,7 +261,7 @@ public:
   XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
   get_ert_slots() const;
-  
+
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
   /**
@@ -277,6 +290,7 @@ public:
 
  private:
   id_type m_device_id;
+  mutable boost::optional<bool> m_nodma = boost::none;
 
   // cache xclbin meta data loaded by this process
   uuid m_xclbin_uuid;

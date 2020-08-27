@@ -307,6 +307,9 @@ clGetDeviceInfo(cl_device_id   device,
   case CL_DEVICE_HANDLE:
     buffer.as<void*>() = xdevice->get_handle();
     break;
+  case CL_DEVICE_NODMA:
+    buffer.as<cl_bool>() = xdevice->is_nodma();
+    break;
   default:
     throw error(CL_INVALID_VALUE,"clGetDeviceInfo: invalid param_name");
     break;

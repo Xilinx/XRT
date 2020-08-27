@@ -89,6 +89,7 @@ enum class key_type
 
   m2m,
   error,
+  nodma,
 
   dna_serial_num,
   clock_freqs_mhz,
@@ -780,6 +781,22 @@ struct m2m : request
 {
   using result_type = uint32_t;
   static const key_type key = key_type::m2m;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static bool
+  to_bool(const result_type& value)
+  {
+    return (value == std::numeric_limits<uint32_t>::max())
+      ? false : value;
+  }
+};
+
+struct nodma : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::nodma;
 
   virtual boost::any
   get(const device*) const = 0;
