@@ -1976,7 +1976,6 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	}
 
 	ert_num_slots = exec->cq_size / cfg->slot_size;
-	exec->num_cus = cfg->num_cus;
 	exec->num_cdma = 0;
 
 	if (ert_poll)
@@ -1991,7 +1990,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	}
 
 	// Create CUs for regular CUs
-	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
+	for (cuidx = 0; cuidx < cfg->num_cus; ++cuidx) {
 		struct xocl_cu *xcu = exec->cus[cuidx];
 		void *polladdr = (ert_poll)
 			// cuidx+1 to reserve slot 0 for ctrl => max 127 CUs in ert_poll mode
@@ -2002,6 +2001,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 			xcu = exec->cus[cuidx] = cu_create(xdev);
 		cu_reset(xcu, cuidx, exec->base, cfg->data[cuidx], polladdr);
 	}
+	exec->num_cus = cfg->num_cus;
 
 	// Create KDMA CUs
 	if (cdma) {
