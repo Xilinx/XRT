@@ -811,9 +811,6 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeDataTransferDMA()
   {
-    // For all devices, if (deviceIntf->getNumMonitors(XCL_PERF_MON_SHELL) ==0)
-    //  return
-
     // Caption
     fout << "Data Transfer: DMA" << std::endl ;
 
@@ -827,7 +824,105 @@ namespace xdp {
 	 << "Average Size (KB)"        << ","
 	 << "Average Latency (ns)"     << std::endl ;
 
-    // TODO
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    uint64_t deviceIndex = 0 ;
+    for (auto device : infos)
+    {
+      uint64_t AIMIndex = 0 ;
+      for (auto monitor : device->aimList)
+      {
+	if (monitor->name.find("Host to Device") != std::string::npos)
+	{
+	  // This is the monitor we are looking for
+	  xclCounterResults values =
+	    (db->getDynamicInfo()).getCounterResults(deviceIndex) ;
+
+	  if (values.WriteTranx[AIMIndex] > 0)
+	  {
+	    uint64_t totalWriteBusyCycles = values.WriteBusyCycles[AIMIndex] ;
+	    double totalWriteTime =
+	      (double)(totalWriteBusyCycles) / (1000.0 * device->clockRateMHz);
+	    double writeTransferRate = (totalWriteTime == 0.0) ? 0 :
+	      (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
+
+	    fout << device->platformInfo.deviceName << ","
+		 << "WRITE" << ","
+		 << values.WriteTranx[AIMIndex] << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << writeTransferRate << "," ;
+	    }
+
+	    fout << ((double)(values.WriteBytes[AIMIndex] / 1.0e6)) << "," ;
+
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << (totalWriteTime / 1e06) << "," ;
+	    }
+	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << std::endl ;
+	    }
+	    else
+	    {
+	      fout << ((1000.0 * values.WriteLatency[AIMIndex]) / device->clockRateMHz) / (values.WriteTranx[AIMIndex]) << std::endl ;
+	    }
+	  }
+	  if (values.ReadTranx[AIMIndex] > 0)
+	  {
+	    uint64_t totalReadBusyCycles = values.ReadBusyCycles[AIMIndex] ;
+	    double totalReadTime =
+	      (double)(totalReadBusyCycles) / (1000.0 * device->clockRateMHz);
+	    double readTransferRate = (totalReadTime == 0.0) ? 0 :
+	      (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
+
+	    fout << device->platformInfo.deviceName << ","
+		 << "READ" << ","
+		 << values.ReadTranx[AIMIndex] << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << readTransferRate << "," ;
+	    }
+
+	    fout << ((double)(values.ReadBytes[AIMIndex] / 1.0e6)) << "," ;
+
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << (totalReadTime / 1e06) << "," ;
+	    }
+	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << std::endl ;
+	    }
+	    else
+	    {
+	      fout << ((1000.0 * values.ReadLatency[AIMIndex]) / device->clockRateMHz) / (values.ReadTranx[AIMIndex]) << std::endl ;
+	    }
+	  }
+	}
+	++AIMIndex ;
+      }
+      ++deviceIndex ;
+    }
   }
 
   void OpenCLSummaryWriter::writeDataTransferDMABypass()
@@ -848,7 +943,105 @@ namespace xdp {
 	 << "Average Size (KB)"        << ","
 	 << "Average Latency (ns)"     << std::endl ;
 
-    // TODO
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    uint64_t deviceIndex = 0 ;
+    for (auto device : infos)
+    {
+      uint64_t AIMIndex = 0 ;
+      for (auto monitor : device->aimList)
+      {
+	if (monitor->name.find("Peer to Peer") != std::string::npos)
+	{
+	  // This is the monitor we are looking for
+	  xclCounterResults values =
+	    (db->getDynamicInfo()).getCounterResults(deviceIndex) ;
+
+	  if (values.WriteTranx[AIMIndex] > 0)
+	  {
+	    uint64_t totalWriteBusyCycles = values.WriteBusyCycles[AIMIndex] ;
+	    double totalWriteTime =
+	      (double)(totalWriteBusyCycles) / (1000.0 * device->clockRateMHz);
+	    double writeTransferRate = (totalWriteTime == 0.0) ? 0 :
+	      (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
+
+	    fout << device->platformInfo.deviceName << ","
+		 << "WRITE" << ","
+		 << values.WriteTranx[AIMIndex] << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << writeTransferRate << "," ;
+	    }
+
+	    fout << ((double)(values.WriteBytes[AIMIndex] / 1.0e6)) << "," ;
+
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << (totalWriteTime / 1e06) << "," ;
+	    }
+	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << std::endl ;
+	    }
+	    else
+	    {
+	      fout << ((1000.0 * values.WriteLatency[AIMIndex]) / device->clockRateMHz) / (values.WriteTranx[AIMIndex]) << std::endl ;
+	    }
+	  }
+	  if (values.ReadTranx[AIMIndex] > 0)
+	  {
+	    uint64_t totalReadBusyCycles = values.ReadBusyCycles[AIMIndex] ;
+	    double totalReadTime =
+	      (double)(totalReadBusyCycles) / (1000.0 * device->clockRateMHz);
+	    double readTransferRate = (totalReadTime == 0.0) ? 0 :
+	      (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
+
+	    fout << device->platformInfo.deviceName << ","
+		 << "READ" << ","
+		 << values.ReadTranx[AIMIndex] << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << readTransferRate << "," ;
+	    }
+
+	    fout << ((double)(values.ReadBytes[AIMIndex] / 1.0e6)) << "," ;
+
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << (totalReadTime / 1e06) << "," ;
+	    }
+	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << std::endl ;
+	    }
+	    else
+	    {
+	      fout << ((1000.0 * values.ReadLatency[AIMIndex]) / device->clockRateMHz) / (values.ReadTranx[AIMIndex]) << std::endl ;
+	    }
+	  }
+	}
+	++AIMIndex ;
+      }
+      ++deviceIndex ;
+    }
   }
 
   void OpenCLSummaryWriter::writeDataTransferGlobalMemoryToGlobalMemory()
@@ -869,7 +1062,105 @@ namespace xdp {
 	 << "Average Size (KB)"        << ","
 	 << "Average Latency (ns)"     << std::endl ;
 
-    // TODO
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    uint64_t deviceIndex = 0 ;
+    for (auto device : infos)
+    {
+      uint64_t AIMIndex = 0 ;
+      for (auto monitor : device->aimList)
+      {
+	if (monitor->name.find("Memory to Memory") != std::string::npos)
+	{
+	  // This is the monitor we are looking for
+	  xclCounterResults values =
+	    (db->getDynamicInfo()).getCounterResults(deviceIndex) ;
+
+	  if (values.WriteTranx[AIMIndex] > 0)
+	  {
+	    uint64_t totalWriteBusyCycles = values.WriteBusyCycles[AIMIndex] ;
+	    double totalWriteTime =
+	      (double)(totalWriteBusyCycles) / (1000.0 * device->clockRateMHz);
+	    double writeTransferRate = (totalWriteTime == 0.0) ? 0 :
+	      (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
+
+	    fout << device->platformInfo.deviceName << ","
+		 << "WRITE" << ","
+		 << values.WriteTranx[AIMIndex] << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << writeTransferRate << "," ;
+	    }
+
+	    fout << ((double)(values.WriteBytes[AIMIndex] / 1.0e6)) << "," ;
+
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << (totalWriteTime / 1e06) << "," ;
+	    }
+	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << std::endl ;
+	    }
+	    else
+	    {
+	      fout << ((1000.0 * values.WriteLatency[AIMIndex]) / device->clockRateMHz) / (values.WriteTranx[AIMIndex]) << std::endl ;
+	    }
+	  }
+	  if (values.ReadTranx[AIMIndex] > 0)
+	  {
+	    uint64_t totalReadBusyCycles = values.ReadBusyCycles[AIMIndex] ;
+	    double totalReadTime =
+	      (double)(totalReadBusyCycles) / (1000.0 * device->clockRateMHz);
+	    double readTransferRate = (totalReadTime == 0.0) ? 0 :
+	      (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
+
+	    fout << device->platformInfo.deviceName << ","
+		 << "READ" << ","
+		 << values.ReadTranx[AIMIndex] << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << readTransferRate << "," ;
+	    }
+
+	    fout << ((double)(values.ReadBytes[AIMIndex] / 1.0e6)) << "," ;
+
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << "," ;
+	    }
+	    else
+	    {
+	      fout << (totalReadTime / 1e06) << "," ;
+	    }
+	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
+	    if (getFlowMode() == HW_EMU)
+	    {
+	      fout << "N/A" << std::endl ;
+	    }
+	    else
+	    {
+	      fout << ((1000.0 * values.ReadLatency[AIMIndex]) / device->clockRateMHz) / (values.ReadTranx[AIMIndex]) << std::endl ;
+	    }
+	  }
+	}
+	++AIMIndex ;
+      }
+      ++deviceIndex ;
+    }
   }
 
   void OpenCLSummaryWriter::writeTopDataTransferKernelAndGlobal()
