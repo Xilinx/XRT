@@ -242,14 +242,20 @@ done:
 static struct page **xocl_cma_collect_pages(struct xocl_drm *drm_p, uint64_t base_addr, uint64_t start, uint64_t size)
 {
 	struct xocl_dev *xdev = drm_p->xdev;
-	uint64_t entry_sz = xdev->cma_bank->entry_sz;
+	uint64_t entry_sz = 0;
 	uint64_t chunk_offset, page_copied = 0, page_offset_start, page_offset_end;
 	int64_t addr_offset = 0;
 	struct page **pages = NULL;
-	uint64_t pages_per_chunk = entry_sz >> PAGE_SHIFT;
+	uint64_t pages_per_chunk = 0;
 
 	BUG_ON(!start || !size);
 	BUG_ON(base_addr > start);
+
+	if (!xdev || !xdev->cma_bank)
+		return ERR_PTR(-EINVAL);
+
+	entry_sz = xdev->cma_bank->entry_sz;
+	pages_per_chunk = entry_sz >> PAGE_SHIFT;
 
 	addr_offset = start - base_addr;
 
@@ -266,6 +272,9 @@ static struct page **xocl_cma_collect_pages(struct xocl_drm *drm_p, uint64_t bas
 		uint64_t nr = min(page_offset_end - page_offset_start, (pages_per_chunk - page_offset_start % pages_per_chunk));
 		
 		chunk_offset = page_offset_start / pages_per_chunk;
+		if (chunk_offset >= xdev->cma_bank->entry_num)
+			return ERR_PTR(-ENOMEM);
+
 		DRM_DEBUG("chunk_offset %lld start 0x%llx, end 0x%llx\n", chunk_offset, page_offset_start, page_offset_end);
 
 		memcpy(pages+page_copied, xdev->cma_bank->cma_mem[chunk_offset].pages+(page_offset_start%pages_per_chunk), nr*sizeof(struct page*));
