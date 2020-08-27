@@ -606,7 +606,8 @@ static const std::map<std::string, reset_type> reset_map = {
     { "kernel", reset_type::kernel },
     { "ert", reset_type::ert },
     { "ecc", reset_type::ecc },
-    { "soft_kernel", reset_type::soft_kernel }
+    { "soft_kernel", reset_type::soft_kernel },
+    { "aie", reset_type::aie }
   };
 
 XBUtilities::reset_type

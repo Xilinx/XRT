@@ -45,7 +45,8 @@ namespace XBUtilities {
     kernel,
     ert,
     ecc,
-    soft_kernel
+    soft_kernel,
+    aie
   };
 
   /**

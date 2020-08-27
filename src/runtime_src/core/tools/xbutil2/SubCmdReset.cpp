@@ -34,6 +34,8 @@ pretty_print_action_list(xrt_core::device_collection& deviceCollection, XBU::res
 {
   if(reset == XBU::reset_type::hot)
     std::cout << "Performing 'hot' reset on " << std::endl;
+  else if(reset == XBU::reset_type::aie) 
+    std::cout << "Performing 'aie' reset on " << std::endl;
   
   for(const auto & device: deviceCollection) {
       std::cout << boost::format("  -[%s]\n") % 
@@ -50,6 +52,10 @@ reset_device(std::shared_ptr<xrt_core::device> dev, XBU::reset_type reset)
 {
   if(reset == XBU::reset_type::hot) {
     dev->reset("", "mgmt_reset", "1");
+    std::cout << boost::format("Successfully reset Device[%s]\n") 
+      % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
+  } else if(reset == XBU::reset_type::aie) {
+    dev->reset("", "mgmt_reset", "5");
     std::cout << boost::format("Successfully reset Device[%s]\n") 
       % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
   }
@@ -83,6 +89,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
     ("type,r", boost::program_options::value<decltype(resetType)>(&resetType), "The type of reset to perform. Types resets available:\n"
                                                                        "  hot          - Hot reset (default)\n"
+                                                                       "  aie          - Reset Aie array\n"
                                                                        /*"  kernel       - Kernel communication links\n"*/
                                                                        /*"  scheduler    - Scheduler\n"*/
                                                                        /*"  clear-fabric - Clears the accleration fabric with the\n"*/
