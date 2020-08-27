@@ -1945,6 +1945,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return 1;
 	}
 
+	mutex_lock(&exec->exec_lock);
 	if (major > 2) {
 		DRM_INFO("Unknown ERT major version, fallback to KDS mode\n");
 		ert_full = 0;
@@ -1971,6 +1972,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	if (ert && (exec->cq_size == 0 || cfg->slot_size == 0)) {
 		userpf_err(xdev, "should not have zeroed value of cq_size=%d, slot_size=%d",
 		    exec->cq_size, cfg->slot_size);
+		mutex_unlock(&exec->exec_lock);
 		return 1;
 	}
 
@@ -2066,6 +2068,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	/* WORKAROUND: allow xclRegWrite/xclRegRead access shared CU */
 	exec->rw_shared = cfg->rw_shared;
 
+	mutex_unlock(&exec->exec_lock);
 	userpf_info(xdev, "scheduler config ert(%d), dataflow(%d), slots(%d), cudma(%d), cuisr(%d), cdma(%d), cus(%d)\n"
 		 , ert_poll | ert_full
 		 , cfg->dataflow
@@ -4699,6 +4702,7 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	unsigned int idx = 0;
 	ssize_t sz = 0;
 
+	mutex_lock(&exec->exec_lock);
 	// No need to lock exec, cu stats are computed and cached.
 	// Even if xclbin is swapped, the data reflects the xclbin on
 	// which is was computed above.
@@ -4750,6 +4754,7 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	sz += sprintf(buf+sz, "}\n");
 
 out:
+	mutex_unlock(&exec->exec_lock);
 	if (sz)
 		buf[sz++] = 0;
 
