@@ -1046,9 +1046,6 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeDataTransferGlobalMemoryToGlobalMemory()
   {
-    // For all devices, if (deviceIntf->getNumMonitors(XCL_PERF_MON_SHELL) ==0)
-    //  return
-
     // Caption
     fout << "Data Transfer: Global Memory to Global Memory" << std::endl ;
 
@@ -1407,10 +1404,19 @@ namespace xdp {
 
       for (auto numCounters : accelCounter)
       {
+	std::string accelType = "" ;
+	switch(numCounters.first)
+	{
+	case ACCEL_MONITOR:      accelType = "XCL_PERF_MON_ACCEL" ;  break ;
+	case AXI_MM_MONITOR:     accelType = "XCL_PERF_MON_MEMORY" ; break ;
+	case AXI_STREAM_MONITOR: accelType = "XCL_PERF_MON_STR" ;    break ;
+	default:                 accelType = "other" ;               break ;
+	}
+
 	(t->fout) << "NUM_MONITORS" << ","
 		  << device->platformInfo.deviceName 
 		  << "|"
-		  << (uint64_t)(numCounters.first) << "," // TODO: Type
+		  << accelType << ","
 		  << (numCounters.second) << std::endl ;
       }
     }
