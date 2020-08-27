@@ -511,7 +511,7 @@ public:
     void getMemTopology( const xclDeviceUsage &devstat ) const
     {
         std::string errmsg;
-        std::vector<char> buf, temp_buf;
+        std::vector<char> buf, temp_buf, mig_buf;
         std::vector<std::string> mm_buf, stream_stat;
         uint64_t memoryUsage, boCount;
         auto dev = pcidev::get_dev(m_idx);
@@ -530,7 +530,7 @@ public:
         int j = 0; // stream index
         int m = 0; // mem index
 
-        dev->sysfs_put( "", "mig_cache_update", errmsg, "1");
+        dev->sysfs_get( "", "mig_cache_update", errmsg, mig_buf);
         for(int i = 0; i < map->m_count; i++) {
             if (map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION) {
                 std::string lname, status = "Inactive", total = "N/A", pending = "N/A";
