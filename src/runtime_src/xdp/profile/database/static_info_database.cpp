@@ -204,9 +204,9 @@ namespace xdp {
         continue;
       }
       std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
-      if(0 == cuName.compare(0, 3, "dm_")) {
-        /* Assumption : If the IP_KERNEL name starts with "dm_" then it is a data mover and
-         *              it should not be identified as a "CU" in profiling
+      if(std::string::npos != cuName.find(":dm_")) {
+        /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a 
+         *              data mover and it should not be identified as a "CU" in profiling
          */
         continue;
       }

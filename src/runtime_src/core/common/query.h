@@ -42,6 +42,13 @@ enum class key_type;
  */
 struct request
 {
+  // Modifier for specific request accessor.   For some
+  // query::request types, the accessor can expand into
+  // multiple different requests at run-time. For example
+  // when accessing sysfs nodes, the actual node can be
+  // parameterized by modifying the hardware subdev or entry.
+  enum class modifier { subdev, entry };
+
   virtual
   ~request()
   {}
@@ -57,6 +64,10 @@ struct request
   virtual boost::any
   get(const device*, const boost::any&, const boost::any&) const
   { throw std::runtime_error("query does not support two arguments"); }
+
+  virtual boost::any
+  get(const device*, modifier, const std::string&) const
+  { throw std::runtime_error("query does not support modifier"); }
 
   virtual void
   put(const device*, const boost::any&) const

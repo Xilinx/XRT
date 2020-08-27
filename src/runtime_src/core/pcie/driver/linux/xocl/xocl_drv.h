@@ -604,6 +604,9 @@ struct xocl_dma_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	ssize_t (*migrate_bo)(struct platform_device *pdev,
 		struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 sz);
+	ssize_t (*async_migrate_bo)(struct platform_device *pdev,
+		struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 sz,
+		void (*callback_fn)(unsigned long cb_hndl, int err), void *tx_ctx);
 	int (*ac_chan)(struct platform_device *pdev, u32 dir);
 	void (*rel_chan)(struct platform_device *pdev, u32 dir, u32 channel);
 	u32 (*get_chan_count)(struct platform_device *pdev);
@@ -625,6 +628,9 @@ struct xocl_dma_funcs {
 #define	xocl_migrate_bo(xdev, sgt, to_dev, paddr, chan, len)	\
 	(DMA_CB(xdev, migrate_bo) ? DMA_OPS(xdev)->migrate_bo(DMA_DEV(xdev), \
 	sgt, to_dev, paddr, chan, len) : 0)
+#define	xocl_async_migrate_bo(xdev, sgt, to_dev, paddr, chan, len, cb_fn, ctx_ptr)	\
+	(DMA_CB(xdev, async_migrate_bo) ? DMA_OPS(xdev)->async_migrate_bo(DMA_DEV(xdev), \
+	sgt, to_dev, paddr, chan, len, cb_fn, ctx_ptr) : 0)
 #define	xocl_acquire_channel(xdev, dir)		\
 	(DMA_CB(xdev, ac_chan) ? DMA_OPS(xdev)->ac_chan(DMA_DEV(xdev), dir) : \
 	-ENODEV)

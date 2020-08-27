@@ -39,12 +39,14 @@
 #endif
 
 namespace {
+
 static bool
-is_nodma()
+is_nodma(xclDeviceHandle xhdl)
 {
-  // TODO
-  return false;
+  auto core_device = xrt_core::get_userpf_device(xhdl);
+  return core_device->is_nodma();
 }
+
 }
 
 ////////////////////////////////////////////////////////////////
@@ -514,7 +516,7 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
   switch (type) {
   case 0:
 #ifndef XRT_EDGE
-    if (is_nodma())
+    if (is_nodma(dhdl))
       return alloc_nodma(dhdl, sz, flags, grp);
     else
       return alloc_hbuf(dhdl, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);

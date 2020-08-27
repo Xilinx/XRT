@@ -46,6 +46,24 @@ device::
   XRT_DEBUGF("xrt_core::device::~device(0x%x) idx(%d)\n", this, m_device_id);
 }
 
+bool
+device::
+is_nodma() const
+{
+  if (m_nodma != boost::none)
+    return *m_nodma;
+
+  try {
+    auto nodma = xrt_core::device_query<xrt_core::query::nodma>(this);
+    m_nodma = xrt_core::query::nodma::to_bool(nodma);
+  }
+  catch (const std::exception&) {
+    m_nodma = false;
+  }
+
+  return *m_nodma;
+}
+
 uuid
 device::
 get_xclbin_uuid() const

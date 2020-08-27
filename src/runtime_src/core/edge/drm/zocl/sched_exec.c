@@ -3259,6 +3259,9 @@ int sched_fini_exec(struct drm_device *drm)
 	if (zdev->exec->cq_thread)
 		kthread_stop(zdev->exec->cq_thread);
 
+	if (zdev->ert)
+		zocl_fini_soft_kernel(drm);
+
 	fini_scheduler_thread();
 	zocl_cleanup_cu_timer(zdev);
 	SCHED_DEBUG("<- %s\n", __func__);

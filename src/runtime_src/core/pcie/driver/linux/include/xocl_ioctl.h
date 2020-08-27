@@ -159,6 +159,14 @@ enum drm_xocl_ops {
 	DRM_XOCL_FREE_CMA,
 	/* Memory to Memory BO copy */
 	DRM_XOCL_COPY_BO,
+
+	/* The following IOCTLs can only be called from linux kernel space
+	 * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
+	 */
+	DRM_XOCL_KINFO_BO,
+	DRM_XOCL_MAP_KERN_MEM,
+	DRM_XOCL_EXECBUF_CB,
+	DRM_XOCL_SYNC_BO_CB,
 	DRM_XOCL_NUM_IOCTLS
 };
 
@@ -217,6 +225,24 @@ struct drm_xocl_userptr_bo {
 };
 
 /**
+ * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
+ * For use with Linux kernel space specific IOCTLs.
+ * struct drm_xocl_map_kern_mem - Used for map a buffer object to linux kernel
+ * memory (sgl or vurtual address) with DRM_IOCTL_XOCL_MAP_KERN_MEM ioctl.
+ *
+ * @handle:     bo handle returned by the driver
+ * @addr:       Address of sgl or kernel buffer allocated by user
+ * @size:       Requested size of the buffer object
+ * @flags:      DRM_XOCL_BO_XXX flags
+ */
+struct drm_xocl_map_kern_mem {
+	uint32_t handle;
+	uint64_t addr;
+	uint64_t size;
+	uint32_t flags;
+};
+
+/**
  * struct drm_xocl_map_bo - Prepare a buffer object for mmap
  * used with DRM_IOCTL_XOCL_MAP_BO ioctl
  *
@@ -247,6 +273,31 @@ struct drm_xocl_sync_bo {
 	uint64_t size;
 	uint64_t offset;
 	enum drm_xocl_sync_bo_dir dir;
+};
+
+/**
+ * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
+ * For use with Linux kernel space specific IOCTLs.
+ * struct drm_xocl_sync_bo_cb - Synchronize the buffer in the requested direction
+ * between device and host
+ * used with DRM_IOCTL_XOCL_SYNC_BO_CB ioctl (linux kernel only)
+ *
+ * @handle:	bo handle
+ * @flags:	Unused
+ * @size:	Number of bytes to synchronize
+ * @offset:	Offset into the object to synchronize
+ * @dir:	DRM_XOCL_SYNC_DIR_XXX
+ * @cb_func:	Pointer to callback function(void (*fn)(long,int))
+ * @cb_data:	Pointer to context that callback needs to be invoked with
+ */
+struct drm_xocl_sync_bo_cb {
+	uint32_t handle;
+	uint32_t flags;
+	uint64_t size;
+	uint64_t offset;
+	enum drm_xocl_sync_bo_dir dir;
+	uint64_t cb_func;
+	uint64_t cb_data;
 };
 
 /**
@@ -309,6 +360,26 @@ struct kernel_info {
 	char			 name[64];
 	int			 anums;
 	struct argument_info	 args[];
+};
+
+/**
+ * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
+ * For use with Linux kernel space specific IOCTLs.
+ * struct drm_xocl_kinfo_bo - Used to get a buffer object's kernel virtual address
+ * with DRM_IOCTL_XOCL_KINFO_BO ioctl.
+ *
+ * @handle:     bo handle of BO whose info is required
+ * @flags:      Unused
+ * @size:	Size of buffer object
+ * @paddr:	Physical address (BO's Device address)
+ * @vaddr:	Kernel Virtual address of BO
+ */
+struct drm_xocl_kinfo_bo {
+	uint32_t handle;
+	uint32_t flags;
+	uint64_t size;
+	uint64_t paddr;
+	uint64_t vaddr;
 };
 
 /**
@@ -502,6 +573,27 @@ struct drm_xocl_execbuf {
 };
 
 /**
+ * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
+ * For use with Linux kernel space specific IOCTLs.
+ * struct drm_xocl_execbuf_cb - Submit a command buffer for execution on a compute unit
+ * used with DRM_IOCTL_XOCL_EXECBUF_CB ioctl with a callback (linux kernel only)
+ *
+ * @ctx_id:         Pass 0
+ * @exec_bo_handle: BO handle of command buffer formatted as ERT command
+ * @deps:	    Upto 8 dependency command BO handles this command is dependent on
+ *                  for automatic event dependency handling by ERT
+ * @cb_func:	    Pointer to callback function(void (*fn)(long,int)) upon exec completion
+ * @cb_data:	    Pointer to context that callback needs to be invoked with
+ */
+struct drm_xocl_execbuf_cb {
+	uint32_t ctx_id;
+	uint32_t exec_bo_handle;
+	uint32_t deps[8];
+	uint64_t cb_func;
+	uint64_t cb_data;
+};
+
+/**
  * struct drm_xocl_user_intr - Register user's eventfd for MSIX interrupt
  * used with DRM_IOCTL_XOCL_USER_INTR ioctl
  *
@@ -556,4 +648,9 @@ struct drm_xocl_alloc_cma_info {
 #define	DRM_IOCTL_XOCL_ALLOC_CMA	XOCL_IOC_ARG(ALLOC_CMA, alloc_cma_info)
 #define	DRM_IOCTL_XOCL_FREE_CMA		XOCL_IOC(FREE_CMA)
 #define	DRM_IOCTL_XOCL_COPY_BO		XOCL_IOC_ARG(COPY_BO, copy_bo)
+
+#define	DRM_IOCTL_XOCL_KINFO_BO		XOCL_IOC_ARG(KINFO_BO, kinfo_bo)
+#define	DRM_IOCTL_XOCL_MAP_KERN_MEM	XOCL_IOC_ARG(MAP_KERN_MEM, map_kern_mem)
+#define	DRM_IOCTL_XOCL_EXECBUF_CB	XOCL_IOC_ARG(EXECBUF_CB, execbuf_cb)
+#define	DRM_IOCTL_XOCL_SYNC_BO_CB	XOCL_IOC_ARG(SYNC_BO_CB, sync_bo_cb)
 #endif
