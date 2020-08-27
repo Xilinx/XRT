@@ -38,9 +38,9 @@ namespace xocl {
     std::function<void (const char*, bool)> counter_kernel_execution_cb ;
     std::function<void (const char*, const char*, const char*, bool)> 
       counter_cu_execution_cb ;
-    std::function<void (unsigned long int, unsigned long int, const char*, unsigned long int, bool)>
+    std::function<void (unsigned long int, unsigned long int, const char*, unsigned long int, bool, bool)>
       counter_action_read_cb ;
-    std::function<void (unsigned long int, const char*, unsigned long int, bool)>
+    std::function<void (unsigned long int, const char*, unsigned long int, bool, bool)>
       counter_action_write_cb ;
     std::function<void ()> counter_mark_objects_released_cb ;
 
@@ -66,12 +66,12 @@ namespace xocl {
 	(cuetype)(xrt_core::dlsym(handle, "log_compute_unit_execution")) ;
       if (xrt_core::dlerror() != NULL) counter_cu_execution_cb = nullptr ;
       
-      typedef void (*atype)(unsigned long int, unsigned long int, const char*, unsigned long int, bool) ;
+      typedef void (*atype)(unsigned long int, unsigned long int, const char*, unsigned long int, bool, bool) ;
       counter_action_read_cb =
 	(atype)(xrt_core::dlsym(handle, "counter_action_read")) ;
       if (xrt_core::dlerror() != NULL) counter_action_read_cb = nullptr ;
       
-      typedef void (*wtype)(unsigned long int, const char*, unsigned long int, bool) ;
+      typedef void (*wtype)(unsigned long int, const char*, unsigned long int, bool, bool) ;
       counter_action_write_cb =
 	(wtype)(xrt_core::dlsym(handle, "counter_action_write")) ;
       if (xrt_core::dlerror() != NULL) counter_action_write_cb = nullptr ;
@@ -233,24 +233,30 @@ namespace xocl {
 	       uint64_t numDevices = e->get_context()->num_devices() ;
 	       std::string deviceName = queue->get_device()->get_name() ;
 
+	       auto xmem = xocl::xocl(buffer) ;
+	       auto ext_flags = xmem->get_ext_flags() ;
+	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+
 	       // I'm logging numDevices here because it has to be logged
 	       //  somewhere, although it really doesn't make much sense here
 
 	       if (status == CL_RUNNING)
 	       {
 		 counter_action_read_cb(contextId,
-					 numDevices,
-					 deviceName.c_str(),
-					 0,
-					 true);
+					numDevices,
+					deviceName.c_str(),
+					0,
+					true,
+					isP2P);
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
 		 counter_action_read_cb(contextId,
-					 numDevices,
-					 deviceName.c_str(),
-					 xocl::xocl(buffer)->get_size(),
-					 false) ;
+					numDevices,
+					deviceName.c_str(),
+					xmem->get_size(),
+					false,
+					isP2P) ;
 	       }
 	     } ;
     }
@@ -267,19 +273,25 @@ namespace xocl {
 	       uint64_t contextId = e->get_context()->get_uid() ;
 	       std::string deviceName = queue->get_device()->get_name() ;
 
+	       auto xmem = xocl::xocl(buffer) ;
+	       auto ext_flags = xmem->get_ext_flags() ;
+	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+
 	       if (status == CL_RUNNING)
 	       {
 		 counter_action_write_cb(contextId,
-					  deviceName.c_str(),
-					  0,
-					  true);
+					 deviceName.c_str(),
+					 0,
+					 true,
+					 isP2P);
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
 		 counter_action_write_cb(contextId,
-					  deviceName.c_str(),
-					  xocl::xocl(buffer)->get_size(),
-					  false) ;
+					 deviceName.c_str(),
+					 xmem->get_size(),
+					 false,
+					 isP2P) ;
 	       }
 	     } ;
     }
@@ -307,21 +319,27 @@ namespace xocl {
 		 uint64_t numDevices = e->get_context()->num_devices() ;
 		 std::string deviceName = queue->get_device()->get_name() ;
 
+		 auto xmem = xocl::xocl(buffer) ;
+		 auto ext_flags = xmem->get_ext_flags() ;
+		 bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+
 		 if (status == CL_RUNNING)
 		 {
 		   counter_action_read_cb(contextId,
-					   numDevices,
-					   deviceName.c_str(),
-					   0,
-					   true);
+					  numDevices,
+					  deviceName.c_str(),
+					  0,
+					  true,
+					  isP2P);
 		 }
 		 else if (status == CL_COMPLETE)
 		 {
 		   counter_action_read_cb(contextId,
-					   numDevices,
-					   deviceName.c_str(),
-					   xocl::xocl(buffer)->get_size(),
-					   false) ;
+					  numDevices,
+					  deviceName.c_str(),
+					  xmem->get_size(),
+					  false,
+					  isP2P) ;
 		 }
 	       } ;
       }
@@ -337,19 +355,25 @@ namespace xocl {
 		 uint64_t contextId = e->get_context()->get_uid() ;
 		 std::string deviceName = queue->get_device()->get_name() ;
 
+		 auto xmem = xocl::xocl(buffer) ;
+		 auto ext_flags = xmem->get_ext_flags() ;
+		 bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+
 		 if (status == CL_RUNNING)
 		 {
 		   counter_action_write_cb(contextId,
-					    deviceName.c_str(),
-					    0,
-					    true);
+					   deviceName.c_str(),
+					   0,
+					   true,
+					   isP2P);
 		 }
 		 else if (status == CL_COMPLETE)
 		 {
 		   counter_action_write_cb(contextId,
-					    deviceName.c_str(),
-					    xocl::xocl(buffer)->get_size(),
-					    false) ;
+					   deviceName.c_str(),
+					   xmem->get_size(),
+					   false,
+					   isP2P) ;
 		 }
 	       } ;
       }
@@ -437,19 +461,25 @@ namespace xocl {
 	       uint64_t contextId = e->get_context()->get_uid() ;
 	       std::string deviceName = queue->get_device()->get_name() ;
 
+	       auto xmem = xocl::xocl(mem0) ;
+	       auto ext_flags = xmem->get_ext_flags() ;
+	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+
 	       if (status == CL_RUNNING)
 	       {
 		 counter_action_write_cb(contextId,
-					  deviceName.c_str(),
-					  0,
-					  true);
+					 deviceName.c_str(),
+					 0,
+					 true,
+					 isP2P);
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
 		 counter_action_write_cb(contextId,
-					  deviceName.c_str(),
-					  xocl::xocl(mem0)->get_size(),
-					  false) ;
+					 deviceName.c_str(),
+					 xmem->get_size(),
+					 false,
+					 isP2P) ;
 	       }
 	     } ;
     }

@@ -1557,7 +1557,7 @@ namespace xdp {
 
     (t->fout) << "P2P_DEVICE" << ","
 	      << "all" << ","
-	      << (uint64_t)(hasP2P) ;
+	      << (uint64_t)(hasP2P) << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceP2PHostTransfers(OpenCLSummaryWriter* t)
@@ -1566,7 +1566,7 @@ namespace xdp {
 
     (t->fout) << "P2P_HOST_TRANSFERS" << ","
 	      << "host" << ","
-	      << hostP2PTransfers << std::endl ; // TODO: Make the connection
+	      << hostP2PTransfers << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidancePortBitWidth(OpenCLSummaryWriter* t)

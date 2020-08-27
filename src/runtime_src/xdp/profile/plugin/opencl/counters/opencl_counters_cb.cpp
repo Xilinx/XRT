@@ -117,7 +117,8 @@ namespace xdp {
 				  uint64_t numDevices,
 				  const char* deviceName,
 				  uint64_t size,
-				  bool isStart)
+				  bool isStart,
+				  bool isP2P)
   {
     static std::map<std::pair<uint64_t, std::string>, uint64_t> 
       storedTimestamps ;
@@ -145,6 +146,7 @@ namespace xdp {
       uint64_t deviceId = 0 ; // TODO - lookup the device ID from device name
 
       (db->getStats()).logHostRead(contextId, deviceId, size, transferTime) ;
+      if (isP2P) (db->getStats()).addHostP2PTransfer() ;
     }
     (db->getStaticInfo()).setNumDevices(contextId, numDevices) ;
   }
@@ -152,7 +154,8 @@ namespace xdp {
   static void counter_action_write(uint64_t contextId,
 				   const char* deviceName,
 				   uint64_t size,
-				   bool isStart)
+				   bool isStart,
+				   bool isP2P)
   {
     static std::map<std::pair<uint64_t, std::string>, uint64_t> 
       storedTimestamps ;
@@ -180,6 +183,7 @@ namespace xdp {
       uint64_t deviceId = 0 ; // TODO - lookup the device ID from device name
 
       (db->getStats()).logHostWrite(contextId, deviceId, size, transferTime) ;
+      if (isP2P) (db->getStats()).addHostP2PTransfer() ;
     }
   }
 
@@ -226,18 +230,20 @@ void counter_action_read(unsigned long int contextId,
 			 unsigned long int numDevices,
 			 const char* deviceName,
 			 unsigned long int size,
-			 bool isStart)
+			 bool isStart,
+			 bool isP2P)
 {
-  xdp::counter_action_read(contextId, numDevices, deviceName, size, isStart);
+  xdp::counter_action_read(contextId, numDevices, deviceName, size, isStart, isP2P);
 }
 
 extern "C"
 void counter_action_write(unsigned long int contextId,
 			  const char* deviceName,
 			  unsigned long int size,
-			  bool isStart)
+			  bool isStart,
+			  bool isP2P)
 {
-  xdp::counter_action_write(contextId, deviceName, size, isStart);
+  xdp::counter_action_write(contextId, deviceName, size, isStart, isP2P);
 }
 
 extern "C"

@@ -40,13 +40,15 @@ void counter_action_read(unsigned long int contextId,
 			 unsigned long int numDevices,
 			 const char* deviceName,
 			 unsigned long int size,
-			 bool isStart) ;
+			 bool isStart,
+			 bool isP2P) ;
 
 extern "C"
 void counter_action_write(unsigned long int contextId,
 			  const char* deviceName,
 			  unsigned long int size,
-			  bool isStart) ;
+			  bool isStart,
+			  bool isP2P) ;
 
 extern "C"
 void counter_mark_objects_released() ;
