@@ -28,7 +28,7 @@
 const char *subCmdConfigDesc = "Parse or update daemon/device configuration";
 
 const char *subCmdConfigUsage =
-    "--device [--card bdf] [--runtime_clk_scale (en/dis)able] [--cs_threshold_power_override val] [--cs_threshold_temp_override val] [--cs_reset val]\n"
+    "--device [--card bdf] [--runtime_clk_scale enable|disable]\n"
     "--enable_retention [--ddr] [--card bdf]\n"
     "--disable_retention [--ddr] [--card bdf]\n";
 const char *subCmdConfigExpUsage =
@@ -196,7 +196,28 @@ static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
         std::cout << "\t\t" << "Enabled: " << (lvl ? "Yes" : "No") << std::endl;
     }
 
-    std::cout << "\t\t" << "Threshold limits:\n";
+    std::cout << "\t\t" << "Critical threshold (clock shutdown) limits:\n";
+    errmsg = "";
+    svl = "";
+    dev->sysfs_get("xmc", "scaling_critical_power_threshold", errmsg, svl);
+    if (!errmsg.empty()) {
+        std::cout << "Error: can't read scaling_critical_power_threshold from "
+			<< dev->sysfs_name << " : " << errmsg << std::endl;
+    } else {
+        std::cout << "\t\t\t" << "Power: " << svl << std::endl;
+    }
+
+    errmsg = "";
+    svl = "";
+    dev->sysfs_get("xmc", "scaling_critical_temp_threshold", errmsg, svl);
+    if (!errmsg.empty()) {
+        std::cout << "Error: can't read scaling_critical_temp_threshold from "
+			<< dev->sysfs_name << " : " << errmsg << std::endl;
+    } else {
+        std::cout << "\t\t\t" << "Temperature: " << svl << std::endl;
+    }
+
+    std::cout << "\t\t" << "Throttling threshold limits:\n";
     errmsg = "";
     svl = "";
     dev->sysfs_get("xmc", "scaling_threshold_power_limit", errmsg, svl);

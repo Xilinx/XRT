@@ -126,6 +126,8 @@
 #define	XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK	0xFF
 #define	XMC_CLOCK_SCALING_POWER_THRESHOLD_POS	8
 #define	XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK	0xFF
+#define	XMC_CLOCK_SCALING_CRIT_TEMP_THRESHOLD_REG	0x3C
+#define	XMC_CLOCK_SCALING_CRIT_TEMP_THRESHOLD_REG_MASK	0xFF
 
 //Sensor IDs
 #define	SENSOR_12V_AUX0		0x03
@@ -1767,6 +1769,52 @@ static ssize_t scaling_threshold_power_override_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(scaling_threshold_power_override);
 
+static ssize_t scaling_critical_power_threshold_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+	bool cs_en;
+
+	cs_en = scaling_condition_check(xmc);
+	if (!cs_en)
+		return sprintf(buf, "%d\n", val);
+
+	if (!xmc->sc_presence) {
+		//no power threshold defined for clock shutdown
+		return sprintf(buf, "N/A\n");
+	} else {
+		//no provision given to retrieve this info on alveo cards
+		return sprintf(buf, "N/A\n");
+	}
+
+	return sprintf(buf, "%uW\n", val);
+}
+static DEVICE_ATTR_RO(scaling_critical_power_threshold);
+
+static ssize_t scaling_critical_temp_threshold_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+	bool cs_en;
+
+	cs_en = scaling_condition_check(xmc);
+	if (!cs_en)
+		return sprintf(buf, "%d\n", val);
+
+	if (!xmc->sc_presence) {
+		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_CRIT_TEMP_THRESHOLD_REG);
+		val = val & XMC_CLOCK_SCALING_CRIT_TEMP_THRESHOLD_REG_MASK;
+	} else {
+		//no provision given to retrieve this info on alveo cards
+		return sprintf(buf, "N/A\n");
+	}
+
+	return sprintf(buf, "%uC\n", val);
+}
+static DEVICE_ATTR_RO(scaling_critical_temp_threshold);
+
 static ssize_t scaling_threshold_temp_limit_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
@@ -2288,6 +2336,8 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_scaling_support.attr,
 	&dev_attr_scaling_threshold_temp_limit.attr,
 	&dev_attr_scaling_threshold_power_limit.attr,
+	&dev_attr_scaling_critical_temp_threshold.attr,
+	&dev_attr_scaling_critical_power_threshold.attr,
 	SENSOR_SYSFS_NODE_ATTRS,
 	REG_SYSFS_NODE_ATTRS,
 	NULL,
