@@ -422,16 +422,16 @@ static ssize_t ulp_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ulp_uuids);
 
-static ssize_t mig_cache_update_store(struct device *dev,
-		struct device_attribute *da, const char *buf, size_t count)
+static ssize_t mig_cache_update_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
 	xocl_update_mig_cache(xdev);
 
-	return count;
+	return 0;
 }
-static DEVICE_ATTR_WO(mig_cache_update);
+static DEVICE_ATTR_RO(mig_cache_update);
 
 static ssize_t nodma_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
