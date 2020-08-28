@@ -29,38 +29,17 @@ enum class cu_stat : unsigned short {
   stat
 };
 
-/*
- * xclbin locking
- */
-struct xclbin_lock
-{
-  xclDeviceHandle m_handle;
-  xuid_t m_uuid;
-
-  xclbin_lock(const xrt_core::device *_dev)
-    : m_handle(_dev->get_device_handle())
-  {
-    auto xclbinid = xrt_core::device_query<xrt_core::query::xclbin_uuid>(_dev);
-
-    uuid_parse(xclbinid.c_str(), m_uuid);
-
-    if (uuid_is_null(m_uuid))
-      throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
-
-    if (xclOpenContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max(), true))
-      throw std::runtime_error("'Failed to lock down xclbin");
-  }
-
-  ~xclbin_lock(){
-    xclCloseContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max());
-  }
-};
-
 void
 schedulerUpdateStat(const xrt_core::device *device)
 {
     try {
-      xclbin_lock xb_lock(device);
+      // lock xclbin
+      auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
+      const_cast <xrt_core::device *>(device)->open_context(uuid.get(), -1, true);
+      auto at_exit = [] (auto device, auto uuid) { const_cast <xrt_core::device *>(device)->close_context(uuid.get(), -1); };
+      xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
+
+      // get scheduler stats 
       xrt_core::device_query<qr::scheduler_update_stat>(device);
     }
     catch (const std::exception&) {
@@ -122,14 +101,16 @@ populate_cus(const xrt_core::device *device, const std::string& desc)
     uint32_t status = parseComputeUnitStat(cu_stats, layout->m_ip_data[i].m_base_address, cu_stat::stat);
     uint32_t usage = parseComputeUnitStat(cu_stats, layout->m_ip_data[i].m_base_address, cu_stat::usage);
     boost::property_tree::ptree ptCu;
+    std::stringstream ss_addr;
+    ss_addr << "0x" << std::hex << layout->m_ip_data[i].m_base_address;
     ptCu.put( "name",         layout->m_ip_data[i].m_name);
-    ptCu.put( "base_address", layout->m_ip_data[i].m_base_address);
+    ptCu.put( "base_address", ss_addr.str());
     ptCu.put( "usage",        usage);
     ptCu.put( "status",       xrt_core::utils::parse_cu_status(status));
     ptCu_array.push_back(std::make_pair("", ptCu));
   }
 
-  pt.add_child( std::string("board.compute_unit"), ptCu_array);
+  pt.add_child( std::string("compute_units"), ptCu_array);
 
   return pt;
 }
@@ -148,7 +129,7 @@ ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   // There can only be 1 root node
-  _pt.add_child("cus", populate_cus(_pDevice, "Compute Units"));
+  _pt.add_child("Compute_Unit", populate_cus(_pDevice, "Compute Units Information"));
 }
 
 void 
@@ -160,10 +141,11 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
   boost::property_tree::ptree empty_ptree;
   getPropertyTreeInternal(_pDevice, _pt);
  
-  _output << boost::format("%s\n") % _pt.get<std::string>("cus.description");
+  _output << boost::format("%s\n") % _pt.get<std::string>("Compute_Unit.description");
+  _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
   int index = 0;
   try {
-    for (auto& v : _pt.get_child("cus.board.compute_unit")) {
+    for (auto& v : _pt.get_child("Compute_Unit.compute_units")) {
       std::string name, base_addr, usage, status;
       for (auto& subv : v.second) {
         if (subv.first == "name") {
@@ -176,11 +158,7 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
           status = subv.second.get_value<std::string>();
         }
       }
-      _output << boost::format(" [CU - %2d]\n") % index;
-      _output << boost::format("   \"name\": %-16s\n") % name;
-      _output << boost::format("   \"base_address\": %-16s\n") % base_addr;
-      _output << boost::format("   \"usage\": %-16s\n") % usage;
-      _output << boost::format("   \"status\": %-16s\n") % status;
+      _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") %index % name % base_addr % usage % status;
       index++;
     }
   }
