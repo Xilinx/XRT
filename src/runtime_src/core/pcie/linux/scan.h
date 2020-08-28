@@ -69,6 +69,27 @@ struct fdt_header {
 
 namespace pcidev {
 
+enum pf_type {
+    UNKNOWN,
+    XCLMGMT,
+    XMGMT,
+    XOCL,
+    XUSER
+};
+
+static inline enum pf_type drv2type(const std::string& driver)
+{
+    if (driver.compare("xclmgmt") == 0)
+        return XCLMGMT;
+    if (driver.compare("xmgmt") == 0)
+        return XMGMT;
+    if (driver.compare("xocl") == 0)
+        return XOCL;
+    if (driver.compare("xuser") == 0)
+        return XUSER;
+    return UNKNOWN;
+}
+
 // One PCIE function on FPGA board
 class pci_device
 {
@@ -87,10 +108,12 @@ public:
   std::string sysfs_name =    ""; // dir name under /sys/bus/pci/devices
   int user_bar =              0;  // BAR mapped in by tools, default is BAR0
   size_t user_bar_size =      0;
-  bool is_mgmt =              false;
+  enum pf_type pf_type =      XCLMGMT;
+  bool is_v2_drv() const { return pf_type == XMGMT || pf_type == XUSER; }
+  bool is_mgmt() const { return pf_type == XCLMGMT || pf_type == XMGMT; }
   bool is_ready =             false;
 
-  pci_device(const std::string& sysfs_name);
+  pci_device(enum pf_type type, const std::string& sysfs_name);
   ~pci_device();
 
   void
