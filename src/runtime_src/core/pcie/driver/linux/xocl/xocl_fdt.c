@@ -1347,6 +1347,56 @@ const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 	return fdt_getprop(blob, off, name, lenp);
 }
 
+/*
+ * Now we have all subdevs[] array, we should validate if there are any
+ * violation among all subdevs[].
+ * for example: no dup mem resources within the same bar.
+ */
+static int xocl_subdev_validate(xdev_handle_t xdev_hdl, struct xocl_subdev *subdevs,
+	int num)
+{
+	int i, j, k, l;
+	struct resource *res1 = NULL, *res2 = NULL;
+	char bar1, bar2;
+	int err = 0;
+	struct xocl_subdev *subdevi = NULL, *subdevj = NULL;
+
+	if (num < 2)
+		return 0;
+
+	for (i = 0; i < num - 1; i++) {
+		subdevi = &subdevs[i];
+
+		for (j = i + 1; j < num; j++) {
+			subdevj = &subdevs[j];
+
+			for (k = 0; k < subdevi->info.num_res; k++) {
+				res1 = &subdevi->info.res[k];
+				bar1 = subdevi->bar_idx[k];
+
+				for (l = 0; l < subdevj->info.num_res; l++) {
+					res2 = &subdevj->info.res[l];
+					bar2 = subdevj->bar_idx[l];
+
+	/* indent restart due to space limition */
+	if (bar1 == bar2 && resource_type(res1) & IORESOURCE_MEM &&
+	    resource_type(res1) == resource_type(res2) &&
+	    resource_overlaps(res1, res2)) {
+		xocl_xdev_err(xdev_hdl, "ERROR: resource overlapped!\n"
+		    "BAR:%d (%s @ %pR) VS. (%s @ %pR)", bar1,
+		    res1->name, res1, res2->name, res2);
+		err = -EINVAL;
+	}
+	/* indent restart end here */
+
+				}
+			}
+		}
+	}
+
+	return err;
+}
+
 int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		int part_level, char *vbnv)
 {
@@ -1410,7 +1460,12 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, len, &subdevs);
 	if (ret < 0)
 		goto failed;
+
 	core->dyn_subdev_num = ret;
+
+	ret = xocl_subdev_validate(xdev_hdl, subdevs, ret);
+	if (ret)
+		goto failed;
 
 	if (core->fdt_blob)
 		vfree(core->fdt_blob);
