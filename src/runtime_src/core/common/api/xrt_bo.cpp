@@ -871,6 +871,26 @@ xrtBORead(xrtBufferHandle bhdl, void* dst, size_t size, size_t skip)
   }
 }
 
+int
+xrtBOCopy(xrtBufferHandle dhdl, xrtBufferHandle shdl, size_t sz, size_t dst_offset, size_t src_offset)
+{
+  try {
+    auto dst = get_boh(dhdl);
+    auto src = get_boh(shdl);
+    dst->copy(src.get(), sz, src_offset, dst_offset);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+
 uint64_t
 xrtBOAddress(xrtBufferHandle bhdl)
 {
