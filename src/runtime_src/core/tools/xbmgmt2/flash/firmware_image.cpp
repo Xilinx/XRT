@@ -172,7 +172,7 @@ void getUUIDFromDTB(void *blob, uint64_t &ts, std::vector<std::string> &uuids)
         p = PALIGN(p + sz, 4);
     }
     if (uuids.size() > 0)
-        uuid2ts(uuids[0], ts);  
+        uuid2ts(uuids[0], ts);
 }
 
 DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id, const std::string& bmcV) :
@@ -285,14 +285,14 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         std::replace_if(name.begin(), name.end(),
             [](const char &a){ return a == ':' || a == '.'; }, '_');
         getVendorBoardFromDSAName(name, vendor, board);
-		
+
         // get filename without the path
         using tokenizer = boost::tokenizer< boost::char_separator<char> >;
         boost::char_separator<char> sep("\\/");
         tokenizer tokens(filename, sep);
         std::string dsafile = "";
         for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
-        	if ((std::string(*tok_iter).find(XSABIN_FILE_SUFFIX) != std::string::npos) 
+        	if ((std::string(*tok_iter).find(XSABIN_FILE_SUFFIX) != std::string::npos)
                 || (std::string(*tok_iter).find(DSABIN_FILE_SUFFIX) != std::string::npos))
                 dsafile = *tok_iter;
         }
@@ -347,7 +347,7 @@ DSAInfo::~DSAInfo()
 {
 }
 
-bool DSAInfo::matchId(const std::string &id) const 
+bool DSAInfo::matchId(const std::string &id) const
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
     if (ts != 0 && ts != ULLONG_MAX && ts == timestamp)
@@ -413,24 +413,26 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
 {
     std::vector<DSAInfo> installedDSA;
     // Obtain installed DSA info.
-    boost::filesystem::path p(FIRMWARE_DIR);
-	if (!boost::filesystem::is_directory(p)) {
-		p = FIRMWARE_WIN_DIR;
-	}
+    std::vector<boost::filesystem::path> fw_dirs(FIRMWARE_DIRS);
+    for (auto& p : fw_dirs) {
+        if (!boost::filesystem::is_directory(p)) {
+            p = FIRMWARE_WIN_DIR;
+        }
 
-    boost::filesystem::directory_iterator dir_end;
-    for ( boost::filesystem::directory_iterator start(p); start != dir_end; ++start) {
-      std::string filename = start->path().leaf().string();
-      if(filename.find("xsabin")  == std::string::npos && 
-          filename.find("dsabin")  == std::string::npos)
-        continue;
-	  DSAInfo dsa(start->path().string());
-	  installedDSA.push_back(dsa);
+        boost::filesystem::directory_iterator dir_end;
+        for (boost::filesystem::directory_iterator start(p); start != dir_end; ++start) {
+            std::string filename = start->path().leaf().string();
+            if (filename.find("xsabin")  == std::string::npos &&
+                filename.find("dsabin")  == std::string::npos)
+                continue;
+            DSAInfo dsa(start->path().string());
+            installedDSA.push_back(dsa);
+        }
     }
 
     // for 2RP
-    p = FORMATTED_FW_DIR;
-	if (!boost::filesystem::is_directory(p))
+    boost::filesystem::path p = FORMATTED_FW_DIR;
+    if (!boost::filesystem::is_directory(p))
         return installedDSA;
 
     boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
@@ -440,7 +442,7 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
         std::regex e("^" FORMATTED_FW_DIR "/([^/]+)/([^/]+)/([^/]+)/.+\\." + t);
         std::smatch cm;
 
-        for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, 
+        for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir,
             boost::filesystem::symlink_option::recurse), recursive_end; iter != recursive_end;) {
             std::string name = iter->path().string();
             std::regex_match(name, cm, e);

@@ -79,6 +79,7 @@ enum class key_type
   xmc_board_name,
   xmc_serial_num,
   xmc_max_power,
+  xmc_sc_presence,
   xmc_bmc_version,
   expected_bmc_version,
   xmc_status,
@@ -688,6 +689,22 @@ struct xmc_max_power : request
   to_string(result_type value)
   {
     return std::to_string(value);
+  }
+};
+
+struct xmc_sc_presence : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::xmc_sc_presence;
+  static const char* name() { return "sc_presence"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "true" : "false";
   }
 };
 

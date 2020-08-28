@@ -42,14 +42,13 @@
 #endif
 
 #define DEFAULT_GLOBAL_AFI "agfi-069ddd533a748059b" // 1.4 shell
-#define XILINX_ID 0x1d0f
 #define AWS_UserPF_DEVICE_ID 0x1042     //userPF device on AWS F1 & Pegasus
 #define AWS_MgmtPF_DEVICE_ID 0x1040     //mgmtPF device on Pegasus (mgmtPF not visible on AWS)
 #define AWS_UserPF_DEVICE_ID_SDx 0xf010 //userPF device on AWS F1 after downloading xclbin into FPGA (SHELL 1.4)
 
 /*
  * This class is used to handle ioctl access to mgmt PF of AWS specific FPGA.
- * 
+ *
  * Since AWS has its own FPGA mgmt hardware/driver, any mgmt HW access request from xocl driver
  * will be forwarded by sw mailbox and be intercepted and interpreted by this mpd plugin. And
  * with the plugin, those special requests will be translated to API calls into the libmgmt.so

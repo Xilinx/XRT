@@ -99,7 +99,7 @@ check_os_release(const std::vector<std::string> kernel_versions, std::ostream &o
         if (release.find(ver) != std::string::npos)
             return true;
     }
-    ostr << "WARNING: Kernel verison " << release << " is not officially supported. " 
+    ostr << "WARNING: Kernel verison " << release << " is not officially supported. "
         << kernel_versions.back() << " is the latest supported version" << std::endl;
     return false;
 }
@@ -117,7 +117,7 @@ is_supported_kernel_version(std::ostream &ostr)
         return check_os_release(ubuntu_kernel_versions, ostr);
     else if(os.find("Red Hat") != std::string::npos || os.find("CentOS") != std::string::npos)
         return check_os_release(centos_rh_kernel_versions, ostr);
-    
+
     return true;
 }
 
@@ -963,8 +963,25 @@ int xcldev::xclTop(int argc, char *argv[])
 }
 
 const std::string dsaPath("/opt/xilinx/dsa/");
-const std::string xsaPath("/opt/xilinx/xsa/");
 const std::string xrtPath("/opt/xilinx/xrt/");
+
+std::string getXsaPath(const uint16_t vendor)
+{
+    if ((vendor == 0) || (vendor == INVALID_ID))
+        return std::string();
+
+    std::string vendorName;
+    switch (vendor) {
+        case ARISTA_ID:
+            vendorName = "arista";
+            break;
+        default:
+        case XILINX_ID:
+            vendorName = "xilinx";
+            break;
+    }
+    return "/opt/" + vendorName + "/xsa/";
+}
 
 void testCaseProgressReporter(bool *quit)
 {    int i = 0;
@@ -1159,8 +1176,15 @@ int xcldev::device::runTestCase(const std::string& py,
         return -EINVAL;
     }
 
+    uint16_t vendor;
+    pcidev::get_dev(m_idx)->sysfs_get<uint16_t>("", "vendor", errmsg, vendor, -1);
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
     std::string devInfoPath = name + "/test/";
-    std::string xsaXclbinPath = xsaPath + devInfoPath;
+    std::string xsaXclbinPath = getXsaPath(vendor) + devInfoPath;
     std::string dsaXclbinPath = dsaPath + devInfoPath;
     std::string xrtTestCasePath = xrtPath + "test/" + py;
 
@@ -1224,7 +1248,7 @@ int xcldev::device::bandwidthKernelTest(void)
 
     std::string testcase = (vbnv.find("vck5000") != std::string::npos)
         ? "versal_23_bandwidth.py" : "23_bandwidth.py";
-    
+
     int ret = runTestCase(testcase, std::string("bandwidth.xclbin"), output);
 
     if (ret != 0) {
@@ -1258,11 +1282,11 @@ int xcldev::device::hostMemBandwidthKernelTest(void)
 
     if (!host_mem_size) {
         std::cout << "Host_mem is not available. Skipping validation" << std::endl;
-        return -EOPNOTSUPP;        
+        return -EOPNOTSUPP;
     }
 
     std::string testcase = "host_mem_23_bandwidth.py";
-    
+
     int ret = runTestCase(testcase, std::string("bandwidth.xclbin"), output);
 
     if (ret != 0) {
@@ -1307,7 +1331,7 @@ int xcldev::device::scVersionTest(void)
         if (sc_ver.empty())
             std::cout << "Can't determine SC firmware running on board.";
         else if (sc_ver.compare(exp_sc_ver) != 0)
-            std::cout << "SC firmware running on board: " << sc_ver; 
+            std::cout << "SC firmware running on board: " << sc_ver;
         std::cout << ". Expected SC firmware from installed Shell: " << exp_sc_ver << std::endl;
 
         std::cout << "Please use \"xbmgmt flash --scan\" to check installed Shell." << std::endl;
@@ -1424,7 +1448,7 @@ int xcldev::device::getXclbinuuid(uuid_t &uuid) {
     return 0;
 }
 
-int xcldev::device::kernelVersionTest(void) 
+int xcldev::device::kernelVersionTest(void)
 {
     if (getenv_or_null("INTERNAL_BUILD")) {
         std::cout << "Developer's build. Skipping validation" << std::endl;
@@ -1628,7 +1652,7 @@ int xcldev::device::reset(xclResetKind kind)
 #ifdef __GNUC__
 # pragma GCC diagnostic pop
 #endif
-    
+
 }
 
 bool canProceed()
@@ -2029,7 +2053,7 @@ int xcldev::xclCma(int argc, char *argv[])
             << std::endl;
     } else if (ret == -ENODEV) {
         std::cout << "ERROR: Does not support HOST MEM feature"
-            << std::endl; 
+            << std::endl;
     } else if (ret == -EBUSY) {
         std::cout << "ERROR: HOST MEM already enabled or in-use"
             << std::endl;

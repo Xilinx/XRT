@@ -58,6 +58,16 @@ static ssize_t user_pf_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(user_pf);
 
+static ssize_t board_name_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+    struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+    return sprintf(buf, "%s\n",
+		xdev->core.priv.board_name ? xdev->core.priv.board_name : "");
+}
+static DEVICE_ATTR_RO(board_name);
+
 /* -live client contexts-- */
 static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -437,6 +447,7 @@ static DEVICE_ATTR_RO(nodma);
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
+    &dev_attr_board_name.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,

@@ -230,7 +230,7 @@ static int updateShell(unsigned index, std::string flashType,
         if (sec->fail())
             sec = nullptr;
     }
- 
+
     return flasher.upgradeFirmware(flashType, pri.get(), sec.get(),
         stripped.get());
 }
@@ -291,6 +291,10 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     bool same_bmc = false;
     DSAInfo current = flasher.getOnBoardDSA();
     isSameShellOrSC(candidate, current, &same_dsa, &same_bmc);
+
+    // Always update Arista devices.
+    if (candidate.vendor_id == ARISTA_ID)
+        same_dsa = false;
 
     if (same_dsa && same_bmc)
         std::cout << "update not needed" << std::endl;
@@ -375,7 +379,11 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id, bool
     bool same_bmc = false;
     DSAInfo currentDSA = flasher.getOnBoardDSA();
     isSameShellOrSC(candidate, currentDSA, &same_dsa, &same_bmc);
- 
+
+    // Always update Arista devices.
+    if (candidate.vendor_id == ARISTA_ID)
+        same_dsa = false;
+
     if (same_dsa && same_bmc) {
         std::cout << "\t Status: shell is up-to-date" << std::endl;
         return DSAInfo("");
@@ -481,9 +489,9 @@ static int autoFlash(unsigned index, std::string& shell,
     }
 
     if (success != 0) {
-        std::cout << success << " Card(s) flashed successfully." << std::endl; 
+        std::cout << success << " Card(s) flashed successfully." << std::endl;
     } else {
-        std::cout << "No cards were flashed." << std::endl; 
+        std::cout << "No cards were flashed." << std::endl;
     }
 
     if (needreboot) {
@@ -740,9 +748,9 @@ static int shell(int argc, char *argv[])
         std::cout << "--card switch is not provided." << std::endl;
         return -EINVAL;
     }
-    
+
     const char* secondary = secondary_file.empty() ? nullptr : secondary_file.c_str() ;
-    
+
     int ret = updateShell(index, type, primary_file.c_str(), secondary);
     if (ret)
         return ret;

@@ -37,11 +37,6 @@
 #include "scan.h"
 #include "core/common/utils.h"
 
-// Supported vendors
-#define XILINX_ID       0x10ee
-#define ADVANTECH_ID    0x13fe
-#define AWS_ID          0x1d0f
-
 #define RENDER_NM       "renderD"
 #define DEV_TIMEOUT	90 // seconds
 
@@ -110,7 +105,7 @@ get_devfs_path(bool is_mgmt, uint32_t instance)
 
 static bool
 is_admin()
-{     
+{
   return (getuid() == 0) || (geteuid() == 0);
 }
 
@@ -449,7 +444,7 @@ sysfs_put(const std::string& subdev, const std::string& entry,
 {
   sysfs::put(sysfs_name, subdev, entry, err, buf);
 }
-  
+
 std::string
 pci_device::
 get_sysfs_path(const std::string& subdev, const std::string& entry)
@@ -519,7 +514,10 @@ pci_device(const std::string& sysfs)
     std::cout << err << std::endl;
     return;
   }
-  if((vendor != XILINX_ID) && (vendor != ADVANTECH_ID) && (vendor != AWS_ID))
+  if ((vendor != XILINX_ID)
+      && (vendor != ADVANTECH_ID)
+      && (vendor != AWS_ID)
+      && (vendor != ARISTA_ID))
     return;
 
   // Determine if the device is mgmt or user pf.
@@ -710,7 +708,7 @@ get_partinfo(std::vector<std::string>& info, void *blob)
     s = p_strings + be32toh(GET_CELL(p));
     if (version < 16 && sz >= 8)
       p = PALIGN(p, 8);
-    
+
     if (strcmp(s, "__INFO")) {
       p = PALIGN(p + sz, 4);
       continue;
@@ -803,7 +801,7 @@ private:
 
     user_list.clear();
     mgmt_list.clear();
-  
+
     if(!bfs::exists(sysfs::root)) {
       std::cout << "File does not exist : " << sysfs::root << std::endl;
       return;
@@ -1055,10 +1053,10 @@ shutdown(std::shared_ptr<pci_device> mgmt_dev, bool remove_user, bool remove_mgm
     int curr_act_dev;
     bfs::ifstream file(parent_path);
     file >> curr_act_dev;
-      
+
     if (curr_act_dev + rem_dev_cnt == active_dev_num)
       return 0;
-     
+
     sleep(1);
   }
 
