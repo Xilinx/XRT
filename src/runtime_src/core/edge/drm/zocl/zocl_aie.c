@@ -17,7 +17,9 @@
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
+#ifndef __NONE_PETALINUX__
 #include <linux/xlnx-ai-engine.h>
+#endif
 
 int
 zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data)

@@ -19,5 +19,30 @@ struct zocl_aie {
 	u32		uid;		/* Imiage identifier loaded */
 };
 
+#ifdef __NONE_PETALINUX__
+
+struct aie_partition_req {
+	__u32 partition_id;
+	__u32 uid;
+	__u64 meta_data;
+	__u32 flag;
+};
+
+static inline struct device *
+aie_partition_request(struct aie_partition_req *req)
+{
+	return NULL;
+}
+
+static inline int
+aie_partition_get_fd(struct device *aie_dev)
+{
+	return -EINVAL;
+
+}
+
+static inline void aie_partition_release(struct device *dev) {}
+
+#endif
 
 #endif /* _ZOCL_AIE_H_ */
