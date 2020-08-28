@@ -28,13 +28,13 @@
 const char *subCmdConfigDesc = "Parse or update daemon/device configuration";
 
 const char *subCmdConfigUsage =
-    "--device [--card bdf] --runtime_clk_scale en(dis)able\n"
+    "--device [--card bdf] [--runtime_clk_scale enable|disable]\n"
     "--enable_retention [--ddr] [--card bdf]\n"
     "--disable_retention [--ddr] [--card bdf]\n";
 const char *subCmdConfigExpUsage =
     "Experts only:\n"
     "--daemon --host ip-or-hostname-for-peer\n"
-    "--device [--card bdf] [--security level] [--cs_threshold_power_override val] [--cs_reset val]\n"
+    "--device [--card bdf] [--security level] [--cs_threshold_power_override val] [--cs_threshold_temp_override val] [--cs_reset val]\n"
     "--show [--daemon | --device [--card bdf]\n";
 
 static struct config {
@@ -48,6 +48,7 @@ enum configs {
     CONFIG_CLK_SCALING,
     CONFIG_CS_THRESHOLD_POWER_OVERRIDE,
     CONFIG_CS_RESET,
+    CONFIG_CS_THRESHOLD_TEMP_OVERRIDE,
 };
 typedef configs configType;
 
@@ -176,25 +177,113 @@ static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
 
     lvl = 0;
     errmsg = "";
+    std::cout << "\t" << "Runtime clock scaling feature:\n";
+    dev->sysfs_get("xmc", "scaling_support", errmsg, lvl, 0);
+    if (!errmsg.empty()) {
+        std::cout << "Error: can't read scaling_support status from " <<
+            dev->sysfs_name << " : " << errmsg << std::endl;
+    } else {
+        std::cout << "\t\t" << "Supported: " << (lvl ? "Yes" : "No") << std::endl;
+    }
+
+    lvl = 0;
+    errmsg = "";
     dev->sysfs_get("xmc", "scaling_enabled", errmsg, lvl, 0);
     if (!errmsg.empty()) {
         std::cout << "Error: can't read scaling_enabled status from " <<
             dev->sysfs_name << " : " << errmsg << std::endl;
     } else {
-        std::cout << "\t" << "Runtime clock scaling enabled status: " <<
-            lvl << std::endl;
+        std::cout << "\t\t" << "Enabled: " << (lvl ? "Yes" : "No") << std::endl;
+    }
+
+    std::cout << "\t\t" << "Critical threshold (clock shutdown) limits:\n";
+    errmsg = "";
+    svl = "";
+    dev->sysfs_get("xmc", "scaling_critical_power_threshold", errmsg, svl);
+    if (!errmsg.empty()) {
+        std::cout << "Error: can't read scaling_critical_power_threshold from "
+			<< dev->sysfs_name << " : " << errmsg << std::endl;
+    } else {
+        std::cout << "\t\t\t" << "Power: " << svl << std::endl;
     }
 
     errmsg = "";
+    svl = "";
+    dev->sysfs_get("xmc", "scaling_critical_temp_threshold", errmsg, svl);
+    if (!errmsg.empty()) {
+        std::cout << "Error: can't read scaling_critical_temp_threshold from "
+			<< dev->sysfs_name << " : " << errmsg << std::endl;
+    } else {
+        std::cout << "\t\t\t" << "Temperature: " << svl << std::endl;
+    }
+
+    std::cout << "\t\t" << "Throttling threshold limits:\n";
+    errmsg = "";
+    svl = "";
+    dev->sysfs_get("xmc", "scaling_threshold_power_limit", errmsg, svl);
+    if (!errmsg.empty()) {
+        std::cout << "Error: can't read scaling_threshold_power_limit from "
+			<< dev->sysfs_name << " : " << errmsg << std::endl;
+    } else {
+        std::cout << "\t\t\t" << "Power: " << svl << std::endl;
+    }
+
+    errmsg = "";
+    svl = "";
+    dev->sysfs_get("xmc", "scaling_threshold_temp_limit", errmsg, svl);
+    if (!errmsg.empty()) {
+        std::cout << "Error: can't read scaling_threshold_temp_limit from "
+			<< dev->sysfs_name << " : " << errmsg << std::endl;
+    } else {
+        std::cout << "\t\t\t" << "Temperature: " << svl << std::endl;
+    }
+
+    std::cout << "\t\t" << "Power threshold override:\n ";
+    lvl = 0;
+    errmsg = "";
+    dev->sysfs_get("xmc", "scaling_threshold_power_override_en", errmsg, lvl, 0);
+    if (!errmsg.empty()) {
+        std::cout << "Error: can't read scaling_threshold_power_override_en from "
+			<< dev->sysfs_name << " : " << errmsg << std::endl;
+    } else {
+        std::cout << "\t\t\t" << "Override: "
+			<< (lvl ? "Enabled" : "Disabled") << std::endl;
+    }
+
+    errmsg = "";
+    svl = "";
     dev->sysfs_get("xmc", "scaling_threshold_power_override", errmsg, svl);
     if (!errmsg.empty()) {
         std::cout << "Error: can't read scaling_threshold_power_override from "
 			<< dev->sysfs_name << " : " << errmsg << std::endl;
     } else {
-        std::cout << "\t" << "scaling_threshold_power_override: " <<
-            svl << std::endl;
+        std::cout << "\t\t\t" << "Override limit: " << svl << std::endl;
     }
 
+    std::cout << "\t\t" << "Temperature threshold override:\n ";
+    lvl = 0;
+    errmsg = "";
+    dev->sysfs_get("xmc", "scaling_threshold_temp_override_en", errmsg, lvl, 0);
+    if (!errmsg.empty()) {
+        std::cout << "Error: can't read scaling_threshold_temp_override_en from "
+			<< dev->sysfs_name << " : " << errmsg << std::endl;
+    } else {
+        std::cout << "\t\t\t" << "Override: " << (lvl ? "Enabled" : "Disabled")
+			<< std::endl;
+    }
+
+    errmsg = "";
+    svl = "";
+    dev->sysfs_get("xmc", "scaling_threshold_temp_override", errmsg, svl);
+    if (!errmsg.empty()) {
+        std::cout << "Error: can't read scaling_threshold_temp_override from "
+			<< dev->sysfs_name << " : " << errmsg << std::endl;
+    } else {
+        std::cout << "\t\t\t" << "Override limit: " << svl << std::endl;
+    }
+
+    lvl = 0;
+    errmsg = "";
     dev->sysfs_get("icap", "data_retention", errmsg, lvl, 0);
     if (!errmsg.empty()) {
         std::cout << "Error: can't read data_retention from " << dev->sysfs_name
@@ -306,6 +395,14 @@ static void updateDevConf(pcidev::pci_device *dev,
             std::cout << "See dmesg log for details" << std::endl;
         }
         break;
+    case CONFIG_CS_THRESHOLD_TEMP_OVERRIDE:
+        dev->sysfs_put("xmc", "scaling_threshold_temp_override", errmsg, lvl);
+        if (!errmsg.empty()) {
+            std::cout << "Error: Failed to update clk scaling temp threshold for " <<
+                dev->sysfs_name << "\n";
+            std::cout << "See dmesg log for details" << std::endl;
+        }
+        break;
     }
 }
 
@@ -320,6 +417,7 @@ static int device(int argc, char *argv[])
         { "runtime_clk_scale", required_argument, nullptr, '2' },
         { "cs_threshold_power_override", required_argument, nullptr, '3' },
         { "cs_reset", required_argument, nullptr, '4' },
+        { "cs_threshold_temp_override", required_argument, nullptr, '5' },
         { nullptr, 0, nullptr, 0 },
     };
 
@@ -349,6 +447,10 @@ static int device(int argc, char *argv[])
         case '4':
             lvl = optarg;
             config_type = CONFIG_CS_RESET;
+            break;
+        case '5':
+            lvl = optarg;
+            config_type = CONFIG_CS_THRESHOLD_TEMP_OVERRIDE;
             break;
         default:
             return -EINVAL;
