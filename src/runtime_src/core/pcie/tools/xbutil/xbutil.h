@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  * Author: Sonal Santan, Ryan Radjabi
  * Simple command line utility to inetract with SDX PCIe devices
  *
@@ -772,7 +772,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("icap", "max_host_mem_aperture",  
                                                                              errmsg, max_host_mem_aperture, 0);
 
-        p2p_enabled = pcidev::check_p2p_config(pcidev::get_dev(m_idx), errmsg);
+        pcidev::get_dev(m_idx)->sysfs_get<int>( "p2p", "p2p_enable",         errmsg, p2p_enabled, 0 );
 
         sensor_tree::put( "board.info.dsa_name",       name() );
         sensor_tree::put( "board.info.vendor",         vendor );
