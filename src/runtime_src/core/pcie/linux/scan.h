@@ -77,7 +77,7 @@ enum pf_type {
     XUSER
 };
 
-static inline enum pf_type drv2type(const std::string driver)
+static inline enum pf_type drv2type(const std::string& driver)
 {
     if (driver.compare("xclmgmt") == 0)
         return XCLMGMT;
@@ -109,8 +109,8 @@ public:
   int user_bar =              0;  // BAR mapped in by tools, default is BAR0
   size_t user_bar_size =      0;
   enum pf_type pf_type =      XCLMGMT;
-  bool is_v2_drv() { return pf_type == XMGMT || pf_type == XUSER; }
-  bool is_mgmt() { return pf_type == XCLMGMT || pf_type == XMGMT; }
+  bool is_v2_drv() const { return pf_type == XMGMT || pf_type == XUSER; }
+  bool is_mgmt() const { return pf_type == XCLMGMT || pf_type == XMGMT; }
   bool is_ready =             false;
 
   pci_device(enum pf_type type, const std::string& sysfs_name);

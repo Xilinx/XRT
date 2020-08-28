@@ -168,7 +168,7 @@ static bool
 devfs_exists(pcidev::pf_type type, uint32_t instance, std::string& sysfsname)
 {
   struct stat buf;
-  std::string devfs = get_devfs_path(type, instance, sysfsname);
+  const std::string devfs = get_devfs_path(type, instance, sysfsname);
 
   if (stat(devfs.c_str(), &buf) == 0)
     return true;
