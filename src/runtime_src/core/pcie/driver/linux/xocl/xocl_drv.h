@@ -579,6 +579,7 @@ struct xocl_version_ctrl_funcs {
 	(VC_CB(xdev, cmc_in_bitfile) ? VC_OPS(xdev)->cmc_in_bitfile(VC_DEV(xdev)) : false)
 
 struct xocl_msix_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*user_intr_config)(struct platform_device *pdev, u32 intr,
 		bool en);
 	int (*user_intr_register)(struct platform_device *pdev, u32 intr,
