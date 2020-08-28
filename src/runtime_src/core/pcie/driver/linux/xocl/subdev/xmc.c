@@ -1171,7 +1171,7 @@ static u32 xmc_get_threshold_power(struct xocl_xmc *xmc)
 
 static u32 xmc_get_threshold_temp(struct xocl_xmc *xmc)
 {
-	u32 base, cntrl, fpga_temp = 0, vccint_temp = 0;
+	u32 base, max, cntrl, fpga_temp = 0, vccint_temp = 0;
 
 	base = XMC_HOST_TEMP_THRESHOLD_BASE_REG;
 	max = XMC_HOST_TEMP_THRESHOLD_BASE_REG + 0xC;
