@@ -16,6 +16,13 @@ if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" 
     fi
 fi
 
+CMAKE_EXTRA_DEF=""
+
+if [[ $OSDIST == "ubuntu" ]]; then
+    OS_VERSION_ID=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
+    CMAKE_EXTRA_DEF="-DBoost_NO_BOOST_CMAKE=ON"
+fi
+
 if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
     # On ARM64 Ubuntu use GCC version 8 if available since default
     # (GCC version 7) has random Internal Compiler Issues compiling XRT
@@ -192,8 +199,8 @@ if [[ $dbg == 1 ]]; then
   mkdir -p $debug_dir
   cd $debug_dir
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
+	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain $CMAKE_EXTRA_DEF ../../src"
+	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain $CMAKE_EXTRA_DEF ../../src
   fi
   echo "make -j $jcore $verbose DESTDIR=$PWD install"
   time make -j $jcore $verbose DESTDIR=$PWD install
@@ -207,8 +214,8 @@ if [[ $opt == 1 ]]; then
   mkdir -p $release_dir
   cd $release_dir
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
+	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain $CMAKE_EXTRA_DEF ../../src"
+	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain $CMAKE_EXTRA_DEF ../../src
   fi
 
   if [[ $docs == 1 ]]; then
@@ -250,8 +257,8 @@ if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
   time make -j $jcore $verbose DESTDIR=$PWD
   cd $BUILDDIR
 fi
-    
-    
+
+
 if [[ $clangtidy == 1 ]]; then
     echo "make clang-tidy"
     make clang-tidy
