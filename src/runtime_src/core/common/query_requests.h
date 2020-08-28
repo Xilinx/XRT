@@ -789,7 +789,7 @@ struct m2m : request
   to_bool(const result_type& value)
   {
      // if m2m does not exist, the execption is thrown
-     return true;
+     return value ? true : false;
   }
 };
 
