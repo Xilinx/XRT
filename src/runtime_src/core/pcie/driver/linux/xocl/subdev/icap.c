@@ -967,7 +967,8 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 
 	if (xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
-		if (XDEV(xdev)->priv.sched_bin) {
+		if (XDEV(xdev)->priv.sched_bin
+			&& !(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_DYNAMIC_IP)) {
 			err = request_firmware(&sche_fw,
 				XDEV(xdev)->priv.sched_bin, &pcidev->dev);
 			if (!err)  {

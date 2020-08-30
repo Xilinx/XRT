@@ -17,11 +17,10 @@
 
 #include "../xocl_drv.h"
 
-#define	ERT_MAX_SLOTS 	128
+#define	ERT_MAX_SLOTS		128
 
-#define	ERT_STATE_GOOD	0x1
-#define	ERT_STATE_BAD	0x2
-
+#define	ERT_STATE_GOOD		0x1
+#define	ERT_STATE_BAD		0x2
 
 //#define	SCHED_VERBOSE	1
 
@@ -569,6 +568,8 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 		}
 		epkt = (struct ert_packet *)ecmd->xcmd->execbuf;
 		ERTUSER_DBG(ert_user, "%s op_code %d ecmd->slot_idx %d\n", __func__, cmd_opcode(ecmd), ecmd->slot_idx);
+
+		//sched_debug_packet(epkt, epkt->count+sizeof(epkt->header)/sizeof(u32));
 
 		if (cmd_opcode(ecmd) == OP_CONFIG && !ert_user->polling_mode) {
 			for (i = 0; i < ert_user->num_slots; i++) {

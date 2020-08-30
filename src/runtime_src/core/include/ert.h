@@ -245,7 +245,8 @@ struct ert_configure_cmd {
   uint32_t dataflow:1;
   /* WORKAROUND: allow xclRegWrite/xclRegRead access shared CU */
   uint32_t rw_shared:1;
-  uint32_t unusedf:23;
+  uint32_t kds_30:1;
+  uint32_t unusedf:22;
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */
@@ -433,6 +434,11 @@ uint32_t ert_base_addr = 0;
 # define ERT_BASE_ADDR                     0x01F30008
 #endif
 
+#if defined(ERT_BUILD_V30)
+uint32_t ert_base_addr = 0;
+# define ERT_BASE_ADDR                     0x01F30008
+#endif
+
 /**
  * Address constants per spec
  */
@@ -443,6 +449,9 @@ uint32_t ert_base_addr = 0;
 # define ERT_CSR_ADDR                      0x360000
 #elif defined(ERT_BUILD_V20)
 # define ERT_CQ_BASE_ADDR                  (0x000000 + ert_base_addr)
+# define ERT_CSR_ADDR                      (0x010000 + ert_base_addr)
+#elif defined(ERT_BUILD_V30)
+# define ERT_CQ_BASE_ADDR                  0x1F60000
 # define ERT_CSR_ADDR                      (0x010000 + ert_base_addr)
 #else
 # define ERT_CQ_BASE_ADDR                  0x190000
@@ -554,8 +563,16 @@ uint32_t ert_base_addr = 0;
 # define ERT_INTC_ADDR                     0x01F20000
 #elif defined(ERT_BUILD_V30)
 # define ERT_INTC_ADDR                     0x01F20000
+# define ERT_INTC_CU_0_31_ADDR             (0x0000 + ert_base_addr)
+# define ERT_INTC_CU_32_63_ADDR            (0x1000 + ert_base_addr)
+# define ERT_INTC_CU_64_95_ADDR            (0x2000 + ert_base_addr)
+# define ERT_INTC_CU_96_127_ADDR           (0x3000 + ert_base_addr)
 #else
 # define ERT_INTC_ADDR                     0x41200000
+# define ERT_INTC_CU_0_31_ADDR             0x0000
+# define ERT_INTC_CU_32_63_ADDR            0x1000
+# define ERT_INTC_CU_64_95_ADDR            0x2000
+# define ERT_INTC_CU_96_127_ADDR           0x3000
 #endif
 
 /**
@@ -585,6 +602,26 @@ uint32_t ert_base_addr = 0;
 #define ERT_INTC_IER_ADDR                 (ERT_INTC_ADDR + 0x8)  /* enable */
 #define ERT_INTC_IAR_ADDR                 (ERT_INTC_ADDR + 0x0C) /* acknowledge */
 #define ERT_INTC_MER_ADDR                 (ERT_INTC_ADDR + 0x1C) /* master enable */
+
+#define ERT_INTC_CU_0_31_IPR              (ERT_INTC_CU_0_31_ADDR + 0x4)  /* pending */
+#define ERT_INTC_CU_0_31_IER              (ERT_INTC_CU_0_31_ADDR + 0x8)  /* enable */
+#define ERT_INTC_CU_0_31_IAR              (ERT_INTC_CU_0_31_ADDR + 0x0C) /* acknowledge */
+#define ERT_INTC_CU_0_31_MER              (ERT_INTC_CU_0_31_ADDR + 0x1C) /* master enable */
+
+#define ERT_INTC_CU_32_63_IPR             (ERT_INTC_CU_32_63_ADDR + 0x4)  /* pending */
+#define ERT_INTC_CU_32_63_IER             (ERT_INTC_CU_32_63_ADDR + 0x8)  /* enable */
+#define ERT_INTC_CU_32_63_IAR             (ERT_INTC_CU_32_63_ADDR + 0x0C) /* acknowledge */
+#define ERT_INTC_CU_32_63_MER             (ERT_INTC_CU_32_63_ADDR + 0x1C) /* master enable */
+
+#define ERT_INTC_CU_64_95_IPR             (ERT_INTC_CU_64_95_ADDR + 0x4)  /* pending */
+#define ERT_INTC_CU_64_95_IER             (ERT_INTC_CU_64_95_ADDR + 0x8)  /* enable */
+#define ERT_INTC_CU_64_95_IAR             (ERT_INTC_CU_64_95_ADDR + 0x0C) /* acknowledge */
+#define ERT_INTC_CU_64_95_MER             (ERT_INTC_CU_64_95_ADDR + 0x1C) /* master enable */
+
+#define ERT_INTC_CU_96_127_IPR            (ERT_INTC_CU_96_127_ADDR + 0x4)  /* pending */
+#define ERT_INTC_CU_96_127_IER            (ERT_INTC_CU_96_127_ADDR + 0x8)  /* enable */
+#define ERT_INTC_CU_96_127_IAR            (ERT_INTC_CU_96_127_ADDR + 0x0C) /* acknowledge */
+#define ERT_INTC_CU_96_127_MER            (ERT_INTC_CU_96_127_ADDR + 0x1C) /* master enable */
 
 /*
 * Used in driver and user space code
