@@ -15,18 +15,10 @@
  */
 
 
-#include <iostream>
-#include <stdexcept>
-#include <string>
-#include <cstring>
-#include <tuple>
-#include <typeinfo>
-
 // XRT includes
 #include "experimental/xrt_device.h"
 #include "experimental/xrt_kernel.h"
 #include "experimental/xrt_bo.h"
-#include "xrt.h"
 
 // Pybind11 includes
 #include <pybind11/pybind11.h>
@@ -49,14 +41,6 @@ m.attr("XCL_BO_FLAGS_NONE") = py::int_(XCL_BO_FLAGS_NONE);
 py::enum_<xclBOSyncDirection>(m, "xclBOSyncDirection")
     .value("XCL_BO_SYNC_BO_TO_DEVICE", xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE)
     .value("XCL_BO_SYNC_BO_FROM_DEVICE", xclBOSyncDirection::XCL_BO_SYNC_BO_FROM_DEVICE);
-
-
-/*
- *
- * XRT:: Functions
- *
- */
-m.def("xclProbe", &xclProbe); 
 
 
 /*

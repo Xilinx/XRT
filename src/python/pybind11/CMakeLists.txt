@@ -17,11 +17,6 @@ if (DEFINED ENV{XCL_EMULATION_MODE})
   message("=============== XRT_CORE_LIB=${XRT_CORE_LIBRARY}")
 endif()
 
-find_library(xrt_core_LIBRARY
-  NAMES ${XRT_CORE_LIBRARY}
-  HINTS "${XILINX_XRT}/lib")
-message("xrt_core_LIBRARY=${xrt_core_LIBRARY}")
-
 find_library(xrt_coreutil_LIBRARY
   NAMES xrt_coreutil
   HINTS "${XILINX_XRT}/lib")
@@ -41,5 +36,5 @@ endif (NOT WIN32)
 include_directories(${XILINX_XRT}/include)
 
 pybind11_add_module(pyxrt src/pyxrt.cpp)
-target_link_libraries(pyxrt PRIVATE ${xrt_core_LIBRARY} ${xrt_coreutil_LIBRARY})
+target_link_libraries(pyxrt PRIVATE ${xrt_coreutil_LIBRARY})
 target_link_libraries(pyxrt PRIVATE ${uuid_LIBRARY} pthread)

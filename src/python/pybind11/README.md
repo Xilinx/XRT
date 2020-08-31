@@ -22,7 +22,6 @@ https://github.com/Xilinx/XRT/tree/master/tests/xrt/02_simple
 ```python
 import pyxrt
 
-pyxrt.xclProbe()
 d = pyxrt.device(0)
 
 xclbin = './simple.xclbin'
