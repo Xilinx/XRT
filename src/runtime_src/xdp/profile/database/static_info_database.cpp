@@ -244,9 +244,9 @@ namespace xdp {
           continue;
         }
         std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
-        if(0 == cuName.compare(0, 3, "dm_")) {
-          /* Assumption : If the IP_KERNEL name starts with "dm_" then it is a data mover and
-           *              it should not be identified as a "CU" in profiling
+        if(std::string::npos != cuName.find(":dm_")) {
+          /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a 
+           *              data mover and it should not be identified as a "CU" in profiling
            */
           continue;
         }
@@ -378,6 +378,26 @@ namespace xdp {
             break;
           }
         }
+        if(-1 == cuId && 0 == monCuName.compare(0, 3, "dm_")) {
+          pos = name.find(" - ");
+          monCuName = name.substr(pos+3);
+          pos = monCuName.find('/');
+          monCuName = monCuName.substr(0, pos);
+        std::cout << " AXI STREAM  MON : name " << name << " :: monCuName " << monCuName << " pos " << pos << std::endl;
+          
+//          size_t pos2 = name.find('/', pos);
+//          monCuName = name.substr(pos+3, (pos2 - (pos+3)));
+//        std::cout << " AXI STREAM  MON : name " << name << " :: monCuName " << monCuName << " pos " << pos << " pos2 " << pos2 << std::endl;
+
+        for(auto cu : devInfo->cus) {
+          if(0 == monCuName.compare(cu.second->getName())) {
+            cuId = cu.second->getIndex();
+            cuObj = cu.second;
+            break;
+          }
+        }
+        }
+
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
