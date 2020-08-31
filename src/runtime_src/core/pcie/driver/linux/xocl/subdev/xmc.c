@@ -128,6 +128,7 @@
 #define	XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK	0xFF
 #define	XMC_CLOCK_SCALING_CRIT_TEMP_THRESHOLD_REG	0x3C
 #define	XMC_CLOCK_SCALING_CRIT_TEMP_THRESHOLD_REG_MASK	0xFF
+#define	XMC_CLOCK_SCALING_CLOCK_STATUS_REG	0x38
 
 //Sensor IDs
 #define	SENSOR_12V_AUX0		0x03
@@ -431,6 +432,7 @@ static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags);
 static bool scaling_condition_check(struct xocl_xmc *xmc);
 static const struct file_operations xmc_fops;
 static bool is_sc_fixed(struct xocl_xmc *xmc);
+static void clock_status_check(struct platform_device *pdev, bool *latched);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -3411,6 +3413,7 @@ static struct xocl_mb_funcs xmc_ops = {
 	.stop			= stop_xmc,
 	.get_data		= xmc_get_data,
 	.xmc_access             = xmc_access,
+	.clock_status			= clock_status_check,
 };
 
 static void xmc_unload_board_info(struct xocl_xmc *xmc)
@@ -3875,6 +3878,31 @@ static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags)
 	return XOCL_DSA_IS_SMARTN(xdev) ?
 		smartnic_cmc_access(pdev, flags) :
 		raptor_cmc_access(pdev, flags);
+}
+
+static void clock_status_check(struct platform_device *pdev, bool *latched)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	u32 cntrl;
+	u32 status = 0;
+
+	if (!xmc->sc_presence) {
+		/*
+		 * On U2, when board temp is above the critical threshold value for 0.5 sec
+		 * continuously, CMC firmware turns off the kernel clocks, and sets 0th bit in
+		 * XMC_CLOCK_SCALING_CLOCK_STATUS_REG to 1.
+		 * So, check if kernel clocks have been stopped.
+		 */
+		status = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_CLOCK_STATUS_REG);
+		if (status & 0x1) {
+			xocl_err(&pdev->dev, "Critical temperature event, "
+					"kernel clocks have been stopped, run "
+					"'xbutil valiate -q' to continue. "
+					"See AR 73398 for more details.");
+			/* explicitly indicate reset should be latched */
+			*latched = true;
+		}
+	}
 }
 
 static void xmc_set_board_info(uint32_t *bdinfo_raw, uint32_t bd_info_sz,

@@ -793,6 +793,7 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*get_data)(struct platform_device *pdev, enum xcl_group_kind kind, void *buf);
 	int (*xmc_access)(struct platform_device *pdev, enum xocl_xmc_flags flags);
+	void (*clock_status)(struct platform_device *pdev, bool *latched);
 };
 
 #define	MB_DEV(xdev)		\
@@ -822,6 +823,9 @@ struct xocl_mb_funcs {
 	(MB_CB(xdev, xmc_access) ? MB_OPS(xdev)->xmc_access(MB_DEV(xdev), XOCL_XMC_FREEZE) : -ENODEV)
 #define xocl_xmc_free(xdev) 		\
 	(MB_CB(xdev, xmc_access) ? MB_OPS(xdev)->xmc_access(MB_DEV(xdev), XOCL_XMC_FREE) : -ENODEV)
+
+#define xocl_xmc_clock_status(xdev, latched)		\
+	(MB_CB(xdev, clock_status) ? MB_OPS(xdev)->clock_status(MB_DEV(xdev), latched) : -ENODEV)
 
 /* ERT FW callbacks */
 #define ERT_DEV(xdev)							\
