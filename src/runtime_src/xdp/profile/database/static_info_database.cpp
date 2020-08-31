@@ -399,7 +399,7 @@ namespace xdp {
         devInfo->nocList.push_back(mon);
       } else if(debugIpData->m_type == TRACE_S2MM && (debugIpData->m_properties & 0x1)) {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
-        devInfo->numAIEPlioDM++;
+        devInfo->numTracePLIO++;
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }

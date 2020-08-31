@@ -190,7 +190,7 @@ namespace xdp {
     bool hasFloatingAIM = false;
     bool hasFloatingASM = false;
 
-    uint8_t numAIEPlioDM = 0;
+    uint32_t numTracePLIO = 0;
 
     ~DeviceInfo()
     {
@@ -498,11 +498,11 @@ namespace xdp {
       return deviceInfo[deviceId]->hasFloatingASM;
     }
 
-    inline uint8_t getNumAIEPlioDM(uint64_t deviceId)
+    inline uint64_t getNumTracePLIO(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
-        return false;
-      return deviceInfo[deviceId]->numAIEPlioDM;
+        return 0;
+      return deviceInfo[deviceId]->numTracePLIO;
     }
 
     // Reseting device information whenever a new xclbin is added
