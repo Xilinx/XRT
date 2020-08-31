@@ -3887,7 +3887,12 @@ static void clock_status_check(struct platform_device *pdev, bool *latched)
 	u32 status = 0;
 
 	if (!xmc->sc_presence) {
-		//check if kernel clocks are stopped
+		/*
+		 * On U2, when board temp is above the critical threshold value for 0.5 sec
+		 * continuously, CMC firmware turns off the kernel clocks, and sets 0th bit in
+		 * XMC_CLOCK_SCALING_CLOCK_STATUS_REG to 1.
+		 * So, check if kernel clocks have been stopped.
+		 */
 		status = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_CLOCK_STATUS_REG);
 		if (status & 0x1) {
 			xocl_err(&pdev->dev, "Critical temperature event, "
