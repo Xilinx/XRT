@@ -266,7 +266,10 @@ int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
 {
     int ret = 0;
 
-    if (!hasSC() || !isXMCReady() || !isBMCReady())
+    if (!hasSC())
+        return -EOPNOTSUPP;
+
+    if (!isXMCReady() || !isBMCReady())
         return -EINVAL;
 
     mPkt = {0};

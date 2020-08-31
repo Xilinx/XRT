@@ -224,6 +224,14 @@ get_core_device() const
   return xrt_core::get_userpf_device(m_handle);
 }
 
+bool
+device::
+is_nodma() const
+{
+  auto device = get_core_device();
+  return device->is_nodma();
+}
+
 void
 device::
 acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
@@ -352,6 +360,9 @@ BufferObjectHandle
 device::
 alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
 {
+  if (domain == Domain::XRT_DEVICE_RAM && is_nodma())
+    return alloc_nodma(sz, domain, memory_index, userptr);
+  
   const bool mmapRequired = (userptr == nullptr);
   auto delBufferObject = [mmapRequired, this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
@@ -399,6 +410,36 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
 
   XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
   return BufferObjectHandle(ubo.release(), delBufferObject);
+}
+
+BufferObjectHandle
+device::
+alloc_nodma(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
+{
+  if (userptr)
+      throw std::bad_alloc();
+
+  if (domain == Domain::XRT_DEVICE_RAM) {
+    // Allocate a buffer object with separate host side BO and device side BO
+
+    // Device only
+    auto boh = alloc(sz, Domain::XRT_DEVICE_ONLY_MEM, memory_index, nullptr);
+
+    // Host only
+    auto bo = getBufferObject(boh);
+    bo->nodma_host_handle = m_ops->mAllocBO(m_handle, sz, 0, XCL_BO_FLAGS_HOST_ONLY);
+
+    // Map the host only BO and use this as host addr.
+    bo->hostAddr = m_ops->mMapBO(m_handle, bo->nodma_host_handle, true /*write*/);
+    bo->nodma = true;
+
+    XRT_DEBUGF("allocated nodma buffer object\n");
+    return boh;
+  }
+
+  // Else just regular BO 
+  return alloc(sz, domain, memory_index, nullptr);
+  
 }
 
 BufferObjectHandle
@@ -484,13 +525,21 @@ read(const BufferObjectHandle& boh, void* dst, size_t sz, size_t offset, bool as
 }
 
 event
-device::sync(const BufferObjectHandle& boh, size_t sz, size_t offset, direction dir1, bool async)
+device::
+sync(const BufferObjectHandle& boh, size_t sz, size_t offset, direction dir1, bool async)
 {
   xclBOSyncDirection dir = XCL_BO_SYNC_BO_TO_DEVICE;
   if(dir1 == direction::DEVICE2HOST)
     dir = XCL_BO_SYNC_BO_FROM_DEVICE;
 
   BufferObject* bo = getBufferObject(boh);
+  if (bo->nodma) {
+    // sync is M2M copy between host and device handle
+    if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
+      return event(typed_event<int>(m_ops->mCopyBO(m_handle, bo->handle, bo->nodma_host_handle, sz, offset, offset)));
+    else
+      return event(typed_event<int>(m_ops->mCopyBO(m_handle, bo->nodma_host_handle, bo->handle, sz, offset, offset)));
+  }
 
   if (async) {
     auto qt = (dir==XCL_BO_SYNC_BO_FROM_DEVICE) ? hal::queue_type::read : hal::queue_type::write;

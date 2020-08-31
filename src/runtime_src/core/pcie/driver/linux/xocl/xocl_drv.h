@@ -257,7 +257,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define XOCL_ARE_HOP 0x400000000ull
 
-#define	XOCL_XILINX_VEN		0x10EE
+#define XOCL_XILINX_VEN 0x10EE
+#define XOCL_ARISTA_VEN 0x3475
+
 #define	XOCL_CHARDEV_REG_COUNT	16
 
 #define INVALID_SUBDEVICE ~0U
@@ -577,6 +579,7 @@ struct xocl_version_ctrl_funcs {
 	(VC_CB(xdev, cmc_in_bitfile) ? VC_OPS(xdev)->cmc_in_bitfile(VC_DEV(xdev)) : false)
 
 struct xocl_msix_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*user_intr_config)(struct platform_device *pdev, u32 intr,
 		bool en);
 	int (*user_intr_register)(struct platform_device *pdev, u32 intr,

@@ -24,5 +24,8 @@ all: user_polling
 user_polling: user_polling.o
 	g++ $^ ${CPPLFLAGS} -o $@
 
+krnl_increment_polling: krnl_increment_polling.o
+	g++ $^ ${CPPLFLAGS} -o $@
+
 clean:
 	rm -rf user_polling *.o

@@ -267,6 +267,7 @@ initialize_query_table()
   emplace_sysfs_get<query::xmc_board_name>              ("xmc", "bd_name");
   emplace_sysfs_get<query::xmc_serial_num>              ("xmc", "serial_num");
   emplace_sysfs_get<query::xmc_max_power>               ("xmc", "max_power");
+  emplace_sysfs_get<query::xmc_sc_presence>             ("xmc", "sc_presence");
   emplace_sysfs_get<query::xmc_bmc_version>             ("xmc", "bmc_ver");
   emplace_sysfs_get<query::expected_bmc_version>        ("xmc", "exp_bmc_ver");
   emplace_sysfs_get<query::xmc_status>                  ("xmc", "status");
@@ -277,9 +278,6 @@ initialize_query_table()
   emplace_sysfs_get<query::m2m>                         ("", "m2m");
   emplace_sysfs_get<query::nodma>                       ("", "nodma");
   emplace_sysfs_get<query::dna_serial_num>              ("dna", "dna");
-  emplace_sysfs_getput<query::xmc_scaling_enabled>      ("xmc", "scaling_enabled");
-  emplace_sysfs_getput<query::xmc_scaling_override>     ("xmc", "scaling_threshold_power_override");
-  emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
   emplace_sysfs_get<query::p2p_config>                  ("p2p", "config");
   emplace_sysfs_get<query::temp_card_top_front>         ("xmc", "xmc_se98_temp0");
   emplace_sysfs_get<query::temp_card_top_rear>          ("xmc", "xmc_se98_temp1");
@@ -426,9 +424,9 @@ write(uint64_t offset, const void* buf, uint64_t len) const
     throw error(err, "write failed");
 }
 
-void 
+void
 device_linux::
-reset(const char* subdev, const char* key, const char* value) const 
+reset(const char* subdev, const char* key, const char* value) const
 {
   std::string err;
   pcidev::get_dev(get_device_id(), false)->sysfs_put(subdev, key, err, value);
@@ -436,7 +434,7 @@ reset(const char* subdev, const char* key, const char* value) const
     throw error("reset failed");
 }
 
-int 
+int
 device_linux::
 open(const std::string& subdev, int flag) const
 {
@@ -445,7 +443,7 @@ open(const std::string& subdev, int flag) const
 
 void
 device_linux::
-close(int dev_handle) const 
+close(int dev_handle) const
 {
   pcidev::get_dev(get_device_id(), false)->close(dev_handle);
 }
