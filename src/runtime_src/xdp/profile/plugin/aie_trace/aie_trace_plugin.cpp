@@ -19,21 +19,16 @@
 #include "xdp/profile/plugin/aie_trace/aie_trace_plugin.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 
+#include "core/common/xrt_profiling.h"
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/device/hal_device/xdp_hal_device.h"
+
 namespace xdp {
 
   AieTracePlugin::AieTracePlugin()
                 : XDPPlugin()
   {
     db->registerPlugin(this);
-
-#if 0
-    writers.push_back(new HALHostTraceWriter("aie_trace.csv",
-                            "" /*version*/,
-                            ""  /*creationTime*/,
-                            "" /*xrtVersion*/,
-                            "" /*toolVersion*/));
-#endif
-    (db->getStaticInfo()).addOpenedFile("aie_trace.csv", "VP_TRACE");
   }
 
   AieTracePlugin::~AieTracePlugin()
@@ -49,6 +44,30 @@ namespace xdp {
 
     // If the database is dead, then we must have already forced a 
     //  write at the database destructor so we can just move on
+  }
+
+  void AieTracePlugin::updateAIETraceWriter(void* handle)
+  {
+    char pathBuf[512];
+    memset(pathBuf, 0, 512);
+    xclGetDebugIPlayoutPath(handle, pathBuf, 512);
+
+    std::string path(pathBuf);
+
+    uint64_t deviceId = db->addDevice(path);
+
+    // Assumption : the DB is already populated with the current device data
+    auto numAIEPlioDM = (db->getStaticInfo()).getNumAIEPlioDM(deviceId);
+    for(auto n = 0 ; n < numAIEPlioDM ; n++) {
+      std::string fileName = "aie_trace_" + std::to_string(n) + ".txt";
+      std::string emptyStr;
+      writers.push_back(new AIETraceWriter(fileName.c_str(),
+                            emptyStr /*version*/,
+                            emptyStr /*creationTime*/,
+                            emptyStr /*xrtVersion*/,
+                            emptyStr /*toolVersion*/));
+      (db->getStaticInfo()).addOpenedFile(fileName, "AIE_EVENT_TRACE");
+    }
   }
 
   void AieTracePlugin::writeAll(bool openNewFiles)

@@ -2334,6 +2334,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       core_device->register_axlf(buffer);
 #ifdef ENABLE_HAL_PROFILING
       xdphal::update_device(handle) ;
+      xdphal::update_aie_trace_writer(handle);
 #endif
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN

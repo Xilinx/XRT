@@ -1663,6 +1663,7 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
   xdphal::update_device(handle) ;
+  xdphal::update_aie_trace_writer(handle);
 #endif
 #endif
 

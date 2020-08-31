@@ -14,8 +14,11 @@
  * under the License.
  */
 
+#include <functional>
 #include "plugin/xdp/aie_trace.h"
 #include "core/common/module_loader.h"
+#include "core/common/dlfcn.h"
+
 
 namespace xdpaietrace {
 
@@ -26,8 +29,13 @@ namespace xdpaietrace {
                                                         warning_aie_trace_callbacks);
   }
 
-  void register_aie_trace_callbacks(void* /*handle*/)
+  std::function<void (void*)> update_aie_trace_writer_cb;
+
+  void register_aie_trace_callbacks(void* handle)
   {
+    typedef void (*ftype)(void*) ;
+    update_aie_trace_writer_cb = (ftype)(xrt_core::dlsym(handle, "updateAIETraceWriter")) ;
+    if (xrt_core::dlerror() != NULL) update_aie_trace_writer_cb = nullptr ;
   }
 
   void warning_aie_trace_callbacks()
@@ -35,3 +43,14 @@ namespace xdpaietrace {
   }
 
 } // end namespace xdpaietrace
+
+namespace xdphal {
+
+ void update_aie_trace_writer(void* handle)
+  {
+    if (xdpaietrace::update_aie_trace_writer_cb != nullptr)
+    {
+      xdpaietrace::update_aie_trace_writer_cb(handle) ;
+    }
+  }
+}

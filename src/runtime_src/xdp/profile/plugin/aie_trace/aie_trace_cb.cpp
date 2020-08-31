@@ -14,13 +14,25 @@
  * under the License.
  */
 
+#include "xdp/profile/plugin/aie_trace/aie_trace_cb.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_plugin.h"
 
 namespace xdp {
 
-  // AIE Trace Plugin has only a static instance of the plugin object, but no callbacks
+  // AIE Trace Plugin has only a static instance of the plugin object and a callback
 
-  static AieTracePlugin aieTracePluginInstance ;
+  static AieTracePlugin aieTracePluginInstance;
+
+  static void updateAIETraceWriter(void* handle)
+  {
+    aieTracePluginInstance.updateAIETraceWriter(handle);
+  }
 
 } // end namespace xdp
+
+extern "C" 
+void updateAIETraceWriter(void* handle)
+{
+  xdp::updateAIETraceWriter(handle);
+}
 

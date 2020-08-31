@@ -14,30 +14,10 @@
  * under the License.
  */
 
-#ifndef AIE_TRACE_PLUGIN_H
-#define AIE_TRACE_PLUGIN_H
+#ifdef  XDP_PLUGIN_AIE_TRACE_CB_H
+#define XDP_PLUGIN_AIE_TRACE_CB_H
 
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+extern "C" 
+void updateAIETraceWriter(void* handle) ;
 
-namespace xdp {
-
-  class AieTracePlugin : public XDPPlugin
-  {
-
-    public:
-      XDP_EXPORT
-      AieTracePlugin();
-
-      XDP_EXPORT
-      ~AieTracePlugin();
-
-      XDP_EXPORT
-      void updateAIETraceWriter(void* handle);
-
-      XDP_EXPORT
-      virtual void writeAll(bool openNewFiles);
-  };
-    
-}   
-    
 #endif
