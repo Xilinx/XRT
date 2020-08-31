@@ -11,8 +11,8 @@ else()
   find_package(OpenCL)
 endif(WIN32)
 
-include_directories( ${XILINX_XRT}/include ${XILINX_XRT}/ext/include src/ common/includes/xcl2 )
-add_executable(${TESTNAME} common/includes/xcl2/xcl2.cpp src/host.cpp)
+include_directories( ${XILINX_XRT}/include ${XILINX_XRT}/ext/include src/ ../common/includes/xcl2 )
+add_executable(${TESTNAME} ../common/includes/xcl2/xcl2.cpp src/host.cpp)
 target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY})
 
 if (NOT WIN32)
