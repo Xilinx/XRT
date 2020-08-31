@@ -58,6 +58,16 @@ static ssize_t user_pf_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(user_pf);
 
+static ssize_t board_name_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+    struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+    return sprintf(buf, "%s\n",
+		xdev->core.priv.board_name ? xdev->core.priv.board_name : "");
+}
+static DEVICE_ATTR_RO(board_name);
+
 /* -live client contexts-- */
 static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -107,7 +117,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 
 	mutex_lock(&xdev->dev_lock);
 
-	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+	err = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
 	if (err) {
 		mutex_unlock(&xdev->dev_lock);
 		return err;
@@ -145,7 +155,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	}
 
 done:
-	XOCL_PUT_MEM_TOPOLOGY(xdev);
+	XOCL_PUT_GROUP_TOPOLOGY(xdev);
 	mutex_unlock(&xdev->dev_lock);
 	return size;
 }
@@ -412,21 +422,32 @@ static ssize_t ulp_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ulp_uuids);
 
-static ssize_t mig_cache_update_store(struct device *dev,
-		struct device_attribute *da, const char *buf, size_t count)
+static ssize_t mig_cache_update_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
 	xocl_update_mig_cache(xdev);
 
-	return count;
+	return 0;
 }
-static DEVICE_ATTR_WO(mig_cache_update);
+static DEVICE_ATTR_RO(mig_cache_update);
+
+static ssize_t nodma_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	/* A shell without dma subdev and with m2m subdev is nodma shell */
+	return sprintf(buf, "%d\n", (!DMA_DEV(xdev) && M2M_DEV(xdev)));
+}
+static DEVICE_ATTR_RO(nodma);
 
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
+    &dev_attr_board_name.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
@@ -444,6 +465,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
 	&dev_attr_mig_cache_update.attr,
+	&dev_attr_nodma.attr,
 	NULL,
 };
 

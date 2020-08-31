@@ -72,6 +72,23 @@ struct mfg
   }
 };
 
+struct ready
+{
+  using result_type = bool;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return true;
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return true;
+  }
+};
+
 struct board_name
 {
   using result_type = std::string;
@@ -86,40 +103,6 @@ struct board_name
   mgmt(const xrt_core::device* device, key_type key)
   {
     return "TO-DO";
-  }
-};
-
-struct logic_uuids
-{
-  using result_type = std::vector<std::string>;
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return std::vector<std::string>{"TO-DO"};
-  }
-
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return std::vector<std::string>{"TO-DO"};
-  }
-};
-
-struct interface_uuids
-{
-  using result_type = std::vector<std::string>;
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return std::vector<std::string>{"TO-DO"};
-  }
-
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return std::vector<std::string>{"TO-DO"};
   }
 };
 
@@ -225,13 +208,13 @@ struct mig
   }
 
   static result_type
-  user(const xrt_core::device* device, key_type key, const boost::any&)
+  user(const xrt_core::device* device, key_type key, query::request::modifier, const std::string&)
   {
     return get(device,key);
   }
 
   static result_type
-  mgmt(const xrt_core::device* device, key_type key, const boost::any&)
+  mgmt(const xrt_core::device* device, key_type key, query::request::modifier, const std::string&)
   {
     throw std::runtime_error("query request ("
                              + std::to_string(static_cast<qtype>(key))
@@ -274,7 +257,7 @@ struct board
     case key_type::xmc_max_power:
       return query::xmc_max_power::result_type(info.max_power);
     case key_type::fan_fan_presence:
-      return query::fan_fan_presence::result_type(info.fan_presence);
+      return query::fan_fan_presence::result_type(info.fan_presence == 0 ? "P" : "A");
     default:
       throw std::runtime_error("device_windows::board_info() unexpected qr "
                                + static_cast<qtype>(key));
@@ -362,6 +345,8 @@ struct sensor
       return query::v3v3_pex_millivolts::result_type(info.vol_3v3_pex);
     case key_type::v3v3_aux_millivolts:
       return query::v3v3_aux_millivolts::result_type(info.vol_3v3_aux);
+    case key_type::v3v3_aux_milliamps:
+      return query::v3v3_aux_milliamps::result_type(info.cur_3v3_aux);
     case key_type::ddr_vpp_bottom_millivolts:
       return query::ddr_vpp_bottom_millivolts::result_type(info.ddr_vpp_btm);
     case key_type::ddr_vpp_top_millivolts:
@@ -388,16 +373,16 @@ struct sensor
       return query::int_vcc_milliamps::result_type(info.vccint_curr);
     case key_type::v3v3_pex_milliamps:
       return query::v3v3_pex_milliamps::result_type(info.cur_3v3_pex);
-    case key_type::v0v85_milliamps:
-      return query::v0v85_milliamps::result_type(info.cur_0v85);
+    case key_type::int_vcc_io_milliamps:
+      return query::int_vcc_io_milliamps::result_type(info.cur_0v85);
     case key_type::v3v3_vcc_millivolts:
       return query::v3v3_vcc_millivolts::result_type(info.vol_3v3_vcc);
     case key_type::hbm_1v2_millivolts:
       return query::hbm_1v2_millivolts::result_type(info.vol_1v2_hbm);
     case key_type::v2v5_vpp_millivolts:
       return query::v2v5_vpp_millivolts::result_type(info.vol_2v5_vpp);
-    case key_type::int_bram_vcc_millivolts:
-      return query::int_bram_vcc_millivolts::result_type(info.vccint_bram);
+    case key_type::int_vcc_io_millivolts:
+      return query::int_vcc_io_millivolts::result_type(info.vccint_bram);
     case key_type::temp_card_top_front:
       return query::temp_card_top_front::result_type(info.se98_temp0);
     case key_type::temp_card_top_rear:
@@ -609,7 +594,7 @@ struct bdf
 
 struct info
 {
-  using result_type = uint16_t;
+  using result_type = boost::any;
 
   static result_type
   user(const xrt_core::device* device, key_type key)
@@ -633,13 +618,13 @@ struct info
 
     switch (key) {
     case key_type::pcie_vendor:
-      return info.Vendor;
+      return static_cast<query::pcie_vendor::result_type>(info.Vendor);
     case key_type::pcie_device:
-      return info.Device;
+      return static_cast<query::pcie_device::result_type>(info.Device);
     case key_type::pcie_subsystem_vendor:
-      return info.SubsystemVendor;
+      return static_cast<query::pcie_subsystem_vendor::result_type>(info.SubsystemVendor);
     case key_type::pcie_subsystem_id:
-      return info.SubsystemDevice;
+      return static_cast<query::pcie_subsystem_id::result_type>(info.SubsystemDevice);
     default:
       throw std::runtime_error("device_windows::info_user() unexpected qr");
     }
@@ -667,16 +652,54 @@ struct info
 
     switch (key) {
     case key_type::pcie_vendor:
-      return info.pcie_info.vendor;
+      return static_cast<query::pcie_vendor::result_type>(info.pcie_info.vendor);
     case key_type::pcie_device:
-      return info.pcie_info.device;
+      return static_cast<query::pcie_device::result_type>(info.pcie_info.device);
     case key_type::pcie_subsystem_vendor:
-      return info.pcie_info.subsystem_vendor;
+      return static_cast<query::pcie_subsystem_vendor::result_type>(info.pcie_info.subsystem_vendor);
     case key_type::pcie_subsystem_id:
-      return info.pcie_info.subsystem_device;
+      return static_cast<query::pcie_subsystem_id::result_type>(info.pcie_info.subsystem_device);
+    case key_type::interface_uuids:
+      return std::vector<std::string>{ std::string(info.interface_uuid) };
+    case key_type::logic_uuids:
+      return std::vector<std::string>{ std::string(info.logic_uuid) };
+    case key_type::xmc_reg_base:
+      return info.xmc_offset;
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
+  }
+};
+
+struct flash_bar_offset
+{
+  using result_type = uint64_t;
+
+  static result_type
+  user(const xrt_core::device* device, key_type)
+  {
+    return 0;
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type)
+  {
+    auto init_addr = [](const xrt_core::device* dev) {
+      uint64_t addr;
+      mgmtpf::get_flash_addr(dev->get_mgmt_handle(), addr);
+      return addr;
+    };
+
+    static std::map<const xrt_core::device*, uint64_t> info_map;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = info_map.find(device);
+    if (it == info_map.end()) {
+      auto ret = info_map.emplace(device,init_addr(device));
+      it = ret.first;
+    }
+
+    return (*it).second;
   }
 };
 
@@ -769,7 +792,6 @@ struct function0_getter : QueryRequestType
     else
       throw std::runtime_error("No device handle");
   }
-
 };
 
 template <typename QueryRequestType, typename Getter>
@@ -786,6 +808,25 @@ struct function1_getter : QueryRequestType
       return Getter::mgmt(device,k,any);
     else if (auto uhdl = device->get_user_handle())
       return Getter::user(device,k,any);
+    else
+      throw std::runtime_error("No device handle");
+  }
+};
+
+template <typename QueryRequestType, typename Getter>
+struct function2_getter : QueryRequestType
+{
+  static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value
+             || std::is_same<Getter::result_type, boost::any>::value, "type mismatch");
+
+  boost::any
+  get(const xrt_core::device* device, query::request::modifier m, const std::string& v) const
+  {
+    auto k = QueryRequestType::key;
+    if (auto mhdl = device->get_mgmt_handle())
+      return Getter::mgmt(device,k,m,v);
+    else if (auto uhdl = device->get_user_handle())
+      return Getter::user(device,k,m,v);
     else
       throw std::runtime_error("No device handle");
   }
@@ -809,6 +850,14 @@ emplace_function1_getter()
   query_tbl.emplace(k, std::make_unique<function1_getter<QueryRequestType, Getter>>());
 }
 
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_function2_getter()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function2_getter<QueryRequestType, Getter>>());
+}
+
 static void
 initialize_query_table()
 {
@@ -816,6 +865,9 @@ initialize_query_table()
   emplace_function0_getter<query::pcie_device,               info>();
   emplace_function0_getter<query::pcie_subsystem_vendor,     info>();
   emplace_function0_getter<query::pcie_subsystem_id,         info>();
+  emplace_function0_getter<query::interface_uuids,           info>();
+  emplace_function0_getter<query::logic_uuids,               info>();
+  emplace_function0_getter<query::xmc_reg_base,              info>();
   emplace_function0_getter<query::pcie_bdf,                  bdf>();
   emplace_function0_getter<query::rom_vbnv,                  rom>();
   emplace_function0_getter<query::rom_ddr_bank_size_gb,      rom>();
@@ -836,6 +888,7 @@ initialize_query_table()
   emplace_function0_getter<query::v12v_aux_milliamps,        sensor>();
   emplace_function0_getter<query::v3v3_pex_millivolts,       sensor>();
   emplace_function0_getter<query::v3v3_aux_millivolts,       sensor>();
+  emplace_function0_getter<query::v3v3_aux_milliamps,        sensor>();
   emplace_function0_getter<query::ddr_vpp_bottom_millivolts, sensor>();
   emplace_function0_getter<query::ddr_vpp_top_millivolts,    sensor>();
   emplace_function0_getter<query::v5v5_system_millivolts,    sensor>();
@@ -849,11 +902,11 @@ initialize_query_table()
   emplace_function0_getter<query::int_vcc_millivolts,        sensor>();
   emplace_function0_getter<query::int_vcc_milliamps,         sensor>();
   emplace_function0_getter<query::v3v3_pex_milliamps,        sensor>();
-  emplace_function0_getter<query::v0v85_milliamps,           sensor>();
+  emplace_function0_getter<query::int_vcc_io_milliamps,      sensor>();
   emplace_function0_getter<query::v3v3_vcc_millivolts,       sensor>();
   emplace_function0_getter<query::hbm_1v2_millivolts,        sensor>();
   emplace_function0_getter<query::v2v5_vpp_millivolts,       sensor>();
-  emplace_function0_getter<query::int_bram_vcc_millivolts,   sensor>();
+  emplace_function0_getter<query::int_vcc_io_millivolts,     sensor>();
   emplace_function0_getter<query::temp_card_top_front,       sensor>();
   emplace_function0_getter<query::temp_card_top_rear,        sensor>();
   emplace_function0_getter<query::temp_card_bottom_front,    sensor>();
@@ -875,19 +928,21 @@ initialize_query_table()
   emplace_function0_getter<query::xmc_max_power,             board>();
   emplace_function0_getter<query::xmc_bmc_version,           board>();
   emplace_function0_getter<query::fan_fan_presence,          board>();
-  emplace_function1_getter<query::mig_ecc_enabled,           mig>();
-  emplace_function1_getter<query::mig_ecc_status,            mig>();
-  emplace_function1_getter<query::mig_ecc_ce_cnt,            mig>();
-  emplace_function1_getter<query::mig_ecc_ue_cnt,            mig>();
-  emplace_function1_getter<query::mig_ecc_ce_ffa,            mig>();
-  emplace_function1_getter<query::mig_ecc_ue_ffa,            mig>();
+  emplace_function2_getter<query::mig_ecc_enabled,           mig>();
+  emplace_function2_getter<query::mig_ecc_status,            mig>();
+  emplace_function2_getter<query::mig_ecc_ce_cnt,            mig>();
+  emplace_function2_getter<query::mig_ecc_ue_cnt,            mig>();
+  emplace_function2_getter<query::mig_ecc_ce_ffa,            mig>();
+  emplace_function2_getter<query::mig_ecc_ue_ffa,            mig>();
   emplace_function0_getter<query::firewall_detect_level,     firewall>();
   emplace_function0_getter<query::firewall_status,           firewall>();
   emplace_function0_getter<query::firewall_time_sec,         firewall>();
   emplace_function0_getter<query::f_flash_type,              flash>();
   emplace_function0_getter<query::flash_type,                flash>();
   emplace_function0_getter<query::is_mfg,                    mfg>();
+  emplace_function0_getter<query::is_ready,                  ready>();
   emplace_function0_getter<query::board_name,                board_name>();
+  emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
 }
 
 struct X { X() { initialize_query_table(); }};
@@ -948,9 +1003,9 @@ write(uint64_t addr, const void* buf, uint64_t len) const
   mgmtpf::write_bar(m_mgmthdl, addr, buf, len);
 }
 
-void 
+void
 device_windows::
-reset(const char*, const char*, const char*) const 
+reset(const char*, const char*, const char*) const
 {
   throw std::runtime_error("Reset is not supported on Windows.");
 }

@@ -375,7 +375,7 @@ done:
 
 
   int
-  open_context(xuid_t xclbin_id, unsigned int ip_idx, bool shared)
+  open_context(const xuid_t xclbin_id, unsigned int ip_idx, bool shared)
   {
     HANDLE deviceHandle = m_dev;
     XOCL_CTX_ARGS ctxArgs = { 0 };
@@ -410,7 +410,7 @@ done:
   }
 
   int
-  close_context(xuid_t xclbin_id, unsigned int ip_idx)
+  close_context(const xuid_t xclbin_id, unsigned int ip_idx)
   {
     HANDLE deviceHandle = m_dev;
     XOCL_CTX_ARGS ctxArgs = { 0 };
@@ -551,7 +551,7 @@ done:
     DWORD error = 0;
     DWORD bytesWritten;
     ULONG return_status = 0;
-	
+
 
     if (!DeviceIoControl(deviceHandle,
                          IOCTL_XOCL_READ_AXLF,
@@ -566,9 +566,9 @@ done:
 
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
-      
+
       goto out;
-    
+
     }
     if (return_status != NTSTATUS_STATUS_SUCCESS)
     {
@@ -582,17 +582,17 @@ done:
 
         }
         else {
-        
+
             xrt_core::message::
                 send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with NTSTATUS %x", return_status);
-        
+
         }
 
     }
 
- 
+
   out:
- 
+
     return error ? false : true;
 
   }
@@ -1395,9 +1395,28 @@ xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection d
   return shim->sync_bo(boHandle, dir, size, offset);
 }
 
+int
+xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle,
+          xclBufferHandle srcBoHandle, size_t size, size_t dst_offset,
+          size_t src_offset)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclCopyBO() NOT IMPLEMENTED");
+  return ENOSYS;
+}
+
+int
+xclReClock2(xclDeviceHandle handle, unsigned short region,
+            const uint16_t* targetFreqMHz)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReClock2() NOT IMPLEMENTED");
+  return ENOSYS;
+}
+
 // Compute Unit Execution Management APIs
 int
-xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex, bool shared)
+xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclOpenContext()");
@@ -1409,7 +1428,7 @@ xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex, bo
 	  : shim->open_context(xclbinId, ipIndex, shared);
 }
 
-int xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclCloseContext()");
@@ -1439,14 +1458,16 @@ xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return shim->exec_wait(timeoutMilliSec);
 }
 
-int xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
+xclBufferExportHandle
+xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExportBO() NOT IMPLEMENTED");
-  return ENOSYS;
+  return INVALID_HANDLE_VALUE;
 }
 
-xclBufferHandle xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
+xclBufferHandle
+xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned flags)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclImportBO() NOT IMPLEMENTED");
@@ -1535,7 +1556,7 @@ xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf, size
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnmgdPwrite()");
   auto shim = get_shim_object(handle);
-  return shim->unmgd_pwrite(flags, buf, count, offset);
+  return shim->unmgd_pwrite(flags, buf, count, offset) ? 0 : 1;
 }
 
 ssize_t
@@ -1544,7 +1565,7 @@ xclUnmgdPread(xclDeviceHandle handle, unsigned int flags, void *buf, size_t coun
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnmgdPread()");
   auto shim = get_shim_object(handle);
-  return shim->unmgd_pread(flags, buf, count, offset);
+  return shim->unmgd_pread(flags, buf, count, offset) ? 0 : 1;
 }
 
 size_t xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
@@ -1587,6 +1608,19 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclRead()");
   auto shim = get_shim_object(handle);
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
+}
+
+// Restricted read/write on IP register space
+int
+xclRegWrite(xclDeviceHandle handle, uint32_t ipidx, uint32_t offset, uint32_t data)
+{
+  return 1;
+}
+
+int
+xclRegRead(xclDeviceHandle handle, uint32_t ipidx, uint32_t offset, uint32_t* datap)
+{
+  return 1;
 }
 
 int
@@ -1663,10 +1697,15 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
   return size;
 }
 
-int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
-                        uint32_t idx, char* path, size_t size)
+int
+xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
+                 uint32_t idx, char* path, size_t size)
 {
   return 0;
 }
 
-
+int
+xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
+{
+  return 1; // -ENOSYS;
+}

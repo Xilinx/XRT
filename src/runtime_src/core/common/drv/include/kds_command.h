@@ -17,14 +17,15 @@
 #define KEY_VAL 1
 
 enum kds_opcode {
-	OP_CONFIG_CTRL	= 0,
+	OP_CONFIG = 0,
 	OP_START,
-	OP_ECHO, /* Reserved for performance test purpose */
 };
 
 enum kds_status {
 	KDS_COMPLETED	= 0,
 	KDS_ERROR	= 1,
+	KDS_ABORT,
+	KDS_TIMEOUT,
 };
 
 struct kds_command;
@@ -32,6 +33,13 @@ struct kds_command;
 struct kds_cmd_ops {
 	void (*notify_host)(struct kds_command *xcmd, int status);
 	void (*free)(struct kds_command *xcmd);
+};
+
+struct in_kernel_cb {
+	struct work_struct work;
+	void (*func)(unsigned long cb_data, int err);
+	void *data;
+	int  cmd_state;
 };
 
 /**
@@ -53,11 +61,15 @@ struct kds_command {
 	u32			 cu_mask[4];
 	u32			 num_mask;
 	u32			 payload_type;
+	u64			 start;
 	struct kds_cmd_ops	 cb;
 	/* execbuf is used to update the header
 	 * of execbuf when notifying host
 	 */
 	u32			*execbuf;
+	void			*gem_obj;
+	/* to notify inkernel exec completion */
+	struct in_kernel_cb	*inkern_cb;
 };
 
 /* execbuf command related funtions */

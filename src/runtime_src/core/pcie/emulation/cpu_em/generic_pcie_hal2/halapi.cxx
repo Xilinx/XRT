@@ -520,9 +520,13 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-  return 0;
+  return -ENOSYS;
 }
 
+ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
+{
+  return -ENOSYS;
+}
 
 /*
  * API to get number of live processes.
@@ -561,7 +565,7 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 }
 
 //Added below calls as a fix for CR-1034151
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
@@ -579,10 +583,21 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
   return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
+}
+
+// Restricted read/write on IP register space
+int xclRegWrite(xclDeviceHandle, uint32_t, uint32_t, uint32_t)
+{
+  return 1;
+}
+
+int xclRegRead(xclDeviceHandle, uint32_t, uint32_t, uint32_t*)
+{
+  return 1;
 }
 
 int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
@@ -614,4 +629,8 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
   return 0;
 }
 
-
+int
+xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
+{
+  return -ENOSYS;
+}

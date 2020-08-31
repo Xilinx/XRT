@@ -34,7 +34,7 @@ class Report {
     text,
     unknown,
     json_internal,
-    json_20201,
+    json_20202,
   };
  
   // Helper mapping between string and enum
@@ -64,7 +64,7 @@ class Report {
  protected:
   virtual void writeReport(const xrt_core::device *_pDevice, const std::vector<std::string> & _elementsFilter, std::iostream & _output) const = 0;
   virtual void getPropertyTreeInternal(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
-  virtual void getPropertyTree20201(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
+  virtual void getPropertyTree20202(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
 
  // Child class Helper methods
  protected:

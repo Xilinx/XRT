@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,6 +27,7 @@
 
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/query_requests.h"
 #include "core/common/xclbin_parser.h"
 
 #include <iostream>
@@ -116,6 +117,15 @@ host_copy_message(const xocl::memory* dst, const xocl::memory* src)
 {
   std::stringstream str;
   str << "Reverting to host copy for src buffer(" << src->get_uid() << ") "
+      << "to dst buffer(" << dst->get_uid() << ")";
+  xrt::message::send(xrt::message::severity_level::XRT_WARNING,str.str());
+}
+
+XOCL_UNUSED static void
+cmd_copy_message(const xocl::memory* dst, const xocl::memory* src)
+{
+  std::stringstream str;
+  str << "No M2M, reverting to command based copying for src buffer(" << src->get_uid() << ") "
       << "to dst buffer(" << dst->get_uid() << ")";
   xrt::message::send(xrt::message::severity_level::XRT_WARNING,str.str());
 }
@@ -228,9 +238,23 @@ std::string
 device::
 get_bdf() const 
 {
-  if (m_xdevice)
-    return m_xdevice->get_bdf();
-  throw xocl::error(CL_INVALID_DEVICE, "No BDF");
+  if (!m_xdevice)
+    throw xocl::error(CL_INVALID_DEVICE, "No BDF");
+
+  auto core_device = m_xdevice->get_core_device();
+  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(core_device);
+  return xrt_core::query::pcie_bdf::to_string(bdf);
+}
+
+bool
+device::
+is_nodma() const 
+{
+  if (!m_xdevice)
+    throw xocl::error(CL_INVALID_DEVICE, "Can't check for nodma");
+
+  auto core_device = m_xdevice->get_core_device();
+  return core_device->is_nodma();
 }
 
 void*
@@ -475,11 +499,6 @@ device(platform* pltf, xrt::device* xdevice)
   : m_uid(uid_count++), m_platform(pltf), m_xdevice(xdevice)
 {
   XOCL_DEBUG(std::cout,"xocl::device::device(",m_uid,")\n");
-
-  // lock/open the device once to ensure that device info data
-  // for this device is cached.  There are device level APIs
-  // that access data from low level device info.
-  (void) lock_guard();
 }
 
 device::
@@ -878,6 +897,30 @@ void
 device::
 copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size, const cmd_type& cmd)
 {
+  // if m2m present then use xclCopyBO
+  try {
+    auto core_device = m_xdevice->get_core_device();
+    auto m2m = xrt_core::device_query<xrt_core::query::m2m>(core_device);
+    if (xrt_core::query::m2m::to_bool(m2m)) {
+      auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz, const cmd_type& c) {
+        c->start();
+        auto sboh = sbuf->get_buffer_object(this);
+        auto dboh = sbuf->get_buffer_object(this);
+        m_xdevice->copy(dboh, sboh, sz, doff, soff);
+        c->done();
+      };
+      m_xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
+      // Driver fills dst buffer same as migrate_buffer does, hence dst buffer
+      // is resident after KDMA is done even if host does explicitly migrate.
+      dst_buffer->set_resident(this);
+      return;
+    }
+  }
+  catch (...) {
+    // enable when m2m is the norm
+    // cmd_copy_message(src_buffer, dst_buffer);
+  }
+  
   // Check if any of the buffers are imported
   bool imported = is_imported(src_buffer) || is_imported(dst_buffer);
 
@@ -1087,7 +1130,7 @@ load_program(program* program)
 
   std::lock_guard<std::mutex> lock(m_mutex);
 
-  if (m_active && !std::getenv("XCL_CONFORMANCE"))
+  if (m_active)
     throw xocl::error(CL_OUT_OF_RESOURCES,"program already loaded on device");
 
   auto binary_data = program->get_xclbin_binary(this);
@@ -1141,7 +1184,7 @@ load_program(program* program)
   // Add compute units for each kernel in the program.
   // Note, that conformance mode renames the kernels in the xclbin
   // so iterating kernel names and looking up symbols from kernels
-  // isn't possible, we *must* iterator symbols explicitly
+  // isn't possible, we *must* iterate symbols explicitly
   clear_cus();
   m_cu_memidx = -2;
   auto cu2addr = get_xclbin_cus(this);

@@ -9,16 +9,16 @@
 
 #include "xrt_cu.h"
 
-#define ECHO 0
+extern int kds_echo;
 
-static int cu_plram_get_credit(void *core)
+static int cu_plram_alloc_credit(void *core)
 {
 	struct xrt_cu_plram *cu_plram = core;
 
 	return (cu_plram->credits) ? cu_plram->credits-- : 0;
 }
 
-static void cu_plram_put_credit(void *core, u32 count)
+static void cu_plram_free_credit(void *core, u32 count)
 {
 	struct xrt_cu_plram *cu_plram = core;
 
@@ -27,28 +27,33 @@ static void cu_plram_put_credit(void *core, u32 count)
 		cu_plram->credits = cu_plram->max_credits;
 }
 
+static int cu_plram_peek_credit(void *core)
+{
+	struct xrt_cu_plram *cu_plram = core;
+
+	return cu_plram->credits;
+}
+
 static void cu_plram_configure(void *core, u32 *data, size_t sz, int type)
 {
-#if ECHO
-	return;
-#else
 	struct xrt_cu_plram *cu_plram = core;
+
+	if (kds_echo)
+		return;
 
 	/* TODO: Configure in specific slot */
 	memcpy(cu_plram->plram, data, sz);
-#endif
 }
 
 static void cu_plram_start(void *core)
 {
-#if ECHO
-	return;
-#else
 	struct xrt_cu_plram *cu_plram = core;
+
+	if (kds_echo)
+		return;
 
 	/* TODO: Start CU in specific slot */
 	iowrite32(0x0, cu_plram->vaddr + 0x10);
-#endif
 }
 
 static void cu_plram_check(void *core, struct xcu_status *status)
@@ -56,9 +61,11 @@ static void cu_plram_check(void *core, struct xcu_status *status)
 	struct xrt_cu_plram *cu_plram = core;
 	u32 done_reg = 0;
 
-#if ECHO
-	done_reg = 1;
-#else
+	if (kds_echo) {
+		done_reg = 1;
+		goto out;
+	}
+
 	/* There is only one done commands counter in the plram CU
 	 * It tells how many commands are done and how many FIFO slots
 	 * are ready for more commands.
@@ -68,14 +75,15 @@ static void cu_plram_check(void *core, struct xcu_status *status)
 	 */
 	if (cu_plram->credits != cu_plram->max_credits)
 		done_reg = ioread32(cu_plram->vaddr + 0x1C);
-#endif
+out:
 	status->num_done = done_reg;
 	status->num_ready = done_reg;
 }
 
 static struct xcu_funcs xrt_cu_plram_funcs = {
-	.get_credit	= cu_plram_get_credit,
-	.put_credit	= cu_plram_put_credit,
+	.alloc_credit	= cu_plram_alloc_credit,
+	.free_credit	= cu_plram_free_credit,
+	.peek_credit	= cu_plram_peek_credit,
 	.configure	= cu_plram_configure,
 	.start		= cu_plram_start,
 	.check		= cu_plram_check,
@@ -95,10 +103,6 @@ int xrt_cu_plram_init(struct xrt_cu *xcu)
 		return -EINVAL;
 	}
 
-	err = xrt_cu_init(xcu);
-	if (err)
-		return err;
-
 	core = kzalloc(sizeof(struct xrt_cu_plram), GFP_KERNEL);
 	if (!core)
 		return -ENOMEM;
@@ -116,11 +120,11 @@ int xrt_cu_plram_init(struct xrt_cu *xcu)
 	/* NOTE: Dummy read needed on kernel 0x18 and 0x1c register because
 	 * of some bug in kernel, first read will give some garbage data
 	 */
-	val = ioread32(core->vaddr + 0x18);
 	val = ioread32(core->vaddr + 0x1C);
+	val = ioread32(core->vaddr + 0x18);
 
-	val = ioread32(core->vaddr + 0x18);
 	val = ioread32(core->vaddr + 0x1C);
+	val = ioread32(core->vaddr + 0x18);
 	xcu_info(xcu, "FIFO depth 0x%x", val);
 	core->max_credits = val;
 	core->credits = core->max_credits;
@@ -143,6 +147,10 @@ int xrt_cu_plram_init(struct xrt_cu *xcu)
 
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_plram_funcs;
+
+	err = xrt_cu_init(xcu);
+	if (err)
+		return err;
 
 	return 0;
 err1:

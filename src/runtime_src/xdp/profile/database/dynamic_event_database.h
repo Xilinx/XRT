@@ -30,10 +30,22 @@
 
 namespace xdp {
 
+  // Forward declarations
+  class VPDatabase ;
+
   // The Dynamic Database will own all VTFEvents and is responsible
   //  for cleaning up this memory.
   class VPDynamicDatabase
   {
+  private:
+    VPDatabase* db ;
+
+  public:
+    // Define a public typedef for all plugins that get information
+    //  from counters
+    typedef std::pair<double, std::vector<uint64_t>> CounterSample ;
+    typedef std::map<double, std::string> CounterNames ;
+
   private:
     // For host events, we are guaranteed that all of the timestamps
     //  will come in sequential order.  For this, we can use 
@@ -45,6 +57,13 @@ namespace xdp {
     //  hardware might shuffle the order of events we have to make sure
     //  that this set of events is ordered based on timestamp.
     std::map<uint64_t, std::multimap<double, VTFEvent*>> deviceEvents;
+
+    // For all plugins that read counters, we will store that information
+    //  here.
+    std::map<uint64_t, std::vector<CounterSample>> powerSamples ;
+    std::map<uint64_t, std::vector<CounterSample>> aieSamples ;
+    std::map<uint64_t, std::vector<CounterSample>> nocSamples ;
+    std::map<uint64_t, CounterNames> nocNames ;
 
     // A unique event id for every event added to the database.
     //  It starts with 1 so we can use 0 as an indicator of NULL
@@ -73,7 +92,7 @@ namespace xdp {
     void addDeviceEvent(uint64_t deviceId, VTFEvent* event) ;
 
   public:
-    XDP_EXPORT VPDynamicDatabase() ;
+    XDP_EXPORT VPDynamicDatabase(VPDatabase* d) ;
     XDP_EXPORT ~VPDynamicDatabase() ;
 
     // Add an event in sorted order in the database
@@ -99,6 +118,20 @@ namespace xdp {
 
     // Functions that dump large portions of the database
     XDP_EXPORT void dumpStringTable(std::ofstream& fout) ;
+
+    // Functions that are used by counter-based plugins
+    XDP_EXPORT void addPowerSample(uint64_t deviceId, double timestamp,
+				   const std::vector<uint64_t>& values) ;
+    XDP_EXPORT std::vector<CounterSample> getPowerSamples(uint64_t deviceId) ;
+
+    XDP_EXPORT void addAIESample(uint64_t deviceId, double timestamp,
+				   const std::vector<uint64_t>& values) ;
+    XDP_EXPORT std::vector<CounterSample> getAIESamples(uint64_t deviceId) ;
+
+    XDP_EXPORT void addNOCSample(uint64_t deviceId, double timestamp, std::string name,
+				   const std::vector<uint64_t>& values) ;
+    XDP_EXPORT std::vector<CounterSample> getNOCSamples(uint64_t deviceId) ;
+    XDP_EXPORT CounterNames getNOCNames(uint64_t deviceId) ;
   } ;
   
 }

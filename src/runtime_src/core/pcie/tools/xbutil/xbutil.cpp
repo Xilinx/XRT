@@ -34,6 +34,8 @@
 #define hex_digit "[0-9a-fA-F]+"
 
 const size_t m2mBoSize = 256L * 1024 * 1024;
+const size_t hostMemSize = 256L * 1024 * 1024;
+
 
 static int bdf2index(std::string& bdfStr, unsigned& index)
 {
@@ -97,7 +99,7 @@ check_os_release(const std::vector<std::string> kernel_versions, std::ostream &o
         if (release.find(ver) != std::string::npos)
             return true;
     }
-    ostr << "WARNING: Kernel verison " << release << " is not officially supported. " 
+    ostr << "WARNING: Kernel verison " << release << " is not officially supported. "
         << kernel_versions.back() << " is the latest supported version" << std::endl;
     return false;
 }
@@ -106,16 +108,16 @@ static bool
 is_supported_kernel_version(std::ostream &ostr)
 {
     std::vector<std::string> ubuntu_kernel_versions =
-        { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0" };
+        { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0", "5.4.0" };
     std::vector<std::string> centos_rh_kernel_versions =
-        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062" };
+        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062", "3.10.0-1127", "4.18.0-147", "4.18.0-193" };
     const std::string os = sensor_tree::get<std::string>("system.linux", "N/A");
 
     if(os.find("Ubuntu") != std::string::npos)
         return check_os_release(ubuntu_kernel_versions, ostr);
     else if(os.find("Red Hat") != std::string::npos || os.find("CentOS") != std::string::npos)
         return check_os_release(centos_rh_kernel_versions, ostr);
-    
+
     return true;
 }
 
@@ -961,8 +963,25 @@ int xcldev::xclTop(int argc, char *argv[])
 }
 
 const std::string dsaPath("/opt/xilinx/dsa/");
-const std::string xsaPath("/opt/xilinx/xsa/");
 const std::string xrtPath("/opt/xilinx/xrt/");
+
+std::string getXsaPath(const uint16_t vendor)
+{
+    if ((vendor == 0) || (vendor == INVALID_ID))
+        return std::string();
+
+    std::string vendorName;
+    switch (vendor) {
+        case ARISTA_ID:
+            vendorName = "arista";
+            break;
+        default:
+        case XILINX_ID:
+            vendorName = "xilinx";
+            break;
+    }
+    return "/opt/" + vendorName + "/xsa/";
+}
 
 void testCaseProgressReporter(bool *quit)
 {    int i = 0;
@@ -1157,8 +1176,15 @@ int xcldev::device::runTestCase(const std::string& py,
         return -EINVAL;
     }
 
+    uint16_t vendor;
+    pcidev::get_dev(m_idx)->sysfs_get<uint16_t>("", "vendor", errmsg, vendor, -1);
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
     std::string devInfoPath = name + "/test/";
-    std::string xsaXclbinPath = xsaPath + devInfoPath;
+    std::string xsaXclbinPath = getXsaPath(vendor) + devInfoPath;
     std::string dsaXclbinPath = dsaPath + devInfoPath;
     std::string xrtTestCasePath = xrtPath + "test/" + py;
 
@@ -1190,7 +1216,7 @@ int xcldev::device::runTestCase(const std::string& py,
         return -EINVAL;
     }
 
-    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    std::string cmd = "/usr/bin/python3 " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
     return runShellCmd(cmd, output);
 }
 
@@ -1216,20 +1242,51 @@ int xcldev::device::bandwidthKernelTest(void)
 {
     std::string output;
 
-    if ((sensor_tree::get<std::string>("system.linux", "N/A").find("Red Hat") != std::string::npos)
-            && (sensor_tree::get<std::string>("system.machine", "N/A").find("ppc64le") != std::string::npos)) {
-        std::cout << "Testcase not supported on Red Hat and PowerPC. Skipping validation"
-                  << std::endl;
-        return -EOPNOTSUPP;
-    }
-
     //versal bandwidth kernel is different, hence it needs to run a custom testcase
     std::string errmsg, vbnv;
     pcidev::get_dev(m_idx)->sysfs_get("rom", "VBNV", errmsg, vbnv);
 
-    std::string testcase = (vbnv.find("vck5000") != std::string::npos) 
+    std::string testcase = (vbnv.find("vck5000") != std::string::npos)
         ? "versal_23_bandwidth.py" : "23_bandwidth.py";
-    
+
+    int ret = runTestCase(testcase, std::string("bandwidth.xclbin"), output);
+
+    if (ret != 0) {
+        std::cout << output << std::endl;
+        return ret;
+    }
+
+    if (output.find("PASS") == std::string::npos) {
+        std::cout << output << std::endl;
+        return -EINVAL;
+    }
+
+    // Print out max thruput
+    size_t st = output.find("Maximum");
+    if (st != std::string::npos) {
+        size_t end = output.find("\n", st);
+        std::cout << std::endl << output.substr(st, end - st) << std::endl;
+    }
+
+    return 0;
+}
+
+int xcldev::device::hostMemBandwidthKernelTest(void)
+{
+    std::string output;
+
+    //Kick start hostMemBandwidthKernelTest only if enabled
+    std::string errmsg;
+    uint64_t host_mem_size = 0;
+    pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("address_translator", "host_mem_size",  errmsg, host_mem_size, 0);
+
+    if (!host_mem_size) {
+        std::cout << "Host_mem is not available. Skipping validation" << std::endl;
+        return -EOPNOTSUPP;
+    }
+
+    std::string testcase = "host_mem_23_bandwidth.py";
+
     int ret = runTestCase(testcase, std::string("bandwidth.xclbin"), output);
 
     if (ret != 0) {
@@ -1257,19 +1314,28 @@ int xcldev::device::scVersionTest(void)
     std::string sc_ver, exp_sc_ver;
     std::string errmsg;
 
+    pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, sc_ver);
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
         return -EINVAL;
     }
 
-    pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, sc_ver);
     pcidev::get_dev(m_idx)->sysfs_get("xmc", "exp_bmc_ver", errmsg, exp_sc_ver);
-    if (!exp_sc_ver.empty() && (sc_ver.compare(exp_sc_ver) != 0 || sc_ver.empty()))
-    {
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    if (!exp_sc_ver.empty() && (sc_ver.compare(exp_sc_ver) != 0 || sc_ver.empty())) {
         std::cout << "SC FIRMWARE MISMATCH, ATTENTION" << std::endl;
-        std::cout << "SC firmware running on board: " << sc_ver << ". Expected SC firmware from installed Shell: " << exp_sc_ver << std::endl;
-	std::cout << "Please use \"xbmgmt flash --scan\" to check installed Shell." << std::endl;
-	return 1;
+        if (sc_ver.empty())
+            std::cout << "Can't determine SC firmware running on board.";
+        else if (sc_ver.compare(exp_sc_ver) != 0)
+            std::cout << "SC firmware running on board: " << sc_ver;
+        std::cout << ". Expected SC firmware from installed Shell: " << exp_sc_ver << std::endl;
+
+        std::cout << "Please use \"xbmgmt flash --scan\" to check installed Shell." << std::endl;
+        return 1;
     }
 
     return 0;
@@ -1382,7 +1448,7 @@ int xcldev::device::getXclbinuuid(uuid_t &uuid) {
     return 0;
 }
 
-int xcldev::device::kernelVersionTest(void) 
+int xcldev::device::kernelVersionTest(void)
 {
     if (getenv_or_null("INTERNAL_BUILD")) {
         std::cout << "Developer's build. Skipping validation" << std::endl;
@@ -1472,6 +1538,12 @@ int xcldev::device::validate(bool quick, bool hidden)
     //Perform M2M test
     retVal = runOneTest("memory-to-memory DMA test",
             std::bind(&xcldev::device::testM2m, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
+
+    retVal = runOneTest("host memory bandwidth test",
+            std::bind(&xcldev::device::hostMemBandwidthKernelTest, this));
     withWarning = withWarning || (retVal == 1);
     if (retVal < 0)
         return retVal;
@@ -1580,10 +1652,10 @@ int xcldev::device::reset(xclResetKind kind)
 #ifdef __GNUC__
 # pragma GCC diagnostic pop
 #endif
-    
+
 }
 
-static bool canProceed()
+bool canProceed()
 {
     std::string input;
     bool answered = false;
@@ -1904,7 +1976,7 @@ int xcldev::xclCma(int argc, char *argv[])
     int long_index, ret;
     const char* short_options = "d:"; //don't add numbers
     const char* exe = argv[ 0 ];
-    std::string optarg_s;
+    std::string optarg_s, unit_str;
     const char *unit = NULL;
     size_t end = 0;
 
@@ -1931,7 +2003,9 @@ int xcldev::xclCma(int argc, char *argv[])
                 std::cout << "ERROR: Value supplied to --size option is invalid\n";
                 return -1;
             }
-            unit = optarg_s.substr(end).c_str();
+            unit_str = optarg_s.substr(end);
+            unit = unit_str.c_str();
+
             if (std::tolower(unit[0]) == 'm')
                 unit_sz = 1024*1024;
             else if (std::tolower(unit[0]) == 'g')
@@ -1979,7 +2053,7 @@ int xcldev::xclCma(int argc, char *argv[])
             << std::endl;
     } else if (ret == -ENODEV) {
         std::cout << "ERROR: Does not support HOST MEM feature"
-            << std::endl; 
+            << std::endl;
     } else if (ret == -EBUSY) {
         std::cout << "ERROR: HOST MEM already enabled or in-use"
             << std::endl;
@@ -2019,8 +2093,9 @@ static int m2m_alloc_init_bo(xclDeviceHandle handle, unsigned &boh,
         return -EINVAL;
     }
     memset(boptr, pattern, boSize);
-    if(xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, boSize, 0)) {
-        std::cout << "ERROR: Unable to sync BO" << std::endl;
+    int err = xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, boSize, 0);
+    if (err) {
+        std::cout << "ERROR: Unable to sync BO, err: " << err << std::endl;
         m2m_free_unmap_bo(handle, boh, boptr, boSize);
         return -EINVAL;
     }
@@ -2328,11 +2403,12 @@ int xcldev::xclScheduler(int argc, char *argv[])
         {"echo", required_argument, 0, 0},
         {0, 0, 0, 0}
     };
-    const char* short_opts = "d:e:";
+    const char* short_opts = "d:e:k:";
     int c, opt_idx;
     std::string errmsg;
     unsigned index = 0;
     int kds_echo = -1;
+    int ert_disable = -1;
 
     if (!root) {
         std::cout << "ERROR: root privileges required." << std::endl;
@@ -2355,6 +2431,9 @@ int xcldev::xclScheduler(int argc, char *argv[])
         case 'e':
             kds_echo = std::atoi(optarg);
             break;
+        case 'k':
+            ert_disable = std::atoi(optarg);
+            break;
         default:
             /* This is hidden command, silently exit */
             return -EINVAL;
@@ -2372,6 +2451,18 @@ int xcldev::xclScheduler(int argc, char *argv[])
         pcidev::get_dev(index)->sysfs_get( "", "kds_echo", errmsg, kds_echo);
         std::cout << "Device[" << index << "] kds_echo: " << kds_echo << std::endl;
     }
-    
+
+    if (ert_disable != -1) {
+        std::string val = (ert_disable == 0)? "0" : "1";
+        pcidev::get_dev(index)->sysfs_put( "", "ert_disable", errmsg, val);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+        std::string ert_disable;
+        pcidev::get_dev(index)->sysfs_get( "", "ert_disable", errmsg, ert_disable);
+        std::cout << "Device[" << index << "] ert_disable: " << ert_disable << std::endl;
+    }
+
     return 0;
 }

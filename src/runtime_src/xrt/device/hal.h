@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,6 +22,7 @@
 #include "xrt/util/event.h"
 #include "xrt/util/range.h"
 #include "xrt/util/uuid.h"
+#include "core/common/device.h"
 #include "core/include/xrt.h"
 
 #include "xclperf.h"
@@ -160,6 +161,13 @@ public:
     ,XRT_HOST_ONLY_MEM
   };
 
+  /**
+   * Open the device.
+   *
+   * @return True if device was opened, false if already open
+   *
+   * Throws if device could not be opened
+   */
   virtual bool
   open() = 0;
 
@@ -169,8 +177,8 @@ public:
   virtual device_handle
   get_handle() const = 0;
 
-  virtual std::string
-  get_bdf() const = 0;
+  virtual std::shared_ptr<xrt_core::device>
+  get_core_device() const = 0;
 
   virtual void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared) {}

@@ -78,6 +78,7 @@
  * to fragments into pkt_data to fit the size of BRAM.
  */
 
+#include "xrt_xclbin.h"
 #include "../xocl_drv.h"
 #include "xrt_drv.h"
 

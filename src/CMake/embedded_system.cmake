@@ -8,13 +8,15 @@
 INCLUDE (FindPkgConfig)
 
 # DRM
-pkg_check_modules(DRM REQUIRED libdrm)
-IF(DRM_FOUND)
-  MESSAGE(STATUS "Looking for DRM - found at ${DRM_PREFIX} ${DRM_VERSION}")
-  INCLUDE_DIRECTORIES(${DRM_INCLUDEDIR})
-ELSE(DRM_FOUND)
-  MESSAGE(FATAL_ERROR "Looking for DRM - not found")
-ENDIF(DRM_FOUND)
+if (NOT DEFINED CROSS_COMPILE)
+  pkg_check_modules(DRM REQUIRED libdrm)
+  IF(DRM_FOUND)
+    MESSAGE(STATUS "Looking for DRM - found at ${DRM_PREFIX} ${DRM_VERSION}")
+    INCLUDE_DIRECTORIES(${DRM_INCLUDEDIR})
+  ELSE(DRM_FOUND)
+    MESSAGE(FATAL_ERROR "Looking for DRM - not found")
+  ENDIF(DRM_FOUND)
+endif()
 
 # OpenCL header files
 find_package(OpenCL)
@@ -47,6 +49,11 @@ set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR "${XRT_INSTALL_DIR}/include/xrt")
 set (XRT_INSTALL_LIB_DIR     "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
 
+#Setting RPATH variable for cross compilation
+if (DEFINED CROSS_COMPILE)
+  set(CMAKE_INSTALL_RPATH "${sysroot}/usr/lib:${sysroot}/lib:${sysroot}/usr/lib/aarch64-linux-gnu")
+endif()
+
 # Release OpenCL extension headers
 set(XRT_CL_EXT_SRC
   include/1_2/CL/cl_ext_xilinx.h
@@ -72,3 +79,10 @@ add_subdirectory(runtime_src)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
+if (DEFINED CROSS_COMPILE)
+  set (LINUX_FLAVOR ${flavor})
+  set (LINUX_VERSION ${version})
+  include (CMake/cpackLin.cmake)
+  set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
+  include (CMake/dkms-edge.cmake)
+endif()

@@ -30,6 +30,7 @@
 #include "aim.h"
 #include "am.h"
 #include "asm.h"
+#include "noc.h"
 #include "traceFifoLite.h"
 #include "traceFifoFull.h"
 #include "traceFunnel.h"
@@ -137,8 +138,9 @@ class DeviceIntf {
     /** Trace S2MM Management
      */
     bool hasTs2mm() {return (traceDMA != nullptr);};
+    TraceS2MM* getTs2mm() {return traceDMA;};
     XDP_EXPORT
-    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr);
+    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr, bool circular);
     XDP_EXPORT
     void resetTS2MM();
     XDP_EXPORT
@@ -172,6 +174,7 @@ class DeviceIntf {
     std::vector<AIM*> aimList;
     std::vector<AM*>  amList;
     std::vector<ASM*> asmList;
+    std::vector<NOC*> nocList;
 
     TraceFifoLite* fifoCtrl  = nullptr;
     TraceFifoFull* fifoRead  = nullptr;

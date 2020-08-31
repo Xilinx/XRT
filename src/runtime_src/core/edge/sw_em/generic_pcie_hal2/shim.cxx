@@ -19,8 +19,23 @@
  */
 
 #include "shim.h"
+#include "system_swemu.h"
+#include "xclbin.h"
 #include <errno.h>
 #include <unistd.h>
+
+namespace {
+
+static auto
+get_mem_topology(const axlf* top)
+{
+  if (auto sec = xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY))
+    return sec;
+  return xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+}
+  
+}
+
 namespace xclcpuemhal2 {
 
   std::map<unsigned int, CpuemShim*> devices;
@@ -400,7 +415,8 @@ namespace xclcpuemhal2 {
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fpo_v7_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "opencv"   + ":";
-          sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "lib"   + DS + "csim";
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
+          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS;         
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
 
@@ -526,7 +542,7 @@ namespace xclcpuemhal2 {
           sharedlib = xclbininmemory + sec->m_sectionOffset;
           sharedliblength = sec->m_sectionSize;
         }
-        if (auto sec = xclbin::get_axlf_section(top,MEM_TOPOLOGY)) {
+        if (auto sec = get_mem_topology(top)) {
           memTopologySize = sec->m_sectionSize;
           memTopology = new char[memTopologySize];
           memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);
@@ -916,12 +932,17 @@ namespace xclcpuemhal2 {
   void CpuemShim::xclOpen(const char* logfileName)
   {
     xclemulation::config::getInstance()->populateEnvironmentSetup(mEnvironmentNameValueMap);
-    if( logfileName && (logfileName[0] != '\0')) 
-    {
-      mLogStream.open(logfileName);
+
+    std::string logFilePath = (logfileName && (logfileName[0] != '\0')) ? logfileName : xrt_core::config::get_hal_logging();
+    if (!logFilePath.empty()) {
+      mLogStream.open(logFilePath);
       mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
+    // Shim object creation doesn't follow xclOpen/xclClose.
+    // The core device must correspond to open and close, so
+    // create here rather than in constructor
+    mCoreDevice = xrt_core::swemu::get_userpf_device(this, mDeviceIndex);
   }
 
   void CpuemShim::fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src)
@@ -1006,6 +1027,12 @@ namespace xclcpuemhal2 {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
+
+    // Shim object is not deleted as part of closing device.
+    // The core device must correspond to open and close, so
+    // reset here rather than in destructor
+    mCoreDevice.reset();
+    
     if(!sock)
     {
       if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
@@ -1161,7 +1188,7 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool noHostMemory = xclemulation::no_host_memory(xobj.get());
+  bool noHostMemory = xclemulation::no_host_memory(xobj.get()) || xclemulation::xocl_bo_host_only(xobj.get()); 
   std::string sFileName("");
   xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,noHostMemory,sFileName);
   xobj->filename = sFileName;

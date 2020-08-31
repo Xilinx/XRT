@@ -41,7 +41,7 @@ install_recipes()
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
-        echo 'PV = "202010.2.6.0"' >> $XRT_BB
+        echo 'PV = "2020.2.8.0"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
         echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=da5408f748bce8a9851dac18e66f4bcf \' >> $XRT_BB
         echo '                    file://runtime_src/core/edge/drm/zocl/LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8 "' >> $XRT_BB
@@ -53,7 +53,7 @@ install_recipes()
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
         echo "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $ZOCL_BB
-        echo 'PV = "202010.2.6.0"' >> $ZOCL_BB
+        echo 'PV = "2020.2.8.0"' >> $ZOCL_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $ZOCL_BB
         echo 'LIC_FILES_CHKSUM = "file://LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8"' >> $ZOCL_BB
         echo 'pkg_postinst_ontarget_${PN}() {' >> $ZOCL_BB
@@ -135,17 +135,19 @@ if [[ $clean == 1 ]]; then
 fi
 
 # we pick Petalinux BSP
-source $SETTINGS_FILE
+if [ -f $SETTINGS_FILE ]; then
+    source $SETTINGS_FILE
+fi
 source $PETALINUX/settings.sh 
 
 if [[ $AARCH = $aarch64_dir ]]; then
-    PETA_BSP="$PETALINUX/../../bsp/release/xilinx-zcu106-v2020.1-final.bsp"
+    PETA_BSP="$PETALINUX/../../bsp/release/xilinx-zcu106-v2020.2-final.bsp"
     YOCTO_MACHINE="zynqmp-generic"
 elif [[ $AARCH = $aarch32_dir ]]; then
-    PETA_BSP="$PETALINUX/../../bsp/release/xilinx-zc706-v2020.1-final.bsp"
+    PETA_BSP="$PETALINUX/../../bsp/release/xilinx-zc706-v2020.2-final.bsp"
     YOCTO_MACHINE="zynq-generic"
 elif [[ $AARCH = $versal_dir ]]; then
-    PETA_BSP="$PETALINUX/../../bsp/release/xilinx-vck190-emmc-v2020.1-final.bsp"
+    PETA_BSP="$PETALINUX/../../bsp/release/xilinx-vck190-emmc-es1-v2020.2-final.bsp"
     YOCTO_MACHINE="versal-generic"
 else
     error "$AARCH not exist"

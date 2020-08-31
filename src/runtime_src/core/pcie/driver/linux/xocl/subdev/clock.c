@@ -47,6 +47,11 @@
 /* no float number in kernel, x/33.333 will be converted to x * 1000 / 33333) */
 #define	CLK_ACAP_INPUT_FREQ_X_1000	33333
 
+#define	CLK_TYPE_DATA	0
+#define	CLK_TYPE_KERNEL	1
+#define	CLK_TYPE_SYSTEM	2
+#define	CLK_TYPE_MAX	4
+
 #define	CLOCK_ERR(clock, fmt, arg...)	\
 	xocl_err(&(clock)->clock_pdev->dev, fmt "\n", ##arg)
 #define	CLOCK_WARN(clock, fmt, arg...)	\
@@ -121,6 +126,19 @@ struct acap_clkfbout_fract {
 	u32 clkfbout_fract_seed	:2;
 	u32 skew_sel		:6;
 	u32 reserved		:21;
+};
+
+enum {
+	CLOCK_IORES_CLKWIZKERNEL1 = 0,
+	CLOCK_IORES_CLKWIZKERNEL2,
+	CLOCK_IORES_CLKWIZKERNEL3,
+	CLOCK_IORES_CLKFREQ_K1_K2,
+	CLOCK_IORES_CLKFREQ_HBM,
+	CLOCK_IORES_CLKFREQ_K1,
+	CLOCK_IORES_CLKFREQ_K2,
+	CLOCK_IORES_CLKSHUTDOWN,
+	CLOCK_IORES_UCS_CONTROL_STATUS,
+	CLOCK_IORES_MAX,
 };
 
 struct xocl_iores_map clock_res_map[] = {
@@ -355,13 +373,16 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 {
 	u32 freq = 0, status;
 	int times = 10;
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 
 	BUG_ON(idx > CLOCK_MAX_NUM_CLOCKS);
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	if (clock->clock_freq_counter && idx < 2) {
-		reg_wr(clock->clock_freq_counter,
-			OCL_CLKWIZ_STATUS_MEASURE_START);
+		/* Versal ACAP doesn't support write */
+		if (!XOCL_DSA_IS_VERSAL(xdev))
+			reg_wr(clock->clock_freq_counter, OCL_CLKWIZ_STATUS_MEASURE_START);
+
 		while (times != 0) {
 			status = reg_rd(clock->clock_freq_counter);
 			if ((status & OCL_CLKWIZ_STATUS_MASK) ==
@@ -377,8 +398,10 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 	}
 
 	if (clock->clock_freq_counters[idx]) {
-		reg_wr(clock->clock_freq_counters[idx],
-			OCL_CLKWIZ_STATUS_MEASURE_START);
+		/* Versal ACAP doesn't support write */
+		if (!XOCL_DSA_IS_VERSAL(xdev))
+			reg_wr(clock->clock_freq_counters[idx], OCL_CLKWIZ_STATUS_MEASURE_START);
+
 		while (times != 0) {
 			status =
 			    reg_rd(clock->clock_freq_counters[idx]);
@@ -398,13 +421,13 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 	return freq;
 }
 
-/* For ACAP Versal, we read from freq counter directly */
+/* For ACAP Versal, we read from freq counter directly in KHZ */
 static unsigned short clock_get_freq_acap(struct clock *clock, int idx)
 {
 	u32 freq_counter = 0;
 	if (clock->clock_freq_counters[idx]) {
 		freq_counter = clock_get_freq_counter_khz_impl(clock, idx);
-		freq_counter /= 1000; /* KHZ */
+		freq_counter = DIV_ROUND_CLOSEST(freq_counter, 1000);
 	}
 
 	return freq_counter;
@@ -476,6 +499,8 @@ static unsigned short clock_get_freq_ultrascale(struct clock *clock, int idx)
 static unsigned short clock_get_freq_impl(struct clock *clock, int idx)
 {
 	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
+
+	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	return XOCL_DSA_IS_VERSAL(xdev) ?
 	    clock_get_freq_acap(clock, idx) :
@@ -800,7 +825,7 @@ static int clock_freeze_axi_gate(struct clock *clock, int level)
 
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
-	if (level <= XOCL_SUBDEV_LEVEL_PRP)
+	if (level <= XOCL_SUBDEV_LEVEL_PRP || XOCL_DSA_IS_VERSAL(xdev))
 		err = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	else
 		err = xocl_axigate_reset(xdev, XOCL_SUBDEV_LEVEL_PRP);
@@ -816,7 +841,7 @@ static int clock_free_axi_gate(struct clock *clock, int level)
 
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
-	if (level <= XOCL_SUBDEV_LEVEL_PRP) {
+	if (level <= XOCL_SUBDEV_LEVEL_PRP || XOCL_DSA_IS_VERSAL(xdev)) {
 		xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	} else {
 		if (!clock->clock_ucs_control_status) {
@@ -889,6 +914,7 @@ static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs)
 static int set_and_verify_freqs(struct clock *clock, unsigned short *freqs,
 	int num_freqs)
 {
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 	int i;
 	int err;
 	u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
@@ -903,8 +929,13 @@ static int set_and_verify_freqs(struct clock *clock, unsigned short *freqs,
 		if (!freqs[i])
 			continue;
 
-		lookup_freq = find_matching_freq(freqs[i], frequency_table,
-		    ARRAY_SIZE(frequency_table));
+		if (XOCL_DSA_IS_VERSAL(xdev)) {
+			lookup_freq = freqs[i];
+		} else {
+			lookup_freq = find_matching_freq(freqs[i],
+			    frequency_table, ARRAY_SIZE(frequency_table));
+		}
+
 		clock_freq_counter = clock_get_freq_counter_khz_impl(clock, i);
 		request_in_khz = lookup_freq*1000;
 		tolerance = lookup_freq*50;
@@ -921,7 +952,7 @@ done:
 	return err;
 }
 
-static int clock_freq_scaling(struct platform_device *pdev, bool force)
+static int clock_freq_rescaling(struct platform_device *pdev, bool force)
 {
 	struct clock *clock = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
@@ -935,7 +966,7 @@ static int clock_freq_scaling(struct platform_device *pdev, bool force)
 	return err;
 }
 
-static int clock_update_freq(struct platform_device *pdev,
+static int clock_freq_scaling_by_request(struct platform_device *pdev,
 	unsigned short *freqs, int num_freqs, int verify)
 {
 	struct clock *clock = platform_get_drvdata(pdev);
@@ -949,6 +980,81 @@ static int clock_update_freq(struct platform_device *pdev,
 
 	CLOCK_INFO(clock, "verify: %d ret: %d.", verify, err);
 	return err;
+}
+
+static int clock_freq_scaling_by_topo(struct platform_device *pdev,
+	struct clock_freq_topology *topo, int verify)
+{
+	struct clock *clock = platform_get_drvdata(pdev);
+	struct clock_freq *freq = NULL;
+	int data_clk_count = 0;
+	int kernel_clk_count = 0;
+	int system_clk_count = 0;
+	int clock_type_count = 0;
+	unsigned short target_freqs[4] = {0};
+	int i = 0;
+
+	if (!topo)
+		return -EINVAL;
+
+	if (topo->m_count > CLK_TYPE_MAX) {
+		CLOCK_ERR(clock, "More than 4 clocks found in clock topology");
+		return -EDOM;
+	}
+
+	/* Error checks - we support 1 data clk (reqd), 1 kernel clock(reqd) and
+	 * at most 2 system clocks (optional/reqd for aws).
+	 * Data clk needs to be the first entry, followed by kernel clock
+	 * and then system clocks
+	 */
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_DATA)
+			data_clk_count++;
+		if (freq->m_type == CT_KERNEL)
+			kernel_clk_count++;
+		if (freq->m_type == CT_SYSTEM)
+			system_clk_count++;
+	}
+	if (data_clk_count != 1) {
+		CLOCK_ERR(clock, "Data clock not found in clock topology");
+		return -EDOM;
+	}
+	if (kernel_clk_count != 1) {
+		CLOCK_ERR(clock, "Kernel clock not found in clock topology");
+		return -EDOM;
+	}
+	if (system_clk_count > 2) {
+		CLOCK_ERR(clock,
+			"More than 2 system clocks found in clock topology");
+		return -EDOM;
+	}
+
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_DATA)
+			target_freqs[CLK_TYPE_DATA] = freq->m_freq_Mhz;
+	}
+
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_KERNEL)
+			target_freqs[CLK_TYPE_KERNEL] = freq->m_freq_Mhz;
+	}
+
+	clock_type_count = CLK_TYPE_SYSTEM;
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_SYSTEM)
+			target_freqs[clock_type_count++] = freq->m_freq_Mhz;
+	}
+
+	CLOCK_INFO(clock, "set %lu freq, data: %d, kernel: %d, sys: %d, sys1: %d",
+	    ARRAY_SIZE(target_freqs), target_freqs[0], target_freqs[1],
+	    target_freqs[2], target_freqs[3]);
+
+	return clock_freq_scaling_by_request(pdev, target_freqs,
+	    ARRAY_SIZE(target_freqs), verify);
 }
 
 static int clock_get_freq_counter_khz(struct platform_device *pdev,
@@ -1246,11 +1352,12 @@ static struct attribute_group clock_attr_group = {
 };
 
 static struct xocl_clock_funcs clock_ops = {
-	.freq_scaling = clock_freq_scaling,
 	.get_freq_counter_khz = clock_get_freq_counter_khz,
 	.get_freq_by_id = clock_get_freq_by_id,
 	.get_freq = clock_get_freq,
-	.update_freq = clock_update_freq,
+	.freq_rescaling = clock_freq_rescaling,
+	.freq_scaling_by_request = clock_freq_scaling_by_request,
+	.freq_scaling_by_topo = clock_freq_scaling_by_topo,
 	.clock_status = clock_status_check,
 	.get_data = clock_get_data,
 };
@@ -1338,7 +1445,7 @@ struct platform_device_id clock_id_table[] = {
 	{ },
 };
 
-static struct platform_driver	clock_driver = {
+static struct platform_driver clock_driver = {
 	.probe		= clock_probe,
 	.remove		= clock_remove,
 	.driver		= {

@@ -230,7 +230,7 @@ static int updateShell(unsigned index, std::string flashType,
         if (sec->fail())
             sec = nullptr;
     }
- 
+
     return flasher.upgradeFirmware(flashType, pri.get(), sec.get(),
         stripped.get());
 }
@@ -279,6 +279,7 @@ static void isSameShellOrSC(DSAInfo& candidate, DSAInfo& current,
 static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
 {
     reboot = false;
+    int ret = 0;
 
     Flasher flasher(boardIdx);
     if(!flasher.isValid()) {
@@ -291,13 +292,17 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     DSAInfo current = flasher.getOnBoardDSA();
     isSameShellOrSC(candidate, current, &same_dsa, &same_bmc);
 
+    // Always update Arista devices.
+    if (candidate.vendor_id == ARISTA_ID)
+        same_dsa = false;
+
     if (same_dsa && same_bmc)
         std::cout << "update not needed" << std::endl;
 
     if (!same_bmc) {
         std::cout << "Updating SC firmware on card[" << flasher.sGetDBDF() <<
             "]" << std::endl;
-        int ret = updateSC(boardIdx, candidate.file.c_str());
+        ret = updateSC(boardIdx, candidate.file.c_str());
         if (ret != 0) {
             std::cout << "WARNING: Failed to update SC firmware on card ["
                 << flasher.sGetDBDF() << "]" << std::endl;
@@ -307,7 +312,7 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     if (!same_dsa) {
         std::cout << "Updating shell on card[" << flasher.sGetDBDF() <<
             "]" << std::endl;
-        int ret = updateShell(boardIdx, "", candidate.file.c_str(),
+        ret = updateShell(boardIdx, "", candidate.file.c_str(),
             candidate.file.c_str());
         if (ret != 0) {
             std::cout << "ERROR: Failed to update shell on card["
@@ -320,7 +325,7 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     if (!same_dsa && !reboot)
         return -EINVAL;
 
-    return 0;
+    return ret;
 }
 
 static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id, bool& multi_shell)
@@ -374,7 +379,11 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id, bool
     bool same_bmc = false;
     DSAInfo currentDSA = flasher.getOnBoardDSA();
     isSameShellOrSC(candidate, currentDSA, &same_dsa, &same_bmc);
- 
+
+    // Always update Arista devices.
+    if (candidate.vendor_id == ARISTA_ID)
+        same_dsa = false;
+
     if (same_dsa && same_bmc) {
         std::cout << "\t Status: shell is up-to-date" << std::endl;
         return DSAInfo("");
@@ -480,9 +489,9 @@ static int autoFlash(unsigned index, std::string& shell,
     }
 
     if (success != 0) {
-        std::cout << success << " Card(s) flashed successfully." << std::endl; 
+        std::cout << success << " Card(s) flashed successfully." << std::endl;
     } else {
-        std::cout << "No cards were flashed." << std::endl; 
+        std::cout << "No cards were flashed." << std::endl;
     }
 
     if (needreboot) {
@@ -739,9 +748,9 @@ static int shell(int argc, char *argv[])
         std::cout << "--card switch is not provided." << std::endl;
         return -EINVAL;
     }
-    
+
     const char* secondary = secondary_file.empty() ? nullptr : secondary_file.c_str() ;
-    
+
     int ret = updateShell(index, type, primary_file.c_str(), secondary);
     if (ret)
         return ret;

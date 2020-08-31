@@ -22,10 +22,8 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
-#define ULITE_NAME		"ttyUL"
-#define ULITE_MAJOR		204
-#define ULITE_MINOR		187
-#define ULITE_NR_UARTS		4
+#define ULITE_NAME		"ttyXRTUL"
+#define ULITE_NR_UARTS		8
 
 /* ---------------------------------------------------------------------
  * Register definitions
@@ -33,6 +31,9 @@
  * For register details see datasheet:
  * http://www.xilinx.com/support/documentation/ip_documentation/opb_uartlite.pdf
  */
+
+/* 115200bps / 9bits * 2 sampling rate in jiffies */
+#define ULITE_TIMER		(HZ / 25600)
 
 #define ULITE_RX		0x00
 #define ULITE_TX		0x04
@@ -57,8 +58,11 @@
 struct uartlite_data {
 	const struct uartlite_reg_ops *reg_ops;
 	struct uart_driver *xcl_ulite_driver;
-	struct uart_port port;
+	struct uart_port *port;
+	struct timer_list timer;
 };
+
+static struct uart_port ulite_ports[ULITE_NR_UARTS];
 
 struct uartlite_reg_ops {
 	u32 (*in)(void __iomem *addr);
@@ -190,9 +194,8 @@ static int ulite_transmit(struct uart_port *port, int stat)
 	return 1;
 }
 
-static irqreturn_t ulite_isr(int irq, void *dev_id)
+static void ulite_worker(struct uart_port *port)
 {
-	struct uart_port *port = dev_id;
 	int stat, busy, n = 0;
 	unsigned long flags;
 
@@ -206,12 +209,25 @@ static irqreturn_t ulite_isr(int irq, void *dev_id)
 	} while (busy);
 
 	/* work done? */
-	if (n > 1) {
+	if (n > 1)
 		tty_flip_buffer_push(&port->state->port);
-		return IRQ_HANDLED;
-	} else {
-		return IRQ_NONE;
-	}
+
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+static void ulite_timer(unsigned long data)
+{ 
+	struct uartlite_data *pdata = (struct uartlite_data *)data;
+#else
+static void ulite_timer(struct timer_list *t)
+{
+	struct uartlite_data *pdata = from_timer(pdata, t, timer);
+#endif
+	struct uart_port *port = pdata->port;
+
+	ulite_worker(port);
+	/* We're a periodic timer. */
+	mod_timer(&pdata->timer, jiffies + ULITE_TIMER);
 }
 
 static unsigned int ulite_tx_empty(struct uart_port *port)
@@ -260,6 +276,10 @@ static void ulite_break_ctl(struct uart_port *port, int ctl)
 
 static int ulite_startup(struct uart_port *port)
 {
+	struct uartlite_data *pdata = port->private_data;
+
+	mod_timer(&pdata->timer, jiffies + ULITE_TIMER);
+
 	uart_out32(ULITE_CONTROL_RST_RX | ULITE_CONTROL_RST_TX,
 		ULITE_CONTROL, port);
 	uart_out32(ULITE_CONTROL_IE, ULITE_CONTROL, port);
@@ -268,8 +288,12 @@ static int ulite_startup(struct uart_port *port)
 
 static void ulite_shutdown(struct uart_port *port)
 {
+	struct uartlite_data *pdata = port->private_data;
+
 	uart_out32(0, ULITE_CONTROL, port);
 	uart_in32(ULITE_CONTROL, port); /* dummy */
+
+	del_timer_sync(&pdata->timer);
 }
 
 static void ulite_set_termios(struct uart_port *port, struct ktermios *termios,
@@ -412,8 +436,6 @@ static struct uart_driver xcl_ulite_driver = {
 	.owner		= THIS_MODULE,
 	.driver_name	= XOCL_DEVNAME(XOCL_UARTLITE),
 	.dev_name	= ULITE_NAME,
-	.major		= ULITE_MAJOR,
-	.minor		= ULITE_MINOR,
 	.nr		= ULITE_NR_UARTS,
 };
 
@@ -422,8 +444,7 @@ static int ulite_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct uartlite_data *pdata;
 	struct uart_port *port;
-	int irq, ret;
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	int irq = 0, ret = 0, id = 0;
 
 	pdata = devm_kzalloc(&pdev->dev, sizeof(struct uartlite_data),
 			     GFP_KERNEL);
@@ -434,13 +455,20 @@ static int ulite_probe(struct platform_device *pdev)
 	if (!res)
 		return -ENODEV;
 
-	irq = platform_get_irq(pdev, 0);
-	if (irq <= 0)
-		return -ENXIO;
+	for (id = 0; id < ULITE_NR_UARTS; id++)
+		if (ulite_ports[id].mapbase == 0)
+			break;
+	
+	if (id >= ULITE_NR_UARTS) {
+		dev_err(&pdev->dev, "%s%i too large\n", ULITE_NAME, id);
+		ret = -EINVAL;
+		goto done;
+	}
 
 	pdata->xcl_ulite_driver = &xcl_ulite_driver;
 
-	port = &pdata->port;
+	pdata->port = &ulite_ports[id];
+	port = pdata->port;
 
 	spin_lock_init(&port->lock);
 	port->fifosize = 16;
@@ -454,11 +482,10 @@ static int ulite_probe(struct platform_device *pdev)
 	port->flags = UPF_BOOT_AUTOCONF;
 	port->dev = &pdev->dev;
 	port->type = PORT_UNKNOWN;
-	port->line = 0;
+	port->line = id;
 	port->private_data = pdata;
 
 	platform_set_drvdata(pdev, port);
-
 	/* Register the port */
 	ret = uart_add_one_port(&xcl_ulite_driver, port);
 	if (ret) {
@@ -468,13 +495,12 @@ static int ulite_probe(struct platform_device *pdev)
 		goto done;
 	}
 
-	ret = xocl_user_interrupt_reg(xdev, port->irq, ulite_isr, port);
-	if (ret)
-		goto done;
-	ret = xocl_user_interrupt_config(xdev, port->irq, true);
-	if (ret)
-		goto done;
-
+	/* One timer for one channel. */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+	setup_timer(&pdata->timer, ulite_timer, (unsigned long)pdata);
+#else
+	timer_setup(&pdata->timer, ulite_timer, 0);
+#endif
 
 done:
 	return ret;
@@ -485,8 +511,7 @@ static int ulite_remove(struct platform_device *pdev)
 	struct uart_port *port = platform_get_drvdata(pdev);
 	int ret = 0;
 	struct uartlite_data *pdata;
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	
+
 	if (!port)
 		return ret;
 
@@ -494,9 +519,7 @@ static int ulite_remove(struct platform_device *pdev)
 	if (!pdata)
 		return ret;
 
-	(void) xocl_user_interrupt_config(xdev, port->irq, false);
-	(void) xocl_user_interrupt_reg(xdev, port->irq, NULL, port);
-
+	del_timer_sync(&pdata->timer);
 	ret = uart_remove_one_port(pdata->xcl_ulite_driver, port);
 	platform_set_drvdata(pdev, NULL);
 	port->mapbase = 0;
@@ -505,7 +528,7 @@ static int ulite_remove(struct platform_device *pdev)
 }
 
 struct xocl_drv_private ulite_priv = {
-	.ops = &ulite_ops,
+	.ops = NULL,
 };
 
 struct platform_device_id ulite_id_table[] = {

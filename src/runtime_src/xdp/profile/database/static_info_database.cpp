@@ -24,19 +24,34 @@
 #include <unistd.h>
 #endif
 
+#ifdef _WIN32
+#pragma warning (disable : 4996 4267)
+/* 4267 : Disable warning for conversion of size_t to int32_t */
+#endif
+
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/xml_parser.hpp>
+
 #define XDP_SOURCE
 
 #include "xdp/profile/database/static_info_database.h"
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/writer/vp_base/vp_run_summary.h"
+
 #include "core/include/xclbin.h"
+
+#ifdef XRT_ENABLE_AIE
+#include "core/edge/common/aie_parser.h"
+#endif
 
 #define XAM_STALL_PROPERTY_MASK        0x4
 
 
-
 namespace xdp {
 
-  ComputeUnitInstance::ComputeUnitInstance(int32_t i, const char* n)
+  ComputeUnitInstance::ComputeUnitInstance(int32_t i, const std::string &n)
     : index(i)
   {
     std::string fullName(n);
@@ -75,7 +90,7 @@ namespace xdp {
     connections[argIdx].push_back(memIdx);
   }
 
-  VPStaticDatabase::VPStaticDatabase()
+  VPStaticDatabase::VPStaticDatabase(VPDatabase* d) : db(d), runSummary(nullptr)
   {
 #ifdef _WIN32
     pid = _getpid() ;
@@ -86,6 +101,11 @@ namespace xdp {
 
   VPStaticDatabase::~VPStaticDatabase()
   {
+    if (runSummary != nullptr)
+    {
+      runSummary->write(false) ;
+      delete runSummary ;
+    }
   }
 
   // This function is called whenever a device is loaded with an 
@@ -96,16 +116,34 @@ namespace xdp {
     resetDeviceInfo(deviceId);
 
     DeviceInfo *devInfo = new DeviceInfo();
-    devInfo->clockRateMHz = 300;
     devInfo->platformInfo.kdmaCount = 0;
 
     deviceInfo[deviceId] = devInfo;
 
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
 
-    if (!setXclbinUUID(devInfo, device)) return;
+    if(nullptr == device) return;
+
+    const clock_freq_topology* clockSection = device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
+
+    if(clockSection) {
+      for(int32_t i = 0; i < clockSection->m_count; i++) {
+        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
+        if(clk->m_type != CT_DATA) {
+          continue;
+        }
+        devInfo->clockRateMHz = clk->m_freq_Mhz;
+      }
+    } else {
+      devInfo->clockRateMHz = 300;
+    }
+
+//    if (!setXclbinUUID(devInfo, device)) return;
+    if (!setXclbinName(devInfo, device)) return;
     if (!initializeComputeUnits(devInfo, device)) return ;
     if (!initializeProfileMonitors(devInfo, device)) return ;
+    if (!initializeAIECounters(devInfo, device)) return ;
+    devInfo->isReady = true;
   }
 
   void VPStaticDatabase::resetDeviceInfo(uint64_t deviceId)
@@ -119,33 +157,41 @@ namespace xdp {
     }
   }
 
-  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
+#if 0
+  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
-    auto xclbinUUID = device->get_xclbin_uuid();
-    (void)devInfo;
-    (void)xclbinUUID;
+    devInfo->loadedXclbinUUID = device->get_xclbin_uuid();
+    return true;
+  }
+#endif
 
-    #if 0
-    std::cout << " uuid " << xclbinUUID << std::endl;
-    const axlf* xbin = static_cast<const struct axlf*>(binary) ;
-    (void)xbin;
-    (void)devInfo;
-    long double id = *((long double*)xbin->m_header.uuid);
-    std::cout << " the uid " << id << std::endl;
-    devInfo->loadedXclbin = std::to_string(*(long double*)(xbin->m_header.uuid));
-    
-    std::stringstream ss;
-    ss << xbin->m_header.uuid;
-    devInfo->loadedXclbin = ss.str();
-    std::cout << "sizeof xuid_t " << sizeof(xuid_t) << std::endl;
-    std::cout << "sizeof unsigned long long " << sizeof(unsigned long long) << std::endl;
-    std::cout << "sizeof long double " << sizeof(long double) << std::endl;
-    #endif
+  bool VPStaticDatabase::setXclbinName(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
+  {
+    // Get SYSTEM_METADATA section
+    std::pair<const char*, size_t> systemMetadata = device->get_axlf_section(SYSTEM_METADATA);
+    const char* systemMetadataSection = systemMetadata.first;
+    size_t      systemMetadataSz      = systemMetadata.second;
+    if(systemMetadataSection == nullptr) return false;
 
+    try {
+      std::stringstream ss;
+      ss.write(systemMetadataSection, systemMetadataSz);
+
+      // Create a property tree and determine if the variables are all default values
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+
+      devInfo->loadedXclbin = pt.get<std::string>("system_diagram_metadata.xclbin.generated_by.xclbin_name", "");
+      if(!devInfo->loadedXclbin.empty()) {
+        devInfo->loadedXclbin += ".xclbin";
+      }
+    } catch(...) {
+      // keep default value in "devInfo->loadedXclbin" i.e. empty string
+    }
     return true;
   }
 
-  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
+  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
     // Get IP_LAYOUT section 
     const ip_layout* ipLayoutSection = device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
@@ -157,7 +203,14 @@ namespace xdp {
       if(ipData->m_type != IP_KERNEL) {
         continue;
       }
-      cu = new ComputeUnitInstance(i, reinterpret_cast<const char*>(ipData->m_name));
+      std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
+      if(std::string::npos != cuName.find(":dm_")) {
+        /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a 
+         *              data mover and it should not be identified as a "CU" in profiling
+         */
+        continue;
+      }
+      cu = new ComputeUnitInstance(i, cuName);
       devInfo->cus[i] = cu;
       if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
         cu->setDataflowEnabled(true);
@@ -188,8 +241,16 @@ namespace xdp {
         const struct ip_data* ipData = &(ipLayoutSection->m_ip_data[connctn->m_ip_layout_index]);
         if(ipData->m_type != IP_KERNEL) {
           // error ?
+          continue;
         }
-        cu = new ComputeUnitInstance(connctn->m_ip_layout_index, reinterpret_cast<const char*>(ipData->m_name));
+        std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
+        if(0 == cuName.compare(0, 3, "dm_")) {
+          /* Assumption : If the IP_KERNEL name starts with "dm_" then it is a data mover and
+           *              it should not be identified as a "CU" in profiling
+           */
+          continue;
+        }
+        cu = new ComputeUnitInstance(connctn->m_ip_layout_index, cuName);
         devInfo->cus[connctn->m_ip_layout_index] = cu;
         if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
           cu->setDataflowEnabled(true);
@@ -206,10 +267,44 @@ namespace xdp {
       }
       cu->addConnection(connctn->arg_index, connctn->mem_data_index);
     }
+
+    // Set Static WorkGroup Size of CUs using the EMBEDDED_METADATA section
+    std::pair<const char*, size_t> embeddedMetadata = device->get_axlf_section(EMBEDDED_METADATA);
+    const char* embeddedMetadataSection = embeddedMetadata.first;
+    size_t      embeddedMetadataSz      = embeddedMetadata.second;
+
+    boost::property_tree::ptree xmlProject;
+    std::stringstream xmlStream;
+    xmlStream.write(embeddedMetadataSection, embeddedMetadataSz);
+    boost::property_tree::read_xml(xmlStream, xmlProject);
+
+    for(auto coreItem : xmlProject.get_child("project.platform.device.core")) {
+      std::string coreItemName = coreItem.first;
+      if(0 != coreItemName.compare("kernel")) {  // skip items other than "kernel"
+        continue;
+      }
+      auto kernel = coreItem;
+      auto kernelNameItem    = kernel.second.get_child("<xmlattr>");
+      std::string kernelName = kernelNameItem.get<std::string>("name", "");
+
+      auto workGroupSz = kernel.second.get_child("compileWorkGroupSize");
+      std::string x = workGroupSz.get<std::string>("<xmlattr>.x", "");
+      std::string y = workGroupSz.get<std::string>("<xmlattr>.y", "");
+      std::string z = workGroupSz.get<std::string>("<xmlattr>.z", "");
+
+      // Find the ComputeUnitInstance
+      for(auto cuItr : devInfo->cus) {
+        if(0 != cuItr.second->getKernelName().compare(kernelName)) {
+          continue;
+        }
+        cuItr.second->setDim(std::stoi(x), std::stoi(y), std::stoi(z));
+      }
+    }
+
     return true;
   }
 
-  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
+  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
     // Look into the debug_ip_layout section and load information about Profile Monitors
     // Get DEBUG_IP_LAYOUT section 
@@ -227,7 +322,7 @@ namespace xdp {
       ComputeUnitInstance* cuObj = nullptr;
       // find CU
       if(debugIpData->m_type == ACCEL_MONITOR) {
-		for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->cus) {
           if(0 == name.compare(cu.second->getName())) {
             cuObj = cu.second;
             cuId = cu.second->getIndex();
@@ -241,7 +336,7 @@ namespace xdp {
         }
         if(mon) { devInfo->amList.push_back(mon); }
       } else if(debugIpData->m_type == AXI_MM_MONITOR) {
-		// parse name to find CU Name and Memory
+        // parse name to find CU Name and Memory
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
 
@@ -249,14 +344,14 @@ namespace xdp {
         std::string memName = name.substr(pos+1);
 
         int32_t memId = -1;
-		for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
             break;
           }
         }
-		for(auto mem : devInfo->memoryInfo) {
+        for(auto mem : devInfo->memoryInfo) {
           if(0 == memName.compare(mem.second->name)) {
             memId = mem.second->index;
             break;
@@ -266,14 +361,17 @@ namespace xdp {
         if(cuObj) {
           cuObj->addMonitor(mon);
           cuObj->setDataTransferEnabled(true);
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
+          devInfo->hasFloatingAIM = true;
         }
         devInfo->aimList.push_back(mon);
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
-
-		for(auto cu : devInfo->cus) {
+        
+        for(auto cu : devInfo->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
@@ -283,17 +381,56 @@ namespace xdp {
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
-     	}
+        }
         if(cuObj) {
           cuObj->addMonitor(mon);
-          cuObj->setDataTransferEnabled(true);
+          cuObj->setStreamEnabled(true);
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
+          devInfo->hasFloatingASM = true;
         }
         devInfo->asmList.push_back(mon);
+      } else if(debugIpData->m_type == AXI_NOC) {
+        uint8_t readTrafficClass  = debugIpData->m_properties >> 2;
+        uint8_t writeTrafficClass = debugIpData->m_properties & 0x3;
+
+        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
+                          readTrafficClass, writeTrafficClass);
+        devInfo->nocList.push_back(mon);
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }
     }
     return true; 
+  }
+
+  bool VPStaticDatabase::initializeAIECounters(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
+  {
+#ifdef XRT_ENABLE_AIE
+    // Record all counters listed in AIE metadata (if available)
+    for (auto& counter : xrt_core::edge::aie::get_profile_counters(device.get())) {
+      AIECounter* aie = new AIECounter(counter.id, counter.column, counter.row, 
+          counter.counterNumber, counter.startEvent, counter.endEvent, 
+          counter.resetEvent, counter.clockFreqMhz, counter.module, counter.name);
+      devInfo->aieList.push_back(aie);
+    }
+
+    // Record all trace GMIOs listed in AIE metadata (if available)
+    for (auto& gmio : xrt_core::edge::aie::get_trace_gmios(device.get())) {
+      TraceGMIO* traceGmio = new TraceGMIO(gmio.id, gmio.shim_col, gmio.channel_number, 
+          gmio.stream_id, gmio.burst_len);
+      devInfo->gmioList.push_back(traceGmio);
+    }
+    return true;
+#else
+  // Need to use arguments so it compiles on Windows
+  auto aieMetadata = device->get_axlf_section(AIE_METADATA);
+  if (!aieMetadata.first || !aieMetadata.second)
+    return true;
+
+  devInfo->aieList.clear();
+  return true;
+#endif
   }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
@@ -309,6 +446,12 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
     openedFiles.push_back(std::make_pair(name, type)) ;
+
+    if (runSummary == nullptr)
+    {
+      runSummary = new VPRunSummaryWriter("xclbin.run_summary") ;
+    }
+    runSummary->write(false) ;
   }
 
 }

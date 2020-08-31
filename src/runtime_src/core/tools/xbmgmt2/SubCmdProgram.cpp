@@ -246,7 +246,7 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
   for (const auto & device : deviceCollection) {
     boost::property_tree::ptree _ptDevice;
     auto _rep = std::make_unique<ReportPlatform>();
-    _rep->getPropertyTree20201(device.get(), _ptDevice);
+    _rep->getPropertyTreeInternal(device.get(), _ptDevice);
     _pt.push_back(std::make_pair(std::to_string(device->get_device_id()), _ptDevice));
     pretty_print_platform_info(_ptDevice);
     std::cout << "----------------------------------------------------\n";
@@ -284,7 +284,17 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
   if (!current.name.empty()) {
     same_dsa = (candidate.name == current.name &&
       candidate.matchId(current));
-    same_bmc = (candidate.bmcVer == current.bmcVer);
+
+    // Always update Arista devices
+    if (candidate.vendor_id == ARISTA_ID)
+        same_dsa = false;
+
+    // getOnBoardDSA() returns an empty bmcVer in the case there is no SC,
+    // so do not update
+    if (current.bmcVer.empty())
+        same_bmc = true;
+    else
+        same_bmc = (candidate.bmcVer == current.bmcVer);
   }
   if (same_dsa && same_bmc) {
     std::cout << "update not needed" << std::endl;
@@ -332,8 +342,15 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   for (const auto & device : deviceCollection) {
     DSAInfo dsa(_pt.get_child(std::to_string(device->get_device_id()) + ".platform.available_shells").front().second.get<std::string>("file"));
     //if the shell is not up-to-date and dsa has a flash image, queue the board for update
-    if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.shell") ||
-          !_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.sc")) {
+    bool same_shell = _pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.shell");
+    bool same_sc = _pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.sc");
+
+    // Always update Arista devices
+    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(device);
+    if (vendor == ARISTA_ID)
+        same_shell = false;
+
+    if (!same_shell || !same_sc) {
       if(!dsa.hasFlashImage)
         throw xrt_core::error("Flash image is not available");
       boardsToUpdate.push_back(std::make_pair(device->get_device_id(), dsa));
@@ -487,7 +504,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   //enforce device specification
   if(device.empty()) {
     std::cout << "\nERROR: Device not specified.\n";
-    XBU::report_available_devices();
+    std::cout << "\nList of available devices:" << std::endl;
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("board");
+    }
+    std::cout << std::endl;
     return;
   }
 

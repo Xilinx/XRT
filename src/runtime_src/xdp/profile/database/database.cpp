@@ -25,8 +25,8 @@ namespace xdp {
 
   bool VPDatabase::live ;
 
-  VPDatabase::VPDatabase()
-            : numDevices(0)
+  VPDatabase::VPDatabase() :
+    stats(this), staticdb(this), dyndb(this), numDevices(0)
   {
     VPDatabase::live = true ;
   }
@@ -61,7 +61,16 @@ namespace xdp {
     return VPDatabase::live ;
   }
 
-  uint64_t VPDatabase::addDevice(std::string& sysfsPath)
+  uint64_t VPDatabase::getDeviceId(const std::string& sysfsPath)
+  {
+    if (devices.find(sysfsPath) == devices.end())
+    {
+      throw std::runtime_error("Device not registered in database");
+    }
+    return devices[sysfsPath] ;
+  }
+
+  uint64_t VPDatabase::addDevice(const std::string& sysfsPath)
   {
     if(devices.find(sysfsPath) == devices.end()) {
       devices[sysfsPath] = numDevices++;
@@ -71,19 +80,25 @@ namespace xdp {
 
   // This function should return true the first time any plugin calls it.
   //  The plugin that has ownership is the only one that should be responsible
-  //  for writing the run summary.
-  bool VPDatabase::claimRunSummaryOwnership()
+  //  for offloading information from the devices.  This is necessary for
+  //  hardware OpenCL flows which will end up loading two offload plugins
+  bool VPDatabase::claimDeviceOffloadOwnership()
   {
-    static std::mutex runSummaryLock ;
+    static std::mutex deviceOffloadLock ;
     static bool claimed = false ;
 
-    std::lock_guard<std::mutex> lock(runSummaryLock) ;
-    if (claimed)
-    {
-      return false ;
-    }
+    std::lock_guard<std::mutex> lock(deviceOffloadLock) ;
+    if (claimed) return false ;
+
     claimed = true ;
     return true ;
   }
 
+  void VPDatabase::broadcast(MessageType msg, void* blob)
+  {
+    for (auto p : plugins)
+    {
+      p->broadcast(msg, blob) ;
+    }
+  }
 } // end namespace xdp

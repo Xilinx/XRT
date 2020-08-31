@@ -20,16 +20,61 @@
 #include "core/common/error.h"
 #include "core/common/utils.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
+
 #include "common/system.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/format.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 // System - Include Files
 #include <iostream>
 #include <map>
+
+#ifdef _WIN32
+
+# pragma warning( disable : 4189 4100 )
+# pragma comment(lib, "Ws2_32.lib")
+/* need to link the lib for the following to work */
+# define be32toh ntohl
+#else
+# include <unistd.h> // SUDO check
+#endif
+
+#define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
+#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long long)(p), (a))))
+#define GET_CELL(p)     (p += 4, *((const uint32_t *)(p-4)))
+
+// ------ C O N S T A N T   V A R I A B L E S ---------------------------------
+static const uint32_t FDT_BEGIN_NODE = 0x1;
+static const uint32_t FDT_PROP = 0x3;
+static const uint32_t FDT_END = 0x9;
+
+// ------ L O C A L  F U N C T I O N S  A N D  S T R U C T S ------------------
+enum class p2p_config {
+  disabled,
+  enabled,
+  error,
+  reboot,
+  not_supported
+};
+
+struct fdt_header {
+  uint32_t magic;
+  uint32_t totalsize;
+  uint32_t off_dt_struct;
+  uint32_t off_dt_strings;
+  uint32_t off_mem_rsvmap;
+  uint32_t version;
+  uint32_t last_comp_version;
+  uint32_t boot_cpuid_phys;
+  uint32_t size_dt_strings;
+  uint32_t size_dt_struct;
+};
+
 
 // ------ N A M E S P A C E ---------------------------------------------------
 using namespace XBUtilities;
@@ -42,38 +87,38 @@ static bool m_bShowHidden = false;
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
-void 
+void
 XBUtilities::setVerbose(bool _bVerbose)
 {
   bool prevVerbose = m_bVerbose;
 
-  if ((prevVerbose == true) && (_bVerbose == false)) 
+  if ((prevVerbose == true) && (_bVerbose == false))
     verbose("Disabling Verbosity");
 
   m_bVerbose = _bVerbose;
 
-  if ((prevVerbose == false) && (_bVerbose == true)) 
+  if ((prevVerbose == false) && (_bVerbose == true))
     verbose("Enabling Verbosity");
 }
 
-void 
+void
 XBUtilities::setTrace(bool _bTrace)
 {
-  if (_bTrace) 
+  if (_bTrace)
     trace("Enabling Tracing");
-  else 
+  else
     trace("Disabling Tracing");
 
   m_bTrace = _bTrace;
 }
 
 
-void 
+void
 XBUtilities::setShowHidden(bool _bShowHidden)
 {
-  if (_bShowHidden) 
+  if (_bShowHidden)
     trace("Hidden commands and options will be shown.");
-  else 
+  else
     trace("Hidden commands and options will be hidden");
 
   m_bShowHidden = _bShowHidden;
@@ -85,19 +130,19 @@ XBUtilities::getShowHidden()
   return m_bShowHidden;
 }
 
-void 
-XBUtilities::disable_escape_codes(bool _disable) 
+void
+XBUtilities::disable_escape_codes(bool _disable)
 {
   m_disableEscapeCodes = _disable;
 }
 
-bool 
+bool
 XBUtilities::is_esc_enabled() {
   return m_disableEscapeCodes;
 }
 
 
-void 
+void
 XBUtilities::message_(MessageType _eMT, const std::string& _msg, bool _endl)
 {
   static std::map<MessageType, std::string> msgPrefix = {
@@ -133,52 +178,52 @@ XBUtilities::message_(MessageType _eMT, const std::string& _msg, bool _endl)
   }
 }
 
-void 
-XBUtilities::message(const std::string& _msg, bool _endl) 
-{ 
-  message_(MT_MESSAGE, _msg, _endl); 
+void
+XBUtilities::message(const std::string& _msg, bool _endl)
+{
+  message_(MT_MESSAGE, _msg, _endl);
 }
 
-void 
-XBUtilities::info(const std::string& _msg, bool _endl)    
-{ 
-  message_(MT_INFO, _msg, _endl); 
+void
+XBUtilities::info(const std::string& _msg, bool _endl)
+{
+  message_(MT_INFO, _msg, _endl);
 }
 
-void 
-XBUtilities::warning(const std::string& _msg, bool _endl) 
-{ 
-  message_(MT_WARNING, _msg, _endl); 
+void
+XBUtilities::warning(const std::string& _msg, bool _endl)
+{
+  message_(MT_WARNING, _msg, _endl);
 }
 
-void 
+void
 XBUtilities::error(const std::string& _msg, bool _endl)
-{ 
-  message_(MT_ERROR, _msg, _endl); 
+{
+  message_(MT_ERROR, _msg, _endl);
 }
 
-void 
-XBUtilities::verbose(const std::string& _msg, bool _endl) 
-{ 
-  message_(MT_VERBOSE, _msg, _endl); 
+void
+XBUtilities::verbose(const std::string& _msg, bool _endl)
+{
+  message_(MT_VERBOSE, _msg, _endl);
 }
 
-void 
-XBUtilities::fatal(const std::string& _msg, bool _endl)   
-{ 
-  message_(MT_FATAL, _msg, _endl); 
+void
+XBUtilities::fatal(const std::string& _msg, bool _endl)
+{
+  message_(MT_FATAL, _msg, _endl);
 }
 
-void 
-XBUtilities::trace(const std::string& _msg, bool _endl)   
-{ 
-  message_(MT_TRACE, _msg, _endl); 
+void
+XBUtilities::trace(const std::string& _msg, bool _endl)
+{
+  message_(MT_TRACE, _msg, _endl);
 }
 
 
 
-void 
-XBUtilities::trace_print_tree(const std::string & _name, 
+void
+XBUtilities::trace_print_tree(const std::string & _name,
                               const boost::property_tree::ptree & _pt)
 {
   if (m_bTrace == false) {
@@ -192,10 +237,10 @@ XBUtilities::trace_print_tree(const std::string & _name,
   XBUtilities::message(buf.str());
 }
 
-void 
-XBUtilities::wrap_paragraph( const std::string & _unformattedString, 
-                             unsigned int _indentWidth, 
-                             unsigned int _columnWidth, 
+void
+XBUtilities::wrap_paragraph( const std::string & _unformattedString,
+                             unsigned int _indentWidth,
+                             unsigned int _columnWidth,
                              bool _indentFirstLine,
                              std::string &_formattedString)
 {
@@ -214,10 +259,10 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
 
   unsigned int linesProcessed = 0;
 
-  while (lineBeginIter < paragraphEndIter)  
+  while (lineBeginIter != paragraphEndIter)
   {
     // Remove leading spaces
-    if ((linesProcessed > 0) && 
+    if ((linesProcessed > 0) &&
         (*lineBeginIter == ' ')) {
       lineBeginIter++;
       continue;
@@ -242,13 +287,13 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
         lineEndIter = lastSpaceIter;
       }
     }
-    
+
     // Add new line
     if (linesProcessed > 0)
       _formattedString += "\n";
 
     // Indent the line
-    if ((linesProcessed > 0) || 
+    if ((linesProcessed > 0) ||
         (_indentFirstLine == true)) {
       for (size_t index = _indentWidth; index > 0; index--)
       _formattedString += " ";
@@ -257,17 +302,17 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
     // Write out the line
     _formattedString.append(lineBeginIter, lineEndIter);
 
-    lineBeginIter = lineEndIter;              
+    lineBeginIter = lineEndIter;
     linesProcessed++;
   }
-}   
+}
 
-void 
-XBUtilities::wrap_paragraphs( const std::string & _unformattedString, 
-                              unsigned int _indentWidth, 
-                              unsigned int _columnWidth, 
+void
+XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
+                              unsigned int _indentWidth,
+                              unsigned int _columnWidth,
                               bool _indentFirstLine,
-                              std::string &_formattedString) 
+                              std::string &_formattedString)
 {
   // Set return variables to a now state
   _formattedString.clear();
@@ -291,7 +336,7 @@ XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
     ++iter;
 
     // Determine if a '\n' should be added
-    if (iter != paragraphs.end()) 
+    if (iter != paragraphs.end())
       _formattedString += "\n";
   }
 }
@@ -311,8 +356,8 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     try {
       // If there are no devices in the server a runtime exception is thrown in  mgmt.cpp probe()
       total = (xrt_core::device::id_type) xrt_core::get_total_devices(_inUserDomain /*isUser*/).first;
-    } catch (...) { 
-      /* Do nothing */ 
+    } catch (...) {
+      /* Do nothing */
     }
 
     // No devices found
@@ -323,7 +368,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     for(xrt_core::device::id_type index = 0; index < total; ++index) {
       if(_inUserDomain)
         _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
-      else 
+      else
         _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
     }
 
@@ -332,15 +377,37 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 
   // -- Collect the devices by name
   for (const auto & deviceBDF : _deviceBDFs) {
-  	auto index = xrt_core::utils::bdf2index(deviceBDF, _inUserDomain);         // Can throw
+    auto index = xrt_core::utils::bdf2index(deviceBDF, _inUserDomain);         // Can throw
     if(_inUserDomain)
-        _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
-      else 
-        _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
+      _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
+    else
+      _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
   }
 }
 
-bool 
+xrt_core::device_collection
+XBUtilities::
+collect_devices(const std::vector<std::string>& _devices, bool _inUserDomain)
+{
+  std::set<std::string> device_set(_devices.begin(), _devices.end());
+  xrt_core::device_collection core_devices;
+  collect_devices(device_set, _inUserDomain, core_devices);
+  return core_devices;
+}
+
+xrt_core::device_collection
+XBUtilities::
+collect_devices( const std::string& _devices, // comma separated no space
+                 bool _inUserDomain )
+{
+  std::set<std::string> device_set;
+  boost::split(device_set, _devices, boost::is_any_of(","));
+  xrt_core::device_collection core_devices;
+  collect_devices(device_set, _inUserDomain, core_devices);
+  return core_devices;
+}
+
+bool
 XBUtilities::can_proceed()
 {
   bool proceed = false;
@@ -349,7 +416,7 @@ XBUtilities::can_proceed()
   std::cout << "Are you sure you wish to proceed? [Y/n]: ";
   std::getline( std::cin, input );
 
-  // Ugh, the std::transform() produces windows compiler warnings due to 
+  // Ugh, the std::transform() produces windows compiler warnings due to
   // conversions from 'int' to 'char' in the algorithm header file
   boost::algorithm::to_lower(input);
   //std::transform( input.begin(), input.end(), input.begin(), [](unsigned char c){ return std::tolower(c); });
@@ -362,18 +429,234 @@ XBUtilities::can_proceed()
   return proceed;
 }
 
-void 
-XBUtilities::report_available_devices() 
+void
+XBUtilities::can_proceed_or_throw(const std::string& info, const std::string& error)
 {
-  std::cout << "\nList of available devices:" <<std::endl;
+  std::cout << info << "\n";
+  if (!can_proceed())
+    throw xrt_core::system_error(ECANCELED, error);
+}
+
+void
+XBUtilities::sudo_or_throw(const std::string& msg)
+{
+#ifndef _WIN32
+  if ((getuid() == 0) || (geteuid() == 0))
+    return;
+  throw xrt_core::system_error(EPERM, msg);
+#endif
+}
+
+boost::property_tree::ptree
+XBUtilities::get_available_devices(bool inUserDomain)
+{
   xrt_core::device_collection deviceCollection;
-  collect_devices(std::set<std::string> {"all"}, false, deviceCollection);
+  collect_devices(std::set<std::string> {"all"}, inUserDomain, deviceCollection);
+  boost::property_tree::ptree pt;
   for (const auto & device : deviceCollection) {
-    boost::property_tree::ptree on_board_rom_info;
-    boost::property_tree::ptree on_board_dev_info;
-    device->get_rom_info(on_board_rom_info);
-    device->get_info(on_board_dev_info);
-    std::cout << boost::format("[%s] : %s\n") % on_board_dev_info.get<std::string>("bdf", "N/A") % on_board_rom_info.get<std::string>("vbnv", "N/A");
+    boost::property_tree::ptree pt_dev;
+    pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
+    pt_dev.put("board", xrt_core::device_query<xrt_core::query::board_name>(device));
+
+    // The following only works for 1RP. Golden and 2RP don't have rom info.
+    // As the technologies mature, try getting the vbnv and ID of the shell on device
+    // It doesn't make sense to add ad-hoc code right now.
+    // pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+    // pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+
+    pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
+    pt.push_back(std::make_pair("", pt_dev));
   }
-  std::cout << std::endl;
+  return pt;
+}
+
+std::vector<char>
+XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kind)
+{
+  std::ifstream in(filename);
+  if (!in.is_open())
+    throw std::runtime_error(boost::str(boost::format("Can't open %s") % filename));
+
+  // Read axlf from dsabin file to find out number of sections in total.
+  axlf a;
+  size_t sz = sizeof (axlf);
+  in.read(reinterpret_cast<char *>(&a), sz);
+  if (!in.good())
+    throw std::runtime_error(boost::str(boost::format("Can't read axlf from %s") % filename));
+
+  // Reread axlf from dsabin file, including all sections headers.
+  // Sanity check for number of sections coming from user input file
+  if (a.m_header.m_numSections > 10000)
+    throw std::runtime_error("Incorrect file passed in");
+
+  sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);
+
+  std::vector<char> top(sz);
+  in.seekg(0);
+  in.read(top.data(), sz);
+  if (!in.good())
+    throw std::runtime_error(boost::str(boost::format("Can't read axlf and section headers from %s") % filename));
+
+  const axlf *ap = reinterpret_cast<const axlf *>(top.data());
+  auto section = ::xclbin::get_axlf_section(ap, kind);
+  if (!section)
+    throw std::runtime_error("Section not found");
+
+  std::vector<char> buf(section->m_sectionSize);
+  in.seekg(section->m_sectionOffset);
+  in.read(buf.data(), section->m_sectionSize);
+
+  return buf;
+}
+
+std::vector<std::string>
+XBUtilities::get_uuids(const void *dtbuf)
+{
+  std::vector<std::string> uuids;
+  struct fdt_header *bph = (struct fdt_header *)dtbuf;
+  uint32_t version = be32toh(bph->version);
+  uint32_t off_dt = be32toh(bph->off_dt_struct);
+  const char *p_struct = (const char *)dtbuf + off_dt;
+  uint32_t off_str = be32toh(bph->off_dt_strings);
+  const char *p_strings = (const char *)dtbuf + off_str;
+  const char *p, *s;
+  uint32_t tag;
+  int sz;
+
+  p = p_struct;
+  uuids.clear();
+  while ((tag = be32toh(GET_CELL(p))) != FDT_END) {
+    if (tag == FDT_BEGIN_NODE) {
+      s = p;
+      p = PALIGN(p + strlen(s) + 1, 4);
+      continue;
+    }
+    if (tag != FDT_PROP)
+      continue;
+
+    sz = be32toh(GET_CELL(p));
+    s = p_strings + be32toh(GET_CELL(p));
+    if (version < 16 && sz >= 8)
+      p = PALIGN(p, 8);
+
+    if (!strcmp(s, "logic_uuid")) {
+      uuids.insert(uuids.begin(), std::string(p));
+    }
+    else if (!strcmp(s, "interface_uuid")) {
+      uuids.push_back(std::string(p));
+    }
+
+    p = PALIGN(p + sz, 4);
+  }
+  return uuids;
+}
+
+int
+XBUtilities::check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std::string &msg)
+{
+  std::vector<std::string> config;
+  try {
+    config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
+  }
+  catch (const std::runtime_error&) {
+    msg = "P2P is not available";
+    return static_cast<int>(p2p_config::not_supported);
+  }
+
+  int64_t bar = -1;
+  int64_t rbar = -1;
+  int64_t remap = -1;
+  int64_t exp_bar = -1;
+
+  //parse the query
+  for(const auto& val : config) {
+    auto pos = val.find(':') + 1;
+    if(val.find("rbar") == 0)
+      rbar = std::stoll(val.substr(pos));
+    else if(val.find("exp_bar") == 0)
+      exp_bar = std::stoll(val.substr(pos));
+    else if(val.find("bar") == 0)
+      bar = std::stoll(val.substr(pos));
+    else if(val.find("remap") == 0)
+      remap = std::stoll(val.substr(pos));
+  }
+
+  //return the config with a message
+  if (bar == -1) {
+    msg = "Error:P2P is not supported. Can't find P2P BAR.";
+    return static_cast<int>(p2p_config::not_supported);
+  }
+  else if (rbar != -1 && rbar > bar) {
+    msg = "Warning:Please WARM reboot to enable p2p now.";
+    return static_cast<int>(p2p_config::reboot);
+  }
+  else if (remap > 0 && remap != bar) {
+    msg = "Error:P2P remapper is not set correctly";
+    return static_cast<int>(p2p_config::error);
+  }
+  else if (bar == exp_bar) {
+    return static_cast<int>(p2p_config::enabled);
+  }
+  msg = "P2P bar is not enabled";
+  return static_cast<int>(p2p_config::disabled);
+}
+
+static const std::map<std::string, reset_type> reset_map = {
+    { "hot", reset_type::hot },
+    { "kernel", reset_type::kernel },
+    { "ert", reset_type::ert },
+    { "ecc", reset_type::ecc },
+    { "soft_kernel", reset_type::soft_kernel }
+  };
+
+XBUtilities::reset_type
+XBUtilities::str_to_enum_reset(const std::string& str)
+{
+  auto it = reset_map.find(str);
+  if (it != reset_map.end())
+    return it->second;
+  throw xrt_core::error(str + " is invalid. Please specify a valid reset type");
+}
+
+static std::string
+precision(double value, int p)
+{
+  std::stringstream stream;
+  stream << std::fixed << std::setprecision(p) << value;
+  return stream.str();
+}
+
+std::string
+XBUtilities::format_base10_shiftdown3(uint64_t value)
+{
+  return precision(static_cast<double>(value) / 1000.0, 3);
+}
+
+std::string
+XBUtilities::format_base10_shiftdown6(uint64_t value)
+{
+  return precision(static_cast<double>(value) / 1000000.0, 6);
+}
+
+std::string
+XBUtilities::string_to_UUID(std::string str)
+{
+  //make sure that a UUID is passed in
+  assert(str.length() == 32);
+  std::string uuid = "";
+  //positions to insert hyphens
+  //before: 00000000000000000000000000000000
+  std::vector<int> pos = {8, 4, 4, 4};
+  //before: 00000000-0000-0000-0000-000000000000
+
+  for(auto const p : pos) {
+    std::string token = str.substr(0, p);
+    boost::to_upper(token);
+    uuid.append(token + "-");
+    str.erase(0, p);
+  }
+  boost::to_upper(str);
+  uuid.append(str);
+
+  return uuid;
 }

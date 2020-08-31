@@ -45,7 +45,9 @@
 #include <sys/mman.h>
 
 #ifndef __HWEM__
+#include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
+#include "plugin/xdp/hal_device_offload.h"
 #endif
 
 namespace {
@@ -102,11 +104,6 @@ shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
-
-#ifdef XRT_ENABLE_AIE
-  /* TODO is this necessary? We may want to initialize it when loading xclbin */
-  aieArray = NULL;
-#endif
 }
 
 #ifndef __HWEM__
@@ -486,6 +483,7 @@ xclLoadAxlf(const axlf *buffer)
 {
   int ret = 0;
   unsigned int flags = DRM_ZOCL_PLATFORM_BASE;
+  int off = 0;
 
   /*
    * If platform is a non-PR-platform, Following check will fail. Dont download
@@ -506,7 +504,45 @@ xclLoadAxlf(const axlf *buffer)
   drm_zocl_axlf axlf_obj = {
     .za_xclbin_ptr = const_cast<axlf *>(buffer),
     .za_flags = flags,
+    .za_ksize = 0,
+    .za_kernels = NULL,
   };
+
+  auto kernels = xrt_core::xclbin::get_kernels(buffer);
+  /* Calculate size of kernels */
+  for (auto& kernel : kernels) {
+      axlf_obj.za_ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+  }
+
+  /* Check PCIe's shim.cpp for details of kernels binary */
+  std::vector<char> krnl_binary(axlf_obj.za_ksize);
+  axlf_obj.za_kernels = krnl_binary.data();
+  for (auto& kernel : kernels) {
+      auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.za_kernels + off);
+      if (kernel.name.size() > sizeof(krnl->name))
+          return -EINVAL;
+      std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
+      krnl->name[sizeof(krnl->name)-1] = '\0';
+      krnl->anums = kernel.args.size();
+
+      int ai = 0;
+      for (auto& arg : kernel.args) {
+          if (arg.name.size() > sizeof(krnl->args[ai].name))
+              return -EINVAL;
+          std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+          krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+          krnl->args[ai].offset = arg.offset;
+          krnl->args[ai].size   = arg.size;
+          // XCLBIN doesn't define argument direction yet and it only support
+          // input arguments.
+          // Driver use 1 for input argument and 2 for output.
+          // Let's refine this line later.
+          krnl->args[ai].dir    = 1;
+          ai++;
+      }
+      off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+  }
+
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
   xclLog(XRT_INFO, "XRT", "%s: flags 0x%x, return %d", __func__, flags, ret);
@@ -594,6 +630,8 @@ xclExecBuf(unsigned int cmdBO)
   drm_zocl_execbuf exec = {0, cmdBO};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_EXECBUF, &exec);
   xclLog(XRT_DEBUG, "XRT", "%s: cmdBO handle %d, ioctl return %d", __func__, cmdBO, result);
+  if (result == -EDEADLK)
+      xclLog(XRT_ERROR, "XRT", "CU might hang, please reset device");
   return result;
 }
 
@@ -1351,31 +1389,49 @@ xclGetDeviceClockFreqMHz()
   return (double)clockFreq;
 }
 
+int
+shim::
+xclErrorInject(uint16_t num, uint16_t driver, uint16_t  severity, uint16_t module, uint16_t eclass)
+{
+  int ret;
+  drm_zocl_error_inject ecmd = {ZOCL_ERROR_OP_INJECT, num, driver, severity, module, eclass};
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_ERROR_INJECT, &ecmd);
+  return ret;
+}
+
+int
+shim::
+xclErrorClear()
+{
+  int ret;
+  drm_zocl_error_inject ecmd = {ZOCL_ERROR_OP_CLEAR_ALL};
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_ERROR_INJECT, &ecmd);
+  return ret;
+}
+
 #ifdef XRT_ENABLE_AIE
-zynqaie::Aie *
+zynqaie::Aie*
 shim::
 getAieArray()
 {
-  return aieArray;
+  return aieArray.get();
 }
 
 void
 shim::
-setAieArray(zynqaie::Aie *aie)
+registerAieArray()
 {
-  aieArray = aie;
+  aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
 }
 
-int
-shim::getBOInfo(unsigned bo, drm_zocl_info_bo &info)
+bool
+shim::
+isAieRegistered()
 {
-  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_BO, &info);
-  if (ret)
-    return -errno;
-
-  return 0;
+  return (aieArray != nullptr);
 }
-
 #endif
 
 } // end namespace ZYNQ
@@ -1570,8 +1626,21 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 int
 xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
+#ifndef __HWEM__
+#ifdef ENABLE_HAL_PROFILING
+  LOAD_XCLBIN_CB ;
+#endif
+#endif
+
   try {
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+
+#ifndef __HWEM__
+#ifdef ENABLE_HAL_PROFILING
+  xdphal::flush_device(handle) ;
+#endif
+#endif
+
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
     if (ret) {
       printf("Load Xclbin Failed\n");
@@ -1580,11 +1649,23 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     }
     auto core_device = xrt_core::get_userpf_device(handle);
 
+    core_device->register_axlf(buffer);
+
+#ifdef XRT_ENABLE_AIE
+    drv->registerAieArray();
+#endif
+
     /* If PDI is the only section, return here */
     if (xrt_core::xclbin::is_pdi_only(buffer))
         return 0;
 
-    core_device->register_axlf(buffer);
+
+#ifndef __HWEM__
+#ifdef ENABLE_HAL_PROFILING
+  xdphal::update_device(handle) ;
+#endif
+#endif
+
     ret = xrt_core::scheduler::init(handle, buffer);
     if (ret) {
       printf("Scheduler init failed\n");
@@ -1764,7 +1845,7 @@ xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
  * Context switch phase 1: support xclbin swap, no cu and shared checking
  */
 int
-xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
@@ -1772,7 +1853,7 @@ xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bo
 }
 
 int
-xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;
@@ -1891,7 +1972,7 @@ ssize_t
 xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf,
                size_t size, uint64_t offset)
 {
-  return 0;
+  return -ENOSYS;
 }
 
 int
@@ -2061,8 +2142,35 @@ xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size
   return;
 }
 
-int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
-                        uint32_t idx, char* path, size_t size)
+int
+xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
+                 uint32_t idx, char* path, size_t size)
 {
   return 0;
+}
+
+int
+xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
+{
+  return 1; // -ENOSYS;
+}
+
+int
+xclErrorInject(xclDeviceHandle handle, uint16_t num, uint16_t driver, uint16_t severity, uint16_t module, uint16_t eclass)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+
+  return drv->xclErrorInject(num, driver, severity, module, eclass);
+}
+
+int
+xclErrorClear(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+
+  return drv->xclErrorClear();
 }

@@ -21,19 +21,16 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/OptionOptions.cpp"
   "../common/XBHelpMenus.cpp"
   "../common/Report*.cpp"
+  "../common/ProgressBar.cpp"
+  "../common/Process.cpp"
 )
 
 # Collect local directory files
 file(GLOB XBUTIL_V2_SUBCMD_FILES
   "XBReport.cpp"
-  "XBDatabase.cpp"
-  "SubCmdDmaTest.cpp"
-  "SubCmdDump.cpp"
   "SubCmdExamine.cpp"
   "SubCmdProgram.cpp"
-  "SubCmdQuery.cpp"
   "SubCmdReset.cpp"
-  "SubCmdScan.cpp"
   "SubCmdValidate.cpp"
   "SubCmdAdvanced.cpp"
   "OO_Clock.cpp"

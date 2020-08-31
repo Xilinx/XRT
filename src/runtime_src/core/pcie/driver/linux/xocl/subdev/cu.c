@@ -22,15 +22,6 @@ struct xocl_cu {
 	struct platform_device	*pdev;
 };
 
-static int cu_submit(struct platform_device *pdev, struct kds_command *xcmd)
-{
-	struct xocl_cu *xcu = platform_get_drvdata(pdev);
-
-	xrt_cu_submit(&xcu->base, xcmd);
-
-	return 0;
-}
-
 static ssize_t debug_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -51,15 +42,36 @@ static ssize_t debug_store(struct device *dev,
 	struct xocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &cu->base;
 #endif
-
 	/* Place holder for now. */
 	return count;
 }
 
 static DEVICE_ATTR_RW(debug);
 
+static ssize_t
+cu_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+
+	return show_cu_stat(&cu->base, buf);
+}
+static DEVICE_ATTR_RO(cu_stat);
+
+static ssize_t
+cu_info_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+
+	return show_cu_info(&cu->base, buf);
+}
+static DEVICE_ATTR_RO(cu_info);
+
 static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
+	&dev_attr_cu_stat.attr,
+	&dev_attr_cu_info.attr,
 	NULL,
 };
 
@@ -73,6 +85,8 @@ static int cu_probe(struct platform_device *pdev)
 	struct xocl_cu *xcu;
 	struct resource **res;
 	struct xrt_cu_info *info;
+	struct kernel_info *krnl_info;
+	struct xrt_cu_arg *args = NULL;
 	int err = 0;
 	void *hdl;
 	int i;
@@ -86,6 +100,27 @@ static int cu_probe(struct platform_device *pdev)
 
 	info = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 	memcpy(&xcu->base.info, info, sizeof(struct xrt_cu_info));
+
+	krnl_info = xocl_query_kernel(xdev, info->kname);
+	if (!krnl_info) {
+		err = -EFAULT;
+		goto err;
+	}
+
+	/* Populate kernel argument information */
+	args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
+	if (!args) {
+		err = -ENOMEM;
+		goto err;
+	}
+	for (i = 0; i < krnl_info->anums; i++) {
+		strcpy(args[i].name, krnl_info->args[i].name);
+		args[i].offset = krnl_info->args[i].offset;
+		args[i].size = krnl_info->args[i].size;
+		args[i].dir = krnl_info->args[i].dir;
+	}
+	xcu->base.info.num_args = krnl_info->anums;
+	xcu->base.info.args = args;
 
 	res = vzalloc(sizeof(struct resource *) * xcu->base.info.num_res);
 	if (!res) {
@@ -102,10 +137,10 @@ static int cu_probe(struct platform_device *pdev)
 	}
 	xcu->base.res = res;
 
-	err = xocl_cu_ctrl_add_cu(xdev, &xcu->base);
+	err = xocl_kds_add_cu(xdev, &xcu->base);
 	if (err) {
-		err = 0; //Ignore this error until all platforms support CU controller
-		//XCU_ERR(xcu, "Not able to add CU %p to controller", xcu);
+		err = 0; //Ignore this error now
+		//XCU_ERR(xcu, "Not able to add CU %p to KDS", xcu);
 		goto err1;
 	}
 
@@ -132,10 +167,11 @@ static int cu_probe(struct platform_device *pdev)
 	return 0;
 
 err2:
-	xocl_cu_ctrl_remove_cu(xdev, &xcu->base);
+	(void) xocl_kds_del_cu(xdev, &xcu->base);
 err1:
 	vfree(res);
 err:
+	vfree(args);
 	xocl_drvinst_release(xcu, &hdl);
 	xocl_drvinst_free(hdl);
 	return err;
@@ -164,10 +200,13 @@ static int cu_remove(struct platform_device *pdev)
 		break;
 	}
 
-	(void) xocl_cu_ctrl_remove_cu(xdev, &xcu->base);
+	(void) xocl_kds_del_cu(xdev, &xcu->base);
 
 	if (xcu->base.res)
 		vfree(xcu->base.res);
+
+	if (info->args)
+		vfree(info->args);
 
 	xocl_drvinst_release(xcu, &hdl);
 
@@ -177,16 +216,8 @@ static int cu_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct xocl_cu_funcs cu_ops = {
-	.submit	= cu_submit,
-};
-
-static struct xocl_drv_private cu_priv = {
-	.ops = &cu_ops,
-};
-
 static struct platform_device_id cu_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_CU), (kernel_ulong_t)&cu_priv },
+	{ XOCL_DEVNAME(XOCL_CU), 0 },
 	{ },
 };
 

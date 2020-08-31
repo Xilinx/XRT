@@ -115,6 +115,8 @@ enum drm_zocl_ops {
 	DRM_ZOCL_INFO_CU,
 	/* Open/Close context */
 	DRM_ZOCL_CTX,
+	/* Error injection */
+	DRM_ZOCL_ERROR_INJECT,
 	DRM_ZOCL_NUM_IOCTLS
 };
 
@@ -333,14 +335,47 @@ enum drm_zocl_axlf_flags {
 };
 
 /**
+ * struct argument_info - Kernel argument information
+ *
+ * @name:	argument name
+ * @offset:	argument offset in CU
+ * @size:	argument size in bytes
+ * @dir:	input or output argument for a CU
+ */
+struct argument_info {
+	char		name[32];
+	uint32_t	offset;
+	uint32_t	size;
+	uint32_t	dir;
+};
+
+/**
+ * struct kernel_info - Kernel information
+ *
+ * @name:	kernel name
+ * @anums:	number of argument
+ * @args:	argument array
+ */
+struct kernel_info {
+	char                     name[64];
+	int		                 anums;
+	struct argument_info	 args[];
+};
+
+/**
  * struct drm_zocl_axlf - Read xclbin (AXLF) device image and map CUs (experimental)
  * used with DRM_IOCTL_ZOCL_READ_AXLF ioctl
  *
- * @axlf  : Pointer to xclbin (AXLF) object
+ * @za_xclbin_ptr: Pointer to xclbin (AXLF) object
+ * @za_flags:   platform flags
+ * @za_ksize:	size of kernels in bytes
+ * @za_kernels:	pointer of argument array
  **/
 struct drm_zocl_axlf {
 	struct axlf 	*za_xclbin_ptr;
-	uint32_t 	za_flags;
+	uint32_t         za_flags;
+	int	             za_ksize;
+	char			*za_kernels;
 };
 
 #define	ZOCL_MAX_NAME_LENGTH		32
@@ -397,6 +432,20 @@ struct drm_zocl_sk_report {
 	enum drm_zocl_scu_state	cu_state;
 };
 
+enum drm_zocl_err_ops {
+	ZOCL_ERROR_OP_INJECT = 0,
+	ZOCL_ERROR_OP_CLEAR_ALL
+};
+
+struct drm_zocl_error_inject {
+	enum drm_zocl_err_ops	err_ops;
+	uint16_t		err_num;
+	uint16_t		err_driver;
+	uint16_t		err_severity;
+	uint16_t		err_module;
+	uint16_t		err_class;
+};
+
 #define DRM_IOCTL_ZOCL_CREATE_BO       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_CREATE_BO,     \
                                        struct drm_zocl_create_bo)
@@ -431,4 +480,6 @@ struct drm_zocl_sk_report {
                                        DRM_ZOCL_INFO_CU, struct drm_zocl_info_cu)
 #define DRM_IOCTL_ZOCL_CTX             DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_CTX, struct drm_zocl_ctx)
+#define DRM_IOCTL_ZOCL_ERROR_INJECT    DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_ERROR_INJECT, struct drm_zocl_error_inject)
 #endif

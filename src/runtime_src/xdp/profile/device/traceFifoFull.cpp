@@ -169,7 +169,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       traceVector.mArray[idx++] = results;   // save result
 
       if(out_stream) {
-        uint64_t previousTimestamp = 0;
+        static uint64_t previousTimestamp = 0;
         auto packet_dec = std::bitset<64>(currentSample).to_string();
         (*out_stream) << "  Trace sample " << std::dec << std::setw(5) << i << ": "
                       <<  packet_dec.substr(0,19) << " : " << packet_dec.substr(19)

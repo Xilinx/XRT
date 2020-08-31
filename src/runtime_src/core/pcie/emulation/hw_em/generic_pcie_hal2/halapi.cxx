@@ -147,13 +147,13 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 
 
 //defining following two functions as they gets called in scheduler init call
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 
 {
   return 0;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
   return 0;
 }
@@ -188,7 +188,7 @@ unsigned xclProbe()
 {
   if(!xclemulation::isXclEmulationModeHwEmuOrSwEmu())
   {
-    std::string initMsg ="ERROR: [HW-EM 08] Please set XCL_EMULATION_MODE to \"hw_emu\" to run hardware emulation. ";
+    std::string initMsg ="ERROR: [HW-EMU 08] Please set XCL_EMULATION_MODE to \"hw_emu\" to run hardware emulation. ";
     std::cout<<initMsg<<std::endl;
     return 0;
   }
@@ -269,7 +269,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
     handle->xclOpen(logfileName);
     if(bDefaultDevice)
     {
-      std::string sDummyDeviceMsg ="CRITICAL WARNING: [HW-EM 08-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-hw-em:7v3:1.0\"";
+      std::string sDummyDeviceMsg ="CRITICAL WARNING: [HW-EMU 08-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-hw-em:7v3:1.0\"";
       handle->logMessage(sDummyDeviceMsg);
     }
   }
@@ -519,3 +519,8 @@ int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint3
   return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
 }
 
+int
+xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
+{
+  return -ENOSYS;
+}

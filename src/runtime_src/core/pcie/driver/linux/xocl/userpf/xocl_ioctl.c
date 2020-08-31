@@ -68,6 +68,23 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	return ret;
 }
 
+int xocl_execbuf_callback_ioctl(struct drm_device *dev,
+			  void *data,
+			  struct drm_file *filp)
+{
+	struct xocl_drm *drm_p = dev->dev_private;
+	int ret = 0;
+
+	if (kds_mode == 1)
+		ret = xocl_client_ioctl(drm_p->xdev,
+					DRM_XOCL_EXECBUF_CB, data, filp);
+	else
+		ret = xocl_exec_client_ioctl(drm_p->xdev,
+					     DRM_XOCL_EXECBUF_CB, data, filp);
+
+	return ret;
+}
+
 /*
  * Create a context (only shared supported today) on a CU. Take a lock on xclbin if
  * it has not been acquired before. Shared the same lock for all context requests
@@ -296,6 +313,17 @@ static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_to
 	return ret;
 }
 
+static bool xocl_xclbin_in_use(struct xocl_dev *xdev)
+{
+	BUG_ON(!xdev);
+
+	if (live_clients(xdev, NULL) || atomic_read(&xdev->outstanding_execs)) {
+		userpf_err(xdev, " Current xclbin is in-use, can't change\n");
+		return true;
+	}
+	return false;
+}
+
 static int
 xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 {
@@ -308,6 +336,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	struct xocl_dev *xdev = drm_p->xdev;
 	const struct axlf_section_header * dtbHeader = NULL;
 	void *ulp_blob;
+	void *kernels;
 	int rc;
 
 	if (!xocl_is_unified(xdev)) {
@@ -324,6 +353,18 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	if (uuid_is_null(&bin_obj.m_header.uuid)) {
 		userpf_err(xdev, "invalid xclbin uuid\n");
 		return -EINVAL;
+	}
+
+	if (kds_mode) {
+		if (is_bad_state(&XDEV(xdev)->kds)) {
+			err = -EDEADLK;
+			goto done;
+		}
+	} else {
+		if (list_is_singular(&xdev->ctx_list) && atomic_read(&xdev->outstanding_execs)) {
+			err = -EDEADLK;
+			goto done;
+		}
 	}
 
 	if (xclbin_downloaded(xdev, &bin_obj.m_header.uuid))
@@ -372,8 +413,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	 * Note that icap subdevice also maintains xclbin ref count, which is
 	 * used to lock down xclbin on mgmt pf side.
 	 */
-	if (live_clients(xdev, NULL) || atomic_read(&xdev->outstanding_execs)) {
-		userpf_err(xdev, " Current xclbin is in-use, can't change\n");
+	if (xocl_xclbin_in_use(xdev)) {
 		err = -EBUSY;
 		goto done;
 	}
@@ -462,6 +502,26 @@ skip1:
 			goto done;
 	}
 
+	if (XDEV(xdev)->kernels != NULL) {
+		vfree(XDEV(xdev)->kernels);
+		XDEV(xdev)->kernels = NULL;
+	}
+
+	kernels = vmalloc(axlf_ptr->ksize);
+	if (!kernels) {
+		userpf_err(xdev, "Unable to alloc mem for kernels, size=%u\n",
+			   axlf_ptr->ksize);
+		err = -ENOMEM;
+		goto done;
+	}
+	if (copy_from_user(kernels, axlf_ptr->kernels, axlf_ptr->ksize)) {
+		vfree(kernels);
+		err = -EFAULT;
+		goto done;
+	}
+	XDEV(xdev)->ksize = axlf_ptr->ksize;
+	XDEV(xdev)->kernels = kernels;
+
 	err = xocl_icap_download_axlf(xdev, axlf);
 	if (err) {
 		/* TODO: remove this. Coupling scheduler is a bad idea.
@@ -489,8 +549,7 @@ skip1:
 done:
 	if (size < 0)
 		err = size;
-	if (err){
-		xocl_icap_clean_bitstream(xdev);
+	if (err) {
 		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
 	}
 	else
@@ -552,7 +611,14 @@ int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
 	int err = 0;
 
 	mutex_lock(&xdev->dev_lock);
-	err = xocl_cma_bank_alloc(drm_p, cma_info);
+
+	if (xocl_xclbin_in_use(xdev)) {
+		err = -EBUSY;
+		goto done;
+	}
+
+	err = xocl_cma_bank_alloc(xdev, cma_info);
+done:
 	mutex_unlock(&xdev->dev_lock);
 	return err;
 }
@@ -565,10 +631,11 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	int err = 0;
 
 	mutex_lock(&xdev->dev_lock);
-	if (xocl_addr_translator_get_base_addr(xdev))
+
+	if (xocl_xclbin_in_use(xdev) || xocl_check_topology(drm_p))
 		err = -EBUSY;
 	else
-		xocl_cma_bank_free(drm_p);
+		xocl_cma_bank_free(xdev);
 	mutex_unlock(&xdev->dev_lock);
 
 	return err;

@@ -41,18 +41,20 @@ endif
 endif
 
 drv_common-y   := $(common_dir)/kds_core.o \
-		  $(common_dir)/kds_cu_ctrl.o \
 		  $(common_dir)/xrt_cu.o \
 		  $(common_dir)/cu_hls.o \
-		  $(common_dir)/cu_plram.o
+		  $(common_dir)/cu_plram.o \
+		  $(common_dir)/xrt_xclbin.o
 
 xocl-y := \
 	../xocl_subdev.o \
 	../xocl_ctx.o \
 	../xocl_thread.o \
 	../xocl_fdt.o \
+	../xocl_xclbin.o \
 	../subdev/xdma.o \
 	../subdev/qdma.o \
+	../subdev/qdma4.o \
 	../subdev/feature_rom.o \
 	../subdev/mb_scheduler.o \
 	../subdev/mailbox.o \
@@ -72,12 +74,19 @@ xocl-y := \
 	../subdev/trace_fifo_full.o\
 	../subdev/trace_funnel.o\
 	../subdev/trace_s2mm.o\
+	../subdev/lapc.o\
+	../subdev/spc.o\
 	../subdev/ddr_srsr.o\
 	../subdev/memory_hbm.o \
 	../subdev/address_translator.o \
-	../subdev/cu_ctrl.o \
 	../subdev/cu.o \
 	../subdev/p2p.o \
+	../subdev/intc.o \
+	../subdev/m2m.o \
+	../subdev/version_ctrl.o \
+	../subdev/msix_xdma.o \
+	../subdev/ert_user.o \
+	../subdev/ert_30.o \
 	$(xocl_lib-y)	\
 	$(drv_common-y) \
 	xocl_drv.o	\
@@ -122,7 +131,9 @@ install: all
 clean:
 	rm -rf *.o *.o.d *~ core .depend .*.cmd *.ko *.ko.unsigned *.mod.c \
 	../subdev/*.o ../subdev/.*.o.cmd ../lib/*.o ../lib/.*.o.cmd	\
-	../lib/*.o.ur-safe ../lib/libqdma/*.o ../lib/libqdma/.*.o.cmd \
-	../lib/libqdma/*.o.ur-safe ../subdev/*.o.ur-safe ./.cache.mk	\
+	../lib/*.o.ur-safe ../lib/libqdma*/*.o ../lib/libqdma*/.*.o.cmd \
+	../lib/libqdma*/*/*.o ../lib/libqdma*/*/.*.o.cmd \
+	../lib/libqdma*/*.o.ur-safe ../lib/libqdma*/*/*.o.ur-safe \
+	../subdev/*.o.ur-safe ./.cache.mk	\
 	$(common_dir)/*.o $(common_dir)/.*.o.cmd \
 	.tmp_versions *.symvers modules.order

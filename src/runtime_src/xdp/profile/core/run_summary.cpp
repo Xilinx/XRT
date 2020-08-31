@@ -18,6 +18,7 @@
 
 #include "run_summary.h"
 
+#include "core/common/config_reader.h"
 #include "xdp/profile/writer/base_profile.h"
 
 #include <iostream>
@@ -70,6 +71,7 @@ RunSummary::getFileTypeAsStr(enum RunSummary::FileType eFileType)
     case FT_POWER_PROFILE: return "XRT_POWER_PROFILE";
     case FT_KERNEL_PROFILE: return "KERNEL_PROFILE";
     case FT_KERNEL_TRACE: return "KERNEL_TRACE";
+    case FT_VP_TRACE: return "VP_TRACE";
   }
 
   // Yeah, the code will never get here, but it makes for a clean flow
@@ -181,6 +183,14 @@ void RunSummary::writeContent()
       boost::property_tree::ptree ptFile;
       ptFile.put("name", pKernelTraceFile);
       ptFile.put("type", getFileTypeAsStr(FT_KERNEL_TRACE).c_str());
+      ptFiles.push_back(std::make_pair("", ptFile));
+    }
+
+    // If VART profiling is turned on, then add the generated file
+    if (xrt_core::config::get_vitis_ai_profile()) {
+      boost::property_tree::ptree ptFile;
+      ptFile.put("name", "vart_trace.csv");
+      ptFile.put("type", getFileTypeAsStr(FT_VP_TRACE).c_str());
       ptFiles.push_back(std::make_pair("", ptFile));
     }
 

@@ -941,13 +941,16 @@ static int process_completions(struct xdma_engine *engine,
 
 		if (req->sw_desc_cnt == req->desc_completed) {
 			list_del(&req->entry);
+			spin_unlock(&engine->req_list_lock);
 			if (req->cb && req->cb->io_done) {
 				struct xdma_io_cb *cb = req->cb;
 
+				cb->done_bytes = req->done;
 				cb->io_done((unsigned long)cb->private, 0);
 				xdma_request_release(engine->xdev, req);
 			} else
 				wake_up(&req->arbtr_wait);
+			spin_lock(&engine->req_list_lock);
 		}
 		spin_unlock(&engine->req_list_lock);
 	}
@@ -1242,6 +1245,7 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 		if (req == NULL) {
 			if (desc_set_offset || req_submit) {
 				dbg_tfr("going to submit for pidx = %d", pidx);
+				spin_lock(&engine->desc_lock);
 				goto submit_req;
 			}
 			return 0;
@@ -1250,18 +1254,18 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 		if (!desc_set_offset) {
 			pidx = xdma_get_desc_set(engine);
 			if (pidx == -EBUSY) {
-				spin_unlock(&engine->desc_lock);
 				if (req_submit)
 					goto submit_req;
+				spin_unlock(&engine->desc_lock);
 				return 0;
 			}
 			s = &engine->sets[pidx];
 			if (s->desc_set_offset) {
 				 /* someone already using this desc set,
 				  * dont jump the gun, go and wait */
-				spin_unlock(&engine->desc_lock);
 				if (req_submit)
 					goto submit_req;
+				spin_unlock(&engine->desc_lock);
 				return 0;
 			}
 			 /* if repeatedly same pidx, not going anywhere,
@@ -1273,7 +1277,6 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 		}
 		if (req->sw_desc_cnt == req->sw_desc_idx) {
 			/* req already setup, do no redo */
-			spin_unlock(&engine->desc_lock);
 			desc_setup_yield = 1;
 			goto submit_req;
 		}
@@ -1302,7 +1305,6 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 			desc_virt[desc_set_offset - 1].control |=
 					cpu_to_le32(XDMA_DESC_EOP);
 
-		spin_unlock(&engine->desc_lock);
 		if (eop) {
 			dbg_tfr("EOP desc control = %x", 
 				desc_virt[s->desc_set_offset - 1].control);
@@ -1316,11 +1318,11 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 			goto submit_req;
 		}
 		if (desc_set_offset < desc_set_depth) {
+			spin_unlock(&engine->desc_lock);
 			schedule(); /* time for other threads to do something */
 			continue; /* get new request to fill desc set */
 		}
 submit_req:
-		spin_lock(&engine->desc_lock);
 		dbg_tfr("pidx = %u, cidx = %u %u - %u", pidx,
 			engine->cidx, desc_set_offset, engine->avail_sets);
 		if ((pidx >= 0) && desc_set_offset) { /* something new is setup */
@@ -2487,7 +2489,7 @@ static int irq_msix_channel_setup(struct xdma_dev *xdev)
 	struct xdma_engine *engine;
 
 	BUG_ON(!xdev);
-	if (!xdev->msix_enabled)
+	if (!xdev->msix_enabled || xdev->no_dma)
 		return 0;
 
 	engine = xdev->engine_h2c;
@@ -2557,6 +2559,11 @@ static int irq_msix_user_setup(struct xdma_dev *xdev)
 	int i;
 	int j = xdev->h2c_channel_max + xdev->c2h_channel_max;
 	int rv = 0;
+	struct interrupt_regs *reg = (struct interrupt_regs *)
+		(xdev->bar[xdev->config_bar_idx] + XDMA_OFS_INT_CTRL);
+
+	if (xdev->no_dma)
+		j = read_register(&reg->user_msi_vector) & 0xf;
 
 	/* vectors set in probe_scan_for_msi() */
 	for (i = 0; i < xdev->user_max; i++, j++) {
@@ -3526,6 +3533,9 @@ static void remove_engines(struct xdma_dev *xdev)
 
 	BUG_ON(!xdev);
 
+	if (xdev->no_dma)
+		return;
+
 	/* iterate over channels */
 	for (i = 0; i < xdev->h2c_channel_max; i++) {
 		engine = &xdev->engine_h2c[i];
@@ -3604,6 +3614,12 @@ static int probe_engines(struct xdma_dev *xdev)
 	int rv = 0;
 
 	BUG_ON(!xdev);
+
+	if (xdev->no_dma) {
+		xdev->h2c_channel_max = 2;
+		xdev->c2h_channel_max = 2;
+		return 0;
+	}
 
 	/* iterate over channels */
 	for (i = 0; i < xdev->h2c_channel_max; i++) {
@@ -3698,7 +3714,8 @@ static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 }
 
 void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
-			int *h2c_channel_max, int *c2h_channel_max)
+			int *h2c_channel_max, int *c2h_channel_max,
+			bool no_dma)
 {
 	struct xdma_dev *xdev = NULL;
 	int rv = 0;
@@ -3709,10 +3726,13 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	xdev = alloc_dev_instance(pdev);
 	if (!xdev)
 		return NULL;
+	xdev->no_dma = no_dma;
 	xdev->mod_name = mname;
 	xdev->user_max = *user_max;
-	xdev->h2c_channel_max = *h2c_channel_max;
-	xdev->c2h_channel_max = *c2h_channel_max;
+	if (h2c_channel_max)
+		xdev->h2c_channel_max = *h2c_channel_max;
+	if (c2h_channel_max)
+		xdev->c2h_channel_max = *c2h_channel_max;
 
 	xdma_device_flag_set(xdev, XDEV_FLAG_OFFLINE);
 	xdev_list_add(xdev);
@@ -3802,8 +3822,10 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 
 
 	*user_max = xdev->user_max;
-	*h2c_channel_max = xdev->h2c_channel_max;
-	*c2h_channel_max = xdev->c2h_channel_max;
+	if (h2c_channel_max)
+		*h2c_channel_max = xdev->h2c_channel_max;
+	if (c2h_channel_max)
+		*c2h_channel_max = xdev->c2h_channel_max;
 
 	xdma_device_flag_clear(xdev, XDEV_FLAG_OFFLINE);
 	return (void *)xdev;

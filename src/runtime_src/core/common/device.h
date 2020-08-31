@@ -32,6 +32,11 @@
 #include <map>
 #include <boost/any.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/optional/optional.hpp>
+
+#define XILINX_ID  0x10ee
+#define ARISTA_ID  0x3475
+#define INVALID_ID 0xffff
 
 namespace xrt_core {
 
@@ -120,25 +125,22 @@ public:
     return false;
   }
 
+  /**
+   * is_nodma() - Is this device a NODMA device
+   *
+   * Return: true if device is nodma
+   *
+   * This function is added to avoid sysfs access in
+   * critical path.
+   */
+  XRT_CORE_COMMON_EXPORT
+  bool
+  is_nodma() const;
+
  private:
   // Private look up function for concrete query::request
   virtual const query::request&
   lookup_query(query::key_type query_key) const = 0;
-
-  /**
-   * open() - opens a device with an fd which can be used for non pcie read/write
-   * xospiversal and xspi use this
-   */
-  virtual int
-  open(const std::string&, int) const
-  { throw std::runtime_error("Not implemented"); }
-
-  /**
-   * close() - close the fd
-   */
-  virtual void
-  close(int) const
-  { throw std::runtime_error("Not implemented"); }
 
 public:
   /**
@@ -168,6 +170,20 @@ public:
   {
     auto& qr = lookup_query(QueryRequestType::key);
     return qr.get(this, std::forward<Args>(args)...);
+  }
+
+  /**
+   * update() - Update a given property for this device
+   *
+   * @QueryRequestType: Template parameter identifying a specific query request
+   * @args:  Variadic arguments forwarded to the QueryRequestType
+   */
+  template <typename QueryRequestType, typename ...Args>
+  void
+  update(Args&&... args) const
+  {
+    auto& qr = lookup_query(QueryRequestType::key);
+    return qr.put(this, std::forward<Args>(args)...);
   }
 
   /**
@@ -237,38 +253,6 @@ public:
 
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
-  virtual void read_dma_stats(boost::property_tree::ptree&) const {}
-
-  XRT_CORE_COMMON_EXPORT
-  void get_rom_info(boost::property_tree::ptree & pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void get_xmc_info(boost::property_tree::ptree & pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void get_platform_info(boost::property_tree::ptree & pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_thermal_pcb(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_thermal_fpga(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_fan_info(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_thermal_cage(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_electrical(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_power(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_firewall(boost::property_tree::ptree &pt) const;
-
   /**
    * read() - maps pcie bar and copy bytes word (32bit) by word
    * THIS FUNCTION DOES NOT BELONG HERE
@@ -283,6 +267,21 @@ public:
   virtual void reset(const char*, const char*, const char*) const {}
 
   /**
+   * open() - opens a device with an fd which can be used for non pcie read/write
+   * xospiversal and xspi use this
+   */
+  virtual int
+  open(const std::string&, int) const
+  { throw std::runtime_error("Not implemented"); }
+
+  /**
+   * close() - close the fd
+   */
+  virtual void
+  close(int) const
+  { throw std::runtime_error("Not implemented"); }
+
+  /**
    * file_open() - Opens a scoped fd
    * THIS FUNCTION DOES NOT BELONG HERE
    */
@@ -293,16 +292,9 @@ public:
     return {fd, std::bind(&device::close, this, fd)};
   }
 
-  // Helper methods, move else where
-  typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);
-  static std::string format_primative(const boost::any & _data);
-  static std::string format_hex(const boost::any & _data);
-  static std::string format_hex_base2_shiftup30(const boost::any & _data);
-  static std::string format_base10_shiftdown3(const boost::any &_data);
-  static std::string format_base10_shiftdown6(const boost::any &_data);
-
  private:
   id_type m_device_id;
+  mutable boost::optional<bool> m_nodma = boost::none;
 
   // cache xclbin meta data loaded by this process
   uuid m_xclbin_uuid;
@@ -324,6 +316,14 @@ device_query(const device* device)
   return boost::any_cast<typename QueryRequestType::result_type>(ret);
 }
 
+template <typename QueryRequestType, typename ...Args>
+inline typename QueryRequestType::result_type
+device_query(const device* device, Args&&... args)
+{
+  auto ret = device->query<QueryRequestType>(std::forward<Args>(args)...);
+  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+}
+
 template <typename QueryRequestType>
 inline typename QueryRequestType::result_type
 device_query(const std::shared_ptr<device>& device)
@@ -335,7 +335,15 @@ template <typename QueryRequestType, typename ...Args>
 inline typename QueryRequestType::result_type
 device_query(const std::shared_ptr<device>& device, Args&&... args)
 {
-  return device_query<QueryRequestType>(device.get(), std::forward<Args>(args)...);
+  auto ret = device->query<QueryRequestType>(std::forward<Args>(args)...);
+  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+}
+
+template <typename QueryRequestType, typename ...Args>
+inline void
+device_update(const device* device, Args&&... args)
+{
+  device->update<QueryRequestType>(std::forward<Args>(args)...);
 }
 
 template <typename QueryRequestType>

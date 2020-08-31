@@ -396,3 +396,27 @@ message xclPerfMonReadTrace_Streaming_response {
   }
   repeated events output_data = 8;
 }
+
+//Added these messages for supporting Interrupts and Slave interfaces
+message xclSlaveReadReq_call {
+     required uint64 addr = 1;
+     required uint32 size = 2;
+}
+message xclSlaveReadReq_response {
+     required bool valid = 1;
+     required bytes data = 2;
+}
+message xclSlaveWriteReq_call {
+     required uint64 addr = 1;
+     required uint32 size = 2;
+     required bytes data = 3;
+}
+message xclSlaveWriteReq_response {
+     required bool valid = 1;
+}
+message xclInterruptOccured_call {
+     required uint32 interrupt_line = 1;
+}
+message xclInterruptOccured_response {
+     required bool valid = 1;
+}

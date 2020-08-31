@@ -16,6 +16,38 @@
  */
 
 #include "../xocl_drv.h"
+#include "profile_ioctl.h"
+
+/************************ Accelerator Monitor (AM, earlier SAM) ************************/
+
+#define XAM_CONTROL_OFFSET                          0x08
+#define XAM_TRACE_CTRL_OFFSET                       0x10
+#define XAM_SAMPLE_OFFSET                           0x20
+#define XAM_ACCEL_EXECUTION_COUNT_OFFSET            0x80
+#define XAM_ACCEL_EXECUTION_CYCLES_OFFSET           0x84
+#define XAM_ACCEL_STALL_INT_OFFSET                  0x88
+#define XAM_ACCEL_STALL_STR_OFFSET                  0x8c
+#define XAM_ACCEL_STALL_EXT_OFFSET                  0x90
+#define XAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET       0x94
+#define XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET       0x98
+#define XAM_ACCEL_TOTAL_CU_START_OFFSET             0x9c
+#define XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET      0xA0
+#define XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET     0xA4
+#define XAM_ACCEL_STALL_INT_UPPER_OFFSET            0xA8
+#define XAM_ACCEL_STALL_STR_UPPER_OFFSET            0xAc
+#define XAM_ACCEL_STALL_EXT_UPPER_OFFSET            0xB0
+#define XAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET 0xB4
+#define XAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET 0xB8
+#define XAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET       0xbc
+#define XAM_BUSY_CYCLES_OFFSET                      0xC0
+#define XAM_BUSY_CYCLES_UPPER_OFFSET                0xC4
+#define XAM_MAX_PARALLEL_ITER_OFFSET                0xC8
+#define XAM_MAX_PARALLEL_ITER_UPPER_OFFSET          0xCC
+
+/* SAM Trace Control Masks */
+#define XAM_TRACE_STALL_SELECT_MASK    0x0000001c
+#define XAM_COUNTER_RESET_MASK         0x00000002
+#define XAM_DATAFLOW_EN_MASK           0x00000008
 
 struct xocl_am {
 	void __iomem		*base;
@@ -23,6 +55,179 @@ struct xocl_am {
 	uint64_t		start_paddr;
 	uint64_t		range;
 	struct mutex 		lock;
+	struct debug_ip_data	data;
+	struct am_counters counters;
+};
+
+/**
+ * helper functions
+ */
+static void update_counters(struct xocl_am *am);
+/**
+ * ioctl functions
+ */
+static long reset_counters(struct xocl_am *am);
+static long start_counters(struct xocl_am *am);
+static long read_counters(struct xocl_am *am, void __user *arg);
+static long stop_counters(struct xocl_am *am);
+static long start_trace(struct xocl_am *am, void __user *arg);
+static long stop_trace(struct xocl_am *am);
+static long config_dataflow(struct xocl_am *am, void __user *arg);
+
+static long reset_counters(struct xocl_am *am)
+{
+	uint32_t reg = 0;
+	reg = XOCL_READ_REG32(am->base + XAM_CONTROL_OFFSET);
+	// Start Reset
+	reg = reg | XAM_COUNTER_RESET_MASK;
+	XOCL_WRITE_REG32(reg, am->base + XAM_CONTROL_OFFSET);
+	// End Reset
+	reg = reg & ~(XAM_COUNTER_RESET_MASK);
+	XOCL_WRITE_REG32(reg, am->base + XAM_CONTROL_OFFSET);
+	return 0;
+}
+
+static long start_counters(struct xocl_am *am)
+{
+	// Needs hw implementation
+	return 0;
+}
+
+static long read_counters(struct xocl_am *am, void __user *arg)
+{
+	update_counters(am);
+	if (copy_to_user(arg, &am->counters, sizeof(struct am_counters)))
+	{
+		return -EFAULT;
+	}
+	return 0;
+}
+
+static long stop_counters(struct xocl_am *am)
+{
+	// Needs hw implementation
+	return 0;
+}
+
+static long start_trace(struct xocl_am *am, void __user *arg)
+{
+	uint32_t options = 0;
+	uint32_t reg = 0;
+	if (copy_from_user(&options, arg, sizeof(uint32_t)))
+	{
+		return -EFAULT;
+	}
+	// Set Stall trace control register bits
+	// Bit 1 : CU (Always ON)  Bit 2 : INT  Bit 3 : STR  Bit 4 : Ext
+	reg = ((options & XAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1;
+	XOCL_WRITE_REG32(reg, am->base + XAM_TRACE_CTRL_OFFSET);
+	return 0;
+}
+
+static long stop_trace(struct xocl_am *am)
+{
+	uint32_t reg = 0;
+	XOCL_WRITE_REG32(reg, am->base + XAM_TRACE_CTRL_OFFSET);
+	return 0;
+}
+
+static long config_dataflow(struct xocl_am *am, void __user *arg)
+{
+	uint32_t options = 0;
+	uint32_t reg = 0;
+	if (copy_from_user(&options, arg, sizeof(uint32_t)))
+	{
+		return -EFAULT;
+	}
+	if (options == 0)
+	{
+		return 0;
+	}
+	reg = XOCL_READ_REG32(am->base + XAM_CONTROL_OFFSET);
+	reg = reg | XAM_DATAFLOW_EN_MASK;
+	XOCL_WRITE_REG32(reg, am->base + XAM_CONTROL_OFFSET);
+	return 0;
+}
+
+static void update_counters(struct xocl_am *am)
+{
+	uint64_t low = 0, high = 0, sample_interval = 0;
+
+	// This latches the sampled metric counters
+	sample_interval = XOCL_READ_REG32(am->base + XAM_SAMPLE_OFFSET);
+	// Read the sampled metric counters
+	low = XOCL_READ_REG32(am->base + XAM_ACCEL_EXECUTION_COUNT_OFFSET);
+	high = XOCL_READ_REG32(am->base + XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET);
+	am->counters.end_count =  (high << 32) | low;
+	low = XOCL_READ_REG32(am->base + XAM_ACCEL_TOTAL_CU_START_OFFSET);
+	high = XOCL_READ_REG32(am->base + XAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET);
+	am->counters.start_count = (high << 32) | low;
+	low = XOCL_READ_REG32(am->base + XAM_ACCEL_EXECUTION_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(am->base + XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET);
+	am->counters.exec_cycles = (high << 32) | low;
+	low = XOCL_READ_REG32(am->base + XAM_ACCEL_STALL_INT_OFFSET);
+	high = XOCL_READ_REG32(am->base + XAM_ACCEL_STALL_INT_UPPER_OFFSET);
+	am->counters.stall_int_cycles = (high << 32) | low;
+	low = XOCL_READ_REG32(am->base + XAM_ACCEL_STALL_STR_OFFSET);
+	high = XOCL_READ_REG32(am->base + XAM_ACCEL_STALL_STR_UPPER_OFFSET);
+	am->counters.stall_str_cycles = (high << 32) | low;
+	low = XOCL_READ_REG32(am->base + XAM_ACCEL_STALL_EXT_OFFSET);
+	high = XOCL_READ_REG32(am->base + XAM_ACCEL_STALL_EXT_UPPER_OFFSET);
+	am->counters.stall_ext_cycles = (high << 32) | low;
+	low = XOCL_READ_REG32(am->base + XAM_BUSY_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(am->base + XAM_BUSY_CYCLES_UPPER_OFFSET);
+	am->counters.busy_cycles = (high << 32) | low;
+	low = XOCL_READ_REG32(am->base + XAM_MAX_PARALLEL_ITER_OFFSET);
+	high = XOCL_READ_REG32(am->base + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET);
+	am->counters.max_parallel_iterations = (high << 32) | low;
+	low = XOCL_READ_REG32(am->base + XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(am->base + XAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET);
+	am->counters.max_exec_cycles = (high << 32) | low;
+	low = XOCL_READ_REG32(am->base + XAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(am->base + XAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET);
+	am->counters.min_exec_cycles = (high << 32) | low;
+}
+
+static ssize_t counters_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_am *am = platform_get_drvdata(to_platform_device(dev));
+	mutex_lock(&am->lock);
+	update_counters(am);
+	mutex_unlock(&am->lock);
+	return sprintf(buf, "%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n",
+		am->counters.end_count,
+		am->counters.start_count,
+		am->counters.exec_cycles,
+		am->counters.stall_int_cycles,
+		am->counters.stall_str_cycles,
+		am->counters.stall_ext_cycles,
+		am->counters.busy_cycles,
+		am->counters.max_parallel_iterations,
+		am->counters.max_exec_cycles,
+		am->counters.min_exec_cycles
+		);
+}
+
+static DEVICE_ATTR_RO(counters);
+
+static ssize_t name_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_am *am = platform_get_drvdata(to_platform_device(dev));
+	return sprintf(buf, "accel_mon_%llu\n",am->data.m_base_address);
+}
+
+static DEVICE_ATTR_RO(name);
+
+static struct attribute *am_attrs[] = {
+			   &dev_attr_counters.attr,
+			   &dev_attr_name.attr,
+			   NULL,
+};
+
+static struct attribute_group am_attr_group = {
+			   .attrs = am_attrs,
 };
 
 static int am_remove(struct platform_device *pdev)
@@ -35,6 +240,8 @@ static int am_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
+
+	sysfs_remove_group(&pdev->dev.kobj, &am_attr_group);
 
 	xocl_drvinst_release(am, &hdl);
 
@@ -60,6 +267,8 @@ static int am_probe(struct platform_device *pdev)
 
 	am->dev = &pdev->dev;
 
+	memcpy(&am->data, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct debug_ip_data));
+
 	platform_set_drvdata(pdev, am);
 	mutex_init(&am->lock);
 
@@ -68,7 +277,7 @@ static int am_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto done;
 	}
-		
+
 
 	xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
 		res->start, res->end);
@@ -82,6 +291,11 @@ static int am_probe(struct platform_device *pdev)
 
 	am->start_paddr = res->start;
 	am->range = res->end - res->start + 1;
+
+	err = sysfs_create_group(&pdev->dev.kobj, &am_attr_group);
+	if (err) {
+		xocl_err(&pdev->dev, "create am sysfs attrs failed: %d", err);
+	}
 
 done:
 	if (err) {
@@ -113,15 +327,35 @@ static int am_close(struct inode *inode, struct file *file)
 long am_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_am *am;
+	void __user *data;
 	long result = 0;
 
 	am = (struct xocl_am *)filp->private_data;
+	data = (void __user *)(arg);
 
 	mutex_lock(&am->lock);
 
 	switch (cmd) {
-	case 1:
-		xocl_err(am->dev, "ioctl 1, do nothing");
+	case AM_IOC_RESET:
+		result = reset_counters(am);
+		break;
+	case AM_IOC_STARTCNT:
+		result = start_counters(am);
+		break;
+	case AM_IOC_READCNT:
+		result = read_counters(am, data);
+		break;
+	case AM_IOC_STOPCNT:
+		result = stop_counters(am);
+		break;
+	case AM_IOC_STARTTRACE:
+		result = start_trace(am, data);
+		break;
+	case AM_IOC_STOPTRACE:
+		result = stop_trace(am);
+		break;
+	case AM_IOC_CONFIGDFLOW:
+		result = config_dataflow(am, data);
 		break;
 	default:
 		result = -ENOTTY;

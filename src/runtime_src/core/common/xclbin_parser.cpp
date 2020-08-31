@@ -408,11 +408,8 @@ get_cu_control(const ip_layout* ip_layout, uint64_t cuaddr)
 uint64_t
 get_cu_base_offset(const ip_layout* ip_layout)
 {
-  if (!ip_layout && is_sw_emulation())
-    return 0;
-
   if (!ip_layout)
-    throw std::runtime_error("Missing IP_LAYOUT");
+    return 0;
 
   size_t base = std::numeric_limits<uint32_t>::max();
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
@@ -433,11 +430,8 @@ get_cu_base_offset(const axlf* top)
 bool
 get_cuisr(const ip_layout* ip_layout)
 {
-  if (!ip_layout && is_sw_emulation())
-    return false;
-
   if (!ip_layout)
-    throw std::runtime_error("Missing IP_LAYOUT");
+    return false;
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
@@ -457,11 +451,8 @@ get_cuisr(const axlf* top)
 bool
 get_dataflow(const ip_layout* ip_layout)
 {
-  if (!ip_layout && is_sw_emulation())
-    return false;
-
   if (!ip_layout)
-    throw std::runtime_error("Missing IP_LAYOUT");
+    return false;
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
@@ -576,7 +567,7 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
 
       args.emplace_back(kernel_argument{
           xml_arg.second.get<std::string>("<xmlattr>.name")
-         ,xml_arg.second.get<std::string>("<xmlattr>.type")
+         ,xml_arg.second.get<std::string>("<xmlattr>.type", "no-type")
          ,index
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.size"))
@@ -590,11 +581,48 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
   return args;
 }
 
+std::vector<std::string>
+get_kernel_names(const char *xml_data, size_t xml_size)
+{
+  std::vector<std::string> names;
+
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
+    if (xml_kernel.first != "kernel")
+      continue;
+
+    names.push_back(xml_kernel.second.get<std::string>("<xmlattr>.name"));
+  }
+
+  return names;
+}
+
 std::vector<kernel_argument>
 get_kernel_arguments(const axlf* top, const std::string& kname)
 {
   auto xml = get_xml_section(top);
   return get_kernel_arguments(xml.first, xml.second, kname);
+}
+
+std::vector<kernel_object>
+get_kernels(const axlf* top)
+{
+  auto xml = get_xml_section(top);
+  std::vector<kernel_object> kernels;
+
+  auto knames = get_kernel_names(xml.first, xml.second);
+  for (auto& kname : knames) {
+    kernels.emplace_back(kernel_object{
+       kname
+      ,get_kernel_arguments(xml.first, xml.second, kname)
+    });
+  }
+
+  return kernels;
 }
 
 bool

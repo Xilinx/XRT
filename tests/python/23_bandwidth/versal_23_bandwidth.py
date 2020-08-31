@@ -67,7 +67,7 @@ def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
 def runKernel(opt):
     khandle1 = xrtPLKernelOpen(opt.handle, opt.xuuid, "bandwidth1")
     khandle2 = xrtPLKernelOpen(opt.handle, opt.xuuid, "bandwidth2")
-    kfunc = xrtKernelGetFunc(xrtBufferHandle, xrtBufferHandle, ctypes.c_int, ctypes.c_int)
+    kfunc = xrtKernelGetFunc(xrtBufferHandle, xrtBufferHandle, xrtBufferHandle, xrtBufferHandle, xrtBufferHandle, xrtBufferHandle, ctypes.c_int, ctypes.c_int)
 
     output_bo1, output_buf1 = getInputOutputBuffer(opt.handle, khandle1, 0, False)
     output_bo2, output_buf2 = getInputOutputBuffer(opt.handle, khandle1, 0, False)
@@ -170,7 +170,6 @@ def runKernel(opt):
         raise RuntimeError("ERROR: Throughput is less than expected value of %d GB/sec" %(threshold/1000))
 
 def main(args):
-    os.environ["Runtime.xrt_bo"] = "true"
     opt = Options()
     Options.getOptions(opt, args)
 
@@ -194,7 +193,7 @@ def main(args):
         print("FAILED TEST")
         sys.exit(1)
     finally:
-        xclClose(opt.handle)
+        xrtDeviceClose(opt.handle)
 
 if __name__ == "__main__":
     main(sys.argv)

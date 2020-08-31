@@ -11,20 +11,27 @@
 
 extern int kds_echo;
 
-static int cu_hls_get_credit(void *core)
+static int cu_hls_alloc_credit(void *core)
 {
 	struct xrt_cu_hls *cu_hls = core;
 
 	return (cu_hls->credits) ? cu_hls->credits-- : 0;
 }
 
-static void cu_hls_put_credit(void *core, u32 count)
+static void cu_hls_free_credit(void *core, u32 count)
 {
 	struct xrt_cu_hls *cu_hls = core;
 
 	cu_hls->credits += count;
 	if (cu_hls->credits > cu_hls->max_credits)
 		cu_hls->credits = cu_hls->max_credits;
+}
+
+static int cu_hls_peek_credit(void *core)
+{
+	struct xrt_cu_hls *cu_hls = core;
+
+	return cu_hls->credits;
 }
 
 static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
@@ -53,51 +60,201 @@ static void cu_hls_start(void *core)
 {
 	struct xrt_cu_hls *cu_hls = core;
 
+	cu_hls->run_cnts++;
+
 	if (kds_echo)
 		return;
 
 	/* Bit 0 -- The CU start control bit.
 	 * Write 0 to this bit will be ignored.
-	 * Until the CU is ready to take next task, this bit will reamin 1.
-	 * Once ths CU is ready, it will clear this bit.
-	 * So, if this bit is 1, it means the CU is running.
+	 *
+	 * In ap_ctrl_chain, start bit will keep as 1 until ap_ready assert.
+	 * This bit would be clear by hardware.
 	 */
-	iowrite32(0x1, cu_hls->vaddr);
+	iowrite32(CU_AP_START, cu_hls->vaddr);
+}
+
+/*
+ * In ap_ctrl_hs protocol, HLS CU can run one task at a time. Once CU is
+ * started, software should wait for CU done before configure/start CU again.
+ * The done bit is clear on read. So, the software just need to read control
+ * register.
+ */
+static inline void
+cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
+{
+	u32 ctrl_reg;
+	u32 done_reg = 0;
+	u32 ready_reg = 0;
+
+	/* ioread32/iowrite32 is expensive!
+	 * Avoid access CU register unless we do have running commands.
+	 * This has a huge impact on performance.
+	 */
+	if (!cu_hls->run_cnts)
+		return;
+
+	/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
+	 * but not by AP_IDLE itself.  Since b10 | (b10 | b100) = b110
+	 * checking for b10 is sufficient.
+	 */
+	ctrl_reg = ioread32(cu_hls->vaddr);
+	/* ap_ready and ap_done would assert at the same cycle */
+	if (ctrl_reg & CU_AP_DONE) {
+		done_reg  = 1;
+		ready_reg = 1;
+		cu_hls->run_cnts--;
+	}
+
+	status->num_done  = done_reg;
+	status->num_ready = ready_reg;
+}
+
+/*
+ * In ap_ctrl_check protocol, HLS CU can setup next task before CU is done.
+ * After CU started, the start bit will keep high until CU assert ap_ready.
+ * Once a CU is ready, it means CU is ready to be configured.
+ * If CU is done, it means the previous task is completed. But the CU would
+ * stall until ap_continue bit is set.
+ */
+static inline void
+cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
+{
+	u32 ctrl_reg;
+	u32 done_reg = 0;
+	u32 ready_reg = 0;
+	u32 used_credit;
+
+	used_credit = cu_hls->max_credits - cu_hls->credits;
+
+	/* ioread32/iowrite32 is expensive!
+	 * Access CU when there are unsed credits or running commands
+	 * This has a huge impact on performance.
+	 */
+	if (!used_credit && !cu_hls->run_cnts)
+		return;
+
+	/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
+	 * but not by AP_IDLE itself.  Since b10 | (b10 | b100) = b110
+	 * checking for b10 is sufficient.
+	 */
+	ctrl_reg  = ioread32(cu_hls->vaddr);
+
+	/* if there is submitted tasks, then check if ap_start bit is clear
+	 * See comments in cu_hls_start().
+	 */
+	if (used_credit && !(ctrl_reg & CU_AP_START))
+		ready_reg = 1;
+
+	if (ctrl_reg & CU_AP_DONE) {
+		done_reg = 1;
+		cu_hls->run_cnts--;
+		iowrite32(CU_AP_CONTINUE, cu_hls->vaddr);
+	}
+
+	status->num_done  = done_reg;
+	status->num_ready = ready_reg;
 }
 
 static void cu_hls_check(void *core, struct xcu_status *status)
 {
 	struct xrt_cu_hls *cu_hls = core;
-	u32 ctrl_reg;
-	u32 done_reg = 0;
 
-	if (!kds_echo) {
-		/* ioread32/iowrite32 is expensive! */
-		if (cu_hls->credits == cu_hls->max_credits)
-			goto out;
-
-		/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
-		 * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
-		 * checking for 0x10 is sufficient.
-		 */
-		ctrl_reg  = ioread32(cu_hls->vaddr);
-
-		if (!(ctrl_reg & CU_AP_DONE))
-			goto out;
+	if (kds_echo) {
+		cu_hls->run_cnts--;
+		status->num_done = 1;
+		status->num_ready = 1;
+		return;
 	}
 
-	done_reg = 1;
-out:
-	status->num_done = done_reg;
-	status->num_ready = done_reg;
+	if (cu_hls->ctrl_chain)
+		cu_hls_ctrl_chain_check(cu_hls, status);
+	else
+		cu_hls_ctrl_hs_check(cu_hls, status);
 }
 
+static void cu_hls_enable_intr(void *core, u32 intr_type)
+{
+	struct xrt_cu_hls *cu_hls = core;
+	u32 intr_mask = intr_type & CU_INTR_DONE;
+
+	/* 0x04 and 0x08 -- Interrupt Enable Registers */
+	iowrite32(0x1, cu_hls->vaddr + 0x4);
+	/*
+	 * bit 0 is ap_done, bit 1 is ap_ready
+	 * only enable ap_done before dataflow support, interrupts are handled
+	 * in sched_exec_isr, please see dataflow comments for more information.
+	 */
+	iowrite32(intr_mask, cu_hls->vaddr + 0x8);
+}
+
+static void cu_hls_disable_intr(void *core, u32 intr_type)
+{
+	struct xrt_cu_hls *cu_hls = core;
+
+	u32 intr_mask = intr_type & ioread32(cu_hls->vaddr + 0x8);
+
+	/* 0x04 and 0x08 -- Interrupt Enable Registers */
+	iowrite32(0x0, cu_hls->vaddr + 0x4);
+	/* bit 0 is ap_done, bit 1 is ap_ready, disable both of interrupts */
+	iowrite32(intr_mask, cu_hls->vaddr + 0x8);
+}
+
+static u32 cu_hls_clear_intr(void *core)
+{
+	struct xrt_cu_hls *cu_hls = core;
+
+	/* Clear all interrupts of the CU
+	 *
+	 * HLS style kernel has Interrupt Status Register at offset 0x0C
+	 * It has two interrupt bits, bit[0] is ap_done, bit[1] is ap_ready.
+	 *
+	 * The ap_done interrupt means this CU is complete.
+	 * The ap_ready interrupt means all inputs have been read.
+	 */
+	if (cu_hls->max_credits == 1) {
+		u32 isr;
+
+		/*
+		 * The old HLS adapter.
+		 *
+		 * The Interrupt Status Register is Toggle On Write
+		 * RegData = RegData ^ WriteData
+		 *
+		 * So, the reliable way to clear this register is read
+		 * then write the same value back.
+		 *
+		 * Do not write 1 to this register.  If, somehow, the
+		 * status register is 0, write 1 to this register will
+		 * trigger interrupt.
+		 */
+		isr = ioread32(cu_hls->vaddr + 0xc);
+		iowrite32(isr, cu_hls->vaddr + 0xc);
+		return isr;
+	}
+
+	/*
+	 * The new HLS adapter with queue.
+	 *
+	 * The Interrupt Status Register is Clear on Read.
+	 *
+	 * For debug purpose, This register is toggle on write.
+	 * Write 1 to this register will trigger interrupt.
+	 */
+	return ioread32(cu_hls->vaddr + 0xc);
+}
+
+
 static struct xcu_funcs xrt_cu_hls_funcs = {
-	.get_credit	= cu_hls_get_credit,
-	.put_credit	= cu_hls_put_credit,
+	.alloc_credit	= cu_hls_alloc_credit,
+	.free_credit	= cu_hls_free_credit,
+	.peek_credit	= cu_hls_peek_credit,
 	.configure	= cu_hls_configure,
 	.start		= cu_hls_start,
 	.check		= cu_hls_check,
+	.enable_intr	= cu_hls_enable_intr,
+	.disable_intr	= cu_hls_disable_intr,
+	.clear_intr	= cu_hls_clear_intr,
 };
 
 int xrt_cu_hls_init(struct xrt_cu *xcu)
@@ -107,10 +264,6 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 	size_t size;
 	int err = 0;
 
-	err = xrt_cu_init(xcu);
-	if (err)
-		return err;
-
 	core = kzalloc(sizeof(struct xrt_cu_hls), GFP_KERNEL);
 	if (!core) {
 		err = -ENOMEM;
@@ -118,6 +271,7 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 	}
 
 	/* map CU register */
+	/* TODO: add comment why uses res[0] */
 	res = xcu->res[0];
 	size = res->end - res->start + 1;
 	core->vaddr = ioremap_nocache(res->start, size);
@@ -129,9 +283,15 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 
 	core->max_credits = 1;
 	core->credits = core->max_credits;
+	core->run_cnts = 0;
+	core->ctrl_chain = (xcu->info.protocol == CTRL_CHAIN)? true : false;
 
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_hls_funcs;
+
+	err = xrt_cu_init(xcu);
+	if (err)
+		return err;
 
 	return 0;
 

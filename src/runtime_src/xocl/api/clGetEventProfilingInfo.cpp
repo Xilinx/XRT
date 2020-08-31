@@ -42,7 +42,7 @@ validOrError(const cl_event event)
       (xocl::xocl(event)->get_status()!=CL_COMPLETE) ||
       (xocl::xocl(event)->get_command_type()==CL_COMMAND_USER)
       ) {
-    throw error(CL_PROFILING_INFO_NOT_AVAILABLE);
+    throw error(CL_PROFILING_INFO_NOT_AVAILABLE, "Profiling info not available, make sure profiling is enabled");
   }
 }
 

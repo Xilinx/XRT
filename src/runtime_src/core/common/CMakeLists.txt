@@ -12,25 +12,34 @@ include_directories(${Boost_INCLUDE_DIRS})
 endif (NOT WIN32)
 
 file(GLOB XRT_CORE_COMMON_LIB_FILES
-  "config_reader.*"
+  "config_reader.cpp"
   "debug.cpp"
-  "device.*"
-  "message.*"
-  "time.*"
-  "xclbin_parser.*"
-  "sensor.*"
-  "system.*"
-  "utils.*"
+  "device.cpp"
+  "error.cpp"
+  "message.cpp"
+  "time.cpp"
+  "xclbin_parser.cpp"
+  "sensor.cpp"
+  "system.cpp"
+  "utils.cpp"
   "thread.cpp"
-  "xrt_xclbin.cpp"
   "module_loader.cpp"
   "api/*.cpp"
   )
+
+if (DEFINED XRT_AIE_BUILD)
+  file(GLOB XRT_CORE_COMMON_AIE_LIB_FILES
+    "api/aie/*.cpp"
+    )
+  list(APPEND XRT_CORE_COMMON_LIB_FILES ${XRT_CORE_COMMON_AIE_LIB_FILES})
+endif()
 
 # Files to include in object list
 file(GLOB XRT_CORE_COMMON_OBJ_FILES
   "scheduler.*"
   )
+
+add_compile_options("-DXRT_VERSION_MAJOR=\"${XRT_VERSION_MAJOR}\"")
 
 add_library(xrt_coreutil SHARED ${XRT_CORE_COMMON_LIB_FILES})
 add_library(xrt_coreutil_static STATIC ${XRT_CORE_COMMON_LIB_FILES})
@@ -46,14 +55,18 @@ target_link_libraries(xrt_coreutil
   )
 
 if (NOT WIN32)
-target_link_libraries(xrt_coreutil uuid pthread dl)
+  target_link_libraries(xrt_coreutil uuid pthread dl)
+endif()
+
 install(TARGETS xrt_coreutil
-  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
-else()
-# No external linking with coreutil so release only runtime
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
+  RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
+)
+
 install(TARGETS xrt_coreutil
-  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
-endif (NOT WIN32)
+  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
+)
 
 # The scheduler object files are for auto config of scheduler. These
 # files reference xrt_core symbols, hence are excluded from

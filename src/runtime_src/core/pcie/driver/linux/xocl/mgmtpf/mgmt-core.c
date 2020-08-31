@@ -30,6 +30,7 @@
 #include "../xocl_drv.h"
 #include "version.h"
 #include "xclbin.h"
+#include "../xocl_xclbin.h"
 
 static const struct pci_device_id pci_ids[] = {
 	XOCL_MGMT_PCI_IDS,
@@ -452,7 +453,6 @@ static void check_pcie_link_toggle(struct xclmgmt_dev *lro, int clear)
 	u32 sts;
 	int err;
 
-
 	err = xocl_iores_read32(lro, XOCL_SUBDEV_LEVEL_BLD,
 			IORES_PCIE_MON, 0x8, &sts);
 	if (err)
@@ -464,7 +464,6 @@ static void check_pcie_link_toggle(struct xclmgmt_dev *lro, int clear)
 	}
 
 	if (clear) {
-		
 		xocl_iores_write32(lro,XOCL_SUBDEV_LEVEL_BLD ,
 				IORES_PCIE_MON, 0, 1);
 
@@ -474,9 +473,6 @@ static void check_pcie_link_toggle(struct xclmgmt_dev *lro, int clear)
 		xocl_iores_write32(lro, XOCL_SUBDEV_LEVEL_BLD,
 				IORES_PCIE_MON, 0, 0);
 	}
-
-		
-
 }
 
 
@@ -491,6 +487,12 @@ static int health_check_cb(void *data)
 		return 0;
 
 	(void) xocl_clock_status(lro, &latched);
+
+	/*
+	 * UCS doesn't exist on U2, and U2 CMC firmware uses different
+	 * methodology to report clock shutdown status.
+	 */
+	xocl_xmc_clock_status(lro, &latched);
 
 	check_sensor(lro);
 
@@ -821,10 +823,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			ret = -ENOMEM;
 		} else {
 			memcpy(buf, xclbin, xclbin_len);
-			if (XOCL_DSA_IS_VERSAL(lro))
-				ret = xocl_xfer_versal_download_axlf(lro, buf);
-			else
-				ret = xocl_icap_download_axlf(lro, buf);
+
+			ret = xocl_xclbin_download(lro, buf);
+
 			vfree(buf);
 		}
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
@@ -859,8 +860,8 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 		ret = xocl_icap_ocl_update_clock_freq_topology(lro, clk);
 		if (ret == -ENODEV)
-		    ret = xocl_clock_update_freq(lro, clk->ocl_target_freq,
-		        ARRAY_SIZE(clk->ocl_target_freq), 1);
+			ret = xocl_clock_freq_scaling_by_request(lro,
+			    clk->ocl_target_freq, ARRAY_SIZE(clk->ocl_target_freq), 1);
 
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
@@ -1258,9 +1259,11 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	/*
 	 * Even if extended probe fails, make sure feature ROM subdev
-	 * is loaded to provide basic info about the board.
+	 * is loaded to provide basic info about the board. Also, need
+	 * FLASH to be able to flash new shell.
 	 */
 	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
+	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 
 	/*
 	 * if can not find BLP metadata, it has to bring up flash and xmc to
@@ -1268,6 +1271,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 */
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
+
+	xocl_pmc_enable_reset(lro);
 
 	return 0;
 
@@ -1381,6 +1386,7 @@ static struct pci_driver xclmgmt_driver = {
 
 static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_version_control,
 	xocl_init_iores,
 	xocl_init_flash,
 	xocl_init_mgmt_msix,
@@ -1405,10 +1411,13 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mem_hbm,
 	xocl_init_ulite,
 	xocl_init_calib_storage,
+	xocl_init_pmc,
+	xocl_init_icap_controller,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_version_control,
 	xocl_fini_iores,
 	xocl_fini_flash,
 	xocl_fini_mgmt_msix,
@@ -1433,6 +1442,8 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_mem_hbm,
 	xocl_fini_ulite,
 	xocl_fini_calib_storage,
+	xocl_fini_pmc,
+	xocl_fini_icap_controller,
 };
 
 static int __init xclmgmt_init(void)
