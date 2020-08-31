@@ -49,9 +49,9 @@ def getThreshold(devHandle):
         threshold = 30000
     if b"u2x4" in deviceInfo.mName or b"U2x4" in deviceInfo.mName:
         threshold = 10000
-    if b"gen3x4" in deviceInfo.mName:
+    if b"gen3x4" in deviceInfo.mName or b"_u26z_" in deviceInfo.mName:
         threshold = 20000
-    if b"_u25_" in deviceInfo.mName  b"_u26z_" in deviceInfo.mName: # so that it doesn't set theshold for u250
+    if b"_u25_" in deviceInfo.mName: # so that it doesn't set theshold for u250
         threshold = 9000
     return threshold
 
