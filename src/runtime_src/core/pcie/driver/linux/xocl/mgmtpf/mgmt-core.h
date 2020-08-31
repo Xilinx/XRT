@@ -35,6 +35,7 @@
 /* defines for old DSAs in platform_axilite_flush() */
 #define _FEATURE_ROM_BASE		0xB0000
 #define _MB_GPIO			0x131000
+#define _GOLDEN_VER			0x131008
 #define _SYSMON_BASE			0xA0000
 #define _MB_IMAGE_SCHE			0x140000
 #define _XHWICAP_CR			(0x020000 + 0x10c)

@@ -284,7 +284,17 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
   if (!current.name.empty()) {
     same_dsa = (candidate.name == current.name &&
       candidate.matchId(current));
-    same_bmc = (candidate.bmcVer == current.bmcVer);
+
+    // Always update Arista devices
+    if (candidate.vendor_id == ARISTA_ID)
+        same_dsa = false;
+
+    // getOnBoardDSA() returns an empty bmcVer in the case there is no SC,
+    // so do not update
+    if (current.bmcVer.empty())
+        same_bmc = true;
+    else
+        same_bmc = (candidate.bmcVer == current.bmcVer);
   }
   if (same_dsa && same_bmc) {
     std::cout << "update not needed" << std::endl;
@@ -332,8 +342,15 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   for (const auto & device : deviceCollection) {
     DSAInfo dsa(_pt.get_child(std::to_string(device->get_device_id()) + ".platform.available_shells").front().second.get<std::string>("file"));
     //if the shell is not up-to-date and dsa has a flash image, queue the board for update
-    if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.shell") ||
-          !_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.sc")) {
+    bool same_shell = _pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.shell");
+    bool same_sc = _pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.sc");
+
+    // Always update Arista devices
+    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(device);
+    if (vendor == ARISTA_ID)
+        same_shell = false;
+
+    if (!same_shell || !same_sc) {
       if(!dsa.hasFlashImage)
         throw xrt_core::error("Flash image is not available");
       boardsToUpdate.push_back(std::make_pair(device->get_device_id(), dsa));

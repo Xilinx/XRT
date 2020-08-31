@@ -549,6 +549,7 @@ static struct xocl_subdev_map subdev_map[] = {
 			{.res_name = RESNAME_MEMCALIB},
 			{.res_name = RESNAME_KDMA},
 			{.res_name = RESNAME_DDR4_RESET_GATE},
+			{.res_name = RESNAME_ICAP_RESET},
 			{NULL},
 		},
 		.required_ip = 1,

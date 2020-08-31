@@ -257,7 +257,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define XOCL_ARE_HOP 0x400000000ull
 
-#define	XOCL_XILINX_VEN		0x10EE
+#define XOCL_XILINX_VEN 0x10EE
+#define XOCL_ARISTA_VEN 0x3475
+
 #define	XOCL_CHARDEV_REG_COUNT	16
 
 #define INVALID_SUBDEVICE ~0U
@@ -577,6 +579,7 @@ struct xocl_version_ctrl_funcs {
 	(VC_CB(xdev, cmc_in_bitfile) ? VC_OPS(xdev)->cmc_in_bitfile(VC_DEV(xdev)) : false)
 
 struct xocl_msix_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*user_intr_config)(struct platform_device *pdev, u32 intr,
 		bool en);
 	int (*user_intr_register)(struct platform_device *pdev, u32 intr,
@@ -604,6 +607,9 @@ struct xocl_dma_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	ssize_t (*migrate_bo)(struct platform_device *pdev,
 		struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 sz);
+	ssize_t (*async_migrate_bo)(struct platform_device *pdev,
+		struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 sz,
+		void (*callback_fn)(unsigned long cb_hndl, int err), void *tx_ctx);
 	int (*ac_chan)(struct platform_device *pdev, u32 dir);
 	void (*rel_chan)(struct platform_device *pdev, u32 dir, u32 channel);
 	u32 (*get_chan_count)(struct platform_device *pdev);
@@ -625,6 +631,9 @@ struct xocl_dma_funcs {
 #define	xocl_migrate_bo(xdev, sgt, to_dev, paddr, chan, len)	\
 	(DMA_CB(xdev, migrate_bo) ? DMA_OPS(xdev)->migrate_bo(DMA_DEV(xdev), \
 	sgt, to_dev, paddr, chan, len) : 0)
+#define	xocl_async_migrate_bo(xdev, sgt, to_dev, paddr, chan, len, cb_fn, ctx_ptr)	\
+	(DMA_CB(xdev, async_migrate_bo) ? DMA_OPS(xdev)->async_migrate_bo(DMA_DEV(xdev), \
+	sgt, to_dev, paddr, chan, len, cb_fn, ctx_ptr) : 0)
 #define	xocl_acquire_channel(xdev, dir)		\
 	(DMA_CB(xdev, ac_chan) ? DMA_OPS(xdev)->ac_chan(DMA_DEV(xdev), dir) : \
 	-ENODEV)

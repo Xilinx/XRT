@@ -67,22 +67,6 @@ struct sysfs_fcn
     return value;
   }
 
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry, const boost::any& v)
-  {
-    std::string err;
-    ValueType value;
-    std::pair <const char*,const char*> p = boost::any_cast<std::pair <const char*,const char*>>(v);
-    if (!strcmp(p.first,"subdev"))
-      subdev = p.second;
-    else if (!strcmp(p.first,"entry"))
-      entry = p.second;
-    dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
-    if (!err.empty())
-      throw std::runtime_error(err);
-    return value;
-  }
-
   static void
   put(const pdev& dev, const char* subdev, const char* entry, ValueType value)
   {
@@ -103,22 +87,6 @@ struct sysfs_fcn<std::string>
   {
     std::string err;
     ValueType value;
-    dev->sysfs_get(subdev, entry, err, value);
-    if (!err.empty())
-      throw std::runtime_error(err);
-    return value;
-  }
-
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry, const boost::any& v)
-  {
-    std::string err;
-    ValueType value;
-    std::pair <const char*,const char*> p = boost::any_cast<std::pair <const char*,const char*>>(v);
-    if (!strcmp(p.first,"subdev"))
-      subdev = p.second;
-    else if (!strcmp(p.first,"entry"))
-      entry = p.second;
     dev->sysfs_get(subdev, entry, err, value);
     if (!err.empty())
       throw std::runtime_error(err);
@@ -146,22 +114,6 @@ struct sysfs_fcn<std::vector<VectorValueType>>
   {
     std::string err;
     ValueType value;
-    dev->sysfs_get(subdev, entry, err, value);
-    if (!err.empty())
-      throw std::runtime_error(err);
-    return value;
-  }
-
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry, const boost::any& v)
-  {
-    std::string err;
-    ValueType value;
-    std::pair <const char*,const char*> p = boost::any_cast<std::pair <const char*,const char*>>(v);
-    if (!strcmp(p.first,"subdev"))
-      subdev = p.second;
-    else if (!strcmp(p.first,"entry"))
-      entry = p.second;
     dev->sysfs_get(subdev, entry, err, value);
     if (!err.empty())
       throw std::runtime_error(err);
@@ -196,12 +148,13 @@ struct sysfs_get : virtual QueryRequestType
   }
 
   boost::any
-  get(const xrt_core::device* device, const boost::any& v) const
+  get(const xrt_core::device* device, query::request::modifier m, const std::string& v) const
   {
+    auto ms = (m == query::request::modifier::subdev) ? v.c_str() : subdev;
+    auto me = (m == query::request::modifier::entry) ? v.c_str() : entry;
     return sysfs_fcn<typename QueryRequestType::result_type>
-      ::get(get_pcidev(device), subdev, entry, v);
+      ::get(get_pcidev(device), ms, me);
   }
-
 };
 
 template <typename QueryRequestType>
@@ -314,6 +267,7 @@ initialize_query_table()
   emplace_sysfs_get<query::xmc_board_name>              ("xmc", "bd_name");
   emplace_sysfs_get<query::xmc_serial_num>              ("xmc", "serial_num");
   emplace_sysfs_get<query::xmc_max_power>               ("xmc", "max_power");
+  emplace_sysfs_get<query::xmc_sc_presence>             ("xmc", "sc_presence");
   emplace_sysfs_get<query::xmc_bmc_version>             ("xmc", "bmc_ver");
   emplace_sysfs_get<query::expected_bmc_version>        ("xmc", "exp_bmc_ver");
   emplace_sysfs_get<query::xmc_status>                  ("xmc", "status");
@@ -322,10 +276,8 @@ initialize_query_table()
   emplace_sysfs_getput<query::xmc_scaling_override>     ("xmc", "scaling_threshold_power_override");
   emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
   emplace_sysfs_get<query::m2m>                         ("", "m2m");
+  emplace_sysfs_get<query::nodma>                       ("", "nodma");
   emplace_sysfs_get<query::dna_serial_num>              ("dna", "dna");
-  emplace_sysfs_getput<query::xmc_scaling_enabled>      ("xmc", "scaling_enabled");
-  emplace_sysfs_getput<query::xmc_scaling_override>     ("xmc", "scaling_threshold_power_override");
-  emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
   emplace_sysfs_get<query::p2p_config>                  ("p2p", "config");
   emplace_sysfs_get<query::temp_card_top_front>         ("xmc", "xmc_se98_temp0");
   emplace_sysfs_get<query::temp_card_top_rear>          ("xmc", "xmc_se98_temp1");
@@ -390,7 +342,7 @@ initialize_query_table()
   emplace_sysfs_get<query::host_mem_size>               ("address_translator", "host_mem_size");
   emplace_sysfs_get<query::kds_numcdmas>                ("mb_scheduler", "kds_numcdmas");
 
-  emplace_sysfs_get<query::mig_ecc_enabled>             ("mig", "ecc_enabled");
+  //emplace_sysfs_get<query::mig_ecc_enabled>             ("mig", "ecc_enabled");
   emplace_sysfs_get<query::mig_ecc_status>              ("mig", "ecc_status");
   emplace_sysfs_get<query::mig_ecc_ce_cnt>              ("mig", "ecc_ce_cnt");
   emplace_sysfs_get<query::mig_ecc_ue_cnt>              ("mig", "ecc_ue_cnt");
@@ -472,9 +424,9 @@ write(uint64_t offset, const void* buf, uint64_t len) const
     throw error(err, "write failed");
 }
 
-void 
+void
 device_linux::
-reset(const char* subdev, const char* key, const char* value) const 
+reset(const char* subdev, const char* key, const char* value) const
 {
   std::string err;
   pcidev::get_dev(get_device_id(), false)->sysfs_put(subdev, key, err, value);
@@ -482,7 +434,7 @@ reset(const char* subdev, const char* key, const char* value) const
     throw error("reset failed");
 }
 
-int 
+int
 device_linux::
 open(const std::string& subdev, int flag) const
 {
@@ -491,7 +443,7 @@ open(const std::string& subdev, int flag) const
 
 void
 device_linux::
-close(int dev_handle) const 
+close(int dev_handle) const
 {
   pcidev::get_dev(get_device_id(), false)->close(dev_handle);
 }
