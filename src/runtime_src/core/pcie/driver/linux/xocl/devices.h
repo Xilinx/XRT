@@ -3370,11 +3370,11 @@ struct xocl_subdev_map {
 		.priv_data = &XOCL_BOARD_U25_USER_RAPTOR2,              \
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x6987, PCI_ANY_ID,					\
-		.vbnv = "xilinx_u2_xdma_2020_1",			\
+		.vbnv = "xilinx_u2",					\
 		.priv_data = &XOCL_BOARD_U2_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x6988, PCI_ANY_ID,					\
-		.vbnv = "xilinx_u2_xdma_2020_1",			\
+		.vbnv = "xilinx_u2",					\
 		.priv_data = &XOCL_BOARD_U2_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 }
 
