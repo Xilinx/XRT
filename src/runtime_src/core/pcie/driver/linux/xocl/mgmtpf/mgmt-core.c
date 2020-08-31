@@ -493,6 +493,8 @@ static int health_check_cb(void *data)
 
 	(void) xocl_clock_status(lro, &latched);
 
+	xocl_xmc_clock_status(lro, &latched);
+
 	check_sensor(lro);
 
 	/* Check PCIe Link Toggle */
