@@ -805,8 +805,8 @@ struct m2m : request
   static bool
   to_bool(const result_type& value)
   {
-    return (value == std::numeric_limits<uint32_t>::max())
-      ? false : value;
+     // if m2m does not exist, the execption is thrown
+     return value ? true : false;
   }
 };
 
