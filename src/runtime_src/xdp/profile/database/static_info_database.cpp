@@ -378,24 +378,22 @@ namespace xdp {
             break;
           }
         }
-        if(-1 == cuId && 0 == monCuName.compare(0, 3, "dm_")) {
-          pos = name.find(" - ");
-          monCuName = name.substr(pos+3);
-          pos = monCuName.find('/');
-          monCuName = monCuName.substr(0, pos);
-        std::cout << " AXI STREAM  MON : name " << name << " :: monCuName " << monCuName << " pos " << pos << std::endl;
-          
-//          size_t pos2 = name.find('/', pos);
-//          monCuName = name.substr(pos+3, (pos2 - (pos+3)));
-//        std::cout << " AXI STREAM  MON : name " << name << " :: monCuName " << monCuName << " pos " << pos << " pos2 " << pos2 << std::endl;
+        if(-1 == cuId) {
+          pos = name.find("-");
+          if(std::string::npos != pos) {
+            pos = name.find_first_not_of(" ", pos+1);
+            monCuName = name.substr(pos);
+            pos = monCuName.find('/');
+            monCuName = monCuName.substr(0, pos);
 
-        for(auto cu : devInfo->cus) {
-          if(0 == monCuName.compare(cu.second->getName())) {
-            cuId = cu.second->getIndex();
-            cuObj = cu.second;
-            break;
+            for(auto cu : devInfo->cus) {
+              if(0 == monCuName.compare(cu.second->getName())) {
+                cuId = cu.second->getIndex();
+                cuObj = cu.second;
+                break;
+              }
+            }
           }
-        }
         }
 
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
