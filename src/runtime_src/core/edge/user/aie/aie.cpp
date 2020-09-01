@@ -20,47 +20,44 @@
 #include "core/common/error.h"
 #ifndef __AIESIM__
 #include "core/common/message.h"
+#include "core/edge/user/shim.h"
+#include "xaiengine/xlnx-ai-engine.h"
 #endif
 
 #include <iostream>
 #include <cerrno>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
 
 namespace zynqaie {
 
-static inline uint64_t
-get_bd_high_addr(uint64_t addr)
-{
-  constexpr uint64_t hi_mask = 0xFFFF00000000L;
-  return ((addr & hi_mask) >> 32);
-}
-
-static inline uint64_t
-get_bd_low_addr(uint64_t addr)
-{
-  constexpr uint32_t low_mask = 0xFFFFFFFFL;
-  return (addr & low_mask);
-}
+XAie_InstDeclare(DevInst, &ConfigPtr);   // Declare global device instance
 
 Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 {
-    /* TODO where are these number from */
-    numRows = 8;
-    numCols = 50;
-    aieAddrArrayOff = 0x800;
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-    XAIEGBL_HWCFG_SET_CONFIG((&aieConfig), numRows, numCols, aieAddrArrayOff);
-    XAieGbl_HwInit(&aieConfig);
-    aieConfigPtr = XAieGbl_LookupConfig(XPAR_AIE_DEVICE_ID);
+    /* TODO get partition id and uid from XCLBIN or PDI */
+    uint32_t partition_id = 1;
+    uint32_t uid = 0;
+    drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };
+    int ret = drv->getPartitionFd(aiefd);
+    if (ret)
+        throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd");
+    fd = aiefd.fd;
 
-    int tileArraySize = numCols * (numRows + 1);
-    tileArray.resize(tileArraySize);
+    XAie_SetupConfig(ConfigPtr, HW_GEN, XAIE_BASE_ADDR, XAIE_COL_SHIFT,
+                       XAIE_ROW_SHIFT, XAIE_NUM_COLS, XAIE_NUM_ROWS,
+                       XAIE_SHIM_ROW, XAIE_MEM_TILE_ROW_START,
+                       XAIE_MEM_TILE_NUM_ROWS, XAIE_AIE_TILE_ROW_START,
+                       XAIE_AIE_TILE_NUM_ROWS);
 
-    /*
-     * Initialize AIE tile array.
-     *
-     * TODO is void good here?
-     */
-    (void) XAieGbl_CfgInitialize(&aieInst, tileArray.data(), aieConfigPtr);
+    ConfigPtr.PartProp.Handle = fd;
+
+    AieRC rc;
+    if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
+        throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
+    devInst = DevInst;
 
     /* Initialize graph GMIO metadata */
     for (auto& gmio : xrt_core::edge::aie::get_gmios(device.get()))
@@ -70,22 +67,29 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
      * Initialize AIE shim DMA on column base if there is one for
      * this column.
      */
+    numCols = XAIE_NUM_COLS;
     shim_dma.resize(numCols);
     for (auto& gmio : gmios) {
         if (gmio.shim_col > numCols)
             throw xrt_core::error(-EINVAL, "GMIO " + gmio.name + " shim column " + std::to_string(gmio.shim_col) + " does not exist");
 
         auto dma = &shim_dma.at(gmio.shim_col);
-        auto pos = getTilePos(gmio.shim_col, 0);
+        XAie_LocType shimTile = XAie_TileLoc(gmio.shim_col, 0);
+
         if (!dma->configured) {
-            XAieDma_ShimSoftInitialize(&(tileArray.at(pos)), &(dma->handle));
-            XAieDma_ShimBdClearAll(&(dma->handle));
+            XAie_DmaDescInit(&devInst, &(dma->desc), shimTile);
             dma->configured = true;
         }
 
         auto chan = gmio.channel_number;
-        XAieDma_ShimChControl((&(dma->handle)), chan, XAIE_DISABLE, XAIE_DISABLE, XAIE_ENABLE);
-        for (int i = 0; i < XAIEGBL_NOC_DMASTA_STARTQ_MAX; ++i) {
+        /* type 0: GM->AIE; type 1: AIE->GM */
+        XAie_DmaDirection dir = gmio.type == 0 ? DMA_MM2S : DMA_S2MM;
+        uint8_t pch = CONVERT_LCHANL_TO_PCHANL(chan);
+        XAie_DmaChannelEnable(&devInst, shimTile, pch, dir);
+        XAie_DmaSetAxi(&(dma->desc), 0, gmio.burst_len, 0, 0, 0);
+
+        XAie_DmaGetMaxQueueSize(&devInst, shimTile, &(dma->maxqSize));
+        for (int i = 0; i < dma->maxqSize /*XAIEGBL_NOC_DMASTA_STARTQ_MAX */; ++i) {
             /*
              * 16 BDs are allocated to 4 channels.
              * Channel0: BD0~BD3
@@ -93,145 +97,27 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
              * Channel2: BD8~BD11
              * Channel3: BD12~BD15
              */
-            int bd_num = chan * XAIEGBL_NOC_DMASTA_STARTQ_MAX + i;
+            int bd_num = chan * dma->maxqSize + i;
             BD bd;
             bd.bd_num = bd_num;
             dma->dma_chan[chan].idle_bds.push(bd);
-
-            XAieDma_ShimBdSetAxi(&(dma->handle), bd_num, 0, gmio.burst_len, 0, 0, 0);
         }
     }
-
-#ifndef __AIESIM__
-    /* Disable AIE interrupts */
-    u32 reg = XAieGbl_NPIRead32(XAIE_NPI_ISR);
-    XAieGbl_NPIWrite32(XAIE_NPI_ISR, reg);
-
-    if (XAieTile_EventsHandlingInitialize(&aieInst) != XAIE_SUCCESS)
-        throw xrt_core::error("Failed to initialize AIE Events Handling.");
-
-    /* Register all AIE error events */
-    XAieTile_ErrorRegisterNotification(&aieInst, XAIEGBL_MODULE_ALL, XAIETILE_ERROR_ALL, error_cb, NULL);
-
-    /* Enable AIE interrupts */
-    XAieTile_EventsEnableInterrupt(&aieInst);
-#endif
 }
 
 Aie::~Aie()
 {
+    close(fd);
 }
 
-int Aie::getTilePos(int col, int row)
+XAie_DevInst* Aie::getDevInst()
 {
-    return col * (numRows + 1) + row;
-}
-
-XAieGbl* Aie::getAieInst()
-{
-    return &aieInst;
-}
-
-XAieGbl_ErrorHandleStatus
-Aie::error_cb(struct XAieGbl *aie_inst, XAie_LocType loc, u8 module, u8 error, void *arg)
-{
-#ifndef __AIESIM__
-    auto severity = xrt_core::message::severity_level::XRT_INFO;
-
-    switch (module) {
-    case XAIEGBL_MODULE_CORE:
-        switch (error) {
-            case XAIETILE_EVENT_CORE_TLAST_IN_WSS_WORDS_0_2:
-            case XAIETILE_EVENT_CORE_PM_REG_ACCESS_FAILURE:
-            case XAIETILE_EVENT_CORE_STREAM_PKT_PARITY_ERROR:
-            case XAIETILE_EVENT_CORE_CONTROL_PKT_ERROR:
-            case XAIETILE_EVENT_CORE_INSTRUCTION_DECOMPRESSION_ERROR:
-            case XAIETILE_EVENT_CORE_DM_ADDRESS_OUT_OF_RANGE:
-            case XAIETILE_EVENT_CORE_AXI_MM_SLAVE_ERROR:
-            case XAIETILE_EVENT_CORE_PM_ECC_ERROR_SCRUB_2BIT:
-            case XAIETILE_EVENT_CORE_PM_ADDRESS_OUT_OF_RANGE:
-            case XAIETILE_EVENT_CORE_DM_ACCESS_TO_UNAVAILABLE:
-            case XAIETILE_EVENT_CORE_LOCK_ACCESS_TO_UNAVAILABLE:
-                severity = xrt_core::message::severity_level::XRT_EMERGENCY;
-                break;
-
-            case XAIETILE_EVENT_CORE_FP_OVERFLOW:
-            case XAIETILE_EVENT_CORE_FP_UNDERFLOW:
-            case XAIETILE_EVENT_CORE_FP_INVALID:
-            case XAIETILE_EVENT_CORE_FP_DIV_BY_ZERO:
-            case XAIETILE_EVENT_CORE_INSTR_WARNING:
-            case XAIETILE_EVENT_CORE_INSTR_ERROR:
-                severity = xrt_core::message::severity_level::XRT_ERROR;
-                break;
-
-            case XAIETILE_EVENT_CORE_SRS_SATURATE:
-            case XAIETILE_EVENT_CORE_UPS_SATURATE:
-                severity = xrt_core::message::severity_level::XRT_NOTICE;
-                break;
-
-            default:
-                break;
-        }
-        break;
-
-    case XAIEGBL_MODULE_MEM:
-        switch (error) {
-            case XAIETILE_EVENT_MEM_DM_ECC_ERROR_2BIT:
-            case XAIETILE_EVENT_MEM_DMA_S2MM_0_ERROR:
-            case XAIETILE_EVENT_MEM_DMA_S2MM_1_ERROR:
-            case XAIETILE_EVENT_MEM_DMA_MM2S_0_ERROR:
-            case XAIETILE_EVENT_MEM_DMA_MM2S_1_ERROR:
-                severity = xrt_core::message::severity_level::XRT_EMERGENCY;
-                break;
-
-            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_2:
-            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_3:
-            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_4:
-            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_5:
-            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_6:
-            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_7:
-                severity = xrt_core::message::severity_level::XRT_CRITICAL;
-                break;
-
-            default:
-                break;
-        }
-        break;
-
-    case XAIEGBL_MODULE_PL:
-        switch (error) {
-            case XAIETILE_EVENT_SHIM_AXI_MM_SLAVE_TILE_ERROR:
-            case XAIETILE_EVENT_SHIM_CONTROL_PKT_ERROR:
-            case XAIETILE_EVENT_SHIM_AXI_MM_DECODE_NSU_ERROR_NOC:
-            case XAIETILE_EVENT_SHIM_AXI_MM_SLAVE_NSU_ERROR_NOC:
-            case XAIETILE_EVENT_SHIM_AXI_MM_UNSUPPORTED_TRAFFIC_NOC:
-            case XAIETILE_EVENT_SHIM_AXI_MM_UNSECURE_ACCESS_IN_SECURE_MODE_NOC:
-            case XAIETILE_EVENT_SHIM_AXI_MM_BYTE_STROBE_ERROR_NOC:
-            case XAIETILE_EVENT_SHIM_DMA_S2MM_0_ERROR_NOC:
-            case XAIETILE_EVENT_SHIM_DMA_S2MM_1_ERROR_NOC:
-            case XAIETILE_EVENT_SHIM_DMA_MM2S_0_ERROR_NOC:
-            case XAIETILE_EVENT_SHIM_DMA_MM2S_1_ERROR_NOC:
-                severity = xrt_core::message::severity_level::XRT_EMERGENCY;
-                break;
-
-            default:
-                break;
-        }
-        break;
-
-    default:
-        break;
-    }
-
-    xrt_core::message::send(severity, "XRT", "AIE ERROR: module %d, error %d", module, error);
-#endif
-
-    return XAIETILE_ERROR_HANDLED;
+    return &devInst;
 }
 
 void
 Aie::
-sync_bo(uint64_t paddr, const char *gmioName, enum xclBOSyncDirection dir, size_t size)
+sync_bo(xrtBufferHandle bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   auto gmio = std::find_if(gmios.begin(), gmios.end(),
             [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
@@ -239,16 +125,19 @@ sync_bo(uint64_t paddr, const char *gmioName, enum xclBOSyncDirection dir, size_
   if (gmio == gmios.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
-  submit_sync_bo(paddr, gmio, dir, size);
+  submit_sync_bo(bo, gmio, dir, size, offset);
 
   ShimDMA *dmap = &shim_dma.at(gmio->shim_col);
   auto chan = gmio->channel_number;
-  wait_sync_bo(dmap, chan, 0);
+  auto shim_tile = XAie_TileLoc(gmio->shim_col, 0);
+  XAie_DmaDirection gmdir = gmio->type == 0 ? DMA_MM2S : DMA_S2MM;
+
+  wait_sync_bo(dmap, chan, shim_tile, gmdir, 0);
 }
 
 void
 Aie::
-sync_bo_nb(uint64_t paddr, const char *gmioName, enum xclBOSyncDirection dir, size_t size)
+sync_bo_nb(xrtBufferHandle bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   auto gmio = std::find_if(gmios.begin(), gmios.end(),
             [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
@@ -256,7 +145,7 @@ sync_bo_nb(uint64_t paddr, const char *gmioName, enum xclBOSyncDirection dir, si
   if (gmio == gmios.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
-  submit_sync_bo(paddr, gmio, dir, size);
+  submit_sync_bo(bo, gmio, dir, size, offset);
 }
 
 void
@@ -271,12 +160,15 @@ wait_gmio(const std::string& gmioName)
 
   ShimDMA *dmap = &shim_dma.at(gmio->shim_col);
   auto chan = gmio->channel_number;
-  wait_sync_bo(dmap, chan, 0);
+  auto shim_tile = XAie_TileLoc(gmio->shim_col, 0);
+  XAie_DmaDirection gmdir = gmio->type == 0 ? DMA_MM2S : DMA_S2MM;
+
+  wait_sync_bo(dmap, chan, shim_tile, gmdir, 0);
 }
 
 void
 Aie::
-submit_sync_bo(uint64_t paddr, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size)
+submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   switch (dir) {
   case XCL_BO_SYNC_BO_GMIO_TO_AIE:
@@ -294,20 +186,23 @@ submit_sync_bo(uint64_t paddr, std::vector<gmio_type>::iterator& gmio, enum xclB
   if (size & XAIEDMA_SHIM_TXFER_LEN32_MASK != 0)
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
 
-  if (paddr & XAIEDMA_SHIM_ADDRLOW_ALIGN_MASK != 0)
-    throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: address is not 128 bits aligned.");
-
   ShimDMA *dmap = &shim_dma.at(gmio->shim_col);
   auto chan = gmio->channel_number;
+  auto shim_tile = XAie_TileLoc(gmio->shim_col, 0);
+  XAie_DmaDirection gmdir = gmio->type == 0 ? DMA_MM2S : DMA_S2MM;
+  uint32_t pchan = CONVERT_LCHANL_TO_PCHANL(chan);
 
   /* Find a free BD. Busy wait until we get one. */
   while (dmap->dma_chan[chan].idle_bds.empty()) {
-    uint8_t npend = XAieDma_ShimPendingBdCount(&(dmap->handle), chan);
-    int num_comp = XAIEGBL_NOC_DMASTA_STARTQ_MAX - npend;
+    uint8_t npend;
+    XAie_DmaGetPendingBdCount(&devInst, shim_tile, pchan, gmdir, &npend);
+
+    int num_comp = dmap->maxqSize - npend;
 
     /* Pending BD is completed by order per Shim DMA spec. */
     for (int i = 0; i < num_comp; ++i) {
       BD bd = dmap->dma_chan[chan].pend_bds.front();
+      clear_bd(bd);
       dmap->dma_chan[chan].pend_bds.pop();
       dmap->dma_chan[chan].idle_bds.push(bd);
     }
@@ -315,34 +210,66 @@ submit_sync_bo(uint64_t paddr, std::vector<gmio_type>::iterator& gmio, enum xclB
 
   BD bd = dmap->dma_chan[chan].idle_bds.front();
   dmap->dma_chan[chan].idle_bds.pop();
-  bd.addr_high = get_bd_high_addr(paddr);
-  bd.addr_low = get_bd_low_addr(paddr);
-
-  XAieDma_ShimBdSetAddr(&(dmap->handle), bd.bd_num, bd.addr_high, bd.addr_low, size);
+  prepare_bd(bd, bo);
+  XAie_DmaSetAddrLen(&(dmap->desc), (uint64_t)(bd.vaddr + offset), size);
 
   /* Set BD lock */
-  XAieDma_ShimBdSetLock(&(dmap->handle), bd.bd_num, bd.bd_num, 1, XAIEDMA_SHIM_LKACQRELVAL_INVALID, 1, XAIEDMA_SHIM_LKACQRELVAL_INVALID);
+  auto acq_lock = XAie_LockInit(bd.bd_num, XAIE_LOCK_WITH_NO_VALUE);
+  auto rel_lock = XAie_LockInit(bd.bd_num, XAIE_LOCK_WITH_NO_VALUE);
+  XAie_DmaSetLock(&(dmap->desc), acq_lock, rel_lock);
+
+  XAie_DmaEnableBd(&(dmap->desc));
 
   /* Write BD */
-  XAieDma_ShimBdWrite(&(dmap->handle), bd.bd_num);
+  XAie_DmaWriteBd(&devInst, &(dmap->desc), shim_tile, bd.bd_num);
 
   /* Enqueue BD */
-  XAieDma_ShimSetStartBd((&(dmap->handle)), chan, bd.bd_num);
+  XAie_DmaChannelPushBdToQueue(&devInst, shim_tile, pchan, gmdir, bd.bd_num);
   dmap->dma_chan[chan].pend_bds.push(bd);
 }
 
 void
 Aie::
-wait_sync_bo(ShimDMA* const dmap, uint32_t chan, uint32_t timeout)
+wait_sync_bo(ShimDMA *dmap, uint32_t chan, XAie_LocType& tile, XAie_DmaDirection gmdir, uint32_t timeout)
 {
-  while ((XAieDma_ShimWaitDone(&(dmap->handle), chan, timeout) != XAIEGBL_NOC_DMASTA_STA_IDLE));
+  while (XAie_DmaWaitForDone(&devInst, tile, CONVERT_LCHANL_TO_PCHANL(chan), gmdir, timeout) != XAIE_OK);
 
   while (!dmap->dma_chan[chan].pend_bds.empty()) {
     BD bd = dmap->dma_chan[chan].pend_bds.front();
+    clear_bd(bd);
     dmap->dma_chan[chan].pend_bds.pop();
     dmap->dma_chan[chan].idle_bds.push(bd);
   }
 }
 
+void
+Aie::
+prepare_bd(BD& bd, xrtBufferHandle& bo)
+{
+  auto buf_fd = xrtBOExport(bo);
+  if (buf_fd == XRT_NULL_BO_EXPORT)
+    throw xrt_core::error(-errno, "Sync AIE Bo: fail to export BO.");
+  bd.buf_fd = buf_fd;
+
+  auto ret = ioctl(fd, AIE_ATTACH_DMABUF_IOCTL, buf_fd);
+  if (ret)
+    throw xrt_core::error(-errno, "Sync AIE Bo: fail to attach DMA buf.");
+
+  auto bosize = xrtBOSize(bo);
+  bd.size = bosize;
+
+  bd.vaddr = reinterpret_cast<char *>(mmap(NULL, bosize, PROT_READ | PROT_WRITE, MAP_SHARED, buf_fd, 0));
+}
+
+void
+Aie::
+clear_bd(BD& bd)
+{
+  munmap(bd.vaddr, bd.size);
+  bd.vaddr = nullptr;
+  auto ret = ioctl(fd, AIE_DETACH_DMABUF_IOCTL, bd.buf_fd);
+  if (ret)
+    throw xrt_core::error(-errno, "Sync AIE Bo: fail to detach DMA buf.");
+}
 
 }

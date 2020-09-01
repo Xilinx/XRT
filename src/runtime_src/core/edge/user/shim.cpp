@@ -501,23 +501,24 @@ xclLoadAxlf(const axlf *buffer)
   if (is_pr_platform && is_pr_enabled)
     flags = DRM_ZOCL_PLATFORM_PR;
 
-  drm_zocl_axlf axlf_obj = {
-    .za_xclbin_ptr = const_cast<axlf *>(buffer),
-    .za_flags = flags,
-    .za_ksize = 0,
-    .za_kernels = NULL,
-  };
+    drm_zocl_axlf axlf_obj = {
+      .za_xclbin_ptr = const_cast<axlf *>(buffer),
+      .za_flags = flags,
+      .za_ksize = 0,
+      .za_kernels = NULL,
+    };
 
-  auto kernels = xrt_core::xclbin::get_kernels(buffer);
-  /* Calculate size of kernels */
-  for (auto& kernel : kernels) {
+  if (!xrt_core::xclbin::is_pdi_only(buffer)) {
+    auto kernels = xrt_core::xclbin::get_kernels(buffer);
+    /* Calculate size of kernels */
+    for (auto& kernel : kernels) {
       axlf_obj.za_ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
-  }
+    }
 
-  /* Check PCIe's shim.cpp for details of kernels binary */
-  std::vector<char> krnl_binary(axlf_obj.za_ksize);
-  axlf_obj.za_kernels = krnl_binary.data();
-  for (auto& kernel : kernels) {
+    /* Check PCIe's shim.cpp for details of kernels binary */
+    std::vector<char> krnl_binary(axlf_obj.za_ksize);
+    axlf_obj.za_kernels = krnl_binary.data();
+    for (auto& kernel : kernels) {
       auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.za_kernels + off);
       if (kernel.name.size() > sizeof(krnl->name))
           return -EINVAL;
@@ -527,20 +528,21 @@ xclLoadAxlf(const axlf *buffer)
 
       int ai = 0;
       for (auto& arg : kernel.args) {
-          if (arg.name.size() > sizeof(krnl->args[ai].name))
-              return -EINVAL;
-          std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
-          krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
-          krnl->args[ai].offset = arg.offset;
-          krnl->args[ai].size   = arg.size;
-          // XCLBIN doesn't define argument direction yet and it only support
-          // input arguments.
-          // Driver use 1 for input argument and 2 for output.
-          // Let's refine this line later.
-          krnl->args[ai].dir    = 1;
-          ai++;
+        if (arg.name.size() > sizeof(krnl->args[ai].name))
+          return -EINVAL;
+        std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+        krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+        krnl->args[ai].offset = arg.offset;
+        krnl->args[ai].size   = arg.size;
+        // XCLBIN doesn't define argument direction yet and it only support
+        // input arguments.
+        // Driver use 1 for input argument and 2 for output.
+        // Let's refine this line later.
+        krnl->args[ai].dir    = 1;
+        ai++;
       }
       off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
   }
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
@@ -1435,6 +1437,17 @@ shim::
 isAieRegistered()
 {
   return (aieArray != nullptr);
+}
+
+int
+shim::
+getPartitionFd(drm_zocl_aie_fd &aiefd)
+{
+  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd);
+  if (ret)
+    return -errno;
+
+  return 0;
 }
 #endif
 

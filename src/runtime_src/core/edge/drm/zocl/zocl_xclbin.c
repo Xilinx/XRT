@@ -615,17 +615,20 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		zdev->kernels = NULL;
 	}
 
-	kernels = vmalloc(axlf_obj->za_ksize);
-	if (!kernels) {
-		ret = -ENOMEM;
-		goto out0;
+	if (axlf_obj->za_ksize > 0) {
+		kernels = vmalloc(axlf_obj->za_ksize);
+		if (!kernels) {
+			ret = -ENOMEM;
+			goto out0;
+		}
+		if (copy_from_user(kernels, axlf_obj->za_kernels,
+		    axlf_obj->za_ksize)) {
+			ret = -EFAULT;
+			goto out0;
+		}
+		zdev->ksize = axlf_obj->za_ksize;
+		zdev->kernels = kernels;
 	}
-	if (copy_from_user(kernels, axlf_obj->za_kernels, axlf_obj->za_ksize)) {
-		ret = -EFAULT;
-		goto out0;
-	}
-	zdev->ksize = axlf_obj->za_ksize;
-	zdev->kernels = kernels;
 
 	if (kds_mode == 1) {
 		subdev_destroy_cu(zdev);
@@ -663,6 +666,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 	zocl_clear_mem(zdev);
 	zocl_init_mem(zdev, zdev->topology);
+
+	/* Createing AIE Partition */
+	zocl_destroy_aie(zdev);
+	zocl_create_aie(zdev, axlf);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.

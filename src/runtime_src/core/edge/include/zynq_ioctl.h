@@ -117,6 +117,8 @@ enum drm_zocl_ops {
 	DRM_ZOCL_CTX,
 	/* Error injection */
 	DRM_ZOCL_ERROR_INJECT,
+	/* Request/Release AIE partition */
+	DRM_ZOCL_AIE_FD,
 	DRM_ZOCL_NUM_IOCTLS
 };
 
@@ -290,6 +292,12 @@ struct drm_zocl_ctx {
 	// unused, in future it would return context id
 	uint32_t handle;
 	enum drm_zocl_ctx_code op;
+};
+
+struct drm_zocl_aie_fd {
+	uint32_t partition_id;
+	uint32_t uid;
+	int fd;
 };
 
 /**
@@ -482,4 +490,6 @@ struct drm_zocl_error_inject {
                                        DRM_ZOCL_CTX, struct drm_zocl_ctx)
 #define DRM_IOCTL_ZOCL_ERROR_INJECT    DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_ERROR_INJECT, struct drm_zocl_error_inject)
+#define DRM_IOCTL_ZOCL_AIE_FD          DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_AIE_FD, struct drm_zocl_aie_fd)
 #endif

@@ -135,6 +135,7 @@ public:
   int getBOInfo(drm_zocl_info_bo &info);
   void registerAieArray();
   bool isAieRegistered();
+  int getPartitionFd(drm_zocl_aie_fd &aiefd);
 #endif
 
 private:
