@@ -1015,6 +1015,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		xocl_mb_reset(xdev);
 
 	/* save BMC version */
+	(void)sprintf(icap->bmc_header.m_version, "%s", NONE_BMC_VERSION);
 	mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf, BMC);
 	if (mbHeader) {
 		if (mbHeader->m_sectionSize < sizeof(struct bmc)) {
@@ -1032,7 +1033,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			goto done;
 		}
 	}
-
 
 done:
 	vfree(fw_buf);

@@ -3994,7 +3994,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 			BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
 
 		if (bd_info_valid(xmc->serial_num) &&
-			(!strcmp(xmc->exp_bmc_ver, "") ||	
+			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||	
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
 			xmc->bdinfo_loaded = true;
 			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
@@ -4003,7 +4003,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 	} else {
 
 		if (xmc->bdinfo_loaded &&
-			(!strcmp(xmc->exp_bmc_ver, "") ||	
+			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||	
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
 			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
 			return 0;
@@ -4026,7 +4026,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, EXP_BMC_VER, (u32 *)xmc->exp_bmc_ver);
 
 		if (bd_info_valid(xmc->serial_num) &&
-			(!strcmp(xmc->exp_bmc_ver, "") ||	
+			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||	
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
 			xmc->bdinfo_loaded = true;
 			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
