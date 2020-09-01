@@ -1337,16 +1337,17 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 		if (nxt_offset == 0)
 			break;
 
-		ret = pci_read_config_word(pdev, (nxt_offset + 4), &vsec_id);
+		ret = pci_read_config_word(pdev, (nxt_offset + PCI_VNDR_HEADER),
+								   &vsec_id);
 		if (ret != 0) {
 			xocl_err(&core->pdev->dev, "pci read failed for offset: 0x%x, err: %d",
-					 (nxt_offset + 4), ret);
+					 (nxt_offset + PCI_VNDR_HEADER), ret);
 			offset = 0;
 			nxt_offset = 0;
 			break;
 		}
 
-		if (vsec_id == 0x20)
+		if (vsec_id == XOCL_VSEC_ALF_VSEC_ID)
 			break;
 
 		offset_vsec = nxt_offset;
