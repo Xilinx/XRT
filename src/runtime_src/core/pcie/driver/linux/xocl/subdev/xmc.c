@@ -3885,7 +3885,6 @@ static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags)
 static void clock_status_check(struct platform_device *pdev, bool *latched)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	u32 cntrl;
 	u32 status = 0;
 
 	if (!xmc->sc_presence) {
