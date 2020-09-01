@@ -1,5 +1,4 @@
 set(TESTNAME "slavebridge")
-set(XILINX_XRT $ENV{XILINX_XRT})
 
 if (WIN32)
   set(OpenCL_INCLUDE_DIR ${OCL_ROOT}/include)
@@ -11,7 +10,7 @@ else()
   find_package(OpenCL)
 endif(WIN32)
 
-include_directories( ${XILINX_XRT}/include ${XILINX_XRT}/ext/include src/ ../common/includes/xcl2 )
+include_directories( ../../../src/include/1_2 src/ ../common/includes/xcl2 )
 add_executable(${TESTNAME} ../common/includes/xcl2/xcl2.cpp src/host.cpp)
 target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY})
 
@@ -20,4 +19,4 @@ if (NOT WIN32)
 endif(NOT WIN32)
 
 install(TARGETS ${TESTNAME}
-  RUNTIME DESTINATION ${INSTALL_DIR}/${TESTNAME})
+  RUNTIME DESTINATION ${XRT_VALIDATE_DIR})
