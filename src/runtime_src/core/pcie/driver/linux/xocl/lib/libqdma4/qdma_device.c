@@ -431,7 +431,7 @@ struct qdma_descq *qdma4_device_get_descq_by_id(struct xlnx_dma_dev *xdev,
 	return descq;
 }
 
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 struct qdma_descq *qdma_device_get_pair_descq_by_id(struct xlnx_dma_dev *xdev,
 			unsigned long idx, char *buf, int buflen, int init)
 {
