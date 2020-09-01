@@ -3324,8 +3324,6 @@ static int raptor_cmc_access(struct platform_device *pdev,
 		 */
 		val = (addr & 0x01FFFFFF) | XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT;
 		WRITE_REG32(xmc, val, XMC_HOST_NEW_FEATURE_REG1);
-		//Enable runtime clock scaling feature
-		runtime_clk_scale_enable(xmc);
 		xocl_xdev_info(xdev, "%s is 0x%llx, set New Feature Table to 0x%x\n",
 		    NODE_GAPPING, addr, val);
 	} else if (flags == XOCL_XMC_FREEZE) {
