@@ -219,6 +219,7 @@ struct xrt_cu {
 	struct list_head	  cq;
 	u32			  num_cq;
 	struct semaphore	  sem;
+	struct semaphore	  sem_cu;
 	void                     *core;
 	u32			  stop;
 	bool			  bad_state;
@@ -317,6 +318,7 @@ int xrt_cu_thread(void *data);
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
 int xrt_cu_abort(struct xrt_cu *xcu, void *client);
 int xrt_cu_abort_done(struct xrt_cu *xcu);
+int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr);
 void xrt_cu_set_bad_state(struct xrt_cu *xcu);
 
 int  xrt_cu_init(struct xrt_cu *xcu);

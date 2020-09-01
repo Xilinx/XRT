@@ -98,6 +98,7 @@ struct kds_cu_mgmt {
 	struct xrt_cu		 *xcus[MAX_CUS];
 	struct mutex		  lock;
 	int			  num_cus;
+	u32			  cu_intr[MAX_CUS];
 	u32			  cu_refs[MAX_CUS];
 	u64			  cu_usage[MAX_CUS];
 	int			  configured;
@@ -116,6 +117,9 @@ struct kds_ert {
  * @num_client: Number of clients
  * @lock: Mutex to protect client list
  * @cu_mgmt: hardware CUs management data structure
+ * @ert: remote scheduler
+ * @ert_disable: remote scheduler is disabled or not
+ * @cu_intr: CU or ERT interrupt. 1 for CU, 0 for ERT.
  */
 struct kds_sched {
 	struct list_head	clients;
@@ -125,6 +129,7 @@ struct kds_sched {
 	struct kds_cu_mgmt	cu_mgmt;
 	struct kds_ert	       *ert;
 	bool			ert_disable;
+	u32			cu_intr;
 };
 
 int kds_init_sched(struct kds_sched *kds);
@@ -134,6 +139,7 @@ void kds_fini_sched(struct kds_sched *kds);
 int kds_fini_ert(struct kds_sched *kds);
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client);
 void kds_reset(struct kds_sched *kds);
+int kds_cfg_update(struct kds_sched *kds);
 int is_bad_state(struct kds_sched *kds);
 u32 kds_live_clients(struct kds_sched *kds, pid_t **plist);
 u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist);

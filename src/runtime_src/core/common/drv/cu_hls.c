@@ -176,23 +176,29 @@ static void cu_hls_check(void *core, struct xcu_status *status)
 static void cu_hls_enable_intr(void *core, u32 intr_type)
 {
 	struct xrt_cu_hls *cu_hls = core;
-	u32 intr_mask = intr_type & CU_INTR_DONE;
 
 	/* 0x04 and 0x08 -- Interrupt Enable Registers */
 	iowrite32(0x1, cu_hls->vaddr + 0x4);
 	/*
 	 * bit 0 is ap_done, bit 1 is ap_ready
-	 * only enable ap_done before dataflow support, interrupts are handled
-	 * in sched_exec_isr, please see dataflow comments for more information.
 	 */
-	iowrite32(intr_mask, cu_hls->vaddr + 0x8);
+	iowrite32(intr_type, cu_hls->vaddr + 0x8);
 }
 
 static void cu_hls_disable_intr(void *core, u32 intr_type)
 {
 	struct xrt_cu_hls *cu_hls = core;
 
-	u32 intr_mask = intr_type & ioread32(cu_hls->vaddr + 0x8);
+	/* True table
+	 * | reg bit | intr_type bit | intr_mask bit |
+	 * +---------+---------------+---------------+
+	 * |    0    |       0       |       0       |
+	 * |    0    |       1       |       0       |
+	 * |    1    |       0       |       1       |
+	 * |    1    |       1       |       0       |
+	 * +---------+---------------+---------------+
+	 */
+	u32 intr_mask = ioread32(cu_hls->vaddr + 0x8) & (~intr_type);
 
 	/* 0x04 and 0x08 -- Interrupt Enable Registers */
 	iowrite32(0x0, cu_hls->vaddr + 0x4);
@@ -243,7 +249,6 @@ static u32 cu_hls_clear_intr(void *core)
 	 */
 	return ioread32(cu_hls->vaddr + 0xc);
 }
-
 
 static struct xcu_funcs xrt_cu_hls_funcs = {
 	.alloc_credit	= cu_hls_alloc_credit,
@@ -304,11 +309,11 @@ void xrt_cu_hls_fini(struct xrt_cu *xcu)
 {
 	struct xrt_cu_hls *core = xcu->core;
 
+	xrt_cu_fini(xcu);
+
 	if (xcu->core) {
 		if (core->vaddr)
 			iounmap(core->vaddr);
 		kfree(xcu->core);
 	}
-
-	xrt_cu_fini(xcu);
 }
