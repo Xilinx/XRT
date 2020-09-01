@@ -19,6 +19,7 @@
 #include <linux/debugfs.h>
 #include <linux/types.h>
 #include <linux/pci.h>
+#include <linux/delay.h>
 
 #include "stmc.h"
 #include "qdma_ul_ext.h"
@@ -68,6 +69,12 @@
 		 << S_STM_REG_H2C_MODE_PORTMAP_C2H)
 #define		S_STM_EN_STMA_BKCHAN		15
 #define		F_STM_EN_STMA_BKCHAN		(1 << S_STM_EN_STMA_BKCHAN)
+
+#define		S_STM_QINV_CNT_EN		4
+#define		F_STM_QINV_CNT_EN		(1 << S_STM_QINV_CNT_EN)	
+
+#define		S_STM_QINV_C2H_SEL		2
+#define		F_STM_QINV_C2H_SEL		(1 << S_STM_QINV_C2H_SEL)	
 
 #define STM_REG_C2H_MODE		0x38
 #define STM_REG_C2H_MODE_WEIGHT_DFLT	0x00010200
@@ -163,8 +170,8 @@
 #define V_STM_CTX_W4_C2H_TDEST(x)	\
 		(((x) & M_STM_CTX_W4_C2H_TDEST) << S_STM_CTX_W4_C2H_TDEST)
 
-#define S_STM_CTX_W4_C2H_FLOW_ID	8
-#define M_STM_CTX_W4_C2H_FLOW_ID	0xFFFFFFU
+#define S_STM_CTX_W4_C2H_FLOW_ID	24
+#define M_STM_CTX_W4_C2H_FLOW_ID	0xFFU
 #define V_STM_CTX_W4_C2H_FLOW_ID(x)	\
 		(((x) & M_STM_CTX_W4_C2H_FLOW_ID) << S_STM_CTX_W4_C2H_FLOW_ID)
 
@@ -226,7 +233,8 @@ int stmc_init(struct stmc_dev *sdev, struct qdma_dev_conf *conf)
 	portmap = (v >> S_STM_REG_CONFIG_PORT_MAP) & M_STM_REG_CONFIG_PORT_MAP;
 
 	v = V_STM_REG_H2C_MODE_PORTMAP_H2C(portmap) |
-	    V_STM_REG_H2C_MODE_PORTMAP_C2H(portmap) | F_STM_EN_STMA_BKCHAN;
+	    V_STM_REG_H2C_MODE_PORTMAP_C2H(portmap) | F_STM_EN_STMA_BKCHAN |
+	    F_STM_QINV_CNT_EN | F_STM_QINV_C2H_SEL;
 	writel(v, regs + STM_REG_H2C_MODE);
 
 	/* C2H weight */
@@ -258,6 +266,9 @@ static int stmc_indirect_prog(struct stmc_dev *sdev, unsigned int qid_hw,
 			__func__, sdev->name, qid_hw, op);
 		return -EINVAL;
 	}
+
+	pr_debug("%s: %s, qid %u, fid %u, op 0x%x, sel 0x%x -> cmd 0x%x.\n",
+		__func__, sdev->name, qid_hw, fid, op, sel, cmd);
 
 	spin_lock(&sdev->ctx_prog_lock);
 
@@ -410,6 +421,27 @@ static int stmc_queue_context_program(struct stmc_dev *sdev,
 	struct stm_queue_context context;
 	int rv;
 
+	/* poll the context Cmr bit to make sure the qdma-stm reset is done */
+	if (clear && sqconf->c2h) {
+		int i = 0;
+
+		for (i = 0; i < 5000; i++) {	
+			udelay(1000);	/* 1 ms */
+			rv = stmc_indirect_prog(sdev, sqconf->qid_hw,
+				sqconf->flow_id, STM_CMD_OP_READ,
+				STM_CMD_SEL_C2H_CTX, &context);
+			/* bit 180 Cmr */
+			if (context.data[5] & 0x100000)
+				break;
+		}
+		if (context.data[5] & 0x100000) {
+			pr_info("%s: %d, c2h qid %u, STM ctx 0x%08x, 0x%08x.\n",
+				__func__, i, sqconf->qid_hw, context.data[4],
+				context.data[5]);
+			stmc_queue_context_dump(sdev, sqconf);
+		}
+	}
+
 	if (sqconf->c2h) {
 		stmc_make_c2h_context(sqconf, &context, clear);
 
@@ -429,18 +461,19 @@ static int stmc_queue_context_program(struct stmc_dev *sdev,
 					STM_CMD_OP_WRITE, STM_CMD_SEL_H2C_MAP,
 					&context);
 	}
+
 	return rv;
 }
 
-static int validate_stm_input(struct stmc_dev *sdev,
+static int validate_stm_input(const char *fname, struct stmc_dev *sdev,
 				struct stmc_queue_conf *sqconf)
 {
 	if (!sdev || !sdev->regs) {
-		pr_info("%s: No STMC present.\n", __func__);
+		pr_info("%s: No STMC present.\n", fname);
 		return -EINVAL;
 	}
 	if (sqconf && !sqconf->qconf) {
-		pr_info("%s: STMC context not set up.\n", __func__);
+		pr_info("%s: STMC context not set up.\n", fname);
 		return -EINVAL;
 	}
 	return 0;
@@ -449,7 +482,7 @@ static int validate_stm_input(struct stmc_dev *sdev,
 int stmc_queue_context_cleanup(struct stmc_dev *sdev,
 				struct stmc_queue_conf *sqconf)
 {
-	int rv = validate_stm_input(sdev, sqconf);
+	int rv = validate_stm_input(__func__, sdev, sqconf);
 
 	if (rv < 0)
 		return rv;
@@ -463,7 +496,7 @@ int stmc_queue_context_setup(struct stmc_dev *sdev,
 				struct stmc_queue_conf *sqconf,
 				unsigned int flowid, unsigned int rid)
 {
-	int rv = validate_stm_input(sdev, NULL);
+	int rv = validate_stm_input(__func__, sdev, NULL);
 
 	if (rv < 0)
 		return rv;
@@ -483,6 +516,12 @@ int stmc_queue_context_setup(struct stmc_dev *sdev,
 	sqconf->qconf = qconf;
 	sqconf->qid_hw = qconf->qidx_hw;
 	sqconf->c2h = (qconf->q_type == Q_C2H);
+	/* tdest:
+	 * tdest[3:0]: kernel number within a SLR
+	 * 	[17:16]: SLR#
+	 * flow_id
+	 * 	[5:0]:	= {SLR[1:-0], kernel[3:0]}
+ 	 */
         sqconf->flow_id = flowid & STREAM_FLOWID_MASK;
 	sqconf->tdest = rid & STREAM_TDEST_MASK;
 
@@ -497,7 +536,7 @@ void stmc_queue_context_dump(struct stmc_dev *sdev,
 				struct stmc_queue_conf *sqconf)
 {
 	struct stm_queue_context ctx;
-	int rv = validate_stm_input(sdev, sqconf);
+	int rv = validate_stm_input(__func__, sdev, sqconf);
 
 	if (rv < 0)
 		return;

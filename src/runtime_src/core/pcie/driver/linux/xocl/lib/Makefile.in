@@ -12,6 +12,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
+ccflags-y	+= -D_QDMA4_DEBUGFS_
 
 xocl_lib-y	:= ../lib/libxdma.o
 xocl_lib-y	+=  \

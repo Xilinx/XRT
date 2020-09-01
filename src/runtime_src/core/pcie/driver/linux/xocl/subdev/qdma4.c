@@ -62,10 +62,9 @@ unsigned int qdma4_max_channel = 16;
 module_param(qdma4_max_channel, uint, 0644);
 MODULE_PARM_DESC(qdma4_max_channel, "Set number of channels for qdma, default is 16");
 
-static unsigned int qdma4_poll_mode;
-module_param(qdma4_poll_mode, uint, 0644);
-MODULE_PARM_DESC(poll_mode, "Set 1 for hw polling, default is 0 (interrupts)");
-
+static unsigned int qdma4_interrupt_mode = DIRECT_INTR_MODE;
+module_param(qdma4_interrupt_mode, uint, 0644);
+MODULE_PARM_DESC(interrupt_mode, "0:auto, 1:poll, 2:direct, 3:intr_ring, default is 2");
 
 struct dentry *qdma4_debugfs_root;
 
@@ -968,11 +967,10 @@ static int queue_req_complete(struct qdma_request *req, unsigned int done_bytes,
 	bool free_req = false;
 
 	xocl_dbg(&queue->qdma->pdev->dev,
-		"%s, q 0x%lx, reqcb 0x%p,err %d, %u,%u, %u,%u, pend %u.\n",
-		__func__, queue->queue, reqcb, error,
-		queue->req_submit_cnt, queue->req_cmpl_cnt,
-		queue->req_cancel_cnt, queue->req_cancel_cmpl_cnt,
-		queue->req_pend_cnt);
+		"q 0x%lx, reqcb 0x%p,err %d, %u,%u, %u,%u, pend %u.\n",
+		queue->queue, reqcb, error, queue->req_submit_cnt,
+		queue->req_cmpl_cnt, queue->req_cancel_cnt,
+		queue->req_cancel_cmpl_cnt, queue->req_pend_cnt);
 
 	queue_req_release_resource(queue, reqcb);
 
@@ -1190,7 +1188,7 @@ if (nents != 1) {
 
 error_out:
 	if (ret < 0 || !kiocb) {
-		xocl_warn(&qdma->pdev->dev, "%s ret %ld, kiocb 0x%p.\n",
+		xocl_dbg(&qdma->pdev->dev, "%s ret %ld, kiocb 0x%p.\n",
 			  __func__, ret, (void *)kiocb);
 
 		for (i = 0, reqcb = iocb->reqcb; i < reqcnt; i++, reqcb++)
@@ -1927,11 +1925,10 @@ static int qdma4_probe(struct platform_device *pdev)
 	conf->bar_num_user = -1;
 	conf->bar_num_bypass = -1;
 	conf->no_mailbox = 1;
-	//conf->qdma_drv_mode = POLL_MODE;
 	conf->data_msix_qvec_max = 1;
 	conf->user_msix_qvec_max = 8;
 	conf->msix_qvec_max = 16;
-	conf->qdma_drv_mode = qdma4_poll_mode ? POLL_MODE : AUTO_MODE;
+	conf->qdma_drv_mode = qdma4_interrupt_mode;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;
