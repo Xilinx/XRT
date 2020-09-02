@@ -823,6 +823,18 @@ DeviceIntf::~DeviceIntf()
     }
   }
 
+  void DeviceIntf::configureFa(bool* ipConfig)
+  {
+    // this ipConfig only tells whether the corresponding CU uses Fast Adapter
+    if(!ipConfig)
+      return;
+
+    uint32_t i = 0;
+    for(auto mon: amList) {
+      mon->configureFa(ipConfig[i++]);
+    }
+  }
+
   void DeviceIntf::configAmContext(const std::string& ctx_info)
   {
     if (ctx_info.empty())
