@@ -114,7 +114,7 @@ long qdma4_device_get_id_from_descq(struct xlnx_dma_dev *xdev,
 struct qdma_descq *qdma4_device_get_descq_by_id(struct xlnx_dma_dev *xdev,
 			unsigned long idx, char *buf, int buflen, int init);
 
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 /*****************************************************************************/
 /**
  * qdma_device_get_pair_descq_by_id() - get the descq using the qid

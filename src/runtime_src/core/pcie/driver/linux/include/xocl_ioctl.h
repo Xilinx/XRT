@@ -70,15 +70,22 @@
  * 6    Update bo backing storage with user's  DRM_IOCTL_XOCL_PWRITE_BO       drm_xocl_pwrite_bo
  *      data
  * 7    Read back data in bo backing storage   DRM_IOCTL_XOCL_PREAD_BO        drm_xocl_pread_bo
- * 8    Open/close a context on a compute unit DRM_XOCL_CTX                   drm_xocl_ctx
+ * 8    Open/close a context on a compute unit DRM_IOCTL_XOCL_CTX             drm_xocl_ctx
  *      on the device
  * 9    Unprotected write to device memory     DRM_IOCTL_XOCL_PWRITE_UNMGD    drm_xocl_pwrite_unmgd
  * 10   Unprotected read from device memory    DRM_IOCTL_XOCL_PREAD_UNMGD     drm_xocl_pread_unmgd
  * 11   Send an execute job to a compute unit  DRM_IOCTL_XOCL_EXECBUF         drm_xocl_execbuf
  * 12   Register eventfd handle for MSIX       DRM_IOCTL_XOCL_USER_INTR       drm_xocl_user_intr
  *      interrupt
- * 13   Update device view with a specific     DRM_XOCL_READ_AXLF             drm_xocl_axlf
+ * 13   Update device view with a specific     DRM_IOCTL_XOCL_READ_AXLF       drm_xocl_axlf
  *      xclbin image
+ * 14   Obtain info of bo                      DRM_IOCTL_XOCL_INFO            drm_xocl_info_bo
+ * 15   Obtain bo related statistics           DRM_IOCTL_XOCL_OCL_USAGE_STAT  drm_xocl_usage_stat
+ * 16   Perform hot reset                      DRM_IOCTL_XOCL_HOT_RESET       N/A
+ * 17   Perform clock scaling                  DRM_IOCTL_XOCL_RECLOCK         drm_xocl_reclock_info
+ * 18   Allocate buffer on host memory         DRM_IOCTL_XOCL_ALLOC_CMA       drm_xocl_alloc_cma_info
+ * 19   Free host memory buffer                DRM_IOCTL_XOCL_FREE_CMA        N/A
+ * 20   Copy bo buffers                        DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
  * ==== ====================================== ============================== ==================================
  */
 
@@ -141,8 +148,6 @@ enum drm_xocl_ops {
 	DRM_XOCL_PWRITE_UNMGD,
 	/* Various usage metrics */
 	DRM_XOCL_USAGE_STAT,
-	/* Hardware debug command */
-	DRM_XOCL_DEBUG,
 	/* Command to run on one or more CUs */
 	DRM_XOCL_EXECBUF,
 	/* Register eventfd for user interrupts */
@@ -533,20 +538,6 @@ struct drm_xocl_usage_stat {
 	struct drm_xocl_mm_stat mm[8];
 };
 
-enum drm_xocl_debug_code {
-	DRM_XOCL_DEBUG_ACQUIRE_CU = 0,
-	DRM_XOCL_DEBUG_RELEASE_CU,
-	DRM_XOCL_DEBUG_NIFD_RD,
-	DRM_XOCL_DEBUG_NIFD_WR,
-};
-
-struct drm_xocl_debug {
-	uint32_t ctx_id;
-	enum drm_xocl_debug_code code;
-	unsigned int code_size;
-	uint64_t code_ptr;
-};
-
 enum drm_xocl_execbuf_state {
 	DRM_XOCL_EXECBUF_STATE_COMPLETE = 0,
 	DRM_XOCL_EXECBUF_STATE_RUNNING,
@@ -555,7 +546,6 @@ enum drm_xocl_execbuf_state {
 	DRM_XOCL_EXECBUF_STATE_ERROR,
 	DRM_XOCL_EXECBUF_STATE_ABORT,
 };
-
 
 /**
  * struct drm_xocl_execbuf - Submit a command buffer for execution on a compute unit
@@ -607,12 +597,24 @@ struct drm_xocl_user_intr {
 	int msix;
 };
 
+/**
+ * struct drm_xocl_reclock_info - perform clock scaling 
+ *
+ * @region: 		Region
+ * @ocl_target_freq: 	clock scacling request array
+ */
 struct drm_xocl_reclock_info {
 	unsigned region;
 	unsigned short ocl_target_freq[DRM_XOCL_NUM_SUPPORTED_CLOCKS];
 };
 
-
+/**
+ * struct drm_xocl_alloc_cma_info - Alloc buffer on host memory
+ *
+ * @total_size: 	total size
+ * @entry_num: 		number of entries
+ * @user_addr: 		user space address
+ */
 struct drm_xocl_alloc_cma_info {
 	uint64_t	total_size;
 	uint64_t	entry_num;
@@ -640,7 +642,6 @@ struct drm_xocl_alloc_cma_info {
 #define	DRM_IOCTL_XOCL_PWRITE_UNMGD	XOCL_IOC_ARG(PWRITE_UNMGD, pwrite_unmgd)
 #define	DRM_IOCTL_XOCL_PREAD_UNMGD	XOCL_IOC_ARG(PREAD_UNMGD, pread_unmgd)
 #define	DRM_IOCTL_XOCL_USAGE_STAT	XOCL_IOC_ARG(USAGE_STAT, usage_stat)
-#define	DRM_IOCTL_XOCL_DEBUG		XOCL_IOC_ARG(DEBUG, debug)
 #define	DRM_IOCTL_XOCL_EXECBUF		XOCL_IOC_ARG(EXECBUF, execbuf)
 #define	DRM_IOCTL_XOCL_USER_INTR	XOCL_IOC_ARG(USER_INTR, user_intr)
 #define	DRM_IOCTL_XOCL_HOT_RESET	XOCL_IOC(HOT_RESET)

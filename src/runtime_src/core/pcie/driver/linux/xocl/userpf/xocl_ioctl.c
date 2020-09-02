@@ -507,20 +507,27 @@ skip1:
 		XDEV(xdev)->kernels = NULL;
 	}
 
-	kernels = vmalloc(axlf_ptr->ksize);
-	if (!kernels) {
-		userpf_err(xdev, "Unable to alloc mem for kernels, size=%u\n",
-			   axlf_ptr->ksize);
-		err = -ENOMEM;
-		goto done;
+	/* There is a corner case.
+	 * A xclbin might only have an ap_ctrl_none kernel in ip_layout and
+	 * without any arguments. In this case, ksize would be 0, there is no
+	 * kernel information anywhere.
+	 */
+	if (axlf_ptr->ksize) {
+		kernels = vmalloc(axlf_ptr->ksize);
+		if (!kernels) {
+			userpf_err(xdev, "Unable to alloc mem for kernels, size=%u\n",
+				   axlf_ptr->ksize);
+			err = -ENOMEM;
+			goto done;
+		}
+		if (copy_from_user(kernels, axlf_ptr->kernels, axlf_ptr->ksize)) {
+			vfree(kernels);
+			err = -EFAULT;
+			goto done;
+		}
+		XDEV(xdev)->ksize = axlf_ptr->ksize;
+		XDEV(xdev)->kernels = kernels;
 	}
-	if (copy_from_user(kernels, axlf_ptr->kernels, axlf_ptr->ksize)) {
-		vfree(kernels);
-		err = -EFAULT;
-		goto done;
-	}
-	XDEV(xdev)->ksize = axlf_ptr->ksize;
-	XDEV(xdev)->kernels = kernels;
 
 	err = xocl_icap_download_axlf(xdev, axlf);
 	if (err) {

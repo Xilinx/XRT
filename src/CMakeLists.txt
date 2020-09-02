@@ -9,6 +9,7 @@ SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../tests/validate
   )
 
 find_package(Boost EXACT REQUIRED)

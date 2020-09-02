@@ -905,7 +905,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
       auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz, const cmd_type& c) {
         c->start();
         auto sboh = sbuf->get_buffer_object(this);
-        auto dboh = sbuf->get_buffer_object(this);
+        auto dboh = dbuf->get_buffer_object(this);
         m_xdevice->copy(dboh, sboh, sz, doff, soff);
         c->done();
       };

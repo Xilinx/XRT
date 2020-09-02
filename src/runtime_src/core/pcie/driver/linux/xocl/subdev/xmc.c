@@ -1130,8 +1130,17 @@ uint64_t xmc_get_power(struct platform_device *pdev, enum sensor_val_kind kind)
 static u32 xmc_get_threshold_power(struct xocl_xmc *xmc)
 {
 	u32 base, max, cntrl;
-	u32 c_12v_pex, c_3v3_pex, vccint_c, c_12v_aux, v_pex, v_aux, v_3v3;
+	u32 c_12v_pex = 0, c_3v3_pex = 0, vccint_c = 0, c_12v_aux = 0;
+	u32 v_pex, v_aux, v_3v3;
 	u64 power, power_12v_pex;
+
+	/* The thresholds are stored as [Sensor ID, throttle limit] pairs in the shared
+	 * XRT/CMC memory map.
+	 * Power Thresholds start at 0x0E68 and ends at 0xE8C. This range is
+	 * fixed. But, offsets of sensor_id & it's throttle limit pair
+	 * are not fixed in this range. Hence, read sensor_id first, and store it's
+	 * throttle limit in it's corresponding pair.
+	 */
 
 	base = XMC_HOST_POWER_THRESHOLD_BASE_REG;
 	max = XMC_HOST_POWER_THRESHOLD_BASE_REG + 14;
@@ -1164,21 +1173,18 @@ static u32 xmc_get_threshold_power(struct xocl_xmc *xmc)
 
 static u32 xmc_get_threshold_temp(struct xocl_xmc *xmc)
 {
-	u32 base, cntrl, fpga_temp, vccint_temp;
+	u32 base, max, cntrl, fpga_temp = 0, vccint_temp = 0;
 
 	base = XMC_HOST_TEMP_THRESHOLD_BASE_REG;
-	cntrl = READ_REG32(xmc, base);
-	if (cntrl == SENSOR_FPGA_TEMP)
-		fpga_temp = READ_REG32(xmc, base + 4);
-	else
-		vccint_temp = READ_REG32(xmc, base + 4);
-
-	base = XMC_HOST_TEMP_THRESHOLD_BASE_REG + 8;
-	cntrl = READ_REG32(xmc, base);
-	if (cntrl == SENSOR_FPGA_TEMP)
-		fpga_temp = READ_REG32(xmc, base + 4);
-	else
-		vccint_temp = READ_REG32(xmc, base + 4);
+	max = XMC_HOST_TEMP_THRESHOLD_BASE_REG + 0xC;
+	while (base < max) {
+		cntrl = READ_REG32(xmc, base);
+		if (cntrl == SENSOR_FPGA_TEMP)
+			fpga_temp = READ_REG32(xmc, base + 4);
+		else
+			vccint_temp = READ_REG32(xmc, base + 4);
+		base = base + 8;
+	}
 
 	return fpga_temp;
 }
@@ -1785,12 +1791,10 @@ static ssize_t scaling_critical_power_threshold_show(struct device *dev,
 	if (!xmc->sc_presence) {
 		//no power threshold defined for clock shutdown
 		return sprintf(buf, "N/A\n");
-	} else {
-		//no provision given to retrieve this info on alveo cards
-		return sprintf(buf, "N/A\n");
 	}
 
-	return sprintf(buf, "%uW\n", val);
+	//no provision given to xrt to retrieve this data on alveo cards
+	return sprintf(buf, "N/A\n");
 }
 static DEVICE_ATTR_RO(scaling_critical_power_threshold);
 
@@ -1809,7 +1813,7 @@ static ssize_t scaling_critical_temp_threshold_show(struct device *dev,
 		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_CRIT_TEMP_THRESHOLD_REG);
 		val = val & XMC_CLOCK_SCALING_CRIT_TEMP_THRESHOLD_REG_MASK;
 	} else {
-		//no provision given to retrieve this info on alveo cards
+		//no provision given to xrt to retrieve this data on alveo cards
 		return sprintf(buf, "N/A\n");
 	}
 
@@ -3320,8 +3324,6 @@ static int raptor_cmc_access(struct platform_device *pdev,
 		 */
 		val = (addr & 0x01FFFFFF) | XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT;
 		WRITE_REG32(xmc, val, XMC_HOST_NEW_FEATURE_REG1);
-		//Enable runtime clock scaling feature
-		runtime_clk_scale_enable(xmc);
 		xocl_xdev_info(xdev, "%s is 0x%llx, set New Feature Table to 0x%x\n",
 		    NODE_GAPPING, addr, val);
 	} else if (flags == XOCL_XMC_FREEZE) {
@@ -3883,7 +3885,6 @@ static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags)
 static void clock_status_check(struct platform_device *pdev, bool *latched)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	u32 cntrl;
 	u32 status = 0;
 
 	if (!xmc->sc_presence) {
@@ -3992,7 +3993,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 			BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
 
 		if (bd_info_valid(xmc->serial_num) &&
-			(!strcmp(xmc->exp_bmc_ver, "") ||	
+			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||	
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
 			xmc->bdinfo_loaded = true;
 			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
@@ -4001,7 +4002,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 	} else {
 
 		if (xmc->bdinfo_loaded &&
-			(!strcmp(xmc->exp_bmc_ver, "") ||	
+			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||	
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
 			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
 			return 0;
@@ -4024,7 +4025,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, EXP_BMC_VER, (u32 *)xmc->exp_bmc_ver);
 
 		if (bd_info_valid(xmc->serial_num) &&
-			(!strcmp(xmc->exp_bmc_ver, "") ||	
+			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||	
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
 			xmc->bdinfo_loaded = true;
 			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
