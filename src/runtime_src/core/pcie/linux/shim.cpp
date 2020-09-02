@@ -19,8 +19,6 @@
  * under the License.
  */
 
-#define ENABLE_HAL_PROFILING
-
 #include "shim.h"
 #include "scan.h"
 #include "system_linux.h"
