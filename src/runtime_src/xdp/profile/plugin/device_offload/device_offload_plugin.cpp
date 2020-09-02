@@ -95,60 +95,61 @@ namespace xdp {
     // If offload via memory is requested, make sure the size requested
     //  fits inside the chosen memory resource.
     uint64_t trace_buffer_size = GetTS2MMBufSize() ;
-    if (devInterface->hasTs2mm())
-    {
+    if (devInterface->hasTs2mm()) {
       uint64_t memorySz = ((db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex())->size) * 1024 ;
-      if (memorySz > 0 && trace_buffer_size > memorySz)
-      {
-	trace_buffer_size = memorySz ;
-	std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(memorySz) + " instead." ;
-	xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg) ;
+      if (memorySz > 0 && trace_buffer_size > memorySz) {
+        trace_buffer_size = memorySz ;
+        std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(memorySz) + " instead." ;
+        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg) ;
       }
     }
 
     TraceLoggerCreatingDeviceEvents* logger = 
       new TraceLoggerCreatingDeviceEvents(deviceId) ;
 
-    DeviceTraceOffload* offloader = nullptr;
-
-    if(devInterface->hasTs2mm(true /*isAIETrace*/)) {
-
-      uint64_t aie_trace_buffer_size = GetTS2MMBufSize(true /*isAIETrace*/);
-      uint64_t aie_memorySz = ((db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex(true, 0))->size) * 1024 ;
-      if (aie_memorySz > 0 && aie_trace_buffer_size > aie_memorySz) {
-	aie_trace_buffer_size = aie_memorySz;
-	std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(aie_memorySz) + " instead." ;
-	xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
-      }
-      AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
-
-      offloader = new AIETraceOffload(devInterface, logger,
-                         continuous_trace_interval_ms, // offload_sleep_ms,
-                         trace_buffer_size,            // trbuf_size,
-                         continuous_trace,             // start_thread
-                         aie_trace_buffer_size,        // aie_trbuf_sz
-                         aieTraceLogger);
-    } else {
-
-      offloader = new DeviceTraceOffload(devInterface, logger,
+    DeviceTraceOffload* offloader = 
+      new DeviceTraceOffload(devInterface, logger,
                          continuous_trace_interval_ms, // offload_sleep_ms,
                          trace_buffer_size,            // trbuf_size,
                          continuous_trace);            // start_thread
+
+    bool init_successful = offloader->read_trace_init() ;
+    if (!init_successful) {
+      if (devInterface->hasTs2mm()) {
+        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ;
+      }
+      delete offloader ;
+      delete logger ;
+      return ;
     }
+    offloaders[deviceId] = std::make_tuple(offloader, logger, devInterface) ;
 
-     bool init_successful = offloader->read_trace_init() ;
-     if (!init_successful)
-     {
-       if (devInterface->hasTs2mm())
-       {
-	 xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ;
-       }
-       delete offloader ;
-       delete logger ;
-       return ;
-     }
+    if((db->getStaticInfo()).getNumAIETraceStream(deviceId)) {
 
-     offloaders[deviceId] = std::make_tuple(offloader, logger, devInterface) ;
+      uint64_t aieTraceBufSz = GetTS2MMBufSize(true /*isAIETrace*/);
+      // check only one memory ? : GMIO ?
+      uint64_t aieMemorySz = ((db->getStaticInfo()).getMemory(deviceId, devInterface->getAIETs2mmMemIndex(0))->size) * 1024 ;
+      if(aieMemorySz > 0 && aieTraceBufSz > aieMemorySz) {
+        aieTraceBufSz = aieMemorySz;
+        std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(aieMemorySz) + " instead." ;
+        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+      }
+      bool isPLIO = ((db->getStaticInfo()).getNumTracePLIO(deviceId)) ? true : false;
+      AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
+
+      AIETraceOffload* aieTraceOffloader = new AIETraceOffload(devInterface, aieTraceLogger,
+                                                isPLIO,          // isPLIO 
+                                                aieTraceBufSz,   // total trace buffer size
+                                                (db->getStaticInfo()).getNumAIETraceStream(deviceId));  // numStream
+
+      if(!aieTraceOffloader->initReadTrace()) {
+        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ; // FOR AIE ?
+        delete aieTraceOffloader;
+        delete aieTraceLogger;
+        return;
+      }
+      aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, devInterface) ;
+    }
   }
   
   void DeviceOffloadPlugin::configureTraceIP(DeviceIntf* devInterface)
@@ -191,6 +192,10 @@ namespace xdp {
     {
       (std::get<0>(o.second))->read_trace() ;
     }    
+    for (auto o : aieOffloaders)
+    {
+      (std::get<0>(o.second))->readTrace() ;
+    }    
 
     for (auto w : writers)
     {
@@ -200,40 +205,45 @@ namespace xdp {
 
   void DeviceOffloadPlugin::clearOffloader(uint32_t deviceId)
   {
+    if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
+      auto entry = aieOffloaders[deviceId];
+      auto offloader = std::get<0>(entry);
+      auto logger    = std::get<1>(entry);
+
+      delete offloader;
+      delete logger;
+    }
+
     if(offloaders.find(deviceId) == offloaders.end()) {
       return;
     }
     auto entry = offloaders[deviceId];
-    auto offloader = std::get<0>(entry) ;
-    auto logger    = std::get<1>(entry) ;
-    auto intf      = std::get<2>(entry) ;
+    auto offloader = std::get<0>(entry);
+    auto logger    = std::get<1>(entry);
+    auto intf      = std::get<2>(entry);
 
-    if(dynamic_cast<AIETraceOffload*>(offloader)) {
-      AIETraceLogger* aieLogger = dynamic_cast<AIETraceOffload*>(offloader)->getAIETraceLogger();
-      delete aieLogger;
-    }
-
-    delete offloader ;
-    delete logger ;
-    delete intf ;
+    delete offloader;
+    delete logger;
+    delete intf;
   }
 
   void DeviceOffloadPlugin::clearOffloaders()
   {
-    for (auto o : offloaders)
-    {
-      auto offloader = std::get<0>(o.second) ;
-      auto logger    = std::get<1>(o.second) ;
-      auto intf      = std::get<2>(o.second) ;
+    for(auto entry : aieOffloaders) {
+      auto offloader = std::get<0>(entry.second);
+      auto logger    = std::get<1>(entry.second);
 
-      if(dynamic_cast<AIETraceOffload*>(offloader)) {
-        AIETraceLogger* aieLogger = dynamic_cast<AIETraceOffload*>(offloader)->getAIETraceLogger();
-        delete aieLogger;
-      }
+      delete offloader;
+      delete logger;
+    }
+    for(auto entry : offloaders) {
+      auto offloader = std::get<0>(entry.second);
+      auto logger    = std::get<1>(entry.second);
+      auto intf      = std::get<2>(entry.second);
 
-      delete offloader ;
-      delete logger ;
-      delete intf ;
+      delete offloader;
+      delete logger;
+      delete intf;
     }
   }
   

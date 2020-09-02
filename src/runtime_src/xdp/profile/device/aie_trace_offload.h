@@ -78,7 +78,7 @@ private:
 
     std::vector<AIETraceBufferInfo> buffers;
 
-    uint64_t readPartialTrace();
+    uint64_t readPartialTrace(uint64_t);
     void configAIETs2mm(uint64_t wordCount);
     //void offload_device_continuous();
 

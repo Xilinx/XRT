@@ -95,7 +95,7 @@ namespace xdp {
     uint64_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
                              std::chrono::steady_clock::time_point end);
 
-    uint64_t getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device, bool isAIETrace);
+    uint64_t getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device);
 
     oclDeviceData* initializeDeviceInterface(xocl::device* device);
 

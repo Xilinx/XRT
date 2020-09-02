@@ -505,6 +505,16 @@ namespace xdp {
       return deviceInfo[deviceId]->numTracePLIO;
     }
 
+    inline uint64_t getNumAIETraceStream(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+
+      if(deviceInfo[deviceId]->numTracePLIO)
+        return deviceInfo[deviceId]->numTracePLIO;
+      return deviceInfo[deviceId]->gmioList.size();
+    }
+
     // Reseting device information whenever a new xclbin is added
     XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;
 

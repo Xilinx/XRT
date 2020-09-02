@@ -28,7 +28,7 @@ public:
   AIETraceLogger() {}
   virtual ~AIETraceLogger() {}
 
-  virtual void addAIETraceData(void* buffer, uint64_t bufferSz) = 0; 
+  virtual void addAIETraceData(uint64_t strmIndex, void* buffer, uint64_t bufferSz) = 0; 
 };
 
 }

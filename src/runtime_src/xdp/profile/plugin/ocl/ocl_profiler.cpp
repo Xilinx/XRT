@@ -353,14 +353,14 @@ namespace xdp {
         // Do for both PL and AIE trace (if available)
         //for (int i=0; i < 2; i++) { 
           //bool isAIETrace = (i == 1);	// FOR now
-          bool isAIETrace = false;
+          //bool isAIETrace = false;
 
           // Configure monitor IP and FIFO if present
           dInt->startTrace(traceOption);
           std::string  binaryName = device->get_xclbin().project_name();
           uint64_t traceBufSz = 0;
-          if (dInt->hasTs2mm(isAIETrace)) {
-            traceBufSz = getDeviceDDRBufferSize(dInt, device, isAIETrace);
+          if (dInt->hasTs2mm()) {
+            traceBufSz = getDeviceDDRBufferSize(dInt, device);
             trace_memory = "TS2MM";
           }
           
@@ -764,10 +764,10 @@ namespace xdp {
     return 0;
   }
 
-  uint64_t OCLProfiler::getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device, bool isAIETrace)
+  uint64_t OCLProfiler::getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device)
   {
     uint64_t sz = 0;
-    sz = GetTS2MMBufSize(isAIETrace);
+    sz = GetTS2MMBufSize();
     auto memorySz = xdp::xoclp::platform::device::getMemSizeBytes(device, dInt->getTS2MmMemIndex());
     if (memorySz > 0 && sz > memorySz) {
       sz = memorySz;

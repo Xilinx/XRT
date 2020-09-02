@@ -16,6 +16,7 @@
 
 #define XDP_SOURCE
 
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/database/dynamic_event_database.h"
 #include "xdp/profile/database/events/device_events.h"
 
@@ -173,21 +174,25 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addAIETraceData(uint64_t deviceId,
-                             void* buffer, uint64_t bufferSz) 
+                             uint64_t strmIndex, void* buffer, uint64_t bufferSz) 
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
     if(aieTraceData.find(deviceId) == aieTraceData.end()) {
-      aieTraceData[deviceId] = std::make_pair(buffer, bufferSz);
+      AIETraceDataVector newDataVector;
+      aieTraceData[deviceId] = newDataVector;	// copy
+      aieTraceData[deviceId].resize((db->getStaticInfo()).getNumAIETraceStream(deviceId));
     }
-    // if entry already exists, make a vector for the data ?
+    auto aieTraceDataEntry = aieTraceData[deviceId];
+    aieTraceDataEntry[strmIndex] = std::make_pair(buffer, bufferSz);
   }
 
-  AIETraceDataType VPDynamicDatabase::getAIETraceData(uint64_t deviceId)
+  AIETraceDataType VPDynamicDatabase::getAIETraceData(uint64_t deviceId, uint64_t strmIndex)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
-    return aieTraceData[deviceId] ;
+    auto aieTraceDataEntry = aieTraceData[deviceId];
+    return aieTraceDataEntry[strmIndex];
   }
 
   void VPDynamicDatabase::addPowerSample(uint64_t deviceId, double timestamp,

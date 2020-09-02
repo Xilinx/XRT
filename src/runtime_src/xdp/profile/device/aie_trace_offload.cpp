@@ -17,6 +17,7 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/device/aie_trace_offload.h"
 #include "xdp/profile/device/aie_trace_logger.h"
 
@@ -53,7 +54,7 @@ bool AIETraceOffload::initReadTrace()
   buffers.resize(numStream);
   uint64_t i = 0;
   for(auto b : buffers) {
-    b.boHandle = deviceIntf->allocTraceBuf(bufAllocSz, 1 /*deviceIntf->getTS2MmMemIndex*/);
+    b.boHandle = deviceIntf->allocTraceBuf(bufAllocSz, 1 /*deviceIntf->getAIETs2mmMemIndex*/);
     if(!b.boHandle) {
       return false;
     }
@@ -61,7 +62,7 @@ bool AIETraceOffload::initReadTrace()
     // Data Mover will write input stream to this address
     uint64_t bufAddr = deviceIntf->getDeviceAddr(b.boHandle);
     if(isPLIO) {
-      deviceIntf->initAIETS2MM(bufAllocSz, bufAddr, i);
+      deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i);
     } else {
 		// XAIEDma_ShimSetBDAddr
     }
@@ -79,7 +80,7 @@ void AIETraceOffload::endReadTrace()
       continue; // or break; ??
     }
     if(isPLIO) {
-      deviceIntf->resetAIETS2MM(i);
+      deviceIntf->resetAIETs2mm(i);
     } else {
       // ?
     }

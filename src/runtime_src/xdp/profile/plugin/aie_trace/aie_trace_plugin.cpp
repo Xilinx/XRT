@@ -57,10 +57,7 @@ namespace xdp {
     uint64_t deviceId = db->addDevice(path);
 
     // Assumption : the DB is already populated with the current device data
-    uint64_t numAIETraceOutput = (db->getStaticInfo()).getNumTracePLIO(deviceId);
-    if(0 == numAIETraceOutput) {
-      numAIETraceOutput = (db->getStaticInfo()).getNumTraceGMIO(deviceId);
-    }
+    uint64_t numAIETraceOutput = (db->getStaticInfo()).getNumAIETraceStream(deviceId);
     for(uint64_t n = 0 ; n < numAIETraceOutput ; n++) {
       std::string fileName = "aie_trace_" + std::to_string(n) + ".txt";
       writers.push_back(new AIETraceWriter(fileName.c_str(),

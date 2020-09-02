@@ -127,32 +127,35 @@ class DeviceIntf {
 
     /** Trace S2MM Management
      */
-    bool hasTs2mm(bool isAIETrace = false) {
-      if (isAIETrace)
-        return (mAieTraceDmaList.size() > 0);
-      else
-        return (mPlTraceDma != nullptr);
+    bool hasTs2mm() {
+      return (mPlTraceDma != nullptr);
     };
-    size_t getNumberTS2MM(bool isAIETrace) {
-      if (isAIETrace)
-        return mAieTraceDmaList.size();
-      else
-        return (mPlTraceDma != nullptr) ? 1 : 0;
+    size_t getNumberTS2MM() {
+      return (mPlTraceDma != nullptr) ? 1 : 0;
     };
 
     XDP_EXPORT
-    void resetTS2MM(bool isAIETrace=false);
+    void resetTS2MM();
     TraceS2MM* getTs2mm() {return mPlTraceDma;};
     XDP_EXPORT
-    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr, bool circular, 
-                   bool isAIETrace=false, uint32_t numTS2MM=0);
+    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr, bool circular); 
+
     XDP_EXPORT
-    uint64_t getWordCountTs2mm(bool isAIETrace=false, uint32_t numTS2MM=0);
+    uint64_t getWordCountTs2mm();
     XDP_EXPORT
-    uint8_t  getTS2MmMemIndex(bool isAIETrace=false, uint32_t numTS2MM=0);
+    uint8_t  getTS2MmMemIndex();
     XDP_EXPORT
-    void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector,
-                        bool isAIETrace=false, uint32_t numTS2MM=0);
+    void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector);
+
+    XDP_EXPORT
+    void resetAIETs2mm(uint64_t index);
+    XDP_EXPORT
+    void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index);
+
+    XDP_EXPORT
+    uint64_t getWordCountAIETs2mm(uint64_t index);
+    XDP_EXPORT
+    uint8_t  getAIETs2mmMemIndex(uint64_t index);
     
     double getMaxBwRead() const {return mMaxReadBW;}
     double getMaxBwWrite() const {return mMaxWriteBW;}

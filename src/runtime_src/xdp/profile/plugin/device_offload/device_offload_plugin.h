@@ -22,8 +22,9 @@
 #include <tuple>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/device_trace_offload.h"
+#include "xdp/profile/device/aie_trace_offload.h"
 
 namespace xdp {
 
@@ -60,7 +61,12 @@ namespace xdp {
                        TraceLoggerCreatingDeviceEvents*,
                        DeviceIntf*> DeviceData ;
 
-    std::map<uint32_t, DeviceData> offloaders ;
+    typedef std::tuple<AIETraceOffload*, 
+                       AIETraceLogger*,
+                       DeviceIntf*> AIEData;
+
+    std::map<uint32_t, DeviceData> offloaders;
+    std::map<uint32_t, AIEData>    aieOffloaders;
 
     XDP_EXPORT void addDevice(const std::string& sysfsPath) ;
     XDP_EXPORT void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;

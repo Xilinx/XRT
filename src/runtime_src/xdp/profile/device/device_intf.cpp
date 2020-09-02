@@ -902,85 +902,76 @@ DeviceIntf::~DeviceIntf()
     return mDevice->getDeviceAddr(bufHandle);
   }
 
-  // Reset all trace data movers of a given type
-  void DeviceIntf::resetTS2MM(bool isAIETrace)
+  // Reset PL trace data movers
+  void DeviceIntf::resetTS2MM()
   {
-    if(!isAIETrace) {
-      if(mPlTraceDma)
-        mPlTraceDma->reset();
-      return;
+    if(mPlTraceDma) {
+      mPlTraceDma->reset();
     }
-
-    for(auto aieTraceDma : mAieTraceDmaList)
-      aieTraceDma->reset();
   }
 
-  // Initialize a trace data mover
-  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr, bool circular,
-                             bool isAIETrace, uint32_t numTS2MM)
+  // Initialize PL trace data mover
+  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr, bool circular)
   {
-    if(!isAIETrace) {
-      if(mPlTraceDma) {
-        mPlTraceDma->init(bufSz, bufAddr, circular);
-      }
-      return;
+    if(mPlTraceDma) {
+      mPlTraceDma->init(bufSz, bufAddr, circular);
     }
-
-    if (mAieTraceDmaList.empty() || (numTS2MM >= mAieTraceDmaList.size()))
-      return;
-
-    auto aieTraceDma = mAieTraceDmaList.at(numTS2MM);
-    aieTraceDma->init(bufSz, bufAddr, circular);
   }
 
-  // Get word count written by trace data mover
-  uint64_t DeviceIntf::getWordCountTs2mm(bool isAIETrace, uint32_t numTS2MM)
+  // Get word count written by PL trace data mover
+  uint64_t DeviceIntf::getWordCountTs2mm()
   {
-    if(!isAIETrace) {
-      if(!mPlTraceDma)
-        return 0;
-      return mPlTraceDma->getWordCount();
-    }
-
-    if(mAieTraceDmaList.empty() || (numTS2MM >= mAieTraceDmaList.size()))
+    if(!mPlTraceDma)
       return 0;
-
-    auto aieTraceDma = mAieTraceDmaList.at(numTS2MM);
-    return aieTraceDma->getWordCount();
+    return mPlTraceDma->getWordCount();
   }
 
   // Get memory index of trace data mover
-  uint8_t DeviceIntf::getTS2MmMemIndex(bool isAIETrace, uint32_t numTS2MM)
+  uint8_t DeviceIntf::getTS2MmMemIndex()
   {
-    if(!isAIETrace) {
-      if(!mPlTraceDma)
-        return 0;
-      return mPlTraceDma->getMemIndex();
-    }
-
-    if(mAieTraceDmaList.empty() || (numTS2MM >= mAieTraceDmaList.size()))
+    if(!mPlTraceDma)
       return 0;
-
-    auto aieTraceDma = mAieTraceDmaList.at(numTS2MM);
-    return aieTraceDma->getMemIndex();
+    return mPlTraceDma->getMemIndex();
   }
 
   // Parse trace buffer data after reading from FIFO or DDR
-  void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector, 
-                                  bool isAIETrace, uint32_t numTS2MM)
+  void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector)
   {
-    if(!isAIETrace) {
-      if (mPlTraceDma)
-        mPlTraceDma->parseTraceBuf(traceData, bytes, traceVector);
-      return;
+    if(mPlTraceDma) {
+      mPlTraceDma->parseTraceBuf(traceData, bytes, traceVector);
     }
+  }
 
-    if(mAieTraceDmaList.empty() || (numTS2MM >= mAieTraceDmaList.size()))
+  // Reset AIE trace data movers
+  void DeviceIntf::resetAIETs2mm(uint64_t index)
+  {
+    if(index >= mAieTraceDmaList.size())
       return;
+    mAieTraceDmaList[index]->reset();
+  }
 
-    auto aieTraceDma = mAieTraceDmaList.at(numTS2MM);
-    // empty for now, may even skip
-    aieTraceDma->parseTraceBuf(traceData, bytes, traceVector);
+  // Initialize an AIE trace data mover
+  void DeviceIntf::initAIETs2mm(uint64_t bufSz, uint64_t bufAddr, uint64_t index)
+  {
+    if(index >= mAieTraceDmaList.size())
+      return;
+    mAieTraceDmaList[index]->init(bufSz, bufAddr, false);
+  }
+
+  // Get word count written by AIE trace data mover
+  uint64_t DeviceIntf::getWordCountAIETs2mm(uint64_t index)
+  {
+    if(index >= mAieTraceDmaList.size())
+      return 0;
+    return mAieTraceDmaList[index]->getWordCount();
+  }
+
+  // Get memory index of AIE trace data mover
+  uint8_t DeviceIntf::getAIETs2mmMemIndex(uint64_t index)
+  {
+    if(index >= mAieTraceDmaList.size())
+      return 0;
+    return mAieTraceDmaList[index]->getMemIndex();
   }
 
   void DeviceIntf::setMaxBwRead()
