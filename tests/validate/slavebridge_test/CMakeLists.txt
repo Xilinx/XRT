@@ -10,7 +10,7 @@ else()
   find_package(OpenCL)
 endif(WIN32)
 
-include_directories( ../../../src/include/1_2 src/ ../common/includes/xcl2 )
+include_directories( ../../../src/include/1_2 ../../../src/runtime_src/core/include src/ ../common/includes/xcl2 )
 add_executable(${TESTNAME} ../common/includes/xcl2/xcl2.cpp src/host.cpp)
 target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY})
 
