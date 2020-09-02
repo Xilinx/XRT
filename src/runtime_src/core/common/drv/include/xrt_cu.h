@@ -62,6 +62,7 @@ struct xcu_status {
 	u32	num_ready;
 };
 
+typedef void *xcu_core_t;
 struct xcu_funcs {
 	/**
 	 * @alloc_credit:
@@ -220,7 +221,7 @@ struct xrt_cu {
 	u32			  num_cq;
 	struct semaphore	  sem;
 	struct semaphore	  sem_cu;
-	void                     *core;
+	void			 *core;
 	u32			  stop;
 	bool			  bad_state;
 	u32			  done_cnt;
@@ -314,7 +315,6 @@ static inline void xrt_cu_put_credit(struct xrt_cu *xcu, u32 count)
  * 2. If CU is ready, submit command(Configure hardware)
  * 3. Check if submitted command is completed or not
  */
-int xrt_cu_thread(void *data);
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
 int xrt_cu_abort(struct xrt_cu *xcu, void *client);
 int xrt_cu_abort_done(struct xrt_cu *xcu);

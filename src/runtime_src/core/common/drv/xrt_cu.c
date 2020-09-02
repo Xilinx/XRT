@@ -437,7 +437,7 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 	xcu->stop = 0;
 	sema_init(&xcu->sem, 0);
 	sema_init(&xcu->sem_cu, 0);
-	xcu->thread = kthread_run(cu_thread, xcu, "xrt_thread");
+	xcu->thread = kthread_run(cu_thread, xcu, xcu->info.iname);
 	if (IS_ERR(xcu->thread)) {
 		err = IS_ERR(xcu->thread);
 		xcu_err(xcu, "Create CU thread failed, err %d\n", err);
@@ -454,6 +454,11 @@ void xrt_cu_set_bad_state(struct xrt_cu *xcu)
 int xrt_cu_init(struct xrt_cu *xcu)
 {
 	int err = 0;
+	char *name = xcu->info.iname;
+
+	/* TODO A workaround to avoid m2m subdev launch thread */
+	if (!strlen(name))
+		return 0;
 
 	/* Use list for driver space command queue
 	 * Should we consider ring buffer?
@@ -476,7 +481,7 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	sema_init(&xcu->sem, 0);
 	sema_init(&xcu->sem_cu, 0);
 	/* A CU maybe doesn't support interrupt, polling */
-	xcu->thread = kthread_run(xrt_cu_polling_thread, xcu, "xrt_thread");
+	xcu->thread = kthread_run(xrt_cu_polling_thread, xcu, name);
 	if (IS_ERR(xcu->thread)) {
 		err = IS_ERR(xcu->thread);
 		xcu_err(xcu, "Create CU thread failed, err %d\n", err);
@@ -487,6 +492,10 @@ int xrt_cu_init(struct xrt_cu *xcu)
 
 void xrt_cu_fini(struct xrt_cu *xcu)
 {
+	/* TODO A workaround for m2m subdev */
+	if (!strlen(xcu->info.iname))
+		return;
+
 	xcu->stop = 1;
 	up(&xcu->sem_cu);
 	up(&xcu->sem);
