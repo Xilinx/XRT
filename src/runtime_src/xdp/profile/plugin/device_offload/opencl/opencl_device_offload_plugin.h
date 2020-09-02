@@ -18,6 +18,7 @@
 #define OPENCL_DEVICE_OFFLOAD_PLUGIN_DOT_H
 
 #include <memory>
+#include <set>
 
 // Includes from xilinxopencl
 #include "xocl/core/device.h"
@@ -35,6 +36,10 @@ namespace xdp {
     //  no xrt::device objects are deleted before we read them at 
     //  the end of execution.
     std::shared_ptr<xocl::platform> platform ;
+
+    // The devices that need to be flushed at program end (if the
+    //  host application did not correctly clean them up)
+    std::set<uint64_t> deviceIdsToBeFlushed ;
 
     void updateOpenCLInfo(uint64_t deviceId) ;
 

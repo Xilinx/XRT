@@ -99,10 +99,14 @@ namespace xdp {
       //  from the database.
       for (auto o : offloaders)
       {
-	auto offloader = std::get<0>(o.second) ;
-
-	offloader->read_trace() ;
-	offloader->read_trace_end() ;
+	uint64_t deviceId = o.first ;
+	
+	if (deviceIdsToBeFlushed.find(deviceId) != deviceIdsToBeFlushed.end())
+	{
+	  auto offloader = std::get<0>(o.second) ;	
+	  offloader->read_trace() ;
+	  offloader->read_trace_end() ;
+	}
       }
       readCounters() ;
 
@@ -135,7 +139,8 @@ namespace xdp {
   }
 
   // This function will only be called if an active device is going to
-  //  be reprogrammed.  We can assume the device is good.
+  //  be reprogrammed.  We can assume the device is good before the call
+  //  and bad after this call (until the next update device)
   void OpenCLDeviceOffloadPlugin::flushDevice(void* d)
   {
     if (!active) return ;
@@ -150,8 +155,11 @@ namespace xdp {
     if (offloaders.find(deviceId) != offloaders.end())
     {
       std::get<0>(offloaders[deviceId])->read_trace() ;
+      std::get<0>(offloaders[deviceId])->read_trace_end() ;
     }
     readCounters() ;
+
+    deviceIdsToBeFlushed.erase(deviceId) ;
   }
 
   void OpenCLDeviceOffloadPlugin::updateDevice(void* d)
@@ -224,6 +232,7 @@ namespace xdp {
     (db->getStaticInfo()).setMaxReadBW(deviceId, devInterface->getMaxBwRead()) ;
     (db->getStaticInfo()).setMaxWriteBW(deviceId, devInterface->getMaxBwWrite());
     updateOpenCLInfo(deviceId) ;
+    deviceIdsToBeFlushed.emplace(deviceId) ;
   }
 
   void OpenCLDeviceOffloadPlugin::updateOpenCLInfo(uint64_t deviceId)

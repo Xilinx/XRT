@@ -60,7 +60,7 @@ namespace xdp {
                        TraceLoggerCreatingDeviceEvents*,
                        DeviceIntf*> DeviceData ;
 
-    std::map<uint32_t, DeviceData> offloaders ;
+    std::map<uint64_t, DeviceData> offloaders ;
 
     XDP_EXPORT void addDevice(const std::string& sysfsPath) ;
     XDP_EXPORT void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;
