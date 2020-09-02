@@ -16,211 +16,138 @@
 
 #define XDP_SOURCE
 
+#include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/aie_trace_offload.h"
 #include "xdp/profile/device/aie_trace_logger.h"
 
+// Default dma chunk size
+#define CHUNK_SZ (MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE)
+
 namespace xdp {
 
-AIETraceOffload::AIETraceOffload(DeviceIntf* dInt,
-                                 DeviceTraceLogger* dTraceLogger,
-                                 uint64_t sleep_interval_ms,
-                                 uint64_t trbuf_sz,
-                                 bool     start_thread,
-                                 uint64_t aie_trbuf_sz,
-                                 AIETraceLogger* aieTraceLogger)
-               : DeviceTraceOffload(dInt, dTraceLogger, sleep_interval_ms, trbuf_sz, start_thread),
-                 m_aie_trbuf_alloc_sz(aie_trbuf_sz),
-                 m_aie_trace_logger(aieTraceLogger)
-{
-  // Only question start_thread: start_offload
 
-  // Nothing to do here for AIE
+AIETraceOffload::AIETraceOffload(DeviceIntf* dInt,
+                                 AIETraceLogger* logger,
+                                 bool isPlio,
+                                 uint64_t totalSize,
+                                 uint64_t numStrm)
+               : deviceIntf(dInt),
+                 traceLogger(logger),
+                 isPLIO(isPlio),
+                 totalSz(totalSize),
+                 numStream(numStrm)
+{
+  if(numStream == 1)
+    return;
+
+  bufAllocSz = (totalSz / numStream) & 0xffffffffffffff00;
 }
 
 AIETraceOffload::~AIETraceOffload()
 {
 }
 
-#if 0
-void AIETraceOffload::offload_device_continuous()
+bool AIETraceOffload::initReadTrace()
 {
-#if 0
-  if (!m_initialized && !read_trace_init(true))
-    return;
-
-  while (should_continue()) {
-    train_clock();
-    m_read_trace();
-    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
+  buffers.clear();
+  buffers.resize(numStream);
+  uint64_t i = 0;
+  for(auto b : buffers) {
+    b.boHandle = deviceIntf->allocTraceBuf(bufAllocSz, 1 /*deviceIntf->getTS2MmMemIndex*/);
+    if(!b.boHandle) {
+      return false;
+    }
+    b.isFull = false;
+    // Data Mover will write input stream to this address
+    uint64_t bufAddr = deviceIntf->getDeviceAddr(b.boHandle);
+    if(isPLIO) {
+      deviceIntf->initAIETS2MM(bufAllocSz, bufAddr, i);
+    } else {
+		// XAIEDma_ShimSetBDAddr
+    }
+    ++i;
   }
-
-  // Do a final read
-  m_read_trace();
-  read_trace_end();
-#endif
-
-  DeviceTraceOffload::offload_device_continuous();
-  read_aie_trace();
-}
-#endif
-
-bool AIETraceOffload::read_trace_init(bool circ_buf)
-{
-  DeviceTraceOffload::read_trace_init(circ_buf);
-
-  // reset flags
-  m_aie_trbuf_full = false;
-
-  init_aie_s2mm();	// multiple ?
-
-  return m_initialized;
+  return true;	// no need for m_initialized flag ?
 }
 
-void AIETraceOffload::read_trace_end()
+void AIETraceOffload::endReadTrace()
 {
-  DeviceTraceOffload::read_trace_end();
-
-  // log aie trace buffer : Using AIETraceLogger ?
-  // reset device_intf ts2mm
-
-  reset_aie_s2mm();
-
-  // iterate over all aie ts2mm
+  // reset
+  uint64_t i = 0;
+  for(auto b : buffers) {
+    if(!b.boHandle) {
+      continue; // or break; ??
+    }
+    if(isPLIO) {
+      deviceIntf->resetAIETS2MM(i);
+    } else {
+      // ?
+    }
+    deviceIntf->freeTraceBuf(b.boHandle);
+    b.boHandle = 0;
+    ++i;
+  }
+  buffers.clear();
 }
 
-void AIETraceOffload::read_aie_trace()
+void AIETraceOffload::readTrace()
 {
-  debug_stream
-    << "AIETraceOffload::read_aie_trace " << std::endl;
+  for(uint64_t i = 0; i < numStream; ++i) {
+    if(isPLIO) {
+      configAIETs2mm(i);
+    } 
+    while (1) {
+      auto bytes = readPartialTrace(i);
 
-  config_aie_s2mm_reader(dev_intf->getWordCountTs2mm(true, 0));
-  while (1) {
-    auto bytes = read_aie_trace_s2mm_partial();
-//    aieTraceLogger->log ??
-//    deviceTraceLogger->processTraceData(m_trace_vector);
-//    m_trace_vector = {};
+      if (buffers[i].usedSz == bufAllocSz)
+        buffers[i].isFull = true;
 
-    if (m_aie_trbuf_sz == m_aie_trbuf_alloc_sz)
-      m_aie_trbuf_full = true;
-
-    if (bytes != m_trbuf_chunk_sz)
-      break;
+      if (bytes != CHUNK_SZ)
+        break;
+    }
   }
 }
 
-uint64_t AIETraceOffload::read_aie_trace_s2mm_partial()
+uint64_t AIETraceOffload::readPartialTrace(uint64_t i)
 {
-  if (m_aie_trbuf_offset >= m_aie_trbuf_sz)
+  if(buffers[i].offset >= buffers[i].usedSz) {
     return 0;
+  }
 
-  uint64_t nBytes = m_trbuf_chunk_sz;
+  uint64_t nBytes = CHUNK_SZ;
 
-  if ((m_aie_trbuf_offset + m_trbuf_chunk_sz) > m_aie_trbuf_sz)
-    nBytes = m_aie_trbuf_sz - m_aie_trbuf_offset;
+  if((buffers[i].offset + CHUNK_SZ) > buffers[i].usedSz)
+    nBytes = buffers[i].usedSz - buffers[i].offset;
 
+//  auto  start = std::chrono::steady_clock::now();
+  void* hostBuf = deviceIntf->syncTraceBuf(buffers[i].usedSz, buffers[i].offset, nBytes);
+//  auto  end = std::chrono::steady_clock::now();
+
+#if 0
   debug_stream
-    << "DeviceTraceOffload::read_aie_trace_s2mm_partial "
-    << "Reading " << nBytes << " bytes " << std::endl;
-
-  auto  start = std::chrono::steady_clock::now();
-  void* host_buf = dev_intf->syncTraceBuf(m_aie_trbuf, m_aie_trbuf_offset, nBytes);
-  auto  end = std::chrono::steady_clock::now();
-  debug_stream
-    << "Elapsed time in microseconds for sync : "
+    << "Elapsed time in microseconds for sync in readAiePartial: "
     << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
     << " µs" << std::endl;
-
-  if (host_buf) {
-    m_aie_trace_logger->addAIETraceData(host_buf, nBytes);
-// copy this host_buf
-//    dev_intf->parseTraceData(host_buf, nBytes, m_trace_vector);
-    m_aie_trbuf_offset += nBytes;
+#endif
+  if(hostBuf) {
+    traceLogger->addAIETraceData(i, hostBuf, nBytes);
+    buffers[i].offset += nBytes;
     return nBytes;
   }
   return 0;
 }
 
-void AIETraceOffload::config_aie_s2mm_reader(uint64_t wordCount)
+void AIETraceOffload::configAIETs2mm(uint64_t i /*index*/)
 {
-  m_aie_trbuf_sz = wordCount * TRACE_PACKET_SIZE;
-  if(m_aie_trbuf_sz > m_aie_trbuf_alloc_sz) {
-    m_aie_trbuf_sz = m_aie_trbuf_alloc_sz;
+  uint64_t wordCount = deviceIntf->getWordCountAIETs2mm(i);
+  uint64_t usedSize  = wordCount * TRACE_PACKET_SIZE;
+  if(usedSize <= bufAllocSz) {
+    buffers[i].usedSz = usedSize;
+  } else {
+    buffers[i].usedSz = bufAllocSz;
   }
-
-#if 0
-  auto bytes_written = wordCount * TRACE_PACKET_SIZE;
-  auto bytes_read = m_trbuf_sz;
-
-  // Start Offload from previous offset
-  m_trbuf_offset = m_trbuf_sz;
-#if 0
-  if (m_trbuf_offset == m_trbuf_alloc_sz) {
-    // end 
-  }
-#endif
-
-  // End Offload at this offset
-  m_trbuf_sz = bytes_written;
-  if (m_trbuf_sz > m_trbuf_alloc_sz) {
-    m_trbuf_sz = m_trbuf_alloc_sz;
-  }
-
-  debug_stream
-    << "DeviceTraceOffload::config_s2mm_reader "
-    << "Reading from 0x"
-    << std::hex << m_trbuf_offset << " to 0x" << m_trbuf_sz << std::dec
-    << " Written : " << wordCount * 8
-    << " rollover count : " << m_rollover_count
-    << std::endl;
-#endif
-
 }
 
-bool AIETraceOffload::init_aie_s2mm()
-{
-  debug_stream
-    << "AIETraceOffload::init_aie_s2mm with size : " << m_aie_trbuf_alloc_sz
-    << std::endl;
-
-  /* If buffer is already allocated and still attempting to initialize again,
-   * then reset the TS2MM IP and free the old buffer
-   */
-  if (m_aie_trbuf) {
-    reset_aie_s2mm();
-  }
-
-  if (!m_aie_trbuf_alloc_sz)
-    return false;
-
-  m_aie_trbuf = dev_intf->allocTraceBuf(m_aie_trbuf_alloc_sz, dev_intf->getTS2MmMemIndex(true, 0));
-  if (!m_aie_trbuf) {
-    return false;
-  }
-
-  // Data Mover will write input stream to this address
-  uint64_t bufAddr = dev_intf->getDeviceAddr(m_aie_trbuf);
-  dev_intf->initTS2MM(m_aie_trbuf_alloc_sz, bufAddr, false);
-  return true;
-}
-
-#if 0
-// needed ?
-void AIETraceOffload::reset_s2mm()
-{
-  DeviceTraceOffload::reset_s2mm();
-  reset_aie_s2mm();
-}
-#endif
-
-void AIETraceOffload::reset_aie_s2mm()
-{
-  debug_stream << "AIETraceOffload::reset_aie_s2mm" << std::endl;
-  if (!m_aie_trbuf)
-    return;
-  dev_intf->resetTS2MM(true);
-  dev_intf->freeTraceBuf(m_aie_trbuf); // multiple
-  m_aie_trbuf = 0;
-}
 
 }
 

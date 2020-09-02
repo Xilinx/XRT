@@ -17,62 +17,70 @@
 #ifndef XDP_PROFILE_AIE_TRACE_OFFLOAD_H_
 #define XDP_PROFILE_AIE_TRACE_OFFLOAD_H_
 
-#include "xdp/profile/device/device_trace_offload.h"
+#include "xdp/config.h"
 
 namespace xdp {
 
+class DeviceIntf;
 class AIETraceLogger;
 
+struct AIETraceBufferInfo
+{
+  size_t   boHandle;
+//  uint64_t allocSz;	// currently all the buffers are equal size
+  uint64_t usedSz;
+  uint64_t offset;
+  bool     isFull;
+};
 
-class AIETraceOffload : public DeviceTraceOffload
+class AIETraceOffload 
 {
   public:
     XDP_EXPORT
-    AIETraceOffload(DeviceIntf* , DeviceTraceLogger* ,
-                    uint64_t offload_sleep_ms, uint64_t trbuf_sz,
-                    bool start_thread = true,
-                    uint64_t aie_trbuf_sz = 0,
-                    AIETraceLogger* = nullptr); 
+    AIETraceOffload(DeviceIntf*, AIETraceLogger*,
+                    bool     isPlio,
+                    uint64_t totalSize,
+                    uint64_t numStrm);
+
     XDP_EXPORT
     virtual ~AIETraceOffload();
 
 public:
     XDP_EXPORT
-    virtual bool read_trace_init(bool circ_buf = false);
+    virtual bool initReadTrace();
     XDP_EXPORT
-    virtual void read_trace_end();
+    virtual void endReadTrace();
 
 public:
-    bool aie_trace_buffer_full() {
-      return m_aie_trbuf_full;
+#if 0
+    bool traceBufferFull() {
+      return false;	// should take an argument
+//      return m_aie_trbuf_full;
     }
+#endif
 
-    void read_aie_trace();
+    void readTrace();
 
-    virtual void read_trace() {
-      DeviceTraceOffload::read_trace();
-      read_aie_trace();
-    }
-
-    AIETraceLogger* getAIETraceLogger() { return m_aie_trace_logger; }
+    AIETraceLogger* getAIETraceLogger() { return traceLogger; }
 
     // no circular buffer for now
 
 private:
-    uint64_t m_aie_trbuf_alloc_sz;
 
-    AIETraceLogger* m_aie_trace_logger;
+    DeviceIntf*     deviceIntf;
+    AIETraceLogger* traceLogger;
 
-    size_t   m_aie_trbuf = 0;
-    uint64_t m_aie_trbuf_sz = 0;
-    uint64_t m_aie_trbuf_offset = 0;
-    bool     m_aie_trbuf_full = false;
+    bool     isPLIO;
+    uint64_t totalSz;
+    uint64_t numStream;
 
-    uint64_t read_aie_trace_s2mm_partial();
-    void config_aie_s2mm_reader(uint64_t wordCount);
-    bool init_aie_s2mm(/*bool circ_buf*/);
-    void reset_aie_s2mm();
-    void offload_device_continuous();
+    uint64_t bufAllocSz;
+
+    std::vector<AIETraceBufferInfo> buffers;
+
+    uint64_t readPartialTrace();
+    void configAIETs2mm(uint64_t wordCount);
+    //void offload_device_continuous();
 
     //Circular Buffer Tracking : Not for now
 };
