@@ -551,7 +551,7 @@ SchemaTransformToPM_addressable_endpoint( const std::string _sEndPointName,
     // Determine if an older format was used 
     size_t dashCount = std::count(registerAbstraction.begin(), registerAbstraction.end(), '-');
     if (dashCount == 1) 
-      std::string replaceStr = ":" + compatableVector[1] + ":";
+      replaceStr = ":" + compatableVector[1] + ":";
 
     boost::replace_all(registerAbstraction,searchStr,replaceStr);
     // Example:  xilinx.com:reg_abs:xdma_msix:1.0 xdma_msix
