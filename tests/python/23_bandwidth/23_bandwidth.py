@@ -17,6 +17,7 @@
  under the License.
 """
 
+import ctypes.util
 import sys
 import time
 import math
