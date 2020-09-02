@@ -156,8 +156,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
       else
         status = "N/A";
       try {
-        boost::any a = std::make_pair("entry", lname.c_str());
-        stream_stat = xrt_core::device_query<qr::dma_stream>(device, a);
+        stream_stat = xrt_core::device_query<qr::dma_stream>(device, qr::request::modifier::entry, lname);
         status = "Active";
         for (unsigned k = 0; k < stream_stat.size(); k++) {
           std::vector<std::string> strs;
@@ -188,21 +187,20 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
       uint64_t ecc_st = 0xffffffffffffffff;
       std::string ecc_st_str;
       std::string tag(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
-      boost::any val = std::make_pair("subdev", tag.c_str());
       try {
-        ecc_st = xrt_core::device_query<qr::mig_ecc_status>(device, val);
+        ecc_st = xrt_core::device_query<qr::mig_ecc_status>(device, qr::request::modifier::subdev, tag);
       } catch (const std::exception& ex){
         pt.put("error_msg", ex.what());
       }
       if (eccStatus2Str(ecc_st, ecc_st_str) == 0) {
         uint64_t ce_cnt = 0;
-        ce_cnt = xrt_core::device_query<qr::mig_ecc_ce_cnt>(device, val);
+        ce_cnt = xrt_core::device_query<qr::mig_ecc_ce_cnt>(device, qr::request::modifier::subdev, tag);
         uint64_t ue_cnt = 0;
-        ue_cnt = xrt_core::device_query<qr::mig_ecc_ue_cnt>(device, val);
+        ue_cnt = xrt_core::device_query<qr::mig_ecc_ue_cnt>(device, qr::request::modifier::subdev, tag);
         uint64_t ce_ffa = 0;
-        ce_ffa = xrt_core::device_query<qr::mig_ecc_ce_ffa>(device, val);
+        ce_ffa = xrt_core::device_query<qr::mig_ecc_ce_ffa>(device, qr::request::modifier::subdev, tag);
         uint64_t ue_ffa = 0;
-        ue_ffa = xrt_core::device_query<qr::mig_ecc_ue_ffa>(device, val);
+        ue_ffa = xrt_core::device_query<qr::mig_ecc_ue_ffa>(device, qr::request::modifier::subdev, tag);
 
         ptMem.put("extended_info.ecc.status", ecc_st_str);
         ptMem.put("extended_info.ecc.error.correctable.count", ce_cnt);

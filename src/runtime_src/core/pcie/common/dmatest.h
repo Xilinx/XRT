@@ -58,6 +58,7 @@ namespace xcldev {
         std::vector<buffer_and_deleter> mBOList;
         xclDeviceHandle mHandle;
         size_t mSize;
+        size_t mTotalSize;
         unsigned mFlags;
         char mPattern;
 
@@ -112,12 +113,17 @@ namespace xcldev {
         }
 
     public:
-        DMARunner(xclDeviceHandle handle , size_t size, unsigned flags=0) : mHandle(handle), mSize(size),
-                                                                            mFlags(flags), mPattern('x') {
-            long long count = 0x100000000/size;
+        DMARunner(xclDeviceHandle handle, size_t size, unsigned flags = 0, size_t totalSize = 0) :
+                mHandle(handle),
+                mSize(size),
+                mTotalSize(totalSize ? totalSize : 0x100000000),
+                mFlags(flags),
+                mPattern('x') {
+            long long count = mTotalSize / mSize;
 
             if (count == 0)
-                throw xrt_core::error(-EINVAL, "DMA buffer size cannot be larger than 0x100000000.");
+                throw xrt_core::error(-EINVAL,
+                    boost::str(boost::format("DMA buffer size cannot be larger than %#x.") % mTotalSize));
 
             if (count > 0x40000)
                 count = 0x40000;

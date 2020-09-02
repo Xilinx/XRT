@@ -1,12 +1,11 @@
 .. _platforms.rst:
 
 
-Platform Overview
-*****************
+XRT and Vitis™ Platform Overview
+********************************
 
-XRT exports a common stack across PCIe based platforms and MPSoC based edge platforms.
-From user perspective there is very little porting effort when migrating an
-application from one class of platform to another.
+XRT exports a common stack across PCIe based datacenter platforms and ZYNQ and ZYNQ UltraScale+ MPSoC based embedded platforms.
+It would require minimal porting efforts when migrating an application from one class of platform to another from the user perspective.
 
 User Application Compilation
 ============================
@@ -92,8 +91,8 @@ Zynq-7000 and ZYNQ Ultrascale+ MPSoC Based Embedded Platforms
 .. image:: XRT-Architecture-Edge.svg
    :align: center
 
-XRT supports ZYNQ-7000 and ZYNQ Ultrascale+ MPSoC. User can create their own embedded platforms
- and enable XRT with the steps described :ref:`yocto.rst`. 
+XRT supports ZYNQ-7000 and ZYNQ Ultrascale+ MPSoC. User can create their own embedded platforms 
+and enable XRT with the steps described :ref:`yocto.rst`. 
 
 `Source code <https://github.com/Xilinx/Vitis_Embedded_Platform_Source>`_ and 
 `pre-built <https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/embedded-platforms.html>`_ 
@@ -103,7 +102,7 @@ embedded platforms for the following Xilinx evaluation boards are provided:
 2. ZCU102
 3. ZCU104
 
-File /etc/xocl.txt needs to be in the root file system so that XRT can know which platform it is running on.
+File ``/etc/xocl.txt`` needs to be in the target root file system so that XRT OpenCL layer can know which platform it is running on.
 
 MPSoC based platforms are supported with PetaLinux base stack. XRT Linux kernel
 driver *zocl* does the heavy lifting for the embedded platform. It handles the

@@ -32,6 +32,11 @@
 #include <map>
 #include <boost/any.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/optional/optional.hpp>
+
+#define XILINX_ID  0x10ee
+#define ARISTA_ID  0x3475
+#define INVALID_ID 0xffff
 
 namespace xrt_core {
 
@@ -120,25 +125,22 @@ public:
     return false;
   }
 
+  /**
+   * is_nodma() - Is this device a NODMA device
+   *
+   * Return: true if device is nodma
+   *
+   * This function is added to avoid sysfs access in
+   * critical path.
+   */
+  XRT_CORE_COMMON_EXPORT
+  bool
+  is_nodma() const;
+
  private:
   // Private look up function for concrete query::request
   virtual const query::request&
   lookup_query(query::key_type query_key) const = 0;
-
-  /**
-   * open() - opens a device with an fd which can be used for non pcie read/write
-   * xospiversal and xspi use this
-   */
-  virtual int
-  open(const std::string&, int) const
-  { throw std::runtime_error("Not implemented"); }
-
-  /**
-   * close() - close the fd
-   */
-  virtual void
-  close(int) const
-  { throw std::runtime_error("Not implemented"); }
 
 public:
   /**
@@ -248,7 +250,7 @@ public:
   XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
   get_ert_slots() const;
-  
+
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
   /**
@@ -265,6 +267,21 @@ public:
   virtual void reset(const char*, const char*, const char*) const {}
 
   /**
+   * open() - opens a device with an fd which can be used for non pcie read/write
+   * xospiversal and xspi use this
+   */
+  virtual int
+  open(const std::string&, int) const
+  { throw std::runtime_error("Not implemented"); }
+
+  /**
+   * close() - close the fd
+   */
+  virtual void
+  close(int) const
+  { throw std::runtime_error("Not implemented"); }
+
+  /**
    * file_open() - Opens a scoped fd
    * THIS FUNCTION DOES NOT BELONG HERE
    */
@@ -277,6 +294,7 @@ public:
 
  private:
   id_type m_device_id;
+  mutable boost::optional<bool> m_nodma = boost::none;
 
   // cache xclbin meta data loaded by this process
   uuid m_xclbin_uuid;

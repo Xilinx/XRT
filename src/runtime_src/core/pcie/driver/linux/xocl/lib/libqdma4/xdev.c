@@ -39,7 +39,7 @@
 #include "qdma_intr.h"
 #include "qdma_resource_mgmt.h"
 #include "qdma_access_common.h"
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 #include "qdma_debugfs_dev.h"
 #endif
 
@@ -1172,7 +1172,7 @@ int qdma4_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 		dev_name(&pdev->dev), xdev->conf.bdf, pdev, xdev,
 		xdev->dev_cap.mm_channel_max, conf->qsets_max, conf->vf_max);
 
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 	/** time to clean debugfs */
 	dbgfs_dev_init(xdev);
 #endif
@@ -1234,7 +1234,7 @@ int qdma4_device_close(struct pci_dev *pdev, unsigned long dev_hndl)
 
 	qdma4_device_offline(pdev, dev_hndl, XDEV_FLR_INACTIVE);
 
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 	/** time to clean debugfs */
 	dbgfs_dev_exit(xdev);
 #endif

@@ -257,7 +257,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define XOCL_ARE_HOP 0x400000000ull
 
-#define	XOCL_XILINX_VEN		0x10EE
+#define XOCL_XILINX_VEN 0x10EE
+#define XOCL_ARISTA_VEN 0x3475
+
 #define	XOCL_CHARDEV_REG_COUNT	16
 
 #define INVALID_SUBDEVICE ~0U
@@ -280,6 +282,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_PLAT_1RP          0x1
 #define XOCL_VSEC_PLAT_2RP          0x2
 
+#define XOCL_VSEC_ALF_VSEC_ID       0x20
 
 #define XOCL_MAXNAMELEN	64
 
@@ -287,6 +290,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_XLAT_GPA_LOWER_REG_ADDR       0x18C
 #define XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR  0x190
 #define XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR 0x194
+#define XOCL_VSEC_XLAT_VSEC_ID                  0x40
 
 struct xocl_vsec_header {
 	u32		format;
@@ -577,6 +581,7 @@ struct xocl_version_ctrl_funcs {
 	(VC_CB(xdev, cmc_in_bitfile) ? VC_OPS(xdev)->cmc_in_bitfile(VC_DEV(xdev)) : false)
 
 struct xocl_msix_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*user_intr_config)(struct platform_device *pdev, u32 intr,
 		bool en);
 	int (*user_intr_register)(struct platform_device *pdev, u32 intr,
@@ -604,6 +609,9 @@ struct xocl_dma_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	ssize_t (*migrate_bo)(struct platform_device *pdev,
 		struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 sz);
+	ssize_t (*async_migrate_bo)(struct platform_device *pdev,
+		struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 sz,
+		void (*callback_fn)(unsigned long cb_hndl, int err), void *tx_ctx);
 	int (*ac_chan)(struct platform_device *pdev, u32 dir);
 	void (*rel_chan)(struct platform_device *pdev, u32 dir, u32 channel);
 	u32 (*get_chan_count)(struct platform_device *pdev);
@@ -625,6 +633,9 @@ struct xocl_dma_funcs {
 #define	xocl_migrate_bo(xdev, sgt, to_dev, paddr, chan, len)	\
 	(DMA_CB(xdev, migrate_bo) ? DMA_OPS(xdev)->migrate_bo(DMA_DEV(xdev), \
 	sgt, to_dev, paddr, chan, len) : 0)
+#define	xocl_async_migrate_bo(xdev, sgt, to_dev, paddr, chan, len, cb_fn, ctx_ptr)	\
+	(DMA_CB(xdev, async_migrate_bo) ? DMA_OPS(xdev)->async_migrate_bo(DMA_DEV(xdev), \
+	sgt, to_dev, paddr, chan, len, cb_fn, ctx_ptr) : 0)
 #define	xocl_acquire_channel(xdev, dir)		\
 	(DMA_CB(xdev, ac_chan) ? DMA_OPS(xdev)->ac_chan(DMA_DEV(xdev), dir) : \
 	-ENODEV)
@@ -784,6 +795,7 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*get_data)(struct platform_device *pdev, enum xcl_group_kind kind, void *buf);
 	int (*xmc_access)(struct platform_device *pdev, enum xocl_xmc_flags flags);
+	void (*clock_status)(struct platform_device *pdev, bool *latched);
 };
 
 #define	MB_DEV(xdev)		\
@@ -813,6 +825,9 @@ struct xocl_mb_funcs {
 	(MB_CB(xdev, xmc_access) ? MB_OPS(xdev)->xmc_access(MB_DEV(xdev), XOCL_XMC_FREEZE) : -ENODEV)
 #define xocl_xmc_free(xdev) 		\
 	(MB_CB(xdev, xmc_access) ? MB_OPS(xdev)->xmc_access(MB_DEV(xdev), XOCL_XMC_FREE) : -ENODEV)
+
+#define xocl_xmc_clock_status(xdev, latched)		\
+	(MB_CB(xdev, clock_status) ? MB_OPS(xdev)->clock_status(MB_DEV(xdev), latched) : -ENODEV)
 
 /* ERT FW callbacks */
 #define ERT_DEV(xdev)							\
@@ -1175,6 +1190,8 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	CLOCK_OPS(xdev, __idx)->get_data(CLOCK_DEV(xdev, __idx), kind) : 0); 	\
 })
 
+/* Not a real SC version to indicate that SC image does not exist. */
+#define	NONE_BMC_VERSION	"0.0.0"
 struct xocl_icap_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*reset_axi_gate)(struct platform_device *pdev);

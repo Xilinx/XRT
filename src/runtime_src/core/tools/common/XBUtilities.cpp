@@ -460,10 +460,10 @@ XBUtilities::get_available_devices(bool inUserDomain)
 
     // The following only works for 1RP. Golden and 2RP don't have rom info.
     // As the technologies mature, try getting the vbnv and ID of the shell on device
-    // It doesn't make sense to add ad-hoc code right now. 
+    // It doesn't make sense to add ad-hoc code right now.
     // pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
     // pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-    
+
     pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
     pt.push_back(std::make_pair("", pt_dev));
   }
@@ -554,7 +554,15 @@ XBUtilities::get_uuids(const void *dtbuf)
 int
 XBUtilities::check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std::string &msg)
 {
-  auto config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
+  std::vector<std::string> config;
+  try {
+    config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
+  }
+  catch (const std::runtime_error&) {
+    msg = "P2P is not available";
+    return static_cast<int>(p2p_config::not_supported);
+  }
+
   int64_t bar = -1;
   int64_t rbar = -1;
   int64_t remap = -1;

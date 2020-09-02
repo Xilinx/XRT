@@ -453,7 +453,6 @@ static void check_pcie_link_toggle(struct xclmgmt_dev *lro, int clear)
 	u32 sts;
 	int err;
 
-
 	err = xocl_iores_read32(lro, XOCL_SUBDEV_LEVEL_BLD,
 			IORES_PCIE_MON, 0x8, &sts);
 	if (err)
@@ -465,7 +464,6 @@ static void check_pcie_link_toggle(struct xclmgmt_dev *lro, int clear)
 	}
 
 	if (clear) {
-		
 		xocl_iores_write32(lro,XOCL_SUBDEV_LEVEL_BLD ,
 				IORES_PCIE_MON, 0, 1);
 
@@ -475,9 +473,6 @@ static void check_pcie_link_toggle(struct xclmgmt_dev *lro, int clear)
 		xocl_iores_write32(lro, XOCL_SUBDEV_LEVEL_BLD,
 				IORES_PCIE_MON, 0, 0);
 	}
-
-		
-
 }
 
 
@@ -492,6 +487,12 @@ static int health_check_cb(void *data)
 		return 0;
 
 	(void) xocl_clock_status(lro, &latched);
+
+	/*
+	 * UCS doesn't exist on U2, and U2 CMC firmware uses different
+	 * methodology to report clock shutdown status.
+	 */
+	xocl_xmc_clock_status(lro, &latched);
 
 	check_sensor(lro);
 

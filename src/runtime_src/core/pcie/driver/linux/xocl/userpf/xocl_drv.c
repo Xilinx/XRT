@@ -175,14 +175,11 @@ static int userpf_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 {
 	int ret;
 
-	pr_info("REGISTER INTERRUPT \n");
 	ret = handler ?
 		xocl_dma_intr_register(xdev_hdl, intr, handler, arg, -1) :
 		xocl_dma_intr_unreg(xdev_hdl, intr);
 	if (ret != -ENODEV)
 		return ret;
-
-	pr_info("REGISTER MSIX \n");
 
 	return handler ?
 		xocl_msix_intr_register(xdev_hdl, intr, handler, arg, -1) :

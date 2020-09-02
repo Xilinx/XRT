@@ -39,12 +39,14 @@
 #endif
 
 namespace {
+
 static bool
-is_nodma()
+is_nodma(xclDeviceHandle xhdl)
 {
-  // TODO
-  return false;
+  auto core_device = xrt_core::get_userpf_device(xhdl);
+  return core_device->is_nodma();
 }
+
 }
 
 ////////////////////////////////////////////////////////////////
@@ -514,7 +516,7 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
   switch (type) {
   case 0:
 #ifndef XRT_EDGE
-    if (is_nodma())
+    if (is_nodma(dhdl))
       return alloc_nodma(dhdl, sz, flags, grp);
     else
       return alloc_hbuf(dhdl, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);
@@ -868,6 +870,26 @@ xrtBORead(xrtBufferHandle bhdl, void* dst, size_t size, size_t skip)
     return errno = 0;
   }
 }
+
+int
+xrtBOCopy(xrtBufferHandle dhdl, xrtBufferHandle shdl, size_t sz, size_t dst_offset, size_t src_offset)
+{
+  try {
+    auto dst = get_boh(dhdl);
+    auto src = get_boh(shdl);
+    dst->copy(src.get(), sz, src_offset, dst_offset);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
 
 uint64_t
 xrtBOAddress(xrtBufferHandle bhdl)

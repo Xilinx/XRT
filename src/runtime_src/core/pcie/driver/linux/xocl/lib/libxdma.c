@@ -27,22 +27,6 @@
 #include "libxdma_api.h"
 #include "cdev_sgdma.h"
 
-/* SECTION: Module licensing */
-
-#ifdef __LIBXDMA_MOD__
-#include "version.h"
-#define DRV_MODULE_NAME		"libxdma"
-#define DRV_MODULE_DESC		"Xilinx XDMA Base Driver"
-#define DRV_MODULE_RELDATE	"Feb. 2017"
-
-static char version[] =
-        DRV_MODULE_DESC " " DRV_MODULE_NAME " v" DRV_MODULE_VERSION "\n";
-
-MODULE_AUTHOR("Xilinx, Inc.");
-MODULE_DESCRIPTION(DRV_MODULE_DESC);
-MODULE_VERSION(DRV_MODULE_VERSION);
-MODULE_LICENSE("GPL v2");
-#endif
 
 extern unsigned int desc_blen_max;
 
@@ -307,7 +291,6 @@ void enable_perf(struct xdma_engine *engine)
 	dbg_perf("IOCTL_XDMA_PERF_START\n");
 
 }
-EXPORT_SYMBOL_GPL(enable_perf);
 
 void get_perf_stats(struct xdma_engine *engine)
 {
@@ -334,7 +317,6 @@ void get_perf_stats(struct xdma_engine *engine)
 	lo = read_register(&engine->regs->perf_pnd_lo);
 	engine->xdma_perf->pending_count = build_u64(hi, lo);
 }
-EXPORT_SYMBOL_GPL(get_perf_stats);
 
 static void engine_reg_dump(struct xdma_engine *engine)
 {
@@ -941,13 +923,16 @@ static int process_completions(struct xdma_engine *engine,
 
 		if (req->sw_desc_cnt == req->desc_completed) {
 			list_del(&req->entry);
+			spin_unlock(&engine->req_list_lock);
 			if (req->cb && req->cb->io_done) {
 				struct xdma_io_cb *cb = req->cb;
 
+				cb->done_bytes = req->done;
 				cb->io_done((unsigned long)cb->private, 0);
 				xdma_request_release(engine->xdev, req);
 			} else
 				wake_up(&req->arbtr_wait);
+			spin_lock(&engine->req_list_lock);
 		}
 		spin_unlock(&engine->req_list_lock);
 	}
@@ -2852,7 +2837,6 @@ int engine_cyclic_stop(struct xdma_engine *engine)
 
 	return rv;
 }
-EXPORT_SYMBOL_GPL(engine_cyclic_stop);
 
 static int engine_writeback_setup(struct xdma_engine *engine)
 {
@@ -3253,7 +3237,6 @@ unmap_sgl:
 
 	return done;
 }
-EXPORT_SYMBOL_GPL(xdma_xfer_submit);
 
 void xdma_proc_aio_requests(void *dev_hndl, int channel, bool write)
 {
@@ -3293,7 +3276,6 @@ void xdma_proc_aio_requests(void *dev_hndl, int channel, bool write)
 
 	schedule_work_on(engine->cpu_idx, &engine->req_proc);
 }
-EXPORT_SYMBOL_GPL(xdma_proc_aio_requests);
 
 int xdma_performance_submit(struct xdma_dev *xdev, struct xdma_engine *engine)
 {
@@ -3404,7 +3386,6 @@ err_dma_desc:
 	buffer_virt = NULL;
 	return rv;
 }
-EXPORT_SYMBOL_GPL(xdma_performance_submit);
 
 static struct xdma_dev *alloc_dev_instance(struct pci_dev *pdev)
 {
@@ -3840,7 +3821,6 @@ err_map:
 	kfree(xdev);
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(xdma_device_open);
 
 void xdma_device_close(struct pci_dev *pdev, void *dev_hndl)
 {
@@ -3875,7 +3855,6 @@ void xdma_device_close(struct pci_dev *pdev, void *dev_hndl)
 
 	kfree(xdev);
 }
-EXPORT_SYMBOL_GPL(xdma_device_close);
 
 void xdma_device_offline(struct pci_dev *pdev, void *dev_hndl)
 {
@@ -3930,7 +3909,6 @@ pr_info("pdev 0x%p, xdev 0x%p.\n", pdev, xdev);
 
 	pr_info("xdev 0x%p, done.\n", xdev);
 }
-EXPORT_SYMBOL_GPL(xdma_device_offline);
 
 void xdma_device_online(struct pci_dev *pdev, void *dev_hndl)
 {
@@ -3979,7 +3957,6 @@ pr_info("pdev 0x%p, xdev 0x%p.\n", pdev, xdev);
 	xdma_device_flag_clear(xdev, XDEV_FLAG_OFFLINE);
 pr_info("xdev 0x%p, done.\n", xdev);
 }
-EXPORT_SYMBOL_GPL(xdma_device_online);
 
 int xdma_device_restart(struct pci_dev *pdev, void *dev_hndl)
 {
@@ -3994,7 +3971,6 @@ int xdma_device_restart(struct pci_dev *pdev, void *dev_hndl)
 	pr_info("NOT implemented, 0x%p.\n", xdev);
 	return -EINVAL;
 }
-EXPORT_SYMBOL_GPL(xdma_device_restart);
 
 int xdma_user_isr_register(void *dev_hndl, unsigned int mask,
 			irq_handler_t handler, void *dev)
@@ -4021,7 +3997,6 @@ int xdma_user_isr_register(void *dev_hndl, unsigned int mask,
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(xdma_user_isr_register);
 
 int xdma_user_isr_enable(void *dev_hndl, unsigned int mask)
 {
@@ -4040,7 +4015,6 @@ int xdma_user_isr_enable(void *dev_hndl, unsigned int mask)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(xdma_user_isr_enable);
 
 int xdma_user_isr_disable(void *dev_hndl, unsigned int mask)
 {
@@ -4058,7 +4032,6 @@ int xdma_user_isr_disable(void *dev_hndl, unsigned int mask)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(xdma_user_isr_disable);
 
 int xdma_get_userio(void *dev_hndl, void * __iomem *base_addr,
 	u64 *len, u32 *bar_idx)
@@ -4074,7 +4047,6 @@ int xdma_get_userio(void *dev_hndl, void * __iomem *base_addr,
 
 	return (0);
 }
-EXPORT_SYMBOL_GPL(xdma_get_userio);
 
 int xdma_get_bypassio(void *dev_hndl, u64 *len, u32 *bar_idx)
 {
@@ -4089,24 +4061,6 @@ int xdma_get_bypassio(void *dev_hndl, u64 *len, u32 *bar_idx)
 
 	return (0);
 }
-EXPORT_SYMBOL_GPL(xdma_get_bypassio);
-
-
-#ifdef __LIBXDMA_MOD__
-static int __init xdma_base_init(void)
-{
-	printk(KERN_INFO "%s", version);
-	return 0;
-}
-
-static void __exit xdma_base_exit(void)
-{
-	return;
-}
-
-module_init(xdma_base_init);
-module_exit(xdma_base_exit);
-#endif
 
 struct scatterlist *sglist_index(struct sg_table *sgt, unsigned int idx)
 {
@@ -4127,3 +4081,49 @@ struct scatterlist *sglist_index(struct sg_table *sgt, unsigned int idx)
 
 /* ********************* static function definitions ************************ */
 
+/* SECTION: Module licensing */
+#ifdef __LIBXDMA_MOD__
+#include "version.h"
+#define DRV_MODULE_NAME		"libxdma"
+#define DRV_MODULE_DESC		"Xilinx XDMA Base Driver"
+#define DRV_MODULE_RELDATE	"Feb. 2017"
+
+static char version[] =
+        DRV_MODULE_DESC " " DRV_MODULE_NAME " v" DRV_MODULE_VERSION "\n";
+
+MODULE_AUTHOR("Xilinx, Inc.");
+MODULE_DESCRIPTION(DRV_MODULE_DESC);
+MODULE_VERSION(DRV_MODULE_VERSION);
+MODULE_LICENSE("GPL v2");
+
+static int __init xdma_base_init(void)
+{
+	printk(KERN_INFO "%s", version);
+	return 0;
+}
+
+static void __exit xdma_base_exit(void)
+{
+	return;
+}
+
+module_init(xdma_base_init);
+module_exit(xdma_base_exit);
+
+EXPORT_SYMBOL_GPL(xdma_get_bypassio);
+EXPORT_SYMBOL_GPL(xdma_get_userio);
+EXPORT_SYMBOL_GPL(xdma_user_isr_disable);
+EXPORT_SYMBOL_GPL(xdma_user_isr_enable);
+EXPORT_SYMBOL_GPL(xdma_user_isr_register);
+EXPORT_SYMBOL_GPL(xdma_device_restart);
+EXPORT_SYMBOL_GPL(xdma_device_online);
+EXPORT_SYMBOL_GPL(xdma_device_offline);
+EXPORT_SYMBOL_GPL(xdma_device_close);
+EXPORT_SYMBOL_GPL(xdma_device_open);
+EXPORT_SYMBOL_GPL(xdma_performance_submit);
+EXPORT_SYMBOL_GPL(xdma_proc_aio_requests);
+EXPORT_SYMBOL_GPL(xdma_xfer_submit);
+EXPORT_SYMBOL_GPL(engine_cyclic_stop);
+EXPORT_SYMBOL_GPL(get_perf_stats);
+EXPORT_SYMBOL_GPL(enable_perf);
+#endif
