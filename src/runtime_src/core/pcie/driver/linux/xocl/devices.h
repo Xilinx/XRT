@@ -331,7 +331,6 @@ struct xocl_subdev_map {
 			}				\
 		})
 
-
 #define	XOCL_DEVINFO_FEATURE_ROM			\
 	{						\
 		XOCL_SUBDEV_FEATURE_ROM,		\
@@ -2568,6 +2567,29 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_XMC_USER,					\
 	 })
 
+#define RES_MGMT_U2_VSEC						\
+	((struct xocl_subdev_info []) {					\
+		XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN,			\
+		XOCL_DEVINFO_FMGR,					\
+	 })
+
+#define XOCL_BOARD_U2_MGMT_RAPTOR2					\
+	(struct xocl_board_private){					\
+		.flags		= XOCL_DSAFLAG_DYNAMIC_IP,		\
+		.subdev_info	= RES_MGMT_U2_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_MGMT_U2_VSEC),		\
+		.flash_type = FLASH_TYPE_SPI,				\
+		.sched_bin = "xilinx/sched.bin",			\
+	}
+
+#define XOCL_BOARD_U2_USER_RAPTOR2					\
+	(struct xocl_board_private){					\
+		.flags		= XOCL_DSAFLAG_DYNAMIC_IP,		\
+		.subdev_info	= RES_USER_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
+		.flash_type = FLASH_TYPE_SPI,				\
+	}
+
 #define XOCL_BOARD_U25_USER_RAPTOR2                                     \
 	(struct xocl_board_private){                                    \
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP |                      \
@@ -3421,6 +3443,14 @@ struct xocl_subdev_map {
 	{ 0x10EE, 0x5051, PCI_ANY_ID,                                   \
 		.vbnv = "xilinx_u25",					\
 		.priv_data = &XOCL_BOARD_U25_USER_RAPTOR2,              \
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x6987, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u2",					\
+		.priv_data = &XOCL_BOARD_U2_MGMT_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x6988, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u2",					\
+		.priv_data = &XOCL_BOARD_U2_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 }
 
 #endif
