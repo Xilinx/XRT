@@ -25,5 +25,11 @@ namespace xdpaietrace {
 
 } // end namespace xdpaietrace
 
+namespace xdpaie {
+
+  void update_aie_device(void* handle);
+  void flush_aie_device(void* handle);
+}
+
 #endif
 

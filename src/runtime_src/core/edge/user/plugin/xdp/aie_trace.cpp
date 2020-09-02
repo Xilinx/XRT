@@ -29,14 +29,18 @@ namespace xdpaietrace {
                                                         warning_aie_trace_callbacks);
   }
 
-  std::function<void (void*)> update_aie_trace_writer_cb;
+  std::function<void (void*)> update_aie_device_cb;
+  std::function<void (void*)> flush_aie_device_cb;
 
   void register_aie_trace_callbacks(void* /*handle*/)
   {
 #ifdef XRT_CORE_BUILD_WITH_DL
     typedef void (*ftype)(void*) ;
-    update_aie_trace_writer_cb = (ftype)(xrt_core::dlsym(handle, "updateAIETraceWriter")) ;
-    if (xrt_core::dlerror() != NULL) update_aie_trace_writer_cb = nullptr ;
+    update_aie_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDevice")) ;
+    if (xrt_core::dlerror() != NULL) update_aie_device_cb = nullptr ;
+
+    flush_aie_device_cb = (ftype)(xrt_core::dlsym(handle, "flushAIEDevice")) ;
+    if (xrt_core::dlerror() != NULL) flush_aie_device_cb = nullptr ;
 #endif
   }
 
@@ -46,13 +50,19 @@ namespace xdpaietrace {
 
 } // end namespace xdpaietrace
 
-namespace xdphal {
+namespace xdpaie {
 
- void update_aie_trace_writer(void* handle)
+  void update_aie_device(void* handle)
   {
-    if (xdpaietrace::update_aie_trace_writer_cb != nullptr)
-    {
-      xdpaietrace::update_aie_trace_writer_cb(handle) ;
+    if (xdpaietrace::update_aie_device_cb != nullptr) {
+      xdpaietrace::update_aie_device_cb(handle) ;
+    }
+  }
+
+  void flush_aie_device(void* handle)
+  {
+    if (xdpaietrace::flush_aie_device_cb != nullptr) {
+      xdpaietrace::flush_aie_device_cb(handle) ;
     }
   }
 }
