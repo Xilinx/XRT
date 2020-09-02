@@ -970,8 +970,7 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 				XOCL_SUBDEV_RES_NAME_LEN,
 				"%s %d %d %d %s",
 				ip->name, ip->major, ip->minor,
-				ip->level,
-				ip->regmap_name ? ip->regmap_name : "");
+				ip->level, intr_alias);
 			subdev->res[idx].name = subdev->res_name[idx];
 			subdev->info.num_res++;
 		}

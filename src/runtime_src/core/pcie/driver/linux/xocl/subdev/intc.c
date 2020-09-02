@@ -67,6 +67,20 @@ struct axi_intc {
 #define reg_addr(base, reg) \
 	&(((struct axi_intc *)base)->reg)
 
+static char *res_cu_intc[INTR_NUM] = {
+	RESNAME_INTC_CU_00,
+	RESNAME_INTC_CU_01,
+	RESNAME_INTC_CU_02,
+	RESNAME_INTC_CU_03
+};
+
+static char *csr_intr_alias[INTR_NUM] = {
+	ERT_SCHED_INTR_ALIAS_00,
+	ERT_SCHED_INTR_ALIAS_01,
+	ERT_SCHED_INTR_ALIAS_02,
+	ERT_SCHED_INTR_ALIAS_03
+};
+
 struct intr_info {
 	irqreturn_t (*handler)(int irq, void *arg);
 	int   intr_id;
@@ -376,48 +390,59 @@ get_legacy_res(struct platform_device *pdev, struct xocl_intc *intc)
 	return 0;
 }
 
+/* The ep_ert_sched_00 has 4 irqs. The irq order is related to
+ * the 4 status registers.
+ * But there is no guarantee that the irq resource ordering is
+ * same as the irq ordering in device tree.
+ * Use interrupt alias name is safe.
+ */
+static inline int
+intc_get_csr_irq(struct platform_device *pdev, int index)
+{
+	int i = 0;
+	struct resource *r;
+	char *res_name = RESNAME_ERT_SCHED;
+
+	r = platform_get_resource(pdev, IORESOURCE_IRQ, i);
+
+	while (r) {
+		if (!strncmp(r->name, res_name, strlen(res_name)) &&
+		    strnstr(r->name, csr_intr_alias[index], strlen(r->name)))
+			return r->start;
+		r = platform_get_resource(pdev, IORESOURCE_IRQ, ++i);
+	};
+
+	return -ENXIO;
+}
+
 static inline int
 get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct intr_metadata *data;
 	irqreturn_t (*isr_fn)(int, void*);
-	int num_irq = 0;
 	int i;
 
-	/* Resource for ERT interrupts
-	 * IORESOURCE_MEM 0   : ERT CSR
-	 * IORESOURCE_IRQ 0-3 : ERT irqs
-	 */
-	intc->csr_base = xocl_devm_ioremap_res(pdev, 0);
+	/* Resource for ERT interrupts */
+	intc->csr_base = xocl_devm_ioremap_res_byname(pdev, RESNAME_ERT_SCHED);
 	if (!intc->csr_base) {
 		INTC_ERR(intc, "Did not get CSR resource");
 		return -EINVAL;
 	}
 	for (i = 0; i < INTR_NUM; i++) {
 		data = &intc->ert[i];
-		data->intr = platform_get_irq(pdev, i);
+		data->intr = intc_get_csr_irq(pdev, i);
 		if (data->intr < 0) {
 			INTC_ERR(intc, "Did not get IRQ resource");
 			return data->intr;
 		}
 		data->isr = intc->csr_base + eisr[i];
-		num_irq++;
-	}
-	if (num_irq != INTR_NUM) {
-		INTC_ERR(intc, "Got %d irqs", num_irq);
-		return -EINVAL;
 	}
 
-	/* Resource for CU interrupts
-	 * IORESOURCE_MEM 1-4 : CU INTC
-	 * IORESOURCE_IRQ 4-7 : CU irqs
-	 * NOTE: ERT and CU irqs should overlap
-	 */
-	num_irq = 0;
+	/* Resource for CU interrupts */
 	for (i = 0; i < INTR_NUM; i++) {
 		data = &intc->cu[i];
-		data->isr = xocl_devm_ioremap_res(pdev, i+1);
+		data->isr = xocl_devm_ioremap_res_byname(pdev, res_cu_intc[i]);
 		if (!data->isr) {
 			INTC_ERR(intc, "Did not get CU INTC resource");
 			return -EINVAL;
@@ -427,7 +452,7 @@ get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
 		/* disable all interrupts */
 		iowrite32(0x0, reg_addr(data->isr, ier));
 
-		data->intr = platform_get_irq(pdev, i+4);
+		data->intr = xocl_get_irq_byname(pdev, res_cu_intc[i]);
 		if (data->intr < 0) {
 			INTC_ERR(intc, "Did not get IRQ resource");
 			return data->intr;
@@ -437,11 +462,6 @@ get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
 			INTC_ERR(intc, "CU and ERT interrupt mismatch");
 			return -EINVAL;
 		}
-		num_irq++;
-	}
-	if (num_irq != INTR_NUM) {
-		INTC_ERR(intc, "Got %d irqs", num_irq);
-		return -EINVAL;
 	}
 
 	/* Register interrupt handler */
@@ -481,15 +501,6 @@ static int intc_probe(struct platform_device *pdev)
 
 	/* Use ERT to host interrupt by default */
 	intc->mode = ERT_INTR;
-
-	/* The resource of INTC device could change.
-	 * We have to make some assumptions to get resources.
-	 * Suppose the first IORESOURCE_MEM is ERT CSR IP.
-	 * Since SSv3 platform, there are some IORESOURCE_MEM for CU interrupt.
-	 *
-	 * For IORESOURCE_IRQ, there are seperate resources(1 irq/ea.) in SSv3.
-	 * But in legacy shell, there is only 1 resource (expected 4 irqs).
-	 */
 
 	/* For non SSv3 platform, there is only 1 IORESOURCE_MEM */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);

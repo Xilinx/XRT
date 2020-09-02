@@ -154,19 +154,6 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 }
 #endif
 
-/* This is stolen from Linux 5.x driver,
- * original function name is devm_platform_ioremap_resource
- */
-__attribute__((unused)) static void __iomem *
-xocl_devm_ioremap_res(struct platform_device *pdev,
-		      unsigned int index)
-{
-	struct resource *res;
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, index);
-	return devm_ioremap_resource(&pdev->dev, res);
-}
-
 static inline void xocl_memcpy_fromio(void *buf, void *iomem, u32 size)
 {
 	int i;
@@ -1908,7 +1895,11 @@ int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
-	char *name);
+				       char *name);
+int xocl_get_irq_byname(struct platform_device *pdev, char *name);
+void __iomem *xocl_devm_ioremap_res(struct platform_device *pdev, int index);
+void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,
+					   const char *name);
 
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
 	int *bar_idx, resource_size_t *bar_off);
