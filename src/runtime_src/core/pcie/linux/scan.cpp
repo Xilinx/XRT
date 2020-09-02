@@ -858,7 +858,7 @@ private:
     const std::string subdev_v2;
     const std::string entry_v2;
   };
-  std::vector<sysfs_node_map> sysfs_map {
+  const std::vector<sysfs_node_map> sysfs_map {
     { "",       "ready",        "",             "ready" },
     { "",       "vendor",       "",             "vendor" },
     { "",       "device",       "",             "device" },
@@ -890,7 +890,7 @@ private:
     const std::string subdev;
     const std::string subdev_v2;
   };
-  std::vector<devfs_node_map> devfs_map {
+  const std::vector<devfs_node_map> devfs_map {
     { "",        "xmgmt" },
     { "xmc",     "cmc" },
   };
