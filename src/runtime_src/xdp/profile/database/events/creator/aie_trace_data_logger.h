@@ -18,7 +18,7 @@
 #define XDP_PROFILE_AIE_TRACE_DATA_LOGGER_H
 
 #include "xdp/config.h"
-#include "xdp/profile/device/aie_trace_logger.h"
+#include "xdp/profile/device/aie_trace/aie_trace_logger.h"
 #include "xdp/profile/database/database.h"
 
 namespace xdp {

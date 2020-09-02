@@ -24,7 +24,7 @@
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/device_trace_offload.h"
-#include "xdp/profile/device/aie_trace_offload.h"
+#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 
 namespace xdp {
 

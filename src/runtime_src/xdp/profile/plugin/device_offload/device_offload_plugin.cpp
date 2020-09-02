@@ -25,7 +25,6 @@
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
 #include "xdp/profile/database/events/creator/device_event_trace_logger.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
-#include "xdp/profile/device/aie_trace_offload.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
