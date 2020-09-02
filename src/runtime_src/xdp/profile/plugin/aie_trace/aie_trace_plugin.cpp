@@ -46,7 +46,7 @@ namespace xdp {
     //  write at the database destructor so we can just move on
   }
 
-  void AieTracePlugin::updateAIETraceWriter(void* handle)
+  void AieTracePlugin::updateAIEDevice(void* handle)
   {
     char pathBuf[512];
     memset(pathBuf, 0, 512);
@@ -67,6 +67,10 @@ namespace xdp {
                             "" /*toolVersion*/));
       (db->getStaticInfo()).addOpenedFile(fileName, "AIE_EVENT_TRACE");
     }
+  }
+
+  void AieTracePlugin::flushAIEDevice(void* handle)
+  {
   }
 
   void AieTracePlugin::writeAll(bool openNewFiles)

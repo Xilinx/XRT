@@ -23,16 +23,27 @@ namespace xdp {
 
   static AieTracePlugin aieTracePluginInstance;
 
-  static void updateAIETraceWriter(void* handle)
+  static void updateAIEDevice(void* handle)
   {
-    aieTracePluginInstance.updateAIETraceWriter(handle);
+    aieTracePluginInstance.updateAIEDevice(handle);
+  }
+
+  static void flushAIEDevice(void* handle)
+  {
+    aieTracePluginInstance.flushAIEDevice(handle);
   }
 
 } // end namespace xdp
 
 extern "C" 
-void updateAIETraceWriter(void* handle)
+void updateAIEDevice(void* handle)
 {
-  xdp::updateAIETraceWriter(handle);
+  xdp::updateAIEDevice(handle);
+}
+
+extern "C" 
+void flushAIEDevice(void* handle)
+{
+  xdp::flushAIEDevice(handle);
 }
 

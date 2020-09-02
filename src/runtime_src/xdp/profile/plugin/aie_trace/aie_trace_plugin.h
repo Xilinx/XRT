@@ -32,7 +32,10 @@ namespace xdp {
       ~AieTracePlugin();
 
       XDP_EXPORT
-      void updateAIETraceWriter(void* handle);
+      void updateAIEDevice(void* handle);
+
+      XDP_EXPORT
+      void flushAIEDevice(void* handle);
 
       XDP_EXPORT
       virtual void writeAll(bool openNewFiles);

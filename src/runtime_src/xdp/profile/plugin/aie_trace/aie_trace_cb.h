@@ -18,6 +18,7 @@
 #define XDP_PLUGIN_AIE_TRACE_CB_H
 
 extern "C" 
-void updateAIETraceWriter(void* handle) ;
+void updateAIEDevice(void* handle) ;
+void flushAIEDevice(void* handle) ;
 
 #endif

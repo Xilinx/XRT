@@ -16,13 +16,15 @@
 
 #define XDP_SOURCE
 
+#include<iostream>
+
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/aie_trace/aie_trace_logger.h"
 
 // Default dma chunk size
-#define CHUNK_SZ (MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE)
+//#define CHUNK_SZ (MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE)
 
 namespace xdp {
 
@@ -40,6 +42,8 @@ AIETraceOffload::AIETraceOffload(DeviceIntf* dInt,
 {
   if(numStream == 1)
     return;
+
+  std::cout << " in AIETraceOffload a :: " << a << std::endl;
 
   bufAllocSz = (totalSz / numStream) & 0xffffffffffffff00;
 }
