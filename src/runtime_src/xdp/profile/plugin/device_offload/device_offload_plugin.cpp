@@ -24,8 +24,9 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
 #include "xdp/profile/database/events/creator/device_event_trace_logger.h"
+#if 0
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
-
+#endif
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 
@@ -122,7 +123,7 @@ namespace xdp {
       return ;
     }
     offloaders[deviceId] = std::make_tuple(offloader, logger, devInterface) ;
-
+#if 0
     if((db->getStaticInfo()).getNumAIETraceStream(deviceId)) {
 
       uint64_t aieTraceBufSz = GetTS2MMBufSize(true /*isAIETrace*/);
@@ -149,6 +150,7 @@ namespace xdp {
       }
       aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, devInterface) ;
     }
+#endif
   }
   
   void DeviceOffloadPlugin::configureTraceIP(DeviceIntf* devInterface)
