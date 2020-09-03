@@ -66,6 +66,7 @@ bool AIETraceOffload::initReadTrace()
   if(isPLIO) {
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
   } else {
+    memIndex = 0;  // for now
   }
   for(auto b : buffers) {
     b.boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
@@ -94,7 +95,7 @@ bool AIETraceOffload::initReadTrace()
     }
     ++i;
   }
-  return true;	// no need for m_initialized flag ?
+  return true;
 }
 
 void AIETraceOffload::endReadTrace()
@@ -103,12 +104,12 @@ void AIETraceOffload::endReadTrace()
   uint64_t i = 0;
   for(auto b : buffers) {
     if(!b.boHandle) {
-      continue; // or break; ??
+      continue;
     }
     if(isPLIO) {
       deviceIntf->resetAIETs2mm(i);
     } else {
-      // ?
+      // no reset required
     }
     deviceIntf->freeTraceBuf(b.boHandle);
     b.boHandle = 0;
@@ -146,16 +147,8 @@ uint64_t AIETraceOffload::readPartialTrace(uint64_t i)
   if((buffers[i].offset + CHUNK_SZ) > buffers[i].usedSz)
     nBytes = buffers[i].usedSz - buffers[i].offset;
 
-//  auto  start = std::chrono::steady_clock::now();
   void* hostBuf = deviceIntf->syncTraceBuf(buffers[i].usedSz, buffers[i].offset, nBytes);
-//  auto  end = std::chrono::steady_clock::now();
 
-#if 0
-  debug_stream
-    << "Elapsed time in microseconds for sync in readAiePartial: "
-    << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
-    << " µs" << std::endl;
-#endif
   if(hostBuf) {
     traceLogger->addAIETraceData(i, hostBuf, nBytes);
     buffers[i].offset += nBytes;

@@ -27,26 +27,7 @@
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 
-#if 0
-//#include <string>
-//#include <vector>
-//#include <iostream>
-
-// For HAL applications
-#include "core/common/xrt_profiling.h"
-
-#include "xdp/profile/writer/device_trace/device_trace_writer.h"
-
-#include "xdp/profile/plugin/device_offload/hal/hal_device_offload_plugin.h"
-#include "xdp/profile/database/database.h"
-
-#include "xdp/profile/device/hal_device/xdp_hal_device.h"
-#include "xdp/profile/database/events/creator/device_event_trace_logger.h"
-
-#include "core/common/system.h"
-#endif
-
-
+#include "core/common/message.h"
 
 namespace xdp {
 
@@ -90,6 +71,14 @@ namespace xdp {
       db->unregisterPlugin(this);
     }
 
+    for(auto o : aieOffloaders) {
+      auto offloader = std::get<0>(o.second);
+      auto logger    = std::get<1>(o.second);
+
+      delete offloader;
+      delete logger;
+    }
+
     // If the database is dead, then we must have already forced a 
     //  write at the database destructor so we can just move on
 
@@ -110,6 +99,20 @@ namespace xdp {
     void* ownedHandle = deviceIdToHandle[deviceId];
 
     if(!(db->getStaticInfo()).isDeviceReady(deviceId)) {
+      // first delete the offloader, logger
+      // Delete the old offloader as data is already from it
+      if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
+        auto entry = aieOffloaders[deviceId];
+
+        auto aieOffloader = std::get<0>(entry);
+        auto aieLogger    = std::get<1>(entry);
+
+        delete aieOffloader;
+        delete aieLogger;
+        // don't delete DeviceIntf
+      }
+
+
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceId, handle);
       {
@@ -169,7 +172,7 @@ namespace xdp {
     if(aieMemorySz > 0 && aieTraceBufSz > aieMemorySz) {
       aieTraceBufSz = aieMemorySz;
       std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(aieMemorySz) + " instead." ;
-//      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
     }
     AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
 
@@ -180,22 +183,40 @@ namespace xdp {
                                               numAIETraceOutput);  // numStream
 
     if(!aieTraceOffloader->initReadTrace()) {
-//      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ; // FOR AIE ?
+      std::string msg = "Allocation of buffer for AIE trace failed. AIE trace will not be available.";
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
       delete aieTraceOffloader;
       delete aieTraceLogger;
       return;
     }
-    aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf) ;
+    aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf);
 
   }
 
   void AieTracePlugin::flushAIEDevice(void* handle)
   {
-    // Delete the offloaders for the handle
+    char pathBuf[512];
+    memset(pathBuf, 0, 512);
+    xclGetDebugIPlayoutPath(handle, pathBuf, 512);
+
+    std::string sysfspath(pathBuf);
+
+    uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
+
+    if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
+      (std::get<0>(aieOffloaders[deviceId]))->readTrace();
+    }
+      
   }
 
   void AieTracePlugin::writeAll(bool openNewFiles)
   {
+    // read the trace data from device and wrie to the output file
+    for(auto o : aieOffloaders) {
+      (std::get<0>(o.second))->readTrace();
+      (std::get<0>(o.second))->endReadTrace();
+    }
+
     for(auto w : writers) {
       w->write(openNewFiles);
     }
