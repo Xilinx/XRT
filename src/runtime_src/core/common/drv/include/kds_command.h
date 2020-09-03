@@ -35,6 +35,13 @@ struct kds_cmd_ops {
 	void (*free)(struct kds_command *xcmd);
 };
 
+struct in_kernel_cb {
+	struct work_struct work;
+	void (*func)(unsigned long cb_data, int err);
+	void *data;
+	int  cmd_state;
+};
+
 /**
  * struct kds_command: KDS command struct
  * @client: the client that the command belongs to
@@ -61,6 +68,8 @@ struct kds_command {
 	 */
 	u32			*execbuf;
 	void			*gem_obj;
+	/* to notify inkernel exec completion */
+	struct in_kernel_cb	*inkern_cb;
 };
 
 /* execbuf command related funtions */

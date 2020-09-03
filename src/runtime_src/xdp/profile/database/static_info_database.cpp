@@ -51,7 +51,7 @@
 
 namespace xdp {
 
-  ComputeUnitInstance::ComputeUnitInstance(int32_t i, const char* n)
+  ComputeUnitInstance::ComputeUnitInstance(int32_t i, const std::string &n)
     : index(i)
   {
     std::string fullName(n);
@@ -203,7 +203,14 @@ namespace xdp {
       if(ipData->m_type != IP_KERNEL) {
         continue;
       }
-      cu = new ComputeUnitInstance(i, reinterpret_cast<const char*>(ipData->m_name));
+      std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
+      if(std::string::npos != cuName.find(":dm_")) {
+        /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a 
+         *              data mover and it should not be identified as a "CU" in profiling
+         */
+        continue;
+      }
+      cu = new ComputeUnitInstance(i, cuName);
       devInfo->cus[i] = cu;
       if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
         cu->setDataflowEnabled(true);
@@ -234,8 +241,16 @@ namespace xdp {
         const struct ip_data* ipData = &(ipLayoutSection->m_ip_data[connctn->m_ip_layout_index]);
         if(ipData->m_type != IP_KERNEL) {
           // error ?
+          continue;
         }
-        cu = new ComputeUnitInstance(connctn->m_ip_layout_index, reinterpret_cast<const char*>(ipData->m_name));
+        std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
+        if(std::string::npos != cuName.find(":dm_")) {
+          /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a 
+           *              data mover and it should not be identified as a "CU" in profiling
+           */
+          continue;
+        }
+        cu = new ComputeUnitInstance(connctn->m_ip_layout_index, cuName);
         devInfo->cus[connctn->m_ip_layout_index] = cu;
         if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
           cu->setDataflowEnabled(true);
@@ -363,6 +378,24 @@ namespace xdp {
             break;
           }
         }
+        if(-1 == cuId) {
+          pos = name.find("-");
+          if(std::string::npos != pos) {
+            pos = name.find_first_not_of(" ", pos+1);
+            monCuName = name.substr(pos);
+            pos = monCuName.find('/');
+            monCuName = monCuName.substr(0, pos);
+
+            for(auto cu : devInfo->cus) {
+              if(0 == monCuName.compare(cu.second->getName())) {
+                cuId = cu.second->getIndex();
+                cuObj = cu.second;
+                break;
+              }
+            }
+          }
+        }
+
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;

@@ -321,7 +321,7 @@ xrtGraphSuspend(xrtGraphHandle graph_hdl)
 }
 
 int
-xrtGraphResuem(xrtGraphHandle graph_hdl)
+xrtGraphResume(xrtGraphHandle graph_hdl)
 {
   try {
     auto hdl = get_graph_hdl(graph_hdl);

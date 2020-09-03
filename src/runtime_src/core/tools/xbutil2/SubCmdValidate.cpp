@@ -66,11 +66,11 @@ struct xclbin_lock
   xclDeviceHandle m_handle;
   xuid_t m_uuid;
 
-  xclbin_lock(std::shared_ptr<xrt_core::device> _dev) 
-    : m_handle(_dev->get_device_handle()) 
+  xclbin_lock(std::shared_ptr<xrt_core::device> _dev)
+    : m_handle(_dev->get_device_handle())
   {
     auto xclbinid = xrt_core::device_query<xrt_core::query::xclbin_uuid>(_dev);
-  
+
     uuid_parse(xclbinid.c_str(), m_uuid);
 
     if (uuid_is_null(m_uuid))
@@ -79,7 +79,7 @@ struct xclbin_lock
     if (xclOpenContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max(), true))
       throw std::runtime_error("'Failed to lock down xclbin");
   }
-  
+
   ~xclbin_lock(){
     xclCloseContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max());
   }
@@ -105,7 +105,7 @@ void logger(boost::property_tree::ptree& _ptTest, const std::string& tag, const 
  * search for xclbin for an SSV2 platform
  */
 std::string
-searchSSV2Xclbin(const std::string& logic_uuid, 
+searchSSV2Xclbin(const std::string& logic_uuid,
                   const std::string& xclbin, boost::property_tree::ptree& _ptTest)
 {
   std::string formatted_fw_path("/opt/xilinx/firmware/");
@@ -121,13 +121,13 @@ searchSSV2Xclbin(const std::string& logic_uuid,
 
   for(const std::string& t : suffix) {
     std::regex e("(^" + formatted_fw_path + "[^/]+/[^/]+/[^/]+/).+\\." + t);
-    for(boost::filesystem::recursive_directory_iterator iter(fw_dir, 
+    for(boost::filesystem::recursive_directory_iterator iter(fw_dir,
           boost::filesystem::symlink_option::recurse), end; iter != end;) {
       std::string name = iter->path().string();
       std::smatch cm;
       if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str()))) {
         iter.no_push();
-      } 
+      }
       else {
         iter.no_push(false);
       }
@@ -160,14 +160,33 @@ searchSSV2Xclbin(const std::string& logic_uuid,
   return "";
 }
 
+std::string
+getXsaPath(const uint16_t vendor)
+{
+  if (vendor == 0 || (vendor == INVALID_ID))
+    return std::string();
+
+  std::string vendorName;
+  switch (vendor) {
+    case ARISTA_ID:
+      vendorName = "arista";
+      break;
+    default:
+    case XILINX_ID:
+      vendorName = "xilinx";
+      break;
+  }
+  return "/opt/" + vendorName + "/xsa/";
+}
+
 /*
  * search for xclbin for a legacy platform
  */
 std::string
-searchLegacyXclbin(const std::string& dev_name, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
+searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
 {
   const std::string dsapath("/opt/xilinx/dsa/");
-  const std::string xsapath("/opt/xilinx/xsa/");
+  const std::string xsapath(getXsaPath(vendor));
   //create possible xclbin paths
   std::string xsaXclbinPath = xsapath + dev_name + "/test/" + xclbin;
   std::string dsaXclbinPath = dsapath + dev_name + "/test/" + xclbin;
@@ -175,7 +194,7 @@ searchLegacyXclbin(const std::string& dev_name, const std::string& xclbin, boost
   boost::filesystem::path dsa_xclbin(dsaXclbinPath);
   if (boost::filesystem::exists(xsa_xclbin)) {
     return xsaXclbinPath;
-  } 
+  }
   else if (boost::filesystem::exists(dsa_xclbin)) {
     return dsaXclbinPath;
   }
@@ -187,7 +206,7 @@ searchLegacyXclbin(const std::string& dev_name, const std::string& xclbin, boost
   return "";
 }
 
-/* 
+/*
  * helper funtion for kernel and bandwidth test cases
  * Steps:
  * 1. Find xclbin after determining if the shell is 1RP or 2RP
@@ -195,8 +214,8 @@ searchLegacyXclbin(const std::string& dev_name, const std::string& xclbin, boost
  * 3. Spawn a testcase process
  * 4. Check results
  */
-void 
-runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py, const std::string& xclbin, 
+void
+runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py, const std::string& xclbin,
             boost::property_tree::ptree& _ptTest)
 {
   std::string name;
@@ -219,8 +238,9 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   if(!logic_uuid.empty()) {
     xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, _ptTest);
   } else {
-    xclbinPath = searchLegacyXclbin(name, xclbin, _ptTest);
-    }
+    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
+    xclbinPath = searchLegacyXclbin(vendor, name, xclbin, _ptTest);
+  }
 
   //check if xclbin is present
   if(xclbinPath.empty()) {
@@ -245,8 +265,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   }
   // log testcase path for debugging purposes
   logger(_ptTest, "Testcase", xrtTestCasePath);
-    
-  std::vector<std::string> args = { " -k ", xclbinPath, " -d ", std::to_string(_dev.get()->get_device_id()) };
+
+  std::vector<std::string> args = { "-k", xclbinPath, "-d", std::to_string(_dev.get()->get_device_id()) };
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
   int exit_code = XBU::runPythonScript(xrtTestCasePath, args, os_stdout, os_stderr);
@@ -254,7 +274,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     logger(_ptTest, "Error", os_stdout.str());
     logger(_ptTest, "Error", os_stderr.str());
     _ptTest.put("status", "failed");
-  } 
+  }
   else {
     _ptTest.put("status", "passed");
   }
@@ -273,7 +293,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
  * helper function for kernelVersionTest
  */
 static void
-checkOSRelease(const std::vector<std::string> kernel_versions, const std::string& release, 
+checkOSRelease(const std::vector<std::string> kernel_versions, const std::string& release,
                 boost::property_tree::ptree& _ptTest)
 {
   for (const auto& ver : kernel_versions) {
@@ -287,10 +307,10 @@ checkOSRelease(const std::vector<std::string> kernel_versions, const std::string
                             % release % kernel_versions.back()));
 }
 
-/* 
+/*
  * helper function for M2M and P2P test
- */ 
-static void 
+ */
+static void
 free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t bo_size)
 {
 #ifdef __GNUC__
@@ -309,10 +329,10 @@ free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t 
     xclFreeBO(handle, boh);
 }
 
-/* 
+/*
  * helper function for P2P test
  */
-static bool 
+static bool
 p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
 {
   int stride = xrt_core::getpagesize();
@@ -321,7 +341,7 @@ p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
   for (size_t i = 0; i < size; i += stride) {
     if (set) {
       boptr[i] = pattern;
-    } 
+    }
     else if (boptr[i] != pattern) {
       return false;
     }
@@ -329,10 +349,10 @@ p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
   return true;
 }
 
-/* 
+/*
  * helper function for P2P test
  */
-static bool 
+static bool
 p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t size)
 {
   char *buf = nullptr;
@@ -351,15 +371,15 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
     return false;
   if (!p2ptest_set_or_cmp(buf, size, 'B', false))
     return false;
-  
+
   free(buf);
   return true;
 }
 
-/* 
+/*
  * helper function for P2P test
- */ 
-static bool 
+ */
+static bool
 p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::string m_tag, unsigned int mem_idx, uint64_t addr, uint64_t bo_size)
 {
   const size_t chunk_size = 16 * 1024 * 1024; //16 MB
@@ -398,10 +418,10 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::
   return true;
 }
 
-/* 
+/*
  * helper function for M2M test
- */ 
-static int 
+ */
+static int
 m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, xclBufferHandle &boh,
                    char * &boptr, size_t bo_size, int bank, char pattern)
 {
@@ -428,10 +448,10 @@ m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, 
   return 0;
 }
 
-/* 
+/*
  * helper function for M2M test
- */ 
-static double 
+ */
+static double
 m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int bank_a, int bank_b, size_t bo_size)
 {
   xclBufferHandle bo_src = NULLBO;
@@ -484,7 +504,7 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
  * TEST #1
  */
 void
-kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
+kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   //please append the new supported versions
   const std::vector<std::string> ubuntu_kernel_versions = { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0" };
@@ -510,10 +530,10 @@ kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
  * TEST #2
  */
 void
-auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
+auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   const std::vector<std::string> auxPwrRequiredDevice = { "VCU1525", "U200", "U250", "U280" };
-  
+
   std::string name = xrt_core::device_query<xrt_core::query::xmc_board_name>(_dev);
   uint64_t max_power = xrt_core::device_query<xrt_core::query::xmc_max_power>(_dev);
 
@@ -536,7 +556,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
   if(max_power == 0) {
     logger(_ptTest, "Warning", "Aux power is not connected");
     logger(_ptTest, "Warning", "Device is not stable for heavy acceleration tasks");
-  } 
+  }
   _ptTest.put("status", "passed");
 }
 
@@ -544,7 +564,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
  * TEST #3
  */
 void
-pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
+pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   uint64_t speed     = xrt_core::device_query<xrt_core::query::pcie_link_speed>(_dev);
   uint64_t max_speed = xrt_core::device_query<xrt_core::query::pcie_link_speed_max>(_dev);
@@ -562,7 +582,7 @@ pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree
  * TEST #4
  */
 void
-scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
+scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   auto sc_ver = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_dev);
   std::string exp_sc_ver = "";
@@ -572,7 +592,7 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
 
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
     logger(_ptTest, "Warning", "SC firmware misatch");
-    logger(_ptTest, "Warning", boost::str(boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.") 
+    logger(_ptTest, "Warning", boost::str(boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.")
                                           % sc_ver % exp_sc_ver % "Please use xbmgmt --new status to check the installed shell"));
   }
   _ptTest.put("status", "passed");
@@ -582,7 +602,7 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
  * TEST #5
  */
 void
-verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
+verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   runTestCase(_dev, "22_verify.py", "verify.xclbin", _ptTest);
 }
@@ -591,11 +611,22 @@ verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_
  * TEST #6
  */
 void
-dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
+dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   // get DDR bank count from mem_topology if possible
   auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(_dev);
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
+
+  auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
+  size_t totalSize = 0;
+  switch (vendor) {
+    case ARISTA_ID:
+      totalSize = 0x20000000;
+      break;
+    default:
+    case XILINX_ID:
+      break;
+  }
 
   for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
     auto midx = std::distance(mem_topo->m_mem_data, &mem);
@@ -607,14 +638,14 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
     std::stringstream run_details;
     size_t block_size = 16 * 1024 * 1024; // Default block size 16MB
-    xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx));
+    xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx), totalSize);
     try {
       runner.run(run_details);
       _ptTest.put("status", "passed");
       std::string line;
       while(std::getline(run_details, line))
         logger(_ptTest, "Details", line);
-    } 
+    }
     catch (xrt_core::error& ex) {
       _ptTest.put("status", "failed");
       logger(_ptTest, "Error", ex.what());
@@ -626,7 +657,7 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
  * TEST #7
  */
 void
-bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
+bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   std::string name;
   try {
@@ -644,12 +675,12 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
  * TEST #8
  */
 void
-p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
+p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   std::string msg;
   xclbin_lock xclbin_lock(_dev);
   XBU::check_p2p_config(_dev, msg);
-  
+
   if(msg.find("Error") == 0) {
     logger(_ptTest, "Error", msg.substr(msg.find(':')+1));
     _ptTest.put("status", "error");
@@ -692,7 +723,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
  * TEST #9
  */
 void
-m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
+m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   xclbin_lock xclbin_lock(_dev);
   uint32_t m2m_enabled = xrt_core::device_query<xrt_core::query::kds_numcdmas>(_dev);
@@ -721,11 +752,11 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     for(unsigned int j = i+1; j < used_banks.size(); j++) {
       if(!used_banks[i].m_size || !used_banks[j].m_size)
         continue;
-      
+
       double m2m_bandwidth = m2mtest_bank(_dev->get_device_handle(), _ptTest, i, j, bo_size);
       logger(_ptTest, "Details", boost::str(boost::format("%s -> %s M2M bandwidth: %.2f MB/s") % used_banks[i].m_tag
                   %used_banks[j].m_tag % m2m_bandwidth));
-      
+
       if(m2m_bandwidth == 0) //test failed, exit
         return;
     }
@@ -737,7 +768,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
  * TEST #10
  */
 void
-hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
+hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   uint64_t host_mem_size = 0;
   try {
@@ -777,7 +808,7 @@ struct TestCollection {
 */
 static std::vector<TestCollection> testSuite = {
   { create_init_test("Kernel version", "Check if kernel version is supported by XRT"), kernelVersionTest },
-  { create_init_test("Aux connection", "Check if auxiliary power is connected"), auxConnectionTest }, 
+  { create_init_test("Aux connection", "Check if auxiliary power is connected"), auxConnectionTest },
   { create_init_test("PCIE link", "Check if PCIE link is active"), pcieLinkTest },
   { create_init_test("SC version", "Check if SC firmware is up-to-date"), scVersionTest },
   { create_init_test("Verify kernel", "Run 'Hello World' kernel test"), verifyKernelTest },
@@ -788,18 +819,18 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled"), hostMemBandwidthKernelTest }
 };
 
-/* 
+/*
  * print basic information about a test
  */
 static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int testSuiiteSize)
 {
-  std::cout << boost::format("%d/%d Test #%-10d: %s\n") % test.get<int>("id") % testSuiiteSize 
+  std::cout << boost::format("%d/%d Test #%-10d: %s\n") % test.get<int>("id") % testSuiiteSize
                     % test.get<int>("id") % test.get<std::string>("name");
   std::cout << boost::format("    %-16s: %s\n") % "Description" % test.get<std::string>("description");
 }
 
-/* 
+/*
  * print test run
  */
 static void
@@ -818,7 +849,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test, test_status& stat
           warn = true;
         else if (boost::iequals(kv.first, "error"))
           error = true;
-      }    
+      }
     }
   }
   catch(...) {}
@@ -836,7 +867,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test, test_status& stat
   boost::to_upper(_status);
   std::cout << EscapeCodes::fgcolor(color).string() << boost::format("    [%s]\n") % _status
             << EscapeCodes::fgcolor::reset();
-  std::cout << "-------------------------------------------------------------------------------" << std::endl;    
+  std::cout << "-------------------------------------------------------------------------------" << std::endl;
 }
 
 /*
@@ -875,7 +906,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::proper
 }
 
 void
-run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& _ptDevCollectionTestSuite, 
+run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& _ptDevCollectionTestSuite,
                         bool json, bool quick)
 {
   boost::property_tree::ptree _ptDeviceTestSuite;
@@ -884,7 +915,7 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, boost::pr
   int _test_suite_size = quick ? 5 : static_cast<int>(testSuite.size());
 
   get_platform_info(device, _ptDeviceInfo, json);
-  
+
   for(int i = 0; i < _test_suite_size; i++) {
     testSuite[i].ptTest.put("id", i+1);
     if(!json)
@@ -893,7 +924,7 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, boost::pr
     _ptDeviceTestSuite.push_back( std::make_pair("", testSuite[i].ptTest) );
     if(!json)
       pretty_print_test_run(testSuite[i].ptTest, status);
-    //if a test fails, exit immideately 
+    //if a test fails, exit immideately
     if(status == test_status::failed) {
       break;
     }
@@ -912,7 +943,7 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, boost::pr
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("validate", 
+    : SubCmd("validate",
              "Validates the basic shell accelleration functionality")
 {
   const std::string longDescription = "Validates the given card by executing the platform's validate executable.";
@@ -976,11 +1007,11 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
   xrt_core::device_collection deviceCollection;
-  for (const auto & deviceName : device) 
+  for (const auto & deviceName : device)
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
   XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
-  
+
   //validate all devices
   boost::property_tree::ptree _ptValidate;
   boost::property_tree::ptree _ptDevCollectionTestSuite;
@@ -991,12 +1022,12 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     run_test_suite_device(dev, _ptDevCollectionTestSuite, json, quick);
   }
   _ptValidate.put_child("logical_devices", _ptDevCollectionTestSuite);
-  
+
   if(json) {
     std::stringstream ss;
     boost::property_tree::json_parser::write_json(ss, _ptValidate);
     std::cout << ss.str() << std::endl;
   }
-  
+
 }
 

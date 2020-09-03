@@ -294,7 +294,7 @@ static void stripe_data(uint8_t *intrlv_buf, uint8_t *buf0, uint8_t *buf1, uint3
  * Chronos sleep resolution on Windows is 1 ms which is exponentially bigger than
  * the required sleep. This is a busy loop to mimick the accurate amount of sleep.
  */
-static void delay(std::chrono::microseconds us) 
+static void delay(std::chrono::microseconds us)
 {
 	std::chrono::high_resolution_clock::time_point currTime;
 	const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
@@ -324,9 +324,9 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
     mFlashDev = nullptr;
 #ifdef __GNUC__
     if (std::getenv("FLASH_VIA_USER") == NULL) {
-        auto fd = mDev->file_open("flash", O_RDWR);
-        if (fd.get() >= 0)
-            mFlashDev = fdopen(fd.get(), "r+");
+        int fd = mDev->open("flash", O_RDWR);
+        if (fd >= 0)
+            mFlashDev = fdopen(fd, "r+");
         if (mFlashDev == NULL)
             std::cout << "Failed to open flash device on card" << std::endl;
     }
@@ -550,8 +550,8 @@ int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1) {
 
     if (mFlashDev)
         return upgradeFirmware1Drv(mcsStream1);
-    
-    //Parse MCS file for first flash device 
+
+    //Parse MCS file for first flash device
     status = parseMCS(mcsStream1);
     if(status)
         return status;
@@ -580,7 +580,7 @@ int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1) {
     //Finally we clear bitstream guard if not writing to address 0
     //This will allow the bitstream to be loaded
     if(bitstream_start_loc != 0) {
-        if(!clearBitstreamGuard(bitstream_start_loc)) 
+        if(!clearBitstreamGuard(bitstream_start_loc))
             throw xrt_core::error("Unable to clear bitstream guard!");
         std::cout << boost::format("%-8s : %s\n") % "INFO" % "Cleared bitstream guard. Bitstream now active.";
     }
@@ -602,7 +602,7 @@ int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mc
     if (mFlashDev)
         return upgradeFirmware2Drv(mcsStream1, mcsStream2);
 
-    //Parse MCS file for first flash device 
+    //Parse MCS file for first flash device
     status = parseMCS(mcsStream1);
     if(status)
         return status;
@@ -631,7 +631,7 @@ int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mc
     if(status)
         return status;
 
-    //Parse MCS file for second flash device 
+    //Parse MCS file for second flash device
     status = parseMCS(mcsStream2);
     if(status)
         return status;
@@ -879,6 +879,36 @@ bool XSPI_Flasher::bulkErase()
         return false;
 
     return waitTxEmpty();
+}
+
+// Erases the entire flash
+bool XSPI_Flasher::fullErase() {
+    const uint8_t numFlash = isDualQSPI(mDev.get()) ? 2 : 1;
+
+    for (uint8_t i = 0; i < numFlash; ++i) {
+        if (!prepareXSpi(i))
+            return false;
+
+        // Go through and erase every sector. Alternatively use bulk or die
+        // erase depending on whether the device is monolithic or stacked.
+        uint32_t beatCount = 0;
+        std::cout << "Erasing flash " << i << std::endl;
+        for (uint32_t j = 0; j < MAX_NUM_SECTORS << 24; j += 1 << 15) {
+            // Beat every 4MB
+            if (++beatCount % (1 << 7) == 0) {
+                std::cout << "." << std::flush;
+            }
+
+            if (!sectorErase(j, COMMAND_32KB_SUBSECTOR_ERASE)) {
+                std::cout << "\nERROR: Failed to erase subsector!" << std::endl;
+                return false;
+            }
+        }
+
+        std::cout << std::endl;
+    }
+
+    return true;
 }
 
 //Bitstream guard protects from partially programmed bitstreams
@@ -1672,7 +1702,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
                 erase_flash.finish(false, "Failed to erase subsector!");
                 return -EINVAL;
             }
-            
+
             delay(std::chrono::microseconds(20));
         }
     }
@@ -1705,7 +1735,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
             program_flash.finish(false, "Could not program the block");
             return -EINVAL;
         }
-        
+
         delay(std::chrono::microseconds(20));
     }
     program_flash.finish(true, "Flash programmed");
@@ -1912,6 +1942,16 @@ static int bitstreamGuardAddress(xrt_core::device *dev, uint32_t& addr)
 
 int XSPI_Flasher::revertToMFG(void)
 {
+    // Vendor-dependent behaviour
+    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(mDev);
+    switch (vendor) {
+        case ARISTA_ID:
+            return fullErase() ? 0 : -EINVAL;
+        default:
+        case XILINX_ID:
+            break;
+    }
+
     uint32_t bitstream_start_loc;
 
     int ret = bitstreamGuardAddress(mDev.get(), bitstream_start_loc);

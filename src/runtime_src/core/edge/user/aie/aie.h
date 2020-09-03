@@ -30,12 +30,31 @@ extern "C" {
 #include <xaiengine.h>
 }
 
+#define HW_GEN                   XAIE_DEV_GEN_AIE
+#define XAIE_NUM_ROWS            9
+#define XAIE_NUM_COLS            50
+#define XAIE_BASE_ADDR           0x20000000000
+#define XAIE_COL_SHIFT           23
+#define XAIE_ROW_SHIFT           18
+#define XAIE_SHIM_ROW            0
+#define XAIE_MEM_TILE_ROW_START  0
+#define XAIE_MEM_TILE_NUM_ROWS   0
+#define XAIE_AIE_TILE_ROW_START  1
+#define XAIE_AIE_TILE_NUM_ROWS   8
+
+//#define XAIEGBL_NOC_DMASTA_STARTQ_MAX 4
+#define XAIEDMA_SHIM_MAX_NUM_CHANNELS 4
+#define XAIEDMA_SHIM_TXFER_LEN32_MASK 3
+
+#define CONVERT_LCHANL_TO_PCHANL(l_ch) (l_ch > 1 ? l_ch - 2 : l_ch)
+
 namespace zynqaie {
 
 struct BD {
     uint16_t bd_num;
-    uint16_t addr_high;
-    uint32_t addr_low;
+    char     *vaddr;
+    size_t   size;
+    int      buf_fd;
 };
 
 struct DMAChannel {
@@ -44,9 +63,10 @@ struct DMAChannel {
 };
 
 struct ShimDMA {
-    XAieDma_Shim handle;
+    XAie_DmaDesc desc;
     DMAChannel dma_chan[XAIEDMA_SHIM_MAX_NUM_CHANNELS];
     bool configured;
+    uint8_t maxqSize;
 };
 
 
@@ -57,43 +77,40 @@ public:
     ~Aie();
     Aie(const std::shared_ptr<xrt_core::device>& device);
 
-    std::vector<XAieGbl_Tile> tileArray;  // Tile Array
     std::vector<ShimDMA> shim_dma;   // shim DMA
 
     /* This is the collections of gmios that are used. */
     std::vector<gmio_type> gmios;
 
-    int getTilePos(int col, int row);
-
-    XAieGbl *getAieInst();
+    XAie_DevInst *getDevInst();
 
     void
-    sync_bo(uint64_t paddr, const char *dmaID, enum xclBOSyncDirection dir, size_t size);
+    sync_bo(xrtBufferHandle bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     void
-    sync_bo_nb(uint64_t paddr, const char *gmioName, enum xclBOSyncDirection dir, size_t size);
+    sync_bo_nb(xrtBufferHandle bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     void
     wait_gmio(const std::string& gmioName);
 
-    static XAieGbl_ErrorHandleStatus
-    error_cb(struct XAieGbl *aie_inst, XAie_LocType loc, u8 module, u8 error, void *arg);
-
 private:
-    int numRows;
     int numCols;
-    uint64_t aieAddrArrayOff;
+    int fd;
 
-    XAieGbl_Config *aieConfigPtr; // AIE configuration pointer
-    XAieGbl aieInst;              // AIE global instance
-    XAieGbl_HwCfg aieConfig;      // AIE configuration pointer
+    XAie_DevInst devInst;         // AIE Device Instance
 
     void
-    submit_sync_bo(uint64_t paddr, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size);
+    submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     /* Wait for all the BD transfers for a given channel */
     void
-    wait_sync_bo(ShimDMA* const dmap, uint32_t chan, uint32_t timeout);
+    wait_sync_bo(ShimDMA *dmap, uint32_t chan, XAie_LocType& tile, XAie_DmaDirection gmdir, uint32_t timeout);
+
+    void
+    prepare_bd(BD& bd, xrtBufferHandle& bo);
+
+    void
+    clear_bd(BD& bd);
 };
 
 }

@@ -1,7 +1,7 @@
 set(TESTNAME "02_simple")
 
 add_executable(02_simple main.cpp)
-target_link_libraries(02_simple PRIVATE ${xrt_core_LIBRARY} ${xrt_coreutil_LIBRARY})
+target_link_libraries(02_simple PRIVATE ${xrt_coreutil_LIBRARY})
 
 if (NOT WIN32)
   target_link_libraries(02_simple PRIVATE ${uuid_LIBRARY} pthread)

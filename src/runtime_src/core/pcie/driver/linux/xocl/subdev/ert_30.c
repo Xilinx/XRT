@@ -107,10 +107,6 @@ static uint32_t ert_30_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg 
 		val &= WAKE_MB_UP;
 		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
 		break;
-	case MB_SLEEP:
-		val |= FORCE_MB_SLEEP;
-		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
-		break;
 	case MB_STATUS:
 		ret = ioread32(ert_30->cfg_gpio+GPIO_CFG_STA_CHANNEL);
 		break;

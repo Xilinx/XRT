@@ -31,6 +31,8 @@
 #define XOCL_DRM_IMPORT 	XRT_DRV_BO_DRM_IMPORT
 #define XOCL_P2P_MEM		XRT_DRV_BO_P2P
 #define XOCL_CMA_MEM		XRT_DRV_BO_CMA
+#define XOCL_SGL		XRT_DRV_BO_SGL
+#define XOCL_KERN_BUF		XRT_DRV_BO_KERN_BUF
 
 #define XOCL_PAGE_ALLOC 	(XOCL_DRV_ALLOC | XOCL_USER_MEM | XOCL_P2P_MEM | XOCL_DRM_IMPORT | XOCL_CMA_MEM)
 
@@ -162,6 +164,15 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_copy_bo_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+
+int xocl_kinfo_bo_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_map_kern_mem_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_execbuf_callback_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_sync_bo_callback_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 
 struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj);

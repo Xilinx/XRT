@@ -47,7 +47,8 @@ zocl-y := \
 	zocl_kds.o \
 	cu.o \
 	zocl_generic_cu.o \
-	zocl_error.o
+	zocl_error.o \
+	zocl_aie.o
 
 obj-m	+= zocl.o
 

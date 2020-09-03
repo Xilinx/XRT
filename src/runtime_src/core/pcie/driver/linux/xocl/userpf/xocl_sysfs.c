@@ -58,6 +58,16 @@ static ssize_t user_pf_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(user_pf);
 
+static ssize_t board_name_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+    struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+    return sprintf(buf, "%s\n",
+		xdev->core.priv.board_name ? xdev->core.priv.board_name : "");
+}
+static DEVICE_ATTR_RO(board_name);
+
 /* -live client contexts-- */
 static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -332,7 +342,8 @@ static ssize_t ready_show(struct device *dev,
 	 * experienced user to manually update SC firmware than
 	 * installed xsabin may contain.
 	 */
-	if (strcmp(board_info->bmc_ver, board_info->exp_bmc_ver)) {
+	if (strcmp(board_info->bmc_ver, board_info->exp_bmc_ver) &&
+		strcmp(board_info->exp_bmc_ver, NONE_BMC_VERSION)) {
 		xocl_warn(dev, "installed XSABIN has SC version: "
 		    "(%s) mismatch with loaded SC version: (%s).",
 		    board_info->exp_bmc_ver, board_info->bmc_ver);
@@ -412,21 +423,40 @@ static ssize_t ulp_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ulp_uuids);
 
-static ssize_t mig_cache_update_store(struct device *dev,
-		struct device_attribute *da, const char *buf, size_t count)
+
+/* To get the latest ECC status from peer, mig ecc is slightly different from
+ * most of the sub device, we ask xocl by touch the sysfs node mig_cache_update 
+ * to get the latest ECC status from its peer and save all the data to 
+ * each individual mig ecc sub device instead of generate mailbox request by
+ * touch mig ecc sysfs node the way likes most of the sub device.
+ * It can avoid dmesg overwhelmed by mailbox msg(40x or more)
+ */
+static ssize_t mig_cache_update_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
 	xocl_update_mig_cache(xdev);
 
-	return count;
+	return 0;
 }
-static DEVICE_ATTR_WO(mig_cache_update);
+static DEVICE_ATTR_RO(mig_cache_update);
+
+static ssize_t nodma_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	/* A shell without dma subdev and with m2m subdev is nodma shell */
+	return sprintf(buf, "%d\n", (!DMA_DEV(xdev) && M2M_DEV(xdev)));
+}
+static DEVICE_ATTR_RO(nodma);
 
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
+    &dev_attr_board_name.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
@@ -444,6 +474,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
 	&dev_attr_mig_cache_update.attr,
+	&dev_attr_nodma.attr,
 	NULL,
 };
 
