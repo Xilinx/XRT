@@ -24,6 +24,7 @@
 
 #include "xocl/config.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -51,7 +52,8 @@ cl_int
 clWaitForEvents(cl_uint num_events, const cl_event* event_list) 
 {
   try {
-    PROFILE_LOG_FUNCTION_CALL
+    PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clWaitForEvents(num_events,event_list);
   }
   catch (const xrt::error& ex) {
