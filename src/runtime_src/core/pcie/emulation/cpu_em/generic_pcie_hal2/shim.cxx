@@ -167,43 +167,36 @@ namespace xclcpuemhal2 {
  
   static void sigHandler(int sn, siginfo_t *si, void *sc)
   {
-    switch(sn) {
-      case SIGSEGV:
-        {
-          saveDeviceProcessOutputs();
-          kill(0,SIGSEGV);
-          exit(1);
-          break;
-        }
-      case SIGFPE :
-        {
-          saveDeviceProcessOutputs();
-          kill(0,SIGTERM);
-          exit(1);
-          break;
-        }
-      case SIGABRT:
-        {
-          saveDeviceProcessOutputs();
-          kill(0,SIGABRT);
-          exit(1);
-          break;
-        }
+    switch (sn) {
+    case SIGSEGV:
+      saveDeviceProcessOutputs();
+      kill(0, SIGSEGV);
+      exit(1);
+      break;
+    case SIGFPE:
+      saveDeviceProcessOutputs();
+      kill(0, SIGTERM);
+      exit(1);
+      break;
+    case SIGABRT:
+      saveDeviceProcessOutputs();
+      kill(0, SIGABRT);
+      exit(1);
+      break;
+    case SIGCHLD: // Prevent infinite loop when the emulator dies
+      if (si->si_code != CLD_KILLED && si->si_code != CLD_DUMPED)
+        break;
     case SIGUSR1:
-        {
-	  // One of the spawned processes died for some reason,
-	  //  kill all of the others and exit the host code
-	  saveDeviceProcessOutputs() ;
-	  std::cerr << "Software emulation of compute unit(s) exited unexpectedly" 
-		    << std::endl ;
-	  kill(0, SIGTERM) ; 
-	  exit(1) ;
-	  break ;
-        }
-      default:
-        {
-          break;
-        }
+      // One of the spawned processes died for some reason,
+      //  kill all of the others and exit the host code
+      saveDeviceProcessOutputs();
+      std::cerr << "Software emulation of compute unit(s) exited unexpectedly"
+                << std::endl;
+      kill(0, SIGTERM);
+      exit(1);
+      break;
+    default:
+      break;
     }
   }
 
@@ -343,7 +336,8 @@ namespace xclcpuemhal2 {
     if (sigaction(SIGSEGV, &s, (struct sigaction *)0) ||
         sigaction(SIGFPE , &s, (struct sigaction *)0) ||
         sigaction(SIGABRT, &s, (struct sigaction *)0) ||
-        sigaction(SIGUSR1, &s, (struct sigaction *)0))
+        sigaction(SIGUSR1, &s, (struct sigaction *)0) ||
+        sigaction(SIGCHLD, &s, (struct sigaction *)0))
     {
       //debug_print("unable to support all signals");
     }

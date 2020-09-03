@@ -1728,20 +1728,53 @@ failed:
 	return ret;
 }
 
-struct resource *xocl_get_iores_byname(struct platform_device *pdev,
-		char *name)
+static struct resource *__xocl_get_res_byname(struct platform_device *pdev,
+						unsigned int type,
+						const char *name)
 {
 	int i = 0;
 	struct resource *res;
 
-	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i);
+	for (res = platform_get_resource(pdev, type, i);
 		res;
-		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
+		res = platform_get_resource(pdev, type, ++i)) {
 		if (!strncmp(res->name, name, strlen(name)))
 			return res;
 	}
 
 	return NULL;
+}
+
+struct resource *xocl_get_iores_byname(struct platform_device *pdev,
+				       char *name)
+{
+	return __xocl_get_res_byname(pdev, IORESOURCE_MEM, name);
+}
+
+void __iomem *xocl_devm_ioremap_res(struct platform_device *pdev,
+				     int index)
+{
+	struct resource *res;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, index);
+	return devm_ioremap_resource(&pdev->dev, res);
+}
+
+void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,
+					   const char *name)
+{
+	struct resource *res;
+
+	res = __xocl_get_res_byname(pdev, IORESOURCE_MEM, name);
+	return devm_ioremap_resource(&pdev->dev, res);
+}
+
+int xocl_get_irq_byname(struct platform_device *pdev, char *name)
+{
+	struct resource *r;
+
+	r = __xocl_get_res_byname(pdev, IORESOURCE_IRQ, name);
+	return r? r->start : -ENXIO;
 }
 
 void xocl_subdev_register(struct platform_device *pldev, void *ops)

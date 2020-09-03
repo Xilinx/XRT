@@ -114,6 +114,9 @@ validHostPtrOrError(cl_mem_flags flags, const void* host_ptr)
     }
     if (bool(ubuf) && bool(ext_flags & XCL_MEM_EXT_P2P_BUFFER))
        throw error(CL_INVALID_HOST_PTR,"host_ptr with P2P buffer flags specified");
+
+    if (bool(ubuf) && bool(ext_flags & XCL_MEM_EXT_HOST_ONLY))
+       throw error(CL_INVALID_HOST_PTR,"host_ptr with HOST_ONLY buffer flags specified");
   }
 }
 
