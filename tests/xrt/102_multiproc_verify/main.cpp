@@ -226,9 +226,6 @@ run(int argc, char** argv, char *envp[])
   if (xclbin_fnm.empty())
     throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
 
-  if (device_index >= xclProbe())
-    throw std::runtime_error("Cannot find device index (" + std::to_string(device_index) + ") specified");
-
   auto device = xrt::device(device_index);
   auto uuid = device.load_xclbin(xclbin_fnm);
 

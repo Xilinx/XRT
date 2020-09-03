@@ -103,12 +103,6 @@ namespace xdp {
           continue;
         auto aieArray = drv->getAieArray();
 
-        // TEMPORARY: Larry is making AIE array available when xclbin gets loaded  
-        if (!aieArray) {
-          aieArray = new zynqaie::Aie(device);
-          drv->setAieArray(aieArray);
-        }
-
         // Iterate over all AIE Counters
         auto numCounters = db->getStaticInfo().getNumAIECounter(index);
         for (uint64_t c=0; c < numCounters; c++) {
@@ -121,13 +115,10 @@ namespace xdp {
           values.push_back(aie->endEvent);
           values.push_back(aie->resetEvent);
 
-          // Get tile instance from AIE array
-          auto pos = aieArray->getTilePos(aie->column, aie->row);
-          auto tileInst = aieArray->tileArray.at(pos);
-      
           // Read counter value from device
-          // TODO: Below uses v1 of the AIE driver; eventually switch to v2
-          auto counterValue = XAieTileCore_PerfCounterGet(&tileInst, aie->counterNumber);
+          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
+          uint32_t counterValue;
+          XAie_PerfCounterGet(aieArray->getDevInst(), tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
           values.push_back(counterValue);
 
           // Get timestamp in milliseconds

@@ -44,30 +44,29 @@ get_edgedev(const xrt_core::device* device)
 
 struct devInfo
 {
-   static boost::any
-    get(const xrt_core::device* device,key_type key)
+  static boost::any
+  get(const xrt_core::device* device,key_type key)
   {
     auto edev = get_edgedev(device);
-    switch (key)
-    {
+    switch (key) {
     case key_type::edge_vendor:
       return deviceInfo.mVendorId;
     case key_type::rom_vbnv:
       return std::string(deviceInfo.mName);
     case key_type::rom_ddr_bank_size_gb:
-      {
-	static const uint32_t BYTES_TO_GBYTES = 30;
-      	return (deviceInfo.mDDRSize >> BYTES_TO_GBYTES);
-      }
+    {
+      static const uint32_t BYTES_TO_GBYTES = 30;
+      return (deviceInfo.mDDRSize >> BYTES_TO_GBYTES);
+    }
     case key_type::rom_ddr_bank_count_max:
       return static_cast<uint64_t>(deviceInfo.mDDRBankCount);
     case key_type::clock_freqs_mhz:
-      {
-        std::vector<std::string> clk_freqs;
-        for(int i = 0; i < sizeof(deviceInfo.mOCLFrequency)/sizeof(deviceInfo.mOCLFrequency[0]); i++)
-          clk_freqs.push_back(std::to_string(deviceInfo.mOCLFrequency[i]));
-        return clk_freqs;
-      }
+    {
+      std::vector<std::string> clk_freqs;
+      for(int i = 0; i < sizeof(deviceInfo.mOCLFrequency)/sizeof(deviceInfo.mOCLFrequency[0]); i++)
+        clk_freqs.push_back(std::to_string(deviceInfo.mOCLFrequency[i]));
+      return clk_freqs;
+    }
     default:
       throw query::no_such_key(key);
     }
@@ -94,7 +93,7 @@ template <>
 struct sysfs_fcn<std::string>
 {
   static std::string
-    get(zynq_device* dev, const char* entry)
+  get(zynq_device* dev, const char* entry)
   {
     std::string err;
     std::string value;
@@ -112,7 +111,7 @@ struct sysfs_fcn<std::vector<VectorValueType>>
   using ValueType = std::vector<VectorValueType>;
 
   static ValueType
-    get(zynq_device* dev, const char* entry)
+  get(zynq_device* dev, const char* entry)
   {
     std::string err;
     ValueType value;
@@ -124,67 +123,68 @@ struct sysfs_fcn<std::vector<VectorValueType>>
 };
 
 template <typename QueryRequestType>
-struct sysfs_getter : QueryRequestType
+struct sysfs_get : QueryRequestType
 {
   const char* entry;
 
-  sysfs_getter(const char* e)
+  sysfs_get(const char* e)
     : entry(e)
-  { /* empty */ }
+  {}
 
   boost::any
-    get(const xrt_core::device* device) const
+  get(const xrt_core::device* device) const
   {
-      return sysfs_fcn<typename QueryRequestType::result_type>
-        ::get(get_edgedev(device), entry);
+    return sysfs_fcn<typename QueryRequestType::result_type>
+      ::get(get_edgedev(device), entry);
   }
 };
 
 template <typename QueryRequestType, typename Getter>
-struct function0_getter : QueryRequestType
+struct function0_get : QueryRequestType
 {
-    boost::any
-    get(const xrt_core::device* device) const
-    {
-      auto k = QueryRequestType::key;
-      return Getter::get(device, k);
-    }
+  boost::any
+  get(const xrt_core::device* device) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k);
+  }
 };
 
 template <typename QueryRequestType>
 static void
-emplace_sysfs_request(const char* entry)
+emplace_sysfs_get(const char* entry)
 {
   auto x = QueryRequestType::key;
-  query_tbl.emplace(x, std::make_unique<sysfs_getter<QueryRequestType>>(entry));
+  query_tbl.emplace(x, std::make_unique<sysfs_get<QueryRequestType>>(entry));
 }
 
 template <typename QueryRequestType, typename Getter>
 static void
-emplace_func0_request()
+emplace_func0_get()
 {
   auto k = QueryRequestType::key;
-  query_tbl.emplace(k, std::make_unique<function0_getter<QueryRequestType, Getter>>());
+  query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
 }
 
 static void
 initialize_query_table()
 {
-  emplace_func0_request<query::edge_vendor, devInfo>();
+  emplace_func0_get<query::edge_vendor, devInfo>();
 
-  emplace_func0_request<query::rom_vbnv, devInfo>();
-  emplace_func0_request<query::rom_fpga_name, devInfo>();
-  emplace_func0_request<query::rom_ddr_bank_size_gb, devInfo>();
-  emplace_func0_request<query::rom_ddr_bank_count_max, devInfo>();
+  emplace_func0_get<query::rom_vbnv, devInfo>();
+  emplace_func0_get<query::rom_fpga_name, devInfo>();
+  emplace_func0_get<query::rom_ddr_bank_size_gb, devInfo>();
+  emplace_func0_get<query::rom_ddr_bank_count_max, devInfo>();
 
-  emplace_func0_request<query::clock_freqs_mhz, devInfo>();
+  emplace_func0_get<query::clock_freqs_mhz, devInfo>();
  
-  emplace_sysfs_request<query::xclbin_uuid>               ("xclbinid");
-  emplace_sysfs_request<query::mem_topology_raw>          ("mem_topology");
-  emplace_sysfs_request<query::ip_layout_raw>             ("ip_layout");
-  emplace_sysfs_request<query::aie_metadata>              ("aie_metadata");
-  emplace_sysfs_request<query::memstat>                   ("memstat");
-  emplace_sysfs_request<query::memstat_raw>               ("memstat_raw");
+  emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
+  emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
+  emplace_sysfs_get<query::ip_layout_raw>             ("ip_layout");
+  emplace_sysfs_get<query::aie_metadata>              ("aie_metadata");
+  emplace_sysfs_get<query::memstat>                   ("memstat");
+  emplace_sysfs_get<query::memstat_raw>               ("memstat_raw");
+  emplace_sysfs_get<query::error>                     ("error");
 }
 
 struct X { X() { initialize_query_table(); } };

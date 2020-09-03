@@ -49,4 +49,6 @@ int zocl_ctx_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_error_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
+int zocl_aie_fd_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
 #endif

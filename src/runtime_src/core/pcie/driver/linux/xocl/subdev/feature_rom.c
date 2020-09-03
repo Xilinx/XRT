@@ -378,6 +378,20 @@ static bool is_valid_firmware(struct platform_device *pdev,
 	return true;
 }
 
+static int get_vendor_firmware_dir(u16 vendor, char *buf, size_t len) {
+	size_t ret;
+	switch (vendor) {
+		case XOCL_ARISTA_VEN:
+			ret = strlcpy(buf, "arista", len);
+			break;
+		default:
+		case XOCL_XILINX_VEN:
+			ret = strlcpy(buf, "xilinx", len);
+			break;
+	}
+	return (ret >= len) ? -E2BIG : 0;
+}
+
 static int load_firmware_from_flash(struct platform_device *pdev,
 	char **fw_buf, size_t *fw_len)
 {
@@ -463,6 +477,7 @@ static int load_firmware_from_disk(struct platform_device *pdev, char **fw_buf,
 	int err = 0;
 	char fw_name[256];
 	const struct firmware *fw;
+	char vendor_fw_dir[16];
 
 	if (funcid != 0) {
 		pcidev_user = pci_get_slot(pcidev->bus,
@@ -475,22 +490,27 @@ static int load_firmware_from_disk(struct platform_device *pdev, char **fw_buf,
 			deviceid = le16_to_cpu(pcidev_user->device);
 	}
 
+	err = get_vendor_firmware_dir(vendor, vendor_fw_dir, sizeof(vendor_fw_dir));
+    // Failure returns -E2BIG
+	if (err < 0)
+		return err;
+
 	/* For 2RP, only uuid is provided */
 	if (is_multi_rp(rom)) {
 		snprintf(fw_name, sizeof(fw_name),
-			"xilinx/%s/partition.%s", rom->uuid, suffix);
+			"%s/%s/partition.%s", vendor_fw_dir, rom->uuid, suffix);
 	} else {
 		snprintf(fw_name, sizeof(fw_name),
-			"xilinx/%04x-%04x-%04x-%016llx.%s",
-			vendor, deviceid, subdevice, timestamp, suffix);
+			"%s/%04x-%04x-%04x-%016llx.%s",
+			vendor_fw_dir, vendor, deviceid, subdevice, timestamp, suffix);
 	}
 
 	xocl_info(&pdev->dev, "try loading fw: %s", fw_name);
 	err = request_firmware(&fw, fw_name, &pcidev->dev);
 	if (err && !is_multi_rp(rom)) {
 		snprintf(fw_name, sizeof(fw_name),
-			"xilinx/%04x-%04x-%04x-%016llx.%s",
-			vendor, (deviceid + 1), subdevice, timestamp, suffix);
+			"%s/%04x-%04x-%04x-%016llx.%s",
+			vendor_fw_dir, vendor, (deviceid + 1), subdevice, timestamp, suffix);
 		xocl_info(&pdev->dev, "try loading fw: %s", fw_name);
 		err = request_firmware(&fw, fw_name, &pcidev->dev);
 	}
@@ -506,7 +526,7 @@ static int load_firmware_from_disk(struct platform_device *pdev, char **fw_buf,
 	}
 
 	release_firmware(fw);
-	return 0;
+	return err;
 }
 
 static int load_firmware(struct platform_device *pdev, char **fw, size_t *len)
@@ -559,7 +579,7 @@ static int get_header_from_peer(struct feature_rom *rom)
 	struct resource res;
 	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
 	int ret;
-	
+
 	header = XOCL_GET_SUBDEV_PRIV(&rom->pdev->dev);
 	if (!header)
 		return -ENODEV;

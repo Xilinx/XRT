@@ -246,6 +246,17 @@ get_bdf() const
   return xrt_core::query::pcie_bdf::to_string(bdf);
 }
 
+bool
+device::
+is_nodma() const 
+{
+  if (!m_xdevice)
+    throw xocl::error(CL_INVALID_DEVICE, "Can't check for nodma");
+
+  auto core_device = m_xdevice->get_core_device();
+  return core_device->is_nodma();
+}
+
 void*
 device::
 get_handle() const
@@ -894,7 +905,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
       auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz, const cmd_type& c) {
         c->start();
         auto sboh = sbuf->get_buffer_object(this);
-        auto dboh = sbuf->get_buffer_object(this);
+        auto dboh = dbuf->get_buffer_object(this);
         m_xdevice->copy(dboh, sboh, sz, doff, soff);
         c->done();
       };

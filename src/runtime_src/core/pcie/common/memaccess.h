@@ -257,8 +257,16 @@ namespace xcldev {
 
 //        uint64_t total_mem = std::accumulate(vec_banks.begin(), vec_banks.end(), (uint64_t)0, std::move(banksinfo));
 
+        //Find the first memory bank with valid size since vec_banks is sorted
+        auto validBank =  std::find_if(vec_banks.begin(), vec_banks.end(),
+                    [](const mem_bank_t item) {return (item.m_size);});
+
+        if (validBank == vec_banks.end()) {
+          std:: cout << "ERROR: Couldn't find valid memory banks" << std::dec << std::endl;
+          return -1;
+        }
         //if given start address is 0 then choose start address to be the lowest address available
-        unsigned long long startAddr = aStartAddr == 0 ? vec_banks.front().m_base_address : aStartAddr;
+        unsigned long long startAddr = aStartAddr == 0 ? validBank->m_base_address : aStartAddr;
         aStartAddr = startAddr;
 
         //Sanity check start address

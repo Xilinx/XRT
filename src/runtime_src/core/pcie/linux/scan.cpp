@@ -37,11 +37,6 @@
 #include "scan.h"
 #include "core/common/utils.h"
 
-// Supported vendors
-#define XILINX_ID       0x10ee
-#define ADVANTECH_ID    0x13fe
-#define AWS_ID          0x1d0f
-
 #define RENDER_NM       "renderD"
 #define DEV_TIMEOUT	90 // seconds
 
@@ -100,17 +95,32 @@ get_subdev_dir_name(const std::string& dir, const std::string& subDevName, std::
 
 
 static std::string
-get_devfs_path(bool is_mgmt, uint32_t instance)
+get_devfs_path(pcidev::pf_type type, uint32_t instance, std::string& sysfsname)
 {
-  std::string prefixStr = is_mgmt ? "/dev/xclmgmt" : "/dev/dri/" RENDER_NM;
   std::string instStr = std::to_string(instance);
 
-  return prefixStr + instStr;
+  if (type == pcidev::XCLMGMT) {
+      std::string prefixStr = "/dev/xclmgmt";
+      return prefixStr + instStr;
+  }
+  if (type == pcidev::XOCL) {
+      std::string prefixStr = "/dev/dri/" RENDER_NM;
+      return prefixStr + instStr;
+  }
+  if (type == pcidev::XMGMT) {
+      std::string prefixStr = "/dev/xfpga/xmgmt.";
+      return prefixStr + sysfsname;
+  }
+  if (type == pcidev::XUSER) {
+      std::string prefixStr = "/dev/xfpga/xuser.";
+      return prefixStr + sysfsname;
+  }
+  return "";
 }
 
 static bool
 is_admin()
-{     
+{
   return (getuid() == 0) || (geteuid() == 0);
 }
 
@@ -155,12 +165,17 @@ get_render_value(const std::string& dir)
 }
 
 static bool
-devfs_exists(bool is_mgmt, uint32_t instance)
+devfs_exists(pcidev::pf_type type, uint32_t instance, std::string& sysfsname)
 {
   struct stat buf;
-  std::string devfs = get_devfs_path(is_mgmt, instance);
+  const std::string devfs = get_devfs_path(type, instance, sysfsname);
 
-  return (stat(devfs.c_str(), &buf) == 0);
+  if (stat(devfs.c_str(), &buf) == 0)
+    return true;
+
+  // For xoclv2 golden image, there will only be a flash devfs node
+  std::string flash_devfs = "/dev/xfpga/flash." + sysfsname;
+  return (stat(flash_devfs.c_str(), &buf) == 0);
 }
 
 /*
@@ -193,16 +208,17 @@ namespace pcidev {
 
 namespace sysfs {
 
-static const std::string root = "/sys/bus/pci/devices/";
+static const std::string dev_root = "/sys/bus/pci/devices/";
+static const std::string drv_root = "/sys/bus/pci/drivers/";
 
 static std::string
 get_path(const std::string& name, const std::string& subdev, const std::string& entry)
 {
   std::string subdir;
-  if (get_subdev_dir_name(root + name, subdev, subdir) != 0)
+  if (get_subdev_dir_name(dev_root + name, subdev, subdir) != 0)
     return "";
 
-  auto path = root;
+  auto path = dev_root;
   path += name;
   path += "/";
   path += subdir;
@@ -244,7 +260,7 @@ open(const std::string& name,
   if (path.empty()) {
     std::stringstream ss;
     ss << "Failed to find subdirectory for " << subdev
-       << " under " << root + name << std::endl;
+       << " under " << dev_root + name << std::endl;
     err = ss.str();
   } else {
     fs = open_path(path, err, write, binary);
@@ -449,7 +465,7 @@ sysfs_put(const std::string& subdev, const std::string& entry,
 {
   sysfs::put(sysfs_name, subdev, entry, err, buf);
 }
-  
+
 std::string
 pci_device::
 get_sysfs_path(const std::string& subdev, const std::string& entry)
@@ -464,7 +480,7 @@ get_subdev_path(const std::string& subdev, uint idx)
   std::string path("/dev/xfpga/");
 
   path += subdev;
-  path += is_mgmt ? ".m" : ".u";
+  path += is_mgmt() ? ".m" : ".u";
   path += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
   path += "." + std::to_string(idx);
   return path;
@@ -474,18 +490,18 @@ int
 pci_device::
 open(const std::string& subdev, uint32_t idx, int flag)
 {
-  if (is_mgmt && !::is_admin())
+  if (is_mgmt() && !::is_admin())
     throw std::runtime_error("Root privileges required");
   // Open xclmgmt/xocl node
   if (subdev.empty()) {
-    std::string devfs = get_devfs_path(is_mgmt, instance);
+    std::string devfs = get_devfs_path(pf_type, instance, sysfs_name);
     return ::open(devfs.c_str(), flag);
   }
 
   // Open subdevice node
   std::string file("/dev/xfpga/");
   file += subdev;
-  file += is_mgmt ? ".m" : ".u";
+  file += is_mgmt() ? ".m" : ".u";
   file += std::to_string((uint32_t)(domain<<16) + (bus<<8) + (dev<<3) + func);
   file += "." + std::to_string(idx);
   return ::open(file.c_str(), flag);
@@ -499,17 +515,12 @@ open(const std::string& subdev, int flag)
 }
 
 pci_device::
-pci_device(const std::string& sysfs)
-  : sysfs_name(sysfs)
+pci_device(pcidev::pf_type type, const std::string& sysfs)
+  : sysfs_name(sysfs), pf_type(type)
 {
-  if((sysfs.c_str())[0] == '.')
-    return;
-
   uint16_t dom, b, d, f;
-  if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &dom, &b, &d, &f) < 4) {
-    std::cout << "Couldn't parse entry name " << sysfs << std::endl;
+  if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &dom, &b, &d, &f) < 4)
     return;
-  }
 
   // Determine if device is of supported vendor
   uint16_t vendor;
@@ -519,30 +530,19 @@ pci_device(const std::string& sysfs)
     std::cout << err << std::endl;
     return;
   }
-  if((vendor != XILINX_ID) && (vendor != ADVANTECH_ID) && (vendor != AWS_ID))
+  if ((vendor != XILINX_ID)
+      && (vendor != ADVANTECH_ID)
+      && (vendor != AWS_ID)
+      && (vendor != ARISTA_ID))
     return;
 
-  // Determine if the device is mgmt or user pf.
-  bool mgmt = false;
-  std::string tmp;
-  sysfs_get("", "mgmt_pf", err, tmp);
-  if (err.empty()) {
-    mgmt = true;
-  } else {
-    mgmt = false;
-    sysfs_get("", "user_pf", err, tmp);
-    if (!err.empty()) {
-      return; // device not recognized
-    }
-  }
-
-  const std::string dir = sysfs::root + sysfs;
+  const std::string dir = sysfs::dev_root + sysfs;
   uint32_t inst = INVALID_ID;
-  if (mgmt)
-    sysfs_get("", "instance", err, inst, static_cast<uint32_t>(-1));
+  if (is_mgmt())
+    sysfs_get("", "instance", err, inst, static_cast<uint32_t>(INVALID_ID));
   else
     inst = get_render_value(dir + "/drm");
-  if (!devfs_exists(mgmt, inst))
+  if (!devfs_exists(pf_type, inst, sysfs_name))
     return; // device node is not available
 
   domain = dom;
@@ -552,7 +552,6 @@ pci_device(const std::string& sysfs)
 
   sysfs_get<int>("", "userbar", err, user_bar, 0);
   user_bar_size = bar_size(dir, user_bar);
-  is_mgmt = mgmt;
   instance = inst;
   sysfs_get<bool>("", "ready", err, is_ready, false);
 }
@@ -710,7 +709,7 @@ get_partinfo(std::vector<std::string>& info, void *blob)
     s = p_strings + be32toh(GET_CELL(p));
     if (version < 16 && sz >= 8)
       p = PALIGN(p, 8);
-    
+
     if (strcmp(s, "__INFO")) {
       p = PALIGN(p + sz, 4);
       continue;
@@ -741,7 +740,7 @@ std::shared_ptr<pci_device>
 pci_device::
 lookup_peer_dev()
 {
-  if (!is_mgmt)
+  if (!is_mgmt())
     return nullptr;
 
   int i = 0;
@@ -766,7 +765,19 @@ public:
   rescan()
   {
     std::lock_guard<std::mutex> l(lock);
-    rescan_nolock();
+
+    if (is_in_use(user_list) || is_in_use(mgmt_list)) {
+      std::cout << "Device list is in use, can't rescan" << std::endl;
+      return;
+    }
+
+    user_list.clear();
+    mgmt_list.clear();
+
+    rescan_nolock("xclmgmt");
+    rescan_nolock("xocl");
+    rescan_nolock("xmgmt");
+    rescan_nolock("xuser");
   }
 
   size_t
@@ -794,32 +805,23 @@ public:
   }
 
 private:
-  void rescan_nolock()
+  void rescan_nolock(const std::string driver)
   {
-    if (is_in_use(user_list) || is_in_use(mgmt_list)) {
-      std::cout << "Device list is in use, can't rescan" << std::endl;
+    std::string drvpath = sysfs::drv_root + driver;
+    if(!bfs::exists(drvpath))
       return;
-    }
-
-    user_list.clear();
-    mgmt_list.clear();
-  
-    if(!bfs::exists(sysfs::root)) {
-      std::cout << "File does not exist : " << sysfs::root << std::endl;
-      return;
-    }
 
     // Gather all sysfs directory and sort
-    std::vector<bfs::path> vec{bfs::directory_iterator(sysfs::root), bfs::directory_iterator()};
+    std::vector<bfs::path> vec{bfs::directory_iterator(drvpath), bfs::directory_iterator()};
     std::sort(vec.begin(), vec.end());
 
     for (auto& path : vec) {
-      auto pf = std::make_shared<pcidev::pci_device>(path.filename().string());
+      auto pf = std::make_shared<pcidev::pci_device>(pcidev::drv2type(driver), path.filename().string());
       if(!pf || pf->domain == INVALID_ID)
         continue;
 
-      auto& list = pf->is_mgmt ? mgmt_list : user_list;
-      auto& num_ready = pf->is_mgmt ? num_mgmt_ready : num_user_ready;
+      auto& list = pf->is_mgmt() ? mgmt_list : user_list;
+      auto& num_ready = pf->is_mgmt() ? num_mgmt_ready : num_user_ready;
       if (pf->is_ready) {
         list.insert(list.begin(), pf);
         ++num_ready;
@@ -831,7 +833,7 @@ private:
 
   pci_device_scanner()
   {
-    rescan_nolock();
+    rescan();
   }
 
   std::mutex lock;
@@ -964,7 +966,7 @@ get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids)
 int
 shutdown(std::shared_ptr<pci_device> mgmt_dev, bool remove_user, bool remove_mgmt)
 {
-  if (!mgmt_dev->is_mgmt)
+  if (!mgmt_dev->is_mgmt())
     return -EINVAL;
 
   auto udev = mgmt_dev->lookup_peer_dev();
@@ -1055,10 +1057,10 @@ shutdown(std::shared_ptr<pci_device> mgmt_dev, bool remove_user, bool remove_mgm
     int curr_act_dev;
     bfs::ifstream file(parent_path);
     file >> curr_act_dev;
-      
+
     if (curr_act_dev + rem_dev_cnt == active_dev_num)
       return 0;
-     
+
     sleep(1);
   }
 
@@ -1073,7 +1075,7 @@ check_p2p_config(const std::shared_ptr<pci_device>& dev, std::string &err)
   std::string errmsg;
   int ret = P2P_CONFIG_DISABLED;
 
-  if (dev->is_mgmt) {
+  if (dev->is_mgmt()) {
     return -EINVAL;
   }
   err.clear();
@@ -1141,26 +1143,31 @@ operator<<(std::ostream& stream, const std::shared_ptr<pcidev::pci_device>& dev)
     std::string nm;
 
     dev->sysfs_get("", "board_name", err, nm);
-    dev->pcieBarRead(MFG_REV_OFFSET, &ver, sizeof(ver));
+    dev->sysfs_get<unsigned>("", "mfg_ver", err, ver, 0);
     shell_name += "xilinx_";
     shell_name += nm;
     shell_name += "_GOLDEN_";
     shell_name += std::to_string(ver);
-  }
-  else {
+  } else if (!dev->is_v2_drv()) {
     dev->sysfs_get("rom", "VBNV", err, shell_name);
     dev->sysfs_get<uint64_t>("rom", "timestamp", err, ts, static_cast<uint64_t>(-1));
+  } else {
+    dev->sysfs_get("xmgmt_main", "VBNV", err, shell_name);
+    if (!err.empty())
+    	dev->sysfs_get("xocl_vsec_golden", "VBNV", err, shell_name);
   }
   stream << " " << shell_name;
   if (ts != 0)
     stream << "(ID=0x" << std::hex << ts << ")";
 
-  // instance number
-  if (dev->is_mgmt)
-    stream << " mgmt(inst=";
+  if (dev->is_mgmt())
+    stream << " mgmt";
   else
-    stream << " user(inst=";
-  stream << std::dec << dev->instance << ")";
+    stream << " user";
+
+  // instance number
+  if (dev->instance != INVALID_ID)
+      stream << "(inst=" << std::dec << dev->instance << ")";
 
   stream.flags(f);
   return stream;

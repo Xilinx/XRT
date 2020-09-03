@@ -68,6 +68,23 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	return ret;
 }
 
+int xocl_execbuf_callback_ioctl(struct drm_device *dev,
+			  void *data,
+			  struct drm_file *filp)
+{
+	struct xocl_drm *drm_p = dev->dev_private;
+	int ret = 0;
+
+	if (kds_mode == 1)
+		ret = xocl_client_ioctl(drm_p->xdev,
+					DRM_XOCL_EXECBUF_CB, data, filp);
+	else
+		ret = xocl_exec_client_ioctl(drm_p->xdev,
+					     DRM_XOCL_EXECBUF_CB, data, filp);
+
+	return ret;
+}
+
 /*
  * Create a context (only shared supported today) on a CU. Take a lock on xclbin if
  * it has not been acquired before. Shared the same lock for all context requests
@@ -490,19 +507,27 @@ skip1:
 		XDEV(xdev)->kernels = NULL;
 	}
 
-	kernels = vmalloc(axlf_ptr->ksize);
-	if (!kernels) {
-		userpf_err(xdev, "Unable to alloc mem for kernels, size=%u\n",
-			   axlf_ptr->ksize);
-		err = -ENOMEM;
-		goto done;
+	/* There is a corner case.
+	 * A xclbin might only have an ap_ctrl_none kernel in ip_layout and
+	 * without any arguments. In this case, ksize would be 0, there is no
+	 * kernel information anywhere.
+	 */
+	if (axlf_ptr->ksize) {
+		kernels = vmalloc(axlf_ptr->ksize);
+		if (!kernels) {
+			userpf_err(xdev, "Unable to alloc mem for kernels, size=%u\n",
+				   axlf_ptr->ksize);
+			err = -ENOMEM;
+			goto done;
+		}
+		if (copy_from_user(kernels, axlf_ptr->kernels, axlf_ptr->ksize)) {
+			vfree(kernels);
+			err = -EFAULT;
+			goto done;
+		}
+		XDEV(xdev)->ksize = axlf_ptr->ksize;
+		XDEV(xdev)->kernels = kernels;
 	}
-	if (copy_from_user(kernels, axlf_ptr->kernels, axlf_ptr->ksize)) {
-		err = -EFAULT;
-		goto done;
-	}
-	XDEV(xdev)->ksize = axlf_ptr->ksize;
-	XDEV(xdev)->kernels = kernels;
 
 	err = xocl_icap_download_axlf(xdev, axlf);
 	if (err) {

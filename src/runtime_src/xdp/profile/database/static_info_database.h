@@ -147,7 +147,7 @@ namespace xdp {
     void setDataTransferEnabled(bool b) { dataTransfer = b; }
     bool dataTransferEnabled() { return dataTransfer; }
 
-    XDP_EXPORT ComputeUnitInstance(int32_t i, const char* n);
+    XDP_EXPORT ComputeUnitInstance(int32_t i, const std::string &n);
     XDP_EXPORT ~ComputeUnitInstance() ;
   } ;
 

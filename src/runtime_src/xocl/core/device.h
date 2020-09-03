@@ -146,6 +146,12 @@ public:
   get_bdf() const;
 
   /**
+   * Check if this device is a NODMA device
+   */
+  bool
+  is_nodma() const;
+
+  /**
    * Get underlying driver device handle
    */
   void*
