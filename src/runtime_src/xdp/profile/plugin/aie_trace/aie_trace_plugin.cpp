@@ -25,7 +25,7 @@
 //#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
-
+#include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 
 #if 0
 //#include <string>
@@ -111,10 +111,10 @@ namespace xdp {
 
     if(!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(deviceId, userHandle);
+      (db->getStaticInfo()).updateDevice(deviceId, handle);
       {
         struct xclDeviceInfo2 info;
-        if(xclGetDeviceInfo2(userHandle, &info) == 0) {
+        if(xclGetDeviceInfo2(handle, &info) == 0) {
           (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
         }
       }
@@ -126,7 +126,7 @@ namespace xdp {
       return;
     }
 
-    void* dIntf = (db->getStaticInfo())->getDeviceIntf(deviceId);
+    void* dIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
     DeviceIntf* deviceIntf = dynamic_cast<DeviceIntf*>(reinterpret_cast<DeviceIntf*>(dIntf));
     if(nullptr == deviceIntf) {
       // If DeviceIntf is not already created, create a new one to communicate with physical device
@@ -139,7 +139,7 @@ namespace xdp {
         delete deviceIntf;
         return;
       }
-      (db->getStaticInfo()).setDeviceIntf(deviceId, devInterface);
+      (db->getStaticInfo()).setDeviceIntf(deviceId, deviceIntf);
       // configure dataflow etc. may not be required here as those are for PL side
     }
 
@@ -169,22 +169,23 @@ namespace xdp {
     if(aieMemorySz > 0 && aieTraceBufSz > aieMemorySz) {
       aieTraceBufSz = aieMemorySz;
       std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(aieMemorySz) + " instead." ;
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+//      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
     }
     AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
 
-    AIETraceOffload* aieTraceOffloader = new AIETraceOffload(deviceIntf, aieTraceLogger,
+    AIETraceOffload* aieTraceOffloader = new AIETraceOffload(handle, deviceId,
+                                              deviceIntf, aieTraceLogger,
                                               isPLIO,          // isPLIO 
                                               aieTraceBufSz,   // total trace buffer size
                                               numAIETraceOutput);  // numStream
 
     if(!aieTraceOffloader->initReadTrace()) {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ; // FOR AIE ?
+//      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ; // FOR AIE ?
       delete aieTraceOffloader;
       delete aieTraceLogger;
       return;
     }
-    aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, devInterface) ;
+    aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf) ;
 
   }
 

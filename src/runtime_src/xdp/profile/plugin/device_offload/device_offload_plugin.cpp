@@ -193,10 +193,12 @@ namespace xdp {
     {
       (std::get<0>(o.second))->read_trace() ;
     }    
+#if 0
     for (auto o : aieOffloaders)
     {
       (std::get<0>(o.second))->readTrace() ;
-    }    
+    }
+#endif    
 
     for (auto w : writers)
     {
@@ -206,6 +208,7 @@ namespace xdp {
 
   void DeviceOffloadPlugin::clearOffloader(uint32_t deviceId)
   {
+#if 0
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
       auto entry = aieOffloaders[deviceId];
       auto offloader = std::get<0>(entry);
@@ -214,6 +217,7 @@ namespace xdp {
       delete offloader;
       delete logger;
     }
+#endif
 
     if(offloaders.find(deviceId) == offloaders.end()) {
       return;
@@ -230,6 +234,7 @@ namespace xdp {
 
   void DeviceOffloadPlugin::clearOffloaders()
   {
+#if 0
     for(auto entry : aieOffloaders) {
       auto offloader = std::get<0>(entry.second);
       auto logger    = std::get<1>(entry.second);
@@ -237,6 +242,7 @@ namespace xdp {
       delete offloader;
       delete logger;
     }
+#endif
     for(auto entry : offloaders) {
       auto offloader = std::get<0>(entry.second);
       auto logger    = std::get<1>(entry.second);

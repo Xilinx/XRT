@@ -19,7 +19,6 @@
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
-#include "xdp/profile/device/aie_trace/aie_trace_logger.h"
 
 #include "xdp/profile/database/database.h"
 
@@ -29,12 +28,15 @@
 namespace xdp {
 
 
-AIETraceOffload::AIETraceOffload(DeviceIntf* dInt,
+AIETraceOffload::AIETraceOffload(void* handle, uint64_t id,
+                                 DeviceIntf* dInt,
                                  AIETraceLogger* logger,
                                  bool isPlio,
                                  uint64_t totalSize,
                                  uint64_t numStrm)
-               : deviceIntf(dInt),
+               : deviceHandle(handle),
+                 deviceId(id),
+                 deviceIntf(dInt),
                  traceLogger(logger),
                  isPLIO(isPlio),
                  totalSz(totalSize),

@@ -37,7 +37,8 @@ class AIETraceOffload
 {
   public:
     XDP_EXPORT
-    AIETraceOffload(DeviceIntf*, AIETraceLogger*,
+    AIETraceOffload(void* handle, uint64_t id,
+                    DeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
                     uint64_t totalSize,
                     uint64_t numStrm);
@@ -67,6 +68,8 @@ public:
 
 private:
 
+    void*           deviceHandle;
+    uint64_t        deviceId;
     DeviceIntf*     deviceIntf;
     AIETraceLogger* traceLogger;
 

@@ -61,13 +61,15 @@ namespace xdp {
     typedef std::tuple<DeviceTraceOffload*, 
                        TraceLoggerCreatingDeviceEvents*,
                        DeviceIntf*> DeviceData ;
-
+#if 0
     typedef std::tuple<AIETraceOffload*, 
                        AIETraceLogger*,
                        DeviceIntf*> AIEData;
-
+#endif
     std::map<uint32_t, DeviceData> offloaders;
+#if 0
     std::map<uint32_t, AIEData>    aieOffloaders;
+#endif
 
     XDP_EXPORT void addDevice(const std::string& sysfsPath) ;
     XDP_EXPORT void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;
