@@ -287,22 +287,21 @@ write(uint64_t offset, const void* buf, uint64_t len) const
 
 void 
 device_linux::
-reset(const char* subdev, const char* key, const char* value) const 
+reset(query::reset_type key) const 
 {
-  int val = atoi(value);
-
-  switch(val) {
-  case 1:
+  switch(key.get_key()) {
+  case query::reset_key::hot:
     throw error(-ENODEV, "Hot reset not supported");
-  case 2:
+  case query::reset_key::kernel:
     throw error(-ENODEV, "OCL dynamic region reset not supported");
-  case 3:
+  case query::reset_key::ert:
     throw error(-ENODEV, "ERT reset not supported");
-  case 4:
+  case query::reset_key::ecc:
     throw error(-ENODEV, "Soft Kernel reset not supported");
-  case 5:
-    if (auto ret = xclResetAIEArray(get_device_handle()))
-      throw error(ret, "fail to reset aie array");
+  case query::reset_key::aie:
+    /* Commented till xrt shift to aie v2 driver */
+    //if (auto ret = xclResetAIEArray(get_device_handle()))
+    //  throw error(ret, "fail to reset aie array");
     break;
   default:
     throw error(-ENODEV, "invalid argument");

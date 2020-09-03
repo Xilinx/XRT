@@ -24,6 +24,7 @@
 #include "scope_guard.h"
 #include "uuid.h"
 #include "core/include/xrt.h"
+#include "query_reset.h"
 
 // Please keep eternal include file dependencies to a minimum
 #include <cstdint>
@@ -264,7 +265,7 @@ public:
    */
   virtual void write(uint64_t, const void*, uint64_t) const {}
 
-  virtual void reset(const char*, const char*, const char*) const {}
+  virtual void reset(query::reset_type) const {}
 
   /**
    * open() - opens a device with an fd which can be used for non pcie read/write
