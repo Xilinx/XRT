@@ -32,7 +32,7 @@ namespace xdpaietrace {
   std::function<void (void*)> update_aie_device_cb;
   std::function<void (void*)> flush_aie_device_cb;
 
-  void register_aie_trace_callbacks(void* /*handle*/)
+  void register_aie_trace_callbacks(void* handle)
   {
 #ifdef XRT_CORE_BUILD_WITH_DL
     typedef void (*ftype)(void*) ;
