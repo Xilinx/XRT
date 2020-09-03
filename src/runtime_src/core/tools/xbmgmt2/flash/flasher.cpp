@@ -31,7 +31,6 @@
 
 
 #define INVALID_ID      0xffff
-#define MFG_REV_OFFSET  0x131008 // For obtaining Golden image version number
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
@@ -246,7 +245,7 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
     // }
     if (is_mfg)
     {
-       dev->read(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
+       mGoldenVer = xrt_core::device_query<xrt_core::query::mfg_ver>(dev);
     }
     //else
     //{
