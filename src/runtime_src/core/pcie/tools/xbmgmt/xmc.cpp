@@ -48,9 +48,8 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 
     mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (!is_mfg) {
-
         mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);
-	if (!err.empty() || !(val & 1)) {
+        if (!err.empty() || !(val & 1)) {
             mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
             goto nosup;
         }
@@ -58,9 +57,21 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 
     mDev->sysfs_get<unsigned long long>("xmc", "reg_base", err, mRegBase, -1);
     if (!err.empty())
-	    mRegBase = XMC_REG_BASE;
+        mRegBase = XMC_REG_BASE;
 
-    val = readReg(XMC_REG_OFF_MAGIC);
+    try {
+        val = readReg(XMC_REG_OFF_MAGIC);
+    } catch (...) {
+        // Xoclv2 driver does not support mmap'ed BAR access from
+        // user space any more. We must use driver to update SC image.
+        int fd = mDev->open("xmc", O_RDWR);
+        if (fd >= 0)
+            mXmcDev = fdopen(fd, "r+");
+        if (mXmcDev == nullptr)
+            std::cout << "Failed to open XMC device on card" << std::endl;
+        return;
+    }
+
     if (val != XMC_MAGIC_NUM) {
         mProbingErrMsg << "Failed to detect XMC, bad magic number: "
             << std::hex << val << std::dec;
@@ -265,32 +276,42 @@ int XMC_Flasher::erase()
 int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
 {
     int ret = 0;
+    std::string errmsg;
+    std::vector<char> buf;
+    char *byte;
+    size_t size;
 
     if (!hasSC())
         return -EOPNOTSUPP;
 
-    if (!isXMCReady() || !isBMCReady())
-        return -EINVAL;
+    mDev->sysfs_get("xmc", "board_info_raw", errmsg, buf);
+    if (!errmsg.empty()) {
+        if (!isXMCReady() || !isBMCReady())
+            return -EINVAL;
 
-    mPkt = {0};
-    mPkt.hdr.opCode = XPO_BOARD_INFO;
-
-    if ((ret = sendPkt(false)) != 0){
-        if(ret == XMC_HOST_MSG_BRD_INFO_MISSING_ERR)
-        {
-            std::cout << "Unable to get card info, need to upgrade firmware"
-                << std::endl;
+        mPkt = {0};
+        mPkt.hdr.opCode = XPO_BOARD_INFO;
+        if ((ret = sendPkt(false)) != 0){
+            if(ret == XMC_HOST_MSG_BRD_INFO_MISSING_ERR)
+            {
+                std::cout << "Unable to get card info, need to upgrade firmware"
+                    << std::endl;
+            }
+            return ret;
         }
-        return ret;
+
+        ret = recvPkt();
+        if (ret != 0)
+            return ret;
+        byte = reinterpret_cast<char *>(mPkt.data);
+        size = mPkt.hdr.payloadSize;
+    } else {
+        byte = reinterpret_cast<char *>(buf.data());
+        size = buf.size();
     }
 
-    ret = recvPkt();
-    if (ret != 0)
-        return ret;
-
     info.clear();
-    char *byte = reinterpret_cast<char *>(mPkt.data);
-    for(uint i = 0; i < mPkt.hdr.payloadSize;)
+    for(uint i = 0; i < size;)
     {
         char key = byte[i++];
         uint8_t len = byte[i++];
@@ -505,7 +526,15 @@ int XMC_Flasher::writeReg(unsigned RegOffset, unsigned value) {
 
 bool XMC_Flasher::isXMCReady()
 {
-    bool xmcReady = (XMC_MODE() == XMC_READY);
+    bool xmcReady;
+
+    try {
+        xmcReady = (XMC_MODE() == XMC_READY);
+    } catch (...) {
+        // Xoclv2 driver does not support mmap'ed BAR access from
+        // user space any more.
+        return true;
+    }
 
     if (!xmcReady) {
         auto format = xrt_core::utils::ios_restore(std::cout);
@@ -542,7 +571,7 @@ bool XMC_Flasher::hasSC()
     std::string errmsg;
 
     if (!hasXMC())
-	    return false;
+        return false;
 
     mDev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
     if (!errmsg.empty()) {
@@ -560,7 +589,7 @@ bool XMC_Flasher::fixedSC()
     std::string errmsg;
 
     if (!hasXMC())
-	    return false;
+        return false;
 
     mDev->sysfs_get<unsigned>("xmc", "sc_is_fixed", errmsg, val, 0);
     if (!errmsg.empty()) {
