@@ -196,8 +196,12 @@ static void *p2p_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	if (!blob)
 		return NULL;
 
-	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_XDMA);
-	if (node < 0)
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" XOCL_QDMA);
+	if (node >= 0)
+		return NULL;
+
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" XOCL_QDMA4);
+	if (node >= 0)
 		return NULL;
 
 	p2p_priv = vzalloc(sizeof(*p2p_priv));
