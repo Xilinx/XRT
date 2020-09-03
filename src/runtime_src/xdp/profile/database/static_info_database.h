@@ -505,7 +505,7 @@ namespace xdp {
     inline std::string getCtxInfo(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
-        return std::string();
+        return "";
       return deviceInfo[deviceId]->ctxInfo;
     }
 
