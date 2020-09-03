@@ -28,9 +28,12 @@
 #include <vector>
 #include <locale>
 
+// 3rd Party Library - Include Files
+#include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #include "boost/filesystem.hpp"
 #include <boost/tokenizer.hpp>
+
 #include "xclbin.h"
 #include "core/common/utils.h"
 #include "firmware_image.h"
@@ -342,11 +345,23 @@ DSAInfo::DSAInfo(const std::string& filename, std::string &pr_board, std::string
     partition_name = pr_name;
 
     if (name.empty())
-        name = "xilinx_" + board + "_" + pr_family + "_" + pr_name;
+        name = boost::str(boost::format("xilinx_%s_%s_%s") % board % pr_family % pr_name);
 }
 
 DSAInfo::~DSAInfo()
 {
+}
+
+static std::string
+parse_uuid(std::string id)
+{
+    // convert:
+    // 0xB772B6BBD3BA046439ECE1B7763C69C7 -> b772b6bbd3ba046439ece1b7763c69c7
+    std::string uuid = boost::algorithm::to_lower_copy(id);
+    std::string::size_type i = uuid.find("0x");
+    if (i == 0)
+        uuid.erase(0, 2);
+    return uuid;
 }
 
 bool DSAInfo::matchId(const std::string &id) const 
@@ -355,12 +370,9 @@ bool DSAInfo::matchId(const std::string &id) const
     if (ts != 0 && ts != ULLONG_MAX && ts == timestamp)
         return true;
 
-    if (uuids.size() > 0)
-    {
-        std::string uuid = boost::algorithm::to_lower_copy(id);
-        std::string::size_type i = uuid.find("0x");
-        if (i == 0)
-            uuid.erase(0, 2);
+    if (uuids.empty()) {
+        const std::string uuid = parse_uuid(id);
+
         if (!strncmp(uuids[0].c_str(), uuid.c_str(), uuid.length()))
             return true;
     }
@@ -370,21 +382,20 @@ bool DSAInfo::matchId(const std::string &id) const
 
 bool DSAInfo::matchIntId(std::string &id) const
 {
-    uint64_t ts = strtoull(id.c_str(), nullptr, 0);
+    uint64_t ts = strtoull(id.c_str(), nullptr, 0); //get timestamp
+    const std::string uuid = parse_uuid(id); //get hex UUID
 
-    if (uuids.size() > 1)
-    {
-        std::string uuid = boost::algorithm::to_lower_copy(id);
-        std::string::size_type i = uuid.find("0x");
-        if (i == 0)
-            uuid.erase(0, 2);
-        for(unsigned int j = 1; j < uuids.size(); j++)
-        {
+    if (uuids.size() > 1) {
+        for(unsigned int j = 1; j < uuids.size(); j++) {
+            
+            //Check 1: check if passed in id matches UUID
             if (!strncmp(uuids[j].c_str(), uuid.c_str(), uuid.length()))
                 return true;
+            
+            //Check 2: check if passed in ID macthes the timestamp 
             uint64_t int_ts = 0;
             uuid2ts(uuids[j], int_ts);
-	    if (int_ts == ts)
+	        if (int_ts == ts)
                 return true;
         }
     }
@@ -403,18 +414,6 @@ bool DSAInfo::matchId(DSAInfo& dsa) const
     else if (uuids[0].compare(dsa.uuids[0]) == 0)
     {
         return true;
-    }
-    return false;
-}
-
-
-
-static bool
-is_duplicate(const std::vector<DSAInfo>& dsa_list, const DSAInfo& dsa)
-{
-    for(auto const& x : dsa_list) {
-        if(x.file.compare(dsa.file) == 0)
-            return true;
     }
     return false;
 }
@@ -439,13 +438,11 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
     }
 
     // for 2RP
-    boost::filesystem::path lin_2rp(FORMATTED_FW_DIR);
-    boost::filesystem::path win_2rp(FORMATTED_FW_WIN_DIR);
 	boost::filesystem::path formatted_fw_dir;
-	if (boost::filesystem::is_directory(lin_2rp)) {
-		formatted_fw_dir = lin_2rp;
-	} else if (boost::filesystem::is_directory(win_2rp)) {
-		formatted_fw_dir = win_2rp;
+	if (boost::filesystem::is_directory(boost::filesystem::path(FORMATTED_FW_DIR))) {
+		formatted_fw_dir = FORMATTED_FW_DIR;
+	} else if (boost::filesystem::is_directory(boost::filesystem::path(FORMATTED_FW_WIN_DIR))) {
+		formatted_fw_dir = FORMATTED_FW_WIN_DIR;
 	} else {
 		return installedDSA;
 	}
@@ -460,7 +457,17 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
         if ((tokens.back().compare(XSABIN_FILE_SUFFIX) == 0)
             || (tokens.back().compare(DSABIN_FILE_SUFFIX) == 0)) {
             DSAInfo dsa(name);
-            if(!is_duplicate(installedDSA, dsa))
+            //check if the dsa already exists in the lists
+            auto is_duplicate = [installedDSA, dsa] () 
+            {
+                for(auto const& x : installedDSA) {
+                if(x.file.compare(dsa.file) == 0)
+                    return true;
+                }
+                return false;
+            };
+            
+            if(!is_duplicate())
                 installedDSA.push_back(dsa);
         }
         else if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str()))) {

@@ -181,9 +181,9 @@ void
 system_linux::
 program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const 
 {
-  unsigned int ret = buffer.size();
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = dev->file_open("icap", O_WRONLY);
+    unsigned int ret = buffer.size();
     ret = write(fd.get(), buffer.data(), buffer.size());
     if (ret != buffer.size())
       throw xrt_core::error("Write plp to icap subdev failed");
@@ -196,20 +196,20 @@ program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const
     auto value = xrt_core::query::rp_program_status::value_type(1);
     xrt_core::device_update<xrt_core::query::rp_program_status>(dev.get(), value);
   } catch (const xrt_core::error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    throw xrt_core::error(e.what());
   }
 
   // asynchronously check if the download is complete
-  const static int program_timeout = 60;
+  const static int program_timeout_sec = 60;
   bool is_complete = false;
-  int retry = 0;
-  while (!is_complete && retry < program_timeout) {
+  int retry_count = 0;
+  while (!is_complete && retry_count < program_timeout_sec) {
     is_complete = xrt_core::query::rp_program_status::to_bool(xrt_core::device_query<xrt_core::query::rp_program_status>(dev));
-    if (retry == program_timeout)
+    if (retry_count == program_timeout_sec)
       throw xrt_core::error("PLP programmming timed out");
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    retry++;
+    retry_count++;
   }
 }
 

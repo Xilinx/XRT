@@ -1859,7 +1859,7 @@ struct flash_bar_offset : request
 
 struct rp_program_status : request
 {
-  using result_type = uint32_t;  // get value type
+  using result_type = uint32_t;
   using value_type = uint32_t;   // put value type
   static const key_type key = key_type::rp_program_status;
 
@@ -1872,8 +1872,7 @@ struct rp_program_status : request
   static bool
   to_bool(const result_type& value)
   {
-    return (value != 0)
-      ? false : true;
+    return (value != 0) ? false : true;
   }
 };
 

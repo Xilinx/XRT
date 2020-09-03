@@ -398,10 +398,12 @@ program_plp(std::shared_ptr<xrt_core::device> dev, const std::string& partition)
   if (!stream.is_open())
     throw xrt_core::error(boost::str(boost::format("Cannot open %s") % partition));
 
+  //size of the stream
   stream.seekg(0, stream.end);
   int total_size = static_cast<int>(stream.tellg());
   stream.seekg(0, stream.beg);
 
+  //copy stream into a vector
   std::vector<char> buffer(total_size);
   stream.read(buffer.data(), total_size);
 
@@ -618,21 +620,25 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       }
     }
 
+    if (available_partitions.empty())
+      throw xrt_core::error("No matching partition found");
+
     if (available_partitions.size() > 1) {
-      std::stringstream err;
-      err << "Found duplicated partitions, please specify the entire uuid\n";
+      std::stringstream errmsg;
+      errmsg << "Multiple partitions found with the same name. Please specify the UUID\n";
       for (const auto& d : available_partitions)
-        err << boost::format("  - %s [0x%x]\n") % d.name % d.timestamp;
-      throw xrt_core::error(err.str());
-    } else if (available_partitions.size() == 0)
-        throw xrt_core::error("No matching partition found");
+        errmsg << boost::format("  - %s [0x%x]\n") % d.name % d.timestamp;
+      throw xrt_core::error(errmsg.str());
+    }
 
     DSAInfo dsa(available_partitions.front());
     //TO_DO: add a report for plp before asking permission to proceed. Replace following 2 lines
     std::cout << "Programming PLP on Card [" << flasher.sGetDBDF() << "]..." << std::endl;
     std::cout << "Partition file: " << dsa.file << std::endl;
+    
     //ask user's permission
-    for (std::string uuid : dsa.uuids) {
+    for (const auto& uuid : dsa.uuids) {
+      //check if plp is compatible with the installed blp
       if (xrt_core::device_query<xrt_core::query::interface_uuids>(dev).front().compare(uuid) == 0) {
         program_plp(dev, dsa.file);
         return;
