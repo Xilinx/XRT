@@ -128,9 +128,6 @@ namespace xdp {
       bool isRead, uint64_t totalBytes, uint64_t totalTranx, double totalTxTimeMsec,
       double totalTxLatencyMsec, double maxTransferRateMBps) const;
     void writeDeviceTransferSummary(ProfileWriterI* writer, bool isRead) const;
-
-    void writeAcceleratorSummary(ProfileWriterI* writer) const;
-    void writeTopHardwareSummary(ProfileWriterI* writer) const;
     void writeTopKernelSummary(ProfileWriterI* writer) const;
     void writeTopDataTransferSummary(ProfileWriterI* writer, bool isRead) const;
     void writeTopDeviceTransferSummary(ProfileWriterI* writer, bool isRead) const;
