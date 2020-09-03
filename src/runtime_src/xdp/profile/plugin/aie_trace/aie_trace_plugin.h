@@ -21,8 +21,22 @@
 
 namespace xdp {
 
+  class DeviceIntf;
+  class AIETraceOffload;
+  class AIETraceLogger;
+
   class AieTracePlugin : public XDPPlugin
   {
+
+    private:
+      std::vector<void*> deviceHandles;
+      std::map<uint32_t, void*> deviceIdToHandle;
+
+      typedef std::tuple<AIETraceOffload*, 
+                         AIETraceLogger*,
+                         DeviceIntf*> AIEData;
+
+      std::map<uint32_t, AIEData>  aieOffloaders;
 
     public:
       XDP_EXPORT

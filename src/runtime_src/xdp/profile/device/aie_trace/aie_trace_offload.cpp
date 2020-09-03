@@ -16,12 +16,12 @@
 
 #define XDP_SOURCE
 
-#include<iostream>
-
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/aie_trace/aie_trace_logger.h"
+
+#include "xdp/profile/database/database.h"
 
 // Default dma chunk size
 //#define CHUNK_SZ (MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE)
@@ -43,8 +43,6 @@ AIETraceOffload::AIETraceOffload(DeviceIntf* dInt,
   if(numStream == 1)
     return;
 
-  std::cout << " in AIETraceOffload a :: " << a << std::endl;
-
   bufAllocSz = (totalSz / numStream) & 0xffffffffffffff00;
 }
 
@@ -57,8 +55,13 @@ bool AIETraceOffload::initReadTrace()
   buffers.clear();
   buffers.resize(numStream);
   uint64_t i = 0;
+  uint8_t  memIndex = 0;
+  if(isPLIO) {
+    memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
+  } else {
+  }
   for(auto b : buffers) {
-    b.boHandle = deviceIntf->allocTraceBuf(bufAllocSz, 1 /*deviceIntf->getAIETs2mmMemIndex*/);
+    b.boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
     if(!b.boHandle) {
       return false;
     }
@@ -68,6 +71,8 @@ bool AIETraceOffload::initReadTrace()
     if(isPLIO) {
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i);
     } else {
+      VPDatabase* db = VPDatabase::Instace();
+      TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 		// XAIEDma_ShimSetBDAddr
     }
     ++i;
