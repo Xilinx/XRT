@@ -111,7 +111,16 @@ static int cu_probe(struct platform_device *pdev)
 	xcu->base.dev = XDEV2DEV(xdev);
 
 	info = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	BUG_ON(!info);
 	memcpy(&xcu->base.info, info, sizeof(struct xrt_cu_info));
+
+	switch (info->protocol) {
+	case CTRL_HS:
+	case CTRL_CHAIN:
+		xcu->base.info.model = XCU_HLS;
+	default:
+		return -EINVAL;
+	}
 
 	krnl_info = xocl_query_kernel(xdev, info->kname);
 	if (!krnl_info) {
