@@ -352,7 +352,6 @@ DSAInfo::~DSAInfo()
 {
 }
 
-<<<<<<< HEAD
 static std::string
 parse_uuid(std::string id)
 {
@@ -366,9 +365,6 @@ parse_uuid(std::string id)
 }
 
 bool DSAInfo::matchId(const std::string &id) const 
-=======
-bool DSAInfo::matchId(const std::string &id) const
->>>>>>> 3ebdd4bcd09a982db8c6340c62241a2fbee734a1
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
     if (ts != 0 && ts != ULLONG_MAX && ts == timestamp)
