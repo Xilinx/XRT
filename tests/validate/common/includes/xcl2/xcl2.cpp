@@ -56,11 +56,12 @@ std::vector<unsigned char>
 read_binary_file(const std::string &xclbin_file_name) {
   std::cout << "INFO: Reading " << xclbin_file_name << std::endl;
   FILE *fp;
-  if ((fp = fopen(xclbin_file_name.c_str(), "r")) == NULL) {
+  if ((fp = fopen(xclbin_file_name.c_str(), "r")) == nullptr) {
     printf("ERROR: %s xclbin not available please build\n",
            xclbin_file_name.c_str());
     exit(EXIT_FAILURE);
   }
+  fclose(fp);
   // Loading XCL Bin into char buffer
   std::cout << "Loading: '" << xclbin_file_name.c_str() << "'\n";
   std::ifstream bin_file(xclbin_file_name.c_str(), std::ifstream::binary);
@@ -76,7 +77,7 @@ read_binary_file(const std::string &xclbin_file_name) {
 bool is_emulation() {
   bool ret = false;
   char *xcl_mode = getenv("XCL_EMULATION_MODE");
-  if (xcl_mode != NULL) {
+  if (xcl_mode != nullptr) {
     ret = true;
   }
   return ret;
@@ -85,7 +86,7 @@ bool is_emulation() {
 bool is_hw_emulation() {
   bool ret = false;
   char *xcl_mode = getenv("XCL_EMULATION_MODE");
-  if ((xcl_mode != NULL) && !strcmp(xcl_mode, "hw_emu")) {
+  if ((xcl_mode != nullptr) && !strcmp(xcl_mode, "hw_emu")) {
     ret = true;
   }
   return ret;
@@ -94,7 +95,7 @@ bool is_hw_emulation() {
 bool is_xpr_device(const char *device_name) {
   const char *output = strstr(device_name, "xpr");
 
-  if (output == NULL) {
+  if (output == nullptr) {
     return false;
   } else {
     return true;
