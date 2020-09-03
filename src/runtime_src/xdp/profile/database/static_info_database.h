@@ -260,6 +260,9 @@ namespace xdp {
      */
     std::map<uint64_t, DeviceInfo*> deviceInfo;
 
+    // DeviceIntf*
+    std::map<uint64_t, void*> deviceIntf;
+
     // Static info can be accessed via any host thread
     std::mutex dbLock ;
 
@@ -315,6 +318,19 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return std::string(""); 
       return deviceInfo[deviceId]->platformInfo.deviceName; 
+    }
+
+    void setDeviceIntf(uint64_t deviceId, void* devIntf)
+    {
+      if(deviceIntf.find(deviceId) == deviceIntf.end())
+        return; 
+      deviceIntf[deviceId] = devIntf;
+    }
+    void* getDeviceIntf(uint64_t deviceId)
+    {
+      if(deviceIntf.find(deviceId) == deviceIntf.end())
+        return nullptr;
+      return deviceIntf[deviceId]; 
     }
 
     void setKDMACount(uint64_t deviceId, uint64_t num)
