@@ -20,7 +20,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #define TYPESIZE 512
-const size_t typesize = TYPESIZE;
+const double typesize = TYPESIZE;
 
 
 double getMicroTime() {
@@ -35,20 +35,27 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
+  int NUM_KERNEL ;                                                           
   std::string path = argv[1];
   std::string filename = "/slavebridge.json";
   std::string platform_json = path+filename;
-  boost::property_tree::ptree loadPtreeRoot;                                                    
 
-  boost::property_tree::read_json(platform_json, loadPtreeRoot);
-  boost::property_tree::ptree temp ;                                                            
-  int NUM_KERNEL ;                                                           
+  try{
+      boost::property_tree::ptree loadPtreeRoot;                                                    
+      boost::property_tree::read_json(platform_json, loadPtreeRoot);
+      boost::property_tree::ptree temp ;                                                            
   
-  temp = loadPtreeRoot.get_child("total_banks");
+      temp = loadPtreeRoot.get_child("total_banks");
 
-  NUM_KERNEL =  temp.get_value<int>();  
+      NUM_KERNEL =  temp.get_value<int>();  
+  } catch (const std::exception & e) {
+      std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
+      msg += e.what();
+      msg += ").";
+      throw std::runtime_error(msg);
+    }
 
-  size_t DATA_SIZE = 1024 * 1024 * 16; // 16 MB
+  double DATA_SIZE = 1024 * 1024 * 16; // 16 MB
   std::string b_file = "/slavebridge.xclbin";
   std::string binaryFile = path+b_file;
   size_t vector_size_bytes = sizeof(char) * DATA_SIZE;

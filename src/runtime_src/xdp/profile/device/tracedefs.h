@@ -23,6 +23,7 @@
 
 // Property bit masks
 #define XCL_PERF_MON_TRACE_MASK 0x1
+#define TS2MM_AIE_TRACE_MASK    0x1
 
 // Offsets
 #define TS2MM_COUNT_LOW         0x10

@@ -68,10 +68,7 @@ namespace xdp {
     void writeTopKernelTransferSummary(ProfileWriterI* writer) const;
     void writeTopDataTransferSummary(ProfileWriterI* writer, bool isRead) const;
     void writeTopDeviceTransferSummary(ProfileWriterI* writer, bool isRead) const;
-    // Unified summaries
-    void writeAcceleratorSummary(ProfileWriterI* writer) const;
-    void writeTopHardwareSummary(ProfileWriterI* writer) const;
-
+    
   private:
     std::mutex mLogMutex;
     ProfileCounters* mProfileCounters;

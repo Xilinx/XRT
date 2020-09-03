@@ -164,11 +164,6 @@ namespace xdp {
     void writeTopDataTransferSummary(ProfileWriterI* writer, bool isRead) const;
     XDP_EXPORT
     void writeTopDeviceTransferSummary(ProfileWriterI* writer, bool isRead) const;
-    // Unified summaries
-    XDP_EXPORT
-    void writeAcceleratorSummary(ProfileWriterI* writer) const;
-    XDP_EXPORT
-    void writeTopHardwareSummary(ProfileWriterI* writer) const;
 
   public:
     // External access to logger

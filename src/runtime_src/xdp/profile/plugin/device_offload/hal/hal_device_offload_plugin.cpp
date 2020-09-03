@@ -96,6 +96,8 @@ namespace xdp {
       db->unregisterPlugin(this) ;
     }
 
+    clearOffloaders();
+#if 0
     for (auto o : offloaders)
     {
       auto offloader = std::get<0>(o.second) ;
@@ -106,6 +108,7 @@ namespace xdp {
       delete logger ;
       delete intf ;
     }
+#endif
 
     for (auto h : deviceHandles)
     {
@@ -156,7 +159,9 @@ namespace xdp {
 
     uint64_t deviceId = db->addDevice(path) ;
     void* ownedHandle = deviceIdToHandle[deviceId] ;
-    
+  
+    clearOffloader(deviceId); 
+#if 0 
     if (offloaders.find(deviceId) != offloaders.end())
     {
       // Clean up the old offloader.  It has already been flushed.
@@ -170,6 +175,7 @@ namespace xdp {
       delete logger ;
       delete intf ;
     }
+#endif
     
     // Update the static database with all the information that
     //  will be needed later
@@ -194,7 +200,9 @@ namespace xdp {
     {
       // Read debug IP layout could throw an exception
       delete devInterface ;
+      return;
     }
+    (db->getStaticInfo()).setDeviceIntf(deviceId, devInterface);
 
     configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;
