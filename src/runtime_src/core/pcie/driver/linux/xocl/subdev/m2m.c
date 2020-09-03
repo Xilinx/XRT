@@ -231,6 +231,7 @@ static int m2m_probe(struct platform_device *pdev)
 	mutex_init(&m2m->m2m_lock);
 
 	/* init m2m cu based on iores of kdma */
+	m2m->m2m_cu.dev = XDEV2DEV(xdev);
 	m2m->m2m_cu.res = vzalloc(sizeof (struct resource *) * 1);
 	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
 	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {

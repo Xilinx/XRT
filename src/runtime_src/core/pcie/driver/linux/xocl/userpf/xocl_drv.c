@@ -1584,8 +1584,6 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_trace_s2mm,
 	xocl_fini_mem_hbm,
 	xocl_fini_cu,
-	/* Remove intc sub-device after CU/ERT sub-devices */
-	xocl_fini_intc,
 	xocl_fini_addr_translator,
 	xocl_fini_p2p,
 	xocl_fini_spc,
@@ -1594,6 +1592,8 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_ert_user,
 	xocl_fini_ert_30,
 	xocl_fini_m2m,
+	/* Remove intc sub-device after CU/ERT sub-devices */
+	xocl_fini_intc,
 };
 
 static int __init xocl_init(void)
