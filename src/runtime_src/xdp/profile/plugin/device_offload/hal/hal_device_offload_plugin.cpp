@@ -200,7 +200,9 @@ namespace xdp {
     {
       // Read debug IP layout could throw an exception
       delete devInterface ;
+      return;
     }
+    (db->getStaticInfo()).setDeviceIntf(deviceId, devInterface);
 
     configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;
