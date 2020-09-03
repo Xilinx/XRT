@@ -867,7 +867,7 @@ DeviceIntf::~DeviceIntf()
       return;
 
     uint32_t i = 0;
-    for(auto mon: amList) {
+    for(auto mon: mAmList) {
       mon->configureFa(ipConfig[i++]);
     }
   }
