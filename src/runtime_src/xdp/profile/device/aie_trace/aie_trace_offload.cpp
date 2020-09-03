@@ -18,12 +18,17 @@
 
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
-#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
+#include "xdp/profile/device/aie_trace/aie_trace_logger.h"
+
+#ifdef XRT_ENABLE_AIE
+#include "core/edge/user/aie/aie.h"
+#endif
 
 // Default dma chunk size
-//#define CHUNK_SZ (MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE)
+#define CHUNK_SZ (MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE)
 
 namespace xdp {
 
@@ -73,9 +78,19 @@ bool AIETraceOffload::initReadTrace()
     if(isPLIO) {
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i);
     } else {
-      VPDatabase* db = VPDatabase::Instace();
+#ifdef XRT_ENABLE_AIE
+      VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
-		// XAIEDma_ShimSetBDAddr
+
+      ZYNQ::shim *drv = ZYNQ::shim::handleCheck(deviceHandle);
+      if(!drv) {
+        return false;
+      }
+      zynqaie::Aie* aieObj = drv->getAieArray();
+
+      ShimDMA* shimDmaObj = &(aieObj->shim_dma[traceGMIO->shimColumn]);
+      XAie_DmaSetAddrLen(&(shimDmaObj->desc), bufAddr, bufAllocSz);
+#endif
     }
     ++i;
   }
