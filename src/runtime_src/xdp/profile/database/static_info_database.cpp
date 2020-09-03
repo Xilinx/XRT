@@ -262,6 +262,9 @@ namespace xdp {
         devInfo->cus[connctn->m_ip_layout_index] = cu;
         if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
           cu->setDataflowEnabled(true);
+        } else
+        if((ipData->properties >> IP_CONTROL_SHIFT) & FAST_ADAPTER) {
+          cu->setFaEnabled(true);
         }
       } else {
         cu = devInfo->cus[connctn->m_ip_layout_index];
