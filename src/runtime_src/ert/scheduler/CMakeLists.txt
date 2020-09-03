@@ -69,8 +69,8 @@ add_custom_command(
 add_custom_command(
  OUTPUT v30/sched.bin
  COMMAND ${CMAKE_COMMAND} -E make_directory v30
- COMMAND $(MAKE) DEFINES="-DERT_BUILD_V30" BLDDIR=${CMAKE_CURRENT_BINARY_DIR}/v30 SRCDIR=${CMAKE_CURRENT_SOURCE_DIR} -f ${CMAKE_CURRENT_SOURCE_DIR}/scheduler.mk ert
- DEPENDS v30/bsp.extracted ${CMAKE_CURRENT_SOURCE_DIR}/scheduler.cpp
+ COMMAND $(MAKE) DEFINES="-DERT_BUILD_V30" BLDDIR=${CMAKE_CURRENT_BINARY_DIR}/v30 SRCDIR=${CMAKE_CURRENT_SOURCE_DIR} -f ${CMAKE_CURRENT_SOURCE_DIR}/scheduler_v30.mk ert
+ DEPENDS v30/bsp.extracted ${CMAKE_CURRENT_SOURCE_DIR}/scheduler_v30.cpp
  COMMENT "Generating binary for ERT scheduler"
 )
 

@@ -110,6 +110,7 @@ struct drm_zocl_dev {
 	unsigned int		 num_mem;
 	struct zocl_mem		*mem;
 	struct mutex		 mm_lock;
+	struct mutex		 aie_lock;
 
 	struct list_head	 ctx_list;
 
@@ -145,6 +146,7 @@ struct drm_zocl_dev {
 	int			 ksize;
 	char			*kernels;
 	struct zocl_error	zdev_error;
+	struct zocl_aie		*aie;
 };
 
 #endif

@@ -16,8 +16,9 @@ Prerequisite
 ~~~~~~~~~~~~
 
 Before start to build Linux image, make sure your have:
-        1. PetaLinux tool installed and setup;
-        2. Vivado exported expandable XSA for your platform;
+
+1. PetaLinux tool installed and setup;
+2. Vivado exported expandable XSA for your platform;
 
 The PetaLinux tool can be downloaded from xilinx.com.
 

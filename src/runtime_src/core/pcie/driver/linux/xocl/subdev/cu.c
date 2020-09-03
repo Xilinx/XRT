@@ -79,6 +79,18 @@ static const struct attribute_group cu_attrgroup = {
 	.attrs = cu_attrs,
 };
 
+irqreturn_t cu_isr(int irq, void *arg)
+{
+	struct xocl_cu *xcu = arg;
+
+	xrt_cu_check(&xcu->base);
+	xrt_cu_clear_intr(&xcu->base);
+
+	up(&xcu->base.sem_cu);
+
+	return IRQ_HANDLED;
+}
+
 static int cu_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -159,6 +171,10 @@ static int cu_probe(struct platform_device *pdev)
 		goto err2;
 	}
 
+	XCU_INFO(xcu, "Register CU interrupt id %d", info->intr_id);
+	xocl_intc_cu_request(xdev, info->intr_id, cu_isr, xcu);
+	xocl_intc_cu_config(xdev, info->intr_id, true);
+
 	if (sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup))
 		XCU_ERR(xcu, "Not able to create CU sysfs group");
 
@@ -189,8 +205,12 @@ static int cu_remove(struct platform_device *pdev)
 		return -EINVAL;
 
 	(void) sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
-
 	info = &xcu->base.info;
+
+	XCU_INFO(xcu, "Unregister CU interrupt id %d", info->intr_id);
+	xocl_intc_cu_config(xdev, info->intr_id, false);
+	xocl_intc_cu_request(xdev, info->intr_id, NULL, NULL);
+
 	switch (info->model) {
 	case XCU_HLS:
 		xrt_cu_hls_fini(&xcu->base);

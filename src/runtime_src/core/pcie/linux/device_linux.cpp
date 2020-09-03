@@ -275,7 +275,7 @@ initialize_query_table()
   emplace_sysfs_getput<query::xmc_scaling_enabled>      ("xmc", "scaling_enabled");
   emplace_sysfs_getput<query::xmc_scaling_override>     ("xmc", "scaling_threshold_power_override");
   emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
-  emplace_sysfs_get<query::m2m>                         ("", "m2m");
+  emplace_sysfs_get<query::m2m>                         ("m2m", "");
   emplace_sysfs_get<query::nodma>                       ("", "nodma");
   emplace_sysfs_get<query::dna_serial_num>              ("dna", "dna");
   emplace_sysfs_get<query::p2p_config>                  ("p2p", "config");
@@ -350,6 +350,7 @@ initialize_query_table()
   emplace_sysfs_get<query::mig_ecc_ue_ffa>              ("mig", "ecc_ue_ffa");
   emplace_sysfs_get<query::flash_bar_offset>            ("flash", "bar_off");
   emplace_sysfs_get<query::is_mfg>                      ("", "mfg");
+  emplace_sysfs_get<query::mfg_ver>                     ("", "mfg_ver");
   emplace_sysfs_get<query::is_ready>                    ("", "ready");
   emplace_sysfs_get<query::f_flash_type>                ("flash", "flash_type");
   emplace_sysfs_get<query::flash_type>                  ("", "flash_type");

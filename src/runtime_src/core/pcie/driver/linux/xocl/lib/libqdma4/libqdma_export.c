@@ -39,7 +39,7 @@
 #include "qdma_mbox.h"
 #include "qdma_platform.h"
 
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 #include "qdma_debugfs_queue.h"
 
 /** debugfs root */
@@ -482,7 +482,7 @@ int qdma4_device_capabilities_info(unsigned long dev_hndl,
 #ifndef __QDMA_VF__
 /*****************************************************************************/
 /**
- * qdma_config_reg_dump() - display a config registers in a string buffer
+ * qdma4_config_reg_dump() - display a config registers in a string buffer
  *
  * @param[in]	dev_hndl:	dev_hndl returned from qdma_device_open()
  * @param[in]	buflen:		length of the input buffer
@@ -698,7 +698,7 @@ int qdma4_queue_dump(unsigned long dev_hndl, unsigned long id, char *buf,
 
 /*****************************************************************************/
 /**
- * qdma_queue_dump_desc() - display a queue's descriptor ring from index start
+ * qdma4_queue_dump_desc() - display a queue's descriptor ring from index start
  *							~ end in a string buffer
  *
  * @param[in]	dev_hndl:	dev_hndl returned from qdma_device_open()
@@ -859,7 +859,7 @@ int qdma4_queue_remove(unsigned long dev_hndl, unsigned long id, char *buf,
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	struct qdma_descq *descq;
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 	struct qdma_descq *pair_descq;
 #endif
 	struct qdma_dev *qdev;
@@ -881,7 +881,7 @@ int qdma4_queue_remove(unsigned long dev_hndl, unsigned long id, char *buf,
 	}
 
 	descq = qdma4_device_get_descq_by_id(xdev, id, buf, buflen, 1);
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 	pair_descq = qdma_device_get_pair_descq_by_id(xdev, id, buf, buflen, 1);
 #endif
 
@@ -915,7 +915,7 @@ int qdma4_queue_remove(unsigned long dev_hndl, unsigned long id, char *buf,
 		return -EINVAL;
 	}
 
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 	if (pair_descq)
 		/** if pair_descq is not NULL, it means the queue
 		 * is in ENABLED state
@@ -1309,7 +1309,7 @@ int qdma4_queue_add(unsigned long dev_hndl, struct qdma_queue_conf *qconf,
 	unsigned int qcnt;
 	struct qdma_descq *descq;
 	struct qdma_dev *qdev;
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 	struct qdma_descq *pairq;
 #endif
 #ifdef __QDMA_VF__
@@ -1606,7 +1606,7 @@ int qdma4_queue_add(unsigned long dev_hndl, struct qdma_queue_conf *qconf,
 	descq->q_hndl = *qhndl;
 
 
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 	if (qconf->q_type != Q_CMPT) {
 		if (qconf->q_type == Q_H2C)
 			pairq = qdev->c2h_descq + qconf->qidx;
@@ -2036,6 +2036,7 @@ int qdma4_intr_ring_dump(unsigned long dev_hndl, unsigned int vector_idx,
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	union qdma_intr_ring *ring_entry;
 	struct intr_coal_conf *coal_entry;
+	struct qdma_intr_cidx_reg_info *intr_cidx_info;
 	char *cur = buf;
 	char * const end = buf + buflen;
 	int counter = 0;
@@ -2095,7 +2096,17 @@ int qdma4_intr_ring_dump(unsigned long dev_hndl, unsigned int vector_idx,
 
 	/** get the intr entry based on vector index */
 	coal_entry = xdev->intr_coal_list + (vector_idx - xdev->dvec_start_idx);
-
+	intr_cidx_info = &coal_entry->intr_cidx_info;
+	cur += snprintf(cur, end - cur,
+			"intr_ring: msix[%d].vector=%d, msix[%d].entry=%d, "
+			"rngsize=%d, cidx = %d\n",
+			vector_idx, xdev->msix[vector_idx].vector, vector_idx,
+			xdev->msix[vector_idx].entry,
+			coal_entry->intr_rng_num_entries,
+			intr_cidx_info->sw_cidx);
+	if (cur >= end)
+		goto handle_truncation;
+	
 	/** make sure that intr ring entry indexes
 	 *  given are with in the range
 	 */
@@ -2696,7 +2707,7 @@ int libqdma4_init(unsigned int num_threads, void *debugfs_root)
 			       num_threads);
 		return ret;
 	}
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 
 	if (debugfs_root) {
 		qdma_debugfs_root = debugfs_root;
@@ -2722,7 +2733,7 @@ int libqdma4_init(unsigned int num_threads, void *debugfs_root)
  *****************************************************************************/
 void libqdma4_exit(void)
 {
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 	if (qdma_debufs_cleanup)
 		qdma4_debugfs_exit(qdma_debugfs_root);
 #endif

@@ -31,12 +31,13 @@
  *
  * Based on current hardware implementation, the driver supports 4 PCIe MSI-x
  * interrupts. For each interrupt, there are 32 different sources.
+ *
  * If current interrupt mode is ERT.
  * To determine the interrupt sources, read ERT_STATUS_REGISTER_ADDR and check
  * which bit is set.
  *
  * If current interrupt mode is CU.
- * (TBD)...
+ * To determin the interrupt source, read ISR and check which bit is set.
  */
 
 extern int kds_mode;
@@ -50,6 +51,34 @@ static u32 eisr[4] = {
 	ERT_STATUS_REGISTER_ADDR1 - ERT_STATUS_REGISTER_ADDR,
 	ERT_STATUS_REGISTER_ADDR2 - ERT_STATUS_REGISTER_ADDR,
 	ERT_STATUS_REGISTER_ADDR3 - ERT_STATUS_REGISTER_ADDR
+};
+
+/* AXI INTC register layout, based on PG099 */
+struct axi_intc {
+	u32	isr;
+	u32	ipr;
+	u32	ier;
+	u32	iar;
+	u32	sie;
+	u32	cie;
+	u32	ivr;
+	u32	mer;
+} __attribute__((packed));
+#define reg_addr(base, reg) \
+	&(((struct axi_intc *)base)->reg)
+
+static char *res_cu_intc[INTR_NUM] = {
+	RESNAME_INTC_CU_00,
+	RESNAME_INTC_CU_01,
+	RESNAME_INTC_CU_02,
+	RESNAME_INTC_CU_03
+};
+
+static char *csr_intr_alias[INTR_NUM] = {
+	ERT_SCHED_INTR_ALIAS_00,
+	ERT_SCHED_INTR_ALIAS_01,
+	ERT_SCHED_INTR_ALIAS_02,
+	ERT_SCHED_INTR_ALIAS_03
 };
 
 struct intr_info {
@@ -76,11 +105,12 @@ struct intr_metadata {
  */
 struct xocl_intc {
 	struct platform_device	*pdev;
-	struct intr_metadata	 data[INTR_NUM];
-	u32			 data_num;
+	u32			 mode;
+	/* ERT to host interrupt */
+	struct intr_metadata	 ert[INTR_NUM];
 	void __iomem		*csr_base;
-	u32			 csr_size;
-	/* TODO: support CU to host interrupt after we got hardware spec */
+	/* CU to host interrupt */
+	struct intr_metadata	 cu[INTR_NUM];
 };
 
 /**
@@ -115,36 +145,88 @@ irqreturn_t intc_csr_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-static int request_intr(struct platform_device *pdev, int intr_id,
+/**
+ * intc_cu_isr() - Handler of CU to host interrupts
+ */
+irqreturn_t intc_cu_isr(int irq, void *arg)
+{
+	struct intr_metadata *data = arg;
+	u32 orig_pending;
+	u32 pending;
+	u32 index;
+
+	/* AXI intc IP supports multiple ways to handle interrupt
+	 * Read ISR and set IAR is the one that use least register access.
+	 */
+	pending = ioread32(reg_addr(data->isr, isr));
+	orig_pending = pending;
+
+	/* Iterate all interrupt sources. If it is set, handle it */
+	for (index = 0; pending != 0; index++) {
+		struct intr_info *info;
+
+		if (!(pending & (1 << index)))
+			continue;
+
+		info = data->info[index];
+		/* If a bit is set but without handler, it probably is
+		 * a bug on hardware or ERT firmware.
+		 */
+		if (info && info->enabled && info->handler)
+			info->handler(info->intr_id, info->arg);
+
+		pending ^= 1 << index;
+	};
+
+	iowrite32(orig_pending, reg_addr(data->isr, iar));
+
+	return IRQ_HANDLED;
+}
+
+static char *intc_mode(struct xocl_intc *intc)
+{
+	switch (intc->mode) {
+	case ERT_INTR:	return "ERT interrupt";
+	case CU_INTR:	return "CU interrupt";
+	default:	return "unknown";
+	}
+}
+
+static int request_intr(struct platform_device *pdev, int id,
 			irqreturn_t (*handler)(int irq, void *arg),
-			void *arg)
+			void *arg, int mode)
 {
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
 	struct intr_metadata *data;
 	struct intr_info *info;
-	int data_idx = intr_id / INTR_SRCS;
-	int intr_src = intr_id % INTR_SRCS;
+	int data_idx = id / INTR_SRCS;
+	int intr_src = id % INTR_SRCS;
 
-	if (data_idx >= intc->data_num) {
+	if (data_idx >= INTR_NUM) {
 		INTC_ERR(intc, "Interrupt ID out-of-range");
 		return -EINVAL;
 	}
 
-	data = &intc->data[data_idx];
+	if (mode == ERT_INTR)
+		data = &intc->ert[data_idx];
+	else
+		data = &intc->cu[data_idx];
 
 	if (data->info[intr_src] && handler)
 		return -EBUSY;
 
+	/* register handler */
 	if (handler) {
 		info = vzalloc(sizeof(struct intr_info));
 		info->handler = handler;
-		info->intr_id = intr_id;
+		info->intr_id = id;
 		info->arg = arg;
 		info->enabled = false;
 		data->info[intr_src] = info;
 		return 0;
 	}
 
+	/* unregister handler */
 	if (data->info[intr_src]) {
 		vfree(data->info[intr_src]);
 		data->info[intr_src] = NULL;
@@ -153,21 +235,25 @@ static int request_intr(struct platform_device *pdev, int intr_id,
 	return 0;
 }
 
-static int config_intr(struct platform_device *pdev, int intr_id, bool en)
+static int config_intr(struct platform_device *pdev, int id, bool en, int mode)
 {
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct intr_metadata *data;
 	struct intr_info *info;
-	int data_idx = intr_id / INTR_SRCS;
-	int intr_src = intr_id % INTR_SRCS;
+	int data_idx = id / INTR_SRCS;
+	int intr_src = id % INTR_SRCS;
 
-	if (data_idx >= intc->data_num) {
+	if (data_idx >= INTR_NUM) {
 		INTC_ERR(intc, "Interrupt ID out-of-range");
 		return -EINVAL;
 	}
 
-	data = &intc->data[data_idx];
+	if (mode == ERT_INTR)
+		data = &intc->ert[data_idx];
+	else
+		data = &intc->cu[data_idx];
+
 	info = data->info[intr_src];
 
 	if (!info)
@@ -177,13 +263,24 @@ static int config_intr(struct platform_device *pdev, int intr_id, bool en)
 		return 0;
 
 	info->enabled = en;
+	(en)? data->enabled_cnt++ : data->enabled_cnt--;
 
-	if (en && data->enabled_cnt == 0)
+	if (mode != intc->mode)
+		return 0;
+
+	if (en && data->enabled_cnt == 1)
 		xocl_user_interrupt_config(xdev, data->intr, true);
-	else if (!en && data->enabled_cnt == 1)
+	else if (!en && data->enabled_cnt == 0)
 		xocl_user_interrupt_config(xdev, data->intr, false);
 
-	(en)? data->enabled_cnt++ : data->enabled_cnt--;
+	if (intc->mode == ERT_INTR)
+		return 0;
+
+	/* For CU intc, configure sie/cie register */
+	if (en)
+		iowrite32((1 << intr_src), reg_addr(data->isr, sie));
+	else
+		iowrite32((1 << intr_src), reg_addr(data->isr, cie));
 
 	return 0;
 }
@@ -192,7 +289,7 @@ static int csr_read32(struct platform_device *pdev, u32 off)
 {
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
 
-	WARN_ON(intc->data[off>>2].enabled_cnt > 0);
+	WARN_ON(intc->ert[off>>2].enabled_cnt > 0);
 
 	return ioread32(intc->csr_base + off);
 }
@@ -201,24 +298,196 @@ static void csr_write32(struct platform_device *pdev, u32 val, u32 off)
 {
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
 
-	WARN_ON(intc->data[off>>2].enabled_cnt > 0);
+	WARN_ON(intc->ert[off>>2].enabled_cnt > 0);
 
 	iowrite32(val, intc->csr_base + off);
 }
 
-static int intc_probe(struct platform_device *pdev)
+static int sel_ert_intr(struct platform_device *pdev, int mode)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xocl_intc *intc = NULL;
-	struct resource *res;
+	struct xocl_intc *intc = platform_get_drvdata(pdev);
 	struct intr_metadata *data;
-	void *hdl;
-	u32 irq;
-	int ret;
+	irqreturn_t (*isr_fn)(int, void*);
+	int i, j;
+
+	if (intc->mode == mode)
+		return 0;
+
+	/* Check if all interrupts are disabled in previous mode */
+	for (i = 0; i < INTR_NUM; i++) {
+		data = (mode == CU_INTR) ? &intc->ert[i] : &intc->cu[i];
+		if (data->enabled_cnt)
+			return -EBUSY;
+		xocl_user_interrupt_reg(xdev, data->intr, NULL, NULL);
+	}
+
+	for (i = 0; i < INTR_NUM; i++) {
+		data = (mode == CU_INTR) ? &intc->cu[i] : &intc->ert[i];
+		isr_fn = (mode == CU_INTR) ? intc_cu_isr : intc_csr_isr;
+
+		xocl_user_interrupt_reg(xdev, data->intr, isr_fn, data);
+		xocl_user_interrupt_config(xdev, data->intr, false);
+		if (!data->enabled_cnt)
+			continue;
+
+		xocl_user_interrupt_config(xdev, data->intr, true);
+
+		if (mode == ERT_INTR)
+			continue;
+
+		for (j = 0; j < INTR_SRCS; j++) {
+			if (!data->info[j] || !data->info[j]->enabled)
+				continue;
+
+			iowrite32((1 << j), reg_addr(data->isr, sie));
+		}
+	}
+
+	INTC_INFO(intc, "Switch to %s interrupt mode",
+		  (mode == ERT_INTR)? "ERT" : "CU");
+	intc->mode = mode;
+	return 0;
+}
+
+static inline int
+get_legacy_res(struct platform_device *pdev, struct xocl_intc *intc)
+{
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct intr_metadata *data;
+	struct resource *res;
+	int num_irq;
 	int i;
 
-	if (!kds_mode)
-		goto out;
+	/* There should be 1 IORESOURCE_MEM and 1 IORESOURCE_IRQ */
+	intc->csr_base = xocl_devm_ioremap_res(pdev, 0);
+	if (!intc->csr_base) {
+		INTC_ERR(intc, "Did not get CSR resource");
+		return -EINVAL;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (!res) {
+		INTC_ERR(intc, "Did not get IRQ resource");
+		return -EINVAL;
+	}
+	/* For all PCIe platform, CU/ERT interrupts are contiguous */
+	num_irq = res->end - res->start + 1;
+	if (num_irq != INTR_NUM) {
+		INTC_ERR(intc, "Got %d irqs", num_irq);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < INTR_NUM; i++) {
+		data = &intc->ert[i];
+		data->intr = res->start + i;
+		data->isr = intc->csr_base + eisr[i];
+		xocl_user_interrupt_reg(xdev, data->intr, intc_csr_isr, data);
+		/* disable interrupt */
+		xocl_user_interrupt_config(xdev, data->intr, false);
+	}
+
+	return 0;
+}
+
+/* The ep_ert_sched_00 has 4 irqs. The irq order is related to
+ * the 4 status registers.
+ * But there is no guarantee that the irq resource ordering is
+ * same as the irq ordering in device tree.
+ * Use interrupt alias name is safe.
+ */
+static inline int
+intc_get_csr_irq(struct platform_device *pdev, int index)
+{
+	int i = 0;
+	struct resource *r;
+	char *res_name = RESNAME_ERT_SCHED;
+
+	r = platform_get_resource(pdev, IORESOURCE_IRQ, i);
+
+	while (r) {
+		if (!strncmp(r->name, res_name, strlen(res_name)) &&
+		    strnstr(r->name, csr_intr_alias[index], strlen(r->name)))
+			return r->start;
+		r = platform_get_resource(pdev, IORESOURCE_IRQ, ++i);
+	};
+
+	return -ENXIO;
+}
+
+static inline int
+get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
+{
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct intr_metadata *data;
+	irqreturn_t (*isr_fn)(int, void*);
+	int i;
+
+	/* Resource for ERT interrupts */
+	intc->csr_base = xocl_devm_ioremap_res_byname(pdev, RESNAME_ERT_SCHED);
+	if (!intc->csr_base) {
+		INTC_ERR(intc, "Did not get CSR resource");
+		return -EINVAL;
+	}
+	for (i = 0; i < INTR_NUM; i++) {
+		data = &intc->ert[i];
+		data->intr = intc_get_csr_irq(pdev, i);
+		if (data->intr < 0) {
+			INTC_ERR(intc, "Did not get IRQ resource");
+			return data->intr;
+		}
+		data->isr = intc->csr_base + eisr[i];
+	}
+
+	/* Resource for CU interrupts */
+	for (i = 0; i < INTR_NUM; i++) {
+		data = &intc->cu[i];
+		data->isr = xocl_devm_ioremap_res_byname(pdev, res_cu_intc[i]);
+		if (!data->isr) {
+			INTC_ERR(intc, "Did not get CU INTC resource");
+			return -EINVAL;
+		}
+		/* Set MER to allow hardware interrupt, based on PG099 */
+		iowrite32(0x3, reg_addr(data->isr, mer));
+		/* disable all interrupts */
+		iowrite32(0x0, reg_addr(data->isr, ier));
+
+		data->intr = xocl_get_irq_byname(pdev, res_cu_intc[i]);
+		if (data->intr < 0) {
+			INTC_ERR(intc, "Did not get IRQ resource");
+			return data->intr;
+		}
+		/* ERT/CU interrupt irqs should be the same */
+		if (data->intr != intc->ert[i].intr) {
+			INTC_ERR(intc, "CU and ERT interrupt mismatch");
+			return -EINVAL;
+		}
+	}
+
+	/* Register interrupt handler */
+	for (i = 0; i < INTR_NUM; i++) {
+		if (intc->mode == CU_INTR) {
+			data = &intc->cu[i];
+			isr_fn = intc_cu_isr;
+		} else {
+			data = &intc->ert[i];
+			isr_fn = intc_csr_isr;
+		}
+
+		xocl_user_interrupt_reg(xdev, data->intr, isr_fn, data);
+		/* disable interrupt */
+		xocl_user_interrupt_config(xdev, data->intr, false);
+	}
+
+	return 0;
+}
+
+static int intc_probe(struct platform_device *pdev)
+{
+	struct xocl_intc *intc = NULL;
+	struct resource *res;
+	void *hdl;
+	int ret;
 
 	intc = xocl_drvinst_alloc(&pdev->dev, sizeof(*intc));
 	if (!intc)
@@ -227,43 +496,26 @@ static int intc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, intc);
 	intc->pdev = pdev;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		INTC_ERR(intc, "Did not get CSR resource");
-		ret = -EINVAL;
+	if (!kds_mode)
+		goto out;
+
+	/* Use ERT to host interrupt by default */
+	intc->mode = ERT_INTR;
+
+	/* For non SSv3 platform, there is only 1 IORESOURCE_MEM */
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (res)
+		ret = get_ssv3_res(pdev, intc);
+	else
+		ret = get_legacy_res(pdev, intc);
+	if (ret)
 		goto err;
-	}
-	intc->csr_size = res->end - res->start + 1;
-	intc->csr_base = ioremap_nocache(res->start, intc->csr_size);
 
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (!res) {
-		INTC_ERR(intc, "Did not get IRQ resource");
-		ret = -EINVAL;
-		goto err1;
-	}
-	/* For all PCIe platform, CU/ERT interrupts are contiguous */
-	intc->data_num = res->end - res->start + 1;
-	if (intc->data_num > INTR_NUM) {
-		INTC_ERR(intc, "Too many interrupts in the resource");
-		return -EINVAL;
-	}
+	INTC_INFO(intc, "Intc initialized, (%s) mode", intc_mode(intc));
 
-	for (i = 0; i < intc->data_num; i++) {
-		irq = res->start + i;
-		data = &intc->data[i];
-		data->intr = irq;
-		data->isr = intc->csr_base + eisr[i];
-		xocl_user_interrupt_reg(xdev, irq, intc_csr_isr, data);
-		/* disable interrupt */
-		xocl_user_interrupt_config(xdev, irq, false);
-		data->enabled_cnt = 0;
-	}
 out:
 	return 0;
 
-err1:
-	iounmap(intc->csr_base);
 err:
 	xocl_drvinst_release(intc, &hdl);
 	xocl_drvinst_free(hdl);
@@ -280,26 +532,26 @@ static int intc_remove(struct platform_device *pdev)
 	if (!kds_mode)
 		goto out;
 
-	for (i = 0; i < intc->data_num; i++) {
+	for (i = 0; i < INTR_NUM; i++) {
 		/* disable interrupt */
-		xocl_user_interrupt_config(xdev, intc->data[i].intr, false);
-		xocl_user_interrupt_reg(xdev, intc->data[i].intr, NULL, NULL);
+		xocl_user_interrupt_config(xdev, intc->ert[i].intr, false);
+		xocl_user_interrupt_reg(xdev, intc->ert[i].intr, NULL, NULL);
 	}
 
+out:
 	xocl_drvinst_release(intc, &hdl);
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);
-out:
 	return 0;
 }
 
 static struct xocl_intc_funcs intc_ops = {
-	.request_intr = request_intr,
-	.config_intr  = config_intr,
+	.request_intr	= request_intr,
+	.config_intr	= config_intr,
+	.sel_ert_intr	= sel_ert_intr,
 	/* Below two ops only used in ERT sub-device polling mode(for debug) */
-	.csr_read32     = csr_read32,
-	.csr_write32    = csr_write32,
-	/* TODO: add CU/ERT mode switch op */
+	.csr_read32	= csr_read32,
+	.csr_write32	= csr_write32,
 };
 
 struct xocl_drv_private intc_priv = {

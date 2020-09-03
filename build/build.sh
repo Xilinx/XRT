@@ -232,7 +232,7 @@ if [[ $opt == 1 ]]; then
 	# I know this is dirty as it messes up the source directory with build artifacts but this is the
 	# quickest way to enable native zocl build in Travis CI environment for aarch64
 	ZOCL_SRC=`readlink -f ../../src/runtime_src/core/edge/drm/zocl`
-	make -C $ZOCL_SRC
+	make -C $ZOCL_SRC EXTRA_CFLAGS=-D__NONE_PETALINUX__
     fi
   fi
   cd $BUILDDIR

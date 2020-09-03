@@ -62,10 +62,9 @@ unsigned int qdma4_max_channel = 16;
 module_param(qdma4_max_channel, uint, 0644);
 MODULE_PARM_DESC(qdma4_max_channel, "Set number of channels for qdma, default is 16");
 
-static unsigned int qdma4_poll_mode;
-module_param(qdma4_poll_mode, uint, 0644);
-MODULE_PARM_DESC(poll_mode, "Set 1 for hw polling, default is 0 (interrupts)");
-
+static unsigned int qdma4_interrupt_mode = DIRECT_INTR_MODE;
+module_param(qdma4_interrupt_mode, uint, 0644);
+MODULE_PARM_DESC(interrupt_mode, "0:auto, 1:poll, 2:direct, 3:intr_ring, default is 2");
 
 struct dentry *qdma4_debugfs_root;
 
@@ -1926,11 +1925,10 @@ static int qdma4_probe(struct platform_device *pdev)
 	conf->bar_num_user = -1;
 	conf->bar_num_bypass = -1;
 	conf->no_mailbox = 1;
-	//conf->qdma_drv_mode = POLL_MODE;
 	conf->data_msix_qvec_max = 1;
 	conf->user_msix_qvec_max = 8;
 	conf->msix_qvec_max = 16;
-	conf->qdma_drv_mode = qdma4_poll_mode ? POLL_MODE : AUTO_MODE;
+	conf->qdma_drv_mode = qdma4_interrupt_mode;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;

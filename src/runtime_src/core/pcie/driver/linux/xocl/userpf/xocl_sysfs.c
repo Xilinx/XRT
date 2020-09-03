@@ -342,7 +342,8 @@ static ssize_t ready_show(struct device *dev,
 	 * experienced user to manually update SC firmware than
 	 * installed xsabin may contain.
 	 */
-	if (strcmp(board_info->bmc_ver, board_info->exp_bmc_ver)) {
+	if (strcmp(board_info->bmc_ver, board_info->exp_bmc_ver) &&
+		strcmp(board_info->exp_bmc_ver, NONE_BMC_VERSION)) {
 		xocl_warn(dev, "installed XSABIN has SC version: "
 		    "(%s) mismatch with loaded SC version: (%s).",
 		    board_info->exp_bmc_ver, board_info->bmc_ver);
@@ -422,6 +423,14 @@ static ssize_t ulp_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ulp_uuids);
 
+
+/* To get the latest ECC status from peer, mig ecc is slightly different from
+ * most of the sub device, we ask xocl by touch the sysfs node mig_cache_update 
+ * to get the latest ECC status from its peer and save all the data to 
+ * each individual mig ecc sub device instead of generate mailbox request by
+ * touch mig ecc sysfs node the way likes most of the sub device.
+ * It can avoid dmesg overwhelmed by mailbox msg(40x or more)
+ */
 static ssize_t mig_cache_update_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {

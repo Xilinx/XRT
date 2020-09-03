@@ -177,6 +177,7 @@ enum class key_type
 
   flash_bar_offset,
   is_mfg,
+  mfg_ver,
   is_ready,
   f_flash_type,
   flash_type,
@@ -805,8 +806,8 @@ struct m2m : request
   static bool
   to_bool(const result_type& value)
   {
-    return (value == std::numeric_limits<uint32_t>::max())
-      ? false : value;
+     // if m2m does not exist, the execption is thrown
+     return value ? true : false;
   }
 };
 
@@ -1854,6 +1855,15 @@ struct is_mfg : request
 {
   using result_type = bool;
   static const key_type key = key_type::is_mfg;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct mfg_ver : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::mfg_ver;
 
   virtual boost::any
   get(const device*) const = 0;

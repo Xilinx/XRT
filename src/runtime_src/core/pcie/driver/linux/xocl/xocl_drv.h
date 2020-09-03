@@ -282,6 +282,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_PLAT_1RP          0x1
 #define XOCL_VSEC_PLAT_2RP          0x2
 
+#define XOCL_VSEC_ALF_VSEC_ID       0x20
 
 #define XOCL_MAXNAMELEN	64
 
@@ -289,6 +290,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_XLAT_GPA_LOWER_REG_ADDR       0x18C
 #define XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR  0x190
 #define XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR 0x194
+#define XOCL_VSEC_XLAT_VSEC_ID                  0x40
 
 struct xocl_vsec_header {
 	u32		format;
@@ -793,6 +795,7 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*get_data)(struct platform_device *pdev, enum xcl_group_kind kind, void *buf);
 	int (*xmc_access)(struct platform_device *pdev, enum xocl_xmc_flags flags);
+	void (*clock_status)(struct platform_device *pdev, bool *latched);
 };
 
 #define	MB_DEV(xdev)		\
@@ -822,6 +825,9 @@ struct xocl_mb_funcs {
 	(MB_CB(xdev, xmc_access) ? MB_OPS(xdev)->xmc_access(MB_DEV(xdev), XOCL_XMC_FREEZE) : -ENODEV)
 #define xocl_xmc_free(xdev) 		\
 	(MB_CB(xdev, xmc_access) ? MB_OPS(xdev)->xmc_access(MB_DEV(xdev), XOCL_XMC_FREE) : -ENODEV)
+
+#define xocl_xmc_clock_status(xdev, latched)		\
+	(MB_CB(xdev, clock_status) ? MB_OPS(xdev)->clock_status(MB_DEV(xdev), latched) : -ENODEV)
 
 /* ERT FW callbacks */
 #define ERT_DEV(xdev)							\
@@ -1184,6 +1190,8 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	CLOCK_OPS(xdev, __idx)->get_data(CLOCK_DEV(xdev, __idx), kind) : 0); 	\
 })
 
+/* Not a real SC version to indicate that SC image does not exist. */
+#define	NONE_BMC_VERSION	"0.0.0"
 struct xocl_icap_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*reset_axi_gate)(struct platform_device *pdev);
@@ -1564,12 +1572,18 @@ struct xocl_cu_funcs {
 	(CU_DEV(xdev, idx) && CU_OPS(xdev, idx) && CU_OPS(xdev, idx)->cb)
 
 /* INTC call back */
+enum intc_mode {
+	ERT_INTR,
+	CU_INTR,
+};
+
 struct xocl_intc_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	int (*request_intr)(struct platform_device *pdev, int intr_id,
-			     irqreturn_t (*handler)(int irq, void *arg),
-			     void *arg);
-	int (*config_intr)(struct platform_device *pdev, int intr_id, bool en);
+	int (*request_intr)(struct platform_device *pdev, int id,
+			    irqreturn_t (*handler)(int irq, void *arg),
+			    void *arg, int mode);
+	int (*config_intr)(struct platform_device *pdev, int id, bool en, int mode);
+	int (*sel_ert_intr)(struct platform_device *pdev, int mode);
 	int (*csr_read32)(struct platform_device *pdev, u32 off);
 	void (*csr_write32)(struct platform_device *pdev, u32 val, u32 off);
 };
@@ -1578,20 +1592,32 @@ struct xocl_intc_funcs {
 	((struct xocl_intc_funcs *)SUBDEV(xdev, XOCL_SUBDEV_INTC).ops)
 #define INTC_CB(xdev, cb) \
 	(INTC_DEV(xdev) && INTC_OPS(xdev) && INTC_OPS(xdev)->cb)
-#define xocl_intc_request(xdev, id, handler, arg) \
+#define xocl_intc_ert_request(xdev, id, handler, arg) \
 	(INTC_CB(xdev, request_intr) ? \
-	 INTC_OPS(xdev)->request_intr(INTC_DEV(xdev), id, handler, arg) : \
+	 INTC_OPS(xdev)->request_intr(INTC_DEV(xdev), id, handler, arg, ERT_INTR) : \
 	 -ENODEV)
-#define xocl_intc_config(xdev, id, en) \
+#define xocl_intc_ert_config(xdev, id, en) \
 	(INTC_CB(xdev, config_intr) ? \
-	 INTC_OPS(xdev)->config_intr(INTC_DEV(xdev), id, en) : \
+	 INTC_OPS(xdev)->config_intr(INTC_DEV(xdev), id, en, ERT_INTR) : \
+	 -ENODEV)
+#define xocl_intc_cu_request(xdev, id, handler, arg) \
+	(INTC_CB(xdev, request_intr) ? \
+	 INTC_OPS(xdev)->request_intr(INTC_DEV(xdev), id, handler, arg, CU_INTR) : \
+	 -ENODEV)
+#define xocl_intc_cu_config(xdev, id, en) \
+	(INTC_CB(xdev, config_intr) ? \
+	 INTC_OPS(xdev)->config_intr(INTC_DEV(xdev), id, en, CU_INTR) : \
+	 -ENODEV)
+#define xocl_intc_set_mode(xdev, mode) \
+	(INTC_CB(xdev, sel_ert_intr) ? \
+	 INTC_OPS(xdev)->sel_ert_intr(INTC_DEV(xdev), mode) : \
 	 -ENODEV)
 /* Only used in ERT sub-device polling mode */
-#define xocl_intc_csr_read32(xdev, off) \
+#define xocl_intc_ert_read32(xdev, off) \
 	(INTC_CB(xdev, csr_read32) ? \
 	 INTC_OPS(xdev)->csr_read32(INTC_DEV(xdev), off) : \
 	 -ENODEV)
-#define xocl_intc_csr_write32(xdev, val, off) \
+#define xocl_intc_ert_write32(xdev, val, off) \
 	(INTC_CB(xdev, csr_write32) ? \
 	 INTC_OPS(xdev)->csr_write32(INTC_DEV(xdev), val, off) : \
 	 -ENODEV)
@@ -1611,9 +1637,12 @@ struct xocl_ert_user_funcs {
 #define	ERT_USER_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).pldev
 #define ERT_USER_OPS(xdev)  \
 	((struct xocl_ert_user_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).ops)
+#define ERT_USER_CB(xdev, cb)  \
+	(ERT_USER_DEV(xdev) && ERT_USER_OPS(xdev) && ERT_USER_OPS(xdev)->cb)
 
 #define xocl_ert_user_configured(xdev) \
-	( ERT_USER_OPS(xdev)->configured(ERT_USER_DEV(xdev)) : \
+	(ERT_USER_CB(xdev, configured) ? \
+	 ERT_USER_OPS(xdev)->configured(ERT_USER_DEV(xdev)) : \
 	 -ENODEV)
 
 struct xocl_ert_30_funcs {
@@ -1624,21 +1653,28 @@ struct xocl_ert_30_funcs {
 #define	ERT_30_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_30).pldev
 #define ERT_30_OPS(xdev)  \
 	((struct xocl_ert_30_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ERT_30).ops)
+#define ERT_30_CB(xdev, cb)  \
+	(ERT_30_DEV(xdev) && ERT_30_OPS(xdev) && ERT_30_OPS(xdev)->cb)
 
 #define xocl_ert_30_configured(xdev) \
-	( ERT_30_OPS(xdev)->configured(ERT_30_DEV(xdev)) : \
+	(ERT_30_CB(xdev, configured) ? \
+	 ERT_30_OPS(xdev)->configured(ERT_30_DEV(xdev)) : \
 	 -ENODEV)
 #define xocl_ert_30_mb_wakeup(xdev) \
-	( ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), MB_WAKEUP) : \
+	(ERT_30_CB(xdev, gpio_cfg) ? \
+	 ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), MB_WAKEUP) : \
 	 -ENODEV)
 #define xocl_ert_30_mb_sleep(xdev) \
-	( ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), MB_SLEEP) : \
+	(ERT_30_CB(xdev, gpio_cfg) ? \
+	 ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), MB_SLEEP) : \
 	 -ENODEV)
 #define xocl_ert_30_cu_intr_cfg(xdev) \
-	( ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), INTR_TO_CU) : \
+	(ERT_30_CB(xdev, gpio_cfg) ? \
+	 ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), INTR_TO_CU) : \
 	 -ENODEV)
-#define xocl_ert_30_ert_int_cfg(xdev) \
-	( ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), INTR_TO_ERT) : \
+#define xocl_ert_30_ert_intr_cfg(xdev) \
+	(ERT_30_CB(xdev, gpio_cfg) ? \
+	 ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), INTR_TO_ERT) : \
 	 -ENODEV)
 
 
@@ -1863,7 +1899,11 @@ int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
-	char *name);
+				       char *name);
+int xocl_get_irq_byname(struct platform_device *pdev, char *name);
+void __iomem *xocl_devm_ioremap_res(struct platform_device *pdev, int index);
+void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,
+					   const char *name);
 
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
 	int *bar_idx, resource_size_t *bar_off);
