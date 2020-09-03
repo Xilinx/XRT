@@ -150,7 +150,7 @@ namespace xdp {
     for(uint64_t n = 0 ; n < numAIETraceOutput ; n++) {
       // Consider both Device Id and Stream Id to create the output file name
       std::string fileName = "aie_trace_" + std::to_string(deviceId) + "_" + std::to_string(n) + ".txt";
-      writers.push_back(new AIETraceWriter(fileName.c_str(),
+      writers.push_back(new AIETraceWriter(fileName.c_str(), deviceId, n,
                             "" /*version*/,
                             "" /*creationTime*/,
                             "" /*xrtVersion*/,

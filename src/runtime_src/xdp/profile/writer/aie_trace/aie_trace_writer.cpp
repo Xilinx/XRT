@@ -16,14 +16,17 @@
 
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 
+
 namespace xdp {
 
-  AIETraceWriter::AIETraceWriter(const char* filename,
+  AIETraceWriter::AIETraceWriter(const char* filename, uint64_t devId, uint64_t trStrmId,
                                  const std::string& version, 
                                  const std::string& creationTime, 
                                  const std::string& /*xrtV*/, 
                                  const std::string& /*toolV*/)
-    : VPTraceWriter(filename, version, creationTime, 6 /* us */)
+    : VPTraceWriter(filename, version, creationTime, 6 /* us */),
+      deviceId(devId),
+      traceStreamId(trStrmId)
 #if 0
       xrtVersion(xrtV),
       toolVersion(toolV)
@@ -50,6 +53,15 @@ namespace xdp {
   void AIETraceWriter::writeTraceEvents()
   {
     // write the entire buffer
+    AIETraceDataType traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId);
+    void*    buf = traceData.first;
+    uint64_t bufferSz = traceData.second;
+
+    uint32_t* dataBuffer = static_cast<uint32_t*>(buf);
+    for(uint64_t i = 0; i < bufferSz; i++) {
+      fout << "0x" << std::hex << dataBuffer[i] << std::endl;
+    }
+
     fout << std::endl;
   }
 

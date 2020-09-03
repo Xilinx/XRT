@@ -36,6 +36,9 @@ namespace xdp {
     std::string toolVersion;
 #endif
 
+   uint64_t deviceId;
+   uint64_t traceStreamId;
+
   protected:
     virtual void writeHeader();
     virtual void writeStructure();
@@ -44,10 +47,11 @@ namespace xdp {
     virtual void writeDependencies();
 
   public:
-    AIETraceWriter(const char* filename, const std::string& version, 
-		       const std::string& creationTime, 
-		       const std::string& xrtV,
-		       const std::string& toolV);
+    AIETraceWriter(const char* filename, uint64_t devId, uint64_t trStrmId,
+                   const std::string& version, 
+		   const std::string& creationTime, 
+		   const std::string& xrtV,
+		   const std::string& toolV);
     ~AIETraceWriter();
 
     virtual void write(bool openNewFile);
