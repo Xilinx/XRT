@@ -25,6 +25,7 @@
 
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/user/aie/aie.h"
+#include "core/edge/user/shim.h"
 #endif
 
 // Default dma chunk size
@@ -89,7 +90,7 @@ bool AIETraceOffload::initReadTrace()
       }
       zynqaie::Aie* aieObj = drv->getAieArray();
 
-      ShimDMA* shimDmaObj = &(aieObj->shim_dma[traceGMIO->shimColumn]);
+      zynqaie::ShimDMA* shimDmaObj = &(aieObj->shim_dma[traceGMIO->shimColumn]);
       XAie_DmaSetAddrLen(&(shimDmaObj->desc), bufAddr, bufAllocSz);
 #endif
     }
