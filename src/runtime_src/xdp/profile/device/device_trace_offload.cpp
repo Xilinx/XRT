@@ -22,10 +22,10 @@
 namespace xdp {
 
 DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
-                                   DeviceTraceLogger* dTraceLogger,
-                                   uint64_t sleep_interval_ms,
-                                   uint64_t trbuf_sz,
-                                   bool start_thread)
+                                       DeviceTraceLogger* dTraceLogger,
+                                       uint64_t sleep_interval_ms,
+                                       uint64_t trbuf_sz,
+                                       bool start_thread)
                    : sleep_interval_ms(sleep_interval_ms),
                      m_trbuf_alloc_sz(trbuf_sz),
                      dev_intf(dInt),
@@ -170,8 +170,8 @@ bool DeviceTraceOffload::read_trace_init(bool circ_buf)
 
 void DeviceTraceOffload::read_trace_end()
 {
-  // Trace logger will clear it's state and add approximations for pending
-  // events
+  // Trace logger will clear it's state and add approximations 
+  // for pending events
   m_trace_vector = {};
   deviceTraceLogger->endProcessTraceData(m_trace_vector);
   if (dev_intf->hasTs2mm()) {

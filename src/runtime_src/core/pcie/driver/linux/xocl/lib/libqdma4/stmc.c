@@ -430,14 +430,16 @@ static int stmc_queue_context_program(struct stmc_dev *sdev,
 			rv = stmc_indirect_prog(sdev, sqconf->qid_hw,
 				sqconf->flow_id, STM_CMD_OP_READ,
 				STM_CMD_SEL_C2H_CTX, &context);
+			if (rv < 0)
+				break;
 			/* bit 180 Cmr */
 			if (context.data[5] & 0x100000)
 				break;
 		}
-		if (context.data[5] & 0x100000) {
-			pr_info("%s: %d, c2h qid %u, STM ctx 0x%08x, 0x%08x.\n",
-				__func__, i, sqconf->qid_hw, context.data[4],
-				context.data[5]);
+		if (rv < 0 || !(context.data[5] & 0x100000)) {
+			pr_info("%s: %d, %d, c2h qid %u, ctx 0x%08x, 0x%08x.\n",
+				__func__, rv, i, sqconf->qid_hw,
+				context.data[4], context.data[5]);
 			stmc_queue_context_dump(sdev, sqconf);
 		}
 	}

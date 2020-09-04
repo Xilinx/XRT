@@ -50,7 +50,7 @@ XDP_EXPORT
 uint32_t GetDeviceTraceBufferSize(uint32_t property);
 
 XDP_EXPORT
-uint64_t GetTS2MMBufSize();
+uint64_t GetTS2MMBufSize(bool isAIETrace = false);
 
 
 class DeviceIntf {
@@ -62,16 +62,6 @@ class DeviceIntf {
     ~DeviceIntf();
 
   public:
-
-
-#if 0
-    // Raw read/write
-    size_t write(uint64_t offset, const void *hostBuf, size_t size);
-    size_t read(uint64_t offset, void *hostBuf, size_t size);
-    size_t traceRead(void *buffer, size_t size, uint64_t addr);
-#endif
-
-
     // Set device handle
     // NOTE: this is used by write, read, & traceRead
     XDP_EXPORT
@@ -79,23 +69,23 @@ class DeviceIntf {
 
     // Debug IP layout
     XDP_EXPORT
-    void     readDebugIPlayout();
+    void readDebugIPlayout();
 
     XDP_EXPORT
     uint32_t getNumMonitors(xclPerfMonType type);
     XDP_EXPORT
     uint32_t getMonitorProperties(xclPerfMonType type, uint32_t index);
     XDP_EXPORT
-    void     getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length);
+    void getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length);
     XDP_EXPORT
-    std::string  getMonitorName(xclPerfMonType type, uint32_t index);
+    std::string getMonitorName(xclPerfMonType type, uint32_t index);
     XDP_EXPORT
-    std::string  getTraceMonName(xclPerfMonType type, uint32_t index);
+    std::string getTraceMonName(xclPerfMonType type, uint32_t index);
     XDP_EXPORT
-    uint32_t  getTraceMonProperty(xclPerfMonType type, uint32_t index);
+    uint32_t getTraceMonProperty(xclPerfMonType type, uint32_t index);
 
-    bool     isHostAIM(uint32_t index) {
-       return aimList[index]->isHostMonitor();
+    bool isHostAIM(uint32_t index) {
+      return mAimList[index]->isHostMonitor();
     }
     
     // Counters
@@ -123,7 +113,7 @@ class DeviceIntf {
     uint64_t getDeviceAddr(size_t bufHandle);
 
     // Trace FIFO Management
-    bool hasFIFO() {return (fifoCtrl != nullptr);};
+    bool hasFIFO() {return (mFifoCtrl != nullptr);};
     XDP_EXPORT
     uint32_t getTraceCount();
     XDP_EXPORT
@@ -137,28 +127,44 @@ class DeviceIntf {
 
     /** Trace S2MM Management
      */
-    bool hasTs2mm() {return (traceDMA != nullptr);};
-    TraceS2MM* getTs2mm() {return traceDMA;};
-    XDP_EXPORT
-    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr, bool circular);
+    bool hasTs2mm() {
+      return (mPlTraceDma != nullptr);
+    };
+    size_t getNumberTS2MM() {
+      return (mPlTraceDma != nullptr) ? 1 : 0;
+    };
+
     XDP_EXPORT
     void resetTS2MM();
+    TraceS2MM* getTs2mm() {return mPlTraceDma;};
+    XDP_EXPORT
+    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr, bool circular); 
+
+    XDP_EXPORT
+    uint64_t getWordCountTs2mm();
     XDP_EXPORT
     uint8_t  getTS2MmMemIndex();
     XDP_EXPORT
-    uint64_t getWordCountTs2mm();
-
-    XDP_EXPORT
     void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector);
 
-    double getMaxBwRead() const {return m_bw_read;}
-    double getMaxBwWrite() const {return m_bw_write;}
+    XDP_EXPORT
+    void resetAIETs2mm(uint64_t index);
+    XDP_EXPORT
+    void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index);
+
+    XDP_EXPORT
+    uint64_t getWordCountAIETs2mm(uint64_t index);
+    XDP_EXPORT
+    uint8_t  getAIETs2mmMemIndex(uint64_t index);
+    
+    double getMaxBwRead() const {return mMaxReadBW;}
+    double getMaxBwWrite() const {return mMaxWriteBW;}
     XDP_EXPORT
     void setMaxBwRead();
     XDP_EXPORT
     void setMaxBwWrite();
 
-    inline xdp::Device* getAbstractDevice() { return mDevice ; }
+    inline xdp::Device* getAbstractDevice() {return mDevice;}
 
   private:
     // Turn on/off debug messages to stdout
@@ -171,16 +177,17 @@ class DeviceIntf {
     // Depending on OpenCL or HAL flow, "mDevice" is populated with xrt::device handle or HAL handle
     xdp::Device* mDevice = nullptr;
 
-    std::vector<AIM*> aimList;
-    std::vector<AM*>  amList;
-    std::vector<ASM*> asmList;
+    std::vector<AIM*> mAimList;
+    std::vector<AM*>  mAmList;
+    std::vector<ASM*> mAsmList;
     std::vector<NOC*> nocList;
 
-    TraceFifoLite* fifoCtrl  = nullptr;
-    TraceFifoFull* fifoRead  = nullptr;
-    TraceFunnel*   traceFunnel = nullptr;
+    TraceFifoLite* mFifoCtrl    = nullptr;
+    TraceFifoFull* mFifoRead    = nullptr;
+    TraceFunnel*   mTraceFunnel = nullptr;
 
-    TraceS2MM* traceDMA = nullptr;
+    TraceS2MM*     mPlTraceDma  = nullptr;
+    std::vector<TraceS2MM*> mAieTraceDmaList;
 
     /*
      * Set bandwidth number to a reasonable default
@@ -191,8 +198,8 @@ class DeviceIntf {
      * For Edge Device:
      *  total bw = DDR4 memory bandwidth
      */
-    double m_bw_read = 9600.0;
-    double m_bw_write = 9600.0;
+    double mMaxReadBW  = 9600.0;
+    double mMaxWriteBW = 9600.0;
 
 }; /* DeviceIntf */
 

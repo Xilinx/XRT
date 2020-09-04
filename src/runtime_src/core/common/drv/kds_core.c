@@ -661,9 +661,9 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 		if (cu_mgmt->xcus[i] != xcu)
 			continue;
 
+		--cu_mgmt->num_cus;
 		cu_mgmt->xcus[i] = NULL;
 		cu_mgmt->cu_usage[i] = 0;
-		--cu_mgmt->num_cus;
 		return 0;
 	}
 
@@ -686,6 +686,31 @@ int kds_fini_ert(struct kds_sched *kds)
 void kds_reset(struct kds_sched *kds)
 {
 	kds->bad_state = 0;
+}
+
+int kds_cfg_update(struct kds_sched *kds)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	struct xrt_cu *xcu;
+	int ret = 0;
+	int i;
+
+	for (i = 0; i < cu_mgmt->num_cus; i++) {
+		if (cu_mgmt->cu_intr[i] == kds->cu_intr)
+			continue;
+
+		xcu = cu_mgmt->xcus[i];
+		ret = xrt_cu_cfg_update(xcu, kds->cu_intr);
+		if (!ret)
+			cu_mgmt->cu_intr[i] = kds->cu_intr;
+		else if (ret == -ENOSYS) {
+			/* CU doesn't support interrupt */
+			cu_mgmt->cu_intr[i] = 0;
+			ret = 0;
+		}
+	}
+
+	return ret;
 }
 
 int is_bad_state(struct kds_sched *kds)

@@ -98,6 +98,10 @@
 #define NODE_PMC_MUX	"ep_pmc_mux_00"
 #define NODE_ERT_UARTLITE "ep_ert_debug_uart_00"
 #define NODE_ERT_CFG_GPIO "ep_ert_config_00"
+#define NODE_INTC_CU_00 "ep_intc_cu_00"
+#define NODE_INTC_CU_01 "ep_intc_cu_01"
+#define NODE_INTC_CU_02 "ep_intc_cu_02"
+#define NODE_INTC_CU_03 "ep_intc_cu_03"
 
 #define PROP_HWICAP "axi_hwicap"
 #define PROP_PDI_CONFIG "pdi_config_mem"
@@ -127,6 +131,16 @@
 #define RESNAME_PMC_MUX		NODE_PMC_MUX
 #define RESNAME_UCS_CONTROL_STATUS	NODE_UCS_CONTROL_STATUS
 #define RESNAME_ICAP_RESET	NODE_ICAP_RESET
+#define RESNAME_ERT_SCHED	NODE_ERT_SCHED
+#define RESNAME_INTC_CU_00	NODE_INTC_CU_00
+#define RESNAME_INTC_CU_01	NODE_INTC_CU_01
+#define RESNAME_INTC_CU_02	NODE_INTC_CU_02
+#define RESNAME_INTC_CU_03	NODE_INTC_CU_03
+
+#define ERT_SCHED_INTR_ALIAS_00	"interrupt_cu_bank_00"
+#define ERT_SCHED_INTR_ALIAS_01	"interrupt_cu_bank_01"
+#define ERT_SCHED_INTR_ALIAS_02	"interrupt_cu_bank_02"
+#define ERT_SCHED_INTR_ALIAS_03	"interrupt_cu_bank_03"
 
 /*
  * The iores subdev maintains global resources which can be shared to any

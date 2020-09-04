@@ -451,25 +451,6 @@ namespace xdp {
     writeTableRowEnd(getStream());
   }
 
-  void ProfileWriterI::writeAcceleratorSummary(const std::string& name, const TimeStats& stats)
-  {
-    //"name" is of the form "deviceName|kernelName|globalSize|localSize|cuName"
-    size_t first_index = name.find_first_of("|");
-    //size_t second_index = name.find('|', first_index+1);
-    //size_t third_index = name.find('|', second_index+1);
-    size_t fourth_index = name.find_last_of("|");
-
-    std::string deviceName = name.substr(0, first_index);
-    auto clockFreqMHz = mPluginHandle->getKernelClockFreqMHz(deviceName);
-
-    writeTableRowStart(getStream());
-    writeTableCells(getStream(), deviceName,
-        name.substr(fourth_index+1), // cuName
-        stats.getNoOfCalls(), stats.getTotalTime(), stats.getMinTime(),
-        stats.getAveTime(), stats.getMaxTime(), clockFreqMHz);
-    writeTableRowEnd(getStream());
-  }
-
   void ProfileWriterI::writeBufferStats(const std::string& name,
       const BufferStats& stats)
   {

@@ -48,6 +48,8 @@
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
+
+#include "plugin/xdp/aie_trace.h"
 #endif
 
 namespace {
@@ -1655,6 +1657,7 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
   xdphal::flush_device(handle) ;
+  xdpaie::flush_aie_device(handle) ;
 #endif
 #endif
 
@@ -1680,6 +1683,7 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
   xdphal::update_device(handle) ;
+  xdpaie::update_aie_device(handle);
 #endif
 #endif
 

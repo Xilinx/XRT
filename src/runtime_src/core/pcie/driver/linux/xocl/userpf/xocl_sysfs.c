@@ -423,6 +423,14 @@ static ssize_t ulp_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ulp_uuids);
 
+
+/* To get the latest ECC status from peer, mig ecc is slightly different from
+ * most of the sub device, we ask xocl by touch the sysfs node mig_cache_update 
+ * to get the latest ECC status from its peer and save all the data to 
+ * each individual mig ecc sub device instead of generate mailbox request by
+ * touch mig ecc sysfs node the way likes most of the sub device.
+ * It can avoid dmesg overwhelmed by mailbox msg(40x or more)
+ */
 static ssize_t mig_cache_update_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {

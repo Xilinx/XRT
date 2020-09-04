@@ -17,6 +17,7 @@
 #define XDP_SOURCE
 
 #include "device_intf.h"
+#include "aieTraceS2MM.h"
 
 #ifndef _WIN32
 // open+ioctl based Profile IP 
@@ -27,6 +28,7 @@
 #include "ioctl_monitors/ioctl_traceFifoFull.h"
 #include "ioctl_monitors/ioctl_traceFunnel.h"
 #include "ioctl_monitors/ioctl_traceS2MM.h"
+#include "ioctl_monitors/ioctl_aieTraceS2MM.h"
 
 // open+mmap based Profile IP 
 #include "mmapped_monitors/mmapped_aim.h"
@@ -36,6 +38,7 @@
 #include "mmapped_monitors/mmapped_traceFifoFull.h"
 #include "mmapped_monitors/mmapped_traceFunnel.h"
 #include "mmapped_monitors/mmapped_traceS2MM.h"
+#include "mmapped_monitors/mmapped_aieTraceS2MM.h"
 
 #endif
 
@@ -73,9 +76,11 @@
 
 namespace xdp {
 
-// Helper function
+// Helper functions
 
 // Same as defined in vpl tcl
+// NOTE: This converts the property on the FIFO IP in debug_ip_layout
+//       to the corresponding FIFO depth.
 uint32_t GetDeviceTraceBufferSize(uint32_t property)
 {
   switch(property) {
@@ -92,11 +97,15 @@ uint32_t GetDeviceTraceBufferSize(uint32_t property)
   return 8192;
 }
 
-
-uint64_t GetTS2MMBufSize()
+// Get the user-specified trace buffer size by parsing
+// settings from xrt.ini
+uint64_t GetTS2MMBufSize(bool isAIETrace)
 {
-  std::string size_str = xrt_core::config::get_trace_buffer_size();
+  std::string size_str = isAIETrace ?
+                         xrt_core::config::get_aie_trace_buffer_size() :
+                         xrt_core::config::get_trace_buffer_size();
   std::smatch pieces_match;
+  
   // Default is 1M
   uint64_t bytes = TS2MM_DEF_BUF_SIZE;
   // Regex can parse values like : "1024M" "1G" "8192k"
@@ -130,60 +139,37 @@ uint64_t GetTS2MMBufSize()
   return bytes;
 }
 
-
+// Destructor
 DeviceIntf::~DeviceIntf()
 {
-    for(auto mon : aimList) {
-        delete mon;
+    for(auto mon : mAimList) {
+      delete mon;
     }
-    for(auto mon : amList) {
-        delete mon;
+    for(auto mon : mAmList) {
+      delete mon;
     }
-    for(auto mon : asmList) {
-        delete mon;
+    for(auto mon : mAsmList) {
+      delete mon;
+    }
+    for(auto aieTraceDma : mAieTraceDmaList) {
+      delete aieTraceDma;
     }
     for(auto noc : nocList) {
         delete noc;
     }
-    aimList.clear();
-    amList.clear();
-    asmList.clear();
+    mAimList.clear();
+    mAmList.clear();
+    mAsmList.clear();
+    mAieTraceDmaList.clear();
     nocList.clear();
 
-    delete fifoCtrl;
-    delete fifoRead;
-    delete traceFunnel;
-    delete traceDMA;
+    delete mFifoCtrl;
+    delete mFifoRead;
+    delete mTraceFunnel;
+    delete mPlTraceDma;
 
     delete mDevice;
 }
-
-  // ***************************************************************************
-  // Read/Write
-  // ***************************************************************************
-
-#if 0
-  size_t DeviceIntf::write(uint64_t offset, const void *hostBuf, size_t size)
-  {
-    if (mDevice == nullptr)
-      return 0;
-	return xclWrite(mDevice, XCL_ADDR_SPACE_DEVICE_PERFMON, offset, hostBuf, size);
-  }
-
-  size_t DeviceIntf::read(uint64_t offset, void *hostBuf, size_t size)
-  {
-    if (mDevice == nullptr)
-      return 0;
-	return xclRead(mDevice, XCL_ADDR_SPACE_DEVICE_PERFMON, offset, hostBuf, size);
-  }
-
-  size_t DeviceIntf::traceRead(void *buffer, size_t size, uint64_t addr)
-  {
-    if (mDevice == nullptr)
-      return 0;
-    return xclUnmgdPread(mDevice, 0, buffer, size, addr);
-  }
-#endif
 
   void DeviceIntf::setDevice(xdp::Device* devHandle)
   {
@@ -201,78 +187,80 @@ DeviceIntf::~DeviceIntf()
   uint32_t DeviceIntf::getNumMonitors(xclPerfMonType type)
   {
     if (type == XCL_PERF_MON_MEMORY)
-      return aimList.size();
+      return mAimList.size();
     if (type == XCL_PERF_MON_ACCEL)
-      return amList.size();
+      return mAmList.size();
     if (type == XCL_PERF_MON_STR)
-      return asmList.size();
+      return mAsmList.size();
     if (type == XCL_PERF_MON_NOC)
       return nocList.size();
 
-    if(type == XCL_PERF_MON_STALL) {
+    if (type == XCL_PERF_MON_STALL) {
       uint32_t count = 0;
-      for(auto mon : amList) {
-        if(mon->hasStall())  count++;
+      for (auto mon : mAmList) {
+        if (mon->hasStall()) count++;
       }
       return count;
     }
 
-    if(type == XCL_PERF_MON_HOST) {
+    if (type == XCL_PERF_MON_HOST) {
       uint32_t count = 0;
-      for(auto mon : aimList) {
-        if(mon->isHostMonitor())  count++;
+      for (auto mon : mAimList) {
+        if (mon->isHostMonitor()) count++;
       }
       return count;
     }
 
     // FIFO ?
 
-    if(type == XCL_PERF_MON_SHELL) {
+    if (type == XCL_PERF_MON_SHELL) {
       uint32_t count = 0;
-      for(auto mon : aimList) {
-        if(mon->isShellMonitor())  count++;
+      for (auto mon : mAimList) {
+        if (mon->isShellMonitor()) count++;
       }
       return count;
     }
+
+    // Default
     return 0;
   }
 
   void DeviceIntf::getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length)
   {
     std::string str = "";
-    if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { str = aimList[index]->getName(); }
-    if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { str = amList[index]->getName(); }
-    if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { str = asmList[index]->getName(); }
-    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size())) { str = nocList[index]->getName(); }
+    if((type == XCL_PERF_MON_MEMORY) && (index < mAimList.size())) { str = mAimList[index]->getName(); }
+    if((type == XCL_PERF_MON_ACCEL)  && (index < mAmList.size()))  { str = mAmList[index]->getName(); }
+    if((type == XCL_PERF_MON_STR)    && (index < mAsmList.size())) { str = mAsmList[index]->getName(); }
+    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size()))  { str = nocList[index]->getName(); }
     strncpy(name, str.c_str(), length);
     if(str.length() >= length) name[length-1] = '\0'; // required ??
   }
 
   std::string DeviceIntf::getMonitorName(xclPerfMonType type, uint32_t index)
   {
-    if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getName(); }
-    if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getName(); }
-    if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getName(); }
-    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size())) { return nocList[index]->getName(); }
+    if((type == XCL_PERF_MON_MEMORY) && (index < mAimList.size())) { return mAimList[index]->getName(); }
+    if((type == XCL_PERF_MON_ACCEL)  && (index < mAmList.size()))  { return mAmList[index]->getName(); }
+    if((type == XCL_PERF_MON_STR)    && (index < mAsmList.size())) { return mAsmList[index]->getName(); }
+    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size()))  { return nocList[index]->getName(); }
     return std::string("");
   }
 
   std::string DeviceIntf::getTraceMonName(xclPerfMonType type, uint32_t index)
   {
     if (type == XCL_PERF_MON_MEMORY) {
-      for (auto& ip: aimList) {
+      for (auto& ip: mAimList) {
         if (ip->hasTraceID(index))
           return ip->getName();
       }
     }
     if (type == XCL_PERF_MON_ACCEL) {
-      for (auto& ip: amList) {
+      for (auto& ip: mAmList) {
         if (ip->hasTraceID(index))
           return ip->getName();
       }
     }
     if (type == XCL_PERF_MON_STR) {
-      for (auto& ip: asmList) {
+      for (auto& ip: mAsmList) {
         if (ip->hasTraceID(index))
           return ip->getName();
       }
@@ -283,19 +271,19 @@ DeviceIntf::~DeviceIntf()
   uint32_t DeviceIntf::getTraceMonProperty(xclPerfMonType type, uint32_t index)
   {
     if (type == XCL_PERF_MON_MEMORY) {
-      for (auto& ip: aimList) {
+      for (auto& ip: mAimList) {
         if (ip->hasTraceID(index))
           return ip->getProperties();;
       }
     }
     if (type == XCL_PERF_MON_ACCEL) {
-      for (auto& ip: amList) {
+      for (auto& ip: mAmList) {
         if (ip->hasTraceID(index))
           return ip->getProperties();;
       }
     }
     if (type == XCL_PERF_MON_STR) {
-      for (auto& ip: asmList) {
+      for (auto& ip: mAsmList) {
         if (ip->hasTraceID(index))
           return ip->getProperties();;
       }
@@ -305,11 +293,11 @@ DeviceIntf::~DeviceIntf()
 
   uint32_t DeviceIntf::getMonitorProperties(xclPerfMonType type, uint32_t index)
   {
-    if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size())) { return nocList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_FIFO)   && (fifoRead != nullptr))    { return fifoRead->getProperties(); }
+    if((type == XCL_PERF_MON_MEMORY) && (index < mAimList.size())) { return mAimList[index]->getProperties(); }
+    if((type == XCL_PERF_MON_ACCEL)  && (index < mAmList.size()))  { return mAmList[index]->getProperties(); }
+    if((type == XCL_PERF_MON_STR)    && (index < mAsmList.size())) { return mAsmList[index]->getProperties(); }
+    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size()))  { return nocList[index]->getProperties(); }
+    if((type == XCL_PERF_MON_FIFO)   && (mFifoRead != nullptr))    { return mFifoRead->getProperties(); }
     return 0;
   }
 
@@ -334,16 +322,16 @@ DeviceIntf::~DeviceIntf()
     size_t size = 0;
 
     // Axi Interface Mons
-    for(auto mon : aimList) {
+    for(auto mon : mAimList) {
         size += mon->startCounter();
     }
     // Accelerator Mons
-    for(auto mon : amList) {
+    for(auto mon : mAmList) {
         size += mon->startCounter();
     }
 
     // Axi Stream Mons
-    for(auto mon : asmList) {
+    for(auto mon : mAsmList) {
         size += mon->startCounter();
     }
     return size;
@@ -362,7 +350,7 @@ DeviceIntf::~DeviceIntf()
     size_t size = 0;
 
     // Axi Interface Mons
-    for(auto mon : aimList) {
+    for(auto mon : mAimList) {
         size += mon->stopCounter();
     }
 
@@ -370,12 +358,12 @@ DeviceIntf::~DeviceIntf()
 #if 0
     // These aren't enabled in IP
     // Accelerator Mons
-    for(auto mon : amList) {
+    for(auto mon : mAmList) {
         size += mon->stopCounter();
     }
 
     // Axi Stream Mons
-    for(auto mon : asmList) {
+    for(auto mon : mAsmList) {
         size += mon->stopCounter();
     }
 #endif
@@ -400,19 +388,19 @@ DeviceIntf::~DeviceIntf()
 
     // Read all Axi Interface Mons
     uint32_t idx = 0;
-    for(auto mon : aimList) {
+    for(auto mon : mAimList) {
         size += mon->readCounter(counterResults, idx++);
     }
 
     // Read all Accelerator Mons
     idx = 0;
-    for(auto mon : amList) {
+    for(auto mon : mAmList) {
         size += mon->readCounter(counterResults, idx++);
     }
 
     // Read all Axi Stream Mons
     idx = 0;
-    for(auto mon : asmList) {
+    for(auto mon : mAsmList) {
         size += mon->readCounter(counterResults, idx++);
     }
 
@@ -438,47 +426,52 @@ DeviceIntf::~DeviceIntf()
     size_t size = 0;
 
     // These should be reset before anything
-    if (fifoCtrl)
-      fifoCtrl->reset();
-    if (traceFunnel)
-      traceFunnel->reset();
+    if (mFifoCtrl)
+      mFifoCtrl->reset();
+    if (mTraceFunnel)
+      mTraceFunnel->reset();
 
     // This just writes to trace control register
     // Axi Interface Mons
-    for(auto mon : aimList) {
+    for(auto mon : mAimList) {
         size += mon->triggerTrace(startTrigger);
     }
     // Accelerator Mons
-    for(auto mon : amList) {
+    for(auto mon : mAmList) {
         size += mon->triggerTrace(startTrigger);
     }
     // Axi Stream Mons
-    for(auto mon : asmList) {
+    for(auto mon : mAsmList) {
         size += mon->triggerTrace(startTrigger);
     }
 
     uint32_t traceVersion = 0;
-    if (traceFunnel) {
-      if (traceFunnel->compareVersion(1,0) == -1)
+    if (mTraceFunnel) {
+      if (mTraceFunnel->compareVersion(1,0) == -1)
         traceVersion = 1;
     }
 
-    if (fifoRead)
-      fifoRead->setTraceFormat(traceVersion);
+    if (mFifoRead)
+      mFifoRead->setTraceFormat(traceVersion);
 
-    if (traceDMA)
-      traceDMA->setTraceFormat(traceVersion);
+    if (mPlTraceDma)
+      mPlTraceDma->setTraceFormat(traceVersion);
+
+    // TODO: is this correct?
+    for (auto aieTraceDma : mAieTraceDmaList) {
+      aieTraceDma->setTraceFormat(traceVersion);
+    }
 
     return size;
   }
 
   void DeviceIntf::clockTraining(bool force)
   {
-    if(!traceFunnel)
+    if(!mTraceFunnel)
       return;
     // Trace Funnel > 1.0 supports continuous training
-    if (traceFunnel->compareVersion(1,0) == -1 || force == true)
-      traceFunnel->initiateClockTraining();
+    if (mTraceFunnel->compareVersion(1,0) == -1 || force == true)
+      mTraceFunnel->initiateClockTraining();
   }
 
   // Stop trace performance monitoring
@@ -489,10 +482,10 @@ DeviceIntf::~DeviceIntf()
                 << ", Stop and reset device tracing..." << std::endl;
     }
 
-    if (!mIsDeviceProfiling || !fifoCtrl)
+    if (!mIsDeviceProfiling || !mFifoCtrl)
    	  return 0;
 
-    return fifoCtrl->reset();
+    return mFifoCtrl->reset();
   }
 
   // Get trace word count
@@ -501,10 +494,10 @@ DeviceIntf::~DeviceIntf()
       std::cout << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
-    if (!mIsDeviceProfiling || !fifoCtrl)
+    if (!mIsDeviceProfiling || !mFifoCtrl)
    	  return 0;
 
-    return fifoCtrl->getNumTraceSamples();
+    return mFifoCtrl->getNumTraceSamples();
   }
 
   // Read all values from APM trace AXI stream FIFOs
@@ -517,11 +510,11 @@ DeviceIntf::~DeviceIntf()
     }
 
     traceVector.mLength = 0;
-    if (!mIsDeviceProfiling || !fifoRead)
+    if (!mIsDeviceProfiling || !mFifoRead)
    	  return 0;
 
     size_t size = 0;
-    size += fifoRead->readTrace(traceVector, getTraceCount());
+    size += mFifoRead->readTrace(traceVector, getTraceCount());
 
     return size;
   }
@@ -585,20 +578,31 @@ DeviceIntf::~DeviceIntf()
       if(xrt_core::system::monitor_access_type::bar == accessType || true == xrt_core::config::get_container()) {
         for(uint64_t i = 0; i < map->m_count; i++ ) {
           switch(map->m_debug_ip_data[i].m_type) {
-            case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDevice, i, &(map->m_debug_ip_data[i])));
-                                         break;
-            case ACCEL_MONITOR  :        amList.push_back(new AM(mDevice, i, &(map->m_debug_ip_data[i])));
-                                         break;
-            case AXI_STREAM_MONITOR :    asmList.push_back(new ASM(mDevice, i, &(map->m_debug_ip_data[i])));
-                                         break;
-            case AXI_MONITOR_FIFO_LITE : fifoCtrl = new TraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
-                                         break;
-            case AXI_MONITOR_FIFO_FULL : fifoRead = new TraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
-                                         break;
-            case AXI_TRACE_FUNNEL :      traceFunnel = new TraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
-                                         break;
-            case TRACE_S2MM :            traceDMA = new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i]));
-                                         break;
+            case AXI_MM_MONITOR :        
+              mAimList.push_back(new AIM(mDevice, i, &(map->m_debug_ip_data[i])));
+              break;
+            case ACCEL_MONITOR  :        
+              mAmList.push_back(new AM(mDevice, i, &(map->m_debug_ip_data[i])));
+              break;
+            case AXI_STREAM_MONITOR :    
+              mAsmList.push_back(new ASM(mDevice, i, &(map->m_debug_ip_data[i])));
+              break;
+            case AXI_MONITOR_FIFO_LITE : 
+              mFifoCtrl = new TraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
+              break;
+            case AXI_MONITOR_FIFO_FULL : 
+              mFifoRead = new TraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
+              break;
+            case AXI_TRACE_FUNNEL :      
+              mTraceFunnel = new TraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
+              break;
+            case TRACE_S2MM :
+              // AIE trace potentially uses multiple data movers (based on BW requirements)
+              if (map->m_debug_ip_data[i].m_properties & TS2MM_AIE_TRACE_MASK)
+                mAieTraceDmaList.push_back(new AIETraceS2MM(mDevice, i, &(map->m_debug_ip_data[i])));
+              else
+                mPlTraceDma = new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i]));
+              break;
             case AXI_NOC :               nocList.push_back(new NOC(mDevice, i, &(map->m_debug_ip_data[i])));
                                          break;
             default : break;
@@ -612,9 +616,9 @@ DeviceIntf::~DeviceIntf()
           switch(map->m_debug_ip_data[i].m_type) {
             case AXI_MM_MONITOR :
             {
-              MMappedAIM* pMon = new MMappedAIM(mDevice, i, aimList.size(), &(map->m_debug_ip_data[i]));
+              MMappedAIM* pMon = new MMappedAIM(mDevice, i, mAimList.size(), &(map->m_debug_ip_data[i]));
               if(pMon->isMMapped()) {
-                aimList.push_back(pMon);
+                mAimList.push_back(pMon);
               } else {
                 delete pMon;
                 pMon = nullptr;
@@ -623,9 +627,9 @@ DeviceIntf::~DeviceIntf()
             }
             case ACCEL_MONITOR  :
             {
-              MMappedAM* pMon = new MMappedAM(mDevice, i, amList.size(), &(map->m_debug_ip_data[i]));
+              MMappedAM* pMon = new MMappedAM(mDevice, i, mAmList.size(), &(map->m_debug_ip_data[i]));
               if(pMon->isMMapped()) {
-                amList.push_back(pMon);
+                mAmList.push_back(pMon);
               } else {
                 delete pMon;
                 pMon = nullptr;
@@ -634,9 +638,9 @@ DeviceIntf::~DeviceIntf()
             }
             case AXI_STREAM_MONITOR :
             {
-              MMappedASM* pMon = new MMappedASM(mDevice, i, asmList.size(), &(map->m_debug_ip_data[i]));
+              MMappedASM* pMon = new MMappedASM(mDevice, i, mAsmList.size(), &(map->m_debug_ip_data[i]));
               if(pMon->isMMapped()) {
-                asmList.push_back(pMon);
+                mAsmList.push_back(pMon);
               } else {
                 delete pMon;
                 pMon = nullptr;
@@ -645,37 +649,50 @@ DeviceIntf::~DeviceIntf()
             }
             case AXI_MONITOR_FIFO_LITE :
             {
-              fifoCtrl = new MMappedTraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
-              if(!fifoCtrl->isMMapped()) {
-                delete fifoCtrl;
-                fifoCtrl = nullptr;
+              mFifoCtrl = new MMappedTraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!mFifoCtrl->isMMapped()) {
+                delete mFifoCtrl;
+                mFifoCtrl = nullptr;
               }
               break;
             }
             case AXI_MONITOR_FIFO_FULL :
             {
-              fifoRead = new MMappedTraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
-              if(!fifoRead->isMMapped()) {
-                delete fifoRead;
-                fifoRead = nullptr;
+              mFifoRead = new MMappedTraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!mFifoRead->isMMapped()) {
+                delete mFifoRead;
+                mFifoRead = nullptr;
               }
               break;
             }
             case AXI_TRACE_FUNNEL :
             {
-              traceFunnel = new MMappedTraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
-              if(!traceFunnel->isMMapped()) {
-                delete traceFunnel;
-                traceFunnel = nullptr;
+              mTraceFunnel = new MMappedTraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!mTraceFunnel->isMMapped()) {
+                delete mTraceFunnel;
+                mTraceFunnel = nullptr;
               }
               break;
             }
             case TRACE_S2MM :
             {
-              traceDMA = new MMappedTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
-              if(!traceDMA->isMMapped()) {
-                delete traceDMA;
-                traceDMA = nullptr;
+              // AIE trace potentially uses multiple data movers (based on BW requirements)
+              if (map->m_debug_ip_data[i].m_properties & TS2MM_AIE_TRACE_MASK) {
+                TraceS2MM* aieTraceDma = new MMappedAIETraceS2MM(mDevice, i, mAieTraceDmaList.size(), &(map->m_debug_ip_data[i]));
+
+                if (aieTraceDma->isMMapped()) {
+                  mAieTraceDmaList.push_back(aieTraceDma);
+                } else {
+                  delete aieTraceDma;
+                }
+              } 
+              else {
+                mPlTraceDma = new MMappedTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
+              
+                if (!mPlTraceDma->isMMapped()) {
+                  delete mPlTraceDma;
+                  mPlTraceDma = nullptr;
+                }
               }
               break;
             }
@@ -699,9 +716,9 @@ DeviceIntf::~DeviceIntf()
           switch(map->m_debug_ip_data[i].m_type) {
             case AXI_MM_MONITOR :
             {
-              IOCtlAIM* pMon = new IOCtlAIM(mDevice, i, aimList.size(), &(map->m_debug_ip_data[i]));
+              IOCtlAIM* pMon = new IOCtlAIM(mDevice, i, mAimList.size(), &(map->m_debug_ip_data[i]));
               if(pMon->isOpened()) {
-                aimList.push_back(pMon);
+                mAimList.push_back(pMon);
               } else {
                 delete pMon;
                 pMon = nullptr;
@@ -710,9 +727,9 @@ DeviceIntf::~DeviceIntf()
             }
             case ACCEL_MONITOR  :
             {
-              IOCtlAM* pMon = new IOCtlAM(mDevice, i, amList.size(), &(map->m_debug_ip_data[i]));
+              IOCtlAM* pMon = new IOCtlAM(mDevice, i, mAmList.size(), &(map->m_debug_ip_data[i]));
               if(pMon->isOpened()) {
-                amList.push_back(pMon);
+                mAmList.push_back(pMon);
               } else {
                 delete pMon;
                 pMon = nullptr;
@@ -721,9 +738,9 @@ DeviceIntf::~DeviceIntf()
             }
             case AXI_STREAM_MONITOR :
             {
-              IOCtlASM* pMon = new IOCtlASM(mDevice, i, asmList.size(), &(map->m_debug_ip_data[i]));
+              IOCtlASM* pMon = new IOCtlASM(mDevice, i, mAsmList.size(), &(map->m_debug_ip_data[i]));
               if(pMon->isOpened()) {
-                asmList.push_back(pMon);
+                mAsmList.push_back(pMon);
               } else {
                 delete pMon;
                 pMon = nullptr;
@@ -732,37 +749,49 @@ DeviceIntf::~DeviceIntf()
             }
             case AXI_MONITOR_FIFO_LITE :
             {
-              fifoCtrl = new IOCtlTraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
-              if(!fifoCtrl->isOpened()) {
-                delete fifoCtrl;
-                fifoCtrl = nullptr;
+              mFifoCtrl = new IOCtlTraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!mFifoCtrl->isOpened()) {
+                delete mFifoCtrl;
+                mFifoCtrl = nullptr;
               }
               break;
             }
             case AXI_MONITOR_FIFO_FULL :
             {
-              fifoRead = new IOCtlTraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
-              if(!fifoRead->isOpened()) {
-                delete fifoRead;
-                fifoRead = nullptr;
+              mFifoRead = new IOCtlTraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!mFifoRead->isOpened()) {
+                delete mFifoRead;
+                mFifoRead = nullptr;
               }
               break;
             }
             case AXI_TRACE_FUNNEL :
             {
-              traceFunnel = new IOCtlTraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
-              if(!traceFunnel->isOpened()) {
-                delete traceFunnel;
-                traceFunnel = nullptr;
+              mTraceFunnel = new IOCtlTraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!mTraceFunnel->isOpened()) {
+                delete mTraceFunnel;
+                mTraceFunnel = nullptr;
               }
               break;
             }
             case TRACE_S2MM :
             {
-              traceDMA = new IOCtlTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
-              if(!traceDMA->isOpened()) {
-                delete traceDMA;
-                traceDMA = nullptr;
+              // AIE trace potentially uses multiple data movers (based on BW requirements)
+              if (map->m_debug_ip_data[i].m_properties & TS2MM_AIE_TRACE_MASK) {
+                TraceS2MM* aieTraceDma = new IOCtlAIETraceS2MM(mDevice, i, mAieTraceDmaList.size(), &(map->m_debug_ip_data[i]));
+                if (aieTraceDma->isOpened()) {
+                  mAieTraceDmaList.push_back(aieTraceDma);
+                } else {
+                  delete aieTraceDma;
+                }
+              } 
+              else {
+                mPlTraceDma = new IOCtlTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
+              
+                if (!mPlTraceDma->isOpened()) {
+                  delete mPlTraceDma;
+                  mPlTraceDma = nullptr;
+                }
               }
               break;
             }
@@ -783,28 +812,36 @@ DeviceIntf::~DeviceIntf()
     {
       return lhs->getMIndex() < rhs->getMIndex();
     };
-    std::sort(aimList.begin(), aimList.end(), sorter);
-    std::sort(amList.begin(), amList.end(), sorter);
-    std::sort(asmList.begin(), asmList.end(), sorter);
+    std::sort(mAimList.begin(), mAimList.end(), sorter);
+    std::sort(mAmList.begin(), mAmList.end(), sorter);
+    std::sort(mAsmList.begin(), mAsmList.end(), sorter);
     std::sort(nocList.begin(), nocList.end(), sorter);
-    
+
 #if 0
-    for(auto mon : aimList) {
+    for(auto mon : mAimList) {
         mon->showProperties();
     }
-    for(auto mon : amList) {
+
+    for(auto mon : mAmList) {
         mon->showProperties();
     }
-    for(auto mon : asmList) {
+
+    for(auto mon : mAsmList) {
         mon->showProperties();
     }
+
+    for(auto mon : mAieTraceDmaList) {
+        mon->showProperties();
+    }
+
     for(auto noc : nocList) {
         noc->showProperties();
     }
-    if(fifoCtrl) fifoCtrl->showProperties();
-    if(fifoRead) fifoRead->showProperties();
-    if(traceDMA) traceDMA->showProperties();
-    if(traceFunnel) traceFunnel->showProperties();
+
+    if(mFifoCtrl) mFifoCtrl->showProperties();
+    if(mFifoRead) mFifoRead->showProperties();
+    if(mPlTraceDma) mPlTraceDma->showProperties();
+    if(mTraceFunnel) mTraceFunnel->showProperties();
 #endif
 
     mIsDebugIPlayoutRead = true;
@@ -818,7 +855,7 @@ DeviceIntf::~DeviceIntf()
       return;
 
     uint32_t i = 0;
-    for(auto mon: amList) {
+    for(auto mon: mAmList) {
       mon->configureDataflow(ipConfig[i++]);
     }
   }
@@ -827,7 +864,7 @@ DeviceIntf::~DeviceIntf()
   {
     if (ctx_info.empty())
       return;
-    for (auto mon : amList) {
+    for (auto mon : mAmList) {
       mon->disable();
     }
   }
@@ -851,7 +888,7 @@ DeviceIntf::~DeviceIntf()
   * We can read the entire buffer in one go if we want to
   * or choose to read in chunks
   */
-  void* DeviceIntf::syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes)
+  void* DeviceIntf::syncTraceBuf(size_t bufHandle, uint64_t offset, uint64_t bytes)
   {
     auto addr = mDevice->map(bufHandle);
     if (!addr)
@@ -865,46 +902,86 @@ DeviceIntf::~DeviceIntf()
     return mDevice->getDeviceAddr(bufHandle);
   }
 
-  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr, bool circular)
-  {
-    if (traceDMA)
-      traceDMA->init(bufSz, bufAddr, circular);
-  }
-
-  uint64_t DeviceIntf::getWordCountTs2mm()
-  {
-    if (traceDMA)
-      return traceDMA->getWordCount();
-    return 0;
-  }
-
-  uint8_t DeviceIntf::getTS2MmMemIndex()
-  {
-    if (traceDMA)
-      return traceDMA->getMemIndex();
-    return 0;
-  }
-
+  // Reset PL trace data movers
   void DeviceIntf::resetTS2MM()
   {
-    if (traceDMA)
-      traceDMA->reset();
+    if(mPlTraceDma) {
+      mPlTraceDma->reset();
+    }
   }
 
+  // Initialize PL trace data mover
+  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr, bool circular)
+  {
+    if(mPlTraceDma) {
+      mPlTraceDma->init(bufSz, bufAddr, circular);
+    }
+  }
+
+  // Get word count written by PL trace data mover
+  uint64_t DeviceIntf::getWordCountTs2mm()
+  {
+    if(!mPlTraceDma)
+      return 0;
+    return mPlTraceDma->getWordCount();
+  }
+
+  // Get memory index of trace data mover
+  uint8_t DeviceIntf::getTS2MmMemIndex()
+  {
+    if(!mPlTraceDma)
+      return 0;
+    return mPlTraceDma->getMemIndex();
+  }
+
+  // Parse trace buffer data after reading from FIFO or DDR
   void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector)
   {
-    if (traceDMA)
-      traceDMA->parseTraceBuf(traceData, bytes, traceVector);
+    if(mPlTraceDma) {
+      mPlTraceDma->parseTraceBuf(traceData, bytes, traceVector);
+    }
+  }
+
+  // Reset AIE trace data movers
+  void DeviceIntf::resetAIETs2mm(uint64_t index)
+  {
+    if(index >= mAieTraceDmaList.size())
+      return;
+    mAieTraceDmaList[index]->reset();
+  }
+
+  // Initialize an AIE trace data mover
+  void DeviceIntf::initAIETs2mm(uint64_t bufSz, uint64_t bufAddr, uint64_t index)
+  {
+    if(index >= mAieTraceDmaList.size())
+      return;
+    mAieTraceDmaList[index]->init(bufSz, bufAddr, false);
+  }
+
+  // Get word count written by AIE trace data mover
+  uint64_t DeviceIntf::getWordCountAIETs2mm(uint64_t index)
+  {
+    if(index >= mAieTraceDmaList.size())
+      return 0;
+    return mAieTraceDmaList[index]->getWordCount();
+  }
+
+  // Get memory index of AIE trace data mover
+  uint8_t DeviceIntf::getAIETs2mmMemIndex(uint64_t index)
+  {
+    if(index >= mAieTraceDmaList.size())
+      return 0;
+    return mAieTraceDmaList[index]->getMemIndex();
   }
 
   void DeviceIntf::setMaxBwRead()
   {
-    m_bw_read = mDevice->getMaxBwRead();
+    mMaxReadBW = mDevice->getMaxBwRead();
   }
 
   void DeviceIntf::setMaxBwWrite()
   {
-    m_bw_read = mDevice->getMaxBwWrite();
+    mMaxWriteBW = mDevice->getMaxBwWrite();
   }
 
 } // namespace xdp

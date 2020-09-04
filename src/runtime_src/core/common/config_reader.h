@@ -138,13 +138,6 @@ get_container()
   return value;
 }
 
-inline bool
-get_device_profile()
-{
-  static bool value = get_profile() && detail::get_bool_value("Debug.device_profile",false);
-  return value;
-}
-
 inline std::string
 get_data_transfer_trace()
 {
@@ -230,6 +223,13 @@ get_trace_buffer_size()
   return value;
 }
 
+inline std::string
+get_aie_trace_buffer_size()
+{
+  static std::string value = detail::get_string_value("Debug.aie_trace_buffer_size", "1M");
+  return value;
+}
+
 inline bool
 get_profile_api()
 {
@@ -241,6 +241,13 @@ inline bool
 get_xrt_profile()
 {
   static bool value = detail::get_bool_value("Debug.xrt_profile", false);
+  return value;
+}
+
+inline bool
+get_aie_trace()
+{
+  static bool value = detail::get_bool_value("Debug.aie_trace", false);
   return value;
 }
 
