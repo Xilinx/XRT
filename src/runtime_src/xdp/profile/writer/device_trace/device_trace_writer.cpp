@@ -93,8 +93,9 @@ namespace xdp {
           fout << "Static_Row," << (rowCount + KERNEL_STALL_DATAFLOW - KERNEL) << ",Intra-Kernel Dataflow Stall,Stalls from dataflow streams inside compute unit" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_STALL_PIPE - KERNEL) << ",Inter-Kernel Pipe Stall,Stalls from accessing pipes between kernels" << std::endl;
           fout << "Group_End,Stall" << std::endl;
+
+          rowCount += (KERNEL_STALL_PIPE - KERNEL);
         }
-        rowCount += (KERNEL_STALL_PIPE - KERNEL);
 
         // Wave Group for Read and Write, if Data transfer monitoring is enabled in CU
         if(cu->dataTransferEnabled()) {

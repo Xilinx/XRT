@@ -25,12 +25,6 @@
 
 namespace xdp {
 
-  struct CULayout {
-    uint32_t cuRowId;
-    std::map<uint32_t, uint32_t> aimRowIds;
-    std::map<uint32_t, uint32_t> asmRowIds;
-  };
-
   class DeviceTraceWriter : public VPTraceWriter
   {
   private:
@@ -40,9 +34,9 @@ namespace xdp {
     std::string xrtVersion;
     std::string toolVersion;
 
-    std::map<int32_t,  uint32_t>   cuBucketIdMap;
-    std::map<uint32_t, uint32_t>   aimBucketIdMap;
-    std::map<uint32_t, uint32_t>   asmBucketIdMap;
+    std::map<int32_t,  uint32_t> cuBucketIdMap;
+    std::map<uint32_t, uint32_t> aimBucketIdMap;
+    std::map<uint32_t, uint32_t> asmBucketIdMap;
 
     uint64_t deviceId;
 
