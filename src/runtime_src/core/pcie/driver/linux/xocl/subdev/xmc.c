@@ -4262,12 +4262,12 @@ xmc_qsfp_io_read(struct xocl_xmc *xmc, char *buf, int port)
 	ret = xmc_send_pkt(xmc);
 	if (ret) {
 		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
-		return 0;
+		goto out;
 	}
 	ret = xmc_recv_pkt(xmc);
 	if (ret) {
 		xocl_info(&xmc->pdev->dev, "recv pkt ret %d", ret);
-		return 0;
+		goto out;
 	}
 
 	if (xmc->base_addrs[IO_REG]) {
@@ -4277,6 +4277,10 @@ xmc_qsfp_io_read(struct xocl_xmc *xmc, char *buf, int port)
 	mutex_unlock(&xmc->mbx_lock);
 
 	return 1;
+out:
+	mutex_unlock(&xmc->mbx_lock);
+	return 0;
+
 }
 
 static ssize_t
@@ -4305,14 +4309,14 @@ xmc_qsfp_read(struct xocl_xmc *xmc, char *buf, int port, int lp, int up)
 	ret = xmc_send_pkt(xmc);
 	if (ret) {
 		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
-		return 0;
+		goto out;
 	}
 
 	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_recv_op);
 	ret = xmc_recv_pkt(xmc);
 	if (ret) {
 		xocl_info(&xmc->pdev->dev, "recv pkt ret %d", ret);
-		return 0;
+		goto out;
 	}
 
 	data_size = xmc->mbx_pkt.qsfp_recv.data_size;
@@ -4327,6 +4331,9 @@ xmc_qsfp_read(struct xocl_xmc *xmc, char *buf, int port, int lp, int up)
 
 	mutex_unlock(&xmc->mbx_lock);
 	return data_size;
+out:
+	mutex_unlock(&xmc->mbx_lock);
+	return 0;
 }
 
 /*
