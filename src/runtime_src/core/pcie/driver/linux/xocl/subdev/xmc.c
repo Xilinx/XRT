@@ -321,6 +321,15 @@ struct xmc_pkt_hdr {
 #define XMC_BDINFO_ENTRY_LEN_MAX 	256
 #define XMC_BDINFO_ENTRY_LEN		32
 
+#define CMC_OP_READ_QSFP_DIAGNOSTICS            0xB
+#define CMC_OP_WRITE_QSFP_CONTROL               0xC
+#define CMC_OP_READ_QSFP_VALIDATE_LOW_SPEED_IO  0xD
+#define CMC_OP_WRITE_QSFP_VALIDATE_LOW_SPEED_IO 0xE
+
+#define CMC_OP_QSFP_DIAG_OFFSET 	0xC
+#define CMC_OP_QSFP_IO_OFFSET   	0x8
+#define CMC_MAX_QSFP_READ_SIZE		128
+
 struct xmc_pkt_image_end_op {
 	u32 BSL_jump_addr;
 };
@@ -335,6 +344,21 @@ struct xmc_pkt_sector_data_op {
 	u8 data[1];
 };
 
+struct xmc_pkt_qsfp_send_op {
+	u32 port;
+	u32 lower_page;
+	u32 upper_page;
+};
+
+struct xmc_pkt_qsfp_recv_op {
+	u32 port;
+	u32 data_size;
+};
+
+struct xmc_pkt_qsfp_io_op {
+	u32 port;
+};
+
 struct xmc_pkt {
 	struct xmc_pkt_hdr hdr;
 	union {
@@ -342,6 +366,9 @@ struct xmc_pkt {
 		struct xmc_pkt_image_end_op image_end;
 		struct xmc_pkt_sector_start_op sector_start;
 		struct xmc_pkt_sector_data_op sector_data;
+		struct xmc_pkt_qsfp_send_op qsfp_send;
+		struct xmc_pkt_qsfp_recv_op qsfp_recv;
+		struct xmc_pkt_qsfp_io_op qsfp_io;
 	};
 };
 
@@ -433,6 +460,8 @@ static bool scaling_condition_check(struct xocl_xmc *xmc);
 static const struct file_operations xmc_fops;
 static bool is_sc_fixed(struct xocl_xmc *xmc);
 static void clock_status_check(struct platform_device *pdev, bool *latched);
+static ssize_t xmc_qsfp_read(struct xocl_xmc *xmc, char *buf, int port, int lp, int up);
+static ssize_t xmc_qsfp_io_read(struct xocl_xmc *xmc, char *buf, int port);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -2415,8 +2444,97 @@ static struct bin_attribute bin_dimm_temp_by_mem_topology_attr = {
 	.size = 0
 };
 
+/*
+ * preprocessor magic for qsfp name pattern:
+ *
+ * xmc_qsfp_lower_read or xmc_qsfp_upper_read will be called from
+ *
+ * qsfp0_lower_page0_read
+ * qsfp0_upper_page0_read
+ * qsfp0_upper_page1_read
+ *  ...
+ * qsfp3_lower_page0_read
+ * qsfp3_upper_page0_read
+ * qsfp3_upper_page1_read
+ * ...
+ */
+
+static ssize_t
+xmc_qsfp_lower_read(struct xocl_xmc *xmc, char *buf, int port, int pg)
+{
+	BUG_ON(pg != 0);
+	return xmc_qsfp_read(xmc, buf, port, 0, pg);
+}
+static ssize_t
+xmc_qsfp_upper_read(struct xocl_xmc *xmc, char *buf, int port, int pg)
+{
+	return xmc_qsfp_read(xmc, buf, port, 1, pg);
+}
+
+#define QSFP_READ(PORT, level, pg) 						\
+static ssize_t qsfp##PORT##_##level##_page##pg##_read(                          \
+	struct file *filp, struct kobject *kobj, 	                        \
+	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
+{                                                                               \
+	struct xocl_xmc *xmc =                                                  \
+		dev_get_drvdata(container_of(kobj, struct device, kobj));       \
+	return xmc_qsfp_##level##_read(xmc, buffer, PORT, pg);                  \
+}
+
+#define QSFP_READ_PORT(PORT) \
+	QSFP_READ(PORT, lower, 0) \
+	QSFP_READ(PORT, upper, 0) \
+	QSFP_READ(PORT, upper, 1) \
+	QSFP_READ(PORT, upper, 2) \
+	QSFP_READ(PORT, upper, 3) \
+
+QSFP_READ_PORT(0)
+QSFP_READ_PORT(1)
+QSFP_READ_PORT(2)
+QSFP_READ_PORT(3)
+
+#define QSFP_BIN_ATTR(PORT) \
+	static BIN_ATTR_RO(qsfp##PORT##_lower_page0, CMC_MAX_QSFP_READ_SIZE); \
+	static BIN_ATTR_RO(qsfp##PORT##_upper_page0, CMC_MAX_QSFP_READ_SIZE); \
+	static BIN_ATTR_RO(qsfp##PORT##_upper_page1, CMC_MAX_QSFP_READ_SIZE); \
+	static BIN_ATTR_RO(qsfp##PORT##_upper_page2, CMC_MAX_QSFP_READ_SIZE); \
+	static BIN_ATTR_RO(qsfp##PORT##_upper_page3, CMC_MAX_QSFP_READ_SIZE);
+QSFP_BIN_ATTR(0);
+QSFP_BIN_ATTR(1);
+QSFP_BIN_ATTR(2);
+QSFP_BIN_ATTR(3);
+
+#define QSFP_DIAG(PORT) \
+	&bin_attr_qsfp##PORT##_lower_page0, \
+	&bin_attr_qsfp##PORT##_upper_page0, \
+	&bin_attr_qsfp##PORT##_upper_page1, \
+	&bin_attr_qsfp##PORT##_upper_page2, \
+	&bin_attr_qsfp##PORT##_upper_page3 \
+
+#define QSFP_IO_CONFIG(PORT) \
+static ssize_t qsfp##PORT##_io_config_read(    		                        \
+	struct file *filp, struct kobject *kobj, 	                        \
+	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
+{                                                                               \
+	struct xocl_xmc *xmc =                                                  \
+		dev_get_drvdata(container_of(kobj, struct device, kobj));       \
+	return xmc_qsfp_io_read(xmc, buffer, PORT);              		\
+}
+
+QSFP_IO_CONFIG(0);
+QSFP_IO_CONFIG(1);
+
+static BIN_ATTR_RO(qsfp0_io_config, 1);
+static BIN_ATTR_RO(qsfp1_io_config, 1);
+
 static struct bin_attribute *xmc_bin_attrs[] = {
 	&bin_dimm_temp_by_mem_topology_attr,
+	QSFP_DIAG(0),
+	QSFP_DIAG(1),
+	QSFP_DIAG(2),
+	QSFP_DIAG(3),
+	&bin_attr_qsfp0_io_config,
+	&bin_attr_qsfp1_io_config,
 	NULL,
 };
 
@@ -3993,7 +4111,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 			BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
 
 		if (bd_info_valid(xmc->serial_num) &&
-			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||	
+			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
 			xmc->bdinfo_loaded = true;
 			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
@@ -4002,7 +4120,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 	} else {
 
 		if (xmc->bdinfo_loaded &&
-			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||	
+			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
 			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
 			return 0;
@@ -4025,7 +4143,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, EXP_BMC_VER, (u32 *)xmc->exp_bmc_ver);
 
 		if (bd_info_valid(xmc->serial_num) &&
-			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||	
+			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
 			xmc->bdinfo_loaded = true;
 			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
@@ -4119,6 +4237,112 @@ xmc_boot_sc(struct xocl_xmc *xmc, u32 jump_addr)
 		ret = -ETIMEDOUT;
 
 	return ret;
+}
+
+static ssize_t
+xmc_qsfp_io_read(struct xocl_xmc *xmc, char *buf, int port)
+{
+	struct xmc_status status;
+	int ret = 0;
+
+	/*
+	 * Only SC version >= 6 support this
+	 */
+	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+	if (status.sc_comm_ver < 6) {
+		xocl_info(&xmc->pdev->dev,
+			"not supported ver %d", status.sc_comm_ver);
+		return 0;
+	}
+
+	mutex_lock(&xmc->mbx_lock);
+	xmc->mbx_pkt.hdr.op = CMC_OP_READ_QSFP_VALIDATE_LOW_SPEED_IO;
+	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_io_op);
+	xmc->mbx_pkt.qsfp_io.port = port;
+	ret = xmc_send_pkt(xmc);
+	if (ret) {
+		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
+		goto out;
+	}
+	ret = xmc_recv_pkt(xmc);
+	if (ret) {
+		xocl_info(&xmc->pdev->dev, "recv pkt ret %d", ret);
+		goto out;
+	}
+
+	if (xmc->base_addrs[IO_REG]) {
+		((u8 *)buf)[0] = ioread8(xmc->base_addrs[IO_REG] +
+			xmc->mbx_offset + CMC_OP_QSFP_IO_OFFSET);
+	}
+	mutex_unlock(&xmc->mbx_lock);
+
+	return 1;
+out:
+	mutex_unlock(&xmc->mbx_lock);
+	return 0;
+
+}
+
+static ssize_t
+xmc_qsfp_read(struct xocl_xmc *xmc, char *buf, int port, int lp, int up)
+{
+	struct xmc_status status;
+	u32 data_size = 0;
+	int ret = 0;
+
+	/*
+	 * Only SC version >= 6 support this
+	 */
+	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+	if (status.sc_comm_ver < 6) {
+		xocl_info(&xmc->pdev->dev,
+			"not supported ver %d", status.sc_comm_ver);
+		return 0;
+	}
+
+	mutex_lock(&xmc->mbx_lock);
+	xmc->mbx_pkt.hdr.op = CMC_OP_READ_QSFP_DIAGNOSTICS;
+	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_send_op);
+	xmc->mbx_pkt.qsfp_send.port = port;
+	xmc->mbx_pkt.qsfp_send.lower_page = lp; 
+	xmc->mbx_pkt.qsfp_send.upper_page = up;
+	ret = xmc_send_pkt(xmc);
+	if (ret) {
+		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
+		goto out;
+	}
+
+	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_recv_op);
+	ret = xmc_recv_pkt(xmc);
+	if (ret) {
+		xocl_info(&xmc->pdev->dev, "recv pkt ret %d", ret);
+		goto out;
+	}
+
+	data_size = xmc->mbx_pkt.qsfp_recv.data_size;
+	xocl_info(&xmc->pdev->dev, "data_size %d", data_size);
+
+	/* TODO: in case data_size returns as zero in debug version,
+	 * using default max value.
+	 */
+	data_size = data_size == 0 ? CMC_MAX_QSFP_READ_SIZE : data_size;
+	if (data_size & 0x3) {
+		/* Most likely the returned data is corrupted, bail out.*/
+		xocl_info(&xmc->pdev->dev,
+			"data_size %d is not 4 byte aligned", data_size);
+		goto out;
+	}
+
+	if (xmc->base_addrs[IO_REG]) {
+		xocl_memcpy_fromio(buf, xmc->base_addrs[IO_REG] +
+			xmc->mbx_offset + CMC_OP_QSFP_DIAG_OFFSET, data_size);
+	}
+
+	mutex_unlock(&xmc->mbx_lock);
+	return data_size;
+out:
+	mutex_unlock(&xmc->mbx_lock);
+	return 0;
 }
 
 /*
