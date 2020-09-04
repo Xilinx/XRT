@@ -70,6 +70,12 @@ namespace xdp {
     }
     else
     {
+      if (storedTimestamps[kernelName].size() <= 0)
+      {
+	// There are times we get ends with no corresponding starts.
+	//  We can just ignore them.
+	return ; 
+      }
       auto executionTime = timestamp-(storedTimestamps[kernelName]).front();
       (storedTimestamps[kernelName]).pop() ;
 
