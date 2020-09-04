@@ -110,12 +110,12 @@ namespace xdp {
     // A mapping of arguments to memory resources
     std::map<int32_t, std::vector<int32_t>> connections ;
 
-    std::vector<Monitor*> monitors;
+    int32_t amId;
+    std::vector<uint32_t> aimIds;
+    std::vector<uint32_t> asmIds;
 
     bool stall        = false;
-    bool stream       = false;
     bool dataflow     = false;
-    bool dataTransfer = false;
     bool hasfa        = false;
 
     ComputeUnitInstance() = delete ;
@@ -131,22 +131,27 @@ namespace xdp {
     XDP_EXPORT std::string getDim() ;
 
     XDP_EXPORT void addConnection(int32_t, int32_t);
-    std::map<int32_t, std::vector<int32_t>>* getConnections()
+    inline std::map<int32_t, std::vector<int32_t>>* getConnections()
     {  return &connections; }
 
-    void addMonitor(Monitor* m) { monitors.push_back(m); }
+    void    setAccelMon(int32_t id) { amId = id; }
+    int32_t getAccelMon() { return amId; }
+ 
+    void addAIM(uint32_t id) { aimIds.push_back(id); }
+    void addASM(uint32_t id) { asmIds.push_back(id); }
+
+    inline std::vector<uint32_t>* getAIMs() { return &aimIds; }
+    inline std::vector<uint32_t>* getASMs() { return &asmIds; }
 
     void setStallEnabled(bool b) { stall = b; }
     bool stallEnabled() { return stall; }
 
-    void setStreamEnabled(bool b) { stream = b; }
-    bool streamEnabled() { return stream; }
+    bool streamEnabled() { return (asmIds.empty() ? false : true); }
 
     void setDataflowEnabled(bool b) { dataflow = b; }
     bool dataflowEnabled() { return dataflow; }
 
-    void setDataTransferEnabled(bool b) { dataTransfer = b; }
-    bool dataTransferEnabled() { return dataTransfer; }
+    bool dataTransferEnabled() { return (aimIds.empty() ? false : true); }
 
     void setFaEnabled(bool b) { hasfa = b; }
     bool faEnabled() { return hasfa; }
