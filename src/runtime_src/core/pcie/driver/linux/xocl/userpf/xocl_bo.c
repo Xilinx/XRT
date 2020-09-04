@@ -353,8 +353,11 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	/* Attempt to allocate buffer on the requested DDR */
 	xocl_xdev_dbg(xdev, "alloc bo from bank%u", memidx);
 
-	/* Check the mem index to see if it's MEM_HOST */
-	if ((xobj->flags & XOCL_CMA_MEM) && !is_cma_bank(drm_p, memidx)) {
+	/* You must set both XOCL_CMA_MEM and 
+	 * memory bank index that points to a CMA bank or not set at all.
+	 * If users set only one of them, XRT should error out
+	 */
+	if ((!!(xobj->flags & XOCL_CMA_MEM)) ^ is_cma_bank(drm_p, memidx)) {
 		err = -EINVAL;
 		goto failed;
 	}

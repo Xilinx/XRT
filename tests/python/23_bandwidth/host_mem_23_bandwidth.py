@@ -67,7 +67,8 @@ def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     grpid = xrtKernelArgGroupId(krnlhdl, argno)
     if grpid < 0:
         raise RuntimeError("failed to find BO group ID: %d" % grpid)
-    bo = xrtBOAlloc(devhdl, globalbuffersize, 0, grpid)
+    # To alloc HOST only buffer, we have to specify flags XCL_BO_FLAGS_HOST_ONLY = 1<<29
+    bo = xrtBOAlloc(devhdl, globalbuffersize, 1<<29, grpid)
     if bo == 0:
         raise RuntimeError("failed to alloc buffer")
 
