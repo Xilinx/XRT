@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
       std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
       msg += e.what();
       msg += ").";
-      throw std::runtime_error(msg);
+      std::cout << msg;
     }
 
   double DATA_SIZE = 1024 * 1024 * 16; // 16 MB
