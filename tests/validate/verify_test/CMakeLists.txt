@@ -1,4 +1,4 @@
-set(TESTNAME "validate")
+set(TESTNAME "validate.exe")
 
 if (WIN32)
   set(OpenCL_INCLUDE_DIR ${OCL_ROOT}/include)

@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 
   int NUM_KERNEL ;                                                           
   std::string path = argv[1];
-  std::string filename = "/slavebridge.json";
+  std::string filename = "/platform.json";
   std::string platform_json = path+filename;
 
   try{
