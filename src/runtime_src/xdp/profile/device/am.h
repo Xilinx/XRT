@@ -65,6 +65,7 @@ public:
     // Used to explicitly disable the monitor when kernel channels are used
     virtual void disable();
     virtual void configureDataflow(bool cuHasApCtrlChain);
+    virtual void configureFa(bool cuHasFa);
 
     bool has64bit() const;
     bool hasDataflow() const;

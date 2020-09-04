@@ -1063,7 +1063,7 @@ static ssize_t config_store(struct device *dev, struct device_attribute *da,
 	strncpy(p2p->bank_conf[idx].bank_tag, p_tag, MAX_BANK_TAG_LEN - 1);
 	p2p->bank_conf[idx].size = sz;
 
-	p2p->exp_mem_sz= 0;
+	p2p->exp_mem_sz = 0;
 	for (idx = 0;
 	    idx < P2P_BANK_CONF_NUM && p2p->bank_conf[idx].size != 0;
 	    idx++) {
@@ -1317,9 +1317,7 @@ static int p2p_probe(struct platform_device *pdev)
 	if (XDEV(xdev)->priv.p2p_bar_sz > 0) {
 		p2p->p2p_max_mem_sz = XDEV(xdev)->priv.p2p_bar_sz;
 		p2p->p2p_max_mem_sz <<= 30;
-	} else if (p2p_rbar_len(p2p, NULL))
-		p2p->p2p_max_mem_sz = p2p->p2p_bar_len;
-	else if (bar_sz > 0)
+	} else if (bar_sz > 0)
 		p2p->p2p_max_mem_sz = bar_sz;
 	else {
 		p2p->p2p_max_mem_sz = xocl_get_ddr_channel_size(xdev) *

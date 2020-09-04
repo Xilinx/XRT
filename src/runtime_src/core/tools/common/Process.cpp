@@ -99,8 +99,8 @@ XBUtilities::runPythonScript( const std::string & script,
   unsetenv("XCL_EMULATION_MODE");
 
   std::ostringstream args_str;
-  std::copy(args.begin(), args.end(), std::ostream_iterator<std::string>(args_str, ""));
-  std::string cmd = "/usr/bin/python3 " + script + args_str.str();
+  std::copy(args.begin(), args.end(), std::ostream_iterator<std::string>(args_str, " "));
+  std::string cmd = "/usr/bin/python3 " + script + " " + args_str.str();
 
   int stderr_fds[2];
   if (pipe(stderr_fds)== -1) {

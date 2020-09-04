@@ -261,6 +261,13 @@ void AM::configureDataflow(bool cuHasApCtrlChain)
 
 }
 
+void AM::configureFa(bool cuHasFa)
+{
+    // Requires HW Support. TBD in future
+    if (cuHasFa)
+        this->disable();
+}
+
 bool AM::has64bit() const
 {
     return ((properties & XAM_64BIT_PROPERTY_MASK) ? true : false);

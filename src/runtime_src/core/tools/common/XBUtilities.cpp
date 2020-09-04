@@ -456,7 +456,11 @@ XBUtilities::get_available_devices(bool inUserDomain)
   for (const auto & device : deviceCollection) {
     boost::property_tree::ptree pt_dev;
     pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
-    pt_dev.put("board", xrt_core::device_query<xrt_core::query::board_name>(device));
+    //user pf doesn't have this 
+    try{
+      pt_dev.put("board", xrt_core::device_query<xrt_core::query::board_name>(device));
+    } catch(...) {}
+    
 
     // The following only works for 1RP. Golden and 2RP don't have rom info.
     // As the technologies mature, try getting the vbnv and ID of the shell on device

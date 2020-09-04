@@ -1672,7 +1672,9 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     core_device->register_axlf(buffer);
 
 #ifdef XRT_ENABLE_AIE
-    drv->registerAieArray();
+    auto data = core_device->get_axlf_section(AIE_METADATA);
+    if (data.first && data.second)
+      drv->registerAieArray();
 #endif
 
     /* If PDI is the only section, return here */

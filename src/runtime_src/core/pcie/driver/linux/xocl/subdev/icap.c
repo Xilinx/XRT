@@ -1456,12 +1456,6 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 
 		/* NOTE: Only support 64 instences in subdev framework */
 
-		/* TODO: use HLS CU as default.
-		 * don't know how to distinguish plram CU and normal CU
-		 */
-		info.model = XCU_HLS;
-		info.num_res = subdev_info.num_res;
-
 		/* ip_data->m_name format "<kernel name>:<instance name>",
 		 * where instance name is so called CU name.
 		 */
@@ -1471,10 +1465,11 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		strncpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
 		info.kname[sizeof(info.kname)-1] = '\0';
 		strncpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
-		info.kname[sizeof(info.kname)-1] = '\0';
+		info.iname[sizeof(info.kname)-1] = '\0';
 
 		info.inst_idx = i;
 		info.addr = ip->m_base_address;
+		info.num_res = subdev_info.num_res;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
 		info.protocol = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
 		info.intr_id = (ip->properties & IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
@@ -1485,10 +1480,8 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		subdev_info.data_len = sizeof(info);
 		subdev_info.override_idx = info.inst_idx;
 		err = xocl_subdev_create(xdev, &subdev_info);
-		if (err) {
-			//ICAP_ERR(icap, "can't create CU subdev");
-			break;
-		}
+		if (err)
+			ICAP_ERR(icap, "Create CU %s failed. Skip", ip->m_name);
 	}
 
 	return err;

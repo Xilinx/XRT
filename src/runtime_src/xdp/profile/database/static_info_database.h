@@ -116,6 +116,7 @@ namespace xdp {
     bool stream       = false;
     bool dataflow     = false;
     bool dataTransfer = false;
+    bool hasfa        = false;
 
     ComputeUnitInstance() = delete ;
   public:
@@ -147,6 +148,9 @@ namespace xdp {
     void setDataTransferEnabled(bool b) { dataTransfer = b; }
     bool dataTransferEnabled() { return dataTransfer; }
 
+    void setFaEnabled(bool b) { hasfa = b; }
+    bool faEnabled() { return hasfa; }
+
     XDP_EXPORT ComputeUnitInstance(int32_t i, const std::string &n);
     XDP_EXPORT ~ComputeUnitInstance() ;
   } ;
@@ -177,6 +181,7 @@ namespace xdp {
     double clockRateMHz;
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
+    std::string ctxInfo;
     std::map<int32_t, ComputeUnitInstance*> cus;
     //uuid        loadedXclbinUUID;
     std::map<int32_t, Memory*> memoryInfo;
@@ -498,6 +503,28 @@ namespace xdp {
         config[count] = cu->dataflowEnabled();
         ++count;
       }
+    }
+
+    inline void getFaConfiguration(uint64_t deviceId, bool* config, size_t size)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return;
+
+      size_t count = 0;
+      for(auto mon : deviceInfo[deviceId]->amList) {
+        if(count >= size)
+          return;
+        auto cu = deviceInfo[deviceId]->cus[mon->cuIndex];
+        config[count] = cu->faEnabled();
+        ++count;
+      }
+    }
+
+    inline std::string getCtxInfo(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return "";
+      return deviceInfo[deviceId]->ctxInfo;
     }
 
     inline bool hasFloatingAIM(uint64_t deviceId)
