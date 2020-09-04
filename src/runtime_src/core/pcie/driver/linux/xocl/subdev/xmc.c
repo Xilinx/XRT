@@ -4326,6 +4326,12 @@ xmc_qsfp_read(struct xocl_xmc *xmc, char *buf, int port, int lp, int up)
 	 * using default max value.
 	 */
 	data_size = data_size == 0 ? CMC_MAX_QSFP_READ_SIZE : data_size;
+	if (data_size & 0x3) {
+		/* Most likely the returned data is corrupted, bail out.*/
+		xocl_info(&xmc->pdev->dev,
+			"data_size %d is not 4 byte aligned", data_size);
+		goto out;
+	}
 
 	if (xmc->base_addrs[IO_REG]) {
 		xocl_memcpy_fromio(buf, xmc->base_addrs[IO_REG] +
