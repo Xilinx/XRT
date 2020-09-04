@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2018-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -1306,7 +1306,7 @@ xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset)
  * |------+-------+-------+-----|
  * |rsvd                        |
  * +----+-----------------------|
- *  ... next entry ...          
+ *  ... next entry ...
  */
 int
 xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
@@ -1321,11 +1321,41 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 	u64 vsec_off;
 	bool found = false;
 	struct xocl_vsec_header *p_hdr;
+	uint16_t vsec_id = 0;
+	int offset_vsec = 0, nxt_offset = 0, ret = 0;
 
-	/* check vendor specific section */
-	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR);
+	/*
+	 * 1. To detect the ALF VSEC capability:
+	 *	XRT should look for VSEC Capability with vsec_id = 0x0020.
+	 * 2. Similarly, for Address Translation/Pass through VSEC capability:
+	 *	XRT should look for VSEC Capability with vsec_id = 0x0040
+	 * 3. Check vendor specific section for vsec_id 0x20
+	 */
+	do {
+		nxt_offset = pci_find_next_ext_capability(pdev,
+						offset_vsec, PCI_EXT_CAP_ID_VNDR);
+		if (nxt_offset == 0)
+			break;
+
+		ret = pci_read_config_word(pdev, (nxt_offset + PCI_VNDR_HEADER),
+								   &vsec_id);
+		if (ret != 0) {
+			xocl_err(&core->pdev->dev, "pci read failed for offset: 0x%x, err: %d",
+					 (nxt_offset + PCI_VNDR_HEADER), ret);
+			offset = 0;
+			nxt_offset = 0;
+			break;
+		}
+
+		if (vsec_id == XOCL_VSEC_ALF_VSEC_ID)
+			break;
+
+		offset_vsec = nxt_offset;
+	} while (nxt_offset != 0);
+
+	cap = nxt_offset;
 	if (!cap) {
-		xocl_info(&core->pdev->dev, "No Vendor Specific Capability.");
+		xocl_info(&core->pdev->dev, "No Vendor Specific Capability found.");
 		return -EINVAL;
 	}
 
@@ -1698,20 +1728,53 @@ failed:
 	return ret;
 }
 
-struct resource *xocl_get_iores_byname(struct platform_device *pdev,
-		char *name)
+static struct resource *__xocl_get_res_byname(struct platform_device *pdev,
+						unsigned int type,
+						const char *name)
 {
 	int i = 0;
 	struct resource *res;
 
-	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i);
+	for (res = platform_get_resource(pdev, type, i);
 		res;
-		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
+		res = platform_get_resource(pdev, type, ++i)) {
 		if (!strncmp(res->name, name, strlen(name)))
 			return res;
 	}
 
 	return NULL;
+}
+
+struct resource *xocl_get_iores_byname(struct platform_device *pdev,
+				       char *name)
+{
+	return __xocl_get_res_byname(pdev, IORESOURCE_MEM, name);
+}
+
+void __iomem *xocl_devm_ioremap_res(struct platform_device *pdev,
+				     int index)
+{
+	struct resource *res;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, index);
+	return devm_ioremap_resource(&pdev->dev, res);
+}
+
+void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,
+					   const char *name)
+{
+	struct resource *res;
+
+	res = __xocl_get_res_byname(pdev, IORESOURCE_MEM, name);
+	return devm_ioremap_resource(&pdev->dev, res);
+}
+
+int xocl_get_irq_byname(struct platform_device *pdev, char *name)
+{
+	struct resource *r;
+
+	r = __xocl_get_res_byname(pdev, IORESOURCE_IRQ, name);
+	return r? r->start : -ENXIO;
 }
 
 void xocl_subdev_register(struct platform_device *pldev, void *ops)

@@ -9,7 +9,43 @@
 
 #include "xrt_cu.h"
 
+/* Control register bits and special behavior if any.
+ * Bit 0: ap_start(Read/Set). Clear by CU when ap_ready assert.
+ * Bit 1: ap_done(Read only). Clear on read.
+ * Bit 2: ap_idle(Read only).
+ * Bit 3: ap_ready(Read only). Self clear after clear ap_start.
+ * Bit 4: ap_continue(Read/Set). Self clear.
+ */
+#define CTRL		0x0
+/* Global interrupt enable: Set bit 0 to enable. Clear it to disable */
+#define GIE		0x4
+/* Interrupt Enable Register
+ * Bit 0: ap_done. 0 - disable; 1 - enable.
+ * Bit 1: ap_ready. 0 - disable; 1 - enable.
+ */
+#define IER		0x8
+/* Interrupt Status Register
+ * Bit 0: ap_done(Toggle on set).
+ * Bit 1: ap_done(Toggle on set).
+ *   Toggle on set - Write 1 would flip the bit. Write 0 has no change.
+ */
+#define ISR		0xC
+#define ARGS		0x10
+
 extern int kds_echo;
+
+static inline u32 cu_read32(struct xrt_cu_hls *cu, u32 reg)
+{
+	u32 ret;
+
+	ret = ioread32(cu->vaddr + reg);
+	return ret;
+}
+
+static inline void cu_write32(struct xrt_cu_hls *cu, u32 reg, u32 val)
+{
+	iowrite32(val, cu->vaddr + reg);
+}
 
 static int cu_hls_alloc_credit(void *core)
 {
@@ -37,7 +73,6 @@ static int cu_hls_peek_credit(void *core)
 static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
 {
 	struct xrt_cu_hls *cu_hls = core;
-	u32 *base_addr = cu_hls->vaddr;
 	size_t num_reg;
 	u32 i;
 
@@ -45,15 +80,8 @@ static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
 		return;
 
 	num_reg = sz / sizeof(u32);
-	/* Write register map, starting at base_addr + 0x10 (byte)
-	 * This based on the fact that kernel used
-	 *	0x00 -- Control Register
-	 *	0x04 and 0x08 -- Interrupt Enable Registers
-	 *	0x0C -- Interrupt Status Register
-	 * Skip the first 4 words in user regmap.
-	 */
 	for (i = 0; i < num_reg; ++i)
-		iowrite32(data[i], base_addr + 4 + i);
+		cu_write32(cu_hls, ARGS + i, data[i]);
 }
 
 static void cu_hls_start(void *core)
@@ -65,13 +93,7 @@ static void cu_hls_start(void *core)
 	if (kds_echo)
 		return;
 
-	/* Bit 0 -- The CU start control bit.
-	 * Write 0 to this bit will be ignored.
-	 *
-	 * In ap_ctrl_chain, start bit will keep as 1 until ap_ready assert.
-	 * This bit would be clear by hardware.
-	 */
-	iowrite32(CU_AP_START, cu_hls->vaddr);
+	cu_write32(cu_hls, CTRL, CU_AP_START);
 }
 
 /*
@@ -87,18 +109,13 @@ cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 	u32 done_reg = 0;
 	u32 ready_reg = 0;
 
-	/* ioread32/iowrite32 is expensive!
-	 * Avoid access CU register unless we do have running commands.
+	/* Avoid access CU register unless we do have running commands.
 	 * This has a huge impact on performance.
 	 */
 	if (!cu_hls->run_cnts)
 		return;
 
-	/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
-	 * but not by AP_IDLE itself.  Since b10 | (b10 | b100) = b110
-	 * checking for b10 is sufficient.
-	 */
-	ctrl_reg = ioread32(cu_hls->vaddr);
+	ctrl_reg = cu_read32(cu_hls, CTRL);
 	/* ap_ready and ap_done would assert at the same cycle */
 	if (ctrl_reg & CU_AP_DONE) {
 		done_reg  = 1;
@@ -127,18 +144,13 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 
 	used_credit = cu_hls->max_credits - cu_hls->credits;
 
-	/* ioread32/iowrite32 is expensive!
-	 * Access CU when there are unsed credits or running commands
+	/* Access CU when there are unsed credits or running commands
 	 * This has a huge impact on performance.
 	 */
 	if (!used_credit && !cu_hls->run_cnts)
 		return;
 
-	/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
-	 * but not by AP_IDLE itself.  Since b10 | (b10 | b100) = b110
-	 * checking for b10 is sufficient.
-	 */
-	ctrl_reg  = ioread32(cu_hls->vaddr);
+	ctrl_reg  = cu_read32(cu_hls, CTRL);
 
 	/* if there is submitted tasks, then check if ap_start bit is clear
 	 * See comments in cu_hls_start().
@@ -149,7 +161,7 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 	if (ctrl_reg & CU_AP_DONE) {
 		done_reg = 1;
 		cu_hls->run_cnts--;
-		iowrite32(CU_AP_CONTINUE, cu_hls->vaddr);
+		cu_write32(cu_hls, CTRL, CU_AP_CONTINUE);
 	}
 
 	status->num_done  = done_reg;
@@ -176,28 +188,22 @@ static void cu_hls_check(void *core, struct xcu_status *status)
 static void cu_hls_enable_intr(void *core, u32 intr_type)
 {
 	struct xrt_cu_hls *cu_hls = core;
-	u32 intr_mask = intr_type & CU_INTR_DONE;
 
-	/* 0x04 and 0x08 -- Interrupt Enable Registers */
-	iowrite32(0x1, cu_hls->vaddr + 0x4);
-	/*
-	 * bit 0 is ap_done, bit 1 is ap_ready
-	 * only enable ap_done before dataflow support, interrupts are handled
-	 * in sched_exec_isr, please see dataflow comments for more information.
-	 */
-	iowrite32(intr_mask, cu_hls->vaddr + 0x8);
+	cu_write32(cu_hls, GIE, 0x1);
+	cu_write32(cu_hls, IER, intr_type);
 }
 
 static void cu_hls_disable_intr(void *core, u32 intr_type)
 {
 	struct xrt_cu_hls *cu_hls = core;
+	u32 orig = cu_read32(cu_hls, ISR);
+	/* if bit 0 of intr_type is set, it means disable ap_done,
+	 * same to bit 1 for ap_ready.
+	 */
+	u32 new = orig & (~intr_type);
 
-	u32 intr_mask = intr_type & ioread32(cu_hls->vaddr + 0x8);
-
-	/* 0x04 and 0x08 -- Interrupt Enable Registers */
-	iowrite32(0x0, cu_hls->vaddr + 0x4);
-	/* bit 0 is ap_done, bit 1 is ap_ready, disable both of interrupts */
-	iowrite32(intr_mask, cu_hls->vaddr + 0x8);
+	cu_write32(cu_hls, GIE, 0x0);
+	cu_write32(cu_hls, IER, new);
 }
 
 static u32 cu_hls_clear_intr(void *core)
@@ -228,8 +234,8 @@ static u32 cu_hls_clear_intr(void *core)
 		 * status register is 0, write 1 to this register will
 		 * trigger interrupt.
 		 */
-		isr = ioread32(cu_hls->vaddr + 0xc);
-		iowrite32(isr, cu_hls->vaddr + 0xc);
+		isr = cu_read32(cu_hls, ISR);
+		cu_write32(cu_hls, ISR, isr);
 		return isr;
 	}
 
@@ -241,9 +247,8 @@ static u32 cu_hls_clear_intr(void *core)
 	 * For debug purpose, This register is toggle on write.
 	 * Write 1 to this register will trigger interrupt.
 	 */
-	return ioread32(cu_hls->vaddr + 0xc);
+	return cu_read32(cu_hls, ISR);
 }
-
 
 static struct xcu_funcs xrt_cu_hls_funcs = {
 	.alloc_credit	= cu_hls_alloc_credit,
@@ -304,11 +309,11 @@ void xrt_cu_hls_fini(struct xrt_cu *xcu)
 {
 	struct xrt_cu_hls *core = xcu->core;
 
+	xrt_cu_fini(xcu);
+
 	if (xcu->core) {
 		if (core->vaddr)
 			iounmap(core->vaddr);
 		kfree(xcu->core);
 	}
-
-	xrt_cu_fini(xcu);
 }

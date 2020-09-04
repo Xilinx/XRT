@@ -32,6 +32,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    multiprocess.rst
    p2p.rst
    m2m.rst
+   sb.rst
    streaming_data_support.rst
    xrt_ini.rst
 
