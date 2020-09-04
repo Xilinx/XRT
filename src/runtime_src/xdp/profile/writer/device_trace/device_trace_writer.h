@@ -40,7 +40,7 @@ namespace xdp {
     std::string xrtVersion;
     std::string toolVersion;
 
-    std::map<int32_t,  CULayout*>  cuBucketIdMap;
+    std::map<int32_t,  uint32_t>   cuBucketIdMap;
     std::map<uint32_t, uint32_t>   aimBucketIdMap;
     std::map<uint32_t, uint32_t>   asmBucketIdMap;
 

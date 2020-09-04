@@ -115,9 +115,7 @@ namespace xdp {
     std::vector<uint32_t> asmIds;
 
     bool stall        = false;
-    bool stream       = false;
     bool dataflow     = false;
-    bool dataTransfer = false;
 
     ComputeUnitInstance() = delete ;
   public:
@@ -147,14 +145,12 @@ namespace xdp {
     void setStallEnabled(bool b) { stall = b; }
     bool stallEnabled() { return stall; }
 
-    void setStreamEnabled(bool b) { stream = b; }
-    bool streamEnabled() { return stream; }
+    bool streamEnabled() { return (asmIds.empty() ? false : true); }
 
     void setDataflowEnabled(bool b) { dataflow = b; }
     bool dataflowEnabled() { return dataflow; }
 
-    void setDataTransferEnabled(bool b) { dataTransfer = b; }
-    bool dataTransferEnabled() { return dataTransfer; }
+    bool dataTransferEnabled() { return (aimIds.empty() ? false : true); }
 
     XDP_EXPORT ComputeUnitInstance(int32_t i, const std::string &n);
     XDP_EXPORT ~ComputeUnitInstance() ;

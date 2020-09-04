@@ -362,7 +362,6 @@ namespace xdp {
         devInfo->aimList.push_back(mon);
         if(cuObj) {
           cuObj->addAIM(devInfo->aimList.size()-1);
-          cuObj->setDataTransferEnabled(true);
         } else if(0 != monCuName.compare("shell")) {
           // If not connected to CU and not a shell monitor, then a floating monitor
           devInfo->hasFloatingAIM = true;
@@ -404,7 +403,6 @@ namespace xdp {
         }
         if(cuObj) {
           cuObj->addASM(devInfo->asmList.size()-1);
-          cuObj->setStreamEnabled(true);
         } else if(0 != monCuName.compare("shell")) {
           // If not connected to CU and not a shell monitor, then a floating monitor
           devInfo->hasFloatingASM = true;
