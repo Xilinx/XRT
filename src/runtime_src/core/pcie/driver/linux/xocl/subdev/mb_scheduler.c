@@ -1946,7 +1946,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return 1;
 	}
 
-	if (major > 2) {
+	if (major > 3) {
 		DRM_INFO("Unknown ERT major version, fallback to KDS mode\n");
 		ert_full = 0;
 		ert_poll = 0;
