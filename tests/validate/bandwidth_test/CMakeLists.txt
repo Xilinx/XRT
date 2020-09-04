@@ -1,4 +1,4 @@
-set(TESTNAME "kernel_bw")
+set(TESTNAME "kernel_bw.exe")
 
 if (WIN32)
   set(OpenCL_INCLUDE_DIR ${OCL_ROOT}/include)
