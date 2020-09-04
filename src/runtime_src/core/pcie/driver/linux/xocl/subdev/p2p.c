@@ -118,6 +118,8 @@ struct p2p {
 	ulong			remap_slot_sz;
 	ulong			remap_range;
 
+	ulong			rbar_len;
+
 	bool			sysfs_created;
 
 	struct p2p_bank_conf	*bank_conf;
@@ -571,6 +573,7 @@ static int p2p_mem_init(struct p2p *p2p)
 	p2p_info(p2p, "Init remapper. range %ld, slot size %ld, num %ld",
 		p2p->remap_range, p2p->remap_slot_sz, p2p->remap_slot_num);
 
+	p2p_rbar_len(p2p, &p2p->rbar_len);
 	/* Pass P2P bar address and len to mgmtpf */
 	(void) p2p_read_addr_mgmtpf(p2p);
 
@@ -1083,8 +1086,7 @@ static ssize_t config_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
-	ulong rbar_len = 0;
-	int ret, i;
+	int i;
 	ssize_t count = 0;
 
 	mutex_lock(&p2p->p2p_lock);
@@ -1094,10 +1096,8 @@ static ssize_t config_show(struct device *dev,
 
 	count += sprintf(buf + count, "max_bar:%lld\n", p2p->p2p_max_mem_sz);
 	count += sprintf(buf + count, "exp_bar:%ld\n", P2P_EXP_BAR_SZ(p2p));
-
-	ret = p2p_rbar_len(p2p, &rbar_len);
-	if (!ret)
-		count += sprintf(buf + count, "rbar:%ld\n", rbar_len);
+	if (p2p->rbar_len > 0)
+		count += sprintf(buf + count, "rbar:%ld\n", p2p->rbar_len);
 
 	if (p2p->remapper) {
 		count += sprintf(buf + count, "remap:%ld\n",
