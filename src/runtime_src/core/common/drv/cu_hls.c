@@ -81,7 +81,7 @@ static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
 
 	num_reg = sz / sizeof(u32);
 	for (i = 0; i < num_reg; ++i)
-		cu_write32(cu_hls, ARGS + i, data[i]);
+		cu_write32(cu_hls, ARGS + i * 4, data[i]);
 }
 
 static void cu_hls_start(void *core)
