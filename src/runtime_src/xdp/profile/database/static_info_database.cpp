@@ -41,6 +41,7 @@
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #include "core/include/xclbin.h"
+#include "core/common/config_reader.h"
 
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/common/aie_parser.h"
@@ -138,6 +139,10 @@ namespace xdp {
     } else {
       devInfo->clockRateMHz = 300;
     }
+    /* Configure AMs if context monitoring is supported
+     * else disable alll AMs on this device
+     */
+    devInfo->ctxInfo = xrt_core::config::get_kernel_channel_info();
 
 //    if (!setXclbinUUID(devInfo, device)) return;
     if (!setXclbinName(devInfo, device)) return;
@@ -215,6 +220,9 @@ namespace xdp {
       devInfo->cus[i] = cu;
       if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
         cu->setDataflowEnabled(true);
+      } else
+      if((ipData->properties >> IP_CONTROL_SHIFT) & FAST_ADAPTER) {
+        cu->setFaEnabled(true);
       }
     }
 
@@ -255,6 +263,9 @@ namespace xdp {
         devInfo->cus[connctn->m_ip_layout_index] = cu;
         if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
           cu->setDataflowEnabled(true);
+        } else
+        if((ipData->properties >> IP_CONTROL_SHIFT) & FAST_ADAPTER) {
+          cu->setFaEnabled(true);
         }
       } else {
         cu = devInfo->cus[connctn->m_ip_layout_index];
@@ -414,6 +425,9 @@ namespace xdp {
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
                           readTrafficClass, writeTrafficClass);
         devInfo->nocList.push_back(mon);
+      } else if(debugIpData->m_type == TRACE_S2MM && (debugIpData->m_properties & 0x1)) {
+//        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
+        devInfo->numTracePLIO++;
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }

@@ -116,6 +116,7 @@ namespace xdp {
 
     bool stall        = false;
     bool dataflow     = false;
+    bool hasfa        = false;
 
     ComputeUnitInstance() = delete ;
   public:
@@ -152,6 +153,9 @@ namespace xdp {
 
     bool dataTransferEnabled() { return (aimIds.empty() ? false : true); }
 
+    void setFaEnabled(bool b) { hasfa = b; }
+    bool faEnabled() { return hasfa; }
+
     XDP_EXPORT ComputeUnitInstance(int32_t i, const std::string &n);
     XDP_EXPORT ~ComputeUnitInstance() ;
   } ;
@@ -182,6 +186,7 @@ namespace xdp {
     double clockRateMHz;
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
+    std::string ctxInfo;
     std::map<int32_t, ComputeUnitInstance*> cus;
     //uuid        loadedXclbinUUID;
     std::map<int32_t, Memory*> memoryInfo;
@@ -194,6 +199,8 @@ namespace xdp {
 
     bool hasFloatingAIM = false;
     bool hasFloatingASM = false;
+
+    uint32_t numTracePLIO = 0;
 
     ~DeviceInfo()
     {
@@ -263,6 +270,9 @@ namespace xdp {
      */
     std::map<uint64_t, DeviceInfo*> deviceInfo;
 
+    // DeviceIntf*
+    std::map<uint64_t, void*> deviceIntf;
+
     // Static info can be accessed via any host thread
     std::mutex dbLock ;
 
@@ -318,6 +328,19 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return std::string(""); 
       return deviceInfo[deviceId]->platformInfo.deviceName; 
+    }
+
+    void setDeviceIntf(uint64_t deviceId, void* devIntf)
+    {
+      if(deviceIntf.find(deviceId) == deviceIntf.end())
+        return; 
+      deviceIntf[deviceId] = devIntf;
+    }
+    void* getDeviceIntf(uint64_t deviceId)
+    {
+      if(deviceIntf.find(deviceId) == deviceIntf.end())
+        return nullptr;
+      return deviceIntf[deviceId]; 
     }
 
     void setKDMACount(uint64_t deviceId, uint64_t num)
@@ -487,6 +510,28 @@ namespace xdp {
       }
     }
 
+    inline void getFaConfiguration(uint64_t deviceId, bool* config, size_t size)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return;
+
+      size_t count = 0;
+      for(auto mon : deviceInfo[deviceId]->amList) {
+        if(count >= size)
+          return;
+        auto cu = deviceInfo[deviceId]->cus[mon->cuIndex];
+        config[count] = cu->faEnabled();
+        ++count;
+      }
+    }
+
+    inline std::string getCtxInfo(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return "";
+      return deviceInfo[deviceId]->ctxInfo;
+    }
+
     inline bool hasFloatingAIM(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -499,6 +544,23 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false;
       return deviceInfo[deviceId]->hasFloatingASM;
+    }
+
+    inline uint64_t getNumTracePLIO(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->numTracePLIO;
+    }
+
+    inline uint64_t getNumAIETraceStream(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+
+      if(deviceInfo[deviceId]->numTracePLIO)
+        return deviceInfo[deviceId]->numTracePLIO;
+      return deviceInfo[deviceId]->gmioList.size();
     }
 
     // Reseting device information whenever a new xclbin is added
