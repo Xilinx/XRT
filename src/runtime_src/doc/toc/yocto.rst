@@ -21,7 +21,7 @@ Here's an example to install XRT 2020.1 PU1 for ZCU104.
 
 .. code-block:: bash
 
-        # Excute the following scripts on target embedded system
+        # Execute the following scripts on target embedded system
         # Install dnf repository description
         cd /etc/yum.repos.d
         wget http://petalinux.xilinx.com/sswreleases/rel-v2020/generic/rpm/repos/zynqmp-generic_ev.repo
