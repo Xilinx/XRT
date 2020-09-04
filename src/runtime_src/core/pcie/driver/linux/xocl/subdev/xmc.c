@@ -4321,8 +4321,11 @@ xmc_qsfp_read(struct xocl_xmc *xmc, char *buf, int port, int lp, int up)
 
 	data_size = xmc->mbx_pkt.qsfp_recv.data_size;
 	xocl_info(&xmc->pdev->dev, "data_size %d", data_size);
-	/*XXX debug only */
-	data_size = 128;
+
+	/* TODO: in case data_size returns as zero in debug version,
+	 * using default max value.
+	 */
+	data_size = data_size == 0 ? CMC_MAX_QSFP_READ_SIZE : data_size;
 
 	if (xmc->base_addrs[IO_REG]) {
 		xocl_memcpy_fromio(buf, xmc->base_addrs[IO_REG] +
