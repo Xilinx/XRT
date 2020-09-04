@@ -299,6 +299,13 @@ struct xocl_vsec_header {
 	u32		rsvd;
 };
 
+struct xocl_pci_info {
+	unsigned short    link_width;
+	unsigned short    link_speed;
+	unsigned short    link_width_max;
+	unsigned short    link_speed_max;
+};
+
 extern struct class *xrt_class;
 
 struct drm_xocl_bo;
