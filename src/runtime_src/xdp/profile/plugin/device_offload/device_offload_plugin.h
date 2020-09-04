@@ -73,6 +73,8 @@ namespace xdp {
 
     XDP_EXPORT void addDevice(const std::string& sysfsPath) ;
     XDP_EXPORT void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;
+    XDP_EXPORT void configureFa(uint64_t deviceId, DeviceIntf* devInterface) ;
+    XDP_EXPORT void configureCtx(uint64_t deviceId, DeviceIntf* devInterface) ;
     XDP_EXPORT void addOffloader(uint64_t deviceId, DeviceIntf* devInterface) ;
     XDP_EXPORT void configureTraceIP(DeviceIntf* devInterface) ;
 

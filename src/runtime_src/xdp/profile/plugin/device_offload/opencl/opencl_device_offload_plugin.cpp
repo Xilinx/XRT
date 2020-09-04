@@ -183,8 +183,11 @@ namespace xdp {
 
     configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;
+    configureTraceIP(devInterface) ;
+    // Disable AMs for unsupported features
+    configureFa(deviceId, devInterface) ;
+    configureCtx(deviceId, devInterface) ;
 
-    configureTraceIP(devInterface) ; 
     if (getFlowMode() == HW) devInterface->clockTraining() ;
   }
   

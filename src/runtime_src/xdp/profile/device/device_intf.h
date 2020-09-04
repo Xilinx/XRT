@@ -100,6 +100,8 @@ class DeviceIntf {
     XDP_EXPORT
     void configureDataflow(bool* ipConfig);
     XDP_EXPORT
+    void configureFa(bool* ipConfig);
+    XDP_EXPORT
     void configAmContext(const std::string& ctx_info);
 
     // Underlying Device APIs

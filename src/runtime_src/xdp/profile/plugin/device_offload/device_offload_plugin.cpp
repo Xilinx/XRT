@@ -85,6 +85,24 @@ namespace xdp {
     delete [] dataflowConfig ;
   }
 
+  void DeviceOffloadPlugin::configureFa(uint64_t deviceId,
+					      DeviceIntf* devInterface)
+  {
+    uint32_t numAM = devInterface->getNumMonitors(XCL_PERF_MON_ACCEL) ;
+    bool* FaConfig = new bool[numAM] ;
+    (db->getStaticInfo()).getFaConfiguration(deviceId, FaConfig, numAM) ;
+    devInterface->configureFa(FaConfig) ;
+
+    delete [] FaConfig ;
+  }
+
+  void DeviceOffloadPlugin::configureCtx(uint64_t deviceId,
+					      DeviceIntf* devInterface)
+  {
+    auto ctxInfo = (db->getStaticInfo()).getCtxInfo(deviceId) ;
+    devInterface->configAmContext(ctxInfo);
+  }
+
   // It is the responsibility of the child class to instantiate the appropriate
   //  device interface based on the level (OpenCL or HAL)
   void DeviceOffloadPlugin::addOffloader(uint64_t deviceId,
