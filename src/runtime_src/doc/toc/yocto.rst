@@ -5,7 +5,7 @@ XRT Setup for Embedded Flow
 ===========================
 
 To use XRT on embedded designs, xrt and zocl two components need to be installed in the root file system. 
-xrt package contains is user space library and Zocl requires a device tree node.
+Xrt package contains user space libraries and zocl is a driver space module, which requires a device tree node.
 
 
 Install XRT from Package Feed
