@@ -548,7 +548,8 @@ skip1:
 	}
 
 	/* The finial step is to update KDS configuration */
-	xocl_kds_update(xdev);
+	if (kds_mode)
+		xocl_kds_update(xdev);
 
 	if (!preserve_mem) {
 		rc = xocl_init_mem(drm_p);
