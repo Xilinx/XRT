@@ -26,7 +26,8 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
                                    uint64_t sleep_interval_ms,
                                    uint64_t trbuf_sz,
                                    bool start_thread)
-                   : sleep_interval_ms(sleep_interval_ms),
+                   : continuous(start_thread),
+		     sleep_interval_ms(sleep_interval_ms),
                      m_trbuf_alloc_sz(trbuf_sz),
                      dev_intf(dInt),
                      deviceTraceLogger(dTraceLogger)

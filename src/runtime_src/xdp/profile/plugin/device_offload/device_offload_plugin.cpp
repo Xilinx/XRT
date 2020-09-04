@@ -237,7 +237,15 @@ namespace xdp {
     //  and write our writers.
     for (auto o : offloaders)
     {
-      (std::get<0>(o.second))->read_trace() ;
+      auto offloader = std::get<0>(o.second) ;
+      if (offloader->continuous_offload())
+      {
+	offloader->stop_offload() ;
+      }
+      else
+      {
+	offloader->read_trace() ;
+      }
     }
 
     // Also, store away the counter results

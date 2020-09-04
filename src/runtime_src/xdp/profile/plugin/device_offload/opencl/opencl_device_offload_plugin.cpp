@@ -103,9 +103,16 @@ namespace xdp {
 	
 	if (deviceIdsToBeFlushed.find(deviceId) != deviceIdsToBeFlushed.end())
 	{
-	  auto offloader = std::get<0>(o.second) ;	
-	  offloader->read_trace() ;
-	  offloader->read_trace_end() ;
+	  auto offloader = std::get<0>(o.second) ;
+	  if (offloader->continuous_offload())
+	  {
+	    offloader->stop_offload() ;
+	  }
+	  else
+	  {
+	    offloader->read_trace() ;
+	    offloader->read_trace_end() ;
+	  }
 	}
       }
       readCounters() ;
@@ -154,8 +161,16 @@ namespace xdp {
     
     if (offloaders.find(deviceId) != offloaders.end())
     {
-      std::get<0>(offloaders[deviceId])->read_trace() ;
-      std::get<0>(offloaders[deviceId])->read_trace_end() ;
+      auto offloader = std::get<0>(offloaders[deviceId]) ;
+      if (offloader->continuous_offload())
+      {
+	offloader->stop_offload() ;
+      }
+      else
+      {
+	offloader->read_trace() ;
+	offloader->read_trace_end() ;
+      }
     }
     readCounters() ;
 

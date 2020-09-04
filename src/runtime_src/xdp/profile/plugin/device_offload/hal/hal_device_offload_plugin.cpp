@@ -86,8 +86,15 @@ namespace xdp {
       {
 	auto offloader = std::get<0>(o.second) ;
 
-	offloader->read_trace() ;
-	offloader->read_trace_end() ;
+	if (offloader->continuous_offload())
+        {
+	  offloader->stop_offload() ;
+	}
+	else
+	{
+	  offloader->read_trace() ;
+	  offloader->read_trace_end() ;
+	}
       }
 
       // Also, store away the counter results
@@ -140,7 +147,15 @@ namespace xdp {
 
     if (offloaders.find(deviceId) != offloaders.end())
     {
-      std::get<0>(offloaders[deviceId])->read_trace() ;
+      auto offloader = std::get<0>(offloaders[deviceId]) ;
+      if (offloader->continuous_offload())
+      {
+	offloader->stop_offload() ;
+      }
+      else
+      {
+	offloader->read_trace() ;
+      }
     }
     readCounters() ;
   }
