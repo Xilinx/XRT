@@ -73,7 +73,7 @@ static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,
 	struct xrt_cu *xcu = &m2m->m2m_cu;
 	struct start_copybo_cu_cmd cmd;
 
-	M2M_INFO(m2m, "dst %llx, src %llx", dst_paddr, src_paddr);
+	M2M_DBG(m2m, "dst %llx, src %llx", dst_paddr, src_paddr);
 	/* Note: dst_paddr has been adjusted with offset */
 	if ((dst_paddr % KDMA_BLOCK_SIZE) ||
 	    (src_paddr % KDMA_BLOCK_SIZE) ||
