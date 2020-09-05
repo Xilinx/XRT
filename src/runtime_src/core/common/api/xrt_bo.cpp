@@ -346,10 +346,8 @@ public:
   }
 };
 
-// class buffer_dbuf - device only side buffer
+// class buffer_dbuf - device only buffer
 //
-// Kernel driver allocated host side buffer.  The host side buffer
-// is allocated in physical memory by kernel driver.
 class buffer_dbuf : public bo_impl
 {
 public:
