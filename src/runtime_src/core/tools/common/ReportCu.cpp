@@ -34,13 +34,14 @@ schedulerUpdateStat(const xrt_core::device *device)
 {
     try {
       // lock xclbin
-      auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
-      const_cast <xrt_core::device *>(device)->open_context(uuid.get(), -1, true);
-      auto at_exit = [] (auto device, auto uuid) { const_cast <xrt_core::device *>(device)->close_context(uuid.get(), -1); };
-      xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
+      auto dev = const_cast <xrt_core::device *>(device);
+      auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(dev));
+      dev->open_context(uuid.get(), -1, true);
+      auto at_exit = [] (auto dev, auto uuid) { dev->close_context(uuid.get(), -1); };
+      xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, dev, uuid));
 
       // get scheduler stats 
-      xrt_core::device_query<qr::scheduler_update_stat>(device);
+      xrt_core::device_query<qr::scheduler_update_stat>(dev);
     }
     catch (const std::exception&) {
       // xclbin_lock failed, safe to ignore
