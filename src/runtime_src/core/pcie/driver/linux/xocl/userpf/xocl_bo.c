@@ -363,6 +363,9 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		memidx = drm_p->cma_bank_idx;
 	}
 
+	if (memidx == drm_p->cma_bank_idx)
+		xobj->flags |= XOCL_CMA_MEM;
+
 	/* Attempt to allocate buffer on the requested DDR */
 	xocl_xdev_dbg(xdev, "alloc bo from bank%u", memidx);
 
