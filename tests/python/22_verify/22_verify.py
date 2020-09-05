@@ -36,7 +36,7 @@ def runKernel(opt):
     name = list(filter(lambda val: rule.match, opt.kernels))[0]
     khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, name)
 
-    grpid = xrtKernelArgGroupId(krnlhdl, 0)
+    grpid = xrtKernelArgGroupId(khandle, 0)
     if grpid < 0:
         raise RuntimeError("failed to find BO group ID: %d" % grpid)
 
