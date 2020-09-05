@@ -1848,6 +1848,8 @@ struct xocl_m2m_funcs {
 	int (*copy_bo)(struct platform_device *pdev, uint64_t src_paddr,
 		uint64_t dst_paddr, uint32_t src_handle, uint32_t dst_handle,
 		uint32_t size);
+	int (*get_host_bank)(struct platform_device *pdev, u64 *addr,
+		u64 *size);
 };
 #define	M2M_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_M2M).pldev
 #define	M2M_OPS(xdev)	\
@@ -1856,6 +1858,9 @@ struct xocl_m2m_funcs {
 #define	xocl_m2m_copy_bo(xdev, src_paddr, dst_paddr, src_handle, dst_handle, size) \
 	(M2M_CB(xdev) ? M2M_OPS(xdev)->copy_bo(M2M_DEV(xdev), src_paddr, dst_paddr, \
 	src_handle, dst_handle, size) : -ENODEV)
+#define xocl_m2m_host_bank(xdev, addr, size)				\
+	(M2M_CB(xdev) ? M2M_OPS(xdev)->get_host_bank(M2M_DEV(xdev),	\
+	addr, size) : -ENODEV)
 
 /* subdev functions */
 int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,

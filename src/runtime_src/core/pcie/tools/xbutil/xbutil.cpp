@@ -1467,6 +1467,7 @@ int xcldev::device::validate(bool quick, bool hidden)
 {
     bool withWarning = false;
     int retVal = 0;
+    auto dev = pcidev::get_dev(m_idx);
 
     retVal = runOneTest("Kernel version check",
             std::bind(&xcldev::device::kernelVersionTest, this));
@@ -1527,6 +1528,22 @@ int xcldev::device::validate(bool quick, bool hidden)
     withWarning = withWarning || (retVal == 1);
     if (retVal < 0)
         return retVal;
+
+    if (dev != nullptr) {
+        std::string errmsg;
+	int nodma = 0;
+
+        dev->sysfs_get<int>("", "nodma", errmsg, nodma, 0);
+        if (nodma) {
+            retVal = runOneTest("host memory bandwidth test",
+                std::bind(&xcldev::device::hostMemBandwidthKernelTest, this));
+            withWarning = withWarning || (retVal == 1);
+            if (retVal < 0)
+                return retVal;
+
+            return withWarning ? 1 : 0;
+        }
+    }
 
     // Perform P2P test
     retVal = runOneTest("PCIE peer-to-peer test",
