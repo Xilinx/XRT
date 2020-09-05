@@ -36,17 +36,14 @@ def runKernel(opt):
     name = list(filter(lambda val: rule.match, opt.kernels))[0]
     khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, name)
 
-    grpid = xrtKernelArgGroupId(khandle, opt.first_mem)
-    if grpid < 0:
-        raise RuntimeError("failed to find BO group ID: %d" % grpid)
-    boHandle1 = xrtBOAlloc(opt.handle, opt.DATA_SIZE, 0, grpid)
+    boHandle1 = xrtBOAlloc(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
     buf1 = xrtBOMap(boHandle1)
     bo1 = ctypes.cast(buf1, ctypes.POINTER(ctypes.c_char))
     if bo1 == 0:
         raise RuntimeError("failed to map buffer1")
     ctypes.memset(bo1, 0, opt.DATA_SIZE)
 
-    boHandle2 = xrtBOAlloc(opt.handle, opt.DATA_SIZE, 0, grpid)
+    boHandle2 = xrtBOAlloc(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
     buf2 = xrtBOMap(boHandle2)
     bo2 = ctypes.cast(buf2, ctypes.POINTER(ctypes.c_char))
     if bo2 == 0:
