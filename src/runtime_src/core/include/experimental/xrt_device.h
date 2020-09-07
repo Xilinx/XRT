@@ -43,7 +43,7 @@ class device
 {
 public:
   /**
-   * device() - Constructor for empty bo
+   * device() - Constructor for empty device
    */
   device()
   {}
@@ -56,6 +56,16 @@ public:
   XCL_DRIVER_DLLESPEC
   explicit
   device(unsigned int didx);
+
+  /**
+   * device() - Constructor from opaque handle
+   *
+   * Implementation defined constructor
+   */
+  explicit
+  device(std::shared_ptr<xrt_core::device> hdl)
+    : handle(std::move(hdl))
+  {}
 
   /**
    * device() - Copy ctor
