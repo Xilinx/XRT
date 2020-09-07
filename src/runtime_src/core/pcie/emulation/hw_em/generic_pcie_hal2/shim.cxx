@@ -1872,7 +1872,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   bool HwEmShim::isMBSchedulerEnabled()
   {
-    if (xclemulation::is_platform_data_available()) {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
       bool mbSchEnabled = mPlatformData.mIsBoardScheduler;
       return mbSchEnabled;
     }
@@ -1883,7 +1883,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
   bool HwEmShim::isM2MEnabled() {
-   if (xclemulation::is_platform_data_available()) {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
       bool isM2MEnabled = mPlatformData.mIsM2M;
       return isM2MEnabled;
     }
@@ -1891,7 +1891,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
   bool HwEmShim::isNoDMAEnabled() {
-   if (xclemulation::is_platform_data_available()) {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
       bool isNoDMAEnabled = mPlatformData.mIsNoDMA;
       return isNoDMAEnabled;
     }
@@ -1899,7 +1899,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
   std::string HwEmShim::getMBSchedulerVersion() {
-    if (xclemulation::is_platform_data_available()) {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
       std::string ver = (std::string)mPlatformData.mBoardSchedulerVer;
       return ver;
     }
@@ -1931,7 +1931,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   bool HwEmShim::isCdmaEnabled()
   {
-    if (xclemulation::is_platform_data_available()) {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
       return mPlatformData.mIsCDMA;
     }
 
@@ -1940,7 +1940,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   uint64_t HwEmShim::getCdmaBaseAddress(unsigned int index)
   {
-    if (xclemulation::is_platform_data_available()) {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
       if (index == 0){
         return mPlatformData.mCDMABaseAddress0;
       }

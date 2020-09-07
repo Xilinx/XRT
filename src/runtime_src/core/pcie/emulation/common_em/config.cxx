@@ -78,6 +78,7 @@ namespace xclemulation{
     mCuBaseAddrForce=-1;
     mIsSharedFmodel=true;
     mTimeOutScale=TIMEOUT_SCALE::NA;
+    mIsPlatformDataAvailable = false;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -377,13 +378,6 @@ namespace xclemulation{
     return false;
   }
 
-  bool is_platform_data_available() {
-    if (std::getenv("IS_PLATFORM_DATA_AVAILABLE")) {
-      return true;
-    }
-    return false;
-  }
-
   bool is_sw_emulation()
   {    
     static auto xem = std::getenv("XCL_EMULATION_MODE");
@@ -602,80 +596,64 @@ namespace xclemulation{
 
   static void populatePlatformData(boost::property_tree::ptree const& platformDataTree, platformData& platform_data) {
 
-    for (auto& prop : platformDataTree)
-    {
+    for (auto& prop : platformDataTree) {
       std::string name = prop.first;
-      if (name == "Fpga_Part_Name")
-      {
-
+      if (name == "Fpga_Part_Name") {
         std::string fpgaPartName = prop.second.get_value<std::string>();
-        if (fpgaPartName.empty() == false)
-        {
-          if (strlen(fpgaPartName.c_str()) < 64)
+        if (fpgaPartName.empty() == false) {
+          if (strlen(fpgaPartName.c_str()) < 64) {
             std::strcpy(platform_data.mFpgaPartName, fpgaPartName.c_str());
+          }
         }
       }
-      else if (name == "Unified_Platform")
-      {
-        bool isUnifiedPlatform = prop.second.get_value<bool>();
-        platform_data.mIsUnifiedPlatform = isUnifiedPlatform;
+      else if (name == "Unified_Platform") {
+        platform_data.mIsUnifiedPlatform = prop.second.get_value<bool>();
       }
-      else if (name == "Vbnv_Name")
-      {
+      else if (name == "Vbnv_Name") {
         std::string vbnvName = prop.second.get_value<std::string>();
-        if (vbnvName.empty() == false)
-        {
-          if (strlen(vbnvName.c_str()) < 64)
+        if (vbnvName.empty() == false) {
+          if (strlen(vbnvName.c_str()) < 64) {
             std::strcpy(platform_data.mVBNVName, vbnvName.c_str());
+          }
         }
       } 
       else if (name == "Board_Scheduler") {
-        bool boardScheduler = prop.second.get_value<bool>();
-        platform_data.mIsBoardScheduler = boardScheduler;
+        platform_data.mIsBoardScheduler = prop.second.get_value<bool>();
       }
       else if (name == "Board_Scheduler_Ver") {
         std::string boardSchedulerVer = prop.second.get_value<std::string>();
-        if (boardSchedulerVer.empty() == false)
-        {
-          if (strlen(boardSchedulerVer.c_str()) < 16)
+        if (boardSchedulerVer.empty() == false) {
+          if (strlen(boardSchedulerVer.c_str()) < 16) {
             std::strcpy(platform_data.mBoardSchedulerVer, boardSchedulerVer.c_str());
+          }
         }
       }
       else if (name == "Peer_To_Peer") {
-        bool peerToPeer = prop.second.get_value<bool>();
-        platform_data.mIsPeerToPeer = peerToPeer;
+        platform_data.mIsPeerToPeer = prop.second.get_value<bool>();
       }
       else if (name == "No_DMA") {
-        bool isNoDma = prop.second.get_value<bool>();
-        platform_data.mIsNoDMA = isNoDma;
+        platform_data.mIsNoDMA = prop.second.get_value<bool>();
       }
       else if (name == "M2M") {
-        bool isM2M = prop.second.get_value<bool>();
-        platform_data.mIsM2M = isM2M;
+        platform_data.mIsM2M = prop.second.get_value<bool>();
       } 
       else if (name == "CDMA") {
-        bool isCDMA = prop.second.get_value<bool>();
-        platform_data.mIsCDMA = isCDMA;
+        platform_data.mIsCDMA = prop.second.get_value<bool>();
       }
       else if (name == "QDMA") {
-        bool isQDMA = prop.second.get_value<bool>();
-        platform_data.mIsQDMA = isQDMA;
+        platform_data.mIsQDMA = prop.second.get_value<bool>();
       }
       else if (name == "Cdma_Base_Address0") {
-        unsigned long long cdmaBaseAddress0 = prop.second.get_value<unsigned long long>();
-        platform_data.mCDMABaseAddress0 = cdmaBaseAddress0;
+        platform_data.mCDMABaseAddress0 = prop.second.get_value<unsigned long long>();
       }
       else if (name == "Cdma_Base_Address1") {
-        unsigned long long cdmaBaseAddress1 = prop.second.get_value<unsigned long long>();
-        platform_data.mCDMABaseAddress1 = cdmaBaseAddress1;
+        platform_data.mCDMABaseAddress1 = prop.second.get_value<unsigned long long>();
       }
       else if (name == "Cdma_Base_Address2") {
-        unsigned long long cdmaBaseAddress2 = prop.second.get_value<unsigned long long>();
-        platform_data.mCDMABaseAddress2 = cdmaBaseAddress2;
+        platform_data.mCDMABaseAddress2 = prop.second.get_value<unsigned long long>();
       }
       else if (name == "Cdma_Base_Address3") {
-        unsigned long long cdmaBaseAddress3 = prop.second.get_value<unsigned long long>();
-        platform_data.mCDMABaseAddress3 = cdmaBaseAddress3;
+        platform_data.mCDMABaseAddress3 = prop.second.get_value<unsigned long long>();
       }
     }
   }
@@ -834,7 +812,7 @@ namespace xclemulation{
         {
           boost::property_tree::ptree platformDataTree = prop.second;
           populatePlatformData(platformDataTree, platform_data);
-          setenv("IS_PLATFORM_DATA_AVAILABLE", "1", true);
+          config::getInstance()->setIsPlatformEnabled(true);
         }
         else if(prop.first == "OclFreqency")
         {

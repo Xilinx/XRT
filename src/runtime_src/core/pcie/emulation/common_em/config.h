@@ -211,6 +211,9 @@ namespace xclemulation{
       inline long long getCuBaseAddrForce() const         { return mCuBaseAddrForce;              }
       inline bool isSharedFmodel() const         {return mIsSharedFmodel; } 
       inline TIMEOUT_SCALE getTimeOutScale() const    {return mTimeOutScale;}
+
+      inline void setIsPlatformEnabled(bool isPlatformDataAvailable) {mIsPlatformDataAvailable = isPlatformDataAvailable; }
+      inline bool getIsPlatformEnabled() { return mIsPlatformDataAvailable;}
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
     private:
@@ -223,7 +226,7 @@ namespace xclemulation{
       DEBUG_MODE mLaunchWaveform;
       std::string mSimDir;
       std::string mUserPreSimScript;
-	    std::string mUserPostSimScript;
+      std::string mUserPostSimScript;
       std::string mWcfgFilePath;
       unsigned int mPacketSize;
       unsigned int mMaxTraceCount;
@@ -242,6 +245,7 @@ namespace xclemulation{
       ERTMODE mLegacyErt;
       long long mCuBaseAddrForce;
       bool      mIsSharedFmodel;
+      bool mIsPlatformDataAvailable;
       TIMEOUT_SCALE mTimeOutScale;
       config();
       ~config() { };//empty destructor
@@ -252,7 +256,6 @@ namespace xclemulation{
   std::string getEmDebugLogFile();
   bool isXclEmulationModeHwEmuOrSwEmu();
   bool is_sw_emulation();
-  bool is_platform_data_available();
   std::string getRunDirectory();
   
   std::map<std::string,std::string> getEnvironmentByReadingIni();
