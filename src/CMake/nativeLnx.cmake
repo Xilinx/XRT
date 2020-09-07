@@ -66,16 +66,14 @@ if (DEFINED ENV{XRT_BOOST_INSTALL})
     HINTS $ENV{XRT_BOOST_INSTALL}
     REQUIRED COMPONENTS system filesystem)
 else()
-  # On older systems libboost_system.a is not compiled with -fPIC which leads to
-  # link errors when XRT shared objects try to link with it.
-  # Static linking with Boost is enabled on Ubuntu 18.04 but not 20.04
-#  if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} STREQUAL 18.04))
-#    set(Boost_USE_STATIC_LIBS  ON)
-#  endif()
   find_package(Boost 
     REQUIRED COMPONENTS system filesystem)
 endif()
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
+
+if(Boost_VERSION_STRING VERSION_LESS 1.64.0)
+  add_definitions (-DBOOST_PRE_1_64=1)
+endif()
 
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
