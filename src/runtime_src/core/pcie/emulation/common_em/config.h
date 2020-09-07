@@ -23,6 +23,7 @@
 #include "xbar_sys_parameters.h"
 #include "xclhal2.h"
 #include "xclfeatures.h"
+#include "em_defines.h"
 #include "xclbin.h"
 #include <chrono>
 
@@ -246,11 +247,12 @@ namespace xclemulation{
       ~config() { };//empty destructor
   };
 
-  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader> >& devicesInfo);
+  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader, platformData> >& devicesInfo);
   bool copyLogsFromOneFileToAnother(const std::string &logFile, std::ofstream &ofs);
   std::string getEmDebugLogFile();
   bool isXclEmulationModeHwEmuOrSwEmu();
   bool is_sw_emulation();
+  bool is_platform_data_available();
   std::string getRunDirectory();
   
   std::map<std::string,std::string> getEnvironmentByReadingIni();

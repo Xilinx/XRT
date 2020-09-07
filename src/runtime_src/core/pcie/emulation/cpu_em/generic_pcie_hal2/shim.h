@@ -138,7 +138,8 @@ namespace xclcpuemhal2 {
 
 
       ~CpuemShim();
-      CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, bool bXPR, FeatureRomHeader &featureRom );
+      CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, 
+        bool bXPR, FeatureRomHeader &featureRom, platformData& platform_data);
 
       static CpuemShim *handleCheck(void *handle);
       bool isGood() const;
@@ -239,6 +240,7 @@ namespace xclcpuemhal2 {
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
+      platformData mPlatformData;
 
       std::set<unsigned int > mImportedBOs;
       exec_core* mCore;
