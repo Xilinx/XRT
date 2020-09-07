@@ -1787,7 +1787,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   }
 
-  HwEmShim::HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader &fRomHeader)
+  HwEmShim::HwEmShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, 
+    FeatureRomHeader &fRomHeader, platformData &platform_data)
     :mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
@@ -1823,6 +1824,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   
     std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
     std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
+
+    std::memset(&mPlatformData, 0, sizeof(platformData));
+    std::memcpy(&mPlatformData, &platform_data, sizeof(platformData));
     
     last_clk_time = clock();
     mCloseAll = false;
@@ -1868,11 +1872,39 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   bool HwEmShim::isMBSchedulerEnabled()
   {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      bool mbSchEnabled = mPlatformData.mIsBoardScheduler;
+      return mbSchEnabled;
+    }
+
     bool mbSchEnabled = mFeatureRom.FeatureBitMap & FeatureBitMask::MB_SCHEDULER;
-    bool QDMAPlatform = (getDsaVersion() == 60)? true: false;
+    bool QDMAPlatform = (getDsaVersion() == 60) ? true : false;
     return mbSchEnabled && !QDMAPlatform;
   }
-  
+
+  bool HwEmShim::isM2MEnabled() {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      bool isM2MEnabled = mPlatformData.mIsM2M;
+      return isM2MEnabled;
+    }
+    return false;
+  }
+
+  bool HwEmShim::isNoDMAEnabled() {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      bool isNoDMAEnabled = mPlatformData.mIsNoDMA;
+      return isNoDMAEnabled;
+    }
+    return false;
+  }
+
+  std::string HwEmShim::getMBSchedulerVersion() {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      std::string ver = (std::string)mPlatformData.mBoardSchedulerVer;
+      return ver;
+    }
+    return "1.0";
+  }
 
   bool HwEmShim::isLegacyErt()
   {
@@ -1899,11 +1931,30 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   bool HwEmShim::isCdmaEnabled()
   {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      return mPlatformData.mIsCDMA;
+    }
+
     return mFeatureRom.FeatureBitMap & FeatureBitMask::CDMA;
   }
 
   uint64_t HwEmShim::getCdmaBaseAddress(unsigned int index)
   {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      if (index == 0){
+        return mPlatformData.mCDMABaseAddress0;
+      }
+      else if (index == 1) {
+        return mPlatformData.mCDMABaseAddress1;
+      }
+      else if (index == 2) {
+        return mPlatformData.mCDMABaseAddress2;
+      }
+      else if (index == 3) {
+        return mPlatformData.mCDMABaseAddress3;
+      }
+    }
+  
     return mFeatureRom.CDMABaseAddress[index];
   }
 

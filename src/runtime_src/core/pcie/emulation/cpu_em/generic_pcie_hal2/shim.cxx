@@ -50,7 +50,8 @@ namespace xclcpuemhal2 {
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
  
-  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader)
+  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr,
+    FeatureRomHeader& fRomHeader, platformData& platform_data)
     :mTag(TAG)
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
@@ -83,6 +84,9 @@ namespace xclcpuemhal2 {
 
     std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
     std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
+
+    std::memset(&mPlatformData, 0, sizeof(platformData));
+    std::memcpy(&mPlatformData, &platform_data, sizeof(platformData));
     
     char* pack_size = getenv("SW_EMU_PACKET_SIZE");
     if(pack_size)
