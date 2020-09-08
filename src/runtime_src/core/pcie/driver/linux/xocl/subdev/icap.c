@@ -2643,6 +2643,7 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 	long err = 0;
 	uint64_t section_size = 0, sect_sz = 0;
 	void **target = NULL;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	if (memcmp(xclbin->m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)))
 		return -EINVAL;
@@ -2702,6 +2703,23 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 		goto done;
 	}
 
+	if (kind == MEM_TOPOLOGY || kind == ASK_GROUP_TOPOLOGY) {
+		struct mem_topology *mem_topo = *target;
+		u64 hbase, hsz;
+		int i;
+
+		for (i = 0; i< mem_topo->m_count; ++i) {
+			if (!IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag) ||
+			    mem_topo->m_mem_data[i].m_used)
+				continue;
+
+			if (!xocl_m2m_host_bank(xdev, &hbase, &hsz)) {
+				mem_topo->m_mem_data[i].m_used = 1;
+				mem_topo->m_mem_data[i].m_base_address = hbase;
+				mem_topo->m_mem_data[i].m_size = (hsz >> 10);
+			}
+		}
+	}
 done:
 	if (err) {
 		if (target && *target) {
@@ -3480,8 +3498,7 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag)){
 			/* m_size in KB, convert Byte to KB */
 			mem_topo->m_mem_data[i].m_size = (range>>10);
-		} else
-			continue;
+		}
 	}
 
 	if (count < size - offset)
