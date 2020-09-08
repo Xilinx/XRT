@@ -72,9 +72,8 @@
 #define P2P_RBAR_TO_BYTES(rbar_sz)	(1UL << ((rbar_sz) + 20))
 #define P2P_BYTES_TO_RBAR(bytes)	(fls64((bytes) - 1) - 20)
 #define P2P_BAR_ROUNDUP(bytes)		(1UL << (fls64((bytes) - 1)))
-#define P2P_EXP_BAR_SZ(p2p)		((p2p->user_buf_start > 0) ?	\
-	P2P_BAR_ROUNDUP(p2p->exp_mem_sz + p2p->user_buf_start +		\
-	MAX_ULP_IP_SPACE) : P2P_BAR_ROUNDUP(p2p->exp_mem_sz))
+#define P2P_EXP_BAR_SZ(p2p)						\
+	P2P_BAR_ROUNDUP(p2p->exp_mem_sz + p2p->user_buf_start)
 
 struct remapper_regs {
 	u32	ver;
@@ -90,8 +89,7 @@ struct remapper_regs {
 #define P2P_BANK_CONF_NUM	1024
 #define MAX_BANK_TAG_LEN	64
 
-#define MAX_ULP_IP_SPACE	(512UL << 20)
-#define P2P_DEFAULT_BAR_SIZE	(2UL << 30)
+#define P2P_DEFAULT_BAR_SIZE	(256UL << 20)
 
 struct p2p_bank_conf {
 	char bank_tag[MAX_BANK_TAG_LEN];
@@ -117,6 +115,7 @@ struct p2p {
 	ulong			remap_slot_num;
 	ulong			remap_slot_sz;
 	ulong			remap_range;
+	void			*remap_slots;
 
 	ulong			rbar_len;
 
@@ -124,6 +123,13 @@ struct p2p {
 
 	struct p2p_bank_conf	*bank_conf;
 	ulong			user_buf_start;
+};
+
+struct p2p_remap_slot {
+	uint			ref;
+	ulong			ep_addr;
+	ulong			map_head_chunk;
+	ulong			map_chunk_num;
 };
 
 struct p2p_mem_chunk {
@@ -139,12 +145,6 @@ struct p2p_mem_chunk {
 #ifdef  P2P_API_V2
 	struct dev_pagemap	xpmc_pgmap;
 #endif
-
-	/* Used by remap */
-	uint			remap_ref;
-	ulong			ep_addr;
-	ulong			map_head_chunk;
-	ulong			map_chunk_num;
 };
 
 #define remap_reg_rd(g, r)				\
@@ -493,6 +493,7 @@ static int p2p_mem_fini(struct p2p *p2p, bool free_trunk)
 		return 0;
 
 	vfree(p2p->p2p_mem_chunks);
+	vfree(p2p->remap_slots);
 
 	p2p->p2p_mem_chunk_num = 0;
 	p2p->p2p_mem_chunks = NULL;
@@ -500,6 +501,7 @@ static int p2p_mem_fini(struct p2p *p2p, bool free_trunk)
 	remap_reg_wr(p2p, 0, slot_num);
 	p2p->remap_slot_num = 0;
 	p2p->remap_range = 0;
+	p2p->remap_slots = NULL;
 
 	/* Reset Virtualization registers */
 	(void) p2p_read_addr_mgmtpf(p2p);
@@ -512,6 +514,7 @@ static int p2p_mem_init(struct p2p *p2p)
 	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
 	resource_size_t pa;
 	struct p2p_mem_chunk *chunks;
+	struct p2p_remap_slot *slots;
 	int i;
 
 	if (p2p->p2p_mem_chunks) {
@@ -539,28 +542,32 @@ static int p2p_mem_init(struct p2p *p2p)
 				remap_get_max_slot_logsz(p2p);
 		}
 
-		p2p->remap_slot_sz = p2p->remap_range / remap_get_max_slot_num(p2p);
-		if (p2p->remap_slot_sz < XOCL_P2P_CHUNK_SIZE)
-			p2p->remap_slot_sz = XOCL_P2P_CHUNK_SIZE;
+		p2p->remap_slot_sz = p2p->remap_range /
+			remap_get_max_slot_num(p2p);
+		/* range is 2 ** n */
+		p2p->remap_slot_num = p2p->remap_range / p2p->remap_slot_sz;
+		p2p->remap_slots = vzalloc(sizeof(struct p2p_remap_slot) *
+			p2p->remap_slot_num);
+		if (!p2p->remap_slots)
+			return -ENOMEM;
 	}
-	/* range is 2 ** n */
-	p2p->remap_slot_num = p2p->remap_range / p2p->remap_slot_sz;
 
-	p2p->p2p_mem_chunk_num = p2p->p2p_bar_len / XOCL_P2P_CHUNK_SIZE;
+	p2p->p2p_mem_chunk_num = p2p->remap_range / XOCL_P2P_CHUNK_SIZE;
 	p2p->p2p_mem_chunks = vzalloc(sizeof(struct p2p_mem_chunk) *
 			p2p->p2p_mem_chunk_num);
 	if (!p2p->p2p_mem_chunks)
 		return -ENOMEM;
-	chunks = p2p->p2p_mem_chunks;
+	slots = p2p->remap_slots;
+	for (i = 0; i < p2p->remap_slot_num; i++)
+		slots[i].ep_addr = ~0UL;
 
 	pa = pci_resource_start(pcidev, p2p->p2p_bar_idx);
+	chunks = p2p->p2p_mem_chunks;
 	for (i = 0; i < p2p->p2p_mem_chunk_num; i++) {
 		chunks[i].xpmc_pa = pa + XOCL_P2P_CHUNK_SIZE * i; 
 		chunks[i].xpmc_size = XOCL_P2P_CHUNK_SIZE;
-		chunks[i].ep_addr = ~0UL;
 		init_completion(&chunks[i].xpmc_comp);
 	}
-
 
 	remap_reg_wr(p2p, 0, slot_num);
 	if (p2p->priv_data &&
@@ -704,97 +711,100 @@ static int p2p_reserve_release(struct p2p *p2p, ulong off, ulong sz,
 
 static void p2p_bar_unmap(struct p2p *p2p, ulong bar_off)
 {
-	struct p2p_mem_chunk *chunk;
+	struct p2p_remap_slot *slot;
 	ulong idx;
 	ulong num;
 	int i;
 
-	idx = bar_off / XOCL_P2P_CHUNK_SIZE;
-	chunk = p2p->p2p_mem_chunks;
-	if (!chunk)
+	idx = bar_off / p2p->remap_slot_sz;
+	slot = p2p->remap_slots;
+	if (!slot)
 		return;
 
-	num = chunk[idx].map_chunk_num;
-	for (i = chunk[idx].map_head_chunk; i < num; i++) {
-		chunk[i].remap_ref--;
-		if (chunk[i].remap_ref == 0)
-			chunk[i].ep_addr = ~0UL;
-		chunk[i].map_head_chunk = 0;
-		chunk[i].map_chunk_num = 0;
+	num = slot[idx].map_chunk_num;
+	for (i = slot[idx].map_head_chunk; i < num; i++) {
+		slot[i].ref--;
+		if (slot[i].ref == 0)
+			slot[i].ep_addr = ~0UL;
+		slot[i].map_head_chunk = 0;
+		slot[i].map_chunk_num = 0;
 	}
 }
 
-static long p2p_bar_map(struct p2p *p2p, ulong bank_addr, ulong bank_size)
+static long p2p_bar_map(struct p2p *p2p, ulong bank_addr, ulong bank_size,
+	ulong bar_off_align)
 {
-	struct p2p_mem_chunk *chunk;
+	struct p2p_remap_slot *slot;
 	long i, j, bar_off;
 	ulong ep_addr, ep_size, addr;
 	ulong num;
 
 	p2p_info(p2p, "bank addr %lx, sz %ld, slots %ld",
 		bank_addr, bank_size, p2p->remap_slot_num);
-	chunk = p2p->p2p_mem_chunks;
-	if (!chunk)
+	slot = p2p->remap_slots;
+	if (!slot)
 		return -EINVAL;
 
-	ep_addr = rounddown(bank_addr, XOCL_P2P_CHUNK_SIZE);
-	ep_size = roundup(bank_size, XOCL_P2P_CHUNK_SIZE);
-	num = ep_size / XOCL_P2P_CHUNK_SIZE;
-	if (num > p2p->p2p_mem_chunk_num)
+	ep_addr = rounddown(bank_addr, p2p->remap_slot_sz);
+	ep_size = roundup(bank_size, p2p->remap_slot_sz);
+	num = ep_size / p2p->remap_slot_sz;
+	if (num > p2p->remap_slot_num)
 		return -ENOENT;
 
-	for (i = 0; i <= p2p->p2p_mem_chunk_num - num; i++) {
-		if (chunk[i].remap_ref && (chunk[i].ep_addr != ep_addr ||
+	for (i = 0; i <= p2p->remap_slot_num - num; i++) {
+		if (slot[i].ref && (slot[i].ep_addr != ep_addr ||
 		    bank_addr == ~0UL))
 			continue;
 
+		if ((i * p2p->remap_slot_sz) % bar_off_align)
+			continue;
+
 		for (j = i; j < i + num; j++) {
-			if (bank_addr == ~0UL && !chunk[i].remap_ref)
+			if (bank_addr == ~0UL && !slot[i].ref)
 				continue;
-			addr = ep_addr + (j - i) * XOCL_P2P_CHUNK_SIZE;
-			if (chunk[j].ep_addr != ~0UL && chunk[j].ep_addr != addr)
+			addr = ep_addr + (j - i) * p2p->remap_slot_sz;
+			if (slot[j].ep_addr != ~0UL && slot[j].ep_addr != addr)
 				break;
 		}
 		if (j == i + num)
 			break;
 	}
 
-	if (i > p2p->p2p_mem_chunk_num - num)
+	if (i > p2p->remap_slot_num - num)
 		return -ENOENT;
 
 	if (bank_addr == ~0UL) {
 		for (j = i; j < i + num; j++) {
-			chunk[j].remap_ref = 1;
-			chunk[j].map_head_chunk = i;
-			chunk[j].map_chunk_num = num;
+			slot[j].ref = 1;
+			slot[j].map_head_chunk = i;
+			slot[j].map_chunk_num = num;
 		}
-		bar_off = i * XOCL_P2P_CHUNK_SIZE;
+		bar_off = i * p2p->remap_slot_sz;
 
 		p2p_info(p2p, "mark %ld - %ld chunks", i, i +  num - 1);
 		return bar_off;
 	}
 
 	/* mark all slots */
-	bar_off = i * XOCL_P2P_CHUNK_SIZE + ep_addr % XOCL_P2P_CHUNK_SIZE;
+	bar_off = i * p2p->remap_slot_sz + ep_addr % p2p->remap_slot_sz;
 	j = i - (ep_addr - rounddown(bank_addr, p2p->remap_slot_sz)) /
-		XOCL_P2P_CHUNK_SIZE;
+		p2p->remap_slot_sz;
 	ep_addr = rounddown(bank_addr, p2p->remap_slot_sz);
 	ep_size = roundup(bank_size, p2p->remap_slot_sz);
-	num = ep_size / XOCL_P2P_CHUNK_SIZE;
+	num = ep_size / p2p->remap_slot_sz;
 
 	p2p_info(p2p, "mark %ld - %ld chunks", j, j +  num - 1);
 
 	remap_reg_wr(p2p, 0, slot_num);
 	for (i = j; i < j + num; i++) {
-		chunk[i].remap_ref++;
-		chunk[i].ep_addr = ep_addr;
-		chunk[j].map_head_chunk = j;
-		chunk[j].map_chunk_num = num;
+		slot[i].ref++;
+		slot[i].ep_addr = ep_addr;
+		slot[j].map_head_chunk = j;
+		slot[j].map_chunk_num = num;
 
 		if (ep_addr % p2p->remap_slot_sz == 0)
-			remap_write_slot(p2p,
-			    i * XOCL_P2P_CHUNK_SIZE / p2p->remap_slot_sz, ep_addr);
-		ep_addr += XOCL_P2P_CHUNK_SIZE;
+			remap_write_slot(p2p, i, ep_addr);
+		ep_addr += p2p->remap_slot_sz;
 	}
 	remap_reg_wr(p2p, p2p->remap_slot_num, slot_num);
 
@@ -846,7 +856,8 @@ static int p2p_mem_map(struct platform_device *pdev,
 	p2p_info(p2p, "map bank addr 0x%lx, size %ld, offset %ld, len %ld",
 			bank_addr, bank_size, offset, len);
 
-	bank_off = p2p_bar_map(p2p, bank_addr, bank_size);
+	bank_off = p2p_bar_map(p2p, bank_addr, bank_size,
+		XOCL_P2P_CHUNK_SIZE);
 	if (bank_off < 0) {
 		ret = -ENOENT;
 		goto failed;
@@ -976,7 +987,7 @@ static int p2p_remap_resource(struct platform_device *pdev, int bar_idx,
 
 	mutex_lock(&p2p->p2p_lock);
 	p2p_info(p2p, "Remap reserve resource %pR", res);
-	bar_off = p2p_bar_map(p2p, res->start, res_len);
+	bar_off = p2p_bar_map(p2p, res->start, res_len, 1);
 	if (bar_off < 0) {
 		p2p_err(p2p, "not enough remap space");
 		ret = -ENOENT;
@@ -1306,9 +1317,10 @@ static int p2p_probe(struct platform_device *pdev)
 			p2p->p2p_bar_idx);
 	p2p->p2p_bar_len = (ulong) pci_resource_len(pcidev, p2p->p2p_bar_idx);
 	if (p2p->p2p_bar_len < XOCL_P2P_CHUNK_SIZE) {
-		xocl_err(&pdev->dev, "p2p bar len is 0");
+		xocl_err(&pdev->dev, "Invalid p2p bar len %ld",
+			p2p->p2p_bar_len);
 		p2p->p2p_bar_idx = -1;
-		ret = -ENOMEM;
+		ret = -EINVAL;
 		goto failed;
 	}
 

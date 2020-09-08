@@ -365,7 +365,9 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	void *priv_data = NULL;
 	size_t data_len = 0;
 	char devname[64];
-	int retval = 0;
+	int retval = 0, i, bar_idx;
+	struct resource *res = NULL;
+	resource_size_t iostart;
 
 	if (subdev->info.override_name)
 		snprintf(devname, sizeof(devname) - 1, "%s",
@@ -385,8 +387,49 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	}
 
 	if (subdev->info.num_res > 0) {
+		res = vzalloc(subdev->info.num_res);
+		if (!res) {
+			retval = -ENOMEM;
+			goto error;
+		}
+		memcpy(res, subdev->res, sizeof(*res) * subdev->info.num_res);
+		for (i = 0; i < subdev->info.num_res; i++) {
+			if (!(res[i].flags & IORESOURCE_MEM))
+				continue;
+
+			bar_idx = subdev->info.bar_idx ?
+				(int)subdev->info.bar_idx[i]: core->bar_idx;
+			if (!pci_resource_len(core->pdev, bar_idx)) {
+				xocl_xdev_err(xdev_hdl, "invalid bar %d, %s",
+					bar_idx, res[i].name);
+				retval = -EINVAL;
+				goto error;
+			}
+			/* Check if IP is on P2P bar, the res start will be
+			 * endpoint address
+			 */
+			retval = xocl_p2p_remap_resource(xdev_hdl, bar_idx,
+					&res[i], subdev->info.level);
+			if (retval && retval != -ENODEV)
+				goto error;
+			iostart = pci_resource_start(core->pdev, bar_idx);
+			res[i].start += iostart;
+			if (!res[i].end) {
+				res[i].end = pci_resource_end(core->pdev,
+						bar_idx);
+			} else
+				res[i].end += iostart;
+			/*
+			 * Make sure the resource of subdevice is a
+			 * child of the pci bar resource in the 
+			 * resource tree.
+			 */
+			res[i].parent = &(core->pdev->resource[bar_idx]);
+			xocl_xdev_info(xdev_hdl, "resource %pR", &res[i]);
+		}
+
 		retval = platform_device_add_resources(subdev->pldev,
-			subdev->res, subdev->info.num_res);
+			res, subdev->info.num_res);
 		if (retval) {
 			xocl_xdev_err(xdev_hdl, "failed to add res");
 			goto error;
@@ -425,6 +468,8 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	subdev->pldev->dev.parent = &core->pdev->dev;
 
 error:
+	if (res)
+		vfree(res);
 	if (priv_data)
 		vfree(priv_data);
 
@@ -438,11 +483,9 @@ error:
 static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info)
 {
-	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct xocl_subdev *subdev;
-	resource_size_t iostart;
 	struct resource *res = NULL;
-	int i, bar_idx, retval;
+	int i, retval;
 	uint32_t dev_idx = 0;
 
 	retval = xocl_subdev_reserve(xdev_hdl, sdev_info, &subdev);
@@ -462,7 +505,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			goto error;
 		}
 		res = subdev->res;
-		memcpy(res, sdev_info->res, sizeof (*res) * sdev_info->num_res);
+		memcpy(res, sdev_info->res, sizeof(*res) * sdev_info->num_res);
 		for (i = 0; i < sdev_info->num_res; i++) {
 			if (sdev_info->res[i].name) {
 				res[i].name = subdev->res_name[i];
@@ -480,43 +523,6 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			    sizeof(*sdev_info->bar_idx) * sdev_info->num_res);
 		} else
 			subdev->info.bar_idx = NULL;
-	}
-
-	if (res) {
-		for (i = 0; i < sdev_info->num_res; i++) {
-			if (sdev_info->res[i].flags & IORESOURCE_MEM) {
-				bar_idx = sdev_info->bar_idx ?
-					(int)sdev_info->bar_idx[i]: core->bar_idx;
-				if (!pci_resource_len(core->pdev, bar_idx)) {
-					xocl_xdev_err(xdev_hdl, "invalid bar %d, %s", bar_idx, res[i].name);
-					retval = -EINVAL;
-					goto error;
-				}
-				/* Check if IP is on P2P bar, the res start will be endpoint
-				 * address
-				 */
-				retval = xocl_p2p_remap_resource(xdev_hdl, bar_idx, &res[i],
-					subdev->info.level);
-				if (retval && retval != -ENODEV)
-					goto error;
-				iostart = pci_resource_start(core->pdev,
-						bar_idx);
-				res[i].start += iostart;
-				if (!res[i].end)
-					res[i].end =
-						pci_resource_end(core->pdev,
-							bar_idx);
-				else
-					res[i].end += iostart;
-				/*
-				 * Make sure the resource of subdevice is a
-				 * child of the pci bar resource in the 
-				 * resource tree.
-				 */
-				res[i].parent = &(core->pdev->resource[bar_idx]);
-			}
-			xocl_xdev_info(xdev_hdl, "resource %pR", &res[i]);
-		}
 	}
 
 	retval = __xocl_subdev_construct(xdev_hdl, subdev);
