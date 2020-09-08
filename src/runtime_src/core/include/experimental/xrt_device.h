@@ -68,6 +68,16 @@ public:
   {}
 
   /**
+   * device() - Create a managed device object from a shim xclDeviceHandle
+   *
+   * @dhdl:      Shim xclDeviceHandle
+   * Return:     xrt::device object epresenting the opened device, or exception on error
+   */
+  XCL_DRIVER_DLLESPEC
+  explicit
+  device(xclDeviceHandle dhdl);
+
+  /**
    * device() - Copy ctor
    */
   device(const device& rhs)
@@ -197,6 +207,19 @@ extern "C" {
 XCL_DRIVER_DLLESPEC
 xrtDeviceHandle
 xrtDeviceOpen(unsigned int index);
+
+/**
+ * xrtDeviceOpenFromXcl() - Open a device from a shim xclDeviceHandle
+ *
+ * @xhdl:         Shim xclDeviceHandle
+ * Return:        Handle representing the opened device, or nullptr on error
+ *
+ * The returned XRT device handle must be explicitly closed when
+ * nolonger needed.
+ */
+XCL_DRIVER_DLLESPEC
+xrtDeviceHandle
+xrtDeviceOpenFromXcl(xclDeviceHandle dhdl);
 
 /**
  * xrtDeviceClose() - Close an opened device

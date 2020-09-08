@@ -35,32 +35,6 @@
 # pragma warning( disable : 4244 )
 #endif
 
-////////////////////////////////////////////////////////////////
-// Exposed for Vitis aietools as extensions to xrt_device.h
-////////////////////////////////////////////////////////////////
-/**
- * xrtDeviceOpenFromXcl() - Open a device from a shim xclDeviceHandle
- *
- * @xhdl:         Shim xclDeviceHandle
- * Return:        Handle representing the opened device, or nullptr on error
- *
- * The returned XRT device handle must be explicitly closed when
- * nolonger needed.
- */
-XCL_DRIVER_DLLESPEC
-xrtDeviceHandle
-xrtDeviceOpenFromXcl(xclDeviceHandle dhdl);
-
-/**
- * xrtDeviceFromXcl() - Create a managed device object from a shim xclDeviceHandle
- *
- * @xhdl:         Shim xclDeviceHandle
- * Return:        xrt::device object epresenting the opened device, or exception on error
- */
-XCL_DRIVER_DLLESPEC
-xrt::device
-xrtDeviceFromXcl(xclDeviceHandle dhdl);
-
 namespace {
 
 // C-API handles that must be explicitly closed. Corresponding managed
@@ -141,6 +115,11 @@ namespace xrt {
 device::
 device(unsigned int index)
   : handle(xrt_core::get_userpf_device(index))
+{}
+
+device::
+device(xclDeviceHandle dhdl)
+  : handle(xrt_core::get_userpf_device(dhdl))
 {}
 
 uuid
@@ -343,10 +322,4 @@ xrtDeviceOpenFromXcl(xclDeviceHandle dhdl)
     errno = 0;
   }
   return nullptr;
-}
-
-xrt::device
-xrtDeviceFromXcl(xclDeviceHandle dhdl)
-{
-  return xrt::device(xrt_core::get_userpf_device(dhdl));
 }
