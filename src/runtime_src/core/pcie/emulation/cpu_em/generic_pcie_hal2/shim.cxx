@@ -1346,21 +1346,41 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
     PRINTENDFUNC;
     return -1;
   }
-  if(dBO->fd < 0)
-  {
-    std::cout<<"bo is not exported for copying"<<std::endl;
-    return -1;
+
+  // source buffer is host_only and destination buffer is device_only
+  if (xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
+    unsigned char* host_only_buffer = (unsigned char*)(sBO->buf) + src_offset;
+    if (xclCopyBufferHost2Device(dBO->base, (void*) host_only_buffer, size, dst_offset) != size) {
+      return -1;
+    }
+  }  
+
+  // source buffer is device_only and destination buffer is host_only
+  if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+    unsigned char* host_only_buffer = (unsigned char*)(dBO->buf) + dst_offset;
+    if (xclCopyBufferDevice2Host((void*) host_only_buffer, sBO->base, size, src_offset) != size) {
+      return -1;
+    }
   }
 
-  int ack = false;
-  auto fItr = mFdToFileNameMap.find(dBO->fd);
-  if(fItr != mFdToFileNameMap.end())
-  {
-    const std::string& sFileName = std::get<0>((*fItr).second);
-    xclCopyBO_RPC_CALL(xclCopyBO,sBO->base,sFileName,size,src_offset,dst_offset);
+  // source buffer is device_only and destination buffer is p2p_buffer
+  if (xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+    if (dBO->fd < 0)
+    {
+      std::cout << "bo is not exported for copying" << std::endl;
+      return -1;
+    }
+    int ack = false;
+    auto fItr = mFdToFileNameMap.find(dBO->fd);
+    if (fItr != mFdToFileNameMap.end())
+    {
+      const std::string& sFileName = std::get<0>((*fItr).second);
+      xclCopyBO_RPC_CALL(xclCopyBO, sBO->base, sFileName, size, src_offset, dst_offset);
+    }
+    if (!ack)
+      return -1;
   }
-  if(!ack)
-    return -1;
+
   PRINTENDFUNC;
   return 0;
 }
@@ -1858,6 +1878,23 @@ int CpuemShim::xclExecBuf(unsigned int cmdBO)
 int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
 {
   return 0;
+}
+
+// New API's for m2m and no-dma
+bool CpuemShim::isM2MEnabled() {
+  if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+    bool isM2MEnabled = mPlatformData.mIsM2M;
+    return isM2MEnabled;
+  }
+  return false;
+}
+
+bool CpuemShim::isNoDMAEnabled() {
+  if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+    bool isNoDMAEnabled = mPlatformData.mIsNoDMA;
+    return isNoDMAEnabled;
+  }
+  return false;
 }
 
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/

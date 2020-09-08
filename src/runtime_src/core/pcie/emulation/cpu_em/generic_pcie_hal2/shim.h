@@ -166,6 +166,10 @@ namespace xclcpuemhal2 {
       }
       struct exec_core* getExecCore() { return mCore; }
       SWScheduler* getScheduler() { return mSWSch; }
+
+      // New API's for m2m and no-dma
+      bool isM2MEnabled();
+      bool isNoDMAEnabled();
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;

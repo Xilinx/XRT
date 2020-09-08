@@ -15,6 +15,7 @@
  */
 #include "device_swemu.h"
 #include "core/common/query_requests.h"
+#include "shim.h"
 
 #include <string>
 #include <map>
@@ -28,9 +29,58 @@ using qtype = std::underlying_type<query::key_type>::type;
 
 static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
 
+struct m2m
+{
+  using result_type = query::m2m::result_type;
+
+  static result_type
+    get(const xrt_core::device* device, key_type)
+  {
+    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(device->get_device_handle());
+    if (!drv)
+      return 0;
+    return (drv->isM2MEnabled() ? 1 : 0);  
+  }
+};
+
+struct nodma
+{
+  using result_type = query::nodma::result_type;
+
+  static result_type
+    get(const xrt_core::device* device, key_type)
+  {   
+    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(device->get_device_handle());
+    if (!drv)
+      return 0;
+    return (drv->isNoDMAEnabled() ? 1 : 0);
+  }
+};
+
+template <typename QueryRequestType, typename Getter>
+struct function0_get : virtual QueryRequestType
+{
+  boost::any
+    get(const xrt_core::device* device) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k);
+  }
+};
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func0_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
+}
+
 static void
 initialize_query_table()
 {
+  emplace_func0_request<query::m2m, m2m>();
+  emplace_func0_request<query::nodma, nodma>();
 }
 
 struct X { X() { initialize_query_table(); }};
