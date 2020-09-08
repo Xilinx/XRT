@@ -303,7 +303,7 @@ get_polling_throttle()
 inline std::string
 get_hal_logging()
 {
-  static std::string value = detail::get_string_value("Runtime.hal_log","null");
+  static std::string value = detail::get_string_value("Runtime.hal_log","");
   return value;
 }
 

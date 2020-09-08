@@ -1525,6 +1525,12 @@ public:
         std::string errmsg;
 
         auto dev = pcidev::get_dev(m_idx);
+        dev->sysfs_get("dma", "channel_stat_raw", errmsg, buf);
+        if (!errmsg.empty()) {
+            std::cout << "DMA Engine is not found, skip" << std::endl;
+            return 0;
+        }
+
         dev->sysfs_get("icap", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {

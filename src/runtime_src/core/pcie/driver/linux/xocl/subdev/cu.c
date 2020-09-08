@@ -118,6 +118,7 @@ static int cu_probe(struct platform_device *pdev)
 	case CTRL_HS:
 	case CTRL_CHAIN:
 		xcu->base.info.model = XCU_HLS;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -165,7 +166,7 @@ static int cu_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	switch (info->model) {
+	switch (xcu->base.info.model) {
 	case XCU_HLS:
 		err = xrt_cu_hls_init(&xcu->base);
 		break;
@@ -181,8 +182,12 @@ static int cu_probe(struct platform_device *pdev)
 	}
 
 	XCU_INFO(xcu, "Register CU interrupt id %d", info->intr_id);
-	xocl_intc_cu_request(xdev, info->intr_id, cu_isr, xcu);
-	xocl_intc_cu_config(xdev, info->intr_id, true);
+	err = xocl_intc_cu_request(xdev, info->intr_id, cu_isr, xcu);
+	if (err)
+		XCU_ERR(xcu, "xocl_intc_cu_request failed, err: %d", err);
+	err = xocl_intc_cu_config(xdev, info->intr_id, true);
+	if (err)
+		XCU_ERR(xcu, "xocl_intc_cu_config failed, err: %d", err);
 
 	if (sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup))
 		XCU_ERR(xcu, "Not able to create CU sysfs group");
