@@ -116,7 +116,8 @@ namespace xdp {
           values.push_back(aie->resetEvent);
 
           // Read counter value from device
-          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
+          // NOTE: for AIE1: column = core_column, row = core_row + 1
+          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row + 1);
           uint32_t counterValue;
           XAie_PerfCounterGet(aieArray->getDevInst(), tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
           values.push_back(counterValue);

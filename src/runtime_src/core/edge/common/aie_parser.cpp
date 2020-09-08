@@ -173,8 +173,8 @@ get_profile_counter(const pt::ptree& aie_meta)
     counter_type counter;
 
     counter.id = counter_node.second.get<uint32_t>("id");
-    counter.column = counter_node.second.get<uint16_t>("column");
-    counter.row = counter_node.second.get<uint16_t>("row");
+    counter.column = counter_node.second.get<uint16_t>("core_column");
+    counter.row = counter_node.second.get<uint16_t>("core_row");
     counter.counterNumber = counter_node.second.get<uint8_t>("counterId");
     counter.startEvent = counter_node.second.get<uint8_t>("start");
     counter.endEvent = counter_node.second.get<uint8_t>("stop");
