@@ -114,11 +114,19 @@ namespace xdp {
     //  fits inside the chosen memory resource.
     uint64_t trace_buffer_size = GetTS2MMBufSize() ;
     if (devInterface->hasTs2mm()) {
-      uint64_t memorySz = ((db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex())->size) * 1024 ;
-      if (memorySz > 0 && trace_buffer_size > memorySz) {
-        trace_buffer_size = memorySz ;
-        std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(memorySz) + " instead." ;
-        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg) ;
+      Memory* memory = (db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex());
+      if(nullptr == memory) {
+        std::string msg = "Information about memory index " + std::to_string(devInterface->getTS2MmMemIndex()) 
+                           + " not found in given xclbin. So, cannot check availability of memory resource for device trace offload.";
+        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+        return;
+      } else {
+        uint64_t memorySz = (memory->size) * 1024 ;
+        if (memorySz > 0 && trace_buffer_size > memorySz) {
+          trace_buffer_size = memorySz ;
+          std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(memorySz) + " instead." ;
+          xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg) ;
+        }
       }
     }
 
