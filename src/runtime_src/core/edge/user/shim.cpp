@@ -1429,9 +1429,7 @@ registerAieArray()
 {
 //not registering AieArray in hw_emu as it is crashing in hw_emu. We can fix the
 //issue once move to AIE-V2 is done
-#ifndef __HWEM__
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
-#endif
 }
 
 bool
