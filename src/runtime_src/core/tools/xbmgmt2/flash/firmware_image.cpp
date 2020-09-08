@@ -353,7 +353,7 @@ DSAInfo::~DSAInfo()
 }
 
 static std::string
-parse_uuid(std::string id)
+normalize_uuid(std::string id)
 {
     // convert:
     // 0xB772B6BBD3BA046439ECE1B7763C69C7 -> b772b6bbd3ba046439ece1b7763c69c7
@@ -371,7 +371,7 @@ bool DSAInfo::matchId(const std::string &id) const
         return true;
 
     if (uuids.empty()) {
-        const std::string uuid = parse_uuid(id);
+        const std::string uuid = normalize_uuid(id);
 
         if (!strncmp(uuids[0].c_str(), uuid.c_str(), uuid.length()))
             return true;
@@ -383,7 +383,7 @@ bool DSAInfo::matchId(const std::string &id) const
 bool DSAInfo::matchIntId(std::string &id) const
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0); //get timestamp
-    const std::string uuid = parse_uuid(id); //get hex UUID
+    const std::string uuid = normalize_uuid(id); //get hex UUID
 
     if (uuids.size() > 1) {
         for(unsigned int j = 1; j < uuids.size(); j++) {
@@ -423,59 +423,16 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
     std::vector<DSAInfo> installedDSA;
     // Obtain installed DSA info.
     std::vector<boost::filesystem::path> fw_dirs(FIRMWARE_DIRS);
-    for (auto& p : fw_dirs) {
-        if (!boost::filesystem::is_directory(p)) {
-            p = FIRMWARE_WIN_DIR;
-        }
+    for (auto& root : fw_dirs) {
+        if (!boost::filesystem::exists(root) || !boost::filesystem::is_directory(root))
+            continue;
 
-        boost::filesystem::directory_iterator dir_end;
-        for (boost::filesystem::directory_iterator start(p); start != dir_end; ++start) {
-            std::string filename = start->path().leaf().string();
-            if (filename.find("xsabin")  == std::string::npos &&
-                filename.find("dsabin")  == std::string::npos)
-                continue;
-            DSAInfo dsa(start->path().string());
-            installedDSA.push_back(dsa);
-        }
-    }
-
-    // for 2RP
-	boost::filesystem::path formatted_fw_dir;
-	if (boost::filesystem::is_directory(boost::filesystem::path(FORMATTED_FW_DIR))) {
-		formatted_fw_dir = FORMATTED_FW_DIR;
-	} else if (boost::filesystem::is_directory(boost::filesystem::path(FORMATTED_FW_WIN_DIR))) {
-		formatted_fw_dir = FORMATTED_FW_WIN_DIR;
-	} else {
-		return installedDSA;
-	}
-
-    for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, 
-        boost::filesystem::symlink_option::recurse), recursive_end; iter != recursive_end;) {
-            
-        std::string name = iter->path().string();
-        std::vector<std::string> tokens;
-        boost::split(tokens, name, boost::is_any_of("\\/."));
-
-        if ((tokens.back().compare(XSABIN_FILE_SUFFIX) == 0)
-            || (tokens.back().compare(DSABIN_FILE_SUFFIX) == 0)) {
-            DSAInfo dsa(name);
-            //check if the dsa already exists in the lists
-            auto is_duplicate = [installedDSA, dsa] () 
-            {
-                for(auto const& x : installedDSA) {
-                if(x.file.compare(dsa.file) == 0)
-                    return true;
-                }
-                return false;
-            };
-
-            if(!is_duplicate())
+        for (auto const & iter : boost::filesystem::recursive_directory_iterator(root)) {
+            if ((iter.path().extension() == ".xsabin" || iter.path().extension() == ".dsabin")) {
+                DSAInfo dsa(iter.path().string());
                 installedDSA.push_back(dsa);
+            }
         }
-        else if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str()))) {
-            iter.no_push();
-        }
-        ++iter;
     }
 
     return installedDSA;

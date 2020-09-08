@@ -219,14 +219,14 @@ struct mgmt
   {
     DWORD bytes = 0;
     auto status = DeviceIoControl
-		(m_hdl,
-		XCLMGMT_OID_GET_QSPI_INFO,
-		NULL,
-		0,
-		&value,
-		sizeof(uint64_t),
-		&bytes,
-		NULL);
+    (m_hdl,
+    XCLMGMT_OID_GET_QSPI_INFO,
+    NULL,
+    0,
+    &value,
+    sizeof(uint64_t),
+    &bytes,
+    NULL);
 
     if (!status)
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_QSPI_INFO failed");
@@ -240,17 +240,35 @@ struct mgmt
     ULONG return_status = 0;
 
     auto status = DeviceIoControl
-		(m_hdl,
-		XCLMGMT_OID_PRP_ICAPPROGRAM_AXLF,
-		(PUCHAR)buffer,
-		buffSize,
+    (m_hdl,
+    XCLMGMT_OID_PRP_ICAP_PROGRAM_AXLF,
+    (PUCHAR)buffer,
+    buffSize,
     &return_status,
-		sizeof(ULONG),
-		&bytes,
-		nullptr);
+    sizeof(ULONG),
+    &bytes,
+    nullptr);
 
     if (!status)
-      throw std::runtime_error("DeviceIoControl XCLMGMT_OID_PRP_ICAPPROGRAM_AXLF failed");
+      throw std::runtime_error("DeviceIoControl XCLMGMT_OID_PRP_ICAP_PROGRAM_AXLF failed");
+  }
+
+  void
+  plp_program_status(uint64_t& plp_status)
+  {
+    DWORD bytes = 0;
+    auto status = DeviceIoControl
+    (m_hdl,
+    XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF_STATUS,
+    NULL,
+    0,
+    &plp_status,
+    sizeof(uint64_t),
+    &bytes,
+    NULL);
+
+    if (!status)
+      throw std::runtime_error("DeviceIoControl XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF_STATUS failed");
   }
 
 }; // struct mgmt
@@ -403,6 +421,14 @@ plp_program(xclDeviceHandle hdl, const struct axlf *buffer)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "plp_program()");
   auto mgmt = get_mgmt_object(hdl);
   mgmt->plp_program(buffer);
+}
+void
+plp_program_status(uint64_t& plp_status)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "plp_program_status()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->plp_program_status(plp_status);
 }
 
 } // mgmt
