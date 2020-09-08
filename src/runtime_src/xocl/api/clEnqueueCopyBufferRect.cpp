@@ -248,8 +248,8 @@ clEnqueueCopyBufferRect(cl_command_queue     command_queue ,
   {
     auto device = xocl(command_queue)->get_device();
     auto xdevice = device->get_xrt_device();
-    auto src_boh = xocl(src_buffer)->get_buffer_object_or_error(device);
-    auto dst_boh = xocl(dst_buffer)->get_buffer_object_or_error(device);
+    auto src_boh = xocl(src_buffer)->get_buffer_object(device);
+    auto dst_boh = xocl(dst_buffer)->get_buffer_object(device);
     void* host_ptr_src = xdevice->map(src_boh);
     void* host_ptr_dst = xdevice->map(dst_boh);
 
