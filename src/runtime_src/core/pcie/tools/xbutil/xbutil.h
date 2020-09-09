@@ -1522,7 +1522,7 @@ public:
 
         // get DDR bank count from mem_topology if possible
         std::vector<char> buf;
-	std::vector<char> temp;
+        std::vector<char> temp;
         std::string errmsg;
 
         auto dev = pcidev::get_dev(m_idx);
