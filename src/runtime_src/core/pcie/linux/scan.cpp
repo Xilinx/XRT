@@ -300,6 +300,7 @@ get(const std::string& name,
   if (!err.empty())
     return;
 
+  buf.clear();
   buf.insert(std::end(buf),std::istreambuf_iterator<char>(fs),
              std::istreambuf_iterator<char>());
 }
