@@ -133,7 +133,10 @@ namespace xclhwemhal2 {
       if(!handle)
         continue;
       handle->saveWaveDataBase();
-      systemUtil::makeSystemCall(handle->deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+
+      if (xclemulation::config::getInstance()->isKeepRunDirEnabled() == false) {
+        systemUtil::makeSystemCall(handle->deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+      }
     }
 
   }
@@ -1468,10 +1471,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // The core device must correspond to open and close, so
     // reset here rather than in destructor
     mCoreDevice.reset();
-
-    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
-      resetProgram(false);
-    }
+    resetProgram(false);
 
     if (!sock) 
     {
@@ -1492,12 +1492,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         mLogStream.close();
       }
       return;
-    }
-
-    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
-    }
-    else {
-      resetProgram(false);
     }
 
     int status = 0;
