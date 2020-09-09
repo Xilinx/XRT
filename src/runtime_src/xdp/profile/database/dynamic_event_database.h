@@ -123,6 +123,7 @@ namespace xdp {
     // A function that iterates on the dynamic events and returns
     //  events based upon the filter passed in
     XDP_EXPORT std::vector<VTFEvent*> filterEvents(std::function<bool(VTFEvent*)> filter);
+    XDP_EXPORT std::vector<VTFEvent*> filterHostEvents(std::function<bool(VTFEvent*)> filter);
 
     XDP_EXPORT std::vector<VTFEvent*> getHostEvents();
     XDP_EXPORT std::vector<VTFEvent*> getDeviceEvents(uint64_t deviceId);

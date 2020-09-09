@@ -112,12 +112,11 @@ namespace xdp {
   {
     fout << "EVENTS" << std::endl ;
     std::vector<VTFEvent*> APIEvents = 
-      (db->getDynamicInfo()).filterEvents( [](VTFEvent* e)
-					   {
-					     return e->isOpenCLHostEvent() ;
-					     //return e->isHostEvent();
-					   }
-					 ) ;
+      (db->getDynamicInfo()).filterHostEvents( [](VTFEvent* e)
+					       {
+					         return e->isOpenCLHostEvent();
+					       }
+					     ) ;
     for (auto e : APIEvents)
     {
       int bucket = 0 ;

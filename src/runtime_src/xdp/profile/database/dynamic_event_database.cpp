@@ -142,6 +142,18 @@ namespace xdp {
     return collected ;
   }
 
+  std::vector<VTFEvent*> VPDynamicDatabase::filterHostEvents(std::function<bool(VTFEvent*)> filter)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::vector<VTFEvent*> collected ;
+
+    for (auto e : hostEvents)
+    {
+      if (filter(e)) collected.push_back(e) ;
+    }
+    return collected ;
+  }
+
   std::vector<VTFEvent*> VPDynamicDatabase::getHostEvents()
   {
     std::vector<VTFEvent*> events;
