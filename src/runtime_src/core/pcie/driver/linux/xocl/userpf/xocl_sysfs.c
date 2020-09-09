@@ -342,8 +342,7 @@ static ssize_t ready_show(struct device *dev,
 	 * experienced user to manually update SC firmware than
 	 * installed xsabin may contain.
 	 */
-	if (strcmp(board_info->bmc_ver, board_info->exp_bmc_ver) &&
-		strcmp(board_info->exp_bmc_ver, NONE_BMC_VERSION)) {
+	if (strcmp(board_info->bmc_ver, board_info->exp_bmc_ver)) {
 		xocl_warn(dev, "installed XSABIN has SC version: "
 		    "(%s) mismatch with loaded SC version: (%s).",
 		    board_info->exp_bmc_ver, board_info->bmc_ver);

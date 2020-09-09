@@ -4103,6 +4103,14 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 			BDINFO_NAME, xmc->bd_name);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,
 			BDINFO_BMC_VER, xmc->bmc_ver);
+		if (!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION)) {
+			/*
+			 * No SC image is needed, set expect to be
+			 * the same as current.
+			 */
+			xmc_set_board_info(bdinfo_raw, bd_info_sz,
+				BDINFO_BMC_VER, xmc->exp_bmc_ver);
+		}
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,
 			BDINFO_MAX_PWR, (char *)&xmc->max_power);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,
@@ -4111,8 +4119,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 			BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
 
 		if (bd_info_valid(xmc->serial_num) &&
-			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||
-			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
+			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xmc->bdinfo_loaded = true;
 			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
 		}
@@ -4120,8 +4127,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 	} else {
 
 		if (xmc->bdinfo_loaded &&
-			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||
-			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
+			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
 			return 0;
 		} else {
@@ -4143,8 +4149,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, EXP_BMC_VER, (u32 *)xmc->exp_bmc_ver);
 
 		if (bd_info_valid(xmc->serial_num) &&
-			(!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||
-			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver))) {
+			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xmc->bdinfo_loaded = true;
 			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
 		}
