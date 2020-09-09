@@ -1522,11 +1522,10 @@ public:
 
         // get DDR bank count from mem_topology if possible
         std::vector<char> buf;
-        std::vector<char> temp;
         std::string errmsg;
 
         auto dev = pcidev::get_dev(m_idx);
-        dev->sysfs_get("dma", "channel_stat_raw", errmsg, temp);
+        dev->sysfs_get("dma", "channel_stat_raw", errmsg, buf);
         if (!errmsg.empty()) {
             std::cout << "DMA Engine is not found, skip" << std::endl;
             return 0;
