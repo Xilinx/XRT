@@ -22,6 +22,7 @@ namespace xdphaldeviceoffload {
   void load_xdp_hal_device_offload() ;
   void register_hal_device_offload_functions(void* handle) ;
   void hal_device_offload_warning_function() ;
+  int  hal_device_offload_error_function();
 
 } // end xdphaldeviceoffload
 
