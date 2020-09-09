@@ -181,12 +181,17 @@ static int cu_probe(struct platform_device *pdev)
 		goto err2;
 	}
 
-	XCU_INFO(xcu, "Register CU interrupt id %d", info->intr_id);
+	/* If mb_scheduler is enable, the intc subdevic would not be created.
+	 * In this case, the err would be -ENODEV. Don't print error message.
+	 */
 	err = xocl_intc_cu_request(xdev, info->intr_id, cu_isr, xcu);
-	if (err)
+	if (!err)
+		XCU_INFO(xcu, "Register CU interrupt id %d", info->intr_id);
+	else if (err != -ENODEV)
 		XCU_ERR(xcu, "xocl_intc_cu_request failed, err: %d", err);
+
 	err = xocl_intc_cu_config(xdev, info->intr_id, true);
-	if (err)
+	if (err && err != -ENODEV)
 		XCU_ERR(xcu, "xocl_intc_cu_config failed, err: %d", err);
 
 	if (sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup))
@@ -212,6 +217,7 @@ static int cu_remove(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xrt_cu_info *info;
 	struct xocl_cu *xcu;
+	int err;
 	void *hdl;
 
 	xcu = platform_get_drvdata(pdev);
@@ -221,8 +227,9 @@ static int cu_remove(struct platform_device *pdev)
 	(void) sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
 	info = &xcu->base.info;
 
-	XCU_INFO(xcu, "Unregister CU interrupt id %d", info->intr_id);
-	xocl_intc_cu_config(xdev, info->intr_id, false);
+	err = xocl_intc_cu_config(xdev, info->intr_id, false);
+	if (!err)
+		XCU_INFO(xcu, "Unregister CU interrupt id %d", info->intr_id);
 	xocl_intc_cu_request(xdev, info->intr_id, NULL, NULL);
 
 	switch (info->model) {
