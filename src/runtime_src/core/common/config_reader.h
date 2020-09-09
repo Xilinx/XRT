@@ -134,7 +134,7 @@ get_profile()
 inline bool
 get_container()
 {
-  static bool value = detail::get_bool_value("Debug.container",true);
+  static bool value = detail::get_bool_value("Debug.container",false);
   return value;
 }
 
