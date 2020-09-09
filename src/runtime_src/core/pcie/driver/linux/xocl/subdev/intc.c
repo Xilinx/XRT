@@ -94,7 +94,7 @@ struct intr_info {
  * info: Information of each interrupt source
  */
 struct intr_metadata {
-	u32			 intr;
+	int			 intr;
 	u32 __iomem		*isr;
 	struct intr_info	*info[INTR_SRCS];
 	u32			 enabled_cnt;
