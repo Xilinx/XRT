@@ -254,6 +254,7 @@ namespace xdp {
     // The files that need to be included in the run summary for
     //  consumption by Vitis_Analyzer
     std::vector<std::pair<std::string, std::string> > openedFiles ;
+    std::string systemDiagram ;
 
     // ***** OpenCL Information ******
     std::set<uint64_t> commandQueueAddresses ;
@@ -295,6 +296,7 @@ namespace xdp {
       { applicationStartTime = t ; }
     inline std::vector<std::pair<std::string, std::string>>& getOpenedFiles() 
       { return openedFiles ; }
+    inline std::string getSystemDiagram() { return systemDiagram ; }
     inline std::set<uint64_t>& getCommandQueueAddresses() 
       { return commandQueueAddresses ; }
     inline std::set<std::string>& getEnqueuedKernels()

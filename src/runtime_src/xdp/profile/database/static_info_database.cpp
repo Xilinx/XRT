@@ -91,7 +91,7 @@ namespace xdp {
     connections[argIdx].push_back(memIdx);
   }
 
-  VPStaticDatabase::VPStaticDatabase(VPDatabase* d) : db(d), runSummary(nullptr)
+  VPStaticDatabase::VPStaticDatabase(VPDatabase* d) : db(d), runSummary(nullptr), systemDiagram("")
   {
 #ifdef _WIN32
     pid = _getpid() ;
@@ -214,6 +214,16 @@ namespace xdp {
     const char* systemMetadataSection = systemMetadata.first;
     size_t      systemMetadataSz      = systemMetadata.second;
     if(systemMetadataSection == nullptr) return false;
+
+    // For now, also update the System metadata for the run summary.
+    //  TODO: Expand this so that multiple devices and multiple xclbins
+    //  don't overwrite the single system diagram information
+    std::ostringstream buf ;
+    for (size_t index = 0 ; index < systemMetadataSz ; ++index)
+    {
+      buf << std::hex << std::setw(2) << std::setfill('0') << (unsigned int)(systemMetadataSection[index]);
+    }
+    systemDiagram = buf.str() ;
 
     try {
       std::stringstream ss;
