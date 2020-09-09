@@ -220,6 +220,6 @@ int xocl_kds_reconfig(struct xocl_dev *xdev);
 int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
 		     void *drm_filp, u32 *addrp);
 u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist);
-void xocl_kds_update(struct xocl_dev *xdev);
+int xocl_kds_update(struct xocl_dev *xdev);
 
 #endif
