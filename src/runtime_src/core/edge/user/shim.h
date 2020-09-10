@@ -39,7 +39,7 @@
 #include "core/edge/user/aie/aie.h"
 #endif
 
-int xclKdsCUStats(xclDeviceHandle);
+int xclKdsCUStats(xclDeviceHandle, std::vector<std::string>&);
 
 namespace ZYNQ {
 
@@ -85,7 +85,7 @@ public:
   int xclSKGetCmd(xclSKCmd *cmd);
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
-  int xclKdsCUStats();
+  int xclKdsCUStats(std::vector<std::string>&);
 
   double xclGetDeviceClockFreqMHz();
 

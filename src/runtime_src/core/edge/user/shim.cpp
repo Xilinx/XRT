@@ -755,7 +755,7 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
 
 int 
 shim::
-xclKdsCUStats()
+xclKdsCUStats(std::vector<std::string> &cuStats)
 {
 	printf("I am inside here\n");
 	return 0;
@@ -1871,13 +1871,13 @@ xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
 }
 
 int
-xclKdsCUStats(xclDeviceHandle handle)
+xclKdsCUStats(xclDeviceHandle handle, std::vector<std::string> &cuStats)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
 
-  return drv->xclKdsCUStats();
+  return drv->xclKdsCUStats(cuStats);
 }
 
 /*
