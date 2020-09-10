@@ -157,63 +157,52 @@ bool validateXclBin(const xclBin *header , std::string &xclBinName)
 int shim::xclLoadXclBin(const xclBin *header)
 {
   int ret = 0;
- /*if (mLogStream.is_open()) {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-    mLogStream.close();
-  }
-  char *bitstreambin = reinterpret_cast<char*>(const_cast<xclBin*>(header));
-  std::string xclBinName = "";
-  if (!ZYNQ_HW_EM::isRemotePortMapped) {
-    ZYNQ_HW_EM::initRemotePortMap();
-  }
-  ssize_t xmlFileSize = 0;
-  char* xmlFile = nullptr;
-
-  if ((!std::memcmp(bitstreambin, "xclbin0", 7)) || (!std::memcmp(bitstreambin, "xclbin1", 7))) {
-
-  printf("ERROR: Legacy xclbins are no longer supported. \n");
-    return 1;
-
-  } else if (!std::memcmp(bitstreambin, "xclbin2", 7)) {
-    auto top = reinterpret_cast<const axlf*>(header);
-    if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
-      xmlFileSize = sec->m_sectionSize;
-      xmlFile = new char[xmlFileSize + 1];
-      memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
-      xmlFile[xmlFileSize] = '\0';
-    }
-  } else {
-    return 1;
-  }
-
-  if (!ZYNQ_HW_EM::validateXclBin(header, xclBinName)) {
-    printf("ERROR:Xclbin validation failed\n");
-    return 1;
-  }
-
-  xclBinName = xclBinName + ".xclbin";
-
-  //Send the LoadXclBin
-  PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
-  cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
-  cmd->addArg(xclBinName.c_str());
-  uint32_t length;
-  uint8_t* buff = cmd->generateBuffer(&length);
-  for (unsigned int i = 0; i < length; i += 4) {
-    uint32_t copySize = (length - i) > 4 ? 4 : length - i;
-    memcpy(((char*) (ZYNQ_HW_EM::remotePortMappedPointer)) + i, buff + i, copySize);
-  }
-
-  //Send the end of packet
-  char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
-  memcpy((char*) (ZYNQ_HW_EM::remotePortMappedPointer), &cPacketEndChar, 1);*/
+  unsigned int flags = DRM_ZOCL_PLATFORM_BASE;
+  int off = 0;
 
   /* for emulation, we don't download */
   mKernelClockFreq = xrt_core::xclbin::get_kernel_freq(header);
-  drm_zocl_axlf axlf_obj = {
+   drm_zocl_axlf axlf_obj = {
     .za_xclbin_ptr = const_cast<axlf *>(header),
-    .za_flags = 0,
+    .za_flags = flags,
+    .za_ksize = 0,
+    .za_kernels = NULL,
   };
+
+  auto kernels = xrt_core::xclbin::get_kernels(header);
+  /* Calculate size of kernels */
+  for (auto& kernel : kernels) {
+      axlf_obj.za_ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+  }
+
+  /* Check PCIe's shim.cpp for details of kernels binary */
+  std::vector<char> krnl_binary(axlf_obj.za_ksize);
+  axlf_obj.za_kernels = krnl_binary.data();
+  for (auto& kernel : kernels) {
+      auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.za_kernels + off);
+      if (kernel.name.size() > sizeof(krnl->name))
+          return -EINVAL;
+      std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
+      krnl->name[sizeof(krnl->name)-1] = '\0';
+      krnl->anums = kernel.args.size();
+
+      int ai = 0;
+      for (auto& arg : kernel.args) {
+          if (arg.name.size() > sizeof(krnl->args[ai].name))
+              return -EINVAL;
+          std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+          krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+          krnl->args[ai].offset = arg.offset;
+          krnl->args[ai].size   = arg.size;
+          // XCLBIN doesn't define argument direction yet and it only support
+          // input arguments.
+          // Driver use 1 for input argument and 2 for output.
+          // Let's refine this line later.
+          krnl->args[ai].dir    = 1;
+          ai++;
+      }
+      off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+  }
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 

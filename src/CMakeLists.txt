@@ -9,12 +9,8 @@ SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../tests/validate
   )
-
-find_package(Boost EXACT REQUIRED)
-if(Boost_VERSION_STRING VERSION_LESS 1.64.0)
-  add_definitions (-DBOOST_PRE_1_64=1)
-endif()
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

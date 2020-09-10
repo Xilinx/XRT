@@ -216,6 +216,7 @@ static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq,
 			return;
 		}
 
+		xdev->prev_descq = descq;
 		pr_debug("IRQ[%d]: IVE[%d], Qid = %d, e_color = %d, "
 			 "c_color = %d, intr_type = %d\n",
 			irq, vidx, qid, coal_entry->color, color, intr_type);
@@ -248,12 +249,22 @@ static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq,
 		ring_entry = (coal_entry->intr_ring_base + counter);
 	} while (1);
 
-	if (num_entries_processed == 0)
-		pr_warn("No entries processed\n");
-
-	if (descq)
+	if (descq) {
 		queue_intr_cidx_update(descq->xdev,
 				descq->conf.qidx, &coal_entry->intr_cidx_info);
+	} else if (num_entries_processed == 0) {
+		pr_warn("No entries processed\n");
+		descq = xdev->prev_descq;
+		if (descq) {
+			pr_warn("Doing stale update\n");
+			queue_intr_cidx_update(descq->xdev,
+				descq->conf.qidx, &coal_entry->intr_cidx_info);
+		}
+	}
+
+	pr_debug("%s: sw_cidx 0x%x/%u.\n", __func__,
+		intr_cidx_info->sw_cidx, intr_cidx_info->sw_cidx);
+
 }
 
 static void data_intr_direct(struct xlnx_dma_dev *xdev, int vidx, int irq,

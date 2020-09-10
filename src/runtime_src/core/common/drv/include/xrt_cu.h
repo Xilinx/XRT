@@ -62,6 +62,7 @@ struct xcu_status {
 	u32	num_ready;
 };
 
+typedef void *xcu_core_t;
 struct xcu_funcs {
 	/**
 	 * @alloc_credit:
@@ -150,9 +151,9 @@ struct xcu_funcs {
 };
 
 enum arg_dir {
-	NONE = 0,
-	INPUT,
-	OUTPUT
+	DIR_NONE = 0,
+	DIR_INPUT,
+	DIR_OUTPUT
 };
 
 struct xrt_cu_arg {
@@ -219,7 +220,8 @@ struct xrt_cu {
 	struct list_head	  cq;
 	u32			  num_cq;
 	struct semaphore	  sem;
-	void                     *core;
+	struct semaphore	  sem_cu;
+	void			 *core;
 	u32			  stop;
 	bool			  bad_state;
 	u32			  done_cnt;
@@ -285,6 +287,8 @@ static inline void xrt_cu_check(struct xrt_cu *xcu)
 {
 	struct xcu_status status;
 
+	status.num_done = 0;
+	status.num_ready = 0;
 	xcu->funcs->check(xcu->core, &status);
 	/* XRT CU assume command finished in order
 	 */
@@ -311,16 +315,17 @@ static inline void xrt_cu_put_credit(struct xrt_cu *xcu, u32 count)
  * 2. If CU is ready, submit command(Configure hardware)
  * 3. Check if submitted command is completed or not
  */
-int xrt_cu_thread(void *data);
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
 int xrt_cu_abort(struct xrt_cu *xcu, void *client);
 int xrt_cu_abort_done(struct xrt_cu *xcu);
+int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr);
 void xrt_cu_set_bad_state(struct xrt_cu *xcu);
 
 int  xrt_cu_init(struct xrt_cu *xcu);
 void xrt_cu_fini(struct xrt_cu *xcu);
 
 ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf);
+ssize_t show_cu_info(struct xrt_cu *xcu, char *buf);
 
 /* CU Implementations */
 struct xrt_cu_hls {

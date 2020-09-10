@@ -111,10 +111,6 @@ run(int argc, char** argv)
   if (xclbin_fnm.empty())
     throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
 
-  if (device_index >= xclProbe())
-    throw std::runtime_error("Cannot find device index (" + std::to_string(device_index) + ") specified");
-
-
   auto xclbin = xrt::xclbin(xclbin_fnm); // C++ API, construct xclbin object from filename
 
   std::vector<std::string> cu_names = xclbin.get_cu_names();

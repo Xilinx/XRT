@@ -252,7 +252,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
             [](const char &a){ return a == ':' || a == '.'; }, '_');
         getVendorBoardFromDSAName(name, vendor, board);
         parseDSAFilename(filename, vendor_id, device_id, subsystem_id, timestamp);
-        
+
         // Assume there is only 1 interface UUID is provided for BLP,
         // Show it as ID for flashing
         const axlf_section_header* dtbSection = xclbin::get_axlf_section(ap, PARTITION_METADATA);
@@ -374,32 +374,34 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
     if (!installedDSA.empty())
         return installedDSA;
 
+    std::vector<std::string> fw_dirs = FIRMWARE_DIRS;
     struct dirent *entry;
     DIR *dp;
     std::string nm;
 
     // Obtain installed DSA info.
-    dp = opendir(FIRMWARE_DIR);
-    if (dp)
-    {
-        while ((entry = readdir(dp)))
+    for (const auto& d : fw_dirs) {
+        dp = opendir(d.c_str());
+        if (dp)
         {
-            std::string d(FIRMWARE_DIR);
-            std::string e(entry->d_name);
+            while ((entry = readdir(dp)))
+            {
+                std::string e(entry->d_name);
 
-            /*
-             * First look for from .xsabin, if failed,
-             * look for .dsabin file.
-             * legacy .mcs file is not supported.
-             */
-            if ((e.find(XSABIN_FILE_SUFFIX) == std::string::npos) &&
-                (e.find(DSABIN_FILE_SUFFIX) == std::string::npos))
-                continue;
+                /*
+                * First look for from .xsabin, if failed,
+                * look for .dsabin file.
+                * legacy .mcs file is not supported.
+                */
+                if ((e.find(XSABIN_FILE_SUFFIX) == std::string::npos) &&
+                    (e.find(DSABIN_FILE_SUFFIX) == std::string::npos))
+                    continue;
 
-            DSAInfo dsa(d + e);
-            installedDSA.push_back(dsa);
+                DSAInfo dsa(d + e);
+                installedDSA.push_back(dsa);
+            }
+            closedir(dp);
         }
-        closedir(dp);
     }
 
     dp = opendir(FORMATTED_FW_DIR);
@@ -469,7 +471,7 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
 
 /**
  * Helper method to find a set of bytes in a given buffer.
- * 
+ *
  * @param pBuffer The buffer to be examined.
  * @param _bufferSize
  *                The size of the buffer.
@@ -477,12 +479,12 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
  *                The string to search for.
  * @param _foundOffset
  *                The offset where the string was found.
- * 
+ *
  * @return true  - The string was found;
  *         false - the string was not found
  */
 static bool findBytesInBuffer(const char * pBuffer, uint64_t _bufferSize,
-                  const std::string& _searchString, 
+                  const std::string& _searchString,
                   unsigned int& _foundOffset) {
 
   // Initialize return values
@@ -516,11 +518,11 @@ static void remove_xsabin_mirror(void * pXsaBinBuffer)
   uint64_t bufferSize = axlf_header->m_header.m_length;
 
   unsigned int startOffset;
-  if (findBytesInBuffer((const char *) pXsaBinBuffer, bufferSize, MIRROR_DATA_START, startOffset) == false) 
+  if (findBytesInBuffer((const char *) pXsaBinBuffer, bufferSize, MIRROR_DATA_START, startOffset) == false)
     return;   // No MIRROR DATA
 
   unsigned int endOffset;
-  if (findBytesInBuffer((const char *) pXsaBinBuffer, bufferSize, MIRROR_DATA_END, endOffset) == false) 
+  if (findBytesInBuffer((const char *) pXsaBinBuffer, bufferSize, MIRROR_DATA_END, endOffset) == false)
     return;   // Badly formed mirror data (we have a start, but no end)
   endOffset += MIRROR_DATA_END.length();
 
@@ -533,7 +535,7 @@ static void remove_xsabin_mirror(void * pXsaBinBuffer)
 
   // Compress the image
   uint64_t bytesToCopy = bufferSize - endOffset;
-  if (bytesToCopy != 0) 
+  if (bytesToCopy != 0)
     std::memcpy((unsigned char *) pXsaBinBuffer + startOffset, (unsigned char *) pXsaBinBuffer + endOffset, bytesToCopy);
 
   // Update length of the buffer
@@ -548,7 +550,7 @@ static void remove_xsabin_section(void * pXsaBinBuffer, enum axlf_section_kind s
 
   axlf *axlf_header = (struct axlf *) pXsaBinBuffer;
 
-  // This loop does need to re-evaluate the m_numSections for it will be 
+  // This loop does need to re-evaluate the m_numSections for it will be
   // reduced as sections are removed.  In addition, we need to start again from
   // the start for there could be multiple sections of the same type that
   // need to be removed.
@@ -738,7 +740,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                 mBuf = new char[bufsize];
                 in.seekg(flashSection->m_sectionOffset + flashMeta.m_image_offset);
                 in.read(mBuf, bufsize);
-            } 
+            }
             else if (pdiSection) {
                 if (type != MCS_FIRMWARE_PRIMARY)
                 {

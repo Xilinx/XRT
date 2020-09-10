@@ -73,9 +73,7 @@ namespace xdp {
       virtual void writeDeviceTransfer(const DeviceTrace& trace);
       // Write compute unit utilization table
       virtual void writeComputeUnitSummary(const std::string& name, const TimeStats& stats);
-      // Write accelerator table
-      virtual void writeAcceleratorSummary(const std::string& name, const TimeStats& stats);
-
+      
       // Write Read/Write Buffer transfer stats
       virtual void writeHostTransferSummary(const std::string& name,
           const BufferStats& stats, uint64_t totalBytes, uint64_t totalTranx,

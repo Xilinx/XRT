@@ -1806,6 +1806,7 @@ struct exec_core {
 	// when the MSB is not set, or the PID of the process that exclusively
 	// reserved it when MSB is set.
 	unsigned int		   ip_reference[MAX_CUS];
+	struct workqueue_struct    *completion_wq;
 };
 
 /**
@@ -1933,7 +1934,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	unsigned int major = exec->ert_cfg_priv.major;
 	struct ert_configure_cmd *cfg = xcmd->ert_cfg;
 	bool ert = (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) ? 1 :
-	    xocl_mb_sched_on(xdev);
+	    (xocl_mb_sched_on(xdev) && exec->cq_base && exec->csr_base);
 	bool ert_full = (ert && cfg->ert && !cfg->dataflow);
 	bool ert_poll = (ert && cfg->ert && cfg->dataflow);
 	unsigned int ert_num_slots = 0;
@@ -1945,7 +1946,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return 1;
 	}
 
-	if (major > 2) {
+	if (major > 3) {
 		DRM_INFO("Unknown ERT major version, fallback to KDS mode\n");
 		ert_full = 0;
 		ert_poll = 0;
@@ -1975,7 +1976,6 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	}
 
 	ert_num_slots = exec->cq_size / cfg->slot_size;
-	exec->num_cus = cfg->num_cus;
 	exec->num_cdma = 0;
 
 	if (ert_poll)
@@ -1990,7 +1990,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	}
 
 	// Create CUs for regular CUs
-	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
+	for (cuidx = 0; cuidx < cfg->num_cus; ++cuidx) {
 		struct xocl_cu *xcu = exec->cus[cuidx];
 		void *polladdr = (ert_poll)
 			// cuidx+1 to reserve slot 0 for ctrl => max 127 CUs in ert_poll mode
@@ -2001,6 +2001,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 			xcu = exec->cus[cuidx] = cu_create(xdev);
 		cu_reset(xcu, cuidx, exec->base, cfg->data[cuidx], polladdr);
 	}
+	exec->num_cus = cfg->num_cus;
 
 	// Create KDMA CUs
 	if (cdma) {
@@ -2315,6 +2316,9 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	}
 
 	init_waitqueue_head(&exec->poll_wait_queue);
+	exec->completion_wq = alloc_workqueue("xsched-compltn", WQ_HIGHPRI |
+				WQ_MEM_RECLAIM | WQ_UNBOUND, num_online_cpus());
+
 	exec->scheduler = xs;
 	exec->uid = count++;
 
@@ -2446,6 +2450,9 @@ exec_notify_host(struct exec_core *exec, struct xocl_cmd* xcmd)
 	atomic_inc(&client->trigger);
 	mutex_unlock(&xdev->dev_lock); // eliminate ?
 	wake_up_interruptible(&exec->poll_wait_queue);
+	if (xcmd->bo->metadata.compltn_work.func)
+		queue_work(exec->completion_wq,
+			&xcmd->bo->metadata.compltn_work);
 
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
@@ -3428,6 +3435,7 @@ pending_cmds_reset(void)
  * @cores: list of execution cores (devices)
  * @intc: boolean flag set when there is a pending interrupt for command completion
  * @poll: number of running commands in polling mode
+ * @scheduler_lock: lock to protect threads access cores list
  */
 struct xocl_scheduler {
 	struct task_struct	  *scheduler_thread;
@@ -3442,6 +3450,7 @@ struct xocl_scheduler {
 
 	unsigned int		   intc; /* pending intr shared with isr, word aligned atomic */
 	unsigned int		   poll; /* number of cmds to poll */
+	struct mutex		   scheduler_lock;
 };
 
 static struct xocl_scheduler scheduler0;
@@ -3457,11 +3466,14 @@ scheduler_reset(struct xocl_scheduler *xs)
 	xs->poll = 0;
 	xs->intc = 0;
 
+	mutex_lock(&xs->scheduler_lock);
 	list_for_each_safe(pos, next, &xs->cores) {
 		struct exec_core *exec =
 			list_entry(pos, struct exec_core, core_list);
+
 		exec_reset_cmds(exec);
 	}
+	mutex_unlock(&xs->scheduler_lock);
 }
 
 static void
@@ -3532,10 +3544,14 @@ scheduler_service_cores(struct xocl_scheduler *xs)
 	struct list_head *pos, *next;
 
 	SCHED_DEBUGF("-> %s\n", __func__);
+
+	mutex_lock(&xs->scheduler_lock);
 	list_for_each_safe(pos, next, &xs->cores) {
 		struct exec_core *exec = list_entry(pos, struct exec_core, core_list);
 		exec_service_cmds(exec);
 	}
+	mutex_unlock(&xs->scheduler_lock);
+
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
@@ -3740,6 +3756,8 @@ init_scheduler_thread(struct xocl_scheduler *xs)
 	if (xs->use_count++)
 		return 0;
 
+	mutex_init(&xs->scheduler_lock);
+
 	init_waitqueue_head(&xs->wait_queue);
 	INIT_LIST_HEAD(&xs->cores);
 	scheduler_reset(xs);
@@ -3775,6 +3793,8 @@ fini_scheduler_thread(struct xocl_scheduler *xs)
 
 	// reclaim memory for allocate command objects
 	cmd_list_delete();
+
+	mutex_destroy(&xs->scheduler_lock);
 
 	return retval;
 }
@@ -4291,9 +4311,26 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	return 0;
 }
 
+static
+void xocl_execbuf_completion(struct work_struct *work)
+{
+	struct drm_xocl_exec_metadata *xobj_metadata = container_of(work,
+				struct drm_xocl_exec_metadata, compltn_work);
+	struct drm_xocl_bo *xobj = container_of(xobj_metadata,
+				struct drm_xocl_bo, metadata);
+	struct ert_packet *ecmd = (struct ert_packet *)xobj->vmapping;
+	int error = (ecmd->state == ERT_CMD_STATE_COMPLETED) ? 0 : -EFAULT;
+
+	if (xobj->metadata.execbuf_cb_fn)
+		xobj->metadata.execbuf_cb_fn(
+			(unsigned long) xobj->metadata.execbuf_cb_data,
+			error);
+}
+
 static int
 client_ioctl_execbuf(struct platform_device *pdev,
-		     struct client_ctx *client, void *data, struct drm_file *filp)
+		     struct client_ctx *client, void *data, struct drm_file *filp,
+		     bool inkernel)
 {
 	struct drm_xocl_execbuf *args = data;
 	struct drm_xocl_bo *xobj;
@@ -4357,6 +4394,18 @@ client_ioctl_execbuf(struct platform_device *pdev,
 		deps[numdeps] = xbo;
 	}
 
+	if (inkernel) {
+		struct drm_xocl_execbuf_cb *args_cb =
+					(struct drm_xocl_execbuf_cb *)args;
+		if (args_cb->cb_func) {
+			xobj->metadata.execbuf_cb_fn   =
+					(xocl_execbuf_callback)args_cb->cb_func;
+			xobj->metadata.execbuf_cb_data =
+					(void *)args_cb->cb_data;
+		}
+		INIT_WORK(&xobj->metadata.compltn_work, xocl_execbuf_completion);
+	}
+
 	/* Add exec buffer to scheduler (kds).	The scheduler manages the
 	 * drm object references acquired by xobj and deps.  It is vital
 	 * that the references are released properly.
@@ -4395,7 +4444,10 @@ int client_ioctl(struct platform_device *pdev,
 		ret = client_ioctl_ctx(pdev, client, data);
 		break;
 	case DRM_XOCL_EXECBUF:
-		ret = client_ioctl_execbuf(pdev, client, data, drm_filp);
+		ret = client_ioctl_execbuf(pdev, client, data, drm_filp, false);
+		break;
+	case DRM_XOCL_EXECBUF_CB:
+		ret = client_ioctl_execbuf(pdev, client, data, drm_filp, true);
 		break;
 	default:
 		ret = -EINVAL;
@@ -4799,7 +4851,11 @@ static int mb_scheduler_probe(struct platform_device *pdev)
 		goto err;
 
 	init_scheduler_thread(&scheduler0);
+
+	mutex_lock(&scheduler0.scheduler_lock);
 	list_add_tail(&exec->core_list, &scheduler0.cores);
+	mutex_unlock(&scheduler0.scheduler_lock);
+
 	platform_set_drvdata(pdev, exec);
 
 	DRM_INFO("command scheduler started\n");
@@ -4821,8 +4877,12 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	unsigned int i;
 
 	SCHED_DEBUGF("-> %s\n", __func__);
+	mutex_lock(&scheduler0.scheduler_lock);
 	exec_reset_cmds(exec);
+	mutex_unlock(&scheduler0.scheduler_lock);
+
 	fini_scheduler_thread(exec_scheduler(exec));
+	destroy_workqueue(exec->completion_wq);
 
 	if (!kds_mode) {
 		for (i = 0; i < exec->intr_num; i++) {
@@ -4833,7 +4893,15 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	mutex_destroy(&exec->exec_lock);
 
 	user_sysfs_destroy_kds(pdev);
+
+	/*
+	 * fini_scheduler_thread may not stop thread with 1+ exec_cores.
+	 * this exec will be freed, using lock to avoid race condition.
+	 */
+	mutex_lock(&scheduler0.scheduler_lock);
 	exec_destroy(exec);
+	mutex_unlock(&scheduler0.scheduler_lock);
+
 	atomic_set(&xdev->outstanding_execs, 0);
 	platform_set_drvdata(pdev, NULL);
 

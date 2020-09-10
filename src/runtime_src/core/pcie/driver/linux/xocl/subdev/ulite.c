@@ -22,10 +22,8 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
-#define ULITE_NAME		"ttyUL"
-#define ULITE_MAJOR		204
-#define ULITE_MINOR		187
-#define ULITE_NR_UARTS		4
+#define ULITE_NAME		"ttyXRTUL"
+#define ULITE_NR_UARTS		8
 
 /* ---------------------------------------------------------------------
  * Register definitions
@@ -60,9 +58,11 @@
 struct uartlite_data {
 	const struct uartlite_reg_ops *reg_ops;
 	struct uart_driver *xcl_ulite_driver;
-	struct uart_port port;
+	struct uart_port *port;
 	struct timer_list timer;
 };
+
+static struct uart_port ulite_ports[ULITE_NR_UARTS];
 
 struct uartlite_reg_ops {
 	u32 (*in)(void __iomem *addr);
@@ -223,7 +223,7 @@ static void ulite_timer(struct timer_list *t)
 {
 	struct uartlite_data *pdata = from_timer(pdata, t, timer);
 #endif
-	struct uart_port *port = &pdata->port;
+	struct uart_port *port = pdata->port;
 
 	ulite_worker(port);
 	/* We're a periodic timer. */
@@ -436,8 +436,6 @@ static struct uart_driver xcl_ulite_driver = {
 	.owner		= THIS_MODULE,
 	.driver_name	= XOCL_DEVNAME(XOCL_UARTLITE),
 	.dev_name	= ULITE_NAME,
-	.major		= ULITE_MAJOR,
-	.minor		= ULITE_MINOR,
 	.nr		= ULITE_NR_UARTS,
 };
 
@@ -446,7 +444,7 @@ static int ulite_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct uartlite_data *pdata;
 	struct uart_port *port;
-	int irq = 0, ret = 0;
+	int irq = 0, ret = 0, id = 0;
 
 	pdata = devm_kzalloc(&pdev->dev, sizeof(struct uartlite_data),
 			     GFP_KERNEL);
@@ -457,9 +455,20 @@ static int ulite_probe(struct platform_device *pdev)
 	if (!res)
 		return -ENODEV;
 
+	for (id = 0; id < ULITE_NR_UARTS; id++)
+		if (ulite_ports[id].mapbase == 0)
+			break;
+	
+	if (id >= ULITE_NR_UARTS) {
+		dev_err(&pdev->dev, "%s%i too large\n", ULITE_NAME, id);
+		ret = -EINVAL;
+		goto done;
+	}
+
 	pdata->xcl_ulite_driver = &xcl_ulite_driver;
 
-	port = &pdata->port;
+	pdata->port = &ulite_ports[id];
+	port = pdata->port;
 
 	spin_lock_init(&port->lock);
 	port->fifosize = 16;
@@ -473,7 +482,7 @@ static int ulite_probe(struct platform_device *pdev)
 	port->flags = UPF_BOOT_AUTOCONF;
 	port->dev = &pdev->dev;
 	port->type = PORT_UNKNOWN;
-	port->line = 0;
+	port->line = id;
 	port->private_data = pdata;
 
 	platform_set_drvdata(pdev, port);
@@ -519,7 +528,7 @@ static int ulite_remove(struct platform_device *pdev)
 }
 
 struct xocl_drv_private ulite_priv = {
-	.ops = &ulite_ops,
+	.ops = NULL,
 };
 
 struct platform_device_id ulite_id_table[] = {

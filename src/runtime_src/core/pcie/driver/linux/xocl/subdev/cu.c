@@ -58,15 +58,38 @@ cu_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(cu_stat);
 
+static ssize_t
+cu_info_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+
+	return show_cu_info(&cu->base, buf);
+}
+static DEVICE_ATTR_RO(cu_info);
+
 static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
+	&dev_attr_cu_info.attr,
 	NULL,
 };
 
 static const struct attribute_group cu_attrgroup = {
 	.attrs = cu_attrs,
 };
+
+irqreturn_t cu_isr(int irq, void *arg)
+{
+	struct xocl_cu *xcu = arg;
+
+	xrt_cu_check(&xcu->base);
+	xrt_cu_clear_intr(&xcu->base);
+
+	up(&xcu->base.sem_cu);
+
+	return IRQ_HANDLED;
+}
 
 static int cu_probe(struct platform_device *pdev)
 {
@@ -88,7 +111,17 @@ static int cu_probe(struct platform_device *pdev)
 	xcu->base.dev = XDEV2DEV(xdev);
 
 	info = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	BUG_ON(!info);
 	memcpy(&xcu->base.info, info, sizeof(struct xrt_cu_info));
+
+	switch (info->protocol) {
+	case CTRL_HS:
+	case CTRL_CHAIN:
+		xcu->base.info.model = XCU_HLS;
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	krnl_info = xocl_query_kernel(xdev, info->kname);
 	if (!krnl_info) {
@@ -133,7 +166,7 @@ static int cu_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	switch (info->model) {
+	switch (xcu->base.info.model) {
 	case XCU_HLS:
 		err = xrt_cu_hls_init(&xcu->base);
 		break;
@@ -147,6 +180,19 @@ static int cu_probe(struct platform_device *pdev)
 		XCU_ERR(xcu, "Not able to initial CU %p", xcu);
 		goto err2;
 	}
+
+	/* If mb_scheduler is enable, the intc subdevic would not be created.
+	 * In this case, the err would be -ENODEV. Don't print error message.
+	 */
+	err = xocl_intc_cu_request(xdev, info->intr_id, cu_isr, xcu);
+	if (!err)
+		XCU_INFO(xcu, "Register CU interrupt id %d", info->intr_id);
+	else if (err != -ENODEV)
+		XCU_ERR(xcu, "xocl_intc_cu_request failed, err: %d", err);
+
+	err = xocl_intc_cu_config(xdev, info->intr_id, true);
+	if (err && err != -ENODEV)
+		XCU_ERR(xcu, "xocl_intc_cu_config failed, err: %d", err);
 
 	if (sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup))
 		XCU_ERR(xcu, "Not able to create CU sysfs group");
@@ -171,6 +217,7 @@ static int cu_remove(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xrt_cu_info *info;
 	struct xocl_cu *xcu;
+	int err;
 	void *hdl;
 
 	xcu = platform_get_drvdata(pdev);
@@ -178,8 +225,13 @@ static int cu_remove(struct platform_device *pdev)
 		return -EINVAL;
 
 	(void) sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
-
 	info = &xcu->base.info;
+
+	err = xocl_intc_cu_config(xdev, info->intr_id, false);
+	if (!err)
+		XCU_INFO(xcu, "Unregister CU interrupt id %d", info->intr_id);
+	xocl_intc_cu_request(xdev, info->intr_id, NULL, NULL);
+
 	switch (info->model) {
 	case XCU_HLS:
 		xrt_cu_hls_fini(&xcu->base);

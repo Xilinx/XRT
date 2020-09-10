@@ -208,13 +208,13 @@ struct mig
   }
 
   static result_type
-  user(const xrt_core::device* device, key_type key, const boost::any&)
+  user(const xrt_core::device* device, key_type key, query::request::modifier, const std::string&)
   {
     return get(device,key);
   }
 
   static result_type
-  mgmt(const xrt_core::device* device, key_type key, const boost::any&)
+  mgmt(const xrt_core::device* device, key_type key, query::request::modifier, const std::string&)
   {
     throw std::runtime_error("query request ("
                              + std::to_string(static_cast<qtype>(key))
@@ -678,7 +678,7 @@ struct flash_bar_offset
   static result_type
   user(const xrt_core::device* device, key_type)
   {
-	  return 0;
+    return 0;
   }
 
   static result_type
@@ -792,7 +792,6 @@ struct function0_getter : QueryRequestType
     else
       throw std::runtime_error("No device handle");
   }
-
 };
 
 template <typename QueryRequestType, typename Getter>
@@ -814,6 +813,25 @@ struct function1_getter : QueryRequestType
   }
 };
 
+template <typename QueryRequestType, typename Getter>
+struct function2_getter : QueryRequestType
+{
+  static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value
+             || std::is_same<Getter::result_type, boost::any>::value, "type mismatch");
+
+  boost::any
+  get(const xrt_core::device* device, query::request::modifier m, const std::string& v) const
+  {
+    auto k = QueryRequestType::key;
+    if (auto mhdl = device->get_mgmt_handle())
+      return Getter::mgmt(device,k,m,v);
+    else if (auto uhdl = device->get_user_handle())
+      return Getter::user(device,k,m,v);
+    else
+      throw std::runtime_error("No device handle");
+  }
+};
+
 static std::map<xrt_core::query::key_type, std::unique_ptr<xrt_core::query::request>> query_tbl;
 
 template <typename QueryRequestType, typename Getter>
@@ -830,6 +848,14 @@ emplace_function1_getter()
 {
   auto k = QueryRequestType::key;
   query_tbl.emplace(k, std::make_unique<function1_getter<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_function2_getter()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function2_getter<QueryRequestType, Getter>>());
 }
 
 static void
@@ -902,12 +928,12 @@ initialize_query_table()
   emplace_function0_getter<query::xmc_max_power,             board>();
   emplace_function0_getter<query::xmc_bmc_version,           board>();
   emplace_function0_getter<query::fan_fan_presence,          board>();
-  emplace_function1_getter<query::mig_ecc_enabled,           mig>();
-  emplace_function1_getter<query::mig_ecc_status,            mig>();
-  emplace_function1_getter<query::mig_ecc_ce_cnt,            mig>();
-  emplace_function1_getter<query::mig_ecc_ue_cnt,            mig>();
-  emplace_function1_getter<query::mig_ecc_ce_ffa,            mig>();
-  emplace_function1_getter<query::mig_ecc_ue_ffa,            mig>();
+  emplace_function2_getter<query::mig_ecc_enabled,           mig>();
+  emplace_function2_getter<query::mig_ecc_status,            mig>();
+  emplace_function2_getter<query::mig_ecc_ce_cnt,            mig>();
+  emplace_function2_getter<query::mig_ecc_ue_cnt,            mig>();
+  emplace_function2_getter<query::mig_ecc_ce_ffa,            mig>();
+  emplace_function2_getter<query::mig_ecc_ue_ffa,            mig>();
   emplace_function0_getter<query::firewall_detect_level,     firewall>();
   emplace_function0_getter<query::firewall_status,           firewall>();
   emplace_function0_getter<query::firewall_time_sec,         firewall>();
@@ -977,9 +1003,9 @@ write(uint64_t addr, const void* buf, uint64_t len) const
   mgmtpf::write_bar(m_mgmthdl, addr, buf, len);
 }
 
-void 
+void
 device_windows::
-reset(const char*, const char*, const char*) const 
+reset(const char*, const char*, const char*) const
 {
   throw std::runtime_error("Reset is not supported on Windows.");
 }

@@ -272,10 +272,6 @@ namespace xdp {
   //
   // Writers
   //
-  void ProfileCounters::writeTopHardwareSummary(ProfileWriterI* writer) const {
-    TopKernelTimes.writeTopUsageSummary(writer);
-  }
-
   void ProfileCounters::writeTopKernelSummary(ProfileWriterI* writer) const {
     TopKernelTimes.writeTopUsageSummary(writer);
   }
@@ -416,15 +412,6 @@ namespace xdp {
       auto fullName = pair.first;
       auto cuName = fullName.substr(0, fullName.find_last_of("|"));
       writer->writeComputeUnitSummary(cuName, pair.second);
-    }
-  }
-
-  void ProfileCounters::writeAcceleratorSummary(ProfileWriterI* writer) const
-  {
-    for (const auto &pair : ComputeUnitExecutionStats) {
-      auto fullName = pair.first;
-      auto cuName = fullName.substr(0, fullName.find_last_of("|"));
-      writer->writeAcceleratorSummary(cuName, pair.second);
     }
   }
 

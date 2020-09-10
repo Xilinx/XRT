@@ -382,14 +382,6 @@ namespace xdp {
   {
     mWriter->writeTopDeviceTransferSummary(writer, isRead);
   }
-  void RTProfile::writeAcceleratorSummary(ProfileWriterI* writer) const
-  {
-    mWriter->writeAcceleratorSummary(writer);
-  }
-  void RTProfile::writeTopHardwareSummary(ProfileWriterI* writer) const
-  {
-    mWriter->writeTopHardwareSummary(writer);
-  }
 
   // ***************************************************************************
   // External access to logger

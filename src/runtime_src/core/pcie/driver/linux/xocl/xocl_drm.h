@@ -22,6 +22,7 @@
 #include <linux/hashtable.h>
 #endif
 
+typedef void (*xocl_execbuf_callback)(unsigned long data, int error);
 
 #define IS_HOST_MEM(m_tag)	(!strncmp(m_tag, "HOST[0]", 7))
 /**
@@ -33,6 +34,9 @@
 struct drm_xocl_exec_metadata {
 	enum drm_xocl_execbuf_state state;
 	struct xocl_cmd            *active;
+	struct work_struct	    compltn_work;
+	xocl_execbuf_callback	    execbuf_cb_fn;
+	void			   *execbuf_cb_data;
 };
 
 struct xocl_cma_memory {
@@ -57,6 +61,8 @@ struct xocl_drm {
 	struct drm_mm           *mm;
 	struct mutex            mm_lock;
 	struct drm_xocl_mm_stat **mm_usage_stat;
+
+	int			cma_bank_idx;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	DECLARE_HASHTABLE(mm_range, 6);
@@ -107,7 +113,6 @@ uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data);
 int xocl_init_mem(struct xocl_drm *drm_p);
 int xocl_cleanup_mem(struct xocl_drm *drm_p);
 
-bool is_cma_bank(struct xocl_drm *drm_p, uint32_t memidx);
 int xocl_check_topology(struct xocl_drm *drm_p);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)

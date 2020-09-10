@@ -66,16 +66,14 @@ if (DEFINED ENV{XRT_BOOST_INSTALL})
     HINTS $ENV{XRT_BOOST_INSTALL}
     REQUIRED COMPONENTS system filesystem)
 else()
-  # On older systems libboost_system.a is not compiled with -fPIC which leads to
-  # link errors when XRT shared objects try to link with it.
-  # Static linking with Boost is enabled on Ubuntu 18.04 but not 20.04
-#  if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} STREQUAL 18.04))
-#    set(Boost_USE_STATIC_LIBS  ON)
-#  endif()
   find_package(Boost 
     REQUIRED COMPONENTS system filesystem)
 endif()
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
+
+if(Boost_VERSION_STRING VERSION_LESS 1.64.0)
+  add_definitions (-DBOOST_PRE_1_64=1)
+endif()
 
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
@@ -90,6 +88,7 @@ set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")
 set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
 set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
+set (XRT_VALIDATE_DIR          "${XRT_INSTALL_DIR}/test")
 set (XRT_NAMELINK_ONLY NAMELINK_ONLY)
 set (XRT_NAMELINK_SKIP NAMELINK_SKIP)
 
@@ -152,6 +151,7 @@ install (FILES ${PY_TEST_SRC}
   PERMISSIONS OWNER_READ OWNER_EXECUTE OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   DESTINATION ${XRT_INSTALL_DIR}/test)
 
+add_subdirectory("../tests/validate" "${CMAKE_CURRENT_BINARY_DIR}/validate_build")
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
 # -- CPack

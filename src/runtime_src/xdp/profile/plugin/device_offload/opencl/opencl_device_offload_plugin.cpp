@@ -124,6 +124,8 @@ namespace xdp {
       db->unregisterPlugin(this) ;
     }
 
+    clearOffloaders();
+#if 0
     for (auto o : offloaders)
     {
       auto offloader = std::get<0>(o.second) ;
@@ -134,6 +136,7 @@ namespace xdp {
       delete logger ;
       delete intf ;
     }
+#endif
 
   }
 
@@ -201,6 +204,8 @@ namespace xdp {
 
     deviceId = db->addDevice(path) ;
 
+    clearOffloader(deviceId);
+#if 0
     if (offloaders.find(deviceId) != offloaders.end())
     {
       // Clean up the old offloader.  It has already been flushed.
@@ -214,6 +219,7 @@ namespace xdp {
       delete logger ;
       delete intf ;
     }
+#endif
 
     // Update the static database with all the information that will
     //  be needed later.
@@ -236,11 +242,14 @@ namespace xdp {
 
     configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;
-
-    configureTraceIP(devInterface) ; 
+    configureTraceIP(devInterface) ;
     if (getFlowMode() == HW || getFlowMode() == HW_EMU)
       devInterface->clockTraining() ;
     devInterface->startCounters() ;
+
+    // Disable AMs for unsupported features
+    configureFa(deviceId, devInterface) ;
+    configureCtx(deviceId, devInterface) ;
 
     // Once the device has been set up, add additional information to 
     //  the static database specific to OpenCL runs

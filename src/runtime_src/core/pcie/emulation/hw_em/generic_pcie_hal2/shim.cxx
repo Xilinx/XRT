@@ -133,7 +133,10 @@ namespace xclhwemhal2 {
       if(!handle)
         continue;
       handle->saveWaveDataBase();
-      systemUtil::makeSystemCall(handle->deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+
+      if (xclemulation::config::getInstance()->isKeepRunDirEnabled() == false) {
+        systemUtil::makeSystemCall(handle->deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+      }
     }
 
   }
@@ -1468,10 +1471,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // The core device must correspond to open and close, so
     // reset here rather than in destructor
     mCoreDevice.reset();
-
-    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
-      resetProgram(false);
-    }
+    resetProgram(false);
 
     if (!sock) 
     {
@@ -1492,12 +1492,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         mLogStream.close();
       }
       return;
-    }
-
-    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
-    }
-    else {
-      resetProgram(false);
     }
 
     int status = 0;
@@ -1787,7 +1781,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   }
 
-  HwEmShim::HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader &fRomHeader)
+  HwEmShim::HwEmShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, 
+    FeatureRomHeader &fRomHeader, platformData &platform_data)
     :mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
@@ -1823,6 +1818,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   
     std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
     std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
+
+    std::memset(&mPlatformData, 0, sizeof(platformData));
+    std::memcpy(&mPlatformData, &platform_data, sizeof(platformData));
     
     last_clk_time = clock();
     mCloseAll = false;
@@ -1868,11 +1866,39 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   bool HwEmShim::isMBSchedulerEnabled()
   {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      bool mbSchEnabled = mPlatformData.mIsBoardScheduler;
+      return mbSchEnabled;
+    }
+
     bool mbSchEnabled = mFeatureRom.FeatureBitMap & FeatureBitMask::MB_SCHEDULER;
-    bool QDMAPlatform = (getDsaVersion() == 60)? true: false;
+    bool QDMAPlatform = (getDsaVersion() == 60) ? true : false;
     return mbSchEnabled && !QDMAPlatform;
   }
-  
+
+  bool HwEmShim::isM2MEnabled() {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      bool isM2MEnabled = mPlatformData.mIsM2M;
+      return isM2MEnabled;
+    }
+    return false;
+  }
+
+  bool HwEmShim::isNoDMAEnabled() {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      bool isNoDMAEnabled = mPlatformData.mIsNoDMA;
+      return isNoDMAEnabled;
+    }
+    return false;
+  }
+
+  std::string HwEmShim::getMBSchedulerVersion() {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      std::string ver = (std::string)mPlatformData.mBoardSchedulerVer;
+      return ver;
+    }
+    return "1.0";
+  }
 
   bool HwEmShim::isLegacyErt()
   {
@@ -1899,11 +1925,30 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   bool HwEmShim::isCdmaEnabled()
   {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      return mPlatformData.mIsCDMA;
+    }
+
     return mFeatureRom.FeatureBitMap & FeatureBitMask::CDMA;
   }
 
   uint64_t HwEmShim::getCdmaBaseAddress(unsigned int index)
   {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      if (index == 0){
+        return mPlatformData.mCDMABaseAddress0;
+      }
+      else if (index == 1) {
+        return mPlatformData.mCDMABaseAddress1;
+      }
+      else if (index == 2) {
+        return mPlatformData.mCDMABaseAddress2;
+      }
+      else if (index == 3) {
+        return mPlatformData.mCDMABaseAddress3;
+      }
+    }
+  
     return mFeatureRom.CDMABaseAddress[index];
   }
 
@@ -2402,21 +2447,41 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     PRINTENDFUNC;
     return -1;
   }
-  if(dBO->fd < 0)
-  {
-    std::cout<<"bo is not exported for copying"<<std::endl;
-    return -1;
+
+  // source buffer is host_only and destination buffer is device_only
+  if (xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
+    unsigned char* host_only_buffer = (unsigned char*)(sBO->buf) + src_offset;
+    if (xclCopyBufferHost2Device(dBO->base, (void*)host_only_buffer, size, dst_offset, dBO->topology) != size) {
+      return -1;
+    }
   }
 
-  int ack = false;
-  auto fItr = mFdToFileNameMap.find(dBO->fd);
-  if(fItr != mFdToFileNameMap.end())
-  {
-    const std::string& sFileName = std::get<0>((*fItr).second);
-    xclCopyBO_RPC_CALL(xclCopyBO,sBO->base,sFileName,size,src_offset,dst_offset);
+  // source buffer is device_only and destination buffer is host_only
+  if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+    unsigned char* host_only_buffer = (unsigned char*)(dBO->buf) + dst_offset;
+    if (xclCopyBufferDevice2Host((void*)host_only_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
+      return -1;
+    }
   }
-  if(!ack)
-    return -1;
+
+  // source buffer is device_only and destination buffer is p2p_buffer
+  if (xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+    if (dBO->fd < 0)
+    {
+      std::cout << "bo is not exported for copying" << std::endl;
+      return -1;
+    }
+    int ack = false;
+    auto fItr = mFdToFileNameMap.find(dBO->fd);
+    if (fItr != mFdToFileNameMap.end())
+    {
+      const std::string& sFileName = std::get<0>((*fItr).second);
+      xclCopyBO_RPC_CALL(xclCopyBO, sBO->base, sFileName, size, src_offset, dst_offset);
+    }
+    if (!ack)
+      return -1;    
+  }
+
   PRINTENDFUNC;
   return 0;
 }

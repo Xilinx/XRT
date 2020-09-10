@@ -76,7 +76,7 @@ class device : public xrt::hal::device
 
   struct BufferObject : hal::buffer_object
   {
-    xclBufferHandle handle;
+    xclBufferHandle handle = XRT_NULL_BO;
     uint64_t deviceAddr = 0xffffffffffffffff;
     void *hostAddr = nullptr;
     size_t size = 0;
@@ -85,6 +85,9 @@ class device : public xrt::hal::device
     hal2::device_handle owner = nullptr;
     BufferObjectHandle parent = nullptr;
     bool imported = false;
+
+    bool nodma = false;
+    xclBufferHandle nodma_host_handle = XRT_NULL_BO;
   };
 
   struct ExecBufferObject : hal::exec_buffer_object
@@ -206,6 +209,9 @@ public:
   std::shared_ptr<xrt_core::device>
   get_core_device() const;
 
+  bool
+  is_nodma() const;
+
   virtual void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared);
 
@@ -277,6 +283,9 @@ public:
 
   virtual BufferObjectHandle
   alloc(const BufferObjectHandle& bo, size_t sz, size_t offset);
+
+  BufferObjectHandle
+  alloc_nodma(size_t sz, Domain domain, uint64_t memory_index, void* userptr);
 
   virtual void*
   alloc_svm(size_t sz);

@@ -50,7 +50,8 @@ namespace xclcpuemhal2 {
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
  
-  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader)
+  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr,
+    FeatureRomHeader& fRomHeader, platformData& platform_data)
     :mTag(TAG)
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
@@ -83,6 +84,9 @@ namespace xclcpuemhal2 {
 
     std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
     std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
+
+    std::memset(&mPlatformData, 0, sizeof(platformData));
+    std::memcpy(&mPlatformData, &platform_data, sizeof(platformData));
     
     char* pack_size = getenv("SW_EMU_PACKET_SIZE");
     if(pack_size)
@@ -167,43 +171,36 @@ namespace xclcpuemhal2 {
  
   static void sigHandler(int sn, siginfo_t *si, void *sc)
   {
-    switch(sn) {
-      case SIGSEGV:
-        {
-          saveDeviceProcessOutputs();
-          kill(0,SIGSEGV);
-          exit(1);
-          break;
-        }
-      case SIGFPE :
-        {
-          saveDeviceProcessOutputs();
-          kill(0,SIGTERM);
-          exit(1);
-          break;
-        }
-      case SIGABRT:
-        {
-          saveDeviceProcessOutputs();
-          kill(0,SIGABRT);
-          exit(1);
-          break;
-        }
+    switch (sn) {
+    case SIGSEGV:
+      saveDeviceProcessOutputs();
+      kill(0, SIGSEGV);
+      exit(1);
+      break;
+    case SIGFPE:
+      saveDeviceProcessOutputs();
+      kill(0, SIGTERM);
+      exit(1);
+      break;
+    case SIGABRT:
+      saveDeviceProcessOutputs();
+      kill(0, SIGABRT);
+      exit(1);
+      break;
+    case SIGCHLD: // Prevent infinite loop when the emulator dies
+      if (si->si_code != CLD_KILLED && si->si_code != CLD_DUMPED)
+        break;
     case SIGUSR1:
-        {
-	  // One of the spawned processes died for some reason,
-	  //  kill all of the others and exit the host code
-	  saveDeviceProcessOutputs() ;
-	  std::cerr << "Software emulation of compute unit(s) exited unexpectedly" 
-		    << std::endl ;
-	  kill(0, SIGTERM) ; 
-	  exit(1) ;
-	  break ;
-        }
-      default:
-        {
-          break;
-        }
+      // One of the spawned processes died for some reason,
+      //  kill all of the others and exit the host code
+      saveDeviceProcessOutputs();
+      std::cerr << "Software emulation of compute unit(s) exited unexpectedly"
+                << std::endl;
+      kill(0, SIGTERM);
+      exit(1);
+      break;
+    default:
+      break;
     }
   }
 
@@ -343,7 +340,8 @@ namespace xclcpuemhal2 {
     if (sigaction(SIGSEGV, &s, (struct sigaction *)0) ||
         sigaction(SIGFPE , &s, (struct sigaction *)0) ||
         sigaction(SIGABRT, &s, (struct sigaction *)0) ||
-        sigaction(SIGUSR1, &s, (struct sigaction *)0))
+        sigaction(SIGUSR1, &s, (struct sigaction *)0) ||
+        sigaction(SIGCHLD, &s, (struct sigaction *)0))
     {
       //debug_print("unable to support all signals");
     }
@@ -1348,21 +1346,41 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
     PRINTENDFUNC;
     return -1;
   }
-  if(dBO->fd < 0)
-  {
-    std::cout<<"bo is not exported for copying"<<std::endl;
-    return -1;
+
+  // source buffer is host_only and destination buffer is device_only
+  if (xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
+    unsigned char* host_only_buffer = (unsigned char*)(sBO->buf) + src_offset;
+    if (xclCopyBufferHost2Device(dBO->base, (void*) host_only_buffer, size, dst_offset) != size) {
+      return -1;
+    }
+  }  
+
+  // source buffer is device_only and destination buffer is host_only
+  if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+    unsigned char* host_only_buffer = (unsigned char*)(dBO->buf) + dst_offset;
+    if (xclCopyBufferDevice2Host((void*) host_only_buffer, sBO->base, size, src_offset) != size) {
+      return -1;
+    }
   }
 
-  int ack = false;
-  auto fItr = mFdToFileNameMap.find(dBO->fd);
-  if(fItr != mFdToFileNameMap.end())
-  {
-    const std::string& sFileName = std::get<0>((*fItr).second);
-    xclCopyBO_RPC_CALL(xclCopyBO,sBO->base,sFileName,size,src_offset,dst_offset);
+  // source buffer is device_only and destination buffer is p2p_buffer
+  if (xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+    if (dBO->fd < 0)
+    {
+      std::cout << "bo is not exported for copying" << std::endl;
+      return -1;
+    }
+    int ack = false;
+    auto fItr = mFdToFileNameMap.find(dBO->fd);
+    if (fItr != mFdToFileNameMap.end())
+    {
+      const std::string& sFileName = std::get<0>((*fItr).second);
+      xclCopyBO_RPC_CALL(xclCopyBO, sBO->base, sFileName, size, src_offset, dst_offset);
+    }
+    if (!ack)
+      return -1;
   }
-  if(!ack)
-    return -1;
+
   PRINTENDFUNC;
   return 0;
 }
@@ -1860,6 +1878,23 @@ int CpuemShim::xclExecBuf(unsigned int cmdBO)
 int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
 {
   return 0;
+}
+
+// New API's for m2m and no-dma
+bool CpuemShim::isM2MEnabled() {
+  if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+    bool isM2MEnabled = mPlatformData.mIsM2M;
+    return isM2MEnabled;
+  }
+  return false;
+}
+
+bool CpuemShim::isNoDMAEnabled() {
+  if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+    bool isNoDMAEnabled = mPlatformData.mIsNoDMA;
+    return isNoDMAEnabled;
+  }
+  return false;
 }
 
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/

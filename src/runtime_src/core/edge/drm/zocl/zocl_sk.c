@@ -102,9 +102,10 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 	bo = to_zocl_bo(gem_obj);
 	sk->sk_cu[cu_idx]->sc_vregs = bo->cma_base.vaddr;
+	sk->sk_cu[cu_idx]->gem_obj = gem_obj;
 	sema_init(&sk->sk_cu[cu_idx]->sc_sem, 0);
 
-	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
+	/* Hold refcnt till soft kernel is released or driver unload */
 
 	return 0;
 }
@@ -154,6 +155,7 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 			 * If we are interrupted or explictly
 			 * told to exit.
 			 */
+			ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(scu->gem_obj);
 			kfree(sk->sk_cu[args->cu_idx]);
 			sk->sk_cu[args->cu_idx] = NULL;
 
@@ -195,4 +197,22 @@ zocl_init_soft_kernel(struct drm_device *drm)
 	init_waitqueue_head(&sk->sk_wait_queue);
 
 	return 0;
+}
+
+void
+zocl_fini_soft_kernel(struct drm_device *drm)
+{
+	struct drm_zocl_dev *zdev = drm->dev_private;
+	struct soft_krnl *sk;
+	u32 cu_idx;
+
+	sk = zdev->soft_kernel;
+	for (cu_idx = 0; cu_idx < sk->sk_ncus; cu_idx++) {
+		if (!sk->sk_cu[cu_idx])
+			continue;
+
+		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(sk->sk_cu[cu_idx]->gem_obj);
+		kfree(sk->sk_cu[cu_idx]);
+	}
+	mutex_destroy(&sk->sk_lock);
 }

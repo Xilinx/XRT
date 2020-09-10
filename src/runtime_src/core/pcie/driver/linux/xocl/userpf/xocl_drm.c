@@ -258,6 +258,9 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 	}
 
+	if (ret > 0)
+		return ret;
+
 	switch (ret) {
 	case -EAGAIN:
 	case 0:
@@ -370,6 +373,22 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_FREE_CMA, xocl_free_cma_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+
+/* LINUX KERNEL-SPACE IOCTLS - The following entries are meant to be 
+ * accessible only from Linux Kernel and need be grouped to at the end 
+ * of this array.
+ * New IOCTLS meant for Userspace access needs to be defined above these
+ * comments.
+ **/
+#define NUM_KERNEL_IOCTLS 4
+	DRM_IOCTL_DEF_DRV(XOCL_KINFO_BO, xocl_kinfo_bo_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_MAP_KERN_MEM, xocl_map_kern_mem_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_EXECBUF_CB, xocl_execbuf_callback_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_SYNC_BO_CB, xocl_sync_bo_callback_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
 static long xocl_drm_ioctl(struct file *filp,
@@ -409,7 +428,7 @@ static struct drm_driver mm_drm_driver = {
 	.gem_vm_ops			= &xocl_vm_ops,
 
 	.ioctls				= xocl_ioctls,
-	.num_ioctls			= ARRAY_SIZE(xocl_ioctls),
+	.num_ioctls			= (ARRAY_SIZE(xocl_ioctls)-NUM_KERNEL_IOCTLS),
 	.fops				= &xocl_driver_fops,
 
 	.gem_prime_get_sg_table		= xocl_gem_prime_get_sg_table,
@@ -793,6 +812,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 	err = 0;
 
+	drm_p->cma_bank_idx = -1;
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
 		ddr_bank_size = mem_data->m_size * 1024;
@@ -803,6 +823,8 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
 		xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
 		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
+		if (IS_HOST_MEM(mem_data->m_tag))
+			drm_p->cma_bank_idx = i;
 	}
 
 	/* Initialize memory stats based on Group topology */
@@ -939,26 +961,3 @@ done:
 	return err;
 }
 
-bool is_cma_bank(struct xocl_drm *drm_p, uint32_t memidx)
-{
-	struct mem_topology *topo = NULL;
-	int err = 0;
-	bool ret = false;
-
-	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo);
-	if (err)
-		return ret;
-
-	if (topo == NULL)
-		goto done;
-
-	if (!topo->m_mem_data[memidx].m_used)
-		goto done;
-
-	if (IS_HOST_MEM(topo->m_mem_data[memidx].m_tag))
-		ret = true;
-
-done:
-	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
-	return ret;
-}

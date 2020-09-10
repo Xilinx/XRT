@@ -78,6 +78,7 @@ namespace xclemulation{
     mCuBaseAddrForce=-1;
     mIsSharedFmodel=true;
     mTimeOutScale=TIMEOUT_SCALE::NA;
+    mIsPlatformDataAvailable = false;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -593,6 +594,70 @@ namespace xclemulation{
     }
   }
 
+  static void populatePlatformData(boost::property_tree::ptree const& platformDataTree, platformData& platform_data) {
+
+    for (auto& prop : platformDataTree) {
+      std::string name = prop.first;
+      if (name == "Fpga_Part_Name") {
+        std::string fpgaPartName = prop.second.get_value<std::string>();
+        if (fpgaPartName.empty() == false) {
+          if (strlen(fpgaPartName.c_str()) < 64) {
+            std::strcpy(platform_data.mFpgaPartName, fpgaPartName.c_str());
+          }
+        }
+      }
+      else if (name == "Unified_Platform") {
+        platform_data.mIsUnifiedPlatform = prop.second.get_value<bool>();
+      }
+      else if (name == "Vbnv_Name") {
+        std::string vbnvName = prop.second.get_value<std::string>();
+        if (vbnvName.empty() == false) {
+          if (strlen(vbnvName.c_str()) < 64) {
+            std::strcpy(platform_data.mVBNVName, vbnvName.c_str());
+          }
+        }
+      } 
+      else if (name == "Board_Scheduler") {
+        platform_data.mIsBoardScheduler = prop.second.get_value<bool>();
+      }
+      else if (name == "Board_Scheduler_Ver") {
+        std::string boardSchedulerVer = prop.second.get_value<std::string>();
+        if (boardSchedulerVer.empty() == false) {
+          if (strlen(boardSchedulerVer.c_str()) < 16) {
+            std::strcpy(platform_data.mBoardSchedulerVer, boardSchedulerVer.c_str());
+          }
+        }
+      }
+      else if (name == "Peer_To_Peer") {
+        platform_data.mIsPeerToPeer = prop.second.get_value<bool>();
+      }
+      else if (name == "No_DMA") {
+        platform_data.mIsNoDMA = prop.second.get_value<bool>();
+      }
+      else if (name == "M2M") {
+        platform_data.mIsM2M = prop.second.get_value<bool>();
+      } 
+      else if (name == "CDMA") {
+        platform_data.mIsCDMA = prop.second.get_value<bool>();
+      }
+      else if (name == "QDMA") {
+        platform_data.mIsQDMA = prop.second.get_value<bool>();
+      }
+      else if (name == "Cdma_Base_Address0") {
+        platform_data.mCDMABaseAddress0 = prop.second.get_value<unsigned long long>();
+      }
+      else if (name == "Cdma_Base_Address1") {
+        platform_data.mCDMABaseAddress1 = prop.second.get_value<unsigned long long>();
+      }
+      else if (name == "Cdma_Base_Address2") {
+        platform_data.mCDMABaseAddress2 = prop.second.get_value<unsigned long long>();
+      }
+      else if (name == "Cdma_Base_Address3") {
+        platform_data.mCDMABaseAddress3 = prop.second.get_value<unsigned long long>();
+      }
+    }
+  }
+
   static void populateFeatureRom(boost::property_tree::ptree const& featureRomTree, FeatureRomHeader& fRomHeader)
   {
     for (auto& prop : featureRomTree)
@@ -662,7 +727,7 @@ namespace xclemulation{
     }
   }
 
-  static void populateHwDevicesOfSingleBoard(boost::property_tree::ptree & deviceTree, std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool,FeatureRomHeader> >& devicesInfo,std::map<std::string, uint64_t>& memMap, bool bUnified, bool bXPR)
+  static void populateHwDevicesOfSingleBoard(boost::property_tree::ptree & deviceTree, std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader, platformData> >& devicesInfo,std::map<std::string, uint64_t>& memMap, bool bUnified, bool bXPR)
   {
 
     for (auto& device : deviceTree)
@@ -687,8 +752,9 @@ namespace xclemulation{
       bank.ddrSize = MEMSIZE_4G;
       DDRBankList.push_back(bank);
       FeatureRomHeader fRomHeader;
+      platformData platform_data;
+      std::memset(&platform_data, 0, sizeof(platformData));
       std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
-
 
       //iterate over all the properties of device and fill the info structure. This info object gets used to create  device object
       for (auto& prop : device.second)
@@ -742,6 +808,12 @@ namespace xclemulation{
           boost::property_tree::ptree featureRomTree = prop.second;
           populateFeatureRom(featureRomTree,fRomHeader);
         }
+        else if (prop.first == "PlatformData")
+        {
+          boost::property_tree::ptree platformDataTree = prop.second;
+          populatePlatformData(platformDataTree, platform_data);
+          config::getInstance()->setIsPlatformEnabled(true);
+        }
         else if(prop.first == "OclFreqency")
         {
           unsigned oclFrequency = prop.second.get_value<unsigned>();
@@ -757,7 +829,7 @@ namespace xclemulation{
       //iterate using this variable and create that many number of devices.
       for(unsigned int i = 0; i < numDevices;i++)
       {
-        devicesInfo.push_back(make_tuple(info,DDRBankList,bUnified, bXPR,fRomHeader));
+        devicesInfo.push_back(make_tuple(info, DDRBankList, bUnified, bXPR, fRomHeader, platform_data));
       }
     }
     return;
@@ -765,7 +837,7 @@ namespace xclemulation{
 
   //create all the devices If devices child is present in this tree otherwise call this function recursively for all the child trees
   //iterate over devices tree and create all the device objects.
-  static void populateHwEmDevices(boost::property_tree::ptree const& platformTree,std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader > >& devicesInfo,std::map<std::string, uint64_t>& memMap)
+  static void populateHwEmDevices(boost::property_tree::ptree const& platformTree,std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader, platformData > >& devicesInfo,std::map<std::string, uint64_t>& memMap)
   {
     using boost::property_tree::ptree;
     ptree::const_iterator platformEnd = platformTree.end();
@@ -832,7 +904,7 @@ namespace xclemulation{
     return true;
   }
 
-  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool , FeatureRomHeader> >& devicesInfo)
+  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2, std::list<DDRBank>, bool, bool, FeatureRomHeader, platformData> >& devicesInfo)
   {
     std::string emConfigFile =  getEmConfigFilePath();
     std::ifstream ifs;
