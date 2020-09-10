@@ -93,6 +93,9 @@ public:
     void
     wait_gmio(const std::string& gmioName);
 
+    void
+    reset(const std::shared_ptr<xrt_core::device>& device);
+
 private:
     int numCols;
     int fd;

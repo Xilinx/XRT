@@ -284,4 +284,23 @@ clear_bd(BD& bd)
 #endif
 }
 
+void
+Aie::
+reset(const std::shared_ptr<xrt_core::device>& device)
+{
+#ifndef __AIESIM__
+    int rval = close(fd);
+
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+    /* TODO get partition id and uid from XCLBIN or PDI */
+    uint32_t partition_id = 1;
+
+    drm_zocl_aie_reset reset = { partition_id };
+    int ret = drv->resetAIEArray(reset);
+    if (ret)
+        throw xrt_core::error(ret, "Fail to reset AIE Array");
+#endif
+}
+
 }

@@ -1427,8 +1427,6 @@ void
 shim::
 registerAieArray()
 {
-//not registering AieArray in hw_emu as it is crashing in hw_emu. We can fix the
-//issue once move to AIE-V2 is done
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
 }
 
@@ -1444,6 +1442,17 @@ shim::
 getPartitionFd(drm_zocl_aie_fd &aiefd)
 {
   int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd);
+  if (ret)
+    return -errno;
+
+  return 0;
+}
+
+int
+shim::
+resetAIEArray(drm_zocl_aie_reset &reset)
+{
+  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_RESET, &reset);
   if (ret)
     return -errno;
 

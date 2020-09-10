@@ -625,11 +625,15 @@ get_kernels(const axlf* top)
   return kernels;
 }
 
+// PDI only XCLBIN has PDI section only;
+// Or has AIE_METADATA and PDI sections only
 bool
 is_pdi_only(const axlf* top)
 {
   auto pdi = axlf_section_type<const char*>::get(top, axlf_section_kind::PDI);
-  return (top->m_header.m_numSections == 1 && pdi != nullptr);
+  auto aie_meta = axlf_section_type<const char*>::get(top, axlf_section_kind::AIE_METADATA);
+
+  return ((top->m_header.m_numSections == 1 && pdi != nullptr) || (top->m_header.m_numSections == 2 && pdi != nullptr && aie_meta != nullptr));
 }
 
 }} // xclbin, xrt_core
