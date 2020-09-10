@@ -73,7 +73,7 @@ plp_program(xclDeviceHandle hdl, const struct axlf *buffer);
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
-plp_program_status(uint64_t& plp_status);
+plp_program_status(xclDeviceHandle hdl, uint64_t& plp_status);
 } // mgmtpf
 
 #endif

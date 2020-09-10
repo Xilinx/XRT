@@ -24,6 +24,7 @@
 #include <winioctl.h>
 #include <setupapi.h>
 #include <initguid.h>
+#include <iostream>
 
 // To be simplified
 #include "core/pcie/driver/windows/include/XoclMgmt_INTF.h"
@@ -256,17 +257,20 @@ struct mgmt
   void
   plp_program_status(uint64_t& plp_status)
   {
+	  char stat;
     DWORD bytes = 0;
     auto status = DeviceIoControl
     (m_hdl,
     XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF_STATUS,
     NULL,
     0,
-    &plp_status,
-    sizeof(uint64_t),
+    &stat,
+    sizeof(char),
     &bytes,
     NULL);
-
+	std::cout << "DBG: [" << stat << "]" << std::endl;
+	std::cout << "DBG: int [" << (int)stat << "]" << std::endl;
+	std::cout << "DBG bytes: " << bytes<< std::endl;
     if (!status)
       throw std::runtime_error("DeviceIoControl XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF_STATUS failed");
   }
@@ -423,7 +427,7 @@ plp_program(xclDeviceHandle hdl, const struct axlf *buffer)
   mgmt->plp_program(buffer);
 }
 void
-plp_program_status(uint64_t& plp_status)
+plp_program_status(xclDeviceHandle hdl, uint64_t& plp_status)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "plp_program_status()");

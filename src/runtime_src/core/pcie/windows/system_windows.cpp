@@ -26,6 +26,8 @@
 #include "mgmt.h"
 #include <map>
 #include <memory>
+#include <chrono>
+#include <thread>
 #include <ctime>
 #include <windows.h>
 
@@ -178,25 +180,23 @@ program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const
 
   // asynchronously check if the download is complete
   std::this_thread::sleep_for(std::chrono::seconds(5));
-  const static int program_timeout_sec = 60;
+  const static int program_timeout_sec = 15;
   uint64_t plp_status = RP_DOWNLOAD_IN_PROGRESS;
   int retry_count = 0;
   while (retry_count < program_timeout_sec) {
-    mgmtpf::plp_program_status(plp_status);
-    
+    mgmtpf::plp_program_status(dev->get_mgmt_handle(), plp_status);
+	retry_count++;
+
     // check plp status
-    if(plp_status == RP_DOWNLOAD_IN_PROGRESS)
-      continue;
-    else if(plp_status == RP_DOWLOAD_SUCCESS) 
+    if(plp_status == RP_DOWLOAD_SUCCESS) 
       break;
-    else if (RP_DOWLOAD_FAILED)
+    else if (plp_status == RP_DOWLOAD_FAILED)
       throw xrt_core::error("PLP programmming failed");
     
     if (retry_count == program_timeout_sec)
       throw xrt_core::error("PLP programmming timed out");
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    retry_count++;
   }
 }
 
