@@ -56,11 +56,11 @@ struct kds_custats
 {
   using result_type = query::kds_custats::result_type;
 
-  static result_type
-  get(const xrt_core::device* device, key_type)
+  static int
+  get(const xrt_core::device* device, key_type, std::vector<std::string> &cuStats)
   {
     auto hdl = device->get_device_handle();
-    return xclKdsCUStats(hdl);
+    return xclKdsCUStats(hdl, cuStats);
   }
 };
 
@@ -211,7 +211,7 @@ template <typename QueryRequestType, typename Getter>
 struct function1_get : virtual QueryRequestType
 {
   boost::any
-  get(const xrt_core::device* device, std::string& v) const
+  get(const xrt_core::device* device, std::vector<std::string> &v) const
   {
     auto k = QueryRequestType::key;
     return Getter::get(device, k, v);

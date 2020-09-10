@@ -948,19 +948,8 @@ int shim::xclCopyBO(unsigned int dst_bo_handle,
         execbufCopyBO(dst_bo_handle, src_bo_handle, size, dst_offset, src_offset);
 }
 
-static int xclUpdateSchedulerStat()
+int shim::xclUpdateSchedulerStat()
 {
-
-    try {
-          // get scheduler stats 
-      xrt_core::device_query<qr::scheduler_update_stat>(dev);
-    }
-    catch (const std::exception&) {
-      // xclbin_lock failed, safe to ignore
-    }
-
-
-
     auto bo = mCmdBOCache->alloc<ert_packet>();
     bo.second->opcode = ERT_CU_STAT;
     bo.second->type = ERT_CTRL;
@@ -986,12 +975,11 @@ static int xclUpdateSchedulerStat()
     return ret;
 }
 
-std::vector<std::string>
-shim::xclKdsCUStats()
+int shim::xclKdsCUStats(std::vector<std::string> &cuStats)
 {
+xclUpdateSchedulerStat();
+#if 0
     std::string errmsg;
-    std::vector<std::string> cuStats;
-
     if (!std::getenv("XCL_SKIP_CU_READ")) {
         try {
 #if 0
@@ -1002,7 +990,6 @@ shim::xclKdsCUStats()
             auto at_exit = [] (auto dev, auto uuid) { dev->close_context(uuid.get(), -1); };
             xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, dev, uuid));
 #endif
-	    xclOpenContext(
             xclUpdateSchedulerStat();
         }
         catch (const std::exception&) {
@@ -1010,15 +997,19 @@ shim::xclKdsCUStats()
         }
     }
 
+    std::vector<std::string> dmaStatStrs;
+    mDev->sysfs_get("dma", "channel_stat_raw", errmsg, dmaStatStrs);
     //mDev->sysfs_get<int>("mb_scheduler", "kds_custat", errmsg, cuStats, static_cast<int>(-1));
     mDev->sysfs_get("mb_scheduler", "kds_custat", errmsg, cuStats);
     if (!errmsg.empty()) {
         xrt_logmsg(XRT_ERROR, "can't read kds_custat sysfs node: %s",
             errmsg.c_str());
-        return -EINVAL;
+        return std::to_string(-EINVAL);
     }
 
     return cuStats;
+#endif
+    return 0;
 }
 
 /*
@@ -2896,11 +2887,16 @@ int xclIPName2Index(xclDeviceHandle handle, const char *name)
   return (drv) ? drv->xclIPName2Index(name) : -ENODEV;
 }
 
-std::vector<std::string>
-xclKdsCUStats(xclDeviceHandle handle)
+int xclKdsCUStats(xclDeviceHandle handle, std::vector<std::string>& cuStats)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return (drv) ? drv->xclKdsCUStats() : -ENODEV;
+  return (drv) ? drv->xclKdsCUStats(cuStats) : -ENODEV;
+}
+
+int xclUpdateSchedulerStat(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return (drv) ? drv->xclUpdateSchedulerStat() : -ENODEV;
 }
 
 int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, int flags)

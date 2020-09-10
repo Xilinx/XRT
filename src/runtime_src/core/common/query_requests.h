@@ -623,11 +623,11 @@ struct ip_layout_raw : request
 
 struct kds_custats : request
 {
-  using result_type = std::vector<std::string>;
+  using result_type = int;
   static const key_type key = key_type::kds_custats;
 
   virtual boost::any
-  get(const device*) const = 0;
+  get(const device*, std::vector<std::string>&) const = 0;
 };
 
 struct clock_freq_topology_raw : request
