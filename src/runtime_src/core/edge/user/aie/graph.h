@@ -67,10 +67,10 @@ public:
     resume();
 
     std::string
-    getname();
+    getname() const;
 
     unsigned short
-    getstatus();
+    getstatus() const;
 
     void
     end();

@@ -15,8 +15,8 @@
  * under the License.
  */
 
-#include <stdio.h>
-#include <errno.h>
+#include <cstdio>
+#include <cerrno>
 #include <unistd.h>
 #include <sstream>
 #include <iostream>
@@ -29,14 +29,9 @@
 
 namespace zynqaie {
 
-Aied::Aied(std::shared_ptr<xrt_core::device> device): mCoreDevice(std::move(device))
+Aied::Aied(xrt_core::device* device): mCoreDevice(device)
 {
   mPollingThread = std::thread(&Aied::pollAIE, this);
-}
-
-Aied::~Aied()
-{
-
 }
 
 void 
@@ -45,6 +40,7 @@ Aied::pollAIE()
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(mCoreDevice->get_device_handle());
   xclAIECmd cmd;
 
+  /* Ever running thread */
   while (1) {
     /* Calling XRT interface to wait for commands */
     if (drv->xclAIEGetCmd(&cmd) != 0) {
@@ -76,13 +72,13 @@ Aied::pollAIE()
 }
 
 void
-Aied::registerGraph(graph_type *graph)
+Aied::registerGraph(const graph_type *graph)
 {
   mGraphs.push_back(graph);
 }
 
 void
-Aied::deregisterGraph(graph_type *graph)
+Aied::deregisterGraph(const graph_type *graph)
 {
   mGraphs.erase(std::remove(mGraphs.begin(), mGraphs.end(), graph), mGraphs.end());
 }

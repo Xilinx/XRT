@@ -29,16 +29,24 @@ const uint32_t major = 1;
 const uint32_t minor = 0;
 const uint32_t patch = 0;
 
+enum graph_state {   
+  STOP = 0,
+  RESET = 1,
+  RUNNING = 2,
+  SUSPEND = 3,
+  END = 4
+};
+
 inline std::string
 graph_status_to_string(int status) {
   switch(status)
   {
-    case 0: return std::string("stop");
-    case 1: return std::string("reset");
-    case 2: return std::string("running");
-    case 3: return std::string("suspend");
-    case 4: return std::string("end");
-    default: return std::string("idle");
+    case STOP:    return std::string("stop");
+    case RESET:   return std::string("reset");
+    case RUNNING: return std::string("running");
+    case SUSPEND: return std::string("suspend");
+    case END:     return std::string("end");
+    default:      return std::string("idle");
   }
 }
 

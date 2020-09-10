@@ -17,9 +17,6 @@
 #include "zocl_aie.h"
 #include "xrt_xclbin.h"
 #include "xclbin.h"
-//#include "ert.h"
-//#include "sched_exec.h"
-
 
 #ifndef __NONE_PETALINUX__
 #include <linux/xlnx-ai-engine.h>
@@ -134,6 +131,10 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf)
 
 	zdev->aie->partition_id = req.partition_id;
 	zdev->aie->uid = req.uid;
+	mutex_unlock(&zdev->aie_lock);
+
+	zocl_init_aie(zdev);
+	return 0;
 
 done:
 	mutex_unlock(&zdev->aie_lock);
@@ -144,6 +145,7 @@ done:
 void
 zocl_destroy_aie(struct drm_zocl_dev *zdev)
 {
+	vfree(zdev->aie_information);
 	mutex_lock(&zdev->aie_lock);
 
 	if (!zdev->aie) {
@@ -263,7 +265,10 @@ zocl_aie_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct aie_info_cmd *acmd;
 	struct drm_zocl_aie_cmd *kdata = data;
 
-	// If no command, the process who calls this ioctl will block here
+	if(aie == NULL)
+		return -EAGAIN;
+
+	/* If no command, the process who calls this ioctl will block here */
 	mutex_lock(&aie->aie_lock);
 	while (list_empty(&aie->aie_cmd_list)) {
 		mutex_unlock(&aie->aie_lock);
@@ -277,11 +282,13 @@ zocl_aie_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	acmd = list_first_entry(&aie->aie_cmd_list, struct aie_info_cmd,
 	    aiec_list);
 	list_del(&acmd->aiec_list);
+
+	/* Only one aied thread */
+	aie->cmd_inprogress = acmd;
 	mutex_unlock(&aie->aie_lock);
 
 	kdata->opcode = acmd->aiec_packet->opcode;
-	kfree(acmd->aiec_packet);
-	kfree(acmd);
+
 	return 0;
 }
 int
@@ -293,49 +300,41 @@ zocl_aie_putcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct drm_zocl_aie_cmd *kdata = data;
 	struct aie_info_packet *aiec_packet;
 
-	acmd = kmalloc(sizeof(struct aie_info_cmd), GFP_KERNEL);
+	if(aie == NULL)
+		return -EAGAIN;
+
+	mutex_lock(&aie->aie_lock);
+	acmd = aie->cmd_inprogress;
+	mutex_unlock(&aie->aie_lock);
 	if (!acmd) {
 		return -ENOMEM;
 	}
 
-	aiec_packet = kmalloc(sizeof(struct aie_info_packet), GFP_KERNEL);
-	if (!aiec_packet) {
-		return -ENOMEM;
-	}
-
-	aiec_packet->opcode = kdata->opcode;
-	acmd->aiec_packet = aiec_packet;
 	struct aie_info_packet *cmd;
 	cmd = acmd->aiec_packet;
-	cmd->size = kdata->size;
-	snprintf(cmd->info, (cmd->size < AIE_INFO_SIZE) ? cmd->size:AIE_INFO_SIZE
-		, "%s", (char *)kdata->info);
-	
-	mutex_lock(&aie->aie_lock);
-	list_add_tail(&acmd->aiec_list, &aie->aie_cmd_result_list);
-	mutex_unlock(&aie->aie_lock);
+	cmd->size = (kdata->size < AIE_INFO_SIZE) ? kdata->size : AIE_INFO_SIZE;
+	snprintf(cmd->info, cmd->size, "%s", (char *)kdata->info);
 
-	wake_up_interruptible(&aie->aie_wait_result_queue);
+	up(&acmd->aiec_sem);
 
 	return 0;
 }
 
 int
-zocl_init_aie(struct drm_device *drm)
+zocl_init_aie(struct drm_zocl_dev *zdev)
 {
-	struct drm_zocl_dev *zdev = drm->dev_private;
 	struct aie_info *aie;
-
-	aie = devm_kzalloc(drm->dev, sizeof (*aie), GFP_KERNEL);
-	if (!aie)
+	aie = vzalloc(sizeof(struct aie_info));
+	if (!aie) {
+		zdev->aie_information = NULL;
 		return -ENOMEM;
+	}
 
-	zdev->aie_information = aie;
 	mutex_init(&aie->aie_lock);
 	INIT_LIST_HEAD(&aie->aie_cmd_list);
 	init_waitqueue_head(&aie->aie_wait_queue);
-	INIT_LIST_HEAD(&aie->aie_cmd_result_list);
-	init_waitqueue_head(&aie->aie_wait_result_queue);
+	aie->cmd_inprogress = NULL;
+	zdev->aie_information = aie;
 
 	return 0;
 }

@@ -147,6 +147,9 @@ static ssize_t graph_status_show(struct device *dev, struct device_attribute *at
 		return 0;
 
 	aie = zdev->aie_information;
+	if (!aie)
+		return 0;
+
 	acmd = kmalloc(sizeof(struct aie_info_cmd), GFP_KERNEL);
 	if (!acmd) {
 		return -ENOMEM;
@@ -159,31 +162,29 @@ static ssize_t graph_status_show(struct device *dev, struct device_attribute *at
 
 	aiec_packet->opcode = GRAPH_STATUS;
 	acmd->aiec_packet = aiec_packet;
+	sema_init(&acmd->aiec_sem, 0);
 
-	/* caller release the wait aied thread and wait for result*/
+	/* caller release the wait aied thread and wait for result */
 	mutex_lock(&aie->aie_lock);
 	if (waitqueue_active(&aie->aie_wait_queue)) {
 		list_add_tail(&acmd->aiec_list, &aie->aie_cmd_list);
 		mutex_unlock(&aie->aie_lock);
 		wake_up_interruptible(&aie->aie_wait_queue);
-		if (wait_event_interruptible(aie->aie_wait_result_queue,
-		    !list_empty(&aie->aie_cmd_result_list))) {
-			return -ERESTARTSYS;
-                }
+		if (down_interruptible(&acmd->aiec_sem)) {
+			nread = -ERESTARTSYS;
+			goto clean;
+		}
 	} else {
 		mutex_unlock(&aie->aie_lock);
-		return -ERESTARTSYS;
+		nread =  -ERESTARTSYS;
+		goto clean;
 	}
-	mutex_lock(&aie->aie_lock);
-	
-	acmd = list_first_entry(&aie->aie_cmd_result_list, struct aie_info_cmd,
-	    aiec_list);
-	nread = sprintf(buf, "%s\n", acmd->aiec_packet->info);
-	list_del(&acmd->aiec_list);
-	mutex_unlock(&aie->aie_lock);
 
-        kfree(acmd->aiec_packet);
-        kfree(acmd);
+	nread = snprintf(buf, acmd->aiec_packet->size, "%s\n", acmd->aiec_packet->info);
+
+clean:
+	kfree(acmd->aiec_packet);
+	kfree(acmd);
 	return nread;
 }
 static DEVICE_ATTR_RO(graph_status);

@@ -66,13 +66,11 @@ aie_partition_is_available(struct aie_partition_req *req)
 
 #endif
 
-
 struct aie_info {
 	struct list_head	aie_cmd_list;
-	struct list_head	aie_cmd_result_list;
 	struct mutex		aie_lock;
+	struct aie_info_cmd	*cmd_inprogress;
 	wait_queue_head_t	aie_wait_queue;
-	wait_queue_head_t	aie_wait_result_queue;
 };
 
 struct aie_info_packet {
@@ -83,9 +81,10 @@ struct aie_info_packet {
 
 struct aie_info_cmd {
 	struct list_head	aiec_list;
+	struct semaphore	aiec_sem;
 	struct aie_info_packet	*aiec_packet;
 };
 
-int zocl_init_aie(struct drm_device *drm);
+int zocl_init_aie(struct drm_zocl_dev *zdev);
 
 #endif /* _ZOCL_AIE_H_ */

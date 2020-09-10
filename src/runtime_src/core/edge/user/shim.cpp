@@ -724,10 +724,9 @@ int
 shim::
 xclAIEGetCmd(xclAIECmd *cmd)
 {
-  int ret;
   drm_zocl_aie_cmd scmd;
 
-  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_GETCMD, &scmd);
+  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_GETCMD, &scmd);
 
   if (!ret) {
     cmd->opcode = scmd.opcode;
@@ -742,15 +741,12 @@ int
 shim::
 xclAIEPutCmd(xclAIECmd *cmd)
 {
-  int ret;
   drm_zocl_aie_cmd scmd;
 
   scmd.opcode = cmd->opcode;
   scmd.size = cmd->size;
   snprintf(scmd.info, cmd->size, "%s",cmd->info);
-  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_PUTCMD, &scmd);
-
-  return ret;
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_PUTCMD, &scmd);
 }
 
 int
@@ -1470,7 +1466,7 @@ registerAieArray()
 {
   delete aieArray.release();
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
-  aied = std::make_unique<zynqaie::Aied>(mCoreDevice);
+  aied = std::make_unique<zynqaie::Aied>(mCoreDevice.get());
 }
 
 bool

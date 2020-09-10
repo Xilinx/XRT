@@ -955,7 +955,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 			goto err_sched;
 	}
 
-	zocl_init_aie(drm);
 	return 0;
 
 /* error out in exact reverse order of init */

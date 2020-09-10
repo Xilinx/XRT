@@ -34,16 +34,15 @@ namespace zynqaie {
 class Aied
 {
 public:
-  Aied(std::shared_ptr<xrt_core::device> device);
-  ~Aied();
-  void registerGraph(graph_type *graph);
-  void deregisterGraph(graph_type *graph);
+  Aied(xrt_core::device* device);
+  void registerGraph(const graph_type *graph);
+  void deregisterGraph(const graph_type *graph);
 
 private:
   void pollAIE();
   std::thread mPollingThread;
-  std::shared_ptr<xrt_core::device> mCoreDevice;
-  std::vector<graph_type*> mGraphs;
+  xrt_core::device *mCoreDevice;
+  std::vector<const graph_type*> mGraphs;
 };
 } // end namespace
 

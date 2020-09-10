@@ -96,14 +96,14 @@ graph_type::
 
 std::string
 graph_type::
-getname()
+getname() const
 {
   return name;
 }
 
 unsigned short
 graph_type::
-getstatus()
+getstatus() const
 {
   return static_cast<unsigned short>(state);
 }
