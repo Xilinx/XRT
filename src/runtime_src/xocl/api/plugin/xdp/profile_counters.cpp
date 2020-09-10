@@ -82,8 +82,8 @@ namespace xocl {
       if (xrt_core::dlerror() != NULL) counter_mark_objects_released_cb = nullptr ;
 
       // For logging counter information for kernel executions
-      xocl::add_command_start_callback(xocl::profile::log_kernel_start) ;
-      xocl::add_command_done_callback(xocl::profile::log_kernel_end) ;
+      //xocl::add_command_start_callback(xocl::profile::log_kernel_start) ;
+      //xocl::add_command_done_callback(xocl::profile::log_kernel_end) ;
     }
     
     void opencl_counters_warning_function()
@@ -382,22 +382,9 @@ namespace xocl {
     std::function<void (xocl::event*, cl_int, const std::string&)>
     counter_action_ndrange(cl_kernel kernel)
     {
-      return [](xocl::event* e, cl_int status, const std::string&) {} ;
-      /*
-	     { 
-	       if (!counter_action_ndrange_cb) return ;
-	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
-
-	       uint64_t contextId = e->get_context()->get_uid() ;
-	       std::string contextName = e->get_context()->get_name() ;
-	       uint64_t numDevices = e->get_context()->num_devices() ;
-	       
-	     } ;
-      */
-      /*
       return [kernel](xocl::event* e, cl_int status, const std::string&)
 	     {
-	       if (!counter_action_ndrange_cb) return ;
+	       if (!counter_kernel_execution_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 	       auto xkernel = xocl::xocl(kernel) ;
@@ -405,14 +392,13 @@ namespace xocl {
 
 	       if (status == CL_RUNNING)
 	       {
-		 counter_action_ndrange_cb(kernelName.c_str(), true) ;
+		 counter_kernel_execution_cb(kernelName.c_str(), true) ;
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 counter_action_ndrange_cb(kernelName.c_str(), false) ;
+		 counter_kernel_execution_cb(kernelName.c_str(), false) ;
 	       }
 	     } ;
-      */
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
