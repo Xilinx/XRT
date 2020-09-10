@@ -19,6 +19,7 @@
 #include "core/common/query_requests.h"
 
 #include "xrt.h"
+#include "shim.h"
 #include "zynq_dev.h"
 
 #include <string>
@@ -72,6 +73,17 @@ struct devInfo
     }
   }
 };
+
+struct kds_custats
+{
+  static boost::any
+  get(const xrt_core::device* device, key_type key)
+  {
+    auto hdl = device->get_device_handle();
+    return xclKdsCUStats(hdl);
+  }
+};
+
 
 // Specialize for other value types.
 template <typename ValueType>
@@ -177,6 +189,7 @@ initialize_query_table()
   emplace_func0_get<query::rom_ddr_bank_count_max, devInfo>();
 
   emplace_func0_get<query::clock_freqs_mhz, devInfo>();
+  emplace_func0_get<query::kds_custats, kds_custats>();
  
   emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
@@ -185,7 +198,6 @@ initialize_query_table()
   emplace_sysfs_get<query::memstat>                   ("memstat");
   emplace_sysfs_get<query::memstat_raw>               ("memstat_raw");
   emplace_sysfs_get<query::error>                     ("error");
-  emplace_sysfs_request<query::kds_custat>            ("kds_custat");
 }
 
 struct X { X() { initialize_query_table(); } };

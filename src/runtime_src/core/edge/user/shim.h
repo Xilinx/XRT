@@ -39,6 +39,8 @@
 #include "core/edge/user/aie/aie.h"
 #endif
 
+int xclKdsCUStats(xclDeviceHandle);
+
 namespace ZYNQ {
 
 class shim {
@@ -83,6 +85,7 @@ public:
   int xclSKGetCmd(xclSKCmd *cmd);
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
+  int xclKdsCUStats();
 
   double xclGetDeviceClockFreqMHz();
 

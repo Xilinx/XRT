@@ -753,6 +753,14 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
   return ret;
 }
 
+int 
+shim::
+xclKdsCUStats()
+{
+	printf("I am inside here\n");
+	return 0;
+}
+
 int
 shim::
 xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
@@ -1860,6 +1868,16 @@ xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
     return -EINVAL;
 
   return drv->xclSKReport(cu_idx, state);
+}
+
+int
+xclKdsCUStats(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+
+  return drv->xclKdsCUStats();
 }
 
 /*

@@ -21,15 +21,12 @@
 #include "common/utils.h"
 #include "xrt.h"
 #include "scan.h"
+#include "shim.h"
 #include <string>
 #include <iostream>
 #include <map>
 #include <functional>
 #include <boost/format.hpp>
-
-/* exposed by shim */
-/* SAIF TODO */
-int xclUpdateSchedulerStat(xclDeviceHandle);
 
 namespace {
 
@@ -55,14 +52,15 @@ struct bdf
   }
 };
 
-struct sched_update_stat
+struct kds_custats
 {
-  using result_type = query::scheduler_update_stat::result_type;
-  static int
+  using result_type = query::kds_custats::result_type;
+
+  static result_type
   get(const xrt_core::device* device, key_type)
   {
     auto hdl = device->get_device_handle();
-    return xclUpdateSchedulerStat(hdl);
+    return xclKdsCUStats(hdl);
   }
 };
 
@@ -209,6 +207,17 @@ struct function0_get : virtual QueryRequestType
   }
 };
 
+template <typename QueryRequestType, typename Getter>
+struct function1_get : virtual QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device, std::string& v) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, v);
+  }
+};
+
 static std::map<xrt_core::query::key_type, std::unique_ptr<query::request>> query_tbl;
 
 template <typename QueryRequestType>
@@ -225,6 +234,14 @@ emplace_func0_request()
 {
   auto k = QueryRequestType::key;
   query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func1_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function1_get<QueryRequestType, Getter>>());
 }
 
 template <typename QueryRequestType>
@@ -373,7 +390,7 @@ initialize_query_table()
   emplace_sysfs_get<query::interface_uuids>             ("", "interface_uuids");
 
   emplace_func0_request<query::pcie_bdf,                bdf>();
-  emplace_func0_request<query::scheduler_update_stat,   sched_update_stat>();
+  emplace_func1_request<query::kds_custats,		kds_custats>();
 }
 
 struct X { X() { initialize_query_table(); }};
