@@ -50,6 +50,8 @@ enum XCLMGMT_IOC_TYPES {
     XCLMGMT_IOC_GET_DEVICE_INFO,
     XCLMGMT_IOC_SET_VLAN_INFO,
     XCLMGMT_IOC_GET_QSPI_INFO,
+    XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF,
+    XCLMGMT_IOC_GET_UUID_INFO,
     XCLMGMT_IOC_MAX
 };
 
@@ -75,6 +77,11 @@ enum XCLMGMT_IOC_TYPES {
 #define XCLMGMT_OID_SET_VLAN_INFO       CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_SET_VLAN_INFO, METHOD_BUFFERED, FILE_ANY_ACCESS)
 /* IOC_GET_QSPI_INFO gets the start address of Flash Controller */
 #define XCLMGMT_OID_GET_QSPI_INFO       CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_GET_QSPI_INFO, METHOD_BUFFERED, FILE_ANY_ACCESS)
+/* IOC_PRP_ICAP_PROGRAM_AXLF provides  struct xclmgmt_ioc_bitstream_axlf as input and program PRP region */
+#define XCLMGMT_OID_PRP_ICAP_PROGRAM_AXLF CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF, METHOD_BUFFERED, FILE_ANY_ACCESS)
+/* Provides Information about UUID in case of 2RP */
+#define XCLMGMT_OID_GET_UUID_INFO CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_GET_UUID_INFO, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
 
 //
 // Struct for XCLMGMT_OID_GET_DEVICE_INFO IOCTL
@@ -89,6 +96,7 @@ typedef struct {
     CHAR   BMCVersion[16];
     CHAR   MacAddress[20];
     UINT32 VlanTag;
+    ULONGLONG xmc_offset;
 } XCLMGMT_DEVICE_INFO, *PXCLMGMT_DEVICE_INFO;
 #pragma pack(pop)
 
@@ -142,8 +150,11 @@ typedef struct xclmgmt_ioc_device_info {
     UINT32           ocl_frequency[XCLMGMT_NUM_SUPPORTED_CLOCKS];
     bool             mig_calibration[4];
     USHORT           num_clocks;
+    struct FeatureRomHeader rom_hdr;
+}XCLMGMT_IOC_DEVICE_INFO, *PXCLMGMT_IOC_DEVICE_INFO;
+
+/* Structure used to save 2RP related UUID information */
+typedef struct xclmgmt_ioc_uuid_info {
     CHAR             logic_uuid[64];
     CHAR             interface_uuid[64];
-    UINT64           xmc_offset;
-	struct FeatureRomHeader rom_hdr;
-}XCLMGMT_IOC_DEVICE_INFO, *PXCLMGMT_IOC_DEVICE_INFO;
+}XCLMGMT_IOC_UUID_INFO, *PXCLMGMT_IOC_UUID_INFO;
