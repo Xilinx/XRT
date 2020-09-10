@@ -130,7 +130,6 @@ namespace xdp {
     inline const std::string& getKernelName() { return kernelName ; }
 
     inline int32_t getIndex() { return index ; }
-    inline std::vector<Monitor*>& getMonitors() { return monitors ; }
     inline void setDim(int32_t x, int32_t y, int32_t z) { dim[0] = x; dim[1] = y; dim[2] = z; }
     XDP_EXPORT std::string getDim() ;
 

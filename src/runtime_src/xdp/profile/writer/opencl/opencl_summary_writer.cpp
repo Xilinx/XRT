@@ -628,12 +628,15 @@ namespace xdp {
 
       for (auto cu : (device->cus))
       {
-	std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
+	std::vector<uint32_t>* aimMonitors = (cu.second)->getAIMs() ;
+	//std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
 
 	uint64_t AIMIndex = 0 ;
-	for (auto monitor : monitors)
+	for (auto aimMonitorId : (*aimMonitors))
+	//for (auto monitor : monitors)
 	{
-	  if (monitor->type != AXI_MM_MONITOR) continue ;
+	  //if (monitor->type != AXI_MM_MONITOR) continue ;
+	  Monitor* monitor = (db->getStaticInfo()).getAIMonitor(device->deviceId, aimMonitorId) ;
 
 	  auto writeTranx = values.WriteTranx[AIMIndex] ;
 	  auto readTranx = values.ReadTranx[AIMIndex] ;
@@ -747,12 +750,15 @@ namespace xdp {
 
       for (auto cu : (device->cus))
       {
-	std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
+	//std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
+	std::vector<uint32_t>* asmMonitors = (cu.second)->getASMs() ;
 
 	uint64_t ASMIndex = 0 ;
-	for (auto monitor : monitors)
+	//for (auto monitor : monitors)
+	for (auto asmMonitorId : (*asmMonitors))
 	{
-	  if (monitor->type != AXI_STREAM_MONITOR) continue ;
+	  //if (monitor->type != AXI_STREAM_MONITOR) continue ;
+	  Monitor* monitor = (db->getStaticInfo()).getASMonitor(device->deviceId, asmMonitorId) ;
 
 	  uint64_t numTranx = values.StrNumTranx[ASMIndex] ;
 
@@ -1197,17 +1203,20 @@ namespace xdp {
       uint64_t maxNumTranx = 0 ;
       for (auto cu : device->cus)
       {
-	std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
+	//std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
+	std::vector<uint32_t>* aimMonitors = (cu.second)->getAIMs() ;
 
 	uint64_t totalTranx = 0 ;
 	uint64_t totalReadBytes = 0 ;
 	uint64_t totalWriteBytes = 0 ;
 	uint64_t totalBusyCycles = 0 ;
 
-	uint64_t AIMIndex = 0 ;
-	for (auto monitor : monitors)
+	//uint64_t AIMIndex = 0 ;
+	//for (auto monitor : monitors)
+	for (auto AIMIndex : (*aimMonitors))
 	{
-	  if (monitor->type != AXI_MM_MONITOR) continue ;
+	  //if (monitor->type != AXI_MM_MONITOR) continue ;
+	  //Monitor* monitor = (db->getStaticInfo()).getAIMonitor(device->deviceId, aimMonitorId) ;
 
 	  auto writeTranx = values.WriteTranx[AIMIndex] ;
 	  auto readTranx = values.ReadTranx[AIMIndex] ;
@@ -1396,9 +1405,15 @@ namespace xdp {
       // Collect the number of the different types of monitors
       for (auto cu : device->cus)
       {
-	for (auto monitor : (cu.second)->getMonitors())
+	for (auto aimId : *((cu.second)->getAIMs()))
 	{
-	  accelCounter[monitor->type] += 1 ;
+	  Monitor* monitor = (t->db->getStaticInfo()).getAIMonitor(device->deviceId, aimId);
+	  accelCounter[monitor->type] += 1;
+	}
+	for (auto asmId : *((cu.second)->getASMs()))
+	{
+	  Monitor* monitor = (t->db->getStaticInfo()).getASMonitor(device->deviceId, asmId);
+	  accelCounter[monitor->type] += 1;
 	}
       }
 
@@ -1577,10 +1592,18 @@ namespace xdp {
     {
       for (auto cu : device->cus)
       {
-	for (auto monitor : (cu.second)->getMonitors())
+	std::vector<uint32_t>* aimIds = (cu.second)->getAIMs() ;
+	std::vector<uint32_t>* asmIds = (cu.second)->getASMs() ;
+	for (auto aim : (*aimIds))
 	{
-	  if (monitor->type == ACCEL_MONITOR) continue ;
-
+	  Monitor* monitor = (t->db->getStaticInfo()).getAIMonitor(device->deviceId, aim) ;
+	  (t->fout) << "PORT_BIT_WIDTH" << ","
+		    << (cu.second)->getName() << "/" << monitor->args << ","
+		    << monitor->portWidth << std::endl ;
+	}
+	for (auto asmId : (*asmIds))
+	{
+	  Monitor* monitor = (t->db->getStaticInfo()).getASMonitor(device->deviceId, asmId) ;
 	  (t->fout) << "PORT_BIT_WIDTH" << ","
 		    << (cu.second)->getName() << "/" << monitor->args << ","
 		    << monitor->portWidth << std::endl ;

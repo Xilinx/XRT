@@ -283,8 +283,48 @@ namespace xdp {
 	}
       }
 
-      for (Monitor* monitor : cu->getMonitors())
+      std::vector<uint32_t>* AIMIds = cu->getAIMs() ;
+      std::vector<uint32_t>* ASMIds = cu->getASMs() ;
+
+      for (size_t i = 0 ; i < AIMIds->size() ; ++i)
       {
+	uint32_t AIMIndex = (*AIMIds)[i] ;
+	Monitor* monitor = (db->getStaticInfo()).getAIMonitor(deviceId, AIMIndex) ;
+	if (!monitor) continue ;
+
+	// Construct the argument list of each port
+	std::string arguments = "" ;
+	for (auto arg : matchingCU->get_symbol()->arguments)
+	{
+	  if ((arg.address_qualifier != 1 && arg.address_qualifier != 4) ||
+	      arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
+	    continue ;
+	  // Is this particular argument attached to the right port?
+	  std::string lowerPort = arg.port ;
+	  std::transform(lowerPort.begin(), lowerPort.end(), lowerPort.begin(),
+			 [](char c) { return (char)(std::tolower(c)); }) ;
+	  if ((monitor->name).find(lowerPort) == std::string::npos)
+	    continue ;
+
+	  // Is this particular argument heading to the right memory?
+	  std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
+	  if ((monitor->name).find(memoryName) == std::string::npos)
+	    continue ;
+	  
+	  if (arguments != "") arguments += "|" ;
+	  arguments += arg.name ;
+
+	  // Also, set the port width for this monitor explicitly
+	  monitor->portWidth = arg.port_width ;
+	}
+	monitor->args = arguments ;
+      }
+      for (size_t i = 0 ; i < ASMIds->size() ; ++i)
+      {
+	uint32_t ASMIndex = (*ASMIds)[i] ;
+	Monitor* monitor = (db->getStaticInfo()).getASMonitor(deviceId, ASMIndex) ;
+	if (!monitor) continue ;
+
 	// Construct the argument list of each port
 	std::string arguments = "" ;
 	for (auto arg : matchingCU->get_symbol()->arguments)
