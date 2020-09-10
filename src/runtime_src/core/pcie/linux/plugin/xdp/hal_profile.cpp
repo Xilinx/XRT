@@ -36,10 +36,6 @@ CallLogger::CallLogger(uint64_t id)
   }
 
   if (xrt_core::config::get_data_transfer_trace() != "off") {
-#if 0
-      && xrt_core::config::get_profile() == false 
-      && xrt_core::config::get_timeline_trace() == false) 
-#endif
     xdphaldeviceoffload::load_xdp_hal_device_offload() ;
   }
 

@@ -12,7 +12,7 @@ namespace xdphaldeviceoffload {
   {
     static xrt_core::module_loader
       xdp_hal_device_offload_loader("xdp_hal_device_offload_plugin",
-				    register_hal_device_offload_functions,
+                                    register_hal_device_offload_functions,
                                     hal_device_offload_warning_function,
                                     hal_device_offload_error_function);
   }
