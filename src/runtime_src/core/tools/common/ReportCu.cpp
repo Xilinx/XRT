@@ -36,7 +36,11 @@ parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu
 
   for (auto& line : custat) {
     uint32_t ba = 0, cnt = 0, sta = 0;
+#ifdef _WIN32
+    std::sscanf_s(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
+#else
     std::sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
+#endif
 
     if (offset != ba)
       continue;

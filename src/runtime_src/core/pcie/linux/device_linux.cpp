@@ -76,8 +76,8 @@ struct kds_custats
             auto handle = device->get_device_handle();
 	    xclUpdateSchedulerStat(handle);
         }
-	catch (const std::exception&) {
-	    // xclbin_lock failed, safe to ignore
+        catch (const std::exception&) {
+            // xclbin_lock failed, safe to ignore
 	}
     }
   

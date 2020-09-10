@@ -969,9 +969,7 @@ int shim::xclUpdateSchedulerStat()
     ret = (ret == -1) ? -errno : 0;
     if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
         ret = -EINVAL;
-
     mCmdBOCache->release<ert_packet>(bo);
-
     return ret;
 }
 

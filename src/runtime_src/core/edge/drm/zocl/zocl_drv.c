@@ -618,7 +618,7 @@ static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 	if (outstanding) {
 		DRM_ERROR("Please investigate stale cmds\n");
 		for (i = 0; i < zdev->exec->num_cus; i++) {
-			zocl_cu_status_print(&zdev->exec->zcu[i], true);
+			zocl_cu_status_print(&zdev->exec->zcu[i]);
 		}
 	}
 
