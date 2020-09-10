@@ -110,10 +110,12 @@ zocl_cu_status_print(struct zocl_cu *cu)
 u32
 zocl_cu_status_get(struct zocl_cu *cu)
 {
-	if (!cu || !cu->core)
+	struct zcu_core *cu_core = cu->core;
+
+	if (!cu_core)
 		return 0;
 
-	return ioread32(cu->core->vaddr);
+	return (u32)ioread32(cu_core->vaddr);
 }
 
 u32
