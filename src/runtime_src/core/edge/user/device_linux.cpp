@@ -76,7 +76,9 @@ struct devInfo
 
 struct kds_custats
 {
-  static boost::any
+  using result_type = query::kds_custats::result_type;
+
+  static result_type
   get(const xrt_core::device* device, key_type key)
   {
     std::string errmsg;

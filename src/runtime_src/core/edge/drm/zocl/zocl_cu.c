@@ -96,7 +96,7 @@ zocl_cu_get_paddr(struct zocl_cu *cu)
 }
 
 u32
-zocl_cu_status_print(struct zocl_cu *cu)
+zocl_cu_status_print(struct zocl_cu *cu, int flag)
 {
 	struct zcu_core *cu_core = cu->core;
 	u32 status = 0;
@@ -105,8 +105,9 @@ zocl_cu_status_print(struct zocl_cu *cu)
 		return 0;
 
 	status = ioread32(cu_core->vaddr);
-	DRM_INFO("addr 0x%llx, status 0x%x",
-	    (u64)cu_core->paddr, status);
+	if (flag)
+		DRM_INFO("addr 0x%llx, status 0x%x",
+			(u64)cu_core->paddr, status);
 
 	return status;
 }
