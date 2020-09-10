@@ -618,7 +618,7 @@ static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 	if (outstanding) {
 		DRM_ERROR("Please investigate stale cmds\n");
 		for (i = 0; i < zdev->exec->num_cus; i++) {
-			zocl_cu_status_print(&zdev->exec->zcu[i]);
+			zocl_cu_status_print(&zdev->exec->zcu[i], true);
 		}
 	}
 
@@ -734,6 +734,8 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(ZOCL_CTX, zocl_ctx_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_ERROR_INJECT, zocl_error_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_AIE_FD, zocl_aie_fd_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
@@ -927,6 +929,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_sysfs;
 
+	mutex_init(&zdev->aie_lock);
+
 	/* Initial sysfs */
 	rwlock_init(&zdev->attr_rwlock);
 	ret = zocl_init_sysfs(drm->dev);
@@ -950,6 +954,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 err_sched:
 	zocl_fini_sysfs(drm->dev);
 err_err:
+	mutex_destroy(&zdev->aie_lock);
 	zocl_fini_error(zdev);
 err_sysfs:
 	zocl_xclbin_fini(zdev);
@@ -987,6 +992,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	zocl_free_sections(zdev);
 	zocl_xclbin_fini(zdev);
 	mutex_destroy(&zdev->zdev_xclbin_lock);
+	zocl_destroy_aie(zdev);
+	mutex_destroy(&zdev->aie_lock);
 	zocl_fini_sysfs(drm->dev);
 	zocl_fini_error(zdev);
 

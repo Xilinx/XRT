@@ -21,6 +21,7 @@
 #include "common/utils.h"
 #include "xrt.h"
 #include "scan.h"
+#include "shim.h"
 #include <string>
 #include <iostream>
 #include <map>
@@ -54,14 +55,40 @@ struct bdf
   }
 };
 
-struct sched_update_stat
+struct kds_custats
 {
-  using result_type = query::scheduler_update_stat::result_type;
-  static int
+  using result_type = query::kds_custats::result_type;
+
+  static result_type
   get(const xrt_core::device* device, key_type)
   {
-    auto hdl = device->get_device_handle();
-    return xclUpdateSchedulerStat(hdl);
+    std::string errmsg;
+    result_type cuStats;
+    auto pdev = get_pcidev(device);
+  
+    if (!std::getenv("XCL_SKIP_CU_READ")) {
+        try {
+	    // lock xclbin
+            auto dev = const_cast <xrt_core::device *>(device);
+            auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(dev));
+            dev->open_context(uuid.get(), -1, true);
+            auto at_exit = [] (auto dev, auto uuid) { dev->close_context(uuid.get(), -1); };
+            xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, dev, uuid));
+            
+	    // get scheduler stats 
+            auto handle = device->get_device_handle();
+	    xclUpdateSchedulerStat(handle);
+        }
+	catch (const std::exception&) {
+	    // xclbin_lock failed, safe to ignore
+	}
+    }
+  
+    pdev->sysfs_get("mb_scheduler", "kds_custat", errmsg, cuStats);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+    
+    return cuStats;
   }
 };
 
@@ -74,22 +101,6 @@ struct sysfs_fcn
   {
     std::string err;
     ValueType value;
-    dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
-    if (!err.empty())
-      throw std::runtime_error(err);
-    return value;
-  }
-
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry, const boost::any& v)
-  {
-    std::string err;
-    ValueType value;
-    std::pair <const char*,const char*> p = boost::any_cast<std::pair <const char*,const char*>>(v);
-    if (!strcmp(p.first,"subdev"))
-      subdev = p.second;
-    else if (!strcmp(p.first,"entry"))
-      entry = p.second;
     dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
     if (!err.empty())
       throw std::runtime_error(err);
@@ -122,22 +133,6 @@ struct sysfs_fcn<std::string>
     return value;
   }
 
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry, const boost::any& v)
-  {
-    std::string err;
-    ValueType value;
-    std::pair <const char*,const char*> p = boost::any_cast<std::pair <const char*,const char*>>(v);
-    if (!strcmp(p.first,"subdev"))
-      subdev = p.second;
-    else if (!strcmp(p.first,"entry"))
-      entry = p.second;
-    dev->sysfs_get(subdev, entry, err, value);
-    if (!err.empty())
-      throw std::runtime_error(err);
-    return value;
-  }
-
   static void
   put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
   {
@@ -159,22 +154,6 @@ struct sysfs_fcn<std::vector<VectorValueType>>
   {
     std::string err;
     ValueType value;
-    dev->sysfs_get(subdev, entry, err, value);
-    if (!err.empty())
-      throw std::runtime_error(err);
-    return value;
-  }
-
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry, const boost::any& v)
-  {
-    std::string err;
-    ValueType value;
-    std::pair <const char*,const char*> p = boost::any_cast<std::pair <const char*,const char*>>(v);
-    if (!strcmp(p.first,"subdev"))
-      subdev = p.second;
-    else if (!strcmp(p.first,"entry"))
-      entry = p.second;
     dev->sysfs_get(subdev, entry, err, value);
     if (!err.empty())
       throw std::runtime_error(err);
@@ -209,12 +188,13 @@ struct sysfs_get : virtual QueryRequestType
   }
 
   boost::any
-  get(const xrt_core::device* device, const boost::any& v) const
+  get(const xrt_core::device* device, query::request::modifier m, const std::string& v) const
   {
+    auto ms = (m == query::request::modifier::subdev) ? v.c_str() : subdev;
+    auto me = (m == query::request::modifier::entry) ? v.c_str() : entry;
     return sysfs_fcn<typename QueryRequestType::result_type>
-      ::get(get_pcidev(device), subdev, entry, v);
+      ::get(get_pcidev(device), ms, me);
   }
-
 };
 
 template <typename QueryRequestType>
@@ -251,6 +231,7 @@ struct function0_get : virtual QueryRequestType
   get(const xrt_core::device* device) const
   {
     auto k = QueryRequestType::key;
+    std::cout << __func__ << " : " << __LINE__ << "I am here " << std::endl;  
     return Getter::get(device, k);
   }
 };
@@ -270,6 +251,7 @@ static void
 emplace_func0_request()
 {
   auto k = QueryRequestType::key;
+  std::cout << __func__ << " : " << __LINE__ << "I am here " << std::endl;  
   query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
 }
 
@@ -327,6 +309,7 @@ initialize_query_table()
   emplace_sysfs_get<query::xmc_board_name>              ("xmc", "bd_name");
   emplace_sysfs_get<query::xmc_serial_num>              ("xmc", "serial_num");
   emplace_sysfs_get<query::xmc_max_power>               ("xmc", "max_power");
+  emplace_sysfs_get<query::xmc_sc_presence>             ("xmc", "sc_presence");
   emplace_sysfs_get<query::xmc_bmc_version>             ("xmc", "bmc_ver");
   emplace_sysfs_get<query::expected_bmc_version>        ("xmc", "exp_bmc_ver");
   emplace_sysfs_get<query::xmc_status>                  ("xmc", "status");
@@ -334,11 +317,9 @@ initialize_query_table()
   emplace_sysfs_getput<query::xmc_scaling_enabled>      ("xmc", "scaling_enabled");
   emplace_sysfs_getput<query::xmc_scaling_override>     ("xmc", "scaling_threshold_power_override");
   emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
-  emplace_sysfs_get<query::m2m>                         ("", "m2m");
+  emplace_sysfs_get<query::m2m>                         ("m2m", "");
+  emplace_sysfs_get<query::nodma>                       ("", "nodma");
   emplace_sysfs_get<query::dna_serial_num>              ("dna", "dna");
-  emplace_sysfs_getput<query::xmc_scaling_enabled>      ("xmc", "scaling_enabled");
-  emplace_sysfs_getput<query::xmc_scaling_override>     ("xmc", "scaling_threshold_power_override");
-  emplace_sysfs_put<query::xmc_scaling_reset>           ("xmc", "scaling_reset");
   emplace_sysfs_get<query::p2p_config>                  ("p2p", "config");
   emplace_sysfs_get<query::temp_card_top_front>         ("xmc", "xmc_se98_temp0");
   emplace_sysfs_get<query::temp_card_top_rear>          ("xmc", "xmc_se98_temp1");
@@ -403,7 +384,7 @@ initialize_query_table()
   emplace_sysfs_get<query::host_mem_size>               ("address_translator", "host_mem_size");
   emplace_sysfs_get<query::kds_numcdmas>                ("mb_scheduler", "kds_numcdmas");
 
-  emplace_sysfs_get<query::mig_ecc_enabled>             ("mig", "ecc_enabled");
+  //emplace_sysfs_get<query::mig_ecc_enabled>             ("mig", "ecc_enabled");
   emplace_sysfs_get<query::mig_ecc_status>              ("mig", "ecc_status");
   emplace_sysfs_get<query::mig_ecc_ce_cnt>              ("mig", "ecc_ce_cnt");
   emplace_sysfs_get<query::mig_ecc_ue_cnt>              ("mig", "ecc_ue_cnt");
@@ -411,6 +392,7 @@ initialize_query_table()
   emplace_sysfs_get<query::mig_ecc_ue_ffa>              ("mig", "ecc_ue_ffa");
   emplace_sysfs_get<query::flash_bar_offset>            ("flash", "bar_off");
   emplace_sysfs_get<query::is_mfg>                      ("", "mfg");
+  emplace_sysfs_get<query::mfg_ver>                     ("", "mfg_ver");
   emplace_sysfs_get<query::is_ready>                    ("", "ready");
   emplace_sysfs_get<query::f_flash_type>                ("flash", "flash_type");
   emplace_sysfs_get<query::flash_type>                  ("", "flash_type");
@@ -420,7 +402,7 @@ initialize_query_table()
   emplace_sysfs_get<query::kds_custat>                  ("mb_scheduler", "kds_custat");
 
   emplace_func0_request<query::pcie_bdf,                bdf>();
-  emplace_func0_request<query::scheduler_update_stat,   sched_update_stat>();
+  emplace_func0_request<query::kds_custats,		kds_custats>();
 }
 
 struct X { X() { initialize_query_table(); }};
@@ -487,9 +469,9 @@ write(uint64_t offset, const void* buf, uint64_t len) const
     throw error(err, "write failed");
 }
 
-void 
+void
 device_linux::
-reset(const char* subdev, const char* key, const char* value) const 
+reset(const char* subdev, const char* key, const char* value) const
 {
   std::string err;
   pcidev::get_dev(get_device_id(), false)->sysfs_put(subdev, key, err, value);
@@ -497,7 +479,7 @@ reset(const char* subdev, const char* key, const char* value) const
     throw error("reset failed");
 }
 
-int 
+int
 device_linux::
 open(const std::string& subdev, int flag) const
 {
@@ -506,7 +488,7 @@ open(const std::string& subdev, int flag) const
 
 void
 device_linux::
-close(int dev_handle) const 
+close(int dev_handle) const
 {
   pcidev::get_dev(get_device_id(), false)->close(dev_handle);
 }

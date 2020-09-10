@@ -196,8 +196,12 @@ static void *p2p_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	if (!blob)
 		return NULL;
 
-	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_XDMA);
-	if (node < 0)
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" XOCL_QDMA);
+	if (node >= 0)
+		return NULL;
+
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" XOCL_QDMA4);
+	if (node >= 0)
 		return NULL;
 
 	p2p_priv = vzalloc(sizeof(*p2p_priv));
@@ -332,6 +336,10 @@ static struct xocl_subdev_map subdev_map[] = {
 		.dev_name = XOCL_INTC,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_ERT_SCHED},
+			{.res_name = NODE_INTC_CU_00},
+			{.res_name = NODE_INTC_CU_01},
+			{.res_name = NODE_INTC_CU_02},
+			{.res_name = NODE_INTC_CU_03},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -549,6 +557,7 @@ static struct xocl_subdev_map subdev_map[] = {
 			{.res_name = RESNAME_MEMCALIB},
 			{.res_name = RESNAME_KDMA},
 			{.res_name = RESNAME_DDR4_RESET_GATE},
+			{.res_name = RESNAME_ICAP_RESET},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -965,8 +974,7 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 				XOCL_SUBDEV_RES_NAME_LEN,
 				"%s %d %d %d %s",
 				ip->name, ip->major, ip->minor,
-				ip->level,
-				ip->regmap_name ? ip->regmap_name : "");
+				ip->level, intr_alias);
 			subdev->res[idx].name = subdev->res_name[idx];
 			subdev->info.num_res++;
 		}

@@ -33,6 +33,10 @@ namespace xdp {
   // Forward declarations
   class VPDatabase ;
 
+  // AIE Trace data type
+  typedef std::pair<void* /*buffer*/, uint64_t /*bufferSz*/> AIETraceDataType;
+  typedef std::vector<AIETraceDataType> AIETraceDataVector;
+
   // The Dynamic Database will own all VTFEvents and is responsible
   //  for cleaning up this memory.
   class VPDynamicDatabase
@@ -76,6 +80,9 @@ namespace xdp {
     // For device events
     std::map<uint64_t, std::list<VTFEvent*>> deviceEventStartMap;
 
+    // For AIE Trace events
+    std::map<uint64_t, AIETraceDataVector> aieTraceData;
+
     // In order to reduce memory overhead, instead of each event holding
     //  strings, each event will instead point to a unique
     //  instance of that string
@@ -118,6 +125,10 @@ namespace xdp {
 
     // Functions that dump large portions of the database
     XDP_EXPORT void dumpStringTable(std::ofstream& fout) ;
+
+    // Add and get AIE Trace Data Buffer 
+    XDP_EXPORT void addAIETraceData(uint64_t deviceId, uint64_t strmIndex, void* buffer, uint64_t bufferSz);
+    XDP_EXPORT AIETraceDataType getAIETraceData(uint64_t deviceId, uint64_t strmIndex);
 
     // Functions that are used by counter-based plugins
     XDP_EXPORT void addPowerSample(uint64_t deviceId, double timestamp,

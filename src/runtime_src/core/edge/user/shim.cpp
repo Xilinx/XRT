@@ -48,6 +48,8 @@
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
+
+#include "plugin/xdp/aie_trace.h"
 #endif
 
 namespace {
@@ -501,23 +503,24 @@ xclLoadAxlf(const axlf *buffer)
   if (is_pr_platform && is_pr_enabled)
     flags = DRM_ZOCL_PLATFORM_PR;
 
-  drm_zocl_axlf axlf_obj = {
-    .za_xclbin_ptr = const_cast<axlf *>(buffer),
-    .za_flags = flags,
-    .za_ksize = 0,
-    .za_kernels = NULL,
-  };
+    drm_zocl_axlf axlf_obj = {
+      .za_xclbin_ptr = const_cast<axlf *>(buffer),
+      .za_flags = flags,
+      .za_ksize = 0,
+      .za_kernels = NULL,
+    };
 
-  auto kernels = xrt_core::xclbin::get_kernels(buffer);
-  /* Calculate size of kernels */
-  for (auto& kernel : kernels) {
+  if (!xrt_core::xclbin::is_pdi_only(buffer)) {
+    auto kernels = xrt_core::xclbin::get_kernels(buffer);
+    /* Calculate size of kernels */
+    for (auto& kernel : kernels) {
       axlf_obj.za_ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
-  }
+    }
 
-  /* Check PCIe's shim.cpp for details of kernels binary */
-  std::vector<char> krnl_binary(axlf_obj.za_ksize);
-  axlf_obj.za_kernels = krnl_binary.data();
-  for (auto& kernel : kernels) {
+    /* Check PCIe's shim.cpp for details of kernels binary */
+    std::vector<char> krnl_binary(axlf_obj.za_ksize);
+    axlf_obj.za_kernels = krnl_binary.data();
+    for (auto& kernel : kernels) {
       auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.za_kernels + off);
       if (kernel.name.size() > sizeof(krnl->name))
           return -EINVAL;
@@ -527,20 +530,21 @@ xclLoadAxlf(const axlf *buffer)
 
       int ai = 0;
       for (auto& arg : kernel.args) {
-          if (arg.name.size() > sizeof(krnl->args[ai].name))
-              return -EINVAL;
-          std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
-          krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
-          krnl->args[ai].offset = arg.offset;
-          krnl->args[ai].size   = arg.size;
-          // XCLBIN doesn't define argument direction yet and it only support
-          // input arguments.
-          // Driver use 1 for input argument and 2 for output.
-          // Let's refine this line later.
-          krnl->args[ai].dir    = 1;
-          ai++;
+        if (arg.name.size() > sizeof(krnl->args[ai].name))
+          return -EINVAL;
+        std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+        krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+        krnl->args[ai].offset = arg.offset;
+        krnl->args[ai].size   = arg.size;
+        // XCLBIN doesn't define argument direction yet and it only support
+        // input arguments.
+        // Driver use 1 for input argument and 2 for output.
+        // Let's refine this line later.
+        krnl->args[ai].dir    = 1;
+        ai++;
       }
       off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
   }
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
@@ -1423,6 +1427,8 @@ void
 shim::
 registerAieArray()
 {
+//not registering AieArray in hw_emu as it is crashing in hw_emu. We can fix the
+//issue once move to AIE-V2 is done
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
 }
 
@@ -1431,6 +1437,17 @@ shim::
 isAieRegistered()
 {
   return (aieArray != nullptr);
+}
+
+int
+shim::
+getPartitionFd(drm_zocl_aie_fd &aiefd)
+{
+  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd);
+  if (ret)
+    return -errno;
+
+  return 0;
 }
 #endif
 
@@ -1638,6 +1655,7 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
   xdphal::flush_device(handle) ;
+  xdpaie::flush_aie_device(handle) ;
 #endif
 #endif
 
@@ -1652,7 +1670,9 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     core_device->register_axlf(buffer);
 
 #ifdef XRT_ENABLE_AIE
-    drv->registerAieArray();
+    auto data = core_device->get_axlf_section(AIE_METADATA);
+    if (data.first && data.second)
+      drv->registerAieArray();
 #endif
 
     /* If PDI is the only section, return here */
@@ -1663,6 +1683,7 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
   xdphal::update_device(handle) ;
+  xdpaie::update_aie_device(handle);
 #endif
 #endif
 

@@ -17,11 +17,10 @@
 
 #include "../xocl_drv.h"
 
-#define	ERT_MAX_SLOTS 	128
+#define	ERT_MAX_SLOTS		128
 
-#define	ERT_STATE_GOOD	0x1
-#define	ERT_STATE_BAD	0x2
-
+#define	ERT_STATE_GOOD		0x1
+#define	ERT_STATE_BAD		0x2
 
 //#define	SCHED_VERBOSE	1
 
@@ -350,7 +349,7 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 		return;
 
 	for (section_idx = 0; section_idx < 4; ++section_idx) {
-		mask = xocl_intc_csr_read32(xdev, (section_idx<<2));
+		mask = xocl_intc_ert_read32(xdev, (section_idx<<2));
 		if (!mask)
 			continue;
 		ERTUSER_DBG(ert_user, "mask 0x%x\n", mask);
@@ -570,10 +569,12 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 		epkt = (struct ert_packet *)ecmd->xcmd->execbuf;
 		ERTUSER_DBG(ert_user, "%s op_code %d ecmd->slot_idx %d\n", __func__, cmd_opcode(ecmd), ecmd->slot_idx);
 
+		//sched_debug_packet(epkt, epkt->count+sizeof(epkt->header)/sizeof(u32));
+
 		if (cmd_opcode(ecmd) == OP_CONFIG && !ert_user->polling_mode) {
 			for (i = 0; i < ert_user->num_slots; i++) {
-				xocl_intc_request(xdev, i, ert_user_isr, ert_user);
-				xocl_intc_config(xdev, i, true);
+				xocl_intc_ert_request(xdev, i, ert_user_isr, ert_user);
+				xocl_intc_ert_config(xdev, i, true);
 			}
 
 		}
@@ -593,7 +594,7 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 
 			ERTUSER_DBG(ert_user, "++ mb_submit writes slot mask 0x%x to CQ_INT register at addr 0x%x\n",
 					mask, cq_int_addr);
-			xocl_intc_csr_write32(xdev, mask, cq_int_addr);
+			xocl_intc_ert_write32(xdev, mask, cq_int_addr);
 		}
 		spin_lock_irqsave(&ert_user->sq_lock, flags);
 		ert_user->submit_queue[ecmd->slot_idx] = ecmd;
@@ -844,8 +845,8 @@ static int ert_user_remove(struct platform_device *pdev)
 		iounmap(ert_user->cq_base);
 
 	for (i = 0; i < ert_user->num_slots; i++) {
-		xocl_intc_config(xdev, i, false);
-		xocl_intc_request(xdev, i, NULL, NULL);
+		xocl_intc_ert_config(xdev, i, false);
+		xocl_intc_ert_request(xdev, i, NULL, NULL);
 	}
 
 	ert_user->stop = 1;

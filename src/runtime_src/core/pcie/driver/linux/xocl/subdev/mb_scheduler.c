@@ -1806,6 +1806,7 @@ struct exec_core {
 	// when the MSB is not set, or the PID of the process that exclusively
 	// reserved it when MSB is set.
 	unsigned int		   ip_reference[MAX_CUS];
+	struct workqueue_struct    *completion_wq;
 };
 
 /**
@@ -1933,7 +1934,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	unsigned int major = exec->ert_cfg_priv.major;
 	struct ert_configure_cmd *cfg = xcmd->ert_cfg;
 	bool ert = (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) ? 1 :
-	    xocl_mb_sched_on(xdev);
+	    (xocl_mb_sched_on(xdev) && exec->cq_base && exec->csr_base);
 	bool ert_full = (ert && cfg->ert && !cfg->dataflow);
 	bool ert_poll = (ert && cfg->ert && cfg->dataflow);
 	unsigned int ert_num_slots = 0;
@@ -1945,7 +1946,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return 1;
 	}
 
-	if (major > 2) {
+	if (major > 3) {
 		DRM_INFO("Unknown ERT major version, fallback to KDS mode\n");
 		ert_full = 0;
 		ert_poll = 0;
@@ -1975,7 +1976,6 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	}
 
 	ert_num_slots = exec->cq_size / cfg->slot_size;
-	exec->num_cus = cfg->num_cus;
 	exec->num_cdma = 0;
 
 	if (ert_poll)
@@ -1990,7 +1990,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	}
 
 	// Create CUs for regular CUs
-	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
+	for (cuidx = 0; cuidx < cfg->num_cus; ++cuidx) {
 		struct xocl_cu *xcu = exec->cus[cuidx];
 		void *polladdr = (ert_poll)
 			// cuidx+1 to reserve slot 0 for ctrl => max 127 CUs in ert_poll mode
@@ -2001,6 +2001,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 			xcu = exec->cus[cuidx] = cu_create(xdev);
 		cu_reset(xcu, cuidx, exec->base, cfg->data[cuidx], polladdr);
 	}
+	exec->num_cus = cfg->num_cus;
 
 	// Create KDMA CUs
 	if (cdma) {
@@ -2315,6 +2316,9 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	}
 
 	init_waitqueue_head(&exec->poll_wait_queue);
+	exec->completion_wq = alloc_workqueue("xsched-compltn", WQ_HIGHPRI |
+				WQ_MEM_RECLAIM | WQ_UNBOUND, num_online_cpus());
+
 	exec->scheduler = xs;
 	exec->uid = count++;
 
@@ -2446,6 +2450,9 @@ exec_notify_host(struct exec_core *exec, struct xocl_cmd* xcmd)
 	atomic_inc(&client->trigger);
 	mutex_unlock(&xdev->dev_lock); // eliminate ?
 	wake_up_interruptible(&exec->poll_wait_queue);
+	if (xcmd->bo->metadata.compltn_work.func)
+		queue_work(exec->completion_wq,
+			&xcmd->bo->metadata.compltn_work);
 
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
@@ -4291,9 +4298,26 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	return 0;
 }
 
+static
+void xocl_execbuf_completion(struct work_struct *work)
+{
+	struct drm_xocl_exec_metadata *xobj_metadata = container_of(work,
+				struct drm_xocl_exec_metadata, compltn_work);
+	struct drm_xocl_bo *xobj = container_of(xobj_metadata,
+				struct drm_xocl_bo, metadata);
+	struct ert_packet *ecmd = (struct ert_packet *)xobj->vmapping;
+	int error = (ecmd->state == ERT_CMD_STATE_COMPLETED) ? 0 : -EFAULT;
+
+	if (xobj->metadata.execbuf_cb_fn)
+		xobj->metadata.execbuf_cb_fn(
+			(unsigned long) xobj->metadata.execbuf_cb_data,
+			error);
+}
+
 static int
 client_ioctl_execbuf(struct platform_device *pdev,
-		     struct client_ctx *client, void *data, struct drm_file *filp)
+		     struct client_ctx *client, void *data, struct drm_file *filp,
+		     bool inkernel)
 {
 	struct drm_xocl_execbuf *args = data;
 	struct drm_xocl_bo *xobj;
@@ -4357,6 +4381,18 @@ client_ioctl_execbuf(struct platform_device *pdev,
 		deps[numdeps] = xbo;
 	}
 
+	if (inkernel) {
+		struct drm_xocl_execbuf_cb *args_cb =
+					(struct drm_xocl_execbuf_cb *)args;
+		if (args_cb->cb_func) {
+			xobj->metadata.execbuf_cb_fn   =
+					(xocl_execbuf_callback)args_cb->cb_func;
+			xobj->metadata.execbuf_cb_data =
+					(void *)args_cb->cb_data;
+		}
+		INIT_WORK(&xobj->metadata.compltn_work, xocl_execbuf_completion);
+	}
+
 	/* Add exec buffer to scheduler (kds).	The scheduler manages the
 	 * drm object references acquired by xobj and deps.  It is vital
 	 * that the references are released properly.
@@ -4395,7 +4431,10 @@ int client_ioctl(struct platform_device *pdev,
 		ret = client_ioctl_ctx(pdev, client, data);
 		break;
 	case DRM_XOCL_EXECBUF:
-		ret = client_ioctl_execbuf(pdev, client, data, drm_filp);
+		ret = client_ioctl_execbuf(pdev, client, data, drm_filp, false);
+		break;
+	case DRM_XOCL_EXECBUF_CB:
+		ret = client_ioctl_execbuf(pdev, client, data, drm_filp, true);
 		break;
 	default:
 		ret = -EINVAL;
@@ -4823,6 +4862,7 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	SCHED_DEBUGF("-> %s\n", __func__);
 	exec_reset_cmds(exec);
 	fini_scheduler_thread(exec_scheduler(exec));
+	destroy_workqueue(exec->completion_wq);
 
 	if (!kds_mode) {
 		for (i = 0; i < exec->intr_num; i++) {

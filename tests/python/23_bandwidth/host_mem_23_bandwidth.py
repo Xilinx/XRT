@@ -52,7 +52,7 @@ def getThreshold(devHandle):
         threshold = 10000
     if b"gen3x4" in deviceInfo.mName:
         threshold = 20000
-    if b"_u25_" in deviceInfo.mName: # so that it doesn't set theshold for u250
+    if b"_u25_" in deviceInfo.mName or b"_u30_" in deviceInfo.mName: # so that it doesn't set theshold for u250
         threshold = 9000
     return threshold
 
@@ -67,7 +67,8 @@ def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     grpid = xrtKernelArgGroupId(krnlhdl, argno)
     if grpid < 0:
         raise RuntimeError("failed to find BO group ID: %d" % grpid)
-    bo = xrtBOAlloc(devhdl, globalbuffersize, 0, grpid)
+    # To alloc HOST only buffer, we have to specify flags XCL_BO_FLAGS_HOST_ONLY = 1<<29
+    bo = xrtBOAlloc(devhdl, globalbuffersize, 1<<29, grpid)
     if bo == 0:
         raise RuntimeError("failed to alloc buffer")
 

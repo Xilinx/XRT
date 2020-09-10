@@ -17,7 +17,7 @@
  * the file called "COPYING".
  */
 
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 #define pr_fmt(fmt) KBUILD_MODNAME ":%s: " fmt, __func__
 
 #include <linux/fs.h>
@@ -132,10 +132,10 @@ static int dbgfs_dump_qdma_regs(unsigned long dev_hndl, char *dev_name,
 
 #ifndef __QDMA_VF__
 	rv = qdma_acc_reg_dump_buf_len((void *)dev_hndl,
-				xdev->version.info.ip_type, &buflen);
+				xdev->version_info.ip_type, &buflen);
 #else
 	rv = qdma_acc_reg_dump_buf_len((void *)dev_hndl,
-				xdev->version.info.ip_type, &buflen);
+				xdev->version_info.ip_type, &buflen);
 #endif
 	if (rv < 0) {
 		pr_err("Failed to get reg dump buffer length\n");
@@ -158,7 +158,7 @@ static int dbgfs_dump_qdma_regs(unsigned long dev_hndl, char *dev_name,
 	}
 	len += rv;
 
-	rv = qdma_config_reg_dump(dev_hndl, buf + len, buflen - len);
+	rv = qdma4_config_reg_dump(dev_hndl, buf + len, buflen - len);
 	if (rv < 0) {
 		pr_warn("Not able to dump Config Bar register values, err = %d\n",
 					rv);
@@ -318,8 +318,7 @@ static int dbgfs_dump_intr_ring(unsigned long dev_hndl, char *dev_name,
 
 	unsigned int vector_idx = xdev->msix[xdev->dvec_start_idx].entry;
 	int num_entries = (xdev->conf.intr_rngsz + 1) * 512;
-	int buflen = (45 * num_entries) + 1;
-
+	int buflen = (45 * num_entries) + 255 + 1; /* entry + header */
 
 	/** allocate memory */
 	buf = (char *) kzalloc(buflen, GFP_KERNEL);
@@ -355,7 +354,7 @@ static int dbgfs_dump_intr_ring(unsigned long dev_hndl, char *dev_name,
  *****************************************************************************/
 static int dev_dbg_file_open(struct inode *inode, struct file *fp)
 {
-	int dev_id = -1;
+	unsigned long dev_id = -1;
 	int rv = 0;
 	unsigned char dev_name[QDMA_DEV_NAME_SZ] = {0};
 	unsigned char *lptr = NULL, *rptr = NULL;
@@ -382,7 +381,7 @@ static int dev_dbg_file_open(struct inode *inode, struct file *fp)
 	}
 
 	/* convert this string as hex integer */
-	rv = kstrtoint((const char *)dev_name, 16, &dev_id);
+	rv = kstrtoul((const char *)dev_name, 16, &dev_id);
 	if (rv < 0) {
 		rv = -ENODEV;
 		return rv;
@@ -709,7 +708,8 @@ static ssize_t dev_intr_ring_read(struct file *fp, char __user *user_buffer,
  * @return	>0: size read
  * @return	<0: error
  *****************************************************************************/
-int create_dev_dbg_files(struct xlnx_dma_dev *xdev, struct dentry *dev_root)
+static int create_dev_dbg_files(struct xlnx_dma_dev *xdev,
+				struct dentry *dev_root)
 {
 	struct dentry  *fp[DBGFS_DEV_DBGF_END] = { NULL };
 	struct file_operations *fops = NULL;
@@ -754,7 +754,8 @@ int create_dev_dbg_files(struct xlnx_dma_dev *xdev, struct dentry *dev_root)
  * @return	>0: size read
  * @return	<0: error
  *****************************************************************************/
-int create_dev_intr_files(struct xlnx_dma_dev *xdev, struct dentry *intr_root)
+static int create_dev_intr_files(struct xlnx_dma_dev *xdev,
+				struct dentry *intr_root)
 {
 	struct dentry  *fp[DBGFS_DEV_DBGF_END] = { NULL };
 	struct file_operations *fops = NULL;
@@ -819,7 +820,8 @@ int dbgfs_dev_init(struct xlnx_dma_dev *xdev)
 	int rv = 0;
 
 	if (!xdev->conf.debugfs_dev_root) {
-		snprintf(dname, QDMA_DEV_NAME_SZ, "%02x:%02x:%x",
+		snprintf(dname, QDMA_DEV_NAME_SZ, "%04x:%02x:%02x:%x",
+				pci_domain_nr(pdev->bus),
 				pdev->bus->number,
 				PCI_SLOT(pdev->devfn),
 				PCI_FUNC(pdev->devfn));

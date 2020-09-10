@@ -29,25 +29,6 @@ enum class cu_stat : unsigned short {
   stat
 };
 
-void
-schedulerUpdateStat(const xrt_core::device *device)
-{
-    try {
-      // lock xclbin
-      auto dev = const_cast <xrt_core::device *>(device);
-      auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(dev));
-      dev->open_context(uuid.get(), -1, true);
-      auto at_exit = [] (auto dev, auto uuid) { dev->close_context(uuid.get(), -1); };
-      xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, dev, uuid));
-
-      // get scheduler stats 
-      xrt_core::device_query<qr::scheduler_update_stat>(dev);
-    }
-    catch (const std::exception&) {
-      // xclbin_lock failed, safe to ignore
-    }
-}
-
 uint32_t 
 parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu_stat kind) 
 {
@@ -74,9 +55,6 @@ parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu
 boost::property_tree::ptree
 populate_cus(const xrt_core::device *device, const std::string& desc)
 {
-  if (!std::getenv("XCL_SKIP_CU_READ"))
-    schedulerUpdateStat(device);
-
   boost::property_tree::ptree pt;
   std::vector<char> ip_buf;
   std::vector<std::string> cu_stats;
@@ -85,7 +63,8 @@ populate_cus(const xrt_core::device *device, const std::string& desc)
   
   try {
     ip_buf = xrt_core::device_query<qr::ip_layout_raw>(device);
-    cu_stats = xrt_core::device_query<qr::kds_custat>(device);
+    std::cout << __func__ << " : " << __LINE__ << "I am here " << std::endl;
+    cu_stats = xrt_core::device_query<qr::kds_custats>(device);
   } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
   }

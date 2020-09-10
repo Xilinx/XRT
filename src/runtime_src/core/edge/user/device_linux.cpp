@@ -19,6 +19,7 @@
 #include "core/common/query_requests.h"
 
 #include "xrt.h"
+#include "shim.h"
 #include "zynq_dev.h"
 
 #include <string>
@@ -70,6 +71,25 @@ struct devInfo
     default:
       throw query::no_such_key(key);
     }
+  }
+};
+
+struct kds_custats
+{
+  using result_type = query::kds_custats::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key)
+  {
+    std::string errmsg;
+    result_type cuStats;
+    auto edev = get_edgedev(device);
+
+    edev->sysfs_get("kds_custat", errmsg, cuStats);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+
+    return cuStats;
   }
 };
 
@@ -177,6 +197,7 @@ initialize_query_table()
   emplace_func0_get<query::rom_ddr_bank_count_max, devInfo>();
 
   emplace_func0_get<query::clock_freqs_mhz, devInfo>();
+  emplace_func0_get<query::kds_custats, kds_custats>();
  
   emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");

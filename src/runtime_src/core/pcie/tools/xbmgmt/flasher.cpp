@@ -269,11 +269,16 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
     }
     else if (is_mfg)
     {
-        dev->pcieBarRead(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
+        dev->sysfs_get<unsigned>("", "mfg_ver", err, mGoldenVer, 0);
     }
     else
     {
-        std::cout << "ERROR: card not supported." << std::endl;
+        std::string vbnv;
+        dev->sysfs_get("rom", "VBNV", err, vbnv);
+        if (err.empty())
+            memcpy(mFRHeader.VBNVName, vbnv.c_str(), vbnv.size());
+        else
+            std::cout << "ERROR: card not supported." << std::endl;
     }
 
     mDev = dev; // Successfully initialized

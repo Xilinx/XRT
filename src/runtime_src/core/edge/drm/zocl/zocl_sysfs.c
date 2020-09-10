@@ -67,7 +67,7 @@ static ssize_t kds_custat_show(struct device *dev,
 	for (i = 0; i < zdev->exec->num_cus; i++) {
 		paddr = zocl_cu_get_paddr(&zdev->exec->zcu[i]);
 		usage = zdev->exec->zcu[i].usage;
-		status = zocl_cu_status_print(&zdev->exec->zcu[i]);
+		status = zocl_cu_status_print(&zdev->exec->zcu[i], false);
 		/* Use %x for now. Needs to use a better approach when support
 		 * CU at higher than 4GB address range.
 		 */

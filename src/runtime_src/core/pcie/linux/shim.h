@@ -47,6 +47,8 @@ namespace xrt_core {
     class bo_cache;
 }
 
+int xclUpdateSchedulerStat(xclDeviceHandle);
+
 namespace xocl {
 
 const uint64_t mNullAddr = 0xffffffffffffffffull;
