@@ -460,7 +460,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	struct drm_xocl_create_bo *args = data;
-	unsigned ddr;
+	unsigned ddr = 0;
 	unsigned bo_type = xocl_bo_type(args->flags);
 	struct mem_topology *topo = NULL;
 

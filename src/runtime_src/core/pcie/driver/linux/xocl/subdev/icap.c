@@ -994,6 +994,12 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 				load_sched = true;
 				err = 0;
 			}
+
+			mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf,
+					PARTITION_METADATA);
+			if (mbHeader)
+				xocl_fdt_get_ert_fw_ver(xdev,
+					fw_buf + mbHeader->m_sectionOffset);
 		}
 	}
 
@@ -4034,6 +4040,11 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		icap->rp_sche_bin_len = section->m_sectionSize;
 	}
 
+	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
+	if (section) {
+		xocl_fdt_get_ert_fw_ver(xdev,
+			(char *)axlf + section->m_sectionOffset);
+	}
 	vfree(axlf);
 
 	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);
