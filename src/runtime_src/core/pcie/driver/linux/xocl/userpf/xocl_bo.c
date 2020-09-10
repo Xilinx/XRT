@@ -465,9 +465,9 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	struct mem_topology *topo = NULL;
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
-
 	if (IS_ERR(xobj)) {
-		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", ddr, args->size);
+		DRM_ERROR("object creation failed idx %d, size 0x%llx\n",
+			xocl_bo_ddr_idx(args->flags), args->size);
 		return PTR_ERR(xobj);
 	}
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
