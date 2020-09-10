@@ -698,6 +698,25 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
   return 0;
 }
 
+// Get the maximum bandwidth for host reads from the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double
+shim::
+xclGetReadMaxBandwidthMBps()
+{
+  return 9600.0;
+}
+
+// Get the maximum bandwidth for host writes to the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double
+shim::
+xclGetWriteMaxBandwidthMBps()
+{
+  return 9600.0;
+}
+
+
 int
 shim::
 xclSKGetCmd(xclSKCmd *cmd)
@@ -1833,6 +1852,22 @@ xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
     return 0;
   return drv->xclGetDeviceClockFreqMHz();
 }
+
+double
+xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+}
+
 
 int
 xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
