@@ -663,7 +663,7 @@ static int calibrate_mig(struct icap *icap)
 		return -ETIMEDOUT;
 	}
 
-	ICAP_INFO(icap, "took %ds", i/2);
+	ICAP_DBG(icap, "took %ds", i/2);
 	return 0;
 }
 
