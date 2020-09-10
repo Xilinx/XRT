@@ -63,7 +63,8 @@ populate_cus(const xrt_core::device *device, const std::string& desc)
   
   try {
     ip_buf = xrt_core::device_query<qr::ip_layout_raw>(device);
-    xrt_core::device_query<qr::kds_custats>(device, cu_stats);
+    std::cout << __func__ << " : " << __LINE__ << "I am here " << std::endl;
+    cu_stats = xrt_core::device_query<qr::kds_custats>(device);
   } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
   }

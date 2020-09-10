@@ -95,16 +95,20 @@ zocl_cu_get_paddr(struct zocl_cu *cu)
 	return cu_core->paddr;
 }
 
-void
+u32
 zocl_cu_status_print(struct zocl_cu *cu)
 {
 	struct zcu_core *cu_core = cu->core;
+	u32 status = 0;
 
 	if (!cu_core)
-		return;
+		return 0;
 
+	status = ioread32(cu_core->vaddr);
 	DRM_INFO("addr 0x%llx, status 0x%x",
-	    (u64)cu_core->paddr, ioread32(cu_core->vaddr));
+	    (u64)cu_core->paddr, status);
+
+	return status;
 }
 
 u32

@@ -56,11 +56,36 @@ struct kds_custats
 {
   using result_type = query::kds_custats::result_type;
 
-  static int
-  get(const xrt_core::device* device, key_type, std::vector<std::string> &cuStats)
+  static result_type
+  get(const xrt_core::device* device, key_type)
   {
-    auto hdl = device->get_device_handle();
-    return xclKdsCUStats(hdl, cuStats);
+    std::string errmsg;
+    result_type cuStats;
+    auto pdev = get_pcidev(device);
+  
+    if (!std::getenv("XCL_SKIP_CU_READ")) {
+        try {
+	    // lock xclbin
+            auto dev = const_cast <xrt_core::device *>(device);
+            auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(dev));
+            dev->open_context(uuid.get(), -1, true);
+            auto at_exit = [] (auto dev, auto uuid) { dev->close_context(uuid.get(), -1); };
+            xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, dev, uuid));
+            
+	    // get scheduler stats 
+            auto handle = device->get_device_handle();
+	    xclUpdateSchedulerStat(handle);
+        }
+	catch (const std::exception&) {
+	    // xclbin_lock failed, safe to ignore
+	}
+    }
+  
+    pdev->sysfs_get("mb_scheduler", "kds_custat", errmsg, cuStats);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+    
+    return cuStats;
   }
 };
 
@@ -203,18 +228,8 @@ struct function0_get : virtual QueryRequestType
   get(const xrt_core::device* device) const
   {
     auto k = QueryRequestType::key;
+    std::cout << __func__ << " : " << __LINE__ << "I am here " << std::endl;  
     return Getter::get(device, k);
-  }
-};
-
-template <typename QueryRequestType, typename Getter>
-struct function1_get : virtual QueryRequestType
-{
-  boost::any
-  get(const xrt_core::device* device, std::vector<std::string> &v) const
-  {
-    auto k = QueryRequestType::key;
-    return Getter::get(device, k, v);
   }
 };
 
@@ -233,15 +248,8 @@ static void
 emplace_func0_request()
 {
   auto k = QueryRequestType::key;
+  std::cout << __func__ << " : " << __LINE__ << "I am here " << std::endl;  
   query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
-}
-
-template <typename QueryRequestType, typename Getter>
-static void
-emplace_func1_request()
-{
-  auto k = QueryRequestType::key;
-  query_tbl.emplace(k, std::make_unique<function1_get<QueryRequestType, Getter>>());
 }
 
 template <typename QueryRequestType>
@@ -390,7 +398,7 @@ initialize_query_table()
   emplace_sysfs_get<query::interface_uuids>             ("", "interface_uuids");
 
   emplace_func0_request<query::pcie_bdf,                bdf>();
-  emplace_func1_request<query::kds_custats,		kds_custats>();
+  emplace_func0_request<query::kds_custats,		kds_custats>();
 }
 
 struct X { X() { initialize_query_table(); }};

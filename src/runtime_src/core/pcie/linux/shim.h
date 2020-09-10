@@ -47,7 +47,7 @@ namespace xrt_core {
     class bo_cache;
 }
 
-int xclKdsCUStats(xclDeviceHandle, std::vector<std::string>&);
+int xclUpdateSchedulerStat(xclDeviceHandle);
 
 namespace xocl {
 
@@ -80,7 +80,6 @@ public:
     int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
                   size_t dst_offset, size_t src_offset);
 
-    int xclKdsCUStats(std::vector<std::string>&);
     int xclUpdateSchedulerStat();
 
     int xclExportBO(unsigned int boHandle);

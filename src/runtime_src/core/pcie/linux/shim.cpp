@@ -975,43 +975,6 @@ int shim::xclUpdateSchedulerStat()
     return ret;
 }
 
-int shim::xclKdsCUStats(std::vector<std::string> &cuStats)
-{
-xclUpdateSchedulerStat();
-#if 0
-    std::string errmsg;
-    if (!std::getenv("XCL_SKIP_CU_READ")) {
-        try {
-#if 0
-            // lock xclbin
-            auto dev = const_cast <xrt_core::device *>(device);
-            auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(dev));
-            dev->open_context(uuid.get(), -1, true);
-            auto at_exit = [] (auto dev, auto uuid) { dev->close_context(uuid.get(), -1); };
-            xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, dev, uuid));
-#endif
-            xclUpdateSchedulerStat();
-        }
-        catch (const std::exception&) {
-            // xclbin_lock failed, safe to ignore
-        }
-    }
-
-    std::vector<std::string> dmaStatStrs;
-    mDev->sysfs_get("dma", "channel_stat_raw", errmsg, dmaStatStrs);
-    //mDev->sysfs_get<int>("mb_scheduler", "kds_custat", errmsg, cuStats, static_cast<int>(-1));
-    mDev->sysfs_get("mb_scheduler", "kds_custat", errmsg, cuStats);
-    if (!errmsg.empty()) {
-        xrt_logmsg(XRT_ERROR, "can't read kds_custat sysfs node: %s",
-            errmsg.c_str());
-        return std::to_string(-EINVAL);
-    }
-
-    return cuStats;
-#endif
-    return 0;
-}
-
 /*
  * xclSysfsGetErrorStatus()
  */
@@ -2885,12 +2848,6 @@ int xclIPName2Index(xclDeviceHandle handle, const char *name)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return (drv) ? drv->xclIPName2Index(name) : -ENODEV;
-}
-
-int xclKdsCUStats(xclDeviceHandle handle, std::vector<std::string>& cuStats)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return (drv) ? drv->xclKdsCUStats(cuStats) : -ENODEV;
 }
 
 int xclUpdateSchedulerStat(xclDeviceHandle handle)

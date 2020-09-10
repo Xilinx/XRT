@@ -77,13 +77,19 @@ struct devInfo
 struct kds_custats
 {
   static boost::any
-  get(const xrt_core::device* device, key_type key, std::vector<std::string> &v)
+  get(const xrt_core::device* device, key_type key)
   {
-    auto hdl = device->get_device_handle();
-    return xclKdsCUStats(hdl, v);
+    std::string errmsg;
+    result_type cuStats;
+    auto edev = get_edgedev(device);
+
+    edev->sysfs_get("kds_custat", errmsg, cuStats);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+
+    return cuStats;
   }
 };
-
 
 // Specialize for other value types.
 template <typename ValueType>
@@ -162,17 +168,6 @@ struct function0_get : QueryRequestType
   }
 };
 
-template <typename QueryRequestType, typename Getter>
-struct function1_get : QueryRequestType
-{
-  boost::any
-  get(const xrt_core::device* device, std::vector<std::string> &v) const
-  {
-    auto k = QueryRequestType::key;
-    return Getter::get(device, k, v);
-  }
-};
-
 template <typename QueryRequestType>
 static void
 emplace_sysfs_get(const char* entry)
@@ -189,14 +184,6 @@ emplace_func0_get()
   query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
 }
 
-template <typename QueryRequestType, typename Getter>
-static void
-emplace_func1_get()
-{
-  auto k = QueryRequestType::key;
-  query_tbl.emplace(k, std::make_unique<function1_get<QueryRequestType, Getter>>());
-}
-
 static void
 initialize_query_table()
 {
@@ -208,7 +195,7 @@ initialize_query_table()
   emplace_func0_get<query::rom_ddr_bank_count_max, devInfo>();
 
   emplace_func0_get<query::clock_freqs_mhz, devInfo>();
-  emplace_func1_get<query::kds_custats, kds_custats>();
+  emplace_func0_get<query::kds_custats, kds_custats>();
  
   emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
