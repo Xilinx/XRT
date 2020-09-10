@@ -20,4 +20,6 @@ target_link_libraries(skd
   dl
   )
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
+
 install (TARGETS skd RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
