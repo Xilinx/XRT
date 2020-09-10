@@ -175,6 +175,12 @@ loadDevices()
   // xrt
   bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
 
+  if (xrt.empty()){
+    #if defined (__aarch64__) || defined (__arm__)
+        xrt /= "/usr";
+    #endif
+  }
+
   if (!xrt.empty() && !is_emulation()) {
     directoryOrError(xrt);
     auto p = dllpath(xrt,"xrt_core");
