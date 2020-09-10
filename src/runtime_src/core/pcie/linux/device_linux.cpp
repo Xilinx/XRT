@@ -28,9 +28,6 @@
 #include <functional>
 #include <boost/format.hpp>
 
-/* exposed by shim */
-int xclUpdateSchedulerStat(xclDeviceHandle);
-
 namespace {
 
 namespace query = xrt_core::query;
@@ -231,7 +228,6 @@ struct function0_get : virtual QueryRequestType
   get(const xrt_core::device* device) const
   {
     auto k = QueryRequestType::key;
-    std::cout << __func__ << " : " << __LINE__ << "I am here " << std::endl;  
     return Getter::get(device, k);
   }
 };
@@ -251,7 +247,6 @@ static void
 emplace_func0_request()
 {
   auto k = QueryRequestType::key;
-  std::cout << __func__ << " : " << __LINE__ << "I am here " << std::endl;  
   query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
 }
 
@@ -399,10 +394,9 @@ initialize_query_table()
   emplace_sysfs_get<query::board_name>                  ("", "board_name");
   emplace_sysfs_get<query::logic_uuids>                 ("", "logic_uuids");
   emplace_sysfs_get<query::interface_uuids>             ("", "interface_uuids");
-  emplace_sysfs_get<query::kds_custat>                  ("mb_scheduler", "kds_custat");
 
   emplace_func0_request<query::pcie_bdf,                bdf>();
-  emplace_func0_request<query::kds_custats,		kds_custats>();
+  emplace_func0_request<query::kds_custats,             kds_custats>();
 }
 
 struct X { X() { initialize_query_table(); }};
