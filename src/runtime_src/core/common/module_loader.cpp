@@ -87,8 +87,13 @@ static bfs::path
 xilinx_xrt()
 {
   bfs::path xrt(value_or_empty(getenv("XILINX_XRT")));
-  if (xrt.empty()) 
+  if (xrt.empty()){
+#if defined (__aarch64__) || defined (__arm__)
+    xrt = bfs::path("/usr");
+#else
     throw std::runtime_error("XILINX_XRT not set");
+#endif
+  }
 
   return xrt;
 }

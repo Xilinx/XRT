@@ -175,11 +175,11 @@ loadDevices()
   // xrt
   bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
 
-  if (xrt.empty()){
-    #if defined (__aarch64__) || defined (__arm__)
-        xrt /= "/usr";
-    #endif
+#if defined (__aarch64__) || defined (__arm__)
+  if (xrt.empty()) {
+    xrt = bfs::path("/usr");
   }
+#endif
 
   if (!xrt.empty() && !is_emulation()) {
     directoryOrError(xrt);
@@ -233,8 +233,13 @@ load_xdp()
     xdp_once_loader()
     {
       bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
+
       if (xrt.empty()) {
+#if defined (__aarch64__) || defined (__arm__)
+        xrt = bfs::path("/usr");
+#else
         throw std::runtime_error("Library oclxdp not found! XILINX_XRT not set");
+#endif
       }
       bfs::path xrtlib(xrt / "lib");
       directoryOrError(xrtlib);
