@@ -70,9 +70,6 @@ namespace xdp {
 
   OCLProfiler::~OCLProfiler()
   {
-    // Stop power profiling early so no samples during trace offload
-    PowerProfileList.clear();
-
     // Inform downstream guidance if objects were properly released
     Plugin->setObjectsReleased(mEndDeviceProfilingCalled);
 
@@ -155,37 +152,6 @@ namespace xdp {
     // But needed for older flow
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && Plugin->getSystemDPAEmulation() == false)
       xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
-
-    // Start power profiling (device flow only)
-    auto power_profile_en = xrt::config::get_power_profile();
-    if (Plugin->getFlowMode() == xdp::RTUtil::DEVICE && power_profile_en) {
-      for (auto device : platform->get_device_range()) {
-        if (!device->is_active())
-          continue;
-
-        /*
-         * For multi xclbin host code
-         * start thread only once
-         */
-        bool device_has_power_profiling = false;
-        for (auto& thread: PowerProfileList) {
-          if (thread->get_target_device_name() == device->get_unique_name()) {
-            device_has_power_profiling = true;
-            break;
-          }
-        }
-        if (device_has_power_profiling)
-          continue;
-
-        /*
-         * Initialize Power Profiling Threads
-         */
-          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
-          auto& filename = power_profile->get_output_file_name();
-          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
-          PowerProfileList.push_back(std::move(power_profile));
-      }
-    }
 
     mProfileRunning = true;
   }
