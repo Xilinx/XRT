@@ -3435,6 +3435,7 @@ pending_cmds_reset(void)
  * @cores: list of execution cores (devices)
  * @intc: boolean flag set when there is a pending interrupt for command completion
  * @poll: number of running commands in polling mode
+ * @scheduler_lock: lock to protect threads access cores list
  */
 struct xocl_scheduler {
 	struct task_struct	  *scheduler_thread;
@@ -3449,6 +3450,7 @@ struct xocl_scheduler {
 
 	unsigned int		   intc; /* pending intr shared with isr, word aligned atomic */
 	unsigned int		   poll; /* number of cmds to poll */
+	struct mutex		   scheduler_lock;
 };
 
 static struct xocl_scheduler scheduler0;
@@ -3464,11 +3466,14 @@ scheduler_reset(struct xocl_scheduler *xs)
 	xs->poll = 0;
 	xs->intc = 0;
 
+	mutex_lock(&xs->scheduler_lock);
 	list_for_each_safe(pos, next, &xs->cores) {
 		struct exec_core *exec =
 			list_entry(pos, struct exec_core, core_list);
+
 		exec_reset_cmds(exec);
 	}
+	mutex_unlock(&xs->scheduler_lock);
 }
 
 static void
@@ -3539,10 +3544,14 @@ scheduler_service_cores(struct xocl_scheduler *xs)
 	struct list_head *pos, *next;
 
 	SCHED_DEBUGF("-> %s\n", __func__);
+
+	mutex_lock(&xs->scheduler_lock);
 	list_for_each_safe(pos, next, &xs->cores) {
 		struct exec_core *exec = list_entry(pos, struct exec_core, core_list);
 		exec_service_cmds(exec);
 	}
+	mutex_unlock(&xs->scheduler_lock);
+
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
@@ -3747,6 +3756,8 @@ init_scheduler_thread(struct xocl_scheduler *xs)
 	if (xs->use_count++)
 		return 0;
 
+	mutex_init(&xs->scheduler_lock);
+
 	init_waitqueue_head(&xs->wait_queue);
 	INIT_LIST_HEAD(&xs->cores);
 	scheduler_reset(xs);
@@ -3782,6 +3793,8 @@ fini_scheduler_thread(struct xocl_scheduler *xs)
 
 	// reclaim memory for allocate command objects
 	cmd_list_delete();
+
+	mutex_destroy(&xs->scheduler_lock);
 
 	return retval;
 }
@@ -4838,7 +4851,11 @@ static int mb_scheduler_probe(struct platform_device *pdev)
 		goto err;
 
 	init_scheduler_thread(&scheduler0);
+
+	mutex_lock(&scheduler0.scheduler_lock);
 	list_add_tail(&exec->core_list, &scheduler0.cores);
+	mutex_unlock(&scheduler0.scheduler_lock);
+
 	platform_set_drvdata(pdev, exec);
 
 	DRM_INFO("command scheduler started\n");
@@ -4860,7 +4877,10 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	unsigned int i;
 
 	SCHED_DEBUGF("-> %s\n", __func__);
+	mutex_lock(&scheduler0.scheduler_lock);
 	exec_reset_cmds(exec);
+	mutex_unlock(&scheduler0.scheduler_lock);
+
 	fini_scheduler_thread(exec_scheduler(exec));
 	destroy_workqueue(exec->completion_wq);
 
@@ -4873,7 +4893,15 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	mutex_destroy(&exec->exec_lock);
 
 	user_sysfs_destroy_kds(pdev);
+
+	/*
+	 * fini_scheduler_thread may not stop thread with 1+ exec_cores.
+	 * this exec will be freed, using lock to avoid race condition.
+	 */
+	mutex_lock(&scheduler0.scheduler_lock);
 	exec_destroy(exec);
+	mutex_unlock(&scheduler0.scheduler_lock);
+
 	atomic_set(&xdev->outstanding_execs, 0);
 	platform_set_drvdata(pdev, NULL);
 
