@@ -4877,7 +4877,10 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	unsigned int i;
 
 	SCHED_DEBUGF("-> %s\n", __func__);
+	mutex_lock(&scheduler0.scheduler_lock);
 	exec_reset_cmds(exec);
+	mutex_unlock(&scheduler0.scheduler_lock);
+
 	fini_scheduler_thread(exec_scheduler(exec));
 	destroy_workqueue(exec->completion_wq);
 
