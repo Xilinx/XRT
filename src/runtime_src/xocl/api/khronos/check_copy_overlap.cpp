@@ -55,7 +55,7 @@ check_copy_overlap(const size_t src_offset[3],
           (dst_start <= src_start && src_start < dst_end) )
         overlap = true;
     }
-    if (region[2] > 1)
+    if (region[2]>1 && row_pitch)
     {
       size_t src_height = slice_pitch / row_pitch;
       size_t dst_height = slice_pitch / row_pitch;
@@ -77,5 +77,3 @@ check_copy_overlap(const size_t src_offset[3],
 }
 
 } // namespace
-
-

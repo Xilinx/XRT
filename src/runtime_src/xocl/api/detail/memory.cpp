@@ -23,39 +23,6 @@
 #include <string>
 #include <map>
 
-namespace {
-inline const void*
-get_host_ptr(cl_mem_flags flags, const void* host_ptr)
-{
-  return (host_ptr && (flags & CL_MEM_EXT_PTR_XILINX))
-    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->host_ptr
-    : host_ptr;
-}
-
-inline unsigned int
-get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
-{
-  return (host_ptr && (flags & CL_MEM_EXT_PTR_XILINX))
-    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->flags
-    : 0;
-}
-
-inline const cl_kernel
-get_xlnx_ext_kernel(cl_mem_flags flags, const void* host_ptr)
-{
-  return (host_ptr && (flags & CL_MEM_EXT_PTR_XILINX))
-    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->kernel
-    : 0;
-}
-
-inline unsigned int
-get_ocl_flags(cl_mem_flags flags)
-{
-  return ( flags & ~(CL_MEM_EXT_PTR_XILINX | CL_MEM_PROGVAR) );
-}
-
-} // namespace
-
 namespace xocl { namespace detail {
 
 namespace memory {
@@ -128,7 +95,7 @@ validHostPtrOrError(cl_mem_flags flags, const void* host_ptr)
   // CL_INVALID_HOST_PTR if host_ptr is NULL and CL_MEM_EXT_PTR_XILINX is set
   // In this case host_ptr is actually a ptr to some struct
   if (!host_ptr && (flags & CL_MEM_EXT_PTR_XILINX))
-    throw error(CL_INVALID_HOST_PTR,"host_ptr may not be nullptr when CL_ME_EXT_PTR_XILINX is specified");
+    throw error(CL_INVALID_HOST_PTR,"host_ptr may not be nullptr when CL_MEM_EXT_PTR_XILINX is specified");
 
   // CL_INVALID_HOST_PTR if host_ptr is NULL and CL_MEM_USE_HOST_PTR
   // or CL_MEM_COPY_HOST_PTR are set in flags or if host_ptr is not
@@ -139,13 +106,17 @@ validHostPtrOrError(cl_mem_flags flags, const void* host_ptr)
     throw error(CL_INVALID_HOST_PTR,"bad host_ptr of mem use flags");
 
   if (auto ext_flags = get_xlnx_ext_flags(flags,host_ptr)) {
-    return;
-    if (get_xlnx_ext_kernel(ext_flags,host_ptr) && !(ext_flags & XCL_MEM_TOPOLOGY)) {
+    if (!get_xlnx_ext_kernel(flags,host_ptr) && !(ext_flags & XCL_MEM_TOPOLOGY)) {
       auto ddr_bank_mask = XCL_MEM_DDR_BANK0 | XCL_MEM_DDR_BANK1 | XCL_MEM_DDR_BANK2 | XCL_MEM_DDR_BANK3;
       // Test that only one bank flag is set
       if (std::bitset<12>(ext_flags & ddr_bank_mask).count() > 1)
        throw xocl::error(CL_INVALID_VALUE,"Multiple bank flags specified");
     }
+    if (bool(ubuf) && bool(ext_flags & XCL_MEM_EXT_P2P_BUFFER))
+       throw error(CL_INVALID_HOST_PTR,"host_ptr with P2P buffer flags specified");
+
+    if (bool(ubuf) && bool(ext_flags & XCL_MEM_EXT_HOST_ONLY))
+       throw error(CL_INVALID_HOST_PTR,"host_ptr with HOST_ONLY buffer flags specified");
   }
 }
 
@@ -259,11 +230,38 @@ validOrError(const cl_mem mem)
 }
 
 void
+validOrErrorWithHostBuffer(const cl_mem mem)
+{
+  validOrError(mem);
+
+  if (xocl(mem)->no_host_memory())
+    throw error(CL_INVALID_MEM_OBJECT,"mem has no host buffer");
+}
+
+void
 validOrError(const std::vector<cl_mem>& mem_objects)
+{
+  std::for_each(mem_objects.begin(),mem_objects.end(),[](const cl_mem mem){validOrError(mem); });
+}
+
+void
+validOrErrorWithHostBuffer(const std::vector<cl_mem>& mem_objects)
+{
+  std::for_each(mem_objects.begin(),mem_objects.end(),[](const cl_mem mem){validOrErrorWithHostBuffer(mem); });
+}
+
+void
+validHostBufferOrError(const cl_mem mem)
+{
+  if (xocl(mem)->no_host_memory())
+    throw error(CL_INVALID_MEM_OBJECT,"mem has no host side buffer");
+}
+
+void
+validHostBufferOrError(const std::vector<cl_mem>& mem_objects)
 {
   std::for_each(mem_objects.begin(),mem_objects.end(),[](cl_mem mem){validOrError(mem); });
 }
-
 
 } // memory
 
