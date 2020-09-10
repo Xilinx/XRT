@@ -22,6 +22,7 @@
 #ifndef _WIN32
   #include <openssl/cms.h>
   #include <openssl/pem.h>
+  #include <openssl/err.h>
 #endif
 
 #ifdef _WIN32
@@ -31,7 +32,7 @@
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
-static bool 
+static bool
 copyFile(const std::string & _src, const std::string _dest)
 {
   XUtil::TRACE(XUtil::format("Copying file '%s' to '%s'", _src.c_str(), _dest.c_str()).c_str());
@@ -493,6 +494,9 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
   sk_X509_push(ca_stack, x509);
 
   if (!PKCS7_verify(p7, ca_stack, store, bmImage, NULL, PKCS7_DETACHED |  PKCS7_BINARY | PKCS7_NOINTERN)) {
+    long err = ERR_peek_last_error();
+    const char *buffer = ERR_reason_error_string(err);
+    std::cout << "ERROR: " << buffer << std::endl;
     std::cout << "Signed xclbin archive verification [FAILED]" << std::endl;
   } else {
     std::cout << "Signed xclbin archive verification [SUCCESSFUL]" << std::endl;
