@@ -1533,7 +1533,7 @@ int xocl_sync_bo_callback_ioctl(struct drm_device *dev,
 		}
 		if (args->cb_data) {
 			cb_data = kzalloc(sizeof(struct free_sgt_cb), GFP_KERNEL);
-			if (cb_data) {
+			if (!cb_data) {
 				ret = -ENOMEM;
 				goto out;
 			}

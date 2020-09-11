@@ -375,6 +375,11 @@ static bool is_drv_v2(const std::string& driver)
   return ((driver.compare("xmgmt") == 0) || (driver.compare("xuser") == 0));
 }
 
+static bool is_drv_mgmt(const std::string& driver)
+{
+  return ((driver.compare("xmgmt") == 0) || (driver.compare("xclmgmt") == 0));
+}
+
 void
 pci_device::
 sysfs_get(const std::string& subdev, const std::string& entry,
@@ -483,7 +488,7 @@ open(const std::string& subdev, int flag)
 }
 
 pci_device::
-pci_device(const std::string& sysfs) : sysfs_name(sysfs)
+pci_device(const std::string& drv_name, const std::string& sysfs) : sysfs_name(sysfs)
 {
   uint16_t dom, b, d, f;
   if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &dom, &b, &d, &f) < 4)
@@ -504,6 +509,7 @@ pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     (vendor_id != AWS_ID) && (vendor_id != ARISTA_ID))
     return;
   sysfs_get<uint16_t>("", "device", err, device_id, INVALID_ID);
+  mgmt = is_drv_mgmt(drv_name);
 
   if (is_mgmt())
     sysfs_get("", "instance", err, instance, static_cast<uint32_t>(INVALID_ID));
@@ -720,7 +726,7 @@ lookup_peer_dev()
 class pci_device_v2 : public pci_device
 {
 public:
-  pci_device_v2(const std::string& sysfs_name) : pci_device(sysfs_name)
+  pci_device_v2(const std::string& drv_name, const std::string& sysfs_name) : pci_device(drv_name, sysfs_name)
   {
     std::string err;
     sysfs_get<bool>("", "ready", err, is_ready, false);
@@ -976,9 +982,9 @@ private:
     for (auto& path : vec) {
       std::shared_ptr<pci_device> pf;
       if (!is_drv_v2(driver))
-        pf = std::make_shared<pci_device>(path.filename().string());
+        pf = std::make_shared<pci_device>(driver, path.filename().string());
       else
-        pf = std::make_shared<pci_device_v2>(path.filename().string());
+        pf = std::make_shared<pci_device_v2>(driver, path.filename().string());
       if(!pf || pf->domain == INVALID_ID)
         continue;
 
