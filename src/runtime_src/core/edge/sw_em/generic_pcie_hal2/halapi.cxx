@@ -48,15 +48,26 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   info.mNumCDMA = 0;
 #endif
 
-  std::string deviceName("edge");
+  std::string deviceName("");
   std::ifstream mVBNV;
   mVBNV.open("/etc/xocl.txt");
   if (mVBNV.is_open()) {
     mVBNV >> deviceName;
   }
   mVBNV.close();
-  std::size_t length = deviceName.copy(info.mName, deviceName.length(), 0);
-  info.mName[length] = '\0';
+
+  if (deviceName.empty()) {
+    mVBNV.open("platform_desc.txt");
+    if (mVBNV.is_open()) {
+      mVBNV >> deviceName;
+    }
+    mVBNV.close();
+  }
+
+  if (!deviceName.empty()) {
+    std::size_t length = deviceName.copy(info.mName, deviceName.length(), 0);
+    info.mName[length] = '\0';
+  }
 
   std::list<xclemulation::DDRBank> DDRBankList;
   xclemulation::DDRBank bank;
@@ -370,6 +381,22 @@ unsigned xclProbe()
   if(devicesInfo.size() == 0)
     return 1;
 
+  std::string deviceName = "";
+  std::ifstream mVBNV;
+  mVBNV.open("/etc/xocl.txt");
+  if (mVBNV.is_open()) {
+    mVBNV >> deviceName;
+  }
+  mVBNV.close();
+
+  if(deviceName.empty()) {
+    mVBNV.open("platform_desc.txt");
+    if (mVBNV.is_open()) {
+      mVBNV >> deviceName;
+    }
+    mVBNV.close();
+  }  
+
   for(auto &it: devicesInfo)
   {
     xclDeviceInfo2 info = std::get<0>(it);
@@ -377,7 +404,10 @@ unsigned xclProbe()
     bool bUnified = std::get<2>(it);
     bool bXPR = std::get<3>(it);
     FeatureRomHeader fRomHeader = std::get<4>(it);
-
+    if (!deviceName.empty()) {
+      std::size_t length = deviceName.copy(info.mName, deviceName.length(), 0);
+      info.mName[length] = '\0';
+    }
     xclcpuemhal2::CpuemShim *handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList, bUnified, bXPR, fRomHeader);
     xclcpuemhal2::devices[deviceIndex++] = handle;
   }

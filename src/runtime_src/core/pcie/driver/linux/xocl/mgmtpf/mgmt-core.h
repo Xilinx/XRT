@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2017 Xilinx, Inc.
+ * Copyright (C) 2017-2020 Xilinx, Inc.
  *
  * Author(s):
  * Sonal Santan <sonal.santan@xilinx.com>
@@ -148,6 +148,9 @@ struct xclmgmt_dev {
 
 	/* save config for pci reset */
 	u32 saved_config[8][16];
+
+	/* save pci data */
+	struct xocl_pci_info pci_stat;
 
 	/* programming shell flag */
 	u32 rp_program;

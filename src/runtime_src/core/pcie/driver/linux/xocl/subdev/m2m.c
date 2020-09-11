@@ -54,6 +54,17 @@ struct xocl_m2m {
 	u32			m2m_intr_num;
 };
 
+static int get_host_bank(struct platform_device *pdev, u64 *addr, u64 *size)
+{
+	/* hard code address and size for now. Both addr and size should
+	 * be from partition metadata.
+	 */
+	*addr = 0x2000000000;
+	*size = 0x400000000;
+
+	return 0;
+}
+
 static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,
 	uint64_t dst_paddr, uint32_t src_bo_hdl, uint32_t dst_bo_hdl,
 	uint32_t size)
@@ -62,6 +73,7 @@ static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,
 	struct xrt_cu *xcu = &m2m->m2m_cu;
 	struct start_copybo_cu_cmd cmd;
 
+	M2M_DBG(m2m, "dst %llx, src %llx", dst_paddr, src_paddr);
 	/* Note: dst_paddr has been adjusted with offset */
 	if ((dst_paddr % KDMA_BLOCK_SIZE) ||
 	    (src_paddr % KDMA_BLOCK_SIZE) ||
@@ -168,6 +180,7 @@ static struct attribute_group m2m_attr_group = {
 
 static struct xocl_m2m_funcs m2m_ops = {
 	.copy_bo = copy_bo,
+	.get_host_bank = get_host_bank,
 };
 
 struct xocl_drv_private m2m_priv = {

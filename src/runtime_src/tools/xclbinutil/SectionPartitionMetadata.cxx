@@ -16,6 +16,8 @@
 
 #include "SectionPartitionMetadata.h"
 #include "DTC.h"
+#include <algorithm>
+#include <boost/algorithm/string/replace.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 #include "XclBinUtilities.h"
@@ -310,7 +312,8 @@ SchemaTransformToDTC_addressable_endpoint( const std::string _sEndPointName,
       throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".register_abstraction_name' is invalid: '" + sAbstractName + "'");
     }
 
-    std::string sCompLine1 = tokens[0] + "," + tokens[1] + "-" + tokens[3];
+    // Example Format: "xilinx.com,reg_abs-xdma_msix-1.0"
+    std::string sCompLine1 = tokens[0] + "," + tokens[1] + "-" + tokens[2] + "-" + tokens[3];
     boost::property_tree::ptree ptCompLine1;
     ptCompLine1.put("", sCompLine1.c_str());
 
@@ -528,6 +531,8 @@ SchemaTransformToPM_addressable_endpoint( const std::string _sEndPointName,
   SchemaTransform_nameValue("pcie_physical_function", "", false  /*required*/, _ptOriginal, _ptTransformed);
 
   // -- Transform 'compatible' to 'register_abstraction_name'
+  // Example: (new)  xilinx.com,reg_abs-xdma_msix-1.0 xdma_msix
+  //          (old)  xilinx.com,reg_abs-1.0           xdma_msix
   if (_ptOriginal.find("compatible") != _ptOriginal.not_found()) {
     std::vector<std::string> compatableVector = as_vector<std::string>(_ptOriginal, "compatible");
     if (compatableVector.size() != 2) {
@@ -535,12 +540,21 @@ SchemaTransformToPM_addressable_endpoint( const std::string _sEndPointName,
     }
 
     std::string registerAbstraction = compatableVector[0];
-    std::string seachStr = ",";
-    registerAbstraction.replace(registerAbstraction.find(seachStr),seachStr.length(),":");
+    std::string searchStr = ",";
+    registerAbstraction.replace(registerAbstraction.find(searchStr),searchStr.length(),":");
+    // Example: (new)  xilinx.com:reg_abs-xdma_msix-1.0 xdma_msix
+    //          (old)  xilinx.com:reg_abs-1.0           xdma_msix
 
-    seachStr = "-";
-    std::string replaceStr = ":" + compatableVector[1] + ":";
-    registerAbstraction.replace(registerAbstraction.find(seachStr),seachStr.length(),replaceStr);
+    searchStr = "-";
+    std::string replaceStr = ":";                 // Assume new syntax
+
+    // Determine if an older format was used 
+    size_t dashCount = std::count(registerAbstraction.begin(), registerAbstraction.end(), '-');
+    if (dashCount == 1) 
+      replaceStr = ":" + compatableVector[1] + ":";
+
+    boost::replace_all(registerAbstraction,searchStr,replaceStr);
+    // Example:  xilinx.com:reg_abs:xdma_msix:1.0 xdma_msix
 
     _ptTransformed.put("register_abstraction_name", registerAbstraction.c_str());
   }

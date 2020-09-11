@@ -53,7 +53,8 @@
 namespace xdp {
 
   ComputeUnitInstance::ComputeUnitInstance(int32_t i, const std::string &n)
-    : index(i)
+    : index(i),
+      amId(-1)
   {
     std::string fullName(n);
     size_t pos = fullName.find(':');
@@ -338,14 +339,14 @@ namespace xdp {
             cuObj = cu.second;
             cuId = cu.second->getIndex();
             mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
-            cuObj->addMonitor(mon);
+            devInfo->amList.push_back(mon); 
+            cuObj->setAccelMon(devInfo->amList.size()-1);
             if(debugIpData->m_properties & XAM_STALL_PROPERTY_MASK) {
               cuObj->setStallEnabled(true);
             }
             break;
           }
         }
-        if(mon) { devInfo->amList.push_back(mon); }
       } else if(debugIpData->m_type == AXI_MM_MONITOR) {
         // parse name to find CU Name and Memory
         size_t pos = name.find('/');
@@ -369,14 +370,13 @@ namespace xdp {
           }
         }
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
+        devInfo->aimList.push_back(mon);
         if(cuObj) {
-          cuObj->addMonitor(mon);
-          cuObj->setDataTransferEnabled(true);
+          cuObj->addAIM(devInfo->aimList.size()-1);
         } else if(0 != monCuName.compare("shell")) {
           // If not connected to CU and not a shell monitor, then a floating monitor
           devInfo->hasFloatingAIM = true;
         }
-        devInfo->aimList.push_back(mon);
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
         size_t pos = name.find('/');
@@ -408,17 +408,16 @@ namespace xdp {
         }
 
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
+        devInfo->asmList.push_back(mon);
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
         }
         if(cuObj) {
-          cuObj->addMonitor(mon);
-          cuObj->setStreamEnabled(true);
+          cuObj->addASM(devInfo->asmList.size()-1);
         } else if(0 != monCuName.compare("shell")) {
           // If not connected to CU and not a shell monitor, then a floating monitor
           devInfo->hasFloatingASM = true;
         }
-        devInfo->asmList.push_back(mon);
       } else if(debugIpData->m_type == AXI_NOC) {
         uint8_t readTrafficClass  = debugIpData->m_properties >> 2;
         uint8_t writeTrafficClass = debugIpData->m_properties & 0x3;

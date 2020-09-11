@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  * 		Lizhi Hou <lizhi.hou@xilinx.com>
@@ -107,6 +107,7 @@ struct xocl_dev	{
 
 	u32			flags;
 	struct xocl_cma_bank  *cma_bank;
+	struct xocl_pci_info pci_stat;
 };
 
 /**

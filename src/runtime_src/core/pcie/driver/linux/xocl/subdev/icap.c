@@ -663,7 +663,7 @@ static int calibrate_mig(struct icap *icap)
 		return -ETIMEDOUT;
 	}
 
-	ICAP_INFO(icap, "took %ds", i/2);
+	ICAP_DBG(icap, "took %ds", i/2);
 	return 0;
 }
 
@@ -994,6 +994,12 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 				load_sched = true;
 				err = 0;
 			}
+
+			mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf,
+					PARTITION_METADATA);
+			if (mbHeader)
+				xocl_fdt_get_ert_fw_ver(xdev,
+					fw_buf + mbHeader->m_sectionOffset);
 		}
 	}
 
@@ -2643,6 +2649,7 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 	long err = 0;
 	uint64_t section_size = 0, sect_sz = 0;
 	void **target = NULL;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	if (memcmp(xclbin->m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)))
 		return -EINVAL;
@@ -2702,6 +2709,23 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 		goto done;
 	}
 
+	if (kind == MEM_TOPOLOGY || kind == ASK_GROUP_TOPOLOGY) {
+		struct mem_topology *mem_topo = *target;
+		u64 hbase, hsz;
+		int i;
+
+		for (i = 0; i< mem_topo->m_count; ++i) {
+			if (!IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag) ||
+			    mem_topo->m_mem_data[i].m_used)
+				continue;
+
+			if (!xocl_m2m_host_bank(xdev, &hbase, &hsz)) {
+				mem_topo->m_mem_data[i].m_used = 1;
+				mem_topo->m_mem_data[i].m_base_address = hbase;
+				mem_topo->m_mem_data[i].m_size = (hsz >> 10);
+			}
+		}
+	}
 done:
 	if (err) {
 		if (target && *target) {
@@ -3480,8 +3504,7 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag)){
 			/* m_size in KB, convert Byte to KB */
 			mem_topo->m_mem_data[i].m_size = (range>>10);
-		} else
-			continue;
+		}
 	}
 
 	if (count < size - offset)
@@ -4017,6 +4040,11 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		icap->rp_sche_bin_len = section->m_sectionSize;
 	}
 
+	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
+	if (section) {
+		xocl_fdt_get_ert_fw_ver(xdev,
+			(char *)axlf + section->m_sectionOffset);
+	}
 	vfree(axlf);
 
 	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);

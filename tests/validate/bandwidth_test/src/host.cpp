@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 
   int NUM_KERNEL ;                                                           
   std::string path = argv[1];
-  std::string filename = "/bandwidth.json";
+  std::string filename = "/platform.json";
   std::string platform_json = path+filename;
 
   try{
@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
       std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
       msg += e.what();
       msg += ").";
-      throw std::runtime_error(msg);
+      std::cout << msg;
     }
 
   double DATA_SIZE = 1024 * 1024 * 16; // 16 MB
