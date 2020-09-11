@@ -346,15 +346,29 @@ public:
   }
 };
 
+// class buffer_dbuf - device only buffer
+//
+class buffer_dbuf : public bo_impl
+{
+public:
+  buffer_dbuf(xclDeviceHandle dhdl, xclBufferHandle bhdl, size_t sz)
+    : bo_impl(dhdl, bhdl, sz)
+  {}
+
+};
+
 class buffer_nodma : public bo_impl
 {
   buffer_kbuf m_host_only;
-  buffer_kbuf m_device_only;
+  buffer_dbuf m_device_only;
 
 public:
   buffer_nodma(xclDeviceHandle dhdl, xclBufferHandle hbuf, xclBufferHandle dbuf, size_t sz)
     : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
-  {}
+  {
+    device = xrt_core::get_userpf_device(dhdl);
+    handle = dbuf;
+  }
 
   virtual void*
   get_hbuf() const

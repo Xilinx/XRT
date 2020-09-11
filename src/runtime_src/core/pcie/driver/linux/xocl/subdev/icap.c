@@ -663,7 +663,7 @@ static int calibrate_mig(struct icap *icap)
 		return -ETIMEDOUT;
 	}
 
-	ICAP_INFO(icap, "took %ds", i/2);
+	ICAP_DBG(icap, "took %ds", i/2);
 	return 0;
 }
 
@@ -994,6 +994,12 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 				load_sched = true;
 				err = 0;
 			}
+
+			mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf,
+					PARTITION_METADATA);
+			if (mbHeader)
+				xocl_fdt_get_ert_fw_ver(xdev,
+					fw_buf + mbHeader->m_sectionOffset);
 		}
 	}
 
@@ -1456,12 +1462,6 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 
 		/* NOTE: Only support 64 instences in subdev framework */
 
-		/* TODO: use HLS CU as default.
-		 * don't know how to distinguish plram CU and normal CU
-		 */
-		info.model = XCU_HLS;
-		info.num_res = subdev_info.num_res;
-
 		/* ip_data->m_name format "<kernel name>:<instance name>",
 		 * where instance name is so called CU name.
 		 */
@@ -1471,10 +1471,11 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		strncpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
 		info.kname[sizeof(info.kname)-1] = '\0';
 		strncpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
-		info.kname[sizeof(info.kname)-1] = '\0';
+		info.iname[sizeof(info.kname)-1] = '\0';
 
 		info.inst_idx = i;
 		info.addr = ip->m_base_address;
+		info.num_res = subdev_info.num_res;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
 		info.protocol = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
 		info.intr_id = (ip->properties & IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
@@ -1485,10 +1486,8 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		subdev_info.data_len = sizeof(info);
 		subdev_info.override_idx = info.inst_idx;
 		err = xocl_subdev_create(xdev, &subdev_info);
-		if (err) {
-			//ICAP_ERR(icap, "can't create CU subdev");
-			break;
-		}
+		if (err)
+			ICAP_ERR(icap, "Create CU %s failed. Skip", ip->m_name);
 	}
 
 	return err;
@@ -2650,6 +2649,7 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 	long err = 0;
 	uint64_t section_size = 0, sect_sz = 0;
 	void **target = NULL;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	if (memcmp(xclbin->m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)))
 		return -EINVAL;
@@ -2709,6 +2709,23 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 		goto done;
 	}
 
+	if (kind == MEM_TOPOLOGY || kind == ASK_GROUP_TOPOLOGY) {
+		struct mem_topology *mem_topo = *target;
+		u64 hbase, hsz;
+		int i;
+
+		for (i = 0; i< mem_topo->m_count; ++i) {
+			if (!IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag) ||
+			    mem_topo->m_mem_data[i].m_used)
+				continue;
+
+			if (!xocl_m2m_host_bank(xdev, &hbase, &hsz)) {
+				mem_topo->m_mem_data[i].m_used = 1;
+				mem_topo->m_mem_data[i].m_base_address = hbase;
+				mem_topo->m_mem_data[i].m_size = (hsz >> 10);
+			}
+		}
+	}
 done:
 	if (err) {
 		if (target && *target) {
@@ -3487,8 +3504,7 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag)){
 			/* m_size in KB, convert Byte to KB */
 			mem_topo->m_mem_data[i].m_size = (range>>10);
-		} else
-			continue;
+		}
 	}
 
 	if (count < size - offset)
@@ -4024,6 +4040,11 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		icap->rp_sche_bin_len = section->m_sectionSize;
 	}
 
+	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
+	if (section) {
+		xocl_fdt_get_ert_fw_ver(xdev,
+			(char *)axlf + section->m_sectionOffset);
+	}
 	vfree(axlf);
 
 	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);

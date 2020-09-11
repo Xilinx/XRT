@@ -22,12 +22,12 @@
 #include "core/common/message.h"
 #include "core/edge/user/shim.h"
 #include "xaiengine/xlnx-ai-engine.h"
+#include <sys/ioctl.h>
+#include <sys/mman.h>
 #endif
 
 #include <iostream>
 #include <cerrno>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
 
 namespace zynqaie {
 
@@ -35,6 +35,13 @@ XAie_InstDeclare(DevInst, &ConfigPtr);   // Declare global device instance
 
 Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 {
+    XAie_SetupConfig(ConfigPtr, HW_GEN, XAIE_BASE_ADDR, XAIE_COL_SHIFT,
+        XAIE_ROW_SHIFT, XAIE_NUM_COLS, XAIE_NUM_ROWS,
+        XAIE_SHIM_ROW, XAIE_RESERVED_TILE_ROW_START,
+        XAIE_RESERVED_TILE_NUM_ROWS, XAIE_AIE_TILE_ROW_START,
+        XAIE_AIE_TILE_NUM_ROWS);
+
+#ifndef __AIESIM__
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
     /* TODO get partition id and uid from XCLBIN or PDI */
@@ -46,13 +53,8 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
         throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd");
     fd = aiefd.fd;
 
-    XAie_SetupConfig(ConfigPtr, HW_GEN, XAIE_BASE_ADDR, XAIE_COL_SHIFT,
-                       XAIE_ROW_SHIFT, XAIE_NUM_COLS, XAIE_NUM_ROWS,
-                       XAIE_SHIM_ROW, XAIE_MEM_TILE_ROW_START,
-                       XAIE_MEM_TILE_NUM_ROWS, XAIE_AIE_TILE_ROW_START,
-                       XAIE_AIE_TILE_NUM_ROWS);
-
     ConfigPtr.PartProp.Handle = fd;
+#endif
 
     AieRC rc;
     if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
@@ -107,7 +109,9 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 
 Aie::~Aie()
 {
+#ifndef __AIESIM__
     close(fd);
+#endif
 }
 
 XAie_DevInst* Aie::getDevInst()
@@ -211,7 +215,11 @@ submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum 
   BD bd = dmap->dma_chan[chan].idle_bds.front();
   dmap->dma_chan[chan].idle_bds.pop();
   prepare_bd(bd, bo);
+#ifndef __AIESIM__
   XAie_DmaSetAddrLen(&(dmap->desc), (uint64_t)(bd.vaddr + offset), size);
+#else
+  XAie_DmaSetAddrLen(&(dmap->desc), (uint64_t)(xrtBOAddress(bo) + offset), size);
+#endif
 
   /* Set BD lock */
   auto acq_lock = XAie_LockInit(bd.bd_num, XAIE_LOCK_WITH_NO_VALUE);
@@ -246,6 +254,7 @@ void
 Aie::
 prepare_bd(BD& bd, xrtBufferHandle& bo)
 {
+#ifndef __AIESIM__
   auto buf_fd = xrtBOExport(bo);
   if (buf_fd == XRT_NULL_BO_EXPORT)
     throw xrt_core::error(-errno, "Sync AIE Bo: fail to export BO.");
@@ -259,17 +268,20 @@ prepare_bd(BD& bd, xrtBufferHandle& bo)
   bd.size = bosize;
 
   bd.vaddr = reinterpret_cast<char *>(mmap(NULL, bosize, PROT_READ | PROT_WRITE, MAP_SHARED, buf_fd, 0));
+#endif
 }
 
 void
 Aie::
 clear_bd(BD& bd)
 {
+#ifndef __AIESIM__
   munmap(bd.vaddr, bd.size);
   bd.vaddr = nullptr;
   auto ret = ioctl(fd, AIE_DETACH_DMABUF_IOCTL, bd.buf_fd);
   if (ret)
     throw xrt_core::error(-errno, "Sync AIE Bo: fail to detach DMA buf.");
+#endif
 }
 
 }

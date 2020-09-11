@@ -132,7 +132,7 @@ is_ap_ctrl_chain(key k, const std::string& deviceName, const std::string& cu);
 
 // All devices have same buf size
 uint64_t
-get_ts2mm_buf_size();
+get_ts2mm_buf_size(bool isAIETrace);
 
 //
 // Device

@@ -138,7 +138,8 @@ namespace xclcpuemhal2 {
 
 
       ~CpuemShim();
-      CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, bool bXPR, FeatureRomHeader &featureRom );
+      CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, 
+        bool bXPR, FeatureRomHeader &featureRom, platformData& platform_data);
 
       static CpuemShim *handleCheck(void *handle);
       bool isGood() const;
@@ -165,6 +166,10 @@ namespace xclcpuemhal2 {
       }
       struct exec_core* getExecCore() { return mCore; }
       SWScheduler* getScheduler() { return mSWSch; }
+
+      // New API's for m2m and no-dma
+      bool isM2MEnabled();
+      bool isNoDMAEnabled();
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;
@@ -239,6 +244,7 @@ namespace xclcpuemhal2 {
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
+      platformData mPlatformData;
 
       std::set<unsigned int > mImportedBOs;
       exec_core* mCore;

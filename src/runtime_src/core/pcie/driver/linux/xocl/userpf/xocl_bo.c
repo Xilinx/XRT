@@ -310,7 +310,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	bool xobj_inited = false;
 	int err = 0;
 
-	BO_DEBUG("New create bo flags:%x", user_flags);
+	BO_DEBUG("New create bo flags:%x, type %x", user_flags, bo_type);
 	if (!size)
 		return ERR_PTR(-EINVAL);
 
@@ -350,14 +350,24 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	}
 
 	mutex_lock(&drm_p->mm_lock);
+	/* Assume there is only 1 HOST bank. We ignore the  memidx
+	 * for host bank. This is required for supporting No flag
+	 * BO on NoDMA platform. We may remove this logic if there is
+	 * more than 1 HOST bank in the future.
+	 */
+	if (xobj->flags & XOCL_CMA_MEM) {
+		if (drm_p->cma_bank_idx < 0) {
+			err = -EINVAL;
+			goto failed;
+		}
+		memidx = drm_p->cma_bank_idx;
+	}
+
+	if (memidx == drm_p->cma_bank_idx)
+		xobj->flags |= XOCL_CMA_MEM;
+
 	/* Attempt to allocate buffer on the requested DDR */
 	xocl_xdev_dbg(xdev, "alloc bo from bank%u", memidx);
-
-	/* Check the mem index to see if it's MEM_HOST */
-	if ((xobj->flags & XOCL_CMA_MEM) && !is_cma_bank(drm_p, memidx)) {
-		err = -EINVAL;
-		goto failed;
-	}
 
 	err = xocl_mm_insert_node_range(drm_p, memidx, xobj->mm_node,
 		xobj->base.size);
@@ -450,17 +460,20 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	struct drm_xocl_create_bo *args = data;
-	unsigned ddr = xocl_bo_ddr_idx(args->flags);
+	unsigned ddr = 0;
 	unsigned bo_type = xocl_bo_type(args->flags);
 	struct mem_topology *topo = NULL;
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
-
 	if (IS_ERR(xobj)) {
-		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", ddr, args->size);
+		DRM_ERROR("object creation failed idx %d, size 0x%llx\n",
+			xocl_bo_ddr_idx(args->flags), args->size);
 		return PTR_ERR(xobj);
 	}
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
+
+	ddr = (xobj->flags & XOCL_CMA_MEM) ? drm_p->cma_bank_idx :
+		xocl_bo_ddr_idx(args->flags);
 
 	if (xobj->flags == XOCL_BO_P2P) {
 		/*
@@ -550,6 +563,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		goto out_free;
 	xocl_describe(xobj);
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
+
 	return ret;
 
 out_free:
@@ -792,7 +806,6 @@ int xocl_info_bo_ioctl(struct drm_device *dev,
 	struct drm_xocl_info_bo *args = data;
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
 								args->handle);
-
 	if (!gem_obj) {
 		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
 		return -ENOENT;

@@ -49,6 +49,9 @@ set(XRT_XDP_PROFILE_DEVICE_OFFLOAD_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profi
 set(XRT_XDP_PROFILE_DEVICE_OFFLOAD_WRITER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/device_trace")
 set(XRT_XDP_PROFILE_OPENCL_DEVICE_OFFLOAD_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/device_offload/opencl")
 set(XRT_XDP_PROFILE_HAL_DEVICE_OFFLOAD_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/device_offload/hal")
+set(XRT_XDP_PROFILE_DEVICE_AIE_TRACE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/aie_trace")
+set(XRT_XDP_AIE_TRACE_PLUGIN_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/aie_trace")
+set(XRT_XDP_AIE_TRACE_WRITER_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/aie_trace")
 set(XRT_XDP_POWER_PROFILE_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/power")
 set(XRT_XDP_POWER_PROFILE_WRITER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/power")
 
@@ -205,6 +208,15 @@ file(GLOB XRT_XDP_POWER_PROFILE_PLUGIN_FILES
   "${XRT_XDP_POWER_PROFILE_WRITER_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_AIE_TRACE_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_DEVICE_AIE_TRACE_DIR}/*.h"
+  "${XRT_XDP_PROFILE_DEVICE_AIE_TRACE_DIR}/*.cpp"
+  "${XRT_XDP_AIE_TRACE_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_AIE_TRACE_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_AIE_TRACE_WRITER_DIR}/*.h"
+  "${XRT_XDP_AIE_TRACE_WRITER_DIR}/*.cpp"
+  )
+
 file(GLOB XRT_XDP_PROFILE_VART_PLUGIN_FILES
   "${XRT_XDP_PROFILE_VART_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_VART_PLUGIN_DIR}/*.cpp"
@@ -276,6 +288,25 @@ if (DEFINED XRT_AIE_BUILD)
     LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
   )
 endif()
+
+# Build AIE Trace plugin 
+add_library(xdp_aie_trace_plugin MODULE ${XRT_XDP_AIE_TRACE_PLUGIN_FILES})
+add_dependencies(xdp_aie_trace_plugin xdp_core xrt_core)
+
+if (DEFINED XRT_AIE_BUILD)
+  # GMIO flow is supported for Edge only
+  target_link_libraries(xdp_aie_trace_plugin xdp_core xrt_core metal xaiengine)
+else()
+  target_link_libraries(xdp_aie_trace_plugin xdp_core xrt_core)
+endif()
+
+set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+
+install (TARGETS xdp_aie_trace_plugin 
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
+)
+# end of Build AIE Trace plugin 
+
 
 # ====== Linux Specifics =======
 

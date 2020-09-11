@@ -41,6 +41,7 @@
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #include "core/include/xclbin.h"
+#include "core/common/config_reader.h"
 
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/common/aie_parser.h"
@@ -52,7 +53,8 @@
 namespace xdp {
 
   ComputeUnitInstance::ComputeUnitInstance(int32_t i, const std::string &n)
-    : index(i)
+    : index(i),
+      amId(-1)
   {
     std::string fullName(n);
     size_t pos = fullName.find(':');
@@ -137,6 +139,10 @@ namespace xdp {
     } else {
       devInfo->clockRateMHz = 300;
     }
+    /* Configure AMs if context monitoring is supported
+     * else disable alll AMs on this device
+     */
+    devInfo->ctxInfo = xrt_core::config::get_kernel_channel_info();
 
 //    if (!setXclbinUUID(devInfo, device)) return;
     if (!setXclbinName(devInfo, device)) return;
@@ -214,6 +220,9 @@ namespace xdp {
       devInfo->cus[i] = cu;
       if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
         cu->setDataflowEnabled(true);
+      } else
+      if((ipData->properties >> IP_CONTROL_SHIFT) & FAST_ADAPTER) {
+        cu->setFaEnabled(true);
       }
     }
 
@@ -254,6 +263,9 @@ namespace xdp {
         devInfo->cus[connctn->m_ip_layout_index] = cu;
         if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
           cu->setDataflowEnabled(true);
+        } else
+        if((ipData->properties >> IP_CONTROL_SHIFT) & FAST_ADAPTER) {
+          cu->setFaEnabled(true);
         }
       } else {
         cu = devInfo->cus[connctn->m_ip_layout_index];
@@ -327,14 +339,14 @@ namespace xdp {
             cuObj = cu.second;
             cuId = cu.second->getIndex();
             mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
-            cuObj->addMonitor(mon);
+            devInfo->amList.push_back(mon); 
+            cuObj->setAccelMon(devInfo->amList.size()-1);
             if(debugIpData->m_properties & XAM_STALL_PROPERTY_MASK) {
               cuObj->setStallEnabled(true);
             }
             break;
           }
         }
-        if(mon) { devInfo->amList.push_back(mon); }
       } else if(debugIpData->m_type == AXI_MM_MONITOR) {
         // parse name to find CU Name and Memory
         size_t pos = name.find('/');
@@ -358,14 +370,13 @@ namespace xdp {
           }
         }
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
+        devInfo->aimList.push_back(mon);
         if(cuObj) {
-          cuObj->addMonitor(mon);
-          cuObj->setDataTransferEnabled(true);
+          cuObj->addAIM(devInfo->aimList.size()-1);
         } else if(0 != monCuName.compare("shell")) {
           // If not connected to CU and not a shell monitor, then a floating monitor
           devInfo->hasFloatingAIM = true;
         }
-        devInfo->aimList.push_back(mon);
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
         size_t pos = name.find('/');
@@ -397,17 +408,16 @@ namespace xdp {
         }
 
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
+        devInfo->asmList.push_back(mon);
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
         }
         if(cuObj) {
-          cuObj->addMonitor(mon);
-          cuObj->setStreamEnabled(true);
+          cuObj->addASM(devInfo->asmList.size()-1);
         } else if(0 != monCuName.compare("shell")) {
           // If not connected to CU and not a shell monitor, then a floating monitor
           devInfo->hasFloatingASM = true;
         }
-        devInfo->asmList.push_back(mon);
       } else if(debugIpData->m_type == AXI_NOC) {
         uint8_t readTrafficClass  = debugIpData->m_properties >> 2;
         uint8_t writeTrafficClass = debugIpData->m_properties & 0x3;
@@ -415,6 +425,9 @@ namespace xdp {
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
                           readTrafficClass, writeTrafficClass);
         devInfo->nocList.push_back(mon);
+      } else if(debugIpData->m_type == TRACE_S2MM && (debugIpData->m_properties & 0x1)) {
+//        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
+        devInfo->numTracePLIO++;
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }

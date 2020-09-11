@@ -77,11 +77,6 @@ namespace xdp {
     // Write compute unit utilization table
     virtual void writeComputeUnitSummary(const std::string& name, const TimeStats& stats) override;
 
-    // Write accelerator table
-    // This is used in unified_csv_profile, but not csv_profile, so we are
-    // going to skip it for now.
-    //virtual void writeAcceleratorSummary(const std::string& name, const TimeStats& stats) override;
-
     // Write Read/Write Buffer transfer stats
     virtual void writeHostTransferSummary(const std::string& name,
       const BufferStats& stats, uint64_t totalBytes, uint64_t totalTranx,

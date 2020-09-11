@@ -614,21 +614,49 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	}
 }
 
-void get_pcie_link_info(struct xocl_dev *xdev,
-	unsigned short *link_width, unsigned short *link_speed, bool is_cap)
+void store_pcie_link_info(struct xocl_dev *xdev)
 {
-	u16 stat;
+	u16 stat = 0;
 	long result;
-	int pos = is_cap ? PCI_EXP_LNKCAP : PCI_EXP_LNKSTA;
+	int pos = PCI_EXP_LNKCAP;
 
 	result = pcie_capability_read_word(xdev->core.pdev, pos, &stat);
 	if (result) {
-		*link_width = *link_speed = 0;
-		xocl_info(&xdev->core.pdev->dev, "Read pcie capability failed");
-		return;
+		xdev->pci_stat.link_width_max = xdev->pci_stat.link_speed_max = 0;
+		userpf_err(xdev, "Read pcie capability failed for offset: 0x%x", pos);
+	} else {
+		xdev->pci_stat.link_width_max = (stat & PCI_EXP_LNKSTA_NLW) >>
+			PCI_EXP_LNKSTA_NLW_SHIFT;
+		xdev->pci_stat.link_speed_max = stat & PCI_EXP_LNKSTA_CLS;
 	}
-	*link_width = (stat & PCI_EXP_LNKSTA_NLW) >> PCI_EXP_LNKSTA_NLW_SHIFT;
-	*link_speed = stat & PCI_EXP_LNKSTA_CLS;
+
+	stat = 0;
+	pos = PCI_EXP_LNKSTA;
+	result = pcie_capability_read_word(xdev->core.pdev, pos, &stat);
+	if (result) {
+		xdev->pci_stat.link_width = xdev->pci_stat.link_speed = 0;
+		userpf_err(xdev, "Read pcie capability failed for offset: 0x%x", pos);
+	} else {
+		xdev->pci_stat.link_width = (stat & PCI_EXP_LNKSTA_NLW) >>
+			PCI_EXP_LNKSTA_NLW_SHIFT;
+		xdev->pci_stat.link_speed = stat & PCI_EXP_LNKSTA_CLS;
+	}
+
+	return;
+}
+
+void get_pcie_link_info(struct xocl_dev *xdev,
+	unsigned short *link_width, unsigned short *link_speed, bool is_cap)
+{
+	int pos = is_cap ? PCI_EXP_LNKCAP : PCI_EXP_LNKSTA;
+
+	if (pos == PCI_EXP_LNKCAP) {
+		*link_width = xdev->pci_stat.link_width_max;
+		*link_speed = xdev->pci_stat.link_speed_max;
+	} else {
+		*link_width = xdev->pci_stat.link_width;
+		*link_speed = xdev->pci_stat.link_speed;
+	}
 }
 
 uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
@@ -1458,6 +1486,9 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	xdev->mig_cache_expire_secs = XDEV_DEFAULT_EXPIRE_SECS;
 
+    /* store link width & speed stats */
+	store_pcie_link_info(xdev);
+
 	return 0;
 
 failed:
@@ -1584,8 +1615,6 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_trace_s2mm,
 	xocl_fini_mem_hbm,
 	xocl_fini_cu,
-	/* Remove intc sub-device after CU/ERT sub-devices */
-	xocl_fini_intc,
 	xocl_fini_addr_translator,
 	xocl_fini_p2p,
 	xocl_fini_spc,
@@ -1594,6 +1623,8 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_ert_user,
 	xocl_fini_ert_30,
 	xocl_fini_m2m,
+	/* Remove intc sub-device after CU/ERT sub-devices */
+	xocl_fini_intc,
 };
 
 static int __init xocl_init(void)

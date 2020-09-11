@@ -192,21 +192,49 @@ failed:
 	return ret;
 }
 
-void get_pcie_link_info(struct xclmgmt_dev *lro,
-	unsigned short *link_width, unsigned short *link_speed, bool is_cap)
+void store_pcie_link_info(struct xclmgmt_dev *lro)
 {
-	u16 stat;
+	u16 stat = 0;
 	long result;
-	int pos = is_cap ? PCI_EXP_LNKCAP : PCI_EXP_LNKSTA;
+	int pos = PCI_EXP_LNKCAP;
 
 	result = pcie_capability_read_word(lro->core.pdev, pos, &stat);
 	if (result) {
-		*link_width = *link_speed = 0;
-		mgmt_err(lro, "Read pcie capability failed");
-		return;
+		lro->pci_stat.link_width_max = lro->pci_stat.link_speed_max = 0;
+		mgmt_err(lro, "Read pcie capability failed for offset: 0x%x", pos);
+	} else {
+		lro->pci_stat.link_width_max = (stat & PCI_EXP_LNKSTA_NLW) >>
+			PCI_EXP_LNKSTA_NLW_SHIFT;
+		lro->pci_stat.link_speed_max = stat & PCI_EXP_LNKSTA_CLS;
 	}
-	*link_width = (stat & PCI_EXP_LNKSTA_NLW) >> PCI_EXP_LNKSTA_NLW_SHIFT;
-	*link_speed = stat & PCI_EXP_LNKSTA_CLS;
+
+	stat = 0;
+	pos = PCI_EXP_LNKSTA;
+	result = pcie_capability_read_word(lro->core.pdev, pos, &stat);
+	if (result) {
+		lro->pci_stat.link_width = lro->pci_stat.link_speed = 0;
+		mgmt_err(lro, "Read pcie capability failed for offset: 0x%x", pos);
+	} else {
+		lro->pci_stat.link_width = (stat & PCI_EXP_LNKSTA_NLW) >>
+			PCI_EXP_LNKSTA_NLW_SHIFT;
+		lro->pci_stat.link_speed = stat & PCI_EXP_LNKSTA_CLS;
+	}
+
+	return;
+}
+
+void get_pcie_link_info(struct xclmgmt_dev *lro,
+	unsigned short *link_width, unsigned short *link_speed, bool is_cap)
+{
+	int pos = is_cap ? PCI_EXP_LNKCAP : PCI_EXP_LNKSTA;
+
+	if (pos == PCI_EXP_LNKCAP) {
+		*link_width = lro->pci_stat.link_width_max;
+		*link_speed = lro->pci_stat.link_speed_max;
+	} else {
+		*link_width = lro->pci_stat.link_width;
+		*link_speed = lro->pci_stat.link_speed;
+	}
 }
 
 void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
@@ -1086,6 +1114,9 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	/* Reset PCI link monitor */
 	check_pcie_link_toggle(lro, 1);
+
+	/* Store/cache PCI link width & speed info */
+	store_pcie_link_info(lro);
 
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);

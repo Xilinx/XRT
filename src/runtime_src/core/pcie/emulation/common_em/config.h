@@ -23,6 +23,7 @@
 #include "xbar_sys_parameters.h"
 #include "xclhal2.h"
 #include "xclfeatures.h"
+#include "em_defines.h"
 #include "xclbin.h"
 #include <chrono>
 
@@ -210,6 +211,9 @@ namespace xclemulation{
       inline long long getCuBaseAddrForce() const         { return mCuBaseAddrForce;              }
       inline bool isSharedFmodel() const         {return mIsSharedFmodel; } 
       inline TIMEOUT_SCALE getTimeOutScale() const    {return mTimeOutScale;}
+
+      inline void setIsPlatformEnabled(bool isPlatformDataAvailable) {mIsPlatformDataAvailable = isPlatformDataAvailable; }
+      inline bool getIsPlatformEnabled() { return mIsPlatformDataAvailable;}
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
     private:
@@ -222,7 +226,7 @@ namespace xclemulation{
       DEBUG_MODE mLaunchWaveform;
       std::string mSimDir;
       std::string mUserPreSimScript;
-	    std::string mUserPostSimScript;
+      std::string mUserPostSimScript;
       std::string mWcfgFilePath;
       unsigned int mPacketSize;
       unsigned int mMaxTraceCount;
@@ -241,12 +245,13 @@ namespace xclemulation{
       ERTMODE mLegacyErt;
       long long mCuBaseAddrForce;
       bool      mIsSharedFmodel;
+      bool mIsPlatformDataAvailable;
       TIMEOUT_SCALE mTimeOutScale;
       config();
       ~config() { };//empty destructor
   };
 
-  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader> >& devicesInfo);
+  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader, platformData> >& devicesInfo);
   bool copyLogsFromOneFileToAnother(const std::string &logFile, std::ofstream &ofs);
   std::string getEmDebugLogFile();
   bool isXclEmulationModeHwEmuOrSwEmu();

@@ -70,9 +70,6 @@ namespace xdp {
 
   OCLProfiler::~OCLProfiler()
   {
-    // Stop power profiling early so no samples during trace offload
-    PowerProfileList.clear();
-
     // Inform downstream guidance if objects were properly released
     Plugin->setObjectsReleased(mEndDeviceProfilingCalled);
 
@@ -155,37 +152,6 @@ namespace xdp {
     // But needed for older flow
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && Plugin->getSystemDPAEmulation() == false)
       xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
-
-    // Start power profiling (device flow only)
-    auto power_profile_en = xrt::config::get_power_profile();
-    if (Plugin->getFlowMode() == xdp::RTUtil::DEVICE && power_profile_en) {
-      for (auto device : platform->get_device_range()) {
-        if (!device->is_active())
-          continue;
-
-        /*
-         * For multi xclbin host code
-         * start thread only once
-         */
-        bool device_has_power_profiling = false;
-        for (auto& thread: PowerProfileList) {
-          if (thread->get_target_device_name() == device->get_unique_name()) {
-            device_has_power_profiling = true;
-            break;
-          }
-        }
-        if (device_has_power_profiling)
-          continue;
-
-        /*
-         * Initialize Power Profiling Threads
-         */
-          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
-          auto& filename = power_profile->get_output_file_name();
-          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
-          PowerProfileList.push_back(std::move(power_profile));
-      }
-    }
 
     mProfileRunning = true;
   }
@@ -349,22 +315,28 @@ namespace xdp {
       if (stallTrace & xdp::RTUtil::STALL_TRACE_EXT)    traceOption   |= (0x1 << 4);
       XOCL_DEBUGF("Starting trace with option = 0x%x\n", traceOption);
 
-      if(dInt) {
-        // Configure monitor IP and FIFO if present
-        dInt->startTrace(traceOption);
-        std::string  binaryName = device->get_xclbin().project_name();
-        uint64_t traceBufSz = 0;
-        if (dInt->hasTs2mm()) {
-          traceBufSz = getDeviceDDRBufferSize(dInt, device);
-          trace_memory = "TS2MM";
-        }
-        // Continuous trace isn't safe to use with stall setting
-        if (dInt->hasFIFO() && mTraceThreadEn && stallTrace!= xdp::RTUtil::STALL_TRACE_OFF) {
-          xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_STALLS);
-        }
+      if (dInt) {
+        // Do for both PL and AIE trace (if available)
+        //for (int i=0; i < 2; i++) { 
+          //bool isAIETrace = (i == 1);	// FOR now
+          //bool isAIETrace = false;
 
-        DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
-        auto offloader = std::make_unique<DeviceTraceOffload>(dInt, deviceTraceLogger,
+          // Configure monitor IP and FIFO if present
+          dInt->startTrace(traceOption);
+          std::string  binaryName = device->get_xclbin().project_name();
+          uint64_t traceBufSz = 0;
+          if (dInt->hasTs2mm()) {
+            traceBufSz = getDeviceDDRBufferSize(dInt, device);
+            trace_memory = "TS2MM";
+          }
+          
+          // Continuous trace isn't safe to use with stall setting
+          if (dInt->hasFIFO() && mTraceThreadEn && stallTrace!= xdp::RTUtil::STALL_TRACE_OFF) {
+            xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_STALLS);
+          }
+
+          DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
+          auto offloader = std::make_unique<DeviceTraceOffload>(dInt, deviceTraceLogger,
                                                          mTraceReadIntMs, traceBufSz, false);
         bool init_done = offloader->read_trace_init(mTraceThreadEn);
         if (init_done) {
@@ -399,8 +371,9 @@ namespace xdp {
           DeviceTraceOffloadList.push_back(std::move(offloader));
         } else {
           delete deviceTraceLogger;
-          if (dInt->hasTs2mm())
+          if (dInt->hasTs2mm()) {
             xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
+          }
         }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
