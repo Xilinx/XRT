@@ -545,7 +545,7 @@ In the above code block
 Executing the kernel
 ~~~~~~~~~~~~~~~~~~~~
 
-Execution of the kernel is associated with a **Run** handle (or object). The kernel can be executed by the API ``xrtKernelRun`` (in C++ overloaded operator ``xrt::kernel::()``) that takes all the kernel arguments in order. The kernel execution API returns a run handle (or object) corresponding to the execution. 
+Execution of the kernel is associated with a **Run** handle (or object). The kernel can be executed by the API ``xrtKernelRun`` (in C++ overloaded operator ``xrt::kernel::operator()``) that takes all the kernel arguments in order. The kernel execution API returns a run handle (or object) corresponding to the execution. 
 
 
 .. code:: c
