@@ -40,6 +40,7 @@ namespace xdp {
     uint32_t index = 0;
     void* handle = xclOpen(index, "/dev/null", XCL_INFO);
 
+std::cout << " FIRST device " << index << std::endl;
     while(nullptr != handle) {
       deviceHandles.push_back(handle);
 
@@ -58,6 +59,7 @@ namespace xdp {
       ++index;
       handle = xclOpen(index, "/dev/null", XCL_INFO);
     }
+std::cout << " devices FOUND " << index << std::endl;
   }
 
   AieTracePlugin::~AieTracePlugin()
@@ -98,6 +100,7 @@ namespace xdp {
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
     void* ownedHandle = deviceIdToHandle[deviceId];
 
+std::cout << " In AieTracePlugin::updateAIEDevice : deviceId " << deviceId << std::endl;
     if(!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // first delete the offloader, logger
       // Delete the old offloader as data is already from it
@@ -113,8 +116,10 @@ namespace xdp {
       }
 
 
+std::cout << " In AieTracePlugin::updateAIEDevice : going to update deviceId " << deviceId << std::endl;
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceId, handle);
+std::cout << " In AieTracePlugin::updateAIEDevice : updated deviceId " << deviceId << std::endl;
       {
         struct xclDeviceInfo2 info;
         if(xclGetDeviceInfo2(handle, &info) == 0) {
@@ -124,6 +129,7 @@ namespace xdp {
     }
 
     uint64_t numAIETraceOutput = (db->getStaticInfo()).getNumAIETraceStream(deviceId);
+std::cout << " In AieTracePlugin::updateAIEDevice : numAIETraceOutput " << numAIETraceOutput << std::endl;
     if(0 == numAIETraceOutput) {
       // no AIE Trace Stream to offload trace, so return
       return;
