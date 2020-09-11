@@ -124,6 +124,7 @@ private:
     int writeReg(unsigned RegOffset, unsigned value);
     bool isXMCReady();
     bool isBMCReady();
+    bool hasSC();
 };
 
 #endif

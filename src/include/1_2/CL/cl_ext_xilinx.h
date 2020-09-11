@@ -518,9 +518,14 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
  * @type: void*
  * Return: The underlying device handle for use with low
  * level XRT APIs (xrt.h)
+ * 
+ * @CL_DEVICE_NODMA
+ * @type: cl_bool
+ * Return: True if underlying device is NODMA
  */
 #define CL_DEVICE_PCIE_BDF              0x1120  // BUS/DEVICE/FUNCTION
 #define CL_DEVICE_HANDLE                0x1121  // XRT device handle
+#define CL_DEVICE_NODMA                 0x1122  // NODMA device check
 
 // valid target types (CR962714)
 typedef cl_uint cl_program_target_type;

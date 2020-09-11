@@ -4,6 +4,7 @@
 #include "hal_device_offload.h"
 #include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
+#include "core/common/config_reader.h"
 
 namespace xdphaldeviceoffload {
 
@@ -11,8 +12,9 @@ namespace xdphaldeviceoffload {
   {
     static xrt_core::module_loader
       xdp_hal_device_offload_loader("xdp_hal_device_offload_plugin",
-				    register_hal_device_offload_functions,
-				    hal_device_offload_warning_function) ;
+                                    register_hal_device_offload_functions,
+                                    hal_device_offload_warning_function,
+                                    hal_device_offload_error_function);
   }
 
   std::function<void (void*)> update_device_cb ;
@@ -33,6 +35,15 @@ namespace xdphaldeviceoffload {
   void hal_device_offload_warning_function()
   {
     // No warnings at this level
+  }
+
+  int hal_device_offload_error_function()
+  {
+    if(xrt_core::config::get_profile() || xrt_core::config::get_timeline_trace()) {
+      // OpenCL profiling and/or trace is enabled in xrt.ini config. So, disable HAL Device Trace Offload as both of these flows are not supported together.
+      return 1;
+    }
+    return 0 ;
   }
 
 } // end namespace xdphaldeviceoffload

@@ -214,6 +214,9 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 		int count, uint32_t bank);
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
+int zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf);
+void zocl_destroy_aie(struct drm_zocl_dev *zdev);
+int zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data);
 
 int zocl_inject_error(struct drm_zocl_dev *zdev, void *data,
 		struct drm_file *filp);

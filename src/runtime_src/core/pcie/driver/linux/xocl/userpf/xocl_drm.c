@@ -812,6 +812,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 	err = 0;
 
+	drm_p->cma_bank_idx = -1;
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
 		ddr_bank_size = mem_data->m_size * 1024;
@@ -822,6 +823,8 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
 		xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
 		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
+		if (IS_HOST_MEM(mem_data->m_tag))
+			drm_p->cma_bank_idx = i;
 	}
 
 	/* Initialize memory stats based on Group topology */
@@ -958,26 +961,3 @@ done:
 	return err;
 }
 
-bool is_cma_bank(struct xocl_drm *drm_p, uint32_t memidx)
-{
-	struct mem_topology *topo = NULL;
-	int err = 0;
-	bool ret = false;
-
-	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo);
-	if (err)
-		return ret;
-
-	if (topo == NULL)
-		goto done;
-
-	if (!topo->m_mem_data[memidx].m_used)
-		goto done;
-
-	if (IS_HOST_MEM(topo->m_mem_data[memidx].m_tag))
-		ret = true;
-
-done:
-	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
-	return ret;
-}

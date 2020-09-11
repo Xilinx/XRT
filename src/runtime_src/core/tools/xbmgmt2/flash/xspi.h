@@ -62,6 +62,7 @@ class XSPI_Flasher
   bool writeBitstreamGuard(unsigned int Addr);
   bool clearBitstreamGuard(unsigned int Addr);
   bool bulkErase();
+  bool fullErase();
   bool writeEnable();
   bool getFlashId();
   bool finalTransfer(uint8_t *sendBufPtr, uint8_t *recvBufPtr, int byteCount);

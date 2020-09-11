@@ -28,7 +28,7 @@
 #include "qdma_descq.h"
 #include "qdma_regs.h"
 
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 #define DEBUGFS_QUEUE_DESC_SZ	(100)
 #define DEBUGFS_QUEUE_INFO_SZ	(256)
 #define DEBUGFS_QUEUE_CTXT_SZ	(24 * 1024)
@@ -373,7 +373,7 @@ static int create_cmpt_q_dbg_files(struct qdma_descq *descq,
  *****************************************************************************/
 static int q_dbg_file_open(struct inode *inode, struct file *fp)
 {
-	int dev_id = -1;
+	unsigned long dev_id = -1;
 	int qidx = -1;
 	struct dbgfs_q_priv *priv = NULL;
 	int rv = 0;
@@ -415,8 +415,10 @@ static int q_dbg_file_open(struct inode *inode, struct file *fp)
 	}
 
 	/* convert this string as hex integer */
-	rv = kstrtoint((const char *)dev_name, 16, &dev_id);
+	rv = kstrtoul((const char *)dev_name, 16, &dev_id);
 	if (rv < 0) {
+		pr_err("%s, kstrtoint failed for %s, Error:%d\n", __func__,
+			dev_dir->d_iname, rv);
 		rv = -ENODEV;
 		return rv;
 	}
@@ -594,10 +596,10 @@ static int qdbg_desc_read(unsigned long dev_hndl, unsigned long id, char **data,
 		return -ENOMEM;
 
 	if (type != DBGFS_DESC_TYPE_CMPT) {
-		len += qdma_queue_dump_desc(dev_hndl, id,
+		len += qdma4_queue_dump_desc(dev_hndl, id,
 				0, rngsz-1, buf + len, buflen - len);
 	} else {
-		len += qdma_queue_dump_cmpt(dev_hndl, id,
+		len += qdma4_queue_dump_cmpt(dev_hndl, id,
 				0, rngsz-1, buf + len, buflen - len);
 	}
 

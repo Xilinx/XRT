@@ -27,8 +27,12 @@
 #include <fcntl.h>
 #include <mutex>
 
+// Supported vendors
+#define XILINX_ID       0x10ee
+#define ADVANTECH_ID    0x13fe
+#define AWS_ID          0x1d0f
+#define ARISTA_ID       0x3475
 #define INVALID_ID      0xffff
-#define MFG_REV_OFFSET  0x131008 // For obtaining Golden image version number
 
 #define FDT_BEGIN_NODE  0x1
 #define FDT_END_NODE    0x2
@@ -60,7 +64,6 @@ struct fdt_header {
     uint32_t size_dt_struct;
 };
 
-
 namespace pcidev {
 
 // One PCIE function on FPGA board
@@ -77,26 +80,31 @@ public:
   uint16_t bus =              INVALID_ID;
   uint16_t dev =              INVALID_ID;
   uint16_t func =             INVALID_ID;
+  uint16_t vendor_id =        INVALID_ID;
+  uint16_t device_id =        INVALID_ID;
   uint32_t instance =         INVALID_ID;
   std::string sysfs_name =    ""; // dir name under /sys/bus/pci/devices
   int user_bar =              0;  // BAR mapped in by tools, default is BAR0
   size_t user_bar_size =      0;
-  bool is_mgmt =              false;
+  bool is_mgmt() const
+  {
+      return mgmt;
+  }
   bool is_ready =             false;
 
-  pci_device(const std::string& sysfs_name);
+  pci_device(const std::string& drv_name, const std::string& sysfs_name);
   ~pci_device();
 
-  void
+  virtual void
   sysfs_get(const std::string& subdev, const std::string& entry,
             std::string& err, std::vector<std::string>& sv);
-  void
+  virtual void
   sysfs_get(const std::string& subdev, const std::string& entry,
             std::string& err, std::vector<uint64_t>& iv);
-  void
+  virtual void
   sysfs_get(const std::string& subdev, const std::string& entry,
             std::string& err, std::string& s);
-  void
+  virtual void
   sysfs_get(const std::string& subdev, const std::string& entry,
             std::string& err, std::vector<char>& buf);
   template <typename T>
@@ -119,42 +127,41 @@ public:
     sysfs_get<uint32_t>(subdev, entry, err, i, 0);
   }
 
-  void
+  virtual void
   sysfs_put(const std::string& subdev, const std::string& entry,
             std::string& err, const std::string& input);
-  void
+  virtual void
   sysfs_put(const std::string& subdev, const std::string& entry,
             std::string& err, const std::vector<char>& buf);
 
-  void
+  virtual void
   sysfs_put(const std::string& subdev, const std::string& entry,
             std::string& err, const unsigned int& buf);
 
-  std::string
+  virtual std::string
   get_sysfs_path(const std::string& subdev, const std::string& entry);
 
-  std::string
+  virtual std::string
   get_subdev_path(const std::string& subdev, uint32_t idx);
+  virtual int pcieBarRead(uint64_t offset, void *buf, uint64_t len);
+  virtual int pcieBarWrite(uint64_t offset, const void *buf, uint64_t len);
 
-  int pcieBarRead(uint64_t offset, void *buf, uint64_t len);
-  int pcieBarWrite(uint64_t offset, const void *buf, uint64_t len);
-
-  int open(const std::string& subdev, int flag);
-  int open(const std::string& subdev, uint32_t idx, int flag);
+  virtual int open(const std::string& subdev, int flag);
+  virtual int open(const std::string& subdev, uint32_t idx, int flag);
   void close(int devhdl);
   int ioctl(int devhdl, unsigned long cmd, void *arg = nullptr);
   int poll(int devhdl, short events, int timeoutMilliSec);
-  void *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
-  int munmap(int devhdl, void* addr, size_t len);
+  virtual void *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
+  virtual int munmap(int devhdl, void* addr, size_t len);
   int flock(int devhdl, int op);
   int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
   std::shared_ptr<pcidev::pci_device> lookup_peer_dev();
 
 private:
   int map_usr_bar(void);
-
   std::mutex lock;
   char *user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
+  bool mgmt = false;
 };
 
 void rescan(void);

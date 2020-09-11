@@ -22,6 +22,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <string.h>
+#include <thread>
+#include <chrono>
 
 #include "ioctl_traceFifoLite.h"
 #include "core/pcie/driver/linux/include/profile_ioctl.h"
@@ -36,6 +38,13 @@ IOCtlTraceFifoLite::IOCtlTraceFifoLite(Device* handle, uint64_t index, debug_ip_
   std::string driverFileName = getDevice()->getSubDevicePath(subDev, 0 /* a design can have atmost 1 TraceFifoLite*/);
 
   driver_FD = open(driverFileName.c_str(), O_RDWR);
+  uint32_t tries = 0;
+  while(-1 == driver_FD && tries < 5) {
+    std::this_thread::sleep_for(std::chrono::microseconds(1));
+    driver_FD = open(driverFileName.c_str(), O_RDWR);
+    tries++;
+  }
+
   if(-1 == driver_FD) {
     showWarning("Could not open device file.");
     return;

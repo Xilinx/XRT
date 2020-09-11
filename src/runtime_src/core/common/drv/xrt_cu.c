@@ -50,25 +50,14 @@ static inline void process_cq(struct xrt_cu *xcu)
 }
 
 /**
- * process_sq() - Process submitted queue
+ * __process_sq() - Process submitted queue
  * @xcu: Target XRT CU
  */
-static inline void process_sq(struct xrt_cu *xcu)
+static inline void __process_sq(struct xrt_cu *xcu)
 {
 	struct kds_command *xcmd;
 	u64 time;
 
-	/* A submitted command might be done but the CU is still
-	 * not ready for next command. In this case, check CU status
-	 * to get ready count.
-	 */
-	if (!xcu->num_sq && !is_zero_credit(xcu))
-		return;
-
-	/* If no command is running on the hardware,
-	 * this would not really access hardware.
-	 */
-	xrt_cu_check(xcu);
 	/* CU is ready to accept more commands
 	 * Return credits to allow submit more commands
 	 */
@@ -99,6 +88,27 @@ static inline void process_sq(struct xrt_cu *xcu)
 		++xcu->num_cq;
 		--xcu->done_cnt;
 	}
+}
+
+/**
+ * process_sq() - Process submitted queue
+ * @xcu: Target XRT CU
+ */
+static inline void process_sq(struct xrt_cu *xcu)
+{
+	/* A submitted command might be done but the CU is still
+	 * not ready for next command. In this case, check CU status
+	 * to get ready count.
+	 */
+	if (!xcu->num_sq && !is_zero_credit(xcu))
+		return;
+
+	/* If no command is running on the hardware,
+	 * this would not really access hardware.
+	 */
+	xrt_cu_check(xcu);
+
+	__process_sq(xcu);
 }
 
 /**
@@ -216,11 +226,12 @@ done:
 	mutex_unlock(&xcu->ev.lock);
 }
 
-int xrt_cu_thread(void *data)
+int xrt_cu_polling_thread(void *data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
 	int ret = 0;
 
+	xcu_info(xcu, "start");
 	while (!xcu->stop) {
 		/* Make sure to submit as many commands as possible.
 		 * This is why we call continue here. This is important to make
@@ -252,9 +263,12 @@ int xrt_cu_thread(void *data)
 		process_pq(xcu);
 	}
 
-	if (!xcu->bad_state)
+	if (!xcu->bad_state) {
+		xcu_info(xcu, "end");
 		return ret;
+	}
 
+	xcu_info(xcu, "bad state handling");
 	/* CU in bad state mode, abort all new commands */
 	flush_queue(&xcu->sq, &xcu->num_sq, KDS_ABORT, NULL);
 	flush_queue(&xcu->cq, &xcu->num_cq, KDS_ABORT, NULL);
@@ -268,6 +282,69 @@ int xrt_cu_thread(void *data)
 		process_pq(xcu);
 	}
 
+	xcu_info(xcu, "end handling");
+	return ret;
+}
+
+int xrt_cu_intr_thread(void *data)
+{
+	struct xrt_cu *xcu = (struct xrt_cu *)data;
+	int ret = 0;
+
+	xcu_info(xcu, "start");
+	xrt_cu_enable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
+	while (!xcu->stop) {
+		/* Make sure to submit as many commands as possible.
+		 * This is why we call continue here. This is important to make
+		 * CU busy, especially CU has hardware queue.
+		 */
+		if (process_rq(xcu))
+			continue;
+
+		if (xcu->num_sq) {
+			if (down_interruptible(&xcu->sem_cu))
+				ret = -ERESTARTSYS;
+			__process_sq(xcu);
+		}
+
+		process_cq(xcu);
+		process_event(xcu);
+
+		if (xcu->bad_state)
+			break;
+
+		/* Continue until run queue empty */
+		if (xcu->num_rq)
+			continue;
+
+		if (!xcu->num_sq && !xcu->num_cq)
+			if (down_interruptible(&xcu->sem))
+				ret = -ERESTARTSYS;
+
+		process_pq(xcu);
+	}
+	xrt_cu_disable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
+
+	if (!xcu->bad_state) {
+		xcu_info(xcu, "end");
+		return ret;
+	}
+
+	xcu_info(xcu, "bad state handling");
+	/* CU in bad state mode, abort all new commands */
+	flush_queue(&xcu->sq, &xcu->num_sq, KDS_ABORT, NULL);
+	flush_queue(&xcu->cq, &xcu->num_cq, KDS_ABORT, NULL);
+	while (!xcu->stop) {
+		flush_queue(&xcu->rq, &xcu->num_rq, KDS_ABORT, NULL);
+		process_event(xcu);
+
+		if (down_interruptible(&xcu->sem))
+			ret = -ERESTARTSYS;
+
+		process_pq(xcu);
+	}
+
+	xcu_info(xcu, "end handling");
 	return ret;
 }
 
@@ -311,6 +388,7 @@ int xrt_cu_abort(struct xrt_cu *xcu, void *client)
 done:
 	mutex_unlock(&xcu->ev.lock);
 	up(&xcu->sem);
+	up(&xcu->sem_cu);
 	return ret;
 }
 
@@ -334,6 +412,40 @@ int xrt_cu_abort_done(struct xrt_cu *xcu)
 	return state;
 }
 
+int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
+{
+	int (* cu_thread)(void *data);
+	int err = 0;
+
+	/* Check if CU support interrupt in hardware */
+	if (!xcu->info.intr_enable)
+		return -ENOSYS;
+
+	if (intr)
+		cu_thread = xrt_cu_intr_thread;
+	else
+		cu_thread = xrt_cu_polling_thread;
+
+	/* Stop old thread */
+	xcu->stop = 1;
+	up(&xcu->sem_cu);
+	up(&xcu->sem);
+	if (!IS_ERR(xcu->thread))
+		(void) kthread_stop(xcu->thread);
+
+	/* launch new thread */
+	xcu->stop = 0;
+	sema_init(&xcu->sem, 0);
+	sema_init(&xcu->sem_cu, 0);
+	xcu->thread = kthread_run(cu_thread, xcu, xcu->info.iname);
+	if (IS_ERR(xcu->thread)) {
+		err = IS_ERR(xcu->thread);
+		xcu_err(xcu, "Create CU thread failed, err %d\n", err);
+	}
+
+	return err;
+}
+
 void xrt_cu_set_bad_state(struct xrt_cu *xcu)
 {
 	xcu->bad_state = 1;
@@ -342,6 +454,11 @@ void xrt_cu_set_bad_state(struct xrt_cu *xcu)
 int xrt_cu_init(struct xrt_cu *xcu)
 {
 	int err = 0;
+	char *name = xcu->info.iname;
+
+	/* TODO A workaround to avoid m2m subdev launch thread */
+	if (!strlen(name))
+		return 0;
 
 	/* Use list for driver space command queue
 	 * Should we consider ring buffer?
@@ -362,7 +479,9 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	/* default timeout, 0 means infinity */
 	xcu->run_timeout = 0;
 	sema_init(&xcu->sem, 0);
-	xcu->thread = kthread_run(xrt_cu_thread, xcu, "xrt_thread");
+	sema_init(&xcu->sem_cu, 0);
+	/* A CU maybe doesn't support interrupt, polling */
+	xcu->thread = kthread_run(xrt_cu_polling_thread, xcu, name);
 	if (IS_ERR(xcu->thread)) {
 		err = IS_ERR(xcu->thread);
 		xcu_err(xcu, "Create CU thread failed, err %d\n", err);
@@ -373,7 +492,12 @@ int xrt_cu_init(struct xrt_cu *xcu)
 
 void xrt_cu_fini(struct xrt_cu *xcu)
 {
+	/* TODO A workaround for m2m subdev */
+	if (!strlen(xcu->info.iname))
+		return;
+
 	xcu->stop = 1;
+	up(&xcu->sem_cu);
 	up(&xcu->sem);
 	if (!IS_ERR(xcu->thread))
 		(void) kthread_stop(xcu->thread);

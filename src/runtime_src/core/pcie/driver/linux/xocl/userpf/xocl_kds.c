@@ -488,3 +488,17 @@ u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist)
 {
 	return kds_live_clients(&XDEV(xdev)->kds, plist);
 }
+
+void xocl_kds_update(struct xocl_dev *xdev)
+{
+	if (xocl_ert_30_cu_intr_cfg(xdev) == -ENODEV) {
+		userpf_info(xdev, "Not support CU to host interrupt");
+		userpf_info(xdev, "Using ERT to host interrupt");
+		XDEV(xdev)->kds.cu_intr = 0;
+	} else {
+		userpf_info(xdev, "Using CU to host interrupt");
+		XDEV(xdev)->kds.cu_intr = 1;
+	}
+
+	kds_cfg_update(&XDEV(xdev)->kds);
+}

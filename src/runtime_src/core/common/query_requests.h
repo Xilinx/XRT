@@ -79,6 +79,7 @@ enum class key_type
   xmc_board_name,
   xmc_serial_num,
   xmc_max_power,
+  xmc_sc_presence,
   xmc_bmc_version,
   expected_bmc_version,
   xmc_status,
@@ -89,6 +90,7 @@ enum class key_type
 
   m2m,
   error,
+  nodma,
 
   dna_serial_num,
   clock_freqs_mhz,
@@ -162,7 +164,7 @@ enum class key_type
   firewall_status,
   firewall_time_sec,
   power_microwatts,
-  host_mem_size, 
+  host_mem_size,
   kds_numcdmas,
 
   mig_cache_update,
@@ -175,6 +177,7 @@ enum class key_type
 
   flash_bar_offset,
   is_mfg,
+  mfg_ver,
   is_ready,
   f_flash_type,
   flash_type,
@@ -587,7 +590,7 @@ struct dma_stream : request
   get(const device*) const = 0;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct mem_topology_raw : request
@@ -690,6 +693,22 @@ struct xmc_max_power : request
   }
 };
 
+struct xmc_sc_presence : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::xmc_sc_presence;
+  static const char* name() { return "sc_presence"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "true" : "false";
+  }
+};
+
 struct xmc_bmc_version : request
 {
   using result_type = std::string;
@@ -780,6 +799,22 @@ struct m2m : request
 {
   using result_type = uint32_t;
   static const key_type key = key_type::m2m;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static bool
+  to_bool(const result_type& value)
+  {
+     // if m2m does not exist, the execption is thrown
+     return value ? true : false;
+  }
+};
+
+struct nodma : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::nodma;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1756,7 +1791,7 @@ struct mig_cache_update : request
   static const key_type key = key_type::mig_cache_update;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier m, const std::string&) const = 0;
 
   virtual void
   put(const device*, const boost::any&) const = 0;
@@ -1768,7 +1803,7 @@ struct mig_ecc_enabled : request
   static const key_type key = key_type::mig_ecc_enabled;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct mig_ecc_status : request
@@ -1777,7 +1812,7 @@ struct mig_ecc_status : request
   static const key_type key = key_type::mig_ecc_status;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct mig_ecc_ce_cnt : request
@@ -1786,7 +1821,7 @@ struct mig_ecc_ce_cnt : request
   static const key_type key = key_type::mig_ecc_ce_cnt;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct mig_ecc_ue_cnt : request
@@ -1795,7 +1830,7 @@ struct mig_ecc_ue_cnt : request
   static const key_type key = key_type::mig_ecc_ue_cnt;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct mig_ecc_ce_ffa : request
@@ -1804,7 +1839,7 @@ struct mig_ecc_ce_ffa : request
   static const key_type key = key_type::mig_ecc_ce_ffa;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct mig_ecc_ue_ffa : request
@@ -1813,13 +1848,22 @@ struct mig_ecc_ue_ffa : request
   static const key_type key = key_type::mig_ecc_ue_ffa;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct is_mfg : request
 {
   using result_type = bool;
   static const key_type key = key_type::is_mfg;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct mfg_ver : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::mfg_ver;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1851,7 +1895,7 @@ struct flash_type : request
 
   virtual boost::any
   get(const device*) const = 0;
-  
+
   static std::string
   to_string(result_type value)
   {

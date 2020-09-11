@@ -179,7 +179,7 @@ struct qdma_descq {
 	u64 induce_err;
 	u64 ecc_err;
 #endif
-#ifdef DEBUGFS
+#ifdef _QDMA4_DEBUGFS_
 	/** debugfs queue index root */
 	struct dentry *dbgfs_qidx_root;
 	/** debugfs queue root */
