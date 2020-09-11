@@ -1,3 +1,5 @@
+.. _p2p.rst:
+
 PCIe Peer-to-Peer (P2P) Support
 *******************************
 
