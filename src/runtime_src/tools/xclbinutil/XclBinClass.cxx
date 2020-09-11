@@ -1083,8 +1083,8 @@ XclBin::appendSections(ParameterSectionData &_PSD)
     if (pSection == nullptr) {
       Section *pTempSection = Section::createSectionObjectOfKind(eKind);
 
-      // Add DTC exception. Only for 2019.1
-      if (eKind == PARTITION_METADATA) {
+      if ((eKind == PARTITION_METADATA) || 
+          (eKind == IP_LAYOUT)) {
         pSection = Section::createSectionObjectOfKind(eKind);
         addSection(pSection);
       } else {

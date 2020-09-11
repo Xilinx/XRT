@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -108,6 +108,15 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
   XUtil::TRACE("");
   XUtil::TRACE("Extracting: IP_LAYOUT");
   XUtil::TRACE_BUF("Section Buffer", reinterpret_cast<const char*>(_pDataSection), _sectionSize);
+  if (_sectionSize == 0) {
+    XUtil::TRACE("IP_LAYOUT Section is empty.  Adding an empty entry.");
+    boost::property_tree::ptree iplayout;
+    iplayout.put("m_count", "0");
+    boost::property_tree::ptree ipData;
+    iplayout.add_child("m_ip_data",ipData);
+    _ptree.add_child("ip_layout", iplayout);
+    return;
+  }
 
   // Do we have enough room to overlay the header structure
   if (_sectionSize < sizeof(ip_layout)) {
