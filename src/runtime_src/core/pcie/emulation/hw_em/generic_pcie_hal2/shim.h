@@ -193,7 +193,7 @@ using addr_type = uint64_t;
 
       //constructor
       HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified,
-        bool bXPR, FeatureRomHeader &featureRom, platformData& platform_data);
+        bool bXPR, FeatureRomHeader &featureRom, const std::map<std::string, std::string>& platformData);
 
       //destructor
       ~HwEmShim();
@@ -347,7 +347,7 @@ using addr_type = uint64_t;
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
-      platformData mPlatformData;
+      std::map<std::string, std::string> mPlatformData;
       std::set<unsigned int > mImportedBOs;
       uint64_t mCuBaseAddress;
       bool     mVersalPlatform;
