@@ -17,6 +17,8 @@
  * under the License.
  */
 
+#define ENABLE_HAL_PROFILING
+
 #include "shim.h"
 #include "system_linux.h"
 #include "core/common/message.h"

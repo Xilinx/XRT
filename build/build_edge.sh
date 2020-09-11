@@ -147,7 +147,8 @@ elif [[ $AARCH = $aarch32_dir ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/xilinx-zc706-v2020.2-final.bsp"
     YOCTO_MACHINE="zynq-generic"
 elif [[ $AARCH = $versal_dir ]]; then
-    PETA_BSP="$PETALINUX/../../bsp/release/xilinx-vck190-emmc-es1-v2020.2-final.bsp"
+    PETA_BSP="$PETALINUX/../../bsp/release/xilinx-vck190-es1-v2020.2-final.bsp"
+    #PETA_BSP="$PETALINUX/../../bsp/release/xilinx-vck190-emmc-es1-v2020.2-final.bsp"
     YOCTO_MACHINE="versal-generic"
 else
     error "$AARCH not exist"
