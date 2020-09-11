@@ -1186,37 +1186,66 @@ int xcldev::device::runTestCase(const std::string& py,
     std::string devInfoPath = name + "/test/";
     std::string xsaXclbinPath = getXsaPath(vendor) + devInfoPath;
     std::string dsaXclbinPath = dsaPath + devInfoPath;
-    std::string xrtTestCasePath = xrtPath + "test/" + py;
+    std::string xrtTestCasePath = xrtPath + "test/";
 
     output.clear();
 
     std::string xclbinPath;
     searchXsaAndDsa(m_idx, xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
-    xclbinPath += xclbin;
-
-    if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
-        //if bandwidth xclbin isn't present, skip the test
-        if(xclbin.compare("bandwidth.xclbin") == 0) {
-            output += "Bandwidth xclbin not available. Skipping validation.";
-            return -EOPNOTSUPP;
+    std::string cmd;
+    
+    // if platform.json exists in the new shell pakcage then use the new testcase
+    // else fallback to old python test cases
+    
+    // NEW FLOW: runs if platform.json is available
+    auto json_exists = [xclbinPath]() { return boost::filesystem::exists(xclbinPath + "platform.json") ? true : false; };
+    
+    if(json_exists()) {    
+        //map old testcase names to new testcase names
+        static const std::map<std::string, std::string> test_map = {
+            { "22_verify.py",             "validate.exe"    },
+            { "23_bandwidth.py",          "kernel_bw.exe"   },
+            { "host_mem_23_bandwidth.py", "slavebridge.exe" }
+        };
+        
+        xrtTestCasePath += test_map.find(py)->second;
+        // in case the user is trying to run a new platform with an XRT which doesn't support the new platform pkg
+        if (!boost::filesystem::exists(xrtTestCasePath)) {
+            output += "ERROR: Failed to find " + xrtTestCasePath + ", Shell package not installed properly.";
+            return -ENOENT;
         }
-        output += "ERROR: Failed to find ";
-        output += py;
-        output += " or ";
-        output += xclbin;
-        output += ", Shell package not installed properly.";
-        return -ENOENT;
-    }
 
-    // Program xclbin first.
-    int ret = program(xclbinPath, 0);
-    if (ret != 0) {
-        output += "ERROR: Failed to download xclbin: ";
-        output += xclbin;
-        return -EINVAL;
+        cmd = xrtTestCasePath + " " + xclbinPath;
     }
+    //OLD FLOW:
+    else { 
+        xrtTestCasePath += py;    
+        xclbinPath += xclbin;
 
-    std::string cmd = "/usr/bin/python3 " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+        if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+            //if bandwidth xclbin isn't present, skip the test
+            if(xclbin.compare("bandwidth.xclbin") == 0) {
+                output += "Bandwidth xclbin not available. Skipping validation.";
+                return -EOPNOTSUPP;
+            }
+            output += "ERROR: Failed to find ";
+            output += py;
+            output += " or ";
+            output += xclbin;
+            output += ", Shell package not installed properly.";
+            return -ENOENT;
+        }
+
+        // Program xclbin first.
+        int ret = program(xclbinPath, 0);
+        if (ret != 0) {
+            output += "ERROR: Failed to download xclbin: ";
+            output += xclbin;
+            return -EINVAL;
+        }
+
+        cmd = "/usr/bin/python3 " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    }
     return runShellCmd(cmd, output);
 }
 
