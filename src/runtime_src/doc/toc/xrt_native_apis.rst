@@ -92,7 +92,7 @@ The above code block shows
        
 The above code block shows
 
-    - The xrt::device class's constructor is used to open the device
+    - The ``xrt::device`` class's constructor is used to open the device
     - The method ``xrt::device::load_xclbin`` is used to load the XCLBIN from the filename. 
     - The method ``xrt::device::load_xclbin`` returns the XCLBIN UUID, which is required to open the kernel (refer the Kernel Section). 
 
