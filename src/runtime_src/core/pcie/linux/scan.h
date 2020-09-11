@@ -32,11 +32,6 @@
 #define ADVANTECH_ID    0x13fe
 #define AWS_ID          0x1d0f
 #define ARISTA_ID       0x3475
-static inline bool is_legacy_u30(uint16_t vendor, uint16_t device)
-{
-    return (vendor == XILINX_ID && (device == 0x503c || device == 0x503d));
-}
-
 #define INVALID_ID      0xffff
 
 #define FDT_BEGIN_NODE  0x1
@@ -93,11 +88,11 @@ public:
   size_t user_bar_size =      0;
   bool is_mgmt() const
   {
-      return is_legacy_u30(vendor_id, device_id) ? func == 1 : func == 0;
+      return mgmt;
   }
   bool is_ready =             false;
 
-  pci_device(const std::string& sysfs_name);
+  pci_device(const std::string& drv_name, const std::string& sysfs_name);
   ~pci_device();
 
   virtual void
@@ -166,6 +161,7 @@ private:
   int map_usr_bar(void);
   std::mutex lock;
   char *user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
+  bool mgmt = false;
 };
 
 void rescan(void);
