@@ -446,7 +446,7 @@ As an example, assume a kernel name is foo having 3 CUs foo_1, foo_2, foo_3. The
 
 
 
-**C++**: In C++, xrt::kernel object can be created from the constructor of ``xrt::kernel`` class. 
+**C++**: In C++, ``xrt::kernel`` object can be created from the constructor of ``xrt::kernel`` class. 
 
 .. code:: c++
       :number-lines: 35
@@ -615,4 +615,3 @@ The Run handle/object supports few other use-cases.
 In C++, the timeout facility can be used by the same ``xrt::run::wait(unsigned int timeout_ms=0)`` method by providing a millisecond number as an argument. 
 
 **Asynchronous update of the kernel arguments**: The API ``xrtRunSetArg`` (C++: ``xrt::run::set_arg``) is synchronous to the kernel execution. This API can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this API (only for edge platform) ``xrtRunUpdateArg`` (in C++ method ``xrt::run::update_arg``) is provided to change the kernel arguments asynchronous to the kernel execution. 
-
