@@ -1199,12 +1199,9 @@ int xcldev::device::runTestCase(const std::string& py,
     
     // NEW FLOW: runs if platform.json is available and the platform is not versal
     // Note: we don't have cpp based versal bw testcase
-    auto json_exists = [xclbinPath]() 
-        {
-            return boost::filesystem::exists(xclbinPath + "platform.json") ? true : false;
-        };
-    if(json_exists() && xclbin.compare("versal_23_bandwidth.py") != 0) {
-        
+    auto json_exists = [xclbinPath]() { return boost::filesystem::exists(xclbinPath + "platform.json") ? true : false; };
+    
+    if(json_exists()) {    
         //map old testcase names to new testcase names
         static const std::map<std::string, std::string> test_map = {
             { "22_verify.py",             "validate.exe"    },
@@ -1215,7 +1212,7 @@ int xcldev::device::runTestCase(const std::string& py,
         xrtTestCasePath += test_map.find(py)->second;
         // in case the user is trying to run a new platform with an XRT which doesn't support the new platform pkg
         if (!boost::filesystem::exists(xrtTestCasePath)) {
-            output += "ERROR: Failed to find " + xrtTestCasePath + ". Please update XRT.";
+            output += "ERROR: Failed to find " + xrtTestCasePath + ", Shell package not installed properly.";
             return -ENOENT;
         }
 
