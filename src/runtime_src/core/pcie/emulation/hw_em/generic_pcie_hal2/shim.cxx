@@ -1866,7 +1866,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   bool HwEmShim::isMBSchedulerEnabled()
   {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      bool mbSchEnabled = boost::lexical_cast<bool>(mPlatformData.at("boardScheduler"));
+      bool mbSchEnabled = boost::lexical_cast<bool>(mPlatformData.at("ert"));
       return mbSchEnabled;
     }
 
@@ -1891,11 +1891,25 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return false;
   }
 
-  std::string HwEmShim::getMBSchedulerVersion() {
+  std::string HwEmShim::getERTVersion() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      return (mPlatformData.at("boardSchedulerVer"));
+      return (mPlatformData.at("ertVersion"));
     }
-    return "1.0";
+    return "10";
+  }
+
+  uint64_t HwEmShim::getErtCmdQAddress() {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      return (boost::lexical_cast<uint64_t>(mPlatformData.at("ertCmdqBaseAddr")));
+    }
+    return 0x0;
+  }
+
+  uint64_t HwEmShim::getErtBaseAddress() {
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      return (boost::lexical_cast<uint64_t>(mPlatformData.at("ertBaseAddr")));
+    }
+    return 0x0;
   }
 
   bool HwEmShim::isLegacyErt()

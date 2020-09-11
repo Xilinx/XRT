@@ -214,10 +214,12 @@ using addr_type = uint64_t;
       void setUnified(bool _unified) { bUnified = _unified; }
 
       bool isMBSchedulerEnabled();
+      uint64_t getErtCmdQAddress();
+      uint64_t getErtBaseAddress();
       bool isM2MEnabled();
       bool isNoDMAEnabled();
 
-      std::string getMBSchedulerVersion();
+      std::string getERTVersion();
       bool isLegacyErt();
       unsigned int getDsaVersion();
       bool isCdmaEnabled();
