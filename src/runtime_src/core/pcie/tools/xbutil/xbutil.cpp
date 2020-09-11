@@ -1197,8 +1197,7 @@ int xcldev::device::runTestCase(const std::string& py,
     // if platform.json exists in the new shell pakcage then use the new testcase
     // else fallback to old python test cases
     
-    // NEW FLOW: runs if platform.json is available and the platform is not versal
-    // Note: we don't have cpp based versal bw testcase
+    // NEW FLOW: runs if platform.json is available
     auto json_exists = [xclbinPath]() { return boost::filesystem::exists(xclbinPath + "platform.json") ? true : false; };
     
     if(json_exists()) {    
