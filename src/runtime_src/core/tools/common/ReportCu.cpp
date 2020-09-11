@@ -30,19 +30,19 @@ enum class cu_stat : unsigned short {
 };
 
 uint32_t 
-parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu_stat kind) 
+parseComputeUnitStat(const std::vector<std::string>& custat, uint64_t offset, cu_stat kind) 
 {
   uint32_t ret = 0;
 
   for (auto& line : custat) {
     uint32_t ba = 0, cnt = 0, sta = 0;
 #ifdef _WIN32
-    std::sscanf_s(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
+    sscanf_s(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
 #else
-    std::sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
+    sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
 #endif
 
-    if (offset != ba)
+    if (offset != (uint64_t)ba)
       continue;
 
     if (kind == cu_stat::usage)
@@ -64,7 +64,7 @@ populate_cus(const xrt_core::device *device, const std::string& desc)
   std::vector<std::string> cu_stats;
 
   pt.put("description", desc);
-  
+ 
   try {
     ip_buf = xrt_core::device_query<qr::ip_layout_raw>(device);
     cu_stats = xrt_core::device_query<qr::kds_custats>(device);
@@ -81,13 +81,15 @@ populate_cus(const xrt_core::device *device, const std::string& desc)
     if (layout->m_ip_data[i].m_type != IP_KERNEL)
       continue;
 
-    uint32_t status = parseComputeUnitStat(cu_stats, layout->m_ip_data[i].m_base_address, cu_stat::stat);
-    uint32_t usage = parseComputeUnitStat(cu_stats, layout->m_ip_data[i].m_base_address, cu_stat::usage);
+    uint32_t status = parseComputeUnitStat(cu_stats,
+			layout->m_ip_data[i].m_base_address, cu_stat::stat);
+    uint32_t usage = parseComputeUnitStat(cu_stats,
+			layout->m_ip_data[i].m_base_address, cu_stat::usage);
     boost::property_tree::ptree ptCu;
-    std::stringstream ss_addr;
-    ss_addr << "0x" << std::hex << layout->m_ip_data[i].m_base_address;
+    std::string ss_addr = boost::str(boost::format("0x%x") %
+				     layout->m_ip_data[i].m_base_address);
     ptCu.put( "name",         layout->m_ip_data[i].m_name);
-    ptCu.put( "base_address", ss_addr.str());
+    ptCu.put( "base_address", ss_addr);
     ptCu.put( "usage",        usage);
     ptCu.put( "status",       xrt_core::utils::parse_cu_status(status));
     ptCu_array.push_back(std::make_pair("", ptCu));
@@ -123,25 +125,17 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
   boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
   getPropertyTreeInternal(_pDevice, _pt);
- 
+
   _output << boost::format("%s\n") % _pt.get<std::string>("Compute_Unit.description");
   _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
   int index = 0;
   try {
-    for (auto& v : _pt.get_child("Compute_Unit.compute_units")) {
-      std::string name, base_addr, usage, status;
-      for (auto& subv : v.second) {
-        if (subv.first == "name") {
-          name = subv.second.get_value<std::string>();
-        } else if (subv.first == "base_address") {
-          base_addr = subv.second.get_value<std::string>();
-        } else if (subv.first == "usage") {
-          usage = subv.second.get_value<std::string>();
-        } else if (subv.first == "status") {
-          status = subv.second.get_value<std::string>();
-        }
-      }
-      _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") %index % name % base_addr % usage % status;
+    boost::property_tree::ptree& v = _pt.get_child("Compute_Unit.compute_units");
+    for(auto& kv : v) {
+      boost::property_tree::ptree& cu = kv.second;
+      _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") % index %
+	      cu.get<std::string>("name") % cu.get<std::string>("base_address") %
+	      cu.get<std::string>("usage") % cu.get<std::string>("status");
       index++;
     }
   }
