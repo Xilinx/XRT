@@ -19,9 +19,9 @@ The core data structures in C and C++ are as below
 +===============+===============+===================+
 |   Device      | xrt::device   |  xrtDeviceHandle  |
 +---------------+---------------+-------------------+
-|   XCLBIN      | xrt::xclbin   |  xrtXCLBINHandle  |
+|   XCLBIN      | xrt::xclbin   |  xrtXclbinHandle  |
 +---------------+---------------+-------------------+
-|   Buffer      | xrt::buffer   |  xrtBufferHandle  |
+|   Buffer      | xrt::bo       |  xrtBufferHandle  |
 +---------------+---------------+-------------------+
 |   Kernel      | xrt::kernel   |  xrtKernelHandle  |
 +---------------+---------------+-------------------+
