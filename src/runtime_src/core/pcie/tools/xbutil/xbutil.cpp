@@ -1213,7 +1213,7 @@ int xcldev::device::runTestCase(const std::string& py,
         };
         
         xrtTestCasePath += test_map.find(py)->second;
-        // in case the user is trying to run a new platform with an older XRT
+        // in case the user is trying to run a new platform with an XRT which doesn't support the new platform pkg
         if (!boost::filesystem::exists(xrtTestCasePath)) {
             output += "ERROR: Failed to find " + xrtTestCasePath + ". Please update XRT.";
             return -ENOENT;
