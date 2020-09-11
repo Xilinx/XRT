@@ -235,7 +235,7 @@ Code example of transferring data from the host to the device
                buff_data[i] = i;
            }
     
-           input_buffer.write(buff_data,buffer_size_in_bytes,0);
+           input_buffer.write(buff_data, buffer_size_in_bytes, 0);
            input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE, buffer_size_in_bytes,0);
 
 
