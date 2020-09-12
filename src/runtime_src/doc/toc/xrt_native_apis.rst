@@ -432,14 +432,14 @@ As an example, assume a kernel name is foo having 3 CUs foo_1, foo_2, foo_3. The
 
        - Opening kernel handle for foo_1 and foo_2 (as they have identical interface connection)
        
-         .. code:: c++
+         .. code:: c
                :number-lines: 35
                   
                     cu_group_1 = xrtPLKernelOpen(device, xclbin_uuid, "foo:{foo_1,foo_2}");     
    
        - Opening kernel handle for foo_3
           
-         .. code:: c++
+         .. code:: c
                :number-lines: 35
                   
                     cu_group_2 = xrtPLKernelOpen(device, xclbin_uuid, "foo:{foo_3}");     
