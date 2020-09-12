@@ -114,7 +114,7 @@ Buffers are primarily used to transfer the data between the host and the device.
 XRT APIs provides API for
    
       - ``xrtBOAlloc``: Allocates a buffer object 4K aligned, the API must be called with appropriate flags. 
-      - ``xrtBOAllocUserPtr``: Allocates a buffer object by the user-provided pointer aligned to 4K boundary. 
+      - ``xrtBOAllocUserPtr``: Allocates a buffer object using pointer (aligned to 4K boundary) provided by the user. 
       
               - If the user-provided pointer is not aligned to 4K boundary, XRT internally copies the data to align it at 4K boundary. 
       - ``xrtBOFree``: Deallocates the allocated buffer. 
