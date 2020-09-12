@@ -7,6 +7,8 @@ From 2020.2 release XRT provides a new XRT API set in C, C++, and Python flavor.
 
 To use the native XRT APIs, the host application must link with the **xrt_coreutil** library.
 
+Example g++ command
+
 .. code-block:: shell
 
     g++ -g -std=c++14 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o host.exe host.cpp -lxrt_coreutil -pthread
