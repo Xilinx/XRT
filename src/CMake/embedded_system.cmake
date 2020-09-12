@@ -40,6 +40,10 @@ set(LINUX_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
 
 find_package(Boost REQUIRED COMPONENTS system filesystem )
 
+if(Boost_VERSION_STRING VERSION_LESS 1.64.0)
+  add_definitions (-DBOOST_PRE_1_64=1)
+endif()
+
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
 
