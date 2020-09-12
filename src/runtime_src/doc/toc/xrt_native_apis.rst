@@ -93,8 +93,8 @@ The above code block shows
 The above code block shows
 
     - The ``xrt::device`` class's constructor is used to open the device
-    - The method ``xrt::device::load_xclbin`` is used to load the XCLBIN from the filename. 
-    - The method ``xrt::device::load_xclbin`` returns the XCLBIN UUID, which is required to open the kernel (refer the Kernel Section). 
+    - The member function ``xrt::device::load_xclbin`` is used to load the XCLBIN from the filename. 
+    - The member function ``xrt::device::load_xclbin`` returns the XCLBIN UUID, which is required to open the kernel (refer the Kernel Section). 
 
 
 Buffers
@@ -187,7 +187,7 @@ The following C APIs are used for the above tasks
     1. ``xrtBOWrite``  
     2. ``xrtBOSync`` with flag ``XCL_BO_SYNC_BO_TO_DEVICE``
     
-In C++, ``xrt::bo`` class has following methods for the same functionality
+In C++, ``xrt::bo`` class has following member functions for the same functionality
 
     1. ``xrt::bo::write``
     2. ``xrt::bo::sync`` with flag ``XCL_BO_SYNC_BO_TO_DEVICE``
@@ -199,7 +199,7 @@ The following C APIs are used for the above tasks
      1. ``xrtBOSync`` with flag ``XCL_BO_SYNC_BO_FROM_DEVICE``
      2. ``xrtBORead``
 
-In C++ the corresponding ``xrt::bo`` class's methods are
+In C++ the corresponding ``xrt::bo`` class's member functions are
 
     1. ``xrt::bo::sync`` with flag ``XCL_BO_SYNC_BO_FROM_DEVICE``
     2. ``xrt::bo::read``
@@ -340,7 +340,7 @@ In the above example
 In the above example
 
        - The buffer buffer_device_1 is a buffer allocated on device 1
-       - buffer_device_1 is exported by the method ``xrt::bo::export_buffer``
+       - buffer_device_1 is exported by the member function ``xrt::bo::export_buffer``
        - The new buffer buffer_device_2 is imported for device_2 by the constructor ``xrt::bo``
 
 
@@ -382,8 +382,8 @@ Buffer information
 
 XRT provides few other APIs to obtain information related to the buffer. 
 
-   - ``xrtBOSize`` (C++: Method ``xrt::bo::size``): Size of the buffer
-   - ``xrtBOAddr`` (C++: Method ``xrt::bo::address``) : Physical address of the buffer
+   - ``xrtBOSize`` (C++: member function ``xrt::bo::size``): Size of the buffer
+   - ``xrtBOAddr`` (C++: member function ``xrt::bo::address``) : Physical address of the buffer
 
 
 
@@ -504,8 +504,8 @@ Reading and write CU mapped registers
 
 To read and write from the AXI-Lite register space corresponding to a CU, the CU must be opened in exclusive mode (in shared mode, multiple processes can access the CU's address space, hence it is unsafe if they are trying to access/change registers at the same time leading to a potential race behavior). The required APIs for kernel register read and write are
   
-    - ``xrtKernelReadRegister`` (C++: Method ``xrt::kernel::read_register``)
-    - ``xrtKernelWriteRegiste`` (C++: Method ``xrt::kernel::write_register``)
+    - ``xrtKernelReadRegister`` (C++: member function ``xrt::kernel::read_register``)
+    - ``xrtKernelWriteRegiste`` (C++: member function ``xrt::kernel::write_register``)
 
 .. code:: c
       :number-lines: 35
@@ -594,9 +594,9 @@ In C++ the ``xrt::kernel`` class provides **overloaded operator ()** to execute 
 The above c++ code block is demonstrating 
   
   - The kernel execution using the ``xrt::kernel()`` operator with the list of arguments that returns a xrt::run object. This is an asynchronous API and returns after submitting the task.    
-  - The method ``xrt::run::wait`` is used to block the current thread until the current execution is finished. 
-  - The method ``xrt::run::set_arg`` is used to set one or more kernel argument(s) before the next execution. In the example above, only the last (3rd) argument is changed.  
-  - The method ``xrt::run::start`` is used to start the next kernel execution with new argument(s).   
+  - The member function ``xrt::run::wait`` is used to block the current thread until the current execution is finished. 
+  - The member function ``xrt::run::set_arg`` is used to set one or more kernel argument(s) before the next execution. In the example above, only the last (3rd) argument is changed.  
+  - The member function ``xrt::run::start`` is used to start the next kernel execution with new argument(s).   
 
 Other kernel execution related APIs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -606,12 +606,12 @@ The Run handle/object supports few other use-cases.
 **Obtaining the run handle/object before execution**: In the above example we have seen a run handle/object is obtained when the kernel is executed (kernel execution returns a run handle/object). However, a run handle can be obtained even before the kernel execution. The flow is as below
 
     - Open a Run handle (or object) by API ``xrtRunOpen`` (in C++ ``xrt::run`` constructor with a kernel argument). There is no kernel execution associated with this run handle/object yet
-    - Set the kernel arguments associated for the next execution by ``xrtRunSetArg`` (in C++ method ``xrt::run::set_arg``). 
-    - Execute the kernel by ``xrtRunStart`` (in C++ method ``xrt::run::start``).
+    - Set the kernel arguments associated for the next execution by ``xrtRunSetArg`` (in C++ member function ``xrt::run::set_arg``). 
+    - Execute the kernel by ``xrtRunStart`` (in C++ member function ``xrt::run::start``).
     - Wait for the execution finish by ``xrtRunWait`` (C++: ``xrt::run::wait``). 
 
 **Timeout while wait for kernel finish**: The API ``xrtRunWait`` blocks the current thread until the kernel execution finishes. However, a timeout supported API ``xrtRunWaitFor`` is also provided . The timeout number can be specified using a millisecond unit.
 
-In C++, the timeout facility can be used by the same ``xrt::run::wait(unsigned int timeout_ms=0)`` method by providing a millisecond number as an argument. 
+In C++, the timeout facility can be used by the same ``xrt::run::wait(unsigned int timeout_ms=0)`` member function by providing a millisecond number as an argument. 
 
-**Asynchronous update of the kernel arguments**: The API ``xrtRunSetArg`` (C++: ``xrt::run::set_arg``) is synchronous to the kernel execution. This API can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this API (only for edge platform) ``xrtRunUpdateArg`` (in C++ method ``xrt::run::update_arg``) is provided to change the kernel arguments asynchronous to the kernel execution. 
+**Asynchronous update of the kernel arguments**: The API ``xrtRunSetArg`` (C++: ``xrt::run::set_arg``) is synchronous to the kernel execution. This API can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this API (only for edge platform) ``xrtRunUpdateArg`` (in C++ member function ``xrt::run::update_arg``) is provided to change the kernel arguments asynchronous to the kernel execution. 
