@@ -50,6 +50,19 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+dump_host_environment()
+{
+    echo "Build environment"
+    echo "---------------------------------------------------------------------------------"
+    if [ -x /usr/bin/systemd-detect-virt ]; then
+	echo -n "Virtualization: "
+	/usr/bin/systemd-detect-virt
+    fi
+    echo "Distribution: $FLAVOR $VERSION"
+    uname -a
+    echo "---------------------------------------------------------------------------------"
+}
+
 rh_package_list()
 {
     RH_LIST=(\
@@ -322,7 +335,7 @@ prep_centos7()
     fi
     echo "Installing cmake3 from EPEL repository..."
     yum install -y cmake3
-    if [ $docker == 0 ]; then 
+    if [ $docker == 0 ]; then
         echo "Enabling CentOS SCL repository..."
         yum --enablerepo=extras install -y centos-release-scl
     fi
@@ -336,7 +349,7 @@ prep_rhel7()
     	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 	 yum check-update
     fi
-    
+
     echo "Enabling RHEL SCL repository..."
     yum-config-manager --enable rhel-server-rhscl-7-rpms
 
@@ -355,7 +368,7 @@ prep_rhel8()
     	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 	 yum check-update
     fi
-    
+
     echo "Enabling CodeReady-Builder repository..."
     subscription-manager repos --enable "codeready-builder-for-rhel-8-x86_64-rpms"
 }
@@ -392,7 +405,7 @@ prep_rhel()
     else
         prep_rhel7
     fi
-    
+
     echo "Installing cmake3 from EPEL repository..."
     yum install -y cmake3
 }
@@ -409,6 +422,7 @@ prep_amzn()
 
 install()
 {
+    echo "---------------------------------------------------------------------------------"
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         prep_ubuntu
 
@@ -448,8 +462,11 @@ install()
 
     # Install pybind11 for building the XRT python bindings
     pip3 install pybind11
+    echo "---------------------------------------------------------------------------------"
+
 }
 
+dump_host_environment
 update_package_list
 
 if [ $validate == 1 ]; then
