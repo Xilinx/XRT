@@ -16,7 +16,7 @@ matrix:
         build_command: "./build.sh -driver"
         branch_pattern: master
 
-  - os: linux-ppc64le
+  - os: linux
     arch: ppc64le
     dist: bionic
     env:
@@ -27,6 +27,12 @@ matrix:
     dist: bionic
     env:
       - CONFIGURATION=linux/arm64
+
+  - os: linux
+    arch: amd64
+    dist: focal
+    env:
+      - CONFIGURATION=linux/amd64
 
 before_script:
   - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
