@@ -61,6 +61,8 @@ dump_host_environment()
     echo "Distribution: $FLAVOR $VERSION"
     uname -a
     ls -lah /usr/src/
+    ls -lah /lib/modules/
+    ls -lah /lib/modules/`uname -r`/
     dpkg-query -S linux-image || true
     echo "---------------------------------------------------------------------------------"
 }
