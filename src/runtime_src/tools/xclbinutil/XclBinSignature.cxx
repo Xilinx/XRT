@@ -483,6 +483,9 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
     throw std::runtime_error("ERROR: Can't add certificate.");
   }
 
+  // -- v3 Certificates with "extendedKeyUsage = codeSigning,1.3.6.1.4.1.2312.16.1.2"
+  // -- e.g. UEFI DKMS module signing certiciate /var/lib/shim-signed/mok/MOK.der
+  X509_STORE_set_purpose(store, XKU_CODE_SIGN);
   // -- Read in signature --
   PKCS7* p7 = d2i_PKCS7_bio(bmSignature, NULL);
   if (p7 == NULL) {
