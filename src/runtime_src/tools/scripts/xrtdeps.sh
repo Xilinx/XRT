@@ -60,6 +60,8 @@ dump_host_environment()
     fi
     echo "Distribution: $FLAVOR $VERSION"
     uname -a
+    ls -lah /usr/src/
+    dpkg-query -S linux-image || true
     echo "---------------------------------------------------------------------------------"
 }
 
