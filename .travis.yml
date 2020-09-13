@@ -16,7 +16,7 @@ matrix:
         build_command: "./build.sh -driver"
         branch_pattern: master
 
-  - os: linux-ppc64le
+  - os: linux
     arch: ppc64le
     dist: focal
     env:
