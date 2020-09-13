@@ -23,6 +23,7 @@
   #include <openssl/cms.h>
   #include <openssl/pem.h>
   #include <openssl/err.h>
+  #include <openssl/x509v3.h>
 #endif
 
 #ifdef _WIN32
