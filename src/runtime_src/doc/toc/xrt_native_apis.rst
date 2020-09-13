@@ -30,6 +30,14 @@ The core data structures in C and C++ are as below
 |   Run         | xrt::run      |  xrtRunHandle     |
 +---------------+---------------+-------------------+
 
+All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/experimental/`` directory. In the user host code, it is sufficient to include only ``"experimental/xrt_kernel.h"`` to access all the APIs related to these data structure.
+
+.. code:: c
+      :number-lines: 5
+           
+           #include "experimental/xrt_kernel.h"
+
+
 The common host code flow using the above data structures is as below
    
       - Open Xilinx **Device** and Load the **XCLBIN**
