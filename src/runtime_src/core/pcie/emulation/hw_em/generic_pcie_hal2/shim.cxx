@@ -1782,7 +1782,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
   HwEmShim::HwEmShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, 
-    FeatureRomHeader &fRomHeader, const std::map<std::string, std::string>& platformData)
+    FeatureRomHeader &fRomHeader, const boost::property_tree::ptree& platformData)
     :mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
@@ -1866,8 +1866,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   bool HwEmShim::isMBSchedulerEnabled()
   {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      bool mbSchEnabled = boost::lexical_cast<bool>(mPlatformData.at("ert"));
-      return mbSchEnabled;
+      bool isERTEnabled = boost::lexical_cast<bool>(mPlatformData.get<std::string>("blp.ert"));
+      return isERTEnabled;
     }
 
     bool mbSchEnabled = mFeatureRom.FeatureBitMap & FeatureBitMask::MB_SCHEDULER;
@@ -1877,7 +1877,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   bool HwEmShim::isM2MEnabled() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      bool isM2MEnabled = boost::lexical_cast<bool>(mPlatformData.at("m2m"));
+      bool isM2MEnabled = boost::lexical_cast<bool>(mPlatformData.get<std::string>("queryTable.m2m"));
       return isM2MEnabled;
     }
     return false;
@@ -1885,7 +1885,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   bool HwEmShim::isNoDMAEnabled() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      bool isNoDMAEnabled = boost::lexical_cast<bool>(mPlatformData.at("nodma"));
+      bool isNoDMAEnabled = boost::lexical_cast<bool>(mPlatformData.get<std::string>("queryTable.nodma"));
       return isNoDMAEnabled;
     }
     return false;
@@ -1893,21 +1893,21 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   std::string HwEmShim::getERTVersion() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      return (mPlatformData.at("ertVersion"));
+      return (mPlatformData.get<std::string>("blp.ertVersion"));
     }
     return "10";
   }
 
   uint64_t HwEmShim::getErtCmdQAddress() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      return (boost::lexical_cast<uint64_t>(mPlatformData.at("ertCmdqBaseAddr")));
+      return (boost::lexical_cast<uint64_t>(mPlatformData.get<std::string>("blp.ertCmdqBaseAddr")));
     }
     return 0x0;
   }
 
   uint64_t HwEmShim::getErtBaseAddress() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      return (boost::lexical_cast<uint64_t>(mPlatformData.at("ertBaseAddr")));
+      return (boost::lexical_cast<uint64_t>(mPlatformData.get<std::string>("blp.ertBaseAddr")));
     }
     return 0x0;
   }
@@ -1938,7 +1938,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   bool HwEmShim::isCdmaEnabled()
   {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      return (boost::lexical_cast<bool>(mPlatformData.at("cdma")));
+      return (boost::lexical_cast<bool>(mPlatformData.get<std::string>("ulp.cdma")));
     }
 
     return mFeatureRom.FeatureBitMap & FeatureBitMask::CDMA;
@@ -1947,8 +1947,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   uint64_t HwEmShim::getCdmaBaseAddress(unsigned int index)
   {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      std::string cdmaAddrStr = "cdmaBaseAddress" + std::to_string(index);
-      return (boost::lexical_cast<uint64_t>(mPlatformData.at(cdmaAddrStr)));
+      std::string cdmaAddrStr = "ulp.cdmaBaseAddress" + std::to_string(index);
+      return (boost::lexical_cast<uint64_t>(mPlatformData.get<std::string>(cdmaAddrStr)));
     }
   
     return mFeatureRom.CDMABaseAddress[index];

@@ -53,7 +53,7 @@ namespace xclcpuemhal2 {
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
  
   CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr,
-    FeatureRomHeader& fRomHeader, const std::map<std::string, std::string>& platformData)
+    FeatureRomHeader& fRomHeader, const boost::property_tree::ptree& platformData)
     :mTag(TAG)
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
@@ -1884,7 +1884,7 @@ int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) cons
 
 bool CpuemShim::isM2MEnabled() {
   if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-    bool isM2MEnabled = boost::lexical_cast<bool>(mPlatformData.at("m2m"));
+    bool isM2MEnabled = boost::lexical_cast<bool>(mPlatformData.get<std::string>("queryTable.m2m"));
     return isM2MEnabled;
   }
   return false;
@@ -1892,7 +1892,7 @@ bool CpuemShim::isM2MEnabled() {
 
 bool CpuemShim::isNoDMAEnabled() {
   if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-    bool isNoDMAEnabled = boost::lexical_cast<bool>(mPlatformData.at("nodma"));
+    bool isNoDMAEnabled = boost::lexical_cast<bool>(mPlatformData.get<std::string>("queryTable.nodma"));
     return isNoDMAEnabled;
   }
   return false;

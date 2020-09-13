@@ -594,12 +594,13 @@ namespace xclemulation{
     }
   }
 
+/*
   static void populatePlatformData(boost::property_tree::ptree const& platformDataTree, std::map<std::string, std::string>& platform_data) {
 
     for (auto& prop : platformDataTree) {
       platform_data[prop.first] = prop.second.get_value<std::string>();
     }
-  }
+  }*/
 
   static void populateFeatureRom(boost::property_tree::ptree const& featureRomTree, FeatureRomHeader& fRomHeader)
   {
@@ -670,7 +671,7 @@ namespace xclemulation{
     }
   }
 
-  static void populateHwDevicesOfSingleBoard(boost::property_tree::ptree & deviceTree, std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader, std::map<std::string, std::string>> >& devicesInfo,std::map<std::string, uint64_t>& memMap, bool bUnified, bool bXPR)
+  static void populateHwDevicesOfSingleBoard(boost::property_tree::ptree & deviceTree, std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader, boost::property_tree::ptree > >& devicesInfo,std::map<std::string, uint64_t>& memMap, bool bUnified, bool bXPR)
   {
 
     for (auto& device : deviceTree)
@@ -696,7 +697,7 @@ namespace xclemulation{
       DDRBankList.push_back(bank);
       FeatureRomHeader fRomHeader;
       std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
-      std::map<std::string, std::string> platform_data;
+      boost::property_tree::ptree platformDataTree;
 
       //iterate over all the properties of device and fill the info structure. This info object gets used to create  device object
       for (auto& prop : device.second)
@@ -752,10 +753,8 @@ namespace xclemulation{
         }
         else if (prop.first == "PlatformData")
         {
-          populatePlatformData(prop.second, platform_data);
-          if (platform_data.size()) {
-            config::getInstance()->setIsPlatformEnabled(true);
-          }
+          platformDataTree = prop.second;
+          config::getInstance()->setIsPlatformEnabled(true);
         }
         else if(prop.first == "OclFreqency")
         {
@@ -772,7 +771,7 @@ namespace xclemulation{
       //iterate using this variable and create that many number of devices.
       for(unsigned int i = 0; i < numDevices;i++)
       {
-        devicesInfo.push_back(make_tuple(info, DDRBankList, bUnified, bXPR, fRomHeader, platform_data));
+        devicesInfo.push_back(make_tuple(info, DDRBankList, bUnified, bXPR, fRomHeader, platformDataTree));
       }
     }
     return;
@@ -780,7 +779,7 @@ namespace xclemulation{
 
   //create all the devices If devices child is present in this tree otherwise call this function recursively for all the child trees
   //iterate over devices tree and create all the device objects.
-  static void populateHwEmDevices(boost::property_tree::ptree const& platformTree,std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader, std::map<std::string, std::string>> >& devicesInfo,std::map<std::string, uint64_t>& memMap)
+  static void populateHwEmDevices(boost::property_tree::ptree const& platformTree,std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader, boost::property_tree::ptree> >& devicesInfo,std::map<std::string, uint64_t>& memMap)
   {
     using boost::property_tree::ptree;
     ptree::const_iterator platformEnd = platformTree.end();
@@ -847,7 +846,7 @@ namespace xclemulation{
     return true;
   }
 
-  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2, std::list<DDRBank>, bool, bool, FeatureRomHeader, std::map<std::string, std::string>> >& devicesInfo)
+  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2, std::list<DDRBank>, bool, bool, FeatureRomHeader, boost::property_tree::ptree> >& devicesInfo)
   {
     std::string emConfigFile =  getEmConfigFilePath();
     std::ifstream ifs;
