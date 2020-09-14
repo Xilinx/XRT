@@ -16,7 +16,7 @@ matrix:
         build_command: "./build.sh -driver"
         branch_pattern: master
 
-  - os: linux
+  - os: linux-ppc64le
     arch: ppc64le
     dist: bionic
     env:
