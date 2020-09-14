@@ -23,6 +23,8 @@
 #include "xclbin.h"
 #include <errno.h>
 #include <unistd.h>
+#include <boost/property_tree/xml_parser.hpp>
+#include <boost/lexical_cast.hpp>
 
 namespace {
 
@@ -51,7 +53,7 @@ namespace xclcpuemhal2 {
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
  
   CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr,
-    FeatureRomHeader& fRomHeader, platformData& platform_data)
+    FeatureRomHeader& fRomHeader, const boost::property_tree::ptree& platformData)
     :mTag(TAG)
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
@@ -78,15 +80,15 @@ namespace xclcpuemhal2 {
     simulator_started = false;
     mVerbosity = XCL_INFO;
 
+    mPlatformData = platformData;
+    constructQueryTable();
+
     std::memset(&mDeviceInfo, 0, sizeof(xclDeviceInfo2));
     fillDeviceInfo(&mDeviceInfo,&info);
     initMemoryManager(DDRBankList);
 
     std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
     std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
-
-    std::memset(&mPlatformData, 0, sizeof(platformData));
-    std::memcpy(&mPlatformData, &platform_data, sizeof(platformData));
     
     char* pack_size = getenv("SW_EMU_PACKET_SIZE");
     if(pack_size)
@@ -1881,18 +1883,25 @@ int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) cons
 }
 
 // New API's for m2m and no-dma
+
+void CpuemShim::constructQueryTable() {
+  if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+    mQueryTable["m2m"] = mPlatformData.get<std::string>("plp.m2m");
+    std::string dmaVal = mPlatformData.get<std::string>("plp.dma");
+    mQueryTable["nodma"] = (dmaVal == "none" ? "enabled" : "disabled");
+  }
+}
+
 bool CpuemShim::isM2MEnabled() {
   if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-    bool isM2MEnabled = mPlatformData.mIsM2M;
-    return isM2MEnabled;
+    return (mQueryTable["m2m"] == "enabled" ? true : false);
   }
   return false;
 }
 
 bool CpuemShim::isNoDMAEnabled() {
   if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-    bool isNoDMAEnabled = mPlatformData.mIsNoDMA;
-    return isNoDMAEnabled;
+    return (mQueryTable["nodma"] == "enabled" ? true : false);
   }
   return false;
 }
