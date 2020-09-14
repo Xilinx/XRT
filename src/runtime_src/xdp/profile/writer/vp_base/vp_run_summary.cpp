@@ -87,7 +87,7 @@ namespace xdp {
     {
       boost::property_tree::ptree ptSystemDiagram ;
       ptSystemDiagram.put("payload_16bitEnc", systemDiagram.c_str()) ;
-      ptRunSummary.add_child("system_dagram", ptSystemDiagram) ;
+      ptRunSummary.add_child("system_diagram", ptSystemDiagram) ;
     }
 
     boost::property_tree::write_json(fout, ptRunSummary, true) ;
