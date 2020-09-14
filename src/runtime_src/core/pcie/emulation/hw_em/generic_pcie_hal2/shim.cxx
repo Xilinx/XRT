@@ -2204,7 +2204,7 @@ static bool check_bo_user_flags(HwEmShim* dev, unsigned flags)
 	if(ddr_count == 0)
 		return false;
 
-	if (flags == 0xffffffff)
+	if (flags == XOCL_MEM_BANK_MSK)
 		return true;
 
   ddr = xclemulation::xocl_bo_ddr_idx(flags,false);
