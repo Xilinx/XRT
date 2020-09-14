@@ -594,6 +594,13 @@ namespace xclemulation{
     }
   }
 
+  static void populatePlatformData(boost::property_tree::ptree const& platformDataTree, std::map<std::string, std::string>& platform_data) {
+
+    for (auto& prop : platformDataTree) {
+      platform_data[prop.first] = prop.second.get_value<std::string>();
+    }
+  }
+
   static void populateFeatureRom(boost::property_tree::ptree const& featureRomTree, FeatureRomHeader& fRomHeader)
   {
     for (auto& prop : featureRomTree)
@@ -746,7 +753,12 @@ namespace xclemulation{
         else if (prop.first == "PlatformData")
         {
           platformDataTree = prop.second;
-          config::getInstance()->setIsPlatformEnabled(true);
+          std::map<std::string, std::string> platDataMap;
+          populatePlatformData(platformDataTree, platDataMap);
+
+          if (platDataMap.size()) {
+            config::getInstance()->setIsPlatformEnabled(true);
+          }
         }
         else if(prop.first == "OclFreqency")
         {

@@ -1931,10 +1931,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
   void HwEmShim::constructQueryTable() {
-    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-
-      
-      
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {      
       mQueryTable["m2m"] = mPlatformData.get<std::string>("plp.m2m");
       std::string dmaVal = mPlatformData.get<std::string>("plp.dma");
       mQueryTable["nodma"] = (dmaVal == "none" ? "enabled" : "disabled");
