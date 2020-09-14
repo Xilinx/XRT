@@ -426,7 +426,7 @@ setup()
 
   // In dataflow number of slots is number of CUs plus ctrl slot (0),
   // otherwise its as many slots as possible per slot_size
-  num_slots = dataflow_enabled ? num_cus+1 : ERT_CQ_SIZE / slot_size;
+  num_slots = ERT_CQ_SIZE / slot_size;
   num_slot_masks = ((num_slots-1)>>5) + 1;
   num_cu_masks = ((num_cus-1)>>5) + 1;
 
@@ -554,7 +554,6 @@ setup()
 
   // Enable/disable mb->host interrupts
   write_reg(ERT_HOST_INTERRUPT_ENABLE_ADDR,mb_host_interrupt_enabled);
-  
   CTRL_DEBUG("<- setup\r\n");
 }
 
@@ -684,6 +683,7 @@ static inline void
 check_command(size_type slot_idx, size_type cu_idx)
 {
   auto& slot = command_slots[slot_idx];
+  ERT_DEBUGF("slot.cu_idx(%d) slot_idx(%d)\r\n",slot.cu_idx,slot_idx);
   ERT_ASSERT(slot.cu_idx == cu_idx,"cu is not used by slot");
   notify_host(slot_idx);
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
@@ -966,6 +966,7 @@ new_to_queued(size_type slot_idx)
   // new command, gather slot info
   addr_type addr = cu_section_addr(slot.slot_addr);
   slot.cu_idx = read_reg(addr);
+  ERT_DEBUGF("slot.cu_idx(%d)\r\n",slot.cu_idx);
   slot.regmap_addr = regmap_section_addr(slot.header_value,slot.slot_addr);
   slot.regmap_size = regmap_size(slot.header_value);
   slot.header_value = (slot.header_value & ~0xF) | 0x2; // queued
@@ -1151,6 +1152,30 @@ scheduler_v30_loop()
   } // while
 }
 
+
+static inline void cu_hls_ctrl_check(size_type cmd_idx)
+{
+    auto cuvalue = read_reg(cu_idx_to_addr(cmd_idx));
+    ERT_DEBUGF("cu(%d) is interrupting\r\n",cmd_idx);
+    ERT_ASSERT(cu_status[cmd_idx],"cu wasn't started");
+    // check if command is done
+    check_command(cu_slot_usage[cmd_idx],cmd_idx);
+    cu_slot_usage[cmd_idx] = no_index; // reset slot index
+    cu_status[cmd_idx] = !cu_status[cmd_idx]; // toggle status of completed cus
+
+    if (cuvalue & (AP_DONE)) {
+      ERT_DEBUGF("AP_DONE \r\n");
+      cu_done[cmd_idx] = 1;
+      //cu_status[0] = !cu_status[0];
+      write_reg(cu_idx_to_addr(cmd_idx), AP_CONTINUE);
+      write_reg(cu_idx_to_addr(cmd_idx)+0xC, 0x1);
+    }
+
+    if (cuvalue & (AP_READY)) {
+      ERT_DEBUGF("AP_READY \r\n");
+      cu_ready[cmd_idx] = 1;
+    }
+}
 /**
  * CU interrupt service routine
  */
@@ -1174,46 +1199,49 @@ cu_interrupt_handler()
     }
   }
 
-#if 0
-  if (intc_mask & 0x20) { // INCT_CU_0_31
-      ERT_DEBUGF("intc_mask & 0x20 \r\n");
+  for (size_type intc_bit=0x20; intc_bit<0x200; intc_bit <<= 1) {
 
-      bitmask_type intc_0_31_mask = 0;
+    if (intc_mask & intc_bit) { // INTC_CU_0_31 ~ INTC_CU_96_127
+      ERT_DEBUGF("intc_mask & 0x%x \r\n",intc_bit);
 
-      intc_0_31_mask = read_reg(ERT_INTC_CU_0_31_IPR);
+      bitmask_type cu_intc_mask = 0;
+      size_type cu_offset = 0;
 
-      if (0x2 & intc_0_31_mask) {// CU_0 check bit1
-        auto cuvalue = read_reg(cu_idx_to_addr(0x0));
-
-        if (cuvalue & (AP_DONE)) {
-          ERT_DEBUGF("AP_DONE \r\n");
-          cu_done[0] = 1;
-        }
-
-        if (cuvalue & (AP_READY)) {
-          ERT_DEBUGF("AP_READY \r\n");
-          cu_ready[0] = 1;
-        }
-
-        if (cu_done[0] && cu_ready[0]) {
-          ERT_DEBUGF("AP BOTH\r\n");
-          cu_status[0] = 1;
-          write_reg(cu_idx_to_addr(0x0), AP_CONTINUE);
-        }
-
-       write_reg(ERT_INTC_CU_0_31_IAR,intc_0_31_mask);
+      if (intc_bit == 0x20)
+        cu_intc_mask = read_reg(ERT_INTC_CU_0_31_IPR);
+      else if (intc_bit == 0x40) {
+        cu_intc_mask = read_reg(ERT_INTC_CU_32_63_IPR);
+        cu_offset = 32;
       }
-      if (0x1 & intc_0_31_mask) {// CU_1 check bit0        
-
+      else if (intc_bit == 0x80) {
+        cu_intc_mask = read_reg(ERT_INTC_CU_64_95_IPR);
+        cu_offset = 64;
       }
-      for (size_type cu_idx=2; cu_idx<32; ++cu_idx) {
-        if (1<<cu_idx & intc_0_31_mask) {
+      else if (intc_bit == 0x100) {
+        cu_intc_mask = read_reg(ERT_INTC_CU_96_127_IPR);
+        cu_offset = 96;
+      }
 
+      ERT_DEBUGF("cu_intc_mask 0x%x \r\n", cu_intc_mask);
+      if (num_cus == 1 && intc_bit == 0x20) {// CU_0 check bit1
+        if (0x2 & cu_intc_mask)
+          cu_hls_ctrl_check(0);
+      } else {
+        for (size_type cu_idx=0; cu_idx<32; ++cu_idx) {
+          if (1<<cu_idx & cu_intc_mask)
+            cu_hls_ctrl_check(cu_offset+cu_idx);
         }
       }
+      if (intc_bit == 0x20)
+        write_reg(ERT_INTC_CU_0_31_IAR,cu_intc_mask);
+      else if (intc_bit == 0x40)
+        write_reg(ERT_INTC_CU_32_63_IAR,cu_intc_mask);
+      else if (intc_bit == 0x80)
+        write_reg(ERT_INTC_CU_64_95_IAR,cu_intc_mask);
+      else if (intc_bit == 0x100)
+        write_reg(ERT_INTC_CU_96_127_IAR,cu_intc_mask);
     }
-#endif
-
+  }
   // Acknowledge interrupts
   write_reg(ERT_INTC_IAR_ADDR,intc_mask);
 }

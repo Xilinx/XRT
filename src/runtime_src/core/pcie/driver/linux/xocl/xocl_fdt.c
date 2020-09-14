@@ -348,22 +348,11 @@ static struct xocl_subdev_map subdev_map[] = {
 		.devinfo_cb = NULL,
 	},
 	{
-		.id = XOCL_SUBDEV_ERT_USER,
-		.dev_name = XOCL_ERT_USER,
-		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_ERT_CQ_USER},
-			{NULL},
-		},
-		.required_ip = 1,
-		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
-		.build_priv_data = ert_build_priv,
-		.devinfo_cb = NULL,
- 	},
-	{
 		.id = XOCL_SUBDEV_ERT_30,
 		.dev_name = XOCL_ERT_30,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_ERT_CFG_GPIO},
+			{.res_name = NODE_ERT_CQ_USER},
 			{NULL},
 		},
 		.required_ip = 1,

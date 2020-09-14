@@ -236,6 +236,7 @@ ert_release_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 		ert_user->ctrl_busy = false;
 		ert_user->config = true;	
 	} else {
+		ERTUSER_DBG(ert_user, "ecmd->slot_idx %d\n", ecmd->slot_idx);
 		ert_release_slot_idx(ert_user, ecmd->slot_idx);
 	}
 	ecmd->slot_idx = no_index;
@@ -445,7 +446,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	if (cmd_opcode(ecmd) != OP_CONFIG)
 		return -EINVAL;
 
-	if (major > 2) {
+	if (major > 3) {
 		DRM_INFO("Unknown ERT major version, fallback to KDS mode\n");
 		ert_full = 0;
 		ert_poll = 0;
@@ -518,7 +519,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	ERTUSER_INFO(ert_user, "scheduler config ert(%d), dataflow(%d), slots(%d), cudma(%d), cuisr(%d)\n"
 		 , ert_poll | ert_full
 		 , cfg->dataflow
-		 , ert_num_slots
+		 , ert_user->num_slots
 		 , cfg->cu_dma ? 1 : 0
 		 , cfg->cu_isr ? 1 : 0);
 
