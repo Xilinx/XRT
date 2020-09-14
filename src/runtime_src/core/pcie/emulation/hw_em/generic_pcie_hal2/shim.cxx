@@ -445,6 +445,9 @@ namespace xclhwemhal2 {
         mDDRMemoryManager.clear();
       }
 
+      if (mLogStream.is_open())
+         mLogStream << __func__ << " Creating the DDRMemoryManager Object with RTD section info" << std::endl;
+
       for (auto it : mMembanks)
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
@@ -519,8 +522,12 @@ namespace xclhwemhal2 {
     {
       if (xml_kernel.first != "kernel")
         continue;
+
       std::string kernelName = xml_kernel.second.get<std::string>("<xmlattr>.name");
       kernels.push_back(kernelName);
+
+      if (mLogStream.is_open())
+         mLogStream << __func__ << " Filling kernel " << kernelName << " info from xclbin.xml" << std::endl;
 
       for (auto& xml_kernel_info : xml_kernel.second)
       {
@@ -536,7 +543,11 @@ namespace xclhwemhal2 {
           kArg.name = kernelName + ":" + name;
           kArg.size = size;
           kernelArgInfo[offset] = kArg;
+
+          if (mLogStream.is_open())
+            mLogStream << __func__ << " Filling kernel Args name: " << name << " id: " << id << " port: " << port << " info from xclbin.xml" << std::endl;
         }
+
         if (xml_kernel_info.first == "instance")
         {
           std::string instanceName = xml_kernel_info.second.get<std::string>("<xmlattr>.name");
@@ -544,6 +555,10 @@ namespace xclhwemhal2 {
           {
             if (xml_remap.first != "addrRemap")
               continue;
+
+            if (mLogStream.is_open())
+              mLogStream << __func__ << " Filling kernel Instance info from xclbin.xml" << std::endl;
+
             uint64_t base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
             mCuBaseAddress = base & 0xFFFFFFFF00000000;
             mCuIndxVsBaseAddrMap[mCuIndx++] = base;
@@ -577,6 +592,9 @@ namespace xclhwemhal2 {
       mMessengerThreadStarted = true;
     }
 
+    if (mLogStream.is_open())
+       mLogStream << __func__ << " mMessengerThreadStarted " << std::endl;
+
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
@@ -598,8 +616,14 @@ namespace xclhwemhal2 {
       if (userSpecifiedSimPath.empty())
       {
         std::string _sFilePath(fileName.get());
+        if (mLogStream.is_open())
+          mLogStream << __func__ << " UNZIP of sim bin started" << std::endl;
+
         systemUtil::makeSystemCall(_sFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, boost::lexical_cast<std::string>(__LINE__));
         systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
+
+        if (mLogStream.is_open())
+          mLogStream << __func__ << " UNZIP of sim bin ended and permissions operation is complete" << std::endl;
 
         simulatorType = getSimulatorType(binaryDirectory);
       }
@@ -734,6 +758,9 @@ namespace xclhwemhal2 {
           }
         }
       }
+
+      if (mLogStream.is_open())
+        mLogStream << __func__ << " Preparing the launcher args and construction of proper simpath is complete sim_path: " << sim_path << std::endl;
 	  
       std::stringstream socket_id;
       socket_id << deviceName << "_" << binaryCounter << "_";
@@ -744,11 +771,16 @@ namespace xclhwemhal2 {
       socket_id << getpid();
       setenv("EMULATION_SOCKETID", socket_id.str().c_str(), true);
 #endif
+      if (mLogStream.is_open())
+        mLogStream << __func__ << " socket_id: " << socket_id.str().c_str() << " binaryCounter: " << binaryCounter << std::endl;
+
       binaryCounter++;
     }
+
     if(mHostMemAccessThreadStarted == false) {
-	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
-   }
+  	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
+    }
+
     if (deviceDirectory.empty() == false)
       setenv("EMULATION_RUN_DIR", deviceDirectory.c_str(), true);
 
@@ -769,6 +801,10 @@ namespace xclhwemhal2 {
       setenv("SYSTEMC_DISABLE_COPYRIGHT_MESSAGE", "1", true);
       pid_t pid = fork();
       assert(pid >= 0);
+
+      if (mLogStream.is_open())
+        mLogStream << __func__ << " Child process created to launch the simulation process " << std::endl;
+
       if (pid == 0) { //I am child
       
         //Redirecting the XSIM log to a file
@@ -867,21 +903,38 @@ namespace xclhwemhal2 {
       }
 #endif
     }
+
+    if (mLogStream.is_open())
+      mLogStream << __func__ << " Child process launched... " << std::endl;
     //if platform is a XPR platform, dont serilize ddr memory
     if (isXPR())
     {
       mEnvironmentNameValueMap["enable_pr"] = "false";
     }
+
     sock = new unix_socket;
+
+    if (mLogStream.is_open())
+      mLogStream << __func__ << " Created the Unix socket." << std::endl;
+
     if (sock && mEnvironmentNameValueMap.empty() == false)
     {
       //send environment information to device
       bool ack = true;
+
+      if (mLogStream.is_open())
+        mLogStream << __func__ << " Before RPC call xclSetEnvironment_RPC_CALL." << std::endl;
+
       xclSetEnvironment_RPC_CALL(xclSetEnvironment);
       if (!ack)
       {
+        if (mLogStream.is_open())
+          mLogStream << __func__ << "Environment is NOT set properly" << std::endl;
         //std::cout<<"environment is not set properly"<<std::endl;
       }
+
+      if (mLogStream.is_open())
+        mLogStream << __func__ << "Environment is set properly" << std::endl;
     }
 
     return 0;
