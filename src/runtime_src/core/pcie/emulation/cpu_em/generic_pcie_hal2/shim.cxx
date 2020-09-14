@@ -81,6 +81,8 @@ namespace xclcpuemhal2 {
     mVerbosity = XCL_INFO;
 
     mPlatformData = platformData;
+    constructQueryTable();
+
     std::memset(&mDeviceInfo, 0, sizeof(xclDeviceInfo2));
     fillDeviceInfo(&mDeviceInfo,&info);
     initMemoryManager(DDRBankList);
@@ -1882,18 +1884,24 @@ int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) cons
 
 // New API's for m2m and no-dma
 
+void CpuemShim::constructQueryTable() {
+  if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+    mQueryTable["m2m"] = mPlatformData.get<std::string>("plp.m2m");
+    std::string dmaVal = mPlatformData.get<std::string>("plp.dma");
+    mQueryTable["nodma"] = (dmaVal == "none" ? "enabled" : "disabled");
+  }
+}
+
 bool CpuemShim::isM2MEnabled() {
   if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-    bool isM2MEnabled = boost::lexical_cast<bool>(mPlatformData.get<std::string>("queryTable.m2m"));
-    return isM2MEnabled;
+    return (mQueryTable["m2m"] == "enabled" ? true : false);
   }
   return false;
 }
 
 bool CpuemShim::isNoDMAEnabled() {
   if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-    bool isNoDMAEnabled = boost::lexical_cast<bool>(mPlatformData.get<std::string>("queryTable.nodma"));
-    return isNoDMAEnabled;
+    return (mQueryTable["nodma"] == "enabled" ? true : false);
   }
   return false;
 }

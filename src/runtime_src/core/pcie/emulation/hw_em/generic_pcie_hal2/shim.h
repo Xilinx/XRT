@@ -263,6 +263,7 @@ using addr_type = uint64_t;
 
       std::string getSimulatorType(const std::string& binaryDirectory);
       void createPreSimScript(const std::string& wcfgFilePath, std::string& preSimScriptPath);
+      void constructQueryTable();
 
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
@@ -350,6 +351,7 @@ using addr_type = uint64_t;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
       boost::property_tree::ptree mPlatformData;
+      std::map<std::string, std::string> mQueryTable;
       std::set<unsigned int > mImportedBOs;
       uint64_t mCuBaseAddress;
       bool     mVersalPlatform;

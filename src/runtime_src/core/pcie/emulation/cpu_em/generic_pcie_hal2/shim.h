@@ -168,6 +168,7 @@ namespace xclcpuemhal2 {
       SWScheduler* getScheduler() { return mSWSch; }
 
       // New API's for m2m and no-dma
+      void constructQueryTable();
       bool isM2MEnabled();
       bool isNoDMAEnabled();
     private:
@@ -245,6 +246,7 @@ namespace xclcpuemhal2 {
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
       boost::property_tree::ptree mPlatformData;
+      std::map<std::string, std::string> mQueryTable;
 
       std::set<unsigned int > mImportedBOs;
       exec_core* mCore;

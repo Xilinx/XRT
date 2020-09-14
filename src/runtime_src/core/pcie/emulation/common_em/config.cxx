@@ -594,14 +594,6 @@ namespace xclemulation{
     }
   }
 
-/*
-  static void populatePlatformData(boost::property_tree::ptree const& platformDataTree, std::map<std::string, std::string>& platform_data) {
-
-    for (auto& prop : platformDataTree) {
-      platform_data[prop.first] = prop.second.get_value<std::string>();
-    }
-  }*/
-
   static void populateFeatureRom(boost::property_tree::ptree const& featureRomTree, FeatureRomHeader& fRomHeader)
   {
     for (auto& prop : featureRomTree)
