@@ -651,8 +651,9 @@ static inline int process_ert_rq(struct xocl_ert_30 *ert_30)
 
 		xocl_memcpy_toio(ert_30->cq_base + slot_addr + 4,
 				 ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
-
+		wmb();
 		iowrite32(epkt->header, ert_30->cq_base + slot_addr);
+		ioread32(ert_30->cq_base + slot_addr);
 
 		if (ert_30->cq_intr) {
 			u32 mask_idx = mask_idx32(ecmd->slot_idx);
