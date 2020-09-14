@@ -139,16 +139,17 @@ namespace xocl {
 
     // These are the functions on the XOCL side that gets called when
     //  execution contexts start and stop
-    void log_kernel_start(const xrt::command* cmd, 
-			  const xocl::execution_context* ctx)
+    void log_cu_start(const xrt::command* cmd, 
+		      const xocl::execution_context* ctx)
     {
+      /*
       if (!counter_kernel_execution_cb) return ;
 
       auto kernel = ctx->get_kernel() ;
       std::string kernelName = kernel->get_name() ;
 
       counter_kernel_execution_cb(kernelName.c_str(), true) ;
-      
+      */
       if (!counter_cu_execution_cb) return ;
 
       // Check for software emulation logging of compute unit starts as well
@@ -176,10 +177,12 @@ namespace xocl {
       }
     }
     
-    void log_kernel_end(const xrt::command* cmd,
+    void log_cu_end(const xrt::command* cmd,
 			const xocl::execution_context* ctx)
     {
+      /*
       if (!counter_kernel_execution_cb) return ;
+      */
 
       // Check for software emulation logging of compute unit ends as well
       if (counter_cu_execution_cb)
@@ -208,10 +211,12 @@ namespace xocl {
 	}
       }
 
+      /*
       auto kernel = ctx->get_kernel() ;
       std::string kernelName = kernel->get_name() ;
 
       counter_kernel_execution_cb(kernelName.c_str(), false) ;
+      */
     }
 
     void mark_objects_released()

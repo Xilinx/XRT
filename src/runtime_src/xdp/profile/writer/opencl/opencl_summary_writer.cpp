@@ -1836,7 +1836,7 @@ namespace xdp {
 
     (t->fout) << "TOTAL_KERNEL_RUN_TIME_MS" << ","
 	      << "all" << ","
-	      << ((lastKernelEndTime - firstKernelStartTime) / 1.0e06)
+	      << (lastKernelEndTime - firstKernelStartTime)
 	      << std::endl ;
   }
 
