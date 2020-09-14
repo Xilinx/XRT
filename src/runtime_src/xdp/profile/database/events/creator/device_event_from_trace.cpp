@@ -160,7 +160,7 @@ namespace xdp {
       } // AMPacket
       else if(AIMPacket) {
         DeviceMemoryAccess* memEvent = nullptr;
-        if((!trace.TraceID) & 1) { // read packet
+        if(!(trace.TraceID & 1)) { // read packet
           s = trace.TraceID/2;
 
           Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, s);  
