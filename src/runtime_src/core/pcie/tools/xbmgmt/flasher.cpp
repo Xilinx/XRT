@@ -230,9 +230,10 @@ int Flasher::getBoardInfo(BoardInfo& board)
         board.mMacContiguousNum = le16toh(count);
 
 	for (unsigned i = 2; i < 8; i++) {
-	    board.mMacAddrFirst[i-2] = info[BDINFO_MAC_DYNAMIC][i];
+            board.mMacAddrFirst[i-2] = info[BDINFO_MAC_DYNAMIC][i];
 	}
     } else {
+        board.mMacContiguousNum = 0;
         board.mMacAddr0 = charVec2String(info[BDINFO_MAC0]).compare(unassigned_mac) ? 
             std::move(charVec2String(info[BDINFO_MAC0])) :
 	    std::move(std::string("Unassigned"));
