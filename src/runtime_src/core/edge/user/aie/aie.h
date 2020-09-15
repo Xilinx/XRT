@@ -94,13 +94,13 @@ public:
     wait_gmio(const std::string& gmioName);
 
     void
-    reset(const std::shared_ptr<xrt_core::device>& device);
+    reset(const xrt_core::device* device);
 
 private:
     int numCols;
     int fd;
 
-    XAie_DevInst devInst;         // AIE Device Instance
+    XAie_DevInst* devInst;         // AIE Device Instance
 
     void
     submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset);

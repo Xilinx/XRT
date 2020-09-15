@@ -752,7 +752,7 @@ xclResetAieArray(xclDeviceHandle handle)
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
   auto aieArray = drv->getAieArray();
-  aieArray->reset(device);
+  aieArray->reset(device.get());
 #else
   auto aieArray = getAieArray();
 #endif

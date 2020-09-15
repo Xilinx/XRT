@@ -1427,6 +1427,7 @@ void
 shim::
 registerAieArray()
 {
+  delete aieArray.release();
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
 }
 
@@ -1441,22 +1442,14 @@ int
 shim::
 getPartitionFd(drm_zocl_aie_fd &aiefd)
 {
-  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd);
-  if (ret)
-    return -errno;
-
-  return 0;
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd) ? -errno : 0;
 }
 
 int
 shim::
 resetAIEArray(drm_zocl_aie_reset &reset)
 {
-  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_RESET, &reset);
-  if (ret)
-    return -errno;
-
-  return 0;
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_RESET, &reset) ? -errno : 0;
 }
 #endif
 
