@@ -30,6 +30,7 @@
 #include <limits>
 #include <cassert>
 #include <regex>
+#include <iostream>
 
 #pragma warning(disable : 4100 4996)
 #pragma comment (lib, "Setupapi.lib")
@@ -175,7 +176,7 @@ struct mgmt
         &bytes,
         NULL);
 
-    if (!status || bytes != sizeof(XCLMGMT_IOC_DEVICE_INFO))
+    if (!status)// || bytes != sizeof(XCLMGMT_IOC_DEVICE_INFO))
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_IOC_DEVICE_INFO failed");
   }
 
@@ -186,8 +187,8 @@ struct mgmt
     auto status = DeviceIoControl(
         m_hdl,
         XCLMGMT_OID_GET_DEVICE_INFO,
-        value,
-        sizeof(XCLMGMT_DEVICE_INFO),
+        nullptr,
+		0,
         value,
         sizeof(XCLMGMT_DEVICE_INFO),
         &bytes,
@@ -252,20 +253,24 @@ struct mgmt
   void
   get_uuids(XCLMGMT_IOC_UUID_INFO* value)
   {
+	  std::cout << __LINE__ << std::endl;
     DWORD bytes = 0;
     auto status = DeviceIoControl
 		(m_hdl,
 		XCLMGMT_OID_GET_UUID_INFO,
-    value,
-    sizeof(XCLMGMT_IOC_UUID_INFO),
+    nullptr,
+			0,
     value,
     sizeof(XCLMGMT_IOC_UUID_INFO),
     &bytes,
     NULL);
-
-    if (!status)
+	std::cout << "value: " << value << std::endl;
+	std::cout << "bytes: " << bytes << std::endl;
+	std::cout << "size: " << sizeof(XCLMGMT_OID_GET_UUID_INFO) << std::endl;
+    if (!status || bytes != sizeof(XCLMGMT_OID_GET_UUID_INFO))
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_UUID_INFO failed");
   }
+
 
 }; // struct mgmt
 
@@ -422,6 +427,7 @@ get_flash_addr(xclDeviceHandle hdl, uint64_t& addr)
 void
 get_uuids(xclDeviceHandle hdl, XCLMGMT_IOC_UUID_INFO* value)
 {
+	std::cout << __LINE__ << std::endl;
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_uuids()");
   auto mgmt = get_mgmt_object(hdl);

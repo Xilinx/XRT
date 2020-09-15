@@ -29,6 +29,8 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <iostream>
+#include <string>
 
 #pragma warning(disable : 4100 4996)
 
@@ -70,6 +72,23 @@ struct ready
   {
     return true;
   }
+};
+
+struct xmc_sc_presence
+{
+	using result_type = bool;
+
+	static result_type
+		user(const xrt_core::device* device, key_type key)
+	{
+		return true;
+	}
+
+	static result_type
+		mgmt(const xrt_core::device* device, key_type key)
+	{
+		return true;
+	}
 };
 
 struct firewall
@@ -649,7 +668,7 @@ struct devinfo
       mgmtpf::get_dev_info(dev->get_mgmt_handle(), &info);
       return info;
     };
-
+	
     static std::map<const xrt_core::device*, XCLMGMT_DEVICE_INFO> info_map;
     static std::mutex mutex;
     std::lock_guard<std::mutex> lk(mutex);
@@ -660,7 +679,8 @@ struct devinfo
     }
 
     auto& info = (*it).second;
-
+	std::cout << "info: " << info.SerialNumber << std::endl;
+	std::cout << "info: " << info.ShellName << std::endl;
     switch (key) {
     case key_type::board_name:
       return static_cast<query::board_name::result_type>(info.ShellName);
@@ -703,7 +723,8 @@ struct uuid
     }
 
     auto& info = (*it).second;
-
+	std::cout << "dev_win: [" << std::string(info.interface_uuid) << "]" << std::endl;
+	std::cout << "dev_win: [" << std::string(info.logic_uuid) << "]" << std::endl;
     switch (key) {
     case key_type::interface_uuids:
       return std::vector<std::string>{ std::string(info.interface_uuid) };
@@ -986,7 +1007,8 @@ initialize_query_table()
   emplace_function0_getter<query::is_mfg,                    devinfo>();
   emplace_function0_getter<query::is_ready,                  ready>();
   emplace_function0_getter<query::board_name,                devinfo>();
-  emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
+  emplace_function0_getter<query::flash_bar_offset, flash_bar_offset>();
+  emplace_function0_getter<query::xmc_sc_presence, xmc_sc_presence>();
 }
 
 struct X { X() { initialize_query_table(); }};
