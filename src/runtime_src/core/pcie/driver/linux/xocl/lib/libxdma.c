@@ -610,7 +610,7 @@ static void xdma_desc_link(struct xdma_desc *first, struct xdma_desc *second,
 	 */
 
 	/* Clear adjacent count for last descriptor in first block
-	 * also clear out STOPPED and COMPLETION bit. 
+	 * also clear out STOPPED and COMPLETION bit.
 	 * TODO - Need to improve this algorithm for setting COMPLETION BIT.
 	 */
 	u32 control = le32_to_cpu(first->control) & 0xffffc0fcUL;
@@ -1262,8 +1262,8 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 			desc_setup_yield = 1;
 			goto submit_req;
 		}
-		dbg_tfr("%u-%u: req desc proced = %u/%u - %u", 
-			pidx, desc_set_offset,	req->sw_desc_idx, 
+		dbg_tfr("%u-%u: req desc proced = %u/%u - %u",
+			pidx, desc_set_offset,	req->sw_desc_idx,
 			req->sw_desc_cnt, engine->avail_sets);
 
 		s = &engine->sets[pidx];
@@ -1288,7 +1288,7 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 					cpu_to_le32(XDMA_DESC_EOP);
 
 		if (eop) {
-			dbg_tfr("EOP desc control = %x", 
+			dbg_tfr("EOP desc control = %x",
 				desc_virt[s->desc_set_offset - 1].control);
 			/* whole request processed */
 			spin_lock(&engine->req_list_lock);
@@ -1454,7 +1454,7 @@ static int xdma_process_requests(struct xdma_engine *engine,
 			engine_reg_dump(engine);
 			rv = -EIO;
 		}
-	
+
 	}
 	if (req->cb && req->cb->io_done) {
 		req->expiry = jiffies + msecs_to_jiffies(10000);
@@ -1545,7 +1545,7 @@ loop_again:
 			}
 		}
 	}
-	
+
 	spin_lock(&engine->lock);
 
 	/*
@@ -2065,7 +2065,7 @@ static resource_size_t map_single_bar(struct xdma_dev *xdev,
 	/*
 	 * bail out if the bar is mapped
 	 */
-	if (!request_mem_region(bar_start, bar_len, xdev->mod_name)) 
+	if (!request_mem_region(bar_start, bar_len, xdev->mod_name))
 		return 0;
 
 	release_mem_region(bar_start, bar_len);
@@ -2598,7 +2598,7 @@ static int irq_legacy_setup(struct xdma_dev *xdev, struct pci_dev *pdev)
 {
 	u32 w;
 	u8 val;
-	void *reg;
+	char *reg;
 	int rv;
 
 	pci_read_config_byte(pdev, PCI_INTERRUPT_PIN, &val);
@@ -3192,7 +3192,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 	if (!req)
 		return -ENOMEM;
 	req->dma_mapped = dma_mapped;
-	req->cb = cb; 
+	req->cb = cb;
 	req->dir = dir;
 	req->sgt = sgt;
 	req->ep_addr = ep_addr;
@@ -3783,7 +3783,7 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 			xdev->c2h_channel_max);
 		goto err_enable_msix;
 	}
-	
+
 	rv = enable_msi_msix(xdev, pdev);
 	if (rv < 0)
 		goto err_enable_msix;
