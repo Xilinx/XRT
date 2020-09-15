@@ -100,13 +100,13 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     std::string vbnv = "xilinx_" + board_name + "_GOLDEN";
     pt_current_shell.put("vbnv", vbnv);
   } else if(!logic_uuids.empty() && !interface_uuids.empty()) { // 2RP
-    for(unsigned int i = 0; i < logic_uuids.size(); i++) {
-      DSAInfo part("", NULL_TIMESTAMP, logic_uuids[i], ""); 
+    //for(unsigned int i = 0; i < logic_uuids.size(); i++) {
+      DSAInfo part("", NULL_TIMESTAMP, logic_uuids[0], ""); 
       pt_current_shell.put("vbnv", part.name);
-      pt_current_shell.put("logic-uuid", XBU::string_to_UUID(logic_uuids[i]));
-      pt_current_shell.put("interface-uuid", XBU::string_to_UUID(interface_uuids[i]));
+      pt_current_shell.put("logic-uuid", XBU::string_to_UUID(logic_uuids[0]));
+      pt_current_shell.put("interface-uuid", XBU::string_to_UUID(interface_uuids[0]));
       pt_current_shell.put("id", (boost::format("0x%x") % part.timestamp));
-    }
+    //}
   } else { //1RP
     pt_current_shell.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
     pt_current_shell.put("id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));

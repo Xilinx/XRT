@@ -644,6 +644,8 @@ struct info
       return static_cast<query::pcie_subsystem_vendor::result_type>(info.pcie_info.subsystem_vendor);
     case key_type::pcie_subsystem_id:
       return static_cast<query::pcie_subsystem_id::result_type>(info.pcie_info.subsystem_device);
+	case key_type::xmc_reg_base:
+		return info.xmc_offset;
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -679,13 +681,9 @@ struct devinfo
     }
 
     auto& info = (*it).second;
-	std::cout << "info: " << info.SerialNumber << std::endl;
-	std::cout << "info: " << info.ShellName << std::endl;
     switch (key) {
     case key_type::board_name:
       return static_cast<query::board_name::result_type>(info.ShellName);
-    case key_type::xmc_reg_base:
-      return info.xmc_offset;
     case key_type::is_mfg:
       return (static_cast<query::board_name::result_type>(info.ShellName).find("GOLDEN") != std::string::npos) ? true : false;
     default:
@@ -723,13 +721,11 @@ struct uuid
     }
 
     auto& info = (*it).second;
-	std::cout << "dev_win: [" << std::string(info.interface_uuid) << "]" << std::endl;
-	std::cout << "dev_win: [" << std::string(info.logic_uuid) << "]" << std::endl;
     switch (key) {
     case key_type::interface_uuids:
-      return std::vector<std::string>{ std::string(info.interface_uuid) };
+      return std::vector<std::string>{ std::string(info.blp_interface_uuid), std::string(info.plp_interface_uuid) };
     case key_type::logic_uuids:
-      return std::vector<std::string>{ std::string(info.logic_uuid) };
+      return std::vector<std::string>{ std::string(info.blp_logic_uuid), std::string(info.plp_logic_uuid) };
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -932,7 +928,7 @@ initialize_query_table()
   emplace_function0_getter<query::pcie_subsystem_id,         info>();
   emplace_function0_getter<query::interface_uuids,           uuid>();
   emplace_function0_getter<query::logic_uuids,               uuid>();
-  emplace_function0_getter<query::xmc_reg_base,              devinfo>();
+  emplace_function0_getter<query::xmc_reg_base,              info>();
   emplace_function0_getter<query::pcie_bdf,                  bdf>();
   emplace_function0_getter<query::rom_vbnv,                  rom>();
   emplace_function0_getter<query::rom_ddr_bank_size_gb,      rom>();

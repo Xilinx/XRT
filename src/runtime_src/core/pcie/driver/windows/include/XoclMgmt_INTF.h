@@ -99,7 +99,6 @@ typedef struct {
     CHAR   BMCVersion[16];
     CHAR   MacAddress[20];
     UINT32 VlanTag;
-    ULONGLONG xmc_offset;
 } XCLMGMT_DEVICE_INFO, *PXCLMGMT_DEVICE_INFO;
 #pragma pack(pop)
 
@@ -153,6 +152,7 @@ typedef struct xclmgmt_ioc_device_info {
     UINT32           ocl_frequency[XCLMGMT_NUM_SUPPORTED_CLOCKS];
     bool             mig_calibration[4];
     USHORT           num_clocks;
+	ULONGLONG        xmc_offset;
     struct FeatureRomHeader rom_hdr;
 }XCLMGMT_IOC_DEVICE_INFO, *PXCLMGMT_IOC_DEVICE_INFO;
 
