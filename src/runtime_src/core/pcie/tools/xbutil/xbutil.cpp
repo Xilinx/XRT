@@ -2446,7 +2446,9 @@ int xcldev::xclScheduler(int argc, char *argv[])
 {
     bool root = ((getuid() == 0) || (geteuid() == 0));
     static struct option long_opts[] = {
-        {"echo", required_argument, 0, 0},
+        {"echo", required_argument, 0, 'e'},
+        {"kds_schedule", required_argument, 0, 'k'},
+        {"cu_intr", required_argument, 0, xcldev::KDS_CU_INTERRUPT},
         {0, 0, 0, 0}
     };
     const char* short_opts = "d:e:k:";
@@ -2455,6 +2457,7 @@ int xcldev::xclScheduler(int argc, char *argv[])
     unsigned index = 0;
     int kds_echo = -1;
     int ert_disable = -1;
+    int cu_intr = -1;
 
     if (!root) {
         std::cout << "ERROR: root privileges required." << std::endl;
@@ -2479,6 +2482,9 @@ int xcldev::xclScheduler(int argc, char *argv[])
             break;
         case 'k':
             ert_disable = std::atoi(optarg);
+            break;
+        case xcldev::KDS_CU_INTERRUPT:
+            cu_intr = std::atoi(optarg);
             break;
         default:
             /* This is hidden command, silently exit */
@@ -2508,6 +2514,18 @@ int xcldev::xclScheduler(int argc, char *argv[])
         std::string ert_disable;
         pcidev::get_dev(index)->sysfs_get( "", "ert_disable", errmsg, ert_disable);
         std::cout << "Device[" << index << "] ert_disable: " << ert_disable << std::endl;
+    }
+
+    if (cu_intr != -1) {
+        std::string val = (cu_intr == 1)? "cu" : "ert";
+        pcidev::get_dev(index)->sysfs_put( "", "kds_interrupt", errmsg, val);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+        std::string kds_interrupt;
+        pcidev::get_dev(index)->sysfs_get( "", "kds_interrupt", errmsg, kds_interrupt);
+        std::cout << "Device[" << index << "] interrupt mode: " << kds_interrupt << std::endl;
     }
 
     return 0;
