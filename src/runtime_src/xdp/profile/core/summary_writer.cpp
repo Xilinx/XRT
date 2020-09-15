@@ -276,11 +276,6 @@ namespace xdp {
     mProfileCounters->writeComputeUnitSummary(writer);
   }
 
-  void SummaryWriter::writeAcceleratorSummary(ProfileWriterI* writer) const
-  {
-    mProfileCounters->writeAcceleratorSummary(writer);
-  }
-
   void SummaryWriter::writeTransferSummary(ProfileWriterI* writer, RTUtil::e_monitor_type monitorType) const
   {
     std::string deviceName;
@@ -623,11 +618,6 @@ namespace xdp {
   void SummaryWriter::writeTopKernelSummary(ProfileWriterI* writer) const
   {
     mProfileCounters->writeTopKernelSummary(writer);
-  }
-
-  void SummaryWriter::writeTopHardwareSummary(ProfileWriterI* writer) const
-  {
-    mProfileCounters->writeTopHardwareSummary(writer);
   }
 
   void SummaryWriter::writeTopKernelTransferSummary(ProfileWriterI* writer) const

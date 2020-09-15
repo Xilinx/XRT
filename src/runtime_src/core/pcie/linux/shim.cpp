@@ -33,6 +33,7 @@
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
 
+#include "plugin/xdp/aie_trace.h"
 
 #include "xclbin.h"
 #include "ert.h"
@@ -2321,6 +2322,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xocl::shim *drv = xocl::shim::handleCheck(handle);
 #ifdef ENABLE_HAL_PROFILING
     xdphal::flush_device(handle) ;
+    xdpaie::flush_aie_device(handle) ;
 #endif  
 
 #ifdef DISABLE_DOWNLOAD_XCLBIN
@@ -2334,6 +2336,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       core_device->register_axlf(buffer);
 #ifdef ENABLE_HAL_PROFILING
       xdphal::update_device(handle) ;
+      xdpaie::update_aie_device(handle);
 #endif
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN

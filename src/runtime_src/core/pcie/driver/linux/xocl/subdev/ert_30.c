@@ -98,10 +98,14 @@ static uint32_t ert_30_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg 
 	case INTR_TO_ERT:
 		val &= SWITCH_TO_ERT_INTR;
 		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
+		/* TODO: This could return error code -EBUSY. */
+		xocl_intc_set_mode(xocl_get_xdev(pdev), ERT_INTR);
 		break;
 	case INTR_TO_CU:
 		val |= SWITCH_TO_CU_INTR;
 		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
+		/* TODO: This could return error code -EBUSY. */
+		xocl_intc_set_mode(xocl_get_xdev(pdev), CU_INTR);
 		break;
 	case MB_WAKEUP:
 		val &= WAKE_MB_UP;

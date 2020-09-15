@@ -350,6 +350,7 @@ initialize_query_table()
   emplace_sysfs_get<query::mig_ecc_ue_ffa>              ("mig", "ecc_ue_ffa");
   emplace_sysfs_get<query::flash_bar_offset>            ("flash", "bar_off");
   emplace_sysfs_get<query::is_mfg>                      ("", "mfg");
+  emplace_sysfs_get<query::mfg_ver>                     ("", "mfg_ver");
   emplace_sysfs_get<query::is_ready>                    ("", "ready");
   emplace_sysfs_get<query::f_flash_type>                ("flash", "flash_type");
   emplace_sysfs_get<query::flash_type>                  ("", "flash_type");

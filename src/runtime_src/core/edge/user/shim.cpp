@@ -48,6 +48,8 @@
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
+
+#include "plugin/xdp/aie_trace.h"
 #endif
 
 namespace {
@@ -1427,9 +1429,7 @@ registerAieArray()
 {
 //not registering AieArray in hw_emu as it is crashing in hw_emu. We can fix the
 //issue once move to AIE-V2 is done
-#ifndef __HWEM__
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
-#endif
 }
 
 bool
@@ -1655,6 +1655,7 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
   xdphal::flush_device(handle) ;
+  xdpaie::flush_aie_device(handle) ;
 #endif
 #endif
 
@@ -1669,7 +1670,9 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     core_device->register_axlf(buffer);
 
 #ifdef XRT_ENABLE_AIE
-    drv->registerAieArray();
+    auto data = core_device->get_axlf_section(AIE_METADATA);
+    if (data.first && data.second)
+      drv->registerAieArray();
 #endif
 
     /* If PDI is the only section, return here */
@@ -1680,6 +1683,7 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
   xdphal::update_device(handle) ;
+  xdpaie::update_aie_device(handle);
 #endif
 #endif
 

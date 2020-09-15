@@ -32,6 +32,7 @@
 #include <limits>
 #include <cassert>
 #include <regex>
+#include <iostream>
 
 #pragma warning(disable : 4100 4996)
 #pragma comment (lib, "Setupapi.lib")
@@ -178,7 +179,25 @@ struct mgmt
         NULL);
 
     if (!status)// || bytes != sizeof(XCLMGMT_IOC_DEVICE_INFO))
-      throw std::runtime_error("DeviceIoControl XCLMGMT_OID_DEVICE_INFO failed");
+      throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_IOC_DEVICE_INFO failed");
+  }
+
+  void
+  get_dev_info(XCLMGMT_DEVICE_INFO* value)
+  {
+    DWORD bytes = 0;
+    auto status = DeviceIoControl(
+        m_hdl,
+        XCLMGMT_OID_GET_DEVICE_INFO,
+        nullptr,
+		0,
+        value,
+        sizeof(XCLMGMT_DEVICE_INFO),
+        &bytes,
+        NULL);
+
+    if (!status || bytes != sizeof(XCLMGMT_DEVICE_INFO))
+      throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_DEVICE_INFO failed");
   }
 
   void
@@ -273,6 +292,27 @@ struct mgmt
 	std::cout << "DBG bytes: " << bytes<< std::endl;
     if (!status)
       throw std::runtime_error("DeviceIoControl XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF_STATUS failed");
+  }
+
+  void
+  get_uuids(XCLMGMT_IOC_UUID_INFO* value)
+  {
+	  std::cout << __LINE__ << std::endl;
+    DWORD bytes = 0;
+    auto status = DeviceIoControl
+		(m_hdl,
+		XCLMGMT_OID_GET_UUID_INFO,
+    nullptr,
+			0,
+    value,
+    sizeof(XCLMGMT_IOC_UUID_INFO),
+    &bytes,
+    NULL);
+	std::cout << "value: " << value << std::endl;
+	std::cout << "bytes: " << bytes << std::endl;
+	std::cout << "size: " << sizeof(XCLMGMT_OID_GET_UUID_INFO) << std::endl;
+    if (!status || bytes != sizeof(XCLMGMT_OID_GET_UUID_INFO))
+      throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_UUID_INFO failed");
   }
 
 }; // struct mgmt
@@ -392,6 +432,15 @@ get_device_info(xclDeviceHandle hdl, XCLMGMT_IOC_DEVICE_INFO* value)
 }
 
 void
+get_dev_info(xclDeviceHandle hdl, XCLMGMT_DEVICE_INFO* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_dev_info()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->get_dev_info(value);
+}
+
+void
 get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value)
 {
   xrt_core::message::
@@ -419,6 +468,7 @@ get_flash_addr(xclDeviceHandle hdl, uint64_t& addr)
 }
 
 void
+<<<<<<< HEAD
 plp_program(xclDeviceHandle hdl, const struct axlf *buffer)
 {
   xrt_core::message::
@@ -433,6 +483,15 @@ plp_program_status(xclDeviceHandle hdl, uint64_t& plp_status)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "plp_program_status()");
   auto mgmt = get_mgmt_object(hdl);
   mgmt->plp_program_status(plp_status);
+=======
+get_uuids(xclDeviceHandle hdl, XCLMGMT_IOC_UUID_INFO* value)
+{
+	std::cout << __LINE__ << std::endl;
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_uuids()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->get_uuids(value);
+>>>>>>> intf
 }
 
 } // mgmt

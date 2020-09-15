@@ -1934,7 +1934,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	unsigned int major = exec->ert_cfg_priv.major;
 	struct ert_configure_cmd *cfg = xcmd->ert_cfg;
 	bool ert = (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) ? 1 :
-	    xocl_mb_sched_on(xdev);
+	    (xocl_mb_sched_on(xdev) && exec->cq_base && exec->csr_base);
 	bool ert_full = (ert && cfg->ert && !cfg->dataflow);
 	bool ert_poll = (ert && cfg->ert && cfg->dataflow);
 	unsigned int ert_num_slots = 0;
@@ -1946,7 +1946,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return 1;
 	}
 
-	if (major > 2) {
+	if (major > 3) {
 		DRM_INFO("Unknown ERT major version, fallback to KDS mode\n");
 		ert_full = 0;
 		ert_poll = 0;
