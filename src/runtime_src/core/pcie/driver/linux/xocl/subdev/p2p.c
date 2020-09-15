@@ -615,7 +615,6 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 		return ret;
 	}
 
-	if (P2P_BYTES_TO_RBAR(range) != P2P_BYTES_TO_RBAR(p2p->p2p_bar_len))
 	p2p_mem_fini(p2p, true);
 
 	pos += p2p->p2p_bar_idx * PCI_REBAR_CTRL;
