@@ -29,31 +29,17 @@ using qtype = std::underlying_type<query::key_type>::type;
 
 static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
 
-struct m2m
+struct deviceQuery
 {
-  using result_type = query::m2m::result_type;
+  using result_type = uint32_t;
 
   static result_type
-    get(const xrt_core::device* device, key_type)
+    get(const xrt_core::device* device, key_type query_key)
   {
     xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(device->get_device_handle());
     if (!drv)
       return 0;
-    return (drv->isM2MEnabled() ? 1 : 0);  
-  }
-};
-
-struct nodma
-{
-  using result_type = query::nodma::result_type;
-
-  static result_type
-    get(const xrt_core::device* device, key_type)
-  {   
-    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(device->get_device_handle());
-    if (!drv)
-      return 0;
-    return (drv->isNoDMAEnabled() ? 1 : 0);
+    return (drv->deviceQuery(query_key) ? 1 : 0);
   }
 };
 
@@ -79,8 +65,8 @@ emplace_func0_request()
 static void
 initialize_query_table()
 {
-  emplace_func0_request<query::m2m, m2m>();
-  emplace_func0_request<query::nodma, nodma>();
+  emplace_func0_request<query::m2m, deviceQuery>();
+  emplace_func0_request<query::nodma, deviceQuery>();
 }
 
 struct X { X() { initialize_query_table(); }};

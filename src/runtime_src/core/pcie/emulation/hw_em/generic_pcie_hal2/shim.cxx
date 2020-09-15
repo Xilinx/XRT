@@ -1935,22 +1935,21 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   void HwEmShim::constructQueryTable() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      mQueryTable["m2m"] = mPlatformData.get<std::string>("plp.m2m");
+      mQueryTable[key_type::m2m] = mPlatformData.get<std::string>("plp.m2m");
       std::string dmaVal = mPlatformData.get<std::string>("plp.dma");
-      mQueryTable["nodma"] = (dmaVal == "none" ? "enabled" : "disabled");
+      mQueryTable[key_type::nodma] = (dmaVal == "none" ? "enabled" : "disabled");
     }
   }
 
-  bool HwEmShim::isM2MEnabled() {
+  // New API's for device query - m2m and no-dma
+  bool HwEmShim::deviceQuery(key_type queryKey) {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      return (mQueryTable["m2m"] == "enabled" ? true : false);
-    }
-    return false;
-  }
-
-  bool HwEmShim::isNoDMAEnabled() {
-    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      return (mQueryTable["nodma"] == "enabled" ? true : false);
+      if (queryKey == key_type::nodma) {
+        return (mQueryTable[queryKey] == "enabled" ? true : false);
+      }
+      else if (queryKey == key_type::m2m) {
+        return (mQueryTable[queryKey] == "enabled" ? true : false);
+      }
     }
     return false;
   }
