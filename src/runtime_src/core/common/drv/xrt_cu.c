@@ -514,9 +514,10 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
 	sz += sprintf(buf+sz, "Running queue:    %d\n", xcu->num_rq);
 	sz += sprintf(buf+sz, "Submitted queue:  %d\n", xcu->num_sq);
 	sz += sprintf(buf+sz, "Completed queue:  %d\n", xcu->num_cq);
-	sz += sprintf(buf+sz, "Bad state:	%d\n", xcu->bad_state);
-	sz += sprintf(buf+sz, "Current credit:  %d\n",
+	sz += sprintf(buf+sz, "Bad state:        %d\n", xcu->bad_state);
+	sz += sprintf(buf+sz, "Current credit:   %d\n",
 		      xcu->funcs->peek_credit(xcu->core));
+	sz += sprintf(buf+sz, "CU status:        0x%x\n", xcu->status);
 
 	if (sz)
 		buf[sz++] = 0;

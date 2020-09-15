@@ -26,6 +26,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <regex>
 #include <boost/property_tree/json_parser.hpp>
 
 #include "xrt.h"
@@ -354,6 +355,7 @@ public:
         return 0;
     }
 
+    /* Old kds style */
     uint32_t parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu_stat kind) const
     {
        uint32_t ret = 0;
@@ -386,6 +388,7 @@ public:
 
         std::vector<std::string> custat;
         std::string errmsg;
+
         pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
 
         for (unsigned int i = 0; i < computeUnits.size(); ++i) {
@@ -401,6 +404,89 @@ public:
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
+        return 0;
+    }
+
+    /* new KDS which supported CU subdevice */
+    int parseCUSubdevStat() const
+    {
+        std::vector<std::string> kdsstat;
+        std::string errmsg;
+        uint32_t num_cu = 0;
+
+        pcidev::get_dev(m_idx)->sysfs_get("", "kds_stat", errmsg, kdsstat);
+        for (auto& line : kdsstat) {
+           std::smatch sm;
+           std::regex ex("Number of CUs: (\\d+)");
+           std::regex_match(line, sm, ex);
+           /* The fist match result is the entire line */
+           if (sm.size() == 2)
+               num_cu =std::stoul(sm[1]);
+        }
+
+        for (unsigned int i = 0; i < num_cu; ++i) {
+            std::stringstream tag;
+            std::vector<std::string> cuinfo;
+            std::vector<std::string> custat;
+            std::string kname;
+            std::string cname;
+            unsigned long long paddr = 0;
+            uint32_t usage = 0;
+            uint32_t status = 0;
+            std::smatch sm;
+
+            /* Get overall CU usage from kds_stat */
+            for (auto& line : kdsstat) {
+                std::regex ex("  CU\\[(\\d+)\\] usage\\((\\d+)\\) .+");
+                std::regex_match(line, sm, ex);
+                if (sm.size() == 3) {
+                    if (std::stoul(sm[1]) != i)
+                        continue;
+
+                    usage = std::stoul(sm[2]);
+                }
+            }
+
+            tag.str(std::string());
+            tag << "CU[" << i << "]\0";
+            /* Get CU static information */
+            pcidev::get_dev(m_idx)->sysfs_get(tag.str(), "cu_info", errmsg, cuinfo);
+            for (auto& line : cuinfo) {
+                std::regex ex_kname("Kernel name: (.+)");
+                std::regex ex_cname("Instance\\(CU\\) name: (.+)");
+                std::regex ex_paddr("CU address: (.+)");
+
+                std::regex_match(line, sm, ex_kname);
+                if (sm.size() == 2)
+                    kname = sm[1];
+
+                std::regex_match(line, sm, ex_cname);
+                if (sm.size() == 2)
+                    cname = sm[1];
+
+                std::regex_match(line, sm, ex_paddr);
+                if (sm.size() == 2)
+                    paddr = std::stoull(sm[1], nullptr, 16);
+            }
+
+            /* Get CU statistic information */
+            pcidev::get_dev(m_idx)->sysfs_get(tag.str(), "cu_stat", errmsg, custat);
+            for (auto& line : custat) {
+                std::regex ex("CU status:\\s+(.+)");
+
+                std::regex_match(line, sm, ex);
+                if (sm.size() == 2)
+                    status = std::stoull(sm[1], nullptr, 16);
+            }
+
+            boost::property_tree::ptree ptCu;
+            ptCu.put( "name",         kname + ":" + cname );
+            ptCu.put( "base_address", paddr );
+            ptCu.put( "usage",        usage );
+            ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
+            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
+        }
+
         return 0;
     }
 
@@ -969,12 +1055,17 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
         sensor_tree::put( "board.xclbin.uuid", xclbinid );
 
-        // compute unit
-        std::vector<ip_data> computeUnits;
-        if( getComputeUnits( computeUnits ) < 0 ) {
-            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
-        }
-        parseComputeUnits( computeUnits );
+        uint32_t kds_mode;
+        pcidev::get_dev(m_idx)->sysfs_get<uint32_t>("", "kds_mode", errmsg, kds_mode, 0);
+        if (!kds_mode) {
+            // compute unit
+            std::vector<ip_data> computeUnits;
+            if( getComputeUnits( computeUnits ) < 0 ) {
+                std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
+            }
+            parseComputeUnits( computeUnits );
+        } else
+            parseCUSubdevStat();
 
         /**
          * \note Adding device information for debug and profile

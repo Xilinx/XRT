@@ -43,9 +43,6 @@
 #define CU_INTR_DONE  0x1
 #define CU_INTR_READY 0x2
 
-
-/* PLRAM CU macros */
-
 enum xcu_model {
 	XCU_HLS,
 	XCU_ACC,
@@ -57,9 +54,15 @@ enum xcu_config_type {
 	PAIRS_T,
 };
 
+/* Let's use HLS style status bits in new_status
+ * Bit 0: start (running)
+ * Bit 1: done
+ * Bit 2: idle
+ */
 struct xcu_status {
 	u32	num_done;
 	u32	num_ready;
+	u32	new_status;
 };
 
 typedef void *xcu_core_t;
@@ -226,6 +229,7 @@ struct xrt_cu {
 	bool			  bad_state;
 	u32			  done_cnt;
 	u32			  ready_cnt;
+	u32			  status;
 	u64			  run_timeout;
 	struct kds_command	 *old_cmd;
 	struct xrt_cu_event	  ev;
@@ -289,11 +293,12 @@ static inline void xrt_cu_check(struct xrt_cu *xcu)
 
 	status.num_done = 0;
 	status.num_ready = 0;
+	status.new_status = 0;
 	xcu->funcs->check(xcu->core, &status);
-	/* XRT CU assume command finished in order
-	 */
+	/* XRT CU assume command finished in order */
 	xcu->done_cnt += status.num_done;
 	xcu->ready_cnt += status.num_ready;
+	xcu->status = status.new_status;
 }
 
 static inline int xrt_cu_get_credit(struct xrt_cu *xcu)

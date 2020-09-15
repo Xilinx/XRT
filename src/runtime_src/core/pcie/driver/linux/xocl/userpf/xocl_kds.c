@@ -224,10 +224,18 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	/* TODO: one ecmd to one xcmd now. Maybe we will need
 	 * one ecmd to multiple xcmds
 	 */
-	if (ecmd->opcode == ERT_CONFIGURE) {
+	switch (ecmd->opcode) {
+	case ERT_CONFIGURE:
 		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
-	} else if (ecmd->opcode == ERT_START_CU)
+		break;
+	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		break;
+	default:
+		userpf_err(xdev, "Unsupport command\n");
+		xcmd->cb.free(xcmd);
+		return -EINVAL;
+	}
 
 	if (XDEV(xdev)->kds.ert_disable)
 		xcmd->type = KDS_CU;

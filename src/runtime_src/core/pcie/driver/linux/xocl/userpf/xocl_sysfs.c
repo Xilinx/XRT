@@ -208,6 +208,13 @@ kds_echo_store(struct device *dev, struct device_attribute *da,
 static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
 
 static ssize_t
+kds_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", kds_mode);
+}
+static DEVICE_ATTR_RO(kds_mode);
+
+static ssize_t
 kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
@@ -609,6 +616,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
+	&dev_attr_kds_mode.attr,
 	&dev_attr_kds_echo.attr,
 	&dev_attr_kds_stat.attr,
 	&dev_attr_kds_interrupt.attr,
