@@ -446,7 +446,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	if (cmd_opcode(ecmd) != OP_CONFIG)
 		return -EINVAL;
 
-	if (major > 3) {
+	if (major > 2) {
 		DRM_INFO("Unknown ERT major version, fallback to KDS mode\n");
 		ert_full = 0;
 		ert_poll = 0;
