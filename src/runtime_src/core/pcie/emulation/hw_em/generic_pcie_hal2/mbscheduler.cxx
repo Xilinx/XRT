@@ -673,7 +673,7 @@ namespace xclhwemhal2 {
     bool ert_poll = (ert && cfg->ert && cfg->dataflow);
     bool ert_full = (ert && cfg->ert && !cfg->dataflow);
 
-    if (ert_poll) {
+    if (ert_version>=30) {
     	//Disable ERT poll for now as the code is under restructuring
     	ert_poll=false;
     }
