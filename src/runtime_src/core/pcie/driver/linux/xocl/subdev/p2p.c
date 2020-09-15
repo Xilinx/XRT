@@ -211,13 +211,13 @@ static void p2p_percpu_ref_kill(void *data)
 {
 	struct percpu_ref *ref = data;
 #if defined(RHEL_RELEASE_CODE)
-	#if (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6))
+	#if ((RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)) && (RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 1)))
 	unsigned long __percpu *percpu_count = (unsigned long __percpu *)
 		(ref->percpu_count_ptr & ~__PERCPU_REF_ATOMIC_DEAD);
 	unsigned long count = 0;
 	int cpu;
 
-	/* Nasty hack for CentOS 7.6 and above versions (7.7, 7.8 etc.)
+	/* Nasty hack for CentOS 7.6, 7.7 and 7.8)
 	 * percpu_ref->count have to substract the percpu counters
 	 * to guarantee the percpu_ref->count will drop to 0
 	 */
@@ -351,6 +351,9 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 #if RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 2)
 		chk->xpmc_pgmap.ref = pref;
 		chk->xpmc_pgmap.altmap_valid = false;
+#if RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(8, 1)
+		chk->xpmc_pgmap.kill = p2p_percpu_ref_kill_noop;
+#endif
 #else
 		chk->xpmc_pgmap.type = MEMORY_DEVICE_PCI_P2PDMA;
 #endif
