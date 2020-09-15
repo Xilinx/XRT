@@ -21,100 +21,6 @@ MODULE_PARM_DESC(kds_mode,
  */
 int kds_echo = 0;
 
-/* -KDS sysfs-- */
-static ssize_t
-kds_echo_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", kds_echo);
-}
-
-static ssize_t
-kds_echo_store(struct device *dev, struct device_attribute *da,
-	       const char *buf, size_t count)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	u32 clients = 0;
-
-	/* TODO: this should be as simple as */
-	/* return stroe_kds_echo(&XDEV(xdev)->kds, buf, count); */
-
-	if (!kds_mode)
-		clients = get_live_clients(xdev, NULL);
-
-	return store_kds_echo(&XDEV(xdev)->kds, buf, count,
-			      kds_mode, clients, &kds_echo);
-}
-static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
-
-static ssize_t
-kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-
-	return show_kds_stat(&XDEV(xdev)->kds, buf);
-}
-static DEVICE_ATTR_RO(kds_stat);
-
-static ssize_t
-ert_disable_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%d\n", XDEV(xdev)->kds.ert_disable);
-}
-
-static ssize_t
-ert_disable_store(struct device *dev, struct device_attribute *da,
-	       const char *buf, size_t count)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	u32 live_clients;
-	u32 disable;
-
-	/* Switch KDS/ERT mode is a fundamental change on the hardware.
-	 * We should only allow it when hardware is good and there is no
-	 * live clients exist.
-	 * Below sanity check is similar to kds_echo, maybe we should have
-	 * an API to check the status of the hardware and client.
-	 *
-	 * Ideally, ICAP should implement the API. Since it knows if bitstream
-	 * is locked. It could know if hardware is in bad state.
-	 * When a client exit, if KDS is in bad state, notice ICAP before
-	 * unlock bitstream.
-	 */
-	if (XDEV(xdev)->kds.bad_state)
-		return -ENODEV;
-
-	mutex_lock(&XDEV(xdev)->kds.lock);
-	if (kds_mode)
-		live_clients = kds_live_clients_nolock(&XDEV(xdev)->kds, NULL);
-	else
-		live_clients = get_live_clients(xdev, NULL);
-
-	if (live_clients > 0)
-		return -EBUSY;
-
-	if (kstrtou32(buf, 10, &disable) == -EINVAL || disable > 1)
-		return -EINVAL;
-
-	XDEV(xdev)->kds.ert_disable = disable;
-	mutex_unlock(&XDEV(xdev)->kds.lock);
-
-	return count;
-}
-static DEVICE_ATTR(ert_disable, 0644, ert_disable_show, ert_disable_store);
-
-static struct attribute *kds_attrs[] = {
-	&dev_attr_kds_echo.attr,
-	&dev_attr_kds_stat.attr,
-	&dev_attr_ert_disable.attr,
-	NULL,
-};
-
-static struct attribute_group xocl_kds_group = {
-	.attrs = kds_attrs,
-};
-
 static inline void
 xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
 {
@@ -441,21 +347,11 @@ int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 
 int xocl_init_sched(struct xocl_dev *xdev)
 {
-	struct device *dev = &xdev->core.pdev->dev;
-	int ret;
-
-	ret = sysfs_create_group(&dev->kobj, &xocl_kds_group);
-	if (ret)
-		userpf_err(xdev, "create kds attrs failed: %d", ret);
-
 	return kds_init_sched(&XDEV(xdev)->kds);
 }
 
 void xocl_fini_sched(struct xocl_dev *xdev)
 {
-	struct device *dev = &xdev->core.pdev->dev;
-
-	sysfs_remove_group(&dev->kobj, &xocl_kds_group);
 	kds_fini_sched(&XDEV(xdev)->kds);
 }
 
@@ -493,12 +389,12 @@ void xocl_kds_update(struct xocl_dev *xdev)
 {
 	if (xocl_ert_30_cu_intr_cfg(xdev) == -ENODEV) {
 		userpf_info(xdev, "Not support CU to host interrupt");
-		userpf_info(xdev, "Using ERT to host interrupt");
-		XDEV(xdev)->kds.cu_intr = 0;
+		XDEV(xdev)->kds.cu_intr_cap = 0;
 	} else {
-		userpf_info(xdev, "Using CU to host interrupt");
-		XDEV(xdev)->kds.cu_intr = 1;
+		userpf_info(xdev, "Shell supports CU to host interrupt");
+		XDEV(xdev)->kds.cu_intr_cap = 1;
 	}
 
+	XDEV(xdev)->kds.cu_intr = 0;
 	kds_cfg_update(&XDEV(xdev)->kds);
 }

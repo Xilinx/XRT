@@ -51,7 +51,7 @@ namespace xclhwemhal2 {
       bool               dataflow;
       uint32_t           base;
       uint32_t           addr;
-      uint32_t           polladdr;
+      uint64_t           polladdr;
       uint32_t           ctrlreg;
       uint32_t           ap_check;
       unsigned int       done_cnt;
@@ -204,6 +204,11 @@ namespace xclhwemhal2 {
 
     std::mutex m_add_cmd_mutex;
     int num_pending;
+    int ert_version ;
+    uint64_t _CMDQ_BASE_ADDR;
+    uint64_t _CSA_BASE_ADDR;
+    uint64_t _CSA_CQ_STATUS_REGISTER_BASE;
+    uint64_t _CSA_STATUS_REGISTER_BASE;
   };
 }
 

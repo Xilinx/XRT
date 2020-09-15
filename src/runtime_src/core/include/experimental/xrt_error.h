@@ -94,7 +94,7 @@ xrtErrorGetLast(xrtDeviceHandle handle, xrtErrorClass ecl, xrtErrorCode* error, 
  * @error:        XRT error code.
  * @out:          Preallocated output buffer for the error string.
  * @len:          Length of output buffer.
- * @out_len:      Optional output of length of message.
+ * @out_len:      Output of length of message, ignored if null.
  *
  * Return:        0 on success or appropriate XRT error code.
  *
@@ -103,6 +103,6 @@ xrtErrorGetLast(xrtDeviceHandle handle, xrtErrorClass ecl, xrtErrorCode* error, 
  * output buffer itself.
  */
 int
-xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, size_t* out_len=0);
+xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, size_t* out_len);
 
 #endif

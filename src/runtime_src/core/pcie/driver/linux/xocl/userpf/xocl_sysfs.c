@@ -15,6 +15,10 @@
  * GNU General Public License for more details.
  */
 #include "common.h"
+#include "kds_core.h"
+
+extern int kds_mode;
+extern int kds_echo;
 
 /* Attributes followed by bin_attributes. */
 /* -Attributes -- */
@@ -177,6 +181,152 @@ static ssize_t memstat_raw_show(struct device *dev,
 	return xocl_mm_stat(xdev, buf, true);
 }
 static DEVICE_ATTR_RO(memstat_raw);
+
+/* -- KDS sysfs start -- */
+static ssize_t
+kds_echo_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", kds_echo);
+}
+
+static ssize_t
+kds_echo_store(struct device *dev, struct device_attribute *da,
+	       const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u32 clients = 0;
+
+	/* TODO: this should be as simple as */
+	/* return stroe_kds_echo(&XDEV(xdev)->kds, buf, count); */
+
+	if (!kds_mode)
+		clients = get_live_clients(xdev, NULL);
+
+	return store_kds_echo(&XDEV(xdev)->kds, buf, count,
+			      kds_mode, clients, &kds_echo);
+}
+static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
+
+static ssize_t
+kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	return show_kds_stat(&XDEV(xdev)->kds, buf);
+}
+static DEVICE_ATTR_RO(kds_stat);
+
+static ssize_t
+kds_interrupt_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	if (XDEV(xdev)->kds.cu_intr)
+		return sprintf(buf, "%s\n", "cu");
+	else
+		return sprintf(buf, "%s\n", "ert");
+}
+
+static ssize_t
+kds_interrupt_store(struct device *dev, struct device_attribute *da,
+		  const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	u32 live_clients;
+	u32 cu_intr = 0;
+
+	if (XDEV(xdev)->kds.bad_state)
+		return -ENODEV;
+
+	mutex_lock(&XDEV(xdev)->kds.lock);
+	if (kds_mode)
+		live_clients = kds_live_clients_nolock(&XDEV(xdev)->kds, NULL);
+	else
+		live_clients = get_live_clients(xdev, NULL);
+
+	if (live_clients > 0) {
+		mutex_unlock(&XDEV(xdev)->kds.lock);
+		return -EBUSY;
+	}
+
+	if (!kds->cu_intr_cap)
+		goto done;
+
+	/* The last character of buf is '\n' */
+	if (!strncmp(buf, "ert", count-1))
+		cu_intr = 0;
+	else if (!strncmp(buf, "cu", count-1))
+		cu_intr = 1;
+	else
+		goto done;
+
+	if (kds->cu_intr == cu_intr)
+		goto done;
+
+	kds->cu_intr = cu_intr;
+	kds_cfg_update(&XDEV(xdev)->kds);
+
+done:
+	mutex_unlock(&XDEV(xdev)->kds.lock);
+
+	return count;
+}
+static DEVICE_ATTR(kds_interrupt, 0644, kds_interrupt_show, kds_interrupt_store);
+
+static ssize_t
+ert_disable_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", XDEV(xdev)->kds.ert_disable);
+}
+
+static ssize_t
+ert_disable_store(struct device *dev, struct device_attribute *da,
+	       const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u32 live_clients;
+	u32 disable;
+
+	/* Switch KDS/ERT mode is a fundamental change on the hardware.
+	 * We should only allow it when hardware is good and there is no
+	 * live clients exist.
+	 * Below sanity check is similar to kds_echo, maybe we should have
+	 * an API to check the status of the hardware and client.
+	 *
+	 * Ideally, ICAP should implement the API. Since it knows if bitstream
+	 * is locked. It could know if hardware is in bad state.
+	 * When a client exit, if KDS is in bad state, notice ICAP before
+	 * unlock bitstream.
+	 */
+	if (XDEV(xdev)->kds.bad_state)
+		return -ENODEV;
+
+	mutex_lock(&XDEV(xdev)->kds.lock);
+	if (kds_mode)
+		live_clients = kds_live_clients_nolock(&XDEV(xdev)->kds, NULL);
+	else
+		live_clients = get_live_clients(xdev, NULL);
+
+	if (live_clients > 0) {
+		mutex_unlock(&XDEV(xdev)->kds.lock);
+		return -EBUSY;
+	}
+
+	if (kstrtou32(buf, 10, &disable) == -EINVAL || disable > 1) {
+		mutex_unlock(&XDEV(xdev)->kds.lock);
+		return -EINVAL;
+	}
+
+	XDEV(xdev)->kds.ert_disable = disable;
+	mutex_unlock(&XDEV(xdev)->kds.lock);
+
+	return count;
+}
+static DEVICE_ATTR(ert_disable, 0644, ert_disable_show, ert_disable_store);
+/* -- KDS sysfs end -- */
 
 static ssize_t dev_offline_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -455,10 +605,14 @@ static DEVICE_ATTR_RO(nodma);
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
-    &dev_attr_board_name.attr,
+	&dev_attr_board_name.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
+	&dev_attr_kds_echo.attr,
+	&dev_attr_kds_stat.attr,
+	&dev_attr_kds_interrupt.attr,
+	&dev_attr_ert_disable.attr,
 	&dev_attr_dev_offline.attr,
 	&dev_attr_mig_calibration.attr,
 	&dev_attr_link_width.attr,

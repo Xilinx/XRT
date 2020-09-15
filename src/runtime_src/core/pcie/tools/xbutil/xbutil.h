@@ -123,6 +123,9 @@ enum cmacommand {
     CMA_VALIDATE,
     CMA_SIZE,
 };
+enum kdscommand {
+    KDS_CU_INTERRUPT = 0x0,
+};
 
 enum class cu_stat : unsigned short {
   usage = 0,

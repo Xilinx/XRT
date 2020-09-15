@@ -81,16 +81,22 @@ namespace xdp {
     deviceEventStartMap[traceID].push_back(event) ;
   }
 
-  VTFEvent* VPDynamicDatabase::matchingDeviceEventStart(uint64_t traceID)
+  VTFEvent* VPDynamicDatabase::matchingDeviceEventStart(uint64_t traceID, VTFEventType type)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
+    VTFEvent* startEvent = nullptr;
     if (deviceEventStartMap.find(traceID) != deviceEventStartMap.end() && !deviceEventStartMap[traceID].empty())
     {
-      VTFEvent* startEvent = deviceEventStartMap[traceID].front();
-      deviceEventStartMap[traceID].pop_front();
-      return startEvent ;
+      std::list<VTFEvent*>::iterator itr = deviceEventStartMap[traceID].begin();
+      for(; itr != deviceEventStartMap[traceID].end(); ++itr) {
+        if((*itr)->getEventType() == type) {
+          startEvent = (*itr);
+          deviceEventStartMap[traceID].erase(itr);    
+          break;
+        }
+      }
     }
-    return nullptr;
+    return startEvent;
   }
 
   void VPDynamicDatabase::markStart(uint64_t functionID, uint64_t eventID)

@@ -1857,7 +1857,12 @@ static int icap_verify_signature(struct icap *icap,
 	int ret = 0;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+/* Starting with Ubuntu 20.04 we need to use VERIFY_USE_PLATFORM_KEYRING in order to use MOK keys*/
+#define	SYS_KEYS	(VERIFY_USE_PLATFORM_KEYRING)
+#else
 #define	SYS_KEYS	((void *)1UL)
+#endif
 	ret = verify_pkcs7_signature(data, data_len, sig, sig_len,
 		(icap->sec_level == ICAP_SEC_SYSTEM) ? SYS_KEYS : icap_keys,
 		VERIFYING_UNSPECIFIED_SIGNATURE, NULL, NULL);
@@ -2218,7 +2223,7 @@ static bool check_mem_topo_and_data_retention(struct icap *icap,
 	size = hdr->m_sectionSize;
 	offset = hdr->m_sectionOffset;
 
-	/* Data retention feature ONLY works if the xclbins have identical mem_topology 
+	/* Data retention feature ONLY works if the xclbins have identical mem_topology
 	 * or it will lead to hardware failure.
 	 * If the incoming xclbin has different mem_topology, disable data retention feature
 	 */
@@ -2472,7 +2477,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		err = -EINVAL;
 		goto done;
 	}
-	
+
     if (!xocl_verify_timestamp(xdev,
 		xclbin->m_header.m_featureRomTimeStamp)) {
 		ICAP_ERR(icap, "TimeStamp of ROM did not match Xclbin");
@@ -3499,7 +3504,7 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 		goto unlock;
 
 	memcpy(mem_topo, icap->mem_topo, size);
-	range = xocl_addr_translator_get_range(xdev);	
+	range = xocl_addr_translator_get_range(xdev);
 	for ( i=0; i< mem_topo->m_count; ++i) {
 		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag)){
 			/* m_size in KB, convert Byte to KB */

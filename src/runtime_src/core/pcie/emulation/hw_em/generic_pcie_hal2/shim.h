@@ -193,7 +193,7 @@ using addr_type = uint64_t;
 
       //constructor
       HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified,
-        bool bXPR, FeatureRomHeader &featureRom, platformData& platform_data);
+        bool bXPR, FeatureRomHeader &featureRom, const boost::property_tree::ptree& platformData);
 
       //destructor
       ~HwEmShim();
@@ -214,10 +214,12 @@ using addr_type = uint64_t;
       void setUnified(bool _unified) { bUnified = _unified; }
 
       bool isMBSchedulerEnabled();
+      uint64_t getErtCmdQAddress();
+      uint64_t getErtBaseAddress();
       bool isM2MEnabled();
       bool isNoDMAEnabled();
 
-      std::string getMBSchedulerVersion();
+      std::string getERTVersion();
       bool isLegacyErt();
       unsigned int getDsaVersion();
       bool isCdmaEnabled();
@@ -261,6 +263,7 @@ using addr_type = uint64_t;
 
       std::string getSimulatorType(const std::string& binaryDirectory);
       void createPreSimScript(const std::string& wcfgFilePath, std::string& preSimScriptPath);
+      void constructQueryTable();
 
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
@@ -347,7 +350,8 @@ using addr_type = uint64_t;
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
-      platformData mPlatformData;
+      boost::property_tree::ptree mPlatformData;
+      std::map<std::string, std::string> mQueryTable;
       std::set<unsigned int > mImportedBOs;
       uint64_t mCuBaseAddress;
       bool     mVersalPlatform;

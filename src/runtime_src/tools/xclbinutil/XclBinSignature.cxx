@@ -22,6 +22,8 @@
 #ifndef _WIN32
   #include <openssl/cms.h>
   #include <openssl/pem.h>
+  #include <openssl/err.h>
+  #include <openssl/x509v3.h>
 #endif
 
 #ifdef _WIN32
@@ -31,7 +33,7 @@
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
-static bool 
+static bool
 copyFile(const std::string & _src, const std::string _dest)
 {
   XUtil::TRACE(XUtil::format("Copying file '%s' to '%s'", _src.c_str(), _dest.c_str()).c_str());
@@ -482,6 +484,9 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
     throw std::runtime_error("ERROR: Can't add certificate.");
   }
 
+  // -- v3 Certificates with "extendedKeyUsage = codeSigning,1.3.6.1.4.1.2312.16.1.2"
+  // -- e.g. UEFI DKMS module signing certiciate /var/lib/shim-signed/mok/MOK.der
+  X509_STORE_set_purpose(store, XKU_CODE_SIGN);
   // -- Read in signature --
   PKCS7* p7 = d2i_PKCS7_bio(bmSignature, NULL);
   if (p7 == NULL) {
@@ -493,6 +498,9 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
   sk_X509_push(ca_stack, x509);
 
   if (!PKCS7_verify(p7, ca_stack, store, bmImage, NULL, PKCS7_DETACHED |  PKCS7_BINARY | PKCS7_NOINTERN)) {
+    long err = ERR_peek_last_error();
+    const char *buffer = ERR_reason_error_string(err);
+    std::cout << "ERROR: " << buffer << std::endl;
     std::cout << "Signed xclbin archive verification [FAILED]" << std::endl;
   } else {
     std::cout << "Signed xclbin archive verification [SUCCESSFUL]" << std::endl;
