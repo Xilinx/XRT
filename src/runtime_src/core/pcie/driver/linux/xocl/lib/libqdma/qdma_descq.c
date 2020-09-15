@@ -166,7 +166,7 @@ static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
 		if (!descq->avail) {
 			descq_poll_mm_n_h2c_cmpl_status(descq);
 
-			if (!descq->avail) 
+			if (!descq->avail)
 				break;
 		}
 
@@ -285,7 +285,7 @@ static unsigned int st_h2c_desc_fill(struct qdma_descq *descq,
 {
 	struct xlnx_dma_dev *xdev = descq->xdev;
 	unsigned int pidx = descq->pidx;
-	struct qdma_h2c_desc *desc = (struct qdma_h2c_desc *)descq->desc + 
+	struct qdma_h2c_desc *desc = (struct qdma_h2c_desc *)descq->desc +
 					pidx;
 	unsigned int pktsz = PAGE_SIZE;
 	unsigned int desc_avail = descq->avail;
@@ -1264,7 +1264,7 @@ void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 		cb->status = error;
 		cb->done = 1;
 
-	       	if (req->fp_done) 
+		if (req->fp_done)
 			req->fp_done(req->uld_data, cb->offset, error);
 		else
 			qdma_waitq_wakeup(&cb->wq);
