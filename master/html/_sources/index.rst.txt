@@ -19,6 +19,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    platforms.rst
    system_requirements.rst
    build.rst
+   install.rst
    test.rst
 
 
@@ -31,6 +32,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    multiprocess.rst
    p2p.rst
    m2m.rst
+   sb.rst
    streaming_data_support.rst
    xrt_ini.rst
 
@@ -45,6 +47,8 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    :maxdepth: 1
    :caption: User API Library
 
+   opencl_extension.rst
+   xrt_native_apis.rst
    xrt.main.rst
    ert.main.rst
    xma.main.rst

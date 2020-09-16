@@ -58,7 +58,7 @@
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Developer Build and Test Instructions" href="test.html" />
+    <link rel="next" title="XRT Installation" href="install.html" />
     <link rel="prev" title="System Requirements" href="system_requirements.html" /> 
 	</head>
 	<body>
@@ -334,19 +334,19 @@
             
               <p class="caption"><span class="caption-text">Introduction</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Building and Installing Software Stack</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#xrt">XRT</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#build-the-runtime">Build the runtime</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#build-rpm-package-on-rhel-centos-or-deb-package-on-ubuntu">Build RPM package on RHEL/CentOS or DEB package on Ubuntu</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#install-the-xrt-rpm-package">Install the XRT RPM package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#install-the-xrt-deb-package">Install the XRT DEB package</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Building the XRT Software Stack</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#building-the-xrt-installation-package">Building the XRT Installation Package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#installing-building-dependencies">Installing Building Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#building-the-xrt-runtime">Building the XRT Runtime</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#packaging-rpm-on-rhel-centos-or-deb-on-ubuntu">Packaging RPM on RHEL/CentOS or DEB on Ubuntu</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#xrt-documentation">XRT Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#building-the-xrt-documentation">Building the XRT Documentation</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
@@ -356,6 +356,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sb.html">Slave-Bridge Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
@@ -366,6 +367,8 @@
 </ul>
 <p class="caption"><span class="caption-text">User API Library</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
@@ -386,7 +389,7 @@
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -455,7 +458,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Building and Installing Software Stack</li>
+      <li>Building the XRT Software Stack</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -474,45 +477,49 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="building-and-installing-software-stack">
-<span id="build-rst"></span><h1>Building and Installing Software Stack<a class="headerlink" href="#building-and-installing-software-stack" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="xrt">
-<h2>XRT<a class="headerlink" href="#xrt" title="Permalink to this headline">¶</a></h2>
+  <div class="section" id="building-the-xrt-software-stack">
+<span id="build-rst"></span><h1>Building the XRT Software Stack<a class="headerlink" href="#building-the-xrt-software-stack" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="building-the-xrt-installation-package">
+<h2>Building the XRT Installation Package<a class="headerlink" href="#building-the-xrt-installation-package" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="installing-building-dependencies">
+<h3>Installing Building Dependencies<a class="headerlink" href="#installing-building-dependencies" title="Permalink to this headline">¶</a></h3>
 <p>XRT requires C++14 compiler and a few development libraries bundled
 with modern Linux distribution. Please install the necessary tools and
-dependencies using the provided
-<code class="docutils literal notranslate"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code>.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>If <code class="docutils literal notranslate"><span class="pre">xrtdeps.sh</span></code> fails when installing devtoolset-6, then please manually install a later devtoolset, for example <code class="docutils literal notranslate"><span class="pre">devtoolset-9</span></code>.</p>
+dependencies using the provided <code class="docutils literal notranslate"><span class="pre">xrtdeps.sh</span></code>.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>sudo &lt;XRT&gt;/src/runtime_src/tools/scripts/xrtdeps.sh
+</pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">xrtdeps.sh</span></code> script installs the standard distribution packages
 for the tools and libraries XRT depends on. If any system libraries
 XRT depends on (for example Boost libraries) are updated to non
 standard versions, then XRT must be rebuilt.</p>
 <p>On RHEL7.x/CentOS7.x use devtoolset to switch to C++14 devlopment
-environment. This step is not applicable to Ubuntu which already has
+environment. This step is not applicable to Ubuntu, which already has
 C++14 capable GCC.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>scl enable devtoolset-9 bash
 </pre></div>
 </div>
-<div class="section" id="build-the-runtime">
-<h3>Build the runtime<a class="headerlink" href="#build-the-runtime" title="Permalink to this headline">¶</a></h3>
+<p>XRT includes source code for ERT firmware.
+It needs to be compiled with the MicroBlaze GCC compiler, which is available in <a class="reference external" href="https://www.xilinx.com/products/design-tools/vitis.html">Xilinx Vitis™ Software Platform</a>.
+To generate a complete XRT package, please install Vitis™ Software Platform and setup XILINX_VITIS environment variable.
+If XILINX_VITIS is not available in the build system, the building and packaging steps for ERT will be skipped.
+On the deployment system, XRT will try to find the ERT firmware in <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx</span></code> directory.
+If it’s not available, errors will be reported.</p>
+</div>
+<div class="section" id="building-the-xrt-runtime">
+<h3>Building the XRT Runtime<a class="headerlink" href="#building-the-xrt-runtime" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cd build
 ./build.sh
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">build.sh</span></code> script builds for both Debug and Release profiles.  On
-RHEL/CentOS, if <code class="docutils literal notranslate"><span class="pre">build.sh</span></code> was accidentally run prior to enabling
+<p><code class="docutils literal notranslate"><span class="pre">build.sh</span></code> script builds for both Debug and Release profiles.</p>
+<p>On RHEL/CentOS, if <code class="docutils literal notranslate"><span class="pre">build.sh</span></code> was accidentally run prior to enabling
 the devtoolset, then it is necessary to clean stale files makefiles by
 running <code class="docutils literal notranslate"><span class="pre">build.sh</span> <span class="pre">clean</span></code> prior to the next build.</p>
+<p>Please check ERT firmware is built properly at <code class="docutils literal notranslate"><span class="pre">build/Release/opt/xilinx/xrt/share/fw/sched*.bin</span></code>.</p>
 </div>
-<div class="section" id="build-rpm-package-on-rhel-centos-or-deb-package-on-ubuntu">
-<h3>Build RPM package on RHEL/CentOS or DEB package on Ubuntu<a class="headerlink" href="#build-rpm-package-on-rhel-centos-or-deb-package-on-ubuntu" title="Permalink to this headline">¶</a></h3>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>XRT includes source code for ERT firmware, which must compiled using the MicroBlaze GCC compiler available with Xilinx Vitis.  Before building XRT locally, it is recommended that Xilinx Vitis is installed and that XILINX_VITIS environment variable is set accordingly.</p>
-</div>
+<div class="section" id="packaging-rpm-on-rhel-centos-or-deb-on-ubuntu">
+<h3>Packaging RPM on RHEL/CentOS or DEB on Ubuntu<a class="headerlink" href="#packaging-rpm-on-rhel-centos-or-deb-on-ubuntu" title="Permalink to this headline">¶</a></h3>
 <p>The package is automatically built for the <code class="docutils literal notranslate"><span class="pre">Release</span></code>
 version but not for the <code class="docutils literal notranslate"><span class="pre">Debug</span></code> version:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cd build/Release
@@ -522,35 +529,9 @@ make package
 </pre></div>
 </div>
 </div>
-<div class="section" id="install-the-xrt-rpm-package">
-<h3>Install the XRT RPM package<a class="headerlink" href="#install-the-xrt-rpm-package" title="Permalink to this headline">¶</a></h3>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Before installing a locally built RPM for XRT, please make sure the ERT firmware was built by checking that <code class="docutils literal notranslate"><span class="pre">build/Release/opt/xilinx/xrt/share/fw/sched*.bin</span></code> exists under the build tree.  If <code class="docutils literal notranslate"><span class="pre">sched.bin</span></code> files are missing, please download and install Xilinx Vitis, set XILINX_VITIS, and build XRT again.  If you do not plan to install the RPM package then existing firmware under <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx</span></code> will continue to be used.</p>
 </div>
-<p>Install by providing a full path to the RPM package, for example, from
-inside either the <code class="docutils literal notranslate"><span class="pre">Release</span></code> or <code class="docutils literal notranslate"><span class="pre">Debug</span></code> directory according to
-purpose with (the actual package name might differ)</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>sudo yum reinstall ./xrt_202020.2.7.0_7.4.1708-x86_64-xrt.rpm
-</pre></div>
-</div>
-</div>
-<div class="section" id="install-the-xrt-deb-package">
-<h3>Install the XRT DEB package<a class="headerlink" href="#install-the-xrt-deb-package" title="Permalink to this headline">¶</a></h3>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Before installing a locally built DEB for XRT, please make sure the ERT firmware was built by checking that <code class="docutils literal notranslate"><span class="pre">build/Release/opt/xilinx/xrt/share/fw/sched*.bin</span></code> exists under the build tree.  If <code class="docutils literal notranslate"><span class="pre">sched.bin</span></code> files are missing, please download and install Xilinx Vitis, set XILINX_VITIS, and build XRT again.  If you do not plan to install the DEB package then existing firmware under <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx</span></code> will continue to be used.</p>
-</div>
-<p>Install by providing a full path to the DEB package, for example, from
-inside either the <code class="docutils literal notranslate"><span class="pre">Release</span></code> or <code class="docutils literal notranslate"><span class="pre">Debug</span></code> directory according to
-purpose with (the actual package name might differ)</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>sudo apt install --reinstall ./xrt_202020.2.7.0_18.04-amd64-xrt.deb
-</pre></div>
-</div>
-</div>
-</div>
-<div class="section" id="xrt-documentation">
-<h2>XRT Documentation<a class="headerlink" href="#xrt-documentation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="building-the-xrt-documentation">
+<h2>Building the XRT Documentation<a class="headerlink" href="#building-the-xrt-documentation" title="Permalink to this headline">¶</a></h2>
 <p>XRT Documentation can be built automatically using <code class="docutils literal notranslate"><span class="pre">Sphinx</span></code> doc builder
 together with Linux kernel based <code class="docutils literal notranslate"><span class="pre">kernel-doc</span></code> utility.</p>
 <p>To compile and install the documentation into the <code class="docutils literal notranslate"><span class="pre">doc</span></code> directory at
@@ -580,7 +561,7 @@ xdg-open Release/runtime_src/doc/html/index.html
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="test.html" class="btn btn-neutral float-right" title="Developer Build and Test Instructions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="install.html" class="btn btn-neutral float-right" title="XRT Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="system_requirements.html" class="btn btn-neutral float-left" title="System Requirements" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -593,7 +574,7 @@ xdg-open Release/runtime_src/doc/html/index.html
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on August 12, 2020.
+        Last updated on September 16, 2020.
       </span>
 
     </p>
