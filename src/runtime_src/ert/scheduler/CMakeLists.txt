@@ -133,13 +133,13 @@ file(GLOB SCH_SRC_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/scheduler.cpp"
   )
 
-add_definitions(-DERT_HW_EMU -DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
 add_library(sch_objects OBJECT ${SCH_SRC_FILES})
 
 set(CURR_SOURCE "")
 add_library(sched_em SHARED ${CURR_SOURCE}
   $<TARGET_OBJECTS:sch_objects>
   )
+target_compile_definitions(sch_objects PUBLIC -DERT_HW_EMU -DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
 
 set_target_properties(sched_em PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
@@ -159,13 +159,13 @@ file(GLOB SCH_SRC_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/scheduler_v30.cpp"
   )
 
-add_definitions(-DERT_HW_EMU -DERT_BUILD_V30  -DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
 add_library(sch_objects_v30 OBJECT ${SCH_SRC_FILES})
 
 set(CURR_SOURCE "")
 add_library(sched_em_v30 SHARED ${CURR_SOURCE}
   $<TARGET_OBJECTS:sch_objects_v30>
   )
+target_compile_definitions(sch_objects_v30 PUBLIC -DERT_HW_EMU -DERT_BUILD_V30  -DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
 
 set_target_properties(sched_em_v30 PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
