@@ -278,7 +278,7 @@ public:
         std::string errmsg;
         pcidev::get_dev(m_idx)->sysfs_get("rom", "VBNV", errmsg, m_devicename);
         if(!errmsg.empty())
-            throw std::runtime_error("Failed to determine device name. ");
+            throw std::runtime_error("Failed to determine device name. " + errmsg);
     }
 
     device(device&& rhs) = delete;
@@ -493,7 +493,7 @@ public:
 
         // If unknown status bits, can't support.
         if (status & ~(ce_mask | ue_mask)) {
-            std::cout << "Bad ECC status detected!" << std::endl;
+            std::cerr << "Bad ECC status detected!" << std::endl;
             return -EINVAL;
         }
 
