@@ -81,11 +81,11 @@ get_installed_partitions(std::string interface_uuid)
     pt_plp.put("logic-uuid", XBU::string_to_UUID(installedDSA.uuids[0]));
 
     // Find the UUID that it exposes for other partitions
-    for(unsigned int i = 1; i < installedDSA.uuids.size(); i++){
+    for(unsigned int j = 1; j < installedDSA.uuids.size(); j++){
       //check if the interface UUID is resolution of BLP
-      if(interface_uuid.compare(installedDSA.uuids[i]) == 0)
+      if(interface_uuid.compare(installedDSA.uuids[j]) == 0)
         continue;
-      pt_plp.put("interface-uuid", XBU::string_to_UUID(installedDSA.uuids[i]));
+      pt_plp.put("interface-uuid", XBU::string_to_UUID(installedDSA.uuids[j]));
     }
     pt_plp.put("file", installedDSA.file);
     std::cout << std::endl;
