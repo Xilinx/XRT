@@ -1299,7 +1299,27 @@ namespace xdp {
 	 << "Buffer Size (KB)"   << ","
 	 << "Writing Rate(MB/s)" << std::endl ;
 
-    // TODO
+    for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostWrites().begin() ;
+	 iter != (db->getStats()).getTopHostWrites().end() ;
+	 ++iter)
+    {
+      double durationMS = (double)((*iter).duration) / 1.0e6 ;
+      double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+
+      fout << "0x" << std::hex << (*iter).address << "," << std::dec
+	   << (*iter).contextId << ","
+	   << "0x" << std::hex << (*iter).commandQueueId << "," << std::dec
+	   << (double)((*iter).startTime) / 1.0e6 << "," ;
+      if (getFlowMode() == HW)
+	fout << durationMS << "," ;
+      else
+	fout << "N/A," ;
+      fout << (double)((*iter).size) / 1000.0 << "," ;
+      if (getFlowMode() == HW)
+	fout << rate << std::endl ;
+      else
+	fout << "N/A" << std::endl ;
+    }
   }
 
   void OpenCLSummaryWriter::writeTopMemoryReads()
@@ -1316,7 +1336,27 @@ namespace xdp {
 	 << "Buffer Size (KB)"   << ","
 	 << "Reading Rate(MB/s)" << std::endl ;
 
-    // TODO
+    for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostReads().begin() ;
+	 iter != (db->getStats()).getTopHostReads().end() ;
+	 ++iter)
+    {
+      double durationMS = (double)((*iter).duration) / 1.0e6 ;
+      double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+
+      fout << "0x" << std::hex << (*iter).address << "," << std::dec
+	   << (*iter).contextId << ","
+	   << "0x" << std::hex << (*iter).commandQueueId << "," << std::dec
+	   << (double)((*iter).startTime) / 1.0e6 << "," ;
+      if (getFlowMode() == HW)
+	fout << durationMS << "," ;
+      else
+	fout << "N/A," ;
+      fout << (double)((*iter).size) / 1000.0 << "," ;
+      if (getFlowMode() == HW)
+	fout << rate << std::endl ;
+      else
+	fout << "N/A" << std::endl ;
+    }
   }
 
   void OpenCLSummaryWriter::writeGuidance()

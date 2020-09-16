@@ -24,6 +24,7 @@
 #include <vector>
 #include <fstream>
 #include <tuple>
+#include <list>
 
 // For the device results structures
 #include "xclperf.h"
@@ -41,6 +42,8 @@ namespace xdp {
   //  host code execution and should not be reset when
   //  information is dumped in continuous offload.
 
+  // The BufferStatistics struct keeps track of aggregate information
+  //  of all host to device buffer transfers.
   struct BufferStatistics
   {
     uint64_t count ; // Number of buffer transfers
@@ -88,6 +91,28 @@ namespace xdp {
       ++count ;
     }
 
+  } ;
+
+  // The struct BufferTransferStats keeps track of a single buffer transfer
+  //  so we can report the top N transfers
+  struct BufferTransferStats
+  {
+    uint64_t size ;
+    uint64_t address ;
+    uint64_t contextId ;
+    uint64_t commandQueueId ;
+
+    // Timestamps
+    uint64_t startTime ;
+    uint64_t duration ;
+
+    BufferTransferStats() :
+     size(0), address(0), contextId(0), commandQueueId(0),
+     startTime(0), duration(0) 
+    {
+    }
+
+    uint64_t getDuration() { return duration ; }
   } ;
 
   struct TimeStatistics
@@ -174,6 +199,11 @@ namespace xdp {
     uint64_t totalBufferStartTime ;
     uint64_t totalBufferEndTime ;
 
+    // Keep track of the top ten buffer read and write transfers
+    const uint64_t numTopTransfers = 10 ;
+    std::list<BufferTransferStats> topHostReads ;
+    std::list<BufferTransferStats> topHostWrites ;
+
     // Information used by trace parser
     double firstKernelStartTime ;
     double lastKernelEndTime ;
@@ -181,6 +211,10 @@ namespace xdp {
     // Since the host code can be multithreaded, we must protect 
     //  the data
     std::mutex dbLock ;
+
+    // Helper functions for OpenCL
+    void addTopHostRead(BufferTransferStats& transfer) ;
+    void addTopHostWrite(BufferTransferStats& transfer) ;
 
   public:
     XDP_EXPORT VPStatisticsDatabase(VPDatabase* d) ;
@@ -199,6 +233,8 @@ namespace xdp {
       { return computeUnitExecutionStats ; }
     inline std::map<std::pair<uint64_t, uint64_t>, BufferStatistics>& getHostReads() { return hostReads ; }
     inline std::map<std::pair<uint64_t, uint64_t>, BufferStatistics>& getHostWrites() { return hostWrites ; }
+    inline std::list<BufferTransferStats>& getTopHostReads() { return topHostReads ; }
+    inline std::list<BufferTransferStats>& getTopHostWrites() { return topHostWrites ; }
     inline uint64_t getTotalHostReadTime() { return totalHostReadTime ; }
     inline uint64_t getTotalHostWriteTime() { return totalHostWriteTime ; }
     inline uint64_t getTotalBufferStartTime() { return totalBufferStartTime ; }
@@ -253,9 +289,15 @@ namespace xdp {
 					    const std::string& globalWorkGroup,
 					    uint64_t executionTime) ;
     XDP_EXPORT void logHostRead(uint64_t contextId, uint64_t deviceId,
-				uint64_t size, uint64_t transferTime) ;
+				uint64_t size, uint64_t startTime,
+				uint64_t transferTime,
+				uint64_t address,
+				uint64_t commandQueueId) ;
     XDP_EXPORT void logHostWrite(uint64_t contextId, uint64_t deviceId,
-				 uint64_t size, uint64_t transferTime) ;
+				 uint64_t size, uint64_t startTime,
+				 uint64_t transferTime,
+				 uint64_t address,
+				 uint64_t commandQueueId) ;
 
     XDP_EXPORT void updateCounters(uint64_t deviceId, 
 				   xclCounterResults& counters) ;

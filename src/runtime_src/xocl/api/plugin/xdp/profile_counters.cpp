@@ -38,9 +38,9 @@ namespace xocl {
     std::function<void (const char*, bool)> counter_kernel_execution_cb ;
     std::function<void (const char*, const char*, const char*, bool)> 
       counter_cu_execution_cb ;
-    std::function<void (unsigned long int, unsigned long int, const char*, unsigned long int, bool, bool)>
+    std::function<void (unsigned long int, unsigned long int, const char*, unsigned long int, bool, bool, unsigned long int, unsigned long int)>
       counter_action_read_cb ;
-    std::function<void (unsigned long int, const char*, unsigned long int, bool, bool)>
+    std::function<void (unsigned long int, const char*, unsigned long int, bool, bool, unsigned long int, unsigned long int)>
       counter_action_write_cb ;
     std::function<void ()> counter_mark_objects_released_cb ;
 
@@ -66,12 +66,12 @@ namespace xocl {
 	(cuetype)(xrt_core::dlsym(handle, "log_compute_unit_execution")) ;
       if (xrt_core::dlerror() != NULL) counter_cu_execution_cb = nullptr ;
       
-      typedef void (*atype)(unsigned long int, unsigned long int, const char*, unsigned long int, bool, bool) ;
+      typedef void (*atype)(unsigned long int, unsigned long int, const char*, unsigned long int, bool, bool, unsigned long int, unsigned long int) ;
       counter_action_read_cb =
 	(atype)(xrt_core::dlsym(handle, "counter_action_read")) ;
       if (xrt_core::dlerror() != NULL) counter_action_read_cb = nullptr ;
       
-      typedef void (*wtype)(unsigned long int, const char*, unsigned long int, bool, bool) ;
+      typedef void (*wtype)(unsigned long int, const char*, unsigned long int, bool, bool, unsigned long int, unsigned long int) ;
       counter_action_write_cb =
 	(wtype)(xrt_core::dlsym(handle, "counter_action_write")) ;
       if (xrt_core::dlerror() != NULL) counter_action_write_cb = nullptr ;
@@ -128,6 +128,20 @@ namespace {
 	return get_cu_index_mask(cumask) + 32 * i ;
     }
     return 0 ;
+  }
+
+  static uint64_t get_memory_address(cl_mem buffer)
+  {
+    uint64_t address = 0 ;
+    std::string bank = "Unknown" ;
+    try {
+      if (auto xmem = xocl::xocl(buffer))
+	xmem->try_get_address_bank(address, bank) ;
+    }
+    catch (const xocl::error&)
+    {
+    }
+    return address ;
   }
 
 } // end anonymous namespace
@@ -242,6 +256,8 @@ namespace xocl {
 	       auto ext_flags = xmem->get_ext_flags() ;
 	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
+	       uint64_t address = get_memory_address(buffer) ;
+
 	       // I'm logging numDevices here because it has to be logged
 	       //  somewhere, although it really doesn't make much sense here
 
@@ -252,7 +268,9 @@ namespace xocl {
 					deviceName.c_str(),
 					0,
 					true,
-					isP2P);
+					isP2P,
+					address,
+					reinterpret_cast<uint64_t>(queue));
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
@@ -261,7 +279,9 @@ namespace xocl {
 					deviceName.c_str(),
 					xmem->get_size(),
 					false,
-					isP2P) ;
+					isP2P,
+					address,
+					reinterpret_cast<uint64_t>(queue)) ;
 	       }
 	     } ;
     }
@@ -282,13 +302,17 @@ namespace xocl {
 	       auto ext_flags = xmem->get_ext_flags() ;
 	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
+	       uint64_t address = get_memory_address(buffer) ;
+
 	       if (status == CL_RUNNING)
 	       {
 		 counter_action_write_cb(contextId,
 					 deviceName.c_str(),
 					 0,
 					 true,
-					 isP2P);
+					 isP2P,
+					 address,
+					 reinterpret_cast<uint64_t>(queue));
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
@@ -296,7 +320,9 @@ namespace xocl {
 					 deviceName.c_str(),
 					 xmem->get_size(),
 					 false,
-					 isP2P) ;
+					 isP2P,
+					 address,
+					 reinterpret_cast<uint64_t>(queue)) ;
 	       }
 	     } ;
     }
@@ -328,6 +354,8 @@ namespace xocl {
 		 auto ext_flags = xmem->get_ext_flags() ;
 		 bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
+		 uint64_t address = get_memory_address(buffer) ;
+
 		 if (status == CL_RUNNING)
 		 {
 		   counter_action_read_cb(contextId,
@@ -335,7 +363,9 @@ namespace xocl {
 					  deviceName.c_str(),
 					  0,
 					  true,
-					  isP2P);
+					  isP2P,
+					  address,
+					  reinterpret_cast<uint64_t>(queue));
 		 }
 		 else if (status == CL_COMPLETE)
 		 {
@@ -344,7 +374,9 @@ namespace xocl {
 					  deviceName.c_str(),
 					  xmem->get_size(),
 					  false,
-					  isP2P) ;
+					  isP2P,
+					  address,
+					  reinterpret_cast<uint64_t>(queue)) ;
 		 }
 	       } ;
       }
@@ -364,13 +396,17 @@ namespace xocl {
 		 auto ext_flags = xmem->get_ext_flags() ;
 		 bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
+		 uint64_t address = get_memory_address(buffer) ;
+
 		 if (status == CL_RUNNING)
 		 {
 		   counter_action_write_cb(contextId,
 					   deviceName.c_str(),
 					   0,
 					   true,
-					   isP2P);
+					   isP2P,
+					   address,
+					   reinterpret_cast<uint64_t>(queue));
 		 }
 		 else if (status == CL_COMPLETE)
 		 {
@@ -378,7 +414,9 @@ namespace xocl {
 					   deviceName.c_str(),
 					   xmem->get_size(),
 					   false,
-					   isP2P) ;
+					   isP2P,
+					   address,
+					   reinterpret_cast<uint64_t>(queue)) ;
 		 }
 	       } ;
       }
@@ -456,13 +494,17 @@ namespace xocl {
 	       auto ext_flags = xmem->get_ext_flags() ;
 	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
+	       uint64_t address = get_memory_address(mem0) ;
+
 	       if (status == CL_RUNNING)
 	       {
 		 counter_action_write_cb(contextId,
 					 deviceName.c_str(),
 					 0,
 					 true,
-					 isP2P);
+					 isP2P,
+					 address,
+					 reinterpret_cast<uint64_t>(queue));
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
@@ -470,7 +512,9 @@ namespace xocl {
 					 deviceName.c_str(),
 					 xmem->get_size(),
 					 false,
-					 isP2P) ;
+					 isP2P,
+					 address,
+					 reinterpret_cast<uint64_t>(queue)) ;
 	       }
 	     } ;
     }

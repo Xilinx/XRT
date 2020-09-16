@@ -35,6 +35,78 @@ namespace xdp {
   {
   }
 
+  void VPStatisticsDatabase::addTopHostRead(BufferTransferStats& transfer)
+  {
+    // Edge case: First read.
+    if (topHostReads.size() == 0)
+    {
+      topHostReads.push_back(transfer) ;
+      return ;
+    }
+    
+    // Standard case: Insert in sorted order
+    bool inserted = false ;
+    for (std::list<BufferTransferStats>::iterator iter = topHostReads.begin() ;
+	 iter != topHostReads.end() ;
+	 ++iter)
+    {
+      if (transfer.getDuration() > (*iter).getDuration())
+      {
+	topHostReads.insert(iter, transfer) ;
+	inserted = true ;
+	break ;
+      }
+    }
+
+    // Edge case: Transfer is smaller than currently stored values
+    if (!inserted)
+    {
+      topHostReads.push_back(transfer) ;
+    }
+
+    // Clean up any extra elements
+    while (topHostReads.size() > numTopTransfers)
+    {
+      topHostReads.pop_back() ;
+    }
+  }
+
+  void VPStatisticsDatabase::addTopHostWrite(BufferTransferStats& transfer)
+  {
+    // Edge case: First read.
+    if (topHostWrites.size() == 0)
+    {
+      topHostWrites.push_back(transfer) ;
+      return ;
+    }
+    
+    // Standard case: Insert in sorted order
+    bool inserted = false ;
+    for (std::list<BufferTransferStats>::iterator iter = topHostWrites.begin() ;
+	 iter != topHostWrites.end() ;
+	 ++iter)
+    {
+      if (transfer.getDuration() > (*iter).getDuration())
+      {
+	topHostWrites.insert(iter, transfer) ;
+	inserted = true ;
+	break ;
+      }
+    }
+
+    // Edge case: Transfer is smaller than currently stored values
+    if (!inserted)
+    {
+      topHostWrites.push_back(transfer) ;
+    }
+
+    // Clean up any extra elements
+    while (topHostWrites.size() > numTopTransfers)
+    {
+      topHostWrites.pop_back() ;
+    }
+  }
+
   // For a given CU identified by name, collect all the global work group
   //  configurations + statistics
   std::vector<std::pair<std::string, TimeStatistics>>
@@ -131,7 +203,10 @@ namespace xdp {
   }
 
   void VPStatisticsDatabase::logHostRead(uint64_t contextId, uint64_t deviceId,
-					 uint64_t size, uint64_t transferTime)
+					 uint64_t size, uint64_t startTime,
+					 uint64_t transferTime,
+					 uint64_t address,
+					 uint64_t commandQueueId)
   {
     std::pair<uint64_t, uint64_t> identifier = 
       std::make_pair(contextId, deviceId) ;
@@ -145,10 +220,23 @@ namespace xdp {
     hostReads[identifier].update(size, transferTime) ;
 
     totalHostReadTime += transferTime ;
+
+    // Also keep track of the top host reads
+    BufferTransferStats transfer ;
+    transfer.size = size ;
+    transfer.address = address ;
+    transfer.contextId = contextId ;
+    transfer.commandQueueId = commandQueueId ;
+    transfer.startTime = startTime ;
+    transfer.duration = transferTime ;
+    addTopHostRead(transfer) ;
   }
 
   void VPStatisticsDatabase::logHostWrite(uint64_t contextId, uint64_t deviceId,
-					  uint64_t size, uint64_t transferTime)
+					  uint64_t size, uint64_t startTime,
+					  uint64_t transferTime,
+					  uint64_t address,
+					  uint64_t commandQueueId)
   {
     std::pair<uint64_t, uint64_t> identifier = 
       std::make_pair(contextId, deviceId) ;
@@ -162,6 +250,16 @@ namespace xdp {
     hostWrites[identifier].update(size, transferTime) ;
 
     totalHostWriteTime += transferTime ;
+
+    // Also keep track of the top host writes
+    BufferTransferStats transfer ;
+    transfer.size = size ;
+    transfer.address = address ;
+    transfer.contextId = contextId ;
+    transfer.commandQueueId = commandQueueId ;
+    transfer.startTime = startTime ;
+    transfer.duration = transferTime ;
+    addTopHostWrite(transfer) ;
   }
 
   void VPStatisticsDatabase::updateCounters(uint64_t /*deviceId*/,
