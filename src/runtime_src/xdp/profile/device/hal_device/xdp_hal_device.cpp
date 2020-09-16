@@ -155,12 +155,12 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
 
 double HalDevice::getMaxBwRead()
 {
-  return xclGetReadMaxBandwidthMBps(mHalDevice);
+  return 9600.0;
 }
 
 double HalDevice::getMaxBwWrite()
 {
-  return xclGetWriteMaxBandwidthMBps(mHalDevice);
+  return 9600.0;
 }
 
 std::string HalDevice::getSubDevicePath(std::string& subdev, uint32_t index)

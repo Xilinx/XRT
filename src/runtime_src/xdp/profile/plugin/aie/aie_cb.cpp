@@ -23,4 +23,15 @@ namespace xdp {
 
   static AIEProfilingPlugin aiePluginInstance;
 
+  static void updateAIECtrDevice(void* handle)
+  {
+    aiePluginInstance.updateAIEDevice(handle);
+  }
+
 } // end namespace xdp
+
+extern "C"
+void updateAIECtrDevice(void* handle)
+{
+  xdp::updateAIECtrDevice(handle);
+}
