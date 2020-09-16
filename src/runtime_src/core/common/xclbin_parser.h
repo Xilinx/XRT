@@ -32,13 +32,16 @@ struct kernel_argument
   static constexpr size_t no_index { std::numeric_limits<size_t>::max() };
   // numbering must match that of meta data addressQualifier
   enum class argtype { scalar = 0, global = 1, stream = 4 };
+  enum class direction { input = 0, output = 1};
 
   std::string name;
   std::string hosttype;
-  size_t index;
-  size_t offset;
-  size_t size;
+  size_t index = no_index;
+  size_t offset = 0;
+  size_t size = 0;
+  size_t fa_desc_offset = 0;
   argtype type;
+  direction dir;
 };
 
 struct kernel_object
