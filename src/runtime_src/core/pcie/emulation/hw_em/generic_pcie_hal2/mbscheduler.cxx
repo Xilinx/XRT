@@ -132,7 +132,11 @@ namespace xclhwemhal2 {
 
     // in ert_poll mode acknowlegde done to ERT
     if (xcu->polladdr && xcu->run_cnt) {
-      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->polladdr, (void*)&HwEmShim::CONTROL_AP_CONTINUE,4);
+      if(ert_version>=30) {
+    	  mParent->xclCopyBufferHost2Device(xcu->base + xcu->polladdr, (void*)&HwEmShim::CONTROL_AP_CONTINUE,4,0,XCL_ADDR_SPACE_DEVICE_RAM);
+      } else {
+    	  mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->polladdr, (void*)&HwEmShim::CONTROL_AP_CONTINUE,4);
+      }
     }
   }
 
@@ -207,7 +211,11 @@ namespace xclhwemhal2 {
 
     // in ert poll mode request ERT to poll CU
     if (xcu->polladdr) {
-      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->polladdr, (void*)& HwEmShim::CONTROL_AP_START, 4);
+      if(ert_version>=30) {
+          mParent->xclCopyBufferHost2Device(xcu->base + xcu->polladdr, (void*)&HwEmShim::CONTROL_AP_START,4,0,XCL_ADDR_SPACE_DEVICE_RAM);
+      } else {
+    	  mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->polladdr, (void*)& HwEmShim::CONTROL_AP_START, 4);
+      }
     }
 
     ++xcu->run_cnt;
@@ -269,7 +277,7 @@ namespace xclhwemhal2 {
     return false;
   }
 
-  void cu_reset(xocl_cu* xcu, unsigned int idx, uint32_t base, uint32_t addr, uint32_t polladdr)
+  void cu_reset(xocl_cu* xcu, unsigned int idx, uint32_t base, uint32_t addr, uint64_t polladdr)
   {
     xcu->idx = idx;
     xcu->base = base;
@@ -288,6 +296,22 @@ namespace xclhwemhal2 {
     mParent = _parent;
     mScheduler = new xocl_sched(this);
     num_pending = 0;
+    ert_version = atoi(_parent->getERTVersion().c_str());
+
+    if(ert_version>=30) {
+      //std::cout<<"Enabling ERT Version 3.0"<<std::endl;
+      _CMDQ_BASE_ADDR=0x8000000000;       //TODO : Emconfig
+      uint64_t ert_base_addr =0;          //TODO : Emconfig
+      _CSA_BASE_ADDR=0x10000;
+      _CSA_CQ_STATUS_REGISTER_BASE =_CSA_BASE_ADDR + 0x58;
+      _CSA_STATUS_REGISTER_BASE    =_CSA_BASE_ADDR + ert_base_addr;
+    } else {
+      //Legacy
+      _CMDQ_BASE_ADDR=0x190000;
+      _CSA_BASE_ADDR=0x180000;
+      _CSA_CQ_STATUS_REGISTER_BASE= ERT_CQ_STATUS_REGISTER_ADDR;
+      _CSA_STATUS_REGISTER_BASE   = ERT_STATUS_REGISTER_ADDR;
+    }
   }
 
   MBScheduler::~MBScheduler()
@@ -465,7 +489,7 @@ namespace xclhwemhal2 {
         || (cmd_mask_idx==1 && exec->sr1)
         || (cmd_mask_idx==2 && exec->sr2)
         || (cmd_mask_idx==3 && exec->sr3)) {
-      uint32_t csr_addr = ERT_STATUS_REGISTER_ADDR + (cmd_mask_idx<<2);
+      uint32_t csr_addr = _CSA_STATUS_REGISTER_BASE + (cmd_mask_idx<<2);
       //TODO
       uint32_t mask = 0;
       bool waitForResp = false;
@@ -509,7 +533,7 @@ namespace xclhwemhal2 {
     if (type(xcmd) == ERT_KDS_LOCAL)
       return penguin_submit(xcmd);
 
-    uint32_t slot_addr;
+    uint64_t slot_addr;
 
     xcmd->slot_idx = acquire_slot_idx(xcmd->exec);
 #ifdef EM_DEBUG_KDS
@@ -519,7 +543,7 @@ namespace xclhwemhal2 {
       return false;
     }
 
-    slot_addr = ERT_CQ_BASE_ADDR + xcmd->slot_idx*slot_size(xcmd->exec);
+    slot_addr = _CMDQ_BASE_ADDR + xcmd->slot_idx*slot_size(xcmd->exec);
     
     if(!mParent->isLegacyErt())
     {
@@ -541,13 +565,21 @@ namespace xclhwemhal2 {
         if (xcmd->cu_idx < 0) {
           return false;
         }
-
-        mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4,(void*) &(xcmd->cu_idx)  ,4);
-        mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 8, xcmd->packet->data + 1 ,(packet_size(xcmd)-2)*sizeof(uint32_t));
+        if (ert_version>=30) {
+        	mParent->xclCopyBufferHost2Device( xcmd->exec->base + slot_addr + 4,(void*) &(xcmd->cu_idx)  ,4,0,XCL_ADDR_SPACE_DEVICE_RAM);
+        	mParent->xclCopyBufferHost2Device( xcmd->exec->base + slot_addr + 8, (void*)(xcmd->packet->data + 1) ,(packet_size(xcmd)-2)*sizeof(uint32_t),0,XCL_ADDR_SPACE_DEVICE_RAM);
+        } else {
+        	mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4,(void*) &(xcmd->cu_idx)  ,4);
+        	mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 8, xcmd->packet->data + 1 ,(packet_size(xcmd)-2)*sizeof(uint32_t));
+        }
       }
       else
       {
-        mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4, xcmd->packet->data  ,(packet_size(xcmd)-1)*sizeof(uint32_t));
+       if (ert_version>=30) {
+    		  mParent->xclCopyBufferHost2Device(xcmd->exec->base + slot_addr + 4, xcmd->packet->data  ,(packet_size(xcmd)-1)*sizeof(uint32_t) ,0,XCL_ADDR_SPACE_DEVICE_RAM);
+    	 } else {
+    		  mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4, xcmd->packet->data  ,(packet_size(xcmd)-1)*sizeof(uint32_t));
+    	 }
       }
     }
     else
@@ -555,12 +587,16 @@ namespace xclhwemhal2 {
       mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4, xcmd->packet->data  ,(packet_size(xcmd)-1)*sizeof(uint32_t));
     }
     /* TODO write header */
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr, (void*)(&xcmd->packet->header) ,4);
+    if (ert_version>=30) {
+    	mParent->xclCopyBufferHost2Device(xcmd->exec->base + slot_addr, (void*)(&xcmd->packet->header) ,4,0,XCL_ADDR_SPACE_DEVICE_RAM);
+    } else {
+    	mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr, (void*)(&xcmd->packet->header) ,4);
+    }
     //iowrite32(xcmd->packet->header,xcmd->exec->base + slot_addr);
 
     /* trigger interrupt to embedded scheduler if feature is enabled */
     if (xcmd->exec->cq_interrupt) {
-      uint32_t cq_int_addr = ERT_CQ_STATUS_REGISTER_ADDR + (slot_mask_idx(xcmd->slot_idx)<<2);
+      uint32_t cq_int_addr = _CSA_CQ_STATUS_REGISTER_BASE + (slot_mask_idx(xcmd->slot_idx)<<2);
       uint32_t mask = 1<<slot_idx_in_mask(xcmd->slot_idx);
       //TODO
       mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcmd->exec->base + cq_int_addr, (void*)(&mask) ,4);
@@ -605,7 +641,7 @@ namespace xclhwemhal2 {
         || (cmd_mask_idx==1 && exec->sr1)
         || (cmd_mask_idx==2 && exec->sr2)
         || (cmd_mask_idx==3 && exec->sr3)) {
-      uint32_t csr_addr = ERT_STATUS_REGISTER_ADDR + (cmd_mask_idx<<2);
+      uint32_t csr_addr = _CSA_STATUS_REGISTER_BASE + (cmd_mask_idx<<2);
       //TODO
       uint32_t mask = 0;
       bool waitForResp = false;
@@ -637,6 +673,11 @@ namespace xclhwemhal2 {
     bool ert_poll = (ert && cfg->ert && cfg->dataflow);
     bool ert_full = (ert && cfg->ert && !cfg->dataflow);
 
+    if (ert_version>=30) {
+    	//Disable ERT poll for now as the code is under restructuring
+    	ert_poll=false;
+    }
+
     if (exec->configured==0)
     {
       exec->base = 0;
@@ -653,7 +694,7 @@ namespace xclhwemhal2 {
         exec->cu_addr_map[cuidx] = cfg->data[cuidx];
         xocl_cu* nCu = new xocl_cu();
         exec->cus[cuidx] =  nCu;
-        uint32_t polladdr = (ert_poll) ? ERT_CQ_BASE_ADDR + (cuidx+1) * cfg->slot_size : 0;
+        uint64_t polladdr = (ert_poll) ? _CMDQ_BASE_ADDR  + (cuidx+1) * cfg->slot_size : 0;
         cu_reset(nCu, cuidx, exec->base, cfg->data[cuidx], polladdr);
       }
 
@@ -675,7 +716,7 @@ namespace xclhwemhal2 {
             exec->cu_addr_map[cuidx] = cfg->data[cuidx];
             xocl_cu* nCu = new xocl_cu();
             exec->cus[cuidx] =  nCu;
-            uint32_t polladdr = (ert_poll) ? ERT_CQ_BASE_ADDR + (cuidx+1) * cfg->slot_size : 0;
+            uint64_t polladdr = (ert_poll) ? _CMDQ_BASE_ADDR + (cuidx+1) * cfg->slot_size : 0;
             cu_reset(nCu, cuidx, exec->base, cfg->data[cuidx], polladdr);
             ++cuidx;
           }
@@ -690,6 +731,7 @@ namespace xclhwemhal2 {
         exec->ertpoll = true;
         exec->ertfull = false;
         exec->polling_mode = 1; //cfg->polling;
+        cfg->polling=1;
         exec->cq_interrupt = cfg->cq_int;
         cfg->cdma = cdmaEnabled ? 1 : 0;
       }
@@ -700,6 +742,7 @@ namespace xclhwemhal2 {
         exec->polling_mode = 1; //cfg->polling;
         exec->cq_interrupt = cfg->cq_int;
         cfg->cdma = cdmaEnabled ? 1 : 0;
+        cfg->polling=1;
       }
       else
       {

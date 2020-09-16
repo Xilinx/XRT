@@ -43,7 +43,7 @@ class device
 {
 public:
   /**
-   * device() - Constructor for empty bo
+   * device() - Constructor for empty device
    */
   device()
   {}
@@ -56,6 +56,26 @@ public:
   XCL_DRIVER_DLLESPEC
   explicit
   device(unsigned int didx);
+
+  /**
+   * device() - Constructor from opaque handle
+   *
+   * Implementation defined constructor
+   */
+  explicit
+  device(std::shared_ptr<xrt_core::device> hdl)
+    : handle(std::move(hdl))
+  {}
+
+  /**
+   * device() - Create a managed device object from a shim xclDeviceHandle
+   *
+   * @dhdl:      Shim xclDeviceHandle
+   * Return:     xrt::device object epresenting the opened device, or exception on error
+   */
+  XCL_DRIVER_DLLESPEC
+  explicit
+  device(xclDeviceHandle dhdl);
 
   /**
    * device() - Copy ctor
@@ -187,6 +207,19 @@ extern "C" {
 XCL_DRIVER_DLLESPEC
 xrtDeviceHandle
 xrtDeviceOpen(unsigned int index);
+
+/**
+ * xrtDeviceOpenFromXcl() - Open a device from a shim xclDeviceHandle
+ *
+ * @xhdl:         Shim xclDeviceHandle
+ * Return:        Handle representing the opened device, or nullptr on error
+ *
+ * The returned XRT device handle must be explicitly closed when
+ * nolonger needed.
+ */
+XCL_DRIVER_DLLESPEC
+xrtDeviceHandle
+xrtDeviceOpenFromXcl(xclDeviceHandle dhdl);
 
 /**
  * xrtDeviceClose() - Close an opened device

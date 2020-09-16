@@ -212,7 +212,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	struct mem_topology *topo = NULL;
 	int err = 0;
 
-	if (type == XOCL_BO_EXECBUF || type == XOCL_BO_IMPORT || 
+	if (type == XOCL_BO_EXECBUF || type == XOCL_BO_IMPORT ||
 	    type == XOCL_BO_CMA)
 		return 0;
 	//From "mem_topology" or "feature rom" depending on
@@ -242,7 +242,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 			goto done;
 		}
 	}
-done:	
+done:
 	XOCL_PUT_GROUP_TOPOLOGY(xdev);
 	return err;
 }
@@ -278,7 +278,7 @@ static struct page **xocl_cma_collect_pages(struct xocl_drm *drm_p, uint64_t bas
 
 	while (page_offset_start < page_offset_end) {
 		uint64_t nr = min(page_offset_end - page_offset_start, (pages_per_chunk - page_offset_start % pages_per_chunk));
-		
+
 		chunk_offset = page_offset_start / pages_per_chunk;
 		if (chunk_offset >= xdev->cma_bank->entry_num)
 			return ERR_PTR(-ENOMEM);
@@ -465,9 +465,9 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	struct mem_topology *topo = NULL;
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
-
 	if (IS_ERR(xobj)) {
-		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", ddr, args->size);
+		DRM_ERROR("object creation failed idx %d, size 0x%llx\n",
+			xocl_bo_ddr_idx(args->flags), args->size);
 		return PTR_ERR(xobj);
 	}
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
@@ -866,7 +866,7 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	int ret = 0;
-	void *kaddr;
+	char *kaddr;
 	uint64_t ep_addr;
 
 	if (!gem_obj) {
@@ -928,7 +928,7 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	int ret = 0;
-	void *kaddr;
+	char *kaddr;
 	uint64_t ep_addr;
 
 	if (!gem_obj) {
@@ -1200,7 +1200,7 @@ int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 		vma->vm_file = get_file(xobj->base.dma_buf->file);
 		vma->vm_ops = xobj->base.dev->driver->gem_vm_ops;
 	}
-	
+
 	vma->vm_private_data = obj;
 	vma->vm_flags |= VM_MIXEDMAP;
 
@@ -1533,7 +1533,7 @@ int xocl_sync_bo_callback_ioctl(struct drm_device *dev,
 		}
 		if (args->cb_data) {
 			cb_data = kzalloc(sizeof(struct free_sgt_cb), GFP_KERNEL);
-			if (cb_data) {
+			if (!cb_data) {
 				ret = -ENOMEM;
 				goto out;
 			}

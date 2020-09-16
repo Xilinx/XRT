@@ -48,6 +48,11 @@ fi
 
 . "${XRT_SETUP_SCRIPT}" > /dev/null
 
+# XRT uses system librairies whereas Vitis and Vivado ship there own.
+# when XRT tools are invoked from Vitis/Vivado the LD_LIBRARY_PATH will be set to use libraries shipped with Vitis/vivado
+# so we reset the LD_LIBRARY_PATH to make XRT tool select the correct libraries.
+LD_LIBRARY_PATH=$XILINX_XRT/lib:$(echo $LD_LIBRARY_PATH | tr ':' '\n' | grep -E -v "/(Vitis|Vivado).*/(lnx|lin)" | tr '\n' ':')
+
 # -- Execute the wrapped program
 "${XRT_PROG_UNWRAPPED}" "${XRT_LOADER_ARGS[@]}"
 

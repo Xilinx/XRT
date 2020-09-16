@@ -1002,10 +1002,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 
 	kfree(zdev->apertures);
 
-	if (drm) {
-		drm_dev_unregister(drm);
-		ZOCL_DRM_DEV_PUT(drm);
-	}
+	drm_dev_unregister(drm);
+	ZOCL_DRM_DEV_PUT(drm);
 
 	return 0;
 }
