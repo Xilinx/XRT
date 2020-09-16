@@ -25,6 +25,128 @@
 #include <linux/workqueue.h>
 #include <linux/delay.h>
 
+static inline u8
+get_error_module(enum aie_module_type aie_module) {
+	switch (aie_module) {
+	case AIE_MEM_MOD:
+		return XRT_ERROR_MODULE_AIE_MEMORY;
+	case AIE_CORE_MOD:
+		return XRT_ERROR_MODULE_AIE_CORE;
+	case AIE_PL_MOD:
+		return XRT_ERROR_MODULE_AIE_PL;
+	case AIE_NOC_MOD:
+		return XRT_ERROR_MODULE_AIE_NOC;
+	default:
+		return XRT_ERROR_MODULE_AIE_UNKNOWN;
+	}
+}
+
+static int
+zocl_aie_cache_error(struct aie_error_cache *zerr, struct aie_error *err)
+{
+	struct aie_error *temp;
+
+	/* If the current error cache is full, double the cache size */
+	if (zerr->num == zerr->cap) {
+		temp = vzalloc(sizeof (struct aie_error) * zerr->cap * 2);
+		if (!temp)
+			return -ENOMEM;
+
+		memcpy(temp, zerr->errors, sizeof (struct aie_error) *
+		    zerr->num);
+		zerr->cap *= 2;
+		vfree(zerr->errors);
+		zerr->errors = temp;
+	}
+
+	zerr->errors[zerr->num].error_id = err->error_id;
+	zerr->errors[zerr->num].module = err->module;
+	zerr->errors[zerr->num].loc.col = err->loc.col;
+	zerr->errors[zerr->num].loc.row = err->loc.row;
+	zerr->num++;
+
+	return 0;
+}
+
+static bool
+is_cached_error(struct aie_error_cache *zerr, struct aie_error *err)
+{
+	int i;
+
+	for (i = 0; i < zerr->num; i++) {
+		if (zerr->errors[i].error_id == err->error_id &&
+		    zerr->errors[i].module == err->module &&
+		    zerr->errors[i].loc.col == err->loc.col &&
+		    zerr->errors[i].loc.row == err->loc.row)
+			break;
+	}
+
+	return i < zerr->num ? true : false;
+}
+
+static void
+zocl_aie_error_cb(void *arg)
+{
+	struct drm_zocl_dev *zdev = arg;
+	struct aie_errors *errors;
+	int i;
+
+	if (!zdev) {
+		DRM_WARN("%s: zdev is not initialized\n", __func__);
+		return;
+	}
+
+	mutex_lock(&zdev->aie_lock);
+	if (!zdev->aie) {
+		DRM_WARN("%s: AIE image is not loaded.\n", __func__);
+		mutex_unlock(&zdev->aie_lock);
+		return;
+	}
+
+	if (!zdev->aie->aie_dev) {
+		DRM_WARN("%s: No available AIE partition.\n", __func__);
+		mutex_unlock(&zdev->aie_lock);
+		return;
+	}
+
+	errors = aie_get_errors(zdev->aie->aie_dev);
+	if (IS_ERR(errors)) {
+		DRM_WARN("%s: aie_get_errors failed\n", __func__);
+		mutex_unlock(&zdev->aie_lock);
+		return;
+	}
+
+	for (i = 0; i < errors->num_err; i++) {
+		xrtErrorCode err_code;
+
+		DRM_INFO("Get AIE asynchronous Error: "
+		    "error_id %d Mod %d, Col %d, Row %d\n",
+		    errors->errors[i].error_id,
+		    errors->errors[i].module,
+		    errors->errors[i].loc.col,
+		    errors->errors[i].loc.row
+		    );
+
+		if (is_cached_error(&zdev->aie->err, &((errors->errors)[i])))
+			continue;
+
+		err_code = XRT_ERROR_CODE_BUILD(
+		    XRT_ERROR_NUM_UNKNOWN,
+		    XRT_ERROR_DRIVER_AIE,
+		    XRT_ERROR_SEVERITY_CRITICAL,
+		    get_error_module(errors->errors[i].module),
+		    XRT_ERROR_CLASS_AIE
+		    );
+
+		zocl_insert_error_record(zdev, err_code);
+		zocl_aie_cache_error(&zdev->aie->err, &((errors->errors)[i]));
+	}
+
+	aie_free_errors(errors);
+
+	mutex_unlock(&zdev->aie_lock);
+}
+
 int
 zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data)
 {
@@ -99,6 +221,19 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf)
 			DRM_ERROR("Fail to allocate memory.\n");
 			goto done;
 		}
+
+		zdev->aie->err.errors = vzalloc(sizeof (struct aie_error) *
+		    ZOCL_AIE_ERROR_CACHE_CAP);
+		if (!zdev->aie->err.errors) {
+			rval = -ENOMEM;
+			vfree(zdev->aie);
+			DRM_ERROR("Fail to allocate memory.\n");
+			goto done;
+		}
+
+		zdev->aie->err.num = 0;
+		zdev->aie->err.cap = ZOCL_AIE_ERROR_CACHE_CAP;
+
 	}
 
 	if (!zdev->aie->wq) {
@@ -131,9 +266,15 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf)
 
 	zdev->aie->partition_id = req.partition_id;
 	zdev->aie->uid = req.uid;
+
+	/* Register AIE error call back function. */
+	rval = aie_register_error_notification(zdev->aie->aie_dev,
+	    zocl_aie_error_cb, zdev);
+
 	mutex_unlock(&zdev->aie_lock);
 
 	zocl_init_aie(zdev);
+
 	return 0;
 
 done:
@@ -159,13 +300,14 @@ zocl_destroy_aie(struct drm_zocl_dev *zdev)
 	if (zdev->aie->wq)
 		destroy_workqueue(zdev->aie->wq);
 
+	vfree(zdev->aie->err.errors);
 	vfree(zdev->aie);
 	zdev->aie = NULL;
 	mutex_unlock(&zdev->aie_lock);
 }
 
 static void
-zock_aie_reset_work(struct work_struct *aie_work)
+zocl_aie_reset_work(struct work_struct *aie_work)
 {
 	struct aie_work_data *data = container_of(aie_work,
 	    struct aie_work_data, work);
@@ -224,7 +366,7 @@ zocl_aie_reset(struct drm_zocl_dev *zdev)
 	 * Per the requrirement of current AIE driver, we
 	 * need to release the partition in a separate thread.
 	 */
-	INIT_WORK(&data->work, zock_aie_reset_work);
+	INIT_WORK(&data->work, zocl_aie_reset_work);
 	queue_work(zdev->aie->wq, &data->work);
 
 	/* Make sure the reset thread is done */
@@ -251,6 +393,7 @@ zocl_aie_reset(struct drm_zocl_dev *zdev)
 
 	zdev->aie->aie_dev = NULL;
 	zdev->aie->aie_reset = true;
+	zdev->aie->err.num = 0;
 
 	mutex_unlock(&zdev->aie_lock);
 
