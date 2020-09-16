@@ -1895,16 +1895,10 @@ void CpuemShim::constructQueryTable() {
   }
 }
 
-bool CpuemShim::deviceQuery(key_type queryKey) {
-  if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-    if (queryKey == key_type::nodma) {
-      return (mQueryTable[queryKey] == "enabled" ? true : false);
-    }
-    else if (queryKey == key_type::m2m) {
-      return (mQueryTable[queryKey] == "enabled" ? true : false);
-    }
-  }
-  return false;
+int CpuemShim::deviceQuery(key_type queryKey) {
+  if(mQueryTable.find(queryKey) != mQueryTable.end())
+    return (mQueryTable[queryKey] == "enabled" ? 1 : 0);    
+  return 0;
 }
 
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/

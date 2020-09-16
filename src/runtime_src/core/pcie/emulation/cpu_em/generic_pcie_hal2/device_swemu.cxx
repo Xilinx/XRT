@@ -30,16 +30,14 @@ using qtype = std::underlying_type<query::key_type>::type;
 static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
 
 struct deviceQuery
-{
-  using result_type = uint32_t;
-
-  static result_type
+{  
+  static uint32_t
     get(const xrt_core::device* device, key_type query_key)
   {
     xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(device->get_device_handle());
     if (!drv)
       return 0;
-    return (drv->deviceQuery(query_key) ? 1 : 0);
+    return drv->deviceQuery(query_key);
   }
 };
 

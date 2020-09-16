@@ -1942,16 +1942,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
   // New API's for device query - m2m and no-dma
-  bool HwEmShim::deviceQuery(key_type queryKey) {
-    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      if (queryKey == key_type::nodma) {
-        return (mQueryTable[queryKey] == "enabled" ? true : false);
-      }
-      else if (queryKey == key_type::m2m) {
-        return (mQueryTable[queryKey] == "enabled" ? true : false);
-      }
-    }
-    return false;
+  int HwEmShim::deviceQuery(key_type queryKey) {
+    if (mQueryTable.find(queryKey) != mQueryTable.end())
+      return (mQueryTable[queryKey] == "enabled" ? 1 : 0);
+    return 0;
   }
 
   std::string HwEmShim::getERTVersion() {

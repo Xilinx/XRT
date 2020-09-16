@@ -217,7 +217,7 @@ using addr_type = uint64_t;
       bool isMBSchedulerEnabled();
       uint64_t getErtCmdQAddress();
       uint64_t getErtBaseAddress();
-      bool deviceQuery(key_type queryKey);
+      int deviceQuery(key_type queryKey);
 
       std::string getERTVersion();
       bool isLegacyErt();

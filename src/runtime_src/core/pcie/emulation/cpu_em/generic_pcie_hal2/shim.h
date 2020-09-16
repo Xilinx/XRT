@@ -171,7 +171,7 @@ namespace xclcpuemhal2 {
 
       // New API's for m2m and no-dma
       void constructQueryTable();
-      bool deviceQuery(key_type queryKey);
+      int deviceQuery(key_type queryKey);
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;

@@ -32,16 +32,14 @@ namespace {
   static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
 
   struct deviceQuery
-  {
-    using result_type = uint32_t;
-
-    static result_type
+  {   
+    static uint32_t
       get(const xrt_core::device* device, key_type query_key)
     {
       xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(device->get_device_handle());
       if (!drv)
         return 0;
-      return (drv->deviceQuery(query_key) ? 1 : 0);
+      return drv->deviceQuery(query_key);
     }
   };
 
