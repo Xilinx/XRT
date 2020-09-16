@@ -27,7 +27,14 @@ extern "C"
 void log_function_call_end(const char* functionName) ;
 
 extern "C"
-void log_kernel_execution(const char* kernelName, bool isStart) ;
+void log_kernel_execution(const char* kernelName,
+			  bool isStart,
+			  unsigned long int kernelInstanceAddress,
+			  unsigned long int contextId,
+			  unsigned long int commandQueueId,
+			  const char* deviceName,
+			  const char* globalWorkSize,
+			  const char* localWorkSize) ;
 
 extern "C"
 void log_compute_unit_execution(const char* cuName,

@@ -16,7 +16,6 @@
 
 #include <map>
 #include <queue>
-//#include <iostream>
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/opencl/counters/opencl_counters_cb.h"
@@ -47,7 +46,14 @@ namespace xdp {
     (db->getStats()).logFunctionCallEnd(functionName, timestamp) ;
   }
 
-  static void log_kernel_execution(const char* kernelName, bool isStart)
+  static void log_kernel_execution(const char* kernelName,
+				   bool isStart,
+				   uint64_t kernelInstanceAddress,
+				   uint64_t contextId,
+				   uint64_t commandQueueId,
+				   const char* deviceName,
+				   const char* globalWorkSize,
+				   const char* localWorkSize)
   {
     static std::map<std::string, std::queue<uint64_t> > storedTimestamps ;
 
@@ -76,10 +82,19 @@ namespace xdp {
 	//  We can just ignore them.
 	return ; 
       }
-      auto executionTime = timestamp-(storedTimestamps[kernelName]).front();
+      uint64_t startTime = storedTimestamps[kernelName].front() ;
       (storedTimestamps[kernelName]).pop() ;
+      auto executionTime = timestamp-startTime;
 
-      (db->getStats()).logKernelExecution(kernelName, executionTime) ;
+      (db->getStats()).logKernelExecution(kernelName,
+					  executionTime,
+					  kernelInstanceAddress,
+					  contextId,
+					  commandQueueId,
+					  deviceName,
+					  startTime,
+					  globalWorkSize,
+					  localWorkSize) ;
     }
   }
 
@@ -221,9 +236,18 @@ void log_function_call_end(const char* functionName)
 }
 
 extern "C"
-void log_kernel_execution(const char* kernelName, bool isStart)
+void log_kernel_execution(const char* kernelName,
+			  bool isStart,
+			  unsigned long int kernelInstanceId,
+			  unsigned long int contextId,
+			  unsigned long int commandQueueId,
+			  const char* deviceName,
+			  const char* globalWorkSize,
+			  const char* localWorkSize)
 {
-  xdp::log_kernel_execution(kernelName, isStart) ;
+  xdp::log_kernel_execution(kernelName, isStart, kernelInstanceId,
+			    contextId, commandQueueId, deviceName,
+			    globalWorkSize, localWorkSize) ;
 }
 
 extern "C"

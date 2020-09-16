@@ -35,7 +35,7 @@ namespace xocl {
     //  callback functions on the XDP plugin side
     std::function<void (const char*, unsigned long int, bool)> counter_function_start_cb ;
     std::function<void (const char*)> counter_function_end_cb ;
-    std::function<void (const char*, bool)> counter_kernel_execution_cb ;
+    std::function<void (const char*, bool, unsigned long int, unsigned long int, unsigned long int, const char*, const char*, const char*)> counter_kernel_execution_cb ;
     std::function<void (const char*, const char*, const char*, bool)> 
       counter_cu_execution_cb ;
     std::function<void (unsigned long int, unsigned long int, const char*, unsigned long int, bool, bool, unsigned long int, unsigned long int)>
@@ -56,7 +56,7 @@ namespace xocl {
 	(etype)(xrt_core::dlsym(handle, "log_function_call_end")) ;
       if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
       
-      typedef void (*ktype)(const char*, bool) ;
+      typedef void (*ktype)(const char*, bool, unsigned long int, unsigned long int, unsigned long int, const char* ,const char*, const char*) ;
       counter_kernel_execution_cb =
 	(ktype)(xrt_core::dlsym(handle, "log_kernel_execution")) ;
       if (xrt_core::dlerror() != NULL) counter_kernel_execution_cb = nullptr ;
@@ -156,14 +156,6 @@ namespace xocl {
     void log_cu_start(const xrt::command* cmd, 
 		      const xocl::execution_context* ctx)
     {
-      /*
-      if (!counter_kernel_execution_cb) return ;
-
-      auto kernel = ctx->get_kernel() ;
-      std::string kernelName = kernel->get_name() ;
-
-      counter_kernel_execution_cb(kernelName.c_str(), true) ;
-      */
       if (!counter_cu_execution_cb) return ;
 
       // Check for software emulation logging of compute unit starts as well
@@ -194,10 +186,6 @@ namespace xocl {
     void log_cu_end(const xrt::command* cmd,
 			const xocl::execution_context* ctx)
     {
-      /*
-      if (!counter_kernel_execution_cb) return ;
-      */
-
       // Check for software emulation logging of compute unit ends as well
       if (counter_cu_execution_cb)
       {
@@ -224,13 +212,6 @@ namespace xocl {
 				  false) ;
 	}
       }
-
-      /*
-      auto kernel = ctx->get_kernel() ;
-      std::string kernelName = kernel->get_name() ;
-
-      counter_kernel_execution_cb(kernelName.c_str(), false) ;
-      */
     }
 
     void mark_objects_released()
@@ -435,11 +416,43 @@ namespace xocl {
 
 	       if (status == CL_RUNNING)
 	       {
-		 counter_kernel_execution_cb(kernelName.c_str(), true) ;
+		 // The extra information is only used when an end event
+		 //  happens, so don't spend the overhead in this branch
+		 counter_kernel_execution_cb(kernelName.c_str(), true,
+					     0,
+					     0,
+					     0,
+					     "",
+					     "",
+					     "") ;
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 counter_kernel_execution_cb(kernelName.c_str(), false) ;
+		 auto xevent = xocl::xocl(e) ;
+		 auto queue = xevent->get_command_queue() ;
+		 uint64_t contextId = e->get_context()->get_uid() ;
+		 std::string deviceName = queue->get_device()->get_name() ;
+
+		 auto localDim = e->get_execution_context()->get_local_work_size() ;
+		 auto globalDim = e->get_execution_context()->get_global_work_size() ;
+	
+		 std::string localWorkgroupSize = 
+		   std::to_string(localDim[0]) + ":" +
+		   std::to_string(localDim[1]) + ":" +
+		   std::to_string(localDim[2]) ;
+
+		 std::string globalWorkgroupSize = 
+		   std::to_string(globalDim[0]) + ":" +
+		   std::to_string(globalDim[1]) + ":" +
+		   std::to_string(globalDim[2]) ;
+
+		 counter_kernel_execution_cb(kernelName.c_str(), false,
+					     reinterpret_cast<uint64_t>(kernel),
+					     contextId,
+					     reinterpret_cast<uint64_t>(queue),
+					     deviceName.c_str(),
+					     globalWorkgroupSize.c_str(),
+					     localWorkgroupSize.c_str()) ;
 	       }
 	     } ;
     }

@@ -115,6 +115,24 @@ namespace xdp {
     uint64_t getDuration() { return duration ; }
   } ;
 
+  struct KernelExecutionStats
+  {
+    uint64_t kernelInstanceAddress ;
+    std::string kernelName ;
+    uint64_t contextId ;
+    uint64_t commandQueueId ;
+    std::string deviceName ;
+    uint64_t startTime ;
+    uint64_t duration ; 
+    std::string globalWorkSize ;
+    std::string localWorkSize ;
+
+    KernelExecutionStats() :
+     kernelInstanceAddress(0), kernelName(""), contextId(0), commandQueueId(0),
+     deviceName(""), startTime(0), duration(0), globalWorkSize(""),
+     localWorkSize("") { }
+  } ;
+
   struct TimeStatistics
   {
     double totalTime ;
@@ -204,6 +222,10 @@ namespace xdp {
     std::list<BufferTransferStats> topHostReads ;
     std::list<BufferTransferStats> topHostWrites ;
 
+    // Keep track of the top ten kernel executions
+    const uint64_t numTopKernelExecutions = 10 ;
+    std::list<KernelExecutionStats> topKernelExecutions ;
+
     // Information used by trace parser
     double firstKernelStartTime ;
     double lastKernelEndTime ;
@@ -215,6 +237,7 @@ namespace xdp {
     // Helper functions for OpenCL
     void addTopHostRead(BufferTransferStats& transfer) ;
     void addTopHostWrite(BufferTransferStats& transfer) ;
+    void addTopKernelExecution(KernelExecutionStats& exec) ;
 
   public:
     XDP_EXPORT VPStatisticsDatabase(VPDatabase* d) ;
@@ -235,6 +258,7 @@ namespace xdp {
     inline std::map<std::pair<uint64_t, uint64_t>, BufferStatistics>& getHostWrites() { return hostWrites ; }
     inline std::list<BufferTransferStats>& getTopHostReads() { return topHostReads ; }
     inline std::list<BufferTransferStats>& getTopHostWrites() { return topHostWrites ; }
+    inline std::list<KernelExecutionStats>& getTopKernelExecutions() { return topKernelExecutions ; }
     inline uint64_t getTotalHostReadTime() { return totalHostReadTime ; }
     inline uint64_t getTotalHostWriteTime() { return totalHostWriteTime ; }
     inline uint64_t getTotalBufferStartTime() { return totalBufferStartTime ; }
@@ -283,7 +307,14 @@ namespace xdp {
 
     // OpenCL level statistic logging
     XDP_EXPORT void logKernelExecution(const std::string& kernelName, 
-				       double executionTime) ;
+				       uint64_t executionTime,
+				       uint64_t kernelInstanceAddress,
+				       uint64_t contextId,
+				       uint64_t commandQueueId,
+				       const std::string& deviceName,
+				       uint64_t startTime,
+				       const std::string& globalWorkSize,
+				       const std::string& localWorkSize) ;
     XDP_EXPORT void logComputeUnitExecution(const std::string& computeUnitName,
 					    const std::string& localWorkGroup,
 					    const std::string& globalWorkGroup,

@@ -73,7 +73,7 @@ namespace xdp {
 
   void VPStatisticsDatabase::addTopHostWrite(BufferTransferStats& transfer)
   {
-    // Edge case: First read.
+    // Edge case: First write.
     if (topHostWrites.size() == 0)
     {
       topHostWrites.push_back(transfer) ;
@@ -104,6 +104,42 @@ namespace xdp {
     while (topHostWrites.size() > numTopTransfers)
     {
       topHostWrites.pop_back() ;
+    }
+  }
+
+  void VPStatisticsDatabase::addTopKernelExecution(KernelExecutionStats& exec)
+  {
+    // Edge case: First execution
+    if (topKernelExecutions.size() == 0)
+    {
+      topKernelExecutions.push_back(exec) ;
+      return ;
+    }
+    
+    // Standard case: Insert in sorted order
+    bool inserted = false ;
+    for (std::list<KernelExecutionStats>::iterator iter = topKernelExecutions.begin() ;
+	 iter != topKernelExecutions.end() ;
+	 ++iter)
+    {
+      if (exec.duration > (*iter).duration)
+      {
+	topKernelExecutions.insert(iter, exec) ;
+	inserted = true ;
+	break ;
+      }
+    }
+
+    // Edge case: Transfer is smaller than currently stored values
+    if (!inserted)
+    {
+      topKernelExecutions.push_back(exec) ;
+    }
+
+    // Clean up any extra elements
+    while (topKernelExecutions.size() > numTopKernelExecutions)
+    {
+      topKernelExecutions.pop_back() ;
     }
   }
 
@@ -176,7 +212,14 @@ namespace xdp {
   }
 
   void VPStatisticsDatabase::logKernelExecution(const std::string& kernelName,
-						 double executionTime)
+						uint64_t executionTime,
+						uint64_t kernelInstanceAddress,
+						uint64_t contextId,
+						uint64_t commandQueueId,
+						const std::string& deviceName,
+						uint64_t startTime,
+						const std::string& globalWorkSize,
+						const std::string& localWorkSize)
   {
     if (kernelExecutionStats.find(kernelName) == kernelExecutionStats.end())
     {
@@ -184,6 +227,19 @@ namespace xdp {
       kernelExecutionStats[kernelName] = blank ;
     }
     (kernelExecutionStats[kernelName]).update(executionTime) ;
+
+    // Also keep track of top kernel executions
+    KernelExecutionStats exec ;
+    exec.kernelInstanceAddress = kernelInstanceAddress ;
+    exec.kernelName = kernelName ;
+    exec.contextId = contextId ;
+    exec.commandQueueId = commandQueueId ;
+    exec.deviceName = deviceName ;
+    exec.startTime = startTime ;
+    exec.duration = executionTime ;
+    exec.globalWorkSize = globalWorkSize ;
+    exec.localWorkSize = localWorkSize ;
+    addTopKernelExecution(exec) ;
   }
 
   void VPStatisticsDatabase::logComputeUnitExecution(const std::string& computeUnitName,

@@ -1282,7 +1282,20 @@ namespace xdp {
 	 << "Global Work Size"        << ","
 	 << "Local Work Size"         << std::endl ;
 
-    // TODO
+    for (std::list<KernelExecutionStats>::iterator iter = (db->getStats()).getTopKernelExecutions().begin() ;
+	 iter != (db->getStats()).getTopKernelExecutions().end() ;
+	 ++iter)
+    {
+      fout << "0x" << std::hex << (*iter).kernelInstanceAddress << "," << std::dec
+	   << (*iter).kernelName << ","
+	   << (*iter).contextId << ","
+	   << "0x" << std::hex << (*iter).commandQueueId << "," << std::dec
+	   << (*iter).deviceName << ","
+	   << (double)((*iter).startTime) / 1.0e6 << ","
+	   << (double)((*iter).duration) / 1.0e6 << ","
+	   << (*iter).globalWorkSize << ","
+	   << (*iter).localWorkSize << std::endl ;
+    }
   }
 
   void OpenCLSummaryWriter::writeTopMemoryWrites()
