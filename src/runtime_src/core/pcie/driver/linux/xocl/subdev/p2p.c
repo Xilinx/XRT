@@ -618,8 +618,7 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 		return ret;
 	}
 
-	if (P2P_BYTES_TO_RBAR(range) != P2P_BYTES_TO_RBAR(p2p->p2p_bar_len))
-		p2p_mem_fini(p2p, true);
+	p2p_mem_fini(p2p, true);
 
 	pos += p2p->p2p_bar_idx * PCI_REBAR_CTRL;
 	pci_read_config_dword(pcidev, pos + PCI_REBAR_CTRL, &ctrl);
@@ -635,12 +634,6 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 	ctrl &= ~PCI_REBAR_CTRL_BAR_SIZE;
 	ctrl |= P2P_BYTES_TO_RBAR(range) << PCI_REBAR_CTRL_BAR_SHIFT;
 	pci_write_config_dword(pcidev, pos + PCI_REBAR_CTRL, ctrl);
-
-	if (range == p2p->p2p_bar_len) {
-		pci_write_config_word(pcidev, PCI_COMMAND,
-				cmd | PCI_COMMAND_MEMORY);
-		goto done;
-	}
 
 	flags = res->flags;
 	if (res->parent)
@@ -661,13 +654,12 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 		res->flags = flags;
 	}
 
+	p2p->p2p_bar_start = (ulong) pci_resource_start(pcidev,
+			p2p->p2p_bar_idx);
 	p2p->p2p_bar_len = (ulong) pci_resource_len(pcidev, p2p->p2p_bar_idx);
 	pci_write_config_word(pcidev, PCI_COMMAND, cmd | PCI_COMMAND_MEMORY);
-	if (p2p->p2p_bar_len)
-		ret = p2p_mem_init(p2p);
-
-done:
 	if (p2p->p2p_bar_len) {
+		ret = p2p_mem_init(p2p);
 		pci_request_selected_regions(pcidev, (1 << p2p->p2p_bar_idx),
 			NODE_P2P);
 	}
