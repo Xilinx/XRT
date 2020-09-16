@@ -19,6 +19,7 @@
 #include "core/common/time.h"
 #include "core/common/xrt_profiling.h"
 #include "core/include/experimental/xrt-next.h"
+#include "core/include/experimental/xrt_device.h"
 
 #ifdef _WIN32
 #pragma warning (disable : 4267 4244)
@@ -106,13 +107,13 @@ size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
   uint64_t flags = memoryIndex;
   flags |= XCL_BO_FLAGS_CACHEABLE;
 
-  xclBufferHandle boHandle = xclAllocBO(mHalDevice, size, 0, flags);
-  if(NULLBO == boHandle)
+  xrtBufferHandle boHandle = xrtBOAlloc(xrtDeviceOpenFromXcl(mHalDevice), size, flags, memoryIndex);
+  if(nullptr == boHandle) {
     throw std::bad_alloc();
-
+  }
   mBOHandles.push_back(boHandle);
 
-  void* ptr = xclMapBO(mHalDevice, boHandle, true /* write */);
+  void* ptr = xrtBOMap(boHandle);
   mMappedBO.push_back(ptr);
   return mBOHandles.size();
 }
@@ -121,7 +122,7 @@ void HalDevice::free(size_t id)
 {
   if(!id) return;
   size_t boIndex = id - 1;
-  xclFreeBO(mHalDevice, mBOHandles[boIndex]);
+  xrtBOFree(mBOHandles[boIndex]);
 }
 
 void* HalDevice::map(size_t id)
@@ -141,7 +142,7 @@ void HalDevice::sync(size_t id, size_t size, size_t offset, direction d, bool )
   if(!id) return;
   size_t boIndex = id - 1;
   xclBOSyncDirection dir = (d == direction::DEVICE2HOST) ? XCL_BO_SYNC_BO_FROM_DEVICE : XCL_BO_SYNC_BO_TO_DEVICE;
-  xclSyncBO(mHalDevice, mBOHandles[boIndex], dir, size, offset);
+  xrtBOSync(mBOHandles[boIndex], dir, size, offset);
 }
 
 uint64_t HalDevice::getDeviceAddr(size_t id)
@@ -149,8 +150,7 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
   if(!id) return 0;
   size_t boIndex = id - 1;
 
-  xclBOProperties p;
-  return (!xclGetBOProperties(mHalDevice, mBOHandles[boIndex], &p)) ? p.paddr : ((uint64_t)-1);
+  return xrtBOAddress(mBOHandles[boIndex]);
 }
 
 double HalDevice::getMaxBwRead()
