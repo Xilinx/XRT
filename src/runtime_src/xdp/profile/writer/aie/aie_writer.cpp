@@ -39,7 +39,7 @@ namespace xdp {
     // NOTE: Assumed the same for all tiles
     auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
 
-    double aieClockFreqMhz = aie != nullptr ?  aie->clockFreqMhz : 1200.0;
+    double aieClockFreqMhz = (aie != nullptr) ?  aie->clockFreqMhz : 1200.0;
 
     // Write header
     fout << "Target device: " << mDeviceName << std::endl;

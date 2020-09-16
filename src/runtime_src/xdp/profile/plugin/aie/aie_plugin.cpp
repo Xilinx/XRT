@@ -101,13 +101,14 @@ namespace xdp {
         if (!drv)
           continue;
         auto aieArray = drv->getAieArray();
+        if (!aieArray)
+          continue;
 
         // Iterate over all AIE Counters
         auto numCounters = db->getStaticInfo().getNumAIECounter(index);
         for (uint64_t c=0; c < numCounters; c++) {
           auto aie = db->getStaticInfo().getAIECounter(index, c);
-
-          if (!aie || !aieArray)
+          if (!aie)
             continue;
 
           std::vector<uint64_t> values;
