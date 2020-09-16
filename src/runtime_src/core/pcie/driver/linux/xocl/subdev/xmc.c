@@ -320,6 +320,7 @@ struct xmc_pkt_hdr {
 
 #define XMC_BDINFO_ENTRY_LEN_MAX 	256
 #define XMC_BDINFO_ENTRY_LEN		32
+#define XMC_BDINFO_MAC_LEN		6
 
 #define CMC_OP_READ_QSFP_DIAGNOSTICS            0xB
 #define CMC_OP_WRITE_QSFP_CONTROL               0xC
@@ -327,8 +328,10 @@ struct xmc_pkt_hdr {
 #define CMC_OP_WRITE_QSFP_VALIDATE_LOW_SPEED_IO 0xE
 
 #define CMC_OP_QSFP_DIAG_OFFSET 	0xC
-#define CMC_OP_QSFP_IO_OFFSET   	0x8
-#define CMC_MAX_QSFP_READ_SIZE		128
+#define CMC_OP_QSFP_IO_OFFSET           0x8
+#define CMC_MAX_QSFP_READ_SIZE          128
+
+#define BDINFO_MAC_DYNAMIC              0x4B
 
 struct xmc_pkt_image_end_op {
 	u32 BSL_jump_addr;
@@ -441,6 +444,8 @@ struct xocl_xmc {
 	uint32_t		fan_presence;
 	uint32_t		config_mode;
 	bool			bdinfo_loaded;
+	uint32_t		mac_contiguous_num;
+	char			mac_addr_first[XMC_BDINFO_MAC_LEN];
 
 	bool			sysfs_created;
 	bool			mini_sysfs_created;
@@ -959,6 +964,12 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 		case EXP_BMC_VER:
 			memcpy(buf, xmc->exp_bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
+		case MAC_CONT_NUM:
+			*buf = xmc->mac_contiguous_num;
+			break;
+		case MAC_CONT_FIRST:
+			memcpy(buf, xmc->mac_addr_first, XMC_BDINFO_MAC_LEN);
+			break;
 		default:
 			break;
 		}
@@ -1131,6 +1142,8 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_bdinfo(pdev, FAN_PRESENCE, &bdinfo->fan_presence);
 		xmc_bdinfo(pdev, CFG_MODE, &bdinfo->config_mode);
 		xmc_bdinfo(pdev, EXP_BMC_VER, (u32 *)bdinfo->exp_bmc_ver);
+		xmc_bdinfo(pdev, MAC_CONT_NUM, &bdinfo->mac_contiguous_num);
+		xmc_bdinfo(pdev, MAC_CONT_FIRST, (u32 *)bdinfo->mac_addr_first);
 		mutex_unlock(&xmc->mbx_lock);
 		break;
 	default:
@@ -2314,6 +2327,23 @@ XMC_BDINFO_STRING_SYSFS_NODE(bd_name)
 XMC_BDINFO_STRING_SYSFS_NODE(bmc_ver)
 XMC_BDINFO_STRING_SYSFS_NODE(exp_bmc_ver)
 
+static ssize_t mac_addr_first_show(struct device *dev,
+	struct device_attribute *attr, char *buf) {
+	struct xocl_xmc *xmc =
+		platform_get_drvdata(to_platform_device(dev));
+	mutex_lock(&xmc->mbx_lock);
+	xmc_load_board_info(xmc);
+	mutex_unlock(&xmc->mbx_lock);
+	return sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X\n",
+		(u8)xmc->mac_addr_first[0],
+		(u8)xmc->mac_addr_first[1],
+		(u8)xmc->mac_addr_first[2],
+		(u8)xmc->mac_addr_first[3],
+		(u8)xmc->mac_addr_first[4],
+		(u8)xmc->mac_addr_first[5]);
+}
+static DEVICE_ATTR_RO(mac_addr_first);
+
 #define	XMC_BDINFO_STAT_SYSFS_NODE(name)				\
 	static ssize_t name##_show(struct device *dev,			\
 		struct device_attribute *attr, char *buf) {		\
@@ -2328,7 +2358,7 @@ XMC_BDINFO_STRING_SYSFS_NODE(exp_bmc_ver)
 
 XMC_BDINFO_STAT_SYSFS_NODE(max_power);
 XMC_BDINFO_STAT_SYSFS_NODE(config_mode);
-
+XMC_BDINFO_STAT_SYSFS_NODE(mac_contiguous_num);
 
 #define	XMC_BDINFO_CHAR_SYSFS_NODE(name)				\
 	static ssize_t name##_show(struct device *dev,			\
@@ -2373,6 +2403,8 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_scaling_threshold_power_limit.attr,
 	&dev_attr_scaling_critical_temp_threshold.attr,
 	&dev_attr_scaling_critical_power_threshold.attr,
+	&dev_attr_mac_contiguous_num.attr,
+	&dev_attr_mac_addr_first.attr,
 	SENSOR_SYSFS_NODE_ATTRS,
 	REG_SYSFS_NODE_ATTRS,
 	NULL,
@@ -4024,6 +4056,29 @@ static void clock_status_check(struct platform_device *pdev, bool *latched)
 	}
 }
 
+static void xmc_set_dynamic_mac(uint32_t *bdinfo_raw, uint32_t bd_info_sz,
+	struct xocl_xmc *xmc)
+{
+	size_t len;
+	const char *iomem;
+	u16 num = 0;
+
+	iomem = xmc_get_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAC_DYNAMIC, &len);
+	if (len != 8) {
+		xocl_err(&xmc->pdev->dev, "dynamic mac data is corrupted.");
+		return;
+	}
+
+	/*
+	 * Byte 0:1 is contiguous mac addresses number in LSB.
+	 * Byte 2:7 is first mac address.
+	 */
+	memcpy(&num, iomem, 2);
+	xmc->mac_contiguous_num = le16_to_cpu(num);
+
+	memcpy(xmc->mac_addr_first, iomem+2, 6);
+}
+	
 static void xmc_set_board_info(uint32_t *bdinfo_raw, uint32_t bd_info_sz,
 	enum board_info_key key, char *target)
 {
@@ -4058,6 +4113,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		return 0;
 
 	if (XMC_PRIVILEGED(xmc)) {
+		struct xmc_status status;
 
 		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
 		if (tmp_str) {
@@ -4076,7 +4132,6 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		ret = xmc_send_pkt(xmc);
 		if (ret)
 			return ret;
-
 		ret = xmc_recv_pkt(xmc);
 		if (ret)
 			return ret;
@@ -4087,16 +4142,23 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 			return -ENOMEM;
 		memcpy(bdinfo_raw, xmc->mbx_pkt.data, bd_info_sz);
 
+		safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+		if (status.sc_comm_ver >= 7) {
+			xmc_set_dynamic_mac(bdinfo_raw, bd_info_sz, xmc);
+
+		} else {
+			xmc_set_board_info(bdinfo_raw, bd_info_sz,
+				BDINFO_MAC0, xmc->mac_addr0);
+			xmc_set_board_info(bdinfo_raw, bd_info_sz,
+				BDINFO_MAC1, xmc->mac_addr1);
+			xmc_set_board_info(bdinfo_raw, bd_info_sz,
+				BDINFO_MAC2, xmc->mac_addr2);
+			xmc_set_board_info(bdinfo_raw, bd_info_sz,
+				BDINFO_MAC3, xmc->mac_addr3);
+		}
+
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,
 			BDINFO_SN, xmc->serial_num);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz,
-			BDINFO_MAC0, xmc->mac_addr0);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz,
-			BDINFO_MAC1, xmc->mac_addr1);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz,
-			BDINFO_MAC2, xmc->mac_addr2);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz,
-			BDINFO_MAC3, xmc->mac_addr3);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,
 			BDINFO_REV, xmc->revision);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,

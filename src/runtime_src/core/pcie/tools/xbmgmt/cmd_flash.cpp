@@ -17,6 +17,7 @@
 #include <string>
 #include <cstring>
 #include <iostream>
+#include <iomanip>
 #include <map>
 #include <functional>
 #include <getopt.h>
@@ -46,6 +47,23 @@ const char *subCmdFlashExpUsage =
 
 #define fmt_str        "    "
 #define DEV_TIMEOUT    60
+
+#define HEX(x) std::hex << std::uppercase << std::setw(2) << std::setfill('0') \
+	    << (int)(x & 0xFF)
+
+static std::string getMacAddr(char *macAddrFirst, unsigned idx)
+{
+    std::ostringstream oss;
+
+    oss << HEX(macAddrFirst[0]) << ":" <<
+	   HEX(macAddrFirst[1]) << ":" <<
+	   HEX(macAddrFirst[2]) << ":" <<
+	   HEX(macAddrFirst[3]) << ":" <<
+	   HEX(macAddrFirst[4]) << ":" <<
+	   HEX((macAddrFirst[5] + idx));
+
+    return oss.str();
+}
 
 static int scanDevices(bool verbose, bool json)
 {
@@ -79,10 +97,17 @@ static int scanDevices(bool verbose, bool json)
                 sensor_tree::put(card + ".config_mode", info.mConfigMode);
                 sensor_tree::put(card + ".fan_presence", info.mFanPresence);
                 sensor_tree::put(card + ".max_power", info.mMaxPower);
-                sensor_tree::put(card + ".mac0", info.mMacAddr0);
-                sensor_tree::put(card + ".mac1", info.mMacAddr1);
-                sensor_tree::put(card + ".mac2", info.mMacAddr2);
-                sensor_tree::put(card + ".mac3", info.mMacAddr3);
+		if (info.mMacContiguousNum) {
+		    for (unsigned idx = 0; idx < info.mMacContiguousNum; idx++) {
+		    	sensor_tree::put(card + ".mac" + std::to_string(idx),
+			    getMacAddr(info.mMacAddrFirst, idx));
+		    }
+		} else {
+                    sensor_tree::put(card + ".mac0", info.mMacAddr0);
+                    sensor_tree::put(card + ".mac1", info.mMacAddr1);
+                    sensor_tree::put(card + ".mac2", info.mMacAddr2);
+                    sensor_tree::put(card + ".mac3", info.mMacAddr3);
+		}
             }
         } else {
             std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
@@ -121,10 +146,17 @@ static int scanDevices(bool verbose, bool json)
                 std::cout << fmt_str << "Config mode: \t\t" << info.mConfigMode << std::endl;
                 std::cout << fmt_str << "Fan presence:\t\t" << info.mFanPresence << std::endl;
                 std::cout << fmt_str << "Max power level:\t\t" << info.mMaxPower << std::endl;
-                std::cout << fmt_str << "MAC address0:\t\t" << info.mMacAddr0 << std::endl;
-                std::cout << fmt_str << "MAC address1:\t\t" << info.mMacAddr1 << std::endl;
-                std::cout << fmt_str << "MAC address2:\t\t" << info.mMacAddr2 << std::endl;
-                std::cout << fmt_str << "MAC address3:\t\t" << info.mMacAddr3 << std::endl;
+		if (info.mMacContiguousNum) {
+		    for (unsigned idx = 0; idx < info.mMacContiguousNum; idx++) {
+		        std::cout << fmt_str << "MAC address" << idx << ":\t\t" <<
+			    getMacAddr(info.mMacAddrFirst, idx) << std::endl;
+		    }
+		} else {
+		    std::cout << fmt_str << "MAC address0:\t\t" << info.mMacAddr0 << std::endl;
+		    std::cout << fmt_str << "MAC address1:\t\t" << info.mMacAddr1 << std::endl;
+		    std::cout << fmt_str << "MAC address2:\t\t" << info.mMacAddr2 << std::endl;
+		    std::cout << fmt_str << "MAC address3:\t\t" << info.mMacAddr3 << std::endl;
+		}
             }
             std::cout << std::endl;
         }

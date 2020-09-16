@@ -211,13 +211,13 @@ static void p2p_percpu_ref_kill(void *data)
 {
 	struct percpu_ref *ref = data;
 #if defined(RHEL_RELEASE_CODE)
-	#if (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6))
+	#if ((RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)) && (RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 1)))
 	unsigned long __percpu *percpu_count = (unsigned long __percpu *)
 		(ref->percpu_count_ptr & ~__PERCPU_REF_ATOMIC_DEAD);
 	unsigned long count = 0;
 	int cpu;
 
-	/* Nasty hack for CentOS 7.6 and above versions (7.7, 7.8 etc.)
+	/* Nasty hack for CentOS 7.6, 7.7 and 7.8)
 	 * percpu_ref->count have to substract the percpu counters
 	 * to guarantee the percpu_ref->count will drop to 0
 	 */
@@ -351,6 +351,9 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 #if RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 2)
 		chk->xpmc_pgmap.ref = pref;
 		chk->xpmc_pgmap.altmap_valid = false;
+#if RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(8, 1)
+		chk->xpmc_pgmap.kill = p2p_percpu_ref_kill_noop;
+#endif
 #else
 		chk->xpmc_pgmap.type = MEMORY_DEVICE_PCI_P2PDMA;
 #endif
@@ -615,8 +618,7 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 		return ret;
 	}
 
-	if (P2P_BYTES_TO_RBAR(range) != P2P_BYTES_TO_RBAR(p2p->p2p_bar_len))
-		p2p_mem_fini(p2p, true);
+	p2p_mem_fini(p2p, true);
 
 	pos += p2p->p2p_bar_idx * PCI_REBAR_CTRL;
 	pci_read_config_dword(pcidev, pos + PCI_REBAR_CTRL, &ctrl);
@@ -632,12 +634,6 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 	ctrl &= ~PCI_REBAR_CTRL_BAR_SIZE;
 	ctrl |= P2P_BYTES_TO_RBAR(range) << PCI_REBAR_CTRL_BAR_SHIFT;
 	pci_write_config_dword(pcidev, pos + PCI_REBAR_CTRL, ctrl);
-
-	if (range == p2p->p2p_bar_len) {
-		pci_write_config_word(pcidev, PCI_COMMAND,
-				cmd | PCI_COMMAND_MEMORY);
-		goto done;
-	}
 
 	flags = res->flags;
 	if (res->parent)
@@ -658,13 +654,12 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 		res->flags = flags;
 	}
 
+	p2p->p2p_bar_start = (ulong) pci_resource_start(pcidev,
+			p2p->p2p_bar_idx);
 	p2p->p2p_bar_len = (ulong) pci_resource_len(pcidev, p2p->p2p_bar_idx);
 	pci_write_config_word(pcidev, PCI_COMMAND, cmd | PCI_COMMAND_MEMORY);
-	if (p2p->p2p_bar_len)
-		ret = p2p_mem_init(p2p);
-
-done:
 	if (p2p->p2p_bar_len) {
+		ret = p2p_mem_init(p2p);
 		pci_request_selected_regions(pcidev, (1 << p2p->p2p_bar_idx),
 			NODE_P2P);
 	}
