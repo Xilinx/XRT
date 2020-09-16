@@ -45,6 +45,7 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	char *cu_fmt = "  CU[%d] usage(%llu) shared(%d) refcnt(%d) intr(%s)\n";
 	ssize_t sz = 0;
 	bool shared;
 	int ref;
@@ -52,13 +53,17 @@ ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 
 	mutex_lock(&cu_mgmt->lock);
 	sz += sprintf(buf+sz, "Kernel Driver Scheduler(KDS)\n");
+	sz += sprintf(buf+sz, "CU to host interrupt capability: %d\n",
+		      kds->cu_intr_cap);
+	sz += sprintf(buf+sz, "Interrupt mode: %s\n",
+		      (kds->cu_intr)? "cu" : "ert");
 	sz += sprintf(buf+sz, "Configured: %d\n", cu_mgmt->configured);
 	sz += sprintf(buf+sz, "Number of CUs: %d\n", cu_mgmt->num_cus);
 	for (i = 0; i < cu_mgmt->num_cus; ++i) {
 		shared = !(cu_mgmt->cu_refs[i] & CU_EXCLU_MASK);
 		ref = cu_mgmt->cu_refs[i] & ~CU_EXCLU_MASK;
-		sz += sprintf(buf+sz, "  CU[%d] usage(%llu) shared(%d) ref(%d)\n",
-			      i, cu_mgmt->cu_usage[i], shared, ref);
+		sz += sprintf(buf+sz, cu_fmt, i, cu_mgmt->cu_usage[i], shared,
+			      ref, (cu_mgmt->cu_intr[i])? "enable" : "disable");
 	}
 	mutex_unlock(&cu_mgmt->lock);
 
@@ -694,6 +699,9 @@ int kds_cfg_update(struct kds_sched *kds)
 	struct xrt_cu *xcu;
 	int ret = 0;
 	int i;
+
+	if (!kds->cu_intr_cap)
+		return 0;
 
 	for (i = 0; i < cu_mgmt->num_cus; i++) {
 		if (cu_mgmt->cu_intr[i] == kds->cu_intr)

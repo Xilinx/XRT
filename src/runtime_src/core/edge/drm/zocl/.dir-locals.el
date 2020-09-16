@@ -1,0 +1,13 @@
+;; Do not remove this file. It contains Emacs Linux kernel code formatting rules"
+((nil
+  (indent-tabs-mode . t)
+  (tab-width . 8)
+  (c-basic-offset . 8)
+  (c-file-style . "stroustrup")
+  (fill-column . 78)
+  (eval . (progn
+	    (c-set-offset 'innamespace '0)
+	    (c-set-offset 'inline-open '0)))
+  )
+ (makefile-mode (indent-tabs-mode . t))
+ )

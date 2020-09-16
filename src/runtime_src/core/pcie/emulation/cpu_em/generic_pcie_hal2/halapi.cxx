@@ -45,9 +45,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
 
   FeatureRomHeader fRomHeader;
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
-
-  platformData platform_data;
-  std::memset(&platform_data, 0, sizeof(platformData));
+  boost::property_tree::ptree platformData;
 
   xclcpuemhal2::CpuemShim *handle = NULL;
   bool bDefaultDevice = false;
@@ -58,7 +56,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   }
   else
   {
-    handle = new xclcpuemhal2::CpuemShim(deviceIndex, info, DDRBankList, false, false, fRomHeader, platform_data);
+    handle = new xclcpuemhal2::CpuemShim(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
     bDefaultDevice = true;
   }
 
@@ -348,7 +346,7 @@ unsigned xclProbe()
   }
 
   unsigned int deviceIndex = 0;
-  std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank> ,bool, bool, FeatureRomHeader, platformData> > devicesInfo;
+  std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank> ,bool, bool, FeatureRomHeader, boost::property_tree::ptree> > devicesInfo;
   getDevicesInfo(devicesInfo);
 
   if(devicesInfo.size() == 0)
@@ -361,9 +359,9 @@ unsigned xclProbe()
     bool bUnified = std::get<2>(it);
     bool bXPR = std::get<3>(it);
     FeatureRomHeader fRomHeader = std::get<4>(it);
-    platformData platform_data = std::get<5>(it);
+    boost::property_tree::ptree platformData = std::get<5>(it);
 
-    xclcpuemhal2::CpuemShim *handle = new xclcpuemhal2::CpuemShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platform_data);
+    xclcpuemhal2::CpuemShim *handle = new xclcpuemhal2::CpuemShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
     xclcpuemhal2::devices[deviceIndex++] = handle;
   }
 

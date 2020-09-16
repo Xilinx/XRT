@@ -36,6 +36,8 @@ typedef void* xrtBufferHandle;
   
 /**
  * typedef xrtBufferFlags - flags for BO
+ *
+ * See ``xrt_mem.h`` for available flags
  */
 typedef uint64_t xrtBufferFlags;
 
@@ -48,7 +50,7 @@ typedef uint32_t xrtMemoryGroup;
 
 namespace xrt {
 
-using buffer_flags = xrtBufferFlags;  
+using buffer_flags = xrtBufferFlags;
 using memory_group = xrtMemoryGroup;
 
 class bo_impl;
@@ -266,7 +268,8 @@ extern "C" {
  * @handle:        Device handle
  * @userptr:       Pointer to 4K aligned user memory
  * @size:          Size of buffer
- * @flags:         Specify bank information, etc
+ * @flags:         Specify type of buffer
+ * @grp:           Specify bank information
  * Return:         xrtBufferHandle on success or NULL with errno set
  */
 XCL_DRIVER_DLLESPEC
@@ -278,8 +281,8 @@ xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
  *
  * @handle:        Device handle
  * @size:          Size of buffer
- * @unused:        This argument is ignored
- * @flags:         Specify bank information, etc
+ * @flags:         Specify type of buffer
+ * @grp:           Specify bank information
  * Return:         xrtBufferHandle on success or NULL with errno set
  */
 XCL_DRIVER_DLLESPEC
