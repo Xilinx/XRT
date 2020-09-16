@@ -64,7 +64,7 @@ same_sc(const std::string& sc, const DSAInfo& installed)
 }
 
 /*
- *
+ * scan for plps installed on the system
  */
 static boost::property_tree::ptree
 get_installed_partitions(std::string interface_uuid)
@@ -237,6 +237,7 @@ ReportPlatform::writeReport( const xrt_core::device * device,
   }
   output << std::endl;
 
+  // List PLP running on the system
   boost::property_tree::ptree pt_empty;
   boost::property_tree::ptree& plps = pt.get_child("platform.current_partitions", pt_empty);
   for(auto& kv : plps) {
@@ -257,6 +258,7 @@ ReportPlatform::writeReport( const xrt_core::device * device,
     output << std::endl;
   }
 
+  //PLPs installed on the system
   boost::property_tree::ptree& available_plps = pt.get_child("platform.available_partitions", pt_empty);
   for(auto& kv : available_plps) {
     boost::property_tree::ptree& plp = kv.second;
