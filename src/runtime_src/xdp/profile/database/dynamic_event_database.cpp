@@ -20,6 +20,8 @@
 #include "xdp/profile/database/dynamic_event_database.h"
 #include "xdp/profile/database/events/device_events.h"
 
+#include <iostream>
+
 namespace xdp {
   
   VPDynamicDatabase::VPDynamicDatabase(VPDatabase* d) :
@@ -176,22 +178,31 @@ namespace xdp {
   void VPDynamicDatabase::addAIETraceData(uint64_t deviceId,
                              uint64_t strmIndex, void* buffer, uint64_t bufferSz) 
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::lock_guard<std::mutex> lock(dbLock);
 
+std::cout << " in VPDynamicDatabase::addAIETraceData : deviceId " << deviceId << " strmIndex " << strmIndex << " buffer " << buffer << " bufferSz " << bufferSz << std::endl;
     if(aieTraceData.find(deviceId) == aieTraceData.end()) {
+std::cout << " in VPDynamicDatabase::addAIETraceData : Create new entry " << std::endl;
       AIETraceDataVector newDataVector;
       aieTraceData[deviceId] = newDataVector;	// copy
       aieTraceData[deviceId].resize((db->getStaticInfo()).getNumAIETraceStream(deviceId));
     }
     auto aieTraceDataEntry = aieTraceData[deviceId];
     aieTraceDataEntry[strmIndex] = std::make_pair(buffer, bufferSz);
+std::cout << " in VPDynamicDatabase::addAIETraceData : completed " << std::endl;
   }
 
   AIETraceDataType VPDynamicDatabase::getAIETraceData(uint64_t deviceId, uint64_t strmIndex)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
+std::cout << " in VPDynamicDatabase::getAIETraceData : deviceId " << deviceId << " strmIndex " << strmIndex << std::endl;
+    if(aieTraceData.find(deviceId) == aieTraceData.end()) {
+std::cout << " in VPDynamicDatabase::getAIETraceData : deviceId " << deviceId << " NOT FOUND " << std::endl;
+      return std::make_pair(nullptr, 0);
+    }
     auto aieTraceDataEntry = aieTraceData[deviceId];
+std::cout << " in VPDynamicDatabase::getAIETraceData : deviceId " << deviceId << " strmIndex " << strmIndex << " FOUND about to return " << std::endl;
     return aieTraceDataEntry[strmIndex];
   }
 

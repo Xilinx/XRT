@@ -1664,6 +1664,7 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 int
 xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
+std::cout << " in xclLoadXclBin " << std::endl;
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
   LOAD_XCLBIN_CB ;
@@ -1673,6 +1674,7 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   try {
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
+std::cout << " in xclLoadXclBin : about to flush device " << std::endl;
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
   xdphal::flush_device(handle) ;
@@ -1680,7 +1682,10 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #endif
 #endif
 
+std::cout << " in xclLoadXclBin : about to load xclbin " << std::endl;
+
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+std::cout << " in xclLoadXclBin : AFTER load xclbin " << std::endl;
     if (ret) {
       printf("Load Xclbin Failed\n");
 
@@ -1689,22 +1694,29 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     auto core_device = xrt_core::get_userpf_device(handle);
 
     core_device->register_axlf(buffer);
+std::cout << " in xclLoadXclBin : after register_axlf " << std::endl;
 
 #ifdef XRT_ENABLE_AIE
     auto data = core_device->get_axlf_section(AIE_METADATA);
     if (data.first && data.second)
       drv->registerAieArray();
 #endif
+std::cout << " in xclLoadXclBin : AFTER registerAIeArray " << std::endl;
 
     /* If PDI is the only section, return here */
     if (xrt_core::xclbin::is_pdi_only(buffer))
         return 0;
 
+std::cout << " in xclLoadXclBin : just before update device " << std::endl;
 
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
   xdphal::update_device(handle) ;
+
+std::cout << " in xclLoadXclBin : just before update  AIE device " << std::endl;
   xdpaie::update_aie_device(handle);
+
+std::cout << " in xclLoadXclBin : just AFTER update  AIE device " << std::endl;
 #endif
 #endif
 
