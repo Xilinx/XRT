@@ -1,3 +1,4 @@
+.. _sb.rst:
 
 Slave-Bridge Support
 ====================

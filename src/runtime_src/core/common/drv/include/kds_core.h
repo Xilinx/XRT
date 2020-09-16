@@ -119,6 +119,7 @@ struct kds_ert {
  * @cu_mgmt: hardware CUs management data structure
  * @ert: remote scheduler
  * @ert_disable: remote scheduler is disabled or not
+ * @cu_intr_cap: capbility of CU interrupt support
  * @cu_intr: CU or ERT interrupt. 1 for CU, 0 for ERT.
  */
 struct kds_sched {
@@ -129,6 +130,7 @@ struct kds_sched {
 	struct kds_cu_mgmt	cu_mgmt;
 	struct kds_ert	       *ert;
 	bool			ert_disable;
+	u32			cu_intr_cap;
 	u32			cu_intr;
 };
 

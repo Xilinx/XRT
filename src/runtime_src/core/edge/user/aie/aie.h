@@ -30,17 +30,17 @@ extern "C" {
 #include <xaiengine.h>
 }
 
-#define HW_GEN                   XAIE_DEV_GEN_AIE
-#define XAIE_NUM_ROWS            9
-#define XAIE_NUM_COLS            50
-#define XAIE_BASE_ADDR           0x20000000000
-#define XAIE_COL_SHIFT           23
-#define XAIE_ROW_SHIFT           18
-#define XAIE_SHIM_ROW            0
-#define XAIE_MEM_TILE_ROW_START  0
-#define XAIE_MEM_TILE_NUM_ROWS   0
-#define XAIE_AIE_TILE_ROW_START  1
-#define XAIE_AIE_TILE_NUM_ROWS   8
+#define HW_GEN                        XAIE_DEV_GEN_AIE
+#define XAIE_NUM_ROWS                 9
+#define XAIE_NUM_COLS                 50
+#define XAIE_BASE_ADDR                0x20000000000
+#define XAIE_COL_SHIFT                23
+#define XAIE_ROW_SHIFT                18
+#define XAIE_SHIM_ROW                 0
+#define XAIE_RESERVED_TILE_ROW_START  0
+#define XAIE_RESERVED_TILE_NUM_ROWS   0
+#define XAIE_AIE_TILE_ROW_START       1
+#define XAIE_AIE_TILE_NUM_ROWS        8
 
 //#define XAIEGBL_NOC_DMASTA_STARTQ_MAX 4
 #define XAIEDMA_SHIM_MAX_NUM_CHANNELS 4

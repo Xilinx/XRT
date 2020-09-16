@@ -20,7 +20,9 @@
 #define _XRT_AIE_H_
 
 #include "xrt.h"
+#include "experimental/xrt_uuid.h"
 #include "experimental/xrt_bo.h"
+#include "experimental/xrt_device.h"
 
 typedef void *xrtGraphHandle;
 

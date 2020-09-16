@@ -171,7 +171,7 @@ void ProfileIP::showWarning(std::string reason) {
      * do not expect any profiling information.
      */
     std::ostream* outputStream = (out_stream) ? out_stream : (&(std::cout));
-    (*outputStream) << "Error: profiling will not be avaiable. Reason: " << reason << std::endl;
+    (*outputStream) << "Error: profiling will not be available. Reason: " << reason << std::endl;
     return;
 }
 

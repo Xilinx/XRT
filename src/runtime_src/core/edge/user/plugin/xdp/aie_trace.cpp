@@ -18,7 +18,7 @@
 #include "aie_trace.h"
 #include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
-
+#include "core/common/config_reader.h"
 
 namespace xdpaietrace {
 
@@ -26,7 +26,8 @@ namespace xdpaietrace {
   {
     static xrt_core::module_loader xdp_aie_trace_loader("xdp_aie_trace_plugin",
                                                         register_aie_trace_callbacks,
-                                                        warning_aie_trace_callbacks);
+                                                        aie_trace_warning_function,
+                                                        aie_trace_error_function);
   }
 
   std::function<void (void*)> update_aie_device_cb;
@@ -44,8 +45,17 @@ namespace xdpaietrace {
 #endif
   }
 
-  void warning_aie_trace_callbacks()
+  void aie_trace_warning_function()
   {
+  }
+
+  int aie_trace_error_function()
+  {
+    if(xrt_core::config::get_profile() || xrt_core::config::get_timeline_trace()) {
+      // OpenCL profiling and/or trace is enabled in xrt.ini config. So, disable AIE Trace Offload as both of these flows are not supported together.
+      return 1;
+    }
+    return 0 ;
   }
 
 } // end namespace xdpaietrace

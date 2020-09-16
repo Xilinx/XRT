@@ -1,3 +1,4 @@
+.. _streaming_data_support.rst:
 
 XRT Streaming Platform Support
 ==============================

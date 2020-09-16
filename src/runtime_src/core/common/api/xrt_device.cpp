@@ -117,6 +117,11 @@ device(unsigned int index)
   : handle(xrt_core::get_userpf_device(index))
 {}
 
+device::
+device(xclDeviceHandle dhdl)
+  : handle(xrt_core::get_userpf_device(dhdl))
+{}
+
 uuid
 device::
 load_xclbin(const struct axlf* top)
@@ -295,3 +300,26 @@ xrtDeviceToXclDevice(xrtDeviceHandle dhdl)
   return nullptr;
 }
 
+xrtDeviceHandle
+xrtDeviceOpenFromXcl(xclDeviceHandle dhdl)
+{
+  try {
+    auto device = xrt_core::get_userpf_device(dhdl);
+
+    // Only one xrt unmanaged device per xclDeviceHandle
+    // xrtDeviceClose removes the handle from the cache
+    if (device_cache.count(device.get()))
+      throw xrt_core::error(-EINVAL, "Handle is already in use");
+    device_cache[device.get()] = device;
+    return device.get();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
+}

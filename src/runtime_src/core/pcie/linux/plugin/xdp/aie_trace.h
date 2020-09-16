@@ -19,9 +19,10 @@
 
 namespace xdpaietrace {
 
-  void load_xdp_aie_trace_plugin() ;
-  void register_aie_trace_callbacks(void* handle) ;
-  void warning_aie_trace_callbacks() ;
+  void load_xdp_aie_trace_plugin();
+  void register_aie_trace_callbacks(void* handle);
+  void aie_trace_warning_function();
+  int  aie_trace_error_function();
 
 } // end namespace xdpaietrace
 
