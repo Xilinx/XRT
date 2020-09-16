@@ -67,7 +67,7 @@ same_sc(const std::string& sc, const DSAInfo& installed)
  *
  */
 static boost::property_tree::ptree
-get_installed_partitions()
+get_installed_partitions(std::string interface_uuid)
 {
   auto availableDSAs = firmwareImage::getIntalledDSAs();
   boost::property_tree::ptree pt_plps;
@@ -77,9 +77,18 @@ get_installed_partitions()
     if(installedDSA.hasFlashImage || installedDSA.uuids.empty())
       continue;
     pt_plp.put("vbnv", installedDSA.name);
+    //the first UUID is always the logic UUID
     pt_plp.put("logic-uuid", XBU::string_to_UUID(installedDSA.uuids[0]));
-    pt_plp.put("interface-uuid", XBU::string_to_UUID(installedDSA.uuids[1]));
+
+    // Find the UUID that it exposes for other partitions
+    for(unsigned int i = 1; i < installedDSA.uuids.size(); i++){
+      //check if the interface UUID is resolution of BLP
+      if(interface_uuid.compare(installedDSA.uuids[i]) == 0)
+        continue;
+      pt_plp.put("interface-uuid", XBU::string_to_UUID(installedDSA.uuids[i]));
+    }
     pt_plp.put("file", installedDSA.file);
+    std::cout << std::endl;
 
     pt_plps.push_back( std::make_pair("", pt_plp) );
   }
@@ -133,8 +142,8 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
       boost::property_tree::ptree pt_plps;
       for(unsigned int i = 1; i < logic_uuids.size(); i++) {
         boost::property_tree::ptree pt_plp;
-        DSAInfo part("", NULL_TIMESTAMP, logic_uuids[i], ""); 
-        pt_plp.put("vbnv", part.name);
+        DSAInfo partition("", NULL_TIMESTAMP, logic_uuids[i], ""); 
+        pt_plp.put("vbnv", partition.name);
         pt_plp.put("logic-uuid", XBU::string_to_UUID(logic_uuids[i]));
         pt_plp.put("interface-uuid", XBU::string_to_UUID(interface_uuids[i]));
         pt_plps.push_back( std::make_pair("", pt_plp) );
@@ -175,8 +184,11 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   }
   pt_platform.put_child("available_shells", pt_available_shells);
 
-  auto pt_available_partitions = get_installed_partitions();
-  pt_platform.put_child("available_partitions", pt_available_partitions);
+  if (!interface_uuids.empty()) {
+    auto pt_available_partitions = get_installed_partitions(interface_uuids[0]);
+    pt_platform.put_child("available_partitions", pt_available_partitions);
+  }
+  
 
   // There can only be 1 root node
   pt.add_child("platform", pt_platform);
