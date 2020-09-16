@@ -59,7 +59,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Configuration File xrt.ini" href="xrt_ini.html" />
-    <link rel="prev" title="Memory-to-Memory (M2M) Support" href="m2m.html" /> 
+    <link rel="prev" title="Slave-Bridge Support" href="sb.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -334,9 +334,10 @@
             
               <p class="caption"><span class="caption-text">Introduction</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
@@ -346,6 +347,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sb.html">Slave-Bridge Support</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">XRT Streaming Platform Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#apis-required-for-streaming-data-tranfer">APIs required for streaming data tranfer</a></li>
 </ul>
@@ -359,6 +361,8 @@
 </ul>
 <p class="caption"><span class="caption-text">User API Library</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
@@ -379,7 +383,7 @@
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -468,7 +472,7 @@
            <div itemprop="articleBody">
             
   <div class="section" id="xrt-streaming-platform-support">
-<h1>XRT Streaming Platform Support<a class="headerlink" href="#xrt-streaming-platform-support" title="Permalink to this headline">¶</a></h1>
+<span id="streaming-data-support-rst"></span><h1>XRT Streaming Platform Support<a class="headerlink" href="#xrt-streaming-platform-support" title="Permalink to this headline">¶</a></h1>
 <p>Starting from the 2019.1 release, XRT supports a new programming model which supports the direct streaming of data from host to kernel and kernel to host without having to go through global memory. This feature is an addition to the existing host to kernel and kernel to host data transfer using global memories. By using streams, you can get some of the advantages such as:</p>
 <ul class="simple">
 <li><p>The host application does not necessarily need to know the size of the data coming from the kernel. Data resides on the host memory can be transferred to the kernel as soon as it is needed. Similarly, the processed data can be transferred back when it is required.</p></li>
@@ -647,7 +651,7 @@ Required only for non-blocking stream operation.</p></td>
         <a href="xrt_ini.html" class="btn btn-neutral float-right" title="Configuration File xrt.ini" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="m2m.html" class="btn btn-neutral float-left" title="Memory-to-Memory (M2M) Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="sb.html" class="btn btn-neutral float-left" title="Slave-Bridge Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -657,7 +661,7 @@ Required only for non-blocking stream operation.</p></td>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on August 12, 2020.
+        Last updated on September 16, 2020.
       </span>
 
     </p>

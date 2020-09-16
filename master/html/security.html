@@ -334,9 +334,10 @@
             
               <p class="caption"><span class="caption-text">Introduction</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
@@ -346,6 +347,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sb.html">Slave-Bridge Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
@@ -356,6 +358,8 @@
 </ul>
 <p class="caption"><span class="caption-text">User API Library</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
@@ -376,7 +380,7 @@
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -500,7 +504,7 @@ part of <em>Root-of-Trust</em>. The following features reinforce security of the
 <h2>Shell<a class="headerlink" href="#shell" title="Permalink to this headline">¶</a></h2>
 <p>The Shell provides core infrastructure to the Alveo platform. It includes <em>hardened</em> PCIe
 block which provides physical connectivity to the host PCIe bus via two physical functions
-as described in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">Platform Overview</span></a>.
+as described in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">XRT and Vitis™ Platform Overview</span></a>.
 The Shell is <em>trusted</em> partition of the Alveo platform and for all practical purposes
 should be treated like an ASIC. During system boot, the shell is loaded from the PROM.
 Once loaded, the Shell cannot be changed.</p>
@@ -623,7 +627,7 @@ End users in guest VM may be root and may be running modified implementation of 
 standard xocl using well defined <a class="reference internal" href="xocl_ioctl.main.html#xocl-ioctl-main-rst"><span class="std std-ref">XOCL (PCIe User Physical Function) Driver Interfaces</span></a>.</p>
 <p>As explained under the Shell section above, by design xocl has limited access to violet shaded Shell peripherals.
 This ensures that users in guest VM cannot perform any privileged operation like updating flash image or device
-reset. A user in guest VM can only perform operations listed under USER PF (PF1) section in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">Platform Overview</span></a>.</p>
+reset. A user in guest VM can only perform operations listed under USER PF (PF1) section in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">XRT and Vitis™ Platform Overview</span></a>.</p>
 <p>A guest VM user can potentially crash a compute unit in DFX partition, deadlock data path AXI bus or corrupt
 device memory. If the user has root access he may compromise VM memory. But none of this can bring down the
 host or the PCIe bus. Host memory is protected by system IOMMU. Device reset and recovery is described below.</p>
@@ -750,7 +754,7 @@ API and a <em>wait for exec completion</em> API. These operations are exposed as
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on August 12, 2020.
+        Last updated on September 16, 2020.
       </span>
 
     </p>

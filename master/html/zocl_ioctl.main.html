@@ -334,9 +334,10 @@
             
               <p class="caption"><span class="caption-text">Introduction</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
@@ -346,6 +347,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sb.html">Slave-Bridge Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
@@ -356,6 +358,8 @@
 </ul>
 <p class="caption"><span class="caption-text">User API Library</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
@@ -376,7 +380,7 @@
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -828,16 +832,79 @@ units.</p></td>
 </dl>
 <dl class="c type">
 <dt>
+<code class="sig-name descname">struct argument_info</code></dt>
+<dd><p>Kernel argument information</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct argument_info {
+  char name;
+  uint32_t offset;
+  uint32_t size;
+  uint32_t dir;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>argument name</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>argument offset in CU</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>argument size in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dir</span></code></dt><dd><p>input or output argument for a CU</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
+<code class="sig-name descname">struct kernel_info</code></dt>
+<dd><p>Kernel information</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct kernel_info {
+  char name;
+  int anums;
+  struct argument_info args;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>kernel name</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">anums</span></code></dt><dd><p>number of argument</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">args</span></code></dt><dd><p>argument array</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
 <code class="sig-name descname">struct drm_zocl_axlf</code></dt>
 <dd><p>Read xclbin (AXLF) device image and map CUs (experimental) used with DRM_IOCTL_ZOCL_READ_AXLF ioctl</p>
 </dd></dl>
 
 <p><strong>Definition</strong></p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_axlf {
+  struct axlf * za_xclbin_ptr;
+  uint32_t za_flags;
+  int za_ksize;
+  char * za_kernels;
 };
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">za_xclbin_ptr</span></code></dt><dd><p>Pointer to xclbin (AXLF) object</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">za_flags</span></code></dt><dd><p>platform flags</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">za_ksize</span></code></dt><dd><p>size of kernels in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">za_kernels</span></code></dt><dd><p>pointer of argument array</p>
+</dd>
+</dl>
 <dl class="c type">
 <dt>
 <code class="sig-name descname">struct drm_zocl_sk_getcmd</code></dt>
@@ -941,7 +1008,7 @@ units.</p></td>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on August 12, 2020.
+        Last updated on September 16, 2020.
       </span>
 
     </p>

@@ -334,9 +334,10 @@
             
               <p class="caption"><span class="caption-text">Introduction</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
@@ -346,6 +347,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sb.html">Slave-Bridge Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
@@ -356,6 +358,8 @@
 </ul>
 <p class="caption"><span class="caption-text">User API Library</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
@@ -376,7 +380,7 @@
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -539,7 +543,7 @@ data</p></td>
 <tr class="row-odd"><td><p>8</p></td>
 <td><p>Open/close a context on a compute unit
 on the device</p></td>
-<td><p>DRM_XOCL_CTX</p></td>
+<td><p>DRM_IOCTL_XOCL_CTX</p></td>
 <td><p>drm_xocl_ctx</p></td>
 </tr>
 <tr class="row-even"><td><p>9</p></td>
@@ -566,8 +570,43 @@ interrupt</p></td>
 <tr class="row-even"><td><p>13</p></td>
 <td><p>Update device view with a specific
 xclbin image</p></td>
-<td><p>DRM_XOCL_READ_AXLF</p></td>
+<td><p>DRM_IOCTL_XOCL_READ_AXLF</p></td>
 <td><p>drm_xocl_axlf</p></td>
+</tr>
+<tr class="row-odd"><td><p>14</p></td>
+<td><p>Obtain info of bo</p></td>
+<td><p>DRM_IOCTL_XOCL_INFO</p></td>
+<td><p>drm_xocl_info_bo</p></td>
+</tr>
+<tr class="row-even"><td><p>15</p></td>
+<td><p>Obtain bo related statistics</p></td>
+<td><p>DRM_IOCTL_XOCL_OCL_USAGE_STAT</p></td>
+<td><p>drm_xocl_usage_stat</p></td>
+</tr>
+<tr class="row-odd"><td><p>16</p></td>
+<td><p>Perform hot reset</p></td>
+<td><p>DRM_IOCTL_XOCL_HOT_RESET</p></td>
+<td><p>N/A</p></td>
+</tr>
+<tr class="row-even"><td><p>17</p></td>
+<td><p>Perform clock scaling</p></td>
+<td><p>DRM_IOCTL_XOCL_RECLOCK</p></td>
+<td><p>drm_xocl_reclock_info</p></td>
+</tr>
+<tr class="row-odd"><td><p>18</p></td>
+<td><p>Allocate buffer on host memory</p></td>
+<td><p>DRM_IOCTL_XOCL_ALLOC_CMA</p></td>
+<td><p>drm_xocl_alloc_cma_info</p></td>
+</tr>
+<tr class="row-even"><td><p>19</p></td>
+<td><p>Free host memory buffer</p></td>
+<td><p>DRM_IOCTL_XOCL_FREE_CMA</p></td>
+<td><p>N/A</p></td>
+</tr>
+<tr class="row-odd"><td><p>20</p></td>
+<td><p>Copy bo buffers</p></td>
+<td><p>DRM_IOCTL_XOCL_COPY_BO</p></td>
+<td><p>drm_xocl_copy_bo</p></td>
 </tr>
 </tbody>
 </table>
@@ -706,6 +745,84 @@ xclbin image</p></td>
 </dl>
 <dl class="c type">
 <dt>
+<code class="sig-name descname">struct drm_xocl_copy_bo</code></dt>
+<dd><p>device memory to memory copy bo used with DRM_IOCTL_XOCL_COPY_BO IOCTL</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_copy_bo {
+  uint32_t dst_handle;
+  uint32_t src_handle;
+  uint64_t size;
+  uint64_t dst_offset;
+  uint64_t src_offset;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">dst_handle</span></code></dt><dd><p>dst bo handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">src_handle</span></code></dt><dd><p>src bo handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>bo size in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dst_offset</span></code></dt><dd><p>dst offset</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">src_offset</span></code></dt><dd><p>src offset</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
+<code class="sig-name descname">struct argument_info</code></dt>
+<dd><p>Kernel argument information</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct argument_info {
+  char name;
+  uint32_t offset;
+  uint32_t size;
+  uint32_t dir;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>argument name</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>argument offset in CU</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>argument size in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dir</span></code></dt><dd><p>input or output argument for a CU</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
+<code class="sig-name descname">struct kernel_info</code></dt>
+<dd><p>Kernel information</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct kernel_info {
+  char name;
+  int anums;
+  struct argument_info args;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>kernel name</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">anums</span></code></dt><dd><p>number of argument</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">args</span></code></dt><dd><p>argument array</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
 <code class="sig-name descname">struct drm_xocl_axlf</code></dt>
 <dd><p>load xclbin (AXLF) device image used with DRM_IOCTL_XOCL_READ_AXLF ioctl</p>
 </dd></dl>
@@ -713,12 +830,18 @@ xclbin image</p></td>
 <p><strong>Definition</strong></p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_axlf {
   struct axlf * xclbin;
+  int ksize;
+  char * kernels;
 };
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">xclbin</span></code></dt><dd><p>Pointer to user’s xclbin structure in memory</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">ksize</span></code></dt><dd><p>size of kernels in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">kernels</span></code></dt><dd><p>pointer of argument array</p>
 </dd>
 </dl>
 <p><strong>NOTE</strong></p>
@@ -945,6 +1068,49 @@ for automatic event dependency handling by ERT</p>
 <dt><code class="docutils literal notranslate"><span class="pre">msix</span></code></dt><dd><p>User interrupt number (0 to 15)</p>
 </dd>
 </dl>
+<dl class="c type">
+<dt>
+<code class="sig-name descname">struct drm_xocl_reclock_info</code></dt>
+<dd><p>perform clock scaling</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_reclock_info {
+  unsigned region;
+  unsigned short ocl_target_freq;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">region</span></code></dt><dd><p>Region</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">ocl_target_freq</span></code></dt><dd><p>clock scacling request array</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
+<code class="sig-name descname">struct drm_xocl_alloc_cma_info</code></dt>
+<dd><p>Alloc buffer on host memory</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_alloc_cma_info {
+  uint64_t total_size;
+  uint64_t entry_num;
+  uint64_t * user_addr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">total_size</span></code></dt><dd><p>total size</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">entry_num</span></code></dt><dd><p>number of entries</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">user_addr</span></code></dt><dd><p>user space address</p>
+</dd>
+</dl>
 </div>
 
 
@@ -976,7 +1142,7 @@ for automatic event dependency handling by ERT</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on August 12, 2020.
+        Last updated on September 16, 2020.
       </span>
 
     </p>

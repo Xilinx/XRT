@@ -334,7 +334,7 @@
             
               <p class="caption"><span class="caption-text">Introduction</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Platform Overview</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">XRT and Vitis™ Platform Overview</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#user-application-compilation">User Application Compilation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#pcie-based-platforms">PCIe Based Platforms</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#mgmt-pf-pf0">MGMT PF (PF0)</a></li>
@@ -345,7 +345,8 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
@@ -355,6 +356,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sb.html">Slave-Bridge Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
@@ -365,6 +367,8 @@
 </ul>
 <p class="caption"><span class="caption-text">User API Library</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
@@ -385,7 +389,7 @@
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -454,7 +458,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Platform Overview</li>
+      <li>XRT and Vitis™ Platform Overview</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -473,11 +477,10 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="platform-overview">
-<span id="platforms-rst"></span><h1>Platform Overview<a class="headerlink" href="#platform-overview" title="Permalink to this headline">¶</a></h1>
-<p>XRT exports a common stack across PCIe based platforms and MPSoC based edge platforms.
-From user perspective there is very little porting effort when migrating an
-application from one class of platform to another.</p>
+  <div class="section" id="xrt-and-vitis-platform-overview">
+<span id="platforms-rst"></span><h1>XRT and Vitis™ Platform Overview<a class="headerlink" href="#xrt-and-vitis-platform-overview" title="Permalink to this headline">¶</a></h1>
+<p>XRT exports a common stack across PCIe based datacenter platforms and ZYNQ and ZYNQ UltraScale+ MPSoC based embedded platforms.
+It would require minimal porting efforts when migrating an application from one class of platform to another from the user perspective.</p>
 <div class="section" id="user-application-compilation">
 <h2>User Application Compilation<a class="headerlink" href="#user-application-compilation" title="Permalink to this headline">¶</a></h2>
 <p>User application is made up of host code written in C/C++/OpenCL or Python. Device code may be written in C/C++/OpenCL or VHDL/Verilog hardware description language.</p>
@@ -548,10 +551,8 @@ in DFX partition. xocl driver is organized into subdevices and handles the follo
 </div>
 <div class="section" id="zynq-7000-and-zynq-ultrascale-mpsoc-based-embedded-platforms">
 <h2>Zynq-7000 and ZYNQ Ultrascale+ MPSoC Based Embedded Platforms<a class="headerlink" href="#zynq-7000-and-zynq-ultrascale-mpsoc-based-embedded-platforms" title="Permalink to this headline">¶</a></h2>
-<img alt="_images/XRT-Architecture-Edge.svg" class="align-center" src="_images/XRT-Architecture-Edge.svg" /><dl class="simple">
-<dt>XRT supports ZYNQ-7000 and ZYNQ Ultrascale+ MPSoC. User can create their own embedded platforms</dt><dd><p>and enable XRT with the steps described <a class="reference internal" href="yocto.html#yocto-rst"><span class="std std-ref">Yocto Recipes For Embedded Flow</span></a>.</p>
-</dd>
-</dl>
+<img alt="_images/XRT-Architecture-Edge.svg" class="align-center" src="_images/XRT-Architecture-Edge.svg" /><p>XRT supports ZYNQ-7000 and ZYNQ Ultrascale+ MPSoC. User can create their own embedded platforms
+and enable XRT with the steps described <a class="reference internal" href="yocto.html#yocto-rst"><span class="std std-ref">XRT Setup for Embedded Flow</span></a>.</p>
 <p><a class="reference external" href="https://github.com/Xilinx/Vitis_Embedded_Platform_Source">Source code</a> and
 <a class="reference external" href="https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/embedded-platforms.html">pre-built</a>
 embedded platforms for the following Xilinx evaluation boards are provided:</p>
@@ -560,7 +561,7 @@ embedded platforms for the following Xilinx evaluation boards are provided:</p>
 <li><p>ZCU102</p></li>
 <li><p>ZCU104</p></li>
 </ol>
-<p>File /etc/xocl.txt needs to be in the root file system so that XRT can know which platform it is running on.</p>
+<p>File <code class="docutils literal notranslate"><span class="pre">/etc/xocl.txt</span></code> needs to be in the target root file system so that XRT OpenCL layer can know which platform it is running on.</p>
 <p>MPSoC based platforms are supported with PetaLinux base stack. XRT Linux kernel
 driver <em>zocl</em> does the heavy lifting for the embedded platform. It handles the
 following functionality</p>
@@ -604,7 +605,7 @@ following functionality</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on August 12, 2020.
+        Last updated on September 16, 2020.
       </span>
 
     </p>
