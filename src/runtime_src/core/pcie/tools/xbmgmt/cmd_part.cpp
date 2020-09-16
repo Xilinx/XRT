@@ -359,9 +359,15 @@ int program(int argc, char *argv[])
     std::string blp_uuid, logic_uuid;
     auto dev = pcidev::get_dev(index, false);
     std::string errmsg;
+    bool is_mfg = false;
+    dev->sysfs_get("", "mfg", errmsg, is_mfg, false);
+    if (!errmsg.empty()) {
+        std::cerr << "Unexpected error: " << errmsg << std::endl;
+        return -EINVAL;
+    }
 
     dev->sysfs_get("rom", "uuid", errmsg, logic_uuid);
-    if (!errmsg.empty() || logic_uuid.empty())
+    if (!is_mfg && (!errmsg.empty() || logic_uuid.empty()))
     {
         // 1RP platform
     	/* Get permission from user. */
