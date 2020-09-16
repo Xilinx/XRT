@@ -47,6 +47,8 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    :maxdepth: 1
    :caption: User API Library
 
+   opencl_extension.rst
+   xrt_native_apis.rst
    xrt.main.rst
    ert.main.rst
    xma.main.rst
