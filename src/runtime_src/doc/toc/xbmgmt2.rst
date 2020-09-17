@@ -12,8 +12,8 @@ The xbmgmt command options are
 xbutil program
 ~~~~~~~~~~~~~~
 
-The supported options
----------------------
+**The supported options**
+
 
 .. code-block:: 
 
@@ -24,8 +24,8 @@ The supported options
     xbutil program --revert-to-golden
 
 
-The details of the supported options
-------------------------------------
+**The details of the supported options**
+
 
      - The --device (or -d) switch ihas to use by specific BDF
      - The --partition option can optionally be used to program specific partition. This command supports partition specification by full path of the partition file, or UUID
@@ -35,8 +35,8 @@ The details of the supported options
      - The --image option to specify  
 
 
-Example commands
-----------------
+**Example commands**
+
 
 .. code-block::
  
@@ -50,8 +50,8 @@ Example commands
 xbmgmt status
 ~~~~~~~~~~~~~
 
-The supported options
----------------------
+**The supported options**
+
 
 .. code-block::
 
@@ -60,9 +60,7 @@ The supported options
     xbmgmt status -d [BDF] -r [report of interest] -f [output file format] --o [output file name]
 
 
-The details of the supported options
-------------------------------------
-
+**The details of the supported options**
 
     - The --device (or -d) switch can be specified to select the specific device of interest. Otherwise status of all the devices are reported
     - The --report (or -r) switch is optional, by default the device scanning information is provided, supported other options 
@@ -74,8 +72,8 @@ The details of the supported options
      - The --output (or -o) is optional, if not specified the report is shown in stdout. 
 
 
-Example commands 
-----------------
+**Example commands** 
+
 
 .. code-block:: 
 
@@ -92,13 +90,13 @@ Example commands
 xbmgmt reset
 ~~~~~~~~~~~~
 
-The supported options
----------------------
+**The supported options**
 
-The details of the supported options
-------------------------------------
 
-Example commands 
-----------------
+**The details of the supported options**
+
+
+**Example commands** 
+
 
 
