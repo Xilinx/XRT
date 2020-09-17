@@ -105,7 +105,7 @@ static void cu_hls_start(void *core)
 static inline void
 cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 {
-	u32 ctrl_reg;
+	u32 ctrl_reg = 0;
 	u32 done_reg = 0;
 	u32 ready_reg = 0;
 
@@ -178,7 +178,7 @@ static void cu_hls_check(void *core, struct xcu_status *status)
 		cu_hls->run_cnts--;
 		status->num_done = 1;
 		status->num_ready = 1;
-		status->new_status = 0x4;
+		status->new_status = CU_AP_IDLE;
 		return;
 	}
 

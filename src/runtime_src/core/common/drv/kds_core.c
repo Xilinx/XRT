@@ -48,22 +48,25 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
-	struct xrt_cu *xcu;
-	char *cu_fmt = "%d %s:%s 0x%llx 0x%x %llu\n";
+	struct xrt_cu *xcu = NULL;
+	char *cu_fmt = "%d,%s:%s,0x%llx,0x%x,%llu\n";
 	ssize_t sz = 0;
 	int i;
 
 	mutex_lock(&cu_mgmt->lock);
 	for (i = 0; i < cu_mgmt->num_cus; ++i) {
 		xcu = cu_mgmt->xcus[i];
-		sz += sprintf(buf+sz, cu_fmt, i, xcu->info.kname,
-			      xcu->info.iname, xcu->info.addr, xcu->status,
-			      cu_mgmt->cu_usage[i]);
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
+				xcu->info.kname, xcu->info.iname,
+				xcu->info.addr, xcu->status,
+				cu_mgmt->cu_usage[i]);
 	}
 	mutex_unlock(&cu_mgmt->lock);
 
-	if (sz)
+	if (sz < PAGE_SIZE - 1)
 		buf[sz++] = 0;
+	else
+		buf[PAGE_SIZE - 1] = 0;
 
 	return sz;
 }
@@ -78,23 +81,28 @@ ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 	int i;
 
 	mutex_lock(&cu_mgmt->lock);
-	sz += sprintf(buf+sz, "Kernel Driver Scheduler(KDS)\n");
-	sz += sprintf(buf+sz, "CU to host interrupt capability: %d\n",
-		      kds->cu_intr_cap);
-	sz += sprintf(buf+sz, "Interrupt mode: %s\n",
-		      (kds->cu_intr)? "cu" : "ert");
-	sz += sprintf(buf+sz, "Configured: %d\n", cu_mgmt->configured);
-	sz += sprintf(buf+sz, "Number of CUs: %d\n", cu_mgmt->num_cus);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz,
+			"CU to host interrupt capability: %d\n",
+			kds->cu_intr_cap);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Interrupt mode: %s\n",
+			(kds->cu_intr)? "cu" : "ert");
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Configured: %d\n",
+			cu_mgmt->configured);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Number of CUs: %d\n",
+			cu_mgmt->num_cus);
 	for (i = 0; i < cu_mgmt->num_cus; ++i) {
 		shared = !(cu_mgmt->cu_refs[i] & CU_EXCLU_MASK);
 		ref = cu_mgmt->cu_refs[i] & ~CU_EXCLU_MASK;
-		sz += sprintf(buf+sz, cu_fmt, i, cu_mgmt->cu_usage[i], shared,
-			      ref, (cu_mgmt->cu_intr[i])? "enable" : "disable");
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt,
+				i, cu_mgmt->cu_usage[i], shared, ref,
+				(cu_mgmt->cu_intr[i])? "enable" : "disable");
 	}
 	mutex_unlock(&cu_mgmt->lock);
 
-	if (sz)
+	if (sz < PAGE_SIZE - 1)
 		buf[sz++] = 0;
+	else
+		buf[PAGE_SIZE - 1] = 0;
 
 	return sz;
 }

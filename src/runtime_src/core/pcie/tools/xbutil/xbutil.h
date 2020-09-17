@@ -411,12 +411,15 @@ public:
     int parseCUSubdevStat() const
     {
         using tokenizer = boost::tokenizer< boost::char_separator<char> >;
-        boost::char_separator<char> sep(" ");
         std::vector<std::string> custat;
         std::string errmsg;
 
+        // The kds_custat_raw is printing in formatted string of each line
+        // Format: "%d,%s:%s,0x%llx,0x%x,%llu"
+        // Using comma as separator.
         pcidev::get_dev(m_idx)->sysfs_get("", "kds_custat_raw", errmsg, custat);
         for (auto& line : custat) {
+            boost::char_separator<char> sep(",");
             std::string name(":");
             unsigned long long paddr = 0;
             uint32_t usage = 0;
