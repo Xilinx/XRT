@@ -16,6 +16,8 @@
 
 #include "aie_profile.h"
 #include "core/common/module_loader.h"
+#include "core/common/dlfcn.h"
+#include <iostream>
 
 namespace xdpaieprofile {
 
@@ -27,10 +29,15 @@ namespace xdpaieprofile {
 						    warning_aie_callbacks);
 #endif
   }
+  std::function<void (void*)> update_aie_device_cb;
 
-  void register_aie_callbacks(void* /*handle*/)
+  void register_aie_callbacks(void* handle)
   {
-    // No callbacks in AIE profiling. The plugin is always active.
+#ifdef XRT_CORE_BUILD_WITH_DL
+    typedef void (*ftype)(void*) ;
+    update_aie_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIECtrDevice")) ;
+    if (xrt_core::dlerror() != NULL) update_aie_device_cb = nullptr ;
+#endif
   }
 
   void warning_aie_callbacks()
@@ -39,3 +46,13 @@ namespace xdpaieprofile {
   }
 
 } // end namespace xdpaieprofile
+
+namespace xdpaiectr {
+
+  void update_aie_device(void* handle)
+  {
+    if (xdpaieprofile::update_aie_device_cb != nullptr) {
+      xdpaieprofile::update_aie_device_cb(handle) ;
+    }
+  }
+}

@@ -464,7 +464,9 @@ get_subdev_path(const std::string& subdev, uint idx)
 
   path += subdev;
   path += is_mgmt() ? ".m" : ".u";
-  path += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
+  //if the domain number is big, the shift overflows, hence need to cast
+  uint32_t dom = static_cast<uint32_t>(domain);
+  path += std::to_string( (dom<<16)+ (bus<<8) + (dev<<3) + func);
   path += "." + std::to_string(idx);
   return path;
 }
@@ -726,7 +728,8 @@ lookup_peer_dev()
 class pci_device_v2 : public pci_device
 {
 public:
-  pci_device_v2(const std::string& drv_name, const std::string& sysfs_name) : pci_device(drv_name, sysfs_name)
+  pci_device_v2(const std::string& drv_name, const std::string& sysfs_name) :
+    pci_device(drv_name, sysfs_name)
   {
     std::string err;
     sysfs_get<bool>("", "ready", err, is_ready, false);
@@ -746,7 +749,12 @@ public:
   void sysfs_get(const std::string& subdev, const std::string& entry,
     std::string& err, std::vector<std::string>& sv)
   {
-    throw std::runtime_error("sysfs_get_sv(" + subdev + "/" + entry + ") is not supported");
+    try {
+      auto map = find_sysfs_map(subdev, entry);
+      sysfs::get(sysfs_name, map.subdev_v2, map2entry(map, entry), err, sv);
+    } catch (...) {
+      throw std::runtime_error("sysfs_get_sv(" + subdev + "/" + entry + ") is not supported");
+    }
   }
   void sysfs_get(const std::string& subdev, const std::string& entry,
     std::string& err, std::vector<uint64_t>& iv)
@@ -866,12 +874,18 @@ private:
     const std::string entry_v2;
   };
   const std::vector<sysfs_node_map> sysfs_map {
+    // Map as-is
     { "",       "ready",        "",             "ready" },
     { "",       "vendor",       "",             "vendor" },
     { "",       "device",       "",             "device" },
-    { "",       "*",            "xmgmt_main",   "*" },
+    // rom/xxx
+    { "rom",    "uuid",         "xmgmt_main",   "logic_uuids" },
     { "rom",    "*",            "xmgmt_main",   "*" },
+    // root/xxx
+    { "",       "*",            "xmgmt_main",   "*" },
+    // xmc/xxx
     { "xmc",    "*",            "xocl_cmc",     "*" },
+    // flash/xxx
     { "flash",  "*",            "xocl_qspi",    "*" },
   };
   const sysfs_node_map& find_sysfs_map(const std::string& subdev, const std::string& entry)

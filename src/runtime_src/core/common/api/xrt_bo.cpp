@@ -741,10 +741,10 @@ xrtBOSubAlloc(xrtBufferHandle phdl, size_t sz, size_t offset)
 }
 
 xrtBufferHandle
-xrtBOImport(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
+xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl)
 {
   try {
-    auto boh = alloc(dhdl, ehdl);
+    auto boh = alloc(get_xcl_device_handle(dhdl), ehdl);
     bo_cache[boh.get()] = boh;
     return boh.get();
   }

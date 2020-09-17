@@ -136,6 +136,7 @@ public:
   void registerAieArray();
   bool isAieRegistered();
   int getPartitionFd(drm_zocl_aie_fd &aiefd);
+  int resetAIEArray(drm_zocl_aie_reset &reset);
 #endif
 
 private:

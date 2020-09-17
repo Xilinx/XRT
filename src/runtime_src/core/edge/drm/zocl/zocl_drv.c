@@ -737,6 +737,8 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_AIE_FD, zocl_aie_fd_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_AIE_RESET, zocl_aie_reset_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations zocl_driver_fops = {
@@ -1002,10 +1004,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 
 	kfree(zdev->apertures);
 
-	if (drm) {
-		drm_dev_unregister(drm);
-		ZOCL_DRM_DEV_PUT(drm);
-	}
+	drm_dev_unregister(drm);
+	ZOCL_DRM_DEV_PUT(drm);
 
 	return 0;
 }

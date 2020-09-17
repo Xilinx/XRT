@@ -20,6 +20,7 @@
 
 #include<vector>
 #include "core/include/xrt.h"
+#include "core/include/experimental/xrt_bo.h"
 #include "xdp/profile/device/xdp_base_device.h"
 
 namespace xdp {
@@ -28,7 +29,7 @@ namespace xdp {
 class HalDevice : public xdp::Device
 {
   xclDeviceHandle mHalDevice;
-  std::vector<xclBufferHandle> mBOHandles;
+  std::vector<xrtBufferHandle> mBOHandles;
   std::vector<void*>  mMappedBO;
 
 public:

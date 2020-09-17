@@ -623,7 +623,8 @@ int main(int argc, char *argv[])
         try {
             deviceVec.emplace_back(new xcldev::device(i, nullptr));
         } catch (const std::exception& ex) {
-            std::cout << ex.what() << std::endl;
+            std::cerr << ex.what() << std::endl;
+	    return -ENODEV;
         }
     }
 

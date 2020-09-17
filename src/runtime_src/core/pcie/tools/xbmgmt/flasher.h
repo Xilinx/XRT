@@ -48,6 +48,8 @@ struct BoardInfo
     std::string mMaxPower;
     unsigned int mConfigMode;
     char mFanPresence;
+    unsigned int mMacContiguousNum;
+    char mMacAddrFirst[6]; //fixed 6 bytes for current mac address version
 };
 
 enum BoardInfoKey
@@ -64,6 +66,8 @@ enum BoardInfoKey
     BDINFO_FAN_PRESENCE,
     BDINFO_CONFIG_MODE
 };
+
+#define BDINFO_MAC_DYNAMIC 0x4B
 
 class Flasher
 {
