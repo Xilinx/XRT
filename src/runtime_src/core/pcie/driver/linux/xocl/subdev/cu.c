@@ -135,26 +135,48 @@ static int cu_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	krnl_info = xocl_query_kernel(xdev, info->kname);
-	if (!krnl_info) {
-		err = -EFAULT;
-		goto err;
-	}
+	if (!xcu->base.info.is_m2m) {
+		krnl_info = xocl_query_kernel(xdev, info->kname);
+		if (!krnl_info) {
+			err = -EFAULT;
+			goto err;
+		}
+		/* Populate kernel argument information */
+		args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
+		if (!args) {
+			err = -ENOMEM;
+			goto err;
+		}
+		for (i = 0; i < krnl_info->anums; i++) {
+			strcpy(args[i].name, krnl_info->args[i].name);
+			args[i].offset = krnl_info->args[i].offset;
+			args[i].size = krnl_info->args[i].size;
+			args[i].dir = krnl_info->args[i].dir;
+		}
+		xcu->base.info.num_args = krnl_info->anums;
+		xcu->base.info.args = args;
+	} else {
+		/* M2M CU has 3 arguments */
+		args = vmalloc(sizeof(struct xrt_cu_arg) * 3);
 
-	/* Populate kernel argument information */
-	args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
-	if (!args) {
-		err = -ENOMEM;
-		goto err;
+		strcpy(args[0].name, "src_addr");
+		args[0].offset = 0x10;
+		args[0].size = 8;
+		args[0].dir = DIR_INPUT;
+
+		strcpy(args[1].name, "dst_addr");
+		args[1].offset = 0x1C;
+		args[1].size = 8;
+		args[1].dir = DIR_INPUT;
+
+		strcpy(args[2].name, "size");
+		args[2].offset = 0x28;
+		args[2].size = 4;
+		args[2].dir = DIR_INPUT;
+
+		xcu->base.info.num_args = 3;
+		xcu->base.info.args = args;
 	}
-	for (i = 0; i < krnl_info->anums; i++) {
-		strcpy(args[i].name, krnl_info->args[i].name);
-		args[i].offset = krnl_info->args[i].offset;
-		args[i].size = krnl_info->args[i].size;
-		args[i].dir = krnl_info->args[i].dir;
-	}
-	xcu->base.info.num_args = krnl_info->anums;
-	xcu->base.info.args = args;
 
 	res = vzalloc(sizeof(struct resource *) * xcu->base.info.num_res);
 	if (!res) {
@@ -196,15 +218,17 @@ static int cu_probe(struct platform_device *pdev)
 	/* If mb_scheduler is enable, the intc subdevic would not be created.
 	 * In this case, the err would be -ENODEV. Don't print error message.
 	 */
-	err = xocl_intc_cu_request(xdev, info->intr_id, cu_isr, xcu);
-	if (!err)
-		XCU_INFO(xcu, "Register CU interrupt id %d", info->intr_id);
-	else if (err != -ENODEV)
-		XCU_ERR(xcu, "xocl_intc_cu_request failed, err: %d", err);
+	if (info->intr_enable) {
+		err = xocl_intc_cu_request(xdev, info->intr_id, cu_isr, xcu);
+		if (!err)
+			XCU_INFO(xcu, "Register CU interrupt id %d", info->intr_id);
+		else if (err != -ENODEV)
+			XCU_ERR(xcu, "xocl_intc_cu_request failed, err: %d", err);
 
-	err = xocl_intc_cu_config(xdev, info->intr_id, true);
-	if (err && err != -ENODEV)
-		XCU_ERR(xcu, "xocl_intc_cu_config failed, err: %d", err);
+		err = xocl_intc_cu_config(xdev, info->intr_id, true);
+		if (err && err != -ENODEV)
+			XCU_ERR(xcu, "xocl_intc_cu_config failed, err: %d", err);
+	}
 
 	if (sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup))
 		XCU_ERR(xcu, "Not able to create CU sysfs group");
@@ -239,10 +263,12 @@ static int cu_remove(struct platform_device *pdev)
 	(void) sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
 	info = &xcu->base.info;
 
-	err = xocl_intc_cu_config(xdev, info->intr_id, false);
-	if (!err)
-		XCU_INFO(xcu, "Unregister CU interrupt id %d", info->intr_id);
-	xocl_intc_cu_request(xdev, info->intr_id, NULL, NULL);
+	if (info->intr_enable) {
+		err = xocl_intc_cu_config(xdev, info->intr_id, false);
+		if (!err)
+			XCU_INFO(xcu, "Unregister CU interrupt id %d", info->intr_id);
+		xocl_intc_cu_request(xdev, info->intr_id, NULL, NULL);
+	}
 
 	switch (info->model) {
 	case XCU_HLS:

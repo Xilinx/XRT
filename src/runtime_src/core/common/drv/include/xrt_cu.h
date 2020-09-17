@@ -181,6 +181,7 @@ struct xrt_cu_info {
 	u64			 addr;
 	u32			 protocol;
 	u32			 intr_id;
+	u32			 is_m2m;
 	u32			 num_res;
 	bool			 intr_enable;
 	struct xrt_cu_arg	*args;
