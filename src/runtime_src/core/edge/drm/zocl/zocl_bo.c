@@ -202,7 +202,8 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		 * not establish the kernel mapping. We just can not
 		 * access BO directly from kernel.
 		 */
-		bo->vmapping = memremap(bo->mm_node->start, size, MEMREMAP_WC);
+		if (zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_LPDDR)
+			bo->vmapping = memremap(bo->mm_node->start, size, MEMREMAP_WC);
 
 		err = drm_gem_create_mmap_offset(&bo->gem_base);
 		if (err) {
@@ -919,10 +920,8 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
 		memp->zm_used = 1;
 
 		if (strstr(md->m_tag, "MIG") || strstr(md->m_tag, "LPDDR")) {
-			if (strstr(md->m_tag, "MIG"))
-				memp->zm_type = ZOCL_MEM_TYPE_PLDDR;
-			else if (strstr(md->m_tag, "LPDDR"))
-				memp->zm_type = ZOCL_MEM_TYPE_PLDDR;
+			memp->zm_type = strstr(md->m_tag, "MIG") ?
+				ZOCL_MEM_TYPE_PLDDR : ZOCL_MEM_TYPE_LPDDR;
 
 			memp->zm_mm = vzalloc(sizeof(struct drm_mm));
 			drm_mm_init(memp->zm_mm, memp->zm_base_addr, memp->zm_size);
