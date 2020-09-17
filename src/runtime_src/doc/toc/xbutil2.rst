@@ -120,6 +120,7 @@ The command **xbutil examine**  can be used to find the details of the specific 
     - The --device (or -d) switch is optional, when not specified the details of all the cards are shown 
     - The --report (or -r) switch is optional, if not specified all possible reports are generated. The user can select specific report(s) of interest from the following options
           
+          - scan (default): scan option shows System Configuration, XRT and Device BDF information. 
           - verbose: Reports everything, default
           - aie: Reports information related to AIE kernels
           - electrical: Reports information related to Volate, current and Power
@@ -127,7 +128,6 @@ The command **xbutil examine**  can be used to find the details of the specific 
           - firewall: Reports the current firewall status
           - host: Reports the host configuration and drivers
           - mechanical: 
-          - scan
           - thermals: Report thermal 
     - The --format or -f switch is optional, if not specified a text file is generated. Other supported formal is json-2021.2
     - The --output (or -o) is optional, if not specified the report is shown in stdout. 
