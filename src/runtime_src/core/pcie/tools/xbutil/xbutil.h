@@ -430,8 +430,8 @@ public:
                 tokenizer::iterator tok_it = tokens.begin();
                 cu_idx = std::stoi(std::string(*tok_it++));
                 name = std::string(*tok_it++);
-                paddr = std::stoi(std::string(*tok_it++), nullptr, radix);
-                status = std::stoi(std::string(*tok_it++), nullptr, radix);
+                paddr = std::stoull(std::string(*tok_it++), nullptr, radix);
+                status = std::stoul(std::string(*tok_it++), nullptr, radix);
                 usage = std::stoul(std::string(*tok_it++));
             } else
                 break;
