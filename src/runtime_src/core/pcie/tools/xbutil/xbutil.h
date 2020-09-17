@@ -62,8 +62,6 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
 
 #define indent(level)   std::string((level) * 4, ' ')
 
-#define HEX_02X std::hex << std::uppercase << std::setw(2) << std::setfill('0')
-
 /*
  * Simple command line tool to query and interact with SDx PCIe devices
  * The tool statically links with xcldma HAL driver inorder to avoid
@@ -811,29 +809,30 @@ public:
         sensor_tree::put( "board.info.host_mem_size",   xrt_core::utils::unit_convert(host_mem_size) );
         sensor_tree::put( "board.info.max_host_mem_aperture",   xrt_core::utils::unit_convert(max_host_mem_aperture) );
 
-	if (mac_contiguous_num && !mac_addr_first.empty()) {
-	    std::string mac_prefix = mac_addr_first.substr(0, mac_addr_first.find_last_of(":"));
-	    std::string mac_base = mac_addr_first.substr(mac_addr_first.find_last_of(":") + 1);
-	    std::stringstream ss;
-	    uint32_t mac_base_val = 0;
-	    ss << std::hex << mac_base;
-	    ss >> mac_base_val;
+        if (mac_contiguous_num && !mac_addr_first.empty()) {
+            std::string mac_prefix = mac_addr_first.substr(0, mac_addr_first.find_last_of(":"));
+            std::string mac_base = mac_addr_first.substr(mac_addr_first.find_last_of(":") + 1);
+            std::stringstream ss;
+            uint32_t mac_base_val = 0;
+            ss << std::hex << mac_base;
+            ss >> mac_base_val;
 
-	    mac_addrs.resize(mac_contiguous_num);
-	    for (uint32_t i = 0; i < (uint32_t)mac_contiguous_num; i++) {
-	        std::string entry_name = "board.info.mac_addr." + std::to_string(i);
-	        std::ostringstream oss;
-		oss << HEX_02X << mac_base_val + i;
+            mac_addrs.resize(mac_contiguous_num);
+            for (uint32_t i = 0; i < (uint32_t)mac_contiguous_num; i++) {
+                std::string entry_name = "board.info.mac_addr." + std::to_string(i);
+                std::ostringstream oss;
+                oss << boost::format("%02X") % (mac_base_val + i);
 
-		sensor_tree::put(entry_name, mac_prefix + ":" + oss.str());
-	    }
-	} else {
-	    for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
-	        std::string entry_name = "board.info.mac_addr."+std::to_string(i);
-	        if (!mac_addrs[i].empty())
-		    sensor_tree::put(entry_name, mac_addrs[i]);
-	    }
-	}
+                sensor_tree::put(entry_name, mac_prefix + ":" + oss.str());
+            }
+        } else {
+            for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
+                std::string entry_name = "board.info.mac_addr."+std::to_string(i);
+                if (!mac_addrs[i].empty())
+                    sensor_tree::put(entry_name, mac_addrs[i]);
+            }
+        }
+
         //interface uuid
         std::vector<std::string> interface_uuid;
         pcidev::get_dev(m_idx)->sysfs_get( "", "interface_uuids", errmsg, interface_uuid );
