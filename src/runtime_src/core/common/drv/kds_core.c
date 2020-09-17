@@ -384,7 +384,7 @@ int kds_init_sched(struct kds_sched *kds)
 	mutex_init(&kds->cu_mgmt.lock);
 	kds->num_client = 0;
 	kds->bad_state = 0;
-	kds->ert_disable = 1;
+	kds->ert_disable = 0;
 
 	return 0;
 }
@@ -809,6 +809,11 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 		   struct kds_command *xcmd)
 {
 	int i;
+
+	/* To let ERT 3.0 firmware aware new KDS is talking to it,
+	 * set kds_30 bit. This is no harm for ERT 2.0 firmware.
+	 */
+	ecmd->kds_30 = 1;
 
 	xcmd->opcode = OP_CONFIG;
 

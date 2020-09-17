@@ -395,7 +395,7 @@ u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist)
 
 void xocl_kds_update(struct xocl_dev *xdev)
 {
-	if (xocl_ert_30_cu_intr_cfg(xdev) == -ENODEV) {
+	if (xocl_ert_30_ert_intr_cfg(xdev) == -ENODEV) {
 		userpf_info(xdev, "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
 	} else {
