@@ -92,11 +92,26 @@ xbmgmt reset
 
 **The supported options**
 
+.. code-block:: 
+
+    xbutil reset --device [BDF] --type [Reset type]
+    xbutil reset -d [BDF] -t [Reset type]
+
 
 **The details of the supported options**
 
 
+    - The --device (or -d) used to specify the device to be reset
+    - The --type (or -t) can be used to specify the reset type. Currently only supported reset types are
+    
+
 **Example commands** 
 
+
+.. code-block::
+ 
+    xbutil reset -d 0000:65:00.1
+    
+    xbutil reset -d 0000:65:00.1 -t hot
 
 
