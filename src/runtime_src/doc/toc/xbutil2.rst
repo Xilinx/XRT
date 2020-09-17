@@ -16,8 +16,8 @@ xbutil program
 
 The **xbutil program** command downloads a specified xclbin binary to the programmable region on the card.
 
-The supported options
----------------------
+**The supported options**
+
 
 .. code-block:: 
 
@@ -25,8 +25,8 @@ The supported options
     xbutil program -d [BDF] -p [xclbin file]
 
 
-The details of the supported options
-------------------------------------
+**The details of the supported options**
+
 
     - The --device (or -d) specifies the target device to be programmed
     
@@ -36,8 +36,8 @@ The details of the supported options
     - The --program (or -p) is required to specify the .xclbin file
 
 
-Example commands 
-----------------
+**Example commands** 
+
 
 .. code-block:: 
 
@@ -59,8 +59,8 @@ xbutil validate
 
 The command **xbutil validate** validates the card installation by running precompiled basic examples. 
 
-The supported options
----------------------
+**The supported options**
+
 
 .. code-block:: 
 
@@ -69,8 +69,8 @@ The supported options
  
    xbutil validate --d [BDF] --r [program] --f [output file format]
 
-The details of the supported options
-------------------------------------
+**The details of the supported options**
+
 
     - The --device or -d switch must be specified with BDF
     - The --run or -r switch is optional, if not specified all the program is run
@@ -79,8 +79,8 @@ The details of the supported options
     - The --format or -f switch is optional, if not specified a text file is generated
 
 
-Example commands
-----------------
+**Example commands**
+
 
 .. code-block:: 
 
@@ -103,8 +103,8 @@ xbutil examine
 The command **xbutil examine**  can be used to find the details of the specific device(s),
 
 
-The supported options
----------------------
+**The supported options**
+
 
 .. code-block:: 
 
@@ -114,8 +114,8 @@ The supported options
     xbutil examine --d [BDF] --r [Report of interest] --f [o/p file format] --o [o/p file]
 
 
-The details of the supported options
-------------------------------------
+**The details of the supported options**
+
 
     - The --device (or -d) switch is optional, when not specified the details of all the cards are shown 
     - The --report (or -r) switch is optional, if not specified all possible reports are generated. The user can select specific report(s) of interest from the following options
@@ -133,8 +133,8 @@ The details of the supported options
     - The --output (or -o) is optional, if not specified the report is shown in stdout. 
 
 
-Example commands
-----------------
+**Example commands**
+
 
 .. code-block:: 
 
@@ -153,22 +153,21 @@ xbutil reset
 ~~~~~~~~~~~~
 This command can be used to reset one or more devices. 
 
-The supported options
----------------------
+**The supported options**
 
 .. code-block:: 
 
     xbutil reset --device [BDF] --type [Reset type]
     xbutil reset -d [BDF] -t [Reset type]
 
-The details of the supported options
-------------------------------------
+**The details of the supported options**
+
 
     - The --device (or -d) used to specify the device to be reset
     - The --type (or -t) can be used to specify the reset type. Currently only supported reset type is hot reset
 
-Example commands
-----------------
+**Example commands**
+
 
 .. code-block::
  
