@@ -21,8 +21,7 @@ The **xbutil program** command downloads a specified xclbin binary to the progra
 
 .. code-block:: 
 
-    xbutil program --device [BDF] --program [xclbin file]
-    xbutil program -d [BDF] -p [xclbin file]
+    xbutil program [--device|-d] <bdf> [--program|-p] <xclbin>
 
 
 **The details of the supported options**
@@ -32,7 +31,7 @@ The **xbutil program** command downloads a specified xclbin binary to the progra
     
          - Optional for a single device system. 
          - Mandetory for multiple device system, has to be specified with one or more device BDF information 
-         - To specify all devices –device all  or -d all  can be used 
+         - To specify all devices **–-device all**  or **-d all**  can be used 
     - The --program (or -p) is required to specify the .xclbin file
 
 
@@ -41,17 +40,17 @@ The **xbutil program** command downloads a specified xclbin binary to the progra
 
 .. code-block:: 
 
-    # Single Device
-    xbutil program --p my_kernel.xclbin
+    #Programming a only available device with a xclbin 
+    xbutil program -p my_kernel.xclbin
  
     #Multiple Devices, program all the devices
-    xbutil -program -d all --p my_kernel.xclbin
+    xbutil program -d all -p my_kernel.xclbin
  
     #Multiple Device, programing a single device
-    xbutil program --d 0000:d8:00.0 --p my_kernel.xclbin
+    xbutil program -d 0000:03:00.1 --p my_kernel.xclbin
  
     #Multiple Device, programing two devices
-    xbutil program --d 0000:d8:00.0 0000:d8:00.1 --p my_kernel.xclbin
+    xbutil program -d 0000:03:00.1 0000:d8:00.1 --p my_kernel.xclbin
 
 
 xbutil validate
@@ -72,11 +71,20 @@ The command **xbutil validate** validates the card installation by running preco
 **The details of the supported options**
 
 
-    - The --device or -d switch must be specified with BDF
-    - The --run or -r switch is optional, if not specified all the program is run
+    - The --device (or -d) specifies the target device to be validate 
     
-        - The user can select the desired program by this option
-    - The --format or -f switch is optional, if not specified a text file is generated
+         - Optional for a single device system. 
+         - Mandetory for multiple device system, has to be specified with one or more device BDF information 
+         - To specify all devices **–-device all**  or **-d all**  can be used
+    - The --run (or -r) specifies the perticular test to execute
+        
+        - all (default): runs all the tests
+        - DMA: runs DMA test
+        - Verify kernel: Runs simple kernel test
+    - The --format (or -f) specifies the output format
+    
+        - text (default): The output is shown in the text format, default behavior
+        - json-2021.2: The output is shown in json-2021.2 
 
 
 **Example commands**
@@ -84,10 +92,10 @@ The command **xbutil validate** validates the card installation by running preco
 
 .. code-block:: 
 
-    # For a single device run all the program
+    # For a single device run all the tests 
     xbutil valiadte
  
-    # For a multiple device system run all the program
+    # For a multiple device system run all the tests on all the devices
     xbutil valiadte --d all
  
     # For a multiple device system run "DMA" program
