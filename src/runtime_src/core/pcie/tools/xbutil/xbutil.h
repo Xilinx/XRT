@@ -26,8 +26,8 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
-#include <regex>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/tokenizer.hpp>
 
 #include "xrt.h"
 #include "ert.h"
@@ -410,81 +410,38 @@ public:
     /* new KDS which supported CU subdevice */
     int parseCUSubdevStat() const
     {
-        std::vector<std::string> kdsstat;
+        using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+        boost::char_separator<char> sep(" ");
+        std::vector<std::string> custat;
         std::string errmsg;
-        uint32_t num_cu = 0;
 
-        pcidev::get_dev(m_idx)->sysfs_get("", "kds_stat", errmsg, kdsstat);
-        for (auto& line : kdsstat) {
-           std::smatch sm;
-           std::regex ex("Number of CUs: (\\d+)");
-           std::regex_match(line, sm, ex);
-           /* The fist match result is the entire line */
-           if (sm.size() == 2)
-               num_cu =std::stoul(sm[1]);
-        }
-
-        for (unsigned int i = 0; i < num_cu; ++i) {
-            std::stringstream tag;
-            std::vector<std::string> cuinfo;
-            std::vector<std::string> custat;
-            std::string kname;
-            std::string cname;
+        pcidev::get_dev(m_idx)->sysfs_get("", "kds_custat_raw", errmsg, custat);
+        for (auto& line : custat) {
+            std::string name(":");
             unsigned long long paddr = 0;
             uint32_t usage = 0;
             uint32_t status = 0;
-            std::smatch sm;
+            int cu_idx = 0;
+            int radix = 16;
+            tokenizer tokens(line, sep);
 
-            /* Get overall CU usage from kds_stat */
-            for (auto& line : kdsstat) {
-                std::regex ex("  CU\\[(\\d+)\\] usage\\((\\d+)\\) .+");
-                std::regex_match(line, sm, ex);
-                if (sm.size() == 3) {
-                    if (std::stoul(sm[1]) != i)
-                        continue;
-
-                    usage = std::stoul(sm[2]);
-                }
-            }
-
-            tag.str(std::string());
-            tag << "CU[" << i << "]\0";
-            /* Get CU static information */
-            pcidev::get_dev(m_idx)->sysfs_get(tag.str(), "cu_info", errmsg, cuinfo);
-            for (auto& line : cuinfo) {
-                std::regex ex_kname("Kernel name: (.+)");
-                std::regex ex_cname("Instance\\(CU\\) name: (.+)");
-                std::regex ex_paddr("CU address: (.+)");
-
-                std::regex_match(line, sm, ex_kname);
-                if (sm.size() == 2)
-                    kname = sm[1];
-
-                std::regex_match(line, sm, ex_cname);
-                if (sm.size() == 2)
-                    cname = sm[1];
-
-                std::regex_match(line, sm, ex_paddr);
-                if (sm.size() == 2)
-                    paddr = std::stoull(sm[1], nullptr, 16);
-            }
-
-            /* Get CU statistic information */
-            pcidev::get_dev(m_idx)->sysfs_get(tag.str(), "cu_stat", errmsg, custat);
-            for (auto& line : custat) {
-                std::regex ex("CU status:\\s+(.+)");
-
-                std::regex_match(line, sm, ex);
-                if (sm.size() == 2)
-                    status = std::stoull(sm[1], nullptr, 16);
-            }
+            // Check if we have 5 tokens: cu_index, name, addr, status, usage
+            if (std::distance(tokens.begin(), tokens.end()) == 5) {
+                tokenizer::iterator tok_it = tokens.begin();
+                cu_idx = std::stoi(std::string(*tok_it++));
+                name = std::string(*tok_it++);
+                paddr = std::stoi(std::string(*tok_it++), nullptr, radix);
+                status = std::stoi(std::string(*tok_it++), nullptr, radix);
+                usage = std::stoul(std::string(*tok_it++));
+            } else
+                break;
 
             boost::property_tree::ptree ptCu;
-            ptCu.put( "name",         kname + ":" + cname );
+            ptCu.put( "name",         name );
             ptCu.put( "base_address", paddr );
             ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
-            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
+            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(cu_idx)), ptCu );
         }
 
         return 0;

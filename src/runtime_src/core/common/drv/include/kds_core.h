@@ -161,4 +161,5 @@ void kds_free_command(struct kds_command *xcmd);
 int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 		   int kds_mode, u32 clients, int *echo);
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf);
+ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf);
 #endif

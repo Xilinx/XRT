@@ -42,6 +42,32 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 	return count;
 }
 
+/* Each line is a CU, format:
+ * "cu_idx kernel_name:cu_name address status usage"
+ */
+ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	struct xrt_cu *xcu;
+	char *cu_fmt = "%d %s:%s 0x%llx 0x%x %llu\n";
+	ssize_t sz = 0;
+	int i;
+
+	mutex_lock(&cu_mgmt->lock);
+	for (i = 0; i < cu_mgmt->num_cus; ++i) {
+		xcu = cu_mgmt->xcus[i];
+		sz += sprintf(buf+sz, cu_fmt, i, xcu->info.kname,
+			      xcu->info.iname, xcu->info.addr, xcu->status,
+			      cu_mgmt->cu_usage[i]);
+	}
+	mutex_unlock(&cu_mgmt->lock);
+
+	if (sz)
+		buf[sz++] = 0;
+
+	return sz;
+}
+
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
