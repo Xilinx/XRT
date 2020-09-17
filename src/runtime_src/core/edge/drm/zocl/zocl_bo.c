@@ -918,15 +918,18 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
 		memp->zm_size = md->m_size * 1024;
 		memp->zm_used = 1;
 
-		if (!strstr(md->m_tag, "MIG")) {
-			memp->zm_type = ZOCL_MEM_TYPE_CMA;
-			continue;
+		if (strstr(md->m_tag, "MIG") || strstr(md->m_tag, "LPDDR")) {
+			if (strstr(md->m_tag, "MIG"))
+				memp->zm_type = ZOCL_MEM_TYPE_PLDDR;
+			else if (strstr(md->m_tag, "LPDDR"))
+				memp->zm_type = ZOCL_MEM_TYPE_PLDDR;
+
+			memp->zm_mm = vzalloc(sizeof(struct drm_mm));
+			drm_mm_init(memp->zm_mm, memp->zm_base_addr, memp->zm_size);
 		}
+		else
+			memp->zm_type = ZOCL_MEM_TYPE_CMA;
 
-		memp->zm_mm = vzalloc(sizeof(struct drm_mm));
-		memp->zm_type = ZOCL_MEM_TYPE_PLDDR;
-
-		drm_mm_init(memp->zm_mm, memp->zm_base_addr, memp->zm_size);
 	}
 }
 
