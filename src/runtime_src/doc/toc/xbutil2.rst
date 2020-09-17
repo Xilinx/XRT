@@ -9,6 +9,7 @@ The xbutil command options are
     - xbutil validate
     - xbutil examine
     - xbutil reset
+    - xbutil advanced 
 
 
 xbutil program
@@ -185,3 +186,9 @@ This command can be used to reset one or more devices.
     
     xbutil reset -d 0000:65:00.1 -t hot
     
+
+
+xbutil advanced
+~~~~~~~~~~~~~~~
+
+Disclaimer: This may change 
