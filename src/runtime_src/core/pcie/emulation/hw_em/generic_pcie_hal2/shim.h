@@ -32,6 +32,7 @@
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
+#include "core/common/query_requests.h"
 
 #include "mem_model.h"
 #include "mbscheduler.h"
@@ -52,7 +53,7 @@
 #endif
 
 namespace xclhwemhal2 {
-
+using key_type = xrt_core::query::key_type;
 using addr_type = uint64_t;
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
 
@@ -216,8 +217,7 @@ using addr_type = uint64_t;
       bool isMBSchedulerEnabled();
       uint64_t getErtCmdQAddress();
       uint64_t getErtBaseAddress();
-      bool isM2MEnabled();
-      bool isNoDMAEnabled();
+      int deviceQuery(key_type queryKey);
 
       std::string getERTVersion();
       bool isLegacyErt();
@@ -263,7 +263,7 @@ using addr_type = uint64_t;
 
       std::string getSimulatorType(const std::string& binaryDirectory);
       void createPreSimScript(const std::string& wcfgFilePath, std::string& preSimScriptPath);
-      void constructQueryTable();
+      void constructQueryTable();     
 
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
@@ -351,7 +351,7 @@ using addr_type = uint64_t;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
       boost::property_tree::ptree mPlatformData;
-      std::map<std::string, std::string> mQueryTable;
+      std::map<key_type, std::string> mQueryTable;
       std::set<unsigned int > mImportedBOs;
       uint64_t mCuBaseAddress;
       bool     mVersalPlatform;
