@@ -163,6 +163,13 @@ get_mgmtpf_device(device::id_type id) const
   return std::shared_ptr<device_linux>(new device_linux(nullptr, id, false));
 }
 
+void
+system_linux::
+program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const 
+{
+  throw std::runtime_error("plp program is not supported");
+}
+
 namespace edge_linux {
 
 std::shared_ptr<device>

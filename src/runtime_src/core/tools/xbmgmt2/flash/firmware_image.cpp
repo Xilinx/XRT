@@ -427,9 +427,11 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
         if (!boost::filesystem::exists(root) || !boost::filesystem::is_directory(root))
             continue;
 
-        for (auto const & iter : boost::filesystem::recursive_directory_iterator(root)) {
-            if ((iter.path().extension() == ".xsabin" || iter.path().extension() == ".dsabin")) {
-                DSAInfo dsa(iter.path().string());
+        boost::filesystem::recursive_directory_iterator end_iter;
+        // for (auto const & iter : boost::filesystem::recursive_directory_iterator(root)) {
+        for(boost::filesystem::recursive_directory_iterator iter(root); iter != end_iter; ++iter) {
+            if ((iter->path().extension() == ".xsabin" || iter->path().extension() == ".dsabin")) {
+                DSAInfo dsa(iter->path().string());
                 installedDSA.push_back(dsa);
             }
         }
