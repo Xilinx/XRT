@@ -69,7 +69,7 @@ xbmgmt status
         - platform: Reports platform related information
         - scan: Report device scanning information
         
-     - The --output (or -o) is optional, if not specified the report is shown in stdout. 
+    - The --output (or -o) is optional, if not specified the report is shown in stdout. 
 
 
 **Example commands** 
