@@ -16,6 +16,7 @@
 #include <math.h>
 #include <sys/time.h>
 #include <xcl2.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>                                        
 #include <boost/property_tree/json_parser.hpp>
 
@@ -35,10 +36,11 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  int NUM_KERNEL ;                                                           
-  std::string path = argv[1];
+  int NUM_KERNEL;
+  bool file_found = false;  
+  std::string test_path = argv[1];
   std::string filename = "/platform.json";
-  std::string platform_json = path+filename;
+  std::string platform_json = test_path+filename;
 
   try{
       boost::property_tree::ptree loadPtreeRoot;                                                    
@@ -46,18 +48,34 @@ int main(int argc, char **argv) {
       boost::property_tree::ptree temp ;                                                            
   
       temp = loadPtreeRoot.get_child("total_banks");
-
       NUM_KERNEL =  temp.get_value<int>();  
+
+      boost::filesystem::path p(test_path);
+      for (auto i = boost::filesystem::directory_iterator(p); i != boost::filesystem::directory_iterator(); i++)
+       {
+            if (!is_directory(i->path())) //we eliminate directories
+            {
+                if(i->path().filename().string() == "slavebridge.xclbin")
+                    file_found = true;
+            }
+        }
+
+  } catch (const boost::filesystem::filesystem_error & e) {
+      std::cout << "Exception!!!! " << e.what();
   } catch (const std::exception & e) {
       std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
       msg += e.what();
       msg += ").";
       std::cout << msg;
     }
+  if(!file_found){
+      std::cout << "\nNOT SUPPORTED" << std::endl;
+      return EOPNOTSUPP; 
+  }
 
   double DATA_SIZE = 1024 * 1024 * 16; // 16 MB
   std::string b_file = "/slavebridge.xclbin";
-  std::string binaryFile = path+b_file;
+  std::string binaryFile = test_path+b_file;
   size_t vector_size_bytes = sizeof(char) * DATA_SIZE;
   cl_int err;
   cl::Context context;
@@ -116,20 +134,10 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  std::vector<char, aligned_allocator<char>> input_host(DATA_SIZE);
-  std::vector<char, aligned_allocator<char>> output_host[NUM_KERNEL];
-
-  for (int i = 0; i < NUM_KERNEL; i++) {
-    output_host[i].resize(DATA_SIZE);
-  }
+  std::vector<unsigned char, aligned_allocator<unsigned char>> input_host(DATA_SIZE);
 
   for (uint32_t i = 0; i < DATA_SIZE; i++) {
     input_host[i] = i % 256;
-  }
-
-  // Initializing output vectors to zero
-  for (int i = 0; i < NUM_KERNEL; i++) {
-    std::fill(output_host[i].begin(), output_host[i].end(), 0);
   }
 
   std::vector<cl::Buffer> input_buffer(NUM_KERNEL);
@@ -139,25 +147,40 @@ int main(int argc, char **argv) {
   std::vector<cl_mem_ext_ptr_t> output_buffer_ext(NUM_KERNEL);
   for (int i = 0; i < NUM_KERNEL; i++) {
     input_buffer_ext[i].flags = XCL_MEM_EXT_HOST_ONLY;
-    input_buffer_ext[i].obj = input_host.data();
+    input_buffer_ext[i].obj = nullptr;
     input_buffer_ext[i].param = 0;
 
     output_buffer_ext[i].flags = XCL_MEM_EXT_HOST_ONLY;
-    output_buffer_ext[i].obj = output_host[i].data();
+    output_buffer_ext[i].obj = nullptr;
     output_buffer_ext[i].param = 0;
   }
 
   for (int i = 0; i < NUM_KERNEL; i++) {
     OCL_CHECK(err, input_buffer[i] = cl::Buffer(
-                       context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE |
+                       context, CL_MEM_READ_WRITE|
                                     CL_MEM_EXT_PTR_XILINX,
                        vector_size_bytes, &input_buffer_ext[i], &err));
     OCL_CHECK(err, output_buffer[i] = cl::Buffer(
-                       context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE |
+                       context, CL_MEM_READ_WRITE |
                                     CL_MEM_EXT_PTR_XILINX,
                        vector_size_bytes, &output_buffer_ext[i], &err));
   }
 
+  unsigned char *map_input_buffer[NUM_KERNEL];
+  unsigned char *map_output_buffer[NUM_KERNEL];
+  for(int i = 0; i < NUM_KERNEL; i++){  
+  OCL_CHECK(err, map_input_buffer[i] = (unsigned char *)q.enqueueMapBuffer(
+                     (input_buffer[i]), CL_FALSE, CL_MAP_WRITE_INVALIDATE_REGION,
+                     0, vector_size_bytes, nullptr, nullptr, &err));
+  OCL_CHECK(err, err = q.finish());
+  }
+
+    /* prepare data to be written to the device */
+  for(int j=0; j < NUM_KERNEL; j++){
+    for (size_t i = 0; i < vector_size_bytes; i++) {
+      map_input_buffer[j][i] = input_host[i];
+    }
+  }
   double globalbuffersizeinbeats = DATA_SIZE / (typesize / 8);
   uint32_t tests = (uint32_t)log2(globalbuffersizeinbeats) + 1;
 
@@ -187,12 +210,6 @@ int main(int argc, char **argv) {
         OCL_CHECK(err, err = krnls[i].setArg(3, reps));
       }
 
-      // Copy input data to device global memory
-      for (int i = 0; i < NUM_KERNEL; i++) {
-        OCL_CHECK(err, err = q.enqueueMigrateMemObjects(
-                           {input_buffer[i]}, 0 /* 0 means from host*/));
-      }
-      q.finish();
       double start, end;
       start = getMicroTime();
       for (int i = 0; i < NUM_KERNEL; i++) {
@@ -200,19 +217,20 @@ int main(int argc, char **argv) {
       }
       q.finish();
       end = getMicroTime();
-      // copy results back from OpenCL buffer
-      for (int i = 0; i < NUM_KERNEL; i++) {
-        OCL_CHECK(err, err = q.enqueueMigrateMemObjects(
-                           {output_buffer[i]}, CL_MIGRATE_MEM_OBJECT_HOST));
+      
+      for(int i=0; i<NUM_KERNEL; i++){
+      OCL_CHECK(err, map_output_buffer[i] = (unsigned char *)q.enqueueMapBuffer(
+                   (output_buffer[i]), CL_FALSE, CL_MAP_READ, 0, vector_size_bytes, nullptr,
+                    nullptr, &err));
+      OCL_CHECK(err, err = q.finish());
       }
-      q.finish();
       // check
       for (int i = 0; i < NUM_KERNEL; i++) {
         for (uint32_t j = 0; j < beats * (typesize / 8); j++) {
-          if (output_host[i][j] != input_host[j]) {
+          if (map_output_buffer[i][j] != input_host[j]) {
             printf(
                 "ERROR : kernel failed to copy entry %i input %i output %i\n",
-                j, input_host[j], output_host[i][j]);
+                j, input_host[j], map_output_buffer[i][j]);
             return EXIT_FAILURE;
           }
         }
