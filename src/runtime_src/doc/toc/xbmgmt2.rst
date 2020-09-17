@@ -103,6 +103,13 @@ xbmgmt reset
 
     - The --device (or -d) used to specify the device to be reset
     - The --type (or -t) can be used to specify the reset type. Currently only supported reset types are
+      
+         - hot (default): Reset the entire device
+         - kernel: Reset the kernel communication link
+         - ert: Reset the management processor
+         - ecc: Reset ecc memory
+         - soft-kernel: Reset soft kernel
+         
     
 
 **Example commands** 
@@ -110,8 +117,10 @@ xbmgmt reset
 
 .. code-block::
  
+    # Reset a single device entirely (default hot reset)
     xbutil reset -d 0000:65:00.1
     
-    xbutil reset -d 0000:65:00.1 -t hot
+    # Reset kernel communication link of two devices
+    xbutil reset -d 0000:65:00.1 0000:65:00.1 -t kernel
 
 
