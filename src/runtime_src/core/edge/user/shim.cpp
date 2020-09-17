@@ -50,6 +50,7 @@
 #include "plugin/xdp/hal_device_offload.h"
 
 #include "plugin/xdp/aie_trace.h"
+#include "plugin/xdp/aie_profile.h"
 #endif
 
 namespace {
@@ -1427,8 +1428,7 @@ void
 shim::
 registerAieArray()
 {
-//not registering AieArray in hw_emu as it is crashing in hw_emu. We can fix the
-//issue once move to AIE-V2 is done
+  delete aieArray.release();
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
 }
 
@@ -1443,11 +1443,14 @@ int
 shim::
 getPartitionFd(drm_zocl_aie_fd &aiefd)
 {
-  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd);
-  if (ret)
-    return -errno;
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd) ? -errno : 0;
+}
 
-  return 0;
+int
+shim::
+resetAIEArray(drm_zocl_aie_reset &reset)
+{
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_RESET, &reset) ? -errno : 0;
 }
 #endif
 
@@ -1684,6 +1687,7 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #ifdef ENABLE_HAL_PROFILING
   xdphal::update_device(handle) ;
   xdpaie::update_aie_device(handle);
+  xdpaiectr::update_aie_device(handle);
 #endif
 #endif
 

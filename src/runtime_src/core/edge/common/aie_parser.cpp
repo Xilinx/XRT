@@ -161,10 +161,8 @@ std::vector<counter_type>
 get_profile_counter(const pt::ptree& aie_meta)
 {
   // First grab clock frequency
-  double clockFreqMhz;
-  for (auto& clock_node : aie_meta.get_child("aie_metadata.DeviceData")) {
-    clockFreqMhz = clock_node.second.get<double>("AIEFrequency");
-  }
+    auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+    auto clockFreqMhz = dev_node.get<double>("AIEFrequency");
 
   // Now parse all counters
   std::vector<counter_type> counters;
@@ -173,8 +171,8 @@ get_profile_counter(const pt::ptree& aie_meta)
     counter_type counter;
 
     counter.id = counter_node.second.get<uint32_t>("id");
-    counter.column = counter_node.second.get<uint16_t>("column");
-    counter.row = counter_node.second.get<uint16_t>("row");
+    counter.column = counter_node.second.get<uint16_t>("core_column");
+    counter.row = counter_node.second.get<uint16_t>("core_row");
     counter.counterNumber = counter_node.second.get<uint8_t>("counterId");
     counter.startEvent = counter_node.second.get<uint8_t>("start");
     counter.endEvent = counter_node.second.get<uint8_t>("stop");

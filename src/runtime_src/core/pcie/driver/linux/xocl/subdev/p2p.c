@@ -547,13 +547,13 @@ static int p2p_mem_init(struct p2p *p2p)
 
 		p2p->remap_slot_sz = p2p->remap_range /
 			remap_get_max_slot_num(p2p);
-		/* range is 2 ** n */
-		p2p->remap_slot_num = p2p->remap_range / p2p->remap_slot_sz;
-		p2p->remap_slots = vzalloc(sizeof(struct p2p_remap_slot) *
-			p2p->remap_slot_num);
-		if (!p2p->remap_slots)
-			return -ENOMEM;
 	}
+	/* range is 2 ** n */
+	p2p->remap_slot_num = p2p->remap_range / p2p->remap_slot_sz;
+	p2p->remap_slots = vzalloc(sizeof(struct p2p_remap_slot) *
+		p2p->remap_slot_num);
+	if (!p2p->remap_slots)
+		return -ENOMEM;
 
 	p2p->p2p_mem_chunk_num = p2p->remap_range / XOCL_P2P_CHUNK_SIZE;
 	p2p->p2p_mem_chunks = vzalloc(sizeof(struct p2p_mem_chunk) *
@@ -850,7 +850,6 @@ static int p2p_mem_map(struct platform_device *pdev,
 
 	p2p_info(p2p, "map bank addr 0x%lx, size %ld, offset %ld, len %ld",
 			bank_addr, bank_size, offset, len);
-
 	bank_off = p2p_bar_map(p2p, bank_addr, bank_size,
 		XOCL_P2P_CHUNK_SIZE);
 	if (bank_off < 0) {

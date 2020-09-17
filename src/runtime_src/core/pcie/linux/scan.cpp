@@ -464,7 +464,9 @@ get_subdev_path(const std::string& subdev, uint idx)
 
   path += subdev;
   path += is_mgmt() ? ".m" : ".u";
-  path += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
+  //if the domain number is big, the shift overflows, hence need to cast
+  uint32_t dom = static_cast<uint32_t>(domain);
+  path += std::to_string( (dom<<16)+ (bus<<8) + (dev<<3) + func);
   path += "." + std::to_string(idx);
   return path;
 }
