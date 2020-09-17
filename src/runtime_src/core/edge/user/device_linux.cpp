@@ -19,7 +19,6 @@
 #include "core/common/query_requests.h"
 
 #include "xrt.h"
-#include "shim.h"
 #include "zynq_dev.h"
 
 #include <string>
@@ -74,20 +73,27 @@ struct devInfo
   }
 };
 
-struct kds_custats
+struct kds_cu_info
 {
-  using result_type = query::kds_custats::result_type;
+  using result_type = query::kds_cu_info::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type key)
   {
-    std::string errmsg;
-    result_type cuStats;
     auto edev = get_edgedev(device);
 
-    edev->sysfs_get("kds_custat", errmsg, cuStats);
+    std::vector<std::string> stats;
+    std::string errmsg;
+    edev->sysfs_get("kds_custat", errmsg, stats);
     if (!errmsg.empty())
       throw std::runtime_error(errmsg);
+
+    result_type cuStats;
+    for (auto& line : stats) {
+        uint32_t ba = 0, usg = 0, sta = 0;
+        sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &usg, &sta);
+        cuStats.push_back(std::make_tuple(ba, usg, sta));
+    }
 
     return cuStats;
   }
@@ -197,7 +203,7 @@ initialize_query_table()
   emplace_func0_get<query::rom_ddr_bank_count_max, devInfo>();
 
   emplace_func0_get<query::clock_freqs_mhz, devInfo>();
-  emplace_func0_get<query::kds_custats, kds_custats>();
+  emplace_func0_get<query::kds_cu_info, kds_cu_info>();
  
   emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");

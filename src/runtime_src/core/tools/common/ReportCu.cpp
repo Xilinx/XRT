@@ -23,51 +23,18 @@
 
 namespace qr = xrt_core::query;
 
-enum class cu_stat : unsigned short {
-  usage = 0,
-  addr,
-  stat
-};
-
-uint32_t 
-parseComputeUnitStat(const std::vector<std::string>& custat, uint64_t offset, cu_stat kind) 
-{
-  uint32_t ret = 0;
-
-  for (auto& line : custat) {
-    uint32_t ba = 0, cnt = 0, sta = 0;
-#ifdef _WIN32
-    sscanf_s(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
-#else
-    sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
-#endif
-
-    if (offset != (uint64_t)ba)
-      continue;
-
-    if (kind == cu_stat::usage)
-      ret = cnt;
-    else if (kind == cu_stat::stat)
-      ret = sta;
-
-    return ret;
-  }
-
-  return ret;
-}
-
 boost::property_tree::ptree
 populate_cus(const xrt_core::device *device, const std::string& desc)
 {
   boost::property_tree::ptree pt;
   std::vector<char> ip_buf;
-  std::vector<std::string> cu_stats;
+  std::vector<std::tuple<int, int, int>> cu_stats;
 
   pt.put("description", desc);
- 
+
   try {
     ip_buf = xrt_core::device_query<qr::ip_layout_raw>(device);
-    cu_stats = xrt_core::device_query<qr::kds_custats>(device);
+    cu_stats = xrt_core::device_query<qr::kds_cu_info>(device);
   } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
   }
@@ -81,18 +48,19 @@ populate_cus(const xrt_core::device *device, const std::string& desc)
     if (layout->m_ip_data[i].m_type != IP_KERNEL)
       continue;
 
-    uint32_t status = parseComputeUnitStat(cu_stats,
-			layout->m_ip_data[i].m_base_address, cu_stat::stat);
-    uint32_t usage = parseComputeUnitStat(cu_stats,
-			layout->m_ip_data[i].m_base_address, cu_stat::usage);
-    boost::property_tree::ptree ptCu;
-    std::string ss_addr = boost::str(boost::format("0x%x") %
-				     layout->m_ip_data[i].m_base_address);
-    ptCu.put( "name",         layout->m_ip_data[i].m_name);
-    ptCu.put( "base_address", ss_addr);
-    ptCu.put( "usage",        usage);
-    ptCu.put( "status",       xrt_core::utils::parse_cu_status(status));
-    ptCu_array.push_back(std::make_pair("", ptCu));
+    for(auto& stat : cu_stats) {
+      if (layout->m_ip_data[i].m_base_address == (uint64_t)std::get<0>(stat)) {
+        uint32_t usage = std::get<1>(stat);
+        uint32_t status = std::get<2>(stat);
+
+        boost::property_tree::ptree ptCu;
+        ptCu.put( "name",         layout->m_ip_data[i].m_name);
+        ptCu.put( "base_address", boost::str(boost::format("0x%x") % std::get<0>(stat)));
+        ptCu.put( "usage",        usage);
+        ptCu.put( "status",       xrt_core::utils::parse_cu_status(status));
+        ptCu_array.push_back(std::make_pair("", ptCu));
+      }
+    }
   }
 
   pt.add_child( std::string("compute_units"), ptCu_array);
@@ -114,7 +82,7 @@ ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   // There can only be 1 root node
-  _pt.add_child("Compute_Unit", populate_cus(_pDevice, "Compute Units Information"));
+  _pt.add_child("compute_unit", populate_cus(_pDevice, "Compute Units Information"));
 }
 
 void 
@@ -126,21 +94,20 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
   boost::property_tree::ptree empty_ptree;
   getPropertyTreeInternal(_pDevice, _pt);
 
-  _output << boost::format("%s\n") % _pt.get<std::string>("Compute_Unit.description");
+  _output << _pt.get<std::string>("compute_unit.description") << std::endl;
   _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
-  int index = 0;
   try {
-    boost::property_tree::ptree& v = _pt.get_child("Compute_Unit.compute_units");
+    int index = 0;
+    boost::property_tree::ptree& v = _pt.get_child("compute_unit.compute_units");
     for(auto& kv : v) {
       boost::property_tree::ptree& cu = kv.second;
-      _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") % index %
+      _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") % index++ %
 	      cu.get<std::string>("name") % cu.get<std::string>("base_address") %
 	      cu.get<std::string>("usage") % cu.get<std::string>("status");
-      index++;
     }
   }
-  catch( std::exception const&) {
-      // eat the exception, probably bad path
+  catch( std::exception const& e) {
+    _output <<  e.what() << std::endl;
   }
 
   _output << std::endl;

@@ -51,7 +51,8 @@ static ssize_t kds_custat_show(struct device *dev,
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 	ssize_t size = 0;
 	phys_addr_t paddr;
-	u32 usage, status;
+	u32 usage;
+        u32 status;
 	int i;
 
 	if (!zdev)

@@ -52,15 +52,13 @@ struct bdf
   }
 };
 
-struct kds_custats
+struct kds_cu_info
 {
-  using result_type = query::kds_custats::result_type;
+  using result_type = query::kds_cu_info::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    std::string errmsg;
-    result_type cuStats;
     auto pdev = get_pcidev(device);
   
     if (!std::getenv("XCL_SKIP_CU_READ")) {
@@ -68,7 +66,7 @@ struct kds_custats
 	    // lock xclbin
             auto dev = const_cast <xrt_core::device *>(device);
             auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(dev));
-            dev->open_context(uuid.get(), -1, true);
+            dev->open_context(uuid.get(), KDS_VIRT_CU, true);
             auto at_exit = [] (auto dev, auto uuid) { dev->close_context(uuid.get(), -1); };
             xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, dev, uuid));
             
@@ -80,11 +78,20 @@ struct kds_custats
             // xclbin_lock failed, safe to ignore
 	}
     }
-  
-    pdev->sysfs_get("mb_scheduler", "kds_custat", errmsg, cuStats);
+ 
+    std::vector<std::string> stats; 
+    std::string errmsg;
+    pdev->sysfs_get("mb_scheduler", "kds_custat", errmsg, stats);
     if (!errmsg.empty())
       throw std::runtime_error(errmsg);
-    
+
+    result_type cuStats;
+    for (auto& line : stats) {
+	uint32_t ba = 0, usg = 0, sta = 0;
+	sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &usg, &sta);
+	cuStats.push_back(std::make_tuple(ba, usg, sta));
+    }
+
     return cuStats;
   }
 };
@@ -396,7 +403,7 @@ initialize_query_table()
   emplace_sysfs_get<query::interface_uuids>             ("", "interface_uuids");
 
   emplace_func0_request<query::pcie_bdf,                bdf>();
-  emplace_func0_request<query::kds_custats,             kds_custats>();
+  emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
 }
 
 struct X { X() { initialize_query_table(); }};

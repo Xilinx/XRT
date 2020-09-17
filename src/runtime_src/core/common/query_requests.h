@@ -74,7 +74,7 @@ enum class key_type
   ip_layout_raw,
   clock_freq_topology_raw,
   dma_stream,
-  kds_custats,
+  kds_cu_info,
 
   xmc_version,
   xmc_board_name,
@@ -621,10 +621,10 @@ struct ip_layout_raw : request
   get(const device*) const = 0;
 };
 
-struct kds_custats : request
+struct kds_cu_info : request
 {
-  using result_type = std::vector<std::string>;
-  static const key_type key = key_type::kds_custats;
+  using result_type = std::vector<std::tuple<int, int, int>>;
+  static const key_type key = key_type::kds_cu_info;
 
   virtual boost::any
   get(const device*) const = 0;
