@@ -84,8 +84,7 @@ queue(event* ev)
   if (!ooo && m_last_queued_event.get()) {
     m_last_queued_event->chain(ev);
 
-    xocl::profile::log_dependency(ev->get_uid(),
-				  m_last_queued_event->get_uid()) ;
+    xocl::profile::log_dependency(ev->get_uid(), m_last_queued_event->get_uid()) ;
     //auto tmp_lval = static_cast<cl_event>(m_last_queued_event.get());
     //xocl::profile::log_dependencies(ev, 1, &tmp_lval);
   }

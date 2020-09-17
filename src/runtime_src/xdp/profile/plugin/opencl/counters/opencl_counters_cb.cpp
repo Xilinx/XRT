@@ -224,9 +224,13 @@ namespace xdp {
 } // end namespace xdp
 
 extern "C"
-void log_function_call_start(const char* functionName, unsigned long int queueAddress, bool isOOO)
+void log_function_call_start(const char* functionName,
+			     unsigned long long int queueAddress,
+			     bool isOOO)
 {
-  xdp::log_function_call_start(functionName, queueAddress, isOOO) ;
+  xdp::log_function_call_start(functionName,
+			       static_cast<uint64_t>(queueAddress),
+			       isOOO) ;
 }
 
 extern "C"
@@ -238,16 +242,21 @@ void log_function_call_end(const char* functionName)
 extern "C"
 void log_kernel_execution(const char* kernelName,
 			  bool isStart,
-			  unsigned long int kernelInstanceId,
-			  unsigned long int contextId,
-			  unsigned long int commandQueueId,
+			  unsigned long long int kernelInstanceId,
+			  unsigned long long int contextId,
+			  unsigned long long int commandQueueId,
 			  const char* deviceName,
 			  const char* globalWorkSize,
 			  const char* localWorkSize)
 {
-  xdp::log_kernel_execution(kernelName, isStart, kernelInstanceId,
-			    contextId, commandQueueId, deviceName,
-			    globalWorkSize, localWorkSize) ;
+  xdp::log_kernel_execution(kernelName,
+			    isStart,
+			    static_cast<uint64_t>(kernelInstanceId),
+			    static_cast<uint64_t>(contextId),
+			    static_cast<uint64_t>(commandQueueId),
+			    deviceName,
+			    globalWorkSize,
+			    localWorkSize) ;
 }
 
 extern "C"
@@ -263,28 +272,41 @@ void log_compute_unit_execution(const char* cuName,
 }
 
 extern "C"
-void counter_action_read(unsigned long int contextId,
-			 unsigned long int numDevices,
+void counter_action_read(unsigned long long int contextId,
+			 unsigned long long int numDevices,
 			 const char* deviceName,
-			 unsigned long int size,
+			 unsigned long long int size,
 			 bool isStart,
 			 bool isP2P,
-			 unsigned long int address,
-			 unsigned long int commandQueueId)
+			 unsigned long long int address,
+			 unsigned long long int commandQueueId)
 {
-  xdp::counter_action_read(contextId, numDevices, deviceName, size, isStart, isP2P, address, commandQueueId);
+  xdp::counter_action_read(static_cast<uint64_t>(contextId),
+			   static_cast<uint64_t>(numDevices),
+			   deviceName,
+			   static_cast<uint64_t>(size),
+			   isStart,
+			   isP2P,
+			   static_cast<uint64_t>(address),
+			   static_cast<uint64_t>(commandQueueId));
 }
 
 extern "C"
-void counter_action_write(unsigned long int contextId,
+void counter_action_write(unsigned long long int contextId,
 			  const char* deviceName,
-			  unsigned long int size,
+			  unsigned long long int size,
 			  bool isStart,
 			  bool isP2P,
-			  unsigned long int address,
-			  unsigned long int commandQueueId)
+			  unsigned long long int address,
+			  unsigned long long int commandQueueId)
 {
-  xdp::counter_action_write(contextId, deviceName, size, isStart, isP2P, address, commandQueueId);
+  xdp::counter_action_write(static_cast<uint64_t>(contextId),
+			    deviceName,
+			    static_cast<uint64_t>(size),
+			    isStart,
+			    isP2P,
+			    static_cast<uint64_t>(address),
+			    static_cast<uint64_t>(commandQueueId));
 }
 
 extern "C"

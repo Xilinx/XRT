@@ -32,30 +32,31 @@ void function_end(const char* functionName,
 		  unsigned long long int functionID);
 
 extern "C"
-void add_dependency(unsigned long int id, unsigned long int dependency) ;
+void add_dependency(unsigned long long int id,
+		    unsigned long long int dependency) ;
 
 extern "C"
-void action_read(unsigned int id,
+void action_read(unsigned long long int id,
 		 bool isStart,
 		 unsigned long long int deviceAddress,
 		 const char* memoryResource,
 		 size_t bufferSize,
 		 bool isP2P,
-		 unsigned long int* dependencies,
-		 unsigned int numDependencies) ;
+		 unsigned long long int* dependencies,
+		 unsigned long long int numDependencies) ;
 
 extern "C"
-void action_write(unsigned int id,
+void action_write(unsigned long long int id,
 		  bool isStart,
 		  unsigned long long int deviceAddress,
 		  const char* memoryResource,
 		  size_t bufferSize,
 		  bool isP2P,
-		  unsigned long int* dependencies,
-		  unsigned int numDependencies) ;
+		  unsigned long long int* dependencies,
+		  unsigned long long int numDependencies) ;
 
 extern "C"
-void action_copy(unsigned int id,
+void action_copy(unsigned long long int id,
 		 bool isStart,
 		 unsigned long long int srcDeviceAddress,
 		 const char* srcMemoryResource,
@@ -63,19 +64,20 @@ void action_copy(unsigned int id,
 		 const char* dstMemoryResource,
 		 size_t bufferSize,
 		 bool isP2P,
-		 unsigned long int* dependencies,
-		 unsigned int numDependencies) ;
+		 unsigned long long int* dependencies,
+		 unsigned long long int numDependencies) ;
 
 extern "C"
-void action_ndrange(unsigned int id, bool isStart,
+void action_ndrange(unsigned long long int id,
+		    bool isStart,
 		    const char* deviceName,
 		    const char* binaryName,
 		    const char* kernelName,
 		    size_t workgroupConfigurationX,
 		    size_t workgroupConfigurationY,
 		    size_t workgroupConfiguraionZ,
-		    int workgroupSize,
-		    unsigned long int* dependencies,
-		    unsigned int numDependencies) ;
+		    size_t workgroupSize,
+		    unsigned long long int* dependencies,
+		    unsigned long long int numDependencies) ;
 
 #endif

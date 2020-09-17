@@ -35,26 +35,31 @@ namespace {
 
   // All of the function pointers that will be dynamically linked to
   //  callback functions on the XDP plugin side
-  std::function<void (const char*, uint64_t, uint64_t)> function_start_cb ;
-  std::function<void (const char*, uint64_t, uint64_t)> function_end_cb ;
-  std::function<void (unsigned long int, unsigned long int)> dependency_cb ;
-  std::function<void (unsigned int, 
+  std::function<void (const char*,
+		      unsigned long long int,
+		      unsigned long long int)> function_start_cb ;
+  std::function<void (const char*,
+		      unsigned long long int,
+		      unsigned long long int)> function_end_cb ;
+  std::function<void (unsigned long long int,
+		      unsigned long long int)> dependency_cb ;
+  std::function<void (unsigned long long int, 
 		      bool, 
 		      unsigned long long int, 
 		      const char*, 
 		      size_t, 
 		      bool, 
-		      unsigned long int*, 
-		      unsigned int)> read_cb ;
-  std::function<void (unsigned int,
+		      unsigned long long int*, 
+		      unsigned long long int)> read_cb ;
+  std::function<void (unsigned long long int,
 		      bool,
 		      unsigned long long int,
 		      const char*,
 		      size_t,
 		      bool,
-		      unsigned long int*,
-		      unsigned int)> write_cb ;
-  std::function<void (unsigned int,
+		      unsigned long long int*,
+		      unsigned long long int)> write_cb ;
+  std::function<void (unsigned long long int,
 		      bool,
 		      unsigned long long int,
 		      const char*,
@@ -62,9 +67,9 @@ namespace {
 		      const char*,
 		      size_t,
 		      bool,
-		      unsigned long int*,
-		      unsigned int)> copy_cb ;
-  std::function<void (unsigned int,
+		      unsigned long long int*,
+		      unsigned long long int)> copy_cb ;
+  std::function<void (unsigned long long int,
 		      bool,
 		      const char*,
 		      const char*,
@@ -72,31 +77,31 @@ namespace {
 		      size_t,
 		      size_t,
 		      size_t,
-		      int,
-		      unsigned long int*,
-		      unsigned int)> ndrange_cb ;
+		      size_t,
+		      unsigned long long int*,
+		      unsigned long long int)> ndrange_cb ;
 
   void register_opencl_trace_functions(void* handle)
   {
-    typedef void (*ftype)(const char*, uint64_t, uint64_t) ;
+    typedef void (*ftype)(const char*, unsigned long long int, unsigned long long int) ;
     function_start_cb = (ftype)(xrt_core::dlsym(handle, "function_start")) ;
     if (xrt_core::dlerror() != NULL) function_start_cb = nullptr ;
 
     function_end_cb = (ftype)(xrt_core::dlsym(handle, "function_end")) ;
     if (xrt_core::dlerror() != NULL) function_end_cb = nullptr ;
 
-    typedef void (*dtype)(unsigned long int, unsigned long int) ;
+    typedef void (*dtype)(unsigned long long int, unsigned long long int) ;
     dependency_cb = (dtype)(xrt_core::dlsym(handle, "add_dependency")) ;
     if (xrt_core::dlerror() != NULL) dependency_cb = nullptr ;
 
-    typedef void (*ttype)(unsigned int,
+    typedef void (*ttype)(unsigned long long int,
 			  bool,
 			  unsigned long long int,
 			  const char*,
 			  size_t,
 			  bool,
-			  unsigned long int*,
-			  unsigned int) ;
+			  unsigned long long int*,
+			  unsigned long long int) ;
 
     read_cb = (ttype)(xrt_core::dlsym(handle, "action_read")) ;
     if (xrt_core::dlerror() != NULL) read_cb = nullptr ;
@@ -104,7 +109,7 @@ namespace {
     write_cb = (ttype)(xrt_core::dlsym(handle, "action_write")) ;
     if (xrt_core::dlerror() != NULL) write_cb = nullptr ;
 
-    typedef void (*ctype)(unsigned int,
+    typedef void (*ctype)(unsigned long long int,
 			  bool,
 			  unsigned long long int,
 			  const char*,
@@ -112,13 +117,13 @@ namespace {
 			  const char*,
 			  size_t,
 			  bool,
-			  unsigned long int*,
-			  unsigned int) ;
+			  unsigned long long int*,
+			  unsigned long long int) ;
 
     copy_cb = (ctype)(xrt_core::dlsym(handle, "action_copy")) ;
     if (xrt_core::dlerror() != NULL) copy_cb = nullptr ;
 
-    typedef void (*ntype)(unsigned int,
+    typedef void (*ntype)(unsigned long long int,
 			  bool,
 			  const char*,
 			  const char*,
@@ -126,9 +131,9 @@ namespace {
 			  size_t,
 			  size_t,
 			  size_t,
-			  int,
-			  unsigned long int*,
-			  unsigned int) ;
+			  size_t,
+			  unsigned long long int*,
+			  unsigned long long int) ;
     
     ndrange_cb = (ntype)(xrt_core::dlsym(handle, "action_ndrange")) ;
     if (xrt_core::dlerror() != NULL) ndrange_cb = nullptr ;
@@ -180,8 +185,8 @@ namespace {
 // Ths anonymous namespace is for helper functions used in this file
 namespace {
 
-  static void get_dependency_information(uint64_t*& dependencies,
-					 unsigned int& numDependencies,
+  static void get_dependency_information(unsigned long long int*& dependencies,
+					 uint64_t& numDependencies,
 					 xocl::event* e)
   {
     try {
@@ -191,7 +196,7 @@ namespace {
       if (currRange.size() != 0)
       {
 	numDependencies = currRange.size() ;
-	dependencies = new uint64_t[numDependencies] ;
+	dependencies = new unsigned long long int[numDependencies] ;
 
 	int i = 0 ;
 	for (auto it = currRange.begin() ; it != currRange.end() ; ++it)
@@ -266,10 +271,11 @@ namespace xocl {
     }
 
     // ******** OpenCL Host Trace Callbacks *********
-    void log_dependency(unsigned long int id, unsigned long int dependency)
+    void log_dependency(uint64_t id, uint64_t dependency)
     {
       if (dependency_cb)
-	dependency_cb(id, dependency) ;
+	dependency_cb(static_cast<unsigned long long int>(id),
+		      static_cast<unsigned long long int>(dependency)) ;
     }
 
     //static std::map<uint64_t, uint64_t> XRTIdToXDPId ;
@@ -288,8 +294,8 @@ namespace xocl {
 	       auto ext_flags = xmem->get_ext_flags() ;
 	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 	       
-	       uint64_t* dependencies = nullptr ;
-	       unsigned int numDependencies = 0 ;
+	       unsigned long long int* dependencies = nullptr ;
+	       uint64_t numDependencies = 0 ;
 
 	       // For start events, dig in and find all the information
 	       //  necessary to show the tooltip and send it.
@@ -311,9 +317,9 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 read_cb(e->get_uid(),//XRTIdToXDPId[e->get_uid()], 
+		 read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 true,
-			 address,
+			 static_cast<unsigned long long int>(address),
 			 bank.c_str(),
 			 xmem->get_size(),
 			 isP2P,
@@ -325,7 +331,7 @@ namespace xocl {
 	       // For end events, just send the minimal information
 	       else if (status == CL_COMPLETE)
 	       {
-		 read_cb(e->get_uid(),//XRTIdToXDPId[e->get_uid()],
+		 read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 false,
 			 0,
 			 nullptr,
@@ -351,8 +357,8 @@ namespace xocl {
 	       auto ext_flags = xmem->get_ext_flags() ;
 	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 	       
-	       uint64_t* dependencies = nullptr ;
-	       unsigned int numDependencies = 0 ;
+	       unsigned long long int* dependencies = nullptr ;
+	       uint64_t numDependencies = 0 ;
 
 	       // For start events, dig in and find all the information
 	       //  necessary to show the tooltip and send it.
@@ -374,9 +380,9 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 write_cb(e->get_uid(),//XRTIdToXDPId[e->get_uid()],
+		 write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			  true,
-			  address,
+			  static_cast<unsigned long long int>(address),
 			  bank.c_str(),
 			  xmem->get_size(),
 			  isP2P,
@@ -388,7 +394,7 @@ namespace xocl {
 	       // For end events, just send the minimal information
 	       else if (status == CL_COMPLETE)
 	       {
-		 write_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		 write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			  false,
 			  0,
 			  nullptr,
@@ -419,8 +425,8 @@ namespace xocl {
 	       // Ignore if the buffer is *not* resident on the device
 	       if (!(xmem->is_resident(device))) return ;
 
-	       uint64_t* dependencies = nullptr ;
-	       unsigned int numDependencies = 0 ;
+	       unsigned long long int* dependencies = nullptr ;
+	       uint64_t numDependencies = 0 ;
 
 	       if (status == CL_RUNNING)
 	       {
@@ -439,9 +445,9 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 read_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		 read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 true,
-			 address,
+			 static_cast<unsigned long long int>(address),
 			 bank.c_str(),
 			 xmem->get_size(),
 			 false, // isP2P
@@ -452,7 +458,7 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 read_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		 read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 false,
 			 0,
 			 nullptr,
@@ -486,8 +492,8 @@ namespace xocl {
 		 //  information we need from the event
 		 auto xmem = xocl::xocl(mem0) ;
 	       
-		 uint64_t* dependencies = nullptr ;
-		 unsigned int numDependencies = 0 ;
+		 unsigned long long int* dependencies = nullptr ;
+		 uint64_t numDependencies = 0 ;
 
 		 // For start events, dig in and find all the information
 		 //  necessary to show the tooltip and send it.
@@ -508,9 +514,9 @@ namespace xocl {
 		   get_dependency_information(dependencies, numDependencies, e);
 
 		   // Perform the callback
-		   read_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		   read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			   true,
-			   address,
+			   static_cast<unsigned long long int>(address),
 			   bank.c_str(),
 			   xmem->get_size(),
 			   false, // isP2P
@@ -522,7 +528,7 @@ namespace xocl {
 		 // For end events, just send the minimal information
 		 else if (status == CL_COMPLETE)
 		 {
-		   read_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		   read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			   false,
 			   0,
 			   nullptr,
@@ -545,8 +551,8 @@ namespace xocl {
 		 //  information we need from the event
 		 auto xmem = xocl::xocl(mem0) ;
 	       
-		 uint64_t* dependencies = nullptr ;
-		 unsigned int numDependencies = 0 ;
+		 unsigned long long int* dependencies = nullptr ;
+		 uint64_t numDependencies = 0 ;
 
 		 // For start events, dig in and find all the information
 		 //  necessary to show the tooltip and send it.
@@ -567,9 +573,9 @@ namespace xocl {
 		   get_dependency_information(dependencies, numDependencies, e);
 		   
 		   // Perform the callback
-		   write_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		   write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    true,
-			    address,
+			    static_cast<unsigned long long int>(address),
 			    bank.c_str(),
 			    xmem->get_size(),
 			    false, // isP2P
@@ -581,7 +587,7 @@ namespace xocl {
 		 // For end events, just send the minimal information
 		 else if (status == CL_COMPLETE)
 		 {
-		   write_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		   write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    false,
 			    0,
 			    nullptr,
@@ -640,8 +646,8 @@ namespace xocl {
 		 //  information we need from the event
 		 auto xmem = xocl::xocl(mem0) ;
 	       
-		 uint64_t* dependencies = nullptr ;
-		 unsigned int numDependencies = 0 ;
+		 unsigned long long int* dependencies = nullptr ;
+		 uint64_t numDependencies = 0 ;
 
 		 // For start events, dig in and find all the information
 		 //  necessary to show the tooltip and send it.
@@ -662,9 +668,9 @@ namespace xocl {
 		   get_dependency_information(dependencies, numDependencies, e);
 		   
 		   // Perform the callback
-		   write_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		   write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    true,
-			    address,
+			    static_cast<unsigned long long int>(address),
 			    bank.c_str(),
 			    xmem->get_size(),
 			    false, // isP2P
@@ -676,7 +682,7 @@ namespace xocl {
 		 // For end events, just send the minimal information
 		 else if (status == CL_COMPLETE)
 		 {
-		   write_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		   write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    false,
 			    0,
 			    nullptr,
@@ -722,11 +728,11 @@ namespace xocl {
 	       if (status == CL_RUNNING)
 	       {
 		 //XRTIdToXDPId[e->get_uid()] = xrt_core::utils::issue_id() ;
-		 uint64_t* dependencies = nullptr ;
-		 unsigned int numDependencies = 0 ;
+		 unsigned long long int* dependencies = nullptr ;
+		 uint64_t numDependencies = 0 ;
 		 get_dependency_information(dependencies, numDependencies, e);
 
-		 ndrange_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		 ndrange_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    true,
 			    deviceName.c_str(),
 			    binaryName.c_str(),
@@ -741,7 +747,7 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 ndrange_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		 ndrange_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    false,
 			    deviceName.c_str(),
 			    binaryName.c_str(),
@@ -775,8 +781,8 @@ namespace xocl {
 	       auto device = queue->get_device() ;
 	       if (!(xmem->is_resident(device))) return ;
 
-	       uint64_t* dependencies = nullptr ;
-	       unsigned int numDependencies = 0 ;
+	       unsigned long long int* dependencies = nullptr ;
+	       uint64_t numDependencies = 0 ;
 	       if (status == CL_RUNNING)
 	       {
 		 //XRTIdToXDPId[e->get_uid()] = xrt_core::utils::issue_id() ;
@@ -794,9 +800,9 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 write_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		 write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			  true,
-			  address,
+			  static_cast<unsigned long long int>(address),
 			  bank.c_str(),
 			  xmem->get_size(),
 			  false, // isP2P
@@ -807,7 +813,7 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 write_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		 write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			  false,
 			  0,
 			  nullptr,
@@ -859,16 +865,16 @@ namespace xocl {
 		 {
 		 }
 
-		 uint64_t* dependencies = nullptr ;
-		 unsigned int numDependencies = 0 ;
+		 unsigned long long int* dependencies = nullptr ;
+		 uint64_t numDependencies = 0 ;
 		 // Get dependency information
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
-		 copy_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		 copy_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 true,
-			 srcAddress,
+			 static_cast<unsigned long long int>(srcAddress),
 			 srcBank.c_str(),
-			 dstAddress, 
+			 static_cast<unsigned long long int>(dstAddress),
 			 dstBank.c_str(),
 			 xSrcMem->get_size(),
 			 isP2P,
@@ -879,7 +885,7 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 copy_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
+		 copy_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 false,
 			 0,
 			 nullptr,

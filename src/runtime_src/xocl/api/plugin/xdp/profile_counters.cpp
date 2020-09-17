@@ -33,20 +33,42 @@ namespace xocl {
 
     // All of the function pointers that will be dynamically linked to
     //  callback functions on the XDP plugin side
-    std::function<void (const char*, unsigned long int, bool)> counter_function_start_cb ;
+    std::function<void (const char*,
+			unsigned long long int,
+			bool)> counter_function_start_cb ;
     std::function<void (const char*)> counter_function_end_cb ;
-    std::function<void (const char*, bool, unsigned long int, unsigned long int, unsigned long int, const char*, const char*, const char*)> counter_kernel_execution_cb ;
-    std::function<void (const char*, const char*, const char*, bool)> 
-      counter_cu_execution_cb ;
-    std::function<void (unsigned long int, unsigned long int, const char*, unsigned long int, bool, bool, unsigned long int, unsigned long int)>
-      counter_action_read_cb ;
-    std::function<void (unsigned long int, const char*, unsigned long int, bool, bool, unsigned long int, unsigned long int)>
-      counter_action_write_cb ;
+    std::function<void (const char*,
+			bool,
+			unsigned long long int,
+			unsigned long long int,
+			unsigned long long int,
+			const char*,
+			const char*,
+			const char*)> counter_kernel_execution_cb ;
+    std::function<void (const char*,
+			const char*,
+			const char*,
+			bool)> counter_cu_execution_cb ;
+    std::function<void (unsigned long long int,
+			unsigned long long int,
+			const char*,
+			unsigned long long int,
+			bool,
+			bool,
+			unsigned long long int,
+			unsigned long long int)> counter_action_read_cb ;
+    std::function<void (unsigned long long int,
+			const char*,
+			unsigned long long int,
+			bool,
+			bool,
+			unsigned long long int,
+			unsigned long long int)> counter_action_write_cb ;
     std::function<void ()> counter_mark_objects_released_cb ;
 
     void register_opencl_counters_functions(void* handle)
     {
-      typedef void (*stype)(const char*, unsigned long int, bool) ;
+      typedef void (*stype)(const char*, unsigned long long int, bool) ;
       counter_function_start_cb = 
 	(stype)(xrt_core::dlsym(handle, "log_function_call_start")) ;
       if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
@@ -56,7 +78,7 @@ namespace xocl {
 	(etype)(xrt_core::dlsym(handle, "log_function_call_end")) ;
       if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
       
-      typedef void (*ktype)(const char*, bool, unsigned long int, unsigned long int, unsigned long int, const char* ,const char*, const char*) ;
+      typedef void (*ktype)(const char*, bool, unsigned long long int, unsigned long long int, unsigned long long int, const char* ,const char*, const char*) ;
       counter_kernel_execution_cb =
 	(ktype)(xrt_core::dlsym(handle, "log_kernel_execution")) ;
       if (xrt_core::dlerror() != NULL) counter_kernel_execution_cb = nullptr ;
@@ -66,12 +88,12 @@ namespace xocl {
 	(cuetype)(xrt_core::dlsym(handle, "log_compute_unit_execution")) ;
       if (xrt_core::dlerror() != NULL) counter_cu_execution_cb = nullptr ;
       
-      typedef void (*atype)(unsigned long int, unsigned long int, const char*, unsigned long int, bool, bool, unsigned long int, unsigned long int) ;
+      typedef void (*atype)(unsigned long long int, unsigned long long int, const char*, unsigned long long int, bool, bool, unsigned long long int, unsigned long long int) ;
       counter_action_read_cb =
 	(atype)(xrt_core::dlsym(handle, "counter_action_read")) ;
       if (xrt_core::dlerror() != NULL) counter_action_read_cb = nullptr ;
       
-      typedef void (*wtype)(unsigned long int, const char*, unsigned long int, bool, bool, unsigned long int, unsigned long int) ;
+      typedef void (*wtype)(unsigned long long int, const char*, unsigned long long int, bool, bool, unsigned long long int, unsigned long long int) ;
       counter_action_write_cb =
 	(wtype)(xrt_core::dlsym(handle, "counter_action_write")) ;
       if (xrt_core::dlerror() != NULL) counter_action_write_cb = nullptr ;

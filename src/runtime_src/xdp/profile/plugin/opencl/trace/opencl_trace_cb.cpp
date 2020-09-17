@@ -65,20 +65,20 @@ namespace xdp {
     (db->getDynamicInfo()).addEvent(event) ;
   }
 
-  static void add_dependency(unsigned long int id, unsigned long int dependency)
+  static void add_dependency(uint64_t id, uint64_t dependency)
   {
     VPDatabase* db = openclPluginInstance.getDatabase() ;
     (db->getDynamicInfo()).addDependency(id, dependency) ;
   }
 
-  static void action_read(unsigned int id,
+  static void action_read(uint64_t id,
 			  bool isStart,
-			  unsigned long long int deviceAddress,
+			  uint64_t deviceAddress,
 			  const char* memoryResource,
 			  size_t bufferSize,
 			  bool isP2P,
-			  unsigned long int* dependencies,
-			  unsigned int numDependencies)
+			  unsigned long long int* dependencies,
+			  uint64_t numDependencies)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -104,20 +104,20 @@ namespace xdp {
       std::vector<uint64_t> dependentEvents ;
       for (uint32_t i = 0 ; i < numDependencies ; ++i)
       {
-	dependentEvents.push_back(dependencies[i]) ;
+	dependentEvents.push_back(static_cast<uint64_t>(dependencies[i])) ;
       }
       (db->getDynamicInfo()).addDependencies(id, dependentEvents);
     }
   }
 
-  static void action_write(unsigned int id,
+  static void action_write(uint64_t id,
 			   bool isStart,
-			   unsigned long long int deviceAddress,
+			   uint64_t deviceAddress,
 			   const char* memoryResource,
 			   size_t bufferSize,
 			   bool isP2P,
-			   unsigned long int* dependencies,
-			   unsigned int numDependencies)
+			   unsigned long long int* dependencies,
+			   uint64_t numDependencies)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -143,22 +143,22 @@ namespace xdp {
       std::vector<uint64_t> dependentEvents ;
       for (uint32_t i = 0 ; i < numDependencies ; ++i)
       {
-	dependentEvents.push_back(dependencies[i]) ;
+	dependentEvents.push_back(static_cast<uint64_t>(dependencies[i])) ;
       }
       (db->getDynamicInfo()).addDependencies(id, dependentEvents);
     }
   }
 
-  static void action_copy(unsigned int id,
+  static void action_copy(uint64_t id,
 			  bool isStart,
-			  unsigned long long int srcDeviceAddress,
+			  uint64_t srcDeviceAddress,
 			  const char* srcMemoryResource,
-			  unsigned long long int dstDeviceAddress,
+			  uint64_t dstDeviceAddress,
 			  const char* dstMemoryResource,
 			  size_t bufferSize,
 			  bool isP2P,
-			  unsigned long int* dependencies,
-			  unsigned int numDependencies)
+			  unsigned long long int* dependencies,
+			  uint64_t numDependencies)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -186,23 +186,24 @@ namespace xdp {
       std::vector<uint64_t> dependentEvents ;
       for (uint32_t i = 0 ; i < numDependencies ; ++i)
       {
-	dependentEvents.push_back(dependencies[i]) ;
+	dependentEvents.push_back(static_cast<uint64_t>(dependencies[i])) ;
       }
       (db->getDynamicInfo()).addDependencies(id, 
 					     dependentEvents);
     }
   }
   
-  static void action_ndrange(unsigned int id, bool isStart,
+  static void action_ndrange(uint64_t id,
+			     bool isStart,
 			     const char* deviceName,
 			     const char* binaryName,
 			     const char* kernelName,
-			     int workgroupConfigurationX,
-			     int workgroupConfigurationY,
-			     int workgroupConfigurationZ,
-			     int workgroupSize,
-			     unsigned long int* dependencies,
-			     unsigned int numDependencies)
+			     size_t workgroupConfigurationX,
+			     size_t workgroupConfigurationY,
+			     size_t workgroupConfigurationZ,
+			     size_t workgroupSize,
+			     unsigned long long int* dependencies,
+			     uint64_t numDependencies)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -244,7 +245,7 @@ namespace xdp {
       std::vector<uint64_t> dependentEvents ;
       for (uint32_t i = 0 ; i < numDependencies ; ++i)
       {
-	dependentEvents.push_back(dependencies[i]) ;
+	dependentEvents.push_back(static_cast<uint64_t>(dependencies[i])) ;
       }
       (db->getDynamicInfo()).addDependencies(id,
 					     dependentEvents);
@@ -258,7 +259,9 @@ void function_start(const char* functionName,
 		    unsigned long long int queueAddress,
 		    unsigned long long int functionID)
 {
-  xdp::log_function_start(functionName, queueAddress, functionID) ;
+  xdp::log_function_start(functionName,
+			  static_cast<uint64_t>(queueAddress),
+			  static_cast<uint64_t>(functionID)) ;
 }
 
 extern "C"
@@ -266,45 +269,61 @@ void function_end(const char* functionName,
 		  unsigned long long int queueAddress,
 		  unsigned long long int functionID)
 {
-  xdp::log_function_end(functionName, queueAddress, functionID) ;
+  xdp::log_function_end(functionName,
+			static_cast<uint64_t>(queueAddress),
+			static_cast<uint64_t>(functionID)) ;
 }
 
 extern "C"
-void add_dependency(unsigned long int id, unsigned long int dependency)
+void add_dependency(unsigned long long int id,
+		    unsigned long long int dependency)
 {
-  xdp::add_dependency(id, dependency) ;
+  xdp::add_dependency(static_cast<uint64_t>(id),
+		      static_cast<uint64_t>(dependency)) ;
 }
 
 extern "C"
-void action_read(unsigned int id,
+void action_read(unsigned long long int id,
 		 bool isStart,
 		 unsigned long long int deviceAddress,
 		 const char* memoryResource,
 		 size_t bufferSize,
 		 bool isP2P,
-		 unsigned long int* dependencies,
-		 unsigned int numDependencies)
+		 unsigned long long int* dependencies,
+		 unsigned long long int numDependencies)
 {
-  xdp::action_read(id, isStart, deviceAddress, memoryResource, bufferSize, 
-		   isP2P, dependencies, numDependencies) ;
+  xdp::action_read(static_cast<uint64_t>(id),
+		   isStart,
+		   static_cast<uint64_t>(deviceAddress),
+		   memoryResource,
+		   bufferSize, 
+		   isP2P,
+		   dependencies,
+		   static_cast<uint64_t>(numDependencies)) ;
 }
 
 extern "C"
-void action_write(unsigned int id,
+void action_write(unsigned long long int id,
 		  bool isStart,
 		  unsigned long long int deviceAddress,
 		  const char* memoryResource,
 		  size_t bufferSize,
 		  bool isP2P,
-		  unsigned long int* dependencies,
-		  unsigned int numDependencies)
+		  unsigned long long int* dependencies,
+		  unsigned long long int numDependencies)
 {
-  xdp::action_write(id, isStart, deviceAddress, memoryResource, bufferSize, 
-		    isP2P, dependencies, numDependencies) ;
+  xdp::action_write(static_cast<uint64_t>(id),
+		    isStart,
+		    static_cast<uint64_t>(deviceAddress),
+		    memoryResource,
+		    bufferSize, 
+		    isP2P,
+		    dependencies,
+		    static_cast<uint64_t>(numDependencies)) ;
 }
 
 extern "C"
-void action_copy(unsigned int id,
+void action_copy(unsigned long long int id,
 		 bool isStart,
 		 unsigned long long int srcDeviceAddress,
 		 const char* srcMemoryResource,
@@ -312,31 +331,43 @@ void action_copy(unsigned int id,
 		 const char* dstMemoryResource,
 		 size_t bufferSize,
 		 bool isP2P,
-		 unsigned long int* dependencies,
-		 unsigned int numDependencies)
+		 unsigned long long int* dependencies,
+		 unsigned long long int numDependencies)
 {
-  xdp::action_copy(id, isStart, srcDeviceAddress, srcMemoryResource, 
-		   dstDeviceAddress, dstMemoryResource, bufferSize,
-		   isP2P, dependencies, numDependencies) ;
+  xdp::action_copy(static_cast<uint64_t>(id),
+		   isStart,
+		   static_cast<uint64_t>(srcDeviceAddress),
+		   srcMemoryResource, 
+		   static_cast<uint64_t>(dstDeviceAddress),
+		   dstMemoryResource,
+		   bufferSize,
+		   isP2P,
+		   dependencies,
+		   static_cast<uint64_t>(numDependencies)) ;
 }
 
 extern "C"
-void action_ndrange(unsigned int id, bool isStart,
+void action_ndrange(unsigned long long int id,
+		    bool isStart,
 		    const char* deviceName,
 		    const char* binaryName,
 		    const char* kernelName,
 		    size_t workgroupConfigurationX,
 		    size_t workgroupConfigurationY,
 		    size_t workgroupConfigurationZ,
-		    int workgroupSize,
-		    unsigned long int* dependencies,
-		    unsigned int numDependencies)
+		    size_t workgroupSize,
+		    unsigned long long int* dependencies,
+		    unsigned long long int numDependencies)
 {
-  xdp::action_ndrange(id, isStart, deviceName, binaryName, kernelName,
+  xdp::action_ndrange(static_cast<uint64_t>(id),
+		      isStart,
+		      deviceName,
+		      binaryName,
+		      kernelName,
 		      workgroupConfigurationX,
 		      workgroupConfigurationY,
 		      workgroupConfigurationZ,
 		      workgroupSize,
 		      dependencies,
-		      numDependencies) ;
+		      static_cast<uint64_t>(numDependencies)) ;
 }

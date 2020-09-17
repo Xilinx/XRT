@@ -55,10 +55,10 @@ namespace xdp {
     //uint64_t bitWidth ;
     uint64_t totalSize ; // Total number of bytes transferred
     double averageSize ; // Average number of bytes per transfer
-    double totalTime ;
+    uint64_t totalTime ;
     double averageTime ;
-    double maxTime ;
-    double minTime ;
+    uint64_t maxTime ;
+    uint64_t minTime ;
     //double averageTransferRate ;
     //double clockFreqMhz ;
 
@@ -71,10 +71,10 @@ namespace xdp {
       totalTime(0),
       averageTime(0),
       maxTime(0),
-      minTime((std::numeric_limits<double>::max)())
+      minTime((std::numeric_limits<uint64_t>::max)())
     { }
 
-    void update(uint64_t size, double executionTime)
+    void update(uint64_t size, uint64_t executionTime)
     {
       // Update size stats
       totalSize += size ;
@@ -135,15 +135,15 @@ namespace xdp {
 
   struct TimeStatistics
   {
-    double totalTime ;
+    uint64_t totalTime ;
     double averageTime ;
-    double maxTime ;
-    double minTime ;
+    uint64_t maxTime ;
+    uint64_t minTime ;
     uint32_t numExecutions ;
 
     TimeStatistics() : totalTime(0), averageTime(0), maxTime(0), 
-      minTime((std::numeric_limits<double>::max)()), numExecutions(0) { }
-    void update(double executionTime)
+      minTime((std::numeric_limits<uint64_t>::max)()), numExecutions(0) { }
+    void update(uint64_t executionTime)
     {
       totalTime += executionTime ;
       averageTime = ((averageTime * numExecutions) + executionTime)/(numExecutions + 1) ;
