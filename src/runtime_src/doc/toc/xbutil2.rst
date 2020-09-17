@@ -164,7 +164,9 @@ This command can be used to reset one or more devices.
 
 
     - The --device (or -d) used to specify the device to be reset
-    - The --type (or -t) can be used to specify the reset type. Currently only supported reset type is hot reset
+    - The --type (or -t) can be used to specify the reset type. Currently supported reset type
+    
+         - hot: A hot reset (default)
 
 **Example commands**
 
