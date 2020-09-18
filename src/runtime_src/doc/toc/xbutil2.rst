@@ -134,14 +134,15 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 - The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
           
     - ``scan`` (**default**): scan option shows System Configuration, XRT and Device BDF information. 
-    - ``verbose``: Reports everything, default
     - ``aie``: Reports information related to AIE kernels
     - ``electrical``: Reports information related to Volate, current and Power
     - ``debug-ip-status``: Reports information related to Debug IP inserted during the kernel compilation
     - ``firewall``: Reports the current firewall status
     - ``host``: Reports the host configuration and drivers
     - ``mechanical``: 
+    - ``memory``: Report memory information 
     - ``thermals``: Report thermal 
+    - ``verbose``: Reports everything
 - The ``--format`` (or ``-f``) can be used to specify the output format
     
     - ``text`` (**default**): The output is shown in the text format, default behavior
