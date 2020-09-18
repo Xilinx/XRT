@@ -116,21 +116,22 @@ xbmgmt reset
 
 .. code-block:: 
 
-    xbutil reset --device [BDF] --type [Reset type]
-    xbutil reset -d [BDF] -t [Reset type]
+    xbmgmt reset [--device| -d] <bdf> [--type| -t] <reset type>
 
 
 **The details of the supported options**
 
-
-    - The --device (or -d) used to specify the device to be reset
-    - The --type (or -t) can be used to specify the reset type. Currently only supported reset types are
-      
-         - hot (default): Reset the entire device
-         - kernel: Reset the kernel communication link
-         - ert: Reset the management processor
-         - ecc: Reset ecc memory
-         - soft-kernel: Reset soft kernel
+- The ``--device`` (or ``-d``) used to specify the device to be reset
+    
+    - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
+    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
+- The ``--type`` (or ``-t``) can be used to specify the reset type. Currently supported reset type
+    
+    - ``hot`` (**default**): Complete reset of the device
+    - ``kernel``: Reset the kernel communication link
+    - ``ert``: Reset the management processor
+    - ``ecc``: Reset ecc memory
+    - ``soft-kernel``: Reset soft kernel
          
     
 
@@ -140,9 +141,9 @@ xbmgmt reset
 .. code-block::
  
     # Reset a single device entirely (default hot reset)
-    xbutil reset -d 0000:65:00.1
+    xbmgmt reset -d 0000:65:00.1
     
     # Reset kernel communication link of two devices
-    xbutil reset -d 0000:65:00.1 0000:65:00.1 -t kernel
+    xbmgmt reset -d 0000:65:00.1 0000:65:00.1 -t kernel
 
 
