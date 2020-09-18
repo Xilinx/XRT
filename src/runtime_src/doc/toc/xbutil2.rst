@@ -83,7 +83,7 @@ The command ``xbutil validate`` validates the card installation by running preco
     - ``all`` (**default**): runs all the tests
     - ``DMA``: runs DMA test
     - ``Verify kernel``: Runs simple kernel test
- - The ``--format`` (or ``-f``) specifies the report format
+- The ``--format`` (or ``-f``) specifies the report format
     
     - ``text`` (**default**): The report is shown in the text format, default behavior
     - ``json-2021.2``: The report is shown in json-2021.2 
@@ -248,13 +248,13 @@ P2P Enable, disable or valiadte
 - The ``--output`` can be used with ``read-mem`` to dump the read data to a file instead of console
     
     - <filename> : When specified the output of ``--read-mem`` commands are dumped into the user provided file
-- The ``write-mem`` is used to write to the perticular memory location. It has to use with following arguments
+- The ``--write-mem`` is used to write to the perticular memory location. It has to use with following arguments
     
     - <address> <number of bytes> : The write location and the size of the write. 
-- The ``fill`` can be used with ``write-mem`` switch to fill the memory location with a perticular binary value
+- The ``--fill`` can be used with ``write-mem`` switch to fill the memory location with a perticular binary value
         
     - <uint8> : The filled value in byte
-- The ``input`` can be used with ``write-mem`` switch to write the memory location from a file content
+- The ``--input`` can be used with ``write-mem`` switch to write the memory location from a file content
         
     - <binary file> : The binary file 
 - The ``--p2p`` can be used to enable, disable or validate p2p operation
