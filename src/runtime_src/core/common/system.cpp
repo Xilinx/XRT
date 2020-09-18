@@ -176,4 +176,10 @@ get_monitor_access_type()
   return instance().get_monitor_access_type();
 }
 
+void
+program_plp(std::shared_ptr<device> dev, std::vector<char> buffer)
+{
+  instance().program_plp(dev, buffer);
+}
+
 } // xrt_core

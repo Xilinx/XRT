@@ -29,6 +29,8 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <iostream>
+#include <string>
 
 #pragma warning(disable : 4100 4996)
 
@@ -55,23 +57,6 @@ struct flash
   }
 };
 
-struct mfg
-{
-  using result_type = bool;
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return false;
-  }
-
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return false;
-  }
-};
-
 struct ready
 {
   using result_type = bool;
@@ -89,21 +74,21 @@ struct ready
   }
 };
 
-struct board_name
+struct xmc_sc_presence
 {
-  using result_type = std::string;
+	using result_type = bool;
 
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return "TO-DO";
-  }
+	static result_type
+		user(const xrt_core::device* device, key_type key)
+	{
+		return true;
+	}
 
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return "TO-DO";
-  }
+	static result_type
+		mgmt(const xrt_core::device* device, key_type key)
+	{
+		return true;
+	}
 };
 
 struct firewall
@@ -659,12 +644,88 @@ struct info
       return static_cast<query::pcie_subsystem_vendor::result_type>(info.pcie_info.subsystem_vendor);
     case key_type::pcie_subsystem_id:
       return static_cast<query::pcie_subsystem_id::result_type>(info.pcie_info.subsystem_device);
+	case key_type::xmc_reg_base:
+		return info.xmc_offset;
+    default:
+      throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
+    }
+  }
+};
+
+struct devinfo
+{
+  using result_type = boost::any;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    throw std::runtime_error("device info data queries are not implemented on user windows");
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    auto init_device_info = [](const xrt_core::device* dev) {
+      XCLMGMT_DEVICE_INFO info = { 0 };
+      mgmtpf::get_dev_info(dev->get_mgmt_handle(), &info);
+      return info;
+    };
+	
+    static std::map<const xrt_core::device*, XCLMGMT_DEVICE_INFO> info_map;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = info_map.find(device);
+    if (it == info_map.end()) {
+      auto ret = info_map.emplace(device,init_device_info(device));
+      it = ret.first;
+    }
+
+    auto& info = (*it).second;
+    switch (key) {
+    case key_type::board_name:
+      return static_cast<query::board_name::result_type>(info.ShellName);
+    case key_type::is_mfg:
+      return (static_cast<query::board_name::result_type>(info.ShellName).find("GOLDEN") != std::string::npos) ? true : false;
+    default:
+      throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
+    }
+  }
+};
+
+struct uuid
+{
+  using result_type = boost::any;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    throw std::runtime_error("device info data queries are not implemented on user windows");
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    auto init_device_info = [](const xrt_core::device* dev) {
+      XCLMGMT_IOC_UUID_INFO info = { 0 };
+      mgmtpf::get_uuids(dev->get_mgmt_handle(), &info);
+      return info;
+    };
+
+    static std::map<const xrt_core::device*, XCLMGMT_IOC_UUID_INFO> info_map;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = info_map.find(device);
+    if (it == info_map.end()) {
+      auto ret = info_map.emplace(device,init_device_info(device));
+      it = ret.first;
+    }
+
+    auto& info = (*it).second;
+    switch (key) {
     case key_type::interface_uuids:
-      return std::vector<std::string>{ std::string(info.interface_uuid) };
+      return std::vector<std::string>{ std::string(info.blp_interface_uuid), std::string(info.plp_interface_uuid) };
     case key_type::logic_uuids:
-      return std::vector<std::string>{ std::string(info.logic_uuid) };
-    case key_type::xmc_reg_base:
-      return info.xmc_offset;
+      return std::vector<std::string>{ std::string(info.blp_logic_uuid), std::string(info.plp_logic_uuid) };
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -865,8 +926,8 @@ initialize_query_table()
   emplace_function0_getter<query::pcie_device,               info>();
   emplace_function0_getter<query::pcie_subsystem_vendor,     info>();
   emplace_function0_getter<query::pcie_subsystem_id,         info>();
-  emplace_function0_getter<query::interface_uuids,           info>();
-  emplace_function0_getter<query::logic_uuids,               info>();
+  emplace_function0_getter<query::interface_uuids,           uuid>();
+  emplace_function0_getter<query::logic_uuids,               uuid>();
   emplace_function0_getter<query::xmc_reg_base,              info>();
   emplace_function0_getter<query::pcie_bdf,                  bdf>();
   emplace_function0_getter<query::rom_vbnv,                  rom>();
@@ -939,10 +1000,11 @@ initialize_query_table()
   emplace_function0_getter<query::firewall_time_sec,         firewall>();
   emplace_function0_getter<query::f_flash_type,              flash>();
   emplace_function0_getter<query::flash_type,                flash>();
-  emplace_function0_getter<query::is_mfg,                    mfg>();
+  emplace_function0_getter<query::is_mfg,                    devinfo>();
   emplace_function0_getter<query::is_ready,                  ready>();
-  emplace_function0_getter<query::board_name,                board_name>();
-  emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
+  emplace_function0_getter<query::board_name,                devinfo>();
+  emplace_function0_getter<query::flash_bar_offset, flash_bar_offset>();
+  emplace_function0_getter<query::xmc_sc_presence, xmc_sc_presence>();
 }
 
 struct X { X() { initialize_query_table(); }};

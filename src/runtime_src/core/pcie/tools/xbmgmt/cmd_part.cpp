@@ -124,6 +124,10 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
                 std::cout << "ERROR: can not read status." << std::endl;
                 return -EINVAL;
             }
+            if(retry == PROGRAM_TIMEOUT) {
+                std::cout << "ERROR: Programming timed out." << std::endl;
+                return -EINVAL;
+            }
             sleep(1);
             retry++;
         }

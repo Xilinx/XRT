@@ -33,7 +33,7 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "OO_Clock.cpp"
   "OO_Config.cpp"
   "OO_NIFD.cpp"
-  "ReportPlatform.cpp"
+  "Report*.cpp"
   "flash/*.cpp"
 )
 
