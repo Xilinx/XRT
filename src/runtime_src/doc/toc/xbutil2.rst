@@ -1,15 +1,17 @@
 .. _xbutil2.rst:
 
-XBUTIL (Next Generation Xilinx Board Utility Tool)
-==================================================
+XBUTIL Next
+===========
+
+The next generation version of ``xbutil`` tool is in a preview mode for 2020.2 release. This tool will be in production in future release replacing the current ``xbutil`` tool. This documents describes various commands and its usage of this new version of the tool. 
 
 The xbutil command options are
 
-    - xbutil program
-    - xbutil validate
-    - xbutil examine
-    - xbutil reset
-    - xbutil advanced 
+    - ``xbutil program``
+    - ``xbutil validate``
+    - ``xbutil examine``
+    - ``xbutil reset``
+    - ``xbutil advanced`` 
 
 
 xbutil program
@@ -28,12 +30,12 @@ The **xbutil program** command downloads a specified xclbin binary to the progra
 **The details of the supported options**
 
 
-    - The --device (or -d) specifies the target device to be programmed
+    - The ``--device`` (or ``-d``) specifies the target device to be programmed
     
          - Optional for a single device system. 
          - Mandetory for multiple device system, has to be specified with one or more device BDF information 
-         - To specify all devices **–-device all**  or **-d all**  can be used 
-    - The --program (or -p) is required to specify the .xclbin file
+         - To specify all devices ``–-device all``  or ``-d all``  can be used 
+    - The ``--program`` (or ``-p``) is required to specify the .xclbin file
 
 
 **Example commands** 
@@ -72,20 +74,20 @@ The command **xbutil validate** validates the card installation by running preco
 **The details of the supported options**
 
 
-    - The --device (or -d) specifies the target device to be validate 
+    - The ``--device`` (or ``-d``) specifies the target device to be validate 
     
          - Optional for a single device system. 
          - Mandetory for multiple device system, has to be specified with one or more device BDF information 
-         - To specify all devices **–-device all**  or **-d all**  can be used
-    - The --run (or -r) specifies the perticular test to execute
+         - To specify all devices ``–-device all``  or ``-d all``  can be used
+    - The ``--run`` (or ``-r``) specifies the perticular test to execute
         
-        - all (default): runs all the tests
-        - DMA: runs DMA test
-        - Verify kernel: Runs simple kernel test
-    - The --format (or -f) specifies the output format
+        - ``all`` (**default**): runs all the tests
+        - ``DMA``: runs DMA test
+        - ``Verify kernel``: Runs simple kernel test
+    - The ``--format`` (or ``-f``) specifies the output format
     
-        - text (default): The output is shown in the text format, default behavior
-        - json-2021.2: The output is shown in json-2021.2 
+        - ``text`` (**default**): The output is shown in the text format, default behavior
+        - ``json-2021.2``: The output is shown in json-2021.2 
 
 
 **Example commands**
