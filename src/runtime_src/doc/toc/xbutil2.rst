@@ -203,4 +203,46 @@ This ``xbutil reset`` command can be used to reset one or more devices.
 xbutil advanced
 ~~~~~~~~~~~~~~~
 
-Disclaimer: This may change 
+The ``xbutil advanced`` commands are advanced commands only for the advanced users for debug purpose. As a disclaimer, the formats of these commands can change as we know more about the advnced use-cases. 
+
+**The supported options**
+
+Read from Memory
+
+.. code-block:: 
+
+    xbutil advanced [--device| -d] <bdf> --read-mem <address> <size> [--output] <output file>
+
+Fill Memory with binary value
+
+.. code-block:: 
+
+    xbutil advanced [--device| -d] <bdf> --write-mem <address> <size> [--fill] <binary data> 
+
+
+Fill Memory from a file content
+
+.. code-block:: 
+
+    xbutil advanced [--device| -d] <bdf> --write-mem <address> <size>  [--input] <file>
+
+
+P2P Enable, disable or valiadte
+
+.. code-block:: 
+
+    xbutil advanced --p2p [enable|disable|validate]
+
+
+
+**The details of the supported options**
+
+
+    - The ``--device`` (or ``-d``) used to specify the device to be reset
+    
+        - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
+        - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
+    - The ``--type`` (or ``-t``) can be used to specify the reset type. Currently supported reset type
+    
+         - ``hot`` (**default**): Complete reset of the device
+
