@@ -34,6 +34,9 @@ namespace xdp {
     AIEProfilingPlugin();
     ~AIEProfilingPlugin();
 
+    XDP_EXPORT
+    void updateAIEDevice(void* handle);
+
   private:
     void pollAIECounters();
 
@@ -42,7 +45,7 @@ namespace xdp {
     bool mKeepPolling;
     unsigned int mPollingInterval;
     std::thread mPollingThread;
-     xrt_core::device_collection mDevices;
+    std::vector<void*> mHandles;
   };
 
 } // end namespace xdp

@@ -226,12 +226,7 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
 		if (cu_idx < 0)
 			return cu_idx;
-		/* write kds selected cu index in the first cumask
-		 * (first word after header of execbuf)
-		 * TODO: I dislike modify the content of the execbuf
-		 * in this place. Let's refine this later.
-		 */
-		xcmd->execbuf[1] = cu_idx;
+		xcmd->cu_idx = cu_idx;
 	} else {
 		/* Configure command define CU index */
 		ret = kds_cu_config(&kds->cu_mgmt, xcmd);

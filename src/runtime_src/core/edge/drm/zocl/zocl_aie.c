@@ -21,6 +21,9 @@
 #include <linux/xlnx-ai-engine.h>
 #endif
 
+#include <linux/workqueue.h>
+#include <linux/delay.h>
+
 int
 zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data)
 {
@@ -59,6 +62,8 @@ zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data)
 
 	args->fd = fd;
 
+	zdev->aie->fd_cnt++;
+
 done:
 	mutex_unlock(&zdev->aie_lock);
 
@@ -71,7 +76,7 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	uint64_t offset;
 	uint64_t size;
 	struct aie_partition_req req;
-	int rval;
+	int rval = 0;
 
 	rval = xrt_xclbin_section_info(axlf, AIE_METADATA, &offset, &size);
 	if (rval)
@@ -79,37 +84,54 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf)
 
 	mutex_lock(&zdev->aie_lock);
 
-	if (zdev->aie) {
-		DRM_ERROR("AIE already created.\n");
-		rval = -EAGAIN;
-		goto fail_aie;
+	/* AIE is reset and no PDI is loaded after reset */
+	if (zdev->aie && zdev->aie->aie_reset) {
+		rval = -ENODEV;
+		DRM_ERROR("PDI is not loaded after AIE reset.\n");
+		goto done;
 	}
 
-	zdev->aie = vzalloc(sizeof (struct zocl_aie));
+	if (!zdev->aie) {
+		zdev->aie = vzalloc(sizeof (struct zocl_aie));
+		if (!zdev->aie) {
+			rval = -ENOMEM;
+			DRM_ERROR("Fail to allocate memory.\n");
+			goto done;
+		}
+	}
+
+	if (!zdev->aie->wq) {
+		zdev->aie->wq = create_singlethread_workqueue("aie-workq");
+		if (!zdev->aie->wq) {
+			rval = -ENOMEM;
+			DRM_ERROR("Fail to create work queue.\n");
+			goto done;
+		}
+	}
 
 	/* TODO figure out the partition id and uid from xclbin or PDI */
 	req.partition_id = 1;
 	req.uid = 0;
+
+	if (zdev->aie->aie_dev) {
+		DRM_INFO("Partition %d already requested\n",
+		    req.partition_id);
+		goto done;
+	}
+
 	zdev->aie->aie_dev = aie_partition_request(&req);
 
 	if (IS_ERR(zdev->aie->aie_dev)) {
 		rval = PTR_ERR(zdev->aie->aie_dev);
 		DRM_ERROR("Request AIE partition %d, %d\n",
 		    req.partition_id, rval);
-		goto fail_part;
+		goto done;
 	}
 
 	zdev->aie->partition_id = req.partition_id;
 	zdev->aie->uid = req.uid;
-	mutex_unlock(&zdev->aie_lock);
 
-	return 0;
-
-fail_part:
-	vfree(zdev->aie);
-	zdev->aie = NULL;
-
-fail_aie:
+done:
 	mutex_unlock(&zdev->aie_lock);
 
 	return rval;
@@ -128,7 +150,103 @@ zocl_destroy_aie(struct drm_zocl_dev *zdev)
 	if (zdev->aie->aie_dev)
 		aie_partition_release(zdev->aie->aie_dev);
 
+	if (zdev->aie->wq)
+		destroy_workqueue(zdev->aie->wq);
+
 	vfree(zdev->aie);
 	zdev->aie = NULL;
 	mutex_unlock(&zdev->aie_lock);
+}
+
+static void
+zock_aie_reset_work(struct work_struct *aie_work)
+{
+	struct aie_work_data *data = container_of(aie_work,
+	    struct aie_work_data, work);
+	struct drm_zocl_dev *zdev= data->zdev;
+	int i;
+
+	/*
+	 * Note: we can not hold lock here because this
+	 *       work thread is invoked within a lock and
+	 *       that lock will not be relased until the
+	 *       work is flushed.
+	 */
+
+	/*
+	 * Reset AIE by releasing AIE partition. The times we
+	 * release AIE partition is based on the # of fd is
+	 * requested + 1.
+	 */
+	for (i = 0; i < zdev->aie->fd_cnt + 1; i++)
+		aie_partition_release(zdev->aie->aie_dev);
+
+	zdev->aie->fd_cnt = 0;
+}
+
+int
+zocl_aie_reset(struct drm_zocl_dev *zdev)
+{
+	struct aie_partition_req req;
+	bool aie_available = false;
+	struct aie_work_data *data;
+	int count;
+
+	mutex_lock(&zdev->aie_lock);
+
+	if (!zdev->aie) {
+		mutex_unlock(&zdev->aie_lock);
+		DRM_ERROR("AIE image is not loaded.\n");
+		return -ENODEV;
+	}
+
+	if (!zdev->aie->aie_dev) {
+		mutex_unlock(&zdev->aie_lock);
+		DRM_ERROR("No available AIE partition.\n");
+		return -ENODEV;
+	}
+
+	data = kmalloc(sizeof(struct aie_work_data), GFP_KERNEL);
+	if (!data) {
+		mutex_unlock(&zdev->aie_lock);
+		DRM_ERROR("Can not allocate memory,\n");
+		return -ENOMEM;
+	}
+	data->zdev = zdev;
+
+	/*
+	 * Per the requrirement of current AIE driver, we
+	 * need to release the partition in a separate thread.
+	 */
+	INIT_WORK(&data->work, zock_aie_reset_work);
+	queue_work(zdev->aie->wq, &data->work);
+
+	/* Make sure the reset thread is done */
+	flush_workqueue(zdev->aie->wq);
+	kfree(data);
+
+	req.partition_id = zdev->aie->partition_id;
+	req.uid = zdev->aie->uid;
+
+	/* Check if AIE partition is available in a given time */
+	count = 0;
+	while (1) {
+		aie_available = aie_partition_is_available(&req);
+		if (aie_available)
+			break;
+		count++;
+		if (count == ZOCL_AIE_RESET_TIMEOUT_NUMBER) {
+			mutex_unlock(&zdev->aie_lock);
+			DRM_ERROR("AIE Reset fail: timeout.");
+			return -ETIME;
+		}
+		msleep(ZOCL_AIE_RESET_TIMEOUT_INTERVAL);
+	}
+
+	zdev->aie->aie_dev = NULL;
+	zdev->aie->aie_reset = true;
+
+	mutex_unlock(&zdev->aie_lock);
+
+	return 0;
 }
