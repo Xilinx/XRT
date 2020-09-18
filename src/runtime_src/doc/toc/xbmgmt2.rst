@@ -112,6 +112,9 @@ The ``xbmgmt status`` command reports detail status information of the specified
 xbmgmt reset
 ~~~~~~~~~~~~
 
+This ``xbmgmt reset`` command can be used to reset one or more devices. 
+
+
 **The supported options**
 
 .. code-block:: 
