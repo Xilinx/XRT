@@ -231,7 +231,7 @@ P2P Enable, disable or valiadte
 
 .. code-block:: 
 
-    xbutil advanced --p2p [enable|disable|validate]
+    xbutil advanced [--device| -d] <bdf> --p2p [enable|disable|validate]
 
 
 
