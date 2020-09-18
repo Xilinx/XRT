@@ -31,10 +31,12 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 
 - The ``--device`` (or ``-d``) specifies the target device to be programmed
     
-         - <none> : Optional for a single device system. 
-         - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device BDF information 
-         - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used 
+    - <none> : Optional for a single device system. 
+    - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device BDF information 
+    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used 
 - The ``--program`` (or ``-p``) is required to specify the .xclbin file
+    
+    - <xclbin file> : The xclbin file to be used to program the device
 
 
 **Example commands** 
@@ -71,21 +73,20 @@ The command ``xbutil validate`` validates the card installation by running preco
 
 **The details of the supported options**
 
-
-    - The ``--device`` (or ``-d``) specifies the target device to be validate 
+- The ``--device`` (or ``-d``) specifies the target device to be validate 
     
-         - <none> : Optional for a single device system. 
-         - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device BDF information 
-         - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-    - The ``--run`` (or ``-r``) specifies the perticular test to execute
+    - <none> : Optional for a single device system. 
+    - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device BDF information 
+    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
+- The ``--run`` (or ``-r``) specifies the perticular test to execute
         
-        - ``all`` (**default**): runs all the tests
-        - ``DMA``: runs DMA test
-        - ``Verify kernel``: Runs simple kernel test
-    - The ``--format`` (or ``-f``) specifies the report format
+    - ``all`` (**default**): runs all the tests
+    - ``DMA``: runs DMA test
+    - ``Verify kernel``: Runs simple kernel test
+ - The ``--format`` (or ``-f``) specifies the report format
     
-        - ``text`` (**default**): The report is shown in the text format, default behavior
-        - ``json-2021.2``: The report is shown in json-2021.2 
+    - ``text`` (**default**): The report is shown in the text format, default behavior
+    - ``json-2021.2``: The report is shown in json-2021.2 
 
 
 **Example commands**
@@ -125,30 +126,30 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 **The details of the supported options**
 
 
-    - The ``--device`` (or ``-d``) specifies the target device to be validate 
+- The ``--device`` (or ``-d``) specifies the target device to be validate 
     
-         - <none> : Optional for a single device system. 
-         - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device bdf information 
-         - ``all``:To specify all devices ``–-device all``  or ``-d all``  can be used
-    - The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
+    - <none> : Optional for a single device system. 
+    - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device bdf information 
+    - ``all``:To specify all devices ``–-device all``  or ``-d all``  can be used
+- The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
           
-          - ``scan`` (**default**): scan option shows System Configuration, XRT and Device BDF information. 
-          - ``verbose``: Reports everything, default
-          - ``aie``: Reports information related to AIE kernels
-          - ``electrical``: Reports information related to Volate, current and Power
-          - ``debug-ip-status``: Reports information related to Debug IP inserted during the kernel compilation
-          - ``firewall``: Reports the current firewall status
-          - ``host``: Reports the host configuration and drivers
-          - ``mechanical``: 
-          - ``thermals``: Report thermal 
-    - The ``--format`` (or ``-f``) can be used to specify the output format
+    - ``scan`` (**default**): scan option shows System Configuration, XRT and Device BDF information. 
+    - ``verbose``: Reports everything, default
+    - ``aie``: Reports information related to AIE kernels
+    - ``electrical``: Reports information related to Volate, current and Power
+    - ``debug-ip-status``: Reports information related to Debug IP inserted during the kernel compilation
+    - ``firewall``: Reports the current firewall status
+    - ``host``: Reports the host configuration and drivers
+    - ``mechanical``: 
+    - ``thermals``: Report thermal 
+- The ``--format`` (or ``-f``) can be used to specify the output format
     
-        - ``text`` (**default**): The output is shown in the text format, default behavior
-        - ``json-2021.2``: The output is shown in json-2021.2 
+    - ``text`` (**default**): The output is shown in the text format, default behavior
+    - ``json-2021.2``: The output is shown in json-2021.2 
 
-    - The ``--output`` (or ``-o``) can be used to dump output in a file instead of stdout
+- The ``--output`` (or ``-o``) can be used to dump output in a file instead of stdout
         
-       - <filename> : The output file to be dumped
+    - <filename> : The output file to be dumped
 
 
 **Example commands**
@@ -180,13 +181,13 @@ This ``xbutil reset`` command can be used to reset one or more devices.
 **The details of the supported options**
 
 
-    - The ``--device`` (or ``-d``) used to specify the device to be reset
+- The ``--device`` (or ``-d``) used to specify the device to be reset
     
-        - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
-        - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-    - The ``--type`` (or ``-t``) can be used to specify the reset type. Currently supported reset type
+    - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
+    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
+- The ``--type`` (or ``-t``) can be used to specify the reset type. Currently supported reset type
     
-         - ``hot`` (**default**): Complete reset of the device
+    - ``hot`` (**default**): Complete reset of the device
 
 **Example commands**
 
@@ -237,32 +238,30 @@ P2P Enable, disable or valiadte
 **The details of the supported options**
 
 
-    - The ``--device`` (or ``-d``) used to specify the device to be reset
+- The ``--device`` (or ``-d``) used to specify the device to be reset
     
-        - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
-        - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-    - The ``--read-mem`` is used to read from perticular memory location. It has to use with following arguments
+    - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
+    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
+- The ``--read-mem`` is used to read from perticular memory location. It has to use with following arguments
     
-        - <address> <number of bytes> : The read location and the size of the read. 
+    - <address> <number of bytes> : The read location and the size of the read. 
+- The ``--output`` can be used with ``read-mem`` to dump the read data to a file instead of console
     
-    - The ``--output`` can be used with ``read-mem`` to dump the read data to a file instead of console
+    - <filename> : When specified the output of ``--read-mem`` commands are dumped into the user provided file
+- The ``write-mem`` is used to write to the perticular memory location. It has to use with following arguments
     
-        - <filename> : When specified the output of ``--read-mem`` commands are dumped into the user provided file
-    - The ``write-mem`` is used to write to the perticular memory location. It has to use with following arguments
-    
-        - <address> <number of bytes> : The write location and the size of the write. 
-    - The ``fill`` can be used with ``write-mem`` switch to fill the memory location with a perticular binary value
+    - <address> <number of bytes> : The write location and the size of the write. 
+- The ``fill`` can be used with ``write-mem`` switch to fill the memory location with a perticular binary value
         
-        - <uint8> : The filled value in byte
-    
+    - <uint8> : The filled value in byte
 - The ``input`` can be used with ``write-mem`` switch to write the memory location from a file content
         
-        - <binary file> : The binary file 
+    - <binary file> : The binary file 
 - The ``--p2p`` can be used to enable, disable or validate p2p operation
 
-        - enable: Enable the p2p
-        - disable: Disable the p2p
-        - validate: Validate the p2p
+    - enable: Enable the p2p
+    - disable: Disable the p2p
+    - validate: Validate the p2p
         
 
 **Example commands**
