@@ -1,13 +1,15 @@
 .. _xbmgmt2.rst:
 
-XBMGMT (Next Generation Xilinx Board Management Tool)
-=====================================================
+XBMGMT Next
+===========
+
+The next generation version of **xbmgmt** tool is in a preview mode for 2020.2 release. This tool will be in production in future release replacing the current xbmgmt tool. This documents describes various commands and its usage of this new version of the tool.
 
 The xbmgmt command options are
 
-    - xbmgmt program
-    - xbmgmt status
-    - xbmgmt reset
+    - ``xbmgmt program``
+    - ``xbmgmt status``
+    - ``xbmgmt reset``
 
 xbutil program
 ~~~~~~~~~~~~~~
