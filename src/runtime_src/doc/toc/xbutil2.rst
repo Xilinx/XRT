@@ -17,7 +17,7 @@ The xbutil command options are
 xbutil program
 ~~~~~~~~~~~~~~
 
-The **xbutil program** command downloads a specified xclbin binary to the programmable region on the card.
+The ``xbutil program`` command downloads a specified xclbin binary to the programmable region on the card.
 
 **The supported options**
 
@@ -96,22 +96,22 @@ The command **xbutil validate** validates the card installation by running preco
 .. code-block:: 
 
     # For a single device run all the tests 
-    xbutil valiadte
+    xbutil validate
  
     # For a multiple device system run all the tests on all the devices
-    xbutil valiadte --d all
+    xbutil validate --d all
  
     # For a multiple device system run "DMA" program
-    xbutil valiadte --d 0000:d8:00.0 --run DMA
+    xbutil valiadate --d 0000:d8:00.0 --run DMA
  
     # For a multiple device system run "DMA" and "Validate Kernel" program for two devices and generates Json format
-    xbutil valiadte --d 0000:d8:00.0 0000:d8:00.1 --run DMA "Verify Kernel" -f json-2021.2
+    xbutil validate --d 0000:d8:00.0 0000:d8:00.1 --run DMA "Verify Kernel" -f json-2021.2
 
 
 xbutil examine 
 ~~~~~~~~~~~~~~
 
-The command **xbutil examine**  can be used to find the details of the specific device(s),
+The command ``xbutil examine``  can be used to find the details of the specific device(s),
 
 
 **The supported options**
@@ -128,8 +128,12 @@ The command **xbutil examine**  can be used to find the details of the specific 
 **The details of the supported options**
 
 
-    - The --device (or -d) switch is optional, when not specified the details of all the cards are shown 
-    - The --report (or -r) switch is optional, if not specified all possible reports are generated. The user can select specific report(s) of interest from the following options
+    - The ``--device`` (or ``-d``) specifies the target device to be validate 
+    
+         - Optional for a single device system. 
+         - Mandetory for multiple device system, has to be specified with one or more device BDF information 
+         - To specify all devices ``–-device all``  or ``-d all``  can be used
+    - The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
           
           - scan (default): scan option shows System Configuration, XRT and Device BDF information. 
           - verbose: Reports everything, default
@@ -140,8 +144,14 @@ The command **xbutil examine**  can be used to find the details of the specific 
           - host: Reports the host configuration and drivers
           - mechanical: 
           - thermals: Report thermal 
-    - The --format or -f switch is optional, if not specified a text file is generated. Other supported formal is json-2021.2
-    - The --output (or -o) is optional, if not specified the report is shown in stdout. 
+    - The ``--format`` (or ``-f``) can be used to specify the output format
+    
+        - ``text`` (**default**): The output is shown in the text format, default behavior
+        - ``json-2021.2``: The output is shown in json-2021.2 
+
+    - The ``--output`` (or ``-o``) can be used to specify to to dump output in a file instead of stdout
+        
+       - <filename> : The output file to be dumped
 
 
 **Example commands**
