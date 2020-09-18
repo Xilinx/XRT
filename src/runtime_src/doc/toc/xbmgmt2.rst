@@ -25,6 +25,8 @@ Program a partition
 
 Load from a image
 
+.. code-block:: 
+
     xbmgmt program [--device| -d] <bdf>  [--update| -u] <specific image> <--image|-i> <specific image path> 
     
 
@@ -43,11 +45,11 @@ Revert to golden image
 - The ``--partition`` option is used to program specific partition. 
     
     - <partiton file>: 
-    - UUId:
+    - <uuid>:
 - The ``--update`` option can optionally be used to specify the specific image to be programmed. 
     
-    - sc: Satellite controller image 
-    - flash: Flash image 
+    - ``sc``: Satellite controller image 
+    - ``flash``: Flash image 
 - The ``--image`` option can be optionally used with ``--update``
   
     - <image name> : 
