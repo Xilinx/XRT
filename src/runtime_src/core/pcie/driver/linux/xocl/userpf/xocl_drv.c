@@ -841,21 +841,10 @@ void user_pci_reset_done(struct pci_dev *pdev)
 }
 #endif
 
-void xocl_p2p_fini(struct xocl_dev *xdev)
-{
-	if (xocl_subdev_is_vsec(xdev))
-		return;
-
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_P2P);
-}
-
 int xocl_p2p_init(struct xocl_dev *xdev)
 {
 	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_P2P;
 	int ret;
-
-	if (xocl_subdev_is_vsec(xdev))
-		return 0;
 
 	/* create p2p subdev for legacy platform */
 	ret = xocl_subdev_create(xdev, &subdev_info);
@@ -924,7 +913,6 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 		xdev->core.drm = NULL;
 	}
 
-	xocl_p2p_fini(xdev);
 	xocl_fini_persist_sysfs(xdev);
 	xocl_fini_sysfs(xdev);
 
