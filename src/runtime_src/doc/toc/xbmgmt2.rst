@@ -11,30 +11,48 @@ The xbmgmt command options are
     - ``xbmgmt status``
     - ``xbmgmt reset``
 
-xbutil program
+xbmgmt program
 ~~~~~~~~~~~~~~
 
 **The supported options**
 
+Program a partition
 
 .. code-block:: 
 
-    xbmgmt program --device [BDF] --partition [partition file| uuid] --update [specific image] --image [specific image path] 
- 
-    xbutil program -d [BDF] -p [partition file| uuid] -u [specific image] --i [specific image path] 
+    xbmgmt program [--device| -d] <bdf> --partition [partition file| uuid]  
+
+
+Load from a image
+
+    xbmgmt program [--device| -d] <bdf>  [--update| -u] <specific image> <--image|-i> <specific image path> 
     
-    xbutil program --revert-to-golden
+
+Revert to golden image
+.. code-block:: 
+
+    xbmgmt program --revert-to-golden
 
 
 **The details of the supported options**
 
-
-     - The --device (or -d) switch ihas to use by specific BDF
-     - The --partition option can optionally be used to program specific partition. This command supports partition specification by full path of the partition file, or UUID
-     - The --update option can optionally be used to specify the specific image to be programmed. Supported options are 
-     - sc: Satellite controller image 
-     - flash: Flash image 
-     - The --image option to specify  
+- The ``--device`` (or ``-d``) used to specify the device to be reset
+    
+    - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
+    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
+- The ``--partition`` option is used to program specific partition. 
+    
+    - <partiton file>: 
+    - UUId:
+- The ``--update`` option can optionally be used to specify the specific image to be programmed. 
+    
+    - sc: Satellite controller image 
+    - flash: Flash image 
+- The ``--image`` option can be optionally used with ``--update``
+  
+    - <image name> : 
+    - <image path> : 
+- The ``--revert-to-golden`` command is used to reverts the flash image back to the golden version of the card.	
 
 
 **Example commands**
