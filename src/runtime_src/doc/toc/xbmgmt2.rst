@@ -72,15 +72,15 @@ Revert to golden image
 xbmgmt status
 ~~~~~~~~~~~~~
 
+The ``xbmgmt status`` command reports detail status information of the specified device
+
 **The supported options**
 
 
 .. code-block::
 
-    xbmgmt status --device [BDF] --report [report of interest] --format [output file format] --output [output file name]
+    xbmgmt status [--device| -d] <bdf>] [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
  
-    xbmgmt status -d [BDF] -r [report of interest] -f [output file format] --o [output file name]
-
 
 **The details of the supported options**
 
