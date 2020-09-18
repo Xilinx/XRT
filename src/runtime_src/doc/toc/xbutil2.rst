@@ -29,13 +29,12 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 
 **The details of the supported options**
 
-
-    - The ``--device`` (or ``-d``) specifies the target device to be programmed
+- The ``--device`` (or ``-d``) specifies the target device to be programmed
     
          - <none> : Optional for a single device system. 
          - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device BDF information 
          - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used 
-    - The ``--program`` (or ``-p``) is required to specify the .xclbin file
+- The ``--program`` (or ``-p``) is required to specify the .xclbin file
 
 
 **Example commands** 
