@@ -623,7 +623,7 @@ struct ip_layout_raw : request
 
 struct kds_cu_info : request
 {
-  using result_type = std::vector<std::tuple<int, int, int>>;
+  using result_type = std::vector<std::tuple<uint64_t, uint32_t, uint32_t>>;
   static const key_type key = key_type::kds_cu_info;
 
   virtual boost::any

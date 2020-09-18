@@ -16,6 +16,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
+#include <boost/algorithm/string.hpp>
 #include "ReportCu.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
@@ -24,13 +25,31 @@
 namespace qr = xrt_core::query;
 
 boost::property_tree::ptree
+parse_cu_status(uint32_t cu_status)
+{
+  boost::property_tree::ptree pt;
+  std::vector<std::string> result;
+
+  std::string cu_stat_str = xrt_core::utils::parse_cu_status(cu_status);
+  std::string t_str = cu_stat_str.substr(1, cu_stat_str.size()-2);
+  boost::split(result, t_str, boost::is_any_of("|"));
+
+  pt.put("bit_mask",	boost::str(boost::format("0x%x") % cu_status));
+  boost::property_tree::ptree ptSt_arr;
+  for (int i = 0; i < (int)result.size(); i++)
+    ptSt_arr.push_back(std::make_pair("", boost::property_tree::ptree(result[i])));
+
+  pt.add_child( std::string("bits_set"), ptSt_arr);
+
+  return pt;
+}
+
+boost::property_tree::ptree
 populate_cus(const xrt_core::device *device, const std::string& desc)
 {
   boost::property_tree::ptree pt;
   std::vector<char> ip_buf;
-  std::vector<std::tuple<int, int, int>> cu_stats;
-
-  pt.put("description", desc);
+  std::vector<std::tuple<uint64_t, uint32_t, uint32_t>> cu_stats;
 
   try {
     ip_buf = xrt_core::device_query<qr::ip_layout_raw>(device);
@@ -43,7 +62,6 @@ populate_cus(const xrt_core::device *device, const std::string& desc)
     return pt;
 
   const ip_layout *layout = (ip_layout *)ip_buf.data();
-  boost::property_tree::ptree ptCu_array;
   for (int i = 0; i < layout->m_count; i++) {
     if (layout->m_ip_data[i].m_type != IP_KERNEL)
       continue;
@@ -54,16 +72,14 @@ populate_cus(const xrt_core::device *device, const std::string& desc)
         uint32_t status = std::get<2>(stat);
 
         boost::property_tree::ptree ptCu;
-        ptCu.put( "name",         layout->m_ip_data[i].m_name);
-        ptCu.put( "base_address", boost::str(boost::format("0x%x") % std::get<0>(stat)));
-        ptCu.put( "usage",        usage);
-        ptCu.put( "status",       xrt_core::utils::parse_cu_status(status));
-        ptCu_array.push_back(std::make_pair("", ptCu));
+        ptCu.put( "name",			layout->m_ip_data[i].m_name);
+        ptCu.put( "base_address",		boost::str(boost::format("0x%x") % std::get<0>(stat)));
+        ptCu.put( "usage",			usage);
+        ptCu.add_child( std::string("status"),  parse_cu_status(status));
+        pt.push_back(std::make_pair("", ptCu));
       }
     }
   }
-
-  pt.add_child( std::string("compute_units"), ptCu_array);
 
   return pt;
 }
@@ -82,7 +98,7 @@ ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   // There can only be 1 root node
-  _pt.add_child("compute_unit", populate_cus(_pDevice, "Compute Units Information"));
+  _pt.add_child("compute_units", populate_cus(_pDevice, "Compute Units Information"));
 }
 
 void 
@@ -94,16 +110,17 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
   boost::property_tree::ptree empty_ptree;
   getPropertyTreeInternal(_pDevice, _pt);
 
-  _output << _pt.get<std::string>("compute_unit.description") << std::endl;
   _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
   try {
     int index = 0;
-    boost::property_tree::ptree& v = _pt.get_child("compute_unit.compute_units");
+    boost::property_tree::ptree& v = _pt.get_child("compute_units");
     for(auto& kv : v) {
       boost::property_tree::ptree& cu = kv.second;
+      std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
+      uint32_t status_val = std::stoul(cu_status, nullptr, 16);
       _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") % index++ %
 	      cu.get<std::string>("name") % cu.get<std::string>("base_address") %
-	      cu.get<std::string>("usage") % cu.get<std::string>("status");
+	      cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val);
     }
   }
   catch( std::exception const& e) {
