@@ -79,19 +79,29 @@ The ``xbmgmt status`` command reports detail status information of the specified
 
 .. code-block::
 
-    xbmgmt status [--device| -d] <bdf>] [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
+    xbmgmt status [--device| -d] <bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
  
 
 **The details of the supported options**
 
-    - The --device (or -d) switch can be specified to select the specific device of interest. Otherwise status of all the devices are reported
-    - The --report (or -r) switch is optional, by default the device scanning information is provided, supported other options 
+- The ``--device`` (or ``-d``) specifies the target device to be validate 
     
-        - verbose: Reports all
-        - platform: Reports platform related information
-        - scan: Report device scanning information
+    - <none> : Optional for a single device system. 
+    - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device bdf information 
+    - ``all``:To specify all devices ``–-device all``  or ``-d all``  can be used
+- The ``--report`` (or ``-r``) switch is optional, by default the device scanning information is provided, supported other options 
+  
+    - ``scan`` (**default**): scan option shows System Configuration, XRT and Device BDF information. 
+    - ``platform``: Reports platform related informati      
+    - ``verbose``: Reports all
+    
+- The ``--format`` (or ``-f``) can be used to specify the output format
+    
+    - ``text`` (**default**): The output is shown in the text format, default behavior
+    - ``json-2021.2``: The output is shown in json-2021.2 
+- The ``--output`` (or ``-o``) can be used to dump output in a file instead of stdout
         
-    - The --output (or -o) is optional, if not specified the report is shown in stdout. 
+    - <filename> : The output file to be dumped
 
 
 **Example commands** 
