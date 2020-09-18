@@ -242,7 +242,51 @@ P2P Enable, disable or valiadte
     
         - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
         - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-    - The ``--type`` (or ``-t``) can be used to specify the reset type. Currently supported reset type
+    - The ``--read-mem`` is used to read from perticular memory location. It has to use with following arguments
     
-         - ``hot`` (**default**): Complete reset of the device
+        - <address> <number of bytes> : The read location and the size of the read. 
+    
+    - The ``--output`` can be used with ``read-mem`` to dump the read data to a file instead of console
+    
+        - <filename> : When specified the output of ``--read-mem`` commands are dumped into the user provided file
+    - The ``write-mem`` is used to write to the perticular memory location. It has to use with following arguments
+    
+        - <address> <number of bytes> : The write location and the size of the write. 
+    - The ``fill`` can be used with ``write-mem`` switch to fill the memory location with a perticular binary value
+        
+        - <uint8> : The filled value in byte
+    
+- The ``input`` can be used with ``write-mem`` switch to write the memory location from a file content
+        
+        - <binary file> : The binary file 
+- The ``--p2p`` can be used to enable, disable or validate p2p operation
+
+        - enable: Enable the p2p
+        - disable: Disable the p2p
+        - validate: Validate the p2p
+        
+
+**Example commands**
+
+
+.. code-block::
+ 
+    xbutil advanced -d 0000:65:00.1 --read-mem 0x100 0x30
+    
+    xbutil advanced -d 0000:65:00.1 --read-mem 0x100 0x30 --output foo.bin
+    
+    xbutil advanced -d 0000:65:00.1 --write-mem 0x100 0x10 --fill 0xAA
+    
+    xbutil advanced -d 0000:65:00.1 --write-mem 0x100 0x20 --input foo.bin
+    
+    xbutil advanced -d 0000:65:00.1 --p2p enable
+    
+    xbutil advanced -d 0000:65:00.1 --p2p disble
+    
+    xbutil advanced -d 0000:65:00.1 --p2p validate
+    
+    
+    
+
+
 
