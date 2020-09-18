@@ -32,9 +32,9 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 
     - The ``--device`` (or ``-d``) specifies the target device to be programmed
     
-         - Optional for a single device system. 
-         - Mandetory for multiple device system, has to be specified with one or more device BDF information 
-         - To specify all devices ``–-device all``  or ``-d all``  can be used 
+         - <none> : Optional for a single device system. 
+         - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device BDF information 
+         - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used 
     - The ``--program`` (or ``-p``) is required to specify the .xclbin file
 
 
@@ -67,27 +67,26 @@ The command **xbutil validate** validates the card installation by running preco
 .. code-block:: 
 
    # Single Device
-   xbutil validate --device [BDF] --run [program] --format [output file format]
+   xbutil validate [--device| -d] <bdf> [--run| -r] <test> [--format| -f] <report format>
  
-   xbutil validate --d [BDF] --r [program] --f [output file format]
 
 **The details of the supported options**
 
 
     - The ``--device`` (or ``-d``) specifies the target device to be validate 
     
-         - Optional for a single device system. 
-         - Mandetory for multiple device system, has to be specified with one or more device BDF information 
-         - To specify all devices ``–-device all``  or ``-d all``  can be used
+         - <none> : Optional for a single device system. 
+         - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device BDF information 
+         - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
     - The ``--run`` (or ``-r``) specifies the perticular test to execute
         
         - ``all`` (**default**): runs all the tests
         - ``DMA``: runs DMA test
         - ``Verify kernel``: Runs simple kernel test
-    - The ``--format`` (or ``-f``) specifies the output format
+    - The ``--format`` (or ``-f``) specifies the report format
     
-        - ``text`` (**default**): The output is shown in the text format, default behavior
-        - ``json-2021.2``: The output is shown in json-2021.2 
+        - ``text`` (**default**): The report is shown in the text format, default behavior
+        - ``json-2021.2``: The report is shown in json-2021.2 
 
 
 **Example commands**
@@ -120,9 +119,8 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 .. code-block:: 
 
     # Single Device
-    xbutil examine --device [BDF] --report [Report of interest] --format [o/p file format] --output [o/p file]
+    xbutil examine [--device|-d] <bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -o] <filename>
  
-    xbutil examine --d [BDF] --r [Report of interest] --f [o/p file format] --o [o/p file]
 
 
 **The details of the supported options**
@@ -130,26 +128,26 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 
     - The ``--device`` (or ``-d``) specifies the target device to be validate 
     
-         - Optional for a single device system. 
-         - Mandetory for multiple device system, has to be specified with one or more device BDF information 
-         - To specify all devices ``–-device all``  or ``-d all``  can be used
+         - <none> : Optional for a single device system. 
+         - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device bdf information 
+         - ``all``:To specify all devices ``–-device all``  or ``-d all``  can be used
     - The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
           
-          - scan (default): scan option shows System Configuration, XRT and Device BDF information. 
-          - verbose: Reports everything, default
-          - aie: Reports information related to AIE kernels
-          - electrical: Reports information related to Volate, current and Power
-          - debug-ip-status: Reports information related to Debug IP inserted during the kernel compilation
-          - firewall: Reports the current firewall status
-          - host: Reports the host configuration and drivers
-          - mechanical: 
-          - thermals: Report thermal 
+          - ``scan`` (**default**): scan option shows System Configuration, XRT and Device BDF information. 
+          - ``verbose``: Reports everything, default
+          - ``aie``: Reports information related to AIE kernels
+          - ``electrical``: Reports information related to Volate, current and Power
+          - ``debug-ip-status``: Reports information related to Debug IP inserted during the kernel compilation
+          - ``firewall``: Reports the current firewall status
+          - ``host``: Reports the host configuration and drivers
+          - ``mechanical``: 
+          - ``thermals``: Report thermal 
     - The ``--format`` (or ``-f``) can be used to specify the output format
     
         - ``text`` (**default**): The output is shown in the text format, default behavior
         - ``json-2021.2``: The output is shown in json-2021.2 
 
-    - The ``--output`` (or ``-o``) can be used to specify to to dump output in a file instead of stdout
+    - The ``--output`` (or ``-o``) can be used to dump output in a file instead of stdout
         
        - <filename> : The output file to be dumped
 
@@ -178,16 +176,18 @@ This command can be used to reset one or more devices.
 
 .. code-block:: 
 
-    xbutil reset --device [BDF] --type [Reset type]
-    xbutil reset -d [BDF] -t [Reset type]
+    xbutil reset [--device| -d] <bdf> [--type| -t] <reset type>
 
 **The details of the supported options**
 
 
-    - The --device (or -d) used to specify the device to be reset
-    - The --type (or -t) can be used to specify the reset type. Currently supported reset type
+    - The ``--device`` (or ``-d``) used to specify the device to be reset
     
-         - hot: A hot reset (default)
+        - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
+        - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
+    - The ``--type`` (or ``-t``) can be used to specify the reset type. Currently supported reset type
+    
+         - ``hot`` (**default**): Complete reset of the device
 
 **Example commands**
 
