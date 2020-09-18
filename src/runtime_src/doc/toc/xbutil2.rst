@@ -203,7 +203,9 @@ This ``xbutil reset`` command can be used to reset one or more devices.
 xbutil advanced
 ~~~~~~~~~~~~~~~
 
-The ``xbutil advanced`` commands are advanced commands only for the advanced users for debug purpose. As a disclaimer, the formats of these commands can change as we know more about the advnced use-cases. 
+The ``xbutil advanced`` commands are advanced commands only for the advanced users for debug purpose. 
+
+As a disclaimer, the formats of these commands can change significantly as we know more about the advnced use-cases. 
 
 **The supported options**
 
@@ -245,16 +247,16 @@ P2P Enable, disable or valiadte
 - The ``--read-mem`` is used to read from perticular memory location. It has to use with following arguments
     
     - <address> <number of bytes> : The read location and the size of the read. 
-- The ``--output`` can be used with ``read-mem`` to dump the read data to a file instead of console
+- The ``--output`` can be used with ``--read-mem`` to dump the read data to a file instead of console
     
     - <filename> : When specified the output of ``--read-mem`` commands are dumped into the user provided file
 - The ``--write-mem`` is used to write to the perticular memory location. It has to use with following arguments
     
     - <address> <number of bytes> : The write location and the size of the write. 
-- The ``--fill`` can be used with ``write-mem`` switch to fill the memory location with a perticular binary value
+- The ``--fill`` can be used with ``--write-mem`` to fill the memory location with a perticular binary value
         
     - <uint8> : The filled value in byte
-- The ``--input`` can be used with ``write-mem`` switch to write the memory location from a file content
+- The ``--input`` can be used with ``--write-mem`` to write the memory location from a file content
         
     - <binary file> : The binary file 
 - The ``--p2p`` can be used to enable, disable or validate p2p operation
