@@ -59,7 +59,7 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 xbutil validate
 ~~~~~~~~~~~~~~~
 
-The command **xbutil validate** validates the card installation by running precompiled basic examples. 
+The command ``xbutil validate`` validates the card installation by running precompiled basic examples. 
 
 **The supported options**
 
@@ -170,7 +170,7 @@ The command ``xbutil examine``  can be used to find the details of the specific 
  
 xbutil reset
 ~~~~~~~~~~~~
-This command can be used to reset one or more devices. 
+This ``xbutil reset`` command can be used to reset one or more devices. 
 
 **The supported options**
 
