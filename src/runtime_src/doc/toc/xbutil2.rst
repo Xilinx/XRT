@@ -204,7 +204,7 @@ This ``xbutil reset`` command can be used to reset one or more devices.
 xbutil advanced
 ~~~~~~~~~~~~~~~
 
-The ``xbutil advanced`` commands are advanced commands only for the advanced users for debug purpose. 
+The ``xbutil advanced`` commands are the group of commands only recommended for the advanced users. 
 
 As a disclaimer, the formats of these commands can change significantly as we know more about the advnced use-cases. 
 
