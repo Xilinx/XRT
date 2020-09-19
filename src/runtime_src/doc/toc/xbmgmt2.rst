@@ -3,7 +3,7 @@
 XBMGMT Next
 ===========
 
-The next generation version of **xbmgmt** tool is in a preview mode for 2020.2 release. This tool will be in production in future release replacing the current xbmgmt tool. This documents describes various commands and its usage of this new version of the tool.
+The next generation version of **xbmgmt** tool is in preview mode for 2020.2 release. This tool will be in production in future release replacing the current xbmgmt tool. This documents describes various commands and usage of this new version of the tool.
 
 The xbmgmt command options are
 
