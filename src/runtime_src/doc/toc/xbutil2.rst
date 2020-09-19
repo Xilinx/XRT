@@ -97,13 +97,13 @@ The command ``xbutil validate`` validates the card installation by running preco
     xbutil validate
  
     # For a multiple device system run all the tests on all the devices
-    xbutil validate --d all
+    xbutil validate --device all
  
-    # For a multiple device system run "DMA" program
-    xbutil valiadate --d 0000:d8:00.0 --run DMA
+    # For a multiple device system run "DMA" program on a specific device
+    xbutil valiadate --device 0000:d8:00.0 --run DMA
  
-    # For a multiple device system run "DMA" and "Validate Kernel" program for two devices and generates Json format
-    xbutil validate --d 0000:d8:00.0 0000:d8:00.1 --run DMA "Verify Kernel" -f json-2021.2
+    # For a multiple device system run "DMA" and "Validate Kernel" program on two devices and generates Json format
+    xbutil validate --device 0000:d8:00.0 0000:d8:00.1 --run DMA "Verify Kernel" --format json-2021.2
 
 
 xbutil examine 
@@ -162,10 +162,10 @@ The command ``xbutil examine``  can be used to find the details of the specific 
  
  
     # Examine a specific device and report electrical information in the stdout
-    xbutil examine --d 0000:d8:00.0 --r electrical
+    xbutil examine --device 0000:d8:00.0 --run electrical
  
     # Example a list of devices and reports a list of information and dump in a file Json format
-    xbutil examine --d 0000:d8:00.0 0000:d8:00.1 --r electrical firewall -f json-2021.2 -o my_reports.json
+    xbutil examine --device 0000:d8:00.0 0000:d8:00.1 --run electrical firewall --format json-2021.2 --output my_reports.json
  
  
 xbutil reset
