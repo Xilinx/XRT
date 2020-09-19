@@ -67,7 +67,6 @@ The command ``xbutil validate`` validates the card installation by running preco
 
 .. code-block:: 
 
-   # Single Device
    xbutil validate [--device| -d] <bdf> [--run| -r] <test> [--format| -f] <report format>
  
 
