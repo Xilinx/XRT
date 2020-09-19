@@ -3,7 +3,7 @@
 XBUTIL Next
 ===========
 
-The next generation version of ``xbutil`` tool is in a preview mode for 2020.2 release. This tool will be in production in future release replacing the current ``xbutil`` tool. This document describes various commands and its usage of this new version of the tool. 
+The next generation version of ``xbutil`` tool is in preview mode for 2020.2 release. This tool will be in production in future release replacing the current ``xbutil`` tool. This document describes various commands and usage of this new version of the tool. 
 
 The xbutil command options are
 
