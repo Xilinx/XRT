@@ -133,7 +133,7 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("distribution", value);
 
   BufferSize = sizeof value;
-  RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\CurrentControlSet\Control\SystemInformation", "SystemProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\SystemInformation", "SystemProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
   pt.put("model", value);
 
   MEMORYSTATUSEX mem;
