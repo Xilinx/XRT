@@ -45,16 +45,16 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 .. code-block:: 
 
     #Programming a only available device with a xclbin 
-    xbutil program -p my_kernel.xclbin
+    xbutil program --program my_kernel.xclbin
  
     #Multiple Devices, program all the devices
-    xbutil program -d all -p my_kernel.xclbin
+    xbutil program --device all --program my_kernel.xclbin
  
     #Multiple Device, programing a single device
-    xbutil program -d 0000:03:00.1 --p my_kernel.xclbin
+    xbutil program --device 0000:03:00.1 --program my_kernel.xclbin
  
     #Multiple Device, programing two devices
-    xbutil program -d 0000:03:00.1 0000:d8:00.1 --p my_kernel.xclbin
+    xbutil program --device 0000:03:00.1 0000:d8:00.1 --program my_kernel.xclbin
 
 
 xbutil validate
@@ -194,9 +194,9 @@ This ``xbutil reset`` command can be used to reset one or more devices.
 
 .. code-block::
  
-    xbutil reset -d 0000:65:00.1
+    xbutil reset --device 0000:65:00.1
     
-    xbutil reset -d 0000:65:00.1 -t hot
+    xbutil reset --device 0000:65:00.1 --type hot
     
 
 
@@ -271,19 +271,19 @@ P2P Enable, disable or valiadte
 
 .. code-block::
  
-    xbutil advanced -d 0000:65:00.1 --read-mem 0x100 0x30
+    xbutil advanced --device 0000:65:00.1 --read-mem 0x100 0x30
     
-    xbutil advanced -d 0000:65:00.1 --read-mem 0x100 0x30 --output foo.bin
+    xbutil advanced --device 0000:65:00.1 --read-mem 0x100 0x30 --output foo.bin
     
-    xbutil advanced -d 0000:65:00.1 --write-mem 0x100 0x10 --fill 0xAA
+    xbutil advanced --device 0000:65:00.1 --write-mem 0x100 0x10 --fill 0xAA
     
-    xbutil advanced -d 0000:65:00.1 --write-mem 0x100 0x20 --input foo.bin
+    xbutil advanced --device 0000:65:00.1 --write-mem 0x100 0x20 --input foo.bin
     
-    xbutil advanced -d 0000:65:00.1 --p2p enable
+    xbutil advanced --device 0000:65:00.1 --p2p enable
     
-    xbutil advanced -d 0000:65:00.1 --p2p disble
+    xbutil advanced --device 0000:65:00.1 --p2p disble
     
-    xbutil advanced -d 0000:65:00.1 --p2p validate
+    xbutil advanced --device 0000:65:00.1 --p2p validate
     
     
     
