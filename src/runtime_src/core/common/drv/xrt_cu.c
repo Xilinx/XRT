@@ -510,16 +510,25 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
 	ssize_t sz = 0;
 
 	/* Add CU dynamic statistic information in below */
-	sz += sprintf(buf+sz, "Pending queue:    %d\n", xcu->num_pq);
-	sz += sprintf(buf+sz, "Running queue:    %d\n", xcu->num_rq);
-	sz += sprintf(buf+sz, "Submitted queue:  %d\n", xcu->num_sq);
-	sz += sprintf(buf+sz, "Completed queue:  %d\n", xcu->num_cq);
-	sz += sprintf(buf+sz, "Bad state:	%d\n", xcu->bad_state);
-	sz += sprintf(buf+sz, "Current credit:  %d\n",
-		      xcu->funcs->peek_credit(xcu->core));
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Pending queue:    %d\n",
+			xcu->num_pq);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Running queue:    %d\n",
+			xcu->num_rq);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Submitted queue:  %d\n",
+			xcu->num_sq);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Completed queue:  %d\n",
+			xcu->num_cq);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Bad state:        %d\n",
+			xcu->bad_state);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Current credit:   %d\n",
+			xcu->funcs->peek_credit(xcu->core));
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "CU status:        0x%x\n",
+			xcu->status);
 
-	if (sz)
+	if (sz < PAGE_SIZE - 1)
 		buf[sz++] = 0;
+	else
+		buf[PAGE_SIZE - 1] = 0;
 
 	return sz;
 }
@@ -532,16 +541,24 @@ ssize_t show_cu_info(struct xrt_cu *xcu, char *buf)
 	int i;
 
 	/* Add any CU static information in below */
-	sz += sprintf(buf+sz, "Kernel name: %s\n", info->kname);
-	sz += sprintf(buf+sz, "Instance(CU) name: %s\n", info->iname);
-	sz += sprintf(buf+sz, "CU address: 0x%llx\n", info->addr);
-	sz += sprintf(buf+sz, "CU index: %d\n", info->cu_idx);
-	sz += sprintf(buf+sz, "Protocol: %s\n", prot2str(info->protocol));
-	sz += sprintf(buf+sz, "Interrupt cap: %d\n", info->intr_enable);
-	sz += sprintf(buf+sz, "Interrupt ID:  %d\n", info->intr_id);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Kernel name: %s\n",
+			info->kname);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Instance(CU) name: %s\n",
+			info->iname);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "CU address: 0x%llx\n",
+			info->addr);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "CU index: %d\n",
+			info->cu_idx);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Protocol: %s\n",
+			prot2str(info->protocol));
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Interrupt cap: %d\n",
+			info->intr_enable);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Interrupt ID:  %d\n",
+			info->intr_id);
 
-	sz += sprintf(buf+sz, "--- Arguments ---\n");
-	sz += sprintf(buf+sz, "Number of arguments: %d\n", info->num_args);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "--- Arguments ---\n");
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Number of arguments: %d\n",
+			info->num_args);
 	for (i = 0; i < info->num_args; i++) {
 		if (info->args[i].dir == DIR_INPUT)
 			strcpy(dir, "input");
@@ -550,14 +567,21 @@ ssize_t show_cu_info(struct xrt_cu *xcu, char *buf)
 		else
 			strcpy(dir, "unknown");
 
-		sz += sprintf(buf+sz, "arg name: %s\n", info->args[i].name);
-		sz += sprintf(buf+sz, "  size: %d\n", info->args[i].size);
-		sz += sprintf(buf+sz, "  offset: 0x%x\n", info->args[i].offset);
-		sz += sprintf(buf+sz, "  direction: %s\n", dir);
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, "arg name: %s\n",
+				info->args[i].name);
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, "  size: %d\n",
+				info->args[i].size);
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, "  offset: 0x%x\n",
+				info->args[i].offset);
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, "  direction: %s\n",
+				dir);
 	}
 
-	if (sz)
+	if (sz < PAGE_SIZE - 1)
 		buf[sz++] = 0;
+	else
+		buf[PAGE_SIZE - 1] = 0;
+
 
 	return sz;
 }

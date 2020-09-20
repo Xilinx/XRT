@@ -27,6 +27,7 @@
 #include <sstream>
 #include <string>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/tokenizer.hpp>
 
 #include "xrt.h"
 #include "ert.h"
@@ -354,6 +355,7 @@ public:
         return 0;
     }
 
+    /* Old kds style */
     uint32_t parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu_stat kind) const
     {
        uint32_t ret = 0;
@@ -386,6 +388,7 @@ public:
 
         std::vector<std::string> custat;
         std::string errmsg;
+
         pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
 
         for (unsigned int i = 0; i < computeUnits.size(); ++i) {
@@ -401,6 +404,49 @@ public:
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
+        return 0;
+    }
+
+    /* new KDS which supported CU subdevice */
+    int parseCUSubdevStat() const
+    {
+        using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+        std::vector<std::string> custat;
+        std::string errmsg;
+
+        // The kds_custat_raw is printing in formatted string of each line
+        // Format: "%d,%s:%s,0x%llx,0x%x,%llu"
+        // Using comma as separator.
+        pcidev::get_dev(m_idx)->sysfs_get("", "kds_custat_raw", errmsg, custat);
+        for (auto& line : custat) {
+            boost::char_separator<char> sep(",");
+            std::string name(":");
+            unsigned long long paddr = 0;
+            uint32_t usage = 0;
+            uint32_t status = 0;
+            int cu_idx = 0;
+            int radix = 16;
+            tokenizer tokens(line, sep);
+
+            // Check if we have 5 tokens: cu_index, name, addr, status, usage
+            if (std::distance(tokens.begin(), tokens.end()) == 5) {
+                tokenizer::iterator tok_it = tokens.begin();
+                cu_idx = std::stoi(std::string(*tok_it++));
+                name = std::string(*tok_it++);
+                paddr = std::stoull(std::string(*tok_it++), nullptr, radix);
+                status = std::stoul(std::string(*tok_it++), nullptr, radix);
+                usage = std::stoul(std::string(*tok_it++));
+            } else
+                break;
+
+            boost::property_tree::ptree ptCu;
+            ptCu.put( "name",         name );
+            ptCu.put( "base_address", paddr );
+            ptCu.put( "usage",        usage );
+            ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
+            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(cu_idx)), ptCu );
+        }
+
         return 0;
     }
 
@@ -969,12 +1015,17 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
         sensor_tree::put( "board.xclbin.uuid", xclbinid );
 
-        // compute unit
-        std::vector<ip_data> computeUnits;
-        if( getComputeUnits( computeUnits ) < 0 ) {
-            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
-        }
-        parseComputeUnits( computeUnits );
+        uint32_t kds_mode;
+        pcidev::get_dev(m_idx)->sysfs_get<uint32_t>("", "kds_mode", errmsg, kds_mode, 0);
+        if (!kds_mode) {
+            // compute unit
+            std::vector<ip_data> computeUnits;
+            if( getComputeUnits( computeUnits ) < 0 ) {
+                std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
+            }
+            parseComputeUnits( computeUnits );
+        } else
+            parseCUSubdevStat();
 
         /**
          * \note Adding device information for debug and profile
