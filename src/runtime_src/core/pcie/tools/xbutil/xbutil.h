@@ -62,6 +62,7 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
 #define XCL_INVALID_SENSOR_VAL 0
 
 #define indent(level)   std::string((level) * 4, ' ')
+
 /*
  * Simple command line tool to query and interact with SDx PCIe devices
  * The tool statically links with xcldma HAL driver inorder to avoid
@@ -788,6 +789,8 @@ public:
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
         std::vector<std::string> mac_addrs;
+        int mac_contiguous_num;
+        std::string mac_addr_first;
         bool mig_calibration;
 
         clock_freqs.resize(3);
@@ -805,6 +808,8 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr1",               errmsg, mac_addrs[1] );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr2",               errmsg, mac_addrs[2] );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr3",               errmsg, mac_addrs[3] );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_contiguous_num",      errmsg, mac_contiguous_num, 0);
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr_first",          errmsg, mac_addr_first);
         pcidev::get_dev(m_idx)->sysfs_get<int>("rom", "ddr_bank_size",       errmsg, ddr_size,  0 );
         pcidev::get_dev(m_idx)->sysfs_get<int>( "rom", "ddr_bank_count_max", errmsg, ddr_count, 0 );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs",            errmsg, clock_freqs );
@@ -850,14 +855,30 @@ public:
         sensor_tree::put( "board.info.host_mem_size",   xrt_core::utils::unit_convert(host_mem_size) );
         sensor_tree::put( "board.info.max_host_mem_aperture",   xrt_core::utils::unit_convert(max_host_mem_aperture) );
 
-        for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
-            std::string entry_name = "board.info.mac_addr."+std::to_string(i);
+        if (mac_contiguous_num && !mac_addr_first.empty()) {
+            std::string mac_prefix = mac_addr_first.substr(0, mac_addr_first.find_last_of(":"));
+            std::string mac_base = mac_addr_first.substr(mac_addr_first.find_last_of(":") + 1);
+            std::stringstream ss;
+            uint32_t mac_base_val = 0;
+            ss << std::hex << mac_base;
+            ss >> mac_base_val;
 
-            if (mac_addrs[i].empty())
-                continue;
+            mac_addrs.resize(mac_contiguous_num);
+            for (uint32_t i = 0; i < (uint32_t)mac_contiguous_num; i++) {
+                std::string entry_name = "board.info.mac_addr." + std::to_string(i);
+                std::ostringstream oss;
+                oss << boost::format("%02X") % (mac_base_val + i);
 
-            sensor_tree::put( entry_name,     mac_addrs[i]);
+                sensor_tree::put(entry_name, mac_prefix + ":" + oss.str());
+            }
+        } else {
+            for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
+                std::string entry_name = "board.info.mac_addr."+std::to_string(i);
+                if (!mac_addrs[i].empty())
+                    sensor_tree::put(entry_name, mac_addrs[i]);
+            }
         }
+
         //interface uuid
         std::vector<std::string> interface_uuid;
         pcidev::get_dev(m_idx)->sysfs_get( "", "interface_uuids", errmsg, interface_uuid );

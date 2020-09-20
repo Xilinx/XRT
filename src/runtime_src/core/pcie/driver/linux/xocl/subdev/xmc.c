@@ -967,7 +967,7 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 		case MAC_CONT_NUM:
 			*buf = xmc->mac_contiguous_num;
 			break;
-		case MAC_CONT_FIRST:
+		case MAC_ADDR_FIRST:
 			memcpy(buf, xmc->mac_addr_first, XMC_BDINFO_MAC_LEN);
 			break;
 		default:
@@ -1020,6 +1020,12 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 		case EXP_BMC_VER:
 			memcpy(buf, bdinfo->exp_bmc_ver,
 					XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case MAC_CONT_NUM:
+			*buf = bdinfo->mac_contiguous_num;
+			break;
+		case MAC_ADDR_FIRST:
+			memcpy(buf, bdinfo->mac_addr_first, XMC_BDINFO_MAC_LEN);
 			break;
 		default:
 			break;
@@ -1143,7 +1149,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_bdinfo(pdev, CFG_MODE, &bdinfo->config_mode);
 		xmc_bdinfo(pdev, EXP_BMC_VER, (u32 *)bdinfo->exp_bmc_ver);
 		xmc_bdinfo(pdev, MAC_CONT_NUM, &bdinfo->mac_contiguous_num);
-		xmc_bdinfo(pdev, MAC_CONT_FIRST, (u32 *)bdinfo->mac_addr_first);
+		xmc_bdinfo(pdev, MAC_ADDR_FIRST, (u32 *)bdinfo->mac_addr_first);
 		mutex_unlock(&xmc->mbx_lock);
 		break;
 	default:
@@ -4209,6 +4215,8 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, FAN_PRESENCE, &xmc->fan_presence);
 		xmc_bdinfo(xmc->pdev, CFG_MODE, &xmc->config_mode);
 		xmc_bdinfo(xmc->pdev, EXP_BMC_VER, (u32 *)xmc->exp_bmc_ver);
+		xmc_bdinfo(xmc->pdev, MAC_CONT_NUM, &xmc->mac_contiguous_num);
+		xmc_bdinfo(xmc->pdev, MAC_ADDR_FIRST, (u32 *)xmc->mac_addr_first);
 
 		if (bd_info_valid(xmc->serial_num) &&
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
