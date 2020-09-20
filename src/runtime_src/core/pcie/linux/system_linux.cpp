@@ -31,6 +31,7 @@
 
 #include <sys/utsname.h>
 #include <gnu/libc-version.h>
+#include <unistd.h>
 
 namespace {
 
@@ -159,6 +160,7 @@ get_os_info(boost::property_tree::ptree &pt)
 
   pt.put("model", machine_info());
   pt.put("cores", std::thread::hardware_concurrency());
+  pt.put("memory", sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 0x100000);
   boost::property_tree::ptree _ptLibInfo;
   _ptLibInfo.push_back( std::make_pair("", glibc_info() ));
   pt.put_child("libraries", _ptLibInfo);

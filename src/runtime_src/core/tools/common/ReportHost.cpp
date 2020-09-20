@@ -71,6 +71,7 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
     _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.os.version");
     _output << boost::format("  %-20s : %s\n") % "Machine" % _pt.get<std::string>("host.os.machine");
     _output << boost::format("  %-20s : %s\n") % "CPU Cores" % _pt.get<std::string>("host.os.cores");
+    _output << boost::format("  %-20s : %s MB\n") % "Memory" % _pt.get<std::string>("host.os.memory");
     _output << boost::format("  %-20s : %s\n") % "Distribution" % _pt.get<std::string>("host.os.distribution","N/A");
     boost::property_tree::ptree& available_libraries = _pt.get_child("host.os.libraries", empty_ptree);
     for(auto& kl : available_libraries) {

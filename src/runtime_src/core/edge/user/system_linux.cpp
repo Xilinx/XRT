@@ -27,6 +27,7 @@
 
 #include <sys/utsname.h>
 #include <gnu/libc-version.h>
+#include <unistd.h>
 
 namespace {
 
@@ -86,6 +87,30 @@ glibc_info()
   return _pt;
 }
 
+static std::string
+machine_info()
+{
+#if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
+  const char node[] = "/proc/device-tree/model";
+#elif defined(__PPC64__)
+  const char node[] = "/proc/device-tree/model-name";
+  // /proc/device-tree/system-id may be 000000
+  // /proc/device-tree/model may be 00000
+#elif defined (__x86_64__)
+  const char node[] = "/sys/devices/virtual/dmi/id/product_name";
+#else
+#error "Unsupported platform"
+  const char node[] = "";
+#endif
+  std::string model("unknown");
+  std::ifstream stream(node);
+  if (stream.good()) {
+    std::getline(stream, model);
+    stream.close();
+  }
+  return model;
+}
+
 void
 system_linux::
 get_os_info(boost::property_tree::ptree &pt)
@@ -119,19 +144,9 @@ get_os_info(boost::property_tree::ptree &pt)
     }
     ifs.close();
   }
-#if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
-  const char node[] = "/proc/device-tree/model";
-  std::string model("unknown");
-  std::ifstream stream(node);
-  if (stream.good()) {
-      std::getline(stream, model);
-      stream.close();
-  }
-  pt.put("model", model);
-#else
-  #error "Unsupported platform"
-#endif
+  pt.put("model", machine_info());
   pt.put("cores", std::thread::hardware_concurrency());
+  pt.put("memory", sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 0x100000);
   pt.put("now", xrt_core::timestamp());
 }
 

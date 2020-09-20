@@ -136,6 +136,11 @@ get_os_info(boost::property_tree::ptree &pt)
   RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\CurrentControlSet\Control\SystemInformation", "SystemProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
   pt.put("model", value);
 
+  MEMORYSTATUSEX mem;
+  mem.dwLength = sizeof(mem);
+  GlobalMemoryStatusEx(&mem);
+  pt.put("memory", mem.ullTotalPhys / 0x100000);
+
   pt.put("cores", std::thread::hardware_concurrency());
 }
 
