@@ -625,6 +625,7 @@ class argument
 
 public:
   static constexpr size_t no_index = xarg::no_index;
+  using direction = xarg::direction;
 
   argument()
     : grpid(std::numeric_limits<int32_t>::max()), content(nullptr)
@@ -697,6 +698,14 @@ public:
     return content->get_value(args);
   }
 
+  void
+  set_fa_desc_offset(size_t offset)
+  { arg.fa_desc_offset = offset; }
+
+  size_t
+  fa_desc_offset() const
+  { return arg.fa_desc_offset; }
+
   size_t
   index() const
   { return arg.index; }
@@ -717,6 +726,17 @@ public:
   group_id() const
   { return grpid; }
 
+  direction
+  dir() const
+  { return arg.dir; }
+
+  bool
+  is_input() const
+  { return arg.dir == direction::input; }
+
+  bool
+  is_output() const
+  { return arg.dir == direction::output; }
 };
 
 } // namespace
@@ -740,8 +760,63 @@ class kernel_impl
   ipctx vctx;                          // virtual CU context
   std::bitset<128> cumask;             // cumask for command execution
   size_t regmap_size = 0;              // CU register map size
+  size_t fa_num_inputs = 0;            // Fast adapter number of inputs per meta data
+  size_t fa_num_outputs = 0;           // Fast adapter number of outputs per meta data
+  size_t fa_input_entry_bytes = 0;     // Fast adapter input desc bytes
+  size_t fa_output_entry_bytes = 0;    // Fast adapter output desc bytes
   size_t num_cumasks = 1;              // Required number of command cu masks
   uint32_t protocol = 0;               // Default opcode
+
+  // Compute data for FAST_ADAPTER descriptor use (see ert_fa.h)
+  //
+  // Compute argument descriptor entry offset and compute total
+  // descriptor bytes for inputs and outputs.
+  //
+  // This function amends the kernel arguments already captured such
+  // that later kernel invocation can efficiently construct the fa
+  // descriptor from pre computed data.
+  //
+  void
+  amend_fa_args()
+  {
+    // remove last argument which is "nextDescriptorAddr" and
+    // not set by user
+    args.pop_back();
+    
+    size_t desc_offset = 0;
+
+    // process inputs, compute descriptor entry offset
+    for (auto& arg : args) {
+      if (!arg.is_input())
+        continue;
+
+      ++fa_num_inputs;
+      arg.set_fa_desc_offset(desc_offset);
+      desc_offset += arg.size() + sizeof(ert_fa_desc_entry);
+      fa_input_entry_bytes += arg.size();
+    }
+
+    // process outputs, compute descriptor entry offset
+    for (auto& arg : args) {
+      if (!arg.is_output())
+        continue;
+
+      ++fa_num_outputs;
+      arg.set_fa_desc_offset(desc_offset);
+      desc_offset += arg.size() + sizeof(ert_fa_desc_entry);
+      fa_output_entry_bytes += arg.size();
+    }
+
+    // adjust regmap size to be size of descriptor and all entries
+    regmap_size = (sizeof(ert_fa_descriptor) + desc_offset) / sizeof(uint32_t);
+  }
+
+  void
+  amend_args()
+  {
+    if (protocol == FAST_ADAPTER)
+      amend_fa_args();
+  }
 
   // Traverse xclbin connectivity section and find
   int32_t
@@ -828,10 +903,10 @@ class kernel_impl
   {
     auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
     desc->status = ERT_FA_UNDEFINED;
-    desc->num_input_entries = 0;
-    desc->input_entry_bytes = 0;
-    desc->num_output_entries = 0;
-    desc->output_entry_bytes = 0;
+    desc->num_input_entries = fa_num_inputs;
+    desc->input_entry_bytes = fa_input_entry_bytes;
+    desc->num_output_entries = fa_num_outputs;
+    desc->output_entry_bytes = fa_output_entry_bytes;
   }
 
 
@@ -895,6 +970,8 @@ public:
       args.emplace_back(device->get_core_device(), std::move(arg), get_arg_grpid(connectivity, arg.index, ip2idx));
     }
 
+    // amend args with computed data based on kernel protocol
+    amend_args();
   }
 
   // Initialize kernel command and return pointer to payload
@@ -911,6 +988,12 @@ public:
       initialize_fadesc(data);
 
     return data;
+  }
+
+  IP_CONTROL
+  get_ip_control_protocol() const
+  {
+    return IP_CONTROL(protocol);
   }
 
   int
@@ -984,11 +1067,72 @@ public:
 // its own execution buffer (ert command object)
 class run_impl
 {
+  // Helper hierarchy to set argument value per control protocol type
+  // The @data member is the payload to be populated with argument
+  // value.  The interpretation of the payload depends on the control
+  // protocol.
+  struct arg_setter
+  {
+    uint32_t* data;
+
+    arg_setter(uint32_t* d)
+      : data(d)
+    {}
+
+    virtual void
+    set_arg_value(const argument& arg, const std::vector<uint32_t>& value) = 0;
+  };
+
+  // AP_CTRL_HS, AP_CTRL_CHAIN
+  struct hs_arg_setter : arg_setter
+  {
+    hs_arg_setter(uint32_t* data)
+      : arg_setter(data)
+    {}
+
+    virtual void
+    set_arg_value(const argument& arg, const std::vector<uint32_t>& value)
+    {
+      auto cmdidx = arg.offset() / 4;
+      auto count = std::min<size_t>(arg.size() / sizeof(uint32_t), value.size());
+      std::copy_n(value.begin(), count, data + cmdidx);
+    }
+  };
+
+  // FAST_ADAPTER
+  struct fa_arg_setter : arg_setter
+  {
+    fa_arg_setter(uint32_t* data)
+      : arg_setter(data)
+    {}
+
+    virtual void
+    set_arg_value(const argument& arg, const std::vector<uint32_t>& value)
+    {
+      auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
+      auto desc_entry = reinterpret_cast<ert_fa_desc_entry*>(desc->data + arg.fa_desc_offset() / sizeof(uint32_t));
+      desc_entry->arg_offset = arg.offset();
+      desc_entry->arg_size = arg.size();
+      auto count = std::min<size_t>(arg.size() / sizeof(uint32_t), value.size());
+      std::copy_n(value.begin(), count, desc_entry->arg_value);
+    }
+  };
+
+  std::unique_ptr<arg_setter>
+  make_arg_setter()
+  {
+    if (kernel->get_ip_control_protocol() == FAST_ADAPTER)
+      return std::make_unique<fa_arg_setter>(data);
+    else
+      return std::make_unique<hs_arg_setter>(data);
+  }
+  
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
   uint32_t* data;                         // command argument data payload @0x0
+  std::unique_ptr<arg_setter> arg_setter; // helper to populate payload data
 
 public:
   void
@@ -1020,6 +1164,7 @@ public:
     , core_device(kernel->get_core_device()) // cache core device
     , cmd(std::make_shared<kernel_command>(kernel->get_device()))
     , data(kernel->initialize_command(cmd.get()))
+    , arg_setter(make_arg_setter())
   {}
 
   kernel_impl*
@@ -1038,8 +1183,7 @@ public:
   void
   set_arg_value(const argument& arg, const std::vector<uint32_t>& value)
   {
-    auto cmdidx = arg.offset() / 4;
-    std::copy(value.begin(), value.end(), data + cmdidx);
+    arg_setter->set_arg_value(arg, value);
   }
 
   void

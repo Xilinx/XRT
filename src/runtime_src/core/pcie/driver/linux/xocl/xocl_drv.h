@@ -1051,7 +1051,7 @@ enum data_kind {
 	XMC_VCCRAM,
 	DATA_RETAIN,
 	MAC_CONT_NUM,
-	MAC_CONT_FIRST,
+	MAC_ADDR_FIRST,
 };
 
 enum mb_kind {

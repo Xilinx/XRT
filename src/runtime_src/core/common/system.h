@@ -78,7 +78,7 @@ public:
    * by a call to xclOpen.  This call could be explicit xclOpen in
    * host code, which must be followed by xclClose also in host code.
    *
-   * The returned device is unmanaged, in other words xclClose is 
+   * The returned device is unmanaged, in other words xclClose is
    * not called when device goes out of scope.
    */
   virtual std::shared_ptr<device>
@@ -91,8 +91,8 @@ public:
   get_mgmtpf_device(device::id_type id) const = 0;
 
   /**
-   * get_monitor_access_type() - 
-   * 
+   * get_monitor_access_type() -
+   *
    * Each system have different ways of accessing profiling
    * monitors (IPs in HW).  This function is used to determine
    * the access type.   It may be better if accessing the monitor
@@ -106,6 +106,9 @@ public:
   {
     return monitor_access_type::bar;
   }
+
+  virtual void
+  program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const = 0;
 }; // system
 
 /**
@@ -199,7 +202,7 @@ get_mgmtpf_device(device::id_type id);
 
 /**
  * get_monitor_access_type() - How should IPs be accessed from userspace
- * 
+ *
  * Each system have different ways of accessing profiling
  * monitors (IPs in HW).  This function is used to determine
  * the access type.   It may be better if accessing the monitor
@@ -210,6 +213,10 @@ get_mgmtpf_device(device::id_type id);
 XRT_CORE_COMMON_EXPORT
 system::monitor_access_type
 get_monitor_access_type();
+
+XRT_CORE_COMMON_EXPORT
+void
+program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer);
 
 } //xrt_core
 

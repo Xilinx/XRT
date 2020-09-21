@@ -273,11 +273,17 @@ OO_P2P::OO_P2P( const std::string &_longName, bool _isHidden )
 void
 OO_P2P::execute(const SubCmdOptions& _options) const
 {
-  XBU::verbose("SubCommand option: clock");
+  XBU::verbose("SubCommand option: p2p");
 
   XBU::verbose("Option(s):");
   for (auto & aString : _options)
     XBU::verbose(std::string(" ") + aString);
+
+  // Honor help option first
+  if (std::find(_options.begin(), _options.end(), "--help") != _options.end()) {
+    printHelp();
+    return;
+  }
 
   // Parse sub-command ...
   po::variables_map vm;
@@ -288,11 +294,12 @@ OO_P2P::execute(const SubCmdOptions& _options) const
   }
   catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << "\n\n";
+
     printHelp();
-    throw; // Re-throw exception
+    return;
   }
 
-  // exit if neither action or device specified
+  // Exit if neither action or device specified
   if(m_help || (m_action.empty() || m_device.empty())) {
     printHelp();
     return;

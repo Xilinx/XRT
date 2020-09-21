@@ -745,9 +745,17 @@ xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 void
 xclResetAieArray(xclDeviceHandle handle)
 {
-  /* Do a handle check */
-  xrt_core::get_userpf_device(handle);
+#ifndef __AIESIM__
+  auto device = xrt_core::get_userpf_device(handle);
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+  auto aieArray = drv->getAieArray();
+  aieArray->reset(device.get());
+#else
+  auto aieArray = getAieArray();
+#endif
 }
 
 } // api

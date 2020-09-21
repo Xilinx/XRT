@@ -30,29 +30,24 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 static void
-pretty_print_action_list(xrt_core::device_collection& deviceCollection, XBU::reset_type reset)
+pretty_print_action_list(xrt_core::device_collection& deviceCollection, xrt_core::query::reset_type reset)
 {
-  if(reset == XBU::reset_type::hot)
-    std::cout << "Performing 'hot' reset on " << std::endl;
-  
+  std::cout << "Performing '" << reset.get_name() << "' on " << std::endl;
   for(const auto & device: deviceCollection) {
       std::cout << boost::format("  -[%s]\n") % 
         xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
   }
 
-  if(reset == XBU::reset_type::hot)
-    std::cout << "WARNING: Please make sure xocl driver is unloaded." << std::endl;
-  std::cout << std::endl; 
+  if (!reset.get_warning().empty())
+    std::cout << "WARNING: " << reset.get_warning() << std::endl;
 }
 
 static void
-reset_device(std::shared_ptr<xrt_core::device> dev, XBU::reset_type reset)
+reset_device(std::shared_ptr<xrt_core::device> dev, xrt_core::query::reset_type reset)
 {
-  if(reset == XBU::reset_type::hot) {
-    dev->reset("", "mgmt_reset", "1");
-    std::cout << boost::format("Successfully reset Device[%s]\n") 
-      % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
-  }
+  dev->reset(reset);
+  std::cout << boost::format("Successfully reset Device[%s]\n") 
+    % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
 }
 
 SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary)
@@ -65,6 +60,16 @@ SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+}
+
+void
+supported(std::string resetType) {
+  std::vector<std::string> vec { "hot", "aie" };
+  std::vector<std::string>::iterator it;
+  it = std::find (vec.begin(), vec.end(), resetType); 
+  if (it == vec.end()) {
+    throw xrt_core::error(-ENODEV, "reset not supported");
+  }
 }
 
 void
@@ -81,8 +86,9 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
-    ("type,r", boost::program_options::value<decltype(resetType)>(&resetType), "The type of reset to perform. Types resets available:\n"
+    ("type,r", boost::program_options::value<decltype(resetType)>(&resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
                                                                        "  hot          - Hot reset (default)\n"
+                                                                       "  aie          - Reset Aie array\n"
                                                                        /*"  kernel       - Kernel communication links\n"*/
                                                                        /*"  scheduler    - Scheduler\n"*/
                                                                        /*"  clear-fabric - Clears the accleration fabric with the\n"*/
@@ -125,7 +131,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
   XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
-  XBU::reset_type type = XBU::str_to_enum_reset(resetType);
+  xrt_core::query::reset_type type = XBU::str_to_reset_obj(resetType);
   pretty_print_action_list(deviceCollection, type);
 
   // Ask user for permission

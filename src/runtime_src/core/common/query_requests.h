@@ -184,6 +184,7 @@ enum class key_type
   board_name,
   interface_uuids,
   logic_uuids,
+  rp_program_status,
 
   aie_metadata,
   noop
@@ -1919,6 +1920,25 @@ struct flash_bar_offset : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct rp_program_status : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;   // put value type
+  static const key_type key = key_type::rp_program_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+  static bool
+  to_bool(const result_type& value)
+  {
+    return (value != 0) ? false : true;
+  }
 };
 
 struct noop : request

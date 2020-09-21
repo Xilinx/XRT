@@ -364,9 +364,10 @@ static struct xocl_subdev_map subdev_map[] = {
 		.dev_name = XOCL_ERT_30,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_ERT_CFG_GPIO},
+			{.res_name = NODE_ERT_CQ_USER},
 			{NULL},
 		},
-		.required_ip = 1,
+		.required_ip = 2,
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,

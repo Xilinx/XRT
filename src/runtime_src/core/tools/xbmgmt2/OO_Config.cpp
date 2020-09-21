@@ -228,7 +228,7 @@ memory_retention(xrt_core::device* device, mem_type, bool enable)
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_Config::OO_Config( const std::string &_longName, bool _isHidden)
-    : OptionOptions(_longName, _isHidden, "<Add description>")
+    : OptionOptions(_longName, _isHidden, "Utility to modify the memory configuration(s)")
     , m_device({})
     , m_help(false)
     , m_daemon(false)
@@ -240,14 +240,12 @@ OO_Config::OO_Config( const std::string &_longName, bool _isHidden)
     , m_show(false)
     , m_ddr(false)
     , m_hbm(false)
-    , m_enable_retention(false)
-    , m_disable_retention(false)
+    , m_retention("")
 
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("enable_retention", boost::program_options::bool_switch(&m_enable_retention), "<add description>")
-    ("disable_retention", boost::program_options::bool_switch(&m_disable_retention), "<add description>")
+    ("retention", boost::program_options::value<decltype(m_retention)>(&m_retention),"Enables / Disables memory retention.  Valid values are: [ENABLE | DISABLE]")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
@@ -287,11 +285,30 @@ OO_Config::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp();
-    throw; // Re-throw exception
+    return;
   }
 
-  //exit if neither daemon or device is specified
-  if (m_help || (m_device.empty() && !m_daemon)) { 
+  // Check the options
+  // Help
+  if (m_help) {
+    printHelp();
+    return;
+  }
+
+
+  // Check the options
+  if (!m_retention.empty()) {
+    boost::algorithm::to_upper(m_retention);
+    if ((m_retention != "ENABLE") && 
+        (m_retention != "DISABLE")) {
+      std::cerr << "ERROR: Invalidate '--retention' option: " << m_retention << std::endl;
+      printHelp();
+      return;
+    }
+  }
+
+  if (m_device.empty() && !m_daemon)  {
+    std::cerr << "ERROR: If the daemon is to be used (e.g., set to true) then a device must also be declared." << std::endl;
     printHelp();
     return;
   }
@@ -347,7 +364,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
         update_device_conf(dev.get(), m_cs_reset, config_type::reset);
 
     //  enable/disable_retention
-    if (m_enable_retention || m_disable_retention) {
+    if (!m_retention.empty()) {
       auto mem = mem_type::unknown; 
       if(m_ddr)
         mem = mem_type::ddr;
@@ -356,8 +373,9 @@ OO_Config::execute(const SubCmdOptions& _options) const
       else
         throw xrt_core::system_error(EINVAL, "Please specify memory type: ddr or hbm");
 
+      bool enableRetention = (m_retention == "ENABLE");
       for (const auto& dev : devices)
-        memory_retention(dev.get(), mem, m_enable_retention);
+        memory_retention(dev.get(), mem, enableRetention);
     }
   }
 }

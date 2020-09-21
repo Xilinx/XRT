@@ -61,11 +61,27 @@ get_device_info(xclDeviceHandle hdl, XCLMGMT_IOC_DEVICE_INFO* value);
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
+get_dev_info(xclDeviceHandle hdl, XCLMGMT_DEVICE_INFO* value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
 get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3]);
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_flash_addr(xclDeviceHandle hdl, uint64_t& value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+plp_program(xclDeviceHandle hdl, const struct axlf *buffer);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+plp_program_status(xclDeviceHandle hdl, uint64_t& plp_status);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_uuids(xclDeviceHandle hdl, XCLMGMT_IOC_UUID_INFO* value);
 
 } // mgmtpf
 
