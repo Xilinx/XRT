@@ -44,7 +44,7 @@
   #define MACHINE_NODE_PATH "/sys/devices/virtual/dmi/id/product_name"
 #else
 #error "Unsupported platform"
-  #define MACHINE_NODE_PATH "";
+  #define MACHINE_NODE_PATH ""
 #endif
 
 namespace {
