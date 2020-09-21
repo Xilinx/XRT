@@ -139,7 +139,7 @@ get_os_info(boost::property_tree::ptree &pt)
   MEMORYSTATUSEX mem;
   mem.dwLength = sizeof(mem);
   GlobalMemoryStatusEx(&mem);
-  pt.put("memory", mem.ullTotalPhys / 0x100000);
+  pt.put("memory_bytes", (boost::format("0x%llx") % mem.ullTotalPhys).str());
 
   pt.put("cores", std::thread::hardware_concurrency());
 }

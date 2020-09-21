@@ -29,6 +29,19 @@
 #include <gnu/libc-version.h>
 #include <unistd.h>
 
+#if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
+  #define MACHINE_NODE_PATH "/proc/device-tree/model";
+#elif defined(__PPC64__)
+  #define MACHINE_NODE_PATH "/proc/device-tree/model-name";
+  // /proc/device-tree/system-id may be 000000
+  // /proc/device-tree/model may be 00000
+#elif defined (__x86_64__)
+  #define MACHINE_NODE_PATH "/sys/devices/virtual/dmi/id/product_name";
+#else
+#error "Unsupported platform"
+  #define MACHINE_NODE_PATH "";
+#endif
+
 namespace {
 
 // Singleton registers with base class xrt_core::system
@@ -90,18 +103,7 @@ glibc_info()
 static std::string
 machine_info()
 {
-#if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
-  const char node[] = "/proc/device-tree/model";
-#elif defined(__PPC64__)
-  const char node[] = "/proc/device-tree/model-name";
-  // /proc/device-tree/system-id may be 000000
-  // /proc/device-tree/model may be 00000
-#elif defined (__x86_64__)
-  const char node[] = "/sys/devices/virtual/dmi/id/product_name";
-#else
-#error "Unsupported platform"
-  const char node[] = "";
-#endif
+  static const char node[] = MACHINE_NODE_PATH;
   std::string model("unknown");
   std::ifstream stream(node);
   if (stream.good()) {
@@ -146,7 +148,7 @@ get_os_info(boost::property_tree::ptree &pt)
   }
   pt.put("model", machine_info());
   pt.put("cores", std::thread::hardware_concurrency());
-  pt.put("memory", sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 0x100000);
+  pt.put("memory_bytes", (boost::format("0x%lx") % (sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE))).str());
   pt.put("now", xrt_core::timestamp());
 }
 
