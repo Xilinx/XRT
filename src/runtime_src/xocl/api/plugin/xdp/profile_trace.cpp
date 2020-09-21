@@ -234,11 +234,14 @@ namespace xocl {
       if (!s_load_detailed_profile)
       {
 	s_load_detailed_profile = true ;
-	if (xrt_core::config::get_profile())
+	if (xrt_core::config::get_profile() ||
+	    xrt_core::config::get_opencl_summary())
 	  load_xdp_opencl_counters() ;
-	if (xrt_core::config::get_timeline_trace())
+	if (xrt_core::config::get_timeline_trace() ||
+	    xrt_core::config::get_opencl_trace())
 	  load_xdp_opencl_trace() ;
-	if (xrt_core::config::get_data_transfer_trace() != "off")
+	if (xrt_core::config::get_data_transfer_trace() != "off" ||
+	    xrt_core::config::get_device_trace() != "off")
 	  load_xdp_device_offload() ;
       }
 

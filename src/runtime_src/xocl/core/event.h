@@ -134,14 +134,16 @@ public:
   /*virtual*/ void
   set_profile_action(event::action_profile_type&& action)
   {
-    if (xrt::config::get_timeline_trace())
+    if (xrt::config::get_timeline_trace() ||
+	xrt::config::get_opencl_trace())
       m_profile_action = std::move(action);
   }
 
   void
   set_profile_counter_action(event::action_profile_type&& action)
   {
-    if (xrt::config::get_profile())
+    if (xrt::config::get_profile() ||
+	xrt::config::get_opencl_summary())
       m_profile_counter_action = std::move(action) ;
   }
 

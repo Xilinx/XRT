@@ -146,6 +146,14 @@ get_data_transfer_trace()
   return value;
 }
 
+inline std::string
+get_device_trace()
+{
+  static std::string value =
+    detail::get_string_value("Debug.device_trace", "off");
+  return value;
+}
+
 inline bool
 get_power_profile()
 {
@@ -205,7 +213,7 @@ get_timeline_trace()
 inline bool
 get_continuous_trace()
 {
-  static bool value = get_profile() && detail::get_bool_value("Debug.continuous_trace",false);
+  static bool value = detail::get_bool_value("Debug.continuous_trace",false);
   return value;
 }
 
@@ -238,9 +246,23 @@ get_profile_api()
 }
 
 inline bool
-get_xrt_profile()
+get_xrt_trace()
 {
-  static bool value = detail::get_bool_value("Debug.xrt_profile", false);
+  static bool value = detail::get_bool_value("Debug.xrt_trace", false);
+  return value;
+}
+
+inline bool
+get_opencl_trace()
+{
+  static bool value = detail::get_bool_value("Debug.opencl_trace", false);
+  return value;
+}
+
+inline bool
+get_opencl_summary()
+{
+  static bool value = detail::get_bool_value("Debug.opencl_summary", false);
   return value;
 }
 

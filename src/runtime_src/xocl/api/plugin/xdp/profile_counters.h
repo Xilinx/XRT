@@ -29,7 +29,8 @@ namespace xocl {
       inline void
       set_event_action(xocl::event* e, F&& f, Args&&... args)
       {
-	if (xrt_core::config::get_profile())
+	if (xrt_core::config::get_profile() ||
+	    xrt_core::config::get_opencl_summary())
 	  e->set_profile_counter_action(f(std::forward<Args>(args)...)) ;
       }
      } // end namespace counters

@@ -84,8 +84,32 @@ namespace xdp {
     }
     {
       std::stringstream setting ;
+      setting << "XRT_INI_SETTING,opencl_summary," 
+	      << xrt_core::config::get_opencl_summary() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
       setting << "XRT_INI_SETTING,timeline_trace," 
 	      << xrt_core::config::get_timeline_trace() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,opencl_trace,"
+	      << xrt_core::config::get_opencl_trace() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,xrt_trace,"
+	      << xrt_core::config::get_xrt_trace() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,device_trace,"
+	      << xrt_core::config::get_device_trace() ;
       iniSettings.push_back(setting.str()) ;
     }
     {

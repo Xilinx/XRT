@@ -31,11 +31,12 @@ CallLogger::CallLogger(uint64_t id)
   hal_plugins_loaded = true ;
 
   // This hook is responsible for loading all of the HAL level plugins
-  if (xrt_core::config::get_xrt_profile()) {
+  if (xrt_core::config::get_xrt_trace()) {
     load_xdp_plugin_library(nullptr) ;
   }
 
-  if (xrt_core::config::get_data_transfer_trace() != "off") {
+  if (xrt_core::config::get_data_transfer_trace() != "off" ||
+      xrt_core::config::get_device_trace() != "off") {
     xdphaldeviceoffload::load_xdp_hal_device_offload() ;
   }
 
@@ -504,7 +505,7 @@ LoadXclbinCallLogger::~LoadXclbinCallLogger()
       // "profile=true" is also set. This enables OpenCL based flow for profiling. 
       // Currently, mix of OpenCL and HAL based profiling is not supported.
       xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT",
-                std::string("Both profile=true and xrt_profile=true set in xrt.ini config. Currently, these flows are not supported to work together."));
+                std::string("Both profile=true and xrt_trace=true set in xrt.ini config. Currently, these flows are not supported to work together."));
       return;
     }
   }
