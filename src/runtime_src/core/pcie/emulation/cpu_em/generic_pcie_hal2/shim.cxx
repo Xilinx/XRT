@@ -1889,24 +1889,16 @@ int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) cons
 
 void CpuemShim::constructQueryTable() {
   if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-    mQueryTable["m2m"] = mPlatformData.get<std::string>("plp.m2m");
+    mQueryTable[key_type::m2m] = mPlatformData.get<std::string>("plp.m2m");
     std::string dmaVal = mPlatformData.get<std::string>("plp.dma");
-    mQueryTable["nodma"] = (dmaVal == "none" ? "enabled" : "disabled");
+    mQueryTable[key_type::nodma] = (dmaVal == "none" ? "enabled" : "disabled");
   }
 }
 
-bool CpuemShim::isM2MEnabled() {
-  if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-    return (mQueryTable["m2m"] == "enabled" ? true : false);
-  }
-  return false;
-}
-
-bool CpuemShim::isNoDMAEnabled() {
-  if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-    return (mQueryTable["nodma"] == "enabled" ? true : false);
-  }
-  return false;
+int CpuemShim::deviceQuery(key_type queryKey) {
+  if(mQueryTable.find(queryKey) != mQueryTable.end())
+    return (mQueryTable[queryKey] == "enabled" ? 1 : 0);    
+  return 0;
 }
 
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/

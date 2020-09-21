@@ -648,9 +648,18 @@ static inline int process_ert_rq(struct xocl_ert_30 *ert_30)
 		slot_addr = ecmd->slot_idx * (ert_30->cq_range/ert_30->num_slots);
 
 		ERTUSER_DBG(ert_30, "%s slot_addr %x\n", __func__, slot_addr);
+		if (cmd_opcode(ecmd) == OP_CONFIG) {
+			xocl_memcpy_toio(ert_30->cq_base + slot_addr + 4,
+				  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
+		} else {
+			// write kds selected cu_idx in first cumask (first word after header)
+			iowrite32(ecmd->xcmd->cu_idx, ert_30->cq_base + slot_addr + 4);
 
-		xocl_memcpy_toio(ert_30->cq_base + slot_addr + 4,
-				 ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
+			// write remaining packet (past header and cuidx)
+			xocl_memcpy_toio(ert_30->cq_base + slot_addr + 8,
+					 ecmd->xcmd->execbuf+2, (epkt->count-1)*sizeof(u32));
+		}
+
 		iowrite32(epkt->header, ert_30->cq_base + slot_addr);
 
 		if (ert_30->cq_intr) {

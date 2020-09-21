@@ -79,4 +79,11 @@ get_userpf_device(device::handle_type device_handle, device::id_type id)
   return xrt_core::get_userpf_device(device_handle, id);
 }
 
+void
+system::
+program_plp(std::shared_ptr<xrt_core::device> dev, std::vector<char> buffer) const 
+{
+  throw std::runtime_error("plp program is not supported");
+}
+
 }} // swemu, xrt_core

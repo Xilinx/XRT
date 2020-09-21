@@ -106,6 +106,9 @@ public:
   {
     return monitor_access_type::bar;
   }
+
+  virtual void
+  program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const = 0;
 }; // system
 
 /**
@@ -210,6 +213,10 @@ get_mgmtpf_device(device::id_type id);
 XRT_CORE_COMMON_EXPORT
 system::monitor_access_type
 get_monitor_access_type();
+
+XRT_CORE_COMMON_EXPORT
+void
+program_plp(std::shared_ptr<device> dev, std::vector<char> buffer);
 
 } //xrt_core
 

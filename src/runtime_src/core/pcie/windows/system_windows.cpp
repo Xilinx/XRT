@@ -26,6 +26,8 @@
 #include "mgmt.h"
 #include <map>
 #include <memory>
+#include <chrono>
+#include <thread>
 #include <ctime>
 #include <windows.h>
 
@@ -168,6 +170,34 @@ get_mgmtpf_device(device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
   return std::shared_ptr<device_windows>(new device_windows(mgmtpf::open(id), id, false));
+}
+
+void
+system_windows::
+program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const 
+{
+  mgmtpf::plp_program(dev->get_mgmt_handle(), reinterpret_cast<const axlf*>(buffer.data()));
+
+  // asynchronously check if the download is complete
+  std::this_thread::sleep_for(std::chrono::seconds(5));
+  const static int program_timeout_sec = 15;
+  uint64_t plp_status = RP_DOWNLOAD_IN_PROGRESS;
+  int retry_count = 0;
+  while (retry_count < program_timeout_sec) {
+    mgmtpf::plp_program_status(dev->get_mgmt_handle(), plp_status);
+	retry_count++;
+
+    // check plp status
+    if(plp_status == RP_DOWLOAD_SUCCESS) 
+      break;
+    else if (plp_status == RP_DOWLOAD_FAILED)
+      throw xrt_core::error("PLP programmming failed");
+    
+    if (retry_count == program_timeout_sec)
+      throw xrt_core::error("PLP programmming timed out");
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
 }
 
 } // xrt_core

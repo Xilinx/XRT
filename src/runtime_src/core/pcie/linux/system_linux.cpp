@@ -16,6 +16,7 @@
 
 #include "system_linux.h"
 #include "device_linux.h"
+#include "core/common/query_requests.h"
 #include "gen/version.h"
 #include "scan.h"
 
@@ -25,6 +26,8 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <chrono>
+#include <thread>
 
 #include <sys/utsname.h>
 #include <gnu/libc-version.h>
@@ -172,6 +175,42 @@ get_mgmtpf_device(device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
   return std::shared_ptr<device_linux>(new device_linux(nullptr, id, false));
+}
+
+void
+system_linux::
+program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const 
+{
+  try {
+    xrt_core::scope_value_guard<int, std::function<void()>> fd = dev->file_open("icap", O_WRONLY);
+    unsigned int ret = buffer.size();
+    ret = write(fd.get(), buffer.data(), buffer.size());
+    if (ret != buffer.size())
+      throw xrt_core::error("Write plp to icap subdev failed");
+
+  } catch (const std::exception& e) {
+    xrt_core::send_exception_message(e.what(), "XBMGMT");
+  }
+
+  try {
+    auto value = xrt_core::query::rp_program_status::value_type(1);
+    xrt_core::device_update<xrt_core::query::rp_program_status>(dev.get(), value);
+  } catch (const xrt_core::error& e) {
+    throw xrt_core::error(e.what());
+  }
+
+  // asynchronously check if the download is complete
+  const static int program_timeout_sec = 60;
+  bool is_complete = false;
+  int retry_count = 0;
+  while (!is_complete && retry_count < program_timeout_sec) {
+    is_complete = xrt_core::query::rp_program_status::to_bool(xrt_core::device_query<xrt_core::query::rp_program_status>(dev));
+    if (retry_count == program_timeout_sec)
+      throw xrt_core::error("PLP programmming timed out");
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    retry_count++;
+  }
 }
 
 namespace pcie_linux {

@@ -80,6 +80,13 @@ get_mgmtpf_device(device::id_type id) const
   return std::shared_ptr<xrt_core::swemu::device>(new xrt_core::swemu::device(nullptr, id, false));
 }
 
+void
+system::
+program_plp(std::shared_ptr<xrt_core::device> dev, std::vector<char> buffer) const 
+{
+  throw std::runtime_error("plp program is not supported");
+}
+
 std::shared_ptr<xrt_core::device>
 get_userpf_device(device::handle_type device_handle, device::id_type id)
 {

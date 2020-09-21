@@ -28,8 +28,12 @@
 #include <vector>
 #include <locale>
 
+// 3rd Party Library - Include Files
+#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 #include "boost/filesystem.hpp"
 #include <boost/tokenizer.hpp>
+
 #include "xclbin.h"
 #include "core/common/utils.h"
 #include "firmware_image.h"
@@ -340,26 +344,35 @@ DSAInfo::DSAInfo(const std::string& filename, std::string &pr_board, std::string
     partition_family_name = pr_family;
     partition_name = pr_name;
 
-    name = "xilinx_" + board + "_" + pr_family + "_" + pr_name;
+    if (name.empty())
+        name = boost::str(boost::format("xilinx_%s_%s_%s") % board % pr_family % pr_name);
 }
 
 DSAInfo::~DSAInfo()
 {
 }
 
-bool DSAInfo::matchId(const std::string &id) const
+static std::string
+normalize_uuid(std::string id)
+{
+    // convert:
+    // 0xB772B6BBD3BA046439ECE1B7763C69C7 -> b772b6bbd3ba046439ece1b7763c69c7
+    std::string uuid = boost::algorithm::to_lower_copy(id);
+    std::string::size_type i = uuid.find("0x");
+    if (i == 0)
+        uuid.erase(0, 2);
+    return uuid;
+}
+
+bool DSAInfo::matchId(const std::string &id) const 
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
     if (ts != 0 && ts != ULLONG_MAX && ts == timestamp)
         return true;
 
-    if (uuids.size() > 0)
-    {
-        std::string uuid(id.length(), 0);
-        // std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
-        std::string::size_type i = uuid.find("0x");
-        if (i == 0)
-            uuid.erase(0, 2);
+    if (uuids.empty()) {
+        const std::string uuid = normalize_uuid(id);
+
         if (!strncmp(uuids[0].c_str(), uuid.c_str(), uuid.length()))
             return true;
     }
@@ -369,22 +382,20 @@ bool DSAInfo::matchId(const std::string &id) const
 
 bool DSAInfo::matchIntId(std::string &id) const
 {
-    uint64_t ts = strtoull(id.c_str(), nullptr, 0);
+    uint64_t ts = strtoull(id.c_str(), nullptr, 0); //get timestamp
+    const std::string uuid = normalize_uuid(id); //get hex UUID
 
-    if (uuids.size() > 1)
-    {
-        std::string uuid(id.length(), 0);
-        // std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
-        std::string::size_type i = uuid.find("0x");
-        if (i == 0)
-            uuid.erase(0, 2);
-        for(unsigned int j = 1; j < uuids.size(); j++)
-        {
+    if (uuids.size() > 1) {
+        for(unsigned int j = 1; j < uuids.size(); j++) {
+            
+            //Check 1: check if passed in id matches UUID
             if (!strncmp(uuids[j].c_str(), uuid.c_str(), uuid.length()))
                 return true;
+            
+            //Check 2: check if passed in ID macthes the timestamp 
             uint64_t int_ts = 0;
-            uuid2ts(id, int_ts);
-	    if (int_ts == ts)
+            uuid2ts(uuids[j], int_ts);
+	        if (int_ts == ts)
                 return true;
         }
     }
@@ -407,59 +418,21 @@ bool DSAInfo::matchId(DSAInfo& dsa) const
     return false;
 }
 
-
-
 std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
 {
     std::vector<DSAInfo> installedDSA;
     // Obtain installed DSA info.
     std::vector<boost::filesystem::path> fw_dirs(FIRMWARE_DIRS);
-    for (auto& p : fw_dirs) {
-        if (!boost::filesystem::is_directory(p)) {
-            p = FIRMWARE_WIN_DIR;
-        }
+    for (auto& root : fw_dirs) {
+        if (!boost::filesystem::exists(root) || !boost::filesystem::is_directory(root))
+            continue;
 
-        boost::filesystem::directory_iterator dir_end;
-        for (boost::filesystem::directory_iterator start(p); start != dir_end; ++start) {
-            std::string filename = start->path().leaf().string();
-            if (filename.find("xsabin")  == std::string::npos &&
-                filename.find("dsabin")  == std::string::npos)
-                continue;
-            DSAInfo dsa(start->path().string());
-            installedDSA.push_back(dsa);
-        }
-    }
-
-    // for 2RP
-    boost::filesystem::path p = FORMATTED_FW_DIR;
-    if (!boost::filesystem::is_directory(p))
-        return installedDSA;
-
-    boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
-
-    for (const std::string& t : { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX }) {
-
-        std::regex e("^" FORMATTED_FW_DIR "/([^/]+)/([^/]+)/([^/]+)/.+\\." + t);
-        std::smatch cm;
-
-        for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir,
-            boost::filesystem::symlink_option::recurse), recursive_end; iter != recursive_end;) {
-            std::string name = iter->path().string();
-            std::regex_match(name, cm, e);
-            if (cm.size() > 0) {
-                std::string pr_board = cm.str(1);
-                std::string pr_family = cm.str(2);
-                std::string pr_name = cm.str(3);
-                DSAInfo dsa(name, pr_board, pr_family, pr_name);
+        boost::filesystem::recursive_directory_iterator end_iter;
+        // for (auto const & iter : boost::filesystem::recursive_directory_iterator(root)) {
+        for(boost::filesystem::recursive_directory_iterator iter(root); iter != end_iter; ++iter) {
+            if ((iter->path().extension() == ".xsabin" || iter->path().extension() == ".dsabin")) {
+                DSAInfo dsa(iter->path().string());
                 installedDSA.push_back(dsa);
-                while (iter != recursive_end && iter.level() > 2)
-                    iter.pop();
-            } else if (iter.level() > 4)
-                iter.pop();
-            else {
-                if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str())))
-                    iter.no_push();
-                ++iter;
             }
         }
     }
