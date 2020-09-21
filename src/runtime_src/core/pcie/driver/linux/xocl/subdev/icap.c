@@ -1472,12 +1472,7 @@ static int icap_create_subdev_cdma(struct platform_device *pdev, int inst_idx)
 		info.addr = cdma[i];
 		info.num_res = subdev_info.num_res;
 		info.protocol = CTRL_HS;
-		/* The normal CU in ip_layout would assign a interrupt
-		 * ID in range 0 to 127. Use 128 for m2m cu could ensure
-		 * m2m CU is at the end of the CU, which is compatible with
-		 * legacy implementation.
-		 */
-		info.intr_id = 128;
+		info.intr_id = M2M_CU_ID;
 		info.is_m2m = 1;
 
 		subdev_info.res[0].start += info.addr;

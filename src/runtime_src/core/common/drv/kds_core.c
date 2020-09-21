@@ -577,15 +577,15 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 			kds_err(client, "Only allow share virtual CU");
 			return -EINVAL;
 		}
-		++client->virt_cu_ref;
 		/* a special handling for m2m cu :( */
-		if (kds->cu_mgmt.num_cdma) {
+		if (kds->cu_mgmt.num_cdma && !client->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
 			test_and_set_bit(i, client->cu_bitmap);
 			mutex_lock(&kds->cu_mgmt.lock);
 			++kds->cu_mgmt.cu_refs[i];
 			mutex_unlock(&kds->cu_mgmt.lock);
 		}
+		++client->virt_cu_ref;
 	} else {
 		if (kds_add_cu_context(kds, client, info))
 			return -EINVAL;
@@ -612,7 +612,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		}
 		--client->virt_cu_ref;
 		/* a special handling for m2m cu :( */
-		if (kds->cu_mgmt.num_cdma) {
+		if (kds->cu_mgmt.num_cdma && !client->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
 			test_and_clear_bit(i, client->cu_bitmap);
 			mutex_lock(&kds->cu_mgmt.lock);
@@ -636,7 +636,7 @@ insert_cu(struct kds_cu_mgmt *cu_mgmt, int i, struct xrt_cu *xcu)
 	cu_mgmt->xcus[i] = xcu;
 	xcu->info.cu_idx = i;
 	/* m2m cu */
-	if (xcu->info.intr_id == 128)
+	if (xcu->info.intr_id == M2M_CU_ID)
 		cu_mgmt->num_cdma++;
 }
 
@@ -721,7 +721,7 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 		cu_mgmt->cu_usage[i] = 0;
 
 		/* m2m cu */
-		if (xcu->info.intr_id == 128)
+		if (xcu->info.intr_id == M2M_CU_ID)
 			cu_mgmt->num_cdma--;
 
 		return 0;
