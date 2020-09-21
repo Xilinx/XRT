@@ -37,6 +37,14 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
+    for(auto mapEntry : aieTraceData) {
+      for(auto info : mapEntry.second) {
+        delete info;
+      }
+      mapEntry.second.clear();
+    }
+    aieTraceData.clear();
+
     for (auto event : hostEvents) {
       delete event;
     }
@@ -186,29 +194,27 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(dbLock);
 
-std::cout << " in VPDynamicDatabase::addAIETraceData : deviceId " << deviceId << " strmIndex " << strmIndex << " buffer " << buffer << " bufferSz " << bufferSz << std::endl;
     if(aieTraceData.find(deviceId) == aieTraceData.end()) {
-std::cout << " in VPDynamicDatabase::addAIETraceData : Create new entry " << std::endl;
       AIETraceDataVector newDataVector;
       aieTraceData[deviceId] = newDataVector;	// copy
       aieTraceData[deviceId].resize((db->getStaticInfo()).getNumAIETraceStream(deviceId));
     }
-    auto aieTraceDataEntry = aieTraceData[deviceId];
-    aieTraceDataEntry[strmIndex] = std::make_pair(buffer, bufferSz);
-std::cout << " in VPDynamicDatabase::addAIETraceData : completed " << std::endl;
+    aieTraceData[deviceId][strmIndex] = new AIETraceDataType;
+    aieTraceData[deviceId][strmIndex]->buffer = buffer;
+    aieTraceData[deviceId][strmIndex]->bufferSz = bufferSz;
   }
 
-  AIETraceDataType VPDynamicDatabase::getAIETraceData(uint64_t deviceId, uint64_t strmIndex)
+  AIETraceDataType* VPDynamicDatabase::getAIETraceData(uint64_t deviceId, uint64_t strmIndex)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
-std::cout << " in VPDynamicDatabase::getAIETraceData : deviceId " << deviceId << " strmIndex " << strmIndex << std::endl;
     if(aieTraceData.find(deviceId) == aieTraceData.end()) {
-std::cout << " in VPDynamicDatabase::getAIETraceData : deviceId " << deviceId << " NOT FOUND " << std::endl;
-      return std::make_pair(nullptr, 0);
+        return nullptr;
     }
     auto aieTraceDataEntry = aieTraceData[deviceId];
-std::cout << " in VPDynamicDatabase::getAIETraceData : deviceId " << deviceId << " strmIndex " << strmIndex << " FOUND about to return " << std::endl;
+    if(aieTraceData[deviceId].size() == 0 || aieTraceDataEntry[strmIndex] == nullptr) {
+        return nullptr;
+    }
     return aieTraceDataEntry[strmIndex];
   }
 

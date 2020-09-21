@@ -51,10 +51,7 @@ public:
     AIETraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
               uint64_t index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data = nullptr)
         : TraceS2MM(handle, index, data)
-    {
-    if(out_stream)
-        (*out_stream) << " in AIETraceS2MM constructor " << std::endl;
-}
+    {}
 
     /**
      * The exclusive access should be release in the destructor

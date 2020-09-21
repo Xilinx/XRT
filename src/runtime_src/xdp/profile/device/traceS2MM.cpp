@@ -43,8 +43,9 @@ inline void TraceS2MM::write32(uint64_t offset, uint32_t val)
 
 void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
-    if(out_stream)
+    if(out_stream) {
         (*out_stream) << " TraceS2MM::init " << std::endl;
+    }
 
     if (isActive()) {
         reset();
@@ -104,8 +105,8 @@ uint64_t TraceS2MM::getWordCount()
     uint64_t retValue = static_cast<uint64_t>(regValue);
     read(TS2MM_WRITTEN_HIGH, 4, &regValue);
     retValue |= static_cast<uint64_t>(regValue) << 32;
-    if(out_stream)
-        (*out_stream) << " TraceS2MM::getWordCount retValue " << retValue << std::endl;
+if(out_stream)
+(*out_stream) << " TraceS2MM::getWordCount retValue " << std::dec << retValue << " name " << getName() << " base address " << std::hex << getBaseAddress() << std::endl;
     return retValue;
 }
 
@@ -113,7 +114,6 @@ uint8_t TraceS2MM::getMemIndex()
 {
     if(out_stream) {
         (*out_stream) << " TraceS2MM::getMemIndex " << std::endl;
-        (*out_stream) << " TraceS2MM::getMemIndex value " << (uint8_t)(properties >> 1) << std::endl;
     }
 
     return (properties >> 1);

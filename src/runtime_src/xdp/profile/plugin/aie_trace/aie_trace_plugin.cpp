@@ -39,7 +39,6 @@ namespace xdp {
     uint32_t index = 0;
     void* handle = xclOpen(index, "/dev/null", XCL_INFO);
 
-std::cout << " FIRST device " << index << std::endl;
     if(nullptr != handle) {
 //    while(nullptr != handle) 
       deviceHandles.push_back(handle);
@@ -100,7 +99,6 @@ std::cout << " devices FOUND " << index << std::endl;
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
     void* ownedHandle = deviceIdToHandle[deviceId];
 
-std::cout << " In AieTracePlugin::updateAIEDevice : deviceId " << deviceId << std::endl;
     if(!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // first delete the offloader, logger
       // Delete the old offloader as data is already from it
@@ -115,11 +113,8 @@ std::cout << " In AieTracePlugin::updateAIEDevice : deviceId " << deviceId << st
         // don't delete DeviceIntf
       }
 
-
-std::cout << " In AieTracePlugin::updateAIEDevice : going to update deviceId " << deviceId << std::endl;
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceId, handle);
-std::cout << " In AieTracePlugin::updateAIEDevice : updated deviceId " << deviceId << std::endl;
       {
         struct xclDeviceInfo2 info;
         if(xclGetDeviceInfo2(handle, &info) == 0) {
@@ -129,7 +124,6 @@ std::cout << " In AieTracePlugin::updateAIEDevice : updated deviceId " << device
     }
 
     uint64_t numAIETraceOutput = (db->getStaticInfo()).getNumAIETraceStream(deviceId);
-std::cout << " In AieTracePlugin::updateAIEDevice : numAIETraceOutput " << numAIETraceOutput << std::endl;
     if(0 == numAIETraceOutput) {
       // no AIE Trace Stream to offload trace, so return
       return;
@@ -138,12 +132,11 @@ std::cout << " In AieTracePlugin::updateAIEDevice : numAIETraceOutput " << numAI
     void* dIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
     DeviceIntf* deviceIntf = dynamic_cast<DeviceIntf*>(reinterpret_cast<DeviceIntf*>(dIntf));
     if(nullptr == deviceIntf) {
-std::cout << " In AieTracePlugin::updateAIEDevice : nullptr == deviceIntf " << std::endl;
       // If DeviceIntf is not already created, create a new one to communicate with physical device
       deviceIntf = new DeviceIntf();
       try {
-        deviceIntf->setDevice(new HalDevice(ownedHandle));
-std::cout << " In AieTracePlugin::updateAIEDevice : about to readDebugIPlayout " << std::endl;
+        deviceIntf->setDevice(new HalDevice(handle));
+//        deviceIntf->setDevice(new HalDevice(ownedHandle));
         deviceIntf->readDebugIPlayout();
       } catch(std::exception& e) {
         // Read debug IP layout could throw an exception
@@ -151,7 +144,6 @@ std::cout << " In AieTracePlugin::updateAIEDevice : about to readDebugIPlayout "
         return;
       }
       (db->getStaticInfo()).setDeviceIntf(deviceId, deviceIntf);
-std::cout << " In AieTracePlugin::updateAIEDevice : after readDebugIPlayout and setDeviceIntf" << std::endl;
       // configure dataflow etc. may not be required here as those are for PL side
     }
 
@@ -172,31 +164,33 @@ std::cout << " In AieTracePlugin::updateAIEDevice : after readDebugIPlayout and 
     bool     isPLIO = ((db->getStaticInfo()).getNumTracePLIO(deviceId)) ? true : false;
 
 #if 0
-    uint64_t aieMemorySz = 0;
+    uint8_t memIndex = 0;
     if(isPLIO) { // check only one memory for PLIO and for GMIO , assume bank 0 for now
-      aieMemorySz = ((db->getStaticInfo()).getMemory(deviceId, deviceIntf->getAIETs2mmMemIndex(0))->size) * 1024;
-    } else {
-      aieMemorySz = ((db->getStaticInfo()).getMemory(deviceId, 0)->size) * 1024;
+      memIndex = deviceIntf->getAIETs2mmMemIndex(0);
     }
-std::cout << " In AieTracePlugin::updateAIEDevice : aieMemorySz " << aieMemorySz << std::endl;
-
+    Memory* memory = (db->getStaticInfo()).getMemory(deviceId, memIndex);
+    if(nullptr == memory) {
+      std::string msg = "Information about memory index " + std::to_string(memIndex)
+                         + " not found in given xclbin. So, cannot check availability of memory resource for device trace offload.";
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+      return;
+    }
+    uint64_t aieMemorySz = (((db->getStaticInfo()).getMemory(deviceId, memIndex))->size) * 1024;
     if(aieMemorySz > 0 && aieTraceBufSz > aieMemorySz) {
       aieTraceBufSz = aieMemorySz;
       std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(aieMemorySz) + " instead." ;
       xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
     }
 #endif
-std::cout << " In AieTracePlugin::updateAIEDevice : about to trace data logger : isPLIO " << isPLIO << std::endl;
+
     AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
 
-std::cout << " In AieTracePlugin::updateAIEDevice : about to trace data offloader : isPLIO " << isPLIO << std::endl;
     AIETraceOffload* aieTraceOffloader = new AIETraceOffload(handle, deviceId,
                                               deviceIntf, aieTraceLogger,
                                               isPLIO,          // isPLIO 
                                               aieTraceBufSz,   // total trace buffer size
                                               numAIETraceOutput);  // numStream
 
-std::cout << " In AieTracePlugin::updateAIEDevice : about to initReadTrace aieTraceBufSz " << aieTraceBufSz << std::endl;
     if(!aieTraceOffloader->initReadTrace()) {
       std::string msg = "Allocation of buffer for AIE trace failed. AIE trace will not be available.";
       xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
@@ -205,13 +199,10 @@ std::cout << " In AieTracePlugin::updateAIEDevice : about to initReadTrace aieTr
       return;
     }
     aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf);
-std::cout << " END AieTracePlugin::updateAIEDevice : " << std::endl;
-
   }
 
   void AieTracePlugin::flushAIEDevice(void* handle)
   {
-#if 0
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -223,22 +214,17 @@ std::cout << " END AieTracePlugin::updateAIEDevice : " << std::endl;
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
       (std::get<0>(aieOffloaders[deviceId]))->readTrace();
     }
-    #endif  
   }
 
   void AieTracePlugin::writeAll(bool openNewFiles)
   {
     // read the trace data from device and wrie to the output file
     for(auto o : aieOffloaders) {
-std::cout << " AieTracePlugin::writeAll : about to readTrace " << std::endl;
       (std::get<0>(o.second))->readTrace();
-std::cout << " AieTracePlugin::writeAll : after readTrace " << std::endl;
       (std::get<0>(o.second))->endReadTrace();
-std::cout << " AieTracePlugin::writeAll : end readTrace " << std::endl;
     }
 
     for(auto w : writers) {
-std::cout << " AieTracePlugin::write : " << std::endl;
       w->write(openNewFiles);
     }
   }

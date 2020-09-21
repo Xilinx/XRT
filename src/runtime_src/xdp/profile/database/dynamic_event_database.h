@@ -34,8 +34,12 @@ namespace xdp {
   class VPDatabase ;
 
   // AIE Trace data type
-  typedef std::pair<void* /*buffer*/, uint64_t /*bufferSz*/> AIETraceDataType;
-  typedef std::vector<AIETraceDataType> AIETraceDataVector;
+  struct AIETraceDataType {
+    void* buffer;
+    uint64_t bufferSz;
+  };
+//  typedef std::pair<void* /*buffer*/, uint64_t /*bufferSz*/> AIETraceDataType;
+  typedef std::vector<AIETraceDataType*> AIETraceDataVector;
 
   // The Dynamic Database will own all VTFEvents and is responsible
   //  for cleaning up this memory.
@@ -128,7 +132,7 @@ namespace xdp {
 
     // Add and get AIE Trace Data Buffer 
     XDP_EXPORT void addAIETraceData(uint64_t deviceId, uint64_t strmIndex, void* buffer, uint64_t bufferSz);
-    XDP_EXPORT AIETraceDataType getAIETraceData(uint64_t deviceId, uint64_t strmIndex);
+    XDP_EXPORT AIETraceDataType* getAIETraceData(uint64_t deviceId, uint64_t strmIndex);
 
     // Functions that are used by counter-based plugins
     XDP_EXPORT void addPowerSample(uint64_t deviceId, double timestamp,

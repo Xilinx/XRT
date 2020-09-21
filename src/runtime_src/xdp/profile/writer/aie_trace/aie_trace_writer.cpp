@@ -55,10 +55,16 @@ namespace xdp {
   {
 std::cout << " in AIETraceWriter::writeTraceEvents : about to call getAIETraceData : deviceId " << deviceId << " traceStreamId " << traceStreamId << std::endl;
     // write the entire buffer
-    AIETraceDataType traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId);
+    AIETraceDataType* traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId);
+    if(nullptr == traceData) {
+std::cout << " in AIETraceWriter::writeTraceEvents : null traceData " << std::endl;
+      fout << std::endl;
+      return;
+    }
+
 std::cout << " in AIETraceWriter::writeTraceEvents : RIGHT AFTER getAIETraceData : deviceId " << deviceId << " traceStreamId " << traceStreamId << std::endl;
-    void*    buf = traceData.first;
-    uint64_t bufferSz = traceData.second;
+    void*    buf = traceData->buffer;
+    uint64_t bufferSz = traceData->bufferSz;
 
 std::cout << " in AIETraceWriter::writeTraceEvents : after getAIETraceData : deviceId " << deviceId << " traceStreamId " << traceStreamId << " buf " << buf << " bufferSz " << bufferSz << std::endl;
     if(nullptr == buf) {

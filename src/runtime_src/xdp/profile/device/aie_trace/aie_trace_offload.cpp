@@ -70,18 +70,18 @@ bool AIETraceOffload::initReadTrace()
     memIndex = 0;  // for now
   }
   for(auto b : buffers) {
-    b.boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
-std::cout << " In AIETraceOffload::initReadTrace : after allocTraceBuf : i " << i << " isPLIO " << isPLIO << " numStream " << numStream << " bo Handle " << b.boHandle << " memIndex " << memIndex << std::endl;
-    if(!b.boHandle) {
+    buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
+//    b.boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
+    if(!buffers[i].boHandle) {
+//    if(!b.boHandle) 
       return false;
     }
     b.isFull = false;
     // Data Mover will write input stream to this address
-    uint64_t bufAddr = deviceIntf->getDeviceAddr(b.boHandle);
+    uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].boHandle);
+//    uint64_t bufAddr = deviceIntf->getDeviceAddr(b.boHandle);
     if(isPLIO) {
-std::cout << " In AIETraceOffload::initReadTrace : just before initAIETs2mm : i " << i << std::endl;
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i);
-std::cout << " In AIETraceOffload::initReadTrace : just after initAIETs2mm : i " << i << " bufAllocSz " << bufAllocSz << " bufAddr " << bufAddr << std::endl;
     } else {
 #ifdef XRT_ENABLE_AIE
       VPDatabase* db = VPDatabase::Instance();
@@ -116,7 +116,6 @@ void AIETraceOffload::endReadTrace()
       // no reset required
     }
     deviceIntf->freeTraceBuf(b.boHandle);
-std::cout << " In AIETraceOffload::ENDreadTrace : after freeTraceBuf i " << i << std::endl;
     b.boHandle = 0;
     ++i;
   }
@@ -135,7 +134,6 @@ void AIETraceOffload::readTrace()
       if (buffers[i].usedSz == bufAllocSz)
         buffers[i].isFull = true;
 
-std::cout << " In AIETraceOffload::readTrace : i " << i << " usedSz " << buffers[i].usedSz << " isFull " << buffers[i].isFull << std::endl;
       if (bytes != CHUNK_SZ)
         break;
     }
@@ -153,11 +151,9 @@ uint64_t AIETraceOffload::readPartialTrace(uint64_t i)
   if((buffers[i].offset + CHUNK_SZ) > buffers[i].usedSz)
     nBytes = buffers[i].usedSz - buffers[i].offset;
 
-  void* hostBuf = deviceIntf->syncTraceBuf(buffers[i].usedSz, buffers[i].offset, nBytes);
-std::cout << " In AIETraceOffload::readPartialTrace : i " << i << " hostBuf " << hostBuf << " buffers[i].usedSz " << buffers[i].usedSz << " buffers[i].offset " << buffers[i].offset << " nBytes " << nBytes << std::endl;
+  void* hostBuf = deviceIntf->syncTraceBuf(buffers[i].boHandle, buffers[i].offset, nBytes);
 
   if(hostBuf) {
-std::cout << " In AIETraceOffload::readPartialTrace : RIGHT BEFORE addAIETraceData i " << i << " hostBuf " << hostBuf << " nBytes " << nBytes << std::endl;
     traceLogger->addAIETraceData(i, hostBuf, nBytes);
     buffers[i].offset += nBytes;
     return nBytes;
@@ -174,7 +170,6 @@ void AIETraceOffload::configAIETs2mm(uint64_t i /*index*/)
   } else {
     buffers[i].usedSz = bufAllocSz;
   }
-std::cout << " In AIETraceOffload::configAIETs2mm : i " << i << " usedSz " << buffers[i].usedSz << " usedSize " << usedSize << std::endl;
 }
 
 
