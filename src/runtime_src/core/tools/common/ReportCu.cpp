@@ -45,7 +45,7 @@ parse_cu_status(uint32_t cu_status)
 }
 
 boost::property_tree::ptree
-populate_cus(const xrt_core::device *device, const std::string& desc)
+populate_cus(const xrt_core::device *device)
 {
   boost::property_tree::ptree pt;
   std::vector<char> ip_buf;
@@ -98,7 +98,7 @@ ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   // There can only be 1 root node
-  _pt.add_child("compute_units", populate_cus(_pDevice, "Compute Units Information"));
+  _pt.add_child("compute_units", populate_cus(_pDevice));
 }
 
 void 
