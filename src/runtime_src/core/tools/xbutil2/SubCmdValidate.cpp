@@ -381,7 +381,8 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
  * helper function for P2P test
  */
 static bool
-p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::string m_tag, unsigned int mem_idx, uint64_t addr, uint64_t bo_size)
+p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::string m_tag, 
+             unsigned int mem_idx, uint64_t addr, uint64_t bo_size)
 {
   const size_t chunk_size = 16 * 1024 * 1024; //16 MB
 
@@ -824,18 +825,20 @@ static std::vector<TestCollection> testSuite = {
  * print basic information about a test
  */
 static void
-pretty_print_test_desc(const boost::property_tree::ptree& test, int testSuiiteSize)
+pretty_print_test_desc(const boost::property_tree::ptree& test, 
+                       size_t testSuiteSize, std::ostream & _ostream)
 {
-  std::cout << boost::format("%d/%d Test #%-10d: %s\n") % test.get<int>("id") % testSuiiteSize
+  _ostream << boost::format("%d/%d Test #%-10d: %s\n") % test.get<int>("id") % testSuiteSize
                     % test.get<int>("id") % test.get<std::string>("name");
-  std::cout << boost::format("    %-16s: %s\n") % "Description" % test.get<std::string>("description");
+  _ostream << boost::format("    %-16s: %s\n") % "Description" % test.get<std::string>("description");
 }
 
 /*
  * print test run
  */
 static void
-pretty_print_test_run(const boost::property_tree::ptree& test, test_status& status)
+pretty_print_test_run(const boost::property_tree::ptree& test, 
+                      test_status& status, std::ostream & _ostream)
 {
   std::string _status = test.get<std::string>("status");
   auto color = EscapeCodes::FGC_PASS;
@@ -845,7 +848,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test, test_status& stat
   try {
     for (const auto& dict : test.get_child("log")) {
       for (const auto& kv : dict.second) {
-        std::cout << boost::format("    %-16s: %s\n") % kv.first % kv.second.get_value<std::string>();
+        _ostream<< boost::format("    %-16s: %s\n") % kv.first % kv.second.get_value<std::string>();
         if (boost::iequals(kv.first, "warning"))
           warn = true;
         else if (boost::iequals(kv.first, "error"))
@@ -866,24 +869,24 @@ pretty_print_test_run(const boost::property_tree::ptree& test, test_status& stat
   }
 
   boost::to_upper(_status);
-  std::cout << EscapeCodes::fgcolor(color).string() << boost::format("    [%s]\n") % _status
+  _ostream << EscapeCodes::fgcolor(color).string() << boost::format("    [%s]\n") % _status
             << EscapeCodes::fgcolor::reset();
-  std::cout << "-------------------------------------------------------------------------------" << std::endl;
+  _ostream << "-------------------------------------------------------------------------------" << std::endl;
 }
 
 /*
  * print final status of the card
  */
 static void
-print_status(test_status status)
+print_status(test_status status, std::ostream & _ostream)
 {
   if (status == test_status::failed)
-    std::cout << "Validation failed";
+    _ostream<< "Validation failed";
   else
-    std::cout << "Validation completed";
+    _ostream << "Validation completed";
   if (status == test_status::warning)
-    std::cout << ", but with warnings";
-  std::cout << std::endl;
+    _ostream<< ", but with warnings";
+  _ostream<< std::endl;
 }
 
 /*
@@ -891,7 +894,8 @@ print_status(test_status status)
  */
 
 static void
-get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& _ptTree, Report::SchemaVersion schemaVersion)
+get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& _ptTree, 
+                  Report::SchemaVersion schemaVersion, std::ostream & _ostream)
 {
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
   _ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
@@ -899,10 +903,10 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::proper
   _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_bmc_version>(device));
   _ptTree.put("platform_id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
   if (schemaVersion == Report::SchemaVersion::text) {
-    std::cout << boost::format("Validate device[%s]\n") % _ptTree.get<std::string>("device_id");
-    std::cout << boost::format("%-20s: %s\n") % "Platform" % _ptTree.get<std::string>("platform");
-    std::cout << boost::format("%-20s: %s\n") % "SC Version" % _ptTree.get<std::string>("sc_version");
-    std::cout << boost::format("%-20s: %s\n\n") % "Platform ID" % _ptTree.get<std::string>("platform_id");
+    _ostream << boost::format("Validate device[%s]\n") % _ptTree.get<std::string>("device_id");
+    _ostream << boost::format("%-20s: %s\n") % "Platform" % _ptTree.get<std::string>("platform");
+    _ostream << boost::format("%-20s: %s\n") % "SC Version" % _ptTree.get<std::string>("sc_version");
+    _ostream << boost::format("%-20s: %s\n\n") % "Platform ID" % _ptTree.get<std::string>("platform_id");
   }
 }
 
@@ -920,19 +924,19 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device,
   if (testObjectsToRun.empty())
     throw std::runtime_error("No test given to validate against.");
 
-  get_platform_info(device, ptDeviceInfo, schemaVersion);
+  get_platform_info(device, ptDeviceInfo, schemaVersion, _ostream);
 
   for (TestCollection * testPtr : testObjectsToRun) {
     boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
 
     if(schemaVersion == Report::SchemaVersion::text)
-      pretty_print_test_desc(ptTest, testObjectsToRun.size());
+      pretty_print_test_desc(ptTest, testObjectsToRun.size(), _ostream);
 
     testPtr->testHandle(device, ptTest);
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
     if(schemaVersion == Report::SchemaVersion::text)
-      pretty_print_test_run(ptTest, status);
+      pretty_print_test_run(ptTest, status, _ostream);
 
     // If a test fails, exit immediately
     if(status == test_status::failed) {
@@ -941,7 +945,7 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device,
   }
 
   if(schemaVersion == Report::SchemaVersion::text)
-    print_status(status);
+    print_status(status, _ostream);
 
   ptDeviceInfo.put_child("tests", ptDeviceTestSuite);
   _ptDevCollectionTestSuite.push_back( std::make_pair("", ptDeviceInfo) );
