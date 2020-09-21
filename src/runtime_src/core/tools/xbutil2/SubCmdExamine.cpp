@@ -38,7 +38,6 @@ namespace po = boost::program_options;
 // ---- Reports ------
 #include "tools/common/Report.h"
 #include "tools/common/ReportHost.h"
-#include "tools/common/ReportHostInterface.h"
 #include "tools/common/ReportFirewall.h"
 #include "tools/common/ReportDebugIpStatus.h"
 #include "tools/common/ReportElectrical.h"
@@ -56,10 +55,8 @@ static const ReportCollection fullReportCollection = {
   std::make_shared<ReportMemory>(),
   std::make_shared<ReportFirewall>(),
   std::make_shared<ReportHost>(),
-  std::make_shared<ReportHostInterface>(),
   std::make_shared<ReportThermal>(),
-  std::make_shared<ReportDebugIpStatus>(),
-  // std::make_shared<ReportPlatform>()
+  std::make_shared<ReportDebugIpStatus>()
 };
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
@@ -100,12 +97,14 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
     ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("element,e", boost::program_options::value<decltype(elementsFilter)>(&elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
     ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");  
+  commonOptions.add_options()
+    ("element,e", boost::program_options::value<decltype(elementsFilter)>(&elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
+  ;
 
   po::options_description allOptions("All Options");  
   allOptions.add(commonOptions);

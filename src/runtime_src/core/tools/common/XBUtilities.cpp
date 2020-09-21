@@ -252,8 +252,6 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
     throw std::runtime_error(errMsg);
   }
 
-  const unsigned int paragraphWidth = _columnWidth - _indentWidth;
-
   std::string::const_iterator lineBeginIter = _unformattedString.begin();
   const std::string::const_iterator paragraphEndIter = _unformattedString.end();
 
@@ -261,6 +259,8 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
 
   while (lineBeginIter != paragraphEndIter)
   {
+    const unsigned int paragraphWidth = ((linesProcessed != 0) || _indentFirstLine) ? (_columnWidth - _indentWidth) : _columnWidth;
+
     // Remove leading spaces
     if ((linesProcessed > 0) &&
         (*lineBeginIter == ' ')) {
