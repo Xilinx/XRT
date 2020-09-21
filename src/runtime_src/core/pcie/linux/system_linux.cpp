@@ -21,6 +21,7 @@
 #include "scan.h"
 
 #include <boost/property_tree/ini_parser.hpp>
+#include <boost/format.hpp>
 
 #include <fstream>
 #include <memory>

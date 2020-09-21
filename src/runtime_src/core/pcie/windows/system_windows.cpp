@@ -32,6 +32,8 @@
 #include <thread>
 #include <windows.h>
 
+#include <boost/format.hpp>
+
 #ifdef _WIN32
 # pragma warning (disable : 4996)
 #endif
