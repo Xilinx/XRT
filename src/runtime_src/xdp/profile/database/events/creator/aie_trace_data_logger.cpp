@@ -36,9 +36,7 @@ void AIETraceDataLogger::addAIETraceData(uint64_t strmIndex, void* buffer, uint6
   if(!VPDatabase::alive()) {
     return;
   }
-std::cout << " in AIETraceDataLogger::addAIETraceData : about to call Dyn addAIETraceData deviceId " << deviceId << " strmIndex " << strmIndex << " buffer " << buffer << " bufferSz " << bufferSz << std::endl;
   db->getDynamicInfo().addAIETraceData(deviceId, strmIndex, buffer, bufferSz);
-std::cout << " in AIETraceDataLogger::addAIETraceData : AFTER call Dyn addAIETraceData deviceId " << deviceId << " strmIndex " << strmIndex << " buffer " << buffer << " bufferSz " << bufferSz << std::endl;
 }
 
 }
