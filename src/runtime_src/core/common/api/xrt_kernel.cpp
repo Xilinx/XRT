@@ -446,11 +446,11 @@ public:
   }
 
   ert_cmd_state
-  wait(unsigned int timeout_ms) const
+  wait(const std::chrono::milliseconds& timeout_ms) const
   {
     std::unique_lock<std::mutex> lk(m_mutex);
     while (!m_done)
-      m_exec_done.wait_for(lk, timeout_ms * 1ms);
+      m_exec_done.wait_for(lk, timeout_ms);
 
     auto pkt = get_ert_packet();
     return static_cast<ert_cmd_state>(pkt->state);
@@ -1252,9 +1252,9 @@ public:
 
   // wait() - wait for execution to complete
   ert_cmd_state
-  wait(unsigned int timeout_ms) const
+  wait(const std::chrono::milliseconds& timeout_ms) const
   {
-    return timeout_ms ? cmd->wait(timeout_ms) : cmd->wait();
+    return timeout_ms.count() ? cmd->wait(timeout_ms) : cmd->wait();
   }
 
   // state() - get current execution state
@@ -1552,7 +1552,7 @@ ert_cmd_state
 xrtRunWait(xrtRunHandle rhdl, unsigned int timeout_ms)
 {
   auto run = get_run(rhdl);
-  return run->wait(timeout_ms);
+  return run->wait(timeout_ms * 1ms);
 }
 
 void
@@ -1634,7 +1634,7 @@ start()
 
 ert_cmd_state
 run::
-wait(unsigned int timeout_ms) const
+wait(const std::chrono::milliseconds& timeout_ms) const
 {
   return handle->wait(timeout_ms);
 }
