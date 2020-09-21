@@ -287,7 +287,7 @@ public:
    * THIS FUNCTION DOES NOT BELONG HERE
    */
   scope_value_guard<int, std::function<void()>>
-  file_open(const std::string& subdev, int flag)
+  file_open(const std::string& subdev, int flag) const
   {
     auto fd = open(subdev, flag);
     return {fd, std::bind(&device::close, this, fd)};

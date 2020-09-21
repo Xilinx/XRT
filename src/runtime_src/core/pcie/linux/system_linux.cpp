@@ -21,6 +21,7 @@
 #include "scan.h"
 
 #include <boost/property_tree/ini_parser.hpp>
+#include <boost/format.hpp>
 
 #include <fstream>
 #include <memory>
@@ -31,6 +32,20 @@
 
 #include <sys/utsname.h>
 #include <gnu/libc-version.h>
+#include <unistd.h>
+
+#if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
+  #define MACHINE_NODE_PATH "/proc/device-tree/model"
+#elif defined(__PPC64__)
+  #define MACHINE_NODE_PATH "/proc/device-tree/model-name"
+  // /proc/device-tree/system-id may be 000000
+  // /proc/device-tree/model may be 00000
+#elif defined (__x86_64__)
+  #define MACHINE_NODE_PATH "/sys/devices/virtual/dmi/id/product_name"
+#else
+#error "Unsupported platform"
+  #define MACHINE_NODE_PATH ""
+#endif
 
 namespace {
 
@@ -85,6 +100,17 @@ glibc_info()
   return _pt;
 }
 
+static std::string machine_info()
+{
+  std::string model("unknown");
+  std::ifstream stream(MACHINE_NODE_PATH);
+  if (stream.good()) {
+    std::getline(stream, model);
+    stream.close();
+  }
+  return model;
+}
+
 static std::vector<std::weak_ptr<xrt_core::device_linux>> mgmtpf_devices(16); // fix size
 static std::vector<std::weak_ptr<xrt_core::device_linux>> userpf_devices(16); // fix size
 static std::map<xrt_core::device::handle_type, std::weak_ptr<xrt_core::device_linux>> userpf_device_map;
@@ -94,7 +120,7 @@ static std::map<xrt_core::device::handle_type, std::weak_ptr<xrt_core::device_li
 namespace xrt_core {
 
 
-void 
+void
 system_linux::
 get_xrt_info(boost::property_tree::ptree &pt)
 {
@@ -105,7 +131,7 @@ get_xrt_info(boost::property_tree::ptree &pt)
 }
 
 
-void 
+void
 system_linux::
 get_os_info(boost::property_tree::ptree &pt)
 {
@@ -133,6 +159,10 @@ get_os_info(boost::property_tree::ptree &pt)
       }
       ifs.close();
   }
+
+  pt.put("model", machine_info());
+  pt.put("cores", std::thread::hardware_concurrency());
+  pt.put("memory_bytes", (boost::format("0x%lx") % (sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE))).str());
   boost::property_tree::ptree _ptLibInfo;
   _ptLibInfo.push_back( std::make_pair("", glibc_info() ));
   pt.put_child("libraries", _ptLibInfo);
@@ -179,7 +209,7 @@ get_mgmtpf_device(device::id_type id) const
 
 void
 system_linux::
-program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const 
+program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const
 {
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = dev->file_open("icap", O_WRONLY);

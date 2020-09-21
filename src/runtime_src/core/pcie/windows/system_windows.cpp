@@ -31,6 +31,8 @@
 #include <ctime>
 #include <windows.h>
 
+#include <boost/format.hpp>
+
 #ifdef _WIN32
 # pragma warning (disable : 4996)
 #endif
@@ -70,12 +72,12 @@ getmachinename()
   return machine;
 }
 
-static std::string 
+static std::string
 osNameImpl()
 {
     OSVERSIONINFO vi;
     vi.dwOSVersionInfoSize = sizeof(vi);
-    if (GetVersionEx(&vi) == 0) 
+    if (GetVersionEx(&vi) == 0)
       throw xrt_core::error("Cannot get OS version information");
     switch (vi.dwPlatformId)
     {
@@ -130,6 +132,17 @@ get_os_info(boost::property_tree::ptree &pt)
   BufferSize = sizeof value;
   RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
   pt.put("distribution", value);
+
+  BufferSize = sizeof value;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\SystemInformation", "SystemProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  pt.put("model", value);
+
+  MEMORYSTATUSEX mem;
+  mem.dwLength = sizeof(mem);
+  GlobalMemoryStatusEx(&mem);
+  pt.put("memory_bytes", (boost::format("0x%llx") % mem.ullTotalPhys).str());
+
+  pt.put("cores", std::thread::hardware_concurrency());
 }
 
 std::pair<device::id_type, device::id_type>
@@ -174,7 +187,7 @@ get_mgmtpf_device(device::id_type id) const
 
 void
 system_windows::
-program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const 
+program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const
 {
   mgmtpf::plp_program(dev->get_mgmt_handle(), reinterpret_cast<const axlf*>(buffer.data()));
 
@@ -188,11 +201,11 @@ program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const
 	retry_count++;
 
     // check plp status
-    if(plp_status == RP_DOWLOAD_SUCCESS) 
+    if(plp_status == RP_DOWLOAD_SUCCESS)
       break;
     else if (plp_status == RP_DOWLOAD_FAILED)
       throw xrt_core::error("PLP programmming failed");
-    
+
     if (retry_count == program_timeout_sec)
       throw xrt_core::error("PLP programmming timed out");
 

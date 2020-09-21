@@ -20,12 +20,28 @@
 #include "core/common/time.h"
 
 #include <boost/property_tree/ini_parser.hpp>
+#include <boost/format.hpp>
 
 #include <fstream>
 #include <memory>
+#include <thread>
 
 #include <sys/utsname.h>
 #include <gnu/libc-version.h>
+#include <unistd.h>
+
+#if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
+  #define MACHINE_NODE_PATH "/proc/device-tree/model"
+#elif defined(__PPC64__)
+  #define MACHINE_NODE_PATH "/proc/device-tree/model-name"
+  // /proc/device-tree/system-id may be 000000
+  // /proc/device-tree/model may be 00000
+#elif defined (__x86_64__)
+  #define MACHINE_NODE_PATH "/sys/devices/virtual/dmi/id/product_name"
+#else
+#error "Unsupported platform"
+  #define MACHINE_NODE_PATH ""
+#endif
 
 namespace {
 
@@ -65,7 +81,7 @@ driver_version(const std::string& driver)
 
 namespace xrt_core {
 
-void 
+void
 system_linux::
 get_xrt_info(boost::property_tree::ptree &pt)
 {
@@ -85,7 +101,19 @@ glibc_info()
   return _pt;
 }
 
-void 
+static std::string
+machine_info()
+{
+  std::string model("unknown");
+  std::ifstream stream(MACHINE_NODE_PATH);
+  if (stream.good()) {
+    std::getline(stream, model);
+    stream.close();
+  }
+  return model;
+}
+
+void
 system_linux::
 get_os_info(boost::property_tree::ptree &pt)
 {
@@ -109,7 +137,7 @@ get_os_info(boost::property_tree::ptree &pt)
     boost::property_tree::ini_parser::read_ini(ifs, opt);
     auto val = opt.get<std::string>("PRETTY_NAME", "");
     if (!val.empty()) {
-      // Remove extra '"' from both end of string 
+      // Remove extra '"' from both end of string
       if ((val.front() == '"') && (val.back() == '"')) {
         val.erase(0, 1);
         val.erase(val.size()-1);
@@ -118,7 +146,9 @@ get_os_info(boost::property_tree::ptree &pt)
     }
     ifs.close();
   }
-
+  pt.put("model", machine_info());
+  pt.put("cores", std::thread::hardware_concurrency());
+  pt.put("memory_bytes", (boost::format("0x%lx") % (sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE))).str());
   pt.put("now", xrt_core::timestamp());
 }
 
@@ -126,9 +156,9 @@ get_os_info(boost::property_tree::ptree &pt)
 std::pair<device::id_type, device::id_type>
 system_linux::
 get_total_devices(bool is_user) const
-{ 
+{
   device::id_type num = xclProbe();
-  return std::make_pair(num, num); 
+  return std::make_pair(num, num);
 }
 
 void
@@ -153,7 +183,7 @@ get_userpf_device(device::handle_type handle, device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
   return std::shared_ptr<device_linux>(new device_linux(handle, id, true));
-}  
+}
 
 std::shared_ptr<device>
 system_linux::
@@ -165,7 +195,7 @@ get_mgmtpf_device(device::id_type id) const
 
 void
 system_linux::
-program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const 
+program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const
 {
   throw std::runtime_error("plp program is not supported");
 }
