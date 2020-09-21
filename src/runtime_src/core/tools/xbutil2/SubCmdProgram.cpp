@@ -104,7 +104,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
     for(auto& kd : available_devices) {
       boost::property_tree::ptree& dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("board");
+      std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
     }
     std::cout << std::endl;
     return;
@@ -145,7 +145,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       if (auto err = xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data())))
         throw xrt_core::error(err, "Could not program device" + bdf);
 
-      std::cout << "INFO: xbutil2 program succeeded on " << bdf << std::endl;
+      std::cout << "INFO: xbutil program succeeded on " << bdf << std::endl;
     }
     return;
   }
