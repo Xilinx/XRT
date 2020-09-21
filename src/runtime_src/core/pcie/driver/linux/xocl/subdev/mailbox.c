@@ -1262,8 +1262,6 @@ static void dequeue_tx_msg(struct mailbox_channel *ch)
 	ch->mbc_cur_msg = chan_msg_dequeue(ch, INVALID_MSG_ID);
 	if (!ch->mbc_cur_msg)
 		return;
-
-	msg_timer_on(ch->mbc_cur_msg, 0);
 }
 
 /* Check if TX channel is ready for next msg. */
@@ -1311,6 +1309,7 @@ static bool chan_do_tx(struct mailbox_channel *ch)
 				do_sw_tx(ch);
 			else
 				do_hw_tx(ch);
+			msg_timer_on(ch->mbc_cur_msg, 0);
 		} else if (valid_pkt(&mbx->mbx_tst_pkt) && !(MB_SW_ONLY(mbx))) {
 			/* Sending test pkt. */
 			(void) memcpy(&ch->mbc_packet, &mbx->mbx_tst_pkt,
