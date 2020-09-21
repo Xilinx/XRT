@@ -30,9 +30,7 @@
 #include "core/common/device.h"
 
 // directory where all MCS files are saved
-#define FIRMWARE_WIN_DIR    "C:\\Xilinx"
-#define FIRMWARE_DIRS       {"/lib/firmware/xilinx", "/lib/firmware/arista"}
-#define FORMATTED_FW_DIR    "/opt/xilinx/firmware"
+#define FIRMWARE_DIRS       {"/lib/firmware/xilinx", "/lib/firmware/arista", "C:\\Xilinx"}
 #define DSA_FILE_SUFFIX     "mcs"
 #define DSABIN_FILE_SUFFIX  "dsabin"
 #define XSABIN_FILE_SUFFIX  "xsabin"

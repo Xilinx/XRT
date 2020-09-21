@@ -21,20 +21,23 @@
 #include "core/common/system.h"
 
 // 3rd Party Library - Include Files
+#include <string>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 
+#define BYTES_TO_MEGABYTES 0x100000ll
+
 void
-ReportHost::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
+ReportHost::getPropertyTreeInternal( const xrt_core::device * _pDevice,
                                      boost::property_tree::ptree &_pt) const
 {
-  // Defer to the 20202 format.  If we ever need to update JSON data, 
+  // Defer to the 20202 format.  If we ever need to update JSON data,
   // Then update this method to do so.
   getPropertyTree20202(_pDevice, _pt);
 }
 
-void 
-ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/, 
+void
+ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
                                   boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
@@ -55,9 +58,9 @@ ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
 }
 
 
-void 
+void
 ReportHost::writeReport(const xrt_core::device * _pDevice,
-                        const std::vector<std::string> & /*_elementsFilter*/, 
+                        const std::vector<std::string> & /*_elementsFilter*/,
                         std::iostream & _output) const
 {
   boost::property_tree::ptree _pt;
@@ -70,16 +73,18 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
     _output << boost::format("  %-20s : %s\n") % "Release" % _pt.get<std::string>("host.os.release");
     _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.os.version");
     _output << boost::format("  %-20s : %s\n") % "Machine" % _pt.get<std::string>("host.os.machine");
+    _output << boost::format("  %-20s : %s\n") % "CPU Cores" % _pt.get<std::string>("host.os.cores");
+    _output << boost::format("  %-20s : %lld MB\n") % "Memory" % (std::strtoll(_pt.get<std::string>("host.os.memory_bytes").c_str(),nullptr,16) / BYTES_TO_MEGABYTES);
     _output << boost::format("  %-20s : %s\n") % "Distribution" % _pt.get<std::string>("host.os.distribution","N/A");
     boost::property_tree::ptree& available_libraries = _pt.get_child("host.os.libraries", empty_ptree);
     for(auto& kl : available_libraries) {
       boost::property_tree::ptree& lib = kl.second;
       std::string lib_name = lib.get<std::string>("name", "N/A");
       boost::algorithm::to_upper(lib_name);
-      _output << boost::format("  %-20s : %s\n") % lib_name 
+      _output << boost::format("  %-20s : %s\n") % lib_name
           % lib.get<std::string>("version", "N/A");
     }
-    
+    _output << boost::format("  %-20s : %s\n") % "Model" % _pt.get<std::string>("host.os.model");
     _output << std::endl;
     _output << "XRT\n";
     _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.xrt.version", "N/A");
@@ -91,7 +96,7 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
       boost::property_tree::ptree& driver = drv.second;
       std::string drv_name = driver.get<std::string>("name", "N/A");
       boost::algorithm::to_upper(drv_name);
-      _output << boost::format("  %-20s : %s, %s\n") % drv_name 
+      _output << boost::format("  %-20s : %s, %s\n") % drv_name
           % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
     }
     _output << std::endl;
@@ -109,8 +114,6 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
     _output << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("board") % note;
   }
   _output << std::endl;
-  
+
 
 }
-
-

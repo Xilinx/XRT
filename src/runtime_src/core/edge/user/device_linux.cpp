@@ -42,6 +42,46 @@ get_edgedev(const xrt_core::device* device)
   return zynq_device::get_dev();
 }
 
+struct bdf 
+{
+  using result_type = query::pcie_bdf::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    return {0,0,0};
+  }
+
+};
+
+struct board_name 
+{
+  using result_type = query::board_name::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    result_type deviceName("edge");
+    std::ifstream VBNV("/etc/xocl.txt");
+    if (VBNV.is_open()) {
+      VBNV >> deviceName;
+    }
+    VBNV.close();
+    return deviceName;
+  }
+};
+
+struct is_ready 
+{
+  using result_type = query::is_ready::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    return true;
+  }
+};
+
 struct devInfo
 {
   static boost::any
@@ -166,6 +206,14 @@ emplace_func0_get()
   query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
 }
 
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func0_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
+}
+
 static void
 initialize_query_table()
 {
@@ -185,6 +233,9 @@ initialize_query_table()
   emplace_sysfs_get<query::memstat>                   ("memstat");
   emplace_sysfs_get<query::memstat_raw>               ("memstat_raw");
   emplace_sysfs_get<query::error>                     ("error");
+  emplace_func0_request<query::pcie_bdf,                bdf>();
+  emplace_func0_request<query::board_name,              board_name>();
+  emplace_func0_request<query::is_ready,                is_ready>();
 }
 
 struct X { X() { initialize_query_table(); } };
@@ -231,6 +282,30 @@ device_linux::
 write(uint64_t offset, const void* buf, uint64_t len) const
 {
   throw error(-ENODEV, "write failed");
+}
+
+
+void 
+device_linux::
+reset(query::reset_type key) const 
+{
+  switch(key.get_key()) {
+  case query::reset_key::hot:
+    throw error(-ENODEV, "Hot reset not supported");
+  case query::reset_key::kernel:
+    throw error(-ENODEV, "OCL dynamic region reset not supported");
+  case query::reset_key::ert:
+    throw error(-ENODEV, "ERT reset not supported");
+  case query::reset_key::ecc:
+    throw error(-ENODEV, "Soft Kernel reset not supported");
+  case query::reset_key::aie:
+    /* Commented till xrt shift to aie v2 driver */
+    //if (auto ret = xclResetAIEArray(get_device_handle()))
+    //  throw error(ret, "fail to reset aie array");
+    break;
+  default:
+    throw error(-ENODEV, "invalid argument");
+  }
 }
 
 } // xrt_core

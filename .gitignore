@@ -14,3 +14,9 @@ tags
 *.mod
 *.ko
 *.nfs*
+\#*\#
+\.\#*
+a.out
+a.xclbin
+vivado.log
+vivado.jou

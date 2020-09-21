@@ -40,7 +40,7 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
     : SubCmd("program", 
              "Download the acceleration program to a given device")
 {
-  const std::string longDescription = "<add long discription>";
+  const std::string longDescription = "Programs the given acceleration image into the device's shell.";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);
@@ -50,23 +50,18 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
 
 void
 SubCmdProgram::execute(const SubCmdOptions& _options) const
-// Reference Command:  [-d card] [-r region] -p xclbin
-//                     Download the accelerator program for card 2
-//                       xbutil program -d 2 -p a.xclbin
 {
   XBU::verbose("SubCommand: program");
   // -- Retrieve and parse the subcommand options -----------------------------
   unsigned int card = 0;
-  uint64_t region = 0;
   std::string xclbin;
   bool help = false;
 
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-    (",d", boost::program_options::value<unsigned int>(&card), "Card to be examined")
-    (",r", boost::program_options::value<uint64_t>(&region), "Card region")
-    (",p", boost::program_options::value<std::string>(&xclbin), "The xclbin image to load")
+    ("device,d", boost::program_options::value<unsigned int>(&card), "Card to be examined")
+    ("program,p", boost::program_options::value<std::string>(&xclbin), "The xclbin image to load")
   ;
 
   po::options_description hiddenOptions("Hidden Options");
@@ -97,11 +92,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // -- Now process the subcommand --------------------------------------------
   XBU::verbose(boost::str(boost::format("  Card: %ld") % card));
-  XBU::verbose(boost::str(boost::format("Region: %ld") % region));
   XBU::verbose(boost::str(boost::format("XclBin: %s") % xclbin.c_str()));
 
-  if (region)
-    throw xrt_core::error("region is not supported");
 
   if (!xclbin.empty()) {
     std::ifstream stream(xclbin, std::ios::binary);

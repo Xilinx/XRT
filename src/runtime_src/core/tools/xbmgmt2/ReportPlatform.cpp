@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "ReportPlatform.h"
 #include "flash/flasher.h"
+#include "flash/firmware_image.h"
 #include "core/common/query_requests.h"
 
 // Utilities
@@ -62,6 +63,38 @@ same_sc(const std::string& sc, const DSAInfo& installed)
   return ((sc.empty()) || (installed.bmcVer == sc));
 }
 
+/*
+ * scan for plps installed on the system
+ */
+static boost::property_tree::ptree
+get_installed_partitions(std::string interface_uuid)
+{
+  auto availableDSAs = firmwareImage::getIntalledDSAs();
+  boost::property_tree::ptree pt_plps;
+  for(unsigned int i = 0; i < availableDSAs.size(); i++) {
+    boost::property_tree::ptree pt_plp;
+    DSAInfo installedDSA = availableDSAs[i];
+    if(installedDSA.hasFlashImage || installedDSA.uuids.empty())
+      continue;
+    pt_plp.put("vbnv", installedDSA.name);
+    //the first UUID is always the logic UUID
+    pt_plp.put("logic-uuid", XBU::string_to_UUID(installedDSA.uuids[0]));
+
+    // Find the UUID that it exposes for other partitions
+    for(unsigned int j = 1; j < installedDSA.uuids.size(); j++){
+      //check if the interface UUID is resolution of BLP
+      if(interface_uuid.compare(installedDSA.uuids[j]) == 0)
+        continue;
+      pt_plp.put("interface-uuid", XBU::string_to_UUID(installedDSA.uuids[j]));
+    }
+    pt_plp.put("file", installedDSA.file);
+    std::cout << std::endl;
+
+    pt_plps.push_back( std::make_pair("", pt_plp) );
+  }
+  return pt_plps;
+}
+
 void 
 ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
                                       boost::property_tree::ptree &pt) const
@@ -100,13 +133,22 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     std::string vbnv = "xilinx_" + board_name + "_GOLDEN";
     pt_current_shell.put("vbnv", vbnv);
   } else if(!logic_uuids.empty() && !interface_uuids.empty()) { // 2RP
-    for(unsigned int i = 0; i < logic_uuids.size(); i++) {
-      DSAInfo part("", NULL_TIMESTAMP, logic_uuids[i], ""); 
+      DSAInfo part("", NULL_TIMESTAMP, logic_uuids[0], ""); 
       pt_current_shell.put("vbnv", part.name);
-      pt_current_shell.put("logic-uuid", XBU::string_to_UUID(logic_uuids[i]));
-      pt_current_shell.put("interface-uuid", XBU::string_to_UUID(interface_uuids[i]));
+      pt_current_shell.put("logic-uuid", XBU::string_to_UUID(logic_uuids[0]));
+      pt_current_shell.put("interface-uuid", XBU::string_to_UUID(interface_uuids[0]));
       pt_current_shell.put("id", (boost::format("0x%x") % part.timestamp));
-    }
+
+      boost::property_tree::ptree pt_plps;
+      for(unsigned int i = 1; i < logic_uuids.size(); i++) {
+        boost::property_tree::ptree pt_plp;
+        DSAInfo partition("", NULL_TIMESTAMP, logic_uuids[i], ""); 
+        pt_plp.put("vbnv", partition.name);
+        pt_plp.put("logic-uuid", XBU::string_to_UUID(logic_uuids[i]));
+        pt_plp.put("interface-uuid", XBU::string_to_UUID(interface_uuids[i]));
+        pt_plps.push_back( std::make_pair("", pt_plp) );
+      }
+      pt_platform.put_child("current_partitions", pt_plps);
   } else { //1RP
     pt_current_shell.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
     pt_current_shell.put("id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
@@ -142,6 +184,12 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   }
   pt_platform.put_child("available_shells", pt_available_shells);
 
+  if (!interface_uuids.empty()) {
+    auto pt_available_partitions = get_installed_partitions(interface_uuids[0]);
+    pt_platform.put_child("available_partitions", pt_available_partitions);
+  }
+  
+
   // There can only be 1 root node
   pt.add_child("platform", pt_platform);
 }
@@ -174,10 +222,10 @@ ReportPlatform::writeReport( const xrt_core::device * device,
   output << fmtBasic % "Serial Number" % pt.get<std::string>("platform.hardware.serial_num", "N/A");
   output << std::endl;
 
-  output << "Flashable partition running on FPGA\n";
+  output << "Flashable partitions running on FPGA\n";
   output << fmtBasic % "Platform" % pt.get<std::string>("platform.current_shell.vbnv", "N/A");
   output << fmtBasic % "SC Version" % pt.get<std::string>("platform.current_shell.sc_version", "N/A");
-  
+
   // print platform ID, for 2RP, platform ID = logic UUID 
   auto logic_uuid = pt.get<std::string>("platform.current_shell.logic-uuid", "");
   auto interface_uuid = pt.get<std::string>("platform.current_shell.interface-uuid", "");
@@ -189,6 +237,17 @@ ReportPlatform::writeReport( const xrt_core::device * device,
   }
   output << std::endl;
 
+  // List PLP running on the system
+  boost::property_tree::ptree pt_empty;
+  boost::property_tree::ptree& plps = pt.get_child("platform.current_partitions", pt_empty);
+  for(auto& kv : plps) {
+    boost::property_tree::ptree& plp = kv.second;
+    output << fmtBasic % "Platform" % plp.get<std::string>("vbnv", "N/A");
+    output << fmtBasic % "Logic UUID" % plp.get<std::string>("logic-uuid", "N/A");
+    output << fmtBasic % "Interface UUID" % plp.get<std::string>("interface-uuid", "N/A");
+    output << std::endl;
+  }
+
   output << "Flashable partitions installed in system\n"; 
   boost::property_tree::ptree& available_shells = pt.get_child("platform.available_shells");
   for(auto& kv : available_shells) {
@@ -196,6 +255,16 @@ ReportPlatform::writeReport( const xrt_core::device * device,
     output << fmtBasic % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
     output << fmtBasic % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
     output << fmtBasic % "Platform ID" % available_shell.get<std::string>("id", "N/A");
+    output << std::endl;
+  }
+
+  //PLPs installed on the system
+  boost::property_tree::ptree& available_plps = pt.get_child("platform.available_partitions", pt_empty);
+  for(auto& kv : available_plps) {
+    boost::property_tree::ptree& plp = kv.second;
+    output << fmtBasic % "Platform" % plp.get<std::string>("vbnv", "N/A");
+    output << fmtBasic % "Logic UUID" % plp.get<std::string>("logic-uuid", "N/A");
+    output << fmtBasic % "Interface UUID" % plp.get<std::string>("interface-uuid", "N/A");
     output << std::endl;
   }
 

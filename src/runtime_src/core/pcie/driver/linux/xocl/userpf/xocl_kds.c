@@ -224,10 +224,18 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	/* TODO: one ecmd to one xcmd now. Maybe we will need
 	 * one ecmd to multiple xcmds
 	 */
-	if (ecmd->opcode == ERT_CONFIGURE) {
+	switch (ecmd->opcode) {
+	case ERT_CONFIGURE:
 		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
-	} else if (ecmd->opcode == ERT_START_CU)
+		break;
+	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		break;
+	default:
+		userpf_err(xdev, "Unsupport command\n");
+		xcmd->cb.free(xcmd);
+		return -EINVAL;
+	}
 
 	if (XDEV(xdev)->kds.ert_disable)
 		xcmd->type = KDS_CU;
@@ -387,7 +395,7 @@ u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist)
 
 void xocl_kds_update(struct xocl_dev *xdev)
 {
-	if (xocl_ert_30_cu_intr_cfg(xdev) == -ENODEV) {
+	if (xocl_ert_30_ert_intr_cfg(xdev) == -ENODEV) {
 		userpf_info(xdev, "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
 	} else {
