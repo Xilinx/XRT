@@ -97,7 +97,7 @@ std::cout << " devices FOUND " << index << std::endl;
     std::string sysfspath(pathBuf);
 
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
-    void* ownedHandle = deviceIdToHandle[deviceId];
+//    void* ownedHandle = deviceIdToHandle[deviceId];
 
     if(!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // first delete the offloader, logger

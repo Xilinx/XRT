@@ -76,6 +76,9 @@ bool AIETraceOffload::initReadTrace()
 //    if(!b.boHandle) 
       return false;
     }
+    if(b.boHandle) {
+    b.isFull = false;
+    }
     b.isFull = false;
     // Data Mover will write input stream to this address
     uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].boHandle);

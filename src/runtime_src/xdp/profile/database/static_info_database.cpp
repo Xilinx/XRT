@@ -435,7 +435,7 @@ namespace xdp {
     return true; 
   }
 
-  bool VPStaticDatabase::initializeAIECounters(DeviceInfo* /*devInfo*/, const std::shared_ptr<xrt_core::device>& /*device*/)
+  bool VPStaticDatabase::initializeAIECounters(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
 #ifdef XRT_ENABLE_AIE
     // Record all counters listed in AIE metadata (if available)
