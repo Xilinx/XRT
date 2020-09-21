@@ -473,9 +473,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
-    ("plp", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
-                                                                "  Name (and path) of the partition.\n"
-                                                                "  Parition's UUID")
+    ("partition", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
+                                                                      "  Name (and path) of the partition.\n"
+                                                                      "  Parition's UUID")
     ("update", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images.  Value values:\n"
                                                                          "  ALL   - All images will be updated"
                                                                      /*  "  FLASH - Flash image\n"
@@ -485,14 +485,16 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                       "  Name (and path) to the xsabin image on disk\n"
                                                                       "Note: Multiple images can be specified separated by a space")
     ("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")
-    ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
-                                                                      "  ospi\n"
-                                                                      "  ospi_versal")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image.  Note: This currently only applies to the flash image.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");  
+  hiddenOptions.add_options()
+    ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
+                                                                    "  ospi\n"
+                                                                    "  ospi_versal")
+  ;
 
   po::options_description allOptions("All Options");  
 

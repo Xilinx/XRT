@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdValidate.h"
+#include "tools/common/Report.h"
 #include "tools/common/ReportHost.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
@@ -890,14 +891,14 @@ print_status(test_status status)
  */
 
 static void
-get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& _ptTree, bool json)
+get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& _ptTree, Report::SchemaVersion schemaVersion)
 {
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
   _ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
   _ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
   _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_bmc_version>(device));
   _ptTree.put("platform_id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-  if(!json) {
+  if (schemaVersion == Report::SchemaVersion::text) {
     std::cout << boost::format("Validate device[%s]\n") % _ptTree.get<std::string>("device_id");
     std::cout << boost::format("%-20s: %s\n") % "Platform" % _ptTree.get<std::string>("platform");
     std::cout << boost::format("%-20s: %s\n") % "SC Version" % _ptTree.get<std::string>("sc_version");
@@ -906,36 +907,70 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::proper
 }
 
 void
-run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& _ptDevCollectionTestSuite,
-                        bool json, bool quick)
+run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, 
+                      Report::SchemaVersion schemaVersion, 
+                      std::vector<TestCollection *> testObjectsToRun,
+                      boost::property_tree::ptree& _ptDevCollectionTestSuite,
+                      std::ostream & _ostream)
 {
-  boost::property_tree::ptree _ptDeviceTestSuite;
-  boost::property_tree::ptree _ptDeviceInfo;
+  boost::property_tree::ptree ptDeviceTestSuite;
+  boost::property_tree::ptree ptDeviceInfo;
   test_status status = test_status::passed;
-  int _test_suite_size = quick ? 5 : static_cast<int>(testSuite.size());
+  
+  if (testObjectsToRun.empty())
+    throw std::runtime_error("No test given to validate against.");
 
-  get_platform_info(device, _ptDeviceInfo, json);
+  get_platform_info(device, ptDeviceInfo, schemaVersion);
 
-  for(int i = 0; i < _test_suite_size; i++) {
-    testSuite[i].ptTest.put("id", i+1);
-    if(!json)
-      pretty_print_test_desc(testSuite[i].ptTest, _test_suite_size);
-    testSuite[i].testHandle(device, testSuite[i].ptTest);
-    _ptDeviceTestSuite.push_back( std::make_pair("", testSuite[i].ptTest) );
-    if(!json)
-      pretty_print_test_run(testSuite[i].ptTest, status);
-    //if a test fails, exit immideately
+  for (TestCollection * testPtr : testObjectsToRun) {
+    boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
+
+    if(schemaVersion == Report::SchemaVersion::text)
+      pretty_print_test_desc(ptTest, testObjectsToRun.size());
+
+    testPtr->testHandle(device, ptTest);
+    ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
+
+    if(schemaVersion == Report::SchemaVersion::text)
+      pretty_print_test_run(ptTest, status);
+
+    // If a test fails, exit immediately
     if(status == test_status::failed) {
       break;
     }
   }
 
-  if(!json)
+  if(schemaVersion == Report::SchemaVersion::text)
     print_status(status);
 
-  _ptDeviceInfo.put_child("tests", _ptDeviceTestSuite);
-  _ptDevCollectionTestSuite.push_back( std::make_pair("", _ptDeviceInfo) );
+  ptDeviceInfo.put_child("tests", ptDeviceTestSuite);
+  _ptDevCollectionTestSuite.push_back( std::make_pair("", ptDeviceInfo) );
 }
+
+void
+run_tests_on_devices( xrt_core::device_collection &deviceCollection, 
+                      Report::SchemaVersion schemaVersion, 
+                      std::vector<TestCollection *> testObjectsToRun,
+                      boost::property_tree::ptree& ptDevCollectionTestSuite,
+                      std::ostream &_ostream)
+{
+  if (schemaVersion ==  Report::SchemaVersion::text)
+    _ostream << boost::format("Starting validation for %d devices\n\n") % deviceCollection.size();
+
+  boost::property_tree::ptree ptDeviceTested;
+  for(auto const& dev : deviceCollection) {
+    run_test_suite_device(dev, schemaVersion, testObjectsToRun, ptDeviceTested, _ostream);
+  }
+
+  ptDevCollectionTestSuite.put_child("logical_devices", ptDeviceTested);
+
+  if(schemaVersion !=  Report::SchemaVersion::text) {
+    std::stringstream ss;
+    boost::property_tree::json_parser::write_json(ss, ptDevCollectionTestSuite);
+    _ostream << ss.str() << std::endl;
+  }
+}
+
 
 }
 //end anonymous namespace
@@ -954,25 +989,53 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
   setIsPreliminary(_isPreliminary);
 }
 
+XBU::VectorPairStrings
+getTestNameDescriptions(bool addAdditionOptions)
+{
+  XBU::VectorPairStrings reportDescriptionCollection;
+
+  // 'verbose' option
+  if (addAdditionOptions) {
+    reportDescriptionCollection.emplace_back("all", "All known validate tests will be executed");
+    reportDescriptionCollection.emplace_back("quick", "Only the first 5 tests will be executed");
+  }
+
+  // report names and discription
+  for (const auto & test : testSuite) {
+    reportDescriptionCollection.emplace_back(test.ptTest.get("name", "<unknown>"), test.ptTest.get("description", "<no description>"));
+  }
+
+  return reportDescriptionCollection;
+}
+
 
 void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
 
 {
   XBU::verbose("SubCommand: validate");
+
+  // -- Build up the format options
+  const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
+
+  const XBU::VectorPairStrings testNameDescription = getTestNameDescriptions(true /* Add "all" and "quick" options*/);
+  const std::string formatRunValues = XBU::create_suboption_list_string(testNameDescription);
+
   // -- Retrieve and parse the subcommand options -----------------------------
   std::vector<std::string> device  = {"all"};
+  std::vector<std::string> testsToRun = {"all"};
+  std::string sFormat = "text";
+  std::string sOutput = "";
   bool help = false;
-  bool json = false;
-  bool quick = false;
 
   po::options_description commonOptions("Commmon Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The device of interest. This is specified as follows:\n"
                                                                            "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)\n"
                                                                            "  all   - Examines all known devices (default)")
-    ("json,j", boost::program_options::bool_switch(&json), "Print in json format")
-    ("quick,q", boost::program_options::bool_switch(&quick), "Run a subset of the test suite")
+    ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("run,r", boost::program_options::value<decltype(testsToRun)>(&testsToRun)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
+    ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
@@ -1002,8 +1065,59 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // -- Now process the subcommand --------------------------------------------
-  // -- process "device" option -----------------------------------------------
+  // -- Process the options --------------------------------------------
+  Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
+  try {
+    // Output Format
+    schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
+    if (schemaVersion == Report::SchemaVersion::unknown) 
+      throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
+
+    // Output file
+    if (!sOutput.empty() && boost::filesystem::exists(sOutput)) 
+        throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
+
+    if (testsToRun.empty()) 
+      throw std::runtime_error("No test given to validate against.");
+
+    // Examine test entries
+    for (const auto &userTestName : testsToRun) {
+      const std::string userTestNameLC = boost::algorithm::to_lower_copy(userTestName);   // Lower case the string entry
+
+      if ((userTestNameLC == "all") && (testsToRun.size() > 1)) 
+        throw xrt_core::error("The 'all' value for the tests to run cannot be used with any other named tests.");
+
+      if ((userTestNameLC == "quick") && (testsToRun.size() > 1)) 
+        throw xrt_core::error("The 'quick' value for the tests to run cannot be used with any other name tests.");
+
+      // Validate all of the test names
+      bool nameFound = false;
+      for (auto &test : testNameDescription) {
+        const std::string testNameLC = boost::algorithm::to_lower_copy(test.first);
+        if (userTestNameLC.compare(testNameLC) == 0) {
+          nameFound = true;
+          break;
+        }
+      }
+
+      // Did we have a hit?  If not then let the user know of a typo
+      if (nameFound == false) {
+        throw xrt_core::error((boost::format("Invalided test name: '%s'") % userTestName).str());
+      }
+    }
+
+    // Now lower case all of the entries
+    for (auto &userTestName : testsToRun) 
+      boost::algorithm::to_lower(userTestName);   // Lower case the string entry
+
+  } catch (const xrt_core::error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    printHelp(commonOptions, hiddenOptions);
+    return;
+  }
+
+
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
   xrt_core::device_collection deviceCollection;
@@ -1012,22 +1126,46 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
 
-  //validate all devices
-  boost::property_tree::ptree _ptValidate;
-  boost::property_tree::ptree _ptDevCollectionTestSuite;
-  if(!json)
-    std::cout << boost::format("Starting validation for %d devices\n\n") % deviceCollection.size();
+  // Collect all of the tests of interests
+  std::vector<TestCollection *> testObjectsToRun;
 
-  for(auto const& dev : deviceCollection) {
-    run_test_suite_device(dev, _ptDevCollectionTestSuite, json, quick);
+  for (unsigned index = 0; index < testSuite.size(); ++index) {
+    if (testsToRun[0] == "all") {
+      testObjectsToRun.push_back(&testSuite[index]);
+      continue;
+    }
+
+    if (testsToRun[0] == "quick") {
+      testObjectsToRun.push_back(&testSuite[index]);
+      // Only the first 5 should be processed
+      if (index == 4)
+        break;
+    }
+
+    // Must be a test name, look to see if should be added
+    const std::string testSuiteName = boost::algorithm::to_lower_copy(testSuite[index].ptTest.get("name",""));
+    for (const auto & testName : testsToRun) {
+      if (testName.compare(testSuiteName) == 0) {
+        testObjectsToRun.push_back(&testSuite[index]);
+        break;
+      }
+    }
   }
-  _ptValidate.put_child("logical_devices", _ptDevCollectionTestSuite);
 
-  if(json) {
-    std::stringstream ss;
-    boost::property_tree::json_parser::write_json(ss, _ptValidate);
-    std::cout << ss.str() << std::endl;
+  boost::property_tree::ptree ptDevCollectionTestSuite;
+  // -- Run the tests --------------------------------------------------
+  if (sOutput.empty()) {
+    run_tests_on_devices(deviceCollection, schemaVersion, testObjectsToRun, ptDevCollectionTestSuite, std::cout);
   }
+  else {
+    std::ofstream fOutput;
+    fOutput.open(sOutput, std::ios::out | std::ios::binary);
+    if (!fOutput.is_open()) 
+      throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % sOutput).str());
 
+    run_tests_on_devices(deviceCollection, schemaVersion, testObjectsToRun, ptDevCollectionTestSuite, fOutput);
+
+    fOutput.close();
+  }
 }
 
