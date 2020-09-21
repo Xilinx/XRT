@@ -25,7 +25,7 @@ class system : public system_pcie
 {
 public:
   system();
-  
+
   std::pair<device::id_type, device::id_type>
   get_total_devices(bool is_user) const;
 
@@ -39,14 +39,14 @@ public:
   get_mgmtpf_device(device::id_type id) const;
 
   void
-  program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const;
+  program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const;
 };
 
 /**
  * get_userpf_device
  * Force singleton initialization from static linking
  * with libxrt_core.
- */ 
+ */
 std::shared_ptr<device>
 get_userpf_device(device::handle_type device_handle, device::id_type id);
 

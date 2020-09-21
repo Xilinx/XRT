@@ -29,7 +29,6 @@
 #include <chrono>
 #include <thread>
 #include <ctime>
-#include <thread>
 #include <windows.h>
 
 #include <boost/format.hpp>
@@ -188,7 +187,7 @@ get_mgmtpf_device(device::id_type id) const
 
 void
 system_windows::
-program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const
+program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const
 {
   mgmtpf::plp_program(dev->get_mgmt_handle(), reinterpret_cast<const axlf*>(buffer.data()));
 

@@ -31,13 +31,13 @@
 #include <unistd.h>
 
 #if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
-  #define MACHINE_NODE_PATH "/proc/device-tree/model";
+  #define MACHINE_NODE_PATH "/proc/device-tree/model"
 #elif defined(__PPC64__)
-  #define MACHINE_NODE_PATH "/proc/device-tree/model-name";
+  #define MACHINE_NODE_PATH "/proc/device-tree/model-name"
   // /proc/device-tree/system-id may be 000000
   // /proc/device-tree/model may be 00000
 #elif defined (__x86_64__)
-  #define MACHINE_NODE_PATH "/sys/devices/virtual/dmi/id/product_name";
+  #define MACHINE_NODE_PATH "/sys/devices/virtual/dmi/id/product_name"
 #else
 #error "Unsupported platform"
   #define MACHINE_NODE_PATH "";
@@ -104,9 +104,8 @@ glibc_info()
 static std::string
 machine_info()
 {
-  static const char node[] = MACHINE_NODE_PATH;
   std::string model("unknown");
-  std::ifstream stream(node);
+  std::ifstream stream(MACHINE_NODE_PATH);
   if (stream.good()) {
     std::getline(stream, model);
     stream.close();
@@ -196,7 +195,7 @@ get_mgmtpf_device(device::id_type id) const
 
 void
 system_linux::
-program_plp(std::shared_ptr<device> dev, std::vector<char> buffer) const
+program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const
 {
   throw std::runtime_error("plp program is not supported");
 }

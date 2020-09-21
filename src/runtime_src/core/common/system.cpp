@@ -177,7 +177,7 @@ get_monitor_access_type()
 }
 
 void
-program_plp(std::shared_ptr<device> dev, std::vector<char> buffer)
+program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer)
 {
   instance().program_plp(dev, buffer);
 }
