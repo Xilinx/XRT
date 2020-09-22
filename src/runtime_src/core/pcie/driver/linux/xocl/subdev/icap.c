@@ -4043,6 +4043,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		}
 		memcpy(icap->rp_sche_bin, header, section->m_sectionSize);
 		icap->rp_sche_bin_len = section->m_sectionSize;
+		ICAP_INFO(icap, "sche bin from xsabin , len %ld", icap->rp_sche_bin_len);
 	}
 
 	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
