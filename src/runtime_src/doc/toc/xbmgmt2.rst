@@ -1,9 +1,10 @@
 .. _xbmgmt2.rst:
 
-XBMGMT Next
-===========
+Xbmgmt Next Generation
+======================
 
-The next generation version of **xbmgmt** tool is in preview mode for 2020.2 release. This tool will be in production in future release replacing the current xbmgmt tool. This documents describes various commands and usage of this new version of the tool.
+The next generation of the ``xbmgmt`` command-line tool is in preview mode for the 2020.2 release of XRT. This version will replace the current ``xbmgmt`` in a future release of XRT. This document describes the usage of this new version of the tool.
+
 
 The xbmgmt command options are
 
