@@ -1,9 +1,10 @@
 .. _xbutil2.rst:
 
-XBUTIL Next
-===========
+Xbutil next generation
+======================
 
-The next generation version of ``xbutil`` tool is in preview mode for 2020.2 release. This tool will be in production in future release replacing the current ``xbutil`` tool. This document describes various commands and usage of this new version of the tool. 
+The next generation of the ``xbutil`` command-line tool is in preview mode for the 2020.2 release of XRT. This version will replace the current ``xbutil`` in a future release of XRT. This document describes the usage of this new version of the tool. 
+
 
 The xbutil command options are
 
