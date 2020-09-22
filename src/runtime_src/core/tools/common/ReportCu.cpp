@@ -25,21 +25,29 @@
 namespace qr = xrt_core::query;
 
 boost::property_tree::ptree
-parse_cu_status(uint32_t cu_status)
+get_cu_status(uint32_t cu_status)
 {
   boost::property_tree::ptree pt;
-  std::vector<std::string> result;
+  std::vector<std::string> bit_set;
 
-  std::string cu_stat_str = xrt_core::utils::parse_cu_status(cu_status);
-  std::string t_str = cu_stat_str.substr(1, cu_stat_str.size()-2);
-  boost::split(result, t_str, boost::is_any_of("|"));
+  if (cu_status & 0x1)
+    bit_set.push_back("START");
+  if (cu_status & 0x2)
+    bit_set.push_back("DONE");
+  if (cu_status & 0x4)
+    bit_set.push_back("IDLE");
+  if (cu_status & 0x8)
+    bit_set.push_back("READY");
+  if (cu_status & 0x10)
+    bit_set.push_back("RESTART");
 
   pt.put("bit_mask",	boost::str(boost::format("0x%x") % cu_status));
   boost::property_tree::ptree ptSt_arr;
-  for (int i = 0; i < (int)result.size(); i++)
-    ptSt_arr.push_back(std::make_pair("", boost::property_tree::ptree(result[i])));
+  for(auto& str : bit_set)
+    ptSt_arr.push_back(std::make_pair("", boost::property_tree::ptree(str)));
 
-  pt.add_child( std::string("bits_set"), ptSt_arr);
+  if (!ptSt_arr.empty())
+    pt.add_child( std::string("bits_set"), ptSt_arr);
 
   return pt;
 }
@@ -49,33 +57,37 @@ populate_cus(const xrt_core::device *device)
 {
   boost::property_tree::ptree pt;
   std::vector<char> ip_buf;
-  std::vector<std::tuple<uint64_t, uint32_t, uint32_t>> cu_stats;
+  std::vector<std::tuple<uint64_t, uint32_t, uint32_t>> cu_stats; // tuple <base_addr, usage, status>
 
   try {
     ip_buf = xrt_core::device_query<qr::ip_layout_raw>(device);
     cu_stats = xrt_core::device_query<qr::kds_cu_info>(device);
   } catch (const std::exception& ex){
-    pt.put("error_msg", ex.what());
+    pt.put("ERROR: ", ex.what());
+    return pt;
   }
 
-  if(ip_buf.empty() || cu_stats.empty())
+  if(ip_buf.empty() || cu_stats.empty()) {
+    std::cout << "ERROR: Failed to access sysfs entry" << std::endl;
     return pt;
+  }
 
-  const ip_layout *layout = (ip_layout *)ip_buf.data();
+  const ip_layout *layout = reinterpret_cast<const ip_layout*>(ip_buf.data());
   for (int i = 0; i < layout->m_count; i++) {
     if (layout->m_ip_data[i].m_type != IP_KERNEL)
       continue;
 
     for(auto& stat : cu_stats) {
-      if (layout->m_ip_data[i].m_base_address == (uint64_t)std::get<0>(stat)) {
+      uint64_t base_addr = std::get<0>(stat);
+      if (layout->m_ip_data[i].m_base_address == base_addr) {
         uint32_t usage = std::get<1>(stat);
         uint32_t status = std::get<2>(stat);
 
         boost::property_tree::ptree ptCu;
         ptCu.put( "name",			layout->m_ip_data[i].m_name);
-        ptCu.put( "base_address",		boost::str(boost::format("0x%x") % std::get<0>(stat)));
+        ptCu.put( "base_address",		boost::str(boost::format("0x%x") % base_addr));
         ptCu.put( "usage",			usage);
-        ptCu.add_child( std::string("status"),  parse_cu_status(status));
+        ptCu.add_child( std::string("status"),	get_cu_status(status));
         pt.push_back(std::make_pair("", ptCu));
       }
     }
@@ -109,8 +121,8 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
   boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
   getPropertyTreeInternal(_pDevice, _pt);
-
-  _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
+  boost::format cuFmt("%-8s%-24s%-16s%-8s%-8s\n");
+  _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
   try {
     int index = 0;
     boost::property_tree::ptree& v = _pt.get_child("compute_units");
@@ -118,13 +130,13 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
       boost::property_tree::ptree& cu = kv.second;
       std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
       uint32_t status_val = std::stoul(cu_status, nullptr, 16);
-      _output << boost::format("    %-8s%-24s%-16s%-8s%-8s\n") % index++ %
+      _output << cuFmt % index++ %
 	      cu.get<std::string>("name") % cu.get<std::string>("base_address") %
 	      cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val);
     }
   }
   catch( std::exception const& e) {
-    _output <<  e.what() << std::endl;
+    _output << "ERROR: " <<  e.what() << std::endl;
   }
 
   _output << std::endl;

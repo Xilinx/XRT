@@ -90,9 +90,11 @@ struct kds_cu_info
 
     result_type cuStats;
     for (auto& line : stats) {
-        uint32_t ba = 0, usg = 0, sta = 0;
-        sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &usg, &sta);
-        cuStats.push_back(std::make_tuple(ba, usg, sta));
+        uint32_t base_addr = 0;
+        uint32_t usages = 0;
+        uint32_t status = 0;
+        sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &base_addr, &usages, &status);
+        cuStats.push_back(std::make_tuple(base_address, usages, status));
     }
 
     return cuStats;

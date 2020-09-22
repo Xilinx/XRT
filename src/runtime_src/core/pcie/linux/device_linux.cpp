@@ -21,7 +21,6 @@
 #include "common/utils.h"
 #include "xrt.h"
 #include "scan.h"
-#include "shim.h"
 #include <string>
 #include <iostream>
 #include <map>
@@ -61,24 +60,6 @@ struct kds_cu_info
   {
     auto pdev = get_pcidev(device);
   
-    if (!std::getenv("XCL_SKIP_CU_READ")) {
-        try {
-	    // lock xclbin
-            auto dev = const_cast <xrt_core::device *>(device);
-            auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(dev));
-            dev->open_context(uuid.get(), KDS_VIRT_CU, true);
-            auto at_exit = [] (auto dev, auto uuid) { dev->close_context(uuid.get(), -1); };
-            xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, dev, uuid));
-            
-	    // get scheduler stats 
-            auto handle = device->get_device_handle();
-	    xclUpdateSchedulerStat(handle);
-        }
-        catch (const std::exception&) {
-            // xclbin_lock failed, safe to ignore
-	}
-    }
- 
     std::vector<std::string> stats; 
     std::string errmsg;
     pdev->sysfs_get("mb_scheduler", "kds_custat", errmsg, stats);
@@ -87,9 +68,11 @@ struct kds_cu_info
 
     result_type cuStats;
     for (auto& line : stats) {
-	uint32_t ba = 0, usg = 0, sta = 0;
-	sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &usg, &sta);
-	cuStats.push_back(std::make_tuple(ba, usg, sta));
+	uint32_t base_addr = 0;
+	uint32_t usage = 0;
+	uint32_t status = 0;
+	sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &base_addr, &usage, &status);
+	cuStats.push_back(std::make_tuple(base_addr, usage, status));
     }
 
     return cuStats;
