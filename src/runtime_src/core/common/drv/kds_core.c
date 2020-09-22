@@ -563,6 +563,7 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 {
 	u32 cu_idx = info->cu_idx;
 	bool shared = (info->flags != CU_CTX_EXCLUSIVE);
+	int i;
 
 	BUG_ON(!mutex_is_locked(&client->lock));
 
@@ -575,6 +576,14 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		if (!shared) {
 			kds_err(client, "Only allow share virtual CU");
 			return -EINVAL;
+		}
+		/* a special handling for m2m cu :( */
+		if (kds->cu_mgmt.num_cdma && !client->virt_cu_ref) {
+			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
+			test_and_set_bit(i, client->cu_bitmap);
+			mutex_lock(&kds->cu_mgmt.lock);
+			++kds->cu_mgmt.cu_refs[i];
+			mutex_unlock(&kds->cu_mgmt.lock);
 		}
 		++client->virt_cu_ref;
 	} else {
@@ -592,6 +601,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info)
 {
 	u32 cu_idx = info->cu_idx;
+	int i;
 
 	BUG_ON(!mutex_is_locked(&client->lock));
 
@@ -601,6 +611,14 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 			return -EINVAL;
 		}
 		--client->virt_cu_ref;
+		/* a special handling for m2m cu :( */
+		if (kds->cu_mgmt.num_cdma && !client->virt_cu_ref) {
+			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
+			test_and_clear_bit(i, client->cu_bitmap);
+			mutex_lock(&kds->cu_mgmt.lock);
+			--kds->cu_mgmt.cu_refs[i];
+			mutex_unlock(&kds->cu_mgmt.lock);
+		}
 	} else {
 		if (kds_del_cu_context(kds, client, info))
 			return -EINVAL;
@@ -617,6 +635,9 @@ insert_cu(struct kds_cu_mgmt *cu_mgmt, int i, struct xrt_cu *xcu)
 {
 	cu_mgmt->xcus[i] = xcu;
 	xcu->info.cu_idx = i;
+	/* m2m cu */
+	if (xcu->info.intr_id == M2M_CU_ID)
+		cu_mgmt->num_cdma++;
 }
 
 int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu)
@@ -698,6 +719,11 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 		--cu_mgmt->num_cus;
 		cu_mgmt->xcus[i] = NULL;
 		cu_mgmt->cu_usage[i] = 0;
+
+		/* m2m cu */
+		if (xcu->info.intr_id == M2M_CU_ID)
+			cu_mgmt->num_cdma--;
+
 		return 0;
 	}
 
@@ -846,7 +872,7 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 
 	/* Skip first 4 control registers */
 	xcmd->isize = (ecmd->count - xcmd->num_mask - 4) * sizeof(u32);
-	memcpy(xcmd->info, &ecmd->data[4], xcmd->isize);
+	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
 }
 
 /**

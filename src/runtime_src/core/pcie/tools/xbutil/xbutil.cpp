@@ -2208,11 +2208,18 @@ int xcldev::device::testM2m()
     int ret = 0;
     xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
+    uint32_t kds_mode;
 
     if (dev == nullptr)
         return -EINVAL;
 
-    dev->sysfs_get<int>("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled, 0);
+    dev->sysfs_get<uint32_t>("", "kds_mode", errmsg, kds_mode, 0);
+
+    if (!kds_mode)
+        dev->sysfs_get<int>("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled, 0);
+    else
+        dev->sysfs_get<int>("", "kds_numcdma", errmsg, m2m_enabled, 0);
+
     // Workaround:
     // u250_xdma_201830_1 falsely shows that m2m is available
     // which causes a hang. Skip m2mtest if this platform is installed

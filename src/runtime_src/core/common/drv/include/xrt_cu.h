@@ -25,6 +25,13 @@
 
 #define MAX_CUS 128
 
+/* The normal CU in ip_layout would assign a interrupt
+ * ID in range 0 to 127. Use 128 for m2m cu could ensure
+ * m2m CU is at the end of the CU, which is compatible with
+ * legacy implementation.
+ */
+#define M2M_CU_ID 128
+
 #define xcu_info(xcu, fmt, args...)			\
 	dev_info(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
 #define xcu_err(xcu, fmt, args...)			\
@@ -181,6 +188,7 @@ struct xrt_cu_info {
 	u64			 addr;
 	u32			 protocol;
 	u32			 intr_id;
+	u32			 is_m2m;
 	u32			 num_res;
 	bool			 intr_enable;
 	struct xrt_cu_arg	*args;

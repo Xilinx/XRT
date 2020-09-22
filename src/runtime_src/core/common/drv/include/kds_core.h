@@ -98,6 +98,7 @@ struct kds_cu_mgmt {
 	struct xrt_cu		 *xcus[MAX_CUS];
 	struct mutex		  lock;
 	int			  num_cus;
+	int			  num_cdma;
 	u32			  cu_intr[MAX_CUS];
 	u32			  cu_refs[MAX_CUS];
 	u64			  cu_usage[MAX_CUS];
