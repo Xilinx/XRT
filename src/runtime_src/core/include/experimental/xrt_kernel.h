@@ -98,16 +98,17 @@ class run
   /**
    * wait() - Wait for a run to complete execution
    *
-   * @timeout_ms:  Timeout for wait.
-   * Return:       Command state upon return of wait
+   * @timeout:  Timeout for wait (default block till run completes)
+   * Return:    Command state upon return of wait
+   *
+   * The default timeout of 0ms indicates blocking until run completes.
    *
    * The current thread will block until the run completes or timeout
    * expires. Completion does not guarantee success, the run status
    * should be checked by using @state.
    */
-  XCL_DRIVER_DLLESPEC
   ert_cmd_state
-  wait(unsigned int timeout_ms=0) const;
+  wait(const std::chrono::milliseconds& timeout = std::chrono::milliseconds{0}) const;
 
   /**
    * state() - Check the current state of a run object
