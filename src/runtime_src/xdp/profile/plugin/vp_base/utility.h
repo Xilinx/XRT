@@ -27,6 +27,7 @@ namespace xdp {
   XDP_EXPORT std::string getCurrentDateTime() ;
   XDP_EXPORT const char* getToolVersion() ;
   XDP_EXPORT const char* getXRTVersion() ;
+  XDP_EXPORT bool isEdge() ;
 
   enum Flow {
     SW_EMU  = 0,
