@@ -967,8 +967,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 
 	if (xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
-		if (XDEV(xdev)->priv.sched_bin
-			&& !(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_DYNAMIC_IP)) {
+		if (XDEV(xdev)->priv.sched_bin) {
 			err = request_firmware(&sche_fw,
 				XDEV(xdev)->priv.sched_bin, &pcidev->dev);
 			if (!err)  {
@@ -4099,6 +4098,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		}
 		memcpy(icap->rp_sche_bin, header, section->m_sectionSize);
 		icap->rp_sche_bin_len = section->m_sectionSize;
+		ICAP_INFO(icap, "sche bin from xsabin , len %ld", icap->rp_sche_bin_len);
 	}
 
 	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
