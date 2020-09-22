@@ -1532,8 +1532,10 @@ namespace xdp {
 	(t->fout) << "NUM_MONITORS" << ","
 		  << device->platformInfo.deviceName 
 		  << "|"
-		  << accelType << ","
-		  << (numCounters.second) << std::endl ;
+		  << accelType
+		  << "|"
+		  << (numCounters.second) << ","
+		  << (numCounters.second) << "," << std::endl ;
       }
     }
   }
