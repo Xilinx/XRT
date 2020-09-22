@@ -104,8 +104,8 @@ namespace xocl {
       if (xrt_core::dlerror() != NULL) counter_mark_objects_released_cb = nullptr ;
 
       // For logging counter information for kernel executions
-      //xocl::add_command_start_callback(xocl::profile::log_kernel_start) ;
-      //xocl::add_command_done_callback(xocl::profile::log_kernel_end) ;
+      xocl::add_command_start_callback(xocl::profile::log_cu_start) ;
+      xocl::add_command_done_callback(xocl::profile::log_cu_end) ;
     }
     
     void opencl_counters_warning_function()

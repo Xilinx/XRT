@@ -208,6 +208,13 @@ namespace xdp {
       buf[len] = '\0' ;
       execName = buf ;
     }
+
+    auto slashLocation = execName.find_last_of("/") ;
+    if (slashLocation != std::string::npos)
+    {
+      execName = execName.substr(slashLocation + 1) ;
+    }
+
 #endif
 
     fout << "Profiled application: " << execName << std::endl ;
@@ -233,7 +240,7 @@ namespace xdp {
 
     std::vector<std::string> deviceNames = 
       (db->getStaticInfo()).getDeviceNames() ;
-    
+
     fout << "Target devices: " ;
     for (unsigned int i = 0 ; i < deviceNames.size() ; ++i)
     {
