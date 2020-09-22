@@ -108,13 +108,7 @@ size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
   uint64_t flags = memoryIndex;
   flags |= XCL_BO_FLAGS_CACHEABLE;
 
-  xrtBufferHandle boHandle = nullptr;
-  try {
-    auto device = xrt_core::get_userpf_device(mHalDevice);
-    boHandle = xrtBOAlloc(device.get(), size, flags, memoryIndex);
-  } catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
+  xrtBufferHandle boHandle = xrtBOAlloc(xrtDeviceOpenFromXcl(mHalDevice), size, flags, memoryIndex);
   if(nullptr == boHandle) {
     throw std::bad_alloc();
   }
