@@ -653,7 +653,7 @@ namespace xdp {
 	 << "Memory Resources"                  << ","
 	 << "Transfer Type"                     << ","
 	 << "Number Of Transfers"               << ","
-	 << "Transfer Rate (MB)"                << ","
+	 << "Transfer Rate (MB/s)"              << ","
 	 << "Average Bandwidth Utilization (%)" << ","
 	 << "Average Size (KB)"                 << ","
 	 << "Average Latency (ns)"              << std::endl ;
