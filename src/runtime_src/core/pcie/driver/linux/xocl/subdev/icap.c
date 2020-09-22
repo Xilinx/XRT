@@ -1439,6 +1439,57 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 	return err;
 }
 
+static int icap_create_subdev_cdma(struct platform_device *pdev, int inst_idx)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	u32 *cdma = xocl_rom_cdma_addr(xdev);
+	u32 num_cdma = 0;
+	int err = 0;
+	int i;
+
+	/* Some platforms doesn't support m2m CU */
+	if (!cdma)
+		return 0;
+
+	/* Maximum 4 m2m cus */
+	for (i = 0; i < 4; i++) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
+		struct xrt_cu_info info;
+
+		if (!cdma[i])
+			break;
+
+		memset(&info, 0, sizeof(info));
+
+		num_cdma++;
+		sprintf(info.kname, "m2m");
+		info.kname[sizeof(info.kname)-1] = '\0';
+		sprintf(info.iname, "m2m_%d", i + 1);
+		info.iname[sizeof(info.kname)-1] = '\0';
+
+		info.inst_idx = i + inst_idx;
+		info.addr = cdma[i];
+		info.num_res = subdev_info.num_res;
+		info.protocol = CTRL_HS;
+		info.intr_id = M2M_CU_ID;
+		info.is_m2m = 1;
+
+		subdev_info.res[0].start += info.addr;
+		subdev_info.res[0].end += info.addr;
+		subdev_info.priv_data = &info;
+		subdev_info.data_len = sizeof(info);
+		subdev_info.override_idx = info.inst_idx;
+
+		err = xocl_subdev_create(xdev, &subdev_info);
+		if (err)
+			ICAP_ERR(icap, "Create CU %s:%s failed. Skip",
+				 info.kname, info.iname);
+	}
+
+	return 0;
+}
+
 static int icap_create_subdev_cu(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1460,6 +1511,7 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		if (ip->m_base_address == 0xFFFFFFFF)
 			continue;
 
+		memset(&info, 0, sizeof(info));
 		/* NOTE: Only support 64 instences in subdev framework */
 
 		/* ip_data->m_name format "<kernel name>:<instance name>",
@@ -1489,6 +1541,10 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		if (err)
 			ICAP_ERR(icap, "Create CU %s failed. Skip", ip->m_name);
 	}
+
+	/* M2M CU (aka kdma/cdma) */
+	if (!M2M_CB(xdev))
+		icap_create_subdev_cdma(pdev, i);
 
 	return err;
 }

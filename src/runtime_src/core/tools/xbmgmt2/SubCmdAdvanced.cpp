@@ -17,9 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdAdvanced.h"
-#include "OO_Clock.h"
 #include "OO_Config.h"
-#include "OO_NIFD.h"
 
 #include "common/system.h"
 #include "common/device.h"
@@ -72,9 +70,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 
   // -- Define the supporting option options ----
   SubOptionOptions subOptionOptions;
-  subOptionOptions.emplace_back(std::make_shared<OO_Clock>("clock"));
   subOptionOptions.emplace_back(std::make_shared<OO_Config>("config"));
-  subOptionOptions.emplace_back(std::make_shared<OO_NIFD>("nifd"));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 

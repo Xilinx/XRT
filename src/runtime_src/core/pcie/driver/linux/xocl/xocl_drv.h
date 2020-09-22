@@ -1051,7 +1051,7 @@ enum data_kind {
 	XMC_VCCRAM,
 	DATA_RETAIN,
 	MAC_CONT_NUM,
-	MAC_CONT_FIRST,
+	MAC_ADDR_FIRST,
 };
 
 enum mb_kind {
@@ -1685,7 +1685,6 @@ struct xocl_ert_30_funcs {
 	(ERT_30_CB(xdev, gpio_cfg) ? \
 	 ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), INTR_TO_ERT) : \
 	 -ENODEV)
-
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);

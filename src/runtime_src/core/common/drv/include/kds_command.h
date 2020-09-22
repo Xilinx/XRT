@@ -49,6 +49,7 @@ struct in_kernel_cb {
  */
 struct kds_command {
 	struct kds_client	*client;
+	u32			cu_idx;
 	u32			 type;
 	u32			 opcode;
 	struct list_head	 list;

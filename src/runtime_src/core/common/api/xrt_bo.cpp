@@ -70,6 +70,18 @@ is_aligned_ptr(void* p)
   return p && (reinterpret_cast<uintptr_t>(p) % get_alignment())==0;
 }
 
+inline void
+send_exception_message(const char* msg)
+{
+  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+}
+
+inline void
+send_exception_message(const std::string& msg)
+{
+  send_exception_message(msg.c_str());
+}
+
 } // namespace
 
 namespace xrt {
@@ -364,10 +376,16 @@ class buffer_nodma : public bo_impl
 
 public:
   buffer_nodma(xclDeviceHandle dhdl, xclBufferHandle hbuf, xclBufferHandle dbuf, size_t sz)
-    : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
+  try : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
   {
+
     device = xrt_core::get_userpf_device(dhdl);
     handle = dbuf;
+  }
+  catch (const std::exception& ex) {
+    auto fmt = boost::format("Failed to allocate NODMA buffer (%s), make sure host bank is enabled") % ex.what();
+    send_exception_message(fmt.str());
+    throw;
   }
 
   virtual void*
@@ -477,13 +495,6 @@ free_bo(xrtBufferHandle bhdl)
   if (bo_cache.erase(bhdl) == 0)
     throw std::runtime_error("Unexpected internal error");
 }
-
-inline void
-send_exception_message(const char* msg)
-{
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
-}
-
 
 // driver allocates host buffer
 static std::shared_ptr<xrt::bo_impl>

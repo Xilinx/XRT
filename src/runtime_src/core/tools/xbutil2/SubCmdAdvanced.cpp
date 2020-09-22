@@ -17,7 +17,6 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdAdvanced.h"
-#include "OO_Clock.h"
 #include "OO_MemRead.h"
 #include "OO_MemWrite.h"
 #include "OO_P2P.h"
@@ -74,7 +73,6 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 
   // -- Define the supporting option options ----
   SubOptionOptions subOptionOptions;
-  subOptionOptions.emplace_back(std::make_shared<OO_Clock>("clock"));
   subOptionOptions.emplace_back(std::make_shared<OO_MemRead>("read-mem"));
   subOptionOptions.emplace_back(std::make_shared<OO_MemWrite>("write-mem"));
   subOptionOptions.emplace_back(std::make_shared<OO_P2P>("p2p"));

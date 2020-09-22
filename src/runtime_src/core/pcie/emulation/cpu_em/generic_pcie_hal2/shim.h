@@ -31,8 +31,9 @@
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
-#include "swscheduler.h"
+#include "core/common/query_requests.h"
 
+#include "swscheduler.h"
 #include <stdarg.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -46,6 +47,7 @@
 #endif
 
 namespace xclcpuemhal2 {
+  using key_type = xrt_core::query::key_type;
   // XDMA Shim
   class CpuemShim {
     public:
@@ -169,8 +171,7 @@ namespace xclcpuemhal2 {
 
       // New API's for m2m and no-dma
       void constructQueryTable();
-      bool isM2MEnabled();
-      bool isNoDMAEnabled();
+      int deviceQuery(key_type queryKey);
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;
@@ -246,7 +247,7 @@ namespace xclcpuemhal2 {
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
       boost::property_tree::ptree mPlatformData;
-      std::map<std::string, std::string> mQueryTable;
+      std::map<key_type, std::string> mQueryTable;
 
       std::set<unsigned int > mImportedBOs;
       exec_core* mCore;

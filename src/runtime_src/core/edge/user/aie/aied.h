@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Author(s): Himanshu Choudhary <hchoudha@xilinx.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,40 +15,35 @@
  * under the License.
  */
 
-#ifndef XDP_AIE_PLUGIN_DOT_H
-#define XDP_AIE_PLUGIN_DOT_H
+#ifndef AIE_D_H
+#define AIE_D_H
 
-#include <vector>
-#include <string>
+#include <stdio.h>
+#include <errno.h>
+#include <unistd.h>
 #include <thread>
-
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/config.h"
-
 #include "core/common/device.h"
+#include "core/edge/user/aie/graph.h"
 
-namespace xdp {
+/*
+ * It receives commands from zocl and dispatches back the output.
+ * One typical command is get graph status.
+ */
+namespace zynqaie {
 
-  class AIEProfilingPlugin : public XDPPlugin
-  {
-  public:
-    AIEProfilingPlugin();
-    ~AIEProfilingPlugin();
+class Aied
+{
+public:
+  Aied(xrt_core::device* device);
+  void registerGraph(const graph_type *graph);
+  void deregisterGraph(const graph_type *graph);
 
-    XDP_EXPORT
-    void updateAIEDevice(void* handle);
-
-  private:
-    void pollAIECounters();
-
-  private:
-    // AIE profiling uses its own thread
-    bool mKeepPolling;
-    unsigned int mPollingInterval;
-    std::thread mPollingThread;
-    std::vector<void*> mHandles;
-  };
-
-} // end namespace xdp
+private:
+  void pollAIE();
+  std::thread mPollingThread;
+  xrt_core::device *mCoreDevice;
+  std::vector<const graph_type*> mGraphs;
+};
+} // end namespace
 
 #endif
