@@ -49,7 +49,7 @@ static ssize_t kds_custat_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
-	struct zocl_cu *cu = NULL;
+	struct zocl_cu *zcu = NULL;
 	ssize_t size = 0;
 	phys_addr_t paddr;
 	u32 usage;
