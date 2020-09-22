@@ -35,7 +35,7 @@ namespace xdp {
                 : XDPPlugin()
   {
     db->registerPlugin(this);
-
+#if 0
     unsigned int totalDevices = xclProbe();
     // Open all the devices to store the handles
     uint32_t index = 0;
@@ -64,6 +64,7 @@ namespace xdp {
       handle = xclOpen(index, "/dev/null", XCL_INFO);
     }
 std::cout << " devices FOUND " << index << std::endl;
+#endif
   }
 
   AieTracePlugin::~AieTracePlugin()
@@ -102,6 +103,7 @@ std::cout << " devices FOUND " << index << std::endl;
     std::string sysfspath(pathBuf);
 
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
+#if 0
     uint32_t index    = deviceIdToIndex[deviceId];
 
 
@@ -111,7 +113,7 @@ std::cout << " devices FOUND " << index << std::endl;
     deviceHandles.push_back(ownedHandle);
     deviceIdToHandle[deviceId] = ownedHandle;
 //    void* ownedHandle = deviceIdToHandle[deviceId];
-
+#endif
     if(!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // first delete the offloader, logger
       // Delete the old offloader as data is already from it
@@ -148,8 +150,8 @@ std::cout << " devices FOUND " << index << std::endl;
       // If DeviceIntf is not already created, create a new one to communicate with physical device
       deviceIntf = new DeviceIntf();
       try {
-//        deviceIntf->setDevice(new HalDevice(handle));
-        deviceIntf->setDevice(new HalDevice(ownedHandle));
+        deviceIntf->setDevice(new HalDevice(handle));
+//        deviceIntf->setDevice(new HalDevice(ownedHandle));
         deviceIntf->readDebugIPlayout();
       } catch(std::exception& e) {
         // Read debug IP layout could throw an exception
@@ -214,8 +216,9 @@ std::cout << " devices FOUND " << index << std::endl;
     aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf);
   }
 
-  void AieTracePlugin::flushAIEDevice(void* handle)
+  void AieTracePlugin::flushAIEDevice(void* /*handle*/)
   {
+#if 0
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -227,6 +230,7 @@ std::cout << " devices FOUND " << index << std::endl;
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
       (std::get<0>(aieOffloaders[deviceId]))->readTrace();
     }
+#endif
   }
 
   void AieTracePlugin::writeAll(bool openNewFiles)
