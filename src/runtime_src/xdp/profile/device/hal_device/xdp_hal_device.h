@@ -26,17 +26,19 @@
 namespace xdp {
 
 
+  union BufferHandleStoreType {
+    std::vector<xrtBufferHandle> xrtBufHandles;
+    std::vector<xclBufferHandle> xclBufHandles;
+
+    BufferHandleStoreType() {}
+    ~BufferHandleStoreType() {}
+  };
+
 class HalDevice : public xdp::Device
 {
   xclDeviceHandle mHalDevice;
   std::vector<void*>  mMappedBO;
-
-  union BufferHandleStoreType {
-    std::vector<xrtBufferHandle> xrtBufHandles;
-    std::vector<xclBufferHandle> xclBufHandles;
-  };
   BufferHandleStoreType mBufHandleStore;
-
 
 public:
   HalDevice(void* halDeviceHandle);

@@ -25,6 +25,8 @@
 
 #include "xdp/profile/plugin/vp_base/utility.h"
 
+#include<iostream>
+
 #ifdef _WIN32
 #pragma warning (disable : 4267 4244)
 /* 4267 : Disable warning for conversion of size_t to int in return statements in read/write methods */
@@ -105,14 +107,6 @@ int HalDevice::readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSa
 {
   return xclReadTraceData(mHalDevice, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
 }
-
-  union BufferHandleStoreType {
-    std::vector<xrtBufferHandle> xrtBufHandles;
-    std::vector<xclBufferHandle> xclBufHandles;
-  };
-  BufferHandleStoreType mBufHandleStore;
-
-
 
 size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
 {
