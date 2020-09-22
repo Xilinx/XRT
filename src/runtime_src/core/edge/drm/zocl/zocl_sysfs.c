@@ -136,8 +136,7 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 
 static ssize_t graph_status_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	struct drm_zocl_dev *zdev;
-	size_t size;
+	struct drm_zocl_dev *zdev = NULL;
 	struct aie_info *aie;
 	struct aie_info_cmd *acmd;
 	struct aie_info_packet *aiec_packet;
@@ -150,6 +149,7 @@ static ssize_t graph_status_show(struct device *dev, struct device_attribute *at
 	if (!aie)
 		return 0;
 
+	/* create request */
 	acmd = kmalloc(sizeof(struct aie_info_cmd), GFP_KERNEL);
 	if (!acmd) {
 		return -ENOMEM;
@@ -160,8 +160,11 @@ static ssize_t graph_status_show(struct device *dev, struct device_attribute *at
 		return -ENOMEM;
 	}
 
+	/* set command */
 	aiec_packet->opcode = GRAPH_STATUS;
 	acmd->aiec_packet = aiec_packet;
+
+	/* init semaphore */
 	sema_init(&acmd->aiec_sem, 0);
 
 	/* caller release the wait aied thread and wait for result */
