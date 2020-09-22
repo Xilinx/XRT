@@ -136,6 +136,7 @@ struct drm_zocl_dev {
 	rwlock_t		attr_rwlock;
 
 	struct soft_krnl	*soft_kernel;
+	struct aie_info		*aie_information;
 	struct dma_chan		*zdev_dma_chan;
 	struct mailbox		*zdev_mailbox;
 	const struct zdev_data	*zdev_data_info;

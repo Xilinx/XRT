@@ -37,6 +37,7 @@
 
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/user/aie/aie.h"
+#include "core/edge/user/aie/aied.h"
 #endif
 
 namespace ZYNQ {
@@ -83,6 +84,9 @@ public:
   int xclSKGetCmd(xclSKCmd *cmd);
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
+
+  int xclAIEGetCmd(xclAIECmd *cmd);
+  int xclAIEPutCmd(xclAIECmd *cmd);
 
   double xclGetDeviceClockFreqMHz();
 
@@ -132,6 +136,7 @@ public:
 
 #ifdef XRT_ENABLE_AIE
   zynqaie::Aie* getAieArray();
+  zynqaie::Aied* getAied();
   int getBOInfo(drm_zocl_info_bo &info);
   void registerAieArray();
   bool isAieRegistered();
@@ -163,6 +168,7 @@ private:
 
 #ifdef XRT_ENABLE_AIE
   std::unique_ptr<zynqaie::Aie> aieArray;
+  std::unique_ptr<zynqaie::Aied> aied;
 #endif
 };
 

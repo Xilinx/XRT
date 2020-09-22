@@ -80,11 +80,32 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::strin
 
     state = graph_state::reset;
     startTime = 0;
+#ifndef __AIESIM__
+    drv->getAied()->registerGraph(this);
+#endif
 }
 
 graph_type::
 ~graph_type()
 {
+#ifndef __AIESIM__
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+    drv->getAied()->deregisterGraph(this);
+#endif
+}
+
+std::string
+graph_type::
+getname() const
+{
+  return name;
+}
+
+unsigned short
+graph_type::
+getstatus() const
+{
+  return static_cast<unsigned short>(state);
 }
 
 void

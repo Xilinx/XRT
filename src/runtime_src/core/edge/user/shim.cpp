@@ -722,6 +722,35 @@ xclSKGetCmd(xclSKCmd *cmd)
 
 int
 shim::
+xclAIEGetCmd(xclAIECmd *cmd)
+{
+  drm_zocl_aie_cmd scmd;
+
+  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_GETCMD, &scmd);
+
+  if (!ret) {
+    cmd->opcode = scmd.opcode;
+    cmd->size = scmd.size;
+    snprintf(cmd->info, scmd.size, "%s", scmd.info);
+  }
+
+  return ret;
+}
+
+int
+shim::
+xclAIEPutCmd(xclAIECmd *cmd)
+{
+  drm_zocl_aie_cmd scmd;
+
+  scmd.opcode = cmd->opcode;
+  scmd.size = cmd->size;
+  snprintf(scmd.info, cmd->size, "%s",cmd->info);
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_PUTCMD, &scmd);
+}
+
+int
+shim::
 xclSKCreate(unsigned int boHandle, uint32_t cu_idx)
 {
   int ret;
@@ -1424,12 +1453,20 @@ getAieArray()
   return aieArray.get();
 }
 
+zynqaie::Aied*
+shim::
+getAied()
+{
+  return aied.get();
+}
+
 void
 shim::
 registerAieArray()
 {
   delete aieArray.release();
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
+  aied = std::make_unique<zynqaie::Aied>(mCoreDevice.get());
 }
 
 bool
@@ -1845,6 +1882,24 @@ xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
   if (!drv)
     return -EINVAL;
   return drv->xclSKGetCmd(cmd);
+}
+
+int
+xclAIEGetCmd(xclDeviceHandle handle, xclAIECmd *cmd)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclAIEGetCmd(cmd);
+}
+
+int
+xclAIEPutCmd(xclDeviceHandle handle, xclAIECmd *cmd)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclAIEPutCmd(cmd);
 }
 
 int

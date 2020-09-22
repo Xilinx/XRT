@@ -230,6 +230,7 @@ initialize_query_table()
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
   emplace_sysfs_get<query::ip_layout_raw>             ("ip_layout");
   emplace_sysfs_get<query::aie_metadata>              ("aie_metadata");
+  emplace_sysfs_get<query::graph_status>              ("graph_status");
   emplace_sysfs_get<query::memstat>                   ("memstat");
   emplace_sysfs_get<query::memstat_raw>               ("memstat_raw");
   emplace_sysfs_get<query::error>                     ("error");
