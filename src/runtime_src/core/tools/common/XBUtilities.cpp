@@ -456,17 +456,22 @@ XBUtilities::get_available_devices(bool inUserDomain)
   for (const auto & device : deviceCollection) {
     boost::property_tree::ptree pt_dev;
     pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
-    //user pf doesn't have this 
-    try{
-      pt_dev.put("board", xrt_core::device_query<xrt_core::query::board_name>(device));
-    } catch(...) {}
-    
 
-    // The following only works for 1RP. Golden and 2RP don't have rom info.
-    // As the technologies mature, try getting the vbnv and ID of the shell on device
-    // It doesn't make sense to add ad-hoc code right now.
-    // pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
-    // pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+    //user pf doesn't have mfg node. Also if user pf is loaded, it means that the card is not is mfg mode
+    bool is_mfg = false;
+    try{
+      is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
+    } catch(...) {}
+
+    //if factory mode
+    if (is_mfg) {
+      std::string vbnv = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN";
+      pt_dev.put("vbnv", vbnv);
+    }
+    else {
+      pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+      pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+    }
 
     pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
     pt.push_back(std::make_pair("", pt_dev));
