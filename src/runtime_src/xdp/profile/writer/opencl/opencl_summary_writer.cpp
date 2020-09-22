@@ -408,9 +408,18 @@ namespace xdp {
       double maxTime     = (stat.second).maxTime ;
       uint64_t execCount = (stat.second).numExecutions ;
 
+      // Temporarily, just strip away the _# of the compute unit to get
+      //  the kernel name
+      std::string kernelName = cuName ;
+      auto usPosition = kernelName.find("_") ;
+      if (usPosition != std::string::npos)
+      {
+	kernelName = kernelName.substr(0, usPosition - 1) ;
+      }
+
       fout << (db->getStaticInfo()).getSoftwareEmulationDeviceName() << ","
 	   << cuName                              << ","
-	   << "kernelName"                        << "," // TODO
+	   << (cuName.substr(0, cuName.size()-2)) << "," 
 	   << globalWorkGroup                     << "," 
 	   << localWorkGroup                      << ","
 	   << execCount                           << ","
