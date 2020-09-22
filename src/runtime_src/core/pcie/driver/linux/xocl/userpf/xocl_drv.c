@@ -798,6 +798,12 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		userpf_err(xdev, "create subdev failed %d", ret);
 		goto failed;
 	}
+	ret = xocl_p2p_init(xdev);
+	if (ret) {
+		userpf_err(xdev, "failed to init p2p memory");
+		goto failed;
+	}
+
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 
 	ret = xocl_init_sysfs(xdev);
