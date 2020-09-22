@@ -534,7 +534,7 @@ namespace xdp {
 	 << "Running Time (ms)"                 << ","
 	 << "Intra-Kernel Dataflow Stalls (ms)" << ","
 	 << "External Memory Stalls (ms)"       << ","
-	 << "Inter-Kernel Pipe Stalls (ms)"     << std::endl ;
+	 << "Inter-Kernel Pipe Stalls (ms)"     << "," << std::endl ;
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
