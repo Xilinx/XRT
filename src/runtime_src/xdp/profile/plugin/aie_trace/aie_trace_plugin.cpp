@@ -35,13 +35,15 @@ namespace xdp {
                 : XDPPlugin()
   {
     db->registerPlugin(this);
+
+    unsigned int totalDevices = xclProbe();
     // Open all the devices to store the handles
     uint32_t index = 0;
     void* handle = xclOpen(index, "/dev/null", XCL_INFO);
 
-    if(nullptr != handle) {
-//    while(nullptr != handle) 
-      deviceHandles.push_back(handle);
+//    if(nullptr != handle)
+    while(index < totalDevices && nullptr != handle) { 
+//      deviceHandles.push_back(handle); // don't save te handles now
 
       // Use sysfs path for debug_ip_layout to find the unique Device ID
       char pathBuf[512];
@@ -52,11 +54,14 @@ namespace xdp {
 
       uint64_t deviceId = db->addDevice(sysfsPath);
 
-      deviceIdToHandle[deviceId] = handle;
+//      deviceIdToHandle[deviceId] = handle; // don't save te handles now
+      deviceIdToIndex[deviceId]  = index;
+
+      xclClose(handle);
 
       // Move to the next device
       ++index;
-//      handle = xclOpen(index, "/dev/null", XCL_INFO);
+      handle = xclOpen(index, "/dev/null", XCL_INFO);
     }
 std::cout << " devices FOUND " << index << std::endl;
   }
@@ -97,6 +102,14 @@ std::cout << " devices FOUND " << index << std::endl;
     std::string sysfspath(pathBuf);
 
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
+    uint32_t index    = deviceIdToIndex[deviceId];
+
+
+// add change for reload of xclbin
+
+    void* ownedHandle = xclOpen(index, "/dev/null", XCL_INFO);
+    deviceHandles.push_back(ownedHandle);
+    deviceIdToHandle[deviceId] = ownedHandle;
 //    void* ownedHandle = deviceIdToHandle[deviceId];
 
     if(!(db->getStaticInfo()).isDeviceReady(deviceId)) {
@@ -135,8 +148,8 @@ std::cout << " devices FOUND " << index << std::endl;
       // If DeviceIntf is not already created, create a new one to communicate with physical device
       deviceIntf = new DeviceIntf();
       try {
-        deviceIntf->setDevice(new HalDevice(handle));
-//        deviceIntf->setDevice(new HalDevice(ownedHandle));
+//        deviceIntf->setDevice(new HalDevice(handle));
+        deviceIntf->setDevice(new HalDevice(ownedHandle));
         deviceIntf->readDebugIPlayout();
       } catch(std::exception& e) {
         // Read debug IP layout could throw an exception

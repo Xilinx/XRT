@@ -30,7 +30,8 @@ namespace xdp {
 
     private:
       std::vector<void*> deviceHandles;
-      std::map<uint32_t, void*> deviceIdToHandle;
+      std::map<uint64_t, void*> deviceIdToHandle;
+      std::map<uint64_t, uint32_t> deviceIdToIndex;
 
       typedef std::tuple<AIETraceOffload*, 
                          AIETraceLogger*,
