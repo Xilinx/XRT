@@ -22,8 +22,6 @@
 
 namespace xrt_core {
 
-#define KDS_VIRT_CU 0xffffffff
-
 // concrete class derives from device_pcie, but mixes in
 // shim layer functions for access through base class
 class device_linux : public shim<device_pcie>
