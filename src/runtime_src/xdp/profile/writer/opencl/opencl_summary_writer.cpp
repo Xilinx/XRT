@@ -242,12 +242,20 @@ namespace xdp {
       (db->getStaticInfo()).getDeviceNames() ;
 
     fout << "Target devices: " ;
-    for (unsigned int i = 0 ; i < deviceNames.size() ; ++i)
+    if (getFlowMode() == SW_EMU)
     {
-      if (i != 0) fout << ", " ;
-      fout << deviceNames[i] ;
+      fout << (db->getStaticInfo()).getSoftwareEmulationDeviceName()
+	   << std::endl ;
     }
-    fout << std::endl ;
+    else
+    {
+      for (unsigned int i = 0 ; i < deviceNames.size() ; ++i)
+      {
+	if (i != 0) fout << ", " ;
+	fout << deviceNames[i] ;
+      }
+      fout << std::endl ;
+    }
 
     fout << "Flow mode: " ;
     switch(getFlowMode())
@@ -400,7 +408,7 @@ namespace xdp {
       double maxTime     = (stat.second).maxTime ;
       uint64_t execCount = (stat.second).numExecutions ;
 
-      fout << "deviceName"                        << "," // TODO
+      fout << (db->getStaticInfo()).getSoftwareEmulationDeviceName() << ","
 	   << cuName                              << ","
 	   << "kernelName"                        << "," // TODO
 	   << globalWorkGroup                     << "," 

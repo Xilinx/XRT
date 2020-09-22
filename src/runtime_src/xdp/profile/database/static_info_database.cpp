@@ -93,7 +93,9 @@ namespace xdp {
     connections[argIdx].push_back(memIdx);
   }
 
-  VPStaticDatabase::VPStaticDatabase(VPDatabase* d) : db(d), runSummary(nullptr), systemDiagram("")
+  VPStaticDatabase::VPStaticDatabase(VPDatabase* d) :
+    db(d), runSummary(nullptr), systemDiagram(""),
+    softwareEmulationDeviceName("")
   {
 #ifdef _WIN32
     pid = _getpid() ;

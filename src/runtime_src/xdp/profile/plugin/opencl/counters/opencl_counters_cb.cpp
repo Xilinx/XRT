@@ -66,6 +66,13 @@ namespace xdp {
 	openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
     }
 
+    // Since we don't have device information in software emulation,
+    //  we have to piggyback this information here.
+    if (getFlowMode() == SW_EMU)
+    {
+      (db->getStaticInfo()).setSoftwareEmulationDeviceName(deviceName) ;
+    }
+
     if (isStart)
     {
       (storedTimestamps[kernelName]).push(timestamp) ;

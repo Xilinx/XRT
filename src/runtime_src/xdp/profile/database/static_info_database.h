@@ -272,6 +272,9 @@ namespace xdp {
     std::set<std::string> enqueuedKernels ; 
     std::map<uint64_t, uint64_t> contextIdToNumDevices ;
 
+    // For OpenCL software emulation, we need a tiny bit of device info
+    std::string softwareEmulationDeviceName ; 
+
     /* Device Specific Information mapped to the Unique Device Id
      * Device Information contains :
      * 1. Platform information :
@@ -315,6 +318,10 @@ namespace xdp {
       { return commandQueueAddresses ; }
     inline std::set<std::string>& getEnqueuedKernels()
       { return enqueuedKernels ; }
+    inline std::string getSoftwareEmulationDeviceName()
+      { return softwareEmulationDeviceName ; }
+    inline void setSoftwareEmulationDeviceName(const std::string& name)
+      { softwareEmulationDeviceName = name ; }
     inline void setNumDevices(uint64_t contextId, uint64_t numDevices)
     {
       contextIdToNumDevices[contextId] = numDevices ;
