@@ -65,7 +65,7 @@ namespace xdp {
     xrt_core::get_xrt_info(pt) ;
 
     try {
-      pt.get<std::string>("zocl") ;
+      pt.get<std::string>("build.zocl") ;
     } catch (...) {
       // We didn't find the zocl driver version, so we must not be on edge
       return false ;
