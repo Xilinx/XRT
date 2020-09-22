@@ -230,10 +230,11 @@ struct drm_xocl_userptr_bo {
 };
 
 /**
+ * struct drm_xocl_map_kern_mem - Map a buffer object to linux kernel
+ * memory (sgl or virtual address)
+ * used with DRM_IOCTL_XOCL_MAP_KERN_MEM ioctl.
  * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
  * For use with Linux kernel space specific IOCTLs.
- * struct drm_xocl_map_kern_mem - Used for map a buffer object to linux kernel
- * memory (sgl or vurtual address) with DRM_IOCTL_XOCL_MAP_KERN_MEM ioctl.
  *
  * @handle:     bo handle returned by the driver
  * @addr:       Address of sgl or kernel buffer allocated by user
@@ -281,18 +282,18 @@ struct drm_xocl_sync_bo {
 };
 
 /**
- * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
- * For use with Linux kernel space specific IOCTLs.
  * struct drm_xocl_sync_bo_cb - Synchronize the buffer in the requested direction
  * between device and host
  * used with DRM_IOCTL_XOCL_SYNC_BO_CB ioctl (linux kernel only)
+ * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
+ * For use with Linux kernel space specific IOCTLs.
  *
  * @handle:	bo handle
  * @flags:	Unused
  * @size:	Number of bytes to synchronize
  * @offset:	Offset into the object to synchronize
  * @dir:	DRM_XOCL_SYNC_DIR_XXX
- * @cb_func:	Pointer to callback function(void (*fn)(long,int))
+ * @cb_func:	Pointer to callback function(void(\*fn)(long,int))
  * @cb_data:	Pointer to context that callback needs to be invoked with
  */
 struct drm_xocl_sync_bo_cb {
@@ -322,7 +323,7 @@ struct drm_xocl_info_bo {
 };
 
 /**
- * struct drm_xocl_copy_bo - device memory to memory copy bo
+ * struct drm_xocl_copy_bo - Device memory to memory copy bo
  * used with DRM_IOCTL_XOCL_COPY_BO IOCTL
  *
  * @dst_handle:	dst bo handle
@@ -368,10 +369,10 @@ struct kernel_info {
 };
 
 /**
+ * struct drm_xocl_kinfo_bo - Get a buffer object's kernel virtual address
+ * used with DRM_IOCTL_XOCL_KINFO_BO ioctl.
  * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
  * For use with Linux kernel space specific IOCTLs.
- * struct drm_xocl_kinfo_bo - Used to get a buffer object's kernel virtual address
- * with DRM_IOCTL_XOCL_KINFO_BO ioctl.
  *
  * @handle:     bo handle of BO whose info is required
  * @flags:      Unused
@@ -563,10 +564,10 @@ struct drm_xocl_execbuf {
 };
 
 /**
- * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
- * For use with Linux kernel space specific IOCTLs.
  * struct drm_xocl_execbuf_cb - Submit a command buffer for execution on a compute unit
  * used with DRM_IOCTL_XOCL_EXECBUF_CB ioctl with a callback (linux kernel only)
+ * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
+ * For use with Linux kernel space specific IOCTLs.
  *
  * @ctx_id:         Pass 0
  * @exec_bo_handle: BO handle of command buffer formatted as ERT command
@@ -598,7 +599,7 @@ struct drm_xocl_user_intr {
 };
 
 /**
- * struct drm_xocl_reclock_info - perform clock scaling 
+ * struct drm_xocl_reclock_info - perform clock scaling
  *
  * @region: 		Region
  * @ocl_target_freq: 	clock scacling request array

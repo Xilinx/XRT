@@ -376,7 +376,7 @@ struct argument_info {
  */
 struct kernel_info {
 	char                     name[64];
-	int		                 anums;
+	int		         anums;
 	struct argument_info	 args[];
 };
 
