@@ -206,7 +206,7 @@ struct device_type
 class ip_context
 {
 public:
-  enum class access_mode : bool { exclusive = false, shared = true };
+  using access_mode = xrt::kernel::cu_access_mode;
   constexpr static unsigned int virtual_cu_idx = std::numeric_limits<unsigned int>::max();
 
   static std::shared_ptr<ip_context>
@@ -1695,17 +1695,15 @@ set_event(const std::shared_ptr<event_impl>& event) const
 }
 
 kernel::
-kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive)
+kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
   : handle(std::make_shared<kernel_impl>
-     (get_device(xdev), xclbin_id, name,
-      exclusive ? ip_context::access_mode::exclusive : ip_context::access_mode::shared))
+      (get_device(xdev), xclbin_id, name, mode))
 {}
 
 kernel::
-kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive)
+kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
   : handle(std::make_shared<kernel_impl>
-      (get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name,
-      exclusive ? ip_context::access_mode::exclusive : ip_context::access_mode::shared))
+      (get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode))
 {}
 
 uint32_t
