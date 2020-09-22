@@ -854,8 +854,8 @@ int xocl_p2p_init(struct xocl_dev *xdev)
 
 	/* create p2p subdev for legacy platform */
 	ret = xocl_subdev_create(xdev, &subdev_info);
-	if (ret) {
-		xocl_xdev_info(xdev, "create p2p subdev failed. ret %d", ret);
+	if (ret && ret != -EEXIST) {
+		xocl_xdev_err(xdev, "create p2p subdev failed. ret %d", ret);
 		return ret;
 	}
 
