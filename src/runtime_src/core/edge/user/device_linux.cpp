@@ -113,6 +113,34 @@ struct devInfo
   }
 };
 
+struct kds_cu_info
+{
+  using result_type = query::kds_cu_info::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key)
+  {
+    auto edev = get_edgedev(device);
+
+    std::vector<std::string> stats;
+    std::string errmsg;
+    edev->sysfs_get("kds_custat", errmsg, stats);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+
+    result_type cuStats;
+    for (auto& line : stats) {
+        uint32_t base_address = 0;
+        uint32_t usages = 0;
+        uint32_t status = 0;
+        sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &base_address, &usages, &status);
+        cuStats.push_back(std::make_tuple(base_address, usages, status));
+    }
+
+    return cuStats;
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -225,6 +253,7 @@ initialize_query_table()
   emplace_func0_get<query::rom_ddr_bank_count_max, devInfo>();
 
   emplace_func0_get<query::clock_freqs_mhz, devInfo>();
+  emplace_func0_get<query::kds_cu_info, kds_cu_info>();
  
   emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
