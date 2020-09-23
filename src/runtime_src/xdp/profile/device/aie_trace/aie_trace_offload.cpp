@@ -69,20 +69,14 @@ bool AIETraceOffload::initReadTrace()
   } else {
     memIndex = 0;  // for now
   }
-  for(auto b : buffers) {
+  for(uint64_t i = 0; i < numStream ; ++i) {
     buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
-//    b.boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
     if(!buffers[i].boHandle) {
-//    if(!b.boHandle) 
       return false;
     }
-    if(b.boHandle) {
-    b.isFull = false;
-    }
-    b.isFull = false;
+    buffers[i].isFull = false;
     // Data Mover will write input stream to this address
     uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].boHandle);
-//    uint64_t bufAddr = deviceIntf->getDeviceAddr(b.boHandle);
     if(isPLIO) {
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i);
     } else {
@@ -100,7 +94,6 @@ bool AIETraceOffload::initReadTrace()
       XAie_DmaSetAddrLen(&(shimDmaObj->desc), bufAddr, bufAllocSz);
 #endif
     }
-    ++i;
   }
   return true;
 }
@@ -109,7 +102,7 @@ void AIETraceOffload::endReadTrace()
 {
   // reset
   uint64_t i = 0;
-  for(auto b : buffers) {
+  for(auto& b : buffers) {
     if(!b.boHandle) {
       continue;
     }

@@ -105,8 +105,6 @@ uint64_t TraceS2MM::getWordCount()
     uint64_t retValue = static_cast<uint64_t>(regValue);
     read(TS2MM_WRITTEN_HIGH, 4, &regValue);
     retValue |= static_cast<uint64_t>(regValue) << 32;
-if(out_stream)
-(*out_stream) << " TraceS2MM::getWordCount retValue " << std::dec << retValue << " name " << getName() << " base address " << std::hex << getBaseAddress() << std::endl;
     return retValue;
 }
 
