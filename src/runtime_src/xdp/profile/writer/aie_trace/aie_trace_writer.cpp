@@ -53,22 +53,16 @@ namespace xdp {
 
   void AIETraceWriter::writeTraceEvents()
   {
-std::cout << " in AIETraceWriter::writeTraceEvents : about to call getAIETraceData : deviceId " << deviceId << " traceStreamId " << traceStreamId << std::endl;
     // write the entire buffer
     AIETraceDataType* traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId);
     if(nullptr == traceData) {
-std::cout << " in AIETraceWriter::writeTraceEvents : null traceData " << std::endl;
       fout << std::endl;
       return;
     }
 
-std::cout << " in AIETraceWriter::writeTraceEvents : RIGHT AFTER getAIETraceData : deviceId " << deviceId << " traceStreamId " << traceStreamId << std::endl;
     void*    buf = traceData->buffer;
     uint64_t bufferSz = traceData->bufferSz;
-
-std::cout << " in AIETraceWriter::writeTraceEvents : after getAIETraceData : deviceId " << deviceId << " traceStreamId " << traceStreamId << " buf " << buf << " bufferSz " << bufferSz << std::endl;
     if(nullptr == buf) {
-std::cout << " in AIETraceWriter::writeTraceEvents : after getAIETraceData : deviceId " << deviceId << " traceStreamId " << traceStreamId << " buf " << buf << " EMPTY " << std::endl;
       fout << std::endl;
       return;
     }
@@ -77,8 +71,6 @@ std::cout << " in AIETraceWriter::writeTraceEvents : after getAIETraceData : dev
     for(uint64_t i = 0; i < bufferSz; i++) {
       fout << "0x" << std::hex << dataBuffer[i] << std::endl;
     }
-std::cout << " in AIETraceWriter::writeTraceEvents : after WRITE : deviceId " << deviceId << " traceStreamId " << traceStreamId << " buf " << buf << " bufferSz " << bufferSz << std::endl;
-
     fout << std::endl;
   }
 
