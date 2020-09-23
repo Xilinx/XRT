@@ -60,6 +60,8 @@
     ((struct ert_configure_cmd *)(pkg))
 #define to_start_krnl_pkg(pkg) \
     ((struct ert_start_kernel_cmd *)(pkg))
+#define to_copybo_pkg(pkg) \
+    ((struct ert_start_copybo_cmd *)(pkg))
 
 /**
  * struct ert_packet: ERT generic packet format
@@ -245,7 +247,8 @@ struct ert_configure_cmd {
   uint32_t dataflow:1;
   /* WORKAROUND: allow xclRegWrite/xclRegRead access shared CU */
   uint32_t rw_shared:1;
-  uint32_t unusedf:23;
+  uint32_t kds_30:1;
+  uint32_t unusedf:22;
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */

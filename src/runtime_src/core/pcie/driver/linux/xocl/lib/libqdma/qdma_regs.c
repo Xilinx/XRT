@@ -348,13 +348,13 @@ int qdma_device_flr_quirk_set(struct pci_dev *pdev, unsigned long dev_hndl)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 
+	if (!dev_hndl || xdev_check_hndl(__func__, pdev, dev_hndl) < 0)
+		return -EINVAL;
+
 	if (!xdev->flr_prsnt) {
 		pr_info("FLR not present, therefore skipping FLR reset\n");
 		return 0;
 	}
-
-	if (!dev_hndl || xdev_check_hndl(__func__, pdev, dev_hndl) < 0)
-		return -EINVAL;
 
 	__write_reg(xdev, QDMA_REG_FLR_STATUS, 0x1);
 	return 0;
@@ -365,13 +365,13 @@ int qdma_device_flr_quirk_check(struct pci_dev *pdev, unsigned long dev_hndl)
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	int rv;
 
+	if (!dev_hndl || xdev_check_hndl(__func__, pdev, dev_hndl) < 0)
+		return -EINVAL;
+
 	if (!xdev->flr_prsnt) {
 		pr_info("FLR not present, therefore skipping FLR reset status\n");
 		return 0;
 	}
-
-	if (!dev_hndl || xdev_check_hndl(__func__, pdev, dev_hndl) < 0)
-		return -EINVAL;
 
 	/* wait for it to become zero */
 	rv = hw_monitor_reg(xdev, QDMA_REG_FLR_STATUS, 0x1, 0, 500, 500*1000);

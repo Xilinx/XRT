@@ -17,6 +17,7 @@
  */
 
 #include <dlfcn.h>
+#include <execinfo.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <sys/mman.h>
@@ -274,9 +275,35 @@ static int createSoftKernelFile(uint64_t paddr, size_t size, uint32_t cuidx)
   return 0;
 }
 
-/* Define a signal handler to avoid zombie process */
-static void sigAct(int sig)
+#define STACKTRACE_DEPTH	(25)
+static void stacktrace_logger(const int sig)
 {
+  const int stack_depth = STACKTRACE_DEPTH;
+  syslog(LOG_ERR, "%s - got %d\n", __func__, sig);
+  if (sig == SIGCHLD)
+    return;
+  void *array[stack_depth];
+  int nSize = backtrace(array, stack_depth);
+  char **symbols = backtrace_symbols(array, nSize);
+  if (symbols) {
+    for (int i = 0; i < nSize; i++)
+      syslog(LOG_ERR, "%s\n", symbols[i]);
+    free(symbols);
+  }
+}
+
+/* Define a signal handler for the child to handle signals */
+static void sigLog(const int sig)
+{
+  syslog(LOG_ERR, "%s - got %d\n", __func__, sig);
+  stacktrace_logger(sig);
+  exit(EXIT_FAILURE);
+}
+
+/* Define a signal handler for the parent to avoid zombie process */
+static void sigAct(const int sig)
+{
+  syslog(LOG_ERR, "%s - got %d\n", __func__, sig);
   wait((int *)0);
 }
 
@@ -285,11 +312,6 @@ void configSoftKernel(xclSKCmd *cmd)
 {
   pid_t pid;
   uint32_t i;
-
-  struct sigaction act;
-  act.sa_handler = sigAct;
-  sigemptyset(&act.sa_mask);
-  act.sa_flags = 0;
 
   if (createSoftKernelFile(cmd->xclbin_paddr, cmd->xclbin_size,
           cmd->start_cuidx) != 0)
@@ -304,6 +326,26 @@ void configSoftKernel(xclSKCmd *cmd)
     if (pid == 0) {
       char path[XRT_MAX_PATH_LENGTH];
       char proc_name[PNAME_LEN] = {};
+      /* Install Signal Handler for the Child Processes/Soft-Kernels */
+      struct sigaction act;
+      act.sa_handler = sigLog;
+      sigemptyset(&act.sa_mask);
+      act.sa_flags = 0;
+      sigaction(SIGHUP, &act, 0);
+      sigaction(SIGINT, &act, 0);
+      sigaction(SIGQUIT , &act, 0);
+      sigaction(SIGILL, &act, 0);
+      sigaction(SIGTRAP, &act, 0);
+      sigaction(SIGABRT, &act, 0);
+      sigaction(SIGBUS, &act, 0);
+      sigaction(SIGFPE, &act, 0);
+      sigaction(SIGKILL, &act, 0);
+      sigaction(SIGUSR1, &act, 0);
+      sigaction(SIGSEGV, &act, 0);
+      sigaction(SIGUSR2, &act, 0);
+      sigaction(SIGPIPE, &act, 0);
+      sigaction(SIGALRM, &act, 0);
+      sigaction(SIGTERM, &act, 0);
 
       (void)snprintf(proc_name, PNAME_LEN, "%s%d", cmd->krnl_name, i);
       if (prctl(PR_SET_NAME, (char *)proc_name) != 0) {
@@ -318,8 +360,13 @@ void configSoftKernel(xclSKCmd *cmd)
       exit(EXIT_SUCCESS);
     }
 
-    if (pid > 0)
+    if (pid > 0) {
+      struct sigaction act;
+      act.sa_handler = sigAct;
+      sigemptyset(&act.sa_mask);
+      act.sa_flags = 0;
       sigaction(SIGCHLD, &act, 0);
+    }
 
     if (pid < 0)
       syslog(LOG_ERR, "Unable to create soft kernel process( %d)\n", i);

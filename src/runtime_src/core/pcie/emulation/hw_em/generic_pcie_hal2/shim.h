@@ -32,6 +32,7 @@
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
+#include "core/common/query_requests.h"
 
 #include "mem_model.h"
 #include "mbscheduler.h"
@@ -52,7 +53,7 @@
 #endif
 
 namespace xclhwemhal2 {
-
+using key_type = xrt_core::query::key_type;
 using addr_type = uint64_t;
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
 
@@ -193,7 +194,7 @@ using addr_type = uint64_t;
 
       //constructor
       HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified,
-        bool bXPR, FeatureRomHeader &featureRom, platformData& platform_data);
+        bool bXPR, FeatureRomHeader &featureRom, const boost::property_tree::ptree& platformData);
 
       //destructor
       ~HwEmShim();
@@ -214,10 +215,11 @@ using addr_type = uint64_t;
       void setUnified(bool _unified) { bUnified = _unified; }
 
       bool isMBSchedulerEnabled();
-      bool isM2MEnabled();
-      bool isNoDMAEnabled();
+      uint64_t getErtCmdQAddress();
+      uint64_t getErtBaseAddress();
+      int deviceQuery(key_type queryKey);
 
-      std::string getMBSchedulerVersion();
+      std::string getERTVersion();
       bool isLegacyErt();
       unsigned int getDsaVersion();
       bool isCdmaEnabled();
@@ -261,6 +263,7 @@ using addr_type = uint64_t;
 
       std::string getSimulatorType(const std::string& binaryDirectory);
       void createPreSimScript(const std::string& wcfgFilePath, std::string& preSimScriptPath);
+      void constructQueryTable();     
 
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
@@ -347,7 +350,8 @@ using addr_type = uint64_t;
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
-      platformData mPlatformData;
+      boost::property_tree::ptree mPlatformData;
+      std::map<key_type, std::string> mQueryTable;
       std::set<unsigned int > mImportedBOs;
       uint64_t mCuBaseAddress;
       bool     mVersalPlatform;

@@ -517,5 +517,9 @@ bool XMC_Flasher::isBMCReady()
 
 bool XMC_Flasher::hasSC()
 {
-    return xrt_core::device_query<xrt_core::query::xmc_sc_presence>(m_device);
+    bool sc_presence = false;
+    try {
+        sc_presence = xrt_core::device_query<xrt_core::query::xmc_sc_presence>(m_device);
+    } catch(...) { }
+    return sc_presence;
 }

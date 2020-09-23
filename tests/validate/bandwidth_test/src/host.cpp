@@ -16,6 +16,7 @@
 #include <math.h>
 #include <sys/time.h>
 #include <xcl2.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>                                        
 #include <boost/property_tree/json_parser.hpp>
 
@@ -34,10 +35,11 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  int NUM_KERNEL ;                                                           
-  std::string path = argv[1];
+  int NUM_KERNEL;
+  bool file_found = false;
+  std::string test_path = argv[1];
   std::string filename = "/platform.json";
-  std::string platform_json = path+filename;
+  std::string platform_json = test_path+filename;
 
   try{
       boost::property_tree::ptree loadPtreeRoot;                                                    
@@ -45,18 +47,34 @@ int main(int argc, char **argv) {
       boost::property_tree::ptree temp ;                                                            
   
       temp = loadPtreeRoot.get_child("total_banks");
+      NUM_KERNEL =  temp.get_value<int>();
 
-      NUM_KERNEL =  temp.get_value<int>();  
-  } catch (const std::exception & e) {
+      boost::filesystem::path p(test_path);
+      for (auto i = boost::filesystem::directory_iterator(p); i != boost::filesystem::directory_iterator(); i++)
+       {
+            if (!is_directory(i->path())) //we eliminate directories
+            {
+                if(i->path().filename().string() == "bandwidth.xclbin")
+                    file_found = true;
+            }
+        }
+  }catch (const boost::filesystem::filesystem_error & e) {
+      std::cout << "Exception!!!! " << e.what();
+  }catch (const std::exception & e) {
       std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
       msg += e.what();
       msg += ").";
-      std::cout << msg;
+      std::cout << msg << std::endl;
     }
+
+  if(!file_found){
+      std::cout << "\nNOT SUPPORTED" << std::endl;
+      return EOPNOTSUPP; 
+  }
 
   double DATA_SIZE = 1024 * 1024 * 16; // 16 MB
   std::string b_file = "/bandwidth.xclbin";
-  std::string binaryFile = path+b_file;
+  std::string binaryFile = test_path+b_file;
   size_t vector_size_bytes = sizeof(char) * DATA_SIZE;
   cl_int err;
   cl::Context context;

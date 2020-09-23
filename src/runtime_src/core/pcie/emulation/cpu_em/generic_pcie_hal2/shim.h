@@ -31,8 +31,9 @@
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
-#include "swscheduler.h"
+#include "core/common/query_requests.h"
 
+#include "swscheduler.h"
 #include <stdarg.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -46,6 +47,7 @@
 #endif
 
 namespace xclcpuemhal2 {
+  using key_type = xrt_core::query::key_type;
   // XDMA Shim
   class CpuemShim {
     public:
@@ -139,7 +141,7 @@ namespace xclcpuemhal2 {
 
       ~CpuemShim();
       CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, 
-        bool bXPR, FeatureRomHeader &featureRom, platformData& platform_data);
+        bool bXPR, FeatureRomHeader &featureRom, const boost::property_tree::ptree & platformData);
 
       static CpuemShim *handleCheck(void *handle);
       bool isGood() const;
@@ -168,8 +170,8 @@ namespace xclcpuemhal2 {
       SWScheduler* getScheduler() { return mSWSch; }
 
       // New API's for m2m and no-dma
-      bool isM2MEnabled();
-      bool isNoDMAEnabled();
+      void constructQueryTable();
+      int deviceQuery(key_type queryKey);
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;
@@ -244,7 +246,8 @@ namespace xclcpuemhal2 {
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
-      platformData mPlatformData;
+      boost::property_tree::ptree mPlatformData;
+      std::map<key_type, std::string> mQueryTable;
 
       std::set<unsigned int > mImportedBOs;
       exec_core* mCore;

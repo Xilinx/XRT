@@ -193,8 +193,17 @@ unsigned xclProbe()
     return 0;
   }
 
-  unsigned int deviceIndex = 0;
-  std::vector<std::tuple<xclDeviceInfo2, std::list<xclemulation::DDRBank>, bool, bool, FeatureRomHeader, platformData> > devicesInfo;
+  static int xclProbeCallCnt=0;
+  static unsigned int deviceIndex = 0;
+
+  //Ensure xclProbe is called only once as we load all the devices in the single go
+  //xclProbe call happens during the load of the library, no need to explicit call
+
+  if (xclProbeCallCnt == 1) {
+    return deviceIndex;
+  }
+
+  std::vector<std::tuple<xclDeviceInfo2, std::list<xclemulation::DDRBank>, bool, bool, FeatureRomHeader, boost::property_tree::ptree> > devicesInfo;
   getDevicesInfo(devicesInfo);
   if(devicesInfo.size() == 0)
     return 1;//old behavior
@@ -205,12 +214,13 @@ unsigned xclProbe()
     bool bUnified = std::get<2>(it);
     bool bXPR = std::get<3>(it);
     FeatureRomHeader fRomHeader = std::get<4>(it);
-    platformData platform_data = std::get<5>(it);
+    boost::property_tree::ptree platformData = std::get<5>(it);
 
-    xclhwemhal2::HwEmShim *handle = new xclhwemhal2::HwEmShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platform_data);
+    xclhwemhal2::HwEmShim *handle = new xclhwemhal2::HwEmShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
     xclhwemhal2::devices[deviceIndex++] = handle;
   }
 
+  xclProbeCallCnt++;
   return deviceIndex;
 }
 
@@ -246,9 +256,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   DDRBankList.push_back(bank);
   FeatureRomHeader fRomHeader;
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
-
-  platformData platform_data;
-  std::memset(&platform_data, 0, sizeof(platformData));
+  boost::property_tree::ptree platformData;
 
   xclhwemhal2::HwEmShim *handle = NULL;
 
@@ -260,7 +268,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   }
   else
   {
-    handle = new xclhwemhal2::HwEmShim(deviceIndex, info, DDRBankList, false, false, fRomHeader, platform_data);
+    handle = new xclhwemhal2::HwEmShim(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
     bDefaultDevice = true;
   }
 

@@ -364,9 +364,10 @@ static struct xocl_subdev_map subdev_map[] = {
 		.dev_name = XOCL_ERT_30,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_ERT_CFG_GPIO},
+			{.res_name = NODE_ERT_CQ_USER},
 			{NULL},
 		},
-		.required_ip = 1,
+		.required_ip = 2,
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
@@ -1624,4 +1625,47 @@ xocl_res_id2name(const struct xocl_iores_map *res_map,
 	}
 
 	return NULL;
+}
+
+void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
+{
+	int offset = 0;
+	const char *ert_prop = NULL, *fw_ver = NULL;
+	const char *ipname = NULL;
+	bool ert_fw_mem = false;
+
+	if (!blob)
+		return;
+
+	for (offset = fdt_next_node(blob, -1, NULL);
+		offset >= 0;
+		offset = fdt_next_node(blob, offset, NULL)) {
+		ipname = fdt_get_name(blob, offset, NULL);
+
+		if (!ipname)
+			continue;
+
+		ert_fw_mem = (strncmp(ipname, NODE_ERT_FW_MEM,
+				strlen(NODE_ERT_FW_MEM)) == 0);
+		if (ert_fw_mem)
+			break;
+	}
+	/* Didn't find ert_firmware_mem, just return */
+	if (!ert_fw_mem)
+		return;
+
+	for (offset = fdt_first_subnode(blob, offset);
+		offset >= 0;
+		offset = fdt_next_subnode(blob, offset)) {
+
+		ert_prop = fdt_get_name(blob, offset, NULL);
+		if (ert_prop && strncmp(ert_prop, "firmware", 8) == 0) {
+			fw_ver = fdt_getprop(blob, offset, "firmware_branch_name", NULL);
+			break;
+		}
+	}
+	if (fw_ver)
+		xocl_xdev_info(xdev_hdl, "Load embedded scheduler firmware %s", fw_ver);
+
+	return;
 }

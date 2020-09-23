@@ -16,6 +16,7 @@
 #include "xcl2.hpp"
 #include <algorithm>
 #include <vector>
+#include <boost/filesystem.hpp>
 #define LENGTH 12
 
 int main(int argc, char **argv) {
@@ -24,9 +25,28 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  std::string path = argv[1];
+  bool file_found = false;
+  std::string test_path = argv[1];
+  try{
+      boost::filesystem::path p(test_path);
+      for (auto i = boost::filesystem::directory_iterator(p); i != boost::filesystem::directory_iterator(); i++)
+       {
+            if (!is_directory(i->path())) //we eliminate directories
+            {
+                if(i->path().filename().string() == "verify.xclbin")
+                    file_found = true;
+            }
+        }
+  } catch (const boost::filesystem::filesystem_error & e) {
+      std::cout << "Exception!!!! " << e.what();
+  }
+  if(!file_found){
+      std::cout << "\nNOT SUPPORTED" << std::endl;
+      return EOPNOTSUPP; 
+  }
+
   std::string b_file = "/verify.xclbin";
-  std::string binaryFile = path+b_file;
+  std::string binaryFile = test_path+b_file;
   cl_int err;
   cl::Context context;
   cl::Kernel krnl_verify;

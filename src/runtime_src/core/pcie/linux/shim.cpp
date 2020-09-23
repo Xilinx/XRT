@@ -2268,9 +2268,8 @@ int shim::xclIPName2Index(const char *name)
 
 unsigned xclProbe()
 {
-#ifdef ENABLE_HAL_PROFILING
   PROBE_CB;
-#endif
+
     return pcidev::get_dev_ready();
 }
 
@@ -2283,9 +2282,8 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
                        std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
       return nullptr;
     }
-#ifdef ENABLE_HAL_PROFILING
+
   OPEN_CB;
-#endif
 
     xocl::shim *handle = new xocl::shim(deviceIndex);
 
@@ -2303,9 +2301,8 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 
 void xclClose(xclDeviceHandle handle)
 {
-#ifdef ENABLE_HAL_PROFILING
   CLOSE_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (drv) {
         delete drv;
@@ -2315,15 +2312,13 @@ void xclClose(xclDeviceHandle handle)
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
-#ifdef ENABLE_HAL_PROFILING
   LOAD_XCLBIN_CB ;
-#endif
+
   try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
-#ifdef ENABLE_HAL_PROFILING
+
     xdphal::flush_device(handle) ;
     xdpaie::flush_aie_device(handle) ;
-#endif  
 
 #ifdef DISABLE_DOWNLOAD_XCLBIN
     int ret = 0;
@@ -2334,10 +2329,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     if (!ret) {
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
-#ifdef ENABLE_HAL_PROFILING
+
       xdphal::update_device(handle) ;
       xdpaie::update_aie_device(handle);
-#endif
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
@@ -2380,36 +2374,32 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
-#ifdef ENABLE_HAL_PROFILING
   WRITE_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWrite(space, offset, hostBuf, size) : -ENODEV;
 }
 
 size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-#ifdef ENABLE_HAL_PROFILING
   READ_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRead(space, offset, hostBuf, size) : -ENODEV;
 }
 
 int xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t data)
 {
-#ifdef ENABLE_HAL_PROFILING
   REG_WRITE_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRegWrite(ipIndex, offset, data) : -ENODEV;
 }
 
 int xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
-#ifdef ENABLE_HAL_PROFILING
   REG_READ_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRegRead(ipIndex, offset, datap) : -ENODEV;
 }
@@ -2436,26 +2426,24 @@ unsigned int xclVersion ()
 
 unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
-#ifdef ENABLE_HAL_PROFILING
   ALLOC_BO_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
 }
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
-#ifdef ENABLE_HAL_PROFILING
   ALLOC_USERPTR_BO_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocUserPtrBO(userptr, size, flags) : -ENODEV;
 }
 
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
-#ifdef ENABLE_HAL_PROFILING
+
   FREE_BO_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv) {
         return;
@@ -2465,27 +2453,24 @@ void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
 
 size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
-#ifdef ENABLE_HAL_PROFILING
   WRITE_BO_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWriteBO(boHandle, src, size, seek) : -ENODEV;
 }
 
 size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
-#ifdef ENABLE_HAL_PROFILING
   READ_BO_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclReadBO(boHandle, dst, size, skip) : -ENODEV;
 }
 
 void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
-#ifdef ENABLE_HAL_PROFILING
   MAP_BO_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclMapBO(boHandle, write) : nullptr;
 }
@@ -2498,9 +2483,8 @@ int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-#ifdef ENABLE_HAL_PROFILING
   SYNC_BO_CB ;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclSyncBO(boHandle, dir, size, offset) : -ENODEV;
 }
@@ -2508,9 +2492,8 @@ int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
             unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
-#ifdef ENABLE_HAL_PROFILING
   COPY_BO_CB ;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ?
       drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
@@ -2524,9 +2507,8 @@ int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned sh
 
 int xclLockDevice(xclDeviceHandle handle)
 {
-#ifdef ENABLE_HAL_PROFILING
   LOCK_DEVICE_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
@@ -2535,9 +2517,8 @@ int xclLockDevice(xclDeviceHandle handle)
 
 int xclUnlockDevice(xclDeviceHandle handle)
 {
-#ifdef ENABLE_HAL_PROFILING
   UNLOCK_DEVICE_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
@@ -2585,27 +2566,24 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
-#ifdef ENABLE_HAL_PROFILING
   UNMGD_PWRITE_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPwrite(flags, buf, count, offset) : -ENODEV;
 }
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-#ifdef ENABLE_HAL_PROFILING
   UNMGD_PREAD_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
 }
 
 int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)
 {
-#ifdef ENABLE_HAL_PROFILING
   GET_BO_PROP_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclGetBOProperties(boHandle, properties) : -ENODEV;
 }
@@ -2625,9 +2603,8 @@ int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * secti
 
 int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 {
-#ifdef ENABLE_HAL_PROFILING
   EXEC_BUF_CB;
-#endif
+
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
 }
@@ -2646,9 +2623,8 @@ int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, i
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
-#ifdef ENABLE_HAL_PROFILING
   EXEC_WAIT_CB;
-#endif
+
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
 }
@@ -2659,9 +2635,8 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
   return 0;
 #endif
 
-#ifdef ENABLE_HAL_PROFILING
   OPEN_CONTEXT_CB;
-#endif
+
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }
@@ -2672,9 +2647,7 @@ int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIn
   return 0;
 #endif
 
-#ifdef ENABLE_HAL_PROFILING
   CLOSE_CONTEXT_CB;
-#endif
 
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;

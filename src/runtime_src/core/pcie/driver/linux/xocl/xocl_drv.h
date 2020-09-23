@@ -1050,6 +1050,8 @@ enum data_kind {
 	XMC_VCCAUX_PMC,
 	XMC_VCCRAM,
 	DATA_RETAIN,
+	MAC_CONT_NUM,
+	MAC_ADDR_FIRST,
 };
 
 enum mb_kind {
@@ -1684,7 +1686,6 @@ struct xocl_ert_30_funcs {
 	 ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), INTR_TO_ERT) : \
 	 -ENODEV)
 
-
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -2020,7 +2021,7 @@ int xocl_fdt_setprop(xdev_handle_t xdev_hdl, void *blob, int off,
 		     const char *name, const void *val, int size);
 const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 			     char *name, int *lenp);
-
+void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
 
 /* init functions */
 int __init xocl_init_userpf(void);

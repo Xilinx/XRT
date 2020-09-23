@@ -77,7 +77,7 @@ void  main_(int argc, char** argv,
   po::parsed_options parsed = po::command_line_parser(argc, argv).
     options(allOptions).            // Global options
     positional(positionalCommand).  // Our commands
-    allow_unregistered().           // Allow for unregistered options (needed for sub obtions)
+    allow_unregistered().           // Allow for unregistered options (needed for sub options)
     run();                          // Parse the options
 
   po::variables_map vm;

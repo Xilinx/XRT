@@ -16,6 +16,7 @@
 
 #include "system_hwemu.h"
 #include "device_hwemu.h"
+#include "xrt.h"
 
 #include <memory>
 
@@ -41,6 +42,13 @@ struct X
 }
 
 namespace xrt_core { namespace hwemu {
+
+system::
+system()
+{
+  // xclProbe must be called to set up data structures
+  xclProbe();
+}
 
 std::pair<device::id_type, device::id_type>
 system::
@@ -70,6 +78,13 @@ get_mgmtpf_device(device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
   return std::shared_ptr<xrt_core::hwemu::device>(new xrt_core::hwemu::device(nullptr, id, false));
+}
+
+void
+system::
+program_plp(std::shared_ptr<xrt_core::device> dev, const std::vector<char> &buffer) const
+{
+  throw std::runtime_error("plp program is not supported");
 }
 
 std::shared_ptr<xrt_core::device>

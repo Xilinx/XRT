@@ -17,6 +17,7 @@
  under the License.
 """
 
+import ctypes.util
 import numpy as np
 import sys
 import time

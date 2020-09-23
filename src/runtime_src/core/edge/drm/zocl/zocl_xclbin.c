@@ -14,6 +14,7 @@
 #include <linux/fpga/fpga-mgr.h>
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
+#include "zocl_aie.h"
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
@@ -418,6 +419,13 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size);
 	vfree(pdi_buf);
 
+	/* Mark AIE out of reset state after load PDI */
+	if (zdev->aie) {
+		mutex_lock(&zdev->aie_lock);
+		zdev->aie->aie_reset = false;
+		mutex_unlock(&zdev->aie_lock);
+	}
+
 	return ret;
 }
 
@@ -521,6 +529,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 			ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
 			if (ret)
 				DRM_WARN("read xclbin: fail to load AIE");
+			else
+				zocl_create_aie(zdev, axlf);
 		} else {
 			DRM_INFO("%s The XCLBIN already loaded", __func__);
 		}
@@ -668,7 +678,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	zocl_init_mem(zdev, zdev->topology);
 
 	/* Createing AIE Partition */
-	zocl_destroy_aie(zdev);
 	zocl_create_aie(zdev, axlf);
 
 	/*

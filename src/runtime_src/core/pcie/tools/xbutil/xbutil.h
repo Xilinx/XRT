@@ -27,6 +27,7 @@
 #include <sstream>
 #include <string>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/tokenizer.hpp>
 
 #include "xrt.h"
 #include "ert.h"
@@ -61,6 +62,7 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
 #define XCL_INVALID_SENSOR_VAL 0
 
 #define indent(level)   std::string((level) * 4, ' ')
+
 /*
  * Simple command line tool to query and interact with SDx PCIe devices
  * The tool statically links with xcldma HAL driver inorder to avoid
@@ -122,6 +124,9 @@ enum cmacommand {
     CMA_DISABLE,
     CMA_VALIDATE,
     CMA_SIZE,
+};
+enum kdscommand {
+    KDS_CU_INTERRUPT = 0x0,
 };
 
 enum class cu_stat : unsigned short {
@@ -275,7 +280,7 @@ public:
         std::string errmsg;
         pcidev::get_dev(m_idx)->sysfs_get("rom", "VBNV", errmsg, m_devicename);
         if(!errmsg.empty())
-            throw std::runtime_error("Failed to determine device name. ");
+            throw std::runtime_error("Failed to determine device name. " + errmsg);
     }
 
     device(device&& rhs) = delete;
@@ -351,6 +356,7 @@ public:
         return 0;
     }
 
+    /* Old kds style */
     uint32_t parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu_stat kind) const
     {
        uint32_t ret = 0;
@@ -383,6 +389,7 @@ public:
 
         std::vector<std::string> custat;
         std::string errmsg;
+
         pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
 
         for (unsigned int i = 0; i < computeUnits.size(); ++i) {
@@ -398,6 +405,49 @@ public:
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
+        return 0;
+    }
+
+    /* new KDS which supported CU subdevice */
+    int parseCUSubdevStat() const
+    {
+        using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+        std::vector<std::string> custat;
+        std::string errmsg;
+
+        // The kds_custat_raw is printing in formatted string of each line
+        // Format: "%d,%s:%s,0x%llx,0x%x,%llu"
+        // Using comma as separator.
+        pcidev::get_dev(m_idx)->sysfs_get("", "kds_custat_raw", errmsg, custat);
+        for (auto& line : custat) {
+            boost::char_separator<char> sep(",");
+            std::string name(":");
+            unsigned long long paddr = 0;
+            uint32_t usage = 0;
+            uint32_t status = 0;
+            int cu_idx = 0;
+            int radix = 16;
+            tokenizer tokens(line, sep);
+
+            // Check if we have 5 tokens: cu_index, name, addr, status, usage
+            if (std::distance(tokens.begin(), tokens.end()) == 5) {
+                tokenizer::iterator tok_it = tokens.begin();
+                cu_idx = std::stoi(std::string(*tok_it++));
+                name = std::string(*tok_it++);
+                paddr = std::stoull(std::string(*tok_it++), nullptr, radix);
+                status = std::stoul(std::string(*tok_it++), nullptr, radix);
+                usage = std::stoul(std::string(*tok_it++));
+            } else
+                break;
+
+            boost::property_tree::ptree ptCu;
+            ptCu.put( "name",         name );
+            ptCu.put( "base_address", paddr );
+            ptCu.put( "usage",        usage );
+            ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
+            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(cu_idx)), ptCu );
+        }
+
         return 0;
     }
 
@@ -490,7 +540,7 @@ public:
 
         // If unknown status bits, can't support.
         if (status & ~(ce_mask | ue_mask)) {
-            std::cout << "Bad ECC status detected!" << std::endl;
+            std::cerr << "Bad ECC status detected!" << std::endl;
             return -EINVAL;
         }
 
@@ -739,6 +789,8 @@ public:
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
         std::vector<std::string> mac_addrs;
+        int mac_contiguous_num;
+        std::string mac_addr_first;
         bool mig_calibration;
 
         clock_freqs.resize(3);
@@ -756,6 +808,8 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr1",               errmsg, mac_addrs[1] );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr2",               errmsg, mac_addrs[2] );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr3",               errmsg, mac_addrs[3] );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_contiguous_num",      errmsg, mac_contiguous_num, 0);
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr_first",          errmsg, mac_addr_first);
         pcidev::get_dev(m_idx)->sysfs_get<int>("rom", "ddr_bank_size",       errmsg, ddr_size,  0 );
         pcidev::get_dev(m_idx)->sysfs_get<int>( "rom", "ddr_bank_count_max", errmsg, ddr_count, 0 );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs",            errmsg, clock_freqs );
@@ -801,14 +855,30 @@ public:
         sensor_tree::put( "board.info.host_mem_size",   xrt_core::utils::unit_convert(host_mem_size) );
         sensor_tree::put( "board.info.max_host_mem_aperture",   xrt_core::utils::unit_convert(max_host_mem_aperture) );
 
-        for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
-            std::string entry_name = "board.info.mac_addr."+std::to_string(i);
+        if (mac_contiguous_num && !mac_addr_first.empty()) {
+            std::string mac_prefix = mac_addr_first.substr(0, mac_addr_first.find_last_of(":"));
+            std::string mac_base = mac_addr_first.substr(mac_addr_first.find_last_of(":") + 1);
+            std::stringstream ss;
+            uint32_t mac_base_val = 0;
+            ss << std::hex << mac_base;
+            ss >> mac_base_val;
 
-            if (mac_addrs[i].empty())
-                continue;
+            mac_addrs.resize(mac_contiguous_num);
+            for (uint32_t i = 0; i < (uint32_t)mac_contiguous_num; i++) {
+                std::string entry_name = "board.info.mac_addr." + std::to_string(i);
+                std::ostringstream oss;
+                oss << boost::format("%02X") % (mac_base_val + i);
 
-            sensor_tree::put( entry_name,     mac_addrs[i]);
+                sensor_tree::put(entry_name, mac_prefix + ":" + oss.str());
+            }
+        } else {
+            for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
+                std::string entry_name = "board.info.mac_addr."+std::to_string(i);
+                if (!mac_addrs[i].empty())
+                    sensor_tree::put(entry_name, mac_addrs[i]);
+            }
         }
+
         //interface uuid
         std::vector<std::string> interface_uuid;
         pcidev::get_dev(m_idx)->sysfs_get( "", "interface_uuids", errmsg, interface_uuid );
@@ -966,12 +1036,17 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
         sensor_tree::put( "board.xclbin.uuid", xclbinid );
 
-        // compute unit
-        std::vector<ip_data> computeUnits;
-        if( getComputeUnits( computeUnits ) < 0 ) {
-            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
-        }
-        parseComputeUnits( computeUnits );
+        uint32_t kds_mode;
+        pcidev::get_dev(m_idx)->sysfs_get<uint32_t>("", "kds_mode", errmsg, kds_mode, 0);
+        if (!kds_mode) {
+            // compute unit
+            std::vector<ip_data> computeUnits;
+            if( getComputeUnits( computeUnits ) < 0 ) {
+                std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
+            }
+            parseComputeUnits( computeUnits );
+        } else
+            parseCUSubdevStat();
 
         /**
          * \note Adding device information for debug and profile

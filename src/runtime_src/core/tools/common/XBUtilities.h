@@ -40,14 +40,6 @@ namespace XBUtilities {
     MT_UNKNOWN, 
   } MessageType;
 
-  enum class reset_type {
-    hot,
-    kernel,
-    ert,
-    ecc,
-    soft_kernel
-  };
-
   /**
    * Enables / Disables verbosity
    * 
@@ -128,7 +120,7 @@ namespace XBUtilities {
 
   int check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std::string &err);
 
-  reset_type str_to_enum_reset(const std::string& str);
+  xrt_core::query::reset_type str_to_reset_obj(const std::string& str);
 
   /**
    * string_to_UUID(): convert a string to hyphen formatted UUID

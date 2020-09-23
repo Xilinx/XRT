@@ -34,6 +34,7 @@ public:
 
   virtual void read(uint64_t addr, void* buf, uint64_t len) const;
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
+  virtual void reset(const query::reset_type) const;
 
 private:
   // Private look up function for concrete query::request

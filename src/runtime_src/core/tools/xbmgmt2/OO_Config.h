@@ -40,9 +40,7 @@ class OO_Config : public OptionOptions {
   bool m_show;
   bool m_ddr;
   bool m_hbm;
-  bool m_enable_retention;
-  bool m_disable_retention;
-
+  mutable std::string m_retention;
 };
 
 #endif

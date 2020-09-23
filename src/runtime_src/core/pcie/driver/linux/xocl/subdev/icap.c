@@ -663,7 +663,7 @@ static int calibrate_mig(struct icap *icap)
 		return -ETIMEDOUT;
 	}
 
-	ICAP_INFO(icap, "took %ds", i/2);
+	ICAP_DBG(icap, "took %ds", i/2);
 	return 0;
 }
 
@@ -967,8 +967,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 
 	if (xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
-		if (XDEV(xdev)->priv.sched_bin
-			&& !(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_DYNAMIC_IP)) {
+		if (XDEV(xdev)->priv.sched_bin) {
 			err = request_firmware(&sche_fw,
 				XDEV(xdev)->priv.sched_bin, &pcidev->dev);
 			if (!err)  {
@@ -994,6 +993,12 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 				load_sched = true;
 				err = 0;
 			}
+
+			mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf,
+					PARTITION_METADATA);
+			if (mbHeader)
+				xocl_fdt_get_ert_fw_ver(xdev,
+					fw_buf + mbHeader->m_sectionOffset);
 		}
 	}
 
@@ -1433,6 +1438,57 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 	return err;
 }
 
+static int icap_create_subdev_cdma(struct platform_device *pdev, int inst_idx)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	u32 *cdma = xocl_rom_cdma_addr(xdev);
+	u32 num_cdma = 0;
+	int err = 0;
+	int i;
+
+	/* Some platforms doesn't support m2m CU */
+	if (!cdma)
+		return 0;
+
+	/* Maximum 4 m2m cus */
+	for (i = 0; i < 4; i++) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
+		struct xrt_cu_info info;
+
+		if (!cdma[i])
+			break;
+
+		memset(&info, 0, sizeof(info));
+
+		num_cdma++;
+		sprintf(info.kname, "m2m");
+		info.kname[sizeof(info.kname)-1] = '\0';
+		sprintf(info.iname, "m2m_%d", i + 1);
+		info.iname[sizeof(info.kname)-1] = '\0';
+
+		info.inst_idx = i + inst_idx;
+		info.addr = cdma[i];
+		info.num_res = subdev_info.num_res;
+		info.protocol = CTRL_HS;
+		info.intr_id = M2M_CU_ID;
+		info.is_m2m = 1;
+
+		subdev_info.res[0].start += info.addr;
+		subdev_info.res[0].end += info.addr;
+		subdev_info.priv_data = &info;
+		subdev_info.data_len = sizeof(info);
+		subdev_info.override_idx = info.inst_idx;
+
+		err = xocl_subdev_create(xdev, &subdev_info);
+		if (err)
+			ICAP_ERR(icap, "Create CU %s:%s failed. Skip",
+				 info.kname, info.iname);
+	}
+
+	return 0;
+}
+
 static int icap_create_subdev_cu(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1454,6 +1510,7 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		if (ip->m_base_address == 0xFFFFFFFF)
 			continue;
 
+		memset(&info, 0, sizeof(info));
 		/* NOTE: Only support 64 instences in subdev framework */
 
 		/* ip_data->m_name format "<kernel name>:<instance name>",
@@ -1483,6 +1540,10 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		if (err)
 			ICAP_ERR(icap, "Create CU %s failed. Skip", ip->m_name);
 	}
+
+	/* M2M CU (aka kdma/cdma) */
+	if (!M2M_CB(xdev))
+		icap_create_subdev_cdma(pdev, i);
 
 	return err;
 }
@@ -1851,7 +1912,12 @@ static int icap_verify_signature(struct icap *icap,
 	int ret = 0;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+/* Starting with Ubuntu 20.04 we need to use VERIFY_USE_PLATFORM_KEYRING in order to use MOK keys*/
+#define	SYS_KEYS	(VERIFY_USE_PLATFORM_KEYRING)
+#else
 #define	SYS_KEYS	((void *)1UL)
+#endif
 	ret = verify_pkcs7_signature(data, data_len, sig, sig_len,
 		(icap->sec_level == ICAP_SEC_SYSTEM) ? SYS_KEYS : icap_keys,
 		VERIFYING_UNSPECIFIED_SIGNATURE, NULL, NULL);
@@ -2212,7 +2278,7 @@ static bool check_mem_topo_and_data_retention(struct icap *icap,
 	size = hdr->m_sectionSize;
 	offset = hdr->m_sectionOffset;
 
-	/* Data retention feature ONLY works if the xclbins have identical mem_topology 
+	/* Data retention feature ONLY works if the xclbins have identical mem_topology
 	 * or it will lead to hardware failure.
 	 * If the incoming xclbin has different mem_topology, disable data retention feature
 	 */
@@ -2466,7 +2532,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		err = -EINVAL;
 		goto done;
 	}
-	
+
     if (!xocl_verify_timestamp(xdev,
 		xclbin->m_header.m_featureRomTimeStamp)) {
 		ICAP_ERR(icap, "TimeStamp of ROM did not match Xclbin");
@@ -3493,7 +3559,7 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 		goto unlock;
 
 	memcpy(mem_topo, icap->mem_topo, size);
-	range = xocl_addr_translator_get_range(xdev);	
+	range = xocl_addr_translator_get_range(xdev);
 	for ( i=0; i< mem_topo->m_count; ++i) {
 		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag)){
 			/* m_size in KB, convert Byte to KB */
@@ -4032,8 +4098,14 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		}
 		memcpy(icap->rp_sche_bin, header, section->m_sectionSize);
 		icap->rp_sche_bin_len = section->m_sectionSize;
+		ICAP_INFO(icap, "sche bin from xsabin , len %ld", icap->rp_sche_bin_len);
 	}
 
+	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
+	if (section) {
+		xocl_fdt_get_ert_fw_ver(xdev,
+			(char *)axlf + section->m_sectionOffset);
+	}
 	vfree(axlf);
 
 	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);

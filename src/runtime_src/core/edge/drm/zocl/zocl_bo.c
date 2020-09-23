@@ -685,7 +685,7 @@ static int zocl_bo_rdwr_ioctl(struct drm_device *dev, void *data,
 	char __user *user_data = to_user_ptr(args->data_ptr);
 	struct drm_zocl_bo *bo;
 	int ret = 0;
-	void *kaddr;
+	char *kaddr;
 
 	if (!gem_obj) {
 		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
