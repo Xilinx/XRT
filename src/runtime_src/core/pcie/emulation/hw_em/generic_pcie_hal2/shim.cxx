@@ -1432,6 +1432,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
+     xclemulation::DEBUG_MODE lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
+
     // The following is evil--hardcoding. This name may change.
     // Is there a way we can determine the name from the directories or otherwise?
     std::string bdName("dr"); // Used to be opencldesign. This is new default.
@@ -1448,48 +1450,47 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(pPath)
       {
         // Copy waveform database
-        std::string extension = "wdb";
-        if (boost::filesystem::exists(binaryDirectory+"/msim"))
-        {
-          extension = "wlf";
+        if (lWaveform != xclemulation::DEBUG_MODE::OFF) {
+          std::string extension = "wdb";
+          if (boost::filesystem::exists(binaryDirectory+"/msim"))
+          {
+            extension = "wlf";
+          }
+          std::string wdbFileName = binaryDirectory + "/" + fileName + "."+extension;
+          std::string destPath = "'" + std::string(path) + "/" + fileName +"." + extension + "'";
+          systemUtil::makeSystemCall(wdbFileName, systemUtil::systemOperation::COPY,destPath, boost::lexical_cast<std::string>(__LINE__));
+
+          // Copy waveform config
+          std::string wcfgFilePath= binaryDirectory + "/" + bdName + "_behav.wcfg";
+          std::string destPath2 = "'" + std::string(path) + "/" + fileName + ".wcfg'";
+          systemUtil::makeSystemCall(wcfgFilePath, systemUtil::systemOperation::COPY, destPath2, boost::lexical_cast<std::string>(__LINE__));
+
+          // Append to detailed kernel trace data mining results file
+          std::string logFilePath= binaryDirectory + "/profile_kernels.csv";
+          std::string destPath3 = "'" + std::string(path) + "/profile_kernels.csv'";
+          systemUtil::makeSystemCall(logFilePath, systemUtil::systemOperation::APPEND, destPath3, boost::lexical_cast<std::string>(__LINE__));
+          xclemulation::copyLogsFromOneFileToAnother(logFilePath, mDebugLogStream);
+
+          // Append to detailed kernel trace "timeline" file
+          std::string traceFilePath = binaryDirectory + "/timeline_kernels.csv";
+          std::string destPath4 = "'" + std::string(path) + "/timeline_kernels.csv'";
+          systemUtil::makeSystemCall(traceFilePath, systemUtil::systemOperation::APPEND, destPath4, boost::lexical_cast<std::string>(__LINE__));
+
+          // Copy proto inst file
+          std::string protoFilePath= binaryDirectory + "/" + bdName + "_behav.protoinst";
+          std::string destPath6 = "'" + std::string(path) + "/" + fileName + ".protoinst'";
+          systemUtil::makeSystemCall(protoFilePath, systemUtil::systemOperation::COPY, destPath6, boost::lexical_cast<std::string>(__LINE__));
+
+
+          if (mLogStream.is_open())
+            mLogStream << "appended " << logFilePath << " to " << destPath3 << std::endl;
         }
-        std::string wdbFileName = binaryDirectory + "/" + fileName + "."+extension;
-        std::string destPath = "'" + std::string(path) + "/" + fileName +"." + extension + "'";
-        systemUtil::makeSystemCall(wdbFileName, systemUtil::systemOperation::COPY,destPath, boost::lexical_cast<std::string>(__LINE__));
-
-        // Copy waveform config
-        std::string wcfgFilePath= binaryDirectory + "/" + bdName + "_behav.wcfg";
-        std::string destPath2 = "'" + std::string(path) + "/" + fileName + ".wcfg'";
-        systemUtil::makeSystemCall(wcfgFilePath, systemUtil::systemOperation::COPY, destPath2, boost::lexical_cast<std::string>(__LINE__));
-
-        // Append to detailed kernel trace data mining results file
-        std::string logFilePath= binaryDirectory + "/profile_kernels.csv";
-        std::string destPath3 = "'" + std::string(path) + "/profile_kernels.csv'";
-        systemUtil::makeSystemCall(logFilePath, systemUtil::systemOperation::APPEND, destPath3, boost::lexical_cast<std::string>(__LINE__));
-        xclemulation::copyLogsFromOneFileToAnother(logFilePath, mDebugLogStream);
-
-        // Append to detailed kernel trace "timeline" file
-        std::string traceFilePath = binaryDirectory + "/timeline_kernels.csv";
-        std::string destPath4 = "'" + std::string(path) + "/timeline_kernels.csv'";
-        systemUtil::makeSystemCall(traceFilePath, systemUtil::systemOperation::APPEND, destPath4, boost::lexical_cast<std::string>(__LINE__));
-
-        if (mLogStream.is_open())
-          mLogStream << "appended " << logFilePath << " to " << destPath3 << std::endl;
 
         // Copy Simulation Log file
         std::string simulationLogFilePath= binaryDirectory + "/" + "simulate.log";
         std::string destPath5 = "'" + std::string(path) + "/" + fileName + "_simulate.log'";
         systemUtil::makeSystemCall(simulationLogFilePath, systemUtil::systemOperation::COPY, destPath5, boost::lexical_cast<std::string>(__LINE__));
 
-        // Copy proto inst file
-        std::string protoFilePath= binaryDirectory + "/" + bdName + "_behav.protoinst";
-        std::string destPath6 = "'" + std::string(path) + "/" + fileName + ".protoinst'";
-        systemUtil::makeSystemCall(protoFilePath, systemUtil::systemOperation::COPY, destPath6, boost::lexical_cast<std::string>(__LINE__));
-
-        // Copy Simulation Log file
-        std::string sdxEmulatorLogFilePath= binaryDirectory + "/" + "sdx_emulator.log";
-        std::string destPath7 = "'" + std::string(path) + "/" + fileName + "_sdx_emulator.log'";
-        systemUtil::makeSystemCall(sdxEmulatorLogFilePath, systemUtil::systemOperation::COPY, destPath7, boost::lexical_cast<std::string>(__LINE__));
 
         // Copy xsc_report Log file
         std::string xscReportLogFilePath= binaryDirectory + "/" + "xsc_report.log";

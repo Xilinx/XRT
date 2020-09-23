@@ -38,6 +38,7 @@ namespace po = boost::program_options;
 // ---- Reports ------
 #include "tools/common/Report.h"
 #include "tools/common/ReportHost.h"
+#include "tools/common/ReportCu.h"
 #include "tools/common/ReportFirewall.h"
 #include "tools/common/ReportDebugIpStatus.h"
 #include "tools/common/ReportElectrical.h"
@@ -55,6 +56,7 @@ static const ReportCollection fullReportCollection = {
   std::make_shared<ReportMemory>(),
   std::make_shared<ReportFirewall>(),
   std::make_shared<ReportHost>(),
+  std::make_shared<ReportCu>(),
   std::make_shared<ReportThermal>(),
   std::make_shared<ReportDebugIpStatus>()
 };

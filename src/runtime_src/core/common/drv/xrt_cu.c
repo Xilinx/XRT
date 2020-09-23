@@ -150,7 +150,7 @@ static inline int process_rq(struct xrt_cu *xcu)
 }
 
 /**
- * process_rq() - Process pending queue
+ * process_pq() - Process pending queue
  * @xcu: Target XRT CU
  *
  * Move all of the pending queue commands to the tail of run queue

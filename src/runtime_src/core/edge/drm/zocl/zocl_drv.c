@@ -29,6 +29,7 @@
 #include <linux/spinlock.h>
 #include "zocl_drv.h"
 #include "zocl_sk.h"
+#include "zocl_aie.h"
 #include "zocl_bo.h"
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
@@ -738,6 +739,10 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(ZOCL_AIE_FD, zocl_aie_fd_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_AIE_RESET, zocl_aie_reset_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_AIE_GETCMD, zocl_aie_getcmd_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_AIE_PUTCMD, zocl_aie_putcmd_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 

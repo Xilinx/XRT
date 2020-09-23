@@ -215,6 +215,15 @@ kds_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR_RO(kds_mode);
 
 static ssize_t
+kds_numcdma_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	return sprintf(buf, "%d\n", kds->cu_mgmt.num_cdma);
+}
+static DEVICE_ATTR_RO(kds_numcdma);
+
+static ssize_t
 kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
@@ -627,6 +636,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_kds_mode.attr,
 	&dev_attr_kds_echo.attr,
+	&dev_attr_kds_numcdma.attr,
 	&dev_attr_kds_stat.attr,
 	&dev_attr_kds_custat_raw.attr,
 	&dev_attr_kds_interrupt.attr,

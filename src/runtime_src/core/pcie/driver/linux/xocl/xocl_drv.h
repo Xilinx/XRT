@@ -1686,7 +1686,6 @@ struct xocl_ert_30_funcs {
 	 ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), INTR_TO_ERT) : \
 	 -ENODEV)
 
-
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);

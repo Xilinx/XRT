@@ -21,6 +21,101 @@ MODULE_PARM_DESC(kds_mode,
  */
 int kds_echo = 0;
 
+static int
+get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
+	     uint32_t bo_hdl, size_t off, size_t size, uint64_t *paddrp)
+{
+	struct drm_device *ddev = filp->minor->dev;
+	struct drm_gem_object *obj;
+	struct drm_xocl_bo *xobj;
+
+	obj = xocl_gem_object_lookup(ddev, filp, bo_hdl);
+	if (!obj) {
+		userpf_err(xdev, "Failed to look up GEM BO 0x%x\n", bo_hdl);
+		return -ENOENT;
+	}
+
+	xobj = to_xocl_bo(obj);
+	if (!xobj->mm_node) {
+		/* Not a local BO */
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+		return -EADDRNOTAVAIL;
+	}
+
+	if (obj->size <= off || obj->size < off + size) {
+		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+		return -EINVAL;
+	}
+
+	*paddrp = xobj->mm_node->start + off;
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+	return 0;
+}
+
+static int copybo_ecmd2xcmd(struct xocl_dev *xdev, struct drm_file *filp,
+			    struct ert_start_copybo_cmd *ecmd,
+			    struct kds_command *xcmd)
+{
+	struct kds_cu_mgmt *cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
+	uint64_t src_addr;
+	uint64_t dst_addr;
+	size_t src_off;
+	size_t dst_off;
+	size_t sz;
+	int ret_src;
+	int ret_dst;
+	int i;
+
+	sz = ert_copybo_size(ecmd);
+
+	src_off = ert_copybo_src_offset(ecmd);
+	ret_src = get_bo_paddr(xdev, filp, ecmd->src_bo_hdl, src_off, sz, &src_addr);
+	if (ret_src != 0 && ret_src != -EADDRNOTAVAIL)
+		return ret_src;
+
+	dst_off = ert_copybo_dst_offset(ecmd);
+	ret_dst = get_bo_paddr(xdev, filp, ecmd->dst_bo_hdl, dst_off, sz, &dst_addr);
+	if (ret_dst != 0 && ret_dst != -EADDRNOTAVAIL)
+		return ret_dst;
+
+	/* We need at least one local BO for copy */
+	if (ret_src == -EADDRNOTAVAIL && ret_dst == -EADDRNOTAVAIL)
+		return -EINVAL;
+
+	if (ret_src != ret_dst) {
+		/* One of them is not local BO, perform P2P copy */
+		xocl_copy_import_bo(filp->minor->dev, filp, ecmd);
+		return 1;
+	}
+
+	/* Both BOs are local, copy via cdma CU */
+	if (cu_mgmt->num_cdma == 0)
+		return -EINVAL;
+
+	userpf_info(xdev,"checking alignment requirments for KDMA sz(%lu)",sz);
+	if ((dst_addr + dst_off) % KDMA_BLOCK_SIZE ||
+	    (src_addr + src_off) % KDMA_BLOCK_SIZE ||
+	    sz % KDMA_BLOCK_SIZE) {
+		userpf_err(xdev,"improper alignment, cannot use KDMA");
+		return -EINVAL;
+	}
+
+	ert_fill_copybo_cmd(ecmd, 0, 0, src_addr, dst_addr, sz / KDMA_BLOCK_SIZE);
+
+	i = cu_mgmt->num_cus - cu_mgmt->num_cdma;
+	while (i < cu_mgmt->num_cus) {
+		ecmd->cu_mask[i / 32] |= 1 << (i % 32);
+		i++;
+	}
+	ecmd->opcode = ERT_START_CU;
+	ecmd->type = ERT_CU;
+
+	start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+
+	return 0;
+}
+
 static inline void
 xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
 {
@@ -182,7 +277,11 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct drm_xocl_bo *xobj;
 	struct ert_packet *ecmd;
 	struct kds_command *xcmd;
+	struct kds_cu_mgmt *cu_mgmt;
+	u32 cdma_addr;
+	int cu_count;
 	int ret = 0;
+	int i;
 
 	if (!client->xclbin_id) {
 		userpf_err(xdev, "The client has no opening context\n");
@@ -227,9 +326,27 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	switch (ecmd->opcode) {
 	case ERT_CONFIGURE:
 		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
+
+		/* Special handle for m2m cu :( */
+		cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
+		i = cu_mgmt->num_cus - cu_mgmt->num_cdma;
+		while (i < cu_mgmt->num_cus) {
+			cdma_addr = cu_mgmt->xcus[i]->info.addr;
+			to_cfg_pkg(ecmd)->data[i] = cdma_addr;
+			to_cfg_pkg(ecmd)->count++;
+			to_cfg_pkg(ecmd)->num_cus++;
+			i++;
+		}
 		break;
 	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		break;
+	case ERT_START_COPYBO:
+		ret = copybo_ecmd2xcmd(xdev, filp, to_copybo_pkg(ecmd), xcmd);
+		if (ret) {
+			xcmd->cb.free(xcmd);
+			return (ret < 0)? ret : 0;
+		}
 		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");

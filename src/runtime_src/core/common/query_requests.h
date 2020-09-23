@@ -74,6 +74,7 @@ enum class key_type
   ip_layout_raw,
   clock_freq_topology_raw,
   dma_stream,
+  kds_cu_info,
 
   xmc_version,
   xmc_board_name,
@@ -187,6 +188,7 @@ enum class key_type
   rp_program_status,
 
   aie_metadata,
+  graph_status,
   noop
 
 };
@@ -612,10 +614,29 @@ struct aie_metadata : request
   get(const device*) const = 0;
 };
 
+struct graph_status : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::graph_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct ip_layout_raw : request
 {
   using result_type = std::vector<char>;
   static const key_type key = key_type::ip_layout_raw;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct kds_cu_info : request
+{
+  // Returning CUs info as <base_addr, usages, status>
+  using result_type = std::vector<std::tuple<uint64_t, uint32_t, uint32_t>>;
+  static const key_type key = key_type::kds_cu_info;
 
   virtual boost::any
   get(const device*) const = 0;

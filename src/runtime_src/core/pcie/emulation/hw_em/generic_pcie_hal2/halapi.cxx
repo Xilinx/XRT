@@ -193,7 +193,16 @@ unsigned xclProbe()
     return 0;
   }
 
-  unsigned int deviceIndex = 0;
+  static int xclProbeCallCnt=0;
+  static unsigned int deviceIndex = 0;
+
+  //Ensure xclProbe is called only once as we load all the devices in the single go
+  //xclProbe call happens during the load of the library, no need to explicit call
+
+  if (xclProbeCallCnt == 1) {
+    return deviceIndex;
+  }
+
   std::vector<std::tuple<xclDeviceInfo2, std::list<xclemulation::DDRBank>, bool, bool, FeatureRomHeader, boost::property_tree::ptree> > devicesInfo;
   getDevicesInfo(devicesInfo);
   if(devicesInfo.size() == 0)
@@ -211,6 +220,7 @@ unsigned xclProbe()
     xclhwemhal2::devices[deviceIndex++] = handle;
   }
 
+  xclProbeCallCnt++;
   return deviceIndex;
 }
 

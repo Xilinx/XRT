@@ -825,11 +825,11 @@ static std::vector<TestCollection> testSuite = {
  * print basic information about a test
  */
 static void
-pretty_print_test_desc(const boost::property_tree::ptree& test, 
+pretty_print_test_desc(const boost::property_tree::ptree& test, int test_idx,
                        size_t testSuiteSize, std::ostream & _ostream)
 {
-  _ostream << boost::format("%d/%d Test #%-10d: %s\n") % test.get<int>("id") % testSuiteSize
-                    % test.get<int>("id") % test.get<std::string>("name");
+  _ostream << boost::format("%d/%d Test #%-10d: %s\n") % test_idx % testSuiteSize
+                    % test_idx % test.get<std::string>("name");
   _ostream << boost::format("    %-16s: %s\n") % "Description" % test.get<std::string>("description");
 }
 
@@ -926,11 +926,12 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device,
 
   get_platform_info(device, ptDeviceInfo, schemaVersion, _ostream);
 
+  int test_idx = 0;
   for (TestCollection * testPtr : testObjectsToRun) {
     boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
 
     if(schemaVersion == Report::SchemaVersion::text)
-      pretty_print_test_desc(ptTest, testObjectsToRun.size(), _ostream);
+      pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream);
 
     testPtr->testHandle(device, ptTest);
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );

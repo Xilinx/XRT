@@ -51,6 +51,33 @@ struct bdf
   }
 };
 
+struct kds_cu_info
+{
+  using result_type = query::kds_cu_info::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+  
+    std::vector<std::string> stats; 
+    std::string errmsg;
+    pdev->sysfs_get("mb_scheduler", "kds_custat", errmsg, stats);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+
+    result_type cuStats;
+    for (auto& line : stats) {
+	uint32_t base_addr = 0;
+	uint32_t usage = 0;
+	uint32_t status = 0;
+	sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &base_addr, &usage, &status);
+	cuStats.push_back(std::make_tuple(base_addr, usage, status));
+    }
+
+    return cuStats;
+  }
+};
 
 // Specialize for other value types.
 template <typename ValueType>
@@ -360,6 +387,7 @@ initialize_query_table()
   emplace_sysfs_getput<query::rp_program_status>        ("", "rp_program");
 
   emplace_func0_request<query::pcie_bdf,                bdf>();
+  emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
 }
 
 struct X { X() { initialize_query_table(); }};

@@ -1051,7 +1051,7 @@ xclPollQueue(xclDeviceHandle handle, uint64_t q_hdl, int min_compl,
  * @val:           option value
  * Return:         Number of events or appropriate error number
  *
- * Set option of a read or write queue. 
+ * Set option of a read or write queue.
  */
 XCL_DRIVER_DLLESPEC
 int
@@ -1060,6 +1060,7 @@ xclSetQueueOpt(xclDeviceHandle handle, uint64_t q_hdl, int type, uint32_t val);
 
 /**
  * xclPollCompletion - poll read/write queue completion
+ * @handle:        Device handle
  * @min_compl:     Unblock only when receiving min_compl completions
  * @max_compl:     Max number of completion with one poll
  * @comps:         Completed request array

@@ -29,14 +29,37 @@ const uint32_t major = 1;
 const uint32_t minor = 0;
 const uint32_t patch = 0;
 
+enum graph_state {   
+  STOP = 0,
+  RESET = 1,
+  RUNNING = 2,
+  SUSPEND = 3,
+  END = 4
+};
+
+inline std::string
+graph_status_to_string(int status) {
+  switch(status)
+  {
+    case STOP:    return std::string("stop");
+    case RESET:   return std::string("reset");
+    case RUNNING: return std::string("running");
+    case SUSPEND: return std::string("suspend");
+    case END:     return std::string("end");
+    default:      return std::string("idle");
+  }
+}
+
 boost::property_tree::ptree
 populate_aie(const xrt_core::device * device, const std::string& desc)
 {
   boost::property_tree::ptree pt;
   std::string aie_data;
+  std::vector<std::string> graph_status;
   pt.put("description", desc);
   boost::property_tree::ptree graph_array;
   boost::property_tree::ptree _pt;
+  boost::property_tree::ptree _gh_status;
 
   try {
     aie_data = xrt_core::device_query<qr::aie_metadata>(device);
@@ -45,6 +68,15 @@ populate_aie(const xrt_core::device * device, const std::string& desc)
   } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
     return pt;
+  }
+
+  try {
+    graph_status = xrt_core::device_query<qr::graph_status>(device);
+    std::stringstream ss;
+    std::copy(graph_status.begin(), graph_status.end(), std::ostream_iterator<std::string>(ss));
+    boost::property_tree::read_json(ss, _gh_status);
+  } catch (const std::exception& ex){
+    pt.put("error_msg", ex.what());
   }
 
   try {
@@ -138,6 +170,7 @@ populate_aie(const xrt_core::device * device, const std::string& desc)
       boost::property_tree::ptree tile_array;
       igraph.put("id", ograph.get<std::string>("id"));
       igraph.put("name", ograph.get<std::string>("name"));
+      igraph.put("status",graph_status_to_string(_gh_status.get<int>("graphs." + ograph.get<std::string>("name"), -1)));
       auto row_it = gr.second.get_child("core_rows").begin();
       auto memcol_it = gr.second.get_child("iteration_memory_columns").begin();
       auto memrow_it = gr.second.get_child("iteration_memory_rows").begin();
@@ -255,8 +288,9 @@ ReportAie::writeReport(const xrt_core::device * _pDevice,
   try {
     for (auto& gr: _pt.get_child("aie_metadata.graphs")) {
       boost::property_tree::ptree& graph = gr.second;
-      _output << boost::format("  GRAPH[%2d] Name:%2s\n") % graph.get<std::string>("id")
-           % graph.get<std::string>("name");
+      _output << boost::format("  GRAPH[%2d] %-10s: %s\n") % graph.get<std::string>("id")
+           % "Name" % graph.get<std::string>("name");
+      _output << boost::format("            %-10s: %s\n") % "Status" % graph.get<std::string>("status");
       _output << boost::format("    SNo.  %-20s%-30s%-30s\n") % "Core [C:R]"
            % "Iteration_Memory [C:R]" % "Iteration_Memory_Addresses";
       int count = 0;

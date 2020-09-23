@@ -111,7 +111,7 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
   for(auto& kd : available_devices) {
     boost::property_tree::ptree& dev = kd.second;
     std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
-    _output << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("board") % note;
+    _output << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
   }
   _output << std::endl;
 

@@ -967,8 +967,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 
 	if (xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
-		if (XDEV(xdev)->priv.sched_bin
-			&& !(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_DYNAMIC_IP)) {
+		if (XDEV(xdev)->priv.sched_bin) {
 			err = request_firmware(&sche_fw,
 				XDEV(xdev)->priv.sched_bin, &pcidev->dev);
 			if (!err)  {
@@ -1439,6 +1438,57 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 	return err;
 }
 
+static int icap_create_subdev_cdma(struct platform_device *pdev, int inst_idx)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	u32 *cdma = xocl_rom_cdma_addr(xdev);
+	u32 num_cdma = 0;
+	int err = 0;
+	int i;
+
+	/* Some platforms doesn't support m2m CU */
+	if (!cdma)
+		return 0;
+
+	/* Maximum 4 m2m cus */
+	for (i = 0; i < 4; i++) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
+		struct xrt_cu_info info;
+
+		if (!cdma[i])
+			break;
+
+		memset(&info, 0, sizeof(info));
+
+		num_cdma++;
+		sprintf(info.kname, "m2m");
+		info.kname[sizeof(info.kname)-1] = '\0';
+		sprintf(info.iname, "m2m_%d", i + 1);
+		info.iname[sizeof(info.kname)-1] = '\0';
+
+		info.inst_idx = i + inst_idx;
+		info.addr = cdma[i];
+		info.num_res = subdev_info.num_res;
+		info.protocol = CTRL_HS;
+		info.intr_id = M2M_CU_ID;
+		info.is_m2m = 1;
+
+		subdev_info.res[0].start += info.addr;
+		subdev_info.res[0].end += info.addr;
+		subdev_info.priv_data = &info;
+		subdev_info.data_len = sizeof(info);
+		subdev_info.override_idx = info.inst_idx;
+
+		err = xocl_subdev_create(xdev, &subdev_info);
+		if (err)
+			ICAP_ERR(icap, "Create CU %s:%s failed. Skip",
+				 info.kname, info.iname);
+	}
+
+	return 0;
+}
+
 static int icap_create_subdev_cu(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1460,6 +1510,7 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		if (ip->m_base_address == 0xFFFFFFFF)
 			continue;
 
+		memset(&info, 0, sizeof(info));
 		/* NOTE: Only support 64 instences in subdev framework */
 
 		/* ip_data->m_name format "<kernel name>:<instance name>",
@@ -1489,6 +1540,10 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		if (err)
 			ICAP_ERR(icap, "Create CU %s failed. Skip", ip->m_name);
 	}
+
+	/* M2M CU (aka kdma/cdma) */
+	if (!M2M_CB(xdev))
+		icap_create_subdev_cdma(pdev, i);
 
 	return err;
 }
@@ -1574,44 +1629,6 @@ static int icap_create_subdev_ip_layout(struct platform_device *pdev)
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create MIG subdev");
-				goto done;
-			}
-
-		} else if (ip->m_type == IP_MEM_HBM) {
-			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG_HBM;
-			uint16_t memidx = icap_get_memidx(mem_topo, IP_MEM_HBM, ip->indices.m_index);
-
-			if (memidx == INVALID_MEM_IDX)
-				continue;
-
-			if (!mem_topo || memidx >= mem_topo->m_count) {
-				ICAP_ERR(icap, "bad ECC controller index: %u",
-					ip->properties);
-				continue;
-			}
-
-			if (!mem_topo->m_mem_data[memidx].m_used) {
-				ICAP_INFO(icap,
-					"ignore ECC controller for: %s",
-					mem_topo->m_mem_data[memidx].m_tag);
-				continue;
-			}
-
-			memcpy(&mig_label.tag, mem_topo->m_mem_data[memidx].m_tag, 16);
-			mig_label.mem_idx = memidx;
-
-			subdev_info.res[0].start += ip->m_base_address;
-			subdev_info.res[0].end += ip->m_base_address;
-			subdev_info.priv_data = &mig_label;
-			subdev_info.data_len =
-				sizeof(struct xocl_mig_label);
-
-			if (!ICAP_PRIVILEGED(icap))
-				subdev_info.num_res = 0;
-
-			err = xocl_subdev_create(xdev, &subdev_info);
-			if (err) {
-				ICAP_ERR(icap, "can't create MIG_HBM subdev");
 				goto done;
 			}
 
@@ -4043,6 +4060,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		}
 		memcpy(icap->rp_sche_bin, header, section->m_sectionSize);
 		icap->rp_sche_bin_len = section->m_sectionSize;
+		ICAP_INFO(icap, "sche bin from xsabin , len %ld", icap->rp_sche_bin_len);
 	}
 
 	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);

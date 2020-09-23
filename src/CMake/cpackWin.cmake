@@ -103,13 +103,34 @@ if (DEFINED XCL_MGMT)
     
     cpack_add_component(xcl_mgmt_driver
       DISPLAY_NAME "XclMgmt Driver"
-      DESCRIPTION "XCL Managment driver"
+      DESCRIPTION "XCL Managment Driver"
       GROUP DRIVERS
       ENABLED
       REQUIRED
     )
   ENDIF(NOT XCL_MGMT STREQUAL "")
 ENDIF(DEFINED XCL_MGMT)
+
+# -- XCL Managment2 Driver --
+if (DEFINED XCL_MGMT2)
+  if (NOT XCL_MGMT2 STREQUAL "")
+    file(GLOB XCL_MGMT2_DRIVER 
+      "${XCL_MGMT2}/*"
+      )
+      install(FILES ${XCL_MGMT2_DRIVER}
+            DESTINATION xrt/drivers/xcl_mgmt2
+            COMPONENT xcl_mgmt2_driver)
+
+    cpack_add_component(xcl_mgmt2_driver
+      DISPLAY_NAME "XclMgmt2 Driver"
+      DESCRIPTION "XCL Managment2 Driver"
+      GROUP DRIVERS
+      ENABLED
+      REQUIRED
+    )
+  ENDIF(NOT XCL_MGMT2 STREQUAL "")
+ENDIF(DEFINED XCL_MGMT2)
+
 
 # -- Xocl User Driver --
 if (DEFINED XOCL_USER)
@@ -130,6 +151,26 @@ if (DEFINED XOCL_USER)
     )
   ENDIF(NOT XOCL_USER STREQUAL "")
 ENDIF(DEFINED XOCL_USER)
+
+# -- Xocl User2 Driver --
+if (DEFINED XOCL_USER2)
+  if (NOT XOCL_USER2 STREQUAL "")
+    file(GLOB XOCL_USER2_DRIVER 
+      "${XOCL_USER2}/*"
+      )
+      install(FILES ${XOCL_USER2_DRIVER}
+            DESTINATION xrt/drivers/xocl_user2
+            COMPONENT xocl_user2_driver)
+
+    cpack_add_component(xocl_user2_driver
+      DISPLAY_NAME "XoclUser2 Driver"
+      DESCRIPTION "XoclUser2 Driver"
+      GROUP DRIVERS
+      ENABLED
+      REQUIRED
+    )
+  ENDIF(NOT XOCL_USER2 STREQUAL "")
+ENDIF(DEFINED XOCL_USER2)
 
 
 # -- Drivers group --
