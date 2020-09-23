@@ -62,7 +62,7 @@ bool AIETraceOffload::initReadTrace()
 {
   buffers.clear();
   buffers.resize(numStream);
-  uint64_t i = 0;
+
   uint8_t  memIndex = 0;
   if(isPLIO) {
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
