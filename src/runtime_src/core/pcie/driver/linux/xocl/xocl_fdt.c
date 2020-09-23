@@ -1521,6 +1521,37 @@ long xocl_fdt_get_p2pbar_len(xdev_handle_t xdev_hdl, void *blob)
 	return be64_to_cpu(p2p_bar_len[1]);
 }
 
+int xocl_fdt_get_hostmem(xdev_handle_t xdev_hdl, void *blob, u64 *base,
+	u64 *size)
+{
+	int offset;
+	const u64 *prop;
+	const char *ipname;
+
+	if (!blob)
+		return -EINVAL;
+
+	for (offset = fdt_next_node(blob, -1, NULL);
+		offset >= 0;
+		offset = fdt_next_node(blob, offset, NULL)) {
+		ipname = fdt_get_name(blob, offset, NULL);
+		if (ipname && strncmp(ipname, NODE_HOSTMEM_BANK0,
+		    strlen(NODE_HOSTMEM_BANK0) + 1) == 0)
+			break;
+	}
+	if (offset < 0)
+		return -ENODEV;
+
+	prop = fdt_getprop(blob, offset, PROP_IO_OFFSET, NULL);
+	if (!prop)
+		return -EINVAL;
+
+	*base = be64_to_cpu(prop[0]);
+	*size = be64_to_cpu(prop[1]);
+
+	return 0;
+}
+
 int xocl_fdt_path_offset(xdev_handle_t xdev_hdl, void *blob, const char *path)
 {
 	return fdt_path_offset(blob, path);
