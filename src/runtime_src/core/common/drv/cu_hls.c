@@ -105,7 +105,7 @@ static void cu_hls_start(void *core)
 static inline void
 cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 {
-	u32 ctrl_reg;
+	u32 ctrl_reg = 0;
 	u32 done_reg = 0;
 	u32 ready_reg = 0;
 
@@ -125,6 +125,7 @@ cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 
 	status->num_done  = done_reg;
 	status->num_ready = ready_reg;
+	status->new_status = ctrl_reg;
 }
 
 /*
@@ -166,6 +167,7 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 
 	status->num_done  = done_reg;
 	status->num_ready = ready_reg;
+	status->new_status = ctrl_reg;
 }
 
 static void cu_hls_check(void *core, struct xcu_status *status)
@@ -176,6 +178,7 @@ static void cu_hls_check(void *core, struct xcu_status *status)
 		cu_hls->run_cnts--;
 		status->num_done = 1;
 		status->num_ready = 1;
+		status->new_status = CU_AP_IDLE;
 		return;
 	}
 
@@ -291,6 +294,7 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 	core->run_cnts = 0;
 	core->ctrl_chain = (xcu->info.protocol == CTRL_CHAIN)? true : false;
 
+	xcu->status = cu_read32(core, CTRL);
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_hls_funcs;
 

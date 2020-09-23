@@ -14,20 +14,20 @@
  * under the License.
  */
 
-#ifndef __ReportHostInterface_h_
-#define __ReportHostInterface_h_
+#ifndef __ReportCu_h_
+#define __ReportCu_h_
 
-// Please keep eternal include file dependencies to a minimum
+// Please keep external include file dependencies to a minimum
 #include "Report.h"
 
-class ReportHostInterface: public Report {
+class ReportCu : public Report {
  public:
-  ReportHostInterface() : Report("host-interface", "Host interface status/info", true /*deviceRequired*/) { /*empty*/ };
+  ReportCu() : Report("compute_units", "Information of the compute units", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:
   virtual void getPropertyTreeInternal(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
-  virtual void getPropertyTree20202(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
+  virtual void getPropertyTree20202(const xrt_core::device * _pDevicee, boost::property_tree::ptree &_pt) const;
   virtual void writeReport(const xrt_core::device * _pDevice, const std::vector<std::string> & _elementsFilter, std::iostream & _output) const;
 };
 

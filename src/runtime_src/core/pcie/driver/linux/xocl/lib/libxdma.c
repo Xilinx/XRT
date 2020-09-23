@@ -2470,7 +2470,6 @@ static int irq_msix_channel_setup(struct xdma_dev *xdev)
 	u32 vector;
 	struct xdma_engine *engine;
 
-	BUG_ON(!xdev);
 	if (!xdev->msix_enabled || xdev->no_dma)
 		return 0;
 
@@ -2517,8 +2516,6 @@ static void irq_msix_user_teardown(struct xdma_dev *xdev)
 {
 	int i;
 	int j = xdev->h2c_channel_max + xdev->c2h_channel_max;
-
-	BUG_ON(!xdev);
 
 	if (!xdev->msix_enabled)
 		return;

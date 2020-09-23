@@ -98,16 +98,17 @@ class run
   /**
    * wait() - Wait for a run to complete execution
    *
-   * @timeout_ms:  Timeout for wait.
-   * Return:       Command state upon return of wait
+   * @timeout:  Timeout for wait (default block till run completes)
+   * Return:    Command state upon return of wait
+   *
+   * The default timeout of 0ms indicates blocking until run completes.
    *
    * The current thread will block until the run completes or timeout
    * expires. Completion does not guarantee success, the run status
    * should be checked by using @state.
    */
-  XCL_DRIVER_DLLESPEC
   ert_cmd_state
-  wait(unsigned int timeout_ms=0) const;
+  wait(const std::chrono::milliseconds& timeout = std::chrono::milliseconds{0}) const;
 
   /**
    * state() - Check the current state of a run object
@@ -175,9 +176,9 @@ class run
    */
   template <typename ArgType>
   void
-  set_arg(int index, ArgType arg)
+  set_arg(int index, ArgType&& arg)
   {
-    set_arg_at_index(index, get_arg_value(arg));
+    set_arg_at_index(index, get_arg_value(std::forward<ArgType>(arg)));
   }
 
   /**
@@ -212,9 +213,9 @@ class run
    */
   template <typename ArgType>
   void
-  update_arg(int index, ArgType arg)
+  update_arg(int index, ArgType&& arg)
   {
-    update_arg_at_index(index, get_arg_value(arg));
+    update_arg_at_index(index, get_arg_value(std::forward<ArgType>(arg)));
   }
 
   /**
@@ -278,17 +279,17 @@ private:
   
   template<typename ArgType>
   std::vector<uint32_t>
-  get_arg_value(ArgType arg)
+  get_arg_value(ArgType&& arg)
   {
     auto words = std::max(sizeof(ArgType), sizeof(uint32_t)) / sizeof(uint32_t);
-    return { reinterpret_cast<uint32_t*>(&arg), reinterpret_cast<uint32_t*>(&arg) + words };
+    return { reinterpret_cast<const uint32_t*>(&arg), reinterpret_cast<const uint32_t*>(&arg) + words };
   }
 
   template<typename ArgType, typename ...Args>
   void
-  set_arg(int argno, ArgType arg, Args&&... args)
+  set_arg(int argno, ArgType&& arg, Args&&... args)
   {
-    set_arg(argno, arg);
+    set_arg(argno, std::forward<ArgType>(arg));
     set_arg(++argno, std::forward<Args>(args)...);
   }
 };

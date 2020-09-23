@@ -1311,6 +1311,8 @@ static bool chan_do_tx(struct mailbox_channel *ch)
 				do_sw_tx(ch);
 			else
 				do_hw_tx(ch);
+			/* reset timer */
+			msg_timer_on(ch->mbc_cur_msg, 0);
 		} else if (valid_pkt(&mbx->mbx_tst_pkt) && !(MB_SW_ONLY(mbx))) {
 			/* Sending test pkt. */
 			(void) memcpy(&ch->mbc_packet, &mbx->mbx_tst_pkt,

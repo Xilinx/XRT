@@ -25,4 +25,8 @@ namespace xdpaieprofile {
 
 } // end namespace xdpaieprofile
 
+namespace xdpaiectr {
+  void update_aie_device(void* handle);
+}
+
 #endif

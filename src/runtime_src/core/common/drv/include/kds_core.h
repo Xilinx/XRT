@@ -98,6 +98,7 @@ struct kds_cu_mgmt {
 	struct xrt_cu		 *xcus[MAX_CUS];
 	struct mutex		  lock;
 	int			  num_cus;
+	int			  num_cdma;
 	u32			  cu_intr[MAX_CUS];
 	u32			  cu_refs[MAX_CUS];
 	u64			  cu_usage[MAX_CUS];
@@ -161,4 +162,5 @@ void kds_free_command(struct kds_command *xcmd);
 int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 		   int kds_mode, u32 clients, int *echo);
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf);
+ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf);
 #endif

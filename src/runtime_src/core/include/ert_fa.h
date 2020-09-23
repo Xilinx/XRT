@@ -46,7 +46,7 @@
 
 #ifdef _WIN32
 # pragma warning( push )
-# pragma warning( disable : 4201 )
+# pragma warning( disable : 4201 4200 )
 #endif
 
 /**
@@ -87,7 +87,7 @@ typedef enum ert_fa_status_type
 struct ert_fa_desc_entry {
   uint32_t arg_offset;
   uint32_t arg_size;
-  uint32_t arg_value[1];
+  uint32_t arg_value[];
 };
 
 /**
@@ -98,15 +98,12 @@ struct ert_fa_desc_entry {
  * @input_entry_bytes:  total number of bytes for input args
  * @num_output_entries: number of output arg entries
  * @output_entry_bytes: total number of bytes for output args
- * @io_entries:         array of input entries and out entries
+ * @data:               payload comprised of desc entries for inputs and outputs
  * 
  * The io_entries is an array of input entries with num_input_entries
  * elements followed by an array of output entries with
  * num_output_entries elements starting at address io_entries +
- * input_ntry_bytes
- *
- * Kernel scheduling embeds the address of the descriptor as 
- * the payload of an ert_start_kernel_cmd.
+ * input_entry_bytes
  */
 struct ert_fa_descriptor {
   ert_fa_status_t status;
@@ -114,7 +111,7 @@ struct ert_fa_descriptor {
   uint32_t input_entry_bytes;
   uint32_t num_output_entries;
   uint32_t output_entry_bytes;
-  struct ert_fa_desc_entry io_entries[1];
+  uint32_t data[];
 };
   
 #ifdef _WIN32

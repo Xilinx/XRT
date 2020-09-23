@@ -51,6 +51,7 @@ namespace po = boost::program_options;
 #include <chrono>
 #include <ctime>
 #include <locale>
+#include <fcntl.h>
 
 #ifdef _WIN32
 #pragma warning(disable : 4996) //std::asctime
@@ -407,6 +408,26 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   }
 }
 
+static void
+program_plp(std::shared_ptr<xrt_core::device> dev, const std::string& partition)
+{
+  std::ifstream stream(partition.c_str(), std::ios_base::binary);
+  if (!stream.is_open())
+    throw xrt_core::error(boost::str(boost::format("Cannot open %s") % partition));
+
+  //size of the stream
+  stream.seekg(0, stream.end);
+  int total_size = static_cast<int>(stream.tellg());
+  stream.seekg(0, stream.beg);
+
+  //copy stream into a vector
+  std::vector<char> buffer(total_size);
+  stream.read(buffer.data(), total_size);
+
+  xrt_core::program_plp(dev, buffer);
+  std::cout << "Programmed PLP successfully" << std::endl;
+}
+
 }
 //end anonymous namespace
 
@@ -452,26 +473,27 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
-    ("plp", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
-                                                                "  Name (and path) of the partiaion.\n"
-                                                                "  Parition's UUID")
+    ("partition", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
+                                                                      "  Name (and path) of the partition.")
     ("update", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images.  Value values:\n"
                                                                          "  ALL   - All images will be updated"
                                                                      /*  "  FLASH - Flash image\n"
                                                                          "  SC    - Satellite controller"*/)
-    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device(s).  Value values:\n"
-                                                                      "  Name (and path) to the mcs image on disk\n"
-                                                                      "  Name (and path) to the xsabin image on disk\n"
-                                                                      "Note: Multiple images can be specified separated by a space")
     ("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")
-    ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
-                                                                      "  ospi\n"
-                                                                      "  ospi_versal")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image.  Note: This currently only applies to the flash image.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");  
+  hiddenOptions.add_options()
+    ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
+                                                                    "  ospi\n"
+                                                                    "  ospi_versal")
+    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device(s).  Value values:\n"
+                                                                    "  Name (and path) to the mcs image on disk\n"
+                                                                    "  Name (and path) to the xsabin image on disk\n"
+                                                                    "Note: Multiple images can be specified separated by a space")
+  ;
 
   po::options_description allOptions("All Options");  
 
@@ -508,7 +530,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
     for(auto& kd : available_devices) {
       boost::property_tree::ptree& dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("board");
+      std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
     }
     std::cout << std::endl;
     return;
@@ -590,6 +612,41 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     std::cout << "Cold reboot machine to load the new image on card(s).\n";
     std::cout << "****************************************************\n";
     return;
+  }
+
+  // -- process "plp" option ---------------------------------------
+  if(!plp.empty()) {
+    XBU::verbose(boost::str(boost::format("  plp: %s") % plp));
+    //only 1 card and name
+    if(deviceCollection.size() > 1)
+      throw xrt_core::error("Please specify a single device");
+    auto dev = deviceCollection.front();
+
+    Flasher flasher(dev->get_device_id());
+    if(!flasher.isValid())
+      throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % dev->get_device_id()));
+
+    if(xrt_core::device_query<xrt_core::query::interface_uuids>(dev).empty())
+      throw xrt_core::error("Can not get BLP interface uuid. Please make sure corresponding BLP package is installed.");
+
+    // Check if file exists
+    if (!boost::filesystem::exists(plp))
+      throw xrt_core::error("File not found. Please specify the correct path");
+
+    DSAInfo dsa(plp);
+    //TO_DO: add a report for plp before asking permission to proceed. Replace following 2 lines
+    std::cout << "Programming PLP on Card [" << flasher.sGetDBDF() << "]..." << std::endl;
+    std::cout << "Partition file: " << dsa.file << std::endl;
+    
+    //ask user's permission
+    for (const auto& uuid : dsa.uuids) {
+      //check if plp is compatible with the installed blp
+      if (xrt_core::device_query<xrt_core::query::interface_uuids>(dev).front().compare(uuid) == 0) {
+        program_plp(dev, dsa.file);
+        return;
+      }
+    }
+    throw xrt_core::error("uuid does not match BLP");
   }
 
   std::cout << "\nERROR: Missing flash operation.  No action taken.\n\n";

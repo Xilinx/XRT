@@ -548,14 +548,18 @@ XBUtilities::create_suboption_list_string( const ReportCollection &_reportCollec
 {
   VectorPairStrings reportDescriptionCollection;
 
+  // Add the report names and description
+  for (const auto & report : _reportCollection) 
+    reportDescriptionCollection.emplace_back(report->getReportName(), report->getShortDescription());
+
   // 'verbose' option
   if (_addVerboseOption) 
     reportDescriptionCollection.emplace_back("verbose", "All known reports are produced");
 
-  // report names and discription
-  for (const auto & report : _reportCollection) {
-    reportDescriptionCollection.emplace_back(report->getReportName(), report->getShortDescription());
-  }
+  // Sort the collection
+  sort(reportDescriptionCollection.begin(), reportDescriptionCollection.end(), 
+       [](const std::pair<std::string, std::string> & a, const std::pair<std::string, std::string> & b) -> bool
+       { return (a.first.compare(b.first) < 0); });
 
   return create_suboption_list_string(reportDescriptionCollection);
 }
@@ -565,7 +569,7 @@ XBUtilities::create_suboption_list_string( const Report::SchemaDescriptionVector
 {
   VectorPairStrings reportDescriptionCollection;
 
-  // report names and discription
+  // report names and description
   for (const auto & format : _formatCollection) {
     if (format.isVisable == true) 
       reportDescriptionCollection.emplace_back(format.optionName, format.shortDescription);

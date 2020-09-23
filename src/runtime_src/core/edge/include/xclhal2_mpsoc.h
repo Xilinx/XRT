@@ -31,6 +31,7 @@ extern "C" {
 #define	SOFT_KERNEL_FILE_NAME	"sk"
 
 #define	SOFT_KERNEL_REG_SIZE	4096
+#define	AIE_INFO_SIZE		4096
 
 struct xclSKCmd {
     uint32_t	opcode;
@@ -39,6 +40,12 @@ struct xclSKCmd {
     uint64_t	xclbin_paddr;
     size_t	xclbin_size;
     char	krnl_name[XRT_MAX_NAME_LENGTH];
+};
+
+struct xclAIECmd {
+    uint32_t	opcode;
+    uint32_t	size;
+    char	info[AIE_INFO_SIZE];
 };
 
 enum xrt_scu_state {
@@ -66,6 +73,24 @@ XCL_DRIVER_DLLESPEC unsigned int xclGetHostBO(xclDeviceHandle handle, uint64_t p
  * Return:         0 on success or appropriate error number
  */
 XCL_DRIVER_DLLESPEC int xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd);
+
+/**
+ * xclAIEGetCmd() - Get a command for AIE
+ *
+ * @handle:        Device handle
+ * @cmd:           Pointer to the command
+ * Return:         0 on success or appropriate error number
+ */
+XCL_DRIVER_DLLESPEC int xclAIEGetCmd(xclDeviceHandle handle, xclAIECmd *cmd);
+
+/**
+ * xclAIEPutCmd() - Put a command for AIE
+ *
+ * @handle:        Device handle
+ * @cmd:           Pointer to the command
+ * Return:         0 on success or appropriate error number
+ */
+XCL_DRIVER_DLLESPEC int xclAIEPutCmd(xclDeviceHandle handle, xclAIECmd *cmd);
 
 /**
  * xclSKCreate() - Create a soft kernel compute unit

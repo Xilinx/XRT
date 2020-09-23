@@ -31,7 +31,7 @@
 #define XCL_MB_PROTOCOL_VER	0U
 
 /*
- * UUID_SZ should ALWAYS have the same number 
+ * UUID_SZ should ALWAYS have the same number
  * as the MACRO UUID_SIZE defined in linux/uuid.h
  */
 #define XCL_UUID_SZ		16
@@ -83,6 +83,7 @@ enum xcl_mailbox_request {
 /**
  * struct mailbox_req_bitstream_lock - MAILBOX_REQ_LOCK_BITSTREAM and
  * 				       MAILBOX_REQ_UNLOCK_BITSTREAM payload type
+ * @reserved: reserved for future use
  * @uuid: uuid of the xclbin
  */
 struct xcl_mailbox_req_bitstream_lock {
@@ -92,11 +93,13 @@ struct xcl_mailbox_req_bitstream_lock {
 
 /**
  * enum group_kind - Groups of data that can be fetched from mgmt side
- * @SENSOR: all kinds of sensor readings
- * @ICAP: ICAP IP related information
- * @BDINFO: Board Info, serial_num, mac_address
- * @MIG_ECC: ECC statistics
- * @FIREWALL: AF detected time, status
+ * @XCL_SENSOR: all kinds of sensor readings
+ * @XCL_ICAP: ICAP IP related information
+ * @XCL_BDINFO: Board Info, serial_num, mac_address
+ * @XCL_MIG_ECC: ECC statistics
+ * @XCL_FIREWALL: AF detected time, status
+ * @XCL_DNA: Device DNA information
+ * @XCL_SUBDEV: PLP subdevices information
  */
 enum xcl_group_kind {
 	XCL_SENSOR = 0,
