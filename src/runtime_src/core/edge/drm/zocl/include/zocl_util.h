@@ -64,9 +64,8 @@ struct addr_aperture {
 
 enum zocl_mem_type {
 	ZOCL_MEM_TYPE_CMA	= 0,
-	ZOCL_MEM_TYPE_PLDDR	= 1,
-	ZOCL_MEM_TYPE_LPDDR	= 2,
-	ZOCL_MEM_TYPE_STREAMING = 3,
+	ZOCL_MEM_TYPE_PL_LP_DDR	= 1,
+	ZOCL_MEM_TYPE_STREAMING = 2,
 };
 
 /*
