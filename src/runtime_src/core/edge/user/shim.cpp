@@ -117,6 +117,11 @@ shim::
 {
   xclLog(XRT_INFO, "XRT", "%s", __func__);
 
+#ifdef ENABLE_HAL_PROFILING
+//    xdphal::finish_flush_device(handle) ;
+    xdpaie::finish_flush_aie_device(this) ;
+#endif
+
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
   mCmdBOCache.reset(nullptr);
