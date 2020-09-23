@@ -25,7 +25,7 @@
 
 namespace xdp {
 
-
+#if 0
   union BufferHandleStoreType {
     std::vector<xrtBufferHandle> xrtBufHandles;
     std::vector<xclBufferHandle> xclBufHandles;
@@ -33,12 +33,15 @@ namespace xdp {
     BufferHandleStoreType() {}
     ~BufferHandleStoreType() {}
   };
+#endif
 
 class HalDevice : public xdp::Device
 {
   xclDeviceHandle mHalDevice;
   std::vector<void*>  mMappedBO;
-  BufferHandleStoreType mBufHandleStore;
+  std::vector<xrtBufferHandle> xrtBufHandles;
+  std::vector<xclBufferHandle> xclBufHandles;
+//  BufferHandleStoreType mBufHandleStore;
 
 public:
   HalDevice(void* halDeviceHandle);
