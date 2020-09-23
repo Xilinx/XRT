@@ -474,8 +474,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
     ("partition", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
-                                                                      "  Name (and path) of the partition.\n"
-                                                                      "  Parition's UUID")
+                                                                      "  Name (and path) of the partition.")
     ("update", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images.  Value values:\n"
                                                                          "  ALL   - All images will be updated"
                                                                      /*  "  FLASH - Flash image\n"
