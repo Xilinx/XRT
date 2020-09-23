@@ -21,7 +21,7 @@ Program a partition
 
 .. code-block:: 
 
-    xbmgmt program [--device| -d] <bdf> --partition [partition file| uuid]  
+    xbmgmt program [--device| -d] <bdf> --partition [partition file with path]  
 
 
 Load from a image
