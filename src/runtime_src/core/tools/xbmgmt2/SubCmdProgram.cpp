@@ -474,16 +474,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
     ("partition", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
-                                                                      "  Name (and path) of the partition.\n"
-                                                                      "  Parition's UUID")
+                                                                      "  Name (and path) of the partition.")
     ("update", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images.  Value values:\n"
                                                                          "  ALL   - All images will be updated"
                                                                      /*  "  FLASH - Flash image\n"
                                                                          "  SC    - Satellite controller"*/)
-    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device(s).  Value values:\n"
-                                                                      "  Name (and path) to the mcs image on disk\n"
-                                                                      "  Name (and path) to the xsabin image on disk\n"
-                                                                      "Note: Multiple images can be specified separated by a space")
     ("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image.  Note: This currently only applies to the flash image.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
@@ -494,6 +489,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
                                                                     "  ospi\n"
                                                                     "  ospi_versal")
+    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device(s).  Value values:\n"
+                                                                    "  Name (and path) to the mcs image on disk\n"
+                                                                    "  Name (and path) to the xsabin image on disk\n"
+                                                                    "Note: Multiple images can be specified separated by a space")
   ;
 
   po::options_description allOptions("All Options");  
@@ -630,27 +629,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     if(xrt_core::device_query<xrt_core::query::interface_uuids>(dev).empty())
       throw xrt_core::error("Can not get BLP interface uuid. Please make sure corresponding BLP package is installed.");
 
-    std::vector<DSAInfo> available_partitions;
-    auto installedDSAs = firmwareImage::getIntalledDSAs();
-    for (const auto& dsa : installedDSAs) {
-      if (dsa.uuids.size() != 0) {
-        if (dsa.name.compare(plp) == 0 || dsa.matchIntId(plp))
-          available_partitions.push_back(dsa);
-      }
-    }
+    // Check if file exists
+    if (!boost::filesystem::exists(plp))
+      throw xrt_core::error("File not found. Please specify the correct path");
 
-    if (available_partitions.empty())
-      throw xrt_core::error("No matching partition found");
-
-    if (available_partitions.size() > 1) {
-      std::stringstream errmsg;
-      errmsg << "Multiple partitions found with the same name. Please specify the UUID\n";
-      for (const auto& d : available_partitions)
-        errmsg << boost::format("  - %s [0x%x]\n") % d.name % d.timestamp;
-      throw xrt_core::error(errmsg.str());
-    }
-
-    DSAInfo dsa(available_partitions.front());
+    DSAInfo dsa(plp);
     //TO_DO: add a report for plp before asking permission to proceed. Replace following 2 lines
     std::cout << "Programming PLP on Card [" << flasher.sGetDBDF() << "]..." << std::endl;
     std::cout << "Partition file: " << dsa.file << std::endl;
