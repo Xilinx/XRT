@@ -35,36 +35,6 @@ namespace xdp {
                 : XDPPlugin()
   {
     db->registerPlugin(this);
-#if 0
-    unsigned int totalDevices = xclProbe();
-    // Open all the devices to store the handles
-    uint32_t index = 0;
-    void* handle = xclOpen(index, "/dev/null", XCL_INFO);
-
-//    if(nullptr != handle)
-    while(index < totalDevices && nullptr != handle) { 
-//      deviceHandles.push_back(handle); // don't save te handles now
-
-      // Use sysfs path for debug_ip_layout to find the unique Device ID
-      char pathBuf[512];
-      memset(pathBuf, 0, 512);
-      xclGetDebugIPlayoutPath(handle, pathBuf, 512);
-
-      std::string sysfsPath(pathBuf);
-
-      uint64_t deviceId = db->addDevice(sysfsPath);
-
-//      deviceIdToHandle[deviceId] = handle; // don't save te handles now
-      deviceIdToIndex[deviceId]  = index;
-
-      xclClose(handle);
-
-      // Move to the next device
-      ++index;
-      handle = xclOpen(index, "/dev/null", XCL_INFO);
-    }
-std::cout << " devices FOUND " << index << std::endl;
-#endif
   }
 
   AieTracePlugin::~AieTracePlugin()
@@ -76,14 +46,6 @@ std::cout << " devices FOUND " << index << std::endl;
       catch(...) {
       }
       db->unregisterPlugin(this);
-    }
-
-    for(auto o : aieOffloaders) {
-      auto offloader = std::get<0>(o.second);
-      auto logger    = std::get<1>(o.second);
-
-      delete offloader;
-      delete logger;
     }
 
     // If the database is dead, then we must have already forced a 
@@ -103,17 +65,10 @@ std::cout << " devices FOUND " << index << std::endl;
     std::string sysfspath(pathBuf);
 
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
-#if 0
-    uint32_t index    = deviceIdToIndex[deviceId];
 
+    deviceIdToHandle[deviceId] = handle;
+    // handle is not added to "deviceHandles" as this is user provided handle, not owned by XDP
 
-// add change for reload of xclbin
-
-    void* ownedHandle = xclOpen(index, "/dev/null", XCL_INFO);
-    deviceHandles.push_back(ownedHandle);
-    deviceIdToHandle[deviceId] = ownedHandle;
-//    void* ownedHandle = deviceIdToHandle[deviceId];
-#endif
     if(!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // first delete the offloader, logger
       // Delete the old offloader as data is already from it
@@ -216,9 +171,8 @@ std::cout << " devices FOUND " << index << std::endl;
     aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf);
   }
 
-  void AieTracePlugin::flushAIEDevice(void* /*handle*/)
+  void AieTracePlugin::flushAIEDevice(void* handle)
   {
-#if 0
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -230,7 +184,32 @@ std::cout << " devices FOUND " << index << std::endl;
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
       (std::get<0>(aieOffloaders[deviceId]))->readTrace();
     }
-#endif
+  }
+
+  void AieTracePlugin::finishFlushAIEDevice(void* handle)
+  {
+    char pathBuf[512];
+    memset(pathBuf, 0, 512);
+    xclGetDebugIPlayoutPath(handle, pathBuf, 512);
+
+    std::string sysfspath(pathBuf);
+
+    uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
+
+    if(deviceIdToHandle[deviceId] != handle) {
+      return;
+    }
+
+    if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
+      (std::get<0>(aieOffloaders[deviceId]))->readTrace();
+      (std::get<0>(aieOffloaders[deviceId]))->endReadTrace();
+
+      delete (std::get<0>(aieOffloaders[deviceId]));
+      delete (std::get<1>(aieOffloaders[deviceId]));
+
+      aieOffloaders.erase(deviceId);
+    }
+    
   }
 
   void AieTracePlugin::writeAll(bool openNewFiles)
@@ -240,6 +219,16 @@ std::cout << " devices FOUND " << index << std::endl;
       (std::get<0>(o.second))->readTrace();
       (std::get<0>(o.second))->endReadTrace();
     }
+
+    for(auto o : aieOffloaders) {
+      auto offloader = std::get<0>(o.second);
+      auto logger    = std::get<1>(o.second);
+
+      delete offloader;
+      delete logger;
+      // don't delete DeviceIntf
+    }
+    aieOffloaders.clear();
 
     for(auto w : writers) {
       w->write(openNewFiles);

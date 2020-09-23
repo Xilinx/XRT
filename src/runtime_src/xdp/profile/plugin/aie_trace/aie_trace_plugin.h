@@ -31,7 +31,6 @@ namespace xdp {
     private:
       std::vector<void*> deviceHandles;
       std::map<uint64_t, void*> deviceIdToHandle;
-      std::map<uint64_t, uint32_t> deviceIdToIndex;
 
       typedef std::tuple<AIETraceOffload*, 
                          AIETraceLogger*,
@@ -51,6 +50,9 @@ namespace xdp {
 
       XDP_EXPORT
       void flushAIEDevice(void* handle);
+
+      XDP_EXPORT
+      void finishFlushAIEDevice(void* handle);
 
       XDP_EXPORT
       virtual void writeAll(bool openNewFiles);
