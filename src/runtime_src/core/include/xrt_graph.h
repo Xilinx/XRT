@@ -70,4 +70,13 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioNa
 
 int
 xclGMIOWait(xclDeviceHandle handle, const char *gmioName);
+
+int
+xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Nmae, uint32_t value);
+
+uint64_t
+xclReadProfiling(xclDeviceHandle handle, int phdl);
+
+int
+xclStopProfiling(xclDeviceHandle handle, int phdl);
 #endif
