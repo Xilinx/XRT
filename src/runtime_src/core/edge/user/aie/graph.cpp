@@ -430,7 +430,7 @@ update_rtp(const std::string& port, const char* buffer, size_t size)
     }
 
     uint32_t selector;
-    XAie_DataMemRdWord(aieArray->getDevInst(), selector_tile, rtp->selector_addr, &selector);
+    XAie_DataMemBlockRead(aieArray->getDevInst(), selector_tile, rtp->selector_addr, &selector, sizeof(selector));
 
     selector = 1 - selector;
 
@@ -456,22 +456,10 @@ update_rtp(const std::string& port, const char* buffer, size_t size)
             throw xrt_core::error(-EIO, "Can't update graph '" + name + "': acquire lock for RTP '" + port + "' failed or timeout");
     }
 
-    size_t iterations = size / 4;
-    size_t remain = size % 4;
-    int i;
-
-    for (i = 0; i < iterations; ++i) {
-        XAie_DataMemWrWord(aieArray->getDevInst(), update_tile, start_addr, ((const uint32_t *)buffer)[i]);
-        start_addr += 4;
-    }
-    if (remain) {
-        uint32_t rdata = 0;
-        memcpy(&rdata, &((const uint32_t *)buffer)[i], remain);
-        XAie_DataMemWrWord(aieArray->getDevInst(), update_tile, start_addr, rdata);
-    }
+    XAie_DataMemBlockWrite(aieArray->getDevInst(), update_tile, start_addr, const_cast<char *>(buffer), size);
 
     /* update selector */
-    XAie_DataMemWrWord(aieArray->getDevInst(), selector_tile, rtp->selector_addr, selector);
+    XAie_DataMemBlockWrite(aieArray->getDevInst(), selector_tile, rtp->selector_addr, &selector, sizeof(selector));
 
     if (rtp->require_lock) {
         /* release lock, need to release lock even graph is not running */
@@ -523,7 +511,7 @@ read_rtp(const std::string& port, char* buffer, size_t size)
     }
 
     uint32_t selector;
-    XAie_DataMemRdWord(aieArray->getDevInst(), selector_tile, rtp->selector_addr, &selector);
+    XAie_DataMemBlockRead(aieArray->getDevInst(), selector_tile, rtp->selector_addr, &selector, sizeof(selector));
 
     XAie_LocType update_tile;
     uint16_t lock_id;
@@ -553,19 +541,7 @@ read_rtp(const std::string& port, char* buffer, size_t size)
             throw xrt_core::error(-EIO, "Can't read graph '" + name + "': release lock for RTP '" + port + "' failed or timeout");
     }
 
-    size_t iterations = size / 4;
-    size_t remain = size % 4;
-    int i;
-
-    for (i = 0; i < iterations; ++i) {
-        XAie_DataMemRdWord(aieArray->getDevInst(), update_tile, start_addr, (u32*)&(((u32*)buffer)[i]));
-        start_addr += 4;
-    }
-    if (remain) {
-        uint32_t rdata;
-        XAie_DataMemRdWord(aieArray->getDevInst(), update_tile, start_addr, ((u32*)&rdata));
-        memcpy(&((uint32_t *)buffer)[i], &rdata, remain);
-    }
+    XAie_DataMemBlockRead(aieArray->getDevInst(), update_tile, start_addr, buffer, size);
 
     if (need_lock) {
         /* release lock */
