@@ -159,11 +159,12 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 
 		bo = to_zocl_bo(&cma_obj->base);
 	} else {
-		/* We are allocating from a separate BANK, i.e. PL-DDR */
+		/* We are allocating from a separate BANK, i.e. PL-DDR or LPDDR */
 		unsigned int bank = GET_MEM_BANK(user_flags);
 
 		if (bank >= zdev->num_mem || !zdev->mem[bank].zm_used ||
-		    zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_PLDDR)
+		    (zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_PLDDR &&
+		    zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_LPDDR)) 
 			return ERR_PTR(-EINVAL);
 
 		bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
@@ -202,8 +203,7 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		 * not establish the kernel mapping. We just can not
 		 * access BO directly from kernel.
 		 */
-		if (zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_LPDDR)
-			bo->vmapping = memremap(bo->mm_node->start, size, MEMREMAP_WC);
+		bo->vmapping = memremap(bo->mm_node->start, size, MEMREMAP_WC);
 
 		err = drm_gem_create_mmap_offset(&bo->gem_base);
 		if (err) {
@@ -325,9 +325,11 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		/* If cacheable is not set, make sure we set COHERENT. */
 		args->flags |= ZOCL_BO_FLAGS_COHERENT;
 	} else if (!(args->flags & ZOCL_BO_FLAGS_CMA)) {
-		/* We do not support allocating cacheable BO from PL-DDR. */
-		DRM_WARN("Cache is not supported and turned off for PL-DDR.\n");
-		args->flags &= ~ZOCL_BO_FLAGS_CACHEABLE;
+		if (zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_LPDDR) {
+			/* We do not support allocating cacheable BO from PL-DDR. */
+			DRM_WARN("Cache is not supported and turned off for PL-DDR.\n");
+			args->flags &= ~ZOCL_BO_FLAGS_CACHEABLE;
+		}
 	}
 
 	bo = zocl_create_bo(dev, args->size, args->flags);
@@ -852,12 +854,13 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 
 	/*
 	 * If the 'bank' passed in is a valid bank and its type is
-	 * PL-DDR, we update that bank usage. Otherwise, we go
+	 * PL-DDR or LPDDR , we update that bank usage. Otherwise, we go
 	 * through our bank list and find the CMA bank to update
 	 * its usage.
 	 */
 	if (bank < zdev->num_mem &&
-	    zdev->mem[bank].zm_type == ZOCL_MEM_TYPE_PLDDR) {
+	    zdev->mem[bank].zm_type == ZOCL_MEM_TYPE_PLDDR &&
+	    zdev->mem[bank].zm_type == ZOCL_MEM_TYPE_LPDDR) {
 		update_bank = bank;
 	} else {
 		for (i = 0; i < zdev->num_mem; i++) {
