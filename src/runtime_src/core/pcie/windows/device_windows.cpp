@@ -79,12 +79,12 @@ struct xmc_sc_presence
   using result_type = bool;
 
   static result_type
-    user(const xrt_core::device* device, key_type key)
+  user(const xrt_core::device* device, key_type key)
   {
-  	return true;
+    return true;
   }
   static result_type
-    mgmt(const xrt_core::device* device, key_type key)
+  mgmt(const xrt_core::device* device, key_type key)
   {
     return true;
   }
