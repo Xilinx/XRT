@@ -19,7 +19,7 @@ Flashing a card
 
 Downloading shell on a card
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Note: On Linux, please run the followinf with ``--new`` option
+Note: On Linux, please run the following with ``--new`` option
 1. ``xbmgmt program --partition <path/to/partition.xsabin> --device 0000:00:00.0``
 2. Run ``xbmgmt status`` to verify the partition download
 
