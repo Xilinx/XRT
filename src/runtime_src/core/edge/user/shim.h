@@ -98,6 +98,9 @@ public:
   int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
+  double xclGetReadMaxBandwidthMBps();
+  double xclGetWriteMaxBandwidthMBps();
+
   // Bitstream/bin download
   int xclLoadXclBin(const xclBin *buffer);
   int xclLoadAxlf(const axlf *buffer);

@@ -17,6 +17,8 @@
  * under the License.
  */
 
+#define ENABLE_HAL_PROFILING
+
 #include "shim.h"
 #include "system_linux.h"
 #include "core/common/message.h"
@@ -114,6 +116,11 @@ shim::
 ~shim()
 {
   xclLog(XRT_INFO, "XRT", "%s", __func__);
+
+#ifdef ENABLE_HAL_PROFILING
+//    xdphal::finish_flush_device(handle) ;
+    xdpaie::finish_flush_aie_device(this) ;
+#endif
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -698,6 +705,25 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
   wordsPerSample = 2;
   return 0;
 }
+
+// Get the maximum bandwidth for host reads from the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double
+shim::
+xclGetReadMaxBandwidthMBps()
+{
+  return 9600.0;
+}
+
+// Get the maximum bandwidth for host writes to the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double
+shim::
+xclGetWriteMaxBandwidthMBps()
+{
+  return 9600.0;
+}
+
 
 int
 shim::
@@ -1694,10 +1720,11 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
-  xdphal::flush_device(handle) ;
-  xdpaie::flush_aie_device(handle) ;
+    xdphal::flush_device(handle) ;
+    xdpaie::flush_aie_device(handle) ;
 #endif
 #endif
+
 
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
     if (ret) {
@@ -1719,15 +1746,6 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     if (xrt_core::xclbin::is_pdi_only(buffer))
         return 0;
 
-
-#ifndef __HWEM__
-#ifdef ENABLE_HAL_PROFILING
-  xdphal::update_device(handle) ;
-  xdpaie::update_aie_device(handle);
-  xdpaiectr::update_aie_device(handle);
-#endif
-#endif
-
     ret = xrt_core::scheduler::init(handle, buffer);
     if (ret) {
       printf("Scheduler init failed\n");
@@ -1743,7 +1761,13 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       printf("Map Debug IPs Failed\n");
       return ret;
     }
+
 #ifndef __HWEM__
+#ifdef ENABLE_HAL_PROFILING
+    xdphal::update_device(handle) ;
+    xdpaie::update_aie_device(handle);
+    xdpaiectr::update_aie_device(handle);
+#endif
     START_DEVICE_PROFILING_CB(handle);
 #endif
     return 0;
@@ -1874,6 +1898,22 @@ xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
     return 0;
   return drv->xclGetDeviceClockFreqMHz();
 }
+
+double
+xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+}
+
 
 int
 xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)

@@ -62,21 +62,21 @@ bool AIETraceOffload::initReadTrace()
 {
   buffers.clear();
   buffers.resize(numStream);
-  uint64_t i = 0;
+
   uint8_t  memIndex = 0;
   if(isPLIO) {
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
   } else {
     memIndex = 0;  // for now
   }
-  for(auto b : buffers) {
-    b.boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
-    if(!b.boHandle) {
+  for(uint64_t i = 0; i < numStream ; ++i) {
+    buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
+    if(!buffers[i].boHandle) {
       return false;
     }
-    b.isFull = false;
+    buffers[i].isFull = false;
     // Data Mover will write input stream to this address
-    uint64_t bufAddr = deviceIntf->getDeviceAddr(b.boHandle);
+    uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].boHandle);
     if(isPLIO) {
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i);
     } else {
@@ -94,7 +94,6 @@ bool AIETraceOffload::initReadTrace()
       XAie_DmaSetAddrLen(&(shimDmaObj->desc), bufAddr, bufAllocSz);
 #endif
     }
-    ++i;
   }
   return true;
 }
@@ -103,7 +102,7 @@ void AIETraceOffload::endReadTrace()
 {
   // reset
   uint64_t i = 0;
-  for(auto b : buffers) {
+  for(auto& b : buffers) {
     if(!b.boHandle) {
       continue;
     }
@@ -148,7 +147,7 @@ uint64_t AIETraceOffload::readPartialTrace(uint64_t i)
   if((buffers[i].offset + CHUNK_SZ) > buffers[i].usedSz)
     nBytes = buffers[i].usedSz - buffers[i].offset;
 
-  void* hostBuf = deviceIntf->syncTraceBuf(buffers[i].usedSz, buffers[i].offset, nBytes);
+  void* hostBuf = deviceIntf->syncTraceBuf(buffers[i].boHandle, buffers[i].offset, nBytes);
 
   if(hostBuf) {
     traceLogger->addAIETraceData(i, hostBuf, nBytes);

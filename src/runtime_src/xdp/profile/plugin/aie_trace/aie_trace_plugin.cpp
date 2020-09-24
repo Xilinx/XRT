@@ -35,29 +35,6 @@ namespace xdp {
                 : XDPPlugin()
   {
     db->registerPlugin(this);
-
-    // Open all the devices to store the handles
-    uint32_t index = 0;
-    void* handle = xclOpen(index, "/dev/null", XCL_INFO);
-
-    while(nullptr != handle) {
-      deviceHandles.push_back(handle);
-
-      // Use sysfs path for debug_ip_layout to find the unique Device ID
-      char pathBuf[512];
-      memset(pathBuf, 0, 512);
-      xclGetDebugIPlayoutPath(handle, pathBuf, 512);
-
-      std::string sysfsPath(pathBuf);
-
-      uint64_t deviceId = db->addDevice(sysfsPath);
-
-      deviceIdToHandle[deviceId] = handle;
-
-      // Move to the next device
-      ++index;
-      handle = xclOpen(index, "/dev/null", XCL_INFO);
-    }
   }
 
   AieTracePlugin::~AieTracePlugin()
@@ -69,14 +46,6 @@ namespace xdp {
       catch(...) {
       }
       db->unregisterPlugin(this);
-    }
-
-    for(auto o : aieOffloaders) {
-      auto offloader = std::get<0>(o.second);
-      auto logger    = std::get<1>(o.second);
-
-      delete offloader;
-      delete logger;
     }
 
     // If the database is dead, then we must have already forced a 
@@ -96,7 +65,9 @@ namespace xdp {
     std::string sysfspath(pathBuf);
 
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
-    void* ownedHandle = deviceIdToHandle[deviceId];
+
+    deviceIdToHandle[deviceId] = handle;
+    // handle is not added to "deviceHandles" as this is user provided handle, not owned by XDP
 
     if(!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // first delete the offloader, logger
@@ -111,7 +82,6 @@ namespace xdp {
         delete aieLogger;
         // don't delete DeviceIntf
       }
-
 
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceId, handle);
@@ -135,7 +105,8 @@ namespace xdp {
       // If DeviceIntf is not already created, create a new one to communicate with physical device
       deviceIntf = new DeviceIntf();
       try {
-        deviceIntf->setDevice(new HalDevice(ownedHandle));
+        deviceIntf->setDevice(new HalDevice(handle));
+//        deviceIntf->setDevice(new HalDevice(ownedHandle));
         deviceIntf->readDebugIPlayout();
       } catch(std::exception& e) {
         // Read debug IP layout could throw an exception
@@ -162,18 +133,26 @@ namespace xdp {
     uint64_t aieTraceBufSz = GetTS2MMBufSize(true /*isAIETrace*/);
     bool     isPLIO = ((db->getStaticInfo()).getNumTracePLIO(deviceId)) ? true : false;
 
-    uint64_t aieMemorySz = 0;
+#if 0
+    uint8_t memIndex = 0;
     if(isPLIO) { // check only one memory for PLIO and for GMIO , assume bank 0 for now
-      aieMemorySz = ((db->getStaticInfo()).getMemory(deviceId, deviceIntf->getAIETs2mmMemIndex(0))->size) * 1024;
-    } else {
-      aieMemorySz = ((db->getStaticInfo()).getMemory(deviceId, 0)->size) * 1024;
+      memIndex = deviceIntf->getAIETs2mmMemIndex(0);
     }
-
+    Memory* memory = (db->getStaticInfo()).getMemory(deviceId, memIndex);
+    if(nullptr == memory) {
+      std::string msg = "Information about memory index " + std::to_string(memIndex)
+                         + " not found in given xclbin. So, cannot check availability of memory resource for device trace offload.";
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+      return;
+    }
+    uint64_t aieMemorySz = (((db->getStaticInfo()).getMemory(deviceId, memIndex))->size) * 1024;
     if(aieMemorySz > 0 && aieTraceBufSz > aieMemorySz) {
       aieTraceBufSz = aieMemorySz;
       std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(aieMemorySz) + " instead." ;
       xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
     }
+#endif
+
     AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
 
     AIETraceOffload* aieTraceOffloader = new AIETraceOffload(handle, deviceId,
@@ -190,7 +169,6 @@ namespace xdp {
       return;
     }
     aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf);
-
   }
 
   void AieTracePlugin::flushAIEDevice(void* handle)
@@ -206,7 +184,32 @@ namespace xdp {
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
       (std::get<0>(aieOffloaders[deviceId]))->readTrace();
     }
-      
+  }
+
+  void AieTracePlugin::finishFlushAIEDevice(void* handle)
+  {
+    char pathBuf[512];
+    memset(pathBuf, 0, 512);
+    xclGetDebugIPlayoutPath(handle, pathBuf, 512);
+
+    std::string sysfspath(pathBuf);
+
+    uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
+
+    if(deviceIdToHandle[deviceId] != handle) {
+      return;
+    }
+
+    if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
+      (std::get<0>(aieOffloaders[deviceId]))->readTrace();
+      (std::get<0>(aieOffloaders[deviceId]))->endReadTrace();
+
+      delete (std::get<0>(aieOffloaders[deviceId]));
+      delete (std::get<1>(aieOffloaders[deviceId]));
+
+      aieOffloaders.erase(deviceId);
+    }
+    
   }
 
   void AieTracePlugin::writeAll(bool openNewFiles)
@@ -216,6 +219,16 @@ namespace xdp {
       (std::get<0>(o.second))->readTrace();
       (std::get<0>(o.second))->endReadTrace();
     }
+
+    for(auto o : aieOffloaders) {
+      auto offloader = std::get<0>(o.second);
+      auto logger    = std::get<1>(o.second);
+
+      delete offloader;
+      delete logger;
+      // don't delete DeviceIntf
+    }
+    aieOffloaders.clear();
 
     for(auto w : writers) {
       w->write(openNewFiles);

@@ -19,6 +19,9 @@
 #include <chrono>
 #include <ctime>
 #include <cstring>
+#include <boost/property_tree/ptree.hpp>
+
+#include "core/common/system.h"
 
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -51,6 +54,25 @@ namespace xdp {
   const char* getXRTVersion()
   {
     return "2.6.0" ;	// To Do
+  }
+
+  // This function can only be called after the system singleton has
+  //  been created on the XRT side.  This means we cannot call it in any
+  //  plugin constructor.
+  bool isEdge()
+  {
+    boost::property_tree::ptree pt ;
+    xrt_core::get_xrt_info(pt) ;
+
+    try {
+      pt.get<std::string>("build.zocl") ;
+    } catch (...) {
+      // We didn't find the zocl driver version, so we must not be on edge
+      return false ;
+    }
+
+    // We successfully found the zocl driver version, so we must be on edge
+    return true ;
   }
 
   Flow getFlowMode()

@@ -32,6 +32,7 @@ namespace xdpaietrace {
 
   std::function<void (void*)> update_aie_device_cb;
   std::function<void (void*)> flush_aie_device_cb;
+  std::function<void (void*)> finish_flush_aie_device_cb;
 
   void register_aie_trace_callbacks(void* handle)
   {
@@ -42,6 +43,9 @@ namespace xdpaietrace {
 
     flush_aie_device_cb = (ftype)(xrt_core::dlsym(handle, "flushAIEDevice")) ;
     if (xrt_core::dlerror() != NULL) flush_aie_device_cb = nullptr ;
+
+    finish_flush_aie_device_cb = (ftype)(xrt_core::dlsym(handle, "finishFlushAIEDevice")) ;
+    if (xrt_core::dlerror() != NULL) finish_flush_aie_device_cb = nullptr ;
 #endif
   }
 
@@ -73,6 +77,13 @@ namespace xdpaie {
   {
     if (xdpaietrace::flush_aie_device_cb != nullptr) {
       xdpaietrace::flush_aie_device_cb(handle) ;
+    }
+  }
+
+  void finish_flush_aie_device(void* handle)
+  {
+    if (xdpaietrace::finish_flush_aie_device_cb != nullptr) {
+      xdpaietrace::finish_flush_aie_device_cb(handle) ;
     }
   }
 }

@@ -20,6 +20,8 @@
 #include "xdp/profile/database/dynamic_event_database.h"
 #include "xdp/profile/database/events/device_events.h"
 
+#include <iostream>
+
 namespace xdp {
   
   VPDynamicDatabase::VPDynamicDatabase(VPDatabase* d) :
@@ -34,6 +36,14 @@ namespace xdp {
   VPDynamicDatabase::~VPDynamicDatabase()
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
+
+    for(auto mapEntry : aieTraceData) {
+      for(auto info : mapEntry.second) {
+        delete info;
+      }
+      mapEntry.second.clear();
+    }
+    aieTraceData.clear();
 
     for (auto event : hostEvents) {
       delete event;
@@ -182,22 +192,29 @@ namespace xdp {
   void VPDynamicDatabase::addAIETraceData(uint64_t deviceId,
                              uint64_t strmIndex, void* buffer, uint64_t bufferSz) 
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::lock_guard<std::mutex> lock(dbLock);
 
     if(aieTraceData.find(deviceId) == aieTraceData.end()) {
       AIETraceDataVector newDataVector;
       aieTraceData[deviceId] = newDataVector;	// copy
       aieTraceData[deviceId].resize((db->getStaticInfo()).getNumAIETraceStream(deviceId));
     }
-    auto aieTraceDataEntry = aieTraceData[deviceId];
-    aieTraceDataEntry[strmIndex] = std::make_pair(buffer, bufferSz);
+    aieTraceData[deviceId][strmIndex] = new AIETraceDataType;
+    aieTraceData[deviceId][strmIndex]->buffer = buffer;
+    aieTraceData[deviceId][strmIndex]->bufferSz = bufferSz;
   }
 
-  AIETraceDataType VPDynamicDatabase::getAIETraceData(uint64_t deviceId, uint64_t strmIndex)
+  AIETraceDataType* VPDynamicDatabase::getAIETraceData(uint64_t deviceId, uint64_t strmIndex)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
+    if(aieTraceData.find(deviceId) == aieTraceData.end()) {
+        return nullptr;
+    }
     auto aieTraceDataEntry = aieTraceData[deviceId];
+    if(aieTraceData[deviceId].size() == 0 || aieTraceDataEntry[strmIndex] == nullptr) {
+        return nullptr;
+    }
     return aieTraceDataEntry[strmIndex];
   }
 
