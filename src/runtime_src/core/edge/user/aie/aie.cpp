@@ -59,7 +59,7 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
     AieRC rc;
     if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
         throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
-    devInst = DevInst;
+    devInst = &DevInst;
 
     /* Initialize graph GMIO metadata */
     for (auto& gmio : xrt_core::edge::aie::get_gmios(device.get()))
@@ -79,7 +79,7 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
         XAie_LocType shimTile = XAie_TileLoc(gmio.shim_col, 0);
 
         if (!dma->configured) {
-            XAie_DmaDescInit(&devInst, &(dma->desc), shimTile);
+            XAie_DmaDescInit(devInst, &(dma->desc), shimTile);
             dma->configured = true;
         }
 
@@ -87,10 +87,10 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
         /* type 0: GM->AIE; type 1: AIE->GM */
         XAie_DmaDirection dir = gmio.type == 0 ? DMA_MM2S : DMA_S2MM;
         uint8_t pch = CONVERT_LCHANL_TO_PCHANL(chan);
-        XAie_DmaChannelEnable(&devInst, shimTile, pch, dir);
+        XAie_DmaChannelEnable(devInst, shimTile, pch, dir);
         XAie_DmaSetAxi(&(dma->desc), 0, gmio.burst_len, 0, 0, 0);
 
-        XAie_DmaGetMaxQueueSize(&devInst, shimTile, &(dma->maxqSize));
+        XAie_DmaGetMaxQueueSize(devInst, shimTile, &(dma->maxqSize));
         for (int i = 0; i < dma->maxqSize /*XAIEGBL_NOC_DMASTA_STARTQ_MAX */; ++i) {
             /*
              * 16 BDs are allocated to 4 channels.
@@ -110,19 +110,26 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 Aie::~Aie()
 {
 #ifndef __AIESIM__
-    close(fd);
+  if (devInst)
+    XAie_Finish(devInst);
 #endif
 }
 
 XAie_DevInst* Aie::getDevInst()
 {
-    return &devInst;
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "AIE is not initialized");
+
+  return devInst;
 }
 
 void
 Aie::
 sync_bo(xrtBufferHandle bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
+
   auto gmio = std::find_if(gmios.begin(), gmios.end(),
             [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
 
@@ -143,6 +150,9 @@ void
 Aie::
 sync_bo_nb(xrtBufferHandle bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
+
   auto gmio = std::find_if(gmios.begin(), gmios.end(),
             [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
 
@@ -156,6 +166,9 @@ void
 Aie::
 wait_gmio(const std::string& gmioName)
 {
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Can't wait GMIO: AIE is not initialized");
+
   auto gmio = std::find_if(gmios.begin(), gmios.end(),
             [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
 
@@ -199,7 +212,7 @@ submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum 
   /* Find a free BD. Busy wait until we get one. */
   while (dmap->dma_chan[chan].idle_bds.empty()) {
     uint8_t npend;
-    XAie_DmaGetPendingBdCount(&devInst, shim_tile, pchan, gmdir, &npend);
+    XAie_DmaGetPendingBdCount(devInst, shim_tile, pchan, gmdir, &npend);
 
     int num_comp = dmap->maxqSize - npend;
 
@@ -229,10 +242,10 @@ submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum 
   XAie_DmaEnableBd(&(dmap->desc));
 
   /* Write BD */
-  XAie_DmaWriteBd(&devInst, &(dmap->desc), shim_tile, bd.bd_num);
+  XAie_DmaWriteBd(devInst, &(dmap->desc), shim_tile, bd.bd_num);
 
   /* Enqueue BD */
-  XAie_DmaChannelPushBdToQueue(&devInst, shim_tile, pchan, gmdir, bd.bd_num);
+  XAie_DmaChannelPushBdToQueue(devInst, shim_tile, pchan, gmdir, bd.bd_num);
   dmap->dma_chan[chan].pend_bds.push(bd);
 }
 
@@ -240,7 +253,7 @@ void
 Aie::
 wait_sync_bo(ShimDMA *dmap, uint32_t chan, XAie_LocType& tile, XAie_DmaDirection gmdir, uint32_t timeout)
 {
-  while (XAie_DmaWaitForDone(&devInst, tile, CONVERT_LCHANL_TO_PCHANL(chan), gmdir, timeout) != XAIE_OK);
+  while (XAie_DmaWaitForDone(devInst, tile, CONVERT_LCHANL_TO_PCHANL(chan), gmdir, timeout) != XAIE_OK);
 
   while (!dmap->dma_chan[chan].pend_bds.empty()) {
     BD bd = dmap->dma_chan[chan].pend_bds.front();
@@ -281,6 +294,29 @@ clear_bd(BD& bd)
   auto ret = ioctl(fd, AIE_DETACH_DMABUF_IOCTL, bd.buf_fd);
   if (ret)
     throw xrt_core::error(-errno, "Sync AIE Bo: fail to detach DMA buf.");
+#endif
+}
+
+void
+Aie::
+reset(const xrt_core::device* device)
+{
+#ifndef __AIESIM__
+    if (!devInst)
+        throw xrt_core::error(-EINVAL, "Can't Reset AIE: AIE is not initialized");
+
+    XAie_Finish(devInst);
+    devInst = nullptr;
+
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+    /* TODO get partition id and uid from XCLBIN or PDI */
+    uint32_t partition_id = 1;
+
+    drm_zocl_aie_reset reset = { partition_id };
+    int ret = drv->resetAIEArray(reset);
+    if (ret)
+        throw xrt_core::error(ret, "Fail to reset AIE Array");
 #endif
 }
 

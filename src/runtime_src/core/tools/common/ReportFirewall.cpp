@@ -17,6 +17,8 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportFirewall.h"
+#include "core/common/query_requests.h"
+#include "core/common/utils.h"
 
 void
 ReportFirewall::getPropertyTreeInternal( const xrt_core::device * _pDevice,
@@ -28,23 +30,33 @@ ReportFirewall::getPropertyTreeInternal( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportFirewall::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
+ReportFirewall::getPropertyTree20202( const xrt_core::device * _pDevice,
                                        boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
   pt.put("Description","Firewall Information");
 
+  pt.put("firewall_level", xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));
+  pt.put("firewall_status", boost::format("0x%x") % xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));
+  pt.put("status", xrt_core::utils::parse_firewall_status(static_cast<unsigned int>(xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice))));
   // There can only be 1 root node
   _pt.add_child("firewall", pt);
 }
 
 
 void 
-ReportFirewall::writeReport(const xrt_core::device * /*_pDevice*/,
+ReportFirewall::writeReport(const xrt_core::device * _pDevice,
                             const std::vector<std::string> & /*_elementsFilter*/,
                             std::iostream & _output) const
 {
-  _output << "ReportFirewall - Hello world\n";
+  boost::property_tree::ptree _pt;
+  boost::property_tree::ptree empty_ptree;
+  getPropertyTreeInternal(_pDevice, _pt);
+
+  _output << "Firewall\n";
+  _output << boost::format("  %s %d: %s %s\n\n") % "Level" % _pt.get<std::string>("firewall.firewall_level") 
+              % _pt.get<std::string>("firewall.firewall_status") % _pt.get<std::string>("firewall.status");
+
 }
 
 

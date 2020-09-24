@@ -17,6 +17,8 @@
  * under the License.
  */
 
+#define ENABLE_HAL_PROFILING
+
 #include "shim.h"
 #include "system_linux.h"
 #include "core/common/message.h"
@@ -50,6 +52,7 @@
 #include "plugin/xdp/hal_device_offload.h"
 
 #include "plugin/xdp/aie_trace.h"
+#include "plugin/xdp/aie_profile.h"
 #endif
 
 namespace {
@@ -113,6 +116,11 @@ shim::
 ~shim()
 {
   xclLog(XRT_INFO, "XRT", "%s", __func__);
+
+#ifdef ENABLE_HAL_PROFILING
+//    xdphal::finish_flush_device(handle) ;
+    xdpaie::finish_flush_aie_device(this) ;
+#endif
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -698,6 +706,25 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
   return 0;
 }
 
+// Get the maximum bandwidth for host reads from the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double
+shim::
+xclGetReadMaxBandwidthMBps()
+{
+  return 9600.0;
+}
+
+// Get the maximum bandwidth for host writes to the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double
+shim::
+xclGetWriteMaxBandwidthMBps()
+{
+  return 9600.0;
+}
+
+
 int
 shim::
 xclSKGetCmd(xclSKCmd *cmd)
@@ -717,6 +744,35 @@ xclSKGetCmd(xclSKCmd *cmd)
   }
 
   return ret;
+}
+
+int
+shim::
+xclAIEGetCmd(xclAIECmd *cmd)
+{
+  drm_zocl_aie_cmd scmd;
+
+  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_GETCMD, &scmd);
+
+  if (!ret) {
+    cmd->opcode = scmd.opcode;
+    cmd->size = scmd.size;
+    snprintf(cmd->info, scmd.size, "%s", scmd.info);
+  }
+
+  return ret;
+}
+
+int
+shim::
+xclAIEPutCmd(xclAIECmd *cmd)
+{
+  drm_zocl_aie_cmd scmd;
+
+  scmd.opcode = cmd->opcode;
+  scmd.size = cmd->size;
+  snprintf(scmd.info, cmd->size, "%s",cmd->info);
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_PUTCMD, &scmd);
 }
 
 int
@@ -1423,13 +1479,20 @@ getAieArray()
   return aieArray.get();
 }
 
+zynqaie::Aied*
+shim::
+getAied()
+{
+  return aied.get();
+}
+
 void
 shim::
 registerAieArray()
 {
-//not registering AieArray in hw_emu as it is crashing in hw_emu. We can fix the
-//issue once move to AIE-V2 is done
+  delete aieArray.release();
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
+  aied = std::make_unique<zynqaie::Aied>(mCoreDevice.get());
 }
 
 bool
@@ -1443,11 +1506,14 @@ int
 shim::
 getPartitionFd(drm_zocl_aie_fd &aiefd)
 {
-  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd);
-  if (ret)
-    return -errno;
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd) ? -errno : 0;
+}
 
-  return 0;
+int
+shim::
+resetAIEArray(drm_zocl_aie_reset &reset)
+{
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_RESET, &reset) ? -errno : 0;
 }
 #endif
 
@@ -1654,10 +1720,11 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
 #ifndef __HWEM__
 #ifdef ENABLE_HAL_PROFILING
-  xdphal::flush_device(handle) ;
-  xdpaie::flush_aie_device(handle) ;
+    xdphal::flush_device(handle) ;
+    xdpaie::flush_aie_device(handle) ;
 #endif
 #endif
+
 
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
     if (ret) {
@@ -1679,14 +1746,6 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     if (xrt_core::xclbin::is_pdi_only(buffer))
         return 0;
 
-
-#ifndef __HWEM__
-#ifdef ENABLE_HAL_PROFILING
-  xdphal::update_device(handle) ;
-  xdpaie::update_aie_device(handle);
-#endif
-#endif
-
     ret = xrt_core::scheduler::init(handle, buffer);
     if (ret) {
       printf("Scheduler init failed\n");
@@ -1702,7 +1761,13 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       printf("Map Debug IPs Failed\n");
       return ret;
     }
+
 #ifndef __HWEM__
+#ifdef ENABLE_HAL_PROFILING
+    xdphal::update_device(handle) ;
+    xdpaie::update_aie_device(handle);
+    xdpaiectr::update_aie_device(handle);
+#endif
     START_DEVICE_PROFILING_CB(handle);
 #endif
     return 0;
@@ -1834,6 +1899,22 @@ xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
   return drv->xclGetDeviceClockFreqMHz();
 }
 
+double
+xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+}
+
+
 int
 xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
 {
@@ -1841,6 +1922,24 @@ xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
   if (!drv)
     return -EINVAL;
   return drv->xclSKGetCmd(cmd);
+}
+
+int
+xclAIEGetCmd(xclDeviceHandle handle, xclAIECmd *cmd)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclAIEGetCmd(cmd);
+}
+
+int
+xclAIEPutCmd(xclDeviceHandle handle, xclAIECmd *cmd)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclAIEPutCmd(cmd);
 }
 
 int

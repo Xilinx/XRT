@@ -25,7 +25,8 @@
 #include "core/include/experimental/xrt-next.h"
 #include "core/edge/user/shim.h"
 #include "core/edge/common/aie_parser.h"
-//#include "core/edge/user/aie/aie.h"
+#include "xdp/profile/database/database.h"
+
 extern "C" {
 #include <xaiengine.h>
 }
@@ -37,27 +38,25 @@ namespace xdp {
   {
     db->registerPlugin(this);
    
-    // Just like HAL and power profiling, go through devices 
-    //  that exist and open a file for each
+    // Go through devices open a file for each
     uint64_t index = 0;
     void* handle = xclOpen(index, "/dev/null", XCL_INFO);
-    while (handle != nullptr) {
-      // Keep device locally
-      auto device = xrt_core::get_userpf_device(handle);
-      mDevices.push_back(device);
 
+    auto numDevices = xclProbe();
+    while (index < numDevices && handle != nullptr) {
       // Determine the name of the device
       struct xclDeviceInfo2 info;
       xclGetDeviceInfo2(handle, &info);
       std::string deviceName = std::string(info.mName);
 
       // Create and register writer and file
-      std::string outputFile = "aie_profile_" + deviceName + ".csv"; 
+      std::string outputFile = "aie_profile_" + deviceName + ".csv";
       writers.push_back(new AIEProfilingWriter(outputFile.c_str(),
 			    deviceName.c_str(), index));
       db->getStaticInfo().addOpenedFile(outputFile.c_str(), "AIE_PROFILE");
 
-      // Move on to next device
+      // We need to use original shim handles for offload
+      // Move to Next Device
       xclClose(handle);
       ++index;
       handle = xclOpen(index, "/dev/null", XCL_INFO);
@@ -91,22 +90,26 @@ namespace xdp {
       uint64_t index = 0;
 
       // Iterate over all devices
-      for (auto device : mDevices) {
+      for (auto handle : mHandles) {
         // Wait until xclbin has been loaded and device has been updated in database
         if (!(db->getStaticInfo().isDeviceReady(index))) {
           ++index;
           continue;
         }
 
-        auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+        auto drv = ZYNQ::shim::handleCheck(handle);
         if (!drv)
           continue;
         auto aieArray = drv->getAieArray();
+        if (!aieArray)
+          continue;
 
         // Iterate over all AIE Counters
         auto numCounters = db->getStaticInfo().getNumAIECounter(index);
         for (uint64_t c=0; c < numCounters; c++) {
           auto aie = db->getStaticInfo().getAIECounter(index, c);
+          if (!aie)
+            continue;
 
           std::vector<uint64_t> values;
           values.push_back(aie->column);
@@ -116,7 +119,7 @@ namespace xdp {
           values.push_back(aie->resetEvent);
 
           // Read counter value from device
-          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
+          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row+1);
           uint32_t counterValue;
           XAie_PerfCounterGet(aieArray->getDevInst(), tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
           values.push_back(counterValue);
@@ -130,6 +133,29 @@ namespace xdp {
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(mPollingInterval));     
+    }
+  }
+
+    void AIEProfilingPlugin::updateAIEDevice(void* handle)
+  {
+    char pathBuf[512];
+    memset(pathBuf, 0, 512);
+    xclGetDebugIPlayoutPath(handle, pathBuf, 512);
+
+    std::string sysfspath(pathBuf);
+    mHandles.push_back(handle);
+
+    uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
+
+    if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {
+      // Update the static database with information from xclbin
+      (db->getStaticInfo()).updateDevice(deviceId, handle);
+      {
+        struct xclDeviceInfo2 info;
+        if(xclGetDeviceInfo2(handle, &info) == 0) {
+          (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
+        }
+      }
     }
   }
 

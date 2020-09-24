@@ -56,13 +56,9 @@ struct xocl_m2m {
 
 static int get_host_bank(struct platform_device *pdev, u64 *addr, u64 *size)
 {
-	/* hard code address and size for now. Both addr and size should
-	 * be from partition metadata.
-	 */
-	*addr = 0x2000000000;
-	*size = 0x400000000;
+	struct xocl_dev *xdev = xocl_get_xdev(pdev);
 
-	return 0;
+	return xocl_fdt_get_hostmem(xdev, XDEV(xdev)->fdt_blob, addr, size);
 }
 
 static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,

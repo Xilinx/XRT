@@ -364,9 +364,10 @@ static struct xocl_subdev_map subdev_map[] = {
 		.dev_name = XOCL_ERT_30,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_ERT_CFG_GPIO},
+			{.res_name = NODE_ERT_CQ_USER},
 			{NULL},
 		},
-		.required_ip = 1,
+		.required_ip = 2,
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
@@ -1518,6 +1519,37 @@ long xocl_fdt_get_p2pbar_len(xdev_handle_t xdev_hdl, void *blob)
 		return -EINVAL;
 
 	return be64_to_cpu(p2p_bar_len[1]);
+}
+
+int xocl_fdt_get_hostmem(xdev_handle_t xdev_hdl, void *blob, u64 *base,
+	u64 *size)
+{
+	int offset;
+	const u64 *prop;
+	const char *ipname;
+
+	if (!blob)
+		return -EINVAL;
+
+	for (offset = fdt_next_node(blob, -1, NULL);
+		offset >= 0;
+		offset = fdt_next_node(blob, offset, NULL)) {
+		ipname = fdt_get_name(blob, offset, NULL);
+		if (ipname && strncmp(ipname, NODE_HOSTMEM_BANK0,
+		    strlen(NODE_HOSTMEM_BANK0) + 1) == 0)
+			break;
+	}
+	if (offset < 0)
+		return -ENODEV;
+
+	prop = fdt_getprop(blob, offset, PROP_IO_OFFSET, NULL);
+	if (!prop)
+		return -EINVAL;
+
+	*base = be64_to_cpu(prop[0]);
+	*size = be64_to_cpu(prop[1]);
+
+	return 0;
 }
 
 int xocl_fdt_path_offset(xdev_handle_t xdev_hdl, void *blob, const char *path)

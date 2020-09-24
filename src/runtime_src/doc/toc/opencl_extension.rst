@@ -1,3 +1,4 @@
+.. _opencl_extension.rst:
 
 Xilinx OpenCL extension
 ***********************
@@ -15,7 +16,7 @@ Specify a special buffer such as P2P buffer, Host only buffer, etc.
     
 An example of a P2P Buffer specification
 
-.. code-block:: c++
+.. code:: c++
 
     cl_mem_ext_ptr_t p2p_buf_ext = {0};
     p2p_buf_ext.flags = XCL_MEM_EXT_P2P_BUFFER;
@@ -24,12 +25,12 @@ An example of a P2P Buffer specification
 
 An example of a host only buffer specification
 
-.. code-block:: c++
+.. code:: c++
   
-   cl_mem_ext_ptr_t host_buffer_ext = {0};
-   host_buffer_ext.flags = XCL_MEM_EXT_HOST_ONLY;
+      cl_mem_ext_ptr_t host_buffer_ext = {0};
+      host_buffer_ext.flags = XCL_MEM_EXT_HOST_ONLY;
    
-   cl::Buffer host_buffer (context,CL_MEM_READ_ONLY |CL_MEM_EXT_PTR_XILINX, size, &host_buffer_ext);
+      cl::Buffer host_buffer (context,CL_MEM_READ_ONLY |CL_MEM_EXT_PTR_XILINX, size, &host_buffer_ext);
 
 Specify regular buffer location on the device memory banks 
 ----------------------------------------------------------   
@@ -46,10 +47,10 @@ Optionally, for regular buffer, the buffer location can be specified using ``CL_
 
 Here is an example of specifying explicit name of the bank, this works for only DDR banks. The supported flags are ``XCL_MEM_DDR_BANK0``, ``XCL_MEM_DDR_BANK1``, ``XCL_MEM_DDR_BANK2``, and ``XCL_MEM_DDR_BANK3``. 
 
-.. code-block:: c++
+.. code:: c++
    
-      cl_mem_ext_ptr_t ext = {0};​
-      ext.banks = XCL_MEM_DDR_BANK0;​
+      cl_mem_ext_ptr_t ext = {0};
+      ext.banks = XCL_MEM_DDR_BANK0;
       clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,…,&ext,…);
    
 
@@ -61,7 +62,7 @@ Here is an example of specifying explicit name of the bank, this works for only 
 
 This approach works for all types of memory banks as it accept index of the memory. The memory index can be obtained by inspecting .xclbin.info file or by xbutil query. 
 
-.. code-block:: c++
+.. code:: c++
 
     // Check the memory index from xclbin.info file  
     ext.banks = 2 | XCL_MEM_TOPOLOGY;
@@ -75,11 +76,11 @@ This approach works for all types of memory banks as it accept index of the memo
 
 In relative specification style, the memory bank is detected from the kernel arguments, for this purpose the kernel handle and argument index is used as below 
 
-.. code-block:: c++
+.. code:: c++
 
-   ext.argidx = idx;
-   ext.kernel = kernel;
-   clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,…,&ext,…);
+       ext.argidx = idx;
+       ext.kernel = kernel;
+       clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,…,&ext,…);
    
  
  
@@ -119,13 +120,13 @@ The API ``xclGetComputeUnitInfo`` is used to get information of Compute Unit. Th
 
 Example to get CU index and CU base address
 
-.. code-block:: c++
+.. code:: c++
    
-   cl_uint cuidx;  // retrieve index of first cu in kernel
-   xclGetComputeUnitInfo(kernel,0,XCL_COMPUTE_UNIT_INDEX,sizeof(cuidx),&cuidx,nullptr);
+      cl_uint cuidx;  // retrieve index of first cu in kernel
+      xclGetComputeUnitInfo(kernel,0,XCL_COMPUTE_UNIT_INDEX,sizeof(cuidx),&cuidx,nullptr);
 
-   size_t cuaddr;
-   xclGetComputeUnitInfo(kernel,0,XCL_COMPUTE_UNIT_BASE_ADDRESS,sizeof(cuaddr),&cuaddr,nullptr);
+      size_t cuaddr;
+      xclGetComputeUnitInfo(kernel,0,XCL_COMPUTE_UNIT_BASE_ADDRESS,sizeof(cuaddr),&cuaddr,nullptr);
 
 
 Parameter extension of the API ``clGetKernelInfo``
@@ -138,10 +139,10 @@ These XRT specific parameters are provided for ``cl_kernel_info`` to be used wit
   
 The below example is showing to get the number of Compute Unit information from the kernel object 
 
-.. code-block:: c++
+.. code:: c++
 
-   cl_uint numcus = 0;
-   clGetKernelInfo(kernel,CL_KERNEL_COMPUTE_UNIT_COUNT,sizeof(cl_uint),&numcus,nullptr);
+      cl_uint numcus = 0;
+      clGetKernelInfo(kernel,CL_KERNEL_COMPUTE_UNIT_COUNT,sizeof(cl_uint),&numcus,nullptr);
 
 
 Parameter extension of the API ``clGetKernelArgInfo``
@@ -153,10 +154,10 @@ This XRT specific parameter is provided for ``cl_kernel_arg_info`` to be used wi
 
 Example shows below to get the offset for the argument 2 for the kernel. 
 
-.. code-block:: c++
+.. code:: c++
 
-    size_t foo_offset = 0;
-    clGetKernelArgInfo(kernel, 2, CL_KERNEL_ARG_OFFSET, sizeof(foo_offset), &foo_offset, nullptr);
+      size_t foo_offset = 0;
+      clGetKernelArgInfo(kernel, 2, CL_KERNEL_ARG_OFFSET, sizeof(foo_offset), &foo_offset, nullptr);
  
 
 Parameter extension of the API ``clGetMemObjectInfo``
@@ -168,24 +169,24 @@ This XRT specific parameter is provided for ``cl_mem_info`` to be used with API 
 
 Example shows below to get the offset for the argument 2 for the kernel. 
 
-.. code-block:: c++
+.. code:: c++
 
-    int mem_bank_index = 0;
-    clGetMemObjectInfo(buf, CL_MEM_BANK, sizeof(int), &mem_bank_index, nullptr);
+      int mem_bank_index = 0;
+      clGetMemObjectInfo(buf, CL_MEM_BANK, sizeof(int), &mem_bank_index, nullptr);
 
 
 Parameter extension of the API ``clGetDeviceInfo``
 --------------------------------------------------
 
-This XRT specific parameter is provided for ``cl_device_info`` to be used with API ``cl_device_info ``.  
+This XRT specific parameter is provided for ``cl_device_info`` to be used with API ``clGetDeviceInfo``.  
 
   - ``CL_DEVICE_PCIE_BDF``: To obtain the Bus/Device/Function information of the Pcie based Device
 
 Example shows below to get PCie BDF information from the OpenCL device 
 
-.. code-block:: c++
+.. code:: c++
 
-    char[20] bdf;
-    clGetDeviceInfo(device, CL_DEVICE_PCIE_BDF, sizeof(bdf), &bdf, nullptr);
+      char[20] bdf;
+      clGetDeviceInfo(device, CL_DEVICE_PCIE_BDF, sizeof(bdf), &bdf, nullptr);
 
 

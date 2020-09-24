@@ -264,6 +264,7 @@ enum subdev_id {
 	XOCL_SUBDEV_M2M,
 	XOCL_SUBDEV_IORES,
 	XOCL_SUBDEV_FLASH,
+	XOCL_SUBDEV_MAILBOX,
 	XOCL_SUBDEV_P2P,
 	XOCL_SUBDEV_MB_SCHEDULER,
 	XOCL_SUBDEV_XVC_PUB,
@@ -275,7 +276,6 @@ enum subdev_id {
 	XOCL_SUBDEV_MB,
 	XOCL_SUBDEV_PS,
 	XOCL_SUBDEV_XIIC,
-	XOCL_SUBDEV_MAILBOX,
 	XOCL_SUBDEV_ICAP,
 	XOCL_SUBDEV_DNA,
 	XOCL_SUBDEV_FMGR,
@@ -300,8 +300,8 @@ enum subdev_id {
 	XOCL_SUBDEV_SPC,
 	XOCL_SUBDEV_PMC,
 	XOCL_SUBDEV_ICAP_CNTRL,
-	XOCL_SUBDEV_ERT_USER,
 	XOCL_SUBDEV_ERT_30,
+	XOCL_SUBDEV_ERT_USER,
 	XOCL_SUBDEV_NUM
 };
 
@@ -2622,7 +2622,6 @@ struct xocl_subdev_map {
 		.subdev_info = RES_MGMT_VSEC,                           \
 		.subdev_num  = ARRAY_SIZE(RES_MGMT_VSEC),               \
 		.flash_type  = FLASH_TYPE_SPI,                          \
-		.sched_bin   = "xilinx/sched_v20.bin",                  \
 		.board_name  = "u26z"                                   \
 	}
 
@@ -2659,7 +2658,6 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u50"					\
 	}
 
@@ -2677,7 +2675,6 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u55n",					\
 		.vbnv = "xilinx_u55n"					\
 	}
@@ -2755,7 +2752,6 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u250"					\
 	}
 

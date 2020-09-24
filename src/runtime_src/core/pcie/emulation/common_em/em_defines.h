@@ -162,23 +162,6 @@ namespace xclemulation {
 
 }
 
-struct platformData {
-  char mFpgaPartName[64]; // "Fpga_Part_Name"
-  bool mIsUnifiedPlatform;  //Unified_Platform" 
-  char mVBNVName[64]; //"Vbnv_Name"
-  uint32_t mCDMABaseAddress0; //"Cdma_Base_Address0" : "0",
-  uint32_t mCDMABaseAddress1; //"Cdma_Base_Address1" : "0",
-  uint32_t mCDMABaseAddress2; //"Cdma_Base_Address2" : "0",
-  uint32_t mCDMABaseAddress3; //"Cdma_Base_Address3" : "0",
-  bool mIsBoardScheduler; // "Board_Scheduler" : "0",
-  char mBoardSchedulerVer[16]; //"Board_Scheduler_Ver" : "3.0",
-  bool mIsPeerToPeer; //"Peer_To_Peer" : "1",
-  bool mIsNoDMA; //"No_DMA" : "0"
-  bool mIsM2M; // "M2M" : "0"
-  bool mIsCDMA; // "CDMA" : "0"
-  bool mIsQDMA; // "QDMA" : "0"
-};
-
 /**
  * xclMemoryDomains is for support of legacy APIs
  * It is not used in BO APIs where we instead use xclBOKind

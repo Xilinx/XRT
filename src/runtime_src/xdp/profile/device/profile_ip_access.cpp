@@ -118,7 +118,7 @@ int ProfileIP::read(uint64_t offset, size_t size, void* data) {
         return -1;
     }
     uint64_t absolute_offset = ip_base_address + offset;
-    
+
     int read_size = device->read(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
 //    size_t read_size = xDevice->xclRead(device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
     if (read_size < 0) {

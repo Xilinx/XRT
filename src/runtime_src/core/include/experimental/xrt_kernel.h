@@ -98,16 +98,17 @@ class run
   /**
    * wait() - Wait for a run to complete execution
    *
-   * @timeout_ms:  Timeout for wait.
-   * Return:       Command state upon return of wait
+   * @timeout:  Timeout for wait (default block till run completes)
+   * Return:    Command state upon return of wait
+   *
+   * The default timeout of 0ms indicates blocking until run completes.
    *
    * The current thread will block until the run completes or timeout
    * expires. Completion does not guarantee success, the run status
    * should be checked by using @state.
    */
-  XCL_DRIVER_DLLESPEC
   ert_cmd_state
-  wait(unsigned int timeout_ms=0) const;
+  wait(const std::chrono::milliseconds& timeout = std::chrono::milliseconds{0}) const;
 
   /**
    * state() - Check the current state of a run object
@@ -175,9 +176,9 @@ class run
    */
   template <typename ArgType>
   void
-  set_arg(int index, ArgType arg)
+  set_arg(int index, ArgType&& arg)
   {
-    set_arg_at_index(index, get_arg_value(arg));
+    set_arg_at_index(index, get_arg_value(std::forward<ArgType>(arg)));
   }
 
   /**
@@ -212,9 +213,9 @@ class run
    */
   template <typename ArgType>
   void
-  update_arg(int index, ArgType arg)
+  update_arg(int index, ArgType&& arg)
   {
-    update_arg_at_index(index, get_arg_value(arg));
+    update_arg_at_index(index, get_arg_value(std::forward<ArgType>(arg)));
   }
 
   /**
@@ -278,17 +279,17 @@ private:
   
   template<typename ArgType>
   std::vector<uint32_t>
-  get_arg_value(ArgType arg)
+  get_arg_value(ArgType&& arg)
   {
     auto words = std::max(sizeof(ArgType), sizeof(uint32_t)) / sizeof(uint32_t);
-    return { reinterpret_cast<uint32_t*>(&arg), reinterpret_cast<uint32_t*>(&arg) + words };
+    return { reinterpret_cast<const uint32_t*>(&arg), reinterpret_cast<const uint32_t*>(&arg) + words };
   }
 
   template<typename ArgType, typename ...Args>
   void
-  set_arg(int argno, ArgType arg, Args&&... args)
+  set_arg(int argno, ArgType&& arg, Args&&... args)
   {
-    set_arg(argno, arg);
+    set_arg(argno, std::forward<ArgType>(arg));
     set_arg(++argno, std::forward<Args>(args)...);
   }
 };
@@ -306,14 +307,22 @@ private:
 class kernel_impl;
 class kernel
 {
-public:
+ public:
+  /**
+   * cu_access_mode - compute unit access mode
+   *
+   * @shared:    CUs can be shared between processes
+   * @exclusive: CUs are owned exclusively by this process
+   */
+  enum class cu_access_mode : bool { exclusive = false, shared = true };
+
   /**
    * kernel() - Constructor from a device and xclbin
    *
    * @device: Device on which the kernel should execute
    * @xclbin_id: UUID of the xclbin with the kernel
    * @name:  Name of kernel to construct
-   * @exclusive: Open the kernel instances with exclusive access (default shared)
+   * @mode: Open the kernel instances with specified access (default shared)
    *
    * The kernel name must uniquely identify compatible kernel
    * instances (compute units).  Optionally specify which kernel
@@ -321,17 +330,25 @@ public:
    * "kernelname:{instancename1,instancename2,...}" syntax.  The
    * compute units are default opened with shared access, meaning that
    * other kernels and other process will have shared access to same
-   * compute units.  If exclusive access is needed then set @exclusive
-   * argument to true.
+   * compute units.
    */
   XCL_DRIVER_DLLESPEC
-  kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
+  kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
+         cu_access_mode mode = cu_access_mode::shared);
+
+  /// @cond
+  /// Deprecated construtor for exclusive access
+  kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool ex=false)
+    : kernel(device, xclbin_id, name, ex ? cu_access_mode::exclusive : cu_access_mode::shared)
+  {}
+  /// @endcond
 
   /**
    * Obsoleted construction from xclDeviceHandle
    */
   XCL_DRIVER_DLLESPEC
-  kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
+  kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name,
+         cu_access_mode mode = cu_access_mode::shared);
 
   /**
    * operator() - Invoke the kernel function

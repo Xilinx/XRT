@@ -11,6 +11,7 @@
  */
 
 #include "zocl_drv.h"
+#include "zocl_aie.h"
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "xclbin.h"
@@ -49,9 +50,11 @@ static ssize_t kds_custat_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	struct zocl_cu *zcu = NULL;
 	ssize_t size = 0;
 	phys_addr_t paddr;
 	u32 usage;
+	u32 status;
 	int i;
 
 	if (!zdev)
@@ -65,13 +68,20 @@ static ssize_t kds_custat_show(struct device *dev,
 	}
 
 	for (i = 0; i < zdev->exec->num_cus; i++) {
-		paddr = zocl_cu_get_paddr(&zdev->exec->zcu[i]);
-		usage = zdev->exec->zcu[i].usage;
+		zcu = &zdev->exec->zcu[i];
+		if (!zcu) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		paddr = zocl_cu_get_paddr(zcu);
+		usage = zcu->usage;
+		status = zocl_cu_status_get(zcu);
 		/* Use %x for now. Needs to use a better approach when support
 		 * CU at higher than 4GB address range.
 		 */
-		size += sprintf(buf + size, "CU[@0x%llx] : %d\n",
-		    (uint64_t)paddr, usage);
+		size += sprintf(buf + size, "CU[@0x%llx] : %d status : %d\n",
+		    (uint64_t)paddr, usage, status);
 	}
 
 	read_unlock(&zdev->attr_rwlock);
@@ -132,6 +142,64 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 
 	return size;
 }
+
+static ssize_t graph_status_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = NULL;
+	struct aie_info *aie;
+	struct aie_info_cmd *acmd;
+	struct aie_info_packet *aiec_packet;
+	ssize_t nread = 0;
+	zdev = dev_get_drvdata(dev);
+	if (!zdev)
+		return 0;
+
+	aie = zdev->aie_information;
+	if (!aie)
+		return 0;
+
+	/* create request */
+	acmd = kmalloc(sizeof(struct aie_info_cmd), GFP_KERNEL);
+	if (!acmd) {
+		return -ENOMEM;
+	}
+
+	aiec_packet = kmalloc(sizeof(struct aie_info_packet), GFP_KERNEL);
+	if (!aiec_packet) {
+		return -ENOMEM;
+	}
+
+	/* set command */
+	aiec_packet->opcode = GRAPH_STATUS;
+	acmd->aiec_packet = aiec_packet;
+
+	/* init semaphore */
+	sema_init(&acmd->aiec_sem, 0);
+
+	/* caller release the wait aied thread and wait for result */
+	mutex_lock(&aie->aie_lock);
+	if (waitqueue_active(&aie->aie_wait_queue)) {
+		list_add_tail(&acmd->aiec_list, &aie->aie_cmd_list);
+		mutex_unlock(&aie->aie_lock);
+		wake_up_interruptible(&aie->aie_wait_queue);
+		if (down_interruptible(&acmd->aiec_sem)) {
+			nread = -ERESTARTSYS;
+			goto clean;
+		}
+	} else {
+		mutex_unlock(&aie->aie_lock);
+		nread =  -ERESTARTSYS;
+		goto clean;
+	}
+
+	nread = snprintf(buf, acmd->aiec_packet->size, "%s\n", acmd->aiec_packet->info);
+
+clean:
+	kfree(acmd->aiec_packet);
+	kfree(acmd);
+	return nread;
+}
+static DEVICE_ATTR_RO(graph_status);
 
 static ssize_t read_aie_metadata(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
@@ -220,6 +288,7 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_errors.attr,
+	&dev_attr_graph_status.attr,
 	NULL,
 };
 

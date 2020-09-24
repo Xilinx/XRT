@@ -16,6 +16,7 @@
 
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 
+#include <iostream>
 
 namespace xdp {
 
@@ -53,15 +54,23 @@ namespace xdp {
   void AIETraceWriter::writeTraceEvents()
   {
     // write the entire buffer
-    AIETraceDataType traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId);
-    void*    buf = traceData.first;
-    uint64_t bufferSz = traceData.second;
+    AIETraceDataType* traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId);
+    if(nullptr == traceData) {
+      fout << std::endl;
+      return;
+    }
+
+    void*    buf = traceData->buffer;
+    uint64_t bufferSz = traceData->bufferSz;
+    if(nullptr == buf) {
+      fout << std::endl;
+      return;
+    }
 
     uint32_t* dataBuffer = static_cast<uint32_t*>(buf);
     for(uint64_t i = 0; i < bufferSz; i++) {
       fout << "0x" << std::hex << dataBuffer[i] << std::endl;
     }
-
     fout << std::endl;
   }
 

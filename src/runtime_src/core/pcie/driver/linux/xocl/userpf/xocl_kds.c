@@ -21,99 +21,100 @@ MODULE_PARM_DESC(kds_mode,
  */
 int kds_echo = 0;
 
-/* -KDS sysfs-- */
-static ssize_t
-kds_echo_show(struct device *dev, struct device_attribute *attr, char *buf)
+static int
+get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
+	     uint32_t bo_hdl, size_t off, size_t size, uint64_t *paddrp)
 {
-	return sprintf(buf, "%d\n", kds_echo);
+	struct drm_device *ddev = filp->minor->dev;
+	struct drm_gem_object *obj;
+	struct drm_xocl_bo *xobj;
+
+	obj = xocl_gem_object_lookup(ddev, filp, bo_hdl);
+	if (!obj) {
+		userpf_err(xdev, "Failed to look up GEM BO 0x%x\n", bo_hdl);
+		return -ENOENT;
+	}
+
+	xobj = to_xocl_bo(obj);
+	if (!xobj->mm_node) {
+		/* Not a local BO */
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+		return -EADDRNOTAVAIL;
+	}
+
+	if (obj->size <= off || obj->size < off + size) {
+		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+		return -EINVAL;
+	}
+
+	*paddrp = xobj->mm_node->start + off;
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+	return 0;
 }
 
-static ssize_t
-kds_echo_store(struct device *dev, struct device_attribute *da,
-	       const char *buf, size_t count)
+static int copybo_ecmd2xcmd(struct xocl_dev *xdev, struct drm_file *filp,
+			    struct ert_start_copybo_cmd *ecmd,
+			    struct kds_command *xcmd)
 {
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	u32 clients = 0;
+	struct kds_cu_mgmt *cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
+	uint64_t src_addr;
+	uint64_t dst_addr;
+	size_t src_off;
+	size_t dst_off;
+	size_t sz;
+	int ret_src;
+	int ret_dst;
+	int i;
 
-	/* TODO: this should be as simple as */
-	/* return stroe_kds_echo(&XDEV(xdev)->kds, buf, count); */
+	sz = ert_copybo_size(ecmd);
 
-	if (!kds_mode)
-		clients = get_live_clients(xdev, NULL);
+	src_off = ert_copybo_src_offset(ecmd);
+	ret_src = get_bo_paddr(xdev, filp, ecmd->src_bo_hdl, src_off, sz, &src_addr);
+	if (ret_src != 0 && ret_src != -EADDRNOTAVAIL)
+		return ret_src;
 
-	return store_kds_echo(&XDEV(xdev)->kds, buf, count,
-			      kds_mode, clients, &kds_echo);
-}
-static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
+	dst_off = ert_copybo_dst_offset(ecmd);
+	ret_dst = get_bo_paddr(xdev, filp, ecmd->dst_bo_hdl, dst_off, sz, &dst_addr);
+	if (ret_dst != 0 && ret_dst != -EADDRNOTAVAIL)
+		return ret_dst;
 
-static ssize_t
-kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-
-	return show_kds_stat(&XDEV(xdev)->kds, buf);
-}
-static DEVICE_ATTR_RO(kds_stat);
-
-static ssize_t
-ert_disable_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%d\n", XDEV(xdev)->kds.ert_disable);
-}
-
-static ssize_t
-ert_disable_store(struct device *dev, struct device_attribute *da,
-	       const char *buf, size_t count)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	u32 live_clients;
-	u32 disable;
-
-	/* Switch KDS/ERT mode is a fundamental change on the hardware.
-	 * We should only allow it when hardware is good and there is no
-	 * live clients exist.
-	 * Below sanity check is similar to kds_echo, maybe we should have
-	 * an API to check the status of the hardware and client.
-	 *
-	 * Ideally, ICAP should implement the API. Since it knows if bitstream
-	 * is locked. It could know if hardware is in bad state.
-	 * When a client exit, if KDS is in bad state, notice ICAP before
-	 * unlock bitstream.
-	 */
-	if (XDEV(xdev)->kds.bad_state)
-		return -ENODEV;
-
-	mutex_lock(&XDEV(xdev)->kds.lock);
-	if (kds_mode)
-		live_clients = kds_live_clients_nolock(&XDEV(xdev)->kds, NULL);
-	else
-		live_clients = get_live_clients(xdev, NULL);
-
-	if (live_clients > 0)
-		return -EBUSY;
-
-	if (kstrtou32(buf, 10, &disable) == -EINVAL || disable > 1)
+	/* We need at least one local BO for copy */
+	if (ret_src == -EADDRNOTAVAIL && ret_dst == -EADDRNOTAVAIL)
 		return -EINVAL;
 
-	XDEV(xdev)->kds.ert_disable = disable;
-	mutex_unlock(&XDEV(xdev)->kds.lock);
+	if (ret_src != ret_dst) {
+		/* One of them is not local BO, perform P2P copy */
+		xocl_copy_import_bo(filp->minor->dev, filp, ecmd);
+		return 1;
+	}
 
-	return count;
+	/* Both BOs are local, copy via cdma CU */
+	if (cu_mgmt->num_cdma == 0)
+		return -EINVAL;
+
+	userpf_info(xdev,"checking alignment requirments for KDMA sz(%lu)",sz);
+	if ((dst_addr + dst_off) % KDMA_BLOCK_SIZE ||
+	    (src_addr + src_off) % KDMA_BLOCK_SIZE ||
+	    sz % KDMA_BLOCK_SIZE) {
+		userpf_err(xdev,"improper alignment, cannot use KDMA");
+		return -EINVAL;
+	}
+
+	ert_fill_copybo_cmd(ecmd, 0, 0, src_addr, dst_addr, sz / KDMA_BLOCK_SIZE);
+
+	i = cu_mgmt->num_cus - cu_mgmt->num_cdma;
+	while (i < cu_mgmt->num_cus) {
+		ecmd->cu_mask[i / 32] |= 1 << (i % 32);
+		i++;
+	}
+	ecmd->opcode = ERT_START_CU;
+	ecmd->type = ERT_CU;
+
+	start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+
+	return 0;
 }
-static DEVICE_ATTR(ert_disable, 0644, ert_disable_show, ert_disable_store);
-
-static struct attribute *kds_attrs[] = {
-	&dev_attr_kds_echo.attr,
-	&dev_attr_kds_stat.attr,
-	&dev_attr_ert_disable.attr,
-	NULL,
-};
-
-static struct attribute_group xocl_kds_group = {
-	.attrs = kds_attrs,
-};
 
 static inline void
 xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
@@ -276,7 +277,11 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct drm_xocl_bo *xobj;
 	struct ert_packet *ecmd;
 	struct kds_command *xcmd;
+	struct kds_cu_mgmt *cu_mgmt;
+	u32 cdma_addr;
+	int cu_count;
 	int ret = 0;
+	int i;
 
 	if (!client->xclbin_id) {
 		userpf_err(xdev, "The client has no opening context\n");
@@ -318,10 +323,36 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	/* TODO: one ecmd to one xcmd now. Maybe we will need
 	 * one ecmd to multiple xcmds
 	 */
-	if (ecmd->opcode == ERT_CONFIGURE) {
+	switch (ecmd->opcode) {
+	case ERT_CONFIGURE:
 		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
-	} else if (ecmd->opcode == ERT_START_CU)
+
+		/* Special handle for m2m cu :( */
+		cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
+		i = cu_mgmt->num_cus - cu_mgmt->num_cdma;
+		while (i < cu_mgmt->num_cus) {
+			cdma_addr = cu_mgmt->xcus[i]->info.addr;
+			to_cfg_pkg(ecmd)->data[i] = cdma_addr;
+			to_cfg_pkg(ecmd)->count++;
+			to_cfg_pkg(ecmd)->num_cus++;
+			i++;
+		}
+		break;
+	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		break;
+	case ERT_START_COPYBO:
+		ret = copybo_ecmd2xcmd(xdev, filp, to_copybo_pkg(ecmd), xcmd);
+		if (ret) {
+			xcmd->cb.free(xcmd);
+			return (ret < 0)? ret : 0;
+		}
+		break;
+	default:
+		userpf_err(xdev, "Unsupport command\n");
+		xcmd->cb.free(xcmd);
+		return -EINVAL;
+	}
 
 	if (XDEV(xdev)->kds.ert_disable)
 		xcmd->type = KDS_CU;
@@ -441,21 +472,11 @@ int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 
 int xocl_init_sched(struct xocl_dev *xdev)
 {
-	struct device *dev = &xdev->core.pdev->dev;
-	int ret;
-
-	ret = sysfs_create_group(&dev->kobj, &xocl_kds_group);
-	if (ret)
-		userpf_err(xdev, "create kds attrs failed: %d", ret);
-
 	return kds_init_sched(&XDEV(xdev)->kds);
 }
 
 void xocl_fini_sched(struct xocl_dev *xdev)
 {
-	struct device *dev = &xdev->core.pdev->dev;
-
-	sysfs_remove_group(&dev->kobj, &xocl_kds_group);
 	kds_fini_sched(&XDEV(xdev)->kds);
 }
 
@@ -491,14 +512,14 @@ u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist)
 
 void xocl_kds_update(struct xocl_dev *xdev)
 {
-	if (xocl_ert_30_cu_intr_cfg(xdev) == -ENODEV) {
+	if (xocl_ert_30_ert_intr_cfg(xdev) == -ENODEV) {
 		userpf_info(xdev, "Not support CU to host interrupt");
-		userpf_info(xdev, "Using ERT to host interrupt");
-		XDEV(xdev)->kds.cu_intr = 0;
+		XDEV(xdev)->kds.cu_intr_cap = 0;
 	} else {
-		userpf_info(xdev, "Using CU to host interrupt");
-		XDEV(xdev)->kds.cu_intr = 1;
+		userpf_info(xdev, "Shell supports CU to host interrupt");
+		XDEV(xdev)->kds.cu_intr_cap = 1;
 	}
 
+	XDEV(xdev)->kds.cu_intr = 0;
 	kds_cfg_update(&XDEV(xdev)->kds);
 }

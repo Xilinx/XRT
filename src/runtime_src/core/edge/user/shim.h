@@ -37,6 +37,7 @@
 
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/user/aie/aie.h"
+#include "core/edge/user/aie/aied.h"
 #endif
 
 namespace ZYNQ {
@@ -84,6 +85,9 @@ public:
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
 
+  int xclAIEGetCmd(xclAIECmd *cmd);
+  int xclAIEPutCmd(xclAIECmd *cmd);
+
   double xclGetDeviceClockFreqMHz();
 
   uint xclGetNumLiveProcesses();
@@ -93,6 +97,9 @@ public:
   int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
   int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
+  double xclGetReadMaxBandwidthMBps();
+  double xclGetWriteMaxBandwidthMBps();
 
   // Bitstream/bin download
   int xclLoadXclBin(const xclBin *buffer);
@@ -132,10 +139,12 @@ public:
 
 #ifdef XRT_ENABLE_AIE
   zynqaie::Aie* getAieArray();
+  zynqaie::Aied* getAied();
   int getBOInfo(drm_zocl_info_bo &info);
   void registerAieArray();
   bool isAieRegistered();
   int getPartitionFd(drm_zocl_aie_fd &aiefd);
+  int resetAIEArray(drm_zocl_aie_reset &reset);
 #endif
 
 private:
@@ -162,6 +171,7 @@ private:
 
 #ifdef XRT_ENABLE_AIE
   std::unique_ptr<zynqaie::Aie> aieArray;
+  std::unique_ptr<zynqaie::Aied> aied;
 #endif
 };
 

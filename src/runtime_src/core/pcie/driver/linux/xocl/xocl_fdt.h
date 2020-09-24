@@ -102,6 +102,7 @@
 #define NODE_INTC_CU_01 "ep_intc_cu_01"
 #define NODE_INTC_CU_02 "ep_intc_cu_02"
 #define NODE_INTC_CU_03 "ep_intc_cu_03"
+#define NODE_HOSTMEM_BANK0 "ep_c2h_data_00"
 
 #define PROP_HWICAP "axi_hwicap"
 #define PROP_PDI_CONFIG "pdi_config_mem"

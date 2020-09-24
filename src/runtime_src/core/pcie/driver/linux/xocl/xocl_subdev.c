@@ -1514,6 +1514,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	int ret, cap, bar;
 	u64 offset;
 	unsigned err_cap;
+	bool vsec = false;
 	/* workaround MB_SCHEDULER and INTC resource conflict
 	 * Remove below variables when MB_SCHEDULER is removed
 	 */
@@ -1538,6 +1539,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		xocl_xdev_info(xdev_hdl, "found vsec cap, platform type %d",
 				ptype);
 		xocl_fetch_dynamic_platform(core, &in, ptype);
+		vsec = true;
 	}
 		
 	/* workaround firewall completer abort issue */
@@ -1572,6 +1574,9 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		} else if (sdev_info->id == XOCL_SUBDEV_INTC && kds_mode == 0) {
 			sdev_info->res = NULL;
 			sdev_info->num_res = 0;
+		} else if (sdev_info->id == XOCL_SUBDEV_ERT_30 && kds_mode == 0) {
+			sdev_info->res = NULL;
+			sdev_info->num_res = 0;
 		} else if (sdev_info->id == XOCL_SUBDEV_ERT_USER && kds_mode == 0) {
 			sdev_info->res = NULL;
 			sdev_info->num_res = 0;
@@ -1592,7 +1597,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 
 	if (in->sched_bin)
 		core->priv.sched_bin = in->sched_bin;
-	else
+	else if (!vsec)
 		core->priv.sched_bin = "xilinx/sched.bin";
 }
 

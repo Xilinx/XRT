@@ -30,6 +30,7 @@ namespace xdpaie {
     
   void update_aie_device(void* handle);
   void flush_aie_device(void* handle);
+  void finish_flush_aie_device(void* handle);
 }
 
 #endif

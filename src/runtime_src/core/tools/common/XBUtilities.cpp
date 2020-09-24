@@ -252,8 +252,6 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
     throw std::runtime_error(errMsg);
   }
 
-  const unsigned int paragraphWidth = _columnWidth - _indentWidth;
-
   std::string::const_iterator lineBeginIter = _unformattedString.begin();
   const std::string::const_iterator paragraphEndIter = _unformattedString.end();
 
@@ -261,6 +259,8 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
 
   while (lineBeginIter != paragraphEndIter)
   {
+    const unsigned int paragraphWidth = ((linesProcessed != 0) || _indentFirstLine) ? (_columnWidth - _indentWidth) : _columnWidth;
+
     // Remove leading spaces
     if ((linesProcessed > 0) &&
         (*lineBeginIter == ' ')) {
@@ -456,17 +456,22 @@ XBUtilities::get_available_devices(bool inUserDomain)
   for (const auto & device : deviceCollection) {
     boost::property_tree::ptree pt_dev;
     pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
-    //user pf doesn't have this 
-    try{
-      pt_dev.put("board", xrt_core::device_query<xrt_core::query::board_name>(device));
-    } catch(...) {}
-    
 
-    // The following only works for 1RP. Golden and 2RP don't have rom info.
-    // As the technologies mature, try getting the vbnv and ID of the shell on device
-    // It doesn't make sense to add ad-hoc code right now.
-    // pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
-    // pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+    //user pf doesn't have mfg node. Also if user pf is loaded, it means that the card is not is mfg mode
+    bool is_mfg = false;
+    try{
+      is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
+    } catch(...) {}
+
+    //if factory mode
+    if (is_mfg) {
+      std::string vbnv = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN";
+      pt_dev.put("vbnv", vbnv);
+    }
+    else {
+      pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+      pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+    }
 
     pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
     pt.push_back(std::make_pair("", pt_dev));
@@ -605,16 +610,17 @@ XBUtilities::check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std
   return static_cast<int>(p2p_config::disabled);
 }
 
-static const std::map<std::string, reset_type> reset_map = {
-    { "hot", reset_type::hot },
-    { "kernel", reset_type::kernel },
-    { "ert", reset_type::ert },
-    { "ecc", reset_type::ecc },
-    { "soft_kernel", reset_type::soft_kernel }
+static const std::map<std::string, xrt_core::query::reset_type> reset_map = {
+    { "hot", xrt_core::query::reset_type(xrt_core::query::reset_key::hot, "HOT Reset", "", "mgmt_reset", "Please make sure xocl driver is unloaded.", "1") },
+    { "kernel", xrt_core::query::reset_type(xrt_core::query::reset_key::kernel, "KERNEL Reset", "", "mgmt_reset", "Please make sure no application is currently running.", "2") },
+    { "ert", xrt_core::query::reset_type(xrt_core::query::reset_key::ert, "ERT Reset", "", "mgmt_reset", "", "3") },
+    { "ecc", xrt_core::query::reset_type(xrt_core::query::reset_key::ecc, "ECC Reset", "", "ecc_reset", "", "4") },
+    { "soft_kernel", xrt_core::query::reset_type(xrt_core::query::reset_key::soft_kernel, "SOFT KERNEL Reset", "", "mgmt_reset", "", "5") },
+    { "aie", xrt_core::query::reset_type(xrt_core::query::reset_key::aie, "AIE Reset", "", "mgmt_reset", "", "6") }
   };
 
-XBUtilities::reset_type
-XBUtilities::str_to_enum_reset(const std::string& str)
+xrt_core::query::reset_type
+XBUtilities::str_to_reset_obj(const std::string& str)
 {
   auto it = reset_map.find(str);
   if (it != reset_map.end())

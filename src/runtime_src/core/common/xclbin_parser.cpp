@@ -571,7 +571,9 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
          ,index
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.size"))
+         ,0  // fa_desc_offset post computed if necessary
          ,kernel_argument::argtype(xml_arg.second.get<size_t>("<xmlattr>.addressQualifier"))
+         ,kernel_argument::direction(kernel_argument::direction::input)
       });
     }
 
@@ -625,11 +627,15 @@ get_kernels(const axlf* top)
   return kernels;
 }
 
+// PDI only XCLBIN has PDI section only;
+// Or has AIE_METADATA and PDI sections only
 bool
 is_pdi_only(const axlf* top)
 {
   auto pdi = axlf_section_type<const char*>::get(top, axlf_section_kind::PDI);
-  return (top->m_header.m_numSections == 1 && pdi != nullptr);
+  auto aie_meta = axlf_section_type<const char*>::get(top, axlf_section_kind::AIE_METADATA);
+
+  return ((top->m_header.m_numSections == 1 && pdi != nullptr) || (top->m_header.m_numSections == 2 && pdi != nullptr && aie_meta != nullptr));
 }
 
 }} // xclbin, xrt_core

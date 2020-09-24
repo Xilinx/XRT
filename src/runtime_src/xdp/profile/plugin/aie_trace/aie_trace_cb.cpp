@@ -33,6 +33,11 @@ namespace xdp {
     aieTracePluginInstance.flushAIEDevice(handle);
   }
 
+  static void finishFlushAIEDevice(void* handle)
+  {
+    aieTracePluginInstance.finishFlushAIEDevice(handle);
+  }
+
 } // end namespace xdp
 
 extern "C" 
@@ -45,5 +50,11 @@ extern "C"
 void flushAIEDevice(void* handle)
 {
   xdp::flushAIEDevice(handle);
+}
+
+extern "C" 
+void finishFlushAIEDevice(void* handle)
+{
+  xdp::finishFlushAIEDevice(handle);
 }
 

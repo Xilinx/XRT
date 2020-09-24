@@ -20,16 +20,28 @@
 
 #include<vector>
 #include "core/include/xrt.h"
+#include "core/include/experimental/xrt_bo.h"
 #include "xdp/profile/device/xdp_base_device.h"
 
 namespace xdp {
 
+#if 0
+  union BufferHandleStoreType {
+    std::vector<xrtBufferHandle> xrtBufHandles;
+    std::vector<xclBufferHandle> xclBufHandles;
+
+    BufferHandleStoreType() {}
+    ~BufferHandleStoreType() {}
+  };
+#endif
 
 class HalDevice : public xdp::Device
 {
   xclDeviceHandle mHalDevice;
-  std::vector<xclBufferHandle> mBOHandles;
   std::vector<void*>  mMappedBO;
+  std::vector<xrtBufferHandle> xrtBufHandles;
+  std::vector<xclBufferHandle> xclBufHandles;
+//  BufferHandleStoreType mBufHandleStore;
 
 public:
   HalDevice(void* halDeviceHandle);

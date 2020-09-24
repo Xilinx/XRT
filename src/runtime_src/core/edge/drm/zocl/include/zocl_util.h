@@ -64,7 +64,7 @@ struct addr_aperture {
 
 enum zocl_mem_type {
 	ZOCL_MEM_TYPE_CMA	= 0,
-	ZOCL_MEM_TYPE_PLDDR	= 1,
+	ZOCL_MEM_TYPE_PL_LP_DDR	= 1,
 	ZOCL_MEM_TYPE_STREAMING = 2,
 };
 
@@ -136,6 +136,7 @@ struct drm_zocl_dev {
 	rwlock_t		attr_rwlock;
 
 	struct soft_krnl	*soft_kernel;
+	struct aie_info		*aie_information;
 	struct dma_chan		*zdev_dma_chan;
 	struct mailbox		*zdev_mailbox;
 	const struct zdev_data	*zdev_data_info;
