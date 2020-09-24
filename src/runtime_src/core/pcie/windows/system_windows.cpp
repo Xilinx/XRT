@@ -196,9 +196,8 @@ program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const
   const static int program_timeout_sec = 15;
   uint64_t plp_status = RP_DOWNLOAD_IN_PROGRESS;
   int retry_count = 0;
-  while (retry_count < program_timeout_sec) {
+  while (retry_count++ < program_timeout_sec) {
     mgmtpf::plp_program_status(dev->get_mgmt_handle(), plp_status);
-	retry_count++;
 
     // check plp status
     if(plp_status == RP_DOWLOAD_SUCCESS)

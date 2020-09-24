@@ -108,7 +108,7 @@ public:
   }
 
   virtual void
-  program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const = 0;
+  program_plp(const std::shared_ptr<device>& dev, const std::vector<char> &buffer) const = 0;
 }; // system
 
 /**
