@@ -159,11 +159,11 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 
 		bo = to_zocl_bo(&cma_obj->base);
 	} else {
-		/* We are allocating from a separate BANK, i.e. PL-DDR */
+		/* We are allocating from a separate BANK, i.e. PL-DDR or LPDDR */
 		unsigned int bank = GET_MEM_BANK(user_flags);
 
 		if (bank >= zdev->num_mem || !zdev->mem[bank].zm_used ||
-		    zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_PLDDR)
+		    zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_PL_LP_DDR)
 			return ERR_PTR(-EINVAL);
 
 		bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
@@ -324,8 +324,8 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		/* If cacheable is not set, make sure we set COHERENT. */
 		args->flags |= ZOCL_BO_FLAGS_COHERENT;
 	} else if (!(args->flags & ZOCL_BO_FLAGS_CMA)) {
-		/* We do not support allocating cacheable BO from PL-DDR. */
-		DRM_WARN("Cache is not supported and turned off for PL-DDR.\n");
+		/* We do not support allocating cacheable BO from PL-DDR or LPDDR */
+		DRM_WARN("Cache is not supported and turned off for PL-DDR or LPDDR\n");
 		args->flags &= ~ZOCL_BO_FLAGS_CACHEABLE;
 	}
 
@@ -851,12 +851,12 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 
 	/*
 	 * If the 'bank' passed in is a valid bank and its type is
-	 * PL-DDR, we update that bank usage. Otherwise, we go
+	 * PL-DDR or LPDDR , we update that bank usage. Otherwise, we go
 	 * through our bank list and find the CMA bank to update
 	 * its usage.
 	 */
 	if (bank < zdev->num_mem &&
-	    zdev->mem[bank].zm_type == ZOCL_MEM_TYPE_PLDDR) {
+	    zdev->mem[bank].zm_type == ZOCL_MEM_TYPE_PL_LP_DDR) {
 		update_bank = bank;
 	} else {
 		for (i = 0; i < zdev->num_mem; i++) {
@@ -884,10 +884,11 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
  *
  * Currently, we could have multiple memory sections but only two type
  * of them could be marked as used. We identify the memory type by its
- * tag. If the tag field contains "MIG", it is PL-DDR. Other tags
- * e.g. "HP", "HPC", it is CMA memory.
+ * tag. If the tag field contains "MIG", it is PL-DDR. Tag filed LPDDR
+ * for higher order LPDDR memory. Other tags e.g. "HP", "HPC", it is
+ * CMA memory.
  *
- * PL-DDR is managed by DRM MM Range Allocator;
+ * PL-DDR and LPDDR are managed by DRM MM Range Allocator;
  * CMA is managed by DRM CMA Allocator.
  */
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
@@ -918,13 +919,13 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
 		memp->zm_size = md->m_size * 1024;
 		memp->zm_used = 1;
 
-		if (!strstr(md->m_tag, "MIG")) {
+		if (!strstr(md->m_tag, "MIG") || !strstr(md->m_tag, "LPDDR")) {
 			memp->zm_type = ZOCL_MEM_TYPE_CMA;
 			continue;
 		}
 
 		memp->zm_mm = vzalloc(sizeof(struct drm_mm));
-		memp->zm_type = ZOCL_MEM_TYPE_PLDDR;
+		memp->zm_type = ZOCL_MEM_TYPE_PL_LP_DDR;
 
 		drm_mm_init(memp->zm_mm, memp->zm_base_addr, memp->zm_size);
 	}

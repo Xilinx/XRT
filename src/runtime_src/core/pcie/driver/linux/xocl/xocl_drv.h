@@ -2005,6 +2005,8 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob);
 int xocl_fdt_get_p2pbar(xdev_handle_t xdev_hdl, void *blob);
 long xocl_fdt_get_p2pbar_len(xdev_handle_t xdev_hdl, void *blob);
+int xocl_fdt_get_hostmem(xdev_handle_t xdev_hdl, void *blob, u64 *base,
+		u64 *size);
 int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 		void *val, int size);
 int xocl_fdt_get_next_prop_by_name(xdev_handle_t xdev_hdl, void *blob,

@@ -307,14 +307,22 @@ private:
 class kernel_impl;
 class kernel
 {
-public:
+ public:
+  /**
+   * cu_access_mode - compute unit access mode
+   *
+   * @shared:    CUs can be shared between processes
+   * @exclusive: CUs are owned exclusively by this process
+   */
+  enum class cu_access_mode : bool { exclusive = false, shared = true };
+
   /**
    * kernel() - Constructor from a device and xclbin
    *
    * @device: Device on which the kernel should execute
    * @xclbin_id: UUID of the xclbin with the kernel
    * @name:  Name of kernel to construct
-   * @exclusive: Open the kernel instances with exclusive access (default shared)
+   * @mode: Open the kernel instances with specified access (default shared)
    *
    * The kernel name must uniquely identify compatible kernel
    * instances (compute units).  Optionally specify which kernel
@@ -322,17 +330,25 @@ public:
    * "kernelname:{instancename1,instancename2,...}" syntax.  The
    * compute units are default opened with shared access, meaning that
    * other kernels and other process will have shared access to same
-   * compute units.  If exclusive access is needed then set @exclusive
-   * argument to true.
+   * compute units.
    */
   XCL_DRIVER_DLLESPEC
-  kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
+  kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
+         cu_access_mode mode = cu_access_mode::shared);
+
+  /// @cond
+  /// Deprecated construtor for exclusive access
+  kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool ex=false)
+    : kernel(device, xclbin_id, name, ex ? cu_access_mode::exclusive : cu_access_mode::shared)
+  {}
+  /// @endcond
 
   /**
    * Obsoleted construction from xclDeviceHandle
    */
   XCL_DRIVER_DLLESPEC
-  kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
+  kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name,
+         cu_access_mode mode = cu_access_mode::shared);
 
   /**
    * operator() - Invoke the kernel function
