@@ -63,6 +63,8 @@ enum {
 enum {
 	XOCL_XMC_NOSC		= (1 << 0),
 	XOCL_XMC_IN_BITFILE	= (1 << 1),
+	XOCL_XMC_IN_BITFILE_NEW	= (1 << 2),
+	XOCL_XMC_CLK_SCALING	= (1 << 3),
 };
 
 #define	FLASH_TYPE_SPI	"spi"
