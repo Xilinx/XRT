@@ -27,6 +27,35 @@ endif ()
 
 find_program(KERNELDOC_EXECUTABLE ${KERNELDOC} PATHS ${CMAKE_BINARY_DIR})
 find_program(SPHINX_EXECUTABLE sphinx-build)
+find_program(DOXYGEN_EXECUTABLE doxygen)
+
+if (NOT DOXYGEN_EXECUTABLE)
+  message(WARNING "doxygen not found, XRT C++ documentation is disabled")
+  add_custom_target(
+    doxygen
+    )
+else()
+  set(XRT_CPP_APIS
+    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_device.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_bo.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_kernel.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h
+    )
+  string(REPLACE ";" " " DOXY_INPUT "${XRT_CPP_APIS}")
+  set(DOXYFILE ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
+  add_custom_target(
+    doxygen
+    DEPENDS ${XRT_CPP_APIS}
+    COMMAND ${DOXYGEN_EXECUTABLE} -g ${DOXYFILE}
+    COMMAND echo "PROJECT_NAME = XRT" >> ${DOXYFILE}
+    COMMAND echo "GENERATE_XML = YES" >> ${DOXYFILE}
+    COMMAND echo "MACRO_EXPANSION = YES" >> ${DOXYFILE}
+    COMMAND echo "PREDEFINED = __cplusplus XCL_DRIVER_DLLESPEC=" >> ${DOXYFILE}
+    COMMAND echo "EXPAND_AS_DEFINED = XCL_DRIVER_DLLESPEC" >> ${DOXYFILE}
+    COMMAND echo "INPUT = ${DOXY_INPUT}" >> ${DOXYFILE}
+    COMMAND ${DOXYGEN_EXECUTABLE}
+    )
+endif(NOT DOXYGEN_EXECUTABLE)
 
 if (NOT KERNELDOC_EXECUTABLE OR NOT SPHINX_EXECUTABLE)
   MESSAGE (WARNING "kernel-doc or Sphinx not found, XRT documentation build disabled")
@@ -46,6 +75,30 @@ else ()
   add_custom_command(OUTPUT core/zocl_ioctl.rst
     COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_ZOCL_IOCTL_H} > core/zocl_ioctl.rst
     DEPENDS ${XRT_ZOCL_IOCTL_H}
+    VERBATIM
+    )
+
+  add_custom_command(OUTPUT core/xrt_device.rst
+    DEPENDS ${XRT_DEVICE_H}
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_DEVICE_H} > core/xrt_device.rst
+    VERBATIM
+    )
+
+  add_custom_command(OUTPUT core/xrt_bo.rst
+    DEPENDS ${XRT_BO_H}
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_BO_H} > core/xrt_bo.rst
+    VERBATIM
+    )
+
+  add_custom_command(OUTPUT core/xrt_kernel.rst
+    DEPENDS ${XRT_KERNEL_H}
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_KERNEL_H} > core/xrt_kernel.rst
+    VERBATIM
+    )
+
+  add_custom_command(OUTPUT core/xrt_xclbin.rst
+    DEPENDS ${XRT_XCLBIN_H}
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XCLBIN_H} > core/xrt_xclbin.rst
     VERBATIM
     )
 
@@ -85,9 +138,24 @@ else ()
     VERBATIM
     )
 
+
   add_custom_target(
-    xrt_docs ALL
-    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/zocl_ioctl.rst core/xrt.rst core/ert.rst core/xma.rst core/xmaplugin.rst core/mailbox_proto.rst core/mailbox.rst
+    xrt_docs
+    DEPENDS
+    doxygen
+    core/mgmt-ioctl.rst
+    core/xocl_ioctl.rst
+    core/zocl_ioctl.rst
+    core/xrt_device.rst
+    core/xrt_bo.rst
+    core/xrt_kernel.rst
+    core/xrt_xclbin.rst
+    core/xrt.rst
+    core/ert.rst
+    core/xma.rst
+    core/xmaplugin.rst
+    core/mailbox_proto.rst
+    core/mailbox.rst
     COMMENT "Generating documentation with Sphinx"
     COMMAND ${CMAKE_COMMAND} -E make_directory  html
     COMMAND rm -rf ${DOC_TOC_DIR}/*
