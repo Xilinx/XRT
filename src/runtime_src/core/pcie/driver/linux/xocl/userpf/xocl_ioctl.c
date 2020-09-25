@@ -557,6 +557,9 @@ skip1:
 			err = rc;
 	}
 
+	if (!err &&  size >=0)
+		xocl_p2p_refresh_rbar(xdev);
+
 done:
 	if (size < 0)
 		err = size;
