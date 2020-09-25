@@ -223,7 +223,7 @@ program_plp(const device* dev, const std::vector<char> &buffer) const
   }
 
   auto value = xrt_core::query::rp_program_status::value_type(1);
-  xrt_core::device_update<xrt_core::query::rp_program_status>(dev.get(), value);
+  xrt_core::device_update<xrt_core::query::rp_program_status>(dev, value);
 
   // asynchronously check if the download is complete
   const static int program_timeout_sec = 60;

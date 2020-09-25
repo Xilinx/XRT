@@ -187,7 +187,7 @@ get_mgmtpf_device(device::id_type id) const
 
 void
 system_windows::
-program_plp(const std::shared_ptr<device>& dev, const std::vector<char> &buffer) const
+program_plp(const device* dev, const std::vector<char> &buffer) const
 {
   mgmtpf::plp_program(dev->get_mgmt_handle(), reinterpret_cast<const axlf*>(buffer.data()));
 
