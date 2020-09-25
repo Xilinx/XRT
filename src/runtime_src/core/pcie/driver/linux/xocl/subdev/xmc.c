@@ -3142,6 +3142,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		READ_REG32(xmc, XMC_MAGIC_REG));
 	return 0;
 }
+
 static int stop_xmc(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
@@ -3195,7 +3196,6 @@ static int load_xmc(struct xocl_xmc *xmc)
 	u32 reg_val = 0, reg_map_ready;
 	int ret = 0;
 	void *xdev_hdl;
-	bool skip_xmc = false;
 
 	if (!xmc->enabled)
 		return -ENODEV;
@@ -3206,9 +3206,11 @@ static int load_xmc(struct xocl_xmc *xmc)
 	mutex_lock(&xmc->xmc_lock);
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
-	skip_xmc = xmc_in_bitfile(xmc->pdev);
-	if (skip_xmc) {
+
+	if (xmc_in_bitfile(xmc->pdev)) {
 		xocl_info(&xmc->pdev->dev, "Skip XMC stop/load, since XMC is loaded through fpga bitfile");
+		if (READ_XMC_GPIO(xmc, 0) == GPIO_ENABLED)
+			xmc->state = XMC_STATE_ENABLED;
 		goto done;
 	}
 
@@ -3219,26 +3221,19 @@ static int load_xmc(struct xocl_xmc *xmc)
 
 	WRITE_GPIO(xmc, GPIO_RESET, 0);
 	reg_val = READ_GPIO(xmc, 0);
+	xmc->state = XMC_STATE_RESET;
+	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 
-	skip_xmc = xmc_in_bitfile(xmc->pdev);
-	if (skip_xmc) {
-		xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x (ert), 0x%x (xmc)", reg_val,
-			  READ_XMC_GPIO(xmc, 0));
-	} else {
-		xmc->state = XMC_STATE_RESET;
-		xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
-
-		/* Shouldnt make it here but if we do then exit */
-		if (reg_val != GPIO_RESET) {
-			xocl_err(&xmc->pdev->dev, "Hold reset GPIO Failed");
-			xmc->state = XMC_STATE_ERROR;
-			ret = -EIO;
-			goto out;
-		}
+	/* Shouldnt make it here but if we do then exit */
+	if (reg_val != GPIO_RESET) {
+		xocl_err(&xmc->pdev->dev, "Hold reset GPIO Failed");
+		xmc->state = XMC_STATE_ERROR;
+		ret = -EIO;
+		goto out;
 	}
 
 	/* Load XMC and ERT Image */
-	if (!skip_xmc && xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
+	if (xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
 		if (xmc->mgmt_binary_length > xmc->range[IO_IMAGE_MGMT]) {
 			xocl_err(&xmc->pdev->dev, "XMC image too long %d",
 				xmc->mgmt_binary_length);
@@ -3248,8 +3243,6 @@ static int load_xmc(struct xocl_xmc *xmc)
 				xmc->mgmt_binary_length);
 			COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
 		}
-	} else {
-		xocl_info(&xmc->pdev->dev, "Skip copying XMC image since XMC is loaded through fpga bitfile");
 	}
 
 	if (xocl_mb_sched_on(xdev_hdl) && xmc->sche_binary_length) {
@@ -3266,15 +3259,9 @@ static int load_xmc(struct xocl_xmc *xmc)
 
 	/* Take XMC and ERT out of reset */
 	WRITE_GPIO(xmc, GPIO_ENABLED, 0);
-	reg_val = READ_GPIO(xmc, 0);
 
-	if (skip_xmc) {
-		xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x (ert), 0x%x (xmc)", reg_val,
-			  READ_XMC_GPIO(xmc, 0));
-		reg_val = READ_XMC_GPIO(xmc, 0);
-	} else {
-		xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
-	}
+	reg_val = READ_GPIO(xmc, 0);
+	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 
 	/* Shouldnt make it here but if we do then exit */
 	if (reg_val != GPIO_ENABLED) {
@@ -3337,7 +3324,9 @@ static int load_xmc(struct xocl_xmc *xmc)
 	ssleep(5);
 
 done:
-	xmc->state = XMC_STATE_ENABLED;
+	if (READ_GPIO(xmc, 0) == GPIO_ENABLED)
+		xmc->state = XMC_STATE_ENABLED;
+
 	xocl_info(&xmc->pdev->dev, "XMC and scheduler Enabled, retry %d",
 			retry);
 	xocl_info(&xmc->pdev->dev,
@@ -3346,7 +3335,8 @@ done:
 		READ_REG32(xmc, XMC_STATUS_REG),
 		READ_REG32(xmc, XMC_MAGIC_REG));
 
-	if (XMC_PRIVILEGED(xmc) && (xocl_clk_scale_on(xdev_hdl) || xmc_clk_scale_on(xmc->pdev)))
+	if (XMC_PRIVILEGED(xmc) && (xocl_clk_scale_on(xdev_hdl) ||
+                                xmc_clk_scale_on(xmc->pdev)))
 		xmc_clk_scale_config(xmc->pdev);
 
 	mutex_unlock(&xmc->xmc_lock);
