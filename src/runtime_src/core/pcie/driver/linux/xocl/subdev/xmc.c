@@ -1059,9 +1059,6 @@ static bool xmc_in_bitfile(struct platform_device *pdev)
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 	void *xdev_hdl = xocl_get_xdev(pdev);
 
-	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_IN_BITFILE_NEW))
-		return true;
-
 	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_IN_BITFILE)) {
 		/* xmc in bitfile is supported only on SmartSSD U.2 */
 		if (!xmc->sc_presence)

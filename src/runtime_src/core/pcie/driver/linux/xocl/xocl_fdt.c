@@ -198,7 +198,7 @@ static void *xmc_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 
         node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_CMC_CLK_SCALING_REG);
         if (node < 0) {
-                xocl_xdev_err(xdev_hdl, "xmc did not find clock scaling ep in %s", NODE_ENDPOINTS);
+                xocl_xdev_dbg(xdev_hdl, "xmc did not find clock scaling ep in %s", NODE_ENDPOINTS);
                 return NULL;
         }
 
@@ -206,7 +206,7 @@ static void *xmc_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	if (!xmc_priv)
 		return NULL;
 
-	xmc_priv->flags = XOCL_XMC_NOSC | XOCL_XMC_IN_BITFILE_NEW | XOCL_XMC_CLK_SCALING;
+	xmc_priv->flags = XOCL_XMC_CLK_SCALING;
 	*len = sizeof(*xmc_priv);
 
 	return xmc_priv;
