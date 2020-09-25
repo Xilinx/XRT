@@ -854,8 +854,7 @@ int qdma_queue_list(unsigned long dev_hndl, char *buf, int buflen)
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	struct qdma_dev *qdev = xdev_2_qdev(xdev);
 	struct qdma_descq *descq = NULL;
-	char *cur = buf;
-	char * const end = buf + buflen;
+	char *cur, *end;
 	int i;
 
 	/**<b> Detailed Description </b>*/
@@ -870,6 +869,8 @@ int qdma_queue_list(unsigned long dev_hndl, char *buf, int buflen)
 		pr_warn("invalid argument: buf=%p, buflen=%d", buf, buflen);
 		return QDMA_ERR_INVALID_INPUT_PARAM;
 	}
+	cur = buf;
+ 	end = buf + buflen;
 
 	cur += snprintf(cur, end - cur, "H2C Q: %u, C2H Q: %u.\n",
 				qdev->h2c_qcnt, qdev->c2h_qcnt);

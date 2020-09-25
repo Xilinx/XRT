@@ -1085,8 +1085,7 @@ int qdma4_queue_list(unsigned long dev_hndl, char *buf, int buflen)
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	struct qdma_dev *qdev;
 	struct qdma_descq *descq = NULL;
-	char *cur = buf;
-	char * const end = buf + buflen;
+	char *cur, *end;
 	int h2c_qcnt = 0, c2h_qcnt = 0, cmpt_qcnt = 0;
 	int i;
 
@@ -1095,6 +1094,8 @@ int qdma4_queue_list(unsigned long dev_hndl, char *buf, int buflen)
 		pr_err("invalid argument: buf=%p, buflen=%d", buf, buflen);
 		return -EINVAL;
 	}
+	cur = buf;
+ 	end = buf + buflen;
 
 	/** make sure that the dev_hndl passed is Valid */
 	if (!xdev) {
@@ -2037,8 +2038,7 @@ int qdma4_intr_ring_dump(unsigned long dev_hndl, unsigned int vector_idx,
 	union qdma_intr_ring *ring_entry;
 	struct intr_coal_conf *coal_entry;
 	struct qdma_intr_cidx_reg_info *intr_cidx_info;
-	char *cur = buf;
-	char * const end = buf + buflen;
+	char *cur, *end;
 	int counter = 0;
 	u32 data[2];
 
@@ -2047,6 +2047,8 @@ int qdma4_intr_ring_dump(unsigned long dev_hndl, unsigned int vector_idx,
 		pr_err("invalid argument: buf=%p, buflen=%d", buf, buflen);
 		return -EINVAL;
 	}
+	cur = buf;
+ 	end = buf + buflen;
 
 	/** make sure that the dev_hndl passed is Valid */
 	if (!xdev) {
