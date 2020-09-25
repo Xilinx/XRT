@@ -107,8 +107,27 @@ class run
    * expires. Completion does not guarantee success, the run status
    * should be checked by using @state.
    */
+  XCL_DRIVER_DLLESPEC
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout = std::chrono::milliseconds{0}) const;
+
+  /**
+   * wait() - Wait for specified milliseconds for run to complete
+   *
+   * @timeout:  Timeout in milliseconds
+   * Return:    Command state upon return of wait
+   *
+   * The default timeout of 0ms indicates blocking until run completes.
+   *
+   * The current thread will block until the run completes or timeout
+   * expires. Completion does not guarantee success, the run status
+   * should be checked by using @state.
+   */
+  ert_cmd_state
+  wait(unsigned int timeout_ms) const
+  {
+    return wait(timeout_ms * std::chrono::milliseconds{1});
+  }
 
   /**
    * state() - Check the current state of a run object
@@ -185,7 +204,7 @@ class run
    * set_arg() - Set a specific kernel global argument for a run
    *
    * @index:      Index of kernel argument to update
-   * @boh:        The global buffer argument value to set.
+   * @boh:        The global buffer argument value to set (lvalue).
    * 
    * Use this API to explicit set or change a kernel argument prior
    * to starting kernel execution.  After setting arguments, the
@@ -194,11 +213,28 @@ class run
    * See also @operator() to set all arguments and start kernel.
    */
   void
+  set_arg(int index, xrt::bo& boh)
+  {
+    set_arg_at_index(index, boh);
+  }
+
+  /**
+   * set_arg - xrt::bo variant for const lvalue
+   */
+  void
   set_arg(int index, const xrt::bo& boh)
   {
     set_arg_at_index(index, boh);
   }
-  
+
+  /**
+   * set_arg - xrt::bo variant for rvalue
+   */
+  void
+  set_arg(int index, xrt::bo&& boh)
+  {
+    set_arg_at_index(index, boh);
+  }
 
   /**
    * udpdate_arg() - Asynchronous update of scalar kernel global argument
@@ -338,7 +374,7 @@ class kernel
 
   /// @cond
   /// Deprecated construtor for exclusive access
-  kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool ex=false)
+  kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool ex)
     : kernel(device, xclbin_id, name, ex ? cu_access_mode::exclusive : cu_access_mode::shared)
   {}
   /// @endcond
