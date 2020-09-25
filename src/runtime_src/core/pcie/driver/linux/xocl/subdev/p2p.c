@@ -794,8 +794,8 @@ static long p2p_bar_map(struct p2p *p2p, ulong bank_addr, ulong bank_size,
 	for (i = j; i < j + num; i++) {
 		slot[i].ref++;
 		slot[i].ep_addr = ep_addr;
-		slot[j].map_head_chunk = j;
-		slot[j].map_chunk_num = num;
+		slot[i].map_head_chunk = j;
+		slot[i].map_chunk_num = num;
 
 		if (ep_addr % p2p->remap_slot_sz == 0)
 			remap_write_slot(p2p, i, ep_addr);
