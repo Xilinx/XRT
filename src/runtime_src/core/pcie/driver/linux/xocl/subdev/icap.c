@@ -1959,7 +1959,7 @@ static void icap_calib(struct icap *icap, bool retain)
 
 	BUG_ON(!mem_topo);
 
-	err = xocl_calib_storage_restore(xdev);
+	(void) xocl_calib_storage_restore(xdev);
 
 	for (; i < mem_topo->m_count; ++i) {
 		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
@@ -1984,7 +1984,7 @@ static void icap_calib(struct icap *icap, bool retain)
 	}
 
 	if (time_total)
-		ICAP_INFO(icap, "Calibration: %lld ms.", time_total);
+		ICAP_INFO(icap, "SRSR Calibration: %lld ms.", time_total);
 
 }
 
