@@ -271,6 +271,13 @@ static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
 	bool ret = false;
 	int err = 0;
 	xuid_t *downloaded_xclbin =  NULL;
+	bool changed;
+
+	xocl_p2p_conf_status(xdev, &changed);
+	if (changed) {
+		userpf_info(xdev, "p2p configure changed\n");
+		return false;
+	}
 
 	err = XOCL_GET_XCLBIN_ID(xdev, downloaded_xclbin);
 	if (err)
@@ -556,6 +563,12 @@ skip1:
 		if (err == 0)
 			err = rc;
 	}
+
+	/*
+	 * This is a workaround for u280 only
+	 */
+	if (!err &&  size >=0)
+		xocl_p2p_refresh_rbar(xdev);
 
 done:
 	if (size < 0)
