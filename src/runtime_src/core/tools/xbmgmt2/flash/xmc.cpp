@@ -538,7 +538,7 @@ bool XMC_Flasher::isBMCReady()
     bool bmcReady = (BMC_MODE() == 0x1);
 
     if (!bmcReady) {
-      auto format = xrt_core::utils::ios_restore(std::cout);
+        auto format = xrt_core::utils::ios_restore(std::cout);
         std::cout << "ERROR: SC is not ready: 0x" <<
             getStatus(BMC_MODE(), scStatusMap) << std::endl;
     }
