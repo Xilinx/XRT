@@ -277,7 +277,7 @@ zocl_aie_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
  		 * Return greater then 0 if condition true before timeout,
  		 * 0 when time out, else -ERESTARTSYS.
  		 */
-		ret = wait_event_interruptible_timeout (aie->aie_wait_queue,
+		ret = wait_event_interruptible_timeout(aie->aie_wait_queue,
 		    !list_empty(&aie->aie_cmd_list), msecs_to_jiffies(500));
 		if (ret <= 0) {
 			return -ERESTARTSYS;

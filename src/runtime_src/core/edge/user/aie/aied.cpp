@@ -52,7 +52,7 @@ Aied::pollAIE()
     /* Calling XRT interface to wait for commands */
     if (drv->xclAIEGetCmd(&cmd) != 0) {
       /* break if destructor called */
-      if(done == true)
+      if (done)
         break;
       continue;
     }
