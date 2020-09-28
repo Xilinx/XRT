@@ -2622,7 +2622,6 @@ struct xocl_subdev_map {
 		.subdev_info = RES_MGMT_VSEC,                           \
 		.subdev_num  = ARRAY_SIZE(RES_MGMT_VSEC),               \
 		.flash_type  = FLASH_TYPE_SPI,                          \
-		.sched_bin   = "xilinx/sched_v20.bin",                  \
 		.board_name  = "u26z"                                   \
 	}
 
@@ -2676,7 +2675,6 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u55n",					\
 		.vbnv = "xilinx_u55n"					\
 	}
@@ -2695,7 +2693,6 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u55c",					\
 		.vbnv = "xilinx_u55c"					\
 	}
@@ -2714,7 +2711,6 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u50lv",					\
 		.vbnv = "xilinx_u50lv"					\
 	}

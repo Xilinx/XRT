@@ -35,10 +35,12 @@ class Aied
 {
 public:
   Aied(xrt_core::device* device);
+  ~Aied();
   void registerGraph(const graph_type *graph);
   void deregisterGraph(const graph_type *graph);
 
 private:
+  bool done;
   void pollAIE();
   std::thread mPollingThread;
   xrt_core::device *mCoreDevice;

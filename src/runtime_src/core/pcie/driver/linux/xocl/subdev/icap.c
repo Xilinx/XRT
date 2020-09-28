@@ -1954,10 +1954,12 @@ static void icap_calib(struct icap *icap, bool retain)
 	int err = 0, i = 0, ddr_idx = -1;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	struct mem_topology *mem_topo = icap->mem_topo;
+	s64 time_total = 0, delta = 0;
+	ktime_t time_start, time_end;
 
 	BUG_ON(!mem_topo);
 
-	err = xocl_calib_storage_restore(xdev);
+	(void) xocl_calib_storage_restore(xdev);
 
 	for (; i < mem_topo->m_count; ++i) {
 		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
@@ -1968,11 +1970,21 @@ static void icap_calib(struct icap *icap, bool retain)
 		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
 
+		time_start = ktime_get();
 		err = xocl_srsr_calib(xdev, ddr_idx, retain);
+		time_end = ktime_get();
+
 		if (err)
 			ICAP_DBG(icap, "Not able to calibrate mem %d.", i);
-
+		else {
+			/* We only sum up the SRSR calibration time which are valid */
+			delta = ktime_ms_delta(time_end, time_start);
+			time_total += delta;
+		}
 	}
+
+	if (time_total)
+		ICAP_INFO(icap, "SRSR Calibration: %lld ms.", time_total);
 
 }
 
