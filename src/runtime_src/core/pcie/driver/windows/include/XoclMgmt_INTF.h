@@ -107,9 +107,9 @@ typedef union _DRIVER_VERSION
 {
     struct
     {
-        /* [Minor Version Number] Indicates the minor version is �0�. */
+        /* [Minor Version Number] Indicates the minor version is "0". */
         USHORT MNR;
-        /* [Major Version Number] Indicates the major version is �1�. */
+        /* [Major Version Number] Indicates the major version is "1". */
         USHORT MJR;
     };
     ULONG AsUlong;
