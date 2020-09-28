@@ -145,7 +145,7 @@ static ssize_t ert_dmsg_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_ert_30 *ert_30 = platform_get_drvdata(to_platform_device(dev));
-	u64 val;
+	u32 val;
 
 	mutex_lock(&ert_30->lock);
 	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 2) {
