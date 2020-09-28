@@ -31,7 +31,14 @@ namespace zynqaie {
 
 Aied::Aied(xrt_core::device* device): mCoreDevice(device)
 {
+  done = false;
   mPollingThread = std::thread(&Aied::pollAIE, this);
+}
+
+Aied::~Aied()
+{
+  done = true;
+  mPollingThread.join();
 }
 
 void 
@@ -44,6 +51,9 @@ Aied::pollAIE()
   while (1) {
     /* Calling XRT interface to wait for commands */
     if (drv->xclAIEGetCmd(&cmd) != 0) {
+      /* break if destructor called */
+      if (done)
+        break;
       continue;
     }
 
@@ -62,12 +72,13 @@ Aied::pollAIE()
       std::string tmp(ss.str());
       cmd.size = snprintf(cmd.info,(tmp.size() < AIE_INFO_SIZE) ? tmp.size():AIE_INFO_SIZE
                    , "%s\n", tmp.c_str());
+      drv->xclAIEPutCmd(&cmd);
       break;
       }
     default:
       break;
     }
-    drv->xclAIEPutCmd(&cmd);
+
   }
 }
 
