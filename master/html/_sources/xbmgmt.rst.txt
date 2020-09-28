@@ -11,4 +11,17 @@ This utility is used for card installation and administration, and requires sudo
 running it. The ``xbmgmt`` supported tasks include flashing the card firmware, and scanning the
 current device configuration.
 
+Flashing a card
+~~~~~~~~~~~~~~~~
+1. ``xbmgmt flash --update``
+2. Cold reboot
+3. Run ``xbmgmt flash --scan`` to verify that the card is flashed correctly
+
+Downloading shell on a card
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Note: On Linux, please run the following with ``--new`` option
+1. ``xbmgmt program --partition <path/to/partition.xsabin> --device 0000:00:00.0``
+2. Run ``xbmgmt status`` to verify the partition download
+
+
 For more details please refer `Vitis Application Acceleration Development Flow Documentation <https://www.xilinx.com/html_docs/xilinx2019_2/vitis_doc/utg1569948694132.html>`_

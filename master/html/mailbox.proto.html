@@ -520,12 +520,15 @@
 
 <p><strong>Definition</strong></p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_req_bitstream_lock {
+  uint64_t reserved;
   uint8_t uuid;
 };
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
 <dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">reserved</span></code></dt><dd><p>reserved for future use</p>
+</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">uuid</span></code></dt><dd><p>uuid of the xclbin</p>
 </dd>
 </dl>
@@ -537,19 +540,19 @@
 
 <p><strong>Constants</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_SENSOR</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_SENSOR</span></code></dt><dd><p>all kinds of sensor readings</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_ICAP</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_ICAP</span></code></dt><dd><p>ICAP IP related information</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_BDINFO</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_BDINFO</span></code></dt><dd><p>Board Info, serial_num, mac_address</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MIG_ECC</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MIG_ECC</span></code></dt><dd><p>ECC statistics</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_FIREWALL</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_FIREWALL</span></code></dt><dd><p>AF detected time, status</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_DNA</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_DNA</span></code></dt><dd><p>Device DNA information</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_SUBDEV</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_SUBDEV</span></code></dt><dd><p>PLP subdevices information</p>
 </dd>
 </dl>
 <dl class="c type">
@@ -841,7 +844,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 16, 2020.
+        Last updated on September 28, 2020.
       </span>
 
     </p>
