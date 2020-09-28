@@ -939,6 +939,29 @@ units.</p></td>
 </dl>
 <dl class="c type">
 <dt>
+<code class="sig-name descname">struct drm_zocl_aie_cmd</code></dt>
+<dd><p>Get the aie command used with DRM_IOCTL_ZOCL_AIE_GETCMD and DRM_IOCTL_ZOCL_AIE_PUTCMD ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_aie_cmd {
+  uint32_t opcode;
+  uint32_t size;
+  char info;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">opcode</span></code></dt><dd><p>opcode for the Aie Command Packet</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>size in bytes of info data</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">info</span></code></dt><dd><p>information to transfer</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
 <code class="sig-name descname">struct drm_zocl_sk_create</code></dt>
 <dd><p>Create a soft kernel (experimental) used with DRM_IOCTL_ZOCL_SK_CREATE ioctl</p>
 </dd></dl>
@@ -1008,7 +1031,7 @@ units.</p></td>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 16, 2020.
+        Last updated on September 28, 2020.
       </span>
 
     </p>

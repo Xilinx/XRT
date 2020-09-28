@@ -667,6 +667,32 @@ xclbin image</p></td>
 </dl>
 <dl class="c type">
 <dt>
+<code class="sig-name descname">struct drm_xocl_map_kern_mem</code></dt>
+<dd><p>Map a buffer object to linux kernel memory (sgl or virtual address) used with DRM_IOCTL_XOCL_MAP_KERN_MEM ioctl. WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION. For use with Linux kernel space specific IOCTLs.</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_map_kern_mem {
+  uint32_t handle;
+  uint64_t addr;
+  uint64_t size;
+  uint32_t flags;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle returned by the driver</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">addr</span></code></dt><dd><p>Address of sgl or kernel buffer allocated by user</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Requested size of the buffer object</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>DRM_XOCL_BO_XXX flags</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
 <code class="sig-name descname">struct drm_xocl_map_bo</code></dt>
 <dd><p>Prepare a buffer object for mmap used with DRM_IOCTL_XOCL_MAP_BO ioctl</p>
 </dd></dl>
@@ -719,6 +745,41 @@ xclbin image</p></td>
 </dl>
 <dl class="c type">
 <dt>
+<code class="sig-name descname">struct drm_xocl_sync_bo_cb</code></dt>
+<dd><p>Synchronize the buffer in the requested direction between device and host used with DRM_IOCTL_XOCL_SYNC_BO_CB ioctl (linux kernel only) WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION. For use with Linux kernel space specific IOCTLs.</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_sync_bo_cb {
+  uint32_t handle;
+  uint32_t flags;
+  uint64_t size;
+  uint64_t offset;
+  enum drm_xocl_sync_bo_dir dir;
+  uint64_t cb_func;
+  uint64_t cb_data;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>Unused</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Number of bytes to synchronize</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>Offset into the object to synchronize</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dir</span></code></dt><dd><p>DRM_XOCL_SYNC_DIR_XXX</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cb_func</span></code></dt><dd><p>Pointer to callback function(void(*fn)(long,int))</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cb_data</span></code></dt><dd><p>Pointer to context that callback needs to be invoked with</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
 <code class="sig-name descname">struct drm_xocl_info_bo</code></dt>
 <dd><p>Obtain information about an allocated buffer obbject used with DRM_IOCTL_XOCL_INFO_BO IOCTL</p>
 </dd></dl>
@@ -746,7 +807,7 @@ xclbin image</p></td>
 <dl class="c type">
 <dt>
 <code class="sig-name descname">struct drm_xocl_copy_bo</code></dt>
-<dd><p>device memory to memory copy bo used with DRM_IOCTL_XOCL_COPY_BO IOCTL</p>
+<dd><p>Device memory to memory copy bo used with DRM_IOCTL_XOCL_COPY_BO IOCTL</p>
 </dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -819,6 +880,35 @@ xclbin image</p></td>
 <dt><code class="docutils literal notranslate"><span class="pre">anums</span></code></dt><dd><p>number of argument</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">args</span></code></dt><dd><p>argument array</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
+<code class="sig-name descname">struct drm_xocl_kinfo_bo</code></dt>
+<dd><p>Get a buffer object’s kernel virtual address used with DRM_IOCTL_XOCL_KINFO_BO ioctl. WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION. For use with Linux kernel space specific IOCTLs.</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_kinfo_bo {
+  uint32_t handle;
+  uint32_t flags;
+  uint64_t size;
+  uint64_t paddr;
+  uint64_t vaddr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle of BO whose info is required</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>Unused</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Size of buffer object</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt><dd><p>Physical address (BO’s Device address)</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">vaddr</span></code></dt><dd><p>Kernel Virtual address of BO</p>
 </dd>
 </dl>
 <dl class="c type">
@@ -1047,6 +1137,36 @@ for automatic event dependency handling by ERT</p>
 </dl>
 <dl class="c type">
 <dt>
+<code class="sig-name descname">struct drm_xocl_execbuf_cb</code></dt>
+<dd><p>Submit a command buffer for execution on a compute unit used with DRM_IOCTL_XOCL_EXECBUF_CB ioctl with a callback (linux kernel only) WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION. For use with Linux kernel space specific IOCTLs.</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_execbuf_cb {
+  uint32_t ctx_id;
+  uint32_t exec_bo_handle;
+  uint32_t deps;
+  uint64_t cb_func;
+  uint64_t cb_data;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">ctx_id</span></code></dt><dd><p>Pass 0</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">exec_bo_handle</span></code></dt><dd><p>BO handle of command buffer formatted as ERT command</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">deps</span></code></dt><dd><p>Upto 8 dependency command BO handles this command is dependent on
+for automatic event dependency handling by ERT</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cb_func</span></code></dt><dd><p>Pointer to callback function(void (<a href="#id1"><span class="problematic" id="id2">*</span></a>fn)(long,int)) upon exec completion</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cb_data</span></code></dt><dd><p>Pointer to context that callback needs to be invoked with</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
 <code class="sig-name descname">struct drm_xocl_user_intr</code></dt>
 <dd><p>Register user’s eventfd for MSIX interrupt used with DRM_IOCTL_XOCL_USER_INTR ioctl</p>
 </dd></dl>
@@ -1142,7 +1262,7 @@ for automatic event dependency handling by ERT</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 16, 2020.
+        Last updated on September 28, 2020.
       </span>
 
     </p>
