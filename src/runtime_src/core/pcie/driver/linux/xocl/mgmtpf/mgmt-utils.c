@@ -316,6 +316,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	lro->reset_requested = false;
 	xocl_thread_start(lro);
 
+	xocl_clear_pci_errors(lro);
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
 	else if (!force)
