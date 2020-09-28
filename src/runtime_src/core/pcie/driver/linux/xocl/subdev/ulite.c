@@ -68,7 +68,10 @@ static ssize_t console_name_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
 {
 	struct uart_port *port = platform_get_drvdata(to_platform_device(dev));
-	return sprintf(buf, "%s\n", port->name);
+        struct uartlite_data *pdata = port->private_data;
+        struct uart_driver *drv = pdata->xcl_ulite_driver;
+
+	return sprintf(buf, "%s%d\n", drv->dev_name, port->line);
 }
 
 static DEVICE_ATTR_RO(console_name);
