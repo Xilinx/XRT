@@ -1533,7 +1533,6 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	u32 dyn_shell_magic, ptype;
 	int ret, cap, bar;
 	u64 offset;
-	u16 devsta;
 	unsigned val;
 	bool vsec = false;
 	/* workaround MB_SCHEDULER and INTC resource conflict
