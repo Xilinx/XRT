@@ -274,7 +274,7 @@ zocl_aie_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	while (list_empty(&aie->aie_cmd_list)) {
 		mutex_unlock(&aie->aie_lock);
 		/* 
- 		 * Return greater then 0 if condition true before timeout,
+ 		 * Return greater than 0 if condition true before timeout,
  		 * 0 when time out, else -ERESTARTSYS.
  		 */
 		ret = wait_event_interruptible_timeout(aie->aie_wait_queue,
