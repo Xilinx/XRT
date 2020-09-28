@@ -474,7 +474,7 @@ The API ``xrtPLKernelOpen`` opens a kernel's CU in a shared mode so that the CU 
      
            xrtKernelHandle kernel = xrtPLKernelOpenExclusive(device, xclbin_uuid, "name");
 
-**C++**: When the ``xrt::kernel`` constructor is called with an additional boolean argument set as true, it opens CU in exclusive mode and returns the kernel object.    
+**C++**: In C++, change from here ``xrt::kernel`` constructor is called with an additional boolean argument set as true, it opens CU in exclusive mode and returns the kernel object.    
 
 .. code:: c++
       :number-lines: 39
