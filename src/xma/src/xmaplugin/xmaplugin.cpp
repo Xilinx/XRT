@@ -1142,6 +1142,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
         while (iter1 > 0) {
             std::unique_lock<std::mutex> lk(priv1->m_mutex);
             //priv1->work_item_done_1plus.wait(lk);
+	    //Timeout required if cu is hung; Unblock and check status again
             priv1->work_item_done_1plus.wait_for(lk, std::chrono::milliseconds(timeout1));
             lk.unlock();
 
@@ -1154,6 +1155,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
                 }
                 return XMA_SUCCESS;
             }
+	    //Get num_cmds pending first before the done count check
             if (tmp_num_cmds == 0 && count == 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
@@ -1180,6 +1182,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
                 //Release execbo lock
                 priv1->execbo_locked = false;
             }
+            tmp_num_cmds = priv1->num_cu_cmds;
             count = priv1->kernel_complete_count;
             if (count) {
                 priv1->kernel_complete_count--;
@@ -1188,12 +1191,14 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
                 }
                 return XMA_SUCCESS;
             }
-            if (priv1->num_cu_cmds == 0 && count == 0) {
+	    //Get num_cmds pending first before the done count check
+            if (tmp_num_cmds == 0 && count == 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
 
             iter1--;
             //std::this_thread::yield();
+	    //Debug mode: Use small timeout
 	    std::unique_lock<std::mutex> lk(priv1->m_mutex);
             priv1->work_item_done_1plus.wait_for(lk, std::chrono::milliseconds(1));
 
@@ -1219,6 +1224,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
             //Release execbo lock
             priv1->execbo_locked = false;
 
+            tmp_num_cmds = priv1->num_cu_cmds;
             count = priv1->kernel_complete_count;
             if (count) {
                 priv1->kernel_complete_count--;
@@ -1227,7 +1233,8 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
                 }
                 return XMA_SUCCESS;
             }
-            if (priv1->num_cu_cmds == 0 && count == 0) {
+	    //Get num_cmds pending first before the done count check
+            if (tmp_num_cmds == 0 && count == 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
 
@@ -1279,6 +1286,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
         // Wait for a notification
         if (give_up > 10) {
             xclExecWait(priv1->dev_handle, timeout1);
+            tmp_num_cmds = priv1->num_cu_cmds;
             count = priv1->kernel_complete_count;
             if (count) {
                 priv1->kernel_complete_count--;
@@ -1287,7 +1295,8 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
                 }
                 return XMA_SUCCESS;
             }
-            if (priv1->num_cu_cmds == 0 && count == 0) {
+	    //Get num_cmds pending first before the done count check
+            if (tmp_num_cmds == 0 && count == 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
         } else {

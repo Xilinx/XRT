@@ -565,6 +565,7 @@ int32_t check_all_execbo(XmaSession s_handle) {
                     	       cu_cmd->state == ERT_CMD_STATE_ABORT ||
                     	       cu_cmd->state == ERT_CMD_STATE_TIMEOUT ||
                     	       cu_cmd->state == ERT_CMD_STATE_NORESPONSE) {
+                        //Check for invalid/error execo state
                         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
                     }
                 }
@@ -604,6 +605,7 @@ int32_t check_all_execbo(XmaSession s_handle) {
                     	       cu_cmd->state == ERT_CMD_STATE_ABORT ||
                     	       cu_cmd->state == ERT_CMD_STATE_TIMEOUT ||
                     	       cu_cmd->state == ERT_CMD_STATE_NORESPONSE) {
+                        //Check for invalid/error execo state
                         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
                     } else {
                         ebo_it++;
@@ -618,18 +620,18 @@ int32_t check_all_execbo(XmaSession s_handle) {
                 priv1->execbo_is_free.notify_all();
             }
             if (notify_work_item_done_1plus) {
-                priv1->work_item_done_1plus.notify_one();
+                priv1->work_item_done_1plus.notify_one();//Unblock one thread;Though only one is used anyway
                 if (priv1->slowest_element) {
                     std::this_thread::yield();
                 }
             } else if (priv1->kernel_complete_count != 0) {
-                priv1->work_item_done_1plus.notify_one();
+                priv1->work_item_done_1plus.notify_one();//Unblock one thread;Though only one is used anyway
                 if (priv1->slowest_element) {
                     std::this_thread::yield();
                 }
             }
         } else {
-            priv1->work_item_done_1plus.notify_one();
+            priv1->work_item_done_1plus.notify_one();//Unblock one thread;Though only one is used anyway
             priv1->kernel_done_or_free.notify_all();
             priv1->execbo_is_free.notify_all();
         }
