@@ -317,13 +317,13 @@ set_data_retention(uint32_t value)
     DWORD bytes = 0;
 
     auto status = DeviceIoControl
-    (m_hdl,
+        (m_hdl,
         XCLMGMT_OID_SET_DATA_RETENTION, //ioctl code
-        &value,                    //in buffer
-        sizeof(uint32_t),        //in buffer size
-        nullptr,                  //out buffer
-        0,                        //out buffer size
-        &bytes,                   //size of the data returned
+        &value,                         //in buffer
+        sizeof(uint32_t),               //in buffer size
+        nullptr,                        //out buffer
+        0,                              //out buffer size
+        &bytes,                         //size of the data returned
         nullptr);
 
     if (!status)
@@ -336,13 +336,13 @@ get_data_retention(uint32_t* value)
     DWORD bytes = 0;
 
     auto status = DeviceIoControl
-    (m_hdl,
+        (m_hdl,
         XCLMGMT_OID_GET_DATA_RETENTION, //ioctl code
-        nullptr,                    //in buffer
-        0,        //in buffer size
-        value,                  //out buffer
-        sizeof(uint32_t),                        //out buffer size
-        &bytes,                   //size of the data returned
+        nullptr,                        //in buffer
+        0,                              //in buffer size
+        value,                          //out buffer
+        sizeof(uint32_t),               //out buffer size
+        &bytes,                         //size of the data returned
         nullptr);
 
     if (!status)
@@ -519,7 +519,7 @@ plp_program_status(xclDeviceHandle hdl, uint64_t& plp_status)
 	mgmt->plp_program_status(plp_status);
 }
 
-  void 
+void 
 get_uuids(xclDeviceHandle hdl, XCLMGMT_IOC_UUID_INFO* value)
 {
   xrt_core::message::
@@ -531,19 +531,19 @@ get_uuids(xclDeviceHandle hdl, XCLMGMT_IOC_UUID_INFO* value)
 void
 set_data_retention(xclDeviceHandle hdl, uint32_t value)
 {
-    xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "set_data_retention()");
-    auto mgmt = get_mgmt_object(hdl);
-    mgmt->set_data_retention(value);
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "set_data_retention()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->set_data_retention(value);
 }
 
 void
 get_data_retention(xclDeviceHandle hdl, uint32_t* value)
 {
-    xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_data_retention()");
-    auto mgmt = get_mgmt_object(hdl);
-    mgmt->get_data_retention(value);
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_data_retention()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->get_data_retention(value);
 }
 
 } // mgmt
