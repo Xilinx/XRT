@@ -1044,11 +1044,15 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 static bool xmc_clk_scale_on(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	void *xdev_hdl = xocl_get_xdev(pdev);
 
-	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_CLK_SCALING))
-		return true;
+	if (xocl_subdev_is_vsec(xdev_hdl)) {
+		if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_CLK_SCALING))
+			return true;
+		return false;
+	}
 
-	return false;
+	return xocl_clk_scale_on(xdev_hdl);
 }
 
 static bool nosc_xmc(struct platform_device *pdev)
@@ -1661,8 +1665,7 @@ static bool scaling_condition_check(struct xocl_xmc *xmc)
 	}
 
 	if (!xmc->sc_presence) {
-		void *xdev_hdl = xocl_get_xdev(xmc->pdev);
-		if (xocl_clk_scale_on(xdev_hdl) || xmc_clk_scale_on(xmc->pdev))
+		if (xmc_clk_scale_on(xmc->pdev))
 			cs_on_ptfm = true;
 	} else {
 		//Feature present bit may configured each time an xclbin is downloaded,
@@ -3389,8 +3392,7 @@ done:
 		READ_REG32(xmc, XMC_STATUS_REG),
 		READ_REG32(xmc, XMC_MAGIC_REG));
 
-	if (XMC_PRIVILEGED(xmc) && (xocl_clk_scale_on(xdev_hdl) ||
-                                xmc_clk_scale_on(xmc->pdev)))
+	if (XMC_PRIVILEGED(xmc) && xmc_clk_scale_on(xmc->pdev))
 		xmc_clk_scale_config(xmc->pdev);
 
 	mutex_unlock(&xmc->xmc_lock);
