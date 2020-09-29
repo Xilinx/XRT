@@ -4173,7 +4173,15 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
 		if (tmp_str) {
 			strncpy(xmc->exp_bmc_ver, tmp_str,
-				XMC_BDINFO_ENTRY_LEN_MAX - 1);
+				sizeof(xmc->exp_bmc_ver) - 1);
+		}
+		if (!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION)) {
+			/*
+			 * No SC image is needed, set expect to be
+			 * the same as current.
+			 */
+			strncpy(xmc->bmc_ver, xmc->exp_bmc_ver,
+				sizeof(xmc->bmc_ver) - 1);
 		}
 
 		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc, false)))
@@ -4220,14 +4228,6 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 			BDINFO_NAME, xmc->bd_name);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,
 			BDINFO_BMC_VER, xmc->bmc_ver);
-		if (!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION)) {
-			/*
-			 * No SC image is needed, set expect to be
-			 * the same as current.
-			 */
-			xmc_set_board_info(bdinfo_raw, bd_info_sz,
-				BDINFO_BMC_VER, xmc->exp_bmc_ver);
-		}
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,
 			BDINFO_MAX_PWR, (char *)&xmc->max_power);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,
