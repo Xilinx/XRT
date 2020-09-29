@@ -1093,7 +1093,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * like if versal has vesc, then it is a 2.0 shell. We can add the following
 	 * condition.
 	 */
-	if ((dev_info->flags & XOCL_DSAFLAG_VERSAL) &&
+	if ((dev_info->flags & (XOCL_DSAFLAG_VERSAL | XOCL_DSAFLAG_MPSOC)) &&
 	    xocl_subdev_is_vsec(lro))
 		ret = -ENODEV;
 
