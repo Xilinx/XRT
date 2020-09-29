@@ -672,7 +672,7 @@ namespace xclhwemhal2 {
           mLogStream << __func__ << " UNZIP of sim bin ended and permissions operation is complete" << std::endl;
 
         simulatorType = getSimulatorType(binaryDirectory);
-	std::transform(simulatorType.begin(), simulatorType.end(), simulatorType.begin(), ::tolower);
+        std::transform(simulatorType.begin(), simulatorType.end(), simulatorType.begin(), ::tolower);
       }
 
       if (lWaveform == xclemulation::DEBUG_MODE::GUI)
