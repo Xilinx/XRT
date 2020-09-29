@@ -907,9 +907,10 @@ struct function0_getput : QueryRequestType
     auto val = boost::any_cast<typename QueryRequestType::value_type>(any);
     if (device->get_mgmt_handle())
       Getter::mgmt_put(device, val);
-    if (device->get_user_handle())
+    else if (device->get_user_handle())
       Getter::user_put(device, val);
-    throw std::runtime_error("No device handle");
+    else 
+      throw std::runtime_error("No device handle");
   }
 };
 
