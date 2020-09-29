@@ -229,7 +229,7 @@ memory_retention(xrt_core::device* device, mem_type, bool enable)
 
 OO_Config::OO_Config( const std::string &_longName, bool _isHidden)
     : OptionOptions(_longName, _isHidden, "Utility to modify the memory configuration(s)")
-    , m_device({})
+    , m_devices({})
     , m_help(false)
     , m_daemon(false)
     , m_host("")
@@ -244,7 +244,7 @@ OO_Config::OO_Config( const std::string &_longName, bool _isHidden)
 
 {
   m_optionsDescription.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("retention", boost::program_options::value<decltype(m_retention)>(&m_retention),"Enables / Disables memory retention.  Valid values are: [ENABLE | DISABLE]")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
@@ -307,7 +307,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
     }
   }
 
-  if (m_device.empty() && !m_daemon)  {
+  if (m_devices.empty() && !m_daemon)  {
     std::cerr << "ERROR: If the daemon is to be used (e.g., set to true) then a device must also be declared." << std::endl;
     printHelp();
     return;
@@ -316,7 +316,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
   // -- process option: device -----------------------------------------------
   std::set<std::string> deviceNames;
   xrt_core::device_collection deviceCollection;
-  for (const auto & deviceName : m_device) 
+  for (const auto & deviceName : m_devices) 
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
   
   XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
@@ -346,7 +346,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
   }
 
   //-- process option: device -----------------------------------------------
-  if (!m_device.empty()) {
+  if (!m_devices.empty()) {
     XBU::verbose("Sub command: --device");
     //update security
     if (!m_security.empty())
