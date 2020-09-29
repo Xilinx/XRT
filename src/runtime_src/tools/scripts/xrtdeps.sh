@@ -152,6 +152,7 @@ ub_package_list()
      gdb \
      git \
      gnuplot \
+     graphviz \
      libboost-dev \
      libboost-filesystem-dev \
      libboost-program-options-dev \
@@ -189,6 +190,7 @@ ub_package_list()
      python3-pip \
      python3-sphinx \
      python3-sphinx-rtd-theme \
+     python3-breathe \
     )
 
     if [ $docker == 0 ] && [ $sysroot == 0 ]; then
