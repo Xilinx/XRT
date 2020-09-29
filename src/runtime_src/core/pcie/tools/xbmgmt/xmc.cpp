@@ -19,12 +19,30 @@
 #include <vector>
 #include <thread>
 #include <iomanip>
+#include <sstream>
 
 #include "xmc.h"
 #include "flasher.h"
 #include "core/common/utils.h"
 
 #define BMC_JUMP_ADDR   0x201  /* Hard-coded for now */
+
+static std::map<int, std::string> scStatusMap = {
+        {0, "NOT READY"},
+        {1, "READY"},
+        {2, "BSL_UNSYNCED"},
+        {3, "BSL_SYNCED"},
+        {4, "BSL_SYNCED_SC_NOT_UPGRADABLE"},
+        {5, "READY_SC_NOT_UPGRADABLE"},
+ 
+};
+
+static std::map<int, std::string> cmcStatusMap = {
+        {0, "NOT READY"},
+        {1, "READY"},
+        {2, "STOPPED"},
+        {4, "PAUSED"},
+};
 
 XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 {
@@ -524,6 +542,19 @@ int XMC_Flasher::writeReg(unsigned RegOffset, unsigned value) {
     return 0;
 }
 
+static std::string getStatus(int status, std::map<int, std::string> &map)
+{
+    auto entry = map.find(status);
+    std::ostringstream os;
+
+    os << std::hex << status;
+
+    if (entry != map.end())
+	    os << "(" << entry->second << ")";
+
+    return os.str();
+}
+
 bool XMC_Flasher::isXMCReady()
 {
     bool xmcReady;
@@ -539,10 +570,11 @@ bool XMC_Flasher::isXMCReady()
     if (!xmcReady) {
         auto format = xrt_core::utils::ios_restore(std::cout);
         if (!mDev->get_sysfs_path("xmc", "").empty()) {
-            std::cout << "ERROR: XMC is not ready: 0x" << std::hex
-                << XMC_MODE() << std::endl;
+            std::cout << "ERROR: XMC is not ready: 0x" <<
+                getStatus(XMC_MODE(), cmcStatusMap) << std::endl;
         }
     }
+
     return xmcReady;
 }
 
@@ -553,8 +585,8 @@ bool XMC_Flasher::isBMCReady()
 
     if (!bmcReady) {
       auto format = xrt_core::utils::ios_restore(std::cout);
-        std::cout << "ERROR: SC is not ready: 0x" << std::hex
-                << BMC_MODE() << std::endl;
+        std::cout << "ERROR: SC is not ready: 0x" <<
+            getStatus(BMC_MODE(), scStatusMap) << std::endl;
     }
 
     return bmcReady;

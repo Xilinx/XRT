@@ -108,7 +108,7 @@ public:
   }
 
   virtual void
-  program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const = 0;
+  program_plp(const device* dev, const std::vector<char> &buffer) const = 0;
 }; // system
 
 /**
@@ -216,7 +216,7 @@ get_monitor_access_type();
 
 XRT_CORE_COMMON_EXPORT
 void
-program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer);
+program_plp(const device* dev, const std::vector<char> &buffer);
 
 } //xrt_core
 

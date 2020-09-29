@@ -76,19 +76,18 @@ struct ready
 
 struct xmc_sc_presence
 {
-	using result_type = bool;
+  using result_type = bool;
 
-	static result_type
-		user(const xrt_core::device* device, key_type key)
-	{
-		return true;
-	}
-
-	static result_type
-		mgmt(const xrt_core::device* device, key_type key)
-	{
-		return true;
-	}
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return true;
+  }
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return true;
+  }
 };
 
 struct firewall
@@ -644,8 +643,8 @@ struct info
       return static_cast<query::pcie_subsystem_vendor::result_type>(info.pcie_info.subsystem_vendor);
     case key_type::pcie_subsystem_id:
       return static_cast<query::pcie_subsystem_id::result_type>(info.pcie_info.subsystem_device);
-	case key_type::xmc_reg_base:
-		return info.xmc_offset;
+    case key_type::xmc_reg_base:
+      return info.xmc_offset;
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }

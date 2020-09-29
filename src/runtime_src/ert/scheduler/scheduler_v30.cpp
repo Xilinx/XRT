@@ -50,7 +50,7 @@ const char* ert_v30_version = ERT_SVERSION;
 #define ERT_UNUSED __attribute__((unused))
 
 //#define ERT_VERBOSE
-//#define CTRL_VERBOSE
+#define CTRL_VERBOSE
 //#define DEBUG_SLOT_STATE
 
 // Assert macro implementation
@@ -80,6 +80,7 @@ ert_assert(const char* file, long line, const char* function, const char* expr, 
 #ifdef CTRL_VERBOSE
 # define CTRL_DEBUG(msg) print(msg)
 # define CTRL_DEBUGF(format,...) xil_printf(format, ##__VA_ARGS__)
+# define DMSGF(format,...) if (dmsg) xil_printf(format, ##__VA_ARGS__)
 #else
 # define CTRL_DEBUG(msg)
 # define CTRL_DEBUGF(format,...)
@@ -196,6 +197,7 @@ static value_type cq_status_enabled         = 0;
 static value_type mb_host_interrupt_enabled = 0;
 static value_type dataflow_enabled          = 0;
 static value_type kds_30                    = 0;
+static value_type dmsg                      = 0;
 // Struct slot_info is per command slot in command queue
 struct slot_info
 {
@@ -441,6 +443,7 @@ setup()
   CTRL_DEBUGF("mb_host_int_enabled=%d\r\n",mb_host_interrupt_enabled);
   CTRL_DEBUGF("dataflow_enabled=%d\r\n",dataflow_enabled);
   CTRL_DEBUGF("kds_30=%d\r\n",kds_30);
+  CTRL_DEBUGF("dmsg=%d\r\n",dmsg);
   // Initialize command slots
   for (size_type i=0; i<num_slots; ++i) {
     auto& slot = command_slots[i];
@@ -563,7 +566,7 @@ setup()
 inline void
 set_cu_info(size_type cu_idx, size_type slot_idx)
 {
-  ERT_DEBUGF("cu_slot_usage[%d]=%d\r\n",cu_idx,slot_idx);
+  DMSGF("cu_slot_usage[%d]=%d\r\n",cu_idx,slot_idx);
   ERT_ASSERT(cu_slot_usage[cu_idx]==no_index,"cu already used");
   cu_slot_usage[cu_idx] = slot_idx;
   ++cu_usage[cu_idx];
@@ -576,7 +579,7 @@ inline void
 notify_host(size_type cmd_idx)
 {
   // notify host (update host status register)
-  ERT_DEBUGF("notify_host(%d)\r\n",cmd_idx);
+  DMSGF("notify_host(%d)\r\n",cmd_idx);
 #if 0
   auto mask_idx = cmd_idx>>5;
   auto mask = idx_to_mask(cmd_idx,mask_idx);
@@ -652,7 +655,7 @@ start_cu(size_type slot_idx)
   if (cu_status[cu_idx])
     return no_index;
 
-  ERT_DEBUGF("start_cu cu(%d) for slot_idx(%d)\r\n",cu_idx,slot_idx);
+  DMSGF("start_cu cu(%d) for slot_idx(%d)\r\n",cu_idx,slot_idx);
   ERT_ASSERT(read_reg(cu_idx_to_addr(cu_idx))==AP_IDLE,"cu not ready");
 
   if (slot.opcode==ERT_EXEC_WRITE)
@@ -683,11 +686,11 @@ static inline void
 check_command(size_type slot_idx, size_type cu_idx)
 {
   auto& slot = command_slots[slot_idx];
-  ERT_DEBUGF("slot.cu_idx(%d) slot_idx(%d)\r\n",slot.cu_idx,slot_idx);
+  DMSGF("slot.cu_idx(%d) slot_idx(%d)\r\n",slot.cu_idx,slot_idx);
   ERT_ASSERT(slot.cu_idx == cu_idx,"cu is not used by slot");
   notify_host(slot_idx);
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
-  ERT_DEBUGF("slot(%d) [running -> free]\r\n",slot_idx);
+  DMSGF("slot(%d) [running -> free]\r\n",slot_idx);
 
 #ifdef DEBUG_SLOT_STATE
   write_reg(slot.slot_addr,slot.header_value);
@@ -746,10 +749,10 @@ check_cu(size_type cu_idx)
 static bool
 configure_mb(size_type slot_idx)
 {
-  ERT_DEBUGF("-->configure_mb\r\n");
+  CTRL_DEBUGF("-->configure_mb\r\n");
   auto& slot = command_slots[slot_idx];
 
-  ERT_DEBUGF("configure cmd found in slot(%d)\r\n",slot_idx);
+  CTRL_DEBUGF("configure cmd found in slot(%d)\r\n",slot_idx);
   slot_size=read_reg(slot.slot_addr + 0x4);
   num_cus=read_reg(slot.slot_addr + 0x8);
   cu_offset=read_reg(slot.slot_addr + 0xC);
@@ -757,19 +760,19 @@ configure_mb(size_type slot_idx)
 
   // Features
   auto features = read_reg(slot.slot_addr + 0x14);
-  ERT_DEBUGF("features=0x%04x\r\n",features);
+  CTRL_DEBUGF("features=0x%04x\r\n",features);
   ERT_ASSERT(features & 0x1,"ert is not enabled!!");
   mb_host_interrupt_enabled = (features & 0x2)==0;
 
   cq_status_enabled = (features & 0x10)!=0;
   dataflow_enabled = (features & 0x40)!=0;
   kds_30 = (features & 0x100)!=0;
-
+  dmsg = (features & 0x200)!=0;
   // CU base address
   for (size_type i=0; i<num_cus; ++i) {
     u32 addr = read_reg(slot.slot_addr + 0x18 + (i<<2));
     cu_addr_map[i] = addr;  // encoded with handshake
-    ERT_DEBUGF("cu(%d) addr(0x%x) handshake(0x%x) encodedaddr(0x%x)\r\n", i, CU_ADDR(addr), CU_HANDSHAKE(addr), addr);
+    CTRL_DEBUGF("cu(%d) addr(0x%x) handshake(0x%x) encodedaddr(0x%x)\r\n", i, CU_ADDR(addr), CU_HANDSHAKE(addr), addr);
   }
 
   // (Re)initilize MB
@@ -779,9 +782,9 @@ configure_mb(size_type slot_idx)
   notify_host(slot_idx);
 
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
-  ERT_DEBUGF("slot(%d) [running -> free]\r\n",slot_idx);
+  CTRL_DEBUGF("slot(%d) [running -> free]\r\n",slot_idx);
 
-  ERT_DEBUGF("<--configure_mb\r\n");
+  CTRL_DEBUGF("<--configure_mb\r\n");
   return true;
 }
 
@@ -933,10 +936,10 @@ free_to_new(size_type slot_idx)
   ERT_ASSERT((slot.header_value & 0xF)==0x4,"slot is not free\r\n");
   auto header =  read_reg(slot.slot_addr);
   if ((header & 0xF) == 0x1) {
-    ERT_DEBUGF("new slot(%d)\r\n",slot_idx);
+    DMSGF("new slot(%d)\r\n",slot_idx);
     write_reg(slot.slot_addr,header | 0xF);
     slot.header_value = header;
-    ERT_DEBUGF("slot(%d) [free -> new]\r\n",slot_idx);
+    DMSGF("slot(%d) [free -> new]\r\n",slot_idx);
     return true;
   }
   return false;
@@ -956,7 +959,7 @@ new_to_queued(size_type slot_idx)
 
   auto cmt = cmd_type(slot.header_value);
   auto opc = slot.opcode = opcode(slot.header_value);
-  ERT_DEBUGF("slot_idx(%d) type(%d) opcode(%d)\r\n",slot_idx,cmt,opc);
+  DMSGF("slot_idx(%d) type(%d) opcode(%d)\r\n",slot_idx,cmt,opc);
 
   if (cmt != ERT_CU) {
     process_special_command(opc,slot_idx);
@@ -966,12 +969,12 @@ new_to_queued(size_type slot_idx)
   // new command, gather slot info
   addr_type addr = cu_section_addr(slot.slot_addr);
   slot.cu_idx = read_reg(addr);
-  ERT_DEBUGF("slot.cu_idx(%d)\r\n",slot.cu_idx);
+  DMSGF("slot.cu_idx(%d)\r\n",slot.cu_idx);
   slot.regmap_addr = regmap_section_addr(slot.header_value,slot.slot_addr);
   slot.regmap_size = regmap_size(slot.header_value);
   slot.header_value = (slot.header_value & ~0xF) | 0x2; // queued
 
-  ERT_DEBUGF("slot(%d) [new -> queued]\r\n",slot_idx);
+  DMSGF("slot(%d) [new -> queued]\r\n",slot_idx);
 
 #ifdef DEBUG_SLOT_STATE
   write_reg(slot.slot_addr,slot.header_value);
@@ -999,7 +1002,7 @@ queued_to_running(size_type slot_idx)
     return false;
 
   slot.header_value |= 0x1;       // running (0x2->0x3)
-  ERT_DEBUGF("slot(%d) [queued -> running]\r\n",slot_idx);
+  DMSGF("slot(%d) [queued -> running]\r\n",slot_idx);
 
 #ifdef DEBUG_SLOT_STATE
   write_reg(slot.slot_addr,slot.header_value);
@@ -1025,7 +1028,7 @@ running_to_free(size_type slot_idx)
 
   notify_host(slot_idx);
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
-  ERT_DEBUGF("slot(%d) [running -> free]\r\n",slot_idx);
+  DMSGF("slot(%d) [running -> free]\r\n",slot_idx);
 
 #ifdef DEBUG_SLOT_STATE
   write_reg(slot.slot_addr,slot.header_value);
@@ -1079,7 +1082,7 @@ scheduler_v30_loop()
 
           if (cqvalue & (AP_START|AP_CONTINUE)) {
             write_reg(slot.slot_addr,0x0); // clear
-            ERT_DEBUGF("slot.slot_addr 0x%x enable cu(%d) cqvalue(0x%x)\r\n", slot.slot_addr,cuidx,cqvalue);
+            DMSGF("slot.slot_addr 0x%x enable cu(%d) cqvalue(0x%x)\r\n", slot.slot_addr,cuidx,cqvalue);
             cu_status[cuidx] = !cu_status[cuidx]; // enable polling of this CU
           }
         }
@@ -1088,7 +1091,7 @@ scheduler_v30_loop()
           continue; // CU is not used
 
         auto cuvalue = read_reg(cu_idx_to_addr(cuidx));
-        ERT_DEBUGF("cuidx %d, cuvalue(0x%x)\r\n",cuidx,cuvalue);
+        DMSGF("cuidx %d, cuvalue(0x%x)\r\n",cuidx,cuvalue);
         if (!(cuvalue & (AP_DONE)))
           continue;
 
@@ -1156,7 +1159,7 @@ scheduler_v30_loop()
 static inline void cu_hls_ctrl_check(size_type cmd_idx)
 {
     auto cuvalue = read_reg(cu_idx_to_addr(cmd_idx));
-    ERT_DEBUGF("cu(%d) is interrupting\r\n",cmd_idx);
+    DMSGF("cu(%d) is interrupting\r\n",cmd_idx);
     ERT_ASSERT(cu_status[cmd_idx],"cu wasn't started");
     // check if command is done
     check_command(cu_slot_usage[cmd_idx],cmd_idx);
@@ -1164,7 +1167,7 @@ static inline void cu_hls_ctrl_check(size_type cmd_idx)
     cu_status[cmd_idx] = !cu_status[cmd_idx]; // toggle status of completed cus
 
     if (cuvalue & (AP_DONE)) {
-      ERT_DEBUGF("AP_DONE \r\n");
+      DMSGF("AP_DONE \r\n");
       cu_done[cmd_idx] = 1;
       //cu_status[0] = !cu_status[0];
       write_reg(cu_idx_to_addr(cmd_idx), AP_CONTINUE);
@@ -1172,7 +1175,7 @@ static inline void cu_hls_ctrl_check(size_type cmd_idx)
     }
 
     if (cuvalue & (AP_READY)) {
-      ERT_DEBUGF("AP_READY \r\n");
+      DMSGF("AP_READY \r\n");
       cu_ready[cmd_idx] = 1;
     }
 }
@@ -1185,13 +1188,13 @@ void cu_interrupt_handler() __attribute__((interrupt_handler));
 void
 cu_interrupt_handler()
 {
-  ERT_DEBUGF("interrupt_handler\r\n");
+  DMSGF("interrupt_handler\r\n");
   bitmask_type intc_mask = read_reg(ERT_INTC_IPR_ADDR);
 
   if (intc_mask & 0x1) { // host interrupt
     for (size_type w=0,offset=0; w<num_slot_masks; ++w,offset+=32) {
       auto slot_mask = read_reg(CQ_STATUS_REGISTER_ADDR[w]);
-      ERT_DEBUGF("command queue interrupt from host: 0x%x\r\n",slot_mask);
+      DMSGF("command queue interrupt from host: 0x%x\r\n",slot_mask);
       // Transition each new command into new state
       for (size_type slot_idx=offset; slot_mask; slot_mask >>= 1, ++slot_idx)
         if (slot_mask & 0x1)
@@ -1202,7 +1205,7 @@ cu_interrupt_handler()
   for (size_type intc_bit=0x20; intc_bit<0x200; intc_bit <<= 1) {
 
     if (intc_mask & intc_bit) { // INTC_CU_0_31 ~ INTC_CU_96_127
-      ERT_DEBUGF("intc_mask & 0x%x \r\n",intc_bit);
+      DMSGF("intc_mask & 0x%x \r\n",intc_bit);
 
       bitmask_type cu_intc_mask = 0;
       size_type cu_offset = 0;
@@ -1222,7 +1225,7 @@ cu_interrupt_handler()
         cu_offset = 96;
       }
 
-      ERT_DEBUGF("cu_intc_mask 0x%x \r\n", cu_intc_mask);
+      DMSGF("cu_intc_mask 0x%x \r\n", cu_intc_mask);
       if (num_cus == 1 && intc_bit == 0x20) {// CU_0 check bit1
         if (0x2 & cu_intc_mask)
           cu_hls_ctrl_check(0);

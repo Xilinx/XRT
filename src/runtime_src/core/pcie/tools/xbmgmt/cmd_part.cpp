@@ -118,7 +118,7 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
 
         int pending = 1;
         int retry = 0;
-        while (pending && retry < PROGRAM_TIMEOUT) {
+        while (pending && (retry++ < PROGRAM_TIMEOUT)) {
             dev->sysfs_get<int>("", "rp_program", errmsg, pending, 1);
             if (!errmsg.empty()) {
                 std::cout << "ERROR: can not read status." << std::endl;
@@ -129,7 +129,6 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
                 return -EINVAL;
             }
             sleep(1);
-            retry++;
         }
     }
     std::cout << "Program successfully" << std::endl;

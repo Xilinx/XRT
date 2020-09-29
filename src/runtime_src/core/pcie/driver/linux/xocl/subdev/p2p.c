@@ -123,6 +123,8 @@ struct p2p {
 
 	struct p2p_bank_conf	*bank_conf;
 	ulong			user_buf_start;
+
+	bool			p2p_conf_changed;
 };
 
 struct p2p_remap_slot {
@@ -168,6 +170,8 @@ struct p2p_mem_chunk {
 	((remap_reg_rd(p2p, cap) & 0xff))
 #define remap_get_max_slot_num(p2p)			\
 	((remap_reg_rd(p2p, cap) >> 16) & 0x1ff)
+
+static void p2p_ulpmap_release(struct p2p *p2p);
 
 /* for legacy platforms only */
 static int legacy_identify_p2p_bar(struct p2p *p2p)
@@ -492,6 +496,8 @@ static int p2p_mem_fini(struct p2p *p2p, bool free_trunk)
 	}
 	p2p->p2p_mem_chunk_ref = 0;
 
+	p2p_ulpmap_release(p2p);
+
 	if (!free_trunk)
 		return 0;
 
@@ -586,6 +592,8 @@ static int p2p_mem_init(struct p2p *p2p)
 	p2p_rbar_len(p2p, &p2p->rbar_len);
 	/* Pass P2P bar address and len to mgmtpf */
 	(void) p2p_read_addr_mgmtpf(p2p);
+
+	p2p->p2p_conf_changed = true;
 
 	return 0;
 }
@@ -726,6 +734,24 @@ static void p2p_bar_unmap(struct p2p *p2p, ulong bar_off)
 	}
 }
 
+static void p2p_ulpmap_release(struct p2p *p2p)
+{
+	struct p2p_remap_slot *slot;
+	int i;
+
+	i = p2p->user_buf_start / p2p->remap_slot_sz;
+	slot = p2p->remap_slots;
+	if (!slot)
+		return;
+
+	for (; i < p2p->remap_slot_num; i++) {
+		slot[i].ref = 0;
+		slot[i].ep_addr = ~0UL;
+		slot[i].map_head_chunk = 0;
+		slot[i].map_chunk_num = 0;
+	}
+}
+
 static long p2p_bar_map(struct p2p *p2p, ulong bank_addr, ulong bank_size,
 	ulong bar_off_align)
 {
@@ -794,8 +820,8 @@ static long p2p_bar_map(struct p2p *p2p, ulong bank_addr, ulong bank_size,
 	for (i = j; i < j + num; i++) {
 		slot[i].ref++;
 		slot[i].ep_addr = ep_addr;
-		slot[j].map_head_chunk = j;
-		slot[j].map_chunk_num = num;
+		slot[i].map_head_chunk = j;
+		slot[i].map_chunk_num = num;
 
 		if (ep_addr % p2p->remap_slot_sz == 0)
 			remap_write_slot(p2p, i, ep_addr);
@@ -1027,6 +1053,40 @@ static int p2p_release_resource(struct platform_device *pdev,
 	return 0;
 }
 
+static int p2p_conf_status(struct platform_device *pdev, bool *changed)
+{
+	struct p2p *p2p = platform_get_drvdata(pdev);
+
+	mutex_lock(&p2p->p2p_lock);
+	*changed = p2p->p2p_conf_changed;
+	p2p->p2p_conf_changed = false;
+	mutex_unlock(&p2p->p2p_lock);
+
+	return 0;
+}
+
+static int p2p_refresh_rbar(struct platform_device *pdev)
+{
+	struct p2p *p2p = platform_get_drvdata(pdev);
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+	int pos;
+	u32 ctrl;
+
+	pos = pci_find_ext_capability(pcidev, PCI_EXT_CAP_ID_REBAR);
+	if (!pos) {
+		p2p_info(p2p, "rebar cap does not exist");
+		return 0;
+	}
+
+	mutex_lock(&p2p->p2p_lock);
+	pos += p2p->p2p_bar_idx * PCI_REBAR_CTRL;
+	pci_read_config_dword(pcidev, pos + PCI_REBAR_CTRL, &ctrl);
+	pci_write_config_dword(pcidev, pos + PCI_REBAR_CTRL, ctrl);
+	mutex_unlock(&p2p->p2p_lock);
+
+	return 0;
+}
+
 struct xocl_p2p_funcs p2p_ops = {
 	.mem_map = p2p_mem_map,
 	.mem_unmap = p2p_mem_unmap,
@@ -1035,6 +1095,8 @@ struct xocl_p2p_funcs p2p_ops = {
 	.mem_get_pages = p2p_mem_get_pages,
 	.remap_resource = p2p_remap_resource,
 	.release_resource = p2p_release_resource,
+	.conf_status = p2p_conf_status,
+	.refresh_rbar = p2p_refresh_rbar,
 };
 
 static ssize_t config_store(struct device *dev, struct device_attribute *da,

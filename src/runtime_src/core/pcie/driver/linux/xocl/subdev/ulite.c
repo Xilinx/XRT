@@ -64,6 +64,27 @@ struct uartlite_data {
 
 static struct uart_port ulite_ports[ULITE_NR_UARTS];
 
+static ssize_t console_name_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct uart_port *port = platform_get_drvdata(to_platform_device(dev));
+        struct uartlite_data *pdata = port->private_data;
+        struct uart_driver *drv = pdata->xcl_ulite_driver;
+
+	return sprintf(buf, "%s%d\n", drv->dev_name, port->line);
+}
+
+static DEVICE_ATTR_RO(console_name);
+
+static struct attribute *ulite_attrs[] = {
+	&dev_attr_console_name.attr,
+	NULL,
+};
+
+static struct attribute_group ulite_attr_group = {
+	.attrs = ulite_attrs,
+};
+
 struct uartlite_reg_ops {
 	u32 (*in)(void __iomem *addr);
 	void (*out)(u32 val, void __iomem *addr);
@@ -486,6 +507,12 @@ static int ulite_probe(struct platform_device *pdev)
 	port->private_data = pdata;
 
 	platform_set_drvdata(pdev, port);
+
+	ret = sysfs_create_group(&pdev->dev.kobj, &ulite_attr_group);
+	if (ret) {
+		xocl_err(&pdev->dev, "create ulite sysfs attrs failed: %d", ret);
+		goto done;
+	}
 	/* Register the port */
 	ret = uart_add_one_port(&xcl_ulite_driver, port);
 	if (ret) {
@@ -514,6 +541,8 @@ static int ulite_remove(struct platform_device *pdev)
 
 	if (!port)
 		return ret;
+
+	sysfs_remove_group(&pdev->dev.kobj, &ulite_attr_group);
 
 	pdata = port->private_data;
 	if (!pdata)

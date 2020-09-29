@@ -409,7 +409,7 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
 }
 
 static void
-program_plp(std::shared_ptr<xrt_core::device> dev, const std::string& partition)
+program_plp(const xrt_core::device* dev, const std::string& partition)
 {
   std::ifstream stream(partition.c_str(), std::ios_base::binary);
   if (!stream.is_open())
@@ -642,7 +642,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     for (const auto& uuid : dsa.uuids) {
       //check if plp is compatible with the installed blp
       if (xrt_core::device_query<xrt_core::query::interface_uuids>(dev).front().compare(uuid) == 0) {
-        program_plp(dev, dsa.file);
+        program_plp(dev.get(), dsa.file);
         return;
       }
     }
