@@ -1068,6 +1068,9 @@ static bool xmc_in_bitfile(struct platform_device *pdev)
 
 	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_IN_BITFILE)) {
 		/* xmc in bitfile is supported only on SmartSSD U.2 */
+		if (xocl_subdev_is_vsec(xdev_hdl))
+			return true;
+
 		if (!xmc->sc_presence)
 			return xocl_cmc_in_bitfile(xdev_hdl);
 	}
