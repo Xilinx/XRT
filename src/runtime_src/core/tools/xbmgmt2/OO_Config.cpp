@@ -314,8 +314,13 @@ OO_Config::execute(const SubCmdOptions& _options) const
   }
 
   // -- process option: device -----------------------------------------------
-  auto devices = XBU::collect_devices(m_device, false);
+  std::set<std::string> deviceNames;
+  xrt_core::device_collection deviceCollection;
+  for (const auto & deviceName : m_device) 
+    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
   
+  XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+
   //Option:show
   if (m_show) {
     XBU::verbose("Sub command: --show");
@@ -324,7 +329,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
       show_daemon_conf();
 
     //show device config
-    for (const auto& dev : devices)
+    for (const auto& dev : deviceCollection)
       show_device_conf(dev.get());
 
     return;
@@ -345,22 +350,22 @@ OO_Config::execute(const SubCmdOptions& _options) const
     XBU::verbose("Sub command: --device");
     //update security
     if (!m_security.empty())
-      for (const auto& dev : devices)
+      for (const auto& dev : deviceCollection)
         update_device_conf(dev.get(), m_security, config_type::security);
 
     //clock scaling
     if (!m_clk_scale.empty())
-      for (const auto& dev : devices)
+      for (const auto& dev : deviceCollection)
         update_device_conf(dev.get(), m_clk_scale, config_type::clk_scaling);
     
     //update threshold power override
     if (!m_power_override.empty())
-      for (const auto& dev : devices)
+      for (const auto& dev : deviceCollection)
         update_device_conf(dev.get(), m_power_override, config_type::threshold_power_override);
 
     //cs_reset
     if (!m_cs_reset.empty())
-      for (const auto& dev : devices)
+      for (const auto& dev : deviceCollection)
         update_device_conf(dev.get(), m_cs_reset, config_type::reset);
 
     //  enable/disable_retention
@@ -374,7 +379,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
         throw xrt_core::system_error(EINVAL, "Please specify memory type: ddr or hbm");
 
       bool enableRetention = (m_retention == "ENABLE");
-      for (const auto& dev : devices)
+      for (const auto& dev : deviceCollection)
         memory_retention(dev.get(), mem, enableRetention);
     }
   }
