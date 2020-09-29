@@ -157,9 +157,6 @@ namespace xdp {
       thread_map.erase(it);
       thread_ctrl_map.erase(handle);
     }
-    else {
-      return;
-    }
   }
 
   void AIEProfilingPlugin::endPoll()
