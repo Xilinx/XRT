@@ -1081,8 +1081,7 @@ scheduler_v30_loop()
           auto cqvalue = read_reg(slot.slot_addr);
 
           if (cqvalue & (AP_START|AP_CONTINUE)) {
-            while(read_reg(slot.slot_addr))
-              write_reg(slot.slot_addr,0x0); // clear
+            write_reg(slot.slot_addr,0x0); // clear
             DMSGF("slot.slot_addr 0x%x enable cu(%d) cqvalue(0x%x)\r\n", slot.slot_addr,cuidx,cqvalue);
             cu_status[cuidx] = !cu_status[cuidx]; // enable polling of this CU
           }
