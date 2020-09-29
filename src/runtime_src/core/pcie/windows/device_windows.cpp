@@ -850,9 +850,9 @@ struct data_retention
   mgmt_get(const xrt_core::device* device)
   {
     auto init_ret = [](const xrt_core::device* dev) {
-    uint32_t ret;
-    mgmtpf::get_data_retention(dev->get_mgmt_handle(), &ret);
-    return ret;
+      uint32_t ret;
+      mgmtpf::get_data_retention(dev->get_mgmt_handle(), &ret);
+      return ret;
     };
 
     static std::map<const xrt_core::device*, uint32_t> info_map;
@@ -870,11 +870,14 @@ struct data_retention
   static void
   user_put(const xrt_core::device* device, value_type)
   {
+    // data retention can't be set on user side, hence doesn't have driver support
     throw std::runtime_error("device data retention query is not implemented on user windows");
   }
   static void
     mgmt_put(const xrt_core::device* device, value_type val)
   {
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
     mgmtpf::set_data_retention(device->get_mgmt_handle(), val);
   }
 
@@ -891,24 +894,22 @@ struct function0_getput : QueryRequestType
   boost::any
   get(const xrt_core::device* device) const
   {
-    if (auto mhdl = device->get_mgmt_handle())
+    if (device->get_mgmt_handle())
       return Getter::mgmt_get(device);
-    else if (auto uhdl = device->get_user_handle())
+    if (device->get_user_handle())
       return Getter::user_get(device);
-    else
-      throw std::runtime_error("No device handle");
+    throw std::runtime_error("No device handle");
   }
 
   void
   put(const xrt_core::device* device, const boost::any& any) const
   {
     auto val = boost::any_cast<typename QueryRequestType::value_type>(any);
-    if (auto mhdl = device->get_mgmt_handle())
+    if (device->get_mgmt_handle())
       Getter::mgmt_put(device, val);
-    else if (auto uhdl = device->get_user_handle())
+    if (device->get_user_handle())
       Getter::user_put(device, val);
-    else
-      throw std::runtime_error("No device handle");
+    throw std::runtime_error("No device handle");
   }
 };
 

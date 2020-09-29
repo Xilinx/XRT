@@ -194,7 +194,7 @@ struct mgmt
         value,                       //out buffer
         sizeof(XCLMGMT_DEVICE_INFO), //out buffer size
         &bytes,                      //size of the data returned 
-        nullptr);
+        nullptr);                    //ptr to overlapped struct (for async operations)
 
     if (!status || (bytes != sizeof(XCLMGMT_DEVICE_INFO)))
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_DEVICE_INFO failed");
@@ -246,7 +246,7 @@ struct mgmt
         &value,                    //out buffer
         sizeof(uint64_t),          //out buffer size
         &bytes,                    //size of the data returned
-        nullptr);
+        nullptr);                  //ptr to overlapped struct (for async operations)
 
     if (!status)
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_QSPI_INFO failed");
@@ -266,7 +266,7 @@ struct mgmt
         nullptr,                           //out buffer
         0,                                 //out buffer size
         &bytes,                            //size of the data returned
-        nullptr);
+        nullptr);                          //ptr to overlapped struct (for async operations)
 
     if (!status)
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_PRP_ICAP_PROGRAM_AXLF failed");
@@ -285,7 +285,7 @@ struct mgmt
         &stat,                                    //out buffer
         sizeof(char),                             //out buffer size
         &bytes,                                   //size of the data returned
-        nullptr);
+        nullptr);                                 //ptr to overlapped struct (for async operations)
 
 	plp_status = (int)stat;
 
@@ -305,7 +305,7 @@ struct mgmt
         value,                          //out buffer
         sizeof(XCLMGMT_IOC_UUID_INFO),  //in buffer size
         &bytes,                         //size of the data returned
-        nullptr);
+        nullptr);                       //ptr to overlapped struct (for async operations)
 
     if (!status || bytes != sizeof(XCLMGMT_IOC_UUID_INFO))
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_UUID_INFO failed");
@@ -324,7 +324,7 @@ set_data_retention(uint32_t value)
         nullptr,                        //out buffer
         0,                              //out buffer size
         &bytes,                         //size of the data returned
-        nullptr);
+        nullptr);                       //ptr to overlapped struct (for async operations)
 
     if (!status)
         throw std::runtime_error("DeviceIoControl XCLMGMT_OID_SET_DATA_RETENTION failed");
@@ -343,7 +343,7 @@ get_data_retention(uint32_t* value)
         value,                          //out buffer
         sizeof(uint32_t),               //out buffer size
         &bytes,                         //size of the data returned
-        nullptr);
+        nullptr);                       //ptr to overlapped struct (for async operations)
 
     if (!status)
         throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_DATA_RETENTION failed");
