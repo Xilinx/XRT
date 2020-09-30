@@ -88,12 +88,6 @@ namespace XBUtilities {
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
 
-  xrt_core::device_collection
-  collect_devices(const std::vector<std::string>& _devices, bool _inUserDomain);
-              
-  xrt_core::device_collection
-  collect_devices(const std::string& _devices, bool _inUserDomain);
-
   boost::property_tree::ptree
   get_available_devices(bool inUserDomain);
   std::string format_base10_shiftdown3(uint64_t value);
