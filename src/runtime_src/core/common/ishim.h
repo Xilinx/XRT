@@ -156,6 +156,15 @@ struct ishim
 
   virtual void
   wait_gmio(const char *gmioName) = 0;
+
+  virtual int
+  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value) = 0;
+
+  virtual uint64_t
+  read_profiling(int phdl) = 0;
+
+  virtual void
+  stop_profiling(int phdl) = 0;
 #endif
 };
 
@@ -463,6 +472,26 @@ struct shim : public DeviceType
     if (auto ret = xclGMIOWait(DeviceType::get_device_handle(), gmioName))
       throw error(ret, "fail to wait gmio");
   }
+
+  virtual int
+  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value)
+  {
+    return xclStartProfiling(DeviceType::get_device_handle(), option, port1Name, port2Name, value);
+  }
+
+  virtual uint64_t
+  read_profiling(int phdl)
+  {
+    return xclReadProfiling(DeviceType::get_device_handle(), phdl);
+  }
+
+  virtual void
+  stop_profiling(int phdl)
+  {
+    if (auto ret = xclStopProfiling(DeviceType::get_device_handle(), phdl))
+      throw error(ret, "fail to wait gmio");
+  }
+
 #endif
 };
 
