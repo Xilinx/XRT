@@ -764,7 +764,7 @@ namespace xclhwemhal2 {
       if (userSpecifiedSimPath.empty() == false)
       {
         sim_path = userSpecifiedSimPath;
-		systemUtil::makeSystemCall(sim_path, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
+	systemUtil::makeSystemCall(sim_path, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
       }
       else
       {
