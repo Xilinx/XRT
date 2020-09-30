@@ -21,7 +21,6 @@
 #include "detail/memory.h"
 #include "plugin/xdp/profile.h"
 
-#include "xrt/util/memory.h"
 
 namespace xocl {
 
@@ -118,7 +117,7 @@ clCreateSubBuffer(cl_mem                   parentbuffer,
     offset = region->origin;
   }
 
-  auto usb = xrt::make_unique<sub_buffer>(xocl(parentbuffer),flags,offset,sz);
+  auto usb = std::make_unique<sub_buffer>(xocl(parentbuffer),flags,offset,sz);
 
   assign(errcode_ret,CL_SUCCESS);
   return usb.release();

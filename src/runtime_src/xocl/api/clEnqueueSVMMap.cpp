@@ -26,6 +26,7 @@
 #include <iostream>
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -108,6 +109,7 @@ clEnqueueSVMMap(cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::
       clEnqueueSVMMap
       (command_queue,blocking_map,map_flags,svm_ptr,size,

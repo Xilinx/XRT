@@ -17,24 +17,47 @@
 #ifndef xocl_api_debug_h
 #define xocl_api_debug_h
 #include <functional>
+
+#ifdef _WIN32
+  #ifdef XRT_XOCL_SOURCE
+    #define XRT_XOCL_EXPORT __declspec(dllexport)
+  #else
+    #define XRT_XOCL_EXPORT __declspec(dllimport)
+  #endif
+#endif
+
+#ifdef __GNUC__
+  #ifdef XRT_XOCL_SOURCE
+    #define XRT_XOCL_EXPORT __attribute__ ((visibility("default")))
+  #else
+    #define XRT_XOCL_EXPORT 
+  #endif
+#endif
+
+
+
+struct axlf;
+
 /**
  * This file contains the API for adapting the xocl data structures to
  * the infrastructure for debugging of the binary.
  */
-
 namespace xocl { 
-
-class xclbin;
 
 namespace debug {
 
-using cb_reset_type = std::function<void (const xocl::xclbin& xclbin)>;
+void load_xdp_kernel_debug() ;
+void register_kdbg_functions(void* handle) ;
 
+using cb_reset_type = std::function<void (const axlf* xclbin)>;
+
+XRT_XOCL_EXPORT
 void
 register_cb_reset (cb_reset_type && cb);
 
+XRT_XOCL_EXPORT
 void
-reset(const xocl::xclbin& xclbin);
+reset(const axlf* xclbin);
 
 }} // debug,xocl
 
