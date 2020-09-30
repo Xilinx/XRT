@@ -270,6 +270,7 @@ double runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& 
         
         completed++;
         if (issued < total) {
+            cmds[i]->ecmd->state = ERT_CMD_STATE_NEW;
             if (xclExecBuf(handle, cmds[i]->exec_bo))
                 throw std::runtime_error("Unable to issue exec buf");
             issued++;
@@ -286,13 +287,13 @@ double runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& 
 int run_test(xclDeviceHandle handle, xuid_t uuid, int bank)
 {
     std::vector<std::shared_ptr<task_info>> cmds;
-    std::vector<unsigned int> cmds_per_run = { 1 };
+    //std::vector<unsigned int> cmds_per_run = { 1 };
     //std::vector<unsigned int> cmds_per_run = { 16 };
     //std::vector<unsigned int> cmds_per_run = { 16, 100, 1000, 10000 };
-    //std::vector<unsigned int> cmds_per_run = { 16, 100, 1000, 10000, 100000 };
-    //std::vector<unsigned int> cmds_per_run = { 16, 100, 1000, 10000, 100000, 1000000 };
-    int expected_cmds = 1;
-    //int expected_cmds = 100;
+    std::vector<unsigned int> cmds_per_run = { 100, 1000, 10000, 100000, 1000000 };
+    //int expected_cmds = 1;
+    //int expected_cmds = 16;
+    int expected_cmds = 1000;
     int size;
 
     /* descriptor size is kernel specific

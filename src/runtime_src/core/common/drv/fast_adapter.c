@@ -191,7 +191,7 @@ int xrt_cu_fa_init(struct xrt_cu *xcu)
 		goto err;
 	}
 
-	/* TODO: Write 0 to MSWR resiger is a hack for unknown hardware issue.
+	/* TODO: Write 0 to MSWR register is a hack for unknown hardware issue.
 	 * Otherwise, the first read would be a wrong value? It doesn't
 	 * always happen.
 	 * Before hardware team fix this bug, please keep this write.
