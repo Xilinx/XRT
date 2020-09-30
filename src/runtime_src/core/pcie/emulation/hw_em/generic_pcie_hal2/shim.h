@@ -48,6 +48,7 @@
 #include <fcntl.h>
 #include <tuple>
 #include <cstdarg>
+#include <cctype>
 #ifdef _WINDOWS
 #define strtoll _strtoi64
 #endif
@@ -266,7 +267,7 @@ using addr_type = uint64_t;
       std::string loadFileContentsToString(const std::string& path);
       void writeStringIntoFile(const std::string& path, const std::string& content);
       std::string modifyContent(const std::string& simulatorName, std::string& content);
-      void writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName );
+      void writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName);
       void constructQueryTable();     
 
     private:

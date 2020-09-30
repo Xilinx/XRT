@@ -17,11 +17,13 @@
 #include "shim.h"
 #include "system_hwemu.h"
 #include "xclbin.h"
+#include <cctype>
 #include <string.h>
 #include <boost/property_tree/xml_parser.hpp>
 #include <errno.h>
 #include <unistd.h>
 #include <boost/lexical_cast.hpp>
+
 
 #include "xcl_perfmon_parameters.h"
 #define SEND_RESP2QDMA() \
@@ -147,7 +149,7 @@ namespace xclhwemhal2 {
   std::string HwEmShim::loadFileContentsToString(const std::string& path) 
   {
     std::ifstream file(path);
-    return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
   }
   
   void HwEmShim::writeStringIntoFile(const std::string& path, const std::string& content) 
@@ -672,7 +674,7 @@ namespace xclhwemhal2 {
           mLogStream << __func__ << " UNZIP of sim bin ended and permissions operation is complete" << std::endl;
 
         simulatorType = getSimulatorType(binaryDirectory);
-        std::transform(simulatorType.begin(), simulatorType.end(), simulatorType.begin(), ::tolower);
+        std::transform(simulatorType.begin(), simulatorType.end(), simulatorType.begin(), [](unsigned char c){return std::tolower(c);});
       }
 
       if (lWaveform == xclemulation::DEBUG_MODE::GUI)
@@ -762,6 +764,7 @@ namespace xclhwemhal2 {
       if (userSpecifiedSimPath.empty() == false)
       {
         sim_path = userSpecifiedSimPath;
+		systemUtil::makeSystemCall(sim_path, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
       }
       else
       {
