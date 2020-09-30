@@ -253,6 +253,9 @@ struct xrt_cu {
 	 * one for submit, one for complete
 	 */
 	struct task_struct	  *thread;
+	/* Good for debug */
+	u32			   sleep_cnt;
+	u32			   max_running;
 };
 
 static inline char *prot2str(enum CU_PROTOCOL prot)

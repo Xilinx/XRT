@@ -294,7 +294,6 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct kds_command *xcmd;
 	struct kds_cu_mgmt *cu_mgmt;
 	u32 cdma_addr;
-	int cu_count;
 	int ret = 0;
 	int i;
 

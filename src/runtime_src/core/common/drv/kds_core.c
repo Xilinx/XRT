@@ -927,7 +927,7 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
 
 	/* Skip first 4 control registers */
-	xcmd->isize = (ecmd->count - ecmd->extra_cu_masks - 4) * sizeof(u32);
+	xcmd->isize = (ecmd->count - xcmd->num_mask - 4) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
 }
 
@@ -942,7 +942,7 @@ void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
 	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
 
-	xcmd->isize = (ecmd->count - ecmd->extra_cu_masks) * sizeof(u32);
+	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 }
 

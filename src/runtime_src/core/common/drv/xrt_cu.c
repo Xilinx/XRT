@@ -41,12 +41,19 @@ static inline void process_cq(struct xrt_cu *xcu)
 	if (!xcu->num_cq)
 		return;
 
-	/* Notify host and free command */
-	xcmd = list_first_entry(&xcu->cq, struct kds_command, list);
-	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
-	list_del(&xcmd->list);
-	xcmd->cb.free(xcmd);
-	--xcu->num_cq;
+	/* Notify host and free command
+	 *
+	 * NOTE: Use loop to handle completed commands could improve
+	 * performance (Reduce sleep time and increase chance for more
+	 * pending commands at one time)
+	 */
+	while (xcu->num_cq) {
+		xcmd = list_first_entry(&xcu->cq, struct kds_command, list);
+		xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+		list_del(&xcmd->list);
+		xcmd->cb.free(xcmd);
+		--xcu->num_cq;
+	}
 }
 
 /**
@@ -173,6 +180,8 @@ static inline void process_pq(struct xrt_cu *xcu)
 		xcu->num_pq = 0;
 	}
 	spin_unlock_irqrestore(&xcu->pq_lock, flags);
+	if (xcu->max_running < xcu->num_rq)
+		xcu->max_running = xcu->num_rq;
 }
 
 /**
@@ -256,9 +265,11 @@ int xrt_cu_polling_thread(void *data)
 		if (xcu->num_rq)
 			continue;
 
-		if (!xcu->num_sq && !xcu->num_cq)
+		if (!xcu->num_sq && !xcu->num_cq) {
+			xcu->sleep_cnt++;
 			if (down_interruptible(&xcu->sem))
 				ret = -ERESTARTSYS;
+		}
 
 		process_pq(xcu);
 	}
@@ -317,9 +328,11 @@ int xrt_cu_intr_thread(void *data)
 		if (xcu->num_rq)
 			continue;
 
-		if (!xcu->num_sq && !xcu->num_cq)
+		if (!xcu->num_sq && !xcu->num_cq) {
+			xcu->sleep_cnt++;
 			if (down_interruptible(&xcu->sem))
 				ret = -ERESTARTSYS;
+		}
 
 		process_pq(xcu);
 	}
@@ -601,6 +614,10 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
 			xcu->funcs->peek_credit(xcu->core));
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "CU status:        0x%x\n",
 			xcu->status);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "sleep cnt:        %d\n",
+			xcu->sleep_cnt);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "max running:      %d\n",
+			xcu->max_running);
 
 	if (sz < PAGE_SIZE - 1)
 		buf[sz++] = 0;

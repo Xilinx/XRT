@@ -191,7 +191,7 @@ int xrt_cu_fa_init(struct xrt_cu *xcu)
 		goto err;
 	}
 
-	/* TODO: Write 0 to MSWR resiger is a hack.
+	/* TODO: Write 0 to MSWR resiger is a hack for unknown hardware issue.
 	 * Otherwise, the first read would be a wrong value? It doesn't
 	 * always happen.
 	 * Before hardware team fix this bug, please keep this write.
@@ -201,6 +201,7 @@ int xrt_cu_fa_init(struct xrt_cu *xcu)
 	core->task_cnt = cu_read32(core, TCR);
 	core->desc_msw = cu_read32(core, MSWR);
 	xcu_info(xcu, "Fast adapter FIFO depth %d", core->max_credits);
+	xcu_info(xcu, "Fast adapter init taskCount 0x%x", core->task_cnt);
 	core->credits = core->max_credits;
 	core->run_cnts = 0;
 
