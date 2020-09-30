@@ -87,7 +87,6 @@
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
-#define	XMC_STATUS2_REG			0x30C
 #define	XMC_VCC1V2_I_REG                0x314
 #define	XMC_V12_IN_I_REG                0x320
 #define	XMC_V12_IN_AUX0_I_REG           0x32C
@@ -144,17 +143,11 @@
 
 #define	VALID_ID			0x74736574
 #define	XMC_CORE_SUPPORT_NOTUPGRADABLE	0x0c010004
-#define	XMC_CORE_SUPPORT_SENSOR_READY	0x0c010002
 #define	GPIO_RESET			0x0
 #define	GPIO_ENABLED			0x1
-#define	SENSOR_DATA_READY_MASK 		0x1
 
 #define	SELF_JUMP(ins)			(((ins) & 0xfc00ffff) == 0xb8000000)
 #define	XMC_PRIVILEGED(xmc)		((xmc)->base_addrs[0] != NULL)
-
-#define	VALID_MAGIC(val) 		(val == VALID_ID)
-#define	VALID_CMC_VERSION(val) 		((val & 0xff000000) == 0x0c000000)
-#define	VALID_CORE_VERSION(val) 	((val & 0xff000000) == 0x0c000000)
 
 #define	XMC_DEFAULT_EXPIRE_SECS	1
 
@@ -3183,99 +3176,10 @@ static void xmc_enable_mailbox(struct xocl_xmc *xmc)
 	xocl_info(&xmc->pdev->dev, "XMC mailbox offset: 0x%x", val);
 }
 
-static inline int wait_reg_value(struct xocl_xmc *xmc, void __iomem *base, u32 mask)
-{
-	u32 val = XOCL_READ_REG32(base);
-	int i;
-
-	for (i = 0; !(val & mask) && i < MAX_XMC_RETRY; i++) {
-		msleep(RETRY_INTERVAL);
-		val = XOCL_READ_REG32(base);
-	}
-
-	return (val & mask) ? 0 : -ETIMEDOUT;
-}
-
-/*
- * Wait for XMC to start
- * Note that ERT will start long before XMC so we don't check anything
- */
-static int xmc_sense_ready(struct xocl_xmc *xmc)
-{
-	u32 xmc_core_version = 0;
-	int ret = 0;
-
-	/*
-	 * If dev tree has CMC_MUTEX register defined, we rely on the
-	 * regmap_ready bit to check whether cmc is ready, otherwise,
-	 * we still use the legacy 'init done' bit in REGMAP
-	 */
-	if (xmc->base_addrs[IO_MUTEX]) {
-		ret = wait_reg_value(xmc,
-		    xmc->base_addrs[IO_MUTEX] + XOCL_RES_OFFSET_CHANNEL2,
-		    REGMAP_READY_MASK);
-
-		if (ret) {
-			xocl_err(&xmc->pdev->dev, "REGMAP not ready.");
-			goto errout;
-		}
-		xocl_info(&xmc->pdev->dev, "REGMAP ready.");
-
-		/*
-		 * How to define a cmc_core_version:
-		 *   XMC_MAGIC_REG is magjc number 0x74736574
-		 *   XMC_VERSION_REG start from 0x0c000000
-		 *   XMC_CORE_VERSION_REG starr from 0x0c000000
-		 */
-		if (VALID_MAGIC(READ_REG32(xmc, XMC_MAGIC_REG)) &&
-		    VALID_CMC_VERSION(READ_REG32(xmc, XMC_VERSION_REG)) &&
-		    VALID_CORE_VERSION(READ_REG32(xmc, XMC_CORE_VERSION_REG))) {
-			xmc_core_version = READ_REG32(xmc, XMC_CORE_VERSION_REG);
-		}
-		xocl_info(&xmc->pdev->dev, "Core Version 0x%x", xmc_core_version);
-
-		/* early version do not support quick check, fallback to wait */
-		if (xmc_core_version >= XMC_CORE_SUPPORT_SENSOR_READY) {
-			ret = wait_reg_value(xmc,
-			   xmc->base_addrs[IO_REG] + XMC_STATUS2_REG,
-			   SENSOR_DATA_READY_MASK);
-			if (ret) {
-				xocl_err(&xmc->pdev->dev, "Sensor Data not ready.");
-				goto errout;
-			}
-			xocl_info(&xmc->pdev->dev, "Sensor Data ready.");
-			/* skip waiting 5 more seconds */
-			goto done;
-		}
-	} else {
-		ret = wait_reg_value(xmc,
-		   xmc->base_addrs[IO_REG] + XMC_STATUS_REG,
-		   STATUS_MASK_INIT_DONE);
-		if (ret) {
-			xocl_err(&xmc->pdev->dev, "XMC did not finish init.");
-			goto errout;
-		}
-		xocl_info(&xmc->pdev->dev, "XMC init done.");
-	}
-
-	/* not support sensor ready, wait 5 more seconds */
-	xocl_info(&xmc->pdev->dev,
-	    "Wait for 5 seconds to stablize SC connection.");
-	ssleep(5);
-done:
-	return ret;
-
-errout:
-	xocl_err(&xmc->pdev->dev, "Error Reg 0x%x", READ_REG32(xmc, XMC_ERROR_REG));
-	xocl_err(&xmc->pdev->dev, "Status Reg 0x%x", READ_REG32(xmc, XMC_STATUS_REG));
-
-	return ret;
-}
-
 static int load_xmc(struct xocl_xmc *xmc)
 {
 	int retry = 0;
-	u32 reg_val = 0;
+	u32 reg_val = 0, reg_map_ready;
 	int ret = 0;
 	void *xdev_hdl;
 	bool skip_xmc = false;
@@ -3359,13 +3263,60 @@ static int load_xmc(struct xocl_xmc *xmc)
 		goto out;
 	}
 
-	ret = xmc_sense_ready(xmc);
-	if (ret) {
-		xmc->state = XMC_STATE_ERROR;
-		goto out;
+	/* Wait for XMC to start
+	 * Note that ERT will start long before XMC so we don't check anything
+	 *
+	 * If dev tree has CMC_MUTEX register defined, we rely on the
+	 * regmap_ready bit to check whether cmc is ready, otherwise,
+	 * we still use the legacy 'init done' bit in REGMAP
+	 */
+	if (xmc->base_addrs[IO_MUTEX]) {
+		reg_map_ready = XOCL_READ_REG32(xmc->base_addrs[IO_MUTEX] +
+				XOCL_RES_OFFSET_CHANNEL2);
+		retry = 0;
+		while (retry++ < MAX_XMC_RETRY &&
+			!(reg_map_ready & REGMAP_READY_MASK)) {
+			msleep(RETRY_INTERVAL);
+			reg_map_ready = XOCL_READ_REG32(
+				xmc->base_addrs[IO_MUTEX] +
+				XOCL_RES_OFFSET_CHANNEL2);
+                }
+		if (reg_map_ready & REGMAP_READY_MASK) {
+			xocl_info(&xmc->pdev->dev, "REGMAP ready");
+		} else {
+			xocl_err(&xmc->pdev->dev, "REGMAP not ready : %d", ret);
+			ret = -ETIMEDOUT;
+			xmc->state = XMC_STATE_ERROR;
+			goto out;
+		}
+	} else {
+		reg_val = READ_REG32(xmc, XMC_STATUS_REG);
+		if (!(reg_val & STATUS_MASK_INIT_DONE)) {
+			xocl_info(&xmc->pdev->dev, "Waiting for XMC to finish init...");
+			retry = 0;
+			while (retry++ < MAX_XMC_RETRY &&
+				!(READ_REG32(xmc, XMC_STATUS_REG) &
+				STATUS_MASK_INIT_DONE))
+				msleep(RETRY_INTERVAL);
+			if (retry >= MAX_XMC_RETRY) {
+				xocl_err(&xmc->pdev->dev,
+					"XMC did not finish init sequence!");
+				xocl_err(&xmc->pdev->dev,
+					"Error Reg 0x%x",
+					READ_REG32(xmc, XMC_ERROR_REG));
+				xocl_err(&xmc->pdev->dev,
+					"Status Reg 0x%x",
+					READ_REG32(xmc, XMC_STATUS_REG));
+				ret = -ETIMEDOUT;
+				xmc->state = XMC_STATE_ERROR;
+				goto out;
+			}
+		}
 	}
+	xocl_info(&xmc->pdev->dev,
+		"Wait for 5 seconds to stable the connection with SC");
+	ssleep(5);
 	xmc->state = XMC_STATE_ENABLED;
-
 	xocl_info(&xmc->pdev->dev, "XMC and scheduler Enabled, retry %d",
 			retry);
 	xocl_info(&xmc->pdev->dev,
