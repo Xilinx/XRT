@@ -48,7 +48,6 @@
 #include <fcntl.h>
 #include <tuple>
 #include <cstdarg>
-#include <cctype>
 #ifdef _WINDOWS
 #define strtoll _strtoi64
 #endif
