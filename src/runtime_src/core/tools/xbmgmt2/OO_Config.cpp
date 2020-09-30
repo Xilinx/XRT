@@ -130,6 +130,16 @@ show_device_conf(xrt_core::device* device)
   std::cout << bdf << "\n";
 
   try {
+    auto is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
+    if (is_mfg) {
+      throw std::runtime_error("This operation is not supported with golden image");
+    }
+  }
+  catch (const std::exception& ex) {
+    std::cout << ex.what() << "\n";
+  }
+
+  try {
     std::cout << "\tSecurity level: ";
     auto sec_level = xrt_core::device_query<xrt_core::query::sec_level>(device);
     std::cout << sec_level << "\n";
