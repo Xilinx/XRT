@@ -22,6 +22,7 @@
 #include "core/common/message.h"
 #include "core/edge/user/shim.h"
 #include "xaiengine/xlnx-ai-engine.h"
+#include "aie_event.h"
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #endif
@@ -105,6 +106,8 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
             dma->dma_chan[chan].idle_bds.push(bd);
         }
     }
+
+    Resources::AIE::initialize(XAIE_NUM_COLS, XAIE_NUM_ROWS);
 }
 
 Aie::~Aie()
@@ -318,6 +321,104 @@ reset(const xrt_core::device* device)
     if (ret)
         throw xrt_core::error(ret, "Fail to reset AIE Array");
 #endif
+}
+
+int
+Aie::
+start_profiling(int option, const std::string& port1Name, const std::string& port2Name, uint32_t value)
+{
+  int handle = -1;
+
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Start profiling fails: AIE is not initialized");
+
+  if (option != IO_STREAM_RUNNING_EVENT_COUNT)
+    throw xrt_core::error(-EINVAL, "Start profiling fails: unknown profiling option.");
+
+  auto gmio = std::find_if(gmios.begin(), gmios.end(),
+            [port1Name](gmio_type it) { return it.name.compare(port1Name) == 0; });
+
+  if (gmio == gmios.end())
+    throw xrt_core::error(-EINVAL, "Can't start profiling: port name '" + port1Name + "' not found");
+
+  ShimDMA *dmap = &shim_dma.at(gmio->shim_col);
+  auto chan = gmio->channel_number;
+  auto shim_tile = XAie_TileLoc(gmio->shim_col, 0);
+  /* type 0: GM->AIE; type 1: AIE->GM */
+  auto mode = gmio->type == 0 ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+
+  int handleId = eventRecords.size();
+  int eventPortId = Resources::AIE::getShimTile(gmio->shim_col)->plModule.requestStreamEventPort(handleId);
+  int counterId = Resources::AIE::getShimTile(gmio->shim_col)->plModule.requestPerformanceCounter(handleId);
+
+  if (counterId >= 0 && eventPortId >= 0) {
+    XAie_EventSelectStrmPort(devInst, shim_tile, (uint8_t)eventPortId, mode, SOUTH, (uint8_t)gmio->stream_id);
+    XAie_PerfCounterControlSet(devInst, shim_tile, XAIE_PL_MOD, (uint8_t)counterId, XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId],                                     XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId]);
+
+    eventRecords.push_back({ option,
+                { { shim_tile, Resources::pl_module, Resources::performance_counter, (size_t)counterId },
+                { shim_tile, Resources::pl_module, Resources::stream_switch_event_port, (size_t)eventPortId } } });
+    handle = handleId;
+  } else {
+    if (counterId >= 0)
+      Resources::AIE::getShimTile(gmio->shim_col)->plModule.releasePerformanceCounter(handleId, counterId);
+    if (eventPortId >= 0)
+      Resources::AIE::getShimTile(gmio->shim_col)->plModule.releaseStreamEventPort(handleId, eventPortId);
+    throw xrt_core::error(-EAGAIN, "Can't start profiling: Failed to request performance counter or stream switch event port resources.");
+  }
+
+  return handle;
+}
+
+uint64_t
+Aie::
+read_profiling(int phdl)
+{
+  uint64_t value = 0;
+
+  std::vector<Resources::AcquiredResource>& acquiredResourcesForThisHandle = eventRecords[phdl].acquiredResources;
+
+  Resources::AcquiredResource& acquiredResource = acquiredResourcesForThisHandle[0];
+  XAie_ModuleType XAieModuleType = AIEResourceModuletoXAieModuleTypeMap[acquiredResource.module];
+
+  if (acquiredResource.resource == Resources::performance_counter)
+    XAie_PerfCounterGet(devInst, acquiredResource.loc, XAieModuleType, acquiredResource.id, (u32*)(&value));
+  else
+    throw xrt_core::error(-EAGAIN, "Can't read profiling: The acquired resources order does not match the profiling option.");
+
+  return value;
+}
+
+void
+Aie::
+stop_profiling(int phdl)
+{
+  if (phdl < eventRecords.size() && eventRecords[phdl].option >= 0) {
+    std::vector<Resources::AcquiredResource>& acquiredResourcesForThisHandle = eventRecords[phdl].acquiredResources;
+    for (int i = 0; i < acquiredResourcesForThisHandle.size(); i++) {
+      Resources::AcquiredResource& acquiredResource = acquiredResourcesForThisHandle[i];
+      XAie_ModuleType XAieModuleType = AIEResourceModuletoXAieModuleTypeMap[acquiredResource.module];
+
+      if (acquiredResource.resource == Resources::performance_counter) {
+        u8 counterId = acquiredResource.id;
+
+        XAie_PerfCounterReset(devInst, acquiredResource.loc, XAieModuleType, counterId);
+        XAie_PerfCounterResetControlReset(devInst, acquiredResource.loc, XAieModuleType, counterId);
+
+        if (acquiredResource.module == Resources::pl_module)
+          Resources::AIE::getShimTile(acquiredResource.loc.Col)->plModule.releasePerformanceCounter(phdl, counterId);
+        else if (acquiredResource.module == Resources::core_module)
+          Resources::AIE::getAIETile(acquiredResource.loc.Col, acquiredResource.loc.Row - 1)->coreModule.releasePerformanceCounter(phdl, counterId);
+      } else if (acquiredResource.resource == Resources::stream_switch_event_port) {
+        u8 eventPortId = acquiredResource.id;
+
+        XAie_EventSelectStrmPortReset(devInst, acquiredResource.loc, eventPortId);
+
+        if (acquiredResource.module == Resources::pl_module)
+          Resources::AIE::getShimTile(acquiredResource.loc.Col)->plModule.releaseStreamEventPort(phdl, eventPortId);
+      }
+    }
+  }
 }
 
 }

@@ -130,6 +130,16 @@ show_device_conf(xrt_core::device* device)
   std::cout << bdf << "\n";
 
   try {
+    auto is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
+    if (is_mfg) {
+      throw std::runtime_error("This operation is not supported with golden image");
+    }
+  }
+  catch (const std::exception& ex) {
+    std::cout << ex.what() << "\n";
+  }
+
+  try {
     std::cout << "\tSecurity level: ";
     auto sec_level = xrt_core::device_query<xrt_core::query::sec_level>(device);
     std::cout << sec_level << "\n";
@@ -229,7 +239,7 @@ memory_retention(xrt_core::device* device, mem_type, bool enable)
 
 OO_Config::OO_Config( const std::string &_longName, bool _isHidden)
     : OptionOptions(_longName, _isHidden, "Utility to modify the memory configuration(s)")
-    , m_device({})
+    , m_devices({})
     , m_help(false)
     , m_daemon(false)
     , m_host("")
@@ -244,7 +254,7 @@ OO_Config::OO_Config( const std::string &_longName, bool _isHidden)
 
 {
   m_optionsDescription.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("retention", boost::program_options::value<decltype(m_retention)>(&m_retention),"Enables / Disables memory retention.  Valid values are: [ENABLE | DISABLE]")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
@@ -307,15 +317,20 @@ OO_Config::execute(const SubCmdOptions& _options) const
     }
   }
 
-  if (m_device.empty() && !m_daemon)  {
+  if (m_devices.empty() && !m_daemon)  {
     std::cerr << "ERROR: If the daemon is to be used (e.g., set to true) then a device must also be declared." << std::endl;
     printHelp();
     return;
   }
 
   // -- process option: device -----------------------------------------------
-  auto devices = XBU::collect_devices(m_device, false);
+  std::set<std::string> deviceNames;
+  xrt_core::device_collection deviceCollection;
+  for (const auto & deviceName : m_devices) 
+    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
   
+  XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+
   //Option:show
   if (m_show) {
     XBU::verbose("Sub command: --show");
@@ -324,7 +339,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
       show_daemon_conf();
 
     //show device config
-    for (const auto& dev : devices)
+    for (const auto& dev : deviceCollection)
       show_device_conf(dev.get());
 
     return;
@@ -341,26 +356,26 @@ OO_Config::execute(const SubCmdOptions& _options) const
   }
 
   //-- process option: device -----------------------------------------------
-  if (!m_device.empty()) {
+  if (!m_devices.empty()) {
     XBU::verbose("Sub command: --device");
     //update security
     if (!m_security.empty())
-      for (const auto& dev : devices)
+      for (const auto& dev : deviceCollection)
         update_device_conf(dev.get(), m_security, config_type::security);
 
     //clock scaling
     if (!m_clk_scale.empty())
-      for (const auto& dev : devices)
+      for (const auto& dev : deviceCollection)
         update_device_conf(dev.get(), m_clk_scale, config_type::clk_scaling);
     
     //update threshold power override
     if (!m_power_override.empty())
-      for (const auto& dev : devices)
+      for (const auto& dev : deviceCollection)
         update_device_conf(dev.get(), m_power_override, config_type::threshold_power_override);
 
     //cs_reset
     if (!m_cs_reset.empty())
-      for (const auto& dev : devices)
+      for (const auto& dev : deviceCollection)
         update_device_conf(dev.get(), m_cs_reset, config_type::reset);
 
     //  enable/disable_retention
@@ -374,7 +389,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
         throw xrt_core::system_error(EINVAL, "Please specify memory type: ddr or hbm");
 
       bool enableRetention = (m_retention == "ENABLE");
-      for (const auto& dev : devices)
+      for (const auto& dev : deviceCollection)
         memory_retention(dev.get(), mem, enableRetention);
     }
   }

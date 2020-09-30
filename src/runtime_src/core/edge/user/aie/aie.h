@@ -26,6 +26,8 @@
 #include "core/common/device.h"
 #include "core/edge/common/aie_parser.h"
 #include "experimental/xrt_bo.h"
+#include "experimental/xrt_aie.h"
+#include "AIEResources.h"
 extern "C" {
 #include <xaiengine.h>
 }
@@ -48,6 +50,13 @@ extern "C" {
 
 #define CONVERT_LCHANL_TO_PCHANL(l_ch) (l_ch > 1 ? l_ch - 2 : l_ch)
 
+enum xrtProfilingOption {
+  IO_TOTAL_STREAM_RUNNING_TO_IDLE_CYCLE = 0,
+  IO_STREAM_START_TO_BYTES_TRANSFERRED_CYCLES,
+  IO_STREAM_START_DIFFERENCE_CYCLES,
+  IO_STREAM_RUNNING_EVENT_COUNT
+};
+
 namespace zynqaie {
 
 struct BD {
@@ -69,6 +78,10 @@ struct ShimDMA {
     uint8_t maxqSize;
 };
 
+struct EventRecord {
+    int option;
+    std::vector<Resources::AcquiredResource> acquiredResources;
+};
 
 class Aie {
 public:
@@ -96,11 +109,22 @@ public:
     void
     reset(const xrt_core::device* device);
 
+    int
+    start_profiling(int option, const std::string& port1Name, const std::string& port2Name, uint32_t value);
+
+    uint64_t
+    read_profiling(int phdl);
+
+    void
+    stop_profiling(int phdl);
+
 private:
     int numCols;
     int fd;
 
     XAie_DevInst* devInst;         // AIE Device Instance
+
+    std::vector<EventRecord> eventRecords;
 
     void
     submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset);

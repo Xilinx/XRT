@@ -826,11 +826,11 @@ static std::vector<TestCollection> testSuite = {
  */
 static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int test_idx,
-                       size_t testSuiteSize, std::ostream & _ostream)
+                       size_t testSuiteSize, std::ostream & _ostream, const std::string& bdf)
 {
-  _ostream << boost::format("%d/%d Test #%-10d: %s\n") % test_idx % testSuiteSize
-                    % test_idx % test.get<std::string>("name");
-  _ostream << boost::format("    %-16s: %s\n") % "Description" % test.get<std::string>("description");
+  _ostream << boost::format("%d/%d Test #%d [%s]: %s \n") % test_idx % testSuiteSize
+                    % test_idx % bdf % test.get<std::string>("name");
+  _ostream << boost::format("    %-22s: %s\n") % "Description" % test.get<std::string>("description");
 }
 
 /*
@@ -848,7 +848,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   try {
     for (const auto& dict : test.get_child("log")) {
       for (const auto& kv : dict.second) {
-        _ostream<< boost::format("    %-16s: %s\n") % kv.first % kv.second.get_value<std::string>();
+        _ostream<< boost::format("    %-22s: %s\n") % kv.first % kv.second.get_value<std::string>();
         if (boost::iequals(kv.first, "warning"))
           warn = true;
         else if (boost::iequals(kv.first, "error"))
@@ -930,8 +930,10 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device,
   for (TestCollection * testPtr : testObjectsToRun) {
     boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
 
-    if(schemaVersion == Report::SchemaVersion::text)
-      pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream);
+    if(schemaVersion == Report::SchemaVersion::text) {
+      auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+      pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
+    }
 
     testPtr->testHandle(device, ptTest);
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );

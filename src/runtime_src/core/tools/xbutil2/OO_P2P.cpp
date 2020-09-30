@@ -255,12 +255,12 @@ p2p(xrt_core::device* device, action_type action, bool force)
 
 OO_P2P::OO_P2P( const std::string &_longName, bool _isHidden )
     : OptionOptions(_longName, _isHidden, "Controls P2P functionality")
-    , m_device("")
+    , m_devices({})
     , m_action("")
     , m_help(false)
 {
   m_optionsDescription.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("action", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: ENABLE, DISABLE, or VALIDATE")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
@@ -300,12 +300,18 @@ OO_P2P::execute(const SubCmdOptions& _options) const
   }
 
   // Exit if neither action or device specified
-  if(m_help || (m_action.empty() || m_device.empty())) {
+  if(m_help || (m_action.empty() || m_devices.empty())) {
     printHelp();
     return;
   }
 
-  //
-  for (auto& device : XBU::collect_devices(m_device, true))
+  // Collect all of the devices of interest
+  std::set<std::string> deviceNames;
+  xrt_core::device_collection deviceCollection;
+  for (const auto & deviceName : m_devices) 
+    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
+  
+  XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
+  for (auto& device : deviceCollection)
     p2p(device.get(), string2action(m_action), false);
 }
