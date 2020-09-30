@@ -326,29 +326,6 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	BO_ENTER("xobj %p", xobj);
 
 	xobj->flags = bo_type;
-	if (xobj->flags == XOCL_BO_EXECBUF)
-		xobj->metadata.state = DRM_XOCL_EXECBUF_STATE_ABORT;
-
-	if (xobj->flags & XOCL_DRM_SHMEM) {
-		err = drm_gem_object_init(dev, &xobj->base, size);
-		if (err)
-			goto failed;
-	} else {
-		drm_gem_private_object_init(dev, &xobj->base, size);
-	}
-
-	xobj_inited = true;
-
-	if (!(xobj->flags & XOCL_DEVICE_MEM) && !(xobj->flags & XOCL_CMA_MEM))
-		return xobj;
-
-	/* Let's reserve some device memory */
-	xobj->mm_node = kzalloc(sizeof(*xobj->mm_node), GFP_KERNEL);
-	if (!xobj->mm_node) {
-		err = -ENOMEM;
-		goto failed;
-	}
-
 	mutex_lock(&drm_p->mm_lock);
 	/* Assume there is only 1 HOST bank. We ignore the  memidx
 	 * for host bank. This is required for supporting No flag
@@ -363,11 +340,42 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		memidx = drm_p->cma_bank_idx;
 	}
 
-	if (memidx == drm_p->cma_bank_idx)
-		xobj->flags |= XOCL_CMA_MEM;
+	if (memidx == drm_p->cma_bank_idx) {
+		if (xobj->flags &
+		    (XOCL_USER_MEM | XOCL_DRM_IMPORT | XOCL_P2P_MEM)) {
+			err = -EINVAL;
+			xocl_xdev_err(xdev, "invalid HOST BO req. flag %x",
+				xobj->flags);
+			goto failed;
+		}
+		xobj->flags = XOCL_BO_CMA;
+	}
+
+	if (xobj->flags == XOCL_BO_EXECBUF)
+		xobj->metadata.state = DRM_XOCL_EXECBUF_STATE_ABORT;
+
+	if (xobj->flags & XOCL_DRM_SHMEM) {
+		err = drm_gem_object_init(dev, &xobj->base, size);
+		if (err)
+			goto failed;
+	} else
+		drm_gem_private_object_init(dev, &xobj->base, size);
+
+	xobj_inited = true;
+
+	if (!(xobj->flags & XOCL_DEVICE_MEM) && !(xobj->flags & XOCL_CMA_MEM))
+		goto done;
+
+	/* Let's reserve some device memory */
+	xobj->mm_node = kzalloc(sizeof(*xobj->mm_node), GFP_KERNEL);
+	if (!xobj->mm_node) {
+		err = -ENOMEM;
+		goto failed;
+	}
 
 	/* Attempt to allocate buffer on the requested DDR */
-	xocl_xdev_dbg(xdev, "alloc bo from bank%u", memidx);
+	xocl_xdev_dbg(xdev, "alloc bo from bank%u, flag %x, host bank %d",
+		memidx, xobj->flags, drm_p->cma_bank_idx);
 
 	err = xocl_mm_insert_node_range(drm_p, memidx, xobj->mm_node,
 		xobj->base.size);
@@ -377,16 +385,18 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		xobj->mm_node, xobj->mm_node->start,
 		xobj->mm_node->size);
 	xocl_mm_update_usage_stat(drm_p, memidx, xobj->base.size, 1);
-	mutex_unlock(&drm_p->mm_lock);
 	/* Record the DDR we allocated the buffer on */
 	xobj->mem_idx = memidx;
 
+done:
+	mutex_unlock(&drm_p->mm_lock);
+
 	return xobj;
 failed:
-	if (xobj->mm_node) {
-		mutex_unlock(&drm_p->mm_lock);
+	mutex_unlock(&drm_p->mm_lock);
+
+	if (xobj->mm_node)
 		kfree(xobj->mm_node);
-	}
 
 	if (xobj_inited)
 		drm_gem_object_release(&xobj->base);
