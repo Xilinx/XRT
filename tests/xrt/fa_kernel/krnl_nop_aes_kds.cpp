@@ -307,7 +307,6 @@ int run_test(xclDeviceHandle handle, xuid_t uuid, int bank)
     if (xclOpenContext(handle, uuid, cu_idx, false))
         throw std::runtime_error("Cound not open context");
 
-    //std::cout << __func__ << " " << __LINE__ << std::endl;
     for (int i = 0; i < expected_cmds; i++) {
         task_info cmd = {NULLBO, NULLBO, NULLBO, NULLBO, NULLBO, 0, NULL, NULL};
         xclBOProperties prop;
@@ -357,15 +356,10 @@ int run_test(xclDeviceHandle handle, xuid_t uuid, int bank)
         cmd.ecmd->state = ERT_CMD_STATE_NEW;
         cmd.ecmd->opcode = ERT_START_FA;
         cmd.ecmd->type = ERT_CU;
-        cmd.ecmd->count = 0x2F;
+        cmd.ecmd->count = 0x30;
         cmd.ecmd->cu_mask = 0x1;
 
         /* --- Construct descriptor --- */
-        //cmd.desc->status = fa::ISSUED;
-        //cmd.desc->numInputEntries = 7;
-        //cmd.desc->inputEntryBytes = 112;
-        //cmd.desc->numOutputEntries = 0;
-        //cmd.desc->outputEntryBytes = 0;
         cmd.ecmd->data[0] = fa::ISSUED;
         cmd.ecmd->data[1] = 7;
         cmd.ecmd->data[2] = 112;
@@ -434,11 +428,6 @@ int run_test(xclDeviceHandle handle, xuid_t uuid, int bank)
 
         //print_descriptor(cmd.desc);
 
-        //std::cout << "cmd header 0x" << std::hex << cmd.ecmd->header << std::dec << std::endl;
-        //std::cout << "cmd cu_mask 0x" << std::hex << cmd.ecmd->cu_mask << std::dec << std::endl;
-        //for (j = 0; j < cmd.ecmd->count; j++) {
-        //    std::cout << "cmd data[" << j << "] 0x" << std::hex << cmd.ecmd->data[j] << std::dec << std::endl;
-        //}
         cmds.push_back(std::make_shared<task_info>(cmd));
     }
     /* Maybe the manchine is not able to allocate BO for all commands.
