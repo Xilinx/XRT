@@ -746,7 +746,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 		goto out;
 	}
 
-	if (xocl_bo_cma(xobj)) {
+	if (xocl_bo_cma(xobj) || xocl_bo_p2p(xobj)) {
 		if (dir) {
 			dma_sync_single_for_device(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
 				sg->length, DMA_TO_DEVICE);
@@ -1505,8 +1505,7 @@ int xocl_sync_bo_callback_ioctl(struct drm_device *dev,
 		goto out;
 	}
 
-	if (xocl_bo_cma(xobj)) {
-
+	if (xocl_bo_cma(xobj) || xocl_bo_p2p(xobj)) {
 		if (dir) {
 			dma_sync_single_for_device(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
 				sg->length, DMA_TO_DEVICE);
