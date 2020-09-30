@@ -26,6 +26,7 @@
 const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
   { SchemaVersion::unknown,       false, "",              "Unknown entry"},
   { SchemaVersion::text,          true,  "text",          "Human readable report (default)"},
+  { SchemaVersion::json_20202,    true,  "JSON",          "Latest JSON schema"}, // Note: to be updated to the latest schema version every release
   { SchemaVersion::json_internal, false, "JSON-internal", "Internal JSON property tree"},
   { SchemaVersion::json_20202,    true,  "JSON-2020.2",   "JSON 2020.2 schema"}
 };
