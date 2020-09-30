@@ -1046,11 +1046,9 @@ static bool xmc_clk_scale_on(struct platform_device *pdev)
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 	void *xdev_hdl = xocl_get_xdev(pdev);
 
-	if (xocl_subdev_is_vsec(xdev_hdl)) {
-		if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_CLK_SCALING))
-			return true;
-		return false;
-	}
+	//On Raptor2 U2 shell, XOCL_XMC_CLK_SCALING is used to indicate this feature
+	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_CLK_SCALING))
+		return true;
 
 	return xocl_clk_scale_on(xdev_hdl);
 }
