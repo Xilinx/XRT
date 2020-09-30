@@ -174,6 +174,27 @@ wait_gmio(xrtDeviceHandle dhdl, const char *gmio_name)
   device->wait_gmio(gmio_name);
 }
 
+static int
+start_profiling(xrtDeviceHandle dhdl, int option, const char *port1_name, const char *port2_name, uint32_t value)
+{
+  auto device = xrt_core::device_int::get_core_device(dhdl);
+  return device->start_profiling(option, port1_name, port2_name, value);
+}
+
+static uint64_t
+read_profiling(xrtDeviceHandle dhdl, int phdl)
+{
+  auto device = xrt_core::device_int::get_core_device(dhdl);
+  return device->read_profiling(phdl);
+}
+
+static void
+stop_profiling(xrtDeviceHandle dhdl, int phdl)
+{
+  auto device = xrt_core::device_int::get_core_device(dhdl);
+  return device->stop_profiling(phdl);
+}
+
 inline void
 send_exception_message(const char* msg)
 {
@@ -474,6 +495,92 @@ xrtGMIOWait(xrtDeviceHandle handle, const char *gmioName)
 {
   try {
     wait_gmio(handle, gmioName);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+/**
+ * xrtStartProfiling() - Start AIE performance profiling
+ *
+ * @handle:          Handle to the device
+ * @option:          Profiling option.
+ * @port1Name:       Profiling port 1 name
+ * @port2Name:       Profiling port 2 name
+ * @value:           The number of bytes to trigger the profiling event
+ *
+ * Return:         An integer profiling handle on success, -1 on error.
+ *
+ * This function configures the performance counters in AI Engine by given
+ * port names and value. The port names and value will have different
+ * meanings on different options.
+ *
+ * Note: Currently, the only supported io profiling option is
+ *       io_stream_running_event_count (GMIO)
+ */
+int
+xrtStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value)
+{
+  try {
+    return start_profiling(handle, option, port1Name, port2Name, value);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+/**
+ * xrtReadProfiling() - Read the current performance counter value
+ *                      associated with the profiling handle.
+ *
+ * @handle:          Handle to the device
+ * @pHandle:         Profiling handle.
+ *
+ * Return:         The performance counter value, -1 on error.
+ */
+uint64_t
+xrtReadProfiling(xrtDeviceHandle handle, int pHandle)
+{
+  try {
+    return read_profiling(handle, pHandle);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+/**
+ * xrtStopProfiling() - Stop the current performance profiling
+ *                      associated with the profiling handle and
+ *                      release the corresponding hardware resources.
+ *
+ * @handle:          Handle to the device
+ * @pHandle:         Profiling handle.
+ *
+ * Return:         0 on success, -1 on error.
+ */
+int
+xrtStopProfiling(xrtDeviceHandle handle, int pHandle)
+{
+  try {
+    stop_profiling(handle, pHandle);
     return 0;
   }
   catch (const xrt_core::error& ex) {

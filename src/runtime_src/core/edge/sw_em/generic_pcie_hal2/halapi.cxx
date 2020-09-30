@@ -782,3 +782,21 @@ xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 {
   return 0;
 }
+
+int
+xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Nmae, uint32_t value)
+{
+  return 0;
+}
+
+uint64_t
+xclReadProfiling(xclDeviceHandle handle, int phdl)
+{
+  return 0;
+}
+
+int
+xclStopProfiling(xclDeviceHandle handle, int phdl)
+{
+  return 0;
+}

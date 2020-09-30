@@ -25,7 +25,7 @@
 // Initialize our static mapping.
 const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
   { SchemaVersion::unknown,       false, "",              "Unknown entry"},
-  { SchemaVersion::text,          true,  "text",          "Human readable report"},
+  { SchemaVersion::text,          true,  "text",          "Human readable report (default)"},
   { SchemaVersion::json_internal, false, "JSON-internal", "Internal JSON property tree"},
   { SchemaVersion::json_20202,    true,  "JSON-2020.2",   "JSON 2020.2 schema"}
 };

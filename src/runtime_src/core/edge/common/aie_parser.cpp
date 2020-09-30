@@ -149,6 +149,7 @@ get_gmio(const pt::ptree& aie_meta)
     gmio.type = type;
     gmio.shim_col = gmio_node.second.get<uint16_t>("shim_column");
     gmio.channel_number = gmio_node.second.get<uint16_t>("channel_number");
+    gmio.stream_id = gmio_node.second.get<uint16_t>("stream_id");
     gmio.burst_len = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
 
     gmios.emplace_back(std::move(gmio));
