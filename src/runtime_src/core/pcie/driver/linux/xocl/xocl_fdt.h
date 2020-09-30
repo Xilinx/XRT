@@ -56,6 +56,7 @@
 #define NODE_CMC_RESET "ep_cmc_reset_00"
 #define NODE_CMC_MUTEX "ep_cmc_mutex_00"
 #define NODE_CMC_FW_MEM "ep_cmc_firmware_mem_00"
+#define NODE_CMC_CLK_SCALING_REG "ep_aclk_kernel_throttling_00"
 #define NODE_ERT_FW_MEM "ep_ert_firmware_mem_00"
 #define NODE_ERT_CQ_MGMT "ep_ert_command_queue_mgmt_00"
 #define NODE_ERT_CQ_USER "ep_ert_command_queue_user_00"

@@ -185,6 +185,38 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	return flash_priv;
 }
 
+static void *xmc_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
+{
+	struct xocl_dev_core *core = XDEV(xdev_hdl);
+	void *blob;
+	struct xocl_xmc_privdata *xmc_priv;
+	int node;
+
+	blob = core->fdt_blob;
+	if (!blob)
+		return NULL;
+
+	xmc_priv = vzalloc(sizeof(*xmc_priv));
+	if (!xmc_priv)
+		return NULL;
+
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_CMC_CLK_SCALING_REG);
+	if (node < 0)
+		xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_CMC_CLK_SCALING_REG, NODE_ENDPOINTS);
+	else
+		xmc_priv->flags = XOCL_XMC_CLK_SCALING;
+
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_CMC_FW_MEM);
+	if (node < 0) {
+		xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_CMC_FW_MEM, NODE_ENDPOINTS);
+		xmc_priv->flags |= XOCL_XMC_IN_BITFILE;
+	}
+
+	*len = sizeof(*xmc_priv);
+
+	return xmc_priv;
+}
+
 static void *p2p_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
 	struct xocl_dev_core *core = XDEV(xdev_hdl);
@@ -466,12 +498,13 @@ static struct xocl_subdev_map subdev_map[] = {
 			{.res_name = NODE_ERT_FW_MEM},
 			{.res_name = NODE_ERT_CQ_MGMT},
 			{.res_name = NODE_CMC_MUTEX},
+			{.res_name = NODE_CMC_CLK_SCALING_REG},
 			// 0x53000 runtime clk scaling
 			{NULL},
 		},
 		.required_ip = 1, /* for MPSOC, we only have the 1st resource */
 		.flags = 0,
-		.build_priv_data = NULL,
+		.build_priv_data = xmc_build_priv,
 		.devinfo_cb = NULL,
 	},
 	{

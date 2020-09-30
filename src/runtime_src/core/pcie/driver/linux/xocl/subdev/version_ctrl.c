@@ -41,7 +41,8 @@ static bool flat_shell_check(struct platform_device *pdev)
 	struct version_ctrl *vc;
 
 	vc = platform_get_drvdata(pdev);
-	BUG_ON(!vc);
+	if (!vc)
+		return false;
 
 	return vc->flat_shell;
 }
@@ -51,7 +52,8 @@ static bool cmc_in_bitfile(struct platform_device *pdev)
 	struct version_ctrl *vc;
 
 	vc = platform_get_drvdata(pdev);
-	BUG_ON(!vc);
+	if (!vc)
+		return false;
 
 	return vc->cmc_in_bitfile;
 }

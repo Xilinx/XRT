@@ -63,6 +63,7 @@ enum {
 enum {
 	XOCL_XMC_NOSC		= (1 << 0),
 	XOCL_XMC_IN_BITFILE	= (1 << 1),
+	XOCL_XMC_CLK_SCALING	= (1 << 2),
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -1309,8 +1310,7 @@ struct xocl_subdev_map {
 
 #define XOCL_PRIV_XMC_U2			\
 	((struct xocl_xmc_privdata){		\
-		.flags	= XOCL_XMC_NOSC |	\
-			XOCL_XMC_IN_BITFILE,	\
+		.flags	= XOCL_XMC_NOSC,	\
 	 })
 
 #define __RES_XMC			\
