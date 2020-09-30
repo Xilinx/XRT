@@ -1044,13 +1044,11 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 static bool xmc_clk_scale_on(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	void *xdev_hdl = xocl_get_xdev(pdev);
 
-	//On Raptor2 U2 shell, XOCL_XMC_CLK_SCALING is used to indicate this feature
 	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_CLK_SCALING))
 		return true;
 
-	return xocl_clk_scale_on(xdev_hdl);
+	return false;
 }
 
 static bool nosc_xmc(struct platform_device *pdev)
@@ -3789,6 +3787,9 @@ static int xmc_probe(struct platform_device *pdev)
 	}
 
 	xmc->priv_data = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	xdev_hdl = xocl_get_xdev(pdev);
+	xmc->priv_data->flags |= xocl_clk_scale_on(xdev_hdl) ?
+		XOCL_XMC_CLK_SCALING : 0;
 	xmc->sc_presence = nosc_xmc(xmc->pdev) ? 0 : 1;
 
 	if (XMC_PRIVILEGED(xmc)) {
@@ -3817,7 +3818,6 @@ static int xmc_probe(struct platform_device *pdev)
 		}
 	}
 
-	xdev_hdl = xocl_get_xdev(pdev);
 	if (xocl_mb_mgmt_on(xdev_hdl) || xocl_mb_sched_on(xdev_hdl) ||
 		autonomous_xmc(pdev)) {
 		xocl_info(&pdev->dev, "Microblaze is supported.");
