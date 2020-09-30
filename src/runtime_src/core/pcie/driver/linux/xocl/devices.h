@@ -2628,7 +2628,7 @@ struct xocl_subdev_map {
 #define XOCL_BOARD_U30_USER_RAPTOR2                                     \
         (struct xocl_board_private){                                    \
                 .flags = XOCL_DSAFLAG_DYNAMIC_IP |                      \
-		        XOCL_DSAFLAG_MB_SCHE_OFF,          		\
+		        XOCL_DSAFLAG_MPSOC,				\
                 .board_name = "u30",                                    \
                 .subdev_info    = RES_USER_VSEC,                        \
                 .subdev_num = ARRAY_SIZE(RES_USER_VSEC),                \
@@ -2636,7 +2636,8 @@ struct xocl_subdev_map {
 
 #define XOCL_BOARD_U30_MGMT_RAPTOR2                                     \
         (struct xocl_board_private){                                    \
-                .flags = XOCL_DSAFLAG_DYNAMIC_IP,                       \
+                .flags = XOCL_DSAFLAG_DYNAMIC_IP |                      \
+		        XOCL_DSAFLAG_MPSOC,				\
                 .subdev_info    = RES_MGMT_VSEC,                        \
                 .subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),                \
                 .flash_type = FLASH_TYPE_QSPIPS_X2_SINGLE,              \

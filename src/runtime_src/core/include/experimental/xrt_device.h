@@ -51,12 +51,14 @@ public:
   /**
    * device() - Constructor with user host buffer and flags
    *
-   * @didx:     Device index
+   * @param didx
+   *  Device index
    */
   XCL_DRIVER_DLLESPEC
   explicit
   device(unsigned int didx);
 
+  /// @cond
   /**
    * device() - Constructor from opaque handle
    *
@@ -66,12 +68,15 @@ public:
   device(std::shared_ptr<xrt_core::device> hdl)
     : handle(std::move(hdl))
   {}
+  /// @endcond
 
   /**
    * device() - Create a managed device object from a shim xclDeviceHandle
    *
-   * @dhdl:      Shim xclDeviceHandle
-   * Return:     xrt::device object epresenting the opened device, or exception on error
+   * @param dhdl
+   *  Shim xclDeviceHandle
+   * @return
+   *  xrt::device object epresenting the opened device, or exception on error
    */
   XCL_DRIVER_DLLESPEC
   explicit
@@ -80,35 +85,26 @@ public:
   /**
    * device() - Copy ctor
    */
-  device(const device& rhs)
-    : handle(rhs.handle)
-  {}
+  device(const device& rhs) = default;
 
   /**
    * device() - Move ctor
    */
-  device(device&& rhs)
-    : handle(std::move(rhs.handle))
-  {}
+  device(device&& rhs) = default;
 
   /**
    * operator= () - Move assignment
    */
   device&
-  operator=(device&& rhs)
-  {
-    handle = std::move(rhs.handle);
-    return *this;
-  }
+  operator=(device&& rhs) = default;
 
   /**
    * load_xclbin() - Load an xclbin 
    *
-   * @xclbin:     Pointer to xclbin in memory image
-   * Return:      UUID of argument xclbin
-   *
-   * The xclbin image can safely be deleted after calling
-   * this funciton.
+   * @param xclbin
+   *  Pointer to xclbin in memory image
+   * @return
+   *  UUID of argument xclbin
    */
   XCL_DRIVER_DLLESPEC
   uuid
@@ -117,37 +113,43 @@ public:
   /**
    * load_xclbin() - Read and load an xclbin file
    *
-   * @xclbin_fnm:  Full path to xclbin file
-   * Return:       UUID of argument xclbin
+   * @param xclbin_fnm
+   *  Full path to xclbin file
+   * @return
+   *  UUID of argument xclbin
    *
-   * This function read the file from disk and loads
+   * This function reads the file from disk and loads
    * the xclbin.   Using this function allows one time
    * allocation of data that needs to be kept in memory.
    */
   XCL_DRIVER_DLLESPEC
   uuid
-  load_xclbin(const std::string& xclbin_filename);
+  load_xclbin(const std::string& xclbin_fnm);
 
   /**
    * load_xclbin() - load an xclin from an xclbin object
    *
-   * @xclbin:      xclbin object
-   * Return:       UUID of argument xclbin
+   * @param xclbin
+   *  xrt::xclbin object
+   * @return
+   *  UUID of argument xclbin
    *
-   * This function read the xclbin contents from
-   * the xclbin object.
+   * This function uses the specified xrt::xclbin object created by
+   * caller.  The xrt::xclbin object must contain the complete axlf
+   * structure.
    */
   XCL_DRIVER_DLLESPEC
   uuid
-  load_xclbin(const xclbin& xclbin);
+  load_xclbin(const xrt::xclbin& xclbin);
 
   /**
    * get_xclbin_uuid() - Get UUID of xclbin image loaded on device
    *
-   * Return:       UUID of currently loaded xclbin
+   * @return
+   *  UUID of currently loaded xclbin
    *
    * Note that current UUID can be different from the UUID of 
-   * the xclbin loaded by this process using @load_xclbin()
+   * the xclbin loaded by this process using load_xclbin()
    */
   XCL_DRIVER_DLLESPEC
   uuid
@@ -156,8 +158,12 @@ public:
   /**
    * get_xclbin_section() - Retrieve specified xclbin section
    *
-   * @section: The section to retrieve
-   * @uuid:    Xclbin uuid of the xclbin with the section to retrieve
+   * @param section
+   *  The section to retrieve
+   * @param uuid
+   *  Xclbin uuid of the xclbin with the section to retrieve
+   * @return
+   *  The specified section if available.
    *
    * Get the xclbin section of the xclbin currently loaded on the 
    * device.  The function throws on error
@@ -172,6 +178,7 @@ public:
   }
 
 public:
+  /// @cond
   /**
    * Undocumented temporary interface during porting
    */
@@ -183,6 +190,7 @@ public:
   {
     return handle;
   }
+  /// @endcond
 
 private:
   XCL_DRIVER_DLLESPEC
@@ -195,6 +203,7 @@ private:
 
 } // namespace xrt
 
+/// @cond
 extern "C" {
 #endif
 
@@ -219,7 +228,7 @@ xrtDeviceOpen(unsigned int index);
  */
 XCL_DRIVER_DLLESPEC
 xrtDeviceHandle
-xrtDeviceOpenFromXcl(xclDeviceHandle dhdl);
+xrtDeviceOpenFromXcl(xclDeviceHandle xhdl);
 
 /**
  * xrtDeviceClose() - Close an opened device
@@ -234,7 +243,8 @@ xrtDeviceClose(xrtDeviceHandle dhdl);
 /**
  * xrtDeviceLoadXclbin() - Load an xclbin image
  *
- * @xclbin:     Pointer to xclbin in memory image
+ * @dhdl:       Handle to device previously opened with xrtDeviceOpen
+ * @xclbin:     Pointer to complete axlf in memory image
  * Return:      0 on success, error otherwise
  *
  * The xclbin image can safely be deleted after calling
@@ -247,6 +257,7 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin);
 /**
  * xrtDeviceLoadXclbinFile() - Read and load an xclbin file
  *
+ * @dhdl:       Handle to device previously opened with xrtDeviceOpen
  * @xclbin_fnm: Full path to xclbin file
  * Return:      0 on success, error otherwise
  *
@@ -256,16 +267,18 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* xclbin_filename);
+xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* xclbin_fnm);
 
 /**
- * xrtDeviceLoadXclbinHandle() - load an xclbin from an xclbin handle
+ * xrtDeviceLoadXclbinHandle() - load an xclbin from an xrt::xclbin handle
  *
- * @xhdl:       xclbin handle
+ * @dhdl:       Handle to device previously opened with xrtDeviceOpen
+ * @xhdl:       xrt::xclbin handle
  * Return:      0 on success, error otherwise
  *
- * This function read the xclbin contents from
- * the xclbin object.
+ * This function uses the specified xrt::xclbin object created by
+ * caller.  The xrt::xclbin object must contain the complete axlf
+ * structure.
  */
 XCL_DRIVER_DLLESPEC
 int
@@ -274,7 +287,7 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl);
 /**
  * xrtDeviceGetXclbinUUID() - Get UUID of xclbin image loaded on device
  *
- * @handle: Device handle
+ * @dhdl:   Handle to device previously opened with xrtDeviceOpen
  * @out:    Return xclbin id in this uuid_t struct
  * Return:  0 on success or appropriate error number
  *
@@ -283,15 +296,16 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl);
  */
 XCL_DRIVER_DLLESPEC
 void
-xrtDeviceGetXclbinUUID(xrtDeviceHandle dhld, xuid_t out);
+xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out);
 
-/**
+/*
  * xrtDeviceToXclDevice() - Undocumented access to shim handle
  */
 XCL_DRIVER_DLLESPEC
 xclDeviceHandle
 xrtDeviceToXclDevice(xrtDeviceHandle dhdl);
 
+/// @endcond
 #ifdef __cplusplus
 }
 #endif

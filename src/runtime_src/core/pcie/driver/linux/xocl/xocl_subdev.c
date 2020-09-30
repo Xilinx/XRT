@@ -1506,6 +1506,26 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 	return 0;
 }
 
+void xocl_clear_pci_errors(xdev_handle_t xdev_hdl)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	struct pci_dev *pdev = core->pdev;
+	int cap;
+	u32 val;
+	u16 devsta;
+
+
+	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);
+	if (cap) {
+		/* clear NonFatalErr */
+		pci_read_config_dword(pdev, cap + PCI_ERR_COR_STATUS, &val);
+		pci_write_config_dword(pdev, cap + PCI_ERR_COR_STATUS, val);
+	}
+	devsta = 0;
+	pcie_capability_read_word(pdev, PCI_EXP_DEVSTA, &devsta);
+	pcie_capability_write_word(pdev, PCI_EXP_DEVSTA, devsta);
+}
+
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
@@ -1513,7 +1533,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	u32 dyn_shell_magic, ptype;
 	int ret, cap, bar;
 	u64 offset;
-	unsigned err_cap;
+	unsigned val;
 	bool vsec = false;
 	/* workaround MB_SCHEDULER and INTC resource conflict
 	 * Remove below variables when MB_SCHEDULER is removed
@@ -1546,13 +1566,14 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);
 	if (cap) {
 		ret = pci_read_config_dword(pdev, cap + PCI_ERR_UNCOR_SEVER,
-			&err_cap);
+			&val);
 		if (!ret) {
-			err_cap &= ~PCI_ERR_UNC_COMP_ABORT;
+			val &= ~PCI_ERR_UNC_COMP_ABORT;
 			pci_write_config_dword(pdev, cap + PCI_ERR_UNCOR_SEVER,
-				err_cap);
+				val);
 		}
 	}
+	xocl_clear_pci_errors(xdev_hdl);
 
 	/*
 	 * follow xilinx device id, subsystem id codeing rules to set dsa

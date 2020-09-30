@@ -835,6 +835,85 @@ struct rom
   }
 };
 
+struct data_retention
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  
+  static result_type
+  user_get(const xrt_core::device* device)
+  {
+	  return 0;
+  }
+
+  static result_type
+  mgmt_get(const xrt_core::device* device)
+  {
+    auto init_ret = [](const xrt_core::device* dev) {
+      uint32_t ret;
+      mgmtpf::get_data_retention(dev->get_mgmt_handle(), &ret);
+      return ret;
+    };
+
+    static std::map<const xrt_core::device*, uint32_t> info_map;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = info_map.find(device);
+    if (it == info_map.end()) {
+      auto ret = info_map.emplace(device,init_ret(device));
+      it = ret.first;
+    }
+
+    return (*it).second;
+  }
+
+  static void
+  user_put(const xrt_core::device* device, value_type)
+  {
+    // data retention can't be set on user side, hence doesn't have driver support
+    throw std::runtime_error("device data retention query is not implemented on user windows");
+  }
+  static void
+    mgmt_put(const xrt_core::device* device, value_type val)
+  {
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    mgmtpf::set_data_retention(device->get_mgmt_handle(), val);
+  }
+
+};
+
+template <typename QueryRequestType, typename Getter>
+struct function0_getput : QueryRequestType
+{
+  static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value
+    || std::is_same<Getter::result_type, boost::any>::value, "get type mismatch");
+  static_assert(std::is_same<Getter::value_type, QueryRequestType::result_type>::value
+    || std::is_same<Getter::value_type, boost::any>::value, "value type mismatch");
+  
+  boost::any
+  get(const xrt_core::device* device) const
+  {
+    if (device->get_mgmt_handle())
+      return Getter::mgmt_get(device);
+    if (device->get_user_handle())
+      return Getter::user_get(device);
+    throw std::runtime_error("No device handle");
+  }
+
+  void
+  put(const xrt_core::device* device, const boost::any& any) const
+  {
+    auto val = boost::any_cast<typename QueryRequestType::value_type>(any);
+    if (device->get_mgmt_handle())
+      Getter::mgmt_put(device, val);
+    else if (device->get_user_handle())
+      Getter::user_put(device, val);
+    else 
+      throw std::runtime_error("No device handle");
+  }
+};
+
 template <typename QueryRequestType, typename Getter>
 struct function0_getter : QueryRequestType
 {
@@ -916,6 +995,14 @@ emplace_function2_getter()
 {
   auto k = QueryRequestType::key;
   query_tbl.emplace(k, std::make_unique<function2_getter<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_function0_getput()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function0_getput<QueryRequestType, Getter>>());
 }
 
 static void
@@ -1002,8 +1089,9 @@ initialize_query_table()
   emplace_function0_getter<query::is_mfg,                    devinfo>();
   emplace_function0_getter<query::is_ready,                  ready>();
   emplace_function0_getter<query::board_name,                devinfo>();
-  emplace_function0_getter<query::flash_bar_offset, flash_bar_offset>();
-  emplace_function0_getter<query::xmc_sc_presence, xmc_sc_presence>();
+  emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
+  emplace_function0_getter<query::xmc_sc_presence,           xmc_sc_presence>();
+  emplace_function0_getput<query::data_retention,            data_retention>();
 }
 
 struct X { X() { initialize_query_table(); }};

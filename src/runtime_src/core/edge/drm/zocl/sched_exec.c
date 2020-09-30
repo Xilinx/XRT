@@ -770,10 +770,13 @@ configure(struct sched_cmd *cmd)
 
 	cfg = (struct ert_configure_cmd *)(cmd->packet);
 
-	if (exec->configured != 0) {
-		DRM_WARN("Reconfiguration not supported\n");
-		return 1;
-	}
+	/*
+	 * In ert mode, no ert config cmd for the same xclbin will be coming
+	 * from host. so always unconfig ert when there is ert config cmd
+	 * arriving
+	 */
+	if (zdev->ert)
+		sched_reset_scheduler(zdev->ddev)
 
 	SCHED_DEBUG("Configuring scheduler\n");
 	write_lock(&zdev->attr_rwlock);

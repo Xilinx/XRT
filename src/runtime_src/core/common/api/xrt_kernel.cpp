@@ -902,7 +902,7 @@ class kernel_impl
   initialize_fadesc(uint32_t* data)
   {
     auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
-    desc->status = ERT_FA_UNDEFINED;
+    desc->status = ERT_FA_ISSUED; // somewhat misleading
     desc->num_input_entries = fa_num_inputs;
     desc->input_entry_bytes = fa_input_entry_bytes;
     desc->num_output_entries = fa_num_outputs;
