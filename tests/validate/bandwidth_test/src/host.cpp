@@ -13,25 +13,17 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#include <boost/filesystem.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <math.h>
 #include <sys/time.h>
 #include <xcl2.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/property_tree/ptree.hpp>                                        
-#include <boost/property_tree/json_parser.hpp>
-
-#define TYPESIZE 512
-const double typesize = TYPESIZE;
-
-double getMicroTime() {
-  struct timeval currentTime;
-  gettimeofday(&currentTime, nullptr);
-  return currentTime.tv_sec * 1000000 + currentTime.tv_usec;
-}
 
 int main(int argc, char **argv) {
   if (argc != 2) {
-    std::cout << "Usage: " << argv[0] << " <Platform Test Area Path>" << std::endl;
+    std::cout << "Usage: " << argv[0] << " <Platform Test Area Path>"
+              << std::endl;
     return EXIT_FAILURE;
   }
 
@@ -39,43 +31,42 @@ int main(int argc, char **argv) {
   bool file_found = false;
   std::string test_path = argv[1];
   std::string filename = "/platform.json";
-  std::string platform_json = test_path+filename;
+  std::string platform_json = test_path + filename;
 
-  try{
-      boost::property_tree::ptree loadPtreeRoot;                                                    
-      boost::property_tree::read_json(platform_json, loadPtreeRoot);
-      boost::property_tree::ptree temp ;                                                            
-  
-      temp = loadPtreeRoot.get_child("total_banks");
-      NUM_KERNEL =  temp.get_value<int>();
+  try {
+    boost::property_tree::ptree loadPtreeRoot;
+    boost::property_tree::read_json(platform_json, loadPtreeRoot);
+    boost::property_tree::ptree temp;
 
-      boost::filesystem::path p(test_path);
-      for (auto i = boost::filesystem::directory_iterator(p); i != boost::filesystem::directory_iterator(); i++)
-       {
-            if (!is_directory(i->path())) //we eliminate directories
-            {
-                if(i->path().filename().string() == "bandwidth.xclbin")
-                    file_found = true;
-            }
-        }
-  }catch (const boost::filesystem::filesystem_error & e) {
-      std::cout << "Exception!!!! " << e.what();
-  }catch (const std::exception & e) {
-      std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
-      msg += e.what();
-      msg += ").";
-      std::cout << msg << std::endl;
+    temp = loadPtreeRoot.get_child("total_banks");
+    NUM_KERNEL = temp.get_value<int>();
+
+    boost::filesystem::path p(test_path);
+    for (auto i = boost::filesystem::directory_iterator(p);
+         i != boost::filesystem::directory_iterator(); i++) {
+      if (!is_directory(i->path())) // we eliminate directories
+      {
+        if (i->path().filename().string() == "bandwidth.xclbin")
+          file_found = true;
+      }
     }
-
-  if(!file_found){
-      std::cout << "\nNOT SUPPORTED" << std::endl;
-      return EOPNOTSUPP; 
+  } catch (const boost::filesystem::filesystem_error &e) {
+    std::cout << "Exception!!!! " << e.what();
+  } catch (const std::exception &e) {
+    std::string msg(
+        "ERROR: Bad JSON format detected while marshaling build metadata (");
+    msg += e.what();
+    msg += ").";
+    std::cout << msg << std::endl;
   }
 
-  double DATA_SIZE = 1024 * 1024 * 16; // 16 MB
+  if (!file_found) {
+    std::cout << "\nNOT SUPPORTED" << std::endl;
+    return EOPNOTSUPP;
+  }
+
   std::string b_file = "/bandwidth.xclbin";
-  std::string binaryFile = test_path+b_file;
-  size_t vector_size_bytes = sizeof(char) * DATA_SIZE;
+  std::string binaryFile = test_path + b_file;
   cl_int err;
   cl::Context context;
   std::string krnl_name = "bandwidth";
@@ -94,7 +85,8 @@ int main(int argc, char **argv) {
   for (unsigned int i = 0; i < devices.size(); i++) {
     auto device = devices[i];
     // Creating Context and Command Queue for selected Device
-    OCL_CHECK(err, context = cl::Context(device, nullptr, nullptr, nullptr, &err));
+    OCL_CHECK(err,
+              context = cl::Context(device, nullptr, nullptr, nullptr, &err));
     OCL_CHECK(err,
               q = cl::CommandQueue(context, device,
                                    CL_QUEUE_PROFILING_ENABLE |
@@ -132,136 +124,116 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  std::vector<char, aligned_allocator<char>> input_host(DATA_SIZE);
-  std::vector<char, aligned_allocator<char>> output_host[NUM_KERNEL];
+  double max_throughput = 0;
+  for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
+    unsigned int reps = 1000;
+    unsigned int DATA_SIZE = i;
 
-  for (int i = 0; i < NUM_KERNEL; i++) {
-    output_host[i].resize(DATA_SIZE);
-  }
-  for (uint32_t j = 0; j < DATA_SIZE; j++) {
-    input_host[j] = j % 256;
-  }
+    if (xcl::is_emulation()) {
+      reps = 2;
+      if (DATA_SIZE > 8 * 1024)
+        break;
+    }
 
-  // Initializing output vectors to zero
-  for (int i = 0; i < NUM_KERNEL; i++) {
-    std::fill(output_host[i].begin(), output_host[i].end(), 0);
-  }
+    unsigned int vector_size_bytes = DATA_SIZE;
+    std::vector<unsigned char, aligned_allocator<unsigned char>> input_host(
+        DATA_SIZE);
+    std::vector<unsigned char, aligned_allocator<unsigned char>>
+        output_host[NUM_KERNEL];
 
-  std::vector<cl::Buffer> input_buffer(NUM_KERNEL);
-  std::vector<cl::Buffer> output_buffer(NUM_KERNEL);
+    for (int i = 0; i < NUM_KERNEL; i++) {
+      output_host[i].resize(DATA_SIZE);
+    }
+    for (uint32_t j = 0; j < DATA_SIZE; j++) {
+      input_host[j] = j % 256;
+    }
 
-  // These commands will allocate memory on the FPGA. The cl::Buffer objects can
-  // be used to reference the memory locations on the device.
-  // Creating Buffers
-  for (int i = 0; i < NUM_KERNEL; i++) {
-    OCL_CHECK(err, input_buffer[i] = cl::Buffer(
-                       context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
-                       vector_size_bytes, input_host.data(), &err));
-    OCL_CHECK(err, output_buffer[i] = cl::Buffer(
-                       context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
-                       vector_size_bytes, output_host[i].data(), &err));
-  }
+    // Initializing output vectors to zero
+    for (int i = 0; i < NUM_KERNEL; i++) {
+      std::fill(output_host[i].begin(), output_host[i].end(), 0);
+    }
 
-  double globalbuffersizeinbeats = DATA_SIZE / (typesize / 8);
-  uint32_t tests = (uint32_t)log2(globalbuffersizeinbeats) + 1;
+    std::vector<cl::Buffer> input_buffer(NUM_KERNEL);
+    std::vector<cl::Buffer> output_buffer(NUM_KERNEL);
 
-  double dnsduration[tests];
-  double dsduration[tests];
-  double dbytes[tests];
-  double bpersec[tests];
-  double mbpersec[tests];
+    // These commands will allocate memory on the FPGA. The cl::Buffer objects
+    // can
+    // be used to reference the memory locations on the device.
+    // Creating Buffers
+    for (int i = 0; i < NUM_KERNEL; i++) {
+      OCL_CHECK(err, input_buffer[i] = cl::Buffer(
+                         context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
+                         vector_size_bytes, input_host.data(), &err));
+      OCL_CHECK(err, output_buffer[i] = cl::Buffer(
+                         context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
+                         vector_size_bytes, output_host[i].data(), &err));
+    }
 
-  // run tests with burst length 1 beat to globalbuffersize
-  // double burst length each test
-  uint32_t beats;
-  uint32_t test = 0;
+    for (int i = 0; i < NUM_KERNEL; i++) {
+      OCL_CHECK(err, err = krnls[i].setArg(0, input_buffer[i]));
+      OCL_CHECK(err, err = krnls[i].setArg(1, output_buffer[i]));
+      OCL_CHECK(err, err = krnls[i].setArg(2, DATA_SIZE));
+      OCL_CHECK(err, err = krnls[i].setArg(3, reps));
+    }
 
-  float throughput[7] = {0, 0, 0, 0, 0, 0, 0};
-  for (beats = 16; beats <= 1024; beats = beats * 4) {
-    std::cout << "Loop PIPELINE " << beats << " beats\n";
+    // Copy input data to device global memory
+    for (int i = 0; i < NUM_KERNEL; i++) {
+      OCL_CHECK(err, err = q.enqueueMigrateMemObjects(
+                         {input_buffer[i]}, 0 /* 0 means from host*/));
+    }
+    q.finish();
+    std::chrono::high_resolution_clock::time_point timeStart;
+    std::chrono::high_resolution_clock::time_point timeEnd;
 
-    double usduration;
-    double fiveseconds = 5 * 1000000;
-    unsigned reps = 64;
-    do {
-      for (int i = 0; i < NUM_KERNEL; i++) {
-        OCL_CHECK(err, err = krnls[i].setArg(0, output_buffer[i]));
-        OCL_CHECK(err, err = krnls[i].setArg(1, input_buffer[i]));
-        OCL_CHECK(err, err = krnls[i].setArg(2, beats));
-        OCL_CHECK(err, err = krnls[i].setArg(3, reps));
-      }
+    timeStart = std::chrono::high_resolution_clock::now();
 
-      // Copy input data to device global memory
-      for (int i = 0; i < NUM_KERNEL; i++) {
-        OCL_CHECK(err, err = q.enqueueMigrateMemObjects(
-                           {input_buffer[i]}, 0 /* 0 means from host*/));
-      }
-      q.finish();
-      double start, end;
-      start = getMicroTime();
-      for (int i = 0; i < NUM_KERNEL; i++) {
-        OCL_CHECK(err, err = q.enqueueTask(krnls[i]));
-      }
-      q.finish();
-      end = getMicroTime();
+    for (int i = 0; i < NUM_KERNEL; i++) {
+      OCL_CHECK(err, err = q.enqueueTask(krnls[i]));
+    }
+    q.finish();
 
-      // copy results back from OpenCL buffer
-      for (int i = 0; i < NUM_KERNEL; i++) {
-        OCL_CHECK(err, err = q.enqueueMigrateMemObjects(
-                           {output_buffer[i]}, CL_MIGRATE_MEM_OBJECT_HOST));
-      }
-      q.finish();
-      // check
-      for (int i = 0; i < NUM_KERNEL; i++) {
-        for (uint32_t j = 0; j < beats * (typesize / 8); j++) {
-          if (output_host[i][j] != input_host[j]) {
-            printf(
-                "ERROR : kernel failed to copy entry %i input %i output %i\n",
-                j, input_host[j], output_host[i][j]);
-            return EXIT_FAILURE;
-          }
+    // copy results back from OpenCL buffer
+    for (int i = 0; i < NUM_KERNEL; i++) {
+      OCL_CHECK(err, err = q.enqueueMigrateMemObjects(
+                         {output_buffer[i]}, CL_MIGRATE_MEM_OBJECT_HOST));
+    }
+    q.finish();
+    timeEnd = std::chrono::high_resolution_clock::now();
+    // check
+    for (int i = 0; i < NUM_KERNEL; i++) {
+      for (uint32_t j = 0; j < DATA_SIZE; j++) {
+        if (output_host[i][j] != input_host[j]) {
+          printf("ERROR : kernel failed to copy entry %i input %i output %i\n",
+                 j, input_host[j], output_host[i][j]);
+          return EXIT_FAILURE;
         }
       }
-
-      usduration = end - start;
-      dnsduration[test] = ((double)usduration);
-      dsduration[test] = dnsduration[test] / ((double)1000000);
-
-      if (usduration < fiveseconds)
-        reps = reps * 2;
-
-    } while (usduration < fiveseconds);
-
-    dnsduration[test] = ((double)usduration);
-    dsduration[test] = dnsduration[test] / ((double)1000000);
-    dbytes[test] = reps * beats * (typesize / 8);
-    bpersec[test] =
-        (NUM_KERNEL * dbytes[test]) / dsduration[test]; // for NUM Kernels
-    mbpersec[test] = 2 * bpersec[test] /
-                     ((double)1024 * 1024); // for concurrent READ and WRITE
-
-    throughput[test] = mbpersec[test];
-    printf("Test : %d, Throughput: %f MB/s\n", test, throughput[test]);
-    test++;
-  }
-
-  float max_V;
-  int ii;
-  max_V = throughput[0];
-  printf("TTTT : %f\n", throughput[0]);
-  int count = 0;
-  for (ii = 1; ii < 7; ii++) {
-    if (max_V < throughput[ii]) {
-      count++;
-      max_V = throughput[ii];
     }
-  }
-  if (count == 0) {
-    max_V = throughput[0];
-  }
-  printf("Maximum throughput: %f MB/s\n", max_V);
 
-  printf("TEST PASSED\n");
+    double usduration;
+    double dnsduration;
+    double dsduration;
+    double bpersec;
+    double mbpersec;
+
+    usduration = (double)(std::chrono::duration_cast<std::chrono::microseconds>(
+                              timeEnd - timeStart)
+                              .count() /
+                          reps);
+
+    dnsduration = (double)usduration;
+    dsduration = dnsduration / ((double)1000000);
+    bpersec = (DATA_SIZE * NUM_KERNEL) / dsduration;
+    mbpersec =
+        (2 * bpersec) / ((double)1024 * 1024); // For concurrent Read/Write
+
+    if (mbpersec > max_throughput)
+      max_throughput = mbpersec;
+  }
+
+  std::cout << "Maximum throughput: " << max_throughput << "MB/s\n";
+
+  std::cout << "TEST PASSED\n";
 
   return EXIT_SUCCESS;
 }

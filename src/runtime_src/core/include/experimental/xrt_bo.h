@@ -66,25 +66,34 @@ public:
   /**
    * bo() - Constructor with user host buffer and flags
    *
-   * @dhdl:     Device handle
-   * @userptr:  Pointer to aligned user memory
-   * @size:     Size of buffer
-   * @flags:    Specify special flags per ``xrt_mem.h``
-   * @grp:      Device memory group to allocate buffer in
+   * @param dhdl
+   *  Device handle
+   * @param userptr
+   *  Pointer to aligned user memory
+   * @param sz
+   *  Size of buffer
+   * @param flags
+   *  Specify special flags per ``xrt_mem.h``
+   * @param grp
+   *  Device memory group to allocate buffer in
    */
   XCL_DRIVER_DLLESPEC
-  bo(xclDeviceHandle dhld, void* userptr, size_t sz, buffer_flags flags, memory_group grp);
+  bo(xclDeviceHandle dhdl, void* userptr, size_t sz, buffer_flags flags, memory_group grp);
 
   /**
    * bo() - Constructor where XRT manages host buffer if any
    *
-   * @dhdl:     Device handle
-   * @size:     Size of buffer
-   * @flags:    Specify special flags per ``xrt_mem.h``
-   * @grp:      Device memory group to allocate buffer in
+   * @param dhdl
+   *  Device handle
+   * @param size
+   *  Size of buffer
+   * @param flags
+   *  Specify special flags per ``xrt_mem.h``
+   * @param grp
+   *  Device memory group to allocate buffer in
    *
    * If the flags require a host buffer, then the host buffer is allocated by
-   * XRT and can be accessed by using @map()
+   * XRT and can be accessed by using map()
    */
   XCL_DRIVER_DLLESPEC
   bo(xclDeviceHandle dhdl, size_t size, buffer_flags flags, memory_group grp);
@@ -92,8 +101,10 @@ public:
   /**
    * bo() - Constructor to import an exported buffer
    *
-   * @dhdl:     Device that imports the exported buffer
-   * @ehdl:     Exported buffer handle, implementation specific type
+   * @param dhdl
+   *  Device that imports the exported buffer
+   * @param ehdl
+   *  Exported buffer handle, implementation specific type
    * 
    * The exported buffer handle is acquired by using the export() method
    * and can be passed to another process.  
@@ -104,9 +115,12 @@ public:
   /**
    * bo() - Constructor for sub-buffer
    *
-   * @parent:   Parent buffer
-   * @size:     Size of sub-buffer
-   * @size:     Offset into parent buffer
+   * @param parent
+   *  Parent buffer
+   * @param size
+   *  Size of sub-buffer
+   * @param offset
+   *  Offset into parent buffer
    */
   XCL_DRIVER_DLLESPEC
   bo(const bo& parent, size_t size, size_t offset);
@@ -114,31 +128,24 @@ public:
   /**
    * bo() - Copy ctor
    */
-  bo(const bo& rhs)
-    : handle(rhs.handle)
-  {}
+  bo(const bo& rhs) = default;
 
   /**
    * bo() - Move ctor
    */
-  bo(bo&& rhs)
-    : handle(std::move(rhs.handle))
-  {}
+  bo(bo&& rhs) = default;
 
   /**
    * operator= () - Move assignment
    */
   bo&
-  operator=(bo&& rhs)
-  {
-    handle = std::move(rhs.handle);
-    return *this;
-  }
+  operator=(bo&& rhs) = default;
 
   /**
    * size() - Get the size of this buffer
    *
-   * Return: size of buffer in bytes
+   * @return 
+   *  Size of buffer in bytes
    */
   XCL_DRIVER_DLLESPEC
   size_t
@@ -147,7 +154,8 @@ public:
   /**
    * address() - Get the device address of this buffer
    *
-   * Return: device address of buffer
+   * @return 
+   *  Device address of buffer
    */
   XCL_DRIVER_DLLESPEC
   uint64_t
@@ -156,7 +164,8 @@ public:
   /**
    * buffer_export() - Export this buffer
    *
-   * Return:  exported buffer handle
+   * @return 
+   *  Exported buffer handle
    *
    * An exported buffer can be imported on another device by this
    * process or another process.
@@ -168,9 +177,12 @@ public:
   /**
    * sync() - Synchronize buffer content with device side 
    *
-   * @dir:     To device or from device
-   * @size:    Size of data to synchronize
-   * @offset:  Offset within the BO
+   * @param dir
+   *  To device or from device
+   * @param size
+   *  Size of data to synchronize
+   * @param offset
+   *  Offset within the BO
    */
   XCL_DRIVER_DLLESPEC
   void
@@ -179,7 +191,8 @@ public:
   /**
    * map() - Map the host side buffer into application
    *
-   * Return: Memory mapped buffer
+   * @return
+   *  Memory mapped buffer
    *
    * Map the contents of the buffer object into host memory
    */
@@ -190,8 +203,10 @@ public:
   /**
    * map() - Map the host side buffer info application
    *
-   * @MapType: Type of mapped data
-   * Return: Memory mapped buffer
+   * @tparam MapType
+   *  Type of mapped data
+   * @return 
+   *  Memory mapped buffer
    */
   template<typename MapType>
   MapType
@@ -203,9 +218,12 @@ public:
   /**
    * write() - Copy-in user data to host backing storage of BO
    *
-   * @src:   Source data pointer
-   * @size:  Size of data to copy
-   * @seek:  Offset within the BO
+   * @param src
+   *  Source data pointer
+   * @param size
+   *  Size of data to copy
+   * @param seek
+   *  Offset within the BO
    *
    * Copy host buffer contents to previously allocated device
    * memory. ``seek`` specifies how many bytes to skip at the beginning
@@ -218,9 +236,12 @@ public:
   /**
    * read() - Copy-out user data from host backing storage of BO
    *
-   * @dst:           Destination data pointer
-   * @size:          Size of data to copy
-   * @skip:          Offset within the BO
+   * @param dst
+   *  Destination data pointer
+   * @param size
+   *  Size of data to copy
+   * @param skip
+   *  Offset within the BO
    *
    * Copy contents of previously allocated device memory to host
    * buffer. ``skip`` specifies how many bytes to skip from the
@@ -234,10 +255,14 @@ public:
   /**
    * copy() - Deep copy BO content from another buffer
    *
-   * @src:          Source BO to copy from
-   * @sz:           Size of data to copy
-   * @src_offset:   Offset into src buffer copy from
-   * @dst_offset:   Offset in this buffer to copy to
+   * @param src
+   *  Source BO to copy from
+   * @param sz
+   *  Size of data to copy
+   * @param src_offset
+   *  Offset into src buffer copy from
+   * @param dst_offset
+   *  Offset into this buffer to copy to
    *
    * A copy size equal to 0 indicates copying complete src bo
    * to this bo.
@@ -247,25 +272,27 @@ public:
   copy(const bo& src, size_t sz=0, size_t src_offset=0, size_t dst_offset=0);
 
 public:
+  /// @cond
   std::shared_ptr<bo_impl>
   get_handle() const
   {
     return handle;
   }
-
+  /// @endcond
 private:
   std::shared_ptr<bo_impl> handle;
 };
 
 } // namespace xrt
 
+/// @cond
 extern "C" {
 #endif
 
 /**
  * xrtBOAllocUserPtr() - Allocate a BO using userptr provided by the user
  *
- * @handle:        Device handle
+ * @dhdl:          Device handle
  * @userptr:       Pointer to 4K aligned user memory
  * @size:          Size of buffer
  * @flags:         Specify type of buffer
@@ -279,7 +306,7 @@ xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
 /**
  * xrtBOAlloc() - Allocate a BO of requested size with appropriate flags
  *
- * @handle:        Device handle
+ * @dhdl:          Device handle
  * @size:          Size of buffer
  * @flags:         Specify type of buffer
  * @grp:           Specify bank information
@@ -305,7 +332,8 @@ xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl);
 /**
  * xrtBOExport() - Export this buffer
  *
- * Return:  exported buffer handle
+ * @bhdl:   Buffer handle
+ * Return:  Exported buffer handle
  *
  * An exported buffer can be imported on another device by this
  * process or another process.
@@ -329,36 +357,37 @@ xrtBOSubAlloc(xrtBufferHandle parent, size_t size, size_t offset);
 /**
  * xrtBOFree() - Free a previously allocated BO
  *
- * @handle:       Buffer handle
+ * @bhdl:         Buffer handle
  * Return:        0 on success, or err code on error
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtBOFree(xrtBufferHandle handle);
+xrtBOFree(xrtBufferHandle bhdl);
 
 /**
  * xrtBOSize() - Get the size of this buffer
  *
- * @handle:       Buffer handle
+ * @bhdl:         Buffer handle
  * Return:        Size of buffer in bytes
  */
 XCL_DRIVER_DLLESPEC
 size_t
-xrtBOSize(xrtBufferHandle handle);
+xrtBOSize(xrtBufferHandle bhdl);
 
 /**
  * xrtBOAddr() - Get the physical address of this buffer
- * @handle:       Buffer handle
+ *
+ * @bhdl:         Buffer handle
  * Return:        Device address of this BO
  */
 XCL_DRIVER_DLLESPEC
 uint64_t
-xrtBOAddress(xrtBufferHandle handle);
+xrtBOAddress(xrtBufferHandle bhdl);
 
 /**
  * xrtBOSync() - Synchronize buffer contents in requested direction
  *
- * @handle:        Bufferhandle
+ * @bhdl:          Bufferhandle
  * @dir:           To device or from device
  * @size:          Size of data to synchronize
  * @offset:        Offset within the BO
@@ -370,12 +399,12 @@ xrtBOAddress(xrtBufferHandle handle);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtBOSync(xrtBufferHandle handle, enum xclBOSyncDirection dir, size_t size, size_t offset);
+xrtBOSync(xrtBufferHandle bhdl, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
 /**
  * xrtBOMap() - Memory map BO into user's address space
  *
- * @handle:     Buffer handle
+ * @bhdl:       Buffer handle
  * Return:      Memory mapped buffer, or NULL on error with errno set
  *
  * Map the contents of the buffer object into host memory.  The buffer
@@ -383,12 +412,12 @@ xrtBOSync(xrtBufferHandle handle, enum xclBOSyncDirection dir, size_t size, size
  */
 XCL_DRIVER_DLLESPEC
 void*
-xrtBOMap(xrtBufferHandle handle);
+xrtBOMap(xrtBufferHandle bhdl);
 
 /**
  * xrtBOWrite() - Copy-in user data to host backing storage of BO
  *
- * @handle:        Buffer handle
+ * @bhdl:          Buffer handle
  * @src:           Source data pointer
  * @size:          Size of data to copy
  * @seek:          Offset within the BO
@@ -400,12 +429,12 @@ xrtBOMap(xrtBufferHandle handle);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtBOWrite(xrtBufferHandle handle, const void* src, size_t size, size_t seek);
+xrtBOWrite(xrtBufferHandle bhdl, const void* src, size_t size, size_t seek);
 
 /**
  * xrtBORead() - Copy-out user data from host backing storage of BO
  *
- * @handle:        Buffer handle
+ * @bhdl:          Buffer handle
  * @dst:           Destination data pointer
  * @size:          Size of data to copy
  * @skip:          Offset within the BO
@@ -418,15 +447,16 @@ xrtBOWrite(xrtBufferHandle handle, const void* src, size_t size, size_t seek);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtBORead(xrtBufferHandle handle, void* dst, size_t size, size_t skip);
+xrtBORead(xrtBufferHandle bhdl, void* dst, size_t size, size_t skip);
 
 /**
  * xrtBOCopy() - Deep copy BO content from another buffer
  *
+ * @dst:          Destination BO to copy to
  * @src:          Source BO to copy from
  * @sz:           Size of data to copy
- * @src_offset:   Offset into src buffer copy from
- * @dst_offset:   Offset in this buffer to copy to
+ * @dst_offset:   Offset into destination buffer to copy to
+ * @src_offset:   Offset into src buffer to copy from
  * Return:        0 on success or appropriate error number
  *
  * A copy size equal to 0 indicates copying complete src bo
@@ -436,6 +466,7 @@ XCL_DRIVER_DLLESPEC
 int
 xrtBOCopy(xrtBufferHandle dst, xrtBufferHandle src, size_t sz, size_t dst_offset, size_t src_offset);
 
+/// @endcond  
 #ifdef __cplusplus
 }
 #endif

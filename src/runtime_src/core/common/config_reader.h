@@ -191,7 +191,8 @@ get_noc_profile_interval_ms()
 inline std::string
 get_stall_trace()
 {
-  static std::string value = (!get_profile()) ? "off" : detail::get_string_value("Debug.stall_trace","off");
+  static std::string data_transfer_enabled = get_data_transfer_trace();
+  static std::string value = (!get_profile() && (0 == data_transfer_enabled.compare("off")) ) ? "off" : detail::get_string_value("Debug.stall_trace","off");
   return value;
 }
 

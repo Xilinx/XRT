@@ -81,7 +81,7 @@ get_userpf_device(device::handle_type device_handle, device::id_type id)
 
 void
 system::
-program_plp(std::shared_ptr<xrt_core::device> dev, const std::vector<char> &buffer) const
+program_plp(const xrt_core::device* dev, const std::vector<char> &buffer) const
 {
   throw std::runtime_error("plp program is not supported");
 }

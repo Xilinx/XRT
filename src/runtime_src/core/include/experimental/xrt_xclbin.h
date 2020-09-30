@@ -22,11 +22,9 @@
 #include "experimental/xrt_uuid.h"
 
 #ifdef __cplusplus
-
 # include <memory>
 # include <vector>
 # include <string>
-
 #endif
 
 /**
@@ -45,7 +43,8 @@ public:
   /**
    * xclbin() - Constructor from an xclbin filename
    *
-   * @filename:  path to the xclbin file
+   * @param filename
+   *  Path to the xclbin file
    *
    * The xclbin file must be accessible by the application. An
    * exception is thrown file not found
@@ -57,7 +56,8 @@ public:
   /**
    * xclbin() - Constructor from raw data
    *
-   * @data: raw data of xclbin
+   * @param data
+   *  Raw data of xclbin
    *
    * The raw data of the xclbin can be deleted after calling the constructor.
    */
@@ -84,7 +84,8 @@ public:
   /**
    * get_cu_names() - Get CU names of xclbin
    *
-   * Return: A list of CU Names in order of increasing base address.
+   * @return
+   *  A list of CU Names in order of increasing base address.
    *
    * An exception is thrown if the data is missing.
    */
@@ -95,7 +96,8 @@ public:
   /**
    * get_xsa_name() - Get Xilinx Support Archive (XSA) Name of xclbin
    *
-   * Return: Name of XSA
+   * @return 
+   *  Name of XSA
    *
    * An exception is thrown if the data is missing.
    */
@@ -106,7 +108,8 @@ public:
   /**
    * get_uuid() - Get the uuid of the xclbin
    *
-   * Return: UUID of xclbin
+   * @return 
+   *  UUID of xclbin
    *
    * An exception is thrown if the data is missing.
    */
@@ -117,7 +120,8 @@ public:
   /**
    * get_data() - Get the raw data of the xclbin
    *
-   * Return: The raw data of the xclbin
+   * @return 
+   *  The raw data of the xclbin
    *
    * An exception is thrown if the data is missing.
    */
@@ -131,6 +135,7 @@ private:
 
 } // namespace xrt
 
+/// @cond
 extern "C" {
 #endif
 
@@ -154,23 +159,23 @@ xrtXclbinAllocFilename(const char* filename);
  */
 XCL_DRIVER_DLLESPEC
 xrtXclbinHandle
-xrtXclbinAllocRawData(const char* data, const int size);
+xrtXclbinAllocRawData(const char* data, int size);
 
 /**
  * xrtXclbinFreeHandle() - Deallocate the xclbin handle
  *
- * @handle:        xclbin handle
+ * @xhdl:          xclbin handle
  * Return:         0 on success, -1 on error
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtXclbinFreeHandle(xrtXclbinHandle handle);
+xrtXclbinFreeHandle(xrtXclbinHandle xhdl);
 
 #if 0
-/**
+/*
  * xrtXclbinGetCUNames() - Get CU names of xclbin
  *
- * @handle:      Xclbin handle
+ * @xhdl:        Xclbin handle
  * @names:       Return pointer to a list of CU names.
  *               If the value is nullptr, the content of this value will not be populated.
  *               Otherwise, the the content of this value will be populated.
@@ -181,13 +186,13 @@ xrtXclbinFreeHandle(xrtXclbinHandle handle);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
+xrtXclbinGetCUNames(xrtXclbinHandle xhdl, char** names, int* numNames);
 #endif
 
 /**
  * xrtXclbinGetXSAName() - Get Xilinx Support Archive (XSA) Name of xclbin handle
  *
- * @handle:     Xclbin handle
+ * @xhdl:       Xclbin handle
  * @name:       Return name of XSA.
  *              If the value is nullptr, the content of this value will not be populated.
  *              Otherwise, the the content of this value will be populated.
@@ -199,23 +204,23 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size);
+xrtXclbinGetXSAName(xrtXclbinHandle xhdl, char* name, int size, int* ret_size);
 
 /**
  * xrtXclbinGetUUID() - Get UUID of xclbin handle
  *
- * @handle:   Xclbin handle
+ * @xhdl:     Xclbin handle
  * @ret_uuid: Return xclbin id in this uuid_t struct
  * Return:    0 on success or appropriate error number
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid);
+xrtXclbinGetUUID(xrtXclbinHandle xhdl, xuid_t ret_uuid);
 
 /**
  * xrtXclbinGetData() - Get the raw data of the xclbin handle
  *
- * @handle:     Xclbin handle
+ * @xhdl:       Xclbin handle
  * @data:       Return raw data.
  *              If the value is nullptr, the content of this value will not be populated.
  *              Otherwise, the the content of this value will be populated.
@@ -227,19 +232,20 @@ xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size);
+xrtXclbinGetData(xrtXclbinHandle xhdl, char* data, int size, int* ret_size);
 
-/**
+/*
  * xrtGetXclbinUUID() - Get UUID of xclbin image running on device
  *
- * @handle: Device handle
+ * @dhdl:   Device handle
  * @out:    Return xclbin id in this uuid_t struct
  * Return:  0 on success or appropriate error number
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtXclbinUUID(xclDeviceHandle handle, xuid_t out);
+xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out);
 
+/// @endcond
 #ifdef __cplusplus
 }
 #endif

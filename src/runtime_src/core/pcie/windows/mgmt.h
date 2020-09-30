@@ -83,6 +83,14 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_uuids(xclDeviceHandle hdl, XCLMGMT_IOC_UUID_INFO* value);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+set_data_retention(xclDeviceHandle hdl, uint32_t value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_data_retention(xclDeviceHandle hdl, uint32_t* value);
+
 } // mgmtpf
 
 #endif

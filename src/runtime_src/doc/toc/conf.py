@@ -31,7 +31,7 @@
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.graphviz']
+extensions = ['sphinx.ext.graphviz', 'breathe']
 
 graphviz_output_format = 'svg'
 
@@ -51,6 +51,11 @@ master_doc = 'index'
 project = 'XRT'
 copyright = '2017-2020, Xilinx, Inc'
 author = 'Xilinx, Inc'
+
+# Breathe Configuration
+breathe_projects = {
+    "XRT":"../xml",
+}
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

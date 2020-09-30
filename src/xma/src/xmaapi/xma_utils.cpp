@@ -47,6 +47,27 @@ namespace xma_core {
         { XmaSessionType::XMA_INVALID, "invalid"}
     };
 
+    static const std::map<ert_cmd_state, const std::string> cu_cmdMap = {
+        { ert_cmd_state::ERT_CMD_STATE_NEW, "NEW"},
+        { ert_cmd_state::ERT_CMD_STATE_QUEUED, "QUEUED"},
+        { ert_cmd_state::ERT_CMD_STATE_RUNNING, "RUNNING"},
+        { ert_cmd_state::ERT_CMD_STATE_COMPLETED, "COMPLETED"},
+        { ert_cmd_state::ERT_CMD_STATE_ERROR, "ERROR"},
+        { ert_cmd_state::ERT_CMD_STATE_ABORT, "ABORT"},
+        { ert_cmd_state::ERT_CMD_STATE_SUBMITTED, "SUBMITTED"},
+        { ert_cmd_state::ERT_CMD_STATE_TIMEOUT, "TIMEOUT"},
+        { ert_cmd_state::ERT_CMD_STATE_NORESPONSE, "NORESPONSE"},
+        { ert_cmd_state::ERT_CMD_STATE_MAX, "MAX"}
+    };
+
+    std::string get_cu_cmd_state(ert_start_kernel_cmd *cu_cmd) {
+        auto it = cu_cmdMap.find((ert_cmd_state)cu_cmd->state);
+        if (it == cu_cmdMap.end()) {
+            return std::string("invalid");
+        }
+        return it->second;
+    }
+
     std::string get_session_name(XmaSessionType eSessionType) {
         auto it = sessionMap.find(eSessionType);
         if (it == sessionMap.end()) {
@@ -540,6 +561,12 @@ int32_t check_all_execbo(XmaSession s_handle) {
                         cu_cmd->state = ERT_CMD_STATE_MAX;
                         priv1->CU_cmds.erase(ebo.cu_cmd_id1);
                         priv1->num_cu_cmds--;
+                    } else if (cu_cmd->state == ERT_CMD_STATE_ERROR ||
+                    	       cu_cmd->state == ERT_CMD_STATE_ABORT ||
+                    	       cu_cmd->state == ERT_CMD_STATE_TIMEOUT ||
+                    	       cu_cmd->state == ERT_CMD_STATE_NORESPONSE) {
+                        //Check for invalid/error execo state
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
                     }
                 }
             }
@@ -574,6 +601,12 @@ int32_t check_all_execbo(XmaSession s_handle) {
                         priv1->num_cu_cmds--;
                         //priv1->execbo_lru.emplace_back(val);Let's not reuse execbo immediately after completion
                         ebo_it = priv1->execbo_to_check.erase(ebo_it);
+                    } else if (cu_cmd->state == ERT_CMD_STATE_ERROR ||
+                    	       cu_cmd->state == ERT_CMD_STATE_ABORT ||
+                    	       cu_cmd->state == ERT_CMD_STATE_TIMEOUT ||
+                    	       cu_cmd->state == ERT_CMD_STATE_NORESPONSE) {
+                        //Check for invalid/error execo state
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
                     } else {
                         ebo_it++;
                     }
@@ -587,17 +620,18 @@ int32_t check_all_execbo(XmaSession s_handle) {
                 priv1->execbo_is_free.notify_all();
             }
             if (notify_work_item_done_1plus) {
-                priv1->work_item_done_1plus.notify_all();
+                priv1->work_item_done_1plus.notify_one();//Unblock one thread;Though only one is used anyway
                 if (priv1->slowest_element) {
                     std::this_thread::yield();
                 }
             } else if (priv1->kernel_complete_count != 0) {
-                priv1->work_item_done_1plus.notify_all();
+                priv1->work_item_done_1plus.notify_one();//Unblock one thread;Though only one is used anyway
                 if (priv1->slowest_element) {
                     std::this_thread::yield();
                 }
             }
         } else {
+            priv1->work_item_done_1plus.notify_one();//Unblock one thread;Though only one is used anyway
             priv1->kernel_done_or_free.notify_all();
             priv1->execbo_is_free.notify_all();
         }

@@ -188,15 +188,15 @@ struct mgmt
     DWORD bytes = 0;
     auto status = DeviceIoControl(
         m_hdl,
-        XCLMGMT_OID_GET_DEVICE_INFO,
-        nullptr,
-		0,
-        value,
-        sizeof(XCLMGMT_DEVICE_INFO),
-        &bytes,
-        NULL);
+        XCLMGMT_OID_GET_DEVICE_INFO, //ioctl code
+        nullptr,                     //in buffer
+        0,                           //in buffer size
+        value,                       //out buffer
+        sizeof(XCLMGMT_DEVICE_INFO), //out buffer size
+        &bytes,                      //size of the data returned 
+        nullptr);                    //ptr to overlapped struct (for async operations)
 
-    if (!status || bytes != sizeof(XCLMGMT_DEVICE_INFO))
+    if (!status || (bytes != sizeof(XCLMGMT_DEVICE_INFO)))
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_DEVICE_INFO failed");
   }
 
@@ -239,14 +239,14 @@ struct mgmt
   {
     DWORD bytes = 0;
     auto status = DeviceIoControl
-    (m_hdl,
-    XCLMGMT_OID_GET_QSPI_INFO,
-    NULL,
-    0,
-    &value,
-    sizeof(uint64_t),
-    &bytes,
-    NULL);
+        (m_hdl,
+        XCLMGMT_OID_GET_QSPI_INFO, //ioctl code
+        nullptr,                   //in buffer
+        0,                         //in buffer size
+        &value,                    //out buffer
+        sizeof(uint64_t),          //out buffer size
+        &bytes,                    //size of the data returned
+        nullptr);                  //ptr to overlapped struct (for async operations)
 
     if (!status)
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_QSPI_INFO failed");
@@ -259,14 +259,14 @@ struct mgmt
     DWORD bytes = 0;
 
     auto status = DeviceIoControl
-    (m_hdl,
-    XCLMGMT_OID_PRP_ICAP_PROGRAM_AXLF,
-    (PUCHAR)buffer,
-    buffSize,
-    nullptr,
-    0,
-    &bytes,
-    nullptr);
+        (m_hdl,
+        XCLMGMT_OID_PRP_ICAP_PROGRAM_AXLF, //ioctl code
+        (PUCHAR)buffer,                    //in buffer
+        buffSize,                          //in buffer size
+        nullptr,                           //out buffer
+        0,                                 //out buffer size
+        &bytes,                            //size of the data returned
+        nullptr);                          //ptr to overlapped struct (for async operations)
 
     if (!status)
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_PRP_ICAP_PROGRAM_AXLF failed");
@@ -278,14 +278,15 @@ struct mgmt
 	  char stat;
     DWORD bytes = 0;
     auto status = DeviceIoControl
-    (m_hdl,
-    XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF_STATUS,
-    NULL,
-    NULL,
-    &stat,
-    sizeof(char),
-    &bytes,
-    NULL);
+        (m_hdl,
+        XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF_STATUS, //ioctl code
+        nullptr,                                  //in buffer
+        0,                                        //in buffer size
+        &stat,                                    //out buffer
+        sizeof(char),                             //out buffer size
+        &bytes,                                   //size of the data returned
+        nullptr);                                 //ptr to overlapped struct (for async operations)
+
 	plp_status = (int)stat;
 
     if (!status)
@@ -297,17 +298,57 @@ struct mgmt
   {
     DWORD bytes = 0;
     auto status = DeviceIoControl
-		(m_hdl,
-		XCLMGMT_OID_GET_UUID_INFO,
-    nullptr,
-			0,
-    value,
-    sizeof(XCLMGMT_IOC_UUID_INFO),
-    &bytes,
-    NULL);
+        (m_hdl,
+        XCLMGMT_OID_GET_UUID_INFO,      //ioctl code
+        nullptr,                        //in buffer
+        0,                              //in buffer size
+        value,                          //out buffer
+        sizeof(XCLMGMT_IOC_UUID_INFO),  //in buffer size
+        &bytes,                         //size of the data returned
+        nullptr);                       //ptr to overlapped struct (for async operations)
+
     if (!status || bytes != sizeof(XCLMGMT_IOC_UUID_INFO))
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_UUID_INFO failed");
   }
+
+void
+set_data_retention(uint32_t value)
+{
+    DWORD bytes = 0;
+
+    auto status = DeviceIoControl
+        (m_hdl,
+        XCLMGMT_OID_SET_DATA_RETENTION, //ioctl code
+        &value,                         //in buffer
+        sizeof(uint32_t),               //in buffer size
+        nullptr,                        //out buffer
+        0,                              //out buffer size
+        &bytes,                         //size of the data returned
+        nullptr);                       //ptr to overlapped struct (for async operations)
+
+    if (!status)
+        throw std::runtime_error("DeviceIoControl XCLMGMT_OID_SET_DATA_RETENTION failed");
+}
+
+void
+get_data_retention(uint32_t* value)
+{
+    DWORD bytes = 0;
+
+    auto status = DeviceIoControl
+        (m_hdl,
+        XCLMGMT_OID_GET_DATA_RETENTION, //ioctl code
+        nullptr,                        //in buffer
+        0,                              //in buffer size
+        value,                          //out buffer
+        sizeof(uint32_t),               //out buffer size
+        &bytes,                         //size of the data returned
+        nullptr);                       //ptr to overlapped struct (for async operations)
+
+    if (!status)
+        throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_DATA_RETENTION failed");
+}
+
 
 }; // struct mgmt
 
@@ -478,13 +519,31 @@ plp_program_status(xclDeviceHandle hdl, uint64_t& plp_status)
 	mgmt->plp_program_status(plp_status);
 }
 
-  void 
+void 
 get_uuids(xclDeviceHandle hdl, XCLMGMT_IOC_UUID_INFO* value)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_uuids()");
   auto mgmt = get_mgmt_object(hdl);
   mgmt->get_uuids(value);
+}
+
+void
+set_data_retention(xclDeviceHandle hdl, uint32_t value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "set_data_retention()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->set_data_retention(value);
+}
+
+void
+get_data_retention(xclDeviceHandle hdl, uint32_t* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_data_retention()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->get_data_retention(value);
 }
 
 } // mgmt
