@@ -28,10 +28,21 @@ namespace xdp {
     aiePluginInstance.updateAIEDevice(handle);
   }
 
+  static void endAIECtrPoll(void* handle)
+  {
+    aiePluginInstance.endPollforDevice(handle);
+  }
+
 } // end namespace xdp
 
 extern "C"
 void updateAIECtrDevice(void* handle)
 {
   xdp::updateAIECtrDevice(handle);
+}
+
+extern "C"
+void endAIECtrPoll(void* handle)
+{
+  xdp::endAIECtrPoll(handle);
 }

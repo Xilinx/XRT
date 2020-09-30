@@ -120,6 +120,7 @@ shim::
 #ifdef ENABLE_HAL_PROFILING
 //    xdphal::finish_flush_device(handle) ;
     xdpaie::finish_flush_aie_device(this) ;
+    xdpaiectr::end_aie_ctr_poll(this);
 #endif
 
   // The BO cache unmaps and releases all execbo, but this must
