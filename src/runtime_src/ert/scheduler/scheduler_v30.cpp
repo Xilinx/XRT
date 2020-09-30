@@ -1092,7 +1092,7 @@ scheduler_v30_loop()
 
         auto cuvalue = read_reg(cu_idx_to_addr(cuidx));
         DMSGF("cuidx %d, cuvalue(0x%x)\r\n",cuidx,cuvalue);
-        if (!(cuvalue & (AP_DONE)))
+        if (!(cuvalue & (AP_DONE|AP_IDLE)))
           continue;
 
         cu_status[cuidx] = !cu_status[cuidx]; // disable polling until host re-enables
