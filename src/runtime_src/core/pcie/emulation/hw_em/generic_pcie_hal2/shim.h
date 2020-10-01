@@ -250,6 +250,8 @@ using addr_type = uint64_t;
         return false;
       }
 
+      int xclIPName2Index(const char *name);
+
       void fetchAndPrintMessages();
       std::mutex mPrintMessagesLock;
       // Restricted read/write on IP register space
@@ -368,6 +370,7 @@ using addr_type = uint64_t;
       const size_t mCuMapSize = 64 * 1024;
       std::string simulatorType;
       std::map<uint64_t, std::pair<void*, uint64_t> > mHostOnlyMemMap;
+      xclBin *mHeader;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

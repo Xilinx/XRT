@@ -21,6 +21,7 @@
 #include "shim.h"
 #include "system_swemu.h"
 #include "xclbin.h"
+#include "core/common/xclbin_parser.h"
 #include <errno.h>
 #include <unistd.h>
 
@@ -65,6 +66,7 @@ namespace xclcpuemhal2 {
     ci_msg.set_xcl_api(0);
     mCore = nullptr;
     mSWSch = nullptr;
+    mHeader = nullptr;
 
     ci_buf = malloc(ci_msg.ByteSize());
     ri_msg.set_size(0);
@@ -418,8 +420,7 @@ namespace xclcpuemhal2 {
         }
 
         if (xilinxInstall.empty()) {
-           std::cerr << "ERROR : [SW-EM 10] Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
-           exit(1);
+          xilinxInstall = ".";
         }
 
         std::string modelDirectory("");
@@ -481,6 +482,7 @@ namespace xclcpuemhal2 {
     int result = dumpXML(header, xmlFile) ;
     if (result != 0) return result ;
 
+    mHeader = const_cast<xclBin*>(header);
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
     //  by checking to see if there is a DEBUG_DATA section in
@@ -1855,6 +1857,63 @@ int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) cons
   return 0;
 }
 
+
+int CpuemShim::xclIPName2Index(const char *name)
+{ 
+  std::string errmsg;
+  const uint64_t bad_addr = 0xffffffffffffffff;
+  char* ipLayoutbuf = nullptr;
+  size_t bufsize = 0;
+
+  if (!mHeader) {
+    errmsg = "ERROR: [SW-EMU 13] xclIPName2Index - Invalid xclbin content";
+    std::cout << errmsg << std::endl;
+    return -EINVAL;
+  }
+
+  char *bitstreambin = reinterpret_cast<char*> (mHeader);
+  auto top = reinterpret_cast<const axlf*>(mHeader);
+  if (auto sec = xclbin::get_axlf_section(top, IP_LAYOUT)) {
+    bufsize = sec->m_sectionSize;
+    ipLayoutbuf = new char[bufsize];
+    memcpy(ipLayoutbuf, bitstreambin + sec->m_sectionOffset, bufsize);
+  }
+
+  if (!ipLayoutbuf)
+  {
+    errmsg = "ERROR: [SW-EMU 14] xclIPName2Index - can't load ip_layout section";
+    std::cout << errmsg << std::endl;
+    return -EINVAL;
+  }
+
+  const ip_layout* map = (reinterpret_cast<const ::ip_layout*>(ipLayoutbuf));
+  if (map->m_count < 0) {
+    errmsg = "ERROR: [SW-EMU 15] xclIPName2Index - invalid ip_layout section content";
+    std::cout << errmsg << std::endl;
+    return -EINVAL;
+  }
+
+  uint64_t addr = bad_addr;
+  int i;
+  for (i = 0; i < map->m_count; i++) {
+    if (strncmp((char *)map->m_ip_data[i].m_name, name,
+      sizeof(map->m_ip_data[i].m_name)) == 0) {
+      addr = map->m_ip_data[i].m_base_address;
+      break;
+    }
+  }
+  if (i == map->m_count)
+    return -ENOENT;
+  if (addr == bad_addr)
+    return -EINVAL;
+
+  auto cus = xrt_core::xclbin::get_cus(map);
+  auto itr = std::find(cus.begin(), cus.end(), addr);
+  if (itr == cus.end())
+    return -ENOENT;
+
+  return std::distance(cus.begin(), itr);
+}
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }

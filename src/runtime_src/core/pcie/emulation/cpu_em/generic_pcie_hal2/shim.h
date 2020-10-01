@@ -160,6 +160,7 @@ namespace xclcpuemhal2 {
       int xclExecBuf(unsigned int cmdBO);
       int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
 
+      int xclIPName2Index(const char *name);
       bool isImported(unsigned int _bo)
       {
         if (mImportedBOs.find(_bo) != mImportedBOs.end())
@@ -253,6 +254,7 @@ namespace xclcpuemhal2 {
       exec_core* mCore;
       SWScheduler* mSWSch;
       bool mIsKdsSwEmu;
+      xclBin *mHeader;
   };
 
   extern std::map<unsigned int, CpuemShim*> devices;
