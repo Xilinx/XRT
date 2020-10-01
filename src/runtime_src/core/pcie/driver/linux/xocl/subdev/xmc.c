@@ -1150,6 +1150,13 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_bdinfo(pdev, EXP_BMC_VER, (u32 *)bdinfo->exp_bmc_ver);
 		xmc_bdinfo(pdev, MAC_CONT_NUM, &bdinfo->mac_contiguous_num);
 		xmc_bdinfo(pdev, MAC_ADDR_FIRST, (u32 *)bdinfo->mac_addr_first);
+
+	 	if (strcmp(bdinfo->bmc_ver, bdinfo->exp_bmc_ver)) {
+			xocl_warn(&xmc->pdev->dev, "installed XSABIN has SC version: "
+			    "(%s) mismatch with loaded SC version: (%s).",
+			    bdinfo->exp_bmc_ver, bdinfo->bmc_ver);
+		}
+
 		mutex_unlock(&xmc->mbx_lock);
 		break;
 	default:
