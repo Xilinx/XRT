@@ -36,7 +36,6 @@
 const size_t m2mBoSize = 256L * 1024 * 1024;
 const size_t hostMemSize = 256L * 1024 * 1024;
 
-
 static int bdf2index(std::string& bdfStr, unsigned& index)
 {
     // Extract bdf from bdfStr.
@@ -1747,14 +1746,28 @@ bool canProceed()
     return proceed;
 }
 
+static int isSudo()
+{
+    const char* SudoMessage = "ERROR: root privileges required.";
+    if ((getuid() == 0) || (geteuid() == 0))
+        return 0;
+    std::cout << SudoMessage << std::endl;
+    return -EPERM;
+}
+
 int xcldev::xclReset(int argc, char *argv[])
 {
     int c;
     unsigned index = 0;
+    bool all = false;
     const std::string usage("Options: [-d index]");
 
-    while ((c = getopt(argc, argv, "d:")) != -1) {
+    while ((c = getopt(argc, argv, "ad:")) != -1) {
         switch (c) {
+        case 'a': {
+            all = true;
+            break;
+        }
         case 'd': {
             int ret = str2index(optarg, index);
             if (ret != 0)
@@ -1774,6 +1787,33 @@ int xcldev::xclReset(int argc, char *argv[])
     if (optind != argc) {
         std::cerr << usage << std::endl;
         return -EINVAL;
+    }
+
+    std::string vbnv, errmsg;
+    auto dev = pcidev::get_dev(index);
+    dev->sysfs_get( "rom", "VBNV", errmsg, vbnv );
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+    if (!all && vbnv.find("_u30_") != std::string::npos) {
+        std::stringstream dbdf;
+        std::string output;
+        std::string xbresetPath = "/opt/xilinx/xrt/python/xbreset.py";
+        dbdf << std::setfill('0') << std::hex
+            << std::setw(4) << dev->domain << ":"
+            << std::setw(2) << dev->bus << ":"
+            << std::setw(2) << dev->dev << "."
+            << std::setw(1) << dev->func;
+        std::cout << "Card level reset. This will reset all FPGAs on the card." << std::endl;
+        int ret = isSudo();
+        if (ret)
+            return ret;
+        std::cout << "All existing processes will be killed." << std::endl;
+        if(!canProceed())
+            return -ECANCELED;
+        std::string cmd = "/usr/bin/python3 " + xbresetPath + " -y -d " + dbdf.str();
+        return runShellCmd(cmd, output);
     }
 
     std::cout << "All existing processes will be killed." << std::endl;

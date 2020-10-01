@@ -386,8 +386,10 @@ static ssize_t shutdown_store(struct device *dev,
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 
-	if (val)
-		xocl_queue_work(xdev, XOCL_WORK_SHUTDOWN, 0);
+	if (val == 1)
+		xocl_queue_work(xdev, XOCL_WORK_SHUTDOWN_WITH_RESET, 0);
+	else if (val == 2)
+		xocl_queue_work(xdev, XOCL_WORK_SHUTDOWN_WITHOUT_RESET, 0);
 	else
 		xocl_queue_work(xdev, XOCL_WORK_ONLINE, 0);
 
