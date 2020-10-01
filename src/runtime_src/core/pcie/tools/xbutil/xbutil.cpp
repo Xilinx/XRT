@@ -1748,10 +1748,9 @@ bool canProceed()
 
 static int isSudo()
 {
-    const char* SudoMessage = "ERROR: root privileges required.";
     if ((getuid() == 0) || (geteuid() == 0))
         return 0;
-    std::cout << SudoMessage << std::endl;
+    std::cerr << "ERROR: root privileges required." << std::endl;
     return -EPERM;
 }
 
@@ -1793,13 +1792,13 @@ int xcldev::xclReset(int argc, char *argv[])
     auto dev = pcidev::get_dev(index);
     dev->sysfs_get( "rom", "VBNV", errmsg, vbnv );
     if (!errmsg.empty()) {
-        std::cout << errmsg << std::endl;
+        std::cerr << errmsg << std::endl;
         return -EINVAL;
     }
     if (!all && vbnv.find("_u30_") != std::string::npos) {
         std::stringstream dbdf;
         std::string output;
-        std::string xbresetPath = "/opt/xilinx/xrt/python/xbreset.py";
+        const std::string xbresetPath = "/opt/xilinx/xrt/bin/unwrapped/_xbreset.py";
         dbdf << std::setfill('0') << std::hex
             << std::setw(4) << dev->domain << ":"
             << std::setw(2) << dev->bus << ":"
@@ -1810,14 +1809,14 @@ int xcldev::xclReset(int argc, char *argv[])
         if (ret)
             return ret;
         std::cout << "All existing processes will be killed." << std::endl;
-        if(!canProceed())
+        if (!canProceed())
             return -ECANCELED;
-        std::string cmd = "/usr/bin/python3 " + xbresetPath + " -y -d " + dbdf.str();
+        const auto cmd = "/usr/bin/python3 " + xbresetPath + " -y -d " + dbdf.str();
         return runShellCmd(cmd, output);
     }
 
     std::cout << "All existing processes will be killed." << std::endl;
-    if(!canProceed())
+    if (!canProceed())
         return -ECANCELED;
 
     std::unique_ptr<device> d = xclGetDevice(index);

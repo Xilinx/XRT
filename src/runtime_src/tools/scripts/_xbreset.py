@@ -17,7 +17,8 @@
 """
 
 import sys
-import getopt
+import argparse
+import textwrap
 import os
 import re
 import subprocess
@@ -59,75 +60,55 @@ def run(cmdline):
     #print cmdline
     subprocess.call(cmdline, shell=True)
 
-def usage():
-    print("Usage:")
-    print("\t%s [options]" % sys.argv[0])
-    print("options:")
-    print("\t-d, --dbdf : DBDF of the FPGA, mandatory")
-    print("\t-y, --yes : If specified, automatic yes to prompts")
-    print("\t-h, --help : If specified, show usage\n")
-    print("\tExample: %s 0000:17:0.1" % sys.argv[0])
-    print("\n\tThis cmdline tool is used to mainly do card level reset.")
-    print("\tEg. U30 card which has 2 FPGAs in one card. When whichever FPGA is")
-    print("\tspecified, both FPGAs on the card will be reset. Please note, user")
-    print("\tneeds to manually kill all processes running on the specified FPGA.")
-    print("\tIf there is only one FPGA node in the card, the cmd will fall back")
-    print("\tto 'xbutil reset'\n")
-    print("\tRoot privilege is required to run this cmd\n")
-
 def main():
+    desc = textwrap.dedent('''\
+        This cmdline tool is mainly used to do card level reset.
+        Eg. U30 card which has 2 FPGAs in one card. When whichever FPGA is
+        specified, both FPGAs on the card will be reset.
+        If there is only one FPGA node in the card, the cmd will fall back
+        to 'xbutil reset'
+
+        Root privilege is required to run this cmd
+        
+        Example:
+            xbrest -d 0000:17:0.1
+    ''')
     if (os.geteuid() != 0):
         print("ERROR: root privilege is required.")
-        exit(1)
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "hd:y", ["help", "dbdf=", "yes"])
-    except getopt.GetoptError as err:
-        print(str(err))
-        usage()
-        exit(1)
+        sys.exit(1)
 
-    dbdf = None
-    yes = False
-    for o, a in opts:
-        if o in ("-y", "--yes"):
-            yes = True
-        elif o in ("-h", "--help"):
-            usage()
-            exit(1)
-        elif o in ("-d", "--dbdf"):
-            dbdf = a
-        else:
-            assert False, "unrecognized option"
-
-    if not dbdf:
-        print("ERROR: -d is mandatory")
-        usage()
-        exit(1)
+    parser=argparse.ArgumentParser(description=desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("-d","--dbdf", required=True,
+        help="DBDF of a FPGA node, with format xxxx:xx:xx.x")
+    parser.add_argument("-y","--yes", help="automatic yes to prompts",
+        action="store_true")
+    args = parser.parse_args()
 
     get_node_bus_mapping()
-    mgmt = dbdf[:len(dbdf)-1] + "0"
-    user = dbdf[:len(dbdf)-1] + "1"
+    mgmt = args.dbdf[:len(args.dbdf)-1] + "0"
+    user = args.dbdf[:len(args.dbdf)-1] + "1"
 
     try:
         if mgmt not in node_bus_mapping:
             print("ERROR: Is %s a FPGA node?" % user)
-            exit(1)
+            sys.exit(1)
         with open(os.path.join(rootDir, user, "ready")) as f : ready = f.read()
         ready = ready.strip("\n")
         if ready == "0x0" or ready == "0":
             print("ERROR: FPGA %s is not usable" % user)
-            exit(1)
+            sys.exit(1)
 
         #print node_parent_mapping
         nodes_in_cards = bus_children[node_bus_mapping[mgmt]]
         #print nodes_in_cards
         if len(nodes_in_cards) == 1:
-            #print("xbutil reset %s" % sys.argv[1])
+            #print("xbutil reset %s" % user)
             print("All existing processes will be killed.")
-            while not yes:
+            while not args.yes:
                 line = input("Are you sure you wish to proceed? [y/n]:")
                 if line == "n":
-                    exit(1)
+                    sys.exit(1)
                 if line == "y":
                     break
             run_reset(["/opt/xilinx/xrt/bin/unwrapped/xbutil", "reset", "-d", user])
@@ -138,10 +119,10 @@ def main():
                 rm = nodes_in_cards[0]
             print("Card level reset. This will reset all FPGAs on the card: %s, %s" % (mgmt, rm))
             print("All existing processes will be killed.")
-            while not yes:
+            while not args.yes:
                 line = input("Are you sure you wish to proceed? [y/n]:")
                 if line == "n":
-                    exit(1)
+                    sys.exit(1)
                 if line == "y":
                     break
             rm_user = rm[:len(rm)-1] + "1"
@@ -163,6 +144,5 @@ def main():
         run("echo 1 > /sys/bus/pci/rescan")
     except Exception as e:
         print(e)
-        usage()
 
 main()
