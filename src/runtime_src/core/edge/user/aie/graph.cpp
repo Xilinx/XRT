@@ -20,8 +20,8 @@
 #ifndef __AIESIM__
 #include "core/edge/user/shim.h"
 #include "core/common/message.h"
-#include "plugin/xdp/aie_trace.h"
-#include "plugin/xdp/aie_profile.h"
+#include "core/edge/user/plugin/xdp/aie_trace.h"
+#include "core/edge/user/plugin/xdp/aie_profile.h"
 #endif
 #include "core/common/error.h"
 
