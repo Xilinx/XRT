@@ -4111,8 +4111,18 @@ static void clock_status_check(struct platform_device *pdev, bool *latched)
 	}
 }
 
-static void xmc_set_dynamic_mac(uint32_t *bdinfo_raw, uint32_t bd_info_sz,
-	struct xocl_xmc *xmc)
+static bool xmc_has_dynamic_mac(uint32_t *bdinfo_raw, uint32_t bd_info_sz)
+{
+	size_t len;
+	const char *iomem;
+
+	iomem = xmc_get_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAC_DYNAMIC, &len);
+
+	return iomem != NULL && len == 8;
+}
+
+static void xmc_set_dynamic_mac(struct xocl_xmc *xmc, uint32_t *bdinfo_raw,
+	uint32_t bd_info_sz)
 {
 	size_t len;
 	const char *iomem;
@@ -4168,7 +4178,6 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		return 0;
 
 	if (XMC_PRIVILEGED(xmc)) {
-		struct xmc_status status;
 
 		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
 		if (tmp_str) {
@@ -4205,9 +4214,8 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 			return -ENOMEM;
 		memcpy(bdinfo_raw, xmc->mbx_pkt.data, bd_info_sz);
 
-		safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
-		if (status.sc_comm_ver >= 7) {
-			xmc_set_dynamic_mac(bdinfo_raw, bd_info_sz, xmc);
+		if (xmc_has_dynamic_mac(bdinfo_raw, bd_info_sz)) {
+			xmc_set_dynamic_mac(xmc, bdinfo_raw, bd_info_sz);
 
 		} else {
 			xmc_set_board_info(bdinfo_raw, bd_info_sz,
