@@ -92,7 +92,7 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
         XAie_DmaSetAxi(&(dma->desc), 0, gmio.burst_len, 0, 0, 0);
 
         XAie_DmaGetMaxQueueSize(devInst, shimTile, &(dma->maxqSize));
-        for (int i = 0; i < dma->maxqSize /*XAIEGBL_NOC_DMASTA_STARTQ_MAX */; ++i) {
+        for (int i = 0; i < dma->maxqSize; ++i) {
             /*
              * 16 BDs are allocated to 4 channels.
              * Channel0: BD0~BD3

@@ -17,42 +17,6 @@
 #include "zocl_error.h"
 #include "zocl_drv.h"
 
-static int
-zocl_insert_error_record(struct drm_zocl_dev *zdev,
-		struct drm_zocl_error_inject *args)
-{
-	struct zocl_error *zer = &zdev->zdev_error;
-	u64 timestamp = ktime_to_ns(ktime_get_real());
-	xrtErrorCode err_code = XRT_ERROR_CODE_BUILD(
-	    args->err_num,
-	    args->err_driver,
-	    args->err_severity,
-	    args->err_module,
-	    args->err_class
-	    );
-
-	write_lock(&zdev->attr_rwlock);
-
-	/*
-	 * TODO Dynamically increase the error cache or limit the
-	 * number of error records for each class
-	 */
-	if (zer->ze_num == zer->ze_cap) {
-		DRM_INFO("Error cache is full. "
-		    "No more asynchronous error will be recorded.\n");
-		write_unlock(&zdev->attr_rwlock);
-		return -ENOSPC;
-	}
-
-	zer->ze_err[zer->ze_num].zer_err_code = err_code;
-	zer->ze_err[zer->ze_num].zer_ts = timestamp;
-	zer->ze_num++;
-
-	write_unlock(&zdev->attr_rwlock);
-
-	return 0;
-}
-
 static void
 zocl_clear_all_error_record(struct drm_zocl_dev *zdev)
 {
@@ -67,15 +31,62 @@ zocl_clear_all_error_record(struct drm_zocl_dev *zdev)
 }
 
 int
+zocl_insert_error_record(struct drm_zocl_dev *zdev, xrtErrorCode err_code)
+{
+	struct zocl_error *zer = &zdev->zdev_error;
+	u64 timestamp = ktime_to_ns(ktime_get_real());
+	enum xrtErrorClass class;
+	int i;
+
+	write_lock(&zdev->attr_rwlock);
+
+	if (zer->ze_num == zer->ze_cap) {
+		DRM_INFO("Error cache is full. "
+		    "No more asynchronous error will be recorded.\n");
+		write_unlock(&zdev->attr_rwlock);
+		return -ENOSPC;
+	}
+
+	/*
+	 * We only record one error for each error class.
+	 * If we can find existing error class, replace it;
+	 * Otherwise, record the error at the end.
+	 */
+	class = XRT_ERROR_CLASS(err_code);
+	for (i = 0; i < zer->ze_num; i++) {
+		if (class == XRT_ERROR_CLASS(zer->ze_err[i].zer_err_code))
+			break;
+	}
+
+	zer->ze_err[i].zer_err_code = err_code;
+	zer->ze_err[i].zer_ts = timestamp;
+	if (i == zer->ze_num)
+		zer->ze_num++;
+
+	write_unlock(&zdev->attr_rwlock);
+
+	return 0;
+}
+
+int
 zocl_inject_error(struct drm_zocl_dev *zdev, void *data,
 		struct drm_file *filp)
 {
 	struct drm_zocl_error_inject *args = data;
+	xrtErrorCode err_code;
 	int ret = 0;
 
 	switch (args->err_ops) {
 	case ZOCL_ERROR_OP_INJECT:
-		ret = zocl_insert_error_record(zdev, args);
+		err_code = XRT_ERROR_CODE_BUILD(
+		    args->err_num,
+		    args->err_driver,
+		    args->err_severity,
+		    args->err_module,
+		    args->err_class
+		    );
+
+		ret = zocl_insert_error_record(zdev, err_code);
 		break;
 
 	case ZOCL_ERROR_OP_CLEAR_ALL:
