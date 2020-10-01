@@ -20,6 +20,8 @@
 #ifndef __AIESIM__
 #include "core/edge/user/shim.h"
 #include "core/common/message.h"
+#include "plugin/xdp/aie_trace.h"
+#include "plugin/xdp/aie_profile.h"
 #endif
 #include "core/common/error.h"
 
@@ -793,6 +795,12 @@ xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, con
 
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
+
+#ifndef __AIESIM__
+  xdpaie::finish_flush_aie_device(handle) ;
+  xdpaiectr::end_aie_ctr_poll(handle);
+#endif
+
   auto aieArray = drv->getAieArray();
   return aieArray->start_profiling(option, value_or_empty(port1Name), value_or_empty(port2Name), value);
 }
@@ -805,6 +813,12 @@ xclReadProfiling(xclDeviceHandle handle, int phdl)
 
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
+
+#ifndef __AIESIM__
+  xdpaie::finish_flush_aie_device(handle) ;
+  xdpaiectr::end_aie_ctr_poll(handle);
+#endif
+
   auto aieArray = drv->getAieArray();
   return aieArray->read_profiling(phdl);
 }
@@ -817,6 +831,12 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
 
   if (!drv->isAieRegistered())
     throw xrt_core::error(-EINVAL, "No AIE presented");
+
+#ifndef __AIESIM__
+  xdpaie::finish_flush_aie_device(handle) ;
+  xdpaiectr::end_aie_ctr_poll(handle);
+#endif
+
   auto aieArray = drv->getAieArray();
   return aieArray->stop_profiling(phdl);
 }
