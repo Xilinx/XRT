@@ -26,6 +26,8 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info_database.h"
 
+#include "core/common/time.h"
+
 namespace xdp {
 
   VPRunSummaryWriter::VPRunSummaryWriter(const char* filename) :
@@ -64,9 +66,20 @@ namespace xdp {
     {
       boost::property_tree::ptree ptSchema ;
       ptSchema.put("major", "1") ;
-      ptSchema.put("minor", "0") ;
+      ptSchema.put("minor", "1") ;
       ptSchema.put("patch", "0") ; 
       ptRunSummary.add_child("schema_version", ptSchema) ;
+    }
+
+    {
+      auto pid = (db->getStaticInfo()).getPid() ;
+      auto timestamp = xrt_core::time_ns() ;
+
+      boost::property_tree::ptree ptGeneration ;
+      ptGeneration.put("source", "vp") ;
+      ptGeneration.put("PID", std::to_string(pid)) ;
+      ptGeneration.put("timestamp", std::to_string(timestamp)) ;
+      ptRunSummary.add_child("generation", ptGeneration) ;
     }
 
     boost::property_tree::ptree ptFiles ;
