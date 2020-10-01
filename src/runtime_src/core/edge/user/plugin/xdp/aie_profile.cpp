@@ -34,7 +34,6 @@ namespace xdpaieprofile {
 
   void register_aie_callbacks(void* handle)
   {
-#ifdef XRT_CORE_BUILD_WITH_DL
     typedef void (*ftype)(void*) ;
 
     update_aie_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIECtrDevice")) ;
@@ -42,7 +41,6 @@ namespace xdpaieprofile {
 
     end_aie_ctr_poll_cb = (ftype)(xrt_core::dlsym(handle, "endAIECtrPoll")) ;
     if (xrt_core::dlerror() != NULL) end_aie_ctr_poll_cb = nullptr ;
-#endif
   }
 
   void warning_aie_callbacks()
