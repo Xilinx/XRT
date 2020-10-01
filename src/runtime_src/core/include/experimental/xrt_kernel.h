@@ -598,8 +598,8 @@ xrtKernelArgGroupId(xrtKernelHandle kernelHandle, int argno);
  * @argno:  Index of kernel argument
  * Return:  The kernel register offset of the argument with specified index
  *
- * Use with ``read_register()`` and ``write_register()`` if manually
- * reading or writing kernel registers for explicit arguments.
+ * Use with ``xrtKernelReadRegister()`` and ``xrtKernelWriteRegister()`` 
+ * if manually reading or writing kernel registers for explicit arguments.
  */
 XCL_DRIVER_DLLESPEC
 uint32_t
