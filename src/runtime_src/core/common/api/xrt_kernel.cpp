@@ -853,7 +853,7 @@ class kernel_impl
       throw std::runtime_error("Cannot read or write kernel with multiple compute units");
     auto& ipctx = ipctxs.back();
     auto mode = ipctx->get_access_mode();
-    if (!force && mode != ip_context::access_mode::exclusive)
+    if (!force && mode != ip_context::access_mode::exclusive && !xrt_core::config::get_rw_shared())
       throw std::runtime_error("Cannot read or write kernel with shared access");
 
     if ((offset + sizeof(uint32_t)) > ipctx->get_size())

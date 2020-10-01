@@ -83,11 +83,11 @@ def main():
     if "qdma" in str(dev) or "qep" in str(dev):
        threshold = 30000
 
-    if "u2x4" in str(dev) or "U2x4" in str(dev):
-       threshold = 10000
-
     if "gen3x4" in str(dev):
        threshold = 20000
+
+    if "u2x4" in str(dev) or "U2x4" in str(dev) or "u2_gen3x4" in str(dev):
+       threshold = 10000
 
     if "_u25_" in str(dev): # so that it doesn't set theshold for u250
        threshold = 9000

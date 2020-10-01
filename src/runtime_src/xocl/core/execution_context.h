@@ -127,6 +127,19 @@ private:
   cu_control_type() const;
 
   /**
+   * Fill the Fast Adapter descriptor when 
+   * kernel control type is FAST_ADAPTER
+   */
+  size_t
+  fill_fa_desc(void* data);
+
+  /**
+   * Opcode for command object
+   */
+  ert_cmd_opcode
+  get_opcode() const;
+
+  /**
    * Update workgroup accounting.
    */
   void

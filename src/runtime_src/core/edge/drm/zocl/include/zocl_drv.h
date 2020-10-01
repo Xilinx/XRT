@@ -223,6 +223,7 @@ int zocl_inject_error(struct drm_zocl_dev *zdev, void *data,
 		struct drm_file *filp);
 int zocl_init_error(struct drm_zocl_dev *zdev);
 void zocl_fini_error(struct drm_zocl_dev *zdev);
+int zocl_insert_error_record(struct drm_zocl_dev *zdev, xrtErrorCode err_code);
 
 /* zocl_kds.c */
 int zocl_init_sched(struct drm_zocl_dev *zdev);

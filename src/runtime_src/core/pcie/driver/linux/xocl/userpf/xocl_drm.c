@@ -812,21 +812,6 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 	err = 0;
 
-	drm_p->cma_bank_idx = -1;
-	for (i = 0; i < topo->m_count; i++) {
-		mem_data = &topo->m_mem_data[i];
-		ddr_bank_size = mem_data->m_size * 1024;
-
-		xocl_info(drm_p->ddev->dev, "  Memory Bank: %s", mem_data->m_tag);
-		xocl_info(drm_p->ddev->dev, "  Base Address:0x%llx",
-			mem_data->m_base_address);
-		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
-		xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
-		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
-		if (IS_HOST_MEM(mem_data->m_tag))
-			drm_p->cma_bank_idx = i;
-	}
-
 	/* Initialize memory stats based on Group topology */
 	err = XOCL_GET_GROUP_TOPOLOGY(drm_p->xdev, group_topo);
 	if (err) {
@@ -851,7 +836,19 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		goto done;
 	}
 
+	drm_p->cma_bank_idx = -1;
 	for (i = 0; i < group_topo->m_count; i++) {
+		mem_data = &group_topo->m_mem_data[i];
+		ddr_bank_size = mem_data->m_size * 1024;
+		xocl_info(drm_p->ddev->dev, "  Memory Bank: %s", mem_data->m_tag);
+		xocl_info(drm_p->ddev->dev, "  Base Address:0x%llx",
+			mem_data->m_base_address);
+		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
+		xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
+		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
+		if (IS_HOST_MEM(mem_data->m_tag))
+			drm_p->cma_bank_idx = i;
+
 		if (!group_topo->m_mem_data[i].m_used)
 			continue;
 
