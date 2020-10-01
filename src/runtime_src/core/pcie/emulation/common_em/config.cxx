@@ -16,6 +16,7 @@
 
 #include "config.h"
 #include "core/common/config_reader.h"
+#include "core/common/xclbin_parser.h"
 #include <errno.h>
 #include <unistd.h>
 #include <string>
@@ -978,6 +979,63 @@ namespace xclemulation{
         std::cout << warnMsg << std::endl;
       }
     }
+  }
+
+  int getIPName2Index(const char *name, xclBin* header)
+  {
+    std::string errmsg;
+    const uint64_t bad_addr = 0xffffffffffffffff;
+    char* ipLayoutbuf = nullptr;
+    size_t bufsize = 0;
+
+    if (!header) {
+      errmsg = "ERROR: getIPName2Index - Invalid xclbin content";
+      std::cout << errmsg << std::endl;
+      return -EINVAL;
+    }
+
+    char *bitstreambin = reinterpret_cast<char*> (header);
+    auto top = reinterpret_cast<const axlf*>(header);
+    if (auto sec = xclbin::get_axlf_section(top, IP_LAYOUT)) {
+      bufsize = sec->m_sectionSize;
+      ipLayoutbuf = new char[bufsize];
+      memcpy(ipLayoutbuf, bitstreambin + sec->m_sectionOffset, bufsize);
+    }
+
+    if (!ipLayoutbuf)
+    {
+      errmsg = "ERROR: getIPName2Index - can't load ip_layout section";
+      std::cout << errmsg << std::endl;
+      return -EINVAL;
+    }
+
+    const ip_layout* map = (reinterpret_cast<const ::ip_layout*>(ipLayoutbuf));
+    if (map->m_count < 0) {
+      errmsg = "ERROR: getIPName2Index - invalid ip_layout section content";
+      std::cout << errmsg << std::endl;
+      return -EINVAL;
+    }
+
+    uint64_t addr = bad_addr;
+    int i;
+    for (i = 0; i < map->m_count; i++) {
+      if (strncmp((char *)map->m_ip_data[i].m_name, name,
+        sizeof(map->m_ip_data[i].m_name)) == 0) {
+        addr = map->m_ip_data[i].m_base_address;
+        break;
+      }
+    }
+    if (i == map->m_count)
+      return -ENOENT;
+    if (addr == bad_addr)
+      return -EINVAL;
+
+    auto cus = xrt_core::xclbin::get_cus(map);
+    auto itr = std::find(cus.begin(), cus.end(), addr);
+    if (itr == cus.end())
+      return -ENOENT;
+
+    return std::distance(cus.begin(), itr);
   }
 
 }
