@@ -200,6 +200,9 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
 	if (prepare) {
+		if (kds_mode)
+			xocl_kds_reset(xdev, xclbin_id);
+
 		/* clean up mem topology */
 		if (xdev->core.drm) {
 			xocl_drm_fini(xdev->core.drm);

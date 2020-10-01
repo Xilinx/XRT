@@ -1816,6 +1816,8 @@ struct xocl_p2p_funcs {
 			struct resource *res);
 	int (*conf_status)(struct platform_device *pdev, bool *changed);
 	int (*refresh_rbar)(struct platform_device *pdev);
+	int (*get_bar_paddr)(struct platform_device *pdev, ulong bank_addr,
+			     ulong bank_size, ulong *bar_paddr);
 };
 #define	P2P_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_P2P).pldev
 #define	P2P_OPS(xdev)				\
@@ -1851,6 +1853,9 @@ struct xocl_p2p_funcs {
 #define xocl_p2p_refresh_rbar(xdev)				\
 	(P2P_CB(xdev) ?					\
 	 P2P_OPS(xdev)->refresh_rbar(P2P_DEV(xdev)) : -ENODEV)
+#define xocl_p2p_get_bar_paddr(xdev, ba, bs, pa)				\
+	(P2P_CB(xdev) ?					\
+	 P2P_OPS(xdev)->get_bar_paddr(P2P_DEV(xdev), ba, bs, pa) : -ENODEV)
 
 /* Each P2P chunk we set up must be at least 256MB */
 #define XOCL_P2P_CHUNK_SHIFT		28

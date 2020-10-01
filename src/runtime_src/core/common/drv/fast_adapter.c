@@ -96,8 +96,10 @@ static void cu_fa_start(void *core)
 		return;
 
 	/* The MSW of descriptor is fixed */
-	if (desc_msw != cu_fa->desc_msw)
+	if (desc_msw != cu_fa->desc_msw) {
 		cu_write32(cu_fa, MSWR, desc_msw);
+		cu_fa->desc_msw = desc_msw;
+	}
 
 	/* Write LSW would kick off CU */
 	cu_write32(cu_fa, LSWR, cu_fa->head_slot);
