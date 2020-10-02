@@ -124,9 +124,7 @@ Buffers are primarily used to transfer the data between the host and the device.
 XRT APIs provides API for
    
       - ``xrtBOAlloc``: Allocates a buffer object 4K aligned, the API must be called with appropriate flags. 
-      - ``xrtBOAllocUserPtr``: Allocates a buffer object using pointer (aligned to 4K boundary) provided by the user. 
-      
-              - If the user-provided pointer is not aligned to 4K boundary, XRT internally copies the data to align it at 4K boundary. 
+      - ``xrtBOAllocUserPtr``: Allocates a buffer object using pointer provided by the user. The user pointer must be aligned to 4K boundary. 
       - ``xrtBOFree``: Deallocates the allocated buffer. 
 
 .. code:: c
@@ -474,9 +472,9 @@ The API ``xrtPLKernelOpen`` opens a kernel's CU in a shared mode so that the CU 
      
            xrtKernelHandle kernel = xrtPLKernelOpenExclusive(device, xclbin_uuid, "name");
 
-**C++**: In C++, ``xrt::kernel`` constructor accepts an addition ``enum`` argument to open the kernel in exclusive mode. The enumerator ``xrt::kernel::cu_access_mode`` has two possible values
+**C++**: In C++, ``xrt::kernel`` constructor can be called with an additional ``enum class`` argument to access the kernel in exclusive mode. The enumerator values are: 
 
-     - ``xrt::kernel::cu_access_mode::shared`` (default argument of xrt::kernel constructor)
+     - ``xrt::kernel::cu_access_mode::shared`` (default ``xrt::kernel`` constructor argument)
      - ``xrt::kernel::cu_access_mode::exclusive`` 
 
 .. code:: c++
