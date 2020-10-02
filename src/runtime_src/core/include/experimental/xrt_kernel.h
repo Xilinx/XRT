@@ -442,6 +442,21 @@ class kernel
   group_id(int argno) const;
 
   /**
+   * offset() - Get the offset of kernel argument
+   *
+   * @param argno
+   *  The argument index
+   * @return
+   *  The kernel register offset of the argument with specified index
+   *
+   * Use with ``read_register()`` and ``write_register()`` if manually
+   * reading or writing kernel registers for explicit arguments. 
+   */
+  XCL_DRIVER_DLLESPEC
+  uint32_t
+  offset(int argno) const;
+
+  /**
    * write() - Write to the address range of a kernel
    *
    * @param offset
@@ -575,6 +590,20 @@ xrtKernelClose(xrtKernelHandle kernelHandle);
 XCL_DRIVER_DLLESPEC
 int
 xrtKernelArgGroupId(xrtKernelHandle kernelHandle, int argno);
+
+/**
+ * xrtKernelArgOffset() - Get the offset of kernel argument
+ *
+ * @khdl:   Handle to kernel previously opened with xrtKernelOpen
+ * @argno:  Index of kernel argument
+ * Return:  The kernel register offset of the argument with specified index
+ *
+ * Use with ``xrtKernelReadRegister()`` and ``xrtKernelWriteRegister()`` 
+ * if manually reading or writing kernel registers for explicit arguments.
+ */
+XCL_DRIVER_DLLESPEC
+uint32_t
+xrtKernelArgOffset(xrtKernelHandle khdl, int argno);
 
 /**
  * xrtKernelReadRegister() - Read data from kernel address range
