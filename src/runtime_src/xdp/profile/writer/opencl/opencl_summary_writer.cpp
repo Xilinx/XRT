@@ -281,7 +281,7 @@ namespace xdp {
 	 << "Total Time (ms)"   << ","
 	 << "Minimum Time (ms)" << ","
 	 << "Average Time (ms)" << ","
-	 << "Maximum Time (ms)" << std::endl ;
+	 << "Maximum Time (ms)" << "," << std::endl ;
     
     // For each function call, across all of the threads, 
     //  consolidate all the information into what we need
@@ -333,7 +333,8 @@ namespace xdp {
 	   << (std::get<1>(row.second)/1e06) << ","         // Total time
 	   << (std::get<2>(row.second)/1e06) << ","         // Minimum time
 	   << (averageTime/1e06)             << ","         // Average time
-	   << (std::get<3>(row.second)/1e06) << std::endl ; // Maximum time
+	   << (std::get<3>(row.second)/1e06) << "," // Maximum time
+	   << std::endl ;
     }
 
   }
@@ -354,7 +355,8 @@ namespace xdp {
 	 << "Total Time (ms)"    << ","
 	 << "Minimum Time (ms)"  << ","
 	 << "Average Time (ms)"  << ","
-	 << "Maximum Time (ms)"  << std::endl ;
+	 << "Maximum Time (ms)"  << "," 
+	 << std::endl ;
 
     // We can get kernel executions from purely host information
     std::map<std::string, TimeStatistics> kernelExecutions = 
@@ -367,7 +369,8 @@ namespace xdp {
 	   << ((execution.second).totalTime / 1e06)   << ","
 	   << ((execution.second).minTime / 1e06)     << ","
 	   << ((execution.second).averageTime / 1e06) << ","
-	   << ((execution.second).maxTime / 1e06)     << std::endl ;
+	   << ((execution.second).maxTime / 1e06)     << ","
+	   << std::endl ;
     }
   }
 
@@ -390,7 +393,8 @@ namespace xdp {
 	 << "Minimum Time (ms)"          << ","
 	 << "Average Time (ms)"          << ","
 	 << "Maximum Time (ms)"          << ","
-	 << "Clock Frequency (MHz)"      << std::endl ;
+	 << "Clock Frequency (MHz)"      << "," 
+	 << std::endl ;
 
     std::map<std::tuple<std::string, std::string, std::string>,
 	     TimeStatistics> cuStats = 
@@ -430,7 +434,8 @@ namespace xdp {
 	   << (minTime / 1e06)                    << ","
 	   << (averageTime / 1e06)                << ","
 	   << (maxTime / 1e06)                    << ","
-	   << 300                                 << std::endl ; // TODO?
+	   << 300                                 << "," 
+	   << std::endl ; // TODO?
     }
 
   }
@@ -459,7 +464,8 @@ namespace xdp {
 	 << "Minimum Time (ms)"          << ","
 	 << "Average Time (ms)"          << ","
 	 << "Maximum Time (ms)"          << ","
-	 << "Clock Frequency (MHz)"      << std::endl ;
+	 << "Clock Frequency (MHz)"      << "," 
+	 << std::endl ;
 
     // The static portion of this output has to come from the
     //  static database.  The counter portion has to come from the
@@ -515,7 +521,8 @@ namespace xdp {
 	       << (minTime / 1e06) << ","
 	       << (averageTime /1e06) << ","
 	       << (maxTime / 1e06) << "," 
-	       << (device->clockRateMHz) << std::endl ;
+	       << (device->clockRateMHz) << ","
+	       << std::endl ;
 	}
       }
     }    
@@ -571,7 +578,8 @@ namespace xdp {
 	 << "Average Bandwidth Utilization (%)" << ","
 	 << "Average Buffer Size (KB)"          << ","
 	 << "Total Time (ms)"                   << ","
-	 << "Average Time (ms)"                 << std::endl ;
+	 << "Average Time (ms)"                 << "," 
+	 << std::endl ;
 
     std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostReads =
       (db->getStats()).getHostReads() ;
@@ -592,7 +600,7 @@ namespace xdp {
 	     << "N/A" << ","
 	     << ((double)((read.second).averageSize) / 1000.0) << ","
 	     << "N/A" << ","
-	     << "N/A" << std::endl ;
+	     << "N/A" << "," << std::endl ;
       }
       else
       {
@@ -609,7 +617,7 @@ namespace xdp {
 	     << aveBWUtil << ","
 	     << ((double)((read.second).averageSize) / 1000.0) << ","
 	     << (read.second).totalTime << ","
-	     << (read.second).averageTime << std::endl ;
+	     << (read.second).averageTime << "," << std::endl ;
       }
     }
 
@@ -628,7 +636,7 @@ namespace xdp {
 	     << "N/A" << ","
 	     << ((double)((write.second).averageSize) / 1000.0) << ","
 	     << "N/A" << ","
-	     << "N/A" << std::endl ;
+	     << "N/A" << "," << std::endl ;
       }
       else
       {
@@ -645,7 +653,7 @@ namespace xdp {
 	     << aveBWUtil << ","
 	     << ((double)((write.second).averageSize) / 1000.0) << ","
 	     << (write.second).totalTime << ","
-	     << (write.second).averageTime << std::endl ;
+	     << (write.second).averageTime << "," << std::endl ;
       }
     }
   }
@@ -665,7 +673,8 @@ namespace xdp {
 	 << "Transfer Rate (MB/s)"              << ","
 	 << "Average Bandwidth Utilization (%)" << ","
 	 << "Average Size (KB)"                 << ","
-	 << "Average Latency (ns)"              << std::endl ;
+	 << "Average Latency (ns)"              << "," 
+	 << std::endl ;
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
@@ -787,7 +796,8 @@ namespace xdp {
 	 << "Average Size (KB)"       << ","
 	 << "Link Utilization (%)"    << ","
 	 << "Link Starve (%)"         << ","
-	 << "Link Stall (%)"          << std::endl ;
+	 << "Link Stall (%)"          << "," 
+	 << std::endl ;
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
@@ -854,7 +864,7 @@ namespace xdp {
 	       << (values.StrDataBytes[ASMIndex] / numTranx) << ","
 	       << linkUtil << "," 
 	       << (values.StrStarveCycles[ASMIndex]) << ","
-	       << (values.StrStallCycles[ASMIndex])
+	       << (values.StrStallCycles[ASMIndex]) << ","
 	       << std::endl ;
 
 	  ++ASMIndex ;
@@ -876,7 +886,8 @@ namespace xdp {
 	 << "Total Data Transfer (MB)" << ","
 	 << "Total Time (ms)"          << ","
 	 << "Average Size (KB)"        << ","
-	 << "Average Latency (ns)"     << std::endl ;
+	 << "Average Latency (ns)"     << "," 
+	 << std::endl ;
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
@@ -925,11 +936,11 @@ namespace xdp {
 	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
-	      fout << "N/A" << std::endl ;
+	      fout << "N/A" << "," << std::endl ;
 	    }
 	    else
 	    {
-	      fout << ((1000.0 * values.WriteLatency[AIMIndex]) / device->clockRateMHz) / (values.WriteTranx[AIMIndex]) << std::endl ;
+	      fout << ((1000.0 * values.WriteLatency[AIMIndex]) / device->clockRateMHz) / (values.WriteTranx[AIMIndex]) << "," << std::endl ;
 	    }
 	  }
 	  if (values.ReadTranx[AIMIndex] > 0)
@@ -965,11 +976,11 @@ namespace xdp {
 	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
-	      fout << "N/A" << std::endl ;
+	      fout << "N/A" << "," << std::endl ;
 	    }
 	    else
 	    {
-	      fout << ((1000.0 * values.ReadLatency[AIMIndex]) / device->clockRateMHz) / (values.ReadTranx[AIMIndex]) << std::endl ;
+	      fout << ((1000.0 * values.ReadLatency[AIMIndex]) / device->clockRateMHz) / (values.ReadTranx[AIMIndex]) << "," << std::endl ;
 	    }
 	  }
 	}
@@ -995,7 +1006,8 @@ namespace xdp {
 	 << "Total Data Transfer (MB)" << ","
 	 << "Total Time (ms)"          << ","
 	 << "Average Size (KB)"        << ","
-	 << "Average Latency (ns)"     << std::endl ;
+	 << "Average Latency (ns)"     << "," 
+	 << std::endl ;
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
@@ -1044,11 +1056,11 @@ namespace xdp {
 	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
-	      fout << "N/A" << std::endl ;
+	      fout << "N/A" << "," << std::endl ;
 	    }
 	    else
 	    {
-	      fout << ((1000.0 * values.WriteLatency[AIMIndex]) / device->clockRateMHz) / (values.WriteTranx[AIMIndex]) << std::endl ;
+	      fout << ((1000.0 * values.WriteLatency[AIMIndex]) / device->clockRateMHz) / (values.WriteTranx[AIMIndex]) << "," << std::endl ;
 	    }
 	  }
 	  if (values.ReadTranx[AIMIndex] > 0)
@@ -1084,11 +1096,11 @@ namespace xdp {
 	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
-	      fout << "N/A" << std::endl ;
+	      fout << "N/A" << "," << std::endl ;
 	    }
 	    else
 	    {
-	      fout << ((1000.0 * values.ReadLatency[AIMIndex]) / device->clockRateMHz) / (values.ReadTranx[AIMIndex]) << std::endl ;
+	      fout << ((1000.0 * values.ReadLatency[AIMIndex]) / device->clockRateMHz) / (values.ReadTranx[AIMIndex]) << "," << std::endl ;
 	    }
 	  }
 	}
@@ -1111,7 +1123,8 @@ namespace xdp {
 	 << "Total Data Transfer (MB)" << ","
 	 << "Total Time (ms)"          << ","
 	 << "Average Size (KB)"        << ","
-	 << "Average Latency (ns)"     << std::endl ;
+	 << "Average Latency (ns)"     << ","
+	 << std::endl ;
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
@@ -1160,11 +1173,11 @@ namespace xdp {
 	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
-	      fout << "N/A" << std::endl ;
+	      fout << "N/A" << "," << std::endl ;
 	    }
 	    else
 	    {
-	      fout << ((1000.0 * values.WriteLatency[AIMIndex]) / device->clockRateMHz) / (values.WriteTranx[AIMIndex]) << std::endl ;
+	      fout << ((1000.0 * values.WriteLatency[AIMIndex]) / device->clockRateMHz) / (values.WriteTranx[AIMIndex]) << "," << std::endl ;
 	    }
 	  }
 	  if (values.ReadTranx[AIMIndex] > 0)
@@ -1200,11 +1213,11 @@ namespace xdp {
 	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
-	      fout << "N/A" << std::endl ;
+	      fout << "N/A" << "," << std::endl ;
 	    }
 	    else
 	    {
-	      fout << ((1000.0 * values.ReadLatency[AIMIndex]) / device->clockRateMHz) / (values.ReadTranx[AIMIndex]) << std::endl ;
+	      fout << ((1000.0 * values.ReadLatency[AIMIndex]) / device->clockRateMHz) / (values.ReadTranx[AIMIndex]) << "," << std::endl ;
 	    }
 	  }
 	}
@@ -1228,7 +1241,8 @@ namespace xdp {
 	 << "Total Data Transfer (MB)"   << ","
 	 << "Total Write (MB)"           << ","
 	 << "Total Read (MB)"            << ","
-	 << "Total Transfer Rate (MB/s)" << std::endl ;
+	 << "Total Transfer Rate (MB/s)" << "," 
+	 << std::endl ;
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
@@ -1308,7 +1322,7 @@ namespace xdp {
 	   << (double)(totalDataTransfer) / 1.0e6 << ","
 	   << (double)(totalWrite) / 1.0e6 << ","
 	   << (double)(totalRead) / 1.0e6 << ","
-	   << totalTransferRate << std::endl ;
+	   << totalTransferRate << "," << std::endl ;
 
       ++i ;
     }
@@ -1328,7 +1342,7 @@ namespace xdp {
 	 << "Start Time (ms)"         << ","
 	 << "Duration (ms)"           << ","
 	 << "Global Work Size"        << ","
-	 << "Local Work Size"         << std::endl ;
+	 << "Local Work Size"         << "," << std::endl ;
 
     for (std::list<KernelExecutionStats>::iterator iter = (db->getStats()).getTopKernelExecutions().begin() ;
 	 iter != (db->getStats()).getTopKernelExecutions().end() ;
@@ -1342,7 +1356,7 @@ namespace xdp {
 	   << (double)((*iter).startTime) / 1.0e6 << ","
 	   << (double)((*iter).duration) / 1.0e6 << ","
 	   << (*iter).globalWorkSize << ","
-	   << (*iter).localWorkSize << std::endl ;
+	   << (*iter).localWorkSize << "," << std::endl ;
     }
   }
 
@@ -1358,7 +1372,7 @@ namespace xdp {
 	 << "Start Time (ms)"    << ","
 	 << "Duration (ms)"      << ","
 	 << "Buffer Size (KB)"   << ","
-	 << "Writing Rate(MB/s)" << std::endl ;
+	 << "Writing Rate(MB/s)" << "," << std::endl ;
 
     for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostWrites().begin() ;
 	 iter != (db->getStats()).getTopHostWrites().end() ;
@@ -1377,9 +1391,9 @@ namespace xdp {
 	fout << "N/A," ;
       fout << (double)((*iter).size) / 1000.0 << "," ;
       if (getFlowMode() == HW)
-	fout << rate << std::endl ;
+	fout << rate << "," << std::endl ;
       else
-	fout << "N/A" << std::endl ;
+	fout << "N/A" << "," << std::endl ;
     }
   }
 
@@ -1395,7 +1409,7 @@ namespace xdp {
 	 << "Start Time (ms)"    << ","
 	 << "Duration (ms)"      << ","
 	 << "Buffer Size (KB)"   << ","
-	 << "Reading Rate(MB/s)" << std::endl ;
+	 << "Reading Rate(MB/s)" << "," << std::endl ;
 
     for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostReads().begin() ;
 	 iter != (db->getStats()).getTopHostReads().end() ;
@@ -1414,9 +1428,9 @@ namespace xdp {
 	fout << "N/A," ;
       fout << (double)((*iter).size) / 1000.0 << "," ;
       if (getFlowMode() == HW)
-	fout << rate << std::endl ;
+	fout << rate << "," << std::endl ;
       else
-	fout << "N/A" << std::endl ;
+	fout << "N/A" << "," << std::endl ;
     }
   }
 
@@ -1428,7 +1442,7 @@ namespace xdp {
     // Columns
     fout << "Parameter" << ","
 	 << "Element"   << ","
-	 << "Value"     << std::endl ;
+	 << "Value"     << "," << std::endl ;
 
     for (auto rule : guidanceRules)
     {
@@ -1476,7 +1490,7 @@ namespace xdp {
     {
       (t->fout) << "DEVICE_EXEC_TIME" << "," 
 		<< (device->platformInfo).deviceName << ","
-		<< 0 << std::endl ; // TODO - Total device execution time
+		<< 0 << "," << std::endl ; // TODO - Total device execution time
     }
   }
 
@@ -1491,7 +1505,7 @@ namespace xdp {
 	(t->fout) << "CU_CALLS" << ","
 		  << ((cu.second)->getName()) << ","
 		  << 0 // TODO: Execution count
-		  << std::endl ;
+		  << "," << std::endl ;
       }
     }
   }
@@ -1546,7 +1560,7 @@ namespace xdp {
 
     (t->fout) << "MIGRATE_MEM" << ","
 	      << "host" << ","
-	      << numCalls << std::endl ;
+	      << numCalls << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceMemoryUsage(OpenCLSummaryWriter* t)
@@ -1566,7 +1580,7 @@ namespace xdp {
 		  << memName
 		  << ","
 		  << (memory.second)->used
-		  << std::endl ;
+		  << "," << std::endl ;
       }
     }
   }
@@ -1593,7 +1607,7 @@ namespace xdp {
 
     (t->fout) << "PLRAM_DEVICE" << ","
 	      << "all" << ","
-	      << (uint64_t)(hasPLRAM) << std::endl ;
+	      << (uint64_t)(hasPLRAM) << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceHBMDevice(OpenCLSummaryWriter* t)
@@ -1617,7 +1631,7 @@ namespace xdp {
 
     (t->fout) << "HBM_DEVICE" << ","
 	      << "all" << ","
-	      << (uint64_t)(hasHBM) << std::endl ;
+	      << (uint64_t)(hasHBM) << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceKDMADevice(OpenCLSummaryWriter* t)
@@ -1648,7 +1662,7 @@ namespace xdp {
 
     (t->fout) << "KDMA_DEVICE" << ","
 	      << "all" << ","
-	      << (uint64_t)(hasKDMA) << std::endl ;
+	      << (uint64_t)(hasKDMA) << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceP2PDevice(OpenCLSummaryWriter* t)
@@ -1675,7 +1689,7 @@ namespace xdp {
 
     (t->fout) << "P2P_DEVICE" << ","
 	      << "all" << ","
-	      << (uint64_t)(hasP2P) << std::endl ;
+	      << (uint64_t)(hasP2P) << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceP2PHostTransfers(OpenCLSummaryWriter* t)
@@ -1684,7 +1698,7 @@ namespace xdp {
 
     (t->fout) << "P2P_HOST_TRANSFERS" << ","
 	      << "host" << ","
-	      << hostP2PTransfers << std::endl ;
+	      << hostP2PTransfers << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidancePortBitWidth(OpenCLSummaryWriter* t)
@@ -1702,14 +1716,14 @@ namespace xdp {
 	  Monitor* monitor = (t->db->getStaticInfo()).getAIMonitor(device->deviceId, aim) ;
 	  (t->fout) << "PORT_BIT_WIDTH" << ","
 		    << (cu.second)->getName() << "/" << monitor->args << ","
-		    << monitor->portWidth << std::endl ;
+		    << monitor->portWidth << "," << std::endl ;
 	}
 	for (auto asmId : (*asmIds))
 	{
 	  Monitor* monitor = (t->db->getStaticInfo()).getASMonitor(device->deviceId, asmId) ;
 	  (t->fout) << "PORT_BIT_WIDTH" << ","
 		    << (cu.second)->getName() << "/" << monitor->args << ","
-		    << monitor->portWidth << std::endl ;
+		    << monitor->portWidth << "," << std::endl ;
 	}
       }
     }
@@ -1742,7 +1756,7 @@ namespace xdp {
     {
       (t->fout) << "KERNEL_COUNT" << ","
 		<< (kernel.first) << "," 
-		<< (kernel.second) << std::endl ;
+		<< (kernel.second) << "," << std::endl ;
     }
   }
 
@@ -1752,7 +1766,7 @@ namespace xdp {
 
     (t->fout) << "OBJECTS_RELEASED" << ","
 	      << "all" << ","
-	      << numReleased
+	      << numReleased << "," 
 	      << std::endl ;
   }
 
@@ -1762,7 +1776,7 @@ namespace xdp {
 
     (t->fout) << "CU_CONTEXT_EN" << ","
 	      << "all" << ","
-	      << (uint64_t)(isContextEnabled)
+	      << (uint64_t)(isContextEnabled) << ","
 	      << std::endl ;
   }
 
@@ -1782,7 +1796,7 @@ namespace xdp {
     }
 
     (t->fout) << "TRACE_MEMORY" << ","
-	      << memType << std::endl ;
+	      << memType << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceMaxParallelKernelEnqueues(OpenCLSummaryWriter* t)
@@ -1799,7 +1813,7 @@ namespace xdp {
 
 	(t->fout) << "MAX_PARALLEL_KERNEL_ENQUEUES" << ","
 		  << kernelName << ","
-		  << maxExecutions << std::endl ;
+		  << maxExecutions << "," << std::endl ;
       }
     }
   }
@@ -1812,7 +1826,7 @@ namespace xdp {
     {
       (t->fout) << "COMMAND_QUEUE_OOO" << "," 
 		<< "0x" << std::hex << cq.first << "," << std::dec
-		<< cq.second << std::endl ;
+		<< cq.second << "," << std::endl ;
     }
   }
 
@@ -1828,7 +1842,7 @@ namespace xdp {
 	{
 	  (t->fout) << "PLRAM_SIZE_BYTES" << ","
 		    << (memory.second)->name << ","
-		    << (memory.second)->size << std::endl ;
+		    << (memory.second)->size << "," << std::endl ;
 	}
       }
     }
@@ -1869,19 +1883,19 @@ namespace xdp {
       {
 	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
 		  << device->platformInfo.deviceName << "|DDR" << ","
-		  << 64 << std::endl ;
+		  << 64 << "," << std::endl ;
       }
       else
       {
 	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
 		  << device->platformInfo.deviceName << "|HBM" << ","
-		  << 256 << std::endl ;
+		  << 256 << "," << std::endl ;
 	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
 		  << device->platformInfo.deviceName << "|DDR" << ","
-		  << 512 << std::endl ;
+		  << 512 << "," << std::endl ;
 	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
 		  << device->platformInfo.deviceName << "|PLRAM" << ","
-		  << 512 << std::endl ;	  
+		  << 512 << "," << std::endl ;	  
       }
     }
   }
@@ -1890,7 +1904,7 @@ namespace xdp {
   {
     for (auto setting : t->iniSettings)
     {
-      (t->fout) << setting << std::endl ;
+      (t->fout) << setting << "," << std::endl ;
     }
   }
 
@@ -1899,6 +1913,7 @@ namespace xdp {
     (t->fout) << "BUFFER_RD_ACTIVE_TIME_MS" << ","
 	      << "all" << ","
 	      << (double)((t->db->getStats()).getTotalHostReadTime()) / 1e06
+	      << ","
 	      << std::endl ;
   }
 
@@ -1907,6 +1922,7 @@ namespace xdp {
     (t->fout) << "BUFFER_WR_ACTIVE_TIME_MS" << ","
 	      << "all" << ","
 	      << ((double)((t->db->getStats()).getTotalHostWriteTime())) / 1e06
+	      << ","
 	      << std::endl ;
   }
 
@@ -1915,6 +1931,7 @@ namespace xdp {
     (t->fout) << "BUFFER_TX_ACTIVE_TIME_MS" << ","
 	      << "all" << ","
 	      << ((double)(t->db->getStats()).getTotalBufferTxTime()) / 1e06
+	      << ","
 	      << std::endl ;
   }
 
@@ -1926,6 +1943,7 @@ namespace xdp {
     (t->fout) << "APPLICATION_RUN_TIME_MS" << ","
 	      << "all" << ","
 	      << ((double)(endTime - startTime) / 1.0e6)
+	      << ","
 	      << std::endl ;
     
   }
@@ -1940,6 +1958,7 @@ namespace xdp {
     (t->fout) << "TOTAL_KERNEL_RUN_TIME_MS" << ","
 	      << "all" << ","
 	      << (lastKernelEndTime - firstKernelStartTime)
+	      << ","
 	      << std::endl ;
   }
 
