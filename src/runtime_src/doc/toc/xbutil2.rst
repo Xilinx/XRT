@@ -5,6 +5,11 @@ Xbutil Next Generation
 
 The next generation of the ``xbutil`` command-line tool is in preview mode for the 2020.2 release of XRT. This version will replace the current ``xbutil`` in a future release of XRT. This document describes the usage of this new version of the tool. 
 
+To invoke the new version please set the following environment variable
+
+.. code: 
+    export NB_NEW_TOOL=true
+
 
 The xbutil command options are
 
