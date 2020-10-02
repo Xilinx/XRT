@@ -268,6 +268,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_AF);
+		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_AXIGATE);
 		/* request XMC/ERT to stop */
 		xocl_mb_stop(lro);
 		/* If the PCIe board has PS */
@@ -277,6 +278,18 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 #else
 		xclmgmt_reset_pci(lro);
 #endif
+		/*
+		 * For U50 built with 2RP flow. PLP Gate is closed after
+		 * pci hot reset. Any access to PLP IPs will hangs the host.
+		 * E.g. read/write BAR2 (DMA BAR). 
+		 * To be able to open PLP gate after hot reset, the first 64
+		 * bytes of config space has to be restored. 
+		 * In the meanwhile, XRT expects firewall trip instead of
+		 * hard hang if there is an unexpected access of non-exist
+		 * IPs. (E.g. Invalid access from a active VM)
+		 */
+		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_AXIGATE);
+		//xocl_axigate_free(lro, XOCL_SUBDEV_LEVEL_BLD);
 		/* restart XMC/ERT */
 		xocl_mb_reset(lro);
 		/* If the PCIe board has PS. This could take 50 seconds */
@@ -383,19 +396,8 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 	pdev = to_pci_dev(dev);
 
 	if ((XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3)) {
-		/*
-		 * For U50 built with 2RP flow. PLP Gate is closed after
-		 * pci hot reset. Any access to PLP IPs will hangs the host.
-		 * E.g. read/write BAR2 (DMA BAR). 
-		 * To be able to open PLP gate after hot reset, the first 64
-		 * bytes of config space has to be restored. 
-		 * In the meanwhile, XRT expects firewall trip instead of
-		 * hard hang if there is an unexpected access of non-exist
-		 * IPs. (E.g. Invalid access from a active VM)
-		 */
 		xocl_restore_config_space(pdev,
 			lro->saved_config[PCI_FUNC(pdev->devfn)]);
-		xocl_axigate_free(lro, XOCL_SUBDEV_LEVEL_BLD);
 
 		pci_restore_state(pdev);
 		pci_cfg_access_unlock(pdev);
