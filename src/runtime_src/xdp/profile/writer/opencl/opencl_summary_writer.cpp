@@ -421,6 +421,9 @@ namespace xdp {
 	kernelName = kernelName.substr(0, usPosition - 1) ;
       }
 
+      double speedup = (averageTime*execCount)/totalTime ;
+      std::string speedup_string = std::to_string(speedup) + "x" ;
+
       fout << (db->getStaticInfo()).getSoftwareEmulationDeviceName() << ","
 	   << cuName                              << ","
 	   << (cuName.substr(0, cuName.size()-2)) << "," 
@@ -429,7 +432,7 @@ namespace xdp {
 	   << execCount                           << ","
 	   << "No"                                << ","
 	   << 1                                   << "," // TODO?
-	   << ((averageTime*execCount)/totalTime) << ","
+	   << speedup_string                      << ","
 	   << (totalTime / 1e06)                  << ","
 	   << (minTime / 1e06)                    << ","
 	   << (averageTime / 1e06)                << ","
@@ -508,6 +511,10 @@ namespace xdp {
 	  double minTime = (cuCall.second).minTime ;
 	  double maxTime = (cuCall.second).maxTime ;
 
+	  double speedup =
+	    (averageTime*(values.CuExecCount[cuIndex]))/totalTime ;
+	  std::string speedup_string = std::to_string(speedup) + "x" ;
+
 	  fout << (device->platformInfo.deviceName) << "," 
 	       << cuName << ","
 	       << kernelName << ","
@@ -516,7 +523,7 @@ namespace xdp {
 	       << values.CuExecCount[cuIndex] << ","
 	       << dataflowEnabled << ","
 	       << values.CuMaxParallelIter[cuIndex] << ","
-	       << ((averageTime*(values.CuExecCount[cuIndex]))/totalTime) << ","
+	       << speedup_string << ","
 	       << (totalTime / 1e06) << ","
 	       << (minTime / 1e06) << ","
 	       << (averageTime /1e06) << ","
