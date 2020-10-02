@@ -16,6 +16,7 @@
 
 #include <vector>
 #include <string>
+#include <chrono>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -73,12 +74,15 @@ namespace xdp {
 
     {
       auto pid = (db->getStaticInfo()).getPid() ;
-      auto timestamp = xrt_core::time_ns() ;
+      auto timestamp = (std::chrono::system_clock::now()).time_since_epoch() ;
+      auto value =
+	std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
+      uint64_t timeMsec = value.count() ;
 
       boost::property_tree::ptree ptGeneration ;
       ptGeneration.put("source", "vp") ;
       ptGeneration.put("PID", std::to_string(pid)) ;
-      ptGeneration.put("timestamp", std::to_string(timestamp)) ;
+      ptGeneration.put("timestamp", std::to_string(timeMsec)) ;
       ptRunSummary.add_child("generation", ptGeneration) ;
     }
 

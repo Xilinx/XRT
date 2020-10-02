@@ -22,6 +22,7 @@
 #include "xocl/core/time.h"
 #include "xdp/profile/writer/base_profile.h"
 
+#include <chrono>
 #include <iostream>
 #include <stdlib.h>
 #include <boost/property_tree/ptree.hpp>
@@ -161,12 +162,15 @@ void RunSummary::writeContent()
 #else
     auto pid = (getpid()) ;
 #endif
-    auto timestamp = xocl::time_ns() ;
+    auto timestamp = (std::chrono::system_clock::now()).time_since_epoch() ;
+    auto value =
+      std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
+    uint64_t timeMsec = value.count() ;
 
     boost::property_tree::ptree ptGeneration ;
     ptGeneration.put("source", "ocl") ;
     ptGeneration.put("PID", std::to_string(pid)) ;
-    ptGeneration.put("timestamp", std::to_string(timestamp)) ;
+    ptGeneration.put("timestamp", std::to_string(timeMsec)) ;
     ptRunSummary.add_child("generation", ptGeneration) ;
   }
 
