@@ -414,6 +414,12 @@ enum {
 	XOCL_WORK_NUM,
 };
 
+enum {
+	XOCL_ONLINE = 0,
+	XOCL_SHUTDOWN_WITH_RESET = 1,
+	XOCL_SHUTDOWN_WITHOUT_RESET = 2,
+};
+
 struct xocl_work {
 	struct delayed_work	work;
 	int			op;

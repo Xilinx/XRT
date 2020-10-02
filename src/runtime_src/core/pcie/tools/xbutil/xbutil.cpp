@@ -1997,7 +1997,6 @@ int xcldev::xclP2p(int argc, char *argv[])
     int c;
     unsigned index = 0;
     int p2p_enable = -1;
-    bool root = ((getuid() == 0) || (geteuid() == 0));
     bool validate = false;
     const std::string usage("Options: [-d index] --[enable|disable|validate]");
     static struct option long_options[] = {
@@ -2049,10 +2048,9 @@ int xcldev::xclP2p(int argc, char *argv[])
         return -EINVAL;
     }
 
-    if (!root) {
-        std::cout << "ERROR: root privileges required." << std::endl;
-        return -EPERM;
-    }
+    ret = isSudo();
+    if (ret)
+        return ret;
 
     ret = d->setP2p(p2p_enable, force);
     if (ret)
@@ -2076,7 +2074,6 @@ int xcldev::xclCma(int argc, char *argv[])
     unsigned int index = 0;
     int cma_enable = -1;
     uint64_t total_size = 0, unit_sz = 0;
-    bool root = ((getuid() == 0) || (geteuid() == 0));
     const std::string usage("Options: [-d index] --[enable|disable] --size [size M|G]");
     static struct option long_options[] = {
         {"enable", no_argument, 0, xcldev::CMA_ENABLE},
@@ -2145,10 +2142,9 @@ int xcldev::xclCma(int argc, char *argv[])
         return -EINVAL;
     }
 
-    if (!root) {
-        std::cout << "ERROR: root privileges required." << std::endl;
-        return -EPERM;
-    }
+    ret = isSudo();
+    if (ret)
+        return ret;
 
     /* At this moment, we have two way to collect CMA memory chunk
      * 1. Call Kernel API
@@ -2517,7 +2513,6 @@ xcldev::device::iopsTest()
 
 int xcldev::xclScheduler(int argc, char *argv[])
 {
-    bool root = ((getuid() == 0) || (geteuid() == 0));
     static struct option long_opts[] = {
         {"echo", required_argument, 0, 'e'},
         {"kds_schedule", required_argument, 0, 'k'},
@@ -2532,10 +2527,9 @@ int xcldev::xclScheduler(int argc, char *argv[])
     int ert_disable = -1;
     int cu_intr = -1;
 
-    if (!root) {
-        std::cout << "ERROR: root privileges required." << std::endl;
-        return -EPERM;
-    }
+    int ret = isSudo();
+    if (ret)
+        return ret;
 
     while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_idx)) != -1) {
         switch (c) {

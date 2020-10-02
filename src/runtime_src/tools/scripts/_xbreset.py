@@ -24,11 +24,31 @@ import re
 import subprocess
 import time
 
+#In this 'lspci -t' snippet
+#-+-[0000:16]-+-00.0-[17]--+-00.0
+# |           |            \-00.1
+# |           +-01.0-[18]--+-00.0
+# |           |            \-00.1
+#
+#FPGA 17:00.[01] parent is 16.00.0, which has primary bus number 16, and secondary bus number 17
+#FPGA 18:00.[01] parent is 16.01.0, which has primary bus number 16, and secondary bus number 18
+#FPGAs whose parents have identical pcie primary bus number are on same card
+
+#FPGA node and its parent primary bus number mapping
+#eg "0000:17:00.0" "16"
+#   "0000:18:00.0" "16"
 node_bus_mapping = {}
+#FPGA node and its parent node DBDF mapping
+#eg "0000:17:00.0" "0000:16:00.0"
+#   "0000:18:00.0" "0000:16:01.0"
 node_parent_mapping = {}
+#primary bus of pcie bridge and FPGA node mapping
+#eg "16" ["0000:17.00.0", "0000:18:00.0"]
 bus_children = {}
+
 rootDir = "/sys/bus/pci/devices/"
 
+#get all above "node vs bus" mappings of xilinx FPGAs 
 def get_node_bus_mapping():
     subdir = os.listdir(rootDir)
     for subdirName in subdir:
@@ -49,6 +69,7 @@ def get_node_bus_mapping():
                     bus_children[bus] = []
                 bus_children[bus].append(subdirName);
 
+#call 'xbutil reset' to do the real reset
 def run_reset(cmdline):
     #print cmdline
     p1 = subprocess.Popen(["echo", "y"], stdout=subprocess.PIPE)
@@ -56,6 +77,7 @@ def run_reset(cmdline):
     p1.stdout.close()
     p2.communicate(timeout=60)[0]
 
+#do pcie node remove and rescan
 def run(cmdline):
     #print cmdline
     subprocess.call(cmdline, shell=True)
@@ -126,6 +148,11 @@ def main():
                 if line == "y":
                     break
             rm_user = rm[:len(rm)-1] + "1"
+            #steps to do card level reset
+            #1. kill processes running on one card
+            #2. remove nodes of that FPGA
+            #3. call 'xbutil reset' on another FPGA
+            #4. rescan pcie 
             print("shutdown: %s" % rm_user)
             run("echo 2 > " + os.path.join(rootDir, rm_user, "shutdown"))
             print("remove: %s, %s" % (rm_user, rm))
@@ -145,4 +172,5 @@ def main():
     except Exception as e:
         print(e)
 
-main()
+if __name__ == "__main__":
+    main()
