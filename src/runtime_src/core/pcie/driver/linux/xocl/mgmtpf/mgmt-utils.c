@@ -289,7 +289,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		 * IPs. (E.g. Invalid access from a active VM)
 		 */
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_AXIGATE);
-		//xocl_axigate_free(lro, XOCL_SUBDEV_LEVEL_BLD);
+
 		/* restart XMC/ERT */
 		xocl_mb_reset(lro);
 		/* If the PCIe board has PS. This could take 50 seconds */
