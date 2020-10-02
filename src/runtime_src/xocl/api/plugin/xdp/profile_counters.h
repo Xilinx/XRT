@@ -43,7 +43,7 @@ namespace xocl {
     std::function<void (xocl::event*, cl_int, const std::string&)>
       counter_action_write(cl_mem buffer) ;
     std::function<void (xocl::event*, cl_int, const std::string&)>
-      counter_action_migrate(cl_mem buffer, cl_mem_migration_flags flags) ;
+      counter_action_migrate(cl_uint num_mem_objects, const cl_mem* mem_objects, cl_mem_migration_flags flags) ;
     std::function<void (xocl::event*, cl_int, const std::string&)>
       counter_action_ndrange_migrate(cl_event event, cl_kernel kernel);
     void log_cu_start(const xrt::command* cmd, 

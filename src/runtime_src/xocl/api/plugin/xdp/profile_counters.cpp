@@ -331,7 +331,7 @@ namespace xocl {
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
-    counter_action_migrate(cl_mem buffer, cl_mem_migration_flags flags)
+    counter_action_migrate(cl_uint num_mem_objects, const cl_mem* mem_objects, cl_mem_migration_flags flags)
     {
       // Don't do anything for this migration
       if (flags & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED)
@@ -339,11 +339,18 @@ namespace xocl {
 	return [](xocl::event*, cl_int, const std::string&) { } ;
       }
 
+      cl_mem buffer = num_mem_objects > 0 ? mem_objects[0] : nullptr ;
+      size_t totalSize = 0 ;
+      for (auto mem : xocl::get_range(mem_objects, mem_objects+num_mem_objects))
+      {
+	totalSize += xocl::xocl(mem)->get_size() ;
+      }
+
       // Migrate actions could be either a read or a write.
       if (flags & CL_MIGRATE_MEM_OBJECT_HOST)
       {
 	// Read
-	return [buffer](xocl::event* e, cl_int status, const std::string&)
+	return [buffer, totalSize](xocl::event* e, cl_int status, const std::string&)
 	       {
 		 if (!counter_action_read_cb) return ;
 		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
@@ -375,7 +382,7 @@ namespace xocl {
 		   counter_action_read_cb(contextId,
 					  numDevices,
 					  deviceName.c_str(),
-					  xmem->get_size(),
+					  totalSize,
 					  false,
 					  isP2P,
 					  address,
@@ -386,7 +393,7 @@ namespace xocl {
       else
       {
 	// Write
-	return [buffer](xocl::event* e, cl_int status, const std::string&)
+	return [buffer, totalSize](xocl::event* e, cl_int status, const std::string&)
 	       {
 		 if (!counter_action_write_cb) return ;
 		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
@@ -415,7 +422,7 @@ namespace xocl {
 		 {
 		   counter_action_write_cb(contextId,
 					   deviceName.c_str(),
-					   xmem->get_size(),
+					   totalSize,
 					   false,
 					   isP2P,
 					   address,
