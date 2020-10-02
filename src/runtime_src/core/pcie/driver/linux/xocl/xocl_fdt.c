@@ -1658,15 +1658,14 @@ xocl_res_id2name(const struct xocl_iores_map *res_map,
 	return NULL;
 }
 
-void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
+const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
 {
 	int offset = 0;
-	const char *ert_prop = NULL, *fw_ver = NULL;
-	const char *ipname = NULL;
+	const char *ert_prop = NULL, *ipname = NULL, *fw_ver = NULL;
 	bool ert_fw_mem = false;
 
 	if (!blob)
-		return;
+		return NULL;
 
 	for (offset = fdt_next_node(blob, -1, NULL);
 		offset >= 0;
@@ -1683,7 +1682,7 @@ void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
 	}
 	/* Didn't find ert_firmware_mem, just return */
 	if (!ert_fw_mem)
-		return;
+		return NULL;
 
 	for (offset = fdt_first_subnode(blob, offset);
 		offset >= 0;
@@ -1698,5 +1697,5 @@ void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
 	if (fw_ver)
 		xocl_xdev_info(xdev_hdl, "Load embedded scheduler firmware %s", fw_ver);
 
-	return;
+	return fw_ver;
 }

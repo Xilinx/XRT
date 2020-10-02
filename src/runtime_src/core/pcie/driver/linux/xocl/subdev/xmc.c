@@ -4082,7 +4082,7 @@ static bool xmc_has_dynamic_mac(uint32_t *bdinfo_raw, uint32_t bd_info_sz)
 static void xmc_set_dynamic_mac(struct xocl_xmc *xmc, uint32_t *bdinfo_raw,
 	uint32_t bd_info_sz)
 {
-	size_t len;
+	size_t len = 0;
 	const char *iomem;
 	u16 num = 0;
 
