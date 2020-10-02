@@ -1444,6 +1444,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_calib_storage,
 	xocl_init_pmc,
 	xocl_init_icap_controller,
+	xocl_init_pcie_firewall,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1475,6 +1476,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_calib_storage,
 	xocl_fini_pmc,
 	xocl_fini_icap_controller,
+	xocl_fini_pcie_firewall,
 };
 
 static int __init xclmgmt_init(void)
