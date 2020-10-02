@@ -431,7 +431,7 @@ namespace xdp {
 	   << localWorkGroup                      << ","
 	   << execCount                           << ","
 	   << "No"                                << ","
-	   << 1                                   << "," // TODO?
+	   << 0                                   << "," // TODO?
 	   << speedup_string                      << ","
 	   << (totalTime / 1e06)                  << ","
 	   << (minTime / 1e06)                    << ","
