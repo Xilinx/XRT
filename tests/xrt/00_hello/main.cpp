@@ -74,6 +74,21 @@ copy_test(const xrt::device& device, size_t bytes, int32_t grpidx)
     throw std::runtime_error("Value read back from copy bo does not match value written");
 }
 
+static void
+register_test(const xrt::kernel& kernel, int argno)
+{
+  try {
+    (void) argno;
+    // Throws unless Runtime.rw_shared=true
+    // Note, that xclbin must also be loaded with rw_shared=true
+    auto val = kernel.read_register(0x10); 
+    std::cout << "value at 0x10: " << val << "\n";
+  }
+  catch (const std::exception& ex) {
+    std::cout << "Expected failed kernel register read (" << ex.what() << ")\n";
+  }      
+}
+
 int run(int argc, char** argv)
 {
   if (argc < 3) {
@@ -126,6 +141,9 @@ int run(int argc, char** argv)
 
   // Copy through host not 64 byte aligned
   copy_test(device, 40, grpidx);
+
+  // Test of kernel.read_register (expected failure)
+  register_test(kernel, 0);
 
   return 0;
 }

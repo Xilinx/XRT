@@ -179,14 +179,30 @@ public:
    *
    * @param dir
    *  To device or from device
-   * @param size
+   * @param sz
    *  Size of data to synchronize
    * @param offset
    *  Offset within the BO
+   *
+   * Sync specified size bytes of buffer starting at specified offset.
    */
   XCL_DRIVER_DLLESPEC
   void
-  sync(xclBOSyncDirection dir, size_t size, size_t offset);
+  sync(xclBOSyncDirection dir, size_t sz, size_t offset);
+
+  /**
+   * sync() - Synchronize buffer content with device side 
+   *
+   * @param dir
+   *  To device or from device
+   *
+   * Sync entire buffer content in specified direction.
+   */
+  void
+  sync(xclBOSyncDirection dir)
+  {
+    sync(dir, size(), 0);
+  }
 
   /**
    * map() - Map the host side buffer into application
