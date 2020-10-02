@@ -489,6 +489,7 @@ namespace xocl {
       auto device = queue->get_device() ;
 
       cl_mem mem0 = nullptr ;
+      size_t totalSize = 0 ;
 
       // See how many of the arguments will be migrated and mark them
       for (auto& arg : xkernel->get_argument_range())
@@ -504,8 +505,8 @@ namespace xocl {
 		     (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS)))
 	  {
 	    mem0 = mem ;
+	    totalSize += xocl::xocl(mem)->get_size() ;
 	  }
-
 	}
       }
       
@@ -516,7 +517,7 @@ namespace xocl {
 	       } ;
       }
 
-      return [mem0](xocl::event* e, cl_int status, const std::string&) 
+      return [mem0, totalSize](xocl::event* e, cl_int status, const std::string&) 
 	     {
 	       if (!counter_action_write_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
@@ -545,7 +546,7 @@ namespace xocl {
 	       {
 		 counter_action_write_cb(contextId,
 					 deviceName.c_str(),
-					 xmem->get_size(),
+					 totalSize,
 					 false,
 					 isP2P,
 					 address,
