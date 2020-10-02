@@ -471,7 +471,7 @@ namespace xocl {
 		 counter_kernel_execution_cb(kernelName.c_str(), false,
 					     reinterpret_cast<uint64_t>(kernel),
 					     contextId,
-					     reinterpret_cast<uint64_t>(queue),
+					     static_cast<uint64_t>(queue->get_uid()),
 					     deviceName.c_str(),
 					     globalWorkgroupSize.c_str(),
 					     localWorkgroupSize.c_str()) ;

@@ -1358,7 +1358,7 @@ namespace xdp {
       fout << "0x" << std::hex << (*iter).kernelInstanceAddress << "," << std::dec
 	   << (*iter).kernelName << ","
 	   << (*iter).contextId << ","
-	   << "0x" << std::hex << (*iter).commandQueueId << "," << std::dec
+	   << (*iter).commandQueueId << "," 
 	   << (*iter).deviceName << ","
 	   << (double)((*iter).startTime) / 1.0e6 << ","
 	   << (double)((*iter).duration) / 1.0e6 << ","
@@ -1390,7 +1390,7 @@ namespace xdp {
 
       fout << "0x" << std::hex << (*iter).address << "," << std::dec
 	   << (*iter).contextId << ","
-	   << "0x" << std::hex << (*iter).commandQueueId << "," << std::dec
+	   << (*iter).commandQueueId << ","
 	   << (double)((*iter).startTime) / 1.0e6 << "," ;
       if (getFlowMode() == HW)
 	fout << durationMS << "," ;
@@ -1427,7 +1427,7 @@ namespace xdp {
 
       fout << "0x" << std::hex << (*iter).address << "," << std::dec
 	   << (*iter).contextId << ","
-	   << "0x" << std::hex << (*iter).commandQueueId << "," << std::dec
+	   << (*iter).commandQueueId << ","
 	   << (double)((*iter).startTime) / 1.0e6 << "," ;
       if (getFlowMode() == HW)
 	fout << durationMS << "," ;
