@@ -1796,6 +1796,7 @@ namespace xdp {
     }
 
     (t->fout) << "TRACE_MEMORY" << ","
+	      << "all" << ","
 	      << memType << "," << std::endl ;
   }
 
