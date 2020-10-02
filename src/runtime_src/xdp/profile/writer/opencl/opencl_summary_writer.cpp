@@ -1355,7 +1355,7 @@ namespace xdp {
 	 iter != (db->getStats()).getTopKernelExecutions().end() ;
 	 ++iter)
     {
-      fout << "0x" << std::hex << (*iter).kernelInstanceAddress << "," << std::dec
+      fout << (*iter).kernelInstanceAddress << ","
 	   << (*iter).kernelName << ","
 	   << (*iter).contextId << ","
 	   << (*iter).commandQueueId << "," 
@@ -1388,7 +1388,7 @@ namespace xdp {
       double durationMS = (double)((*iter).duration) / 1.0e6 ;
       double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
 
-      fout << "0x" << std::hex << (*iter).address << "," << std::dec
+      fout << (*iter).address << ","
 	   << (*iter).contextId << ","
 	   << (*iter).commandQueueId << ","
 	   << (double)((*iter).startTime) / 1.0e6 << "," ;
@@ -1425,7 +1425,7 @@ namespace xdp {
       double durationMS = (double)((*iter).duration) / 1.0e6 ;
       double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
 
-      fout << "0x" << std::hex << (*iter).address << "," << std::dec
+      fout << (*iter).address << "," 
 	   << (*iter).contextId << ","
 	   << (*iter).commandQueueId << ","
 	   << (double)((*iter).startTime) / 1.0e6 << "," ;
@@ -1833,7 +1833,7 @@ namespace xdp {
     for (auto cq : commandQueueInfo)
     {
       (t->fout) << "COMMAND_QUEUE_OOO" << "," 
-		<< "0x" << std::hex << cq.first << "," << std::dec
+		<< cq.first << "," 
 		<< cq.second << "," << std::endl ;
     }
   }
