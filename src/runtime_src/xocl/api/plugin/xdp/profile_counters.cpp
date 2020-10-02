@@ -273,7 +273,7 @@ namespace xocl {
 					true,
 					isP2P,
 					address,
-					reinterpret_cast<uint64_t>(queue));
+				        static_cast<uint64_t>(queue->get_uid()));
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
@@ -284,7 +284,7 @@ namespace xocl {
 					false,
 					isP2P,
 					address,
-					reinterpret_cast<uint64_t>(queue)) ;
+					static_cast<uint64_t>(queue->get_uid())) ;
 	       }
 	     } ;
     }
@@ -315,7 +315,7 @@ namespace xocl {
 					 true,
 					 isP2P,
 					 address,
-					 reinterpret_cast<uint64_t>(queue));
+					 static_cast<uint64_t>(queue->get_uid()));
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
@@ -325,7 +325,7 @@ namespace xocl {
 					 false,
 					 isP2P,
 					 address,
-					 reinterpret_cast<uint64_t>(queue)) ;
+					 static_cast<uint64_t>(queue->get_uid())) ;
 	       }
 	     } ;
     }
@@ -368,7 +368,7 @@ namespace xocl {
 					  true,
 					  isP2P,
 					  address,
-					  reinterpret_cast<uint64_t>(queue));
+					  static_cast<uint64_t>(queue->get_uid()));
 		 }
 		 else if (status == CL_COMPLETE)
 		 {
@@ -379,7 +379,7 @@ namespace xocl {
 					  false,
 					  isP2P,
 					  address,
-					  reinterpret_cast<uint64_t>(queue)) ;
+					  static_cast<uint64_t>(queue->get_uid())) ;
 		 }
 	       } ;
       }
@@ -409,7 +409,7 @@ namespace xocl {
 					   true,
 					   isP2P,
 					   address,
-					   reinterpret_cast<uint64_t>(queue));
+					   static_cast<uint64_t>(queue->get_uid()));
 		 }
 		 else if (status == CL_COMPLETE)
 		 {
@@ -419,7 +419,7 @@ namespace xocl {
 					   false,
 					   isP2P,
 					   address,
-					   reinterpret_cast<uint64_t>(queue)) ;
+					   static_cast<uint64_t>(queue->get_uid())) ;
 		 }
 	       } ;
       }
@@ -539,7 +539,7 @@ namespace xocl {
 					 true,
 					 isP2P,
 					 address,
-					 reinterpret_cast<uint64_t>(queue));
+					 static_cast<uint64_t>(queue->get_uid()));
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
@@ -549,7 +549,7 @@ namespace xocl {
 					 false,
 					 isP2P,
 					 address,
-					 reinterpret_cast<uint64_t>(queue)) ;
+					 static_cast<uint64_t>(queue->get_uid())) ;
 	       }
 	     } ;
     }
