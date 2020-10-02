@@ -1495,9 +1495,11 @@ namespace xdp {
 
     for (auto device : deviceInfos)
     {
+      std::string deviceName = (device->platformInfo).deviceName ;
+      uint64_t execTime = (t->db->getStats()).getDeviceActiveTime(deviceName) ;
       (t->fout) << "DEVICE_EXEC_TIME" << "," 
-		<< (device->platformInfo).deviceName << ","
-		<< 0 << "," << std::endl ; // TODO - Total device execution time
+		<< deviceName << ","
+		<< execTime  << "," << std::endl ;
     }
   }
 

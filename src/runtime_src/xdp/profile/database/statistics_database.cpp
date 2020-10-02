@@ -160,8 +160,16 @@ namespace xdp {
     return calls ;
   }
 
+  uint64_t VPStatisticsDatabase::getDeviceActiveTime(const std::string& deviceName)
+  {
+    if (deviceActiveTimes.find(deviceName) == deviceActiveTimes.end())
+      return 0 ;
+    std::pair<uint64_t, uint64_t> time = deviceActiveTimes[deviceName] ;
+    return time.second - time.first ;
+  }
+
   void VPStatisticsDatabase::logFunctionCallStart(const std::string& name,
-						   double timestamp)
+						  double timestamp)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
@@ -209,6 +217,23 @@ namespace xdp {
 
     (memoryStats[deviceId]).channels[channelNum].transactionCount++;
     (memoryStats[deviceId]).channels[channelNum].totalByteCount += count;
+  }
+
+  void VPStatisticsDatabase::logDeviceActiveTime(const std::string& deviceName,
+						 uint64_t startTime,
+						 uint64_t endTime)
+  {
+    if (deviceActiveTimes.find(deviceName) == deviceActiveTimes.end())
+    {
+      std::pair<uint64_t, uint64_t> execution =
+	std::make_pair(startTime, endTime) ;
+      deviceActiveTimes[deviceName] = execution ;
+    }
+    else
+    {
+      // Don't change the start time, only update the end time
+      deviceActiveTimes[deviceName].second = endTime ;
+    }
   }
 
   void VPStatisticsDatabase::logKernelExecution(const std::string& kernelName,

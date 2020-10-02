@@ -93,6 +93,7 @@ namespace xdp {
       (storedTimestamps[kernelName]).pop() ;
       auto executionTime = timestamp-startTime;
 
+      (db->getStats()).logDeviceActiveTime(deviceName, startTime, timestamp) ;
       (db->getStats()).logKernelExecution(kernelName,
 					  executionTime,
 					  kernelInstanceAddress,

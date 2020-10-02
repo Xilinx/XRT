@@ -226,6 +226,9 @@ namespace xdp {
     const uint64_t numTopKernelExecutions = 10 ;
     std::list<KernelExecutionStats> topKernelExecutions ;
 
+    // Keep track of the device start and end times
+    std::map<std::string, std::pair<uint64_t, uint64_t>> deviceActiveTimes ;
+
     // Information used by trace parser
     double firstKernelStartTime ;
     double lastKernelEndTime ;
@@ -290,6 +293,7 @@ namespace xdp {
       { return commandQueuesAreOOO ; }
     inline void setCommandQueueOOO(uint64_t cq, bool value)
       { commandQueuesAreOOO[cq] = value ; }
+    uint64_t getDeviceActiveTime(const std::string& deviceName) ;
 
     // Functions specific to compute unit executions
     std::vector<std::pair<std::string, TimeStatistics>> 
@@ -306,6 +310,9 @@ namespace xdp {
 				      size_t byteCount) ;
 
     // OpenCL level statistic logging
+    XDP_EXPORT void logDeviceActiveTime(const std::string& deviceName,
+					uint64_t startTime,
+					uint64_t endTime) ;
     XDP_EXPORT void logKernelExecution(const std::string& kernelName, 
 				       uint64_t executionTime,
 				       uint64_t kernelInstanceAddress,
