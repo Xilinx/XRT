@@ -57,8 +57,12 @@ class kernel;
 class event_impl;
 
 /**
- * class run - xrt::run represents one execution of a kernel
+ * @class run 
  *
+ * @brief 
+ * xrt::run represents one execution of a kernel
+ *
+ * @details
  * The run handle can be explicitly constructed from a kernel object
  * or implicitly constructed from starting a kernel execution.
  *
@@ -347,15 +351,16 @@ private:
     set_arg(++argno, std::forward<Args>(args)...);
   }
 };
+ 
 
 /**
- * class kernel - xrt::kernel object 
+ * @class kernel
  *
  * A kernel object represents a set of instances matching a specified name.
  * The kernel is created by finding matching kernel instances in the 
  * currently loaded xclbin.
  *
- * Most interaction with kernel objects are through run objects created 
+ * Most interaction with kernel objects are through \ref xrt::run objects created 
  * from the kernel object to represent an execution of the kernel
  */
 class kernel_impl;
