@@ -109,7 +109,7 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
   _output << "Devices\n";
   boost::property_tree::ptree& available_devices = _pt.get_child("host.devices", empty_ptree);
 
-  if(available_devices.size() == 0)
+  if(available_devices.empty())
     _output << "  0 devices found" << std::endl;
   
   for(auto& kd : available_devices) {

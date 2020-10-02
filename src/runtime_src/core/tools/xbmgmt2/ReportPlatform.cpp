@@ -195,11 +195,11 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
 }
 
 static const std::string
-shell_status(bool shell_status, bool sc_status, int multiDSA)
+shell_status(bool shell_status, bool sc_status, int num_dsa_shells)
 {
-  if(multiDSA == 0)
+  if(num_dsa_shells == 0)
     return boost::str(boost::format("%-8s : %s\n") % "WARNING" % "No shell is installed on the system.");
-  if(multiDSA > 1)
+  if(num_dsa_shells > 1)
     return boost::str(boost::format("%-8s : %s\n") % "WARNING" % "Multiple shells are installed on the system.");
   if(!shell_status)
     return boost::str(boost::format("%-8s : %s\n") % "WARNING" % "Device is not up-to-date.");
@@ -253,7 +253,7 @@ ReportPlatform::writeReport( const xrt_core::device * device,
   output << "Flashable partitions installed in system\n"; 
   boost::property_tree::ptree& available_shells = pt.get_child("platform.available_shells");
   
-  if(available_shells.size() == 0)
+  if(available_shells.empty())
     output << boost::format("  %-20s\n") % "None" << std::endl;
   
   for(auto& kv : available_shells) {

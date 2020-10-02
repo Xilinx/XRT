@@ -165,7 +165,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
       if (!missingReports.empty()) {
 
         auto dev_pt = XBU::get_available_devices(true);
-        if(dev_pt.size() == 0)
+        if(dev_pt.empty())
           std::cout << "0 devices found" << std::endl;
         else 
           std::cout << "Device list" << std::endl;
