@@ -78,11 +78,11 @@ static void
 register_test(const xrt::kernel& kernel, int argno)
 {
   try {
-    (void) argno;
+    auto offset = kernel.offset(argno);
     // Throws unless Runtime.rw_shared=true
     // Note, that xclbin must also be loaded with rw_shared=true
-    auto val = kernel.read_register(0x10); 
-    std::cout << "value at 0x10: " << val << "\n";
+    auto val = kernel.read_register(offset);
+    std::cout << "value at 0x" << std::hex << offset << " = 0x" << val << std::dec << "\n";
   }
   catch (const std::exception& ex) {
     std::cout << "Expected failed kernel register read (" << ex.what() << ")\n";
