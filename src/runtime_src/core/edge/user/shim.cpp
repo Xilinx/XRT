@@ -17,8 +17,6 @@
  * under the License.
  */
 
-#define ENABLE_HAL_PROFILING
-
 #include "shim.h"
 #include "system_linux.h"
 #include "core/common/message.h"
@@ -117,11 +115,9 @@ shim::
 {
   xclLog(XRT_INFO, "XRT", "%s", __func__);
 
-#ifdef ENABLE_HAL_PROFILING
-//    xdphal::finish_flush_device(handle) ;
-    xdpaie::finish_flush_aie_device(this) ;
-    xdpaiectr::end_aie_ctr_poll(this);
-#endif
+//  xdphal::finish_flush_device(handle) ;
+  xdpaie::finish_flush_aie_device(this) ;
+  xdpaiectr::end_aie_ctr_poll(this);
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -1711,19 +1707,15 @@ int
 xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
 #ifndef __HWEM__
-#ifdef ENABLE_HAL_PROFILING
   LOAD_XCLBIN_CB ;
-#endif
 #endif
 
   try {
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
 #ifndef __HWEM__
-#ifdef ENABLE_HAL_PROFILING
     xdphal::flush_device(handle) ;
     xdpaie::flush_aie_device(handle) ;
-#endif
 #endif
 
 
@@ -1764,11 +1756,10 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     }
 
 #ifndef __HWEM__
-#ifdef ENABLE_HAL_PROFILING
     xdphal::update_device(handle) ;
     xdpaie::update_aie_device(handle);
     xdpaiectr::update_aie_device(handle);
-#endif
+
     START_DEVICE_PROFILING_CB(handle);
 #endif
     return 0;
