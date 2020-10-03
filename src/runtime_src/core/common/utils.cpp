@@ -23,6 +23,7 @@
 #include <string>
 #include <atomic>
 #include <cstdint>
+#include <boost/tokenizer.hpp>
 
 namespace {
 
@@ -183,24 +184,31 @@ unit_convert(size_t size)
 uint16_t
 bdf2index(const std::string& bdfstr, bool _inUserDomain)
 {
-  auto n = std::count(bdfstr.begin(), bdfstr.end(), ':');
+  using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+  boost::char_separator<char> sep(":.");
+  tokenizer tokens(bdfstr, sep);
+  int radix = 16;
+  uint16_t dom = 0, bus = 0, dev = 0, func = 0;
 
-  std::stringstream s(bdfstr);
-  uint16_t dom = 0, b = 0, d = 0, f = 0;
-  char dummy;
-
-  if (n == 2)
-    s >> std::hex >> dom >> dummy;
-  s >> std::hex >> b >> dummy >> d >> dummy >> f;
-
-  if ((n != 1 && n != 2) || s.fail())
-    throw std::runtime_error("Bad BDF string '" + bdfstr + "'");
+	// check if we have 4 tokens: domain, bus, device, function
+	if (std::distance(tokens.begin(), tokens.end()) == 4) {
+    tokenizer::iterator tok_iter = tokens.begin();
+    dom = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
+    tok_iter++;
+    bus = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
+    tok_iter++;
+    dev = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
+    tok_iter++;
+    func = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
+  } else {
+    throw std::runtime_error(boost::format("Invalid BDF '%s'. Please spcify the BDF using 'DDDD:BB:DD.F' format") % bdfstr);
+  }
 
   uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
   for (uint16_t i = 0; i < devices; i++) {
     auto device = _inUserDomain ? get_userpf_device(i) : get_mgmtpf_device(i);
     auto bdf = device_query<query::pcie_bdf>(device);
-    if (b == std::get<0>(bdf) && d == std::get<1>(bdf) && f == std::get<2>(bdf))
+    if (bus == std::get<0>(bdf) && dev == std::get<1>(bdf) && func == std::get<2>(bdf))
       return i;
   }
 
