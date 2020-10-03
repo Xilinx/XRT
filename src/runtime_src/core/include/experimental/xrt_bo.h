@@ -241,13 +241,27 @@ public:
    * @param seek
    *  Offset within the BO
    *
-   * Copy host buffer contents to previously allocated device
-   * memory. ``seek`` specifies how many bytes to skip at the beginning
-   * of the BO before copying-in ``size`` bytes of host buffer.
+   * Copy source data to host buffer of this buffer object.
+   * ``seek`` specifies how many bytes to skip at the beginning
+   * of the BO before copying-in ``size`` bytes to host buffer.
    */
   XCL_DRIVER_DLLESPEC
   void 
   write(const void* src, size_t size, size_t seek);
+
+  /**
+   * write() - Copy-in user data to host backing storage of BO
+   *
+   * @param src
+   *  Source data pointer
+   *
+   * Copy specified source data to host buffer of this buffer object.
+   */
+  void
+  write(const void* src)
+  {
+    write(src, size(), 0);
+  }
 
   /**
    * read() - Copy-out user data from host backing storage of BO
@@ -259,14 +273,29 @@ public:
    * @param skip
    *  Offset within the BO
    *
-   * Copy contents of previously allocated device memory to host
-   * buffer. ``skip`` specifies how many bytes to skip from the
-   * beginning of the BO before copying-out ``size`` bytes of device
+   * Copy content of host buffer of this buffer object to specified
+   * destination.  ``skip`` specifies how many bytes to skip from the
+   * beginning of the BO before copying-out ``size`` bytes of host
    * buffer.
    */
   XCL_DRIVER_DLLESPEC
   void
   read(void* dst, size_t size, size_t skip);
+
+  /**
+   * read() - Copy-out user data from host backing storage of BO
+   *
+   * @param dst
+   *  Destination data pointer
+   *
+   * Copy content of host buffer of this buffer object to specified
+   * destination.
+   */
+  void
+  read(void* dst)
+  {
+    read(dst, size(), 0);
+  }
 
   /**
    * copy() - Deep copy BO content from another buffer
@@ -280,12 +309,25 @@ public:
    * @param dst_offset
    *  Offset into this buffer to copy to
    *
-   * A copy size equal to 0 indicates copying complete src bo
-   * to this bo.
+   * Throws if copy size is 0 or sz + src/dst_offset is out of bounds.
    */
   XCL_DRIVER_DLLESPEC
   void    
-  copy(const bo& src, size_t sz=0, size_t src_offset=0, size_t dst_offset=0);
+  copy(const bo& src, size_t sz, size_t src_offset=0, size_t dst_offset=0);
+
+  /**
+   * copy() - Deep copy BO content from another buffer
+   *
+   * @param src
+   *  Source BO to copy from
+   *
+   * Copy full content of specified src buffer object to this buffer object
+   */
+  void
+  copy(const bo& src)
+  {
+    copy(src, src.size());
+  }
 
 public:
   /// @cond
@@ -475,8 +517,7 @@ xrtBORead(xrtBufferHandle bhdl, void* dst, size_t size, size_t skip);
  * @src_offset:   Offset into src buffer to copy from
  * Return:        0 on success or appropriate error number
  *
- * A copy size equal to 0 indicates copying complete src bo
- * to this bo.
+ * It is an error if sz is 0 bytes or sz + src/dst_offset is out of bounds.
  */
 XCL_DRIVER_DLLESPEC
 int
