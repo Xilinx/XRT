@@ -188,12 +188,12 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
   boost::char_separator<char> sep(":.");
   tokenizer tokens(bdfstr, sep);
   int radix = 16;
-  uint16_t dom = 0, bus = 0, dev = 0, func = 0;
+  uint16_t bus = 0, dev = 0, func = 0;
 
 	// check if we have 4 tokens: domain, bus, device, function
 	if (std::distance(tokens.begin(), tokens.end()) == 4) {
     tokenizer::iterator tok_iter = tokens.begin();
-    dom = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
+    //dom = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
     tok_iter++;
     bus = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
     tok_iter++;
@@ -201,7 +201,7 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
     tok_iter++;
     func = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
   } else {
-    throw std::runtime_error(boost::format("Invalid BDF '%s'. Please spcify the BDF using 'DDDD:BB:DD.F' format") % bdfstr);
+    throw std::runtime_error(boost::str(boost::format("Invalid BDF '%s'. Please spcify the BDF using 'DDDD:BB:DD.F' format") % bdfstr));
   }
 
   uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
