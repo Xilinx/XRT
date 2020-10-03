@@ -28,6 +28,9 @@ Kernel APIs
    :project: XRT
    :members:
 
+.. doxygenclass:: xrt::run
+   :project: XRT
+   :members:
 
 XRT Native Library C API
 ************************
