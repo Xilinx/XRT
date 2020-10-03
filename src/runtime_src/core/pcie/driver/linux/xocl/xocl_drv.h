@@ -2032,7 +2032,7 @@ int xocl_fdt_setprop(xdev_handle_t xdev_hdl, void *blob, int off,
 		     const char *name, const void *val, int size);
 const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 			     char *name, int *lenp);
-void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
+const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
 
 /* init functions */
 int __init xocl_init_userpf(void);
