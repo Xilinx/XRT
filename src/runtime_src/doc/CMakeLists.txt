@@ -10,6 +10,7 @@ file(GLOB XRT_DEVICE_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_
 file(GLOB XRT_BO_H         ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_bo.h)
 file(GLOB XRT_KERNEL_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_kernel.h)
 file(GLOB XRT_XCLBIN_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h)
+file(GLOB XRT_INI_H        ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ini.h)
 file(GLOB XRT_XRT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/xrt.h)
 file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/ert.h)
 file(GLOB XRT_XMA_H        ${XRT_RUNTIME_SRC_DIR}/../xma/include/xma.h)
@@ -44,6 +45,7 @@ else()
     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_bo.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_kernel.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ini.h
     )
   string(REPLACE ";" " " DOXY_INPUT "${XRT_CPP_APIS}")
   set(DOXYFILE ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
@@ -107,6 +109,12 @@ else ()
     VERBATIM
     )
 
+  add_custom_command(OUTPUT core/xrt_ini.rst
+    DEPENDS ${XRT_INI_H}
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_INI_H} > core/xrt_ini.rst
+    VERBATIM
+    )
+
   add_custom_command(OUTPUT core/xrt.rst
     COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XRT_H} > core/xrt.rst
     DEPENDS ${XRT_XRT_H}
@@ -155,6 +163,7 @@ else ()
     core/xrt_bo.rst
     core/xrt_kernel.rst
     core/xrt_xclbin.rst
+    core/xrt_ini.rst
     core/xrt.rst
     core/ert.rst
     core/xma.rst
