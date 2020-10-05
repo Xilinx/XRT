@@ -200,6 +200,9 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
 	if (prepare) {
+		if (kds_mode)
+			xocl_kds_reset(xdev, xclbin_id);
+
 		/* clean up mem topology */
 		if (xdev->core.drm) {
 			xocl_drm_fini(xdev->core.drm);
@@ -904,6 +907,11 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 		return;
 	}
 
+	/* If fast adapter is present in the xclbin, new kds would
+	 * hold a bo for reserve plram bank.
+	 */
+	xocl_fini_sched(xdev);
+
 	xocl_drvinst_release(xdev, &hdl);
 
 	xocl_queue_destroy(xdev);
@@ -930,8 +938,6 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	pci_disable_device(pdev);
 
 	unmap_bar(xdev);
-
-	xocl_fini_sched(xdev);
 
 	xocl_subdev_fini(xdev);
 	if (xdev->ulp_blob)

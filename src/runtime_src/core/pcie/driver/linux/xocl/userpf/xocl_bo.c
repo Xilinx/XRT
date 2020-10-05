@@ -451,24 +451,23 @@ cleanup:
 	return ERR_PTR(-ENOMEM);
 }
 
-int xocl_create_bo_ioctl(struct drm_device *dev,
-			 void *data,
-			 struct drm_file *filp)
+struct drm_xocl_bo *
+__xocl_create_bo_ioctl(struct drm_device *dev,
+		       struct drm_xocl_create_bo *args)
 {
-	int ret;
 	struct drm_xocl_bo *xobj;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
-	struct drm_xocl_create_bo *args = data;
-	unsigned ddr = 0;
 	unsigned bo_type = xocl_bo_type(args->flags);
 	struct mem_topology *topo = NULL;
+	unsigned ddr = 0;
+	int ret;
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 	if (IS_ERR(xobj)) {
 		DRM_ERROR("object creation failed idx %d, size 0x%llx\n",
 			xocl_bo_ddr_idx(args->flags), args->size);
-		return PTR_ERR(xobj);
+		return xobj;
 	}
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 
@@ -511,7 +510,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 				xobj->p2p_bar_offset, xobj->base.size);
 		else if (xobj->flags & XOCL_DRM_SHMEM)
 			xobj->pages = drm_gem_get_pages(&xobj->base);
-		else if (xobj->flags & XOCL_CMA_MEM){
+		else if (xobj->flags & XOCL_CMA_MEM) {
 			uint64_t start_addr;
 
 			ret = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
@@ -555,6 +554,25 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			}
 		}
 	}
+	return xobj;
+
+out_free:
+	xocl_free_bo(&xobj->base);
+	return ERR_PTR(ret);
+}
+
+int xocl_create_bo_ioctl(struct drm_device *dev,
+			 void *data,
+			 struct drm_file *filp)
+{
+	int ret;
+	struct drm_xocl_bo *xobj;
+	struct drm_xocl_create_bo *args = data;
+
+	xobj = __xocl_create_bo_ioctl(dev, data);
+	if (IS_ERR(xobj))
+		return PTR_ERR(xobj);
+
 	ret = drm_gem_create_mmap_offset(&xobj->base);
 	if (ret < 0)
 		goto out_free;
@@ -728,7 +746,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 		goto out;
 	}
 
-	if (xocl_bo_cma(xobj)) {
+	if (xocl_bo_cma(xobj) || xocl_bo_p2p(xobj)) {
 		if (dir) {
 			dma_sync_single_for_device(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
 				sg->length, DMA_TO_DEVICE);
@@ -1487,8 +1505,7 @@ int xocl_sync_bo_callback_ioctl(struct drm_device *dev,
 		goto out;
 	}
 
-	if (xocl_bo_cma(xobj)) {
-
+	if (xocl_bo_cma(xobj) || xocl_bo_p2p(xobj)) {
 		if (dir) {
 			dma_sync_single_for_device(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
 				sg->length, DMA_TO_DEVICE);

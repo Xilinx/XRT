@@ -1087,6 +1087,43 @@ static int p2p_refresh_rbar(struct platform_device *pdev)
 	return 0;
 }
 
+static int p2p_get_bar_paddr(struct platform_device *pdev, ulong bank_addr,
+			     ulong bank_size, ulong *bar_paddr)
+{
+	struct p2p *p2p = platform_get_drvdata(pdev);
+	ulong bank_off = 0;
+	int ret;
+
+	if (p2p->p2p_bar_idx < 0) {
+		p2p_err(p2p, "can not find p2p bar");
+		return -EINVAL;
+	}
+
+	mutex_lock(&p2p->p2p_lock);
+
+	if (bank_addr == ~0UL && p2p->remapper) {
+		/* do not need to reserve bar space if remapper present */
+		ret = 0;
+		goto  failed;
+	}
+
+	bank_off = p2p_bar_map(p2p, bank_addr, bank_size,
+		XOCL_P2P_CHUNK_SIZE);
+	if (bank_off < 0) {
+		ret = -ENOENT;
+		goto failed;
+	}
+
+	p2p_bar_unmap(p2p, bank_off);
+
+	if (bar_paddr)
+		*bar_paddr = bank_off + p2p->p2p_bar_start;
+
+failed:
+	mutex_unlock(&p2p->p2p_lock);
+	return ret;
+}
+
 struct xocl_p2p_funcs p2p_ops = {
 	.mem_map = p2p_mem_map,
 	.mem_unmap = p2p_mem_unmap,
@@ -1097,6 +1134,7 @@ struct xocl_p2p_funcs p2p_ops = {
 	.release_resource = p2p_release_resource,
 	.conf_status = p2p_conf_status,
 	.refresh_rbar = p2p_refresh_rbar,
+	.get_bar_paddr = p2p_get_bar_paddr,
 };
 
 static ssize_t config_store(struct device *dev, struct device_attribute *da,
