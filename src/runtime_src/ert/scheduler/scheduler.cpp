@@ -1159,6 +1159,9 @@ scheduler_loop()
          * So here ERT should check both AP_DONE and AP_IDLE bits or ERT will keep
          * polling CU status register and never get AP_DONE. It may cause firewall
          * tripped if we freeze the axi gate of the dynamic region.
+         *
+         * For some CUs have no cmd to execute but AP_IDLE remain 0x0
+         * We should turn off ert and let KDS be in charge of this alone
          */
         auto cuvalue = read_reg(cu_idx_to_addr(cuidx));
         if (!(cuvalue & (AP_DONE|AP_IDLE)))
