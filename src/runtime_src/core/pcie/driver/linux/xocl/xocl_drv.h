@@ -1052,6 +1052,7 @@ enum data_kind {
 	DATA_RETAIN,
 	MAC_CONT_NUM,
 	MAC_ADDR_FIRST,
+	XMC_POWER_WARN,
 };
 
 enum mb_kind {
