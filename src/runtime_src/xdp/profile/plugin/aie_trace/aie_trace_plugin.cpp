@@ -28,6 +28,7 @@
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 
 #include "core/common/message.h"
+#include <iostream>
 
 namespace xdp {
 
