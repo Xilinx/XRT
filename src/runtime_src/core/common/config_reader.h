@@ -174,7 +174,7 @@ get_aie_profile()
 inline unsigned int
 get_aie_profile_interval_ms()
 {
-  static unsigned int value = detail::get_uint_value("Debug.aie_profile_interval_ms", 20) ;
+  static unsigned int value = detail::get_uint_value("Debug.aie_profile_interval_ms", 5) ;
   return value ;
 }
 
