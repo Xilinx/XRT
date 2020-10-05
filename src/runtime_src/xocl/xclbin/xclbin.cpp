@@ -15,6 +15,7 @@
  */
 
 #include "xclbin.h"
+#include "ert_fa.h"
 
 #include "xocl/config.h"
 #include "xocl/core/debug.h"
@@ -325,6 +326,7 @@ private:
       for (auto& xml_arg : xml_kernel) {
         if (xml_arg.first != "arg")
           continue;
+
         std::string nm = xml_arg.second.get<std::string>("<xmlattr>.name");
         std::string id = xml_arg.second.get<std::string>("<xmlattr>.id");
         std::string port = xml_arg.second.get<std::string>("<xmlattr>.port");
@@ -345,6 +347,7 @@ private:
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.hostOffset"))
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.hostSize"))
+            ,0    // fa_desc_offset computed separately
             ,xml_arg.second.get<std::string>("<xmlattr>.type","")
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.memSize",""))
             ,0   // progvar base addr computed separately
@@ -471,6 +474,32 @@ private:
       }
     }
 
+    // For FA style kernels compute the descriptor entry offsets for
+    // each argument and total size of descriptor.
+    void
+    fix_fadesc()
+    {
+      auto protocol = xml_kernel.get<std::string>("<xmlattr>.hwControlProtocol","");
+      if (protocol != "fast_adapter")
+        return;
+
+      // Remove last argument which is "nextDescriptorAddr" and
+      // not set by user
+      m_symbol.arguments.pop_back();
+      
+      size_t desc_offset = 0;
+      for (auto& arg : m_symbol.arguments) {
+        if (arg.id.empty())
+          continue;
+
+        arg.fa_desc_offset = desc_offset;
+        desc_offset += arg.size + sizeof(ert_fa_desc_entry);
+        m_symbol.fa_num_inputs++;
+        m_symbol.fa_input_entry_bytes += arg.size;
+      }
+      m_symbol.fa_desc_bytes = sizeof(ert_fa_descriptor) + desc_offset;
+    }
+
     // The kernel symbol is exposed by the xclbin interface.  The
     // majority of the work done in this file is to populate the
     // symbol data members.  Seems like a lot of work to do little!
@@ -486,6 +515,7 @@ private:
       init_instances();
       init_stringtable();
       init_workgroup();
+      fix_fadesc();
 
       m_symbol.name = m_name;
       m_symbol.attributes = xml_kernel.get<std::string>("<xmlattr>.attributes","");

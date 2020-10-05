@@ -487,7 +487,6 @@ static ssize_t ready_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	uint64_t ch_state = 0, ret = 0, daemon_state = 0;
-	struct xcl_board_info *board_info = NULL;
 
 	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 
@@ -503,30 +502,6 @@ static ssize_t ready_show(struct device *dev,
 		ret = ((ch_state & XCL_MB_PEER_READY) && daemon_state)
 			? 1 : 0;
 	}
-
-	/* for now skip checking SC compatibility for 1RP flow */
-	if (!ret || !xocl_rom_get_uuid(xdev))
-		goto bail;
-
-	board_info = vzalloc(sizeof(*board_info));
-	if (!board_info)
-		goto bail;
-	xocl_xmc_get_data(xdev, XCL_BDINFO, board_info);
-	/*
-	 * Lift the restriction of mis-matching SC version for
-	 * experienced user to manually update SC firmware than
-	 * installed xsabin may contain.
-	 */
-	if (strcmp(board_info->bmc_ver, board_info->exp_bmc_ver)) {
-		xocl_warn(dev, "installed XSABIN has SC version: "
-		    "(%s) mismatch with loaded SC version: (%s).",
-		    board_info->exp_bmc_ver, board_info->bmc_ver);
-	}
-	ret = 1;
-
-bail:
-	if (board_info)
-		vfree(board_info);
 
 	return sprintf(buf, "0x%llx\n", ret);
 }

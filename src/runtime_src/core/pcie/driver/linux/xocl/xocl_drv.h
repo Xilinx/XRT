@@ -1914,6 +1914,7 @@ int xocl_subdev_get_resource(xdev_handle_t xdev_hdl,
 		char *res_name, u32 type, struct resource *res);
 
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
+void xocl_clear_pci_errors(xdev_handle_t xdev_hdl);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
@@ -2031,7 +2032,7 @@ int xocl_fdt_setprop(xdev_handle_t xdev_hdl, void *blob, int off,
 		     const char *name, const void *val, int size);
 const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 			     char *name, int *lenp);
-void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
+const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
 
 /* init functions */
 int __init xocl_init_userpf(void);

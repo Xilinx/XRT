@@ -165,6 +165,18 @@ static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
 {
     std::string errmsg, svl;
     int lvl = 0;
+    bool is_mfg = false;
+
+    dev->sysfs_get("", "mfg", errmsg, is_mfg, false);
+    if (!errmsg.empty()) {
+        std::cerr << "Unexpected error: " << errmsg << std::endl;
+	return;
+    }
+
+    if (is_mfg) {
+        std::cerr << "This operation is not supported with golden image" << std::endl;
+        return;
+    }
 
     dev->sysfs_get("icap", "sec_level", errmsg, lvl, 0);
     if (!errmsg.empty()) {

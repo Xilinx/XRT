@@ -232,8 +232,6 @@ XQSPIPS_Flasher::XQSPIPS_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 
     // maybe initialized QSPI here
     if (typeStr.empty())
-        mDev->sysfs_get("flash", "flash_type", err, typeStr);
-    if (typeStr.empty())
         mDev->sysfs_get("", "flash_type", err, typeStr);
 
     // By default, it is 'perallel'

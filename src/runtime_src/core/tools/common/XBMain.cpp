@@ -100,6 +100,7 @@ void  main_(int argc, char** argv,
 
   // Check to see if help was requested and no command was found
   if (vm.count("subCmd") == 0) {
+    std::cerr << "ERROR: " << "Please specify a valid command" << std::endl << std::endl;
     XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, _subCmds);
     return;
   }

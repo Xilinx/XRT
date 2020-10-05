@@ -385,28 +385,6 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   }
 }
 
-xrt_core::device_collection
-XBUtilities::
-collect_devices(const std::vector<std::string>& _devices, bool _inUserDomain)
-{
-  std::set<std::string> device_set(_devices.begin(), _devices.end());
-  xrt_core::device_collection core_devices;
-  collect_devices(device_set, _inUserDomain, core_devices);
-  return core_devices;
-}
-
-xrt_core::device_collection
-XBUtilities::
-collect_devices( const std::string& _devices, // comma separated no space
-                 bool _inUserDomain )
-{
-  std::set<std::string> device_set;
-  boost::split(device_set, _devices, boost::is_any_of(","));
-  xrt_core::device_collection core_devices;
-  collect_devices(device_set, _inUserDomain, core_devices);
-  return core_devices;
-}
-
 bool
 XBUtilities::can_proceed()
 {

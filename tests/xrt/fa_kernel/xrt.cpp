@@ -30,13 +30,6 @@
 # pragma warning ( disable : 4244 )
 #endif
 
-
-/**
- * Runs an OpenCL kernel which writes known 16 integers into a 64 byte
- * buffer. Does not use OpenCL runtime but directly exercises the HAL
- * driver API.
- */
-
 static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
@@ -177,9 +170,7 @@ run(int argc, char** argv)
   }
 
   std::string xclbin_fnm;
-  bool verbose = false;
   unsigned int device_index = 0;
-  bool random = false;
 
   std::vector<std::string> args(argv+1,argv+argc);
   std::string cur;
@@ -187,14 +178,6 @@ run(int argc, char** argv)
     if (arg == "-h") {
       usage();
       return 1;
-    }
-    else if (arg == "-v") {
-      verbose = true;
-      continue;
-    }
-    else if (cur == "-r") {
-      random = true;
-      continue;
     }
 
     if (arg[0] == '-') {

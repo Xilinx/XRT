@@ -212,6 +212,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			xocl_subdev_online_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 	} else {
 		(void) xocl_config_pci(xdev);
+		xocl_clear_pci_errors(xdev);
 
 		if (!xrt_reset_syncup)
 			xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);

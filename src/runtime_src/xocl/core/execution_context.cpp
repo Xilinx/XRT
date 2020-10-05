@@ -17,6 +17,8 @@
 #include "execution_context.h"
 #include "device.h"
 #include "event.h"
+#include "ert.h"
+#include "ert_fa.h"
 
 #include "xrt/scheduler/command.h"
 #include "xrt/scheduler/scheduler.h"
@@ -92,7 +94,7 @@ public:
   mutable xocl::execution_context* m_ec;
 };
 
-static int
+static void
 fill_regmap(execution_context::regmap_type& regmap, size_t offset,
             ert_cmd_opcode opcode, uint32_t ctrl,
             const void* data, const size_t size,
@@ -132,10 +134,8 @@ fill_regmap(execution_context::regmap_type& regmap, size_t offset,
         auto idx = offset + arginfo->offset / wsize + wi;
         regmap[idx] = device_value;
       }
-      //std::cout << "regmap[" << offset + regmap_idx + wi << "]=" << device_value << "\n";
     }
   }
-  return 0;
 }
 
 execution_context::
@@ -200,6 +200,20 @@ add_compute_units(device* device)
                      + m_kernel->get_name()
                      + "' has no compute units to execute job '"
                      + std::to_string(m_uid) + "'\n");
+}
+
+ert_cmd_opcode
+execution_context::
+get_opcode() const
+{
+  switch (m_cus.front()->get_control_type()) {
+  case ACCEL_ADAPTER:
+    return ERT_EXEC_WRITE;
+  case FAST_ADAPTER:
+    return ERT_START_FA;
+  default:
+    return ERT_START_KERNEL;
+  }
 }
 
 uint32_t
@@ -303,6 +317,73 @@ update_work()
   m_done = true;
 }
 
+size_t
+execution_context::
+fill_fa_desc(void* data)
+{
+  // Convert payload data to fa_descriptor
+  auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
+  auto& symbol = m_kernel->get_symbol();
+
+  // Initialize descriptor
+  desc->status = ERT_FA_ISSUED;
+  desc->num_input_entries = symbol.fa_num_inputs;
+  desc->input_entry_bytes = symbol.fa_input_entry_bytes;
+  desc->num_output_entries = symbol.fa_num_outputs;
+  desc->output_entry_bytes = symbol.fa_output_entry_bytes;
+
+  // Iterate kernel indexed args and populate descriptor entries
+  for (auto& arg : m_kernel_args) {
+    if (!arg->is_indexed())
+      continue;
+
+    // Components of the argument
+    auto arginforange = arg->get_arginfo_range();
+    if (arginforange.size() != 1)
+      // e.g. int4 not supported
+      throw std::runtime_error("Multi-component arguments are not supported for FA style kernels");
+
+    // XML meta data for this argument.  The meta data has been
+    // parsed for FA specific data
+    auto arginfo = *(arginforange.begin());
+
+    // Offset into descriptor entries at precomputed offset
+    auto desc_entry = reinterpret_cast<ert_fa_desc_entry*>(desc->data + arginfo->fa_desc_offset / sizeof(uint32_t));
+    desc_entry->arg_offset = arginfo->offset;
+    desc_entry->arg_size = arginfo->size;
+
+    switch (arg->get_address_space()) {
+      // global
+      case kernel::argument::addr_space_type::SPIR_ADDRSPACE_GLOBAL:
+      case kernel::argument::addr_space_type::SPIR_ADDRSPACE_CONSTANT: {
+        auto mem = arg->get_memory_object();
+        auto boh = mem->get_buffer_object_or_error(m_device);
+        uint64_t addr = m_device->get_boh_addr(boh);
+        auto words = reinterpret_cast<uint32_t*>(&addr);
+        auto count = arginfo->size / sizeof(uint32_t);
+        assert(count == 2);
+        std::copy(words, words + count, desc_entry->arg_value);
+        break;
+      }
+
+      // scalar
+      case kernel::argument::addr_space_type::SPIR_ADDRSPACE_PRIVATE: {
+        const void* value = arg->get_value();
+        auto words = reinterpret_cast<const uint32_t*>(value);
+        auto count = arginfo->size / sizeof(uint32_t);
+        std::copy(words, words + count, desc_entry->arg_value);
+        break;
+      }
+
+      // not supported
+      default:
+        throw std::runtime_error("Unsupported argument type for Fast Adapter protocol");
+        break;
+    }
+  }
+  return symbol.fa_desc_bytes;
+}
+
 void
 execution_context::
 start()
@@ -314,21 +395,32 @@ start()
   if ( (m_cu_group_id[0]==0) && (m_cu_group_id[1]==0) && (m_cu_group_id[2]==0))
     m_event->set_status(CL_RUNNING);
 
-  auto xdevice = m_device->get_xrt_device();
-
   // Construct command packet and send to hardware
-  auto ctrl = cu_control_type();
-  auto opcode = (ctrl == ACCEL_ADAPTER) ? ERT_EXEC_WRITE : ERT_START_KERNEL;
-  auto cmd = std::make_shared<start_kernel>(xdevice,this,opcode);
+  auto opcode = get_opcode();
+  auto cmd = std::make_shared<start_kernel>(m_device->get_xrt_device(),this,opcode);
   ++m_active;
-  auto& packet = cmd->get_packet();
 
+  auto& packet = cmd->get_packet();
   // Encode CUs in cu bitmasks with bits in position according to the
   // CUs that can be used
   encode_compute_units(packet);
 
-  // Create the cu register map
+  // Start of the command payload for CU arguments
   auto offset = packet.size();  // start of regmap
+
+  // Amendment for FA style kernels
+  if (opcode == ERT_START_FA) {
+    auto data = packet.data() + offset;
+    auto desc_size = fill_fa_desc(data);
+    // Ensure internal packet size is adjusted to descriptor
+    packet.resize(offset + desc_size / sizeof(uint32_t));
+    write(cmd);
+    return;
+  }
+
+  // kernel control protocol 
+  auto ctrl = cu_control_type();
+
   auto& regmap = packet;
 
   // Ensure that S_AXI_CONTROL is created even when kernel
@@ -373,8 +465,8 @@ start()
     {
       uint64_t physaddr = 0;
       if (auto mem = arg->get_memory_object()) {
-        auto boh = xocl::xocl(mem)->get_buffer_object_or_error(m_device);
-        physaddr = xdevice->getDeviceAddr(boh);
+        auto boh = mem->get_buffer_object_or_error(m_device);
+        physaddr = m_device->get_boh_addr(boh);
       }
       else if (auto svm = arg->get_svm_object()) {
         physaddr = reinterpret_cast<uint64_t>(svm);
@@ -388,8 +480,8 @@ start()
   for (auto& arg : m_kernel->get_progvar_argument_range()) {
     uint64_t physaddr = 0;
     if (auto mem = arg->get_memory_object()) {
-      auto boh = xocl::xocl(mem)->get_buffer_object_or_error(m_device);
-      physaddr = xdevice->getDeviceAddr(boh);
+      auto boh = mem->get_buffer_object_or_error(m_device);
+      physaddr = m_device->get_boh_addr(boh);
     }
     assert(arg->get_arginfo_range().size()==1);
     fill_regmap(regmap,offset,opcode,ctrl,&physaddr,arg->get_size(),arg->get_arginfo_range());
@@ -415,7 +507,7 @@ start()
                       group_y_size * group_x_size * m_cu_group_id[2];
     auto printf_buffer_offset = group_id * local_buffer_size;
     auto boh = printf_buffer->get_buffer_object_or_error(m_device);
-    auto printf_buffer_base_addr = static_cast<uint64_t>(xdevice->getDeviceAddr(boh));
+    auto printf_buffer_base_addr = m_device->get_boh_addr(boh);
     printf_buffer_addr = printf_buffer_base_addr + printf_buffer_offset;
   }
 

@@ -27,7 +27,7 @@ class OO_P2P : public OptionOptions {
   OO_P2P( const std::string &_longName, bool _isHidden = false);
 
  private:
-  std::string m_device;
+  std::vector<std::string> m_devices;
   std::string m_action;
   bool m_help;
 };
