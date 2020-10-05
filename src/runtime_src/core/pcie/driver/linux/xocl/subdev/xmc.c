@@ -194,6 +194,7 @@ static struct xocl_iores_map res_map[] = {
 	{ NODE_CMC_FW_MEM, IO_IMAGE_MGMT},
 	{ NODE_ERT_FW_MEM, IO_IMAGE_SCHED},
 	{ NODE_ERT_CQ_MGMT, IO_CQ},
+	{ NODE_CMC_CLK_SCALING_REG, IO_CLK_SCALING},
 	{ NODE_CMC_MUTEX, IO_MUTEX},
 };
 
@@ -1033,6 +1034,16 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 	}
 }
 
+static bool xmc_clk_scale_on(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+
+	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_CLK_SCALING))
+		return true;
+
+	return false;
+}
+
 static bool nosc_xmc(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
@@ -1046,13 +1057,10 @@ static bool nosc_xmc(struct platform_device *pdev)
 static bool xmc_in_bitfile(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	void *xdev_hdl = xocl_get_xdev(pdev);
 
-	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_IN_BITFILE)) {
-		/* xmc in bitfile is supported only on SmartSSD U.2 */
-		if (!xmc->sc_presence)
-			return xocl_cmc_in_bitfile(xdev_hdl);
-	}
+	/* xmc in bitfile is supported only on SmartSSD U.2 */
+	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_IN_BITFILE))
+		return true;
 
 	return false;
 }
@@ -1071,8 +1079,10 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 	struct xcl_board_info *bdinfo = NULL;
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 
-	if (XMC_PRIVILEGED(xmc) && !xmc->mgmt_binary && !autonomous_xmc(pdev))
-		return -ENODEV;
+	if (XMC_PRIVILEGED(xmc) && !xmc->mgmt_binary && !autonomous_xmc(pdev)) {
+		if (!xmc_in_bitfile(xmc->pdev))
+			return -ENODEV;
+	}
 
 	switch (kind) {
 	case XCL_SENSOR:
@@ -1645,8 +1655,7 @@ static bool scaling_condition_check(struct xocl_xmc *xmc)
 	}
 
 	if (!xmc->sc_presence) {
-		void *xdev_hdl = xocl_get_xdev(xmc->pdev);
-		if (xocl_clk_scale_on(xdev_hdl))
+		if (xmc_clk_scale_on(xmc->pdev))
 			cs_on_ptfm = true;
 	} else {
 		//Feature present bit may configured each time an xclbin is downloaded,
@@ -3136,6 +3145,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		READ_REG32(xmc, XMC_MAGIC_REG));
 	return 0;
 }
+
 static int stop_xmc(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
@@ -3189,7 +3199,6 @@ static int load_xmc(struct xocl_xmc *xmc)
 	u32 reg_val = 0, reg_map_ready;
 	int ret = 0;
 	void *xdev_hdl;
-	bool skip_xmc = false;
 
 	if (!xmc->enabled)
 		return -ENODEV;
@@ -3199,6 +3208,15 @@ static int load_xmc(struct xocl_xmc *xmc)
 
 	mutex_lock(&xmc->xmc_lock);
 
+	xdev_hdl = xocl_get_xdev(xmc->pdev);
+
+	if (xmc_in_bitfile(xmc->pdev)) {
+		xocl_info(&xmc->pdev->dev, "Skip XMC stop/load, since XMC is loaded through fpga bitfile");
+		if (READ_XMC_GPIO(xmc, 0) == GPIO_ENABLED)
+			xmc->state = XMC_STATE_ENABLED;
+		goto done;
+	}
+
 	/* Stop XMC first */
 	ret = stop_xmc_nolock(xmc->pdev);
 	if (ret != 0)
@@ -3206,27 +3224,19 @@ static int load_xmc(struct xocl_xmc *xmc)
 
 	WRITE_GPIO(xmc, GPIO_RESET, 0);
 	reg_val = READ_GPIO(xmc, 0);
+	xmc->state = XMC_STATE_RESET;
+	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 
-	xdev_hdl = xocl_get_xdev(xmc->pdev);
-	skip_xmc = xmc_in_bitfile(xmc->pdev);
-	if (skip_xmc) {
-		xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x (ert), 0x%x (xmc)", reg_val,
-			  READ_XMC_GPIO(xmc, 0));
-	} else {
-		xmc->state = XMC_STATE_RESET;
-		xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
-
-		/* Shouldnt make it here but if we do then exit */
-		if (reg_val != GPIO_RESET) {
-			xocl_err(&xmc->pdev->dev, "Hold reset GPIO Failed");
-			xmc->state = XMC_STATE_ERROR;
-			ret = -EIO;
-			goto out;
-		}
+	/* Shouldnt make it here but if we do then exit */
+	if (reg_val != GPIO_RESET) {
+		xocl_err(&xmc->pdev->dev, "Hold reset GPIO Failed");
+		xmc->state = XMC_STATE_ERROR;
+		ret = -EIO;
+		goto out;
 	}
 
 	/* Load XMC and ERT Image */
-	if (!skip_xmc && xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
+	if (xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
 		if (xmc->mgmt_binary_length > xmc->range[IO_IMAGE_MGMT]) {
 			xocl_err(&xmc->pdev->dev, "XMC image too long %d",
 				xmc->mgmt_binary_length);
@@ -3236,8 +3246,6 @@ static int load_xmc(struct xocl_xmc *xmc)
 				xmc->mgmt_binary_length);
 			COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
 		}
-	} else {
-		xocl_info(&xmc->pdev->dev, "Skip copying XMC image since XMC is loaded through fpga bitfile");
 	}
 
 	if (xocl_mb_sched_on(xdev_hdl) && xmc->sche_binary_length) {
@@ -3254,15 +3262,9 @@ static int load_xmc(struct xocl_xmc *xmc)
 
 	/* Take XMC and ERT out of reset */
 	WRITE_GPIO(xmc, GPIO_ENABLED, 0);
-	reg_val = READ_GPIO(xmc, 0);
 
-	if (skip_xmc) {
-		xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x (ert), 0x%x (xmc)", reg_val,
-			  READ_XMC_GPIO(xmc, 0));
-		reg_val = READ_XMC_GPIO(xmc, 0);
-	} else {
-		xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
-	}
+	reg_val = READ_GPIO(xmc, 0);
+	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 
 	/* Shouldnt make it here but if we do then exit */
 	if (reg_val != GPIO_ENABLED) {
@@ -3320,10 +3322,14 @@ static int load_xmc(struct xocl_xmc *xmc)
 			}
 		}
 	}
+
 	xocl_info(&xmc->pdev->dev,
 		"Wait for 5 seconds to stable the connection with SC");
 	ssleep(5);
-	xmc->state = XMC_STATE_ENABLED;
+done:
+	if (READ_GPIO(xmc, 0) == GPIO_ENABLED)
+		xmc->state = XMC_STATE_ENABLED;
+
 	xocl_info(&xmc->pdev->dev, "XMC and scheduler Enabled, retry %d",
 			retry);
 	xocl_info(&xmc->pdev->dev,
@@ -3332,7 +3338,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 		READ_REG32(xmc, XMC_STATUS_REG),
 		READ_REG32(xmc, XMC_MAGIC_REG));
 
-	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
+	if (XMC_PRIVILEGED(xmc) && xmc_clk_scale_on(xmc->pdev))
 		xmc_clk_scale_config(xmc->pdev);
 
 	mutex_unlock(&xmc->xmc_lock);
@@ -3601,8 +3607,10 @@ static int xmc_remove(struct platform_device *pdev)
 
 	xocl_drvinst_release(xmc, &hdl);
 
-	vfree(xmc->mgmt_binary);
-	vfree(xmc->sche_binary);
+	if (xmc->mgmt_binary)
+		vfree(xmc->mgmt_binary);
+	if (xmc->sche_binary)
+		vfree(xmc->sche_binary);
 
 	if (xmc->mini_sysfs_created)
 		mgmt_sysfs_destroy_xmc_mini(pdev);
@@ -3729,7 +3737,23 @@ static int xmc_probe(struct platform_device *pdev)
 	}
 
 	xmc->priv_data = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	xdev_hdl = xocl_get_xdev(pdev);
+
 	xmc->sc_presence = nosc_xmc(xmc->pdev) ? 0 : 1;
+
+	if (XMC_PRIVILEGED(xmc)) {
+		if (!xmc->priv_data) {
+			xmc->priv_data = vzalloc(sizeof(*xmc->priv_data));
+			if (!xmc->priv_data) {
+				xocl_err(&pdev->dev, "Unable to alloc mem");
+				goto failed;
+			}
+		}
+		if (xocl_clk_scale_on(xdev_hdl))
+			xmc->priv_data->flags |= XOCL_XMC_CLK_SCALING;
+		if (xocl_cmc_in_bitfile(xdev_hdl))
+			xmc->priv_data->flags |= XOCL_XMC_IN_BITFILE;
+	}
 
 	if (XMC_PRIVILEGED(xmc)) {
 		if (xmc->base_addrs[IO_REG]) {
@@ -3767,13 +3791,8 @@ static int xmc_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-	if (xmc_in_bitfile(xmc->pdev)) {
-		if (READ_XMC_GPIO(xmc, 0) == GPIO_ENABLED)
-			xmc->state = XMC_STATE_ENABLED;
-	} else {
-		if (READ_GPIO(xmc, 0) == GPIO_ENABLED || autonomous_xmc(pdev))
-			xmc->state = XMC_STATE_ENABLED;
-	}
+	if (READ_GPIO(xmc, 0) == GPIO_ENABLED || autonomous_xmc(pdev))
+		xmc->state = XMC_STATE_ENABLED;
 
 	xmc->cache = vzalloc(sizeof(struct xcl_sensor));
 
@@ -3793,6 +3812,11 @@ static int xmc_probe(struct platform_device *pdev)
 		bool cs_en = scaling_condition_check(xmc);
 		if (cs_en)
 			xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
+
+		if (xmc_in_bitfile(xmc->pdev)) {
+			if (READ_XMC_GPIO(xmc, 0) == GPIO_ENABLED)
+				xmc->state = XMC_STATE_ENABLED;
+		}
 	}
 
 	err = mgmt_sysfs_create_xmc(pdev);
