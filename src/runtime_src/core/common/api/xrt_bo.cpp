@@ -176,6 +176,8 @@ public:
   copy(const bo_impl* src, size_t sz, size_t src_offset, size_t dst_offset)
   {
     // Check size and offset of dst and src
+    if (!sz)
+      throw xrt_core::system_error(EINVAL, "size must be a positive number");
     if (sz + dst_offset > size)
       throw xrt_core::system_error(EINVAL, "copying past destination buffer size");
     if (src->get_size() < sz + src_offset)
@@ -684,7 +686,7 @@ void
 bo::
 copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 {
-  handle->copy(src.handle.get(), sz ? sz : src.size(), src_offset, dst_offset);
+  handle->copy(src.handle.get(), sz, src_offset, dst_offset);
 }
 
 } // xrt

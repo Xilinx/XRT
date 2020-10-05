@@ -56,9 +56,13 @@ namespace xrt {
 class kernel;
 class event_impl;
 
-/**
- * class run - xrt::run represents one execution of a kernel
+/*!
+ * @class run 
  *
+ * @brief 
+ * xrt::run represents one execution of a kernel
+ *
+ * @details
  * The run handle can be explicitly constructed from a kernel object
  * or implicitly constructed from starting a kernel execution.
  *
@@ -116,7 +120,7 @@ class run
   /**
    * wait() - Wait for specified milliseconds for run to complete
    *
-   * @param timeout
+   * @param timeout_ms
    *  Timeout in milliseconds
    * @return
    *  Command state upon return of wait
@@ -347,15 +351,16 @@ private:
     set_arg(++argno, std::forward<Args>(args)...);
   }
 };
+ 
 
-/**
- * class kernel - xrt::kernel object 
+/*!
+ * @class kernel
  *
  * A kernel object represents a set of instances matching a specified name.
  * The kernel is created by finding matching kernel instances in the 
  * currently loaded xclbin.
  *
- * Most interaction with kernel objects are through run objects created 
+ * Most interaction with kernel objects are through \ref xrt::run objects created 
  * from the kernel object to represent an execution of the kernel
  */
 class kernel_impl;
@@ -440,6 +445,21 @@ class kernel
   XCL_DRIVER_DLLESPEC
   int
   group_id(int argno) const;
+
+  /**
+   * offset() - Get the offset of kernel argument
+   *
+   * @param argno
+   *  The argument index
+   * @return
+   *  The kernel register offset of the argument with specified index
+   *
+   * Use with ``read_register()`` and ``write_register()`` if manually
+   * reading or writing kernel registers for explicit arguments. 
+   */
+  XCL_DRIVER_DLLESPEC
+  uint32_t
+  offset(int argno) const;
 
   /**
    * write() - Write to the address range of a kernel
@@ -575,6 +595,20 @@ xrtKernelClose(xrtKernelHandle kernelHandle);
 XCL_DRIVER_DLLESPEC
 int
 xrtKernelArgGroupId(xrtKernelHandle kernelHandle, int argno);
+
+/**
+ * xrtKernelArgOffset() - Get the offset of kernel argument
+ *
+ * @khdl:   Handle to kernel previously opened with xrtKernelOpen
+ * @argno:  Index of kernel argument
+ * Return:  The kernel register offset of the argument with specified index
+ *
+ * Use with ``xrtKernelReadRegister()`` and ``xrtKernelWriteRegister()`` 
+ * if manually reading or writing kernel registers for explicit arguments.
+ */
+XCL_DRIVER_DLLESPEC
+uint32_t
+xrtKernelArgOffset(xrtKernelHandle khdl, int argno);
 
 /**
  * xrtKernelReadRegister() - Read data from kernel address range

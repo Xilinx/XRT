@@ -1002,6 +1002,12 @@ public:
     return args.at(argno).group_id();
   }
 
+  int
+  arg_offset(int argno)
+  {
+    return args.at(argno).offset();
+  }
+
   uint32_t
   read_register(uint32_t offset, bool force=false) const
   {
@@ -1728,6 +1734,13 @@ group_id(int argno) const
   return handle->group_id(argno);
 }
 
+uint32_t
+kernel::
+offset(int argno) const
+{
+  return handle->arg_offset(argno);
+}
+
 } // namespace xrt
 
 ////////////////////////////////////////////////////////////////
@@ -1800,6 +1813,23 @@ xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
     return -1;
+  }
+}
+
+uint32_t
+xrtKernelArgOffset(xrtKernelHandle khdl, int argno)
+{
+  try {
+    auto kernel = get_kernel(khdl);
+    return kernel->arg_offset(argno);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return std::numeric_limits<uint32_t>::max();
   }
 }
 

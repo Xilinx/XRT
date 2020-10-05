@@ -33,11 +33,14 @@ namespace xdp {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = userEventsPluginInstance.getDatabase() ;
 
+    const char* labelStr   = (label == nullptr)   ? "" : label ;
+    const char* tooltipStr = (tooltip == nullptr) ? "" : tooltip ;
+
     VTFEvent* event = new UserRange(0, 
 				    timestamp, 
 				    true, // isStart
-				    (db->getDynamicInfo()).addString(label),
-				    (db->getDynamicInfo()).addString(tooltip)) ;
+				    (db->getDynamicInfo()).addString(labelStr),
+				    (db->getDynamicInfo()).addString(tooltipStr)) ;
     (db->getDynamicInfo()).addEvent(event) ;
     (db->getDynamicInfo()).markStart(functionID, event->getEventId()) ;
   }

@@ -21,7 +21,6 @@
 #include "xrt.h"
 
 #ifdef __cplusplus
-#include <string>
 
 namespace xrt { namespace profile {
 
@@ -51,8 +50,7 @@ namespace xrt { namespace profile {
      * upon construction.
      */
     XCL_DRIVER_DLLESPEC
-    user_range(const std::string& label, 
-		       const std::string& tooltip) ;
+    user_range(const char* label, const char* tooltip) ;
 
     /**
      * user_range() - Copy constructor
@@ -93,7 +91,7 @@ namespace xrt { namespace profile {
      * range and start a new one.
      */
     XCL_DRIVER_DLLESPEC
-    void start(const std::string& label, const std::string& tooltip) ;
+    void start(const char* label, const char* tooltip) ;
 
     /**
      * end() - Mark the end position of a user range
