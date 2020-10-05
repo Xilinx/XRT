@@ -1449,7 +1449,7 @@ int xcldev::device::powerTest(void)
     pcidev::get_dev(m_idx)->sysfs_get<int>("xmc", "xmc_power_warn",  errmsg, power_warn, 0);
 
     if(power_warn == 1) {
-        std::cout << "POWER WARNNING IS ON, ATTENTION" << std::endl;
+        std::cout << "POWER WARNING IS ON, ATTENTION" << std::endl;
         std::cout << "Sensor data might not be valid" << std::endl;
         return 1;
     }
