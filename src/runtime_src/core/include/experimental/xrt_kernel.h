@@ -56,7 +56,7 @@ namespace xrt {
 class kernel;
 class event_impl;
 
-/**
+/*!
  * @class run 
  *
  * @brief 
@@ -120,7 +120,7 @@ class run
   /**
    * wait() - Wait for specified milliseconds for run to complete
    *
-   * @param timeout
+   * @param timeout_ms
    *  Timeout in milliseconds
    * @return
    *  Command state upon return of wait
@@ -353,7 +353,7 @@ private:
 };
  
 
-/**
+/*!
  * @class kernel
  *
  * A kernel object represents a set of instances matching a specified name.

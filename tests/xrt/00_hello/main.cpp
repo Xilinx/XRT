@@ -23,6 +23,7 @@
 #include "experimental/xrt_device.h"
 #include "experimental/xrt_kernel.h"
 #include "experimental/xrt_bo.h"
+#include "experimental/xrt_ini.h"
 /**
  * Trivial loopback example which runs OpenCL loopback kernel. Does not use OpenCL
  * runtime but directly exercises the XRT driver API.
@@ -85,8 +86,24 @@ register_test(const xrt::kernel& kernel, int argno)
     std::cout << "value at 0x" << std::hex << offset << " = 0x" << val << std::dec << "\n";
   }
   catch (const std::exception& ex) {
-    std::cout << "Expected failed kernel register read (" << ex.what() << ")\n";
+    std::cout << "Expected failure reading kernel register (" << ex.what() << ")\n";
   }      
+}
+
+static void
+ini_test(bool failure_expected = false)
+{
+  try {
+    xrt::ini::set("Runtime.verbosity", 5);
+    xrt::ini::set("Runtime.runtime_log", "console");
+    xrt::ini::set("Runtime.exclusive_cu_context", true);
+  }
+  catch (const std::exception& ex) {
+    if (!failure_expected)
+      throw;
+
+    std::cout << "Expected failure setting configuration options (" << ex.what() << ")\n";
+  }
 }
 
 int run(int argc, char** argv)
@@ -131,6 +148,9 @@ int run(int argc, char** argv)
   if (xclbin_fnm.empty())
     throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
 
+  // Configuration options can be change before accessed
+  ini_test();
+  
   auto device = xrt::device(device_index);
   auto uuid = device.load_xclbin(xclbin_fnm);
   auto kernel = xrt::kernel(device, uuid, cu_name);
@@ -144,6 +164,9 @@ int run(int argc, char** argv)
 
   // Test of kernel.read_register (expected failure)
   register_test(kernel, 0);
+
+  // Make sure configuration options cannot be changed now
+  ini_test(true); // expected failure caught
 
   return 0;
 }
