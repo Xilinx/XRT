@@ -370,7 +370,6 @@ using addr_type = uint64_t;
       const size_t mCuMapSize = 64 * 1024;
       std::string simulatorType;
       std::map<uint64_t, std::pair<void*, uint64_t> > mHostOnlyMemMap;
-      xclBin *mHeader;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

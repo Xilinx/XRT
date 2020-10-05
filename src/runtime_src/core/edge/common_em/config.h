@@ -251,6 +251,7 @@ namespace xclemulation{
   std::string getRunDirectory();
   
   std::map<std::string,std::string> getEnvironmentByReadingIni();
+  int getIPName2Index(const char *name,const char* ipLayoutbuf);
 }
 
 #endif

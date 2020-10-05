@@ -262,7 +262,7 @@ namespace xclemulation{
   std::string getXclbinVersion(const axlf* top);
   std::string getVivadoVersion();
   void checkXclibinVersionWithTool(const xclBin *header);
-  int getIPName2Index(const char *name, xclBin* header);
+  int getIPName2Index(const char *name,const char* ipLayoutbuf);
 }
 
 #endif

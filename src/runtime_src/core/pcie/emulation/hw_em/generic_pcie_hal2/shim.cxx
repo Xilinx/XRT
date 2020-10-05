@@ -225,8 +225,7 @@ namespace xclhwemhal2 {
     if (std::memcmp(bitstreambin, "xclbin2", 7)) {
       PRINTENDFUNC;
       return -1;
-    }
-    mHeader = const_cast<xclBin*> (header);
+    }  
     //check xclbin version with vivado tool version
     xclemulation::checkXclibinVersionWithTool(header);
 
@@ -1904,8 +1903,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bUnified = _unified;
     bXPR = _xpr;
     mCore = nullptr;
-    mMBSch = nullptr;
-    mHeader = nullptr;
+    mMBSch = nullptr; 
     mIsDebugIpLayoutRead = false;
     mIsDeviceProfiling = false;
     mMemoryProfilingNumberSlots = 0;
@@ -3288,7 +3286,8 @@ int HwEmShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
 
 int HwEmShim::xclIPName2Index(const char *name)
 {
-  return xclemulation::getIPName2Index(name, mHeader);
+  auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
+  return xclemulation::getIPName2Index(name, buffer.first);
 }
 
 

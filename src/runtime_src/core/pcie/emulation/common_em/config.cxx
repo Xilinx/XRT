@@ -981,35 +981,19 @@ namespace xclemulation{
     }
   }
 
-  int getIPName2Index(const char *name, xclBin* header)
+  int getIPName2Index(const char *name,const char* buffer)
   {
     std::string errmsg;
-    const uint64_t bad_addr = 0xffffffffffffffff;
-    char* ipLayoutbuf = nullptr;
-    size_t bufsize = 0;
-
-    if (!header) {
-      errmsg = "ERROR: getIPName2Index - Invalid xclbin content";
-      std::cout << errmsg << std::endl;
-      return -EINVAL;
-    }
-
-    char *bitstreambin = reinterpret_cast<char*> (header);
-    auto top = reinterpret_cast<const axlf*>(header);
-    if (auto sec = xclbin::get_axlf_section(top, IP_LAYOUT)) {
-      bufsize = sec->m_sectionSize;
-      ipLayoutbuf = new char[bufsize];
-      memcpy(ipLayoutbuf, bitstreambin + sec->m_sectionOffset, bufsize);
-    }
-
-    if (!ipLayoutbuf)
+    const uint64_t bad_addr = 0xffffffffffffffff;   
+  
+    if (!buffer)
     {
       errmsg = "ERROR: getIPName2Index - can't load ip_layout section";
       std::cout << errmsg << std::endl;
       return -EINVAL;
     }
 
-    const ip_layout* map = (reinterpret_cast<const ::ip_layout*>(ipLayoutbuf));
+    const ip_layout* map = (reinterpret_cast<const ::ip_layout*>(buffer));
     if (map->m_count < 0) {
       errmsg = "ERROR: getIPName2Index - invalid ip_layout section content";
       std::cout << errmsg << std::endl;

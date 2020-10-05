@@ -254,7 +254,6 @@ namespace xclcpuemhal2 {
       exec_core* mCore;
       SWScheduler* mSWSch;
       bool mIsKdsSwEmu;
-      xclBin *mHeader;
   };
 
   extern std::map<unsigned int, CpuemShim*> devices;
