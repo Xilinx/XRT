@@ -23,7 +23,10 @@
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/aie_trace/aie_trace_logger.h"
 
+#include <iostream>
 #ifdef XRT_ENABLE_AIE
+#include <sys/mman.h>
+#include "core/include/xrt.h"
 #include "core/edge/user/aie/aie.h"
 #include "core/edge/user/shim.h"
 #endif
@@ -48,9 +51,6 @@ AIETraceOffload::AIETraceOffload(void* handle, uint64_t id,
                  totalSz(totalSize),
                  numStream(numStrm)
 {
-  if(numStream == 1)
-    return;
-
   bufAllocSz = (totalSz / numStream) & 0xffffffffffffff00;
 }
 
@@ -91,7 +91,43 @@ bool AIETraceOffload::initReadTrace()
       zynqaie::Aie* aieObj = drv->getAieArray();
 
       zynqaie::ShimDMA* shimDmaObj = &(aieObj->shim_dma[traceGMIO->shimColumn]);
-      XAie_DmaSetAddrLen(&(shimDmaObj->desc), bufAddr, bufAllocSz);
+
+      XAie_DevInst* devInst = aieObj->getDevInst();
+
+      XAie_LocType shimTile = XAie_TileLoc(traceGMIO->shimColumn, 0);
+      XAie_DmaDescInit(devInst, &(shimDmaObj->desc), shimTile);
+
+      // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
+      // Enable shim DMA channel, need to start first so the status is correct
+      uint16_t channelNumber = (traceGMIO->channelNumber > 1) ? (traceGMIO->channelNumber - 2) : traceGMIO->channelNumber;
+      XAie_DmaDirection dir = (traceGMIO->channelNumber > 1) ? DMA_MM2S : DMA_S2MM;
+
+      XAie_DmaChannelEnable(devInst, XAie_TileLoc(traceGMIO->shimColumn, 0), channelNumber, dir);
+
+      // Set AXI burst length
+      XAie_DmaSetAxi(&(shimDmaObj->desc), 0, traceGMIO->burstLength, 0, 0, 0);
+
+      XAie_MemInst memInst;
+	  XAie_MemCacheProp prop = XAIE_MEM_CACHEABLE;
+      xclBufferExportHandle boExportHandle = xclExportBO(deviceHandle, buffers[i].boHandle);
+      if(XRT_NULL_BO_EXPORT == boExportHandle) {
+        throw std::runtime_error("Unable to export BO while attaching to AIE Driver");
+      }
+      XAie_MemAttach(devInst,  &memInst, 0, 0, 0, prop, boExportHandle);
+
+      char* vaddr = reinterpret_cast<char *>(mmap(NULL, bufAllocSz, PROT_READ | PROT_WRITE, MAP_SHARED, boExportHandle, 0));
+      XAie_DmaSetAddrLen(&(shimDmaObj->desc), (uint64_t)vaddr, bufAllocSz);
+
+      XAie_DmaEnableBd(&(shimDmaObj->desc));
+
+      // For trace, use bd# 0 for S2MM0, use bd# 4 for S2MM1
+      int bdNum = channelNumber * 4;
+      // Write to shim DMA BD AxiMM registers
+      XAie_DmaWriteBd(devInst, &(shimDmaObj->desc), XAie_TileLoc(traceGMIO->shimColumn, 0), bdNum);
+
+      // Enqueue BD
+      XAie_DmaChannelPushBdToQueue(devInst, XAie_TileLoc(traceGMIO->shimColumn, 0), channelNumber, dir, bdNum);
+
 #endif
     }
   }
@@ -108,6 +144,7 @@ void AIETraceOffload::endReadTrace()
     }
     if(isPLIO) {
       deviceIntf->resetAIETs2mm(i);
+//      deviceIntf->freeTraceBuf(b.boHandle);
     } else {
       // no reset required
     }
@@ -123,12 +160,16 @@ void AIETraceOffload::readTrace()
   for(uint64_t i = 0; i < numStream; ++i) {
     if(isPLIO) {
       configAIETs2mm(i);
-    } 
+    } else { 
+      buffers[i].usedSz = bufAllocSz;
+    }
     while (1) {
       auto bytes = readPartialTrace(i);
 
-      if (buffers[i].usedSz == bufAllocSz)
+      if (buffers[i].usedSz == bufAllocSz) {
         buffers[i].isFull = true;
+        break;
+      }
 
       if (bytes != CHUNK_SZ)
         break;
