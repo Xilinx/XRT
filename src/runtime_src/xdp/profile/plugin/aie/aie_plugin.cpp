@@ -38,8 +38,8 @@ namespace xdp {
   {
     db->registerPlugin(this);
 
-    // Get polling interval (in msec)
-    mPollingInterval = xrt_core::config::get_aie_profile_interval_ms();
+    // Get polling interval (in usec)
+    mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
   }
 
   AIEProfilingPlugin::~AIEProfilingPlugin()
@@ -98,7 +98,7 @@ namespace xdp {
         double timestamp = xrt_core::time_ns() / 1.0e6;
         db->getDynamicInfo().addAIESample(index, timestamp, values);
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(mPollingInterval));     
+      std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));     
     }
   }
 
