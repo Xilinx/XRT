@@ -16,6 +16,7 @@
 
 #include <vector>
 #include <string>
+#include <chrono>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -25,6 +26,8 @@
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info_database.h"
+
+#include "core/common/time.h"
 
 namespace xdp {
 
@@ -64,9 +67,23 @@ namespace xdp {
     {
       boost::property_tree::ptree ptSchema ;
       ptSchema.put("major", "1") ;
-      ptSchema.put("minor", "0") ;
+      ptSchema.put("minor", "1") ;
       ptSchema.put("patch", "0") ; 
       ptRunSummary.add_child("schema_version", ptSchema) ;
+    }
+
+    {
+      auto pid = (db->getStaticInfo()).getPid() ;
+      auto timestamp = (std::chrono::system_clock::now()).time_since_epoch() ;
+      auto value =
+	std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
+      uint64_t timeMsec = value.count() ;
+
+      boost::property_tree::ptree ptGeneration ;
+      ptGeneration.put("source", "vp") ;
+      ptGeneration.put("PID", std::to_string(pid)) ;
+      ptGeneration.put("timestamp", std::to_string(timeMsec)) ;
+      ptRunSummary.add_child("generation", ptGeneration) ;
     }
 
     boost::property_tree::ptree ptFiles ;
