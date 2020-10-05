@@ -52,6 +52,7 @@
 #define NODE_AF_DATA_C2H "ep_firewall_data_c2h_00"
 #define NODE_AF_DATA_P2P "ep_firewall_data_p2p_00"
 #define NODE_AF_DATA_M2M "ep_firewall_data_m2m_00"
+#define NODE_PCIE_FIREWALL "ep_firewall_pcie_00"
 #define NODE_CMC_REG "ep_cmc_regmap_00"
 #define NODE_CMC_RESET "ep_cmc_reset_00"
 #define NODE_CMC_MUTEX "ep_cmc_mutex_00"

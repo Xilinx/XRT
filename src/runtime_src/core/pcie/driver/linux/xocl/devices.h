@@ -253,12 +253,14 @@ enum {
 #define	XOCL_ERT_USER		"ert_user"
 #define	XOCL_ERT_30		"ert_30"
 #define	XOCL_M2M		"m2m"
+#define	XOCL_PCIE_FIREWALL	"pcie_firewall"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
 enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
 	XOCL_SUBDEV_VERSION_CTRL,
+	XOCL_SUBDEV_PCIE_FIREWALL,
 	XOCL_SUBDEV_AXIGATE,
 	XOCL_SUBDEV_MSIX,
 	XOCL_SUBDEV_DMA,
@@ -2718,8 +2720,7 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_U200_USER_RAPTOR2					\
 	(struct xocl_board_private){					\
-		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
-			XOCL_DSAFLAG_MB_SCHE_OFF,			\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
 		.subdev_info	= RES_USER_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
 		.board_name = "u200"					\
@@ -2727,12 +2728,10 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_U200_MGMT_RAPTOR2					\
 	(struct xocl_board_private){					\
-		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
-			XOCL_DSAFLAG_MB_SCHE_OFF,			\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u200"					\
 	}
 

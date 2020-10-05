@@ -1880,6 +1880,18 @@ struct xocl_m2m_funcs {
 	(M2M_CB(xdev) ? M2M_OPS(xdev)->get_host_bank(M2M_DEV(xdev),	\
 	addr, size) : -ENODEV)
 
+struct xocl_pcie_firewall_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*unblock)(struct platform_device *pdev, int pf, int bar);
+};
+
+#define PCIE_FIREWALL_DEV(xdev) SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL).pldev
+#define PCIE_FIREWALL_OPS(xdev)					\
+	((struct xocl_pcie_firewall_funcs*)SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL).ops)
+#define PCIE_FIREWALL_CB(xdev) (PCIE_FIREWALL_DEV(xdev) && PCIE_FIREWALL_OPS(xdev))
+#define xocl_pcie_firewall_unblock(xdev, pf, bar)			\
+	(PCIE_FIREWALL_CB(xdev) ? PCIE_FIREWALL_OPS(xdev)->unblock(PCIE_FIREWALL_DEV(xdev), pf, bar) : -ENODEV)
+
 /* subdev functions */
 int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 	struct xocl_pci_funcs *pci_ops);
@@ -2041,6 +2053,7 @@ int xocl_fdt_setprop(xdev_handle_t xdev_hdl, void *blob, int off,
 		     const char *name, const void *val, int size);
 const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 			     char *name, int *lenp);
+int xocl_fdt_unblock_ip(xdev_handle_t xdev_hdl, void *blob);
 const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
 
 /* init functions */
@@ -2199,5 +2212,8 @@ void xocl_fini_ert_user(void);
 
 int __init xocl_init_ert_30(void);
 void xocl_fini_ert_30(void);
+
+int __init xocl_init_pcie_firewall(void);
+void xocl_fini_pcie_firewall(void);
 
 #endif

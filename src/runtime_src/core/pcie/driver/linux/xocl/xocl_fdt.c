@@ -730,6 +730,18 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
 	},
+	{
+		.id = XOCL_SUBDEV_PCIE_FIREWALL,
+		.dev_name = XOCL_PCIE_FIREWALL,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_PCIE_FIREWALL},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
 };
 
 /*
@@ -1297,6 +1309,25 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 
 failed:
 	return dev_num;
+}
+
+int xocl_fdt_unblock_ip(xdev_handle_t xdev_hdl, void *blob)
+{
+	const u32 *bar_idx, *pfnum;
+	struct ip_node ip;
+	int off = -1;
+
+	for (off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip); off >= 0;
+	    off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip)) {
+		pfnum = fdt_getprop(blob, off, PROP_PF_NUM, NULL);
+		bar_idx = fdt_getprop(blob, off, PROP_BAR_IDX, NULL);
+
+		xocl_pcie_firewall_unblock(xdev_hdl,
+			(pfnum ? ntohl(*pfnum) : 0),
+			(bar_idx ? ntohl(*bar_idx) : 0));
+	}
+
+	return 0;
 }
 
 int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
