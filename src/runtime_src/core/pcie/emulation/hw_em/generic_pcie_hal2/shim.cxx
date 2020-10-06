@@ -398,12 +398,10 @@ namespace xclhwemhal2 {
     }
     mCuIndx = 0;
     //TBD the file read may slowdown things...whenever xclLoadBitStream hal API implementation changes, we also need to make changes.
-    std::unique_ptr<char[]> fileName(new char[1024]);
-#ifndef _WINDOWS
-    // TODO: Windows build support
-    //    getpid is defined in unistd.h
-    std::sprintf(fileName.get(), "%s/tempFile_%d", deviceDirectory.c_str(), binaryCounter);
-#endif
+
+    boost::format fmt = boost::format("%1%/tempFile_%2%.zip") % deviceDirectory.c_str() % std::to_string(binaryCounter);
+    std::string zip_fileName = fmt.str();
+
     //systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
 
     if (mMemModel)
@@ -426,7 +424,7 @@ namespace xclhwemhal2 {
 
     mRunDeviceBinDir = binaryDirectory;
 
-    std::ofstream os(fileName.get());
+    std::ofstream os(zip_fileName);
     os.write(args.m_zipFile, args.m_zipFileSize);
     os.close();
 
@@ -663,15 +661,18 @@ namespace xclhwemhal2 {
       std::string userSpecifiedSimPath = xclemulation::config::getInstance()->getSimDir();
       if (userSpecifiedSimPath.empty())
       {
-        std::string _sFilePath(fileName.get());
         if (mLogStream.is_open())
           mLogStream << __func__ << " UNZIP of sim bin started" << std::endl;
 
-        systemUtil::makeSystemCall(_sFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(zip_fileName, systemUtil::systemOperation::UNZIP, binaryDirectory, boost::lexical_cast<std::string>(__LINE__));
+ 
+        if (mLogStream.is_open())
+          mLogStream << __func__ << " UNZIP of sim bin complete" << std::endl;
+
         systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
 
         if (mLogStream.is_open())
-          mLogStream << __func__ << " UNZIP of sim bin ended and permissions operation is complete" << std::endl;
+          mLogStream << __func__ << " Permissions operation is complete" << std::endl;
 
         simulatorType = getSimulatorType(binaryDirectory);
         std::transform(simulatorType.begin(), simulatorType.end(), simulatorType.begin(), [](unsigned char c){return std::tolower(c);});
@@ -901,8 +902,17 @@ namespace xclhwemhal2 {
 
           extractEmuData(sim_path, binaryCounter, args);
 
-          launcherArgs += " -emuData " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
-          launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+          if (boost::filesystem::exists(sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt")) {
+            launcherArgs += " -emuData " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+            launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+          } else if (boost::filesystem::exists(sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt")) {
+            launcherArgs += " -emuData " + sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt";
+            launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt";
+          } else {
+            launcherArgs += " -emuData " + sim_path + "/emulation_data/cfg/aie.sim.config.txt";
+            launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/cfg/aie.sim.config.txt";
+          }
+
           launcherArgs += " -boot-bh " + sim_path + "/emulation_data/BOOT_bh.bin";
           launcherArgs += " -ospi-image " + sim_path + "/emulation_data/qemu_ospi.bin";
           launcherArgs += " -qemu-args-file " + sim_path + "/emulation_data/qemu_args.txt";
