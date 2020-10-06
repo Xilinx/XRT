@@ -1886,9 +1886,10 @@ int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) cons
   return 0;
 }
 
-
+//Get CU index from IP_LAYOUT section for corresponding kernel name
 int CpuemShim::xclIPName2Index(const char *name)
 { 
+  //Get IP_LAYOUT buffer from xclbin
   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
   return xclemulation::getIPName2Index(name, buffer.first);
 }

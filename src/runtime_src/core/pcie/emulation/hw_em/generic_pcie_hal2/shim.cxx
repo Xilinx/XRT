@@ -3284,8 +3284,10 @@ int HwEmShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
   return xclRegRW(false, cu_index, offset, &data);
 }
 
+//Get CU index from IP_LAYOUT section for corresponding kernel name
 int HwEmShim::xclIPName2Index(const char *name)
 {
+  //Get IP_LAYOUT buffer from xclbin
   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
   return xclemulation::getIPName2Index(name, buffer.first);
 }

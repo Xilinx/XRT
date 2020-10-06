@@ -262,7 +262,8 @@ namespace xclemulation{
   std::string getXclbinVersion(const axlf* top);
   std::string getVivadoVersion();
   void checkXclibinVersionWithTool(const xclBin *header);
-  int getIPName2Index(const char *name,const char* ipLayoutbuf);
+  //Get CU index from IP_LAYOUT section for corresponding kernel name
+  int getIPName2Index(const char *name, const char* ipLayoutbuf);
 }
 
 #endif

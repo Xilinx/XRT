@@ -249,7 +249,7 @@ using addr_type = uint64_t;
           return true;
         return false;
       }
-
+      //Get CU index from IP_LAYOUT section for corresponding kernel name
       int xclIPName2Index(const char *name);
 
       void fetchAndPrintMessages();

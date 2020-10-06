@@ -537,8 +537,9 @@ xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
   return -ENOSYS;
 }
 
+//Get CU index from IP_LAYOUT section for corresponding kernel name
 int xclIPName2Index(xclDeviceHandle handle, const char *name)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return (drv) ? drv->xclIPName2Index(name) : -ENODEV;
+  return drv ? drv->xclIPName2Index(name) : -ENODEV;
 }

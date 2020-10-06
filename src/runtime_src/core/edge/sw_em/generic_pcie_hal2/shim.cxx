@@ -65,7 +65,7 @@ namespace xclcpuemhal2 {
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
     mCore = nullptr;
-    mSWSch = nullptr; 
+    mSWSch = nullptr;
 
     ci_buf = malloc(ci_msg.ByteSize());
     ri_msg.set_size(0);
@@ -480,7 +480,6 @@ namespace xclcpuemhal2 {
     std::string xmlFile = "" ;
     int result = dumpXML(header, xmlFile) ;
     if (result != 0) return result ;
-   
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
     //  by checking to see if there is a DEBUG_DATA section in
@@ -1855,9 +1854,10 @@ int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) cons
   return 0;
 }
 
-
+//Get CU index from IP_LAYOUT section for corresponding kernel name
 int CpuemShim::xclIPName2Index(const char *name)
 { 
+  //Get IP_LAYOUT buffer from xclbin
   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
   return xclemulation::getIPName2Index(name, buffer.first);
 }

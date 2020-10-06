@@ -886,39 +886,37 @@ namespace xclemulation{
     return false;
   }
 
-  int getIPName2Index(const char *name,const char* buffer)
+  //Get CU index from IP_LAYOUT section for corresponding kernel name
+  int getIPName2Index(const char *name, const char* buffer)
   {
     std::string errmsg;
-    const uint64_t bad_addr = 0xffffffffffffffff;
+    const uint64_t bad_addr = -1;
   
     if (!buffer)
     {
       errmsg = "ERROR: getIPName2Index - can't load ip_layout section";
-      std::cout << errmsg << std::endl;
+      std::cerr << errmsg << std::endl;
       return -EINVAL;
     }
 
-    const ip_layout* map = (reinterpret_cast<const ::ip_layout*>(buffer));
+    auto map = (reinterpret_cast<const ::ip_layout*>(buffer));
     if (map->m_count < 0) {
       errmsg = "ERROR: getIPName2Index - invalid ip_layout section content";
-      std::cout << errmsg << std::endl;
+      std::cerr << errmsg << std::endl;
       return -EINVAL;
     }
-
+    //Find out base address of the kernel in IP_LAYOUT section in XCLBIN
     uint64_t addr = bad_addr;
-    int i;
-    for (i = 0; i < map->m_count; i++) {
+    for (int i = 0; i < map->m_count; i++) {
       if (strncmp((char *)map->m_ip_data[i].m_name, name,
         sizeof(map->m_ip_data[i].m_name)) == 0) {
         addr = map->m_ip_data[i].m_base_address;
         break;
       }
-    }
-    if (i == map->m_count)
-      return -ENOENT;
+    } 
     if (addr == bad_addr)
       return -EINVAL;
-
+    //get all CU index vector for the correspodning ip_layout buffer.
     auto cus = xrt_core::xclbin::get_cus(map);
     auto itr = std::find(cus.begin(), cus.end(), addr);
     if (itr == cus.end())
