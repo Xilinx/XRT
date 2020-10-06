@@ -245,6 +245,7 @@ xrtDeviceClose(xrtDeviceHandle dhdl);
  *
  * @dhdl:       Handle to device previously opened with xrtDeviceOpen
  * @xclbin:     Pointer to complete axlf in memory image
+ * @uuid:       Pointer to xuid_t for return xclbin uuid, ignored if NULL
  * Return:      0 on success, error otherwise
  *
  * The xclbin image can safely be deleted after calling
@@ -252,13 +253,14 @@ xrtDeviceClose(xrtDeviceHandle dhdl);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin);
+xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin, xuid_t* uuid);
 
 /**
  * xrtDeviceLoadXclbinFile() - Read and load an xclbin file
  *
  * @dhdl:       Handle to device previously opened with xrtDeviceOpen
  * @xclbin_fnm: Full path to xclbin file
+ * @uuid:       Pointer to xuid_t for return xclbin uuid, ignored if NULL
  * Return:      0 on success, error otherwise
  *
  * This function read the file from disk and loads
@@ -267,13 +269,14 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* xclbin_fnm);
+xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* xclbin_fnm, xuid_t* uuid);
 
 /**
  * xrtDeviceLoadXclbinHandle() - load an xclbin from an xrt::xclbin handle
  *
  * @dhdl:       Handle to device previously opened with xrtDeviceOpen
  * @xhdl:       xrt::xclbin handle
+ * @uuid:       Pointer to xuid_t for return xclbin uuid, ignored if NULL
  * Return:      0 on success, error otherwise
  *
  * This function uses the specified xrt::xclbin object created by
@@ -282,7 +285,7 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* xclbin_fnm);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl);
+xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl, xuid_t* uuid);
 
 /**
  * xrtDeviceGetXclbinUUID() - Get UUID of xclbin image loaded on device

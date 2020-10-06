@@ -209,11 +209,14 @@ xrtDeviceClose(xrtDeviceHandle dhdl)
 }
 
 int
-xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin)
+xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin, xuid_t* uuid)
 {
   try {
     auto device = get_device(dhdl);
     device->load_xclbin(xclbin);
+    if (uuid)
+      uuid_copy(*uuid, device->get_xclbin_uuid().get());
+      
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -227,12 +230,14 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin)
 }
 
 int
-xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
+xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm, xuid_t* uuid)
 {
   try {
     auto device = get_device(dhdl);
     auto xclbin = read_xclbin(fnm);
     device->load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
+    if (uuid)
+      uuid_copy(*uuid, device->get_xclbin_uuid().get());
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -246,12 +251,14 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
 }
 
 int
-xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
+xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl, xuid_t* uuid)
 {
   try {
     auto device = get_device(dhdl);
     auto& xclbin = xrt_core::xclbin_int::get_xclbin_data(xhdl);
     device->load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
+    if (uuid)
+      uuid_copy(*uuid, device->get_xclbin_uuid().get());
     return 0;
   }
   catch (const xrt_core::error& ex) {
