@@ -70,10 +70,12 @@ driver_version(const std::string& driver)
   std::string hash("unknown");
   //dkms flow is not available for zocl
   //so version.h file is not available at zocl build time
+#if defined(XRT_DRIVER_VERSION)
   std::string zocl_driver_ver = XRT_DRIVER_VERSION;
   std::stringstream ss(zocl_driver_ver);
   getline(ss, ver, ',');
   getline(ss, hash, ',');
+#endif
 
   _pt.put("name", driver);
   _pt.put("version", ver);
