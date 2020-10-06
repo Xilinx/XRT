@@ -349,6 +349,8 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
 
+	if (flag & XOCL_RESET_NO)
+		goto failed_notify;
 	/* On powerpc, it does not have secondary level bus reset.
 	 * Instead, it uses fundemantal reset which does not allow mailbox polling
 	 * xrt_reset_syncup might have to be true on power pc.
@@ -438,9 +440,15 @@ static void xocl_work_cb(struct work_struct *work)
 	case XOCL_WORK_RESET:
 		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE);
 		break;
-	case XOCL_WORK_SHUTDOWN:
+	case XOCL_WORK_SHUTDOWN_WITH_RESET:
 		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE |
-				XOCL_RESET_SHUTDOWN);
+			XOCL_RESET_SHUTDOWN);
+		/* mark device offline. Only hotplug is allowed. */
+		XDEV(xdev)->shutdown = true;
+		break;
+	case XOCL_WORK_SHUTDOWN_WITHOUT_RESET:
+		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE |
+			XOCL_RESET_SHUTDOWN | XOCL_RESET_NO);
 		/* mark device offline. Only hotplug is allowed. */
 		XDEV(xdev)->shutdown = true;
 		break;
