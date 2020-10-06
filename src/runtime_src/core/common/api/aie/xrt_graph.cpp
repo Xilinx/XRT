@@ -508,7 +508,7 @@ xrtGMIOWait(xrtDeviceHandle handle, const char *gmioName)
 }
 
 /**
- * xrtStartProfiling() - Start AIE performance profiling
+ * xrtAIEStartProfiling() - Start AIE performance profiling
  *
  * @handle:          Handle to the device
  * @option:          Profiling option.
@@ -523,10 +523,10 @@ xrtGMIOWait(xrtDeviceHandle handle, const char *gmioName)
  * meanings on different options.
  *
  * Note: Currently, the only supported io profiling option is
- *       io_stream_running_event_count (GMIO)
+ *       io_stream_running_event_count (GMIO and PLIO)
  */
 int
-xrtStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value)
+xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value)
 {
   try {
     return start_profiling(handle, option, port1Name, port2Name, value);
@@ -542,8 +542,8 @@ xrtStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, con
 }
 
 /**
- * xrtReadProfiling() - Read the current performance counter value
- *                      associated with the profiling handle.
+ * xrtAIEReadProfiling() - Read the current performance counter value
+ *                         associated with the profiling handle.
  *
  * @handle:          Handle to the device
  * @pHandle:         Profiling handle.
@@ -551,7 +551,7 @@ xrtStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, con
  * Return:         The performance counter value, -1 on error.
  */
 uint64_t
-xrtReadProfiling(xrtDeviceHandle handle, int pHandle)
+xrtAIEReadProfiling(xrtDeviceHandle handle, int pHandle)
 {
   try {
     return read_profiling(handle, pHandle);
@@ -567,9 +567,9 @@ xrtReadProfiling(xrtDeviceHandle handle, int pHandle)
 }
 
 /**
- * xrtStopProfiling() - Stop the current performance profiling
- *                      associated with the profiling handle and
- *                      release the corresponding hardware resources.
+ * xrtAIEStopProfiling() - Stop the current performance profiling
+ *                         associated with the profiling handle and
+ *                         release the corresponding hardware resources.
  *
  * @handle:          Handle to the device
  * @pHandle:         Profiling handle.
@@ -577,7 +577,7 @@ xrtReadProfiling(xrtDeviceHandle handle, int pHandle)
  * Return:         0 on success, -1 on error.
  */
 int
-xrtStopProfiling(xrtDeviceHandle handle, int pHandle)
+xrtAIEStopProfiling(xrtDeviceHandle handle, int pHandle)
 {
   try {
     stop_profiling(handle, pHandle);

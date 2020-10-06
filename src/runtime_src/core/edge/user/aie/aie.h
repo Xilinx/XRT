@@ -86,6 +86,7 @@ struct EventRecord {
 class Aie {
 public:
     using gmio_type = xrt_core::edge::aie::gmio_type;
+    using plio_type = xrt_core::edge::aie::plio_type;
 
     ~Aie();
     Aie(const std::shared_ptr<xrt_core::device>& device);
@@ -94,6 +95,8 @@ public:
 
     /* This is the collections of gmios that are used. */
     std::vector<gmio_type> gmios;
+
+    std::vector<plio_type> plios;
 
     XAie_DevInst *getDevInst();
 
