@@ -94,6 +94,7 @@
 #define	XMC_VCCAUX_REG                  0x344
 #define	XMC_VCCAUX_PMC_REG              0x350
 #define	XMC_VCCRAM_REG                  0x35C
+#define	XMC_POWER_WARN_REG              0x370
 #define	XMC_HOST_NEW_FEATURE_REG1	0xB20
 #define	XMC_HOST_NEW_FEATURE_REG1_SC_NO_CS (1 << 30)
 #define	XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT (1 << 29)
@@ -709,6 +710,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case XMC_VCCRAM:
 			READ_SENSOR(xmc, XMC_VCCRAM_REG, val, val_kind);
 			break;
+		case XMC_POWER_WARN:
+			READ_SENSOR(xmc, XMC_POWER_WARN_REG, val, val_kind);
+			break;
 		default:
 			break;
 		}
@@ -869,7 +873,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case XMC_VCCRAM:
 			*val = xmc->cache->vol_vccram;
 			break;
-
+		case XMC_POWER_WARN:
+			*val = xmc->cache->power_warn;
+			break;
 		default:
 			break;
 		}
@@ -1139,6 +1145,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_sensor(pdev, XMC_VCCAUX, &sensors->vol_vccaux, SENSOR_INS);
 		xmc_sensor(pdev, XMC_VCCAUX_PMC, &sensors->vol_vccaux_pmc, SENSOR_INS);
 		xmc_sensor(pdev, XMC_VCCRAM, &sensors->vol_vccram, SENSOR_INS);
+		xmc_sensor(pdev, XMC_POWER_WARN, &sensors->power_warn, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
@@ -1362,6 +1369,7 @@ SENSOR_SYSFS_NODE(xmc_v12_in_aux1_i, XMC_V12_IN_AUX1_I);
 SENSOR_SYSFS_NODE(xmc_vccaux, XMC_VCCAUX);
 SENSOR_SYSFS_NODE(xmc_vccaux_pmc, XMC_VCCAUX_PMC);
 SENSOR_SYSFS_NODE(xmc_vccram, XMC_VCCRAM);
+SENSOR_SYSFS_NODE(xmc_power_warn, XMC_POWER_WARN);
 
 static ssize_t xmc_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -1446,7 +1454,8 @@ static DEVICE_ATTR_RO(core_version);
 	&dev_attr_xmc_v12_in_aux1_i.attr,				\
 	&dev_attr_xmc_vccaux.attr,					\
 	&dev_attr_xmc_vccaux_pmc.attr,					\
-	&dev_attr_xmc_vccram.attr
+	&dev_attr_xmc_vccram.attr,					\
+	&dev_attr_xmc_power_warn.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
