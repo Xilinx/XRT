@@ -19,6 +19,7 @@
 #include "xdp/profile/plugin/aie/aie_plugin.h"
 #include "xdp/profile/writer/aie/aie_writer.h"
 
+#include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/time.h"
 #include "core/common/config_reader.h"
