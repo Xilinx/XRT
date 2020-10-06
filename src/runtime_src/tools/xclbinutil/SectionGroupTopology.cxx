@@ -251,7 +251,6 @@ SectionGroupTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSect
     std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the MEM_TOPOLOGY (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",
                                        (unsigned int) bufferSize, (unsigned int) maxBufferSize);
     std::cout << errMsg << std::endl;
-    // throw std::runtime_error(errMsg);
   }
 }
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019 - 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -217,7 +217,7 @@ FDTNode::marshalFromDTC( const char* _pBuffer,
     throw std::runtime_error(err);
   }
 
-  // -- Validate the first and and last tokens
+  // -- Validate the first and last tokens
   uint32_t startDtcToken = ntohl(*((const uint32_t*)&_pBuffer[0]));
 
   if (startDtcToken != FDT_BEGIN_NODE) {
