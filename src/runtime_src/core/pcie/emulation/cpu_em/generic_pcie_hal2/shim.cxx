@@ -940,12 +940,32 @@ namespace xclcpuemhal2 {
   {
     xclemulation::config::getInstance()->populateEnvironmentSetup(mEnvironmentNameValueMap);
 
-    std::string logFilePath = (logfileName && (logfileName[0] != '\0')) ? logfileName : xrt_core::config::get_hal_logging();
-    if (!logFilePath.empty()) {
+    //std::string logFilePath = (logfileName && (logfileName[0] != '\0')) ? logfileName : xrt_core::config::get_hal_logging();
+
+    char path[FILENAME_MAX];
+    size_t size = PATH_MAX;
+    char* pPath = GetCurrentDir(path,size);
+
+    std::string lf = "";
+    if (getenv("ENABLE_HAL_SW_EMU_DEBUG")) {
+      lf = std::string(pPath) + "/hal_sw_log.txt";
+    }
+    else {
+      lf = "";
+    }
+
+    if (!lf.empty())
+    {
+      mLogStream.open(lf);
+      mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+    }
+
+    /*if (!logFilePath.empty()) {
       mLogStream.open(logFilePath);
       mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-    }
+    }*/
     // Shim object creation doesn't follow xclOpen/xclClose.
     // The core device must correspond to open and close, so
     // create here rather than in constructor
@@ -989,6 +1009,9 @@ namespace xclcpuemhal2 {
       }
     }
 
+    if (mLogStream.is_open()) {
+      mLogStream.close();
+    }
   }
   void CpuemShim::resetProgram(bool callingFromClose)
   {
@@ -1709,7 +1732,6 @@ ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
   mReqCounter++;
   PRINTENDFUNC;
   return fullSize;
-
 }
 /*
  * xclPollCompletion
@@ -1720,6 +1742,7 @@ int CpuemShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion 
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
   }
+
 //  struct timespec time, *ptime = NULL;
 //
 //  if (timeout > 0)

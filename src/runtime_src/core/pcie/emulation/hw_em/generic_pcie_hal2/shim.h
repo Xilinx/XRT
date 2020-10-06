@@ -263,6 +263,10 @@ using addr_type = uint64_t;
 
       std::string getSimulatorType(const std::string& binaryDirectory);
       void createPreSimScript(const std::string& wcfgFilePath, std::string& preSimScriptPath);
+      std::string loadFileContentsToString(const std::string& path);
+      void writeStringIntoFile(const std::string& path, const std::string& content);
+      std::string modifyContent(const std::string& simulatorName, std::string& content);
+      void writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName);
       void constructQueryTable();     
 
     private:

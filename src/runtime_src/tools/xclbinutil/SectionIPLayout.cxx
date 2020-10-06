@@ -409,7 +409,7 @@ SectionIPLayout::appendToSectionMetadata(const boost::property_tree::ptree& _ptA
   unsigned int appendCount = _ptAppendData.get<unsigned int>("m_count");
 
   if (appendCount != ip_datas.size()) {
-    std::string errMsg = XUtil::format("ERROR: IP layout section to append's count (%d) doesn't match the number of ip_data entries (%d).", appendCount, ip_datas.size());
+    std::string errMsg = XUtil::format("ERROR: IP layout section append's count (%d) does not match the number of ip_data entries (%d).", appendCount, ip_datas.size());
     throw std::runtime_error(errMsg);
   }
 

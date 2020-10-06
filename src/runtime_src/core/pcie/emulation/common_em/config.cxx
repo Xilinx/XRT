@@ -71,7 +71,7 @@ namespace xclemulation{
     mPrintErrorsInConsole = true;
     mVerbosity = 0;
     mServerPort = 0;
-    mKeepRunDir=false;
+    mKeepRunDir=true;
     mLauncherArgs = "";
     mSystemDPA = true;
     mLegacyErt = ERTMODE::NONE;
@@ -192,7 +192,7 @@ namespace xclemulation{
       }
       else if(name == "keep_run_dir")
       {
-        setKeepRunDir(getBoolValue(value,false));
+        setKeepRunDir(getBoolValue(value,true));
       }
       else if (name == "enable_prep_target" || name == "enable_debug" || name == "aie_sim_options") {
         //Do nothing: Added to bypass the WARNING that is issued below stating "invalid xrt.ini option" 

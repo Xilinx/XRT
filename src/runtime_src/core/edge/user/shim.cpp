@@ -1549,6 +1549,11 @@ xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
 {
   try {
     //std::cout << "xclOpen called" << std::endl;
+    if (deviceIndex >= xclProbe()) {
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT",
+                       std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
+      return nullptr;
+    }
     auto handle = new ZYNQ::shim(deviceIndex, logFileName, level);
     if (!ZYNQ::shim::handleCheck(handle)) {
       delete handle;

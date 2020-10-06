@@ -828,9 +828,9 @@ static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int test_idx,
                        size_t testSuiteSize, std::ostream & _ostream, const std::string& bdf)
 {
-  _ostream << boost::format("%d/%d Test #%d [%s]: %s \n") % test_idx % testSuiteSize
-                    % test_idx % bdf % test.get<std::string>("name");
-  _ostream << boost::format("    %-22s: %s\n") % "Description" % test.get<std::string>("description");
+  std::string test_desc = boost::str(boost::format("%d/%d Test #%d [%s]") % test_idx % testSuiteSize % test_idx % bdf);
+  _ostream << boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name");
+  _ostream << boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description");
 }
 
 /*
@@ -848,7 +848,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   try {
     for (const auto& dict : test.get_child("log")) {
       for (const auto& kv : dict.second) {
-        _ostream<< boost::format("    %-22s: %s\n") % kv.first % kv.second.get_value<std::string>();
+        _ostream<< boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>();
         if (boost::iequals(kv.first, "warning"))
           warn = true;
         else if (boost::iequals(kv.first, "error"))
@@ -869,7 +869,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   }
 
   boost::to_upper(_status);
-  _ostream << EscapeCodes::fgcolor(color).string() << boost::format("    [%s]\n") % _status
+  _ostream << boost::format("    %-24s:") % "Test Status" << EscapeCodes::fgcolor(color).string() << boost::format(" [%s]\n") % _status
             << EscapeCodes::fgcolor::reset();
   _ostream << "-------------------------------------------------------------------------------" << std::endl;
 }
@@ -1003,7 +1003,7 @@ getTestNameDescriptions(bool addAdditionOptions)
 
   // 'verbose' option
   if (addAdditionOptions) {
-    reportDescriptionCollection.emplace_back("all", "All known validate tests will be executed");
+    reportDescriptionCollection.emplace_back("all", "All known validate tests will be executed (default)");
     reportDescriptionCollection.emplace_back("quick", "Only the first 5 tests will be executed");
   }
 

@@ -92,6 +92,8 @@ struct drm_xocl_unmgd {
 	unsigned              flags;
 };
 
+struct drm_xocl_bo *__xocl_create_bo_ioctl(struct drm_device *dev,
+	struct drm_xocl_create_bo *args);
 struct drm_xocl_bo *xocl_drm_create_bo(struct xocl_drm *drm_p,
 	uint64_t unaligned_size, unsigned user_flags);
 void xocl_drm_free_bo(struct drm_gem_object *obj);

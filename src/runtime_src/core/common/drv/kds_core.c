@@ -748,6 +748,50 @@ void kds_reset(struct kds_sched *kds)
 	kds->bad_state = 0;
 }
 
+static int kds_fa_assign_plram(struct kds_sched *kds)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	u32 total_sz = 0;
+	u32 num_slots;
+	u32 size;
+	u64 bar_addr;
+	u64 dev_addr;
+	int ret = 0;
+	int i;
+
+	for (i = 0; i < cu_mgmt->num_cus; i++) {
+		if (!xrt_is_fa(cu_mgmt->xcus[i], &size))
+			continue;
+
+		total_sz += size;
+		/* Release old resoruces if exist */
+		xrt_fa_cfg_update(cu_mgmt->xcus[i], 0, 0, 0);
+	}
+
+	total_sz = round_up_to_next_power2(total_sz);
+
+	if (kds->plram.size < total_sz)
+		return -EINVAL;
+
+	num_slots = kds->plram.size / total_sz;
+
+	bar_addr = kds->plram.bar_paddr;
+	dev_addr = kds->plram.dev_paddr;
+	for (i = 0; i < cu_mgmt->num_cus; i++) {
+		if (!xrt_is_fa(cu_mgmt->xcus[i], &size))
+			continue;
+
+		/* The updated FA CU would release when it is removed */
+		ret = xrt_fa_cfg_update(cu_mgmt->xcus[i], bar_addr, dev_addr, num_slots);
+		if (ret)
+			return ret;
+		bar_addr += size * num_slots;
+		dev_addr += size * num_slots;
+	}
+
+	return 0;
+}
+
 int kds_cfg_update(struct kds_sched *kds)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
@@ -755,21 +799,33 @@ int kds_cfg_update(struct kds_sched *kds)
 	int ret = 0;
 	int i;
 
-	if (!kds->cu_intr_cap)
-		return 0;
+	/* Update PLRAM CU */
+	if (kds->plram.dev_paddr) {
+		ret = kds_fa_assign_plram(kds);
+		if (ret)
+			return -EINVAL;
+		/* ERT doesn't understand Fast adapter
+		 * Host crash at around configure command if ERT is enabled.
+		 * TODO: Support fast adapter in ERT?
+		 */
+		kds->ert_disable = 1;
+	}
 
-	for (i = 0; i < cu_mgmt->num_cus; i++) {
-		if (cu_mgmt->cu_intr[i] == kds->cu_intr)
-			continue;
+	/* Update CU interrupt mode */
+	if (kds->cu_intr_cap) {
+		for (i = 0; i < cu_mgmt->num_cus; i++) {
+			if (cu_mgmt->cu_intr[i] == kds->cu_intr)
+				continue;
 
-		xcu = cu_mgmt->xcus[i];
-		ret = xrt_cu_cfg_update(xcu, kds->cu_intr);
-		if (!ret)
-			cu_mgmt->cu_intr[i] = kds->cu_intr;
-		else if (ret == -ENOSYS) {
-			/* CU doesn't support interrupt */
-			cu_mgmt->cu_intr[i] = 0;
-			ret = 0;
+			xcu = cu_mgmt->xcus[i];
+			ret = xrt_cu_cfg_update(xcu, kds->cu_intr);
+			if (!ret)
+				cu_mgmt->cu_intr[i] = kds->cu_intr;
+			else if (ret == -ENOSYS) {
+				/* CU doesn't support interrupt */
+				cu_mgmt->cu_intr[i] = 0;
+				ret = 0;
+			}
 		}
 	}
 
@@ -873,6 +929,21 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	/* Skip first 4 control registers */
 	xcmd->isize = (ecmd->count - xcmd->num_mask - 4) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
+}
+
+void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+			  struct kds_command *xcmd)
+{
+	xcmd->opcode = OP_START;
+
+	xcmd->execbuf = (u32 *)ecmd;
+
+	xcmd->cu_mask[0] = ecmd->cu_mask;
+	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
+	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+
+	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
+	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 }
 
 /**

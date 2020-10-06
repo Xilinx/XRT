@@ -554,10 +554,6 @@ skip1:
 		 */
 	}
 
-	/* The finial step is to update KDS configuration */
-	if (kds_mode)
-		xocl_kds_update(xdev);
-
 	if (!preserve_mem) {
 		rc = xocl_init_mem(drm_p);
 		if (err == 0)
@@ -569,6 +565,10 @@ skip1:
 	 */
 	if (!err &&  size >=0)
 		xocl_p2p_refresh_rbar(xdev);
+
+	/* The finial step is to update KDS configuration */
+	if (kds_mode)
+		err = xocl_kds_update(xdev);
 
 done:
 	if (size < 0)

@@ -38,7 +38,7 @@ int main( int argc, char** argv )
   // and adjacent key value pairs.  In other words, depending on which version
   // of boost you are using, the syntax:
   //     --info myfile
-  // may or maynot be valued.  What is valued across all versions is:
+  // may or may not be valued.  What is valued across all versions is:
   //     --info=myfile
 
   std::vector<std::string> implicitOptions = {"--info"};

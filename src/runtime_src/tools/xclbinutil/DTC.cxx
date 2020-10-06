@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019 - 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -225,7 +225,7 @@ DTC::marshalToDTC(std::ostringstream& _buf) const
   _buf.write(sStructureNodes.c_str(), sStructureNodes.size());
   _buf.write(sStringBlock.c_str(), sStringBlock.size());
 
-  // -- Integrety check --
+  // -- Integrity check --
   if (runningOffset >= UINT32_MAX) {
     throw std::runtime_error("ERROR: DTC block exceeds 4 GBytes (uint32_t max size)");
   }

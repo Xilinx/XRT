@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -49,7 +49,6 @@ SectionBuildMetadata::marshalToJSON(char* _pDataSection,
 
     std::stringstream ss((char*) memBuffer.get());
 
-    // TODO: Catch the exception (if any) from this call and produce a nice message
     XUtil::TRACE_BUF("BUILD_METADATA", (const char *) memBuffer.get(), _sectionSize+1);
     try {
       boost::property_tree::ptree pt;
