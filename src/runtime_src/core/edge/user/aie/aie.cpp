@@ -329,7 +329,7 @@ reset(const xrt_core::device* device)
 
 int
 Aie::
-start_profiling(int option, const std::string& port1Name, const std::string& port2Name, uint32_t value)
+start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
 {
   int handle = -1;
 
@@ -340,22 +340,22 @@ start_profiling(int option, const std::string& port1Name, const std::string& por
     throw xrt_core::error(-EINVAL, "Start profiling fails: unknown profiling option.");
 
   auto gmio = std::find_if(gmios.begin(), gmios.end(),
-            [port1Name](gmio_type it) { return it.name.compare(port1Name) == 0; });
+            [&port1_name](auto& it) { return it.name.compare(port1_name) == 0; });
 
   // For PLIO inside graph, there is no name property.
   // So we need to match logical name too
   auto plio = std::find_if(plios.begin(), plios.end(),
-            [port1Name](plio_type it) { return it.name.compare(port1Name) == 0; });
+            [&port1_name](auto& it) { return it.name.compare(port1_name) == 0; });
   if (plio == plios.end()) {
     plio = std::find_if(plios.begin(), plios.end(),
-            [port1Name](plio_type it) { return it.logical_name.compare(port1Name) == 0; });
+            [&port1_name](auto& it) { return it.logical_name.compare(port1_name) == 0; });
   }
 
   if (gmio == gmios.end() && plio == plios.end())
-    throw xrt_core::error(-EINVAL, "Can't start profiling: port name '" + port1Name + "' not found");
+    throw xrt_core::error(-EINVAL, "Can't start profiling: port name '" + port1_name + "' not found");
 
   if (gmio != gmios.end() && plio != plios.end())
-    throw xrt_core::error(-EINVAL, "Can't start profiling: ambiguous port name '" + port1Name + "'");
+    throw xrt_core::error(-EINVAL, "Can't start profiling: ambiguous port name '" + port1_name + "'");
 
   XAie_LocType shim_tile;
   XAie_StrmPortIntf mode;

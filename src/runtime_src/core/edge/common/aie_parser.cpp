@@ -166,7 +166,7 @@ get_plio(const pt::ptree& aie_meta)
 
   auto plio_nodes = aie_meta.get_child_optional("aie_metadata.PLIOs");
   if (!plio_nodes)
-    return plios;
+    return {};
 
   for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
     plio_type plio;
