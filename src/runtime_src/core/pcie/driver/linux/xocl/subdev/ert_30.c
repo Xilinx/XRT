@@ -283,8 +283,8 @@ flush_submit_queue(struct xocl_ert_30 *ert_30, u32 *len, int status, void *clien
 	unsigned long flags;
 
 
-	spin_lock_irqsave(&ert_30->sq_lock, flags);
 	for ( i = 0; i < ERT_MAX_SLOTS; ++i ) {
+		spin_lock_irqsave(&ert_30->sq_lock, flags);
 		ecmd = ert_30->submit_queue[i];
 		if (ecmd) {
 			xcmd = ecmd->xcmd;
@@ -293,11 +293,12 @@ flush_submit_queue(struct xocl_ert_30 *ert_30, u32 *len, int status, void *clien
 			xcmd->cb.notify_host(xcmd, status);
 			xcmd->cb.free(xcmd);
 			ert_30->submit_queue[i] = NULL;
-			ert_30_free_cmd(ecmd);
 			--ert_30->num_sq;
 		}
+		spin_unlock_irqrestore(&ert_30->sq_lock, flags);
+		ert_30_free_cmd(ecmd);
 	}
-	spin_unlock_irqrestore(&ert_30->sq_lock, flags);
+
 }
 /*
  * release_slot_idx() - Release specified slot idx
@@ -354,9 +355,9 @@ static inline void process_ert_cq(struct xocl_ert_30 *ert_30)
 	list_del(&ecmd->list);
 	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
 	xcmd->cb.free(xcmd);
-	ert_30_free_cmd(ecmd);
 	--ert_30->num_cq;
 	spin_unlock_irqrestore(&ert_30->sq_lock, flags);
+	ert_30_free_cmd(ecmd);
 	ERTUSER_DBG(ert_30, "<- %s\n", __func__);
 }
 
@@ -378,6 +379,7 @@ ert_30_isr(int irq, void *arg)
 	struct xocl_ert_30 *ert_30 = (struct xocl_ert_30 *)arg;
 	xdev_handle_t xdev;
 	struct ert_30_command *ecmd;
+	unsigned long flags = 0;
 
 	if (!ert_30)
 		return IRQ_HANDLED;
@@ -390,7 +392,7 @@ ert_30_isr(int irq, void *arg)
 
 	if (!ert_30->polling_mode) {
 
-		spin_lock(&ert_30->sq_lock);
+		spin_lock_irqsave(&ert_30->sq_lock, flags);
 		ecmd = ert_30->submit_queue[irq];
 		if (ecmd) {
 			ert_30->submit_queue[irq] = NULL;
@@ -400,7 +402,7 @@ ert_30_isr(int irq, void *arg)
 			++ert_30->num_cq;			
 		}
 
-		spin_unlock(&ert_30->sq_lock);
+		spin_unlock_irqrestore(&ert_30->sq_lock, flags);
 
 		up(&ert_30->sem);
 		/* wake up all scheduler ... currently one only */
