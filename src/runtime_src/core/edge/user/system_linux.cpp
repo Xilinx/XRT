@@ -62,19 +62,24 @@ struct X
   X() { singleton_instance(); }
 } x;
 
-static std::string
+static boost::property_tree::ptree
 driver_version(const std::string& driver)
 {
-  std::string line("unknown");
-  std::string path("/sys/module/");
-  path += driver;
-  path += "/version";
-  std::ifstream ver(path);
-  if (ver.is_open()) {
-    getline(ver, line);
-  }
+  boost::property_tree::ptree _pt;
+  std::string ver("unknown");
+  std::string hash("unknown");
+  //dkms flow is not available for zocl
+  //so version.h file is not available at zocl build time
+  std::string zocl_driver_ver = XRT_DRIVER_VERSION;
+  std::stringstream ss(zocl_driver_ver);
+  getline(ss, ver, ',');
+  getline(ss, hash, ',');
 
-  return line;
+  _pt.put("name", driver);
+  _pt.put("version", ver);
+  _pt.put("hash", hash);
+
+  return _pt;
 }
 
 }
@@ -89,7 +94,10 @@ get_xrt_info(boost::property_tree::ptree &pt)
   pt.put("build.hash", xrt_build_version_hash);
   pt.put("build.date", xrt_build_version_date);
   pt.put("build.branch", xrt_build_version_branch);
-  pt.put("build.zocl", driver_version("zocl"));
+  //driver version
+  boost::property_tree::ptree _ptDriverInfo;
+  _ptDriverInfo.push_back( std::make_pair("", driver_version("zocl") ));
+  pt.put_child("drivers", _ptDriverInfo);
 }
 
 static boost::property_tree::ptree
