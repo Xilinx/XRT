@@ -131,6 +131,9 @@ static int cu_probe(struct platform_device *pdev)
 	case CTRL_CHAIN:
 		xcu->base.info.model = XCU_HLS;
 		break;
+	case CTRL_FA:
+		xcu->base.info.model = XCU_FA;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -207,6 +210,9 @@ static int cu_probe(struct platform_device *pdev)
 	case XCU_PLRAM:
 		err = xrt_cu_plram_init(&xcu->base);
 		break;
+	case XCU_FA:
+		err = xrt_cu_fa_init(&xcu->base);
+		break;
 	default:
 		err = -EINVAL;
 	}
@@ -276,6 +282,9 @@ static int cu_remove(struct platform_device *pdev)
 		break;
 	case XCU_PLRAM:
 		xrt_cu_plram_fini(&xcu->base);
+		break;
+	case XCU_FA:
+		xrt_cu_fa_fini(&xcu->base);
 		break;
 	}
 

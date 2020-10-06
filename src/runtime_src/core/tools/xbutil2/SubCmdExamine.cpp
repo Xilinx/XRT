@@ -104,7 +104,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   ;
 
   po::options_description hiddenOptions("Hidden Options");  
-  commonOptions.add_options()
+  hiddenOptions.add_options()
     ("element,e", boost::program_options::value<decltype(elementsFilter)>(&elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
   ;
 
@@ -163,6 +163,19 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
           missingReports.push_back(report->getReportName());
       }
       if (!missingReports.empty()) {
+
+        auto dev_pt = XBU::get_available_devices(true);
+        if(dev_pt.empty())
+          std::cout << "0 devices found" << std::endl;
+        else 
+          std::cout << "Device list" << std::endl;
+
+        for(auto& kd : dev_pt) {
+          boost::property_tree::ptree& dev = kd.second;
+          std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
+          std::cout << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
+        }
+        
         std::cout << boost::format("Warning: Due to missing devices, the following reports will not be generated:\n");
         for (const auto & report : missingReports) 
           std::cout << boost::format("         - %s\n") % report;

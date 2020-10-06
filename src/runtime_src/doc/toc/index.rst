@@ -49,8 +49,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
    opencl_extension.rst
    xrt_native_apis.rst
-   xrt.main.rst
-   ert.main.rst
+   xrt_native.main.rst
    xma.main.rst
 
 
@@ -60,6 +59,8 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
    sysfs.rst
    formats.rst
+   xrt.main.rst
+   ert.main.rst
    mgmt-ioctl.main.rst
    xocl_ioctl.main.rst
    zocl_ioctl.main.rst

@@ -74,6 +74,7 @@ xclmgmt-y := \
 	../subdev/pmc.o \
 	../subdev/icap_cntrl.o \
 	../subdev/version_ctrl.o \
+	../subdev/pcie_firewall.o \
 	$(drv_common-y) \
 	mgmt-core.o \
 	mgmt-cw.o \

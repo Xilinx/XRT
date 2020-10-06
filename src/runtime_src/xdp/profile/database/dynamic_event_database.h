@@ -34,9 +34,15 @@ namespace xdp {
   class VPDatabase ;
 
   // AIE Trace data type
+#if 0
   struct AIETraceDataType {
     void* buffer;
     uint64_t bufferSz;
+  };
+#endif
+  struct AIETraceDataType {
+    std::vector<void*> buffer;
+    std::vector<uint64_t> bufferSz;
   };
 //  typedef std::pair<void* /*buffer*/, uint64_t /*bufferSz*/> AIETraceDataType;
   typedef std::vector<AIETraceDataType*> AIETraceDataVector;

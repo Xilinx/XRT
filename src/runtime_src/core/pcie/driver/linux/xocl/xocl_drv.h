@@ -1052,6 +1052,7 @@ enum data_kind {
 	DATA_RETAIN,
 	MAC_CONT_NUM,
 	MAC_ADDR_FIRST,
+	XMC_POWER_WARN,
 };
 
 enum mb_kind {
@@ -1313,6 +1314,8 @@ enum {
 	(xocl_icap_get_xclbin_metadata(xdev, GROUPTOPO_AXLF, (void **)&group_topo))
 #define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
 	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
+#define XOCL_GET_CONNECTIVITY(xdev, conn)						\
+	(xocl_icap_get_xclbin_metadata(xdev, CONNECTIVITY_AXLF, (void **)&conn))
 #define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
 	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
 
@@ -1322,6 +1325,8 @@ enum {
 #define XOCL_PUT_GROUP_TOPOLOGY(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_IP_LAYOUT(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_CONNECTIVITY(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_XCLBIN_ID(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
@@ -1812,6 +1817,8 @@ struct xocl_p2p_funcs {
 			struct resource *res);
 	int (*conf_status)(struct platform_device *pdev, bool *changed);
 	int (*refresh_rbar)(struct platform_device *pdev);
+	int (*get_bar_paddr)(struct platform_device *pdev, ulong bank_addr,
+			     ulong bank_size, ulong *bar_paddr);
 };
 #define	P2P_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_P2P).pldev
 #define	P2P_OPS(xdev)				\
@@ -1847,6 +1854,9 @@ struct xocl_p2p_funcs {
 #define xocl_p2p_refresh_rbar(xdev)				\
 	(P2P_CB(xdev) ?					\
 	 P2P_OPS(xdev)->refresh_rbar(P2P_DEV(xdev)) : -ENODEV)
+#define xocl_p2p_get_bar_paddr(xdev, ba, bs, pa)				\
+	(P2P_CB(xdev) ?					\
+	 P2P_OPS(xdev)->get_bar_paddr(P2P_DEV(xdev), ba, bs, pa) : -ENODEV)
 
 /* Each P2P chunk we set up must be at least 256MB */
 #define XOCL_P2P_CHUNK_SHIFT		28
@@ -1870,6 +1880,18 @@ struct xocl_m2m_funcs {
 #define xocl_m2m_host_bank(xdev, addr, size)				\
 	(M2M_CB(xdev) ? M2M_OPS(xdev)->get_host_bank(M2M_DEV(xdev),	\
 	addr, size) : -ENODEV)
+
+struct xocl_pcie_firewall_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*unblock)(struct platform_device *pdev, int pf, int bar);
+};
+
+#define PCIE_FIREWALL_DEV(xdev) SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL).pldev
+#define PCIE_FIREWALL_OPS(xdev)					\
+	((struct xocl_pcie_firewall_funcs*)SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL).ops)
+#define PCIE_FIREWALL_CB(xdev) (PCIE_FIREWALL_DEV(xdev) && PCIE_FIREWALL_OPS(xdev))
+#define xocl_pcie_firewall_unblock(xdev, pf, bar)			\
+	(PCIE_FIREWALL_CB(xdev) ? PCIE_FIREWALL_OPS(xdev)->unblock(PCIE_FIREWALL_DEV(xdev), pf, bar) : -ENODEV)
 
 /* subdev functions */
 int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
@@ -2032,7 +2054,8 @@ int xocl_fdt_setprop(xdev_handle_t xdev_hdl, void *blob, int off,
 		     const char *name, const void *val, int size);
 const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 			     char *name, int *lenp);
-void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
+int xocl_fdt_unblock_ip(xdev_handle_t xdev_hdl, void *blob);
+const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
 
 /* init functions */
 int __init xocl_init_userpf(void);
@@ -2190,5 +2213,8 @@ void xocl_fini_ert_user(void);
 
 int __init xocl_init_ert_30(void);
 void xocl_fini_ert_30(void);
+
+int __init xocl_init_pcie_firewall(void);
+void xocl_fini_pcie_firewall(void);
 
 #endif

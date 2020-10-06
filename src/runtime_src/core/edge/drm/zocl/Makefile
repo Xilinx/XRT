@@ -23,6 +23,10 @@ endif
 endif
 
 ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -I$(src)/../../../common/drv/include
+#flags passed from xrt_git.bb file are added below
+ifneq ($(cflags_zocl),)
+	ccflags-y += $(cflags_zocl)
+endif
 
 drv_common-y   := $(common_dir)/kds_core.o \
                   $(common_dir)/cu_hls.o \

@@ -19,12 +19,21 @@
 #include "run_summary.h"
 
 #include "core/common/config_reader.h"
+#include "xocl/core/time.h"
 #include "xdp/profile/writer/base_profile.h"
 
+#include <chrono>
 #include <iostream>
 #include <stdlib.h>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <sys/types.h>
+#include <unistd.h>
+#endif
 
 #ifdef _WIN32
 #pragma warning(disable : 4996)
@@ -142,9 +151,27 @@ void RunSummary::writeContent()
   {
     boost::property_tree::ptree ptSchema;
     ptSchema.put("major", "1");
-    ptSchema.put("minor", "0");
+    ptSchema.put("minor", "1");
     ptSchema.put("patch", "0");
     ptRunSummary.add_child("schema_version", ptSchema);
+  }
+
+  {
+#ifdef _WIN32
+    auto pid = _getpid() ;
+#else
+    auto pid = (getpid()) ;
+#endif
+    auto timestamp = (std::chrono::system_clock::now()).time_since_epoch() ;
+    auto value =
+      std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
+    uint64_t timeMsec = value.count() ;
+
+    boost::property_tree::ptree ptGeneration ;
+    ptGeneration.put("source", "ocl") ;
+    ptGeneration.put("PID", std::to_string(pid)) ;
+    ptGeneration.put("timestamp", std::to_string(timeMsec)) ;
+    ptRunSummary.add_child("generation", ptGeneration) ;
   }
 
   // -- Add the files

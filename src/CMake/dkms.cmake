@@ -233,6 +233,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/msix_xdma.c
   xocl/subdev/ert_user.c
   xocl/subdev/ert_30.c
+  xocl/subdev/pcie_firewall.c
   xocl/Makefile
   )
 
@@ -260,6 +261,7 @@ SET (XRT_DKMS_COMMON_XRT_DRV
   common/drv/kds_core.c
   common/drv/xrt_cu.c
   common/drv/cu_hls.c
+  common/drv/fast_adapter.c
   common/drv/cu_plram.c
   common/drv/xrt_xclbin.c
   )

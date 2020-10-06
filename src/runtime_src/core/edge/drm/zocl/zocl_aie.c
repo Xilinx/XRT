@@ -447,7 +447,7 @@ zocl_aie_putcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct aie_info *aie = zdev->aie_information;
 	struct aie_info_cmd *acmd;
 	struct drm_zocl_aie_cmd *kdata = data;
-	struct aie_info_packet *aiec_packet;
+	struct aie_info_packet *cmd;
 
 	if(aie == NULL)
 		return -EAGAIN;
@@ -459,7 +459,6 @@ zocl_aie_putcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		return -ENOMEM;
 	}
 
-	struct aie_info_packet *cmd;
 	cmd = acmd->aiec_packet;
 	cmd->size = (kdata->size < AIE_INFO_SIZE) ? kdata->size : AIE_INFO_SIZE;
 	snprintf(cmd->info, cmd->size, "%s", (char *)kdata->info);

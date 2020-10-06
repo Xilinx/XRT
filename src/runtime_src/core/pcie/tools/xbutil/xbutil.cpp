@@ -1436,6 +1436,26 @@ int xcldev::device::auxConnectionTest(void)
     return 0;
 }
 
+int xcldev::device::powerTest(void)
+{
+    std::string name, errmsg;
+    int power_warn = 0;
+
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    pcidev::get_dev(m_idx)->sysfs_get<int>("xmc", "xmc_power_warn",  errmsg, power_warn, 0);
+
+    if(power_warn == 1) {
+        std::cout << "POWER WARNING IS ON, ATTENTION" << std::endl;
+        std::cout << "Sensor data might not be valid" << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
 int xcldev::device::runOneTest(std::string testName,
     std::function<int(void)> testFunc)
 {
@@ -1507,6 +1527,12 @@ int xcldev::device::validate(bool quick, bool hidden)
 
     retVal = runOneTest("AUX power connector check",
             std::bind(&xcldev::device::auxConnectionTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
+
+    retVal = runOneTest("Power warnning check",
+            std::bind(&xcldev::device::powerTest, this));
     withWarning = withWarning || (retVal == 1);
     if (retVal < 0)
         return retVal;

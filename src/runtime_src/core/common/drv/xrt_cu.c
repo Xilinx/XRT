@@ -41,12 +41,19 @@ static inline void process_cq(struct xrt_cu *xcu)
 	if (!xcu->num_cq)
 		return;
 
-	/* Notify host and free command */
-	xcmd = list_first_entry(&xcu->cq, struct kds_command, list);
-	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
-	list_del(&xcmd->list);
-	xcmd->cb.free(xcmd);
-	--xcu->num_cq;
+	/* Notify host and free command
+	 *
+	 * NOTE: Use loop to handle completed commands could improve
+	 * performance (Reduce sleep time and increase chance for more
+	 * pending commands at one time)
+	 */
+	while (xcu->num_cq) {
+		xcmd = list_first_entry(&xcu->cq, struct kds_command, list);
+		xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+		list_del(&xcmd->list);
+		xcmd->cb.free(xcmd);
+		--xcu->num_cq;
+	}
 }
 
 /**
@@ -173,6 +180,8 @@ static inline void process_pq(struct xrt_cu *xcu)
 		xcu->num_pq = 0;
 	}
 	spin_unlock_irqrestore(&xcu->pq_lock, flags);
+	if (xcu->max_running < xcu->num_rq)
+		xcu->max_running = xcu->num_rq;
 }
 
 /**
@@ -256,9 +265,11 @@ int xrt_cu_polling_thread(void *data)
 		if (xcu->num_rq)
 			continue;
 
-		if (!xcu->num_sq && !xcu->num_cq)
+		if (!xcu->num_sq && !xcu->num_cq) {
+			xcu->sleep_cnt++;
 			if (down_interruptible(&xcu->sem))
 				ret = -ERESTARTSYS;
+		}
 
 		process_pq(xcu);
 	}
@@ -317,9 +328,11 @@ int xrt_cu_intr_thread(void *data)
 		if (xcu->num_rq)
 			continue;
 
-		if (!xcu->num_sq && !xcu->num_cq)
+		if (!xcu->num_sq && !xcu->num_cq) {
+			xcu->sleep_cnt++;
 			if (down_interruptible(&xcu->sem))
 				ret = -ERESTARTSYS;
+		}
 
 		process_pq(xcu);
 	}
@@ -446,6 +459,83 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 	return err;
 }
 
+/* TODO: maybe we should move below fast adapter specific functions to
+ * fast_adapter.c. Before we clearly know what to do for below cases,
+ *	single CU  to single plram
+ *	multi  CUs to single plram
+ *	single CU  to multi  plrams
+ * Let's leave them stay at this place.
+ *
+ * If KDS has to manage PLRAM resources, we should come up with a better design.
+ * Ideally, CU subdevice should request for plram resource instead of KDS assign
+ * plram resource to CU.
+ * Or, another solution is to let KDS create CU subdevice indtead of
+ * icap/zocl_xclbin.
+ */
+static u32 cu_fa_get_desc_size(struct xrt_cu *xcu)
+{
+	struct xrt_cu_info *info = &xcu->info;
+	u32 size = sizeof(descriptor_t);
+	int i;
+
+	for (i = 0; i < info->num_args; i++) {
+		/* The "nextDescriptorAddr" argument is a fast adapter argument.
+		 * It is not required to construct descriptor
+		 */
+		if (!strcmp(info->args[i].name, "nextDescriptorAddr"))
+			continue;
+
+		size += info->args[i].size;
+	}
+
+	return round_up_to_next_power2(size);
+}
+
+int xrt_is_fa(struct xrt_cu *xcu, u32 *size)
+{
+	struct xrt_cu_info *info = &xcu->info;
+	int ret;
+
+	ret = (info->model == XCU_FA)? 1 : 0;
+
+	if (ret && size)
+		*size = cu_fa_get_desc_size(xcu);
+
+	return ret;
+}
+
+int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, u32 num_slots)
+{
+	struct xrt_cu_fa *cu_fa = xcu->core;
+	u32 slot_size;
+	u32 *plram;
+
+	if (bar == 0) {
+		if (cu_fa->plram)
+			iounmap(cu_fa->plram);
+		cu_fa->plram = NULL;
+		cu_fa->paddr = 0;
+		cu_fa->slot_sz = 0;
+		cu_fa->num_slots = 0;
+		return 0;
+	}
+
+	slot_size = cu_fa_get_desc_size(xcu);
+	plram = ioremap_wc(bar, num_slots * slot_size);
+	if (!plram)
+		return -ENOMEM;
+
+	cu_fa->plram = plram;
+	cu_fa->paddr = dev;
+	cu_fa->slot_sz = slot_size;
+	cu_fa->num_slots = num_slots;
+
+	cu_fa->credits = (cu_fa->num_slots < cu_fa->max_credits)?
+			 cu_fa->num_slots : cu_fa->max_credits;
+
+	return 0;
+}
+
 void xrt_cu_set_bad_state(struct xrt_cu *xcu)
 {
 	xcu->bad_state = 1;
@@ -524,6 +614,10 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
 			xcu->funcs->peek_credit(xcu->core));
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "CU status:        0x%x\n",
 			xcu->status);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "sleep cnt:        %d\n",
+			xcu->sleep_cnt);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "max running:      %d\n",
+			xcu->max_running);
 
 	if (sz < PAGE_SIZE - 1)
 		buf[sz++] = 0;

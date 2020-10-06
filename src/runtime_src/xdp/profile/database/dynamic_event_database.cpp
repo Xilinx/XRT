@@ -199,9 +199,16 @@ namespace xdp {
       aieTraceData[deviceId] = newDataVector;	// copy
       aieTraceData[deviceId].resize((db->getStaticInfo()).getNumAIETraceStream(deviceId));
     }
+    if(nullptr == aieTraceData[deviceId][strmIndex]) {
+      aieTraceData[deviceId][strmIndex] = new AIETraceDataType;
+    }
+    aieTraceData[deviceId][strmIndex]->buffer.push_back(buffer);
+    aieTraceData[deviceId][strmIndex]->bufferSz.push_back(bufferSz);
+#if 0
     aieTraceData[deviceId][strmIndex] = new AIETraceDataType;
     aieTraceData[deviceId][strmIndex]->buffer = buffer;
     aieTraceData[deviceId][strmIndex]->bufferSz = bufferSz;
+#endif
   }
 
   AIETraceDataType* VPDynamicDatabase::getAIETraceData(uint64_t deviceId, uint64_t strmIndex)
