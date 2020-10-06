@@ -20,8 +20,10 @@
 #ifndef __AIESIM__
 #include "core/edge/user/shim.h"
 #include "core/common/message.h"
+#ifndef __HWEM__
 #include "core/edge/user/plugin/xdp/aie_trace.h"
 #include "core/edge/user/plugin/xdp/aie_profile.h"
+#endif
 #endif
 #include "core/common/error.h"
 
@@ -1114,6 +1116,14 @@ int
 xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Name, uint32_t value)
 {
   try {
+
+#ifndef __AIESIM__
+#ifndef __HWEM__
+    xdpaie::finish_flush_aie_device(handle) ;
+    xdpaiectr::end_aie_ctr_poll(handle);
+#endif
+#endif
+
     return api::xclStartProfiling(handle, option, port1Name, port2Name, value);
   }
   catch (const xrt_core::error& ex) {
@@ -1130,6 +1140,14 @@ uint64_t
 xclReadProfiling(xclDeviceHandle handle, int phdl)
 {
   try {
+
+#ifndef __AIESIM__
+#ifndef __HWEM__
+    xdpaie::finish_flush_aie_device(handle) ;
+    xdpaiectr::end_aie_ctr_poll(handle);
+#endif
+#endif
+
     return api::xclReadProfiling(handle, phdl);
   }
   catch (const xrt_core::error& ex) {
@@ -1146,6 +1164,14 @@ int
 xclStopProfiling(xclDeviceHandle handle, int phdl)
 {
   try {
+
+#ifndef __AIESIM__
+#ifndef __HWEM__
+    xdpaie::finish_flush_aie_device(handle) ;
+    xdpaiectr::end_aie_ctr_poll(handle);
+#endif
+#endif
+
     api::xclStopProfiling(handle, phdl);
     return 0;
   }
