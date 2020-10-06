@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -148,7 +148,6 @@ SectionConnectivity::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
     std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the CONNECTIVITY section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",
                                        (unsigned int) bufferSize, (unsigned int) maxBufferSize);
     std::cout << errMsg << std::endl;
-    // throw std::runtime_error(errMsg);
   }
 }
 

@@ -173,10 +173,6 @@ XclBinUtilities::TRACE_PrintTree(const std::string& _msg,
   std::ostringstream outputBuffer;
   boost::property_tree::write_json(outputBuffer, _pt, true /*Pretty print*/);
   std::cout << outputBuffer.str() << std::endl;
-  
-//  std::ostringstream buf;
-//  printTree(_pt, buf);
-//  std::cout << buf.str();
 }
 
 void
@@ -622,13 +618,13 @@ static void addConnection( std::vector<boost::property_tree::ptree> & groupConne
 }
 
 // Given the collection of connections, appends to the GROUP_TOPOLOGY and
-// GROUP_CONNECIVITY additional entries that represents grouped memories.
+// GROUP_CONNECTIVITY additional entries that represents grouped memories.
 static void
 createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnections, 
                               std::vector<boost::property_tree::ptree> & groupTopology, 
                               std::vector<boost::property_tree::ptree> & groupConnectivity)
 {
-  // Sort our collection by: Memory Type, IP Layout Index, Arugment Index, and Base address
+  // Sort our collection by: Memory Type, IP Layout Index, Argument Index, and Base address
   std::sort(workingConnections.begin(), workingConnections.end(), 
             [](WorkingConnection &a, WorkingConnection &b) { 
               if (a.memType.compare(b.memType) != 0)      // Level 1: Memory Type
@@ -731,7 +727,7 @@ validateMemoryBankGroupEntries( const unsigned int startGroupMemIndex,
         // Do we have a duplicate entry
         const unsigned int searchMemIndex = groupConnectivity[searchIndex].get<unsigned int>("mem_data_index");
         if (searchMemIndex == memIndex) {
-          std::string errMsg = XUtil::format("ERROR: Connection indexes at %d and %d in the GROUP_CONNECTIVITY section are are duplicates of each other.", index, searchIndex);
+          std::string errMsg = XUtil::format("ERROR: Connection indexes at %d and %d in the GROUP_CONNECTIVITY section are duplicates of each other.", index, searchIndex);
           throw std::runtime_error(errMsg);
         }
 
@@ -758,8 +754,8 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
 
   std::vector<WorkingConnection> possibleGroupConnections;
 
-  // Examine the existing connections.  Collect the bank grouping canidates and
-  // place those that are not in the the groupConnectivitysection.
+  // Examine the existing connections.  Collect the bank grouping candidates and
+  // place those that are not in the groupConnectivitySection.
   for (auto & connection : connectivity) {
     const unsigned int argIndex = connection.get<unsigned int>("arg_index");
     const unsigned int ipLayoutIndex = connection.get<unsigned int>("m_ip_layout_index");
@@ -778,7 +774,7 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
     }
 
     // This connection need to be evaluated
-    // Collect informatin about the memory
+    // Collect information about the memory
     const uint64_t baseAddress = XUtil::stringToUInt64(groupTopology[memIndex].get<std::string>("m_base_address"));
     uint64_t sizeBytes = 0;
     boost::optional<std::string> sSizeBytes = groupTopology[memIndex].get_optional<std::string>("m_size");
@@ -818,7 +814,7 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   pMemTopology->getPayload(ptMemTopology);
   const std::vector<boost::property_tree::ptree> memTopology = XUtil::as_vector<boost::property_tree::ptree>(ptMemTopology.get_child("mem_topology"), "m_mem_data");
   if ( memTopology.empty() ) {
-    std::cout << "Info: MEM_TOPOLGY section is empty.  No action will be taken to create the GROUP_TOPOLOGY section." << std::endl;
+    std::cout << "Info: MEM_TOPOLOGY section is empty.  No action will be taken to create the GROUP_TOPOLOGY section." << std::endl;
     return;
   }
 
