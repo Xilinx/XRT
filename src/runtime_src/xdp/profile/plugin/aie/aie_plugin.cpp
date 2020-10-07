@@ -39,12 +39,12 @@ namespace xdp {
   {
     db->registerPlugin(this);
 
-    // Get polling interval (in usec; minimum is 50)
+    // Get polling interval (in usec; minimum is 100)
     mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
-    if (mPollingInterval < 50) {
-      mPollingInterval = 50;
+    if (mPollingInterval < 100) {
+      mPollingInterval = 100;
       xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", 
-          "Minimum supported AIE profile interval is 50 usec.");
+          "Minimum supported AIE profile interval is 100 usec.");
     }
   }
 
