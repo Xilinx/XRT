@@ -994,7 +994,7 @@ namespace xclemulation{
       return -EINVAL;
     }
 
-    auto map = (reinterpret_cast<const ::ip_layout*>(buffer));
+    auto map = reinterpret_cast<const ::ip_layout*>(buffer);
     if (map->m_count < 0) {
       errmsg = "ERROR: getIPName2Index - invalid ip_layout section content";
       std::cerr << errmsg << std::endl;
