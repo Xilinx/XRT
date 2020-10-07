@@ -289,7 +289,6 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl);
  *
  * @dhdl:   Handle to device previously opened with xrtDeviceOpen
  * @out:    Return xclbin id in this uuid_t struct
- * Return:  0 on success or appropriate error number
  *
  * Note that current UUID can be different from the UUID of 
  * the xclbin loaded by this process using @load_xclbin()
