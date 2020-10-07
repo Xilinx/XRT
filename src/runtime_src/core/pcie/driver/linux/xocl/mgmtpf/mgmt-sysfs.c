@@ -91,6 +91,15 @@ static ssize_t mfg_ver_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(mfg_ver);
 
+static ssize_t recovery_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", xocl_subdev_is_vsec_recovery(lro));
+}
+static DEVICE_ATTR_RO(recovery);
+
 static ssize_t mgmt_pf_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -419,6 +428,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_ready.attr,
 	&dev_attr_mfg.attr,
 	&dev_attr_mfg_ver.attr,
+	&dev_attr_recovery.attr,
 	&dev_attr_mgmt_pf.attr,
 	&dev_attr_flash_type.attr,
 	&dev_attr_board_name.attr,

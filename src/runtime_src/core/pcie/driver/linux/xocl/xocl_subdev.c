@@ -1423,6 +1423,22 @@ bool xocl_subdev_is_vsec(xdev_handle_t xdev)
 	return pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR) != 0;
 }
 
+bool xocl_subdev_is_vsec_recovery(xdev_handle_t xdev_hdl)
+{
+	int bar;
+	u64 offset;
+
+	if (!xocl_subdev_is_vsec(xdev_hdl))
+		return false;
+
+	if (xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, &bar, &offset,
+		NULL))
+		return false;
+
+	return xocl_subdev_vsec_read32(xdev_hdl, bar, offset) ==
+		XOCL_VSEC_PLAT_RECOVERY;
+}
+
 static inline int xocl_subdev_create_vsec_impl(xdev_handle_t xdev,
 	struct xocl_subdev_info *info, u64 offset, int bar)
 {

@@ -161,22 +161,38 @@ static void showDaemonConf(void)
     writeConf(std::cout, config);
 }
 
+static bool isSupported(std::shared_ptr<pcidev::pci_device>& dev)
+{
+    std::string errmsg;
+    bool is_mfg = false, is_recovery = false;
+
+    dev->sysfs_get("", "mfg", errmsg, is_mfg, false);
+    if (!errmsg.empty()) {
+        std::cerr << "unexpected error: " << errmsg << std::endl;
+	return false;
+    }
+
+    dev->sysfs_get("", "recovery", errmsg, is_recovery, false);
+    if (!errmsg.empty()) {
+        std::cerr << "unexpected error: " << errmsg << std::endl;
+	return false;
+    }
+
+    if (is_mfg || is_recovery) {
+        std::cerr << "This operation is not supported with manufacturing image" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
 {
     std::string errmsg, svl;
     int lvl = 0;
-    bool is_mfg = false;
 
-    dev->sysfs_get("", "mfg", errmsg, is_mfg, false);
-    if (!errmsg.empty()) {
-        std::cerr << "Unexpected error: " << errmsg << std::endl;
-	return;
-    }
-
-    if (is_mfg) {
-        std::cerr << "This operation is not supported with golden image" << std::endl;
-        return;
-    }
+    if (!isSupported(dev))
+	    return;
 
     dev->sysfs_get("icap", "sec_level", errmsg, lvl, 0);
     if (!errmsg.empty()) {
