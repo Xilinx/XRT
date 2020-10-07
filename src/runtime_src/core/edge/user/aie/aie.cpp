@@ -62,6 +62,10 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
         throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
     devInst = &DevInst;
 
+    /* Initialize PLIO metadata */
+    for (auto& plio : xrt_core::edge::aie::get_plios(device.get()))
+        plios.emplace_back(std::move(plio));
+
     /* Initialize graph GMIO metadata */
     for (auto& gmio : xrt_core::edge::aie::get_gmios(device.get()))
         gmios.emplace_back(std::move(gmio));
@@ -325,7 +329,7 @@ reset(const xrt_core::device* device)
 
 int
 Aie::
-start_profiling(int option, const std::string& port1Name, const std::string& port2Name, uint32_t value)
+start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
 {
   int handle = -1;
 
@@ -336,34 +340,52 @@ start_profiling(int option, const std::string& port1Name, const std::string& por
     throw xrt_core::error(-EINVAL, "Start profiling fails: unknown profiling option.");
 
   auto gmio = std::find_if(gmios.begin(), gmios.end(),
-            [port1Name](gmio_type it) { return it.name.compare(port1Name) == 0; });
+            [&port1_name](auto& it) { return it.name.compare(port1_name) == 0; });
 
-  if (gmio == gmios.end())
-    throw xrt_core::error(-EINVAL, "Can't start profiling: port name '" + port1Name + "' not found");
+  // For PLIO inside graph, there is no name property.
+  // So we need to match logical name too
+  auto plio = std::find_if(plios.begin(), plios.end(),
+            [&port1_name](auto& it) { return it.name.compare(port1_name) == 0; });
+  if (plio == plios.end()) {
+    plio = std::find_if(plios.begin(), plios.end(),
+            [&port1_name](auto& it) { return it.logical_name.compare(port1_name) == 0; });
+  }
 
-  ShimDMA *dmap = &shim_dma.at(gmio->shim_col);
-  auto chan = gmio->channel_number;
-  auto shim_tile = XAie_TileLoc(gmio->shim_col, 0);
-  /* type 0: GM->AIE; type 1: AIE->GM */
-  auto mode = gmio->type == 0 ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+  if (gmio == gmios.end() && plio == plios.end())
+    throw xrt_core::error(-EINVAL, "Can't start profiling: port name '" + port1_name + "' not found");
+
+  if (gmio != gmios.end() && plio != plios.end())
+    throw xrt_core::error(-EINVAL, "Can't start profiling: ambiguous port name '" + port1_name + "'");
+
+  XAie_LocType shim_tile;
+  XAie_StrmPortIntf mode;
+  uint8_t stream_id;
+  if (gmio != gmios.end()) {
+    shim_tile = XAie_TileLoc(gmio->shim_col, 0);
+    /* type 0: GM->AIE; type 1: AIE->GM */
+    mode = gmio->type == 1 ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
+    stream_id = gmio->stream_id;
+  } else {
+    shim_tile = XAie_TileLoc(plio->shim_col, 0);
+    mode = plio->is_master ? XAIE_STRMSW_MASTER: XAIE_STRMSW_SLAVE;
+    stream_id = plio->stream_id;
+  }
 
   int handleId = eventRecords.size();
-  int eventPortId = Resources::AIE::getShimTile(gmio->shim_col)->plModule.requestStreamEventPort(handleId);
-  int counterId = Resources::AIE::getShimTile(gmio->shim_col)->plModule.requestPerformanceCounter(handleId);
-
+  int eventPortId = Resources::AIE::getShimTile(shim_tile.Col)->plModule.requestStreamEventPort(handleId);
+  int counterId = Resources::AIE::getShimTile(shim_tile.Col)->plModule.requestPerformanceCounter(handleId);
   if (counterId >= 0 && eventPortId >= 0) {
-    XAie_EventSelectStrmPort(devInst, shim_tile, (uint8_t)eventPortId, mode, SOUTH, (uint8_t)gmio->stream_id);
+    XAie_EventSelectStrmPort(devInst, shim_tile, (uint8_t)eventPortId, mode, SOUTH, stream_id);
     XAie_PerfCounterControlSet(devInst, shim_tile, XAIE_PL_MOD, (uint8_t)counterId, XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId],                                     XAIETILE_EVENT_SHIM_PORT_RUNNING[eventPortId]);
-
     eventRecords.push_back({ option,
                 { { shim_tile, Resources::pl_module, Resources::performance_counter, (size_t)counterId },
                 { shim_tile, Resources::pl_module, Resources::stream_switch_event_port, (size_t)eventPortId } } });
     handle = handleId;
   } else {
     if (counterId >= 0)
-      Resources::AIE::getShimTile(gmio->shim_col)->plModule.releasePerformanceCounter(handleId, counterId);
+      Resources::AIE::getShimTile(shim_tile.Col)->plModule.releasePerformanceCounter(handleId, counterId);
     if (eventPortId >= 0)
-      Resources::AIE::getShimTile(gmio->shim_col)->plModule.releaseStreamEventPort(handleId, eventPortId);
+      Resources::AIE::getShimTile(shim_tile.Col)->plModule.releaseStreamEventPort(handleId, eventPortId);
     throw xrt_core::error(-EAGAIN, "Can't start profiling: Failed to request performance counter or stream switch event port resources.");
   }
 
