@@ -853,7 +853,7 @@ class kernel_impl
       throw std::runtime_error("Cannot read or write kernel with multiple compute units");
     auto& ipctx = ipctxs.back();
     auto mode = ipctx->get_access_mode();
-    if (!force && mode != ip_context::access_mode::exclusive)
+    if (!force && mode != ip_context::access_mode::exclusive && !xrt_core::config::get_rw_shared())
       throw std::runtime_error("Cannot read or write kernel with shared access");
 
     if ((offset + sizeof(uint32_t)) > ipctx->get_size())
@@ -1000,6 +1000,12 @@ public:
   group_id(int argno)
   {
     return args.at(argno).group_id();
+  }
+
+  int
+  arg_offset(int argno)
+  {
+    return args.at(argno).offset();
   }
 
   uint32_t
@@ -1728,6 +1734,13 @@ group_id(int argno) const
   return handle->group_id(argno);
 }
 
+uint32_t
+kernel::
+offset(int argno) const
+{
+  return handle->arg_offset(argno);
+}
+
 } // namespace xrt
 
 ////////////////////////////////////////////////////////////////
@@ -1800,6 +1813,23 @@ xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
     return -1;
+  }
+}
+
+uint32_t
+xrtKernelArgOffset(xrtKernelHandle khdl, int argno)
+{
+  try {
+    auto kernel = get_kernel(khdl);
+    return kernel->arg_offset(argno);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return std::numeric_limits<uint32_t>::max();
   }
 }
 

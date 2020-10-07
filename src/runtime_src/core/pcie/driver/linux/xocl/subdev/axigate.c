@@ -184,6 +184,8 @@ static int axigate_probe(struct platform_device *pdev)
 	if (gate->level > XOCL_SUBDEV_LEVEL_BLD) {
 		xdev = xocl_get_xdev(pdev);
 		xocl_axigate_free(xdev, gate->level - 1);
+		if (XDEV(xdev)->fdt_blob)
+			xocl_fdt_unblock_ip(xdev, XDEV(xdev)->fdt_blob);
 	}
 
 	return 0;

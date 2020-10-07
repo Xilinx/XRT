@@ -174,6 +174,7 @@ void xocl_fini_persist_sysfs(struct xocl_dev *xdev);
 enum {
 	XOCL_RESET_FORCE = 1,
 	XOCL_RESET_SHUTDOWN = 2,
+	XOCL_RESET_NO = 4,
 };
 int xocl_hot_reset(struct xocl_dev *xdev, u32 flag);
 void xocl_p2p_fini(struct xocl_dev *xdev);
@@ -220,6 +221,6 @@ int xocl_kds_reconfig(struct xocl_dev *xdev);
 int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
 		     void *drm_filp, u32 *addrp);
 u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist);
-void xocl_kds_update(struct xocl_dev *xdev);
+int xocl_kds_update(struct xocl_dev *xdev);
 
 #endif

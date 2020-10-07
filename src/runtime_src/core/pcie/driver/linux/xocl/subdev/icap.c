@@ -966,10 +966,28 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	bin_obj_axlf = (struct axlf *)fw_buf;
 
 	if (xocl_mb_sched_on(xdev)) {
-		/* Try locating the microblaze binary. */
-		if (XDEV(xdev)->priv.sched_bin) {
-			err = request_firmware(&sche_fw,
-				XDEV(xdev)->priv.sched_bin, &pcidev->dev);
+		const char *sched_bin = XDEV(xdev)->priv.sched_bin;
+		char bin[32] = {0}; 
+
+		/* Try locating the microblaze binary. 
+		 * For dynamic platforms like 1RP or 2RP, we load the ert fw
+		 * under /lib/firmware/xilinx regardless there is an ert fw 
+		 * in partition.xsabin or not
+		 */
+		mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf,
+				PARTITION_METADATA);
+		if (mbHeader) {
+			const char *ert_ver = xocl_fdt_get_ert_fw_ver(xdev,
+				fw_buf + mbHeader->m_sectionOffset);
+			if (ert_ver) {
+				snprintf(bin, sizeof(bin), 
+					"xilinx/sched_%s.bin", ert_ver);
+				sched_bin = bin;
+			}
+		}
+
+		if (sched_bin) {
+			err = request_firmware(&sche_fw, sched_bin, &pcidev->dev);
 			if (!err)  {
 				xocl_mb_load_sche_image(xdev, sche_fw->data,
 					sche_fw->size);
@@ -993,12 +1011,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 				load_sched = true;
 				err = 0;
 			}
-
-			mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf,
-					PARTITION_METADATA);
-			if (mbHeader)
-				xocl_fdt_get_ert_fw_ver(xdev,
-					fw_buf + mbHeader->m_sectionOffset);
 		}
 	}
 
@@ -3881,6 +3893,8 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	const struct firmware *sche_fw = NULL;
 	ssize_t ret, len;
 	int err;
+	const char *sched_bin = XDEV(xdev)->priv.sched_bin;
+	char bin[32] = {0}; 
 
 	mutex_lock(&icap->icap_lock);
 	if (icap->rp_fdt) {
@@ -4042,10 +4056,24 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		memcpy(icap->rp_mgmt_bin, header, section->m_sectionSize);
 		icap->rp_mgmt_bin_len = section->m_sectionSize;
 	}
+	/* Try locating the microblaze binary. 
+	 * For dynamic platforms like 1RP or 2RP, we load the ert fw
+	 * under /lib/firmware/xilinx regardless there is an ert fw 
+	 * in partition.xsabin or not
+	 */
+	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
+	if (section) {
+		const char *ert_ver = xocl_fdt_get_ert_fw_ver(xdev,
+			(char *)axlf + section->m_sectionOffset);
+		if (ert_ver) {
+			snprintf(bin, sizeof(bin), 
+				"xilinx/sched_%s.bin", ert_ver);
+			sched_bin = bin;
+		}
+	}
 
-	if (XDEV(xdev)->priv.sched_bin) {
-		err = request_firmware(&sche_fw,
-			XDEV(xdev)->priv.sched_bin, &pcidev->dev);
+	if (sched_bin) {
+		err = request_firmware(&sche_fw, sched_bin, &pcidev->dev);
 		if (!err)  {
 			icap->rp_sche_bin = vmalloc(sche_fw->size);
 			if (!icap->rp_sche_bin) {
@@ -4075,11 +4103,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		ICAP_INFO(icap, "sche bin from xsabin , len %ld", icap->rp_sche_bin_len);
 	}
 
-	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
-	if (section) {
-		xocl_fdt_get_ert_fw_ver(xdev,
-			(char *)axlf + section->m_sectionOffset);
-	}
 	vfree(axlf);
 
 	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);

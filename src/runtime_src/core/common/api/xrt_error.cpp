@@ -55,7 +55,7 @@ error_number_to_string(xrtErrorNum err)
     {XRT_ERROR_NUM_TEMP_HIGH,         "TEMP_HIGH"},
     {XRT_ERROR_NUM_AXI_MM_SLAVE_TILE, "AXI_MM_SLAVE_TILE"},
     {XRT_ERROR_NUM_DM_ECC,            "DM_ECC"},
-    {XRT_ERROR_DMA_S2MM_0,            "DMA_S2MM_0"}
+    {XRT_ERROR_NUM_DMA_S2MM_0,        "DMA_S2MM_0"}
   };
 
   return code_to_string(map, err, "Unknown error number");

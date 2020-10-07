@@ -138,7 +138,7 @@ static inline unsigned xocl_bo_type(unsigned user_flags)
 static inline bool xocl_bo_sync_able(unsigned bo_flags)
 {
 	return ((bo_flags & XOCL_DEVICE_MEM) && (bo_flags & XOCL_HOST_MEM)) 
-		|| (bo_flags & XOCL_CMA_MEM);
+		|| (bo_flags & XOCL_CMA_MEM) || (bo_flags & XOCL_P2P_MEM);
 }
 
 int xocl_create_bo_ioctl(struct drm_device *dev, void *data,

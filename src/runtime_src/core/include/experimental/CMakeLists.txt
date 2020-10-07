@@ -5,6 +5,7 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt_device.h
   xrt_enqueue.h
   xrt_error.h
+  xrt_ini.h
   xrt_kernel.h
   xrt_profile.h
   xrt_uuid.h

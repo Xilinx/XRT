@@ -30,25 +30,13 @@
 
 namespace xcldev {
 
-static std::string driver_version(std::string driver)
-{
-    std::string line("unknown");
-    std::string path("/sys/module/");
-    path += driver;
-    path += "/version";
-    std::ifstream ver(path);
-    if (ver.is_open())
-        getline(ver, line);
-    return line;
-}
-
 void xrtInfo(boost::property_tree::ptree &pt)
 {
     pt.put("build.version",   xrt_build_version);
     pt.put("build.hash",      xrt_build_version_hash);
     pt.put("build.date",      xrt_build_version_date);
     pt.put("build.branch",    xrt_build_version_branch);
-    pt.put("build.zocl",      driver_version("zocl"));
+    pt.put("build.zocl",      XRT_DRIVER_VERSION);
 }
 
 void osInfo(boost::property_tree::ptree &pt)

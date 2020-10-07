@@ -6,6 +6,11 @@ set(DOC_TOC_DIR            "${CMAKE_CURRENT_BINARY_DIR}/toc")
 file(GLOB XRT_MGMT_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/include/mgmt-ioctl.h)
 file(GLOB XRT_XOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/include/xocl_ioctl.h)
 file(GLOB XRT_ZOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/edge/include/zynq_ioctl.h)
+file(GLOB XRT_DEVICE_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_device.h)
+file(GLOB XRT_BO_H         ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_bo.h)
+file(GLOB XRT_KERNEL_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_kernel.h)
+file(GLOB XRT_XCLBIN_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h)
+file(GLOB XRT_INI_H        ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ini.h)
 file(GLOB XRT_XRT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/xrt.h)
 file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/ert.h)
 file(GLOB XRT_XMA_H        ${XRT_RUNTIME_SRC_DIR}/../xma/include/xma.h)
@@ -40,6 +45,7 @@ else()
     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_bo.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_kernel.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ini.h
     )
   string(REPLACE ";" " " DOXY_INPUT "${XRT_CPP_APIS}")
   set(DOXYFILE ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
@@ -50,6 +56,7 @@ else()
     COMMAND echo "PROJECT_NAME = XRT" >> ${DOXYFILE}
     COMMAND echo "GENERATE_XML = YES" >> ${DOXYFILE}
     COMMAND echo "MACRO_EXPANSION = YES" >> ${DOXYFILE}
+    COMMAND echo "EXTRACT_ALL = YES" >> ${DOXYFILE}
     COMMAND echo "PREDEFINED = __cplusplus XCL_DRIVER_DLLESPEC=" >> ${DOXYFILE}
     COMMAND echo "EXPAND_AS_DEFINED = XCL_DRIVER_DLLESPEC" >> ${DOXYFILE}
     COMMAND echo "INPUT = ${DOXY_INPUT}" >> ${DOXYFILE}
@@ -102,6 +109,12 @@ else ()
     VERBATIM
     )
 
+  add_custom_command(OUTPUT core/xrt_ini.rst
+    DEPENDS ${XRT_INI_H}
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_INI_H} > core/xrt_ini.rst
+    VERBATIM
+    )
+
   add_custom_command(OUTPUT core/xrt.rst
     COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XRT_H} > core/xrt.rst
     DEPENDS ${XRT_XRT_H}
@@ -150,6 +163,7 @@ else ()
     core/xrt_bo.rst
     core/xrt_kernel.rst
     core/xrt_xclbin.rst
+    core/xrt_ini.rst
     core/xrt.rst
     core/ert.rst
     core/xma.rst

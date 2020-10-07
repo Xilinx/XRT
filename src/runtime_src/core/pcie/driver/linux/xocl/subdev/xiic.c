@@ -28,6 +28,7 @@
 #include <linux/interrupt.h>
 #include <linux/wait.h>
 #include <linux/io.h>
+#include <linux/version.h>
 
 #include "../xocl_drv.h"
 
@@ -110,7 +111,7 @@
 #define LM63_REG_REMOTE_TCRIT_1     0x01
 
 #define MAX_TACH_THRESHOLD			0x940
-#define MGMT_LM96_IMPLEMENT         0	
+#define MGMT_LM96_IMPLEMENT         0
 
 enum xilinx_i2c_state {
 	STATE_DONE,
@@ -792,7 +793,7 @@ static int xiic_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 		err = -ETIMEDOUT;
 		goto out;
 	}
-		
+
 out:
 	return err;
 }
@@ -896,7 +897,7 @@ static int xiic_probe(struct platform_device *pdev)
 	i2c->base = ioremap_nocache(res->start, res->end - res->start + 1);
 
 	i2c->adap = xiic_adapter;
-	snprintf(i2c->adap.name, sizeof(i2c->adap.name) - 1, 
+	snprintf(i2c->adap.name, sizeof(i2c->adap.name) - 1,
 		"xclmgmt-i2c-%s", dev_name(&pdev->dev));
 	i2c_set_adapdata(&i2c->adap, i2c);
 
@@ -977,7 +978,7 @@ static int xiic_probe(struct platform_device *pdev)
 	tach_value = data.byte;
 
 	/* read MSB */
-	
+
 	i2c_smbus_xfer(&i2c->adap, LM63_ADDR, 0,
 		I2C_SMBUS_READ, LM63_REG_TACH_COUNT_MSB,
 		I2C_SMBUS_BYTE_DATA, &data);
@@ -1011,7 +1012,11 @@ static int xiic_probe(struct platform_device *pdev)
 		I2C_SMBUS_BYTE_DATA, &data);
 
 cont:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,8,0)
+	i2c->lm63 = i2c_new_client_device(&i2c->adap, &lm96163_board_info);
+#else
 	i2c->lm63 = i2c_new_device(&i2c->adap, &lm96163_board_info);
+#endif
 	if (!i2c->lm63) {
 		xocl_err(&pdev->dev, "add lm96163 failed \n");
 	}
