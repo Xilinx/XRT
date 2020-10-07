@@ -1053,8 +1053,13 @@ static bool xmc_clk_scale_on(struct platform_device *pdev)
 static bool nosc_xmc(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	struct xmc_status status;
 
 	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_NOSC))
+		return true;
+
+	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+	if (status.sc_mode == XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE)
 		return true;
 
 	return false;
