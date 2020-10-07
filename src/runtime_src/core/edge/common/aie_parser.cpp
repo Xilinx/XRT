@@ -162,11 +162,11 @@ get_gmio(const pt::ptree& aie_meta)
 std::vector<plio_type>
 get_plio(const pt::ptree& aie_meta)
 {
-  std::vector<plio_type> plios;
-
   auto plio_nodes = aie_meta.get_child_optional("aie_metadata.PLIOs");
   if (!plio_nodes)
     return {};
+
+  std::vector<plio_type> plios;
 
   for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
     plio_type plio;
