@@ -187,14 +187,19 @@ get_plio(const pt::ptree& aie_meta)
 std::vector<counter_type>
 get_profile_counter(const pt::ptree& aie_meta)
 {
-  // First grab clock frequency
-    auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
-    auto clockFreqMhz = dev_node.get<double>("AIEFrequency");
-
-  // Now parse all counters
   std::vector<counter_type> counters;
 
-  for (auto& counter_node : aie_meta.get_child("aie_metadata.PerformanceCounter")) {
+  // If counters not found, then return empty vector
+  auto counterTree = aie_meta.get_child_optional("aie_metadata.PerformanceCounter");
+  if (!counterTree)
+    return counters;
+
+  // First grab clock frequency
+  auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+  auto clockFreqMhz = dev_node.get<double>("AIEFrequency");
+
+  // Now parse all counters
+  for (auto const &counter_node : counterTree.get()) {
     counter_type counter;
 
     counter.id = counter_node.second.get<uint32_t>("id");

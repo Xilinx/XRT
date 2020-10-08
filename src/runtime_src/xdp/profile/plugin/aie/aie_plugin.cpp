@@ -19,6 +19,7 @@
 #include "xdp/profile/plugin/aie/aie_plugin.h"
 #include "xdp/profile/writer/aie/aie_writer.h"
 
+#include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/time.h"
 #include "core/common/config_reader.h"
@@ -38,8 +39,13 @@ namespace xdp {
   {
     db->registerPlugin(this);
 
-    // Get polling interval (in msec)
-    mPollingInterval = xrt_core::config::get_aie_profile_interval_ms();
+    // Get polling interval (in usec; minimum is 100)
+    mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
+    if (mPollingInterval < 100) {
+      mPollingInterval = 100;
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", 
+          "Minimum supported AIE profile interval is 100 usec.");
+    }
   }
 
   AIEProfilingPlugin::~AIEProfilingPlugin()
@@ -98,7 +104,7 @@ namespace xdp {
         double timestamp = xrt_core::time_ns() / 1.0e6;
         db->getDynamicInfo().addAIESample(index, timestamp, values);
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(mPollingInterval));     
+      std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));     
     }
   }
 
