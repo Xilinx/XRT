@@ -61,7 +61,6 @@ static const ReportCollection fullReportCollection = {
   std::make_shared<ReportThermal>(),
   std::make_shared<ReportDebugIpStatus>(),
   std::make_shared<ReportAsyncError>()
-  // std::make_shared<ReportPlatform>()
 };
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
