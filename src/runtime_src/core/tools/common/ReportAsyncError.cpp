@@ -53,7 +53,7 @@ populate_async_error(const xrt_core::device * device)
   boost::property_tree::ptree pt;
   boost::property_tree::ptree error_array;
   auto dhdl = xrtDeviceOpenFromXcl(device->get_device_handle());
-  for (xrtErrorClass ecl = XRT_ERROR_CLASS_FIRST_ENTRY; ecl < XRT_ERROR_CLASS_LAST_ENTRY; ecl = xrtErrorClass(ecl+1)) {
+  for (xrtErrorClass ecl = XRT_ERROR_CLASS_FIRST_ENTRY; ecl < XRT_ERROR_CLASS_UNKNOWN; ecl = xrtErrorClass(ecl+1)) {
     xrtErrorCode errorCode;
     uint64_t timestamp;
     int rval = xrtErrorGetLast(dhdl, ecl, &errorCode, &timestamp);
