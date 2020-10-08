@@ -37,6 +37,8 @@ static struct xocl_dsa_map dsa_map[] = {
 	XOCL_DSA_DYNAMIC_MAP,
 };
 
+int xocl_subdev_find_vsec_offset(xdev_handle_t xdev);
+
 void xocl_subdev_fini(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
@@ -1327,39 +1329,9 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 	u64 vsec_off;
 	bool found = false;
 	struct xocl_vsec_header *p_hdr;
-	uint16_t vsec_id = 0;
-	int offset_vsec = 0, nxt_offset = 0, ret = 0;
 
-	/*
-	 * 1. To detect the ALF VSEC capability:
-	 *	XRT should look for VSEC Capability with vsec_id = 0x0020.
-	 * 2. Similarly, for Address Translation/Pass through VSEC capability:
-	 *	XRT should look for VSEC Capability with vsec_id = 0x0040
-	 * 3. Check vendor specific section for vsec_id 0x20
-	 */
-	do {
-		nxt_offset = pci_find_next_ext_capability(pdev,
-						offset_vsec, PCI_EXT_CAP_ID_VNDR);
-		if (nxt_offset == 0)
-			break;
-
-		ret = pci_read_config_word(pdev, (nxt_offset + PCI_VNDR_HEADER),
-								   &vsec_id);
-		if (ret != 0) {
-			xocl_err(&core->pdev->dev, "pci read failed for offset: 0x%x, err: %d",
-					 (nxt_offset + PCI_VNDR_HEADER), ret);
-			offset = 0;
-			nxt_offset = 0;
-			break;
-		}
-
-		if (vsec_id == XOCL_VSEC_ALF_VSEC_ID)
-			break;
-
-		offset_vsec = nxt_offset;
-	} while (nxt_offset != 0);
-
-	cap = nxt_offset;
+	/* Check vendor specific section for vsec_id 0x20 */
+	cap = xocl_subdev_find_vsec_offset(xdev);
 	if (!cap) {
 		xocl_info(&core->pdev->dev, "No Vendor Specific Capability found.");
 		return -EINVAL;
@@ -1415,12 +1387,49 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 	return found ? 0 : -ENOENT;
 }
 
-bool xocl_subdev_is_vsec(xdev_handle_t xdev)
+int xocl_subdev_find_vsec_offset(xdev_handle_t xdev)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	struct pci_dev *pdev = core->pdev;
+	int cap = 0, offset_vsec = 0, ret;
+	uint16_t vsec_id;
 
-	return pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR) != 0;
+	/*
+	 * 1. To detect the ALF VSEC capability:
+	 *	XRT should look for VSEC Capability with vsec_id = 0x0020.
+	 * 2. Similarly, for Address Translation/Pass through VSEC capability:
+	 *	XRT should look for VSEC Capability with vsec_id = 0x0040
+	 * 3. Check vendor specific section for vsec_id 0x20
+	 */
+	do {
+		cap = pci_find_next_ext_capability(pdev,
+						offset_vsec, PCI_EXT_CAP_ID_VNDR);
+		if (cap == 0)
+			break;
+
+		ret = pci_read_config_word(pdev, (cap + PCI_VNDR_HEADER), &vsec_id);
+		if (ret != 0) {
+			xocl_err(&pdev->dev, "pci read failed for offset: 0x%x, err: %d",
+					 (cap + PCI_VNDR_HEADER), ret);
+			cap = 0;
+			break;
+		}
+
+		if (vsec_id == XOCL_VSEC_ALF_VSEC_ID)
+			break;
+
+		offset_vsec = cap;
+	} while (cap != 0);
+
+	return cap;
+}
+
+bool xocl_subdev_is_vsec(xdev_handle_t xdev)
+{
+	if (xocl_subdev_find_vsec_offset(xdev))
+		return true;
+
+	return false;
 }
 
 static inline int xocl_subdev_create_vsec_impl(xdev_handle_t xdev,
