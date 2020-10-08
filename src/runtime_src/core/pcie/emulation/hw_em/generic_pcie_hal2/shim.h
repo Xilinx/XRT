@@ -271,8 +271,8 @@ using addr_type = uint64_t;
       void writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName);
       void constructQueryTable();     
       void parseSimulateLog();
-      void setSimPath(std::string simPath) {sim_path = simPath;}
-      std::string getSimPath (){return sim_path;}
+      void setSimPath(std::string simPath) { sim_path = simPath; }
+      std::string getSimPath () { return sim_path; }
       
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;

@@ -194,7 +194,8 @@ namespace xclhwemhal2 {
     if (content.find("// ERROR!!! DEADLOCK DETECTED ") != std::string::npos) {
       size_t first = content.find("// ERROR!!! DEADLOCK DETECTED");
       size_t last = content.find("detected!", first);
-      std::string deadlockMsg = content.substr(first + 1, last + 9 - first -1);
+      // substr including the word detected!
+      std::string deadlockMsg = content.substr(first , last + 9 - first);
       logMessage(deadlockMsg, 0);
     }
   }
@@ -1931,7 +1932,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     tracecount_calls = 0;
     mReqCounter = 0;
     simulatorType = "xsim";
-	sim_path = "";
+    sim_path = "";
 
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
