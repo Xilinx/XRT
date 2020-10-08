@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <iostream>
+#include <map>
 #include "xrt_mem.h"
 #define GCC_VERSION (__GNUC__ * 10000 \
                      + __GNUC_MINOR__ * 100 \
@@ -126,6 +127,7 @@ namespace xclemulation {
     uint32_t              topology;
     std::string           filename;
     int                   fd;
+    std::map<uint64_t,uint64_t> chunks;
   };
 
   //we should not create a memory in default bank for hw_emu. As sw_emu doesnt have rtd information, we are not doing any error check
