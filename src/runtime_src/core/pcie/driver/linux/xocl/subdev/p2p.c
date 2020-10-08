@@ -1091,8 +1091,8 @@ static int p2p_get_bar_paddr(struct platform_device *pdev, ulong bank_addr,
 			     ulong bank_size, ulong *bar_paddr)
 {
 	struct p2p *p2p = platform_get_drvdata(pdev);
-	ulong bank_off = 0;
-	int ret;
+	long bank_off = 0;
+	int ret = 0;
 
 	if (p2p->p2p_bar_idx < 0) {
 		p2p_err(p2p, "can not find p2p bar");

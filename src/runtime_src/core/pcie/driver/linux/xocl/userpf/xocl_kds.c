@@ -553,15 +553,17 @@ static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index)
 
 	XOCL_GET_CONNECTIVITY(xdev, conn);
 
-	/* The "last" argument of fast adapter would connect to plram */
-	for (i = 0; i < conn->m_count; ++i) {
-		struct connection *connect = &conn->m_connection[i];
-		if (connect->m_ip_layout_index != ip_index)
-			continue;
+	if (conn) {
+		/* The "last" argument of fast adapter would connect to plram */
+		for (i = 0; i < conn->m_count; ++i) {
+			struct connection *connect = &conn->m_connection[i];
+			if (connect->m_ip_layout_index != ip_index)
+				continue;
 
-		if (max_arg_idx < connect->arg_index) {
-			max_arg_idx = connect->arg_index;
-			mem_data_idx = connect->mem_data_index;
+			if (max_arg_idx < connect->arg_index) {
+				max_arg_idx = connect->arg_index;
+				mem_data_idx = connect->mem_data_index;
+			}
 		}
 	}
 
@@ -586,6 +588,9 @@ static void xocl_detect_fa_plram(struct xocl_dev *xdev)
 	 */
 	XOCL_GET_IP_LAYOUT(xdev, ip_layout);
 	XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo);
+
+	if (!ip_layout || !mem_topo)
+		goto done;
 
 	for (i = 0; i < ip_layout->m_count; ++i) {
 		struct ip_data *ip = &ip_layout->m_ip_data[i];
