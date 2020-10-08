@@ -1,7 +1,7 @@
 set(TESTNAME "56_xclbin")
 
 add_executable(56_xclbin main.cpp)
-target_link_libraries(56_xclbin PRIVATE ${xrt_coreutil_LIBRARY})
+target_link_libraries(${TESTNAME} PRIVATE XRT::xrt_core)
 
 if (NOT WIN32)
   target_link_libraries(56_xclbin PRIVATE ${uuid_LIBRARY} pthread)

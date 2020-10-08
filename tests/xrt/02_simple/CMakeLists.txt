@@ -1,11 +1,11 @@
 set(TESTNAME "02_simple")
 
-add_executable(02_simple main.cpp)
-target_link_libraries(02_simple PRIVATE ${xrt_coreutil_LIBRARY})
+add_executable(${TESTNAME} main.cpp)
+target_link_libraries(${TESTNAME} PRIVATE XRT::xrt_core)
 
 if (NOT WIN32)
-  target_link_libraries(02_simple PRIVATE ${uuid_LIBRARY} pthread)
+  target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY} pthread)
 endif(NOT WIN32)
 
-install(TARGETS 02_simple
+install(TARGETS ${TESTNAME}
   RUNTIME DESTINATION ${INSTALL_DIR}/${TESTNAME})

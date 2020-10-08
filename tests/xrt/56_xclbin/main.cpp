@@ -110,7 +110,7 @@ run(int argc, char** argv)
 
   if (xclbin_fnm.empty())
     throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
-
+  
   auto xclbin = xrt::xclbin(xclbin_fnm); // C++ API, construct xclbin object from filename
 
   std::vector<std::string> cu_names = xclbin.get_cu_names();

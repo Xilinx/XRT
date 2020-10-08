@@ -1,11 +1,11 @@
 set(TESTNAME "04_swizzle")
 
-add_executable(04_swizzle main.cpp)
-target_link_libraries(04_swizzle PRIVATE ${xrt_coreutil_LIBRARY})
+add_executable(${TESTNAME} main.cpp)
+target_link_libraries(${TESTNAME} PRIVATE XRT::xrt_core)
 
 if (NOT WIN32)
-  target_link_libraries(04_swizzle PRIVATE ${uuid_LIBRARY} pthread)
+  target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY} pthread)
 endif(NOT WIN32)
 
-install(TARGETS 04_swizzle
+install(TARGETS ${TESTNAME}
   RUNTIME DESTINATION ${INSTALL_DIR}/${TESTNAME})

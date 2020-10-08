@@ -1,11 +1,11 @@
 set(TESTNAME "03_loopback")
 
-add_executable(03_loopback main.cpp)
-target_link_libraries(03_loopback PRIVATE ${xrt_coreutil_LIBRARY})
+add_executable(${TESTNAME} main.cpp)
+target_link_libraries(${TESTNAME} PRIVATE XRT::xrt_core)
 
 if (NOT WIN32)
-  target_link_libraries(03_loopback PRIVATE ${uuid_LIBRARY} pthread)
+  target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY} pthread)
 endif(NOT WIN32)
 
-install(TARGETS 03_loopback
+install(TARGETS ${TESTNAME}
   RUNTIME DESTINATION ${INSTALL_DIR}/${TESTNAME})

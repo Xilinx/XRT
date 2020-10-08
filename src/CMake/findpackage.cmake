@@ -1,0 +1,36 @@
+message("-- Preparing XRT find_package")
+
+include(CMakePackageConfigHelpers)
+
+string(TOLOWER ${PROJECT_NAME} LOWER_NAME)
+
+file(RELATIVE_PATH REL_INCLUDE_DIR
+  ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
+  ${XRT_INSTALL_DIR}/include
+  )
+
+set(CONF_INCLUDE_DIRS "\${${PROJECT_NAME}_CMAKE_DIR}/${REL_INCLUDE_DIR}")
+
+configure_file (
+  ${CMAKE_SOURCE_DIR}/CMake/config/xrt.fp.in
+  ${CMAKE_CURRENT_BINARY_DIR}/${LOWER_NAME}-config.cmake
+  @ONLY
+  )
+write_basic_package_version_file (
+  ${CMAKE_CURRENT_BINARY_DIR}/${LOWER_NAME}-config-version.cmake
+  VERSION ${XRT_VERSION_STRING}
+  COMPATIBILITY AnyNewerVersion
+  )
+install (
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/${LOWER_NAME}-config.cmake ${CMAKE_CURRENT_BINARY_DIR}/${LOWER_NAME}-config-version.cmake
+  DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
+  COMPONENT ${XRT_DEV_COMPONENT}
+  )
+install(
+  EXPORT xrt_core-targets
+  NAMESPACE ${PROJECT_NAME}::
+  DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME})
+install(
+  EXPORT xilinxopencl-targets
+  NAMESPACE ${PROJECT_NAME}::
+  DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME})

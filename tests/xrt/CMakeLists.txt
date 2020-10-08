@@ -14,20 +14,11 @@ if (DEFINED ENV{XCL_EMULATION_MODE})
   message("=============== XRT_CORE_LIB=${XRT_CORE_LIBRARY}")
 endif()
 
-find_library(xrt_core_LIBRARY
-  NAMES ${XRT_CORE_LIBRARY}
-  HINTS "${XILINX_XRT}/lib")
-message("xrt_core_LIBRARY=${xrt_core_LIBRARY}")
+list(APPEND CMAKE_MODULE_PATH "/opt/xilinx/xrt/share/cmake")
 
-find_library(xrt_coreutil_LIBRARY
-  NAMES xrt_coreutil
-  HINTS "${XILINX_XRT}/lib")
-message("xrt_coreutil_LIBRARY=${xrt_coreutil_LIBRARY}")
+find_package(XRT)
 
-find_library(xrt_xilinxopencl_LIBRARY
-  NAMES xilinxopencl
-  HINTS "${XILINX_XRT}/lib")
-message("xrt_xilinxopencl_LIBRARY=${xrt_xilinxopencl_LIBRARY}")
+include_directories(${XRT_INCLUDE_DIRS})
 
 if (NOT WIN32)
 find_library(uuid_LIBRARY
@@ -35,7 +26,6 @@ find_library(uuid_LIBRARY
 message("uuid_LIBRARY=${uuid_LIBRARY}")
 endif (NOT WIN32)
 
-include_directories(${XILINX_XRT}/include)
 
 if (NOT DEFINED ${INSTALL_DIR})
   set(INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/${CMAKE_SYSTEM_NAME}/${CMAKE_BUILD_TYPE}/${MODE}")
