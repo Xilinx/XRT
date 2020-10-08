@@ -159,7 +159,7 @@ mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets)
         int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
         if (result) {
           xclLog(XRT_ERROR, "XRT", "%s: Failed to find CU info 0x%lx", __func__, offset_it->first);
-          return -1;
+          return -errno;
         }
         size_t psize = getpagesize();
         ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*psize);
@@ -325,7 +325,7 @@ xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek)
   xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, src %p, size %ld, seek %ld", __func__, boHandle, src, size, seek);
   xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
 
-  return result;
+  return result ? -errno : result;
 }
 
 int
@@ -338,7 +338,7 @@ xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip)
   xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, dst %p, size %ld, skip %ld", __func__, boHandle, dst, size, skip);
   xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
 
-  return result;
+  return result ? -errno : result;
 }
 
 void *
@@ -431,7 +431,7 @@ xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t off
   xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, dir %d, size %ld, offset %ld", __func__, boHandle, dir, size, offset);
   xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
 
-  return result;
+  return result ? -errno : result;
 }
 
 int
@@ -555,7 +555,7 @@ xclLoadAxlf(const axlf *buffer)
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
   xclLog(XRT_INFO, "XRT", "%s: flags 0x%x, return %d", __func__, flags, ret);
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
@@ -604,7 +604,7 @@ xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
 
   xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, size %x, paddr 0x%lx", __func__, boHandle, info.size, info.paddr);
 
-  return result;
+  return result ? -errno : result;
 }
 
 bool
@@ -641,7 +641,7 @@ xclExecBuf(unsigned int cmdBO)
   xclLog(XRT_DEBUG, "XRT", "%s: cmdBO handle %d, ioctl return %d", __func__, cmdBO, result);
   if (result == -EDEADLK)
       xclLog(XRT_ERROR, "XRT", "CU might hang, please reset device");
-  return result;
+  return result ? -errno : result;
 }
 
 int
@@ -740,7 +740,7 @@ xclSKGetCmd(xclSKCmd *cmd)
     snprintf(cmd->krnl_name, ZOCL_MAX_NAME_LENGTH, "%s", scmd.name);
   }
 
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
@@ -757,19 +757,21 @@ xclAIEGetCmd(xclAIECmd *cmd)
     snprintf(cmd->info, scmd.size, "%s", scmd.info);
   }
 
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
 shim::
 xclAIEPutCmd(xclAIECmd *cmd)
 {
+  int ret;
   drm_zocl_aie_cmd scmd;
 
   scmd.opcode = cmd->opcode;
   scmd.size = cmd->size;
   snprintf(scmd.info, cmd->size, "%s",cmd->info);
-  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_PUTCMD, &scmd);
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_PUTCMD, &scmd);
+  return ret ? -errno : ret;
 }
 
 int
@@ -781,7 +783,7 @@ xclSKCreate(unsigned int boHandle, uint32_t cu_idx)
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_CREATE, &scmd);
 
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
@@ -803,7 +805,7 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_REPORT, &scmd);
 
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
@@ -852,8 +854,7 @@ xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
   };
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
-  // return ret ? -errno : ret; // wait for PR-3018 to be merged  return ret ? -errno : ret;
-  return 0;
+  return ret ? -errno : ret;
 }
 
 int
@@ -986,7 +987,7 @@ xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags)
 
   xclLog(XRT_DEBUG, "XRT", "%s: IP index %d, flags 0x%x", __func__, ipIndex, flags);
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
@@ -1454,7 +1455,7 @@ xclErrorInject(uint16_t num, uint16_t driver, uint16_t  severity, uint16_t modul
   drm_zocl_error_inject ecmd = {ZOCL_ERROR_OP_INJECT, num, driver, severity, module, eclass};
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_ERROR_INJECT, &ecmd);
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
@@ -1465,7 +1466,7 @@ xclErrorClear()
   drm_zocl_error_inject ecmd = {ZOCL_ERROR_OP_CLEAR_ALL};
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_ERROR_INJECT, &ecmd);
-  return ret;
+  return ret ? -errno : ret;
 }
 
 #ifdef XRT_ENABLE_AIE
