@@ -265,6 +265,7 @@ initialize_query_table()
   emplace_sysfs_get<query::error>                     ("errors");
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::board_name,              board_name>();
+  emplace_func0_request<query::rom_vbnv,                board_name>();
   emplace_func0_request<query::is_ready,                is_ready>();
 }
 
