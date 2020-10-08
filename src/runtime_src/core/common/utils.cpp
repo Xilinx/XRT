@@ -23,7 +23,8 @@
 #include <string>
 #include <atomic>
 #include <cstdint>
-#include <boost/tokenizer.hpp>
+#include <limits>
+#include <boost/algorithm/string.hpp>
 
 namespace {
 
@@ -184,31 +185,57 @@ unit_convert(size_t size)
 uint16_t
 bdf2index(const std::string& bdfstr, bool _inUserDomain)
 {
-  using tokenizer = boost::tokenizer< boost::char_separator<char> >;
-  boost::char_separator<char> sep(":.");
-  tokenizer tokens(bdfstr, sep);
+  std::vector<std::string> tokens; 
+  boost::split(tokens, bdfstr, boost::is_any_of(":")); 
   int radix = 16;
-  uint16_t bus = 0, dev = 0, func = 0;
+  uint16_t bus = 0, dev = 0, func = std::numeric_limits<uint16_t>::max();
 
-	// check if we have 4 tokens: domain, bus, device, function
-	if (std::distance(tokens.begin(), tokens.end()) == 4) {
-    tokenizer::iterator tok_iter = tokens.begin();
-    //dom = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
-    tok_iter++;
-    bus = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
-    tok_iter++;
-    dev = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
-    tok_iter++;
-    func = static_cast<uint16_t>(std::stoi(std::string(*tok_iter), nullptr, radix));
-  } else {
+  //throw an eror if no devices are present
+  uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
+  if(devices == 0) 
+    throw std::runtime_error("No devices found");
+  
+  //check if edge, return the first device
+  uint16_t d = 0;
+  auto device = _inUserDomain ? get_userpf_device(d) : get_mgmtpf_device(d);
+  auto bdf = device_query<query::pcie_bdf>(device);
+  if(std::get<0>(bdf) == 0 && std::get<1>(bdf) == 0 && std::get<2>(bdf) == 0) {
+    return 0;
+  }
+
+  // check if we have 2-3 tokens: domain, bus, device.function
+  // domain is optional
+  if(tokens.size() == 2 || tokens.size() == 3) {
+    int tok_pos = tokens.size() == 3 ? 1 : 0; //if domain is specified, skip it for now
+    bus = static_cast<uint16_t>(std::stoi(std::string(tokens[tok_pos]), nullptr, radix));
+    //check if func was specified. func is optional
+    auto pos_of_func = tokens[tok_pos+1].find('.');
+    if(pos_of_func != std::string::npos) {
+      dev = static_cast<uint16_t>(std::stoi(std::string(tokens[tok_pos+1].substr(0, pos_of_func)), nullptr, radix));
+      func = static_cast<uint16_t>(std::stoi(std::string(tokens[tok_pos+1].substr(pos_of_func+1)), nullptr, radix));
+    }
+    else{
+      dev = static_cast<uint16_t>(std::stoi(std::string(tokens[tok_pos+1]), nullptr, radix));
+    }
+  }
+  else {
     throw std::runtime_error(boost::str(boost::format("Invalid BDF '%s'. Please spcify the BDF using 'DDDD:BB:DD.F' format") % bdfstr));
   }
 
-  uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
   for (uint16_t i = 0; i < devices; i++) {
     auto device = _inUserDomain ? get_userpf_device(i) : get_mgmtpf_device(i);
     auto bdf = device_query<query::pcie_bdf>(device);
-    if (bus == std::get<0>(bdf) && dev == std::get<1>(bdf) && func == std::get<2>(bdf))
+
+    //if the user specifies func, compare
+    //otherwise safely ignore
+    auto cmp_func = [bdf](uint16_t func) 
+    {
+      if (func != std::numeric_limits<uint16_t>::max())
+        return func == std::get<2>(bdf);
+      return true;
+    };
+
+    if (bus == std::get<0>(bdf) && dev == std::get<1>(bdf) && cmp_func(func))
       return i;
   }
 
