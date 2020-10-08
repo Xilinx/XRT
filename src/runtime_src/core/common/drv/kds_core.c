@@ -614,7 +614,10 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		/* a special handling for m2m cu :( */
 		if (kds->cu_mgmt.num_cdma && !client->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
-			test_and_clear_bit(i, client->cu_bitmap);
+			if (!test_and_clear_bit(i, client->cu_bitmap)) {
+				kds_err(client, "never reserved cmda");
+				return -EINVAL;
+			}
 			mutex_lock(&kds->cu_mgmt.lock);
 			--kds->cu_mgmt.cu_refs[i];
 			mutex_unlock(&kds->cu_mgmt.lock);

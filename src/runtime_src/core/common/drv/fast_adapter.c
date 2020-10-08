@@ -82,13 +82,18 @@ static void cu_fa_configure(void *core, u32 *data, size_t sz, int type)
 		return;
 
 	/* move commands to device quickly is the key of performance */
-	memcpy(slot, data, sz);
+	memcpy(&slot[1], &data[1], sz - 4);
+
+	/* Update status of descriptor */
+	wmb();
+	slot[0] = data[0];
 }
 
 static void cu_fa_start(void *core)
 {
 	struct xrt_cu_fa *cu_fa = core;
 	u32 desc_msw = cu_fa->paddr >> 32;
+	u32 desc_lsw = (u32)cu_fa->paddr;
 
 	cu_fa->run_cnts++;
 
@@ -102,7 +107,7 @@ static void cu_fa_start(void *core)
 	}
 
 	/* Write LSW would kick off CU */
-	cu_write32(cu_fa, LSWR, cu_fa->head_slot);
+	cu_write32(cu_fa, LSWR, desc_lsw + cu_fa->head_slot);
 
 	/* move to next descriptor slot */
 	cu_fa->head_slot += cu_fa->slot_sz;

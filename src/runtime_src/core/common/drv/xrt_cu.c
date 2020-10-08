@@ -459,13 +459,7 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 	return err;
 }
 
-/* TODO: maybe we should move below fast adapter specific functions to
- * fast_adapter.c. Before we clearly know what to do for below cases,
- *	single CU  to single plram
- *	multi  CUs to single plram
- *	single CU  to multi  plrams
- * Let's leave them stay at this place.
- *
+/* 
  * If KDS has to manage PLRAM resources, we should come up with a better design.
  * Ideally, CU subdevice should request for plram resource instead of KDS assign
  * plram resource to CU.
