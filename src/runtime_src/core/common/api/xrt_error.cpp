@@ -141,11 +141,10 @@ static std::string
 error_code_to_json(xrtErrorCode ecode)
 {
   boost::property_tree::ptree pt;
-  boost::property_tree::ptree pt_status;
   pt.put("class.code", XRT_ERROR_CLASS(ecode));
   pt.put("class.string", error_class_to_string(xrtErrorClass(XRT_ERROR_CLASS(ecode))));
   pt.put("module.code", XRT_ERROR_MODULE(ecode));
-  pt.put("module.string", error_class_to_string(xrtErrorClass(XRT_ERROR_MODULE(ecode))));
+  pt.put("module.string", error_module_to_string(xrtErrorModule(XRT_ERROR_MODULE(ecode))));
   pt.put("severity.code", XRT_ERROR_SEVERITY(ecode));
   pt.put("severity.string", error_severity_to_string(xrtErrorSeverity(XRT_ERROR_SEVERITY(ecode))));
   pt.put("driver.code", XRT_ERROR_DRIVER(ecode));
