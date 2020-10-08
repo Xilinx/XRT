@@ -38,14 +38,14 @@ static std::string DEFAULT_TAG("");
         uint64_t mSize;
         uint64_t mStart;
         uint64_t mAlignment;
-		std::string mTag;
+	std::string mTag;
         const unsigned mCoalesceThreshold;
         uint64_t mFreeSize;
 
         typedef std::list<std::pair<uint64_t, uint64_t> > PairList;
 
     public:
-        static const uint64_t mNull = 0xffffffffffffffffull;
+	static const uint64_t mNull = 0xffffffffffffffffull;
 	std::list<MemoryManager*> mChildMemories;
 
     public:
