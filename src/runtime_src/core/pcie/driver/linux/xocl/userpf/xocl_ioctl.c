@@ -502,6 +502,11 @@ skip1:
 
 	preserve_mem = xocl_preserve_mem(drm_p, new_topology, size);
 
+	/* To support fast adapter kind of CU, KDS would create a bo to
+	 * reserve plram. Needs to release it before cleanup mem.
+	 */
+	xocl_kds_reset(xdev, NULL);
+
 	/* Switching the xclbin, make sure none of the buffers are used. */
 	if (!preserve_mem) {
 		err = xocl_cleanup_mem(drm_p);
