@@ -225,7 +225,7 @@ get_trace_gmio(const pt::ptree& aie_meta)
 {
   std::vector<gmio_type> gmios;
 
-  for (auto& gmio_node : aie_meta.get_child("aie_metadata.TraceGMIOs")) {
+  for (auto& gmio_node : aie_meta.get_child_optional("aie_metadata.TraceGMIOs")) {
     gmio_type gmio;
 
     gmio.id = gmio_node.second.get<uint32_t>("id");
