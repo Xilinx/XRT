@@ -42,7 +42,7 @@ populate_async_error(const xrt_core::device * device)
      * In case of no error for given class, errorCode and timestamp will be zero,
      * but zero errorCode is valid error, so checking for only timestamp.
      */
-    if (rval == 0 && timestamp) {
+    if (rval == 0 && errorCode && timestamp) {
       size_t len = 0;
       if (xrtErrorGetJson(dhdl, errorCode, nullptr, 0, &len))
         continue;
