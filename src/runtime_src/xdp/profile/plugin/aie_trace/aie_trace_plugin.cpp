@@ -97,6 +97,8 @@ namespace xdp {
     uint64_t numAIETraceOutput = (db->getStaticInfo()).getNumAIETraceStream(deviceId);
     if(0 == numAIETraceOutput) {
       // no AIE Trace Stream to offload trace, so return
+      std::string msg("Neither PLIO nor GMIO trace infrastucture is found in the given design. So, AIE event trace will not be available.");
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
       return;
     }
 

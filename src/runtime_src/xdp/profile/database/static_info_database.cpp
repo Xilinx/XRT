@@ -42,6 +42,7 @@
 
 #include "core/include/xclbin.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/common/aie_parser.h"
@@ -439,7 +440,13 @@ namespace xdp {
   {
 #ifdef XRT_ENABLE_AIE
     // Record all counters listed in AIE metadata (if available)
-    for (auto& counter : xrt_core::edge::aie::get_profile_counters(device.get())) {
+    auto counters = xrt_core::edge::aie::get_profile_counters(device.get());
+    if(xrt_core::config::get_aie_profile() && counters.empty()) {
+      std::string msg("AIE Profile Counters are not found in AIE metadata of the given design. So, AIE Profile information will not be available.");
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+    }
+
+    for (auto& counter : counters) {
       AIECounter* aie = new AIECounter(counter.id, counter.column, counter.row, 
           counter.counterNumber, counter.startEvent, counter.endEvent, 
           counter.resetEvent, counter.clockFreqMhz, counter.module, counter.name);

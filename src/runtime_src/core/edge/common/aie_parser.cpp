@@ -168,22 +168,27 @@ get_profile_counter(const pt::ptree& aie_meta)
   // Now parse all counters
   std::vector<counter_type> counters;
 
-  for (auto& counter_node : aie_meta.get_child("aie_metadata.PerformanceCounter")) {
-    counter_type counter;
+  try {
+    for (auto& counter_node : aie_meta.get_child("aie_metadata.PerformanceCounter")) {
+      counter_type counter;
 
-    counter.id = counter_node.second.get<uint32_t>("id");
-    counter.column = counter_node.second.get<uint16_t>("core_column");
-    counter.row = counter_node.second.get<uint16_t>("core_row");
-    counter.counterNumber = counter_node.second.get<uint8_t>("counterId");
-    counter.startEvent = counter_node.second.get<uint8_t>("start");
-    counter.endEvent = counter_node.second.get<uint8_t>("stop");
-    //counter.resetEvent = counter_node.second.get<uint8_t>("reset");
-    // Assume common clock frequency for all AIE tiles
-    counter.clockFreqMhz = clockFreqMhz;
-    counter.module = counter_node.second.get<std::string>("module");
-    counter.name = counter_node.second.get<std::string>("name");
+      counter.id = counter_node.second.get<uint32_t>("id");
+      counter.column = counter_node.second.get<uint16_t>("core_column");
+      counter.row = counter_node.second.get<uint16_t>("core_row");
+      counter.counterNumber = counter_node.second.get<uint8_t>("counterId");
+      counter.startEvent = counter_node.second.get<uint8_t>("start");
+      counter.endEvent = counter_node.second.get<uint8_t>("stop");
+      //counter.resetEvent = counter_node.second.get<uint8_t>("reset");
+      // Assume common clock frequency for all AIE tiles
+      counter.clockFreqMhz = clockFreqMhz;
+      counter.module = counter_node.second.get<std::string>("module");
+      counter.name = counter_node.second.get<std::string>("name");
 
-    counters.emplace_back(std::move(counter));
+      counters.emplace_back(std::move(counter));
+    }
+  } catch (const pt::ptree_error &e) {
+    // Missing aie_metadata.PerformanceCounter
+    // No need to error out here. Check aie_profile configurations and then handle this.
   }
 
   return counters;
