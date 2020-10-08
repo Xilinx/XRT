@@ -31,6 +31,7 @@ namespace pt = boost::property_tree;
 using tile_type = xrt_core::edge::aie::tile_type;
 using rtp_type = xrt_core::edge::aie::rtp_type;
 using gmio_type = xrt_core::edge::aie::gmio_type;
+using plio_type = xrt_core::edge::aie::plio_type;
 using counter_type = xrt_core::edge::aie::counter_type;
 
 inline void
@@ -158,17 +159,47 @@ get_gmio(const pt::ptree& aie_meta)
   return gmios;
 }
 
+std::vector<plio_type>
+get_plio(const pt::ptree& aie_meta)
+{
+  auto plio_nodes = aie_meta.get_child_optional("aie_metadata.PLIOs");
+  if (!plio_nodes)
+    return {};
+
+  std::vector<plio_type> plios;
+
+  for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
+    plio_type plio;
+
+    plio.id = plio_node.second.get<uint32_t>("id");
+    plio.name = plio_node.second.get<std::string>("name");
+    plio.logical_name = plio_node.second.get<std::string>("logical_name");
+    plio.shim_col = plio_node.second.get<uint16_t>("shim_column");
+    plio.stream_id = plio_node.second.get<uint16_t>("stream_id");
+    plio.is_master = plio_node.second.get<bool>("slaveOrMaster");
+
+    plios.emplace_back(std::move(plio));
+  }
+
+  return plios;
+}
+
 std::vector<counter_type>
 get_profile_counter(const pt::ptree& aie_meta)
 {
-  // First grab clock frequency
-    auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
-    auto clockFreqMhz = dev_node.get<double>("AIEFrequency");
-
-  // Now parse all counters
   std::vector<counter_type> counters;
 
-  for (auto& counter_node : aie_meta.get_child("aie_metadata.PerformanceCounter")) {
+  // If counters not found, then return empty vector
+  auto counterTree = aie_meta.get_child_optional("aie_metadata.PerformanceCounter");
+  if (!counterTree)
+    return counters;
+
+  // First grab clock frequency
+  auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+  auto clockFreqMhz = dev_node.get<double>("AIEFrequency");
+
+  // Now parse all counters
+  for (auto const &counter_node : counterTree.get()) {
     counter_type counter;
 
     counter.id = counter_node.second.get<uint32_t>("id");
@@ -249,6 +280,18 @@ get_gmios(const xrt_core::device* device)
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_gmio(aie_meta);
+}
+
+std::vector<plio_type>
+get_plios(const xrt_core::device* device)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return std::vector<plio_type>();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_plio(aie_meta);
 }
 
 std::vector<counter_type>

@@ -86,6 +86,7 @@ struct EventRecord {
 class Aie {
 public:
     using gmio_type = xrt_core::edge::aie::gmio_type;
+    using plio_type = xrt_core::edge::aie::plio_type;
 
     ~Aie();
     Aie(const std::shared_ptr<xrt_core::device>& device);
@@ -94,6 +95,8 @@ public:
 
     /* This is the collections of gmios that are used. */
     std::vector<gmio_type> gmios;
+
+    std::vector<plio_type> plios;
 
     XAie_DevInst *getDevInst();
 
@@ -110,7 +113,7 @@ public:
     reset(const xrt_core::device* device);
 
     int
-    start_profiling(int option, const std::string& port1Name, const std::string& port2Name, uint32_t value);
+    start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value);
 
     uint64_t
     read_profiling(int phdl);

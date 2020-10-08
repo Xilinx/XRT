@@ -100,6 +100,25 @@ struct gmio_type
 std::vector<gmio_type>
 get_gmios(const xrt_core::device* device);
 
+struct plio_type
+{
+  std::string     name;
+  std::string     logical_name;
+
+  uint32_t        id;
+  uint16_t        shim_col;
+  uint16_t        stream_id;
+  bool            is_master;
+};
+
+/**
+ * get_plios() - get plio data from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+std::vector<plio_type>
+get_plios(const xrt_core::device* device);
+
 struct counter_type
 {
   uint32_t        id;

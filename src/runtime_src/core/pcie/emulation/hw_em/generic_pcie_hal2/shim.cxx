@@ -23,8 +23,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <boost/lexical_cast.hpp>
-
-
+#include "core/common/xclbin_parser.h"
 #include "xcl_perfmon_parameters.h"
 #define SEND_RESP2QDMA() \
     { \
@@ -270,8 +269,7 @@ namespace xclhwemhal2 {
     if (std::memcmp(bitstreambin, "xclbin2", 7)) {
       PRINTENDFUNC;
       return -1;
-    }
-
+    }  
     //check xclbin version with vivado tool version
     xclemulation::checkXclibinVersionWithTool(header);
 
@@ -1920,10 +1918,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     ri_msg.set_size(0);
     ri_buf = malloc(ri_msg.ByteSize());
 
-    buf = NULL;
+    buf = nullptr;
     buf_size = 0;
     binaryCounter = 0;
-    sock = NULL;
+    sock = nullptr;
 
     deviceName = "device"+std::to_string(deviceIndex);
     deviceDirectory = xclemulation::getRunDirectory() +"/" + std::to_string(getpid())+"/hw_em/"+deviceName;
@@ -1943,7 +1941,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     last_clk_time = clock();
     mCloseAll = false;
-    mMemModel = NULL;
+    mMemModel = nullptr;
 
     // Delete detailed kernel trace data mining results file
     // NOTE: do this only if we're going to write a new one
@@ -1964,8 +1962,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
     bUnified = _unified;
     bXPR = _xpr;
-    mCore = NULL;
-    mMBSch = NULL;
+    mCore = nullptr;
+    mMBSch = nullptr; 
     mIsDebugIpLayoutRead = false;
     mIsDeviceProfiling = false;
     mMemoryProfilingNumberSlots = 0;
@@ -3345,6 +3343,16 @@ int HwEmShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
 {
   return xclRegRW(false, cu_index, offset, &data);
 }
+
+//Get CU index from IP_LAYOUT section for corresponding kernel name
+int HwEmShim::xclIPName2Index(const char *name)
+{
+  //Get IP_LAYOUT buffer from xclbin
+  auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
+  return xclemulation::getIPName2Index(name, buffer.first);
+}
+
+
 volatile bool HwEmShim::get_mHostMemAccessThreadStarted() { return mHostMemAccessThreadStarted; }
 volatile void HwEmShim::set_mHostMemAccessThreadStarted(bool val) { mHostMemAccessThreadStarted = val; }
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/

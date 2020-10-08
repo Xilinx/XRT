@@ -23,11 +23,11 @@ class printSPMInfo (infCallUtil):
 		if (jsonformat):
 			stdstr = self.callmethod(spm_ptr,"getstring",[1, 1]);
 			strout = stdstr['_M_dataplus']['_M_p'].string();
-			print strout
+			print (strout)
 		else:
 			stdstr = self.callmethod(spm_ptr,"getstring",[1, 0]);
 			strout = stdstr['_M_dataplus']['_M_p'].string();
-			print strout
+			print (strout)
 
 		# free the allocated vector
 		self.callfunc("appdebug::clFreeAppDebugView",free_args)
@@ -50,11 +50,11 @@ class printSSPMInfo (infCallUtil):
 		if (jsonformat):
 			stdstr = self.callmethod(sspm_ptr,"getstring",[1, 1]);
 			strout = stdstr['_M_dataplus']['_M_p'].string();
-			print strout
+			print (strout)
 		else:
 			stdstr = self.callmethod(sspm_ptr,"getstring",[1, 0]);
 			strout = stdstr['_M_dataplus']['_M_p'].string();
-			print strout
+			print (strout)
 
 		# free the allocated vector
 		self.callfunc("appdebug::clFreeAppDebugView",free_args)
@@ -76,11 +76,11 @@ class printSAMInfo (infCallUtil):
 		if (jsonformat):
 			stdstr = self.callmethod(sam_ptr,"getstring",[1, 1]);
 			strout = stdstr['_M_dataplus']['_M_p'].string();
-			print strout
+			print (strout)
 		else:
 			stdstr = self.callmethod(sam_ptr,"getstring",[1, 0]);
 			strout = stdstr['_M_dataplus']['_M_p'].string();
-			print strout
+			print (strout)
 
 		# free the allocated vector
 		self.callfunc("appdebug::clFreeAppDebugView",free_args)
@@ -102,11 +102,11 @@ class printLAPCInfo (infCallUtil):
 		if (jsonformat):
 			stdstr = self.callmethod(lapc_ptr,"getstring",[0, 1]);
 			strout = stdstr['_M_dataplus']['_M_p'].string();
-			print strout
+			print (strout)
 		else :
 			stdstr = self.callmethod(lapc_ptr,"getstring",[0, 0]);
 			strout = stdstr['_M_dataplus']['_M_p'].string();
-			print strout
+			print (strout)
 
 		# free the allocated vector
 		self.callfunc("appdebug::clFreeAppDebugView",free_args)
@@ -190,7 +190,7 @@ class xstatusAllInfo (gdb.Command,infCallUtil):
 			print (e.message)
 			return
 		obj_spm.invoke(arg, 0)
-                obj_sspm.invoke(arg, 0)
+		obj_sspm.invoke(arg, 0)
 		obj_sam.invoke(arg, 0)
 		obj_lapc.invoke(arg, 0)
 xstatusAllInfo()
@@ -211,11 +211,11 @@ class xstatusJSONAllInfo (gdb.Command,infCallUtil):
 		super (xstatusJSONAllInfo, self).__init__ ("xstatus_json all", 
                          gdb.COMMAND_USER)
 	def invoke (self, arg, from_tty):
-		print "{ \"aim\" : "
+		print ("{ \"aim\" : ")
 		obj_spm.invoke(arg,1)
-		print ","
-		print "\"lapc\" : "
+		print (",")
+		print ("\"lapc\" : ")
 		obj_lapc.invoke(arg,1)
-		print "}"
+		print ("}")
 all_json_xstatus=xstatusJSONAllInfo()
 

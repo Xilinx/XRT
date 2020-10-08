@@ -6,7 +6,14 @@ include_directories(
 add_subdirectory(plugin/xdp)
 
 if (DEFINED XRT_AIE_BUILD)
-  add_subdirectory(aie)
+  file(GLOB XRT_CORE_EDGE_USER_AIE_FILES
+    "aie/*.h"
+    "aie/*.cpp"
+    "aie/*.c"
+  )
+
+  set(CMAKE_CXX_FLAGS "-DXAIE_DEBUG ${CMAKE_CXX_FLAGS}")
+  add_library(core_edge_user_aie_object OBJECT ${XRT_CORE_EDGE_USER_AIE_FILES})
 endif()
 
 file(GLOB XRT_EDGE_USER_FILES "*.cpp")

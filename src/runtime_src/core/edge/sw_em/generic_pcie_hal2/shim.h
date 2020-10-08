@@ -156,7 +156,8 @@ namespace xclcpuemhal2 {
       int xclExecWait(int timeoutMilliSec);
       int xclExecBuf(unsigned int cmdBO);
       int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
-
+      //Get CU index from IP_LAYOUT section for corresponding kernel name
+      int xclIPName2Index(const char *name);
       bool isImported(unsigned int _bo)
       {
         if (mImportedBOs.find(_bo) != mImportedBOs.end())

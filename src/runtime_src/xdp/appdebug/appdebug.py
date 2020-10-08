@@ -216,7 +216,7 @@ class printMemInfo (infCallUtil):
 		try:
 			fargs.append(gdb.parse_and_eval("(cl_mem)"+ arg))
 		except gdb.error as e:
-			print e.message;
+			print (e.message);
 			return
 
 		free_args,clm_ptr,errmsg = self.callfunc_verify("appdebug::clGetMemInfo",fargs,"cl_mem")
@@ -230,7 +230,7 @@ class printMemInfo (infCallUtil):
 		if (jsonformat):
 			stdstr = self.callmethod(clm_ptr,"getstring",[0, 1])
 			strout = stdstr['_M_dataplus']['_M_p'].string()
-			print strout
+			print (strout)
 		else :
 			stdstr = self.callmethod(clm_ptr,"getstring",[0, 0])
 			strout = stdstr['_M_dataplus']['_M_p'].string()
@@ -248,7 +248,7 @@ class printEventInfo (infCallUtil):
 		try:
 			fargs.append(gdb.parse_and_eval("(cl_event)"+ arg))
 		except gdb.error as e:
-			print e.message;
+			print (e.message);
 			return
 
 		free_args,cle_ptr,errmsg = self.callfunc_verify("appdebug::clGetEventInfo",fargs, "cl_event")
@@ -287,7 +287,7 @@ class xprintQueue (gdb.Command, infCallUtil):
 		try:
 			gdb.parse_and_eval("(cl_command_queue)"+arg)
 		except gdb.error as e:
-			print e.message;
+			print (e.message);
 			return
 
 		print ("Status:")
@@ -416,7 +416,7 @@ class xprintKernel (gdb.Command,infCallUtil):
 				item = item+1
 			self.callfunc("appdebug::clFreeAppDebugView",free_args)
 		else :
-			print "xprint kernel does not accept arguments"
+			print ("xprint kernel does not accept arguments")
 all_kernels=xprintKernel()
 
 class xprintAll (gdb.Command,infCallUtil):
@@ -431,9 +431,9 @@ class xprintAll (gdb.Command,infCallUtil):
 			print (e.message)
 			return
 		all_queues.invoke(arg,from_tty)
-		print "";
+		print ("");
 		all_mems.invoke(arg,from_tty)
-		print "";
+		print ("");
 		all_kernels.invoke(arg,from_tty)
 xprintAll()
 
@@ -568,18 +568,18 @@ class xprintJSONAll (gdb.Command,infCallUtil):
 
 		print ("\"queues\": [")
 		all_json_queues.invoke(arg,from_tty)
-		print "],"
+		print ("],")
 
 		print ("\"cl_mems\": [")
 		all_json_mems.invoke(arg,from_tty)
-		print "],"
+		print ("],")
 
 		from appdebugint import xstatusJSONAllInfo
 		all_json_xstatus=xstatusJSONAllInfo()
 
 		print ("\"debugips\": [")
 		all_json_xstatus.invoke(arg,from_tty)
-		print "]"
+		print ("]")
 
-		print "}"
+		print ("}")
 xprintJSONAll()
