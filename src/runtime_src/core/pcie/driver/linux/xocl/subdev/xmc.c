@@ -228,7 +228,8 @@ enum sc_mode {
 	XMC_SC_BSL_MODE_UNSYNCED = 2,
 	XMC_SC_BSL_MODE_SYNCED = 3,
 	XMC_SC_BSL_MODE_SYNCED_SC_NOT_UPGRADABLE = 4,
-	XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE = 5
+	XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE = 5,
+	XMC_SC_NOSC_MODE = 6
 };
 
 #define	READ_REG32(xmc, off)			\
@@ -1066,7 +1067,7 @@ static bool nosc_xmc(struct platform_device *pdev)
 		return true;
 
 	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
-	if (status.sc_mode == XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE)
+	if (status.sc_mode == XMC_SC_NOSC_MODE)
 		return true;
 
 	return false;
