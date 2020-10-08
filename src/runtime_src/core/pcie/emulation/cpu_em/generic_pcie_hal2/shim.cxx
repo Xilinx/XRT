@@ -21,6 +21,7 @@
 #include "shim.h"
 #include "system_swemu.h"
 #include "xclbin.h"
+#include "core/common/xclbin_parser.h"
 #include <errno.h>
 #include <unistd.h>
 #include <boost/property_tree/xml_parser.hpp>
@@ -63,16 +64,16 @@ namespace xclcpuemhal2 {
   {
     binaryCounter = 0;
     mReqCounter = 0;
-    sock = NULL;
+    sock = nullptr;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
     mCore = nullptr;
     mSWSch = nullptr;
-
+  
     ci_buf = malloc(ci_msg.ByteSize());
     ri_msg.set_size(0);
     ri_buf = malloc(ri_msg.ByteSize());
-    buf = NULL;
+    buf = nullptr;
     buf_size = 0;
 
     deviceName = "device"+std::to_string(deviceIndex);
@@ -486,7 +487,7 @@ namespace xclcpuemhal2 {
     std::string xmlFile = "" ;
     int result = dumpXML(header, xmlFile) ;
     if (result != 0) return result ;
-
+   
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
     //  by checking to see if there is a DEBUG_DATA section in
@@ -1906,6 +1907,14 @@ int CpuemShim::xclExecBuf(unsigned int cmdBO)
 int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
 {
   return 0;
+}
+
+//Get CU index from IP_LAYOUT section for corresponding kernel name
+int CpuemShim::xclIPName2Index(const char *name)
+{ 
+  //Get IP_LAYOUT buffer from xclbin
+  auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
+  return xclemulation::getIPName2Index(name, buffer.first);
 }
 
 // New API's for m2m and no-dma
