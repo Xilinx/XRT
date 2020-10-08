@@ -89,8 +89,8 @@ int run(int argc, char** argv)
   auto uuid = device.load_xclbin(xclbin_fnm);
 
   auto loopback = xrt::kernel(device, uuid.get(), "loopback");
-  auto bo0 = xrt::bo(device, DATA_SIZE, XCL_BO_FLAGS_NONE, loopback.group_id(0));  // handle 1
-  auto bo1 = xrt::bo(device, DATA_SIZE, XCL_BO_FLAGS_NONE, loopback.group_id(1));  // handle 2
+  auto bo0 = xrt::bo(device, DATA_SIZE, loopback.group_id(0));  // handle 1
+  auto bo1 = xrt::bo(device, DATA_SIZE, loopback.group_id(1));  // handle 2
 
   auto bo1_map = bo1.map<char*>();
   std::fill(bo1_map, bo1_map + DATA_SIZE, 0);
