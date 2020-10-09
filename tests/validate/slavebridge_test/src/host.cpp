@@ -1,19 +1,18 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-#include <boost/filesystem.hpp>
+* Copyright (C) 2020 Xilinx, Inc
+*
+* Licensed under the Apache License, Version 2.0 (the "License"). You may
+* not use this file except in compliance with the License. A copy of the
+* License is located at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+* License for the specific language governing permissions and limitations
+* under the License.
+*/
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <math.h>
@@ -28,7 +27,6 @@ int main(int argc, char **argv) {
   }
 
   int NUM_KERNEL;
-  bool file_found = false;
   std::string test_path = argv[1];
   std::string filename = "/platform.json";
   std::string platform_json = test_path + filename;
@@ -41,18 +39,6 @@ int main(int argc, char **argv) {
     temp = loadPtreeRoot.get_child("total_banks");
     NUM_KERNEL = temp.get_value<int>();
 
-    boost::filesystem::path p(test_path);
-    for (auto i = boost::filesystem::directory_iterator(p);
-         i != boost::filesystem::directory_iterator(); i++) {
-      if (!is_directory(i->path())) // we eliminate directories
-      {
-        if (i->path().filename().string() == "slavebridge.xclbin")
-          file_found = true;
-      }
-    }
-
-  } catch (const boost::filesystem::filesystem_error &e) {
-    std::cout << "Exception!!!! " << e.what();
   } catch (const std::exception &e) {
     std::string msg(
         "ERROR: Bad JSON format detected while marshaling build metadata (");
@@ -60,13 +46,14 @@ int main(int argc, char **argv) {
     msg += ").";
     std::cout << msg;
   }
-  if (!file_found) {
-    std::cout << "\nNOT SUPPORTED" << std::endl;
-    return EOPNOTSUPP;
-  }
 
   std::string b_file = "/slavebridge.xclbin";
   std::string binaryFile = test_path + b_file;
+  std::ifstream infile(binaryFile);
+  if (!infile.good()) {
+    std::cout << "\nNOT SUPPORTED" << std::endl;
+    return EOPNOTSUPP;
+  }
 
   cl_int err;
   cl::Context context;
