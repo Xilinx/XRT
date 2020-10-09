@@ -187,6 +187,19 @@ namespace xclhwemhal2 {
     systemUtil::makeSystemCall(filePath, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
   }
   
+  void HwEmShim::parseSimulateLog ()
+  {
+    std::string simPath = getSimPath();
+    std::string content = loadFileContentsToString(simPath + "/simulate.log");
+    if (content.find("// ERROR!!! DEADLOCK DETECTED ") != std::string::npos) {
+      size_t first = content.find("// ERROR!!! DEADLOCK DETECTED");
+      size_t last = content.find("detected!", first);
+      // substr including the word detected!
+      std::string deadlockMsg = content.substr(first , last + 9 - first);
+      logMessage(deadlockMsg, 0);
+    }
+  }
+
   static size_t convert(const std::string& str)
   {
     return str.empty() ? 0 : std::stoul(str,0,0);
@@ -437,7 +450,6 @@ namespace xclhwemhal2 {
       //debug_print("unable to support all signals");
     }
 
-    std::string sim_path("");
     std::string sim_file("launch_hw_emu.sh");
 
     // Write and read debug IP layout (for debug & profiling)
@@ -683,6 +695,7 @@ namespace xclhwemhal2 {
         std::stringstream cmdLineOption;
         std::string waveformDebugfilePath = "";
         sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
+        setSimPath(sim_path);
 
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
@@ -719,6 +732,7 @@ namespace xclhwemhal2 {
 
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
+        setSimPath(sim_path);
         std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
 
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
@@ -744,6 +758,7 @@ namespace xclhwemhal2 {
 
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
+        setSimPath(sim_path);
         std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
 
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
@@ -757,12 +772,15 @@ namespace xclhwemhal2 {
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
 
-      if (lWaveform == xclemulation::DEBUG_MODE::GDB)
+      if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
         sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
+        setSimPath(sim_path);
+      }
 
       if (userSpecifiedSimPath.empty() == false)
       {
         sim_path = userSpecifiedSimPath;
+        setSimPath(sim_path);
         systemUtil::makeSystemCall(sim_path, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
       }
       else
@@ -770,12 +788,14 @@ namespace xclhwemhal2 {
         if (sim_path.empty())
         {
           sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
+          setSimPath(sim_path);
         }
 
         if (boost::filesystem::exists(sim_path) == false)
         {
           if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
             sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
+            setSimPath(sim_path);
             std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
 
             std::string dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'gdb' in INI file and none of kernels compiled in GDB mode. Running simulation using waveform mode. Do run v++ link with -g and --xp param:hw_emu.debugMode=gdb options to launch simulation in 'gdb' mode";
@@ -800,6 +820,7 @@ namespace xclhwemhal2 {
           else {
             std::string dMsg;
             sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
+            setSimPath(sim_path);
             if (lWaveform == xclemulation::DEBUG_MODE::GUI)
               dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'gui' in ini file. Cannot enable simulator gui in this mode. Using " + sim_path + " as simulation directory.";
             else if (lWaveform == xclemulation::DEBUG_MODE::BATCH)
@@ -1911,6 +1932,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     tracecount_calls = 0;
     mReqCounter = 0;
     simulatorType = "xsim";
+    sim_path = "";
 
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);

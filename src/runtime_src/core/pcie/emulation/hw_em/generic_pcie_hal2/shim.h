@@ -270,7 +270,10 @@ using addr_type = uint64_t;
       std::string modifyContent(const std::string& simulatorName, std::string& content);
       void writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName);
       void constructQueryTable();     
-
+      void parseSimulateLog();
+      void setSimPath(std::string simPath) { sim_path = simPath; }
+      std::string getSimPath () { return sim_path; }
+      
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       bool simulator_started;
@@ -373,6 +376,7 @@ using addr_type = uint64_t;
       uint32_t mCuIndx;
       const size_t mCuMapSize = 64 * 1024;
       std::string simulatorType;
+      std::string sim_path;
       std::map<uint64_t, std::pair<void*, uint64_t> > mHostOnlyMemMap;
   };
 
