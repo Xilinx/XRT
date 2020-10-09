@@ -1554,74 +1554,6 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 }
 
 /**
- * New ERT populates:
- * [1  ]      : header
- * [1  ]      : custat version
- * [1  ]      : ert git version
- * [1  ]      : number of cq slots
- * [1  ]      : number of cus
- * [#numcus]  : cu execution stats (number of executions)
- * [#numcus]  : cu status (1: running, 0: idle)
- * [#slots]   : command queue slot status
- *
- * Old ERT populates
- * [1  ]      : header
- * [#numcus]  : cu execution stats (number of executions)
- */
-static void
-ert_read_custat(struct xocl_ert *xert, struct xocl_cmd *xcmd, unsigned int num_cus)
-{
-	u32 slot_addr = xcmd->slot_idx*xert->slot_size;
-
-	// cu stat version is 1 word past header
-	u32 custat_version = ioread32(xert->cq_base + slot_addr + 4);
-
-	xert->version = -1;
-	memset(xert->cu_usage, -1, MAX_CUS * sizeof(u32));
-	memset(xert->cu_status, -1, MAX_CUS * sizeof(u32));
-	memset(xert->cq_slot_status, -1, MAX_SLOTS * sizeof(u32));
-
-	// New command style from ERT firmware
-	if (custat_version == 0x51a10000) {
-		unsigned int idx = 2; // packet word index past header and version
-		unsigned int max_idx = (xert->slot_size >> 2);
-		u32 git = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
-		u32 ert_num_cq_slots = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
-		u32 ert_num_cus = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
-		unsigned int words = 0;
-
-		xert->version = git;
-
-		// bogus data in command, avoid oob writes to local arrays
-		if (ert_num_cus > MAX_CUS || ert_num_cq_slots > MAX_CUS)
-			return;
-
-		// cu execution stat
-		words = min(ert_num_cus, max_idx - idx);
-		xocl_memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + (idx << 2),
-			      words * sizeof(u32));
-		idx += words;
-
-		// ert cu status
-		words = min(ert_num_cus, max_idx - idx);
-		xocl_memcpy_fromio(xert->cu_status, xert->cq_base + slot_addr + (idx << 2),
-			      words * sizeof(u32));
-		idx += words;
-
-		// ert cq status
-		words = min(ert_num_cq_slots, max_idx - idx);
-		xocl_memcpy_fromio(xert->cq_slot_status, xert->cq_base + slot_addr + (idx << 2),
-			      words * sizeof(u32));
-		idx += words;
-	}
-	else {
-		// Old ERT command style populates only cu usage past header
-		xocl_memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + 4,
-			      num_cus * sizeof(u32));
-	}
-}
-
-/**
  */
 static inline u32
 ert_version(struct xocl_ert *xert)
@@ -1761,6 +1693,7 @@ struct exec_core {
 
 	unsigned int		   num_cus;
 	unsigned int		   num_cdma;
+	unsigned int		   num_sk_cus;
 
 	bool		           polling_mode;
 	bool		           cq_interrupt;
@@ -1808,6 +1741,83 @@ struct exec_core {
 	unsigned int		   ip_reference[MAX_CUS];
 	struct workqueue_struct    *completion_wq;
 };
+
+/**
+ * New ERT populates:
+ * [1  ]      : header
+ * [1  ]      : custat version
+ * [1  ]      : ert git version
+ * [1  ]      : number of cq slots
+ * [1  ]      : number of cus
+ * [#numcus]  : cu execution stats (number of executions)
+ * [#numcus]  : cu status (1: running, 0: idle)
+ * [#slots]   : command queue slot status
+ *
+ * Old ERT populates
+ * [1  ]      : header
+ * [#numcus]  : cu execution stats (number of executions)
+ */
+static void
+ert_read_custat(struct xocl_ert *xert, struct xocl_cmd *xcmd, unsigned int num_cus)
+{
+	u32 slot_addr = xcmd->slot_idx*xert->slot_size;
+
+	// cu stat version is 1 word past header
+	u32 custat_version = ioread32(xert->cq_base + slot_addr + 4);
+
+	xert->version = -1;
+	memset(xert->cu_usage, -1, MAX_CUS * sizeof(u32));
+	memset(xert->cu_status, -1, MAX_CUS * sizeof(u32));
+	memset(xert->cq_slot_status, -1, MAX_SLOTS * sizeof(u32));
+
+	// New command style from ERT firmware
+	if (custat_version == 0x51a10000) {
+		struct exec_core *exec = xcmd->exec;
+		unsigned int idx = 2; // packet word index past header and version
+		unsigned int max_idx = (xert->slot_size >> 2);
+		u32 git = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
+		u32 ert_num_cq_slots = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
+		u32 ert_num_cus = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
+		int words = 0;
+
+		xert->version = git;
+
+		// bogus data in command, avoid oob writes to local arrays
+		if (ert_num_cus > MAX_CUS || ert_num_cq_slots > MAX_CUS)
+			return;
+
+		exec->num_sk_cus = ert_num_cus - exec->num_cus;
+
+		// cu execution stat
+		words = min(ert_num_cus, max_idx - idx);
+		if (words <= 0)
+			return;
+		xocl_memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + (idx << 2),
+			      words * sizeof(u32));
+		idx += words;
+
+		// ert cu status
+		words = min(ert_num_cus, max_idx - idx);
+		if (words <= 0)
+			return;
+		xocl_memcpy_fromio(xert->cu_status, xert->cq_base + slot_addr + (idx << 2),
+			      words * sizeof(u32));
+		idx += words;
+
+		// ert cq status
+		words = min(ert_num_cq_slots, max_idx - idx);
+		if (words <= 0)
+			return;
+		xocl_memcpy_fromio(xert->cq_slot_status, xert->cq_base + slot_addr + (idx << 2),
+			      words * sizeof(u32));
+		idx += words;
+	}
+	else {
+		// Old ERT command style populates only cu usage past header
+		xocl_memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + 4,
+			      num_cus * sizeof(u32));
+	}
+}
 
 /**
  * exec_get_pdev() -
@@ -2387,6 +2397,11 @@ exec_update_custatus(struct exec_core *exec)
 	// reset cdma status
 	for (; cuidx < exec->num_cus; ++cuidx)
 		exec->cu_status[cuidx] = 0;
+
+	for (cuidx = 0; cuidx < exec->num_sk_cus; cuidx++) {
+		exec->cu_status[cuidx + exec->num_cus] =
+			ert_cu_status(exec->ert, cuidx) ? AP_START : AP_IDLE;
+	}
 }
 
 /**
@@ -4706,7 +4721,7 @@ static ssize_t
 kds_numcus_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct exec_core *exec = dev_get_exec(dev);
-	unsigned int cus = exec ? exec->num_cus - exec->num_cdma : 0;
+	unsigned int cus = exec ? exec->num_cus - exec->num_cdma  + exec->num_sk_cus : 0;
 
 	return sprintf(buf, "%d\n", cus);
 }
@@ -4716,6 +4731,7 @@ static ssize_t
 kds_cucounts_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct exec_core *exec = dev_get_exec(dev);
+	struct xocl_ert *xert = exec_is_ert(exec) ? exec->ert : NULL;
 	unsigned int cus = exec ? exec->num_cus - exec->num_cdma : 0;
 	unsigned int sz = 0;
 	unsigned int idx;
@@ -4723,7 +4739,13 @@ kds_cucounts_show(struct device *dev, struct device_attribute *attr, char *buf)
 	for (idx = 0; idx < cus; ++idx) {
 		struct xocl_cu *xcu = exec->cus[idx];
 
-		sz += sprintf(buf, "cu[%d] done(%d) run(%d)\n", idx, xcu->done_cnt, xcu->run_cnt);
+		sz += sprintf(buf + sz, "cu[%d] done(%d) run(%d)\n", idx, xcu->done_cnt, xcu->run_cnt);
+	}
+
+	cus = exec ? exec->num_sk_cus : 0;
+	for (idx = exec->num_cus; idx < exec->num_cus + cus; idx++) {
+		sz += sprintf(buf + sz, "cu[%d] done(%d) run(%d)\n", idx,
+			ert_cu_usage(xert, idx), ert_cu_usage(xert, idx));
 	}
 	if (sz)
 		buf[sz++] = 0;
@@ -4754,9 +4776,9 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	// No need to lock exec, cu stats are computed and cached.
 	// Even if xclbin is swapped, the data reflects the xclbin on
 	// which is was computed above.
-	for (idx = 0; idx < exec->num_cus; ++idx)
+	for (idx = 0; idx < exec->num_cus + exec->num_sk_cus; ++idx)
 		sz += sprintf(buf+sz, "CU[@0x%x] : %d status : %d\n",
-			      exec_cu_base_addr(exec, idx),
+			      (idx < exec->num_cus) ? exec_cu_base_addr(exec, idx) : 0,
 			      xert ? ert_cu_usage(xert, idx) : exec_cu_usage(exec, idx),
 			      exec_cu_status(exec, idx));
 
@@ -4785,7 +4807,7 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	sz += sprintf(buf+sz, "ERT scheduler version : 0x%x\n", ert_version(xert));
 	sz += sprintf(buf+sz, "ERT number of submitted commands: %d\n", exec_num_running(exec));
 	sz += sprintf(buf+sz, "ERT scheduler CU state : {");
-	for (idx = 0; idx < exec->num_cus; ++idx) {
+	for (idx = 0; idx < exec->num_cus + exec->num_sk_cus; ++idx) {
 		if (idx > 0)
 			sz += sprintf(buf+sz, ",");
 		sz += sprintf(buf+sz, "%d", ert_cu_status(xert, idx));

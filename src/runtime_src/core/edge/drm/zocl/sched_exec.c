@@ -1017,6 +1017,7 @@ cu_stat(struct sched_cmd *cmd)
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	struct zocl_ert_dev *ert = zdev->ert;
 	struct sched_exec_core *exec = zdev->exec;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct ert_packet *pkg;
 	int slot_idx;
 	int pkt_idx = 0;
@@ -1037,15 +1038,25 @@ cu_stat(struct sched_cmd *cmd)
 	pkg->data[pkt_idx++] = exec->num_slots;
 
 	/* number of CUs */
-	pkg->data[pkt_idx++] = exec->num_cus;
+	pkg->data[pkt_idx++] = exec->num_cus + sk->sk_ncus;
 
 	/* individual CU execution stat */
 	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i)
 		pkg->data[pkt_idx++] = exec->zcu[i].usage;
 
+	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i)
+		pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
+
 	/* individual CU status */
-	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i)
-		pkg->data[pkt_idx++] = exec->cu_status[i];
+	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i) {
+		pkg->data[pkt_idx++] = (exec->cu_status[cu_mask_idx(i)] &
+			(1 << (i % sizeof(exec->cu_status[0])))) ? 1 : 0;
+	}
+
+	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
+		pkg->data[pkt_idx++] = (exec->scu_status[cu_mask_idx(i)] &
+			(1 << (i % sizeof(exec->scu_status[0])))) ? 1 : 0;
+	}
 
 	/* Command slot status
 	 * Hard code QUEUED state. When a NEW command is found,
@@ -1991,6 +2002,7 @@ ert_configure_scu(struct sched_cmd *cmd, int cu_idx)
 		cu_regfile[i] = *(skc->data + skc->extra_cu_masks + i);
 
 	up(&scu->sc_sem);
+	scu->usage++;
 	mutex_unlock(&sk->sk_lock);
 
 	SCHED_DEBUG("<- %s", __func__);

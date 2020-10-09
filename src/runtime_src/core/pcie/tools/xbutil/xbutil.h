@@ -360,15 +360,18 @@ public:
     uint32_t parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu_stat kind) const
     {
        uint32_t ret = 0;
+       uint32_t idx = 0;
 
        if (custat.empty())
           return ret;
 
        for (auto& line : custat) {
            uint32_t ba = 0, cnt = 0, sta = 0;
-           std::sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
+           ret = std::sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
+           if (ret)
+               idx++;
 
-           if (offset != ba)
+           if (offset != ba && offset != idx)
                continue;
 
            if (kind == cu_stat::usage)
@@ -377,6 +380,20 @@ public:
                 ret = sta;
 
            return ret;
+       }
+
+       return ret;
+    }
+
+    uint32_t parseComputeUnitNum(const std::vector<std::string>& custat) const
+    {
+       uint32_t ret = 0;
+
+       if (custat.empty())
+          return ret;
+
+       for (auto& line : custat) {
+           ret += std::strncmp(line.c_str(), "CU[", 3) ? 0 : 1;
        }
 
        return ret;
@@ -405,6 +422,19 @@ public:
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
+
+        for (unsigned int i = computeUnits.size(); i < parseComputeUnitNum(custat); i++) {
+            uint32_t status = parseComputeUnitStat(custat, i, cu_stat::stat);
+            uint32_t usage = parseComputeUnitStat(custat, i, cu_stat::usage);
+
+	    boost::property_tree::ptree ptCu;
+            ptCu.put( "name",         "Soft" );
+            ptCu.put( "base_address", 0 );
+            ptCu.put( "usage",        usage );
+            ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
+            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
+        }
+
         return 0;
     }
 
