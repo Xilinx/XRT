@@ -197,6 +197,14 @@ static int updateSC(unsigned index, const char *file)
         return writeSCImage(flasher, file);
     }
 
+    {// check fixed sc before trying to shutdown device
+        XMC_Flasher xflasher(mgmt_dev);
+        if (xflasher.fixedSC()) {
+            std::cerr << "Flashing fixed SC not allowed" << std::endl;
+            return -ENOTSUP;
+        }
+    }
+    
     auto dev = mgmt_dev->lookup_peer_dev();
     ret = pcidev::shutdown(mgmt_dev);
     if (ret) {
@@ -207,7 +215,7 @@ static int updateSC(unsigned index, const char *file)
     dev->sysfs_put("", "shutdown", errmsg, "0\n");
     if (!errmsg.empty()) {
         std::cout << "ERROR: online userpf failed. Please warm reboot." << std::endl;
-    return ret;
+        return ret;
     }
 
     int wait = 0;

@@ -154,7 +154,7 @@ private:
   std::ifstream mVBNV;
   xclVerbosityLevel mVerbosity;
   int mKernelFD;
-  std::map<uint64_t, uint32_t *> mKernelControl;
+  static std::map<uint64_t, uint32_t *> mKernelControl;
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
   zynq_device *mDev = nullptr;
   size_t mKernelClockFreq;

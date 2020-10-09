@@ -278,18 +278,6 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 #else
 		xclmgmt_reset_pci(lro);
 #endif
-		/*
-		 * For U50 built with 2RP flow. PLP Gate is closed after
-		 * pci hot reset.
-		 * XRT expects firewall trip instead of * hard hang if there
-		 * is an unexpected access of non-exist
-		 * IPs. (E.g. Invalid access from a active VM)
-		 *
-		 * for the new platforms which support pcie firewall which
-		 * should be able to block some of the unexpected access
-		 * (BAR 0 access will not be blocked by pcie firewall.
-		 */
-		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_AXIGATE);
 
 		/* restart XMC/ERT */
 		xocl_mb_reset(lro);
@@ -399,6 +387,23 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 	if ((XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3)) {
 		xocl_restore_config_space(pdev,
 			lro->saved_config[PCI_FUNC(pdev->devfn)]);
+
+		/*
+		 * For U50 built with 2RP flow. PLP Gate is closed after
+		 * pci hot reset.
+		 * XRT expects firewall trip instead of hard hang if there
+		 * is an unexpected access of non-exist
+		 * IPs. (E.g. Invalid access from a active VM)
+		 *
+		 * However there is a old u50 gen3x4-xdma-base_2-2902115
+		 * which will hard hang host if we do not open PLP gate before
+		 * restoring pci state and unlock access
+		 *
+		 * for the new platforms which support pcie firewall which
+		 * should be able to block some of the unexpected access
+		 * (BAR 0 access will not be blocked by pcie firewall.
+		 */
+		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_AXIGATE);
 
 		pci_restore_state(pdev);
 		pci_cfg_access_unlock(pdev);

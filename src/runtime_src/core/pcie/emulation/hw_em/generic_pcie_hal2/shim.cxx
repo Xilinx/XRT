@@ -187,6 +187,19 @@ namespace xclhwemhal2 {
     systemUtil::makeSystemCall(filePath, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
   }
   
+  void HwEmShim::parseSimulateLog ()
+  {
+    std::string simPath = getSimPath();
+    std::string content = loadFileContentsToString(simPath + "/simulate.log");
+    if (content.find("// ERROR!!! DEADLOCK DETECTED ") != std::string::npos) {
+      size_t first = content.find("// ERROR!!! DEADLOCK DETECTED");
+      size_t last = content.find("detected!", first);
+      // substr including the word detected!
+      std::string deadlockMsg = content.substr(first , last + 9 - first);
+      logMessage(deadlockMsg, 0);
+    }
+  }
+
   static size_t convert(const std::string& str)
   {
     return str.empty() ? 0 : std::stoul(str,0,0);
@@ -437,7 +450,6 @@ namespace xclhwemhal2 {
       //debug_print("unable to support all signals");
     }
 
-    std::string sim_path("");
     std::string sim_file("launch_hw_emu.sh");
 
     // Write and read debug IP layout (for debug & profiling)
@@ -495,7 +507,26 @@ namespace xclhwemhal2 {
       for (auto it : mMembanks)
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize()));
+        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));
+      }
+      for (auto it:mDDRMemoryManager)
+      {
+              std::string tag = it->tag();
+
+              if(tag.empty() || tag.find("MBG") == std::string::npos)
+        	      continue;
+
+              for (auto it2:mDDRMemoryManager)
+              {
+        	      if(it2->size() !=0 &&
+			 it2 != it &&
+        		 it->start() <= it2->start() &&
+        		 (it->start() + it->size()) >= (it2->start() + it2->size()))
+        	      {
+			      //add child memories
+			      it->mChildMemories.push_back(it2);
+        	      }
+              }
       }
     }
 
@@ -683,6 +714,7 @@ namespace xclhwemhal2 {
         std::stringstream cmdLineOption;
         std::string waveformDebugfilePath = "";
         sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
+        setSimPath(sim_path);
 
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
@@ -719,6 +751,7 @@ namespace xclhwemhal2 {
 
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
+        setSimPath(sim_path);
         std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
 
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
@@ -744,6 +777,7 @@ namespace xclhwemhal2 {
 
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
+        setSimPath(sim_path);
         std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
 
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
@@ -757,12 +791,15 @@ namespace xclhwemhal2 {
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
 
-      if (lWaveform == xclemulation::DEBUG_MODE::GDB)
+      if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
         sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
+        setSimPath(sim_path);
+      }
 
       if (userSpecifiedSimPath.empty() == false)
       {
         sim_path = userSpecifiedSimPath;
+        setSimPath(sim_path);
         systemUtil::makeSystemCall(sim_path, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
       }
       else
@@ -770,12 +807,14 @@ namespace xclhwemhal2 {
         if (sim_path.empty())
         {
           sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
+          setSimPath(sim_path);
         }
 
         if (boost::filesystem::exists(sim_path) == false)
         {
           if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
             sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
+            setSimPath(sim_path);
             std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
 
             std::string dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'gdb' in INI file and none of kernels compiled in GDB mode. Running simulation using waveform mode. Do run v++ link with -g and --xp param:hw_emu.debugMode=gdb options to launch simulation in 'gdb' mode";
@@ -800,6 +839,7 @@ namespace xclhwemhal2 {
           else {
             std::string dMsg;
             sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
+            setSimPath(sim_path);
             if (lWaveform == xclemulation::DEBUG_MODE::GUI)
               dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'gui' in ini file. Cannot enable simulator gui in this mode. Using " + sim_path + " as simulation directory.";
             else if (lWaveform == xclemulation::DEBUG_MODE::BATCH)
@@ -1403,7 +1443,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return finalValidAddress;
   }
 
-  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool noHostMemory, unsigned boFlags, std::string &sFileName)
+  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool noHostMemory, unsigned boFlags, std::string &sFileName, std::map<uint64_t,uint64_t>& chunks)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
@@ -1425,7 +1465,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     uint64_t origSize = size;
     unsigned int paddingFactor = xclemulation::config::getInstance()->getPaddingFactor();
-    uint64_t result = mDDRMemoryManager[flags]->alloc(size,paddingFactor);
+    uint64_t result = mDDRMemoryManager[flags]->alloc(size, paddingFactor,chunks);
     if(result == xclemulation::MemoryManager::mNull)
       return result;
     uint64_t finalValidAddress = result+(paddingFactor*size);
@@ -1436,8 +1476,18 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       if (boFlags & XCL_BO_FLAGS_HOST_ONLY) { // bypassed the xclAllocDeviceBuffer RPC call for Slave Bridge (host only buffer)
       } else {
-        xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, finalValidAddress, origSize, noHostMemory);
+	      if(chunks.size())
+	      {
+		      for (auto it:chunks)
+		      {
+			      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, it.first, it.second, noHostMemory);
+		      }
 
+	      }
+	      else
+	      {
+		      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, finalValidAddress, origSize, noHostMemory);
+	      }
         PRINTENDFUNC;
         if (!ack)
           return 0;
@@ -1911,6 +1961,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     tracecount_calls = 0;
     mReqCounter = 0;
     simulatorType = "xsim";
+    sim_path = "";
 
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
@@ -2407,7 +2458,7 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
   else
   {
-    xobj->base = xclAllocDeviceBuffer2(size, XCL_MEM_DEVICE_RAM, ddr, noHostMemory, info->flags, sFileName);
+    xobj->base = xclAllocDeviceBuffer2(size, XCL_MEM_DEVICE_RAM, ddr, noHostMemory, info->flags, sFileName, xobj->chunks);
   }
   xobj->filename = sFileName;
   xobj->size = size;
@@ -2736,7 +2787,16 @@ void HwEmShim::xclFreeBO(unsigned int boHandle)
     if(bo->flags & XCL_BO_FLAGS_EXECBUF)
       bSendToSim = false;
 
-    xclFreeDeviceBuffer(bo->base, bSendToSim);
+    if(bo->chunks.size())
+    {
+	    for(auto it: bo->chunks)
+		    xclFreeDeviceBuffer(it.first,bSendToSim);
+
+    }
+    else
+    {
+	    xclFreeDeviceBuffer(bo->base, bSendToSim);
+    }
     mXoclObjMap.erase(it);
   }
   PRINTENDFUNC;

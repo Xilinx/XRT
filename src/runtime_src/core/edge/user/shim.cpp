@@ -87,6 +87,8 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
 }
 
 namespace ZYNQ {
+//initializing static member
+std::map<uint64_t, uint32_t *> shim::mKernelControl;
 
 shim::
 shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)

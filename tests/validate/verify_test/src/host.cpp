@@ -1,52 +1,39 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+* Copyright (C) 2020 Xilinx, Inc
+*
+* Licensed under the Apache License, Version 2.0 (the "License"). You may
+* not use this file except in compliance with the License. A copy of the
+* License is located at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+* License for the specific language governing permissions and limitations
+* under the License.
+*/
 #include "xcl2.hpp"
 #include <algorithm>
 #include <vector>
-#include <boost/filesystem.hpp>
 #define LENGTH 12
 
 int main(int argc, char **argv) {
   if (argc != 2) {
-    std::cout << "Usage: " << argv[0] << " <Platform Test Area Path>" << std::endl;
+    std::cout << "Usage: " << argv[0] << " <Platform Test Area Path>"
+              << std::endl;
     return EXIT_FAILURE;
   }
 
-  bool file_found = false;
   std::string test_path = argv[1];
-  try{
-      boost::filesystem::path p(test_path);
-      for (auto i = boost::filesystem::directory_iterator(p); i != boost::filesystem::directory_iterator(); i++)
-       {
-            if (!is_directory(i->path())) //we eliminate directories
-            {
-                if(i->path().filename().string() == "verify.xclbin")
-                    file_found = true;
-            }
-        }
-  } catch (const boost::filesystem::filesystem_error & e) {
-      std::cout << "Exception!!!! " << e.what();
-  }
-  if(!file_found){
-      std::cout << "\nNOT SUPPORTED" << std::endl;
-      return EOPNOTSUPP; 
-  }
 
   std::string b_file = "/verify.xclbin";
-  std::string binaryFile = test_path+b_file;
+  std::string binaryFile = test_path + b_file;
+  std::ifstream infile(binaryFile);
+  if (!infile.good()) {
+    std::cout << "\nNOT SUPPORTED" << std::endl;
+    return EOPNOTSUPP;
+  }
   cl_int err;
   cl::Context context;
   cl::Kernel krnl_verify;
