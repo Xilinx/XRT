@@ -22,6 +22,7 @@
 #include "core/include/experimental/xrt_error.h"
 
 #include "device_int.h"
+#include "error_int.h"
 #include "core/common/error.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -137,10 +138,9 @@ error_code_to_string(xrtErrorCode ecode)
   return fmt.str();
 }
 
-static std::string
-error_code_to_json(xrtErrorCode ecode)
+void
+error_code_to_json(xrtErrorCode ecode, boost::property_tree::ptree &pt)
 {
-  boost::property_tree::ptree pt;
   pt.put("class.code", XRT_ERROR_CLASS(ecode));
   pt.put("class.string", error_class_to_string(xrtErrorClass(XRT_ERROR_CLASS(ecode))));
   pt.put("module.code", XRT_ERROR_MODULE(ecode));
@@ -151,12 +151,6 @@ error_code_to_json(xrtErrorCode ecode)
   pt.put("driver.string", error_driver_to_string(xrtErrorDriver(XRT_ERROR_DRIVER(ecode))));
   pt.put("number.code", XRT_ERROR_NUM(ecode));
   pt.put("number.string", error_number_to_string(xrtErrorNum(XRT_ERROR_NUM(ecode))));
-
-  std::stringstream ss;
-  boost::property_tree::json_parser::write_json(ss, pt);
-  std::string tmp(ss.str());
-  
-  return tmp;
 }
 
 static std::string
@@ -168,6 +162,12 @@ error_time_to_string(xrtErrorTime time)
 
 } // namespace
 
+namespace xrt_core { namespace error_int {
+  void get_error_code_to_json(xrtErrorCode ecode,boost::property_tree::ptree &pt)
+  {
+    return error_code_to_json(ecode, pt);
+  }
+}} // namespace error_int, xrt_core
 
 namespace xrt {
 
@@ -285,35 +285,6 @@ xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, si
 {
   try {
     auto str = error_code_to_string(error);
-
-    if (out_len)
-      *out_len = str.size() + 1;
-
-    if (!out)
-      return 0;
-
-    auto cp_len = std::min(len-1, str.size());
-    std::strncpy(out, str.c_str(), cp_len);
-    out[cp_len] = 0;
-
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = 1;
-  }
-  return errno;
-}
-
-int
-xrtErrorGetJson(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, size_t* out_len)
-{
-  try {
-    auto str = error_code_to_json(error);
 
     if (out_len)
       *out_len = str.size() + 1;

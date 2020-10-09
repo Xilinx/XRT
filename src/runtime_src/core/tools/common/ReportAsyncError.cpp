@@ -20,7 +20,7 @@
 #include "ReportAsyncError.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
-#include "core/include/xrt.h"
+#include "core/common/api/error_int.h"
 #include "core/include/experimental/xrt_error.h"
 #include "core/include/xrt_error_code.h"
 #include <boost/algorithm/string.hpp>
@@ -38,32 +38,17 @@ populate_async_error(const xrt_core::device * device)
     xrtErrorCode errorCode = 0;
     uint64_t timestamp = 0;
     int rval = xrtErrorGetLast(dhdl, ecl, &errorCode, &timestamp);
-    /**
-     * In case of no error for given class, errorCode and timestamp will be zero,
-     * but zero errorCode is valid error, so checking for only timestamp.
-     */
     if (rval == 0 && errorCode && timestamp) {
-      size_t len = 0;
-      if (xrtErrorGetJson(dhdl, errorCode, nullptr, 0, &len))
-        continue;
-      char buf[len];
-      if (xrtErrorGetJson(dhdl, errorCode, buf, len, nullptr))
-        continue;
-      std::stringstream ss(buf);
       boost::property_tree::ptree _pt;
-      boost::property_tree::read_json(ss, _pt);
       boost::property_tree::ptree node;
+      xrt_core::error_int::get_error_code_to_json(errorCode, _pt);
       node.put("timestamp", timestamp);
-      node.put("class.code", _pt.get<int>("class.code"));
-      node.put("class.string", _pt.get<std::string>("class.string"));
-      node.put("module.code", _pt.get<int>("module.code"));
-      node.put("module.string", _pt.get<std::string>("module.string"));
-      node.put("severity.code", _pt.get<int>("severity.code"));
-      node.put("severity.string", _pt.get<std::string>("severity.string"));
-      node.put("driver.code", _pt.get<int>("driver.code"));
-      node.put("driver.string", _pt.get<std::string>("driver.string"));
-      node.put("number.code", _pt.get<int>("number.code"));
-      node.put("number.string", _pt.get<std::string>("number.string"));
+      node.put("class", _pt.get<std::string>("class.string"));
+      node.put("module", _pt.get<std::string>("module.string"));
+      node.put("severity", _pt.get<std::string>("severity.string"));
+      node.put("driver", _pt.get<std::string>("driver.string"));
+      node.put("error_code.error_id", _pt.get<int>("number.code"));
+      node.put("error_code.error_msg", _pt.get<std::string>("number.string"));
       error_array.push_back(std::make_pair("", node));
     }
   }
@@ -96,12 +81,13 @@ ReportAsyncError::writeReport( const xrt_core::device * _pDevice,
   getPropertyTreeInternal(_pDevice, _pt);
 
   _output << "Asynchronous Errors\n";
-  _output << boost::format("  %-35s%-20s%-20s%-20s%-20s%-20s\n") % "Time" % "Class" % "Module" % "Driver" % "Severity" % "Error Code";
+  boost::format fmt("  %-35s%-20s%-20s%-20s%-20s%-20s\n");
+  _output << fmt % "Time" % "Class" % "Module" % "Driver" % "Severity" % "Error Code";
   for (auto& node : _pt.get_child("asynchronous_errors")) {
-    _output << boost::format("  %-35s%-20s%-20s%-20s%-20s%-20s\n") % boost::posix_time::from_time_t(node.second.get<long unsigned>("timestamp")/1000000000)
-               % node.second.get<std::string>("class.string") % node.second.get<std::string>("module.string")
-               % node.second.get<std::string>("driver.string") % node.second.get<std::string>("severity.string")
-               % node.second.get<std::string>("number.string");
+    _output << fmt % boost::posix_time::from_time_t(node.second.get<long unsigned>("timestamp")/1000000000)
+               % node.second.get<std::string>("class") % node.second.get<std::string>("module")
+               % node.second.get<std::string>("driver") % node.second.get<std::string>("severity")
+               % node.second.get<std::string>("error_code.error_msg");
   }
   _output << std::endl;
   
