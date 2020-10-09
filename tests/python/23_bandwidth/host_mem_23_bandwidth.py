@@ -18,7 +18,6 @@
 """
 
 import ctypes.util
-import numpy as np
 import sys
 import time
 import math
@@ -58,13 +57,6 @@ def getThreshold(devHandle):
     return threshold
 
 def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
-    if isInput:
-        lst = [i%256 for i in range(globalbuffersize)]
-    else:
-        lst = [0 for i in range(globalbuffersize)]
-    hostbuf = np.array(lst).astype(np.uint8)
-    assert hostbuf.size == globalbuffersize
-
     grpid = xrtKernelArgGroupId(krnlhdl, argno)
     if grpid < 0:
         raise RuntimeError("failed to find BO group ID: %d" % grpid)
@@ -76,7 +68,11 @@ def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     bobuf = xrtBOMap(bo)
     if bobuf == 0:
         raise RuntimeError("failed to map buffer")
-    libc.memcpy(bobuf, hostbuf.ctypes.data, globalbuffersize)
+    lst = ctypes.cast(bobuf, ctypes.POINTER(ctypes.c_char))
+
+    for i in range(globalbuffersize):
+        lst[i] = i%256 if isInput else 0
+
     xrtBOSync(bo, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, globalbuffersize, 0)
     return bo, bobuf
 
