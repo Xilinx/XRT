@@ -657,8 +657,8 @@ static inline int process_ert_rq(struct xocl_ert_30 *ert_30)
 		}
 
 		if (ert20_acquire_slot(ert_30, ecmd) == no_index) {
-			ERTUSER_ERR(ert_30, "%s not slot available\n", __func__);
-			continue;
+			ERTUSER_DBG(ert_30, "%s not slot available\n", __func__);
+			return 0;
 		}
 		epkt = (struct ert_packet *)ecmd->xcmd->execbuf;
 		ERTUSER_DBG(ert_30, "%s op_code %d ecmd->slot_idx %d\n", __func__, cmd_opcode(ecmd), ecmd->slot_idx);
