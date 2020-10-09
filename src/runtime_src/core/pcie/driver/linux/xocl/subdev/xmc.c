@@ -1082,7 +1082,8 @@ static bool autonomous_xmc(struct platform_device *pdev)
 {
 	struct xocl_dev_core *core = xocl_get_xdev(pdev);
 
-	return core->priv.flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL);
+	return core->priv.flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL
+			| XOCL_DSAFLAG_MPSOC);
 }
 
 static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
@@ -3756,7 +3757,7 @@ static int xmc_probe(struct platform_device *pdev)
 	struct resource *res;
 	void *xdev_hdl;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	int i, err;
+	int i, err = 0;
 
 	xmc = xocl_drvinst_alloc(&pdev->dev, sizeof(*xmc));
 	if (!xmc) {
@@ -4047,8 +4048,10 @@ static bool is_xmc_ready(struct xocl_xmc *xmc)
 static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 {
 	struct xmc_status status;
+	struct xocl_dev_core *core = xocl_get_xdev(xmc->pdev);
 
-	if (autonomous_xmc(xmc->pdev))
+	if (autonomous_xmc(xmc->pdev) &&
+	       	(!(core->priv.flags & XOCL_DSAFLAG_MPSOC)))
 		return true;
 
 	if (!xmc->sc_presence)
