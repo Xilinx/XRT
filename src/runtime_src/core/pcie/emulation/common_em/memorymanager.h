@@ -19,6 +19,7 @@
 
 #include <mutex>
 #include <list>
+#include <map>
 #include <cassert>
 #include <algorithm>
 
@@ -27,6 +28,8 @@
 
 namespace xclemulation
 {
+static std::map<uint64_t,uint64_t> DEFAULT_MAP;
+static std::string DEFAULT_TAG("");
     class MemoryManager 
     {
         std::mutex mMemManagerMutex;
@@ -35,24 +38,27 @@ namespace xclemulation
         uint64_t mSize;
         uint64_t mStart;
         uint64_t mAlignment;
+	std::string mTag;
         const unsigned mCoalesceThreshold;
         uint64_t mFreeSize;
 
         typedef std::list<std::pair<uint64_t, uint64_t> > PairList;
 
     public:
-        static const uint64_t mNull = 0xffffffffffffffffull;
+	static const uint64_t mNull = 0xffffffffffffffffull;
+	std::list<MemoryManager*> mChildMemories;
 
     public:
-        MemoryManager(uint64_t size, uint64_t start, unsigned alignment);
+        MemoryManager(uint64_t size, uint64_t start, unsigned alignment, std::string&tag = DEFAULT_TAG );
         ~MemoryManager();
-        uint64_t alloc(size_t& size,unsigned int paddingFactor = 0);
+        uint64_t alloc(size_t& size, unsigned int paddingFactor = 0,std::map<uint64_t,uint64_t>& chunks = DEFAULT_MAP);
         void free(uint64_t buf);
         void reset();
 
         uint64_t size()     { return mSize; }
         uint64_t start()    { return mStart; }
         uint64_t freeSize() { return mFreeSize; }
+	std::string tag()   { return mTag; }
         static bool isNullAlloc(const std::pair<uint64_t, uint64_t>& buf) { return ((buf.first == mNull) || (buf.second == mNull)); }
 
         std::pair<uint64_t, uint64_t>lookup(uint64_t buf);

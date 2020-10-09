@@ -507,7 +507,26 @@ namespace xclhwemhal2 {
       for (auto it : mMembanks)
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize()));
+        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));
+      }
+      for (auto it:mDDRMemoryManager)
+      {
+              std::string tag = it->tag();
+
+              if(tag.empty() || tag.find("MBG") == std::string::npos)
+        	      continue;
+
+              for (auto it2:mDDRMemoryManager)
+              {
+        	      if(it2->size() !=0 &&
+			 it2 != it &&
+        		 it->start() <= it2->start() &&
+        		 (it->start() + it->size()) >= (it2->start() + it2->size()))
+        	      {
+			      //add child memories
+			      it->mChildMemories.push_back(it2);
+        	      }
+              }
       }
     }
 
@@ -1424,7 +1443,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return finalValidAddress;
   }
 
-  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool noHostMemory, unsigned boFlags, std::string &sFileName)
+  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool noHostMemory, unsigned boFlags, std::string &sFileName, std::map<uint64_t,uint64_t>& chunks)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
@@ -1446,7 +1465,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     uint64_t origSize = size;
     unsigned int paddingFactor = xclemulation::config::getInstance()->getPaddingFactor();
-    uint64_t result = mDDRMemoryManager[flags]->alloc(size,paddingFactor);
+    uint64_t result = mDDRMemoryManager[flags]->alloc(size, paddingFactor,chunks);
     if(result == xclemulation::MemoryManager::mNull)
       return result;
     uint64_t finalValidAddress = result+(paddingFactor*size);
@@ -1457,8 +1476,18 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       if (boFlags & XCL_BO_FLAGS_HOST_ONLY) { // bypassed the xclAllocDeviceBuffer RPC call for Slave Bridge (host only buffer)
       } else {
-        xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, finalValidAddress, origSize, noHostMemory);
+	      if(chunks.size())
+	      {
+		      for (auto it:chunks)
+		      {
+			      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, it.first, it.second, noHostMemory);
+		      }
 
+	      }
+	      else
+	      {
+		      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, finalValidAddress, origSize, noHostMemory);
+	      }
         PRINTENDFUNC;
         if (!ack)
           return 0;
@@ -2429,7 +2458,7 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
   else
   {
-    xobj->base = xclAllocDeviceBuffer2(size, XCL_MEM_DEVICE_RAM, ddr, noHostMemory, info->flags, sFileName);
+    xobj->base = xclAllocDeviceBuffer2(size, XCL_MEM_DEVICE_RAM, ddr, noHostMemory, info->flags, sFileName, xobj->chunks);
   }
   xobj->filename = sFileName;
   xobj->size = size;
@@ -2758,7 +2787,16 @@ void HwEmShim::xclFreeBO(unsigned int boHandle)
     if(bo->flags & XCL_BO_FLAGS_EXECBUF)
       bSendToSim = false;
 
-    xclFreeDeviceBuffer(bo->base, bSendToSim);
+    if(bo->chunks.size())
+    {
+	    for(auto it: bo->chunks)
+		    xclFreeDeviceBuffer(it.first,bSendToSim);
+
+    }
+    else
+    {
+	    xclFreeDeviceBuffer(bo->base, bSendToSim);
+    }
     mXoclObjMap.erase(it);
   }
   PRINTENDFUNC;
