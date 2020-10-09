@@ -201,9 +201,9 @@ int xrt_cu_fa_init(struct xrt_cu *xcu)
 	/* TODO: Write 0 to MSWR register is a hack for unknown hardware issue.
 	 * Otherwise, the first read would be a wrong value? It doesn't
 	 * always happen.
-	 * Before hardware team fix this bug, please keep this write.
+	 * Before hardware team fix this bug, please keep below line.
 	 */
-	cu_write32(core, MSWR, 0);
+	cu_read32(core, FDR);
 	core->max_credits = cu_read32(core, FDR);
 	core->task_cnt = cu_read32(core, TCR);
 	core->desc_msw = cu_read32(core, MSWR);
