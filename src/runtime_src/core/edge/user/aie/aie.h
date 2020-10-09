@@ -141,6 +141,21 @@ private:
 
     void
     clear_bd(BD& bd);
+
+    void
+    get_profiling_config(const std::string& port_name, XAie_LocType& out_shim_tile, XAie_StrmPortIntf& out_mode, uint8_t& out_stream_id);
+
+    int
+    start_profiling_run_idle(const std::string& port_name);
+
+    int
+    start_profiling_start_bytes(const std::string& port_name, uint32_t value);
+
+    int
+    start_profiling_diff_cycles(const std::string& port1_name, const std::string& port2_name);
+
+    int
+    start_profiling_event_count(const std::string& port_name);
 };
 
 }

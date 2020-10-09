@@ -792,6 +792,7 @@ xclResetAieArray(xclDeviceHandle handle)
 int
 xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Name, uint32_t value)
 {
+#ifndef __AIESIM__
   auto device = xrt_core::get_userpf_device(handle);
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
@@ -799,12 +800,17 @@ xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, con
     throw xrt_core::error(-EINVAL, "No AIE presented");
 
   auto aieArray = drv->getAieArray();
+#else
+  auto aieArray = getAieArray();
+#endif
+
   return aieArray->start_profiling(option, value_or_empty(port1Name), value_or_empty(port2Name), value);
 }
 
 uint64_t
 xclReadProfiling(xclDeviceHandle handle, int phdl)
 {
+#ifndef __AIESIM__
   auto device = xrt_core::get_userpf_device(handle);
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
@@ -812,12 +818,17 @@ xclReadProfiling(xclDeviceHandle handle, int phdl)
     throw xrt_core::error(-EINVAL, "No AIE presented");
 
   auto aieArray = drv->getAieArray();
+#else
+  auto aieArray = getAieArray();
+#endif
+
   return aieArray->read_profiling(phdl);
 }
 
 void
 xclStopProfiling(xclDeviceHandle handle, int phdl)
 {
+#ifndef __AIESIM__
   auto device = xrt_core::get_userpf_device(handle);
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
@@ -825,6 +836,10 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
     throw xrt_core::error(-EINVAL, "No AIE presented");
 
   auto aieArray = drv->getAieArray();
+#else
+  auto aieArray = getAieArray();
+#endif
+
   return aieArray->stop_profiling(phdl);
 }
 
