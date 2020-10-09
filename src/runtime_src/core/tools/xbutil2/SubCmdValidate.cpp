@@ -243,6 +243,15 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     xclbinPath = searchLegacyXclbin(vendor, name, xclbin, _ptTest);
   }
 
+  //flat shell support:
+  //if ssv2 flow and verify kernel is not present, then skip
+  if(!logic_uuid.empty() && !boost::filesystem::exists(xclbinPath)) {
+    //if bandwidth xclbin isn't present, skip the test
+    logger(_ptTest, "Details", "Verify xclbin not available. Skipping validation.");
+    _ptTest.put("status", "skipped");
+    return;
+  }
+
   //check if xclbin is present
   if(xclbinPath.empty()) {
     if(xclbin.compare("bandwidth.xclbin") == 0) {
@@ -940,6 +949,10 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device,
 
     if(schemaVersion == Report::SchemaVersion::text)
       pretty_print_test_run(ptTest, status, _ostream);
+    
+    //flash shell support: if verify xclbin is not present, exit immediately
+    if(ptTest.get<std::string>("name").compare("Verify kernel") == 0 && ptTest.get<std::string>("status").compare("skipped") == 0)
+      break;
 
     // If a test fails, exit immediately
     if(status == test_status::failed) {
