@@ -3075,6 +3075,10 @@ int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *
         comps[*actual].nbytes = numBytesProcessed;
         (*actual)++;
         mReqList.erase(it++);
+        if(*actual >= max_compl) {
+        	PRINTENDFUNC;
+        	return (*actual);
+        }
       }
       else
       {
@@ -3082,7 +3086,11 @@ int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *
       }
       if(watch.isTimeout()) {
     	 PRINTENDFUNC;
-    	 return -1;
+    	 if (*actual <=0) {
+    		 return -ETIMEDOUT;
+    	 } else {
+    		 return *actual;
+    	 }
      }
 
     }
