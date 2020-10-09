@@ -691,6 +691,22 @@ struct devinfo
   }
 };
 
+struct recovery
+{
+  using result_type = bool;
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return false;
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return false;
+  }
+};
+
 struct uuid
 {
   using result_type = boost::any;
@@ -1092,6 +1108,7 @@ initialize_query_table()
   emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
   emplace_function0_getter<query::xmc_sc_presence,           xmc_sc_presence>();
   emplace_function0_getput<query::data_retention,            data_retention>();
+  emplace_function0_getter<query::is_recovery,               recovery>();
 }
 
 struct X { X() { initialize_query_table(); }};

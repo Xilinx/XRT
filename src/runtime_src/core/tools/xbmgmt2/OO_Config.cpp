@@ -131,8 +131,10 @@ show_device_conf(xrt_core::device* device)
 
   try {
     auto is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
-    if (is_mfg) {
-      throw std::runtime_error("This operation is not supported with golden image");
+    auto is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(device);
+    if (is_mfg || is_recovery) {
+      std::cerr << "This operation is not supported with manufacturing image.\n";
+      return;
     }
   }
   catch (const std::exception& ex) {
