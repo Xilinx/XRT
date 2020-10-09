@@ -154,6 +154,15 @@ namespace xdp {
     static std::map<std::pair<uint64_t, std::string>, uint64_t> 
       storedTimestamps ;
 
+    std::pair<uint64_t, std::string> identifier =
+      std::make_pair(contextId, std::string(deviceName)) ;
+
+    // clEnqueueNDRangeKernel will issue end events with no start
+    //  if the data transfer didn't have to happen.  We can safely
+    //  discard those events, so just return
+    if (!isStart && storedTimestamps.find(identifier) == storedTimestamps.end())
+      return ;
+
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
 
@@ -161,9 +170,6 @@ namespace xdp {
     if (db->getStats().getTotalBufferStartTime() == 0)
       (db->getStats()).setTotalBufferStartTime(timestamp) ;
     (db->getStats()).setTotalBufferEndTime(timestamp) ;
-
-    std::pair<uint64_t, std::string> identifier =
-      std::make_pair(contextId, std::string(deviceName)) ;
 
     if (isStart)
     {
@@ -194,6 +200,15 @@ namespace xdp {
     static std::map<std::pair<uint64_t, std::string>, uint64_t> 
       storedTimestamps ;
 
+    std::pair<uint64_t, std::string> identifier =
+      std::make_pair(contextId, std::string(deviceName)) ;
+
+    // clEnqueueNDRangeKernel will issue end events with no start
+    //  if the data transfer didn't have to happen.  We can safely
+    //  discard those events, so just return
+    if (!isStart && storedTimestamps.find(identifier) == storedTimestamps.end())
+      return ;
+
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
 
@@ -201,9 +216,6 @@ namespace xdp {
     if (db->getStats().getTotalBufferStartTime() == 0)
       (db->getStats()).setTotalBufferStartTime(timestamp) ;
     (db->getStats()).setTotalBufferEndTime(timestamp) ;
-
-    std::pair<uint64_t, std::string> identifier =
-      std::make_pair(contextId, std::string(deviceName)) ;
 
     if (isStart)
     {
