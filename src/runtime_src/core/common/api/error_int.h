@@ -20,11 +20,14 @@
 
 // This file defines implementation extensions to the XRT Error APIs.
 #include "core/include/experimental/xrt_error.h"
+#include "core/common/config.h"
 #include <boost/property_tree/ptree.hpp>
 
 namespace xrt_core { namespace error_int {
 
-void get_error_code_to_json(xrtErrorCode ecode, boost::property_tree::ptree &pt);
+XRT_CORE_COMMON_EXPORT
+void
+get_error_code_to_json(xrtErrorCode ecode, boost::property_tree::ptree &pt);
 
 }} // error_int, xrt_core
 

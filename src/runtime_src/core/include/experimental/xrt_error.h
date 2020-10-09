@@ -105,22 +105,4 @@ xrtErrorGetLast(xrtDeviceHandle handle, xrtErrorClass ecl, xrtErrorCode* error, 
 int
 xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, size_t* out_len);
 
-/**
- * xrtErrorGetJson - Get the description string in json format of a given error code.
- *
- * @handle:       Device handle.
- * @error:        XRT error code.
- * @out:          Preallocated output buffer for the error string.
- * @len:          Length of output buffer.
- * @out_len:      Output of length of message, ignored if null.
- *
- * Return:        0 on success or appropriate XRT error code.
- *
- * Specifying out_len while passing nullptr for output buffer will
- * return the message length, which can then be used to allocate the
- * output buffer itself.
- */
-int
-xrtErrorGetJson(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, size_t* out_len);
-
 #endif
