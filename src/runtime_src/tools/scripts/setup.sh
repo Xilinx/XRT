@@ -37,4 +37,4 @@ export PYTHONPATH=$XILINX_XRT/python:$PYTHONPATH
 echo "XILINX_XRT      : $XILINX_XRT"
 echo "PATH            : $PATH"
 echo "LD_LIBRARY_PATH : $LD_LIBRARY_PATH"
-echo "PYTHONPATH     : $PYTHONPATH"
+echo "PYTHONPATH      : $PYTHONPATH"
