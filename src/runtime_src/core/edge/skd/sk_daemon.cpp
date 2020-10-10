@@ -119,6 +119,11 @@ xclDeviceHandle initXRTHandle(unsigned deviceIndex)
   return(xclOpen(deviceIndex, NULL, XCL_QUIET));
 }
 
+void finiXRTHandle(xclDeviceHandle handle)
+{
+  xclClose(handle);
+}
+
 /*
  * This is the main loop for a soft kernel CU.
  * name   : soft kernel function name to run it.
@@ -135,6 +140,13 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   int ret;
 
   devHdl = initXRTHandle(0);
+  if (devHdl == NULL)
+	  return;
+
+  if (xclSKOpenContext(devHdl, cu_idx, true)) {
+	  finiXRTHandle(devHdl);
+	  return;
+  }
 
   ret = createSoftKernel(&boh, cu_idx);
   if (ret) {
@@ -146,12 +158,14 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   sk_handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL);
   if (!sk_handle) {
     syslog(LOG_ERR, "Cannot open %s\n", path);
+    /* memroy leask destroySoftKernel? */
     return;
   }
 
   kernel = (kernel_t)dlsym(sk_handle, name);
   if (!kernel) {
     syslog(LOG_ERR, "Cannot find kernel %s\n", name);
+    /* memroy leask destroySoftKernel, dlclose? */
     return;
   }
 
@@ -168,6 +182,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
       syslog(LOG_ERR, "Failed to map soft kernel args for %s_%d", name, cu_idx);
       freeBO(boh);
       dlclose(sk_handle);
+      /* memroy leask destroySoftKernel? */
       return;
   }
 
@@ -190,6 +205,8 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 
   dlclose(sk_handle);
   (void) destroySoftKernel(boh, args_from_host);
+  xclSKCloseContext(devHdl, cu_idx);
+  finiXRTHandle(devHdl);
 }
 
 static inline void getSoftKernelPathName(uint32_t cu_idx, char *path)

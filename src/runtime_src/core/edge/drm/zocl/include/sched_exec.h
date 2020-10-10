@@ -76,6 +76,7 @@ struct sched_ops;
  * @abort: Flag to indicate that this context has detached from user space
  * @shcus: CUs shared reserved by this context
  * @excus: CUs exclusively reserved by this context
+ * @sk_cu_id: soft kernel cu index, default is -1
  */
 struct sched_client_ctx {
 	struct list_head   link;
@@ -87,6 +88,7 @@ struct sched_client_ctx {
 	unsigned int	   abort;
 	DECLARE_BITMAP(shcus, MAX_CU_NUM);
 	DECLARE_BITMAP(excus, MAX_CU_NUM);
+	u32		   sk_cu_id;
 };
 #define CLIENT_NUM_CU_CTX(client) ((client)->num_cus)
 

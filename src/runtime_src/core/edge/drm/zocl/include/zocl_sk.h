@@ -57,4 +57,9 @@ struct soft_krnl_cmd {
 int zocl_init_soft_kernel(struct drm_device *drm);
 void zocl_fini_soft_kernel(struct drm_device *drm);
 
+int zocl_sk_ctx_open(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+	void *client);
+int zocl_sk_ctx_close(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+	void *client);
+int zocl_fini_soft_kernel_cu(struct drm_zocl_dev *zdev, u32 cu_idx);
 #endif

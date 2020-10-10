@@ -29,6 +29,7 @@
 #define MAX_CU_NUM     128
 #define CU_SIZE        _64KB
 #define PR_ISO_SIZE    _4KB
+#define INVALID_CU_ID  U32_MAX
 
 #define CLEAR(x) \
 	memset(&x, 0, sizeof(x))

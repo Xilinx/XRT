@@ -146,11 +146,13 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 			*vaddr = 2 | (*vaddr & ~3);
 
 		mutex_unlock(&sk->sk_lock);
-		if (down_interruptible(&scu->sc_sem))
+		if (down_interruptible(&scu->sc_sem)) {
+			DRM_WARN("Signal catched while waiting.\n");
 			ret = -ERESTARTSYS;
+		}
 		mutex_lock(&sk->sk_lock);
 
-		if (ret || scu->sc_flags & ZOCL_SCU_FLAGS_RELEASE) {
+		if (scu->sc_flags & ZOCL_SCU_FLAGS_RELEASE) {
 			/*
 			 * If we are interrupted or explictly
 			 * told to exit.
@@ -215,4 +217,35 @@ zocl_fini_soft_kernel(struct drm_device *drm)
 		kfree(sk->sk_cu[cu_idx]);
 	}
 	mutex_destroy(&sk->sk_lock);
+}
+
+int zocl_fini_soft_kernel_cu(struct drm_zocl_dev *zdev, u32 cu_idx)
+{
+	struct soft_krnl *sk = zdev->soft_kernel;
+	struct soft_cu *scu = NULL;
+
+	DRM_INFO("%s.\n", __func__);
+
+	if (cu_idx == INVALID_CU_ID) {
+		DRM_INFO("Invalid cu_id %u.\n", cu_idx); 
+		return -EINVAL;
+	}
+
+	if (!sk) {
+		DRM_INFO("No soft kernel.\n"); 
+		return -ENODEV;
+	}
+
+	if (cu_idx >= sk->sk_ncus)
+		return -EINVAL;
+
+	scu = sk->sk_cu[cu_idx];
+	if (!scu)
+		return -ENODEV;
+
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(scu->gem_obj);
+	kfree(scu);
+	scu = NULL;
+
+	return 0;
 }

@@ -281,7 +281,10 @@ struct drm_zocl_info_cu {
 enum drm_zocl_ctx_code {
 	ZOCL_CTX_OP_ALLOC_CTX = 0,
 	ZOCL_CTX_OP_FREE_CTX,
-	ZOCL_CTX_OP_OPEN_GCU_FD
+	ZOCL_CTX_OP_OPEN_GCU_FD,
+	ZOCL_CTX_OP_SK_OPEN,
+	ZOCL_CTX_OP_SK_CLOSE
+
 };
 
 #define	ZOCL_CTX_NOOPS		0

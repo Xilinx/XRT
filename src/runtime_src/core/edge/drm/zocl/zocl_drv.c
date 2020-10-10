@@ -580,6 +580,7 @@ static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 		atomic_set(&fpriv->outstanding_execs, 0);
 		fpriv->abort = false;
 		fpriv->pid = get_pid(task_pid(current));
+		fpriv->sk_cu_id = INVALID_CU_ID;
 		zocl_track_ctx(dev, fpriv);
 		DRM_INFO("Pid %d opened device\n", pid_nr(task_tgid(current)));
 	}
@@ -603,6 +604,10 @@ static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 
 	if (!client)
 		return;
+
+	if (client->sk_cu_id != INVALID_CU_ID) {
+		zocl_fini_soft_kernel_cu(zdev, client->sk_cu_id);
+	}
 
 	pid = pid_nr(client->pid);
 

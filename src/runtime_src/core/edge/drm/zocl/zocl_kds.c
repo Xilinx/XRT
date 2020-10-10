@@ -13,6 +13,7 @@
 #include "zocl_drv.h"
 #include "zocl_util.h"
 #include "zocl_xclbin.h"
+#include "zocl_sk.h"
 #include "kds_core.h"
 
 int kds_mode = 0;
@@ -194,6 +195,12 @@ int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 	case ZOCL_CTX_OP_FREE_CTX:
 		ret = zocl_del_context(zdev, client, args);
 		break;
+	case ZOCL_CTX_OP_SK_OPEN:
+		client->sk_cu_id = args->cu_index;
+		break;
+	case ZOCL_CTX_OP_SK_CLOSE:
+		client->sk_cu_id = INVALID_CU_ID;
+		break;
 	default:
 		ret = -EINVAL;
 		break;
@@ -317,6 +324,7 @@ int zocl_create_client(struct drm_zocl_dev *zdev, void **priv)
 
 	kds = &zdev->kds;
 	client->dev = ddev->dev;
+	client->sk_cu_id = INVALID_CU_ID;
 	ret = kds_init_client(kds, client);
 	if (ret) {
 		kfree(client);
@@ -348,6 +356,10 @@ void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv)
 	if (client->xclbin_id) {
 		(void) zocl_unlock_bitstream(zdev, client->xclbin_id);
 		vfree(client->xclbin_id);
+	}
+
+	if (client->sk_cu_id != INVALID_CU_ID) {
+		zocl_fini_soft_kernel_cu(zdev, client->sk_cu_id);
 	}
 
 	/* Make sure all resources of the client are released */

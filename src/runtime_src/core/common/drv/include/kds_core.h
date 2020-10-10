@@ -65,6 +65,7 @@ struct kds_ctx_info {
  * @cu_bitmap: bitmap of opening CU
  * @waitq: Wait queue for poll client
  * @event: Events to notify user client
+ * @sk_cu_id: soft kernel cu index, default is -1
  */
 struct kds_client {
 	struct list_head	  link;
@@ -90,6 +91,7 @@ struct kds_client {
 	u64			  padding[16];
 	wait_queue_head_t	  waitq;
 	atomic_t		  event;
+	u32			  sk_cu_id;
 };
 
 /* the MSB of cu_refs is used for exclusive flag */

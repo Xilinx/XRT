@@ -812,6 +812,40 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
 
 int
 shim::
+xclSKOpenContext(unsigned int ipIndex, bool shared)
+{
+  int ret;
+
+  drm_zocl_ctx ctx = {
+    .cu_index = ipIndex,
+    .flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE,
+    .handle = 0,
+    .op = ZOCL_CTX_OP_SK_OPEN,
+  };
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret ? -errno : ret;
+}
+
+int
+shim::
+xclSKCloseContext(unsigned int ipIndex)
+{
+  int ret;
+
+  drm_zocl_ctx ctx = {
+    .cu_index = ipIndex,
+    .flags = 0,
+    .handle = 0,
+    .op = ZOCL_CTX_OP_SK_CLOSE,
+  };
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret ? -errno : ret;
+}
+
+int
+shim::
 xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
@@ -2018,6 +2052,21 @@ xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
     return -EINVAL;
 
   return drv->xclSKReport(cu_idx, state);
+}
+
+int
+xclSKOpenContext(xclDeviceHandle handle, unsigned int ipIndex, bool shared)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+
+  return drv ? drv->xclSKOpenContext(ipIndex, shared) : -EINVAL;
+}
+
+int
+xclSKCloseContext(xclDeviceHandle handle, unsigned ipIndex)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclSKCloseContext(ipIndex) : -EINVAL;
 }
 
 /*

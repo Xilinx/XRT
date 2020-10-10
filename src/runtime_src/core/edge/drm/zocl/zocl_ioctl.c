@@ -17,6 +17,7 @@
 #include "zocl_xclbin.h"
 #include "zocl_generic_cu.h"
 #include "zocl_error.h"
+#include "zocl_sk.h"
 
 extern int kds_mode;
 
@@ -66,14 +67,22 @@ zocl_ctx_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 		return zocl_context_ioctl(zdev, data, filp);
 	}
 
-	if (args->op == ZOCL_CTX_OP_OPEN_GCU_FD) {
+	switch(args->op) {
+	case ZOCL_CTX_OP_SK_OPEN:
+		((struct sched_client_ctx *)filp->driver_priv)->sk_cu_id = args->cu_index;
+		break;
+	case ZOCL_CTX_OP_SK_CLOSE:
+		((struct sched_client_ctx *)filp->driver_priv)->sk_cu_id = INVALID_CU_ID;
+		break;
+	case ZOCL_CTX_OP_OPEN_GCU_FD:
 		ret = zocl_open_gcu(zdev, args, filp->driver_priv);
-		return ret;
+		break;
+	default:
+		mutex_lock(&zdev->zdev_xclbin_lock);
+		ret = zocl_xclbin_ctx(zdev, args, filp->driver_priv);
+		mutex_unlock(&zdev->zdev_xclbin_lock);
+		break;
 	}
-
-	mutex_lock(&zdev->zdev_xclbin_lock);
-	ret = zocl_xclbin_ctx(zdev, args, filp->driver_priv);
-	mutex_unlock(&zdev->zdev_xclbin_lock);
 
 	return ret;
 }
