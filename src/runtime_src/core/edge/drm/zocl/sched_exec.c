@@ -1044,8 +1044,15 @@ cu_stat(struct sched_cmd *cmd)
 	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i)
 		pkg->data[pkt_idx++] = exec->zcu[i].usage;
 
-	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i)
-		pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
+	/* individual SK CU execution stat */
+	mutex_lock(&sk->sk_lock);
+	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
+		if (sk->sk_cu[i])
+			pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
+		else
+			pkg->data[pkt_idx++] = -1; /* crashed sk_cu */
+	}
+	mutex_unlock(&sk->sk_lock);
 
 	/* individual CU status */
 	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i) {
@@ -1053,6 +1060,7 @@ cu_stat(struct sched_cmd *cmd)
 			(1 << (i % sizeof(exec->cu_status[0])))) ? 1 : 0;
 	}
 
+	/* indevidual SK CU status */
 	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
 		pkg->data[pkt_idx++] = (exec->scu_status[cu_mask_idx(i)] &
 			(1 << (i % sizeof(exec->scu_status[0])))) ? 1 : 0;
