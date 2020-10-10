@@ -51,12 +51,12 @@ run(xrt::device& device, const xrt::uuid& uuid, size_t n_elements)
   const size_t size = n_elements * ARRAY_SIZE;
   const size_t bytes = sizeof(data_type) * size;
 
-  auto a = xrt::bo(device, bytes, 0, addone.group_id(0));
+  auto a = xrt::bo(device, bytes, addone.group_id(0));
   auto a_data = a.map<unsigned long*>();
   std::iota(a_data,a_data+size,0);
   a.sync(XCL_BO_SYNC_BO_TO_DEVICE , bytes, 0);
 
-  auto b = xrt::bo(device, bytes, 0, addone.group_id(1));
+  auto b = xrt::bo(device, bytes, addone.group_id(1));
 
   auto run = addone(a, b, n_elements);
   run.wait();
