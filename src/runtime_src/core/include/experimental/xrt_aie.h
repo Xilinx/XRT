@@ -166,7 +166,7 @@ int
 xrtGraphUpdateRTP(xrtGraphHandle gh, const char *hierPathPort, const char *buffer, size_t size);
 
 /**
- * xrtGraphUpdateRTP() - Read RTP value of port with hierarchical name
+ * xrtGraphReadRTP() - Read RTP value of port with hierarchical name
  *
  * @gh:              Handle to graph previously opened with xrtGraphOpen.
  * @hierPathPort:    hierarchial name of RTP port.
