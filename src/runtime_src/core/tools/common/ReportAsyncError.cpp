@@ -24,9 +24,9 @@
 #include "core/include/experimental/xrt_error.h"
 #include "core/include/xrt_error_code.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/date_time/posix_time/posix_time_io.hpp>
-namespace qr = xrt_core::query;
+
+const static long unsigned NanoSecondsPerSecond = 1000000000;
 
 boost::property_tree::ptree
 populate_async_error(const xrt_core::device * device)
@@ -84,7 +84,7 @@ ReportAsyncError::writeReport( const xrt_core::device * _pDevice,
   boost::format fmt("  %-35s%-20s%-20s%-20s%-20s%-20s\n");
   _output << fmt % "Time" % "Class" % "Module" % "Driver" % "Severity" % "Error Code";
   for (auto& node : _pt.get_child("asynchronous_errors")) {
-    _output << fmt % boost::posix_time::from_time_t(node.second.get<long unsigned>("timestamp")/1000000000)
+    _output << fmt % boost::posix_time::from_time_t(node.second.get<long unsigned>("timestamp")/NanoSecondsPerSecond)
                % node.second.get<std::string>("class") % node.second.get<std::string>("module")
                % node.second.get<std::string>("driver") % node.second.get<std::string>("severity")
                % node.second.get<std::string>("error_code.error_msg");
