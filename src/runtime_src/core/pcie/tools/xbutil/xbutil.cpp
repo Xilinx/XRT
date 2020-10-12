@@ -1223,9 +1223,13 @@ int xcldev::device::runTestCase(const std::string& py,
         xclbinPath += xclbin;
 
         if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
-            // flat shell support
+            // 0RP (nonDFX) flat shell support.  
+            // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.  
+            // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
             std::string logic_uuid, errmsg;
             pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuid);
+            // Only skip the test if it nonDFX platform and the accelerator doesn't exist. 
+            // All other conditions should generate an error.
             if (!logic_uuid.empty() && xclbin.compare("verify.xclbin") == 0) {
                 output += "Verify xclbin not available. Skipping validation.";
                 return -EOPNOTSUPP;
