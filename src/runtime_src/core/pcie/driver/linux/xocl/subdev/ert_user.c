@@ -564,8 +564,8 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 		}
 
 		if (ert20_acquire_slot(ert_user, ecmd) == no_index) {
-			ERTUSER_ERR(ert_user, "%s not slot available\n", __func__);
-			continue;
+			ERTUSER_DBG(ert_user, "%s not slot available\n", __func__);
+			return 0;
 		}
 		epkt = (struct ert_packet *)ecmd->xcmd->execbuf;
 		ERTUSER_DBG(ert_user, "%s op_code %d ecmd->slot_idx %d\n", __func__, cmd_opcode(ecmd), ecmd->slot_idx);
@@ -741,11 +741,15 @@ int ert_user_thread(void *data)
 		if (ert_user->bad_state)
 			break;
 
-		/* Continue until run queue empty */
-		if (ert_user->num_rq)
-			continue;
 
-		if (!ert_user->num_sq && !ert_user->num_cq)
+		/* ert polling mode goes to sleep only if it doesn't have to poll
+		 * submitted queue to check the completion
+		 * ert interrupt mode goes to sleep if there is no cmd to be submitted
+		 * OR submitted queue is full
+		 */
+		if (((!ert_user->num_rq || ert_user->num_sq == (ert_user->num_slots-1))
+			|| (ert_user->polling_mode && !ert_user->num_sq)) 
+			&& !ert_user->num_cq)
 			if (down_interruptible(&ert_user->sem))
 				ret = -ERESTARTSYS;
 
