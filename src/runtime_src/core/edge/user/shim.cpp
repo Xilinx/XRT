@@ -818,6 +818,8 @@ xclSKOpenContext(unsigned int cu_idx, bool shared)
   int ret;
 
   drm_zocl_ctx ctx = {
+    .uuid_ptr = NULL,
+    .uuid_size = 0,
     .cu_index = cu_idx,
     .flags = flags,
     .handle = 0,
@@ -835,6 +837,8 @@ xclSKCloseContext(unsigned int cu_idx)
   int ret;
 
   drm_zocl_ctx ctx = {
+    .uuid_ptr = NULL,
+    .uuid_size = 0,
     .cu_index = cu_idx,
     .flags = 0,
     .handle = 0,
