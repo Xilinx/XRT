@@ -32,6 +32,7 @@ Program a Shell Partition for 2RP platform
 
 
 Revert to golden image
+
 .. code-block:: 
 
     xbmgmt program --revert-to-golden
