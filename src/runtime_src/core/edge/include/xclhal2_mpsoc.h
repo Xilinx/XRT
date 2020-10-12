@@ -112,6 +112,25 @@ XCL_DRIVER_DLLESPEC int xclSKCreate(xclDeviceHandle handle, unsigned int boHandl
  */
 XCL_DRIVER_DLLESPEC int xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state);
 
+/**
+ * xclSKOpenContext() - soft kernel open context
+ *
+ * @handle:        Device handle
+ * @ipIndex:       CU index
+ * @shared:        shared or exclusive 
+ * Return:         0 on success or appropriate error number
+ */
+XCL_DRIVER_DLLESPEC int xclSKOpenContext(xclDeviceHandle handle, uint32_t cu_idx, bool shared);
+
+/**
+ * xclSKOpenContext() - soft kernel close context
+ *
+ * @handle:        Device handle
+ * @ipIndex:       CU index
+ * Return:         0 on success or appropriate error number
+ */
+XCL_DRIVER_DLLESPEC int xclSKCloseContext(xclDeviceHandle handle, uint32_t cu_idx);
+
 #ifdef __cplusplus
 }
 #endif

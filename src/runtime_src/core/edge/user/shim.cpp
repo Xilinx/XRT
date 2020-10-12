@@ -812,13 +812,14 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
 
 int
 shim::
-xclSKOpenContext(unsigned int ipIndex, bool shared)
+xclSKOpenContext(unsigned int cu_idx, bool shared)
 {
+  unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
   int ret;
 
   drm_zocl_ctx ctx = {
-    .cu_index = ipIndex,
-    .flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE,
+    .cu_index = cu_idx,
+    .flags = flags,
     .handle = 0,
     .op = ZOCL_CTX_OP_SK_OPEN,
   };
@@ -829,12 +830,12 @@ xclSKOpenContext(unsigned int ipIndex, bool shared)
 
 int
 shim::
-xclSKCloseContext(unsigned int ipIndex)
+xclSKCloseContext(unsigned int cu_idx)
 {
   int ret;
 
   drm_zocl_ctx ctx = {
-    .cu_index = ipIndex,
+    .cu_index = cu_idx,
     .flags = 0,
     .handle = 0,
     .op = ZOCL_CTX_OP_SK_CLOSE,
