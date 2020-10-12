@@ -65,17 +65,17 @@ Revert to golden image
      xbmgmt program --device 0000:d8:00.0 --revert-to-golden
 
 
-xbmgmt status
-~~~~~~~~~~~~~
+xbmgmt examine
+~~~~~~~~~~~~~~
 
-The ``xbmgmt status`` command reports detail status information of the specified device
+The ``xbmgmt examine`` command reports detail status information of the specified device
 
 **The supported options**
 
 
 .. code-block::
 
-    xbmgmt status [--device| -d] <bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
+    xbmgmt examine [--device| -d] <bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
  
 
 **The details of the supported options**
@@ -106,13 +106,13 @@ The ``xbmgmt status`` command reports detail status information of the specified
 .. code-block:: 
 
     #Reports Scanning of all the devices
-    xbmgmt status 
+    xbmgmt examine 
     
     #Report all the information for a specific device
-    xbmgmt status --d 0000:d8:00.0 -r verbose
+    xbmgmt examine --d 0000:d8:00.0 -r verbose
     
     #Reports platform information of two devices and dump to a file
-    xbmgmt status -d 0000:b3:00.0 0000:65:00.0 =report platform -f json -o output output.json
+    xbmgmt examine -d 0000:b3:00.0 0000:65:00.0 --report platform --format json --output output output.json
 
 
 xbmgmt reset
@@ -150,9 +150,9 @@ This ``xbmgmt reset`` command can be used to reset one or more devices.
 .. code-block::
  
     # Reset a single device entirely (default hot reset)
-    xbmgmt reset -d 0000:65:00.1
+    xbmgmt reset --device 0000:65:00.0
     
     # Reset kernel communication link of two devices
-    xbmgmt reset -d 0000:65:00.1 0000:65:00.1 -t kernel
+    xbmgmt reset --device 0000:65:00.0 0000:5e:00.0 --type kernel
 
 
