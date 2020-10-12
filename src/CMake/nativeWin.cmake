@@ -60,6 +60,9 @@ include (CMake/cpackWin.cmake)
 # --- Create Version header and JSON file ---
 include (CMake/version.cmake)
 
+# --- Find Package Support ---
+include (CMake/findpackage.cmake)
+
 message ("------------ xrt install dir: ${XRT_INSTALL_DIR}")
 add_subdirectory(runtime_src)
 
