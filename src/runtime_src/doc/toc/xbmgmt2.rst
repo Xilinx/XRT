@@ -21,14 +21,14 @@ Update the Base partition (applicable for 1RP platform too)
 
 .. code-block:: 
 
-    xbmgmt program [--device|-d] <bdf> [--update|-u] 
+    xbmgmt program [--device|-d] <management bdf> [--update|-u] 
 
 
 Program a Shell Partition for 2RP platform
 
 .. code-block:: 
 
-    xbmgmt program [--device| -d] <bdf> [--partition|-p] <partition file with path>  
+    xbmgmt program [--device| -d] <management bdf> [--partition|-p] <partition file with path>  
 
 
 Revert to golden image
@@ -42,7 +42,7 @@ Revert to golden image
 
 - The ``--device`` (or ``-d``) used to specify the device to be reset
     
-    - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
+    - <management bdf>+ : Mandetory, has to be specified with one or more device management bdf  
     - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
 - The ``--update`` option is used to update the base partition. This option is applicable for both the 1RP and 2RP platform. 
 - The ``--partition`` option is used to program shell partition, applicable for 2RP platform only.
@@ -75,7 +75,7 @@ The ``xbmgmt examine`` command reports detail status information of the specifie
 
 .. code-block::
 
-    xbmgmt examine [--device| -d] <bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
+    xbmgmt examine [--device| -d] <management bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
  
 
 **The details of the supported options**
@@ -83,11 +83,11 @@ The ``xbmgmt examine`` command reports detail status information of the specifie
 - The ``--device`` (or ``-d``) specifies the target device to be validate 
     
     - <none> : Optional for a single device system. 
-    - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device bdf information 
+    - <management bdf>+ : Mandetory for multiple device system, has to be specified with one or more device management bdf information 
     - ``all``:To specify all devices ``–-device all``  or ``-d all``  can be used
 - The ``--report`` (or ``-r``) switch is optional, by default the device scanning information is provided, supported other options 
   
-    - ``scan`` (**default**): scan option shows System Configuration, XRT and Device BDF information. 
+    - ``scan`` (**default**): scan option shows System Configuration, XRT and Device management bdf information. 
     - ``platform``: Reports platform related informati      
     - ``verbose``: Reports all
     
@@ -125,14 +125,14 @@ This ``xbmgmt reset`` command can be used to reset one or more devices.
 
 .. code-block:: 
 
-    xbmgmt reset [--device| -d] <bdf> [--type| -t] <reset type>
+    xbmgmt reset [--device| -d] <management bdf> [--type| -t] <reset type>
 
 
 **The details of the supported options**
 
 - The ``--device`` (or ``-d``) used to specify the device to be reset
     
-    - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
+    - <management bdf>+ : Mandetory, has to be specified with one or more device management bdf  
     - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
 - The ``--type`` (or ``-t``) can be used to specify the reset type. Currently supported reset type
     
