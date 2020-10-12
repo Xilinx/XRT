@@ -20,7 +20,9 @@
 #include <iostream>
 
 #include "core/common/error.h"
+#ifndef __AIESIM__
 #include "core/common/message.h"
+#endif
 
 namespace zynqaie
 {
