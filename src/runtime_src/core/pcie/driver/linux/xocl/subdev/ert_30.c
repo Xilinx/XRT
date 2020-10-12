@@ -841,8 +841,8 @@ int ert_30_thread(void *data)
 		 * OR submitted queue is full
 		 */
 		intr_sleep = (!ert_30->num_rq || ert_30->num_sq == (ert_30->num_slots-1))
-					|| !ert_30->num_cq;
-		polling_sleep = (ert_30->polling_mode && !ert_30->num_sq) || !ert_30->num_cq;
+					&& !ert_30->num_cq;
+		polling_sleep = (ert_30->polling_mode && !ert_30->num_sq) && !ert_30->num_cq;
 		if (intr_sleep || polling_sleep)
 			if (down_interruptible(&ert_30->sem))
 				ret = -ERESTARTSYS;
