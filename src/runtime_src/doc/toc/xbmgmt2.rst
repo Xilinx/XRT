@@ -9,22 +9,22 @@ The next generation of the ``xbmgmt`` command-line tool is in preview mode for t
 The xbmgmt command options are
 
     - ``xbmgmt program``
-    - ``xbmgmt status``
+    - ``xbmgmt examine``
     - ``xbmgmt reset``
 
 xbmgmt program
 ~~~~~~~~~~~~~~
 
-**The supported options**
+**The supported usecases with options**
 
-Update the Base partition 
+Update the Base partition (applicable for 1RP platform too)
 
 .. code-block:: 
 
-    xbmgmt program [--device|-d] <bdf> [--update|-u] [--image|-i] <image path with path>
+    xbmgmt program [--device|-d] <bdf> [--update|-u] 
 
 
-Program a Shell Partition
+Program a Shell Partition for 2RP platform
 
 .. code-block:: 
 
@@ -44,10 +44,6 @@ Revert to golden image
     - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
     - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
 - The ``--update`` option is used to update the base partition. This option is applicable for both the 1RP and 2RP platform. 
-- The ``--image`` option can be optionally used with ``--update``. If there are multiple base partition images exist in the system, the correct base partition has be specified through ``--image`` switch
-  
-    - <image name with path> : 
-
 - The ``--partition`` option is used to program shell partition, applicable for 2RP platform only.
     
     - <partiton file with path>: 
@@ -60,14 +56,12 @@ Revert to golden image
 .. code-block::
  
      #Update the base partition 
-     xbmgmt program --d 0000:d8:00.0 --update 
+     xbmgmt program --device 0000:d8:00.0 --update 
      
-     #Update the base partition when multiple base partition images exist in the system
-     xbmgmt program --d 0000:d8:00.0 --update --image <image full path>/<image file name>
+     #Program the shell partition
+     xbmgmt program --device 0000:d8:00.0 --partition <partition file with path>
  
-     xbmgmt program --d 0000:d8:00.0 -u SC --image [specific image path] --revert-to-golden
- 
-     xbmgmt program -d [BDF] -p [partition file| uuid] -u [specific image] --i [specific image path] --revert-to-golden
+     xbmgmt program --device 0000:d8:00.0 --revert-to-golden
 
 
 xbmgmt status
