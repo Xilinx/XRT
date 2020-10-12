@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -243,7 +243,7 @@ SectionBMC::createDefaultFWImage(std::fstream & _istream, std::ostringstream &_b
   {
     _istream.seekg( 0, _istream.end );
 
-    static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize percision is greater then 64 bits");
+    static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize precision is greater then 64 bits");
     bmcHdr.m_size = (uint64_t) _istream.tellg();
     bmcHdr.m_offset = sizeof(bmc);
   }

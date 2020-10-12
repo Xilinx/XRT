@@ -20,6 +20,10 @@
 #ifndef __AIESIM__
 #include "core/edge/user/shim.h"
 #include "core/common/message.h"
+#ifndef __HWEM__
+#include "core/edge/user/plugin/xdp/aie_trace.h"
+#include "core/edge/user/plugin/xdp/aie_profile.h"
+#endif
 #endif
 #include "core/common/error.h"
 
@@ -606,6 +610,12 @@ namespace api {
 
 using graph_type = zynqaie::graph_type;
 
+static inline
+std::string value_or_empty(const char* s)
+{
+  return s == nullptr ? "" : s;
+}
+
 xclGraphHandle
 xclGraphOpen(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* name)
 {
@@ -777,6 +787,45 @@ xclResetAieArray(xclDeviceHandle handle)
 #else
   auto aieArray = getAieArray();
 #endif
+}
+
+int
+xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Name, uint32_t value)
+{
+  auto device = xrt_core::get_userpf_device(handle);
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+
+  auto aieArray = drv->getAieArray();
+  return aieArray->start_profiling(option, value_or_empty(port1Name), value_or_empty(port2Name), value);
+}
+
+uint64_t
+xclReadProfiling(xclDeviceHandle handle, int phdl)
+{
+  auto device = xrt_core::get_userpf_device(handle);
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+
+  auto aieArray = drv->getAieArray();
+  return aieArray->read_profiling(phdl);
+}
+
+void
+xclStopProfiling(xclDeviceHandle handle, int phdl)
+{
+  auto device = xrt_core::get_userpf_device(handle);
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+
+  auto aieArray = drv->getAieArray();
+  return aieArray->stop_profiling(phdl);
 }
 
 } // api
@@ -1060,5 +1109,78 @@ xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
     return -1;
+  }
+}
+
+int
+xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Name, uint32_t value)
+{
+  try {
+
+#ifndef __AIESIM__
+#ifndef __HWEM__
+    xdpaie::finish_flush_aie_device(handle) ;
+    xdpaiectr::end_aie_ctr_poll(handle);
+#endif
+#endif
+
+    return api::xclStartProfiling(handle, option, port1Name, port2Name, value);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+uint64_t
+xclReadProfiling(xclDeviceHandle handle, int phdl)
+{
+  try {
+
+#ifndef __AIESIM__
+#ifndef __HWEM__
+    xdpaie::finish_flush_aie_device(handle) ;
+    xdpaiectr::end_aie_ctr_poll(handle);
+#endif
+#endif
+
+    return api::xclReadProfiling(handle, phdl);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+int
+xclStopProfiling(xclDeviceHandle handle, int phdl)
+{
+  try {
+
+#ifndef __AIESIM__
+#ifndef __HWEM__
+    xdpaie::finish_flush_aie_device(handle) ;
+    xdpaiectr::end_aie_ctr_poll(handle);
+#endif
+#endif
+
+    api::xclStopProfiling(handle, phdl);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = 0;
   }
 }

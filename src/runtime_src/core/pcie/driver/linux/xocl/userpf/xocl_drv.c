@@ -200,6 +200,9 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
 	if (prepare) {
+		if (kds_mode)
+			xocl_kds_reset(xdev, xclbin_id);
+
 		/* clean up mem topology */
 		if (xdev->core.drm) {
 			xocl_drm_fini(xdev->core.drm);
@@ -212,6 +215,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			xocl_subdev_online_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 	} else {
 		(void) xocl_config_pci(xdev);
+		xocl_clear_pci_errors(xdev);
 
 		if (!xrt_reset_syncup)
 			xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);
@@ -345,6 +349,8 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
 
+	if (flag & XOCL_RESET_NO)
+		goto failed_notify;
 	/* On powerpc, it does not have secondary level bus reset.
 	 * Instead, it uses fundemantal reset which does not allow mailbox polling
 	 * xrt_reset_syncup might have to be true on power pc.
@@ -434,9 +440,15 @@ static void xocl_work_cb(struct work_struct *work)
 	case XOCL_WORK_RESET:
 		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE);
 		break;
-	case XOCL_WORK_SHUTDOWN:
+	case XOCL_WORK_SHUTDOWN_WITH_RESET:
 		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE |
-				XOCL_RESET_SHUTDOWN);
+			XOCL_RESET_SHUTDOWN);
+		/* mark device offline. Only hotplug is allowed. */
+		XDEV(xdev)->shutdown = true;
+		break;
+	case XOCL_WORK_SHUTDOWN_WITHOUT_RESET:
+		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE |
+			XOCL_RESET_SHUTDOWN | XOCL_RESET_NO);
 		/* mark device offline. Only hotplug is allowed. */
 		XDEV(xdev)->shutdown = true;
 		break;
@@ -903,6 +915,11 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 		return;
 	}
 
+	/* If fast adapter is present in the xclbin, new kds would
+	 * hold a bo for reserve plram bank.
+	 */
+	xocl_fini_sched(xdev);
+
 	xocl_drvinst_release(xdev, &hdl);
 
 	xocl_queue_destroy(xdev);
@@ -929,8 +946,6 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	pci_disable_device(pdev);
 
 	unmap_bar(xdev);
-
-	xocl_fini_sched(xdev);
 
 	xocl_subdev_fini(xdev);
 	if (xdev->ulp_blob)

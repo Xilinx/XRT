@@ -63,6 +63,7 @@ enum {
 enum {
 	XOCL_XMC_NOSC		= (1 << 0),
 	XOCL_XMC_IN_BITFILE	= (1 << 1),
+	XOCL_XMC_CLK_SCALING	= (1 << 2),
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -252,12 +253,14 @@ enum {
 #define	XOCL_ERT_USER		"ert_user"
 #define	XOCL_ERT_30		"ert_30"
 #define	XOCL_M2M		"m2m"
+#define	XOCL_PCIE_FIREWALL	"pcie_firewall"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
 enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
 	XOCL_SUBDEV_VERSION_CTRL,
+	XOCL_SUBDEV_PCIE_FIREWALL,
 	XOCL_SUBDEV_AXIGATE,
 	XOCL_SUBDEV_MSIX,
 	XOCL_SUBDEV_DMA,
@@ -1309,8 +1312,7 @@ struct xocl_subdev_map {
 
 #define XOCL_PRIV_XMC_U2			\
 	((struct xocl_xmc_privdata){		\
-		.flags	= XOCL_XMC_NOSC |	\
-			XOCL_XMC_IN_BITFILE,	\
+		.flags	= XOCL_XMC_NOSC,	\
 	 })
 
 #define __RES_XMC			\
@@ -2628,7 +2630,7 @@ struct xocl_subdev_map {
 #define XOCL_BOARD_U30_USER_RAPTOR2                                     \
         (struct xocl_board_private){                                    \
                 .flags = XOCL_DSAFLAG_DYNAMIC_IP |                      \
-		        XOCL_DSAFLAG_MB_SCHE_OFF,          		\
+		        XOCL_DSAFLAG_MPSOC,				\
                 .board_name = "u30",                                    \
                 .subdev_info    = RES_USER_VSEC,                        \
                 .subdev_num = ARRAY_SIZE(RES_USER_VSEC),                \
@@ -2636,7 +2638,8 @@ struct xocl_subdev_map {
 
 #define XOCL_BOARD_U30_MGMT_RAPTOR2                                     \
         (struct xocl_board_private){                                    \
-                .flags = XOCL_DSAFLAG_DYNAMIC_IP,                       \
+                .flags = XOCL_DSAFLAG_DYNAMIC_IP |                      \
+		        XOCL_DSAFLAG_MPSOC,				\
                 .subdev_info    = RES_MGMT_VSEC,                        \
                 .subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),                \
                 .flash_type = FLASH_TYPE_QSPIPS_X2_SINGLE,              \
@@ -2693,7 +2696,6 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u55c",					\
 		.vbnv = "xilinx_u55c"					\
 	}
@@ -2712,15 +2714,13 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u50lv",					\
 		.vbnv = "xilinx_u50lv"					\
 	}
 
 #define	XOCL_BOARD_U200_USER_RAPTOR2					\
 	(struct xocl_board_private){					\
-		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
-			XOCL_DSAFLAG_MB_SCHE_OFF,			\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
 		.subdev_info	= RES_USER_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
 		.board_name = "u200"					\
@@ -2728,12 +2728,10 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_U200_MGMT_RAPTOR2					\
 	(struct xocl_board_private){					\
-		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
-			XOCL_DSAFLAG_MB_SCHE_OFF,			\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u200"					\
 	}
 

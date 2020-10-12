@@ -27,6 +27,7 @@ namespace xdpaieprofile {
 
 namespace xdpaiectr {
   void update_aie_device(void* handle);
+  void end_aie_ctr_poll(void* handle);
 }
 
 #endif

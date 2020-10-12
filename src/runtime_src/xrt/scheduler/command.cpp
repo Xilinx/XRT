@@ -111,7 +111,6 @@ command(xrt::device* device, ert_cmd_opcode opcode)
   auto epacket = get_ert_cmd<ert_packet*>();
   epacket->state = ERT_CMD_STATE_NEW; // new command
   epacket->opcode = opcode & 0x1F; // [4:0]
-  epacket->type = opcode >> 5;     // [9:5]
 
   XRT_DEBUG(std::cout,"xrt::command::command(",m_uid,")\n");
 

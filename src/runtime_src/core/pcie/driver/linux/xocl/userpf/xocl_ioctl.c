@@ -271,6 +271,13 @@ static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
 	bool ret = false;
 	int err = 0;
 	xuid_t *downloaded_xclbin =  NULL;
+	bool changed;
+
+	xocl_p2p_conf_status(xdev, &changed);
+	if (changed) {
+		userpf_info(xdev, "p2p configure changed\n");
+		return false;
+	}
 
 	err = XOCL_GET_XCLBIN_ID(xdev, downloaded_xclbin);
 	if (err)
@@ -495,6 +502,11 @@ skip1:
 
 	preserve_mem = xocl_preserve_mem(drm_p, new_topology, size);
 
+	/* To support fast adapter kind of CU, KDS would create a bo to
+	 * reserve plram. Needs to release it before cleanup mem.
+	 */
+	xocl_kds_reset(xdev, NULL);
+
 	/* Switching the xclbin, make sure none of the buffers are used. */
 	if (!preserve_mem) {
 		err = xocl_cleanup_mem(drm_p);
@@ -547,15 +559,21 @@ skip1:
 		 */
 	}
 
-	/* The finial step is to update KDS configuration */
-	if (kds_mode)
-		xocl_kds_update(xdev);
-
 	if (!preserve_mem) {
 		rc = xocl_init_mem(drm_p);
 		if (err == 0)
 			err = rc;
 	}
+
+	/*
+	 * This is a workaround for u280 only
+	 */
+	if (!err &&  size >=0)
+		xocl_p2p_refresh_rbar(xdev);
+
+	/* The finial step is to update KDS configuration */
+	if (kds_mode)
+		err = xocl_kds_update(xdev);
 
 done:
 	if (size < 0)

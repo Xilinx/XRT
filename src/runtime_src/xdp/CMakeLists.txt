@@ -400,26 +400,23 @@ add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
 # Plugin modules
 add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
 add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
-add_library(xdp_vart_plugin MODULE ${XRT_XDP_PROFILE_VART_PLUGIN_FILES})
 
 add_dependencies(xdp xrt_core xilinxopencl)
 add_dependencies(oclxdp xdp xilinxopencl)
 add_dependencies(xdp_hal_plugin xdp xrt_core)
 add_dependencies(xdp_hal_api_interface_plugin xdp)
-add_dependencies(xdp_vart_plugin xdp xrt_core)
 
 target_link_libraries(xdp xrt_core xilinxopencl)
 target_link_libraries(oclxdp xdp xilinxopencl)
 target_link_libraries(xdp_hal_plugin xdp xrt_core)
 target_link_libraries(xdp_hal_api_interface_plugin xdp)
-target_link_libraries(xdp_vart_plugin xdp xrt_core)
 
-install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin xdp_vart_plugin
+install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin 
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin xdp_vart_plugin
+install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin 
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )

@@ -21,6 +21,7 @@
 #include "shim.h"
 #include "system_swemu.h"
 #include "xclbin.h"
+#include "core/common/xclbin_parser.h"
 #include <errno.h>
 #include <unistd.h>
 #include <boost/property_tree/xml_parser.hpp>
@@ -63,16 +64,16 @@ namespace xclcpuemhal2 {
   {
     binaryCounter = 0;
     mReqCounter = 0;
-    sock = NULL;
+    sock = nullptr;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
     mCore = nullptr;
     mSWSch = nullptr;
-
+  
     ci_buf = malloc(ci_msg.ByteSize());
     ri_msg.set_size(0);
     ri_buf = malloc(ri_msg.ByteSize());
-    buf = NULL;
+    buf = nullptr;
     buf_size = 0;
 
     deviceName = "device"+std::to_string(deviceIndex);
@@ -486,7 +487,7 @@ namespace xclcpuemhal2 {
     std::string xmlFile = "" ;
     int result = dumpXML(header, xmlFile) ;
     if (result != 0) return result ;
-
+   
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
     //  by checking to see if there is a DEBUG_DATA section in
@@ -940,12 +941,32 @@ namespace xclcpuemhal2 {
   {
     xclemulation::config::getInstance()->populateEnvironmentSetup(mEnvironmentNameValueMap);
 
-    std::string logFilePath = (logfileName && (logfileName[0] != '\0')) ? logfileName : xrt_core::config::get_hal_logging();
-    if (!logFilePath.empty()) {
+    //std::string logFilePath = (logfileName && (logfileName[0] != '\0')) ? logfileName : xrt_core::config::get_hal_logging();
+
+    char path[FILENAME_MAX];
+    size_t size = PATH_MAX;
+    char* pPath = GetCurrentDir(path,size);
+
+    std::string lf = "";
+    if (getenv("ENABLE_HAL_SW_EMU_DEBUG")) {
+      lf = std::string(pPath) + "/hal_sw_log.txt";
+    }
+    else {
+      lf = "";
+    }
+
+    if (!lf.empty())
+    {
+      mLogStream.open(lf);
+      mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+    }
+
+    /*if (!logFilePath.empty()) {
       mLogStream.open(logFilePath);
       mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-    }
+    }*/
     // Shim object creation doesn't follow xclOpen/xclClose.
     // The core device must correspond to open and close, so
     // create here rather than in constructor
@@ -989,6 +1010,9 @@ namespace xclcpuemhal2 {
       }
     }
 
+    if (mLogStream.is_open()) {
+      mLogStream.close();
+    }
   }
   void CpuemShim::resetProgram(bool callingFromClose)
   {
@@ -1709,7 +1733,6 @@ ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
   mReqCounter++;
   PRINTENDFUNC;
   return fullSize;
-
 }
 /*
  * xclPollCompletion
@@ -1720,6 +1743,7 @@ int CpuemShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion 
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
   }
+
 //  struct timespec time, *ptime = NULL;
 //
 //  if (timeout > 0)
@@ -1883,6 +1907,14 @@ int CpuemShim::xclExecBuf(unsigned int cmdBO)
 int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
 {
   return 0;
+}
+
+//Get CU index from IP_LAYOUT section for corresponding kernel name
+int CpuemShim::xclIPName2Index(const char *name)
+{ 
+  //Get IP_LAYOUT buffer from xclbin
+  auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
+  return xclemulation::getIPName2Index(name, buffer.first);
 }
 
 // New API's for m2m and no-dma

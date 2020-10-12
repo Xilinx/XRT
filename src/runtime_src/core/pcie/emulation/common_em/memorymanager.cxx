@@ -18,7 +18,7 @@
 
 namespace xclemulation {
   MemoryManager::MemoryManager(uint64_t size, uint64_t start,
-      unsigned alignment) : mSize(size), mStart(start), mAlignment(alignment),
+      unsigned alignment,std::string& tag ) : mSize(size), mStart(start), mAlignment(alignment), mTag(tag),
   mCoalesceThreshold(4), mFreeSize(0)
   {
     assert(start % alignment == 0);
@@ -31,7 +31,7 @@ namespace xclemulation {
 
   }
 
-  uint64_t MemoryManager::alloc(size_t& origSize, unsigned int paddingFactor)
+  uint64_t MemoryManager::alloc(size_t& origSize, unsigned int paddingFactor,std::map<uint64_t, uint64_t> &chunks )
   {
     if (origSize == 0)
       origSize = mAlignment;
@@ -44,6 +44,27 @@ namespace xclemulation {
     size = size +(2*paddingFactor*size);
 
     std::lock_guard<std::mutex> lock(mMemManagerMutex);
+    if(mChildMemories.size())
+    {
+	    size_t remainingSize = size;
+	    for (auto it:mChildMemories)
+	    {
+		    size_t sizeToBeAllocated = (it->freeSize() <= remainingSize) ? it->freeSize() : remainingSize;
+		    uint64_t result_final = it->alloc(sizeToBeAllocated);
+
+		    if(result_final != mNull)
+			    chunks[result_final] = sizeToBeAllocated;
+
+		    if(result == mNull)
+			    result = result_final;
+
+		    remainingSize = remainingSize - sizeToBeAllocated;
+		    if(remainingSize == 0)
+		    {
+			    return result;
+		    }
+	    }
+    }
 
     for (PairList::iterator i = mFreeBufferList.begin(), e = mFreeBufferList.end(); i != e; ++i) 
     {

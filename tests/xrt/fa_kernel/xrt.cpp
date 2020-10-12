@@ -30,13 +30,6 @@
 # pragma warning ( disable : 4244 )
 #endif
 
-
-/**
- * Runs an OpenCL kernel which writes known 16 integers into a 64 byte
- * buffer. Does not use OpenCL runtime but directly exercises the HAL
- * driver API.
- */
-
 static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
@@ -84,9 +77,9 @@ struct job_type
 
   job_type(const xrt::device& device, const xrt::kernel& aes)
     : run(aes)
-    , in(device, len, 0, aes.group_id(0))
-    , out(device, len, 0, aes.group_id(2))
-    , out_status(device, len, 0, aes.group_id(4))
+    , in(device, len, aes.group_id(0))
+    , out(device, len, aes.group_id(2))
+    , out_status(device, len, aes.group_id(4))
   {
     auto in_data = in.map<uint32_t*>();
     std::iota(in_data, in_data + len/sizeof(uint32_t), 0);
@@ -177,9 +170,7 @@ run(int argc, char** argv)
   }
 
   std::string xclbin_fnm;
-  bool verbose = false;
   unsigned int device_index = 0;
-  bool random = false;
 
   std::vector<std::string> args(argv+1,argv+argc);
   std::string cur;
@@ -187,14 +178,6 @@ run(int argc, char** argv)
     if (arg == "-h") {
       usage();
       return 1;
-    }
-    else if (arg == "-v") {
-      verbose = true;
-      continue;
-    }
-    else if (cur == "-r") {
-      random = true;
-      continue;
     }
 
     if (arg[0] == '-') {

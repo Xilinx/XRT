@@ -140,7 +140,6 @@ SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _pt
     std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the CONNECTIVITY section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",
                                        (unsigned int) bufferSize, (unsigned int) maxBufferSize);
     std::cout << errMsg << std::endl;
-    // throw std::runtime_error(errMsg);
   }
 }
 

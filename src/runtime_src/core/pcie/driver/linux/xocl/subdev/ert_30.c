@@ -128,6 +128,8 @@ struct xocl_ert_30 {
 	struct ert_30_event	ev;
 
 	struct task_struct	*thread;
+
+	uint32_t 		ert_dmsg;
 };
 
 static ssize_t name_show(struct device *dev,
@@ -139,8 +141,29 @@ static ssize_t name_show(struct device *dev,
 
 static DEVICE_ATTR_RO(name);
 
+static ssize_t ert_dmsg_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_ert_30 *ert_30 = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	mutex_lock(&ert_30->lock);
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 2) {
+		xocl_err(&to_platform_device(dev)->dev,
+			"usage: echo 0 or 1 > ert_dmsg");
+		return -EINVAL;
+	}
+
+	ert_30->ert_dmsg = val;
+
+	mutex_unlock(&ert_30->lock);
+	return count;
+}
+static DEVICE_ATTR_WO(ert_dmsg);
+
 static struct attribute *ert_30_attrs[] = {
 	&dev_attr_name.attr,
+	&dev_attr_ert_dmsg.attr,
 	NULL,
 };
 
@@ -260,8 +283,8 @@ flush_submit_queue(struct xocl_ert_30 *ert_30, u32 *len, int status, void *clien
 	unsigned long flags;
 
 
-	spin_lock_irqsave(&ert_30->sq_lock, flags);
 	for ( i = 0; i < ERT_MAX_SLOTS; ++i ) {
+		spin_lock_irqsave(&ert_30->sq_lock, flags);
 		ecmd = ert_30->submit_queue[i];
 		if (ecmd) {
 			xcmd = ecmd->xcmd;
@@ -270,11 +293,12 @@ flush_submit_queue(struct xocl_ert_30 *ert_30, u32 *len, int status, void *clien
 			xcmd->cb.notify_host(xcmd, status);
 			xcmd->cb.free(xcmd);
 			ert_30->submit_queue[i] = NULL;
-			ert_30_free_cmd(ecmd);
 			--ert_30->num_sq;
 		}
+		spin_unlock_irqrestore(&ert_30->sq_lock, flags);
+		ert_30_free_cmd(ecmd);
 	}
-	spin_unlock_irqrestore(&ert_30->sq_lock, flags);
+
 }
 /*
  * release_slot_idx() - Release specified slot idx
@@ -331,9 +355,9 @@ static inline void process_ert_cq(struct xocl_ert_30 *ert_30)
 	list_del(&ecmd->list);
 	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
 	xcmd->cb.free(xcmd);
-	ert_30_free_cmd(ecmd);
 	--ert_30->num_cq;
 	spin_unlock_irqrestore(&ert_30->sq_lock, flags);
+	ert_30_free_cmd(ecmd);
 	ERTUSER_DBG(ert_30, "<- %s\n", __func__);
 }
 
@@ -355,6 +379,7 @@ ert_30_isr(int irq, void *arg)
 	struct xocl_ert_30 *ert_30 = (struct xocl_ert_30 *)arg;
 	xdev_handle_t xdev;
 	struct ert_30_command *ecmd;
+	unsigned long flags = 0;
 
 	if (!ert_30)
 		return IRQ_HANDLED;
@@ -367,7 +392,7 @@ ert_30_isr(int irq, void *arg)
 
 	if (!ert_30->polling_mode) {
 
-		spin_lock(&ert_30->sq_lock);
+		spin_lock_irqsave(&ert_30->sq_lock, flags);
 		ecmd = ert_30->submit_queue[irq];
 		if (ecmd) {
 			ert_30->submit_queue[irq] = NULL;
@@ -377,7 +402,7 @@ ert_30_isr(int irq, void *arg)
 			++ert_30->num_cq;			
 		}
 
-		spin_unlock(&ert_30->sq_lock);
+		spin_unlock_irqrestore(&ert_30->sq_lock, flags);
 
 		up(&ert_30->sem);
 		/* wake up all scheduler ... currently one only */
@@ -572,6 +597,8 @@ static int ert_cfg_cmd(struct xocl_ert_30 *ert_30, struct ert_30_command *ecmd)
 
 	if (XDEV(xdev)->priv.flags & XOCL_DSAFLAG_CUDMA_OFF)
 		cfg->cu_dma = 0;
+
+	cfg->dmsg = ert_30->ert_dmsg;
 
 	// The KDS side of of the scheduler is now configured.  If ERT is
 	// enabled, then the configure command will be started asynchronously

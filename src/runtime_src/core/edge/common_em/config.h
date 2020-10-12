@@ -251,6 +251,8 @@ namespace xclemulation{
   std::string getRunDirectory();
   
   std::map<std::string,std::string> getEnvironmentByReadingIni();
+  //Get CU index from IP_LAYOUT section for corresponding kernel name
+  int getIPName2Index(const char *name, const char* ipLayoutbuf);
 }
 
 #endif

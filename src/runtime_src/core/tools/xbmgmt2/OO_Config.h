@@ -29,7 +29,7 @@ class OO_Config : public OptionOptions {
   OO_Config(const std::string &_longName, bool _isHidden = false);
 
  private:
-  std::vector<std::string> m_device;
+  std::vector<std::string> m_devices;
   bool m_help;
   bool m_daemon;
   std::string m_host;

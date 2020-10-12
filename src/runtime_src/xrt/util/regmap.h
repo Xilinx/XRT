@@ -115,6 +115,12 @@ public:
     return m_size * sizeof(WordType);
   }
 
+  WordType*
+  data()
+  {
+    return m_regmap.data();
+  }
+
   const WordType*
   data() const
   {

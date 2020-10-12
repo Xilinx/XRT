@@ -1093,7 +1093,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * like if versal has vesc, then it is a 2.0 shell. We can add the following
 	 * condition.
 	 */
-	if ((dev_info->flags & XOCL_DSAFLAG_VERSAL) &&
+	if ((dev_info->flags & (XOCL_DSAFLAG_VERSAL | XOCL_DSAFLAG_MPSOC)) &&
 	    xocl_subdev_is_vsec(lro))
 		ret = -ENODEV;
 
@@ -1444,6 +1444,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_calib_storage,
 	xocl_init_pmc,
 	xocl_init_icap_controller,
+	xocl_init_pcie_firewall,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1475,6 +1476,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_calib_storage,
 	xocl_fini_pmc,
 	xocl_fini_icap_controller,
+	xocl_fini_pcie_firewall,
 };
 
 static int __init xclmgmt_init(void)

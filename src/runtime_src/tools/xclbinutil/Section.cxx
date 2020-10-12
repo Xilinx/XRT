@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2018 - 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -192,7 +192,7 @@ Section::createSectionObjectOfKind( enum axlf_section_kind _eKind,
   Section* pSection = nullptr;
 
   if (m_mapIdToCtor.find(_eKind) == m_mapIdToCtor.end()) {
-    std::string errMsg = XUtil::format("ERROR: Section constructor for the archive section ID '%d' does not exist.  This error is most likely the result of examining a newer version of an archive image then this version of software supports.", (unsigned int)_eKind);
+    std::string errMsg = XUtil::format("ERROR: Section constructor for the archive section ID '%d' does not exist.  This error is most likely the result of examining a newer version of an archive image than this version of software supports.", (unsigned int)_eKind);
     throw std::runtime_error(errMsg);
   }
 
@@ -402,7 +402,7 @@ Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
         sectionHeader.m_sectionOffset = 0;
         _istream.seekg(0, _istream.end);
 
-        static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize percision is greater then 64 bits");
+        static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize precision is greater then 64 bits");
         sectionHeader.m_sectionSize = (uint64_t) _istream.tellg();
 
         readXclBinBinary(_istream, sectionHeader);
@@ -461,7 +461,7 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
       sectionHeader.m_sectionOffset = 0;
       _istream.seekg(0, _istream.end);
 
-      static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize percision is greater then 64 bits");
+      static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize precision is greater then 64 bits");
       sectionHeader.m_sectionSize = (uint64_t) _istream.tellg();
 
       readXclBinBinary(_istream, sectionHeader);

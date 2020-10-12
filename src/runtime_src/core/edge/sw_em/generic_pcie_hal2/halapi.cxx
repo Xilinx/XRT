@@ -686,6 +686,13 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
   return 0;
 }
 
+//Get CU index from IP_LAYOUT section for corresponding kernel name
+int xclIPName2Index(xclDeviceHandle handle, const char *name)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclIPName2Index(name) : -ENODEV;
+}
+
 // Temporary place holder for XRT shim level Graph APIs
 
 void*
@@ -779,6 +786,24 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioNa
 
 int
 xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
+{
+  return 0;
+}
+
+int
+xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Nmae, uint32_t value)
+{
+  return 0;
+}
+
+uint64_t
+xclReadProfiling(xclDeviceHandle handle, int phdl)
+{
+  return 0;
+}
+
+int
+xclStopProfiling(xclDeviceHandle handle, int phdl)
 {
   return 0;
 }

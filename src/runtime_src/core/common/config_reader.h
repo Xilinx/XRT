@@ -86,6 +86,10 @@ XRT_CORE_COMMON_EXPORT
 std::ostream&
 debug(std::ostream&, const std::string& ini="");
 
+// Internal method for xrt_ini.cpp implementation
+void
+set(const std::string& key, const std::string& value);
+
 }
 
 /**
@@ -168,9 +172,9 @@ get_aie_profile()
 }
 
 inline unsigned int
-get_aie_profile_interval_ms()
+get_aie_profile_interval_us()
 {
-  static unsigned int value = detail::get_uint_value("Debug.aie_profile_interval_ms", 20) ;
+  static unsigned int value = detail::get_uint_value("Debug.aie_profile_interval_us", 1000) ;
   return value ;
 }
 
@@ -276,14 +280,16 @@ get_api_checks()
 inline std::string
 get_logging()
 {
-  static std::string value = detail::get_string_value("Runtime.runtime_log","console");
+  // Allow this configure value to change on the fly
+  std::string value = detail::get_string_value("Runtime.runtime_log","console");
   return value;
 }
 
 inline unsigned int
 get_verbosity()
 {
-  static unsigned int value = detail::get_uint_value("Runtime.verbosity",4);
+  // Allow this configure value to change on the fly
+  unsigned int value = detail::get_uint_value("Runtime.verbosity",4);
   return value;
 }
 

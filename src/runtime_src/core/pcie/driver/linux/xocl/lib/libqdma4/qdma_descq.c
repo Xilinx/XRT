@@ -1538,13 +1538,14 @@ int qdma4_descq_dump_cmpt(struct qdma_descq *descq, int start,
 
 int qdma4_descq_dump_state(struct qdma_descq *descq, char *buf, int buflen)
 {
-	char *cur = buf;
-	char *const end = buf + buflen;
+	char *cur, *end;
 
 	if (!buf || !buflen) {
 		pr_warn("incorrect arguments buf=%p buflen=%d", buf, buflen);
 		return 0;
 	}
+	cur = buf;
+ 	end = buf + buflen;
 
 	if (descq->conf.q_type != Q_CMPT)
 		cur += snprintf(cur, end - cur, "%s %s ",
@@ -1574,8 +1575,7 @@ handle_truncation:
 
 int qdma4_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail)
 {
-	char *cur = buf;
-	char *end = buf + buflen;
+	char *cur, *end;
 	char buffer[512];	/* xocl: allow dump w/o provided buffer */
 	int start, stop;
 
@@ -1586,6 +1586,9 @@ int qdma4_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail
 			descq->avail, descq->pidx, descq->cidx);
 		cur = buffer;
 		end = buffer + 512;
+	} else {
+		cur = buf;
+		end = buf + buflen;
 	}
 
 	cur += qdma4_descq_dump_state(descq, cur, end - cur);

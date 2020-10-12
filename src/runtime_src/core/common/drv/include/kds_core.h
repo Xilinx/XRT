@@ -110,6 +110,14 @@ struct kds_ert {
 	void (* submit)(struct kds_ert *ert, struct kds_command *xcmd);
 };
 
+struct plram_info {
+	/* This is use for free bo, do not use it in shared code */
+	void		       *bo;
+	u64			bar_paddr;
+	u64			dev_paddr;
+	u32			size;
+};
+
 /**
  * struct kds_sched: KDS scheduler manage CUs and client list.
  *		     There should be only one KDS per device.
@@ -133,6 +141,7 @@ struct kds_sched {
 	bool			ert_disable;
 	u32			cu_intr_cap;
 	u32			cu_intr;
+	struct plram_info	plram;
 };
 
 int kds_init_sched(struct kds_sched *kds);

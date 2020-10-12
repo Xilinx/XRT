@@ -91,6 +91,14 @@ static int stop_ert_nolock(struct xocl_ert *ert)
 	if (reg_val != GPIO_ENABLED)
 		WRITE_GPIO(ert, GPIO_ENABLED, 0);
 
+	/*
+	 * New SSv3 platforms does not have command queue exposed to
+	 * mgmtpf anymore. Start/Stop ERT command will happen on
+	 * userpf side. In the case that xocl driver is running ERT
+	 * and xclmgmt stops ERT at the same time, userpf firewall
+	 * will trip. This should not be a normal running case.
+	 * And firewall trip makes sense.
+	 */
 	retry = 0;
 	while ((READ_CQ(ert, 0) != (ERT_EXIT_CMD_OP | ERT_EXIT_ACK)) &&
 			retry++ < MAX_ERT_RETRY) {

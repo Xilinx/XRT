@@ -17,13 +17,18 @@
 #define XRT_CORE_COMMON_SOURCE
 #include "config_reader.h"
 #include "message.h"
+#include "error.h"
+
+#include <set>
+#include <iostream>
+#include <mutex>
+#include <cstdlib>
+
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <iostream>
-#include <cstdlib>
-#include <atomic>
+#include <boost/format.hpp>
 
 #ifdef __GNUC__
 # include <linux/limits.h>
@@ -35,6 +40,31 @@
 #endif
 
 namespace {
+
+namespace key {
+
+// Configuration values can be changed programmatically, but because
+// values are statically cached, they can be changed only until they
+// have been accessed the very first time.  This map tracks first key
+// access.
+static std::set<std::string> locked;
+static std::mutex mutex;
+
+static void
+lock(const std::string& key)
+{
+  std::lock_guard<std::mutex> lk(mutex);
+  locked.insert(key);
+}
+
+static bool
+is_locked(const std::string& key)
+{
+  std::lock_guard<std::mutex> lk(mutex);
+  return locked.find(key) != locked.end();
+}
+
+} // key
 
 static const char*
 value_or_empty(const char* cstr)
@@ -170,6 +200,7 @@ get_bool_value(const char* key, bool default_value)
   if (auto env = get_env_value(key))
     return is_true(env);
 
+  key::lock(key);
   return tree::instance()->m_tree.get<bool>(key,default_value);
 }
 
@@ -184,10 +215,12 @@ get_string_value(const char* key, const std::string& default_value)
     if (!val.empty() && (val.front() == '"') && (val.back() == '"')) {
       val.erase(0, 1);
       val.erase(val.size()-1);
-      } 
-    }catch( std::exception const&) {
+    } 
+  }
+  catch( std::exception const&) {
     // eat the exception, probably bad path
   }
+  key::lock(key);
   return val;
 }
 
@@ -197,9 +230,11 @@ get_uint_value(const char* key, unsigned int default_value)
   unsigned int val = default_value;
   try {
     val = tree::instance()->m_tree.get<unsigned int>(key,default_value);
-  } catch( std::exception const&) {
+  }
+  catch( std::exception const&) {
     // eat the exception, probably bad path
   }
+  key::lock(key);
   return val;
 }
 
@@ -208,8 +243,25 @@ const boost::property_tree::ptree&
 get_ptree_value(const char* key)
 {
   auto s_tree  = tree::instance();
-  boost::property_tree::ptree::const_assoc_iterator i = s_tree->m_tree.find(key);
+  auto i = s_tree->m_tree.find(key);
+  key::lock(key);
   return (i != s_tree->m_tree.not_found()) ? i->second : s_tree->null_tree;
+}
+
+void
+set(const std::string& key, const std::string& value)
+{
+  auto s_tree = tree::instance();
+
+  if (key::is_locked(key)) {
+    auto val = s_tree->m_tree.get<std::string>(key);
+    auto fmt = boost::format("Cannot change value of configuration key '%s' because "
+                             "its current value '%s' has already been used and has "
+                             "been statically cached") % key % val;
+    throw xrt_core::error(-EINVAL,fmt.str());
+  }
+
+  s_tree->m_tree.put(key, value);
 }
 
 std::ostream&

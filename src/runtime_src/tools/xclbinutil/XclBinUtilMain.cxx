@@ -235,9 +235,6 @@ int main_(int argc, const char** argv) {
   try {
     po::store(po::command_line_parser(argc, argv).options(all).positional(p).run(), vm);
 
-
- // po::store(po::parse_command_line(argc, argv, all), vm); // Can throw
-
     if ((vm.count("help")) ||
         (argc == 1)) {
       std::cout << "This utility operates on a xclbin produced by v++." << std::endl << std::endl;

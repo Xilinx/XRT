@@ -37,6 +37,8 @@ static struct xocl_dsa_map dsa_map[] = {
 	XOCL_DSA_DYNAMIC_MAP,
 };
 
+int xocl_subdev_find_vsec_offset(xdev_handle_t xdev);
+
 void xocl_subdev_fini(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
@@ -1327,39 +1329,9 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 	u64 vsec_off;
 	bool found = false;
 	struct xocl_vsec_header *p_hdr;
-	uint16_t vsec_id = 0;
-	int offset_vsec = 0, nxt_offset = 0, ret = 0;
 
-	/*
-	 * 1. To detect the ALF VSEC capability:
-	 *	XRT should look for VSEC Capability with vsec_id = 0x0020.
-	 * 2. Similarly, for Address Translation/Pass through VSEC capability:
-	 *	XRT should look for VSEC Capability with vsec_id = 0x0040
-	 * 3. Check vendor specific section for vsec_id 0x20
-	 */
-	do {
-		nxt_offset = pci_find_next_ext_capability(pdev,
-						offset_vsec, PCI_EXT_CAP_ID_VNDR);
-		if (nxt_offset == 0)
-			break;
-
-		ret = pci_read_config_word(pdev, (nxt_offset + PCI_VNDR_HEADER),
-								   &vsec_id);
-		if (ret != 0) {
-			xocl_err(&core->pdev->dev, "pci read failed for offset: 0x%x, err: %d",
-					 (nxt_offset + PCI_VNDR_HEADER), ret);
-			offset = 0;
-			nxt_offset = 0;
-			break;
-		}
-
-		if (vsec_id == XOCL_VSEC_ALF_VSEC_ID)
-			break;
-
-		offset_vsec = nxt_offset;
-	} while (nxt_offset != 0);
-
-	cap = nxt_offset;
+	/* Check vendor specific section for vsec_id 0x20 */
+	cap = xocl_subdev_find_vsec_offset(xdev);
 	if (!cap) {
 		xocl_info(&core->pdev->dev, "No Vendor Specific Capability found.");
 		return -EINVAL;
@@ -1415,12 +1387,65 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 	return found ? 0 : -ENOENT;
 }
 
-bool xocl_subdev_is_vsec(xdev_handle_t xdev)
+int xocl_subdev_find_vsec_offset(xdev_handle_t xdev)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	struct pci_dev *pdev = core->pdev;
+	int cap = 0, offset_vsec = 0, ret;
+	uint16_t vsec_id;
 
-	return pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR) != 0;
+	/*
+	 * 1. To detect the ALF VSEC capability:
+	 *	XRT should look for VSEC Capability with vsec_id = 0x0020.
+	 * 2. Similarly, for Address Translation/Pass through VSEC capability:
+	 *	XRT should look for VSEC Capability with vsec_id = 0x0040
+	 * 3. Check vendor specific section for vsec_id 0x20
+	 */
+	do {
+		cap = pci_find_next_ext_capability(pdev,
+						offset_vsec, PCI_EXT_CAP_ID_VNDR);
+		if (cap == 0)
+			break;
+
+		ret = pci_read_config_word(pdev, (cap + PCI_VNDR_HEADER), &vsec_id);
+		if (ret != 0) {
+			xocl_err(&pdev->dev, "pci read failed for offset: 0x%x, err: %d",
+					 (cap + PCI_VNDR_HEADER), ret);
+			cap = 0;
+			break;
+		}
+
+		if (vsec_id == XOCL_VSEC_ALF_VSEC_ID)
+			break;
+
+		offset_vsec = cap;
+	} while (cap != 0);
+
+	return cap;
+}
+
+bool xocl_subdev_is_vsec(xdev_handle_t xdev)
+{
+	if (xocl_subdev_find_vsec_offset(xdev))
+		return true;
+
+	return false;
+}
+
+bool xocl_subdev_is_vsec_recovery(xdev_handle_t xdev_hdl)
+{
+	int bar;
+	u64 offset;
+
+	if (!xocl_subdev_is_vsec(xdev_hdl))
+		return false;
+
+	if (xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, &bar, &offset,
+		NULL))
+		return false;
+
+	return xocl_subdev_vsec_read32(xdev_hdl, bar, offset) ==
+		XOCL_VSEC_PLAT_RECOVERY;
 }
 
 static inline int xocl_subdev_create_vsec_impl(xdev_handle_t xdev,
@@ -1506,6 +1531,26 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 	return 0;
 }
 
+void xocl_clear_pci_errors(xdev_handle_t xdev_hdl)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	struct pci_dev *pdev = core->pdev;
+	int cap;
+	u32 val;
+	u16 devsta;
+
+
+	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);
+	if (cap) {
+		/* clear NonFatalErr */
+		pci_read_config_dword(pdev, cap + PCI_ERR_COR_STATUS, &val);
+		pci_write_config_dword(pdev, cap + PCI_ERR_COR_STATUS, val);
+	}
+	devsta = 0;
+	pcie_capability_read_word(pdev, PCI_EXP_DEVSTA, &devsta);
+	pcie_capability_write_word(pdev, PCI_EXP_DEVSTA, devsta);
+}
+
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
@@ -1513,7 +1558,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	u32 dyn_shell_magic, ptype;
 	int ret, cap, bar;
 	u64 offset;
-	unsigned err_cap;
+	unsigned val;
 	bool vsec = false;
 	/* workaround MB_SCHEDULER and INTC resource conflict
 	 * Remove below variables when MB_SCHEDULER is removed
@@ -1546,13 +1591,14 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);
 	if (cap) {
 		ret = pci_read_config_dword(pdev, cap + PCI_ERR_UNCOR_SEVER,
-			&err_cap);
+			&val);
 		if (!ret) {
-			err_cap &= ~PCI_ERR_UNC_COMP_ABORT;
+			val &= ~PCI_ERR_UNC_COMP_ABORT;
 			pci_write_config_dword(pdev, cap + PCI_ERR_UNCOR_SEVER,
-				err_cap);
+				val);
 		}
 	}
+	xocl_clear_pci_errors(xdev_hdl);
 
 	/*
 	 * follow xilinx device id, subsystem id codeing rules to set dsa

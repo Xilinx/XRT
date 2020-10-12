@@ -24,15 +24,30 @@
 #define MAX_WAIT        12
 #define WAIT_INTERVAL   5000	//ms
 
-#define RESET_REG	0xC
+/**
+ * ps reset and por are controlled by reg offset 0
+ * bit 31: reset controller enable bit, 1 is active
+ * bit 3-2: ps reset issue bits
+ * bit 1-0: por issue bits.
+ * For both types, bit 31 needs to be set.
+ * And for qor, just setting the 2 bits does nothing, the controller will
+ * wait for the signal trigger by pcie reset. So for xrt, the sequence for
+ * qor is,
+ * 1. set bit 31, and bit1-0,
+ * 2. set pcie reset bit.
+ */
+#define RESET_REG_0     0x0
+#define RESET_ENABLE    0x80000000
+#define PS_RESET        0xc
+#define POR_RESET       0x3
+
+#define RESET_REG_C	0xC
 
 #define ERT_READY_MASK  0x8
 #define RES_DONE_MASK   0x4
 #define RES_TYPE_MASK   0x3
 
 #define SK_RESET	0x1
-#define ERT_RESET	0x2
-#define SYS_RESET	0x3
 
 #define READ_REG32(ps, off)	\
 	XOCL_READ_REG32(ps->base_addr + off)
@@ -62,28 +77,37 @@ static void ps_reset(struct platform_device *pdev, int type)
 		return;
 
 	mutex_lock(&ps->ps_lock);
-	reg = READ_REG32(ps, RESET_REG);
 	/* Set reset type in scratchpad register */
 	switch(type) {
 	case 1:
 		xocl_info(&pdev->dev, "Soft Kernel reset...");
+		reg = READ_REG32(ps, RESET_REG_C);
 		reg = (reg & ~RES_TYPE_MASK) | SK_RESET;
+		WRITE_REG32(ps, reg, RESET_REG_C);
 		break;
 	case 2:
-		xocl_info(&pdev->dev, "ERT reset...");
-		reg = (reg & ~RES_TYPE_MASK) | ERT_RESET;
-		break;
+		xocl_info(&pdev->dev, "PS reset...");
+		reg = READ_REG32(ps, RESET_REG_0);
+		reg |= (RESET_ENABLE | PS_RESET);
+		WRITE_REG32(ps, reg, RESET_REG_0);
+		/* clear ERT ready bits */
+		reg = READ_REG32(ps, RESET_REG_C);
+		reg &= (~ERT_READY_MASK);
+		WRITE_REG32(ps, reg, RESET_REG_C);
+		goto done;
 	case 3:
-		xocl_info(&pdev->dev, "SYS reset...");
-		reg = (reg & ~RES_TYPE_MASK) | SYS_RESET;
-		break;
+		xocl_info(&pdev->dev, "POR reset...");
+		/*
+		 * don't set POR bits here since firewall may have been tripped
+		 * and the registers are not accessible here
+		 */
+		goto done;
 	default:
 		xocl_info(&pdev->dev, "Unknown reset type");
 	}
-	WRITE_REG32(ps, reg, RESET_REG);
 
 	do {
-		reg = READ_REG32(ps, RESET_REG);
+		reg = READ_REG32(ps, RESET_REG_C);
 		msleep(RETRY_INTERVAL);
 	} while (retry++ < MAX_RETRY && !(reg & RES_DONE_MASK));
 
@@ -95,7 +119,8 @@ static void ps_reset(struct platform_device *pdev, int type)
 
 	/* Clear reset done bit */
 	reg &= ~RES_DONE_MASK;
-	WRITE_REG32(ps, reg, RESET_REG);
+	WRITE_REG32(ps, reg, RESET_REG_C);
+done:
 	mutex_unlock(&ps->ps_lock);
 }
 
@@ -113,12 +138,18 @@ static void ps_wait(struct platform_device *pdev)
 
 	mutex_lock(&ps->ps_lock);
 	do {
-		reg = READ_REG32(ps, RESET_REG);
+		reg = READ_REG32(ps, RESET_REG_C);
 		msleep(WAIT_INTERVAL);
 	} while(retry++ < MAX_WAIT && !(reg & ERT_READY_MASK));
 
 	if (retry >= MAX_WAIT)
 		xocl_err(&pdev->dev, "PS wait time out");
+	xocl_info(&pdev->dev, "Processor System ready in %d retries", retry);
+
+	/* set POR bits again after reset */
+	reg = READ_REG32(ps, RESET_REG_0);
+	reg |= (RESET_ENABLE | POR_RESET);
+	WRITE_REG32(ps, reg, RESET_REG_0);
 
 	mutex_unlock(&ps->ps_lock);
 }
@@ -156,6 +187,7 @@ static int ps_probe(struct platform_device *pdev)
 	struct xocl_ps *ps;
 	struct resource *res;
 	int err;
+	u32 reg;
 
 	ps = devm_kzalloc(&pdev->dev, sizeof(*ps), GFP_KERNEL);
 	if (!ps) {
@@ -175,6 +207,11 @@ static int ps_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "Map iomem failed");
 		goto failed;
 	}
+
+	/* set POR bits during probe */
+	reg = READ_REG32(ps, RESET_REG_0);
+	reg |= (RESET_ENABLE | POR_RESET);
+	WRITE_REG32(ps, reg, RESET_REG_0);
 
 	mutex_init(&ps->ps_lock);
 

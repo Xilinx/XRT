@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019 - 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -400,7 +400,7 @@ SectionFlash::writeObjImage(std::ostream& _oStream) const {
   // Overlay the structure
   // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(flash)) {
-    std::string errMsg = XUtil::format("ERROR: Segment size (%d) is smaller than the size of the falsh structure (%d)", m_bufferSize, sizeof(flash));
+    std::string errMsg = XUtil::format("ERROR: Segment size (%d) is smaller than the size of the flash structure (%d)", m_bufferSize, sizeof(flash));
     throw std::runtime_error(errMsg);
   }
 
