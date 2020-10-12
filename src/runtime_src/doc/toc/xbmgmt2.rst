@@ -17,19 +17,19 @@ xbmgmt program
 
 **The supported options**
 
-Program a partition
+Update the Base partition 
 
 .. code-block:: 
 
-    xbmgmt program [--device| -d] <bdf> --partition [partition file with path]  
+    xbmgmt program [--device|-d] <bdf> [--update|-u] [--image|-i] <image path with path>
 
 
-Load from a image
+Program a Shell Partition
 
 .. code-block:: 
 
-    xbmgmt program [--device| -d] <bdf>  [--update| -u] <specific image> <--image|-i> <specific image path> 
-    
+    xbmgmt program [--device| -d] <bdf> [--partition|-p] <partition file with path>  
+
 
 Revert to golden image
 .. code-block:: 
@@ -43,18 +43,14 @@ Revert to golden image
     
     - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
     - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-- The ``--partition`` option is used to program specific partition. 
-    
-    - <partiton file>: 
-    - <uuid>:
-- The ``--update`` option can optionally be used to specify the specific image to be programmed. 
-    
-    - ``sc``: Satellite controller image 
-    - ``flash``: Flash image 
-- The ``--image`` option can be optionally used with ``--update``
+- The ``--update`` option is used to update the base partition. This option is applicable for both the 1RP and 2RP platform. 
+- The ``--image`` option can be optionally used with ``--update``. If there are multiple base partition images exist in the system, the correct base partition has be specified through ``--image`` switch
   
-    - <image name> : 
-    - <image path> : 
+    - <image name with path> : 
+
+- The ``--partition`` option is used to program shell partition, applicable for 2RP platform only.
+    
+    - <partiton file with path>: 
 - The ``--revert-to-golden`` command is used to reverts the flash image back to the golden version of the card.	
 
 
@@ -63,7 +59,11 @@ Revert to golden image
 
 .. code-block::
  
-     xbmgmt program --d 0000:d8:00.0 --p ./my_partition.xsabin
+     #Update the base partition 
+     xbmgmt program --d 0000:d8:00.0 --update 
+     
+     #Update the base partition when multiple base partition images exist in the system
+     xbmgmt program --d 0000:d8:00.0 --update --image <image full path>/<image file name>
  
      xbmgmt program --d 0000:d8:00.0 -u SC --image [specific image path] --revert-to-golden
  
