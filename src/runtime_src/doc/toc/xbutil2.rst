@@ -30,7 +30,7 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 
 .. code-block:: 
 
-    xbutil program [--device|-d] <bdf> [--program|-p] <xclbin>
+    xbutil program [--device|-d] <user bdf> [--program|-p] <xclbin>
 
 
 **The details of the supported options**
@@ -38,7 +38,7 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 - The ``--device`` (or ``-d``) specifies the target device to be programmed
     
     - <none> : Optional for a single device system. 
-    - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device BDF information 
+    - <user bdf>+ : Mandetory for multiple device system, has to be specified with one or more device user bdf information 
     - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used 
 - The ``--program`` (or ``-p``) is required to specify the .xclbin file
     
@@ -73,7 +73,7 @@ The command ``xbutil validate`` validates the card installation by running preco
 
 .. code-block:: 
 
-   xbutil validate [--device| -d] <bdf> [--run| -r] <test> [--format| -f] <report format>
+   xbutil validate [--device| -d] <user bdf> [--run| -r] <test> [--format| -f] <report format>
  
 
 **The details of the supported options**
@@ -81,7 +81,7 @@ The command ``xbutil validate`` validates the card installation by running preco
 - The ``--device`` (or ``-d``) specifies the target device to be validate 
     
     - <none> : Optional for a single device system. 
-    - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device BDF information 
+    - <user bdf>+ : Mandetory for multiple device system, has to be specified with one or more device user bdf information 
     - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
 - The ``--run`` (or ``-r``) specifies the perticular test to execute
         
@@ -106,10 +106,10 @@ The command ``xbutil validate`` validates the card installation by running preco
     xbutil validate --device all
  
     # For a multiple device system run "DMA" program on a specific device
-    xbutil valiadate --device 0000:d8:00.0 --run DMA
+    xbutil valiadate --device 0000:d8:00.1 --run DMA
  
     # For a multiple device system run "DMA" and "Validate Kernel" program on two devices and generates Json format
-    xbutil validate --device 0000:d8:00.0 0000:d8:00.1 --run DMA "Verify Kernel" --format json-2021.2
+    xbutil validate --device 0000:d8:00.1 0000:03:00.1 --run DMA "Verify Kernel" --format json-2021.2
 
 
 xbutil examine 
@@ -124,7 +124,7 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 .. code-block:: 
 
     # Single Device
-    xbutil examine [--device|-d] <bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -o] <filename>
+    xbutil examine [--device|-d] <user bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -o] <filename>
  
 
 
@@ -134,11 +134,11 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 - The ``--device`` (or ``-d``) specifies the target device to be validate 
     
     - <none> : Optional for a single device system. 
-    - <bdf>+ : Mandetory for multiple device system, has to be specified with one or more device bdf information 
+    - <user bdf>+ : Mandetory for multiple device system, has to be specified with one or more device user bdf information 
     - ``all``:To specify all devices ``–-device all``  or ``-d all``  can be used
 - The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
           
-    - ``scan`` (**default**): Shows System Configuration, XRT and Device BDF information. 
+    - ``scan`` (**default**): Shows System Configuration, XRT and Device user bdf information. 
     - ``aie``: Reports information related to AIE kernels
     - ``electrical``: Reports information related to Voltage, current and power
     - ``debug-ip-status``: Reports information related to Debug-IPs inserted during the kernel compilation
@@ -182,14 +182,14 @@ This ``xbutil reset`` command can be used to reset one or more devices.
 
 .. code-block:: 
 
-    xbutil reset [--device| -d] <bdf> [--type| -t] <reset type>
+    xbutil reset [--device| -d] <user bdf> [--type| -t] <reset type>
 
 **The details of the supported options**
 
 
 - The ``--device`` (or ``-d``) used to specify the device to be reset
     
-    - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
+    - <user bdf>+ : Mandetory, has to be specified with one or more device user bdf  
     - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
 - The ``--type`` (or ``-t``) can be used to specify the reset type. Currently supported reset type
     
@@ -219,27 +219,27 @@ Read from Memory
 
 .. code-block:: 
 
-    xbutil advanced [--device| -d] <bdf> --read-mem <address> <size> [--output] <output file>
+    xbutil advanced [--device| -d] <user bdf> --read-mem <address> <size> [--output] <output file>
 
 Fill Memory with binary value
 
 .. code-block:: 
 
-    xbutil advanced [--device| -d] <bdf> --write-mem <address> <size> [--fill] <binary data> 
+    xbutil advanced [--device| -d] <user bdf> --write-mem <address> <size> [--fill] <binary data> 
 
 
 Fill Memory from a file content
 
 .. code-block:: 
 
-    xbutil advanced [--device| -d] <bdf> --write-mem <address> <size>  [--input] <file>
+    xbutil advanced [--device| -d] <user bdf> --write-mem <address> <size>  [--input] <file>
 
 
 P2P Enable, disable or valiadte
 
 .. code-block:: 
 
-    xbutil advanced [--device| -d] <bdf> --p2p [enable|disable|validate]
+    xbutil advanced [--device| -d] <user bdf> --p2p [enable|disable|validate]
 
 
 
@@ -248,7 +248,7 @@ P2P Enable, disable or valiadte
 
 - The ``--device`` (or ``-d``) used to specify the device to be reset
     
-    - <bdf>+ : Mandetory, has to be specified with one or more device bdf  
+    - <user bdf>+ : Mandetory, has to be specified with one or more device user bdf  
     - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
 - The ``--read-mem`` is used to read from perticular memory location. It has to use with following arguments
     
