@@ -1523,6 +1523,8 @@ resetAIEArray(drm_zocl_aie_reset &reset)
 unsigned
 xclProbe()
 {
+  PROBE_CB;
+
   int fd = open("/dev/dri/renderD128", O_RDWR);
   if (fd < 0) {
     return 0;
@@ -1557,6 +1559,11 @@ xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
                        std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
       return nullptr;
     }
+
+#ifndef __HWEM__
+    OPEN_CB;
+#endif
+
     auto handle = new ZYNQ::shim(deviceIndex, logFileName, level);
     if (!ZYNQ::shim::handleCheck(handle)) {
       delete handle;
@@ -1578,6 +1585,10 @@ xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
 void
 xclClose(xclDeviceHandle handle)
 {
+#ifndef __HWEM__
+  CLOSE_CB;
+#endif
+
   //std::cout << "xclClose called" << std::endl;
   if (ZYNQ::shim::handleCheck(handle)) {
     delete ((ZYNQ::shim *) handle);
@@ -1587,6 +1598,9 @@ xclClose(xclDeviceHandle handle)
 unsigned int
 xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
+#ifndef __HWEM__
+  ALLOC_BO_CB;
+#endif
   //std::cout << "xclAllocBO called " << std::endl;
   //std::cout << "xclAllocBO size:  "  << size << std::endl;
   //std::cout << "xclAllocBO handle " << handle << std::endl;
@@ -1600,6 +1614,9 @@ xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 unsigned int
 xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
+#ifndef __HWEM__
+  ALLOC_USERPTR_BO_CB;
+#endif
   //std::cout << "xclAllocUserPtrBO called.. " << handle << std::endl;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
@@ -1621,6 +1638,9 @@ xclGetHostBO(xclDeviceHandle handle, uint64_t paddr, size_t size)
 void
 xclFreeBO(xclDeviceHandle handle, unsigned int boHandle)
 {
+#ifndef __HWEM__
+  FREE_BO_CB;
+#endif
   //std::cout << "xclFreeBO called" << std::endl;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
@@ -1632,6 +1652,9 @@ size_t
 xclWriteBO(xclDeviceHandle handle, unsigned int boHandle, const void *src,
            size_t size, size_t seek)
 {
+#ifndef __HWEM__
+  WRITE_BO_CB;
+#endif
 
   //std::cout << "xclWriteBO called" << std::endl;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
@@ -1644,6 +1667,10 @@ size_t
 xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
           size_t size, size_t skip)
 {
+#ifndef __HWEM__
+  READ_BO_CB;
+#endif
+
   //std::cout << "xclReadBO called" << std::endl;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
@@ -1654,6 +1681,10 @@ xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
 void *
 xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
+#ifndef __HWEM__
+  MAP_BO_CB;
+#endif
+
   //std::cout << "xclMapBO called" << std::endl;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
@@ -1675,6 +1706,10 @@ int
 xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
           size_t size, size_t offset)
 {
+#ifndef __HWEM__
+  SYNC_BO_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1685,6 +1720,10 @@ int
 xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
           unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
+#ifndef __HWEM__
+  COPY_BO_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1785,6 +1824,10 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 size_t
 xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
+#ifndef __HWEM__
+  WRITE_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1794,6 +1837,10 @@ xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const v
 size_t
 xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
+#ifndef __HWEM__
+  READ_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1812,6 +1859,10 @@ xclGetDeviceInfo2(xclDeviceHandle handle, xclDeviceInfo2 *info)
 int
 xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)
 {
+#ifndef __HWEM__
+  GET_BO_PROP_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1827,6 +1878,10 @@ xclVersion ()
 int
 xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 {
+#ifndef __HWEM__
+  EXEC_BUF_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1836,6 +1891,10 @@ xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 int
 xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
+#ifndef __HWEM__
+  EXEC_WAIT_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1967,6 +2026,10 @@ xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
 int
 xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
+#ifndef __HWEM__
+  OPEN_CONTEXT_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -EINVAL;
@@ -1975,6 +2038,10 @@ xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipInd
 int
 xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
+#ifndef __HWEM__
+  CLOSE_CONTEXT_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;
 }
@@ -2042,12 +2109,20 @@ xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned short 
 int
 xclLockDevice(xclDeviceHandle handle)
 {
+#ifndef __HWEM__
+  LOCK_DEVICE_CB;
+#endif
+
   return 0;
 }
 
 int
 xclUnlockDevice(xclDeviceHandle handle)
 {
+#ifndef __HWEM__
+  UNLOCK_DEVICE_CB;
+#endif
+
   return 0;
 }
 
@@ -2083,15 +2158,23 @@ xclRemoveAndScanFPGA()
 
 ssize_t
 xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf,
-              size_t size, uint64_t offset)
+              size_t count, uint64_t offset)
 {
+#ifndef __HWEM__
+  UNMGD_PREAD_CB;
+#endif
+
   return -ENOSYS;
 }
 
 ssize_t
 xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf,
-               size_t size, uint64_t offset)
+               size_t count, uint64_t offset)
 {
+#ifndef __HWEM__
+  UNMGD_PWRITE_CB;
+#endif
+
   return -ENOSYS;
 }
 
