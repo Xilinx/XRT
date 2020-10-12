@@ -813,6 +813,7 @@ int ert_30_thread(void *data)
 {
 	struct xocl_ert_30 *ert_30 = (struct xocl_ert_30 *)data;
 	int ret = 0;
+	bool polling_sleep = false, intr_sleep = false;
 
 	while (!ert_30->stop) {
 		/* Make sure to submit as many commands as possible.
@@ -839,9 +840,10 @@ int ert_30_thread(void *data)
 		 * ert interrupt mode goes to sleep if there is no cmd to be submitted
 		 * OR submitted queue is full
 		 */
-		if (((!ert_30->num_rq || ert_30->num_sq == (ert_30->num_slots-1))
-			|| (ert_30->polling_mode && !ert_30->num_sq)) 
-			&& !ert_30->num_cq)
+		intr_sleep = (!ert_30->num_rq || ert_30->num_sq == (ert_30->num_slots-1))
+					|| !ert_30->num_cq;
+		polling_sleep = (ert_30->polling_mode && !ert_30->num_sq) || !ert_30->num_cq;
+		if (intr_sleep || polling_sleep)
 			if (down_interruptible(&ert_30->sem))
 				ret = -ERESTARTSYS;
 

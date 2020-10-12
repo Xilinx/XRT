@@ -720,6 +720,7 @@ int ert_user_thread(void *data)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)data;
 	int ret = 0;
+	bool polling_sleep = false, intr_sleep = false;
 
 	while (!ert_user->stop) {
 		/* Make sure to submit as many commands as possible.
@@ -747,9 +748,10 @@ int ert_user_thread(void *data)
 		 * ert interrupt mode goes to sleep if there is no cmd to be submitted
 		 * OR submitted queue is full
 		 */
-		if (((!ert_user->num_rq || ert_user->num_sq == (ert_user->num_slots-1))
-			|| (ert_user->polling_mode && !ert_user->num_sq)) 
-			&& !ert_user->num_cq)
+		intr_sleep = (!ert_user->num_rq || ert_user->num_sq == (ert_user->num_slots-1))
+					|| !ert_user->num_cq;
+		polling_sleep = (ert_user->polling_mode && !ert_user->num_sq) || !ert_user->num_cq;
+		if (intr_sleep || polling_sleep)
 			if (down_interruptible(&ert_user->sem))
 				ret = -ERESTARTSYS;
 
