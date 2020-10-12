@@ -32,6 +32,7 @@ struct soft_cu {
 	struct semaphore	sc_sem;
 
 	uint32_t		sc_flags;
+	uint32_t		usage;
 };
 
 struct soft_krnl {

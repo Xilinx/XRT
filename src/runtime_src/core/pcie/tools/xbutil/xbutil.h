@@ -360,15 +360,18 @@ public:
     uint32_t parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu_stat kind) const
     {
        uint32_t ret = 0;
+       uint32_t idx = 0;
 
        if (custat.empty())
           return ret;
 
        for (auto& line : custat) {
            uint32_t ba = 0, cnt = 0, sta = 0;
-           std::sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
+           ret = std::sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
+           if (ret)
+               idx++;
 
-           if (offset != ba)
+           if ((offset != ba) && ((offset + 1) != idx))
                continue;
 
            if (kind == cu_stat::usage)
@@ -380,6 +383,47 @@ public:
        }
 
        return ret;
+    }
+
+    uint32_t parseComputeUnitNum(const std::vector<std::string>& custat) const
+    {
+       uint32_t cu_count = 0;
+
+       if (custat.empty())
+          return 0; 
+
+       //CU or Soft Kernel CU syntax
+       //    CU[@0x1400000] : 0 status : 4
+       //    CU[@0x0] : 0 status : 4 name : kernel1
+       //
+       for (auto& line : custat) {
+           cu_count += std::strncmp(line.c_str(), "CU[", 3) ? 0 : 1;
+       }
+
+       return cu_count;
+    }
+
+    std::string parseComputeUnitName(const std::vector<std::string>& custat, uint32_t idx) const
+    {
+        uint32_t i = 0;
+
+       if (custat.empty())
+          return std::string();
+
+       //CU or Soft Kernel CU syntax
+       //    CU[@0x1400000] : 0 status : 4
+       //    CU[@0x0] : 0 status : 4 name : kernel1
+       //
+       for (auto& line : custat) {
+           i += std::strncmp(line.c_str(), "CU[", 3) ? 0 : 1;
+           if (idx + 1 == i) {
+               std::size_t pos = line.find(" name : ");
+               pos += std::strlen(" name : ");
+               return line.substr(pos);
+           }
+       }
+
+       return std::string();
     }
 
     int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
@@ -405,6 +449,20 @@ public:
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
+
+        for (unsigned int i = computeUnits.size(); i < parseComputeUnitNum(custat); i++) {
+            uint32_t status = parseComputeUnitStat(custat, i, cu_stat::stat);
+            uint32_t usage = parseComputeUnitStat(custat, i, cu_stat::usage);
+	    auto name = parseComputeUnitName(custat, i);
+
+	    boost::property_tree::ptree ptCu;
+            ptCu.put( "name",         name );
+            ptCu.put( "base_address", 0 );
+            ptCu.put( "usage",        usage );
+            ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
+            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
+        }
+
         return 0;
     }
 
