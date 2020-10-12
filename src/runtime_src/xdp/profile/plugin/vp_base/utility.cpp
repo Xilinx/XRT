@@ -71,11 +71,11 @@ namespace xdp {
           if(0 == str.compare("zocl")) {
             return true;
           }
-        } catch (const boost::property_tree::ptree_error &e) {
+        } catch (const boost::property_tree::ptree_error&) {
           continue;
         }
       }
-    } catch (const boost::property_tree::ptree_error &e) {
+    } catch (const boost::property_tree::ptree_error&) {
       return false;
     }
     return false;
