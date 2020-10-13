@@ -27,7 +27,7 @@ d = pyxrt.device(0)
 xclbin = './simple.xclbin'
 uuid = d.load_xclbin(xclbin)
 
-simple = pyxrt.kernel(d, uuid.get(), "simple", False)
+simple = pyxrt.kernel(d, uuid.get(), "simple")
 
 bo0 = pyxrt.bo(d, 1024, pyxrt.XCL_BO_FLAGS_NONE, simple.group_id(0))
 bo1 = pyxrt.bo(d, 1024, pyxrt.XCL_BO_FLAGS_NONE, simple.group_id(1))
@@ -35,7 +35,7 @@ bo1 = pyxrt.bo(d, 1024, pyxrt.XCL_BO_FLAGS_NONE, simple.group_id(1))
 bo0.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, 1024, 0)
 bo1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, 1024, 0)
 
-run = simple(*(bo0, bo1, 0x10))
+run = simple(bo0, bo1, 0x10)
 run.wait()
 
 bo0.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, 1024, 0)
