@@ -14,10 +14,8 @@ XRT_PROG=xbmgmt
 # Check to see environment variable is NOT set
 if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then 
   XRT_PROG=xbmgmt
-else
-  if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
+elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
      XRT_PROG=xbmgmt2
-  fi
 fi
 
 # -- Examine the options

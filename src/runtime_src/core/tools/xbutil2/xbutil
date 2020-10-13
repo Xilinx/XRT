@@ -14,10 +14,8 @@ XRT_PROG=xbutil
 # Check to see environment variable is NOT set
 if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then 
   XRT_PROG=xbutil
-else
-  if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
+elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
      XRT_PROG=xbutil2
-  fi
 fi
 
 # -- Examine the options
