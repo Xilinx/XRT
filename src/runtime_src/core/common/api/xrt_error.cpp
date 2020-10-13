@@ -138,7 +138,7 @@ error_code_to_string(xrtErrorCode ecode)
   return fmt.str();
 }
 
-void
+static void
 error_code_to_json(xrtErrorCode ecode, boost::property_tree::ptree &pt)
 {
   pt.put("class.code", XRT_ERROR_CLASS(ecode));
@@ -163,10 +163,13 @@ error_time_to_string(xrtErrorTime time)
 } // namespace
 
 namespace xrt_core { namespace error_int {
-  void get_error_code_to_json(xrtErrorCode ecode,boost::property_tree::ptree &pt)
-  {
-    return error_code_to_json(ecode, pt);
-  }
+
+void
+get_error_code_to_json(xrtErrorCode ecode, boost::property_tree::ptree &pt)
+{
+  return error_code_to_json(ecode, pt);
+}
+
 }} // namespace error_int, xrt_core
 
 namespace xrt {

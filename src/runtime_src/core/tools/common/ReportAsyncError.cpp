@@ -24,7 +24,6 @@
 #include "core/include/experimental/xrt_error.h"
 #include "core/include/xrt_error_code.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/date_time/posix_time/posix_time_io.hpp>
 
 const static long unsigned NanoSecondsPerSecond = 1000000000;
 
@@ -58,22 +57,22 @@ populate_async_error(const xrt_core::device * device)
 }
 
 void
-ReportAsyncError::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
+ReportAsyncError::getPropertyTreeInternal( const xrt_core::device * _pDevice,
                                               boost::property_tree::ptree &_pt) const
 {
   getPropertyTree20202(_pDevice, _pt);
 }
 
-void 
-ReportAsyncError::getPropertyTree20202( const xrt_core::device * _pDevice, 
+void
+ReportAsyncError::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   _pt.add_child("asynchronous_errors", populate_async_error(_pDevice));
 }
 
-void 
+void
 ReportAsyncError::writeReport( const xrt_core::device * _pDevice,
-                                  const std::vector<std::string> & /*_elementsFilter*/, 
+                                  const std::vector<std::string> & /*_elementsFilter*/,
                                   std::iostream & _output) const
 {
   boost::property_tree::ptree _pt;
@@ -84,11 +83,12 @@ ReportAsyncError::writeReport( const xrt_core::device * _pDevice,
   boost::format fmt("  %-35s%-20s%-20s%-20s%-20s%-20s\n");
   _output << fmt % "Time" % "Class" % "Module" % "Driver" % "Severity" % "Error Code";
   for (auto& node : _pt.get_child("asynchronous_errors")) {
-    _output << fmt % boost::posix_time::from_time_t(node.second.get<long unsigned>("timestamp")/NanoSecondsPerSecond)
+    time_t rawtime = node.second.get<long unsigned>("timestamp")/NanoSecondsPerSecond;
+    _output << fmt %  ctime(&rawtime)
                % node.second.get<std::string>("class") % node.second.get<std::string>("module")
                % node.second.get<std::string>("driver") % node.second.get<std::string>("severity")
                % node.second.get<std::string>("error_code.error_msg");
   }
   _output << std::endl;
-  
+
 }
