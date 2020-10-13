@@ -243,10 +243,10 @@ Code example of transferring data from the host to the device
                buff_data[i] = i;
            }
     
-           input_buffer.write(buff_data, buffer_size_in_bytes, 0);
-           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE, buffer_size_in_bytes,0);
+           input_buffer.write(buff_data);
+           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-
+Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has overloaded version that can be used for paritial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and 0 offset are used as default arguments. 
 
 
 II. Data transfer between host and device by Buffer map API
@@ -280,7 +280,7 @@ Code example of transferring data from the host to the device by this approach
                input_buffer_mapped[i] = i;
            }
 
-           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE,buffer_size_in_bytes,0);
+           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
 
 III. Data transfer between the buffers by copy API
@@ -303,10 +303,10 @@ API Example in C, all arguments are self-explanatory
 .. code:: c++
       :number-lines: 25
            
-           size_t dst_buffer_offset = 0;
-           size_t src_buffer_offset = 0;
-           dst_buffer.copy(src_buffer, copy_size_in_bytes, dst_buffer_offset, src_buffer_offset);
+           
+           dst_buffer.copy(src_buffer, copy_size_in_bytes);
 
+The API ``xrt::bo::copy`` also has overloaded version to provide a different offset than 0 for both the source and the destination buffer. 
 
 3. Miscellaneous other Buffer APIs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
