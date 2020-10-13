@@ -623,6 +623,6 @@ The Run handle/object supports few other use-cases.
 
 **Timeout while wait for kernel finish**: The API ``xrtRunWait`` blocks the current thread until the kernel execution finishes. However, a timeout supported API ``xrtRunWaitFor`` is also provided . The timeout number can be specified using a millisecond unit.
 
-In C++, the timeout facility can be used by the same ``xrt::run::wait(unsigned int timeout_ms=0)`` member function by providing a millisecond number as an argument. 
+In C++, the timeout facility can be used by the same member function that takes a ``std::chrono::milliseconds`` to specify the timeout. 
 
 **Asynchronous update of the kernel arguments**: The API ``xrtRunSetArg`` (C++: ``xrt::run::set_arg``) is synchronous to the kernel execution. This API can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this API (only for edge platform) ``xrtRunUpdateArg`` (in C++ member function ``xrt::run::update_arg``) is provided to change the kernel arguments asynchronous to the kernel execution. 
