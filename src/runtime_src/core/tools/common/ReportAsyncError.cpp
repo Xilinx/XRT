@@ -25,6 +25,10 @@
 #include "core/include/xrt_error_code.h"
 #include <boost/algorithm/string.hpp>
 
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+#endif
+
 const static long unsigned NanoSecondsPerSecond = 1000000000;
 
 boost::property_tree::ptree
