@@ -435,6 +435,13 @@ get_enable_pr()
 }
 
 inline bool
+get_enable_flat()
+{
+  static unsigned int value = detail::get_bool_value("Runtime.enable_flat",false);
+  return value;
+}
+
+inline bool
 get_multiprocess()
 {
   static bool value = get_kds() && detail::get_bool_value("Runtime.multiprocess",true);

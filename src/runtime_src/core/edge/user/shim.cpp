@@ -505,10 +505,21 @@ xclLoadAxlf(const axlf *buffer)
    * some v++ param).  User need to add enable_pr=false in xrt.ini.
    */
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
+  auto is_flat_platform = (buffer->m_header.m_mode == XCLBIN_FLAT ) ? true : false;
   auto is_pr_enabled = xrt_core::config::get_enable_pr(); //default value is true
+  auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
 
   if (is_pr_platform && is_pr_enabled)
     flags = DRM_ZOCL_PLATFORM_PR;
+  /*
+   * If platform is a PR-platform, Following check will fail. Dont download the
+   * full bitstream
+   *
+   * If its non-PR-platform and enable_flat=true in xrt.ini. Download the full
+   * bitstream.
+   */
+  else if (is_flat_platform && is_flat_enabled)
+    flags = DRM_ZOCL_PLATFORM_FLAT;
 
     drm_zocl_axlf axlf_obj = {
       .za_xclbin_ptr = const_cast<axlf *>(buffer),
