@@ -534,7 +534,7 @@ To read and write from the AXI-Lite register space corresponding to a CU, the CU
 
 In the above code block
 
-              - The compute unit named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
+              - The CU named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
               - The Register Read/Write operation is performed. 
               - Closed the kernel
               
@@ -551,8 +551,46 @@ In the above code block
            read_data = kernel.read_register(READ_OFFSET);
            kernel.write_register(WRITE_OFFSET,write_data); 
               
+              
+Obtaining the argument offset
+*****************************
+              
+The register read/write access APIs use the register offset as shown in the above examples. The user can get the register offset of a corresponding kernel argument from the ``v++`` generated ``.xclbin.info`` file and use with the register read/write APIs. 
 
-     
+.. code::
+    
+    --------------------------
+    Instance:        foo_1
+    Base Address: 0x1800000
+
+    Argument:          a
+    Register Offset:   0x10
+    
+
+
+However, XRT also provides APIs to obtain the register offset for CU arguments. In the below example C API ``xrtKernelArgOffset`` is used to obtain offset of third argument of the CU ``foo:foo_1``.  
+
+
+.. code:: c
+      :number-lines: 38
+
+           // Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively) 
+           
+           xrtKernelHandle kernel = xrtPLKernelOpenExclusive(device, xclbin_uuid, "foo:{foo_1}");
+           uint32_t arg_c_offset = xrtKernelArgOffset(kernel, 2);
+ 
+
+**C++**: The equivalent C++ API example
+
+.. code:: c
+      :number-lines: 38
+
+           // Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively) 
+           
+           auto krnl = xrt::kernel(device, "foo:{foo_1}", xclbin_uuid, true); 
+           auto offset = krnl.offset(2);
+
+ 
 Executing the kernel
 ~~~~~~~~~~~~~~~~~~~~
 
