@@ -84,7 +84,8 @@ ReportAsyncError::writeReport( const xrt_core::device * _pDevice,
   _output << fmt % "Time" % "Class" % "Module" % "Driver" % "Severity" % "Error Code";
   for (auto& node : _pt.get_child("asynchronous_errors")) {
     time_t rawtime = node.second.get<long unsigned>("timestamp")/NanoSecondsPerSecond;
-    _output << fmt %  ctime(&rawtime)
+    std::string tmp(ctime(&rawtime));
+    _output << fmt %  tmp.substr( 0, tmp.length() -1).c_str() //remove linebreak
                % node.second.get<std::string>("class") % node.second.get<std::string>("module")
                % node.second.get<std::string>("driver") % node.second.get<std::string>("severity")
                % node.second.get<std::string>("error_code.error_msg");
