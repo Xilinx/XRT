@@ -298,6 +298,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = rom_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
        	},
 	{
 		.id = XOCL_SUBDEV_DMA,
@@ -310,6 +311,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb =devinfo_cb_xdma,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_DMA,
@@ -323,6 +325,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = msix_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_DMA,
@@ -337,6 +340,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
        	},
 	{
 		.id = XOCL_SUBDEV_DMA,
@@ -350,6 +354,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_MSIX,
@@ -362,6 +367,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_xdma,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_INTC,
@@ -378,6 +384,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_ERT_USER,
@@ -390,6 +397,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
  	},
 	{
 		.id = XOCL_SUBDEV_ERT_30,
@@ -403,6 +411,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
  	},
  	{
 		.id = XOCL_SUBDEV_MB_SCHEDULER,
@@ -416,6 +425,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
  	},
 	{
 		.id = XOCL_SUBDEV_XVC_PUB,
@@ -428,6 +438,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 	       	.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_URP,
        	},
 	{
 		.id = XOCL_SUBDEV_XVC_PRI,
@@ -440,6 +451,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 	       	.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
        	},
 	{
 		.id = XOCL_SUBDEV_SYSMON,
@@ -452,6 +464,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
        	},
 	{
 		.id = XOCL_SUBDEV_AF,
@@ -472,6 +485,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_MB,
@@ -487,6 +501,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = ert_cb_set_inst,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_MB,
@@ -506,6 +521,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = xmc_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_MAILBOX,
@@ -518,6 +534,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_MAILBOX,
@@ -530,6 +547,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_AXIGATE,
@@ -542,6 +560,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_plp_gate,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_AXIGATE,
@@ -554,6 +573,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_ulp_gate,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_IORES,
@@ -567,6 +587,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_setlevel,
 		.min_level = XOCL_SUBDEV_LEVEL_URP,
+		.max_level = XOCL_SUBDEV_LEVEL_URP,
 	},
 	{
 		.id = XOCL_SUBDEV_IORES,
@@ -582,6 +603,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_setlevel,
 		.min_level = XOCL_SUBDEV_LEVEL_PRP,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_IORES,
@@ -598,6 +620,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_setlevel,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_CLOCK,
@@ -618,6 +641,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_URP,
 	},
 	{
 		.id = XOCL_SUBDEV_MAILBOX_VERSAL,
@@ -630,6 +654,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_PMC,
@@ -643,6 +668,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 #if 0
 	{
@@ -669,6 +695,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_FLASH,
@@ -681,6 +708,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = flash_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_ADDR_TRANSLATOR,
@@ -693,6 +721,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_P2P,
@@ -705,6 +734,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = p2p_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_UARTLITE,
@@ -717,6 +747,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_M2M,
@@ -729,6 +760,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_PCIE_FIREWALL,
@@ -741,6 +773,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_PS,
@@ -753,6 +786,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 };
 
@@ -1100,7 +1134,8 @@ found:
 }
 
 static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
-	const char *ipname, u32 min_level, struct xocl_subdev *subdev,
+	const char *ipname, u32 min_level, u32 max_level,
+	struct xocl_subdev *subdev,
 	struct ip_node *ip, int ip_num, const char *regmap_name)
 {
 	int i, ret;
@@ -1112,7 +1147,7 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 	 */
 	for (i = 0; i < ip_num; i++) {
 		if (ip->name && strlen(ipname) > 0 && !ip->used &&
-		    ip->level >= min_level &&
+		    ip->level >= min_level && ip->level <= max_level &&
 		    !strncmp(ip->name, ipname, strlen(ipname))) {
 			if (regmap_name && ip->regmap_name &&
 			    strncmp(ip->regmap_name, regmap_name,
@@ -1173,7 +1208,8 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 	    res = &map_p->res_array[++i]) {
 
 		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res->res_name,
-		    map_p->min_level, subdev, ip, ip_num, res->regmap_name);
+		    map_p->min_level, map_p->max_level,
+		    subdev, ip, ip_num, res->regmap_name);
 
 		if (ret) {
 			xocl_xdev_err(xdev_hdl, "lookup dev %s, ip %s failed",
