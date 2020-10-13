@@ -21,7 +21,7 @@
 #include "shim.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
-#include "xrt_graph.h"
+#include "xcl_graph.h"
  
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
