@@ -688,12 +688,6 @@ namespace xclhwemhal2 {
       exec->cu_base_addr = cfg->cu_base_addr;
       exec->num_cu_masks = ((exec->num_cus-1)>>5) + 1;
 
-      /*if (ert_full && cfg->cu_dma && exec->num_slots > 32) {
-          // Max slot size is 32 because of cudma bug
-          exec->num_slots = 32;
-          cfg->slot_size = ERT_CQ_SIZE / exec->num_slots;
-      }*/
-
       unsigned int cuidx = 0;
       for ( cuidx=0; cuidx<exec->num_cus; cuidx++)
       {
@@ -743,6 +737,7 @@ namespace xclhwemhal2 {
       }
       else if(ert_full)
       {
+        cfg->cu_dma = 0;
         exec->ertfull = true;
         exec->ertpoll = false;
         exec->polling_mode = 1; //cfg->polling;
