@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -84,10 +84,25 @@ bool pcieFunc::loadConf()
     std::lock_guard<std::mutex> l(lock);
     std::vector<std::string> config;
     std::string err;
+    int retry = 1;
+    bool failed = true;
 
-    dev->sysfs_get("", "config_mailbox_channel_switch", err, chanSwitch, static_cast<uint64_t>(0));
-    if (!err.empty()) {
-        log(LOG_ERR, "failed to get channel switch: %s", err.c_str());
+    // Wait for mailbox sysfs entries are up and then read, so retry for 20sec
+    while (retry < 20) {
+        dev->sysfs_get("", "config_mailbox_channel_switch", err, chanSwitch, static_cast<uint64_t>(0));
+        if (!err.empty()) {
+            sleep(1);
+            retry++;
+        } else {
+            failed = false;
+            log(LOG_INFO, "got config_mailbox_channel_switch, retry: %d seconds", retry);
+            break;
+        }
+    }
+
+    if (failed) {
+        log(LOG_ERR, "failed to get channel switch: %s, retry: %d seconds",
+            err.c_str(), retry);
         return false;
     }
 
