@@ -149,7 +149,6 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 
 .. code-block:: 
 
-    # Single Device
     xbutil examine [--device|-d] <user bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -o] <filename>
  
 
