@@ -123,8 +123,10 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 	/* On pr platofrm load partial bitstream and on Flat platform load full bitstream */
 	if (zdev->pr_isolation_addr)
 		return zocl_load_partial(zdev, data, bit_header.BitstreamLength);
-	else
-		return zocl_fpga_mgr_load(zdev, buffer, length, 0); //0 is for full btstream
+	else {
+		/* 0 is for full bitstream */
+		return zocl_fpga_mgr_load(zdev, buffer, length, 0);
+	}
 }
 
 static int
@@ -597,12 +599,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
 		if (ret)
 			goto out0;
-	} else if ( axlf_obj->za_flags == DRM_ZOCL_PLATFORM_FLAT && 
-		    axlf_head.m_header.m_mode == XCLBIN_FLAT && 
-		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
-		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
+	} else if (axlf_obj->za_flags == DRM_ZOCL_PLATFORM_FLAT && 
+		   axlf_head.m_header.m_mode == XCLBIN_FLAT && 
+		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
+		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
 		/* 
-		 * Load full bitstream in case, it is enables in xrt runtime config
+		 * Load full bitstream, enabled in xrt runtime config
 		 * and xclbin has full bitstream and its not hw emulation
 		 */
 		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
