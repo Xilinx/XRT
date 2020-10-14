@@ -22,6 +22,18 @@ The xbutil command options are
     - ``xbutil advanced`` 
 
 
+A note about multidevice system: All the ``xbutil`` command supports a --device (or -d) switch to specify the target device of interest. The ``xbutil`` command accept the PCie user function bdf as an argument of --device switch. The user can check the user function bdf from ``xbutil examine`` command.
+
+.. code:: 
+
+    xbutil --new examine
+    ....
+    ....
+    Devices present
+    [0000:b3:00.1] : xilinx_u200_xdma_201830_2
+    [0000:65:00.1] : xilinx_u50_gen3x16_xdma_201920_3
+
+
 xbutil program
 ~~~~~~~~~~~~~~
 
