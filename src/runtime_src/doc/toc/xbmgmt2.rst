@@ -18,6 +18,22 @@ The xbmgmt command options are
     - ``xbmgmt examine``
     - ``xbmgmt reset``
 
+**A note about multidevice system**: All the ``xbmgmt`` command supports a ``--device`` (or ``-d``) switch to specify the target device of interest. The ``xbmgmt`` commands accept the PCIe management function bdf as an argument of ``--device`` switch. The user can check the management function bdf from ``xbmgmt examine`` command.
+
+.. code:: 
+
+    xbutil --new examine
+    
+    Device : [0000:b3:00.0]
+    ....
+    ....
+    Device : [0000:65:00.0]
+
+
+The above output shows the the devices with user function bdf ``0000:b3:00.0`` and ``0000:65:00.0`` that goes along with ``--device`` switch
+
+
+
 xbmgmt program
 ~~~~~~~~~~~~~~
 
