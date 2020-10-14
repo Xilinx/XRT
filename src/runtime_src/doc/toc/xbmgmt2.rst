@@ -27,7 +27,7 @@ Update the Base partition (applicable for 1RP platform too)
 
 .. code-block:: 
 
-    xbmgmt program [--device|-d] <management bdf> [--update|-u] 
+    xbmgmt program [--device|-d] <management bdf> [--update|-u] [--force|=f]
 
 
 Program a Shell Partition for 2RP platform
@@ -50,7 +50,8 @@ Revert to golden image
     
     - <management bdf>+ : Mandetory, has to be specified with one or more device management bdf  
     - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-- The ``--update`` option is used to update the base partition. This option is applicable for both the 1RP and 2RP platform. 
+- The ``--update`` option is used to update the base partition. This option is applicable for both the 1RP and 2RP platform. No action is performed if the card's existing base partition is already up-to-date, or in a higher version, or a different platform's partition. 
+- The ``--force`` option can be used with ``--update`` to update the base partition forcefully for the above cases when it is not updated. 
 - The ``--partition`` option is used to program shell partition, applicable for 2RP platform only.
     
     - <partiton file with path>: 
