@@ -30,7 +30,7 @@ The xbmgmt command options are
     Device : [0000:65:00.0]
 
 
-The above output shows the the devices with user function bdf ``0000:b3:00.0`` and ``0000:65:00.0`` that goes along with ``--device`` switch
+The above output showing management function bdfs of the two devices (``0000:b3:00.0`` and ``0000:65:00.0``) can be used with ``--device`` switch.
 
 
 
