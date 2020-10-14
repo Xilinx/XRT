@@ -19,6 +19,7 @@
 
 #include "core/common/config.h"
 #include <string>
+#include <ctime>
 
 namespace xrt_core {
 
@@ -36,6 +37,13 @@ time_ns();
 XRT_CORE_COMMON_EXPORT
 std::string
 timestamp();
+
+/**
+ * @return GMT formatted timestamp
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+gmt_timestamp(const std::time_t& time);
 
 /**
  * Simple time guard to accumulate scoped time

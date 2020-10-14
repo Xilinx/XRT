@@ -18,8 +18,6 @@
 #include "time.h"
 
 #include <chrono>
-#include <string>
-#include <ctime>
 #include <cstring>
 
 #ifdef _WIN32
@@ -60,6 +58,18 @@ timestamp()
 {
   auto time = std::chrono::system_clock::now();
   auto tm = get_gmtime(std::chrono::system_clock::to_time_t(time));
+  char buf[64] = {0};
+  return std::strftime(buf, sizeof(buf), "%c GMT", tm)
+    ? buf : "Time conversion failed";
+}
+
+/**
+ * @return GMT formatted timestamp
+ */
+std::string
+gmt_timestamp(const std::time_t& time)
+{
+  auto tm = get_gmtime(time);
   char buf[64] = {0};
   return std::strftime(buf, sizeof(buf), "%c GMT", tm)
     ? buf : "Time conversion failed";

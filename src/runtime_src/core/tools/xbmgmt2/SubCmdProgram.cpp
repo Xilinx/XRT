@@ -523,7 +523,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                      /*  "  FLASH - Flash image\n"
                                                                          "  SC    - Satellite controller"*/)
     ("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")
-    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image.  Note: This currently only applies to the flash image.")
+    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Control (MSP432) will not be reverted for a golden image does not exist.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 

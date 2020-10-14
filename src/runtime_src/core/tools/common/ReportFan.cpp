@@ -58,10 +58,12 @@ ReportFan::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree fan_array;
+  boost::property_tree::ptree pt_mechanical;
   fan_array.push_back(std::make_pair("", populate_fan(_pDevice, "fpga_fan_1", "FPGA Fan 1")));
 
   // There can only be 1 root node
-  _pt.add_child("fans", fan_array);
+  pt_mechanical.add_child("fans", fan_array);
+  _pt.add_child("mechanical", pt_mechanical);
 }
 
 void 
@@ -73,15 +75,16 @@ ReportFan::writeReport( const xrt_core::device * _pDevice,
   boost::property_tree::ptree empty_ptree;
   getPropertyTreeInternal(_pDevice, _pt);
 
-  _output << "Fans\n";
-  boost::property_tree::ptree& fans = _pt.get_child("fans", empty_ptree);
+  _output << "Mechanical\n";
+  _output << "  Fans\n";
+  boost::property_tree::ptree& fans = _pt.get_child("mechanical.fans", empty_ptree);
   for(auto& kv : fans) {
     boost::property_tree::ptree& pt_fan = kv.second;
     if(!pt_fan.get<bool>("is_present", false))
       continue;
-    _output << boost::format("  %-10s\n") % pt_fan.get<std::string>("description");
-    _output << boost::format("    %-22s: %s C\n") % "Critical Trigger Temp" % pt_fan.get<std::string>("critical_trigger_temp_C");
-    _output << boost::format("    %-22s: %s RPM\n") % "Speed" % pt_fan.get<std::string>("speed_rpm");
+    _output << boost::format("    %-10s\n") % pt_fan.get<std::string>("description");
+    _output << boost::format("      %-22s: %s C\n") % "Critical Trigger Temp" % pt_fan.get<std::string>("critical_trigger_temp_C");
+    _output << boost::format("      %-22s: %s RPM\n") % "Speed" % pt_fan.get<std::string>("speed_rpm");
   }
   _output << std::endl;
   
