@@ -85,7 +85,7 @@ The command ``xbutil validate`` validates the card installation by running preco
     - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
 - The ``--run`` (or ``-r``) specifies the perticular test to execute
         
-    - ``all`` (**default**): runs all the tests
+    - ``all`` (**default**): runs all the tests listed below
     - ``Kernel version``: Check if the kernel version is supported by XRT
     - ``Aux connection``: Check if auxiliary power is connected
     - ``PCIE link``: Check if PCIE link is active
@@ -96,11 +96,12 @@ The command ``xbutil validate`` validates the card installation by running preco
     - ``Peer to peer bar``: Run P2P test
     - ``Memory to memory DMA``: Run M2M test
     - ``Host memory bandwidth test``: Run 'bandwidth kernel' when slave bridge is enabled
+    - ``quick``: Run first five tests (Kernel version, Aux connection, PCIE link, SC version and Verify kernel)   
   
 - The ``--format`` (or ``-f``) specifies the report format
     
     - ``text`` (**default**): The report is shown in the text format, default behavior
-    - ``json-2021.2``: The report is shown in json-2021.2 
+    - ``json``: The report is shown in json-2020.2  
 
 
 **Example commands**
@@ -160,7 +161,7 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 - The ``--format`` (or ``-f``) can be used to specify the output format
     
     - ``text`` (**default**): The output is shown in the text format, default behavior
-    - ``json-2021.2``: The output is shown in json-2021.2 
+    - ``json``: The output is shown in json-2020.2 
 
 - The ``--output`` (or ``-o``) can be used to dump output in a file instead of stdout
         
@@ -179,8 +180,8 @@ The command ``xbutil examine``  can be used to find the details of the specific 
     # Examine a specific device and report electrical information in the stdout
     xbutil examine --device 0000:d8:00.0 --run electrical
  
-    # Example a list of devices and reports a list of information and dump in a file Json format
-    xbutil examine --device 0000:d8:00.0 0000:d8:00.1 --run electrical firewall --format json-2021.2 --output my_reports.json
+    # Example a list of devices and reports a list of information and dump in a file json format
+    xbutil examine --device 0000:d8:00.0 0000:d8:00.1 --run electrical firewall --format json --output my_reports.json
  
  
 xbutil reset
