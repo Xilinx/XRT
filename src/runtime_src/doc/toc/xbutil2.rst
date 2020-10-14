@@ -34,7 +34,7 @@ The xbutil command options are
     [0000:65:00.1] : xilinx_u50_gen3x16_xdma_201920_3
 
 
-The above output shows the the devices with user function bdf ``0000:b3:00.1`` and ``0000:65:00.1`` that goes along with ``--device`` switch
+The above output shows two devices and their user function bdf (``0000:b3:00.1`` and ``0000:65:00.1``) can be used with the ``--device`` switch
 
 xbutil program
 ~~~~~~~~~~~~~~
