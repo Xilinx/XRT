@@ -58,6 +58,7 @@ struct xocl_ps {
 	struct platform_device	*pdev;
 	void __iomem		*base_addr;
 	struct mutex		 ps_lock;
+	bool			sysfs_created;
 };
 
 /*
@@ -159,14 +160,70 @@ static struct xocl_ps_funcs ps_ops = {
 	.wait		= ps_wait,
 };
 
+static ssize_t ps_ready_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_ps *ps = platform_get_drvdata(to_platform_device(dev));
+	ssize_t count = 0;
+	u32 reg;
+
+	mutex_lock(&ps->ps_lock);
+	reg = READ_REG32(ps, RESET_REG_C);
+	mutex_unlock(&ps->ps_lock);
+
+	if (reg & ERT_READY_MASK)
+		count = sprintf(buf, "1\n");
+	else
+		count = sprintf(buf, "0\n");
+
+	return count;
+}
+static DEVICE_ATTR_RO(ps_ready);
+
+static struct attribute *ps_attrs[] = {
+	&dev_attr_ps_ready.attr,
+	NULL,
+};
+
+static struct attribute_group ps_attr_group = {
+	.attrs = ps_attrs,
+};
+
+static void ps_sysfs_destroy(struct xocl_ps *ps)
+{
+	if (!ps->sysfs_created)
+		return;
+
+	sysfs_remove_group(&ps->pdev->dev.kobj, &ps_attr_group);
+	ps->sysfs_created = false;
+}
+
+static int ps_sysfs_create(struct xocl_ps *ps)
+{
+	int ret;
+
+	if (ps->sysfs_created)
+		return 0;
+
+	ret = sysfs_create_group(&ps->pdev->dev.kobj, &ps_attr_group);
+	if (ret) {
+		xocl_err(&ps->pdev->dev, "create ps attrs failed: 0x%x", ret);
+		return ret;
+	}
+	ps->sysfs_created = true;
+
+	return 0;
+}
+
 static int ps_remove(struct platform_device *pdev)
 {
 	struct xocl_ps *ps;
 
 	ps = platform_get_drvdata(pdev);
 	if (!ps)
-		return 0;
+		return -EINVAL;
 
+	ps_sysfs_destroy(ps);
 	if (ps->base_addr)
 		iounmap(ps->base_addr);
 
@@ -186,7 +243,7 @@ static int ps_probe(struct platform_device *pdev)
 {
 	struct xocl_ps *ps;
 	struct resource *res;
-	int err;
+	int err, ret;
 	u32 reg;
 
 	ps = devm_kzalloc(&pdev->dev, sizeof(*ps), GFP_KERNEL);
@@ -214,6 +271,10 @@ static int ps_probe(struct platform_device *pdev)
 	WRITE_REG32(ps, reg, RESET_REG_0);
 
 	mutex_init(&ps->ps_lock);
+
+	ret = ps_sysfs_create(ps);
+	if (ret)
+		goto failed;
 
 	return 0;
 failed:
