@@ -5,6 +5,12 @@ Xbmgmt Next Generation
 
 The next generation of the ``xbmgmt`` command-line tool is in preview mode for the 2020.2 release of XRT. This version will replace the current ``xbmgmt`` in a future release of XRT. This document describes the usage of this new version of the tool.
 
+To invoke the new version please set the following environment variable
+
+.. code::
+
+    export XRT_TOOLS_NEXTGEN=true
+
 
 The xbmgmt command options are
 
@@ -94,7 +100,7 @@ The ``xbmgmt examine`` command reports detail status information of the specifie
 - The ``--format`` (or ``-f``) can be used to specify the output format
     
     - ``text`` (**default**): The output is shown in the text format, default behavior
-    - ``json-2021.2``: The output is shown in json-2021.2 
+    - ``json``: The output is shown in json-2020.2 
 - The ``--output`` (or ``-o``) can be used to dump output in a file instead of stdout
         
     - <filename> : The output file to be dumped
