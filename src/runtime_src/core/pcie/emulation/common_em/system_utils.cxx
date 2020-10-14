@@ -68,7 +68,13 @@ namespace systemUtil {
             operationStr = "UNZIP";
             std::stringstream unzipCommand;
             unzipCommand <<"unzip -q " << operand1 << " -d " << operand2;
+            if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
+              std::cout << __func__ << " DEBUG_MSGS unzipCommand: " << unzipCommand.str().c_str() << std::endl;
+            }
             int status = system(unzipCommand.str().c_str());
+            if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
+              std::cout << __func__ << " DEBUG_MSGS unzip status: " << status << std::endl;
+            }
             printErrorMessage(unzipCommand.str(),status, LineNo);
             break;
           }
