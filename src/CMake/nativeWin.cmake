@@ -61,7 +61,7 @@ include (CMake/cpackWin.cmake)
 include (CMake/version.cmake)
 
 # --- Find Package Support ---
-include (CMake/findpackage.cmake)
+#include (CMake/findpackage.cmake)
 
 message ("------------ xrt install dir: ${XRT_INSTALL_DIR}")
 add_subdirectory(runtime_src)

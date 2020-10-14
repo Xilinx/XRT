@@ -98,7 +98,7 @@ install (
   )
 
 # --- Find Package Support ---
-include (CMake/findpackage.cmake)
+#include (CMake/findpackage.cmake)
 
 if (DEFINED CROSS_COMPILE)
   set (LINUX_FLAVOR ${flavor})
