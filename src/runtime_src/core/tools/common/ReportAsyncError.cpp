@@ -16,18 +16,14 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include <ctime>
 #include "ReportAsyncError.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
+#include "core/common/time.h"
 #include "core/common/api/error_int.h"
 #include "core/include/experimental/xrt_error.h"
 #include "core/include/xrt_error_code.h"
 #include <boost/algorithm/string.hpp>
-
-#ifdef _WIN32
-# pragma warning( disable : 4996 )
-#endif
 
 const static long unsigned NanoSecondsPerSecond = 1000000000;
 
@@ -45,7 +41,8 @@ populate_async_error(const xrt_core::device * device)
       boost::property_tree::ptree _pt;
       boost::property_tree::ptree node;
       xrt_core::error_int::get_error_code_to_json(errorCode, _pt);
-      node.put("timestamp", timestamp);
+      node.put("time.epoch", timestamp);
+      node.put("time.timestamp", xrt_core::timestamp(timestamp/NanoSecondsPerSecond));
       node.put("class", _pt.get<std::string>("class.string"));
       node.put("module", _pt.get<std::string>("module.string"));
       node.put("severity", _pt.get<std::string>("severity.string"));
@@ -87,9 +84,7 @@ ReportAsyncError::writeReport( const xrt_core::device * _pDevice,
   boost::format fmt("  %-35s%-20s%-20s%-20s%-20s%-20s\n");
   _output << fmt % "Time" % "Class" % "Module" % "Driver" % "Severity" % "Error Code";
   for (auto& node : _pt.get_child("asynchronous_errors")) {
-    time_t rawtime = node.second.get<long unsigned>("timestamp")/NanoSecondsPerSecond;
-    std::string tmp(ctime(&rawtime));
-    _output << fmt %  tmp.substr( 0, tmp.length() -1).c_str() //remove linebreak
+    _output << fmt %  node.second.get<std::string>("time.timestamp")
                % node.second.get<std::string>("class") % node.second.get<std::string>("module")
                % node.second.get<std::string>("driver") % node.second.get<std::string>("severity")
                % node.second.get<std::string>("error_code.error_msg");
