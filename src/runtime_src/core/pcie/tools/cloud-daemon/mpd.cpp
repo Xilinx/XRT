@@ -659,7 +659,6 @@ void Mpd::mpd_getMsg(size_t index)
     int ret = 0;
     std::string ip;
     msgHandler cb = nullptr;
-    struct queue_msg msg;
 
     pcieFunc dev(index);
 
@@ -672,37 +671,50 @@ void Mpd::mpd_getMsg(size_t index)
     if (plugin_cbs.get_remote_msd_fd) {
         ret = (*plugin_cbs.get_remote_msd_fd)(dev.getIndex(), &msdfd);
         if (ret) {
-            dev.log(LOG_ERR, "failed to get remote fd in plugin");
-            goto out;
+            dev.log(LOG_ERR, "failed to get remote fd in plugin, mpd_getMsg thread for %s exit!!", sysfs_name.c_str());
+            threads_handling[sysfs_name] = false;
+            return;
         }
         cb = Mpd::localMsgHandler;
     } else {
-        if (!dev.loadConf())
-            goto out;
+        if (!dev.loadConf()) {
+            dev.log(LOG_ERR, "loadConf() failed, mpd_getMsg thread for %s exit!!", sysfs_name.c_str());
+            threads_handling[sysfs_name] = false;
+            return;
+        }
 
         ip = getIP(dev.getHost());
         if (ip.empty()) {
-            dev.log(LOG_ERR, "Can't find out IP from host: %s", dev.getHost());
-            goto out;
+            dev.log(LOG_ERR, "Can't find out IP from host: %s, mpd_getMsg thread for %s exit!!",
+                    dev.getHost(), sysfs_name.c_str());
+            threads_handling[sysfs_name] = false;
+            return;
         }
 
         dev.log(LOG_INFO, "peer msd ip=%s, port=%d, id=0x%x",
             ip.c_str(), dev.getPort(), dev.getId());
 
-        if ((msdfd = connectMsd(dev, ip, dev.getPort(), dev.getId())) < 0)
-            goto out;
+        if ((msdfd = connectMsd(dev, ip, dev.getPort(), dev.getId())) < 0) {
+            dev.log(LOG_ERR, "Unable to connect to msd, mpd_getMsg thread for %s exit!!", sysfs_name.c_str());
+            threads_handling[sysfs_name] = false;
+            return;
+        }
     }
 
     mbxfd = dev.getMailbox();
-    if (mbxfd == -1)
-        goto out;
+    if (mbxfd == -1) {
+        dev.log(LOG_ERR, "Unable to get mailbox fd, mpd_getMsg thread for %s exit!!",
+                sysfs_name.c_str());
+        threads_handling[sysfs_name] = false;
+        return;
+    }
 
    /*
     * Notify software mailbox online
     * This is usefull for aws. Since there is no mgmt, when xocl driver is loaded,
     * and before the mpd daemon is running, sending MAILBOX_REQ_USER_PROBE msg
     * will timeout and get no response, so there is no chance to know the card is
-    * ready.
+    * ready. 
     * With this notification, when the mpd open/close the mailbox instance, a fake
     * MAILBOX_REQ_MGMT_STATE msg is sent to mailbox in xocl, pretending a mgmt is
     * ready, then xocl will send a MAILBOX_REQ_USER_PROBE again. This time, mpd
@@ -714,10 +726,12 @@ void Mpd::mpd_getMsg(size_t index)
             dev.log(LOG_ERR, "failed to mark mgmt as online");
     }
 
-    msg.localFd = mbxfd;
-    msg.remoteFd = msdfd;
-    msg.cb = cb;
-    msg.data = nullptr;
+    struct queue_msg msg = {
+        .localFd = mbxfd,
+        .remoteFd = msdfd,
+        .cb = cb,
+        .data = nullptr,
+    };
 
     int retfd[2];
     for ( ;; ) {
@@ -751,29 +765,28 @@ void Mpd::mpd_getMsg(size_t index)
                 broken = true;
                 break;
             }
-
-            msgq->addMsg(msg);
+        
+            msgq->addMsg(msg);    
         }
 
         if (broken)
             break;
     }
 
-    //notify mailbox driver the daemon is offline
+    threads_handling[sysfs_name] = false;
+
+    //notify mailbox driver the daemon is offline 
     if (plugin_cbs.mb_notify) {
         ret = (*plugin_cbs.mb_notify)(index, mbxfd, false);
         if (ret)
             dev.log(LOG_ERR, "failed to mark mgmt as offline");
     }
 
-out:
-    threads_handling[sysfs_name] = false;
-
-    if (msdfd > 0)
+    if (msdfd > 0)     
         close(msdfd);
 
     dev.log(LOG_INFO, "mpd_getMsg thread for %s exit!!",
-            pcidev::get_dev(index)->sysfs_name.c_str());
+	pcidev::get_dev(index)->sysfs_name.c_str());
 }
 
 // Client of MPD handling msg. Will quit on any error from either local mailbox or socket fd.
