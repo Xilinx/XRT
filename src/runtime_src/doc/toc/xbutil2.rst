@@ -86,8 +86,17 @@ The command ``xbutil validate`` validates the card installation by running preco
 - The ``--run`` (or ``-r``) specifies the perticular test to execute
         
     - ``all`` (**default**): runs all the tests
-    - ``DMA``: runs DMA test
-    - ``Verify kernel``: Runs simple kernel test
+    - ``Kernel version``: Check if the kernel version is supported by XRT
+    - ``Aux connection``: Check if auxiliary power is connected
+    - ``PCIE link``: Check if PCIE link is active
+    - ``SC version``: Check if SC firmware is up-to-date
+    - ``Verify kernel``: Run 'Hello World' kernel test
+    - ``DMA``: Run dma test
+    - ``Bandwidth kernel``: Run 'bandwidth kernel' and check the throughput
+    - ``Peer to peer bar``: Run P2P test
+    - ``Memory to memory DMA``: Run M2M test
+    - ``Host memory bandwidth test``: Run 'bandwidth kernel' when slave bridge is enabled
+  
 - The ``--format`` (or ``-f``) specifies the report format
     
     - ``text`` (**default**): The report is shown in the text format, default behavior
