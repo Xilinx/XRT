@@ -27,14 +27,14 @@ Update the Base partition (applicable for 1RP platform too)
 
 .. code-block:: 
 
-    xbmgmt program [--device|-d] <management bdf> [--update|-u] [--force|=f]
+    xbmgmt program [--device|-d] <management bdf> --update [--force|-f]
 
 
 Program a Shell Partition for 2RP platform
 
 .. code-block:: 
 
-    xbmgmt program [--device| -d] <management bdf> [--partition|-p] <partition file with path>  
+    xbmgmt program [--device| -d] <management bdf> --partition <partition file with path>  
 
 
 Revert to golden image
