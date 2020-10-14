@@ -212,6 +212,30 @@ namespace xdp {
 
     uint32_t numTracePLIO = 0;
 
+    bool hasDMAMonitor() {
+      for (auto aim : aimList) {
+	if (aim->name.find("Host to Device") != std::string::npos)
+	  return true ;
+      }
+      return false ;
+    }
+
+    bool hasDMABypassMonitor() {
+      for (auto aim : aimList) {
+	if (aim->name.find("Peer to Peer") != std::string::npos)
+	  return true ;
+      }
+      return false ;
+    }
+
+    bool hasKDMAMonitor() {
+      for (auto aim : aimList) {
+	if (aim->name.find("Memory to Memory") != std::string::npos)
+	  return true ;
+      }
+      return false ;
+    }
+
     ~DeviceInfo()
     {
       for(auto i : cus) {

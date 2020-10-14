@@ -882,6 +882,20 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeDataTransferDMA()
   {
+    // Only output this table and header if some device has 
+    //  DMA monitors in the shell
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    if (infos.size() == 0) return ;
+    bool printTable = false ;
+    for (auto device : infos) {
+      if (device->hasDMAMonitor()) {
+	printTable = true ;
+	break ;
+      }
+    }
+    if (!printTable) return ;
+
     // Caption
     fout << "Data Transfer: DMA" << std::endl ;
 
@@ -895,8 +909,6 @@ namespace xdp {
 	 << "Average Size (KB)"        << ","
 	 << "Average Latency (ns)"     << "," 
 	 << std::endl ;
-
-    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
     uint64_t deviceIndex = 0 ;
     for (auto device : infos)
@@ -999,8 +1011,17 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeDataTransferDMABypass()
   {
-    // For all devices, if (deviceIntf->getNumMonitors(XCL_PERF_MON_SHELL) ==0)
-    //  return
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    if (infos.size() == 0) return ;
+    bool printTable = false ;
+    for (auto device : infos) {
+      if (device->hasDMABypassMonitor()) {
+	printTable = true ;
+	break ;
+      }
+    }
+    if (!printTable) return ;
 
     // Caption
     fout << "Data Transfer: DMA Bypass" << std::endl ;
@@ -1015,8 +1036,6 @@ namespace xdp {
 	 << "Average Size (KB)"        << ","
 	 << "Average Latency (ns)"     << "," 
 	 << std::endl ;
-
-    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
     uint64_t deviceIndex = 0 ;
     for (auto device : infos)
@@ -1119,6 +1138,18 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeDataTransferGlobalMemoryToGlobalMemory()
   {
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    if (infos.size() == 0) return ;
+    bool printTable = false ;
+    for (auto device : infos) {
+      if (device->hasKDMAMonitor()) {
+	printTable = true ;
+	break ;
+      }
+    }
+    if (!printTable) return ;
+
     // Caption
     fout << "Data Transfer: Global Memory to Global Memory" << std::endl ;
 
@@ -1132,8 +1163,6 @@ namespace xdp {
 	 << "Average Size (KB)"        << ","
 	 << "Average Latency (ns)"     << ","
 	 << std::endl ;
-
-    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
     uint64_t deviceIndex = 0 ;
     for (auto device : infos)
