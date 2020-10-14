@@ -23,7 +23,7 @@
 extern int kds_mode;
 
 static int
-zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size)
+zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size, u32 flags)
 {
 	struct drm_device *ddev = zdev->ddev;
 	struct device *dev = ddev->dev;
@@ -43,7 +43,7 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size)
 	if (!info)
 		return -ENOMEM;
 
-	info->flags = FPGA_MGR_PARTIAL_RECONFIG;
+	info->flags = flags;
 	info->buf = data;
 	info->count = size;
 
@@ -78,7 +78,7 @@ zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length)
 
 	/* Freeze PR ISOLATION IP for bitstream download */
 	iowrite32(0x0, map);
-	err = zocl_fpga_mgr_load(zdev, buffer, length);
+	err = zocl_fpga_mgr_load(zdev, buffer, length, FPGA_MGR_PARTIAL_RECONFIG);
 	/* Unfreeze PR ISOLATION IP */
 	iowrite32(0x3, map);
 
@@ -120,7 +120,13 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 		data[i+2] = temp;
 	}
 
-	return zocl_load_partial(zdev, data, bit_header.BitstreamLength);
+	/* On pr platofrm load partial bitstream and on Flat platform load full bitstream */
+	if (zdev->pr_isolation_addr)
+		return zocl_load_partial(zdev, data, bit_header.BitstreamLength);
+	else {
+		/* 0 is for full bitstream */
+		return zocl_fpga_mgr_load(zdev, buffer, length, 0);
+	}
 }
 
 static int
@@ -416,7 +422,7 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	if (size == 0)
 		return 0;
 
-	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size);
+	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size, FPGA_MGR_PARTIAL_RECONFIG);
 	vfree(pdi_buf);
 
 	/* Mark AIE out of reset state after load PDI */
@@ -591,6 +597,17 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		}
 	} else if (is_aie_only(axlf)) {
 		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
+		if (ret)
+			goto out0;
+	} else if (axlf_obj->za_flags == DRM_ZOCL_PLATFORM_FLAT && 
+		   axlf_head.m_header.m_mode == XCLBIN_FLAT && 
+		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
+		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
+		/* 
+		 * Load full bitstream, enabled in xrt runtime config
+		 * and xclbin has full bitstream and its not hw emulation
+		 */
+		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
 		if (ret)
 			goto out0;
 	}
