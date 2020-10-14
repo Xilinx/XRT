@@ -46,6 +46,9 @@ node_parent_mapping = {}
 #eg "16" ["0000:17.00.0", "0000:18:00.0"]
 bus_children = {}
 
+#path of the ps_ready sysfs node of the FPGA
+ps_ready = {}
+
 rootDir = "/sys/bus/pci/devices/"
 
 #get all above "node vs bus" mappings of xilinx FPGAs 
@@ -57,7 +60,12 @@ def get_node_bus_mapping():
         with open(os.path.join(rootDir, subdirName, "vendor")) as f : vendor = f.read()
         if vendor.strip() != "0x10ee":
             continue
-        #print("node: %s" % subdirName)
+        files = os.listdir(os.path.join(rootDir, subdirName))
+        for fname in files:
+            if re.search("^processor_system.+$", fname) != None:
+                ps_ready[subdirName] = os.path.join(rootDir, subdirName, fname, "ps_ready")
+                break
+        #print("%s: %s " % (subdirName, ps_ready[subdirName]))
         files = os.listdir(os.path.join(rootDir, subdirName, "dparent"))
         for fname in files:
             if re.search("^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-3]{2}.[0-7]:pcie.+$", fname) != None:
@@ -69,26 +77,36 @@ def get_node_bus_mapping():
                     bus_children[bus] = []
                 bus_children[bus].append(subdirName);
 
-#call 'xbutil reset' to do the real reset
-def run_reset(cmdline):
-    #print cmdline
-    p1 = subprocess.Popen(["echo", "y"], stdout=subprocess.PIPE)
-    p2 = subprocess.Popen(cmdline, stdout=subprocess.PIPE, stdin=p1.stdout)
-    p1.stdout.close()
-    p2.communicate(timeout=60)[0]
-
 #do pcie node remove and rescan
 def run(cmdline):
-    #print cmdline
+    #print(cmdline)
     subprocess.call(cmdline, shell=True)
+
+#wait ps on FPGA back online
+def wait_ps_online(mgmt):
+    while True:
+        with open(ps_ready[mgmt]) as f : ready = f.read()
+        if ready.strip() == '0':
+            time.sleep(3)
+            continue
+        print("%s ps ready" % mgmt)
+        break
+
+#wait FPGA back online
+def wait_xocl_online(user):
+    while True:
+        with open(os.path.join(rootDir, user, "dev_offline")) as f : ready = f.read()
+        if ready.strip() == '1':
+            time.sleep(1)
+            continue
+        print("%s host online" % user)
+        break
 
 def main():
     desc = textwrap.dedent('''\
         This cmdline tool is mainly used to do card level reset.
         Eg. U30 card which has 2 FPGAs in one card. When whichever FPGA is
         specified, both FPGAs on the card will be reset.
-        If there is only one FPGA node in the card, the cmd will fall back
-        to 'xbutil reset'
 
         Root privilege is required to run this cmd
         
@@ -121,46 +139,44 @@ def main():
             print("ERROR: FPGA %s is not usable" % user)
             sys.exit(1)
 
-        #print node_parent_mapping
+        #print(node_parent_mapping)
         nodes_in_cards = bus_children[node_bus_mapping[mgmt]]
-        #print nodes_in_cards
-        if len(nodes_in_cards) == 1:
-            #print("xbutil reset %s" % user)
-            print("All existing processes will be killed.")
-            while not args.yes:
-                line = input("Are you sure you wish to proceed? [y/n]:")
-                if line == "n":
-                    sys.exit(1)
-                if line == "y":
-                    break
-            run_reset(["/opt/xilinx/xrt/bin/unwrapped/xbutil", "reset", "-d", user])
-        elif (len(nodes_in_cards) == 2):
-            if mgmt == nodes_in_cards[0]:
-                rm = nodes_in_cards[1]
-            else:
-                rm = nodes_in_cards[0]
-            print("Card level reset. This will reset all FPGAs on the card: %s, %s" % (mgmt, rm))
-            print("All existing processes will be killed.")
-            while not args.yes:
-                line = input("Are you sure you wish to proceed? [y/n]:")
-                if line == "n":
-                    sys.exit(1)
-                if line == "y":
-                    break
-            rm_user = rm[:len(rm)-1] + "1"
-            #steps to do card level reset
-            #1. kill processes running on one card
-            #2. remove nodes of that FPGA
-            #3. call 'xbutil reset' on another FPGA
-            #4. rescan pcie 
-            print("shutdown: %s" % rm_user)
-            run("echo 2 > " + os.path.join(rootDir, rm_user, "shutdown"))
-            print("remove: %s, %s" % (rm_user, rm))
-            run("echo 1 > " + os.path.join(rootDir, node_parent_mapping[rm], "remove"))
-            print("xbutil reset %s" % user)
-            run_reset(["/opt/xilinx/xrt/bin/unwrapped/xbutil", "reset", "-a", "-d", user])
-            print("rescan pci")
-            run("echo 1 > /sys/bus/pci/rescan")
+        #print(nodes_in_cards)
+        print("Card level reset. This will reset all FPGAs on the card")
+        print("All existing processes will be killed.")
+        while not args.yes:
+            line = input("Are you sure you wish to proceed? [y/n]:")
+            if line == "n":
+                sys.exit(1)
+            if line == "y":
+                break
+        #steps to do card level reset
+        #1. kill processes running on both cards
+        #2. trigger SBR
+        #3. remove nodes of that FPGA
+        #4. rescan pcie 
+        #5. wait back online
+        for node in nodes_in_cards:
+            user = node[:len(node)-1] + "1"
+            print("shutdown: %s" % user)
+            run("echo 2 > " + os.path.join(rootDir, user, "shutdown"))
+        print("SBR reset...")
+        run("echo 1 > " + os.path.join(rootDir, mgmt, "sbr_toggle"))
+        time.sleep(3)
+        for node in nodes_in_cards:
+            user = node[:len(node)-1] + "1"
+            print("remove: %s, %s" % (user, node))
+            run("echo 1 > " + os.path.join(rootDir, user, "remove"))
+            run("echo 1 > " + os.path.join(rootDir, node, "remove"))
+        print("rescan pci")
+        run("echo 1 > /sys/bus/pci/rescan")
+        time.sleep(1)
+        print("wait FPGAs back on line")
+        for node in nodes_in_cards:
+            user = node[:len(node)-1] + "1"
+            wait_ps_online(node)
+            wait_xocl_online(user)
+
     except (subprocess.TimeoutExpired):
         #xbutil reset timeout, try remove it
         print("shutdown: %s" % user)
