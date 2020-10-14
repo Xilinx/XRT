@@ -164,14 +164,14 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 - The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
           
     - ``scan`` (**default**): Shows System Configuration, XRT and Device user bdf information. 
-    - ``aie``: Reports information related to AIE kernels
-    - ``electrical``: Reports information related to Voltage, current and power
+    - ``aie``: Reports AIE kernels metadata from the .xclbin
+    - ``electrical``: Reports  Electrical and power sensors present on the device
     - ``debug-ip-status``: Reports information related to Debug-IPs inserted during the kernel compilation
     - ``firewall``: Reports the current firewall status
     - ``host``: Reports the host configuration and drivers
-    - ``mechanical``: Reports mechanical information
+    - ``fan``: Reports fans present on the device
     - ``memory``: Reports memory topology of the XCLBIN (if XCLBIN is already loaded) 
-    - ``thermals``: Reports thermal 
+    - ``thermal``: Reports thermal sensors present on the device
     - ``verbose``: Reports everything
 - The ``--format`` (or ``-f``) can be used to specify the output format
     
