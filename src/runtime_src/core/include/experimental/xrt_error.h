@@ -24,7 +24,7 @@
 #ifdef __cplusplus
 #include <string>
 
-namespace xrt { 
+namespace xrt {
 
 class error_impl;
 class error

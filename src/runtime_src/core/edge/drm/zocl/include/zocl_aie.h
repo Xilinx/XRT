@@ -68,6 +68,7 @@ struct aie_error {
 	struct aie_location loc;
 	enum aie_module_type module;
 	u32 error_id;
+	u32 category;
 };
 
 struct aie_errors {
