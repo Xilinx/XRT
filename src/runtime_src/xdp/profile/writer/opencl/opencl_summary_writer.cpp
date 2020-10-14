@@ -1349,16 +1349,19 @@ namespace xdp {
 	    (double)(totalDataTransfer) / (1000.0 * totalTimeMSec) ;
 	}
       }
-      
-      fout << device->platformInfo.deviceName << ","
-	   << computeUnitName << "," 
-	   << numTransfers << ","
-	   << aveBytesPerTransfer << ","
-	   << transferEfficiency << ","
-	   << (double)(totalDataTransfer) / 1.0e6 << ","
-	   << (double)(totalWrite) / 1.0e6 << ","
-	   << (double)(totalRead) / 1.0e6 << ","
-	   << totalTransferRate << "," << std::endl ;
+
+      // Verify that this device actually had some data transfers registered
+      if (computeUnitName != "" && numTransfers != 0) {
+	fout << device->platformInfo.deviceName << ","
+	     << computeUnitName << "," 
+	     << numTransfers << ","
+	     << aveBytesPerTransfer << ","
+	     << transferEfficiency << ","
+	     << (double)(totalDataTransfer) / 1.0e6 << ","
+	     << (double)(totalWrite) / 1.0e6 << ","
+	     << (double)(totalRead) / 1.0e6 << ","
+	     << totalTransferRate << "," << std::endl ;
+      }
 
       ++i ;
     }
