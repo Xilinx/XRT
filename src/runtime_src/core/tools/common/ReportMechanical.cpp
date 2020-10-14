@@ -16,7 +16,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "ReportFan.h"
+#include "ReportMechanical.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
 namespace qr = xrt_core::query;
@@ -45,7 +45,7 @@ populate_fan(const xrt_core::device * device, const std::string& loc_id, const s
 }
 
 void
-ReportFan::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
+ReportMechanical::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
                                               boost::property_tree::ptree &_pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data, 
@@ -54,7 +54,7 @@ ReportFan::getPropertyTreeInternal( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportFan::getPropertyTree20202( const xrt_core::device * _pDevice, 
+ReportMechanical::getPropertyTree20202( const xrt_core::device * _pDevice, 
                                            boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree fan_array;
@@ -67,7 +67,7 @@ ReportFan::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportFan::writeReport( const xrt_core::device * _pDevice,
+ReportMechanical::writeReport( const xrt_core::device * _pDevice,
                                   const std::vector<std::string> & /*_elementsFilter*/, 
                                   std::iostream & _output) const
 {
