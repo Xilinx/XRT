@@ -22,7 +22,7 @@ The xbutil command options are
     - ``xbutil advanced`` 
 
 
-A note about multidevice system: All the ``xbutil`` command supports a --device (or -d) switch to specify the target device of interest. The ``xbutil`` command accept the PCie user function bdf as an argument of --device switch. The user can check the user function bdf from ``xbutil examine`` command.
+**A note about multidevice system**: All the ``xbutil`` command supports a ``--device`` (or ``-d``) switch to specify the target device of interest. The ``xbutil`` command accept the PCIe user function bdf as an argument of ``--device`` switch. The user can check the user function bdf from ``xbutil examine`` command.
 
 .. code:: 
 
@@ -33,6 +33,8 @@ A note about multidevice system: All the ``xbutil`` command supports a --device 
     [0000:b3:00.1] : xilinx_u200_xdma_201830_2
     [0000:65:00.1] : xilinx_u50_gen3x16_xdma_201920_3
 
+
+The above output shows the the devices with user function bdf ``0000:b3:00.1`` and ``0000:65:00.1`` that goes along with ``--device`` switch
 
 xbutil program
 ~~~~~~~~~~~~~~
