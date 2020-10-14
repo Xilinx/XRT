@@ -327,11 +327,11 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
     int index = 0;
     _output << std::endl;
     _output << "  Memory Topology" << std::endl;
-    _output << boost::format("    %-17s%-12s%-9s%-8s\n") % "     Tag" % "Type"
-        % "Temp(C)" % "Size";
+    _output << boost::format("    %-17s%-12s%-9s%-10s%-16s\n") % "     Tag" % "Type"
+        % "Temp(C)" % "Size" % "Base Address";
     try {
       for (auto& v : _pt.get_child("mem_topology.board.memory.memories",empty_ptree)) {
-        std::string tag, size, type, temp;
+        std::string tag, size, type, temp, base_addr;
         for (auto& subv : v.second) {
           if (subv.first == "type") {
             type = subv.second.get_value<std::string>();
@@ -342,10 +342,12 @@ ReportMemory::writeReport( const xrt_core::device * _pDevice,
             temp = pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
           } else if (subv.first == "range_bytes") {
             size = xrt_core::utils::unit_convert(std::stoll(subv.second.get_value<std::string>(), 0, 16));
+          } else if (subv.first == "base_address") {
+            base_addr = subv.second.get_value<std::string>();
           }
         }
-        _output << boost::format("    [%2d] %-12s%-12s%-9s%-8s\n") % index
-            % tag % type % temp % size;
+        _output << boost::format("    [%2d] %-12s%-12s%-9s%-10s%-16s\n") % index
+            % tag % type % temp % size % base_addr;
         index++;
       }
     }

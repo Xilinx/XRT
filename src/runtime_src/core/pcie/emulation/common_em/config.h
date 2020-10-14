@@ -106,15 +106,15 @@ namespace xclemulation{
 	  std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
 	  std::chrono::time_point<std::chrono::high_resolution_clock> end_time;
 	  bool disabled;
-	  unsigned long timeout_period;
+	  double timeout_period;
   public:
 	ApiWatchdog(TIMEOUT_SCALE scale,unsigned long timeout) {
 		  timeout_period=timeout;
 		  timeout_scale=scale;
 		  if (timeout_scale==TIMEOUT_SCALE::MIN) {
 			  timeout_period=timeout*60;
-		  } else if (TIMEOUT_SCALE::MS) {
-			  timeout_period=timeout/1000;
+		  } else if (timeout_scale==TIMEOUT_SCALE::MS) {
+			  timeout_period=((double)timeout)/1000;
 		  }
 		  if (timeout_scale==TIMEOUT_SCALE::NA) {
 			  disabled=true;

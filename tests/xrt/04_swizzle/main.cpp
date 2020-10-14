@@ -84,7 +84,7 @@ int run(int argc, char** argv)
   auto swizzle = xrt::kernel(device, uuid.get(), "vectorswizzle");
 
   // Create a parent BO for kernel input data
-  auto bo = xrt::bo(device, DATA_SIZE*sizeof(int), 0, swizzle.group_id(0));
+  auto bo = xrt::bo(device, DATA_SIZE*sizeof(int), swizzle.group_id(0));
   auto bo_mapped = bo.map<int*>();
 
   //Populate the input and reference vectors.

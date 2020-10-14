@@ -704,19 +704,6 @@ failed:
 
 }
 
-static bool xocl_subdev_vsec_is_golden(xdev_handle_t xdev_hdl)
-{
-	int bar;
-	u64 offset;
-
-	if (xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, &bar, &offset,
-		NULL))
-		return false;
-
-	return xocl_subdev_vsec_read32(xdev_hdl, bar, offset) ==
-		XOCL_VSEC_PLAT_RECOVERY;
-}
-
 int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 {
 	struct xocl_board_private *dev_info = &lro->core.priv;
@@ -727,7 +714,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	size_t					fw_size = 0;
 
 
-	if (xocl_subdev_vsec_is_golden(lro)) {
+	if (xocl_subdev_is_vsec_recovery(lro)) {
 		mgmt_info(lro, "Skip load_fdt for vsec Golden image");
 		return 0;
 	}

@@ -55,8 +55,8 @@ run(xrt::device& device, const xrt::uuid& uuid, bool random, bool verbose)
 {
   auto mmult = xrt::kernel(device, uuid.get(), "mmult");
 
-  auto a = xrt::bo(device, 2*data_size*sizeof(float), 0, mmult.group_id(0));
-  auto output = xrt::bo(device, data_size*sizeof(float), 0, mmult.group_id(1));
+  auto a = xrt::bo(device, 2*data_size*sizeof(float), mmult.group_id(0));
+  auto output = xrt::bo(device, data_size*sizeof(float), mmult.group_id(1));
 
   auto a_mapped = a.map<float*>();
 

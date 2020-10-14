@@ -43,8 +43,8 @@ static int run(const xrt::device& device, const xrt::uuid& uuid, const std::stri
   const size_t DATA_SIZE = COUNT * sizeof(int);
 
   auto simple = xrt::kernel(device, uuid.get(), cuName);
-  auto bo0 = xrt::bo(device, DATA_SIZE, XCL_BO_FLAGS_NONE, simple.group_id(0));
-  auto bo1 = xrt::bo(device, DATA_SIZE, XCL_BO_FLAGS_NONE, simple.group_id(1));
+  auto bo0 = xrt::bo(device, DATA_SIZE, simple.group_id(0));
+  auto bo1 = xrt::bo(device, DATA_SIZE, simple.group_id(1));
   auto bo0_map = bo0.map<int*>();
   auto bo1_map = bo1.map<int*>();
   std::fill(bo0_map, bo0_map + COUNT, 0);

@@ -33,6 +33,8 @@
 // System - Include Files
 #include <iostream>
 #include <map>
+#include <regex>
+
 
 #ifdef _WIN32
 
@@ -341,6 +343,136 @@ XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
   }
 }
 
+boost::property_tree::ptree
+XBUtilities::get_available_devices(bool inUserDomain)
+{
+  xrt_core::device_collection deviceCollection;
+  collect_devices(std::set<std::string> {"all"}, inUserDomain, deviceCollection);
+  boost::property_tree::ptree pt;
+  for (const auto & device : deviceCollection) {
+    boost::property_tree::ptree pt_dev;
+    pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
+
+    //user pf doesn't have mfg node. Also if user pf is loaded, it means that the card is not is mfg mode
+    bool is_mfg = false;
+    try{
+      is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
+    } catch(...) {}
+
+    //if factory mode
+    if (is_mfg) {
+      std::string vbnv = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN";
+      pt_dev.put("vbnv", vbnv);
+    }
+    else {
+      pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+      pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+    }
+
+    pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
+    pt.push_back(std::make_pair("", pt_dev));
+  }
+  return pt;
+}
+
+/* 
+ * currently edge supports only one device
+ */
+static uint16_t
+deviceId2index()
+{
+  return 0;
+}
+
+/*
+ * Parse the bdf passed in by the user to an index
+ * DDDD:BB:DD.F where domain and function are optional
+ */
+static uint16_t
+bdf2index(const std::string& bdfstr, bool _inUserDomain)
+{
+  //gather available devices for user to pick from
+  std::stringstream available_devs;
+  available_devs << "\n Available devices:\n";
+  boost::property_tree::ptree available_devices = get_available_devices(_inUserDomain);
+  for(auto& kd : available_devices) {
+    boost::property_tree::ptree& dev = kd.second;
+    available_devs << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
+  }
+
+  if(!std::regex_match(bdfstr,std::regex("[A-Za-z0-9:.]+")))
+    throw std::runtime_error("Please specify valid string" + available_devs.str());
+
+  std::vector<std::string> tokens; 
+  boost::split(tokens, bdfstr, boost::is_any_of(":")); 
+  int radix = 16;
+  uint16_t bus = 0; 
+  uint16_t dev = 0; 
+  uint16_t func = std::numeric_limits<uint16_t>::max();
+
+  // check if we have 2-3 tokens: domain, bus, device.function
+  // domain is optional
+  if(tokens.size() <= 1 || tokens.size() > 3)
+    throw std::runtime_error(boost::str(boost::format("Invalid BDF '%s'. Please spcify the BDF using 'DDDD:BB:DD.F' format") % bdfstr) + available_devs.str());
+
+  std::reverse(std::begin(tokens), std::end(tokens));
+
+  //check if func was specified. func is optional
+  auto pos_of_func = tokens[0].find('.');
+  if(pos_of_func != std::string::npos) {
+    dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0].substr(0, pos_of_func)), nullptr, radix));
+    func = static_cast<uint16_t>(std::stoi(std::string(tokens[0].substr(pos_of_func+1)), nullptr, radix));
+  }
+  else{
+    dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0]), nullptr, radix));
+  }
+  bus = static_cast<uint16_t>(std::stoi(std::string(tokens[1]), nullptr, radix));
+
+  uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
+  for (uint16_t i = 0; i < devices; i++) {
+    auto device = _inUserDomain ? xrt_core::get_userpf_device(i) : xrt_core::get_mgmtpf_device(i);
+    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+
+    //if the user specifies func, compare
+    //otherwise safely ignore
+    auto cmp_func = [bdf](uint16_t func) 
+    {
+      if (func != std::numeric_limits<uint16_t>::max())
+        return func == std::get<2>(bdf);
+      return true;
+    };
+
+    if (bus == std::get<0>(bdf) && dev == std::get<1>(bdf) && cmp_func(func))
+      return i;
+  }
+
+  throw std::runtime_error(boost::str(boost::format("No user or mgmt PF found for '%s'") % bdfstr) + available_devs.str());
+}
+
+/*
+ * Map the string passed in by the user to a valid index
+ * Supports pcie and edge devices
+ */
+static uint16_t
+str2index(const std::string& str, bool _inUserDomain)
+{
+  //throw an error if no devices are present
+  uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
+  if(devices == 0) 
+    throw std::runtime_error("No devices found");
+
+  uint16_t idx = 0;
+  auto device = _inUserDomain ? xrt_core::get_userpf_device(idx) : xrt_core::get_mgmtpf_device(idx);
+  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+  // if the bdf is zero, we are dealing with an edge device
+  if(std::get<0>(bdf) == 0 && std::get<1>(bdf) == 0 && std::get<2>(bdf) == 0) {
+    return deviceId2index();
+  }
+  else {
+    return bdf2index(str, _inUserDomain);
+  }
+}
+
 void
 XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
                               bool _inUserDomain,
@@ -377,7 +509,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 
   // -- Collect the devices by name
   for (const auto & deviceBDF : _deviceBDFs) {
-    auto index = xrt_core::utils::bdf2index(deviceBDF, _inUserDomain);         // Can throw
+    auto index = str2index(deviceBDF, _inUserDomain);         // Can throw
     if(_inUserDomain)
       _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
     else
@@ -423,38 +555,6 @@ XBUtilities::sudo_or_throw(const std::string& msg)
     return;
   throw xrt_core::system_error(EPERM, msg);
 #endif
-}
-
-boost::property_tree::ptree
-XBUtilities::get_available_devices(bool inUserDomain)
-{
-  xrt_core::device_collection deviceCollection;
-  collect_devices(std::set<std::string> {"all"}, inUserDomain, deviceCollection);
-  boost::property_tree::ptree pt;
-  for (const auto & device : deviceCollection) {
-    boost::property_tree::ptree pt_dev;
-    pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
-
-    //user pf doesn't have mfg node. Also if user pf is loaded, it means that the card is not is mfg mode
-    bool is_mfg = false;
-    try{
-      is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
-    } catch(...) {}
-
-    //if factory mode
-    if (is_mfg) {
-      std::string vbnv = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN";
-      pt_dev.put("vbnv", vbnv);
-    }
-    else {
-      pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
-      pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-    }
-
-    pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
-    pt.push_back(std::make_pair("", pt_dev));
-  }
-  return pt;
 }
 
 std::vector<char>
@@ -593,7 +693,7 @@ static const std::map<std::string, xrt_core::query::reset_type> reset_map = {
     { "kernel", xrt_core::query::reset_type(xrt_core::query::reset_key::kernel, "KERNEL Reset", "", "mgmt_reset", "Please make sure no application is currently running.", "2") },
     { "ert", xrt_core::query::reset_type(xrt_core::query::reset_key::ert, "ERT Reset", "", "mgmt_reset", "", "3") },
     { "ecc", xrt_core::query::reset_type(xrt_core::query::reset_key::ecc, "ECC Reset", "", "ecc_reset", "", "4") },
-    { "soft_kernel", xrt_core::query::reset_type(xrt_core::query::reset_key::soft_kernel, "SOFT KERNEL Reset", "", "mgmt_reset", "", "5") },
+    { "soft-kernel", xrt_core::query::reset_type(xrt_core::query::reset_key::soft_kernel, "SOFT KERNEL Reset", "", "mgmt_reset", "", "5") },
     { "aie", xrt_core::query::reset_type(xrt_core::query::reset_key::aie, "AIE Reset", "", "mgmt_reset", "", "6") }
   };
 

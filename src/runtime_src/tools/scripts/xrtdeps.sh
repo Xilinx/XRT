@@ -324,7 +324,7 @@ prep_centos7()
     fi
     echo "Installing cmake3 from EPEL repository..."
     yum install -y cmake3
-    if [ $docker == 0 ]; then 
+    if [ $docker == 0 ]; then
         echo "Enabling CentOS SCL repository..."
         yum --enablerepo=extras install -y centos-release-scl
     fi
@@ -338,7 +338,7 @@ prep_rhel7()
     	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 	 yum check-update
     fi
-    
+
     echo "Enabling RHEL SCL repository..."
     yum-config-manager --enable rhel-server-rhscl-7-rpms
 
@@ -357,7 +357,7 @@ prep_rhel8()
     	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 	 yum check-update
     fi
-    
+
     echo "Enabling CodeReady-Builder repository..."
     subscription-manager repos --enable "codeready-builder-for-rhel-8-x86_64-rpms"
 }
@@ -394,7 +394,7 @@ prep_rhel()
     else
         prep_rhel7
     fi
-    
+
     echo "Installing cmake3 from EPEL repository..."
     yum install -y cmake3
 }
@@ -404,9 +404,9 @@ prep_amzn()
     echo "Installing amazon EPEL..."
     amazon-linux-extras install epel
     echo "Installing cmake3 from EPEL repository..."
-    yum install cmake3
+    yum install -y cmake3
     echo "Installing opencl header from EPEL repository..."
-    yum install ocl-icd ocl-icd-devel opencl-headers
+    yum install -y ocl-icd ocl-icd-devel opencl-headers
 }
 
 install()

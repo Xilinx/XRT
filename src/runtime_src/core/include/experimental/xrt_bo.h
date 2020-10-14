@@ -19,6 +19,7 @@
 #define _XRT_BO_H_
 
 #include "xrt.h"
+#include "xrt_mem.h"
 
 #ifdef __cplusplus
 # include <memory>
@@ -80,6 +81,26 @@ public:
   XCL_DRIVER_DLLESPEC
   bo(xclDeviceHandle dhdl, void* userptr, size_t sz, buffer_flags flags, memory_group grp);
 
+  
+  /**
+   * bo() - Constructor with user host buffer 
+   *
+   * @param dhdl
+   *  Device handle
+   * @param userptr
+   *  Pointer to aligned user memory
+   * @param sz
+   *  Size of buffer
+   * @param grp
+   *  Device memory group to allocate buffer in
+   *
+   * The buffer type is default buffer object with host buffer and
+   * device buffer, where the host buffer is managed by user.
+   */
+  bo(xclDeviceHandle dhdl, void* userptr, size_t sz, memory_group grp)
+    : bo(dhdl, userptr, sz, XCL_BO_FLAGS_NONE, grp)
+  {}
+
   /**
    * bo() - Constructor where XRT manages host buffer if any
    *
@@ -97,6 +118,23 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   bo(xclDeviceHandle dhdl, size_t size, buffer_flags flags, memory_group grp);
+
+  /**
+   * bo() - Constructor, default flags, where XRT manages host buffer if any
+   *
+   * @param dhdl
+   *  Device handle
+   * @param size
+   *  Size of buffer
+   * @param grp
+   *  Device memory group to allocate buffer in
+   *
+   * The buffer type is default buffer object with host buffer and device buffer.
+   * The host buffer is allocated and managed by XRT.
+   */
+  bo(xclDeviceHandle dhdl, size_t size, memory_group grp)
+    : bo(dhdl, size, XCL_BO_FLAGS_NONE, grp)
+  {}
 
   /**
    * bo() - Constructor to import an exported buffer

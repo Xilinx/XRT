@@ -179,6 +179,7 @@ enum class key_type
   flash_bar_offset,
   is_mfg,
   mfg_ver,
+  is_recovery,
   is_ready,
   f_flash_type,
   flash_type,
@@ -1886,6 +1887,15 @@ struct mfg_ver : request
 {
   using result_type = uint32_t;
   static const key_type key = key_type::mfg_ver;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct is_recovery : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::is_recovery;
 
   virtual boost::any
   get(const device*) const = 0;

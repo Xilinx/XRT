@@ -3307,6 +3307,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 	u32 reg_val = 0;
 	int ret = 0;
 	void *xdev_hdl;
+	bool skip_xmc = false;
 
 	if (!xmc->enabled)
 		return -ENODEV;
@@ -3317,12 +3318,14 @@ static int load_xmc(struct xocl_xmc *xmc)
 	mutex_lock(&xmc->xmc_lock);
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
+	skip_xmc = xmc_in_bitfile(xmc->pdev);
 
-	if (xmc_in_bitfile(xmc->pdev)) {
+	if (skip_xmc) {
 		xocl_info(&xmc->pdev->dev, "Skip XMC stop/load, since XMC is loaded through fpga bitfile");
 		if (READ_XMC_GPIO(xmc, 0) == GPIO_ENABLED)
 			xmc->state = XMC_STATE_ENABLED;
-		goto done;
+		if (xocl_subdev_is_vsec(xdev_hdl))
+			goto done;
 	}
 
 	/* Stop XMC first */
@@ -3344,7 +3347,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 	}
 
 	/* Load XMC and ERT Image */
-	if (xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
+	if (!skip_xmc && xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
 		if (xmc->mgmt_binary_length > xmc->range[IO_IMAGE_MGMT]) {
 			xocl_err(&xmc->pdev->dev, "XMC image too long %d",
 				xmc->mgmt_binary_length);

@@ -53,7 +53,7 @@ int testSingleThread(const xrt::device& device, const xrt::uuid& uuid)
   std::vector<xrt::run> cmds;
   for (int i = 0; i < expected_cmds; i++) {
     auto run = xrt::run(hello);
-    run.set_arg(0, xrt::bo(device, 20, 0, hello.group_id(0)));
+    run.set_arg(0, xrt::bo(device, 20, hello.group_id(0)));
     cmds.push_back(std::move(run));
   }
   std::cout << "Allocated commands, expect " << expected_cmds << ", created " << cmds.size() << std::endl;

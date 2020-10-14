@@ -101,13 +101,13 @@ struct job_type
     auto grpid1 = kernel.group_id(1);
 
     const size_t data_size = ELEMENTS * ARRAY_SIZE;
-    a = xrt::bo(device, data_size*sizeof(unsigned long), 0, grpid0);
+    a = xrt::bo(device, data_size*sizeof(unsigned long), grpid0);
     am = a.map();
     auto adata = reinterpret_cast<unsigned long*>(am);
     for (unsigned int i=0;i<data_size;++i)
       adata[i] = i;
 
-    b = xrt::bo(device, data_size*sizeof(unsigned long), 0, grpid1);
+    b = xrt::bo(device, data_size*sizeof(unsigned long), grpid1);
     bm = b.map();
     auto bdata = reinterpret_cast<unsigned long*>(bm);
      for (unsigned int j=0;j<data_size;++j)

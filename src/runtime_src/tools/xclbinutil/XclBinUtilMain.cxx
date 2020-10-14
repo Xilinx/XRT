@@ -462,6 +462,7 @@ int main_(int argc, const char** argv) {
     return RC_SUCCESS;
   }
 
+  // -- Read in the xclbin image --
   XclBin xclBin;
   if (!sInputFile.empty()) {
     QUIET("Reading xclbin file into memory.  File: " + sInputFile);
@@ -470,15 +471,25 @@ int main_(int argc, const char** argv) {
     QUIET("Creating a default 'in-memory' xclbin image.");
   }
 
-  for (auto section : sectionsToRemove) {
-    xclBin.removeSection(section);
+  // -- DRC checks --
+  // Determine if we should auto create the GROUP_TOPOLOGY or GROUP_CONNECTIVITY sections
+  if ((xclBin.findSection(ASK_GROUP_TOPOLOGY) != nullptr) ||
+      (xclBin.findSection(ASK_GROUP_CONNECTIVITY) != nullptr)) {
+    // GROUP Sections already exist don't modify them.
+    bSkipBankGrouping = true;
   }
 
+  // -- Remove Sections --
+  for (auto section : sectionsToRemove) 
+    xclBin.removeSection(section);
+
+  // -- Replace Sections --
   for (auto section : sectionsToReplace) {
     ParameterSectionData psd(section);
     xclBin.replaceSection( psd );
   }
 
+  // -- Add Sections --
   for (auto section : sectionsToAdd) {
     ParameterSectionData psd(section);
     if (psd.getSectionName().empty() &&
@@ -489,6 +500,7 @@ int main_(int argc, const char** argv) {
     }
   }
 
+  // -- Append to Sections --
   for (auto section : sectionsToAppend) {
     ParameterSectionData psd(section);
     if (psd.getSectionName().empty() &&
@@ -500,7 +512,7 @@ int main_(int argc, const char** argv) {
     }
   }
 
-  // -------------------------------------------------------------------------
+  // -- Post Section Processing --
   // Auto add GROUP_TOPOLOGY and/or GROUP_CONNECTIVITY
   if ((bSkipBankGrouping == false) &&
       (xclBin.findSection(ASK_GROUP_TOPOLOGY) == nullptr) &&
@@ -510,14 +522,17 @@ int main_(int argc, const char** argv) {
     XUtil::createMemoryBankGrouping(xclBin);
   } 
 
+  // -- Remove Keys --
   for (auto key : keysToRemove) {
     xclBin.removeKey(key);
   }
 
+  // -- Add / Set Keys --
   for (auto keyValue : keyValuePairs) {
     xclBin.setKeyValue(keyValue);
   }
 
+  // -- Dump Sections --
   for (auto section : sectionsToDump) {
     ParameterSectionData psd(section);
     if (psd.getSectionName().empty() &&
@@ -528,6 +543,7 @@ int main_(int argc, const char** argv) {
     }
   }
 
+  // -- Write out new xclbin image --
   if (!sOutputFile.empty()) {
     xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
 
@@ -536,6 +552,7 @@ int main_(int argc, const char** argv) {
     }
   }
 
+  // -- Redirect INFO output --
   if (!sInfoFile.empty()) {
     if (sInfoFile == "<console>") {
       xclBin.reportInfo(std::cout, sInputFile, bVerbose);

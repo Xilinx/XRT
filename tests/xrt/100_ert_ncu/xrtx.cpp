@@ -33,28 +33,6 @@
 # pragma warning ( disable : 4267 )
 #endif
 
-static std::vector<char>
-load_xclbin(xrtDeviceHandle device, const std::string& fnm)
-{
-  if (fnm.empty())
-    throw std::runtime_error("No xclbin speified");
-
-  // load bit stream
-  std::ifstream stream(fnm);
-  stream.seekg(0,stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
-
-  std::vector<char> header(size);
-  stream.read(header.data(),size);
-
-  auto top = reinterpret_cast<const axlf*>(header.data());
-  if (xrtDeviceLoadXclbin(device, top))
-    throw std::runtime_error("Bitstream download failed");
-
-  return header;
-}
-
 const size_t ELEMENTS = 16;
 const size_t ARRAY_SIZE = 8;
 const size_t MAXCUS = 8;
@@ -114,7 +92,7 @@ struct job_type
   void* bm               = nullptr;
   xrtRunHandle r         = XRT_NULL_HANDLE;
 
-  job_type(xrtDeviceHandle device, xrtKernelHandle kernel, unsigned int)
+  job_type(xrtDeviceHandle device, xrtKernelHandle kernel)
     : d(device), k(kernel)
   {
     static size_t count=0;
@@ -206,12 +184,12 @@ kernel_done(xrtRunHandle rhdl, ert_cmd_state state, void* data)
 }
 
 static int
-run(xrtDeviceHandle device, xrtKernelHandle kernel, size_t num_jobs, size_t seconds, int first_used_mem)
+run(xrtDeviceHandle device, xrtKernelHandle kernel, size_t num_jobs, size_t seconds)
 {
   std::vector<job_type> jobs;
   jobs.reserve(num_jobs);
   for (int i=0; i<num_jobs; ++i)
-    jobs.emplace_back(device, kernel, first_used_mem);
+    jobs.emplace_back(device, kernel);
 
   stop = (seconds == 0) ? true : false;
   std::for_each(jobs.begin(),jobs.end(),[](job_type& j){j.run();});
@@ -276,35 +254,17 @@ int run(int argc, char** argv)
 
   auto device = xrtDeviceOpen(device_index);
 
-  auto header = load_xclbin(device, xclbin_fnm);
-  auto top = reinterpret_cast<const axlf*>(header.data());
-  auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
-  auto topology = reinterpret_cast<mem_topology*>(header.data() + topo->m_sectionOffset);
+  if (xrtDeviceLoadXclbinFile(device, xclbin_fnm.c_str()))
+    throw std::runtime_error("failed to load xclbin");
 
-  {
-    // Demo xrt_xclbin API retrieving uuid from kernel if applicable
-    xuid_t xclbin_id;
-    uuid_copy(xclbin_id, top->m_header.uuid);
-
-    xuid_t xid;
-    xrtDeviceGetXclbinUUID(device, xid);
-    if (uuid_compare(xclbin_id, xid) != 0)
-      throw std::runtime_error("xid mismatch");
-  }
-
-  int first_used_mem = 0;
-  for (int i=0; i<topology->m_count; ++i) {
-    if (topology->m_mem_data[i].m_used) {
-      first_used_mem = i;
-      break;
-    }
-  }
+  xuid_t uuid;
+  xrtDeviceGetXclbinUUID(device, uuid);
 
   compute_units = cus = std::min<size_t>(cus, compute_units);
   std::string kname = get_kernel_name(cus);
-  auto kernel = xrtPLKernelOpen(device, top->m_header.uuid, kname.c_str());
+  auto kernel = xrtPLKernelOpen(device, uuid, kname.c_str());
 
-  run(device,kernel,jobs,secs,first_used_mem);
+  run(device,kernel,jobs,secs);
 
   xrtKernelClose(kernel);
   xrtDeviceClose(device);
