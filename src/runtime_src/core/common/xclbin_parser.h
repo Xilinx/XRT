@@ -69,6 +69,19 @@ struct softkernel_object
 };
 
 /**
+ * get_axlf_section_header() - retrieve axlf section header
+ *
+ * @top: axlf to retrieve section from
+ * @kind: section kind to retrieve
+ *
+ * This function treats group sections conditionally based on
+ * xrt.ini settings
+ */ 
+XRT_CORE_COMMON_EXPORT
+const axlf_section_header*
+get_axlf_section(const axlf* top, axlf_section_kind kind);
+
+/**
  * Get specific binary section of the axlf structure
  *
  * auto data = axlf_section_type::get<const ip_layout*>(top,axlf_section_kind::IP_LAYOUT);
@@ -82,7 +95,7 @@ struct axlf_section_type<SectionType*>
   static SectionType*
   get(const axlf* top, axlf_section_kind kind)
   {
-    if (auto header = ::xclbin::get_axlf_section(top, kind)) {
+    if (auto header = get_axlf_section(top, kind)) {
       auto begin = reinterpret_cast<const char*>(top) + header->m_sectionOffset ;
       return reinterpret_cast<SectionType*>(begin);
     }
