@@ -7,8 +7,10 @@ The next generation of the ``xbutil`` command-line tool is in preview mode for t
 
 To invoke the new version please set the following environment variable
 
-.. code: 
-    export NB_NEW_TOOL=true
+.. code::
+
+    export XRT_TOOLS_NEXTGEN=true
+
 
 
 The xbutil command options are
