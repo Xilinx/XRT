@@ -10,6 +10,14 @@ fi
 # Working variables
 XRT_PROG=xbutil
 
+# Determine which version of xbutil should be used
+# Check to see environment variable is NOT set
+if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then 
+  XRT_PROG=xbutil
+elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
+     XRT_PROG=xbutil2
+fi
+
 # -- Examine the options
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
@@ -19,10 +27,6 @@ while [ $# -gt 0 ]; do
     -new|--new)
       XRT_PROG=xbutil2
       shift
-      echo "-----------------------------------------------------"
-      echo " Invoking next generation of the xbutil application "
-      echo "-----------------------------------------------------"
-
       ;;
     # Copy the options the remaining options
     *)
@@ -32,6 +36,13 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+
+# Friendly message
+if [ ${XRT_PROG} == "xbutil2" ]; then
+  echo "-----------------------------------------------------"
+  echo " Invoking next generation of the xbutil application "
+  echo "-----------------------------------------------------"
+fi
 
 # -- Find and call the loader
 XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"

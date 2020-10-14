@@ -10,6 +10,14 @@ fi
 # Working variables
 XRT_PROG=xbmgmt
 
+# Determine which version of xbmgmt should be used
+# Check to see environment variable is NOT set
+if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then 
+  XRT_PROG=xbmgmt
+elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
+     XRT_PROG=xbmgmt2
+fi
+
 # -- Examine the options
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
@@ -19,9 +27,6 @@ while [ $# -gt 0 ]; do
     -new|--new)
       XRT_PROG=xbmgmt2
       shift
-      echo "-----------------------------------------------------"
-      echo " Invoking next generation of the xbmgmt application "
-      echo "-----------------------------------------------------"
       ;;
     # Copy the options the remaining options
     *)
@@ -31,6 +36,13 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+
+# Friendly message
+if [ ${XRT_PROG} == "xbmgmt2" ]; then
+  echo "-----------------------------------------------------"
+  echo " Invoking next generation of the xbmgmt application "
+  echo "-----------------------------------------------------"
+fi
 
 # -- Find and call the loader
 XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"

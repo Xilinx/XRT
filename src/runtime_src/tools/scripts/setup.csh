@@ -65,7 +65,10 @@ else
     setenv PYTHONPATH $XILINX_XRT/python:$PYTHONPATH
 endif
 
-echo "XILINX_XRT      : $XILINX_XRT"
-echo "PATH            : $PATH"
-echo "LD_LIBRARY_PATH : $LD_LIBRARY_PATH"
-echo "PYTHONPATH      : $PYTHONPATH"
+setenv XRT_TOOLS_NEXTGEN false
+
+echo "XILINX_XRT        : $XILINX_XRT"
+echo "PATH              : $PATH"
+echo "LD_LIBRARY_PATH   : $LD_LIBRARY_PATH"
+echo "PYTHONPATH        : $PYTHONPATH"
+echo "XRT_TOOLS_NEXTGEN : $XRT_TOOLS_NEXTGEN"
