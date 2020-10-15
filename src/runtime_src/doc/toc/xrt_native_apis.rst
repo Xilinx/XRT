@@ -227,7 +227,7 @@ Code example of transferring data from the host to the device
 .. code:: c
       :number-lines: 20
            
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
 
            // Prepare the input data
            int buff_data[data_size];
@@ -245,7 +245,7 @@ Code example of transferring data from the host to the device
 .. code:: c++
       :number-lines: 20    
            
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_0);
            // Prepare the input data
            int buff_data[data_size];
            for (auto i=0; i<data_size; ++i) {
@@ -268,7 +268,7 @@ Code example of transferring data from the host to the device by this approach
 .. code:: c
       :number-lines: 20
            
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
            int* input_buffer_mapped = (int*)xrtBOMap(input_buffer);
 
            for (int i=0;i<data_size;++i) {
@@ -282,7 +282,7 @@ Code example of transferring data from the host to the device by this approach
 .. code:: c++
       :number-lines: 20
            
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_0);
            auto input_buffer_mapped = input_buffer.map<int*>();
 
            for (auto i=0;i<data_size;++i) {
@@ -505,13 +505,13 @@ Let us review the example below where the buffer is allocated for the kernel's f
       :number-lines: 39
            
            xrtMemoryGroup idx_0 = xrtKernelArgGroupId(kernel, 0); // bank index of 0th argument
-           xrtBufferHandle a = xrtBOAlloc(device, data_size*sizeof(int), XCL_BO_FLAGS_NONE, idx_0);
+           xrtBufferHandle a = xrtBOAlloc(device, data_size*sizeof(int), XRT_BO_FLAGS_NONE, idx_0);
 
 
 .. code:: c++
       :number-lines: 15
                        
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, kernel.group_id(0));
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, kernel.group_id(0));
 
 
 
