@@ -674,15 +674,17 @@ XclBin::removeSection(const std::string & _sSectionToRemove)
   }
 
   removeSection(pSection);
+  pSection = nullptr;
 
   std::string indexEntry;
   if (!sectionIndexName.empty()) {
     indexEntry = "[" + sectionIndexName + "]";
   }
+
   std::cout << std::endl << XUtil::format("Section '%s%s'(%d) was successfully removed",
-                                          pSection->getSectionKindAsString().c_str(), 
+                                          _sSectionToRemove.c_str(), 
                                           indexEntry.c_str(),
-                                          pSection->getSectionKind()) << std::endl;
+                                          _eKind) << std::endl;
 }
 
 

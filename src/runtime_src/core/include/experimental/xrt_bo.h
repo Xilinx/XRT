@@ -51,13 +51,38 @@ typedef uint32_t xrtMemoryGroup;
 
 namespace xrt {
 
-using buffer_flags = xrtBufferFlags;
 using memory_group = xrtMemoryGroup;
 
 class bo_impl;
 class bo
 {
 public:
+  /**
+   * @enum flags - buffer object flags
+   *
+   * @var normal
+   *  Create normal BO with host side and device side buffers
+   * @var cacheable
+   *  Create cacheable BO.  Only effective on embedded platforms.
+   * @var device_only
+   *  Create a BO with a device side buffer only
+   * @var host_only
+   *  Create a BO with a host side buffer only
+   * @var p2p
+   *  Create a BO for peer-to-peer use
+   *
+   * The flags used by xrt::bo are compatible with XCL style 
+   * flags as define in ``xrt_mem.h``
+   */
+  enum class flags : uint32_t
+  {
+    normal      = 0,
+    cacheable   = XRT_BO_FLAGS_CACHEABLE,
+    device_only = XRT_BO_FLAGS_DEV_ONLY,
+    host_only   = XRT_BO_FLAGS_HOST_ONLY,
+    p2p         = XRT_BO_FLAGS_P2P,
+  };
+  
   /**
    * bo() - Constructor for empty bo
    */
@@ -79,8 +104,14 @@ public:
    *  Device memory group to allocate buffer in
    */
   XCL_DRIVER_DLLESPEC
-  bo(xclDeviceHandle dhdl, void* userptr, size_t sz, buffer_flags flags, memory_group grp);
+  bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp);
 
+  /// @cond
+  // Legacy constructor
+  bo(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags, memory_group grp)
+    : bo(dhdl, userptr, sz, static_cast<bo::flags>(flags), grp)
+  {}
+  /// @endcond
   
   /**
    * bo() - Constructor with user host buffer 
@@ -98,7 +129,7 @@ public:
    * device buffer, where the host buffer is managed by user.
    */
   bo(xclDeviceHandle dhdl, void* userptr, size_t sz, memory_group grp)
-    : bo(dhdl, userptr, sz, XCL_BO_FLAGS_NONE, grp)
+    : bo(dhdl, userptr, sz, bo::flags::normal, grp)
   {}
 
   /**
@@ -117,7 +148,14 @@ public:
    * XRT and can be accessed by using map()
    */
   XCL_DRIVER_DLLESPEC
-  bo(xclDeviceHandle dhdl, size_t size, buffer_flags flags, memory_group grp);
+  bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp);
+
+  /// @cond
+  // Legacy constructor
+  bo(xclDeviceHandle dhdl, size_t size, xrtBufferFlags flags, memory_group grp)
+    : bo(dhdl, size, static_cast<bo::flags>(flags), grp)
+  {}
+  /// @endcond
 
   /**
    * bo() - Constructor, default flags, where XRT manages host buffer if any
@@ -133,7 +171,7 @@ public:
    * The host buffer is allocated and managed by XRT.
    */
   bo(xclDeviceHandle dhdl, size_t size, memory_group grp)
-    : bo(dhdl, size, XCL_BO_FLAGS_NONE, grp)
+    : bo(dhdl, size, bo::flags::normal, grp)
   {}
 
   /**

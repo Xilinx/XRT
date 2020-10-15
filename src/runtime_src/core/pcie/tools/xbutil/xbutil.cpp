@@ -1223,6 +1223,17 @@ int xcldev::device::runTestCase(const std::string& py,
         xclbinPath += xclbin;
 
         if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+            // 0RP (nonDFX) flat shell support.  
+            // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.  
+            // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
+            std::string logic_uuid, errmsg;
+            pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuid);
+            // Only skip the test if it nonDFX platform and the accelerator doesn't exist. 
+            // All other conditions should generate an error.
+            if (!logic_uuid.empty() && xclbin.compare("verify.xclbin") == 0) {
+                output += "Verify xclbin not available. Skipping validation.";
+                return -EOPNOTSUPP;
+            }
             //if bandwidth xclbin isn't present, skip the test
             if(xclbin.compare("bandwidth.xclbin") == 0) {
                 output += "Bandwidth xclbin not available. Skipping validation.";
@@ -1466,7 +1477,8 @@ int xcldev::device::runOneTest(std::string testName,
 	    std::cout << "INFO: == " << testName << " PASSED" << std::endl;
     } else if (ret == -EOPNOTSUPP) {
 	    std::cout << "INFO: == " << testName << " SKIPPED" << std::endl;
-        ret = 0;
+        if(testName.compare("verify kernel test") != 0)
+            ret = 0;
     } else if (ret == 1) {
 	    std::cout << "WARN: == " << testName << " PASSED with warning"
             << std::endl;
@@ -1554,6 +1566,10 @@ int xcldev::device::validate(bool quick, bool hidden)
     retVal = runOneTest("verify kernel test",
             std::bind(&xcldev::device::verifyKernelTest, this));
     withWarning = withWarning || (retVal == 1);
+    //flat shell support: if the shell doesn't support xclbin download
+    //exit immediately
+    if(retVal == -EOPNOTSUPP)
+        return withWarning ? 1 : 0;
     if (retVal < 0)
         return retVal;
 

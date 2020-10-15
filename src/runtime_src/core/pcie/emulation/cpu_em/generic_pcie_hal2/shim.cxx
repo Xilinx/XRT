@@ -419,8 +419,9 @@ namespace xclcpuemhal2 {
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fpo_v7_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "opencv"   + ":";
-          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
-          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS;
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";         
+          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
+          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS;
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
 
@@ -940,33 +941,13 @@ namespace xclcpuemhal2 {
   void CpuemShim::xclOpen(const char* logfileName)
   {
     xclemulation::config::getInstance()->populateEnvironmentSetup(mEnvironmentNameValueMap);
+    std::string logFilePath = (logfileName && (logfileName[0] != '\0')) ? logfileName : xrt_core::config::get_hal_logging();
 
-    //std::string logFilePath = (logfileName && (logfileName[0] != '\0')) ? logfileName : xrt_core::config::get_hal_logging();
-
-    char path[FILENAME_MAX];
-    size_t size = PATH_MAX;
-    char* pPath = GetCurrentDir(path,size);
-
-    std::string lf = "";
-    if (getenv("ENABLE_HAL_SW_EMU_DEBUG")) {
-      lf = std::string(pPath) + "/hal_sw_log.txt";
-    }
-    else {
-      lf = "";
-    }
-
-    if (!lf.empty())
-    {
-      mLogStream.open(lf);
-      mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
-      mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-    }
-
-    /*if (!logFilePath.empty()) {
+    if (!logFilePath.empty()) {
       mLogStream.open(logFilePath);
       mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-    }*/
+    }
     // Shim object creation doesn't follow xclOpen/xclClose.
     // The core device must correspond to open and close, so
     // create here rather than in constructor

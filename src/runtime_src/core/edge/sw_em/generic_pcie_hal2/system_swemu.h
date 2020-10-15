@@ -24,6 +24,8 @@ namespace xrt_core { namespace swemu {
 class system : public system_edge
 {
 public:
+  system();
+
   std::pair<device::id_type, device::id_type>
   get_total_devices(bool is_user) const;
 

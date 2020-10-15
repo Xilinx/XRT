@@ -617,6 +617,21 @@ static void addConnection( std::vector<boost::property_tree::ptree> & groupConne
   groupConnectivity.push_back(ptConnection);
 }
 
+// Compare two property trees for equality
+static bool
+isEqual(const boost::property_tree::ptree & first,
+        const boost::property_tree::ptree & second)
+{
+  // A simple way to determine if the trees are the same
+  std::ostringstream outputBufferFirst;
+  boost::property_tree::write_json(outputBufferFirst, first, false /*Pretty print*/);
+
+  std::ostringstream outputBufferSecond;
+  boost::property_tree::write_json(outputBufferSecond, second, false /*Pretty print*/);
+
+  return (outputBufferFirst.str() == outputBufferSecond.str());
+}
+
 // Given the collection of connections, appends to the GROUP_TOPOLOGY and
 // GROUP_CONNECTIVITY additional entries that represents grouped memories.
 static void
@@ -670,26 +685,36 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
     // Create a group entry based on the first memory entry
     boost::property_tree::ptree ptGroupMemory = groupTopology[workingConnections[startIndex].memIndex];
 
-    // Update size
-    const boost::optional<std::string> sSizeBytes = ptGroupMemory.get_optional<std::string>("m_size");
-    if (sSizeBytes.is_initialized()) 
-      ptGroupMemory.put("m_size", XUtil::format("0x%lx", groupSize).c_str());
-    else 
-      ptGroupMemory.put("m_sizeKB", XUtil::format("0x%lx", groupSize / 1024).c_str());
+    // Prepare a new entry
+    {
+      const boost::optional<std::string> sSizeBytes = ptGroupMemory.get_optional<std::string>("m_size");
+      if (sSizeBytes.is_initialized()) 
+        ptGroupMemory.put("m_size", XUtil::format("0x%lx", groupSize).c_str());
+      else 
+        ptGroupMemory.put("m_sizeKB", XUtil::format("0x%lx", groupSize / 1024).c_str());
 
-    // Add a tag value to indicate that this entry was the result of grouping memories
-    std::string newTag = "MBG[";
-    for (unsigned int memIndex = startIndex; memIndex <= endIndex; ++memIndex) {
-      newTag += std::to_string(memIndex);
-      newTag += (memIndex != endIndex) ? "," : "]";
+      // Add a tag value to indicate that this entry was the result of grouping memories
+      std::string newTag = "MBG[";
+      for (unsigned int memIndex = startIndex; memIndex <= endIndex; ++memIndex) {
+        newTag += std::to_string(workingConnections[memIndex].memIndex);
+        newTag += (memIndex != endIndex) ? "," : "]";
+      }
+
+      // Record the new tag, honoring the size limitation
+      ptGroupMemory.put("m_tag", newTag.substr(0, sizeof(mem_data::m_tag) - 1).c_str());
     }
 
-    // Record the new tag, honoring the size limitation
-    ptGroupMemory.put("m_tag", newTag.substr(0, sizeof(mem_data::m_tag) - 1).c_str());
+    unsigned int groupMemIndex = 0; // Index where this group memory entry is located
 
-    // Add memory topology entry
-    const unsigned int groupMemIndex = (unsigned int) groupTopology.size();
-    groupTopology.push_back(ptGroupMemory);
+    // See if this entry has already been added, if so use it
+    for (groupMemIndex = 0; groupMemIndex < (unsigned int) groupTopology.size(); ++groupMemIndex) {
+      if (isEqual(groupTopology[groupMemIndex], ptGroupMemory)) 
+        break;
+    }
+
+    // Entry not found, add it to the array
+    if (groupMemIndex == groupTopology.size()) 
+      groupTopology.push_back(ptGroupMemory);
 
     // Create the connection entry
     addConnection(groupConnectivity, workingConnections[startIndex].argIndex, workingConnections[startIndex].ipLayoutIndex, groupMemIndex);
