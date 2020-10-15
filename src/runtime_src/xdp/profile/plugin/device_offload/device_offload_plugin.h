@@ -24,9 +24,7 @@
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/device_trace_offload.h"
-#if 0
-#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
-#endif
+
 namespace xdp {
 
   // Forward declarations
@@ -61,15 +59,8 @@ namespace xdp {
     typedef std::tuple<DeviceTraceOffload*, 
                        TraceLoggerCreatingDeviceEvents*,
                        DeviceIntf*> DeviceData ;
-#if 0
-    typedef std::tuple<AIETraceOffload*, 
-                       AIETraceLogger*,
-                       DeviceIntf*> AIEData;
-#endif
+
     std::map<uint32_t, DeviceData> offloaders;
-#if 0
-    std::map<uint32_t, AIEData>    aieOffloaders;
-#endif
 
     XDP_EXPORT void addDevice(const std::string& sysfsPath) ;
     XDP_EXPORT void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;
