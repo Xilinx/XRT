@@ -64,15 +64,14 @@ timestamp()
 }
 
 /**
- * @return GMT formatted timestamp
+ * @return formatted timestamp for epoch
  */
 std::string
-gmt_timestamp(const std::time_t& time)
+timestamp(uint64_t epoch)
 {
-  auto tm = get_gmtime(time);
-  char buf[64] = {0};
-  return std::strftime(buf, sizeof(buf), "%c GMT", tm)
-    ? buf : "Time conversion failed";
+  time_t rawtime = epoch;
+  std::string tmp(ctime(&rawtime));
+  return tmp.substr( 0, tmp.length() -1).append(" GMT");
 }
 
 } // xrt_core

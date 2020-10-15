@@ -101,7 +101,7 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    throw; // Re-throw exception
+    return;
   }
 
   // Check to see if help was requested 
@@ -152,6 +152,11 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp(commonOptions, hiddenOptions);
+    return;
+  }
+  catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
     return;
   }
 

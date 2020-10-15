@@ -614,13 +614,13 @@ address(xrtBufferHandle handle)
 namespace xrt {
 
 bo::
-bo(xclDeviceHandle dhdl, void* userptr, size_t sz, buffer_flags flags, memory_group grp)
-  : handle(alloc(dhdl, userptr, sz, flags, grp))
+bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp)
+  : handle(alloc(dhdl, userptr, sz, static_cast<xrtBufferFlags>(flags), grp))
 {}
 
 bo::
-bo(xclDeviceHandle dhdl, size_t size, buffer_flags flags, memory_group grp)
-  : handle(alloc(dhdl, size, flags, grp))
+bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp)
+  : handle(alloc(dhdl, size, static_cast<xrtBufferFlags>(flags), grp))
 {}
 
 bo::

@@ -138,9 +138,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-
-    // Re-throw exception
-    throw;
+    return;
   }
 
   // Check to see if help was requested or no command was found
@@ -163,7 +161,14 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   for (const auto & deviceName : devices) 
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
-  XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+  try {
+    XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    return;
+  }
+  
   xrt_core::query::reset_type type = XBU::str_to_reset_obj(resetType);
   pretty_print_action_list(deviceCollection, type);
 

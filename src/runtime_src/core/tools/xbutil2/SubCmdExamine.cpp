@@ -46,6 +46,7 @@ namespace po = boost::program_options;
 #include "tools/common/ReportAie.h"
 #include "tools/common/ReportMemory.h"
 #include "tools/common/ReportThermal.h"
+#include "tools/common/ReportAsyncError.h"
 // #include "tools/common/ReportPlatform.h"
 
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
@@ -58,7 +59,8 @@ static const ReportCollection fullReportCollection = {
   std::make_shared<ReportHost>(),
   std::make_shared<ReportCu>(),
   std::make_shared<ReportThermal>(),
-  std::make_shared<ReportDebugIpStatus>()
+  std::make_shared<ReportDebugIpStatus>(),
+  std::make_shared<ReportAsyncError>()
 };
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
@@ -121,7 +123,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    throw; // Re-throw exception
+    return;
   }
 
   // Check to see if help was requested 
@@ -185,6 +187,11 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp(commonOptions, hiddenOptions);
+    return;
+  }
+  catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
     return;
   }
 

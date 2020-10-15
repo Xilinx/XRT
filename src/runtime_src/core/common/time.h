@@ -39,11 +39,11 @@ std::string
 timestamp();
 
 /**
- * @return GMT formatted timestamp
+ * @return timestamp for epoch
  */
 XRT_CORE_COMMON_EXPORT
 std::string
-gmt_timestamp(const std::time_t& time);
+timestamp(uint64_t epoch);
 
 /**
  * Simple time guard to accumulate scoped time

@@ -85,13 +85,19 @@ ReportThermal::writeReport( const xrt_core::device * _pDevice,
   boost::property_tree::ptree empty_ptree;
   getPropertyTreeInternal(_pDevice, _pt);
 
+  bool thermals_present = false;
   _output << "Thermals\n";
   boost::property_tree::ptree& thermals = _pt.get_child("thermals", empty_ptree);
   for(auto& kv : thermals) {
     boost::property_tree::ptree& pt_temp = kv.second;
     if(!pt_temp.get<bool>("is_present", false))
       continue;
+    thermals_present = true;
     _output << boost::format("  %-20s : %s C\n") % pt_temp.get<std::string>("description") % pt_temp.get<std::string>("temp_C");
+  }
+
+  if(!thermals_present) {
+    _output << "  No temperature sensors are present" << std::endl;
   }
   _output << std::endl;
   

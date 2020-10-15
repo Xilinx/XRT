@@ -22,6 +22,7 @@
 #include "core/include/experimental/xrt_error.h"
 
 #include "device_int.h"
+#include "error_int.h"
 #include "core/common/error.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -29,6 +30,8 @@
 #include "core/common/query_requests.h"
 
 #include <boost/format.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include <string>
 #include <map>
 #include <cstring>
@@ -135,6 +138,21 @@ error_code_to_string(xrtErrorCode ecode)
   return fmt.str();
 }
 
+static void
+error_code_to_json(xrtErrorCode ecode, boost::property_tree::ptree &pt)
+{
+  pt.put("class.code", XRT_ERROR_CLASS(ecode));
+  pt.put("class.string", error_class_to_string(xrtErrorClass(XRT_ERROR_CLASS(ecode))));
+  pt.put("module.code", XRT_ERROR_MODULE(ecode));
+  pt.put("module.string", error_module_to_string(xrtErrorModule(XRT_ERROR_MODULE(ecode))));
+  pt.put("severity.code", XRT_ERROR_SEVERITY(ecode));
+  pt.put("severity.string", error_severity_to_string(xrtErrorSeverity(XRT_ERROR_SEVERITY(ecode))));
+  pt.put("driver.code", XRT_ERROR_DRIVER(ecode));
+  pt.put("driver.string", error_driver_to_string(xrtErrorDriver(XRT_ERROR_DRIVER(ecode))));
+  pt.put("number.code", XRT_ERROR_NUM(ecode));
+  pt.put("number.string", error_number_to_string(xrtErrorNum(XRT_ERROR_NUM(ecode))));
+}
+
 static std::string
 error_time_to_string(xrtErrorTime time)
 {
@@ -144,6 +162,15 @@ error_time_to_string(xrtErrorTime time)
 
 } // namespace
 
+namespace xrt_core { namespace error_int {
+
+void
+get_error_code_to_json(xrtErrorCode ecode, boost::property_tree::ptree &pt)
+{
+  return error_code_to_json(ecode, pt);
+}
+
+}} // namespace error_int, xrt_core
 
 namespace xrt {
 

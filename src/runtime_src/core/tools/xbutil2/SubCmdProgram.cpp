@@ -82,9 +82,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-
-    // Re-throw exception
-    throw;
+    return;
   }
 
   // Check to see if help was requested or no command was found
@@ -116,7 +114,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   for (const auto & deviceName : device) 
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
-  XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
+  try {
+    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    return;
+  }
 
   //allow programming of only 1 device
   if(deviceCollection.size() > 1)

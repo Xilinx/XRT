@@ -355,6 +355,12 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			to_cfg_pkg(ecmd)->num_cus++;
 			i++;
 		}
+
+		/* Before scheduler config options are removed from xrt.ini */
+		if (to_cfg_pkg(ecmd)->ert)
+			XDEV(xdev)->kds.ert_disable = 0;
+		else
+			XDEV(xdev)->kds.ert_disable = 1;
 		break;
 	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);

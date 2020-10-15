@@ -16,6 +16,7 @@
 
 #include "system_swemu.h"
 #include "device_swemu.h"
+#include "xrt.h"
 
 #include <memory>
 
@@ -41,6 +42,13 @@ struct X
 }
 
 namespace xrt_core { namespace swemu {
+
+system::
+system()
+{
+  // xclProbe must be called to set up data structures
+  xclProbe();
+}
 
 std::pair<device::id_type, device::id_type>
 system::

@@ -1352,8 +1352,7 @@ public:
              << std::hex << sensor_tree::get( "board.error.firewall.firewall_status", -1 ) << std::dec
              << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
         if (lvl != 0) {
-            time_t stamp = static_cast<time_t>(sensor_tree::get( "board.error.firewall.firewall_time", 0 ));
-            auto ts = xrt_core::gmt_timestamp(stamp);
+            auto ts = xrt_core::timestamp(sensor_tree::get( "board.error.firewall.firewall_time", 0 ));
             ostr << "Error occurred on: " << ts << std::endl;
         }
         ostr << std::endl;
