@@ -55,7 +55,7 @@ error_number_to_string(xrtErrorNum err)
     {XRT_ERROR_NUM_TEMP_HIGH,         "TEMP_HIGH"},
     {XRT_ERROR_NUM_AIE_SATURATION,    "AIE_SATURATION"},
     {XRT_ERROR_NUM_AIE_FP,            "AIE_FP"},
-    {XRT_ERROR_NUM_AIE_STREAM,        "SIE_STREAM"},
+    {XRT_ERROR_NUM_AIE_STREAM,        "AIE_STREAM"},
     {XRT_ERROR_NUM_AIE_ACCESS,        "AIE_ACCESS"},
     {XRT_ERROR_NUM_AIE_BUS,           "AIE_BUS"},
     {XRT_ERROR_NUM_AIE_INSTRUCTION,   "AIE_INSTRUCTION"},
