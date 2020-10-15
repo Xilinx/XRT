@@ -823,7 +823,7 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
 
 
 ////////////////////////////////////////////////////////////////
-// Shim level Graph API implementations (xrt_graph.h)
+// Shim level Graph API implementations (xcl_graph.h)
 ////////////////////////////////////////////////////////////////
 xclGraphHandle
 xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph)
