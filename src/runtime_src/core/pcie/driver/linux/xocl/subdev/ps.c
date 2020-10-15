@@ -243,7 +243,7 @@ static int ps_probe(struct platform_device *pdev)
 {
 	struct xocl_ps *ps;
 	struct resource *res;
-	int err, ret;
+	int ret = 0;
 	u32 reg;
 
 	ps = devm_kzalloc(&pdev->dev, sizeof(*ps), GFP_KERNEL);
@@ -260,7 +260,7 @@ static int ps_probe(struct platform_device *pdev)
 		  res->start, res->end);
 	ps->base_addr = ioremap_nocache(res->start, res->end - res->start + 1);
 	if (!ps->base_addr) {
-		err = -EIO;
+		ret = -EIO;
 		xocl_err(&pdev->dev, "Map iomem failed");
 		goto failed;
 	}
@@ -279,7 +279,7 @@ static int ps_probe(struct platform_device *pdev)
 	return 0;
 failed:
 	ps_remove(pdev);
-	return err;
+	return ret;
 };
 
 struct platform_device_id ps_id_table[] = {

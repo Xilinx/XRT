@@ -594,7 +594,8 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 					"/" NODE_ENDPOINTS "/" NODE_ERT_FW_MEM
 					"/" NODE_FIRMWARE);
 	if (offset < 0) {
-		mgmt_err(lro, "get ert firmware node failed %d", offset);
+		mgmt_info(lro, "firmware node is not in %s", NODE_ERT_FW_MEM);
+		goto done;
 	}
 	version = xocl_fdt_getprop(lro, lro->core.fdt_blob, offset, PROP_VERSION_MAJOR, NULL);
 
@@ -607,6 +608,7 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	(void) xocl_fdt_setprop(lro, lro->userpf_blob, offset, PROP_VERSION_MAJOR,
 				version, sizeof(int));
 
+done:
 	fdt_pack(lro->userpf_blob);
 	lro->userpf_blob_updated = true;
 
