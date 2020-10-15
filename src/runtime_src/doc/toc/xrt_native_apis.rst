@@ -97,7 +97,8 @@ The above code block shows
 .. code:: c++
       :number-lines: 10
            
-           auto device = xrt::device(0);
+           unsigned int dev_index = 0;
+           auto device = xrt::device(dev_index);
            auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
        
 The above code block shows
