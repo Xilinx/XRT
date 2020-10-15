@@ -65,4 +65,15 @@ timestamp()
     ? buf : "Time conversion failed";
 }
 
+/**
+ * @return formatted timestamp for epoch
+ */
+std::string
+timestamp(uint64_t epoch)
+{
+  time_t rawtime = epoch;
+  std::string tmp(ctime(&rawtime));
+  return tmp.substr( 0, tmp.length() -1).append(" GMT");
+}
+
 } // xrt_core

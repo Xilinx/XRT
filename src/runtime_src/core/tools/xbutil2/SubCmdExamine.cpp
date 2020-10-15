@@ -46,6 +46,7 @@ namespace po = boost::program_options;
 #include "tools/common/ReportAie.h"
 #include "tools/common/ReportMemory.h"
 #include "tools/common/ReportThermal.h"
+#include "tools/common/ReportAsyncError.h"
 // #include "tools/common/ReportPlatform.h"
 
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
@@ -58,7 +59,8 @@ static const ReportCollection fullReportCollection = {
   std::make_shared<ReportHost>(),
   std::make_shared<ReportCu>(),
   std::make_shared<ReportThermal>(),
-  std::make_shared<ReportDebugIpStatus>()
+  std::make_shared<ReportDebugIpStatus>(),
+  std::make_shared<ReportAsyncError>()
 };
 
 // ----- C L A S S   M E T H O D S -------------------------------------------

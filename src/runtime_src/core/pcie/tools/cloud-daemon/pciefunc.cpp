@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -81,13 +81,32 @@ void pcieFunc::clearConf()
 
 bool pcieFunc::loadConf()
 {
-    std::lock_guard<std::mutex> l(lock);
+    std::unique_lock<std::mutex> l(lock, std::defer_lock);
     std::vector<std::string> config;
     std::string err;
+    int retry = 1;
+    bool failed = true;
 
-    dev->sysfs_get("", "config_mailbox_channel_switch", err, chanSwitch, static_cast<uint64_t>(0));
-    if (!err.empty()) {
-        log(LOG_ERR, "failed to get channel switch: %s", err.c_str());
+    l.lock();
+    // Wait for mailbox sysfs entries are up and then read, so retry for 20sec
+    while (retry < 20) {
+        dev->sysfs_get("", "config_mailbox_channel_switch", err, chanSwitch, static_cast<uint64_t>(0));
+        if (!err.empty()) {
+            l.unlock();
+            sleep(1);
+            l.lock();
+            retry++;
+        } else {
+            failed = false;
+            log(LOG_INFO, "got config_mailbox_channel_switch, retry: %d seconds", retry);
+            break;
+        }
+    }
+
+    if (failed) {
+        log(LOG_ERR, "failed to get channel switch: %s, retry: %d seconds",
+            err.c_str(), retry);
+        l.unlock();
         return false;
     }
 
@@ -96,6 +115,7 @@ bool pcieFunc::loadConf()
     dev->sysfs_get("", "config_mailbox_comm_id", err, config);
     if (!err.empty()) {
         log(LOG_ERR, "failed to obtain config: %s", err.c_str());
+        l.unlock();
         return false;
     }
 
@@ -128,6 +148,7 @@ bool pcieFunc::loadConf()
             chanSwitch, host.c_str(), port, devId);
     }
 
+    l.unlock();
     return validConf();
 }
 

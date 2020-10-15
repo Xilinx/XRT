@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -671,20 +671,22 @@ void Mpd::mpd_getMsg(size_t index)
     if (plugin_cbs.get_remote_msd_fd) {
         ret = (*plugin_cbs.get_remote_msd_fd)(dev.getIndex(), &msdfd);
         if (ret) {
-            dev.log(LOG_ERR, "failed to get remote fd in plugin");
+            dev.log(LOG_ERR, "failed to get remote fd in plugin, mpd_getMsg thread for %s exit!!", sysfs_name.c_str());
             threads_handling[sysfs_name] = false;
             return;
         }
         cb = Mpd::localMsgHandler;
     } else {
         if (!dev.loadConf()) {
+            dev.log(LOG_ERR, "loadConf() failed, mpd_getMsg thread for %s exit!!", sysfs_name.c_str());
             threads_handling[sysfs_name] = false;
             return;
         }
 
         ip = getIP(dev.getHost());
         if (ip.empty()) {
-            dev.log(LOG_ERR, "Can't find out IP from host: %s", dev.getHost());
+            dev.log(LOG_ERR, "Can't find out IP from host: %s, mpd_getMsg thread for %s exit!!",
+                    dev.getHost(), sysfs_name.c_str());
             threads_handling[sysfs_name] = false;
             return;
         }
@@ -693,6 +695,7 @@ void Mpd::mpd_getMsg(size_t index)
             ip.c_str(), dev.getPort(), dev.getId());
 
         if ((msdfd = connectMsd(dev, ip, dev.getPort(), dev.getId())) < 0) {
+            dev.log(LOG_ERR, "Unable to connect to msd, mpd_getMsg thread for %s exit!!", sysfs_name.c_str());
             threads_handling[sysfs_name] = false;
             return;
         }
@@ -700,6 +703,8 @@ void Mpd::mpd_getMsg(size_t index)
 
     mbxfd = dev.getMailbox();
     if (mbxfd == -1) {
+        dev.log(LOG_ERR, "Unable to get mailbox fd, mpd_getMsg thread for %s exit!!",
+                sysfs_name.c_str());
         threads_handling[sysfs_name] = false;
         return;
     }

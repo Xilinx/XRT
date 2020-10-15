@@ -72,8 +72,7 @@ target_link_libraries(
     Boost::system
     ws2_32
     xrt_core
-    xrt_core_static
-    xrt_coreutil_static
+    xrt_coreutil
   )
 
 else()

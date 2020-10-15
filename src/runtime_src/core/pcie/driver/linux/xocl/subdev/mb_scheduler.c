@@ -4255,16 +4255,21 @@ static int config_scu(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	if (scmd->opcode == ERT_SK_CONFIG)
-		exec->num_sk_cus += scmd->num_cus;
-	else
-		exec->num_sk_cus -= scmd->num_cus;
-
 	for (i = scmd->start_cuidx; i < scmd->start_cuidx + scmd->num_cus;
 	    i++) {
 		if (scmd->opcode == ERT_SK_CONFIG) {
+			if (strlen(xert->scu_name[i]) > 0)
+				continue;
+			exec->num_sk_cus++;
 			strncpy(xert->scu_name[i], (char *)scmd->sk_name,
 				sizeof(xert->scu_name[0]) - 1);
+			if (strlen(xert->scu_name[i]) == 0)
+				strcpy(xert->scu_name[i], " ");
+		} else {
+			if (strlen(xert->scu_name[i]) == 0)
+				continue;
+			exec->num_sk_cus--;
+			xert->scu_name[i][0] = 0;
 		}
 	}
 
