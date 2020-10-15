@@ -69,7 +69,7 @@ timestamp()
  * @return formatted timestamp for epoch
  */
 std::string
-timestamp(long int epoch)
+timestamp(uint64_t epoch)
 {
   time_t rawtime = epoch;
   std::string tmp(ctime(&rawtime));

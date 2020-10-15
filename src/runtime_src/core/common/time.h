@@ -42,7 +42,7 @@ timestamp();
  */
 XRT_CORE_COMMON_EXPORT
 std::string
-timestamp(long int epoch);
+timestamp(uint64_t epoch);
 
 /**
  * Simple time guard to accumulate scoped time
