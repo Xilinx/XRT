@@ -231,7 +231,7 @@ int xrt_cu_fa_init(struct xrt_cu *xcu)
 	/* Not sure what is the best initial value.
 	 * But below parameters are configurable to user. No worry.
 	 */
-	xcu->busy_threshold = 8;
+	xcu->busy_threshold = core->max_credits / 2;
 	xcu->interval_min = 2;
 	xcu->interval_max = 5;
 
