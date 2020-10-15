@@ -82,6 +82,8 @@ namespace xdp {
         delete aieOffloader;
         delete aieLogger;
         // don't delete DeviceIntf
+
+        aieOffloaders.erase(deviceId);
       }
 
       // Update the static database with information from xclbin

@@ -207,6 +207,8 @@ namespace xdp {
 
     delete offloader;
     delete logger;
+
+    offloaders.erase(deviceId);
   }
 
   void DeviceOffloadPlugin::clearOffloaders()
@@ -218,6 +220,7 @@ namespace xdp {
       delete offloader;
       delete logger;
     }
+    offloaders.clear();
   }
   
 } // end namespace xdp
