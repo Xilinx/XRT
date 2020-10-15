@@ -167,7 +167,7 @@ namespace xdp {
     auto itr = deviceInfo.find(deviceId);
     if(itr != deviceInfo.end()) {
       DeviceInfo *devInfo = itr->second;
-      if(device->get_xclbin_uuid() == devInfo->loadedXclbinUUId) {
+      if(device->get_xclbin_uuid() == devInfo->loadedXclbinUUID) {
         // loading same xclbin multiple times ?
         return false;
       }

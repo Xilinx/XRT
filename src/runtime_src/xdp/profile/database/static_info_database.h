@@ -25,6 +25,7 @@
 
 #include "xdp/config.h"
 #include "core/common/system.h"
+#include "core/common/device.h"
 
 namespace xdp {
 
@@ -188,8 +189,8 @@ namespace xdp {
     double clockRateMHz;
     struct PlatformInfo platformInfo;
 
-    DeviceIntf* deviceIntf;
-    uuid loadedXclbinUUID;
+    void* deviceIntf;
+    xrt_core::uuid loadedXclbinUUID;
 
     std::string loadedXclbin;
     std::string ctxInfo;
@@ -280,7 +281,7 @@ namespace xdp {
     // Static info can be accessed via any host thread
     std::mutex dbLock ;
 
-    void resetDeviceInfo(uint64_t deviceId) ;
+    bool resetDeviceInfo(uint64_t deviceId, void*) ;
 
     // Helper functions that fill in device information
     //bool setXclbinUUID(DeviceInfo*, const std::shared_ptr<xrt_core::device>& device);
@@ -341,7 +342,7 @@ namespace xdp {
       deviceInfo[deviceId]->deviceIntf = devIntf;
     }
 
-    void* getDeviceIntf(uint63_t deviceId)
+    void* getDeviceIntf(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
