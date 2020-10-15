@@ -1,16 +1,16 @@
 set(TESTNAME "100_ert_ncu")
 
 add_executable(xrt xrt.cpp)
-target_link_libraries(xrt PRIVATE XRT::xrt_core)
+target_link_libraries(xrt PRIVATE ${xrt_core_LIBRARY})
 
 add_executable(xrtx xrtx.cpp)
-target_link_libraries(xrtx PRIVATE XRT::xrt_core)
+target_link_libraries(xrtx PRIVATE ${xrt_coreutil_LIBRARY})
 
 add_executable(xrtxx xrtxx.cpp)
-target_link_libraries(xrtxx PRIVATE XRT::xrt_core)
+target_link_libraries(xrtxx PRIVATE ${xrt_coreutil_LIBRARY})
 
 add_executable(ocl ocl.cpp)
-target_link_libraries(ocl PRIVATE XRT::xilinxopencl)
+target_link_libraries(ocl PRIVATE ${xrt_xilinxopencl_LIBRARY})
 if (WIN32)
   set(OCL_ROOT c:/Xilinx/XRT/ext)
   set(OpenCL_INCLUDE_DIR ${OCL_ROOT}/include)

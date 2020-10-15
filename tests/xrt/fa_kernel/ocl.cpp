@@ -25,7 +25,6 @@
 #include <iostream>
 #include <iomanip>
 #include <cstdarg>
-#include <numeric>
 
 static void usage()
 {

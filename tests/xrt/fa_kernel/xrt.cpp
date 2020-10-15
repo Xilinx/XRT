@@ -21,7 +21,7 @@
 #include <cstring>
 #include <ctime>
 #include <chrono>
-#include <numeric>
+
 #include "experimental/xrt_device.h"
 #include "experimental/xrt_kernel.h"
 #include "experimental/xrt_bo.h"

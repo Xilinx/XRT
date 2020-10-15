@@ -1,10 +1,10 @@
 set(TESTNAME "fa_kernel")
 
 add_executable(fa_xrt xrt.cpp)
-target_link_libraries(fa_xrt PRIVATE XRT::xrt_core)
+target_link_libraries(fa_xrt PRIVATE ${xrt_coreutil_LIBRARY})
 
 add_executable(fa_ocl ocl.cpp)
-target_link_libraries(fa_ocl PRIVATE XRT::xilinxopencl)
+target_link_libraries(fa_ocl PRIVATE ${xrt_xilinxopencl_LIBRARY})
 if (WIN32)
   set(OCL_ROOT c:/Xilinx/XRT/ext)
   set(OpenCL_INCLUDE_DIR ${OCL_ROOT}/include)

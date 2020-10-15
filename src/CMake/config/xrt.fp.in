@@ -10,3 +10,6 @@ message(STATUS "Found importable target @PROJECT_NAME@::xilinxopencl: ${TARGET_L
 
 get_filename_component(@PROJECT_NAME@_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 set(@PROJECT_NAME@_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+
+set(XRT_CORE_LIBRARY @PROJECT_NAME@::xrt_core)
+set(XRT_OPENCL_LIBRARY @PROJECT_NAME@::xilinxopencl)
