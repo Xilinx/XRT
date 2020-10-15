@@ -97,7 +97,8 @@ is_legacy_cu_intr(const ip_layout *ips)
   return (cu_cnt == intr_cnt);
 }
 
-bool compare_intr_id(struct ip_data &l, struct ip_data &r)
+bool
+compare_intr_id(struct ip_data &l, struct ip_data &r)
 {
     /* We need to put free running CU at the end */
     if (l.m_base_address == static_cast<size_t>(-1))
@@ -155,6 +156,31 @@ kernel_max_ctx(const ip_data& ip)
 } // namespace
 
 namespace xrt_core { namespace xclbin {
+
+const axlf_section_header*
+get_axlf_section(const axlf* top, axlf_section_kind kind)
+{
+  // replace group kinds with none group kinds if grouping
+  // is disabled per xrt.ini
+  static bool use_groups = xrt_core::config::get_use_xclbin_group_sections();
+  if (kind == ASK_GROUP_TOPOLOGY && !use_groups)
+    kind = MEM_TOPOLOGY;
+  else if (kind == ASK_GROUP_CONNECTIVITY && !use_groups)
+    kind = CONNECTIVITY;
+
+  if (auto hdr = ::xclbin::get_axlf_section(top, kind))
+    return hdr;
+
+  // hdr is nullptr, check if kind is one of the group sections,
+  // which then does not appear in the xclbin and should default to
+  // the none group one.
+  if (kind == ASK_GROUP_TOPOLOGY)
+    return ::xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+  else if (kind == ASK_GROUP_CONNECTIVITY)
+    return ::xclbin::get_axlf_section(top, CONNECTIVITY);
+
+  return nullptr;
+}
 
 std::string
 memidx_to_name(const mem_topology* mem_topology,  int32_t midx)
