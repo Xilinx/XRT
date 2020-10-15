@@ -24,9 +24,7 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
 #include "xdp/profile/database/events/creator/device_event_trace_logger.h"
-#if 0
-#include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
-#endif
+
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 
@@ -149,34 +147,6 @@ namespace xdp {
       return ;
     }
     offloaders[deviceId] = std::make_tuple(offloader, logger, devInterface) ;
-#if 0
-    if((db->getStaticInfo()).getNumAIETraceStream(deviceId)) {
-
-      uint64_t aieTraceBufSz = GetTS2MMBufSize(true /*isAIETrace*/);
-      // check only one memory ? : GMIO ?
-      uint64_t aieMemorySz = ((db->getStaticInfo()).getMemory(deviceId, devInterface->getAIETs2mmMemIndex(0))->size) * 1024 ;
-      if(aieMemorySz > 0 && aieTraceBufSz > aieMemorySz) {
-        aieTraceBufSz = aieMemorySz;
-        std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(aieMemorySz) + " instead." ;
-        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
-      }
-      bool isPLIO = ((db->getStaticInfo()).getNumTracePLIO(deviceId)) ? true : false;
-      AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
-
-      AIETraceOffload* aieTraceOffloader = new AIETraceOffload(devInterface, aieTraceLogger,
-                                                isPLIO,          // isPLIO 
-                                                aieTraceBufSz,   // total trace buffer size
-                                                (db->getStaticInfo()).getNumAIETraceStream(deviceId));  // numStream
-
-      if(!aieTraceOffloader->initReadTrace()) {
-        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ; // FOR AIE ?
-        delete aieTraceOffloader;
-        delete aieTraceLogger;
-        return;
-      }
-      aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, devInterface) ;
-    }
-#endif
   }
   
   void DeviceOffloadPlugin::configureTraceIP(DeviceIntf* devInterface)
@@ -219,12 +189,6 @@ namespace xdp {
     {
       (std::get<0>(o.second))->read_trace() ;
     }    
-#if 0
-    for (auto o : aieOffloaders)
-    {
-      (std::get<0>(o.second))->readTrace() ;
-    }
-#endif    
 
     for (auto w : writers)
     {
@@ -234,50 +198,29 @@ namespace xdp {
 
   void DeviceOffloadPlugin::clearOffloader(uint32_t deviceId)
   {
-#if 0
-    if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
-      auto entry = aieOffloaders[deviceId];
-      auto offloader = std::get<0>(entry);
-      auto logger    = std::get<1>(entry);
-
-      delete offloader;
-      delete logger;
-    }
-#endif
-
     if(offloaders.find(deviceId) == offloaders.end()) {
       return;
     }
     auto entry = offloaders[deviceId];
     auto offloader = std::get<0>(entry);
     auto logger    = std::get<1>(entry);
-    auto intf      = std::get<2>(entry);
 
     delete offloader;
     delete logger;
-    delete intf;
+
+    offloaders.erase(deviceId);
   }
 
   void DeviceOffloadPlugin::clearOffloaders()
   {
-#if 0
-    for(auto entry : aieOffloaders) {
-      auto offloader = std::get<0>(entry.second);
-      auto logger    = std::get<1>(entry.second);
-
-      delete offloader;
-      delete logger;
-    }
-#endif
     for(auto entry : offloaders) {
       auto offloader = std::get<0>(entry.second);
       auto logger    = std::get<1>(entry.second);
-      auto intf      = std::get<2>(entry.second);
 
       delete offloader;
       delete logger;
-      delete intf;
     }
+    offloaders.clear();
   }
   
 } // end namespace xdp

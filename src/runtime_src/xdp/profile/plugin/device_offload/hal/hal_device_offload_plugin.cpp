@@ -97,18 +97,6 @@ namespace xdp {
     }
 
     clearOffloaders();
-#if 0
-    for (auto o : offloaders)
-    {
-      auto offloader = std::get<0>(o.second) ;
-      auto logger    = std::get<1>(o.second) ;
-      auto intf      = std::get<2>(o.second) ;
-
-      delete offloader ;
-      delete logger ;
-      delete intf ;
-    }
-#endif
 
     for (auto h : deviceHandles)
     {
@@ -161,21 +149,6 @@ namespace xdp {
     void* ownedHandle = deviceIdToHandle[deviceId] ;
   
     clearOffloader(deviceId); 
-#if 0 
-    if (offloaders.find(deviceId) != offloaders.end())
-    {
-      // Clean up the old offloader.  It has already been flushed.
-      auto info = offloaders[deviceId] ;
-
-      auto offloader = std::get<0>(info) ;
-      auto logger    = std::get<1>(info) ;
-      auto intf      = std::get<2>(info) ;
-
-      delete offloader ;
-      delete logger ;
-      delete intf ;
-    }
-#endif
     
     // Update the static database with all the information that
     //  will be needed later
@@ -187,22 +160,25 @@ namespace xdp {
 	(db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
       }
     }
-    //(db->getStaticInfo()).setDeviceName(deviceId, userHandle) ;
 
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
-    DeviceIntf* devInterface = new DeviceIntf() ;
-    try {
-      devInterface->setDevice(new HalDevice(ownedHandle)) ;
-      devInterface->readDebugIPlayout() ;      
+    DeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
+    if(nullptr == devInterface) {
+      // If DeviceIntf is not already created, create a new one to communicate with physical device
+      devInterface = new DeviceIntf() ;
+      try {
+        devInterface->setDevice(new HalDevice(ownedHandle)) ;
+        devInterface->readDebugIPlayout() ;      
+      }
+      catch(std::exception& e)
+      {
+        // Read debug IP layout could throw an exception
+        delete devInterface ;
+        return;
+      }
+      (db->getStaticInfo()).setDeviceIntf(deviceId, devInterface);
     }
-    catch(std::exception& e)
-    {
-      // Read debug IP layout could throw an exception
-      delete devInterface ;
-      return;
-    }
-    (db->getStaticInfo()).setDeviceIntf(deviceId, devInterface);
 
     configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;
