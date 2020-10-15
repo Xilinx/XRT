@@ -14,11 +14,12 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include <stdio.h>
+#include <cstdio>
 #include <fstream>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <cstring>
+#include <cstdlib>
+#include <cstdint>
+#include "core/common/xclbin_parser.h"
 #include "xclbin.h"
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
@@ -30,24 +31,6 @@
 static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info);
 static int get_xclbin_mem_topology(char *buffer, XmaXclbinInfo *xclbin_info);
 static int get_xclbin_connectivity(char *buffer, XmaXclbinInfo *xclbin_info);
-
-static const axlf_section_header*
-get_mem_topology(const axlf* xclbin)
-{
-  if (auto hdr = xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY))
-    return hdr;
-
-  return xclbin::get_axlf_section(xclbin, MEM_TOPOLOGY);
-}
-
-static const axlf_section_header*
-get_connectivity(const axlf* xclbin)
-{
-  if (auto hdr = xclbin::get_axlf_section(xclbin, ASK_GROUP_CONNECTIVITY))
-    return hdr;
-
-  return xclbin::get_axlf_section(xclbin, CONNECTIVITY);
-}
 
 char *xma_xclbin_file_open(const char *xclbin_name)
 {
@@ -114,7 +97,7 @@ static int get_xclbin_mem_topology(char *buffer, XmaXclbinInfo *xclbin_info)
     //int rc = XMA_SUCCESS;
     axlf *xclbin = reinterpret_cast<axlf *>(buffer);
 
-    const axlf_section_header *ip_hdr = get_mem_topology(xclbin);
+    const axlf_section_header *ip_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
     if (ip_hdr)
     {
         char *data = &buffer[ip_hdr->m_sectionOffset];
@@ -149,7 +132,7 @@ static int get_xclbin_connectivity(char *buffer, XmaXclbinInfo *xclbin_info)
     //int rc = XMA_SUCCESS;
     axlf *xclbin = reinterpret_cast<axlf *>(buffer);
 
-    const axlf_section_header *ip_hdr = get_connectivity(xclbin);
+    const axlf_section_header *ip_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_CONNECTIVITY);
     if (ip_hdr)
     {
         char *data = &buffer[ip_hdr->m_sectionOffset];

@@ -160,6 +160,8 @@ namespace xrt_core { namespace xclbin {
 const axlf_section_header*
 get_axlf_section(const axlf* top, axlf_section_kind kind)
 {
+  // replace group kinds with none group kinds if grouping
+  // is disabled per xrt.ini
   static bool use_groups = xrt_core::config::get_use_xclbin_group_sections();
   if (kind == ASK_GROUP_TOPOLOGY && !use_groups)
     kind = MEM_TOPOLOGY;
@@ -169,6 +171,9 @@ get_axlf_section(const axlf* top, axlf_section_kind kind)
   if (auto hdr = ::xclbin::get_axlf_section(top, kind))
     return hdr;
 
+  // hdr is nullptr, check if kind is one of the group sections,
+  // which then does not appear in the xclbin and should default to
+  // the none group one.
   if (kind == ASK_GROUP_TOPOLOGY)
     return ::xclbin::get_axlf_section(top, MEM_TOPOLOGY);
   else if (kind == ASK_GROUP_CONNECTIVITY)
