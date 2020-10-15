@@ -385,7 +385,8 @@ public:
     handle = dbuf;
   }
   catch (const std::exception& ex) {
-    auto fmt = boost::format("Failed to allocate NODMA buffer (%s), make sure host bank is enabled") % ex.what();
+    auto fmt = boost::format("Failed to allocate host memory buffer (%s), make sure host bank is enabled "
+                             "(see xbutil host_mem --enable ...)") % ex.what();
     send_exception_message(fmt.str());
     throw;
   }
