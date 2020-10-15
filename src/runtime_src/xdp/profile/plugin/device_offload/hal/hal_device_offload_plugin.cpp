@@ -160,12 +160,10 @@ namespace xdp {
 	(db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
       }
     }
-    //(db->getStaticInfo()).setDeviceName(deviceId, userHandle) ;
 
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
-    void* dIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
-    DeviceIntf* devInterface = dynamic_cast<DeviceIntf*>(reinterpret_cast<DeviceIntf*>(dIntf));
+    DeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
     if(nullptr == devInterface) {
       // If DeviceIntf is not already created, create a new one to communicate with physical device
       devInterface = new DeviceIntf() ;

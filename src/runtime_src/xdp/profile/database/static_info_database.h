@@ -189,7 +189,7 @@ namespace xdp {
     double clockRateMHz;
     struct PlatformInfo platformInfo;
 
-    void* deviceIntf;
+    DeviceIntf* deviceIntf;
     xrt_core::uuid loadedXclbinUUID;
 
     std::string loadedXclbin;
@@ -335,14 +335,14 @@ namespace xdp {
       return deviceInfo[deviceId]->platformInfo.deviceName; 
     }
 
-    void setDeviceIntf(uint64_t deviceId, void* devIntf)
+    void setDeviceIntf(uint64_t deviceId, DeviceIntf* devIntf)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return; 
       deviceInfo[deviceId]->deviceIntf = devIntf;
     }
 
-    void* getDeviceIntf(uint64_t deviceId)
+    DeviceIntf* getDeviceIntf(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
@@ -361,13 +361,6 @@ namespace xdp {
         return 0;
       return deviceInfo[deviceId]->platformInfo.kdmaCount; 
     }
-#if 0
-    uuid getXclbinUUID(uint64_t deviceId) { 
-      if(deviceInfo.find(deviceId) == deviceInfo.end())
-        return 0;
-      return deviceInfo[deviceId]->loadedXclbinUUID; 
-    }
-#endif
 
     std::string getXclbinName(uint64_t deviceId) { 
       if(deviceInfo.find(deviceId) == deviceInfo.end())

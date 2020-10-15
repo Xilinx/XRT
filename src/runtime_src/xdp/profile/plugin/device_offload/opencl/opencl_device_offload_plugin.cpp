@@ -142,8 +142,7 @@ namespace xdp {
 
     // For the OpenCL level, we must create a device inteface using
     //  the xdp::XrtDevice to communicate with the physical device
-    void* dIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
-    DeviceIntf* devInterface = dynamic_cast<DeviceIntf*>(reinterpret_cast<DeviceIntf*>(dIntf));
+    DeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
     if(nullptr == devInterface) {
       // If DeviceIntf is not already created, create a new one to communicate with physical device
       devInterface = new DeviceIntf() ;
@@ -157,6 +156,7 @@ namespace xdp {
         delete devInterface ;
         return ;
       }
+      (db->getStaticInfo()).setDeviceIntf(deviceId, devInterface);
     }
 
     configureDataflow(deviceId, devInterface) ;

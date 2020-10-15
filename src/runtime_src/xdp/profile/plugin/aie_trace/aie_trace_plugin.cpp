@@ -102,8 +102,7 @@ namespace xdp {
       return;
     }
 
-    void* dIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
-    DeviceIntf* deviceIntf = dynamic_cast<DeviceIntf*>(reinterpret_cast<DeviceIntf*>(dIntf));
+    DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
     if(nullptr == deviceIntf) {
       // If DeviceIntf is not already created, create a new one to communicate with physical device
       deviceIntf = new DeviceIntf();
