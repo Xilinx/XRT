@@ -146,7 +146,7 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 			*vaddr = 2 | (*vaddr & ~3);
 
 		mutex_unlock(&sk->sk_lock);
-		if (down_interruptible(&scu->sc_sem))
+		if (down_killable(&scu->sc_sem))
 			ret = -ERESTARTSYS;
 		mutex_lock(&sk->sk_lock);
 
