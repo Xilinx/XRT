@@ -164,18 +164,23 @@ namespace xdp {
 
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
-    DeviceIntf* devInterface = new DeviceIntf() ;
-    try {
-      devInterface->setDevice(new HalDevice(ownedHandle)) ;
-      devInterface->readDebugIPlayout() ;      
+    void* dIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
+    DeviceIntf* devInterface = dynamic_cast<DeviceIntf*>(reinterpret_cast<DeviceIntf*>(dIntf));
+    if(nullptr == devInterface) {
+      // If DeviceIntf is not already created, create a new one to communicate with physical device
+      devInterface = new DeviceIntf() ;
+      try {
+        devInterface->setDevice(new HalDevice(ownedHandle)) ;
+        devInterface->readDebugIPlayout() ;      
+      }
+      catch(std::exception& e)
+      {
+        // Read debug IP layout could throw an exception
+        delete devInterface ;
+        return;
+      }
+      (db->getStaticInfo()).setDeviceIntf(deviceId, devInterface);
     }
-    catch(std::exception& e)
-    {
-      // Read debug IP layout could throw an exception
-      delete devInterface ;
-      return;
-    }
-    (db->getStaticInfo()).setDeviceIntf(deviceId, devInterface);
 
     configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;
