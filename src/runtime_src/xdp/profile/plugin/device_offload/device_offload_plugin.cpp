@@ -204,11 +204,9 @@ namespace xdp {
     auto entry = offloaders[deviceId];
     auto offloader = std::get<0>(entry);
     auto logger    = std::get<1>(entry);
-    auto intf      = std::get<2>(entry);
 
     delete offloader;
     delete logger;
-    delete intf;
   }
 
   void DeviceOffloadPlugin::clearOffloaders()
@@ -216,11 +214,9 @@ namespace xdp {
     for(auto entry : offloaders) {
       auto offloader = std::get<0>(entry.second);
       auto logger    = std::get<1>(entry.second);
-      auto intf      = std::get<2>(entry.second);
 
       delete offloader;
       delete logger;
-      delete intf;
     }
   }
   
