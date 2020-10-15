@@ -133,8 +133,8 @@ XRT APIs provides API for
            xrtMemoryGroup bank_grp_idx_0 = xrtKernelArgGroupId(kernel, 0);
            xrtMemoryGroup bank_grp_idx_1 = xrtKernelArgGroupId(kernel, 1);
 
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
-           xrtBufferHandle output_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_1);
+           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
+           xrtBufferHandle output_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_1);
 
            ....
            ....
@@ -151,12 +151,13 @@ The various arguments of the API ``xrtBOAlloc`` are
 
     - Argument 1: The device on which the buffer should be allocated 
     - Argument 2: The size (in bytes) of the buffer
-    - Argument 3: ``xrtBufferFlag``: Used to specify the buffer type, most commonly used types are
+    - Argument 3: ``xrtBufferFlags``: Used to specify the buffer type, most commonly used types are
        
-        - ``XCL_BO_FLAGS_NONE``: Regular Buffer,
-        - ``XCL_BO_FLAGS_DEV_ONLY``: Device only Buffer (meant to be used only by the kernel). 
-        - ``XCL_BO_FLAGS_HOST_ONLY``: Host Only Buffer (buffers reside in the host memory directly transferred to/from the kernel)
-        - ``XCL_BO_FLAGS_P2P``: P2P Buffer, buffer for NVMe transfer
+        - ``XRT_BO_FLAGS_NONE``: Regular Buffer
+        - ``XRT_BO_FLAGS_DEV_ONLY``: Device only Buffer (meant to be used only by the kernel). 
+        - ``XRT_BO_FLAGS_HOST_ONLY``: Host Only Buffer (buffers reside in the host memory directly transferred to/from the kernel)
+        - ``XRT_BO_FLAGS_P2P``: P2P Buffer, buffer for NVMe transfer
+        - ``XRT_BO_FLAGS_CACHEABLE``: Cacheble buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform). 
         
     - Argument 4:  ``xrtMemoryGroup``: Enumerated Memory Bank to specify the location on the device where the buffer should be allocated. The ``xrtMemoryGroup`` is obtained by the API ``xrtKernelArgGroupId`` as shown in line 15 (for more details of this API refer to the Kernel section).   
     
@@ -169,10 +170,17 @@ The various arguments of the API ``xrtBOAlloc`` are
            auto bank_grp_idx_0 = kernel.group_id(0);
            auto bank_grp_idx_1 = kernel.group_id(1);
     
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
-           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_1);
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes,bank_grp_idx_0);
+           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_1);
 
-In the above code ``xrt::bo`` buffer objects are created using the class's constructor. All the arguments are identical to the ``xrtBOAlloc`` API as discussed above in the C example explanation.  
+In the above code ``xrt::bo`` buffer objects are created using the class's constructor. Note the buffer flag is not used as constructor by default created regular buffer. Nonetheless, the available buffer flags for ``xrt::bo`` are described using ``enum class`` argument with the following enumerator values
+
+        - ``xrt::bo::flags::normal``: Default, Regular Buffer
+        - ``xrt::bo::flags::device_only``: Device only Buffer (meant to be used only by the kernel).
+        - ``xrt::bo::flags::host_only``: Host Only Buffer (buffer resides in the host memory directly transferred to/from the kernel)
+        - ``xrt::bo::flags::p2p``: P2P Buffer, buffer for NVMe transfer  
+        - ``xrt::bo::flags::cacheable``: Cacheble buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).
+
 
 
 2. Data transfer using Buffers
