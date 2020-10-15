@@ -29,8 +29,9 @@
 namespace xdp {
 
   // Forward declarations
-  class VPDatabase ;
-  class VPWriter ;
+  class VPDatabase;
+  class VPWriter;
+  class DeviceIntf;
 
   struct Monitor {
     uint8_t     type;
@@ -183,12 +184,17 @@ namespace xdp {
 
   struct DeviceInfo {
     bool isReady;
+
     double clockRateMHz;
     struct PlatformInfo platformInfo;
+
+    DeviceIntf* deviceIntf;
+    uuid loadedXclbinUUID;
+
     std::string loadedXclbin;
     std::string ctxInfo;
     std::map<int32_t, ComputeUnitInstance*> cus;
-    //uuid        loadedXclbinUUID;
+
     std::map<int32_t, Memory*> memoryInfo;
     std::vector<Monitor*>      aimList;
     std::vector<Monitor*>      amList;
@@ -204,6 +210,7 @@ namespace xdp {
 
     ~DeviceInfo()
     {
+// add deletion on deviceintf
       for(auto i : cus) {
         delete i.second;
       }
@@ -270,9 +277,6 @@ namespace xdp {
      */
     std::map<uint64_t, DeviceInfo*> deviceInfo;
 
-    // DeviceIntf*
-    std::map<uint64_t, void*> deviceIntf;
-
     // Static info can be accessed via any host thread
     std::mutex dbLock ;
 
@@ -332,15 +336,16 @@ namespace xdp {
 
     void setDeviceIntf(uint64_t deviceId, void* devIntf)
     {
-      if(deviceIntf.find(deviceId) == deviceIntf.end())
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
         return; 
-      deviceIntf[deviceId] = devIntf;
+      deviceInfo[deviceId]->deviceIntf = devIntf;
     }
-    void* getDeviceIntf(uint64_t deviceId)
+
+    void* getDeviceIntf(uint63_t deviceId)
     {
-      if(deviceIntf.find(deviceId) == deviceIntf.end())
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return deviceIntf[deviceId]; 
+      return deviceInfo[deviceId]->deviceIntf; 
     }
 
     void setKDMACount(uint64_t deviceId, uint64_t num)
