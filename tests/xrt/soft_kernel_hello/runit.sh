@@ -1,14 +1,14 @@
 #!/bin/bash
 
-echo "INFO: Generating xclbin"
-cd xclbin
-echo "DIR: $(pwd)"
-#source ./build_xclbin.sh
-
 echo "INFO: Compiling soft kernel"
-cd ../soft_kernel
+cd soft_kernel
 echo "DIR: $(pwd)"
 source ./compileit.sh
+
+echo "INFO: Generating xclbin"
+cd ../xclbin
+echo "DIR: $(pwd)"
+#source ./build_xclbin.sh
 
 echo "INFO: Compiled Host Executable: host.exe"
 cd ..
