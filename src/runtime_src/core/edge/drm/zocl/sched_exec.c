@@ -83,8 +83,6 @@ static DEFINE_MUTEX(free_cmds_mutex);
  */
 static LIST_HEAD(pending_cmds);
 static DEFINE_SPINLOCK(pending_cmds_lock);
-static atomic_t num_pending = ATOMIC_INIT(0);
-static atomic_t num_running = ATOMIC_INIT(0);
 
 /**
  * is_ert() - Check if running in embedded (ert) mode.
@@ -1488,12 +1486,13 @@ notify_host(struct sched_cmd *cmd)
 	struct list_head *ptr;
 	struct sched_client_ctx *entry;
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct sched_exec_core *exec = zdev->exec;
 	unsigned long flags = 0;
 
 	SCHED_DEBUG("-> %s from num_running: %d\n",
-	    __func__, atomic_read(&num_running));
+	    __func__, atomic_read(&exec->scheduler->num_running));
 
-	atomic_dec(&num_running);
+	atomic_dec(&exec->scheduler->num_running);
 
 	if (!zdev->ert) {
 		/* for each client update the trigger counter in the context */
@@ -1509,9 +1508,10 @@ notify_host(struct sched_cmd *cmd)
 		wake_up_interruptible(&zdev->exec->poll_wait_queue);
 	} else {
 		zdev->ert->ops->notify_host(zdev->ert, cmd->cq_slot_idx);
+                atomic_inc(&exec->scheduler->num_notified);
 	}
 	SCHED_DEBUG("<- %s to num_running: %d\n",
-	    __func__, atomic_read(&num_running));
+	    __func__, atomic_read(&exec->scheduler->num_running));
 }
 
 /**
@@ -1670,7 +1670,7 @@ add_cmd(struct sched_cmd *cmd)
 	spin_unlock_irqrestore(&pending_cmds_lock, flags);
 
 	/* wake scheduler */
-	atomic_inc(&num_pending);
+	atomic_inc(&cmd->exec->scheduler->num_pending);
 	wake_up_interruptible(&cmd->sched->wait_queue);
 
 	SCHED_DEBUG("<- %s\n", __func__);
@@ -1995,7 +1995,7 @@ ert_configure_scu(struct sched_cmd *cmd, int cu_idx)
 	mutex_lock(&sk->sk_lock);
 	scu = sk->sk_cu[cu_idx];
 	if (!scu) {
-		DRM_ERROR("Error: soft cu does not exist.\n");
+		DRM_ERROR("Error: soft cu %d does not exist.\n", cu_idx);
 		mutex_unlock(&sk->sk_lock);
 		return -ENXIO;
 	}
@@ -2188,9 +2188,9 @@ scheduler_queue_cmds(struct scheduler *sched)
 		if (cmd->sched != sched)
 			continue;
 		list_del(&cmd->list);
-		atomic_dec(&num_pending);
+		atomic_dec(&cmd->exec->scheduler->num_pending);
 		list_add_tail(&cmd->list, &sched->cq);
-		atomic_inc(&num_running);
+		atomic_inc(&sched->num_running);
 		set_cmd_int_state(cmd, ERT_CMD_STATE_QUEUED);
 	}
 	spin_unlock_irqrestore(&pending_cmds_lock, flags);
@@ -2278,7 +2278,7 @@ sched_wait_cond(struct scheduler *sched)
 		return 0;
 	}
 
-	if (atomic_read(&num_pending)) {
+	if (atomic_read(&sched->num_pending)) {
 		SCHED_DEBUG("scheduler wakes to copy new pending commands\n");
 		return 0;
 	}
@@ -2987,6 +2987,7 @@ add_ert_cq_cmd(struct drm_device *drm, void *buffer, unsigned int cq_idx)
 {
 	struct sched_cmd *cmd = get_free_sched_cmd();
 	struct drm_zocl_dev *zdev = drm->dev_private;
+	struct sched_exec_core *exec = zdev->exec;
 	int ret;
 
 	SCHED_DEBUG("-> %s", __func__);
@@ -2999,6 +3000,7 @@ add_ert_cq_cmd(struct drm_device *drm, void *buffer, unsigned int cq_idx)
 	cmd->free_buffer = zocl_cmd_buffer_free;
 
 	ret = add_cmd(cmd);
+	atomic_inc(&exec->scheduler->num_received);
 
 	SCHED_DEBUG("<- %s", __func__);
 	return ret;
@@ -3172,6 +3174,11 @@ static inline void init_exec(struct sched_exec_core *exec_core)
 	exec_core->polling_mode = 1;
 	exec_core->cq_interrupt = 0;
 	exec_core->configured = 0;
+	atomic_set(&exec_core->scheduler->num_pending, 0);
+	atomic_set(&exec_core->scheduler->num_running, 0);
+	atomic_set(&exec_core->scheduler->num_received, 0);
+	atomic_set(&exec_core->scheduler->num_notified, 0);
+
 	exec_core->cu_isr = 0;
 	exec_core->cu_dma = 0;
 	exec_core->num_slot_masks = 1;
@@ -3360,19 +3367,19 @@ sched_reset_exec(struct drm_device *drm)
 	/* Once stopped, keep this status until reset done */
 	atomic_set(&exec->exec_status, ZOCL_EXEC_STOP);
 
-	outstanding = atomic_read(&num_pending);
+	outstanding = atomic_read(&exec->scheduler->num_pending);
 	while (retry-- && outstanding) {
 		DRM_INFO("Wait for (%d) pending cmds to finish", outstanding);
 		msleep(wait_ms);
-		outstanding = atomic_read(&num_pending);
+		outstanding = atomic_read(&exec->scheduler->num_pending);
 	}
 
 	retry = 20;
-	outstanding = atomic_read(&num_running);
+	outstanding = atomic_read(&exec->scheduler->num_running);
 	while (retry-- && outstanding) {
 		DRM_INFO("Wait for (%d) pending cmds to finish", outstanding);
 		msleep(wait_ms);
-		outstanding = atomic_read(&num_running);
+		outstanding = atomic_read(&exec->scheduler->num_running);
 	}
 
 	/*
@@ -3380,15 +3387,15 @@ sched_reset_exec(struct drm_device *drm)
 	 * aborted. If there are still outstanding commands, return EBUSY.
 	 * User should deal with potential hung or long time running CUs.
 	 */
-	if (atomic_read(&num_pending) || atomic_read(&num_running)) {
+	if (atomic_read(&exec->scheduler->num_pending) || atomic_read(&exec->scheduler->num_running)) {
 		atomic_set(&exec->exec_status, ZOCL_EXEC_FLUSH);
 		msleep(1000); /* wait a second */
 	}
 
-	if (atomic_read(&num_pending) || atomic_read(&num_running)) {
+	if (atomic_read(&exec->scheduler->num_pending) || atomic_read(&exec->scheduler->num_running)) {
 		/* set back to normal, user can retry next time */
 		DRM_WARN("Still have pending(%d), running(%d) cmds",
-		    atomic_read(&num_pending), atomic_read(&num_running));
+		    atomic_read(&exec->scheduler->num_pending), atomic_read(&exec->scheduler->num_running));
 		atomic_set(&exec->exec_status, ZOCL_EXEC_NORMAL);
 		return -EBUSY;
 	}
@@ -3411,7 +3418,8 @@ sched_reset_exec(struct drm_device *drm)
 u32
 sched_is_busy(struct drm_zocl_dev *zdev)
 {
-	return (atomic_read(&num_pending) + atomic_read(&num_running));
+	struct sched_exec_core *exec = zdev->exec;
+	return (atomic_read(&exec->scheduler->num_pending) + atomic_read(&exec->scheduler->num_running));
 }
 
 int sched_attach_cu(struct drm_zocl_dev *zdev, int cu_idx)
