@@ -209,42 +209,7 @@ namespace xdp {
 
     uint32_t numTracePLIO = 0;
 
-    ~DeviceInfo()
-    {
-// add deletion on deviceintf
-      for(auto i : cus) {
-        delete i.second;
-      }
-      cus.clear();
-      for(auto i : memoryInfo) {
-        delete i.second;
-      }
-      memoryInfo.clear();
-      for(auto i : aimList) {
-        delete i;
-      }
-      aimList.clear();
-      for(auto i : amList) {
-        delete i;
-      }
-      amList.clear();
-      for(auto i : asmList) {
-        delete i;
-      }
-      asmList.clear();
-      for(auto i : nocList) {
-        delete i;
-      }
-      nocList.clear();
-      for(auto i : aieList) {
-        delete i;
-      }
-      aieList.clear();
-      for(auto i : gmioList) {
-        delete i;
-      }
-      gmioList.clear();
-    }
+    ~DeviceInfo();
   };
 
   class VPStaticDatabase

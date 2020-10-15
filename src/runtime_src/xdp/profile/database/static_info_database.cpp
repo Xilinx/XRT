@@ -37,7 +37,7 @@
 
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #include "core/include/xclbin.h"
@@ -92,6 +92,46 @@ namespace xdp {
     }
     connections[argIdx].push_back(memIdx);
   }
+
+
+  DeviceInfo::~DeviceInfo()
+  {
+    delete deviceIntf;
+
+    for(auto i : cus) {
+      delete i.second;
+    }
+    cus.clear();
+    for(auto i : memoryInfo) {
+      delete i.second;
+    }
+    memoryInfo.clear();
+    for(auto i : aimList) {
+      delete i;
+    }
+    aimList.clear();
+    for(auto i : amList) {
+      delete i;
+    }
+    amList.clear();
+    for(auto i : asmList) {
+      delete i;
+    }
+    asmList.clear();
+    for(auto i : nocList) {
+      delete i;
+    }
+    nocList.clear();
+    for(auto i : aieList) {
+      delete i;
+    }
+    aieList.clear();
+    for(auto i : gmioList) {
+      delete i;
+    }
+    gmioList.clear();
+  }
+
 
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d) : db(d), runSummary(nullptr)
   {
