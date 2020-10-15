@@ -32,6 +32,24 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info);
 static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_info);
 static int get_xclbin_connectivity(const char *buffer, XmaXclbinInfo *xclbin_info);
 
+static const axlf_section_header*
+get_mem_topology(const axlf* xclbin)
+{
+  if (auto hdr = xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY))
+    return hdr;
+
+  return xclbin::get_axlf_section(xclbin, MEM_TOPOLOGY);
+}
+
+static const axlf_section_header*
+get_connectivity(const axlf* xclbin)
+{
+  if (auto hdr = xclbin::get_axlf_section(xclbin, ASK_GROUP_CONNECTIVITY))
+    return hdr;
+
+  return xclbin::get_axlf_section(xclbin, CONNECTIVITY);
+}
+
 std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name)
 {
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loading %s ", xclbin_name.c_str());
@@ -280,7 +298,7 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
 {
     const axlf *xclbin = reinterpret_cast<const axlf *>(buffer);
 
-    const axlf_section_header *ip_hdr = xclbin::get_axlf_section(xclbin, MEM_TOPOLOGY);
+    const axlf_section_header *ip_hdr = get_mem_topology(xclbin);
     if (ip_hdr)
     {
         const char *data = &buffer[ip_hdr->m_sectionOffset];
@@ -321,7 +339,7 @@ static int get_xclbin_connectivity(const char *buffer, XmaXclbinInfo *xclbin_inf
 {
     const axlf *xclbin = reinterpret_cast<const axlf *>(buffer);
 
-    const axlf_section_header *ip_hdr = xclbin::get_axlf_section(xclbin, CONNECTIVITY);
+    const axlf_section_header *ip_hdr = get_connectivity(xclbin);
     if (ip_hdr)
     {
         const char *data = &buffer[ip_hdr->m_sectionOffset];
