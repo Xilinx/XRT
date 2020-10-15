@@ -158,7 +158,7 @@ The various arguments of the API ``xrtBOAlloc`` are
         - ``XRT_BO_FLAGS_DEV_ONLY``: Device only Buffer (meant to be used only by the kernel). 
         - ``XRT_BO_FLAGS_HOST_ONLY``: Host Only Buffer (buffers reside in the host memory directly transferred to/from the kernel)
         - ``XRT_BO_FLAGS_P2P``: P2P Buffer, buffer for NVMe transfer
-        - ``XRT_BO_FLAGS_CACHEABLE``: Cacheble buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform). 
+        - ``XRT_BO_FLAGS_CACHEABLE``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform). 
         
     - Argument 4:  ``xrtMemoryGroup``: Enumerated Memory Bank to specify the location on the device where the buffer should be allocated. The ``xrtMemoryGroup`` is obtained by the API ``xrtKernelArgGroupId`` as shown in line 15 (for more details of this API refer to the Kernel section).   
     
@@ -180,7 +180,7 @@ In the above code ``xrt::bo`` buffer objects are created using the class's const
         - ``xrt::bo::flags::device_only``: Device only Buffer (meant to be used only by the kernel).
         - ``xrt::bo::flags::host_only``: Host Only Buffer (buffer resides in the host memory directly transferred to/from the kernel)
         - ``xrt::bo::flags::p2p``: P2P Buffer, buffer for NVMe transfer  
-        - ``xrt::bo::flags::cacheable``: Cacheble buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).
+        - ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).
 
 
 
