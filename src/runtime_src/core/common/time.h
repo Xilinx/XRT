@@ -38,6 +38,13 @@ std::string
 timestamp();
 
 /**
+ * @return timestamp for epoch
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+timestamp(uint64_t epoch);
+
+/**
  * Simple time guard to accumulate scoped time
  */
 class time_guard
