@@ -246,7 +246,7 @@ namespace xdp {
     // Static info can be accessed via any host thread
     std::mutex dbLock ;
 
-    bool resetDeviceInfo(uint64_t deviceId, void*) ;
+    bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Helper functions that fill in device information
     //bool setXclbinUUID(DeviceInfo*, const std::shared_ptr<xrt_core::device>& device);

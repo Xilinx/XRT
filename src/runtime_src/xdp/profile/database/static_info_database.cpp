@@ -159,9 +159,9 @@ namespace xdp {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
     if(nullptr == device) return;
 
-    if(false == resetDeviceInfo(deviceId, devHandle)) {
+    if(false == resetDeviceInfo(deviceId, device)) {
       /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
-       * in the static data base. So, no need to read and the xclbin information again.
+       * in the static data base. So, no need to read the xclbin information again.
        */
       return;
     }
@@ -197,12 +197,9 @@ namespace xdp {
     devInfo->isReady = true;
   }
 
-  bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, void* devHandle)
+  bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
   {
     std::lock_guard<std::mutex> lock(dbLock);
-
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
-    if(nullptr == device) return false;
 
     auto itr = deviceInfo.find(deviceId);
     if(itr != deviceInfo.end()) {
@@ -213,9 +210,6 @@ namespace xdp {
       }
       delete itr->second;
       deviceInfo.erase(deviceId);
-
-      // Delete the DeviceIntf as well
-
     }
     return true;
   }
