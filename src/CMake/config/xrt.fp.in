@@ -1,15 +1,23 @@
 set(@PROJECT_NAME@_FOUND True)
-  
-include("${CMAKE_CURRENT_LIST_DIR}/xrt_core-targets.cmake")
-get_target_property(TARGET_LOCATION @PROJECT_NAME@::xrt_core LOCATION)
-message(STATUS "Found importable target @PROJECT_NAME@::xrt_core: ${TARGET_LOCATION}")
 
-include("${CMAKE_CURRENT_LIST_DIR}/xilinxopencl-targets.cmake")
-get_target_property(TARGET_LOCATION @PROJECT_NAME@::xilinxopencl LOCATION)
-message(STATUS "Found importable target @PROJECT_NAME@::xilinxopencl: ${TARGET_LOCATION}")
+set(_export_groups @CONF_EXPORT_GROUPS@)
+set(_targets @CONF_TARGETS@)
+
+foreach(_group ${_export_groups})
+  include("${CMAKE_CURRENT_LIST_DIR}/${_group}-targets.cmake")
+endforeach()
+
+foreach(_target ${_targets})
+  get_target_property(TARGET_LOCATION @PROJECT_NAME@::${_target} LOCATION)
+  message(STATUS "Found @PROJECT_NAME@::${_target} : ${TARGET_LOCATION}")
+endforeach()
 
 get_filename_component(@PROJECT_NAME@_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+
 set(@PROJECT_NAME@_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
 
-set(XRT_CORE_LIBRARY @PROJECT_NAME@::xrt_core)
-set(XRT_OPENCL_LIBRARY @PROJECT_NAME@::xilinxopencl)
+set(XRT_CORE_LIBRARIES @PROJECT_NAME@::xrt_core @PROJECT_NAME@::xrt_coreutil)
+set(XRT_OPENCL_LIBRARIES @PROJECT_NAME@::xilinxopencl @PROJECT_NAME@::xrt++)
+set(XRT_SWEMU_LIBRARIES @PROJECT_NAME@::xrt_swemu)
+set(XRT_HWEMU_LIBRARIES @PROJECT_NAME@::xrt_hwemu)
+

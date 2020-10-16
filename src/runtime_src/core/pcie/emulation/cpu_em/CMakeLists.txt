@@ -32,21 +32,25 @@ set_target_properties(xrt_swemu PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(xrt_swemu
+  PUBLIC
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   ${PROTOBUF_LIBRARY}
   xrt_coreutil
-  common_em
   rt
   uuid
+  PRIVATE
+  common_em
   )
 
 install (TARGETS xrt_swemu
+  EXPORT xrt_swemu-targets
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
 install (TARGETS xrt_swemu
+  EXPORT xrt_swemu-targets
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )

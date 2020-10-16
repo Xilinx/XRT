@@ -11,6 +11,10 @@ file(RELATIVE_PATH REL_INCLUDE_DIR
 
 set(CONF_INCLUDE_DIRS "\${${PROJECT_NAME}_CMAKE_DIR}/${REL_INCLUDE_DIR}")
 
+set(CONF_EXPORT_GROUPS xrt_core xilinxopencl xrt_swemu xrt_hwemu)
+
+set(CONF_TARGETS xrt_core xrt_coreutil xilinxopencl xrt++ xrt_swemu xrt_hwemu)
+
 configure_file (
   ${CMAKE_SOURCE_DIR}/CMake/config/xrt.fp.in
   ${CMAKE_CURRENT_BINARY_DIR}/${LOWER_NAME}-config.cmake
@@ -32,5 +36,13 @@ install(
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME})
 install(
   EXPORT xilinxopencl-targets
+  NAMESPACE ${PROJECT_NAME}::
+  DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME})
+install(
+  EXPORT xrt_hwemu-targets
+  NAMESPACE ${PROJECT_NAME}::
+  DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME})
+install(
+  EXPORT xrt_swemu-targets
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME})
