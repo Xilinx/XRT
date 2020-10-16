@@ -63,12 +63,11 @@ populate_cus(const xrt_core::device *device)
     ip_buf = xrt_core::device_query<qr::ip_layout_raw>(device);
     cu_stats = xrt_core::device_query<qr::kds_cu_info>(device);
   } catch (const std::exception& ex){
-    pt.put("ERROR: ", ex.what());
+    pt.put("error_msg", ex.what());
     return pt;
   }
 
   if(ip_buf.empty() || cu_stats.empty()) {
-    std::cout << "ERROR: Failed to access sysfs entry" << std::endl;
     return pt;
   }
 
@@ -121,11 +120,17 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
   boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
   getPropertyTreeInternal(_pDevice, _pt);
+
+  //check if a valid report is generated
+  boost::property_tree::ptree& v = _pt.get_child("compute_units");
+  if(v.empty())
+    return;
+
+  _output << "Compute Units" << std::endl;
   boost::format cuFmt("%-8s%-24s%-16s%-8s%-8s\n");
   _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
   try {
     int index = 0;
-    boost::property_tree::ptree& v = _pt.get_child("compute_units");
     for(auto& kv : v) {
       boost::property_tree::ptree& cu = kv.second;
       std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");

@@ -154,6 +154,11 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
     printHelp(commonOptions, hiddenOptions);
     return;
   }
+  catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    return;
+  }
 
   // -- Create the reports ------------------------------------------------
   if (sOutput.empty()) {

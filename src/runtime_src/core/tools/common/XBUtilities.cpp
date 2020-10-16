@@ -401,7 +401,7 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
   }
 
   if(!std::regex_match(bdfstr,std::regex("[A-Za-z0-9:.]+")))
-    throw std::runtime_error("Please specify valid string" + available_devs.str());
+    throw std::runtime_error("Invalid BDF format. Please specify valid BDF" + available_devs.str());
 
   std::vector<std::string> tokens; 
   boost::split(tokens, bdfstr, boost::is_any_of(":")); 
@@ -446,7 +446,7 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
       return i;
   }
 
-  throw std::runtime_error(boost::str(boost::format("No user or mgmt PF found for '%s'") % bdfstr) + available_devs.str());
+  throw std::runtime_error(boost::str(boost::format("Specified device BDF '%s' not found") % bdfstr) + available_devs.str());
 }
 
 /*

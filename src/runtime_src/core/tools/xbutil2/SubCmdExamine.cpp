@@ -42,7 +42,7 @@ namespace po = boost::program_options;
 #include "tools/common/ReportFirewall.h"
 #include "tools/common/ReportDebugIpStatus.h"
 #include "tools/common/ReportElectrical.h"
-#include "tools/common/ReportFan.h"
+#include "tools/common/ReportMechanical.h"
 #include "tools/common/ReportAie.h"
 #include "tools/common/ReportMemory.h"
 #include "tools/common/ReportThermal.h"
@@ -52,7 +52,7 @@ namespace po = boost::program_options;
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
 static const ReportCollection fullReportCollection = {
   std::make_shared<ReportElectrical>(),
-  std::make_shared<ReportFan>(),
+  std::make_shared<ReportMechanical>(),
   std::make_shared<ReportAie>(),
   std::make_shared<ReportMemory>(),
   std::make_shared<ReportFirewall>(),
@@ -187,6 +187,11 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp(commonOptions, hiddenOptions);
+    return;
+  }
+  catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
     return;
   }
 

@@ -48,7 +48,7 @@ def getThreshold(devHandle):
     xclGetDeviceInfo2(devHandle, ctypes.byref(deviceInfo))
     if b"qdma" in deviceInfo.mName or b"qep" in deviceInfo.mName:
         threshold = 30000
-    if b"gen3x4" in deviceInfo.mName:
+    if b"gen3x4" in deviceInfo.mName or b"_u26z_" in deviceInfo.mName:
         threshold = 20000
     if b"u2x4" in deviceInfo.mName or b"U2x4" in deviceInfo.mName or b"u2_gen3x4" in deviceInfo.mName:
         threshold = 10000

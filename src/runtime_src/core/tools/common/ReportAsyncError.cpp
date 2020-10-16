@@ -17,7 +17,6 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportAsyncError.h"
-#include "core/common/query_requests.h"
 #include "core/common/device.h"
 #include "core/common/time.h"
 #include "core/common/api/error_int.h"
@@ -80,10 +79,15 @@ ReportAsyncError::writeReport( const xrt_core::device * _pDevice,
   boost::property_tree::ptree empty_ptree;
   getPropertyTreeInternal(_pDevice, _pt);
 
+  //check if a valid report is generated
+  boost::property_tree::ptree& pt_err = _pt.get_child("asynchronous_errors");
+  if(pt_err.empty())
+    return;
+
   _output << "Asynchronous Errors\n";
   boost::format fmt("  %-35s%-20s%-20s%-20s%-20s%-20s\n");
   _output << fmt % "Time" % "Class" % "Module" % "Driver" % "Severity" % "Error Code";
-  for (auto& node : _pt.get_child("asynchronous_errors")) {
+  for (auto& node : pt_err) {
     _output << fmt %  node.second.get<std::string>("time.timestamp")
                % node.second.get<std::string>("class") % node.second.get<std::string>("module")
                % node.second.get<std::string>("driver") % node.second.get<std::string>("severity")
