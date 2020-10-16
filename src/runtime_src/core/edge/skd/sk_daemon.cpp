@@ -300,13 +300,6 @@ static void sigLog(const int sig)
   exit(EXIT_FAILURE);
 }
 
-/* Define a signal handler for the parent to avoid zombie process */
-static void sigAct(const int sig)
-{
-  syslog(LOG_ERR, "%s - got %d\n", __func__, sig);
-  wait((int *)0);
-}
-
 #define PNAME_LEN	(16)
 void configSoftKernel(xclSKCmd *cmd)
 {
@@ -360,13 +353,8 @@ void configSoftKernel(xclSKCmd *cmd)
       exit(EXIT_SUCCESS);
     }
 
-    if (pid > 0) {
-      struct sigaction act;
-      act.sa_handler = sigAct;
-      sigemptyset(&act.sa_mask);
-      act.sa_flags = 0;
-      sigaction(SIGCHLD, &act, 0);
-    }
+    if (pid > 0)
+      signal(SIGCHLD,SIG_IGN);
 
     if (pid < 0)
       syslog(LOG_ERR, "Unable to create soft kernel process( %d)\n", i);
