@@ -261,6 +261,16 @@ int xrt_cu_polling_thread(void *data)
 		if (xcu->bad_state)
 			break;
 
+		/* The idea is when CU's credit is less than busy threshold,
+		 * sleep a while to wait for CU completion.
+		 * The interval is configurable and it should be determin by
+		 * kernel execution.
+		 * If threshold is -1, then this is a busy loop to check CU
+		 * statue.
+		 */
+		if (xrt_cu_peek_credit(xcu) <= xcu->busy_threshold)
+			usleep_range(xcu->interval_min, xcu->interval_max);
+
 		/* Continue until run queue empty */
 		if (xcu->num_rq)
 			continue;
@@ -612,6 +622,12 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
 			xcu->sleep_cnt);
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "max running:      %d\n",
 			xcu->max_running);
+
+	if (xcu->info.model == XCU_FA) {
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, "-- FA CU specific --\n");
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Check count: %lld\n",
+				to_cu_fa(xcu->core)->check_count);
+	}
 
 	if (sz < PAGE_SIZE - 1)
 		buf[sz++] = 0;
