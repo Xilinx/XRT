@@ -66,6 +66,8 @@ struct qdma_q_type q_type_list[] = {
 	{"BI", Q_H2C_C2H},
 };
 
+void qdma4_request_dump(const char *str, struct qdma_request *req, bool dump_cb);
+
 /* ********************* static function definitions ************************ */
 #ifdef __QDMA_VF__
 static int qdma_dev_notify_qadd(struct qdma_descq *descq,
