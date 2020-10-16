@@ -573,7 +573,7 @@ struct drm_xocl_execbuf {
  * @exec_bo_handle: BO handle of command buffer formatted as ERT command
  * @deps:	    Upto 8 dependency command BO handles this command is dependent on
  *                  for automatic event dependency handling by ERT
- * @cb_func:	    Pointer to callback function(void (*fn)(long,int)) upon exec completion
+ * @cb_func:	    Pointer to callback function(void (\*fn)(long,int)) upon exec completion
  * @cb_data:	    Pointer to context that callback needs to be invoked with
  */
 struct drm_xocl_execbuf_cb {

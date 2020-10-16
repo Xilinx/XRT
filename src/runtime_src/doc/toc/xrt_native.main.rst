@@ -5,6 +5,7 @@ XRT Native Library C++ API
 
 Configuration APIs
 ~~~~~~~~~~~~~~~~~~
+
 .. doxygennamespace:: xrt::ini
    :project: XRT
    :members:
@@ -21,12 +22,14 @@ Device and XCLBIN APIs
    :project: XRT
    :members:
 
+
 Buffer APIs
 ~~~~~~~~~~~
 
 .. doxygenclass:: xrt::bo
    :project: XRT
    :members:
+
 
 Kernel APIs
 ~~~~~~~~~~~
@@ -38,6 +41,7 @@ Kernel APIs
 .. doxygenclass:: xrt::run
    :project: XRT
    :members:
+
 
 XRT Native Library C API
 ************************
@@ -62,5 +66,3 @@ Buffer APIs
 Kernel APIs
 ~~~~~~~~~~~
 .. include:: ../core/xrt_kernel.rst
-
-
