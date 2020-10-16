@@ -134,7 +134,7 @@ static ssize_t xdma_async_migrate_bo(struct platform_device *pdev,
 	int i = 0;
 	ssize_t ret;
 	unsigned long long pgaddr;
-	struct xdma_io_cb *io_cb;
+	struct xdma_io_cb *io_cb = NULL;
 	struct xdma_async_context *async_ctx;
 
 	xdma = platform_get_drvdata(pdev);
@@ -169,8 +169,6 @@ static ssize_t xdma_async_migrate_bo(struct platform_device *pdev,
 
 		io_cb->io_done = xdma_async_migrate_done;
 		io_cb->private = async_ctx;
-	} else {
-		io_cb = NULL;
 	}
 
 	//pr_info("%s: iocb:%llx ",__func__, (u64)io_cb);
@@ -193,6 +191,7 @@ static ssize_t xdma_async_migrate_bo(struct platform_device *pdev,
 	}
 
 failed:
+	kfree(io_cb);
 	return ret;
 }
 

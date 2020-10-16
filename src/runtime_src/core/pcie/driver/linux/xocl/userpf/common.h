@@ -81,9 +81,6 @@ struct xocl_dev	{
 	struct xocl_dev_core	core;
 
 	struct list_head	ctx_list;
-	struct workqueue_struct	*wq;
-	struct xocl_work	works[XOCL_WORK_NUM];
-	struct mutex		wq_lock;
 
 	/*
 	 * Per xdev lock protecting client list and all client contexts in the
