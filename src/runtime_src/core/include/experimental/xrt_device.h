@@ -60,6 +60,22 @@ public:
 
   /// @cond
   /**
+   * device() - Constructor with user host buffer and flags
+   *
+   * @param didx
+   *  Device index
+   *
+   * Provided to resolve ambiguity in conversion from integral
+   * to unsigned int.
+   */
+  explicit
+  device(int didx)
+    : device(static_cast<unsigned int>(didx))
+  {}
+  /// @endcond
+
+  /// @cond
+  /**
    * device() - Constructor from opaque handle
    *
    * Implementation defined constructor
