@@ -45,6 +45,17 @@ struct zocl_aie {
 
 #ifdef __NONE_PETALINUX__
 
+#define AIE_ERROR_CATEGORY_SATURATION		0U
+#define AIE_ERROR_CATEGORY_FP			1U
+#define AIE_ERROR_CATEGORY_STREAM		2U
+#define AIE_ERROR_CATEGORY_ACCESS		3U
+#define AIE_ERROR_CATEGORY_BUS			4U
+#define AIE_ERROR_CATEGORY_INSTRUCTION		5U
+#define AIE_ERROR_CATEGORY_ECC			6U
+#define AIE_ERROR_CATEGORY_LOCK			7U
+#define AIE_ERROR_CATEGORY_DMA			8U
+#define AIE_ERROR_CATEGORY_MEM_PARITY		9U
+
 enum aie_module_type {
 	AIE_MEM_MOD,
 	AIE_CORE_MOD,
@@ -68,6 +79,7 @@ struct aie_error {
 	struct aie_location loc;
 	enum aie_module_type module;
 	u32 error_id;
+	u32 category;
 };
 
 struct aie_errors {

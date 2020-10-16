@@ -56,9 +56,16 @@ error_number_to_string(xrtErrorNum err)
   const std::map<xrtErrorNum, std::string> map {
     {XRT_ERROR_NUM_FIRWWALL_TRIP,     "FIREWALL_TRIP"},
     {XRT_ERROR_NUM_TEMP_HIGH,         "TEMP_HIGH"},
-    {XRT_ERROR_NUM_AXI_MM_SLAVE_TILE, "AXI_MM_SLAVE_TILE"},
-    {XRT_ERROR_NUM_DM_ECC,            "DM_ECC"},
-    {XRT_ERROR_NUM_DMA_S2MM_0,        "DMA_S2MM_0"}
+    {XRT_ERROR_NUM_AIE_SATURATION,    "AIE_SATURATION"},
+    {XRT_ERROR_NUM_AIE_FP,            "AIE_FP"},
+    {XRT_ERROR_NUM_AIE_STREAM,        "AIE_STREAM"},
+    {XRT_ERROR_NUM_AIE_ACCESS,        "AIE_ACCESS"},
+    {XRT_ERROR_NUM_AIE_BUS,           "AIE_BUS"},
+    {XRT_ERROR_NUM_AIE_INSTRUCTION,   "AIE_INSTRUCTION"},
+    {XRT_ERROR_NUM_AIE_ECC,           "AIE_ECC"},
+    {XRT_ERROR_NUM_AIE_LOCK,          "AIE_LOCK"},
+    {XRT_ERROR_NUM_AIE_DMA,           "AIE_DMA"},
+    {XRT_ERROR_NUM_AIE_MEM_PARITY,    "AIE_MEM_PARITY"},
   };
 
   return code_to_string(map, err, "Unknown error number");
