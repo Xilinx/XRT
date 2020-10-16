@@ -311,7 +311,7 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl);
  * the xclbin loaded by this process using @load_xclbin()
  */
 XCL_DRIVER_DLLESPEC
-void
+int
 xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out);
 
 /*
