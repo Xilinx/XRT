@@ -19,6 +19,12 @@
 #include "../xocl_drv.h"
 #include <linux/iommu.h>
 
+int p2p_max_bar_size = 64; /* GB */
+module_param(p2p_max_bar_size, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(p2p_max_bar_size,
+	"Maximum P2P BAR size in GB, default is 64");
+
+
 #if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
 	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
 #define P2P_API_V0
@@ -73,7 +79,8 @@
 #define P2P_BYTES_TO_RBAR(bytes)	(fls64((bytes) - 1) - 20)
 #define P2P_BAR_ROUNDUP(bytes)		(1UL << (fls64((bytes) - 1)))
 #define P2P_EXP_BAR_SZ(p2p)						\
-	P2P_BAR_ROUNDUP(p2p->exp_mem_sz + p2p->user_buf_start)
+	P2P_BAR_ROUNDUP(min((ulong)p2p_max_bar_size * 1024 * 1024 * 1024,	\
+			p2p->exp_mem_sz + p2p->user_buf_start))
 
 struct remapper_regs {
 	u32	ver;
@@ -838,10 +845,8 @@ static int p2p_mem_unmap(struct platform_device *pdev, ulong bar_off,
 	struct p2p *p2p = platform_get_drvdata(pdev);
 	int ret = 0;
 
-	if (p2p->p2p_bar_idx < 0) {
-		p2p_err(p2p, "can not find p2p bar");
-		return -EINVAL;
-	}
+	if (p2p->p2p_bar_idx < 0)
+		return -ENODEV;
 
 	mutex_lock(&p2p->p2p_lock);
 
@@ -861,10 +866,8 @@ static int p2p_mem_map(struct platform_device *pdev,
 	long bank_off = 0;
 	int ret;
 
-	if (p2p->p2p_bar_idx < 0) {
-		p2p_err(p2p, "can not find p2p bar");
-		return -EINVAL;
-	}
+	if (p2p->p2p_bar_idx < 0)
+		return -ENODEV;
 
 	mutex_lock(&p2p->p2p_lock);
 
@@ -945,10 +948,8 @@ static int p2p_mem_get_pages(struct platform_device *pdev,
 	ulong offset;
 	int ret = 0;
 
-	if (p2p->p2p_bar_idx < 0) {
-		p2p_err(p2p, "can not find p2p bar");
-		return -EINVAL;
-	}
+	if (p2p->p2p_bar_idx < 0)
+		return -ENODEV;
 
 	p2p_info(p2p, "bar_off: %ld, size %ld, npages %ld",
 		bar_off, size, npages);
@@ -1094,10 +1095,8 @@ static int p2p_get_bar_paddr(struct platform_device *pdev, ulong bank_addr,
 	long bank_off = 0;
 	int ret = 0;
 
-	if (p2p->p2p_bar_idx < 0) {
-		p2p_err(p2p, "can not find p2p bar");
-		return -EINVAL;
-	}
+	if (p2p->p2p_bar_idx < 0)
+		return -ENODEV;
 
 	mutex_lock(&p2p->p2p_lock);
 
@@ -1124,6 +1123,54 @@ failed:
 	return ret;
 }
 
+static int p2p_adjust_mem_topo(struct platform_device *pdev, void *mem_topo)
+{
+	struct p2p *p2p = platform_get_drvdata(pdev);
+	struct mem_topology *topo = mem_topo;
+	int i;
+	u64 total_sz = 0, sz;
+
+	if (!p2p_is_enabled(p2p))
+		return 0;
+
+	if (p2p->p2p_bar_len >= p2p->exp_mem_sz + p2p->user_buf_start)
+		return 0;
+
+	if (p2p->remapper) {
+		p2p_err(p2p, "does not have remapper, can not adjust");
+		return -EINVAL;
+	}
+
+	for (i = 0; i< topo->m_count; ++i) {
+		if (!XOCL_IS_P2P_MEM(topo, i) || !topo->m_mem_data[i].m_used)
+			continue;
+		total_sz += roundup((topo->m_mem_data[i].m_size << 10),
+			p2p->remap_slot_sz);
+	}
+
+	/* total required size should be half BAR size to align with the
+	 * normal case.
+	 */
+	if (total_sz <= p2p->p2p_bar_len / 2)
+		return 0;
+
+	p2p_info(p2p, "can not cover all memory, adjust bank sizes");
+
+	for (i = 0; i< topo->m_count; ++i) {
+		if (!XOCL_IS_P2P_MEM(topo, i) || !topo->m_mem_data[i].m_used)
+			continue;
+
+		sz = roundup((topo->m_mem_data[i].m_size << 10),
+			p2p->remap_slot_sz);
+		topo->m_mem_data[i].m_size = roundup(p2p->p2p_bar_len / 2 *
+			sz / total_sz, p2p->remap_slot_sz) >> 10;
+		p2p_info(p2p, "adjusted bank %d to %lld k", i,
+				topo->m_mem_data[i].m_size);
+	}
+
+	return 0;
+
+}
 struct xocl_p2p_funcs p2p_ops = {
 	.mem_map = p2p_mem_map,
 	.mem_unmap = p2p_mem_unmap,
@@ -1135,6 +1182,7 @@ struct xocl_p2p_funcs p2p_ops = {
 	.conf_status = p2p_conf_status,
 	.refresh_rbar = p2p_refresh_rbar,
 	.get_bar_paddr = p2p_get_bar_paddr,
+	.adjust_mem_topo = p2p_adjust_mem_topo,
 };
 
 static ssize_t config_store(struct device *dev, struct device_attribute *da,
@@ -1162,10 +1210,8 @@ static ssize_t config_store(struct device *dev, struct device_attribute *da,
 	if (kstrtol(p_sz, 10, &sz))
 		return -EINVAL;
 
-	if (p2p->p2p_bar_idx < 0) {
-		p2p_err(p2p, "can not find p2p bar");
-		return -EINVAL;
-	}
+	if (p2p->p2p_bar_idx < 0)
+		return -ENODEV;
 
 	mutex_lock(&p2p->p2p_lock);
 	strncpy(p2p->bank_conf[idx].bank_tag, p_tag, MAX_BANK_TAG_LEN - 1);
