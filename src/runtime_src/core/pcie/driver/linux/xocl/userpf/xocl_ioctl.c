@@ -271,7 +271,7 @@ static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
 	bool ret = false;
 	int err = 0;
 	xuid_t *downloaded_xclbin =  NULL;
-	bool changed;
+	bool changed = false;
 
 	xocl_p2p_conf_status(xdev, &changed);
 	if (changed) {

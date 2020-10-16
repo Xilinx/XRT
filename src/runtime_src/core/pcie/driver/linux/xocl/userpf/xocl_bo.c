@@ -1495,6 +1495,7 @@ int xocl_sync_bo_callback_ioctl(struct drm_device *dev,
 	struct scatterlist *sg;
 	void (*cb_func)(unsigned long cb_hndl, int err) = NULL;
 	void *cb_data = NULL;
+	bool cb_data_alloced = false;
 
 	u32 dir = (args->dir == DRM_XOCL_SYNC_BO_TO_DEVICE) ? 1 : 0;
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
@@ -1564,6 +1565,7 @@ int xocl_sync_bo_callback_ioctl(struct drm_device *dev,
 				ret = -ENOMEM;
 				goto out;
 			}
+			cb_data_alloced = true;
 			cb_func = xocl_free_sgt_callback;
 			((struct free_sgt_cb *)cb_data)->sgt = sgt;
 			((struct free_sgt_cb *)cb_data)->orig_func = (void *)args->cb_func;
@@ -1602,6 +1604,8 @@ clear:
 	}
 
 out:
+	if (cb_data_alloced)
+		kfree(cb_data);
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 	return ret;
 }

@@ -1491,11 +1491,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	}
 
 	xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
-
+	/* Waiting for all subdev to be initialized before returning. */
+	flush_delayed_work(&xdev->core.works[XOCL_WORK_REFRESH_SUBDEV].work);
 
 	xdev->mig_cache_expire_secs = XDEV_DEFAULT_EXPIRE_SECS;
 
-    /* store link width & speed stats */
+	/* store link width & speed stats */
 	store_pcie_link_info(xdev);
 
 	return 0;
