@@ -257,6 +257,13 @@ get_timestamp() const
   return handle->get_timestamp();
 }
 
+xrtErrorCode
+error::
+get_error_code() const
+{
+  return handle->get_error_code();
+}
+
 std::string
 error::
 to_string() const

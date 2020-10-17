@@ -62,6 +62,15 @@ public:
   get_timestamp() const;
 
   /**
+   * get_error_code() - Get the error code for this error
+   *
+   * Return:  Underlying xrt error code
+   */
+  XCL_DRIVER_DLLESPEC
+  xrtErrorCode
+  get_error_code() const;
+
+  /**
    * to_string() - Convert error object into a formatted string
    *
    * Return:  Formatted string for error
