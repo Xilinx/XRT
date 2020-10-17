@@ -4263,8 +4263,7 @@ static int config_scu(struct platform_device *pdev,
 			exec->num_sk_cus++;
 			strncpy(xert->scu_name[i], (char *)scmd->sk_name,
 				sizeof(xert->scu_name[0]) - 1);
-			if (strlen(xert->scu_name[i]) == 0)
-				strcpy(xert->scu_name[i], " ");
+			strcpy(xert->scu_name[i], " ");
 		} else {
 			if (strlen(xert->scu_name[i]) == 0)
 				continue;
