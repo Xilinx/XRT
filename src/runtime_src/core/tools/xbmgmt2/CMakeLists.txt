@@ -28,7 +28,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
 file(GLOB XBMGMT_V2_SUBCMD_FILES
   "SubCmdProgram.cpp"
   "SubCmdReset.cpp"
-  "SubCmdStatus.cpp"
+  "SubCmdExamine.cpp"
   "SubCmdAdvanced.cpp"
   "OO_Clock.cpp"
   "OO_Config.cpp"

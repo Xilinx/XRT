@@ -65,10 +65,11 @@ else
     setenv PYTHONPATH $XILINX_XRT/python:$PYTHONPATH
 endif
 
-setenv XRT_TOOLS_NEXTGEN false
+# To use the newest version of the XRT tools, either uncomment or set 
+# the following environment variable in your profile:
+#   setenv XRT_TOOLS_NEXTGEN true
 
 echo "XILINX_XRT        : $XILINX_XRT"
 echo "PATH              : $PATH"
 echo "LD_LIBRARY_PATH   : $LD_LIBRARY_PATH"
 echo "PYTHONPATH        : $PYTHONPATH"
-echo "XRT_TOOLS_NEXTGEN : $XRT_TOOLS_NEXTGEN"

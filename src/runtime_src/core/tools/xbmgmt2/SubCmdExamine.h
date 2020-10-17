@@ -14,17 +14,17 @@
  * under the License.
  */
 
-#ifndef __SubCmdStatus_h_
-#define __SubCmdStatus_h_
+#ifndef __SubCmdExamine_h_
+#define __SubCmdExamine_h_
 
 #include "tools/common/SubCmd.h"
 
-class SubCmdStatus : public SubCmd {
+class SubCmdExamine : public SubCmd {
  public:
   virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-  SubCmdStatus(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+  SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 };
 
 #endif

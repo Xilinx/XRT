@@ -29,14 +29,16 @@ if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
     return 1
 fi
 
+# To use the newest version of the XRT tools, either uncomment or set 
+# the following environment variable in your profile:
+#   export XRT_TOOLS_NEXTGEN=true
+
 export XILINX_XRT
 export LD_LIBRARY_PATH=$XILINX_XRT/lib:$LD_LIBRARY_PATH
 export PATH=$XILINX_XRT/bin:$PATH
 export PYTHONPATH=$XILINX_XRT/python:$PYTHONPATH
-export XRT_TOOLS_NEXTGEN=false
 
 echo "XILINX_XRT        : $XILINX_XRT"
 echo "PATH              : $PATH"
 echo "LD_LIBRARY_PATH   : $LD_LIBRARY_PATH"
 echo "PYTHONPATH        : $PYTHONPATH"
-echo "XRT_TOOLS_NEXTGEN : $XRT_TOOLS_NEXTGEN"
