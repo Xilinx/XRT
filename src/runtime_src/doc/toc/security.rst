@@ -3,11 +3,13 @@
 Security of Alveo Platform
 **************************
 
-.. image:: XSA-shell.svg
-   :align: center
+.. figure:: XSA-shell.svg
+    :figclass: align-center
+
+    XSA PCIe shell mgmt and user components, data and control paths
 
 Security is built into Alveo platform hardware and software architecture. The platform
-is made up of two fixed physical partitions: an immutable Shell and user compiled DFX partition.
+is made up of two fixed physical partitions: an immutable Shell and user compiled DFX partition (Role).
 This design allows end users to perform Dynamic Function eXchange (Partial Reconfiguration
 in classic FPGA terminology) in the well defined DFX partition while the static Shell
 provides key infrastructure services. Alveo shells assume PCIe host (with access to PF0) is
@@ -18,6 +20,7 @@ part of *Root-of-Trust*. The following features reinforce security of the platfo
 3. Signing of xclbins
 4. AXI Firewall
 5. Well-defined compute kernel execution model
+6. No direct access to PCIe TLP
 
 Shell
 =====
@@ -121,6 +124,18 @@ the peer about FireWall trip. xocl can suggest a reset by sending a reset comman
 that even if no reset is performed the AXI Protocol Firewall will continue to protect the host PCIe bus. DFX
 partition will be unavailable till device is reset. **A reboot of host is not required to reset the device.**
 
+AXI Firewall in SI mode also protects the host from errant kernels using the Slave Bridge for direct access to
+host memory. For example if a kernel (AXI master) issues a non compliant AXI transaction like starting a burst transfer but
+stalling afterwards, the AXI Firewall will complete the transaction on behalf of the failing kernel. This protects
+PCIe from Timeout errors.
+
+PCIe Bus Safety
+===============
+
+As explained in the Firewall section above PCIe bus is protected by AXI Firewalls in both control and data path.
+DFX Isolation only exposes AXI bus (AXI-Lite for control and AXI-Full for data paths) to the Dynamic Region. Kernels
+compiled by user which sit in Dynamic Region do not have direct access to PCIe bus and hence cannot generate TLP packets.
+This removes the risk of an erant Role compromising the PCIe bus and taking over the host system.
 
 Deployment Models
 =================
