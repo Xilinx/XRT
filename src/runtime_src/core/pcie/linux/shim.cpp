@@ -27,6 +27,7 @@
 #include "core/common/scheduler.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
+#include "core/common/query_requests.h"
 #include "core/common/AlignedAllocator.h"
 
 #include "plugin/xdp/hal_profile.h"
@@ -1345,8 +1346,14 @@ int shim::xclLoadXclBin(const xclBin *buffer)
     auto ret = xclLoadAxlf(top);
     if (ret != 0) {
       if (ret == -EOPNOTSUPP) {
-        xrt_logmsg(XRT_ERROR, "Xclbin does not match Shell on card.");
-        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update Shell.");
+        xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
+        auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(top);
+        auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
+        if (xclbin_vbnv != shell_vbnv) {
+          xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
+          xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
+        }
+        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
       }
       else if (ret == -EBUSY) {
         xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");

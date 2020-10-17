@@ -15,6 +15,7 @@
  */
 #include "device_swemu.h"
 #include "core/common/query_requests.h"
+#include "core/pcie/emulation/common_em/query.h"
 #include "shim.h"
 
 #include <string>
@@ -29,7 +30,7 @@ using qtype = std::underlying_type<query::key_type>::type;
 
 static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
 
-struct deviceQuery
+struct device_query
 {  
   static uint32_t
     get(const xrt_core::device* device, key_type query_key)
@@ -40,6 +41,7 @@ struct deviceQuery
     return drv->deviceQuery(query_key);
   }
 };
+
 
 template <typename QueryRequestType, typename Getter>
 struct function0_get : virtual QueryRequestType
@@ -63,8 +65,9 @@ emplace_func0_request()
 static void
 initialize_query_table()
 {
-  emplace_func0_request<query::m2m, deviceQuery>();
-  emplace_func0_request<query::nodma, deviceQuery>();
+  emplace_func0_request<query::m2m, device_query>();
+  emplace_func0_request<query::nodma, device_query>();
+  emplace_func0_request<query::rom_vbnv, xclemulation::query::device_info>();
 }
 
 struct X { X() { initialize_query_table(); }};
