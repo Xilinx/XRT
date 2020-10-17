@@ -1,8 +1,9 @@
 .. _platforms.rst:
 
 
-XRT and Vitis™ Platform Overview
-********************************
+=================================
+ XRT and Vitis™ Platform Overview
+=================================
 
 XRT exports a common software stack across PCIe based datacenter platforms and ZYNQ UltraScale+ MPSoC/Versal ACAP based embedded platforms. Applications can be seamlessly ported from one class of platform to another with little effort.
 
@@ -16,7 +17,7 @@ User application is made up of host code written in C/C++/OpenCL or Python. Devi
 
     User application compilation and execution
 
-Users use Vitis™ compiler, v++ to compile and link device code for the target platform. Host code written in C/C++/OpenCL may be compiled with gcc/g++. Host code may be written in Python OpenCL (using PyOpenCL) or Python XRT (using builti-in python binding).
+Users use Vitis™ compiler, v++ to compile and link device code for the target platform. Host code written in C/C++/OpenCL may be compiled with gcc/g++. Host code may be written in Python OpenCL (using PyOpenCL) or Python XRT (using built-in python binding).
 
 PCIe Based Platforms
 ====================
@@ -51,43 +52,43 @@ XRT Linux kernel driver *xclmgmt* binds to management physical function. Managem
 provides access to Shell components responsible for privileged operations. xclmgmt driver is organized
 into subdevices and handles the following functionality:
 
-* User compiled FPGA image (xclbin) download which involves ICAP programming, clock scaling
-  and iolsation logic
-* Loading firmware container called xsabin. xsabin contains PLP (for 2 RP solution)
-  and embedded Microblaze firmwares for ERT and CMC
-* Access to in-band sensors: Temperature, Voltage, Current, Power, etc.
-* AXI Firewall management in data and control paths
-* Flash programmer for shell upgrade
-* Device reset and rescan
-* Communication with user pf driver xocl via hardware mailbox
-* Interrupt handling for AXI Firewall and Mailbox
-* Device DNA discovery and validation
-* DDR and HBM memory ECC handling
+* User compiled FPGA image (xclbin) download which involves ICAP (bitstream download) programming, clock
+  scaling and isolation logic management.
+* Loading firmware container called xsabin which contains PLP (for 2 RP platfroms) and firmwares for
+  embedded Microblazes. The embedded Microblazes perform the functionality of ERT and CMC.
+* Access to in-band sensors: temperature, voltage, current, power, fan RPM etc.
+* AXI Firewall management in data and control paths. AXI firewalls protect shell and PCIe from untrusted Role.
+* Shell upgrade by grogramming QSPI flash constroller.
+* Device reset and recovery upon detecting AXI firewall trips or explicit request from end user.
+* Communication with user pf driver xocl via hardware mailbox. The protocol is defined :ref:`mailbox.proto.rst`
+* Interrupt handling for AXI Firewall and Mailbox HW IPs.
+* Device DNA (unique ID) discovery and validation.
+* DDR and HBM memory ECC handling and reporting.
 
 USER PF (PF1)
 -------------
 
 XRT Linux kernel driver *xocl* binds to user physical function. User physical function provides access
 to Shell components responsible for non privileged operations. It also provides access to compute units
-in DFX partition. xocl driver is organized into subdevices and handles the following functionality:
+in DFX partition. xocl driver is organized into subdevices and handles the following functionality which
+are exercised using well-defined APIs in ``xrt.h`` header file.
 
-* Device memory topology discovery and memory management
-* Device memory management as abstracted buffer objects
-* XDMA memory mapped PCIe DMA engine programming
-* QDMA streaming DMA engine programming
-* Multi-process aware context management
-* Compute unit execution management (optionally with help of ERT) for client processes
-* Interrupt handling for DMA, Compute unit completion and Mailbox
-* Buffer object migration between device and host as DMA operation
-* Programming Address-remapper for direct access to host memory by kernels via Slave Bridge (SB)
-* Host memory pinning and management
-* Buffer import and export via DMA-BUF
-* PCIe peer-to-peer buffer mapping and sharing
-* Access to in-band sensors via MailBox proxy into xclmgmt
-* Hardware mailbox for communication with xclmgmt driver
+* Device memory topology discovery and device memory management. The driver provides well-defined abstraction
+  of buffer objects to the clients.
+* XDMA/QDMA memory mapped PCIe DMA engine programming and with easy to use buffer migration API.
+* Multi-process aware context management with concurrent access to device by multiple processes.
+* Compute unit execution pipeline management with the help of hardware scheduler ERT. If ERT is not available
+  then scheduling is completely handled by xocl driver in software.
+* Interrupt handling for PCIe DMA, Compute unit completion and Mailbox messages.
+* Setting up of Address-remapper tables for direct access to host memory by kernels compiled into Role. Direct
+  access to host memory is enabled by Slave Bridge (SB) in the shell.
+* Buffer import and export via Linux DMA-BUF infrastructure.
+* PCIe peer-to-peer buffer mapping and sharing over PCIe bus.
+* Secure communication infrastructure for exchanging messages with xclmgmt driver.
+* Memory-to-memory (M2M) programming for moving data between device DDR, PL-RAM and HBM.
 
 
-PCIe platform security and robustness is described in section :ref:`security.rst`.
+Section :ref:`security.rst` describes PCIe platform security and robustness in detail.
 
 PCIe Based Hybrid Platforms
 ---------------------------
@@ -95,9 +96,12 @@ PCIe Based Hybrid Platforms
 .. figure:: XRT-Architecture-Hybrid.svg
     :figclass: align-center
 
-    Alveo PCIe based hybrid stack
+    Alveo PCIe hybrid stack
 
-PCIe Based Hybrid Platforms like U30 and VCK5000 are MPSoC/Versal platforms. They act as PCIe endpoint and appear as regular PCIe device to PCIe hosts like x86_64 or PPC64LE. They have two physical function architecture similar to other Alveo platforms. On these platforms the ERT subsystem is running on APU.
+U30 and VCK5000 are MPSoC and Versal platforms respectively are considered hybrid devices. They have hardedned PS
+subsystem with ARM APUs in the Shell. The PL fabric is exposed as Role. The devices act as PCIe endpoint to PCIe
+hosts like x86_64, PPC64LE. They have two physical function architecture identical to other Alveo platforms. On
+these platforms the ERT subsystem is running on APU.
 
 
 Zynq-7000 and ZYNQ Ultrascale+ MPSoC Based Embedded Platforms
@@ -126,17 +130,19 @@ embedded platforms for the following Xilinx evaluation boards are provided:
 4. ZCU106
 5. VCK190
 
-MPSoC and Versal based platforms are supported with PetaLinux based common root filesystem and common kernel.
-XRT Linux kernel driver *zocl* does the heavy lifting for the embedded platform. It handles the
-following functionality:
+MPSoC and Versal based platforms are supported with PetaLinux based common root filesystem and common
+kernel. XRT Linux kernel driver *zocl* does the heavy lifting for the embedded platform. It handles the
+following functionality with well defined APIs in ``xrt.h`` and ``xrt_aie.h`` (for AIE) header files.
 
-* CMA buffer management and cache management
-* SMMU programming for SVM platforms
-* Compute unit execution management on behalf of client processes
-* xclbin download for platforms with Partial Reconfiguration support
-* Buffer import and export via DMA-BUF
-* Interrupt handling for compute unit completion
-* AIE array programming and graph execution
-* PL-DDR memory management
-* ZynqMP DMA engine programming via well defined API
-* AIE GMIO data mover programming via well defined API
+* PS memory CMA buffer management and cache management. On SVM enabled platforms zocl also manages SMMU. The driver provides
+  well-defined abstraction of buffer objects to the clients.
+* Compute unit execution pipeline management for clients.
+* User compiled FPGA image (xclbin) for platforms with Partial Reconfiguration support.
+* Buffer object import and export via DMA-BUF.
+* Interrupt handling for compute unit completion.
+* AIE array programming and graph execution.
+* If PL-DDR memory is enabled by instantiating MIG in PL, zocl provides memory management similar to PS memory.
+* ZynqMP DMA engine programming for moving data between PS DDR and PL-DDR.
+* AIE GMIO data mover programming to move data between NOC and AIE.
+
+Section :ref:`execution-model.rst` provides a high level overview of execution model.

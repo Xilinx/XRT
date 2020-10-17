@@ -10,7 +10,7 @@ Xilinx® FPGA based acceleration platform architecture are described in the :ref
 Image Download
 ==============
 
-Xilinx® Vitis compiler, v++ compiles user's device code into xclbin file which contains FPGA bitstream and collection of metadata like memory topology, IP instantiations, etc. xclbin format is defined in :ref:`formats.rst` document. For Alveo platforms xclmgmt driver provides an ioctl for xclbin download. For Zynq Ultrascale+ MPSoC zocl provides an ioctl for xclbin download. Both drivers support FPGA Manager integration. The drivers walk the xclbin sections, program the FPGA fabric, discover the memory topology, initialize the memory managers for the provided memory topology and discover user's compute units programmed into the FPGA fabric.
+Xilinx® Vitis compiler, v++ compiles user's device code into xclbin file which contains FPGA bitstream and collection of metadata like memory topology, IP instantiations, etc. xclbin format is defined in :ref:`formats.rst` document. For Alveo platforms xclmgmt driver provides an ioctl for xclbin download. For Zynq Ultrascale+ MPSoC zocl provides a similar ioctl for xclbin download. Both drivers support FPGA Manager integration. The drivers walk the xclbin sections, program the FPGA fabric, discover the memory topology, initialize the memory managers for the provided memory topology and discover user's compute units programmed into the FPGA fabric.
 
 Memory Management
 =================
@@ -22,7 +22,9 @@ For both class of platforms, memory management is performed inside Linux kernel 
 xocl
 ----
 
-Xilinx® PCIe platforms like Alveo PCIe cards support various memory topologies which can be dynamically loaded as part of FPGA image loading step. This means from one FPGA image to another the device may expose one or more memory controllers where each memory controller has its own memory address range. We use drm_mm for allocation of memory and drm_gem framework for mmap handling. Since ordinarily our device memory is not exposed to host CPU (except when we enable PCIe peer-to-peer feature) we use host memory pages to back device memory for mmap support. For syncing between device memory and host memory pages XDMA PCIe DMA engine is used. Users call sync ioctl to effect DMA in requested direction.
+Xilinx® PCIe platforms like Alveo PCIe cards support various memory topologies which can be dynamically loaded as part of FPGA image loading step. This means from one FPGA image to another the device may expose one or more memory controllers where each memory controller has its own memory address range. We use Linux *drm_mm* for allocation of memory and Linux *drm_gem* framework for mmap handling. Since ordinarily our device memory is not exposed to host CPU (except when we enable PCIe peer-to-peer feature) we use host memory pages to back device memory for mmap support. For syncing between device memory and host memory pages XDMA/QDMA PCIe memory mapped DMA engine is used. Users call sync ioctl to effect DMA in requested direction.
+
+xocl also supports PCIe Slave Bridge where it handles pinning of host memory and programming the Address Remapper tables. Section :ref:`sb.rst` provides more information.
 
 zocl
 ----
@@ -47,6 +49,8 @@ For Alveo boards xclmgmt does the board management like board recovery in case c
 
 Execution Flow
 ==============
+
+A typical user execution flow would like the following:
 
 1. Load xclbin using DOWNLOAD ioctl
 2. Discover compute unit register map from xclbin

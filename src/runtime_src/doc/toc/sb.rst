@@ -1,9 +1,9 @@
 .. _sb.rst:
 
-Slave-Bridge Support
-====================
+PCIe Slave-Bridge (SB)
+======================
 
-Slave Bridge IP is used by the kernel(s) to read and write data directly from the Host Memory. Unlike the XDMA data transfer, this data transfer mechanism does not utlize global memories (DDR, HBM, PLRAM ,etc) on the card. Slave-Bridge provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.
+Slave Bridge IP is used by the kernel(s) to read and write data directly from/to the Host Memory. Unlike the XDMA data transfer, this data transfer mechanism does not utlize global memories (DDR, HBM, PLRAM ,etc) on the card. Slave-Bridge provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.
 
 
 Kernel Compilation

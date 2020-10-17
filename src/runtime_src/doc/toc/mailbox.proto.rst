@@ -1,3 +1,5 @@
+.. _mailbox.proto.rst:
+
 Mailbox Inter-domain Communication Protocol
 -------------------------------------------
 
