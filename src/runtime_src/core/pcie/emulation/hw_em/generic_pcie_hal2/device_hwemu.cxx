@@ -17,60 +17,61 @@
 
 #include "device_hwemu.h"
 #include "core/common/query_requests.h"
+#include "core/pcie/emulation/common_em/query.h"
 #include "shim.h"
 
 #include <string>
 #include <map>
-#include <boost/format.hpp>
 
 namespace {
 
-  namespace query = xrt_core::query;
-  using key_type = query::key_type;
-  using qtype = std::underlying_type<query::key_type>::type;
+namespace query = xrt_core::query;
+using key_type = query::key_type;
+using qtype = std::underlying_type<query::key_type>::type;
 
-  static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
+static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
 
-  struct deviceQuery
-  {   
-    static uint32_t
-      get(const xrt_core::device* device, key_type query_key)
-    {
-      xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(device->get_device_handle());
-      if (!drv)
-        return 0;
-      return drv->deviceQuery(query_key);
-    }
-  };
-
-  template <typename QueryRequestType, typename Getter>
-  struct function0_get : virtual QueryRequestType
+struct device_query
+{   
+  static uint32_t
+  get(const xrt_core::device* device, key_type query_key)
   {
-    boost::any
-      get(const xrt_core::device* device) const
-    {
-      auto k = QueryRequestType::key;
-      return Getter::get(device, k);
-    }
-  };
+    xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(device->get_device_handle());
+    if (!drv)
+      return 0;
+    return drv->deviceQuery(query_key);
+  }
+};
 
-  template <typename QueryRequestType, typename Getter>
-  static void
-    emplace_func0_request()
+template <typename QueryRequestType, typename Getter>
+struct function0_get : virtual QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device) const
   {
     auto k = QueryRequestType::key;
-    query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
+    return Getter::get(device, k);
   }
+};
 
-  static void
-    initialize_query_table()
-  {
-    emplace_func0_request<query::m2m, deviceQuery>();
-    emplace_func0_request<query::nodma, deviceQuery>();
-  }
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func0_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
+}
 
-  struct X { X() { initialize_query_table(); } };
-  static X x;
+static void
+initialize_query_table()
+{
+  emplace_func0_request<query::m2m, device_query>();
+  emplace_func0_request<query::nodma, device_query>();
+  emplace_func0_request<query::rom_vbnv, xclemulation::query::device_info>();
+}
+
+struct X { X() { initialize_query_table(); } };
+static X x;
 
 }
 

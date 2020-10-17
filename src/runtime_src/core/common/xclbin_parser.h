@@ -275,6 +275,13 @@ XRT_CORE_COMMON_EXPORT
 bool
 is_pdi_only(const axlf* top);
 
+/**
+ * get_vbnv() - Get VBNV of xclbin
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+get_vbnv(const axlf* top);
+
 }} // xclbin, xrt_core
 
 #endif
