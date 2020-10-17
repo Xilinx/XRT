@@ -19,7 +19,6 @@
 
 #include "core/common/config.h"
 #include <string>
-#include <ctime>
 
 namespace xrt_core {
 

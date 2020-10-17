@@ -19,6 +19,7 @@
 
 #include <chrono>
 #include <cstring>
+#include <ctime>
 
 #ifdef _WIN32
 # pragma warning ( disable : 4996 )
