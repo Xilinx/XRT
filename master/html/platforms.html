@@ -307,7 +307,7 @@
             
             
               <div class="version">
-                2020.1
+                2020.2
               </div>
             
           
@@ -339,6 +339,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#pcie-based-platforms">PCIe Based Platforms</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#mgmt-pf-pf0">MGMT PF (PF0)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#user-pf-pf1">USER PF (PF1)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pcie-based-hybrid-platforms">PCIe Based Hybrid Platforms</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#zynq-7000-and-zynq-ultrascale-mpsoc-based-embedded-platforms">Zynq-7000 and ZYNQ Ultrascale+ MPSoC Based Embedded Platforms</a></li>
@@ -354,10 +355,9 @@
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">Slave-Bridge Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -369,14 +369,16 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
@@ -479,25 +481,30 @@
             
   <div class="section" id="xrt-and-vitis-platform-overview">
 <span id="platforms-rst"></span><h1>XRT and Vitis™ Platform Overview<a class="headerlink" href="#xrt-and-vitis-platform-overview" title="Permalink to this headline">¶</a></h1>
-<p>XRT exports a common stack across PCIe based datacenter platforms and ZYNQ and ZYNQ UltraScale+ MPSoC based embedded platforms.
-It would require minimal porting efforts when migrating an application from one class of platform to another from the user perspective.</p>
+<p>XRT exports a common software stack across PCIe based datacenter platforms and ZYNQ UltraScale+ MPSoC/Versal ACAP based embedded platforms. Applications can be seamlessly ported from one class of platform to another with little effort.</p>
 <div class="section" id="user-application-compilation">
 <h2>User Application Compilation<a class="headerlink" href="#user-application-compilation" title="Permalink to this headline">¶</a></h2>
 <p>User application is made up of host code written in C/C++/OpenCL or Python. Device code may be written in C/C++/OpenCL or VHDL/Verilog hardware description language.</p>
 <div class="align-center figure align-default" id="id1">
 <img alt="_images/Alveo-Compilation-Flow.svg" src="_images/Alveo-Compilation-Flow.svg" /><p class="caption"><span class="caption-text">User application compilation and execution</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
 </div>
-<p>Users use Vitis™ compiler, v++ to compile and link device code for the target platform. Host code written in C/C++/OpenCL may be compiled with gcc/g++. Host code may be written in Python OpenCL (using PyOpenCL) or Python XRT (using builti-in python binding).</p>
+<p>Users use Vitis™ compiler, v++ to compile and link device code for the target platform. Host code written in C/C++/OpenCL may be compiled with gcc/g++. Host code may be written in Python OpenCL (using PyOpenCL) or Python XRT (using built-in python binding).</p>
 </div>
 <div class="section" id="pcie-based-platforms">
 <h2>PCIe Based Platforms<a class="headerlink" href="#pcie-based-platforms" title="Permalink to this headline">¶</a></h2>
-<img alt="_images/XRT-Architecture-PCIe.svg" class="align-center" src="_images/XRT-Architecture-PCIe.svg" /><p>XRT supports following PCIe based devices:</p>
+<div class="align-center figure align-default" id="id2">
+<img alt="_images/XRT-Architecture-PCIe.svg" src="_images/XRT-Architecture-PCIe.svg" /><p class="caption"><span class="caption-text">Alveo PCIe stack</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
+</div>
+<p>XRT supports following PCIe based devices:</p>
 <ol class="arabic simple">
 <li><p>U200</p></li>
 <li><p>U250</p></li>
 <li><p>U280</p></li>
 <li><p>U50</p></li>
 <li><p>AWS F1</p></li>
+<li><p>U30</p></li>
+<li><p>U25</p></li>
+<li><p>VCK5000</p></li>
 <li><p>Advantech VEGA-4000/4002</p></li>
 </ol>
 <p>PCIe based platforms are supported on x86_64, PPC64LE and AARCH64 host architectures. The
@@ -510,48 +517,64 @@ using process called <em>Dynamic Function Exchange (DFX)</em>.</p>
 <p>XRT Linux kernel driver <em>xclmgmt</em> binds to management physical function. Management physical function
 provides access to Shell components responsible for privileged operations. xclmgmt driver is organized
 into subdevices and handles the following functionality:</p>
-<ol class="arabic simple">
-<li><p>ICAP programming</p></li>
-<li><p>Clock scaling</p></li>
-<li><p>Loading firmware container called dsabin (renamed to xsabin since 2019.2). Dsabin contains RL Shell (for 2 RP solution)
-and embedded Microblaze firmware for ERT and XMC.</p></li>
-<li><p>Access to in-band sensors: Temperature, Voltage, Current, etc.</p></li>
-<li><p>AXI Firewall management</p></li>
-<li><p>Access to flash programmer</p></li>
-<li><p>Device reset and rescan</p></li>
-<li><p>Hardware mailbox for communication with xocl driver</p></li>
-<li><p>Interrupt handling for AXI Firewall and Mailbox</p></li>
-<li><p>Device DNA discovery and validation</p></li>
-<li><p>ECC handling</p></li>
-</ol>
+<ul class="simple">
+<li><p>User compiled FPGA image (xclbin) download which involves ICAP (bitstream download) programming, clock
+scaling and isolation logic management.</p></li>
+<li><p>Loading firmware container called xsabin which contains PLP (for 2 RP platfroms) and firmwares for
+embedded Microblazes. The embedded Microblazes perform the functionality of ERT and CMC.</p></li>
+<li><p>Access to in-band sensors: temperature, voltage, current, power, fan RPM etc.</p></li>
+<li><p>AXI Firewall management in data and control paths. AXI firewalls protect shell and PCIe from untrusted Role.</p></li>
+<li><p>Shell upgrade by grogramming QSPI flash constroller.</p></li>
+<li><p>Device reset and recovery upon detecting AXI firewall trips or explicit request from end user.</p></li>
+<li><p>Communication with user pf driver xocl via hardware mailbox. The protocol is defined <a class="reference internal" href="mailbox.proto.html#mailbox-proto-rst"><span class="std std-ref">Mailbox Inter-domain Communication Protocol</span></a></p></li>
+<li><p>Interrupt handling for AXI Firewall and Mailbox HW IPs.</p></li>
+<li><p>Device DNA (unique ID) discovery and validation.</p></li>
+<li><p>DDR and HBM memory ECC handling and reporting.</p></li>
+</ul>
 </div>
 <div class="section" id="user-pf-pf1">
 <h3>USER PF (PF1)<a class="headerlink" href="#user-pf-pf1" title="Permalink to this headline">¶</a></h3>
 <p>XRT Linux kernel driver <em>xocl</em> binds to user physical function. User physical function provides access
 to Shell components responsible for non privileged operations. It also provides access to compute units
-in DFX partition. xocl driver is organized into subdevices and handles the following functionality:</p>
-<ol class="arabic simple">
-<li><p>Device memory topology discovery and memory management</p></li>
-<li><p>Device memory management as abstracted buffer objects</p></li>
-<li><p>XDMA memory mapped PCIe DMA engine programming</p></li>
-<li><p>QDMA streaming DMA engine programming</p></li>
-<li><p>Multi-process aware context management</p></li>
-<li><p>Standardized compute unit execution management (optionally with help of ERT) for client processes</p></li>
-<li><p>Interrupt handling for DMA, Compute unit completion and Mailbox</p></li>
-<li><p>Buffer object migration between device and host as DMA operation</p></li>
-<li><p>Queue creation/deletion read/write operation for streaming DMA operation</p></li>
-<li><p>AIO support for the streaming queues</p></li>
-<li><p>Buffer import and export via DMA-BUF</p></li>
-<li><p>PCIe peer-to-peer buffer mapping and sharing</p></li>
-<li><p>Access to in-band sensors via MailBox proxy into xclmgmt</p></li>
-<li><p>Hardware mailbox for communication with xclmgmt driver</p></li>
-</ol>
-<p>PCIe platform security and robustness is described in section <a class="reference internal" href="security.html#security-rst"><span class="std std-ref">Security of Alveo Platform</span></a>.</p>
+in DFX partition. xocl driver is organized into subdevices and handles the following functionality which
+are exercised using well-defined APIs in <code class="docutils literal notranslate"><span class="pre">xrt.h</span></code> header file.</p>
+<ul class="simple">
+<li><p>Device memory topology discovery and device memory management. The driver provides well-defined abstraction
+of buffer objects to the clients.</p></li>
+<li><p>XDMA/QDMA memory mapped PCIe DMA engine programming and with easy to use buffer migration API.</p></li>
+<li><p>Multi-process aware context management with concurrent access to device by multiple processes.</p></li>
+<li><p>Compute unit execution pipeline management with the help of hardware scheduler ERT. If ERT is not available
+then scheduling is completely handled by xocl driver in software.</p></li>
+<li><p>Interrupt handling for PCIe DMA, Compute unit completion and Mailbox messages.</p></li>
+<li><p>Setting up of Address-remapper tables for direct access to host memory by kernels compiled into Role. Direct
+access to host memory is enabled by Slave Bridge (SB) in the shell.</p></li>
+<li><p>Buffer import and export via Linux DMA-BUF infrastructure.</p></li>
+<li><p>PCIe peer-to-peer buffer mapping and sharing over PCIe bus.</p></li>
+<li><p>Secure communication infrastructure for exchanging messages with xclmgmt driver.</p></li>
+<li><p>Memory-to-memory (M2M) programming for moving data between device DDR, PL-RAM and HBM.</p></li>
+</ul>
+<p>Section <a class="reference internal" href="security.html#security-rst"><span class="std std-ref">Security of Alveo Platform</span></a> describes PCIe platform security and robustness in detail.</p>
+</div>
+<div class="section" id="pcie-based-hybrid-platforms">
+<h3>PCIe Based Hybrid Platforms<a class="headerlink" href="#pcie-based-hybrid-platforms" title="Permalink to this headline">¶</a></h3>
+<div class="align-center figure align-default" id="id3">
+<img alt="_images/XRT-Architecture-Hybrid.svg" src="_images/XRT-Architecture-Hybrid.svg" /><p class="caption"><span class="caption-text">Alveo PCIe hybrid stack</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></p>
+</div>
+<p>U30 and VCK5000 are MPSoC and Versal platforms respectively are considered hybrid devices. They have hardedned PS
+subsystem with ARM APUs in the Shell. The PL fabric is exposed as Role. The devices act as PCIe endpoint to PCIe
+hosts like x86_64, PPC64LE. They have two physical function architecture identical to other Alveo platforms. On
+these platforms the ERT subsystem is running on APU.</p>
 </div>
 </div>
 <div class="section" id="zynq-7000-and-zynq-ultrascale-mpsoc-based-embedded-platforms">
 <h2>Zynq-7000 and ZYNQ Ultrascale+ MPSoC Based Embedded Platforms<a class="headerlink" href="#zynq-7000-and-zynq-ultrascale-mpsoc-based-embedded-platforms" title="Permalink to this headline">¶</a></h2>
-<img alt="_images/XRT-Architecture-Edge.svg" class="align-center" src="_images/XRT-Architecture-Edge.svg" /><p>XRT supports ZYNQ-7000 and ZYNQ Ultrascale+ MPSoC. User can create their own embedded platforms
+<div class="align-center figure align-default" id="id4">
+<img alt="_images/XRT-Architecture-Edge.svg" src="_images/XRT-Architecture-Edge.svg" /><p class="caption"><span class="caption-text">MPSoC Embedded stack</span><a class="headerlink" href="#id4" title="Permalink to this image">¶</a></p>
+</div>
+<div class="align-center figure align-default" id="id5">
+<img alt="_images/XRT-Architecture-Versal-Edge.svg" src="_images/XRT-Architecture-Versal-Edge.svg" /><p class="caption"><span class="caption-text">Versal ACAP Embedded stack</span><a class="headerlink" href="#id5" title="Permalink to this image">¶</a></p>
+</div>
+<p>XRT supports ZYNQ-7000, ZYNQ Ultrascale+ MPSoC and Versal ACAP. User can create their own embedded platforms
 and enable XRT with the steps described <a class="reference internal" href="yocto.html#yocto-rst"><span class="std std-ref">XRT Setup for Embedded Flow</span></a>.</p>
 <p><a class="reference external" href="https://github.com/Xilinx/Vitis_Embedded_Platform_Source">Source code</a> and
 <a class="reference external" href="https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/embedded-platforms.html">pre-built</a>
@@ -560,19 +583,25 @@ embedded platforms for the following Xilinx evaluation boards are provided:</p>
 <li><p>ZC706</p></li>
 <li><p>ZCU102</p></li>
 <li><p>ZCU104</p></li>
+<li><p>ZCU106</p></li>
+<li><p>VCK190</p></li>
 </ol>
-<p>File <code class="docutils literal notranslate"><span class="pre">/etc/xocl.txt</span></code> needs to be in the target root file system so that XRT OpenCL layer can know which platform it is running on.</p>
-<p>MPSoC based platforms are supported with PetaLinux base stack. XRT Linux kernel
-driver <em>zocl</em> does the heavy lifting for the embedded platform. It handles the
-following functionality</p>
-<ol class="arabic simple">
-<li><p>CMA buffer management and cache management</p></li>
-<li><p>SMMU programming for SVM platforms</p></li>
-<li><p>Standardized compute unit execution management on behalf of client processes</p></li>
-<li><p>xclbin download for platforms with Partial Reconfiguration support</p></li>
-<li><p>Buffer import and export via DMA-BUF</p></li>
-<li><p>Interrupt handling for compute unit completion</p></li>
-</ol>
+<p>MPSoC and Versal based platforms are supported with PetaLinux based common root filesystem and common
+kernel. XRT Linux kernel driver <em>zocl</em> does the heavy lifting for the embedded platform. It handles the
+following functionality with well defined APIs in <code class="docutils literal notranslate"><span class="pre">xrt.h</span></code> and <code class="docutils literal notranslate"><span class="pre">xrt_aie.h</span></code> (for AIE) header files.</p>
+<ul class="simple">
+<li><p>PS memory CMA buffer management and cache management. On SVM enabled platforms zocl also manages SMMU. The driver provides
+well-defined abstraction of buffer objects to the clients.</p></li>
+<li><p>Compute unit execution pipeline management for clients.</p></li>
+<li><p>User compiled FPGA image (xclbin) for platforms with Partial Reconfiguration support.</p></li>
+<li><p>Buffer object import and export via DMA-BUF.</p></li>
+<li><p>Interrupt handling for compute unit completion.</p></li>
+<li><p>AIE array programming and graph execution.</p></li>
+<li><p>If PL-DDR memory is enabled by instantiating MIG in PL, zocl provides memory management similar to PS memory.</p></li>
+<li><p>ZynqMP DMA engine programming for moving data between PS DDR and PL-DDR.</p></li>
+<li><p>AIE GMIO data mover programming to move data between NOC and AIE.</p></li>
+</ul>
+<p>Section <a class="reference internal" href="execution-model.html#execution-model-rst"><span class="std std-ref">Execution Model Overview</span></a> provides a high level overview of execution model.</p>
 </div>
 </div>
 
@@ -605,7 +634,7 @@ following functionality</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 28, 2020.
+        Last updated on October 16, 2020.
       </span>
 
     </p>

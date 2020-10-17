@@ -58,7 +58,7 @@
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="XRT Core Library" href="xrt.main.html" />
+    <link rel="next" title="XRT Native Library C++ API" href="xrt_native.main.html" />
     <link rel="prev" title="Xilinx OpenCL extension" href="opencl_extension.html" /> 
 	</head>
 	<body>
@@ -307,7 +307,7 @@
             
             
               <div class="version">
-                2020.1
+                2020.2
               </div>
             
           
@@ -345,10 +345,9 @@
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">Slave-Bridge Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -383,21 +382,26 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#getting-bank-group-index-of-the-kernel-argument">Getting bank group index of the kernel argument</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#reading-and-write-cu-mapped-registers">Reading and write CU mapped registers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#reading-and-write-cu-mapped-registers">Reading and write CU mapped registers</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#obtaining-the-argument-offset">Obtaining the argument offset</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="#executing-the-kernel">Executing the kernel</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#other-kernel-execution-related-apis">Other kernel execution related APIs</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
@@ -607,7 +611,9 @@ INFO: Found total 2 card(s), 2 are usable
 </div></blockquote>
 <p><strong>C++</strong>: The equivalent C++ API based code</p>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>10
-11</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">device</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">device</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+11
+12</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">dev_index</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+     <span class="k">auto</span> <span class="n">device</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">device</span><span class="p">(</span><span class="n">dev_index</span><span class="p">);</span>
      <span class="k">auto</span> <span class="n">xclbin_uuid</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">load_xclbin</span><span class="p">(</span><span class="s">&quot;kernel.xclbin&quot;</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
@@ -634,15 +640,9 @@ INFO: Found total 2 card(s), 2 are usable
 <h3>1. Buffer allocation and deallocation<a class="headerlink" href="#buffer-allocation-and-deallocation" title="Permalink to this headline">¶</a></h3>
 <p>XRT APIs provides API for</p>
 <blockquote>
-<div><ul>
-<li><p><code class="docutils literal notranslate"><span class="pre">xrtBOAlloc</span></code>: Allocates a buffer object 4K aligned, the API must be called with appropriate flags.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">xrtBOAllocUserPtr</span></code>: Allocates a buffer object using pointer (aligned to 4K boundary) provided by the user.</p>
-<blockquote>
 <div><ul class="simple">
-<li><p>If the user-provided pointer is not aligned to 4K boundary, XRT internally copies the data to align it at 4K boundary.</p></li>
-</ul>
-</div></blockquote>
-</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xrtBOAlloc</span></code>: Allocates a buffer object 4K aligned, the API must be called with appropriate flags.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xrtBOAllocUserPtr</span></code>: Allocates a buffer object using pointer provided by the user. The user pointer must be aligned to 4K boundary.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">xrtBOFree</span></code>: Deallocates the allocated buffer.</p></li>
 </ul>
 </div></blockquote>
@@ -658,8 +658,8 @@ INFO: Found total 2 card(s), 2 are usable
 24</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">xrtMemoryGroup</span> <span class="n">bank_grp_idx_0</span> <span class="o">=</span> <span class="n">xrtKernelArgGroupId</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
      <span class="n">xrtMemoryGroup</span> <span class="n">bank_grp_idx_1</span> <span class="o">=</span> <span class="n">xrtKernelArgGroupId</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
 
-     <span class="n">xrtBufferHandle</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XCL_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
-     <span class="n">xrtBufferHandle</span> <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XCL_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_1</span><span class="p">);</span>
+     <span class="n">xrtBufferHandle</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XRT_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
+     <span class="n">xrtBufferHandle</span> <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XRT_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_1</span><span class="p">);</span>
 
      <span class="p">....</span>
      <span class="p">....</span>
@@ -679,13 +679,14 @@ INFO: Found total 2 card(s), 2 are usable
 <div><ul>
 <li><p>Argument 1: The device on which the buffer should be allocated</p></li>
 <li><p>Argument 2: The size (in bytes) of the buffer</p></li>
-<li><p>Argument 3: <code class="docutils literal notranslate"><span class="pre">xrtBufferFlag</span></code>: Used to specify the buffer type, most commonly used types are</p>
+<li><p>Argument 3: <code class="docutils literal notranslate"><span class="pre">xrtBufferFlags</span></code>: Used to specify the buffer type, most commonly used types are</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">XCL_BO_FLAGS_NONE</span></code>: Regular Buffer,</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">XCL_BO_FLAGS_DEV_ONLY</span></code>: Device only Buffer (meant to be used only by the kernel).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">XCL_BO_FLAGS_HOST_ONLY</span></code>: Host Only Buffer (buffers reside in the host memory directly transferred to/from the kernel)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">XCL_BO_FLAGS_P2P</span></code>: P2P Buffer, buffer for NVMe transfer</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">XRT_BO_FLAGS_NONE</span></code>: Regular Buffer</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">XRT_BO_FLAGS_DEV_ONLY</span></code>: Device only Buffer (meant to be used only by the kernel).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">XRT_BO_FLAGS_HOST_ONLY</span></code>: Host Only Buffer (buffers reside in the host memory directly transferred to/from the kernel)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">XRT_BO_FLAGS_P2P</span></code>: P2P Buffer, buffer for NVMe transfer</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">XRT_BO_FLAGS_CACHEABLE</span></code>: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).</p></li>
 </ul>
 </div></blockquote>
 </li>
@@ -700,11 +701,20 @@ INFO: Found total 2 card(s), 2 are usable
 19</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">bank_grp_idx_0</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
      <span class="k">auto</span> <span class="n">bank_grp_idx_1</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
 
-     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XCL_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
-     <span class="k">auto</span> <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XCL_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_1</span><span class="p">);</span>
+     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span><span class="n">bank_grp_idx_0</span><span class="p">);</span>
+     <span class="k">auto</span> <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">bank_grp_idx_1</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
-<p>In the above code <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> buffer objects are created using the class’s constructor. All the arguments are identical to the <code class="docutils literal notranslate"><span class="pre">xrtBOAlloc</span></code> API as discussed above in the C example explanation.</p>
+<p>In the above code <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> buffer objects are created using the class’s constructor. Note the buffer flag is not used as constructor by default created regular buffer. Nonetheless, the available buffer flags for <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> are described using <code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">class</span></code> argument with the following enumerator values</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">xrt::bo::flags::normal</span></code>: Default, Regular Buffer</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xrt::bo::flags::device_only</span></code>: Device only Buffer (meant to be used only by the kernel).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xrt::bo::flags::host_only</span></code>: Host Only Buffer (buffer resides in the host memory directly transferred to/from the kernel)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xrt::bo::flags::p2p</span></code>: P2P Buffer, buffer for NVMe transfer</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xrt::bo::flags::cacheable</span></code>: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).</p></li>
+</ul>
+</div></blockquote>
 </div>
 <div class="section" id="data-transfer-using-buffers">
 <h3>2. Data transfer using Buffers<a class="headerlink" href="#data-transfer-using-buffers" title="Permalink to this headline">¶</a></h3>
@@ -758,7 +768,7 @@ INFO: Found total 2 card(s), 2 are usable
 26
 27
 28
-29</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">xrtBufferHandle</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XCL_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
+29</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">xrtBufferHandle</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XRT_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
 
      <span class="c1">// Prepare the input data</span>
      <span class="kt">int</span> <span class="n">buff_data</span><span class="p">[</span><span class="n">data_size</span><span class="p">];</span>
@@ -779,17 +789,18 @@ INFO: Found total 2 card(s), 2 are usable
 25
 26
 27
-28</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XCL_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
+28</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
      <span class="c1">// Prepare the input data</span>
      <span class="kt">int</span> <span class="n">buff_data</span><span class="p">[</span><span class="n">data_size</span><span class="p">];</span>
      <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">data_size</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
          <span class="n">buff_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
      <span class="p">}</span>
 
-     <span class="n">input_buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">buff_data</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
-     <span class="n">input_buffer</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="n">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span>
+     <span class="n">input_buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">buff_data</span><span class="p">);</span>
+     <span class="n">input_buffer</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="n">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
+<p>Note the C++ <code class="docutils literal notranslate"><span class="pre">xrt::bo::sync</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt::bo::write</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt::bo::read</span></code> etc has overloaded version that can be used for paritial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and 0 offset are used as default arguments.</p>
 </div>
 <div class="section" id="ii-data-transfer-between-host-and-device-by-buffer-map-api">
 <h4>II. Data transfer between host and device by Buffer map API<a class="headerlink" href="#ii-data-transfer-between-host-and-device-by-buffer-map-api" title="Permalink to this headline">¶</a></h4>
@@ -802,7 +813,7 @@ INFO: Found total 2 card(s), 2 are usable
 24
 25
 26
-27</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">xrtBufferHandle</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XCL_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
+27</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">xrtBufferHandle</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XRT_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
      <span class="kt">int</span><span class="o">*</span> <span class="n">input_buffer_mapped</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span><span class="n">xrtBOMap</span><span class="p">(</span><span class="n">input_buffer</span><span class="p">);</span>
 
      <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">data_size</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
@@ -820,20 +831,20 @@ INFO: Found total 2 card(s), 2 are usable
 24
 25
 26
-27</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XCL_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
+27</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
      <span class="k">auto</span> <span class="n">input_buffer_mapped</span> <span class="o">=</span> <span class="n">input_buffer</span><span class="p">.</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">*&gt;</span><span class="p">();</span>
 
      <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">data_size</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
          <span class="n">input_buffer_mapped</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
      <span class="p">}</span>
 
-     <span class="n">input_buffer</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="n">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="p">,</span><span class="n">buffer_size_in_bytes</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span>
+     <span class="n">input_buffer</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="n">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
 </div>
 <div class="section" id="iii-data-transfer-between-the-buffers-by-copy-api">
 <h4>III. Data transfer between the buffers by copy API<a class="headerlink" href="#iii-data-transfer-between-the-buffers-by-copy-api" title="Permalink to this headline">¶</a></h4>
-<p>XRT provides <code class="docutils literal notranslate"><span class="pre">xrtBOCopy</span></code> (C++: <code class="docutils literal notranslate"><span class="pre">xrt::bo::copy</span></code>) API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in <a class="reference internal" href="m2m.html#m2m-rst"><span class="std std-ref">Memory-to-Memory (M2M) Support</span></a>). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host).</p>
+<p>XRT provides <code class="docutils literal notranslate"><span class="pre">xrtBOCopy</span></code> (C++: <code class="docutils literal notranslate"><span class="pre">xrt::bo::copy</span></code>) API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in <a class="reference internal" href="m2m.html#m2m-rst"><span class="std std-ref">Memory-to-Memory (M2M)</span></a>). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host).</p>
 <p>API Example in C, all arguments are self-explanatory</p>
 <div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>25
 26
@@ -843,13 +854,10 @@ INFO: Found total 2 card(s), 2 are usable
 </pre></div>
 </td></tr></table></div>
 <p><strong>C++</strong>: The equivalent C++ API based code</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>25
-26
-27</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="kt">size_t</span> <span class="n">dst_buffer_offset</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-     <span class="kt">size_t</span> <span class="n">src_buffer_offset</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-     <span class="n">dst_buffer</span><span class="p">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src_buffer</span><span class="p">,</span> <span class="n">copy_size_in_bytes</span><span class="p">,</span> <span class="n">dst_buffer_offset</span><span class="p">,</span> <span class="n">src_buffer_offset</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>25</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">dst_buffer</span><span class="p">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src_buffer</span><span class="p">,</span> <span class="n">copy_size_in_bytes</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
+<p>The API <code class="docutils literal notranslate"><span class="pre">xrt::bo::copy</span></code> also has overloaded version to provide a different offset than 0 for both the source and the destination buffer.</p>
 </div>
 </div>
 <div class="section" id="miscellaneous-other-buffer-apis">
@@ -1004,8 +1012,14 @@ INFO: Found total 2 card(s), 2 are usable
 <div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>39</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">xrtKernelHandle</span> <span class="n">kernel</span> <span class="o">=</span> <span class="n">xrtPLKernelOpenExclusive</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;name&quot;</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
-<p><strong>C++</strong>: When the <code class="docutils literal notranslate"><span class="pre">xrt::kernel</span></code> constructor is called with an additional boolean argument set as true, it opens CU in exclusive mode and returns the kernel object.</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>39</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="nb">true</span><span class="p">);</span>
+<p><strong>C++</strong>: In C++, <code class="docutils literal notranslate"><span class="pre">xrt::kernel</span></code> constructor can be called with an additional <code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">class</span></code> argument to access the kernel in exclusive mode. The enumerator values are:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">xrt::kernel::cu_access_mode::shared</span></code> (default <code class="docutils literal notranslate"><span class="pre">xrt::kernel</span></code> constructor argument)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xrt::kernel::cu_access_mode::exclusive</span></code></p></li>
+</ul>
+</div></blockquote>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>39</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="o">::</span><span class="n">cu_access_mode</span><span class="o">::</span><span class="n">exclusive</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
 </div>
@@ -1016,10 +1030,10 @@ INFO: Found total 2 card(s), 2 are usable
 <p>Let us review the example below where the buffer is allocated for the kernel’s first (argument index 0) by using this API</p>
 <div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>39
 40</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">xrtMemoryGroup</span> <span class="n">idx_0</span> <span class="o">=</span> <span class="n">xrtKernelArgGroupId</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span> <span class="c1">// bank index of 0th argument</span>
-     <span class="n">xrtBufferHandle</span> <span class="n">a</span> <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">data_size</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">),</span> <span class="n">XCL_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">idx_0</span><span class="p">);</span>
+     <span class="n">xrtBufferHandle</span> <span class="n">a</span> <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">data_size</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">),</span> <span class="n">XRT_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">idx_0</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>15</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">XCL_BO_FLAGS_NONE</span><span class="p">,</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>15</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
 </pre></div>
 </td></tr></table></div>
 <p>The API fails if the kernel bank index is ambiguous. For example, the kernel has multiple CU with different connectivity for that argument. In those cases, it is required to create a kernel object/handle with specific a CU (or group of CUs with identical connectivity).</p>
@@ -1055,7 +1069,7 @@ INFO: Found total 2 card(s), 2 are usable
 <p>In the above code block</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>The compute unit named “foo_1” (name syntax: “kernel_name:{cu_name}”) is opened exclusively.</p></li>
+<li><p>The CU named “foo_1” (name syntax: “kernel_name:{cu_name}”) is opened exclusively.</p></li>
 <li><p>The Register Read/Write operation is performed.</p></li>
 <li><p>Closed the kernel</p></li>
 </ul>
@@ -1076,6 +1090,38 @@ INFO: Found total 2 card(s), 2 are usable
      <span class="n">kernel</span><span class="p">.</span><span class="n">write_register</span><span class="p">(</span><span class="n">WRITE_OFFSET</span><span class="p">,</span><span class="n">write_data</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
+<div class="section" id="obtaining-the-argument-offset">
+<h4>Obtaining the argument offset<a class="headerlink" href="#obtaining-the-argument-offset" title="Permalink to this headline">¶</a></h4>
+<p>The register read/write access APIs use the register offset as shown in the above examples. The user can get the register offset of a corresponding kernel argument from the <code class="docutils literal notranslate"><span class="pre">v++</span></code> generated <code class="docutils literal notranslate"><span class="pre">.xclbin.info</span></code> file and use with the register read/write APIs.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>--------------------------
+Instance:        foo_1
+Base Address: 0x1800000
+
+Argument:          a
+Register Offset:   0x10
+</pre></div>
+</div>
+<p>However, XRT also provides APIs to obtain the register offset for CU arguments. In the below example C API <code class="docutils literal notranslate"><span class="pre">xrtKernelArgOffset</span></code> is used to obtain offset of third argument of the CU <code class="docutils literal notranslate"><span class="pre">foo:foo_1</span></code>.</p>
+<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>38
+39
+40
+41</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively)</span>
+
+     <span class="n">xrtKernelHandle</span> <span class="n">kernel</span> <span class="o">=</span> <span class="n">xrtPLKernelOpenExclusive</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;foo:{foo_1}&quot;</span><span class="p">);</span>
+     <span class="kt">uint32_t</span> <span class="n">arg_c_offset</span> <span class="o">=</span> <span class="n">xrtKernelArgOffset</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+</pre></div>
+</td></tr></table></div>
+<p><strong>C++</strong>: The equivalent C++ API example</p>
+<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>38
+39
+40
+41</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively)</span>
+
+     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="s">&quot;foo:{foo_1}&quot;</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="nb">true</span><span class="p">);</span>
+     <span class="k">auto</span> <span class="n">offset</span> <span class="o">=</span> <span class="n">krnl</span><span class="p">.</span><span class="n">offset</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+</pre></div>
+</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="executing-the-kernel">
 <h3>Executing the kernel<a class="headerlink" href="#executing-the-kernel" title="Permalink to this headline">¶</a></h3>
@@ -1162,7 +1208,7 @@ INFO: Found total 2 card(s), 2 are usable
 </ul>
 </div></blockquote>
 <p><strong>Timeout while wait for kernel finish</strong>: The API <code class="docutils literal notranslate"><span class="pre">xrtRunWait</span></code> blocks the current thread until the kernel execution finishes. However, a timeout supported API <code class="docutils literal notranslate"><span class="pre">xrtRunWaitFor</span></code> is also provided . The timeout number can be specified using a millisecond unit.</p>
-<p>In C++, the timeout facility can be used by the same <code class="docutils literal notranslate"><span class="pre">xrt::run::wait(unsigned</span> <span class="pre">int</span> <span class="pre">timeout_ms=0)</span></code> member function by providing a millisecond number as an argument.</p>
+<p>In C++, the timeout facility can be used by the same member function that takes a <code class="docutils literal notranslate"><span class="pre">std::chrono::milliseconds</span></code> to specify the timeout.</p>
 <p><strong>Asynchronous update of the kernel arguments</strong>: The API <code class="docutils literal notranslate"><span class="pre">xrtRunSetArg</span></code> (C++: <code class="docutils literal notranslate"><span class="pre">xrt::run::set_arg</span></code>) is synchronous to the kernel execution. This API can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this API (only for edge platform) <code class="docutils literal notranslate"><span class="pre">xrtRunUpdateArg</span></code> (in C++ member function <code class="docutils literal notranslate"><span class="pre">xrt::run::update_arg</span></code>) is provided to change the kernel arguments asynchronous to the kernel execution.</p>
 </div>
 </div>
@@ -1184,7 +1230,7 @@ INFO: Found total 2 card(s), 2 are usable
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="xrt.main.html" class="btn btn-neutral float-right" title="XRT Core Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xrt_native.main.html" class="btn btn-neutral float-right" title="XRT Native Library C++ API" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="opencl_extension.html" class="btn btn-neutral float-left" title="Xilinx OpenCL extension" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -1197,7 +1243,7 @@ INFO: Found total 2 card(s), 2 are usable
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 28, 2020.
+        Last updated on October 16, 2020.
       </span>
 
     </p>
