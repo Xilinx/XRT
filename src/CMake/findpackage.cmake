@@ -30,19 +30,31 @@ install (
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
   COMPONENT ${XRT_DEV_COMPONENT}
   )
+
+if(TARGET xrt_core)
 install(
   EXPORT xrt_core-targets
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME})
+endif()
+
+if(TARGET xilinxopencl)
 install(
   EXPORT xilinxopencl-targets
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME})
+endif()
+
+if(TARGET xrt_hwemu)
 install(
   EXPORT xrt_hwemu-targets
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME})
+endif()
+
+if(TARGET xrt_swemu)
 install(
   EXPORT xrt_swemu-targets
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME})
+endif()
