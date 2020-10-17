@@ -97,7 +97,8 @@ The above code block shows
 .. code:: c++
       :number-lines: 10
            
-           auto device = xrt::device(0);
+           unsigned int dev_index = 0;
+           auto device = xrt::device(dev_index);
            auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
        
 The above code block shows
@@ -124,9 +125,7 @@ Buffers are primarily used to transfer the data between the host and the device.
 XRT APIs provides API for
    
       - ``xrtBOAlloc``: Allocates a buffer object 4K aligned, the API must be called with appropriate flags. 
-      - ``xrtBOAllocUserPtr``: Allocates a buffer object using pointer (aligned to 4K boundary) provided by the user. 
-      
-              - If the user-provided pointer is not aligned to 4K boundary, XRT internally copies the data to align it at 4K boundary. 
+      - ``xrtBOAllocUserPtr``: Allocates a buffer object using pointer provided by the user. The user pointer must be aligned to 4K boundary. 
       - ``xrtBOFree``: Deallocates the allocated buffer. 
 
 .. code:: c
@@ -135,8 +134,8 @@ XRT APIs provides API for
            xrtMemoryGroup bank_grp_idx_0 = xrtKernelArgGroupId(kernel, 0);
            xrtMemoryGroup bank_grp_idx_1 = xrtKernelArgGroupId(kernel, 1);
 
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
-           xrtBufferHandle output_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_1);
+           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
+           xrtBufferHandle output_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_1);
 
            ....
            ....
@@ -153,12 +152,13 @@ The various arguments of the API ``xrtBOAlloc`` are
 
     - Argument 1: The device on which the buffer should be allocated 
     - Argument 2: The size (in bytes) of the buffer
-    - Argument 3: ``xrtBufferFlag``: Used to specify the buffer type, most commonly used types are
+    - Argument 3: ``xrtBufferFlags``: Used to specify the buffer type, most commonly used types are
        
-        - ``XCL_BO_FLAGS_NONE``: Regular Buffer,
-        - ``XCL_BO_FLAGS_DEV_ONLY``: Device only Buffer (meant to be used only by the kernel). 
-        - ``XCL_BO_FLAGS_HOST_ONLY``: Host Only Buffer (buffers reside in the host memory directly transferred to/from the kernel)
-        - ``XCL_BO_FLAGS_P2P``: P2P Buffer, buffer for NVMe transfer
+        - ``XRT_BO_FLAGS_NONE``: Regular Buffer
+        - ``XRT_BO_FLAGS_DEV_ONLY``: Device only Buffer (meant to be used only by the kernel). 
+        - ``XRT_BO_FLAGS_HOST_ONLY``: Host Only Buffer (buffers reside in the host memory directly transferred to/from the kernel)
+        - ``XRT_BO_FLAGS_P2P``: P2P Buffer, buffer for NVMe transfer
+        - ``XRT_BO_FLAGS_CACHEABLE``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform). 
         
     - Argument 4:  ``xrtMemoryGroup``: Enumerated Memory Bank to specify the location on the device where the buffer should be allocated. The ``xrtMemoryGroup`` is obtained by the API ``xrtKernelArgGroupId`` as shown in line 15 (for more details of this API refer to the Kernel section).   
     
@@ -171,10 +171,17 @@ The various arguments of the API ``xrtBOAlloc`` are
            auto bank_grp_idx_0 = kernel.group_id(0);
            auto bank_grp_idx_1 = kernel.group_id(1);
     
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
-           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_1);
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes,bank_grp_idx_0);
+           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_1);
 
-In the above code ``xrt::bo`` buffer objects are created using the class's constructor. All the arguments are identical to the ``xrtBOAlloc`` API as discussed above in the C example explanation.  
+In the above code ``xrt::bo`` buffer objects are created using the class's constructor. Note the buffer flag is not used as constructor by default created regular buffer. Nonetheless, the available buffer flags for ``xrt::bo`` are described using ``enum class`` argument with the following enumerator values
+
+        - ``xrt::bo::flags::normal``: Default, Regular Buffer
+        - ``xrt::bo::flags::device_only``: Device only Buffer (meant to be used only by the kernel).
+        - ``xrt::bo::flags::host_only``: Host Only Buffer (buffer resides in the host memory directly transferred to/from the kernel)
+        - ``xrt::bo::flags::p2p``: P2P Buffer, buffer for NVMe transfer  
+        - ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).
+
 
 
 2. Data transfer using Buffers
@@ -220,7 +227,7 @@ Code example of transferring data from the host to the device
 .. code:: c
       :number-lines: 20
            
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
 
            // Prepare the input data
            int buff_data[data_size];
@@ -238,17 +245,17 @@ Code example of transferring data from the host to the device
 .. code:: c++
       :number-lines: 20    
            
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_0);
            // Prepare the input data
            int buff_data[data_size];
            for (auto i=0; i<data_size; ++i) {
                buff_data[i] = i;
            }
     
-           input_buffer.write(buff_data, buffer_size_in_bytes, 0);
-           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE, buffer_size_in_bytes,0);
+           input_buffer.write(buff_data);
+           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-
+Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has overloaded version that can be used for paritial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and 0 offset are used as default arguments. 
 
 
 II. Data transfer between host and device by Buffer map API
@@ -261,7 +268,7 @@ Code example of transferring data from the host to the device by this approach
 .. code:: c
       :number-lines: 20
            
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
            int* input_buffer_mapped = (int*)xrtBOMap(input_buffer);
 
            for (int i=0;i<data_size;++i) {
@@ -275,14 +282,14 @@ Code example of transferring data from the host to the device by this approach
 .. code:: c++
       :number-lines: 20
            
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_0);
            auto input_buffer_mapped = input_buffer.map<int*>();
 
            for (auto i=0;i<data_size;++i) {
                input_buffer_mapped[i] = i;
            }
 
-           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE,buffer_size_in_bytes,0);
+           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
 
 III. Data transfer between the buffers by copy API
@@ -305,10 +312,10 @@ API Example in C, all arguments are self-explanatory
 .. code:: c++
       :number-lines: 25
            
-           size_t dst_buffer_offset = 0;
-           size_t src_buffer_offset = 0;
-           dst_buffer.copy(src_buffer, copy_size_in_bytes, dst_buffer_offset, src_buffer_offset);
+           
+           dst_buffer.copy(src_buffer, copy_size_in_bytes);
 
+The API ``xrt::bo::copy`` also has overloaded version to provide a different offset than 0 for both the source and the destination buffer. 
 
 3. Miscellaneous other Buffer APIs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -474,12 +481,15 @@ The API ``xrtPLKernelOpen`` opens a kernel's CU in a shared mode so that the CU 
      
            xrtKernelHandle kernel = xrtPLKernelOpenExclusive(device, xclbin_uuid, "name");
 
-**C++**: When the ``xrt::kernel`` constructor is called with an additional boolean argument set as true, it opens CU in exclusive mode and returns the kernel object.    
+**C++**: In C++, ``xrt::kernel`` constructor can be called with an additional ``enum class`` argument to access the kernel in exclusive mode. The enumerator values are: 
+
+     - ``xrt::kernel::cu_access_mode::shared`` (default ``xrt::kernel`` constructor argument)
+     - ``xrt::kernel::cu_access_mode::exclusive`` 
 
 .. code:: c++
       :number-lines: 39
        
-           auto krnl = xrt::kernel(device, name, xclbin_uuid, true); 
+           auto krnl = xrt::kernel(device, name, xclbin_uuid, xrt::kernel::cu_access_mode::exclusive); 
 
    
 
@@ -495,13 +505,13 @@ Let us review the example below where the buffer is allocated for the kernel's f
       :number-lines: 39
            
            xrtMemoryGroup idx_0 = xrtKernelArgGroupId(kernel, 0); // bank index of 0th argument
-           xrtBufferHandle a = xrtBOAlloc(device, data_size*sizeof(int), XCL_BO_FLAGS_NONE, idx_0);
+           xrtBufferHandle a = xrtBOAlloc(device, data_size*sizeof(int), XRT_BO_FLAGS_NONE, idx_0);
 
 
 .. code:: c++
       :number-lines: 15
                        
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, kernel.group_id(0));
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, kernel.group_id(0));
 
 
 
@@ -533,7 +543,7 @@ To read and write from the AXI-Lite register space corresponding to a CU, the CU
 
 In the above code block
 
-              - The compute unit named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
+              - The CU named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
               - The Register Read/Write operation is performed. 
               - Closed the kernel
               
@@ -550,8 +560,46 @@ In the above code block
            read_data = kernel.read_register(READ_OFFSET);
            kernel.write_register(WRITE_OFFSET,write_data); 
               
+              
+Obtaining the argument offset
+*****************************
+              
+The register read/write access APIs use the register offset as shown in the above examples. The user can get the register offset of a corresponding kernel argument from the ``v++`` generated ``.xclbin.info`` file and use with the register read/write APIs. 
 
-     
+.. code::
+    
+    --------------------------
+    Instance:        foo_1
+    Base Address: 0x1800000
+
+    Argument:          a
+    Register Offset:   0x10
+    
+
+
+However, XRT also provides APIs to obtain the register offset for CU arguments. In the below example C API ``xrtKernelArgOffset`` is used to obtain offset of third argument of the CU ``foo:foo_1``.  
+
+
+.. code:: c
+      :number-lines: 38
+
+           // Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively) 
+           
+           xrtKernelHandle kernel = xrtPLKernelOpenExclusive(device, xclbin_uuid, "foo:{foo_1}");
+           uint32_t arg_c_offset = xrtKernelArgOffset(kernel, 2);
+ 
+
+**C++**: The equivalent C++ API example
+
+.. code:: c
+      :number-lines: 38
+
+           // Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively) 
+           
+           auto krnl = xrt::kernel(device, "foo:{foo_1}", xclbin_uuid, true); 
+           auto offset = krnl.offset(2);
+
+ 
 Executing the kernel
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -622,6 +670,6 @@ The Run handle/object supports few other use-cases.
 
 **Timeout while wait for kernel finish**: The API ``xrtRunWait`` blocks the current thread until the kernel execution finishes. However, a timeout supported API ``xrtRunWaitFor`` is also provided . The timeout number can be specified using a millisecond unit.
 
-In C++, the timeout facility can be used by the same ``xrt::run::wait(unsigned int timeout_ms=0)`` member function by providing a millisecond number as an argument. 
+In C++, the timeout facility can be used by the same member function that takes a ``std::chrono::milliseconds`` to specify the timeout. 
 
 **Asynchronous update of the kernel arguments**: The API ``xrtRunSetArg`` (C++: ``xrt::run::set_arg``) is synchronous to the kernel execution. This API can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this API (only for edge platform) ``xrtRunUpdateArg`` (in C++ member function ``xrt::run::update_arg``) is provided to change the kernel arguments asynchronous to the kernel execution. 

@@ -58,7 +58,7 @@
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Memory-to-Memory (M2M) Support" href="m2m.html" />
+    <link rel="next" title="Memory-to-Memory (M2M)" href="m2m.html" />
     <link rel="prev" title="Multi-Process Support" href="multiprocess.html" /> 
 	</head>
 	<body>
@@ -307,7 +307,7 @@
             
             
               <div class="version">
-                2020.1
+                2020.2
               </div>
             
           
@@ -345,7 +345,7 @@
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">PCIe Peer-to-Peer (P2P) Support</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">PCIe Peer-to-Peer (P2P)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#bios-setup">BIOS Setup</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#note">Note</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#warning">Warning</a></li>
@@ -371,9 +371,8 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">Slave-Bridge Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -385,14 +384,16 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
@@ -474,7 +475,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>PCIe Peer-to-Peer (P2P) Support</li>
+      <li>PCIe Peer-to-Peer (P2P)</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -493,8 +494,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="pcie-peer-to-peer-p2p-support">
-<span id="p2p-rst"></span><h1>PCIe Peer-to-Peer (P2P) Support<a class="headerlink" href="#pcie-peer-to-peer-p2p-support" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="pcie-peer-to-peer-p2p">
+<span id="p2p-rst"></span><h1>PCIe Peer-to-Peer (P2P)<a class="headerlink" href="#pcie-peer-to-peer-p2p" title="Permalink to this headline">¶</a></h1>
 <p>PCIe peer-to-peer communication (P2P) is a PCIe feature which enables two PCIe devices to directly transfer data between each other without using host RAM as a temporary storage. The latest version of Alveo PCIe platforms support P2P feature via PCIe Resizeable BAR Capability.</p>
 <ol class="arabic simple">
 <li><p>Data can be directly transferred between the DDR/HBM of one Alveo PCIe device and DDR/HBM of a second Alveo PCIe device.</p></li>
@@ -887,7 +888,7 @@ Latency(ns)</p></th>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="m2m.html" class="btn btn-neutral float-right" title="Memory-to-Memory (M2M) Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="m2m.html" class="btn btn-neutral float-right" title="Memory-to-Memory (M2M)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="multiprocess.html" class="btn btn-neutral float-left" title="Multi-Process Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -900,7 +901,7 @@ Latency(ns)</p></th>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 28, 2020.
+        Last updated on October 16, 2020.
       </span>
 
     </p>

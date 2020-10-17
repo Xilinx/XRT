@@ -307,7 +307,7 @@
             
             
               <div class="version">
-                2020.1
+                2020.2
               </div>
             
           
@@ -345,10 +345,9 @@
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">Slave-Bridge Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -382,14 +381,16 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
@@ -570,7 +571,7 @@ clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,…,&amp;ext,…);
 <li><p><code class="docutils literal notranslate"><span class="pre">xclGetMemObjectFromFd</span></code>: To obtain OpenCL memory object from FD</p></li>
 </ul>
 </div></blockquote>
-<p>The example of API usage in the p2p context can be found in OpenCL example code in P2P documentation <a class="reference internal" href="p2p.html#p2p-rst"><span class="std std-ref">PCIe Peer-to-Peer (P2P) Support</span></a></p>
+<p>The example of API usage in the p2p context can be found in OpenCL example code in P2P documentation <a class="reference internal" href="p2p.html#p2p-rst"><span class="std std-ref">PCIe Peer-to-Peer (P2P)</span></a></p>
 </div>
 <div class="section" id="stream-or-qdma-platform-related-apis">
 <h2>Stream or QDMA Platform Related APIs<a class="headerlink" href="#stream-or-qdma-platform-related-apis" title="Permalink to this headline">¶</a></h2>
@@ -687,7 +688,7 @@ clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,…,&amp;ext,…);
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 28, 2020.
+        Last updated on October 16, 2020.
       </span>
 
     </p>

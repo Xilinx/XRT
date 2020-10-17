@@ -305,7 +305,7 @@
             
             
               <div class="version">
-                2020.1
+                2020.2
               </div>
             
           
@@ -343,10 +343,9 @@
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">Slave-Bridge Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -358,14 +357,16 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
@@ -477,8 +478,6 @@
 </li>
       <li><a href="xma.main.html#c.xma_plg_buffer_free">xma_plg_buffer_free (C function)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xma.main.html#c.xma_plg_buffer_read">xma_plg_buffer_read (C function)</a>
 </li>
       <li><a href="xma.main.html#c.xma_plg_buffer_write">xma_plg_buffer_write (C function)</a>
@@ -490,6 +489,108 @@
       <li><a href="xma.main.html#c.xma_plg_is_work_item_done">xma_plg_is_work_item_done (C function)</a>
 </li>
       <li><a href="xma.main.html#c.xma_plg_schedule_work_item">xma_plg_schedule_work_item (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2boE">xrt::bo (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bo7addressEv">xrt::bo::address (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle21xclBufferExportHandle">xrt::bo::bo (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle6size_t12memory_group">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle6size_tN2bo5flagsE12memory_group">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandlePv6size_t12memory_group">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandlePv6size_tN2bo5flagsE12memory_group">[4]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERK2bo">[5]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERK2bo6size_t6size_t">[6]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERR2bo">[7]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boEv">[8]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo4copyERK2bo">xrt::bo::copy (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo4copyERK2bo6size_t6size_t6size_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo13export_bufferEv">xrt::bo::export_buffer (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flagsE">xrt::bo::flags (C++ enum)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags9cacheableE">xrt::bo::flags::cacheable (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags11device_onlyE">xrt::bo::flags::device_only (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags9host_onlyE">xrt::bo::flags::host_only (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags6normalE">xrt::bo::flags::normal (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags3p2pE">xrt::bo::flags::p2p (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt2bo3mapE7MapTypev">xrt::bo::map (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo3mapEv">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2boaSERR2bo">xrt::bo::operator= (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo4readEPv">xrt::bo::read (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo4readEPv6size_t6size_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bo4sizeEv">xrt::bo::size (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo4syncE18xclBOSyncDirection">xrt::bo::sync (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo4syncE18xclBOSyncDirection6size_t6size_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5writeEPKv">xrt::bo::write (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo5writeEPKv6size_t6size_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6deviceE">xrt::device (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceE15xclDeviceHandle">xrt::device::device (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceERK6device">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceERR6device">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceEj">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceEv">[4]</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="xrt_native.main.html#_CPPv4I0ENK3xrt6device18get_xclbin_sectionE11SectionType17axlf_section_kindRK4uuid">xrt::device::get_xclbin_section (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6device15get_xclbin_uuidEv">xrt::device::get_xclbin_uuid (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6device11load_xclbinEPK4axlf">xrt::device::load_xclbin (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device11load_xclbinERKN3xrt6xclbinE">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device11load_xclbinERKNSt6stringE">[2]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6deviceaSERR6device">xrt::device::operator= (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3iniE">xrt::ini (C++ type)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3ini3setERKNSt6stringERKNSt6stringE">xrt::ini::set (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3ini3setERKNSt6stringEj">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernelE">xrt::kernel (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel8group_idEi">xrt::kernel::group_id (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode">xrt::kernel::kernel (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel6offsetEi">xrt::kernel::offset (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4IDpEN3xrt6kernelclE3runDpRR4Args">xrt::kernel::operator() (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel13read_registerE8uint32_t">xrt::kernel::read_register (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernel14write_registerE8uint32_t8uint32_t">xrt::kernel::write_register (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3runE">xrt::run (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvRK3run13ert_cmd_statePvEEEPv">xrt::run::add_callback (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3runcvbEv">xrt::run::operator bool (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4IDpEN3xrt3runclEvDpRR4Args">xrt::run::operator() (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run3runERK6kernel">xrt::run::run (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run3runEv">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt3run7set_argEviRR7ArgType">xrt::run::set_arg (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRKN3xrt2boE">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRN3xrt2boE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRRN3xrt2boE">[3]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run9set_eventERKNSt10shared_ptrI10event_implEE">xrt::run::set_event (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run5startEv">xrt::run::start (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run5stateEv">xrt::run::state (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt3run10update_argEviRR7ArgType">xrt::run::update_arg (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run10update_argEiRKN3xrt2boE">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run4waitERKNSt6chrono12millisecondsE">xrt::run::wait (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4NK3xrt3run4waitEj">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbinE">xrt::xclbin (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin12get_cu_namesEv">xrt::xclbin::get_cu_names (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin8get_dataEv">xrt::xclbin::get_data (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin8get_uuidEv">xrt::xclbin::get_uuid (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin12get_xsa_nameEv">xrt::xclbin::get_xsa_name (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbinaSERR6xclbin">xrt::xclbin::operator= (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERK6xclbin">xrt::xclbin::xclbin (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERKNSt6stringE">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERKNSt6vectorIcEE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERR6xclbin">[3]</a>
 </li>
   </ul></td>
 </tr></table>
@@ -515,7 +616,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 28, 2020.
+        Last updated on October 16, 2020.
       </span>
 
     </p>

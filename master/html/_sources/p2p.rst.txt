@@ -1,7 +1,7 @@
 .. _p2p.rst:
 
-PCIe Peer-to-Peer (P2P) Support
-*******************************
+PCIe Peer-to-Peer (P2P)
+***********************
 
 PCIe peer-to-peer communication (P2P) is a PCIe feature which enables two PCIe devices to directly transfer data between each other without using host RAM as a temporary storage. The latest version of Alveo PCIe platforms support P2P feature via PCIe Resizeable BAR Capability.
 

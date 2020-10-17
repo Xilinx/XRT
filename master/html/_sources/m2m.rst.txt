@@ -1,7 +1,7 @@
 .. _m2m.rst:
 
-Memory-to-Memory (M2M) Support
-******************************
+Memory-to-Memory (M2M)
+**********************
 
 Some of the recent Alveo cards support direct Memory to Memory (M2M) data transfer whithin the card, improving the data transfer performance
 as data does not need to be transferred via host while moving from one DDR bank to another.

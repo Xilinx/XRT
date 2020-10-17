@@ -58,8 +58,8 @@
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="XRT Streaming Platform Support" href="streaming_data_support.html" />
-    <link rel="prev" title="Memory-to-Memory (M2M) Support" href="m2m.html" /> 
+    <link rel="next" title="Configuration File xrt.ini" href="xrt_ini.html" />
+    <link rel="prev" title="Memory-to-Memory (M2M)" href="m2m.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -307,7 +307,7 @@
             
             
               <div class="version">
-                2020.1
+                2020.2
               </div>
             
           
@@ -345,9 +345,9 @@
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Slave-Bridge Support</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">PCIe Slave-Bridge (SB)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#kernel-compilation">Kernel Compilation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#host-server-setup">Host Server Setup</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#hugepage-requirement">Hugepage Requirement</a></li>
@@ -358,7 +358,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#opencl-host-code-guideline">OpenCL Host code Guideline</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -370,14 +369,16 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
@@ -459,7 +460,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Slave-Bridge Support</li>
+      <li>PCIe Slave-Bridge (SB)</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -478,9 +479,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="slave-bridge-support">
-<span id="sb-rst"></span><h1>Slave-Bridge Support<a class="headerlink" href="#slave-bridge-support" title="Permalink to this headline">¶</a></h1>
-<p>Slave Bridge IP is used by the kernel(s) to read and write data directly from the Host Memory. Unlike the XDMA data transfer, this data transfer mechanism does not utlize global memories (DDR, HBM, PLRAM ,etc) on the card. Slave-Bridge provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.</p>
+  <div class="section" id="pcie-slave-bridge-sb">
+<span id="sb-rst"></span><h1>PCIe Slave-Bridge (SB)<a class="headerlink" href="#pcie-slave-bridge-sb" title="Permalink to this headline">¶</a></h1>
+<p>Slave Bridge IP is used by the kernel(s) to read and write data directly from/to the Host Memory. Unlike the XDMA data transfer, this data transfer mechanism does not utlize global memories (DDR, HBM, PLRAM ,etc) on the card. Slave-Bridge provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.</p>
 <div class="section" id="kernel-compilation">
 <h2>Kernel Compilation<a class="headerlink" href="#kernel-compilation" title="Permalink to this headline">¶</a></h2>
 <p>Use the following V++ configuration option to connect a kernel AXI-Master Port to Slave-Bridge IP.</p>
@@ -650,10 +651,10 @@ DNA                             CPU_AFFINITY    HOST_MEM size   Max HOST_MEM
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="streaming_data_support.html" class="btn btn-neutral float-right" title="XRT Streaming Platform Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xrt_ini.html" class="btn btn-neutral float-right" title="Configuration File xrt.ini" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="m2m.html" class="btn btn-neutral float-left" title="Memory-to-Memory (M2M) Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="m2m.html" class="btn btn-neutral float-left" title="Memory-to-Memory (M2M)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -663,7 +664,7 @@ DNA                             CPU_AFFINITY    HOST_MEM size   Max HOST_MEM
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 28, 2020.
+        Last updated on October 16, 2020.
       </span>
 
     </p>
