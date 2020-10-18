@@ -32,7 +32,7 @@ void get_system_info();
 
 //Check if it is a valid xma session
 //return: XMA_SUCCESS - if valid; XMA_ERROR - otherwise
-int32_t check_xma_session(XmaSession &s_handle);
+int32_t check_xma_session(const XmaSession &s_handle);
 
 } // namespace utils
 } // namespace xma_core

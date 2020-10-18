@@ -24,8 +24,8 @@
 
 namespace xma_core { namespace utils {
 
-int32_t check_xma_session(XmaSession &s_handle) {
-    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+int32_t check_xma_session(const XmaSession &s_handle) {
+    auto priv1 = static_cast<const XmaHwSessionPrivate*>(s_handle.hw_session.private_do_not_use);
     if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "XMASession is corrupted.");
         return XMA_ERROR;
