@@ -65,16 +65,13 @@ namespace XBUtilities {
     create_usage_string( const boost::program_options::options_description &_od,
                          const boost::program_options::positional_options_description & _pod );
 
-  std::string 
-    create_suboption_list_string(const ReportCollection &_reportCollection, bool _addAll = false);
-
   using VectorPairStrings = std::vector< std::pair< std::string, std::string > >;
 
   std::string 
     create_suboption_list_string(const VectorPairStrings &_collection);
 
   std::string 
-    create_suboption_list_string(const ReportCollection &_reportCollection, bool _addVerboseOption);
+    create_suboption_list_string(const ReportCollection &_reportCollection, bool _addAllOption);
 
   std::string 
     create_suboption_list_string(const Report::SchemaDescriptionVector &_formatCollection);

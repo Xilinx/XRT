@@ -54,10 +54,8 @@ endif()
 add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
 
 # Determine what functionality should be added
-if(WIN32)
-  target_compile_definitions(${XBMGMT2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
-else()
-  target_compile_definitions(${XBMGMT2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  target_compile_definitions(${XBMGMT2_NAME} PUBLIC ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
 endif()
 
 # Add the supporting libraries
