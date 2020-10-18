@@ -30,7 +30,8 @@ int32_t check_xma_session(const XmaSession &s_handle) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "XMASession is corrupted.");
         return XMA_ERROR;
     }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+    uint64_t tmp1 = reinterpret_cast<uint64_t>(priv1) | reinterpret_cast<uint64_t>(priv1->reserved);
+    if (s_handle.session_signature != reinterpret_cast<void*>(tmp1)) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "XMASession is corrupted.");
         return XMA_ERROR;
     }
