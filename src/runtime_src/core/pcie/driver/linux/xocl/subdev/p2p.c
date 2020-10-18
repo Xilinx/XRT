@@ -17,6 +17,7 @@
  * to maintain our driver compabile w/ all kernels we support here.
  */
 #include "../xocl_drv.h"
+#include "../xocl_drm.h"
 #include <linux/iommu.h>
 
 int p2p_max_bar_size = 64; /* GB */
@@ -1128,7 +1129,7 @@ static int p2p_adjust_mem_topo(struct platform_device *pdev, void *mem_topo)
 	struct p2p *p2p = platform_get_drvdata(pdev);
 	struct mem_topology *topo = mem_topo;
 	int i;
-	u64 total_sz = 0, sz;
+	u64 adjust_sz = 0, sz, fixed_sz;
 
 	if (!p2p_is_enabled(p2p))
 		return 0;
@@ -1136,22 +1137,27 @@ static int p2p_adjust_mem_topo(struct platform_device *pdev, void *mem_topo)
 	if (p2p->p2p_bar_len >= p2p->exp_mem_sz + p2p->user_buf_start)
 		return 0;
 
-	if (p2p->remapper) {
+	if (!p2p->remapper) {
 		p2p_err(p2p, "does not have remapper, can not adjust");
 		return -EINVAL;
 	}
 
+	fixed_sz = p2p->user_buf_start;
 	for (i = 0; i< topo->m_count; ++i) {
 		if (!XOCL_IS_P2P_MEM(topo, i) || !topo->m_mem_data[i].m_used)
 			continue;
-		total_sz += roundup((topo->m_mem_data[i].m_size << 10),
+		if (IS_HOST_MEM(topo->m_mem_data[i].m_tag))
+			continue;
+
+		sz = roundup((topo->m_mem_data[i].m_size << 10),
 			p2p->remap_slot_sz);
+		if (sz <= XOCL_P2P_CHUNK_SIZE)
+			fixed_sz += sz;
+		else
+			adjust_sz += sz;
 	}
 
-	/* total required size should be half BAR size to align with the
-	 * normal case.
-	 */
-	if (total_sz <= p2p->p2p_bar_len / 2)
+	if (adjust_sz + fixed_sz <= p2p->p2p_bar_len)
 		return 0;
 
 	p2p_info(p2p, "can not cover all memory, adjust bank sizes");
@@ -1159,11 +1165,20 @@ static int p2p_adjust_mem_topo(struct platform_device *pdev, void *mem_topo)
 	for (i = 0; i< topo->m_count; ++i) {
 		if (!XOCL_IS_P2P_MEM(topo, i) || !topo->m_mem_data[i].m_used)
 			continue;
+		if (IS_HOST_MEM(topo->m_mem_data[i].m_tag))
+			continue;
 
 		sz = roundup((topo->m_mem_data[i].m_size << 10),
 			p2p->remap_slot_sz);
-		topo->m_mem_data[i].m_size = roundup(p2p->p2p_bar_len / 2 *
-			sz / total_sz, p2p->remap_slot_sz) >> 10;
+		if (sz <= XOCL_P2P_CHUNK_SIZE)
+			continue;
+
+		topo->m_mem_data[i].m_size = (p2p->p2p_bar_len - fixed_sz) /
+			p2p->remap_slot_sz * (sz / p2p->remap_slot_sz) /
+			(adjust_sz / p2p->remap_slot_sz);
+		topo->m_mem_data[i].m_size *= p2p->remap_slot_sz;
+		topo->m_mem_data[i].m_size >>= 10;
+
 		p2p_info(p2p, "adjusted bank %d to %lld k", i,
 				topo->m_mem_data[i].m_size);
 	}
