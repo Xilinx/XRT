@@ -1130,6 +1130,7 @@ static int p2p_adjust_mem_topo(struct platform_device *pdev, void *mem_topo)
 	struct mem_topology *topo = mem_topo;
 	int i;
 	u64 adjust_sz = 0, sz, fixed_sz;
+	u32 align = max(XOCL_P2P_CHUNK_SIZE, p2p->remap_slot_sz);
 
 	if (!p2p_is_enabled(p2p))
 		return 0;
@@ -1149,9 +1150,8 @@ static int p2p_adjust_mem_topo(struct platform_device *pdev, void *mem_topo)
 		if (IS_HOST_MEM(topo->m_mem_data[i].m_tag))
 			continue;
 
-		sz = roundup((topo->m_mem_data[i].m_size << 10),
-			p2p->remap_slot_sz);
-		if (sz <= XOCL_P2P_CHUNK_SIZE)
+		sz = roundup((topo->m_mem_data[i].m_size << 10), align);
+		if (sz <= align)
 			fixed_sz += sz;
 		else
 			adjust_sz += sz;
@@ -1168,15 +1168,13 @@ static int p2p_adjust_mem_topo(struct platform_device *pdev, void *mem_topo)
 		if (IS_HOST_MEM(topo->m_mem_data[i].m_tag))
 			continue;
 
-		sz = roundup((topo->m_mem_data[i].m_size << 10),
-			p2p->remap_slot_sz);
-		if (sz <= XOCL_P2P_CHUNK_SIZE)
+		sz = roundup((topo->m_mem_data[i].m_size << 10), align);
+		if (sz <= align)
 			continue;
 
 		topo->m_mem_data[i].m_size = (p2p->p2p_bar_len - fixed_sz) /
-			p2p->remap_slot_sz * (sz / p2p->remap_slot_sz) /
-			(adjust_sz / p2p->remap_slot_sz);
-		topo->m_mem_data[i].m_size *= p2p->remap_slot_sz;
+			align * (sz / align) / (adjust_sz / align);
+		topo->m_mem_data[i].m_size *= align;
 		topo->m_mem_data[i].m_size >>= 10;
 
 		p2p_info(p2p, "adjusted bank %d to %lld k", i,
