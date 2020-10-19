@@ -33,6 +33,13 @@ struct soft_cu {
 
 	uint32_t		sc_flags;
 	uint64_t		usage;
+
+	/*
+	 * soft cu pid and parent pid. This can be used to identify if the
+	 * soft cu is still running or not. The parent should never crash
+	 */
+	uint32_t		sc_pid;
+	uint32_t		sc_parent_pid;
 };
 
 struct soft_krnl {
