@@ -25,6 +25,7 @@
 #include "core/common/device.h"
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 typedef xclDeviceHandle xrtDeviceHandle;
 
@@ -122,7 +123,7 @@ private:
     std::vector<tile_type> tiles;
 
     /* This is the collections of rtps that are used. */
-    std::vector<rtp_type> rtps;
+    std::unordered_map<std::string, rtp_type> rtps;
 };
 
 }
