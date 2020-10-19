@@ -3552,6 +3552,7 @@ static int raptor_cmc_access(struct platform_device *pdev,
 		 * 28 is flag for enable, set to 0x0
 		 * 29 is flag for present, set to 0x1
 		 * Note: seems that we should write all data at one time.
+         * Apply 24:0 address, set preset bit to 1, and keep other bits to intact.
 		 */
 		val = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
 		val &= ~0x1FFFFFF;
