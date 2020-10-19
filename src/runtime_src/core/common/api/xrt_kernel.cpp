@@ -818,11 +818,15 @@ class kernel_impl
       amend_fa_args();
   }
 
-  // Traverse xclbin connectivity section and find
+  // Traverse xclbin connectivity section and find connectivity
+  // for {argument,ipidx}.  Connectivity is checked from high order
+  // of connectivity entries, since these entries represent groups
+  // formed from low order connectivity if and only if groups are
+  // used
   int32_t
   get_arg_grpid(const connectivity* cons, int32_t argidx, int32_t ipidx)
   {
-    for (int32_t count=0; cons && count <cons->m_count; ++count) {
+    for (int count = (cons ? cons->m_count-1 : -1); count >=0; --count) {
       auto& con = cons->m_connection[count];
       if (con.m_ip_layout_index != ipidx)
         continue;
