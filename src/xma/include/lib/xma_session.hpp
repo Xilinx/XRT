@@ -31,8 +31,8 @@ namespace plg {
  */
 class session
 {
-protected:
-    void*        session_signature;
+private:
+    void*        session_signature{nullptr};
     int32_t         session_id;
     /** Subclass this session is a part of */
     XmaSessionType session_type;
@@ -43,20 +43,22 @@ protected:
     /** Private plugin data attached to a specific kernel session. Allocated
     by XMA prior to calling plugin init() and freed automatically as part of
     close. */
-    void          *plugin_data;
+    void          *plugin_data{nullptr};
     /** Private stats data attached to a specific session. This field is
     allocated and managed by XMA for each session type. */
-    void          *stats;
+    void          *stats{nullptr};
   
-
-  session(int s_id, XmaSessionType s_type, int32_t c_id);
+  ~session();
 
 public:
   int32_t
-  init(int32_t dev_idx, int32_t cu_idx, std::string cu_name);
+  init(int32_t dev_idx, int32_t cu_idx, const std::string& cu_name);
 
   int32_t
   alloc_buf() const;
+
+  session(int s_id, XmaSessionType s_type, int32_t c_id);
+  void destroy();
 
 }; //class session
 

@@ -20,18 +20,16 @@ namespace xma_core {
 namespace plg {
 
 session::session(int s_id, XmaSessionType s_type, int32_t c_id)
+:session_id{s_id}, session_type{s_type},
+channel_id{c_id}
 {
-  session_id = s_id;
-  session_type = s_type;
-  channel_id = c_id;
-  session_signature = nullptr;
   std::memset(&hw_session, 0 , sizeof(XmaHwSession));
-  plugin_data = nullptr;
-  stats = nullptr;
+  //hw_session will be modifed below
+  //TODO
 }
 
 int32_t
-session::init(int32_t dev_idx, int32_t cu_idx, std::string cu_name)
+session::init(int32_t dev_idx, int32_t cu_idx, const std::string& cu_name)
 {
   //TODO
 
