@@ -773,6 +773,8 @@ skip_kill:
 		}
 	}
 
+	sk->sk_ncus = 0;
+
 	mutex_unlock(&sk->sk_lock);
 }
 
