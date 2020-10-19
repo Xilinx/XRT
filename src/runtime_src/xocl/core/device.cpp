@@ -729,9 +729,9 @@ get_cu_memidx() const
       for (auto& cu : get_cu_range())
         mask &= cu->get_memidx_intersect();
 
-	  // Select first common Group index if present prior to bank index.
-	  // Traverse from the higher order of the mask as groups comes in higher order
-      for (size_t idx=mask.size() - 1; idx >= 0; --idx) {
+      // Select first common Group index if present prior to bank index.
+      // Traverse from the higher order of the mask as groups comes in higher order
+      for (int idx=mask.size() - 1; idx >= 0; --idx) {
         if (mask.test(idx)) {
           m_cu_memidx = idx;
           break;
