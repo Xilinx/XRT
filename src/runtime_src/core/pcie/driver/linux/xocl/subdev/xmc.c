@@ -3553,7 +3553,9 @@ static int raptor_cmc_access(struct platform_device *pdev,
 		 * 29 is flag for present, set to 0x1
 		 * Note: seems that we should write all data at one time.
 		 */
-		val = (addr & 0x01FFFFFF) | XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT;
+		val = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+		val &= ~0x1FFFFFF;
+		val |= ((addr & 0x01FFFFFF) | XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT);
 		WRITE_REG32(xmc, val, XMC_HOST_NEW_FEATURE_REG1);
 		xocl_xdev_info(xdev, "%s is 0x%llx, set New Feature Table to 0x%x\n",
 		    NODE_GAPPING, addr, val);
