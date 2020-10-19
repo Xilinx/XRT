@@ -869,6 +869,14 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
       // Transform and group the memories
       transformMemoryBankGroupingCollections(connectivity, groupTopology, groupConnectivity);
 
+      // Perform some DRC checks on the memory grouping and connectivity produced before marging to group connectivity
+      validateMemoryBankGroupEntries((unsigned int) memTopology.size(), groupTopology, groupConnectivity);
+
+      // Merge connectivity information into the group connectivity
+      for (auto & connection : connectivity) {
+	      groupConnectivity.push_back(connection);
+      }
+
       // Re-create the property tree, create and re-populate the Group Connectivity section, and add it.
       {
         boost::property_tree::ptree ptConnection;
@@ -908,9 +916,6 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
     pGroupTopologySection->readJSONSectionImage(ptTop);
     xclbin.addSection(pGroupTopologySection);
   }
-
-  // Perform some DRC checks on the memory grouping and connectivity produced
-  validateMemoryBankGroupEntries((unsigned int) memTopology.size(), groupTopology, groupConnectivity);
 }
 
 
