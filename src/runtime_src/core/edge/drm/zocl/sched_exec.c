@@ -723,6 +723,59 @@ done:
 		DRM_INFO("CU can only be initialized once.\n");
 }
 
+static void kill_soft_kernel(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct soft_krnl *sk = zdev->soft_kernel;
+	struct pid *p;
+	struct task_struct *task;
+	uint32_t pid;
+	int i, ret;
+
+	mutex_lock(&sk->sk_lock);
+
+	for (i = 0; i < ARRAY_SIZE(sk->sk_cu); i++) {
+		if (!sk->sk_cu[i])
+			continue;
+
+		p = find_get_pid(sk->sk_cu[i]->sc_pid);
+		if (!p) {
+			/* cu process is gone. cleanup it anyway */
+			ret = 0;
+			goto skip_kill;
+		}
+
+		task = pid_task(p, PIDTYPE_PID);
+		if (!task) {
+			DRM_WARN("failed to get task for pid %d\n",
+				sk->sk_cu[i]->sc_pid);
+			put_pid(p);
+			continue;
+		}
+
+		if (sk->sk_cu[i]->sc_parent_pid != task_ppid_nr(task)) {
+			DRM_WARN("parent pid does not match\n");
+			put_pid(p);
+			continue;
+		}
+
+		pid = sk->sk_cu[i]->sc_pid;
+		ret = kill_pid(p, SIGKILL, 1);
+		if (ret) {
+			DRM_WARN("failed to kill cu pid %d\n", pid);
+		}
+		put_pid(p);
+skip_kill:
+		if (!ret) {
+			ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(sk->sk_cu[i]->gem_obj);
+			kfree(sk->sk_cu[i]);
+			sk->sk_cu[i] = NULL;
+		}
+	}
+
+	mutex_unlock(&sk->sk_lock);
+}
+
 /**
  * configure() - Configure the scheduler from user space command
  *
@@ -773,8 +826,10 @@ configure(struct sched_cmd *cmd)
 	 * from host. so always unconfig ert when there is ert config cmd
 	 * arriving
 	 */
-	if (zdev->ert)
-		sched_reset_scheduler(zdev->ddev)
+	if (zdev->ert) {
+		kill_soft_kernel(cmd);
+		sched_reset_scheduler(zdev->ddev);
+	}
 
 	SCHED_DEBUG("Configuring scheduler\n");
 	write_lock(&zdev->attr_rwlock);
@@ -1090,59 +1145,6 @@ zocl_cu_reclaim(struct drm_zocl_dev *zdev)
 	}
 
 	vfree(zdev->exec->zcu);
-}
-
-static void kill_soft_kernel(struct sched_cmd *cmd)
-{
-	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
-	struct soft_krnl *sk = zdev->soft_kernel;
-	struct pid *p;
-	struct task_struct *task;
-	uint32_t pid;
-	int i, ret;
-
-	mutex_lock(&sk->sk_lock);
-
-	for (i = 0; i < ARRAY_SIZE(sk->sk_cu); i++) {
-		if (!sk->sk_cu[i])
-			continue;
-
-		p = find_get_pid(sk->sk_cu[i]->sc_pid);
-		if (!p) {
-			/* cu process is gone. cleanup it anyway */
-			ret = 0;
-			goto skip_kill;
-		}
-
-		task = pid_task(p, PIDTYPE_PID);
-		if (!task) {
-			DRM_WARN("failed to get task for pid %d\n",
-				sk->sk_cu[i]->sc_pid);
-			put_pid(p);
-			continue;
-		}
-
-		if (sk->sk_cu[i]->sc_parent_pid != task_ppid_nr(task)) {
-			DRM_WARN("parent pid does not match\n");
-			put_pid(p);
-			continue;
-		}
-
-		pid = sk->sk_cu[i]->sc_pid;
-		ret = kill_pid(p, SIGKILL, 1);
-		if (ret) {
-			DRM_WARN("failed to kill cu pid %d\n", pid);
-		}
-		put_pid(p);
-skip_kill:
-		if (!ret) {
-			ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(sk->sk_cu[i]->gem_obj);
-			kfree(sk->sk_cu[i]);
-			sk->sk_cu[i] = NULL;
-		}
-	}
-
-	mutex_unlock(&sk->sk_lock);
 }
 
 static int
@@ -2765,7 +2767,6 @@ ps_ert_submit(struct sched_cmd *cmd)
 	switch (opcode(cmd)) {
 	case ERT_CONFIGURE:
 		SCHED_DEBUG("<- %s (configure)\n", __func__);
-		kill_soft_kernel(cmd);
 		break;
 
 	case ERT_CU_STAT:
