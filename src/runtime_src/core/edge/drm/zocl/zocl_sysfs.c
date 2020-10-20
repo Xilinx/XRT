@@ -55,7 +55,7 @@ static ssize_t kds_custat_show(struct device *dev,
 	ssize_t size = 0;
 	phys_addr_t paddr;
 	u32 usage;
-	u32 status;
+	int status;
 	int i;
 
 	if (!zdev)
