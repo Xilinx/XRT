@@ -264,21 +264,22 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
   }
 }
 
-void
+int
 xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
 {
   try {
     auto device = get_device(dhdl);
     auto uuid = device->get_xclbin_uuid();
     uuid_copy(out, uuid.get());
+    return 0;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
+    return 1;
   }
 }
 

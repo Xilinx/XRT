@@ -19,6 +19,7 @@
 #include "XBHelpMenus.h"
 #include "XBUtilities.h"
 #include "core/common/time.h"
+#include "core/common/query_requests.h"
 
 namespace XBU = XBUtilities;
 
@@ -665,8 +666,18 @@ XBUtilities::produce_reports( xrt_core::device_collection _devices,
 
   // -- Process reports that work on a device
   boost::property_tree::ptree ptDevices;
+  int dev_idx = 0;
   for (const auto & device : _devices) {
     boost::property_tree::ptree ptDevice;
+    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+    ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
+    if (_schemaVersion == Report::SchemaVersion::text) {
+      auto platform = xrt_core::device_query<xrt_core::query::rom_vbnv>(device);
+      std::string dev_desc = (boost::format("%d/%d [%s] : %s\n") % ++dev_idx % _devices.size() % ptDevice.get<std::string>("device_id") % platform).str();
+      _ostream << std::string(dev_desc.length(), '-') << std::endl;
+      _ostream << dev_desc;
+      _ostream << std::string(dev_desc.length(), '-') << std::endl;
+    }
     for (auto &report : _reportsToProcess) {
       if (report->isDeviceRequired() == false)
         continue;

@@ -25,12 +25,14 @@
 
 #include "xdp/config.h"
 #include "core/common/system.h"
+#include "core/common/device.h"
 
 namespace xdp {
 
   // Forward declarations
-  class VPDatabase ;
-  class VPWriter ;
+  class VPDatabase;
+  class VPWriter;
+  class DeviceIntf;
 
   struct Monitor {
     uint8_t     type;
@@ -183,12 +185,17 @@ namespace xdp {
 
   struct DeviceInfo {
     bool isReady;
+
     double clockRateMHz;
     struct PlatformInfo platformInfo;
+
+    DeviceIntf* deviceIntf;
+    xrt_core::uuid loadedXclbinUUID;
+
     std::string loadedXclbin;
     std::string ctxInfo;
     std::map<int32_t, ComputeUnitInstance*> cus;
-    //uuid        loadedXclbinUUID;
+
     std::map<int32_t, Memory*> memoryInfo;
     std::vector<Monitor*>      aimList;
     std::vector<Monitor*>      amList;
@@ -202,41 +209,7 @@ namespace xdp {
 
     uint32_t numTracePLIO = 0;
 
-    ~DeviceInfo()
-    {
-      for(auto i : cus) {
-        delete i.second;
-      }
-      cus.clear();
-      for(auto i : memoryInfo) {
-        delete i.second;
-      }
-      memoryInfo.clear();
-      for(auto i : aimList) {
-        delete i;
-      }
-      aimList.clear();
-      for(auto i : amList) {
-        delete i;
-      }
-      amList.clear();
-      for(auto i : asmList) {
-        delete i;
-      }
-      asmList.clear();
-      for(auto i : nocList) {
-        delete i;
-      }
-      nocList.clear();
-      for(auto i : aieList) {
-        delete i;
-      }
-      aieList.clear();
-      for(auto i : gmioList) {
-        delete i;
-      }
-      gmioList.clear();
-    }
+    ~DeviceInfo();
   };
 
   class VPStaticDatabase
@@ -270,13 +243,10 @@ namespace xdp {
      */
     std::map<uint64_t, DeviceInfo*> deviceInfo;
 
-    // DeviceIntf*
-    std::map<uint64_t, void*> deviceIntf;
-
     // Static info can be accessed via any host thread
     std::mutex dbLock ;
 
-    void resetDeviceInfo(uint64_t deviceId) ;
+    bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Helper functions that fill in device information
     //bool setXclbinUUID(DeviceInfo*, const std::shared_ptr<xrt_core::device>& device);
@@ -330,17 +300,18 @@ namespace xdp {
       return deviceInfo[deviceId]->platformInfo.deviceName; 
     }
 
-    void setDeviceIntf(uint64_t deviceId, void* devIntf)
+    void setDeviceIntf(uint64_t deviceId, DeviceIntf* devIntf)
     {
-      if(deviceIntf.find(deviceId) == deviceIntf.end())
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
         return; 
-      deviceIntf[deviceId] = devIntf;
+      deviceInfo[deviceId]->deviceIntf = devIntf;
     }
-    void* getDeviceIntf(uint64_t deviceId)
+
+    DeviceIntf* getDeviceIntf(uint64_t deviceId)
     {
-      if(deviceIntf.find(deviceId) == deviceIntf.end())
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return deviceIntf[deviceId]; 
+      return deviceInfo[deviceId]->deviceIntf; 
     }
 
     void setKDMACount(uint64_t deviceId, uint64_t num)
@@ -355,13 +326,6 @@ namespace xdp {
         return 0;
       return deviceInfo[deviceId]->platformInfo.kdmaCount; 
     }
-#if 0
-    uuid getXclbinUUID(uint64_t deviceId) { 
-      if(deviceInfo.find(deviceId) == deviceInfo.end())
-        return 0;
-      return deviceInfo[deviceId]->loadedXclbinUUID; 
-    }
-#endif
 
     std::string getXclbinName(uint64_t deviceId) { 
       if(deviceInfo.find(deviceId) == deviceInfo.end())

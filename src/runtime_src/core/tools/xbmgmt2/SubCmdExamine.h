@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,27 +14,18 @@
  * under the License.
  */
 
-#ifndef xma_utils_app_h_
-#define xma_utils_app_h_
-#include <streambuf>
-#include "plg/xmasess.h"
+#ifndef __SubCmdExamine_h_
+#define __SubCmdExamine_h_
 
-namespace xma_core { namespace utils {
+#include "tools/common/SubCmd.h"
 
-typedef struct streambuf: public std::streambuf {
-   streambuf(char* s, uint32_t size) {
-      setg(s, s, s+size);
-   }
-} streambuf;
+class SubCmdExamine : public SubCmd {
+ public:
+  virtual void execute(const SubCmdOptions &_options) const;
 
-void get_session_cmd_load();
-void get_system_info();
-
-//Check if it is a valid xma session
-//return: XMA_SUCCESS - if valid; XMA_ERROR - otherwise
-int32_t check_xma_session(const XmaSession &s_handle);
-
-} // namespace utils
-} // namespace xma_core
+ public:
+  SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+};
 
 #endif
+

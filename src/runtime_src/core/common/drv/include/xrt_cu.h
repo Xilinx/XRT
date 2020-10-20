@@ -241,6 +241,9 @@ struct xrt_cu {
 	u32			  ready_cnt;
 	u32			  status;
 	u64			  run_timeout;
+	int			  busy_threshold;
+	u32			  interval_min;
+	u32			  interval_max;
 	struct kds_command	 *old_cmd;
 	struct xrt_cu_event	  ev;
 	/**
@@ -325,6 +328,11 @@ static inline int is_zero_credit(struct xrt_cu *xcu)
 	return (xcu->funcs->peek_credit(xcu->core) == 0);
 }
 
+static inline int xrt_cu_peek_credit(struct xrt_cu *xcu)
+{
+	return xcu->funcs->peek_credit(xcu->core);
+}
+
 static inline void xrt_cu_put_credit(struct xrt_cu *xcu, u32 count)
 {
 	xcu->funcs->free_credit(xcu->core, count);
@@ -390,6 +398,7 @@ typedef struct {
 	u32 data[];
 } descriptor_t;
 
+#define to_cu_fa(core) ((struct xrt_cu_fa *)(core))
 struct xrt_cu_fa {
 	void __iomem		*vaddr;
 	void __iomem		*plram;
@@ -402,11 +411,15 @@ struct xrt_cu_fa {
 	int			 max_credits;
 	int			 credits;
 	int			 run_cnts;
+	u64			 check_count;
 };
 
 int xrt_cu_fa_init(struct xrt_cu *xcu);
 void xrt_cu_fa_fini(struct xrt_cu *xcu);
 
+/* PLRAM CU -- deprecated
+ * TODO: Delete this type of CU once fast adapter is full supported
+ */
 struct xrt_cu_plram {
 	void __iomem		*vaddr;
 	void __iomem		*plram;

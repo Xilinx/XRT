@@ -22,7 +22,7 @@
 
 class ReportMemory : public Report {
  public:
-  ReportMemory() : Report("memory", "Memmory information present on the device", true /*deviceRequired*/) { /*empty*/ };
+  ReportMemory() : Report("memory", "Memory information present on the device", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:

@@ -37,7 +37,7 @@
 
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #include "core/include/xclbin.h"
@@ -93,6 +93,46 @@ namespace xdp {
     connections[argIdx].push_back(memIdx);
   }
 
+
+  DeviceInfo::~DeviceInfo()
+  {
+    delete deviceIntf;
+
+    for(auto i : cus) {
+      delete i.second;
+    }
+    cus.clear();
+    for(auto i : memoryInfo) {
+      delete i.second;
+    }
+    memoryInfo.clear();
+    for(auto i : aimList) {
+      delete i;
+    }
+    aimList.clear();
+    for(auto i : amList) {
+      delete i;
+    }
+    amList.clear();
+    for(auto i : asmList) {
+      delete i;
+    }
+    asmList.clear();
+    for(auto i : nocList) {
+      delete i;
+    }
+    nocList.clear();
+    for(auto i : aieList) {
+      delete i;
+    }
+    aieList.clear();
+    for(auto i : gmioList) {
+      delete i;
+    }
+    gmioList.clear();
+  }
+
+
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d) : db(d), runSummary(nullptr)
   {
 #ifdef _WIN32
@@ -116,16 +156,20 @@ namespace xdp {
   //  reload our information.
   void VPStaticDatabase::updateDevice(uint64_t deviceId, void* devHandle)
   {  
-    resetDeviceInfo(deviceId);
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+    if(nullptr == device) return;
+
+    if(false == resetDeviceInfo(deviceId, device)) {
+      /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
+       * in the static data base. So, no need to read the xclbin information again.
+       */
+      return;
+    }
 
     DeviceInfo *devInfo = new DeviceInfo();
     devInfo->platformInfo.kdmaCount = 0;
 
-    deviceInfo[deviceId] = devInfo;
-
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
-
-    if(nullptr == device) return;
+    deviceInfo[deviceId] = devInfo;    // update this at the end ??
 
     const clock_freq_topology* clockSection = device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
 
@@ -153,15 +197,21 @@ namespace xdp {
     devInfo->isReady = true;
   }
 
-  void VPStaticDatabase::resetDeviceInfo(uint64_t deviceId)
+  bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
   {
     std::lock_guard<std::mutex> lock(dbLock);
 
     auto itr = deviceInfo.find(deviceId);
     if(itr != deviceInfo.end()) {
+      DeviceInfo *devInfo = itr->second;
+      if(device->get_xclbin_uuid() == devInfo->loadedXclbinUUID) {
+        // loading same xclbin multiple times ?
+        return false;
+      }
       delete itr->second;
       deviceInfo.erase(deviceId);
     }
+    return true;
   }
 
 #if 0

@@ -27,7 +27,9 @@
 #include "core/common/scheduler.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
+#include "core/common/query_requests.h"
 #include "core/common/AlignedAllocator.h"
+#include "core/include/experimental/xclbin_util.h"
 
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
@@ -544,6 +546,13 @@ shim(unsigned index)
   , mCuMaps(128, nullptr)
 {
   init(index);
+}
+
+int shim::get_dev_xclbin_uuid(xuid_t out)
+{
+    auto tmp_uuid = mCoreDevice->get_xclbin_uuid();
+    memcpy(out, &tmp_uuid, sizeof(xuid_t));
+    return 0;
 }
 
 int shim::dev_init()
@@ -1345,8 +1354,14 @@ int shim::xclLoadXclBin(const xclBin *buffer)
     auto ret = xclLoadAxlf(top);
     if (ret != 0) {
       if (ret == -EOPNOTSUPP) {
-        xrt_logmsg(XRT_ERROR, "Xclbin does not match Shell on card.");
-        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update Shell.");
+        xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
+        auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(top);
+        auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
+        if (xclbin_vbnv != shell_vbnv) {
+          xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
+          xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
+        }
+        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
       }
       else if (ret == -EBUSY) {
         xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
@@ -2320,6 +2335,20 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xdphal::flush_device(handle) ;
     xdpaie::flush_aie_device(handle) ;
 
+    bool same_xclbin = false;
+    xuid_t new_xclbin_uuid;
+    xclbin_uuid((char *)buffer, new_xclbin_uuid);
+    xrt::uuid new_xclbin_uuid_xrt(new_xclbin_uuid);
+
+    xuid_t dev_uuid;
+    drv->get_dev_xclbin_uuid(dev_uuid);
+    if (new_xclbin_uuid_xrt) {
+        //This is not a legacy xclbin without uuid
+        if(xrt::uuid(dev_uuid) == new_xclbin_uuid_xrt) {
+            same_xclbin = true;
+        }
+    }
+
 #ifdef DISABLE_DOWNLOAD_XCLBIN
     int ret = 0;
 #else
@@ -2334,7 +2363,10 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       xdpaie::update_aie_device(handle);
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN
-      ret = xrt_core::scheduler::init(handle, buffer);
+      if (!same_xclbin) {
+          //Do not reset and re-init ERT & soft kernels if same xclbin
+          ret = xrt_core::scheduler::init(handle, buffer);
+      }
       START_DEVICE_PROFILING_CB(handle);
 #endif
     }

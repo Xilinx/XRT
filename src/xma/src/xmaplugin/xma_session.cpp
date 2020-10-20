@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,19 +13,36 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#include "lib/xma_session.hpp"
+#include "app/xmaerror.h"
 
-#ifndef __SubCmdStatus_h_
-#define __SubCmdStatus_h_
+namespace xma_core {
+namespace plg {
 
-#include "tools/common/SubCmd.h"
+session::session(int s_id, XmaSessionType s_type, int32_t c_id)
+:session_id{s_id}, session_type{s_type},
+channel_id{c_id}
+{
+  std::memset(&hw_session, 0 , sizeof(XmaHwSession));
+  //hw_session will be modifed below
+  //TODO
+}
 
-class SubCmdStatus : public SubCmd {
- public:
-  virtual void execute(const SubCmdOptions &_options) const;
+int32_t
+session::init(int32_t dev_idx, int32_t cu_idx, const std::string& cu_name)
+{
+  //TODO
 
- public:
-  SubCmdStatus(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-};
+  return XMA_ERROR;
+}
 
-#endif
+int32_t
+session::alloc_buf() const
+{
+  //TODO
 
+  return XMA_ERROR;
+}
+
+
+}} // exec,xrt

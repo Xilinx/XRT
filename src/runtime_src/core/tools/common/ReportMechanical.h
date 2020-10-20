@@ -14,15 +14,15 @@
  * under the License.
  */
 
-#ifndef __ReportFan_h_
-#define __ReportFan_h_
+#ifndef __ReportMechanical_h_
+#define __ReportMechanical_h_
 
 // Please keep external include file dependencies to a minimum
 #include "Report.h"
 
-class ReportFan : public Report {
+class ReportMechanical : public Report {
  public:
-  ReportFan() : Report("fan", "Fans present on the device", true /*deviceRequired*/) { /*empty*/ };
+  ReportMechanical() : Report("mechanical", "Mechanical sensors on and surrounding the device", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:

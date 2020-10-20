@@ -396,12 +396,12 @@ static int load_firmware_from_flash(struct platform_device *pdev,
 	char **fw_buf, size_t *fw_len)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct flash_data_header header = { 0 };
+	struct flash_data_header header = { {{0}} };
 	const size_t magiclen = sizeof(header.fdh_id_begin.fdi_magic);
 	size_t flash_size = 0;
 	int ret = 0;
 	char *buf = NULL;
-	struct flash_data_ident id = { 0 };
+	struct flash_data_ident id = { {0} };
 
 	xocl_info(&pdev->dev, "try loading fw from flash");
 

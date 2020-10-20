@@ -277,6 +277,13 @@ get_api_checks()
   return value;
 }
 
+inline bool
+get_use_xclbin_group_sections()
+{
+  static bool value = detail::get_bool_value("Runtime.use_xclbin_group_sections",true);
+  return value;
+}
+
 inline std::string
 get_logging()
 {

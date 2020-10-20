@@ -18,9 +18,8 @@
 #include "time.h"
 
 #include <chrono>
-#include <string>
-#include <ctime>
 #include <cstring>
+#include <ctime>
 
 #ifdef _WIN32
 # pragma warning ( disable : 4996 )

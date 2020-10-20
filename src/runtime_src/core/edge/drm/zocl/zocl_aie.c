@@ -37,7 +37,35 @@ get_error_module(enum aie_module_type aie_module) {
 	case AIE_NOC_MOD:
 		return XRT_ERROR_MODULE_AIE_NOC;
 	default:
-		return XRT_ERROR_MODULE_AIE_UNKNOWN;
+		return XRT_ERROR_MODULE_UNKNOWN;
+	}
+}
+
+static inline u8
+get_error_num(u8 aie_category) {
+	switch (aie_category) {
+	case AIE_ERROR_CATEGORY_SATURATION:
+		return XRT_ERROR_NUM_AIE_SATURATION;
+	case AIE_ERROR_CATEGORY_FP:
+		return XRT_ERROR_NUM_AIE_FP;
+	case AIE_ERROR_CATEGORY_STREAM:
+		return XRT_ERROR_NUM_AIE_STREAM;
+	case AIE_ERROR_CATEGORY_ACCESS:
+		return XRT_ERROR_NUM_AIE_ACCESS;
+	case AIE_ERROR_CATEGORY_BUS:
+		return XRT_ERROR_NUM_AIE_BUS;
+	case AIE_ERROR_CATEGORY_INSTRUCTION:
+		return XRT_ERROR_NUM_AIE_INSTRUCTION;
+	case AIE_ERROR_CATEGORY_ECC:
+		return XRT_ERROR_NUM_AIE_ECC;
+	case AIE_ERROR_CATEGORY_LOCK:
+		return XRT_ERROR_NUM_AIE_LOCK;
+	case AIE_ERROR_CATEGORY_DMA:
+		return XRT_ERROR_NUM_AIE_DMA;
+	case AIE_ERROR_CATEGORY_MEM_PARITY:
+		return XRT_ERROR_NUM_AIE_MEM_PARITY;
+	default:
+		return XRT_ERROR_NUM_UNKNOWN;
 	}
 }
 
@@ -75,6 +103,7 @@ is_cached_error(struct aie_error_cache *zerr, struct aie_error *err)
 
 	for (i = 0; i < zerr->num; i++) {
 		if (zerr->errors[i].error_id == err->error_id &&
+		    zerr->errors[i].category == err->category &&
 		    zerr->errors[i].module == err->module &&
 		    zerr->errors[i].loc.col == err->loc.col &&
 		    zerr->errors[i].loc.row == err->loc.row)
@@ -120,9 +149,10 @@ zocl_aie_error_cb(void *arg)
 		xrtErrorCode err_code;
 
 		DRM_INFO("Get AIE asynchronous Error: "
-		    "error_id %d Mod %d, Col %d, Row %d\n",
+		    "error_id %d Mod %d, category %d, Col %d, Row %d\n",
 		    errors->errors[i].error_id,
 		    errors->errors[i].module,
+		    errors->errors[i].category,
 		    errors->errors[i].loc.col,
 		    errors->errors[i].loc.row
 		    );
@@ -131,7 +161,7 @@ zocl_aie_error_cb(void *arg)
 			continue;
 
 		err_code = XRT_ERROR_CODE_BUILD(
-		    XRT_ERROR_NUM_UNKNOWN,
+		    get_error_num(errors->errors[i].category),
 		    XRT_ERROR_DRIVER_AIE,
 		    XRT_ERROR_SEVERITY_CRITICAL,
 		    get_error_module(errors->errors[i].module),

@@ -331,7 +331,13 @@ OO_Config::execute(const SubCmdOptions& _options) const
   for (const auto & deviceName : m_devices) 
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
   
-  XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+  try {
+    XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    return;
+  }
 
   //Option:show
   if (m_show) {

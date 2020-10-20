@@ -134,6 +134,7 @@ static void cu_fa_check(void *core, struct xcu_status *status)
 	if (!cu_fa->run_cnts)
 		return;
 
+	cu_fa->check_count++;
 	task_count = cu_read32(cu_fa, TCR);
 	/* If taskCount register overflow once, below calculate is still correct.
 	 * Only when the register overflow more than once, this is wrong.
@@ -227,6 +228,12 @@ int xrt_cu_fa_init(struct xrt_cu *xcu)
 
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_fa_funcs;
+	/* Not sure what is the best initial value.
+	 * But below parameters are configurable to user. No worry.
+	 */
+	xcu->busy_threshold = core->max_credits / 2;
+	xcu->interval_min = 2;
+	xcu->interval_max = 5;
 
 	err = xrt_cu_init(xcu);
 	if (err)

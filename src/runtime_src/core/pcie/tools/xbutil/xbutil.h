@@ -37,6 +37,7 @@
 #include "core/pcie/common/memaccess.h"
 #include "core/pcie/common/dd.h"
 #include "core/common/utils.h"
+#include "core/common/time.h"
 #include "core/common/sensor.h"
 #include "core/pcie/linux/scan.h"
 #include "core/pcie/linux/shim.h"
@@ -1351,11 +1352,8 @@ public:
              << std::hex << sensor_tree::get( "board.error.firewall.firewall_status", -1 ) << std::dec
              << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
         if (lvl != 0) {
-            char cbuf[80];
-            time_t stamp = static_cast<time_t>(sensor_tree::get( "board.error.firewall.firewall_time", 0 ));
-            struct tm *ts = localtime(&stamp);
-            strftime(cbuf, sizeof(cbuf), "%a %Y-%m-%d %H:%M:%S %Z", ts);
-            ostr << "Error occurred on: " << cbuf << std::endl;
+            auto ts = xrt_core::timestamp(sensor_tree::get( "board.error.firewall.firewall_time", 0 ));
+            ostr << "Error occurred on: " << ts << std::endl;
         }
         ostr << std::endl;
         ostr << "ECC Error Status\n";

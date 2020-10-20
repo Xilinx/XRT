@@ -75,24 +75,18 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     b_obj.device_only_buffer = false;
     b_obj.private_do_not_touch = nullptr;
 
-    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == nullptr) {
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed. XMASession is corrupted.");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
     xclDeviceHandle dev_handle = priv1->dev_handle;
     uint32_t ddr_bank = s_handle.hw_session.bank_index;
     b_obj.bank_index = ddr_bank;
     b_obj.size = size;
     b_obj.dev_index = s_handle.hw_session.dev_index;
 
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
-        //std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed. XMASession is corrupted.");
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-    }
     if (s_handle.session_type >= XMA_ADMIN) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc can not be used for this XMASession type");
         if (return_code) *return_code = XMA_ERROR;
@@ -152,24 +146,18 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     b_obj.device_only_buffer = false;
     b_obj.private_do_not_touch = nullptr;
 
-    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == nullptr) {
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num failed. XMASession is corrupted.");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
     xclDeviceHandle dev_handle = priv1->dev_handle;
     uint32_t ddr_bank = s_handle.hw_session.bank_index;
     b_obj.bank_index = ddr_bank;
     b_obj.size = size;
     b_obj.dev_index = s_handle.hw_session.dev_index;
 
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
-        //std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num failed. XMASession is corrupted.");
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-    }
     if (s_handle.session_type >= XMA_ADMIN) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num can not be used for this XMASession type");
         if (return_code) *return_code = XMA_ERROR;
@@ -231,24 +219,18 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
     b_obj.device_only_buffer = false;
     b_obj.private_do_not_touch = nullptr;
 
-    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == nullptr) {
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. XMASession is corrupted.");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
     xclDeviceHandle dev_handle = priv1->dev_handle;
     uint32_t ddr_bank = ddr_index;
     b_obj.bank_index = ddr_bank;
     b_obj.size = size;
     b_obj.dev_index = s_handle.hw_session.dev_index;
 
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
-        //std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. XMASession is corrupted.");
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-    }
     if (s_handle.session_type != XMA_ADMIN) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr can be used only for XMA_ADMIN session type");
         if (return_code) *return_code = XMA_ERROR;
@@ -337,13 +319,7 @@ int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
 void
 xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
 {
-    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == nullptr) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMASession is corrupted.");
-        return;
-    }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
-        //std::cout << "ERROR: xma_plg_buffer_free failed. XMASession is corrupted" << std::endl;
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMASession is corrupted.");
         return;
     }
@@ -367,13 +343,7 @@ xma_plg_buffer_write(XmaSession s_handle,
                      size_t           offset)
 {
     int32_t rc;
-    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == nullptr) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMASession is corrupted.");
-        return XMA_ERROR;
-    }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
-        //std::cout << "ERROR: xma_plg_buffer_write failed. XMASession is corrupted" << std::endl;
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMASession is corrupted.");
         return XMA_ERROR;
     }
@@ -409,13 +379,7 @@ xma_plg_buffer_read(XmaSession s_handle,
                     size_t           offset)
 {
     int32_t rc;
-    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == nullptr) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMASession is corrupted.");
-        return XMA_ERROR;
-    }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
-        //std::cout << "ERROR: xma_plg_buffer_read failed. XMASession is corrupted" << std::endl;
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMASession is corrupted.");
         return XMA_ERROR;
     }
@@ -518,17 +482,12 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     cmd_obj_error.cu_index = -1;
     cmd_obj_error.do_not_use1 = nullptr;
 
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == nullptr) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.");
-        if (return_code) *return_code = XMA_ERROR;
-        return cmd_obj_error;
-    }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.");
-        if (return_code) *return_code = XMA_ERROR;
-        return cmd_obj_error;
-    }
     if (s_handle.session_type >= XMA_ADMIN) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item can not be used for this XMASession type");
         if (return_code) *return_code = XMA_ERROR;
@@ -730,17 +689,12 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     cmd_obj_error.cu_index = -1;
     cmd_obj_error.do_not_use1 = nullptr;
 
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. XMASession is corrupted.");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == nullptr) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. XMASession is corrupted.");
-        if (return_code) *return_code = XMA_ERROR;
-        return cmd_obj_error;
-    }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. XMASession is corrupted.");
-        if (return_code) *return_code = XMA_ERROR;
-        return cmd_obj_error;
-    }
     XmaHwDevice *dev_tmp1 = priv1->device;
     if (dev_tmp1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL");
@@ -947,15 +901,11 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
 
 int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, int32_t num_cu_objs, bool wait_for_cu_cmds)
 {
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_cu_cmd_status failed. XMASession is corrupted.");
+        return XMA_ERROR;
+    }
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == nullptr) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_cu_cmd_status failed. XMASession is corrupted.");
-        return XMA_ERROR;
-    }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_cu_cmd_status failed. XMASession is corrupted.");
-        return XMA_ERROR;
-    }
 
     XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
     XmaHwDevice *dev_tmp1 = priv1->device;
@@ -1063,15 +1013,11 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
 
 int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
 {
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done failed. XMASession is corrupted.");
+        return XMA_ERROR;
+    }
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == nullptr) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done failed. XMASession is corrupted.");
-        return XMA_ERROR;
-    }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done failed. XMASession is corrupted.");
-        return XMA_ERROR;
-    }
     if (s_handle.session_type >= XMA_ADMIN) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done can not be used for this XMASession type");
         return XMA_ERROR;
@@ -1309,12 +1255,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
 }
 
 int32_t xma_plg_channel_id(XmaSession s_handle) {
-    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == nullptr) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_channel_id failed. XMASession is corrupted.");
-        return XMA_ERROR;
-    }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_channel_id failed. XMASession is corrupted.");
         return XMA_ERROR;
     }
