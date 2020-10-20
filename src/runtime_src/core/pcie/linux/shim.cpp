@@ -2331,6 +2331,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
   try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
+    if (!drv) {
+        return -EINVAL;
+    }
 
     xdphal::flush_device(handle) ;
     xdpaie::flush_aie_device(handle) ;
