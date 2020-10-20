@@ -36,7 +36,6 @@ class buffer
 {
 private:
     void*    dummy{nullptr};
-    uint8_t* data{nullptr};
     xrt::bo  xrt_bo;
     int32_t  bank_index;
     int32_t  dev_index;
