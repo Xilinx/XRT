@@ -835,6 +835,13 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		uint64_t xclbin_len = 0;
 		struct xcl_mailbox_bitstream_kaddr *mb_kaddr =
 			(struct xcl_mailbox_bitstream_kaddr *)req->data;
+		u64 ch_state = 0;
+
+		(void) xocl_mailbox_get(lro, CHAN_STATE, &ch_state);
+		if ((ch_state & XCL_MB_PEER_SAME_DOMAIN) == 0) {
+			mgmt_err(lro, "can't load xclbin via kva, dropped\n");
+			break;
+		}
 
 		if (payload_len < sizeof(*mb_kaddr)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
@@ -945,6 +952,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)resp->comm_id);
 		(void) xocl_peer_response(lro, req->req, msgid, resp,
 			sizeof(struct xcl_mailbox_conn_resp));
+		(void ) xocl_mailbox_set(lro, CHAN_STATE, resp->conn_flags);
 		vfree(resp);
 		break;
 	}

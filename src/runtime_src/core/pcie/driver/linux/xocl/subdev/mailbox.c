@@ -1080,8 +1080,6 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 	if (st == 0xffffffff) {
 		/* Device is still being reset. */
 		read_hw = false;
-	} else if (test_bit(MBXCS_BIT_POLL_MODE, &ch->mbc_state)) {
-		read_hw = ((st & STATUS_EMPTY) == 0);
 	} else {
 		read_hw = ((st & STATUS_RTA) != 0);
 	}
@@ -1127,7 +1125,7 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 		}
 		break;
 	default:
-		MBX_ERR(mbx, "invalid mailbox pkt type\n");
+		MBX_ERR(mbx, "invalid mailbox pkt type: %d\n", type);
 		reset_pkt(pkt);
 		return true;
 	}
