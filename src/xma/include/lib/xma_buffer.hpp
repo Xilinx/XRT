@@ -32,19 +32,16 @@ using memory_group = xrtMemoryGroup;
 /**
  * class buffer : abstraction for xma buffer
  */
-class buffer: public xrt::bo
+class buffer
 {
 private:
     void*    dummy{nullptr};
     uint8_t* data{nullptr};
-    uint64_t size;
-    uint64_t paddr;
+    xrt::bo  xrt_bo;
     int32_t  bank_index;
     int32_t  dev_index;
-    xclBufferHandle boHandle;
     std::atomic<int32_t> ref_cnt{0};//For use by plugins when shared by plugins
     bool     device_only_buffer;
-    xclDeviceHandle dev_handle;
     uint32_t reserved[4];
 
 public:
@@ -54,7 +51,7 @@ public:
   int32_t
   write_ddr(int32_t offset, uint64_t size) const;
 
-  buffer(xclDeviceHandle dhdl, bo::flags flags, memory_group grp, int32_t dev_idx, int32_t bank_idx, uint64_t sz, bool dev_only);
+  buffer(xclDeviceHandle dhdl, xrt::bo::flags flags, memory_group grp, int32_t dev_idx, int32_t bank_idx, uint64_t sz, bool dev_only);
   ~buffer(); //bo_impl automatically does free buffer when shared_ptr ref_cnt is zero
 
 
