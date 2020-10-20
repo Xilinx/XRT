@@ -162,7 +162,7 @@ get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t mem
 
 memory::buffer_object_handle
 memory::
-get_buffer_object(device* device)
+get_buffer_object(device* device, memory::memidx_type subidx)
 {
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
@@ -172,7 +172,7 @@ get_buffer_object(device* device)
 
   // Get memory bank index if assigned, -1 if not assigned, which will trigger
   // allocation error when default allocation is disabled
-  get_memidx_nolock(device); // computes m_memidx
+  get_memidx_nolock(device, subidx); // computes m_memidx
   auto boh = (m_bomap[device] = device->allocate_buffer_object(this,m_memidx));
 
   // To be deleted when strict bank rules are enforced
@@ -289,7 +289,7 @@ update_memidx_nolock(const device* device, const buffer_object_handle& boh)
 // private
 memory::memidx_type
 memory::
-get_memidx_nolock(const device* dev) const
+get_memidx_nolock(const device* dev, memory::memidx_type subidx) const
 {
   // already initialized
   if (m_memidx>=0)
@@ -318,7 +318,8 @@ get_memidx_nolock(const device* dev) const
     return m_memidx;
 
   if (m_karg.empty())
-    return -1;
+    // memory index could be from sub-buffer
+    return (m_memidx = subidx);
 
   // kernel,argidx deduced
   memidx_bitmask_type mset;

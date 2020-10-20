@@ -640,7 +640,8 @@ allocate_buffer_object(memory* mem, memidx_type memidx)
 
   // sub buffer
   if (auto parent = mem->get_sub_buffer_parent()) {
-    auto boh = parent->get_buffer_object(this);
+    // parent buffer should be allocated in bank selected by sub-buffer
+    auto boh = parent->get_buffer_object(this, memidx);
     auto pmemidx = get_boh_memidx(boh);
     if (pmemidx.test(memidx)) {
       auto offset = mem->get_sub_buffer_offset();
