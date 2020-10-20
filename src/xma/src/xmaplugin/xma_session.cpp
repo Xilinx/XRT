@@ -19,21 +19,14 @@
 namespace xma_core {
 namespace plg {
 
-session::session(int s_id, XmaSessionType s_type, int32_t c_id)
+session::session(int32_t s_id, XmaSessionType s_type, int32_t c_id, const xrt::device& x_dev, const xrt::uuid& xclbin_uid, const std::string& cu_name)
 :session_id{s_id}, session_type{s_type},
-channel_id{c_id}
+channel_id{c_id}, xrt_device{x_dev}, 
+xrt_kernel{x_dev, xclbin_uid, cu_name}
 {
   std::memset(&hw_session, 0 , sizeof(XmaHwSession));
   //hw_session will be modifed below
   //TODO
-}
-
-int32_t
-session::init(int32_t dev_idx, int32_t cu_idx, const std::string& cu_name)
-{
-  //TODO
-
-  return XMA_ERROR;
 }
 
 int32_t
@@ -45,4 +38,4 @@ session::alloc_buf() const
 }
 
 
-}} // exec,xrt
+}} //namespace xma_core->plg

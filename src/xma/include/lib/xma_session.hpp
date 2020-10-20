@@ -22,6 +22,8 @@
 #include <string>
 #include "app/xmahw.h"
 #include "plg/xmasess.h"
+#include "experimental/xrt_device.h"
+#include "experimental/xrt_kernel.h"
 
 namespace xma_core {
 namespace plg {
@@ -40,6 +42,8 @@ private:
     XmaHwSession   hw_session;
     /** For kernels that support channels, this is the channel id assigned by XMA during session creation. Initalized to -1. */
     int32_t        channel_id; //Assigned by XMA session create
+    xrt::device    xrt_device;
+    xrt::kernel    xrt_kernel;
     /** Private plugin data attached to a specific kernel session. Allocated
     by XMA prior to calling plugin init() and freed automatically as part of
     close. */
@@ -48,17 +52,12 @@ private:
     allocated and managed by XMA for each session type. */
     void          *stats{nullptr};
   
-  ~session();
-
 public:
-  int32_t
-  init(int32_t dev_idx, int32_t cu_idx, const std::string& cu_name);
-
   int32_t
   alloc_buf() const;
 
-  session(int s_id, XmaSessionType s_type, int32_t c_id);
-  void destroy();
+  session(int32_t s_id, XmaSessionType s_type, int32_t c_id, const xrt::device& x_dev, const xrt::uuid& xclbin_uid, const std::string& cu_name);
+  ~session();
 
 }; //class session
 
