@@ -826,13 +826,15 @@ class kernel_impl
   int32_t
   get_arg_grpid(const connectivity* cons, int32_t argidx, int32_t ipidx)
   {
-    for (int count = (cons ? cons->m_count-1 : -1); count >=0; --count) {
-      auto& con = cons->m_connection[count];
-      if (con.m_ip_layout_index != ipidx)
-        continue;
-      if (con.arg_index != argidx)
-        continue;
-      return con.mem_data_index;
+    if (cons) {
+      for (int count = cons->m_count-1; count >=0; --count) {
+        auto& con = cons->m_connection[count];
+        if (con.m_ip_layout_index != ipidx)
+          continue;
+        if (con.arg_index != argidx)
+          continue;
+        return con.mem_data_index;
+      }
     }
     return std::numeric_limits<int32_t>::max();
   }
