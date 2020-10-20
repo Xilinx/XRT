@@ -2119,6 +2119,7 @@ exec_reset(struct exec_core *exec, const xuid_t *xclbin_id)
 	uuid_copy(&exec->xclbin_id, xclbin_id);
 	exec->num_cus = 0;
 	exec->num_cdma = 0;
+	exec->num_sk_cus = 0;
 
 	exec->polling_mode = true;
 	exec->cq_interrupt = false;
