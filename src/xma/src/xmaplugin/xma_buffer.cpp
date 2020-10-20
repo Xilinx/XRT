@@ -20,9 +20,11 @@
 namespace xma_core {
 namespace plg {
 
-buffer::buffer(int32_t dev_idx, int32_t bank_idx, uint64_t sz, bool dev_only)
-:size(sz), bank_index{bank_idx}, dev_index{dev_idx},
-device_only_buffer(dev_only)
+
+
+buffer::buffer(xclDeviceHandle dhdl, bo::flags flags, memory_group grp, int32_t dev_idx, int32_t bank_idx, uint64_t sz, bool dev_only)
+:xrt::bo{dhdl, sz, flags, grp}, size(sz), bank_index{bank_idx}, dev_index{dev_idx},
+device_only_buffer(dev_only), dev_handle{dhdl}
 {
   //TODO
   throw std::runtime_error(" --- TODO --");
