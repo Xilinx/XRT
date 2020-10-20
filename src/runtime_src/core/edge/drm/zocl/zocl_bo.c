@@ -919,7 +919,7 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
 		memp->zm_size = md->m_size * 1024;
 		memp->zm_used = 1;
 
-		if (!strstr(md->m_tag, "MIG") || !strstr(md->m_tag, "LPDDR")) {
+		if (!strstr(md->m_tag, "MIG") && !strstr(md->m_tag, "LPDDR")) {
 			memp->zm_type = ZOCL_MEM_TYPE_CMA;
 			continue;
 		}
