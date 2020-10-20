@@ -79,7 +79,8 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::strin
       rtp.selector_row += 1;
       rtp.ping_row += 1;
       rtp.pong_row += 1;
-      rtps.insert(std::make_pair(rtp.name, std::move(rtp)));
+      std::string port_name(rtp.name);
+      rtps.emplace(std::move(port_name), std::move(rtp));
     }
 
     state = graph_state::reset;
