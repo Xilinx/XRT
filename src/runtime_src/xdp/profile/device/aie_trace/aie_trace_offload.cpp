@@ -51,7 +51,8 @@ AIETraceOffload::AIETraceOffload(void* handle, uint64_t id,
                  totalSz(totalSize),
                  numStream(numStrm)
 {
-  bufAllocSz = (totalSz / numStream) & 0xffffffffffffff00;
+  bufAllocSz = (totalSz / numStream) & 0xfffffffffffff000;
+std::cout << " bufAllocSz " << bufAllocSz << std::endl;
 }
 
 AIETraceOffload::~AIETraceOffload()
@@ -117,6 +118,7 @@ bool AIETraceOffload::initReadTrace()
 
       char* vaddr = reinterpret_cast<char *>(mmap(NULL, bufAllocSz, PROT_READ | PROT_WRITE, MAP_SHARED, boExportHandle, 0));
       XAie_DmaSetAddrLen(&(shimDmaObj->desc), (uint64_t)vaddr, bufAllocSz);
+std::cout << " init : i " << i << " bufAddr " << std::hex << bufAddr << " vaddr " << (uint64_t)vaddr << std::dec << std::endl;
 
       XAie_DmaEnableBd(&(shimDmaObj->desc));
 
