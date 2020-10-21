@@ -387,7 +387,7 @@ int kds_init_sched(struct kds_sched *kds)
 	mutex_init(&kds->cu_mgmt.lock);
 	kds->num_client = 0;
 	kds->bad_state = 0;
-	kds->ert_disable = 0;
+	kds->ert_disable = 1;
 
 	return 0;
 }
@@ -736,13 +736,13 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 {
 	kds->ert = ert;
-	/* Do anything necessary */
+	/* By default enable ERT if it exist */
+	kds->ert_disable = 0;
 	return 0;
 }
 
 int kds_fini_ert(struct kds_sched *kds)
 {
-	/* TODO: implement this */
 	return 0;
 }
 

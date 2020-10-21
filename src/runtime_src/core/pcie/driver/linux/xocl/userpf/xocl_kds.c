@@ -357,7 +357,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		}
 
 		/* Before scheduler config options are removed from xrt.ini */
-		if (to_cfg_pkg(ecmd)->ert)
+		if (to_cfg_pkg(ecmd)->ert && XDEV(xdev)->kds.ert)
 			XDEV(xdev)->kds.ert_disable = 0;
 		else
 			XDEV(xdev)->kds.ert_disable = 1;
