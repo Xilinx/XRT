@@ -56,14 +56,72 @@ paths protect the Shell from un-trusted DFX partition. For example if a slave in
 bug or is malicious the appropriate firewall will step in and protect the Shell from the
 failing slave as soon as a non compliant AXI transaction is placed on AXI bus.
 
-Newer revisions of shell have a feature called Slave Bridge which provides direct access to host
+Newer revisions of shell have a feature called :ref:`sb.rst` which provides direct access to host
 memory from kernels in the DFX partition. With this feature kernels can initiate PCIe burst
 transfers from PF1 without direct access to PCIe bus. AXI Firewall (SI) in reverse direction protects
 PCIe from non-compliant transfers.
 
+.. note::
+   Features :ref:`sb.rst` and :ref:`p2p.rst` are not available in all shells.
+
+
 For more information on firewall protection see `Firewall`_ section below.
 
 For shell update see `Shell Update`_ section below.
+
+PCIe Topology
+-------------
+
+As mentioned before Alveo platforms have two physical function architecture where each function has its
+own BARs. The table below gives overview of the topology and functionality.
+
+== === ======= ===============================================================
+PF BAR Driver  Purpose
+== === ======= ===============================================================
+0  0   xclmgmt Memory mapped access to privileged IPs in the shell as shown
+               in the Figure above.
+0  2   xclmgmt Setup MSI-X vector table
+1  0   xocl    Access to register maps of user compiled compute units in the
+               DFX region
+1  2   xocl    Memory mapped access to XDMA/QDMA PCIe DMA engine programming
+               registers
+1  4   xocl    CPU direct and P2P access to device attached DDR/HBM/PL-RAM
+               memory.
+               By default its size is limited to 256MB but can be expanded
+	       using XRT xbutil tool as described in :ref:`p2p.rst`
+== === ======= ===============================================================
+
+Sample output of Linux ``lspci`` command for U50 device below::
+
+  dx4300:~>lspci -vvv -d 10ee:
+  02:00.0 Processing accelerators: Xilinx Corporation Device 5020
+          Subsystem: Xilinx Corporation Device 000e
+          Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+          Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+          Latency: 0, Cache Line Size: 64 bytes
+          NUMA node: 0
+          Region 0: Memory at 20fd2000000 (64-bit, prefetchable) [size=32M]
+          Region 2: Memory at 20fd4020000 (64-bit, prefetchable) [size=128K]
+          Capabilities: <access denied>
+          Kernel driver in use: xclmgmt
+          Kernel modules: xclmgmt
+
+  02:00.1 Processing accelerators: Xilinx Corporation Device 5021
+          Subsystem: Xilinx Corporation Device 000e
+          Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+          Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+          Latency: 0, Cache Line Size: 64 bytes
+          Interrupt: pin A routed to IRQ 66
+          NUMA node: 0
+          Region 0: Memory at 20fd0000000 (64-bit, prefetchable) [size=32M]
+          Region 2: Memory at 20fd4000000 (64-bit, prefetchable) [size=128K]
+          Region 4: Memory at 20fc0000000 (64-bit, prefetchable) [size=256M]
+          Capabilities: <access denied>
+          Kernel driver in use: xocl
+          Kernel modules: xocl
+
+  dx4300:~>
+
 
 Dynamic Function eXchange
 =========================
