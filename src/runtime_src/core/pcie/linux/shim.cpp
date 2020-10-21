@@ -29,7 +29,6 @@
 #include "core/common/config_reader.h"
 #include "core/common/query_requests.h"
 #include "core/common/AlignedAllocator.h"
-#include "core/include/experimental/xclbin_util.h"
 
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
@@ -546,13 +545,6 @@ shim(unsigned index)
   , mCuMaps(128, nullptr)
 {
   init(index);
-}
-
-int shim::get_dev_xclbin_uuid(xuid_t out)
-{
-    auto tmp_uuid = mCoreDevice->get_xclbin_uuid();
-    memcpy(out, &tmp_uuid, sizeof(xuid_t));
-    return 0;
 }
 
 int shim::dev_init()
