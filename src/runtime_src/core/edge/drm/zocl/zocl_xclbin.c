@@ -671,9 +671,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		if (ret)
 			goto out0;
 		ret = zocl_kds_update(zdev);
-		if (ret) {
+		if (ret)
 			goto out0;
-                }
 	}
 
 	/* Populating AIE_METADATA sections */
