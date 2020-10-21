@@ -15,17 +15,18 @@
  */
 
 // Copyright 2018 Xilinx, Inc. All rights reserved.
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
 #include "xocl/core/device.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
 static void
 validOrError(cl_device_id               device,
-	cl_streams_poll_req_completions*completions, 
+	cl_streams_poll_req_completions*completions,
 	cl_int                          min_num_completion,
 	cl_int                          max_num_completion,
 	cl_int*                         actual_num_completion,
@@ -33,20 +34,23 @@ validOrError(cl_device_id               device,
 	cl_int*                         errcode_ret)
 
 {
+  if (min_num_completion <= 0)
+    throw error(CL_INVALID_VALUE,"minimum number of completion argument must be greater than zero");
 }
 
-static cl_int 
+static cl_int
 clPollStreams(cl_device_id              device,
-	cl_streams_poll_req_completions*completions, 
+	cl_streams_poll_req_completions*completions,
 	cl_int                          min,
 	cl_int                          max,
 	cl_int*                         actual,
 	cl_int                          timeout,
 	cl_int*                         errcode_ret)
 {
+  int ret;
   validOrError(device,completions,min,max,actual,timeout,errcode_ret);
-  xocl::xocl(device)->poll_streams(completions,min,max,actual,timeout);
-  xocl::assign(errcode_ret,CL_SUCCESS);
+  ret = xocl::xocl(device)->poll_streams(completions,min,max,actual,timeout);
+  *errcode_ret = (ret < 0) ? ret : 0;
   return CL_SUCCESS;
 }
 
@@ -76,4 +80,3 @@ clPollStreams(cl_device_id               device,
   }
   return CL_INVALID_VALUE;
 }
-

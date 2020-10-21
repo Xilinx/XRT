@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
+#include "xocl/config.h"
 #include "context.h"
 #include "command_queue.h"
 #include "xocl/core/context.h"
@@ -59,5 +59,3 @@ validOrError(const cl_context_properties* properties)
 } // context
 
 }} // detail,xocl
-
-

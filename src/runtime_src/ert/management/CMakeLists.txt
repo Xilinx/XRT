@@ -1,6 +1,6 @@
 add_custom_command(
  OUTPUT bsp.extracted
- COMMAND mkdir -p bsp
+ COMMAND ${CMAKE_COMMAND} -E make_directory bsp
  COMMAND tar -C bsp -jxf ${CMAKE_CURRENT_SOURCE_DIR}/mgmt_bsp.tar.bz2
  COMMAND touch bsp.extracted
  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/mgmt_bsp.tar.bz2

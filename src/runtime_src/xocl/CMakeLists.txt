@@ -1,9 +1,7 @@
 include_directories(
+  ${Boost_INCLUDE_DIRS}
   ${XRT_SRC_DIR}/include/1_2
-  ${DRM_INCLUDE_DIRS}
-  ${BOOST_FILESYSTEM_INCLUDE_DIRS}
-  ${BOOST_SYSTEM_INCLUDE_DIRS}
-  )
+)
 
 set(XRT_XOCL_API_DIR       "${CMAKE_CURRENT_SOURCE_DIR}/api")
 set(XRT_XOCL_CORE_DIR      "${CMAKE_CURRENT_SOURCE_DIR}/core")
@@ -39,14 +37,73 @@ file(GLOB XRT_XOCL_XCLBIN_FILES
   "${XRT_XOCL_XCLBIN_DIR}/*.cpp"
   )
 
-#source_group(XRT_XOCL_API_FILES FILES ${XRT_XOCL_API_FILES})
-#source_group(XRT_XOCL_CORE_FILES FILES ${XRT_XOCL_CORE_FILES})
-#source_group(XRT_XOCL_XCLBIN_FILES FILES ${XRT_XOCL_XCLBIN_FILES})
-
 set(XRT_XOCL_ALL_SRC
   ${XRT_XOCL_API_FILES}
   ${XRT_XOCL_CORE_FILES}
   ${XRT_XOCL_XCLBIN_FILES}
   )
 
+add_compile_options("-DXRT_XOCL_SOURCE")
+
 add_library(xocl OBJECT ${XRT_XOCL_ALL_SRC})
+
+if (WIN32)
+include_directories(
+  ${KHRONOS}/include
+  )
+
+add_library(xilinxopencl SHARED
+  $<TARGET_OBJECTS:xocl>
+  ${XRT_XOCL_API_DIR}/icd/windows/xilinxopencl.def
+  )
+
+target_link_libraries(xilinxopencl
+  xrt++
+  xrt_coreutil
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
+  )
+
+else ()
+
+add_library(xilinxopencl SHARED
+  $<TARGET_OBJECTS:xocl>
+  )
+
+# Attach to the user's linker flags
+set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
+set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,defs")
+
+set_target_properties(xilinxopencl
+  PROPERTIES LINKER_LANGUAGE CXX
+  )
+
+target_link_libraries(xilinxopencl
+  xrt++
+  xrt_coreutil
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
+  dl
+  pthread
+  crypt
+  uuid
+  rt
+  )
+
+endif ()
+
+# install(TARGETS xilinxopencl
+#   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
+#   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT xrt NAMELINK_COMPONENT ${XRT_DEV_COMPONENT}
+#   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
+# )
+
+install(TARGETS xilinxopencl
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
+  RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
+)
+
+install(TARGETS xilinxopencl
+  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
+)
