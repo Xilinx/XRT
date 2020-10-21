@@ -527,9 +527,10 @@
 <div class="section" id="specify-a-buffer-location-by-ddr-bank-name-legacy">
 <h4>1. Specify a Buffer location by DDR bank name (legacy)<a class="headerlink" href="#specify-a-buffer-location-by-ddr-bank-name-legacy" title="Permalink to this headline">¶</a></h4>
 <p>Here is an example of specifying explicit name of the bank, this works for only DDR banks. The supported flags are <code class="docutils literal notranslate"><span class="pre">XCL_MEM_DDR_BANK0</span></code>, <code class="docutils literal notranslate"><span class="pre">XCL_MEM_DDR_BANK1</span></code>, <code class="docutils literal notranslate"><span class="pre">XCL_MEM_DDR_BANK2</span></code>, and <code class="docutils literal notranslate"><span class="pre">XCL_MEM_DDR_BANK3</span></code>.</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span>cl_mem_ext_ptr_t ext = {0};
-ext.banks = XCL_MEM_DDR_BANK0;
-clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,…,&amp;ext,…);
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">cl_mem_ext_ptr_t</span> <span class="n">ext</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="n">ext</span><span class="p">.</span><span class="n">banks</span> <span class="o">=</span> <span class="n">XCL_MEM_DDR_BANK0</span><span class="p">;</span>
+<span class="n">cl_int</span> <span class="n">error</span><span class="p">;</span>
+<span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">context</span><span class="p">,</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span><span class="n">size</span><span class="p">,</span><span class="o">&amp;</span><span class="n">ext</span><span class="p">,</span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
 <ul class="simple">
@@ -539,9 +540,10 @@ clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,…,&amp;ext,…);
 <div class="section" id="specify-a-buffer-location-by-memory-bank-index">
 <h4>2. Specify a Buffer location by memory bank index<a class="headerlink" href="#specify-a-buffer-location-by-memory-bank-index" title="Permalink to this headline">¶</a></h4>
 <p>This approach works for all types of memory banks as it accept index of the memory. The memory index can be obtained by inspecting .xclbin.info file or by xbutil query.</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span>// Check the memory index from xclbin.info file
-ext.banks = 2 | XCL_MEM_TOPOLOGY;
-clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,…,&amp;ext,…)
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="c1">// Check the memory index from xclbin.info file</span>
+<span class="n">ext</span><span class="p">.</span><span class="n">banks</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">|</span> <span class="n">XCL_MEM_TOPOLOGY</span><span class="p">;</span>
+<span class="n">cl_int</span> <span class="n">error</span><span class="p">;</span>
+<span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">context</span><span class="p">,</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span><span class="n">size</span><span class="p">,</span><span class="o">&amp;</span><span class="n">ext</span><span class="p">,</span><span class="o">&amp;</span><span class="n">error</span><span class="p">)</span>
 </pre></div>
 </div>
 <ul class="simple">
@@ -551,9 +553,10 @@ clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,…,&amp;ext,…)
 <div class="section" id="specify-a-buffer-location-by-kernel-name-and-argument-index">
 <h4>3. Specify a Buffer location by kernel name and argument index<a class="headerlink" href="#specify-a-buffer-location-by-kernel-name-and-argument-index" title="Permalink to this headline">¶</a></h4>
 <p>In relative specification style, the memory bank is detected from the kernel arguments, for this purpose the kernel handle and argument index is used as below</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span>ext.argidx = idx;
-ext.kernel = kernel;
-clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,…,&amp;ext,…);
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">ext</span><span class="p">.</span><span class="n">argidx</span> <span class="o">=</span> <span class="n">idx</span><span class="p">;</span>
+<span class="n">ext</span><span class="p">.</span><span class="n">kernel</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">;</span>
+<span class="n">cl_int</span> <span class="n">error</span><span class="p">;</span>
+<span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">context</span><span class="p">,</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span><span class="n">size</span><span class="p">,</span><span class="o">&amp;</span><span class="n">ext</span><span class="p">,</span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
 <ul class="simple">
@@ -688,7 +691,7 @@ clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,…,&amp;ext,…);
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on October 17, 2020.
+        Last updated on October 21, 2020.
       </span>
 
     </p>
