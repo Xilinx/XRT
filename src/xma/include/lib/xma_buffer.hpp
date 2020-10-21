@@ -50,7 +50,7 @@ public:
   int32_t
   write_ddr(int32_t offset, uint64_t size) const;
 
-  buffer(xclDeviceHandle dhdl, xrt::bo::flags flags, memory_group grp, int32_t dev_idx, int32_t bank_idx, uint64_t sz, bool dev_only);
+  buffer(xclDeviceHandle dhdl, xrt::bo::flags flags, memory_group grp, uint64_t sz);
   ~buffer(); //bo_impl automatically does free buffer when shared_ptr ref_cnt is zero
 
 

@@ -22,7 +22,7 @@ namespace plg {
 
 
 
-buffer::buffer(xclDeviceHandle dhdl, xrt::bo::flags flags, memory_group grp, int32_t dev_idx, int32_t bank_idx, uint64_t sz, bool dev_only)
+buffer::buffer(xclDeviceHandle dhdl, xrt::bo::flags flags, memory_group grp, uint64_t sz)
 :xrt_bo{dhdl, sz, flags, grp}, bank_index{bank_idx}, dev_index{dev_idx},
 device_only_buffer(dev_only)
 {
