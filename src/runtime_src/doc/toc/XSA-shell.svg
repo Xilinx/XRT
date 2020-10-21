@@ -153,15 +153,15 @@
    </g>
    <g class="com.sun.star.drawing.ConnectorShape">
     <g id="id4">
-     <rect class="BoundingBox" stroke="none" fill="none" x="5486" y="13319" width="5890" height="4000"/>
-     <path fill="none" stroke="rgb(163,35,142)" d="M 11374,13320 L 8430,13320 8430,17168 5705,17168"/>
-     <path fill="rgb(163,35,142)" stroke="none" d="M 5486,17168 L 5725,17318 5725,17018 5486,17168 Z"/>
+     <rect class="BoundingBox" stroke="none" fill="none" x="5336" y="13319" width="6040" height="3850"/>
+     <path fill="none" stroke="rgb(163,35,142)" d="M 11374,13320 L 11374,15239 5486,15239 5486,16949"/>
+     <path fill="rgb(163,35,142)" stroke="none" d="M 5486,17168 L 5636,16929 5336,16929 5486,17168 Z"/>
     </g>
    </g>
    <g class="com.sun.star.drawing.ConnectorShape">
     <g id="id5">
      <rect class="BoundingBox" stroke="none" fill="none" x="8718" y="13319" width="2658" height="3150"/>
-     <path fill="none" stroke="rgb(163,35,142)" d="M 11374,13320 L 11374,15742 8868,15742 8868,16249"/>
+     <path fill="none" stroke="rgb(163,35,142)" d="M 11374,13320 L 11374,15737 8868,15737 8868,16249"/>
      <path fill="rgb(163,35,142)" stroke="none" d="M 8868,16468 L 9018,16229 8718,16229 8868,16468 Z"/>
     </g>
    </g>
@@ -829,8 +829,8 @@
    </g>
    <g class="com.sun.star.drawing.ConnectorShape">
     <g id="id52">
-     <rect class="BoundingBox" stroke="none" fill="none" x="14187" y="5871" width="2359" height="12498"/>
-     <path fill="none" stroke="rgb(255,151,47)" stroke-width="81" stroke-linejoin="round" d="M 15279,18327 L 16504,18327 16504,6992 14398,6992 14398,6179"/>
+     <rect class="BoundingBox" stroke="none" fill="none" x="14187" y="5871" width="2352" height="12498"/>
+     <path fill="none" stroke="rgb(255,151,47)" stroke-width="81" stroke-linejoin="round" d="M 15279,18327 L 16497,18327 16497,6992 14398,6992 14398,6179"/>
      <path fill="rgb(255,151,47)" stroke="none" d="M 14397,5871 L 14188,6207 14609,6207 14397,5871 Z"/>
     </g>
    </g>
