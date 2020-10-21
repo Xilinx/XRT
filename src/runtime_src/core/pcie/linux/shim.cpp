@@ -2345,12 +2345,11 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       //scheduler::init can not be skipped even for same_xclbin
-      //as in multiplt process stress tests it fails as
-      //below init step is without a lock with above driver load xclbin.
-      //New kds fixes this by ensuring that scheduler init is done by driver itself
+      //as in multiple process stress tests it fails as
+      //below init step is without a lock with above driver load xclbin step.
+      //New KDS fixes this by ensuring that scheduler init is done by driver itself
       //along with icap download in single command call and then below init step in user space
       //is ignored
-      //Do not reset and re-init ERT & soft kernels if same xclbin
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
 #endif
