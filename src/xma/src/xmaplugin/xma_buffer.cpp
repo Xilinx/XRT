@@ -23,8 +23,7 @@ namespace plg {
 
 
 buffer::buffer(xclDeviceHandle dhdl, xrt::bo::flags flags, memory_group grp, uint64_t sz)
-:xrt_bo{dhdl, sz, flags, grp}, bank_index{bank_idx}, dev_index{dev_idx},
-device_only_buffer(dev_only)
+:xrt_bo{dhdl, sz, flags, grp} 
 {
   //TODO
   throw std::runtime_error(" --- TODO --");
