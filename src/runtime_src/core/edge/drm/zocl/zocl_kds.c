@@ -406,9 +406,7 @@ static void zocl_detect_fa_plram(struct drm_zocl_dev *zdev)
 	void __iomem *vaddr;
 	ulong bar_paddr = 0;
 
-	/* Detect Fast adapter and descriptor plram
-	 * Assume only one PLRAM would be used for descriptor
-	 */
+	/* Detect Fast adapter */
 	ip_layout = zdev->ip;
 
 	for (i = 0; i < ip_layout->m_count; ++i) {
