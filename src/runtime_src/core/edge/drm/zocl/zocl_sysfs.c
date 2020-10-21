@@ -91,7 +91,7 @@ static ssize_t kds_custat_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(kds_custat);
 
-static ssize_t kds_stat_show(struct device *dev,
+static ssize_t kds_stats_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
@@ -130,7 +130,7 @@ static ssize_t kds_stat_show(struct device *dev,
 
 	return sz;
 }
-static DEVICE_ATTR_RO(kds_stat);
+static DEVICE_ATTR_RO(kds_stats);
 
 static ssize_t kds_skstat_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -359,7 +359,7 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_xclbinid.attr,
 	&dev_attr_kds_numcus.attr,
 	&dev_attr_kds_custat.attr,
-	&dev_attr_kds_stat.attr,
+	&dev_attr_kds_stats.attr,
 	&dev_attr_kds_skstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
