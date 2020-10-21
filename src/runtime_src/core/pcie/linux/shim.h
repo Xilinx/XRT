@@ -59,7 +59,6 @@ public:
     shim(unsigned index);
     void init(unsigned index);
 
-    int get_dev_xclbin_uuid(xuid_t out);
     static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
     // Raw unmanaged read/write on the entire PCIE user BAR
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
