@@ -286,6 +286,11 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
         const char *data = &buffer[ip_hdr->m_sectionOffset];
         const mem_topology *mem_topo = reinterpret_cast<const mem_topology *>(data);
         auto& xma_mem_topology = xclbin_info->mem_topology;
+        const axlf_section_header *mem_grp_hdr = xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
+        xclbin_info->has_mem_groups = false;
+	if (mem_grp_hdr) {
+            xclbin_info->has_mem_groups = true;
+	}
 
         xclbin_info->number_of_mem_banks = mem_topo->m_count;
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "MEM TOPOLOGY - %ud banks ",xclbin_info->number_of_mem_banks);
@@ -375,19 +380,30 @@ int xma_xclbin_info_get(const char *buffer, XmaXclbinInfo *info)
     return XMA_SUCCESS;
 }
 
-int xma_xclbin_map2ddr(uint64_t bit_map, int32_t* ddr_bank)
+int xma_xclbin_map2ddr(uint64_t bit_map, int32_t* ddr_bank, bool has_mem_grps)
 {
     //64 bits based on MAX_DDR_MAP = 64
     int ddr_bank_idx = 0;
-    while (bit_map != 0)
-    {
-        if (bit_map & 1)
-        {
-            *ddr_bank = ddr_bank_idx;
-            return XMA_SUCCESS;
+    if (!has_mem_grps) {
+        while (bit_map != 0) {
+            if (bit_map & 1) {
+                *ddr_bank = ddr_bank_idx;
+                return XMA_SUCCESS;
+            }
+            ddr_bank_idx++;
+            bit_map = bit_map >> 1;
         }
-        ddr_bank_idx++;
-        bit_map = bit_map >> 1;
+    } else {//For Memory Groups use last group as default memory group; For HBM groups
+        ddr_bank_idx = 63;
+        uint64_t tmp_int = 1ULL << 63;
+        while (bit_map != 0) {
+            if (bit_map & tmp_int) {
+                *ddr_bank = ddr_bank_idx;
+                return XMA_SUCCESS;
+            }
+            ddr_bank_idx--;
+            bit_map = bit_map << 1;
+        }
     }
     *ddr_bank = -1;
     return XMA_ERROR;
