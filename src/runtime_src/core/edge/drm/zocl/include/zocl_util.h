@@ -150,4 +150,5 @@ struct drm_zocl_dev {
 	struct zocl_aie		*aie;
 };
 
+int zocl_kds_update(struct drm_zocl_dev *zdev);
 #endif

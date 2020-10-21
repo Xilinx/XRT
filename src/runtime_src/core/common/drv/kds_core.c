@@ -761,6 +761,7 @@ static int kds_fa_assign_plram(struct kds_sched *kds)
 	u64 dev_addr;
 	int ret = 0;
 	int i;
+	void __iomem *vaddr;
 
 	for (i = 0; i < cu_mgmt->num_cus; i++) {
 		if (!xrt_is_fa(cu_mgmt->xcus[i], &size))
@@ -768,7 +769,7 @@ static int kds_fa_assign_plram(struct kds_sched *kds)
 
 		total_sz += size;
 		/* Release old resoruces if exist */
-		xrt_fa_cfg_update(cu_mgmt->xcus[i], 0, 0, 0);
+		xrt_fa_cfg_update(cu_mgmt->xcus[i], 0, 0, 0, 0);
 	}
 
 	total_sz = round_up_to_next_power2(total_sz);
@@ -780,16 +781,18 @@ static int kds_fa_assign_plram(struct kds_sched *kds)
 
 	bar_addr = kds->plram.bar_paddr;
 	dev_addr = kds->plram.dev_paddr;
+	vaddr = kds->plram.vaddr;
 	for (i = 0; i < cu_mgmt->num_cus; i++) {
 		if (!xrt_is_fa(cu_mgmt->xcus[i], &size))
 			continue;
 
 		/* The updated FA CU would release when it is removed */
-		ret = xrt_fa_cfg_update(cu_mgmt->xcus[i], bar_addr, dev_addr, num_slots);
+		ret = xrt_fa_cfg_update(cu_mgmt->xcus[i], bar_addr, dev_addr, vaddr, num_slots);
 		if (ret)
 			return ret;
 		bar_addr += size * num_slots;
 		dev_addr += size * num_slots;
+		vaddr += size * num_slots;
 	}
 
 	return 0;

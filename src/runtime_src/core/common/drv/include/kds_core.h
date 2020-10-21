@@ -115,6 +115,7 @@ struct plram_info {
 	void		       *bo;
 	u64			bar_paddr;
 	u64			dev_paddr;
+	void __iomem		*vaddr;
 	u32			size;
 };
 

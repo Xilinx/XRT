@@ -466,6 +466,13 @@ out1:
 	return ret;
 }
 
+struct drm_zocl_bo *zocl_drm_create_bo(struct drm_device *dev,
+					  uint64_t unaligned_size,
+					  unsigned user_flags)
+{
+	return zocl_create_bo(dev, unaligned_size, user_flags);
+}
+
 int zocl_map_bo_ioctl(struct drm_device *dev,
 		void *data,
 		struct drm_file *filp)
@@ -973,4 +980,9 @@ struct drm_gem_object *zocl_gem_import(struct drm_device *dev,
 	}
 
 	return gem_obj;
+}
+
+void zocl_drm_free_bo(struct drm_zocl_bo *bo)
+{
+	zocl_free_bo(&bo->gem_base);
 }

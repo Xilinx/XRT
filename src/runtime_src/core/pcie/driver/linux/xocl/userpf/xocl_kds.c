@@ -507,8 +507,10 @@ void xocl_fini_sched(struct xocl_dev *xdev)
 	struct drm_xocl_bo *bo = NULL;
 
 	bo = XDEV(xdev)->kds.plram.bo;
-	if (bo)
+	if (bo) {
+		iounmap(XDEV(xdev)->kds.plram.vaddr);
 		xocl_drm_free_bo(&bo->base);
+	}
 
 	kds_fini_sched(&XDEV(xdev)->kds);
 }
@@ -524,8 +526,11 @@ int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 	struct drm_xocl_bo *bo = NULL;
 
 	bo = XDEV(xdev)->kds.plram.bo;
-	if (bo)
+	if (bo) {
+		iounmap(XDEV(xdev)->kds.plram.vaddr);
 		xocl_drm_free_bo(&bo->base);
+	}
+
 	XDEV(xdev)->kds.plram.bo = NULL;
 
 	kds_reset(&XDEV(xdev)->kds);
@@ -587,6 +592,7 @@ static void xocl_detect_fa_plram(struct xocl_dev *xdev)
 	int i, mem_idx = 0;
 	uint64_t size;
 	uint64_t base_addr;
+	void __iomem *vaddr;
 	ulong bar_paddr = 0;
 
 	/* Detect Fast adapter and descriptor plram
@@ -631,9 +637,15 @@ static void xocl_detect_fa_plram(struct xocl_dev *xdev)
 	if (IS_ERR(bo))
 		goto done;
 
+	vaddr = ioremap_wc(bar_paddr, size);
+
+	if (!vaddr)
+		goto done;
+
 	XDEV(xdev)->kds.plram.bo = bo;
 	XDEV(xdev)->kds.plram.bar_paddr = bar_paddr;
 	XDEV(xdev)->kds.plram.dev_paddr = base_addr;
+	XDEV(xdev)->kds.plram.vaddr = vaddr;
 	XDEV(xdev)->kds.plram.size = size;
 
 done:
@@ -655,10 +667,12 @@ int xocl_kds_update(struct xocl_dev *xdev)
 
 	if (XDEV(xdev)->kds.plram.bo) {
 		bo = XDEV(xdev)->kds.plram.bo;
+		iounmap(XDEV(xdev)->kds.plram.vaddr);
 		xocl_drm_free_bo(&bo->base);
 		XDEV(xdev)->kds.plram.bo = NULL;
 		XDEV(xdev)->kds.plram.bar_paddr = 0;
 		XDEV(xdev)->kds.plram.dev_paddr = 0;
+		XDEV(xdev)->kds.plram.vaddr = 0;
 		XDEV(xdev)->kds.plram.size = 0;
 	}
 
