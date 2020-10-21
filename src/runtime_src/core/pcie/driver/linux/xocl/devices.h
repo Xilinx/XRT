@@ -1937,6 +1937,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER_U2,			\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_INTC,				\
+			XOCL_DEVINFO_ERT_USER,				\
 		})
 
 #define USER_RES_SMARTN							\
@@ -2104,6 +2105,7 @@ struct xocl_subdev_map {
 		.subdev_info	= MGMT_RES_U2,				\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_U2),			\
 		.flash_type = FLASH_TYPE_SPI,				\
+		.sched_bin = "xilinx/sched.bin",			\
 	}
 
 #define	XOCL_BOARD_MGMT_VERSAL						\
@@ -2582,7 +2584,6 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_U2_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_U2_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched.bin",			\
 	}
 
 #define XOCL_BOARD_U2_USER_RAPTOR2					\
