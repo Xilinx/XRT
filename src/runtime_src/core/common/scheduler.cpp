@@ -196,6 +196,7 @@ init(xclDeviceHandle handle, const axlf* top)
       sk.symbol_name.copy(reinterpret_cast<char*>(scmd->sk_name), 31);
       scmd->sk_addr = skbo->prop.paddr;
       scmd->sk_size = skbo->prop.size;
+      uuid_copy(scmd->uuid, uuid);
       std::memcpy(skbo->data, sk.sk_buf, sk.size);
       if (xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, sk.size, 0))
 	    throw std::runtime_error("unable to synch BO to device");
