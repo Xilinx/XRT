@@ -298,15 +298,23 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 		if (ip->m_base_address == -1)
 			continue;
 
-		/* TODO: use HLS CU as default.
-		 * don't know how to distinguish HLS CU and other CU
-		 */
-		info.model = XCU_HLS;
 		info.num_res = 1;
 		info.addr = ip->m_base_address;
 		info.intr_enable = xclbin_intr_enable(ip->properties);
 		info.protocol = xclbin_protocol(ip->properties);
 		info.intr_id = xclbin_intr_id(ip->properties);
+
+		switch (info.protocol) {
+		case CTRL_HS:
+		case CTRL_CHAIN:
+			info.model = XCU_HLS;
+			break;
+		case CTRL_FA:
+			info.model = XCU_FA;
+			break;
+		default:
+			return -EINVAL;
+		}
 
 		info.inst_idx = i;
 		/* ip_data->m_name format "<kernel name>:<instance name>",
@@ -660,6 +668,9 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	if (kds_mode == 1) {
 		subdev_destroy_cu(zdev);
 		ret = zocl_create_cu(zdev);
+		if (ret)
+			goto out0;
+		ret = zocl_kds_update(zdev);
 		if (ret)
 			goto out0;
 	}

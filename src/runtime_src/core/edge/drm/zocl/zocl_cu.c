@@ -107,13 +107,13 @@ zocl_cu_status_print(struct zocl_cu *cu)
 	    (u64)cu_core->paddr, ioread32(cu_core->vaddr));
 }
 
-u32
+int
 zocl_cu_status_get(struct zocl_cu *cu)
 {
 	struct zcu_core *cu_core = cu->core;
 
 	if (!cu_core)
-		return 0;
+		return -1;//soft cu has crashed
 
 	return (u32)ioread32(cu_core->vaddr);
 }

@@ -210,6 +210,9 @@ int zocl_init_sysfs(struct device *dev);
 void zocl_fini_sysfs(struct device *dev);
 void zocl_free_sections(struct drm_zocl_dev *zdev);
 void zocl_free_bo(struct drm_gem_object *obj);
+void zocl_drm_free_bo(struct drm_zocl_bo *bo);
+struct drm_zocl_bo *zocl_drm_create_bo(struct drm_device *dev,
+		uint64_t unaligned_size, unsigned user_flags);
 void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 		int count, uint32_t bank);
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);

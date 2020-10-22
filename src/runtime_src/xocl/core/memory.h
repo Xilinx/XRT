@@ -321,11 +321,20 @@ public:
    *
    * @param device
    *   The device object that creates the buffer object
+   * @param subidx
+   *   The memory bank index required by sub-buffer
    * @return
    *   The buffer object
+   *
+   * The sub-buffer index is used when allocation of this boh is
+   * originating from a sub-buffer allocation.  It means that the
+   * sub-buffer is used as a kernel argument with the 'subidx'
+   * conectitivy.  The parent buffer is the one that is physically
+   * allocated and it must be allocated in the bank indicated by 
+   * the sub buffer.
    */
   virtual buffer_object_handle
-  get_buffer_object(device* device);
+  get_buffer_object(device* device, memidx_type subidx=-1);
 
   /**
    * Get the buffer object on argument device or error out if none
@@ -466,7 +475,7 @@ public:
 
 private:
   memidx_type
-  get_memidx_nolock(const device* d) const;
+  get_memidx_nolock(const device* d, memidx_type subidx=-1) const;
 
   memidx_type
   get_ext_memidx_nolock(const xclbin& xclbin) const;

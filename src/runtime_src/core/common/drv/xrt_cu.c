@@ -486,10 +486,10 @@ static u32 cu_fa_get_desc_size(struct xrt_cu *xcu)
 		/* The "nextDescriptorAddr" argument is a fast adapter argument.
 		 * It is not required to construct descriptor
 		 */
-		if (!strcmp(info->args[i].name, "nextDescriptorAddr"))
+		if (!strcmp(info->args[i].name, "nextDescriptorAddr") || !info->args[i].size)
 			continue;
 
-		size += info->args[i].size;
+		size += (sizeof(descEntry_t)+info->args[i].size);
 	}
 
 	return round_up_to_next_power2(size);
@@ -508,15 +508,12 @@ int xrt_is_fa(struct xrt_cu *xcu, u32 *size)
 	return ret;
 }
 
-int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, u32 num_slots)
+int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr, u32 num_slots)
 {
 	struct xrt_cu_fa *cu_fa = xcu->core;
 	u32 slot_size;
-	u32 *plram;
 
 	if (bar == 0) {
-		if (cu_fa->plram)
-			iounmap(cu_fa->plram);
 		cu_fa->plram = NULL;
 		cu_fa->paddr = 0;
 		cu_fa->slot_sz = 0;
@@ -525,11 +522,8 @@ int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, u32 num_slots)
 	}
 
 	slot_size = cu_fa_get_desc_size(xcu);
-	plram = ioremap_wc(bar, num_slots * slot_size);
-	if (!plram)
-		return -ENOMEM;
 
-	cu_fa->plram = plram;
+	cu_fa->plram = vaddr;
 	cu_fa->paddr = dev;
 	cu_fa->slot_sz = slot_size;
 	cu_fa->num_slots = num_slots;

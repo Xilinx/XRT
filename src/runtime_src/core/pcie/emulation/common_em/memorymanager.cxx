@@ -47,6 +47,16 @@ namespace xclemulation {
     if(mChildMemories.size())
     {
 	    size_t remainingSize = size;
+	    // Check whether sufficient memory available before allocation
+	    for (auto it:mChildMemories)
+	    {
+		    size_t sizeToBeAllocated = (it->freeSize() <= remainingSize) ? it->freeSize() : remainingSize;
+		    remainingSize = remainingSize - sizeToBeAllocated;
+	    }
+	    if(remainingSize != 0)
+		    return mNull;
+
+	    remainingSize = size;
 	    for (auto it:mChildMemories)
 	    {
 		    size_t sizeToBeAllocated = (it->freeSize() <= remainingSize) ? it->freeSize() : remainingSize;

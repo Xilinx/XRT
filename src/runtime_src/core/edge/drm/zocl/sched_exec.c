@@ -1102,10 +1102,7 @@ cu_stat(struct sched_cmd *cmd)
 	/* individual SK CU execution stat */
 	mutex_lock(&sk->sk_lock);
 	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
-		if (sk->sk_cu[i])
-			pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
-		else
-			pkg->data[pkt_idx++] = -1; /* crashed sk_cu */
+		pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
 	}
 	mutex_unlock(&sk->sk_lock);
 
@@ -1117,8 +1114,11 @@ cu_stat(struct sched_cmd *cmd)
 
 	/* indevidual SK CU status */
 	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
-		pkg->data[pkt_idx++] = (exec->scu_status[cu_mask_idx(i)] &
-			(1 << (i % sizeof(exec->scu_status[0])))) ? 1 : 0;
+		if (sk->sk_cu[i])
+			pkg->data[pkt_idx++] = (exec->scu_status[cu_mask_idx(i)] &
+				(1 << (i % sizeof(exec->scu_status[0])))) ? 1 : 0;
+		else
+			pkg->data[pkt_idx++] = -1; //soft cu has crashed
 	}
 
 	/* Command slot status

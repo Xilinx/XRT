@@ -49,19 +49,23 @@ namespace po = boost::program_options;
 #include "tools/common/ReportAsyncError.h"
 // #include "tools/common/ReportPlatform.h"
 
-// Note: Please insert the reports in the order to be displayed (current alphabetical)
-static const ReportCollection fullReportCollection = {
-  std::make_shared<ReportElectrical>(),
-  std::make_shared<ReportMechanical>(),
-  std::make_shared<ReportAie>(),
-  std::make_shared<ReportMemory>(),
-  std::make_shared<ReportFirewall>(),
-  std::make_shared<ReportHost>(),
-  std::make_shared<ReportCu>(),
-  std::make_shared<ReportThermal>(),
-  std::make_shared<ReportDebugIpStatus>(),
-  std::make_shared<ReportAsyncError>()
-};
+// Note: Please insert the reports in the order to be displayed (alphabetical)
+  static ReportCollection fullReportCollection = {
+  // Common reports
+    std::make_shared<ReportAie>(),
+    std::make_shared<ReportMemory>(),
+    std::make_shared<ReportHost>(),
+    std::make_shared<ReportCu>(),
+    std::make_shared<ReportDebugIpStatus>(),
+    std::make_shared<ReportAsyncError>(),
+  // Native only reports
+  #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
+    std::make_shared<ReportElectrical>(),
+    std::make_shared<ReportMechanical>(),
+    std::make_shared<ReportFirewall>(),
+    std::make_shared<ReportThermal>(),
+  #endif
+  };
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -84,7 +88,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   XBU::verbose("SubCommand: examine");
 
   // -- Build up the report & format options
-  const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'verbose' option*/);
+  const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'all' option*/);
   const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
 
   // Option Variables

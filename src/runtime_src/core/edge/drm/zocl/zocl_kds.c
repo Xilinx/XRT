@@ -14,6 +14,16 @@
 #include "zocl_util.h"
 #include "zocl_xclbin.h"
 #include "kds_core.h"
+#include "xclbin.h"
+
+#define print_ecmd_info(ecmd) \
+do {\
+	int i;\
+	printk("%s: ecmd header 0x%x\n", __func__, ecmd->header);\
+	for (i = 0; i < ecmd->count; i++) {\
+		printk("%s: ecmd data[%d] 0x%x\n", __func__, i, ecmd->data[i]);\
+	}\
+} while(0)
 
 int kds_mode = 0;
 module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
@@ -270,6 +280,8 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	}
 	xcmd->cb.free = kds_free_command;
 
+	//print_ecmd_info(ecmd);
+
 	/* TODO: one ecmd to one xcmd now. Maybe we will need
 	 * one ecmd to multiple xcmds
 	 */
@@ -277,6 +289,8 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
 	else if (ecmd->opcode == ERT_START_CU)
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+	else if (ecmd->opcode == ERT_START_FA)
+		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->gem_obj = gem_obj;
 
@@ -370,8 +384,84 @@ int zocl_init_sched(struct drm_zocl_dev *zdev)
 void zocl_fini_sched(struct drm_zocl_dev *zdev)
 {
 	struct device *dev = zdev->ddev->dev;
+	struct drm_zocl_bo *bo = NULL;
+
+	bo = zdev->kds.plram.bo;
+	if (bo)
+		zocl_drm_free_bo(bo);
+	zdev->kds.plram.bo = NULL;
 
 	sysfs_remove_group(&dev->kobj, &zocl_kds_group);
 	kds_fini_sched(&zdev->kds);
 }
 
+static void zocl_detect_fa_plram(struct drm_zocl_dev *zdev)
+{
+	struct ip_layout    *ip_layout = NULL;
+	struct drm_zocl_bo *bo = NULL;
+	struct drm_zocl_create_bo args;
+	int i;
+	uint64_t size;
+	uint64_t base_addr;
+	void __iomem *vaddr;
+	ulong bar_paddr = 0;
+
+	/* Detect Fast adapter */
+	ip_layout = zdev->ip;
+
+	for (i = 0; i < ip_layout->m_count; ++i) {
+		struct ip_data *ip = &ip_layout->m_ip_data[i];
+		u32 prot;
+
+		if (ip->m_type != IP_KERNEL)
+			continue;
+
+		prot = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
+		if (prot != FAST_ADAPTER)
+			continue;
+
+		break;
+	}
+
+	if (i == ip_layout->m_count)
+		return;
+
+	/* TODO: logic to dynamicly select size */
+	size = 4096;
+
+	args.size = size;
+	args.flags = ZOCL_BO_FLAGS_CMA;
+	bo = zocl_drm_create_bo(zdev->ddev, size, args.flags);
+	if (IS_ERR(bo))
+		return;
+
+	
+	bar_paddr = (uint64_t)bo->cma_base.paddr;	
+	base_addr = (uint64_t)bo->cma_base.paddr;	
+	vaddr = bo->cma_base.vaddr;	
+
+	zdev->kds.plram.bo = bo;
+	zdev->kds.plram.bar_paddr = bar_paddr;
+	zdev->kds.plram.dev_paddr = base_addr;
+	zdev->kds.plram.vaddr = vaddr;
+	zdev->kds.plram.size = size;
+}
+
+int zocl_kds_update(struct drm_zocl_dev *zdev)
+{
+	struct drm_zocl_bo *bo = NULL;
+
+	if (zdev->kds.plram.bo) {
+		bo = zdev->kds.plram.bo;
+		zocl_drm_free_bo(bo);
+		zdev->kds.plram.bo = NULL;
+		zdev->kds.plram.bar_paddr = 0;
+		zdev->kds.plram.dev_paddr = 0;
+		zdev->kds.plram.vaddr = 0;
+		zdev->kds.plram.size = 0;
+	}
+
+	zocl_detect_fa_plram(zdev);
+	zdev->kds.cu_intr = 0;
+	return kds_cfg_update(&zdev->kds);
+}
