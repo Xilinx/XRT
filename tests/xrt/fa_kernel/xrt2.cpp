@@ -85,12 +85,17 @@ struct job_type
     auto in_data = in.map<uint32_t*>();
     std::iota(in_data, in_data + len/sizeof(uint32_t), 0);
     in.sync(XCL_BO_SYNC_BO_TO_DEVICE , len, 0);
+
+    // seed the run object with all arguments requires
+    // starting and waiting for one run.
+    run(in, len, out, len, out_status, aes_key, aes_iv);
+    run.wait();
   }
 
   void
   start()
   {
-    run(in, len, out, len, out_status, aes_key, aes_iv);
+    run.start();
   }
 
   void
