@@ -155,7 +155,7 @@ namespace xdp {
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
   void VPStaticDatabase::updateDevice(uint64_t deviceId, void* devHandle)
-  {  
+  {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
     if(nullptr == device) return;
 
@@ -252,7 +252,7 @@ namespace xdp {
   {
     // Get IP_LAYOUT section 
     const ip_layout* ipLayoutSection = device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
-    if(ipLayoutSection == nullptr) return false;
+    if(ipLayoutSection == nullptr) return true;
 
     ComputeUnitInstance* cu = nullptr;
     for(int32_t i = 0; i < ipLayoutSection->m_count; i++) {
