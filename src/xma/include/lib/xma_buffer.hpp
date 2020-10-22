@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,24 +14,22 @@
  * under the License.
  */
 
-#ifndef _XMA_BUFFERCLS_H_
-#define _XMA_BUFFERCLS_H_
+#ifndef _XMA_BUFFER_PLGCLS_H_
+#define _XMA_BUFFER_PLGCLS_H_
 
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <string>
-#include <atomic>
-#include "xrt.h"
 #include "core/include/experimental/xrt_bo.h"
+#include "xrt.h"
 
 namespace xma_core {
 namespace plg {
 
 using memory_group = xrtMemoryGroup;
 
-/**
- * class buffer : abstraction for xma buffer
- */
+/* class buffer : abstraction for xma buffer */
 class buffer
 {
 private:
@@ -41,7 +39,7 @@ private:
     int32_t  dev_index;
     std::atomic<int32_t> ref_cnt{0};//For use by plugins when shared by plugins
     bool     device_only_buffer;
-    uint32_t reserved[4];
+    void*    dummy2{nullptr};
 
 public:
   int32_t
