@@ -336,7 +336,7 @@ struct xmc_pkt_hdr {
 #define CMC_OP_READ_QSFP_VALIDATE_LOW_SPEED_IO  0xD
 #define CMC_OP_WRITE_QSFP_VALIDATE_LOW_SPEED_IO 0xE
 
-#define CMC_OP_QSFP_DIAG_OFFSET 	0xC
+#define CMC_OP_QSFP_DIAG_OFFSET 	0x14
 #define CMC_OP_QSFP_IO_OFFSET           0x8
 #define CMC_MAX_QSFP_READ_SIZE          128
 
@@ -356,14 +356,10 @@ struct xmc_pkt_sector_data_op {
 	u8 data[1];
 };
 
-struct xmc_pkt_qsfp_send_op {
+struct xmc_pkt_qsfp_diag_op {
 	u32 port;
-	u32 lower_page;
 	u32 upper_page;
-};
-
-struct xmc_pkt_qsfp_recv_op {
-	u32 port;
+	u32 lower_page;
 	u32 data_size;
 };
 
@@ -378,8 +374,7 @@ struct xmc_pkt {
 		struct xmc_pkt_image_end_op image_end;
 		struct xmc_pkt_sector_start_op sector_start;
 		struct xmc_pkt_sector_data_op sector_data;
-		struct xmc_pkt_qsfp_send_op qsfp_send;
-		struct xmc_pkt_qsfp_recv_op qsfp_recv;
+		struct xmc_pkt_qsfp_diag_op qsfp_diag;
 		struct xmc_pkt_qsfp_io_op qsfp_io;
 	};
 };
@@ -4491,30 +4486,29 @@ xmc_qsfp_read(struct xocl_xmc *xmc, char *buf, int port, int lp, int up)
 
 	mutex_lock(&xmc->mbx_lock);
 	xmc->mbx_pkt.hdr.op = CMC_OP_READ_QSFP_DIAGNOSTICS;
-	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_send_op);
-	xmc->mbx_pkt.qsfp_send.port = port;
-	xmc->mbx_pkt.qsfp_send.lower_page = lp; 
-	xmc->mbx_pkt.qsfp_send.upper_page = up;
+	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_diag_op);
+	xmc->mbx_pkt.qsfp_diag.port = port;
+	xmc->mbx_pkt.qsfp_diag.upper_page = up;
+	xmc->mbx_pkt.qsfp_diag.lower_page = lp;
 	ret = xmc_send_pkt(xmc);
 	if (ret) {
 		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
 		goto out;
 	}
 
-	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_recv_op);
+	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_diag_op);
 	ret = xmc_recv_pkt(xmc);
 	if (ret) {
 		xocl_info(&xmc->pdev->dev, "recv pkt ret %d", ret);
 		goto out;
 	}
 
-	data_size = xmc->mbx_pkt.qsfp_recv.data_size;
+	data_size = xmc->mbx_pkt.qsfp_diag.data_size;
 	xocl_info(&xmc->pdev->dev, "data_size %d", data_size);
 
-	/* TODO: in case data_size returns as zero in debug version,
-	 * using default max value.
-	 */
-	data_size = data_size == 0 ? CMC_MAX_QSFP_READ_SIZE : data_size;
+	if (data_size == 0)
+		goto out;
+
 	if (data_size & 0x3) {
 		/* Most likely the returned data is corrupted, bail out.*/
 		xocl_info(&xmc->pdev->dev,
