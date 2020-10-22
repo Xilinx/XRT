@@ -2771,6 +2771,8 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 				mem_topo->m_mem_data[i].m_size = (hsz >> 10);
 			}
 		}
+
+		xocl_p2p_adjust_mem_topo(xdev, mem_topo);
 	}
 done:
 	if (err) {
