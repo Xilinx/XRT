@@ -262,6 +262,7 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		return ret;
 
 	switch (ret) {
+	case -EBUSY:
 	case -EAGAIN:
 	case 0:
 	case -ERESTARTSYS:
