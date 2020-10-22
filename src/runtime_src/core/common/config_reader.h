@@ -358,7 +358,7 @@ get_xma_cpu_mode()
 inline bool
 get_enable_flat()
 {
-  static unsigned int value = detail::get_bool_value("Runtime.enable_flat",false);
+  static bool value = detail::get_bool_value("Runtime.enable_flat",false);
   return value;
 }
 
