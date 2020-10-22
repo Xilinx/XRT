@@ -390,9 +390,10 @@ inline bool
 get_ert_polling()
 {
   /**
-   * enable_flat is flag added for embedded platform where it load bitstream after boot
-   * but this feature does not support interrupt mode as interrupt controller exist in pl and
-   * is configured at boot time. So if enable_flat is true, polling mode should be enabled default.
+   * enable_flat flag is added for embedded platforms where it load full bitstream after boot.
+   * This feature does not support interrupt mode as interrupt controller exist in pl 
+   * and is configured at boot time. 
+   * So if enable_flat is true, polling mode should be enabled by default.
    */
   static bool value = get_enable_flat() || detail::get_bool_value("Runtime.ert_polling",false);
   return value;
