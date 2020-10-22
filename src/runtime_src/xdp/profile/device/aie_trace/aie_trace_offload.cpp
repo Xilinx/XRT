@@ -51,7 +51,7 @@ AIETraceOffload::AIETraceOffload(void* handle, uint64_t id,
                  totalSz(totalSize),
                  numStream(numStrm)
 {
-  bufAllocSz = (totalSz / numStream) & 0xffffffffffffff00;
+  bufAllocSz = (totalSz / numStream) & 0xfffffffffffff000;
 }
 
 AIETraceOffload::~AIETraceOffload()
@@ -137,20 +137,41 @@ bool AIETraceOffload::initReadTrace()
 void AIETraceOffload::endReadTrace()
 {
   // reset
-  uint64_t i = 0;
-  for(auto& b : buffers) {
-    if(!b.boHandle) {
+  for(uint64_t i = 0; i < numStream ; ++i) {
+    if(!buffers[i].boHandle) {
       continue;
     }
     if(isPLIO) {
       deviceIntf->resetAIETs2mm(i);
 //      deviceIntf->freeTraceBuf(b.boHandle);
     } else {
-      // no reset required
+#ifdef XRT_ENABLE_AIE
+      VPDatabase* db = VPDatabase::Instance();
+      TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
+
+      ZYNQ::shim *drv = ZYNQ::shim::handleCheck(deviceHandle);
+      if(!drv) {
+        return ;
+      }
+      zynqaie::Aie* aieObj = drv->getAieArray();
+
+      zynqaie::ShimDMA* shimDmaObj = &(aieObj->shim_dma[traceGMIO->shimColumn]);
+
+      XAie_DevInst* devInst = aieObj->getDevInst();
+
+      XAie_LocType shimTile = XAie_TileLoc(traceGMIO->shimColumn, 0);
+
+      // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
+      // Enable shim DMA channel, need to start first so the status is correct
+      uint16_t channelNumber = (traceGMIO->channelNumber > 1) ? (traceGMIO->channelNumber - 2) : traceGMIO->channelNumber;
+      XAie_DmaDirection dir = (traceGMIO->channelNumber > 1) ? DMA_MM2S : DMA_S2MM;
+
+      XAie_DmaChannelReset(devInst, XAie_TileLoc(traceGMIO->shimColumn, 0), channelNumber, dir, DMA_CHANNEL_RESET);
+#endif
+      
     }
-    deviceIntf->freeTraceBuf(b.boHandle);
-    b.boHandle = 0;
-    ++i;
+    deviceIntf->freeTraceBuf(buffers[i].boHandle);
+    buffers[i].boHandle = 0;
   }
   buffers.clear();
 }
