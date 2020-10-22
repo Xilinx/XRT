@@ -20,10 +20,10 @@
 #include "../xocl_drm.h"
 #include <linux/iommu.h>
 
-int p2p_max_bar_size = 64; /* GB */
+int p2p_max_bar_size = 128; /* GB */
 module_param(p2p_max_bar_size, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(p2p_max_bar_size,
-	"Maximum P2P BAR size in GB, default is 64");
+	"Maximum P2P BAR size in GB, default is 128");
 
 
 #if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
