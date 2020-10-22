@@ -280,43 +280,47 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
 {
     const axlf *xclbin = reinterpret_cast<const axlf *>(buffer);
 
-    const axlf_section_header *ip_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
-    if (ip_hdr)
-    {
-        const char *data = &buffer[ip_hdr->m_sectionOffset];
-        const mem_topology *mem_topo = reinterpret_cast<const mem_topology *>(data);
-        auto& xma_mem_topology = xclbin_info->mem_topology;
-        const axlf_section_header *mem_grp_hdr = xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
-        xclbin_info->has_mem_groups = false;
-	if (mem_grp_hdr) {
-            xclbin_info->has_mem_groups = true;
-	}
+    //const axlf_section_header *ip_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
+    const axlf_section_header *mem_hdr = xclbin::get_axlf_section(xclbin, MEM_TOPOLOGY);
+    if (!mem_hdr) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not find MEM TOPOLOGY in xclbin ");
+        throw std::runtime_error("Could not find MEM TOPOLOGY in xclbin file");
+    }
+    const char *data3 = &buffer[mem_hdr->m_sectionOffset];
+    const mem_topology *mem_topo1 = reinterpret_cast<const mem_topology *>(data3);
+    mem_topology *mem_topo2 = const_cast<mem_topology*>(mem_topo1);
+    xclbin_info->has_mem_groups = false;
 
-        xclbin_info->number_of_mem_banks = mem_topo->m_count;
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "MEM TOPOLOGY - %ud banks ",xclbin_info->number_of_mem_banks);
-        if (xclbin_info->number_of_mem_banks > MAX_DDR_MAP) {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d mem banks ", MAX_DDR_MAP);
-            throw std::runtime_error("XMA supports max of only " + std::to_string(MAX_DDR_MAP) + " mem banks");
-        }
-        for (int i = 0; i < mem_topo->m_count; i++)
-        {
-            XmaMemTopology temp_mem_topology;
-            temp_mem_topology.m_type = mem_topo->m_mem_data[i].m_type;
-            temp_mem_topology.m_used = mem_topo->m_mem_data[i].m_used;
-            temp_mem_topology.m_size = mem_topo->m_mem_data[i].m_size;
-            temp_mem_topology.m_base_address = mem_topo->m_mem_data[i].m_base_address;
-            //m_tag is 16 chars
-            temp_mem_topology.m_tag = std::string((char*)mem_topo->m_mem_data[i].m_tag);
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index=%d, tag=%s, type = %ud, used = %ud, size = %lx, base = %lx ",
-                   i,temp_mem_topology.m_tag.c_str(), temp_mem_topology.m_type, temp_mem_topology.m_used,
-                   temp_mem_topology.m_size, temp_mem_topology.m_base_address);
-            xma_mem_topology.emplace_back(std::move(temp_mem_topology));
+    const axlf_section_header *mem_grp_hdr = xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
+    if (mem_grp_hdr) {
+        const char *data2 = &buffer[mem_grp_hdr->m_sectionOffset];
+        const mem_topology *mem_grp_topo = reinterpret_cast<const mem_topology *>(data2);
+        if (mem_grp_topo->m_count > mem_topo1->m_count) {
+            xclbin_info->has_mem_groups = true;
+            mem_topo2 = const_cast<mem_topology*>(mem_grp_topo);
         }
     }
-    else
-    {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not find MEM TOPOLOGY in xclbin ip_hdr=%p ", ip_hdr);
-        throw std::runtime_error("Could not find MEM TOPOLOGY in xclbin file");
+    const mem_topology *mem_topo = reinterpret_cast<const mem_topology *>(mem_topo2);
+    auto& xma_mem_topology = xclbin_info->mem_topology;
+
+    xclbin_info->number_of_mem_banks = mem_topo->m_count;
+    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "MEM TOPOLOGY - %ud banks ",xclbin_info->number_of_mem_banks);
+    if (xclbin_info->number_of_mem_banks > MAX_DDR_MAP) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d mem banks ", MAX_DDR_MAP);
+        throw std::runtime_error("XMA supports max of only " + std::to_string(MAX_DDR_MAP) + " mem banks");
+    }
+    for (int i = 0; i < mem_topo->m_count; i++) {
+        XmaMemTopology temp_mem_topology;
+        temp_mem_topology.m_type = mem_topo->m_mem_data[i].m_type;
+        temp_mem_topology.m_used = mem_topo->m_mem_data[i].m_used;
+        temp_mem_topology.m_size = mem_topo->m_mem_data[i].m_size;
+        temp_mem_topology.m_base_address = mem_topo->m_mem_data[i].m_base_address;
+        //m_tag is 16 chars
+        temp_mem_topology.m_tag = std::string((char*)mem_topo->m_mem_data[i].m_tag);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index=%d, tag=%s, type = %ud, used = %ud, size = %lx, base = %lx ",
+               i,temp_mem_topology.m_tag.c_str(), temp_mem_topology.m_type, temp_mem_topology.m_used,
+               temp_mem_topology.m_size, temp_mem_topology.m_base_address);
+        xma_mem_topology.emplace_back(std::move(temp_mem_topology));
     }
 
     return XMA_SUCCESS;
