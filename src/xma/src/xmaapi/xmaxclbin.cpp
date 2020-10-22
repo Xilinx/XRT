@@ -280,8 +280,7 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
 {
     const axlf *xclbin = reinterpret_cast<const axlf *>(buffer);
 
-    //const axlf_section_header *ip_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
-    const axlf_section_header *mem_hdr = xclbin::get_axlf_section(xclbin, MEM_TOPOLOGY);
+    const axlf_section_header *mem_hdr = xrt_core::xclbin::get_axlf_section(xclbin, MEM_TOPOLOGY);
     if (!mem_hdr) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not find MEM TOPOLOGY in xclbin ");
         throw std::runtime_error("Could not find MEM TOPOLOGY in xclbin file");
@@ -291,7 +290,7 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
     mem_topology *mem_topo2 = const_cast<mem_topology*>(mem_topo1);
     xclbin_info->has_mem_groups = false;
 
-    const axlf_section_header *mem_grp_hdr = xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
+    const axlf_section_header *mem_grp_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
     if (mem_grp_hdr) {
         const char *data2 = &buffer[mem_grp_hdr->m_sectionOffset];
         const mem_topology *mem_grp_topo = reinterpret_cast<const mem_topology *>(data2);
