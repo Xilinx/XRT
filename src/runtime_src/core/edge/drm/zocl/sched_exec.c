@@ -3243,7 +3243,7 @@ static inline void init_exec(struct sched_exec_core *exec_core)
 
 	exec_core->cu_isr = 0;
 	exec_core->cu_dma = 0;
-	exec_core->num_slot_masks = 1;
+	exec_core->num_slot_masks = MAX_U32_SLOT_MASKS;
 	exec_core->num_cu_masks = 0;
 	exec_core->ops = &penguin_ops;
 
