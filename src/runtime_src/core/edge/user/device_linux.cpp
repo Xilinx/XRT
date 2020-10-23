@@ -330,10 +330,7 @@ reset(query::reset_type key) const
   case query::reset_key::ecc:
     throw error(-ENODEV, "Soft Kernel reset not supported");
   case query::reset_key::aie:
-    /* Commented till xrt shift to aie v2 driver */
-    //if (auto ret = xclResetAIEArray(get_device_handle()))
-    //  throw error(ret, "fail to reset aie array");
-    break;
+    throw error(-ENODEV, "AIE reset not supported");
   default:
     throw error(-ENODEV, "invalid argument");
   }
