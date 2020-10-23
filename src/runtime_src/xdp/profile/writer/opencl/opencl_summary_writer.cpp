@@ -506,13 +506,20 @@ namespace xdp {
 	for (auto cuCall : cuCalls)
 	{
 	  std::string globalWorkDimensions = cuCall.first ;
-	  double averageTime = (cuCall.second).averageTime ;
-	  double totalTime = (cuCall.second).totalTime ;
-	  double minTime = (cuCall.second).minTime ;
-	  double maxTime = (cuCall.second).maxTime ;
 
-	  double speedup =
-	    (averageTime*(values.CuExecCount[cuIndex]))/totalTime ;
+	  auto kernelClockMHz = device->clockRateMHz ;
+	  double deviceCyclesMsec = (double)(kernelClockMHz) * 1000.0 ;
+
+	  double cuRunTimeMsec =
+	    (double)(values.CuBusyCycles[cuIndex]) / deviceCyclesMsec ;
+	  double cuRunTimeAvgMsec = (double)(values.CuExecCycles[cuIndex]) / deviceCyclesMsec / (double)(values.CuExecCount[cuIndex]) ;
+	  double cuMaxExecCyclesMsec = (double)(values.CuMaxExecCycles[cuIndex]) / deviceCyclesMsec ;
+	  double cuMinExecCyclesMsec = (double)(values.CuMinExecCycles[cuIndex]) / deviceCyclesMsec ;
+
+	  double speedup = (cuRunTimeAvgMsec * (double)(values.CuExecCount[cuIndex])) / cuRunTimeMsec ;
+
+	  //double speedup =
+	  // (averageTime*(values.CuExecCount[cuIndex]))/totalTime ;
 	  std::string speedup_string = std::to_string(speedup) + "x" ;
 
 	  fout << (device->platformInfo.deviceName) << "," 
@@ -524,12 +531,14 @@ namespace xdp {
 	       << dataflowEnabled << ","
 	       << values.CuMaxParallelIter[cuIndex] << ","
 	       << speedup_string << ","
-	       << (totalTime / 1e06) << ","
-	       << (minTime / 1e06) << ","
-	       << (averageTime /1e06) << ","
-	       << (maxTime / 1e06) << "," 
+	       << cuRunTimeMsec << "," //<< (totalTime / 1e06) << ","
+	       << cuMinExecCyclesMsec << "," //<< (minTime / 1e06) << ","
+	       << cuRunTimeAvgMsec << "," //<< (averageTime /1e06) << ","
+	       << cuMaxExecCyclesMsec << "," //<< (maxTime / 1e06) << "," 
 	       << (device->clockRateMHz) << ","
 	       << std::endl ;
+
+	  ++cuIndex ;
 	}
       }
     }    

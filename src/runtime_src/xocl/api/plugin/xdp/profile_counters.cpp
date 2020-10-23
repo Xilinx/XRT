@@ -103,7 +103,7 @@ namespace xocl {
 	(vtype)(xrt_core::dlsym(handle, "counter_mark_objects_released")) ;
       if (xrt_core::dlerror() != NULL) counter_mark_objects_released_cb = nullptr ;
 
-      // For logging counter information for kernel executions
+      // For logging counter information for compute unit executions
       xocl::add_command_start_callback(xocl::profile::log_cu_start) ;
       xocl::add_command_done_callback(xocl::profile::log_cu_end) ;
     }
@@ -206,7 +206,7 @@ namespace xocl {
     }
     
     void log_cu_end(const xrt::command* cmd,
-			const xocl::execution_context* ctx)
+		    const xocl::execution_context* ctx)
     {
       // Check for software emulation logging of compute unit ends as well
       if (counter_cu_execution_cb)
