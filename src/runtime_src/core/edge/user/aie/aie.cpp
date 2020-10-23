@@ -231,7 +231,8 @@ submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum 
     }
   }
 
-  BD bd = dmap->dma_chan[chan].idle_bds.front();
+  BD_scope bd_scope(dmap->dma_chan[chan].idle_bds.front(), this);
+  auto& bd = bd_scope.get();
   dmap->dma_chan[chan].idle_bds.pop();
   prepare_bd(bd, bo);
 
@@ -254,13 +255,6 @@ submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum 
   /* Enqueue BD */
   XAie_DmaChannelPushBdToQueue(devInst, shim_tile, pchan, gmdir, bd.bd_num);
   dmap->dma_chan[chan].pend_bds.push(bd);
-
-  /*
-   * We are safe to release the exported BO DMA Buf here.
-   * 1. The physical address of BO is set to AIE register already;
-   * 2. The reference count of the buffer is held by BO itself.
-   */
-  clear_bd(bd);
 }
 
 void
