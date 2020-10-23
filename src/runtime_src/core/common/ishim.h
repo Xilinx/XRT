@@ -73,6 +73,9 @@ struct ishim
   get_bo_properties(xclBufferHandle boh, struct xclBOProperties *properties) const = 0;
 
   virtual void
+  get_device_info(struct xclDeviceInfo2 *info) const = 0;
+
+  virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const = 0;
 
   virtual void
@@ -269,6 +272,13 @@ struct shim : public DeviceType
   {
     if (auto ret = xclGetBOProperties(DeviceType::get_device_handle(), bo, properties))
       throw error(ret, "failed to get BO properties");
+  }
+
+  virtual void
+  get_device_info(struct xclDeviceInfo2 *info) const
+  {
+    if (auto ret = xclGetDeviceInfo2(DeviceType::get_device_handle(), info))
+      throw error(ret, "failed to get device info");
   }
 
   virtual void

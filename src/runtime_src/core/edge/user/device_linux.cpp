@@ -88,6 +88,8 @@ struct devInfo
   get(const xrt_core::device* device,key_type key)
   {
     auto edev = get_edgedev(device);
+    device->get_device_info(&deviceInfo);
+
     switch (key) {
     case key_type::edge_vendor:
       return deviceInfo.mVendorId;
@@ -107,6 +109,8 @@ struct devInfo
         clk_freqs.push_back(std::to_string(deviceInfo.mOCLFrequency[i]));
       return clk_freqs;
     }
+    case key_type::rom_time_since_epoch:
+      return static_cast<uint64_t>(deviceInfo.mTimeStamp);
     default:
       throw query::no_such_key(key);
     }
@@ -228,14 +232,6 @@ emplace_sysfs_get(const char* entry)
 
 template <typename QueryRequestType, typename Getter>
 static void
-emplace_func0_get()
-{
-  auto k = QueryRequestType::key;
-  query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
-}
-
-template <typename QueryRequestType, typename Getter>
-static void
 emplace_func0_request()
 {
   auto k = QueryRequestType::key;
@@ -245,15 +241,16 @@ emplace_func0_request()
 static void
 initialize_query_table()
 {
-  emplace_func0_get<query::edge_vendor, devInfo>();
+  emplace_func0_request<query::edge_vendor,             devInfo>();
 
-  emplace_func0_get<query::rom_vbnv, devInfo>();
-  emplace_func0_get<query::rom_fpga_name, devInfo>();
-  emplace_func0_get<query::rom_ddr_bank_size_gb, devInfo>();
-  emplace_func0_get<query::rom_ddr_bank_count_max, devInfo>();
+  emplace_func0_request<query::rom_vbnv,                devInfo>();
+  emplace_func0_request<query::rom_fpga_name,           devInfo>();
+  emplace_func0_request<query::rom_ddr_bank_size_gb,    devInfo>();
+  emplace_func0_request<query::rom_ddr_bank_count_max,  devInfo>();
+  emplace_func0_request<query::rom_time_since_epoch,    devInfo>();
 
-  emplace_func0_get<query::clock_freqs_mhz, devInfo>();
-  emplace_func0_get<query::kds_cu_info, kds_cu_info>();
+  emplace_func0_request<query::clock_freqs_mhz,         devInfo>();
+  emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
  
   emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
@@ -265,7 +262,6 @@ initialize_query_table()
   emplace_sysfs_get<query::error>                     ("errors");
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::board_name,              board_name>();
-  emplace_func0_request<query::rom_vbnv,                board_name>();
   emplace_func0_request<query::is_ready,                is_ready>();
 }
 
