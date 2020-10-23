@@ -333,7 +333,9 @@ get_memidx_nolock(const device* dev, memory::memidx_type subidx) const
   if (mset.none())
     throw std::runtime_error("No matching memory index");
 
-  for (size_t idx=0; idx<mset.size(); ++idx) {
+  // As connectivity section contains both group and bank index. Traverse from
+  // the higher order to give priority on group index over bank index
+  for (int idx=mset.size() - 1; idx >= 0; --idx) {
     if (mset.test(idx)) {
       m_memidx = idx;
       break;
