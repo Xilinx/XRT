@@ -286,7 +286,7 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
         throw std::runtime_error("Could not find MEM TOPOLOGY in xclbin file");
     }
     const char *data3 = &buffer[mem_hdr->m_sectionOffset];
-    const mem_topology *mem_topo1 = reinterpret_cast<const mem_topology *>(data3);
+    auto mem_topo1 = reinterpret_cast<const mem_topology *>(data3);
     mem_topology *mem_topo2 = const_cast<mem_topology*>(mem_topo1);
     xclbin_info->has_mem_groups = false;
 
