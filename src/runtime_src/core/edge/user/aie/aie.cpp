@@ -258,7 +258,7 @@ submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum 
   /*
    * We are safe to release the exported BO DMA Buf here.
    * 1. The physical address of BO is set to AIE register already;
-   * 2. The reference count of the buffer is hold by BO itself.
+   * 2. The reference count of the buffer is held by BO itself.
    */
   clear_bd(bd);
 }
