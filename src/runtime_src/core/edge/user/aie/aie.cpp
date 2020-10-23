@@ -27,8 +27,8 @@
 #include <sys/mman.h>
 #endif
 
-#include <iostream>
 #include <cerrno>
+#include <iostream>
 
 namespace zynqaie {
 
