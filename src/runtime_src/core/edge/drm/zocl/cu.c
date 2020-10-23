@@ -142,6 +142,7 @@ static int cu_probe(struct platform_device *pdev)
 	switch (info->model) {
 	case XCU_HLS:
 		err = xrt_cu_hls_init(&zcu->base);
+		break;
 	case XCU_FA:
 		err = xrt_cu_fa_init(&zcu->base);
 		break;
@@ -184,6 +185,7 @@ static int cu_remove(struct platform_device *pdev)
 	switch (info->model) {
 	case XCU_HLS:
 		xrt_cu_hls_fini(&zcu->base);
+		break;
 	case XCU_FA:
 		xrt_cu_fa_fini(&zcu->base);
 		break;
