@@ -287,7 +287,7 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
     }
     const char *data3 = &buffer[mem_hdr->m_sectionOffset];
     auto mem_topo1 = reinterpret_cast<const mem_topology *>(data3);
-    mem_topology *mem_topo2 = const_cast<mem_topology*>(mem_topo1);
+    auto mem_topo2 = const_cast<mem_topology*>(mem_topo1);
     xclbin_info->has_mem_groups = false;
 
     const axlf_section_header *mem_grp_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
