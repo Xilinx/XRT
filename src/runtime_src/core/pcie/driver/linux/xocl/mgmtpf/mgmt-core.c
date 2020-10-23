@@ -698,7 +698,7 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 
 static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
-	size_t resp_sz = 0, current_sz = 0;
+	size_t resp_sz = 0, current_sz = 0, entry_sz;
 	struct xcl_mailbox_subdev_peer *subdev_req = (struct xcl_mailbox_subdev_peer *)data_ptr;
 
 	BUG_ON(!lro);
@@ -716,9 +716,11 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		(void) xclmgmt_icap_get_data(lro, *resp);
 		break;
 	case XCL_MIG_ECC:
-		current_sz = sizeof(struct xcl_mig_ecc)*MAX_M_COUNT;
+		entry_sz = sizeof(struct xcl_mig_ecc);
+		current_sz = entry_sz*MAX_M_COUNT;
 		*resp = vzalloc(current_sz);
-		(void) xclmgmt_mig_get_data(lro, *resp, subdev_req->size);
+		entry_sz = min_t(size_t, subdev_req->size, entry_sz);
+		(void) xclmgmt_mig_get_data(lro, *resp, entry_sz);
 		break;
 	case XCL_FIREWALL:
 		current_sz = sizeof(struct xcl_firewall);
