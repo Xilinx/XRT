@@ -17,12 +17,12 @@
 #ifndef _XMA_BUFFER_PLGCLS_H_
 #define _XMA_BUFFER_PLGCLS_H_
 
+#include "core/include/experimental/xrt_bo.h"
+#include "xrt.h"
 #include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <string>
-#include "core/include/experimental/xrt_bo.h"
-#include "xrt.h"
 
 namespace xma_core {
 namespace plg {
