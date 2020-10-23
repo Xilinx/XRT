@@ -299,7 +299,7 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
             mem_topo2 = const_cast<mem_topology*>(mem_grp_topo);
         }
     }
-    const mem_topology *mem_topo = reinterpret_cast<const mem_topology *>(mem_topo2);
+    auto mem_topo = reinterpret_cast<const mem_topology *>(mem_topo2);
     auto& xma_mem_topology = xclbin_info->mem_topology;
 
     xclbin_info->number_of_mem_banks = mem_topo->m_count;
