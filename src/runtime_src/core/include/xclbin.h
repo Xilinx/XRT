@@ -499,7 +499,7 @@ extern "C" {
       {
         auto begin = top->m_sections;
         auto end = begin + top->m_header.m_numSections;
-        auto itr = std::find_if(begin,end,[kind](const axlf_section_header& sec) { return sec.m_sectionKind==(const uint32_t) kind; });
+        auto itr = std::find_if(begin,end,[kind](const axlf_section_header& sec) { return sec.m_sectionKind == static_cast<uint32_t>(kind); });
         return (itr!=end) ? &(*itr) : nullptr;
       }
 
@@ -529,7 +529,7 @@ extern "C" {
         auto begin = current_section + 1;        // Point to the next section
         if (begin == end) { return nullptr; }
 
-        auto itr = std::find_if(begin, end, [kind](const axlf_section_header &sec) {return sec.m_sectionKind == static_cast<uint32_t>(kind);});
+        auto itr = std::find_if(begin, end, [kind](const axlf_section_header &sec) {return sec.m_sectionKind == static_cast<uint32_t>(kind); });
         return (itr!=end) ? &(*itr) : nullptr;
       }
     }
