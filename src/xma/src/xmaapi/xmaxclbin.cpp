@@ -293,7 +293,7 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
     const axlf_section_header *mem_grp_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
     if (mem_grp_hdr) {
         const char *data2 = &buffer[mem_grp_hdr->m_sectionOffset];
-        const mem_topology *mem_grp_topo = reinterpret_cast<const mem_topology *>(data2);
+        auto mem_grp_topo = reinterpret_cast<const mem_topology *>(data2);
         if (mem_grp_topo->m_count > mem_topo1->m_count) {
             xclbin_info->has_mem_groups = true;
             mem_topo2 = const_cast<mem_topology*>(mem_grp_topo);
