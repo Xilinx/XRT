@@ -54,10 +54,6 @@
 #ifdef _WIN32
 # pragma warning( push )
 # pragma warning( disable : 4201 )
-# include "windows/uuid.h"
-#else
-#include "/usr/include/uuid/uuid.h"
-typedef uuid_t xuid_t;
 #endif
 
 
@@ -295,7 +291,7 @@ struct ert_configure_sk_cmd {
   uint32_t sk_size;		/* soft kernel size */
   uint32_t sk_name[8];		/* soft kernel name */
   uint64_t sk_addr;
-  xuid_t   uuid;
+  unsigned char   uuid[16];//xuid_t or uuid/uuid.h doesn't compile for zocl
 };
 
 /**
@@ -324,7 +320,7 @@ struct ert_unconfigure_sk_cmd {
   /* payload */
   uint32_t start_cuidx;
   uint32_t num_cus;
-  xuid_t   uuid;
+  unsigned char   uuid[16];
 };
 
 /**
