@@ -1102,7 +1102,10 @@ cu_stat(struct sched_cmd *cmd)
 	/* individual SK CU execution stat */
 	mutex_lock(&sk->sk_lock);
 	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
-		pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
+		if (sk->sk_cu[i])
+			pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
+		else //soft kernel cu has crashed
+			pkg->data[pkt_idx++] = -1;
 	}
 	mutex_unlock(&sk->sk_lock);
 
