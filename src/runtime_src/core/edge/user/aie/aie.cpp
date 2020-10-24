@@ -27,8 +27,8 @@
 #include <sys/mman.h>
 #endif
 
-#include <iostream>
 #include <cerrno>
+#include <iostream>
 
 namespace zynqaie {
 
@@ -226,15 +226,16 @@ submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum 
     /* Pending BD is completed by order per Shim DMA spec. */
     for (int i = 0; i < num_comp; ++i) {
       BD bd = dmap->dma_chan[chan].pend_bds.front();
-      clear_bd(bd);
       dmap->dma_chan[chan].pend_bds.pop();
       dmap->dma_chan[chan].idle_bds.push(bd);
     }
   }
 
-  BD bd = dmap->dma_chan[chan].idle_bds.front();
+  BD_scope bd_scope(dmap->dma_chan[chan].idle_bds.front(), this);
+  auto& bd = bd_scope.get();
   dmap->dma_chan[chan].idle_bds.pop();
   prepare_bd(bd, bo);
+
 #ifndef __AIESIM__
   XAie_DmaSetAddrLen(&(dmap->desc), (uint64_t)(bd.vaddr + offset), size);
 #else
@@ -264,7 +265,6 @@ wait_sync_bo(ShimDMA *dmap, uint32_t chan, XAie_LocType& tile, XAie_DmaDirection
 
   while (!dmap->dma_chan[chan].pend_bds.empty()) {
     BD bd = dmap->dma_chan[chan].pend_bds.front();
-    clear_bd(bd);
     dmap->dma_chan[chan].pend_bds.pop();
     dmap->dma_chan[chan].idle_bds.push(bd);
   }
@@ -301,6 +301,7 @@ clear_bd(BD& bd)
   auto ret = ioctl(fd, AIE_DETACH_DMABUF_IOCTL, bd.buf_fd);
   if (ret)
     throw xrt_core::error(-errno, "Sync AIE Bo: fail to detach DMA buf.");
+  close(bd.buf_fd);
 #endif
 }
 

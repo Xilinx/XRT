@@ -19,9 +19,9 @@
 #ifndef xrt_core_edge_user_aie_h
 #define xrt_core_edge_user_aie_h
 
-#include <vector>
-#include <queue>
 #include <memory>
+#include <queue>
+#include <vector>
 
 #include "core/common/device.h"
 #include "core/edge/common/aie_parser.h"
@@ -121,6 +121,12 @@ public:
     void
     stop_profiling(int phdl);
 
+    void
+    prepare_bd(BD& bd, xrtBufferHandle& bo);
+
+    void
+    clear_bd(BD& bd);
+
 private:
     int numCols;
     int fd;
@@ -137,12 +143,6 @@ private:
     wait_sync_bo(ShimDMA *dmap, uint32_t chan, XAie_LocType& tile, XAie_DmaDirection gmdir, uint32_t timeout);
 
     void
-    prepare_bd(BD& bd, xrtBufferHandle& bo);
-
-    void
-    clear_bd(BD& bd);
-
-    void
     get_profiling_config(const std::string& port_name, XAie_LocType& out_shim_tile, XAie_StrmPortIntf& out_mode, uint8_t& out_stream_id);
 
     int
@@ -156,6 +156,26 @@ private:
 
     int
     start_profiling_event_count(const std::string& port_name);
+};
+
+struct BD_scope {
+  BD bd;
+  Aie* aie;
+
+  BD_scope(const BD& bd_in, Aie* host)
+    : bd(bd_in), aie(host)
+  {}
+
+  ~BD_scope()
+  {
+    aie->clear_bd(bd);
+  }
+
+  BD&
+  get()
+  {
+    return bd;
+  }
 };
 
 }
