@@ -315,7 +315,8 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
         temp_mem_topology.m_size = mem_topo->m_mem_data[i].m_size;
         temp_mem_topology.m_base_address = mem_topo->m_mem_data[i].m_base_address;
         //m_tag is 16 chars
-        temp_mem_topology.m_tag = std::string((char*)mem_topo->m_mem_data[i].m_tag);
+        auto tmp_ptr = mem_topo->m_mem_data[i].m_tag;
+        temp_mem_topology.m_tag = std::string(tmp_ptr, std::find(tmp_ptr, tmp_ptr+16, '\0'));//magic 16 from xclbin.h
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index=%d, tag=%s, type = %ud, used = %ud, size = %lx, base = %lx ",
                i,temp_mem_topology.m_tag.c_str(), temp_mem_topology.m_type, temp_mem_topology.m_used,
                temp_mem_topology.m_size, temp_mem_topology.m_base_address);
