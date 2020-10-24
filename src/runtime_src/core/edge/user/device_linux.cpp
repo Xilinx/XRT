@@ -82,14 +82,28 @@ struct is_ready
   }
 };
 
+static xclDeviceInfo2
+init_device_info(const xrt_core::device* device)
+{
+  xclDeviceInfo2 dinfo;
+  xclGetDeviceInfo2(device->get_user_handle(), &dinfo);
+  return dinfo;
+}
+
 struct devInfo
 {
   static boost::any
   get(const xrt_core::device* device,key_type key)
   {
     auto edev = get_edgedev(device);
-    device->get_device_info(&deviceInfo);
+    static std::map<const xrt_core::device*, xclDeviceInfo2> infomap;
+    auto it = infomap.find(device);
+    if (it == infomap.end()) {
+      auto ret = infomap.emplace(device,init_device_info(device));
+      it = ret.first;
+    }
 
+    auto& deviceInfo = (*it).second;
     switch (key) {
     case key_type::edge_vendor:
       return deviceInfo.mVendorId;
