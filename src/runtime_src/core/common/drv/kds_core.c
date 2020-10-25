@@ -390,7 +390,7 @@ int kds_init_sched(struct kds_sched *kds)
 	mutex_init(&kds->cu_mgmt.lock);
 	kds->num_client = 0;
 	kds->bad_state = 0;
-	kds->ert_disable = 0;
+	kds->ert_disable = 1;
 
 	return 0;
 }
@@ -739,13 +739,13 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 {
 	kds->ert = ert;
-	/* Do anything necessary */
+	/* By default enable ERT if it exist */
+	kds->ert_disable = 0;
 	return 0;
 }
 
 int kds_fini_ert(struct kds_sched *kds)
 {
-	/* TODO: implement this */
 	return 0;
 }
 
@@ -935,7 +935,13 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
 	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
 
-	/* Skip first 4 control registers */
+	/* Copy resigter map into info and isize is the size of info in bytes.
+	 *
+	 * Based on ert.h, ecmd->count is the number of words following header.
+	 * In ert_start_kernel_cmd, the CU register map size is
+	 * (count - (1 + extra_cu_masks)) and I would like to Skip
+	 * first 4 control registers
+	 */
 	xcmd->isize = (ecmd->count - xcmd->num_mask - 4) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
 }
@@ -951,6 +957,11 @@ void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
 	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
 
+	/* Copy descriptor into info and isize is the size of info in bytes.
+	 *
+	 * Based on ert.h, ecmd->count is the number of words following header.
+	 * The descriptor size is (count - (1 + extra_cu_masks)).
+	 */
 	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 }

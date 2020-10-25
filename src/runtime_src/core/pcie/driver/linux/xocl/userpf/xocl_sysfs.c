@@ -345,6 +345,10 @@ ert_disable_store(struct device *dev, struct device_attribute *da,
 		return -EINVAL;
 	}
 
+	/* If ERT subdev doesn't present, cound not enable ERT */
+	if (!XDEV(xdev)->kds.ert)
+		disable = 1;
+
 	XDEV(xdev)->kds.ert_disable = disable;
 	mutex_unlock(&XDEV(xdev)->kds.lock);
 
