@@ -663,6 +663,11 @@ int xocl_kds_update(struct xocl_dev *xdev)
 {
 	struct drm_xocl_bo *bo = NULL;
 
+	/* Detect if ERT subsystem is able to support CU to host interrupt
+	 * This support is added since ERT ver3.0
+	 *
+	 * So, please make sure this is called after subdev init.
+	 */
 	if (xocl_ert_30_ert_intr_cfg(xdev) == -ENODEV) {
 		userpf_info(xdev, "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
@@ -684,6 +689,7 @@ int xocl_kds_update(struct xocl_dev *xdev)
 
 	xocl_detect_fa_plram(xdev);
 
+	/* By default, use ERT */
 	XDEV(xdev)->kds.cu_intr = 0;
 	return kds_cfg_update(&XDEV(xdev)->kds);
 }
