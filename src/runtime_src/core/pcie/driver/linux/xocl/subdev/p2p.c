@@ -206,7 +206,7 @@ static bool p2p_is_enabled(struct p2p *p2p)
 		p2p_info(p2p, "no mem chunks");
 		return false;
 	} else if (p2p->p2p_max_mem_sz != 0 &&
-	    p2p->p2p_max_mem_sz != p2p->exp_mem_sz)
+	    P2P_EXP_BAR_SZ(p2p) != p2p->p2p_bar_len)
 		return false;
 
 	return true;
