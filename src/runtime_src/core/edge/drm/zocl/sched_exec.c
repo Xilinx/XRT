@@ -1164,6 +1164,7 @@ configure_soft_kernel(struct sched_cmd *cmd)
 	cfg = (struct ert_configure_sk_cmd *)(cmd->packet);
 
 	mutex_lock(&sk->sk_lock);
+	atomic_inc(&cmd->exec->scheduler->num_running);//Else num_running becomes -1 by missing SK_CONFIG command increment
 
 	/* Check if the CU configuration exceeds maximum CU number */
 	if (cfg->start_cuidx + cfg->num_cus > MAX_CU_NUM) {
