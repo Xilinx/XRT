@@ -4245,8 +4245,8 @@ static int config_scu(struct platform_device *pdev,
 	if (scmd->opcode != ERT_SK_CONFIG && scmd->opcode != ERT_SK_UNCONFIG)
 		return 0;
 
-	if (!xert) {
-		userpf_err(xdev, "ERT is off");
+	if (!xert) {//ini of ert=false is checked here; KDS mode is not allowed
+		userpf_err(xdev, "ERROR: ERT is off. Soft kernels can not be used without ERT");
 		return -EINVAL;
 	}
 
