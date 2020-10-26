@@ -545,7 +545,7 @@ XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
 
 std::string 
 XBUtilities::create_suboption_list_string( const ReportCollection &_reportCollection, 
-                                           bool _addVerboseOption)
+                                           bool _addAllOption)
 {
   VectorPairStrings reportDescriptionCollection;
 
@@ -554,8 +554,8 @@ XBUtilities::create_suboption_list_string( const ReportCollection &_reportCollec
     reportDescriptionCollection.emplace_back(report->getReportName(), report->getShortDescription());
 
   // 'verbose' option
-  if (_addVerboseOption) 
-    reportDescriptionCollection.emplace_back("verbose", "All known reports are produced");
+  if (_addAllOption) 
+    reportDescriptionCollection.emplace_back("all", "All known reports are produced");
 
   // Sort the collection
   sort(reportDescriptionCollection.begin(), reportDescriptionCollection.end(), 

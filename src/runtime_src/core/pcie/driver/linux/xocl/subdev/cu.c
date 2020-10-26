@@ -150,8 +150,8 @@ irqreturn_t cu_isr(int irq, void *arg)
 {
 	struct xocl_cu *xcu = arg;
 
-	xrt_cu_check(&xcu->base);
 	xrt_cu_clear_intr(&xcu->base);
+	xrt_cu_check(&xcu->base);
 
 	up(&xcu->base.sem_cu);
 

@@ -29,7 +29,6 @@
 #include "core/common/config_reader.h"
 #include "core/common/query_requests.h"
 #include "core/common/AlignedAllocator.h"
-#include "core/include/experimental/xclbin_util.h"
 
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
@@ -546,13 +545,6 @@ shim(unsigned index)
   , mCuMaps(128, nullptr)
 {
   init(index);
-}
-
-int shim::get_dev_xclbin_uuid(xuid_t out)
-{
-    auto tmp_uuid = mCoreDevice->get_xclbin_uuid();
-    memcpy(out, &tmp_uuid, sizeof(xuid_t));
-    return 0;
 }
 
 int shim::dev_init()
@@ -2338,20 +2330,6 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xdphal::flush_device(handle) ;
     xdpaie::flush_aie_device(handle) ;
 
-    bool same_xclbin = false;
-    xuid_t new_xclbin_uuid;
-    xclbin_uuid((char *)buffer, new_xclbin_uuid);
-    xrt::uuid new_xclbin_uuid_xrt(new_xclbin_uuid);
-
-    xuid_t dev_uuid;
-    drv->get_dev_xclbin_uuid(dev_uuid);
-    if (new_xclbin_uuid_xrt) {
-        //This is not a legacy xclbin without uuid
-        if(xrt::uuid(dev_uuid) == new_xclbin_uuid_xrt) {
-            same_xclbin = true;
-        }
-    }
-
 #ifdef DISABLE_DOWNLOAD_XCLBIN
     int ret = 0;
 #else
@@ -2366,10 +2344,13 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       xdpaie::update_aie_device(handle);
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN
-      if (!same_xclbin) {
-          //Do not reset and re-init ERT & soft kernels if same xclbin
-          ret = xrt_core::scheduler::init(handle, buffer);
-      }
+      //scheduler::init can not be skipped even for same_xclbin
+      //as in multiple process stress tests it fails as
+      //below init step is without a lock with above driver load xclbin step.
+      //New KDS fixes this by ensuring that scheduler init is done by driver itself
+      //along with icap download in single command call and then below init step in user space
+      //is ignored
+      ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
 #endif
     }

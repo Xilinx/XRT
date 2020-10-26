@@ -75,9 +75,9 @@ static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,
 	    (src_paddr % KDMA_BLOCK_SIZE) ||
 	    (size % KDMA_BLOCK_SIZE)) {
 		M2M_ERR(m2m, "cannot use KDMA. dst: %s, src: %s, size: %s",
-		    (dst_paddr % KDMA_BLOCK_SIZE) ? "not 64-bit aligned" : "aligned",
-		    (src_paddr % KDMA_BLOCK_SIZE) ? "not 64-bit aligned" : "aligned",
-		    (size % KDMA_BLOCK_SIZE) ? "not 64-bit aligned" : "aligned");
+		    (dst_paddr % KDMA_BLOCK_SIZE) ? "not 64-byte aligned" : "aligned",
+		    (src_paddr % KDMA_BLOCK_SIZE) ? "not 64-byte aligned" : "aligned",
+		    (size % KDMA_BLOCK_SIZE) ? "not 64-byte aligned" : "aligned");
 		return -EINVAL;
 	}
 

@@ -13,6 +13,7 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/workqueue.h>
 #include "../xocl_drv.h"
 /* To get register address of CSR */
 #include "ert.h"
@@ -44,6 +45,7 @@ extern int kds_mode;
 
 #define INTR_NUM  4
 #define INTR_SRCS 32
+#define MAX_TRY 2
 
 /* ERT Interrupt Status Register offsets */
 static u32 eisr[4] = {
@@ -88,16 +90,24 @@ struct intr_info {
 	bool  enabled;
 };
 
+#define ERT_CSR_TYPE 0
+#define AXI_INTC_TYPE 1
 /* A metadata contains details of a MSI-X interrupt
  * intr: MSI-x irq number
  * isr:  Interrupt status register
  * info: Information of each interrupt source
  */
 struct intr_metadata {
+	xdev_handle_t		 xdev;
 	int			 intr;
+	int			 type;
 	u32 __iomem		*isr;
 	struct intr_info	*info[INTR_SRCS];
 	u32			 enabled_cnt;
+	u32			 cnt;
+	u32			 blanking;
+	struct work_struct	 work;
+	spinlock_t		 lock;
 };
 
 /* The details for intc sub-device.
@@ -113,17 +123,51 @@ struct xocl_intc {
 	struct intr_metadata	 cu[INTR_NUM];
 };
 
-/**
- * intc_csr_isr() - Handler of ERT to host interrupts
- */
-irqreturn_t intc_csr_isr(int irq, void *arg)
+static inline struct intr_metadata *work_to_data(struct work_struct *work)
 {
-	struct intr_metadata *data = arg;
-	u32 pending;
-	u32 index;
+	return container_of(work, struct intr_metadata, work);
+}
 
-	/* EISR is clear on read */
-	pending = ioread32(data->isr);
+static ssize_t
+intc_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_intc *intc = platform_get_drvdata(pdev);
+	ssize_t sz = 0;
+	int i = 0;
+
+	for (i = 0; i < INTR_NUM; i++) {
+		sz += sprintf(buf+sz, "CSR[%d] %d\n", i, intc->ert[i].cnt);
+	}
+
+	for (i = 0; i < INTR_NUM; i++) {
+		sz += sprintf(buf+sz, "CU INTC[%d] %d\n", i, intc->cu[i].cnt);
+	}
+
+	return sz;
+}
+static DEVICE_ATTR_RO(intc_stat);
+
+static ssize_t
+name_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "intc\n");
+}
+static DEVICE_ATTR_RO(name);
+
+static struct attribute *intc_attrs[] = {
+	&dev_attr_intc_stat.attr,
+	&dev_attr_name.attr,
+	NULL,
+};
+
+static const struct attribute_group intc_attrgroup = {
+	.attrs = intc_attrs,
+};
+
+static void handle_pending(struct intr_metadata *data, u32 pending)
+{
+	u32 index;
 
 	/* Iterate all interrupt sources. If it is set, handle it */
 	for (index = 0; pending != 0; index++) {
@@ -141,44 +185,62 @@ irqreturn_t intc_csr_isr(int irq, void *arg)
 
 		pending ^= 1 << index;
 	};
+}
 
-	return IRQ_HANDLED;
+static void intc_polling(struct work_struct *work)
+{
+	struct intr_metadata *data = work_to_data(work);
+	unsigned long flags;
+	u32 pending;
+	u32 max_try = MAX_TRY;
+
+	do {
+		pending = (data->type == ERT_CSR_TYPE)?
+			   ioread32(data->isr) :
+			   ioread32(reg_addr(data->isr, isr));
+		handle_pending(data, pending);
+		if (data->type == AXI_INTC_TYPE)
+			iowrite32(pending, reg_addr(data->isr, iar));
+
+		/* If no interrupt, still polling max_try times */
+		if (pending == 0)
+			max_try--;
+		else
+			max_try = MAX_TRY;
+	} while (max_try > 0);
+
+	spin_lock_irqsave(&data->lock, flags);
+	xocl_user_interrupt_config(data->xdev, data->intr, true);
+	spin_unlock_irqrestore(&data->lock, flags);
 }
 
 /**
- * intc_cu_isr() - Handler of CU to host interrupts
+ * intc_isr()
  */
-irqreturn_t intc_cu_isr(int irq, void *arg)
+irqreturn_t intc_isr(int irq, void *arg)
 {
 	struct intr_metadata *data = arg;
-	u32 orig_pending;
+	unsigned long flags;
 	u32 pending;
-	u32 index;
 
-	/* AXI intc IP supports multiple ways to handle interrupt
-	 * Read ISR and set IAR is the one that use least register access.
-	 */
-	pending = ioread32(reg_addr(data->isr, isr));
-	orig_pending = pending;
+	data->cnt++;
 
-	/* Iterate all interrupt sources. If it is set, handle it */
-	for (index = 0; pending != 0; index++) {
-		struct intr_info *info;
+	if (data->blanking) {
+		spin_lock_irqsave(&data->lock, flags);
+		xocl_user_interrupt_config(data->xdev, irq, false);
+		spin_unlock_irqrestore(&data->lock, flags);
+		schedule_work(&data->work);
+		return IRQ_HANDLED;
+	}
 
-		if (!(pending & (1 << index)))
-			continue;
+	pending = (data->type == ERT_CSR_TYPE)?
+		   ioread32(data->isr) :
+		   ioread32(reg_addr(data->isr, isr));
 
-		info = data->info[index];
-		/* If a bit is set but without handler, it probably is
-		 * a bug on hardware or ERT firmware.
-		 */
-		if (info && info->enabled && info->handler)
-			info->handler(info->intr_id, info->arg);
+	handle_pending(data, pending);
 
-		pending ^= 1 << index;
-	};
-
-	iowrite32(orig_pending, reg_addr(data->isr, iar));
+	if (data->type == AXI_INTC_TYPE)
+		iowrite32(pending, reg_addr(data->isr, iar));
 
 	return IRQ_HANDLED;
 }
@@ -276,6 +338,7 @@ static int config_intr(struct platform_device *pdev, int id, bool en, int mode)
 	if (intc->mode == ERT_INTR)
 		return 0;
 
+	iowrite32(0x3, reg_addr(data->isr, mer));
 	/* For CU intc, configure sie/cie register */
 	if (en)
 		iowrite32((1 << intr_src), reg_addr(data->isr, sie));
@@ -308,7 +371,6 @@ static int sel_ert_intr(struct platform_device *pdev, int mode)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
 	struct intr_metadata *data;
-	irqreturn_t (*isr_fn)(int, void*);
 	int i, j;
 
 	if (intc->mode == mode)
@@ -324,10 +386,10 @@ static int sel_ert_intr(struct platform_device *pdev, int mode)
 
 	for (i = 0; i < INTR_NUM; i++) {
 		data = (mode == CU_INTR) ? &intc->cu[i] : &intc->ert[i];
-		isr_fn = (mode == CU_INTR) ? intc_cu_isr : intc_csr_isr;
 
-		xocl_user_interrupt_reg(xdev, data->intr, isr_fn, data);
+		xocl_user_interrupt_reg(xdev, data->intr, intc_isr, data);
 		xocl_user_interrupt_config(xdev, data->intr, false);
+
 		if (!data->enabled_cnt)
 			continue;
 
@@ -336,6 +398,7 @@ static int sel_ert_intr(struct platform_device *pdev, int mode)
 		if (mode == ERT_INTR)
 			continue;
 
+		iowrite32(0x3, reg_addr(data->isr, mer));
 		for (j = 0; j < INTR_SRCS; j++) {
 			if (!data->info[j] || !data->info[j]->enabled)
 				continue;
@@ -344,9 +407,9 @@ static int sel_ert_intr(struct platform_device *pdev, int mode)
 		}
 	}
 
-	INTC_INFO(intc, "Switch to %s interrupt mode",
-		  (mode == ERT_INTR)? "ERT" : "CU");
 	intc->mode = mode;
+	INTC_INFO(intc, "Switch to %s interrupt mode",
+		  (intc->mode == ERT_INTR)? "ERT" : "CU");
 	return 0;
 }
 
@@ -382,9 +445,14 @@ get_legacy_res(struct platform_device *pdev, struct xocl_intc *intc)
 		data = &intc->ert[i];
 		data->intr = res->start + i;
 		data->isr = intc->csr_base + eisr[i];
-		xocl_user_interrupt_reg(xdev, data->intr, intc_csr_isr, data);
+		xocl_user_interrupt_reg(xdev, data->intr, intc_isr, data);
 		/* disable interrupt */
 		xocl_user_interrupt_config(xdev, data->intr, false);
+		data->xdev = xdev;
+		INIT_WORK(&data->work, intc_polling);
+		data->type = ERT_CSR_TYPE;
+		spin_lock_init(&data->lock);
+		data->blanking = 1;
 	}
 
 	return 0;
@@ -420,7 +488,6 @@ get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct intr_metadata *data;
-	irqreturn_t (*isr_fn)(int, void*);
 	int i;
 
 	/* Resource for ERT interrupts */
@@ -431,6 +498,10 @@ get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
 	}
 	for (i = 0; i < INTR_NUM; i++) {
 		data = &intc->ert[i];
+		data->xdev = xdev;
+		INIT_WORK(&data->work, intc_polling);
+		data->type = ERT_CSR_TYPE;
+		spin_lock_init(&data->lock);
 		data->intr = intc_get_csr_irq(pdev, i);
 		if (data->intr < 0) {
 			INTC_ERR(intc, "Did not get IRQ resource");
@@ -442,6 +513,10 @@ get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
 	/* Resource for CU interrupts */
 	for (i = 0; i < INTR_NUM; i++) {
 		data = &intc->cu[i];
+		data->xdev = xdev;
+		INIT_WORK(&data->work, intc_polling);
+		data->type = AXI_INTC_TYPE;
+		spin_lock_init(&data->lock);
 		data->isr = xocl_devm_ioremap_res_byname(pdev, res_cu_intc[i]);
 		if (!data->isr) {
 			INTC_ERR(intc, "Did not get CU INTC resource");
@@ -466,17 +541,16 @@ get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
 
 	/* Register interrupt handler */
 	for (i = 0; i < INTR_NUM; i++) {
-		if (intc->mode == CU_INTR) {
+		if (intc->mode == CU_INTR)
 			data = &intc->cu[i];
-			isr_fn = intc_cu_isr;
-		} else {
+		else
 			data = &intc->ert[i];
-			isr_fn = intc_csr_isr;
-		}
 
-		xocl_user_interrupt_reg(xdev, data->intr, isr_fn, data);
+		xocl_user_interrupt_reg(xdev, data->intr, intc_isr, data);
 		/* disable interrupt */
 		xocl_user_interrupt_config(xdev, data->intr, false);
+
+		data->blanking = 1;
 	}
 
 	return 0;
@@ -513,6 +587,9 @@ static int intc_probe(struct platform_device *pdev)
 
 	INTC_INFO(intc, "Intc initialized, (%s) mode", intc_mode(intc));
 
+	if (sysfs_create_group(&pdev->dev.kobj, &intc_attrgroup))
+		INTC_ERR(intc, "Not able to create INTC sysfs group");
+
 out:
 	return 0;
 
@@ -538,6 +615,7 @@ static int intc_remove(struct platform_device *pdev)
 		xocl_user_interrupt_reg(xdev, intc->ert[i].intr, NULL, NULL);
 	}
 
+	(void) sysfs_remove_group(&pdev->dev.kobj, &intc_attrgroup);
 out:
 	xocl_drvinst_release(intc, &hdl);
 	platform_set_drvdata(pdev, NULL);

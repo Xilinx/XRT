@@ -76,7 +76,9 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
     bool is_mfg = false;
     is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(m_device);
     if (!is_mfg) {
-      val = xrt_core::device_query<xrt_core::query::xmc_status>(m_device);
+      try {
+        val = xrt_core::device_query<xrt_core::query::xmc_status>(m_device);
+    } catch (...) { return; }
       if (!(val & 1)) {
         mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
         goto nosup;

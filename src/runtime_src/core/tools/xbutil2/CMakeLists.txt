@@ -55,12 +55,9 @@ endif()
 add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
 
 # Determine what functionality should be added
-if(WIN32)
-  target_compile_definitions(${XBUTIL2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
-else()
-  target_compile_definitions(${XBUTIL2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  target_compile_definitions(${XBUTIL2_NAME} PUBLIC ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
 endif()
-
 
 # Add the supporting libraries
 if(WIN32)

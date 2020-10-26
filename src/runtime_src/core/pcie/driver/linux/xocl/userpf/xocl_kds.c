@@ -338,9 +338,15 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	print_ecmd_info(ecmd);
 #endif
 
-	/* TODO: one ecmd to one xcmd now. Maybe we will need
-	 * one ecmd to multiple xcmds
+	/* xcmd->type is the only thing determine who to handle this command.
+	 * If ERT is supported, use ERT as default handler.
+	 * It could be override later if some command needs specific handler.
 	 */
+	if (XDEV(xdev)->kds.ert_disable)
+		xcmd->type = KDS_CU;
+	else
+		xcmd->type = KDS_ERT;
+
 	switch (ecmd->opcode) {
 	case ERT_CONFIGURE:
 		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
@@ -357,16 +363,21 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		}
 
 		/* Before scheduler config options are removed from xrt.ini */
-		if (to_cfg_pkg(ecmd)->ert)
+		if (to_cfg_pkg(ecmd)->ert && XDEV(xdev)->kds.ert) {
 			XDEV(xdev)->kds.ert_disable = 0;
-		else
+			xcmd->type = KDS_ERT;
+		} else {
 			XDEV(xdev)->kds.ert_disable = 1;
+			xcmd->type = KDS_CU;
+		}
 		break;
 	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_START_FA:
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		/* ERT doesn't support Fast adapter command */
+		xcmd->type = KDS_CU;
 		break;
 	case ERT_START_COPYBO:
 		ret = copybo_ecmd2xcmd(xdev, filp, to_copybo_pkg(ecmd), xcmd);
@@ -380,11 +391,6 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		xcmd->cb.free(xcmd);
 		return -EINVAL;
 	}
-
-	if (XDEV(xdev)->kds.ert_disable)
-		xcmd->type = KDS_CU;
-	else
-		xcmd->type = KDS_ERT;
 
 	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->gem_obj = obj;
@@ -657,6 +663,11 @@ int xocl_kds_update(struct xocl_dev *xdev)
 {
 	struct drm_xocl_bo *bo = NULL;
 
+	/* Detect if ERT subsystem is able to support CU to host interrupt
+	 * This support is added since ERT ver3.0
+	 *
+	 * So, please make sure this is called after subdev init.
+	 */
 	if (xocl_ert_30_ert_intr_cfg(xdev) == -ENODEV) {
 		userpf_info(xdev, "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
@@ -678,6 +689,7 @@ int xocl_kds_update(struct xocl_dev *xdev)
 
 	xocl_detect_fa_plram(xdev);
 
+	/* By default, use ERT */
 	XDEV(xdev)->kds.cu_intr = 0;
 	return kds_cfg_update(&XDEV(xdev)->kds);
 }

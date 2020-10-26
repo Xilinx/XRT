@@ -355,6 +355,13 @@ get_xma_cpu_mode()
   return value;
 }
 
+inline bool
+get_enable_flat()
+{
+  static bool value = detail::get_bool_value("Runtime.enable_flat",false);
+  return value;
+}
+
 /**
  * Enable / Disable kernel driver scheduling when running in hardware.
  * If disabled, xrt will be scheduling either using the software scheduler
@@ -382,7 +389,13 @@ get_ert()
 inline bool
 get_ert_polling()
 {
-  static bool value = detail::get_bool_value("Runtime.ert_polling",false);
+  /**
+   * enable_flat flag is added for embedded platforms where it load full bitstream after boot.
+   * This feature does not support interrupt mode as interrupt controller exist in pl 
+   * and is configured at boot time. 
+   * So if enable_flat is true, polling mode should be enabled by default.
+   */
+  static bool value = get_enable_flat() || detail::get_bool_value("Runtime.ert_polling",false);
   return value;
 }
 
@@ -438,13 +451,6 @@ inline bool
 get_enable_pr()
 {
   static unsigned int value = detail::get_bool_value("Runtime.enable_pr",true);
-  return value;
-}
-
-inline bool
-get_enable_flat()
-{
-  static unsigned int value = detail::get_bool_value("Runtime.enable_flat",false);
   return value;
 }
 
