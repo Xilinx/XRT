@@ -630,7 +630,7 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 		xclmgmt_clock_get_data_impl(lro, buf);
 }
 
-static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t offset_sz, size_t entries, size_t entry_sz)
+static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t entry_sz, size_t entries, size_t offset_sz)
 {
 	int i;
 	size_t offset = 0;
@@ -719,8 +719,8 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		/* when allocating response buffer, 
 		 * we shall use remote_entry_size * min(local_num_entries, remote_num_entries), 
 		 * and check the final total buffer size.
-                 * when filling up each entry, we should use min(local_entry_size, remote_entry_size)
-                 * when moving to next entry, we should use remote_entry_size as step size.
+		 * when filling up each entry, we should use min(local_entry_size, remote_entry_size)
+		 * when moving to next entry, we should use remote_entry_size as step size.
 		 */
 		entries = min_t(size_t, subdev_req->entries, MAX_M_COUNT);
 		current_sz = subdev_req->size*entries;
