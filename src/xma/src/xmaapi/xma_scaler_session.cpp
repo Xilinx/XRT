@@ -19,14 +19,14 @@
 namespace xma_core {
 namespace app {
 
-sc_session::sc_session(XmaScalerProperties *props, xma_core::plg::session& sess)
+sc_session::sc_session(const XmaScalerProperties *props, const xma_core::plg::session& sess)
 :base{sess}, scaler_props{*props}
 {
   //TODO
 }
 
 int32_t
-sc_session::send_frame(XmaFrame *frame) const
+sc_session::send_frame(const XmaFrame *frame) const
 {
   //TODO
 
@@ -34,7 +34,7 @@ sc_session::send_frame(XmaFrame *frame) const
 }
 
 int32_t
-sc_session::recv_frame_list(XmaFrame **frame) const
+sc_session::recv_frame_list(const XmaFrame **frame) const
 {
   //TODO
 
@@ -42,7 +42,7 @@ sc_session::recv_frame_list(XmaFrame **frame) const
 }
 
 void 
-sc_session::set_default_filter_coeff(XmaScalerFilterProperties *props)
+sc_session::set_default_filter_coeff(const XmaScalerFilterProperties *props)
 {
   //TODO
 

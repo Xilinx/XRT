@@ -32,22 +32,22 @@ namespace app {
 class sc_session
 {
 private:
-    xma_core::plg::session&  base; // base session class
+    const xma_core::plg::session&  base; // base session class
     XmaScalerProperties   scaler_props; // client requested scaler properties
     XmaScalerPlugin      *scaler_plugin{nullptr}; // pointer to plugin interface
  
 public:
   int32_t
-  send_frame(XmaFrame *frame) const; //send input frame to scaler cu for processing
+  send_frame(const XmaFrame *frame) const; //send input frame to scaler cu for processing
   int32_t
-  recv_frame_list(XmaFrame **frame_list) const; //recv scaled output frame array for multiple outputs
+  recv_frame_list(const XmaFrame **frame_list) const; //recv scaled output frame array for multiple outputs
 
   //Set default horizontal and vertical filter coefficients for a polyphase filter
   void 
-  set_default_filter_coeff(XmaScalerFilterProperties *props);
+  set_default_filter_coeff(const XmaScalerFilterProperties *props);
 
 
-  sc_session(XmaScalerProperties *props, xma_core::plg::session& sess);//host app can be C; user input is Scaler Properties
+  sc_session(const XmaScalerProperties *props, const xma_core::plg::session& sess);//host app can be C; user input is Scaler Properties
   ~sc_session();
 
 }; //class sc_session
