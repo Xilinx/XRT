@@ -107,7 +107,6 @@ struct intr_metadata {
 	u32			 cnt;
 	u32			 blanking;
 	struct work_struct	 work;
-	spinlock_t		 lock;
 };
 
 /* The details for intc sub-device.
@@ -190,7 +189,6 @@ static void handle_pending(struct intr_metadata *data, u32 pending)
 static void intc_polling(struct work_struct *work)
 {
 	struct intr_metadata *data = work_to_data(work);
-	unsigned long flags;
 	u32 pending;
 	u32 max_try = MAX_TRY;
 
@@ -209,9 +207,8 @@ static void intc_polling(struct work_struct *work)
 			max_try = MAX_TRY;
 	} while (max_try > 0);
 
-	spin_lock_irqsave(&data->lock, flags);
+	/* xocl_user_interrupt_config() is thread safe */
 	xocl_user_interrupt_config(data->xdev, data->intr, true);
-	spin_unlock_irqrestore(&data->lock, flags);
 }
 
 /**
@@ -220,15 +217,13 @@ static void intc_polling(struct work_struct *work)
 irqreturn_t intc_isr(int irq, void *arg)
 {
 	struct intr_metadata *data = arg;
-	unsigned long flags;
 	u32 pending;
 
 	data->cnt++;
 
 	if (data->blanking) {
-		spin_lock_irqsave(&data->lock, flags);
+		/* xocl_user_interrupt_config() is thread safe */
 		xocl_user_interrupt_config(data->xdev, irq, false);
-		spin_unlock_irqrestore(&data->lock, flags);
 		schedule_work(&data->work);
 		return IRQ_HANDLED;
 	}
@@ -451,7 +446,6 @@ get_legacy_res(struct platform_device *pdev, struct xocl_intc *intc)
 		data->xdev = xdev;
 		INIT_WORK(&data->work, intc_polling);
 		data->type = ERT_CSR_TYPE;
-		spin_lock_init(&data->lock);
 		data->blanking = 1;
 	}
 
@@ -501,7 +495,6 @@ get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
 		data->xdev = xdev;
 		INIT_WORK(&data->work, intc_polling);
 		data->type = ERT_CSR_TYPE;
-		spin_lock_init(&data->lock);
 		data->intr = intc_get_csr_irq(pdev, i);
 		if (data->intr < 0) {
 			INTC_ERR(intc, "Did not get IRQ resource");
@@ -516,7 +509,6 @@ get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
 		data->xdev = xdev;
 		INIT_WORK(&data->work, intc_polling);
 		data->type = AXI_INTC_TYPE;
-		spin_lock_init(&data->lock);
 		data->isr = xocl_devm_ioremap_res_byname(pdev, res_cu_intc[i]);
 		if (!data->isr) {
 			INTC_ERR(intc, "Did not get CU INTC resource");
