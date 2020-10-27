@@ -460,6 +460,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 out0:
 	kvfree(pages);
+	return ret;
 out1:
 	zocl_free_userptr_bo(&bo->cma_base.base);
 	DRM_DEBUG("handle creation failed\n");
