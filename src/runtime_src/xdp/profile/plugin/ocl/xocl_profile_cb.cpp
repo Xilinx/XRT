@@ -270,9 +270,13 @@ cb_action_read(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uin
       XOCL_DEBUGF("READ status: %d, event: %s, depend: %s\n", status, eventStr.c_str(), dependStr.c_str());
     }
 
-    // Catch if reading from P2P buffer
+    // Catch if reading from P2P buffer or via slave bridge
     auto ext_flags = xocl::xocl(buffer)->get_ext_flags();
-    auto kind = (ext_flags & XCL_MEM_EXT_P2P_BUFFER) ? xdp::RTUtil::READ_BUFFER_P2P : xdp::RTUtil::READ_BUFFER;
+    auto kind = xdp::RTUtil::READ_BUFFER;
+    if (ext_flags & XCL_MEM_EXT_P2P_BUFFER)
+      kind = xdp::RTUtil::READ_BUFFER_P2P;
+    else if (ext_flags & XCL_MEM_EXT_HOST_ONLY)
+      kind = xdp::RTUtil::READ_BUFFER_HOST_MEMORY;
 
     auto commandState = event_status_to_profile_state(status);
     auto queue = event->get_command_queue();
@@ -377,9 +381,13 @@ cb_action_write(xocl::event* event,cl_int status, cl_mem buffer, size_t size, ui
       XOCL_DEBUGF("WRITE event: %s, depend: %s\n", eventStr.c_str(), dependStr.c_str());
     }
 
-    // Catch if writing to P2P buffer
+    // Catch if writing to P2P buffer or via slave bridge
     auto ext_flags = xocl::xocl(buffer)->get_ext_flags();
-    auto kind = (ext_flags & XCL_MEM_EXT_P2P_BUFFER) ? xdp::RTUtil::WRITE_BUFFER_P2P : xdp::RTUtil::WRITE_BUFFER;
+    auto kind = xdp::RTUtil::WRITE_BUFFER;
+    if (ext_flags & XCL_MEM_EXT_P2P_BUFFER)
+      kind = xdp::RTUtil::WRITE_BUFFER_P2P;
+    else if (ext_flags & XCL_MEM_EXT_HOST_ONLY)
+      kind = xdp::RTUtil::WRITE_BUFFER_HOST_MEMORY;
 
     auto commandState = event_status_to_profile_state(status);
     auto deviceName = device->get_name();
@@ -570,12 +578,14 @@ cb_action_copy(xocl::event* event, cl_int status, cl_mem src_buffer, cl_mem dst_
       XOCL_DEBUGF("COPY event: %s, depend: %s\n", eventStr.c_str(), dependStr.c_str());
     }
 
-    // Catch if copying to/from P2P buffer
+    // Catch if copying to/from P2P buffer or via slave bridge
     auto kind = (same_device) ? xdp::RTUtil::COPY_BUFFER : xdp::RTUtil::COPY_BUFFER_P2P;
     auto src_ext_flags = xocl::xocl(src_buffer)->get_ext_flags();
     auto dst_ext_flags = xocl::xocl(dst_buffer)->get_ext_flags();
     if ((src_ext_flags & XCL_MEM_EXT_P2P_BUFFER) || (dst_ext_flags & XCL_MEM_EXT_P2P_BUFFER))
       kind = xdp::RTUtil::COPY_BUFFER_P2P;
+    else if ((src_ext_flags & XCL_MEM_EXT_HOST_ONLY) || (dst_ext_flags & XCL_MEM_EXT_HOST_ONLY))
+      kind = xdp::RTUtil::COPY_BUFFER_HOST_MEMORY;
 
     auto commandState = event_status_to_profile_state(status);
     auto deviceName = device->get_name();
