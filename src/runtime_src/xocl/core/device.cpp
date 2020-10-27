@@ -730,6 +730,13 @@ get_cu_memidx() const
       for (auto& cu : get_cu_range())
         mask &= cu->get_memidx_intersect();
 
+      // If all bits are set i.e. No Banks are specified. Hence return the
+      // default bank i.e. Bank 0.
+      if (mask.all()) {
+        m_cu_memidx = 0;
+	return m_cu_memidx;
+      }
+
       // Select first common Group index if present prior to bank index.
       // Traverse from the higher order of the mask as groups comes in higher order
       for (int idx=mask.size() - 1; idx >= 0; --idx) {
