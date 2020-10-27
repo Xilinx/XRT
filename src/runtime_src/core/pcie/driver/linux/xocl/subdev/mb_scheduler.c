@@ -4764,7 +4764,7 @@ static ssize_t
 kds_numcus_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct exec_core *exec = dev_get_exec(dev);
-	unsigned int cus = exec ? exec->num_cus - exec->num_cdma  + exec->num_sk_cus : 0;
+	unsigned int cus = exec ? exec->num_cus - exec->num_cdma + exec->num_sk_cus : 0;
 
 	return sprintf(buf, "%d\n", cus);
 }
@@ -4775,7 +4775,7 @@ kds_cucounts_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct exec_core *exec = dev_get_exec(dev);
 	struct xocl_ert *xert = exec_is_ert(exec) ? exec->ert : NULL;
-	unsigned int cus = exec ? exec->num_cus - exec->num_cdma : 0;
+	unsigned int cus = exec->num_cus - exec->num_cdma;
 	unsigned int sz = 0;
 	unsigned int idx;
 
@@ -4785,10 +4785,12 @@ kds_cucounts_show(struct device *dev, struct device_attribute *attr, char *buf)
 		sz += sprintf(buf + sz, "cu[%d] done(%d) run(%d)\n", idx, xcu->done_cnt, xcu->run_cnt);
 	}
 
-	cus = exec ? exec->num_sk_cus : 0;
-	for (idx = exec->num_cus; idx < exec->num_cus + cus; idx++) {
-		sz += sprintf(buf + sz, "cu[%d] done(%d) run(%d)\n", idx,
-			ert_cu_usage(xert, idx), ert_cu_usage(xert, idx));
+	if (xert) {
+		cus = exec ? exec->num_sk_cus : 0;
+		for (idx = exec->num_cus; idx < exec->num_cus + cus; idx++) {
+			sz += sprintf(buf + sz, "cu[%d] done(%d) run(%d)\n", idx,
+				      ert_cu_usage(xert, idx), ert_cu_usage(xert, idx));
+		}
 	}
 	if (sz)
 		buf[sz++] = 0;
@@ -4826,12 +4828,14 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 		    exec_cu_status(exec, idx));
 	}
 
-	/* soft kernel CUs */
-	for (;idx < (exec->num_cus + exec->num_sk_cus); ++idx) {
-		sz += sprintf(buf+sz, "CU[@0x0] : %d status : %d name : %s\n",
-		    ert_cu_usage(xert, idx),
-		    ert_cu_status(xert, idx) ? AP_START : AP_IDLE,
-		    xert->scu_name[idx - exec->num_cus]);
+	if (xert) {
+		/* soft kernel CUs */
+		for (;idx < (exec->num_cus + exec->num_sk_cus); ++idx) {
+			sz += sprintf(buf+sz, "CU[@0x0] : %d status : %d name : %s\n",
+				      ert_cu_usage(xert, idx),
+				      ert_cu_status(xert, idx) ? AP_START : AP_IDLE,
+				      xert->scu_name[idx - exec->num_cus]);
+		}
 	}
 
 	sz += sprintf(buf+sz, "KDS number of pending commands: %d\n", exec_num_pending(exec));
