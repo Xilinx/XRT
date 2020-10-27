@@ -30,7 +30,8 @@
 
 namespace xdp {
 
-  DeviceOffloadPlugin::DeviceOffloadPlugin() : XDPPlugin()
+  DeviceOffloadPlugin::DeviceOffloadPlugin() :
+    XDPPlugin(), continuous_trace(false), continuous_trace_interval_ms(10)
   {
     active = db->claimDeviceOffloadOwnership() ;
     if (!active) return ; 
