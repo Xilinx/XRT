@@ -18,19 +18,19 @@
 #ifndef _XRT_KERNEL_H_
 #define _XRT_KERNEL_H_
 
-#include "xrt.h"
 #include "ert.h"
-#include "experimental/xrt_uuid.h"
+#include "xrt.h"
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_device.h"
+#include "experimental/xrt_uuid.h"
 
 #ifdef __cplusplus
 # include "experimental/xrt_enqueue.h"
-# include <memory>
-# include <vector>
-# include <functional>
 # include <chrono>
 # include <cstdint>
+# include <functional>
+# include <memory>
+# include <vector>
 #endif
 
 /**

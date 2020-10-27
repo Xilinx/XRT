@@ -24,12 +24,12 @@
 #include "bo.h"
 #include "device_int.h"
 #include "kernel_int.h"
-#include "core/common/system.h"
 #include "core/common/device.h"
-#include "core/common/query_requests.h"
 #include "core/common/memalign.h"
-#include "core/common/unistd.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
+#include "core/common/system.h"
+#include "core/common/unistd.h"
 
 #include <map>
 #include <set>

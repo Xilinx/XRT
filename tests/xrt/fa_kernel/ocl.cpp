@@ -16,15 +16,16 @@
 #include <CL/cl.h>
 
 #include <algorithm>
-#include <chrono>
 #include <atomic>
-#include <stdexcept>
-#include <string>
+#include <chrono>
+#include <cstdarg>
 #include <fstream>
-#include <vector>
 #include <iostream>
 #include <iomanip>
-#include <cstdarg>
+#include <numeric>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 static void usage()
 {
