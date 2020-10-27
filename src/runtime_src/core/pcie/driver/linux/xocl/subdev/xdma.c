@@ -40,7 +40,7 @@ struct xocl_xdma {
 	u32			max_user_intr;
 	u32			start_user_intr;
 	struct xdma_irq		*user_msix_table;
-	struct mutex		user_msix_table_lock;
+	spinlock_t		user_msix_table_lock;
 
 	struct xocl_drm		*drm;
 	/* Number of bidirectional channels */
@@ -258,6 +258,7 @@ static int user_intr_config(struct platform_device *pdev, u32 intr, bool en)
 {
 	struct xocl_xdma *xdma;
 	const unsigned int mask = 1 << intr;
+	unsigned long flags;
 	int ret;
 
 	xdma= platform_get_drvdata(pdev);
@@ -268,7 +269,7 @@ static int user_intr_config(struct platform_device *pdev, u32 intr, bool en)
 		return -EINVAL;
 	}
 
-	mutex_lock(&xdma->user_msix_table_lock);
+	spin_lock_irqsave(&xdma->user_msix_table_lock, flags);
 	if (xdma->user_msix_table[intr].enabled == en) {
 		ret = 0;
 		goto end;
@@ -279,7 +280,7 @@ static int user_intr_config(struct platform_device *pdev, u32 intr, bool en)
 	if (!ret)
 		xdma->user_msix_table[intr].enabled = en;
 end:
-	mutex_unlock(&xdma->user_msix_table_lock);
+	spin_unlock_irqrestore(&xdma->user_msix_table_lock, flags);
 
 	return ret;
 }
@@ -303,6 +304,7 @@ static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 {
 	struct xocl_xdma *xdma;
 	const unsigned int mask = 1 << intr;
+	unsigned long flags;
 	int ret;
 
 	xdma= platform_get_drvdata(pdev);
@@ -312,7 +314,7 @@ static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 		return -EINVAL;
 	}
 
-	mutex_lock(&xdma->user_msix_table_lock);
+	spin_lock_irqsave(&xdma->user_msix_table_lock, flags);
 	if (!xdma->user_msix_table[intr].in_use) {
 		xocl_err(&pdev->dev, "intr %d is not in use", intr);
 		ret = -EINVAL;
@@ -330,7 +332,7 @@ static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 	xdma->user_msix_table[intr].in_use = false;
 
 failed:
-	mutex_unlock(&xdma->user_msix_table_lock);
+	spin_unlock_irqrestore(&xdma->user_msix_table_lock, flags);
 	return ret;
 }
 
@@ -340,6 +342,7 @@ static int user_intr_register(struct platform_device *pdev, u32 intr,
 	struct xocl_xdma *xdma;
 	struct eventfd_ctx *trigger = ERR_PTR(-EINVAL);
 	const unsigned int mask = 1 << intr;
+	unsigned long flags;
 	int ret;
 
 	xdma= platform_get_drvdata(pdev);
@@ -359,7 +362,7 @@ static int user_intr_register(struct platform_device *pdev, u32 intr,
 		}
 	}
 
-	mutex_lock(&xdma->user_msix_table_lock);
+	spin_lock_irqsave(&xdma->user_msix_table_lock, flags);
 	if (xdma->user_msix_table[intr].in_use) {
 		xocl_err(&pdev->dev, "IRQ %d is in use", intr);
 		ret = -EPERM;
@@ -381,13 +384,12 @@ static int user_intr_register(struct platform_device *pdev, u32 intr,
 
 	xdma->user_msix_table[intr].in_use = true;
 
-	mutex_unlock(&xdma->user_msix_table_lock);
-
+	spin_unlock_irqrestore(&xdma->user_msix_table_lock, flags);
 
 	return 0;
 
 failed:
-	mutex_unlock(&xdma->user_msix_table_lock);
+	spin_unlock_irqrestore(&xdma->user_msix_table_lock, flags);
 	if (!IS_ERR(trigger))
 		eventfd_ctx_put(trigger);
 
@@ -503,7 +505,7 @@ static int xdma_probe(struct platform_device *pdev)
 	}
 
 	mutex_init(&xdma->stat_lock);
-	mutex_init(&xdma->user_msix_table_lock);
+	spin_lock_init(&xdma->user_msix_table_lock);
 
 	return 0;
 
@@ -565,7 +567,6 @@ static int xdma_remove(struct platform_device *pdev)
 		devm_kfree(&pdev->dev, xdma->channel_usage[1]);
 
 	mutex_destroy(&xdma->stat_lock);
-	mutex_destroy(&xdma->user_msix_table_lock);
 
 	devm_kfree(&pdev->dev, xdma->user_msix_table);
 	platform_set_drvdata(pdev, NULL);
