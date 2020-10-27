@@ -124,6 +124,37 @@ namespace {
 
 constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
 
+template <typename ValueType>
+class arg_range
+{
+  const ValueType* uval;
+  size_t words;
+
+public:
+  arg_range(const void* value, size_t bytes)
+    : uval(reinterpret_cast<const ValueType*>(value))
+    , words(bytes / sizeof(ValueType))
+  {}
+
+  const ValueType*
+  begin() const
+  {
+    return uval;
+  }
+
+  const ValueType*
+  end() const
+  {
+    return uval + words;
+  }
+
+  size_t
+  size() const
+  {
+    return words;
+  }
+};
+
 inline bool
 is_sw_emulation()
 {
@@ -1092,7 +1123,7 @@ class run_impl
     {}
 
     virtual void
-    set_arg_value(const argument& arg, const std::vector<uint32_t>& value) = 0;
+    set_arg_value(const argument& arg, const arg_range<uint32_t>& value) = 0;
   };
 
   // AP_CTRL_HS, AP_CTRL_CHAIN
@@ -1103,10 +1134,10 @@ class run_impl
     {}
 
     virtual void
-    set_arg_value(const argument& arg, const std::vector<uint32_t>& value)
+    set_arg_value(const argument& arg, const arg_range<uint32_t>& value)
     {
       auto cmdidx = arg.offset() / 4;
-      auto count = std::min<size_t>(arg.size() / sizeof(uint32_t), value.size());
+      auto count = std::min(arg.size() / sizeof(uint32_t), value.size());
       std::copy_n(value.begin(), count, data + cmdidx);
     }
   };
@@ -1119,13 +1150,13 @@ class run_impl
     {}
 
     virtual void
-    set_arg_value(const argument& arg, const std::vector<uint32_t>& value)
+    set_arg_value(const argument& arg, const arg_range<uint32_t>& value)
     {
       auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
       auto desc_entry = reinterpret_cast<ert_fa_desc_entry*>(desc->data + arg.fa_desc_offset() / sizeof(uint32_t));
       desc_entry->arg_offset = arg.offset();
       desc_entry->arg_size = arg.size();
-      auto count = std::min<size_t>(arg.size() / sizeof(uint32_t), value.size());
+      auto count = std::min(arg.size() / sizeof(uint32_t), value.size());
       std::copy_n(value.begin(), count, desc_entry->arg_value);
     }
   };
@@ -1193,30 +1224,29 @@ public:
   }
 
   void
-  set_arg_value(const argument& arg, const std::vector<uint32_t>& value)
+  set_arg_value(const argument& arg, const arg_range<uint32_t>& value)
   {
     arg_setter->set_arg_value(arg, value);
   }
 
   void
-  set_arg(const argument& arg, std::va_list* args)
+  set_arg_value(const argument& arg, const void* value, size_t bytes)
   {
-    auto value = arg.get_value(args);
-    set_arg_value(arg, value);
+    set_arg_value(arg, arg_range<uint32_t>{value, bytes});
   }
 
   void
-  set_arg_at_index(size_t index, const std::vector<uint32_t>& value)
+  set_arg(const argument& arg, std::va_list* args)
   {
-    auto& arg = kernel->get_arg(index);
-    set_arg_value(arg, value);
+    auto value = arg.get_value(args);  // vector<uint32_t>
+    set_arg_value(arg, value.data(), value.size() * sizeof(uint32_t));
   }
 
   void
   set_arg_at_index(size_t index, const xrt::bo& bo)
   {
     auto value = xrt_core::bo::address(bo);
-    set_arg_at_index(index, value_to_uint32_vector(value));
+    set_arg_at_index(index, &value, sizeof(value));
   }
 
   void
@@ -1230,8 +1260,7 @@ public:
   set_arg_at_index(size_t index, const void* value, size_t bytes)
   {
     auto& arg = kernel->get_arg(index);
-    arg.valid_or_error(bytes);
-    set_arg_value(arg, value_to_uint32_vector(value, bytes));
+    set_arg_value(arg, value, bytes);
   }
 
   void
@@ -1321,7 +1350,7 @@ public:
   }
 
   void
-  update_arg_value(const argument& arg, const std::vector<uint32_t>& value)
+  update_arg_value(const argument& arg, const arg_range<uint32_t>& value)
   {
     reset_cmd();
 
@@ -1345,19 +1374,25 @@ public:
   }
 
   void
-  update_arg_at_index(size_t index, std::va_list* args)
+  update_arg_value(const argument& arg, const void* value, size_t bytes)
   {
-    auto& arg = kernel->get_arg(index);
-    arg.valid_or_error();
-    update_arg_value(arg, arg.get_value(args));
+    update_arg_value(arg, arg_range<uint32_t>{value, std::min(arg.size(), bytes)});
   }
 
   void
-  update_arg_at_index(size_t index, const std::vector<uint32_t>& value)
+  update_arg_at_index(size_t index, std::va_list* args)
   {
     auto& arg = kernel->get_arg(index);
-    arg.valid_or_error();
-    update_arg_value(arg, value);
+    auto value = arg.get_value(args);  // vector<uint32_t>
+    auto bytes = value.size() * sizeof(uint32_t);
+    update_arg_value(arg, value.data(), bytes);
+  }
+
+  void
+  update_arg_at_index(size_t index, const void* value, size_t bytes)
+  {
+    auto& arg = kernel->get_arg(index);
+    update_arg_value(arg, value, bytes);
   }
 
   void
@@ -1365,19 +1400,7 @@ public:
   {
     auto& arg = kernel->get_arg(index);
     auto value = xrt_core::bo::address(glb);
-    arg.valid_or_error(sizeof(value));
-    update_arg_value(arg, value_to_uint32_vector(value));
-  }
-
-  void
-  update_arg_at_index(size_t index, const void* value, size_t bytes)
-  {
-    auto& arg = kernel->get_arg(index);
-    if (arg.index() == argument::no_index)
-      throw std::runtime_error("Bad argument index '" + std::to_string(index) + "'");
-    if (bytes != arg.size())
-      throw std::runtime_error("Bad argument size '" + std::to_string(bytes) + "'");
-    update_arg_value(arg, value_to_uint32_vector(value, bytes));
+    update_arg_value(arg, &value, sizeof(value));
   }
 };
 
@@ -1660,9 +1683,9 @@ state() const
 
 void
 run::
-set_arg_at_index(int index, const std::vector<uint32_t>& value)
+set_arg_at_index(int index, const void* value, size_t bytes)
 {
-  handle->set_arg_at_index(index, value);
+  handle->set_arg_at_index(index, value, bytes);
 }
 
 void
@@ -1674,10 +1697,10 @@ set_arg_at_index(int index, const xrt::bo& glb)
 
 void
 run::
-update_arg_at_index(int index, const std::vector<uint32_t>& value)
+update_arg_at_index(int index, const void* value, size_t bytes)
 {
   auto upd = get_run_update(handle.get());
-  upd->update_arg_at_index(index, value);
+  upd->update_arg_at_index(index, value, bytes);
 }
 
 void
