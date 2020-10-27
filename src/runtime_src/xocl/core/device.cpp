@@ -734,7 +734,7 @@ get_cu_memidx() const
       // default bank i.e. Bank 0.
       if (mask.all()) {
         m_cu_memidx = 0;
-	return m_cu_memidx;
+        return m_cu_memidx;
       }
 
       // Select first common Group index if present prior to bank index.
