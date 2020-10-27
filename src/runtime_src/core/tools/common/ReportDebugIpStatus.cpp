@@ -82,6 +82,7 @@ class DebugIpStatusCollector
 
   xclDeviceHandle handle;
 
+  std::string infoMessage ;
   std::vector<char> map;
 
   uint64_t debugIpNum[maxDebugIpType];
@@ -100,8 +101,10 @@ class DebugIpStatusCollector
   xclDebugStreamingCheckersResults spcResults;
 
 public :
-  DebugIpStatusCollector(xclDeviceHandle h);
+  DebugIpStatusCollector(xclDeviceHandle h, bool jsonFormat, std::ostream& _output = std::cout);
   ~DebugIpStatusCollector() {}
+
+  inline std::string getInfoMessage() { return infoMessage ; }
 
   void collect();
   void collect(const std::vector<std::string> & _elementsFilter);
@@ -149,8 +152,11 @@ private :
 
 
 
-DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
+DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
+					       bool jsonFormat,
+					       std::ostream& _output)
     : handle(h)
+    , infoMessage("")
     , debugIpNum{0}
     , debugIpOpt{false}
     , cuNameMaxStrLen{0}
@@ -169,9 +175,13 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
   // Get the size of full debug_ip_layout
   xclGetDebugIpLayout(handle, nullptr, sz1, &sectionSz);
   if(sectionSz == 0) {
-    std::cout << "INFO: Failed to find any Debug IP Layout section in the bitstream loaded on device. "
-              << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
-              << std::endl;
+    if (jsonFormat) {
+      infoMessage = "Failed to find any Debug IP Layout section in the bitstream loaded on device. Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded." ;
+    } else {
+      _output << "INFO: Failed to find any Debug IP Layout section in the bitstream loaded on device. "
+		<< "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
+		<< std::endl;
+    }
    return;
   }
   // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
@@ -184,9 +194,9 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
   std::string path(layoutPath.data());
 
   if(path.empty()) {
-    std::cout << "INFO: Failed to find path to Debug IP Layout. "
-              << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
-              << std::endl;
+    _output << "INFO: Failed to find path to Debug IP Layout. "
+            << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
+            << std::endl;
     return;
   }
 
@@ -200,9 +210,13 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
   ifs.read(map.data(), 65536);
 
   if (ifs.gcount() <= 0) {
-    std::cout << "INFO: Failed to find any Debug IP Layout section in the bitstream loaded on device. "
+    if (jsonFormat) {
+      infoMessage = "Failed to find any Debug IP Layout section in the bitstream loaded on device. Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded." ;
+    } else {
+      _output << "INFO: Failed to find any Debug IP Layout section in the bitstream loaded on device. "
               << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
               << std::endl;
+    }
   }
 
 #endif
@@ -218,7 +232,7 @@ DebugIpStatusCollector::getDebugIpLayout()
   }
   debug_ip_layout* dbgIpLayout = reinterpret_cast<debug_ip_layout*>(map.data());
   if(0 == dbgIpLayout->m_count) {
-    std::cout << "INFO: Failed to find any Debug IPs in the bitstream loaded on device." << std::endl;
+    //std::cout << "INFO: Failed to find any Debug IPs in the bitstream loaded on device." << std::endl;
     return nullptr;
   }
   return dbgIpLayout;
@@ -1580,13 +1594,16 @@ ReportDebugIpStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
 {
   boost::property_tree::ptree pt;
   pt.put("description","Status of Debug IPs present in xclbin loaded on device");
-
   auto handle = _pDevice->get_device_handle();
 
-  DebugIpStatusCollector collector(handle);
-  collector.populateOverview(pt);
-  collector.collect();
-  collector.populateAllResults(pt);
+  DebugIpStatusCollector collector(handle, true);
+  if (collector.getInfoMessage() != "") {
+    pt.put("info", collector.getInfoMessage().c_str()) ;
+  } else {
+    collector.populateOverview(pt);
+    collector.collect();
+    collector.populateAllResults(pt);
+  }
 
   // There can only be 1 root node
   _pt.add_child("debug_ip_status", pt);
@@ -1601,7 +1618,9 @@ ReportDebugIpStatus::writeReport( const xrt_core::device * _pDevice,
 {
   auto handle = _pDevice->get_device_handle();
 
-  DebugIpStatusCollector collector(handle);
+  _output << "Debug IP Status" << std::endl ;
+
+  DebugIpStatusCollector collector(handle, false, _output);
   collector.printOverview(_output);
   collector.collect(_elementsFilter);
   collector.printAllResults(_output);
