@@ -64,6 +64,7 @@ typedef struct XmaXclbinInfo
     uint32_t            number_of_kernels;
     uint32_t            number_of_mem_banks;
     uint32_t            number_of_connections;
+    bool                has_mem_groups;
     //uint64_t bitmap based on MAX_DDR_MAP=64
     uint64_t            ip_ddr_mapping[MAX_XILINX_KERNELS];
     //For execbo:
@@ -74,5 +75,5 @@ typedef struct XmaXclbinInfo
 
 std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name);
 int xma_xclbin_info_get(const char *buffer, XmaXclbinInfo *info);
-int xma_xclbin_map2ddr(uint64_t bit_map, int* ddr_bank);
+int xma_xclbin_map2ddr(uint64_t bit_map, int* ddr_bank, bool has_mem_grps);
 #endif

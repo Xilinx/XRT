@@ -79,7 +79,7 @@ namespace xdp {
 
   void NOCProfilingPlugin::pollNOCCounters()
   {
-    uint32_t pollnum = 0;
+    uint64_t pollnum = 0;
 
     while (mKeepPolling) {
       // Get timestamp in milliseconds

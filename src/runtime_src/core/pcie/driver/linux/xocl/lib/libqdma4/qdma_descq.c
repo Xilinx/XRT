@@ -1680,7 +1680,8 @@ int qdma4_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail
 	return cur - buf;
 
 handle_truncation:
-	*buf = '\0';
+	if (buf)
+		*buf = '\0';
 	return cur - buf;
 }
 

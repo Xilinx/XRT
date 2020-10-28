@@ -1102,7 +1102,10 @@ cu_stat(struct sched_cmd *cmd)
 	/* individual SK CU execution stat */
 	mutex_lock(&sk->sk_lock);
 	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
-		pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
+		if (sk->sk_cu[i])
+			pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
+		else //soft kernel cu has crashed
+			pkg->data[pkt_idx++] = -1;
 	}
 	mutex_unlock(&sk->sk_lock);
 
@@ -1164,6 +1167,7 @@ configure_soft_kernel(struct sched_cmd *cmd)
 	cfg = (struct ert_configure_sk_cmd *)(cmd->packet);
 
 	mutex_lock(&sk->sk_lock);
+	atomic_inc(&cmd->exec->scheduler->num_running);//Else num_running becomes -1 by missing SK_CONFIG command increment
 
 	/* Check if the CU configuration exceeds maximum CU number */
 	if (cfg->start_cuidx + cfg->num_cus > MAX_CU_NUM) {

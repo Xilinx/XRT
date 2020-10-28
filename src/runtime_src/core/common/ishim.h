@@ -199,17 +199,21 @@ struct shim : public DeviceType
   virtual xclBufferHandle
   alloc_bo(size_t size, unsigned int flags)
   {
-    if (auto bo = xclAllocBO(DeviceType::get_device_handle(), size, 0, flags))
-      return bo;
-    throw std::bad_alloc();
+    auto bo = xclAllocBO(DeviceType::get_device_handle(), size, 0, flags);
+    if (bo == XRT_NULL_BO)
+      throw std::bad_alloc();
+
+    return bo;
   }
 
   virtual xclBufferHandle
   alloc_bo(void* userptr, size_t size, unsigned int flags)
   {
-    if (auto bo = xclAllocUserPtrBO(DeviceType::get_device_handle(), userptr, size, flags))
-      return bo;
-    throw std::bad_alloc();
+    auto bo = xclAllocUserPtrBO(DeviceType::get_device_handle(), userptr, size, flags);
+    if (bo == XRT_NULL_BO)
+      throw std::bad_alloc();
+
+    return bo;
   }
 
   virtual void

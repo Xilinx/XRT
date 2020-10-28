@@ -761,7 +761,7 @@ public:
   {
     try {
       if (subdev.compare("") == 0 && entry.compare("mfg") == 0) {
-          bool golden = !sysfs::get_path(sysfs_name, "xocl_vsec_golden", "").empty();
+          bool golden = !sysfs::get_path(sysfs_name, "xrt_vsec_golden", "").empty();
           iv.push_back(golden);
       } else {
         auto map = find_sysfs_map(subdev, entry);
@@ -778,7 +778,7 @@ public:
       if (subdev.compare("rom") == 0 && entry.compare("VBNV") == 0) {
         sysfs::get(sysfs_name, "xmgmt_main", "VBNV", err, s);
         if (!err.empty())
-          sysfs::get(sysfs_name, "xocl_vsec_golden", "VBNV", err, s);
+          sysfs::get(sysfs_name, "xrt_vsec_golden", "VBNV", err, s);
       } else {
         auto map = find_sysfs_map(subdev, entry);
         sysfs::get(sysfs_name, map.subdev_v2, map2entry(map, entry), err, s);
@@ -884,9 +884,9 @@ private:
     // root/xxx
     { "",       "*",            "xmgmt_main",   "*" },
     // xmc/xxx
-    { "xmc",    "*",            "xocl_cmc",     "*" },
+    { "xmc",    "*",            "xrt_cmc",     "*" },
     // flash/xxx
-    { "flash",  "*",            "xocl_qspi",    "*" },
+    { "flash",  "*",            "xrt_qspi",    "*" },
   };
   const sysfs_node_map& find_sysfs_map(const std::string& subdev, const std::string& entry)
   {
