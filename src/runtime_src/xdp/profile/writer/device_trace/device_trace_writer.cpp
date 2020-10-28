@@ -99,37 +99,37 @@ namespace xdp {
 
         // Wave Group for Read and Write, if Data transfer monitoring is enabled in CU
         if(cu->dataTransferEnabled()) {
-          std::vector<Monitor*> *aimList = (db->getStaticInfo()).getAIMonitors(deviceId);
-
           std::vector<uint32_t> *cuAIMs  = cu->getAIMs();
           for(auto cuAIM : *cuAIMs) {
             ++rowCount;
             aimBucketIdMap[cuAIM] = rowCount;
 
+            Monitor* aim = (db->getStaticInfo()).getAIMonitor(deviceId, cuAIM);
+
             // Read : KERNEL_READ
-            fout << "Group_Start,Read,Read data transfers between " << cuName << " and Global Memory over " << aimList->at(cuAIM)->name << std::endl;
-            fout << "Static_Row," << rowCount << "," << aimList->at(cuAIM)->name << ",Read Data Transfers " << std::endl;
+            fout << "Group_Start,Read,Read data transfers between " << cuName << " and Global Memory over " << aim->name << std::endl;
+            fout << "Static_Row," << rowCount << "," << aim->name << ",Read Data Transfers " << std::endl;
             fout << "Group_End,Read" << std::endl;
 
   
             // Write : KERNEL_WRITE
-            fout << "Group_Start,Write,Write data transfers between " << cuName << " and Global Memory over " << aimList->at(cuAIM)->name << std::endl;
-            fout << "Static_Row," << ++rowCount << "," << aimList->at(cuAIM)->name << ",Write Data Transfers " << std::endl;
+            fout << "Group_Start,Write,Write data transfers between " << cuName << " and Global Memory over " << aim->name << std::endl;
+            fout << "Static_Row," << ++rowCount << "," << aim->name << ",Write Data Transfers " << std::endl;
             fout << "Group_End,Write" << std::endl;
           }
         }
 
         if(cu->streamEnabled()) {
-          std::vector<Monitor*> *asmList = (db->getStaticInfo()).getASMonitors(deviceId);
-
           std::vector<uint32_t> *cuASMs  = cu->getASMs();
           for(auto cuASM : *cuASMs) {
             ++rowCount;
             asmBucketIdMap[cuASM] = rowCount;
 
+            Monitor* asM = (db->getStaticInfo()).getASMonitor(deviceId, cuASM);
+
             // KERNEL_STREAM_READ/WRITE
-            fout << "Group_Start,Stream Transfers,AXI Stream transaction over " << asmList->at(cuASM)->name << std::endl;
-            fout << "Static_Row," << rowCount << "," << asmList->at(cuASM)->name << ",AXI Stream transactions over " << asmList->at(cuASM)->name << std::endl;
+            fout << "Group_Start,Stream Transfers,AXI Stream transaction over " << asM->name << std::endl;
+            fout << "Static_Row," << rowCount << "," << asM->name << ",AXI Stream transactions over " << asM->name << std::endl;
             fout << "Static_Row," << ++rowCount << ",Link Stall" << std::endl;
             fout << "Static_Row," << ++rowCount << ",Link Starve" << std::endl;
             fout << "Group_End,Stream Transfers" << std::endl;
@@ -142,50 +142,63 @@ namespace xdp {
 
     if((db->getStaticInfo()).hasFloatingAIM(deviceId)) {
       fout << "Group_Start,AXI Memory Monitors,Read/Write data transfers over AXI Memory Mapped connection " << std::endl;
-      std::vector<Monitor*> *aimList = (db->getStaticInfo()).getAIMonitors(deviceId);
-      for(size_t i = 0; i < aimList->size() ; i++) {
-        Monitor* aim = aimList->at(i);
+      std::map<uint64_t, Monitor*> *aimMap = (db->getStaticInfo()).getAIMonitors(deviceId);
+      size_t i = 0;
+      for(auto& entry : *aimMap) {
+        Monitor* aim = entry.second;
         if(-1 != aim->cuIndex) {
           // not a floating AIM, must have been covered in CU section
+          i++;
           continue;
         }
+#if 0
+        // This check is not required anymore as "getAIMonitors" returns user space AIM only but no shell AIM
         // If monitor name starts with "shell", then it is a shell monitor and trace is not available. So, skip it.
         size_t pos = aim->name.find('/');
         if(0 == aim->name.substr(0, pos).compare("shell")) {
           continue;
         }
+#endif
         aimBucketIdMap[i] = ++rowCount;
         fout << "Group_Start," << aim->name  << " AXI Memory Monitor,Read/Write data transfers over AXI Memory Mapped " << aim->name << std::endl;
         fout << "Static_Row,"  << rowCount   << ",Read transfers,Read transfers for "  << aim->name << std::endl;
         fout << "Static_Row,"  << ++rowCount << ",Write transfers,Write transfers for " << aim->name << std::endl;
         fout << "Group_End,"   << aim->name  << " AXI Memory Monitor" << std::endl ;
+        i++;
       }
       fout << "Group_End,AXI Memory Monitors" << std::endl ;
     }
 
     if((db->getStaticInfo()).hasFloatingASM(deviceId)) {
       fout << "Group_Start,AXI Stream Monitors,Data transfers over AXI Stream connection " << std::endl;
-      std::vector<Monitor*> *asmList = (db->getStaticInfo()).getASMonitors(deviceId);
-      for(size_t i = 0; i < asmList->size() ; i++) {
-        Monitor* asM = asmList->at(i);
+      std::map<uint64_t, Monitor*> *asmMap = (db->getStaticInfo()).getASMonitors(deviceId);
+      size_t i = 0;
+      for(auto& entry : *asmMap) {
+        Monitor* asM = entry.second;
         if(-1 != asM->cuIndex) {
           // not a floating ASM, must have been covered in CU section
+          i++;
           continue;
         }
+#if 0
+        // This check is not required anymore as "getASMonitors" returns user space ASM only but no shell ASM
         // If monitor name starts with "shell", then it is a shell monitor and trace is not available. So, skip it.
         size_t pos = asM->name.find('/');
         if(0 == asM->name.substr(0, pos).compare("shell")) {
           continue;
         }
+#endif
         asmBucketIdMap[i] = ++rowCount;
         fout << "Group_Start," << asM->name  << " AXI Stream Monitor,Read/Write data transfers over AXI Stream " << asM->name << std::endl;
         fout << "Static_Row,"  << rowCount   << ",Stream Port,AXI Stream Read/Write transaction over " << asM->name << std::endl;
         fout << "Static_Row,"  << ++rowCount << ",Link Stall,Stall during transaction over " << asM->name << std::endl;
         fout << "Static_Row,"  << ++rowCount << ",Link Starve,Starve during transaction over " << asM->name << std::endl;
         fout << "Group_End,"   << asM->name  << " AXI Stream Monitor" << std::endl;
+        i++;
       }
       fout << "Group_End,AXI Stream Monitors" << std::endl ;
     }
+
 
     fout << "Group_End," << xclbinName << std::endl ;
     fout << "Group_End," << deviceName << std::endl ;

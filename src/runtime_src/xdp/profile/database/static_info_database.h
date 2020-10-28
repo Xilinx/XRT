@@ -197,9 +197,17 @@ namespace xdp {
     std::map<int32_t, ComputeUnitInstance*> cus;
 
     std::map<int32_t, Memory*> memoryInfo;
-    std::vector<Monitor*>      aimList;
-    std::vector<Monitor*>      amList;
-    std::vector<Monitor*>      asmList;
+
+    /* Maps for AM, AIM, ASM Monitor with slotID as the key.
+     * Contains only user space monitors, but no shell monitor (e.g. shell AIM/ASM)
+     */
+    std::map<uint64_t, Monitor*>  amMap;
+    std::map<uint64_t, Monitor*>  aimMap;
+    std::map<uint64_t, Monitor*>  asmMap;
+
+    std::vector<Monitor*>  shellAIMList;
+    std::vector<Monitor*>  shellASMList;
+
     std::vector<Monitor*>      nocList;
     std::vector<AIECounter*>   aieList;
     std::vector<TraceGMIO*>    gmioList;
@@ -361,25 +369,34 @@ namespace xdp {
       return deviceInfo[deviceId]->memoryInfo[memId];
     }
 
-    inline uint64_t getNumAIM(uint64_t deviceId)
-    {
-      if(deviceInfo.find(deviceId) == deviceInfo.end())
-        return 0;
-      return deviceInfo[deviceId]->aimList.size();
-    }
-
+    // Includes User Space AM only
     inline uint64_t getNumAM(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
-      return deviceInfo[deviceId]->amList.size();
+      return deviceInfo[deviceId]->amMap.size();
     }
 
+    /* Includes User Space AIM only; but no shell AIM
+     * Note : May not match xdp::DeviceIntf::getNumMonitors(XCL_PERF_MON_MEMORY)
+     *        as that includes both user-space and shell AIM
+     */
+    inline uint64_t getNumAIM(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->aimMap.size();
+    }
+
+    /* Includes User Space ASM only; but no shell ASM
+     * Note : May not match xdp::DeviceIntf::getNumMonitors(XCL_PERF_MON_STR)
+     *        as that includes both user-space and shell ASM
+     */
     inline uint64_t getNumASM(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
-      return deviceInfo[deviceId]->asmList.size();
+      return deviceInfo[deviceId]->asmMap.size();
     }
 
     inline uint64_t getNumNOC(uint64_t deviceId)
@@ -403,32 +420,25 @@ namespace xdp {
       return deviceInfo[deviceId]->gmioList.size();
     }
 
-    inline Monitor* getAIMonitor(uint64_t deviceId, uint64_t idx)
+    inline Monitor* getAIMonitor(uint64_t deviceId, uint64_t slotID)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return deviceInfo[deviceId]->aimList[idx];
+      return deviceInfo[deviceId]->aimMap[slotID];
     }
 
-    inline std::vector<Monitor*>* getAIMonitors(uint64_t deviceId)
+    inline Monitor* getAMonitor(uint64_t deviceId, uint64_t slotID)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return &(deviceInfo[deviceId]->aimList);
+      return deviceInfo[deviceId]->amMap[slotID];
     }
 
-    inline Monitor* getAMonitor(uint64_t deviceId, uint64_t idx)
+    inline Monitor* getASMonitor(uint64_t deviceId, uint64_t slotID)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return deviceInfo[deviceId]->amList[idx];
-    }
-
-    inline Monitor* getASMonitor(uint64_t deviceId, uint64_t idx)
-    {
-      if(deviceInfo.find(deviceId) == deviceInfo.end())
-        return nullptr;
-      return deviceInfo[deviceId]->asmList[idx];
+      return deviceInfo[deviceId]->asmMap[slotID];
     }
 
     inline Monitor* getNOC(uint64_t deviceId, uint64_t idx)
@@ -451,12 +461,21 @@ namespace xdp {
         return nullptr;
       return deviceInfo[deviceId]->gmioList[idx];
     }
-    
-    inline std::vector<Monitor*>* getASMonitors(uint64_t deviceId)
+
+    // Includes User Space AIM only, but no shell AIM
+    inline std::map<uint64_t, Monitor*>* getAIMonitors(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return &(deviceInfo[deviceId]->asmList);
+      return &(deviceInfo[deviceId]->aimMap);
+    }
+
+    // Includes User Space ASM only, but no shell ASM
+    inline std::map<uint64_t, Monitor*>* getASMonitors(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return &(deviceInfo[deviceId]->asmMap);
     }
 
     inline void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size)
@@ -465,10 +484,13 @@ namespace xdp {
         return;
 
       size_t count = 0;
-      for(auto mon : deviceInfo[deviceId]->amList) {
+      /* User space AM in sorted order of their slotIds.
+       * Matches with sorted list of AM in xdp::DeviceIntf
+       */   
+      for(auto mon : deviceInfo[deviceId]->amMap) {
         if(count >= size)
           return;
-        auto cu = deviceInfo[deviceId]->cus[mon->cuIndex];
+        auto cu = deviceInfo[deviceId]->cus[mon.second->cuIndex];
         config[count] = cu->dataflowEnabled();
         ++count;
       }
@@ -480,10 +502,13 @@ namespace xdp {
         return;
 
       size_t count = 0;
-      for(auto mon : deviceInfo[deviceId]->amList) {
+      /* User space AM in sorted order of their slotIds.
+       * Matches with sorted list of AM in xdp::DeviceIntf
+       */   
+      for(auto mon : deviceInfo[deviceId]->amMap) {
         if(count >= size)
           return;
-        auto cu = deviceInfo[deviceId]->cus[mon->cuIndex];
+        auto cu = deviceInfo[deviceId]->cus[mon.second->cuIndex];
         config[count] = cu->faEnabled();
         ++count;
       }
