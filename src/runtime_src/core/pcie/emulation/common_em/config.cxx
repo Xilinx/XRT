@@ -99,6 +99,7 @@ namespace xclemulation{
 
   void config::populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap)
   {
+    setenv("HW_EM_DISABLE_LATENCY", "true", true);
     for (auto i : mEnvironmentNameValueMap)
     {
       std::string name  = i.first;
@@ -177,7 +178,7 @@ namespace xclemulation{
       else if (name == "ENABLE_GMEM_LATENCY" || name == "enable_gmem_latency") {
         //This is then new INI option that sets the ENV HW_EM_DISABLE_LATENCY to appropriate value before 
         //launching simulation
-        bool val = getBoolValue(value, true);
+        bool val = getBoolValue(value, false);
         if (val) {
           setenv("HW_EM_DISABLE_LATENCY", "false", true);
         } else {
