@@ -25,8 +25,9 @@
 #endif
 
 #ifdef _WIN32
-#pragma warning (disable : 4996 4267)
+#pragma warning (disable : 4996 4267 4244 4200)
 /* 4267 : Disable warning for conversion of size_t to int32_t */
+/* 4244 : Disable warning for conversion of uint64_t to uint32_t */
 #endif
 
 #include <boost/property_tree/ptree.hpp>
@@ -41,6 +42,7 @@
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #include "core/include/xclbin.h"
+#include "core/include/xclperf.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 
@@ -98,26 +100,28 @@ namespace xdp {
   {
     delete deviceIntf;
 
-    for(auto i : cus) {
+    for(auto& i : cus) {
       delete i.second;
     }
     cus.clear();
-    for(auto i : memoryInfo) {
+    for(auto& i : memoryInfo) {
       delete i.second;
     }
     memoryInfo.clear();
-    for(auto i : aimList) {
-      delete i;
+
+    for(auto& i : amMap) {
+      delete i.second;
     }
-    aimList.clear();
-    for(auto i : amList) {
-      delete i;
+    amMap.clear();
+    for(auto& i : aimMap) {
+      delete i.second;
     }
-    amList.clear();
-    for(auto i : asmList) {
-      delete i;
+    aimMap.clear();
+    for(auto& i : asmMap) {
+      delete i.second;
     }
-    asmList.clear();
+    asmMap.clear();
+
     for(auto i : nocList) {
       delete i;
     }
@@ -390,8 +394,9 @@ namespace xdp {
             cuObj = cu.second;
             cuId = cu.second->getIndex();
             mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
-            devInfo->amList.push_back(mon); 
-            cuObj->setAccelMon(devInfo->amList.size()-1);
+            uint64_t slotID = (index - MIN_TRACE_ID_AM) / 16;
+            devInfo->amMap.emplace(slotID, mon);
+            cuObj->setAccelMon(slotID);
             if(debugIpData->m_properties & XAM_STALL_PROPERTY_MASK) {
               cuObj->setStallEnabled(true);
             }
@@ -421,12 +426,19 @@ namespace xdp {
           }
         }
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
-        devInfo->aimList.push_back(mon);
-        if(cuObj) {
-          cuObj->addAIM(devInfo->aimList.size()-1);
-        } else if(0 != monCuName.compare("shell")) {
-          // If not connected to CU and not a shell monitor, then a floating monitor
-          devInfo->hasFloatingAIM = true;
+        // If the AIM is an User Space AIM i.e. either connected to a CU or floating but not shell AIM
+        if(cuObj || (0 != monCuName.compare("shell"))) {
+          uint64_t slotID = (index - MIN_TRACE_ID_AIM) / 2;
+          devInfo->aimMap.emplace(slotID, mon);
+          if(cuObj) {
+            cuObj->addAIM(slotID);
+          } else {
+            // If not connected to CU and not a shell monitor, then a floating monitor
+            devInfo->hasFloatingAIM = true;
+          }
+        } else /* if(0 == monCuName.compare("shell")) */ {
+          // Shell AIM
+          devInfo->shellAIMList.push_back(mon);
         }
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
@@ -459,15 +471,22 @@ namespace xdp {
         }
 
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
-        devInfo->asmList.push_back(mon);
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
         }
-        if(cuObj) {
-          cuObj->addASM(devInfo->asmList.size()-1);
-        } else if(0 != monCuName.compare("shell")) {
-          // If not connected to CU and not a shell monitor, then a floating monitor
-          devInfo->hasFloatingASM = true;
+        // If the ASM is an User Space ASM i.e. either connected to a CU or floating but not shell ASM
+        if(cuObj || (0 != monCuName.compare("shell"))) {
+          uint64_t slotID = (index - MIN_TRACE_ID_ASM);
+          devInfo->asmMap.emplace(slotID, mon);
+          if(cuObj) {
+            cuObj->addASM(slotID);
+          } else {
+            // If not connected to CU and not a shell monitor, then a floating monitor
+            devInfo->hasFloatingASM = true;
+          }
+        } else /* if(0 == monCuName.compare("shell")) */ {
+          // Shell ASM
+          devInfo->shellASMList.push_back(mon);
         }
       } else if(debugIpData->m_type == AXI_NOC) {
         uint8_t readTrafficClass  = debugIpData->m_properties >> 2;
@@ -476,6 +495,7 @@ namespace xdp {
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
                           readTrafficClass, writeTrafficClass);
         devInfo->nocList.push_back(mon);
+        // nocList in xdp::DeviceIntf is sorted; Is that required here?
       } else if(debugIpData->m_type == TRACE_S2MM && (debugIpData->m_properties & 0x1)) {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
         devInfo->numTracePLIO++;
@@ -483,6 +503,7 @@ namespace xdp {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }
     }
+
     return true; 
   }
 
