@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 echo "INFO: Compiling soft kernel"
 cd soft_kernel
