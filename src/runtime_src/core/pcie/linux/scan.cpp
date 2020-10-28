@@ -518,13 +518,6 @@ pci_device(const std::string& drv_name, const std::string& sysfs) : sysfs_name(s
   else
     instance = get_render_value(sysfs::dev_root + sysfs + "/drm");
 
-  // In docker, all host sysfs nodes are available. So, we need to check
-  // devnode to make sure the device is really assigned to docker. For xoclv2
-  // driver, we only have flash subdev devnode when running golden image.
-  if (!bfs::exists(get_subdev_path("", INVALID_ID)) &&
-    !bfs::exists(get_subdev_path("flash", INVALID_ID)))
-    return;
-
   sysfs_get<int>("", "userbar", err, user_bar, 0);
   user_bar_size = bar_size(sysfs::dev_root + sysfs, user_bar);
   sysfs_get<bool>("", "ready", err, is_ready, false);
@@ -823,18 +816,18 @@ public:
   }
   std::string get_subdev_path(const std::string& subdev, uint32_t idx)
   {
+    std::string path("/dev/xfpga/");
     try {
       auto map = find_devfs_map(subdev);
-      std::string path("/dev/xfpga/");
       path += map.subdev_v2;
-      path += ".";
-      path += sysfs_name;
-      if (idx != (uint32_t)-1)
-        path += "-" + std::to_string(idx);
-      return path;
     } catch (...) {
-      throw std::runtime_error("get_subdev_path(" + subdev + ") is not supported");
+      path += subdev;
     }
+    path += ".";
+    path += sysfs_name;
+    if (idx != (uint32_t)-1)
+      path += "-" + std::to_string(idx);
+    return path;
   }
   int open(const std::string& subdev, int flag)
   {
@@ -1000,6 +993,13 @@ private:
       else
         pf = std::make_shared<pci_device_v2>(driver, path.filename().string());
       if(!pf || pf->domain == INVALID_ID)
+        continue;
+
+      // In docker, all host sysfs nodes are available. So, we need to check
+      // devnode to make sure the device is really assigned to docker. For
+      // xoclv2 driver, we only have flash devnode when running golden image.
+      if (!bfs::exists(pf->get_subdev_path("", -1)) &&
+        !bfs::exists(pf->get_subdev_path("flash", -1)))
         continue;
 
       auto& list = pf->is_mgmt() ? mgmt_list : user_list;
