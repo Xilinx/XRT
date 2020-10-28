@@ -18,19 +18,19 @@
 #ifndef _XRT_KERNEL_H_
 #define _XRT_KERNEL_H_
 
-#include "xrt.h"
 #include "ert.h"
-#include "experimental/xrt_uuid.h"
+#include "xrt.h"
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_device.h"
+#include "experimental/xrt_uuid.h"
 
 #ifdef __cplusplus
 # include "experimental/xrt_enqueue.h"
-# include <memory>
-# include <vector>
-# include <functional>
 # include <chrono>
 # include <cstdint>
+# include <functional>
+# include <memory>
+# include <vector>
 #endif
 
 /**
@@ -212,7 +212,7 @@ class run
   void
   set_arg(int index, ArgType&& arg)
   {
-    set_arg_at_index(index, get_arg_value(std::forward<ArgType>(arg)));
+    set_arg_at_index(index, &arg, sizeof(arg));
   }
 
   /**
@@ -270,7 +270,7 @@ class run
   void
   update_arg(int index, ArgType&& arg)
   {
-    update_arg_at_index(index, get_arg_value(std::forward<ArgType>(arg)));
+    update_arg_at_index(index, &arg, sizeof(arg));
   }
 
   /**
@@ -321,7 +321,7 @@ private:
 
   XCL_DRIVER_DLLESPEC
   void
-  set_arg_at_index(int index, const std::vector<uint32_t>&);
+  set_arg_at_index(int index, const void* value, size_t bytes);
 
   XCL_DRIVER_DLLESPEC
   void
@@ -329,19 +329,11 @@ private:
 
   XCL_DRIVER_DLLESPEC
   void
-  update_arg_at_index(int index, const std::vector<uint32_t>&);
+  update_arg_at_index(int index, const void* value, size_t bytes);
 
   XCL_DRIVER_DLLESPEC
   void
   update_arg_at_index(int index, const xrt::bo&);
-  
-  template<typename ArgType>
-  std::vector<uint32_t>
-  get_arg_value(ArgType&& arg)
-  {
-    auto words = std::max(sizeof(ArgType), sizeof(uint32_t)) / sizeof(uint32_t);
-    return { reinterpret_cast<const uint32_t*>(&arg), reinterpret_cast<const uint32_t*>(&arg) + words };
-  }
 
   template<typename ArgType, typename ...Args>
   void
