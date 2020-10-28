@@ -18,6 +18,8 @@
 #ifndef _XRT_NEXT_APIS_H_
 #define _XRT_NEXT_APIS_H_
 
+#include "xrt.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -261,7 +263,9 @@ xclIPName2Index(xclDeviceHandle handle, const char *ipName);
  *
  * Note: the IP irq would be disable after this is called. Caller could manually enable the interrupt by write().
  */
-XCL_DRIVER_DLLESPEC int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, unsigned int flags);
+XCL_DRIVER_DLLESPEC
+int
+xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, unsigned int flags);
 
 /**
  * xclCloseIPInterruptNotify() - Clost the interrupt notify fd
@@ -274,7 +278,9 @@ XCL_DRIVER_DLLESPEC int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_
  * This API would close the file descriptor used for IP interrupt notification.
  * Once this API was called, xclExecBuf() could schedule this specific IP.
  */
-XCL_DRIVER_DLLESPEC int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd);
+XCL_DRIVER_DLLESPEC
+int
+xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd);
 
 /**
  * xclErrorClear() - Clear all asynchronous error records in driver
