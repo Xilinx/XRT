@@ -18,12 +18,6 @@ typedef struct __attribute__ ((packed)) regfile {
     unsigned int size_log;
 } regfile_t;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-
 size_t write_log(FILE* f1, size_t size_log, char* bo_log, size_t curr_log_size)
 {
     fseek(f1, 0, SEEK_END);
@@ -213,7 +207,4 @@ int hello_world(void *args, struct sk_operations *ops)
     return 0;
 }
 
-#ifdef __cplusplus
-}
-#endif
 
