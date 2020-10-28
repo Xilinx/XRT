@@ -388,8 +388,9 @@ ert_30_isr(int irq, void *arg)
 			scheduler_reset(xs);
 		}
 #endif
-	} else if (ert_30) {
+	} else {
 		ERTUSER_DBG(ert_30, "unhandled isr irq %d", irq);
+		return IRQ_NONE;
 	}
 	ERTUSER_DBG(ert_30, "<- xocl_user_event %d\n", irq);
 	return IRQ_HANDLED;
