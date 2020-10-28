@@ -535,10 +535,18 @@ sync(const BufferObjectHandle& boh, size_t sz, size_t offset, direction dir1, bo
   BufferObject* bo = getBufferObject(boh);
   if (bo->nodma) {
     // sync is M2M copy between host and device handle
-    if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
-      return event(typed_event<int>(m_ops->mCopyBO(m_handle, bo->handle, bo->nodma_host_handle, sz, offset, offset)));
-    else
-      return event(typed_event<int>(m_ops->mCopyBO(m_handle, bo->nodma_host_handle, bo->handle, sz, offset, offset)));
+    if (dir == XCL_BO_SYNC_BO_TO_DEVICE) {
+      if (m_ops->mCopyBO(m_handle, bo->handle, bo->nodma_host_handle, sz, offset, offset))
+	throw std::runtime_error("failed to sync nodma buffer to device, "
+				 "is the buffer 64byte aligned?  Check dmesg for errors.");
+      return typed_event<int>(0);
+    }
+    else {
+      if (m_ops->mCopyBO(m_handle, bo->nodma_host_handle, bo->handle, sz, offset, offset))
+	throw std::runtime_error("failed to sync nodma buffer to host, "
+				 "is the buffer 64byte aligned? Check dmesg for errors.");
+      return typed_event<int>(0);
+    }
   }
 
   if (async) {

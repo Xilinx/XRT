@@ -469,7 +469,7 @@ As an example, assume a kernel name is foo having 3 CUs foo_1, foo_2, foo_3. The
       :number-lines: 35
           
            auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
-           auto krnl = xrt::kernel(device, name, xclbin_uuid); 
+           auto krnl = xrt::kernel(device, xclbin_uuid, name); 
       
 Exclusive access of the kernel's CU
 ***********************************
@@ -489,7 +489,7 @@ The API ``xrtPLKernelOpen`` opens a kernel's CU in a shared mode so that the CU 
 .. code:: c++
       :number-lines: 39
        
-           auto krnl = xrt::kernel(device, name, xclbin_uuid, xrt::kernel::cu_access_mode::exclusive); 
+           auto krnl = xrt::kernel(device, xclbin_uuid, name, xrt::kernel::cu_access_mode::exclusive); 
 
    
 
@@ -555,7 +555,7 @@ In the above code block
            int read_data; 
            int write_data = 7; 
               
-           auto krnl = xrt::kernel(device, "foo:{foo_1}", xclbin_uuid, true); 
+           auto krnl = xrt::kernel(device, xclbin_uuid, "foo:{foo_1}", true); 
 
            read_data = kernel.read_register(READ_OFFSET);
            kernel.write_register(WRITE_OFFSET,write_data); 
@@ -596,7 +596,7 @@ However, XRT also provides APIs to obtain the register offset for CU arguments. 
 
            // Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively) 
            
-           auto krnl = xrt::kernel(device, "foo:{foo_1}", xclbin_uuid, true); 
+           auto krnl = xrt::kernel(device, xclbin_uuid, "foo:{foo_1}", true); 
            auto offset = krnl.offset(2);
 
  

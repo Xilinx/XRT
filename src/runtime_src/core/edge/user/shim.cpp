@@ -398,6 +398,7 @@ xclGetDeviceInfo2(xclDeviceInfo2 *info)
 
   info->mDDRBankCount = 1;
   info->mOCLFrequency[0] = mKernelClockFreq;
+  info->mTimeStamp = 0;
 
 #if defined(__aarch64__)
   info->mNumCDMA = 1;

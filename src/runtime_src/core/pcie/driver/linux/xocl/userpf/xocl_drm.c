@@ -258,10 +258,24 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 	}
 
-	if (ret > 0)
+	/**
+	 * vmf_*** functions returning VM_FAULT_XXX values.(all positive values)
+	 * vm_*** functions returning 0 on success and errno on failure. (Zero or negative)
+	 */ 
+	if (ret > 0) {
+		/* Comes here only in vmf_*** case. */
 		return ret;
+	}
 
+	/**
+	 *  Comes here only in vm_*** case.
+	 *  When two threads enter this function at the same time, the first thread will
+	 *  successfully insert the page. The second thread will call the insert page, 
+	 *  but gets back -EBUSY (-16) since the page has already been inserted. So should 
+	 *  treat -EBUSY as success
+	 */
 	switch (ret) {
+	case -EBUSY:
 	case -EAGAIN:
 	case 0:
 	case -ERESTARTSYS:

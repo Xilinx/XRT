@@ -289,6 +289,14 @@ kds_interrupt_store(struct device *dev, struct device_attribute *da,
 	if (kds->cu_intr == cu_intr)
 		goto done;
 
+	if (cu_intr) {
+		xocl_ert_30_mb_sleep(xdev);
+		xocl_ert_30_cu_intr_cfg(xdev);
+	} else {
+		xocl_ert_30_mb_wakeup(xdev);
+		xocl_ert_30_ert_intr_cfg(xdev);
+	}
+
 	kds->cu_intr = cu_intr;
 	kds_cfg_update(&XDEV(xdev)->kds);
 
@@ -344,6 +352,10 @@ ert_disable_store(struct device *dev, struct device_attribute *da,
 		mutex_unlock(&XDEV(xdev)->kds.lock);
 		return -EINVAL;
 	}
+
+	/* If ERT subdev doesn't present, cound not enable ERT */
+	if (!XDEV(xdev)->kds.ert)
+		disable = 1;
 
 	XDEV(xdev)->kds.ert_disable = disable;
 	mutex_unlock(&XDEV(xdev)->kds.lock);

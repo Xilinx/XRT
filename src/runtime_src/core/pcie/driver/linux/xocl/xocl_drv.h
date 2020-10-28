@@ -1362,10 +1362,11 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
 	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
 #define XOCL_IS_P2P_MEM(topo, idx)					\
-	(topo->m_mem_data[idx].m_type == MEM_DDR3 ||			\
+	((topo->m_mem_data[idx].m_type == MEM_DDR3 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DRAM ||			\
-	 topo->m_mem_data[idx].m_type == MEM_HBM)
+	 topo->m_mem_data[idx].m_type == MEM_HBM) &&			\
+	!IS_HOST_MEM(topo->m_mem_data[i].m_tag))
 
 struct xocl_mig_label {
 	unsigned char		tag[16];
@@ -1826,6 +1827,7 @@ struct xocl_p2p_funcs {
 	int (*refresh_rbar)(struct platform_device *pdev);
 	int (*get_bar_paddr)(struct platform_device *pdev, ulong bank_addr,
 			     ulong bank_size, ulong *bar_paddr);
+	int (*adjust_mem_topo)(struct platform_device *pdev, void *mem_topo);
 };
 #define	P2P_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_P2P).pldev
 #define	P2P_OPS(xdev)				\
@@ -1864,6 +1866,9 @@ struct xocl_p2p_funcs {
 #define xocl_p2p_get_bar_paddr(xdev, ba, bs, pa)				\
 	(P2P_CB(xdev) ?					\
 	 P2P_OPS(xdev)->get_bar_paddr(P2P_DEV(xdev), ba, bs, pa) : -ENODEV)
+#define xocl_p2p_adjust_mem_topo(xdev, mem_topo)			\
+	(P2P_CB(xdev) ?					\
+	 P2P_OPS(xdev)->adjust_mem_topo(P2P_DEV(xdev), mem_topo) : -ENODEV)
 
 /* Each P2P chunk we set up must be at least 256MB */
 #define XOCL_P2P_CHUNK_SHIFT		28

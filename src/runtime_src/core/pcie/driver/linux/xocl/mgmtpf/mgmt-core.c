@@ -630,16 +630,16 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 		xclmgmt_clock_get_data_impl(lro, buf);
 }
 
-static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t entry_sz)
+static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t entry_sz, size_t entries, size_t offset_sz)
 {
 	int i;
 	size_t offset = 0;
 
 	xocl_lock_xdev(lro);
-	for (i = 0; i < MAX_M_COUNT; i++) {
+	for (i = 0; i < entries; i++) {
 
 		xocl_mig_get_data(lro, i, mig_ecc+offset, entry_sz);
-		offset += entry_sz;
+		offset += offset_sz;
 	}
 	xocl_unlock_xdev(lro);
 }
@@ -698,7 +698,7 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 
 static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
-	size_t resp_sz = 0, current_sz = 0;
+	size_t resp_sz = 0, current_sz = 0, entry_sz = 0, entries = 0;
 	struct xcl_mailbox_subdev_peer *subdev_req = (struct xcl_mailbox_subdev_peer *)data_ptr;
 
 	BUG_ON(!lro);
@@ -716,9 +716,19 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		(void) xclmgmt_icap_get_data(lro, *resp);
 		break;
 	case XCL_MIG_ECC:
-		current_sz = sizeof(struct xcl_mig_ecc)*MAX_M_COUNT;
+		/* when allocating response buffer, 
+		 * we shall use remote_entry_size * min(local_num_entries, remote_num_entries), 
+		 * and check the final total buffer size.
+		 * when filling up each entry, we should use min(local_entry_size, remote_entry_size)
+		 * when moving to next entry, we should use remote_entry_size as step size.
+		 */
+		entries = min_t(size_t, subdev_req->entries, MAX_M_COUNT);
+		current_sz = subdev_req->size*entries;
+		if (current_sz > (4*PAGE_SIZE))
+			break;
 		*resp = vzalloc(current_sz);
-		(void) xclmgmt_mig_get_data(lro, *resp, subdev_req->size);
+		entry_sz = min_t(size_t, subdev_req->size, sizeof(struct xcl_mig_ecc));
+		(void) xclmgmt_mig_get_data(lro, *resp, entry_sz, entries, subdev_req->size);
 		break;
 	case XCL_FIREWALL:
 		current_sz = sizeof(struct xcl_firewall);

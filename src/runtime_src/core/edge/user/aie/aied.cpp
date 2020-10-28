@@ -20,7 +20,7 @@
 #include <unistd.h>
 #include <sstream>
 #include <iostream>
-
+#include <csignal>
 #include "aied.h"
 #include "core/edge/include/zynq_ioctl.h"
 #include "core/edge/user/shim.h"
@@ -32,28 +32,35 @@ namespace zynqaie {
 Aied::Aied(xrt_core::device* device): mCoreDevice(device)
 {
   done = false;
-  mPollingThread = std::thread(&Aied::pollAIE, this);
+  pthread_create(&ptid, NULL, &Aied::pollAIE, this);
 }
 
 Aied::~Aied()
 {
   done = true;
-  mPollingThread.join();
+  pthread_kill(ptid, SIGUSR1);
+  pthread_join(ptid, NULL);
 }
 
-void 
-Aied::pollAIE()
+/* Dummy signal handler for SIGTERM */
+static void signalHandler(int signum) {}
+
+void* 
+Aied::pollAIE(void* arg)
 {
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(mCoreDevice->get_device_handle());
+  Aied* ai = (Aied*)arg;
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(ai->mCoreDevice->get_device_handle());
   xclAIECmd cmd;
+
+  signal(SIGUSR1, signalHandler);
 
   /* Ever running thread */
   while (1) {
     /* Calling XRT interface to wait for commands */
     if (drv->xclAIEGetCmd(&cmd) != 0) {
       /* break if destructor called */
-      if (done)
-        break;
+      if (ai->done)
+        return NULL;
       continue;
     }
 
@@ -62,7 +69,7 @@ Aied::pollAIE()
       boost::property_tree::ptree pt;
       boost::property_tree::ptree pt_status;
 
-      for (auto graph : mGraphs) {
+      for (auto graph : ai->mGraphs) {
         pt.put(graph->getname(), graph->getstatus());
       }
 

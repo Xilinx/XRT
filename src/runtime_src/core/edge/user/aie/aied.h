@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <thread>
+#include <pthread.h> 
 #include "core/common/device.h"
 #include "core/edge/user/aie/graph.h"
 
@@ -41,10 +42,10 @@ public:
 
 private:
   bool done;
-  void pollAIE();
-  std::thread mPollingThread;
+  static void* pollAIE(void *arg);
   xrt_core::device *mCoreDevice;
   std::vector<const graph_type*> mGraphs;
+  pthread_t ptid;
 };
 } // end namespace
 
