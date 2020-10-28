@@ -112,7 +112,7 @@ namespace xdp {
     // A mapping of arguments to memory resources
     std::map<int32_t, std::vector<int32_t>> connections ;
 
-    uint32_t amId;
+    int32_t amId;
     std::vector<uint32_t> aimIds;
     std::vector<uint32_t> asmIds;
 
@@ -136,8 +136,8 @@ namespace xdp {
     inline std::map<int32_t, std::vector<int32_t>>* getConnections()
     {  return &connections; }
 
-    void    setAccelMon(uint32_t id) { amId = id; }
-    uint32_t getAccelMon() { return amId; }
+    void    setAccelMon(int32_t id) { amId = id; }
+    int32_t getAccelMon() { return amId; }
  
     void addAIM(uint32_t id) { aimIds.push_back(id); }
     void addASM(uint32_t id) { asmIds.push_back(id); }

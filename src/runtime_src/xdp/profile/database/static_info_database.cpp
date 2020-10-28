@@ -25,7 +25,7 @@
 #endif
 
 #ifdef _WIN32
-#pragma warning (disable : 4996 4267 4244)
+#pragma warning (disable : 4996 4267 4244 4200)
 /* 4267 : Disable warning for conversion of size_t to int32_t */
 /* 4244 : Disable warning for conversion of uint64_t to uint32_t */
 #endif
