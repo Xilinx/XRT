@@ -17,6 +17,7 @@
 #ifndef _XMAAPP_PARAM_H_
 #define _XMAAPP_PARAM_H_
 
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
