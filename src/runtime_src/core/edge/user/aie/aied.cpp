@@ -38,7 +38,7 @@ Aied::Aied(xrt_core::device* device): mCoreDevice(device)
 Aied::~Aied()
 {
   done = true;
-  pthread_kill(ptid,SIGTERM);
+  pthread_kill(ptid, SIGUSR1);
   pthread_join(ptid, NULL);
 }
 
@@ -52,7 +52,7 @@ Aied::pollAIE(void* arg)
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(ai->mCoreDevice->get_device_handle());
   xclAIECmd cmd;
 
-  signal(SIGTERM, signalHandler);
+  signal(SIGUSR1, signalHandler);
 
   /* Ever running thread */
   while (1) {
