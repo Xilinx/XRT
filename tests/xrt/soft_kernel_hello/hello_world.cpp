@@ -41,6 +41,14 @@ typedef struct __attribute__ ((packed)) regfile {
     uint32_t  dummy[8];//Extra margin
 } regfile_t;
 
+typedef struct __attribute__ ((packed)) regfile_hw {
+    uint8_t reserved[16];//Reserved till 0x10 addr; 16 bytes
+    //Start of hardware PL kernel arguments below
+    uint64_t out_hello;
+    uint32_t  dummy[8];//Extra margin
+} regfile_hw_t;
+
+
 
 
 int main(int argc, char *argv[])
@@ -114,12 +122,72 @@ int main(int argc, char *argv[])
     enc_props.dev_index = dev_id;
     enc_props.ddr_bank_index = -1;//XMA to select the ddr bank based on xclbin meta data
     //enc_props.ddr_bank_index = 2;//XMA to use user provided ddr bank; error if invalid ddr bank
+
+    //hardware PL hello CUs are: 0 - 7
+    enc_props.cu_index = 0;//cu_index of hw kernel in xclbin; 
+
+    //Create dummy xma session
+    XmaEncoderSession *xma_enc_session1 = xma_enc_session_create(&enc_props);
+    if (!xma_enc_session1) {
+        std::cout << "ERROR: Failed to create dummy xma encoder session for PL hello CU" << std::endl;
+        std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
+        return -1;
+    }
+
+    XmaBufferObj buf_hello = xma_plg_buffer_alloc(xma_enc_session1->base, size_hello, false, &rc);
+    if (rc != 0) {
+        std::cout << "ERROR: Failed to allocate device buffer for hello_world" << std::endl;
+        std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
+        return -1;
+    }
+
+    regfile_hw_t regmap1;
+    std::memset(&regmap1, 0, sizeof(regmap1));
+
+    regmap1.out_hello = buf_hello.paddr;
+
+    //Start hardware PL kernel
+    XmaCUCmdObj cu_cmd1 = xma_plg_schedule_work_item(xma_enc_session1->base, (void*)&regmap1, sizeof(regmap1), &rc);
+    if (rc != 0) {
+        std::cout << "ERROR: Failed to start hello PL kernel" << std::endl;
+        std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
+        return -1;
+    }
+
+    //Wait for the hello PL kernel to finish
+    xma_plg_is_work_item_done(xma_enc_session1->base, 10000);
+
+    //DMA kernel output to host
+    rc = xma_plg_buffer_read(xma_enc_session1->base, buf_hello, buf_hello.size, 0);
+    if (rc != 0) {
+        std::cout << "ERROR: DMA failed" << std::endl;
+        std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
+        return -1;
+    }
+    std::string hello_str1((char *)buf_hello.data);
+    if (hello_str1.find("Hello World") != std::string::npos) {
+        std::cout << "Hello world check on hardware PL CU completed: Correct" << std::endl;
+    } else {
+        std::cout << "ERROR: Hello world check failed" << std::endl;
+        std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
+    }
+
+    //Clear out the buffer on device for next soft kernel check
+    std::memset(buf_hello.data, 0, buf_hello.size);
+    rc = xma_plg_buffer_write(xma_enc_session1->base, buf_hello, buf_hello.size, 0);
+    if (rc != 0) {
+        std::cout << "ERROR: DMA failed" << std::endl;
+        std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
+        return -1;
+    }
+
+    //soft hello CUs are: 8 - 15
     enc_props.cu_index = 8;//cu_index of soft kernel in xclbin; 
 
     //Create dummy xma session
-    XmaEncoderSession *xma_enc_session = xma_enc_session_create(&enc_props);
-    if (!xma_enc_session) {
-        std::cout << "ERROR: Failed to create dummy xma encoder session" << std::endl;
+    XmaEncoderSession *xma_enc_session2 = xma_enc_session_create(&enc_props);
+    if (!xma_enc_session2) {
+        std::cout << "ERROR: Failed to create dummy xma encoder session for soft hello_world CU" << std::endl;
         std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
         return -1;
     }
@@ -127,13 +195,7 @@ int main(int argc, char *argv[])
 
     regfile_t regmap;
     std::memset(&regmap, 0, sizeof(regmap));
-    XmaBufferObj buf_hello = xma_plg_buffer_alloc(xma_enc_session->base, size_hello, false, &rc);
-    if (rc != 0) {
-        std::cout << "ERROR: Failed to allocate device buffer for hello_world" << std::endl;
-        std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
-        return -1;
-    }
-    XmaBufferObj buf_log = xma_plg_buffer_alloc(xma_enc_session->base, size_log, false, &rc);
+    XmaBufferObj buf_log = xma_plg_buffer_alloc(xma_enc_session2->base, size_log, false, &rc);
     if (rc != 0) {
         std::cout << "ERROR: Failed to allocate device buffer for log files" << std::endl;
         std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
@@ -164,7 +226,7 @@ int main(int argc, char *argv[])
     regmap.size_log = size_log;
 
     //Start soft kernel
-    XmaCUCmdObj cu_cmd = xma_plg_schedule_work_item(xma_enc_session->base, (void*)&regmap, sizeof(regmap), &rc);
+    XmaCUCmdObj cu_cmd2 = xma_plg_schedule_work_item(xma_enc_session2->base, (void*)&regmap, sizeof(regmap), &rc);
     if (rc != 0) {
         std::cout << "ERROR: Failed to start soft kernel" << std::endl;
         std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
@@ -172,24 +234,24 @@ int main(int argc, char *argv[])
     }
 
     //Wait for the soft kernel to finish
-    xma_plg_is_work_item_done(xma_enc_session->base, 10000);
+    xma_plg_is_work_item_done(xma_enc_session2->base, 10000);
 
     //DMA kernel output to host
-    rc = xma_plg_buffer_read(xma_enc_session->base, buf_hello, buf_hello.size, 0);
+    rc = xma_plg_buffer_read(xma_enc_session2->base, buf_hello, buf_hello.size, 0);
     if (rc != 0) {
         std::cout << "ERROR: DMA failed" << std::endl;
         std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
         return -1;
     }
-    rc = xma_plg_buffer_read(xma_enc_session->base, buf_log, buf_log.size, 0);
+    rc = xma_plg_buffer_read(xma_enc_session2->base, buf_log, buf_log.size, 0);
     if (rc != 0) {
         std::cout << "ERROR: DMA failed" << std::endl;
         std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
         return -1;
     }
     //memcpy(&out_size, ctx->encoder.output_len[nb].data, ctx->encoder.output_len[nb].size);
-    std::string hello_str((char *)buf_hello.data);
-    if (hello_str.find("Hello World - ") != std::string::npos) {
+    std::string hello_str2((char *)buf_hello.data);
+    if (hello_str2.find("Hello World - ") != std::string::npos) {
         std::cout << "TEST PASSED: Hello world check completed" << std::endl;
     } else {
         std::cout << "ERROR: Hello world check failed" << std::endl;
@@ -197,7 +259,7 @@ int main(int argc, char *argv[])
     }
     std::ofstream hello_stream(hello_file, std::ios::binary | std::ios::out);
     if (hello_stream.is_open()) {
-        hello_stream.write(hello_str.c_str(), hello_str.size() + 1);
+        hello_stream.write(hello_str2.c_str(), hello_str2.size() + 1);
         hello_stream.close();
     }
     std::ofstream log_stream(log_file, std::ios::binary | std::ios::out);
