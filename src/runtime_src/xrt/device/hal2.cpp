@@ -428,6 +428,8 @@ alloc_nodma(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     // Host only
     auto bo = getBufferObject(boh);
     bo->nodma_host_handle = m_ops->mAllocBO(m_handle, sz, 0, XCL_BO_FLAGS_HOST_ONLY);
+    if (bo->nodma_host_handle == NULLBO)
+        throw std::bad_alloc();
 
     // Map the host only BO and use this as host addr.
     bo->hostAddr = m_ops->mMapBO(m_handle, bo->nodma_host_handle, true /*write*/);
