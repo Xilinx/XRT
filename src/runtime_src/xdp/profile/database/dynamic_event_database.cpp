@@ -266,6 +266,11 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
+    if (aieSamples.find(deviceId) == aieSamples.end()) {
+      std::vector<CounterSample> empty;
+      aieSamples[deviceId] = empty;
+    }
+
     return aieSamples[deviceId] ;
   }
 
