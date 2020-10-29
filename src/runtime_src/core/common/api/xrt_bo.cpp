@@ -24,12 +24,12 @@
 #include "bo.h"
 #include "device_int.h"
 #include "kernel_int.h"
-#include "core/common/system.h"
 #include "core/common/device.h"
-#include "core/common/query_requests.h"
 #include "core/common/memalign.h"
-#include "core/common/unistd.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
+#include "core/common/system.h"
+#include "core/common/unistd.h"
 
 #include <map>
 #include <set>
@@ -102,11 +102,13 @@ namespace xrt {
 // A buffer is freed when last references is released.
 class bo_impl
 {
+  static constexpr uint64_t no_addr = std::numeric_limits<uint64_t>::max();
 protected:
   std::shared_ptr<xrt_core::device> device;
-  xclBufferHandle handle;  // driver handle
-  size_t size;             // size of buffer
-  bool free_bo;            // should dtor free bo
+  xclBufferHandle handle;           // driver handle
+  size_t size;                      // size of buffer
+  mutable uint64_t addr = no_addr;  // bo device address
+  bool free_bo;                     // should dtor free bo
 
 public:
   explicit bo_impl(size_t sz)
@@ -250,9 +252,12 @@ public:
   virtual uint64_t
   get_address() const
   {
+    if (addr != no_addr)
+      return addr;
+
     xclBOProperties prop;
     device->get_bo_properties(handle, &prop);
-    return prop.paddr;
+    return (addr = prop.paddr);
   }
 
   virtual size_t get_size()      const { return size;    }

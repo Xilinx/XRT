@@ -145,8 +145,8 @@ run(std::vector<job_type>& cmds, size_t total)
 static void
 run(const xrt::device& device, xrt::kernel& aes)
 {
-  std::vector<size_t> cmds_per_run = { 16, 100, 1000, 10000, 100000, 1000000 };
-  size_t expected_cmds = 10000;
+  std::vector<size_t> cmds_per_run = { 100, 1000, 10000, 100000, 1000000 };
+  size_t expected_cmds = 1000;
 
   std::vector<job_type> jobs;
   jobs.reserve(expected_cmds);

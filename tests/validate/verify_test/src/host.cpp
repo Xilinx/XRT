@@ -16,7 +16,7 @@
 #include "xcl2.hpp"
 #include <algorithm>
 #include <vector>
-#define LENGTH 12
+#define LENGTH 64
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -92,20 +92,20 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  OCL_CHECK(err,
-            cl::Buffer d_buf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY,
-                             sizeof(char) * LENGTH, h_buf.data(), &err));
+  OCL_CHECK(err, cl::Buffer d_buf(context, CL_MEM_WRITE_ONLY,
+                                  sizeof(char) * LENGTH, nullptr, &err));
 
   OCL_CHECK(err, err = krnl_verify.setArg(0, d_buf));
 
   // Launch the Kernel
   OCL_CHECK(err, err = q.enqueueTask(krnl_verify));
-
-  // Copy Result from Device Global Memory to Host Local Memory
-  OCL_CHECK(err, err = q.enqueueMigrateMemObjects({d_buf},
-                                                  CL_MIGRATE_MEM_OBJECT_HOST));
   q.finish();
-  for (int i = 0; i < LENGTH; i++) {
+
+  OCL_CHECK(err,
+            err = q.enqueueReadBuffer(d_buf, CL_TRUE, 0, sizeof(char) * LENGTH,
+                                      h_buf.data(), nullptr, nullptr));
+  q.finish();
+  for (int i = 0; i < 12; i++) {
     std::cout << h_buf[i];
   }
   std::cout << "TEST PASSED\n";
