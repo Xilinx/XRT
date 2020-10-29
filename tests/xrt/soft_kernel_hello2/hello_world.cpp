@@ -88,7 +88,8 @@ int main(int argc, char *argv[])
     auto uuid = device.load_xclbin(xclbin_file);
     auto kernel1 = xrt::kernel(device, uuid, cu1_name);
     auto grpidx1 = kernel1.group_id(0);//Memory bank index
-    auto kernel_soft = xrt::kernel(device, uuid, cu_soft_name);
+    //auto kernel_soft = xrt::kernel(device, uuid, cu_soft_name);//Soft kenrl not working
+    auto kernel_soft = xrt::kernel(device, uuid, cu1_name);
     auto grpidx_soft = kernel_soft.group_id(0);//Memory bank index
 
     if (argv[5])
@@ -118,9 +119,10 @@ int main(int argc, char *argv[])
     std::memset((void*)buf_hello_ptr, 0, size_hello);
     //Clear out the buffer before test
     buf_hello.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    auto run1 = kernel1(buf_hello.address());
-    run1.start();
+    auto run1 = kernel1(buf_hello);//Set arguments and start kernel
     run1.wait();
+    //run1(buf_new);//Set new arguments and start kernel
+    //run1.wait();
 
     //DMA kernel output to host
     buf_hello.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
@@ -144,8 +146,7 @@ int main(int argc, char *argv[])
         std::cout << ">>>>>>>> TEST FAILED >>>>>>>" << std::endl;
         return -1;
     }
-    auto run2 = kernel_soft(buf_hello.address(), buf_log.address());
-    run2.start();
+    auto run2 = kernel_soft(buf_hello, buf_log);
     run2.wait();
 
     //DMA kernel output to host
