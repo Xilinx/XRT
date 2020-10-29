@@ -261,7 +261,8 @@ namespace xdp {
     bool isRead = (objKind == RTUtil::READ_BUFFER);
     bool isHostTx = (objKind == RTUtil::READ_BUFFER || objKind == RTUtil::WRITE_BUFFER);
     bool isP2PTx = (objKind == RTUtil::READ_BUFFER_P2P || objKind == RTUtil::WRITE_BUFFER_P2P);
-
+    bool isHostMemory = (objKind == RTUtil::READ_BUFFER_HOST_MEMORY || objKind == RTUtil::WRITE_BUFFER_HOST_MEMORY);
+    
     // Log Guidance Data
     // Time period during which host buffer transfers were active
     // In case of parallel transfers, log first start and last end
@@ -291,7 +292,8 @@ namespace xdp {
     // We can safely discard those events
     if (isEnd && (traceObject->getStart() > 0.0)) {
       // Collect performance counters
-      mProfileCounters->logBufferTransfer(objKind, objSize, (traceObject->End - traceObject->Start), contextId, numDevices);
+      if (!isHostMemory)
+        mProfileCounters->logBufferTransfer(objKind, objSize, (traceObject->End - traceObject->Start), contextId, numDevices);
 
       if (isHostTx) {
         mProfileCounters->pushToSortedTopUsage(traceObject, isRead);

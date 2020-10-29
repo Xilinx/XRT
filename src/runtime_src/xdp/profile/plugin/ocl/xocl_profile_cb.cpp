@@ -339,9 +339,14 @@ cb_action_map(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
+    // Catch if writing via slave bridge
+    auto ext_flags = xocl::xocl(buffer)->get_ext_flags();
+    auto kind = (ext_flags & XCL_MEM_EXT_HOST_ONLY) ? 
+        xdp::RTUtil::READ_BUFFER_HOST_MEMORY : xdp::RTUtil::READ_BUFFER;
+
     OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
-       ,xdp::RTUtil::READ_BUFFER
+       ,kind
        ,commandState
        ,size
        ,contextId
@@ -448,9 +453,14 @@ cb_action_unmap (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
+    // Catch if writing via slave bridge
+    auto ext_flags = xocl::xocl(buffer)->get_ext_flags();
+    auto kind = (ext_flags & XCL_MEM_EXT_HOST_ONLY) ? 
+        xdp::RTUtil::WRITE_BUFFER_HOST_MEMORY : xdp::RTUtil::WRITE_BUFFER;
+
     OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
-       ,xdp::RTUtil::WRITE_BUFFER
+       ,kind
        ,commandState
        ,size
        ,contextId
@@ -493,9 +503,14 @@ cb_action_ndrange_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
+    // Catch if writing via slave bridge
+    auto ext_flags = xocl::xocl(mem0)->get_ext_flags();
+    auto kind = (ext_flags & XCL_MEM_EXT_HOST_ONLY) ? 
+        xdp::RTUtil::WRITE_BUFFER_HOST_MEMORY : xdp::RTUtil::WRITE_BUFFER;
+
     OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(mem0)
-       ,xdp::RTUtil::WRITE_BUFFER
+       ,kind
        ,commandState
        ,totalSize
        ,contextId
@@ -535,9 +550,14 @@ cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSi
     auto numDevices = event->get_context()->num_devices();
     auto commandQueueId = event->get_command_queue()->get_uid();
     auto threadId = std::this_thread::get_id();
-    xdp::RTUtil::e_profile_command_kind kind = (flags & CL_MIGRATE_MEM_OBJECT_HOST) ?
-      xdp::RTUtil::READ_BUFFER : xdp::RTUtil::WRITE_BUFFER;
+    
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
+
+    // Determine kind of transfer
+    auto ext_flags = xocl::xocl(mem0)->get_ext_flags();
+    auto kind = (flags & CL_MIGRATE_MEM_OBJECT_HOST) ?
+      ((ext_flags & XCL_MEM_EXT_HOST_ONLY) ? xdp::RTUtil::READ_BUFFER_HOST_MEMORY  : xdp::RTUtil::READ_BUFFER) :
+      ((ext_flags & XCL_MEM_EXT_HOST_ONLY) ? xdp::RTUtil::WRITE_BUFFER_HOST_MEMORY : xdp::RTUtil::WRITE_BUFFER);
 
     OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(mem0)
