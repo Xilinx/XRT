@@ -73,6 +73,8 @@ typedef struct XmaFilterProperties
     XmaFilterPortProperties  input;
     /** output data port instance */
     XmaFilterPortProperties  output;
+    /** number of actual filter outputs */
+    int32_t                   num_outputs;
     /* user-defineable properties */
     /** array of custom parameters for port */
     XmaParameter             *params;
