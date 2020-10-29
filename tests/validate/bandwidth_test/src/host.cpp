@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     boost::property_tree::read_json(platform_json, loadPtreeRoot);
     boost::property_tree::ptree temp;
 
-    temp = loadPtreeRoot.get_child("total_banks");
+    temp = loadPtreeRoot.get_child("total_ddr_banks");
     NUM_KERNEL = temp.get_value<int>();
   } catch (const std::exception &e) {
     std::string msg(
@@ -148,12 +148,12 @@ int main(int argc, char **argv) {
     // be used to reference the memory locations on the device.
     // Creating Buffers
     for (int i = 0; i < NUM_KERNEL; i++) {
-      OCL_CHECK(err, input_buffer[i] = cl::Buffer(
-                         context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
-                         vector_size_bytes, input_host.data(), &err));
-      OCL_CHECK(err, output_buffer[i] = cl::Buffer(
-                         context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
-                         vector_size_bytes, output_host[i].data(), &err));
+      OCL_CHECK(err,
+                input_buffer[i] = cl::Buffer(context, CL_MEM_READ_WRITE,
+                                             vector_size_bytes, nullptr, &err));
+      OCL_CHECK(err, output_buffer[i] =
+                         cl::Buffer(context, CL_MEM_READ_WRITE,
+                                    vector_size_bytes, nullptr, &err));
     }
 
     for (int i = 0; i < NUM_KERNEL; i++) {
@@ -163,12 +163,13 @@ int main(int argc, char **argv) {
       OCL_CHECK(err, err = krnls[i].setArg(3, reps));
     }
 
-    // Copy input data to device global memory
     for (int i = 0; i < NUM_KERNEL; i++) {
-      OCL_CHECK(err, err = q.enqueueMigrateMemObjects(
-                         {input_buffer[i]}, 0 /* 0 means from host*/));
+      OCL_CHECK(err, err = q.enqueueWriteBuffer(
+                         input_buffer[i], CL_TRUE, 0, vector_size_bytes,
+                         input_host.data(), nullptr, nullptr));
+      OCL_CHECK(err, err = q.finish());
     }
-    q.finish();
+
     std::chrono::high_resolution_clock::time_point timeStart;
     std::chrono::high_resolution_clock::time_point timeEnd;
 
@@ -178,14 +179,15 @@ int main(int argc, char **argv) {
       OCL_CHECK(err, err = q.enqueueTask(krnls[i]));
     }
     q.finish();
-
-    // copy results back from OpenCL buffer
-    for (int i = 0; i < NUM_KERNEL; i++) {
-      OCL_CHECK(err, err = q.enqueueMigrateMemObjects(
-                         {output_buffer[i]}, CL_MIGRATE_MEM_OBJECT_HOST));
-    }
-    q.finish();
     timeEnd = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < NUM_KERNEL; i++) {
+      OCL_CHECK(err, err = q.enqueueReadBuffer(
+                         output_buffer[i], CL_TRUE, 0, vector_size_bytes,
+                         output_host[i].data(), nullptr, nullptr));
+      OCL_CHECK(err, err = q.finish());
+    }
+
     // check
     for (int i = 0; i < NUM_KERNEL; i++) {
       for (uint32_t j = 0; j < DATA_SIZE; j++) {
