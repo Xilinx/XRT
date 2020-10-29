@@ -49,8 +49,8 @@ public:
   recv_frame_list(XmaFrame **frame) const;
 
   //get_status of filter cu, kernel properties and output status
-  //user input is array of XmaParameter; User/plugin managed
-  //This optional for plugins; some plugins may not implement this functions interface
+  //user input is blank array of XmaParameter to get the result; User/plugin managed
+  //This is optional for plugins; some plugins may not implement this functions interface
   int32_t
   get_status(XmaParameter *param, int32_t num_params) const;
 
