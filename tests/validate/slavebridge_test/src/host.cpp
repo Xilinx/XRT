@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     boost::property_tree::read_json(platform_json, loadPtreeRoot);
     boost::property_tree::ptree temp;
 
-    temp = loadPtreeRoot.get_child("total_banks");
+    temp = loadPtreeRoot.get_child("total_host_banks");
     NUM_KERNEL = temp.get_value<int>();
 
   } catch (const std::exception &e) {
