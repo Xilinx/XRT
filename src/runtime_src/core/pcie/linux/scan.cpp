@@ -817,16 +817,16 @@ public:
   std::string get_subdev_path(const std::string& subdev, uint32_t idx)
   {
     std::string path("/dev/xfpga/");
+    path += sysfs_name;
+    path += "/";
     try {
       auto map = find_devfs_map(subdev);
       path += map.subdev_v2;
     } catch (...) {
       path += subdev;
     }
-    path += ".";
-    path += sysfs_name;
     if (idx != (uint32_t)-1)
-      path += "-" + std::to_string(idx);
+      path += "." + std::to_string(idx);
     return path;
   }
   int open(const std::string& subdev, int flag)
