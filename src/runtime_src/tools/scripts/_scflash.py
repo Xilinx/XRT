@@ -178,6 +178,7 @@ def main():
         #1. kill processes running on the other FPGA
         #2. call 'xbmgmt flash' on the specified FPGA
         #3. call 'xbmgmt reset --ert' on the 'fixed sc' FPGA to reboot cmc
+        #   this step 3 is a workaround to https://jira.xilinx.com/browse/CR-1076187
         #4. wait for FPGAs back online
         #Note: since this python is called by xbmgmt, so we can't do a card reset
         #      here, otherwise, card reset will remove the xclmgmt which is still
