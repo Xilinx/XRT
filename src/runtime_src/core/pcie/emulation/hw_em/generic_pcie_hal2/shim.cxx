@@ -628,7 +628,6 @@ namespace xclhwemhal2 {
 
             uint64_t base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
             mCuBaseAddress = base & 0xFFFFFFFF00000000;
-            mCuIndxVsBaseAddrMap[mCuIndx++] = base;
 
             std::string vbnv  = mDeviceInfo.mName;
             //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
@@ -3350,13 +3349,43 @@ int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char
       }
   }
 
+//Construct CU index vs Base address map from IP_LAYOUT section in xclbin.
+ int HwEmShim::getCuIdxBaseAddrMap() 
+ {
+   std::string errmsg;
+   if (!mCoreDevice){
+     errmsg = "ERROR: [HW-EMU] getCuIdxBaseAddrMap - core device not found";
+     std::cerr << errmsg << std::endl;
+     return -EINVAL;
+   }
+   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);    
+   if (!buffer.first){
+     errmsg = "ERROR: [HW-EMU] getCuIdxBaseAddrMap - can't load ip_layout section";
+     std::cerr << errmsg << std::endl;
+     return -EINVAL;
+   }
+   auto map = reinterpret_cast<const ::ip_layout*>(buffer.first);
+   if (map->m_count < 0) {
+     errmsg = "ERROR: [HW-EMU] getCuIdxBaseAddrMap - invalid ip_layout section content";
+     std::cerr << errmsg << std::endl;
+     return -EINVAL;
+   }
+   mCuIndxVsBaseAddrMap.clear();
+   //Fill map with CU Index and Base address of the kernel in IP_LAYOUT section in XCLBIN
+   for (int i = 0; i < map->m_count; i++) {      
+     mCuIndxVsBaseAddrMap[i] = map->m_ip_data[i].m_base_address;
+   }
+   return 0;
+ }
+
 //CU register space for xclRegRead/Write()
 int HwEmShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
 {
   if (mLogStream.is_open()) {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << "CU Idx : " << cu_index << " Offset : " << offset << " Datap : " << (*datap) << std::endl;
   }
-
+  //get cu idx vs base addr map from IP_LAYOUT section in xclbin.
+  getCuIdxBaseAddrMap();
   std::string strCuidx = boost::lexical_cast<std::string>(cu_index);
   if (cu_index >= mCuIndxVsBaseAddrMap.size()) {
     std::string strMsg = "ERROR: [HW-EMU 20] xclRegRW - invalid CU index: " + strCuidx;
