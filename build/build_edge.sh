@@ -53,7 +53,7 @@ install_recipes()
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
         echo "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $ZOCL_BB
-        echo 'PV = "2020.2.8.0"' >> $ZOCL_BB
+        echo 'PV = "202020.2.8.0"' >> $ZOCL_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $ZOCL_BB
         echo 'LIC_FILES_CHKSUM = "file://LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8"' >> $ZOCL_BB
         echo 'pkg_postinst_ontarget_${PN}() {' >> $ZOCL_BB
