@@ -318,6 +318,7 @@ struct xmc_pkt_hdr {
 	u32 op		: 8;
 };
 
+#define XMC_MBX_DEF_OFFSET 0x1000
 /* We have a 4k buffer for xmc mailbox */
 #define	XMC_PKT_MAX_SZ	1024 /* In u32 */
 #define	XMC_PKT_MAX_PAYLOAD_SZ	\
@@ -3201,7 +3202,7 @@ static void xmc_enable_mailbox(struct xocl_xmc *xmc)
 
 	xmc->mbx_enabled = true;
 	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
-	xmc->mbx_offset = val;
+	xmc->mbx_offset = val ? val : XMC_MBX_DEF_OFFSET;
 	xocl_info(&xmc->pdev->dev, "XMC mailbox offset: 0x%x", val);
 }
 
