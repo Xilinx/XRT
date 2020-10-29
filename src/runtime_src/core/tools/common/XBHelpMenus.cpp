@@ -586,7 +586,7 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
                                            ReportCollection & reportsToUse)
 {
   // If "verbose" used, then use all of the reports
-  if (std::find(reportNamesToAdd.begin(), reportNamesToAdd.end(), "verbose") != reportNamesToAdd.end()) {
+  if (std::find(reportNamesToAdd.begin(), reportNamesToAdd.end(), "all") != reportNamesToAdd.end()) {
     reportsToUse = allReportsAvailable;
   } else { 
     // Examine each report name for a match 
@@ -664,50 +664,61 @@ XBUtilities::produce_reports( xrt_core::device_collection _devices,
   if (!ptSystem.empty()) 
     ptRoot.add_child("system", ptSystem);
 
-  // -- Process reports that work on a device
-  boost::property_tree::ptree ptDevices;
-  int dev_idx = 0;
-  for (const auto & device : _devices) {
-    boost::property_tree::ptree ptDevice;
-    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-    ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
-    if (_schemaVersion == Report::SchemaVersion::text) {
-      auto platform = xrt_core::device_query<xrt_core::query::rom_vbnv>(device);
-      std::string dev_desc = (boost::format("%d/%d [%s] : %s\n") % ++dev_idx % _devices.size() % ptDevice.get<std::string>("device_id") % platform).str();
-      _ostream << std::string(dev_desc.length(), '-') << std::endl;
-      _ostream << dev_desc;
-      _ostream << std::string(dev_desc.length(), '-') << std::endl;
-    }
+  // -- Check if any device sepcific report is requested
+  auto dev_report = [_reportsToProcess]() {
     for (auto &report : _reportsToProcess) {
-      if (report->isDeviceRequired() == false)
-        continue;
+      if (report->isDeviceRequired() == true)
+        return true;
+      }
+    return false;
+  };
 
-      boost::any output = report->getFormattedReport(device.get(), _schemaVersion, _elementFilter);
+  if(dev_report()) {
+    // -- Process reports that work on a device
+    boost::property_tree::ptree ptDevices;
+    int dev_idx = 0;
+    for (const auto & device : _devices) {
+      boost::property_tree::ptree ptDevice;
+      auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+      ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
+      if (_schemaVersion == Report::SchemaVersion::text) {
+        auto platform = xrt_core::device_query<xrt_core::query::rom_vbnv>(device);
+        std::string dev_desc = (boost::format("%d/%d [%s] : %s\n") % ++dev_idx % _devices.size() % ptDevice.get<std::string>("device_id") % platform).str();
+        _ostream << std::string(dev_desc.length(), '-') << std::endl;
+        _ostream << dev_desc;
+        _ostream << std::string(dev_desc.length(), '-') << std::endl;
+      }
+      for (auto &report : _reportsToProcess) {
+        if (report->isDeviceRequired() == false)
+          continue;
 
-      // Simple string output
-      if (output.type() == typeid(std::string)) 
-        _ostream << boost::any_cast<std::string>(output);
+        boost::any output = report->getFormattedReport(device.get(), _schemaVersion, _elementFilter);
 
-      if (output.type() == typeid(boost::property_tree::ptree)) {
-        boost::property_tree::ptree ptReport = boost::any_cast< boost::property_tree::ptree>(output);
+        // Simple string output
+        if (output.type() == typeid(std::string)) 
+          _ostream << boost::any_cast<std::string>(output);
 
-        // Only support 1 node on the root
-        if (ptReport.size() > 1)
-          throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(_schemaVersion).optionName).str());
+        if (output.type() == typeid(boost::property_tree::ptree)) {
+          boost::property_tree::ptree ptReport = boost::any_cast< boost::property_tree::ptree>(output);
 
-        // We have 1 node, copy the child to the root property tree
-        if (ptReport.size() == 1) {
-          for (const auto & ptChild : ptReport) {
-            ptDevice.add_child(ptChild.first, ptChild.second);
+          // Only support 1 node on the root
+          if (ptReport.size() > 1)
+            throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(_schemaVersion).optionName).str());
+
+          // We have 1 node, copy the child to the root property tree
+          if (ptReport.size() == 1) {
+            for (const auto & ptChild : ptReport) {
+              ptDevice.add_child(ptChild.first, ptChild.second);
+            }
           }
         }
       }
+      if (!ptDevice.empty()) 
+        ptDevices.push_back(std::make_pair("", ptDevice));   // Used to make an array of objects
     }
-    if (!ptDevice.empty()) 
-      ptDevices.push_back(std::make_pair("", ptDevice));   // Used to make an array of objects
+    if (!ptDevices.empty())
+      ptRoot.add_child("devices", ptDevices);
   }
-  if (!ptDevices.empty())
-    ptRoot.add_child("devices", ptDevices);
 
 
   // Did we add anything to the property tree.  If so, then write it out.
