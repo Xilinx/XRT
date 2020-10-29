@@ -273,7 +273,8 @@ using addr_type = uint64_t;
       void parseSimulateLog();
       void setSimPath(std::string simPath) { sim_path = simPath; }
       std::string getSimPath () { return sim_path; }
-      
+      //Construct CU index vs Base address map from IP_LAYOUT section in xclbin.
+      int getCuIdxBaseAddrMap();
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       bool simulator_started;
