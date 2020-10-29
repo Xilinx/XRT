@@ -244,6 +244,5 @@ void AIETraceOffload::configAIETs2mm(uint64_t i /*index*/)
 }
 
 
-
 }
 
