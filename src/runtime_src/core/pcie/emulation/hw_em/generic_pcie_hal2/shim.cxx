@@ -2616,27 +2616,21 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     if (xclCopyBufferHost2Device(dBO->base, (void*)host_only_buffer, size, dst_offset, dBO->topology) != size) {
       return -1;
     }
-  }
-
-  // source buffer is device_only and destination buffer is host_only
-  if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+  } // source buffer is device_only and destination buffer is host_only
+  else if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
     unsigned char* host_only_buffer = (unsigned char*)(dBO->buf) + dst_offset;
     if (xclCopyBufferDevice2Host((void*)host_only_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
       return -1;
     }
   }
-
-  // source buffer is device_only and destination buffer is p2p_buffer
-  if (xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
-    if (dBO->fd < 0)
-    {
+  else {
+    if (dBO->fd < 0) {
       std::cout << "bo is not exported for copying" << std::endl;
       return -1;
     }
     int ack = false;
     auto fItr = mFdToFileNameMap.find(dBO->fd);
-    if (fItr != mFdToFileNameMap.end())
-    {
+    if (fItr != mFdToFileNameMap.end()) {
       const std::string& sFileName = std::get<0>((*fItr).second);
       xclCopyBO_RPC_CALL(xclCopyBO, sBO->base, sFileName, size, src_offset, dst_offset);
     }
