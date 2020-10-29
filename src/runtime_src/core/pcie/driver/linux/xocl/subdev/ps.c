@@ -131,6 +131,7 @@ static void ps_wait(struct platform_device *pdev)
 	struct xocl_ps *ps;
 	u32 reg;
 	int retry = 0;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	xocl_info(&pdev->dev, "Wait Processor System ready...");
 	ps = platform_get_drvdata(pdev);
@@ -148,9 +149,11 @@ static void ps_wait(struct platform_device *pdev)
 	xocl_info(&pdev->dev, "Processor System ready in %d retries", retry);
 
 	/* set POR bits again after reset */
-	reg = READ_REG32(ps, RESET_REG_0);
-	reg |= (RESET_ENABLE | POR_RESET);
-	WRITE_REG32(ps, reg, RESET_REG_0);
+	if (xocl_subdev_is_vsec(xdev)) {
+		reg = READ_REG32(ps, RESET_REG_0);
+		reg |= (RESET_ENABLE | POR_RESET);
+		WRITE_REG32(ps, reg, RESET_REG_0);
+	}
 
 	mutex_unlock(&ps->ps_lock);
 }
@@ -245,6 +248,7 @@ static int ps_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret = 0;
 	u32 reg;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	ps = devm_kzalloc(&pdev->dev, sizeof(*ps), GFP_KERNEL);
 	if (!ps) {
@@ -266,9 +270,11 @@ static int ps_probe(struct platform_device *pdev)
 	}
 
 	/* set POR bits during probe */
-	reg = READ_REG32(ps, RESET_REG_0);
-	reg |= (RESET_ENABLE | POR_RESET);
-	WRITE_REG32(ps, reg, RESET_REG_0);
+	if (xocl_subdev_is_vsec(xdev)) {
+		reg = READ_REG32(ps, RESET_REG_0);
+		reg |= (RESET_ENABLE | POR_RESET);
+		WRITE_REG32(ps, reg, RESET_REG_0);
+	}
 
 	mutex_init(&ps->ps_lock);
 

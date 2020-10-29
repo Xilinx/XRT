@@ -2451,7 +2451,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_PS,				\
 			XOCL_DEVINFO_XMC,				\
-			XOCL_DEVINFO_XVC_PUB,				\
+			XOCL_DEVINFO_XVC_PRI,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
 			XOCL_DEVINFO_FMGR,				\
