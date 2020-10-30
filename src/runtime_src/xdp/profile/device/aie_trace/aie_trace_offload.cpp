@@ -219,6 +219,19 @@ uint64_t AIETraceOffload::readPartialTrace(uint64_t i)
   return 0;
 }
 
+bool AIETraceOffload::isTraceBufferFull()
+{
+  // Detect if any trace buffer got full
+  if (isPLIO) {
+    for (auto& buf: buffers) {
+      if (buf.isFull) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void AIETraceOffload::configAIETs2mm(uint64_t i /*index*/)
 {
   uint64_t wordCount = deviceIntf->getWordCountAIETs2mm(i);

@@ -22,6 +22,7 @@
 #include "core/common/xrt_profiling.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/tracedefs.h"
 //#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
@@ -205,11 +206,16 @@ namespace xdp {
     }
 
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
-      (std::get<0>(aieOffloaders[deviceId]))->readTrace();
-      (std::get<0>(aieOffloaders[deviceId]))->endReadTrace();
+      auto offloader = std::get<0>(aieOffloaders[deviceId]);
+      auto logger    = std::get<1>(aieOffloaders[deviceId]);
 
-      delete (std::get<0>(aieOffloaders[deviceId]));
-      delete (std::get<1>(aieOffloaders[deviceId]));
+      offloader->readTrace();
+      if (offloader->isTraceBufferFull())
+        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
+      offloader->endReadTrace();
+
+      delete (offloader);
+      delete (logger);
 
       aieOffloaders.erase(deviceId);
     }
@@ -220,13 +226,13 @@ namespace xdp {
   {
     // read the trace data from device and wrie to the output file
     for(auto o : aieOffloaders) {
-      (std::get<0>(o.second))->readTrace();
-      (std::get<0>(o.second))->endReadTrace();
-    }
-
-    for(auto o : aieOffloaders) {
       auto offloader = std::get<0>(o.second);
       auto logger    = std::get<1>(o.second);
+
+      offloader->readTrace();
+      if (offloader->isTraceBufferFull())
+        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
+      offloader->endReadTrace();
 
       delete offloader;
       delete logger;
