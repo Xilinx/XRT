@@ -3202,7 +3202,7 @@ static void xmc_enable_mailbox(struct xocl_xmc *xmc)
 	xmc->mbx_enabled = true;
 	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
 	xmc->mbx_offset = val;
-	xocl_info(&xmc->pdev->dev, "XMC mailbox offset: 0x%x", val);
+	xocl_info(&xmc->pdev->dev, "XMC mailbox offset read during probe: 0x%x", val);
 }
 
 static inline int wait_reg_value(struct xocl_xmc *xmc, void __iomem *base, u32 mask)
@@ -3976,7 +3976,7 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 	u32 len = XMC_PKT_SZ(&xmc->mbx_pkt.hdr);
 	int ret = 0;
 	u32 i;
-	u32 val;
+	u32 val = 0;
 
 	if (!xmc->mbx_enabled) {
 		xocl_err(&xmc->pdev->dev, "CMC mailbox is not supported");
@@ -3984,6 +3984,21 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 	}
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
+	/*
+	 * On card with ps, eg, u30, when xmc subdevice is probed on host,
+	 * the cmc running on ps may be not ready yet. so the saved mbx offset
+	 * might be 0. The register should be ready when we are here.
+	 * we need check and update the mbx offset.
+	 */
+	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
+	if (!val) {
+		xocl_err(&xmc->pdev->dev, "CMC mailbox is not ready");
+		return -EIO;
+	}
+	if (val != xmc->mbx_offset) {
+		xocl_info(&xmc->pdev->dev, "CMC mailbox offset updated: 0x%x", val);
+		xmc->mbx_offset = val;
+	}
 #ifdef	MBX_PKT_DEBUG
 	xocl_info(&xmc->pdev->dev, "Sending XMC packet: %d DWORDS...", len);
 	xocl_info(&xmc->pdev->dev, "opcode=%d payload_sz=0x%x (0x%x)",

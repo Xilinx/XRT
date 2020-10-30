@@ -14,6 +14,7 @@
  * under the License.
  */
 
+#include <thread>
 #include <string>
 #include <cstring>
 #include <iostream>
@@ -168,6 +169,94 @@ static int scanDevices(bool verbose, bool json)
     return 0;
 }
 
+static void testCaseProgressReporter(bool *quit)
+{    int i = 0;
+    while (!*quit) {
+        if (i != 0 && (i % 5 == 0))
+            std::cout << "." << std::flush;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        i++;
+    }
+}
+
+inline const char* getenv_or_empty(const char* path)
+{
+    return getenv(path) ? getenv(path) : "";
+}
+
+static void set_shell_path_env(const std::string& var_name,
+    const std::string& trailing_path)
+{
+    std::string xrt_path(getenv_or_empty("XILINX_XRT"));
+    std::string new_path(getenv_or_empty(var_name.c_str()));
+    xrt_path += trailing_path + ":";
+    new_path = xrt_path + new_path;
+    setenv(var_name.c_str(), new_path.c_str(), 1);
+}
+
+int runShellCmd(const std::string& cmd, std::string& output)
+{
+    int ret = 0;
+    bool quit = false;
+
+    // Fix environment variables before running test case
+    setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+    set_shell_path_env("PYTHONPATH", "/python");
+    set_shell_path_env("LD_LIBRARY_PATH", "/lib");
+    set_shell_path_env("PATH", "/bin");
+    unsetenv("XCL_EMULATION_MODE");
+
+    int stderr_fds[2];
+    if (pipe(stderr_fds)== -1) {
+        perror("ERROR: Unable to create pipe");
+        return -errno;
+    }
+
+    // Save stderr
+    int stderr_save = dup(STDERR_FILENO);
+    if (stderr_save == -1) {
+        perror("ERROR: Unable to duplicate stderr");
+        return -errno;
+    }
+
+    // Kick off progress reporter
+    std::thread t(testCaseProgressReporter, &quit);
+
+    // Close existing stderr and set it to be the write end of the pipe.
+    // After fork below, our child process's stderr will point to the same fd.
+    dup2(stderr_fds[1], STDERR_FILENO);
+    close(stderr_fds[1]);
+    std::shared_ptr<FILE> stderr_child(fdopen(stderr_fds[0], "r"), fclose);
+    std::shared_ptr<FILE> stdout_child(popen(cmd.c_str(), "r"), pclose);
+    // Restore our normal stderr
+    dup2(stderr_save, STDERR_FILENO);
+    close(stderr_save);
+
+    if (stdout_child == nullptr) {
+        std::cout << "ERROR: Failed to run " << cmd << std::endl;
+        ret = -EINVAL;
+    }
+
+    // Read child's stdout and stderr without parsing the content
+    char buf[1024];
+    while (ret == 0 && !feof(stdout_child.get())) {
+        if (fgets(buf, sizeof (buf), stdout_child.get()) != nullptr) {
+            output += buf;
+        }
+    }
+    while (ret == 0 && stderr_child && !feof(stderr_child.get())) {
+        if (fgets(buf, sizeof (buf), stderr_child.get()) != nullptr) {
+            output += buf;
+        }
+    }
+
+    // Stop progress reporter
+    quit = true;
+    t.join();
+
+    return ret;
+}
+
 static int writeSCImage(Flasher &flasher, const char *file)
 {
     int ret = 0;
@@ -182,7 +271,7 @@ static int writeSCImage(Flasher &flasher, const char *file)
 }
 
 // Update SC firmware on the board.
-static int updateSC(unsigned index, const char *file)
+static int updateSC(unsigned index, const char *file, bool cardlevel = true)
 {
     int ret = 0;
     Flasher flasher(index);
@@ -204,7 +293,30 @@ static int updateSC(unsigned index, const char *file)
             return -ENOTSUP;
         }
     }
-    
+    std::string vbnv;
+    mgmt_dev->sysfs_get( "rom", "VBNV", errmsg, vbnv );
+    if (!errmsg.empty()) {
+        std::cerr << errmsg << std::endl;
+        return -EINVAL;
+    }
+    //don't trigger reset for u30. let python helper handle everything
+    if (vbnv.find("_u30_") != std::string::npos) {
+        if (!cardlevel)
+            return writeSCImage(flasher, file);
+
+        std::string output;
+        std::stringstream dbdf;
+        const std::string scFlashPath = "/opt/xilinx/xrt/bin/unwrapped/_scflash.py";
+        dbdf << std::setfill('0') << std::hex
+            << std::setw(4) << mgmt_dev->domain << ":"
+            << std::setw(2) << mgmt_dev->bus << ":"
+            << std::setw(2) << mgmt_dev->dev << "."
+            << std::setw(1) << mgmt_dev->func;
+        const auto cmd = "/usr/bin/python3 " + scFlashPath + " -y -d " +
+           dbdf.str() + " -p " + file;
+        return runShellCmd(cmd, output);
+    }
+
     auto dev = mgmt_dev->lookup_peer_dev();
     ret = pcidev::shutdown(mgmt_dev);
     if (ret) {
@@ -804,9 +916,11 @@ static int sc(int argc, char *argv[])
 {
     unsigned index = UINT_MAX;
     std::string file;
+    bool cardlevel = true;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "path", required_argument, nullptr, '1' },
+        { "no_cardlevel", no_argument, nullptr, '2' },
         { nullptr, 0, nullptr, 0 },
     };
 
@@ -824,6 +938,9 @@ static int sc(int argc, char *argv[])
         case '1':
             file = std::string(optarg);
             break;
+        case '2':
+            cardlevel = false;
+            break;
         default:
             return -EINVAL;
         }
@@ -832,7 +949,7 @@ static int sc(int argc, char *argv[])
     if (file.empty() || index == UINT_MAX)
         return -EINVAL;
 
-    int ret = updateSC(index, file.c_str());
+    int ret = updateSC(index, file.c_str(), cardlevel);
     if (ret)
         return ret;
 
