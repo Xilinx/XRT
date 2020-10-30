@@ -142,6 +142,7 @@ struct kds_sched {
 	bool			bad_state;
 	struct kds_cu_mgmt	cu_mgmt;
 	struct kds_ert	       *ert;
+	bool			ini_disable;
 	bool			ert_disable;
 	u32			cu_intr_cap;
 	u32			cu_intr;

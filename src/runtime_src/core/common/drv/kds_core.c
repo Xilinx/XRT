@@ -390,7 +390,9 @@ int kds_init_sched(struct kds_sched *kds)
 	mutex_init(&kds->cu_mgmt.lock);
 	kds->num_client = 0;
 	kds->bad_state = 0;
-	kds->ert_disable = 1;
+	/* At this point, I don't know if ERT subdev exist or not */
+	kds->ert_disable = true;
+	kds->ini_disable = false;
 
 	return 0;
 }
@@ -740,7 +742,7 @@ int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 {
 	kds->ert = ert;
 	/* By default enable ERT if it exist */
-	kds->ert_disable = 0;
+	kds->ert_disable = false;
 	return 0;
 }
 
@@ -752,6 +754,8 @@ int kds_fini_ert(struct kds_sched *kds)
 void kds_reset(struct kds_sched *kds)
 {
 	kds->bad_state = 0;
+	kds->ert_disable = true;
+	kds->ini_disable = false;
 }
 
 static int kds_fa_assign_plram(struct kds_sched *kds)
@@ -817,7 +821,7 @@ int kds_cfg_update(struct kds_sched *kds)
 		 * Host crash at around configure command if ERT is enabled.
 		 * TODO: Support fast adapter in ERT?
 		 */
-		kds->ert_disable = 1;
+		kds->ert_disable = true;
 	}
 
 	/* Update CU interrupt mode */

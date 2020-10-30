@@ -354,9 +354,13 @@ ert_disable_store(struct device *dev, struct device_attribute *da,
 	}
 
 	/* If ERT subdev doesn't present, cound not enable ERT */
-	if (!XDEV(xdev)->kds.ert)
+	if (kds_mode && !XDEV(xdev)->kds.ert)
 		disable = 1;
 
+	/* once ini_disable set to true, xrt.ini could not
+	 * enable/disable ert.
+	 */
+	XDEV(xdev)->kds.ini_disable = true;
 	XDEV(xdev)->kds.ert_disable = disable;
 	mutex_unlock(&XDEV(xdev)->kds.lock);
 

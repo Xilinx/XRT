@@ -239,8 +239,10 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 
 		if (kds_mode)
 			xocl_kds_reset(xdev, xclbin_id);
-		else
+		else {
+			XDEV(xdev)->kds.ini_disable = false;
 			xocl_exec_reset(xdev, xclbin_id);
+		}
 		XOCL_PUT_XCLBIN_ID(xdev);
 		if (!xdev->core.drm) {
 			xdev->core.drm = xocl_drm_init(xdev);
