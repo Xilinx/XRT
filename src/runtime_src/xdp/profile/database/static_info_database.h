@@ -452,6 +452,10 @@ namespace xdp {
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
+
+      if(deviceInfo[deviceId]->aieList.size() <= idx)
+        return nullptr;
+
       return deviceInfo[deviceId]->aieList[idx];
     }
 
