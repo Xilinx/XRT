@@ -103,9 +103,10 @@ namespace xdp {
 	// Update the AIE specific portion of the device
 	std::shared_ptr<xrt_core::device> device =
 	  xrt_core::get_userpf_device(handle) ;
-	if (device == nullptr) return ;
-	for (auto& gmio : xrt_core::edge::aie::get_trace_gmios(device.get())) {
-	  (db->getStaticInfo()).addTraceGMIO(deviceId, gmio.id, gmio.shim_col, gmio.channel_number, gmio.stream_id, gmio.burst_len) ;
+	if (device != nullptr) {
+	  for (auto& gmio : xrt_core::edge::aie::get_trace_gmios(device.get())) {
+	    (db->getStaticInfo()).addTraceGMIO(deviceId, gmio.id, gmio.shim_col, gmio.channel_number, gmio.stream_id, gmio.burst_len) ;
+	  }
 	}
       }
 #endif
