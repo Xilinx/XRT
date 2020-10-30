@@ -124,7 +124,7 @@ all:
 install: all
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules_install
 	depmod -a
-	install -m 644 10-xocl.rules /etc/udev/rules.d
+	install -m 644 99-xocl.rules /etc/udev/rules.d
 	-rmmod -s xocl || true
 	-rmmod -s xdma || true
 	-modprobe xocl

@@ -70,8 +70,8 @@ find /lib/modules -type f -name xocl.ko.xz -delete
 find /lib/modules -type f -name xclmgmt.ko.xz -delete
 depmod -A
 
-rm -f /etc/udev/rules.d/10-xocl.rules
-rm -f /etc/udev/rules.d/10-xclmgmt.rules
+rm -f /etc/udev/rules.d/99-xocl.rules
+rm -f /etc/udev/rules.d/99-xclmgmt.rules
 rm -f /etc/dracut.conf.d/xocl.dracut.conf
 rm -f /etc/dracut.conf.d/xclmgmt.dracut.conf
 
