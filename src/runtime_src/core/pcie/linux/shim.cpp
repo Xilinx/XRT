@@ -1639,7 +1639,8 @@ shim *shim::handleCheck(void *handle)
     if (!handle) {
         return 0;
     }
-    if (!((shim *) handle)->isGood()) {
+    if (!((shim *) handle)->isGood() ||
+      ((shim *) handle)->mUserHandle == -1) {
         return 0;
     }
     return (shim *) handle;
@@ -2286,13 +2287,19 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
   try {
     if(pcidev::get_dev_total() <= deviceIndex) {
       xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT",
-                       std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
+        std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
       return nullptr;
     }
 
   OPEN_CB;
 
     xocl::shim *handle = new xocl::shim(deviceIndex);
+
+    if (handle->handleCheck(handle) == 0) {
+      xrt_core::send_exception_message(strerror(errno) +
+        std::string(" Device index ") + std::to_string(deviceIndex));
+      return nullptr;
+    }
 
     return static_cast<xclDeviceHandle>(handle);
   }
