@@ -173,17 +173,6 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
         return false;
     }
 
-    /* For each of the requested devices, check that the DSA name matches */
-    for (i = 0; i < num_devices_requested; i++)
-    {
-        if (strcmp(systemcfg->dsa, hwcfg->devices[i].dsa) != 0)
-        {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "DSA mismatch: requested %s found %s\n",
-                       systemcfg->dsa, hwcfg->devices[i].dsa);
-            return false;
-        }
-    }
-
     return true;
 }
 
