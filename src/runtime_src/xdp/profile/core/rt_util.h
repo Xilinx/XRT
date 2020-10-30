@@ -60,7 +60,10 @@ namespace xdp {
       DEVICE_KERNEL_EXECUTE = 0xA,
       DEVICE_BUFFER_READ = 0xB,
       DEVICE_BUFFER_WRITE = 0xC,
-      DEPENDENCY_EVENT = 0xD
+      DEPENDENCY_EVENT = 0xD,
+      READ_BUFFER_HOST_MEMORY = 0xE,
+      WRITE_BUFFER_HOST_MEMORY = 0xF,
+      COPY_BUFFER_HOST_MEMORY = 0x10
     };
 
     enum e_profile_command_state {

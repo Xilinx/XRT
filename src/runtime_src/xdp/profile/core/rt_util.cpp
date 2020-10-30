@@ -69,6 +69,15 @@ namespace xdp {
     case DEPENDENCY_EVENT:
       commandString = "DEPENDENCY_EVENT";
       break;
+    case READ_BUFFER_HOST_MEMORY:
+      commandString = "READ_BUFFER_HOST_MEMORY";
+      break;
+    case WRITE_BUFFER_HOST_MEMORY:
+      commandString = "WRITE_BUFFER_HOST_MEMORY";
+      break;
+    case COPY_BUFFER_HOST_MEMORY:
+      commandString = "COPY_BUFFER_HOST_MEMORY";
+      break;
     default:
       assert(0);
       break;

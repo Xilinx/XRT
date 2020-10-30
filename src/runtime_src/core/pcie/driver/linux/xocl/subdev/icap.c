@@ -1885,7 +1885,7 @@ static int icap_verify_signature(struct icap *icap,
 {
 	int ret = 0;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0) && defined(CONFIG_SYSTEM_DATA_VERIFICATION)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 /* Starting with Ubuntu 20.04 we need to use VERIFY_USE_PLATFORM_KEYRING in order to use MOK keys*/
 #define	SYS_KEYS	(VERIFY_USE_PLATFORM_KEYRING)

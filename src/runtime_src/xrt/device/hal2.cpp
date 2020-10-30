@@ -370,6 +370,8 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     if (mmapRequired)
       m_ops->mUnmapBO(m_handle, bo->handle, bo->hostAddr);
     m_ops->mFreeBO(m_handle, bo->handle);
+    if (bo->nodma)
+      m_ops->mFreeBO(m_handle, bo->nodma_host_handle);
     delete bo;
   };
 

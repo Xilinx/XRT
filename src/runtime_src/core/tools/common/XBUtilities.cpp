@@ -366,7 +366,14 @@ XBUtilities::get_available_devices(bool inUserDomain)
     }
     else {
       pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+      try { //1RP
       pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+      } catch(...) {}
+      try { //2RP
+        auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
+        if (!logic_uuids.empty())
+          pt_dev.put("id", boost::str(boost::format("0x%s") % logic_uuids[0]));
+      } catch(...) {}
     }
 
     pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));

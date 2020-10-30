@@ -363,11 +363,14 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		}
 
 		/* Before scheduler config options are removed from xrt.ini */
+		if (XDEV(xdev)->kds.ini_disable)
+			break;
+
 		if (to_cfg_pkg(ecmd)->ert && XDEV(xdev)->kds.ert) {
-			XDEV(xdev)->kds.ert_disable = 0;
+			XDEV(xdev)->kds.ert_disable = false;
 			xcmd->type = KDS_ERT;
 		} else {
-			XDEV(xdev)->kds.ert_disable = 1;
+			XDEV(xdev)->kds.ert_disable = true;
 			xcmd->type = KDS_CU;
 		}
 		break;
@@ -538,6 +541,10 @@ int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 	}
 
 	XDEV(xdev)->kds.plram.bo = NULL;
+
+	/* We do not need to reset kds core if xclbin_id is null */
+	if (!xclbin_id)
+		return 0;
 
 	kds_reset(&XDEV(xdev)->kds);
 	return 0;

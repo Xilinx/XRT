@@ -1945,9 +1945,11 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	unsigned int major = exec->ert_cfg_priv.major;
 	struct ert_configure_cmd *cfg = xcmd->ert_cfg;
 	bool ert = (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) ? 1 :
-	    (!XDEV(xdev)->kds.ert_disable && xocl_mb_sched_on(xdev) && exec->cq_base && exec->csr_base);
-	bool ert_full = (ert && cfg->ert && !cfg->dataflow);
-	bool ert_poll = (ert && cfg->ert && cfg->dataflow);
+	    (xocl_mb_sched_on(xdev) && exec->cq_base && exec->csr_base);
+	bool ert_enabled = (XDEV(xdev)->kds.ini_disable) ?
+		!XDEV(xdev)->kds.ert_disable : cfg->ert;
+	bool ert_full = (ert && ert_enabled && !cfg->dataflow);
+	bool ert_poll = (ert && ert_enabled && cfg->dataflow);
 	unsigned int ert_num_slots = 0;
 	unsigned int cuidx = 0;
 
@@ -1972,7 +1974,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		// For MPSoC device, we will use ert_full if we are
 		// configured as ert mode even dataflow is configured.
 		// And we do not support ert_poll.
-		ert_full = cfg->ert;
+		ert_full = ert_enabled;
 		ert_poll = false;
 	}
 
@@ -2049,6 +2051,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		ert_cfg(exec->ert, exec->cq_size, MAX_CUS, cfg->cq_int);
 		exec->ops = &ert_poll_ops;
 		exec->polling_mode = cfg->polling;
+		XDEV(xdev)->kds.ert_disable = false;
 	} else if (ert_full) {
 		userpf_info(xdev, "configuring embedded scheduler mode\n");
 		ert_cfg(exec->ert, exec->cq_size, ert_num_slots, cfg->cq_int);
@@ -2057,10 +2060,12 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		exec->cq_interrupt = cfg->cq_int;
 		cfg->dsa52 = dsa;
 		cfg->cdma = cdma ? 1 : 0;
+		XDEV(xdev)->kds.ert_disable = false;
 	} else {
 		userpf_info(xdev, "configuring penguin scheduler mode\n");
 		exec->ops = &penguin_ops;
 		exec->polling_mode = true;
+		XDEV(xdev)->kds.ert_disable = true;
 	}
 
 	if (XDEV(xdev)->priv.flags & XOCL_DSAFLAG_CUDMA_OFF)
