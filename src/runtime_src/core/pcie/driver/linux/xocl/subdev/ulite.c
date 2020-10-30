@@ -302,12 +302,12 @@ static int ulite_startup(struct uart_port *port)
 	mutex_lock(&pdata->lock);
 	pdata->console_opened++;
 	pdata->thread = kthread_run(ulite_thread, pdata, "ulite_thread");
-	mutex_unlock(&pdata->lock);
 
 	uart_out32(ULITE_CONTROL_RST_RX | ULITE_CONTROL_RST_TX,
 		ULITE_CONTROL, port);
 	uart_out32(ULITE_CONTROL_IE, ULITE_CONTROL, port);
 
+	mutex_unlock(&pdata->lock);
 	return 0;
 }
 
@@ -319,11 +319,11 @@ static void ulite_shutdown(struct uart_port *port)
 	pdata->console_opened--;
 	if (!pdata->console_opened)
 		(void)kthread_stop(pdata->thread);
-	mutex_unlock(&pdata->lock);
 
 	uart_out32(0, ULITE_CONTROL, port);
 	uart_in32(ULITE_CONTROL, port); /* dummy */
 
+	mutex_unlock(&pdata->lock);
 }
 
 static void ulite_set_termios(struct uart_port *port, struct ktermios *termios,
