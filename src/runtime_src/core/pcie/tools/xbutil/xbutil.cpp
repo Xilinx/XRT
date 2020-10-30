@@ -1542,7 +1542,7 @@ int xcldev::device::validate(bool quick, bool hidden)
     if (retVal < 0)
         return retVal;
 
-    retVal = runOneTest("Power warnning check",
+    retVal = runOneTest("Power warning check",
             std::bind(&xcldev::device::powerTest, this));
     withWarning = withWarning || (retVal == 1);
     if (retVal < 0)
