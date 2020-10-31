@@ -231,7 +231,7 @@ get_trace_buffer_size()
 inline std::string
 get_aie_trace_buffer_size()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_buffer_size", "1M");
+  static std::string value = detail::get_string_value("Debug.aie_trace_buffer_size", "8M");
   return value;
 }
 
