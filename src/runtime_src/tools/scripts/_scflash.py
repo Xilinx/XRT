@@ -59,7 +59,7 @@ xbmgmt = "/opt/xilinx/xrt/bin/unwrapped/xbmgmt"
 def get_node_bus_mapping():
     subdir = os.listdir(rootDir)
     for subdirName in subdir:
-        if re.search("^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-3]{2}.0$", subdirName) == None:
+        if re.search("^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.0$", subdirName) == None:
             continue
         with open(os.path.join(rootDir, subdirName, "vendor")) as f : vendor = f.read()
         if vendor.strip() != "0x10ee":
@@ -73,7 +73,7 @@ def get_node_bus_mapping():
         #print("%s: %s " % (subdirName, ps_ready[subdirName]))
         files = os.listdir(os.path.join(rootDir, subdirName, "dparent"))
         for fname in files:
-            if re.search("^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-3]{2}.[0-7]:pcie.+$", fname) != None:
+            if re.search("^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-7]:pcie.+$", fname) != None:
                 bus = fname.split(":")[1]
                 node_bus_mapping[subdirName] = bus
                 node_parent_mapping[subdirName] = fname[:fname.rfind(":")]
