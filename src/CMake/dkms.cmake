@@ -43,7 +43,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/mgmtpf/mgmt-sysfs.c
   xocl/mgmtpf/mgmt-core.h
   xocl/mgmtpf/xclmgmt.dracut.conf
-  xocl/mgmtpf/10-xclmgmt.rules
+  xocl/mgmtpf/99-xclmgmt.rules
   xocl/mgmtpf/Makefile
   xocl/devices.h
   xocl/xocl_drv.h
@@ -65,7 +65,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/userpf/xocl_drv.c
   xocl/userpf/xocl_kds.c
   xocl/userpf/xocl.dracut.conf
-  xocl/userpf/10-xocl.rules
+  xocl/userpf/99-xocl.rules
   xocl/userpf/Makefile
   xocl/lib/libxdma.c
   xocl/lib/libxdma.h
