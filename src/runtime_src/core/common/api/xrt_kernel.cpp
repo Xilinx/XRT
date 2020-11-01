@@ -1053,8 +1053,10 @@ public:
     // get kernel arguments from xml parser
     // compute regmap size, convert to typed argument
     for (auto& arg : xrt_core::xclbin::get_kernel_arguments(xml_section.first, xml_section.second, name)) {
-      regmap_size = std::max(regmap_size, (arg.offset + arg.size) / 4);
-      args.emplace_back(device->get_core_device(), std::move(arg), get_arg_grpid(connectivity, arg.index, ip2idx));
+      if (arg.index != xrt_core::xclbin::kernel_argument::no_index) {
+        regmap_size = std::max(regmap_size, (arg.offset + arg.size) / 4);
+        args.emplace_back(device->get_core_device(), std::move(arg), get_arg_grpid(connectivity, arg.index, ip2idx));
+      }
     }
 
     // amend args with computed data based on kernel protocol
