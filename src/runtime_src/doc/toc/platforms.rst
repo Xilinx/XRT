@@ -88,7 +88,9 @@ are exercised using well-defined APIs in ``xrt.h`` header file.
 * Memory-to-memory (M2M) programming for moving data between device DDR, PL-RAM and HBM.
 
 
-Section :ref:`security.rst` describes PCIe platform security and robustness in detail.
+.. note::
+   Section :ref:`security.rst` describes PCIe platform security and robustness in detail.
+
 
 PCIe Based Hybrid Platforms
 ---------------------------
@@ -145,4 +147,5 @@ following functionality with well defined APIs in ``xrt.h`` and ``xrt_aie.h`` (f
 * ZynqMP DMA engine programming for moving data between PS DDR and PL-DDR.
 * AIE GMIO data mover programming to move data between NOC and AIE.
 
-Section :ref:`execution-model.rst` provides a high level overview of execution model.
+.. note::
+   Section :ref:`execution-model.rst` provides a high level overview of execution model.

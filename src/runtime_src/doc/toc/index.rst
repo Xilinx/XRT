@@ -56,6 +56,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    :caption: XRT Developer's Space
    :maxdepth: 1
 
+   platforms_partitions.rst
    sysfs.rst
    formats.rst
    xrt.main.rst
@@ -63,6 +64,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    mgmt-ioctl.main.rst
    xocl_ioctl.main.rst
    zocl_ioctl.main.rst
+
 
 
 .. toctree::
