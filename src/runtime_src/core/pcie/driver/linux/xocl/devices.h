@@ -231,6 +231,7 @@ enum {
 #define	XOCL_AXIGATE		"axigate"
 #define	XOCL_MIG		"mig"
 #define	XOCL_XMC		"xmc"
+#define	XOCL_XMC_U2		"xmc.u2"
 #define	XOCL_DNA		"dna"
 #define	XOCL_FMGR		"fmgr"
 #define	XOCL_FLASH		"flash"
