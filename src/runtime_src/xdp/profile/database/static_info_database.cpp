@@ -46,10 +46,6 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 
-#ifdef XRT_ENABLE_AIE
-#include "core/edge/common/aie_parser.h"
-#endif
-
 #define XAM_STALL_PROPERTY_MASK        0x4
 
 
@@ -136,6 +132,23 @@ namespace xdp {
     gmioList.clear();
   }
 
+  void DeviceInfo::addTraceGMIO(uint32_t id, uint16_t col, uint16_t num,
+				uint16_t stream, uint16_t len)
+  {
+    TraceGMIO* traceGmio = new TraceGMIO(id, col, num, stream, len);
+    gmioList.push_back(traceGmio);
+  }
+
+  void DeviceInfo::addAIECounter(uint32_t i, uint16_t col, uint16_t r,
+				 uint8_t num, uint8_t start, uint8_t end,
+				 uint8_t reset, double freq,
+				 const std::string& mod,
+				 const std::string& aieName)
+  {
+      AIECounter* aie = new AIECounter(i, col, r, num, start, end,
+				       reset, freq, mod, aieName);
+      aieList.push_back(aie);
+  }
 
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d) : db(d), runSummary(nullptr)
   {
@@ -197,7 +210,6 @@ namespace xdp {
     if (!setXclbinName(devInfo, device)) return;
     if (!initializeComputeUnits(devInfo, device)) return ;
     if (!initializeProfileMonitors(devInfo, device)) return ;
-    if (!initializeAIECounters(devInfo, device)) return ;
     devInfo->isReady = true;
   }
 
@@ -505,41 +517,6 @@ namespace xdp {
     }
 
     return true; 
-  }
-
-  bool VPStaticDatabase::initializeAIECounters(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
-  {
-#ifdef XRT_ENABLE_AIE
-    // Record all counters listed in AIE metadata (if available)
-    auto counters = xrt_core::edge::aie::get_profile_counters(device.get());
-    if(xrt_core::config::get_aie_profile() && counters.empty()) {
-      std::string msg("AIE Profile Counters are not found in AIE metadata of the given design. So, AIE Profile information will not be available.");
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
-    }
-
-    for (auto& counter : counters) {
-      AIECounter* aie = new AIECounter(counter.id, counter.column, counter.row, 
-          counter.counterNumber, counter.startEvent, counter.endEvent, 
-          counter.resetEvent, counter.clockFreqMhz, counter.module, counter.name);
-      devInfo->aieList.push_back(aie);
-    }
-
-    // Record all trace GMIOs listed in AIE metadata (if available)
-    for (auto& gmio : xrt_core::edge::aie::get_trace_gmios(device.get())) {
-      TraceGMIO* traceGmio = new TraceGMIO(gmio.id, gmio.shim_col, gmio.channel_number, 
-          gmio.stream_id, gmio.burst_len);
-      devInfo->gmioList.push_back(traceGmio);
-    }
-    return true;
-#else
-  // Need to use arguments so it compiles on Windows
-  auto aieMetadata = device->get_axlf_section(AIE_METADATA);
-  if (!aieMetadata.first || !aieMetadata.second)
-    return true;
-
-  devInfo->aieList.clear();
-  return true;
-#endif
   }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
