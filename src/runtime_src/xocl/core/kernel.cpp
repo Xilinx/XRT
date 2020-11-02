@@ -21,8 +21,6 @@
 #include "compute_unit.h"
 #include "core/common/xclbin_parser.h"
 
-#include <boost/detail/endian.hpp>
-
 #include <sstream>
 #include <iostream>
 #include <memory>
@@ -130,8 +128,6 @@ void
 kernel::scalar_argument::
 set(size_t size, const void* cvalue)
 {
-  static_assert(BOOST_BYTE_ORDER==1234,"Big endian detected");
-
   if (size != m_sz)
     throw error(CL_INVALID_ARG_SIZE,"Invalid scalar argument size, expected "
                 + std::to_string(m_sz) + " got " + std::to_string(size));
