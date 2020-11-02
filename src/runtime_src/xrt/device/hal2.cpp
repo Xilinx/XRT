@@ -467,6 +467,8 @@ alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
   ubo->flags = bo->flags;
   ubo->owner = bo->owner;
   ubo->parent = boh;  // keep parent boh reference
+  ubo->nodma = bo->nodma;
+  ubo->nodma_host_handle = bo->nodma_host_handle;
 
   // Verify alignment based on hardware requirement
   auto alignment = getAlignment();
