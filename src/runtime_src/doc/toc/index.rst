@@ -74,6 +74,8 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    xclbintools.rst
    xbutil.rst
    xbmgmt.rst
+   xbutil2.rst
+   xbmgmt2.rst
 
 
 .. toctree::
