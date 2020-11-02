@@ -68,7 +68,7 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     if (!is_mfg) {
         mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);
         if (!err.empty() || !(val & 1)) {
-            mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
+            mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded on card " << mDev->sysfs_name;
             goto nosup;
         }
     }
@@ -86,25 +86,26 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
         if (fd >= 0)
             mXmcDev = fdopen(fd, "r+");
         if (mXmcDev == nullptr)
-            std::cout << "Failed to open XMC device on card" << std::endl;
+            std::cout << "Failed to open XMC device on card " << mDev->sysfs_name << std::endl;
         return;
     }
 
     if (val != XMC_MAGIC_NUM) {
         mProbingErrMsg << "Failed to detect XMC, bad magic number: "
-            << std::hex << val << std::dec;
+            << std::hex << val << std::dec << " on card " << mDev->sysfs_name;
         goto nosup;
     }
 
     val = readReg(XMC_REG_OFF_VER);
     if (val < XMC_BASE_VERSION) {
-        mProbingErrMsg << "Found unsupported XMC version: " << val;
+        mProbingErrMsg << "Found unsupported XMC version: " << val << " on card "
+            << mDev->sysfs_name;
         goto nosup;
     }
 
     val = readReg(XMC_REG_OFF_FEATURE);
     if (val & XMC_NO_MAILBOX_MASK) {
-        mProbingErrMsg << "XMC mailbox is not supported";
+        mProbingErrMsg << "XMC mailbox is not supported on card " << mDev->sysfs_name;
         goto nosup;
     }
 
@@ -115,8 +116,13 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
         int fd = mDev->open("xmc", O_RDWR);
         if (fd >= 0)
             mXmcDev = fdopen(fd, "r+");
+        if (mXmcDev == nullptr) {
+            fd = mDev->open("xmc.u2", O_RDWR);
+            if (fd >= 0)
+                mXmcDev = fdopen(fd, "r+");
+        }
         if (mXmcDev == nullptr)
-            std::cout << "Failed to open XMC device on card" << std::endl;
+            std::cout << "Failed to open XMC device on card " << mDev->sysfs_name << std::endl;
     }
 
 nosup:
