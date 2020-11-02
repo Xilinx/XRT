@@ -180,7 +180,7 @@ struct ert_start_copybo_cmd {
   uint32_t state:4;          /* [3-0], must be ERT_CMD_STATE_NEW */
   uint32_t unused:6;         /* [9-4] */
   uint32_t extra_cu_masks:2; /* [11-10], = 3 */
-  uint32_t count:12;         /* [22-12], = 16, exclude 'arg' */
+  uint32_t count:11;         /* [22-12], = 16, exclude 'arg' */
   uint32_t opcode:5;         /* [27-23], = ERT_START_COPYBO */
   uint32_t type:4;           /* [31-27], = ERT_DEFAULT */
   uint32_t cu_mask[4];       /* mandatory cu masks */
