@@ -28,13 +28,12 @@
 const char *subCmdConfigDesc = "Parse or update daemon/device configuration";
 
 const char *subCmdConfigUsage =
-    "--device [--card bdf] [--runtime_clk_scale enable|disable]\n"
     "--enable_retention [--ddr] [--card bdf]\n"
     "--disable_retention [--ddr] [--card bdf]\n";
 const char *subCmdConfigExpUsage =
     "Experts only:\n"
     "--daemon --host ip-or-hostname-for-peer\n"
-    "--device [--card bdf] [--security level] [--cs_threshold_power_override val] [--cs_threshold_temp_override val] [--cs_reset val]\n"
+    "--device [--card bdf] [--runtime_clk_scale enable|disable] [--security level] [--cs_threshold_power_override val] [--cs_threshold_temp_override val] [--cs_reset val]\n"
     "--show [--daemon | --device [--card bdf]\n";
 
 static struct config {
