@@ -307,7 +307,7 @@
             
             
               <div class="version">
-                2020.2
+                2020.1
               </div>
             
           
@@ -377,6 +377,7 @@
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
@@ -390,6 +391,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -1208,8 +1211,7 @@
 <dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">offset</span></code>: Offset in register space to write to </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code>: <p> Data to write</p>
-</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code>: Data to write</p></li>
 </ul>
 </dd>
 </dl>
@@ -1226,8 +1228,7 @@
 <dt><strong>Return</strong></dt><dd><p>Value read from offset</p>
 </dd>
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">offset</span></code>: <p> Offset in register space to read from </p>
-</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">offset</span></code>: Offset in register space to read from </p></li>
 </ul>
 </dd>
 </dl>
@@ -1282,8 +1283,7 @@
 <dt><strong>Return</strong></dt><dd><p>Command state upon return of wait</p>
 </dd>
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">timeout</span></code>: <p> Timeout for wait (default block till run completes) </p>
-</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">timeout</span></code>: Timeout for wait (default block till run completes) </p></li>
 </ul>
 </dd>
 </dl>
@@ -1344,8 +1344,7 @@
 <p><p>This function is used when a run object is enqueued in an event graph. The event must be notified upon completion of the run. </p>
 <dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">event</span></code>: <p> Opaque implementation object</p>
-</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">event</span></code>: Opaque implementation object</p></li>
 </ul>
 </dd>
 </dl>
@@ -1371,8 +1370,7 @@
 <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1ada025d6709796a6ea20182e5b720a96b"><span class="std std-ref"><span class="pre">start()</span></span></a></code> on the run object.<dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">index</span></code>: Index of kernel argument to update </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">arg</span></code>: <p> The scalar argument value to set.</p>
-</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">arg</span></code>: The scalar argument value to set.</p></li>
 </ul>
 </dd>
 </dl>
@@ -1428,7 +1426,7 @@
 <dt id="_CPPv4N3xrt3run10update_argEiRKN3xrt2boE">
 <span id="_CPPv3N3xrt3run10update_argEiRKN3xrt2boE"></span><span id="_CPPv2N3xrt3run10update_argEiRKN3xrt2boE"></span><span id="xrt::run::update_arg__i.xrt::boCR"></span><span class="target" id="classxrt_1_1run_1a15fa11c122834664d7d24c7c2867c834"></span>void <code class="sig-name descname">update_arg</code><span class="sig-paren">(</span>int <em>index</em>, <em class="property">const</em> xrt::<a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo">bo</a> &amp;<em>boh</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3run10update_argEiRKN3xrt2boE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1run_1a53ee8f980ab4730a247015501feee605"><span class="std std-ref">update_arg()</span></a> - Asynchronous update of kernel global argument for a run</p>
-<p><p>Use this API to asynchronously update a specific kernel argument of an existing run. </p>
+<p><p>Use this API to asynchronously update a specific kernel argument of an existing run.</p>
 <dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">index</span></code>: Index of kernel argument to update </p></li>
@@ -2343,7 +2341,7 @@ Support states are: ERT_CMD_STATE_COMPLETED (to be extended)</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on October 21, 2020.
+        Last updated on November 02, 2020.
       </span>
 
     </p>
