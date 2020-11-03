@@ -273,7 +273,7 @@ static void *icap_cntrl_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t 
 			xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_GATE_ULP, NODE_ENDPOINTS);
 
 		node1 = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_GATE_PLP);
-		if (node < 0)
+		if (node1 < 0)
 			xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_GATE_PLP, NODE_ENDPOINTS);
 
 		if ((node < 0) && (node1 < 0))
