@@ -992,7 +992,7 @@ The above code shows
      - As good practice synchronous error checking is done directly against all APIs (line 41,47,53,56,59)
      - After timeout occurs from ``xrtGraphWaitDone`` the API ``xrtErrorGetLast`` is called to retrieve asynchronous error code (line 53) 
      - Using the error code API ``xrtErrorGetString`` is called to get the length of the error string (line 56)
-     - The API xrtErrorGetString called again for the second time to get the full error string (line 59)
+     - The API ``xrtErrorGetString`` called again for the second time to get the full error string (line 59)
 
 
 
