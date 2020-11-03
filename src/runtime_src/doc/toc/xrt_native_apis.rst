@@ -29,6 +29,8 @@ The core data structures in C and C++ are as below
 +---------------+---------------+-------------------+
 |   Run         | xrt::run      |  xrtRunHandle     |
 +---------------+---------------+-------------------+
+|   Graph       | TBD           |  xrtGraphHandle   |
++---------------+---------------+-------------------+
 
 All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/experimental/`` directory. In the user host code, it is sufficient to include only ``"experimental/xrt_kernel.h"`` to access all the APIs related to these data structure.
 
