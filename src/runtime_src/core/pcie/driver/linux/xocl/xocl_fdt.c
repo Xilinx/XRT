@@ -251,7 +251,7 @@ static void *icap_cntrl_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t 
 	struct xocl_dev_core *core = XDEV(xdev_hdl);
 	void *blob;
 	struct xocl_icap_cntrl_privdata *priv;
-	int node;
+	int node, node1;
 
 	blob = core->fdt_blob;
 	if (!blob)
@@ -267,12 +267,18 @@ static void *icap_cntrl_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t 
 		return NULL;
 	}
 
-	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_GATE_ULP);
-	if (node < 0) {
-		xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_GATE_ULP, NODE_ENDPOINTS);
-		priv->flags |= XOCL_IC_FLAT_SHELL;
-	}
+	{
+		node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_GATE_ULP);
+		if (node < 0)
+			xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_GATE_ULP, NODE_ENDPOINTS);
 
+		node1 = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_GATE_PLP);
+		if (node < 0)
+			xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_GATE_PLP, NODE_ENDPOINTS);
+
+		if ((node < 0) && (node1 < 0))
+			priv->flags |= XOCL_IC_FLAT_SHELL;
+	}
 	*len = sizeof(*priv);
 
 	return priv;
