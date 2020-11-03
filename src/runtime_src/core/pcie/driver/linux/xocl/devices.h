@@ -66,6 +66,11 @@ enum {
 	XOCL_XMC_CLK_SCALING	= (1 << 2),
 };
 
+/* icap controller flags */
+enum {
+	XOCL_IC_FLAT_SHELL	= (1 << 0),
+};
+
 #define	FLASH_TYPE_SPI	"spi"
 #define	FLASH_TYPE_QSPIPS	"qspi_ps"
 #define	FLASH_TYPE_QSPIPS_X2_SINGLE	"qspi_ps_x2_single"
@@ -132,6 +137,10 @@ struct xocl_sysmon_privdata {
 };
 
 struct xocl_xmc_privdata {
+	uint16_t		flags;
+};
+
+struct xocl_icap_cntrl_privdata {
 	uint16_t		flags;
 };
 
