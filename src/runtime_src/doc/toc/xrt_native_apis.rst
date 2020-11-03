@@ -593,7 +593,7 @@ However, XRT also provides APIs to obtain the register offset for CU arguments. 
 
 **C++**: The equivalent C++ API example
 
-.. code:: c
+.. code:: c++
       :number-lines: 38
 
            // Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively) 
@@ -715,7 +715,7 @@ There are two reset functions are used:
 
 
 .. code:: c
-      :number-lines: 35
+      :number-lines: 45
            
            xrtDeviceHandle device_handle = xrtDeviceOpen(0);
            ...
@@ -814,7 +814,7 @@ The graph runs infinitely if ``xrtGraphRun`` is called with iteration argument -
 
 
 .. code:: c
-      :number-lines: 35
+      :number-lines: 39
            
            // start from reset state
            xrtGraphReset(graphHandle);
@@ -867,27 +867,28 @@ XRT provides the API to update and read the runtime parameters of the graph.
 - The API ``xrtGraphUpdateRTP`` to update the RTP 
 - The API ``xrtGraphReadRTP`` to read the RTP. 
 
-.. code-block:: c
+.. code:: c
+      :number-lines: 35
 
-     ret = xrtGraphReset(graphHandle);
-     if (ret) throw std::runtime_error("Unable to reset graph");
+           ret = xrtGraphReset(graphHandle);
+           if (ret) throw std::runtime_error("Unable to reset graph");
 
-     ret = xrtGraphRun(graphHandle, 2);
-     if (ret) throw std::runtime_error("Unable to run graph");
+           ret = xrtGraphRun(graphHandle, 2);
+           if (ret) throw std::runtime_error("Unable to run graph");
 
-     float increment[1] = {1};
-     const char *inVect = reinterpret_cast<const char *>(increment);
-     xrtGraphUpdateRTP(graphHandle, "mm.mm0.in[2]", inVect, sizeof (float));
+           float increment[1] = {1};
+           const char *inVect = reinterpret_cast<const char *>(increment);
+           xrtGraphUpdateRTP(graphHandle, "mm.mm0.in[2]", inVect, sizeof (float));
      
-     // Do more things
-     xrtGraphRun(graphHandle,16);
-     xrtGraphWait(graphHandle,0);
+           // Do more things
+           xrtGraphRun(graphHandle,16);
+           xrtGraphWait(graphHandle,0);
      
-     // Read RTP
-     float increment_out[1] = {1};
-     char *outVect = reinterpret_cast<char *>(increment_out);
-     xrtGraphReadRTP(graphHandle, "mm.mm0.inout[0]", outVect, sizeof(float));
-     std::cout<<"\n RTP value read<<increment_out[0]; 
+           // Read RTP
+           float increment_out[1] = {1};
+           char *outVect = reinterpret_cast<char *>(increment_out);
+           xrtGraphReadRTP(graphHandle, "mm.mm0.inout[0]", outVect, sizeof(float));
+           std::cout<<"\n RTP value read<<increment_out[0]; 
  
 In the above example, the API ``xrtGraphUpdateRTP`` and ``xrtGraphReadRTP`` are used to update and read the RTP values respectively. Note the API arguments 
    
@@ -902,25 +903,26 @@ XRT provides API ``xrtAIESyncBO`` to synchronize the buffer contents between GMI
 
 
 .. code:: 
+      :number-lines: 35
 
-       xrtDeviceHandle device_handle = xrtDeviceOpen(0);
+           xrtDeviceHandle device_handle = xrtDeviceOpen(0);
        
-       // Buffer from GM to AIE
-       xrtBufferHandle in_bo_handle  = xrtBOAlloc(device_handle, SIZE * sizeof (float), 0, 0);
+           // Buffer from GM to AIE
+           xrtBufferHandle in_bo_handle  = xrtBOAlloc(device_handle, SIZE * sizeof (float), 0, 0);
        
-       // Buffer from AIE to GM
-       xrtBufferHandle out_bo_handle  = xrtBOAlloc(device_handle, SIZE * sizeof (float), 0, 0);
+           // Buffer from AIE to GM
+           xrtBufferHandle out_bo_handle  = xrtBOAlloc(device_handle, SIZE * sizeof (float), 0, 0);
        
-       inp_bo_map = (float *)xrtBOMap(in_bo_handle);
-       out_bo_map = (float *)xrtBOMap(out_bo_handle);
+           inp_bo_map = (float *)xrtBOMap(in_bo_handle);
+           out_bo_map = (float *)xrtBOMap(out_bo_handle);
 
-       for (int j = 0; j < SIZE; j++)
-            inp_bo_map[j] = my_float_array[j];
+           for (int j = 0; j < SIZE; j++)
+               inp_bo_map[j] = my_float_array[j];
 
 
-       xrtAIESyncBO(device_handle, in_bo_handle, "in_sink", XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0); 
+           xrtAIESyncBO(device_handle, in_bo_handle, "in_sink", XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0); 
 
-       xrtAIESyncBO(device_handle, out_bo_handle, "out_sink", XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float), 0);
+           xrtAIESyncBO(device_handle, out_bo_handle, "out_sink", XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float), 0);
        
        
 The above code shows
