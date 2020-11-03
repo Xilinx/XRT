@@ -1511,7 +1511,9 @@ int xcldev::device::getXclbinuuid(uuid_t &uuid) {
 
 bool xcldev::device::isHostMem(const char *m_tag)
 {
-    return (!strncmp(m_tag, "HOST", 4));
+    std::string str(m_tag);
+
+    return (!str.compare(0, 4, "HOST"));
 }
 
 int xcldev::device::kernelVersionTest(void)
