@@ -307,7 +307,7 @@
             
             
               <div class="version">
-                2020.2
+                2020.1
               </div>
             
           
@@ -398,6 +398,7 @@
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
@@ -411,6 +412,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -1003,7 +1006,7 @@ INFO: Found total 2 card(s), 2 are usable
 <p><strong>C++</strong>: In C++, <code class="docutils literal notranslate"><span class="pre">xrt::kernel</span></code> object can be created from the constructor of <code class="docutils literal notranslate"><span class="pre">xrt::kernel</span></code> class.</p>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
 36</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">xclbin_uuid</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">load_xclbin</span><span class="p">(</span><span class="s">&quot;kernel.xclbin&quot;</span><span class="p">);</span>
-     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">);</span>
+     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
 <div class="section" id="exclusive-access-of-the-kernel-s-cu">
@@ -1019,7 +1022,7 @@ INFO: Found total 2 card(s), 2 are usable
 <li><p><code class="docutils literal notranslate"><span class="pre">xrt::kernel::cu_access_mode::exclusive</span></code></p></li>
 </ul>
 </div></blockquote>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>39</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="o">::</span><span class="n">cu_access_mode</span><span class="o">::</span><span class="n">exclusive</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>39</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="o">::</span><span class="n">cu_access_mode</span><span class="o">::</span><span class="n">exclusive</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
 </div>
@@ -1084,7 +1087,7 @@ INFO: Found total 2 card(s), 2 are usable
 41</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="kt">int</span> <span class="n">read_data</span><span class="p">;</span>
      <span class="kt">int</span> <span class="n">write_data</span> <span class="o">=</span> <span class="mi">7</span><span class="p">;</span>
 
-     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="s">&quot;foo:{foo_1}&quot;</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="nb">true</span><span class="p">);</span>
+     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;foo:{foo_1}&quot;</span><span class="p">,</span> <span class="nb">true</span><span class="p">);</span>
 
      <span class="n">read_data</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">.</span><span class="n">read_register</span><span class="p">(</span><span class="n">READ_OFFSET</span><span class="p">);</span>
      <span class="n">kernel</span><span class="p">.</span><span class="n">write_register</span><span class="p">(</span><span class="n">WRITE_OFFSET</span><span class="p">,</span><span class="n">write_data</span><span class="p">);</span>
@@ -1117,7 +1120,7 @@ Register Offset:   0x10
 40
 41</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively)</span>
 
-     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="s">&quot;foo:{foo_1}&quot;</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="nb">true</span><span class="p">);</span>
+     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;foo:{foo_1}&quot;</span><span class="p">,</span> <span class="nb">true</span><span class="p">);</span>
      <span class="k">auto</span> <span class="n">offset</span> <span class="o">=</span> <span class="n">krnl</span><span class="p">.</span><span class="n">offset</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
 </pre></div>
 </td></tr></table></div>
@@ -1243,7 +1246,7 @@ Register Offset:   0x10
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on October 21, 2020.
+        Last updated on November 02, 2020.
       </span>
 
     </p>
