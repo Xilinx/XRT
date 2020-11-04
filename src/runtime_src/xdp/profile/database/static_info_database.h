@@ -218,6 +218,12 @@ namespace xdp {
     uint32_t numTracePLIO = 0;
 
     ~DeviceInfo();
+    void addTraceGMIO(uint32_t i, uint16_t col, uint16_t num, uint16_t stream,
+		      uint16_t len) ;
+    void addAIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num,
+		       uint8_t start, uint8_t end, uint8_t reset,
+		       double freq, const std::string& mod,
+		       const std::string& aieName) ;
   };
 
   class VPStaticDatabase
@@ -261,7 +267,6 @@ namespace xdp {
     bool setXclbinName(DeviceInfo*, const std::shared_ptr<xrt_core::device>& device);
     bool initializeComputeUnits(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
     bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
-    bool initializeAIECounters(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -464,6 +469,26 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->gmioList[idx];
+    }
+
+    inline void addTraceGMIO(uint64_t deviceId, uint32_t i, uint16_t col,
+			     uint16_t num, uint16_t stream, uint16_t len)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+	return ;
+      deviceInfo[deviceId]->addTraceGMIO(i, col, num, stream, len);
+    }
+
+    inline void addAIECounter(uint64_t deviceId, uint32_t i, uint16_t col,
+			      uint16_t r, uint8_t num, uint8_t start,
+			      uint8_t end, uint8_t reset, double freq,
+			      const std::string& mod,
+			      const std::string& aieName)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+	return ;
+      deviceInfo[deviceId]->addAIECounter(i, col, r, num, start, end, reset,
+					  freq, mod, aieName) ;
     }
 
     // Includes User Space AIM only, but no shell AIM

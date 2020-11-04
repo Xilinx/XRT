@@ -1806,8 +1806,14 @@ const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
 			break;
 		}
 	}
-	if (fw_ver)
+	if (fw_ver) {
 		xocl_xdev_info(xdev_hdl, "Load embedded scheduler firmware %s", fw_ver);
+		/* if firmware_branch_name is "legacy", XRT loads the sched.bin */
+		if (!strcmp(fw_ver, "legacy")) {
+			xocl_xdev_info(xdev_hdl, "Firmware branch name is legacy. Loading default sched.bin");
+			return NULL;
+		}
+	}
 
 	return fw_ver;
 }

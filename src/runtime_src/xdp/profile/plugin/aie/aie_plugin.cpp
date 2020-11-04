@@ -28,6 +28,10 @@
 #include "core/edge/common/aie_parser.h"
 #include "xdp/profile/database/database.h"
 
+#ifdef XRT_ENABLE_AIE
+#include "core/edge/common/aie_parser.h"
+#endif
+
 extern "C" {
 #include <xaiengine.h>
 }
@@ -126,6 +130,31 @@ namespace xdp {
           (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
         }
       }
+#ifdef XRT_ENABLE_AIE
+      {
+	// Update the AIE specific portion of the device
+	std::shared_ptr<xrt_core::device> device =
+	  xrt_core::get_userpf_device(handle) ;
+	auto counters = xrt_core::edge::aie::get_profile_counters(device.get());
+	if (xrt_core::config::get_aie_profile() && counters.empty()) {
+	  std::string msg("AIE Profile Counters are not found in AIE metadata of the given design. So, AIE Profile information will not be available.");
+	  xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg) ;			  
+	}
+	for (auto& counter : counters) {
+	  (db->getStaticInfo()).addAIECounter(deviceId,
+					      counter.id,
+					      counter.column,
+					      counter.row,
+					      counter.counterNumber,
+					      counter.startEvent,
+					      counter.endEvent,
+					      counter.resetEvent,
+					      counter.clockFreqMhz,
+					      counter.module,
+					      counter.name) ;
+	}
+      }
+#endif
     }
 
     // Open the writer for this device

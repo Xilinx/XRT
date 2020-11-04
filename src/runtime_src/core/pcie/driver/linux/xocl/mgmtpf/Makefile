@@ -107,7 +107,7 @@ all:
 install: all
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules_install
 	depmod -a
-	install -m 644 10-xclmgmt.rules /etc/udev/rules.d
+	install -m 644 99-xclmgmt.rules /etc/udev/rules.d
 	-rmmod -s xclmgmt || true
 	-modprobe xclmgmt
 

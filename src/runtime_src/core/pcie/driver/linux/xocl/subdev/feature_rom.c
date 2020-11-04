@@ -710,7 +710,7 @@ static int get_header_from_iomem(struct feature_rom *rom)
 			memset(rom->header.VBNVName, 0,
 				sizeof(rom->header.VBNVName));
 			strncpy(rom->header.VBNVName,
-				"xilinx_aws-vu9p-f1_dynamic_5_0", 35);
+				"xilinx_aws-vu9p-f1_shell-v04261818_201920_2", 35);
 			rom->header.MajorVersion = 4;
 			rom->header.MinorVersion = 0;
 			rom->header.VivadoBuildID = 0xabcd;
