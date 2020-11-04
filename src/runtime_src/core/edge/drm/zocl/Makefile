@@ -22,7 +22,7 @@ endif
 
 endif
 
-ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -I$(src)/../../../common/drv/include -DXRT_HASH=\"$(GIT_HASH)\" -DXRT_HASH_DATE=\"$(GIT_HASH_DATE)\" -DXRT_BRANCH=\"$(GIT_BRANCH)\" -DXRT_MODIFIED_FILES=\"$(GIT_MODIFIED_FILES)\" 
+ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -I$(src)/../../../common/drv/include -DXRT_HASH=\"$(GIT_HASH)\" -DXRT_HASH_DATE=\"$(GIT_HASH_DATE)\" -DXRT_BRANCH=\"$(GIT_BRANCH)\" -DXRT_MODIFIED_FILES=\"$(GIT_MODIFIED_FILES)\" -DXRT_DATE=\"$(DATE_NOW)\" -DXRT_DRIVER_VERSION=\"$(XRT_DRIVER_VERSION)\"
 
 #flags passed from xrt_git.bb file are added below
 ifneq ($(cflags_zocl),)
