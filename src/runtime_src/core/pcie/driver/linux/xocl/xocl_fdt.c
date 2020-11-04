@@ -246,6 +246,44 @@ static void *p2p_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	return p2p_priv;
 }
 
+static void *icap_cntrl_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
+{
+	struct xocl_dev_core *core = XDEV(xdev_hdl);
+	void *blob;
+	struct xocl_icap_cntrl_privdata *priv;
+	int node, node1;
+
+	blob = core->fdt_blob;
+	if (!blob)
+		return NULL;
+
+	priv = vzalloc(sizeof(*priv));
+	if (!priv)
+		return NULL;
+
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_ICAP_CONTROLLER);
+	if (node < 0) {
+		xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_ICAP_CONTROLLER, NODE_ENDPOINTS);
+		return NULL;
+	}
+
+	{
+		node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_GATE_ULP);
+		if (node < 0)
+			xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_GATE_ULP, NODE_ENDPOINTS);
+
+		node1 = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_GATE_PLP);
+		if (node1 < 0)
+			xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_GATE_PLP, NODE_ENDPOINTS);
+
+		if ((node < 0) && (node1 < 0))
+			priv->flags |= XOCL_IC_FLAT_SHELL;
+	}
+	*len = sizeof(*priv);
+
+	return priv;
+}
+
 static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
 {
 	struct xocl_subdev *subdev = subdevs;
@@ -785,6 +823,19 @@ static struct xocl_subdev_map subdev_map[] = {
 		.required_ip = 1,
 		.flags = 0,
 		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
+	},
+	{
+		.id = XOCL_SUBDEV_ICAP_CNTRL,
+		.dev_name = XOCL_ICAP_CNTRL,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ICAP_CONTROLLER},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = icap_cntrl_build_priv,
 		.devinfo_cb = NULL,
 		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},

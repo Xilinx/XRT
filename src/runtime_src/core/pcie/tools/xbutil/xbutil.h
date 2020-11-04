@@ -1727,7 +1727,7 @@ public:
             if(map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
 
-            if(!strncmp((const char*)map->m_mem_data[i].m_tag, "HOST", 4))
+            if(isHostMem((const char*)map->m_mem_data[i].m_tag))
                 continue;
 
             if(map->m_mem_data[i].m_used) {
@@ -1950,6 +1950,7 @@ private:
     int runOneTest(std::string testName, std::function<int(void)> testFunc);
 
     int getXclbinuuid(uuid_t &uuid);
+    bool isHostMem(const char *m_tag);
 };
 
 void printHelp(const std::string& exe);

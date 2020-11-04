@@ -1509,6 +1509,13 @@ int xcldev::device::getXclbinuuid(uuid_t &uuid) {
     return 0;
 }
 
+bool xcldev::device::isHostMem(const char *m_tag)
+{
+    std::string str(m_tag);
+
+    return (!str.compare(0, 4, "HOST"));
+}
+
 int xcldev::device::kernelVersionTest(void)
 {
     if (getenv_or_null("INTERNAL_BUILD")) {
@@ -2317,6 +2324,9 @@ int xcldev::device::testM2m()
     }
 
     for(int32_t i = 0; i < map->m_count; i++) {
+        if (isHostMem((const char *)map->m_mem_data[i].m_tag))
+            continue;
+
         if(map->m_mem_data[i].m_used &&
             map->m_mem_data[i].m_size * 1024 >= m2mBoSize) {
             /* use u8 m_type field to as bank index */

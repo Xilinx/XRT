@@ -4791,7 +4791,7 @@ kds_cucounts_show(struct device *dev, struct device_attribute *attr, char *buf)
 	}
 
 	if (xert) {
-		cus = exec ? exec->num_sk_cus : 0;
+		cus = exec->num_sk_cus;
 		for (idx = exec->num_cus; idx < exec->num_cus + cus; idx++) {
 			sz += sprintf(buf + sz, "cu[%d] done(%d) run(%d)\n", idx,
 				      ert_cu_usage(xert, idx), ert_cu_usage(xert, idx));
