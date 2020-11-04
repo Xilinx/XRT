@@ -37,10 +37,6 @@
 
 #define ZOCL_DRIVER_NAME        "zocl"
 #define ZOCL_DRIVER_DESC        "Zynq BO manager"
-//#define ZOCL_DRIVER_DATE        "20180313"
-//#define ZOCL_DRIVER_MAJOR       2018
-//#define ZOCL_DRIVER_MINOR       2
-//#define ZOCL_DRIVER_PATCHLEVEL  1
 
 static char driver_date[9];
 
@@ -784,9 +780,6 @@ static struct drm_driver zocl_driver = {
 	.name                      = ZOCL_DRIVER_NAME,
 	.desc                      = ZOCL_DRIVER_DESC,
 	.date                      = driver_date,
-	//.major                     = ZOCL_DRIVER_MAJOR,
-	//.minor                     = ZOCL_DRIVER_MINOR,
-	//.patchlevel                = ZOCL_DRIVER_PATCHLEVEL,
 };
 
 static const struct zdev_data zdev_data_mpsoc = {
