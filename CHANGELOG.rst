@@ -1,9 +1,17 @@
 XRT ChangeLog
 -------------
 
-2.8.0
-~~~~~
+2.8.0 (202020.2.8.x)
+~~~~~~~~~~~~~~~~~~~~
 
+Added
+.....
+
+* Support for Ubuntu 20.04, CentOS/RHEL 8.2
+* HBM grouping support. Contiguous banks are merged into a single group allowing for larger buffer size.
+* AIE graph APIs supported through native XRT APIs. AIE APIs are split into AIE array/shim level APIs in xrt_aie.h and graph level APIs in xrt_graph.h.  AIE APIs are moved to libxrt_coreutil.so from libxrt_core.so
+* Python wrappers for native XRT APIs
+  
 Removed
 .......
 
