@@ -847,16 +847,16 @@ Here in this example, the AIE cycle consumed by 3 iteration is calculated
            // start from reset state
            xrtGraphReset(graphHandle);
            
-           begin_t = xrtGraphTimeStamp(graphHandle);
+           uint64_t begin_t = xrtGraphTimeStamp(graphHandle);
            
            // run the graph for 3 iteration
            xrtGraphRun(graphHandle, 3);
            
            xrtGraphWait(graphHandle, 0); 
            
-           end_t = xrtGraphTimeStamp(graphHandle);
+           uint64_t end_t = xrtGraphTimeStamp(graphHandle);
            
-           cout<<"Number of AIE cycles consumed in the 3 iteration is<< end_t-begin_t; 
+           std::cout<<"Number of AIE cycles consumed in the 3 iteration is: "<< end_t-begin_t; 
            
 
 RTP (Runtime Parameter) control
