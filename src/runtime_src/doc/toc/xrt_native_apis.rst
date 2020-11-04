@@ -896,7 +896,7 @@ XRT provides the API to update and read the runtime parameters of the graph.
  
 In the above example, the API ``xrtGraphUpdateRTP`` and ``xrtGraphReadRTP`` are used to update and read the RTP values respectively. Note the API arguments 
    
-      - The hierarchical name of the RTL port
+      - The hierarchical name of the RTP port
       - Pointer to write or read the RTP variable
       - The size of the RTP value. 
 
