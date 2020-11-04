@@ -467,6 +467,8 @@ alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
   ubo->flags = bo->flags;
   ubo->owner = bo->owner;
   ubo->parent = boh;  // keep parent boh reference
+  ubo->nodma = bo->nodma;
+  ubo->nodma_host_handle = bo->nodma_host_handle;
 
   // Verify alignment based on hardware requirement
   auto alignment = getAlignment();
@@ -537,16 +539,22 @@ sync(const BufferObjectHandle& boh, size_t sz, size_t offset, direction dir1, bo
     dir = XCL_BO_SYNC_BO_FROM_DEVICE;
 
   BufferObject* bo = getBufferObject(boh);
+
+  // A sub buffer shares the BO handle with the parent buffer.  When
+  // syncing a sub buffer, the offset of the sub buffer relative to
+  // the parent buffer must be included.
+  auto offs = offset + bo->offset; 
+
   if (bo->nodma) {
     // sync is M2M copy between host and device handle
     if (dir == XCL_BO_SYNC_BO_TO_DEVICE) {
-      if (m_ops->mCopyBO(m_handle, bo->handle, bo->nodma_host_handle, sz, offset, offset))
+      if (m_ops->mCopyBO(m_handle, bo->handle, bo->nodma_host_handle, sz, offs, offs))
 	throw std::runtime_error("failed to sync nodma buffer to device, "
 				 "is the buffer 64byte aligned?  Check dmesg for errors.");
       return typed_event<int>(0);
     }
     else {
-      if (m_ops->mCopyBO(m_handle, bo->nodma_host_handle, bo->handle, sz, offset, offset))
+      if (m_ops->mCopyBO(m_handle, bo->nodma_host_handle, bo->handle, sz, offs, offs))
 	throw std::runtime_error("failed to sync nodma buffer to host, "
 				 "is the buffer 64byte aligned? Check dmesg for errors.");
       return typed_event<int>(0);
@@ -555,9 +563,9 @@ sync(const BufferObjectHandle& boh, size_t sz, size_t offset, direction dir1, bo
 
   if (async) {
     auto qt = (dir==XCL_BO_SYNC_BO_FROM_DEVICE) ? hal::queue_type::read : hal::queue_type::write;
-    return event(addTaskF(m_ops->mSyncBO,qt,m_handle,bo->handle,dir,sz,offset));
+    return event(addTaskF(m_ops->mSyncBO,qt,m_handle,bo->handle,dir,sz,offs));
   }
-  return event(typed_event<int>(m_ops->mSyncBO(m_handle, bo->handle, dir, sz, offset+bo->offset)));
+  return event(typed_event<int>(m_ops->mSyncBO(m_handle, bo->handle, dir, sz, offs)));
 }
 
 event

@@ -41,7 +41,8 @@ struct start_copybo_cu_cmd {
   uint32_t dst_addr_lo;      /* low 32 bit of dst addr */
   uint32_t dst_addr_hi;      /* high 32 bit of dst addr */
   uint32_t dst_bo_hdl;       /* dst bo handle */
-  uint32_t size;             /* size of bus width in bytes */
+  uint32_t size_lo;          /* size of bus width in bytes, low 32 bit */
+  uint32_t size_hi;          /* size of bus width in bytes, high 32 bit */
 };
 
 struct xocl_m2m {
@@ -87,7 +88,8 @@ static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,
 	cmd.dst_addr_hi = (dst_paddr >> 32) & 0xFFFFFFFF;
 	cmd.src_bo_hdl = src_bo_hdl;
 	cmd.dst_bo_hdl = dst_bo_hdl;
-	cmd.size = size / KDMA_BLOCK_SIZE;
+	cmd.size_lo = size / KDMA_BLOCK_SIZE;
+	cmd.size_hi = 0;
 
 	mutex_lock(&m2m->m2m_lock);
 	if (!xrt_cu_get_credit(xcu)) {

@@ -201,16 +201,10 @@ static int icap_cntrl_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	icap_cntrl->support_enabled = xocl_flat_shell_check(xdev_hdl);
-
-	if (icap_cntrl->support_enabled)
-		xocl_info(&pdev->dev, "ICAP Controller Programming is Supported");
-
 	platform_set_drvdata(pdev, icap_cntrl);
 	icap_cntrl->pdev = pdev;
 	mutex_init(&icap_cntrl->icap_cntrl_lock);
 
-	icap_cntrl->priv_data = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	icap_cntrl->base_addr = ioremap_nocache(res->start,
                                 res->end - res->start + 1);
@@ -219,6 +213,18 @@ static int icap_cntrl_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "Map iomem failed");
 		goto failed;
 	}
+
+	icap_cntrl->priv_data = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (icap_cntrl->priv_data) {
+		if (icap_cntrl->priv_data->flags & XOCL_IC_FLAT_SHELL)
+			icap_cntrl->support_enabled = true;
+		else
+			icap_cntrl->support_enabled = false;
+	} else {
+		icap_cntrl->support_enabled = xocl_flat_shell_check(xdev_hdl);
+	}
+	if (icap_cntrl->support_enabled)
+		xocl_info(&pdev->dev, "ICAP Controller Programming is Supported");
 
 	ret = icap_cntrl_sysfs_create(icap_cntrl);
 	if (ret)
