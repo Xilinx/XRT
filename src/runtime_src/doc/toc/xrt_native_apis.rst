@@ -775,7 +775,7 @@ Let's review the below example
 
 As shown in the above example ``xrtGraphWait(graphHandle,0)`` performs a busy-wait and suspend the execution till the graph is not done. If desired a timeout version of the wait can be achieved by ``xrtGraphWaitDone`` which can be used to wait for some specified number of milliseconds, and if the graph is not done do something else in the meantime. An example is shown below
 
-.. code:: c
+.. code:: c++
       :number-lines: 35
            
            // start from reset state
@@ -841,7 +841,7 @@ The API ``xrtGraphTimeStamp`` can be used to determine AIE cycle consumed betwee
 Here in this example, the AIE cycle consumed by 3 iteration is calculated
  
 
-.. code:: c
+.. code:: c++
       :number-lines: 35
            
            // start from reset state
@@ -867,7 +867,7 @@ XRT provides the API to update and read the runtime parameters of the graph.
 - The API ``xrtGraphUpdateRTP`` to update the RTP 
 - The API ``xrtGraphReadRTP`` to read the RTP. 
 
-.. code:: c
+.. code:: c++
       :number-lines: 35
 
            ret = xrtGraphReset(graphHandle);
@@ -902,7 +902,7 @@ DMA operation to and from Global Memory IO
 XRT provides API ``xrtAIESyncBO`` to synchronize the buffer contents between GMIO and AIE. The following code shows a sample example
 
 
-.. code:: 
+.. code:: c++
       :number-lines: 35
 
            xrtDeviceHandle device_handle = xrtDeviceOpen(0);
@@ -956,7 +956,7 @@ XRT provides a couple of APIs to retrieve the asynchronous errors into the users
 
 Example code
 
-.. code-block:: c
+.. code-block:: c++
       :number-lines: 41
 
            rval = xrtGraphRun(graphHandle, runInteration);
