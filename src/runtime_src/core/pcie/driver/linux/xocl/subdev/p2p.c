@@ -1103,7 +1103,7 @@ static int p2p_get_bar_paddr(struct platform_device *pdev, ulong bank_addr,
 		goto  failed;
 	}
 
-	bank_off = p2p_bar_map(p2p, bank_addr, bank_size, XOCL_P2P_CHUNK_SIZE);
+	bank_off = p2p_bar_map(p2p, bank_addr, bank_size, 1);
 	if (bank_off < 0) {
 		ret = -ENOENT;
 		goto failed;
