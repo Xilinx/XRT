@@ -108,7 +108,19 @@ public:
   }
 
   void
+  update_rtp(const std::string& port, const char* buffer, size_t size)
+  {
+    device->update_graph_rtp(handle, port, buffer, size);
+  }
+
+  void
   read_rtp(const char* port, char* buffer, size_t size)
+  {
+    device->read_graph_rtp(handle, port, buffer, size);
+  }
+
+  void
+  read_rtp(const std::string& port, char* buffer, size_t size)
   {
     device->read_graph_rtp(handle, port, buffer, size);
   }
@@ -127,6 +139,15 @@ open_graph(xrtDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* graph_nam
 {
   auto device = xrt_core::device_int::get_core_device(dhdl);
   auto handle = device->open_graph(xclbin_uuid, graph_name);
+  auto ghdl = std::make_shared<xrt::graph_impl>(device, handle);
+  return ghdl;
+}
+
+static std::shared_ptr<xrt::graph_impl>
+open_graph(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name)
+{
+  auto device = xrt_core::get_userpf_device(dhdl);
+  auto handle = device->open_graph(xclbin_id.get(), name.c_str());
   auto ghdl = std::make_shared<xrt::graph_impl>(device, handle);
   return ghdl;
 }
@@ -203,6 +224,110 @@ send_exception_message(const char* msg)
 }
 
 }
+
+//////////////////////////////////////////////////////////////
+// xrt_graph C++ API implementations (xrt_graph.h)
+//////////////////////////////////////////////////////////////
+namespace xrt {
+
+graph::
+graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name)
+  : handle(open_graph(device, xclbin_id, name))
+{}
+
+void
+graph::
+reset() const
+{
+  handle->reset();
+}
+
+uint64_t
+graph::
+get_timestamp() const
+{
+  return (handle->get_timestamp());
+}
+
+void
+graph::
+run()
+{
+  handle->run(0);
+}
+
+void
+graph::
+run(uint32_t iterations)
+{
+  handle->run(iterations);
+}
+
+void
+graph::
+wait_done(int timeout_ms)
+{
+  handle->wait(timeout_ms);
+}
+
+void
+graph::
+wait()
+{
+  handle->wait(0);
+}
+
+void
+graph::
+wait(uint64_t cycles)
+{
+  handle->wait(cycles);
+}
+
+void
+graph::
+suspend()
+{
+  handle->suspend();
+}
+
+void
+graph::
+resume()
+{
+  handle->resume();
+}
+
+void
+graph::
+end()
+{
+  handle->end(0);
+}
+
+void
+graph::
+end(uint64_t cycles)
+{
+  handle->end(cycles);
+}
+
+void
+graph::
+update_port(const std::string& port_name, const void* value, size_t bytes)
+{
+  handle->update_rtp(port_name, reinterpret_cast<const char*>(value), bytes);
+}
+
+void
+graph::
+read_port(const std::string& port_name, void* value, size_t bytes)
+{
+  handle->read_rtp(port_name, reinterpret_cast<char *>(value), bytes);
+}
+
+} // namespace xrt
+
 
 ////////////////////////////////////////////////////////////////
 // xrt_aie API implementations (xrt_aie.h, xrt_graph.h)

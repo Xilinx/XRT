@@ -770,7 +770,19 @@ xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, siz
 }
 
 int
+xclGraphUpdateRTP(xclGraphHandle ghdl, const std::string& port, const char* buffer, size_t size)
+{
+  return 0;
+}
+
+int
 xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size)
+{
+  return 0;
+}
+
+int
+xclGraphReadRTP(xclGraphHandle ghdl, const std::string& port, char *buffer, size_t size)
 {
   return 0;
 }

@@ -688,7 +688,21 @@ xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, siz
 }
 
 void
+xclGraphUpdateRTP(xclGraphHandle ghdl, const std::string& port, const char* buffer, size_t size)
+{
+  auto graph = get_graph(ghdl);
+  graph->update_rtp(port, buffer, size);
+}
+
+void
 xclGraphReadRTP(xclGraphHandle ghdl, const char* port, char* buffer, size_t size)
+{
+  auto graph = get_graph(ghdl);
+  graph->read_rtp(port, buffer, size);
+}
+
+void
+xclGraphReadRTP(xclGraphHandle ghdl, const std::string& port, char* buffer, size_t size)
 {
   auto graph = get_graph(ghdl);
   graph->read_rtp(port, buffer, size);
@@ -1003,7 +1017,41 @@ xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, siz
 }
 
 int
+xclGraphUpdateRTP(xclGraphHandle ghdl, const std::string& port, const char* buffer, size_t size)
+{
+  try {
+    api::xclGraphUpdateRTP(ghdl, port, buffer, size);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
 xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size)
+{
+  try {
+    api::xclGraphReadRTP(ghdl, port, buffer, size);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xclGraphReadRTP(xclGraphHandle ghdl, const std::string& port, char *buffer, size_t size)
 {
   try {
     api::xclGraphReadRTP(ghdl, port, buffer, size);
