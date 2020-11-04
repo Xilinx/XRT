@@ -916,8 +916,8 @@ XRT provides API ``xrtAIESyncBO`` to synchronize the buffer contents between GMI
            inp_bo_map = (float *)xrtBOMap(in_bo_handle);
            out_bo_map = (float *)xrtBOMap(out_bo_handle);
 
-           for (int j = 0; j < SIZE; j++)
-               inp_bo_map[j] = my_float_array[j];
+           // Prepare input data 
+           std::copy(my_float_array,my_float_array+SIZE,inp_bo_map);
 
 
            xrtAIESyncBO(device_handle, in_bo_handle, "in_sink", XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0); 
