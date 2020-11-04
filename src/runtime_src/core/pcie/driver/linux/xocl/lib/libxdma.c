@@ -923,16 +923,16 @@ static int process_completions(struct xdma_engine *engine,
 
 		if (req->sw_desc_cnt == req->desc_completed) {
 			list_del(&req->entry);
-			spin_unlock(&engine->req_list_lock);
 			if (req->cb && req->cb->io_done) {
 				struct xdma_io_cb *cb = req->cb;
 
 				cb->done_bytes = req->done;
+				spin_unlock(&engine->req_list_lock);
 				cb->io_done((unsigned long)cb->private, 0);
+				spin_lock(&engine->req_list_lock);
 				xdma_request_release(engine->xdev, req);
 			} else
 				wake_up(&req->arbtr_wait);
-			spin_lock(&engine->req_list_lock);
 		}
 		spin_unlock(&engine->req_list_lock);
 	}
@@ -3213,15 +3213,12 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 	}
 	rv = xdma_process_requests(engine, req);
 
+	spin_lock(&engine->req_list_lock);
 	/* Read length of completed transfer */
 	done = req->done;
 	if (rv < 0) {
-		spin_lock(&engine->req_list_lock);
-
-
 		if (req->sw_desc_cnt > req->desc_completed)
 			list_del(&req->entry);
-		spin_unlock(&engine->req_list_lock);
 		pr_err("Request Processing failed, :%u/%u/%u\n",
 		       req->sw_desc_cnt, req->sw_desc_idx, req->desc_completed);
 		goto unmap_sgl;
@@ -3229,6 +3226,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 
 unmap_sgl:
 	xdma_request_release(engine->xdev, req);
+	spin_unlock(&engine->req_list_lock);
 	if (rv < 0)
 		return rv;
 
