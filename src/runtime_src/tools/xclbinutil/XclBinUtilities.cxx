@@ -640,7 +640,7 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
                               std::vector<boost::property_tree::ptree> & groupTopology, 
                               std::vector<boost::property_tree::ptree> & groupConnectivity)
 {
-  // Sort our collection by: Memory Type, IP Layout Index, Argument Index, and Base address
+  // Sort our collection by: IP Layout Index, Argument Index, and Base address
   std::sort(workingConnections.begin(), workingConnections.end(), 
             [](WorkingConnection &a, WorkingConnection &b) { 
               if (a.ipLayoutIndex != b.ipLayoutIndex)     // Level 1: IP Layout Index
