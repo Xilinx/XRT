@@ -47,7 +47,7 @@
 #include "core/common/message.h"
 
 #define XAM_STALL_PROPERTY_MASK        0x4
-
+#define XMON_TRACE_PROPERTY_MASK       0x1
 
 namespace xdp {
 
@@ -406,9 +406,13 @@ namespace xdp {
             cuObj = cu.second;
             cuId = cu.second->getIndex();
             mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
-            uint64_t slotID = (index - MIN_TRACE_ID_AM) / 16;
-            devInfo->amMap.emplace(slotID, mon);
-            cuObj->setAccelMon(slotID);
+            if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_AM)) {
+              uint64_t slotID = (index - MIN_TRACE_ID_AM) / 16;
+              devInfo->amMap.emplace(slotID, mon);
+              cuObj->setAccelMon(slotID);
+            } else {
+              devInfo->noTraceAMs.push_back(mon);
+            }
             if(debugIpData->m_properties & XAM_STALL_PROPERTY_MASK) {
               cuObj->setStallEnabled(true);
             }
@@ -438,8 +442,8 @@ namespace xdp {
           }
         }
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
-        // If the AIM is an User Space AIM i.e. either connected to a CU or floating but not shell AIM
-        if(cuObj || (0 != monCuName.compare("shell"))) {
+        // If the AIM is an User Space AIM with trace enabled i.e. either connected to a CU or floating but not shell AIM
+        if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_AIM)) {
           uint64_t slotID = (index - MIN_TRACE_ID_AIM) / 2;
           devInfo->aimMap.emplace(slotID, mon);
           if(cuObj) {
@@ -448,9 +452,8 @@ namespace xdp {
             // If not connected to CU and not a shell monitor, then a floating monitor
             devInfo->hasFloatingAIM = true;
           }
-        } else /* if(0 == monCuName.compare("shell")) */ {
-          // Shell AIM
-          devInfo->shellAIMList.push_back(mon);
+        } else {
+          devInfo->noTraceAIMs.push_back(mon);
         }
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
@@ -486,8 +489,8 @@ namespace xdp {
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
         }
-        // If the ASM is an User Space ASM i.e. either connected to a CU or floating but not shell ASM
-        if(cuObj || (0 != monCuName.compare("shell"))) {
+        // If the ASM is an User Space ASM with trace enabled i.e. either connected to a CU or floating but not shell ASM
+        if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_ASM)) {
           uint64_t slotID = (index - MIN_TRACE_ID_ASM);
           devInfo->asmMap.emplace(slotID, mon);
           if(cuObj) {
@@ -496,9 +499,8 @@ namespace xdp {
             // If not connected to CU and not a shell monitor, then a floating monitor
             devInfo->hasFloatingASM = true;
           }
-        } else /* if(0 == monCuName.compare("shell")) */ {
-          // Shell ASM
-          devInfo->shellASMList.push_back(mon);
+        } else {
+          devInfo->noTraceASMs.push_back(mon);
         }
       } else if(debugIpData->m_type == AXI_NOC) {
         uint8_t readTrafficClass  = debugIpData->m_properties >> 2;

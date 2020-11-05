@@ -101,10 +101,12 @@ namespace xdp {
         if(cu->dataTransferEnabled()) {
           std::vector<uint32_t> *cuAIMs  = cu->getAIMs();
           for(auto cuAIM : *cuAIMs) {
+            Monitor* aim = (db->getStaticInfo()).getAIMonitor(deviceId, cuAIM);
+            if(nullptr == aim) {
+              continue;
+            }
             ++rowCount;
             aimBucketIdMap[cuAIM] = rowCount;
-
-            Monitor* aim = (db->getStaticInfo()).getAIMonitor(deviceId, cuAIM);
 
             // Read : KERNEL_READ
             fout << "Group_Start,Read,Read data transfers between " << cuName << " and Global Memory over " << aim->name << std::endl;
@@ -122,10 +124,12 @@ namespace xdp {
         if(cu->streamEnabled()) {
           std::vector<uint32_t> *cuASMs  = cu->getASMs();
           for(auto cuASM : *cuASMs) {
+            Monitor* asM = (db->getStaticInfo()).getASMonitor(deviceId, cuASM);
+            if(nullptr == asM) {
+              continue;
+            }
             ++rowCount;
             asmBucketIdMap[cuASM] = rowCount;
-
-            Monitor* asM = (db->getStaticInfo()).getASMonitor(deviceId, cuASM);
 
             // KERNEL_STREAM_READ/WRITE
             fout << "Group_Start,Stream Transfers,AXI Stream transaction over " << asM->name << std::endl;
@@ -146,6 +150,9 @@ namespace xdp {
       size_t i = 0;
       for(auto& entry : *aimMap) {
         Monitor* aim = entry.second;
+        if(nullptr == aim) {
+          continue;
+        }
         if(-1 != aim->cuIndex) {
           // not a floating AIM, must have been covered in CU section
           i++;
@@ -175,6 +182,9 @@ namespace xdp {
       size_t i = 0;
       for(auto& entry : *asmMap) {
         Monitor* asM = entry.second;
+        if(nullptr == asM) {
+          continue;
+        }
         if(-1 != asM->cuIndex) {
           // not a floating ASM, must have been covered in CU section
           i++;
