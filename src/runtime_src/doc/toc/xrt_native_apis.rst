@@ -812,7 +812,7 @@ The graph runs infinitely if ``xrtGraphRun`` is called with iteration argument -
            // run the graph infinitely
            xrtGraphRun(graphHandle, -1);
            
-           xrtGraphWait(graphHandle,3);  // Suspends the graph after 3 AIE cycles from the previous start 
+           xrtGraphWait(graphHandle,3000);  // Suspends the graph after 3000 AIE cycles from the previous start 
            
            
            xrtGraphResume(graphHandle); // Restart the suspended graph again to run forever
@@ -821,20 +821,20 @@ The graph runs infinitely if ``xrtGraphRun`` is called with iteration argument -
            
            xrtGraphResume(graphHandle); // Restart the suspended graph again to run forever
            
-           xrtGraphEnd(graphHandle,5);  // End the graph operation after 5 AIE cycles from the previous start
+           xrtGraphEnd(graphHandle,5000);  // End the graph operation after 5000 AIE cycles from the previous start
 
 
 In the example above
 
 - The API ``xrtGraphRun(graphHandle, -1)`` is used to execute the graph infinitely
-- The API ``xrtGraphWait`` suspends the graph after 3 AIE cycles from the graph starts. 
+- The API ``xrtGraphWait(graphHandle,3000)`` suspends the graph after 3000 AIE cycles from the graph starts. 
 
-       - If the graph was already run more than 3 AIE cycles the graph is suspended immediately. 
+       - If the graph was already run more than 3000 AIE cycles the graph is suspended immediately. 
 - The API ``xrtGraphResume`` is used to restart the suspended graph
 - The API ``xrtGraphSuspend`` is used to suspend the graph immediately
-- The API ``xrtGraphEnd(graphHandle,5)`` is  ending the graph after 5 AIE cycles from the previous graph start. 
+- The API ``xrtGraphEnd(graphHandle,5000)`` is  ending the graph after 5000 AIE cycles from the previous graph start. 
        
-       - If the graph was already run more than 5 AIE cycles the graph is suspended immediately.
+       - If the graph was already run more than 5000 AIE cycles the graph is suspended immediately.
        - Using ``xrtGraphEnd`` eliminates the capability of rerunning the Graph (without loading PDI and a graph reset again). 
 
 
