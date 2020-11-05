@@ -197,7 +197,7 @@ enum {
 };
 
 static struct xocl_iores_map res_map[] = {
-	{ NODE_CMC_U2_REG, IO_REG},
+	{ NODE_CMC_REG, IO_REG},
 	{ NODE_CMC_RESET, IO_GPIO},
 	{ NODE_CMC_CLK_SCALING_REG, IO_CLK_SCALING},
 };
