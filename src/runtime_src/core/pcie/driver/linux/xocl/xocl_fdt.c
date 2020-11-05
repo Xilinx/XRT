@@ -553,7 +553,7 @@ static struct xocl_subdev_map subdev_map[] = {
 			{.res_name = NODE_CMC_CLK_SCALING_REG},
 			{NULL},
 		},
-		.required_ip = 6,
+		.required_ip = 3,
 		.flags = 0,
 		.build_priv_data = xmc_build_priv,
 		.devinfo_cb = NULL,
