@@ -37,10 +37,8 @@
 
 #define ZOCL_DRIVER_NAME        "zocl"
 #define ZOCL_DRIVER_DESC        "Zynq BO manager"
-#define ZOCL_DRIVER_DATE        "20180313"
-#define ZOCL_DRIVER_MAJOR       2018
-#define ZOCL_DRIVER_MINOR       2
-#define ZOCL_DRIVER_PATCHLEVEL  1
+
+static char driver_date[9];
 
 /* This should be the same as DRM_FILE_PAGE_OFFSET_START in drm_gem.c */
 #if defined(CONFIG_ARM64)
@@ -781,10 +779,7 @@ static struct drm_driver zocl_driver = {
 	.fops                      = &zocl_driver_fops,
 	.name                      = ZOCL_DRIVER_NAME,
 	.desc                      = ZOCL_DRIVER_DESC,
-	.date                      = ZOCL_DRIVER_DATE,
-	.major                     = ZOCL_DRIVER_MAJOR,
-	.minor                     = ZOCL_DRIVER_MINOR,
-	.patchlevel                = ZOCL_DRIVER_PATCHLEVEL,
+	.date                      = driver_date,
 };
 
 static const struct zdev_data zdev_data_mpsoc = {
@@ -817,6 +812,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	int index;
 	int irq;
 	int ret;
+	int year, mon, day;
 
 	id = of_match_node(zocl_drm_of_match, pdev->dev.of_node);
 	DRM_INFO("Probing for %s\n", id->compatible);
@@ -909,6 +905,16 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, zdev);
+
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d",
+		&zocl_driver.major,
+		&zocl_driver.minor,
+		&zocl_driver.patchlevel);
+	sscanf(XRT_DATE, "%d-%d-%d ", &year, &mon, &day);
+        //e.g HASH_DATE ==> Wed, 4 Nov 2020 08:46:44 -0800
+        //e.g XRT_DATE ==> 2020-11-04
+	snprintf(driver_date, sizeof(driver_date),
+		"%d%02d%02d", year, mon, day);
 
 	/* Create and register DRM device */
 	drm = drm_dev_alloc(&zocl_driver, &pdev->dev);
