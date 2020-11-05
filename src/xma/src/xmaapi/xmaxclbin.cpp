@@ -122,6 +122,8 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
             using xarg = xrt_core::xclbin::kernel_argument;
             static constexpr size_t no_index = xarg::no_index;
             auto args = xrt_core::xclbin::get_kernel_arguments(xclbin, temp_ip_layout.kernel_name);
+            //Note: args are sorted by index; Assuming that offset will increase with arg index
+            //This is fair assumption; v++ or HLS decides on these offset values
             std::vector<xarg> args2;
             std::copy_if(args.begin(), args.end(), std::back_inserter(args2), 
                   [](const xarg& y){return y.index != no_index;});
