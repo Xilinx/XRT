@@ -1404,7 +1404,7 @@ Register Offset:   0x10
      <span class="c1">// run the graph infinitely</span>
      <span class="n">xrtGraphRun</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">);</span>
 
-     <span class="n">xrtGraphWait</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span><span class="mi">3</span><span class="p">);</span>  <span class="c1">// Suspends the graph after 3 AIE cycles from the previous start</span>
+     <span class="n">xrtGraphWait</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span><span class="mi">3000</span><span class="p">);</span>  <span class="c1">// Suspends the graph after 3000 AIE cycles from the previous start</span>
 
 
      <span class="n">xrtGraphResume</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span> <span class="c1">// Restart the suspended graph again to run forever</span>
@@ -1413,25 +1413,25 @@ Register Offset:   0x10
 
      <span class="n">xrtGraphResume</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span> <span class="c1">// Restart the suspended graph again to run forever</span>
 
-     <span class="n">xrtGraphEnd</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span><span class="mi">5</span><span class="p">);</span>  <span class="c1">// End the graph operation after 5 AIE cycles from the previous start</span>
+     <span class="n">xrtGraphEnd</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span><span class="mi">5000</span><span class="p">);</span>  <span class="c1">// End the graph operation after 5000 AIE cycles from the previous start</span>
 </pre></div>
 </td></tr></table></div>
 <p>In the example above</p>
 <ul>
 <li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphRun(graphHandle,</span> <span class="pre">-1)</span></code> is used to execute the graph infinitely</p></li>
-<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphWait</span></code> suspends the graph after 3 AIE cycles from the graph starts.</p>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphWait(graphHandle,3000)</span></code> suspends the graph after 3000 AIE cycles from the graph starts.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>If the graph was already run more than 3 AIE cycles the graph is suspended immediately.</p></li>
+<li><p>If the graph was already run more than 3000 AIE cycles the graph is suspended immediately.</p></li>
 </ul>
 </div></blockquote>
 </li>
 <li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphResume</span></code> is used to restart the suspended graph</p></li>
 <li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphSuspend</span></code> is used to suspend the graph immediately</p></li>
-<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphEnd(graphHandle,5)</span></code> is  ending the graph after 5 AIE cycles from the previous graph start.</p>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphEnd(graphHandle,5000)</span></code> is  ending the graph after 5000 AIE cycles from the previous graph start.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>If the graph was already run more than 5 AIE cycles the graph is suspended immediately.</p></li>
+<li><p>If the graph was already run more than 5000 AIE cycles the graph ends immediately.</p></li>
 <li><p>Using <code class="docutils literal notranslate"><span class="pre">xrtGraphEnd</span></code> eliminates the capability of rerunning the Graph (without loading PDI and a graph reset again).</p></li>
 </ul>
 </div></blockquote>
@@ -1609,7 +1609,57 @@ Register Offset:   0x10
 </div></blockquote>
 <p><strong>NOTE</strong>: The asynchronous error retrieving APIs are at an early stage of development and only supports AIE related asynchronous errors. Full support for all other asynchronous errors is planned in a future release.</p>
 <p>Example code</p>
-<p>}</p>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">rval</span> <span class="o">=</span> <span class="n">xrtGraphRun</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="n">runInteration</span><span class="p">);</span>
+     <span class="k">if</span> <span class="p">(</span><span class="n">rval</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+         <span class="cm">/* code to handle synchronous xrtGraphRun error */</span>
+         <span class="k">goto</span> <span class="n">fail</span><span class="p">;</span>
+     <span class="p">}</span>
+
+     <span class="n">rval</span> <span class="o">=</span> <span class="n">xrtGraphWaitDone</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="n">timeout</span><span class="p">);</span>
+     <span class="k">if</span> <span class="p">(</span><span class="n">rval</span> <span class="o">==</span> <span class="o">-</span><span class="n">ETIME</span><span class="p">)</span> <span class="p">{</span>
+         <span class="cm">/* wait Graph done timeout without further information */</span>
+         <span class="n">xrtErrorCode</span> <span class="n">errCode</span><span class="p">;</span>
+         <span class="kt">uint64_t</span> <span class="n">timestamp</span><span class="p">;</span>
+
+         <span class="n">rval</span> <span class="o">=</span> <span class="n">xrtErrorGetLast</span><span class="p">(</span><span class="n">devHandle</span><span class="p">,</span> <span class="n">XRT_ERROR_CLASS_AIE</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">errCode</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">timestamp</span><span class="p">);</span>
+         <span class="k">if</span> <span class="p">(</span><span class="n">rval</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+             <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+             <span class="k">if</span> <span class="p">(</span><span class="n">xrtErrorGetString</span><span class="p">(</span><span class="n">devHandle</span><span class="p">,</span> <span class="n">errCode</span><span class="p">,</span> <span class="k">nullptr</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">len</span><span class="p">))</span>
+                 <span class="k">goto</span> <span class="n">fail</span><span class="p">;</span>
+             <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span> <span class="n">buf</span><span class="p">(</span><span class="n">len</span><span class="p">);</span>  <span class="c1">// or C equivalent</span>
+             <span class="k">if</span> <span class="p">(</span><span class="n">xrtErrorGetString</span><span class="p">(</span><span class="n">devHandle</span><span class="p">,</span> <span class="n">errCode</span><span class="p">,</span> <span class="n">buf</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">buf</span><span class="p">.</span><span class="n">size</span><span class="p">()))</span>
+                 <span class="k">goto</span> <span class="n">fail</span><span class="p">;</span>
+             <span class="cm">/* code to deal with this specific error */</span>
+             <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">buf</span><span class="p">.</span><span class="n">data</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+         <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="cm">/* more code can be added here to check other error class */</span>
+</pre></div>
+</td></tr></table></div>
 <p>The above code shows</p>
 <blockquote>
 <div><ul class="simple">
@@ -1651,7 +1701,7 @@ Register Offset:   0x10
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on November 04, 2020.
+        Last updated on November 05, 2020.
       </span>
 
     </p>

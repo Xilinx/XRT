@@ -26,7 +26,7 @@ The xbutil command options are
 
 .. code:: 
 
-    xbutil --new examine
+    xbutil examine
     ....
     ....
     Devices present

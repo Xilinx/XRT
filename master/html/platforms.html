@@ -484,14 +484,14 @@
             
   <div class="section" id="xrt-and-vitis-platform-overview">
 <span id="platforms-rst"></span><h1>XRT and Vitis™ Platform Overview<a class="headerlink" href="#xrt-and-vitis-platform-overview" title="Permalink to this headline">¶</a></h1>
-<p>XRT exports a common software stack across PCIe based datacenter platforms and ZYNQ UltraScale+ MPSoC/Versal ACAP based embedded platforms. Applications can be seamlessly ported from one class of platform to another with little effort.</p>
+<p><a class="reference external" href="https://www.xilinx.com/products/design-tools/vitis/xrt.html">Xilinx Runtime library (XRT)</a> is an open-source easy to use software stack that facilitates management and usage of FPGA/ACAP devices. Users use familiar programming languages like C/C++ or Python to write host code which uses XRT to interact with FPGA/ACAP device. XRT exports well defined set of software APIs that work across PCIe based datacenter platforms and ZYNQ UltraScale+ MPSoC/Versal ACAP based embedded platforms. XRT is key component of <a class="reference external" href="https://www.xilinx.com/products/design-tools/vitis/vitis-platform.html">Vitis™</a> and <a class="reference external" href="https://www.xilinx.com/products/boards-and-kits/alveo.html">Alveo™</a> solutions.</p>
 <div class="section" id="user-application-compilation">
 <h2>User Application Compilation<a class="headerlink" href="#user-application-compilation" title="Permalink to this headline">¶</a></h2>
 <p>User application is made up of host code written in C/C++/OpenCL or Python. Device code may be written in C/C++/OpenCL or VHDL/Verilog hardware description language.</p>
 <div class="align-center figure align-default" id="id1">
 <img alt="_images/Alveo-Compilation-Flow.svg" src="_images/Alveo-Compilation-Flow.svg" /><p class="caption"><span class="caption-text">User application compilation and execution</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
 </div>
-<p>Users use Vitis™ compiler, v++ to compile and link device code for the target platform. Host code written in C/C++/OpenCL may be compiled with gcc/g++. Host code may be written in Python OpenCL (using PyOpenCL) or Python XRT (using built-in python binding).</p>
+<p>Users use Vitis™ compiler, v++ to compile and link device code for the target platform. Host code written in C/C++/OpenCL may be compiled with gcc/g++. Host code may also be written in Python OpenCL (using PyOpenCL) or Python XRT (using built-in python binding).</p>
 </div>
 <div class="section" id="pcie-based-platforms">
 <h2>PCIe Based Platforms<a class="headerlink" href="#pcie-based-platforms" title="Permalink to this headline">¶</a></h2>
@@ -511,14 +511,15 @@
 <li><p>Advantech VEGA-4000/4002</p></li>
 </ol>
 <p>PCIe based platforms are supported on x86_64, PPC64LE and AARCH64 host architectures. The
-platform is comprised of <em>Shell</em> and <em>Dynamic Region</em>. The Shell (previously known as DSA)
-has two physical functions: PF0 also called <em>mgmt pf</em> and PF1 also called <em>user pf</em>.
-Dynamic Region contains <em>Role</em> which is user compiled binary. Roles are swapped by user
-using process called <em>Dynamic Function Exchange (DFX)</em>.</p>
+platform is comprised of physical partitions called <em>Shell</em> and <em>User</em>. The Shell has two physical
+functions: privileged PF0 also called <em>mgmt pf</em> and non-privileged PF1 also called <em>user pf</em>. Shell
+provides basic infrastructure for the Alveo platform. User partition (otherwise known as PR-Region)
+contains user compiled binary. XRT uses <em>Dynamic Function Exchange (DFX)</em> to load user compiled
+binary to the User partition.</p>
 <div class="section" id="mgmt-pf-pf0">
 <h3>MGMT PF (PF0)<a class="headerlink" href="#mgmt-pf-pf0" title="Permalink to this headline">¶</a></h3>
 <p>XRT Linux kernel driver <em>xclmgmt</em> binds to management physical function. Management physical function
-provides access to Shell components responsible for privileged operations. xclmgmt driver is organized
+provides access to Shell components responsible for <strong>privileged</strong> operations. xclmgmt driver is organized
 into subdevices and handles the following functionality:</p>
 <ul class="simple">
 <li><p>User compiled FPGA image (xclbin) download which involves ICAP (bitstream download) programming, clock
@@ -526,7 +527,7 @@ scaling and isolation logic management.</p></li>
 <li><p>Loading firmware container called xsabin which contains PLP (for 2 RP platfroms) and firmwares for
 embedded Microblazes. The embedded Microblazes perform the functionality of ERT and CMC.</p></li>
 <li><p>Access to in-band sensors: temperature, voltage, current, power, fan RPM etc.</p></li>
-<li><p>AXI Firewall management in data and control paths. AXI firewalls protect shell and PCIe from untrusted Role.</p></li>
+<li><p>AXI Firewall management in data and control paths. AXI firewalls protect shell and PCIe from untrusted user partition.</p></li>
 <li><p>Shell upgrade by grogramming QSPI flash constroller.</p></li>
 <li><p>Device reset and recovery upon detecting AXI firewall trips or explicit request from end user.</p></li>
 <li><p>Communication with user pf driver xocl via hardware mailbox. The protocol is defined <a class="reference internal" href="mailbox.proto.html#mailbox-proto-rst"><span class="std std-ref">Mailbox Inter-domain Communication Protocol</span></a></p></li>
@@ -538,8 +539,8 @@ embedded Microblazes. The embedded Microblazes perform the functionality of ERT 
 <div class="section" id="user-pf-pf1">
 <h3>USER PF (PF1)<a class="headerlink" href="#user-pf-pf1" title="Permalink to this headline">¶</a></h3>
 <p>XRT Linux kernel driver <em>xocl</em> binds to user physical function. User physical function provides access
-to Shell components responsible for non privileged operations. It also provides access to compute units
-in DFX partition. xocl driver is organized into subdevices and handles the following functionality which
+to Shell components responsible for <strong>non privileged</strong> operations. It also provides access to compute units
+in user partition. xocl driver is organized into subdevices and handles the following functionality which
 are exercised using well-defined APIs in <code class="docutils literal notranslate"><span class="pre">xrt.h</span></code> header file.</p>
 <ul class="simple">
 <li><p>Device memory topology discovery and device memory management. The driver provides well-defined abstraction
@@ -549,7 +550,7 @@ of buffer objects to the clients.</p></li>
 <li><p>Compute unit execution pipeline management with the help of hardware scheduler ERT. If ERT is not available
 then scheduling is completely handled by xocl driver in software.</p></li>
 <li><p>Interrupt handling for PCIe DMA, Compute unit completion and Mailbox messages.</p></li>
-<li><p>Setting up of Address-remapper tables for direct access to host memory by kernels compiled into Role. Direct
+<li><p>Setting up of Address-remapper tables for direct access to host memory by kernels compiled into user partition. Direct
 access to host memory is enabled by Slave Bridge (SB) in the shell.</p></li>
 <li><p>Buffer import and export via Linux DMA-BUF infrastructure.</p></li>
 <li><p>PCIe peer-to-peer buffer mapping and sharing over PCIe bus.</p></li>
@@ -567,9 +568,9 @@ access to host memory is enabled by Slave Bridge (SB) in the shell.</p></li>
 <img alt="_images/XRT-Architecture-Hybrid.svg" src="_images/XRT-Architecture-Hybrid.svg" /><p class="caption"><span class="caption-text">Alveo PCIe hybrid stack</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></p>
 </div>
 <p>U30 and VCK5000 are MPSoC and Versal platforms respectively are considered hybrid devices. They have hardedned PS
-subsystem with ARM APUs in the Shell. The PL fabric is exposed as Role. The devices act as PCIe endpoint to PCIe
-hosts like x86_64, PPC64LE. They have two physical function architecture identical to other Alveo platforms. On
-these platforms the ERT subsystem is running on APU.</p>
+subsystem with ARM APUs in the Shell. The PL fabric is exposed as user partition. The devices act as PCIe endpoint
+to PCIe hosts like x86_64, PPC64LE. They have two physical function architecture identical to other Alveo platforms.
+On these platforms the ERT subsystem is running on APU.</p>
 </div>
 </div>
 <div class="section" id="zynq-7000-and-zynq-ultrascale-mpsoc-based-embedded-platforms">
@@ -643,7 +644,7 @@ well-defined abstraction of buffer objects to the clients.</p></li>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on November 04, 2020.
+        Last updated on November 05, 2020.
       </span>
 
     </p>

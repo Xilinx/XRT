@@ -366,9 +366,16 @@
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Alveo™ Platform Loading Overview</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#blp">BLP</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#plp">PLP</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ulp">ULP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#single-stage-platforms">Single Stage Platforms</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#shell">Shell</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#two-stage-platforms">Two Stage Platforms</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#base">Base</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Shell</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#user">User</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
@@ -479,33 +486,54 @@
             
   <div class="section" id="alveo-platform-loading-overview">
 <span id="platform-partitions-rst"></span><h1>Alveo™ Platform Loading Overview<a class="headerlink" href="#alveo-platform-loading-overview" title="Permalink to this headline">¶</a></h1>
-<p>Alveo platforms are architected as two logical FPGA partitions: <em>shell</em> and <em>role</em>. In 1RP platforms like U30 and U50 shell contains only one fixed physical partition called BLP. In 2RP platforms shell contains a fixed physical partition called BLP and a loadable physical partition called PLP. For both class of platforms the role partition is made of physical partition called ULP that can be loaded by end user. Every physical partition has two interface UUIDs: parent UUID and child UUID.</p>
+<p>Alveo platforms are architected as two physical FPGA partitions: <em>Shell</em> and <em>User</em>. Shell provides basic infrastructure
+for the platform like PCIe connectivity, board management, DFX support, sensors, clocking, reset, etc. <a class="reference internal" href="security.html#security-rst"><span class="std std-ref">Security of Alveo Platform</span></a>
+enumerates the shell functionality in detail. User partition contains user compiled binary called xclbin which is loaded by XRT using
+DFX technology.</p>
+<p>There is a variation of Alveo platform called two stage platform here where the Shell is further split into two partitions: a
+thin partition called <em>Base</em> and second partition called <em>Shell</em>.</p>
+<p>Physical partitions require strict HW compatibility with each other for DFX to work properly. Hence every physical partition
+has two interface UUIDs: <em>parent</em> UUID and <em>child</em> UUID. For simple single stage platforms Shell → User forms parent child
+relationship. For complex two stage platforms Base → Shell → User forms the parent child relationship chain.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Partition compatibility matching is key part of Alveo platforms and XRT. The partitions have child and parent relationship. A loaded partition exposes child partition UUID to advertise its compatibility requirement for child partition. When loading a child partition the management driver matches parent UUID of the child partition against child UUID exported by the parent. Parent and child partition UUIDs are stored in the xclbin (for ULP) or xsabin (for BLP and ULP).</p>
+<p>Partition compatibility matching is key design component of Alveo platforms and XRT. Partitions have child and parent relationship. A loaded partition exposes child partition UUID to advertise its compatibility requirement for child partition. When loading a child partition the xclmgmt management driver matches parent UUID of the child partition against child UUID exported by the parent. Parent and child partition UUIDs are stored in the xclbin (for user) or xsabin (for base and shell).</p>
 </div>
-<div class="section" id="blp">
-<h2>BLP<a class="headerlink" href="#blp" title="Permalink to this headline">¶</a></h2>
-<div class="align-center figure align-default" id="id1">
-<img alt="_images/XSA-shell-partitions-1RP.svg" src="_images/XSA-shell-partitions-1RP.svg" /><p class="caption"><span class="caption-text">Alveo shell partitions and loading for 1RP platform</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
-</div>
-<p>BLP partition is loaded from flash at system boot time. It establishes the PCIe link and exposes two physical functions to the BIOS. After OS boot xclmgmt driver attaches to BLP physical function 0 and then looks for VSEC in PCIe extended config space. Using VSEC it determines the logic UUID of BLP and uses the UUID to load matching <em>xsabin</em> from Linux firmware directory. The xsabin contains metadata to discover peripherals that are part of BLP and firmware(s) for embedded processors in BLP. In 1RP platforms <em>all</em> the shell peripherals are present in the BLP. In 2RP platforms only a small set of peripherals such as ICAP, QSPI controller, AXI Firewalls etc. are present in BLP.</p>
-<p>BLP exports unique interface UUID which is used to match the next stage of the platform. In 1RP platforms when loading ULP, the management driver reads the parent interface UUID stored in the ULP xclbin and matches it with child UUID exported by BLP to determine if xclbin – which describes the role – the role is compatible with the BLP.</p>
-<p>In 2RP platforms when loading PLP, the management driver reads the parent interface UUID stored in the PLP xsabin and matches it with child UUID exported by BLP to determine if xsabin – which describes the PLP – is compatible with the BLP.</p>
-</div>
-<div class="section" id="plp">
-<h2>PLP<a class="headerlink" href="#plp" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="single-stage-platforms">
+<h2>Single Stage Platforms<a class="headerlink" href="#single-stage-platforms" title="Permalink to this headline">¶</a></h2>
+<p>As mentioned before simple platforms have two partitions: Shell and User.</p>
+<div class="section" id="shell">
+<h3>Shell<a class="headerlink" href="#shell" title="Permalink to this headline">¶</a></h3>
 <div class="align-center figure align-default" id="id2">
-<img alt="_images/XSA-shell-partitions-2RP.svg" src="_images/XSA-shell-partitions-2RP.svg" /><p class="caption"><span class="caption-text">Alveo shell partitions and loading for 2RP platform</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
+<img alt="_images/XSA-shell-partitions-1RP.svg" src="_images/XSA-shell-partitions-1RP.svg" /><p class="caption"><span class="caption-text">Alveo shell partitions and loading for simple platform</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
 </div>
-<p>PLP partition is present in 2RP platforms and contains additional shell components such as PCIe DMA engine, AXI Firewalls, Address Re-mapper, ERT, etc. PLP partition is explicitly loaded by system administrator using <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">partition</span></code> command. After PLP partition is loaded, xclmgmt driver sends <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MGMT_STATE</span></code> to the xocl driver via mailbox to indicate shell changed. xocl driver then requests for metadata via <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code> opcode. xclmgmt driver responds by sending information about shell components such as XDMA that should be managed by xocl driver.</p>
+<p>Shell partition is loaded from flash at system boot time. It establishes the PCIe link and exposes two physical functions to the BIOS. After OS boot, xclmgmt driver attaches to PCIe physical function 0 exposed by the Shell and then looks for VSEC in PCIe extended configuration space. Using VSEC it determines the logic UUID of Shell and uses the UUID to load matching <em>xsabin</em> file from Linux firmware directory. The xsabin file contains metadata to discover peripherals that are part of Shell and firmware(s) for any embedded processors in Shell.</p>
+<p>When xocl driver comes online it requests for Shell metadata via <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code> opcode over mailbox. xclmgmt managemet driver responds by sending relevant information about shell components such as XDMA or Address Re-mapper that should be managed by xocl driver.</p>
+<p>Shell exports child interface UUID which is used for compatbility check when loading user compiled User partition as part of DFX. The xclmgmt management driver reads the parent interface UUID stored in the User xclbin and matches it with child interface UUID exported by Shell to determine if User xclbin is compatible with the Shell. If match fails loading of xclbin is denied.</p>
 </div>
-<div class="section" id="ulp">
-<h2>ULP<a class="headerlink" href="#ulp" title="Permalink to this headline">¶</a></h2>
-<p>ULP partition contains user compiled components like acceleration engines/compute kernels, Memory subsystem, etc. ULP is loaded by the end user using <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">program</span></code> command.</p>
+</div>
+<div class="section" id="two-stage-platforms">
+<h2>Two Stage Platforms<a class="headerlink" href="#two-stage-platforms" title="Permalink to this headline">¶</a></h2>
+<p>As mentioned before complex platforms have three partitions: Base, Shell and User.</p>
+<div class="section" id="base">
+<h3>Base<a class="headerlink" href="#base" title="Permalink to this headline">¶</a></h3>
+<p>Base partition is loaded from flash at system boot time. It establishes the PCIe link and exposes two physical functions to the BIOS. After OS boot, xclmgmt driver attaches to physical function 0 exposed by Base and then looks for VSEC in PCIe extended configuration space. Using VSEC it determines the logic UUID of Base and uses the UUID to load matching <em>xsabin</em> from Linux firmware directory. The xsabin contains metadata to discover peripherals that are part of Base and firmware(s) for any embedded processors in Base. Base only contains essential peripherals such as ICAP, QSPI controller, AXI Firewalls etc.</p>
+<p>Base exports child interface UUID which is used for compatbility check when loading vendor provided Shell partition as part of DFX. The xclmgmt management driver reads the parent interface UUID stored in the Shell xsabin and matches it with child interface UUID exported by Base to determine if Shell xsabin is compatible with the Base. If match fails loading of xsabin is denied.</p>
+</div>
+<div class="section" id="id1">
+<h3>Shell<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<div class="align-center figure align-default" id="id3">
+<img alt="_images/XSA-shell-partitions-2RP.svg" src="_images/XSA-shell-partitions-2RP.svg" /><p class="caption"><span class="caption-text">Alveo shell partitions and loading for 2RP platform</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></p>
+</div>
+<p>In two stage platforms, Shell partition contains additional shell components such as PCIe DMA engine, AXI Firewalls, Address Re-mapper, ERT, etc. Shell partition is explicitly loaded by system administrator using <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">partition</span></code> command. After Shell partition is loaded, xclmgmt driver posts <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MGMT_STATE</span></code> message to the xocl driver via mailbox to indicate shell has changed. xocl driver then requests for metadata via <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code> opcode. xclmgmt managemet driver responds by sending relevant information about shell components such as XDMA that should be managed by xocl driver. A system administrator can pre-load a Shell based on the workload the system is being provised for. A new Shell xsabin load clobbers previous Shell and User images.</p>
+</div>
+</div>
+<div class="section" id="user">
+<h2>User<a class="headerlink" href="#user" title="Permalink to this headline">¶</a></h2>
+<p>User partition contains user compiled components like acceleration engines/compute kernels etc. It is loaded by xclmgmt driver on request by user. XRT provides API <code class="docutils literal notranslate"><span class="pre">xclLoadXclBin()</span></code> and command line utility <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">program</span></code> to help load xclbins. This allows users to dynamically swap the image running on User parition to meet their workload requirements.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Refer to <a class="reference internal" href="mailbox.proto.html#mailbox-proto-rst"><span class="std std-ref">Mailbox Inter-domain Communication Protocol</span></a> for details on inter driver interaction.</p>
+<p>Refer to <a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a> for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.</p>
 </div>
 </div>
 </div>
@@ -539,7 +567,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on November 04, 2020.
+        Last updated on November 05, 2020.
       </span>
 
     </p>
