@@ -812,6 +812,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	int index;
 	int irq;
 	int ret;
+        int year, mon, day;
 
 	id = of_match_node(zocl_drm_of_match, pdev->dev.of_node);
 	DRM_INFO("Probing for %s\n", id->compatible);
@@ -905,7 +906,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, zdev);
 
-        int year, mon, day;
 	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d",
 		&zocl_driver.major,
 		&zocl_driver.minor,
