@@ -3801,8 +3801,6 @@ static int xmc_probe(struct platform_device *pdev)
 	xmc->priv_data = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 	xdev_hdl = xocl_get_xdev(pdev);
 
-	xmc->sc_presence = nosc_xmc(xmc->pdev) ? 0 : 1;
-
 	if (XMC_PRIVILEGED(xmc)) {
 		if (!xmc->priv_data) {
 			xmc->priv_data = vzalloc(sizeof(*xmc->priv_data));
@@ -3880,6 +3878,8 @@ static int xmc_probe(struct platform_device *pdev)
 				xmc->state = XMC_STATE_ENABLED;
 		}
 	}
+
+	xmc->sc_presence = nosc_xmc(xmc->pdev) ? 0 : 1;
 
 	err = mgmt_sysfs_create_xmc(pdev);
 	if (err) {
@@ -4061,6 +4061,8 @@ static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 		return false;
 
 	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+	if (status.sc_mode == XMC_SC_NOSC_MODE)
+		return false;
 	if (status.sc_mode == XMC_SC_NORMAL ||
 		status.sc_mode == XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE)
 		return true;
