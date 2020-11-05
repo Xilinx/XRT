@@ -596,7 +596,7 @@ static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index)
 	return mem_data_idx;
 }
 
-static void xocl_detect_fa_plram(struct xocl_dev *xdev)
+static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 {
 	struct ip_layout    *ip_layout = NULL;
 	struct mem_topology *mem_topo = NULL;
@@ -607,6 +607,7 @@ static void xocl_detect_fa_plram(struct xocl_dev *xdev)
 	uint64_t base_addr;
 	void __iomem *vaddr;
 	ulong bar_paddr = 0;
+	int ret = 0;
 
 	/* Detect Fast adapter and descriptor plram
 	 * Assume only one PLRAM would be used for descriptor
@@ -638,8 +639,11 @@ static void xocl_detect_fa_plram(struct xocl_dev *xdev)
 
 	base_addr = mem_topo->m_mem_data[mem_idx].m_base_address;
 	size = mem_topo->m_mem_data[mem_idx].m_size * 1024;
-	if (xocl_p2p_get_bar_paddr(xdev, base_addr, size, &bar_paddr))
+	ret = xocl_p2p_get_bar_paddr(xdev, base_addr, size, &bar_paddr);
+	if (ret) {
+		userpf_err(xdev, "Cannot get p2p BAR address");
 		goto done;
+	}
 
 	/* To avoid user to allocate buffer on this descriptor dedicated mameory
 	 * bank, create a buffer object to reserve the bank.
@@ -647,13 +651,18 @@ static void xocl_detect_fa_plram(struct xocl_dev *xdev)
 	args.size = size;
 	args.flags = XCL_BO_FLAGS_P2P | mem_idx;
 	bo = xocl_drm_create_bo(XOCL_DRM(xdev), size, args.flags);
-	if (IS_ERR(bo))
+	if (IS_ERR(bo)) {
+		userpf_err(xdev, "Cannot create bo for fast adapter");
+		ret = -ENOMEM;
 		goto done;
+	}
 
 	vaddr = ioremap_wc(bar_paddr, size);
-
-	if (!vaddr)
+	if (!vaddr) {
+		userpf_err(xdev, "Map failed");
+		ret = -ENOMEM;
 		goto done;
+	}
 
 	XDEV(xdev)->kds.plram.bo = bo;
 	XDEV(xdev)->kds.plram.bar_paddr = bar_paddr;
@@ -664,11 +673,13 @@ static void xocl_detect_fa_plram(struct xocl_dev *xdev)
 done:
 	XOCL_PUT_MEM_TOPOLOGY(xdev);
 	XOCL_PUT_IP_LAYOUT(xdev);
+	return ret;
 }
 
 int xocl_kds_update(struct xocl_dev *xdev)
 {
 	struct drm_xocl_bo *bo = NULL;
+	int ret = 0;
 
 	/* Detect if ERT subsystem is able to support CU to host interrupt
 	 * This support is added since ERT ver3.0
@@ -694,7 +705,9 @@ int xocl_kds_update(struct xocl_dev *xdev)
 		XDEV(xdev)->kds.plram.size = 0;
 	}
 
-	xocl_detect_fa_plram(xdev);
+	ret = xocl_detect_fa_plram(xdev);
+	if (ret)
+		return ret;
 
 	/* By default, use ERT */
 	XDEV(xdev)->kds.cu_intr = 0;

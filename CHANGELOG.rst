@@ -1,8 +1,21 @@
 XRT ChangeLog
 -------------
 
-2.8.0
-~~~~~
+2.8.0 (202020.2.8.x)
+~~~~~~~~~~~~~~~~~~~~
+
+Added
+.....
+
+* Support for Ubuntu 20.04 and CentOS/RHEL 8.2 has been added.
+* HBM grouping support has been added which allows contiguous banks to be merged into a single group allowing for larger buffer size.
+* Support for AIE graph has been added. New AIE APIs are split into AIE array/shim level APIs in ``xrt_aie.h`` and graph level APIs in ``xrt_graph.h``. AIE APIs are moved to ``libxrt_coreutil.so`` from ``libxrt_core.so``.
+* pybind11 based Python wrappers have been added for native XRT C++ APIs.
+* Support for PCIe Slave Bridge has been added which allows user kernels to directly read/write host memory.
+* Support for data driven *two stage* platforms have been added.
+* Slimmed down XRT RPM/DEB package dependencies. XRT package does not depend on other **dev/devel** packages anymore.
+* Enabled LPDDR for edge platforms
+* xbutil for edge platforms (use xbutil --new)
 
 Removed
 .......
@@ -21,7 +34,7 @@ Added
 * Native XRT APIs under $XILINX_XRT/include/experimental are subject to change without warning.
 
 Removed
-.......    
+.......
 
 * Removed all references to python2.
 * Removed automatic installation of PyOpenCL.

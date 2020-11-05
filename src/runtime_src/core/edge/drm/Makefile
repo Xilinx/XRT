@@ -6,11 +6,14 @@ KBUILD_OPTS := M=$(CURDIR)/$(DRIVER)
 KBUILD_OPTS += ARCH=$(TARGET)
 KBUILD_OPTS += CROSS_COMPILE=$(CROSS_COMPILE)
 
-GIT_HASH := `git -C /proj/rdi-xsj/staff/sarabjee/xrt_git/sarab/XRT/src rev-parse --verify HEAD`
+GIT_HASH := `git rev-parse --verify HEAD`
 GIT_HASH_DATE := `git log -1 --pretty=format:%cD`
 GIT_BRANCH := `git rev-parse --abbrev-ref HEAD`
 TMP_MODIFIED_FILES := `git status --porcelain -u no`
 GIT_MODIFIED_FILES := $(subst \\n,\,,$(TMP_MODIFIED_FILES))
+DATE_NOW := `date \"+%Y-%m-%d\"`
+
+XRT_DRIVER_VERSION := 2.8.0
 
 all: modules check-env
 

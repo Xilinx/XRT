@@ -22,7 +22,7 @@ The xbmgmt command options are
 
 .. code:: 
 
-    xbmgmt --new examine
+    xbmgmt examine
     
     Device : [0000:b3:00.0]
     ....
