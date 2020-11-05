@@ -1147,7 +1147,9 @@ public:
   const argument&
   get_arg(size_t argidx) const
   {
-    return args.at(argidx);
+    auto& arg = args.at(argidx);
+    arg.valid_or_error();
+    return arg;
   }
 };
 

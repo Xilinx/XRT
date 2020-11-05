@@ -602,6 +602,7 @@ typedef struct {
   std::string memType;          // Type of memory being indexed
   uint64_t baseAddress;         // Base address of the memory
   uint64_t size;                // Size of the memory
+  bool canGroup;                // Indicates if this entry can be grouped
 } WorkingConnection;
 
 
@@ -639,22 +640,23 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
                               std::vector<boost::property_tree::ptree> & groupTopology, 
                               std::vector<boost::property_tree::ptree> & groupConnectivity)
 {
-  // Sort our collection by: Memory Type, IP Layout Index, Argument Index, and Base address
+  // Sort our collection by: IP Layout Index, Argument Index, and Base address
   std::sort(workingConnections.begin(), workingConnections.end(), 
             [](WorkingConnection &a, WorkingConnection &b) { 
-              if (a.memType.compare(b.memType) != 0)      // Level 1: Memory Type
-                return a.memType.compare(b.memType) < 0;
-
-              if (a.ipLayoutIndex != b.ipLayoutIndex)     // Level 2: IP Layout Index
+              if (a.ipLayoutIndex != b.ipLayoutIndex)     // Level 1: IP Layout Index
                 return a.ipLayoutIndex < b.ipLayoutIndex;
 
-              if (a.argIndex != b.argIndex)               // Level 3: Argument Index
+              if (a.argIndex != b.argIndex)               // Level 2: Argument Index
                 return a.argIndex < b.argIndex;
 
-              return a.baseAddress < b.baseAddress;       // Level 4: Base addresses
+              return a.baseAddress < b.baseAddress;       // Level 3: Base addresses
             });
 
-  // Determine and recode the grouped memory range 
+  // Assume that all of the memory connections cannot be grouped
+  for (auto & entry : workingConnections)
+    entry.canGroup = false;
+
+  // Look at the memory connections and determine which are valid to group.
   for (unsigned int index = 0; index < workingConnections.size(); ++index) {
     const unsigned int startIndex = index;
     unsigned int endIndex = index;
@@ -662,15 +664,66 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
     uint64_t groupSize = workingConnections[startIndex].size;
 
     // Peek at the next entry
-    for ( ; endIndex + 1 < workingConnections.size(); ++endIndex) {
+    for (; endIndex + 1 < workingConnections.size(); ++endIndex) {
       const unsigned int peekIndex = endIndex + 1;
       const uint64_t nextBaseAddress = groupBaseAddress + groupSize;
+
+      // The next memory must be:
+      //    1) Continuous
+      //    2) Same IP
+      //    3) Same argument
       if ((nextBaseAddress != workingConnections[peekIndex].baseAddress) ||
-          (workingConnections[startIndex].memType.compare(workingConnections[peekIndex].memType)) ||
           (workingConnections[startIndex].ipLayoutIndex != workingConnections[peekIndex].ipLayoutIndex) ||
           (workingConnections[startIndex].argIndex != workingConnections[peekIndex].argIndex)) 
         break;
-      groupSize += workingConnections[endIndex +1].size;
+      groupSize += workingConnections[peekIndex].size;
+    }
+
+    index = endIndex;
+
+    // Group requirements:
+    //    + Group size must be greater then 1
+    //    + Only one (1) group per IP Argument pair
+    // 
+    // Note: Because of how the collection is sorted, if there are multiple groups,
+    //       they would be before or after the current group collection.
+    if (startIndex == endIndex)
+      continue;
+
+    if ((startIndex != 0) && 
+        (workingConnections[startIndex-1].ipLayoutIndex == workingConnections[startIndex].ipLayoutIndex) &&
+        (workingConnections[startIndex-1].argIndex == workingConnections[startIndex].argIndex))
+      continue;
+
+    if ((endIndex < (workingConnections.size() - 1)) && 
+        (workingConnections[endIndex+1].ipLayoutIndex == workingConnections[endIndex].ipLayoutIndex) &&
+        (workingConnections[endIndex+1].argIndex == workingConnections[endIndex].argIndex))
+      continue;
+
+    // The is a valid group, mark it as so
+    for (unsigned int goodIndex = startIndex; goodIndex <= endIndex; ++goodIndex) 
+      workingConnections[goodIndex].canGroup = true;
+  }
+
+  // Collect the groups 
+  for (unsigned int index = 0; index < workingConnections.size(); ++index) {
+    const unsigned int startIndex = index;
+    unsigned int endIndex = index;
+    const uint64_t groupBaseAddress = workingConnections[startIndex].baseAddress;
+    uint64_t groupSize = workingConnections[startIndex].size;
+
+    // Peek at the next entry
+    if (workingConnections[startIndex].canGroup) {
+      for (; endIndex + 1 < workingConnections.size(); ++endIndex) {
+        const unsigned int peekIndex = endIndex + 1;
+        const uint64_t nextBaseAddress = groupBaseAddress + groupSize;
+  
+        if ((nextBaseAddress != workingConnections[peekIndex].baseAddress) ||
+            (workingConnections[startIndex].ipLayoutIndex != workingConnections[peekIndex].ipLayoutIndex) ||
+            (workingConnections[startIndex].argIndex != workingConnections[peekIndex].argIndex)) 
+          break;
+        groupSize += workingConnections[peekIndex].size;
+      }
     }
     
     // Update to our next working index
@@ -811,7 +864,7 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
         sizeBytes = XUtil::stringToUInt64(static_cast<std::string>(sSizeKBytes.get())) * 1024;
     }
 
-    possibleGroupConnections.emplace_back( WorkingConnection{argIndex, ipLayoutIndex, memIndex, memType, baseAddress, sizeBytes} );
+    possibleGroupConnections.emplace_back( WorkingConnection{argIndex, ipLayoutIndex, memIndex, memType, baseAddress, sizeBytes, 0 /*canGroup*/} );
   }
 
   // Group the memories

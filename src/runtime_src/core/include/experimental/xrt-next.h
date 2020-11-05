@@ -18,7 +18,7 @@
 #ifndef _XRT_NEXT_APIS_H_
 #define _XRT_NEXT_APIS_H_
 
-#include "xrt.h"
+#include "../xrt.h"
 
 #ifdef __cplusplus
 extern "C" {

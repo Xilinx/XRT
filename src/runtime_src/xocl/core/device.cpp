@@ -137,7 +137,7 @@ buffer_resident_or_error(const xocl::memory* buffer, const xocl::device* device)
     throw std::runtime_error("buffer ("
                              + std::to_string(buffer->get_uid())
                              + ") is not resident in device ("
-                             + std::to_string(device->get_uid()) + ")");
+                             + std::to_string(device->get_uid()) + ") so migration from device to host fails");
 }
 
 // Copy hbuf to ubuf if necessary

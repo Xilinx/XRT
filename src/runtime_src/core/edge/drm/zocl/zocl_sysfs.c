@@ -197,6 +197,24 @@ static ssize_t kds_skstat_show(struct device *dev,
 static DEVICE_ATTR_RO(kds_skstat);
 
 
+static ssize_t kds_xrt_version_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	ssize_t sz = 0;
+
+	if (!zdev || !zdev->soft_kernel)
+		return 0;
+
+	sz += sprintf(buf+sz, "XRT GIT BRANCH: %s\n", XRT_BRANCH);
+	sz += sprintf(buf+sz, "XRT GIT HASH: %s\n", XRT_HASH);
+	sz += sprintf(buf+sz, "XRT GIT HASH DATE: %s\n", XRT_HASH_DATE);
+	sz += sprintf(buf+sz, "XRT GIT Modified Files: %s\n", XRT_MODIFIED_FILES);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(kds_xrt_version);
+
 static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
@@ -394,6 +412,7 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_kds_custat.attr,
 	&dev_attr_kds_stats.attr,
 	&dev_attr_kds_skstat.attr,
+	&dev_attr_kds_xrt_version.attr,
 	&dev_attr_kds_echo.attr,
 	&dev_attr_kds_stat.attr,
 	&dev_attr_memstat.attr,

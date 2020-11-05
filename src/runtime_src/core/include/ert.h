@@ -180,7 +180,7 @@ struct ert_start_copybo_cmd {
   uint32_t state:4;          /* [3-0], must be ERT_CMD_STATE_NEW */
   uint32_t unused:6;         /* [9-4] */
   uint32_t extra_cu_masks:2; /* [11-10], = 3 */
-  uint32_t count:11;         /* [22-12], = 15, exclude 'arg' */
+  uint32_t count:11;         /* [22-12], = 16, exclude 'arg' */
   uint32_t opcode:5;         /* [27-23], = ERT_START_COPYBO */
   uint32_t type:4;           /* [31-27], = ERT_DEFAULT */
   uint32_t cu_mask[4];       /* mandatory cu masks */
@@ -191,7 +191,8 @@ struct ert_start_copybo_cmd {
   uint32_t dst_addr_lo;      /* low 32 bit of dst addr */
   uint32_t dst_addr_hi;      /* high 32 bit of dst addr */
   uint32_t dst_bo_hdl;       /* dst bo handle, cleared by driver */
-  uint32_t size;             /* size in bytes */
+  uint32_t size;             /* size in bytes low 32 bit*/
+  uint32_t size_hi;          /* size in bytes high 32 bit*/
   void     *arg;             /* pointer to aux data for KDS */
 };
 
@@ -641,7 +642,7 @@ ert_fill_copybo_cmd(struct ert_start_copybo_cmd *pkt, uint32_t src_bo,
 {
   pkt->state = ERT_CMD_STATE_NEW;
   pkt->extra_cu_masks = 3;
-  pkt->count = 15;
+  pkt->count = 16;
   pkt->opcode = ERT_START_COPYBO;
   pkt->type = ERT_DEFAULT;
   pkt->cu_mask[0] = 0;
@@ -655,6 +656,7 @@ ert_fill_copybo_cmd(struct ert_start_copybo_cmd *pkt, uint32_t src_bo,
   pkt->dst_addr_hi = (dst_offset >> 32) & 0xFFFFFFFF;
   pkt->dst_bo_hdl = dst_bo;
   pkt->size = size;
+  pkt->size_hi = 0; /* set to 0 explicitly */
   pkt->arg = 0;
 }
 static inline uint64_t

@@ -383,17 +383,11 @@ class buffer_nodma : public bo_impl
 
 public:
   buffer_nodma(xclDeviceHandle dhdl, xclBufferHandle hbuf, xclBufferHandle dbuf, size_t sz)
-  try : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
+    : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
   {
 
     device = xrt_core::get_userpf_device(dhdl);
     handle = dbuf;
-  }
-  catch (const std::exception& ex) {
-    auto fmt = boost::format("Failed to allocate host memory buffer (%s), make sure host bank is enabled "
-                             "(see xbutil host_mem --enable ...)") % ex.what();
-    send_exception_message(fmt.str());
-    throw;
   }
 
   virtual void*
@@ -536,10 +530,18 @@ alloc_hbuf(xclDeviceHandle dhdl, xrt_core::aligned_ptr_type&& hbuf, size_t sz, x
 static std::shared_ptr<xrt::bo_impl>
 alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 {
-  auto hbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
-  auto dbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
-  auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz);
-  return boh;
+  try {
+    auto hbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
+    auto dbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
+    auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz);
+    return boh;
+  }
+  catch (const std::exception& ex) {
+    auto fmt = boost::format("Failed to allocate host memory buffer (%s), make sure host bank is enabled "
+                             "(see xbutil host_mem --enable ...)") % ex.what();
+    send_exception_message(fmt.str());
+    throw;
+  }
 }
 
 static std::shared_ptr<xrt::bo_impl>
