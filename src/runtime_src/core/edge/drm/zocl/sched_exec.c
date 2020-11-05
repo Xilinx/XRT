@@ -811,6 +811,11 @@ configure(struct sched_cmd *cmd)
 	if (sched_error_on(exec, opcode(cmd) != ERT_CONFIGURE))
 		return 1;
 
+	if (!zdev->ert && exec->configured) {
+		DRM_WARN("Reconfiguration not supported\n");
+		return 1;
+	}
+
 	if (!list_empty(&pending_cmds)) {
 		DRM_ERROR("Pending commands list not empty\n");
 		return 1;
