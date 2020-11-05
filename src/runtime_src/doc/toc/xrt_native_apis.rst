@@ -29,13 +29,16 @@ The core data structures in C and C++ are as below
 +---------------+---------------+-------------------+
 |   Run         | xrt::run      |  xrtRunHandle     |
 +---------------+---------------+-------------------+
+|   Graph       | TBD           |  xrtGraphHandle   |
++---------------+---------------+-------------------+
 
-All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/experimental/`` directory. In the user host code, it is sufficient to include only ``"experimental/xrt_kernel.h"`` to access all the APIs related to these data structure.
+All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/experimental/`` directory. In the user host code, it is sufficient to include ``"experimental/xrt_kernel.h"`` and ``"experimental/xrt_aie.h"`` (when using Graph APIs) to access all the APIs related to these data structure.
 
 .. code:: c
       :number-lines: 5
            
            #include "experimental/xrt_kernel.h"
+           #include "experimental/xrt_aie.h"
 
 
 The common host code flow using the above data structures is as below
@@ -591,7 +594,7 @@ However, XRT also provides APIs to obtain the register offset for CU arguments. 
 
 **C++**: The equivalent C++ API example
 
-.. code:: c
+.. code:: c++
       :number-lines: 38
 
            // Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively) 
@@ -673,3 +676,328 @@ The Run handle/object supports few other use-cases.
 In C++, the timeout facility can be used by the same member function that takes a ``std::chrono::milliseconds`` to specify the timeout. 
 
 **Asynchronous update of the kernel arguments**: The API ``xrtRunSetArg`` (C++: ``xrt::run::set_arg``) is synchronous to the kernel execution. This API can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this API (only for edge platform) ``xrtRunUpdateArg`` (in C++ member function ``xrt::run::update_arg``) is provided to change the kernel arguments asynchronous to the kernel execution. 
+
+Graph
+-----
+
+In Versal ACAPs with AI Engines, the XRT Graph APIs can be used to dynamically load, monitor, and control the graphs executing on the AI Engine array. As of the 2020.2 release, XRT provides a set of C APIs for graph control. The C++ APIs are planned for a future release. Also, as of the 2020.2 release Graph APIs are only supported on the Edge platform.
+
+A graph handle is of type ``xrtGraphHandle``. 
+
+Graph Opening and Closing
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The XRT graph APIs support the obtaining of graph handle from currently loaded xclbin. The required APIs for graph open and close are
+
+         - ``xrtGraphOpen``: API provides the handle of the graph from the device, XCLBIN UUID, and the graph name. 
+         - ``xrtGraphClose``: API to close the graph handle. 
+
+.. code:: c
+      :number-lines: 35
+           
+           xuid_t xclbin_uuid;
+           xrtXclbinGetUUID(xclbin,xclbin_uuid);
+
+           xrtGraphHandle graph = xrtGraphOpen(device, xclbin_uuid, "graph_name");
+           ....
+           ....
+           xrtGraphClose(graph);
+
+
+The graph handle obtained from ``xrtGraphOpen`` is used to execute the graph function on the AIE tiles.
+
+Reset Functions
+~~~~~~~~~~~~~~~
+
+There are two reset functions are used:
+
+   - API ``xrtAIEResetArray`` is used to reset the whole AIE array. 
+   - API ``xrtGraphReset`` is used to reset a specified graph by disabling tiles and enabling tile reset. 
+
+
+.. code:: c
+      :number-lines: 45
+           
+           xrtDeviceHandle device_handle = xrtDeviceOpen(0);
+           ...
+           // AIE Array Reset
+           xrtAIEResetArray(device_handle)
+           
+           xrtGraphHandle graph = xrtGraphOpen(device, xclbin_uuid, "graph_name");
+           // Graph Reset
+           xrtGraphReset(graphHandle);
+
+
+
+
+Graph execution
+~~~~~~~~~~~~~~~
+
+XRT provides basic graph execution control APIs to initialize, run, wait, and terminate graphs for a specific number of iterations. Below we will review some of the common graph execution styles. 
+
+Graph execution for a fixed number of iterations
+************************************************
+
+A graph can be executed for a fixed number of iterations followed by a "busy-wait" or a "time-out wait". 
+
+**Busy Wait scheme**
+
+The graph can be executed for a fixed number of iteration by ``xrtGraphRun`` API using an iteration argument. Subsequently, ``xrtGraphWait`` or ``xrtGraphEnd`` API should be used (with argument 0) to wait until graph execution is completed. 
+
+Let's review the below example
+
+- The graph is executed for 3 iterations by API ``xrtGraphRun`` with the number of iterations as an argument. 
+- The API ``xrtGraphWait(graphHandle,0)`` is used to wait till the iteration is done. 
+
+     - The API `xrtGraphWait` is used because the host code needs to execute the graph again. 
+- The Graph is executed again for 5 iteration
+- The API ``xrtGraphEnd(graphHandle,0)`` is used to wait till the iteration is done. 
+
+    - After ``xrtGraphEnd`` the same graph should not be executed. 
+
+.. code:: c
+      :number-lines: 35
+           
+           // start from reset state
+           xrtGraphReset(graphHandle);
+           
+           // run the graph for 3 iteration
+           xrtGraphRun(graphHandle, 3);
+           
+           // Wait till the graph is done 
+           xrtGraphWait(graphHandle,0);  // Use xrtGraphWait if you want to execute the graph again
+           
+           
+           xrtGraphRun(graphHandle,5);
+           xrtGraphEnd(graphHandle,0);  // Use xrtGraphEnd if you are done with the graph execution
+
+
+**Timeout wait scheme**
+
+As shown in the above example ``xrtGraphWait(graphHandle,0)`` performs a busy-wait and suspend the execution till the graph is not done. If desired a timeout version of the wait can be achieved by ``xrtGraphWaitDone`` which can be used to wait for some specified number of milliseconds, and if the graph is not done do something else in the meantime. An example is shown below
+
+.. code:: c++
+      :number-lines: 35
+           
+           // start from reset state
+           xrtGraphReset(graphHandle);
+           
+           // run the graph for 100 iteration
+           xrtGraphRun(graphHandle, 100);
+           
+            while (1) {
+             auto rval  = xrtGraphWaitDone(graphHandle, 5); 
+              std::cout << "Wait for graph done returns: " << rval << std::endl;
+              if (rval == -ETIME)  {
+                   std::cout << "Timeout, reenter......" << std::endl;
+                   // Do something 
+              }
+              else  // Graph is done, quit the loop
+                  break;
+             }
+
+
+Infinite Graph Execution
+************************
+
+The graph runs infinitely if ``xrtGraphRun`` is called with iteration argument -1. While a graph running infinitely the APIs ``xrtGraphWait``, ``xrtGraphSuspend`` and xrtGraphEnd can be used to suspend/end the graph operation after some number of AIE cycles. The API ``xrtGraphResume`` is used to execute the infinitely running graph again. 
+
+
+.. code:: c
+      :number-lines: 39
+           
+           // start from reset state
+           xrtGraphReset(graphHandle);
+           
+           // run the graph infinitely
+           xrtGraphRun(graphHandle, -1);
+           
+           xrtGraphWait(graphHandle,3);  // Suspends the graph after 3 AIE cycles from the previous start 
+           
+           
+           xrtGraphResume(graphHandle); // Restart the suspended graph again to run forever
+           
+           xrtGraphSuspend(graphHandle); // Suspend the graph immediately
+           
+           xrtGraphResume(graphHandle); // Restart the suspended graph again to run forever
+           
+           xrtGraphEnd(graphHandle,5);  // End the graph operation after 5 AIE cycles from the previous start
+
+
+In the example above
+
+- The API ``xrtGraphRun(graphHandle, -1)`` is used to execute the graph infinitely
+- The API ``xrtGraphWait`` suspends the graph after 3 AIE cycles from the graph starts. 
+
+       - If the graph was already run more than 3 AIE cycles the graph is suspended immediately. 
+- The API ``xrtGraphResume`` is used to restart the suspended graph
+- The API ``xrtGraphSuspend`` is used to suspend the graph immediately
+- The API ``xrtGraphEnd(graphHandle,5)`` is  ending the graph after 5 AIE cycles from the previous graph start. 
+       
+       - If the graph was already run more than 5 AIE cycles the graph is suspended immediately.
+       - Using ``xrtGraphEnd`` eliminates the capability of rerunning the Graph (without loading PDI and a graph reset again). 
+
+
+Measuring AIE cycle consumed by the Graph
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The API ``xrtGraphTimeStamp`` can be used to determine AIE cycle consumed between a graph start and stop. 
+
+Here in this example, the AIE cycle consumed by 3 iteration is calculated
+ 
+
+.. code:: c++
+      :number-lines: 35
+           
+           // start from reset state
+           xrtGraphReset(graphHandle);
+           
+           uint64_t begin_t = xrtGraphTimeStamp(graphHandle);
+           
+           // run the graph for 3 iteration
+           xrtGraphRun(graphHandle, 3);
+           
+           xrtGraphWait(graphHandle, 0); 
+           
+           uint64_t end_t = xrtGraphTimeStamp(graphHandle);
+           
+           std::cout<<"Number of AIE cycles consumed in the 3 iteration is: "<< end_t-begin_t; 
+           
+
+RTP (Runtime Parameter) control
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+XRT provides the API to update and read the runtime parameters of the graph. 
+
+- The API ``xrtGraphUpdateRTP`` to update the RTP 
+- The API ``xrtGraphReadRTP`` to read the RTP. 
+
+.. code:: c++
+      :number-lines: 35
+
+           ret = xrtGraphReset(graphHandle);
+           if (ret) throw std::runtime_error("Unable to reset graph");
+
+           ret = xrtGraphRun(graphHandle, 2);
+           if (ret) throw std::runtime_error("Unable to run graph");
+
+           float increment[1] = {1};
+           const char *inVect = reinterpret_cast<const char *>(increment);
+           xrtGraphUpdateRTP(graphHandle, "mm.mm0.in[2]", inVect, sizeof (float));
+     
+           // Do more things
+           xrtGraphRun(graphHandle,16);
+           xrtGraphWait(graphHandle,0);
+     
+           // Read RTP
+           float increment_out[1] = {1};
+           char *outVect = reinterpret_cast<char *>(increment_out);
+           xrtGraphReadRTP(graphHandle, "mm.mm0.inout[0]", outVect, sizeof(float));
+           std::cout<<"\n RTP value read<<increment_out[0]; 
+ 
+In the above example, the API ``xrtGraphUpdateRTP`` and ``xrtGraphReadRTP`` are used to update and read the RTP values respectively. Note the API arguments 
+   
+      - The hierarchical name of the RTP port
+      - Pointer to write or read the RTP variable
+      - The size of the RTP value. 
+
+DMA operation to and from Global Memory IO
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+XRT provides API ``xrtAIESyncBO`` to synchronize the buffer contents between GMIO and AIE. The following code shows a sample example
+
+
+.. code:: c++
+      :number-lines: 35
+
+           xrtDeviceHandle device_handle = xrtDeviceOpen(0);
+       
+           // Buffer from GM to AIE
+           xrtBufferHandle in_bo_handle  = xrtBOAlloc(device_handle, SIZE * sizeof (float), 0, 0);
+       
+           // Buffer from AIE to GM
+           xrtBufferHandle out_bo_handle  = xrtBOAlloc(device_handle, SIZE * sizeof (float), 0, 0);
+       
+           inp_bo_map = (float *)xrtBOMap(in_bo_handle);
+           out_bo_map = (float *)xrtBOMap(out_bo_handle);
+
+           // Prepare input data 
+           std::copy(my_float_array,my_float_array+SIZE,inp_bo_map);
+
+
+           xrtAIESyncBO(device_handle, in_bo_handle, "in_sink", XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0); 
+
+           xrtAIESyncBO(device_handle, out_bo_handle, "out_sink", XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float), 0);
+       
+       
+The above code shows
+
+    - Input and output buffer (``in_bo_handle`` and ``out_bo_handle``) to the graph are created and mapped to the user space
+    - The API ``xrtAIESyncBO`` is used for data transfer using the following arguments
+    
+          - Device and Buffer Handle
+          - The name of the GMIO ports associated with the DMA transfer
+          - The direction of the buffer transfer 
+          
+                   - GMIO to Graph: ``XCL_BO_SYNC_BO_GMIO_TO_AIE``
+                   - Graph to GMIO: ``XCL_BO_SYNC_BO_AIE_TO_GMIO``
+          - The size and the offset of the buffer
+    
+               
+XRT Error API
+-------------
+
+In general, XRT APIs can encounter two types of errors:
+ 
+       - Synchronous error: Error can be thrown by the API itself. These types of errors should be checked against all APIs (strongly recommended). 
+       - Asynchronous error: Errors from the underneath driver, system, hardware, etc. 
+       
+XRT provides a couple of APIs to retrieve the asynchronous errors into the userspace host code. This helps to debug when something goes wrong.
+ 
+       - ``xrtErrorGetLast`` - Gets the last error code and its timestamp of a given error class
+       - ``xrtErrorGetString`` - Gets the description string of a given error code.
+
+**NOTE**: The asynchronous error retrieving APIs are at an early stage of development and only supports AIE related asynchronous errors. Full support for all other asynchronous errors is planned in a future release. 
+
+Example code
+
+.. code-block:: c++
+      :number-lines: 41
+
+           rval = xrtGraphRun(graphHandle, runInteration);
+           if (rval != 0) {                                                                   
+               /* code to handle synchronous xrtGraphRun error */ 
+               goto fail;                                             
+           }      
+ 
+           rval = xrtGraphWaitDone(graphHandle, timeout);
+           if (rval == -ETIME) {
+               /* wait Graph done timeout without further information */
+               xrtErrorCode errCode;
+               uint64_t timestamp;
+ 
+               rval = xrtErrorGetLast(devHandle, XRT_ERROR_CLASS_AIE, &errCode, &timestamp);
+               if (rval == 0) {
+                   size_t len = 0;
+                   if (xrtErrorGetString(devHandle, errCode, nullptr, 0, &len))
+                       goto fail;
+                   std::vector<char> buf(len);  // or C equivalent
+                   if (xrtErrorGetString(devHandle, errCode, buf.data(), buf.size()))
+                       goto fail;
+                   /* code to deal with this specific error */
+                   std::cout << buf.data() << std::endl;
+           }
+     
+           /* more code can be added here to check other error class */
+}                  
+        
+       
+The above code shows
+     
+     - As good practice synchronous error checking is done directly against all APIs (line 41,47,53,56,59)
+     - After timeout occurs from ``xrtGraphWaitDone`` the API ``xrtErrorGetLast`` is called to retrieve asynchronous error code (line 53) 
+     - Using the error code API ``xrtErrorGetString`` is called to get the length of the error string (line 56)
+     - The API ``xrtErrorGetString`` called again for the second time to get the full error string (line 59)
+
+
+
