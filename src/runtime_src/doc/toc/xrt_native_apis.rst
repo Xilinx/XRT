@@ -834,7 +834,7 @@ In the example above
 - The API ``xrtGraphSuspend`` is used to suspend the graph immediately
 - The API ``xrtGraphEnd(graphHandle,5000)`` is  ending the graph after 5000 AIE cycles from the previous graph start. 
        
-       - If the graph was already run more than 5000 AIE cycles the graph is suspended immediately.
+       - If the graph was already run more than 5000 AIE cycles the graph ends immediately.
        - Using ``xrtGraphEnd`` eliminates the capability of rerunning the Graph (without loading PDI and a graph reset again). 
 
 
@@ -961,7 +961,7 @@ XRT provides a couple of APIs to retrieve the asynchronous errors into the users
 
 Example code
 
-.. code-block:: c++
+.. code:: c++
       :number-lines: 41
 
            rval = xrtGraphRun(graphHandle, runInteration);
@@ -986,10 +986,9 @@ Example code
                        goto fail;
                    /* code to deal with this specific error */
                    std::cout << buf.data() << std::endl;
-           }
-     
-           /* more code can be added here to check other error class */
-}                  
+               }
+          }                  
+          /* more code can be added here to check other error class */
         
        
 The above code shows
