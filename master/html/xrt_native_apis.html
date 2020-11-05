@@ -390,6 +390,20 @@
 <li class="toctree-l3"><a class="reference internal" href="#other-kernel-execution-related-apis">Other kernel execution related APIs</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#graph">Graph</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#graph-opening-and-closing">Graph Opening and Closing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#reset-functions">Reset Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#graph-execution">Graph execution</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#graph-execution-for-a-fixed-number-of-iterations">Graph execution for a fixed number of iterations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#infinite-graph-execution">Infinite Graph Execution</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#measuring-aie-cycle-consumed-by-the-graph">Measuring AIE cycle consumed by the Graph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rtp-runtime-parameter-control">RTP (Runtime Parameter) control</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dma-operation-to-and-from-global-memory-io">DMA operation to and from Global Memory IO</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#xrt-error-api">XRT Error API</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
@@ -547,10 +561,16 @@
 <td><p>xrt::run</p></td>
 <td><p>xrtRunHandle</p></td>
 </tr>
+<tr class="row-odd"><td><p>Graph</p></td>
+<td><p>TBD</p></td>
+<td><p>xrtGraphHandle</p></td>
+</tr>
 </tbody>
 </table>
-<p>All the core data structures are defined inside in the header files at <code class="docutils literal notranslate"><span class="pre">$XILINX_XRT/include/experimental/</span></code> directory. In the user host code, it is sufficient to include only <code class="docutils literal notranslate"><span class="pre">&quot;experimental/xrt_kernel.h&quot;</span></code> to access all the APIs related to these data structure.</p>
-<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>5</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="cp">#include</span> <span class="cpf">&quot;experimental/xrt_kernel.h&quot;</span><span class="cp"></span>
+<p>All the core data structures are defined inside in the header files at <code class="docutils literal notranslate"><span class="pre">$XILINX_XRT/include/experimental/</span></code> directory. In the user host code, it is sufficient to include <code class="docutils literal notranslate"><span class="pre">&quot;experimental/xrt_kernel.h&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;experimental/xrt_aie.h&quot;</span></code> (when using Graph APIs) to access all the APIs related to these data structure.</p>
+<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>5
+6</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="cp">#include</span> <span class="cpf">&quot;experimental/xrt_kernel.h&quot;</span><span class="cp"></span>
+     <span class="cp">#include</span> <span class="cpf">&quot;experimental/xrt_aie.h&quot;</span><span class="cp"></span>
 </pre></div>
 </td></tr></table></div>
 <p>The common host code flow using the above data structures is as below</p>
@@ -1115,7 +1135,7 @@ Register Offset:   0x10
 </pre></div>
 </td></tr></table></div>
 <p><strong>C++</strong>: The equivalent C++ API example</p>
-<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>38
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>38
 39
 40
 41</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively)</span>
@@ -1215,6 +1235,391 @@ Register Offset:   0x10
 <p><strong>Asynchronous update of the kernel arguments</strong>: The API <code class="docutils literal notranslate"><span class="pre">xrtRunSetArg</span></code> (C++: <code class="docutils literal notranslate"><span class="pre">xrt::run::set_arg</span></code>) is synchronous to the kernel execution. This API can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this API (only for edge platform) <code class="docutils literal notranslate"><span class="pre">xrtRunUpdateArg</span></code> (in C++ member function <code class="docutils literal notranslate"><span class="pre">xrt::run::update_arg</span></code>) is provided to change the kernel arguments asynchronous to the kernel execution.</p>
 </div>
 </div>
+<div class="section" id="graph">
+<h2>Graph<a class="headerlink" href="#graph" title="Permalink to this headline">¶</a></h2>
+<p>In Versal ACAPs with AI Engines, the XRT Graph APIs can be used to dynamically load, monitor, and control the graphs executing on the AI Engine array. As of the 2020.2 release, XRT provides a set of C APIs for graph control. The C++ APIs are planned for a future release. Also, as of the 2020.2 release Graph APIs are only supported on the Edge platform.</p>
+<p>A graph handle is of type <code class="docutils literal notranslate"><span class="pre">xrtGraphHandle</span></code>.</p>
+<div class="section" id="graph-opening-and-closing">
+<h3>Graph Opening and Closing<a class="headerlink" href="#graph-opening-and-closing" title="Permalink to this headline">¶</a></h3>
+<p>The XRT graph APIs support the obtaining of graph handle from currently loaded xclbin. The required APIs for graph open and close are</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">xrtGraphOpen</span></code>: API provides the handle of the graph from the device, XCLBIN UUID, and the graph name.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xrtGraphClose</span></code>: API to close the graph handle.</p></li>
+</ul>
+</div></blockquote>
+<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
+36
+37
+38
+39
+40
+41</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">xuid_t</span> <span class="n">xclbin_uuid</span><span class="p">;</span>
+     <span class="n">xrtXclbinGetUUID</span><span class="p">(</span><span class="n">xclbin</span><span class="p">,</span><span class="n">xclbin_uuid</span><span class="p">);</span>
+
+     <span class="n">xrtGraphHandle</span> <span class="n">graph</span> <span class="o">=</span> <span class="n">xrtGraphOpen</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;graph_name&quot;</span><span class="p">);</span>
+     <span class="p">....</span>
+     <span class="p">....</span>
+     <span class="n">xrtGraphClose</span><span class="p">(</span><span class="n">graph</span><span class="p">);</span>
+</pre></div>
+</td></tr></table></div>
+<p>The graph handle obtained from <code class="docutils literal notranslate"><span class="pre">xrtGraphOpen</span></code> is used to execute the graph function on the AIE tiles.</p>
+</div>
+<div class="section" id="reset-functions">
+<h3>Reset Functions<a class="headerlink" href="#reset-functions" title="Permalink to this headline">¶</a></h3>
+<p>There are two reset functions are used:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>API <code class="docutils literal notranslate"><span class="pre">xrtAIEResetArray</span></code> is used to reset the whole AIE array.</p></li>
+<li><p>API <code class="docutils literal notranslate"><span class="pre">xrtGraphReset</span></code> is used to reset a specified graph by disabling tiles and enabling tile reset.</p></li>
+</ul>
+</div></blockquote>
+<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>45
+46
+47
+48
+49
+50
+51
+52</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">xrtDeviceHandle</span> <span class="n">device_handle</span> <span class="o">=</span> <span class="n">xrtDeviceOpen</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+     <span class="p">...</span>
+     <span class="c1">// AIE Array Reset</span>
+     <span class="n">xrtAIEResetArray</span><span class="p">(</span><span class="n">device_handle</span><span class="p">)</span>
+
+     <span class="n">xrtGraphHandle</span> <span class="n">graph</span> <span class="o">=</span> <span class="n">xrtGraphOpen</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;graph_name&quot;</span><span class="p">);</span>
+     <span class="c1">// Graph Reset</span>
+     <span class="n">xrtGraphReset</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<div class="section" id="graph-execution">
+<h3>Graph execution<a class="headerlink" href="#graph-execution" title="Permalink to this headline">¶</a></h3>
+<p>XRT provides basic graph execution control APIs to initialize, run, wait, and terminate graphs for a specific number of iterations. Below we will review some of the common graph execution styles.</p>
+<div class="section" id="graph-execution-for-a-fixed-number-of-iterations">
+<h4>Graph execution for a fixed number of iterations<a class="headerlink" href="#graph-execution-for-a-fixed-number-of-iterations" title="Permalink to this headline">¶</a></h4>
+<p>A graph can be executed for a fixed number of iterations followed by a “busy-wait” or a “time-out wait”.</p>
+<p><strong>Busy Wait scheme</strong></p>
+<p>The graph can be executed for a fixed number of iteration by <code class="docutils literal notranslate"><span class="pre">xrtGraphRun</span></code> API using an iteration argument. Subsequently, <code class="docutils literal notranslate"><span class="pre">xrtGraphWait</span></code> or <code class="docutils literal notranslate"><span class="pre">xrtGraphEnd</span></code> API should be used (with argument 0) to wait until graph execution is completed.</p>
+<p>Let’s review the below example</p>
+<ul>
+<li><p>The graph is executed for 3 iterations by API <code class="docutils literal notranslate"><span class="pre">xrtGraphRun</span></code> with the number of iterations as an argument.</p></li>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphWait(graphHandle,0)</span></code> is used to wait till the iteration is done.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>The API <cite>xrtGraphWait</cite> is used because the host code needs to execute the graph again.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>The Graph is executed again for 5 iteration</p></li>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphEnd(graphHandle,0)</span></code> is used to wait till the iteration is done.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>After <code class="docutils literal notranslate"><span class="pre">xrtGraphEnd</span></code> the same graph should not be executed.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// start from reset state</span>
+     <span class="n">xrtGraphReset</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span>
+
+     <span class="c1">// run the graph for 3 iteration</span>
+     <span class="n">xrtGraphRun</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span>
+
+     <span class="c1">// Wait till the graph is done</span>
+     <span class="n">xrtGraphWait</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span>  <span class="c1">// Use xrtGraphWait if you want to execute the graph again</span>
+
+
+     <span class="n">xrtGraphRun</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span><span class="mi">5</span><span class="p">);</span>
+     <span class="n">xrtGraphEnd</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span>  <span class="c1">// Use xrtGraphEnd if you are done with the graph execution</span>
+</pre></div>
+</td></tr></table></div>
+<p><strong>Timeout wait scheme</strong></p>
+<p>As shown in the above example <code class="docutils literal notranslate"><span class="pre">xrtGraphWait(graphHandle,0)</span></code> performs a busy-wait and suspend the execution till the graph is not done. If desired a timeout version of the wait can be achieved by <code class="docutils literal notranslate"><span class="pre">xrtGraphWaitDone</span></code> which can be used to wait for some specified number of milliseconds, and if the graph is not done do something else in the meantime. An example is shown below</p>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// start from reset state</span>
+     <span class="n">xrtGraphReset</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span>
+
+     <span class="c1">// run the graph for 100 iteration</span>
+     <span class="n">xrtGraphRun</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+
+      <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+       <span class="k">auto</span> <span class="n">rval</span>  <span class="o">=</span> <span class="n">xrtGraphWaitDone</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Wait for graph done returns: &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">rval</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">rval</span> <span class="o">==</span> <span class="o">-</span><span class="n">ETIME</span><span class="p">)</span>  <span class="p">{</span>
+             <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Timeout, reenter......&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+             <span class="c1">// Do something</span>
+        <span class="p">}</span>
+        <span class="k">else</span>  <span class="c1">// Graph is done, quit the loop</span>
+            <span class="k">break</span><span class="p">;</span>
+       <span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<div class="section" id="infinite-graph-execution">
+<h4>Infinite Graph Execution<a class="headerlink" href="#infinite-graph-execution" title="Permalink to this headline">¶</a></h4>
+<p>The graph runs infinitely if <code class="docutils literal notranslate"><span class="pre">xrtGraphRun</span></code> is called with iteration argument -1. While a graph running infinitely the APIs <code class="docutils literal notranslate"><span class="pre">xrtGraphWait</span></code>, <code class="docutils literal notranslate"><span class="pre">xrtGraphSuspend</span></code> and xrtGraphEnd can be used to suspend/end the graph operation after some number of AIE cycles. The API <code class="docutils literal notranslate"><span class="pre">xrtGraphResume</span></code> is used to execute the infinitely running graph again.</p>
+<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// start from reset state</span>
+     <span class="n">xrtGraphReset</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span>
+
+     <span class="c1">// run the graph infinitely</span>
+     <span class="n">xrtGraphRun</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+
+     <span class="n">xrtGraphWait</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span><span class="mi">3</span><span class="p">);</span>  <span class="c1">// Suspends the graph after 3 AIE cycles from the previous start</span>
+
+
+     <span class="n">xrtGraphResume</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span> <span class="c1">// Restart the suspended graph again to run forever</span>
+
+     <span class="n">xrtGraphSuspend</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span> <span class="c1">// Suspend the graph immediately</span>
+
+     <span class="n">xrtGraphResume</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span> <span class="c1">// Restart the suspended graph again to run forever</span>
+
+     <span class="n">xrtGraphEnd</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span><span class="mi">5</span><span class="p">);</span>  <span class="c1">// End the graph operation after 5 AIE cycles from the previous start</span>
+</pre></div>
+</td></tr></table></div>
+<p>In the example above</p>
+<ul>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphRun(graphHandle,</span> <span class="pre">-1)</span></code> is used to execute the graph infinitely</p></li>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphWait</span></code> suspends the graph after 3 AIE cycles from the graph starts.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>If the graph was already run more than 3 AIE cycles the graph is suspended immediately.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphResume</span></code> is used to restart the suspended graph</p></li>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphSuspend</span></code> is used to suspend the graph immediately</p></li>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphEnd(graphHandle,5)</span></code> is  ending the graph after 5 AIE cycles from the previous graph start.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>If the graph was already run more than 5 AIE cycles the graph is suspended immediately.</p></li>
+<li><p>Using <code class="docutils literal notranslate"><span class="pre">xrtGraphEnd</span></code> eliminates the capability of rerunning the Graph (without loading PDI and a graph reset again).</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="measuring-aie-cycle-consumed-by-the-graph">
+<h3>Measuring AIE cycle consumed by the Graph<a class="headerlink" href="#measuring-aie-cycle-consumed-by-the-graph" title="Permalink to this headline">¶</a></h3>
+<p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphTimeStamp</span></code> can be used to determine AIE cycle consumed between a graph start and stop.</p>
+<p>Here in this example, the AIE cycle consumed by 3 iteration is calculated</p>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// start from reset state</span>
+     <span class="n">xrtGraphReset</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span>
+
+     <span class="kt">uint64_t</span> <span class="n">begin_t</span> <span class="o">=</span> <span class="n">xrtGraphTimeStamp</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span>
+
+     <span class="c1">// run the graph for 3 iteration</span>
+     <span class="n">xrtGraphRun</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span>
+
+     <span class="n">xrtGraphWait</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+     <span class="kt">uint64_t</span> <span class="n">end_t</span> <span class="o">=</span> <span class="n">xrtGraphTimeStamp</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span>
+
+     <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="o">&lt;&lt;</span><span class="s">&quot;Number of AIE cycles consumed in the 3 iteration is: &quot;</span><span class="o">&lt;&lt;</span> <span class="n">end_t</span><span class="o">-</span><span class="n">begin_t</span><span class="p">;</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<div class="section" id="rtp-runtime-parameter-control">
+<h3>RTP (Runtime Parameter) control<a class="headerlink" href="#rtp-runtime-parameter-control" title="Permalink to this headline">¶</a></h3>
+<p>XRT provides the API to update and read the runtime parameters of the graph.</p>
+<ul class="simple">
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphUpdateRTP</span></code> to update the RTP</p></li>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtGraphReadRTP</span></code> to read the RTP.</p></li>
+</ul>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">ret</span> <span class="o">=</span> <span class="n">xrtGraphReset</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">);</span>
+     <span class="k">if</span> <span class="p">(</span><span class="n">ret</span><span class="p">)</span> <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;Unable to reset graph&quot;</span><span class="p">);</span>
+
+     <span class="n">ret</span> <span class="o">=</span> <span class="n">xrtGraphRun</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+     <span class="k">if</span> <span class="p">(</span><span class="n">ret</span><span class="p">)</span> <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;Unable to run graph&quot;</span><span class="p">);</span>
+
+     <span class="kt">float</span> <span class="n">increment</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">};</span>
+     <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">inVect</span> <span class="o">=</span> <span class="k">reinterpret_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*&gt;</span><span class="p">(</span><span class="n">increment</span><span class="p">);</span>
+     <span class="n">xrtGraphUpdateRTP</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="s">&quot;mm.mm0.in[2]&quot;</span><span class="p">,</span> <span class="n">inVect</span><span class="p">,</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">float</span><span class="p">));</span>
+
+     <span class="c1">// Do more things</span>
+     <span class="n">xrtGraphRun</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span><span class="mi">16</span><span class="p">);</span>
+     <span class="n">xrtGraphWait</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span>
+
+     <span class="c1">// Read RTP</span>
+     <span class="kt">float</span> <span class="n">increment_out</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">};</span>
+     <span class="kt">char</span> <span class="o">*</span><span class="n">outVect</span> <span class="o">=</span> <span class="k">reinterpret_cast</span><span class="o">&lt;</span><span class="kt">char</span> <span class="o">*&gt;</span><span class="p">(</span><span class="n">increment_out</span><span class="p">);</span>
+     <span class="n">xrtGraphReadRTP</span><span class="p">(</span><span class="n">graphHandle</span><span class="p">,</span> <span class="s">&quot;mm.mm0.inout[0]&quot;</span><span class="p">,</span> <span class="n">outVect</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">));</span>
+     <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="o">&lt;&lt;</span><span class="s">&quot;</span><span class="se">\n</span><span class="s"> RTP value read&lt;&lt;increment_out[0];</span>
+</pre></div>
+</td></tr></table></div>
+<p>In the above example, the API <code class="docutils literal notranslate"><span class="pre">xrtGraphUpdateRTP</span></code> and <code class="docutils literal notranslate"><span class="pre">xrtGraphReadRTP</span></code> are used to update and read the RTP values respectively. Note the API arguments</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>The hierarchical name of the RTP port</p></li>
+<li><p>Pointer to write or read the RTP variable</p></li>
+<li><p>The size of the RTP value.</p></li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="dma-operation-to-and-from-global-memory-io">
+<h3>DMA operation to and from Global Memory IO<a class="headerlink" href="#dma-operation-to-and-from-global-memory-io" title="Permalink to this headline">¶</a></h3>
+<p>XRT provides API <code class="docutils literal notranslate"><span class="pre">xrtAIESyncBO</span></code> to synchronize the buffer contents between GMIO and AIE. The following code shows a sample example</p>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">xrtDeviceHandle</span> <span class="n">device_handle</span> <span class="o">=</span> <span class="n">xrtDeviceOpen</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+     <span class="c1">// Buffer from GM to AIE</span>
+     <span class="n">xrtBufferHandle</span> <span class="n">in_bo_handle</span>  <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device_handle</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">float</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+     <span class="c1">// Buffer from AIE to GM</span>
+     <span class="n">xrtBufferHandle</span> <span class="n">out_bo_handle</span>  <span class="o">=</span> <span class="n">xrtBOAlloc</span><span class="p">(</span><span class="n">device_handle</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">float</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+     <span class="n">inp_bo_map</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span> <span class="o">*</span><span class="p">)</span><span class="n">xrtBOMap</span><span class="p">(</span><span class="n">in_bo_handle</span><span class="p">);</span>
+     <span class="n">out_bo_map</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span> <span class="o">*</span><span class="p">)</span><span class="n">xrtBOMap</span><span class="p">(</span><span class="n">out_bo_handle</span><span class="p">);</span>
+
+     <span class="c1">// Prepare input data</span>
+     <span class="n">std</span><span class="o">::</span><span class="n">copy</span><span class="p">(</span><span class="n">my_float_array</span><span class="p">,</span><span class="n">my_float_array</span><span class="o">+</span><span class="n">SIZE</span><span class="p">,</span><span class="n">inp_bo_map</span><span class="p">);</span>
+
+
+     <span class="n">xrtAIESyncBO</span><span class="p">(</span><span class="n">device_handle</span><span class="p">,</span> <span class="n">in_bo_handle</span><span class="p">,</span> <span class="s">&quot;in_sink&quot;</span><span class="p">,</span> <span class="n">XCL_BO_SYNC_BO_GMIO_TO_AIE</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">),</span><span class="mi">0</span><span class="p">);</span>
+
+     <span class="n">xrtAIESyncBO</span><span class="p">(</span><span class="n">device_handle</span><span class="p">,</span> <span class="n">out_bo_handle</span><span class="p">,</span> <span class="s">&quot;out_sink&quot;</span><span class="p">,</span> <span class="n">XCL_BO_SYNC_BO_AIE_TO_GMIO</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">),</span> <span class="mi">0</span><span class="p">);</span>
+</pre></div>
+</td></tr></table></div>
+<p>The above code shows</p>
+<blockquote>
+<div><ul>
+<li><p>Input and output buffer (<code class="docutils literal notranslate"><span class="pre">in_bo_handle</span></code> and <code class="docutils literal notranslate"><span class="pre">out_bo_handle</span></code>) to the graph are created and mapped to the user space</p></li>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtAIESyncBO</span></code> is used for data transfer using the following arguments</p>
+<blockquote>
+<div><ul>
+<li><p>Device and Buffer Handle</p></li>
+<li><p>The name of the GMIO ports associated with the DMA transfer</p></li>
+<li><p>The direction of the buffer transfer</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>GMIO to Graph: <code class="docutils literal notranslate"><span class="pre">XCL_BO_SYNC_BO_GMIO_TO_AIE</span></code></p></li>
+<li><p>Graph to GMIO: <code class="docutils literal notranslate"><span class="pre">XCL_BO_SYNC_BO_AIE_TO_GMIO</span></code></p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>The size and the offset of the buffer</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="xrt-error-api">
+<h2>XRT Error API<a class="headerlink" href="#xrt-error-api" title="Permalink to this headline">¶</a></h2>
+<p>In general, XRT APIs can encounter two types of errors:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Synchronous error: Error can be thrown by the API itself. These types of errors should be checked against all APIs (strongly recommended).</p></li>
+<li><p>Asynchronous error: Errors from the underneath driver, system, hardware, etc.</p></li>
+</ul>
+</div></blockquote>
+<p>XRT provides a couple of APIs to retrieve the asynchronous errors into the userspace host code. This helps to debug when something goes wrong.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">xrtErrorGetLast</span></code> - Gets the last error code and its timestamp of a given error class</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xrtErrorGetString</span></code> - Gets the description string of a given error code.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>NOTE</strong>: The asynchronous error retrieving APIs are at an early stage of development and only supports AIE related asynchronous errors. Full support for all other asynchronous errors is planned in a future release.</p>
+<p>Example code</p>
+<p>}</p>
+<p>The above code shows</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>As good practice synchronous error checking is done directly against all APIs (line 41,47,53,56,59)</p></li>
+<li><p>After timeout occurs from <code class="docutils literal notranslate"><span class="pre">xrtGraphWaitDone</span></code> the API <code class="docutils literal notranslate"><span class="pre">xrtErrorGetLast</span></code> is called to retrieve asynchronous error code (line 53)</p></li>
+<li><p>Using the error code API <code class="docutils literal notranslate"><span class="pre">xrtErrorGetString</span></code> is called to get the length of the error string (line 56)</p></li>
+<li><p>The API <code class="docutils literal notranslate"><span class="pre">xrtErrorGetString</span></code> called again for the second time to get the full error string (line 59)</p></li>
+</ul>
+</div></blockquote>
+</div>
 </div>
 
 
@@ -1246,7 +1651,7 @@ Register Offset:   0x10
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on November 02, 2020.
+        Last updated on November 04, 2020.
       </span>
 
     </p>
