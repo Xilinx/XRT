@@ -14,19 +14,22 @@
  * under the License.
  */
 #include "hal2.h"
+
 #include "ert.h"
-#include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
-#include "core/common/thread.h"
 #include "core/common/scope_guard.h"
+#include "core/common/system.h"
+#include "core/common/thread.h"
 
 #include <boost/format.hpp>
+
+#include <cerrno>
+#include <cstdlib>
 #include <cstring> // for std::memcpy
 #include <iostream>
-#include <cerrno>
 #include <regex>
-#include <cstdlib>
+#include <string>
 
 #ifdef _WIN32
 # pragma warning( disable : 4267 4996 4244 4245 )
@@ -39,6 +42,18 @@ is_emulation()
 {
   static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
   return val;
+}
+
+inline void
+send_exception_message(const char* msg)
+{
+  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+}
+
+inline void
+send_exception_message(const std::string& msg)
+{
+  send_exception_message(msg.c_str());
 }
 
 }
@@ -430,8 +445,12 @@ alloc_nodma(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     // Host only
     auto bo = getBufferObject(boh);
     bo->nodma_host_handle = m_ops->mAllocBO(m_handle, sz, 0, XCL_BO_FLAGS_HOST_ONLY);
-    if (bo->nodma_host_handle == NULLBO)
-        throw std::bad_alloc();
+    if (bo->nodma_host_handle == NULLBO) {
+      auto fmt = boost::format("Failed to allocate host memory buffer, make sure host bank is enabled "
+                               "(see xbutil host_mem --enable ...)");
+      ::send_exception_message(fmt.str());
+      throw std::bad_alloc();
+    }
 
     // Map the host only BO and use this as host addr.
     bo->hostAddr = m_ops->mMapBO(m_handle, bo->nodma_host_handle, true /*write*/);
