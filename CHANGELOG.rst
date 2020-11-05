@@ -14,6 +14,8 @@ Added
 * Support for PCIe Slave Bridge has been added which allows user kernels to directly read/write host memory.
 * Support for data driven *two stage* platforms have been added.
 * Slimmed down XRT RPM/DEB package dependencies. XRT package does not depend on other **dev/devel** packages anymore.
+* Enabled LPDDR for edge platforms
+* xbutil for edge platforms (use xbutil --new)
 
 Removed
 .......
