@@ -543,21 +543,35 @@ static struct xocl_subdev_map subdev_map[] = {
 	},
 	{
 		.id = XOCL_SUBDEV_MB,
+		.dev_name = XOCL_XMC_U2,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_CMC_REG, .regmap_name = PROP_CMC_U2},
+			{.res_name = NODE_CMC_RESET},
+			{.res_name = NODE_CMC_CLK_SCALING_REG},
+			{NULL},
+		},
+		.required_ip = 3,
+		.flags = 0,
+		.build_priv_data = xmc_build_priv,
+		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
+	},
+	{
+		.id = XOCL_SUBDEV_MB,
 		.dev_name = XOCL_XMC,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_CMC_REG},
+			{.res_name = NODE_CMC_REG, .regmap_name = PROP_CMC_DEFAULT},
 			{.res_name = NODE_CMC_RESET},
 			{.res_name = NODE_CMC_FW_MEM},
 			{.res_name = NODE_ERT_FW_MEM},
 			{.res_name = NODE_ERT_CQ_MGMT},
 			{.res_name = NODE_CMC_MUTEX},
 			{.res_name = NODE_CMC_CLK_SCALING_REG},
-			// 0x53000 runtime clk scaling
 			{NULL},
 		},
 		.required_ip = 1, /* for MPSOC, we only have the 1st resource */
 		.flags = 0,
-		.build_priv_data = xmc_build_priv,
+		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
 		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},

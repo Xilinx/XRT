@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
- * Authors: chienwei@xilinx.com
+ * Authors: chienwei@xilinx.com;rajkumar@xilinx.com
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -199,11 +199,7 @@ enum {
 static struct xocl_iores_map res_map[] = {
 	{ NODE_CMC_REG, IO_REG},
 	{ NODE_CMC_RESET, IO_GPIO},
-	{ NODE_CMC_FW_MEM, IO_IMAGE_MGMT},
-	{ NODE_ERT_FW_MEM, IO_IMAGE_SCHED},
-	{ NODE_ERT_CQ_MGMT, IO_CQ},
 	{ NODE_CMC_CLK_SCALING_REG, IO_CLK_SCALING},
-	{ NODE_CMC_MUTEX, IO_MUTEX},
 };
 
 
@@ -228,7 +224,8 @@ enum sc_mode {
 	XMC_SC_BSL_MODE_UNSYNCED = 2,
 	XMC_SC_BSL_MODE_SYNCED = 3,
 	XMC_SC_BSL_MODE_SYNCED_SC_NOT_UPGRADABLE = 4,
-	XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE = 5
+	XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE = 5,
+	XMC_SC_NOSC_MODE = 6
 };
 
 #define	READ_REG32(xmc, off)			\
@@ -1055,8 +1052,13 @@ static bool xmc_clk_scale_on(struct platform_device *pdev)
 static bool nosc_xmc(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	struct xmc_status status;
 
 	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_NOSC))
+		return true;
+
+	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+	if (status.sc_mode == XMC_SC_NOSC_MODE)
 		return true;
 
 	return false;
@@ -3202,7 +3204,7 @@ static void xmc_enable_mailbox(struct xocl_xmc *xmc)
 	xmc->mbx_enabled = true;
 	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
 	xmc->mbx_offset = val;
-	xocl_info(&xmc->pdev->dev, "XMC mailbox offset read during probe: 0x%x", val);
+	xocl_info(&xmc->pdev->dev, "XMC mailbox offset: 0x%x", val);
 }
 
 static inline int wait_reg_value(struct xocl_xmc *xmc, void __iomem *base, u32 mask)
@@ -3799,8 +3801,6 @@ static int xmc_probe(struct platform_device *pdev)
 	xmc->priv_data = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 	xdev_hdl = xocl_get_xdev(pdev);
 
-	xmc->sc_presence = nosc_xmc(xmc->pdev) ? 0 : 1;
-
 	if (XMC_PRIVILEGED(xmc)) {
 		if (!xmc->priv_data) {
 			xmc->priv_data = vzalloc(sizeof(*xmc->priv_data));
@@ -3879,6 +3879,8 @@ static int xmc_probe(struct platform_device *pdev)
 		}
 	}
 
+	xmc->sc_presence = nosc_xmc(xmc->pdev) ? 0 : 1;
+
 	err = mgmt_sysfs_create_xmc(pdev);
 	if (err) {
 		xocl_err(&pdev->dev, "Create sysfs failed, err %d", err);
@@ -3902,7 +3904,7 @@ static struct xocl_drv_private	xmc_priv = {
 };
 
 static struct platform_device_id xmc_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XMC), (kernel_ulong_t)&xmc_priv },
+	{ XOCL_DEVNAME(XOCL_XMC_U2), (kernel_ulong_t)&xmc_priv },
 	{ },
 };
 
@@ -3910,15 +3912,15 @@ static struct platform_driver	xmc_driver = {
 	.probe		= xmc_probe,
 	.remove		= xmc_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_XMC),
+		.name = XOCL_DEVNAME(XOCL_XMC_U2),
 	},
 	.id_table = xmc_id_table,
 };
 
-int __init xocl_init_xmc(void)
+int __init xocl_init_xmc_u2(void)
 {
 	int err = alloc_chrdev_region(&xmc_priv.dev, 0, XOCL_MAX_DEVICES,
-			XOCL_XMC);
+			XOCL_XMC_U2);
 	if (err)
 		return err;
 
@@ -3931,7 +3933,7 @@ int __init xocl_init_xmc(void)
 	return 0;
 }
 
-void xocl_fini_xmc(void)
+void xocl_fini_xmc_u2(void)
 {
 	unregister_chrdev_region(xmc_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&xmc_driver);
@@ -3976,7 +3978,7 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 	u32 len = XMC_PKT_SZ(&xmc->mbx_pkt.hdr);
 	int ret = 0;
 	u32 i;
-	u32 val = 0;
+	u32 val;
 
 	if (!xmc->mbx_enabled) {
 		xocl_err(&xmc->pdev->dev, "CMC mailbox is not supported");
@@ -3984,21 +3986,6 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 	}
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
-	/*
-	 * On card with ps, eg, u30, when xmc subdevice is probed on host,
-	 * the cmc running on ps may be not ready yet. so the saved mbx offset
-	 * might be 0. The register should be ready when we are here.
-	 * we need check and update the mbx offset.
-	 */
-	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
-	if (!val) {
-		xocl_err(&xmc->pdev->dev, "CMC mailbox is not ready");
-		return -EIO;
-	}
-	if (val != xmc->mbx_offset) {
-		xocl_info(&xmc->pdev->dev, "CMC mailbox offset updated: 0x%x", val);
-		xmc->mbx_offset = val;
-	}
 #ifdef	MBX_PKT_DEBUG
 	xocl_info(&xmc->pdev->dev, "Sending XMC packet: %d DWORDS...", len);
 	xocl_info(&xmc->pdev->dev, "opcode=%d payload_sz=0x%x (0x%x)",
@@ -4074,6 +4061,8 @@ static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 		return false;
 
 	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+	if (status.sc_mode == XMC_SC_NOSC_MODE)
+		return false;
 	if (status.sc_mode == XMC_SC_NORMAL ||
 		status.sc_mode == XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE)
 		return true;

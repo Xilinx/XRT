@@ -59,6 +59,7 @@ xclmgmt-y := \
 	../subdev/clock.o \
 	../subdev/mig.o \
 	../subdev/xmc.o \
+	../subdev/xmc_u2.o \
 	../subdev/dna.o \
 	../subdev/fmgr.o \
 	../subdev/mgmt_msix.o \

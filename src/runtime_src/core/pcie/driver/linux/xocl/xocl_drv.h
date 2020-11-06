@@ -2128,6 +2128,9 @@ void xocl_fini_ert(void);
 int __init xocl_init_xmc(void);
 void xocl_fini_xmc(void);
 
+int __init xocl_init_xmc_u2(void);
+void xocl_fini_xmc_u2(void);
+
 int __init xocl_init_dna(void);
 void xocl_fini_dna(void);
 
