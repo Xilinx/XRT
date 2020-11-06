@@ -202,6 +202,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/axigate.c
   xocl/subdev/mig.c
   xocl/subdev/xmc.c
+  xocl/subdev/xmc_u2.c
   xocl/subdev/dna.c
   xocl/subdev/fmgr.c
   xocl/subdev/mgmt_msix.c
