@@ -260,7 +260,7 @@ mtx.unlock();
 
 //-------------------xclClose---------------------------------
 #define xclClose_SET_PROTOMESSAGE(func_name,dev_handle) \
-    c_msg.set_xcldevicehandle((char*)dev_handle);\
+    c_msg.set_xcldevicehandle((void*)dev_handle, sizeof(decltype(*dev_handle)));\
     c_msg.set_closeall(mCloseAll);
 
 #define xclClose_SET_PROTO_RESPONSE() \
@@ -279,7 +279,7 @@ mtx.unlock();
 
 //-----------xclCopyBufferHost2Device-----------------
 #define xclCopyBufferHost2Device_SET_PROTOMESSAGE(func_name,dev_handle,dest,src,size,seek,space) \
-    c_msg.set_xcldevicehandle((char*)dev_handle); \
+    c_msg.set_xcldevicehandle((void*)dev_handle, sizeof(decltype(*dev_handle))); \
     c_msg.set_dest(dest); \
     c_msg.set_src((char*)src,size); \
     c_msg.set_size(size); \
@@ -303,7 +303,7 @@ mtx.unlock();
 
 //-----------xclCopyBufferDevice2Host-----------------
 #define xclCopyBufferDevice2Host_SET_PROTOMESSAGE(func_name,dev_handle,dest,src,size,skip,space) \
-    c_msg.set_xcldevicehandle((char*)dev_handle); \
+    c_msg.set_xcldevicehandle((void*)dev_handle, sizeof(decltype(*dev_handle))); \
     c_msg.set_dest((char*)dest,size); \
     c_msg.set_src(src); \
     c_msg.set_size(size); \

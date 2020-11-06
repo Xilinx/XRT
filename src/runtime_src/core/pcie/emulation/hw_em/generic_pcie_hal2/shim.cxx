@@ -1330,7 +1330,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
     std::string dMsg ="INFO: [HW-EMU 02-0] Copying buffer from host to device started : size = " + std::to_string(size);
     logMessage(dMsg,1);
-    void *handle = this;
 
     uint64_t messageSize = xclemulation::config::getInstance()->getPacketSize();
     uint64_t c_size = messageSize;
@@ -1348,7 +1347,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       // TODO: Windows build support
       // *_RPC_CALL uses unix_socket
       uint32_t space = getAddressSpace(topology);
-      xclCopyBufferHost2Device_RPC_CALL(xclCopyBufferHost2Device,handle,c_dest,c_src,c_size,seek,space);
+      xclCopyBufferHost2Device_RPC_CALL(xclCopyBufferHost2Device,this,c_dest,c_src,c_size,seek,space);
 #endif
       processed_bytes += c_size;
     }
@@ -1378,7 +1377,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     std::string dMsg ="INFO: [HW-EMU 05-0] Copying buffer from device to host started. size := " + std::to_string(size);
     logMessage(dMsg,1);
-    void *handle = this;
 
     uint64_t messageSize = xclemulation::config::getInstance()->getPacketSize();
     uint64_t c_size = messageSize;
@@ -1395,7 +1393,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       uint64_t c_src = src + processed_bytes;
 #ifndef _WINDOWS
       uint32_t space = getAddressSpace(topology);
-      xclCopyBufferDevice2Host_RPC_CALL(xclCopyBufferDevice2Host,handle,c_dest,c_src,c_size,skip,space);
+      xclCopyBufferDevice2Host_RPC_CALL(xclCopyBufferDevice2Host,this,c_dest,c_src,c_size,skip,space);
 #endif
 
       processed_bytes += c_size;

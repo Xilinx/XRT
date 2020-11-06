@@ -875,8 +875,6 @@ namespace xclcpuemhal2 {
     src = (unsigned char*)src + seek;
     dest += seek;
 
-    void *handle = this;
-
     unsigned int messageSize = get_messagesize();
     unsigned int c_size = messageSize;
     unsigned int processed_bytes = 0;
@@ -891,7 +889,7 @@ namespace xclcpuemhal2 {
       uint64_t c_dest = dest + processed_bytes;
 #ifndef _WINDOWS
       uint32_t space =0;
-      xclCopyBufferHost2Device_RPC_CALL(xclCopyBufferHost2Device,handle,c_dest,c_src,c_size,seek,space);
+      xclCopyBufferHost2Device_RPC_CALL(xclCopyBufferHost2Device,this,c_dest,c_src,c_size,seek,space);
 #endif
       processed_bytes += c_size;
     }
@@ -912,7 +910,6 @@ namespace xclcpuemhal2 {
       launchTempProcess();
     }
     src += skip;
-    void *handle = this;
 
     unsigned int messageSize = get_messagesize();
     unsigned int c_size = messageSize;
@@ -929,7 +926,7 @@ namespace xclcpuemhal2 {
       uint64_t c_src = src + processed_bytes;
 #ifndef _WINDOWS
       uint32_t space =0;
-      xclCopyBufferDevice2Host_RPC_CALL(xclCopyBufferDevice2Host,handle,c_dest,c_src,c_size,skip,space);
+      xclCopyBufferDevice2Host_RPC_CALL(xclCopyBufferDevice2Host,this,c_dest,c_src,c_size,skip,space);
 #endif
 
       processed_bytes += c_size;
