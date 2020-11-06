@@ -119,12 +119,19 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
             temp_ip_layout.base_addr = ipl->m_ip_data[i].m_base_address;
             temp_ip_layout.kernel_name = std::string((char*)ipl->m_ip_data[i].m_name);
 
+            using xarg = xrt_core::xclbin::kernel_argument;
+            static constexpr size_t no_index = xarg::no_index;
             auto args = xrt_core::xclbin::get_kernel_arguments(xclbin, temp_ip_layout.kernel_name);
+            //Note: args are sorted by index; Assuming that offset will increase with arg index
+            //This is fair assumption; v++ or HLS decides on these offset values
+            std::vector<xarg> args2;
+            std::copy_if(args.begin(), args.end(), std::back_inserter(args2), 
+                  [](const xarg& y){return y.index != no_index;});
             temp_ip_layout.arg_start = -1;
             temp_ip_layout.regmap_size = -1;
-            if (args.size() > 0) {
-                temp_ip_layout.arg_start = args[0].offset;
-                auto& last = args.back();
+            if (args2.size() > 0) {
+                temp_ip_layout.arg_start = args2[0].offset;
+                auto& last = args2.back();
                 temp_ip_layout.regmap_size = last.offset + last.size;
                 if (temp_ip_layout.arg_start < 0x10) {
                     xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s doesn't meet argument register map spec of HLS/RTL Wizard kernels ", temp_ip_layout.kernel_name.c_str());
@@ -133,9 +140,12 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
             } else {
                 std::string knm = temp_ip_layout.kernel_name.substr(0,temp_ip_layout.kernel_name.find(":"));
                 args = xrt_core::xclbin::get_kernel_arguments(xclbin, knm);
-                if (args.size() > 0) {
-                    temp_ip_layout.arg_start = args[0].offset;
-                    auto& last = args.back();
+                std::vector<xarg> args3;
+                std::copy_if(args.begin(), args.end(), std::back_inserter(args3), 
+                      [](const xarg& y){return y.index != no_index;});
+                if (args3.size() > 0) {
+                    temp_ip_layout.arg_start = args3[0].offset;
+                    auto& last = args3.back();
                     temp_ip_layout.regmap_size = last.offset + last.size;
                     if (temp_ip_layout.arg_start < 0x10) {
                         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s doesn't meet argument register map spec of HLS/RTL Wizard kernels ", temp_ip_layout.kernel_name.c_str());

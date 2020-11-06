@@ -24,4 +24,4 @@ Note: On Linux, please run the following with ``--new`` option
 2. Run ``xbmgmt status`` to verify the partition download
 
 
-For more details please refer `Vitis Application Acceleration Development Flow Documentation <https://www.xilinx.com/html_docs/xilinx2019_2/vitis_doc/utg1569948694132.html>`_
+For more details please refer `Vitis Application Acceleration Development Flow Documentation <https://www.xilinx.com/html_docs/xilinx2020_2/vitis_doc/xbmgmtutility.html#utg1569948694132>`_
