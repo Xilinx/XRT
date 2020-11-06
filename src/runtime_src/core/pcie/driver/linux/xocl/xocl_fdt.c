@@ -547,9 +547,6 @@ static struct xocl_subdev_map subdev_map[] = {
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_CMC_REG, .regmap_name = PROP_CMC_U2},
 			{.res_name = NODE_CMC_RESET},
-			{.res_name = NODE_CMC_FW_MEM},
-			{.res_name = NODE_ERT_FW_MEM},
-			{.res_name = NODE_ERT_CQ_MGMT},
 			{.res_name = NODE_CMC_CLK_SCALING_REG},
 			{NULL},
 		},
