@@ -61,6 +61,7 @@ namespace xdp {
       }
 
       uint32_t s = 0;
+      uint64_t monTraceID = 0;
       bool AMPacket  = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM);
       bool AIMPacket = (trace.TraceID >= MIN_TRACE_ID_AIM && trace.TraceID <= MAX_TRACE_ID_AIM);
       bool ASMPacket = (trace.TraceID >= MIN_TRACE_ID_ASM && trace.TraceID < MAX_TRACE_ID_ASM);
@@ -70,6 +71,7 @@ namespace xdp {
       double hostTimestamp = convertDeviceToHostTimestamp(timestamp);
       if (AMPacket) {
         s = ((trace.TraceID - MIN_TRACE_ID_AM) / 16);
+        monTraceID = s*16 + MIN_TRACE_ID_AM;
         uint32_t cuEvent       = trace.TraceID & XAM_TRACE_CU_MASK;
         uint32_t stallIntEvent = trace.TraceID & XAM_TRACE_STALL_INT_MASK;
         uint32_t stallStrEvent = trace.TraceID & XAM_TRACE_STALL_STR_MASK;
@@ -82,7 +84,7 @@ namespace xdp {
           KernelEvent* event = nullptr;
           if (!(trace.EventFlags & XAM_TRACE_CU_MASK)) {
             // end event
-            VTFEvent* e = db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, KERNEL);
+            VTFEvent* e = db->getDynamicInfo().matchingDeviceEventStart(monTraceID, KERNEL);
             if(!e) {
               continue;
             }
@@ -98,7 +100,7 @@ namespace xdp {
             event = new KernelEvent(0, hostTimestamp, KERNEL, deviceId, s, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
-            db->getDynamicInfo().markDeviceEventStart(trace.TraceID, event);
+            db->getDynamicInfo().markDeviceEventStart(monTraceID, event);
             cuStarts[s].push_back(event);
             if(1 == cuStarts[s].size()) {
               traceIDs[s] = 0;	// When current CU starts, reset stall status
@@ -110,7 +112,7 @@ namespace xdp {
           KernelStall* event = nullptr;
           if(traceIDs[s] & XAM_TRACE_STALL_INT_MASK) {
             // end event
-            event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, KERNEL_STALL_DATAFLOW)->getEventId(),
+            event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(monTraceID, KERNEL_STALL_DATAFLOW)->getEventId(),
                              hostTimestamp, KERNEL_STALL_DATAFLOW, deviceId, s, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
@@ -119,7 +121,7 @@ namespace xdp {
             event = new KernelStall(0, hostTimestamp, KERNEL_STALL_DATAFLOW, deviceId, s, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
-            db->getDynamicInfo().markDeviceEventStart(trace.TraceID, event);
+            db->getDynamicInfo().markDeviceEventStart(monTraceID, event);
           }
         } 
 
@@ -127,7 +129,7 @@ namespace xdp {
           KernelStall* event = nullptr;
           if(traceIDs[s] & XAM_TRACE_STALL_STR_MASK) {
             // end event
-            event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, KERNEL_STALL_PIPE)->getEventId(),
+            event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(monTraceID, KERNEL_STALL_PIPE)->getEventId(),
                              hostTimestamp, KERNEL_STALL_PIPE, deviceId, s, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
@@ -136,14 +138,14 @@ namespace xdp {
             event = new KernelStall(0, hostTimestamp, KERNEL_STALL_PIPE, deviceId, s, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
-            db->getDynamicInfo().markDeviceEventStart(trace.TraceID, event);
+            db->getDynamicInfo().markDeviceEventStart(monTraceID, event);
           }
         } 
         if(stallExtEvent) {
           KernelStall* event = nullptr;
           if(traceIDs[s] & XAM_TRACE_STALL_EXT_MASK) {
             // end event
-            event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, KERNEL_STALL_EXT_MEM)->getEventId(),
+            event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(monTraceID, KERNEL_STALL_EXT_MEM)->getEventId(),
                              hostTimestamp, KERNEL_STALL_EXT_MEM, deviceId, s, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
@@ -152,7 +154,7 @@ namespace xdp {
             event = new KernelStall(0, hostTimestamp, KERNEL_STALL_EXT_MEM, deviceId, s, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
-            db->getDynamicInfo().markDeviceEventStart(trace.TraceID, event);
+            db->getDynamicInfo().markDeviceEventStart(monTraceID, event);
           }
         }
         traceIDs[s] ^= (trace.TraceID & 0xf);
