@@ -34,6 +34,7 @@
 #include "xdp/profile/database/events/creator/device_event_trace_logger.h"
 
 #include "core/common/system.h"
+#include "core/common/message.h"
 
 namespace xdp {
 
@@ -83,15 +84,24 @@ namespace xdp {
       //  from the database.
       for (auto o : offloaders)
       {
-	auto offloader = std::get<0>(o.second) ;
+        auto offloader = std::get<0>(o.second) ;
 
-	offloader->read_trace() ;
-	offloader->read_trace_end() ;
+        offloader->read_trace() ;
+        offloader->read_trace_end() ;
+        if(offloader->trace_buffer_full()) {
+          std::string msg;
+          if(offloader->has_ts2mm()) {
+            msg = TS2MM_WARN_MSG_BUF_FULL;
+          } else {
+            msg = FIFO_WARN_MSG;
+          } 
+          xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+        }
+
       }
-
       for (auto w : writers)
       {
-	w->write(false) ;
+        w->write(false) ;
       }
       db->unregisterPlugin(this) ;
     }

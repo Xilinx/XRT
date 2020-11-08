@@ -145,8 +145,7 @@ get_container()
 inline std::string
 get_data_transfer_trace()
 {
-  static std::string value = 
-    detail::get_string_value("Debug.data_transfer_trace","off");
+  static std::string value = detail::get_string_value("Debug.data_transfer_trace","off");
   return value;
 }
 
