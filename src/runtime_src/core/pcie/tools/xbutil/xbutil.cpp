@@ -1509,11 +1509,9 @@ int xcldev::device::getXclbinuuid(uuid_t &uuid) {
     return 0;
 }
 
-bool xcldev::device::isHostMem(const char *m_tag)
+bool xcldev::device::isHostMem(const unsigned char *m_tag)
 {
-    std::string str(m_tag);
-
-    return (!str.compare(0, 4, "HOST"));
+    return (!strncmp((const char *)m_tag, "HOST", 4));
 }
 
 int xcldev::device::kernelVersionTest(void)
@@ -2324,7 +2322,7 @@ int xcldev::device::testM2m()
     }
 
     for(int32_t i = 0; i < map->m_count; i++) {
-        if (isHostMem((const char *)map->m_mem_data[i].m_tag))
+        if (isHostMem(map->m_mem_data[i].m_tag))
             continue;
 
         if(map->m_mem_data[i].m_used &&

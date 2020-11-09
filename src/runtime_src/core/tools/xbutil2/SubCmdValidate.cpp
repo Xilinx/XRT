@@ -835,7 +835,8 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
 
   for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
-    std::string str((char *)mem.m_tag);
+    auto c_str = reinterpret_cast<const char*>(mem.m_tag);
+    std::string str(c_str, std::min<size_t>(strlen(c_str), 16)); // max len is 16 from xclbin.h
     if (!str.compare(0, 4, "HOST"))
         continue;
 
