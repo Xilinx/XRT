@@ -2771,7 +2771,9 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 				mem_topo->m_mem_data[i].m_size = (hsz >> 10);
 			}
 		}
-
+		/* Xclbin binary has been adjusted as a workaround of Bios Limitation of some machine 
+		 * We won't be able to retain the device memory because of the limitation
+		 */
 		xocl_p2p_adjust_mem_topo(xdev, mem_topo);
 	}
 done:
