@@ -66,6 +66,9 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 	int ret;
 	struct drm_xocl_bo *xobj;
 	struct mm_struct *mm = current->mm;
+	struct drm_file *priv = filp->private_data;
+	struct xocl_drm *drm_p = priv->minor->dev->dev_private;
+	xdev_handle_t xdev = drm_p->xdev;
 
 	DRM_ENTER("BO map pgoff 0x%lx, size 0x%lx",
 		vma->vm_pgoff, vma->vm_end - vma->vm_start);
@@ -77,7 +80,7 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 	xobj = to_xocl_bo(vma->vm_private_data);
 
 	if (!xobj->pages) {
-		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
+		xocl_xdev_err(xdev, "BO pages is NULL");
 		return -EINVAL;
 	}
 	/* Clear VM_PFNMAP flag set by drm_gem_mmap()
