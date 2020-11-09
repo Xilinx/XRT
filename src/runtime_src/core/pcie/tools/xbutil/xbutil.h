@@ -192,6 +192,16 @@ static const std::map<int, std::string> oemid_map = {
     {0x2b79, "Google"}
 };
 
+inline bool isHostMem(const char *tag)
+{
+	return strncmp(tag, "HOST", 4) == 0;
+}
+
+inline bool isHostMem(const unsigned char *tag)
+{
+	return isHostMem(reinterpret_cast<const char *>(tag));
+}
+
 static const std::string getOEMID(std::string oemid)
 {
     unsigned int oemIDValue = 0;
@@ -1950,7 +1960,6 @@ private:
     int runOneTest(std::string testName, std::function<int(void)> testFunc);
 
     int getXclbinuuid(uuid_t &uuid);
-    bool isHostMem(const unsigned char *m_tag);
 };
 
 void printHelp(const std::string& exe);

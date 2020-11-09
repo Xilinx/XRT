@@ -1509,11 +1509,6 @@ int xcldev::device::getXclbinuuid(uuid_t &uuid) {
     return 0;
 }
 
-bool xcldev::device::isHostMem(const unsigned char *m_tag)
-{
-    return (!strncmp(reinterpret_cast<const char *>(m_tag), "HOST", 4));
-}
-
 int xcldev::device::kernelVersionTest(void)
 {
     if (getenv_or_null("INTERNAL_BUILD")) {
