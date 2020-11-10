@@ -2636,7 +2636,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       return -1;
     }
   }
-  else if(dBO->fd > 0){  //destination p2p buffer 
+  else if(dBO->fd >= 0){  //destination p2p buffer 
     int ack = false;
     auto fItr = mFdToFileNameMap.find(dBO->fd);
     if (fItr != mFdToFileNameMap.end()) {

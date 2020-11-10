@@ -1372,7 +1372,7 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
       return -1;
     }
   }
-  else if (dBO->fd > 0) {
+  else if (dBO->fd >= 0) {
     int ack = false;
     auto fItr = mFdToFileNameMap.find(dBO->fd);
     if (fItr != mFdToFileNameMap.end()) {
