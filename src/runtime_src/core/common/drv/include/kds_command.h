@@ -39,10 +39,8 @@ struct kds_cmd_ops {
 };
 
 struct in_kernel_cb {
-	struct work_struct work;
 	void (*func)(unsigned long cb_data, int err);
 	void *data;
-	int  cmd_state;
 };
 
 /**
