@@ -46,9 +46,7 @@ Example
 .. code-block:: ini
 
     xrt::ini::set("Runtime.runtime_log", "console");
-    xrt::ini::set("Runtime.exclusive_cu_context", true);
-
-
+    xrt::ini::set("Runtime.verbosity", 5);
 
 
 The following table lists all supported groups, keys, valid key values, and short descriptions on the function of the keys.
