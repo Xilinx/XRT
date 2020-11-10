@@ -49,6 +49,7 @@ usage()
     echo "[-checkpatch]              Run checkpatch.pl on driver code"
     echo "[-verbose]                 Turn on verbosity when compiling"
     echo "[-ertfw <dir>]             Path to directory with pre-built ert firmware (default: build the firmware)"
+    echo "[-no-static-boost]         Do not link statically with Boost libraries"
     echo ""
     echo "ERT firmware is built if and only if MicroBlaze gcc compiler can be located."
     echo "When compiler is not accesible, use -ertfw to specify path to directory with"
@@ -74,6 +75,7 @@ nocmake=0
 nobuild=0
 noctest=0
 ertfw=""
+staticboost="YES"
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -148,6 +150,10 @@ while [ $# -gt 0 ]; do
             verbose="VERBOSE=1"
             shift
             ;;
+        -no-static-boost)
+            staticboost="NO"
+            shift
+            ;;
         *)
             echo "unknown option"
             usage
@@ -196,8 +202,8 @@ if [[ $dbg == 1 ]]; then
   mkdir -p $debug_dir
   cd $debug_dir
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
+    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DSTATIC_BUILD=$staticboost ../../src"
+    time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DSTATIC_BUILD=$staticboost ../../src
   fi
 
   echo "make -j $jcore $verbose DESTDIR=$PWD install"
@@ -213,8 +219,8 @@ if [[ $opt == 1 ]]; then
   mkdir -p $release_dir
   cd $release_dir
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
+	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DSTATIC_BUILD=$staticboost ../../src"
+	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DSTATIC_BUILD=$staticboost ../../src
   fi
 
   if [[ $nobuild == 0 ]]; then
