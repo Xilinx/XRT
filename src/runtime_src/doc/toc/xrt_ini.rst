@@ -39,7 +39,7 @@ C APIs
 
 C++ API
 
-    - xrt::ini::set
+    - ``xrt::ini::set``
 
 Example
 
