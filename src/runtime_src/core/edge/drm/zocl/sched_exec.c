@@ -23,7 +23,7 @@
 #include "zocl_xclbin.h"
 #include "xclbin.h"
 
-/* #define SCHED_VERBOSE */
+#define SCHED_VERBOSE
 
 #if defined(__GNUC__)
 #define SCHED_UNUSED __attribute__((unused))
@@ -811,11 +811,6 @@ configure(struct sched_cmd *cmd)
 	if (sched_error_on(exec, opcode(cmd) != ERT_CONFIGURE))
 		return 1;
 
-	if (!zdev->ert && exec->configured) {
-		DRM_WARN("Reconfiguration not supported\n");
-		return 1;
-	}
-
 	if (!list_empty(&pending_cmds)) {
 		DRM_ERROR("Pending commands list not empty\n");
 		return 1;
@@ -890,8 +885,8 @@ configure(struct sched_cmd *cmd)
 	/* Enable interrupt from host to PS when new commands are ready */
 	if (zdev->ert && exec->cq_interrupt) {
 		/* Stop CQ check thread */
-		if (zdev->exec->cq_thread)
-			kthread_stop(zdev->exec->cq_thread);
+		//if (zdev->exec->cq_thread)
+		//	kthread_stop(zdev->exec->cq_thread);
 
 		/* At this point we are good. No one is polling CQ */
 		cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
@@ -900,7 +895,9 @@ configure(struct sched_cmd *cmd)
 			DRM_WARN("Failed to initial CQ interrupt. "
 			    "Fall back to polling\n");
 			exec->cq_interrupt = 0;
-			exec->cq_thread = kthread_run(cq_check, zdev, name);
+			//exec->cq_thread = kthread_run(cq_check, zdev, name);
+		} else {
+			atomic_set(&exec->cq_intc, 0);
 		}
 	}
 	/* TODO: let's consider how to support reconfigurable KDS/ERT later.
@@ -3110,6 +3107,58 @@ create_cmd_buffer(struct ert_packet *packet, unsigned int slot_size)
 	return buffer;
 }
 
+static int
+iterate_cqint_packets(struct drm_device *drm)
+{
+	struct drm_zocl_dev *zdev = drm->dev_private;
+	struct zocl_ert_dev *ert = zdev->ert;
+	struct sched_exec_core *exec_core = zdev->exec;
+	static u32 cq_status[4];
+	struct ert_packet *packet;
+	unsigned int idx, slot_idx, cq_idx, slot_sz, num_slots;
+	void *buffer;
+	int ret;
+	unsigned long flags;
+	slot_sz = slot_size(zdev->ddev);
+	num_slots = exec_core->num_slots;
+
+	SCHED_DEBUG("-> %s", __func__);
+	spin_lock_irqsave(&exec_core->cq_lock, flags);
+	for (cq_idx = 0; cq_idx < 4; cq_idx++) {
+		cq_status[cq_idx] = exec_core->cq_status[cq_idx];
+		exec_core->cq_status[cq_idx] = 0;
+	}
+	spin_unlock_irqrestore(&exec_core->cq_lock, flags);
+	for (cq_idx = 0; cq_idx < 4; cq_idx++) {
+		SCHED_DEBUG("cq %d status: %x ", cq_idx, cq_status[cq_idx]);
+		if (!cq_status[cq_idx])
+			continue;
+		for (idx = 0; idx < 32; idx++) {
+			if (!(cq_status[cq_idx] & (1UL << idx)))
+				continue;
+			slot_idx = (cq_idx << 5) + idx;
+			if (slot_idx >= num_slots)
+				continue;
+			packet = get_next_packet(ert->cq_ioremap, slot_idx * slot_sz);
+			buffer = create_cmd_buffer(packet, slot_sz);
+			if (IS_ERR(buffer))
+				continue;
+	
+			if (add_ert_cq_cmd(zdev->ddev, buffer, slot_idx)) {
+				ret = -EINVAL;
+				goto err;
+			}
+			SCHED_DEBUG("add ert cmd in slot: %d ", slot_idx);
+		}
+	}
+	SCHED_DEBUG("<- %s", __func__);
+	return 0;
+err:
+	kfree(buffer);
+	SCHED_DEBUG("<- %s", __func__);
+	return ret;
+}
+
 /**
  * iterate_packets() - iterate packets in HW Command Queue
  *
@@ -3130,6 +3179,8 @@ iterate_packets(struct drm_device *drm)
 	void *buffer;
 	int ret;
 
+	//if (exec_core->cq_interrupt)
+	//	return iterate_cqint_packets(drm);
 	packet = ert->cq_ioremap;
 	num_slots = exec_core->num_slots;
 	slot_sz = slot_size(zdev->ddev);
@@ -3160,6 +3211,24 @@ err:
 	return ret;
 }
 
+static int
+cq_wait_condition(struct sched_exec_core *exec_core)
+{
+	if (!exec_core->cq_interrupt)
+		return 0;
+	if (atomic_xchg(&exec_core->cq_intc, 0))
+		return 0;
+	return 1;
+}
+
+static void
+cq_check_wait(struct drm_zocl_dev *zdev)
+{
+	struct sched_exec_core *exec_core = zdev->exec;
+	wait_event_interruptible(exec_core->cq_wait_queue,
+		cq_wait_condition(exec_core) == 0);
+}
+
 /**
  * cq_check() - Check CQ status and submit new command to KDS
  *
@@ -3174,14 +3243,19 @@ cq_check(void *data)
 {
 	struct drm_zocl_dev *zdev = data;
 	struct sched_exec_core *exec_core = zdev->exec;
+	int loop = 0;
 
 	SCHED_DEBUG("-> %s", __func__);
-	while (!kthread_should_stop() && !exec_core->cq_interrupt) {
+	//while (!kthread_should_stop() && !exec_core->cq_interrupt) {
+	while (!kthread_should_stop()) {
+		//cq_check_wait(zdev);
+		//disable_irq_nosync(zdev->ert->irq[ERT_CQ_IRQ]);
 		if (iterate_packets(zdev->ddev) == 1) {
 			/* This thread should exit */
 			exec_core->cq_thread = NULL;
-			break;
-		}
+			return 0;
+		} 
+		//enable_irq(zdev->ert->irq[ERT_CQ_IRQ]);
 		schedule();
 	}
 	SCHED_DEBUG("<- %s", __func__);
@@ -3191,13 +3265,24 @@ cq_check(void *data)
 static irqreturn_t sched_cq_isr(int irq, void *arg)
 {
 	struct drm_zocl_dev *zdev = arg;
+	struct sched_exec_core *exec_core = zdev->exec;
+	char *ert_hw = zdev->ert->hw_ioremap;
+/*
 	struct ert_packet *pkg;
 	int slot_sz, slot_idx = 0;
 	int good_pkg;
 	void *buffer;
-
+*/
 	SCHED_DEBUG("-> %s", __func__);
-
+	//spin_lock(&exec_core->cq_lock);
+	exec_core->cq_status[0] = ioread32(ert_hw + ERT_CQ_STATUS_REG0);
+	exec_core->cq_status[1] = ioread32(ert_hw + ERT_CQ_STATUS_REG1);
+	exec_core->cq_status[2] = ioread32(ert_hw + ERT_CQ_STATUS_REG2);
+	exec_core->cq_status[3] = ioread32(ert_hw + ERT_CQ_STATUS_REG3);
+	//spin_unlock(&exec_core->cq_lock);
+	atomic_set(&exec_core->cq_intc, 1);
+	wake_up_interruptible(&exec_core->cq_wait_queue);
+#if 0
 	good_pkg = 1;
 	slot_sz = slot_size(zdev->ddev);
 	pkg = zdev->ert->ops->get_next_cmd(zdev->ert, NULL, &slot_idx);
@@ -3229,6 +3314,7 @@ static irqreturn_t sched_cq_isr(int irq, void *arg)
 	}
 
 out:
+#endif
 	SCHED_DEBUG("<- %s", __func__);
 	return IRQ_HANDLED;
 }
@@ -3249,6 +3335,11 @@ static inline void init_exec(struct sched_exec_core *exec_core)
 	atomic_set(&exec_core->scheduler->num_running, 0);
 	atomic_set(&exec_core->scheduler->num_received, 0);
 	atomic_set(&exec_core->scheduler->num_notified, 0);
+	exec_core->cq_status[0] = 0;
+	exec_core->cq_status[1] = 0;
+	exec_core->cq_status[2] = 0;
+	exec_core->cq_status[3] = 0;
+	spin_lock_init(&exec_core->cq_lock);
 
 	exec_core->cu_isr = 0;
 	exec_core->cu_dma = 0;
@@ -3307,6 +3398,7 @@ sched_init_exec(struct drm_device *drm)
 		/* Initialize soft kernel */
 		zocl_init_soft_kernel(drm);
 
+		init_waitqueue_head(&exec_core->cq_wait_queue);
 		exec_core->cq_thread = kthread_run(cq_check, zdev, name);
 	}
 
