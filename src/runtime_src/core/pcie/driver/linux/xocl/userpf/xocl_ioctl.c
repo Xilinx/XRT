@@ -304,7 +304,8 @@ static int xocl_preserve_memcmp(struct mem_topology *new_topo, struct mem_topolo
 		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag))
 			continue;
 		for (j = 0; j < new_topo->m_count; ++j) {
-			if (IS_HOST_MEM(new_topo->m_mem_data[j].m_tag))
+			if (memcmp(mem_topo->m_mem_data[i].m_tag, 
+				new_topo->m_mem_data[j].m_tag, 16))
 				continue;
 			if (memcmp(&mem_topo->m_mem_data[i], &new_topo->m_mem_data[j],
 				 sizeof(struct mem_data))) {
