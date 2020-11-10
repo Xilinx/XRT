@@ -66,9 +66,6 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 	int ret;
 	struct drm_xocl_bo *xobj;
 	struct mm_struct *mm = current->mm;
-	struct drm_file *priv = filp->private_data;
-	struct xocl_drm *drm_p = priv->minor->dev->dev_private;
-	xdev_handle_t xdev = drm_p->xdev;
 
 	DRM_ENTER("BO map pgoff 0x%lx, size 0x%lx",
 		vma->vm_pgoff, vma->vm_end - vma->vm_start);
@@ -80,7 +77,7 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 	xobj = to_xocl_bo(vma->vm_private_data);
 
 	if (!xobj->pages) {
-		xocl_xdev_err(xdev, "BO pages is NULL");
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
 		return -EINVAL;
 	}
 	/* Clear VM_PFNMAP flag set by drm_gem_mmap()
@@ -105,7 +102,6 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 		vma->vm_page_prot = pgprot_writecombine(
 			vm_get_page_prot(vma->vm_flags));
 
-	XOCL_DRM_GEM_OBJECT_GET(&xobj->base);
 	return ret;
 }
 
@@ -190,22 +186,6 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	 * mmap of that particular CU register space.
 	 */
 	return xocl_native_mmap(filp, vma);
-}
-
-void xocl_gem_vm_open(struct vm_area_struct *vma)
-{
-	struct drm_xocl_bo *xobj = to_xocl_bo(vma->vm_private_data);
-
-	XOCL_DRM_GEM_OBJECT_GET(&xobj->base);
-	drm_gem_vm_open(vma);
-}
-
-void xocl_gem_vm_close(struct vm_area_struct *vma)
-{
-	struct drm_xocl_bo *xobj = to_xocl_bo(vma->vm_private_data);
-
-	drm_gem_vm_close(vma);
-	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
@@ -445,8 +425,8 @@ static const struct file_operations xocl_driver_fops = {
 
 static const struct vm_operations_struct xocl_vm_ops = {
 	.fault = xocl_gem_fault,
-	.open = xocl_gem_vm_open,
-	.close = xocl_gem_vm_close,
+	.open = drm_gem_vm_open,
+	.close = drm_gem_vm_close,
 };
 
 static struct drm_driver mm_drm_driver = {
