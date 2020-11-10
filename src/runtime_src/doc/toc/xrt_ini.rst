@@ -30,7 +30,7 @@ The following is a simple example that turns on profile timeline trace and sends
    timeline_trace = true
 
 
-**API Support**: From 2020.2 release the runtime configuration options can also be provided through APIs. 
+**API Support**: From 2020.2 release the runtime configuration options can also be provided through APIs. These APIs are applicable for ``[Runtime]`` group options, not for ``[Debug]`` or ``[Emulation]`` related options.  
 
 C APIs 
 
