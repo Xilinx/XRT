@@ -120,12 +120,12 @@ is_supported_kernel_version(std::ostream &ostr)
     return true;
 }
 
-static void print_pci_info(std::ostream &ostr)
+static bool print_pci_info(std::ostream &ostr)
 {
     ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     if (pcidev::get_dev_total() == 0) {
         ostr << "No card found!" << std::endl;
-        return;
+        return true;
     }
 
     for (unsigned j = 0; j < pcidev::get_dev_total(); j++) {
@@ -139,9 +139,10 @@ static void print_pci_info(std::ostream &ostr)
 
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
         ostr << "WARNING: card(s) marked by '*' are not ready." << std::endl;
+        return false;
     }
 
-    is_supported_kernel_version(ostr);
+    return is_supported_kernel_version(ostr);
 }
 
 static int xrt_xbutil_version_cmp()
@@ -614,8 +615,7 @@ int main(int argc, char *argv[])
     }
 
     if (cmd == xcldev::SCAN || cmd == xcldev::LIST) {
-        print_pci_info(std::cout);
-        return 0;
+        return print_pci_info(std::cout) ? 0 : -ENOENT;
     }
 
     for (unsigned i = 0; i < count; i++) {
