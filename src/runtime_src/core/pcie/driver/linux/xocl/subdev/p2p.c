@@ -91,6 +91,8 @@ struct remapper_regs {
 	u32	base_addr_lo;
 	u32	base_addr_hi;
 	u32	log_range;
+	u32	bypass_mode;
+	u32	wildcard_mode;
 } __attribute__((packed));
 
 #define SLOT_START_OFF		0x800
@@ -589,6 +591,7 @@ static int p2p_mem_init(struct p2p *p2p)
 		remap_reg_wr(p2p, P2P_ADDR_HI(pa), base_addr_hi);
 	}
 	remap_reg_wr(p2p, fls64(p2p->remap_range) - 1, log_range);
+	remap_reg_wr(p2p, 1, wildcard_mode);
 
 	p2p_info(p2p, "Init remapper. range %ld, slot size %ld, num %ld",
 		p2p->remap_range, p2p->remap_slot_sz, p2p->remap_slot_num);
