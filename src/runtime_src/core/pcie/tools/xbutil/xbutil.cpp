@@ -1215,7 +1215,7 @@ int xcldev::device::runTestCase(const std::string& py,
             return -ENOENT;
         }
 
-        cmd = xrtTestCasePath + " " + xclbinPath;
+        cmd = xrtTestCasePath + " " + xclbinPath + " -d " + std::to_string(m_idx);
     }
     //OLD FLOW:
     else { 
