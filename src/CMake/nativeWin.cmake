@@ -21,13 +21,18 @@ endif(GIT_FOUND)
 #set(Boost_DEBUG 1)
 
 INCLUDE (FindBoost)
-INCLUDE (FindGTest)
-include_directories(${Boost_INCLUDE_DIRS})
-add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
+find_package(Boost 
+  REQUIRED COMPONENTS system filesystem)
+set(Boost_USE_MULTITHREADED ON)
 
 if(Boost_VERSION_STRING VERSION_LESS 1.64.0)
   add_definitions (-DBOOST_PRE_1_64=1)
 endif()
+
+include_directories(${Boost_INCLUDE_DIRS})
+add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
+
+INCLUDE (FindGTest)
 
 # --- XRT Variables ---
 set (XRT_INSTALL_DIR "xrt")

@@ -1,15 +1,7 @@
 # -----------------------------------------------------------------------------
 # Required libraries
 
-#TODO: Remove the window dependency on these settings.  
-if(WIN32)
-  set(Boost_USE_STATIC_LIBS ON)      # Only find static libraries
-  set(Boost_USE_MULTITHREADED ON)    # Multi-threaded libraries
-  set(Boost_USE_STATIC_RUNTIME ON)   # This is how the boost libraries were build
-endif()
-
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
-include_directories(${Boost_INCLUDE_DIRS})
 
 # Signing xclbin images are currently only support on Linux
 if(NOT WIN32)
