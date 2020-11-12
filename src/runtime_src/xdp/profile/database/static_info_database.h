@@ -184,8 +184,6 @@ namespace xdp {
   };
 
   struct DeviceInfo {
-    bool isReady;
-
     double clockRateMHz;
     struct PlatformInfo platformInfo;
 
@@ -215,6 +213,9 @@ namespace xdp {
 
     bool hasFloatingAIM = false;
     bool hasFloatingASM = false;
+    bool isReady          = false;
+    bool isAIEcounterRead = false;
+    bool isGMIORead       = false;
 
     uint32_t numTracePLIO = 0;
 
@@ -292,6 +293,34 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false; 
       return deviceInfo[deviceId]->isReady;
+    }
+
+    bool isAIECounterRead(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false; 
+      return deviceInfo[deviceId]->isAIEcounterRead;
+    }
+
+    void setIsAIECounterRead(uint64_t deviceId, bool val)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return; 
+      deviceInfo[deviceId]->isAIEcounterRead = val;
+    }
+
+    void setIsGMIORead(uint64_t deviceId, bool val)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return; 
+      deviceInfo[deviceId]->isGMIORead = val;
+    }
+
+    bool isGMIORead(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false; 
+      return deviceInfo[deviceId]->isGMIORead;
     }
 
     double getClockRateMHz(uint64_t deviceId)
