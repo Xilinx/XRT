@@ -1828,6 +1828,7 @@ struct xocl_p2p_funcs {
 	int (*get_bar_paddr)(struct platform_device *pdev, ulong bank_addr,
 			     ulong bank_size, ulong *bar_paddr);
 	int (*adjust_mem_topo)(struct platform_device *pdev, void *mem_topo);
+	int (*mem_reclaim)(struct platform_device *pdev);
 };
 #define	P2P_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_P2P).pldev
 #define	P2P_OPS(xdev)				\
@@ -1869,6 +1870,9 @@ struct xocl_p2p_funcs {
 #define xocl_p2p_adjust_mem_topo(xdev, mem_topo)			\
 	(P2P_CB(xdev) ?					\
 	 P2P_OPS(xdev)->adjust_mem_topo(P2P_DEV(xdev), mem_topo) : -ENODEV)
+#define xocl_p2p_mem_reclaim(xdev)					\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->mem_reclaim(P2P_DEV(xdev)) : -ENODEV)
 
 /* Each P2P chunk we set up must be at least 256MB */
 #define XOCL_P2P_CHUNK_SHIFT		28

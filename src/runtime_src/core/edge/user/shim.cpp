@@ -1001,7 +1001,7 @@ xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags)
 
   xclLog(XRT_DEBUG, "XRT", "%s: IP index %d, flags 0x%x", __func__, ipIndex, flags);
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
-  return ret ? -errno : ret;
+  return (ret < 0) ? -errno : ret;
 }
 
 int

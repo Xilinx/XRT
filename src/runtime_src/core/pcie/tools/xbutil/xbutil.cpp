@@ -98,7 +98,7 @@ check_os_release(const std::vector<std::string> kernel_versions, std::ostream &o
         if (release.find(ver) != std::string::npos)
             return true;
     }
-    ostr << "WARNING: Kernel verison " << release << " is not officially supported. "
+    ostr << "WARNING: Kernel version " << release << " is not officially supported. "
         << kernel_versions.back() << " is the latest supported version" << std::endl;
     return false;
 }
@@ -1215,7 +1215,7 @@ int xcldev::device::runTestCase(const std::string& py,
             return -ENOENT;
         }
 
-        cmd = xrtTestCasePath + " " + xclbinPath;
+        cmd = xrtTestCasePath + " " + xclbinPath + " -d " + std::to_string(m_idx);
     }
     //OLD FLOW:
     else { 
