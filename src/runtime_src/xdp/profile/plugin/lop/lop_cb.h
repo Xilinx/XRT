@@ -36,4 +36,9 @@ void lop_write(unsigned int XRTEventId, bool isStart) ;
 extern "C"
 void lop_kernel_enqueue(unsigned int XRTEventId, bool isStart) ;
 
+// Since both OpenCL and LOP profiling can be turned on at the same time,
+//  and XRT has the same ID for the event passed in to both, we use this mask
+//  to distinguish between the two.
+#define LOP_EVENT_MASK 0x1000000000000000ll
+
 #endif
