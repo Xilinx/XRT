@@ -99,9 +99,11 @@ namespace xdp {
           (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
         }
       }
+    }
 #ifdef XRT_ENABLE_AIE
-      {
+    {
 	// Update the AIE specific portion of the device
+	// If new xclbin is loaded, the xclbin specific datastructure is alreasy recreated
 	std::shared_ptr<xrt_core::device> device =
 	  xrt_core::get_userpf_device(handle) ;
 	if (device != nullptr) {
@@ -109,9 +111,8 @@ namespace xdp {
 	    (db->getStaticInfo()).addTraceGMIO(deviceId, gmio.id, gmio.shim_col, gmio.channel_number, gmio.stream_id, gmio.burst_len) ;
 	  }
 	}
-      }
-#endif
     }
+#endif
 
     uint64_t numAIETraceOutput = (db->getStaticInfo()).getNumAIETraceStream(deviceId);
     if(0 == numAIETraceOutput) {

@@ -130,9 +130,11 @@ namespace xdp {
           (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
         }
       }
+    }
 #ifdef XRT_ENABLE_AIE
-      {
+    {
 	// Update the AIE specific portion of the device
+	// If new xclbin is loaded, the xclbin specific datastructure is alreasy recreated
 	std::shared_ptr<xrt_core::device> device =
 	  xrt_core::get_userpf_device(handle) ;
 	auto counters = xrt_core::edge::aie::get_profile_counters(device.get());
@@ -153,9 +155,8 @@ namespace xdp {
 					      counter.module,
 					      counter.name) ;
 	}
-      }
-#endif
     }
+#endif
 
     // Open the writer for this device
     struct xclDeviceInfo2 info;
