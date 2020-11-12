@@ -138,6 +138,7 @@ fi
 if [ -f $SETTINGS_FILE ]; then
     source $SETTINGS_FILE
 fi
+PETALINUX="/proj/petalinux/2020.2/petalinux-v2020.2_1108_1/tool/petalinux-v2020.2-final"
 source $PETALINUX/settings.sh 
 
 if [[ $AARCH = $aarch64_dir ]]; then

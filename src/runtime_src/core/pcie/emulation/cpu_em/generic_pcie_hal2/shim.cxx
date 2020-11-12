@@ -1359,21 +1359,32 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
       return -1;
     }
   }
-  else {
-    if (dBO->fd < 0)
-    {
-      std::cout << "bo is not exported for copying" << std::endl;
+  else if (!xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_host_only(dBO) && (dBO->fd < 0) && (sBO->fd < 0)) {
+    unsigned char temp_buffer[size];
+    // copy data from source buffer to temp buffer
+    if (xclCopyBufferDevice2Host((void*)temp_buffer, sBO->base, size, src_offset) != size) {
+      std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
       return -1;
     }
+    // copy data from temp buffer to destination buffer
+    if (xclCopyBufferHost2Device(dBO->base, (void*)temp_buffer, size, dst_offset) != size) {
+      std::cerr << "ERROR: copy buffer from host to device failed " << std::endl;
+      return -1;
+    }
+  }
+  else if (dBO->fd >= 0) {
     int ack = false;
     auto fItr = mFdToFileNameMap.find(dBO->fd);
-    if (fItr != mFdToFileNameMap.end())
-    {
+    if (fItr != mFdToFileNameMap.end()) {
       const std::string& sFileName = std::get<0>((*fItr).second);
       xclCopyBO_RPC_CALL(xclCopyBO, sBO->base, sFileName, size, src_offset, dst_offset);
     }
     if (!ack)
       return -1;
+  }
+  else {
+    std::cerr << "ERROR: Copy buffer from source to destination faliled" << std::endl;
+    return -1;
   }
 
   PRINTENDFUNC;

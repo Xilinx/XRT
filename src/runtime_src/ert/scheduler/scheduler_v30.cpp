@@ -845,20 +845,20 @@ cu_stat(size_type slot_idx)
   
   // individual cu execution stat
   for (size_type i=0; pkt_idx<max_idx && i<num_cus; ++i) {
-    CTRL_DEBUGF("cu_usage[0x%x]=%d\r\n",cu_idx_to_addr(i),cu_usage[i]);
+    DMSGF("cu_usage[0x%x]=%d\r\n",cu_idx_to_addr(i),cu_usage[i]);
     write_reg(slot.slot_addr + (pkt_idx++ << 2),cu_usage[i]);
   }
 
   // individual cu status
   for (size_type i=0; pkt_idx<max_idx && i<num_cus; ++i) {
-    //CTRL_DEBUGF("cu_staus[0x%x]=%d\r\n",cu_idx_to_addr(i),cu_status[i]);
+    DMSGF("cu_staus[0x%x]=%d\r\n",cu_idx_to_addr(i),(uint32_t)cu_status[i]);
     write_reg(slot.slot_addr + (pkt_idx++ << 2),cu_status[i]);
   }
 
   // command slot status
   for (size_type i=0; pkt_idx<max_idx && i<num_slots; ++i) {
     auto& s = command_slots[i];
-    CTRL_DEBUGF("slot_status[%d]=%d\r\n",i,s.header_value & 0XF);
+    DMSGF("slot_status[%d]=%d\r\n",i,s.header_value & 0XF);
     write_reg(slot.slot_addr + (pkt_idx++ << 2),s.header_value & 0XF);
   }
 

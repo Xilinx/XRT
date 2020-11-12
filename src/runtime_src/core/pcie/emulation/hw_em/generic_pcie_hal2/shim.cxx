@@ -2622,12 +2622,21 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     if (xclCopyBufferDevice2Host((void*)host_only_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
       return -1;
     }
-  }
-  else {
-    if (dBO->fd < 0) {
-      std::cout << "bo is not exported for copying" << std::endl;
+  }// source and destination buffers are device_only
+  else if (!xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_host_only(dBO) && (dBO->fd < 0) && (sBO->fd < 0)) {
+    unsigned char temp_buffer[size];
+    // copy data from source buffer to temp buffer
+    if (xclCopyBufferDevice2Host((void*)temp_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
+      std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
       return -1;
     }
+    // copy data from temp buffer to destination buffer
+    if (xclCopyBufferHost2Device(dBO->base, (void*)temp_buffer, size, dst_offset, dBO->topology) != size) {
+      std::cerr << "ERROR: copy buffer from host to device failed " << std::endl;
+      return -1;
+    }
+  }
+  else if(dBO->fd >= 0){  //destination p2p buffer 
     int ack = false;
     auto fItr = mFdToFileNameMap.find(dBO->fd);
     if (fItr != mFdToFileNameMap.end()) {
@@ -2636,6 +2645,10 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     }
     if (!ack)
       return -1;
+  }
+  else{
+     std::cerr << "ERROR: Copy buffer from source to destination faliled" << std::endl;
+     return -1;
   }
 
   PRINTENDFUNC;
