@@ -314,7 +314,7 @@ checkOSRelease(const std::vector<std::string> kernel_versions, const std::string
     }
   }
   _ptTest.put("status", "passed");
-  logger(_ptTest, "Warning", boost::str(boost::format("Kernel verison %s is not officially supported. %s is the latest supported version")
+  logger(_ptTest, "Warning", boost::str(boost::format("Kernel version %s is not officially supported. %s is the latest supported version")
                             % release % kernel_versions.back()));
 }
 
