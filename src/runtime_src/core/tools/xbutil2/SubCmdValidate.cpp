@@ -314,7 +314,7 @@ checkOSRelease(const std::vector<std::string> kernel_versions, const std::string
     }
   }
   _ptTest.put("status", "passed");
-  logger(_ptTest, "Warning", boost::str(boost::format("Kernel verison %s is not officially supported. %s is the latest supported version")
+  logger(_ptTest, "Warning", boost::str(boost::format("Kernel version %s is not officially supported. %s is the latest supported version")
                             % release % kernel_versions.back()));
 }
 
@@ -835,8 +835,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
 
   for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
-    std::string str((char *)mem.m_tag);
-    if (!str.compare(0, 4, "HOST"))
+    if (!strncmp(reinterpret_cast<const char *>(mem.m_tag), "HOST", 4))
         continue;
 
     if(mem.m_used && mem.m_size * 1024 >= bo_size)

@@ -98,7 +98,7 @@ check_os_release(const std::vector<std::string> kernel_versions, std::ostream &o
         if (release.find(ver) != std::string::npos)
             return true;
     }
-    ostr << "WARNING: Kernel verison " << release << " is not officially supported. "
+    ostr << "WARNING: Kernel version " << release << " is not officially supported. "
         << kernel_versions.back() << " is the latest supported version" << std::endl;
     return false;
 }
@@ -1215,7 +1215,7 @@ int xcldev::device::runTestCase(const std::string& py,
             return -ENOENT;
         }
 
-        cmd = xrtTestCasePath + " " + xclbinPath;
+        cmd = xrtTestCasePath + " " + xclbinPath + " -d " + std::to_string(m_idx);
     }
     //OLD FLOW:
     else { 
@@ -1507,13 +1507,6 @@ int xcldev::device::getXclbinuuid(uuid_t &uuid) {
     }
 
     return 0;
-}
-
-bool xcldev::device::isHostMem(const char *m_tag)
-{
-    std::string str(m_tag);
-
-    return (!str.compare(0, 4, "HOST"));
 }
 
 int xcldev::device::kernelVersionTest(void)
@@ -2324,7 +2317,7 @@ int xcldev::device::testM2m()
     }
 
     for(int32_t i = 0; i < map->m_count; i++) {
-        if (isHostMem((const char *)map->m_mem_data[i].m_tag))
+        if (isHostMem(map->m_mem_data[i].m_tag))
             continue;
 
         if(map->m_mem_data[i].m_used &&
