@@ -101,6 +101,7 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 	else
 		vma->vm_page_prot = pgprot_writecombine(
 			vm_get_page_prot(vma->vm_flags));
+
 	return ret;
 }
 
@@ -328,6 +329,7 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 		xocl_destroy_client(drm_p->xdev, &filp->driver_priv);
 	else
 		xocl_exec_destroy_client(drm_p->xdev, &filp->driver_priv);
+	xocl_p2p_mem_reclaim(drm_p->xdev);
 	xocl_drvinst_close(drm_p);
 }
 
