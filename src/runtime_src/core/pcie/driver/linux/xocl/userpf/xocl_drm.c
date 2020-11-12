@@ -430,11 +430,20 @@ static const struct vm_operations_struct xocl_vm_ops = {
 };
 
 static struct drm_driver mm_drm_driver = {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0) || defined(RHEL_RELEASE_CODE) && RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
-	.driver_features                = DRIVER_GEM | DRIVER_RENDER,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
+#if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
+        .driver_features                = DRIVER_GEM | DRIVER_RENDER,
 #else
 	.driver_features		= DRIVER_GEM | DRIVER_PRIME |
 						DRIVER_RENDER,
+#endif
+#else
+        .driver_features                = DRIVER_GEM | DRIVER_PRIME |
+                                                DRIVER_RENDER,
+#endif
+#else
+	.driver_features		= DRIVER_GEM | DRIVER_RENDER,
 #endif
 
 	.postclose			= xocl_client_release,
