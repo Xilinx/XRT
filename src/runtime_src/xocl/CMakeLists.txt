@@ -58,6 +58,7 @@ add_library(xilinxopencl SHARED
   )
 
 target_link_libraries(xilinxopencl
+  PRIVATE
   xrt++
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
@@ -79,6 +80,7 @@ set_target_properties(xilinxopencl
   )
 
 target_link_libraries(xilinxopencl
+  PRIVATE
   xrt++
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}

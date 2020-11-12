@@ -15,6 +15,7 @@ file(GLOB MPD_FILES
 set(MPD_SRC ${MPD_FILES})
 add_executable(mpd ${MPD_SRC})
 target_link_libraries(mpd
+  PRIVATE
   xrt_core_static
   xrt_coreutil_static
   pthread
@@ -39,6 +40,7 @@ file(GLOB MSD_FILES
 set(MSD_SRC ${MSD_FILES})
 add_executable(msd ${MSD_SRC})
 target_link_libraries(msd
+  PRIVATE
   xrt_core_static
   xrt_coreutil_static
   pthread

@@ -55,29 +55,29 @@ endif()
 
 # Add the supporting libraries
 if(WIN32)
-target_link_libraries(
-    ${XBMGMT2_NAME} PRIVATE
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_PROGRAM_OPTIONS_LIBRARY}
-    Boost::filesystem
-    Boost::program_options
-    Boost::system
-    ws2_32
-    xrt_core
-    xrt_coreutil
+target_link_libraries(${XBMGMT2_NAME}
+  PRIVATE
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
+  ${Boost_PROGRAM_OPTIONS_LIBRARY}
+  Boost::filesystem
+  Boost::program_options
+  Boost::system
+  ws2_32
+  xrt_core
+  xrt_coreutil
   )
 
 else()
-  target_link_libraries(
-    ${XBMGMT2_NAME}
-    xrt_core
-    xrt_coreutil
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_PROGRAM_OPTIONS_LIBRARY}
-    uuid
-    dl
+target_link_libraries(${XBMGMT2_NAME}
+  PRIVATE
+  xrt_core
+  xrt_coreutil
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
+  ${Boost_PROGRAM_OPTIONS_LIBRARY}
+  uuid
+  dl
   )
 endif()
 

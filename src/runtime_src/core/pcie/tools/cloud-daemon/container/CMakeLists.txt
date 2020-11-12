@@ -18,6 +18,7 @@ add_library(container_mpd_plugin SHARED ""
 add_compile_options("-fPIC")
 
 target_link_libraries(container_mpd_plugin
+  PRIVATE
   xrt_core_static
   xrt_coreutil_static
   uuid

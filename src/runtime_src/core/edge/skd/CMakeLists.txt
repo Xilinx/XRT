@@ -16,6 +16,7 @@ set(SKD_SRC
 add_executable(skd ${SKD_SRC})
 
 target_link_libraries(skd
+  PRIVATE
   xrt_core
   dl
   )

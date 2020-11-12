@@ -50,6 +50,7 @@ set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}
 
 if (DEFINED XRT_AIE_BUILD)
   target_link_libraries(xrt_hwemu
+    PRIVATE
     xrt_coreutil
     pthread
     rt
@@ -61,14 +62,15 @@ if (DEFINED XRT_AIE_BUILD)
     xaiengine
     )
 else()
-target_link_libraries(xrt_hwemu
-  xrt_coreutil
-  pthread
-  rt
-  dl
-  uuid
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
+  target_link_libraries(xrt_hwemu
+    PRIVATE
+    xrt_coreutil
+    pthread
+    rt
+    dl
+    uuid
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
   )
 endif()
 
