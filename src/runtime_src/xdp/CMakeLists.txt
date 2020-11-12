@@ -223,7 +223,7 @@ file(GLOB XRT_XDP_PROFILE_VART_PLUGIN_FILES
   "${XRT_XDP_PROFILE_VART_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_VART_PLUGIN_DIR}/*.cpp"
   )
-  
+
 set(XRT_XDP_ALL_SRC
   ${XRT_XDP_PROFILE_FILES}
   ${XRT_XDP_FILES}
@@ -291,7 +291,7 @@ if (DEFINED XRT_AIE_BUILD)
   )
 endif()
 
-# Build AIE Trace plugin 
+# Build AIE Trace plugin
 add_library(xdp_aie_trace_plugin MODULE ${XRT_XDP_AIE_TRACE_PLUGIN_FILES})
 add_dependencies(xdp_aie_trace_plugin xdp_core xrt_core)
 
@@ -304,10 +304,10 @@ endif()
 
 set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xdp_aie_trace_plugin 
+install (TARGETS xdp_aie_trace_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
 )
-# end of Build AIE Trace plugin 
+# end of Build AIE Trace plugin
 
 
 # ====== Linux Specifics =======
@@ -401,22 +401,22 @@ add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
 add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
 add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
 
-add_dependencies(xdp xrt_core xilinxopencl)
-add_dependencies(oclxdp xdp xilinxopencl)
+add_dependencies(xdp xrt_coreutil xilinxopencl)
+add_dependencies(oclxdp xdp xilinxopencl xrt_coreutil)
 add_dependencies(xdp_hal_plugin xdp xrt_core)
 add_dependencies(xdp_hal_api_interface_plugin xdp)
 
-target_link_libraries(xdp PRIVATE xrt_core xilinxopencl)
-target_link_libraries(oclxdp PRIVATE xdp xilinxopencl)
-target_link_libraries(xdp_hal_plugin PRIVATE xdp xrt_core)
-target_link_libraries(xdp_hal_api_interface_plugin PRIVATE xdp)
+target_link_libraries(xdp PRIVATE xrt_coreutil xilinxopencl)
+target_link_libraries(oclxdp PRIVATE xdp xilinxopencl xrt_coreutil)
+target_link_libraries(xdp_hal_plugin PRIVATE xdp xrt_coreutil xrt_core)
+target_link_libraries(xdp_hal_api_interface_plugin PRIVATE xdp xrt_coreutil xrt_core)
 
-install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin 
+install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin 
+install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )
