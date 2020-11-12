@@ -133,7 +133,6 @@ namespace xdp {
     }
 #ifdef XRT_ENABLE_AIE
     if(!(db->getStaticInfo()).isAIECounterRead(deviceId)) {
-std::cout << " Reading 2020.2 AIE profile metadata " << std::endl;
       // Update the AIE specific portion of the device
       // When new xclbin is loaded, the xclbin specific datastructure is already recreated
       std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
