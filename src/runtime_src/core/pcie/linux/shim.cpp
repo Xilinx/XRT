@@ -1166,9 +1166,17 @@ int shim::p2pEnable(bool enable, bool force)
     const std::string input = "1\n";
     std::string err;
     std::vector<std::string> p2p_cfg;
+    int ret;
 
     if (mDev == nullptr)
         return -EINVAL;
+
+    ret = check_p2p_config(mDev, err);
+    if (ret == P2P_CONFIG_ENABLED && enable) {
+        throw std::runtime_error("P2P is already enabled");
+    } else if (ret == P2P_CONFIG_DISABLED && !enable) {
+        throw std::runtime_error("P2P is already disabled");
+    }
 
     /* write 0 to config for default bar size */
     if (enable) {
@@ -1196,7 +1204,6 @@ int shim::p2pEnable(bool enable, bool force)
         dev_init();
     }
 
-    int ret;
     ret = check_p2p_config(mDev, err);
     if (!err.empty()) {
         throw std::runtime_error(err);
