@@ -356,17 +356,18 @@ xma_plg_buffer_write(XmaSession s_handle,
         return XMA_SUCCESS;
     }
     if (size + offset > b_obj_priv->size) {
-        //std::cout << "ERROR: xma_plg_buffer_write failed. Can not write past end of buffer" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. Can not write past end of buffer.");
         return XMA_ERROR;
     }
-    //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    if (size == 0) {
+        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write skipped. size is zero. Nothing to write.");
+        return XMA_SUCCESS;
+    }
 
-    //printf("xma_plg_buffer_write b_obj=%d,src=%p,size=%lu,offset=%lx\n", b_obj, src, size, offset);
     rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
     if (rc != 0) {
-        //std::cout << "ERROR: xma_plg_buffer_write xclSyncBO failed " << std::dec << rc << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclSyncBO failed %d", rc);
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. dev_index: %d. xclSyncBO failed. Error: %d", b_obj_priv->dev_index, rc);
+        return XMA_ERROR;
     }
 
     return XMA_SUCCESS;
@@ -392,21 +393,19 @@ xma_plg_buffer_read(XmaSession s_handle,
         return XMA_SUCCESS;
     }
     if (size + offset > b_obj_priv->size) {
-        //std::cout << "ERROR: xma_plg_buffer_read failed. Can not read past end of buffer" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. Can not read past end of buffer.");
         return XMA_ERROR;
     }
+    if (size == 0) {
+        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read skipped. size is zero. Nothing to read.");
+        return XMA_SUCCESS;
+    }
 
-    //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
-
-    //printf("xma_plg_buffer_read b_obj=%d,dst=%p,size=%lu,offset=%lx\n",
-    //       b_obj, dst, size, offset);
     rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_FROM_DEVICE,
                    size, offset);
     if (rc != 0)
     {
-        //std::cout << "ERROR: xma_plg_buffer_read xclSyncBO failed " << std::dec << rc << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read xclSyncBO failed. Check device status with \"xbutil/awssak query\" cmmand");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. dev_index: %d. xclSyncBO failed. Check device status with \"xbutil/awssak query\" cmmand. Error: %d", b_obj_priv->dev_index, rc);
         return XMA_ERROR;
     }
 
