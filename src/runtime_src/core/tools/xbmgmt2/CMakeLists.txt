@@ -1,10 +1,5 @@
 # -----------------------------------------------------------------------------
-
-set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
-set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
-
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
-include_directories(${Boost_INCLUDE_DIRS})
 
 # -----------------------------------------------------------------------------
 
@@ -77,8 +72,7 @@ else()
   target_link_libraries(
     ${XBMGMT2_NAME}
     xrt_core
-    xrt_core_static
-    xrt_coreutil_static
+    xrt_coreutil
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}

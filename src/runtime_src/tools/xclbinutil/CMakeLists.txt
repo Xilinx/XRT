@@ -1,19 +1,11 @@
 # -----------------------------------------------------------------------------
 # Required libraries
 
-#TODO: Remove the window dependency on these settings.  
-if(WIN32)
-  set(Boost_USE_STATIC_LIBS ON)      # Only find static libraries
-  set(Boost_USE_MULTITHREADED ON)    # Multi-threaded libraries
-  set(Boost_USE_STATIC_RUNTIME ON)   # This is how the boost libraries were build
-endif()
-
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
-include_directories(${Boost_INCLUDE_DIRS})
 
 # Signing xclbin images are currently only support on Linux
 if(NOT WIN32)
-  find_package(OpenSSL REQUIRED)      
+  find_package(OpenSSL REQUIRED)
 endif()
 
 # -----------------------------------------------------------------------------
@@ -28,7 +20,7 @@ set(XCLBINUTIL_NAME "xclbinutil")
 set(XRT_LOADER_SCRIPTS ${XCLBINUTIL_NAME})
 
 if(WIN32)
-  # Add the command shell wrapper in addition to the bash shell wrapper. 
+  # Add the command shell wrapper in addition to the bash shell wrapper.
   # Note: The bash shell wrapper is smart and will call this wrapper
   list(APPEND XRT_LOADER_SCRIPTS ${XCLBINUTIL_NAME}.bat)
 endif()
@@ -39,7 +31,7 @@ file(GLOB XCLBINUTIL_FILES
   "FormattedOutput.cxx"
   "ParameterSectionData.cxx"
   "Section.cxx"     # Note: Due to linking dependency issue, this entry needs to be before the other sections
-  "Section*.cxx"  
+  "Section*.cxx"
   "XclBinClass.cxx"
   "XclBinSignature.cxx"
   "XclBinUtilities.cxx"
@@ -53,16 +45,6 @@ file(GLOB XCLBINUTIL_MAIN_FILE
 set(XCLBINUTIL_SRCS ${XCLBINUTIL_MAIN_FILE} ${XCLBINUTIL_FILES_SRCS})
 
 add_executable(${XCLBINUTIL_NAME} ${XCLBINUTIL_SRCS})
-
-if(WIN32)
-  # Use the static version of the run-time library
-  # Note: Needed to link with boost
-  if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    target_compile_options(${XCLBINUTIL_NAME} PRIVATE /MTd)
-  else()
-    target_compile_options(${XCLBINUTIL_NAME} PRIVATE /MT)
-  endif()
-endif()
 
 # Signing xclbin images currently is not support on windows
 if(NOT WIN32)
@@ -100,23 +82,15 @@ if (GTEST_FOUND)
   set(XCLBINTEST_SRCS ${XCLBINTEST_FILES} ${XCLBINUTIL_FILES_SRCS})
   add_executable(${UNIT_TEST_NAME} ${XCLBINTEST_SRCS})
 
-  if(WIN32) 
+  if(WIN32)
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE Boost::filesystem Boost::program_options Boost::system )
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE ${GTEST_BOTH_LIBRARIES})
-
-    # Use the static version of the run-time library 
-    # Note: Needed to link with boost
-    if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-      target_compile_options(${UNIT_TEST_NAME} PRIVATE /MTd)
-    else()
-      target_compile_options(${UNIT_TEST_NAME} PRIVATE /MT)
-    endif()
   else()
     target_link_libraries(xclbintest ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread crypto)
   endif()
 
   message(STATUS "Configuring CMake to run unit test after building")
-  add_test(NAME ${UNIT_TEST_NAME} 
+  add_test(NAME ${UNIT_TEST_NAME}
            COMMAND ${UNIT_TEST_NAME}
            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -126,14 +100,14 @@ if (GTEST_FOUND)
     add_custom_command(
          TARGET ${UNIT_TEST_NAME}
          COMMENT "Run xclbinutil unit-tests"
-         POST_BUILD 
+         POST_BUILD
          WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
          COMMAND ${CMAKE_CTEST_COMMAND} -C ${CMAKE_BUILD_TYPE} -R ${UNIT_TEST_NAME} --output-on-failures
       )
   endif()
 
   # Execute unit tests after the xclbintest is created.
-  # Note: This command works GREAT if the tests pass.  If they fail xclbintest is deleted, 
+  # Note: This command works GREAT if the tests pass.  If they fail xclbintest is deleted,
   #       hence this code is commented out.
   #  add_custom_command(
   #     TARGET ${UNIT_TEST_XCLBINUTIL}

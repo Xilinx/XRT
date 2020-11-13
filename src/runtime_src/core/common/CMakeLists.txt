@@ -4,11 +4,6 @@ include_directories(
 
 if (NOT WIN32)
 include_directories(${DRM_INCLUDE_DIRS})
-else()
-set(Boost_USE_STATIC_LIBS     ON)
-set(Boost_USE_MULTITHREADED   ON)
-find_package(Boost REQUIRED COMPONENTS system filesystem )
-include_directories(${Boost_INCLUDE_DIRS})
 endif (NOT WIN32)
 
 file(GLOB XRT_CORE_COMMON_LIB_FILES
