@@ -278,7 +278,7 @@ static void p2p_mem_chunk_release(struct p2p *p2p, struct p2p_mem_chunk *chk)
 		for (addr = chk->xpmc_va; addr < chk->xpmc_va + chk->xpmc_size;
 		    addr += PAGE_SIZE) {
 			page = virt_to_page(addr);
-#if KERNEL_VERSION(4, 4, 216) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 5, 0) <= LINUX_VERSION_CODE
 			if (page_ref_count(page) > 1)
 				break;
 #else
