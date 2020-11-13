@@ -1064,9 +1064,7 @@ static void __exit zocl_exit(void)
 }
 module_exit(zocl_exit);
 
-MODULE_VERSION(__stringify(ZOCL_DRIVER_MAJOR) "."
-		__stringify(ZOCL_DRIVER_MINOR) "."
-		__stringify(ZOCL_DRIVER_PATCHLEVEL));
+MODULE_VERSION(XRT_DRIVER_VERSION);
 
 MODULE_DESCRIPTION(ZOCL_DRIVER_DESC);
 MODULE_AUTHOR("Sonal Santan <sonal.santan@xilinx.com>");
