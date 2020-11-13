@@ -264,22 +264,13 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 
 	if (xcmd->inkern_cb) {
-		schedule_work(&xcmd->inkern_cb->work);
+		int error = (status == ERT_CMD_STATE_COMPLETED)?0:-EFAULT;
+		xcmd->inkern_cb->func((unsigned long)xcmd->inkern_cb->data, error);
+		kfree(xcmd->inkern_cb);
 	} else {
 		atomic_inc(&client->event);
 		wake_up_interruptible(&client->waitq);
 	}
-}
-
-static void xocl_execbuf_completion(struct work_struct *work)
-{
-	struct in_kernel_cb *inkern_cb = container_of(work,
-						struct in_kernel_cb, work);
-	int error = (inkern_cb->cmd_state == ERT_CMD_STATE_COMPLETED) ?
-			0 : -EFAULT;
-
-	if (inkern_cb->func)
-		inkern_cb->func((unsigned long)inkern_cb->data, error);
 }
 
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
@@ -412,9 +403,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			}
 			xcmd->inkern_cb->func = (void (*)(unsigned long, int))
 						args_cb->cb_func;
-			xcmd->inkern_cb->data = (void *)args_cb->cb_data;
-			INIT_WORK(&xcmd->inkern_cb->work,
-						xocl_execbuf_completion);
+			xcmd->inkern_cb->data = args_cb->cb_data;
 		}
 	}
 
