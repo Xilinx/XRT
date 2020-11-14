@@ -2072,9 +2072,9 @@ int xcldev::xclP2p(int argc, char *argv[])
     if (ret)
         std::cout << "Config P2P failed" << std::endl;
     else if (p2p_enable)
-        std::cout << "P2P is enabled" << std::endl;
+        std::cout << "Please WARM reboot to enable p2p now." << std::endl;
     else
-        std::cout << "P2P is disabled" << std::endl;
+        std::cout << "Please WARM reboot to disable p2p now." << std::endl;
 
     return 0;
 }
