@@ -3,6 +3,10 @@ set(COMMON_EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../common_em")
 set(COMMON_EM_GEN_DIR  "${CMAKE_CURRENT_BINARY_DIR}/../common_em")
 set(COMMON_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
+set(Protobuf_DEBUG)
+include(FindProtobuf)
+find_package(Protobuf REQUIRED)
+
 include_directories(
   ${EM_SRC_DIR}
   ${COMMON_SRC_DIR}
@@ -39,6 +43,7 @@ target_link_libraries(xrt_swemu
   ${PROTOBUF_LIBRARY}
   xrt_coreutil
   common_em
+  pthread
   rt
   uuid
   )
