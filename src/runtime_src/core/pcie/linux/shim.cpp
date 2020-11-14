@@ -2563,8 +2563,14 @@ int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 
 int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
+  try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENODEV;
+  }
 }
 
 int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size)
@@ -2745,8 +2751,14 @@ int xclPollQueue(xclDeviceHandle handle, uint64_t q_hdl, int min_compl, int max_
 
 int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
 {
-        xocl::shim *drv = xocl::shim::handleCheck(handle);
-        return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
+  try {
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENODEV;
+  }
 }
 
 size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
