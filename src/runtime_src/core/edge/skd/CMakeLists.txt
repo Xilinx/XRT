@@ -15,14 +15,21 @@ set(SKD_SRC
 
 add_executable(skd ${SKD_SRC})
 
-# linking with coreutil to resolve private link dependency
-# of xrt_core while linking to xrt_core from its build folder
 target_link_libraries(skd
   PRIVATE
   xrt_core
-  xrt_coreutil
   dl
   )
+
+# This linking with xrt_coreutil resolves link path for indirect link
+# dependencies for libxrt_core.  The link path is embedded correctly
+# in libxrt_core.so but is for some reason ignored when cross
+# compiling with petalinux.  Per google this is an issue others have
+# faced also and has something to do with explicit setting of sysroot.
+target_link_libraries(skd
+  PRIVATE
+  xrt_coreutil
+)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
 
