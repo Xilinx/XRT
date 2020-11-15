@@ -19,13 +19,15 @@
 #include <dlfcn.h>
 #include <execinfo.h>
 #include <string.h>
+#include <cstdarg>
 #include <sys/wait.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
 
 #include "sk_types.h"
 #include "sk_daemon.h"
-#include "xclhal2_mpsoc.h"
+#include "core/common/config_reader.h"
+#include "core/edge/user/shim.h"
 
 xclDeviceHandle devHdl;
 
@@ -48,6 +50,28 @@ void *mapBO(unsigned int boHandle, bool write)
 void freeBO(unsigned int boHandle)
 {
   xclFreeBO(devHdl, boHandle);
+}
+
+int logMsg(xrtLogMsgLevel level, const char* tag,
+		       const char* format, ...)
+{
+  static auto verbosity = xrt_core::config::get_verbosity();
+  if (level <= verbosity) {
+    va_list args;
+    va_start(args, format);
+    int ret = -1;
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(devHdl);
+    ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
+    va_end(args);
+
+    return ret;
+  }
+
+  return 0;
+
+
+//sarab
+//  return xclLogMsg(devHdl, level, tag, format, (char*) "test");
 }
 
 int getBufferFd(unsigned int boHandle)
@@ -162,6 +186,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   ops.mapBO         = &mapBO;
   ops.freeBO        = &freeBO;
   ops.getBufferFd   = &getBufferFd;
+  ops.logMsg        = &logMsg;
 
   args_from_host = (unsigned *)getKernelArg(boh, cu_idx);
   if (args_from_host == MAP_FAILED) {
