@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,14 +21,14 @@
 #include <algorithm>
 #include <iostream>
 
-using namespace xrt::test;
+using namespace xrt_xocl::test;
 
 namespace {
 
 static size_t alignment = 128;
 
 static int 
-transferSizeTest(xrt::device* device, size_t maxSize)
+transferSizeTest(xrt_xocl::device* device, size_t maxSize)
 {
   AlignedAllocator<char> buf1(alignment, maxSize);
   AlignedAllocator<char> buf2(alignment, maxSize);
@@ -53,12 +53,12 @@ transferSizeTest(xrt::device* device, size_t maxSize)
       ev.wait();
     }
     {
-      auto ev = device->sync(bo,size,0,xrt::device::direction::HOST2DEVICE); // h2d
+      auto ev = device->sync(bo,size,0,xrt_xocl::device::direction::HOST2DEVICE); // h2d
       std::fill(readBuffer,readBuffer+size,0);
       ev.wait(); // todo: check for throw if unmap failed
     }
     {
-      auto ev = device->sync(bo,size,0,xrt::device::direction::HOST2DEVICE); // d2h
+      auto ev = device->sync(bo,size,0,xrt_xocl::device::direction::HOST2DEVICE); // d2h
       ev.wait();
     }
     {
@@ -76,7 +76,7 @@ transferSizeTest(xrt::device* device, size_t maxSize)
 }
 
 static int 
-transferBenchmarkTest(xrt::device* device, size_t blockSize, size_t count, bool async)
+transferBenchmarkTest(xrt_xocl::device* device, size_t blockSize, size_t count, bool async)
 {
   AlignedAllocator<char> buf1(alignment, blockSize);
   AlignedAllocator<char> buf2(alignment, blockSize);
@@ -84,7 +84,7 @@ transferBenchmarkTest(xrt::device* device, size_t blockSize, size_t count, bool 
   auto writeBuffer = buf1.getBuffer();
   auto readBuffer = buf2.getBuffer();
 
-  std::vector<xrt::device::BufferObjectHandle> deviceHandleList;
+  std::vector<xrt_xocl::device::BufferObjectHandle> deviceHandleList;
 
   unsigned long long totalData = 0;
 
@@ -100,12 +100,12 @@ transferBenchmarkTest(xrt::device* device, size_t blockSize, size_t count, bool 
     deviceHandleList.push_back(bo);
 
     {
-      auto ev = device->sync(bo,blockSize,0,xrt::device::direction::HOST2DEVICE,false); // h2d
+      auto ev = device->sync(bo,blockSize,0,xrt_xocl::device::direction::HOST2DEVICE,false); // h2d
       std::fill(readBuffer,readBuffer+blockSize,0);
       ev.wait();
     }
     {
-      auto ev = device->sync(bo,blockSize,0,xrt::device::direction::DEVICE2HOST,false); // d2h
+      auto ev = device->sync(bo,blockSize,0,xrt_xocl::device::direction::DEVICE2HOST,false); // d2h
       ev.wait();
     }
     {
@@ -122,13 +122,13 @@ transferBenchmarkTest(xrt::device* device, size_t blockSize, size_t count, bool 
 
   // Transfer bw test
   totalData = 0;
-  std::vector<xrt::event> events;
+  std::vector<xrt_xocl::event> events;
   Timer myclock;
 
   for (auto& bo : deviceHandleList) {
 
     {
-      auto ev = device->sync(bo,blockSize,0,xrt::device::direction::HOST2DEVICE,async); // h2d
+      auto ev = device->sync(bo,blockSize,0,xrt_xocl::device::direction::HOST2DEVICE,async); // h2d
       if (async) 
         events.push_back(std::move(ev));
       else 
@@ -136,7 +136,7 @@ transferBenchmarkTest(xrt::device* device, size_t blockSize, size_t count, bool 
     }
 
     {
-      auto ev = device->sync(bo,blockSize,0,xrt::device::direction::DEVICE2HOST,async); // d2h
+      auto ev = device->sync(bo,blockSize,0,xrt_xocl::device::direction::DEVICE2HOST,async); // d2h
       if (async)
         events.push_back(std::move(ev));
       else 
@@ -161,7 +161,7 @@ transferBenchmarkTest(xrt::device* device, size_t blockSize, size_t count, bool 
 }
 
 void
-run(xrt::device* device)
+run(xrt_xocl::device* device)
 {
   std::string libraryName = device->getDriverLibraryName();
   std::cout << libraryName << "\n";
@@ -236,10 +236,10 @@ BOOST_AUTO_TEST_SUITE ( test_device_bw )
 
 BOOST_AUTO_TEST_CASE ( test_device_bw1)
 {
-  auto pred = [](const xrt::hal::device& hal) {
+  auto pred = [](const xrt_xocl::hal::device& hal) {
     return (hal.getDriverLibraryName().find("690")!=std::string::npos);
   };
-  auto devices = xrt::test::loadDevices(std::move(pred));
+  auto devices = xrt_xocl::test::loadDevices(std::move(pred));
 
   for (auto& device : devices) {
     run(&device);
@@ -255,11 +255,11 @@ BOOST_AUTO_TEST_CASE( test_swemu )
 {
   std::cout << "test_device_bw[test_swemu]" << std::endl;
 
-  auto pred = [](const xrt::hal::device& hal) {
+  auto pred = [](const xrt_xocl::hal::device& hal) {
     return (hal.getDriverLibraryName().find("sw_em")!=std::string::npos);
   };
 
-  auto devices = xrt::test::loadDevices(std::move(pred));
+  auto devices = xrt_xocl::test::loadDevices(std::move(pred));
 
   for (auto& device : devices) {
     run(&device);

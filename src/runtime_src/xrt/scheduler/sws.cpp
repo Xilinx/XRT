@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -66,7 +66,7 @@ using idx_type    = uint32_t;
 using size_type   = uint32_t;
 using addr_type   = uint32_t;
 using value_type  = uint32_t;
-using cmd_ptr     = std::shared_ptr<xrt::command>;
+using cmd_ptr     = std::shared_ptr<xrt_xocl::command>;
 
 ////////////////////////////////////////////////////////////////
 // Constants
@@ -90,7 +90,7 @@ const value_type AP_CONTINUE = 0x10;
 // and notifier.  This allows the scheduler to continue
 // while host callback can be processed in the background
 ////////////////////////////////////////////////////////////////
-static xrt::task::queue notify_queue;
+static xrt_xocl::task::queue notify_queue;
 static std::thread notifier;
 static bool threaded_notification = true;
 static bool cu_trace_enabled = false;
@@ -182,7 +182,7 @@ public:
       cmd->notify(ERT_CMD_STATE_COMPLETED);
     };
 
-    xrt::task::createF(notify_queue,notify,m_cmd);
+    xrt_xocl::task::createF(notify_queue,notify,m_cmd);
   }
 
   // Notify of start of cu with idx
@@ -341,7 +341,7 @@ class xocl_cu
 {
 private:
   std::queue<xocl_cmd*> running_queue;
-  xrt::device* xdev = nullptr;
+  xrt_xocl::device* xdev = nullptr;
   size_type idx = 0;
   addr_type addr = 0;
 
@@ -368,7 +368,7 @@ private:
   }
 
 public:
-  xocl_cu(xrt::device* dev, size_type index, addr_type baseaddr)
+  xocl_cu(xrt_xocl::device* dev, size_type index, addr_type baseaddr)
     : xdev(dev), idx(index), addr(baseaddr)
   {}
 
@@ -488,7 +488,7 @@ public:
 class exec_core
 {
   // device
-  xrt::device* m_xdev = nullptr;
+  xrt_xocl::device* m_xdev = nullptr;
 
   // scheduler for this device
   xocl_scheduler* m_scheduler = nullptr;
@@ -505,7 +505,7 @@ class exec_core
   size_type num_cus = 0;
 
 public:
-  exec_core(xrt::device* xdev, xocl_scheduler* xs, size_t slots, const std::vector<addr_type>& cu_amap)
+  exec_core(xrt_xocl::device* xdev, xocl_scheduler* xs, size_t slots, const std::vector<addr_type>& cu_amap)
     : m_xdev(xdev), m_scheduler(xs), num_slots(slots), num_cus(cu_amap.size())
   {
     cu_usage.reserve(cu_amap.size());
@@ -776,7 +776,7 @@ class xocl_scheduler
 
     // Sleep if no new pending commands or no running command have completed
     // throttle polling for cu completion
-    if (auto us = xrt::config::get_polling_throttle())
+    if (auto us = xrt_xocl::config::get_polling_throttle())
       std::this_thread::sleep_for(std::chrono::microseconds(us));
   }
 
@@ -825,7 +825,7 @@ static std::thread s_scheduler_thread;
 static bool s_running=false;
 
 // Each device has a execution core
-static std::map<const xrt::device*, std::unique_ptr<exec_core>> s_device_exec_core;
+static std::map<const xrt_xocl::device*, std::unique_ptr<exec_core>> s_device_exec_core;
 
 // Thread routine for scheduler loop
 static void
@@ -836,7 +836,7 @@ scheduler_loop()
 
 } // namespace
 
-namespace xrt { namespace sws {
+namespace xrt_xocl { namespace sws {
 
 void
 schedule(const cmd_ptr& cmd)
@@ -861,7 +861,7 @@ start()
   XRT_DEBUG(std::cout, "SWS Thread started\n");
   s_scheduler_thread = std::move(xrt_core::thread(scheduler_loop));
   if (threaded_notification)
-    notifier = std::move(xrt_core::thread(xrt::task::worker,std::ref(notify_queue)));
+    notifier = std::move(xrt_core::thread(xrt_xocl::task::worker,std::ref(notify_queue)));
   s_running = true;
 }
 
@@ -888,7 +888,7 @@ stop()
 }
 
 void
-init(xrt::device* xdev)
+init(xrt_xocl::device* xdev)
 {
   auto cdev = xrt_core::get_userpf_device(xdev->get_handle());
 
@@ -913,7 +913,7 @@ init(xrt::device* xdev)
   // Slots are computed by device, its a function of device properties
   auto slots = cdev->get_ert_slots(xml_data, xml_size).first;
 
-  cu_trace_enabled = xrt::config::get_profile();
+  cu_trace_enabled = xrt_xocl::config::get_profile();
 
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert

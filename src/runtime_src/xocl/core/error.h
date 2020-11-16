@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -31,14 +31,14 @@
 namespace xocl {
 
 // For now, no xocl specific exceptions
-// If introduce, then derive off of xrt::error since xocl
-// code catches xrt::error
-using error = xrt::error;
+// If introduce, then derive off of xrt_xocl::error since xocl
+// code catches xrt_xocl::error
+using error = xrt_xocl::error;
 
 inline void
 send_exception_message(const char* msg)
 {
-  xrt::message::send(xrt::message::severity_level::XRT_ERROR, msg);
+  xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_ERROR, msg);
 }
 
 } // xocl

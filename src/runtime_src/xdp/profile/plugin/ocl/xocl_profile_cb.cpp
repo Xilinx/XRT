@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -647,7 +647,7 @@ void cb_log_function_end(const char* functionName, long long queueAddress, unsig
 
 void cb_log_dependencies(xocl::event* event,  cl_uint num_deps, const cl_event* deps)
 {
-  if (!xrt::config::get_timeline_trace()) {
+  if (!xrt_xocl::config::get_timeline_trace()) {
     return;
   }
 
@@ -705,7 +705,7 @@ void cb_reset(const axlf* xclbin)
     profiler->turnOffProfile(xdp::RTUtil::PROFILE_DEVICE);
   } else if (is_hw_emulation()) {
     profiler->getPlugin()->setFlowMode(xdp::RTUtil::HW_EM);
-    profiler->getPlugin()->setSystemDPAEmulation(xrt::config::get_system_dpa_emulation());
+    profiler->getPlugin()->setSystemDPAEmulation(xrt_xocl::config::get_system_dpa_emulation());
   } else {
     throw xocl::error(CL_INVALID_BINARY,"invalid xclbin region target");
   }
@@ -751,7 +751,7 @@ initXDPLib()
   try {
     (void)xdp::OCLProfiler::Instance();
   } catch (std::runtime_error& e) {
-    xrt::message::send(xrt::message::severity_level::XRT_WARNING, e.what());
+    xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, e.what());
     // Don't register any of the callbacks.  Something went wrong during
     //  initialization.
     return ;

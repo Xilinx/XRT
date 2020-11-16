@@ -30,11 +30,11 @@
 #include <mutex>
 #include <algorithm>
 
-// Opaque handle to xrt::device
-// The handle can be static_cast to xrt::device
+// Opaque handle to xrt_xocl::device
+// The handle can be static_cast to xrt_xocl::device
 struct xrt_device {};
 
-namespace xrt {
+namespace xrt_xocl {
 
 /**
  * Runtime level device class.
@@ -908,20 +908,20 @@ private:
   std::unique_ptr<hal::device> m_hal;
   std::vector<BufferObjectHandle> m_buffers;
   mutable std::mutex m_buffers_mutex;
-  xrt::uuid m_uuid;
+  xrt_xocl::uuid m_uuid;
   bool m_setup_done;
 };
 
 /**
- * Construct xrt::device objects from matching hal devices
+ * Construct xrt_xocl::device objects from matching hal devices
  *
  * @param pred
- *   Unary predicate to limit construction of xrt::devices from
- *   xrt::hal::devices that match the predicate.  The predicate
+ *   Unary predicate to limit construction of xrt_xocl::devices from
+ *   xrt_xocl::hal::devices that match the predicate.  The predicate
  *   is called with a std::string representing the hal device
  *   driver name.
  * @return
- *   Rvalue container of xrt::device objects.
+ *   Rvalue container of xrt_xocl::device objects.
  */
 template <typename UnaryPredicate>
 std::vector<device>
@@ -937,10 +937,10 @@ loadDevices(UnaryPredicate pred)
 }
 
 /**
- * Construct xrt::device objects from all hal devices
+ * Construct xrt_xocl::device objects from all hal devices
  *
  * @return
- *   Rvalue container of xrt::device objects
+ *   Rvalue container of xrt_xocl::device objects
  */
 inline
 std::vector<device>

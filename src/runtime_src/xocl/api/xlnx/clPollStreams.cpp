@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2019 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2018 Xilinx, Inc. All rights reserved.
+// Copyright 2018-2020 Xilinx, Inc. All rights reserved.
 #include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
@@ -70,7 +70,7 @@ clPollStreams(cl_device_id               device,
     return xocl::clPollStreams
       (device,completions,min_num_completion,max_num_completion,actual_num_completion,timeout,errcode_ret);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,ex.get_code());
   }

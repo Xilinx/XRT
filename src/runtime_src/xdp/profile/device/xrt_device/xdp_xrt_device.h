@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,15 +27,15 @@ namespace xdp {
 
 class XrtDevice : public xdp::Device
 {
-  xrt::device* mXrtDevice;
+  xrt_xocl::device* mXrtDevice;
 
 private:
-  using BufferObjectHandle  = xrt::hal::BufferObjectHandle;
+  using BufferObjectHandle  = xrt_xocl::hal::BufferObjectHandle;
   std::vector<BufferObjectHandle> m_bos;
 
 public:
   XDP_EXPORT
-  XrtDevice(xrt::device* xrtDevice);
+  XrtDevice(xrt_xocl::device* xrtDevice);
   virtual ~XrtDevice();
 
   virtual std::string getDebugIPlayoutPath();

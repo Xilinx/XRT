@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,14 +24,14 @@
 #include <cstring>
 #include <list>
 
-using namespace xrt::test;
+using namespace xrt_xocl::test;
 
 namespace {
 
-static int transferSizeTest(xrt::hal2::device* hal, size_t alignment, unsigned maxSize)
+static int transferSizeTest(xrt_xocl::hal2::device* hal, size_t alignment, unsigned maxSize)
 {
-  xrt::test::AlignedAllocator<unsigned> buf1(alignment, maxSize);
-  xrt::test::AlignedAllocator<unsigned> buf2(alignment, maxSize);
+  xrt_xocl::test::AlignedAllocator<unsigned> buf1(alignment, maxSize);
+  xrt_xocl::test::AlignedAllocator<unsigned> buf2(alignment, maxSize);
 
   unsigned *writeBuffer = buf1.getBuffer();
   unsigned *readBuffer = buf2.getBuffer();
@@ -78,7 +78,7 @@ static int transferSizeTest(xrt::hal2::device* hal, size_t alignment, unsigned m
   return 0;
 }
 
-static int transferBenchmarkTest(xrt::hal2::device* hal, size_t alignment, unsigned blockSize, unsigned count)
+static int transferBenchmarkTest(xrt_xocl::hal2::device* hal, size_t alignment, unsigned blockSize, unsigned count)
 {
   AlignedAllocator<unsigned> buf1(alignment, blockSize);
   AlignedAllocator<unsigned> buf2(alignment, blockSize);
@@ -166,10 +166,10 @@ BOOST_AUTO_TEST_SUITE ( test_hal2_bw )
 
 BOOST_AUTO_TEST_CASE( test_hal2_bw1 )
 {
-  auto devices = xrt::hal::loadDevices();
-  xrt::hal::device* pcie_device = 0;
+  auto devices = xrt_xocl::hal::loadDevices();
+  xrt_xocl::hal::device* pcie_device = 0;
   for (auto& device : devices) {
-    device->open("device.log",xrt::hal::verbosity_level::quiet);
+    device->open("device.log",xrt_xocl::hal::verbosity_level::quiet);
     device->printDeviceInfo(std::cout) << "\n";
     std::string libraryName = device->getDriverLibraryName();
     std::cout << libraryName << "\n";
@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE( test_hal2_bw1 )
       pcie_device = device.get();
   }
 
-  xrt::hal2::device* hal2 = dynamic_cast<xrt::hal2::device*>(pcie_device);
+  xrt_xocl::hal2::device* hal2 = dynamic_cast<xrt_xocl::hal2::device*>(pcie_device);
   
   size_t alignment = 128;
   if (hal2) {

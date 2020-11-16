@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -398,8 +398,8 @@ validate_cus(const device* device, unsigned long argidx, int memidx) const
     auto cuconn = cu->get_memidx(argidx);
     if ((cuconn & connections).none()) {
       auto mem = device->get_axlf_section<const mem_topology*>(ASK_GROUP_TOPOLOGY);
-      xrt::message::send
-        (xrt::message::severity_level::XRT_WARNING
+      xrt_xocl::message::send
+        (xrt_xocl::message::severity_level::XRT_WARNING
          , "Argument '" + std::to_string(argidx)
          + "' of kernel '" + get_name()
          + "' is allocated in memory bank '" + xrt_core::xclbin::memidx_to_name(mem,memidx)

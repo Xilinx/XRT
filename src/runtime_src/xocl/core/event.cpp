@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -425,7 +425,7 @@ create_event(command_queue* cq, context* ctx, cl_command_type cmd, cl_uint num_d
   using edpw_event = event_with_debugging<epw_event>; // debug event with profiling and waitlist
 
   assert(!cq || cq->get_context()==ctx);
-  static bool app_debug = xrt::config::get_app_debug();
+  static bool app_debug = xrt_xocl::config::get_app_debug();
 
   ptr<event> retval;
 

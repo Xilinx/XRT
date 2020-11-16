@@ -29,7 +29,7 @@ namespace xdp {
   class VTFDeviceEvent : public VTFEvent
   {
   private:
-    uint64_t deviceId ; // Either a device handle or an xrt::device
+    uint64_t deviceId ; // Either a device handle or an xrt_xocl::device
     uint64_t deviceTimestamp;	// actual device timestamp from HW
 
     /* Type dependent Profile Monitor Index

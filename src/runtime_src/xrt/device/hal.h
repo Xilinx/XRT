@@ -43,7 +43,7 @@
 #endif
 struct axlf;
 
-namespace xrt {
+namespace xrt_xocl {
 
 namespace hal {
 

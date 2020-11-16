@@ -34,10 +34,10 @@
 
 #include <boost/optional/optional.hpp>
 
-namespace xrt { namespace hal2 {
+namespace xrt_xocl { namespace hal2 {
 
-namespace hal  = xrt::hal;
-namespace hal2 = xrt::hal2;
+namespace hal  = xrt_xocl::hal;
+namespace hal2 = xrt_xocl::hal2;
 using BufferObjectHandle = hal::BufferObjectHandle;
 using ExecBufferObjectHandle = hal::ExecBufferObjectHandle;
 using svmbomap_type = std::map<void *, BufferObjectHandle>;
@@ -56,7 +56,7 @@ using svmbomap_iterator_type = svmbomap_type::iterator;
  * and aquired through the HAL API.
  */
 
-class device : public xrt::hal::device
+class device : public xrt_xocl::hal::device
 {
   // separate queues for read,write, and misc operations
   // primarily done so that independent operations can be serviced

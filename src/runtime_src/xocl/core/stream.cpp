@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2019 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -61,7 +61,7 @@ stream::close()
 
 int 
 stream
-::poll_stream(xrt::device::stream_xfer_completions *comps, int min, int max, int *actual, int timeout)
+::poll_stream(xrt_xocl::device::stream_xfer_completions *comps, int min, int max, int *actual, int timeout)
 {
   return m_device->poll_stream(m_handle, comps, min, max, actual, timeout);
 }

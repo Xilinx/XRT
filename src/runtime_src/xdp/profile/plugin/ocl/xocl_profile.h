@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -48,12 +48,12 @@ get_num_cu_masks(uint32_t header);
 uint32_t
 get_cu_index_mask(uint32_t cumask);
 unsigned int
-get_cu_index(const xrt::command* cmd);
+get_cu_index(const xrt_xocl::command* cmd);
 
 void
-get_cu_start(const xrt::command* cmd, const xocl::execution_context* ctx);
+get_cu_start(const xrt_xocl::command* cmd, const xocl::execution_context* ctx);
 void
-get_cu_done(const xrt::command* cmd, const xocl::execution_context* ctx);
+get_cu_done(const xrt_xocl::command* cmd, const xocl::execution_context* ctx);
 
 //
 // Platform

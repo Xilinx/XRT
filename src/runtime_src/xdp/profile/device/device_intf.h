@@ -2,7 +2,7 @@
 #define _XDP_DEVICE_INTF_H_
 
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
 
  * Author(s): Paul Schumacher
  *          : Anurag Dubey
@@ -176,7 +176,7 @@ class DeviceIntf {
     // Debug IP Layout has been read or not
     bool mIsDebugIPlayoutRead = false;
 
-    // Depending on OpenCL or HAL flow, "mDevice" is populated with xrt::device handle or HAL handle
+    // Depending on OpenCL or HAL flow, "mDevice" is populated with xrt_xocl::device handle or HAL handle
     xdp::Device* mDevice = nullptr;
 
     std::vector<AIM*> mAimList;

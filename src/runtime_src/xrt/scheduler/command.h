@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,7 +26,7 @@
 #include <array>
 #include <memory>
 
-namespace xrt {
+namespace xrt_xocl {
 
 /**
  * Command class for command format used by scheduler.
@@ -38,9 +38,9 @@ class command : public std::enable_shared_from_this<command>
 {
   static constexpr auto regmap_size = 4096/sizeof(uint32_t);
 public:
-  using packet_type = xrt::regmap_placed<uint32_t,regmap_size>;
+  using packet_type = xrt_xocl::regmap_placed<uint32_t,regmap_size>;
   using value_type = packet_type::word_type;
-  using buffer_type = xrt::device::ExecBufferObjectHandle;
+  using buffer_type = xrt_xocl::device::ExecBufferObjectHandle;
 
   /**
    * Construct a command object to be schedule on device
@@ -48,7 +48,7 @@ public:
    * @device:  device on which the exec buffer is allocated
    */
   XRT_EXPORT
-  command(xrt::device* device, ert_cmd_opcode opcode);
+  command(xrt_xocl::device* device, ert_cmd_opcode opcode);
 
   /**
    * Move ctor
@@ -136,7 +136,7 @@ public:
     return m_packet[0];
   }
 
-  xrt::device*
+  xrt_xocl::device*
   get_device() const
   {
     return m_device;
@@ -248,7 +248,7 @@ public:
 
 private:
   unsigned int m_uid;
-  xrt::device* m_device;
+  xrt_xocl::device* m_device;
   buffer_type m_exec_bo;
   mutable packet_type m_packet;
 
@@ -288,7 +288,7 @@ purge_command_freelist();
  * must be cleared when device is closed.
  */
 void
-purge_device_command_freelist(xrt::device* device);
+purge_device_command_freelist(xrt_xocl::device* device);
 
 } // xrt
 #endif

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -31,8 +31,8 @@
 #include <mutex>
 
 namespace appdebug {
-void cb_scheduler_cmd_start (const xrt::command*,const xocl::execution_context*);
-void cb_scheduler_cmd_done (const xrt::command*,const xocl::execution_context*);
+void cb_scheduler_cmd_start (const xrt_xocl::command*,const xocl::execution_context*);
+void cb_scheduler_cmd_done (const xrt_xocl::command*,const xocl::execution_context*);
 
 template <typename T>
 class app_debug_track {
@@ -191,21 +191,21 @@ private:
 ////////////////////////Command queue////////////////////
 inline
 void add_command_queue (xocl::command_queue* cq) {
-  if (xrt::config::get_app_debug()) {
+  if (xrt_xocl::config::get_app_debug()) {
     //std::cout << "Adding queue xocl: " << std::hex << cq << " cl: " << (static_cast<cl_command_queue>(cq)) << std::endl;
     app_debug_track<cl_command_queue>::getInstance()->add_object(static_cast<cl_command_queue>(cq));
   }
 }
 inline
 void remove_command_queue (xocl::command_queue* cq) {
-  if (xrt::config::get_app_debug()) {
+  if (xrt_xocl::config::get_app_debug()) {
     //std::cout << "Removing queue xocl: " << std::hex << cq << " cl: " << (static_cast<cl_command_queue>(cq)) << std::endl;
     app_debug_track<cl_command_queue>::getInstance()->remove_object(static_cast<cl_command_queue>(cq));
   }
 }
 inline
 void validate_command_queue (cl_command_queue cq) {
-  if (xrt::config::get_app_debug()) {
+  if (xrt_xocl::config::get_app_debug()) {
     //std::cout << "validating queue cl: " << cq << std::endl;
     app_debug_track<cl_command_queue>::getInstance()->validate_object(cq);
   }
@@ -218,7 +218,7 @@ void validate_command_queue (cl_command_queue cq) {
 //////////////////////// Event ////////////////////
 inline
 void add_event (xocl::event* aEv) {
-  if (xrt::config::get_app_debug()) {
+  if (xrt_xocl::config::get_app_debug()) {
     cl_event clEv = aEv;
     //std::cout << "Adding event xocl " << std::hex << aEv << " cl " << clEv << std::endl;
     //app_debug_track<cl_event>::getInstance()->add_object(static_cast<cl_event>(aEv));
@@ -227,7 +227,7 @@ void add_event (xocl::event* aEv) {
 }
 inline
 void remove_event (xocl::event* aEv) {
-  if (xrt::config::get_app_debug()) {
+  if (xrt_xocl::config::get_app_debug()) {
     cl_event clEv = aEv;
     //std::cout << "Removing event: " << std::hex << aEv << std::endl;
     //std::cout << "Removing event xocl " << std::hex << aEv << " cl " << clEv << std::endl;
@@ -237,7 +237,7 @@ void remove_event (xocl::event* aEv) {
 }
 inline
 void validate_event (cl_event aEv) {
-  if (xrt::config::get_app_debug()) {
+  if (xrt_xocl::config::get_app_debug()) {
     //std::cout << "Validating event cl " << std::hex << aEv  << std::endl;
     app_debug_track<cl_event>::getInstance()->validate_object(aEv);
   }
@@ -250,19 +250,19 @@ void validate_event (cl_event aEv) {
 //////////////////////// cl_mem ////////////////////
 inline
 void add_clmem (cl_mem aMem) {
-  if (xrt::config::get_app_debug()) {
+  if (xrt_xocl::config::get_app_debug()) {
     app_debug_track<cl_mem>::getInstance()->add_object(aMem);
   }
 }
 inline
 void remove_clmem (cl_mem aMem) {
-  if (xrt::config::get_app_debug()) {
+  if (xrt_xocl::config::get_app_debug()) {
     app_debug_track<cl_mem>::getInstance()->remove_object(aMem);
   }
 }
 inline
 void validate_clmem (cl_mem aMem) {
-  if (xrt::config::get_app_debug()) {
+  if (xrt_xocl::config::get_app_debug()) {
     app_debug_track<cl_mem>::getInstance()->validate_object(aMem);
   }
   else {
