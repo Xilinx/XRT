@@ -108,19 +108,7 @@ public:
   }
 
   void
-  update_rtp(const std::string& port, const char* buffer, size_t size)
-  {
-    device->update_graph_rtp(handle, port, buffer, size);
-  }
-
-  void
   read_rtp(const char* port, char* buffer, size_t size)
-  {
-    device->read_graph_rtp(handle, port, buffer, size);
-  }
-
-  void
-  read_rtp(const std::string& port, char* buffer, size_t size)
   {
     device->read_graph_rtp(handle, port, buffer, size);
   }
@@ -316,14 +304,14 @@ void
 graph::
 update_port(const std::string& port_name, const void* value, size_t bytes)
 {
-  handle->update_rtp(port_name, reinterpret_cast<const char*>(value), bytes);
+  handle->update_rtp(port_name.c_str(), reinterpret_cast<const char*>(value), bytes);
 }
 
 void
 graph::
 read_port(const std::string& port_name, void* value, size_t bytes)
 {
-  handle->read_rtp(port_name, reinterpret_cast<char *>(value), bytes);
+  handle->read_rtp(port_name.c_str(), reinterpret_cast<char *>(value), bytes);
 }
 
 } // namespace xrt

@@ -288,6 +288,7 @@ zocl_hls_check(void *core, struct zcu_tasks_info *tasks_info)
 		ctrl_reg = ioread32(cu_core->vaddr);
 		if ((ctrl_reg & CU_AP_DONE) != 0)
 			DRM_ERROR("AP_DONE is not zero: 0x%x", ctrl_reg);
+
 	}
 
 	tasks_info->num_tasks_ready = ready_cnt;

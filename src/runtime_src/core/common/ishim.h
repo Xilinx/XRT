@@ -143,13 +143,7 @@ struct ishim
   update_graph_rtp(xclGraphHandle handle, const char* port, const char* buffer, size_t size) = 0;
 
   virtual void
-  update_graph_rtp(xclGraphHandle handle, const std::string& port, const char* buffer, size_t size) = 0;
-
-  virtual void
   read_graph_rtp(xclGraphHandle handle, const char* port, char* buffer, size_t size) = 0;
-
-  virtual void
-  read_graph_rtp(xclGraphHandle handle, const std::string& port, char* buffer, size_t size) = 0;
 
   virtual void
   sync_aie_bo(xrtBufferHandle bohdl, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
@@ -449,21 +443,7 @@ struct shim : public DeviceType
   }
 
   virtual void
-  update_graph_rtp(xclGraphHandle handle, const std::string& port, const char* buffer, size_t size)
-  {
-    if (auto ret = xclGraphUpdateRTP(handle, port, buffer, size))
-      throw error(ret, "fail to update graph rtp");
-  }
-
-  virtual void
   read_graph_rtp(xclGraphHandle handle, const char* port, char* buffer, size_t size)
-  {
-    if (auto ret = xclGraphReadRTP(handle, port, buffer, size))
-      throw error(ret, "fail to read graph rtp");
-  }
-
-  virtual void
-  read_graph_rtp(xclGraphHandle handle, const std::string& port, char* buffer, size_t size)
   {
     if (auto ret = xclGraphReadRTP(handle, port, buffer, size))
       throw error(ret, "fail to read graph rtp");

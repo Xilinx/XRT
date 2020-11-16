@@ -57,13 +57,7 @@ int
 xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, size_t size);
 
 int
-xclGraphUpdateRTP(xclGraphHandle ghdl, const std::string& port, const char* buffer, size_t size);
-
-int
 xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size);
-
-int
-xclGraphReadRTP(xclGraphHandle ghdl, const std::string& port, char *buffer, size_t size);
 
 int
 xclSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset);
