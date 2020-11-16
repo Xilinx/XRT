@@ -31,7 +31,7 @@
 
 xclDeviceHandle devHdl;
 
-unsigned int getHostBO(unsigned long paddr, size_t size)
+static unsigned int getHostBO(unsigned long paddr, size_t size)
 {
   unsigned int boHandle;
 
@@ -40,41 +40,36 @@ unsigned int getHostBO(unsigned long paddr, size_t size)
   return boHandle;
 }
 
-void *mapBO(unsigned int boHandle, bool write)
+static void *mapBO(unsigned int boHandle, bool write)
 {
   void *buf;
   buf = xclMapBO(devHdl, boHandle, write);
   return buf;
 }
 
-void freeBO(unsigned int boHandle)
+static void freeBO(unsigned int boHandle)
 {
   xclFreeBO(devHdl, boHandle);
 }
 
-int logMsg(xrtLogMsgLevel level, const char* tag,
+static int logMsg(xrtLogMsgLevel level, const char* tag,
 		       const char* format, ...)
 {
   static auto verbosity = xrt_core::config::get_verbosity();
-  if (level <= verbosity) {
-    va_list args;
-    va_start(args, format);
-    int ret = -1;
-    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(devHdl);
-    ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
-    va_end(args);
-
-    return ret;
+  if (level > verbosity) {
+    return 0;
   }
+  va_list args;
+  va_start(args, format);
+  int ret = -1;
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(devHdl);
+  ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
+  va_end(args);
 
-  return 0;
-
-
-//sarab
-//  return xclLogMsg(devHdl, level, tag, format, (char*) "test");
+  return ret;
 }
 
-int getBufferFd(unsigned int boHandle)
+static int getBufferFd(unsigned int boHandle)
 {
     return xclExportBO(devHdl, boHandle);
 }
@@ -118,7 +113,7 @@ static int destroySoftKernel(unsigned int boh, void *mapAddr)
  * This function calls XRT interface to notify a soft kenel is idle
  * and wait for next command.
  */
-int waitNextCmd(uint32_t cu_idx)
+static int waitNextCmd(uint32_t cu_idx)
 {
   return xclSKReport(devHdl, cu_idx, XRT_SCU_STATE_DONE);
 }
@@ -128,7 +123,7 @@ int waitNextCmd(uint32_t cu_idx)
  * file. By mapping the reg file BO, we get the process's memory
  * address for the soft kernel argemnts.
  */
-void *getKernelArg(unsigned int boHdl, uint32_t cu_idx)
+static void *getKernelArg(unsigned int boHdl, uint32_t cu_idx)
 {
   return xclMapBO(devHdl, boHdl, false);
 }
