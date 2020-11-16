@@ -43,7 +43,7 @@ validOrError(cl_mem mem,
   if (size != sizeof(uintptr_t))
     throw error(CL_INVALID_VALUE,"size of address argument must be sizeof(uintptr_t)");
 
-  if (xocl(mem)->get_buffer_object_or_null(xocl(device)) == nullptr)
+  if (!xocl(mem)->get_buffer_object_or_null(xocl(device)))
     throw error(CL_INVALID_MEM_OBJECT,"mem object is not associated with device");
 }
 

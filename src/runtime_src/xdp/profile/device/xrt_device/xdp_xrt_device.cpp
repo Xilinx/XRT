@@ -106,7 +106,7 @@ void XrtDevice::free(size_t xdpBoHandle)
 {
   if (!xdpBoHandle) return;
   auto idx = xdpBoHandle - 1;
-  mXrtDevice->free(m_bos[idx]);
+  m_bos[idx] = xrt::bo{};
 }
 
 void* XrtDevice::map(size_t xdpBoHandle)

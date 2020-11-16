@@ -40,7 +40,7 @@ class command : public std::enable_shared_from_this<command>
 public:
   using packet_type = xrt_xocl::regmap_placed<uint32_t,regmap_size>;
   using value_type = packet_type::word_type;
-  using buffer_type = xrt_xocl::device::ExecBufferObjectHandle;
+  using buffer_type = xrt_xocl::device::execbuffer_object_handle;
 
   /**
    * Construct a command object to be schedule on device

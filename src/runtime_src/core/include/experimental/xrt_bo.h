@@ -70,6 +70,8 @@ public:
    *  Create a BO with a host side buffer only
    * @var p2p
    *  Create a BO for peer-to-peer use
+   * @var svm
+   *  Create a BO for SVM (supported on specific platforms only)
    *
    * The flags used by xrt::bo are compatible with XCL style 
    * flags as define in ``xrt_mem.h``
@@ -81,6 +83,7 @@ public:
     device_only = XRT_BO_FLAGS_DEV_ONLY,
     host_only   = XRT_BO_FLAGS_HOST_ONLY,
     p2p         = XRT_BO_FLAGS_P2P,
+    svm         = XRT_BO_FLAGS_SVM,
   };
   
   /**
@@ -216,6 +219,24 @@ public:
    */
   bo&
   operator=(bo&& rhs) = default;
+
+  /**
+   * operator== () - Compare operator
+   */
+  bool
+  operator==(const bo& rhs) const
+  {
+    return handle == rhs.handle;
+  }
+
+  /**
+   * operator bool() - Check if bo handle is valid
+   */
+  explicit
+  operator bool() const
+  {
+    return handle != nullptr;
+  }
 
   /**
    * size() - Get the size of this buffer

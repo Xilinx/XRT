@@ -84,7 +84,7 @@ transferBenchmarkTest(xrt_xocl::device* device, size_t blockSize, size_t count, 
   auto writeBuffer = buf1.getBuffer();
   auto readBuffer = buf2.getBuffer();
 
-  std::vector<xrt_xocl::device::BufferObjectHandle> deviceHandleList;
+  std::vector<xrt_xocl::device::buffer_object_handle> deviceHandleList;
 
   unsigned long long totalData = 0;
 

@@ -22,7 +22,7 @@
 
 namespace {
 
-using buffer_type = xrt_xocl::device::ExecBufferObjectHandle;
+using buffer_type = xrt_xocl::device::execbuffer_object_handle;
 static std::mutex s_mutex;
 
 // Static destruction logic to prevent double purging.

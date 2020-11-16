@@ -25,6 +25,7 @@
 
 #include "core/common/memalign.h"
 #include "core/common/unistd.h"
+#include "core/include/experimental/xrt_bo.h"
 
 #include <map>
 
@@ -46,7 +47,7 @@ class memory : public refcount, public _cl_mem
   using memidx_type = xclbin::memidx_type;
 
 protected:
-  using buffer_object_handle = xrt_xocl::device::BufferObjectHandle;
+  using buffer_object_handle = xrt_xocl::device::buffer_object_handle;
   using buffer_object_map_type = std::map<const device*,buffer_object_handle>;
   using bomap_type = std::map<const device*,buffer_object_handle>;
   using bomap_value_type = bomap_type::value_type;

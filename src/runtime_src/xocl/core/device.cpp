@@ -75,44 +75,6 @@ userptr_bad_alloc_message(void* addr)
 }
 
 static void
-default_allocation_message(const xocl::device* device,const xocl::memory* mem,
-                           const xrt_xocl::device::BufferObjectHandle& boh)
-{
-  if (!boh)
-    return;
-
-  auto mask = device->get_boh_memidx(boh);
-  xocl::device::memidx_type memidx = 0;
-  for (size_t idx=0; idx<mask.size(); ++idx) {
-    if (mask.test(idx)) {
-      memidx = idx;
-      break;
-    }
-  }
-
-  std::stringstream str;
-  str << "Host buffer (" << mem->get_uid() << ") "
-      << "has no bank assignment and is not used as kernel argument "
-      << "before first enqueue operation; "
-      << "allocating in default memory bank '" << memidx << "'.";
-
-  if (xrt_xocl::config::get_feature_toggle("Runtime.strict_bank_rule"))
-    throw std::runtime_error(str.str());
-  else
-    xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,str.str());
-}
-
-static void
-default_bad_allocation_message(const xocl::device* device,const xocl::memory* mem)
-{
-  std::stringstream str;
-  str << "Host buffer (" << mem->get_uid() << ") "
-      << "has no bank assignment and is not used as kernel argument "
-      << "before first enqueue operation.";
-  xrt_xocl::message::send(xrt_xocl::message::severity_level::error,str.str());
-}
-
-static void
 host_copy_message(const xocl::memory* dst, const xocl::memory* src)
 {
   std::stringstream str;
@@ -143,7 +105,7 @@ buffer_resident_or_error(const xocl::memory* buffer, const xocl::device* device)
 // Copy hbuf to ubuf if necessary
 static void
 sync_to_ubuf(xocl::memory* buffer, size_t offset, size_t size,
-             xrt_xocl::device* xdevice, const xrt_xocl::device::BufferObjectHandle& boh)
+             xrt_xocl::device* xdevice, const xocl::device::buffer_object_handle& boh)
 {
   if (!buffer->need_extra_sync())
     return;
@@ -163,7 +125,7 @@ sync_to_ubuf(xocl::memory* buffer, size_t offset, size_t size,
 // Copy ubuf to hbuf if necessary
 static void
 sync_to_hbuf(xocl::memory* buffer, size_t offset, size_t size,
-             xrt_xocl::device* xdevice, const xrt_xocl::device::BufferObjectHandle& boh)
+             xrt_xocl::device* xdevice, const xocl::device::buffer_object_handle& boh)
 {
   if (!buffer->need_extra_sync())
     return;
@@ -272,20 +234,6 @@ get_handle() const
   throw xocl::error(CL_INVALID_DEVICE, "No device handle");
 }
 
-void
-device::
-track(const memory* mem)
-{
-#if 0
-  // not yet enabled.  need memory.cpp to use and ensure calls to free
-  // also proper handling of mem objects imported and gotten from
-  // xclGetMemObjectFromFD (should go through xocl::device, not directly
-  // to xrt_xocl::device)
-  std::lock_guard<std::mutex> lk(m_mutex);
-  m_memobjs.insert(mem);
-#endif
-}
-
 xrt_xocl::device::memoryDomain
 get_mem_domain(const memory* mem)
 {
@@ -307,7 +255,7 @@ clear_connection(connidx_type conn)
   m_metadata.clear_connection(conn);
 }
 
-xrt_xocl::device::BufferObjectHandle
+device::buffer_object_handle
 device::
 alloc(memory* mem, memidx_type memidx)
 {
@@ -319,7 +267,6 @@ alloc(memory* mem, memidx_type memidx)
     aligned_flag = true;
     try {
       auto boh = m_xdevice->alloc(sz,xrt_xocl::device::memoryDomain::XRT_DEVICE_RAM,memidx,host_ptr);
-      track(mem);
       return boh;
     }
     catch (const std::bad_alloc&) {
@@ -330,7 +277,6 @@ alloc(memory* mem, memidx_type memidx)
   auto domain = get_mem_domain(mem);
 
   auto boh = m_xdevice->alloc(sz,domain,memidx,nullptr);
-  track(mem);
 
   // Handle unaligned user ptr or bad alloc host_ptr
   if (host_ptr) {
@@ -344,43 +290,6 @@ alloc(memory* mem, memidx_type memidx)
 
     m_xdevice->unmap(boh);
   }
-  return boh;
-}
-
-xrt_xocl::device::BufferObjectHandle
-device::
-alloc(memory* mem)
-{
-  auto host_ptr = mem->get_host_ptr();
-  auto sz = mem->get_size();
-  bool aligned_flag = false;
-
-  if (is_aligned_ptr(host_ptr)) {
-    aligned_flag = true;
-    try {
-      auto boh = m_xdevice->alloc(sz,host_ptr);
-      track(mem);
-      return boh;
-    }
-    catch (const std::bad_alloc&) {
-      userptr_bad_alloc_message(host_ptr);
-    }
-  }
-
-  auto boh = m_xdevice->alloc(sz);
-  // Handle unaligned user ptr or bad alloc host_ptr
-  if (host_ptr) {
-    if (!aligned_flag)
-      unaligned_message(host_ptr);
-    mem->set_extra_sync();
-    auto bo_host_ptr = m_xdevice->map(boh);
-    // No need to copy data to a CL_MEM_WRITE_ONLY buffer
-    if (!(mem->get_flags() & CL_MEM_WRITE_ONLY))
-        memcpy(bo_host_ptr, host_ptr, sz);
-
-    m_xdevice->unmap(boh);
-  }
-  track(mem);
   return boh;
 }
 
@@ -585,41 +494,12 @@ unlock()
   return m_locks; // 0
 }
 
-xrt_xocl::device::BufferObjectHandle
-device::
-allocate_buffer_object(memory* mem)
-{
-  if (mem->get_flags() & CL_MEM_REGISTER_MAP)
-    return nullptr;
-
-  // sub buffer
-  if (auto parent = mem->get_sub_buffer_parent()) {
-    auto boh = parent->get_buffer_object(this);
-    auto offset = mem->get_sub_buffer_offset();
-    auto size = mem->get_size();
-    return m_xdevice->alloc(boh,size,offset);
-  }
-
-  // Else just allocated on any bank
-  XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in default bank\n");
-
-  try {
-    auto boh = alloc(mem);
-    default_allocation_message(this,mem,boh);
-    return boh;
-  }
-  catch (const std::bad_alloc&) {
-    default_bad_allocation_message(this,mem);
-    throw;
-  }
-}
-
-xrt_xocl::device::BufferObjectHandle
+device::buffer_object_handle
 device::
 allocate_buffer_object(memory* mem, memidx_type memidx)
 {
   if (memidx==-1)
-    return allocate_buffer_object(mem);
+    throw std::runtime_error("Unexpected error memidx == -1");
 
   if (mem->get_flags() & CL_MEM_REGISTER_MAP)
     throw std::runtime_error("Cannot allocate register map buffer on bank");
@@ -664,23 +544,23 @@ is_imported(const memory* mem) const
   return boh ? m_xdevice->is_imported(boh) : false;
 }
 
-xrt_xocl::device::BufferObjectHandle
+device::buffer_object_handle
 device::
-allocate_buffer_object(memory* mem, xrt_xocl::device::memoryDomain domain, uint64_t memoryIndex, void* user_ptr)
+allocate_buffer_object(memory* mem, xrt_xocl::device::memoryDomain domain, uint64_t memidx, void* user_ptr)
 {
-  return m_xdevice->alloc(mem->get_size(),domain,memoryIndex,user_ptr);
+  return m_xdevice->alloc(mem->get_size(),domain,memidx,user_ptr);
 }
 
 uint64_t
 device::
-get_boh_addr(const xrt_xocl::device::BufferObjectHandle& boh) const
+get_boh_addr(const buffer_object_handle& boh) const
 {
   return m_xdevice->getDeviceAddr(boh);
 }
 
 device::memidx_bitmask_type
 device::
-get_boh_memidx(const xrt_xocl::device::BufferObjectHandle& boh) const
+get_boh_memidx(const buffer_object_handle& boh) const
 {
   auto addr = get_boh_addr(boh);
   auto bset = m_metadata.mem_address_to_memidx(addr);
@@ -692,7 +572,7 @@ get_boh_memidx(const xrt_xocl::device::BufferObjectHandle& boh) const
 
 std::string
 device::
-get_boh_banktag(const xrt_xocl::device::BufferObjectHandle& boh) const
+get_boh_banktag(const buffer_object_handle& boh) const
 {
   auto addr = get_boh_addr(boh);
   auto memidx = m_metadata.mem_address_to_first_memidx(addr);
@@ -729,9 +609,9 @@ get_cu_memidx() const
   return m_cu_memidx;
 }
 
-xrt_xocl::device::BufferObjectHandle
+device::buffer_object_handle
 device::
-import_buffer_object(const device* src_device, const xrt_xocl::device::BufferObjectHandle& src_boh)
+import_buffer_object(const device* src_device, const buffer_object_handle& src_boh)
 {
   // Consider moving to xrt_xocl::device
 
@@ -747,7 +627,7 @@ void*
 device::
 map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, void* assert_result, bool nosync)
 {
-  xrt_xocl::device::BufferObjectHandle boh;
+  buffer_object_handle boh;
 
   // If buffer is resident it must be refreshed unless CL_MAP_INVALIDATE_REGION
   // is specified in which case host will discard current content
@@ -842,7 +722,7 @@ migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
 
   // Host to device for kernel args and clEnqueueMigrateMemObjects
   // Get or create the buffer object on this device.
-  xrt_xocl::device::BufferObjectHandle boh = buffer->get_buffer_object(this);
+  buffer_object_handle boh = buffer->get_buffer_object(this);
 
   // Sync from host to device to make make buffer resident of this device
   sync_to_hbuf(buffer,0,buffer->get_size(),m_xdevice,boh);

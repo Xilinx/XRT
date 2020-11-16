@@ -46,7 +46,7 @@ run(xrt_xocl::device* mydev1, xrt_xocl::device* mydev2)
     randomChar2 /= 2;
 
   const int bufSize = 1024;
-  xrt_xocl::hal::BufferObjectHandle bo1 = mydev1->alloc(bufSize);
+  xrt_xocl::hal::buffer_object_handle bo1 = mydev1->alloc(bufSize);
   char *data1 = new char[bufSize];
   char *data2 = new char[bufSize];
 
@@ -57,7 +57,7 @@ run(xrt_xocl::device* mydev1, xrt_xocl::device* mydev2)
   ev.wait();
 
   // bo2 now aliases bo1
-  xrt_xocl::hal::BufferObjectHandle bo2 = mydev2->import(bo1);
+  xrt_xocl::hal::buffer_object_handle bo2 = mydev2->import(bo1);
   ev = mydev2->read(bo2, data2, bufSize, 0);
   ev.wait();
 
