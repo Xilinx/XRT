@@ -158,14 +158,12 @@ struct sched_exec_core {
 	struct sched_ops          *ops;
 	struct task_struct        *cq_thread;
 	wait_queue_head_t          cq_wait_queue;
-	atomic_t		cq_intc;
+	atomic_t                   cq_intc;
 
 	struct task_struct        *timer_task;
 
 	/* Context switch */
 	atomic_t		  exec_status;
-	spinlock_t                cq_lock;
-	u32			  cq_status[4];
 };
 
 /**

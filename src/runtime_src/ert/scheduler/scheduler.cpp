@@ -1175,8 +1175,6 @@ scheduler_loop()
         continue;
       }
 
-      // CQ_STATUS_ENABLED CHECK WON'T WORK IF HOST TRANSITIONS
-      // FROM ENABLED -> DISABLED IN CONFIGURE COMMAND
       if (!cq_status_enabled && ((slot.header_value & 0xF) == 0x4)) { // free
         if (!free_to_new(slot_idx))
           continue;
