@@ -57,7 +57,8 @@ endif()
 # Add the supporting libraries
 if(WIN32)
   target_link_libraries(
-    ${XBUTIL2_NAME} PRIVATE
+    ${XBUTIL2_NAME}
+    PRIVATE
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
@@ -68,6 +69,7 @@ if(WIN32)
 else()
   target_link_libraries(
     ${XBUTIL2_NAME}
+    PRIVATE
     xrt_core
     xrt_coreutil
     ${Boost_FILESYSTEM_LIBRARY}

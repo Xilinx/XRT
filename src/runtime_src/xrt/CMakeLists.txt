@@ -47,6 +47,7 @@ add_library(xrt++ SHARED
   )
 
 target_link_libraries(xrt++
+  PRIVATE
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}

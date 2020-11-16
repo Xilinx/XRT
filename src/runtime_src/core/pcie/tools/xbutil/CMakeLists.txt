@@ -13,6 +13,7 @@ set(XBUTIL_SRC ${XBUTIL_FILES})
 add_executable(xbutil ${XBUTIL_SRC})
 
 target_link_libraries(xbutil
+  PRIVATE
   xrt_core
   xrt_coreutil
   pthread

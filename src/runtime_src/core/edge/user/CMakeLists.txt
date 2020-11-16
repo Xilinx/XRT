@@ -56,6 +56,7 @@ set_target_properties(xrt_core PROPERTIES VERSION ${XRT_VERSION_STRING}
 
 if (DEFINED XRT_AIE_BUILD)
   target_link_libraries(xrt_core
+    PRIVATE
     xrt_coreutil
     pthread
     rt
@@ -68,6 +69,7 @@ if (DEFINED XRT_AIE_BUILD)
     )
 else()
   target_link_libraries(xrt_core
+    PRIVATE
     xrt_coreutil
     pthread
     rt

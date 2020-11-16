@@ -223,7 +223,7 @@ file(GLOB XRT_XDP_PROFILE_VART_PLUGIN_FILES
   "${XRT_XDP_PROFILE_VART_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_VART_PLUGIN_DIR}/*.cpp"
   )
-  
+
 set(XRT_XDP_ALL_SRC
   ${XRT_XDP_PROFILE_FILES}
   ${XRT_XDP_FILES}
@@ -264,26 +264,26 @@ add_dependencies(xdp_power_plugin xdp_core xrt_core)
 add_dependencies(xdp_noc_plugin xdp_core xrt_core)
 add_dependencies(xdp_vart_plugin xdp xrt_core)
 
-target_link_libraries(xdp xrt_coreutil)
-target_link_libraries(oclxdp xilinxopencl xdp)
-target_link_libraries(xdp_core xrt_coreutil)
-target_link_libraries(xdp_hal_plugin xdp_core xdp xrt_core)
-target_link_libraries(xdp_hal_api_interface_plugin xdp xrt_core)
-target_link_libraries(xdp_debug_plugin xrt_coreutil xilinxopencl)
-target_link_libraries(xdp_appdebug_plugin xrt_coreutil xilinxopencl)
-target_link_libraries(xdp_lop_plugin xdp_core)
-target_link_libraries(xdp_user_plugin xdp_core)
-target_link_libraries(xdp_device_offload_plugin xdp_core xilinxopencl)
-target_link_libraries(xdp_hal_device_offload_plugin xdp_core xrt_core)
-target_link_libraries(xdp_power_plugin xdp_core xrt_core)
-target_link_libraries(xdp_noc_plugin xdp_core xrt_core)
-target_link_libraries(xdp_vart_plugin xdp xrt_core)
+target_link_libraries(xdp PRIVATE xrt_coreutil)
+target_link_libraries(oclxdp PRIVATE xilinxopencl xdp)
+target_link_libraries(xdp_core PRIVATE xrt_coreutil)
+target_link_libraries(xdp_hal_plugin PRIVATE xdp_core xdp xrt_core)
+target_link_libraries(xdp_hal_api_interface_plugin PRIVATE xdp xrt_core)
+target_link_libraries(xdp_debug_plugin PRIVATE xrt_coreutil xilinxopencl)
+target_link_libraries(xdp_appdebug_plugin PRIVATE xrt_coreutil xilinxopencl)
+target_link_libraries(xdp_lop_plugin PRIVATE xdp_core)
+target_link_libraries(xdp_user_plugin PRIVATE xdp_core)
+target_link_libraries(xdp_device_offload_plugin PRIVATE xdp_core xilinxopencl)
+target_link_libraries(xdp_hal_device_offload_plugin PRIVATE xdp_core xrt_core)
+target_link_libraries(xdp_power_plugin PRIVATE xdp_core xrt_core)
+target_link_libraries(xdp_noc_plugin PRIVATE xdp_core xrt_core)
+target_link_libraries(xdp_vart_plugin PRIVATE xdp xrt_core)
 
 # AI Engine plugin is Edge only
 if (DEFINED XRT_AIE_BUILD)
   add_library(xdp_aie_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
   add_dependencies(xdp_aie_plugin xdp_core xrt_core)
-  target_link_libraries(xdp_aie_plugin xdp_core xrt_core metal xaiengine)
+  target_link_libraries(xdp_aie_plugin PRIVATE xdp_core xrt_core metal xaiengine)
   set_target_properties(xdp_aie_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_plugin
@@ -291,23 +291,23 @@ if (DEFINED XRT_AIE_BUILD)
   )
 endif()
 
-# Build AIE Trace plugin 
+# Build AIE Trace plugin
 add_library(xdp_aie_trace_plugin MODULE ${XRT_XDP_AIE_TRACE_PLUGIN_FILES})
 add_dependencies(xdp_aie_trace_plugin xdp_core xrt_core)
 
 if (DEFINED XRT_AIE_BUILD)
   # GMIO flow is supported for Edge only
-  target_link_libraries(xdp_aie_trace_plugin xdp_core xrt_core metal xaiengine)
+  target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core metal xaiengine)
 else()
-  target_link_libraries(xdp_aie_trace_plugin xdp_core xrt_core)
+  target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core)
 endif()
 
 set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xdp_aie_trace_plugin 
+install (TARGETS xdp_aie_trace_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
 )
-# end of Build AIE Trace plugin 
+# end of Build AIE Trace plugin
 
 
 # ====== Linux Specifics =======
@@ -401,22 +401,22 @@ add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
 add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
 add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
 
-add_dependencies(xdp xrt_core xilinxopencl)
-add_dependencies(oclxdp xdp xilinxopencl)
+add_dependencies(xdp xrt_coreutil xilinxopencl)
+add_dependencies(oclxdp xdp xilinxopencl xrt_coreutil)
 add_dependencies(xdp_hal_plugin xdp xrt_core)
 add_dependencies(xdp_hal_api_interface_plugin xdp)
 
-target_link_libraries(xdp xrt_core xilinxopencl)
-target_link_libraries(oclxdp xdp xilinxopencl)
-target_link_libraries(xdp_hal_plugin xdp xrt_core)
-target_link_libraries(xdp_hal_api_interface_plugin xdp)
+target_link_libraries(xdp PRIVATE xrt_coreutil xilinxopencl)
+target_link_libraries(oclxdp PRIVATE xdp xilinxopencl xrt_coreutil)
+target_link_libraries(xdp_hal_plugin PRIVATE xdp xrt_coreutil xrt_core)
+target_link_libraries(xdp_hal_api_interface_plugin PRIVATE xdp xrt_coreutil xrt_core)
 
-install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin 
+install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin 
+install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )
