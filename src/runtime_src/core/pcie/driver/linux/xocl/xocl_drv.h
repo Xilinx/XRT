@@ -22,7 +22,18 @@
 #include <drm/drm_backport.h>
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
+#if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
+#include <drm/drm_device.h>
+#include <drm/drm_file.h>
+#include <drm/drm_ioctl.h>
+#include <drm/drm_drv.h>
+#else
 #include <drm/drmP.h>
+#endif
+#else
+#include <drm/drmP.h>
+#endif
 #else
 #include <drm/drm_device.h>
 #include <drm/drm_file.h>
@@ -50,6 +61,11 @@
 #include "lib/libfdt/libfdt.h"
 #include <linux/firmware.h>
 #include "kds_core.h"
+#if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
+#include <linux/sched/signal.h>
+#endif
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 #define ioremap_nocache		ioremap
