@@ -25,9 +25,8 @@ INCLUDE (FindGTest)
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
 
-if(Boost_VERSION_STRING VERSION_LESS 1.64.0)
-  add_definitions (-DBOOST_PRE_1_64=1)
-endif()
+# Boost_VERSION_STRING is not working properly, use our own macro
+set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})
 
 # --- XRT Variables ---
 set (XRT_INSTALL_DIR "xrt")
