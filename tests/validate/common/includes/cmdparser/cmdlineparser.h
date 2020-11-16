@@ -38,7 +38,15 @@ class CmdLineParser {
 public:
   class CmdSwitch {
   public:
-    CmdSwitch() {}
+    CmdSwitch() {
+      key = "--help";
+      shortcut = "-h";
+      default_value = "0";
+      value = "0";
+      desc = "Command Line Parser";
+      istoggle = true;
+      isvalid = true;
+    }
     CmdSwitch(const CmdSwitch &rhs) { copyfrom(rhs); }
 
     void copyfrom(const CmdSwitch &rhs) {
