@@ -93,12 +93,9 @@ clSVMAlloc(cl_context       context,
 
   validOrError(context,flags,size,alignment);
 
-  if (!(flags & CL_MEM_PROGVAR)) {
-    if (auto device = singleContextDevice(context)) {
+  if (auto device = singleContextDevice(context))
       return device->get_xrt_device()->alloc_svm(size);
-    }
-  }
-
+  
   return nullptr;
 }
 

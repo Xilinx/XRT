@@ -68,7 +68,7 @@ public:
   private:
     /**
      * Get the type of the argument
-     * enum class argtype { indexed, printf, progvar, rtinfo };
+     * enum class argtype { indexed, printf, rtinfo };
      */
     virtual argtype
     get_argtype() const
@@ -115,10 +115,6 @@ public:
     bool
     is_printf() const
     { return get_argtype()==argtype::printf; }
-
-    bool
-    is_progvar() const
-    { return get_argtype()==argtype::progvar; }
 
     bool
     is_rtinfo() const
@@ -222,15 +218,7 @@ public:
     { throw std::runtime_error("not implemented"); }
 
     virtual size_t
-    get_baseaddr() const
-    { throw std::runtime_error("not implemented"); }
-
-    virtual size_t
     get_offset() const
-    { throw std::runtime_error("not implemented"); }
-
-    virtual std::string
-    get_linkage() const
     { throw std::runtime_error("not implemented"); }
 
     /**
@@ -293,8 +281,6 @@ public:
     virtual size_t get_size() const { return sizeof(memory*); }
     virtual const void* get_value() const { return m_buf.get(); }
     virtual size_t get_offset() const { return m_arg_info->offset; }
-    virtual size_t get_baseaddr() const { return m_arg_info->baseaddr; }
-    virtual std::string get_linkage() const { return m_arg_info->linkage; }
     virtual arginfo_range_type get_arginfo_range() const
     { return arginfo_range_type(&m_arg_info,&m_arg_info+1); }
   private:
@@ -302,16 +288,6 @@ public:
     void* m_svm_buf = nullptr;
     arginfo_type m_arg_info;
   };
-
-#if 0 // not necessary?
-  class progvar_argument : public global_argument
-  {
-  public:
-  progvar_argument(arginfo_type arg, kernel* kernel)
-    : m_kernel(kernel), global_argument(arg) {}
-  private:
-  };
-#endif
 
   class local_argument : public argument
   {
@@ -532,11 +508,10 @@ public:
    * Get range of all arguments that have a dynamic value
    * rtinfo args and progvars do not matter, they are static per kernel
    */
-  joined_range<const argument_vector_type,joined_range<const argument_vector_type,const argument_vector_type>>
+  joined_range<const argument_vector_type, const argument_vector_type>
   get_argument_range() const
   {
-    auto j1 = boost::join(m_printf_args,m_progvar_args);
-    return boost::join(m_indexed_args,j1);
+    return boost::join(m_indexed_args,m_printf_args);
   }
 
   /**
@@ -546,15 +521,6 @@ public:
   get_indexed_argument_range() const
   {
     return range<argument_iterator_type>(m_indexed_args.begin(),m_indexed_args.end());
-  }
-
-  /**
-   * @return Range of progvar arguments
-   */
-  range<argument_iterator_type>
-  get_progvar_argument_range() const
-  {
-    return range<argument_iterator_type>(m_progvar_args.begin(),m_progvar_args.end());
   }
 
   /**
@@ -666,7 +632,6 @@ private:
   const xclbin::symbol& m_symbol;
   argument_vector_type m_indexed_args;
   argument_vector_type m_printf_args;
-  argument_vector_type m_progvar_args;
   argument_vector_type m_rtinfo_args;
 };
 

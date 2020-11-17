@@ -386,14 +386,6 @@ public:
   try_get_buffer_object_or_error(const device* device) const;
 
   /**
-   * Get buffer object or create with arguments.
-   *
-   * Used for progvar memory objects exclusively.
-   */
-  virtual buffer_object_handle
-  get_buffer_object(device* device, xrt_xocl::device::memoryDomain domain, uint64_t memidx);
-
-  /**
    * Check if buffer is resident on any device
    *
    * Return: %true if this buffer is resident on a device, %false otherwise.
@@ -741,9 +733,6 @@ public:
   virtual buffer_object_handle
   get_buffer_object(device* device);
 
-  virtual buffer_object_handle
-  get_buffer_object(device* device, xrt_xocl::device::memoryDomain domain, uint64_t memoryIndex);
-
 private:
 
   void populate_image_info(image_info& info) {
@@ -852,7 +841,7 @@ get_xlnx_ext_argidx(cl_mem_flags flags, const void* host_ptr)
 inline unsigned int
 get_ocl_flags(cl_mem_flags flags)
 {
-  return ( flags & ~(CL_MEM_EXT_PTR_XILINX | CL_MEM_PROGVAR) );
+  return ( flags & ~(CL_MEM_EXT_PTR_XILINX) );
 }
 
 } // xocl

@@ -82,21 +82,6 @@ clGetMemObjectFromFd(cl_context context,
     buffer->update_buffer_object_map(xdevice,boh);
     *mem = buffer.release();
     return CL_SUCCESS;
-
-    //Sarab: How to handle importing buffer which is on multiple devices?
-    //That will need to change update_buffer_object_mao functions as well..
-
-
-    // allocate device buffer object if context has only one device
-    // and if this is not a progvar (clCreateProgramWithBinary)
-    /*
-    if (!(flags & CL_MEM_PROGVAR)) {
-      if (auto device = singleContextDevice(context)) {
-        buffer->get_buffer_object(device);
-      }
-    }
-    */
-
   }
 
   throw error(CL_INVALID_MEM_OBJECT, "CreateBufferFromFd: Unable to get MemObject Handle from FD");

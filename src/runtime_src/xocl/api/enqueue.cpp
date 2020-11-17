@@ -347,14 +347,8 @@ action_ndrange_migrate(cl_event event,cl_kernel kernel)
   std::vector<xocl::memory*> kernel_args;
   for (auto& arg : xocl::xocl(kernel)->get_argument_range()) {
     if (auto mem = arg->get_memory_object()) {
-      if (arg->is_progvar() && arg->get_address_qualifier()==CL_KERNEL_ARG_ADDRESS_GLOBAL /*1*/) {
-        mem->get_buffer_object(device,xrt_xocl::device::memoryDomain::XRT_DEVICE_PREALLOCATED_BRAM,arg->get_baseaddr());
-        // progvars are not to be transfered so dont add to kernel args
-      }
-      else {
-        mem->get_buffer_object(device);
-        kernel_args.push_back(mem);
-      }
+      mem->get_buffer_object(device);
+      kernel_args.push_back(mem);
     }
   }
 

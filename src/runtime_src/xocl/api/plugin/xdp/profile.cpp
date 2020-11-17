@@ -353,13 +353,10 @@ action_ndrange_migrate(cl_event event, cl_kernel kernel)
   auto device = command_queue->get_device();
 
   // Calculate total size and grab first address & bank
-  // NOTE: argument must be: NOT a progvar, NOT write only, and NOT resident
+  // NOTE: argument must be: NOT write only, and NOT resident
   for (auto& arg : xocl::xocl(kernel)->get_argument_range()) {
     if (auto mem = arg->get_memory_object()) {
-      if (arg->is_progvar() && arg->get_address_qualifier()==CL_KERNEL_ARG_ADDRESS_GLOBAL)
-        // DO NOTHING: progvars are not transfered
-        continue;
-      else if (mem->is_resident(device))
+      if (mem->is_resident(device))
         continue;
       else if (!(mem->get_flags() & (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS))) {
         if (totalSize == 0) {

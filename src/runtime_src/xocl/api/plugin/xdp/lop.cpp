@@ -192,7 +192,7 @@ namespace xocl {
       for (auto& arg : xocl::xocl(kernel)->get_argument_range())
       {
 	auto mem = arg->get_memory_object() ;
-	if (mem != nullptr && !(arg->is_progvar()) && !(mem->is_resident()))
+	if (mem != nullptr && !(mem->is_resident()))
 	{
 	  writeWillHappen = true ;
 	  break ;

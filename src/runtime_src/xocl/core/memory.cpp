@@ -148,20 +148,6 @@ update_buffer_object_map(const device* device, buffer_object_handle boh)
 
 memory::buffer_object_handle
 memory::
-get_buffer_object(device* device, xrt_xocl::device::memoryDomain domain, uint64_t memidx)
-{
-  // for progvar only
-  assert(domain==xrt_xocl::device::memoryDomain::XRT_DEVICE_PREALLOCATED_BRAM);
-
-  std::lock_guard<std::mutex> lk(m_boh_mutex);
-  auto itr = m_bomap.find(device);
-  return (itr==m_bomap.end())
-    ? (m_bomap[device] = device->allocate_buffer_object(this,domain,memidx,nullptr))
-    : (*itr).second;
-}
-
-memory::buffer_object_handle
-memory::
 get_buffer_object(device* device, memory::memidx_type subidx)
 {
   std::lock_guard<std::mutex> lk(m_boh_mutex);
@@ -383,21 +369,6 @@ memory::
 register_destructor_callbacks (memory::memory_callback_type&& cb)
 {
   sg_destructor_callbacks.emplace_back(std::move(cb));
-}
-
-
-//Functions for derived classes.
-memory::buffer_object_handle
-image::
-get_buffer_object(device* device, xrt_xocl::device::memoryDomain domain, uint64_t memidx)
-{
-  if (auto boh = get_buffer_object_or_null(device))
-    return boh;
-  memory::buffer_object_handle boh = memory::get_buffer_object(device, domain, memidx);
-  image_info info;
-  populate_image_info(info);
-  device->write_buffer(this, 0, get_image_data_offset(), &info);
-  return boh;
 }
 
 memory::buffer_object_handle

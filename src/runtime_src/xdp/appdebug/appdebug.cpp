@@ -950,26 +950,6 @@ getArgValueString(const xocl::event* aEvent)
     }
   }
 
-  //Now collect the progvars
-  size_t eventargitint = 0;
-
-  for (auto& arg : ctx->get_progvar_argument_range()) {
-    uint64_t physaddr = 0;
-    std::string bank;
-    if (eventargitint == 0) sstr << "ProgVars: ";
-    if (auto mem = arg->get_memory_object()) {
-      xocl::xocl(mem)->try_get_address_bank(physaddr, bank);
-    }
-    //progvars are prefixed "__xcl_gv_", remove them before printing
-    std::string argname = arg->get_name();
-    std::string progvar_prefix = "__xcl_gv_";
-    if (argname.find(progvar_prefix)!= std::string::npos) {
-      argname = argname.substr(progvar_prefix.length());
-    }
-    sstr << argname <<  " = 0x" << std::hex << physaddr << " " << std::dec;
-    ++eventargitint;
-  }
-
   return sstr.str();
 }
 
