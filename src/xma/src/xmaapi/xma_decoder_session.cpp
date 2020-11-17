@@ -13,7 +13,11 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#include <cstdarg>
 #include "app/xmaerror.h"
+#include "core/common/config_reader.h"
+#include "lib/xmalogger.h"
+#include "lib/xma_utils.hpp"
 #include "lib/xma_decoder_session.hpp"
 
 namespace xma_core {
@@ -22,6 +26,13 @@ namespace app {
 dec_session::dec_session(const XmaDecoderProperties *props, const xma_core::plg::session& sess)
 :base{sess}, decoder_props{*props}
 {
+  tag = "decoder# ";
+  tag.append(std::to_string(sess.get_session_id()));
+  tag.append(" - cu: ");
+  tag.append(sess.get_cu_name());
+  tag.append(" - dev_index: ");
+  tag.append(std::to_string(sess.get_dev_id()));
+
   //TODO
 }
 
@@ -46,6 +57,25 @@ dec_session::get_properties(XmaFrameProperties *fprops)
 {
   //TODO
 
+  return;
+}
+
+void 
+dec_session::logmsg(XmaLogLevelType level, const char *msg, ...) const
+{
+  static auto verbosity = xrt_core::config::get_verbosity();
+  if (level > verbosity) {
+    return;
+  }
+  va_list ap;
+  char    msg_buff[XMA_MAX_LOGMSG_SIZE];
+  std::memset(msg_buff, 0, sizeof(msg_buff));
+
+  va_start(ap, msg);
+  vsnprintf(msg_buff, XMA_MAX_LOGMSG_SIZE, msg, ap);
+  va_end(ap);
+
+  xma_core::utils::logmsg(level, tag, msg_buff);
   return;
 }
 

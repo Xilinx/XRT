@@ -56,6 +56,15 @@ public:
   int32_t
   alloc_buf() const;
 
+  int32_t
+  get_session_id() const;
+
+  std::string
+  get_cu_name() const;
+
+  int32_t
+  get_dev_id() const;
+
   session(int32_t s_id, XmaSessionType s_type, int32_t c_id, const xrt::device& x_dev, const xrt::uuid& xclbin_uid, const std::string& cu_name);
   ~session();
 
