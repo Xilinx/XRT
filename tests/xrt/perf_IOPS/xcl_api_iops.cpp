@@ -11,11 +11,28 @@
 #include "ert.h"
 #include "xclbin.h"
 
+using ms_t = std::chrono::microseconds;
+using Clock = std::chrono::high_resolution_clock;
+
+bool start = false;
+bool stop = false;
+pthread_barrier_t barrier;
+
 struct task_info {
     unsigned                boh;
     unsigned                exec_bo;
     ert_start_kernel_cmd   *ecmd;
 };
+
+typedef struct task_args {
+    int thread_id;
+    int bank;
+    int queueLength;
+    unsigned int total;
+    xclDeviceHandle handle;
+    Clock::time_point start;
+    Clock::time_point end;
+} arg_t;
 
 void usage()
 {
@@ -41,11 +58,11 @@ load_file_to_memory(const std::string& fn)
 }
 
 double runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& cmds,
-               unsigned int total)
+               unsigned int total, arg_t *arg)
 {
     int i = 0;
     unsigned int issued = 0, completed = 0;
-    auto start = std::chrono::high_resolution_clock::now();
+    arg->start = Clock::now();
 
     for (auto& cmd : cmds) {
         if (xclExecBuf(handle, cmd->exec_bo))
@@ -73,23 +90,15 @@ double runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& 
             i = 0;
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    return (std::chrono::duration_cast<std::chrono::microseconds>(end - start)).count();
+    arg->end = Clock::now();
+    return (std::chrono::duration_cast<ms_t>(arg->end - arg->start)).count();
 }
 
-int testSingleThread(xclDeviceHandle handle, xuid_t uuid, int bank)
+void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>> &cmds,
+        int bank, int expected_cmds)
 {
-    std::vector<std::shared_ptr<task_info>> cmds;
-    /* The command would incease */
-    std::vector<unsigned int> cmds_per_run = { 10,50,100,200,500,1000,1500,2000,3000,5000,10000,50000,100000,500000,1000000 };
-    int expected_cmds = 100000;
-
-    if (xclOpenContext(handle, uuid, 0, true))
-        throw std::runtime_error("Cound not open context");
-
-    /* Create 'expected_cmds' commands if possible */
     for (int i = 0; i < expected_cmds; i++) {
-        task_info cmd = {0};
+        task_info cmd;
         cmd.boh = xclAllocBO(handle, 20, 0, bank);
         if (cmd.boh == NULLBO) {
             std::cout << "Could not allocate more output buffers" << std::endl;
@@ -122,8 +131,27 @@ int testSingleThread(xclDeviceHandle handle, xuid_t uuid, int bank)
 
         cmds.push_back(std::make_shared<task_info>(cmd));
     }
-    std::cout << "Allocated commands, expect " << expected_cmds << ", created " << cmds.size() << std::endl;
+    //std::cout << "Allocated commands, expect " << expected_cmds << ", created " << cmds.size() << std::endl;
+}
 
+int testSingleThread(xclDeviceHandle handle, xuid_t uuid, int bank)
+{
+    std::vector<std::shared_ptr<task_info>> cmds;
+    /* The command would incease */
+    //std::vector<unsigned int> cmds_per_run = { 50000,100000,500000,1000000 };
+    std::vector<unsigned int> cmds_per_run = { 5000000 };
+    /* There is performance and reach maximum FD limited issue */
+    //int expected_cmds = 100000;
+    int expected_cmds = 128;
+    arg_t *arg = (arg_t *)malloc(sizeof(arg_t));
+
+    if (xclOpenContext(handle, uuid, 0, true))
+        throw std::runtime_error("Cound not open context");
+
+    /* Create 'expected_cmds' commands if possible */
+    fillCmdVector(handle, cmds, bank, expected_cmds);
+
+    arg->thread_id = 0;
     for (auto& num_cmds : cmds_per_run) {
 #if 0
         double total = 0;
@@ -132,7 +160,7 @@ int testSingleThread(xclDeviceHandle handle, xuid_t uuid, int bank)
         }
         double duration = total / 5;
 #else
-        double duration = runTest(handle, cmds, num_cmds);
+        double duration = runTest(handle, cmds, num_cmds, arg);
 #endif
         std::cout << "Commands: " << std::setw(7) << num_cmds
                   << " iops: " << (num_cmds * 1000.0 * 1000.0 / duration)
@@ -149,27 +177,129 @@ int testSingleThread(xclDeviceHandle handle, xuid_t uuid, int bank)
     return 0;
 }
 
+void *runTestThread(void *data)
+{
+    arg_t *arg = (arg_t *)data;
+    std::vector<std::shared_ptr<task_info>> cmds;
+    /* The command would incease */
+
+    fillCmdVector(arg->handle, cmds, arg->bank, arg->queueLength);
+
+    pthread_barrier_wait(&barrier);
+
+    //wait start from main thread
+
+    double duration = runTest(arg->handle, cmds, arg->total, arg);
+
+    pthread_barrier_wait(&barrier);
+
+    for (auto& cmd : cmds) {
+        xclFreeBO(arg->handle, cmd->boh);
+        munmap(cmd->ecmd, 4096);
+        xclFreeBO(arg->handle, cmd->exec_bo);
+    }
+}
+
+/* let's start from test two threads */
+int testMultiThreads(xclDeviceHandle handle, xuid_t uuid, int bank,
+        int threadNumber, int queueLength, unsigned int total)
+{
+    pthread_t *tids = (pthread_t *)malloc(threadNumber * sizeof(pthread_t));
+    arg_t *arg[threadNumber];
+
+    if (xclOpenContext(handle, uuid, 0, true))
+        throw std::runtime_error("Cound not open context");
+
+    pthread_barrier_init(&barrier, NULL, threadNumber+1);
+
+    for (int i = 0; i < threadNumber; i++) {
+        arg[i] = (arg_t *)malloc(sizeof(arg_t));
+        arg[i]->thread_id = i;
+        arg[i]->bank = bank;
+        arg[i]->handle = handle;
+        arg[i]->queueLength = queueLength;
+        arg[i]->total = total;
+        pthread_create(&tids[i], NULL, runTestThread, arg[i]);
+    }
+
+    /* Wait threads to prepare to start */
+    pthread_barrier_wait(&barrier);
+    auto start = Clock::now();
+
+    /* Wait threads done */
+    pthread_barrier_wait(&barrier);
+    auto end = Clock::now();
+
+    for (int i = 0; i < threadNumber; i++)
+        pthread_join(tids[i], NULL);
+
+    int overallCommands = 0;
+    double duration;
+    for (int i = 0; i < threadNumber; i++) {
+        duration = (std::chrono::duration_cast<ms_t>(arg[i]->end - arg[i]->start)).count();
+        std::cout << "Thread " << arg[i]->thread_id
+                  << " Commands: " << std::setw(7) << total
+                  << std::setprecision(0) << std::fixed
+                  << " iops: " << (total * 1000000.0 / duration)
+                  << std::endl;
+        overallCommands += total;
+    }
+    duration = (std::chrono::duration_cast<ms_t>(end - start)).count();
+    std::cout << "Overall Commands: " << std::setw(7) << overallCommands
+              << " iops: " << (overallCommands * 1000000.0 / duration)
+              << std::endl;
+
+    xclCloseContext(handle, uuid, 0);
+    return 0;
+}
+
 int _main(int argc, char* argv[])
 {
     xclDeviceHandle handle;
     std::string xclbin_fn;
     xuid_t uuid;
     int first_mem = 0;
+    int dev_id = 0;
+    int queueLength = 128;
+    unsigned total = 50000;
+    int threadNumber = 2;
     char c;
 
-    while ((c = getopt(argc, argv, "k:h")) != -1) {
+    while ((c = getopt(argc, argv, "k:d:l:t:a:h")) != -1) {
         switch (c) {
             case 'k':
-               xclbin_fn = optarg; 
-               break;
+                xclbin_fn = optarg; 
+                break;
+            case 'd':
+                dev_id = std::stoi(optarg);
+                break;
+            case 't':
+                threadNumber = std::stoi(optarg);
+                break;
+            case 'l':
+                queueLength = std::stoi(optarg);
+                break;
+            case 'a':
+                total = std::stoi(optarg);
+                break;
             case 'h':
-               usage();
+                usage();
         }
     }
 
+    /* Sanity check */
+    if (dev_id < 0)
+        throw std::runtime_error("Negative device ID");
+
+    if (queueLength <= 0)
+        throw std::runtime_error("Negative/Zero queue length");
+
+    if (threadNumber <= 0)
+        throw std::runtime_error("Invalid thread number");
+
     printf("The system has %d device(s)\n", xclProbe());
 
-    handle = xclOpen(0, "", XCL_QUIET);
+    handle = xclOpen(dev_id, "", XCL_QUIET);
     if (!handle) {
         printf("Could not open device\n");
         return 1;
@@ -191,7 +321,8 @@ int _main(int argc, char* argv[])
         }
     }
 
-    testSingleThread(handle, uuid, first_mem);
+    //testSingleThread(handle, uuid, first_mem);
+    testMultiThreads(handle, uuid, first_mem, threadNumber, queueLength, total);
 
     xclClose(handle);
     return 0;

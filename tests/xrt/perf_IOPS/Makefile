@@ -12,7 +12,7 @@ CPPFLAGS += -g
 endif
 
 CPPFLAGS += -I${XRT_PATH}/include
-CPPLFLAGS += -L${XRT_PATH}/lib -lxrt_core -lxrt_coreutil -luuid
+CPPLFLAGS += -L${XRT_PATH}/lib -lxrt_core -lxrt_coreutil -luuid -lpthread
 
 .PHONY: all clean
 
