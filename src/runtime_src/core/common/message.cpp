@@ -25,6 +25,7 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <algorithm>
 #include <climits>
 #ifdef __GNUC__
 # include <unistd.h>
@@ -276,6 +277,22 @@ send(severity_level l, const char* tag, const char* msg)
     static message_dispatch* dispatcher = message_dispatch::make_dispatcher(logger);
     dispatcher->send(l, tag, msg);
   }
+}
+
+void
+send(severity_level l, const char* tag, const char* format, va_list args)
+{
+  static auto verbosity = xrt_core::config::get_verbosity();
+  if (l > (xrt_core::message::severity_level)verbosity) {
+    return;
+  }
+  std::vector<char> msg_buff(MAX_LOGMSG_SIZE);
+  std::fill(msg_buff.begin(), msg_buff.end(), 0);
+
+  vsnprintf(msg_buff.data(), MAX_LOGMSG_SIZE, format, args);
+
+  send(l, tag, msg_buff.data());
+  return;
 }
   
 }} // message,xrt

@@ -22,6 +22,8 @@
 #include <cstdio>
 #include <vector>
 
+#define MAX_LOGMSG_SIZE 512
+
 namespace xrt_core { namespace message {
 
 //modeled based on syslog severity.
@@ -41,6 +43,9 @@ enum class severity_level : unsigned short
 XRT_CORE_COMMON_EXPORT
 void
 send(severity_level l, const char* tag, const char* msg);
+
+void
+send(severity_level l, const char* tag, const char* format, va_list args);
 
 inline void
 send(severity_level l, const std::string& tag, const std::string& msg)
