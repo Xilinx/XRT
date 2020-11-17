@@ -36,6 +36,22 @@ MODULE_PARM_DESC(kds_mode,
  */
 int kds_echo = 0;
 
+static void xocl_kds_fa_clear(struct xocl_dev *xdev)
+{
+	struct drm_xocl_bo *bo = NULL;
+
+	if (XDEV(xdev)->kds.plram.bo) {
+		bo = XDEV(xdev)->kds.plram.bo;
+		iounmap(XDEV(xdev)->kds.plram.vaddr);
+		xocl_drm_free_bo(&bo->base);
+		XDEV(xdev)->kds.plram.bo = NULL;
+		XDEV(xdev)->kds.plram.bar_paddr = 0;
+		XDEV(xdev)->kds.plram.dev_paddr = 0;
+		XDEV(xdev)->kds.plram.vaddr = 0;
+		XDEV(xdev)->kds.plram.size = 0;
+	}
+}
+
 static int
 get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
 	     uint32_t bo_hdl, size_t off, size_t size, uint64_t *paddrp)
@@ -521,15 +537,7 @@ int xocl_kds_stop(struct xocl_dev *xdev)
 
 int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 {
-	struct drm_xocl_bo *bo = NULL;
-
-	bo = XDEV(xdev)->kds.plram.bo;
-	if (bo) {
-		iounmap(XDEV(xdev)->kds.plram.vaddr);
-		xocl_drm_free_bo(&bo->base);
-	}
-
-	XDEV(xdev)->kds.plram.bo = NULL;
+	xocl_kds_fa_clear(xdev);
 
 	/* We do not need to reset kds core if xclbin_id is null */
 	if (!xclbin_id)
@@ -667,7 +675,6 @@ done:
 
 int xocl_kds_update(struct xocl_dev *xdev)
 {
-	struct drm_xocl_bo *bo = NULL;
 	int ret = 0;
 
 	/* Detect if ERT subsystem is able to support CU to host interrupt
@@ -683,16 +690,7 @@ int xocl_kds_update(struct xocl_dev *xdev)
 		XDEV(xdev)->kds.cu_intr_cap = 1;
 	}
 
-	if (XDEV(xdev)->kds.plram.bo) {
-		bo = XDEV(xdev)->kds.plram.bo;
-		iounmap(XDEV(xdev)->kds.plram.vaddr);
-		xocl_drm_free_bo(&bo->base);
-		XDEV(xdev)->kds.plram.bo = NULL;
-		XDEV(xdev)->kds.plram.bar_paddr = 0;
-		XDEV(xdev)->kds.plram.dev_paddr = 0;
-		XDEV(xdev)->kds.plram.vaddr = 0;
-		XDEV(xdev)->kds.plram.size = 0;
-	}
+	xocl_kds_fa_clear(xdev);
 
 	ret = xocl_detect_fa_plram(xdev);
 	if (ret)
