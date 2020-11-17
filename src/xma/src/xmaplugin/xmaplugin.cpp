@@ -386,17 +386,18 @@ xma_plg_buffer_write(XmaSession s_handle,
         return XMA_SUCCESS;
     }
     if (size + offset > b_obj_priv->size) {
-        //std::cout << "ERROR: xma_plg_buffer_write failed. Can not write past end of buffer" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. Can not write past end of buffer.");
         return XMA_ERROR;
     }
-    //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    if (size == 0) {
+        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write skipped. size is zero. Nothing to write.");
+        return XMA_SUCCESS;
+    }
 
-    //printf("xma_plg_buffer_write b_obj=%d,src=%p,size=%lu,offset=%lx\n", b_obj, src, size, offset);
     rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
     if (rc != 0) {
-        //std::cout << "ERROR: xma_plg_buffer_write xclSyncBO failed " << std::dec << rc << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclSyncBO failed %d", rc);
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. dev_index: %d. xclSyncBO failed. Error: %d", b_obj_priv->dev_index, rc);
+        return XMA_ERROR;
     }
 
     return XMA_SUCCESS;
@@ -428,21 +429,19 @@ xma_plg_buffer_read(XmaSession s_handle,
         return XMA_SUCCESS;
     }
     if (size + offset > b_obj_priv->size) {
-        //std::cout << "ERROR: xma_plg_buffer_read failed. Can not read past end of buffer" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. Can not read past end of buffer.");
         return XMA_ERROR;
     }
+    if (size == 0) {
+        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read skipped. size is zero. Nothing to read.");
+        return XMA_SUCCESS;
+    }
 
-    //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
-
-    //printf("xma_plg_buffer_read b_obj=%d,dst=%p,size=%lu,offset=%lx\n",
-    //       b_obj, dst, size, offset);
     rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_FROM_DEVICE,
                    size, offset);
     if (rc != 0)
     {
-        //std::cout << "ERROR: xma_plg_buffer_read xclSyncBO failed " << std::dec << rc << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read xclSyncBO failed. Check device status with \"xbutil/awssak query\" cmmand");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. dev_index: %d. xclSyncBO failed. Check device status with \"xbutil/awssak query\" cmmand. Error: %d", b_obj_priv->dev_index, rc);
         return XMA_ERROR;
     }
 
@@ -1132,12 +1131,17 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
     if (iter1 < 10) {
         iter1 = 10;
     }
+    uint32_t timeout1 = 10;
+    uint32_t tmp_num_cmds = 1;
     if (g_xma_singleton->cpu_mode == XMA_CPU_MODE1) {
         while (iter1 > 0) {
             std::unique_lock<std::mutex> lk(priv1->m_mutex);
-            priv1->work_item_done_1plus.wait(lk);
+            //priv1->work_item_done_1plus.wait(lk);
+	    //Timeout required if cu is hung; Unblock and check status again
+            priv1->work_item_done_1plus.wait_for(lk, std::chrono::milliseconds(timeout1));
             lk.unlock();
 
+            tmp_num_cmds = priv1->num_cu_cmds;
             count = priv1->kernel_complete_count;
             if (count) {
                 priv1->kernel_complete_count--;
@@ -1146,16 +1150,19 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
                 }
                 return XMA_SUCCESS;
             }
-            if (priv1->num_cu_cmds == 0 && count == 0) {
+	    //Get num_cmds pending first before the done count check
+            if (tmp_num_cmds == 0 && count == 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
 
             iter1--;
         }
+        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. CU cmd is still pending. Cu might be stuck", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
         return XMA_ERROR;
     }
 
     if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
+	iter1 = iter1 * 10;
         while (iter1 > 0) {
             expected = false;
             if (priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
@@ -1170,6 +1177,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
                 //Release execbo lock
                 priv1->execbo_locked = false;
             }
+            tmp_num_cmds = priv1->num_cu_cmds;
             count = priv1->kernel_complete_count;
             if (count) {
                 priv1->kernel_complete_count--;
@@ -1178,17 +1186,22 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
                 }
                 return XMA_SUCCESS;
             }
-            if (priv1->num_cu_cmds == 0 && count == 0) {
+	    //Get num_cmds pending first before the done count check
+            if (tmp_num_cmds == 0 && count == 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
 
             iter1--;
-            std::this_thread::yield();
+            //std::this_thread::yield();
+	    //Debug mode: Use small timeout
+	    std::unique_lock<std::mutex> lk(priv1->m_mutex);
+            priv1->work_item_done_1plus.wait_for(lk, std::chrono::milliseconds(1));
+
         }
+        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. CU cmd is still pending. Cu might be stuck", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
         return XMA_ERROR;
     }
 
-    uint32_t timeout1 = 10;
     if (g_xma_singleton->cpu_mode == XMA_CPU_MODE3) {
         while (iter1 > 0) {
             expected = false;
@@ -1206,6 +1219,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
             //Release execbo lock
             priv1->execbo_locked = false;
 
+            tmp_num_cmds = priv1->num_cu_cmds;
             count = priv1->kernel_complete_count;
             if (count) {
                 priv1->kernel_complete_count--;
@@ -1214,19 +1228,24 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
                 }
                 return XMA_SUCCESS;
             }
-            if (priv1->num_cu_cmds == 0 && count == 0) {
+	    //Get num_cmds pending first before the done count check
+            if (tmp_num_cmds == 0 && count == 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
 
             xclExecWait(priv1->dev_handle, timeout1);
             iter1--;
         }
+        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. CU cmd is still pending. Cu might be stuck", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
         return XMA_ERROR;
     }
 
     //Below is CPU mode-4; low cpu load mode
     int32_t give_up = 0;
-    while (give_up < 20) {
+    if (iter1 < 20) {
+        iter1 = 20;
+    }
+    while (give_up < (int32_t)iter1) {
         count = priv1->kernel_complete_count;
         if (count) {
             priv1->kernel_complete_count--;
@@ -1262,6 +1281,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
         // Wait for a notification
         if (give_up > 10) {
             xclExecWait(priv1->dev_handle, timeout1);
+            tmp_num_cmds = priv1->num_cu_cmds;
             count = priv1->kernel_complete_count;
             if (count) {
                 priv1->kernel_complete_count--;
@@ -1270,7 +1290,8 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
                 }
                 return XMA_SUCCESS;
             }
-            if (priv1->num_cu_cmds == 0 && count == 0) {
+	    //Get num_cmds pending first before the done count check
+            if (tmp_num_cmds == 0 && count == 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
         } else {
@@ -1278,6 +1299,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
         }
         give_up++;
     }
+    xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. CU cmd is still pending. Cu might be stuck", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
     return XMA_ERROR;
 }
 
