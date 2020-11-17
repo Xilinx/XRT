@@ -303,8 +303,6 @@ send(severity_level l, const char* tag, const char* format, va_list args)
   std::vector<char> buf(len, 0);
   std::vsnprintf(buf.data(), len, format, args);
   send(l, tag, buf.data());
-
-  return;
 }
   
 }} // message,xrt
