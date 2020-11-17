@@ -305,6 +305,8 @@ private:
             return arg_type::indexed;
           if (nm=="printf_buffer")
             return arg_type::printf;
+          else if (nm.find("__xcl_gv_")==0)
+            throw xocl::error(CL_INVALID_BINARY, "Global program variables are not supported");
           else
             return arg_type::rtinfo;
         }
