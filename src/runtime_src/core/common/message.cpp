@@ -294,22 +294,14 @@ send(severity_level l, const char* tag, const char* format, va_list args)
   va_end(args_bak);
   if (len <= 0) {
     //illegal arguments
-    std::string err_str = "ERROR: Illegal arguments in log format string. ";
-    err_str.append(std::string(format));
+    std::string err_str = "ERROR: Illegal arguments or invalid format string. Format string is: ";
+    err_str.append(format);
     send(l, tag, err_str);
     return;
   }
   ++len; //To include null terminator
-  std::vector<char> buf(len);
-  std::fill(buf.begin(), buf.end(), 0);
-  len = std::vsnprintf(buf.data(), len, format, args);
-  if (len < 0) {
-    //error processing arguments
-    std::string err_str = "ERROR: When processing arguments in log format string. ";
-    err_str.append(std::string(format));
-    send(l, tag, err_str.c_str());
-    return;
-  }
+  std::vector<char> buf(len, 0);
+  std::vsnprintf(buf.data(), len, format, args);
   send(l, tag, buf.data());
 
   return;
