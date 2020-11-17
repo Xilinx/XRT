@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -125,7 +125,7 @@ std::string event_dependencies_to_string(std::vector<xocl::event*>&& dependencie
 namespace appdebug {
 
 // Call back function to be called when a command is sent to the scheduler
-void cb_scheduler_cmd_start (const xrt::command* aCommand, const xocl::execution_context* aContext)
+void cb_scheduler_cmd_start (const xrt_xocl::command* aCommand, const xocl::execution_context* aContext)
 {
   //update the datastructure associated with the given event
   try {
@@ -143,7 +143,7 @@ void cb_scheduler_cmd_start (const xrt::command* aCommand, const xocl::execution
 
 
 // Call back function to be called when a command is finished
-void cb_scheduler_cmd_done (const xrt::command* aCommand, const xocl::execution_context* aContext)
+void cb_scheduler_cmd_done (const xrt_xocl::command* aCommand, const xocl::execution_context* aContext)
 {
   //update the datastructure associated with the given event
   try {
@@ -1026,7 +1026,7 @@ clGetKernelInfo()
 bool
 isAppdebugEnabled()
 {
-  return xrt::config::get_app_debug();
+  return xrt_xocl::config::get_app_debug();
 }
 
 uint32_t getIPCountAddrNames(std::string& devUserName, int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,7 +21,7 @@
 #include "xrt/util/debug.h"
 
 #ifdef XDP_VERBOSE
-# define XDP_DEBUG(...) xrt::debug(__VA_ARGS__)
+# define XDP_DEBUG(...) xrt_xocl::debug(__VA_ARGS__)
 # define XDP_LOG(format,...) ::xocl::logf(format, ##__VA_ARGS__)
 #else
 # define XDP_DEBUG(...)

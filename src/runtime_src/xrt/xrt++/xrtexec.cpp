@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -57,30 +57,30 @@ add_cu(ert_start_kernel_cmd* skcmd, index_type cuidx)
 void
 acquire_cu_context(xrt_device* device, value_type cuidx)
 {
-  auto xdevice = static_cast<xrt::device*>(device);
+  auto xdevice = static_cast<xrt_xocl::device*>(device);
   xdevice->acquire_cu_context(cuidx,true);
 }
 
 void
 release_cu_context(xrt_device* device, value_type cuidx)
 {
-  auto xdevice = static_cast<xrt::device*>(device);
+  auto xdevice = static_cast<xrt_xocl::device*>(device);
   xdevice->release_cu_context(cuidx);
 }
 
-xrt::device::device_handle
+xrt_xocl::device::device_handle
 get_device_handle(const xrt_device* device)
 {
-  auto xdevice = static_cast<const xrt::device*>(device);
+  auto xdevice = static_cast<const xrt_xocl::device*>(device);
   return xdevice->get_handle();
 }
 
 namespace exec {
 
-struct command::impl : xrt::command
+struct command::impl : xrt_xocl::command
 {
-  impl(xrt::device* device, ert_cmd_opcode opcode)
-    : xrt::command(device,opcode)
+  impl(xrt_xocl::device* device, ert_cmd_opcode opcode)
+    : xrt_xocl::command(device,opcode)
       //    , ecmd(get_ert_cmd<ert_packet*>())
   {
     ert_pkt = get_ert_cmd<ert_packet*>();
@@ -94,7 +94,7 @@ struct command::impl : xrt::command
 
 command::
 command(xrt_device* device, ert_cmd_opcode opcode)
-  : m_impl(std::make_shared<impl>(static_cast<xrt::device*>(device),opcode))
+  : m_impl(std::make_shared<impl>(static_cast<xrt_xocl::device*>(device),opcode))
 {}
 
 void

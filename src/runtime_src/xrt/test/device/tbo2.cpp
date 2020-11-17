@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,12 +26,12 @@
 #include <future>
 #include <thread>
 
-using namespace xrt::test;
+using namespace xrt_xocl::test;
 
 namespace {
 
 static void
-run(xrt::device* mydev, unsigned count)
+run(xrt_xocl::device* mydev, unsigned count)
 {
   std::thread::id tid = std::this_thread::get_id();
   std::cout << "Thread ID: " << tid << "\n";
@@ -42,7 +42,7 @@ run(xrt::device* mydev, unsigned count)
     randomChar += 32;
   const int bufSize = 1024;
 
-  std::vector<xrt::hal::BufferObjectHandle> boArray(count);
+  std::vector<xrt_xocl::hal::BufferObjectHandle> boArray(count);
   for (unsigned i = 0; i < count; i++) {
     boArray[i] = mydev->alloc(bufSize);
     char *data1 = new char[bufSize];
@@ -50,19 +50,19 @@ run(xrt::device* mydev, unsigned count)
 
     std::memset(data1, randomChar, bufSize);
     std::memset(data2, 0, bufSize);
-    xrt::event ev1 = mydev->write(boArray[i], data1, bufSize, 0);
+    xrt_xocl::event ev1 = mydev->write(boArray[i], data1, bufSize, 0);
     ev1.wait();
-    xrt::event ev2 = mydev->read(boArray[i], data2, bufSize, 0);
+    xrt_xocl::event ev2 = mydev->read(boArray[i], data2, bufSize, 0);
     ev1.wait();
     int result = std::memcmp(data1, data2, bufSize);
     BOOST_CHECK_EQUAL(result, 0);
 
     std::memset(data2, 0, bufSize);
-    xrt::event ev3 = mydev->sync(boArray[i], bufSize, 0, xrt::device::direction::HOST2DEVICE);
+    xrt_xocl::event ev3 = mydev->sync(boArray[i], bufSize, 0, xrt_xocl::device::direction::HOST2DEVICE);
     ev3.wait();
-    xrt::event ev4 = mydev->write(boArray[i], data2, bufSize, 0);
+    xrt_xocl::event ev4 = mydev->write(boArray[i], data2, bufSize, 0);
     ev4.wait();
-    ev4 = mydev->sync(boArray[i], bufSize, 0, xrt::device::direction::DEVICE2HOST);
+    ev4 = mydev->sync(boArray[i], bufSize, 0, xrt_xocl::device::direction::DEVICE2HOST);
     ev4.wait();
 
     void *data3 = mydev->map(boArray[i]);
@@ -75,12 +75,12 @@ run(xrt::device* mydev, unsigned count)
 
     std::memset(data3, randomChar, bufSize);
     std::memset(data1, randomChar, bufSize);
-    xrt::event ev5 = mydev->sync(boArray[i], bufSize, 0, xrt::device::direction::HOST2DEVICE);
+    xrt_xocl::event ev5 = mydev->sync(boArray[i], bufSize, 0, xrt_xocl::device::direction::HOST2DEVICE);
     ev5.wait();
     std::memset(data3, 0, bufSize);
-    xrt::event ev6 = mydev->sync(boArray[i], bufSize, 0, xrt::device::direction::DEVICE2HOST);
+    xrt_xocl::event ev6 = mydev->sync(boArray[i], bufSize, 0, xrt_xocl::device::direction::DEVICE2HOST);
     ev6.wait();
-    xrt::event ev7 = mydev->read(boArray[i], data2, bufSize, 0);
+    xrt_xocl::event ev7 = mydev->read(boArray[i], data2, bufSize, 0);
     ev7.wait();
     result = std::memcmp(data2, data3, bufSize);
     BOOST_CHECK_EQUAL(result, 0);
@@ -89,14 +89,14 @@ run(xrt::device* mydev, unsigned count)
     delete [] data1;
     delete [] data2;
   }
-  for (xrt::hal::BufferObjectHandle bo : boArray) {
+  for (xrt_xocl::hal::BufferObjectHandle bo : boArray) {
     mydev->unmap(bo);
     mydev->free(bo);
   }
 }
 
 static void
-runThreads(xrt::device* mydev, unsigned count)
+runThreads(xrt_xocl::device* mydev, unsigned count)
 {
   std::cout << "Launching concurrent BO tests ...\n";
   auto future0 = std::async(std::launch::async, run, mydev, count);
@@ -115,10 +115,10 @@ BOOST_AUTO_TEST_SUITE(test_bo_stress)
 
 BOOST_AUTO_TEST_CASE(bo1)
 {
-  auto pred = [](const xrt::hal::device& hal) {
+  auto pred = [](const xrt_xocl::hal::device& hal) {
     return (hal.getDriverLibraryName().find("xcldrv")!=std::string::npos);
   };
-  auto devices = xrt::test::loadDevices(std::move(pred));
+  auto devices = xrt_xocl::test::loadDevices(std::move(pred));
 
   for (auto& device : devices) {
     device.open();
@@ -133,10 +133,10 @@ BOOST_AUTO_TEST_CASE(bo1)
 
 BOOST_AUTO_TEST_CASE(bo2)
 {
-  auto pred = [](const xrt::hal::device& hal) {
+  auto pred = [](const xrt_xocl::hal::device& hal) {
     return (hal.getDriverLibraryName().find("xcldrv")!=std::string::npos);
   };
-  auto devices = xrt::test::loadDevices(std::move(pred));
+  auto devices = xrt_xocl::test::loadDevices(std::move(pred));
 
   for (auto& device : devices) {
     device.open();

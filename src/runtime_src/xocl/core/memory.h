@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -46,7 +46,7 @@ class memory : public refcount, public _cl_mem
   using memidx_type = xclbin::memidx_type;
 
 protected:
-  using buffer_object_handle = xrt::device::BufferObjectHandle;
+  using buffer_object_handle = xrt_xocl::device::BufferObjectHandle;
   using buffer_object_map_type = std::map<const device*,buffer_object_handle>;
   using bomap_type = std::map<const device*,buffer_object_handle>;
   using bomap_value_type = bomap_type::value_type;
@@ -391,7 +391,7 @@ public:
    * Used for progvar memory objects exclusively.
    */
   virtual buffer_object_handle
-  get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memidx);
+  get_buffer_object(device* device, xrt_xocl::device::memoryDomain domain, uint64_t memidx);
 
   /**
    * Check if buffer is resident on any device
@@ -742,7 +742,7 @@ public:
   get_buffer_object(device* device);
 
   virtual buffer_object_handle
-  get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memoryIndex);
+  get_buffer_object(device* device, xrt_xocl::device::memoryDomain domain, uint64_t memoryIndex);
 
 private:
 

@@ -40,7 +40,7 @@ class event;
  * is deleted when the xocl::event destructs.
  *
  * The execution context executes a kernel event by sending
- * xrt::command objects to the xrt::scheduler.  The scheduler
+ * xrt_xocl::command objects to the xrt_xocl::scheduler.  The scheduler
  * itself can be running in either software or hardware.
  *
  * When a command is constructed all registered construction callbacks
@@ -54,8 +54,8 @@ class execution_context
   struct start_kernel;
 
 public:
-  using command_type = std::shared_ptr<xrt::command>;
-  using packet_type = xrt::command::packet_type;
+  using command_type = std::shared_ptr<xrt_xocl::command>;
+  using packet_type = xrt_xocl::command::packet_type;
   using regmap_type = packet_type;
   using word_type = packet_type::word_type;
 
@@ -156,7 +156,7 @@ private:
    *   be used.
    */
   bool
-  done(const xrt::command* cmd);
+  done(const xrt_xocl::command* cmd);
 
 public:
   /**
@@ -273,7 +273,7 @@ public:
 /**
  * Callback function type for kernel command callbacks
  */
-using command_callback_function_type = std::function<void(const xrt::command*,const execution_context*)>;
+using command_callback_function_type = std::function<void(const xrt_xocl::command*,const execution_context*)>;
 
 /**
  * Register function to invoke when a kernel command is constructed

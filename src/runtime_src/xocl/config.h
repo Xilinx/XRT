@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -48,7 +48,7 @@ namespace xocl { namespace config {
 inline bool
 api_checks()
 {
-  return xrt::config::get_api_checks();
+  return xrt_xocl::config::get_api_checks();
 }
 
 }}

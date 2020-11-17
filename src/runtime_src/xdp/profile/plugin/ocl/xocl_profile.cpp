@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -47,7 +47,7 @@ get_cu_index_mask(uint32_t cumask)
 
 // Index of CU used to execute command
 unsigned int
-get_cu_index(const xrt::command* cmd)
+get_cu_index(const xrt_xocl::command* cmd)
 {
   auto& packet = cmd->get_packet();
   auto masks = get_num_cu_masks(packet[0]);
@@ -63,7 +63,7 @@ get_cu_index(const xrt::command* cmd)
 // Compute unit profiling callbacks
 ////////////////////////////////////////////////////////////////
 
-void get_cu_start(const xrt::command* cmd, const xocl::execution_context* ctx)
+void get_cu_start(const xrt_xocl::command* cmd, const xocl::execution_context* ctx)
 {
   //auto packet = cmd->get_packet();
   auto kernel = ctx->get_kernel();
@@ -100,7 +100,7 @@ void get_cu_start(const xrt::command* cmd, const xocl::execution_context* ctx)
                           workGroupSize, localWorkDim, cuName);
 }
 
-void get_cu_done(const xrt::command* cmd, const xocl::execution_context* ctx)
+void get_cu_done(const xrt_xocl::command* cmd, const xocl::execution_context* ctx)
 {
   //auto packet = cmd->get_packet();
   auto kernel = ctx->get_kernel();

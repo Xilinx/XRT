@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -148,10 +148,10 @@ update_buffer_object_map(const device* device, buffer_object_handle boh)
 
 memory::buffer_object_handle
 memory::
-get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memidx)
+get_buffer_object(device* device, xrt_xocl::device::memoryDomain domain, uint64_t memidx)
 {
   // for progvar only
-  assert(domain==xrt::device::memoryDomain::XRT_DEVICE_PREALLOCATED_BRAM);
+  assert(domain==xrt_xocl::device::memoryDomain::XRT_DEVICE_PREALLOCATED_BRAM);
 
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
@@ -389,7 +389,7 @@ register_destructor_callbacks (memory::memory_callback_type&& cb)
 //Functions for derived classes.
 memory::buffer_object_handle
 image::
-get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memidx)
+get_buffer_object(device* device, xrt_xocl::device::memoryDomain domain, uint64_t memidx)
 {
   if (auto boh = get_buffer_object_or_null(device))
     return boh;

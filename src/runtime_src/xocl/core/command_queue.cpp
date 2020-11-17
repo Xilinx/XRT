@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -45,7 +45,7 @@ command_queue(context* ctx, device* device, cl_command_queue_properties props)
   static unsigned int uid_count = 0;
   m_uid = uid_count++;
 
-  if (xrt::config::get_profile())
+  if (xrt_xocl::config::get_profile())
     m_props |= CL_QUEUE_PROFILING_ENABLE;
 
   XOCL_DEBUG(std::cout,"xocl::command_queue::command_queue(",m_uid,")\n");

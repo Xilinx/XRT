@@ -58,7 +58,7 @@ send_exception_message(const std::string& msg)
 
 }
 
-namespace xrt { namespace hal2 {
+namespace xrt_xocl { namespace hal2 {
 
 device::
 device(std::shared_ptr<operations> ops, unsigned int idx)
@@ -639,10 +639,10 @@ device::
 unmap(const BufferObjectHandle& boh)
 {
 /*
- * Any BO allocated through xrt::hal2 is mapped by default and cannot be munmap'ed.
+ * Any BO allocated through xrt_xocl::hal2 is mapped by default and cannot be munmap'ed.
  * The unmapping happens as part of the buffer object handle going out of scope.
- * xrt::device::map() simply returns the already nmap'ed host pointer contained within the opaque buffer object handle.
- * So,xrt::device::unmap is provided for symmetry but is a no-op.
+ * xrt_xocl::device::map() simply returns the already nmap'ed host pointer contained within the opaque buffer object handle.
+ * So,xrt_xocl::device::unmap is provided for symmetry but is a no-op.
  */
 }
 
@@ -659,10 +659,10 @@ device::
 unmap(const ExecBufferObjectHandle& boh)
 {
 /*
- * Any BO allocated through xrt::hal2 is mapped by default and cannot be munmap'ed.
+ * Any BO allocated through xrt_xocl::hal2 is mapped by default and cannot be munmap'ed.
  * The unmapping happens as part of the buffer object handle going out of scope.
- * xrt::device::map() simply returns the already nmap'ed host pointer contained within the opaque buffer object handle.
- * So,xrt::device::unmap is provided for symmetry but is a no-op.
+ * xrt_xocl::device::map() simply returns the already nmap'ed host pointer contained within the opaque buffer object handle.
+ * So,xrt_xocl::device::unmap is provided for symmetry but is a no-op.
  */
 }
 
@@ -923,7 +923,7 @@ createDevices(hal::device_list& devices,
 {
   auto halops = std::make_shared<operations>(dll,driverHandle,deviceCount);
   for (unsigned int idx=0; idx<deviceCount; ++idx)
-    devices.emplace_back(std::make_unique<xrt::hal2::device>(halops,idx));
+    devices.emplace_back(std::make_unique<xrt_xocl::hal2::device>(halops,idx));
 }
 
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -381,18 +381,18 @@ namespace xdp {
 
   void XoclPlugin::getXrtIniSettings()
   {
-    mXrtIniMap["profile"] = std::to_string(xrt::config::get_profile());
-    mXrtIniMap["timeline_trace"] = std::to_string(xrt::config::get_timeline_trace());
-    mXrtIniMap["data_transfer_trace"] = xrt::config::get_data_transfer_trace();
-    mXrtIniMap["power_profile"] = std::to_string(xrt::config::get_power_profile());
-    mXrtIniMap["stall_trace"] = xrt::config::get_stall_trace();
-    mXrtIniMap["trace_buffer_size"] = xrt::config::get_trace_buffer_size();
-    mXrtIniMap["aie_trace_buffer_size"] = xrt::config::get_aie_trace_buffer_size();
-    mXrtIniMap["verbosity"] = std::to_string(xrt::config::get_verbosity());
-    mXrtIniMap["continuous_trace"] = std::to_string(xrt::config::get_continuous_trace());
-    mXrtIniMap["continuous_trace_interval_ms"] = std::to_string(xrt::config::get_continuous_trace_interval_ms());
-    mXrtIniMap["lop_trace"] = std::to_string(xrt::config::get_lop_trace());
-    mXrtIniMap["launch_waveform"] = xrt::config::get_launch_waveform();
+    mXrtIniMap["profile"] = std::to_string(xrt_xocl::config::get_profile());
+    mXrtIniMap["timeline_trace"] = std::to_string(xrt_xocl::config::get_timeline_trace());
+    mXrtIniMap["data_transfer_trace"] = xrt_xocl::config::get_data_transfer_trace();
+    mXrtIniMap["power_profile"] = std::to_string(xrt_xocl::config::get_power_profile());
+    mXrtIniMap["stall_trace"] = xrt_xocl::config::get_stall_trace();
+    mXrtIniMap["trace_buffer_size"] = xrt_xocl::config::get_trace_buffer_size();
+    mXrtIniMap["aie_trace_buffer_size"] = xrt_xocl::config::get_aie_trace_buffer_size();
+    mXrtIniMap["verbosity"] = std::to_string(xrt_xocl::config::get_verbosity());
+    mXrtIniMap["continuous_trace"] = std::to_string(xrt_xocl::config::get_continuous_trace());
+    mXrtIniMap["continuous_trace_interval_ms"] = std::to_string(xrt_xocl::config::get_continuous_trace_interval_ms());
+    mXrtIniMap["lop_trace"] = std::to_string(xrt_xocl::config::get_lop_trace());
+    mXrtIniMap["launch_waveform"] = xrt_xocl::config::get_launch_waveform();
   }
 
   // ****************************************
@@ -481,6 +481,6 @@ namespace xdp {
 
   void XoclPlugin::sendMessage(const std::string &msg)
   {
-    xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
+    xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, msg);
   }
 } // xdp

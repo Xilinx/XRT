@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2018-2019 Xilinx, Inc
+* Copyright (C) 2018-2020 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
 * not use this file except in compliance with the License. A copy of the
@@ -27,13 +27,13 @@ namespace xocl {
 //class stream for qdma and other streaming purposes.
 class stream : public _cl_stream // TODO: public refcount
 {  
-  using stream_opt_type = xrt::hal::StreamOptType;
+  using stream_opt_type = xrt_xocl::hal::StreamOptType;
   using stream_flags_type = property_object<cl_stream_flags>;
   using stream_attributes_type = property_object<cl_stream_attributes>;
 protected:
-  using stream_handle = xrt::hal::StreamHandle;
-  using stream_xfer_flags = xrt::hal::StreamXferFlags;
-  using stream_xfer_req = xrt::hal::StreamXferReq;
+  using stream_handle = xrt_xocl::hal::StreamHandle;
+  using stream_xfer_flags = xrt_xocl::hal::StreamXferFlags;
+  using stream_xfer_req = xrt_xocl::hal::StreamXferReq;
 
 public:
   stream(stream_flags_type flags, stream_attributes_type attr, cl_mem_ext_ptr_t* ext);
@@ -47,7 +47,7 @@ private:
   int m_connidx = -1;
 public:
   int get_stream(device* device); 
-  int poll_stream(xrt::device::stream_xfer_completions *comps, int min, int max, int *actual, int timeout); 
+  int poll_stream(xrt_xocl::device::stream_xfer_completions *comps, int min, int max, int *actual, int timeout); 
   int set_stream_opt(int type, uint32_t val);
   ssize_t read(void* ptr, size_t size, stream_xfer_req* req );
   ssize_t write(const void* ptr, size_t size, stream_xfer_req* req);
@@ -57,8 +57,8 @@ public:
 //class stream_mem for streaming memory allocs.
 class stream_mem : public _cl_stream_mem //TODO: public refcount
 {   
-  using stream_buf_handle = xrt::hal::StreamBufHandle;
-  using stream_buf = xrt::hal::StreamBuf;
+  using stream_buf_handle = xrt_xocl::hal::StreamBufHandle;
+  using stream_buf = xrt_xocl::hal::StreamBuf;
 public:
   size_t m_size {0};
   stream_buf_handle m_handle {0};

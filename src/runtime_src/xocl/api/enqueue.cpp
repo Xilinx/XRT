@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -77,11 +77,11 @@ throw_if_error()
 }
 
 // Command based enqueue needs to manage event state
-struct enqueue_command : xrt::command
+struct enqueue_command : xrt_xocl::command
 {
   xocl::event* m_ev;
   enqueue_command(xocl::device* device, xocl::event* event,ert_cmd_opcode opcode)
-    : xrt::command(device->get_xrt_device(),opcode), m_ev(event)
+    : xrt_xocl::command(device->get_xrt_device(),opcode), m_ev(event)
   {}
   virtual void start() const
   {
@@ -97,7 +97,7 @@ struct enqueue_command : xrt::command
   }
 };
 
-using async_type = xrt::device::queue_type;
+using async_type = xrt_xocl::device::queue_type;
 
 auto event_completer = [](xocl::event* ev)
 {
@@ -348,7 +348,7 @@ action_ndrange_migrate(cl_event event,cl_kernel kernel)
   for (auto& arg : xocl::xocl(kernel)->get_argument_range()) {
     if (auto mem = arg->get_memory_object()) {
       if (arg->is_progvar() && arg->get_address_qualifier()==CL_KERNEL_ARG_ADDRESS_GLOBAL /*1*/) {
-        mem->get_buffer_object(device,xrt::device::memoryDomain::XRT_DEVICE_PREALLOCATED_BRAM,arg->get_baseaddr());
+        mem->get_buffer_object(device,xrt_xocl::device::memoryDomain::XRT_DEVICE_PREALLOCATED_BRAM,arg->get_baseaddr());
         // progvars are not to be transfered so dont add to kernel args
       }
       else {

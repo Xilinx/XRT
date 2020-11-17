@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -134,14 +134,14 @@ public:
   /*virtual*/ void
   set_profile_action(event::action_profile_type&& action)
   {
-    if (xrt::config::get_profile())
+    if (xrt_xocl::config::get_profile())
       m_profile_action = std::move(action);
   }
 
   void
   set_lop_action(event::action_lop_type&& action)
   {
-    if (xrt::config::get_lop_trace())
+    if (xrt_xocl::config::get_lop_trace())
       m_lop_action = std::move(action);
   }
 

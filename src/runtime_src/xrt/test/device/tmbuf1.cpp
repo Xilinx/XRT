@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -29,12 +29,12 @@
 #include <future>
 #include <thread>
 
-using namespace xrt::test;
+using namespace xrt_xocl::test;
 
 namespace {
 
 static void
-run(xrt::device* mydev)
+run(xrt_xocl::device* mydev)
 {
   std::thread::id tid = std::this_thread::get_id();
   std::cout << "Thread ID: " << tid << "\n";
@@ -47,10 +47,10 @@ BOOST_AUTO_TEST_SUITE(test_mbuf_basic)
 
 BOOST_AUTO_TEST_CASE(mbuf1)
 {
-  auto pred = [](const xrt::hal::device& hal) {
+  auto pred = [](const xrt_xocl::hal::device& hal) {
     return (hal.getDriverLibraryName().find("xcldrv")!=std::string::npos);
   };
-  auto devices = xrt::test::loadDevices(std::move(pred));
+  auto devices = xrt_xocl::test::loadDevices(std::move(pred));
 
   for (auto& device : devices) {
     device.open();

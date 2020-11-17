@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -41,7 +41,7 @@ public:
   using compute_unit_vector_type = std::vector<compute_unit_type>;
   using compute_unit_range = compute_unit_vector_type;
   using compute_unit_iterator = compute_unit_vector_type::const_iterator;
-  using cmd_type = std::shared_ptr<xrt::command>;
+  using cmd_type = std::shared_ptr<xrt_xocl::command>;
   using memidx_type = xclbin::memidx_type;
   using connidx_type = xclbin::connidx_type;
 
@@ -53,7 +53,7 @@ public:
    * @param xdevice
    *   The underlying xrt device managed by the platform
    */
-  device(platform* pltf, xrt::device* xdevice);
+  device(platform* pltf, xrt_xocl::device* xdevice);
 
   /**
    * Sub device constructor
@@ -113,7 +113,7 @@ public:
     return m_parent.get() != nullptr;
   }
 
-  xrt::device*
+  xrt_xocl::device*
   get_xrt_device() const
   {
     return  m_xdevice;
@@ -233,8 +233,8 @@ public:
    * @return
    *  Imported buffer object associated with this device
    */
-  xrt::device::BufferObjectHandle
-  import_buffer_object(const device* src_device, const  xrt::device::BufferObjectHandle& src_boh);
+  xrt_xocl::device::BufferObjectHandle
+  import_buffer_object(const device* src_device, const  xrt_xocl::device::BufferObjectHandle& src_boh);
 
   /**
    * Allocate and return a buffer object for argument cl_mem.
@@ -249,7 +249,7 @@ public:
    * @return
    *   The buffer object that was created.
    */
-  xrt::device::BufferObjectHandle
+  xrt_xocl::device::BufferObjectHandle
   allocate_buffer_object(memory* mem);
 
   /**
@@ -265,7 +265,7 @@ public:
    * @return
    *   The buffer object that was created.
    */
-  xrt::device::BufferObjectHandle
+  xrt_xocl::device::BufferObjectHandle
   allocate_buffer_object(memory* mem, memidx_type memidx);
 
   /**
@@ -274,8 +274,8 @@ public:
    * Used by clCreateProgramWithBinary.  Not a great interface, but
    * has to be exposed here to ensure proper locking
    */
-  xrt::device::BufferObjectHandle
-  allocate_buffer_object(memory* mem, xrt::device::memoryDomain domain, uint64_t memoryIndex, void* user_ptr);
+  xrt_xocl::device::BufferObjectHandle
+  allocate_buffer_object(memory* mem, xrt_xocl::device::memoryDomain domain, uint64_t memoryIndex, void* user_ptr);
 
   /**
    * Free memory object on this device
@@ -306,7 +306,7 @@ public:
    *   return the address of the buffer object
    */
   uint64_t
-  get_boh_addr(const xrt::device::BufferObjectHandle& boh) const;
+  get_boh_addr(const xrt_xocl::device::BufferObjectHandle& boh) const;
 
   /**
    * Get indicies of matching memory banks on which mem is allocated
@@ -318,7 +318,7 @@ public:
    *   Memory indeces identifying bank or -1 if not allocated
    */
   memidx_bitmask_type
-  get_boh_memidx(const xrt::device::BufferObjectHandle& boh) const;
+  get_boh_memidx(const xrt_xocl::device::BufferObjectHandle& boh) const;
 
   /**
    * Get the banktag of the bank on which mem is allocated
@@ -331,7 +331,7 @@ public:
    *   Banktag or "Unknown" if no match
    */
   std::string
-  get_boh_banktag(const xrt::device::BufferObjectHandle& boh) const;
+  get_boh_banktag(const xrt_xocl::device::BufferObjectHandle& boh) const;
 
   /**
    * Get the memory index of the bank for all CUs in this device
@@ -446,31 +446,31 @@ public:
   read_image(memory* image,const size_t* origin,const size_t* region,size_t row_pitch,size_t slice_pitch,void *ptr);
 
   int
-  get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream, int32_t& m_conn);
+  get_stream(xrt_xocl::device::stream_flags flags, xrt_xocl::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt_xocl::device::stream_handle* stream, int32_t& m_conn);
 
   int
-  close_stream(xrt::device::stream_handle stream, int connidx);
+  close_stream(xrt_xocl::device::stream_handle stream, int connidx);
 
   ssize_t
-  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t size, xrt::device::stream_xfer_req* req);
+  write_stream(xrt_xocl::device::stream_handle stream, const void* ptr, size_t size, xrt_xocl::device::stream_xfer_req* req);
 
   ssize_t
-  read_stream(xrt::device::stream_handle stream, void* ptr, size_t size, xrt::device::stream_xfer_req* req);
+  read_stream(xrt_xocl::device::stream_handle stream, void* ptr, size_t size, xrt_xocl::device::stream_xfer_req* req);
 
-  xrt::device::stream_buf
-  alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle);
-
-  int
-  free_stream_buf(xrt::device::stream_buf_handle handle);
+  xrt_xocl::device::stream_buf
+  alloc_stream_buf(size_t size, xrt_xocl::device::stream_buf_handle* handle);
 
   int
-  set_stream_opt(xrt::device::stream_handle stream, int type, uint32_t val);
+  free_stream_buf(xrt_xocl::device::stream_buf_handle handle);
 
   int
-  poll_stream(xrt::device::stream_handle stream, xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
+  set_stream_opt(xrt_xocl::device::stream_handle stream, int type, uint32_t val);
 
   int
-  poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
+  poll_stream(xrt_xocl::device::stream_handle stream, xrt_xocl::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
+
+  int
+  poll_streams(xrt_xocl::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
 
   /**
    * Read a device register at specified offset
@@ -740,7 +740,7 @@ private:
    * @return
    *  Buffer object handle for allocated memory
    */
-  xrt::device::BufferObjectHandle
+  xrt_xocl::device::BufferObjectHandle
   alloc(memory* mem, memidx_type memidx);
 
   /**
@@ -751,7 +751,7 @@ private:
    * @return
    *  Buffer object handle for allocated memory
    */
-  xrt::device::BufferObjectHandle
+  xrt_xocl::device::BufferObjectHandle
   alloc(memory* mem);
 
 
@@ -768,7 +768,7 @@ private:
   unsigned int m_locks = 0;      // number of locks on this device
 
   platform* m_platform = nullptr;
-  xrt::device* m_xdevice = nullptr;
+  xrt_xocl::device* m_xdevice = nullptr;
 
   // Set for sub-device only
   ptr<device> m_parent = nullptr;

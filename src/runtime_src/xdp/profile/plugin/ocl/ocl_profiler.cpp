@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -75,7 +75,7 @@ namespace xdp {
 
     // End all profiling, including device
     if (!mEndDeviceProfilingCalled && applicationProfilingOn()) {
-      xrt::message::send(xrt::message::severity_level::XRT_WARNING,
+      xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING,
           "Profiling may contain incomplete information. Please ensure all OpenCL objects are released by your host code (e.g., clReleaseProgram()).");
 
       // Before deleting, do a final read of counters and force flush of trace buffers
@@ -251,7 +251,7 @@ namespace xdp {
           /* this ip_config only tells whether the corresponding CU has ap_control_chain :
            * could have been just a property on the monitor set at compile time (in debug_ip_layout)
            * Currently, isApCtrlChain retrieves info from xocl::device and conpute_unit. So, could not be moved
-           * into DeviceIntf as it uses xrt::device
+           * into DeviceIntf as it uses xrt_xocl::device
            */
           ip_config[i] = xoclp::platform::device::isAPCtrlChain(device, cuName) ? true : false;
         }
@@ -280,11 +280,11 @@ namespace xdp {
            ++numActiveDevices;
        }
        if (numActiveDevices > 1) {
-         xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_DEVICE);
+         xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_DEVICE);
          mTraceThreadEn = false;
        }
        if (Plugin->getFlowMode() != xdp::RTUtil::DEVICE) {
-         xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_FLOW);
+         xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_FLOW);
          mTraceThreadEn = false;
        }
     }
@@ -332,7 +332,7 @@ namespace xdp {
           
           // Continuous trace isn't safe to use with stall setting
           if (dInt->hasFIFO() && mTraceThreadEn && stallTrace!= xdp::RTUtil::STALL_TRACE_OFF) {
-            xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_STALLS);
+            xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_STALLS);
           }
 
           DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
@@ -362,7 +362,7 @@ namespace xdp {
                 std::string msg = std::string(TS2MM_WARN_MSG_CIRC_BUF)
                                 + " Minimum required offload rate (bytes per second) : " + std::to_string(min_offload_rate)
                                 + " Requested offload rate : " + std::to_string(requested_offload_rate);
-                xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
+                xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, msg);
               }
             }
           }
@@ -372,7 +372,7 @@ namespace xdp {
         } else {
           delete deviceTraceLogger;
           if (dInt->hasTs2mm()) {
-            xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
+            xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
           }
         }
       } else {
@@ -484,14 +484,14 @@ namespace xdp {
 
   // Kick off profiling and open writers
   void OCLProfiler::startProfiling() {
-    if (xrt::config::get_profile() == false)
+    if (xrt_xocl::config::get_profile() == false)
       return;
 
     ProfileMgr->setProfileStartTime(std::chrono::steady_clock::now());
 
     // Turn on device profiling (as requested)
-    std::string data_transfer_trace = xrt::config::get_data_transfer_trace();
-    std::string stall_trace = xrt::config::get_stall_trace();
+    std::string data_transfer_trace = xrt_xocl::config::get_data_transfer_trace();
+    std::string stall_trace = xrt_xocl::config::get_stall_trace();
 
     // Turn on application profiling
     turnOnProfile(xdp::RTUtil::PROFILE_APPLICATION);
@@ -500,8 +500,8 @@ namespace xdp {
 
     char* emuMode = std::getenv("XCL_EMULATION_MODE");
     if((!emuMode /* Device Flow */
-        || ((0 == strcmp(emuMode, "hw_emu")) && xrt::config::get_system_dpa_emulation()) /* HW Emu with System DPA, same as Device Flow */
-        || (data_transfer_trace.find("off") == std::string::npos)) && xrt::config::get_timeline_trace()  ) {
+        || ((0 == strcmp(emuMode, "hw_emu")) && xrt_xocl::config::get_system_dpa_emulation()) /* HW Emu with System DPA, same as Device Flow */
+        || (data_transfer_trace.find("off") == std::string::npos)) && xrt_xocl::config::get_timeline_trace()  ) {
       turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_TRACE);
     }
 
@@ -524,12 +524,12 @@ namespace xdp {
 
     // Enable Trace File if profile is on and trace is enabled
     std::string timelineFile("");
-    if (xrt::config::get_timeline_trace()) {
+    if (xrt_xocl::config::get_timeline_trace()) {
       timelineFile = "timeline_trace";
       ProfileMgr->turnOnFile(xdp::RTUtil::FILE_TIMELINE_TRACE);
-      mTraceThreadEn = xrt::config::get_continuous_trace();
+      mTraceThreadEn = xrt_xocl::config::get_continuous_trace();
       if (mTraceThreadEn) {
-        mTraceReadIntMs = xrt::config::get_continuous_trace_interval_ms();
+        mTraceReadIntMs = xrt_xocl::config::get_continuous_trace_interval_ms();
       } else {
         // Faster clock training causes problems with long designs
         // 500ms is good enough for continous clock training
@@ -739,7 +739,7 @@ namespace xdp {
       sz = memorySz;
       std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memorySz)
                         + " Bytes instead.";
-      xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
+      xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, msg);
     }
     return sz;
   }

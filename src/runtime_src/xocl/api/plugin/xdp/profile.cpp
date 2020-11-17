@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -454,13 +454,13 @@ function_call_logger(const char* function, long long address)
   //This call here should occur just once per application run
   if (!s_load_xdp) {
     s_load_xdp = true;
-    if (xrt::config::get_profile()) {
-      xrt::hal::load_xdp();
+    if (xrt_xocl::config::get_profile()) {
+      xrt_xocl::hal::load_xdp();
     }
 #ifdef _WIN32
     // Application debug not supported on Windows
 #else
-    if (xrt::config::get_app_debug()) {
+    if (xrt_xocl::config::get_app_debug()) {
       xocl::appdebug::load_xdp_app_debug() ;
     }
 #endif

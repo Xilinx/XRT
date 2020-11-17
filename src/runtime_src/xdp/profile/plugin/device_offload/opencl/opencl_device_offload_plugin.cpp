@@ -47,7 +47,7 @@ namespace xdp {
 
     // Since we are using xocl and xrt level objects in this plugin,
     //  we need a pointer to the shared platform to make sure the
-    //  xrt::device objects aren't destroyed before we get a chance
+    //  xrt_xocl::device objects aren't destroyed before we get a chance
     //  to offload the trace at the end
     platform = xocl::get_shared_platform() ;
   }
@@ -97,7 +97,7 @@ namespace xdp {
     if (!active) return ;
     if (getFlowMode() == SW_EMU) return ;
 
-    xrt::device* device = static_cast<xrt::device*>(d) ;
+    xrt_xocl::device* device = static_cast<xrt_xocl::device*>(d) ;
 
     std::string path = device->getDebugIPlayoutPath().get() ;
 
@@ -114,8 +114,8 @@ namespace xdp {
     if (!active) return ;
     if (getFlowMode() == SW_EMU) return ;
 
-    // The OpenCL level expects an xrt::device to be passed in
-    xrt::device* device = static_cast<xrt::device*>(d) ;
+    // The OpenCL level expects an xrt_xocl::device to be passed in
+    xrt_xocl::device* device = static_cast<xrt_xocl::device*>(d) ;
 
     // In both hardware and hardware emulation, the debug ip layout path
     //  is used as a unique identifier of the physical device

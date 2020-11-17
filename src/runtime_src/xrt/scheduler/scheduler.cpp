@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -55,7 +55,7 @@ inline bool
 kds_enabled(bool forceoff=false)
 {  
   bool iskdsemu = is_sw_emulation() ? (xrt_core::config::get_flag_kds_sw_emu() ? false : true) : false;
-  static bool enabled = !iskdsemu && xrt::config::get_kds() && !xrt::config::get_feature_toggle("Runtime.sws") && !is_windows() ;
+  static bool enabled = !iskdsemu && xrt_xocl::config::get_kds() && !xrt_xocl::config::get_feature_toggle("Runtime.sws") && !is_windows() ;
   if (forceoff)
     enabled = false;
   return enabled;
@@ -63,7 +63,7 @@ kds_enabled(bool forceoff=false)
 
 // Force disabling of kds if emulation and 5.0 DSA
 static void
-emu_50_disable_kds(const xrt::device* device)
+emu_50_disable_kds(const xrt_xocl::device* device)
 {
   static bool done = false;
   if (!done) {
@@ -79,19 +79,19 @@ emu_50_disable_kds(const xrt::device* device)
       return;
 
     // stop kds thread
-    xrt::scheduler::stop();
+    xrt_xocl::scheduler::stop();
 
     // force kds off
     kds_enabled(true/*forceoff*/);
 
     // restart scheduler thread
-    xrt::scheduler::start();
+    xrt_xocl::scheduler::start();
   }
 }
 
 }
 
-namespace xrt {  namespace scheduler {
+namespace xrt_xocl {  namespace scheduler {
 
 void
 start()
@@ -126,7 +126,7 @@ schedule(const command_type& cmd)
 }
 
 void
-init(xrt::device* device)
+init(xrt_xocl::device* device)
 {
   emu_50_disable_kds(device);
 

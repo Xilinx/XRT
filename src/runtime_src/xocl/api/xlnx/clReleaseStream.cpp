@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2019 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,7 +19,7 @@
 #include "plugin/xdp/profile.h"
 #include <CL/opencl.h>
 
-// Copyright 2018 Xilinx, Inc. All rights reserved.
+// Copyright 2018-2020 Xilinx, Inc. All rights reserved.
 
 namespace xocl {
 static void
@@ -43,7 +43,7 @@ clReleaseStream(cl_stream stream) CL_API_SUFFIX__VERSION_1_0
     PROFILE_LOG_FUNCTION_CALL;
     return xocl::clReleaseStream(stream);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
   }
   catch (const std::exception& ex) {
