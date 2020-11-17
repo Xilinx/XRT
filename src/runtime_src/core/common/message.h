@@ -22,8 +22,6 @@
 #include <cstdio>
 #include <vector>
 
-#define MAX_LOGMSG_SIZE 512
-
 namespace xrt_core { namespace message {
 
 //modeled based on syslog severity.
