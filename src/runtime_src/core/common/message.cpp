@@ -284,9 +284,9 @@ void
 send(severity_level l, const char* tag, const char* format, va_list args)
 {
   static auto verbosity = xrt_core::config::get_verbosity();
-  if (l > (xrt_core::message::severity_level)verbosity) {
+  if (l > (xrt_core::message::severity_level)verbosity) 
     return;
-  }
+  
   va_list args_bak;
   // vsnprintf will mutate va_list so back it up
   va_copy(args_bak, args);
