@@ -234,12 +234,12 @@ static void ert_30_reset(struct xocl_ert_30 *ert_30);
 
 static void ert_30_free_cmd(struct ert_30_command* ecmd)
 {
-	vfree(ecmd);
+	kfree(ecmd);
 }
 
 static struct ert_30_command* ert_30_alloc_cmd(struct kds_command *xcmd)
 {
-	struct ert_30_command* ecmd = vzalloc(sizeof(struct ert_30_command));
+	struct ert_30_command* ecmd = kzalloc(sizeof(struct ert_30_command), GFP_KERNEL);
 
 	if (!ecmd)
 		return NULL;
