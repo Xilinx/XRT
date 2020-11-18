@@ -1212,8 +1212,8 @@ clGetDebugCounters() {
     if (device->is_active()) {
       //memset(&debugResults,0, sizeof(xclDebugCountersResults));
       //At this point we deal with only one deviceyy
-      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_AIM, &debugResults);
-      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      device->get_xdevice()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_AIM, &debugResults);
+      sysfs_open_path = device->get_xdevice()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
     }
   }
@@ -1366,8 +1366,8 @@ clGetDebugStreamCounters()
     if (device->is_active())
     {
       // At this point, we are dealing with only one device
-      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_ASM, &streamingDebugCounters);
-      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      device->get_xdevice()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_ASM, &streamingDebugCounters);
+      sysfs_open_path = device->get_xdevice()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_ASM, &streamingDebugCounters);
     }
   }
@@ -1567,8 +1567,8 @@ clGetDebugAccelMonitorCounters()
     if (device->is_active())
     {
       // At this point, we are dealing with only one device
-      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_AM, &amCounters);
-      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      device->get_xdevice()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_AM, &amCounters);
+      sysfs_open_path = device->get_xdevice()->getSysfsPath(subdev, entry).get();
       // ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_AM, &amCounters);
     }
   }
@@ -1789,8 +1789,8 @@ clGetDebugCheckers() {
     if (device->is_active()) {
       //memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
       //At this point we deal with only one deviceyy
-      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
-      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      device->get_xdevice()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
+      sysfs_open_path = device->get_xdevice()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
     }
   }

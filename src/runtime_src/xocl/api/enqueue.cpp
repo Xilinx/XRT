@@ -81,7 +81,7 @@ struct enqueue_command : xrt_xocl::command
 {
   xocl::event* m_ev;
   enqueue_command(xocl::device* device, xocl::event* event,ert_cmd_opcode opcode)
-    : xrt_xocl::command(device->get_xrt_device(),opcode), m_ev(event)
+    : xrt_xocl::command(device->get_xdevice(),opcode), m_ev(event)
   {}
   virtual void start() const
   {
@@ -306,7 +306,7 @@ action_fill_buffer(cl_mem buffer, const void* pattern, size_t pattern_size, size
   return [=](xocl::event* event) {
     auto command_queue = event->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     xdevice->schedule(fill_buffer,async_type::misc,event,device,buffer, pattern, pattern_size, offset, size);
   };
 }
@@ -329,7 +329,7 @@ action_copy_p2p_buffer(cl_mem src_buffer,cl_mem dst_buffer,size_t src_offset,siz
   return [=](xocl::event* ev) {
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     xdevice->schedule(copy_p2p_buffer,async_type::misc,ev,device,src_buffer,dst_buffer, src_offset, dst_offset, size);
   };
 }
@@ -356,7 +356,7 @@ action_ndrange_migrate(cl_event event,cl_kernel kernel)
     XOCL_DEBUG(std::cout,"launching ndrange migrate DMA event(",ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     auto ec = make_shared_event_completer(ev);
 
     for (auto mem : kernel_args) {
@@ -383,7 +383,7 @@ action_read_buffer(cl_mem buffer,size_t offset, size_t size, const void* ptr)
     XOCL_DEBUG(std::cout,"launching read buffer DMA event(",ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     xdevice->schedule(read_buffer,async_type::read,ev,device,buffer,offset,size,const_cast<void*>(ptr));
   };
 }
@@ -407,7 +407,7 @@ action_map_buffer(cl_event event,cl_mem buffer,cl_map_flags map_flags,size_t off
     XOCL_DEBUG(std::cout,"launching map buffer DMA event(",ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     xdevice->schedule(map_buffer,async_type::read,ev,device,buffer,map_flags,offset,size,userptr);
   };
 }
@@ -420,7 +420,7 @@ action_map_svm_buffer(cl_event event,cl_map_flags map_flags,void* svm_ptr,size_t
     XOCL_DEBUG(std::cout, "launching map svm buffer event(", ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     xdevice->schedule(map_svm_buffer,async_type::read,ev,device,map_flags,svm_ptr,size);
   };
 }
@@ -433,7 +433,7 @@ action_write_buffer(cl_mem buffer,size_t offset, size_t size, const void* ptr)
     XOCL_DEBUG(std::cout,"launching write buffer DMA event(",ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     xdevice->schedule(write_buffer,async_type::write,ev,device,buffer,offset,size,ptr);
   };
 }
@@ -446,7 +446,7 @@ action_unmap_buffer(cl_mem memobj,void* mapped_ptr)
     XOCL_DEBUG(std::cout,"launching unmap DMA event(",ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     xdevice->schedule(unmap_buffer,async_type::write,ev,device,memobj,mapped_ptr);
   };
 }
@@ -459,7 +459,7 @@ action_unmap_svm_buffer(void* svm_ptr)
     XOCL_DEBUG(std::cout,"launching unmap svm buffer event(",ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     xdevice->schedule(unmap_svm_buffer,async_type::write,ev,device,svm_ptr);
   };
 }
@@ -472,7 +472,7 @@ action_read_image(cl_mem image,const size_t* origin,const size_t* region, size_t
     XOCL_DEBUG(std::cout,"launching read image DMA event(",ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     xdevice->schedule(read_image,async_type::read,ev,device,image,origin,region,row_pitch,slice_pitch,const_cast<void*>(ptr));
   };
 }
@@ -485,7 +485,7 @@ action_write_image(cl_mem image,const size_t* origin,const size_t* region,size_t
     XOCL_DEBUG(std::cout,"launching write image DMA event(",ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     xdevice->schedule(write_image,async_type::write,ev,device,image,origin,region,row_pitch,slice_pitch,ptr);
   };
 }
@@ -500,7 +500,7 @@ action_migrate_memobjects(size_t num, const cl_mem* memobjs, cl_mem_migration_fl
     XOCL_DEBUG(std::cout,"launching migrate DMA event(",ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     auto ec = make_shared_event_completer(ev);
     for (auto mem : mo) {
       // do not migrate if argument is CL_MIGRATE_MEM_OBJECT_CONTENT_UNDERFINED

@@ -114,7 +114,7 @@ clEnqueueWriteBufferRect(cl_command_queue     command_queue ,
 
   // Now the event is running, this should be hard_event and handle asynchronously
   auto device = xocl::xocl(command_queue)->get_device();
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
   auto boh = xocl::xocl(buffer)->get_buffer_object_or_error(device);
   void* host_ptr = xdevice->map(boh);
   

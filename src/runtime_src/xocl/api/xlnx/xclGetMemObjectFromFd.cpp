@@ -74,7 +74,7 @@ clGetMemObjectFromFd(cl_context context,
 
   size_t size = 0;
   unsigned int iflags = static_cast<unsigned int>(flags);
-  if (auto boh = xdevice->get_xrt_device()->getBufferFromFd(fd, size, iflags)) {
+  if (auto boh = xdevice->get_xdevice()->getBufferFromFd(fd, size, iflags)) {
     auto buffer = std::make_unique<xocl::buffer>(xcontext, flags, size, nullptr);
     // set fields in cl_buffer
     buffer->set_ext_flags(get_xlnx_ext_flags(flags,nullptr));

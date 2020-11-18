@@ -36,7 +36,7 @@ xclGetXrtDevice(cl_device_id device)
 {
   validOrError(device);
 
-  return xocl(device)->get_xrt_device();
+  return xocl(device)->get_xdevice();
 }
 
 } // xocl

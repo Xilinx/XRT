@@ -114,7 +114,7 @@ public:
   }
 
   xrt_xocl::device*
-  get_xrt_device() const
+  get_xdevice() const
   {
     return  m_xdevice;
   }
