@@ -322,15 +322,13 @@ static size_t flash_detect_slaves(struct xocl_flash *flash)
 	u32 slave_reg;
 	size_t num_slaves;
 
-	flash_reg_wr(flash, &flash->qspi_regs->qspi_slave, 0x00000000);
-	slave_reg = flash_reg_rd(flash, &flash->qspi_regs->qspi_slave);
-	printk(KERN_ERR "SLAVE_REG=%d\n", flash_reg_rd(flash, &flash->qspi_regs->qspi_slave));
-	slave_reg &= SLAVE_REG_MASK;
+	/* Clear the slave register to make sure we read correct slave value. */
 	flash_reg_wr(flash, &flash->qspi_regs->qspi_slave, 0xFFFFFFFF);
+	slave_reg = flash_reg_rd(flash, &flash->qspi_regs->qspi_slave);
 
-	if(slave_reg == 0x2)
+	if(slave_reg == 0x1)
 		num_slaves = 1;
-	else if(slave_reg == 0x0)
+	else if(slave_reg == 0x3)
 		num_slaves = 2;
 	else
 		num_slaves = 0;
@@ -588,6 +586,7 @@ static int macronix_configure(struct xocl_flash *flash)
 {
 	int ret;
 	u8 cmd[3];
+
 	FLASH_INFO(flash, "Configuring registers for Macronix");
 
 	//Configure status register (Quad enable, default drive strength)
