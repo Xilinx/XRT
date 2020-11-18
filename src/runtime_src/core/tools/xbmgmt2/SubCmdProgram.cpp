@@ -102,7 +102,7 @@ update_shell(unsigned int index, const std::string& flashType,
   const std::string& primary, const std::string& secondary)
 {
   if (!flashType.empty()) {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", 
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
         "Overriding flash mode is not recommended.\nYou may damage your card with this option.");
   }
 

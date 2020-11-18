@@ -118,8 +118,6 @@ public:
   bool isGood() const;
   static shim *handleCheck(void *handle);
   int xclIPName2Index(const char *name);
-  static int xclLogMsg(xrtLogMsgLevel level, const char* tag,
-		       const char* format, va_list args);
 
   // Application debug path functionality for xbutil
   size_t xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults);
@@ -167,7 +165,6 @@ private:
   const size_t mCuMapSize = 64 * 1024;
   std::mutex mCuMapLock;
   int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
-  int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
 
 #ifdef XRT_ENABLE_AIE
   std::unique_ptr<zynqaie::Aie> aieArray;

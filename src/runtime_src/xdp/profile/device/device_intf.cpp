@@ -123,18 +123,18 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
       }
     } catch (const std::exception& ) {
       // User specified number cannot be parsed
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
     }
   } else {
-    xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
   }
   if (bytes > TS2MM_MAX_BUF_SIZE) {
     bytes = TS2MM_MAX_BUF_SIZE;
-    xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_BIG);
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_BIG);
   }
   if (bytes < TS2MM_MIN_BUF_SIZE) {
     bytes = TS2MM_MIN_BUF_SIZE;
-    xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_SMALL);
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_SMALL);
   }
   return bytes;
 }
@@ -537,7 +537,7 @@ DeviceIntf::~DeviceIntf()
        */
       std::string warnMsg = "Multiple live processes running on device. Hardware Debug and Profiling data will be unavailable for this process.";
       std::cout << warnMsg << std::endl;
-//      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", warnMsg) ;
+//      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", warnMsg) ;
       mIsDeviceProfiling = false;
       mIsDebugIPlayoutRead = true;
       return;

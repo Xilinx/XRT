@@ -55,6 +55,14 @@
 
 namespace {
 
+template <typename ...Args>
+void
+xclLog(xrtLogMsgLevel level, const char* format, Args&&... args)
+{
+  auto slvl = static_cast<xrt_core::message::severity_level>(level);
+  xrt_core::message::send(slvl, "XRT", format, std::forward<Args>(args)...);
+}
+
 constexpr size_t
 operator"" _gb(unsigned long long value)
 {
@@ -1013,59 +1021,6 @@ xclCloseIPInterruptNotify(int fd)
   return 0;
 }
 
-inline int
-shim::
-xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...)
-{
-  va_list args;
-  va_start(args, format);
-  int ret = xclLogMsg(level, tag, format, args);
-  va_end(args);
-
-  return ret;
-}
-
-int
-shim::
-xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
-{
-  static auto verbosity = xrt_core::config::get_verbosity();
-  if (level <= verbosity) {
-    va_list args_bak;
-    // vsnprintf will mutate va_list so back it up
-    va_copy(args_bak, args);
-    int len = std::vsnprintf(nullptr, 0, format, args_bak);
-    va_end(args_bak);
-
-    if (len < 0) {
-      //illegal arguments
-      std::string err_str = "ERROR: Illegal arguments in log format string. ";
-      err_str.append(std::string(format));
-      xrt_core::message::send((xrt_core::message::severity_level)level, tag,
-                              err_str);
-      return len;
-    }
-    ++len; //To include null terminator
-
-    std::vector<char> buf(len);
-    len = std::vsnprintf(buf.data(), len, format, args);
-
-    if (len < 0) {
-      //error processing arguments
-      std::string err_str =
-        "ERROR: When processing arguments in log format string. ";
-      err_str.append(std::string(format));
-      xrt_core::message::send((xrt_core::message::severity_level)level, tag,
-                              err_str.c_str());
-      return len;
-    }
-    xrt_core::message::send((xrt_core::message::severity_level)level, tag,
-                            buf.data());
-  }
-
-  return 0;
-}
-
 size_t
 shim::
 xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults)
@@ -1567,7 +1522,7 @@ xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
   try {
     //std::cout << "xclOpen called" << std::endl;
     if (deviceIndex >= xclProbe()) {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT",
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
                        std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
       return nullptr;
     }
@@ -2315,20 +2270,13 @@ xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
           const char* format, ...)
 {
   static auto verbosity = xrt_core::config::get_verbosity();
-  if (level <= verbosity) {
-    va_list args;
-    va_start(args, format);
-    int ret = -1;
-    if (handle) {
-      ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-      ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
-    } else {
-      ret = ZYNQ::shim::xclLogMsg(level, tag, format, args);
-    }
-    va_end(args);
+  if (level > verbosity)
+    return 0;
 
-    return ret;
-  }
+  va_list args;
+  va_start(args, format);
+  xrt_core::message::sendv(static_cast<xrt_core::message::severity_level>(level), tag, format, args);
+  va_end(args);
 
   return 0;
 }

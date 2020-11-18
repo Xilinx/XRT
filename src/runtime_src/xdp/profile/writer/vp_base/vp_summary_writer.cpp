@@ -43,7 +43,7 @@ namespace xdp {
     if (std::rename(getRawBasename(), backupFile.c_str()) != 0)
     {
       // Cannot rename summary file to checkpoint file
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, 
+      xrt_core::message::send(xrt_core::message::severity_level::warning,
 			      "XRT",
 			      "Cannot create profile summary checkpoint file") ;
     }

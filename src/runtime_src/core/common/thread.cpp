@@ -117,7 +117,7 @@ set_cpu_affinity(std::thread& thread)
           CPU_SET(cpu,&cpuset);
         }
         else {
-          xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING,"XRT", "Ignoring cpu affinity since cpu #" + tok + " is out of range\n");
+          xrt_core::message::send(xrt_core::message::severity_level::warning,"XRT", "Ignoring cpu affinity since cpu #" + tok + " is out of range\n");
           all=true;
         }
       }

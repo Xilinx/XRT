@@ -173,7 +173,7 @@ namespace xdp {
 	     << " directory.  "
 	     << "Breakpoints set in kernels may not be honored."
 	     << std::endl ;
-      xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, errMsg.str()) ;
+      xrt_xocl::message::send(xrt_xocl::message::severity_level::warning, errMsg.str()) ;
       return ;
     }
     

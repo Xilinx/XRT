@@ -751,7 +751,7 @@ initXDPLib()
   try {
     (void)xdp::OCLProfiler::Instance();
   } catch (std::runtime_error& e) {
-    xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, e.what());
+    xrt_xocl::message::send(xrt_xocl::message::severity_level::warning, e.what());
     // Don't register any of the callbacks.  Something went wrong during
     //  initialization.
     return ;

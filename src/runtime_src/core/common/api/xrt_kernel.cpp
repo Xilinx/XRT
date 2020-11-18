@@ -1664,7 +1664,7 @@ xrtRunStart(xrtRunHandle rhdl)
 inline void
 send_exception_message(const char* msg)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+  xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
 }
 
 } // namespace

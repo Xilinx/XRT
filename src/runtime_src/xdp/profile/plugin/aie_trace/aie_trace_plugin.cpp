@@ -118,7 +118,7 @@ namespace xdp {
     if(0 == numAIETraceOutput) {
       // no AIE Trace Stream to offload trace, so return
       std::string msg("Neither PLIO nor GMIO trace infrastucture is found in the given design. So, AIE event trace will not be available.");
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return;
     }
 
@@ -164,14 +164,14 @@ namespace xdp {
     if(nullptr == memory) {
       std::string msg = "Information about memory index " + std::to_string(memIndex)
                          + " not found in given xclbin. So, cannot check availability of memory resource for device trace offload.";
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return;
     }
     uint64_t aieMemorySz = (((db->getStaticInfo()).getMemory(deviceId, memIndex))->size) * 1024;
     if(aieMemorySz > 0 && aieTraceBufSz > aieMemorySz) {
       aieTraceBufSz = aieMemorySz;
       std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(aieMemorySz) + " instead." ;
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
     }
 #endif
 
@@ -185,7 +185,7 @@ namespace xdp {
 
     if(!aieTraceOffloader->initReadTrace()) {
       std::string msg = "Allocation of buffer for AIE trace failed. AIE trace will not be available.";
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       delete aieTraceOffloader;
       delete aieTraceLogger;
       return;
@@ -228,7 +228,7 @@ namespace xdp {
 
       offloader->readTrace();
       if (offloader->isTraceBufferFull())
-        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
       offloader->endReadTrace();
 
       delete (offloader);
@@ -248,7 +248,7 @@ namespace xdp {
 
       offloader->readTrace();
       if (offloader->isTraceBufferFull())
-        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
       offloader->endReadTrace();
 
       delete offloader;
