@@ -897,7 +897,9 @@ configure(struct sched_cmd *cmd)
 			exec->cq_interrupt = 0;
 		}
 	}
-	wake_up_interruptible(&exec->cq_wait_queue);
+	if (zdev->ert)
+		wake_up_interruptible(&exec->cq_wait_queue);
+
 	/* TODO: let's consider how to support reconfigurable KDS/ERT later.
 	 * At that time, ERT should be able to change back to CQ polling mode.
 	 */
