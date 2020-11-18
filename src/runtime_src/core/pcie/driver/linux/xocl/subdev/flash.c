@@ -130,7 +130,8 @@
 
 #define	MAX_NUM_OF_SLAVES	2
 #define	SLAVE_NONE		(-1)
-#define SLAVE_SELECT_NONE	((1 << MAX_NUM_OF_SLAVES) -1)
+#define	SLAVE_REG_MASK		((1 << MAX_NUM_OF_SLAVES) -1)
+#define SLAVE_SELECT_NONE	SLAVE_REG_MASK
 
 /*
  * We support erasing flash memory at three page unit. Page read-modify-write
@@ -148,6 +149,8 @@ static inline size_t FLASH_PAGE_ROUNDUP(loff_t offset)
 		return round_up(offset, FLASH_PAGE_SIZE);
 	return offset + FLASH_PAGE_SIZE;
 }
+struct xocl_flash;
+static int macronix_configure(struct xocl_flash *flash);
 
 /*
  * Wait for condition to be true for at most 1 second.
@@ -200,6 +203,11 @@ static size_t macronix_code2sectors(u8 code)
 	return (1 << (code - 0x38));
 }
 
+static int micron_configure(struct xocl_flash *flash)
+{
+	return 0;
+}
+
 /*
  * Flash memory vendor specific operations.
  */
@@ -207,9 +215,10 @@ static struct qspi_flash_vendor {
 	u8 vendor_id;
 	const char *vendor_name;
 	size_t (*code2sectors)(u8 code);
+	int (*configure)(struct xocl_flash *flash);
 } vendors[] = {
-	{ 0x20, "micron", micron_code2sectors},
-	{ 0xc2, "macronix", macronix_code2sectors},
+	{ 0x20, "micron", micron_code2sectors, micron_configure},
+	{ 0xc2, "macronix", macronix_code2sectors, macronix_configure},
 };
 
 struct qspi_flash_addr {
@@ -246,6 +255,7 @@ struct xocl_flash {
 	bool busy;
 	bool io_debug;
 	size_t flash_size;
+	size_t num_slaves;
 	u8 *io_buf;
 
 	/* For now, only support QSPI */
@@ -307,23 +317,24 @@ static inline void flash_set_ctrl(struct xocl_flash *flash, u32 ctrl)
 	flash_reg_wr(flash, &flash->qspi_regs->qspi_ctrl, ctrl);
 }
 
-static u32 flash_detect_slaves(struct xocl_flash *flash) 
+static size_t flash_detect_slaves(struct xocl_flash *flash) 
 {
 	u32 slave_reg;
-	u32 num_slaves;
+	size_t num_slaves;
 
 	flash_reg_wr(flash, &flash->qspi_regs->qspi_slave, 0x00000000);
 	slave_reg = flash_reg_rd(flash, &flash->qspi_regs->qspi_slave);
+	printk(KERN_ERR "SLAVE_REG=%d\n", flash_reg_rd(flash, &flash->qspi_regs->qspi_slave));
+	slave_reg &= SLAVE_REG_MASK;
+	flash_reg_wr(flash, &flash->qspi_regs->qspi_slave, 0xFFFFFFFF);
 
-	if((slave_reg & 0x3) == 0x2)
+	if(slave_reg == 0x2)
 		num_slaves = 1;
-	else if((slave_reg & 0x3) == 0x0)
+	else if(slave_reg == 0x0)
 		num_slaves = 2;
 	else
 		num_slaves = 0;
 
-	FLASH_INFO(flash, "Number of slave chips detected: %d", num_slaves);
-	flash_reg_wr(flash, &flash->qspi_regs->qspi_slave, 0xFFFFFFFF);
 	return num_slaves;
 }
 
@@ -573,7 +584,34 @@ static bool flash_wait_until_ready(struct xocl_flash *flash)
 	return true;
 }
 
-static int flash_get_ID(struct xocl_flash *flash)
+static int macronix_configure(struct xocl_flash *flash)
+{
+	int ret;
+	u8 cmd[3];
+	FLASH_INFO(flash, "Configuring registers for Macronix");
+
+	//Configure status register (Quad enable, default drive strength)
+	if (!flash_wait_until_ready(flash))
+		return -EINVAL;
+
+	flash_enable_write(flash);
+	cmd[0] = QSPI_CMD_STATUSREG_WRITE;
+	cmd[1] = 0x40;
+	cmd[2] = 0x07;
+	ret = flash_transaction(flash, cmd, 3, false);
+	if (ret)
+		return ret;
+
+	//Set gang block unlock
+	if (!flash_wait_until_ready(flash))
+		return -EINVAL;
+
+	flash_enable_write(flash);
+	cmd[0] = QSPI_CMD_GBULK;
+	return flash_transaction(flash, cmd, 1, false);
+}
+
+static int flash_get_info(struct xocl_flash *flash)
 {
 	int i;
 	struct qspi_flash_vendor *vendor = NULL;
@@ -614,29 +652,6 @@ static int flash_get_ID(struct xocl_flash *flash)
 			flash->flash_size / 1024 / 1024);
 	}
 
-	if (strcmp(vendor->vendor_name, "macronix") == 0) {
-		FLASH_INFO(flash, "Configuring registers for Macronix.");
-
-		//Configure status register (Quad enable, default drive strength)
-		if (!flash_wait_until_ready(flash))
-			return -EINVAL;
-		flash_enable_write(flash);
-		cmd[0] = QSPI_CMD_STATUSREG_WRITE;
-		cmd[1] = 0x40;
-		cmd[2] = 0x07;
-		ret = flash_transaction(flash, cmd, 3, false);
-		if (ret)
-			return ret;
-
-		//Set gang block unlock
-		if (!flash_wait_until_ready(flash))
-			return -EINVAL;
-		flash_enable_write(flash);
-		cmd[0] = QSPI_CMD_GBULK;
-		ret = flash_transaction(flash, cmd, 1, false);
-		if (ret)
-			return ret;
-	}
 	return 0;
 }
 
@@ -714,7 +729,7 @@ flash_setup_io_cmd_header(struct xocl_flash *flash,
 static int qspi_probe(struct xocl_flash *flash)
 {
 	int ret;
-	u32 num_slaves, i;
+	size_t i;
 
 	/* Probing on first flash only. */
 	flash->qspi_curr_slave = 0;
@@ -730,19 +745,29 @@ static int qspi_probe(struct xocl_flash *flash)
 	if (!flash_wait_until_ready(flash))
 		return -EINVAL;
 
-	num_slaves = flash_detect_slaves(flash);
-	if(num_slaves == 0)
+	flash->num_slaves = flash_detect_slaves(flash);
+	if(flash->num_slaves == 0)
 		return -EINVAL;
+	FLASH_INFO(flash, "Number of slave chips is: %ld", flash->num_slaves);
 
-	/* Get flash info for each chip and configure it if necessary */
-	for(i=0; i<num_slaves; ++i) {
+	/*
+	 * Get flash info only from first chip assuming that all chips
+	 * are identical. If not, we have a much bigger problem to solve.
+	 */
+	flash->qspi_curr_slave = 0;
+	ret = flash_get_info(flash);
+	if (ret)
+		return ret;
+
+	/* Configure all chips, if necessary. */
+	for (i = 0; i < flash->num_slaves; ++i) {
 		flash->qspi_curr_slave = i;
-		ret = flash_get_ID(flash);
+		ret = flash->vendor->configure(flash);
 		if (ret)
 			return ret;
 	}
-	flash->qspi_curr_slave = 0;
 
+	flash->qspi_curr_slave = 0;
 	flash->qspi_curr_sector = 0xff;
 
 	return 0;
@@ -972,9 +997,13 @@ flash_do_read(struct xocl_flash *flash, char *kbuf, size_t n, loff_t off)
 	mutex_lock(&flash->io_lock);
 
 	flash_offset2faddr(off, &faddr);
+	if (faddr.slave >= flash->num_slaves) {
+		FLASH_ERR(flash, "Can't read: out of slave boundary");
+		ret = -ENOSPC;
+	}
 	flash->qspi_curr_slave = faddr.slave;
 
-	if (!flash_wait_until_ready(flash))
+	if (ret == 0 && !flash_wait_until_ready(flash))
 		ret = -EINVAL;
 
 	while (ret == 0 && cnt < n) {
@@ -1147,9 +1176,13 @@ flash_write(struct file *file, const char __user *buf, size_t n, loff_t *off)
 	mutex_lock(&flash->io_lock);
 
 	flash_offset2faddr(*off, &faddr);
+	if (faddr.slave >= flash->num_slaves) {
+		FLASH_ERR(flash, "Can't write: out of slave boundary");
+		ret = -ENOSPC;
+	}
 	flash->qspi_curr_slave = faddr.slave;
 
-	if (!flash_wait_until_ready(flash))
+	if (ret == 0 && !flash_wait_until_ready(flash))
 		ret = -EINVAL;
 
 	while (ret == 0 && cnt < n) {
