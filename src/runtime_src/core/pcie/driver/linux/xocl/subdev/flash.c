@@ -25,8 +25,12 @@
 #define QSPI_CMD_PAGE_PROGRAM			0x02
 /* Random read command */
 #define QSPI_CMD_RANDOM_READ			0x03
-/* Status read command */
+/* Status Reg read command */
 #define QSPI_CMD_STATUSREG_READ			0x05
+/* Config Reg read command */
+#define QSPI_CMD_CONFIGREG_READ			0x15
+/* Security Reg read command */
+#define QSPI_CMD_SECURREG_READ			0x2B
 /* Enable flash write */
 #define QSPI_CMD_WRITE_ENABLE			0x06
 /* 4KB Subsector Erase command */
@@ -71,6 +75,8 @@
 #define QSPI_CMD_SECTOR_ERASE			0xD8
 /* Quad IO Fast Read */
 #define QSPI_CMD_QUAD_IO_READ			0xEB
+/* Global block unlock */
+#define QSPI_CMD_GBULK				0x98
 
 #define	FLASH_ERR(flash, fmt, arg...)	\
 	xocl_err(&flash->pdev->dev, fmt "\n", ##arg)
@@ -194,16 +200,6 @@ static size_t macronix_code2sectors(u8 code)
 	return (1 << (code - 0x38));
 }
 
-static u8 macronix_write_cmd(void)
-{
-	return QSPI_CMD_PAGE_PROGRAM;
-}
-
-static u8 micron_write_cmd(void)
-{
-	return QSPI_CMD_QUAD_WRITE;
-}
-
 /*
  * Flash memory vendor specific operations.
  */
@@ -211,10 +207,9 @@ static struct qspi_flash_vendor {
 	u8 vendor_id;
 	const char *vendor_name;
 	size_t (*code2sectors)(u8 code);
-	u8 (*write_cmd)(void);
 } vendors[] = {
-	{ 0x20, "micron", micron_code2sectors, micron_write_cmd },
-	{ 0xc2, "macronix", macronix_code2sectors, macronix_write_cmd },
+	{ 0x20, "micron", micron_code2sectors},
+	{ 0xc2, "macronix", macronix_code2sectors},
 };
 
 struct qspi_flash_addr {
@@ -310,6 +305,26 @@ static inline u32 flash_get_ctrl(struct xocl_flash *flash)
 static inline void flash_set_ctrl(struct xocl_flash *flash, u32 ctrl)
 {
 	flash_reg_wr(flash, &flash->qspi_regs->qspi_ctrl, ctrl);
+}
+
+static u32 flash_detect_slaves(struct xocl_flash *flash) 
+{
+	u32 slave_reg;
+	u32 num_slaves;
+
+	flash_reg_wr(flash, &flash->qspi_regs->qspi_slave, 0x00000000);
+	slave_reg = flash_reg_rd(flash, &flash->qspi_regs->qspi_slave);
+
+	if((slave_reg & 0x3) == 0x2)
+		num_slaves = 1;
+	else if((slave_reg & 0x3) == 0x0)
+		num_slaves = 2;
+	else
+		num_slaves = 0;
+
+	FLASH_INFO(flash, "Number of slave chips detected: %d", num_slaves);
+	flash_reg_wr(flash, &flash->qspi_regs->qspi_slave, 0xFFFFFFFF);
+	return num_slaves;
 }
 
 static inline void flash_activate_slave(struct xocl_flash *flash, int index)
@@ -539,6 +554,25 @@ static bool flash_is_ready(struct xocl_flash *flash)
 	return true;
 }
 
+static int flash_enable_write(struct xocl_flash *flash)
+{
+	u8 cmd = QSPI_CMD_WRITE_ENABLE;
+	int ret = flash_transaction(flash, &cmd, 1, false);
+
+	if (ret)
+		FLASH_ERR(flash, "Failed to enable flash write: %d", ret);
+	return ret;
+}
+
+static bool flash_wait_until_ready(struct xocl_flash *flash)
+{
+	if (FLASH_BUSY_WAIT(flash_is_ready(flash))) {
+		FLASH_ERR(flash, "QSPI flash device is not ready");
+		return false;
+	}
+	return true;
+}
+
 static int flash_get_ID(struct xocl_flash *flash)
 {
 	int i;
@@ -580,17 +614,30 @@ static int flash_get_ID(struct xocl_flash *flash)
 			flash->flash_size / 1024 / 1024);
 	}
 
+	if (strcmp(vendor->vendor_name, "macronix") == 0) {
+		FLASH_INFO(flash, "Configuring registers for Macronix.");
+
+		//Configure status register (Quad enable, default drive strength)
+		if (!flash_wait_until_ready(flash))
+			return -EINVAL;
+		flash_enable_write(flash);
+		cmd[0] = QSPI_CMD_STATUSREG_WRITE;
+		cmd[1] = 0x40;
+		cmd[2] = 0x07;
+		ret = flash_transaction(flash, cmd, 3, false);
+		if (ret)
+			return ret;
+
+		//Set gang block unlock
+		if (!flash_wait_until_ready(flash))
+			return -EINVAL;
+		flash_enable_write(flash);
+		cmd[0] = QSPI_CMD_GBULK;
+		ret = flash_transaction(flash, cmd, 1, false);
+		if (ret)
+			return ret;
+	}
 	return 0;
-}
-
-static int flash_enable_write(struct xocl_flash *flash)
-{
-	u8 cmd = QSPI_CMD_WRITE_ENABLE;
-	int ret = flash_transaction(flash, &cmd, 1, false);
-
-	if (ret)
-		FLASH_ERR(flash, "Failed to enable flash write: %d", ret);
-	return ret;
 }
 
 static int flash_set_sector(struct xocl_flash *flash, u8 sector)
@@ -660,21 +707,14 @@ flash_setup_io_cmd_header(struct xocl_flash *flash,
 		flash->io_buf[3] = faddr->addr_lo;
 		*header_len = 4;
 	}
-	return ret;
-}
 
-static bool flash_wait_until_ready(struct xocl_flash *flash)
-{
-	if (FLASH_BUSY_WAIT(flash_is_ready(flash))) {
-		FLASH_ERR(flash, "QSPI flash device is not ready");
-		return false;
-	}
-	return true;
+	return ret;
 }
 
 static int qspi_probe(struct xocl_flash *flash)
 {
 	int ret;
+	u32 num_slaves, i;
 
 	/* Probing on first flash only. */
 	flash->qspi_curr_slave = 0;
@@ -690,10 +730,18 @@ static int qspi_probe(struct xocl_flash *flash)
 	if (!flash_wait_until_ready(flash))
 		return -EINVAL;
 
-	/* Update flash vendor. */
-	ret = flash_get_ID(flash);
-	if (ret)
-		return ret;
+	num_slaves = flash_detect_slaves(flash);
+	if(num_slaves == 0)
+		return -EINVAL;
+
+	/* Get flash info for each chip and configure it if necessary */
+	for(i=0; i<num_slaves; ++i) {
+		flash->qspi_curr_slave = i;
+		ret = flash_get_ID(flash);
+		if (ret)
+			return ret;
+	}
+	flash->qspi_curr_slave = 0;
 
 	flash->qspi_curr_sector = 0xff;
 
@@ -776,7 +824,7 @@ static int flash_fifo_wr(struct xocl_flash *flash,
 	flash_offset2faddr(off, &faddr);
 
 	ret = flash_setup_io_cmd_header(flash,
-		flash->vendor->write_cmd(), &faddr, &header_len);
+		QSPI_CMD_EXT_QUAD_WRITE, &faddr, &header_len);
 	if (ret)
 		return ret;
 
@@ -1306,6 +1354,7 @@ static int flash_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 
 	sysfs_destroy_flash(flash);
+
 	if (flash->io_buf)
 		vfree(flash->io_buf);
 
