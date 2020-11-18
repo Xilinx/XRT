@@ -3201,7 +3201,8 @@ static void xmc_enable_mailbox(struct xocl_xmc *xmc)
 
 	xmc->mbx_enabled = true;
 	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
-	xmc->mbx_offset = val;
+	/* If val is not 32bit aligned, set back to default value */
+	xmc->mbx_offset = val & 0x3 ? 0 : val;
 	xocl_info(&xmc->pdev->dev, "XMC mailbox offset read during probe: 0x%x", val);
 }
 
@@ -3991,8 +3992,8 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 	 * we need check and update the mbx offset.
 	 */
 	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
-	if (!val) {
-		xocl_err(&xmc->pdev->dev, "CMC mailbox is not ready");
+	if (!val || val & 0x3) {
+		xocl_err(&xmc->pdev->dev, "CMC mailbox is not ready, offset: 0x%x", val);
 		return -EIO;
 	}
 	if (val != xmc->mbx_offset) {
