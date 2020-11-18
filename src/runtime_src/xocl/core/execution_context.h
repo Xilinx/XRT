@@ -211,12 +211,6 @@ public:
     return m_kernel->get_indexed_argument_range();
   }
 
-  xocl::range<argument_iterator_type>
-  get_progvar_argument_range() const
-  {
-    return m_kernel->get_progvar_argument_range();
-  }
-
   /**
    * Get the kernel for this context
    *

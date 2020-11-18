@@ -560,11 +560,8 @@ mkImageCore (cl_context context,
 
     // allocate device buffer object if context has only one device
     // and if this is not a progvar (clCreateProgramWithBinary)
-    if (!(flags & CL_MEM_PROGVAR)) {
-	if (auto device = singleContextDevice(context)) {
-	    xocl::xocl(image)->get_buffer_object(device);
-	}
-    }
+    if (auto device = singleContextDevice(context))
+      xocl::xocl(image)->get_buffer_object(device);
 
     xocl::assign(errcode_ret,CL_SUCCESS);
     return ubuffer.release();

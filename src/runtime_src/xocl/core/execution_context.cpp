@@ -477,16 +477,6 @@ start()
     }
   }
 
-  for (auto& arg : m_kernel->get_progvar_argument_range()) {
-    uint64_t physaddr = 0;
-    if (auto mem = arg->get_memory_object()) {
-      auto boh = mem->get_buffer_object_or_error(m_device);
-      physaddr = m_device->get_boh_addr(boh);
-    }
-    assert(arg->get_arginfo_range().size()==1);
-    fill_regmap(regmap,offset,opcode,ctrl,&physaddr,arg->get_size(),arg->get_arginfo_range());
-  }
-
   // Set runtime arguments as required
   size3 local_id {0,0,0};
   uint64_t printf_buffer_addr = 0;

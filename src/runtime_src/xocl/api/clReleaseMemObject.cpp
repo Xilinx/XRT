@@ -43,26 +43,6 @@ clReleaseMemObject(cl_mem memobj)
   if (!xocl(memobj)->release())
     return CL_SUCCESS;
 
-  // Host Accessible Prorgam Scope Globals
-  // Progvars are deleted via kernel argument destruction through
-  // regular reference counting.  Here we just make sure progvars
-  // are not deleted via clReleaseMemObject.
-  auto flags = xocl(memobj)->get_flags();
-  if (flags & CL_MEM_PROGVAR) {
-    XOCL_DEBUG(std::cout,"clReleaseMemObject on user buffer backed by external progvar, mem obj not deleted\n");
-    return CL_SUCCESS;
-  }
-
-#if 0
-  // After the memobj reference count becomes zero *and* commands
-  // queued for execution on a command-queue(s) that use memobj have
-  // finished, the memory object is deleted.  Easiest is to just
-  // wait for all command queues.
-  auto context = xocl(memobj)->get_context();
-  for (auto command_queue : context->get_queue_range())
-    command_queue->wait();
-#endif
-
   delete xocl(memobj);
   return CL_SUCCESS;
 }

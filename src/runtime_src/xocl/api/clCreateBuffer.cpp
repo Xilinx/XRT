@@ -130,10 +130,8 @@ clCreateBuffer(cl_context   context,
     cl_mem mem = buffer.get(); // cast to cl_mem is important before going void*
     api::clSetKernelArg(kernel,argidx,sizeof(cl_mem),&mem);
   }
-  else if (!(flags & CL_MEM_PROGVAR)) {
-    if (auto device = singleContextDevice(context,flags,host_ptr))
-      buffer->get_buffer_object(device);
-  }
+  else if (auto device = singleContextDevice(context,flags,host_ptr))
+    buffer->get_buffer_object(device);
 
   xocl::assign(errcode_ret,CL_SUCCESS);
   return buffer.release();
