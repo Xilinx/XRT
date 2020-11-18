@@ -130,7 +130,7 @@ int testMultiThreads(xrt::device& device, xrt::uuid& uuid,
       arg[i].thread_id = i;
       arg[i].queueLength = queueLength;
       arg[i].total = total;
-      threads[i] = std::move(std::thread(runTestThread, std::ref(device), std::ref(hello), std::ref(arg[i])));
+      threads[i] = std::thread([&](int i){ runTestThread(device, hello, arg[i]); }, i);
     }
 
     /* Wait threads to prepare to start */

@@ -226,7 +226,7 @@ int testMultiThreads(xclDeviceHandle handle, xuid_t uuid, int bank,
         arg[i].handle = handle;
         arg[i].queueLength = queueLength;
         arg[i].total = total;
-        threads[i] = std::move(std::thread(runTestThread, std::ref(arg[i])));
+        threads[i] = std::thread([&](int i){ runTestThread(arg[i]); }, i);
     }
 
     /* Wait threads to prepare to start */
