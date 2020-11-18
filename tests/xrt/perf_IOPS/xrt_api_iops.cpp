@@ -2,21 +2,50 @@
 #include <iomanip>
 #include <vector>
 #include <chrono>
+#include <thread>
+#include <getopt.h>
 
+#include "xilutil.hpp"
 #include "experimental/xrt_device.h"
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_kernel.h"
 
-void usage()
+using ms_t = std::chrono::microseconds;
+using Clock = std::chrono::high_resolution_clock;
+
+typedef struct task_args {
+  int thread_id;
+  int queueLength;
+  unsigned int total;
+  Clock::time_point start;
+  Clock::time_point end;
+} arg_t;
+
+bool start = false;
+bool stop = false;
+barrier barrier;
+
+static void usage(char *prog)
 {
-  std::cout  << "Usage: test -k <xclbin>\n";
+  std::cout << "Usage: " << prog << " -k <xclbin> -d <dev id> [options]\n"
+    << "options:\n"
+    << "    -t       number of threads\n"
+    << "    -l       length of queue (send how many commands without waiting)\n"
+    << "    -a       total amount of commands per thread\n"
+    << std::endl;
 }
 
-double runTest(std::vector<xrt::run>& cmds, unsigned int total)
+static void usage_and_exit(char *prog)
+{
+  usage(prog);
+  exit(0);
+}
+
+double runTest(std::vector<xrt::run>& cmds, unsigned int total, arg_t &arg)
 {
   int i = 0;
   unsigned int issued = 0, completed = 0;
-  auto start = std::chrono::high_resolution_clock::now();
+  arg.start = Clock::now();
 
   for (auto& cmd : cmds) {
     cmd.start();
@@ -26,7 +55,7 @@ double runTest(std::vector<xrt::run>& cmds, unsigned int total)
 
   while (completed < total) {
     cmds[i].wait();
-        
+
     completed++;
     if (issued < total) {
       cmds[i].start();
@@ -37,18 +66,20 @@ double runTest(std::vector<xrt::run>& cmds, unsigned int total)
       i = 0;
   }
 
-  auto end = std::chrono::high_resolution_clock::now();
-  return (std::chrono::duration_cast<std::chrono::microseconds>(end - start)).count();
+  arg.end = Clock::now();
+  return (std::chrono::duration_cast<ms_t>(arg.end - arg.start)).count();
 }
 
 int testSingleThread(const xrt::device& device, const xrt::uuid& uuid)
 {
   /* The command would incease */
-  std::vector<unsigned int> cmds_per_run = { 10,50,100,200,500,1000,1500,2000,3000,5000,10000,50000,100000,500000,1000000 };
-  int expected_cmds = 10000;
+  std::vector<unsigned int> cmds_per_run = { 50000,100000,500000,1000000 };
+  int expected_cmds = 128;
+  std::vector<arg_t> arg(1);
 
   auto hello = xrt::kernel(device, uuid.get(), "hello");
 
+  arg[0].thread_id = 0;
   /* Create 'expected_cmds' commands if possible */
   std::vector<xrt::run> cmds;
   for (int i = 0; i < expected_cmds; i++) {
@@ -59,29 +90,127 @@ int testSingleThread(const xrt::device& device, const xrt::uuid& uuid)
   std::cout << "Allocated commands, expect " << expected_cmds << ", created " << cmds.size() << std::endl;
 
   for (auto num_cmds : cmds_per_run) {
-    double duration = runTest(cmds, num_cmds);
+    double duration = runTest(cmds, num_cmds, arg[0]);
     std::cout << "Commands: " << std::setw(7) << num_cmds
-              << " iops: " << (num_cmds * 1000.0 * 1000.0 / duration)
-              << std::endl;
+      << " iops: " << (num_cmds * 1000.0 * 1000.0 / duration)
+      << std::endl;
   }
 
   return 0;
 }
 
+void runTestThread(xrt::device &device, xrt::kernel& kernel, arg_t &arg)
+{
+  std::vector<xrt::run> cmds;
+
+  for (int i = 0; i < arg.queueLength; i++) {
+    auto run = xrt::run(kernel);
+    run.set_arg(0, xrt::bo(device, 20, kernel.group_id(0)));
+    cmds.push_back(std::move(run));
+  }
+  barrier.wait();
+
+  double duration = runTest(cmds, arg.total, arg);
+
+  barrier.wait();
+
+}
+
+int testMultiThreads(xrt::device& device, xrt::uuid& uuid,
+        int threadNumber, int queueLength, unsigned int total)
+{
+    std::thread threads[threadNumber];
+    std::vector<arg_t> arg(threadNumber);
+
+    auto hello = xrt::kernel(device, uuid.get(), "hello");
+
+    barrier.init(threadNumber + 1);
+
+    for (int i = 0; i < threadNumber; i++) {
+      arg[i].thread_id = i;
+      arg[i].queueLength = queueLength;
+      arg[i].total = total;
+      threads[i] = std::move(std::thread(runTestThread, std::ref(device), std::ref(hello), std::ref(arg[i])));
+    }
+
+    /* Wait threads to prepare to start */
+    barrier.wait();
+    auto start = Clock::now();
+
+    /* Wait threads done */
+    barrier.wait();
+    auto end = Clock::now();
+
+    for (int i = 0; i < threadNumber; i++)
+        threads[i].join();
+
+    /* calculate performance */
+    int overallCommands = 0;
+    double duration;
+    for (int i = 0; i < threadNumber; i++) {
+        duration = (std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count();
+        std::cout << "Thread " << arg[i].thread_id
+                  << " Commands: " << std::setw(7) << total
+                  << std::setprecision(0) << std::fixed
+                  << " iops: " << (total * 1000000.0 / duration)
+                  << std::endl;
+        overallCommands += total;
+    }
+
+    duration = (std::chrono::duration_cast<ms_t>(end - start)).count();
+    std::cout << "Overall Commands: " << std::setw(7) << overallCommands
+              << " iops: " << (overallCommands * 1000000.0 / duration)
+              << std::endl;
+    return 0;
+}
+
 int _main(int argc, char* argv[])
 {
-  if (argc < 3 || argv[1] != std::string("-k")) {
-    usage();
-    return 1;
+  std::string xclbin_fn;
+    int dev_id = 0;
+    int queueLength = 128;
+    unsigned total = 50000;
+    int threadNumber = 2;
+    char c;
+
+  while ((c = getopt(argc, argv, "k:d:l:t:a:h")) != -1) {
+    switch (c) {
+      case 'k':
+        xclbin_fn = optarg; 
+        break;
+      case 'd':
+        dev_id = std::stoi(optarg);
+        break;
+      case 't':
+        threadNumber = std::stoi(optarg);
+        break;
+      case 'l':
+        queueLength = std::stoi(optarg);
+        break;
+      case 'a':
+        total = std::stoi(optarg);
+        break;
+      case 'h':
+        usage_and_exit(argv[0]);
+    }
   }
 
-  std::string xclbin_fn = argv[2];
+  /* Sanity check */
+  if (dev_id < 0)
+    throw std::runtime_error("Negative device ID");
+
+  if (queueLength <= 0)
+    throw std::runtime_error("Negative/Zero queue length");
+
+  if (threadNumber <= 0)
+    throw std::runtime_error("Invalid thread number");
 
   printf("The system has %d device(s)\n", xclProbe());
-  auto device = xrt::device(0);
+  auto device = xrt::device(dev_id);
   auto uuid = device.load_xclbin(xclbin_fn);
 
-  testSingleThread(device, uuid);
+  //testSingleThread(device, uuid);
+  testMultiThreads(device, uuid, threadNumber, queueLength, total);
 
   return 0;
 }
@@ -101,3 +230,5 @@ int main(int argc, char *argv[])
 
   return 1;
 };
+
+/* vim: set ts=2 sw=2: */
