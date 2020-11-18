@@ -25,6 +25,8 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <algorithm>
+#include <cstdarg>
 #include <climits>
 #ifdef __GNUC__
 # include <unistd.h>
@@ -276,6 +278,31 @@ send(severity_level l, const char* tag, const char* msg)
     static message_dispatch* dispatcher = message_dispatch::make_dispatcher(logger);
     dispatcher->send(l, tag, msg);
   }
+}
+
+void
+sendv(severity_level l, const char* tag, const char* format, va_list args)
+{
+  static auto verbosity = xrt_core::config::get_verbosity();
+  if (l > (xrt_core::message::severity_level)verbosity) 
+    return;
+  
+  va_list args_bak;
+  // vsnprintf will mutate va_list so back it up
+  va_copy(args_bak, args);
+  int len = std::vsnprintf(nullptr, 0, format, args_bak);
+  va_end(args_bak);
+  if (len <= 0) {
+    //illegal arguments
+    std::string err_str = "ERROR: Illegal arguments or invalid format string. Format string is: ";
+    err_str.append(format);
+    send(l, tag, err_str);
+    return;
+  }
+  ++len; //To include null terminator
+  std::vector<char> buf(len, 0);
+  std::vsnprintf(buf.data(), len, format, args);
+  send(l, tag, buf.data());
 }
   
 }} // message,xrt
