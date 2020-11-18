@@ -281,7 +281,7 @@ send(severity_level l, const char* tag, const char* msg)
 }
 
 void
-send(severity_level l, const char* tag, const char* format, va_list args)
+sendv(severity_level l, const char* tag, const char* format, va_list args)
 {
   static auto verbosity = xrt_core::config::get_verbosity();
   if (l > (xrt_core::message::severity_level)verbosity) 

@@ -43,7 +43,7 @@ void
 send(severity_level l, const char* tag, const char* msg);
 
 void
-send(severity_level l, const char* tag, const char* format, va_list args);
+sendv(severity_level l, const char* tag, const char* format, va_list args);
 
 inline void
 send(severity_level l, const std::string& tag, const std::string& msg)
