@@ -702,20 +702,16 @@ namespace xdp {
       for (auto cu : (device->cus))
       {
 	std::vector<uint32_t>* aimMonitors = (cu.second)->getAIMs() ;
-	//std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
 
-	uint64_t AIMIndex = 0 ;
 	for (auto aimMonitorId : (*aimMonitors))
-	//for (auto monitor : monitors)
 	{
-	  //if (monitor->type != AXI_MM_MONITOR) continue ;
 	  Monitor* monitor = (db->getStaticInfo()).getAIMonitor(device->deviceId, aimMonitorId) ;
 
-	  auto writeTranx = values.WriteTranx[AIMIndex] ;
-	  auto readTranx = values.ReadTranx[AIMIndex] ;
+	  auto writeTranx = values.WriteTranx[aimMonitorId] ;
+	  auto readTranx = values.ReadTranx[aimMonitorId] ;
 
-	  uint64_t totalReadBusyCycles = values.ReadBusyCycles[AIMIndex] ;
-	  uint64_t totalWriteBusyCycles = values.WriteBusyCycles[AIMIndex] ;
+	  uint64_t totalReadBusyCycles = values.ReadBusyCycles[aimMonitorId] ;
+	  uint64_t totalWriteBusyCycles = values.WriteBusyCycles[aimMonitorId] ;
 
 	  double totalReadTime = 
 	    (double)(totalReadBusyCycles) / (1000.0 * device->clockRateMHz) ;
@@ -751,7 +747,7 @@ namespace xdp {
 	  if (writeTranx > 0)
 	  {
 	    double transferRate = (totalWriteTime == 0.0) ? 0 :
-	      (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
+	      (double)(values.WriteBytes[aimMonitorId]) / (1000.0 * totalWriteTime);
 	    double aveBW =
 	      (100.0 * transferRate) / device->maxWriteBW ;
 	    if (aveBW > 100.0) aveBW = 100.0 ;
@@ -764,14 +760,14 @@ namespace xdp {
 		 << writeTranx << ","
 		 << transferRate << ","
 		 << aveBW << ","
-		 << (values.WriteBytes[AIMIndex] / writeTranx) << ","
-		 << (values.WriteLatency[AIMIndex] / writeTranx) << "," 
+		 << (values.WriteBytes[aimMonitorId] / writeTranx) << ","
+		 << (values.WriteLatency[aimMonitorId] / writeTranx) << "," 
 		 << std::endl ;
 	  }
 	  if (readTranx > 0)
 	  {
 	    double transferRate = (totalReadTime == 0.0) ? 0 :
-	      (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
+	      (double)(values.ReadBytes[aimMonitorId]) / (1000.0 * totalReadTime);
 	    double aveBW =
 	      (100.0 * transferRate) / device->maxReadBW ;
 	    if (aveBW > 100.0) aveBW = 100.0 ;
@@ -784,12 +780,10 @@ namespace xdp {
 		 << readTranx << ","
 		 << transferRate << ","
 		 << aveBW << ","
-		 << (values.ReadBytes[AIMIndex] / readTranx) << ","
-		 << (values.ReadLatency[AIMIndex] / readTranx) << "," 
+		 << (values.ReadBytes[aimMonitorId] / readTranx) << ","
+		 << (values.ReadLatency[aimMonitorId] / readTranx) << "," 
 		 << std::endl ;
 	  }
-
-	  ++AIMIndex ;
 	}
       }
       ++i ;
@@ -1310,7 +1304,6 @@ namespace xdp {
       uint64_t maxNumTranx = 0 ;
       for (auto cu : device->cus)
       {
-	//std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
 	std::vector<uint32_t>* aimMonitors = (cu.second)->getAIMs() ;
 
 	uint64_t totalTranx = 0 ;
