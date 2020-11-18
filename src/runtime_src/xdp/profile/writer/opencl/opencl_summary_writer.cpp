@@ -1285,87 +1285,66 @@ namespace xdp {
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
-    uint64_t i = 0 ;
     for (auto device : infos)
     {
-      // For this device, find the monitor that has the most total number of
-      //  read/write transactions
-      xclCounterResults values = (db->getDynamicInfo()).getCounterResults(i) ;
+      uint64_t deviceId = device->deviceId ;
+      xclCounterResults values =
+	(db->getDynamicInfo()).getCounterResults(deviceId) ;
 
-      std::string computeUnitName = "" ;
-      uint64_t numTransfers = 0 ;
-      double aveBytesPerTransfer = 0 ;
-      double transferEfficiency = 0 ;
-      uint64_t totalDataTransfer = 0 ;
-      uint64_t totalWrite = 0 ;
-      uint64_t totalRead = 0 ;
-      double totalTransferRate = 0 ;
-
-      uint64_t maxNumTranx = 0 ;
       for (auto cu : device->cus)
       {
+	// For each CU, we need to find the monitor that has 
+	//  the most transactions
+	std::string computeUnitName = (cu.second)->getName() ;
 	std::vector<uint32_t>* aimMonitors = (cu.second)->getAIMs() ;
 
-	uint64_t totalTranx = 0 ;
-	uint64_t totalReadBytes = 0 ;
+	// These are the max we have seen so far
+	uint64_t numTransfers = 0 ;
+	double aveBytesPerTransfer = 0 ;
+	double transferEfficiency = 0 ;
+	uint64_t totalDataTransfer = 0 ;
 	uint64_t totalWriteBytes = 0 ;
-	uint64_t totalBusyCycles = 0 ;
+	uint64_t totalReadBytes = 0 ;
+	double totalTransferRate = 0 ;
 
-	//uint64_t AIMIndex = 0 ;
-	//for (auto monitor : monitors)
 	for (auto AIMIndex : (*aimMonitors))
-	{
-	  //if (monitor->type != AXI_MM_MONITOR) continue ;
-	  //Monitor* monitor = (db->getStaticInfo()).getAIMonitor(device->deviceId, aimMonitorId) ;
-
+        {
 	  auto writeTranx = values.WriteTranx[AIMIndex] ;
 	  auto readTranx = values.ReadTranx[AIMIndex] ;
-	  
-	  totalTranx += writeTranx + readTranx ;
-	  totalReadBytes += values.ReadBytes[AIMIndex] ;
-	  totalWriteBytes += values.WriteBytes[AIMIndex] ;
+	  auto totalTranx = writeTranx + readTranx ;
 
-	  totalBusyCycles += values.ReadBusyCycles[AIMIndex] ;
-	  totalBusyCycles += values.WriteBusyCycles[AIMIndex] ;
-
-	  ++AIMIndex ;
+	  if (totalTranx > numTransfers) {
+	    numTransfers = totalTranx ;
+	    totalReadBytes = values.ReadBytes[AIMIndex] ;
+	    totalWriteBytes = values.WriteBytes[AIMIndex] ;
+	    aveBytesPerTransfer =
+	      (double)(totalReadBytes + totalWriteBytes)/(double)(numTransfers);
+	    // TODO: Fix bit width calculation here
+	    transferEfficiency = (100.0 * aveBytesPerTransfer) / 4096 ; 
+	    totalDataTransfer = totalReadBytes + totalWriteBytes ;
+	    auto totalBusyCycles =
+	      values.ReadBusyCycles[AIMIndex]+values.WriteBusyCycles[AIMIndex];
+	    double totalTimeMSec = 
+	      (double)(totalBusyCycles) /(1000.0 * device->clockRateMHz) ;
+	    totalTransferRate =
+	      (totalTimeMSec == 0) ? 0.0 :
+	      (double)(totalDataTransfer) / (1000.0 * totalTimeMSec) ;
+	  }
 	}
 
-	if (totalTranx > maxNumTranx)
-	{
-	  // For now, this CU has the most transactions that we monitored,
-	  //  so update our information
-	  computeUnitName = (cu.second)->getName() ;
-	  numTransfers = totalTranx ;
-	  aveBytesPerTransfer =
-	    (double)(totalReadBytes + totalWriteBytes)/(double)(numTransfers) ;
-	  // TODO: Fix bit width calculation here
-	  transferEfficiency = (100.0 * aveBytesPerTransfer) / 4096 ; 
-	  totalDataTransfer = totalReadBytes + totalWriteBytes ;
-	  totalRead = totalReadBytes ;
-	  totalWrite = totalWriteBytes ;	  
-	  double totalTimeMSec = 
-	    (double)(totalBusyCycles) /(1000.0 * device->clockRateMHz) ;
-	  totalTransferRate =
-	    (totalTimeMSec == 0) ? 0.0 :
-	    (double)(totalDataTransfer) / (1000.0 * totalTimeMSec) ;
+	// Verify that this CU actually had some data transfers registered
+	if (computeUnitName != "" && numTransfers != 0) {
+	  fout << device->platformInfo.deviceName << ","
+	       << computeUnitName << ","
+	       << numTransfers << ","
+	       << aveBytesPerTransfer << ","
+	       << transferEfficiency << ","
+	       << (double)(totalDataTransfer) / 1.0e6 << ","
+	       << (double)(totalWriteBytes) / 1.0e6 << ","
+	       << (double)(totalReadBytes) / 1.0e6 << ","
+	       << totalTransferRate << "," << std::endl ;
 	}
       }
-
-      // Verify that this device actually had some data transfers registered
-      if (computeUnitName != "" && numTransfers != 0) {
-	fout << device->platformInfo.deviceName << ","
-	     << computeUnitName << "," 
-	     << numTransfers << ","
-	     << aveBytesPerTransfer << ","
-	     << transferEfficiency << ","
-	     << (double)(totalDataTransfer) / 1.0e6 << ","
-	     << (double)(totalWrite) / 1.0e6 << ","
-	     << (double)(totalRead) / 1.0e6 << ","
-	     << totalTransferRate << "," << std::endl ;
-      }
-
-      ++i ;
     }
   }
 
