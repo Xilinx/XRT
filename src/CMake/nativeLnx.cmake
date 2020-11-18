@@ -178,5 +178,8 @@ include (CMake/pkgconfig.cmake)
 # --- Coverity Support ---
 include (CMake/coverity.cmake)
 
+# --- Find Package Support ---
+include (CMake/findpackage.cmake)
+
 set (CTAGS "${CMAKE_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
 include (CMake/tags.cmake)
