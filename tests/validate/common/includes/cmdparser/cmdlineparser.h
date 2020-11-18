@@ -20,8 +20,6 @@
 #include <string>
 #include <vector>
 
-using namespace std;
-
 namespace sda {
 namespace utils {
 
@@ -37,31 +35,13 @@ bool is_file(const std::string &name);
 class CmdLineParser {
 public:
   class CmdSwitch {
-  public:
-    CmdSwitch() {}
-    CmdSwitch(const CmdSwitch &rhs) { copyfrom(rhs); }
-
-    void copyfrom(const CmdSwitch &rhs) {
-      this->key = rhs.key;
-      this->shortcut = rhs.shortcut;
-      this->default_value = rhs.default_value;
-      this->value = rhs.value;
-      this->desc = rhs.desc;
-      this->istoggle = rhs.istoggle;
-      this->isvalid = rhs.isvalid;
-    }
-
-    CmdSwitch &operator=(const CmdSwitch &rhs) {
-      this->copyfrom(rhs);
-      return *this;
-    }
 
   public:
-    string key;
-    string shortcut;
-    string default_value;
-    string value;
-    string desc;
+    std::string key;
+    std::string shortcut;
+    std::string default_value;
+    std::string value;
+    std::string desc;
     bool istoggle;
     bool isvalid;
   };
@@ -72,8 +52,9 @@ public:
   virtual ~CmdLineParser();
 
   bool addSwitch(const CmdSwitch &s);
-  bool addSwitch(const string &name, const string &shortcut, const string &desc,
-                 const string &default_value = "", bool istoggle = false);
+  bool addSwitch(const std::string &name, const std::string &shortcut,
+                 const std::string &desc, const std::string &default_value = "",
+                 bool istoggle = false);
 
   /*!
    * sets default key to be able to read a 2 argumented call
@@ -88,7 +69,7 @@ public:
   /*!
    * retrieve value using a key
    */
-  string value(const char *key);
+  std::string value(const char *key);
 
   int value_to_int(const char *key);
 
@@ -110,17 +91,18 @@ protected:
    */
   CmdSwitch *getCmdSwitch(const char *key);
 
-  bool token_to_fullkeyname(const string &token, string &fullkey);
+  bool token_to_fullkeyname(const std::string &token, std::string &fullkey);
 
 private:
-  map<string, CmdSwitch *> m_mapKeySwitch;
-  map<string, string> m_mapShortcutKeys;
-  vector<CmdSwitch *> m_vSwitches;
-  string m_strDefaultKey;
-  string m_appname;
+  std::map<std::string, CmdSwitch *> m_mapKeySwitch;
+  std::map<std::string, std::string> m_mapShortcutKeys;
+  std::vector<CmdSwitch *> m_vSwitches;
+  std::string m_strDefaultKey;
+  std::string m_appname;
 };
 
 // bool starts_with(const string& src, const string& sub);
 }
 }
 #endif /* CMDLINEPARSER_H_ */
+
