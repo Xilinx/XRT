@@ -408,8 +408,7 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	/* preserve uuid, avoid double download */
 	zocl_xclbin_set_uuid(zdev, &axlf_head->m_header.uuid);
 
-	/* reset scheduler */
-	sched_reset_scheduler(zdev->ddev);
+	/* no need to reset scheduler, config will always reset scheduler */
 
 out:
 	write_unlock(&zdev->attr_rwlock);
