@@ -189,7 +189,7 @@ clGetDeviceInfo(cl_device_id   device,
     buffer.as<cl_ulong>() = 0;
     break;
   case CL_DEVICE_GLOBAL_MEM_SIZE:
-    buffer.as<cl_ulong>() = xdevice->get_xrt_device()->getDdrSize();
+    buffer.as<cl_ulong>() = xdevice->get_xdevice()->getDdrSize();
     break;
   case CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE:
     buffer.as<cl_ulong>() = 4*1024*1024;

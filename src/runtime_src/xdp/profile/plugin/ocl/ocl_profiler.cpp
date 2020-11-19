@@ -90,7 +90,7 @@ namespace xdp {
   oclDeviceData* OCLProfiler::initializeDeviceInterface(xocl::device* device)
   {
     DeviceIntf* dInt = nullptr;
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
 
     auto itr = DeviceData.find(device);
     if (itr!=DeviceData.end())
@@ -213,7 +213,7 @@ namespace xdp {
         continue;
       }
       auto info = initializeDeviceInterface(device);
-      auto xdevice = device->get_xrt_device();
+      auto xdevice = device->get_xdevice();
       DeviceIntf* dInt = &info->mDeviceIntf;
 
       // Set clock etc.
@@ -294,7 +294,7 @@ namespace xdp {
         continue;
       }
       auto info = initializeDeviceInterface(device);
-      auto xdevice = device->get_xrt_device();
+      auto xdevice = device->get_xdevice();
       DeviceIntf* dInt = &info->mDeviceIntf;
 
       // Since clock training is performed in mStartTrace, let's record this time
@@ -633,7 +633,7 @@ namespace xdp {
       if(!device->is_active()) {
         continue;
       }
-      auto xdevice = device->get_xrt_device();
+      auto xdevice = device->get_xdevice();
 
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {

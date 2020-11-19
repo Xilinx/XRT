@@ -227,7 +227,7 @@ init_scheduler(xocl::device* device)
   if (!program)
     throw xocl::error(CL_INVALID_PROGRAM,"Cannot initialize MBS before program is loadded");
 
-  xrt_xocl::scheduler::init(device->get_xrt_device());
+  xrt_xocl::scheduler::init(device->get_xdevice());
 }
 
 }
@@ -750,11 +750,11 @@ import_buffer_object(const device* src_device, const xrt_xocl::device::BufferObj
   // Consider moving to xrt_xocl::device
 
   // Export from exporting device (src_device)
-  auto fd = src_device->get_xrt_device()->getMemObjectFd(src_boh);
+  auto fd = src_device->get_xdevice()->getMemObjectFd(src_boh);
 
   // Import into this device
   size_t size=0;
-  return get_xrt_device()->getBufferFromFd(fd,size,1);
+  return get_xdevice()->getBufferFromFd(fd,size,1);
 }
 
 void*
@@ -1041,7 +1041,7 @@ rw_image(device* device,
          ,char* read_to,const char* write_from)
 {
   auto boh = image->get_buffer_object(device);
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
 
   size_t image_offset = image->get_image_data_offset()
     + image->get_image_bytes_per_pixel()*origin[0]
@@ -1093,7 +1093,7 @@ write_image(memory* image,const size_t* origin,const size_t* region,size_t row_p
   // Sync newly writte data to device if image is resident
   if (image->is_resident(this) && !image->no_host_memory()) {
     auto boh = image->get_buffer_object_or_error(this);
-    get_xrt_device()->sync(boh, image->get_size(), 0,xrt_xocl::hal::device::direction::HOST2DEVICE,false);
+    get_xdevice()->sync(boh, image->get_size(), 0,xrt_xocl::hal::device::direction::HOST2DEVICE,false);
   }
 }
 
@@ -1104,7 +1104,7 @@ read_image(memory* image,const size_t* origin,const size_t* region,size_t row_pi
   // Sync back from device if image is resident
   if (image->is_resident(this) && !image->no_host_memory()) {
     auto boh = image->get_buffer_object_or_error(this);
-    get_xrt_device()->sync(boh,image->get_size(),0,xrt_xocl::hal::device::direction::DEVICE2HOST,false);
+    get_xdevice()->sync(boh,image->get_size(),0,xrt_xocl::hal::device::direction::DEVICE2HOST,false);
   }
 
   // Now read from image into ptr
@@ -1117,7 +1117,7 @@ read_register(memory* mem, size_t offset,void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
     throw xocl::error(CL_INVALID_OPERATION,"read_register requires mem object with CL_MEM_REGISTER_MAP");
-  get_xrt_device()->read_register(offset,ptr,size);
+  get_xdevice()->read_register(offset,ptr,size);
 }
 
 void
@@ -1126,7 +1126,7 @@ write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
     throw xocl::error(CL_INVALID_OPERATION,"write_register requires mem object with CL_MEM_REGISTER_MAP");
-  get_xrt_device()->write_register(offset,ptr,size);
+  get_xdevice()->write_register(offset,ptr,size);
 }
 
 void

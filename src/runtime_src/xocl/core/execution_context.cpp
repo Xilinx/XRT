@@ -397,7 +397,7 @@ start()
 
   // Construct command packet and send to hardware
   auto opcode = get_opcode();
-  auto cmd = std::make_shared<start_kernel>(m_device->get_xrt_device(),this,opcode);
+  auto cmd = std::make_shared<start_kernel>(m_device->get_xdevice(),this,opcode);
   ++m_active;
 
   auto& packet = cmd->get_packet();

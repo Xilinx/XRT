@@ -56,7 +56,7 @@ clGetMemObjDeviceAddress(cl_mem mem,
   validOrError(mem,device,size,address);
 
   if (auto boh = xocl(mem)->get_buffer_object_or_null(xocl(device))) {
-    auto xdevice = xocl(device)->get_xrt_device();
+    auto xdevice = xocl(device)->get_xdevice();
     auto addr = reinterpret_cast<uintptr_t*>(address);
     *addr = xdevice->getDeviceAddr(boh);
     return CL_SUCCESS;

@@ -76,7 +76,7 @@ void clSVMFree(cl_context     context,
   // If a NULL pointer is passed in svm_pointer, no action occurs.
   if (svm_pointer) {
     if (auto device = singleContextDevice(context)) {
-      device->get_xrt_device()->free_svm(svm_pointer);
+      device->get_xdevice()->free_svm(svm_pointer);
     }
   }
 

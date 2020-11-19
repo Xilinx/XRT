@@ -480,7 +480,7 @@ getProfileNumSlots(key k, xclPerfMonType type)
   if(device_interface) {
     return device_interface->getNumMonitors(type);
   }
-  return device->get_xrt_device()->getProfilingSlots(type).get();
+  return device->get_xdevice()->getProfilingSlots(type).get();
 }
 
 cl_int
@@ -494,7 +494,7 @@ getProfileSlotName(key k, xclPerfMonType type, unsigned int index,
   if(device_interface) {
     device_interface->getMonitorName(type, index, name, 128);
   } else {
-    device->get_xrt_device()->getProfilingSlotName(type, index, name, 128);
+    device->get_xdevice()->getProfilingSlotName(type, index, name, 128);
   }
   slotName = name;
   return CL_SUCCESS;
@@ -524,7 +524,7 @@ getTraceSlotProperties(key k, xclPerfMonType type, unsigned int index)
   if (device_interface)
     return device_interface->getTraceMonProperty(type, index);
   else
-    return device->get_xrt_device()->getProfilingSlotProperties(type, index).get();
+    return device->get_xdevice()->getProfilingSlotProperties(type, index).get();
 }
 
 unsigned int
@@ -535,14 +535,14 @@ getProfileSlotProperties(key k, xclPerfMonType type, unsigned int index)
   if(device_interface) {
     return device_interface->getMonitorProperties(type, index);
   }
-  return device->get_xrt_device()->getProfilingSlotProperties(type, index).get();
+  return device->get_xdevice()->getProfilingSlotProperties(type, index).get();
 }
 
 cl_int
 startTrace(key k, xclPerfMonType type, size_t /*numComputeUnits*/)
 {
   auto device = k;
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
   auto data = get_data(k);
   auto profiler = OCLProfiler::Instance();
   auto profileMgr = profiler->getProfileManager();
@@ -583,7 +583,7 @@ cl_int
 stopTrace(key k, xclPerfMonType type)
 {
   auto device = k;
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
   xdevice->stopTrace(type);
   return CL_SUCCESS;
 }
@@ -593,7 +593,7 @@ getTimestamp(key k)
 {
   auto device = k;
   if(OCLProfiler::Instance()->getPlugin()->getFlowMode() == xdp::RTUtil::HW_EM) {
-      return device->get_xrt_device()->getDeviceTime().get();
+      return device->get_xdevice()->getDeviceTime().get();
   }
   return 0;
 }
@@ -605,7 +605,7 @@ getMaxRead(key k)
   auto device_interface = get_device_interface(device);
   if (device_interface)
     return device_interface->getMaxBwRead();
-  return device->get_xrt_device()->getDeviceMaxRead().get();
+  return device->get_xdevice()->getDeviceMaxRead().get();
 }
 
 double
@@ -615,7 +615,7 @@ getMaxWrite(key k)
   auto device_interface = get_device_interface(device);
   if (device_interface)
     return device_interface->getMaxBwRead();
-  return device->get_xrt_device()->getDeviceMaxWrite().get();
+  return device->get_xdevice()->getDeviceMaxWrite().get();
 }
 
 void configureDataflow(key k, xclPerfMonType type)
@@ -629,7 +629,7 @@ void configureDataflow(key k, xclPerfMonType type)
   }
 
   auto device = k;
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
   xdevice->configureDataflow(type, ip_config.get());
 }
 
@@ -638,7 +638,7 @@ startCounters(key k, xclPerfMonType type)
 {
   auto data = get_data(k);
   auto device = k;
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
 
   data->mPerformingFlush = false;
 
@@ -661,7 +661,7 @@ cl_int
 stopCounters(key k, xclPerfMonType type)
 {
   auto device = k;
-  device->get_xrt_device()->stopCounters(type);
+  device->get_xdevice()->stopCounters(type);
   return CL_SUCCESS;
 }
 
@@ -670,7 +670,7 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
 {
   auto data = get_data(k);
   auto device = k;
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
   auto profilemgr = OCLProfiler::Instance()->getProfileManager();
 
   // Create unique name for device since system can have multiples of same device
@@ -731,7 +731,7 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
 {
   auto data = get_data(k);
   auto device = k;
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
 
   //if (data->mPerformingFlush)
   //  return CL_SUCCESS;
@@ -773,7 +773,7 @@ cl_int
 debugReadIPStatus(key k, xclDebugReadType type, void* aDebugResults)
 {
   auto device = k;
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
   //warning : reading from the accelerator device only
   //read the device profile
   xdevice->debugReadIPStatus(type, aDebugResults);

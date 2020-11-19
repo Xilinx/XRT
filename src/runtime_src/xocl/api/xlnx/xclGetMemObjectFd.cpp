@@ -51,7 +51,7 @@ clGetMemObjectFd(cl_mem mem,
   auto context = xmem->get_context();
   for (auto device : context->get_device_range()) {
     if (auto boh = xmem->get_buffer_object_or_null(device)) {
-      *fd = device->get_xrt_device()->getMemObjectFd(boh);
+      *fd = device->get_xdevice()->getMemObjectFd(boh);
       return CL_SUCCESS;
     }
   }
