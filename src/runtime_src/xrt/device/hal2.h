@@ -20,6 +20,8 @@
 #include "xrt/device/hal.h"
 #include "xrt/device/halops2.h"
 
+#include "experimental/xrt_device.h"
+
 #include "ert.h"
 
 #include <cassert>
@@ -69,7 +71,7 @@ class device : public xrt_xocl::hal::device
   std::shared_ptr<hal2::operations> m_ops;
   unsigned int m_idx;
 
-  hal2::device_handle m_handle;
+  xrt::device m_handle;
   mutable boost::optional<hal2::device_info> m_devinfo;
 
   mutable std::mutex m_mutex;
@@ -203,7 +205,7 @@ public:
   virtual hal::device_handle
   get_handle() const
   {
-    return m_handle;
+    return m_handle; // cast to xclDeviceHandle
   }
 
   std::shared_ptr<xrt_core::device>
@@ -385,22 +387,6 @@ public:
   getBufferFromFd(const int fd, size_t& size, unsigned flags);
 
 public:
-  virtual hal::operations_result<int>
-  lockDevice()
-  {
-    if (!m_ops->mLockDevice)
-      return hal::operations_result<int>();
-    return m_ops->mLockDevice(m_handle);
-  }
-
-  virtual hal::operations_result<int>
-  unlockDevice()
-  {
-    if (!m_ops->mUnlockDevice)
-      return hal::operations_result<int>();
-    return m_ops->mUnlockDevice(m_handle);
-  }
-
   virtual hal::operations_result<int>
   loadXclBin(const xclBin* xclbin);
 

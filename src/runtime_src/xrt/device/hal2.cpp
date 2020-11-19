@@ -62,7 +62,7 @@ namespace xrt_xocl { namespace hal2 {
 
 device::
 device(std::shared_ptr<operations> ops, unsigned int idx)
-  : m_ops(std::move(ops)), m_idx(idx), m_handle(nullptr), m_devinfo{}
+  : m_ops(std::move(ops)), m_idx(idx), m_devinfo{}
 {
 }
 
@@ -86,10 +86,7 @@ open_nolock()
   if (m_handle)
     return false;
 
-  m_handle=m_ops->mOpen(m_idx, nullptr, XCL_QUIET);
-
-  if (!m_handle)
-    throw std::runtime_error("Could not open device");
+  m_handle = xrt::device{m_idx};
 
   return true;
 }
@@ -106,10 +103,8 @@ void
 device::
 close_nolock()
 {
-  if (m_handle) {
-    m_ops->mClose(m_handle);
-    m_handle=nullptr;
-  }
+  if (m_handle)
+    m_handle.reset();
 }
 
 void
@@ -236,7 +231,7 @@ std::shared_ptr<xrt_core::device>
 device::
 get_core_device() const
 {
-  return xrt_core::get_userpf_device(m_handle);
+  return m_handle.get_handle();
 }
 
 bool
@@ -279,18 +274,13 @@ hal::operations_result<int>
 device::
 loadXclBin(const xclBin* xclbin)
 {
-  if (!m_ops->mLoadXclBin)
-    return hal::operations_result<int>();
-
-  hal::operations_result<int> ret = m_ops->mLoadXclBin(m_handle,xclbin);
+  m_handle.load_xclbin(xclbin);
 
   // refresh device info on successful load
-  if (!ret.get()) {
-    std::lock_guard<std::mutex> lk(m_mutex);
-    m_devinfo = boost::none;
-  }
+  std::lock_guard<std::mutex> lk(m_mutex);
+  m_devinfo = boost::none;
 
-  return ret;
+  return 0;
 }
 
 ExecBufferObjectHandle

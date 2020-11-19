@@ -561,13 +561,6 @@ lock()
   if (!m_parent.get())
     m_xdevice->open();
   
-  // First time, but only hw devices need locking
-  if (!is_emulation_mode()) {
-    auto rv = m_xdevice->lockDevice();
-    if (rv.valid() && rv.get())
-      throw  xocl::error(CL_DEVICE_NOT_AVAILABLE,"could not lock device");
-  }
-
   // All good, return increment lock count
   return ++m_locks;
 }
@@ -580,13 +573,6 @@ unlock()
   // Return lock count if not locked or decremented lock count > 0
   if (!m_locks || --m_locks)
     return m_locks;
-
-  // Last locked was released, now unlock hw device if any
-  if (!is_emulation_mode()) {
-    auto rv = m_xdevice->unlockDevice();
-    if (rv.valid() && rv.get())
-      throw  xocl::error(CL_DEVICE_NOT_AVAILABLE,"could not unlock device");
-  }
 
   // sub-device should unlock the parent
   if (m_parent.get())
