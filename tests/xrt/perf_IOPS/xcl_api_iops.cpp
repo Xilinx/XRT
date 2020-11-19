@@ -24,10 +24,10 @@ struct task_info {
 
 typedef struct task_args {
     int thread_id;
-    int bank;
+    int dev_id;
     int queueLength;
     unsigned int total;
-    xclDeviceHandle handle;
+    std::string xclbin_fn;
     Clock::time_point start;
     Clock::time_point end;
 } arg_t;
@@ -147,8 +147,11 @@ void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info
     //std::cout << "Allocated commands, expect " << expected_cmds << ", created " << cmds.size() << std::endl;
 }
 
-int testSingleThread(xclDeviceHandle handle, xuid_t uuid, int bank)
+int testSingleThread(int dev_id, std::string &xclbin_fn)
 {
+    xclDeviceHandle handle;
+    xuid_t uuid;
+    int bank = 0;
     std::vector<std::shared_ptr<task_info>> cmds;
     /* The command would incease */
     std::vector<unsigned int> cmds_per_run = { 50000,100000,500000,1000000 };
@@ -156,6 +159,28 @@ int testSingleThread(xclDeviceHandle handle, xuid_t uuid, int bank)
     //int expected_cmds = 100000;
     int expected_cmds = 128;
     std::vector<arg_t> arg(1);
+
+    handle = xclOpen(dev_id, "", XCL_QUIET);
+    if (!handle) {
+        printf("Could not open device\n");
+        return 1;
+    }
+
+    auto xclbin = load_file_to_memory(xclbin_fn);
+    auto top = reinterpret_cast<const axlf*>(xclbin.data());
+    auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+    auto topology = reinterpret_cast<mem_topology*>(xclbin.data() + topo->m_sectionOffset);
+    if (xclLoadXclBin(handle, top))
+        throw std::runtime_error("Bitstream download failed");
+
+    uuid_copy(uuid, top->m_header.uuid);
+
+    for (int i = 0; i < topology->m_count; ++i) {
+        if (topology->m_mem_data[i].m_used) {
+            bank = i;
+            break;
+        }
+    }
 
     if (xclOpenContext(handle, uuid, 0, true))
         throw std::runtime_error("Cound not open context");
@@ -186,46 +211,70 @@ int testSingleThread(xclDeviceHandle handle, xuid_t uuid, int bank)
     }
 
     xclCloseContext(handle, uuid, 0);
+    xclClose(handle);
     return 0;
 }
 
 void *runTestThread(arg_t &arg)
 {
+    xclDeviceHandle handle;
+    xuid_t uuid;
+    int bank = 0;
     std::vector<std::shared_ptr<task_info>> cmds;
-    /* The command would incease */
 
-    fillCmdVector(arg.handle, cmds, arg.bank, arg.queueLength);
+    handle = xclOpen(arg.dev_id, "", XCL_QUIET);
+    if (!handle)
+        throw std::runtime_error("Could not open device");
+
+    auto xclbin = load_file_to_memory(arg.xclbin_fn);
+    auto top = reinterpret_cast<const axlf*>(xclbin.data());
+    auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+    auto topology = reinterpret_cast<mem_topology*>(xclbin.data() + topo->m_sectionOffset);
+    if (xclLoadXclBin(handle, top))
+        throw std::runtime_error("Bitstream download failed");
+
+    uuid_copy(uuid, top->m_header.uuid);
+
+    for (int i = 0; i < topology->m_count; ++i) {
+        if (topology->m_mem_data[i].m_used) {
+            bank = i;
+            break;
+        }
+    }
+
+    if (xclOpenContext(handle, uuid, 0, true))
+        throw std::runtime_error("Cound not open context");
+
+    fillCmdVector(handle, cmds, bank, arg.queueLength);
 
     barrier.wait();
 
-    double duration = runTest(arg.handle, cmds, arg.total, arg);
+    double duration = runTest(handle, cmds, arg.total, arg);
 
     barrier.wait();
 
     for (auto& cmd : cmds) {
-        xclFreeBO(arg.handle, cmd->boh);
+        xclFreeBO(handle, cmd->boh);
         munmap(cmd->ecmd, 4096);
-        xclFreeBO(arg.handle, cmd->exec_bo);
+        xclFreeBO(handle, cmd->exec_bo);
     }
+
+    xclCloseContext(handle, uuid, 0);
 }
 
-int testMultiThreads(xclDeviceHandle handle, xuid_t uuid, int bank,
-        int threadNumber, int queueLength, unsigned int total)
+int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int queueLength, unsigned int total)
 {
     std::thread threads[threadNumber];
     std::vector<arg_t> arg(threadNumber);
-
-    if (xclOpenContext(handle, uuid, 0, true))
-        throw std::runtime_error("Cound not open context");
 
     barrier.init(threadNumber + 1);
 
     for (int i = 0; i < threadNumber; i++) {
         arg[i].thread_id = i;
-        arg[i].bank = bank;
-        arg[i].handle = handle;
+        arg[i].dev_id = dev_id;
         arg[i].queueLength = queueLength;
         arg[i].total = total;
+        arg[i].xclbin_fn = xclbin_fn;
         threads[i] = std::thread([&](int i){ runTestThread(arg[i]); }, i);
     }
 
@@ -239,8 +288,6 @@ int testMultiThreads(xclDeviceHandle handle, xuid_t uuid, int bank,
 
     for (int i = 0; i < threadNumber; i++)
         threads[i].join();
-
-    xclCloseContext(handle, uuid, 0);
 
     /* calculate performance */
     int overallCommands = 0;
@@ -264,10 +311,7 @@ int testMultiThreads(xclDeviceHandle handle, xuid_t uuid, int bank,
 
 int _main(int argc, char* argv[])
 {
-    xclDeviceHandle handle;
     std::string xclbin_fn;
-    xuid_t uuid;
-    int first_mem = 0;
     int dev_id = 0;
     int queueLength = 128;
     unsigned total = 50000;
@@ -308,32 +352,9 @@ int _main(int argc, char* argv[])
 
     printf("The system has %d device(s)\n", xclProbe());
 
-    handle = xclOpen(dev_id, "", XCL_QUIET);
-    if (!handle) {
-        printf("Could not open device\n");
-        return 1;
-    }
+    //testSingleThread(dev_id, xclbin_fn);
+    testMultiThreads(dev_id, xclbin_fn, threadNumber, queueLength, total);
 
-    auto xclbin = load_file_to_memory(xclbin_fn);
-    auto top = reinterpret_cast<const axlf*>(xclbin.data());
-    auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
-    auto topology = reinterpret_cast<mem_topology*>(xclbin.data() + topo->m_sectionOffset);
-    if (xclLoadXclBin(handle, top))
-        throw std::runtime_error("Bitstream download failed");
-
-    uuid_copy(uuid, top->m_header.uuid);
-
-    for (int i = 0; i < topology->m_count; ++i) {
-        if (topology->m_mem_data[i].m_used) {
-            first_mem = i;
-            break;
-        }
-    }
-
-    //testSingleThread(handle, uuid, first_mem);
-    testMultiThreads(handle, uuid, first_mem, threadNumber, queueLength, total);
-
-    xclClose(handle);
     return 0;
 }
 
