@@ -66,6 +66,8 @@
 		DRM_INFO("packet(0x%p) execbuf[%d] = 0x%x\n", data, i, data[i]); \
 })
 
+extern int kds_echo;
+
 struct ert_30_event {
 	struct mutex		  lock;
 	void			 *client;
@@ -120,6 +122,8 @@ struct xocl_ert_30 {
 	struct ert_30_command	*submit_queue[ERT_MAX_SLOTS];
 	u32			num_sq;
 
+	struct list_head	cq;
+	u32			num_cq;
 	u32			stop;
 	bool			bad_state;
 
@@ -316,7 +320,36 @@ ert_release_slot(struct xocl_ert_30 *ert_30, struct ert_30_command *ecmd)
 }
 
 /**
- * process_ert_sq() - Process cmd witch is submitted and completed
+ * process_ert_cq() - Process cmd witch is completed
+ * @ert_30: Target XRT CU
+ */
+static inline void process_ert_cq(struct xocl_ert_30 *ert_30)
+{
+	struct kds_command *xcmd;
+	struct ert_30_command *ecmd;
+
+	if (!ert_30->num_cq)
+		return;
+
+	ERTUSER_DBG(ert_30, "-> %s\n", __func__);
+
+	while (ert_30->num_cq) {
+		ecmd = list_first_entry(&ert_30->cq, struct ert_30_command, list);
+		list_del(&ecmd->list);
+		xcmd = ecmd->xcmd;
+		ert_release_slot(ert_30, ecmd);
+		xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+		xcmd->cb.free(xcmd);
+		ert_30_free_cmd(ecmd);
+		--ert_30->num_cq;
+	}
+
+	ERTUSER_DBG(ert_30, "<- %s\n", __func__);
+}
+
+
+/**
+ * process_ert_sq() - Process cmd witch is submitted
  * @ert_30: Target XRT CU
  */
 static inline void process_ert_sq(struct xocl_ert_30 *ert_30)
@@ -332,14 +365,13 @@ static inline void process_ert_sq(struct xocl_ert_30 *ert_30)
 		if (ecmd->completed) {
 			xcmd = ecmd->xcmd;
 			ERTUSER_DBG(ert_30, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
-			list_del(&ecmd->list);
+			list_move_tail(&ecmd->list, &ert_30->cq);
 			--ert_30->num_sq;
+			++ert_30->num_cq;
 			ert_30->submit_queue[ecmd->slot_idx] = NULL;
-			ert_release_slot(ert_30, ecmd);
-
-			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
-			xcmd->cb.free(xcmd);
-			ert_30_free_cmd(ecmd);
+			/* If it's the first completed command, up the semaphore */
+			if (ert_30->num_cq == 1)
+				up(&ert_30->sem);
 		}
 	}
 	ERTUSER_DBG(ert_30, "<- %s\n", __func__);
@@ -429,14 +461,10 @@ static inline void process_ert_sq_polling(struct xocl_ert_30 *ert_30)
 				if (ecmd) {
 					xcmd = ecmd->xcmd;
 					ERTUSER_DBG(ert_30, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
-					list_del(&ecmd->list);
+					list_move_tail(&ecmd->list, &ert_30->cq);
 					--ert_30->num_sq;
+					++ert_30->num_cq;
 					ert_30->submit_queue[cmd_idx] = NULL;
-					ert_release_slot(ert_30, ecmd);
-
-					xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
-					xcmd->cb.free(xcmd);
-					ert_30_free_cmd(ecmd);
 				} else
 					ERTUSER_DBG(ert_30, "ERR: submit queue slot is empty\n");
 			}
@@ -649,20 +677,24 @@ static inline int process_ert_rq(struct xocl_ert_30 *ert_30)
 		slot_addr = ecmd->slot_idx * (ert_30->cq_range/ert_30->num_slots);
 
 		ERTUSER_DBG(ert_30, "%s slot_addr %x\n", __func__, slot_addr);
-		if (cmd_opcode(ecmd) == OP_CONFIG) {
-			xocl_memcpy_toio(ert_30->cq_base + slot_addr + 4,
-				  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
+		if (kds_echo) {
+			ecmd->completed = true;
 		} else {
-			// write kds selected cu_idx in first cumask (first word after header)
-			iowrite32(ecmd->xcmd->cu_idx, ert_30->cq_base + slot_addr + 4);
+			if (cmd_opcode(ecmd) == OP_CONFIG) {
+				xocl_memcpy_toio(ert_30->cq_base + slot_addr + 4,
+					  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
 
-			// write remaining packet (past header and cuidx)
-			xocl_memcpy_toio(ert_30->cq_base + slot_addr + 8,
-					 ecmd->xcmd->execbuf+2, (epkt->count-1)*sizeof(u32));
+			} else {
+				// write kds selected cu_idx in first cumask (first word after header)
+				iowrite32(ecmd->xcmd->cu_idx, ert_30->cq_base + slot_addr + 4);
+
+				// write remaining packet (past header and cuidx)
+				xocl_memcpy_toio(ert_30->cq_base + slot_addr + 8,
+						 ecmd->xcmd->execbuf+2, (epkt->count-1)*sizeof(u32));
+			}
+
+			iowrite32(epkt->header, ert_30->cq_base + slot_addr);
 		}
-
-		iowrite32(epkt->header, ert_30->cq_base + slot_addr);
-
 		if (ert_30->cq_intr) {
 			u32 mask_idx = mask_idx32(ecmd->slot_idx);
 			u32 cq_int_addr = (mask_idx << 2);
@@ -729,11 +761,15 @@ static inline void process_event(struct xocl_ert_30 *ert_30)
 	flush_queue(&ert_30->rq, &ert_30->num_rq, KDS_ABORT, client);
 
 	/* Let's check submitted commands one more time */
+	process_ert_sq(ert_30);
 	process_ert_sq_polling(ert_30);
 	if (ert_30->num_sq) {
 		flush_queue(&ert_30->sq, &ert_30->num_sq, KDS_ABORT, client);
 		ert_30->ev.state = ERT_STATE_BAD;
 	}
+
+	while (ert_30->num_cq)
+		process_ert_cq(ert_30);
 
 	/* Maybe pending queue has commands of this client */
 	process_ert_pq(ert_30);
@@ -797,12 +833,17 @@ int ert_30_thread(void *data)
 		 * - while handling completed queue, running command might done
 		 * - process_ert_sq_polling will check CU status, which is thru slow bus
 		 */
+		process_ert_cq(ert_30);
+
 		process_ert_sq(ert_30);
 		process_ert_sq_polling(ert_30);
 		process_event(ert_30);
 
 		if (ert_30->bad_state)
 			break;
+
+		if (ert_30->num_rq)
+			continue;
 
 		/* ert polling mode goes to sleep only if it doesn't have to poll
 		 * submitted queue to check the completion
@@ -947,6 +988,7 @@ static int ert_30_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&ert_30->rq);
 
 	/* Initialize completed queue */
+	INIT_LIST_HEAD(&ert_30->cq);
 	INIT_LIST_HEAD(&ert_30->sq);
 
 	mutex_init(&ert_30->ev.lock);
@@ -992,7 +1034,7 @@ static int ert_30_probe(struct platform_device *pdev)
 		res->start, res->end);
 
 	ert_30->cq_range = res->end - res->start + 1;
-	ert_30->cq_base = ioremap_nocache(res->start, ert_30->cq_range);
+	ert_30->cq_base = ioremap_wc(res->start, ert_30->cq_range);
 	if (!ert_30->cq_base) {
 		err = -EIO;
 		xocl_err(&pdev->dev, "Map iomem failed");
