@@ -23,7 +23,7 @@
 #include "zocl_xclbin.h"
 #include "xclbin.h"
 
-/* #define SCHED_VERBOSE */
+//#define SCHED_VERBOSE
 
 #if defined(__GNUC__)
 #define SCHED_UNUSED __attribute__((unused))
@@ -799,7 +799,6 @@ configure(struct sched_cmd *cmd)
 	struct ert_configure_cmd *cfg;
 	unsigned int i, j;
 	phys_addr_t cu_addr;
-	char name[256] = "zocl-ert-thread";
 	int cq_irq;
 	int acc_cu = 0;
 	int has_acc_cu = 0;
@@ -889,10 +888,6 @@ configure(struct sched_cmd *cmd)
 
 	/* Enable interrupt from host to PS when new commands are ready */
 	if (zdev->ert && exec->cq_interrupt) {
-		/* Stop CQ check thread */
-		if (zdev->exec->cq_thread)
-			kthread_stop(zdev->exec->cq_thread);
-
 		/* At this point we are good. No one is polling CQ */
 		cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
 		ret = request_irq(cq_irq, sched_cq_isr, 0, "zocl_cq", zdev);
@@ -900,9 +895,11 @@ configure(struct sched_cmd *cmd)
 			DRM_WARN("Failed to initial CQ interrupt. "
 			    "Fall back to polling\n");
 			exec->cq_interrupt = 0;
-			exec->cq_thread = kthread_run(cq_check, zdev, name);
 		}
 	}
+	if (zdev->ert)
+		wake_up_interruptible(&exec->cq_wait_queue);
+
 	/* TODO: let's consider how to support reconfigurable KDS/ERT later.
 	 * At that time, ERT should be able to change back to CQ polling mode.
 	 */
@@ -3160,6 +3157,24 @@ err:
 	return ret;
 }
 
+static int
+cq_wait_condition(struct sched_exec_core *exec_core)
+{
+	if (!exec_core->cq_interrupt)
+		return 0;
+	if (atomic_xchg(&exec_core->cq_intc, 0))
+		return 0;
+	return 1;
+}
+
+static void
+cq_check_wait(struct drm_zocl_dev *zdev)
+{
+	struct sched_exec_core *exec_core = zdev->exec;
+	wait_event_interruptible(exec_core->cq_wait_queue,
+		cq_wait_condition(exec_core) == 0);
+}
+
 /**
  * cq_check() - Check CQ status and submit new command to KDS
  *
@@ -3176,7 +3191,8 @@ cq_check(void *data)
 	struct sched_exec_core *exec_core = zdev->exec;
 
 	SCHED_DEBUG("-> %s", __func__);
-	while (!kthread_should_stop() && !exec_core->cq_interrupt) {
+	while (!kthread_should_stop()) {
+		cq_check_wait(zdev);
 		if (iterate_packets(zdev->ddev) == 1) {
 			/* This thread should exit */
 			exec_core->cq_thread = NULL;
@@ -3188,47 +3204,27 @@ cq_check(void *data)
 	return 0;
 }
 
+#define BITS_IN_U32 (32)
 static irqreturn_t sched_cq_isr(int irq, void *arg)
 {
 	struct drm_zocl_dev *zdev = arg;
-	struct ert_packet *pkg;
-	int slot_sz, slot_idx = 0;
-	int good_pkg;
-	void *buffer;
+	struct sched_exec_core *exec_core = zdev->exec;
+	char *ert_hw = zdev->ert->hw_ioremap;
+	static u32 i, cq_status[4];
 
 	SCHED_DEBUG("-> %s", __func__);
-
-	good_pkg = 1;
-	slot_sz = slot_size(zdev->ddev);
-	pkg = zdev->ert->ops->get_next_cmd(zdev->ert, NULL, &slot_idx);
-	/* The first slot is ctrl slot in CQ.
-	 * It might has special command.
+	/*
+	 * Don't do heavy lifting in ISR since the interrupt is still disabled now.
+	 * Trigger a soft int or tasklet if required or to simplify just do it in
+	 * kernel thread.
+	 * Here, just leverage the cq_check kthread. So ack the interrupt by reading
+	 * the cq status register and wake up the kthread
 	 */
-	if (slot_idx == 0 && pkg->opcode == ERT_EXIT) {
-		/* Exit command, do not response to CQ interrupt anymore */
-		disable_irq_nosync(irq);
-		pkg->state = ERT_CMD_STATE_COMPLETED;
-		goto out;
-	}
+	for (i = 0; i < (exec_core->num_slots + BITS_IN_U32 - 1) / BITS_IN_U32; i++)
+		cq_status[i] = ioread32(ert_hw + ERT_CQ_STATUS_REG + i*4);
+	atomic_set(&exec_core->cq_intc, 1);
+	wake_up_interruptible(&exec_core->cq_wait_queue);
 
-	while (pkg) {
-		/* Usually, if the status of the pkg is not NEW. We think it is
-		 * not 'good' at this point.
-		 */
-		buffer = create_cmd_buffer(pkg, slot_sz);
-		if (IS_ERR(buffer))
-			good_pkg = 0;
-
-		if (good_pkg)
-			if (add_ert_cq_cmd(zdev->ddev, buffer, slot_idx))
-				kfree(buffer);
-
-		pkg = zdev->ert->ops->get_next_cmd(zdev->ert, pkg, &slot_idx);
-		/* No harm to assume the next pkg is good */
-		good_pkg = 1;
-	}
-
-out:
 	SCHED_DEBUG("<- %s", __func__);
 	return IRQ_HANDLED;
 }
@@ -3249,6 +3245,7 @@ static inline void init_exec(struct sched_exec_core *exec_core)
 	atomic_set(&exec_core->scheduler->num_running, 0);
 	atomic_set(&exec_core->scheduler->num_received, 0);
 	atomic_set(&exec_core->scheduler->num_notified, 0);
+	atomic_set(&exec_core->cq_intc, 0);
 
 	exec_core->cu_isr = 0;
 	exec_core->cu_dma = 0;
@@ -3307,6 +3304,7 @@ sched_init_exec(struct drm_device *drm)
 		/* Initialize soft kernel */
 		zocl_init_soft_kernel(drm);
 
+		init_waitqueue_head(&exec_core->cq_wait_queue);
 		exec_core->cq_thread = kthread_run(cq_check, zdev, name);
 	}
 

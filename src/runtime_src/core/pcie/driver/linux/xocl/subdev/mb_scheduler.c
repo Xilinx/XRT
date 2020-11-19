@@ -1509,6 +1509,7 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 {
 	u32 slot_addr = 0;
 	struct ert_packet *ecmd = cmd_packet(xcmd);
+	u32 mask_idx, cq_int_addr, mask;
 
 	SCHED_DEBUGF("-> %s ert(%d) cmd(%lu)\n", __func__, xert->uid, xcmd->uid);
 
@@ -1537,16 +1538,25 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 	// write header
 	iowrite32(ecmd->header, xert->cq_base + slot_addr);
 
-	// trigger interrupt to embedded scheduler if feature is enabled
-	if (xert->cq_intr) {
-		u32 mask_idx = mask_idx32(xcmd->slot_idx);
-		u32 cq_int_addr = ERT_CQ_STATUS_REGISTER_ADDR + (mask_idx << 2);
-		u32 mask = 1 << idx_in_mask32(xcmd->slot_idx, mask_idx);
+	/*
+	 * Always try to trigger interrupt to embedded scheduler.
+	 * The reason is, the ert configure cmd is also sent to MB/PS through cq,
+	 * and at the time the new ert configure cmd is sent, host doesn't know
+	 * MB/PS is running in cq polling or interrupt mode. eg, if MB/PS is in
+	 * cq interrupt mode, new ert configure is cq polling mode, but the new
+	 * ert configure cmd has to be received by MB/PS throught interrupt mode
+	 *
+	 * Setting the bit in cq status register when MB/PS is in cq polling mode
+	 * doesn't do harm since the interrupt is disabled and MB/PS will not read
+	 * the register
+	 */
+	mask_idx = mask_idx32(xcmd->slot_idx);
+	cq_int_addr = ERT_CQ_STATUS_REGISTER_ADDR + (mask_idx << 2);
+	mask = 1 << idx_in_mask32(xcmd->slot_idx, mask_idx);
 
-		SCHED_DEBUGF("++ mb_submit writes slot mask 0x%x to CQ_INT register at addr 0x%x\n",
-			     mask, cq_int_addr);
-		csr_write32(mask, xert->csr_base, cq_int_addr);
-	}
+	SCHED_DEBUGF("++ mb_submit writes slot mask 0x%x to CQ_INT register at addr 0x%x\n",
+		     mask, cq_int_addr);
+	csr_write32(mask, xert->csr_base, cq_int_addr);
 
 	// success
 	++xert->cq_slot_usage[xcmd->slot_idx];
