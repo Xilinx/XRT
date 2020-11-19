@@ -206,6 +206,18 @@ public:
   {
     return handle;
   }
+
+  void
+  reset()
+  {
+    handle.reset();
+  }
+
+  explicit
+  operator bool() const
+  {
+    return handle != nullptr;
+  }
   /// @endcond
 
 private:

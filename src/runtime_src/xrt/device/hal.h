@@ -385,28 +385,6 @@ public:
 
 public:
   /**
-   * Lock the device
-   *
-   * Fails if device is already locked
-   */
-  virtual operations_result<int>
-  lockDevice()
-  {
-    return operations_result<int>(); // invalid result
-  }
-
-  /**
-   * Unlock the device
-   *
-   * Unlocking an unlocked device is a no-op
-   */
-  virtual operations_result<int>
-  unlockDevice()
-  {
-    return operations_result<int>(); // invalid result
-  }
-
-  /**
    * Load an xclbin
    *
    * @param xclbin

@@ -586,24 +586,6 @@ private:
 
 public:
   /**
-   * Lock the device
-   */
-  hal::operations_result<int>
-  lockDevice()
-  {
-    return m_hal->lockDevice();
-  }
-
-  /**
-   * Unlock the device
-   */
-  hal::operations_result<int>
-  unlockDevice()
-  {
-    return m_hal->unlockDevice();
-  }
-
-  /**
    * Load an xclbin
    *
    * @param xclbin
