@@ -27,6 +27,7 @@
 #include "sk_types.h"
 #include "sk_daemon.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 #include "core/edge/user/shim.h"
 
 xclDeviceHandle devHdl;
@@ -62,11 +63,10 @@ static int logMsg(xrtLogMsgLevel level, const char* tag,
   va_list args;
   va_start(args, format);
   int ret = -1;
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(devHdl);
-  ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
+  xrt_core::message::sendv(static_cast<xrt_core::message::severity_level>(level), tag, format, args);
   va_end(args);
 
-  return ret;
+  return 0;
 }
 
 static int getBufferFd(unsigned int boHandle)
