@@ -353,10 +353,22 @@ namespace xdp {
       auto kernelNameItem    = kernel.second.get_child("<xmlattr>");
       std::string kernelName = kernelNameItem.get<std::string>("name", "");
 
-      auto workGroupSz = kernel.second.get_child("compileWorkGroupSize");
-      std::string x = workGroupSz.get<std::string>("<xmlattr>.x", "");
-      std::string y = workGroupSz.get<std::string>("<xmlattr>.y", "");
-      std::string z = workGroupSz.get<std::string>("<xmlattr>.z", "");
+      std::string x ;
+      std::string y ;
+      std::string z ;
+
+      try {
+	auto workGroupSz = kernel.second.get_child("compileWorkGroupSize");
+	x = workGroupSz.get<std::string>("<xmlattr>.x", "");
+	y = workGroupSz.get<std::string>("<xmlattr>.y", "");
+	z = workGroupSz.get<std::string>("<xmlattr>.z", "");
+      } catch (...) {
+	// RTL kernels might not have this information, so if the fetch
+	//  fails default to 1:1:1
+	x = "1" ;
+	y = "1" ;
+	z = "1" ;
+      }
 
       // Find the ComputeUnitInstance
       for(auto cuItr : devInfo->cus) {
