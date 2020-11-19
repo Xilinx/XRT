@@ -15,9 +15,15 @@ set(SKD_SRC
 
 add_executable(skd ${SKD_SRC})
 
+add_dependencies(skd 
+  xrt_core
+  xrt_coreutil
+  )
+
 target_link_libraries(skd
   PRIVATE
   xrt_core
+  xrt_coreutil
   dl
   )
 
