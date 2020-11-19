@@ -73,7 +73,7 @@ is_aligned_ptr(void* p)
 inline void
 send_exception_message(const char* msg)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+  xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
 }
 
 inline void
@@ -209,7 +209,7 @@ public:
     }
     catch (const std::exception& ex) {
       auto fmt = boost::format("Reverting to host copy of buffers (%s)") % ex.what();
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT",  fmt.str());
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",  fmt.str());
     }
 
     // revert to copying through host

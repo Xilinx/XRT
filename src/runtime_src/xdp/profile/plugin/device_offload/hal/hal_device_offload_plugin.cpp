@@ -95,7 +95,7 @@ namespace xdp {
           } else {
             msg = FIFO_WARN_MSG;
           } 
-          xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         }
 
       }

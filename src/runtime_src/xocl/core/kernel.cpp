@@ -376,7 +376,7 @@ validate_cus(const device* device, unsigned long argidx, int memidx) const
     if ((cuconn & connections).none()) {
       auto mem = device->get_axlf_section<const mem_topology*>(ASK_GROUP_TOPOLOGY);
       xrt_xocl::message::send
-        (xrt_xocl::message::severity_level::XRT_WARNING
+        (xrt_xocl::message::severity_level::warning
          , "Argument '" + std::to_string(argidx)
          + "' of kernel '" + get_name()
          + "' is allocated in memory bank '" + xrt_core::xclbin::memidx_to_name(mem,memidx)

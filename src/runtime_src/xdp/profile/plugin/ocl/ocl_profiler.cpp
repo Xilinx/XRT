@@ -75,7 +75,7 @@ namespace xdp {
 
     // End all profiling, including device
     if (!mEndDeviceProfilingCalled && applicationProfilingOn()) {
-      xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING,
+      xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,
           "Profiling may contain incomplete information. Please ensure all OpenCL objects are released by your host code (e.g., clReleaseProgram()).");
 
       // Before deleting, do a final read of counters and force flush of trace buffers
@@ -280,11 +280,11 @@ namespace xdp {
            ++numActiveDevices;
        }
        if (numActiveDevices > 1) {
-         xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_DEVICE);
+         xrt_xocl::message::send(xrt_xocl::message::severity_level::warning, CONTINUOUS_OFFLOAD_WARN_MSG_DEVICE);
          mTraceThreadEn = false;
        }
        if (Plugin->getFlowMode() != xdp::RTUtil::DEVICE) {
-         xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_FLOW);
+         xrt_xocl::message::send(xrt_xocl::message::severity_level::warning, CONTINUOUS_OFFLOAD_WARN_MSG_FLOW);
          mTraceThreadEn = false;
        }
     }
@@ -332,7 +332,7 @@ namespace xdp {
           
           // Continuous trace isn't safe to use with stall setting
           if (dInt->hasFIFO() && mTraceThreadEn && stallTrace!= xdp::RTUtil::STALL_TRACE_OFF) {
-            xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_STALLS);
+            xrt_xocl::message::send(xrt_xocl::message::severity_level::warning, CONTINUOUS_OFFLOAD_WARN_MSG_STALLS);
           }
 
           DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
@@ -362,7 +362,7 @@ namespace xdp {
                 std::string msg = std::string(TS2MM_WARN_MSG_CIRC_BUF)
                                 + " Minimum required offload rate (bytes per second) : " + std::to_string(min_offload_rate)
                                 + " Requested offload rate : " + std::to_string(requested_offload_rate);
-                xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, msg);
+                xrt_xocl::message::send(xrt_xocl::message::severity_level::warning, msg);
               }
             }
           }
@@ -372,7 +372,7 @@ namespace xdp {
         } else {
           delete deviceTraceLogger;
           if (dInt->hasTs2mm()) {
-            xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
+            xrt_xocl::message::send(xrt_xocl::message::severity_level::warning, TS2MM_WARN_MSG_ALLOC_FAIL);
           }
         }
       } else {
@@ -739,7 +739,7 @@ namespace xdp {
       sz = memorySz;
       std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memorySz)
                         + " Bytes instead.";
-      xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, msg);
+      xrt_xocl::message::send(xrt_xocl::message::severity_level::warning, msg);
     }
     return sz;
   }

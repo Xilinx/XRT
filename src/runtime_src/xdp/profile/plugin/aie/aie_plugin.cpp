@@ -47,7 +47,7 @@ namespace xdp {
     mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
     if (mPollingInterval < 100) {
       mPollingInterval = 100;
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", 
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
           "Minimum supported AIE profile interval is 100 usec.");
     }
   }
@@ -139,7 +139,7 @@ namespace xdp {
       auto counters = xrt_core::edge::aie::get_profile_counters(device.get());
       if (xrt_core::config::get_aie_profile() && counters.empty()) {
         std::string msg("AIE Profile Counters are not found in AIE metadata of the given design. So, AIE Profile information will not be available.");
-        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg) ;			  
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;			  
       }
       for (auto& counter : counters) {
         (db->getStaticInfo()).addAIECounter(deviceId, counter.id, counter.column,

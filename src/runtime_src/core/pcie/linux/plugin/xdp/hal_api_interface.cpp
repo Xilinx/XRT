@@ -89,7 +89,7 @@ namespace xdphalinterface {
   int error_hal_interface_callbacks()
   {
     if(xrt_core::config::get_profile()) {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", std::string("Both profile=true and profile_api=true set in xrt.ini config. Currently, these flows are not supported to work together. Hence, retrieving profile results using APIs will not be available in this run. To enable profiling with APIs, please set profile_api=true only and re-run."));
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", std::string("Both profile=true and profile_api=true set in xrt.ini config. Currently, these flows are not supported to work together. Hence, retrieving profile results using APIs will not be available in this run. To enable profiling with APIs, please set profile_api=true only and re-run."));
       return 1 ;
     }
     return 0 ;

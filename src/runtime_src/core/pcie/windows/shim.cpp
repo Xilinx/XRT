@@ -73,7 +73,7 @@ struct shim
     if (m_dev == INVALID_HANDLE_VALUE) {
       auto error = GetLastError();
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR,"XRT", "CreateFile failed with error %d",error);
+        send(xrt_core::message::severity_level::error,"XRT", "CreateFile failed with error %d",error);
       throw std::runtime_error("CreateFile failed with error " + std::to_string(error));
     }
 
@@ -97,7 +97,7 @@ struct shim
       mapBar.BarType = i;
 
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "Mapping %s BAR...", barNames[i]);
+        send(xrt_core::message::severity_level::debug, "XRT", "Mapping %s BAR...", barNames[i]);
 
       if (!DeviceIoControl(m_dev,
                            IOCTL_XOCL_MAP_BAR,
@@ -111,13 +111,13 @@ struct shim
         error = GetLastError();
 
         xrt_core::message::
-          send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
+          send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl failed with error %d", error);
 
         continue;
       }
 
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "BAR mapped at 0x%p (0x%llu)"
+        send(xrt_core::message::severity_level::debug, "XRT", "BAR mapped at 0x%p (0x%llu)"
              ,mapBarResult.Bar, mapBarResult.BarLength);
 
       mappedBar[i].Bar = (PUCHAR)mapBarResult.Bar;
@@ -160,7 +160,7 @@ struct shim
         error = GetLastError();
 
         xrt_core::message::
-          send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "CreateFile failed with error %d", error);
+          send(xrt_core::message::severity_level::error, "XRT", "CreateFile failed with error %d", error);
 
         goto done;
     }
@@ -182,7 +182,7 @@ struct shim
         error = GetLastError();
 
         xrt_core::message::
-          send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl 4 failed with error %d", error);
+          send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl 4 failed with error %d", error);
 
         goto done;
     }
@@ -229,7 +229,7 @@ done:
       error = GetLastError();
 
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR,"XRT", "CreateFile failed with error %d",error);
+        send(xrt_core::message::severity_level::error,"XRT", "CreateFile failed with error %d",error);
 
       goto done;
 
@@ -252,7 +252,7 @@ done:
       error = GetLastError();
 
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR,"XRT", "DeviceIoControl 4 failed with error %d", error);
+        send(xrt_core::message::severity_level::error,"XRT", "DeviceIoControl 4 failed with error %d", error);
 
       goto done;
     }
@@ -285,10 +285,10 @@ done:
 
     if (handle)
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "IOCTL_XOCL_MAP_BO");
+        send(xrt_core::message::severity_level::debug, "XRT", "IOCTL_XOCL_MAP_BO");
     else {
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "IOCTL_XOCL_MAP_BO: Invalid Handle");
+        send(xrt_core::message::severity_level::error, "XRT", "IOCTL_XOCL_MAP_BO: Invalid Handle");
       return nullptr;
     }
 
@@ -304,13 +304,13 @@ done:
       code = GetLastError();
 
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl 3 failed with error %d", code);
+        send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl 3 failed with error %d", code);
       return nullptr;
     }
     else {
 
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "Mapped Address = 0x%p"
+        send(xrt_core::message::severity_level::debug, "XRT", "Mapped Address = 0x%p"
              ,mapBO.MappedUserVirtualAddress);
 
       //
@@ -362,7 +362,7 @@ done:
       error = GetLastError();
 
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Sync write failed with error %d", error);
+        send(xrt_core::message::severity_level::error, "XRT", "Sync write failed with error %d", error);
 
       return error;
     }
@@ -389,7 +389,7 @@ done:
     char str[512] = { 0 };
     uuid_unparse_lower(ctxArgs.XclBinUuid, str);
     xrt_core::message::
-      send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclbin_uuid = %s\n", str);
+      send(xrt_core::message::severity_level::debug, "XRT", "xclbin_uuid = %s\n", str);
 
     if (!DeviceIoControl(deviceHandle,
                          IOCTL_XOCL_CTX,
@@ -402,7 +402,7 @@ done:
 
       auto error = GetLastError();
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "CTX failed with error %d", error);
+        send(xrt_core::message::severity_level::error, "XRT", "CTX failed with error %d", error);
       return error;
     }
 
@@ -431,7 +431,7 @@ done:
 
       auto error = GetLastError();
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "CTX failed with error %d", error);
+        send(xrt_core::message::severity_level::error, "XRT", "CTX failed with error %d", error);
       return error;
     }
 
@@ -457,7 +457,7 @@ done:
 
       auto error = GetLastError();
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "CTX failed with error %d", error);
+        send(xrt_core::message::severity_level::error, "XRT", "CTX failed with error %d", error);
 
       if (GetLastError() == ERROR_BAD_COMMAND) {
 
@@ -465,7 +465,7 @@ done:
         // Device is already configured, not really a problem...
         //
         xrt_core::message::
-          send(xrt_core::message::severity_level::XRT_INFO, "XRT", "Device already configured!");
+          send(xrt_core::message::severity_level::info, "XRT", "Device already configured!");
         return -1; //ERROR_SUCCESS;
       }
 
@@ -501,7 +501,7 @@ done:
       error = GetLastError();
 
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT"
+        send(xrt_core::message::severity_level::error, "XRT"
              ,"DeviceIoControl IOCTL_XOCL_EXECPOLL failed with error %d", error);
 
       goto done;
@@ -533,7 +533,7 @@ done:
 
       error = GetLastError();
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT"
+        send(xrt_core::message::severity_level::error, "XRT"
              ,"get_bo_Properties - DeviceIoControl failed with error %d", error);
     }
 
@@ -565,7 +565,7 @@ done:
       error = GetLastError();
 
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
+        send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl failed with error %d", error);
 
       goto out;
 
@@ -578,13 +578,13 @@ done:
         if (return_status == NTSTATUS_REVISION_MISMATCH)
         {
             xrt_core::message::
-                send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Xclbin does not match Shell on card. Use 'xbmgmt flash' to update Shell.");
+                send(xrt_core::message::severity_level::error, "XRT", "Xclbin does not match Shell on card. Use 'xbmgmt flash' to update Shell.");
 
         }
         else {
 
             xrt_core::message::
-                send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with NTSTATUS %x", return_status);
+                send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl failed with NTSTATUS %x", return_status);
 
         }
 
@@ -609,17 +609,17 @@ done:
     buffSize = (DWORD) buffer->m_header.m_length;
 
     xrt_core::message::
-      send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "Calling IOCTL_XOCL_READ_AXLF... ");
+      send(xrt_core::message::severity_level::debug, "XRT", "Calling IOCTL_XOCL_READ_AXLF... ");
 
     succeeded = SendIoctlReadAxlf((PUCHAR)buffer, buffSize);
 
     if (succeeded) {
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "OK");
+        send(xrt_core::message::severity_level::debug, "XRT", "OK");
     }
     else {
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "FAILED");
+        send(xrt_core::message::severity_level::debug, "XRT", "FAILED");
       return 1;
     }
 
@@ -627,16 +627,16 @@ done:
     // Second test...
     //
     xrt_core::message::
-      send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "Calling IOCTL_XOCL_STAT (XoclStatMemTopology)... ");
+      send(xrt_core::message::severity_level::debug, "XRT", "Calling IOCTL_XOCL_STAT (XoclStatMemTopology)... ");
 
 
     if (succeeded) {
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "OK");
+        send(xrt_core::message::severity_level::debug, "XRT", "OK");
     }
     else {
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "FAILED");
+        send(xrt_core::message::severity_level::debug, "XRT", "FAILED");
       return 1;
     }
 
@@ -677,7 +677,7 @@ done:
       break;
     default:
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Unsupported Address Space: Write failed");
+        send(xrt_core::message::severity_level::error, "XRT", "Unsupported Address Space: Write failed");
       return 1;
     }
     return 0;
@@ -694,7 +694,7 @@ done:
       break;
     default:
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Unsupported Address Space: Read failed");
+        send(xrt_core::message::severity_level::error, "XRT", "Unsupported Address Space: Read failed");
       return 1;
     }
     return 0;
@@ -729,7 +729,7 @@ done:
           code = GetLastError();
 
           xrt_core::message::
-              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE unmanaged failed with error %d", code);
+              send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl PWRITE unmanaged failed with error %d", code);
           return false;
       }
 
@@ -766,7 +766,7 @@ done:
 
           code = GetLastError();
           xrt_core::message::
-              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD unmanaged failed with error %d", code);
+              send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl PREAD unmanaged failed with error %d", code);
           return false;
       }
 
@@ -794,7 +794,7 @@ done:
           code = GetLastError();
 
           xrt_core::message::
-              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE failed with error %d", code);
+              send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl PWRITE failed with error %d", code);
           return code;
       }
       // Ignoring bytesWritten as API only expects 0 as success
@@ -821,7 +821,7 @@ done:
 
           code = GetLastError();
           xrt_core::message::
-              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD failed with error %d", code);
+              send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl PREAD failed with error %d", code);
           return code;
       }
       // Ignoring bytesWritten as API only expects 0 as success
@@ -1156,7 +1156,7 @@ void
 get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_rom_info()");
+    send(xrt_core::message::severity_level::debug, "XRT", "get_rom_info()");
   auto shim = get_shim_object(hdl);
   shim->get_rom_info(value);
 }
@@ -1165,7 +1165,7 @@ void
 get_device_info(xclDeviceHandle hdl, XOCL_DEVICE_INFORMATION* value)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_device_info()");
+    send(xrt_core::message::severity_level::debug, "XRT", "get_device_info()");
   auto shim = get_shim_object(hdl);
   shim->get_device_info(value);
 }
@@ -1174,7 +1174,7 @@ void
 get_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_mem_topology()");
+    send(xrt_core::message::severity_level::debug, "XRT", "get_mem_topology()");
   auto shim = get_shim_object(hdl);
   shim->get_mem_topology(buffer, size, size_ret);
 }
@@ -1183,7 +1183,7 @@ void
 get_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_ip_layout()");
+    send(xrt_core::message::severity_level::debug, "XRT", "get_ip_layout()");
   auto shim = get_shim_object(hdl);
   shim->get_ip_layout(buffer, size, size_ret);
 }
@@ -1192,7 +1192,7 @@ void
 get_debug_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
 {
     xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_debug_ip_layout()");
+        send(xrt_core::message::severity_level::debug, "XRT", "get_debug_ip_layout()");
     auto shim = get_shim_object(hdl);
     shim->get_debug_ip_layout(buffer, size, size_ret);
 }
@@ -1201,7 +1201,7 @@ void
 get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_bdf_info()");
+    send(xrt_core::message::severity_level::debug, "XRT", "get_bdf_info()");
   auto shim = get_shim_object(hdl);
   shim->get_bdf_info(bdf);
 }
@@ -1210,7 +1210,7 @@ void
 get_sensor_info(xclDeviceHandle hdl, xcl_sensor* value)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "sensor_info()");
+    send(xrt_core::message::severity_level::debug, "XRT", "sensor_info()");
   shim* shim = get_shim_object(hdl);
   shim->get_sensor_info(value);
 }
@@ -1219,7 +1219,7 @@ void
 get_icap_info(xclDeviceHandle hdl, xcl_hwicap* value)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "icap_info()");
+    send(xrt_core::message::severity_level::debug, "XRT", "icap_info()");
   shim* shim = get_shim_object(hdl);
   shim->get_icap_info(value);
 }
@@ -1228,7 +1228,7 @@ void
 get_board_info(xclDeviceHandle hdl, xcl_board_info* value)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "board_info()");
+    send(xrt_core::message::severity_level::debug, "XRT", "board_info()");
   shim* shim = get_shim_object(hdl);
   shim->get_board_info(value);
 }
@@ -1237,7 +1237,7 @@ void
 get_mig_ecc_info(xclDeviceHandle hdl, xcl_mig_ecc* value)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "mig_ecc_info()");
+    send(xrt_core::message::severity_level::debug, "XRT", "mig_ecc_info()");
   shim* shim = get_shim_object(hdl);
   shim->get_mig_ecc_info(value);
 }
@@ -1246,7 +1246,7 @@ void
 get_firewall_info(xclDeviceHandle hdl, xcl_firewall* value)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "firewall_info()");
+    send(xrt_core::message::severity_level::debug, "XRT", "firewall_info()");
   shim* shim = get_shim_object(hdl);
   shim->get_firewall_info(value);
 }
@@ -1258,14 +1258,14 @@ unsigned int
 xclProbe()
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclProbe()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclProbe()");
   GUID guid = GUID_DEVINTERFACE_XOCL_USER;
 
   HDEVINFO device_info =
     SetupDiGetClassDevs((LPGUID) &guid, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
   if (device_info == INVALID_HANDLE_VALUE) {
     xrt_core::message::
-      send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "GetDevices INVALID_HANDLE_VALUE");
+      send(xrt_core::message::severity_level::error, "XRT", "GetDevices INVALID_HANDLE_VALUE");
     return 0;
   }
 
@@ -1283,7 +1283,7 @@ xclProbe()
     if (!SetupDiGetDeviceInterfaceDetail(device_info, &device_interface, NULL, 0, &detailLength, NULL)
         && GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "SetupDiGetDeviceInterfaceDetail - get length failed");
+        send(xrt_core::message::severity_level::error, "XRT", "SetupDiGetDeviceInterfaceDetail - get length failed");
       break;
     }
 
@@ -1291,7 +1291,7 @@ xclProbe()
     auto dev_detail = static_cast<PSP_DEVICE_INTERFACE_DETAIL_DATA>(HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, detailLength));
     if (!dev_detail) {
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "HeapAlloc failed");
+        send(xrt_core::message::severity_level::error, "XRT", "HeapAlloc failed");
       break;
     }
     dev_detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
@@ -1299,7 +1299,7 @@ xclProbe()
     // get device interface detail
     if (!SetupDiGetDeviceInterfaceDetail(device_info, &device_interface, dev_detail, detailLength, NULL, NULL)) {
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "SetupDiGetDeviceInterfaceDetail - get detail failed");
+        send(xrt_core::message::severity_level::error, "XRT", "SetupDiGetDeviceInterfaceDetail - get detail failed");
       HeapFree(GetProcessHeap(), 0, dev_detail);
       break;
     }
@@ -1317,7 +1317,7 @@ xclOpen(unsigned int deviceIndex, const char *logFileName, xclVerbosityLevel lev
 {
   try {
     xrt_core::message::
-      send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclOpen()");
+      send(xrt_core::message::severity_level::debug, "XRT", "xclOpen()");
     return new shim(deviceIndex);
   }
   catch (const xrt_core::error& ex) {
@@ -1334,7 +1334,7 @@ void
 xclClose(xclDeviceHandle handle)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclClose()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclClose()");
   auto shim = get_shim_object(handle);
   delete shim;
 }
@@ -1345,7 +1345,7 @@ xclBufferHandle
 xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned int flags)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclAllocBO()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclAllocBO()");
   auto shim = get_shim_object(handle);
   return shim->alloc_bo(size, flags);
 }
@@ -1354,7 +1354,7 @@ xclBufferHandle
 xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned int flags)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclAllocUserPtrBO()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclAllocUserPtrBO()");
   auto shim = get_shim_object(handle);
   return shim->alloc_user_ptr_bo(userptr, size, flags);
 }
@@ -1363,7 +1363,7 @@ void*
 xclMapBO(xclDeviceHandle handle, xclBufferHandle boHandle, bool write)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclMapBO()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclMapBO()");
   auto shim = get_shim_object(handle);
   return shim->map_bo(boHandle, write);
 }
@@ -1372,7 +1372,7 @@ int
 xclUnmapBO(xclDeviceHandle handle, xclBufferHandle boHandle, void* addr)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnmapBO()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclUnmapBO()");
   auto shim = get_shim_object(handle);
   return shim->unmap_bo(boHandle, addr);
 }
@@ -1381,7 +1381,7 @@ void
 xclFreeBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclFreeBO()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclFreeBO()");
   auto shim = get_shim_object(handle);
   return shim->free_bo(boHandle);
 }
@@ -1390,7 +1390,7 @@ int
 xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclSyncBO()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclSyncBO()");
   auto shim = get_shim_object(handle);
   return shim->sync_bo(boHandle, dir, size, offset);
 }
@@ -1401,7 +1401,7 @@ xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle,
           size_t src_offset)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclCopyBO() NOT IMPLEMENTED");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclCopyBO() NOT IMPLEMENTED");
   return ENOSYS;
 }
 
@@ -1410,7 +1410,7 @@ xclReClock2(xclDeviceHandle handle, unsigned short region,
             const uint16_t* targetFreqMHz)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReClock2() NOT IMPLEMENTED");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclReClock2() NOT IMPLEMENTED");
   return ENOSYS;
 }
 
@@ -1419,7 +1419,7 @@ int
 xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclOpenContext()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclOpenContext()");
   auto shim = get_shim_object(handle);
 
   //Virtual resources are not currently supported by driver
@@ -1431,7 +1431,7 @@ xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipInd
 int xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclCloseContext()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclCloseContext()");
   auto shim = get_shim_object(handle);
 
   //Virtual resources are not currently supported by driver
@@ -1444,7 +1444,7 @@ int
 xclExecBuf(xclDeviceHandle handle, xclBufferHandle cmdBO)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExecBuf()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclExecBuf()");
   auto shim = get_shim_object(handle);
   return shim->exec_buf(cmdBO);
 }
@@ -1453,7 +1453,7 @@ int
 xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExecWait()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclExecWait()");
   auto shim = get_shim_object(handle);
   return shim->exec_wait(timeoutMilliSec);
 }
@@ -1462,7 +1462,7 @@ xclBufferExportHandle
 xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExportBO() NOT IMPLEMENTED");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclExportBO() NOT IMPLEMENTED");
   return INVALID_HANDLE_VALUE;
 }
 
@@ -1470,7 +1470,7 @@ xclBufferHandle
 xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned flags)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclImportBO() NOT IMPLEMENTED");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclImportBO() NOT IMPLEMENTED");
   return INVALID_HANDLE_VALUE;
 }
 
@@ -1479,7 +1479,7 @@ xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
 		   struct xclBOProperties *properties)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclGetBOProperties()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclGetBOProperties()");
   auto shim = get_shim_object(handle);
   return shim->get_bo_properties(boHandle,properties);
 }
@@ -1489,7 +1489,7 @@ xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer)
 {
   try {
     xrt_core::message::
-      send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclLoadXclbin()");
+      send(xrt_core::message::severity_level::debug, "XRT", "xclLoadXclbin()");
     auto shim = get_shim_object(handle);
     if (auto ret =shim->load_xclbin(buffer))
       return ret;
@@ -1536,7 +1536,7 @@ int
 xclLockDevice(xclDeviceHandle handle)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclLockDevice()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclLockDevice()");
   auto shim = get_shim_object(handle);
   return shim->lock_device() ? 0 : 1;
 }
@@ -1545,7 +1545,7 @@ int
 xclUnlockDevice(xclDeviceHandle handle)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnlockDevice()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclUnlockDevice()");
   auto shim = get_shim_object(handle);
   return shim->unlock_device() ? 0 : 1;
 }
@@ -1554,7 +1554,7 @@ ssize_t
 xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf, size_t count, uint64_t offset)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnmgdPwrite()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclUnmgdPwrite()");
   auto shim = get_shim_object(handle);
   return shim->unmgd_pwrite(flags, buf, count, offset) ? 0 : 1;
 }
@@ -1563,7 +1563,7 @@ ssize_t
 xclUnmgdPread(xclDeviceHandle handle, unsigned int flags, void *buf, size_t count, uint64_t offset)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnmgdPread()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclUnmgdPread()");
   auto shim = get_shim_object(handle);
   return shim->unmgd_pread(flags, buf, count, offset) ? 0 : 1;
 }
@@ -1571,7 +1571,7 @@ xclUnmgdPread(xclDeviceHandle handle, unsigned int flags, void *buf, size_t coun
 size_t xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
 {
     xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclWriteBO()");
+        send(xrt_core::message::severity_level::debug, "XRT", "xclWriteBO()");
     auto shim = get_shim_object(handle);
     return shim->write_bo(boHandle, src, size, seek);
 }
@@ -1579,7 +1579,7 @@ size_t xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle, const void *
 size_t xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle, void *dst, size_t size, size_t skip)
 {
     xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReadBO()");
+        send(xrt_core::message::severity_level::debug, "XRT", "xclReadBO()");
     auto shim = get_shim_object(handle);
     return shim->read_bo(boHandle, dst, size, skip);
 }
@@ -1595,7 +1595,7 @@ size_t
 xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset, const void *hostbuf, size_t size)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclWrite()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclWrite()");
   auto shim = get_shim_object(handle);
   return shim->write(space,offset,hostbuf,size) ? 0 : size;
 }
@@ -1605,7 +1605,7 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
         uint64_t offset, void *hostbuf, size_t size)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclRead()");
+    send(xrt_core::message::severity_level::debug, "XRT", "xclRead()");
   auto shim = get_shim_object(handle);
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
 }
@@ -1627,7 +1627,7 @@ int
 xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples,
                       uint32_t& traceSamples, uint32_t& traceBufSz)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclGetTraceBufferInfo()");
+  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "xclGetTraceBufferInfo()");
   uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
   traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
@@ -1639,7 +1639,7 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
                  uint32_t numSamples, uint64_t ipBaseAddress,
                  uint32_t& wordsPerSample)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReadTraceData()");
+  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "xclReadTraceData()");
   auto shim = get_shim_object(handle);
 
   // Create trace buffer on host (requires alignment)

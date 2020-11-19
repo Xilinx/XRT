@@ -52,7 +52,7 @@ public:
 inline void
 send_exception_message(const char* msg)
 {
-  message::send(message::severity_level::XRT_ERROR, msg);
+  message::send(message::severity_level::error, msg);
 }
 
 } // xrt

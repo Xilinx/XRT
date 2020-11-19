@@ -509,7 +509,7 @@ void warning_hal_callbacks()
   if(xrt_core::config::get_profile()) {
     // "profile=true" is also set. This enables OpenCL based flow for profiling. 
     // Currently, mix of OpenCL and HAL based profiling is not supported.
-    xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT",
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
               std::string("Both profile=true and xrt_profile=true set in xrt.ini config. Currently, these flows are not supported to work together."));
     return;
   }

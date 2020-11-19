@@ -86,6 +86,14 @@
 
 namespace {
 
+template <typename ...Args>
+void
+xrt_logmsg(xrtLogMsgLevel level, const char* format, Args&&... args)
+{
+  auto slvl = static_cast<xrt_core::message::severity_level>(level);
+  xrt_core::message::send(slvl, "XRT", format, std::forward<Args>(args)...);
+}
+
 /*
  * numClocks()
  */
@@ -591,20 +599,6 @@ int shim::dev_init()
     return 0;
 }
 
-int shim::xrt_logmsg(xrtLogMsgLevel level, const char* format, ...)
-{
-    static auto verbosity = xrt_core::config::get_verbosity();
-    if (level <= verbosity) {
-        va_list args;
-        va_start(args, format);
-        int ret = xclLogMsg(level, "XRT", format, args);
-        va_end(args);
-        return ret;
-    } else {
-        return 0;
-    }
-}
-
 void shim::dev_fini()
 {
     if (mStreamHandle > 0) {
@@ -632,7 +626,7 @@ init(unsigned int index)
 
     int ret = dev_init();
     if (ret) {
-        xrt_logmsg(XRT_WARNING, "XRT", "dev_init failed: %d", ret);
+        xrt_logmsg(XRT_WARNING, "dev_init failed: %d", ret);
         return;
     }
 
@@ -659,44 +653,6 @@ shim::~shim()
         if (p)
             (void) munmap(p, mCuMapSize);
     }
-}
-
-/*
- * xclLogMsg()
- */
-int shim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
-{
-    static auto verbosity = xrt_core::config::get_verbosity();
-    if (level <= verbosity) {
-        va_list args_bak;
-        // vsnprintf will mutate va_list so back it up
-        va_copy(args_bak, args);
-        int len = std::vsnprintf(nullptr, 0, format, args_bak);
-        va_end(args_bak);
-
-        if (len < 0) {
-          //illegal arguments
-          std::string err_str = "ERROR: Illegal arguments in log format string. ";
-          err_str.append(std::string(format));
-          xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str);
-          return len;
-        }
-        ++len; //To include null terminator
-
-        std::vector<char> buf(len);
-        len = std::vsnprintf(buf.data(), len, format, args);
-
-        if (len < 0) {
-          //error processing arguments
-          std::string err_str = "ERROR: When processing arguments in log format string. ";
-          err_str.append(std::string(format));
-          xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
-          return len;
-        }
-        xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
-    }
-
-    return 0;
 }
 
 /*
@@ -2293,7 +2249,7 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
   try {
     if(pcidev::get_dev_total() <= deviceIndex) {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT",
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
         std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
       return nullptr;
     }
@@ -2380,27 +2336,18 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   }
 }
 
-int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
+int xclLogMsg(xclDeviceHandle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
     static auto verbosity = xrt_core::config::get_verbosity();
-    if (level <= verbosity) {
-        va_list args;
-        va_start(args, format);
-        int ret = -1;
-        if (handle) {
-            xocl::shim *drv = xocl::shim::handleCheck(handle);
-            ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
-        } else {
-            ret = xocl::shim::xclLogMsg(level, tag, format, args);
-        }
-        va_end(args);
+    if (level > verbosity)
+      return 0;
 
-        return ret;
-    }
-
+    va_list args;
+    va_start(args, format);
+    xrt_core::message::sendv(static_cast<xrt_core::message::severity_level>(level), tag, format, args);
+    va_end(args);
     return 0;
 }
-
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {

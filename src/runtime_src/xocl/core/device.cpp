@@ -56,7 +56,7 @@ to_hex(void* addr)
 static void
 unaligned_message(void* addr)
 {
-  xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING,
+  xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,
                      "unaligned host pointer '"
                      + to_hex(addr)
                      + "' detected, this leads to extra memcpy");
@@ -65,7 +65,7 @@ unaligned_message(void* addr)
 static void
 userptr_bad_alloc_message(void* addr)
 {
-  xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_INFO,
+  xrt_xocl::message::send(xrt_xocl::message::severity_level::info,
                      "might be noncontiguous host pointer '"
                      + to_hex(addr)
                      + "' detected, check dmesg for more information."
@@ -99,7 +99,7 @@ default_allocation_message(const xocl::device* device,const xocl::memory* mem,
   if (xrt_xocl::config::get_feature_toggle("Runtime.strict_bank_rule"))
     throw std::runtime_error(str.str());
   else
-    xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING,str.str());
+    xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,str.str());
 }
 
 static void
@@ -109,7 +109,7 @@ default_bad_allocation_message(const xocl::device* device,const xocl::memory* me
   str << "Host buffer (" << mem->get_uid() << ") "
       << "has no bank assignment and is not used as kernel argument "
       << "before first enqueue operation.";
-  xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_ERROR,str.str());
+  xrt_xocl::message::send(xrt_xocl::message::severity_level::error,str.str());
 }
 
 static void
@@ -118,7 +118,7 @@ host_copy_message(const xocl::memory* dst, const xocl::memory* src)
   std::stringstream str;
   str << "Reverting to host copy for src buffer(" << src->get_uid() << ") "
       << "to dst buffer(" << dst->get_uid() << ")";
-  xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING,str.str());
+  xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,str.str());
 }
 
 XOCL_UNUSED static void
@@ -127,7 +127,7 @@ cmd_copy_message(const xocl::memory* dst, const xocl::memory* src)
   std::stringstream str;
   str << "No M2M, reverting to command based copying for src buffer(" << src->get_uid() << ") "
       << "to dst buffer(" << dst->get_uid() << ")";
-  xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING,str.str());
+  xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,str.str());
 }
 
 static void

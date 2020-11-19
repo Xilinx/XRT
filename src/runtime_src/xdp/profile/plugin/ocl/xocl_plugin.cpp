@@ -481,6 +481,6 @@ namespace xdp {
 
   void XoclPlugin::sendMessage(const std::string &msg)
   {
-    xrt_xocl::message::send(xrt_xocl::message::severity_level::XRT_WARNING, msg);
+    xrt_xocl::message::send(xrt_xocl::message::severity_level::warning, msg);
   }
 } // xdp
