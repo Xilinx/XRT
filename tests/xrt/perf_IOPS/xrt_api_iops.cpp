@@ -15,16 +15,13 @@ using Clock = std::chrono::high_resolution_clock;
 
 typedef struct task_args {
   int thread_id;
-  int dev_id;
   int queueLength;
   unsigned int total;
-  std::string xclbin_fn;
   Clock::time_point start;
   Clock::time_point end;
 } arg_t;
 
-bool start = false;
-bool stop = false;
+bool verbose = false;
 barrier barrier;
 
 static void usage(char *prog)
@@ -104,14 +101,9 @@ int testSingleThread(int dev_id, std::string &xclbin_fn)
   return 0;
 }
 
-void runTestThread(arg_t &arg)
+void runTestThread(xrt::device &device, xrt::kernel &hello, arg_t &arg)
 {
   std::vector<xrt::run> cmds;
-
-  auto device = xrt::device(arg.dev_id);
-  auto uuid = device.load_xclbin(arg.xclbin_fn);
-
-  auto hello = xrt::kernel(device, uuid.get(), "hello");
 
   for (int i = 0; i < arg.queueLength; i++) {
     auto run = xrt::run(hello);
@@ -123,7 +115,6 @@ void runTestThread(arg_t &arg)
   double duration = runTest(cmds, arg.total, arg);
 
   barrier.wait();
-
 }
 
 int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int queueLength, unsigned int total)
@@ -131,15 +122,17 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
   std::thread threads[threadNumber];
   std::vector<arg_t> arg(threadNumber);
 
+  auto device = xrt::device(dev_id);
+  auto uuid = device.load_xclbin(xclbin_fn);
+  auto hello = xrt::kernel(device, uuid.get(), "hello");
+
   barrier.init(threadNumber + 1);
 
   for (int i = 0; i < threadNumber; i++) {
     arg[i].thread_id = i;
-    arg[i].dev_id = dev_id;
     arg[i].queueLength = queueLength;
     arg[i].total = total;
-    arg[i].xclbin_fn = xclbin_fn;
-    threads[i] = std::thread([&](int i){ runTestThread(arg[i]); }, i);
+    threads[i] = std::thread([&](int i){ runTestThread(device, hello, arg[i]); }, i);
   }
 
   /* Wait threads to prepare to start */
@@ -157,19 +150,22 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
   int overallCommands = 0;
   double duration;
   for (int i = 0; i < threadNumber; i++) {
-    duration = (std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count();
-    std::cout << "Thread " << arg[i].thread_id
-      << " Commands: " << std::setw(7) << total
-      << std::setprecision(0) << std::fixed
-      << " iops: " << (total * 1000000.0 / duration)
-      << std::endl;
+    if (verbose) {
+      duration = (std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count();
+      std::cout << "Thread " << arg[i].thread_id
+                << " Commands: " << std::setw(7) << total
+                << std::setprecision(0) << std::fixed
+                << " iops: " << (total * 1000000.0 / duration)
+                << std::endl;
+    }
     overallCommands += total;
   }
 
   duration = (std::chrono::duration_cast<ms_t>(end - start)).count();
   std::cout << "Overall Commands: " << std::setw(7) << overallCommands
-    << " iops: " << (overallCommands * 1000000.0 / duration)
-    << std::endl;
+            << std::setprecision(0) << std::fixed
+            << " iops: " << (overallCommands * 1000000.0 / duration)
+            << std::endl;
   return 0;
 }
 
@@ -198,6 +194,9 @@ int _main(int argc, char* argv[])
         break;
       case 'a':
         total = std::stoi(optarg);
+        break;
+      case 'v':
+        verbose = true;
         break;
       case 'h':
         usage_and_exit(argv[0]);

@@ -32,8 +32,7 @@ typedef struct task_args {
     Clock::time_point end;
 } arg_t;
 
-bool start = false;
-bool stop = false;
+bool verbose = false;
 barrier barrier;
 
 static void usage(char *prog)
@@ -215,7 +214,7 @@ int testSingleThread(int dev_id, std::string &xclbin_fn)
     return 0;
 }
 
-void *runTestThread(arg_t &arg)
+void runTestThread(arg_t &arg)
 {
     xclDeviceHandle handle;
     xuid_t uuid;
@@ -293,17 +292,20 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
     int overallCommands = 0;
     double duration;
     for (int i = 0; i < threadNumber; i++) {
-        duration = (std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count();
-        std::cout << "Thread " << arg[i].thread_id
-                  << " Commands: " << std::setw(7) << total
-                  << std::setprecision(0) << std::fixed
-                  << " iops: " << (total * 1000000.0 / duration)
-                  << std::endl;
+        if (verbose) {
+            duration = (std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count();
+            std::cout << "Thread " << arg[i].thread_id
+                << " Commands: " << std::setw(7) << total
+                << std::setprecision(0) << std::fixed
+                << " iops: " << (total * 1000000.0 / duration)
+                << std::endl;
+        }
         overallCommands += total;
     }
 
     duration = (std::chrono::duration_cast<ms_t>(end - start)).count();
     std::cout << "Overall Commands: " << std::setw(7) << overallCommands
+              << std::setprecision(0) << std::fixed
               << " iops: " << (overallCommands * 1000000.0 / duration)
               << std::endl;
     return 0;
@@ -318,7 +320,7 @@ int _main(int argc, char* argv[])
     int threadNumber = 2;
     char c;
 
-    while ((c = getopt(argc, argv, "k:d:l:t:a:h")) != -1) {
+    while ((c = getopt(argc, argv, "k:d:l:t:a:vh")) != -1) {
         switch (c) {
             case 'k':
                 xclbin_fn = optarg; 
@@ -334,6 +336,9 @@ int _main(int argc, char* argv[])
                 break;
             case 'a':
                 total = std::stoi(optarg);
+                break;
+            case 'v':
+                verbose = true;
                 break;
             case 'h':
                 usage_and_exit(argv[0]);
