@@ -72,8 +72,8 @@ device::
 {
   if (is_emulation())
     // xsim will not shutdown unless there is a guaranteed call to xclClose
-    close();  
-  
+    close();
+
   for (auto& q : m_queue)
     q.stop();
   for (auto& t : m_workers)
@@ -501,10 +501,14 @@ getMemObjectFd(const buffer_object_handle& boh)
 
 buffer_object_handle
 device::
-getBufferFromFd(const int fd, size_t& size, unsigned flags)
+getBufferFromFd(int fd, size_t& size, unsigned flags)
 {
+#ifndef _WIN32
   auto export_handle = static_cast<xclBufferExportHandle>(fd);
   return xrt::bo{m_handle, export_handle};
+#else
+  throw std::runtime_error("ImportBO function not supported on windows");
+#endif
 }
 
 //Stream

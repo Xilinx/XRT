@@ -20,8 +20,8 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_bo.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_bo.h"
-
 #include "bo.h"
+
 #include "device_int.h"
 #include "kernel_int.h"
 #include "core/common/device.h"
@@ -35,7 +35,7 @@
 #include <set>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 )
+# pragma warning( disable : 4244 4100)
 #endif
 
 namespace {
