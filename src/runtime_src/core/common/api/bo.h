@@ -20,6 +20,8 @@
 
 // This file defines implementation extensions to the XRT BO APIs.
 #include "core/include/experimental/xrt_bo.h"
+#include "core/common/config.h"
+#include "core/include/ert.h"
 
 namespace xrt_core { namespace bo {
 
@@ -33,7 +35,18 @@ uint64_t
 address(const xrt::bo& bo);
 uint64_t
 address(xrtBufferHandle handle);
-  
+
+// Fill the ERT copy BO command packet
+XRT_CORE_COMMON_EXPORT
+void
+fill_copy_pkt(const xrt::bo& dst, const xrt::bo& src, size_t sz,
+              size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt);
+
+// Check if this BO has been imported from another device
+XRT_CORE_COMMON_EXPORT
+bool
+is_imported(const xrt::bo& bo);
+
 }} // namespace bo, xrt_core
 
 #endif

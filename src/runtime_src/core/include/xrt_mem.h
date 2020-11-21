@@ -50,6 +50,7 @@ extern "C" {
 #define XRT_BO_FLAGS_DEV_ONLY  XCL_BO_FLAGS_DEV_ONLY
 #define XRT_BO_FLAGS_HOST_ONLY XCL_BO_FLAGS_HOST_ONLY
 #define XRT_BO_FLAGS_P2P       XCL_BO_FLAGS_P2P
+#define XRT_BO_FLAGS_SVM       XCL_BO_FLAGS_SVM
 
 /**
  * This is the legacy usage of XCL DDR Flags.

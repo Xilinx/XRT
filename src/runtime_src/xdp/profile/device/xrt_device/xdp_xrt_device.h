@@ -30,8 +30,8 @@ class XrtDevice : public xdp::Device
   xrt_xocl::device* mXrtDevice;
 
 private:
-  using BufferObjectHandle  = xrt_xocl::hal::BufferObjectHandle;
-  std::vector<BufferObjectHandle> m_bos;
+  using buffer_object_handle  = xrt_xocl::hal::buffer_object_handle;
+  std::vector<buffer_object_handle> m_bos;
 
 public:
   XDP_EXPORT

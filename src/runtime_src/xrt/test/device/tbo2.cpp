@@ -42,7 +42,7 @@ run(xrt_xocl::device* mydev, unsigned count)
     randomChar += 32;
   const int bufSize = 1024;
 
-  std::vector<xrt_xocl::hal::BufferObjectHandle> boArray(count);
+  std::vector<xrt_xocl::hal::buffer_object_handle> boArray(count);
   for (unsigned i = 0; i < count; i++) {
     boArray[i] = mydev->alloc(bufSize);
     char *data1 = new char[bufSize];
@@ -89,7 +89,7 @@ run(xrt_xocl::device* mydev, unsigned count)
     delete [] data1;
     delete [] data2;
   }
-  for (xrt_xocl::hal::BufferObjectHandle bo : boArray) {
+  for (xrt_xocl::hal::buffer_object_handle bo : boArray) {
     mydev->unmap(bo);
     mydev->free(bo);
   }

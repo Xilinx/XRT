@@ -15,12 +15,13 @@
  */
 #include "hal2.h"
 
-#include "ert.h"
+#include "core/common/api/bo.h"
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
 #include "core/common/scope_guard.h"
 #include "core/common/system.h"
 #include "core/common/thread.h"
+#include "core/include/ert.h"
 
 #include <boost/format.hpp>
 
@@ -71,8 +72,8 @@ device::
 {
   if (is_emulation())
     // xsim will not shutdown unless there is a guaranteed call to xclClose
-    close();  
-  
+    close();
+
   for (auto& q : m_queue)
     q.stop();
   for (auto& t : m_workers)
@@ -175,19 +176,9 @@ setup()
   m_workers.emplace_back(xrt_core::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::misc)]),"misc"));
 }
 
-device::BufferObject*
-device::
-getBufferObject(const BufferObjectHandle& boh) const
-{
-  BufferObject* bo = static_cast<BufferObject*>(boh.get());
-  if (bo->owner != m_handle)
-    throw std::runtime_error("bad buffer object");
-  return bo;
-}
-
 device::ExecBufferObject*
 device::
-getExecBufferObject(const ExecBufferObjectHandle& boh) const
+getExecBufferObject(const execbuffer_object_handle& boh) const
 {
   ExecBufferObject* bo = static_cast<ExecBufferObject*>(boh.get());
   if (bo->owner != m_handle)
@@ -283,11 +274,11 @@ loadXclBin(const xclBin* xclbin)
   return 0;
 }
 
-ExecBufferObjectHandle
+execbuffer_object_handle
 device::
 allocExecBuffer(size_t sz)
 {
-  auto delBufferObject = [this](ExecBufferObjectHandle::element_type* ebo) {
+  auto delBufferObject = [this](execbuffer_object_handle::element_type* ebo) {
     ExecBufferObject* bo = static_cast<ExecBufferObject*>(ebo);
     XRT_DEBUG(std::cout,"deleted exec buffer object\n");
     m_ops->mUnmapBO(m_handle, bo->handle, bo->data);
@@ -305,301 +296,102 @@ allocExecBuffer(size_t sz)
   ubo->data = m_ops->mMapBO(m_handle,ubo->handle, true /* write */);
   if (ubo->data == (void*)(-1))
     throw std::runtime_error(std::string("map failed: ") + std::strerror(errno));
-  return ExecBufferObjectHandle(ubo.release(),delBufferObject);
+  return execbuffer_object_handle(ubo.release(),delBufferObject);
 }
 
-BufferObjectHandle
-device::
-alloc(size_t sz)
-{
-  auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
-    BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
-    m_ops->mUnmapBO(m_handle, bo->handle, bo->hostAddr);
-    m_ops->mFreeBO(m_handle, bo->handle);
-    delete bo;
-  };
-
-  uint64_t flags = 0xFFFFFF; //TODO: check default, any bank.
-  auto ubo = std::make_unique<BufferObject>();
-  ubo->handle = m_ops->mAllocBO(m_handle, sz, 0, flags);
-  if (ubo->handle == NULLBO)
-    throw std::bad_alloc();
-
-  ubo->size = sz;
-  ubo->owner = m_handle;
-  ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
-  ubo->hostAddr = m_ops->mMapBO(m_handle, ubo->handle, true /*write*/);
-
-  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
-  return BufferObjectHandle(ubo.release(), delBufferObject);
-}
-
-BufferObjectHandle
-device::
-alloc(size_t sz,void* userptr)
-{
-  auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
-    BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
-    m_ops->mFreeBO(m_handle, bo->handle);
-    delete bo;
-  };
-
-  uint64_t flags = 0xFFFFFF; //TODO:check default
-  auto ubo = std::make_unique<BufferObject>();
-  ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
-  if (ubo->handle == NULLBO)
-    throw std::bad_alloc();
-
-  ubo->hostAddr = userptr;
-  ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
-  ubo->size = sz;
-  ubo->owner = m_handle;
-
-  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
-  return BufferObjectHandle(ubo.release(), delBufferObject);
-}
-
-BufferObjectHandle
+buffer_object_handle
 device::
 alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
 {
-  if (domain == Domain::XRT_DEVICE_RAM && is_nodma())
-    return alloc_nodma(sz, domain, memory_index, userptr);
-  
-  const bool mmapRequired = (userptr == nullptr);
-  auto delBufferObject = [mmapRequired, this](BufferObjectHandle::element_type* vbo) {
-    BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
-    if (mmapRequired)
-      m_ops->mUnmapBO(m_handle, bo->handle, bo->hostAddr);
-    m_ops->mFreeBO(m_handle, bo->handle);
-    if (bo->nodma)
-      m_ops->mFreeBO(m_handle, bo->nodma_host_handle);
-    delete bo;
-  };
+  xrt::bo::flags flags = xrt::bo::flags::cacheable;
+  if(domain==Domain::XRT_DEVICE_ONLY_MEM_P2P)
+    flags = xrt::bo::flags::p2p;
+  else if (domain == Domain::XRT_DEVICE_ONLY_MEM)
+    flags = xrt::bo::flags::device_only;
+  else if (domain == Domain::XRT_HOST_ONLY_MEM)
+    flags = xrt::bo::flags::host_only;
 
-  auto ubo = std::make_unique<BufferObject>();
+  auto bo = userptr
+    ? xrt::bo{m_handle, userptr, sz, flags, static_cast<xrt::memory_group>(memory_index)}
+    : xrt::bo{m_handle, sz, flags, static_cast<xrt::memory_group>(memory_index)};
 
-  if (domain==Domain::XRT_DEVICE_PREALLOCATED_BRAM) {
-    ubo->deviceAddr = memory_index;
-    ubo->hostAddr = nullptr;
-  }
-  else {
-    uint64_t flags = memory_index;
-    if(domain==Domain::XRT_DEVICE_ONLY_MEM_P2P)
-      flags |= XCL_BO_FLAGS_P2P;
-    else if (domain == Domain::XRT_DEVICE_ONLY_MEM)
-      flags |= XCL_BO_FLAGS_DEV_ONLY;
-    else if (domain == Domain::XRT_HOST_ONLY_MEM)
-      flags |= XCL_BO_FLAGS_HOST_ONLY;
-    else
-      flags |= XCL_BO_FLAGS_CACHEABLE;
+  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",bo.address(), bo.size());
 
-    if (userptr)
-      ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
-    else
-      ubo->handle = m_ops->mAllocBO(m_handle, sz, 0, flags);
-
-    if (ubo->handle == NULLBO)
-      throw std::bad_alloc();
-
-    if (userptr)
-      ubo->hostAddr = userptr;
-    else
-      ubo->hostAddr = m_ops->mMapBO(m_handle, ubo->handle, true /*write*/);
-
-    ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
-  }
-  ubo->size = sz;
-  ubo->owner = m_handle;
-
-  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
-  return BufferObjectHandle(ubo.release(), delBufferObject);
+  return bo;
 }
 
-BufferObjectHandle
+buffer_object_handle
 device::
-alloc_nodma(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
+alloc(const buffer_object_handle& boh, size_t sz, size_t offset)
 {
-  if (userptr)
-      throw std::bad_alloc();
-
-  if (domain == Domain::XRT_DEVICE_RAM) {
-    // Allocate a buffer object with separate host side BO and device side BO
-
-    // Device only
-    auto boh = alloc(sz, Domain::XRT_DEVICE_ONLY_MEM, memory_index, nullptr);
-
-    // Host only
-    auto bo = getBufferObject(boh);
-    bo->nodma_host_handle = m_ops->mAllocBO(m_handle, sz, 0, XCL_BO_FLAGS_HOST_ONLY);
-    if (bo->nodma_host_handle == NULLBO) {
-      auto fmt = boost::format("Failed to allocate host memory buffer, make sure host bank is enabled "
-                               "(see xbutil host_mem --enable ...)");
-      ::send_exception_message(fmt.str());
-      throw std::bad_alloc();
-    }
-
-    // Map the host only BO and use this as host addr.
-    bo->hostAddr = m_ops->mMapBO(m_handle, bo->nodma_host_handle, true /*write*/);
-    bo->nodma = true;
-
-    XRT_DEBUGF("allocated nodma buffer object\n");
-    return boh;
-  }
-
-  // Else just regular BO 
-  return alloc(sz, domain, memory_index, nullptr);
-  
-}
-
-BufferObjectHandle
-device::
-alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
-{
-  auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
-    BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUG(std::cout,"deleted offset buffer object device address(",bo->deviceAddr,",",bo->size,")\n");
-    delete bo;
-  };
-
-  BufferObject* bo = getBufferObject(boh);
-
-  auto ubo = std::make_unique<BufferObject>();
-  ubo->handle = bo->handle;
-  ubo->deviceAddr = bo->deviceAddr+offset;
-  ubo->hostAddr = static_cast<char*>(bo->hostAddr)+offset;
-  ubo->size = sz;
-  ubo->offset = offset;
-  ubo->flags = bo->flags;
-  ubo->owner = bo->owner;
-  ubo->parent = boh;  // keep parent boh reference
-  ubo->nodma = bo->nodma;
-  ubo->nodma_host_handle = bo->nodma_host_handle;
-
-  // Verify alignment based on hardware requirement
-  auto alignment = getAlignment();
-  if (reinterpret_cast<uintptr_t>(bo->hostAddr) % alignment || bo->deviceAddr % alignment)
-    throw std::bad_alloc();
-
-  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
-  return BufferObjectHandle(ubo.release(), delBufferObject);
+  return xrt::bo{boh, sz, offset};
 }
 
 void*
 device::
 alloc_svm(size_t sz)
 {
-  auto boh = alloc(sz);
-  auto bo = getBufferObject(boh);
-  emplaceSVMBufferObjectMap(boh, bo->hostAddr);
-  return bo->hostAddr;
-}
+  auto bo = xrt::bo{m_handle, sz, xrt::bo::flags::svm, 0};
+  auto host_addr = bo.map();
 
-void
-device::
-free(const BufferObjectHandle& boh)
-{
-  BufferObject* bo = getBufferObject(boh);
-  m_ops->mFreeBO(m_handle, bo->handle);
+  std::lock_guard<std::mutex> lk(m_mutex);
+  m_svmbomap[host_addr] = std::move(bo);
+
+  return host_addr;
 }
 
 void
 device::
 free_svm(void* svm_ptr)
 {
-  auto boh = svm_bo_lookup(svm_ptr);
-  auto bo = getBufferObject(boh);
-  eraseSVMBufferObjectMap(bo->hostAddr);
-  m_ops->mFreeBO(m_handle, bo->handle);
+  std::lock_guard<std::mutex> lk(m_mutex);
+  auto itr = m_svmbomap.find(svm_ptr);
+  if (itr != m_svmbomap.end())
+    m_svmbomap.erase(itr);
+  else
+    throw std::runtime_error("svm_bo_lookup: The SVM pointer is invalid.");
 }
 
 event
 device::
-write(const BufferObjectHandle& boh, const void* src, size_t sz, size_t offset, bool async)
+write(const buffer_object_handle& boh, const void* src, size_t sz, size_t offset, bool async)
 {
-  BufferObject* bo = getBufferObject(boh);
-
-  char *hostAddr = static_cast<char*>(bo->hostAddr) + offset;
-  return async
-    ? event(addTaskF(std::memcpy,hal::queue_type::misc,hostAddr, src, sz))
-    : event(typed_event<void *>(std::memcpy(hostAddr, src, sz)));
+  const_cast<buffer_object_handle&>(boh).write(src, sz, offset);
+  return event(typed_event<int>(0));
 }
 
 event
 device::
-read(const BufferObjectHandle& boh, void* dst, size_t sz, size_t offset, bool async)
+read(const buffer_object_handle& boh, void* dst, size_t sz, size_t offset, bool async)
 {
-  BufferObject* bo = getBufferObject(boh);
-  char *hostAddr = static_cast<char*>(bo->hostAddr) + offset;
-  return async
-    ? event(addTaskF(std::memcpy,hal::queue_type::misc,dst,hostAddr,sz))
-    : event(typed_event<void *>(std::memcpy(dst, hostAddr, sz)));
+  const_cast<buffer_object_handle&>(boh).read(dst, sz, offset);
+  return event(typed_event<int>(0));
 }
 
 event
 device::
-sync(const BufferObjectHandle& boh, size_t sz, size_t offset, direction dir1, bool async)
+sync(const buffer_object_handle& boh, size_t sz, size_t offset, direction dir1, bool async)
 {
-  xclBOSyncDirection dir = XCL_BO_SYNC_BO_TO_DEVICE;
-  if(dir1 == direction::DEVICE2HOST)
-    dir = XCL_BO_SYNC_BO_FROM_DEVICE;
-
-  BufferObject* bo = getBufferObject(boh);
-
-  // A sub buffer shares the BO handle with the parent buffer.  When
-  // syncing a sub buffer, the offset of the sub buffer relative to
-  // the parent buffer must be included.
-  auto offs = offset + bo->offset; 
-
-  if (bo->nodma) {
-    // sync is M2M copy between host and device handle
-    if (dir == XCL_BO_SYNC_BO_TO_DEVICE) {
-      if (m_ops->mCopyBO(m_handle, bo->handle, bo->nodma_host_handle, sz, offs, offs))
-	throw std::runtime_error("failed to sync nodma buffer to device, "
-				 "is the buffer 64byte aligned?  Check dmesg for errors.");
-      return typed_event<int>(0);
-    }
-    else {
-      if (m_ops->mCopyBO(m_handle, bo->nodma_host_handle, bo->handle, sz, offs, offs))
-	throw std::runtime_error("failed to sync nodma buffer to host, "
-				 "is the buffer 64byte aligned? Check dmesg for errors.");
-      return typed_event<int>(0);
-    }
-  }
-
-  if (async) {
-    auto qt = (dir==XCL_BO_SYNC_BO_FROM_DEVICE) ? hal::queue_type::read : hal::queue_type::write;
-    return event(addTaskF(m_ops->mSyncBO,qt,m_handle,bo->handle,dir,sz,offs));
-  }
-  return event(typed_event<int>(m_ops->mSyncBO(m_handle, bo->handle, dir, sz, offs)));
+  auto dir = (dir1 == direction::HOST2DEVICE) ? XCL_BO_SYNC_BO_TO_DEVICE : XCL_BO_SYNC_BO_FROM_DEVICE;
+  const_cast<buffer_object_handle&>(boh).sync(dir, sz, offset);
+  return event(typed_event<int>(0));
 }
 
 event
 device::
-copy(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh, size_t sz, size_t dst_offset, size_t src_offset)
+copy(const buffer_object_handle& dst_boh, const buffer_object_handle& src_boh, size_t sz, size_t dst_offset, size_t src_offset)
 {
-  BufferObject* dst_bo = getBufferObject(dst_boh);
-  BufferObject* src_bo = getBufferObject(src_boh);
-  return event(typed_event<int>(m_ops->mCopyBO(m_handle, dst_bo->handle, src_bo->handle, sz, dst_offset, src_offset)));
+  auto& dst = const_cast<buffer_object_handle&>(dst_boh);
+  dst.copy(src_boh, sz, src_offset, dst_offset);
+  return event(typed_event<int>(0));
 }
 
 void
 device::
-fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
+fill_copy_pkt(const buffer_object_handle& dst_boh, const buffer_object_handle& src_boh
               ,size_t sz, size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt)
 {
-#ifndef _WIN32
-  BufferObject* dst_bo = getBufferObject(dst_boh);
-  BufferObject* src_bo = getBufferObject(src_boh);
-  ert_fill_copybo_cmd(pkt,src_bo->handle,dst_bo->handle,src_offset,dst_offset,sz);
-#else
-  throw std::runtime_error("ert_fill_copybo_cmd not implemented on windows");
-#endif
-
-  return;
+  xrt_core::bo::fill_copy_pkt(dst_boh, src_boh, sz, dst_offset, src_offset, pkt);
 }
 
 size_t
@@ -618,15 +410,15 @@ write_register(size_t offset, const void* buffer, size_t size)
 
 void*
 device::
-map(const BufferObjectHandle& boh)
+map(const buffer_object_handle& boh)
 {
-  auto bo = getBufferObject(boh);
-  return bo->hostAddr;
+  auto& bo = const_cast<buffer_object_handle&>(boh);
+  return bo.map();
 }
 
 void
 device::
-unmap(const BufferObjectHandle& boh)
+unmap(const buffer_object_handle& boh)
 {
 /*
  * Any BO allocated through xrt_xocl::hal2 is mapped by default and cannot be munmap'ed.
@@ -638,7 +430,7 @@ unmap(const BufferObjectHandle& boh)
 
 void*
 device::
-map(const ExecBufferObjectHandle& boh)
+map(const execbuffer_object_handle& boh)
 {
   auto bo = getExecBufferObject(boh);
   return bo->data;
@@ -646,7 +438,7 @@ map(const ExecBufferObjectHandle& boh)
 
 void
 device::
-unmap(const ExecBufferObjectHandle& boh)
+unmap(const execbuffer_object_handle& boh)
 {
 /*
  * Any BO allocated through xrt_xocl::hal2 is mapped by default and cannot be munmap'ed.
@@ -658,7 +450,7 @@ unmap(const ExecBufferObjectHandle& boh)
 
 int
 device::
-exec_buf(const ExecBufferObjectHandle& boh)
+exec_buf(const execbuffer_object_handle& boh)
 {
   auto bo = getExecBufferObject(boh);
   if (m_ops->mExecBuf(m_handle,bo->handle))
@@ -681,115 +473,42 @@ exec_wait(int timeout_ms) const
   return retval;
 }
 
-BufferObjectHandle
-device::
-import(const BufferObjectHandle& boh)
-{
-  if(!m_ops->mImportBO) {
-    throw std::bad_alloc();
-  }
-  assert(0);
-
-  BufferObject* bo = getBufferObject(boh);
-
-  auto ubo = std::make_unique<BufferObject>();
-  ubo->hostAddr = bo->hostAddr;
-  ubo->size = bo->size;
-  ubo->owner = m_handle;
-  // Point to the parent exported bo; if the parent is itself an imported
-  // bo point to its parent
-  // Note that the max hierarchy depth is not more than 1
-  ubo->parent = bo->parent ? bo->parent : boh;
-  return BufferObjectHandle(ubo.release());
-}
-
-
 uint64_t
 device::
-getDeviceAddr(const BufferObjectHandle& boh)
+getDeviceAddr(const buffer_object_handle& boh)
 {
-  BufferObject* bo = getBufferObject(boh);
-  return bo->deviceAddr;
+  return boh.address();
 }
 
 bool
 device::
-is_imported(const BufferObjectHandle& boh) const
+is_imported(const buffer_object_handle& boh) const
 {
-  auto bo = getBufferObject(boh);
-  return bo->imported;
+  return xrt_core::bo::is_imported(boh);
 }
 
 int
 device::
-getMemObjectFd(const BufferObjectHandle& boh)
+getMemObjectFd(const buffer_object_handle& boh)
 {
-  if (!m_ops->mExportBO)
-    throw std::runtime_error("ExportBO function not found in FPGA driver. Please install latest driver");
-  return m_ops->mExportBO(m_handle, getBufferObject(boh)->handle);
+#ifndef _WIN32
+  auto& bo = const_cast<buffer_object_handle&>(boh);
+  return bo.export_buffer();
+#else
+  throw std::runtime_error("ExportBO function not supported on windows");
+#endif
 }
 
-BufferObjectHandle
+buffer_object_handle
 device::
-getBufferFromFd(const int fd, size_t& size, unsigned flags)
+getBufferFromFd(int fd, size_t& size, unsigned flags)
 {
-  auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
-    BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
-    m_ops->mUnmapBO(m_handle, bo->handle, bo->hostAddr);
-    m_ops->mFreeBO(m_handle, bo->handle);
-    delete bo;
-  };
-
-  auto ubo = std::make_unique<BufferObject>();
-
-  if (!m_ops->mImportBO)
-    throw std::runtime_error("ImportBO function not found in FPGA driver. Please install latest driver");
-
-  ubo->handle = m_ops->mImportBO(m_handle, fd, flags);
-  if (ubo->handle == NULLBO)
-    throw std::runtime_error("getBufferFromFd-Create XRT-BO: BOH handle is invalid");
-
-  ubo->size = m_ops->mGetBOSize(m_handle, ubo->handle);
-  size = ubo->size;
-  ubo->owner = m_handle;
-  ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
-  ubo->hostAddr = m_ops->mMapBO(m_handle, ubo->handle, true /*write*/);
-  ubo->imported = true;
-
-  return BufferObjectHandle(ubo.release(), delBufferObject);
-}
-
-void
-device::
-emplaceSVMBufferObjectMap(const BufferObjectHandle& boh, void* ptr)
-{
-  std::lock_guard<std::mutex> lk(m_mutex);
-  auto itr = m_svmbomap.find(ptr);
-  if (itr == m_svmbomap.end())
-    m_svmbomap[ptr] = boh;
-}
-
-void
-device::
-eraseSVMBufferObjectMap(void* ptr)
-{
-  std::lock_guard<std::mutex> lk(m_mutex);
-  auto itr = m_svmbomap.find(ptr);
-  if (itr != m_svmbomap.end())
-    m_svmbomap.erase(itr);
-}
-
-BufferObjectHandle
-device::
-svm_bo_lookup(void* ptr)
-{
-  std::lock_guard<std::mutex> lk(m_mutex);
-  auto itr = m_svmbomap.find(ptr);
-  if (itr != m_svmbomap.end())
-    return (*itr).second;
-  else
-    throw std::runtime_error("svm_bo_lookup: The SVM pointer is invalid.");
+#ifndef _WIN32
+  auto export_handle = static_cast<xclBufferExportHandle>(fd);
+  return xrt::bo{m_handle, export_handle};
+#else
+  throw std::runtime_error("ImportBO function not supported on windows");
+#endif
 }
 
 //Stream

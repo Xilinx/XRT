@@ -29,13 +29,12 @@
 
 #include <cassert>
 
-namespace xrt { class device; }
-
 namespace xocl {
 
 class device : public refcount, public _cl_device_id
 {
 public:
+  using buffer_object_handle = xrt_xocl::device::buffer_object_handle;
   using memidx_bitmask_type = xclbin::memidx_bitmask_type;
   using compute_unit_type = std::shared_ptr<compute_unit>;
   using compute_unit_vector_type = std::vector<compute_unit_type>;
@@ -233,24 +232,8 @@ public:
    * @return
    *  Imported buffer object associated with this device
    */
-  xrt_xocl::device::BufferObjectHandle
-  import_buffer_object(const device* src_device, const  xrt_xocl::device::BufferObjectHandle& src_boh);
-
-  /**
-   * Allocate and return a buffer object for argument cl_mem.
-   *
-   * This function allocates a buffer object for current device
-   * and argument cl_mem object.  It is undefined behavior to call
-   * this function if a buffer object already exists for current
-   * device and argument mem object.
-   *
-   * @param mem
-   *   The cl_mem object to allocate a buffer object from.
-   * @return
-   *   The buffer object that was created.
-   */
-  xrt_xocl::device::BufferObjectHandle
-  allocate_buffer_object(memory* mem);
+  buffer_object_handle
+  import_buffer_object(const device* src_device, const  buffer_object_handle& src_boh);
 
   /**
    * Allocate and return buffer object for argument cl_mem
@@ -265,7 +248,7 @@ public:
    * @return
    *   The buffer object that was created.
    */
-  xrt_xocl::device::BufferObjectHandle
+  buffer_object_handle
   allocate_buffer_object(memory* mem, memidx_type memidx);
 
   /**
@@ -274,7 +257,7 @@ public:
    * Used by clCreateProgramWithBinary.  Not a great interface, but
    * has to be exposed here to ensure proper locking
    */
-  xrt_xocl::device::BufferObjectHandle
+  buffer_object_handle
   allocate_buffer_object(memory* mem, xrt_xocl::device::memoryDomain domain, uint64_t memoryIndex, void* user_ptr);
 
   /**
@@ -306,7 +289,7 @@ public:
    *   return the address of the buffer object
    */
   uint64_t
-  get_boh_addr(const xrt_xocl::device::BufferObjectHandle& boh) const;
+  get_boh_addr(const buffer_object_handle& boh) const;
 
   /**
    * Get indicies of matching memory banks on which mem is allocated
@@ -318,7 +301,7 @@ public:
    *   Memory indeces identifying bank or -1 if not allocated
    */
   memidx_bitmask_type
-  get_boh_memidx(const xrt_xocl::device::BufferObjectHandle& boh) const;
+  get_boh_memidx(const buffer_object_handle& boh) const;
 
   /**
    * Get the banktag of the bank on which mem is allocated
@@ -331,7 +314,7 @@ public:
    *   Banktag or "Unknown" if no match
    */
   std::string
-  get_boh_banktag(const xrt_xocl::device::BufferObjectHandle& boh) const;
+  get_boh_banktag(const buffer_object_handle& boh) const;
 
   /**
    * Get the memory index of the bank for all CUs in this device
@@ -725,12 +708,6 @@ private:
   clear_cus();
 
   /**
-   * Track mem object as allocated on this device
-   */
-  void
-  track(const memory* mem);
-
-  /**
    * Allocate device side buffer buffer object on specified bank
    *
    * @param mem
@@ -740,20 +717,8 @@ private:
    * @return
    *  Buffer object handle for allocated memory
    */
-  xrt_xocl::device::BufferObjectHandle
+  buffer_object_handle
   alloc(memory* mem, memidx_type memidx);
-
-  /**
-   * Allocate device side buffer in first available DDR bank
-   *
-   * @param mem
-   *  Memory object for which to allocated device side buffer
-   * @return
-   *  Buffer object handle for allocated memory
-   */
-  xrt_xocl::device::BufferObjectHandle
-  alloc(memory* mem);
-
 
 private:
   struct mapinfo {

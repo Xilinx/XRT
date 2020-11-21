@@ -211,7 +211,7 @@ get_buffer_object_or_null(const device* device) const
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
   return itr==m_bomap.end()
-    ? nullptr
+    ? xrt::bo{}
     : (*itr).second;
 }
 

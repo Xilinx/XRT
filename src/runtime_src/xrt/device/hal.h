@@ -48,11 +48,10 @@ namespace xrt_xocl {
 namespace hal {
 
 // Opaque types for various buffer objects
-struct buffer_object {};
 struct exec_buffer_object {};
 
-using BufferObjectHandle = std::shared_ptr<buffer_object>;
-using ExecBufferObjectHandle = std::shared_ptr<exec_buffer_object>;
+using buffer_object_handle = xrt::bo;
+using execbuffer_object_handle = std::shared_ptr<exec_buffer_object>;
 using device_handle = xclDeviceHandle;
 
 enum class verbosity_level : unsigned short
@@ -211,14 +210,8 @@ public:
   virtual size_t
   get_cdma_count() const = 0;
 
-  virtual ExecBufferObjectHandle
+  virtual execbuffer_object_handle
   allocExecBuffer(size_t sz) = 0;
-
-  virtual BufferObjectHandle
-  alloc(size_t sz) = 0;
-
-  virtual BufferObjectHandle
-  alloc(size_t sz,void* userptr) = 0;
 
   /**
    * Allocate buffer object in specified memory bank index
@@ -226,39 +219,38 @@ public:
    * The bank index is an index into mem topology array and not
    * necessarily the logical bank number used in the host code.
    */
-  virtual BufferObjectHandle
+  virtual buffer_object_handle
   alloc(size_t sz, Domain domain, uint64_t memoryIndex, void* user_ptr) = 0;
 
-  virtual BufferObjectHandle
-  alloc(const BufferObjectHandle& bo, size_t sz, size_t offset) = 0;
+  virtual buffer_object_handle
+  alloc(const buffer_object_handle& bo, size_t sz, size_t offset) = 0;
 
   virtual void*
   alloc_svm(size_t sz) = 0;
 
-  virtual BufferObjectHandle
-  import(const BufferObjectHandle& bo) = 0;
-
+#if 0
   virtual void
-  free(const BufferObjectHandle& bo) = 0;
+  free(const buffer_object_handle& bo) = 0;
+#endif
 
   virtual void
   free_svm(void* svm_ptr) = 0;
 
   virtual event
-  write(const BufferObjectHandle& bo, const void* buffer, size_t sz, size_t offset,bool async) = 0;
+  write(const buffer_object_handle& bo, const void* buffer, size_t sz, size_t offset,bool async) = 0;
 
   virtual event
-  read(const BufferObjectHandle& bo, void* buffer, size_t sz, size_t offset, bool async) = 0;
+  read(const buffer_object_handle& bo, void* buffer, size_t sz, size_t offset, bool async) = 0;
 
   virtual event
-  sync(const BufferObjectHandle& bo, size_t sz, size_t offset, direction dir, bool async) = 0;
+  sync(const buffer_object_handle& bo, size_t sz, size_t offset, direction dir, bool async) = 0;
 
   virtual event
-  copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz,
+  copy(const buffer_object_handle& dst_bo, const buffer_object_handle& src_bo, size_t sz,
        size_t dst_offset, size_t src_offset) = 0;
 
   virtual void
-  fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
+  fill_copy_pkt(const buffer_object_handle& dst_boh, const buffer_object_handle& src_boh
                 ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt) = 0;
 
   virtual size_t
@@ -268,19 +260,19 @@ public:
   write_register(size_t offset, const void* buffer, size_t size) = 0;
 
   virtual void*
-  map(const BufferObjectHandle& bo) = 0;
+  map(const buffer_object_handle& bo) = 0;
 
   virtual void
-  unmap(const BufferObjectHandle& bo) = 0;
+  unmap(const buffer_object_handle& bo) = 0;
 
   virtual void*
-  map(const ExecBufferObjectHandle& bo) = 0;
+  map(const execbuffer_object_handle& bo) = 0;
 
   virtual void
-  unmap(const ExecBufferObjectHandle& bo) = 0;
+  unmap(const execbuffer_object_handle& bo) = 0;
 
   virtual int
-  exec_buf(const ExecBufferObjectHandle& bo)
+  exec_buf(const execbuffer_object_handle& bo)
   {
     throw std::runtime_error("exec_buf not supported");
   }
@@ -330,14 +322,14 @@ public:
    *   false otherwise
    */
   virtual bool
-  is_imported(const BufferObjectHandle& boh) const = 0;
+  is_imported(const buffer_object_handle& boh) const = 0;
 
   /**
    * @returns
    *   The device address of a buffer object
    */
   virtual uint64_t
-  getDeviceAddr(const BufferObjectHandle& boh) = 0;
+  getDeviceAddr(const buffer_object_handle& boh) = 0;
 
   /**
    * Export FD of buffer object handle on this device.
@@ -354,7 +346,7 @@ public:
    *   Fd as integer
    */
   virtual int
-  getMemObjectFd(const BufferObjectHandle& boh)
+  getMemObjectFd(const buffer_object_handle& boh)
   {
     throw std::runtime_error("getMemObjectFd: HAL1 doesn't support DMA_BUF");
   }
@@ -377,7 +369,7 @@ public:
    * @return
    *   Handle to imported buffer
    */
-  virtual BufferObjectHandle
+  virtual buffer_object_handle
   getBufferFromFd(const int fd, size_t& size, unsigned flags)
   {
     throw std::runtime_error("getBufferFromFd: HAL1 doesn't support DMA_BUF");

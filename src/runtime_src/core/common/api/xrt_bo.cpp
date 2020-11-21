@@ -20,8 +20,8 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_bo.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_bo.h"
-
 #include "bo.h"
+
 #include "device_int.h"
 #include "kernel_int.h"
 #include "core/common/device.h"
@@ -35,7 +35,7 @@
 #include <set>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 )
+# pragma warning( disable : 4244 4100)
 #endif
 
 namespace {
@@ -139,7 +139,7 @@ public:
   }
 
   xclBufferHandle
-  get_handle() const
+  get_xcl_handle() const
   {
     return handle;
   }
@@ -194,7 +194,7 @@ public:
     try {
       auto m2m = xrt_core::device_query<xrt_core::query::m2m>(get_device());
       if (xrt_core::query::m2m::to_bool(m2m)) {
-        device->copy_bo(get_handle(), src->get_handle(), sz, dst_offset, src_offset);
+        device->copy_bo(get_xcl_handle(), src->get_xcl_handle(), sz, dst_offset, src_offset);
         return;
       }
     }
@@ -204,7 +204,7 @@ public:
     // try copying with kdma
     try {
       xrt_core::kernel_int::copy_bo_with_kdma
-        (device, sz, get_handle(), dst_offset, src->get_handle(), src_offset);
+        (device, sz, get_xcl_handle(), dst_offset, src->get_xcl_handle(), src_offset);
       return;
     }
     catch (const std::exception& ex) {
@@ -403,10 +403,10 @@ public:
   {
     if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
       // dst, src, size, dst_offset, src_offset
-      device->copy_bo(m_device_only.get_handle(), m_host_only.get_handle(), sz, offset, offset);
+      device->copy_bo(m_device_only.get_xcl_handle(), m_host_only.get_xcl_handle(), sz, offset, offset);
     else
       // dst, src, size, dst_offset, src_offset
-      device->copy_bo(m_host_only.get_handle(), m_device_only.get_handle(), sz, offset, offset);
+      device->copy_bo(m_host_only.get_xcl_handle(), m_device_only.get_xcl_handle(), sz, offset, offset);
   }
 };
 
@@ -611,6 +611,26 @@ address(xrtBufferHandle handle)
 {
   auto boh = get_boh(handle);
   return boh->get_address();
+}
+
+void
+fill_copy_pkt(const xrt::bo& dst, const xrt::bo& src, size_t sz,
+              size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt)
+{
+#ifndef _WIN32
+  auto dst_boh = dst.get_handle();
+  auto src_boh = src.get_handle();
+  ert_fill_copybo_cmd(pkt, src_boh->get_xcl_handle(), dst_boh->get_xcl_handle(), src_offset, dst_offset, sz);
+#else
+  throw std::runtime_error("ert_fill_copybo_cmd not implemented on windows");
+#endif
+}
+
+bool
+is_imported(const xrt::bo& bo)
+{
+  auto boh = bo.get_handle();
+  return boh->is_imported();
 }
 
 }} // namespace bo, xrt_core

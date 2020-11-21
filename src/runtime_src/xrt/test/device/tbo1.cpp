@@ -42,7 +42,7 @@ run(xrt_xocl::device* mydev)
     randomChar += 32;
 
   const int bufSize = 1024;
-  xrt_xocl::hal::BufferObjectHandle bo = mydev->alloc(bufSize);
+  xrt_xocl::hal::buffer_object_handle bo = mydev->alloc(bufSize);
   char *data1 = new char[bufSize];
   char *data2 = new char[bufSize];
 
