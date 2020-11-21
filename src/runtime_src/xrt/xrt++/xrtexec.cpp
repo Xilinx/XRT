@@ -68,11 +68,11 @@ release_cu_context(xrt_device* device, value_type cuidx)
   xdevice->release_cu_context(cuidx);
 }
 
-xrt_xocl::device::device_handle
+xclDeviceHandle
 get_device_handle(const xrt_device* device)
 {
   auto xdevice = static_cast<const xrt_xocl::device*>(device);
-  return xdevice->get_handle();
+  return xdevice->get_xcl_handle();
 }
 
 namespace exec {

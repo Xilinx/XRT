@@ -137,7 +137,7 @@ namespace xdp {
 
     // Update the static database with all the information that will
     //  be needed later.
-    (db->getStaticInfo()).updateDevice(deviceId, device->get_handle()) ;
+    (db->getStaticInfo()).updateDevice(deviceId, device->get_xcl_handle()) ;
     (db->getStaticInfo()).setDeviceName(deviceId, device->getName()) ;
 
     // For the OpenCL level, we must create a device inteface using

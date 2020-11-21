@@ -24,6 +24,7 @@
 #include "xrt/util/uuid.h"
 #include "core/common/device.h"
 #include "core/include/xrt.h"
+#include "core/include/experimental/xrt_device.h"
 
 #include "xclperf.h"
 #include "xcl_app_debug.h"
@@ -173,8 +174,11 @@ public:
   virtual void
   close() = 0;
 
-  virtual device_handle
-  get_handle() const = 0;
+  virtual xclDeviceHandle
+  get_xcl_handle() const = 0;
+
+  virtual xrt::device
+  get_xrt_device() const = 0;
 
   virtual std::shared_ptr<xrt_core::device>
   get_core_device() const = 0;

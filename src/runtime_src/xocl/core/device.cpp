@@ -230,7 +230,7 @@ device::
 get_handle() const
 {
   if (m_xdevice)
-    return m_xdevice->get_handle();
+    return m_xdevice->get_xcl_handle();
   throw xocl::error(CL_INVALID_DEVICE, "No device handle");
 }
 

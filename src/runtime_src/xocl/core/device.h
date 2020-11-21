@@ -118,6 +118,12 @@ public:
     return  m_xdevice;
   }
 
+  xrt::device
+  get_xrt_device() const
+  {
+    return m_xdevice->get_xrt_device();
+  }
+
   platform*
   get_platform() const
   {
