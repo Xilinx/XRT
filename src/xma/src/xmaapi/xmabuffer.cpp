@@ -38,6 +38,8 @@ int32_t
 xma_frame_planes_get(XmaFrameProperties *frame_props)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD, "%s()\n", __func__);
+    if (!frame_props)
+        return XMA_ERROR;
     XmaFrameFormatDesc frame_format_desc[] =
     {
         {XMA_NONE_FMT_TYPE,    0},
@@ -61,6 +63,13 @@ xma_frame_alloc(XmaFrameProperties *frame_props, bool dummy)
     int32_t num_planes;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD, "%s()\n", __func__);
+    if (!frame_props)
+        return nullptr;
+    if (!dummy && (frame_props->width > MAX_FRAME_W_H || frame_props->height > MAX_FRAME_W_H))
+        return nullptr;
+    if (!dummy && (frame_props->width <= 0 || frame_props->height <= 0))
+        return nullptr;
+
     XmaFrame *frame = (XmaFrame*) malloc(sizeof(XmaFrame));
     if (frame  == NULL)
         return NULL;
@@ -96,6 +105,10 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
                "%s() frame_props %p and frame_data %p\n",
                __func__, frame_props, frame_data);
+    if (!frame_props)
+        return nullptr;
+    if (!frame_data)
+        return nullptr;
     XmaFrame *frame = (XmaFrame*) malloc(sizeof(XmaFrame));
     if (frame  == NULL)
         return NULL;
@@ -168,6 +181,10 @@ xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
                "%s() frame_props %p and frame_data %p\n",
                __func__, frame_props, frame_data);
+    if (!frame_props)
+        return nullptr;
+    if (!frame_data)
+        return nullptr;
     XmaFrame *frame = (XmaFrame*) malloc(sizeof(XmaFrame));
     if (frame  == NULL)
         return NULL;
@@ -475,6 +492,8 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size)
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
                "%s() Cloning buffer from %p of size %lu\n",
                __func__, data, size);
+    if (!data)
+        return nullptr;
     XmaDataBuffer *buffer = (XmaDataBuffer*) malloc(sizeof(XmaDataBuffer));
     if (buffer  == NULL)
         return NULL;
