@@ -494,7 +494,7 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size)
     if (!data)
         return nullptr;
     XmaDataBuffer *buffer = (XmaDataBuffer*) malloc(sizeof(XmaDataBuffer));
-    if (buffer  == nullptr)
+    if (!buffer)
         return nullptr;
     memset(buffer, 0, sizeof(XmaDataBuffer));
     buffer->data.refcount++;
