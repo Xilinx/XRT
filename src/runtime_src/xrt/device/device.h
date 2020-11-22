@@ -174,11 +174,13 @@ public:
   void
   close();
 
-  device_handle
-  get_handle() const
-  {
-    return m_hal->get_handle();
-  }
+  xclDeviceHandle
+  get_xcl_handle() const
+  { return m_hal->get_xcl_handle(); }
+
+  xrt::device
+  get_xrt_device() const
+  { return m_hal->get_xrt_device(); }
 
   void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)

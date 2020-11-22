@@ -890,7 +890,7 @@ stop()
 void
 init(xrt_xocl::device* xdev)
 {
-  auto cdev = xrt_core::get_userpf_device(xdev->get_handle());
+  auto cdev = xrt_core::get_userpf_device(xdev->get_xcl_handle());
 
   auto ip_section = cdev->get_axlf_section(IP_LAYOUT);
   auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);

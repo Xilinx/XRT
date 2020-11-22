@@ -172,10 +172,16 @@ public:
   virtual void
   close();
 
-  virtual hal::device_handle
-  get_handle() const
+  virtual xclDeviceHandle
+  get_xcl_handle() const
   {
     return m_handle; // cast to xclDeviceHandle
+  }
+
+  xrt::device
+  get_xrt_device() const
+  {
+    return m_handle;
   }
 
   std::shared_ptr<xrt_core::device>
