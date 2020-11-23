@@ -31,6 +31,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
 #include "core/common/unistd.h"
+#include "core/common/xclbin_parser.h"
 
 #include <map>
 #include <set>
@@ -103,12 +104,30 @@ namespace xrt {
 // A buffer is freed when last references is released.
 class bo_impl
 {
+public:
   static constexpr uint64_t no_addr = std::numeric_limits<uint64_t>::max();
+  static constexpr int32_t no_group = std::numeric_limits<int32_t>::max();
+
+private:
+  void
+  get_bo_properties() const
+  { 
+    xclBOProperties prop;
+    device->get_bo_properties(handle, &prop);
+    addr = prop.paddr;
+    //grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
+
+    // Remove when driver returns the flags that were used to ctor the bo
+    auto mem_topo = device->get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
+    grpid = xrt_core::xclbin::address_to_memidx(mem_topo, addr);
+  }
+
 protected:
   std::shared_ptr<xrt_core::device> device;
   xclBufferHandle handle;           // driver handle
   size_t size;                      // size of buffer
   mutable uint64_t addr = no_addr;  // bo device address
+  mutable int32_t grpid = no_group; // memory group index
   bool free_bo;                     // should dtor free bo
 
 public:
@@ -261,12 +280,19 @@ public:
   virtual uint64_t
   get_address() const
   {
-    if (addr != no_addr)
-      return addr;
+    if (addr == no_addr)
+      get_bo_properties();
+    
+    return addr;
+  }
 
-    xclBOProperties prop;
-    device->get_bo_properties(handle, &prop);
-    return (addr = prop.paddr);
+  virtual uint64_t
+  get_group_id() const
+  {
+    if (grpid == no_group)
+      get_bo_properties();
+
+    return grpid;
   }
 
   virtual size_t get_size()      const { return size;    }
@@ -372,6 +398,13 @@ public:
   {
     return hbuf;
   }
+
+  virtual uint64_t
+  get_group_id() const
+  {
+    return bo_impl::no_group;
+  }
+  
 };
 
 // class buffer_dbuf - device only buffer
@@ -620,6 +653,13 @@ address(xrtBufferHandle handle)
 {
   auto boh = get_boh(handle);
   return boh->get_address();
+}
+
+int32_t
+group_id(const xrt::bo& bo)
+{
+  auto boh = bo.get_handle();
+  return boh->get_group_id();
 }
 
 void

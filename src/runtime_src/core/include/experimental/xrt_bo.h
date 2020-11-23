@@ -436,6 +436,7 @@ public:
 
   // Construct bo from C-API handle
   // Throws if argument handle is not from xrtBOAlloc variant
+  XCL_DRIVER_DLLESPEC
   bo(xrtBufferHandle);
   /// @endcond
 private:

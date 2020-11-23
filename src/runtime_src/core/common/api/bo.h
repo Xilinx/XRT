@@ -36,6 +36,15 @@ address(const xrt::bo& bo);
 uint64_t
 address(xrtBufferHandle handle);
 
+/**
+ * group_id() - Get the memory bank index of BO
+ *
+ * @bo:       Buffer object
+ * Return:    Memory bank index where BO is allocated
+ */
+int32_t
+group_id(const xrt::bo& bo);
+
 // Fill the ERT copy BO command packet
 XRT_CORE_COMMON_EXPORT
 void

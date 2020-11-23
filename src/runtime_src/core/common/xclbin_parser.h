@@ -117,6 +117,12 @@ int32_t
 get_first_used_mem(const axlf* top);
 
 /**
+ * address_to_memidx() - Map memory address to memory bank index
+ */
+int32_t
+address_to_memidx(const mem_topology* mem, uint64_t address);
+
+/**
  * get_max_cu_size() - Compute max register map size of CUs in xclbin
  */
 XRT_CORE_COMMON_EXPORT

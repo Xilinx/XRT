@@ -48,6 +48,7 @@
 #include <memory>
 #include <mutex>
 #include <stdexcept>
+#include <sstream>
 #include <type_traits>
 #include <utility>
 using namespace std::chrono_literals;
@@ -122,6 +123,20 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
 namespace {
 
 constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
+
+XRT_CORE_UNUSED // debug enabled function
+std::string
+debug_cmd_packet(const ert_packet* pkt)
+{
+  std::ostringstream ostr;
+  ostr << std::uppercase << std::setfill('0') << std::setw(3);
+  ostr << "pkt->header    = 0x"
+       << std::setw(8) << std::hex << pkt->header << std::dec << "\n";
+  for (size_t i = 0; i < pkt->count; ++i)
+    ostr << "pkt->data[" << std::setw(3) << i << "] = 0x"
+         << std::setw(8) << std::hex << pkt->data[i] << std::dec << "\n";
+  return ostr.str();
+}
 
 // Helper class for representing an in-memory kernel argument.  User
 // calls kernel(arg1, arg2, ...).  This class stores the address of
@@ -250,29 +265,104 @@ struct device_type
 // then behavior is undefined.
 class ip_context
 {
+  // class connectivy - Represents argument connectiviy to memory banks
+  //  
+  // TODO: compress the connectivity bitset to ignore unused memory banks
+  class connectivity
+  {
+    static constexpr int32_t no_memidx = -1;
+    static constexpr size_t max_connections = 128;
+    std::vector<std::bitset<max_connections>> connections; // sorted argidx
+    std::vector<int32_t> default_connection;               // sorted argidx
+
+    // Resize the vectors if neccessary
+    void
+    resize(size_t size)
+    {
+      if (connections.size() >= size)
+        return;
+
+      connections.resize(size);
+      default_connection.resize(size, no_memidx);
+    }
+
+  public:
+    connectivity()
+    {}
+
+    connectivity(const ::connectivity* conn, int32_t ipidx)
+    {
+      // Compute the connections for IP with specified index
+      for (int count = 0; count < conn->m_count; ++count) {
+        auto& cxn  = conn->m_connection[count];
+        if (cxn.m_ip_layout_index != ipidx)
+          continue;
+
+        auto argidx = cxn.arg_index;
+        auto memidx = cxn.mem_data_index;
+        resize(argidx + 1);
+        connections[argidx].set(memidx);
+
+        // default connections is largest memidx to account for groups
+        default_connection[argidx] = std::max(default_connection[argidx], memidx);
+      }
+    }
+
+    int32_t
+    get_arg_memidx(size_t argidx) const
+    {
+      return default_connection[argidx];
+    }
+
+    bool
+    valid_arg_connection(size_t argidx, size_t memidx) const
+    {
+      return connections[argidx].test(memidx);
+    }
+  };
+  
+  
 public:
   using access_mode = xrt::kernel::cu_access_mode;
   constexpr static unsigned int virtual_cu_idx = std::numeric_limits<unsigned int>::max();
 
+  // open() - open a context in a specific IP/CU
+  //
+  // @device:    Device on which context should opened
+  // @xclbin_id: UUID of xclbin containeing the IP definition
+  // @ip:        The ip_data defintion for this IP from the xclbin
+  // @conn:      The connectivity section from xclbin
+  // @cuidx:     Sorted index of CU used when populating cmd pkt
+  // @ipidx:     Index of IP in the IP_LAYOUT section of xclbin
+  // @am:        Access mode, how this CU should be opened
   static std::shared_ptr<ip_context>
-  open(xrt_core::device* device, const xrt::uuid& xclbin_id, const ip_data* ip, unsigned int ipidx, access_mode am)
+  open(xrt_core::device* device, const xrt::uuid& xclbin_id,
+       const ip_data* ip, const ::connectivity* conn,
+       unsigned int ipidx, unsigned int cuidx, access_mode am)
   {
     static std::mutex mutex;
     static std::map<xrt_core::device*, std::array<std::weak_ptr<ip_context>, 128>> dev2ips;
     std::lock_guard<std::mutex> lk(mutex);
     auto& ips = dev2ips[device];
-    auto ipctx = ips[ipidx].lock();
+    auto ipctx = ips[cuidx].lock();
     if (!ipctx) {
-      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id.get(), ip, ipidx, am));
-      ips[ipidx] = ipctx;
+      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ip, conn, ipidx, cuidx, am));
+      ips[cuidx] = ipctx;
     }
 
     if (ipctx->access != am)
-      throw std::runtime_error("Conflicting access mode for IP(" + std::to_string(ipidx) + ")");
+      throw std::runtime_error("Conflicting access mode for IP(" + std::to_string(cuidx) + ")");
 
     return ipctx;
   }
 
+  // open() - open a context on the device virtual CU
+  //
+  // @device:    The device on which to open the virtual CU
+  // xclbin_id:  The xclbin that is locked by this call
+  //
+  // This keeps a lock on the xclbin after it is loaded onto the device
+  // without locking any specific CU.
   static std::shared_ptr<ip_context>
   open_virtual_cu(xrt_core::device* device, const xrt::uuid& xclbin_id)
   {
@@ -283,16 +373,26 @@ public:
     return ipctx;
   }
 
-  // For symmetry
+  // Access mode can be set only if it starts out as unspecifed (none).
   void
-  close()
-  {}
+  set_access_mode(access_mode am)
+  {
+    if (access != access_mode::none)
+      throw std::runtime_error("Cannot change current access mode");
+    device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(am));
+    access = am;
+  }
 
   access_mode
   get_access_mode() const
   {
     return access;
   }
+
+  // For symmetry
+  void
+  close()
+  {}
 
   size_t
   get_size() const
@@ -307,39 +407,64 @@ public:
   }
 
   unsigned int
-  get_index() const
+  get_cuidx() const
   {
-    return idx;
+    return cuidx;
+  }
+
+  // Check if arg is connected to specified memory bank
+  bool
+  valid_connection(size_t argidx, int32_t memidx)
+  {
+    return args.valid_arg_connection(argidx, memidx);
+  }
+
+  // Get default memory bank for argument at specified index The
+  // default memory bank is the connection with the highest group
+  // connectivity index
+  int32_t
+  arg_memidx(size_t argidx) const
+  {
+    return args.get_arg_memidx(argidx);
   }
 
   ~ip_context()
   {
-    device->close_context(xid.get(), idx);
+    device->close_context(xid.get(), cuidx);
   }
 
 private:
-  ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id, const ip_data* ip,
-             unsigned int ipidx, access_mode am)
-    : device(dev), xid(xclbin_id), idx(ipidx), address(ip->m_base_address), size(64_kb), access(am)
+  // regular CU
+  ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id,
+             const ip_data* ip, const ::connectivity* conn,
+             unsigned int ipindex, unsigned int cuindex, access_mode am)
+    : device(dev), xid(xclbin_id)
+    , args(conn, ipindex), cuidx(cuindex)
+    , address(ip->m_base_address), size(64_kb), access(am)
   {
-    device->open_context(xid.get(), idx, std::underlying_type<access_mode>::type(am));
+    if (access != access_mode::none)
+      device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(am));
   }
 
   // virtual CU
   ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id)
-    : device(dev), xid(xclbin_id), idx(virtual_cu_idx), address(0), size(0), access(access_mode::shared)
+    : device(dev), xid(xclbin_id), cuidx(virtual_cu_idx), address(0), size(0), access(access_mode::shared)
   {
-    device->open_context(xid.get(), idx, std::underlying_type<access_mode>::type(access));
+    device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(access));
   }
-
-  xrt_core::device* device;
-  xrt::uuid xid;
-  unsigned int idx;
-  uint64_t address;
-  size_t size;
-  access_mode access;
+    
+  xrt_core::device* device; // 
+  xrt::uuid xid;            // xclbin uuid
+  connectivity args;        // argument memory connections
+  unsigned int cuidx;       // cu index for execution
+  uint64_t address;         // base address for programming
+  size_t size;              // address space size
+  access_mode access;       // compute unit access mode
 };
 
+// Remove when c++17
+constexpr int32_t ip_context::connectivity::no_memidx;
+  
 // class kernel_command - Immplements command API expected by schedulers
 //
 // The kernel command is
@@ -368,9 +493,22 @@ public:
     m_device->exec_buffer_cache.release(m_execbuf);
   }
 
-  /**
-   * Cast underlying exec buffer to its requested type
-   */
+  void
+  encode_compute_units(const std::bitset<128>& cumask, size_t num_cumasks)
+  {
+    auto ecmd = get_ert_cmd<ert_packet*>();
+    std::fill(ecmd->data, ecmd->data + num_cumasks, 0);
+
+    for (size_t cu_idx = 0; cu_idx < 128; ++cu_idx) {
+      if (!cumask.test(cu_idx))
+        continue;
+      auto mask_idx = cu_idx / 32;
+      auto idx_in_mask = cu_idx - mask_idx * 32;
+      ecmd->data[mask_idx] |= (1 << idx_in_mask);
+    }
+  }
+
+  // Cast underlying exec buffer to its requested type
   template <typename ERT_COMMAND_TYPE>
   const ERT_COMMAND_TYPE
   get_ert_cmd() const
@@ -378,9 +516,7 @@ public:
     return reinterpret_cast<const ERT_COMMAND_TYPE>(get_ert_packet());
   }
 
-  /**
-   * Cast underlying exec buffer to its requested type
-   */
+  // Cast underlying exec buffer to its requested type
   template <typename ERT_COMMAND_TYPE>
   ERT_COMMAND_TYPE
   get_ert_cmd()
@@ -388,10 +524,8 @@ public:
     return reinterpret_cast<ERT_COMMAND_TYPE>(get_ert_packet());
   }
 
-  /**
-   * Add a callback, synchronize with concurrent state change
-   * Call the callback if command is complete.
-   */
+  // Add a callback, synchronize with concurrent state change
+  // Call the callback if command is complete.
   void
   add_callback(callback_function_type fcn)
   {
@@ -435,9 +569,7 @@ public:
     m_event = event;
   }
 
-  /**
-   * Run registered callbacks.
-   */
+  // Run registered callbacks.
   void
   run_callbacks(ert_cmd_state state) const
   {
@@ -464,9 +596,7 @@ public:
       (*cb)(state);
   }
 
-  /**
-   * Submit the command for execution
-   */
+  // Submit the command for execution
   void
   run()
   {
@@ -479,9 +609,7 @@ public:
     xrt_core::exec::schedule(this);
   }
 
-  /**
-   * Wait for command completion
-   */
+  // Wait for command completion
   ert_cmd_state
   wait() const
   {
@@ -698,8 +826,7 @@ private:
   };
 
   using xarg = xrt_core::xclbin::kernel_argument;
-  xarg arg;       // argument meta data from xclbin
-  int32_t grpid;  // memory bank group id
+  xarg arg;         // argument meta data from xclbin
 
   std::unique_ptr<iarg> content;
 
@@ -708,15 +835,14 @@ public:
   using direction = xarg::direction;
 
   argument()
-    : grpid(std::numeric_limits<int32_t>::max()), content(nullptr)
   {}
 
   argument(argument&& rhs)
-    : arg(std::move(rhs.arg)), grpid(rhs.grpid), content(std::move(rhs.content))
+    : arg(std::move(rhs.arg)), content(std::move(rhs.content))
   {}
 
-  argument(xrt_core::device* dev, xarg&& karg, int32_t grp)
-    : arg(std::move(karg)), grpid(grp)
+  argument(xrt_core::device* dev, xarg&& karg)
+    : arg(std::move(karg))
   {
     // Determine type
     switch (arg.type) {
@@ -808,10 +934,6 @@ public:
   name() const
   { return arg.name; }
 
-  int32_t
-  group_id() const
-  { return grpid; }
-
   direction
   dir() const
   { return arg.dir; }
@@ -840,7 +962,6 @@ class kernel_impl
 
   std::shared_ptr<device_type> device; // shared ownership
   std::string name;                    // kernel name
-  std::vector<int32_t> arg2grp;        // argidx to memory group index
   std::vector<argument> args;          // kernel args sorted by argument index
   std::vector<ipctx> ipctxs;           // CU context locks
   ipctx vctx;                          // virtual CU context
@@ -904,41 +1025,8 @@ class kernel_impl
       amend_fa_args();
   }
 
-  // Traverse xclbin connectivity section and find connectivity for
-  // {argument,ipidx}.  Connectivity is checked from high order of
-  // connectivity entries, since these entries represent groups formed
-  // from low order connectivity if and only if groups are used
-  int32_t
-  get_arg_grpid(const connectivity* cons, int32_t argidx, int32_t ipidx)
-  {
-    if (cons) {
-      for (int count = cons->m_count-1; count >=0; --count) {
-        auto& con = cons->m_connection[count];
-        if (con.m_ip_layout_index != ipidx)
-          continue;
-        if (con.arg_index != argidx)
-          continue;
-        return con.mem_data_index;
-      }
-    }
-    return std::numeric_limits<int32_t>::max();
-  }
-
-  int32_t
-  get_arg_grpid(const connectivity* cons, int32_t argidx, const std::vector<int32_t>& ips)
-  {
-    auto grpidx = std::numeric_limits<int32_t>::max();
-    for (auto ipidx : ips) {
-      auto gidx = get_arg_grpid(cons, argidx, ipidx);
-      if (gidx != grpidx && grpidx != std::numeric_limits<int32_t>::max())
-        throw std::runtime_error("Ambigious kernel connectivity for argument " + std::to_string(argidx));
-      grpidx = gidx;
-    }
-    return grpidx;
-  }
-
   unsigned int
-  get_ipidx_or_error(size_t offset, bool force=false) const
+  get_cuidx_or_error(size_t offset, bool force=false) const
   {
     if (ipctxs.size() != 1)
       throw std::runtime_error("Cannot read or write kernel with multiple compute units");
@@ -950,7 +1038,7 @@ class kernel_impl
     if ((offset + sizeof(uint32_t)) > ipctx->get_size())
         throw std::out_of_range("Cannot read or write outside kernel register space");
 
-    return ipctx->get_index();
+    return ipctx->get_cuidx();
   }
 
   IP_CONTROL
@@ -963,21 +1051,6 @@ class kernel_impl
         throw std::runtime_error("CU control protocol mismatch");
 
     return ctrl;
-  }
-
-  void
-  encode_compute_units(kernel_command* cmd)
-  {
-    auto ecmd = cmd->get_ert_cmd<ert_packet*>();
-    std::fill(ecmd->data, ecmd->data + num_cumasks, 0);
-
-    for (size_t cu_idx = 0; cu_idx < 128; ++cu_idx) {
-      if (!cumask.test(cu_idx))
-        continue;
-      auto mask_idx = cu_idx / 32;
-      auto idx_in_mask = cu_idx - mask_idx * 32;
-      ecmd->data[mask_idx] |= (1 << idx_in_mask);
-    }
   }
 
   void
@@ -1029,36 +1102,37 @@ public:
       throw std::runtime_error("No xml metadata available to construct kernel, make sure xclbin is loaded");
 
     // Compare the matching CUs against the CU sort order to create cumask
-    auto ips = xrt_core::xclbin::get_cus(ip_layout, nm);
-    if (ips.empty())
+    auto kernel_cus = xrt_core::xclbin::get_cus(ip_layout, nm);
+    if (kernel_cus.empty())
       throw std::runtime_error("No compute units matching '" + nm + "'");
 
-    auto cus = xrt_core::xclbin::get_cus(ip_layout);  // sort order
-    for (const ip_data* cu : ips) {
-      auto itr = std::find(cus.begin(), cus.end(), cu->m_base_address);
-      if (itr == cus.end())
+    auto all_cus = xrt_core::xclbin::get_cus(ip_layout);  // sort order
+    for (const ip_data* cu : kernel_cus) {
+      auto itr = std::find(all_cus.begin(), all_cus.end(), cu->m_base_address);
+      if (itr == all_cus.end())
         throw std::runtime_error("unexpected error");
-      auto idx = std::distance(cus.begin(), itr);
-      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, cu, idx, am));
-      cumask.set(idx);
-      num_cumasks = std::max<size_t>(num_cumasks, (idx / 32) + 1);
+      auto cuidx = std::distance(all_cus.begin(), itr);         // sort order index
+      auto ipidx = std::distance(ip_layout->m_ip_data, cu); // ip_layout index
+      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, cu, connectivity, ipidx, cuidx, am));
+      cumask.set(cuidx);
+      num_cumasks = std::max<size_t>(num_cumasks, (cuidx / 32) + 1);
     }
 
     // set kernel protocol
-    protocol = get_ip_control(ips);
+    protocol = get_ip_control(kernel_cus);
 
     // Collect ip_layout index of the selected CUs so that xclbin
     // connectivity section can be used to gather memory group index
     // for each kernel argument.
-    std::vector<int32_t> ip2idx(ips.size());
-    std::transform(ips.begin(), ips.end(), ip2idx.begin(),
+    std::vector<int32_t> ip2idx(kernel_cus.size());
+    std::transform(kernel_cus.begin(), kernel_cus.end(), ip2idx.begin(),
         [ip_layout](auto& ip) { return std::distance(ip_layout->m_ip_data, ip); });
 
     // get kernel arguments from xml parser
     // compute regmap size, convert to typed argument
     for (auto& arg : xrt_core::xclbin::get_kernel_arguments(xml_section.first, xml_section.second, name)) {
       regmap_size = std::max(regmap_size, (arg.offset + arg.size) / 4);
-      args.emplace_back(device->get_core_device(), std::move(arg), get_arg_grpid(connectivity, arg.index, ip2idx));
+      args.emplace_back(device->get_core_device(), std::move(arg));
     }
 
     // amend args with computed data based on kernel protocol
@@ -1072,7 +1146,7 @@ public:
   {
     auto kcmd = cmd->get_ert_cmd<ert_start_kernel_cmd*>();
     initialize_command_header(kcmd);
-    encode_compute_units(cmd);
+    cmd->encode_compute_units(cumask, num_cumasks);
     auto data = kcmd->data + kcmd->extra_cu_masks;
 
     if (kcmd->opcode == ERT_START_FA)
@@ -1081,16 +1155,45 @@ public:
     return data;
   }
 
+  const std::bitset<128>&
+  get_cumask() const
+  {
+    return cumask;
+  }
+
+  size_t 
+  get_num_cumasks() const
+  {
+    return num_cumasks;
+  }
+
+  const std::vector<ipctx>&
+  get_ips() const
+  {
+    return ipctxs;
+  }
+
   IP_CONTROL
   get_ip_control_protocol() const
   {
     return IP_CONTROL(protocol);
   }
 
+  // Group id is the memory bank index where a global buffer
+  // can be allocated for use with this kernel.   If the kernel
+  // contains imcompatible compute units, then these are
+  // filtered out from a run object when the arguments are set.
+  // This filtering implies that the group id returned by this
+  // function may not necessarily be compatible with an existing
+  // filtered run object, but it is guaranteed to be compatible
+  // with a new 'fresh' run object.
   int
   group_id(int argno)
   {
-    return args.at(argno).group_id();
+    // Last (for group id) connection of first ip in this kernel
+    // The group id can change if cus are trimmed based on argument
+    auto& ip = ipctxs.front();  // guaranteed to be non empty
+    return ip->arg_memidx(argno);
   }
 
   int
@@ -1102,7 +1205,7 @@ public:
   uint32_t
   read_register(uint32_t offset, bool force=false) const
   {
-    auto idx = get_ipidx_or_error(offset, force);
+    auto idx = get_cuidx_or_error(offset, force);
     uint32_t value = 0;
     if (has_reg_read_write())
       device->core_device->reg_read(idx, offset, &value);
@@ -1114,7 +1217,7 @@ public:
   void
   write_register(uint32_t offset, uint32_t data)
   {
-    auto idx = get_ipidx_or_error(offset);
+    auto idx = get_cuidx_or_error(offset);
     if (has_reg_read_write())
       device->core_device->reg_write(idx, offset, data);
     else
@@ -1166,6 +1269,8 @@ public:
 // its own execution buffer (ert command object)
 class run_impl
 {
+  using ipctx = std::shared_ptr<ip_context>;
+
   // Helper hierarchy to set argument value per control protocol type
   // The @data member is the payload to be populated with argument
   // value.  The interpretation of the payload depends on the control
@@ -1225,13 +1330,44 @@ class run_impl
     else
       return std::make_unique<hs_arg_setter>(data);
   }
+
+  void
+  validate_ip_arg_connectivity(size_t argidx, int32_t grpidx)
+  {
+    // remove ips that don't meet requested connectivity
+    auto itr = std::remove_if(ips.begin(), ips.end(),
+                   [argidx, grpidx] (const auto& ip) {
+                     return !ip->valid_connection(argidx, grpidx);
+                   });
+
+    // if no ips are left then error
+    if (itr == ips.begin())
+      throw std::runtime_error("No compute units satisfy requested connectivity");
+
+    // no ips were removed
+    if (itr == ips.end())
+      return;
+
+    // update the cumask to set remaining cus, note that removed
+    // cus, while not erased, are no longer valid per move sematics
+    cumask.reset();
+    std::for_each(ips.begin(), itr, [this](const auto& ip) { cumask.set(ip->get_cuidx()); });
+
+    // erase the removed ips and mark that CUs must be
+    // encoded in command packet.
+    ips.erase(itr,ips.end());
+    encode_cumasks = true;
+  }
   
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
+  std::vector<ipctx> ips;                 // ips controlled by this run object
+  std::bitset<128> cumask;                // cumask for command execution
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
   uint32_t* data;                         // command argument data payload @0x0
   std::unique_ptr<arg_setter> arg_setter; // helper to populate payload data
+  bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
 
 public:
   void
@@ -1258,11 +1394,22 @@ public:
   // run_type() - constructor
   //
   // @krnl:  kernel object to run
+  //
+  // Contructs and initializes a command packet.  The command packet
+  // is further populated during setting of arguments.   By default
+  // the command packet is initialized based in kernel meta data and
+  // it encodes compute units based on the compute units associated
+  // with the kernel object.  These compute units can be filtered
+  // as a result of setting kernel arguments (global buffers) in
+  // which case they must be re-encoded as indicated by encode_cumask
+  // data member before starting the command.
   run_impl(std::shared_ptr<kernel_impl> k)
-    : kernel(std::move(k))                   // share ownership
-    , core_device(kernel->get_core_device()) // cache core device
+    : kernel(std::move(k))                        // share ownership
+    , ips(kernel->get_ips())
+    , cumask(kernel->get_cumask())
+    , core_device(kernel->get_core_device())      // cache core device
     , cmd(std::make_shared<kernel_command>(kernel->get_device()))
-    , data(kernel->initialize_command(cmd.get()))
+    , data(kernel->initialize_command(cmd.get())) // default encodes CUs
     , arg_setter(make_arg_setter())
   {}
 
@@ -1300,6 +1447,7 @@ public:
   void
   set_arg_at_index(size_t index, const xrt::bo& bo)
   {
+    validate_ip_arg_connectivity(index, xrt_core::bo::group_id(bo));
     auto value = xrt_core::bo::address(bo);
     set_arg_at_index(index, &value, sizeof(value));
   }
@@ -1341,8 +1489,19 @@ public:
   void
   start()
   {
+    // If this run object's cus were filtered compared to kernel cus
+    // then update the command packet encoded cus.
+    // To avoid comparison consider bool flag set when filtering
+    if (encode_cumasks) {
+      cmd->encode_compute_units(cumask, kernel->get_num_cumasks());
+      encode_cumasks = false;
+    }
+
     auto pkt = cmd->get_ert_packet();
     pkt->state = ERT_CMD_STATE_NEW;
+
+    //XRT_PRINTF("cmd packet:\n%s\n", debug_cmd_packet(pkt).c_str());
+    
     cmd->run();
   }
 
@@ -1359,6 +1518,12 @@ public:
   {
     auto pkt = cmd->get_ert_packet();
     return static_cast<ert_cmd_state>(pkt->state);
+  }
+
+  ert_packet*
+  get_ert_packet() const
+  {
+    return cmd->get_ert_packet();
   }
 };
 
@@ -1424,6 +1589,11 @@ public:
 
     auto pkt = cmd->get_ert_packet();
     pkt->state = ERT_CMD_STATE_NEW;
+
+    // There is a problem here if the run object from which
+    // this update was constructed has been CU filtered.  If
+    // that is the case then the update cmd cumask should be
+    // re-encoded.  This condition is not currently checked.
     cmd->run();
     cmd->wait();
   }
@@ -1782,6 +1952,13 @@ run::
 set_event(const std::shared_ptr<event_impl>& event) const
 {
   handle->set_event(event);
+}
+
+ert_packet*
+run::
+get_ert_packet() const
+{
+  return handle->get_ert_packet();
 }
 
 kernel::
