@@ -198,6 +198,12 @@ static value_type mb_host_interrupt_enabled = 0;
 static value_type dataflow_enabled          = 0;
 static value_type kds_30                    = 0;
 static value_type dmsg                      = 0;
+/* Performance breakdown: if echo flag is set,
+ * MB notifies host right away and does not touch
+ * hardware(config CU)
+ */
+static value_type echo                      = 0;
+
 // Struct slot_info is per command slot in command queue
 struct slot_info
 {
@@ -444,6 +450,8 @@ setup()
   CTRL_DEBUGF("dataflow_enabled=%d\r\n",dataflow_enabled);
   CTRL_DEBUGF("kds_30=%d\r\n",kds_30);
   CTRL_DEBUGF("dmsg=%d\r\n",dmsg);
+  CTRL_DEBUGF("echo=%d\r\n",echo);
+
   // Initialize command slots
   for (size_type i=0; i<num_slots; ++i) {
     auto& slot = command_slots[i];
@@ -768,6 +776,7 @@ configure_mb(size_type slot_idx)
   dataflow_enabled = (features & 0x40)!=0;
   kds_30 = (features & 0x100)!=0;
   dmsg = (features & 0x200)!=0;
+  echo = (features & 0x400)!=0;
   // CU base address
   for (size_type i=0; i<num_cus; ++i) {
     u32 addr = read_reg(slot.slot_addr + 0x18 + (i<<2));
@@ -935,6 +944,12 @@ free_to_new(size_type slot_idx)
   ERT_ASSERT((slot.header_value & 0xF)==0x4,"slot is not free\r\n");
   auto header =  read_reg(slot.slot_addr);
   if ((header & 0xF) == 0x1) {
+    if (echo && slot_idx > 0) {
+      notify_host(slot_idx);
+      slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
+      return true;
+    }
+
     DMSGF("new slot(%d)\r\n",slot_idx);
     write_reg(slot.slot_addr,header | 0xF);
     slot.header_value = header;
