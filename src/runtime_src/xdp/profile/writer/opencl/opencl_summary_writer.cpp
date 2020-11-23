@@ -489,6 +489,7 @@ namespace xdp {
       for (auto cuInfo : device->cus)
       {
 	// This info is the same for every execution call
+	uint64_t cuIndex = (uint64_t)((cuInfo.second)->getAccelMon()) ;
 	std::string cuName = (cuInfo.second)->getName() ;
 	std::string kernelName = (cuInfo.second)->getKernelName() ;
 	std::string cuLocalDimensions = (cuInfo.second)->getDim() ;
@@ -500,8 +501,6 @@ namespace xdp {
 	//  execution types here
 	std::vector<std::pair<std::string, TimeStatistics>> cuCalls = 
 	  (db->getStats()).getComputeUnitExecutionStats(cuName) ;
-
-	uint64_t cuIndex = 0 ;
 
 	for (auto cuCall : cuCalls)
 	{
@@ -537,8 +536,6 @@ namespace xdp {
 	       << cuMaxExecCyclesMsec << "," //<< (maxTime / 1e06) << "," 
 	       << (device->clockRateMHz) << ","
 	       << std::endl ;
-
-	  ++cuIndex ;
 	}
       }
     }    
