@@ -695,7 +695,7 @@ xclGraphReadRTP(xclGraphHandle ghdl, const char* port, char* buffer, size_t size
 }
 
 void
-xclSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
 #ifndef __AIESIM__
   auto device = xrt_core::get_userpf_device(handle);
@@ -708,16 +708,16 @@ xclSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
   auto aieArray = getAieArray();
 #endif
 
-  auto bosize = xrtBOSize(bohdl);
+  auto bosize = bo.size();
 
   if (offset + size > bosize)
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: exceed BO boundary.");
 
-  aieArray->sync_bo(bohdl, gmioName, dir, size, offset);
+  aieArray->sync_bo(bo, gmioName, dir, size, offset);
 }
 
 void
-xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
 #ifndef __AIESIM__
   auto device = xrt_core::get_userpf_device(handle);
@@ -730,12 +730,12 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioNa
   auto aieArray = getAieArray();
 #endif
 
-  auto bosize = xrtBOSize(bohdl);
+  auto bosize = bo.size();
 
   if (offset + size > bosize)
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: exceed BO boundary.");
 
-  aieArray->sync_bo_nb(bohdl, gmioName, dir, size, offset);
+  aieArray->sync_bo_nb(bo, gmioName, dir, size, offset);
 }
 
 void
@@ -1020,10 +1020,10 @@ xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size
 }
 
 int
-xclSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   try {
-    api::xclSyncBOAIE(handle, bohdl, gmioName, dir, size, offset);
+    api::xclSyncBOAIE(handle, bo, gmioName, dir, size, offset);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -1068,10 +1068,10 @@ xclResetAIEArray(xclDeviceHandle handle)
  * Note: Upon return, the synchronization is submitted or error out
  */
 int
-xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   try {
-    api::xclSyncBOAIENB(handle, bohdl, gmioName, dir, size, offset);
+    api::xclSyncBOAIENB(handle, bo, gmioName, dir, size, offset);
     return 0;
   }
   catch (const xrt_core::error& ex) {

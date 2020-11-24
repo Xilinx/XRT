@@ -74,20 +74,17 @@ public:
   /**
    * run() - Start graph execution.
    *
-   * Start the graph execution by default. Run forever; Or run a fixed
-   * number of iterations if specified during compilation time.
-   */
-  void
-  run();
-
-  /**
-   * run() - Start graph execution.
-   *
    * @param iterations
    *  Number of iterations the graph should run.
+   *
+   * Start the graph execution with given iterations.
+   *
+   * The default iterations of 0 indicates start the graph execution by
+   * default, run forever; or run a fixed number of iterations if specified
+   * during compilation time.
    */
   void
-  run(uint32_t iterations);
+  run(uint32_t iterations = 0);
 
   /**
    * wait_done() - Wait for specified milliseconds for graph to complete.
@@ -95,49 +92,30 @@ public:
    * @param timeout_ms
    *  Timeout in milliseconds
    *
-   * Wait for done status for all the tiles in graph.
+   * Wait for done status for all the tiles in graph. The default timeout
+   * of 0ms indicates blocking until run completes.
    *
    * The current thread will block until graph run completes or timeout.
    */
   void
-  wait_done(int timeout_ms);
+  wait(int timeout_ms = 0);
 
   /**
-   * wait() - Wait for graph to complete.
-   *
-   * Busy wait until graph is done.
-   *
-   * The current thread will block until graph run completes.
-   */
-  void
-  wait();
-
-  /**
-   * wait() - Wait for graph to complete for specified AIE cycles.
-   *
-   * @param cycles
-   *  AIE cycles to wait since last run starts.
+   * suspend() - Wait for graph to complete for specified AIE cycles and
+   *             then suspend the graph.
    *
    * Wait a given AIE cycle since the last graph run and then pause the
    * graph. If graph already runs more than the given cycles, stop the
    * graph immediately.
    *
-   * This API with non-zero AIE cycle is for grahp that is running forever
-   * or graph that has multi-rate core(s); zero AIE cycle means busy wait
-   * until graph is done. It has the same effect as wait() API.
+   * This API is for graph that is running forever or graph that has
+   * multi-rate core(s);
+   * Zero AIE cycle means suspend the graph immediately.
    *
-   * The current thread will block until graph run completes or is paused.
+   * The current thread will block until graph is paused.
    */
   void
-  wait(uint64_t cycles);
-
-  /**
-   * suspend() - Suspend a running graph.
-   *
-   * Suspend graph execution.
-   */
-  void
-  suspend();
+  suspend(uint64_t cycles = 0);
 
   /**
    * resume() - Resume a suspended graph.
@@ -148,17 +126,6 @@ public:
   resume();
 
   /**
-   * end() - Busy wait for graph to complete and terminate the graph.
-   *
-   * When terminating, all active processors exit their main thread and
-   * disable themselves.
-   *
-   * The current thread will block until graph is terminated.
-   */
-  void
-  end();
-
- /**
    * end() - Wait for graph to complete for specified AIE cycles and then
    * terminate the graph.
    *
@@ -171,12 +138,12 @@ public:
    *
    * This API with non-zero AIE cycle is for graph that is running forever
    * or graph that has multi-rate core(s); zero AIE cycle means busy wait
-   * until graph is done. It has the same effect as end() API.
+   * until graph is done.
    *
    * The current thread will block until graph is terminated.
    */
   void
-  end(uint64_t cycles);
+  end(uint64_t cycles = 0);
 
   /**
    * update() - Update graph Run Time Parameters.

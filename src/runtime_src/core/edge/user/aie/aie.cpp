@@ -132,7 +132,7 @@ XAie_DevInst* Aie::getDevInst()
 
 void
 Aie::
-sync_bo(xrtBufferHandle bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+sync_bo(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
@@ -155,7 +155,7 @@ sync_bo(xrtBufferHandle bo, const char *gmioName, enum xclBOSyncDirection dir, s
 
 void
 Aie::
-sync_bo_nb(xrtBufferHandle bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+sync_bo_nb(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
@@ -192,7 +192,7 @@ wait_gmio(const std::string& gmioName)
 
 void
 Aie::
-submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset)
+submit_sync_bo(xrt::bo& bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   switch (dir) {
   case XCL_BO_SYNC_BO_GMIO_TO_AIE:
@@ -239,7 +239,7 @@ submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum 
 #ifndef __AIESIM__
   XAie_DmaSetAddrLen(&(dmap->desc), (uint64_t)(bd.vaddr + offset), size);
 #else
-  XAie_DmaSetAddrLen(&(dmap->desc), (uint64_t)(xrtBOAddress(bo) + offset), size);
+  XAie_DmaSetAddrLen(&(dmap->desc), (uint64_t)(bo.address() + offset), size);
 #endif
 
   /* Set BD lock */
@@ -272,10 +272,10 @@ wait_sync_bo(ShimDMA *dmap, uint32_t chan, XAie_LocType& tile, XAie_DmaDirection
 
 void
 Aie::
-prepare_bd(BD& bd, xrtBufferHandle& bo)
+prepare_bd(BD& bd, xrt::bo& bo)
 {
 #ifndef __AIESIM__
-  auto buf_fd = xrtBOExport(bo);
+  auto buf_fd = bo.export_buffer();
   if (buf_fd == XRT_NULL_BO_EXPORT)
     throw xrt_core::error(-errno, "Sync AIE Bo: fail to export BO.");
   bd.buf_fd = buf_fd;
@@ -284,7 +284,7 @@ prepare_bd(BD& bd, xrtBufferHandle& bo)
   if (ret)
     throw xrt_core::error(-errno, "Sync AIE Bo: fail to attach DMA buf.");
 
-  auto bosize = xrtBOSize(bo);
+  auto bosize = bo.size();
   bd.size = bosize;
 
   bd.vaddr = reinterpret_cast<char *>(mmap(NULL, bosize, PROT_READ | PROT_WRITE, MAP_SHARED, buf_fd, 0));

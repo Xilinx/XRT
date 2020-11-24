@@ -21,6 +21,7 @@
 // core/include/experimental/xrt_graph.h -- end user APIs
 // core/include/xcl_graph.h -- shim level APIs
 #include "core/include/experimental/xrt_aie.h"
+#include "core/include/experimental/xrt_bo.h"
 #include "core/include/xcl_graph.h"
 
 #include "core/include/experimental/xrt_device.h"
@@ -160,7 +161,8 @@ static void
 sync_aie_bo(xrtDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   auto device = xrt_core::device_int::get_core_device(dhdl);
-  device->sync_aie_bo(bohdl, gmio_name, dir, size, offset);
+  auto bo = xrt::bo(bohdl);
+  device->sync_aie_bo(bo, gmio_name, dir, size, offset);
 }
 
 static void
@@ -174,7 +176,8 @@ static void
 sync_aie_bo_nb(xrtDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   auto device = xrt_core::device_int::get_core_device(dhdl);
-  device->sync_aie_bo_nb(bohdl, gmio_name, dir, size, offset);
+  auto bo = xrt::bo(bohdl);
+  device->sync_aie_bo_nb(bo, gmio_name, dir, size, offset);
 }
 
 static void
@@ -239,13 +242,6 @@ get_timestamp() const
 
 void
 graph::
-run()
-{
-  handle->run(0);
-}
-
-void
-graph::
 run(uint32_t iterations)
 {
   handle->run(iterations);
@@ -253,30 +249,22 @@ run(uint32_t iterations)
 
 void
 graph::
-wait_done(int timeout_ms)
+wait(int timeout_ms)
 {
-  handle->wait(timeout_ms);
+  if (timeout_ms == 0)
+    handle->wait(static_cast<uint64_t>(0));
+  else
+    handle->wait(timeout_ms);
 }
 
 void
 graph::
-wait()
+suspend(uint64_t cycles)
 {
-  handle->wait(0);
-}
-
-void
-graph::
-wait(uint64_t cycles)
-{
-  handle->wait(cycles);
-}
-
-void
-graph::
-suspend()
-{
-  handle->suspend();
+  if (cycles == 0)
+    handle->suspend();
+  else
+    wait(cycles);
 }
 
 void
@@ -284,13 +272,6 @@ graph::
 resume()
 {
   handle->resume();
-}
-
-void
-graph::
-end()
-{
-  handle->end(0);
 }
 
 void
@@ -315,7 +296,6 @@ read_port(const std::string& port_name, void* value, size_t bytes)
 }
 
 } // namespace xrt
-
 
 ////////////////////////////////////////////////////////////////
 // xrt_aie API implementations (xrt_aie.h, xrt_graph.h)
