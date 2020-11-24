@@ -750,14 +750,14 @@ namespace xdp {
 	    if (aveBW > 100.0) aveBW = 100.0 ;
 
 	    fout << (device->platformInfo.deviceName) << ","
-		 << (cu.second)->getName() << ":" << portName << ","
+		 << (cu.second)->getName() << "/" << portName << ","
 		 << (monitor->args) << ","
 		 << memoryName << ","
 		 << "WRITE" << ","
 		 << writeTranx << ","
 		 << transferRate << ","
 		 << aveBW << ","
-		 << (values.WriteBytes[aimMonitorId] / writeTranx) << ","
+		 << (values.WriteBytes[aimMonitorId] / writeTranx) / 1000 << ","
 		 << (values.WriteLatency[aimMonitorId] / writeTranx) << "," 
 		 << std::endl ;
 	  }
@@ -770,14 +770,14 @@ namespace xdp {
 	    if (aveBW > 100.0) aveBW = 100.0 ;
 
 	    fout << (device->platformInfo.deviceName) << ","
-		 << (cu.second)->getName() << ":" << portName << ","
+		 << (cu.second)->getName() << "/" << portName << ","
 		 << (monitor->args) << ","
 		 << memoryName << ","
 		 << "READ" << ","
 		 << readTranx << ","
 		 << transferRate << ","
 		 << aveBW << ","
-		 << (values.ReadBytes[aimMonitorId] / readTranx) << ","
+		 << (values.ReadBytes[aimMonitorId] / readTranx) / 1000 << ","
 		 << (values.ReadLatency[aimMonitorId] / readTranx) << "," 
 		 << std::endl ;
 	  }
