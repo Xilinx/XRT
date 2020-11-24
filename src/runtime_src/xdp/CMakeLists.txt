@@ -262,7 +262,7 @@ add_dependencies(xdp_device_offload_plugin xdp_core xilinxopencl)
 add_dependencies(xdp_hal_device_offload_plugin xdp_core xrt_core)
 add_dependencies(xdp_power_plugin xdp_core xrt_core)
 add_dependencies(xdp_noc_plugin xdp_core xrt_core)
-add_dependencies(xdp_vart_plugin xdp xrt_core)
+add_dependencies(xdp_vart_plugin xdp_core xrt_core)
 
 target_link_libraries(xdp PRIVATE xrt_coreutil)
 target_link_libraries(oclxdp PRIVATE xilinxopencl xdp)
@@ -277,7 +277,7 @@ target_link_libraries(xdp_device_offload_plugin PRIVATE xdp_core xilinxopencl)
 target_link_libraries(xdp_hal_device_offload_plugin PRIVATE xdp_core xrt_core)
 target_link_libraries(xdp_power_plugin PRIVATE xdp_core xrt_core)
 target_link_libraries(xdp_noc_plugin PRIVATE xdp_core xrt_core)
-target_link_libraries(xdp_vart_plugin PRIVATE xdp xrt_core)
+target_link_libraries(xdp_vart_plugin PRIVATE xdp_core xrt_core)
 
 # AI Engine plugin is Edge only
 if (DEFINED XRT_AIE_BUILD)
