@@ -757,7 +757,7 @@ namespace xdp {
 		 << writeTranx << ","
 		 << transferRate << ","
 		 << aveBW << ","
-		 << (values.WriteBytes[aimMonitorId] / writeTranx) / 1000 << ","
+		 << (double)(values.WriteBytes[aimMonitorId] / writeTranx) / 1000.0 << ","
 		 << (values.WriteLatency[aimMonitorId] / writeTranx) << "," 
 		 << std::endl ;
 	  }
@@ -777,7 +777,7 @@ namespace xdp {
 		 << readTranx << ","
 		 << transferRate << ","
 		 << aveBW << ","
-		 << (values.ReadBytes[aimMonitorId] / readTranx) / 1000 << ","
+		 << (double)(values.ReadBytes[aimMonitorId] / readTranx) / 1000.0 << ","
 		 << (values.ReadLatency[aimMonitorId] / readTranx) << "," 
 		 << std::endl ;
 	  }
