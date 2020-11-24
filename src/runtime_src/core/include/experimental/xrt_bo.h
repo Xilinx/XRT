@@ -433,6 +433,10 @@ public:
   {
     return handle;
   }
+
+  // Construct bo from C-API handle
+  // Throws if argument handle is not from xrtBOAlloc variant
+  bo(xrtBufferHandle);
   /// @endcond
 private:
   std::shared_ptr<bo_impl> handle;
