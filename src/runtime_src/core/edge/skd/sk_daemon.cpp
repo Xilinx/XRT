@@ -150,7 +150,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   kernel_t kernel;
   struct sk_operations ops;
   uint32_t *args_from_host;
-  uint32_t kernel_return;
+  int32_t kernel_return;
   unsigned int boh;
   int ret;
 
@@ -207,9 +207,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 
     /* Start run the soft kernel. */
     kernel_return = kernel(&args_from_host[1], &ops);
-    kernel_return &= 0xFF000000; //Keep only upper 8 bits
-    args_from_host[0] &= 0xFFFFFF; //Clear upper 8 bits
-    args_from_host[0] |= kernel_return;
+    args_from_host[1] = (uint32_t)kernel_return;
   }
 
   dlclose(sk_handle);
