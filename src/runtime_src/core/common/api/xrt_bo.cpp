@@ -661,6 +661,11 @@ bo(const bo& parent, size_t size, size_t offset)
   : handle(sub_buffer(parent.handle, size, offset))
 {}
 
+bo::
+bo(xrtBufferHandle xhdl)
+  : handle(get_boh(xhdl))
+{}
+
 size_t
 bo::
 size() const
