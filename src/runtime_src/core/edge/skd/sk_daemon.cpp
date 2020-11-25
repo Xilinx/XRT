@@ -149,7 +149,8 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   void *sk_handle;
   kernel_t kernel;
   struct sk_operations ops;
-  unsigned *args_from_host;
+  uint32_t *args_from_host;
+  int32_t kernel_return;
   unsigned int boh;
   int ret;
 
@@ -201,11 +202,12 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
     }
 
     /* Reg file indicates the kernel should not be running. */
-    if (args_from_host[0] != 0x1)
-      continue;
+    if (!(args_from_host[0] & 0x1))
+      continue; //AP_START bit is not set; New Cmd is not available
 
     /* Start run the soft kernel. */
-    kernel(&args_from_host[1], &ops);
+    kernel_return = kernel(&args_from_host[1], &ops);
+    args_from_host[1] = (uint32_t)kernel_return;
   }
 
   dlclose(sk_handle);
