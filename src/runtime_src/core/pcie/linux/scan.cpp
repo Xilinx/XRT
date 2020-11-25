@@ -518,13 +518,6 @@ pci_device(const std::string& drv_name, const std::string& sysfs) : sysfs_name(s
   else
     instance = get_render_value(sysfs::dev_root + sysfs + "/drm");
 
-  // In docker, all host sysfs nodes are available. So, we need to check
-  // devnode to make sure the device is really assigned to docker. For xoclv2
-  // driver, we only have flash subdev devnode when running golden image.
-  if (!bfs::exists(get_subdev_path("", INVALID_ID)) &&
-    !bfs::exists(get_subdev_path("flash", INVALID_ID)))
-    return;
-
   sysfs_get<int>("", "userbar", err, user_bar, 0);
   user_bar_size = bar_size(sysfs::dev_root + sysfs, user_bar);
   sysfs_get<bool>("", "ready", err, is_ready, false);
@@ -761,7 +754,7 @@ public:
   {
     try {
       if (subdev.compare("") == 0 && entry.compare("mfg") == 0) {
-          bool golden = !sysfs::get_path(sysfs_name, "xocl_vsec_golden", "").empty();
+          bool golden = !sysfs::get_path(sysfs_name, "xrt_vsec_golden", "").empty();
           iv.push_back(golden);
       } else {
         auto map = find_sysfs_map(subdev, entry);
@@ -778,7 +771,7 @@ public:
       if (subdev.compare("rom") == 0 && entry.compare("VBNV") == 0) {
         sysfs::get(sysfs_name, "xmgmt_main", "VBNV", err, s);
         if (!err.empty())
-          sysfs::get(sysfs_name, "xocl_vsec_golden", "VBNV", err, s);
+          sysfs::get(sysfs_name, "xrt_vsec_golden", "VBNV", err, s);
       } else {
         auto map = find_sysfs_map(subdev, entry);
         sysfs::get(sysfs_name, map.subdev_v2, map2entry(map, entry), err, s);
@@ -823,18 +816,18 @@ public:
   }
   std::string get_subdev_path(const std::string& subdev, uint32_t idx)
   {
+    std::string path("/dev/xfpga/");
+    path += sysfs_name;
+    path += "/";
     try {
       auto map = find_devfs_map(subdev);
-      std::string path("/dev/xfpga/");
       path += map.subdev_v2;
-      path += ".";
-      path += sysfs_name;
-      if (idx != (uint32_t)-1)
-        path += "-" + std::to_string(idx);
-      return path;
     } catch (...) {
-      throw std::runtime_error("get_subdev_path(" + subdev + ") is not supported");
+      path += subdev;
     }
+    if (idx != (uint32_t)-1)
+      path += "." + std::to_string(idx);
+    return path;
   }
   int open(const std::string& subdev, int flag)
   {
@@ -884,9 +877,9 @@ private:
     // root/xxx
     { "",       "*",            "xmgmt_main",   "*" },
     // xmc/xxx
-    { "xmc",    "*",            "xocl_cmc",     "*" },
+    { "xmc",    "*",            "xrt_cmc",     "*" },
     // flash/xxx
-    { "flash",  "*",            "xocl_qspi",    "*" },
+    { "flash",  "*",            "xrt_qspi",    "*" },
   };
   const sysfs_node_map& find_sysfs_map(const std::string& subdev, const std::string& entry)
   {
@@ -1000,6 +993,13 @@ private:
       else
         pf = std::make_shared<pci_device_v2>(driver, path.filename().string());
       if(!pf || pf->domain == INVALID_ID)
+        continue;
+
+      // In docker, all host sysfs nodes are available. So, we need to check
+      // devnode to make sure the device is really assigned to docker. For
+      // xoclv2 driver, we only have flash devnode when running golden image.
+      if (!bfs::exists(pf->get_subdev_path("", -1)) &&
+        !bfs::exists(pf->get_subdev_path("flash", -1)))
         continue;
 
       auto& list = pf->is_mgmt() ? mgmt_list : user_list;
@@ -1283,7 +1283,6 @@ check_p2p_config(const std::shared_ptr<pci_device>& dev, std::string &err)
     }
     else if (rbar != -1 && rbar > bar) {
       ret = P2P_CONFIG_REBOOT;
-      err = "Please WARM reboot to enable p2p now.";
     }
     else if (remap > 0 && remap != bar) {
       ret = P2P_CONFIG_ERROR;

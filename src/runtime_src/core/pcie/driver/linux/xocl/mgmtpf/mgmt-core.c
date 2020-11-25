@@ -630,16 +630,16 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 		xclmgmt_clock_get_data_impl(lro, buf);
 }
 
-static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t entry_sz)
+static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t entry_sz, size_t entries, size_t offset_sz)
 {
 	int i;
 	size_t offset = 0;
 
 	xocl_lock_xdev(lro);
-	for (i = 0; i < MAX_M_COUNT; i++) {
+	for (i = 0; i < entries; i++) {
 
 		xocl_mig_get_data(lro, i, mig_ecc+offset, entry_sz);
-		offset += entry_sz;
+		offset += offset_sz;
 	}
 	xocl_unlock_xdev(lro);
 }
@@ -698,7 +698,7 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 
 static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
-	size_t resp_sz = 0, current_sz = 0;
+	size_t resp_sz = 0, current_sz = 0, entry_sz = 0, entries = 0;
 	struct xcl_mailbox_subdev_peer *subdev_req = (struct xcl_mailbox_subdev_peer *)data_ptr;
 
 	BUG_ON(!lro);
@@ -716,9 +716,19 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		(void) xclmgmt_icap_get_data(lro, *resp);
 		break;
 	case XCL_MIG_ECC:
-		current_sz = sizeof(struct xcl_mig_ecc)*MAX_M_COUNT;
+		/* when allocating response buffer, 
+		 * we shall use remote_entry_size * min(local_num_entries, remote_num_entries), 
+		 * and check the final total buffer size.
+		 * when filling up each entry, we should use min(local_entry_size, remote_entry_size)
+		 * when moving to next entry, we should use remote_entry_size as step size.
+		 */
+		entries = min_t(size_t, subdev_req->entries, MAX_M_COUNT);
+		current_sz = subdev_req->size*entries;
+		if (current_sz > (4*PAGE_SIZE))
+			break;
 		*resp = vzalloc(current_sz);
-		(void) xclmgmt_mig_get_data(lro, *resp, subdev_req->size);
+		entry_sz = min_t(size_t, subdev_req->size, sizeof(struct xcl_mig_ecc));
+		(void) xclmgmt_mig_get_data(lro, *resp, entry_sz, entries, subdev_req->size);
 		break;
 	case XCL_FIREWALL:
 		current_sz = sizeof(struct xcl_firewall);
@@ -835,6 +845,13 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		uint64_t xclbin_len = 0;
 		struct xcl_mailbox_bitstream_kaddr *mb_kaddr =
 			(struct xcl_mailbox_bitstream_kaddr *)req->data;
+		u64 ch_state = 0;
+
+		(void) xocl_mailbox_get(lro, CHAN_STATE, &ch_state);
+		if ((ch_state & XCL_MB_PEER_SAME_DOMAIN) == 0) {
+			mgmt_err(lro, "can't load xclbin via kva, dropped\n");
+			break;
+		}
 
 		if (payload_len < sizeof(*mb_kaddr)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
@@ -945,6 +962,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)resp->comm_id);
 		(void) xocl_peer_response(lro, req->req, msgid, resp,
 			sizeof(struct xcl_mailbox_conn_resp));
+		(void ) xocl_mailbox_set(lro, CHAN_STATE, resp->conn_flags);
 		vfree(resp);
 		break;
 	}
@@ -1093,7 +1111,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * like if versal has vesc, then it is a 2.0 shell. We can add the following
 	 * condition.
 	 */
-	if ((dev_info->flags & XOCL_DSAFLAG_VERSAL) &&
+	if ((dev_info->flags & (XOCL_DSAFLAG_VERSAL | XOCL_DSAFLAG_MPSOC)) &&
 	    xocl_subdev_is_vsec(lro))
 		ret = -ENODEV;
 
@@ -1435,6 +1453,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mig,
 	xocl_init_ert,
 	xocl_init_xmc,
+	xocl_init_xmc_u2,
 	xocl_init_dna,
 	xocl_init_fmgr,
 	xocl_init_xfer_versal,
@@ -1444,6 +1463,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_calib_storage,
 	xocl_init_pmc,
 	xocl_init_icap_controller,
+	xocl_init_pcie_firewall,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1466,6 +1486,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_mig,
 	xocl_fini_ert,
 	xocl_fini_xmc,
+	xocl_fini_xmc_u2,
 	xocl_fini_dna,
 	xocl_fini_fmgr,
 	xocl_fini_xfer_versal,
@@ -1475,6 +1496,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_calib_storage,
 	xocl_fini_pmc,
 	xocl_fini_icap_controller,
+	xocl_fini_pcie_firewall,
 };
 
 static int __init xclmgmt_init(void)

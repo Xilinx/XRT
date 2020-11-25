@@ -34,7 +34,7 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 static void
-pretty_print_action_list(xrt_core::device_collection& deviceCollection, xrt_core::query::reset_type reset)
+pretty_print_action_list(xrt_core::device_collection& deviceCollection, xrt_core::query::reset_type& reset)
 {
   std::cout << "Performing '" << reset.get_name() << "' on " << std::endl;
   for(const auto & device: deviceCollection) {
@@ -47,7 +47,7 @@ pretty_print_action_list(xrt_core::device_collection& deviceCollection, xrt_core
 }
 
 static void 
-reset_ecc(std::shared_ptr<xrt_core::device> dev, xrt_core::query::reset_type reset)
+reset_ecc(const std::shared_ptr<xrt_core::device>& dev, xrt_core::query::reset_type& reset)
 {
   auto raw_mem = xrt_core::device_query<xrt_core::query::mem_topology_raw>(dev);
   const mem_topology *map = (mem_topology *)raw_mem.data();
@@ -67,7 +67,7 @@ reset_ecc(std::shared_ptr<xrt_core::device> dev, xrt_core::query::reset_type res
 }
 
 static void
-reset_device(std::shared_ptr<xrt_core::device> dev, xrt_core::query::reset_type reset)
+reset_device(const std::shared_ptr<xrt_core::device>& dev, xrt_core::query::reset_type& reset)
 {  
   if(reset.get_key() == xrt_core::query::reset_key::ecc)
     reset_ecc(dev, reset);
@@ -138,9 +138,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-
-    // Re-throw exception
-    throw;
+    return;
   }
 
   // Check to see if help was requested or no command was found
@@ -163,7 +161,14 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   for (const auto & deviceName : devices) 
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
-  XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+  try {
+    XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    return;
+  }
+  
   xrt_core::query::reset_type type = XBU::str_to_reset_obj(resetType);
   pretty_print_action_list(deviceCollection, type);
 

@@ -19,17 +19,22 @@
 #ifndef __SK_TYPES_H_
 #define __SK_TYPES_H_
 
+#include "xclhal2_mpsoc.h"
+
 /*
  * Helper functions for kernel to use.
  * getHostBO : create a BO handle from given physical address.
  * mapBO     : map BO handle to process's memory space.
  * freeBO    : free BO handle.
+ * logMsg    : send log messages to XRT driver for saving as per ini settings
  */
 struct sk_operations {
   unsigned int (* getHostBO)(unsigned long paddr, size_t size);
   void *(* mapBO)(unsigned int boHandle, bool write);
   void (* freeBO)(unsigned int boHandle);
   int (* getBufferFd)(unsigned int boHandle);
+  int (* logMsg)(xrtLogMsgLevel level, const char* tag,
+		       const char* format, ...);
 };
 
 /*

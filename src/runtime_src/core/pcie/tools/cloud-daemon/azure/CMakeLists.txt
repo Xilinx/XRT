@@ -24,6 +24,7 @@ add_library(azure_mpd_plugin SHARED ""
 add_compile_options("-fPIC")
 
 target_link_libraries(azure_mpd_plugin
+  PRIVATE
   xrt_core_static
   xrt_coreutil_static
   uuid

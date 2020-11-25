@@ -13,19 +13,37 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#include "lib/xma_buffer.hpp"
+#include "app/xmaerror.h"
+#include <stdexcept>
 
-#ifndef __SubCmdStatus_h_
-#define __SubCmdStatus_h_
+namespace xma_core {
+namespace plg {
 
-#include "tools/common/SubCmd.h"
 
-class SubCmdStatus : public SubCmd {
- public:
-  virtual void execute(const SubCmdOptions &_options) const;
 
- public:
-  SubCmdStatus(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-};
+buffer::buffer(xclDeviceHandle dhdl, xrt::bo::flags flags, memory_group grp, uint64_t sz)
+:xrt_bo{dhdl, sz, flags, grp} 
+{
+  //TODO
+  throw std::runtime_error(" --- TODO --");
+}
 
-#endif
+int32_t
+buffer::read_ddr(int32_t offset, uint64_t size) const
+{
+  //TODO
+
+  return XMA_ERROR;
+}
+
+int32_t
+buffer::write_ddr(int32_t offset, uint64_t size) const
+{
+  //TODO
+
+  return XMA_ERROR;
+}
+
+}} //namespace xma_core->plg
 

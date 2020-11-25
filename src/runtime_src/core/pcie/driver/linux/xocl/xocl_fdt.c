@@ -185,6 +185,38 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	return flash_priv;
 }
 
+static void *xmc_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
+{
+	struct xocl_dev_core *core = XDEV(xdev_hdl);
+	void *blob;
+	struct xocl_xmc_privdata *xmc_priv;
+	int node;
+
+	blob = core->fdt_blob;
+	if (!blob)
+		return NULL;
+
+	xmc_priv = vzalloc(sizeof(*xmc_priv));
+	if (!xmc_priv)
+		return NULL;
+
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_CMC_CLK_SCALING_REG);
+	if (node < 0)
+		xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_CMC_CLK_SCALING_REG, NODE_ENDPOINTS);
+	else
+		xmc_priv->flags = XOCL_XMC_CLK_SCALING;
+
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_CMC_FW_MEM);
+	if (node < 0) {
+		xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_CMC_FW_MEM, NODE_ENDPOINTS);
+		xmc_priv->flags |= XOCL_XMC_IN_BITFILE;
+	}
+
+	*len = sizeof(*xmc_priv);
+
+	return xmc_priv;
+}
+
 static void *p2p_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
 	struct xocl_dev_core *core = XDEV(xdev_hdl);
@@ -196,11 +228,11 @@ static void *p2p_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	if (!blob)
 		return NULL;
 
-	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" XOCL_QDMA);
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_QDMA);
 	if (node >= 0)
 		return NULL;
 
-	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" XOCL_QDMA4);
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_QDMA4);
 	if (node >= 0)
 		return NULL;
 
@@ -212,6 +244,44 @@ static void *p2p_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	*len = sizeof(*p2p_priv);
 
 	return p2p_priv;
+}
+
+static void *icap_cntrl_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
+{
+	struct xocl_dev_core *core = XDEV(xdev_hdl);
+	void *blob;
+	struct xocl_icap_cntrl_privdata *priv;
+	int node, node1;
+
+	blob = core->fdt_blob;
+	if (!blob)
+		return NULL;
+
+	priv = vzalloc(sizeof(*priv));
+	if (!priv)
+		return NULL;
+
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_ICAP_CONTROLLER);
+	if (node < 0) {
+		xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_ICAP_CONTROLLER, NODE_ENDPOINTS);
+		return NULL;
+	}
+
+	{
+		node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_GATE_ULP);
+		if (node < 0)
+			xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_GATE_ULP, NODE_ENDPOINTS);
+
+		node1 = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_GATE_PLP);
+		if (node1 < 0)
+			xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_GATE_PLP, NODE_ENDPOINTS);
+
+		if ((node < 0) && (node1 < 0))
+			priv->flags |= XOCL_IC_FLAT_SHELL;
+	}
+	*len = sizeof(*priv);
+
+	return priv;
 }
 
 static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
@@ -266,6 +336,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = rom_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
        	},
 	{
 		.id = XOCL_SUBDEV_DMA,
@@ -278,6 +349,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb =devinfo_cb_xdma,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_DMA,
@@ -291,6 +363,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = msix_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_DMA,
@@ -305,6 +378,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
        	},
 	{
 		.id = XOCL_SUBDEV_DMA,
@@ -318,6 +392,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_MSIX,
@@ -330,6 +405,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_xdma,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_INTC,
@@ -346,6 +422,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_ERT_USER,
@@ -358,6 +435,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
  	},
 	{
 		.id = XOCL_SUBDEV_ERT_30,
@@ -371,6 +449,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
  	},
  	{
 		.id = XOCL_SUBDEV_MB_SCHEDULER,
@@ -384,6 +463,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
  	},
 	{
 		.id = XOCL_SUBDEV_XVC_PUB,
@@ -396,6 +476,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 	       	.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_URP,
        	},
 	{
 		.id = XOCL_SUBDEV_XVC_PRI,
@@ -408,6 +489,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 	       	.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
        	},
 	{
 		.id = XOCL_SUBDEV_SYSMON,
@@ -420,6 +502,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
        	},
 	{
 		.id = XOCL_SUBDEV_AF,
@@ -440,6 +523,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_MB,
@@ -455,24 +539,41 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = ert_cb_set_inst,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
+	},
+	{
+		.id = XOCL_SUBDEV_MB,
+		.dev_name = XOCL_XMC_U2,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_CMC_REG, .regmap_name = PROP_CMC_U2},
+			{.res_name = NODE_CMC_RESET},
+			{.res_name = NODE_CMC_CLK_SCALING_REG},
+			{NULL},
+		},
+		.required_ip = 3,
+		.flags = 0,
+		.build_priv_data = xmc_build_priv,
+		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_MB,
 		.dev_name = XOCL_XMC,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_CMC_REG},
+			{.res_name = NODE_CMC_REG, .regmap_name = PROP_CMC_DEFAULT},
 			{.res_name = NODE_CMC_RESET},
 			{.res_name = NODE_CMC_FW_MEM},
 			{.res_name = NODE_ERT_FW_MEM},
 			{.res_name = NODE_ERT_CQ_MGMT},
 			{.res_name = NODE_CMC_MUTEX},
-			// 0x53000 runtime clk scaling
+			{.res_name = NODE_CMC_CLK_SCALING_REG},
 			{NULL},
 		},
 		.required_ip = 1, /* for MPSOC, we only have the 1st resource */
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_MAILBOX,
@@ -485,6 +586,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_MAILBOX,
@@ -497,6 +599,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_AXIGATE,
@@ -509,6 +612,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_plp_gate,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_AXIGATE,
@@ -521,6 +625,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_ulp_gate,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_IORES,
@@ -534,6 +639,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_setlevel,
 		.min_level = XOCL_SUBDEV_LEVEL_URP,
+		.max_level = XOCL_SUBDEV_LEVEL_URP,
 	},
 	{
 		.id = XOCL_SUBDEV_IORES,
@@ -549,6 +655,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_setlevel,
 		.min_level = XOCL_SUBDEV_LEVEL_PRP,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_IORES,
@@ -565,6 +672,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = devinfo_cb_setlevel,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_CLOCK,
@@ -585,6 +693,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_URP,
 	},
 	{
 		.id = XOCL_SUBDEV_MAILBOX_VERSAL,
@@ -597,6 +706,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_PMC,
@@ -610,6 +720,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 #if 0
 	{
@@ -636,6 +747,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_FLASH,
@@ -648,6 +760,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = flash_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_ADDR_TRANSLATOR,
@@ -660,6 +773,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_P2P,
@@ -672,6 +786,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = p2p_build_priv,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_UARTLITE,
@@ -684,6 +799,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		.id = XOCL_SUBDEV_M2M,
@@ -696,6 +812,46 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
+	},
+	{
+		.id = XOCL_SUBDEV_PCIE_FIREWALL,
+		.dev_name = XOCL_PCIE_FIREWALL,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_PCIE_FIREWALL},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
+	},
+	{
+		.id = XOCL_SUBDEV_PS,
+		.dev_name = XOCL_PS,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_PS_RESET_CTRL},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
+	},
+	{
+		.id = XOCL_SUBDEV_ICAP_CNTRL,
+		.dev_name = XOCL_ICAP_CNTRL,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ICAP_CONTROLLER},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = icap_cntrl_build_priv,
+		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 };
 
@@ -1043,7 +1199,8 @@ found:
 }
 
 static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
-	const char *ipname, u32 min_level, struct xocl_subdev *subdev,
+	const char *ipname, u32 min_level, u32 max_level,
+	struct xocl_subdev *subdev,
 	struct ip_node *ip, int ip_num, const char *regmap_name)
 {
 	int i, ret;
@@ -1055,7 +1212,7 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 	 */
 	for (i = 0; i < ip_num; i++) {
 		if (ip->name && strlen(ipname) > 0 && !ip->used &&
-		    ip->level >= min_level &&
+		    ip->level >= min_level && ip->level <= max_level &&
 		    !strncmp(ip->name, ipname, strlen(ipname))) {
 			if (regmap_name && ip->regmap_name &&
 			    strncmp(ip->regmap_name, regmap_name,
@@ -1116,7 +1273,8 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 	    res = &map_p->res_array[++i]) {
 
 		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res->res_name,
-		    map_p->min_level, subdev, ip, ip_num, res->regmap_name);
+		    map_p->min_level, map_p->max_level,
+		    subdev, ip, ip_num, res->regmap_name);
 
 		if (ret) {
 			xocl_xdev_err(xdev_hdl, "lookup dev %s, ip %s failed",
@@ -1264,6 +1422,25 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 
 failed:
 	return dev_num;
+}
+
+int xocl_fdt_unblock_ip(xdev_handle_t xdev_hdl, void *blob)
+{
+	const u32 *bar_idx, *pfnum;
+	struct ip_node ip;
+	int off = -1;
+
+	for (off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip); off >= 0;
+	    off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip)) {
+		pfnum = fdt_getprop(blob, off, PROP_PF_NUM, NULL);
+		bar_idx = fdt_getprop(blob, off, PROP_BAR_IDX, NULL);
+
+		xocl_pcie_firewall_unblock(xdev_hdl,
+			(pfnum ? ntohl(*pfnum) : 0),
+			(bar_idx ? ntohl(*bar_idx) : 0));
+	}
+
+	return 0;
 }
 
 int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
@@ -1658,15 +1835,14 @@ xocl_res_id2name(const struct xocl_iores_map *res_map,
 	return NULL;
 }
 
-void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
+const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
 {
 	int offset = 0;
-	const char *ert_prop = NULL, *fw_ver = NULL;
-	const char *ipname = NULL;
+	const char *ert_prop = NULL, *ipname = NULL, *fw_ver = NULL;
 	bool ert_fw_mem = false;
 
 	if (!blob)
-		return;
+		return NULL;
 
 	for (offset = fdt_next_node(blob, -1, NULL);
 		offset >= 0;
@@ -1683,7 +1859,7 @@ void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
 	}
 	/* Didn't find ert_firmware_mem, just return */
 	if (!ert_fw_mem)
-		return;
+		return NULL;
 
 	for (offset = fdt_first_subnode(blob, offset);
 		offset >= 0;
@@ -1695,8 +1871,14 @@ void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
 			break;
 		}
 	}
-	if (fw_ver)
+	if (fw_ver) {
 		xocl_xdev_info(xdev_hdl, "Load embedded scheduler firmware %s", fw_ver);
+		/* if firmware_branch_name is "legacy", XRT loads the sched.bin */
+		if (!strcmp(fw_ver, "legacy")) {
+			xocl_xdev_info(xdev_hdl, "Firmware branch name is legacy. Loading default sched.bin");
+			return NULL;
+		}
+	}
 
-	return;
+	return fw_ver;
 }

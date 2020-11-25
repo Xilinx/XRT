@@ -20,6 +20,8 @@
 #include <vector>
 #include <string>
 #include <thread>
+#include <atomic>
+#include <iostream>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/config.h"
@@ -36,16 +38,21 @@ namespace xdp {
 
     XDP_EXPORT
     void updateAIEDevice(void* handle);
+    XDP_EXPORT
+    void endPollforDevice(void* handle);
 
   private:
-    void pollAIECounters();
+    void pollAIECounters(uint32_t index, void* handle);
+    void endPoll();
 
   private:
     // AIE profiling uses its own thread
-    bool mKeepPolling;
     unsigned int mPollingInterval;
-    std::thread mPollingThread;
-    std::vector<void*> mHandles;
+
+    std::map<void*,std::atomic<bool>> thread_ctrl_map;
+    std::map<void*,std::thread> thread_map;
+
+    uint32_t mIndex = 0;
   };
 
 } // end namespace xdp

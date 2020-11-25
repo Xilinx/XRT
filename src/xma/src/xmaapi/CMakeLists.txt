@@ -16,6 +16,7 @@ set_target_properties(xma2api PROPERTIES VERSION ${XMA_VERSION_STRING}
   SOVERSION ${XMA_SOVERSION})
 
 target_link_libraries(xma2api
+  PRIVATE
   m
   dl
   gcc_s

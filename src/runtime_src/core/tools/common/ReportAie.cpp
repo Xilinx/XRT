@@ -19,6 +19,7 @@
 #include "ReportAie.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
+#include <boost/optional/optional.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 #define fmtCommon(x) boost::format("    %-22s: " x "\n")
@@ -281,6 +282,10 @@ ReportAie::writeReport(const xrt_core::device * _pDevice,
   boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
   getPropertyTreeInternal(_pDevice, _pt);
+
+  // validate and print aie metadata by checking schema_version node
+  if(!_pt.get_child_optional("aie_metadata.schema_version"))
+    return;
 
   _output << "Aie\n";
   _output << boost::format("  %-10s\n") % _pt.get<std::string>("aie_metadata.description");

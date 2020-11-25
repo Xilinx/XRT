@@ -81,7 +81,7 @@ namespace xdp {
 
     // Since we are using xocl and xrt level objects in this plugin,
     //  we need a pointer to the shared platform to make sure the
-    //  xrt::device objects aren't destroyed before we get a chance
+    //  xrt_xocl::device objects aren't destroyed before we get a chance
     //  to offload the trace at the end
     platform = xocl::get_shared_platform() ;
   }
@@ -113,9 +113,9 @@ namespace xdp {
 	    offloader->read_trace() ;
 	    offloader->read_trace_end() ;
 	  }
+	  readCounters() ;
 	}
       }
-      readCounters() ;
 
       for (auto w : writers)
       {
@@ -125,18 +125,6 @@ namespace xdp {
     }
 
     clearOffloaders();
-#if 0
-    for (auto o : offloaders)
-    {
-      auto offloader = std::get<0>(o.second) ;
-      auto logger    = std::get<1>(o.second) ;
-      auto intf      = std::get<2>(o.second) ;
-
-      delete offloader ;
-      delete logger ;
-      delete intf ;
-    }
-#endif
 
   }
 
@@ -156,7 +144,7 @@ namespace xdp {
     if (!active) return ;
     if (getFlowMode() == SW_EMU) return ;
 
-    xrt::device* device = static_cast<xrt::device*>(d) ;
+    xrt_xocl::device* device = static_cast<xrt_xocl::device*>(d) ;
 
     std::string path = device->getDebugIPlayoutPath().get() ;
 
@@ -185,8 +173,8 @@ namespace xdp {
     if (!active) return ;
     if (getFlowMode() == SW_EMU) return ;
 
-    // The OpenCL level expects an xrt::device to be passed in
-    xrt::device* device = static_cast<xrt::device*>(d) ;
+    // The OpenCL level expects an xrt_xocl::device to be passed in
+    xrt_xocl::device* device = static_cast<xrt_xocl::device*>(d) ;
 
     // In both hardware and hardware emulation, the debug ip layout path
     //  is used as a unique identifier of the physical device
@@ -205,39 +193,29 @@ namespace xdp {
     deviceId = db->addDevice(path) ;
 
     clearOffloader(deviceId);
-#if 0
-    if (offloaders.find(deviceId) != offloaders.end())
-    {
-      // Clean up the old offloader.  It has already been flushed.
-      auto info = offloaders[deviceId] ;
-
-      auto offloader = std::get<0>(info) ;
-      auto logger    = std::get<1>(info) ;
-      auto intf      = std::get<2>(info) ;
-
-      delete offloader ;
-      delete logger ;
-      delete intf ;
-    }
-#endif
 
     // Update the static database with all the information that will
     //  be needed later.
-    (db->getStaticInfo()).updateDevice(deviceId, device->get_handle()) ;
+    (db->getStaticInfo()).updateDevice(deviceId, device->get_xcl_handle()) ;
     (db->getStaticInfo()).setDeviceName(deviceId, device->getName()) ;
 
     // For the OpenCL level, we must create a device inteface using
     //  the xdp::XrtDevice to communicate with the physical device
-    DeviceIntf* devInterface = new DeviceIntf() ;
-    try {
-      devInterface->setDevice(new XrtDevice(device)) ;
-      devInterface->readDebugIPlayout() ;
-    }
-    catch(std::exception& e)
-    {
-      // Read debug IP Layout could throw an exception
-      delete devInterface ;
-      return ;
+    DeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
+    if(nullptr == devInterface) {
+      // If DeviceIntf is not already created, create a new one to communicate with physical device
+      devInterface = new DeviceIntf() ;
+      try {
+        devInterface->setDevice(new XrtDevice(device)) ;
+        devInterface->readDebugIPlayout() ;
+      }
+      catch(std::exception& e)
+      {
+        // Read debug IP Layout could throw an exception
+        delete devInterface ;
+        return ;
+      }
+      (db->getStaticInfo()).setDeviceIntf(deviceId, devInterface);
     }
 
     configureDataflow(deviceId, devInterface) ;

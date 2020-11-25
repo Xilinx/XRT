@@ -1,10 +1,5 @@
 # -----------------------------------------------------------------------------
-
-set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
-set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
-
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
-include_directories(${Boost_INCLUDE_DIRS})
 
 # -----------------------------------------------------------------------------
 
@@ -28,7 +23,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
 file(GLOB XBMGMT_V2_SUBCMD_FILES
   "SubCmdProgram.cpp"
   "SubCmdReset.cpp"
-  "SubCmdStatus.cpp"
+  "SubCmdExamine.cpp"
   "SubCmdAdvanced.cpp"
   "OO_Clock.cpp"
   "OO_Config.cpp"
@@ -54,39 +49,35 @@ endif()
 add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
 
 # Determine what functionality should be added
-if(WIN32)
-  target_compile_definitions(${XBMGMT2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
-else()
-  target_compile_definitions(${XBMGMT2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  target_compile_definitions(${XBMGMT2_NAME} PUBLIC ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
 endif()
 
 # Add the supporting libraries
 if(WIN32)
-target_link_libraries(
-    ${XBMGMT2_NAME} PRIVATE
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_PROGRAM_OPTIONS_LIBRARY}
-    Boost::filesystem
-    Boost::program_options
-    Boost::system
-    ws2_32
-    xrt_core
-    xrt_core_static
-    xrt_coreutil_static
+target_link_libraries(${XBMGMT2_NAME}
+  PRIVATE
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
+  ${Boost_PROGRAM_OPTIONS_LIBRARY}
+  Boost::filesystem
+  Boost::program_options
+  Boost::system
+  ws2_32
+  xrt_core
+  xrt_coreutil
   )
 
 else()
-  target_link_libraries(
-    ${XBMGMT2_NAME}
-    xrt_core
-    xrt_core_static
-    xrt_coreutil_static
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_PROGRAM_OPTIONS_LIBRARY}
-    uuid
-    dl
+target_link_libraries(${XBMGMT2_NAME}
+  PRIVATE
+  xrt_core
+  xrt_coreutil
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
+  ${Boost_PROGRAM_OPTIONS_LIBRARY}
+  uuid
+  dl
   )
 endif()
 

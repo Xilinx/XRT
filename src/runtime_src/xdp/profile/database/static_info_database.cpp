@@ -25,8 +25,9 @@
 #endif
 
 #ifdef _WIN32
-#pragma warning (disable : 4996 4267)
+#pragma warning (disable : 4996 4267 4244 4200)
 /* 4267 : Disable warning for conversion of size_t to int32_t */
+/* 4244 : Disable warning for conversion of uint64_t to uint32_t */
 #endif
 
 #include <boost/property_tree/ptree.hpp>
@@ -37,19 +38,17 @@
 
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #include "core/include/xclbin.h"
+#include "core/include/xclperf.h"
 #include "core/common/config_reader.h"
-
-#ifdef XRT_ENABLE_AIE
-#include "core/edge/common/aie_parser.h"
-#endif
+#include "core/common/message.h"
 
 #define XAM_STALL_PROPERTY_MASK        0x4
-
+#define XMON_TRACE_PROPERTY_MASK       0x1
 
 namespace xdp {
 
@@ -91,6 +90,70 @@ namespace xdp {
       return;
     }
     connections[argIdx].push_back(memIdx);
+  }
+
+  DeviceInfo::~DeviceInfo()
+  {
+    delete deviceIntf;
+
+    for(auto& i : cus) {
+      delete i.second;
+    }
+    cus.clear();
+    for(auto& i : memoryInfo) {
+      delete i.second;
+    }
+    memoryInfo.clear();
+
+    for(auto& i : amMap) {
+      delete i.second;
+    }
+    amMap.clear();
+    for(auto& i : aimMap) {
+      delete i.second;
+    }
+    aimMap.clear();
+    for(auto& i : asmMap) {
+      delete i.second;
+    }
+    asmMap.clear();
+
+    // Do not delete the monitors in the complete lists, they
+    //  are just pointers to objects owned by other data structures
+    aimList.clear() ;
+    amList.clear() ;
+    asmList.clear() ;
+
+    for(auto i : nocList) {
+      delete i;
+    }
+    nocList.clear();
+    for(auto i : aieList) {
+      delete i;
+    }
+    aieList.clear();
+    for(auto i : gmioList) {
+      delete i;
+    }
+    gmioList.clear();
+  }
+
+  void DeviceInfo::addTraceGMIO(uint32_t id, uint16_t col, uint16_t num,
+				uint16_t stream, uint16_t len)
+  {
+    TraceGMIO* traceGmio = new TraceGMIO(id, col, num, stream, len);
+    gmioList.push_back(traceGmio);
+  }
+
+  void DeviceInfo::addAIECounter(uint32_t i, uint16_t col, uint16_t r,
+				 uint8_t num, uint8_t start, uint8_t end,
+				 uint8_t reset, double freq,
+				 const std::string& mod,
+				 const std::string& aieName)
+  {
+      AIECounter* aie = new AIECounter(i, col, r, num, start, end,
+				       reset, freq, mod, aieName);
+      aieList.push_back(aie);
   }
 
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d) :
@@ -151,8 +214,16 @@ namespace xdp {
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
   void VPStaticDatabase::updateDevice(uint64_t deviceId, void* devHandle)
-  {  
-    resetDeviceInfo(deviceId);
+  {
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+    if(nullptr == device) return;
+
+    if(false == resetDeviceInfo(deviceId, device)) {
+      /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
+       * in the static data base. So, no need to read the xclbin information again.
+       */
+      return;
+    }
 
     DeviceInfo *devInfo = new DeviceInfo();
     devInfo->deviceId = deviceId ;
@@ -166,7 +237,7 @@ namespace xdp {
 
     deviceInfo[deviceId] = devInfo;
 
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+    //std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
 
     if(nullptr == device) return;
 
@@ -192,19 +263,24 @@ namespace xdp {
     if (!setXclbinName(devInfo, device)) return;
     if (!initializeComputeUnits(devInfo, device)) return ;
     if (!initializeProfileMonitors(devInfo, device)) return ;
-    if (!initializeAIECounters(devInfo, device)) return ;
     devInfo->isReady = true;
   }
 
-  void VPStaticDatabase::resetDeviceInfo(uint64_t deviceId)
+  bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
   {
     std::lock_guard<std::mutex> lock(dbLock);
 
     auto itr = deviceInfo.find(deviceId);
     if(itr != deviceInfo.end()) {
+      DeviceInfo *devInfo = itr->second;
+      if(device->get_xclbin_uuid() == devInfo->loadedXclbinUUID) {
+        // loading same xclbin multiple times ?
+        return false;
+      }
       delete itr->second;
       deviceInfo.erase(deviceId);
     }
+    return true;
   }
 
 #if 0
@@ -255,7 +331,7 @@ namespace xdp {
   {
     // Get IP_LAYOUT section 
     const ip_layout* ipLayoutSection = device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
-    if(ipLayoutSection == nullptr) return false;
+    if(ipLayoutSection == nullptr) return true;
 
     ComputeUnitInstance* cu = nullptr;
     for(int32_t i = 0; i < ipLayoutSection->m_count; i++) {
@@ -405,8 +481,15 @@ namespace xdp {
             cuObj = cu.second;
             cuId = cu.second->getIndex();
             mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
-            devInfo->amList.push_back(mon); 
-            cuObj->setAccelMon(devInfo->amList.size()-1);
+            if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_AM)) {
+              uint64_t slotID = (index - MIN_TRACE_ID_AM) / 16;
+              devInfo->amMap.emplace(slotID, mon);
+              cuObj->setAccelMon(slotID);
+            } else {
+              devInfo->noTraceAMs.push_back(mon);
+            }
+	    // Also add it to the list of all AMs
+	    devInfo->amList.push_back(mon);
             if(debugIpData->m_properties & XAM_STALL_PROPERTY_MASK) {
               cuObj->setStallEnabled(true);
             }
@@ -436,13 +519,21 @@ namespace xdp {
           }
         }
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
-        devInfo->aimList.push_back(mon);
-        if(cuObj) {
-          cuObj->addAIM(devInfo->aimList.size()-1);
-        } else if(0 != monCuName.compare("shell")) {
-          // If not connected to CU and not a shell monitor, then a floating monitor
-          devInfo->hasFloatingAIM = true;
+        // If the AIM is an User Space AIM with trace enabled i.e. either connected to a CU or floating but not shell AIM
+        if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_AIM)) {
+          uint64_t slotID = (index - MIN_TRACE_ID_AIM) / 2;
+          devInfo->aimMap.emplace(slotID, mon);
+          if(cuObj) {
+            cuObj->addAIM(slotID);
+          } else {
+            // If not connected to CU and not a shell monitor, then a floating monitor
+            devInfo->hasFloatingAIM = true;
+          }
+        } else {
+          devInfo->noTraceAIMs.push_back(mon);
         }
+	// Also add it to the list of all AIMs
+	devInfo->aimList.push_back(mon) ;
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
         size_t pos = name.find('/');
@@ -474,16 +565,24 @@ namespace xdp {
         }
 
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
-        devInfo->asmList.push_back(mon);
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
         }
-        if(cuObj) {
-          cuObj->addASM(devInfo->asmList.size()-1);
-        } else if(0 != monCuName.compare("shell")) {
-          // If not connected to CU and not a shell monitor, then a floating monitor
-          devInfo->hasFloatingASM = true;
+        // If the ASM is an User Space ASM with trace enabled i.e. either connected to a CU or floating but not shell ASM
+        if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_ASM)) {
+          uint64_t slotID = (index - MIN_TRACE_ID_ASM);
+          devInfo->asmMap.emplace(slotID, mon);
+          if(cuObj) {
+            cuObj->addASM(slotID);
+          } else {
+            // If not connected to CU and not a shell monitor, then a floating monitor
+            devInfo->hasFloatingASM = true;
+          }
+        } else {
+          devInfo->noTraceASMs.push_back(mon);
         }
+	// Also add it to the list of all ASM monitors
+	devInfo->asmList.push_back(mon) ;
       } else if (debugIpData->m_type == TRACE_S2MM) {
 	devInfo->usesTs2mm = true ;
       } else if(debugIpData->m_type == AXI_NOC) {
@@ -493,6 +592,7 @@ namespace xdp {
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
                           readTrafficClass, writeTrafficClass);
         devInfo->nocList.push_back(mon);
+        // nocList in xdp::DeviceIntf is sorted; Is that required here?
       } else if(debugIpData->m_type == TRACE_S2MM && (debugIpData->m_properties & 0x1)) {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
         devInfo->numTracePLIO++;
@@ -500,36 +600,8 @@ namespace xdp {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }
     }
+
     return true; 
-  }
-
-  bool VPStaticDatabase::initializeAIECounters(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
-  {
-#ifdef XRT_ENABLE_AIE
-    // Record all counters listed in AIE metadata (if available)
-    for (auto& counter : xrt_core::edge::aie::get_profile_counters(device.get())) {
-      AIECounter* aie = new AIECounter(counter.id, counter.column, counter.row, 
-          counter.counterNumber, counter.startEvent, counter.endEvent, 
-          counter.resetEvent, counter.clockFreqMhz, counter.module, counter.name);
-      devInfo->aieList.push_back(aie);
-    }
-
-    // Record all trace GMIOs listed in AIE metadata (if available)
-    for (auto& gmio : xrt_core::edge::aie::get_trace_gmios(device.get())) {
-      TraceGMIO* traceGmio = new TraceGMIO(gmio.id, gmio.shim_col, gmio.channel_number, 
-          gmio.stream_id, gmio.burst_len);
-      devInfo->gmioList.push_back(traceGmio);
-    }
-    return true;
-#else
-  // Need to use arguments so it compiles on Windows
-  auto aieMetadata = device->get_axlf_section(AIE_METADATA);
-  if (!aieMetadata.first || !aieMetadata.second)
-    return true;
-
-  devInfo->aieList.clear();
-  return true;
-#endif
   }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
@@ -548,7 +620,10 @@ namespace xdp {
 
     if (runSummary == nullptr)
     {
-      runSummary = new VPRunSummaryWriter("xclbin.run_summary") ;
+      // Since turning on the OpenCL architecture will generate its own
+      //  run summary, different than the one generated by the new
+      //  architecture, we name this one with ".ex" added
+      runSummary = new VPRunSummaryWriter("xclbin.ex.run_summary") ;
     }
     runSummary->write(false) ;
   }

@@ -50,7 +50,7 @@ run(const xrt::device& device, const xrt::uuid& uuid, bool verbose)
 {
   auto hello = xrt::kernel(device, uuid.get(), "hello:hello_1");
 
-  auto bo = xrt::bo(device, 1024, 0, hello.group_id(0));
+  auto bo = xrt::bo(device, 1024, hello.group_id(0));
   auto bo_data = bo.map<char*>();
   std::fill(bo_data, bo_data + 1024, 0);
   bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, 1024,0);

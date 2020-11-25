@@ -36,7 +36,6 @@
 const size_t m2mBoSize = 256L * 1024 * 1024;
 const size_t hostMemSize = 256L * 1024 * 1024;
 
-
 static int bdf2index(std::string& bdfStr, unsigned& index)
 {
     // Extract bdf from bdfStr.
@@ -99,7 +98,7 @@ check_os_release(const std::vector<std::string> kernel_versions, std::ostream &o
         if (release.find(ver) != std::string::npos)
             return true;
     }
-    ostr << "WARNING: Kernel verison " << release << " is not officially supported. "
+    ostr << "WARNING: Kernel version " << release << " is not officially supported. "
         << kernel_versions.back() << " is the latest supported version" << std::endl;
     return false;
 }
@@ -110,7 +109,7 @@ is_supported_kernel_version(std::ostream &ostr)
     std::vector<std::string> ubuntu_kernel_versions =
         { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0", "5.4.0" };
     std::vector<std::string> centos_rh_kernel_versions =
-        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062", "3.10.0-1127", "4.18.0-147", "4.18.0-193" };
+        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062", "3.10.0-1127", "4.18.0-147", "4.18.0-193", "4.18.0-240" };
     const std::string os = sensor_tree::get<std::string>("system.linux", "N/A");
 
     if(os.find("Ubuntu") != std::string::npos)
@@ -1216,7 +1215,7 @@ int xcldev::device::runTestCase(const std::string& py,
             return -ENOENT;
         }
 
-        cmd = xrtTestCasePath + " " + xclbinPath;
+        cmd = xrtTestCasePath + " " + xclbinPath + " -d " + std::to_string(m_idx);
     }
     //OLD FLOW:
     else { 
@@ -1224,6 +1223,17 @@ int xcldev::device::runTestCase(const std::string& py,
         xclbinPath += xclbin;
 
         if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+            // 0RP (nonDFX) flat shell support.  
+            // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.  
+            // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
+            std::string logic_uuid, errmsg;
+            pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuid);
+            // Only skip the test if it nonDFX platform and the accelerator doesn't exist. 
+            // All other conditions should generate an error.
+            if (!logic_uuid.empty() && xclbin.compare("verify.xclbin") == 0) {
+                output += "Verify xclbin not available. Skipping validation.";
+                return -EOPNOTSUPP;
+            }
             //if bandwidth xclbin isn't present, skip the test
             if(xclbin.compare("bandwidth.xclbin") == 0) {
                 output += "Bandwidth xclbin not available. Skipping validation.";
@@ -1436,6 +1446,26 @@ int xcldev::device::auxConnectionTest(void)
     return 0;
 }
 
+int xcldev::device::powerTest(void)
+{
+    std::string name, errmsg;
+    int power_warn = 0;
+
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    pcidev::get_dev(m_idx)->sysfs_get<int>("xmc", "xmc_power_warn",  errmsg, power_warn, 0);
+
+    if(power_warn == 1) {
+        std::cout << "POWER WARNING IS ON, ATTENTION" << std::endl;
+        std::cout << "Sensor data might not be valid" << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
 int xcldev::device::runOneTest(std::string testName,
     std::function<int(void)> testFunc)
 {
@@ -1447,7 +1477,8 @@ int xcldev::device::runOneTest(std::string testName,
 	    std::cout << "INFO: == " << testName << " PASSED" << std::endl;
     } else if (ret == -EOPNOTSUPP) {
 	    std::cout << "INFO: == " << testName << " SKIPPED" << std::endl;
-        ret = 0;
+        if(testName.compare("verify kernel test") != 0)
+            ret = 0;
     } else if (ret == 1) {
 	    std::cout << "WARN: == " << testName << " PASSED with warning"
             << std::endl;
@@ -1511,6 +1542,12 @@ int xcldev::device::validate(bool quick, bool hidden)
     if (retVal < 0)
         return retVal;
 
+    retVal = runOneTest("Power warning check",
+            std::bind(&xcldev::device::powerTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
+
     // Check pcie training
     retVal = runOneTest("PCIE link check",
             std::bind(&xcldev::device::pcieLinkTest, this));
@@ -1529,6 +1566,10 @@ int xcldev::device::validate(bool quick, bool hidden)
     retVal = runOneTest("verify kernel test",
             std::bind(&xcldev::device::verifyKernelTest, this));
     withWarning = withWarning || (retVal == 1);
+    //flat shell support: if the shell doesn't support xclbin download
+    //exit immediately
+    if(retVal == -EOPNOTSUPP)
+        return withWarning ? 1 : 0;
     if (retVal < 0)
         return retVal;
 
@@ -1721,14 +1762,27 @@ bool canProceed()
     return proceed;
 }
 
+static int isSudo()
+{
+    if ((getuid() == 0) || (geteuid() == 0))
+        return 0;
+    std::cerr << "ERROR: root privileges required." << std::endl;
+    return -EPERM;
+}
+
 int xcldev::xclReset(int argc, char *argv[])
 {
     int c;
     unsigned index = 0;
+    bool all = false;
     const std::string usage("Options: [-d index]");
 
-    while ((c = getopt(argc, argv, "d:")) != -1) {
+    while ((c = getopt(argc, argv, "ad:")) != -1) {
         switch (c) {
+        case 'a': {
+            all = true;
+            break;
+        }
         case 'd': {
             int ret = str2index(optarg, index);
             if (ret != 0)
@@ -1750,8 +1804,35 @@ int xcldev::xclReset(int argc, char *argv[])
         return -EINVAL;
     }
 
+    std::string vbnv, errmsg;
+    auto dev = pcidev::get_dev(index);
+    dev->sysfs_get( "rom", "VBNV", errmsg, vbnv );
+    if (!errmsg.empty()) {
+        std::cerr << errmsg << std::endl;
+        return -EINVAL;
+    }
+    if (!all && vbnv.find("_u30_") != std::string::npos) {
+        std::stringstream dbdf;
+        std::string output;
+        const std::string xbresetPath = "/opt/xilinx/xrt/bin/unwrapped/_xbreset.py";
+        dbdf << std::setfill('0') << std::hex
+            << std::setw(4) << dev->domain << ":"
+            << std::setw(2) << dev->bus << ":"
+            << std::setw(2) << dev->dev << "."
+            << std::setw(1) << dev->func;
+        std::cout << "Card level reset. This will reset all FPGAs on the card." << std::endl;
+        int ret = isSudo();
+        if (ret)
+            return ret;
+        std::cout << "All existing processes will be killed." << std::endl;
+        if (!canProceed())
+            return -ECANCELED;
+        const auto cmd = "/usr/bin/python3 " + xbresetPath + " -y -d " + dbdf.str();
+        return runShellCmd(cmd, output);
+    }
+
     std::cout << "All existing processes will be killed." << std::endl;
-    if(!canProceed())
+    if (!canProceed())
         return -ECANCELED;
 
     std::unique_ptr<device> d = xclGetDevice(index);
@@ -1932,7 +2013,6 @@ int xcldev::xclP2p(int argc, char *argv[])
     int c;
     unsigned index = 0;
     int p2p_enable = -1;
-    bool root = ((getuid() == 0) || (geteuid() == 0));
     bool validate = false;
     const std::string usage("Options: [-d index] --[enable|disable|validate]");
     static struct option long_options[] = {
@@ -1984,18 +2064,17 @@ int xcldev::xclP2p(int argc, char *argv[])
         return -EINVAL;
     }
 
-    if (!root) {
-        std::cout << "ERROR: root privileges required." << std::endl;
-        return -EPERM;
-    }
+    ret = isSudo();
+    if (ret)
+        return ret;
 
     ret = d->setP2p(p2p_enable, force);
     if (ret)
         std::cout << "Config P2P failed" << std::endl;
     else if (p2p_enable)
-        std::cout << "P2P is enabled" << std::endl;
+        std::cout << "Please WARM reboot to enable p2p now." << std::endl;
     else
-        std::cout << "P2P is disabled" << std::endl;
+        std::cout << "Please WARM reboot to disable p2p now." << std::endl;
 
     return 0;
 }
@@ -2011,7 +2090,6 @@ int xcldev::xclCma(int argc, char *argv[])
     unsigned int index = 0;
     int cma_enable = -1;
     uint64_t total_size = 0, unit_sz = 0;
-    bool root = ((getuid() == 0) || (geteuid() == 0));
     const std::string usage("Options: [-d index] --[enable|disable] --size [size M|G]");
     static struct option long_options[] = {
         {"enable", no_argument, 0, xcldev::CMA_ENABLE},
@@ -2080,10 +2158,9 @@ int xcldev::xclCma(int argc, char *argv[])
         return -EINVAL;
     }
 
-    if (!root) {
-        std::cout << "ERROR: root privileges required." << std::endl;
-        return -EPERM;
-    }
+    ret = isSudo();
+    if (ret)
+        return ret;
 
     /* At this moment, we have two way to collect CMA memory chunk
      * 1. Call Kernel API
@@ -2240,6 +2317,9 @@ int xcldev::device::testM2m()
     }
 
     for(int32_t i = 0; i < map->m_count; i++) {
+        if (isHostMem(map->m_mem_data[i].m_tag))
+            continue;
+
         if(map->m_mem_data[i].m_used &&
             map->m_mem_data[i].m_size * 1024 >= m2mBoSize) {
             /* use u8 m_type field to as bank index */
@@ -2452,7 +2532,6 @@ xcldev::device::iopsTest()
 
 int xcldev::xclScheduler(int argc, char *argv[])
 {
-    bool root = ((getuid() == 0) || (geteuid() == 0));
     static struct option long_opts[] = {
         {"echo", required_argument, 0, 'e'},
         {"kds_schedule", required_argument, 0, 'k'},
@@ -2467,10 +2546,9 @@ int xcldev::xclScheduler(int argc, char *argv[])
     int ert_disable = -1;
     int cu_intr = -1;
 
-    if (!root) {
-        std::cout << "ERROR: root privileges required." << std::endl;
-        return -EPERM;
-    }
+    int ret = isSudo();
+    if (ret)
+        return ret;
 
     while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_idx)) != -1) {
         switch (c) {

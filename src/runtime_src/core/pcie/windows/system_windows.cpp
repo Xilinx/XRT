@@ -187,7 +187,7 @@ get_mgmtpf_device(device::id_type id) const
 
 void
 system_windows::
-program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const
+program_plp(const device* dev, const std::vector<char> &buffer) const
 {
   mgmtpf::plp_program(dev->get_mgmt_handle(), reinterpret_cast<const axlf*>(buffer.data()));
 
@@ -196,9 +196,8 @@ program_plp(std::shared_ptr<device> dev, const std::vector<char> &buffer) const
   const static int program_timeout_sec = 15;
   uint64_t plp_status = RP_DOWNLOAD_IN_PROGRESS;
   int retry_count = 0;
-  while (retry_count < program_timeout_sec) {
+  while (retry_count++ < program_timeout_sec) {
     mgmtpf::plp_program_status(dev->get_mgmt_handle(), plp_status);
-	retry_count++;
 
     // check plp status
     if(plp_status == RP_DOWLOAD_SUCCESS)

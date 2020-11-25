@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -134,23 +134,23 @@ public:
   /*virtual*/ void
   set_profile_action(event::action_profile_type&& action)
   {
-    if (xrt::config::get_timeline_trace() ||
-	xrt::config::get_opencl_trace())
+    if (xrt_xocl::config::get_timeline_trace() ||
+	xrt_xocl::config::get_opencl_trace())
       m_profile_action = std::move(action);
   }
 
   void
   set_profile_counter_action(event::action_profile_type&& action)
   {
-    if (xrt::config::get_profile() ||
-	xrt::config::get_opencl_summary())
+    if (xrt_xocl::config::get_profile() ||
+	xrt_xocl::config::get_opencl_summary())
       m_profile_counter_action = std::move(action) ;
   }
 
   void
   set_lop_action(event::action_lop_type&& action)
   {
-    if (xrt::config::get_lop_trace())
+    if (xrt_xocl::config::get_lop_trace())
       m_lop_action = std::move(action);
   }
 

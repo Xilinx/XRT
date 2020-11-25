@@ -17,9 +17,15 @@
 
 #include "xdp_hal_device.h"
 #include "core/common/time.h"
+#include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
+
 #include "core/include/experimental/xrt-next.h"
 #include "core/include/experimental/xrt_device.h"
+
+#include "xdp/profile/plugin/vp_base/utility.h"
+
+#include<iostream>
 
 #ifdef _WIN32
 #pragma warning (disable : 4267 4244)
@@ -107,22 +113,40 @@ size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
   uint64_t flags = memoryIndex;
   flags |= XCL_BO_FLAGS_CACHEABLE;
 
+  if(xdp::isEdge()) {
+    xclBufferHandle boHandle = xclAllocBO(mHalDevice, size, 0, flags);
+    if(NULLBO == boHandle) {
+      throw std::bad_alloc();
+    }
+    xclBufHandles.push_back(boHandle);
+
+    void* ptr = xclMapBO(mHalDevice, boHandle, true /* write */);
+    mMappedBO.push_back(ptr);
+    return xclBufHandles.size();
+  }
+
   xrtBufferHandle boHandle = xrtBOAlloc(xrtDeviceOpenFromXcl(mHalDevice), size, flags, memoryIndex);
   if(nullptr == boHandle) {
     throw std::bad_alloc();
   }
-  mBOHandles.push_back(boHandle);
+  xrtBufHandles.push_back(boHandle);
 
   void* ptr = xrtBOMap(boHandle);
   mMappedBO.push_back(ptr);
-  return mBOHandles.size();
+  return xrtBufHandles.size();
 }
 
 void HalDevice::free(size_t id)
 {
   if(!id) return;
   size_t boIndex = id - 1;
-  xrtBOFree(mBOHandles[boIndex]);
+
+  if(xdp::isEdge()) {
+    xclFreeBO(mHalDevice, xclBufHandles[boIndex]);
+    return;
+  }
+
+  xrtBOFree(xrtBufHandles[boIndex]);
 }
 
 void* HalDevice::map(size_t id)
@@ -142,7 +166,13 @@ void HalDevice::sync(size_t id, size_t size, size_t offset, direction d, bool )
   if(!id) return;
   size_t boIndex = id - 1;
   xclBOSyncDirection dir = (d == direction::DEVICE2HOST) ? XCL_BO_SYNC_BO_FROM_DEVICE : XCL_BO_SYNC_BO_TO_DEVICE;
-  xrtBOSync(mBOHandles[boIndex], dir, size, offset);
+
+  if(xdp::isEdge()) {
+    xclSyncBO(mHalDevice, xclBufHandles[boIndex], dir, size, offset);
+    return;
+  }
+
+  xrtBOSync(xrtBufHandles[boIndex], dir, size, offset);
 }
 
 uint64_t HalDevice::getDeviceAddr(size_t id)
@@ -150,17 +180,22 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
   if(!id) return 0;
   size_t boIndex = id - 1;
 
-  return xrtBOAddress(mBOHandles[boIndex]);
+  if(xdp::isEdge()) {
+    xclBOProperties p;
+    return (!xclGetBOProperties(mHalDevice, xclBufHandles[boIndex], &p)) ? p.paddr : ((uint64_t)-1);
+  }
+
+  return xrtBOAddress(xrtBufHandles[boIndex]);
 }
 
 double HalDevice::getMaxBwRead()
 {
-  return 9600.0;
+  return xclGetReadMaxBandwidthMBps(mHalDevice);
 }
 
 double HalDevice::getMaxBwWrite()
 {
-  return 9600.0;
+   return xclGetWriteMaxBandwidthMBps(mHalDevice);
 }
 
 std::string HalDevice::getSubDevicePath(std::string& subdev, uint32_t index)

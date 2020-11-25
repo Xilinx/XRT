@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -148,21 +148,7 @@ update_buffer_object_map(const device* device, buffer_object_handle boh)
 
 memory::buffer_object_handle
 memory::
-get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memidx)
-{
-  // for progvar only
-  assert(domain==xrt::device::memoryDomain::XRT_DEVICE_PREALLOCATED_BRAM);
-
-  std::lock_guard<std::mutex> lk(m_boh_mutex);
-  auto itr = m_bomap.find(device);
-  return (itr==m_bomap.end())
-    ? (m_bomap[device] = device->allocate_buffer_object(this,domain,memidx,nullptr))
-    : (*itr).second;
-}
-
-memory::buffer_object_handle
-memory::
-get_buffer_object(device* device)
+get_buffer_object(device* device, memory::memidx_type subidx)
 {
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
@@ -172,13 +158,15 @@ get_buffer_object(device* device)
 
   // Get memory bank index if assigned, -1 if not assigned, which will trigger
   // allocation error when default allocation is disabled
-  get_memidx_nolock(device); // computes m_memidx
+  get_memidx_nolock(device, subidx); // computes m_memidx
   auto boh = (m_bomap[device] = device->allocate_buffer_object(this,m_memidx));
 
   // To be deleted when strict bank rules are enforced
   if (boh && m_memidx==-1) {
     auto mset = device->get_boh_memidx(boh);
-    for (size_t idx=0; idx<mset.size(); ++idx) {
+    // As connectivity section contains both group and bank index. Traverse from
+    // the higher order to give priority on group index over bank index
+    for (int idx=mset.size() - 1; idx >= 0; --idx) {
       if (mset.test(idx)) {
         m_memidx=idx;
         break;
@@ -223,7 +211,7 @@ get_buffer_object_or_null(const device* device) const
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
   return itr==m_bomap.end()
-    ? nullptr
+    ? xrt::bo{}
     : (*itr).second;
 }
 
@@ -277,7 +265,9 @@ memory::
 update_memidx_nolock(const device* device, const buffer_object_handle& boh)
 {
   auto mset = device->get_boh_memidx(boh);
-  for (size_t idx=0; idx<mset.size(); ++idx) {
+  // As connectivity section contains both group and bank index. Traverse from
+  // the higher order to give priority on group index over bank index
+  for (int idx=mset.size() - 1; idx >= 0; --idx) {
     if (mset.test(idx)) {
       m_memidx=idx;
       break;
@@ -289,7 +279,7 @@ update_memidx_nolock(const device* device, const buffer_object_handle& boh)
 // private
 memory::memidx_type
 memory::
-get_memidx_nolock(const device* dev) const
+get_memidx_nolock(const device* dev, memory::memidx_type subidx) const
 {
   // already initialized
   if (m_memidx>=0)
@@ -318,7 +308,8 @@ get_memidx_nolock(const device* dev) const
     return m_memidx;
 
   if (m_karg.empty())
-    return -1;
+    // memory index could be from sub-buffer
+    return (m_memidx = subidx);
 
   // kernel,argidx deduced
   memidx_bitmask_type mset;
@@ -332,7 +323,9 @@ get_memidx_nolock(const device* dev) const
   if (mset.none())
     throw std::runtime_error("No matching memory index");
 
-  for (size_t idx=0; idx<mset.size(); ++idx) {
+  // As connectivity section contains both group and bank index. Traverse from
+  // the higher order to give priority on group index over bank index
+  for (int idx=mset.size() - 1; idx >= 0; --idx) {
     if (mset.test(idx)) {
       m_memidx = idx;
       break;
@@ -376,21 +369,6 @@ memory::
 register_destructor_callbacks (memory::memory_callback_type&& cb)
 {
   sg_destructor_callbacks.emplace_back(std::move(cb));
-}
-
-
-//Functions for derived classes.
-memory::buffer_object_handle
-image::
-get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memidx)
-{
-  if (auto boh = get_buffer_object_or_null(device))
-    return boh;
-  memory::buffer_object_handle boh = memory::get_buffer_object(device, domain, memidx);
-  image_info info;
-  populate_image_info(info);
-  device->write_buffer(this, 0, get_image_data_offset(), &info);
-  return boh;
 }
 
 memory::buffer_object_handle

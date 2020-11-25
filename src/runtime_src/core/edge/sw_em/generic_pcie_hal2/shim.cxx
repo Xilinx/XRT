@@ -21,20 +21,9 @@
 #include "shim.h"
 #include "system_swemu.h"
 #include "xclbin.h"
+#include "core/common/xclbin_parser.h"
 #include <errno.h>
 #include <unistd.h>
-
-namespace {
-
-static auto
-get_mem_topology(const axlf* top)
-{
-  if (auto sec = xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY))
-    return sec;
-  return xclbin::get_axlf_section(top, MEM_TOPOLOGY);
-}
-
-}
 
 namespace xclcpuemhal2 {
 
@@ -418,8 +407,7 @@ namespace xclcpuemhal2 {
         }
 
         if (xilinxInstall.empty()) {
-           std::cerr << "ERROR : [SW-EM 10] Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
-           exit(1);
+          xilinxInstall = ".";
         }
 
         std::string modelDirectory("");
@@ -480,7 +468,6 @@ namespace xclcpuemhal2 {
     std::string xmlFile = "" ;
     int result = dumpXML(header, xmlFile) ;
     if (result != 0) return result ;
-
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
     //  by checking to see if there is a DEBUG_DATA section in
@@ -539,7 +526,7 @@ namespace xclcpuemhal2 {
           sharedlib = xclbininmemory + sec->m_sectionOffset;
           sharedliblength = sec->m_sectionSize;
         }
-        if (auto sec = get_mem_topology(top)) {
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY)) {
           memTopologySize = sec->m_sectionSize;
           memTopology = new char[memTopologySize];
           memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);
@@ -1855,6 +1842,13 @@ int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) cons
   return 0;
 }
 
+//Get CU index from IP_LAYOUT section for corresponding kernel name
+int CpuemShim::xclIPName2Index(const char *name)
+{ 
+  //Get IP_LAYOUT buffer from xclbin
+  auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
+  return xclemulation::getIPName2Index(name, buffer.first);
+}
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }

@@ -105,7 +105,7 @@ int run(int argc, char** argv)
 
   auto mysequence = xrt::kernel(device, uuid.get(), "mysequence");
 
-  auto bo = xrt::bo(device, DATA_SIZE*sizeof(unsigned int), 0, mysequence.group_id(0));
+  auto bo = xrt::bo(device, DATA_SIZE*sizeof(unsigned int), mysequence.group_id(0));
   auto bo_mapped = bo.map<unsigned int*>();
   memset(bo_mapped, 0, DATA_SIZE*sizeof(unsigned int));
   bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE*sizeof(unsigned int), 0);

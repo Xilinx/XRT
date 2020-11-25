@@ -46,9 +46,9 @@ namespace xocl {
       counter_action_migrate(cl_uint num_mem_objects, const cl_mem* mem_objects, cl_mem_migration_flags flags) ;
     std::function<void (xocl::event*, cl_int, const std::string&)>
       counter_action_ndrange_migrate(cl_event event, cl_kernel kernel);
-    void log_cu_start(const xrt::command* cmd, 
+    void log_cu_start(const xrt_xocl::command* cmd, 
 		      const xocl::execution_context* ctx) ;
-    void log_cu_end(const xrt::command* cmd, 
+    void log_cu_end(const xrt_xocl::command* cmd, 
 		    const xocl::execution_context* ctx) ;
     void mark_objects_released() ;
 

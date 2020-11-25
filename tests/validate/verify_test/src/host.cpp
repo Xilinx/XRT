@@ -1,52 +1,51 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+* Copyright (C) 2020 Xilinx, Inc
+*
+* Licensed under the Apache License, Version 2.0 (the "License"). You may
+* not use this file except in compliance with the License. A copy of the
+* License is located at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+* License for the specific language governing permissions and limitations
+* under the License.
+*/
+#include "cmdlineparser.h"
 #include "xcl2.hpp"
 #include <algorithm>
 #include <vector>
-#include <boost/filesystem.hpp>
-#define LENGTH 12
+#define LENGTH 64
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
-    std::cout << "Usage: " << argv[0] << " <Platform Test Area Path>" << std::endl;
+  if (argc < 2) {
+    std::cout << "Usage: " << argv[0] << " <Platform Test Area Path>"
+              << "<optional> -d device_id" << std::endl;
     return EXIT_FAILURE;
   }
 
-  bool file_found = false;
+  // Command Line Parser
+  sda::utils::CmdLineParser parser;
+
+  // Switches
+  //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
+  parser.addSwitch("--device", "-d", "device id", "0");
+  parser.parse(argc, argv);
+
+  // Read settings
+  unsigned int dev_id = stoi(parser.value("device"));
+
   std::string test_path = argv[1];
-  try{
-      boost::filesystem::path p(test_path);
-      for (auto i = boost::filesystem::directory_iterator(p); i != boost::filesystem::directory_iterator(); i++)
-       {
-            if (!is_directory(i->path())) //we eliminate directories
-            {
-                if(i->path().filename().string() == "verify.xclbin")
-                    file_found = true;
-            }
-        }
-  } catch (const boost::filesystem::filesystem_error & e) {
-      std::cout << "Exception!!!! " << e.what();
-  }
-  if(!file_found){
-      std::cout << "\nNOT SUPPORTED" << std::endl;
-      return EOPNOTSUPP; 
-  }
 
   std::string b_file = "/verify.xclbin";
-  std::string binaryFile = test_path+b_file;
+  std::string binaryFile = test_path + b_file;
+  std::ifstream infile(binaryFile);
+  if (!infile.good()) {
+    std::cout << "\nNOT SUPPORTED" << std::endl;
+    return EOPNOTSUPP;
+  }
   cl_int err;
   cl::Context context;
   cl::Kernel krnl_verify;
@@ -81,46 +80,47 @@ int main(int argc, char **argv) {
   // and will return the pointer to file buffer.
   auto fileBuf = xcl::read_binary_file(binaryFile);
   cl::Program::Binaries bins{{fileBuf.data(), fileBuf.size()}};
-  int valid_device = 0;
-  for (unsigned int i = 0; i < devices.size(); i++) {
-    auto device = devices[i];
-    // Creating Context and Command Queue for selected Device
-    OCL_CHECK(err, context = cl::Context(device, nullptr, nullptr, nullptr, &err));
-    OCL_CHECK(err, q = cl::CommandQueue(context, device,
-                                        CL_QUEUE_PROFILING_ENABLE, &err));
-    std::cout << "Trying to program device[" << i
-              << "]: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
-    cl::Program program(context, {device}, bins, nullptr, &err);
-    if (err != CL_SUCCESS) {
-      std::cout << "Failed to program device[" << i << "] with xclbin file!\n";
-    } else {
-      std::cout << "Device[" << i << "]: program successful!\n";
-      OCL_CHECK(err, krnl_verify = cl::Kernel(program, "verify", &err));
-      valid_device++;
-      break; // we break because we found a valid device
-    }
-  }
-  if (valid_device == 0) {
-    std::cout << "Failed to program any device found, exit!\n";
-    exit(EXIT_FAILURE);
+
+  if (dev_id >= devices.size()) {
+    std::cout << "The device_id provided using -d flag is outside the range of "
+                 "available devices\n";
+    return EXIT_FAILURE;
   }
 
+  auto device = devices[dev_id];
+  // Creating Context and Command Queue for selected Device
   OCL_CHECK(err,
-            cl::Buffer d_buf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY,
-                             sizeof(char) * LENGTH, h_buf.data(), &err));
+            context = cl::Context(device, nullptr, nullptr, nullptr, &err));
+  OCL_CHECK(err, q = cl::CommandQueue(context, device,
+                                      CL_QUEUE_PROFILING_ENABLE, &err));
+  std::cout << "Trying to program device[" << dev_id
+            << "]: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
+  cl::Program program(context, {device}, bins, nullptr, &err);
+  if (err != CL_SUCCESS) {
+    std::cout << "Failed to program device[" << dev_id
+              << "] with xclbin file!\n";
+  } else {
+    std::cout << "Device[" << dev_id << "]: program successful!\n";
+    OCL_CHECK(err, krnl_verify = cl::Kernel(program, "verify", &err));
+  }
+
+  OCL_CHECK(err, cl::Buffer d_buf(context, CL_MEM_WRITE_ONLY,
+                                  sizeof(char) * LENGTH, nullptr, &err));
 
   OCL_CHECK(err, err = krnl_verify.setArg(0, d_buf));
 
   // Launch the Kernel
   OCL_CHECK(err, err = q.enqueueTask(krnl_verify));
-
-  // Copy Result from Device Global Memory to Host Local Memory
-  OCL_CHECK(err, err = q.enqueueMigrateMemObjects({d_buf},
-                                                  CL_MIGRATE_MEM_OBJECT_HOST));
   q.finish();
-  for (int i = 0; i < LENGTH; i++) {
+
+  OCL_CHECK(err,
+            err = q.enqueueReadBuffer(d_buf, CL_TRUE, 0, sizeof(char) * LENGTH,
+                                      h_buf.data(), nullptr, nullptr));
+  q.finish();
+  for (int i = 0; i < 12; i++) {
     std::cout << h_buf[i];
   }
   std::cout << "TEST PASSED\n";
   return 0;
 }
+

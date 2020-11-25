@@ -29,13 +29,16 @@ The core data structures in C and C++ are as below
 +---------------+---------------+-------------------+
 |   Run         | xrt::run      |  xrtRunHandle     |
 +---------------+---------------+-------------------+
+|   Graph       | TBD           |  xrtGraphHandle   |
++---------------+---------------+-------------------+
 
-All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/experimental/`` directory. In the user host code, it is sufficient to include only ``"experimental/xrt_kernel.h"`` to access all the APIs related to these data structure.
+All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/experimental/`` directory. In the user host code, it is sufficient to include ``"experimental/xrt_kernel.h"`` and ``"experimental/xrt_aie.h"`` (when using Graph APIs) to access all the APIs related to these data structure.
 
 .. code:: c
       :number-lines: 5
            
            #include "experimental/xrt_kernel.h"
+           #include "experimental/xrt_aie.h"
 
 
 The common host code flow using the above data structures is as below
@@ -97,7 +100,8 @@ The above code block shows
 .. code:: c++
       :number-lines: 10
            
-           auto device = xrt::device(0);
+           unsigned int dev_index = 0;
+           auto device = xrt::device(dev_index);
            auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
        
 The above code block shows
@@ -124,9 +128,7 @@ Buffers are primarily used to transfer the data between the host and the device.
 XRT APIs provides API for
    
       - ``xrtBOAlloc``: Allocates a buffer object 4K aligned, the API must be called with appropriate flags. 
-      - ``xrtBOAllocUserPtr``: Allocates a buffer object using pointer (aligned to 4K boundary) provided by the user. 
-      
-              - If the user-provided pointer is not aligned to 4K boundary, XRT internally copies the data to align it at 4K boundary. 
+      - ``xrtBOAllocUserPtr``: Allocates a buffer object using pointer provided by the user. The user pointer must be aligned to 4K boundary. 
       - ``xrtBOFree``: Deallocates the allocated buffer. 
 
 .. code:: c
@@ -135,8 +137,8 @@ XRT APIs provides API for
            xrtMemoryGroup bank_grp_idx_0 = xrtKernelArgGroupId(kernel, 0);
            xrtMemoryGroup bank_grp_idx_1 = xrtKernelArgGroupId(kernel, 1);
 
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
-           xrtBufferHandle output_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_1);
+           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
+           xrtBufferHandle output_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_1);
 
            ....
            ....
@@ -153,12 +155,13 @@ The various arguments of the API ``xrtBOAlloc`` are
 
     - Argument 1: The device on which the buffer should be allocated 
     - Argument 2: The size (in bytes) of the buffer
-    - Argument 3: ``xrtBufferFlag``: Used to specify the buffer type, most commonly used types are
+    - Argument 3: ``xrtBufferFlags``: Used to specify the buffer type, most commonly used types are
        
-        - ``XCL_BO_FLAGS_NONE``: Regular Buffer,
-        - ``XCL_BO_FLAGS_DEV_ONLY``: Device only Buffer (meant to be used only by the kernel). 
-        - ``XCL_BO_FLAGS_HOST_ONLY``: Host Only Buffer (buffers reside in the host memory directly transferred to/from the kernel)
-        - ``XCL_BO_FLAGS_P2P``: P2P Buffer, buffer for NVMe transfer
+        - ``XRT_BO_FLAGS_NONE``: Regular Buffer
+        - ``XRT_BO_FLAGS_DEV_ONLY``: Device only Buffer (meant to be used only by the kernel). 
+        - ``XRT_BO_FLAGS_HOST_ONLY``: Host Only Buffer (buffers reside in the host memory directly transferred to/from the kernel)
+        - ``XRT_BO_FLAGS_P2P``: P2P Buffer, buffer for NVMe transfer
+        - ``XRT_BO_FLAGS_CACHEABLE``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform). 
         
     - Argument 4:  ``xrtMemoryGroup``: Enumerated Memory Bank to specify the location on the device where the buffer should be allocated. The ``xrtMemoryGroup`` is obtained by the API ``xrtKernelArgGroupId`` as shown in line 15 (for more details of this API refer to the Kernel section).   
     
@@ -171,10 +174,17 @@ The various arguments of the API ``xrtBOAlloc`` are
            auto bank_grp_idx_0 = kernel.group_id(0);
            auto bank_grp_idx_1 = kernel.group_id(1);
     
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
-           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_1);
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes,bank_grp_idx_0);
+           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_1);
 
-In the above code ``xrt::bo`` buffer objects are created using the class's constructor. All the arguments are identical to the ``xrtBOAlloc`` API as discussed above in the C example explanation.  
+In the above code ``xrt::bo`` buffer objects are created using the class's constructor. Note the buffer flag is not used as constructor by default created regular buffer. Nonetheless, the available buffer flags for ``xrt::bo`` are described using ``enum class`` argument with the following enumerator values
+
+        - ``xrt::bo::flags::normal``: Default, Regular Buffer
+        - ``xrt::bo::flags::device_only``: Device only Buffer (meant to be used only by the kernel).
+        - ``xrt::bo::flags::host_only``: Host Only Buffer (buffer resides in the host memory directly transferred to/from the kernel)
+        - ``xrt::bo::flags::p2p``: P2P Buffer, buffer for NVMe transfer  
+        - ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).
+
 
 
 2. Data transfer using Buffers
@@ -220,7 +230,7 @@ Code example of transferring data from the host to the device
 .. code:: c
       :number-lines: 20
            
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
 
            // Prepare the input data
            int buff_data[data_size];
@@ -238,17 +248,17 @@ Code example of transferring data from the host to the device
 .. code:: c++
       :number-lines: 20    
            
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_0);
            // Prepare the input data
            int buff_data[data_size];
            for (auto i=0; i<data_size; ++i) {
                buff_data[i] = i;
            }
     
-           input_buffer.write(buff_data, buffer_size_in_bytes, 0);
-           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE, buffer_size_in_bytes,0);
+           input_buffer.write(buff_data);
+           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-
+Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has overloaded version that can be used for paritial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and 0 offset are used as default arguments. 
 
 
 II. Data transfer between host and device by Buffer map API
@@ -261,7 +271,7 @@ Code example of transferring data from the host to the device by this approach
 .. code:: c
       :number-lines: 20
            
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
            int* input_buffer_mapped = (int*)xrtBOMap(input_buffer);
 
            for (int i=0;i<data_size;++i) {
@@ -275,14 +285,14 @@ Code example of transferring data from the host to the device by this approach
 .. code:: c++
       :number-lines: 20
            
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, bank_grp_idx_0);
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_0);
            auto input_buffer_mapped = input_buffer.map<int*>();
 
            for (auto i=0;i<data_size;++i) {
                input_buffer_mapped[i] = i;
            }
 
-           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE,buffer_size_in_bytes,0);
+           input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
 
 III. Data transfer between the buffers by copy API
@@ -305,10 +315,10 @@ API Example in C, all arguments are self-explanatory
 .. code:: c++
       :number-lines: 25
            
-           size_t dst_buffer_offset = 0;
-           size_t src_buffer_offset = 0;
-           dst_buffer.copy(src_buffer, copy_size_in_bytes, dst_buffer_offset, src_buffer_offset);
+           
+           dst_buffer.copy(src_buffer, copy_size_in_bytes);
 
+The API ``xrt::bo::copy`` also has overloaded version to provide a different offset than 0 for both the source and the destination buffer. 
 
 3. Miscellaneous other Buffer APIs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -462,7 +472,7 @@ As an example, assume a kernel name is foo having 3 CUs foo_1, foo_2, foo_3. The
       :number-lines: 35
           
            auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
-           auto krnl = xrt::kernel(device, name, xclbin_uuid); 
+           auto krnl = xrt::kernel(device, xclbin_uuid, name); 
       
 Exclusive access of the kernel's CU
 ***********************************
@@ -474,12 +484,15 @@ The API ``xrtPLKernelOpen`` opens a kernel's CU in a shared mode so that the CU 
      
            xrtKernelHandle kernel = xrtPLKernelOpenExclusive(device, xclbin_uuid, "name");
 
-**C++**: When the ``xrt::kernel`` constructor is called with an additional boolean argument set as true, it opens CU in exclusive mode and returns the kernel object.    
+**C++**: In C++, ``xrt::kernel`` constructor can be called with an additional ``enum class`` argument to access the kernel in exclusive mode. The enumerator values are: 
+
+     - ``xrt::kernel::cu_access_mode::shared`` (default ``xrt::kernel`` constructor argument)
+     - ``xrt::kernel::cu_access_mode::exclusive`` 
 
 .. code:: c++
       :number-lines: 39
        
-           auto krnl = xrt::kernel(device, name, xclbin_uuid, true); 
+           auto krnl = xrt::kernel(device, xclbin_uuid, name, xrt::kernel::cu_access_mode::exclusive); 
 
    
 
@@ -495,13 +508,13 @@ Let us review the example below where the buffer is allocated for the kernel's f
       :number-lines: 39
            
            xrtMemoryGroup idx_0 = xrtKernelArgGroupId(kernel, 0); // bank index of 0th argument
-           xrtBufferHandle a = xrtBOAlloc(device, data_size*sizeof(int), XCL_BO_FLAGS_NONE, idx_0);
+           xrtBufferHandle a = xrtBOAlloc(device, data_size*sizeof(int), XRT_BO_FLAGS_NONE, idx_0);
 
 
 .. code:: c++
       :number-lines: 15
                        
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, XCL_BO_FLAGS_NONE, kernel.group_id(0));
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes, kernel.group_id(0));
 
 
 
@@ -533,7 +546,7 @@ To read and write from the AXI-Lite register space corresponding to a CU, the CU
 
 In the above code block
 
-              - The compute unit named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
+              - The CU named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
               - The Register Read/Write operation is performed. 
               - Closed the kernel
               
@@ -545,13 +558,51 @@ In the above code block
            int read_data; 
            int write_data = 7; 
               
-           auto krnl = xrt::kernel(device, "foo:{foo_1}", xclbin_uuid, true); 
+           auto krnl = xrt::kernel(device, xclbin_uuid, "foo:{foo_1}", true); 
 
            read_data = kernel.read_register(READ_OFFSET);
            kernel.write_register(WRITE_OFFSET,write_data); 
               
+              
+Obtaining the argument offset
+*****************************
+              
+The register read/write access APIs use the register offset as shown in the above examples. The user can get the register offset of a corresponding kernel argument from the ``v++`` generated ``.xclbin.info`` file and use with the register read/write APIs. 
 
-     
+.. code::
+    
+    --------------------------
+    Instance:        foo_1
+    Base Address: 0x1800000
+
+    Argument:          a
+    Register Offset:   0x10
+    
+
+
+However, XRT also provides APIs to obtain the register offset for CU arguments. In the below example C API ``xrtKernelArgOffset`` is used to obtain offset of third argument of the CU ``foo:foo_1``.  
+
+
+.. code:: c
+      :number-lines: 38
+
+           // Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively) 
+           
+           xrtKernelHandle kernel = xrtPLKernelOpenExclusive(device, xclbin_uuid, "foo:{foo_1}");
+           uint32_t arg_c_offset = xrtKernelArgOffset(kernel, 2);
+ 
+
+**C++**: The equivalent C++ API example
+
+.. code:: c++
+      :number-lines: 38
+
+           // Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively) 
+           
+           auto krnl = xrt::kernel(device, xclbin_uuid, "foo:{foo_1}", true); 
+           auto offset = krnl.offset(2);
+
+ 
 Executing the kernel
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -622,6 +673,330 @@ The Run handle/object supports few other use-cases.
 
 **Timeout while wait for kernel finish**: The API ``xrtRunWait`` blocks the current thread until the kernel execution finishes. However, a timeout supported API ``xrtRunWaitFor`` is also provided . The timeout number can be specified using a millisecond unit.
 
-In C++, the timeout facility can be used by the same ``xrt::run::wait(unsigned int timeout_ms=0)`` member function by providing a millisecond number as an argument. 
+In C++, the timeout facility can be used by the same member function that takes a ``std::chrono::milliseconds`` to specify the timeout. 
 
 **Asynchronous update of the kernel arguments**: The API ``xrtRunSetArg`` (C++: ``xrt::run::set_arg``) is synchronous to the kernel execution. This API can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this API (only for edge platform) ``xrtRunUpdateArg`` (in C++ member function ``xrt::run::update_arg``) is provided to change the kernel arguments asynchronous to the kernel execution. 
+
+Graph
+-----
+
+In Versal ACAPs with AI Engines, the XRT Graph APIs can be used to dynamically load, monitor, and control the graphs executing on the AI Engine array. As of the 2020.2 release, XRT provides a set of C APIs for graph control. The C++ APIs are planned for a future release. Also, as of the 2020.2 release Graph APIs are only supported on the Edge platform.
+
+A graph handle is of type ``xrtGraphHandle``. 
+
+Graph Opening and Closing
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The XRT graph APIs support the obtaining of graph handle from currently loaded xclbin. The required APIs for graph open and close are
+
+         - ``xrtGraphOpen``: API provides the handle of the graph from the device, XCLBIN UUID, and the graph name. 
+         - ``xrtGraphClose``: API to close the graph handle. 
+
+.. code:: c
+      :number-lines: 35
+           
+           xuid_t xclbin_uuid;
+           xrtXclbinGetUUID(xclbin,xclbin_uuid);
+
+           xrtGraphHandle graph = xrtGraphOpen(device, xclbin_uuid, "graph_name");
+           ....
+           ....
+           xrtGraphClose(graph);
+
+
+The graph handle obtained from ``xrtGraphOpen`` is used to execute the graph function on the AIE tiles.
+
+Reset Functions
+~~~~~~~~~~~~~~~
+
+There are two reset functions are used:
+
+   - API ``xrtAIEResetArray`` is used to reset the whole AIE array. 
+   - API ``xrtGraphReset`` is used to reset a specified graph by disabling tiles and enabling tile reset. 
+
+
+.. code:: c
+      :number-lines: 45
+           
+           xrtDeviceHandle device_handle = xrtDeviceOpen(0);
+           ...
+           // AIE Array Reset
+           xrtAIEResetArray(device_handle)
+           
+           xrtGraphHandle graph = xrtGraphOpen(device, xclbin_uuid, "graph_name");
+           // Graph Reset
+           xrtGraphReset(graphHandle);
+
+
+
+
+Graph execution
+~~~~~~~~~~~~~~~
+
+XRT provides basic graph execution control APIs to initialize, run, wait, and terminate graphs for a specific number of iterations. Below we will review some of the common graph execution styles. 
+
+Graph execution for a fixed number of iterations
+************************************************
+
+A graph can be executed for a fixed number of iterations followed by a "busy-wait" or a "time-out wait". 
+
+**Busy Wait scheme**
+
+The graph can be executed for a fixed number of iteration by ``xrtGraphRun`` API using an iteration argument. Subsequently, ``xrtGraphWait`` or ``xrtGraphEnd`` API should be used (with argument 0) to wait until graph execution is completed. 
+
+Let's review the below example
+
+- The graph is executed for 3 iterations by API ``xrtGraphRun`` with the number of iterations as an argument. 
+- The API ``xrtGraphWait(graphHandle,0)`` is used to wait till the iteration is done. 
+
+     - The API `xrtGraphWait` is used because the host code needs to execute the graph again. 
+- The Graph is executed again for 5 iteration
+- The API ``xrtGraphEnd(graphHandle,0)`` is used to wait till the iteration is done. 
+
+    - After ``xrtGraphEnd`` the same graph should not be executed. 
+
+.. code:: c
+      :number-lines: 35
+           
+           // start from reset state
+           xrtGraphReset(graphHandle);
+           
+           // run the graph for 3 iteration
+           xrtGraphRun(graphHandle, 3);
+           
+           // Wait till the graph is done 
+           xrtGraphWait(graphHandle,0);  // Use xrtGraphWait if you want to execute the graph again
+           
+           
+           xrtGraphRun(graphHandle,5);
+           xrtGraphEnd(graphHandle,0);  // Use xrtGraphEnd if you are done with the graph execution
+
+
+**Timeout wait scheme**
+
+As shown in the above example ``xrtGraphWait(graphHandle,0)`` performs a busy-wait and suspend the execution till the graph is not done. If desired a timeout version of the wait can be achieved by ``xrtGraphWaitDone`` which can be used to wait for some specified number of milliseconds, and if the graph is not done do something else in the meantime. An example is shown below
+
+.. code:: c++
+      :number-lines: 35
+           
+           // start from reset state
+           xrtGraphReset(graphHandle);
+           
+           // run the graph for 100 iteration
+           xrtGraphRun(graphHandle, 100);
+           
+            while (1) {
+             auto rval  = xrtGraphWaitDone(graphHandle, 5); 
+              std::cout << "Wait for graph done returns: " << rval << std::endl;
+              if (rval == -ETIME)  {
+                   std::cout << "Timeout, reenter......" << std::endl;
+                   // Do something 
+              }
+              else  // Graph is done, quit the loop
+                  break;
+             }
+
+
+Infinite Graph Execution
+************************
+
+The graph runs infinitely if ``xrtGraphRun`` is called with iteration argument -1. While a graph running infinitely the APIs ``xrtGraphWait``, ``xrtGraphSuspend`` and xrtGraphEnd can be used to suspend/end the graph operation after some number of AIE cycles. The API ``xrtGraphResume`` is used to execute the infinitely running graph again. 
+
+
+.. code:: c
+      :number-lines: 39
+           
+           // start from reset state
+           xrtGraphReset(graphHandle);
+           
+           // run the graph infinitely
+           xrtGraphRun(graphHandle, -1);
+           
+           xrtGraphWait(graphHandle,3000);  // Suspends the graph after 3000 AIE cycles from the previous start 
+           
+           
+           xrtGraphResume(graphHandle); // Restart the suspended graph again to run forever
+           
+           xrtGraphSuspend(graphHandle); // Suspend the graph immediately
+           
+           xrtGraphResume(graphHandle); // Restart the suspended graph again to run forever
+           
+           xrtGraphEnd(graphHandle,5000);  // End the graph operation after 5000 AIE cycles from the previous start
+
+
+In the example above
+
+- The API ``xrtGraphRun(graphHandle, -1)`` is used to execute the graph infinitely
+- The API ``xrtGraphWait(graphHandle,3000)`` suspends the graph after 3000 AIE cycles from the graph starts. 
+
+       - If the graph was already run more than 3000 AIE cycles the graph is suspended immediately. 
+- The API ``xrtGraphResume`` is used to restart the suspended graph
+- The API ``xrtGraphSuspend`` is used to suspend the graph immediately
+- The API ``xrtGraphEnd(graphHandle,5000)`` is  ending the graph after 5000 AIE cycles from the previous graph start. 
+       
+       - If the graph was already run more than 5000 AIE cycles the graph ends immediately.
+       - Using ``xrtGraphEnd`` eliminates the capability of rerunning the Graph (without loading PDI and a graph reset again). 
+
+
+Measuring AIE cycle consumed by the Graph
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The API ``xrtGraphTimeStamp`` can be used to determine AIE cycle consumed between a graph start and stop. 
+
+Here in this example, the AIE cycle consumed by 3 iteration is calculated
+ 
+
+.. code:: c++
+      :number-lines: 35
+           
+           // start from reset state
+           xrtGraphReset(graphHandle);
+           
+           uint64_t begin_t = xrtGraphTimeStamp(graphHandle);
+           
+           // run the graph for 3 iteration
+           xrtGraphRun(graphHandle, 3);
+           
+           xrtGraphWait(graphHandle, 0); 
+           
+           uint64_t end_t = xrtGraphTimeStamp(graphHandle);
+           
+           std::cout<<"Number of AIE cycles consumed in the 3 iteration is: "<< end_t-begin_t; 
+           
+
+RTP (Runtime Parameter) control
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+XRT provides the API to update and read the runtime parameters of the graph. 
+
+- The API ``xrtGraphUpdateRTP`` to update the RTP 
+- The API ``xrtGraphReadRTP`` to read the RTP. 
+
+.. code:: c++
+      :number-lines: 35
+
+           ret = xrtGraphReset(graphHandle);
+           if (ret) throw std::runtime_error("Unable to reset graph");
+
+           ret = xrtGraphRun(graphHandle, 2);
+           if (ret) throw std::runtime_error("Unable to run graph");
+
+           float increment[1] = {1};
+           const char *inVect = reinterpret_cast<const char *>(increment);
+           xrtGraphUpdateRTP(graphHandle, "mm.mm0.in[2]", inVect, sizeof (float));
+     
+           // Do more things
+           xrtGraphRun(graphHandle,16);
+           xrtGraphWait(graphHandle,0);
+     
+           // Read RTP
+           float increment_out[1] = {1};
+           char *outVect = reinterpret_cast<char *>(increment_out);
+           xrtGraphReadRTP(graphHandle, "mm.mm0.inout[0]", outVect, sizeof(float));
+           std::cout<<"\n RTP value read<<increment_out[0]; 
+ 
+In the above example, the API ``xrtGraphUpdateRTP`` and ``xrtGraphReadRTP`` are used to update and read the RTP values respectively. Note the API arguments 
+   
+      - The hierarchical name of the RTP port
+      - Pointer to write or read the RTP variable
+      - The size of the RTP value. 
+
+DMA operation to and from Global Memory IO
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+XRT provides API ``xrtAIESyncBO`` to synchronize the buffer contents between GMIO and AIE. The following code shows a sample example
+
+
+.. code:: c++
+      :number-lines: 35
+
+           xrtDeviceHandle device_handle = xrtDeviceOpen(0);
+       
+           // Buffer from GM to AIE
+           xrtBufferHandle in_bo_handle  = xrtBOAlloc(device_handle, SIZE * sizeof (float), 0, 0);
+       
+           // Buffer from AIE to GM
+           xrtBufferHandle out_bo_handle  = xrtBOAlloc(device_handle, SIZE * sizeof (float), 0, 0);
+       
+           inp_bo_map = (float *)xrtBOMap(in_bo_handle);
+           out_bo_map = (float *)xrtBOMap(out_bo_handle);
+
+           // Prepare input data 
+           std::copy(my_float_array,my_float_array+SIZE,inp_bo_map);
+
+
+           xrtAIESyncBO(device_handle, in_bo_handle, "in_sink", XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0); 
+
+           xrtAIESyncBO(device_handle, out_bo_handle, "out_sink", XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float), 0);
+       
+       
+The above code shows
+
+    - Input and output buffer (``in_bo_handle`` and ``out_bo_handle``) to the graph are created and mapped to the user space
+    - The API ``xrtAIESyncBO`` is used for data transfer using the following arguments
+    
+          - Device and Buffer Handle
+          - The name of the GMIO ports associated with the DMA transfer
+          - The direction of the buffer transfer 
+          
+                   - GMIO to Graph: ``XCL_BO_SYNC_BO_GMIO_TO_AIE``
+                   - Graph to GMIO: ``XCL_BO_SYNC_BO_AIE_TO_GMIO``
+          - The size and the offset of the buffer
+    
+               
+XRT Error API
+-------------
+
+In general, XRT APIs can encounter two types of errors:
+ 
+       - Synchronous error: Error can be thrown by the API itself. These types of errors should be checked against all APIs (strongly recommended). 
+       - Asynchronous error: Errors from the underneath driver, system, hardware, etc. 
+       
+XRT provides a couple of APIs to retrieve the asynchronous errors into the userspace host code. This helps to debug when something goes wrong.
+ 
+       - ``xrtErrorGetLast`` - Gets the last error code and its timestamp of a given error class
+       - ``xrtErrorGetString`` - Gets the description string of a given error code.
+
+**NOTE**: The asynchronous error retrieving APIs are at an early stage of development and only supports AIE related asynchronous errors. Full support for all other asynchronous errors is planned in a future release. 
+
+Example code
+
+.. code:: c++
+      :number-lines: 41
+
+           rval = xrtGraphRun(graphHandle, runInteration);
+           if (rval != 0) {                                                                   
+               /* code to handle synchronous xrtGraphRun error */ 
+               goto fail;                                             
+           }      
+ 
+           rval = xrtGraphWaitDone(graphHandle, timeout);
+           if (rval == -ETIME) {
+               /* wait Graph done timeout without further information */
+               xrtErrorCode errCode;
+               uint64_t timestamp;
+ 
+               rval = xrtErrorGetLast(devHandle, XRT_ERROR_CLASS_AIE, &errCode, &timestamp);
+               if (rval == 0) {
+                   size_t len = 0;
+                   if (xrtErrorGetString(devHandle, errCode, nullptr, 0, &len))
+                       goto fail;
+                   std::vector<char> buf(len);  // or C equivalent
+                   if (xrtErrorGetString(devHandle, errCode, buf.data(), buf.size()))
+                       goto fail;
+                   /* code to deal with this specific error */
+                   std::cout << buf.data() << std::endl;
+               }
+          }                  
+          /* more code can be added here to check other error class */
+        
+       
+The above code shows
+     
+     - As good practice synchronous error checking is done directly against all APIs (line 41,47,53,56,59)
+     - After timeout occurs from ``xrtGraphWaitDone`` the API ``xrtErrorGetLast`` is called to retrieve asynchronous error code (line 53) 
+     - Using the error code API ``xrtErrorGetString`` is called to get the length of the error string (line 56)
+     - The API ``xrtErrorGetString`` called again for the second time to get the full error string (line 59)
+
+
+

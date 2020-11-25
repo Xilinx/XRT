@@ -20,7 +20,7 @@
 #include "xrt.h"
 #include "experimental/xrt-next.h"
 #include "experimental/xrt_bo.h"
-#include "xrt_graph.h"
+#include "xcl_graph.h"
 #include "error.h"
 #include <stdexcept>
 
@@ -156,6 +156,15 @@ struct ishim
 
   virtual void
   wait_gmio(const char *gmioName) = 0;
+
+  virtual int
+  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value) = 0;
+
+  virtual uint64_t
+  read_profiling(int phdl) = 0;
+
+  virtual void
+  stop_profiling(int phdl) = 0;
 #endif
 };
 
@@ -190,17 +199,21 @@ struct shim : public DeviceType
   virtual xclBufferHandle
   alloc_bo(size_t size, unsigned int flags)
   {
-    if (auto bo = xclAllocBO(DeviceType::get_device_handle(), size, 0, flags))
-      return bo;
-    throw std::bad_alloc();
+    auto bo = xclAllocBO(DeviceType::get_device_handle(), size, 0, flags);
+    if (bo == XRT_NULL_BO)
+      throw std::bad_alloc();
+
+    return bo;
   }
 
   virtual xclBufferHandle
   alloc_bo(void* userptr, size_t size, unsigned int flags)
   {
-    if (auto bo = xclAllocUserPtrBO(DeviceType::get_device_handle(), userptr, size, flags))
-      return bo;
-    throw std::bad_alloc();
+    auto bo = xclAllocUserPtrBO(DeviceType::get_device_handle(), userptr, size, flags);
+    if (bo == XRT_NULL_BO)
+      throw std::bad_alloc();
+
+    return bo;
   }
 
   virtual void
@@ -463,6 +476,26 @@ struct shim : public DeviceType
     if (auto ret = xclGMIOWait(DeviceType::get_device_handle(), gmioName))
       throw error(ret, "fail to wait gmio");
   }
+
+  virtual int
+  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value)
+  {
+    return xclStartProfiling(DeviceType::get_device_handle(), option, port1Name, port2Name, value);
+  }
+
+  virtual uint64_t
+  read_profiling(int phdl)
+  {
+    return xclReadProfiling(DeviceType::get_device_handle(), phdl);
+  }
+
+  virtual void
+  stop_profiling(int phdl)
+  {
+    if (auto ret = xclStopProfiling(DeviceType::get_device_handle(), phdl))
+      throw error(ret, "fail to wait gmio");
+  }
+
 #endif
 };
 

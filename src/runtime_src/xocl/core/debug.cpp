@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -84,8 +84,8 @@ static std::vector<info> s_info;
 static void
 init()
 {
-  s_start_id = xrt::config::detail::get_uint_value("Debug.xocl_event_begin",0);
-  s_end_id = xrt::config::detail::get_uint_value("Debug.xocl_event_end",1000);
+  s_start_id = xrt_xocl::config::detail::get_uint_value("Debug.xocl_event_begin",0);
+  s_end_id = xrt_xocl::config::detail::get_uint_value("Debug.xocl_event_end",1000);
 
   s_info.reserve(s_end_id-s_start_id+1);
 }
@@ -169,7 +169,7 @@ print()
 // [Debug] xocl_debug --- enable debugging  (false)
 // [Debug] xocl_log --- log file for debugging (xocl.log)
 //
-// This function must be after main(), since it uses xrt::config
+// This function must be after main(), since it uses xrt_xocl::config
 // which relies on static global initialization
 static bool
 init()
@@ -180,10 +180,10 @@ init()
 
   called = true;
 
-  if (!(s_debug_on = xrt::config::get_xocl_debug()))
+  if (!(s_debug_on = xrt_xocl::config::get_xocl_debug()))
     return false;
 
-  s_debug_log = xrt::config::detail::get_string_value("Debug.xocl_log","xocl.log");
+  s_debug_log = xrt_xocl::config::detail::get_string_value("Debug.xocl_log","xocl.log");
 
   ::event::init();
 

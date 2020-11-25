@@ -187,7 +187,7 @@ free_xclbin(xrtXclbinHandle handle)
 inline void
 send_exception_message(const char* msg)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+  xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
 }
 
 } // namespace
@@ -240,7 +240,7 @@ xrtXclbinAllocFilename(const char* filename)
 }
 
 xrtXclbinHandle
-xrtXclbinAllocRawData(const char* data, const int size)
+xrtXclbinAllocRawData(const char* data, int size)
 {
   try {
     std::vector<char> raw_data(data, data + size);

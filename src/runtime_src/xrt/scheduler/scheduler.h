@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,7 +21,7 @@
 #include "xrt/scheduler/command.h"
 #include <vector>
 
-namespace xrt {
+namespace xrt_xocl {
 
 using command_type = std::shared_ptr<command>;
 
@@ -41,7 +41,7 @@ stop();
 
 XRT_EXPORT
 void
-init(xrt::device* device);
+init(xrt_xocl::device* device);
 
 } // sws
 
@@ -60,7 +60,7 @@ void
 stop();
 
 void
-init(xrt::device* device);
+init(xrt_xocl::device* device);
 
 } // kds
 
@@ -82,7 +82,7 @@ stop();
 
 XRT_EXPORT
 void
-init(xrt::device* device);
+init(xrt_xocl::device* device);
 
 } // scheduler
 

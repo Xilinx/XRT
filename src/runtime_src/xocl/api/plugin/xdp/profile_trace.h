@@ -66,8 +66,8 @@ namespace xocl {
       action_copy(cl_mem src_buffer, cl_mem dst_buffer) ;
 
     // Functions used by the device trace plugin
-    void flush_device(xrt::device* handle) ;
-    void update_device(xrt::device* handle) ;
+    void flush_device(xrt_xocl::device* handle) ;
+    void update_device(xrt_xocl::device* handle) ;
 
   } // end namespace profile
 

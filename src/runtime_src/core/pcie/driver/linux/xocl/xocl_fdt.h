@@ -52,10 +52,12 @@
 #define NODE_AF_DATA_C2H "ep_firewall_data_c2h_00"
 #define NODE_AF_DATA_P2P "ep_firewall_data_p2p_00"
 #define NODE_AF_DATA_M2M "ep_firewall_data_m2m_00"
+#define NODE_PCIE_FIREWALL "ep_firewall_pcie_00"
 #define NODE_CMC_REG "ep_cmc_regmap_00"
 #define NODE_CMC_RESET "ep_cmc_reset_00"
 #define NODE_CMC_MUTEX "ep_cmc_mutex_00"
 #define NODE_CMC_FW_MEM "ep_cmc_firmware_mem_00"
+#define NODE_CMC_CLK_SCALING_REG "ep_aclk_kernel_throttling_00"
 #define NODE_ERT_FW_MEM "ep_ert_firmware_mem_00"
 #define NODE_ERT_CQ_MGMT "ep_ert_command_queue_mgmt_00"
 #define NODE_ERT_CQ_USER "ep_ert_command_queue_user_00"
@@ -103,10 +105,14 @@
 #define NODE_INTC_CU_02 "ep_intc_cu_02"
 #define NODE_INTC_CU_03 "ep_intc_cu_03"
 #define NODE_HOSTMEM_BANK0 "ep_c2h_data_00"
+#define NODE_PS_RESET_CTRL "ep_reset_ps_00"
+#define NODE_ICAP_CONTROLLER "ep_iprog_ctrl_00"
 
 #define PROP_HWICAP "axi_hwicap"
 #define PROP_PDI_CONFIG "pdi_config_mem"
 #define PROP_SHELL_KDMA "shell_utils_kdma"
+#define PROP_CMC_U2 "cmc_regmap_u2"
+#define PROP_CMC_DEFAULT "axi_bram_ctrl"
 
 #define RESNAME_GATEPLP		NODE_GATE_PLP
 #define RESNAME_PCIEMON		NODE_PCIE_MON

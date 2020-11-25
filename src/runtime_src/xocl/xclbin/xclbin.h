@@ -55,7 +55,7 @@ public:
   {
     // Wrap data associated with a kernel argument
     struct arg {
-      enum class argtype { indexed, printf, progvar, rtinfo };
+      enum class argtype { indexed, printf, rtinfo };
       std::string name;
       size_t address_qualifier;
       std::string id;
@@ -65,10 +65,9 @@ public:
       size_t offset;
       size_t hostoffset;
       size_t hostsize;
+      size_t fa_desc_offset;// fast adapter desc entry offseet
       std::string type;
       size_t memsize;
-      size_t baseaddr;      // progvar base addr
-      std::string linkage;  // progvar linkage per meminst
       argtype atype;        // optimization to avoid repeated string cmp
       symbol* host;
 
@@ -99,6 +98,11 @@ public:
     std::vector<arg> arguments;      // the args of this kernel
     std::vector<instance> instances; // the kernel instances
     target_type target;              // xclbin target
+    size_t fa_num_inputs = 0;        // Fast adapter number of inputs per meta data
+    size_t fa_num_outputs = 0;       // Fast adapter number of outputs per meta data
+    size_t fa_input_entry_bytes = 0; // Fast adapter input desc bytes
+    size_t fa_output_entry_bytes = 0;// Fast adapter output desc bytes
+    size_t fa_desc_bytes = 0;        // Fast adapter total bytes for descriptor
   };
 
 public:

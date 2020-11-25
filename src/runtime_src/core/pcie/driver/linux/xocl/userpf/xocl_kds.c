@@ -10,6 +10,21 @@
 #include <linux/workqueue.h>
 #include "common.h"
 #include "kds_core.h"
+/* Need detect fast adapter and find out plram
+ * Cound not avoid coupling xclbin.h
+ */
+#include "xclbin.h"
+
+#define print_ecmd_info(ecmd) \
+do {\
+	int i;\
+	printk("%s: ecmd header 0x%x\n", __func__, ecmd->header);\
+	for (i = 0; i < ecmd->count; i++) {\
+		printk("%s: ecmd data[%d] 0x%x\n", __func__, i, ecmd->data[i]);\
+	}\
+} while(0)
+
+void xocl_describe(const struct drm_xocl_bo *xobj);
 
 int kds_mode = 0;
 module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
@@ -20,6 +35,22 @@ MODULE_PARM_DESC(kds_mode,
  * Let's move it to struct kds_sched in the future.
  */
 int kds_echo = 0;
+
+static void xocl_kds_fa_clear(struct xocl_dev *xdev)
+{
+	struct drm_xocl_bo *bo = NULL;
+
+	if (XDEV(xdev)->kds.plram.bo) {
+		bo = XDEV(xdev)->kds.plram.bo;
+		iounmap(XDEV(xdev)->kds.plram.vaddr);
+		xocl_drm_free_bo(&bo->base);
+		XDEV(xdev)->kds.plram.bo = NULL;
+		XDEV(xdev)->kds.plram.bar_paddr = 0;
+		XDEV(xdev)->kds.plram.dev_paddr = 0;
+		XDEV(xdev)->kds.plram.vaddr = 0;
+		XDEV(xdev)->kds.plram.size = 0;
+	}
+}
 
 static int
 get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
@@ -249,22 +280,13 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 
 	if (xcmd->inkern_cb) {
-		schedule_work(&xcmd->inkern_cb->work);
+		int error = (status == ERT_CMD_STATE_COMPLETED)?0:-EFAULT;
+		xcmd->inkern_cb->func((unsigned long)xcmd->inkern_cb->data, error);
+		kfree(xcmd->inkern_cb);
 	} else {
 		atomic_inc(&client->event);
 		wake_up_interruptible(&client->waitq);
 	}
-}
-
-static void xocl_execbuf_completion(struct work_struct *work)
-{
-	struct in_kernel_cb *inkern_cb = container_of(work,
-						struct in_kernel_cb, work);
-	int error = (inkern_cb->cmd_state == ERT_CMD_STATE_COMPLETED) ?
-			0 : -EFAULT;
-
-	if (inkern_cb->func)
-		inkern_cb->func((unsigned long)inkern_cb->data, error);
 }
 
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
@@ -279,7 +301,6 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct kds_command *xcmd;
 	struct kds_cu_mgmt *cu_mgmt;
 	u32 cdma_addr;
-	int cu_count;
 	int ret = 0;
 	int i;
 
@@ -320,9 +341,19 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	}
 	xcmd->cb.free = kds_free_command;
 
-	/* TODO: one ecmd to one xcmd now. Maybe we will need
-	 * one ecmd to multiple xcmds
+#if 0
+	print_ecmd_info(ecmd);
+#endif
+
+	/* xcmd->type is the only thing determine who to handle this command.
+	 * If ERT is supported, use ERT as default handler.
+	 * It could be override later if some command needs specific handler.
 	 */
+	if (XDEV(xdev)->kds.ert_disable)
+		xcmd->type = KDS_CU;
+	else
+		xcmd->type = KDS_ERT;
+
 	switch (ecmd->opcode) {
 	case ERT_CONFIGURE:
 		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
@@ -337,9 +368,26 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			to_cfg_pkg(ecmd)->num_cus++;
 			i++;
 		}
+
+		/* Before scheduler config options are removed from xrt.ini */
+		if (XDEV(xdev)->kds.ini_disable)
+			break;
+
+		if (to_cfg_pkg(ecmd)->ert && XDEV(xdev)->kds.ert) {
+			XDEV(xdev)->kds.ert_disable = false;
+			xcmd->type = KDS_ERT;
+		} else {
+			XDEV(xdev)->kds.ert_disable = true;
+			xcmd->type = KDS_CU;
+		}
 		break;
 	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		break;
+	case ERT_START_FA:
+		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		/* ERT doesn't support Fast adapter command */
+		xcmd->type = KDS_CU;
 		break;
 	case ERT_START_COPYBO:
 		ret = copybo_ecmd2xcmd(xdev, filp, to_copybo_pkg(ecmd), xcmd);
@@ -353,11 +401,6 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		xcmd->cb.free(xcmd);
 		return -EINVAL;
 	}
-
-	if (XDEV(xdev)->kds.ert_disable)
-		xcmd->type = KDS_CU;
-	else
-		xcmd->type = KDS_ERT;
 
 	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->gem_obj = obj;
@@ -376,9 +419,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			}
 			xcmd->inkern_cb->func = (void (*)(unsigned long, int))
 						args_cb->cb_func;
-			xcmd->inkern_cb->data = (void *)args_cb->cb_data;
-			INIT_WORK(&xcmd->inkern_cb->work,
-						xocl_execbuf_completion);
+			xcmd->inkern_cb->data = args_cb->cb_data;
 		}
 	}
 
@@ -477,6 +518,14 @@ int xocl_init_sched(struct xocl_dev *xdev)
 
 void xocl_fini_sched(struct xocl_dev *xdev)
 {
+	struct drm_xocl_bo *bo = NULL;
+
+	bo = XDEV(xdev)->kds.plram.bo;
+	if (bo) {
+		iounmap(XDEV(xdev)->kds.plram.vaddr);
+		xocl_drm_free_bo(&bo->base);
+	}
+
 	kds_fini_sched(&XDEV(xdev)->kds);
 }
 
@@ -488,6 +537,12 @@ int xocl_kds_stop(struct xocl_dev *xdev)
 
 int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 {
+	xocl_kds_fa_clear(xdev);
+
+	/* We do not need to reset kds core if xclbin_id is null */
+	if (!xclbin_id)
+		return 0;
+
 	kds_reset(&XDEV(xdev)->kds);
 	return 0;
 }
@@ -510,8 +565,123 @@ u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist)
 	return kds_live_clients(&XDEV(xdev)->kds, plist);
 }
 
-void xocl_kds_update(struct xocl_dev *xdev)
+static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index)
 {
+	struct connectivity *conn = NULL;
+	int max_arg_idx = -1;
+	int mem_data_idx = 0;
+	int i;
+
+	XOCL_GET_CONNECTIVITY(xdev, conn);
+
+	if (conn) {
+		/* The "last" argument of fast adapter would connect to plram */
+		for (i = 0; i < conn->m_count; ++i) {
+			struct connection *connect = &conn->m_connection[i];
+			if (connect->m_ip_layout_index != ip_index)
+				continue;
+
+			if (max_arg_idx < connect->arg_index) {
+				max_arg_idx = connect->arg_index;
+				mem_data_idx = connect->mem_data_index;
+			}
+		}
+	}
+
+	XOCL_PUT_CONNECTIVITY(xdev);
+
+	return mem_data_idx;
+}
+
+static int xocl_detect_fa_plram(struct xocl_dev *xdev)
+{
+	struct ip_layout    *ip_layout = NULL;
+	struct mem_topology *mem_topo = NULL;
+	struct drm_xocl_bo *bo = NULL;
+	struct drm_xocl_create_bo args;
+	int i, mem_idx = 0;
+	uint64_t size;
+	uint64_t base_addr;
+	void __iomem *vaddr;
+	ulong bar_paddr = 0;
+	int ret = 0;
+
+	/* Detect Fast adapter and descriptor plram
+	 * Assume only one PLRAM would be used for descriptor
+	 */
+	XOCL_GET_IP_LAYOUT(xdev, ip_layout);
+	XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo);
+
+	if (!ip_layout || !mem_topo)
+		goto done;
+
+	for (i = 0; i < ip_layout->m_count; ++i) {
+		struct ip_data *ip = &ip_layout->m_ip_data[i];
+		u32 prot;
+
+		if (ip->m_type != IP_KERNEL)
+			continue;
+
+		prot = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
+		if (prot != FAST_ADAPTER)
+			continue;
+
+		/* TODO: consider if we could support multiple plram */
+		mem_idx = xocl_kds_get_mem_idx(xdev, i);
+		break;
+	}
+
+	if (i == ip_layout->m_count)
+		goto done;
+
+	base_addr = mem_topo->m_mem_data[mem_idx].m_base_address;
+	size = mem_topo->m_mem_data[mem_idx].m_size * 1024;
+	ret = xocl_p2p_get_bar_paddr(xdev, base_addr, size, &bar_paddr);
+	if (ret) {
+		userpf_err(xdev, "Cannot get p2p BAR address");
+		goto done;
+	}
+
+	/* To avoid user to allocate buffer on this descriptor dedicated mameory
+	 * bank, create a buffer object to reserve the bank.
+	 */
+	args.size = size;
+	args.flags = XCL_BO_FLAGS_P2P | mem_idx;
+	bo = xocl_drm_create_bo(XOCL_DRM(xdev), size, args.flags);
+	if (IS_ERR(bo)) {
+		userpf_err(xdev, "Cannot create bo for fast adapter");
+		ret = -ENOMEM;
+		goto done;
+	}
+
+	vaddr = ioremap_wc(bar_paddr, size);
+	if (!vaddr) {
+		userpf_err(xdev, "Map failed");
+		ret = -ENOMEM;
+		goto done;
+	}
+
+	XDEV(xdev)->kds.plram.bo = bo;
+	XDEV(xdev)->kds.plram.bar_paddr = bar_paddr;
+	XDEV(xdev)->kds.plram.dev_paddr = base_addr;
+	XDEV(xdev)->kds.plram.vaddr = vaddr;
+	XDEV(xdev)->kds.plram.size = size;
+
+done:
+	XOCL_PUT_MEM_TOPOLOGY(xdev);
+	XOCL_PUT_IP_LAYOUT(xdev);
+	return ret;
+}
+
+int xocl_kds_update(struct xocl_dev *xdev)
+{
+	int ret = 0;
+
+	/* Detect if ERT subsystem is able to support CU to host interrupt
+	 * This support is added since ERT ver3.0
+	 *
+	 * So, please make sure this is called after subdev init.
+	 */
 	if (xocl_ert_30_ert_intr_cfg(xdev) == -ENODEV) {
 		userpf_info(xdev, "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
@@ -520,6 +690,13 @@ void xocl_kds_update(struct xocl_dev *xdev)
 		XDEV(xdev)->kds.cu_intr_cap = 1;
 	}
 
+	xocl_kds_fa_clear(xdev);
+
+	ret = xocl_detect_fa_plram(xdev);
+	if (ret)
+		return ret;
+
+	/* By default, use ERT */
 	XDEV(xdev)->kds.cu_intr = 0;
-	kds_cfg_update(&XDEV(xdev)->kds);
+	return kds_cfg_update(&XDEV(xdev)->kds);
 }

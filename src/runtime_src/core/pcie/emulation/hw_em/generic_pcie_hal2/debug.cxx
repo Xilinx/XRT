@@ -250,9 +250,9 @@ void messagesThread(xclhwemhal2::HwEmShim* inst) {
 				inst->mPrintMessagesLock.unlock();
 				return;
 			}
-
-			inst->fetchAndPrintMessages();
-			inst->mPrintMessagesLock.unlock();
+                        inst->parseSimulateLog();
+                        inst->fetchAndPrintMessages();
+                        inst->mPrintMessagesLock.unlock();
 		}
 	}
 }

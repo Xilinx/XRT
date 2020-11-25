@@ -91,6 +91,15 @@ static ssize_t mfg_ver_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(mfg_ver);
 
+static ssize_t recovery_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", xocl_subdev_is_vsec_recovery(lro));
+}
+static DEVICE_ATTR_RO(recovery);
+
 static ssize_t mgmt_pf_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -404,6 +413,31 @@ static ssize_t mgmt_reset_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(mgmt_reset);
 
+static ssize_t sbr_toggle_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	u32 val;
+	struct pci_dev *pdev = lro->pci_dev;
+	struct pci_bus *bus = pdev->bus;
+	u8 pci_bctl;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val != 1)
+		return -EINVAL;
+
+	pci_read_config_byte(bus->self, PCI_BRIDGE_CONTROL, &pci_bctl);
+	pci_bctl |= PCI_BRIDGE_CTL_BUS_RESET;
+	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
+
+	msleep(100);
+	pci_bctl &= ~PCI_BRIDGE_CTL_BUS_RESET;
+	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
+	ssleep(1);
+
+    return count;
+}
+static DEVICE_ATTR_WO(sbr_toggle);
+
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
 	&dev_attr_error.attr,
@@ -419,6 +453,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_ready.attr,
 	&dev_attr_mfg.attr,
 	&dev_attr_mfg_ver.attr,
+	&dev_attr_recovery.attr,
 	&dev_attr_mgmt_pf.attr,
 	&dev_attr_flash_type.attr,
 	&dev_attr_board_name.attr,
@@ -429,6 +464,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_interface_uuids.attr,
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_mgmt_reset.attr,
+	&dev_attr_sbr_toggle.attr,
 	NULL,
 };
 

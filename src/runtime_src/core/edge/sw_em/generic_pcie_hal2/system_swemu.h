@@ -24,6 +24,8 @@ namespace xrt_core { namespace swemu {
 class system : public system_edge
 {
 public:
+  system();
+
   std::pair<device::id_type, device::id_type>
   get_total_devices(bool is_user) const;
 
@@ -37,7 +39,7 @@ public:
   get_mgmtpf_device(device::id_type id) const;
 
   void
-  program_plp(std::shared_ptr<device> dev, const std::vector<char>& buffer) const;
+  program_plp(const device* dev, const std::vector<char>& buffer) const;
 };
 
 /**

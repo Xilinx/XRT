@@ -1,10 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Xilinx Unify CU Model
  *
- * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
+ *
+ * This file is dual-licensed; you may select either the GNU General Public
+ * License version 2 or Apache License, Version 2.0.
  */
 
 #ifndef _XRT_CU_H
@@ -54,6 +57,7 @@ enum xcu_model {
 	XCU_HLS,
 	XCU_ACC,
 	XCU_PLRAM,
+	XCU_FA,
 };
 
 enum xcu_config_type {
@@ -178,7 +182,8 @@ enum CU_PROTOCOL {
 	CTRL_CHAIN = 1,
 	CTRL_NONE = 2,
 	CTRL_ME = 3,
-	CTRL_ACC = 4
+	CTRL_ACC = 4,
+	CTRL_FA = 5
 };
 
 struct xrt_cu_info {
@@ -239,6 +244,9 @@ struct xrt_cu {
 	u32			  ready_cnt;
 	u32			  status;
 	u64			  run_timeout;
+	int			  busy_threshold;
+	u32			  interval_min;
+	u32			  interval_max;
 	struct kds_command	 *old_cmd;
 	struct xrt_cu_event	  ev;
 	/**
@@ -251,6 +259,9 @@ struct xrt_cu {
 	 * one for submit, one for complete
 	 */
 	struct task_struct	  *thread;
+	/* Good for debug */
+	u32			   sleep_cnt;
+	u32			   max_running;
 };
 
 static inline char *prot2str(enum CU_PROTOCOL prot)
@@ -261,6 +272,7 @@ static inline char *prot2str(enum CU_PROTOCOL prot)
 	case CTRL_NONE:		return "CTRL_NONE";
 	case CTRL_ME:		return "CTRL_ME";
 	case CTRL_ACC:		return "CTRL_ACC";
+	case CTRL_FA:		return "CTRL_FA";
 	default:		return "UNKNOWN";
 	}
 }
@@ -319,9 +331,29 @@ static inline int is_zero_credit(struct xrt_cu *xcu)
 	return (xcu->funcs->peek_credit(xcu->core) == 0);
 }
 
+static inline int xrt_cu_peek_credit(struct xrt_cu *xcu)
+{
+	return xcu->funcs->peek_credit(xcu->core);
+}
+
 static inline void xrt_cu_put_credit(struct xrt_cu *xcu, u32 count)
 {
 	xcu->funcs->free_credit(xcu->core, count);
+}
+
+/* This is a bit trick to calculate next highest power of 2.
+ * If size is a power of 2, the return would be the same as size.
+ */
+static __attribute__((unused))
+u32 round_up_to_next_power2(u32 size)
+{
+	u32 v = --size;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	return ++v;
 }
 
 /* 1. Move commands from pending command queue to running queue
@@ -332,6 +364,8 @@ void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
 int xrt_cu_abort(struct xrt_cu *xcu, void *client);
 int xrt_cu_abort_done(struct xrt_cu *xcu);
 int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr);
+int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr, u32 num_slots);
+int xrt_is_fa(struct xrt_cu *xcu, u32 *size);
 void xrt_cu_set_bad_state(struct xrt_cu *xcu);
 
 int  xrt_cu_init(struct xrt_cu *xcu);
@@ -352,6 +386,43 @@ struct xrt_cu_hls {
 int xrt_cu_hls_init(struct xrt_cu *xcu);
 void xrt_cu_hls_fini(struct xrt_cu *xcu);
 
+typedef struct {
+	u32 argOffset;
+	u32 argSize;
+	u32 argValue[];
+} descEntry_t;
+
+typedef struct {
+	u32 status;
+	u32 numInputEntries;
+	u32 inputEntryBytes;
+	u32 numOutputEntries;
+	u32 outputEntryBytes;
+	u32 data[];
+} descriptor_t;
+
+#define to_cu_fa(core) ((struct xrt_cu_fa *)(core))
+struct xrt_cu_fa {
+	void __iomem		*vaddr;
+	void __iomem		*plram;
+	u64			 paddr;
+	u32			 slot_sz;
+	u32			 num_slots;
+	u32			 head_slot;
+	u32			 desc_msw;
+	u32			 task_cnt;
+	int			 max_credits;
+	int			 credits;
+	int			 run_cnts;
+	u64			 check_count;
+};
+
+int xrt_cu_fa_init(struct xrt_cu *xcu);
+void xrt_cu_fa_fini(struct xrt_cu *xcu);
+
+/* PLRAM CU -- deprecated
+ * TODO: Delete this type of CU once fast adapter is full supported
+ */
 struct xrt_cu_plram {
 	void __iomem		*vaddr;
 	void __iomem		*plram;

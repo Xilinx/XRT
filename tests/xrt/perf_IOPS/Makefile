@@ -19,7 +19,7 @@ CPPLFLAGS += -L${XRT_PATH}/lib -lxrt_core -lxrt_coreutil -luuid
 all: xrt_api_iops xcl_api_iops
 
 %.o: %.cpp
-	g++ -std=c++11 -c ${CPPFLAGS} -o $@ $^
+	g++ -std=c++14 -c ${CPPFLAGS} -o $@ $^
 
 xrt_api_iops: xrt_api_iops.o
 	g++ $^ ${CPPLFLAGS} -o $@

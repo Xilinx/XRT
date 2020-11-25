@@ -619,10 +619,13 @@ namespace xocl {
       {
 	if (auto mem = arg->get_memory_object())
 	{
+	  /*
 	  if (arg->is_progvar() && 
 	      arg->get_address_qualifier() == CL_KERNEL_ARG_ADDRESS_GLOBAL)
 	    continue ;
-	  else if (mem->is_resident(device))
+	  else 
+	  */
+	  if (mem->is_resident(device))
 	    continue ;
 	  else if (!(mem->get_flags() & 
 		     (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS)))
@@ -903,13 +906,13 @@ namespace xocl {
     }
 
     // ******** OpenCL Device Trace Callbacks *********
-    void flush_device(xrt::device* handle)
+    void flush_device(xrt_xocl::device* handle)
     {
       if (flush_device_cb)
 	flush_device_cb(handle) ;
     }
 
-    void update_device(xrt::device* handle)
+    void update_device(xrt_xocl::device* handle)
     {
       if (update_device_cb)
 	update_device_cb(handle) ;

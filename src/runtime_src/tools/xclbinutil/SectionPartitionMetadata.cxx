@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2018 - 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -93,7 +93,7 @@ SchemaTransform_subNode( const std::string & _nodeName,
 
   if (iter == _ptOriginal.not_found()) {
     if (_bRequired == true) {
-      std::string errMsg = "Error: Missing partition_meta entry: '" + _nodeName + "'";
+      std::string errMsg = "Error: Missing expected partition_metadata node entry: '" + _nodeName + "'";
       throw std::runtime_error(errMsg);
     }
     return;
@@ -124,7 +124,7 @@ SchemaTransform_nameValue( const std::string & _valueName,
   boost::property_tree::ptree::const_assoc_iterator iter = _ptOriginal.find(_valueName);
   if (iter == _ptOriginal.not_found()) {
     if (_bRequired == true) {
-      std::string errMsg = "Error: Missing partition_meta entry: '" + _valueName + "'";
+      std::string errMsg = "Error: Missing expected partition_metadata entry: '" + _valueName + "'";
       throw std::runtime_error(errMsg);
     }
     return;
@@ -203,13 +203,13 @@ SchemaTransformToDTC_interrupt_endpoint( const std::string _sEndPointName,
                                          boost::property_tree::ptree & _ptTransformed)
 {
   // -- Transform array to 'interrupts' array
-  // Validate the the count id correct
+  // Validate the count id is correct
   if (_ptOriginal.size() % 2 != 0) {
     std::string errMsg =  XUtil::format("Error: The interrupt count (%d) for the interrupt '%s' needs to be a paired (e.g. even) set.", _ptOriginal.size(), _sEndPointName.c_str());
     throw std::runtime_error(errMsg);
   }
 
-  // -- Move the array down to an interrupt araay
+  // -- Move the array down to an interrupt array
   _ptTransformed.put("alias_name", _sEndPointName.c_str());
   _ptTransformed.add_child("interrupts", _ptOriginal);
 }
@@ -225,8 +225,7 @@ SchemaTransformToDTC_interrupt_mapping( const boost::property_tree::ptree& _ptOr
 
     SchemaTransformToDTC_interrupt_endpoint(endpoint.first, endpoint.second, ptEndpoint);
     std::string entry = std::string("@") + std::to_string(indexCount++);
-      _ptTransformed.add_child(entry.c_str(), ptEndpoint);
-//    _ptTransformed.push_back(std::make_pair("", ptEndpoint));
+    _ptTransformed.add_child(entry.c_str(), ptEndpoint);
   }
 }
 
@@ -454,7 +453,7 @@ SchemaTransformToPM_interrupt_endpoint( const boost::property_tree::ptree& _ptOr
   if (_sEndPointName.empty()) 
     throw std::runtime_error("Error: interrupt addressable_endpoints property 'alias_name' is either not defined or empty.");
 
-  // -- Transform 'interrupts" to the addressable_endpont array format
+  // -- Transform 'interrupts" to the addressable_endpoint array format
   if (_ptOriginal.find("interrupts") != _ptOriginal.not_found()) {
     std::vector<std::string> interruptVector = as_vector<std::string>(_ptOriginal, "interrupts");
 

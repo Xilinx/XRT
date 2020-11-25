@@ -28,15 +28,6 @@ endif()
 
 include (CMake/glibc.cmake)
 
-# Trick to get the Boost Version string and one version greater
-SET(Boost_MINOR_VERSION_ONEGREATER "${Boost_MINOR_VERSION}")
-MATH(EXPR Boost_MINOR_VERSION_ONEGREATER "1 + ${Boost_MINOR_VERSION}")
-SET(Boost_VER_STR "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}")
-SET(Boost_VER_STR_ONEGREATER "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION_ONEGREATER}")
-SET(XRT_BOOST_VER_STR "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION}")
-
-message("cpackLin XRT_BOOST_VER_STR=${XRT_BOOST_VER_STR}")
-
 SET(PACKAGE_KIND "TGZ")
 if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   execute_process(

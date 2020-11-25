@@ -71,8 +71,8 @@ echo "Invoking DKMS common.postinst for xrt"
 /usr/lib/dkms/common.postinst xrt @XRT_VERSION_STRING@ "" "" $2
 if [ $? -eq 0 ]; then
     echo "Finished DKMS common.postinst"
-    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/userpf/10-xocl.rules /etc/udev/rules.d
-    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/userpf/99-xocl.rules /etc/udev/rules.d
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/mgmtpf/99-xclmgmt.rules /etc/udev/rules.d
 
     echo "Loading new XRT Linux kernel modules"
     udevadm control --reload-rules

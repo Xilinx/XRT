@@ -966,10 +966,28 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	bin_obj_axlf = (struct axlf *)fw_buf;
 
 	if (xocl_mb_sched_on(xdev)) {
-		/* Try locating the microblaze binary. */
-		if (XDEV(xdev)->priv.sched_bin) {
-			err = request_firmware(&sche_fw,
-				XDEV(xdev)->priv.sched_bin, &pcidev->dev);
+		const char *sched_bin = XDEV(xdev)->priv.sched_bin;
+		char bin[32] = {0}; 
+
+		/* Try locating the microblaze binary. 
+		 * For dynamic platforms like 1RP or 2RP, we load the ert fw
+		 * under /lib/firmware/xilinx regardless there is an ert fw 
+		 * in partition.xsabin or not
+		 */
+		mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf,
+				PARTITION_METADATA);
+		if (mbHeader) {
+			const char *ert_ver = xocl_fdt_get_ert_fw_ver(xdev,
+				fw_buf + mbHeader->m_sectionOffset);
+			if (ert_ver) {
+				snprintf(bin, sizeof(bin), 
+					"xilinx/sched_%s.bin", ert_ver);
+				sched_bin = bin;
+			}
+		}
+
+		if (sched_bin) {
+			err = request_firmware(&sche_fw, sched_bin, &pcidev->dev);
 			if (!err)  {
 				xocl_mb_load_sche_image(xdev, sche_fw->data,
 					sche_fw->size);
@@ -993,12 +1011,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 				load_sched = true;
 				err = 0;
 			}
-
-			mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf,
-					PARTITION_METADATA);
-			if (mbHeader)
-				xocl_fdt_get_ert_fw_ver(xdev,
-					fw_buf + mbHeader->m_sectionOffset);
 		}
 	}
 
@@ -1873,7 +1885,7 @@ static int icap_verify_signature(struct icap *icap,
 {
 	int ret = 0;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0) && defined(CONFIG_SYSTEM_DATA_VERIFICATION)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 /* Starting with Ubuntu 20.04 we need to use VERIFY_USE_PLATFORM_KEYRING in order to use MOK keys*/
 #define	SYS_KEYS	(VERIFY_USE_PLATFORM_KEYRING)
@@ -1954,10 +1966,12 @@ static void icap_calib(struct icap *icap, bool retain)
 	int err = 0, i = 0, ddr_idx = -1;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	struct mem_topology *mem_topo = icap->mem_topo;
+	s64 time_total = 0, delta = 0;
+	ktime_t time_start, time_end;
 
 	BUG_ON(!mem_topo);
 
-	err = xocl_calib_storage_restore(xdev);
+	(void) xocl_calib_storage_restore(xdev);
 
 	for (; i < mem_topo->m_count; ++i) {
 		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
@@ -1968,11 +1982,21 @@ static void icap_calib(struct icap *icap, bool retain)
 		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
 
+		time_start = ktime_get();
 		err = xocl_srsr_calib(xdev, ddr_idx, retain);
+		time_end = ktime_get();
+
 		if (err)
 			ICAP_DBG(icap, "Not able to calibrate mem %d.", i);
-
+		else {
+			/* We only sum up the SRSR calibration time which are valid */
+			delta = ktime_ms_delta(time_end, time_start);
+			time_total += delta;
+		}
 	}
+
+	if (time_total)
+		ICAP_INFO(icap, "SRSR Calibration: %lld ms.", time_total);
 
 }
 
@@ -2747,6 +2771,10 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 				mem_topo->m_mem_data[i].m_size = (hsz >> 10);
 			}
 		}
+		/* Xclbin binary has been adjusted as a workaround of Bios Limitation of some machine 
+		 * We won't be able to retain the device memory because of the limitation
+		 */
+		xocl_p2p_adjust_mem_topo(xdev, mem_topo);
 	}
 done:
 	if (err) {
@@ -3869,6 +3897,8 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	const struct firmware *sche_fw = NULL;
 	ssize_t ret, len;
 	int err;
+	const char *sched_bin = XDEV(xdev)->priv.sched_bin;
+	char bin[32] = {0}; 
 
 	mutex_lock(&icap->icap_lock);
 	if (icap->rp_fdt) {
@@ -4030,10 +4060,24 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		memcpy(icap->rp_mgmt_bin, header, section->m_sectionSize);
 		icap->rp_mgmt_bin_len = section->m_sectionSize;
 	}
+	/* Try locating the microblaze binary. 
+	 * For dynamic platforms like 1RP or 2RP, we load the ert fw
+	 * under /lib/firmware/xilinx regardless there is an ert fw 
+	 * in partition.xsabin or not
+	 */
+	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
+	if (section) {
+		const char *ert_ver = xocl_fdt_get_ert_fw_ver(xdev,
+			(char *)axlf + section->m_sectionOffset);
+		if (ert_ver) {
+			snprintf(bin, sizeof(bin), 
+				"xilinx/sched_%s.bin", ert_ver);
+			sched_bin = bin;
+		}
+	}
 
-	if (XDEV(xdev)->priv.sched_bin) {
-		err = request_firmware(&sche_fw,
-			XDEV(xdev)->priv.sched_bin, &pcidev->dev);
+	if (sched_bin) {
+		err = request_firmware(&sche_fw, sched_bin, &pcidev->dev);
 		if (!err)  {
 			icap->rp_sche_bin = vmalloc(sche_fw->size);
 			if (!icap->rp_sche_bin) {
@@ -4063,11 +4107,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		ICAP_INFO(icap, "sche bin from xsabin , len %ld", icap->rp_sche_bin_len);
 	}
 
-	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
-	if (section) {
-		xocl_fdt_get_ert_fw_ver(xdev,
-			(char *)axlf + section->m_sectionOffset);
-	}
 	vfree(axlf);
 
 	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);

@@ -101,6 +101,7 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 	else
 		vma->vm_page_prot = pgprot_writecombine(
 			vm_get_page_prot(vma->vm_flags));
+
 	return ret;
 }
 
@@ -258,10 +259,24 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 	}
 
-	if (ret > 0)
+	/**
+	 * vmf_*** functions returning VM_FAULT_XXX values.(all positive values)
+	 * vm_*** functions returning 0 on success and errno on failure. (Zero or negative)
+	 */ 
+	if (ret > 0) {
+		/* Comes here only in vmf_*** case. */
 		return ret;
+	}
 
+	/**
+	 *  Comes here only in vm_*** case.
+	 *  When two threads enter this function at the same time, the first thread will
+	 *  successfully insert the page. The second thread will call the insert page, 
+	 *  but gets back -EBUSY (-16) since the page has already been inserted. So should 
+	 *  treat -EBUSY as success
+	 */
 	switch (ret) {
+	case -EBUSY:
 	case -EAGAIN:
 	case 0:
 	case -ERESTARTSYS:
@@ -314,6 +329,7 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 		xocl_destroy_client(drm_p->xdev, &filp->driver_priv);
 	else
 		xocl_exec_destroy_client(drm_p->xdev, &filp->driver_priv);
+	xocl_p2p_mem_reclaim(drm_p->xdev);
 	xocl_drvinst_close(drm_p);
 }
 
@@ -415,8 +431,17 @@ static const struct vm_operations_struct xocl_vm_ops = {
 
 static struct drm_driver mm_drm_driver = {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
+#if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
+        .driver_features                = DRIVER_GEM | DRIVER_RENDER,
+#else
 	.driver_features		= DRIVER_GEM | DRIVER_PRIME |
 						DRIVER_RENDER,
+#endif
+#else
+        .driver_features                = DRIVER_GEM | DRIVER_PRIME |
+                                                DRIVER_RENDER,
+#endif
 #else
 	.driver_features		= DRIVER_GEM | DRIVER_RENDER,
 #endif
@@ -812,21 +837,6 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 	err = 0;
 
-	drm_p->cma_bank_idx = -1;
-	for (i = 0; i < topo->m_count; i++) {
-		mem_data = &topo->m_mem_data[i];
-		ddr_bank_size = mem_data->m_size * 1024;
-
-		xocl_info(drm_p->ddev->dev, "  Memory Bank: %s", mem_data->m_tag);
-		xocl_info(drm_p->ddev->dev, "  Base Address:0x%llx",
-			mem_data->m_base_address);
-		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
-		xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
-		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
-		if (IS_HOST_MEM(mem_data->m_tag))
-			drm_p->cma_bank_idx = i;
-	}
-
 	/* Initialize memory stats based on Group topology */
 	err = XOCL_GET_GROUP_TOPOLOGY(drm_p->xdev, group_topo);
 	if (err) {
@@ -851,7 +861,19 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		goto done;
 	}
 
+	drm_p->cma_bank_idx = -1;
 	for (i = 0; i < group_topo->m_count; i++) {
+		mem_data = &group_topo->m_mem_data[i];
+		ddr_bank_size = mem_data->m_size * 1024;
+		xocl_info(drm_p->ddev->dev, "  Memory Bank: %s", mem_data->m_tag);
+		xocl_info(drm_p->ddev->dev, "  Base Address:0x%llx",
+			mem_data->m_base_address);
+		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
+		xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
+		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
+		if (IS_HOST_MEM(mem_data->m_tag))
+			drm_p->cma_bank_idx = i;
+
 		if (!group_topo->m_mem_data[i].m_used)
 			continue;
 

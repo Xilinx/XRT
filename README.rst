@@ -15,22 +15,22 @@ Xilinx Runtime
 
 
 Xilinx Runtime (XRT) is implemented as as a combination of userspace and kernel
-driver components. XRT supports both PCIe based boards like U200, U250, U280 and MPSoC
-based embedded platforms. XRT provides a standardized software interface to Xilinx
-FPGA. The key user APIs are defined in
+driver components. XRT supports both PCIe based boards like U30, U50, U200, U250,
+U280, VCK190 and MPSoC based embedded platforms. XRT provides a standardized software
+interface to Xilinx FPGA. The key user APIs are defined in
 `xrt.h <src/runtime_src/core/include/xrt.h>`_ header file.
 
 -------------------------------------------------------------------------------
 
-`System Requirements <src/runtime_src/doc/toc/system_requirements.rst>`_
+`System Requirements <https://xilinx.github.io/XRT/master/html/system_requirements.html>`_
 
 -------------------------------------------------------------------------------
 
-`Build Instructions <src/runtime_src/doc/toc/build.rst>`_
+`Build Instructions <https://xilinx.github.io/XRT/master/html/build.html>`_
 
 -------------------------------------------------------------------------------
 
-`Test Instructions <src/runtime_src/doc/toc/test.rst>`_
+`Test Instructions <https://xilinx.github.io/XRT/master/html/test.html>`_
 
 -------------------------------------------------------------------------------
 

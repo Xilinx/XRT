@@ -38,6 +38,7 @@ add_library(xrt_core_static STATIC
   )
 
 target_link_libraries(xrt_core
+  PRIVATE
   xrt_coreutil
   )
 

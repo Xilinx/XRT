@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/context.h"
@@ -561,11 +561,8 @@ mkImageCore (cl_context context,
 
     // allocate device buffer object if context has only one device
     // and if this is not a progvar (clCreateProgramWithBinary)
-    if (!(flags & CL_MEM_PROGVAR)) {
-	if (auto device = singleContextDevice(context)) {
-	    xocl::xocl(image)->get_buffer_object(device);
-	}
-    }
+    if (auto device = singleContextDevice(context))
+      xocl::xocl(image)->get_buffer_object(device);
 
     xocl::assign(errcode_ret,CL_SUCCESS);
     return ubuffer.release();
@@ -664,7 +661,7 @@ clCreateImage(cl_context              context,
       return xocl::clCreateImage
         (context,flags,image_format,image_desc,host_ptr,errcode_ret);
     }
-    catch (const xrt::error& ex) {
+    catch (const xrt_xocl::error& ex) {
 	xocl::send_exception_message(ex.what());
 	xocl::assign(errcode_ret,ex.get_code());
     }

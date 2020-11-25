@@ -129,15 +129,6 @@ public:
   }
 
   /**
-   * Return a list of progvar names in this program
-   *
-   * @return
-   *   List of std::strings corresponding to names of the prog vars
-   */
-  std::vector<std::string>
-  get_progvar_names() const;
-
-  /**
    * Return the xclbin for argument device
    *
    * @param d

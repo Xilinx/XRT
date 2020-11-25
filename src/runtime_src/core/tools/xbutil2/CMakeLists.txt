@@ -1,10 +1,5 @@
 # -----------------------------------------------------------------------------
-
-set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
-set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
-
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
-include_directories(${Boost_INCLUDE_DIRS})
 
 # -----------------------------------------------------------------------------
 
@@ -55,17 +50,15 @@ endif()
 add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
 
 # Determine what functionality should be added
-if(WIN32)
-  target_compile_definitions(${XBUTIL2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
-else()
-  target_compile_definitions(${XBUTIL2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  target_compile_definitions(${XBUTIL2_NAME} PUBLIC ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
 endif()
-
 
 # Add the supporting libraries
 if(WIN32)
   target_link_libraries(
-    ${XBUTIL2_NAME} PRIVATE
+    ${XBUTIL2_NAME}
+    PRIVATE
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
@@ -76,9 +69,9 @@ if(WIN32)
 else()
   target_link_libraries(
     ${XBUTIL2_NAME}
+    PRIVATE
     xrt_core
-    xrt_core_static
-    xrt_coreutil_static
+    xrt_coreutil
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}

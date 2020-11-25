@@ -65,14 +65,20 @@ namespace xdp {
     xrt_core::get_xrt_info(pt) ;
 
     try {
-      pt.get<std::string>("build.zocl") ;
-    } catch (...) {
-      // We didn't find the zocl driver version, so we must not be on edge
-      return false ;
+      for (boost::property_tree::ptree::value_type& info : pt.get_child("drivers")) {
+        try {
+          std::string str = info.second.get<std::string>("name");
+          if(0 == str.compare("zocl")) {
+            return true;
+          }
+        } catch (const boost::property_tree::ptree_error&) {
+          continue;
+        }
+      }
+    } catch (const boost::property_tree::ptree_error&) {
+      return false;
     }
-
-    // We successfully found the zocl driver version, so we must be on edge
-    return true ;
+    return false;
   }
 
   Flow getFlowMode()

@@ -3,21 +3,25 @@
 Security of Alveo Platform
 **************************
 
-.. image:: XSA-shell.svg
-   :align: center
+.. figure:: XSA-shell.svg
+    :figclass: align-center
+
+    Alveo shell mgmt and user components, data and control paths
 
 Security is built into Alveo platform hardware and software architecture. The platform
-is made up of two fixed physical partitions: an immutable Shell and user compiled DFX partition.
+is made up of two physical partitions: an immutable Shell and user compiled User partition.
 This design allows end users to perform Dynamic Function eXchange (Partial Reconfiguration
-in classic FPGA terminology) in the well defined DFX partition while the static Shell
+in classic FPGA terminology) in the well defined User partition while the static Shell
 provides key infrastructure services. Alveo shells assume PCIe host (with access to PF0) is
 part of *Root-of-Trust*. The following features reinforce security of the platform:
 
 1. Two physical function shell design
-2. Trusted vs untrusted peripherals
+2. Clearly classified trusted vs untrusted shell peripherals
 3. Signing of xclbins
 4. AXI Firewall
 5. Well-defined compute kernel execution model
+6. No direct access to PCIe TLP from User partition
+7. Treating User partition as untrused partition
 
 Shell
 =====
@@ -29,8 +33,8 @@ The Shell is *trusted* partition of the Alveo platform and for all practical pur
 should be treated like an ASIC. During system boot, the shell is loaded from the PROM.
 Once loaded, the Shell cannot be changed.
 
-In the figure above, the Shell peripherals shaded blue can only be accessed from physical
-function 0 (PF0) while those shaded violet can be accessed from physical
+In the figure above, the Shell peripherals shaded blue can only be accessed from *management*
+physical function 0 (PF0) while those shaded violet can be accessed from *user* physical
 function 1 (PF1). From PCIe topology point of view PF0 *owns* the device and performs
 supervisory actions on the device. It is part of *Root-of-Trust*. Peripherals shaded blue
 are trusted while those shaded violet are not. Alveo shells use a specialized IP called
@@ -38,8 +42,8 @@ are trusted while those shaded violet are not. Alveo shells use a specialized IP
 for PF1 to PF1 AXI network. It is responsible for the necessary isolation between PF0 and PF1.
 
 Trusted peripherals includes ICAP for bitstream download (DFX), CMC for sensors and thermal
-management, Clock Wizards for clock scaling, QSPI Ctrl for PROM accesss (shell upgrades), DFX
-Isolation and Firewall controls.
+management, Clock Wizards for clock scaling, QSPI Ctrl for PROM access (shell upgrades), DFX
+Isolation, Firewall controls and ERT UART.
 
 All peripherals in the shell except XDMA/QDMA are slaves from PCIe point of view and cannot
 initiate PCIe transactions. Alveo shells have one of XDMA or QDMA PCIe DMA engine. Both
@@ -48,12 +52,79 @@ initiate PCIe transactions. Alveo shells have one of XDMA or QDMA PCIe DMA engin
 are regular PCIe scatter-gather DMA engine with a well defined programming model.
 
 The Shell provides a *control* path and a *data*
-path to the user compiled image loaded on DFX partition. The Firewalls in control and data
-paths protect the Shell from un-trusted DFX partition. For example if a slave in DFX has a
+path to the user compiled image loaded on User partition. The Firewalls in control and data
+paths protect the Shell from un-trusted User partition. For example if a slave in DFX has a
 bug or is malicious the appropriate firewall will step in and protect the Shell from the
-failing slave as soon as a non compiant AXI transaction is placed on AXI bus.
+failing slave as soon as a non compliant AXI transaction is placed on AXI bus.
+
+Newer revisions of shell have a feature called :ref:`sb.rst` which provides direct access to host
+memory from kernels in the User partition. With this feature kernels can initiate PCIe burst
+transfers from PF1 without direct access to PCIe bus. AXI Firewall (SI) in reverse direction protects
+PCIe from non-compliant transfers.
+
+.. note::
+   Features :ref:`sb.rst` and :ref:`p2p.rst` are not available in all shells.
+
+
+For more information on firewall protection see `Firewall`_ section below.
 
 For shell update see `Shell Update`_ section below.
+
+Compatibility enforcement between Shell and User xclbin is described in :ref:`platform_partitions.rst`
+
+PCIe Topology
+-------------
+
+As mentioned before Alveo platforms have two physical function architecture where each function has its
+own BARs. The table below gives overview of the topology and functionality.
+
+== === ======= ===============================================================
+PF BAR Driver  Purpose
+== === ======= ===============================================================
+0  0   xclmgmt Memory mapped access to privileged IPs in the shell as shown
+               in the Figure above.
+0  2   xclmgmt Setup MSI-X vector table
+1  0   xocl    Access to register maps of user compiled compute units in the
+               DFX region
+1  2   xocl    Memory mapped access to XDMA/QDMA PCIe DMA engine programming
+               registers
+1  4   xocl    CPU direct and P2P access to device attached DDR/HBM/PL-RAM
+               memory.
+               By default its size is limited to 256MB but can be expanded
+	       using XRT xbutil tool as described in :ref:`p2p.rst`
+== === ======= ===============================================================
+
+Sample output of Linux ``lspci`` command for U50 device below::
+
+  dx4300:~>lspci -vvv -d 10ee:
+  02:00.0 Processing accelerators: Xilinx Corporation Device 5020
+          Subsystem: Xilinx Corporation Device 000e
+          Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+          Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+          Latency: 0, Cache Line Size: 64 bytes
+          NUMA node: 0
+          Region 0: Memory at 20fd2000000 (64-bit, prefetchable) [size=32M]
+          Region 2: Memory at 20fd4020000 (64-bit, prefetchable) [size=128K]
+          Capabilities: <access denied>
+          Kernel driver in use: xclmgmt
+          Kernel modules: xclmgmt
+
+  02:00.1 Processing accelerators: Xilinx Corporation Device 5021
+          Subsystem: Xilinx Corporation Device 000e
+          Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+          Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+          Latency: 0, Cache Line Size: 64 bytes
+          Interrupt: pin A routed to IRQ 66
+          NUMA node: 0
+          Region 0: Memory at 20fd0000000 (64-bit, prefetchable) [size=32M]
+          Region 2: Memory at 20fd4000000 (64-bit, prefetchable) [size=128K]
+          Region 4: Memory at 20fc0000000 (64-bit, prefetchable) [size=256M]
+          Capabilities: <access denied>
+          Kernel driver in use: xocl
+          Kernel modules: xocl
+
+  dx4300:~>
+
 
 Dynamic Function eXchange
 =========================
@@ -65,10 +136,10 @@ xclmgmt driver. This guarantees that only known good user compiled images are lo
 the Shell. The image load is itself effected by xclmgmt driver which binds to PF0.
 xclmgmt driver downloads the bitstream packaged in the bitstream section of xclbin by
 programming the ICAP peripheral. The management driver also discovers the target frequency
-of the DFX partition by reading the xclbin clock section and then programs the clocks
+of the User partition by reading the xclbin clock section and then programs the clocks
 which are controlled from Shell. DFX is exposed as one atomic ioctl by xclmgmt driver.
 
-xclbin is a container which packs FPGA bitstream for the DFX partition and host of related
+xclbin is a container which packs FPGA bitstream for the User partition and host of related
 metadata like clock frequencies, information about instantiated compute units, etc. The
 compute units typically expose a well defined register space on the PCIe BAR for access by
 XRT. An user compiled image does not have any physical path to directly interact with PCIe
@@ -81,8 +152,8 @@ Xclbin Generation
 
 Users compile their Verilog/VHDL/OpenCL/C/C++ design using Vitis™ compiler, v++ which also takes
 the shell specification as a second input. By construction the Vitis™ compiler, v++ generates image
-compatible with DFX partition of the shell. The compiler uses a technology called *PR Verify*
-to ensure that the user design physically confines itself to DFX partition and does not attempt
+compatible with User partition of the shell. The compiler uses a technology called *PR Verify*
+to ensure that the user design physically confines itself to User partition and does not attempt
 to overwrite portions of the Shell. It also validates that all the IOs between the DFX and
 Shell are going through fixed pins exposed by Shell.
 
@@ -111,7 +182,7 @@ Alveo hardware design uses standard AXI bus. As shown in the figure the control 
 and data path uses AXI4 full. Specialized hardware element called
 `AXI Protocol Firewall <https://www.xilinx.com/support/documentation/ip_documentation/axi_firewall/v1_0/pg293-axi-firewall.pdf>`_
 monitors all transactions
-going across the bus into the un-trusted DFX partition. It is possible that one or more AXI slave in the DFX
+going across the bus into the un-trusted User partition. It is possible that one or more AXI slave in the DFX
 partition is not fully AXI-compliant or deadlocks/stalls/hangs during operation. When an AXI slave in DFX
 partition fails, AXI Firewall *trips* -- it starts completing AXI transactions on behalf of the slave so the
 master and the specific AXI bus is not impacted -- to protect the Shell. The AXI Firewall starts completing
@@ -121,6 +192,20 @@ the peer about FireWall trip. xocl can suggest a reset by sending a reset comman
 that even if no reset is performed the AXI Protocol Firewall will continue to protect the host PCIe bus. DFX
 partition will be unavailable till device is reset. **A reboot of host is not required to reset the device.**
 
+AXI Firewall in Slave Interface (SI) mode also protects the host from errant transactions initiated by kernels over
+Slave Bridge. For example if an AXI master kernel in the Dynamic Region issues a non compliant AXI transaction like
+starting a burst transfer but stalling afterwards, the AXI Firewall (SI) will complete the transaction on behalf of the
+failing kernel. This protects PCIe from un-correctable errors.
+
+PCIe Bus Safety
+===============
+
+As explained in the Firewall section above PCIe bus is protected by AXI Firewalls on both control and data path.
+DFX Isolation only exposes AXI bus (AXI-Lite for control and AXI-Full for data paths) to the Dynamic Region. Kernels
+compiled by user which sit in Dynamic Region do **not have direct access to PCIe bus** and hence cannot generate TLP
+packets. This removes the risk of an errant User partition compromising the PCIe bus and taking over the host system. PCIe Demux
+IP ensures that all PCIe transactions mastered by device over P2P, XDMA/QDMA and SB data paths are only possible over
+PF1. This is critical for `Pass-through Virtualization`_ where host should not see any transactions initiated by PF1.
 
 Deployment Models
 =================
@@ -142,8 +227,8 @@ is loaded on system boot) require root privileges and are effected by xclmgmt dr
 Pass-through Virtualization
 ---------------------------
 
-In Pass-through Virtualization deployment model, management physical function is only visible to the host
-but user physical function is visible to the guest VM. Host considers the guest VM a *hostile* environment.
+In Pass-through Virtualization deployment model, management physical function (PF0) is only visible to the host
+but user physical function (PF1) is visible to the guest VM. Host considers the guest VM a *hostile* environment.
 End users in guest VM may be root and may be running modified implementation of XRT **xocl** driver -- XRT
 **xclmgmt** driver does not trust XRT xocl driver. xclmgmt as described before exposes well defined
 :ref:`mgmt-ioctl.main.rst` to the host. In a good and clean deployment end users in guest VM interact with
@@ -153,11 +238,11 @@ As explained under the Shell section above, by design xocl has limited access to
 This ensures that users in guest VM cannot perform any privileged operation like updating flash image or device
 reset. A user in guest VM can only perform operations listed under USER PF (PF1) section in :ref:`platforms.rst`.
 
-A guest VM user can potentially crash a compute unit in DFX partition, deadlock data path AXI bus or corrupt
+A guest VM user can potentially crash a compute unit in User partition, deadlock data path AXI bus or corrupt
 device memory. If the user has root access he may compromise VM memory. But none of this can bring down the
 host or the PCIe bus. Host memory is protected by system IOMMU. Device reset and recovery is described below.
 
-A user cannot load a malicious xclbin on the DFX partition since xclbin downloads are done by xclmgmt
+A user cannot load a malicious xclbin on the User partition since xclbin downloads are done by xclmgmt
 drive. xclbins are passed on to the host via a plugin based MPD/MSD framework defined in
 :ref:`mailbox.main.rst`. Host can add any extra checks necessary to validate xclbins received from guest VM.
 

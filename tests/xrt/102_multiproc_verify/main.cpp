@@ -140,7 +140,7 @@ run(const xrt::device& device, const xrt::uuid& uuid, size_t n_runs, bool verbos
   std::vector<xrt::run> runs;
 
   for (size_t i=0; i<n_runs; ++i) {
-    auto bo = xrt::bo(device, size, 0, kernel.group_id(0));
+    auto bo = xrt::bo(device, size, kernel.group_id(0));
     auto bo_data = bo.map<char*>();
     std::fill(bo_data, bo_data + size, 0);
     bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, size, 0);

@@ -83,7 +83,7 @@ read_xclbin(const std::string& fnm)
 inline void
 send_exception_message(const char* msg)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+  xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
 }
 
 } // unnamed namespace
@@ -264,21 +264,22 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
   }
 }
 
-void
+int
 xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
 {
   try {
     auto device = get_device(dhdl);
     auto uuid = device->get_xclbin_uuid();
     uuid_copy(out, uuid.get());
+    return 0;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
+    return 1;
   }
 }
 

@@ -1395,13 +1395,14 @@ int qdma_descq_dump_cmpt(struct qdma_descq *descq, int start,
 
 int qdma_descq_dump_state(struct qdma_descq *descq, char *buf, int buflen)
 {
-	char *cur = buf;
-	char *const end = buf + buflen;
+	char *cur, *end;
 
 	if (!buf || !buflen) {
 		pr_warn("incorrect arguments buf=%p buflen=%d", buf, buflen);
 		return 0;
 	}
+ 	cur = buf;
+ 	end = buf + buflen;
 
 	cur += snprintf(cur, end - cur, "%s %s ",
 			descq->conf.name, descq->conf.c2h ? "C2H" : "H2C");
@@ -1428,8 +1429,7 @@ handle_truncation:
 
 int qdma_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail)
 {
-	char *cur = buf;
-	char *const end = buf + buflen;
+	char *cur, *end;
 
 	if (!buf || !buflen) {
 		pr_info("%s:%s 0x%x/0x%x, desc sz %u/%u, pidx %u, cidx %u\n",
@@ -1438,6 +1438,8 @@ int qdma_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail)
 			descq->avail, descq->pidx, descq->cidx);
 		return 0;
 	}
+ 	cur = buf;
+ 	end = buf + buflen;
 
 	cur += qdma_descq_dump_state(descq, cur, end - cur);
 	if (cur >= end)

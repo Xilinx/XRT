@@ -16,6 +16,7 @@
 
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 
+#include <iostream>
 
 namespace xdp {
 
@@ -53,16 +54,48 @@ namespace xdp {
   void AIETraceWriter::writeTraceEvents()
   {
     // write the entire buffer
-    AIETraceDataType traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId);
-    void*    buf = traceData.first;
-    uint64_t bufferSz = traceData.second;
-
-    uint32_t* dataBuffer = static_cast<uint32_t*>(buf);
-    for(uint64_t i = 0; i < bufferSz; i++) {
-      fout << "0x" << std::hex << dataBuffer[i] << std::endl;
+    AIETraceDataType* traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId);
+    if(nullptr == traceData) {
+      fout << std::endl;
+      return;
     }
 
+    size_t num = traceData->buffer.size();
+    for(size_t j = 0; j < num; j++) {
+      void*    buf = traceData->buffer[j];
+      uint64_t bufferSz = traceData->bufferSz[j];
+      if(nullptr == buf) {
+        fout << std::endl;
+        return;
+      }
+
+      uint32_t* dataBuffer = static_cast<uint32_t*>(buf);
+      for(uint64_t i = 0; i < bufferSz; i++) {
+        fout << "0x" << std::hex << dataBuffer[i] << std::endl;
+      }
+    }
     fout << std::endl;
+
+#if 0
+    void*    buf = traceData->buffer;
+    uint64_t bufferSz = traceData->bufferSz;
+std::cout << " AIETraceWriter::writeTraceEvents : buf " << buf << " bufferSz " << bufferSz << std::endl;
+    if(nullptr == buf) {
+      fout << std::endl;
+      return;
+    }
+
+    uint32_t* dataBuffer = static_cast<uint32_t*>(buf);
+std::cout << " AIETraceWriter::writeTraceEvents : dataBuffer " << dataBuffer << std::endl;
+    for(uint64_t i = 0; i < bufferSz; i++) {
+      fout << "0x" << std::hex << dataBuffer[i] << std::endl;
+      if(i < 100) {
+        std::cout << "0x" << std::hex << dataBuffer[i] << std::endl;
+      }
+    }
+    std::cout << std::dec << std::endl;
+    fout << std::endl;
+#endif
   }
 
   void AIETraceWriter::writeDependencies()

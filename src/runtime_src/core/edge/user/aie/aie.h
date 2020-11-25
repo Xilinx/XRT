@@ -19,13 +19,15 @@
 #ifndef xrt_core_edge_user_aie_h
 #define xrt_core_edge_user_aie_h
 
-#include <vector>
-#include <queue>
 #include <memory>
+#include <queue>
+#include <vector>
 
 #include "core/common/device.h"
 #include "core/edge/common/aie_parser.h"
 #include "experimental/xrt_bo.h"
+#include "experimental/xrt_aie.h"
+#include "AIEResources.h"
 extern "C" {
 #include <xaiengine.h>
 }
@@ -48,6 +50,13 @@ extern "C" {
 
 #define CONVERT_LCHANL_TO_PCHANL(l_ch) (l_ch > 1 ? l_ch - 2 : l_ch)
 
+enum xrtProfilingOption {
+  IO_TOTAL_STREAM_RUNNING_TO_IDLE_CYCLE = 0,
+  IO_STREAM_START_TO_BYTES_TRANSFERRED_CYCLES,
+  IO_STREAM_START_DIFFERENCE_CYCLES,
+  IO_STREAM_RUNNING_EVENT_COUNT
+};
+
 namespace zynqaie {
 
 struct BD {
@@ -69,10 +78,15 @@ struct ShimDMA {
     uint8_t maxqSize;
 };
 
+struct EventRecord {
+    int option;
+    std::vector<Resources::AcquiredResource> acquiredResources;
+};
 
 class Aie {
 public:
     using gmio_type = xrt_core::edge::aie::gmio_type;
+    using plio_type = xrt_core::edge::aie::plio_type;
 
     ~Aie();
     Aie(const std::shared_ptr<xrt_core::device>& device);
@@ -81,6 +95,8 @@ public:
 
     /* This is the collections of gmios that are used. */
     std::vector<gmio_type> gmios;
+
+    std::vector<plio_type> plios;
 
     XAie_DevInst *getDevInst();
 
@@ -96,11 +112,28 @@ public:
     void
     reset(const xrt_core::device* device);
 
+    int
+    start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value);
+
+    uint64_t
+    read_profiling(int phdl);
+
+    void
+    stop_profiling(int phdl);
+
+    void
+    prepare_bd(BD& bd, xrtBufferHandle& bo);
+
+    void
+    clear_bd(BD& bd);
+
 private:
     int numCols;
     int fd;
 
     XAie_DevInst* devInst;         // AIE Device Instance
+
+    std::vector<EventRecord> eventRecords;
 
     void
     submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset);
@@ -110,10 +143,39 @@ private:
     wait_sync_bo(ShimDMA *dmap, uint32_t chan, XAie_LocType& tile, XAie_DmaDirection gmdir, uint32_t timeout);
 
     void
-    prepare_bd(BD& bd, xrtBufferHandle& bo);
+    get_profiling_config(const std::string& port_name, XAie_LocType& out_shim_tile, XAie_StrmPortIntf& out_mode, uint8_t& out_stream_id);
 
-    void
-    clear_bd(BD& bd);
+    int
+    start_profiling_run_idle(const std::string& port_name);
+
+    int
+    start_profiling_start_bytes(const std::string& port_name, uint32_t value);
+
+    int
+    start_profiling_diff_cycles(const std::string& port1_name, const std::string& port2_name);
+
+    int
+    start_profiling_event_count(const std::string& port_name);
+};
+
+struct BD_scope {
+  BD bd;
+  Aie* aie;
+
+  BD_scope(const BD& bd_in, Aie* host)
+    : bd(bd_in), aie(host)
+  {}
+
+  ~BD_scope()
+  {
+    aie->clear_bd(bd);
+  }
+
+  BD&
+  get()
+  {
+    return bd;
+  }
 };
 
 }

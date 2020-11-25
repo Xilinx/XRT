@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,8 +20,6 @@
 #include "device.h"
 #include "compute_unit.h"
 #include "core/common/xclbin_parser.h"
-
-#include <boost/detail/endian.hpp>
 
 #include <sstream>
 #include <iostream>
@@ -75,12 +73,7 @@ create(arginfo_type arg, kernel* kernel)
     return std::make_unique<kernel::local_argument>(arg,kernel);
     break;
   case 4:
-    // hack for progvar (064_pipe_num_packets_hw_xilinx_adm-pcie-ku3_2ddr_3_3)
-    // do not understand this code at all, but reuse global_argument all that
-    // matters is that cu_ffa gets proper xclbin arg properties (size,offset,etc)
-    if (arg->atype==xclbin::symbol::arg::argtype::progvar)
-      return std::make_unique<kernel::global_argument>(arg,kernel);
-    //Indexed 4 implies stream. Above kludge contd.. : TODO
+    //Indexed 4 implies stream
     return std::make_unique<kernel::stream_argument>(arg,kernel);
     break;
   default:
@@ -130,8 +123,6 @@ void
 kernel::scalar_argument::
 set(size_t size, const void* cvalue)
 {
-  static_assert(BOOST_BYTE_ORDER==1234,"Big endian detected");
-
   if (size != m_sz)
     throw error(CL_INVALID_ARG_SIZE,"Invalid scalar argument size, expected "
                 + std::to_string(m_sz) + " got " + std::to_string(size));
@@ -304,24 +295,6 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
         throw xocl::error(CL_INVALID_BINARY,"Only one printf argument allowed");
       m_printf_args.emplace_back(argument::create(&arg,this));
       break;
-    case xclbin::symbol::arg::argtype::progvar:
-    {
-      // for address_qualifier==4, see comment under create function above
-      if (arg.address_qualifier!=1 && arg.address_qualifier!=4)
-        throw std::runtime_error
-          ("progvar with address_qualifiler " + std::to_string(arg.address_qualifier)
-           + " not implemented");
-      m_progvar_args.emplace_back(argument::create(&arg,this));
-      if (arg.address_qualifier==1) {
-        auto& pvar = m_progvar_args.back();
-        auto mem = clCreateBuffer(get_context(),CL_MEM_PROGVAR,arg.memsize,nullptr,nullptr);
-        if (arg.linkage=="external")
-          xocl::xocl(mem)->add_flags(CL_MEM_EXT_PTR_XILINX);
-        pvar->set(sizeof(cl_mem),&mem); // retains mem
-        clReleaseMemObject(mem);
-      }
-      break;
-    }
     case xclbin::symbol::arg::argtype::rtinfo:
     {
       assert(arg.id.empty());
@@ -402,8 +375,8 @@ validate_cus(const device* device, unsigned long argidx, int memidx) const
     auto cuconn = cu->get_memidx(argidx);
     if ((cuconn & connections).none()) {
       auto mem = device->get_axlf_section<const mem_topology*>(ASK_GROUP_TOPOLOGY);
-      xrt::message::send
-        (xrt::message::severity_level::XRT_WARNING
+      xrt_xocl::message::send
+        (xrt_xocl::message::severity_level::warning
          , "Argument '" + std::to_string(argidx)
          + "' of kernel '" + get_name()
          + "' is allocated in memory bank '" + xrt_core::xclbin::memidx_to_name(mem,memidx)

@@ -27,6 +27,7 @@
 #include "core/common/scheduler.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
+#include "core/common/query_requests.h"
 #include "core/common/AlignedAllocator.h"
 
 #include "plugin/xdp/hal_profile.h"
@@ -84,6 +85,14 @@
 #define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
 
 namespace {
+
+template <typename ...Args>
+void
+xrt_logmsg(xrtLogMsgLevel level, const char* format, Args&&... args)
+{
+  auto slvl = static_cast<xrt_core::message::severity_level>(level);
+  xrt_core::message::send(slvl, "XRT", format, std::forward<Args>(args)...);
+}
 
 /*
  * numClocks()
@@ -590,20 +599,6 @@ int shim::dev_init()
     return 0;
 }
 
-int shim::xrt_logmsg(xrtLogMsgLevel level, const char* format, ...)
-{
-    static auto verbosity = xrt_core::config::get_verbosity();
-    if (level <= verbosity) {
-        va_list args;
-        va_start(args, format);
-        int ret = xclLogMsg(level, "XRT", format, args);
-        va_end(args);
-        return ret;
-    } else {
-        return 0;
-    }
-}
-
 void shim::dev_fini()
 {
     if (mStreamHandle > 0) {
@@ -631,7 +626,7 @@ init(unsigned int index)
 
     int ret = dev_init();
     if (ret) {
-        xrt_logmsg(XRT_WARNING, "XRT", "dev_init failed: %d", ret);
+        xrt_logmsg(XRT_WARNING, "dev_init failed: %d", ret);
         return;
     }
 
@@ -658,44 +653,6 @@ shim::~shim()
         if (p)
             (void) munmap(p, mCuMapSize);
     }
-}
-
-/*
- * xclLogMsg()
- */
-int shim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
-{
-    static auto verbosity = xrt_core::config::get_verbosity();
-    if (level <= verbosity) {
-        va_list args_bak;
-        // vsnprintf will mutate va_list so back it up
-        va_copy(args_bak, args);
-        int len = std::vsnprintf(nullptr, 0, format, args_bak);
-        va_end(args_bak);
-
-        if (len < 0) {
-          //illegal arguments
-          std::string err_str = "ERROR: Illegal arguments in log format string. ";
-          err_str.append(std::string(format));
-          xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str);
-          return len;
-        }
-        ++len; //To include null terminator
-
-        std::vector<char> buf(len);
-        len = std::vsnprintf(buf.data(), len, format, args);
-
-        if (len < 0) {
-          //error processing arguments
-          std::string err_str = "ERROR: When processing arguments in log format string. ";
-          err_str.append(std::string(format));
-          xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
-          return len;
-        }
-        xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
-    }
-
-    return 0;
 }
 
 /*
@@ -1165,9 +1122,17 @@ int shim::p2pEnable(bool enable, bool force)
     const std::string input = "1\n";
     std::string err;
     std::vector<std::string> p2p_cfg;
+    int ret;
 
     if (mDev == nullptr)
         return -EINVAL;
+
+    ret = check_p2p_config(mDev, err);
+    if (ret == P2P_CONFIG_ENABLED && enable) {
+        throw std::runtime_error("P2P is already enabled");
+    } else if (ret == P2P_CONFIG_DISABLED && !enable) {
+        throw std::runtime_error("P2P is already disabled");
+    }
 
     /* write 0 to config for default bar size */
     if (enable) {
@@ -1195,7 +1160,6 @@ int shim::p2pEnable(bool enable, bool force)
         dev_init();
     }
 
-    int ret;
     ret = check_p2p_config(mDev, err);
     if (!err.empty()) {
         throw std::runtime_error(err);
@@ -1345,8 +1309,14 @@ int shim::xclLoadXclBin(const xclBin *buffer)
     auto ret = xclLoadAxlf(top);
     if (ret != 0) {
       if (ret == -EOPNOTSUPP) {
-        xrt_logmsg(XRT_ERROR, "Xclbin does not match Shell on card.");
-        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update Shell.");
+        xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
+        auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(top);
+        auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
+        if (xclbin_vbnv != shell_vbnv) {
+          xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
+          xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
+        }
+        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
       }
       else if (ret == -EBUSY) {
         xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
@@ -1632,7 +1602,8 @@ shim *shim::handleCheck(void *handle)
     if (!handle) {
         return 0;
     }
-    if (!((shim *) handle)->isGood()) {
+    if (!((shim *) handle)->isGood() ||
+      ((shim *) handle)->mUserHandle == -1) {
         return 0;
     }
     return (shim *) handle;
@@ -2278,14 +2249,20 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
   try {
     if(pcidev::get_dev_total() <= deviceIndex) {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT",
-                       std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+        std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
       return nullptr;
     }
 
   OPEN_CB;
 
     xocl::shim *handle = new xocl::shim(deviceIndex);
+
+    if (handle->handleCheck(handle) == 0) {
+      xrt_core::send_exception_message(strerror(errno) +
+        std::string(" Device index ") + std::to_string(deviceIndex));
+      return nullptr;
+    }
 
     return static_cast<xclDeviceHandle>(handle);
   }
@@ -2316,6 +2293,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
   try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
+    if (!drv) {
+        return -EINVAL;
+    }
 
     xdphal::flush_device(handle) ;
     xdpaie::flush_aie_device(handle) ;
@@ -2334,6 +2314,12 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       xdpaie::update_aie_device(handle);
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN
+      //scheduler::init can not be skipped even for same_xclbin
+      //as in multiple process stress tests it fails as
+      //below init step is without a lock with above driver load xclbin step.
+      //New KDS fixes this by ensuring that scheduler init is done by driver itself
+      //along with icap download in single command call and then below init step in user space
+      //is ignored
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
 #endif
@@ -2350,27 +2336,18 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   }
 }
 
-int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
+int xclLogMsg(xclDeviceHandle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
     static auto verbosity = xrt_core::config::get_verbosity();
-    if (level <= verbosity) {
-        va_list args;
-        va_start(args, format);
-        int ret = -1;
-        if (handle) {
-            xocl::shim *drv = xocl::shim::handleCheck(handle);
-            ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
-        } else {
-            ret = xocl::shim::xclLogMsg(level, tag, format, args);
-        }
-        va_end(args);
+    if (level > verbosity)
+      return 0;
 
-        return ret;
-    }
-
+    va_list args;
+    va_start(args, format);
+    xrt_core::message::sendv(static_cast<xrt_core::message::severity_level>(level), tag, format, args);
+    va_end(args);
     return 0;
 }
-
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
@@ -2533,8 +2510,14 @@ int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 
 int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
+  try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENODEV;
+  }
 }
 
 int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size)
@@ -2715,8 +2698,14 @@ int xclPollQueue(xclDeviceHandle handle, uint64_t q_hdl, int min_compl, int max_
 
 int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
 {
-        xocl::shim *drv = xocl::shim::handleCheck(handle);
-        return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
+  try {
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENODEV;
+  }
 }
 
 size_t xclGetDeviceTimestamp(xclDeviceHandle handle)

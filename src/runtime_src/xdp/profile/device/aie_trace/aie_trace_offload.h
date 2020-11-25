@@ -51,6 +51,8 @@ public:
     virtual bool initReadTrace();
     XDP_EXPORT
     virtual void endReadTrace();
+    XDP_EXPORT
+    virtual bool isTraceBufferFull();
 
 public:
 #if 0

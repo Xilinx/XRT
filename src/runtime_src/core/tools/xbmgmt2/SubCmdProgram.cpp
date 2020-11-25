@@ -102,7 +102,7 @@ update_shell(unsigned int index, const std::string& flashType,
   const std::string& primary, const std::string& secondary)
 {
   if (!flashType.empty()) {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", 
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
         "Overriding flash mode is not recommended.\nYou may damage your card with this option.");
   }
 
@@ -409,7 +409,7 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
 }
 
 static void
-program_plp(std::shared_ptr<xrt_core::device> dev, const std::string& partition)
+program_plp(const xrt_core::device* dev, const std::string& partition)
 {
   std::ifstream stream(partition.c_str(), std::ios_base::binary);
   if (!stream.is_open())
@@ -426,6 +426,49 @@ program_plp(std::shared_ptr<xrt_core::device> dev, const std::string& partition)
 
   xrt_core::program_plp(dev, buffer);
   std::cout << "Programmed PLP successfully" << std::endl;
+}
+
+static std::vector<std::string>
+find_flash_image_paths(const std::vector<std::string> image_list)
+{
+  std::vector<std::string> path_list;
+  auto installedShells = firmwareImage::getIntalledDSAs();
+  
+  //iterates over installed shells
+  //checks the vbnv against the vnbv passed in by the user
+  auto get_shell_file = [installedShells] (std::string shell_name) {
+    std::string path;
+    int multiple_shells = 0;
+    
+    for(auto const& shell : installedShells) {
+      if(shell_name.compare(shell.name) == 0) {
+        multiple_shells++;
+        path = shell.file;
+      }
+    }
+
+    //error-handling
+    if(multiple_shells == 0) 
+      throw xrt_core::error("Specified shell not found on the system");
+    
+    //if multiple shells with the same vbnv are installed on the system, we don't want to 
+    //blindly update the device. in this case, the user needs to specify the complete path
+    if(multiple_shells > 1) 
+      throw xrt_core::error("Specified shell matched mutiple installed shells. Please specify the full path.");
+
+    return path;
+  };
+
+  for(const auto& img : image_list) {
+    // check if the passed in image is absolute path
+    if(boost::filesystem::exists(boost::filesystem::path(img))) {
+      path_list.push_back(img);
+    }
+    else { //search installed shells and find the image path by checking the vbnv
+      path_list.push_back(get_shell_file(img));
+    }
+  }
+  return path_list;
 }
 
 }
@@ -480,7 +523,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                      /*  "  FLASH - Flash image\n"
                                                                          "  SC    - Satellite controller"*/)
     ("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")
-    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image.  Note: This currently only applies to the flash image.")
+    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Control (MSP432) will not be reverted for a golden image does not exist.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
@@ -510,7 +553,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    throw; // Re-throw exception
+    return;
   }
 
   // Check to see if help was requested or no command was found
@@ -542,7 +585,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   for (const auto & deviceName : device) 
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
-  XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+  try {
+    XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    return;
+  }
 
   if(force) {
     //force is a sub-option of update
@@ -555,16 +604,18 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   if(!image.empty()) {
     //image is a sub-option of update
     if(update.empty())
-      throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --update --image='/path/to/flash_image'");
+      throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --update --image='/path/to/flash_image' OR shell_name");
     //allow only 1 device to be manually flashed at a time
     if(deviceCollection.size() != 1)
       throw xrt_core::error("Please specify a single device to be flashed");
     //we support only 2 flash images atm
     if(image.size() > 2)
       throw xrt_core::error("Please specify either 1 or 2 flash images");
+    //find the absolute path to the specified image
+    auto image_paths = find_flash_image_paths(image);
     if(!XBU::can_proceed())
       return;
-    update_shell(deviceCollection.front()->get_device_id(), flashType, image.front(), (image.size() == 2 ? image[1]: ""));
+    update_shell(deviceCollection.front()->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
     return;
   }
 
@@ -642,7 +693,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     for (const auto& uuid : dsa.uuids) {
       //check if plp is compatible with the installed blp
       if (xrt_core::device_query<xrt_core::query::interface_uuids>(dev).front().compare(uuid) == 0) {
-        program_plp(dev, dsa.file);
+        program_plp(dev.get(), dsa.file);
         return;
       }
     }

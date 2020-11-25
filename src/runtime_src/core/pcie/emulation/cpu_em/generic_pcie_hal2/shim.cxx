@@ -21,22 +21,12 @@
 #include "shim.h"
 #include "system_swemu.h"
 #include "xclbin.h"
+#include "core/common/xclbin_parser.h"
 #include <errno.h>
 #include <unistd.h>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/lexical_cast.hpp>
 
-namespace {
-
-static auto
-get_mem_topology(const axlf* top)
-{
-  if (auto sec = xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY))
-    return sec;
-  return xclbin::get_axlf_section(top, MEM_TOPOLOGY);
-}
-
-}
 
 namespace xclcpuemhal2 {
 
@@ -63,16 +53,16 @@ namespace xclcpuemhal2 {
   {
     binaryCounter = 0;
     mReqCounter = 0;
-    sock = NULL;
+    sock = nullptr;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
     mCore = nullptr;
     mSWSch = nullptr;
-
+  
     ci_buf = malloc(ci_msg.ByteSize());
     ri_msg.set_size(0);
     ri_buf = malloc(ri_msg.ByteSize());
-    buf = NULL;
+    buf = nullptr;
     buf_size = 0;
 
     deviceName = "device"+std::to_string(deviceIndex);
@@ -418,8 +408,9 @@ namespace xclcpuemhal2 {
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fpo_v7_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "opencv"   + ":";
-          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
-          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS;
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";         
+          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
+          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS;
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
 
@@ -486,7 +477,7 @@ namespace xclcpuemhal2 {
     std::string xmlFile = "" ;
     int result = dumpXML(header, xmlFile) ;
     if (result != 0) return result ;
-
+   
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
     //  by checking to see if there is a DEBUG_DATA section in
@@ -545,7 +536,7 @@ namespace xclcpuemhal2 {
           sharedlib = xclbininmemory + sec->m_sectionOffset;
           sharedliblength = sec->m_sectionSize;
         }
-        if (auto sec = get_mem_topology(top)) {
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY)) {
           memTopologySize = sec->m_sectionSize;
           memTopology = new char[memTopologySize];
           memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);
@@ -939,8 +930,8 @@ namespace xclcpuemhal2 {
   void CpuemShim::xclOpen(const char* logfileName)
   {
     xclemulation::config::getInstance()->populateEnvironmentSetup(mEnvironmentNameValueMap);
-
     std::string logFilePath = (logfileName && (logfileName[0] != '\0')) ? logfileName : xrt_core::config::get_hal_logging();
+
     if (!logFilePath.empty()) {
       mLogStream.open(logFilePath);
       mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
@@ -989,6 +980,9 @@ namespace xclcpuemhal2 {
       }
     }
 
+    if (mLogStream.is_open()) {
+      mLogStream.close();
+    }
   }
   void CpuemShim::resetProgram(bool callingFromClose)
   {
@@ -1358,32 +1352,39 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
     if (xclCopyBufferHost2Device(dBO->base, (void*) host_only_buffer, size, dst_offset) != size) {
       return -1;
     }
-  }
-
-  // source buffer is device_only and destination buffer is host_only
-  if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+  } // source buffer is device_only and destination buffer is host_only
+  else if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
     unsigned char* host_only_buffer = (unsigned char*)(dBO->buf) + dst_offset;
     if (xclCopyBufferDevice2Host((void*) host_only_buffer, sBO->base, size, src_offset) != size) {
       return -1;
     }
   }
-
-  // source buffer is device_only and destination buffer is p2p_buffer
-  if (xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
-    if (dBO->fd < 0)
-    {
-      std::cout << "bo is not exported for copying" << std::endl;
+  else if (!xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_host_only(dBO) && (dBO->fd < 0) && (sBO->fd < 0)) {
+    unsigned char temp_buffer[size];
+    // copy data from source buffer to temp buffer
+    if (xclCopyBufferDevice2Host((void*)temp_buffer, sBO->base, size, src_offset) != size) {
+      std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
       return -1;
     }
+    // copy data from temp buffer to destination buffer
+    if (xclCopyBufferHost2Device(dBO->base, (void*)temp_buffer, size, dst_offset) != size) {
+      std::cerr << "ERROR: copy buffer from host to device failed " << std::endl;
+      return -1;
+    }
+  }
+  else if (dBO->fd >= 0) {
     int ack = false;
     auto fItr = mFdToFileNameMap.find(dBO->fd);
-    if (fItr != mFdToFileNameMap.end())
-    {
+    if (fItr != mFdToFileNameMap.end()) {
       const std::string& sFileName = std::get<0>((*fItr).second);
       xclCopyBO_RPC_CALL(xclCopyBO, sBO->base, sFileName, size, src_offset, dst_offset);
     }
     if (!ack)
       return -1;
+  }
+  else {
+    std::cerr << "ERROR: Copy buffer from source to destination faliled" << std::endl;
+    return -1;
   }
 
   PRINTENDFUNC;
@@ -1709,7 +1710,6 @@ ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
   mReqCounter++;
   PRINTENDFUNC;
   return fullSize;
-
 }
 /*
  * xclPollCompletion
@@ -1720,6 +1720,7 @@ int CpuemShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion 
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
   }
+
 //  struct timespec time, *ptime = NULL;
 //
 //  if (timeout > 0)
@@ -1883,6 +1884,14 @@ int CpuemShim::xclExecBuf(unsigned int cmdBO)
 int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
 {
   return 0;
+}
+
+//Get CU index from IP_LAYOUT section for corresponding kernel name
+int CpuemShim::xclIPName2Index(const char *name)
+{ 
+  //Get IP_LAYOUT buffer from xclbin
+  auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
+  return xclemulation::getIPName2Index(name, buffer.first);
 }
 
 // New API's for m2m and no-dma

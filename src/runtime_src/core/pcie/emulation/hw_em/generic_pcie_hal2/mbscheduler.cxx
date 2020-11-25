@@ -737,6 +737,7 @@ namespace xclhwemhal2 {
       }
       else if(ert_full)
       {
+        cfg->cu_dma = 0;
         exec->ertfull = true;
         exec->ertpoll = false;
         exec->polling_mode = 1; //cfg->polling;

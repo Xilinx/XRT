@@ -22,6 +22,7 @@
 #include "core/include/experimental/xrt_error.h"
 
 #include "device_int.h"
+#include "error_int.h"
 #include "core/common/error.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -29,6 +30,8 @@
 #include "core/common/query_requests.h"
 
 #include <boost/format.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include <string>
 #include <map>
 #include <cstring>
@@ -53,9 +56,16 @@ error_number_to_string(xrtErrorNum err)
   const std::map<xrtErrorNum, std::string> map {
     {XRT_ERROR_NUM_FIRWWALL_TRIP,     "FIREWALL_TRIP"},
     {XRT_ERROR_NUM_TEMP_HIGH,         "TEMP_HIGH"},
-    {XRT_ERROR_NUM_AXI_MM_SLAVE_TILE, "AXI_MM_SLAVE_TILE"},
-    {XRT_ERROR_NUM_DM_ECC,            "DM_ECC"},
-    {XRT_ERROR_DMA_S2MM_0,            "DMA_S2MM_0"}
+    {XRT_ERROR_NUM_AIE_SATURATION,    "AIE_SATURATION"},
+    {XRT_ERROR_NUM_AIE_FP,            "AIE_FP"},
+    {XRT_ERROR_NUM_AIE_STREAM,        "AIE_STREAM"},
+    {XRT_ERROR_NUM_AIE_ACCESS,        "AIE_ACCESS"},
+    {XRT_ERROR_NUM_AIE_BUS,           "AIE_BUS"},
+    {XRT_ERROR_NUM_AIE_INSTRUCTION,   "AIE_INSTRUCTION"},
+    {XRT_ERROR_NUM_AIE_ECC,           "AIE_ECC"},
+    {XRT_ERROR_NUM_AIE_LOCK,          "AIE_LOCK"},
+    {XRT_ERROR_NUM_AIE_DMA,           "AIE_DMA"},
+    {XRT_ERROR_NUM_AIE_MEM_PARITY,    "AIE_MEM_PARITY"},
   };
 
   return code_to_string(map, err, "Unknown error number");
@@ -135,6 +145,21 @@ error_code_to_string(xrtErrorCode ecode)
   return fmt.str();
 }
 
+static void
+error_code_to_json(xrtErrorCode ecode, boost::property_tree::ptree &pt)
+{
+  pt.put("class.code", XRT_ERROR_CLASS(ecode));
+  pt.put("class.string", error_class_to_string(xrtErrorClass(XRT_ERROR_CLASS(ecode))));
+  pt.put("module.code", XRT_ERROR_MODULE(ecode));
+  pt.put("module.string", error_module_to_string(xrtErrorModule(XRT_ERROR_MODULE(ecode))));
+  pt.put("severity.code", XRT_ERROR_SEVERITY(ecode));
+  pt.put("severity.string", error_severity_to_string(xrtErrorSeverity(XRT_ERROR_SEVERITY(ecode))));
+  pt.put("driver.code", XRT_ERROR_DRIVER(ecode));
+  pt.put("driver.string", error_driver_to_string(xrtErrorDriver(XRT_ERROR_DRIVER(ecode))));
+  pt.put("number.code", XRT_ERROR_NUM(ecode));
+  pt.put("number.string", error_number_to_string(xrtErrorNum(XRT_ERROR_NUM(ecode))));
+}
+
 static std::string
 error_time_to_string(xrtErrorTime time)
 {
@@ -144,6 +169,15 @@ error_time_to_string(xrtErrorTime time)
 
 } // namespace
 
+namespace xrt_core { namespace error_int {
+
+void
+get_error_code_to_json(xrtErrorCode ecode, boost::property_tree::ptree &pt)
+{
+  return error_code_to_json(ecode, pt);
+}
+
+}} // namespace error_int, xrt_core
 
 namespace xrt {
 
@@ -221,6 +255,13 @@ error::
 get_timestamp() const
 {
   return handle->get_timestamp();
+}
+
+xrtErrorCode
+error::
+get_error_code() const
+{
+  return handle->get_error_code();
 }
 
 std::string

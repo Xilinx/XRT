@@ -23,7 +23,7 @@
 extern int kds_mode;
 
 static int
-zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size)
+zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size, u32 flags)
 {
 	struct drm_device *ddev = zdev->ddev;
 	struct device *dev = ddev->dev;
@@ -43,7 +43,7 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size)
 	if (!info)
 		return -ENOMEM;
 
-	info->flags = FPGA_MGR_PARTIAL_RECONFIG;
+	info->flags = flags;
 	info->buf = data;
 	info->count = size;
 
@@ -78,7 +78,7 @@ zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length)
 
 	/* Freeze PR ISOLATION IP for bitstream download */
 	iowrite32(0x0, map);
-	err = zocl_fpga_mgr_load(zdev, buffer, length);
+	err = zocl_fpga_mgr_load(zdev, buffer, length, FPGA_MGR_PARTIAL_RECONFIG);
 	/* Unfreeze PR ISOLATION IP */
 	iowrite32(0x3, map);
 
@@ -120,7 +120,13 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 		data[i+2] = temp;
 	}
 
-	return zocl_load_partial(zdev, data, bit_header.BitstreamLength);
+	/* On pr platofrm load partial bitstream and on Flat platform load full bitstream */
+	if (zdev->pr_isolation_addr)
+		return zocl_load_partial(zdev, data, bit_header.BitstreamLength);
+	else {
+		/* 0 is for full bitstream */
+		return zocl_fpga_mgr_load(zdev, buffer, length, 0);
+	}
 }
 
 static int
@@ -292,15 +298,23 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 		if (ip->m_base_address == -1)
 			continue;
 
-		/* TODO: use HLS CU as default.
-		 * don't know how to distinguish HLS CU and other CU
-		 */
-		info.model = XCU_HLS;
 		info.num_res = 1;
 		info.addr = ip->m_base_address;
 		info.intr_enable = xclbin_intr_enable(ip->properties);
 		info.protocol = xclbin_protocol(ip->properties);
 		info.intr_id = xclbin_intr_id(ip->properties);
+
+		switch (info.protocol) {
+		case CTRL_HS:
+		case CTRL_CHAIN:
+			info.model = XCU_HLS;
+			break;
+		case CTRL_FA:
+			info.model = XCU_FA;
+			break;
+		default:
+			return -EINVAL;
+		}
 
 		info.inst_idx = i;
 		/* ip_data->m_name format "<kernel name>:<instance name>",
@@ -394,8 +408,7 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	/* preserve uuid, avoid double download */
 	zocl_xclbin_set_uuid(zdev, &axlf_head->m_header.uuid);
 
-	/* reset scheduler */
-	sched_reset_scheduler(zdev->ddev);
+	/* no need to reset scheduler, config will always reset scheduler */
 
 out:
 	write_unlock(&zdev->attr_rwlock);
@@ -416,7 +429,7 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	if (size == 0)
 		return 0;
 
-	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size);
+	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size, FPGA_MGR_PARTIAL_RECONFIG);
 	vfree(pdi_buf);
 
 	/* Mark AIE out of reset state after load PDI */
@@ -593,6 +606,17 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
 		if (ret)
 			goto out0;
+	} else if (axlf_obj->za_flags == DRM_ZOCL_PLATFORM_FLAT && 
+		   axlf_head.m_header.m_mode == XCLBIN_FLAT && 
+		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
+		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
+		/* 
+		 * Load full bitstream, enabled in xrt runtime config
+		 * and xclbin has full bitstream and its not hw emulation
+		 */
+		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
+		if (ret)
+			goto out0;
 	}
 
 	/* Populating IP_LAYOUT sections */
@@ -643,6 +667,9 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	if (kds_mode == 1) {
 		subdev_destroy_cu(zdev);
 		ret = zocl_create_cu(zdev);
+		if (ret)
+			goto out0;
+		ret = zocl_kds_update(zdev);
 		if (ret)
 			goto out0;
 	}
@@ -841,13 +868,16 @@ zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 			if (!ret) {
 				/* Maybe it is shared CU */
 				ret = test_and_clear_bit(cu_idx, client->shcus);
-      }
+			}
 			if (!ret) {
 				DRM_ERROR("can not remove unreserved cu");
         			ret = -EINVAL;
 				goto out;
 			}
 		}
+
+		/* revert the meaning of return value. 0 means succesfull */
+		ret = 0;
 
 		--client->num_cus;
 		if (CLIENT_NUM_CU_CTX(client) == 0)

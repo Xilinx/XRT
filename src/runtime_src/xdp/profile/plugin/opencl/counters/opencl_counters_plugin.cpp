@@ -57,7 +57,7 @@ namespace xdp {
     uint64_t convertedTimestamp = realTimestamp ;
 
     auto device = platform->get_device_range()[0] ;
-    uint64_t deviceTimestamp = device->get_xrt_device()->getDeviceTime().get() ;
+    uint64_t deviceTimestamp = device->get_xdevice()->getDeviceTime().get() ;
 
     if (deviceTimestamp != 0)
       convertedTimestamp = deviceTimestamp ;

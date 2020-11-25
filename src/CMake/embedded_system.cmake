@@ -40,9 +40,8 @@ set(LINUX_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
 
 find_package(Boost REQUIRED COMPONENTS system filesystem )
 
-if(Boost_VERSION_STRING VERSION_LESS 1.64.0)
-  add_definitions (-DBOOST_PRE_1_64=1)
-endif()
+# Boost_VERSION_STRING is not working properly, use our own macro
+set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})
 
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
@@ -82,6 +81,20 @@ message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
 add_subdirectory(runtime_src)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
+
+message("-- Preparing XRT pkg-config")
+set(XRT_PKG_CONFIG_DIR "/usr/lib/pkgconfig")
+
+configure_file (
+  ${CMAKE_SOURCE_DIR}/CMake/config/xrt.pc.in
+  xrt.pc
+  @ONLY
+  )
+install (
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/xrt.pc
+  DESTINATION ${XRT_PKG_CONFIG_DIR}
+  COMPONENT ${XRT_DEV_COMPONENT}
+  )
 
 if (DEFINED CROSS_COMPILE)
   set (LINUX_FLAVOR ${flavor})

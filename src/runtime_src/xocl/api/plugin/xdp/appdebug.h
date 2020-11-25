@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -105,7 +105,7 @@ void
 set_event_action(xocl::event* event, F&& f, Args&&... args)
 {
   //Save on effort creating lambda if debug not enabled
-  if (xrt::config::get_app_debug()) {
+  if (xrt_xocl::config::get_app_debug()) {
     event->set_debug_action(f(std::forward<Args>(args)...));
   }
 }

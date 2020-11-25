@@ -14,6 +14,7 @@ usage()
     echo "[-install <path>]          Path to install directory (default: $PWD/boost/xrt)"
     echo "[-srcdir <path>]           Directory for boost sources (default: $PWD/boost/build)"
     echo "[-noclone]                 Don't clone fresh, use exist 'srcdir'"
+    echo "[-nobuild]                 Don't build boost, just exit with message"
     echo ""
     echo "Clone, build, and install boost"
     echo "% boost.sh -prefix $HOME/tmp/boost"
@@ -93,6 +94,7 @@ fi
 if [[ $nobuild == 0 ]] ; then
     echo "Building Boost from '$srcdir' and installing in '$install'"
 fi
+
 read -p "Ok to continue (Y/n): " answer
 answer=${answer:-Y}
 echo $answer

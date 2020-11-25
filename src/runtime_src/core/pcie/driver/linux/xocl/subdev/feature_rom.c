@@ -396,12 +396,12 @@ static int load_firmware_from_flash(struct platform_device *pdev,
 	char **fw_buf, size_t *fw_len)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct flash_data_header header = { 0 };
+	struct flash_data_header header = { {{0}} };
 	const size_t magiclen = sizeof(header.fdh_id_begin.fdi_magic);
 	size_t flash_size = 0;
 	int ret = 0;
 	char *buf = NULL;
-	struct flash_data_ident id = { 0 };
+	struct flash_data_ident id = { {0} };
 
 	xocl_info(&pdev->dev, "try loading fw from flash");
 
@@ -710,7 +710,7 @@ static int get_header_from_iomem(struct feature_rom *rom)
 			memset(rom->header.VBNVName, 0,
 				sizeof(rom->header.VBNVName));
 			strncpy(rom->header.VBNVName,
-				"xilinx_aws-vu9p-f1_dynamic_5_0", 35);
+				"xilinx_aws-vu9p-f1_shell-v04261818_201920_2", 43);
 			rom->header.MajorVersion = 4;
 			rom->header.MinorVersion = 0;
 			rom->header.VivadoBuildID = 0xabcd;

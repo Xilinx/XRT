@@ -20,22 +20,22 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_bo.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_bo.h"
-
 #include "bo.h"
+
 #include "device_int.h"
 #include "kernel_int.h"
-#include "core/common/system.h"
 #include "core/common/device.h"
-#include "core/common/query_requests.h"
 #include "core/common/memalign.h"
-#include "core/common/unistd.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
+#include "core/common/system.h"
+#include "core/common/unistd.h"
 
 #include <map>
 #include <set>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 )
+# pragma warning( disable : 4244 4100)
 #endif
 
 namespace {
@@ -73,7 +73,7 @@ is_aligned_ptr(void* p)
 inline void
 send_exception_message(const char* msg)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+  xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
 }
 
 inline void
@@ -102,11 +102,13 @@ namespace xrt {
 // A buffer is freed when last references is released.
 class bo_impl
 {
+  static constexpr uint64_t no_addr = std::numeric_limits<uint64_t>::max();
 protected:
   std::shared_ptr<xrt_core::device> device;
-  xclBufferHandle handle;  // driver handle
-  size_t size;             // size of buffer
-  bool free_bo;            // should dtor free bo
+  xclBufferHandle handle;           // driver handle
+  size_t size;                      // size of buffer
+  mutable uint64_t addr = no_addr;  // bo device address
+  bool free_bo;                     // should dtor free bo
 
 public:
   explicit bo_impl(size_t sz)
@@ -137,7 +139,7 @@ public:
   }
 
   xclBufferHandle
-  get_handle() const
+  get_xcl_handle() const
   {
     return handle;
   }
@@ -176,6 +178,8 @@ public:
   copy(const bo_impl* src, size_t sz, size_t src_offset, size_t dst_offset)
   {
     // Check size and offset of dst and src
+    if (!sz)
+      throw xrt_core::system_error(EINVAL, "size must be a positive number");
     if (sz + dst_offset > size)
       throw xrt_core::system_error(EINVAL, "copying past destination buffer size");
     if (src->get_size() < sz + src_offset)
@@ -190,7 +194,7 @@ public:
     try {
       auto m2m = xrt_core::device_query<xrt_core::query::m2m>(get_device());
       if (xrt_core::query::m2m::to_bool(m2m)) {
-        device->copy_bo(get_handle(), src->get_handle(), sz, dst_offset, src_offset);
+        device->copy_bo(get_xcl_handle(), src->get_xcl_handle(), sz, dst_offset, src_offset);
         return;
       }
     }
@@ -200,12 +204,12 @@ public:
     // try copying with kdma
     try {
       xrt_core::kernel_int::copy_bo_with_kdma
-        (device, sz, get_handle(), dst_offset, src->get_handle(), src_offset);
+        (device, sz, get_xcl_handle(), dst_offset, src->get_xcl_handle(), src_offset);
       return;
     }
     catch (const std::exception& ex) {
       auto fmt = boost::format("Reverting to host copy of buffers (%s)") % ex.what();
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT",  fmt.str());
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",  fmt.str());
     }
 
     // revert to copying through host
@@ -248,9 +252,12 @@ public:
   virtual uint64_t
   get_address() const
   {
+    if (addr != no_addr)
+      return addr;
+
     xclBOProperties prop;
     device->get_bo_properties(handle, &prop);
-    return prop.paddr;
+    return (addr = prop.paddr);
   }
 
   virtual size_t get_size()      const { return size;    }
@@ -376,16 +383,11 @@ class buffer_nodma : public bo_impl
 
 public:
   buffer_nodma(xclDeviceHandle dhdl, xclBufferHandle hbuf, xclBufferHandle dbuf, size_t sz)
-  try : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
+    : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
   {
 
     device = xrt_core::get_userpf_device(dhdl);
     handle = dbuf;
-  }
-  catch (const std::exception& ex) {
-    auto fmt = boost::format("Failed to allocate NODMA buffer (%s), make sure host bank is enabled") % ex.what();
-    send_exception_message(fmt.str());
-    throw;
   }
 
   virtual void*
@@ -401,10 +403,10 @@ public:
   {
     if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
       // dst, src, size, dst_offset, src_offset
-      device->copy_bo(m_device_only.get_handle(), m_host_only.get_handle(), sz, offset, offset);
+      device->copy_bo(m_device_only.get_xcl_handle(), m_host_only.get_xcl_handle(), sz, offset, offset);
     else
       // dst, src, size, dst_offset, src_offset
-      device->copy_bo(m_host_only.get_handle(), m_device_only.get_handle(), sz, offset, offset);
+      device->copy_bo(m_host_only.get_xcl_handle(), m_device_only.get_xcl_handle(), sz, offset, offset);
   }
 };
 
@@ -528,10 +530,18 @@ alloc_hbuf(xclDeviceHandle dhdl, xrt_core::aligned_ptr_type&& hbuf, size_t sz, x
 static std::shared_ptr<xrt::bo_impl>
 alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 {
-  auto hbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
-  auto dbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
-  auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz);
-  return boh;
+  try {
+    auto hbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
+    auto dbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
+    auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz);
+    return boh;
+  }
+  catch (const std::exception& ex) {
+    auto fmt = boost::format("Failed to allocate host memory buffer (%s), make sure host bank is enabled "
+                             "(see xbutil host_mem --enable ...)") % ex.what();
+    send_exception_message(fmt.str());
+    throw;
+  }
 }
 
 static std::shared_ptr<xrt::bo_impl>
@@ -603,6 +613,26 @@ address(xrtBufferHandle handle)
   return boh->get_address();
 }
 
+void
+fill_copy_pkt(const xrt::bo& dst, const xrt::bo& src, size_t sz,
+              size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt)
+{
+#ifndef _WIN32
+  auto dst_boh = dst.get_handle();
+  auto src_boh = src.get_handle();
+  ert_fill_copybo_cmd(pkt, src_boh->get_xcl_handle(), dst_boh->get_xcl_handle(), src_offset, dst_offset, sz);
+#else
+  throw std::runtime_error("ert_fill_copybo_cmd not implemented on windows");
+#endif
+}
+
+bool
+is_imported(const xrt::bo& bo)
+{
+  auto boh = bo.get_handle();
+  return boh->is_imported();
+}
+
 }} // namespace bo, xrt_core
 
 
@@ -612,13 +642,13 @@ address(xrtBufferHandle handle)
 namespace xrt {
 
 bo::
-bo(xclDeviceHandle dhdl, void* userptr, size_t sz, buffer_flags flags, memory_group grp)
-  : handle(alloc(dhdl, userptr, sz, flags, grp))
+bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp)
+  : handle(alloc(dhdl, userptr, sz, static_cast<xrtBufferFlags>(flags), grp))
 {}
 
 bo::
-bo(xclDeviceHandle dhdl, size_t size, buffer_flags flags, memory_group grp)
-  : handle(alloc(dhdl, size, flags, grp))
+bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp)
+  : handle(alloc(dhdl, size, static_cast<xrtBufferFlags>(flags), grp))
 {}
 
 bo::
@@ -629,6 +659,11 @@ bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
 bo::
 bo(const bo& parent, size_t size, size_t offset)
   : handle(sub_buffer(parent.handle, size, offset))
+{}
+
+bo::
+bo(xrtBufferHandle xhdl)
+  : handle(get_boh(xhdl))
 {}
 
 size_t
@@ -684,7 +719,7 @@ void
 bo::
 copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 {
-  handle->copy(src.handle.get(), sz ? sz : src.size(), src_offset, dst_offset);
+  handle->copy(src.handle.get(), sz, src_offset, dst_offset);
 }
 
 } // xrt

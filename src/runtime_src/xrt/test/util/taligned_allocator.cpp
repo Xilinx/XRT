@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,13 +25,13 @@ BOOST_AUTO_TEST_SUITE ( test_aligned_allocator )
 BOOST_AUTO_TEST_CASE( test_aligned_allocator1 )
 {
   {
-    std::vector<int,xrt::aligned_allocator<int,4096>> vec;
+    std::vector<int,xrt_xocl::aligned_allocator<int,4096>> vec;
     vec.push_back(10);
     auto data = vec.data();
     BOOST_CHECK_EQUAL(reinterpret_cast<uintptr_t>(data) % 4096,0);
   }
   {
-    std::vector<int,xrt::aligned_allocator<int,128>> vec;
+    std::vector<int,xrt_xocl::aligned_allocator<int,128>> vec;
     vec.push_back(10);
     auto data = vec.data();
     BOOST_CHECK_EQUAL(reinterpret_cast<uintptr_t>(data) % 128,0);

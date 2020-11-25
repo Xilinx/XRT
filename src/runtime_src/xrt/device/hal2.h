@@ -20,6 +20,9 @@
 #include "xrt/device/hal.h"
 #include "xrt/device/halops2.h"
 
+#include "experimental/xrt_device.h"
+#include "experimental/xrt_bo.h"
+
 #include "ert.h"
 
 #include <cassert>
@@ -34,13 +37,13 @@
 
 #include <boost/optional/optional.hpp>
 
-namespace xrt { namespace hal2 {
+namespace xrt_xocl { namespace hal2 {
 
-namespace hal  = xrt::hal;
-namespace hal2 = xrt::hal2;
-using BufferObjectHandle = hal::BufferObjectHandle;
-using ExecBufferObjectHandle = hal::ExecBufferObjectHandle;
-using svmbomap_type = std::map<void *, BufferObjectHandle>;
+namespace hal  = xrt_xocl::hal;
+namespace hal2 = xrt_xocl::hal2;
+using buffer_object_handle = hal::buffer_object_handle;
+using execbuffer_object_handle = hal::execbuffer_object_handle;
+using svmbomap_type = std::map<void *, buffer_object_handle>;
 using svmbomap_value_type = svmbomap_type::value_type;
 using svmbomap_iterator_type = svmbomap_type::iterator;
 
@@ -56,7 +59,7 @@ using svmbomap_iterator_type = svmbomap_type::iterator;
  * and aquired through the HAL API.
  */
 
-class device : public xrt::hal::device
+class device : public xrt_xocl::hal::device
 {
   // separate queues for read,write, and misc operations
   // primarily done so that independent operations can be serviced
@@ -69,26 +72,10 @@ class device : public xrt::hal::device
   std::shared_ptr<hal2::operations> m_ops;
   unsigned int m_idx;
 
-  hal2::device_handle m_handle;
+  xrt::device m_handle;
   mutable boost::optional<hal2::device_info> m_devinfo;
 
   mutable std::mutex m_mutex;
-
-  struct BufferObject : hal::buffer_object
-  {
-    xclBufferHandle handle = XRT_NULL_BO;
-    uint64_t deviceAddr = 0xffffffffffffffff;
-    void *hostAddr = nullptr;
-    size_t size = 0;
-    size_t offset = 0;
-    unsigned int flags = 0;
-    hal2::device_handle owner = nullptr;
-    BufferObjectHandle parent = nullptr;
-    bool imported = false;
-
-    bool nodma = false;
-    xclBufferHandle nodma_host_handle = XRT_NULL_BO;
-  };
 
   struct ExecBufferObject : hal::exec_buffer_object
   {
@@ -98,11 +85,8 @@ class device : public xrt::hal::device
     hal2::device_handle owner = nullptr;
   };
 
-  BufferObject*
-  getBufferObject(const BufferObjectHandle& boh) const;
-
   ExecBufferObject*
-  getExecBufferObject(const ExecBufferObjectHandle& boh) const;
+  getExecBufferObject(const execbuffer_object_handle& boh) const;
 
   hal2::device_info*
   get_device_info() const;
@@ -121,18 +105,6 @@ class device : public xrt::hal::device
   {
     return m_queue[static_cast<qtype>(qt)];
   }
-
-  /**
-   * emplace, erase, and find operations for m_svmbomap
-   */
-  virtual void
-  emplaceSVMBufferObjectMap(const BufferObjectHandle& boh, void* ptr);
-
-  virtual void
-  eraseSVMBufferObjectMap(void* ptr);
-
-  virtual BufferObjectHandle
-  svm_bo_lookup(void* ptr);
 
 public:
   /**
@@ -200,8 +172,14 @@ public:
   virtual void
   close();
 
-  virtual hal::device_handle
-  get_handle() const
+  virtual xclDeviceHandle
+  get_xcl_handle() const
+  {
+    return m_handle; // cast to xclDeviceHandle
+  }
+
+  xrt::device
+  get_xrt_device() const
   {
     return m_handle;
   }
@@ -269,50 +247,38 @@ public:
     return get_device_info()->mNumCDMA;
   }
 
-  virtual ExecBufferObjectHandle
+  virtual execbuffer_object_handle
   allocExecBuffer(size_t sz);
 
-  virtual BufferObjectHandle
-  alloc(size_t sz);
-
-  virtual BufferObjectHandle
-  alloc(size_t sz,void* userptr);
-
-  virtual BufferObjectHandle
+  virtual buffer_object_handle
   alloc(size_t sz, Domain domain, uint64_t memoryIndex, void* user_ptr);
 
-  virtual BufferObjectHandle
-  alloc(const BufferObjectHandle& bo, size_t sz, size_t offset);
+  virtual buffer_object_handle
+  alloc(const buffer_object_handle& bo, size_t sz, size_t offset);
 
-  BufferObjectHandle
+  buffer_object_handle
   alloc_nodma(size_t sz, Domain domain, uint64_t memory_index, void* userptr);
 
   virtual void*
   alloc_svm(size_t sz);
 
-  virtual BufferObjectHandle
-  import(const BufferObjectHandle& bo);
-
-  virtual void
-  free(const BufferObjectHandle& bo);
-
   virtual void
   free_svm(void* svm_ptr);
 
   virtual event
-  write(const BufferObjectHandle& bo, const void* buffer, size_t sz, size_t offset,bool async);
+  write(const buffer_object_handle& bo, const void* buffer, size_t sz, size_t offset,bool async);
 
   virtual event
-  read(const BufferObjectHandle& bo, void* buffer, size_t sz, size_t offset,bool async);
+  read(const buffer_object_handle& bo, void* buffer, size_t sz, size_t offset,bool async);
 
   virtual event
-  sync(const BufferObjectHandle& bo, size_t sz, size_t offset, direction dir, bool async);
+  sync(const buffer_object_handle& bo, size_t sz, size_t offset, direction dir, bool async);
 
   virtual event
-  copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz, size_t dst_offset, size_t src_offset);
+  copy(const buffer_object_handle& dst_bo, const buffer_object_handle& src_bo, size_t sz, size_t dst_offset, size_t src_offset);
 
   virtual void
-  fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
+  fill_copy_pkt(const buffer_object_handle& dst_boh, const buffer_object_handle& src_boh
                 ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt);
 
   virtual size_t
@@ -322,19 +288,19 @@ public:
   write_register(size_t offset, const void* buffer, size_t size);
 
   virtual void*
-  map(const BufferObjectHandle& bo);
+  map(const buffer_object_handle& bo);
 
   virtual void
-  unmap(const BufferObjectHandle& bo);
+  unmap(const buffer_object_handle& bo);
 
   virtual void*
-  map(const ExecBufferObjectHandle& bo);
+  map(const execbuffer_object_handle& bo);
 
   virtual void
-  unmap(const ExecBufferObjectHandle& bo);
+  unmap(const execbuffer_object_handle& bo);
 
   virtual int
-  exec_buf(const ExecBufferObjectHandle& bo);
+  exec_buf(const execbuffer_object_handle& bo);
 
   virtual int
   exec_wait(int timeout_ms) const;
@@ -373,34 +339,18 @@ public:
 
 public:
   virtual bool
-  is_imported(const BufferObjectHandle& boh) const;
+  is_imported(const buffer_object_handle& boh) const;
 
   virtual uint64_t
-  getDeviceAddr(const BufferObjectHandle& boh);
+  getDeviceAddr(const buffer_object_handle& boh);
 
   virtual int
-  getMemObjectFd(const BufferObjectHandle& boh);
+  getMemObjectFd(const buffer_object_handle& boh);
 
-  virtual BufferObjectHandle
+  virtual buffer_object_handle
   getBufferFromFd(const int fd, size_t& size, unsigned flags);
 
 public:
-  virtual hal::operations_result<int>
-  lockDevice()
-  {
-    if (!m_ops->mLockDevice)
-      return hal::operations_result<int>();
-    return m_ops->mLockDevice(m_handle);
-  }
-
-  virtual hal::operations_result<int>
-  unlockDevice()
-  {
-    if (!m_ops->mUnlockDevice)
-      return hal::operations_result<int>();
-    return m_ops->mUnlockDevice(m_handle);
-  }
-
   virtual hal::operations_result<int>
   loadXclBin(const xclBin* xclbin);
 

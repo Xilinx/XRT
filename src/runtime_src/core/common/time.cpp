@@ -18,9 +18,8 @@
 #include "time.h"
 
 #include <chrono>
-#include <string>
-#include <ctime>
 #include <cstring>
+#include <ctime>
 
 #ifdef _WIN32
 # pragma warning ( disable : 4996 )
@@ -63,6 +62,17 @@ timestamp()
   char buf[64] = {0};
   return std::strftime(buf, sizeof(buf), "%c GMT", tm)
     ? buf : "Time conversion failed";
+}
+
+/**
+ * @return formatted timestamp for epoch
+ */
+std::string
+timestamp(uint64_t epoch)
+{
+  time_t rawtime = epoch;
+  std::string tmp(ctime(&rawtime));
+  return tmp.substr( 0, tmp.length() -1).append(" GMT");
 }
 
 } // xrt_core

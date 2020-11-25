@@ -69,6 +69,59 @@ cu_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR_RO(cu_info);
 
 static ssize_t
+poll_interval_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+
+	return sprintf(buf, "%d\n", cu->base.interval_min);
+}
+
+static ssize_t
+poll_interval_store(struct device *dev, struct device_attribute *attr,
+	    const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+	u32 interval;
+
+	if (kstrtou32(buf, 10, &interval) == -EINVAL)
+		return -EINVAL;
+
+	cu->base.interval_min = interval;
+	cu->base.interval_max = interval + 3;
+
+	return count;
+}
+static DEVICE_ATTR_RW(poll_interval);
+
+static ssize_t
+busy_threshold_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+
+	return sprintf(buf, "%d\n", cu->base.busy_threshold);
+}
+
+static ssize_t
+busy_threshold_store(struct device *dev, struct device_attribute *attr,
+		     const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+	int threshold;
+
+	if (kstrtos32(buf, 10, &threshold) == -EINVAL)
+		return -EINVAL;
+
+	cu->base.busy_threshold = threshold;
+
+	return count;
+}
+static DEVICE_ATTR_RW(busy_threshold);
+
+static ssize_t
 name_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -83,6 +136,8 @@ static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
 	&dev_attr_cu_info.attr,
+	&dev_attr_poll_interval.attr,
+	&dev_attr_busy_threshold.attr,
 	&dev_attr_name.attr,
 	NULL,
 };
@@ -95,8 +150,8 @@ irqreturn_t cu_isr(int irq, void *arg)
 {
 	struct xocl_cu *xcu = arg;
 
-	xrt_cu_check(&xcu->base);
 	xrt_cu_clear_intr(&xcu->base);
+	xrt_cu_check(&xcu->base);
 
 	up(&xcu->base.sem_cu);
 
@@ -130,6 +185,9 @@ static int cu_probe(struct platform_device *pdev)
 	case CTRL_HS:
 	case CTRL_CHAIN:
 		xcu->base.info.model = XCU_HLS;
+		break;
+	case CTRL_FA:
+		xcu->base.info.model = XCU_FA;
 		break;
 	default:
 		return -EINVAL;
@@ -207,6 +265,9 @@ static int cu_probe(struct platform_device *pdev)
 	case XCU_PLRAM:
 		err = xrt_cu_plram_init(&xcu->base);
 		break;
+	case XCU_FA:
+		err = xrt_cu_fa_init(&xcu->base);
+		break;
 	default:
 		err = -EINVAL;
 	}
@@ -276,6 +337,9 @@ static int cu_remove(struct platform_device *pdev)
 		break;
 	case XCU_PLRAM:
 		xrt_cu_plram_fini(&xcu->base);
+		break;
+	case XCU_FA:
+		xrt_cu_fa_fini(&xcu->base);
 		break;
 	}
 

@@ -41,7 +41,7 @@
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
-#ifndef BOOST_PRE_1_64
+#ifndef NO_BOOST_PROCESS
 #include <boost/process.hpp>
 #endif
 
@@ -53,7 +53,7 @@
 static const int max_test_duration = 60;
 
 // ------ F U N C T I O N S ---------------------------------------------------
-#ifdef BOOST_PRE_1_64
+#ifdef NO_BOOST_PROCESS
 
 /**
  * helper functions for running testcase in linux pipe
@@ -215,9 +215,15 @@ XBUtilities::runPythonScript( const std::string & script,
   // Not really needed, but should be added for completeness 
   runningProcess.wait();
 
+  // boost::process::ipstream::rdbuf() gives conversion error in
+  // 1.65.1 Base class is constructed with underlying buffer so just
+  // use std::istream::rdbuf() instead.
+  std::istream& istr_stdout = ip_stdout;
+  std::istream& istr_stderr = ip_stderr;
+
   // Update the return buffers
-  os_stdout << ip_stdout.rdbuf();
-  os_stderr << ip_stderr.rdbuf();
+  os_stdout << istr_stdout.rdbuf();
+  os_stderr << istr_stderr.rdbuf();
 
   // Obtain the exit code from the running process
   int exitCode = runningProcess.exit_code();

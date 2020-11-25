@@ -1,10 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
+ *
+ * This file is dual-licensed; you may select either the GNU General Public
+ * License version 2 or Apache License, Version 2.0.
  */
 
 #ifndef _KDS_CORE_H
@@ -110,6 +113,15 @@ struct kds_ert {
 	void (* submit)(struct kds_ert *ert, struct kds_command *xcmd);
 };
 
+struct plram_info {
+	/* This is use for free bo, do not use it in shared code */
+	void		       *bo;
+	u64			bar_paddr;
+	u64			dev_paddr;
+	void __iomem		*vaddr;
+	u32			size;
+};
+
 /**
  * struct kds_sched: KDS scheduler manage CUs and client list.
  *		     There should be only one KDS per device.
@@ -130,9 +142,11 @@ struct kds_sched {
 	bool			bad_state;
 	struct kds_cu_mgmt	cu_mgmt;
 	struct kds_ert	       *ert;
+	bool			ini_disable;
 	bool			ert_disable;
 	u32			cu_intr_cap;
 	u32			cu_intr;
+	struct plram_info	plram;
 };
 
 int kds_init_sched(struct kds_sched *kds);

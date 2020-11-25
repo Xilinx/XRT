@@ -22,7 +22,18 @@
 #include <drm/drm_backport.h>
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
+#if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
+#include <drm/drm_device.h>
+#include <drm/drm_file.h>
+#include <drm/drm_ioctl.h>
+#include <drm/drm_drv.h>
+#else
 #include <drm/drmP.h>
+#endif
+#else
+#include <drm/drmP.h>
+#endif
 #else
 #include <drm/drm_device.h>
 #include <drm/drm_file.h>
@@ -50,6 +61,11 @@
 #include "lib/libfdt/libfdt.h"
 #include <linux/firmware.h>
 #include "kds_core.h"
+#if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
+#include <linux/sched/signal.h>
+#endif
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 #define ioremap_nocache		ioremap
@@ -407,10 +423,17 @@ enum {
 	XOCL_WORK_RESET,
 	XOCL_WORK_PROGRAM_SHELL,
 	XOCL_WORK_REFRESH_SUBDEV,
-	XOCL_WORK_SHUTDOWN,
+	XOCL_WORK_SHUTDOWN_WITH_RESET,
+	XOCL_WORK_SHUTDOWN_WITHOUT_RESET,
 	XOCL_WORK_FORCE_RESET,
 	XOCL_WORK_ONLINE,
 	XOCL_WORK_NUM,
+};
+
+enum {
+	XOCL_ONLINE = 0,
+	XOCL_SHUTDOWN_WITH_RESET = 1,
+	XOCL_SHUTDOWN_WITHOUT_RESET = 2,
 };
 
 struct xocl_work {
@@ -1052,6 +1075,7 @@ enum data_kind {
 	DATA_RETAIN,
 	MAC_CONT_NUM,
 	MAC_ADDR_FIRST,
+	XMC_POWER_WARN,
 };
 
 enum mb_kind {
@@ -1313,6 +1337,8 @@ enum {
 	(xocl_icap_get_xclbin_metadata(xdev, GROUPTOPO_AXLF, (void **)&group_topo))
 #define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
 	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
+#define XOCL_GET_CONNECTIVITY(xdev, conn)						\
+	(xocl_icap_get_xclbin_metadata(xdev, CONNECTIVITY_AXLF, (void **)&conn))
 #define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
 	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
 
@@ -1322,6 +1348,8 @@ enum {
 #define XOCL_PUT_GROUP_TOPOLOGY(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_IP_LAYOUT(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_CONNECTIVITY(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_XCLBIN_ID(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
@@ -1350,10 +1378,11 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
 	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
 #define XOCL_IS_P2P_MEM(topo, idx)					\
-	(topo->m_mem_data[idx].m_type == MEM_DDR3 ||			\
+	((topo->m_mem_data[idx].m_type == MEM_DDR3 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DRAM ||			\
-	 topo->m_mem_data[idx].m_type == MEM_HBM)
+	 topo->m_mem_data[idx].m_type == MEM_HBM) &&			\
+	!IS_HOST_MEM(topo->m_mem_data[i].m_tag))
 
 struct xocl_mig_label {
 	unsigned char		tag[16];
@@ -1810,6 +1839,12 @@ struct xocl_p2p_funcs {
 			struct resource *res, int level);
 	int (*release_resource)(struct platform_device *pdev,
 			struct resource *res);
+	int (*conf_status)(struct platform_device *pdev, bool *changed);
+	int (*refresh_rbar)(struct platform_device *pdev);
+	int (*get_bar_paddr)(struct platform_device *pdev, ulong bank_addr,
+			     ulong bank_size, ulong *bar_paddr);
+	int (*adjust_mem_topo)(struct platform_device *pdev, void *mem_topo);
+	int (*mem_reclaim)(struct platform_device *pdev);
 };
 #define	P2P_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_P2P).pldev
 #define	P2P_OPS(xdev)				\
@@ -1839,6 +1874,21 @@ struct xocl_p2p_funcs {
 #define xocl_p2p_release_resource(xdev, res)				\
 	(P2P_CB(xdev) ?							\
 	 P2P_OPS(xdev)->release_resource(P2P_DEV(xdev), res) : -ENODEV)
+#define xocl_p2p_conf_status(xdev, changed)				\
+	(P2P_CB(xdev) ?					\
+	 P2P_OPS(xdev)->conf_status(P2P_DEV(xdev), changed) : -ENODEV)
+#define xocl_p2p_refresh_rbar(xdev)				\
+	(P2P_CB(xdev) ?					\
+	 P2P_OPS(xdev)->refresh_rbar(P2P_DEV(xdev)) : -ENODEV)
+#define xocl_p2p_get_bar_paddr(xdev, ba, bs, pa)				\
+	(P2P_CB(xdev) ?					\
+	 P2P_OPS(xdev)->get_bar_paddr(P2P_DEV(xdev), ba, bs, pa) : -ENODEV)
+#define xocl_p2p_adjust_mem_topo(xdev, mem_topo)			\
+	(P2P_CB(xdev) ?					\
+	 P2P_OPS(xdev)->adjust_mem_topo(P2P_DEV(xdev), mem_topo) : -ENODEV)
+#define xocl_p2p_mem_reclaim(xdev)					\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->mem_reclaim(P2P_DEV(xdev)) : -ENODEV)
 
 /* Each P2P chunk we set up must be at least 256MB */
 #define XOCL_P2P_CHUNK_SHIFT		28
@@ -1862,6 +1912,18 @@ struct xocl_m2m_funcs {
 #define xocl_m2m_host_bank(xdev, addr, size)				\
 	(M2M_CB(xdev) ? M2M_OPS(xdev)->get_host_bank(M2M_DEV(xdev),	\
 	addr, size) : -ENODEV)
+
+struct xocl_pcie_firewall_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*unblock)(struct platform_device *pdev, int pf, int bar);
+};
+
+#define PCIE_FIREWALL_DEV(xdev) SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL).pldev
+#define PCIE_FIREWALL_OPS(xdev)					\
+	((struct xocl_pcie_firewall_funcs*)SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL).ops)
+#define PCIE_FIREWALL_CB(xdev) (PCIE_FIREWALL_DEV(xdev) && PCIE_FIREWALL_OPS(xdev))
+#define xocl_pcie_firewall_unblock(xdev, pf, bar)			\
+	(PCIE_FIREWALL_CB(xdev) ? PCIE_FIREWALL_OPS(xdev)->unblock(PCIE_FIREWALL_DEV(xdev), pf, bar) : -ENODEV)
 
 /* subdev functions */
 int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
@@ -1897,6 +1959,7 @@ int xocl_subdev_vsec(xdev_handle_t xdev, u32 type, int *bar_idx, u64 *offset,
 u32 xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset);
 int xocl_subdev_create_vsec_devs(xdev_handle_t xdev);
 bool xocl_subdev_is_vsec(xdev_handle_t xdev);
+bool xocl_subdev_is_vsec_recovery(xdev_handle_t xdev);
 int xocl_subdev_get_level(struct platform_device *pdev);
 
 void xocl_subdev_register(struct platform_device *pldev, void *ops);
@@ -1906,6 +1969,7 @@ int xocl_subdev_get_resource(xdev_handle_t xdev_hdl,
 		char *res_name, u32 type, struct resource *res);
 
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
+void xocl_clear_pci_errors(xdev_handle_t xdev_hdl);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
@@ -2023,7 +2087,8 @@ int xocl_fdt_setprop(xdev_handle_t xdev_hdl, void *blob, int off,
 		     const char *name, const void *val, int size);
 const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 			     char *name, int *lenp);
-void xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
+int xocl_fdt_unblock_ip(xdev_handle_t xdev_hdl, void *blob);
+const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
 
 /* init functions */
 int __init xocl_init_userpf(void);
@@ -2082,6 +2147,9 @@ void xocl_fini_ert(void);
 
 int __init xocl_init_xmc(void);
 void xocl_fini_xmc(void);
+
+int __init xocl_init_xmc_u2(void);
+void xocl_fini_xmc_u2(void);
 
 int __init xocl_init_dna(void);
 void xocl_fini_dna(void);
@@ -2181,5 +2249,8 @@ void xocl_fini_ert_user(void);
 
 int __init xocl_init_ert_30(void);
 void xocl_fini_ert_30(void);
+
+int __init xocl_init_pcie_firewall(void);
+void xocl_fini_pcie_firewall(void);
 
 #endif

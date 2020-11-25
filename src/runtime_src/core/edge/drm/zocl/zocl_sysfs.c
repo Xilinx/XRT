@@ -15,6 +15,40 @@
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "xclbin.h"
+#include "zocl_sk.h"
+#include "kds_core.h"
+
+extern int kds_mode;
+extern int kds_echo;
+
+/* -KDS sysfs-- */
+static ssize_t
+kds_echo_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", kds_echo);
+}
+
+static ssize_t
+kds_echo_store(struct device *dev, struct device_attribute *da,
+	       const char *buf, size_t count)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+
+	/* TODO: this should be as simple as */
+	/* return stroe_kds_echo(&zdev->kds, buf, count); */
+	return store_kds_echo(&zdev->kds, buf, count,
+			      kds_mode, 0, &kds_echo);
+}
+static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
+
+static ssize_t
+kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+
+	return show_kds_stat(&zdev->kds, buf);
+}
+static DEVICE_ATTR_RO(kds_stat);
 
 static ssize_t xclbinid_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -54,7 +88,7 @@ static ssize_t kds_custat_show(struct device *dev,
 	ssize_t size = 0;
 	phys_addr_t paddr;
 	u32 usage;
-	u32 status;
+	int status;
 	int i;
 
 	if (!zdev)
@@ -89,6 +123,97 @@ static ssize_t kds_custat_show(struct device *dev,
 	return size;
 }
 static DEVICE_ATTR_RO(kds_custat);
+
+static ssize_t kds_stats_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	struct sched_exec_core *exec = zdev->exec;
+	int pending, running;
+	struct list_head *pos, *next;
+	struct sched_cmd *cmd;
+	struct ert_packet *pkg;
+	ssize_t sz;
+	int i;
+
+	if (!zdev || !zdev->exec)
+		return 0;
+
+	pending = atomic_read(&exec->scheduler->num_pending);
+	running = atomic_read(&exec->scheduler->num_running);
+	sz  = sprintf(buf,    "num_pending %d\n", atomic_read(&exec->scheduler->num_pending));
+	sz += sprintf(buf+sz, "num_running %d\n", atomic_read(&exec->scheduler->num_running));
+	sz += sprintf(buf+sz, "num_received %d\n", atomic_read(&exec->scheduler->num_received));
+	sz += sprintf(buf+sz, "num_notified %d\n", atomic_read(&exec->scheduler->num_notified));
+
+	if (running == 0)
+		return sz;
+
+	sz += sprintf(buf+sz, "running commands:\n");
+	list_for_each_safe(pos, next, &exec->scheduler->cq) {
+		cmd = list_entry(pos, struct sched_cmd, list);
+		pkg = cmd->packet;
+		sz += sprintf(buf+sz, " opcode %d\n", pkg->opcode);
+		sz += sprintf(buf+sz, " count %d\n", pkg->count);
+		sz += sprintf(buf+sz, " cu idx %d\n", pkg->data[0]);
+		for (i = 1; i < pkg->count; i++) {
+			sz += sprintf(buf+sz, " data: 0x%x\n", pkg->data[i]);
+		}
+	}
+
+	return sz;
+}
+static DEVICE_ATTR_RO(kds_stats);
+
+static ssize_t kds_skstat_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	struct soft_krnl *sk;
+	struct soft_cu *scu;
+	ssize_t sz = 0;
+	int i;
+
+	if (!zdev || !zdev->soft_kernel)
+		return 0;
+
+	sk = zdev->soft_kernel;
+	mutex_lock(&sk->sk_lock);
+	for (i = 0; i < sk->sk_ncus; i++) {
+		scu = sk->sk_cu[i];
+		if (scu) {
+			sz += sprintf(buf+sz, "SK %d\n", i);
+			sz += sprintf(buf+sz, " flags %d\n", scu->sc_flags);
+			sz += sprintf(buf+sz, " usage %lld\n", scu->usage);
+			sz += sprintf(buf+sz, " vregs[0] 0x%x\n", ((u32*)scu->sc_vregs)[0]);
+		} else {
+			sz += sprintf(buf+sz, "SK %d is released\n", i);
+		}
+	}
+	mutex_unlock(&sk->sk_lock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(kds_skstat);
+
+
+static ssize_t kds_xrt_version_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	ssize_t sz = 0;
+
+	if (!zdev || !zdev->soft_kernel)
+		return 0;
+
+	sz += sprintf(buf+sz, "XRT GIT BRANCH: %s\n", XRT_BRANCH);
+	sz += sprintf(buf+sz, "XRT GIT HASH: %s\n", XRT_HASH);
+	sz += sprintf(buf+sz, "XRT GIT HASH DATE: %s\n", XRT_HASH_DATE);
+	sz += sprintf(buf+sz, "XRT GIT Modified Files: %s\n", XRT_MODIFIED_FILES);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(kds_xrt_version);
 
 static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 {
@@ -285,6 +410,11 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_xclbinid.attr,
 	&dev_attr_kds_numcus.attr,
 	&dev_attr_kds_custat.attr,
+	&dev_attr_kds_stats.attr,
+	&dev_attr_kds_skstat.attr,
+	&dev_attr_kds_xrt_version.attr,
+	&dev_attr_kds_echo.attr,
+	&dev_attr_kds_stat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_errors.attr,

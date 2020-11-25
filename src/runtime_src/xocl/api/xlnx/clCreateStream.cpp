@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2019 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,7 +23,7 @@
 //#include "plugin/xdp/profile.h"
 #include "plugin/xdp/lop.h"
 
-// Copyright 2018 Xilinx, Inc. All rights reserved.
+// Copyright 2018-2020 Xilinx, Inc. All rights reserved.
 
 namespace xocl {
 static void
@@ -70,7 +70,7 @@ clCreateStream(cl_device_id           device,
     return xocl::clCreateStream
       (device,flags,attributes,ext,errcode_ret);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,ex.get_code());
   }

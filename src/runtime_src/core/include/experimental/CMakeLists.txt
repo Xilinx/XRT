@@ -1,10 +1,12 @@
 set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt-next.h
   xrt_aie.h
+  xrt_graph.h
   xrt_bo.h
   xrt_device.h
   xrt_enqueue.h
   xrt_error.h
+  xrt_ini.h
   xrt_kernel.h
   xrt_profile.h
   xrt_uuid.h

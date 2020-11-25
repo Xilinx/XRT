@@ -18,7 +18,6 @@
 """
 
 import ctypes.util
-import numpy as np
 import sys
 import time
 import math
@@ -49,22 +48,15 @@ def getThreshold(devHandle):
     xclGetDeviceInfo2(devHandle, ctypes.byref(deviceInfo))
     if b"qdma" in deviceInfo.mName or b"qep" in deviceInfo.mName:
         threshold = 30000
-    if b"u2x4" in deviceInfo.mName or b"U2x4" in deviceInfo.mName:
-        threshold = 10000
-    if b"gen3x4" in deviceInfo.mName:
+    if b"gen3x4" in deviceInfo.mName or b"_u26z_" in deviceInfo.mName:
         threshold = 20000
+    if b"u2x4" in deviceInfo.mName or b"U2x4" in deviceInfo.mName or b"u2_gen3x4" in deviceInfo.mName:
+        threshold = 10000
     if b"_u25_" in deviceInfo.mName or b"_u30_" in deviceInfo.mName: # so that it doesn't set theshold for u250
         threshold = 9000
     return threshold
 
 def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
-    if isInput:
-        lst = [i%256 for i in range(globalbuffersize)]
-    else:
-        lst = [0 for i in range(globalbuffersize)]
-    hostbuf = np.array(lst).astype(np.uint8)
-    assert hostbuf.size == globalbuffersize
-
     grpid = xrtKernelArgGroupId(krnlhdl, argno)
     if grpid < 0:
         raise RuntimeError("failed to find BO group ID: %d" % grpid)
@@ -76,7 +68,11 @@ def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     bobuf = xrtBOMap(bo)
     if bobuf == 0:
         raise RuntimeError("failed to map buffer")
-    libc.memcpy(bobuf, hostbuf.ctypes.data, globalbuffersize)
+    lst = ctypes.cast(bobuf, ctypes.POINTER(ctypes.c_char))
+
+    for i in range(globalbuffersize):
+        lst[i] = i%256 if isInput else 0
+
     xrtBOSync(bo, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, globalbuffersize, 0)
     return bo, bobuf
 

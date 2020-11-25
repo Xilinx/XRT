@@ -170,9 +170,9 @@ clCreateProgramWithBinary(cl_context                      context ,
   for (auto device : xocl::get_range(device_list,device_list+num_devices)) {
     try {
       if (xocl(device)->is_active())
-	xocl::profile::flush_device(xocl(device)->get_xrt_device()) ;
+	xocl::profile::flush_device(xocl(device)->get_xdevice()) ;
       loadProgramBinary(program.get(),xocl(device));
-      xocl::profile::update_device(xocl(device)->get_xrt_device()) ;
+      xocl::profile::update_device(xocl(device)->get_xdevice()) ;
       if (binary_status)
         xocl::assign(&binary_status[idx++],CL_SUCCESS);
     }

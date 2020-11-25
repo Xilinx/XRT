@@ -32,9 +32,6 @@
  * http://www.xilinx.com/support/documentation/ip_documentation/opb_uartlite.pdf
  */
 
-/* 115200bps / 9bits * 2 sampling rate in jiffies */
-#define ULITE_TIMER		(HZ / 25600)
-
 #define ULITE_RX		0x00
 #define ULITE_TX		0x04
 #define ULITE_STATUS		0x08
@@ -56,13 +53,36 @@
 #define ULITE_CONTROL_IE	0x10
 
 struct uartlite_data {
-	const struct uartlite_reg_ops *reg_ops;
-	struct uart_driver *xcl_ulite_driver;
-	struct uart_port *port;
-	struct timer_list timer;
+	const struct uartlite_reg_ops	*reg_ops;
+	struct uart_driver	*xcl_ulite_driver;
+	struct uart_port	*port;
+	u32			console_opened;
+	struct task_struct	*thread;
+	struct mutex 		lock;
 };
 
 static struct uart_port ulite_ports[ULITE_NR_UARTS];
+
+static ssize_t console_name_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct uart_port *port = platform_get_drvdata(to_platform_device(dev));
+        struct uartlite_data *pdata = port->private_data;
+        struct uart_driver *drv = pdata->xcl_ulite_driver;
+
+	return sprintf(buf, "%s%d\n", drv->dev_name, port->line);
+}
+
+static DEVICE_ATTR_RO(console_name);
+
+static struct attribute *ulite_attrs[] = {
+	&dev_attr_console_name.attr,
+	NULL,
+};
+
+static struct attribute_group ulite_attr_group = {
+	.attrs = ulite_attrs,
+};
 
 struct uartlite_reg_ops {
 	u32 (*in)(void __iomem *addr);
@@ -214,20 +234,21 @@ static void ulite_worker(struct uart_port *port)
 
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
-static void ulite_timer(unsigned long data)
-{ 
-	struct uartlite_data *pdata = (struct uartlite_data *)data;
-#else
-static void ulite_timer(struct timer_list *t)
+static int ulite_thread(void *data)
 {
-	struct uartlite_data *pdata = from_timer(pdata, t, timer);
-#endif
+	struct uartlite_data *pdata = (struct uartlite_data *)data;
 	struct uart_port *port = pdata->port;
+	int ret = 0;
 
-	ulite_worker(port);
-	/* We're a periodic timer. */
-	mod_timer(&pdata->timer, jiffies + ULITE_TIMER);
+	while (pdata->console_opened) {
+		ulite_worker(port);
+		/* 115200bps / 9bits * 2 sampling rate 
+		 * 25600Hz, we should sleep less than 40us
+		 */
+		usleep_range(30, 40);
+	}
+
+	return ret;
 }
 
 static unsigned int ulite_tx_empty(struct uart_port *port)
@@ -278,11 +299,15 @@ static int ulite_startup(struct uart_port *port)
 {
 	struct uartlite_data *pdata = port->private_data;
 
-	mod_timer(&pdata->timer, jiffies + ULITE_TIMER);
+	mutex_lock(&pdata->lock);
+	pdata->console_opened++;
+	pdata->thread = kthread_run(ulite_thread, pdata, "ulite_thread");
 
 	uart_out32(ULITE_CONTROL_RST_RX | ULITE_CONTROL_RST_TX,
 		ULITE_CONTROL, port);
 	uart_out32(ULITE_CONTROL_IE, ULITE_CONTROL, port);
+
+	mutex_unlock(&pdata->lock);
 	return 0;
 }
 
@@ -290,10 +315,15 @@ static void ulite_shutdown(struct uart_port *port)
 {
 	struct uartlite_data *pdata = port->private_data;
 
+	mutex_lock(&pdata->lock);
+	pdata->console_opened--;
+	if (!pdata->console_opened)
+		(void)kthread_stop(pdata->thread);
+
 	uart_out32(0, ULITE_CONTROL, port);
 	uart_in32(ULITE_CONTROL, port); /* dummy */
 
-	del_timer_sync(&pdata->timer);
+	mutex_unlock(&pdata->lock);
 }
 
 static void ulite_set_termios(struct uart_port *port, struct ktermios *termios,
@@ -486,6 +516,13 @@ static int ulite_probe(struct platform_device *pdev)
 	port->private_data = pdata;
 
 	platform_set_drvdata(pdev, port);
+	mutex_init(&pdata->lock);
+
+	ret = sysfs_create_group(&pdev->dev.kobj, &ulite_attr_group);
+	if (ret) {
+		xocl_err(&pdev->dev, "create ulite sysfs attrs failed: %d", ret);
+		goto done;
+	}
 	/* Register the port */
 	ret = uart_add_one_port(&xcl_ulite_driver, port);
 	if (ret) {
@@ -494,13 +531,6 @@ static int ulite_probe(struct platform_device *pdev)
 		platform_set_drvdata(pdev, NULL);
 		goto done;
 	}
-
-	/* One timer for one channel. */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
-	setup_timer(&pdata->timer, ulite_timer, (unsigned long)pdata);
-#else
-	timer_setup(&pdata->timer, ulite_timer, 0);
-#endif
 
 done:
 	return ret;
@@ -515,11 +545,12 @@ static int ulite_remove(struct platform_device *pdev)
 	if (!port)
 		return ret;
 
+	sysfs_remove_group(&pdev->dev.kobj, &ulite_attr_group);
+
 	pdata = port->private_data;
 	if (!pdata)
 		return ret;
-
-	del_timer_sync(&pdata->timer);
+	pdata->console_opened = 0;
 	ret = uart_remove_one_port(pdata->xcl_ulite_driver, port);
 	platform_set_drvdata(pdev, NULL);
 	port->mapbase = 0;

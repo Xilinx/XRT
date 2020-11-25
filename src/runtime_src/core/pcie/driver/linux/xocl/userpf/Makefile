@@ -43,6 +43,7 @@ endif
 drv_common-y   := $(common_dir)/kds_core.o \
 		  $(common_dir)/xrt_cu.o \
 		  $(common_dir)/cu_hls.o \
+		  $(common_dir)/fast_adapter.o \
 		  $(common_dir)/cu_plram.o \
 		  $(common_dir)/xrt_xclbin.o
 
@@ -62,6 +63,7 @@ xocl-y := \
 	../subdev/icap.o \
 	../subdev/clock.o \
 	../subdev/xmc.o \
+	../subdev/xmc_u2.o \
 	../subdev/firewall.o \
 	../subdev/mig.o \
 	../subdev/dna.o \
@@ -123,7 +125,7 @@ all:
 install: all
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules_install
 	depmod -a
-	install -m 644 10-xocl.rules /etc/udev/rules.d
+	install -m 644 99-xocl.rules /etc/udev/rules.d
 	-rmmod -s xocl || true
 	-rmmod -s xdma || true
 	-modprobe xocl

@@ -207,7 +207,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                     tmp1.max_channel_id = info.ip_layout[d].max_channel_id;
                 }
                 //Allow default ddr_bank of -1; When CU is not connected to any ddr
-                xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.default_ddr_bank);
+                xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.default_ddr_bank, info.has_mem_groups);
 
                 //XMA now supports multiple DDR Banks per Kernel
                 tmp1.ip_ddr_mapping = info.ip_ddr_mapping[d];

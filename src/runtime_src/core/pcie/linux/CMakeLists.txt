@@ -42,6 +42,7 @@ set_target_properties(xrt_core PROPERTIES
   SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(xrt_core
+  PRIVATE
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}

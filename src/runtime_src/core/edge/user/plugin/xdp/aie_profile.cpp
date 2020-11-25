@@ -30,14 +30,17 @@ namespace xdpaieprofile {
 #endif
   }
   std::function<void (void*)> update_aie_device_cb;
+  std::function<void (void*)> end_aie_ctr_poll_cb;
 
   void register_aie_callbacks(void* handle)
   {
-#ifdef XRT_CORE_BUILD_WITH_DL
     typedef void (*ftype)(void*) ;
+
     update_aie_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIECtrDevice")) ;
     if (xrt_core::dlerror() != NULL) update_aie_device_cb = nullptr ;
-#endif
+
+    end_aie_ctr_poll_cb = (ftype)(xrt_core::dlsym(handle, "endAIECtrPoll")) ;
+    if (xrt_core::dlerror() != NULL) end_aie_ctr_poll_cb = nullptr ;
   }
 
   void warning_aie_callbacks()
@@ -53,6 +56,13 @@ namespace xdpaiectr {
   {
     if (xdpaieprofile::update_aie_device_cb != nullptr) {
       xdpaieprofile::update_aie_device_cb(handle) ;
+    }
+  }
+
+  void end_aie_ctr_poll(void* handle)
+  {
+    if (xdpaieprofile::end_aie_ctr_poll_cb != nullptr) {
+      xdpaieprofile::end_aie_ctr_poll_cb(handle) ;
     }
   }
 }

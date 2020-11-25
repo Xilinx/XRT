@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
@@ -131,10 +131,8 @@ clCreateBuffer(cl_context   context,
     cl_mem mem = buffer.get(); // cast to cl_mem is important before going void*
     api::clSetKernelArg(kernel,argidx,sizeof(cl_mem),&mem);
   }
-  else if (!(flags & CL_MEM_PROGVAR)) {
-    if (auto device = singleContextDevice(context,flags,host_ptr))
-      buffer->get_buffer_object(device);
-  }
+  else if (auto device = singleContextDevice(context,flags,host_ptr))
+    buffer->get_buffer_object(device);
 
   xocl::assign(errcode_ret,CL_SUCCESS);
   return buffer.release();
@@ -155,7 +153,7 @@ clCreateBuffer(cl_context   context,
     return xocl::clCreateBuffer
       (context,flags,size,host_ptr,errcode_ret);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,ex.get_code());
   }

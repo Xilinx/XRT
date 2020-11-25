@@ -59,6 +59,7 @@ xclmgmt-y := \
 	../subdev/clock.o \
 	../subdev/mig.o \
 	../subdev/xmc.o \
+	../subdev/xmc_u2.o \
 	../subdev/dna.o \
 	../subdev/fmgr.o \
 	../subdev/mgmt_msix.o \
@@ -74,6 +75,7 @@ xclmgmt-y := \
 	../subdev/pmc.o \
 	../subdev/icap_cntrl.o \
 	../subdev/version_ctrl.o \
+	../subdev/pcie_firewall.o \
 	$(drv_common-y) \
 	mgmt-core.o \
 	mgmt-cw.o \
@@ -106,7 +108,7 @@ all:
 install: all
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules_install
 	depmod -a
-	install -m 644 10-xclmgmt.rules /etc/udev/rules.d
+	install -m 644 99-xclmgmt.rules /etc/udev/rules.d
 	-rmmod -s xclmgmt || true
 	-modprobe xclmgmt
 

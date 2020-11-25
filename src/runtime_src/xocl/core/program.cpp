@@ -81,7 +81,7 @@ program::
 
     for(auto d : get_device_range())
     {
-      xocl::profile::flush_device(d->get_xrt_device());
+      xocl::profile::flush_device(d->get_xdevice());
       d->unload_program(this);
     }
 
@@ -104,25 +104,6 @@ get_target() const
   if (auto metadata = get_xclbin(nullptr))
     return metadata.target();
   return xclbin::target_type::invalid;
-}
-
-std::vector<std::string>
-program::
-get_progvar_names() const
-{
-  if (auto device = get_first_device()) {
-    std::vector<std::string> progvars;
-    auto metadata = device->get_xclbin();
-    for (auto& name : get_kernel_names()) {
-      auto& symbol = metadata.lookup_kernel(name);
-      for (auto& arg : symbol.arguments)
-        if (arg.atype == xclbin::symbol::arg::argtype::progvar)
-          progvars.push_back(arg.name);
-    }
-    return progvars;
-  }
-
-  return {};
 }
 
 xclbin

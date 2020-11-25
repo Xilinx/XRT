@@ -16,6 +16,7 @@
 
 #include "system_swemu.h"
 #include "device_swemu.h"
+#include "xrt.h"
 
 #include <memory>
 
@@ -41,6 +42,13 @@ struct X
 }
 
 namespace xrt_core { namespace swemu {
+
+system::
+system()
+{
+  // xclProbe must be called to set up data structures
+  xclProbe();
+}
 
 std::pair<device::id_type, device::id_type>
 system::
@@ -81,7 +89,7 @@ get_userpf_device(device::handle_type device_handle, device::id_type id)
 
 void
 system::
-program_plp(std::shared_ptr<xrt_core::device> dev, const std::vector<char> &buffer) const
+program_plp(const xrt_core::device* dev, const std::vector<char> &buffer) const
 {
   throw std::runtime_error("plp program is not supported");
 }

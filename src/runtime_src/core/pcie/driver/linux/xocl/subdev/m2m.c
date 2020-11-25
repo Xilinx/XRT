@@ -41,7 +41,8 @@ struct start_copybo_cu_cmd {
   uint32_t dst_addr_lo;      /* low 32 bit of dst addr */
   uint32_t dst_addr_hi;      /* high 32 bit of dst addr */
   uint32_t dst_bo_hdl;       /* dst bo handle */
-  uint32_t size;             /* size of bus width in bytes */
+  uint32_t size_lo;          /* size of bus width in bytes, low 32 bit */
+  uint32_t size_hi;          /* size of bus width in bytes, high 32 bit */
 };
 
 struct xocl_m2m {
@@ -69,15 +70,15 @@ static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,
 	struct xrt_cu *xcu = &m2m->m2m_cu;
 	struct start_copybo_cu_cmd cmd;
 
-	M2M_DBG(m2m, "dst %llx, src %llx", dst_paddr, src_paddr);
+	M2M_DBG(m2m, "dst %llx, src %llx, size %x", dst_paddr, src_paddr, size);
 	/* Note: dst_paddr has been adjusted with offset */
 	if ((dst_paddr % KDMA_BLOCK_SIZE) ||
 	    (src_paddr % KDMA_BLOCK_SIZE) ||
 	    (size % KDMA_BLOCK_SIZE)) {
 		M2M_ERR(m2m, "cannot use KDMA. dst: %s, src: %s, size: %s",
-		    (dst_paddr % KDMA_BLOCK_SIZE) ? "not aligned" : "aligned",
-		    (src_paddr % KDMA_BLOCK_SIZE) ? "not aligned" : "aligned",
-		    (size % KDMA_BLOCK_SIZE) ? "not aligned" : "aligned");
+		    (dst_paddr % KDMA_BLOCK_SIZE) ? "not 64-byte aligned" : "aligned",
+		    (src_paddr % KDMA_BLOCK_SIZE) ? "not 64-byte aligned" : "aligned",
+		    (size % KDMA_BLOCK_SIZE) ? "not 64-byte aligned" : "aligned");
 		return -EINVAL;
 	}
 
@@ -87,9 +88,13 @@ static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,
 	cmd.dst_addr_hi = (dst_paddr >> 32) & 0xFFFFFFFF;
 	cmd.src_bo_hdl = src_bo_hdl;
 	cmd.dst_bo_hdl = dst_bo_hdl;
-	cmd.size = size / KDMA_BLOCK_SIZE;
+	cmd.size_lo = size / KDMA_BLOCK_SIZE;
+	cmd.size_hi = 0;
 
+	mutex_lock(&m2m->m2m_lock);
 	if (!xrt_cu_get_credit(xcu)) {
+		M2M_ERR(m2m, "cu is busy");
+		mutex_unlock(&m2m->m2m_lock);
 		return -EBUSY;
 	}
 
@@ -113,6 +118,7 @@ static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,
 			    &m2m->m2m_irq_complete);
 		}
 	}
+	mutex_unlock(&m2m->m2m_lock);
 
 	return 0;
 }

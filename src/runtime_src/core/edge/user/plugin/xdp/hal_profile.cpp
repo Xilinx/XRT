@@ -499,11 +499,9 @@ LoadXclbinCallLogger::~LoadXclbinCallLogger()
 // The registration function
 void register_hal_callbacks(void* handle)
 {
-#ifdef XRT_CORE_BUILD_WITH_DL
   typedef void(*ftype)(unsigned, void*) ;
   cb = (ftype)(xrt_core::dlsym(handle, "hal_level_xdp_cb_func")) ;
   if (xrt_core::dlerror() != NULL) cb = nullptr ;
-#endif
 }
 
 // The warning function
@@ -512,19 +510,17 @@ void warning_hal_callbacks()
   if(xrt_core::config::get_profile()) {
     // "profile=true" is also set. This enables OpenCL based flow for profiling. 
     // Currently, mix of OpenCL and HAL based profiling is not supported.
-    xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT",
-              std::string("Both profile=true and xrt_trace=true set in xrt.ini config. Currently, these flows are not supported to work together."));
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+              std::string("Both profile=true and xrt_profile=true set in xrt.ini config. Currently, these flows are not supported to work together."));
     return;
   }
 }
 
 void load_xdp_plugin_library(HalPluginConfig* )
 {
-#ifdef XRT_CORE_BUILD_WITH_DL
   static xrt_core::module_loader xdp_hal_loader("xdp_hal_plugin",
 						register_hal_callbacks,
 						warning_hal_callbacks) ;
-#endif
 }
 
 }

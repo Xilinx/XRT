@@ -23,7 +23,7 @@
 #include "zocl_xclbin.h"
 #include "xclbin.h"
 
-/* #define SCHED_VERBOSE */
+//#define SCHED_VERBOSE
 
 #if defined(__GNUC__)
 #define SCHED_UNUSED __attribute__((unused))
@@ -83,8 +83,6 @@ static DEFINE_MUTEX(free_cmds_mutex);
  */
 static LIST_HEAD(pending_cmds);
 static DEFINE_SPINLOCK(pending_cmds_lock);
-static atomic_t num_pending = ATOMIC_INIT(0);
-static atomic_t num_running = ATOMIC_INIT(0);
 
 /**
  * is_ert() - Check if running in embedded (ert) mode.
@@ -725,6 +723,61 @@ done:
 		DRM_INFO("CU can only be initialized once.\n");
 }
 
+static void kill_soft_kernel(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct soft_krnl *sk = zdev->soft_kernel;
+	struct pid *p;
+	struct task_struct *task;
+	uint32_t pid;
+	int i, ret;
+
+	mutex_lock(&sk->sk_lock);
+
+	for (i = 0; i < ARRAY_SIZE(sk->sk_cu); i++) {
+		if (!sk->sk_cu[i])
+			continue;
+
+		p = find_get_pid(sk->sk_cu[i]->sc_pid);
+		if (!p) {
+			/* cu process is gone. cleanup it anyway */
+			ret = 0;
+			goto skip_kill;
+		}
+
+		task = pid_task(p, PIDTYPE_PID);
+		if (!task) {
+			DRM_WARN("failed to get task for pid %d\n",
+				sk->sk_cu[i]->sc_pid);
+			put_pid(p);
+			continue;
+		}
+
+		if (sk->sk_cu[i]->sc_parent_pid != task_ppid_nr(task)) {
+			DRM_WARN("parent pid does not match\n");
+			put_pid(p);
+			continue;
+		}
+
+		pid = sk->sk_cu[i]->sc_pid;
+		ret = kill_pid(p, SIGKILL, 1);
+		if (ret) {
+			DRM_WARN("failed to kill cu pid %d\n", pid);
+		}
+		put_pid(p);
+skip_kill:
+		if (!ret) {
+			ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(sk->sk_cu[i]->gem_obj);
+			kfree(sk->sk_cu[i]);
+			sk->sk_cu[i] = NULL;
+		}
+	}
+
+	sk->sk_ncus = 0;
+
+	mutex_unlock(&sk->sk_lock);
+}
+
 /**
  * configure() - Configure the scheduler from user space command
  *
@@ -746,7 +799,6 @@ configure(struct sched_cmd *cmd)
 	struct ert_configure_cmd *cfg;
 	unsigned int i, j;
 	phys_addr_t cu_addr;
-	char name[256] = "zocl-ert-thread";
 	int cq_irq;
 	int acc_cu = 0;
 	int has_acc_cu = 0;
@@ -757,6 +809,11 @@ configure(struct sched_cmd *cmd)
 
 	if (sched_error_on(exec, opcode(cmd) != ERT_CONFIGURE))
 		return 1;
+
+	if (!zdev->ert && exec->configured) {
+		DRM_WARN("Reconfiguration not supported\n");
+		return 1;
+	}
 
 	if (!list_empty(&pending_cmds)) {
 		DRM_ERROR("Pending commands list not empty\n");
@@ -770,9 +827,14 @@ configure(struct sched_cmd *cmd)
 
 	cfg = (struct ert_configure_cmd *)(cmd->packet);
 
-	if (exec->configured != 0) {
-		DRM_WARN("Reconfiguration not supported\n");
-		return 1;
+	/*
+	 * In ert mode, no ert config cmd for the same xclbin will be coming
+	 * from host. so always unconfig ert when there is ert config cmd
+	 * arriving
+	 */
+	if (zdev->ert) {
+		kill_soft_kernel(cmd);
+		sched_reset_scheduler(zdev->ddev);
 	}
 
 	SCHED_DEBUG("Configuring scheduler\n");
@@ -826,10 +888,6 @@ configure(struct sched_cmd *cmd)
 
 	/* Enable interrupt from host to PS when new commands are ready */
 	if (zdev->ert && exec->cq_interrupt) {
-		/* Stop CQ check thread */
-		if (zdev->exec->cq_thread)
-			kthread_stop(zdev->exec->cq_thread);
-
 		/* At this point we are good. No one is polling CQ */
 		cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
 		ret = request_irq(cq_irq, sched_cq_isr, 0, "zocl_cq", zdev);
@@ -837,9 +895,11 @@ configure(struct sched_cmd *cmd)
 			DRM_WARN("Failed to initial CQ interrupt. "
 			    "Fall back to polling\n");
 			exec->cq_interrupt = 0;
-			exec->cq_thread = kthread_run(cq_check, zdev, name);
 		}
 	}
+	if (zdev->ert)
+		wake_up_interruptible(&exec->cq_wait_queue);
+
 	/* TODO: let's consider how to support reconfigurable KDS/ERT later.
 	 * At that time, ERT should be able to change back to CQ polling mode.
 	 */
@@ -1014,6 +1074,7 @@ cu_stat(struct sched_cmd *cmd)
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	struct zocl_ert_dev *ert = zdev->ert;
 	struct sched_exec_core *exec = zdev->exec;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct ert_packet *pkg;
 	int slot_idx;
 	int pkt_idx = 0;
@@ -1034,15 +1095,36 @@ cu_stat(struct sched_cmd *cmd)
 	pkg->data[pkt_idx++] = exec->num_slots;
 
 	/* number of CUs */
-	pkg->data[pkt_idx++] = exec->num_cus;
+	pkg->data[pkt_idx++] = exec->num_cus + sk->sk_ncus;
 
 	/* individual CU execution stat */
 	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i)
 		pkg->data[pkt_idx++] = exec->zcu[i].usage;
 
+	/* individual SK CU execution stat */
+	mutex_lock(&sk->sk_lock);
+	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
+		if (sk->sk_cu[i])
+			pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
+		else //soft kernel cu has crashed
+			pkg->data[pkt_idx++] = -1;
+	}
+	mutex_unlock(&sk->sk_lock);
+
 	/* individual CU status */
-	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i)
-		pkg->data[pkt_idx++] = exec->cu_status[i];
+	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i) {
+		pkg->data[pkt_idx++] = (exec->cu_status[cu_mask_idx(i)] &
+			(1 << (i % sizeof(exec->cu_status[0])))) ? 1 : 0;
+	}
+
+	/* indevidual SK CU status */
+	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
+		if (sk->sk_cu[i])
+			pkg->data[pkt_idx++] = (exec->scu_status[cu_mask_idx(i)] &
+				(1 << (i % sizeof(exec->scu_status[0])))) ? 1 : 0;
+		else
+			pkg->data[pkt_idx++] = -1; //soft cu has crashed
+	}
 
 	/* Command slot status
 	 * Hard code QUEUED state. When a NEW command is found,
@@ -1087,6 +1169,7 @@ configure_soft_kernel(struct sched_cmd *cmd)
 	cfg = (struct ert_configure_sk_cmd *)(cmd->packet);
 
 	mutex_lock(&sk->sk_lock);
+	atomic_inc(&cmd->exec->scheduler->num_running);//Else num_running becomes -1 by missing SK_CONFIG command increment
 
 	/* Check if the CU configuration exceeds maximum CU number */
 	if (cfg->start_cuidx + cfg->num_cus > MAX_CU_NUM) {
@@ -1377,16 +1460,21 @@ scu_done(struct sched_cmd *cmd)
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int cu_idx = cmd->cu_idx;
 	struct soft_krnl *sk = zdev->soft_kernel;
-	u32 *virt_addr = sk->sk_cu[cu_idx]->sc_vregs;
+	u32 *virt_addr;
 
-	SCHED_DEBUG("-> %s (,%d) checks scu at address 0x%p\n",
-	    __func__, cu_idx, virt_addr);
 	/* We simulate hard CU here.
 	 * done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
 	 * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
 	 * checking for 0x10 is sufficient.
 	 */
 	mutex_lock(&sk->sk_lock);
+	if (!sk->sk_cu[cu_idx]) {
+		mutex_unlock(&sk->sk_lock);
+		return true;
+	}
+	virt_addr = sk->sk_cu[cu_idx]->sc_vregs;
+	SCHED_DEBUG("-> %s (,%d) checks scu at address 0x%p\n",
+	    __func__, cu_idx, virt_addr);
 	if (*virt_addr & 2) {
 		unsigned int mask_idx = cu_mask_idx(cu_idx);
 		unsigned int pos = cu_idx_in_mask(cu_idx);
@@ -1466,12 +1554,13 @@ notify_host(struct sched_cmd *cmd)
 	struct list_head *ptr;
 	struct sched_client_ctx *entry;
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct sched_exec_core *exec = zdev->exec;
 	unsigned long flags = 0;
 
 	SCHED_DEBUG("-> %s from num_running: %d\n",
-	    __func__, atomic_read(&num_running));
+	    __func__, atomic_read(&exec->scheduler->num_running));
 
-	atomic_dec(&num_running);
+	atomic_dec(&exec->scheduler->num_running);
 
 	if (!zdev->ert) {
 		/* for each client update the trigger counter in the context */
@@ -1487,9 +1576,10 @@ notify_host(struct sched_cmd *cmd)
 		wake_up_interruptible(&zdev->exec->poll_wait_queue);
 	} else {
 		zdev->ert->ops->notify_host(zdev->ert, cmd->cq_slot_idx);
+                atomic_inc(&exec->scheduler->num_notified);
 	}
 	SCHED_DEBUG("<- %s to num_running: %d\n",
-	    __func__, atomic_read(&num_running));
+	    __func__, atomic_read(&exec->scheduler->num_running));
 }
 
 /**
@@ -1648,7 +1738,7 @@ add_cmd(struct sched_cmd *cmd)
 	spin_unlock_irqrestore(&pending_cmds_lock, flags);
 
 	/* wake scheduler */
-	atomic_inc(&num_pending);
+	atomic_inc(&cmd->exec->scheduler->num_pending);
 	wake_up_interruptible(&cmd->sched->wait_queue);
 
 	SCHED_DEBUG("<- %s\n", __func__);
@@ -1973,7 +2063,7 @@ ert_configure_scu(struct sched_cmd *cmd, int cu_idx)
 	mutex_lock(&sk->sk_lock);
 	scu = sk->sk_cu[cu_idx];
 	if (!scu) {
-		DRM_ERROR("Error: soft cu does not exist.\n");
+		DRM_ERROR("Error: soft cu %d does not exist.\n", cu_idx);
 		mutex_unlock(&sk->sk_lock);
 		return -ENXIO;
 	}
@@ -1988,6 +2078,7 @@ ert_configure_scu(struct sched_cmd *cmd, int cu_idx)
 		cu_regfile[i] = *(skc->data + skc->extra_cu_masks + i);
 
 	up(&scu->sc_sem);
+	scu->usage++;
 	mutex_unlock(&sk->sk_lock);
 
 	SCHED_DEBUG("<- %s", __func__);
@@ -2165,9 +2256,9 @@ scheduler_queue_cmds(struct scheduler *sched)
 		if (cmd->sched != sched)
 			continue;
 		list_del(&cmd->list);
-		atomic_dec(&num_pending);
+		atomic_dec(&cmd->exec->scheduler->num_pending);
 		list_add_tail(&cmd->list, &sched->cq);
-		atomic_inc(&num_running);
+		atomic_inc(&sched->num_running);
 		set_cmd_int_state(cmd, ERT_CMD_STATE_QUEUED);
 	}
 	spin_unlock_irqrestore(&pending_cmds_lock, flags);
@@ -2255,7 +2346,7 @@ sched_wait_cond(struct scheduler *sched)
 		return 0;
 	}
 
-	if (atomic_read(&num_pending)) {
+	if (atomic_read(&sched->num_pending)) {
 		SCHED_DEBUG("scheduler wakes to copy new pending commands\n");
 		return 0;
 	}
@@ -2964,6 +3055,7 @@ add_ert_cq_cmd(struct drm_device *drm, void *buffer, unsigned int cq_idx)
 {
 	struct sched_cmd *cmd = get_free_sched_cmd();
 	struct drm_zocl_dev *zdev = drm->dev_private;
+	struct sched_exec_core *exec = zdev->exec;
 	int ret;
 
 	SCHED_DEBUG("-> %s", __func__);
@@ -2976,6 +3068,7 @@ add_ert_cq_cmd(struct drm_device *drm, void *buffer, unsigned int cq_idx)
 	cmd->free_buffer = zocl_cmd_buffer_free;
 
 	ret = add_cmd(cmd);
+	atomic_inc(&exec->scheduler->num_received);
 
 	SCHED_DEBUG("<- %s", __func__);
 	return ret;
@@ -3064,6 +3157,24 @@ err:
 	return ret;
 }
 
+static int
+cq_wait_condition(struct sched_exec_core *exec_core)
+{
+	if (!exec_core->cq_interrupt)
+		return 0;
+	if (atomic_xchg(&exec_core->cq_intc, 0))
+		return 0;
+	return 1;
+}
+
+static void
+cq_check_wait(struct drm_zocl_dev *zdev)
+{
+	struct sched_exec_core *exec_core = zdev->exec;
+	wait_event_interruptible(exec_core->cq_wait_queue,
+		cq_wait_condition(exec_core) == 0);
+}
+
 /**
  * cq_check() - Check CQ status and submit new command to KDS
  *
@@ -3080,7 +3191,8 @@ cq_check(void *data)
 	struct sched_exec_core *exec_core = zdev->exec;
 
 	SCHED_DEBUG("-> %s", __func__);
-	while (!kthread_should_stop() && !exec_core->cq_interrupt) {
+	while (!kthread_should_stop()) {
+		cq_check_wait(zdev);
 		if (iterate_packets(zdev->ddev) == 1) {
 			/* This thread should exit */
 			exec_core->cq_thread = NULL;
@@ -3092,47 +3204,27 @@ cq_check(void *data)
 	return 0;
 }
 
+#define BITS_IN_U32 (32)
 static irqreturn_t sched_cq_isr(int irq, void *arg)
 {
 	struct drm_zocl_dev *zdev = arg;
-	struct ert_packet *pkg;
-	int slot_sz, slot_idx = 0;
-	int good_pkg;
-	void *buffer;
+	struct sched_exec_core *exec_core = zdev->exec;
+	char *ert_hw = zdev->ert->hw_ioremap;
+	static u32 i, cq_status[4];
 
 	SCHED_DEBUG("-> %s", __func__);
-
-	good_pkg = 1;
-	slot_sz = slot_size(zdev->ddev);
-	pkg = zdev->ert->ops->get_next_cmd(zdev->ert, NULL, &slot_idx);
-	/* The first slot is ctrl slot in CQ.
-	 * It might has special command.
+	/*
+	 * Don't do heavy lifting in ISR since the interrupt is still disabled now.
+	 * Trigger a soft int or tasklet if required or to simplify just do it in
+	 * kernel thread.
+	 * Here, just leverage the cq_check kthread. So ack the interrupt by reading
+	 * the cq status register and wake up the kthread
 	 */
-	if (slot_idx == 0 && pkg->opcode == ERT_EXIT) {
-		/* Exit command, do not response to CQ interrupt anymore */
-		disable_irq_nosync(irq);
-		pkg->state = ERT_CMD_STATE_COMPLETED;
-		goto out;
-	}
+	for (i = 0; i < (exec_core->num_slots + BITS_IN_U32 - 1) / BITS_IN_U32; i++)
+		cq_status[i] = ioread32(ert_hw + ERT_CQ_STATUS_REG + i*4);
+	atomic_set(&exec_core->cq_intc, 1);
+	wake_up_interruptible(&exec_core->cq_wait_queue);
 
-	while (pkg) {
-		/* Usually, if the status of the pkg is not NEW. We think it is
-		 * not 'good' at this point.
-		 */
-		buffer = create_cmd_buffer(pkg, slot_sz);
-		if (IS_ERR(buffer))
-			good_pkg = 0;
-
-		if (good_pkg)
-			if (add_ert_cq_cmd(zdev->ddev, buffer, slot_idx))
-				kfree(buffer);
-
-		pkg = zdev->ert->ops->get_next_cmd(zdev->ert, pkg, &slot_idx);
-		/* No harm to assume the next pkg is good */
-		good_pkg = 1;
-	}
-
-out:
 	SCHED_DEBUG("<- %s", __func__);
 	return IRQ_HANDLED;
 }
@@ -3149,9 +3241,15 @@ static inline void init_exec(struct sched_exec_core *exec_core)
 	exec_core->polling_mode = 1;
 	exec_core->cq_interrupt = 0;
 	exec_core->configured = 0;
+	atomic_set(&exec_core->scheduler->num_pending, 0);
+	atomic_set(&exec_core->scheduler->num_running, 0);
+	atomic_set(&exec_core->scheduler->num_received, 0);
+	atomic_set(&exec_core->scheduler->num_notified, 0);
+	atomic_set(&exec_core->cq_intc, 0);
+
 	exec_core->cu_isr = 0;
 	exec_core->cu_dma = 0;
-	exec_core->num_slot_masks = 1;
+	exec_core->num_slot_masks = MAX_U32_SLOT_MASKS;
 	exec_core->num_cu_masks = 0;
 	exec_core->ops = &penguin_ops;
 
@@ -3206,6 +3304,7 @@ sched_init_exec(struct drm_device *drm)
 		/* Initialize soft kernel */
 		zocl_init_soft_kernel(drm);
 
+		init_waitqueue_head(&exec_core->cq_wait_queue);
 		exec_core->cq_thread = kthread_run(cq_check, zdev, name);
 	}
 
@@ -3337,19 +3436,19 @@ sched_reset_exec(struct drm_device *drm)
 	/* Once stopped, keep this status until reset done */
 	atomic_set(&exec->exec_status, ZOCL_EXEC_STOP);
 
-	outstanding = atomic_read(&num_pending);
+	outstanding = atomic_read(&exec->scheduler->num_pending);
 	while (retry-- && outstanding) {
 		DRM_INFO("Wait for (%d) pending cmds to finish", outstanding);
 		msleep(wait_ms);
-		outstanding = atomic_read(&num_pending);
+		outstanding = atomic_read(&exec->scheduler->num_pending);
 	}
 
 	retry = 20;
-	outstanding = atomic_read(&num_running);
+	outstanding = atomic_read(&exec->scheduler->num_running);
 	while (retry-- && outstanding) {
 		DRM_INFO("Wait for (%d) pending cmds to finish", outstanding);
 		msleep(wait_ms);
-		outstanding = atomic_read(&num_running);
+		outstanding = atomic_read(&exec->scheduler->num_running);
 	}
 
 	/*
@@ -3357,15 +3456,15 @@ sched_reset_exec(struct drm_device *drm)
 	 * aborted. If there are still outstanding commands, return EBUSY.
 	 * User should deal with potential hung or long time running CUs.
 	 */
-	if (atomic_read(&num_pending) || atomic_read(&num_running)) {
+	if (atomic_read(&exec->scheduler->num_pending) || atomic_read(&exec->scheduler->num_running)) {
 		atomic_set(&exec->exec_status, ZOCL_EXEC_FLUSH);
 		msleep(1000); /* wait a second */
 	}
 
-	if (atomic_read(&num_pending) || atomic_read(&num_running)) {
+	if (atomic_read(&exec->scheduler->num_pending) || atomic_read(&exec->scheduler->num_running)) {
 		/* set back to normal, user can retry next time */
 		DRM_WARN("Still have pending(%d), running(%d) cmds",
-		    atomic_read(&num_pending), atomic_read(&num_running));
+		    atomic_read(&exec->scheduler->num_pending), atomic_read(&exec->scheduler->num_running));
 		atomic_set(&exec->exec_status, ZOCL_EXEC_NORMAL);
 		return -EBUSY;
 	}
@@ -3388,7 +3487,8 @@ sched_reset_exec(struct drm_device *drm)
 u32
 sched_is_busy(struct drm_zocl_dev *zdev)
 {
-	return (atomic_read(&num_pending) + atomic_read(&num_running));
+	struct sched_exec_core *exec = zdev->exec;
+	return (atomic_read(&exec->scheduler->num_pending) + atomic_read(&exec->scheduler->num_running));
 }
 
 int sched_attach_cu(struct drm_zocl_dev *zdev, int cu_idx)

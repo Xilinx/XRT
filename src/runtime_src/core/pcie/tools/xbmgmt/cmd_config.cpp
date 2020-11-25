@@ -28,13 +28,12 @@
 const char *subCmdConfigDesc = "Parse or update daemon/device configuration";
 
 const char *subCmdConfigUsage =
-    "--device [--card bdf] [--runtime_clk_scale enable|disable]\n"
     "--enable_retention [--ddr] [--card bdf]\n"
     "--disable_retention [--ddr] [--card bdf]\n";
 const char *subCmdConfigExpUsage =
     "Experts only:\n"
     "--daemon --host ip-or-hostname-for-peer\n"
-    "--device [--card bdf] [--security level] [--cs_threshold_power_override val] [--cs_threshold_temp_override val] [--cs_reset val]\n"
+    "--device [--card bdf] [--runtime_clk_scale enable|disable] [--security level] [--cs_threshold_power_override val] [--cs_threshold_temp_override val] [--cs_reset val]\n"
     "--show [--daemon | --device [--card bdf]\n";
 
 static struct config {
@@ -161,10 +160,38 @@ static void showDaemonConf(void)
     writeConf(std::cout, config);
 }
 
+static bool isSupported(std::shared_ptr<pcidev::pci_device>& dev)
+{
+    std::string errmsg;
+    bool is_mfg = false, is_recovery = false;
+
+    dev->sysfs_get("", "mfg", errmsg, is_mfg, false);
+    if (!errmsg.empty()) {
+        std::cerr << "unexpected error: " << errmsg << std::endl;
+	return false;
+    }
+
+    dev->sysfs_get("", "recovery", errmsg, is_recovery, false);
+    if (!errmsg.empty()) {
+        std::cerr << "unexpected error: " << errmsg << std::endl;
+	return false;
+    }
+
+    if (is_mfg || is_recovery) {
+        std::cerr << "This operation is not supported with manufacturing image" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
 {
     std::string errmsg, svl;
     int lvl = 0;
+
+    if (!isSupported(dev))
+	    return;
 
     dev->sysfs_get("icap", "sec_level", errmsg, lvl, 0);
     if (!errmsg.empty()) {

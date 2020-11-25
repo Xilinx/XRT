@@ -86,6 +86,10 @@ XRT_CORE_COMMON_EXPORT
 std::ostream&
 debug(std::ostream&, const std::string& ini="");
 
+// Internal method for xrt_ini.cpp implementation
+void
+set(const std::string& key, const std::string& value);
+
 }
 
 /**
@@ -141,8 +145,7 @@ get_container()
 inline std::string
 get_data_transfer_trace()
 {
-  static std::string value = 
-    detail::get_string_value("Debug.data_transfer_trace","off");
+  static std::string value = detail::get_string_value("Debug.data_transfer_trace","off");
   return value;
 }
 
@@ -176,9 +179,9 @@ get_aie_profile()
 }
 
 inline unsigned int
-get_aie_profile_interval_ms()
+get_aie_profile_interval_us()
 {
-  static unsigned int value = detail::get_uint_value("Debug.aie_profile_interval_ms", 20) ;
+  static unsigned int value = detail::get_uint_value("Debug.aie_profile_interval_us", 1000) ;
   return value ;
 }
 
@@ -199,7 +202,8 @@ get_noc_profile_interval_ms()
 inline std::string
 get_stall_trace()
 {
-  static std::string value = (!get_profile()) ? "off" : detail::get_string_value("Debug.stall_trace","off");
+  static std::string data_transfer_enabled = get_data_transfer_trace();
+  static std::string value = (!get_profile() && (0 == data_transfer_enabled.compare("off")) ) ? "off" : detail::get_string_value("Debug.stall_trace","off");
   return value;
 }
 
@@ -234,7 +238,7 @@ get_trace_buffer_size()
 inline std::string
 get_aie_trace_buffer_size()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_buffer_size", "1M");
+  static std::string value = detail::get_string_value("Debug.aie_trace_buffer_size", "8M");
   return value;
 }
 
@@ -291,6 +295,13 @@ inline bool
 get_api_checks()
 {
   static bool value = detail::get_bool_value("Runtime.api_checks",true);
+  return value;
+}
+
+inline bool
+get_use_xclbin_group_sections()
+{
+  static bool value = detail::get_bool_value("Runtime.use_xclbin_group_sections",true);
   return value;
 }
 
@@ -363,6 +374,13 @@ get_xma_cpu_mode()
   return value;
 }
 
+inline bool
+get_enable_flat()
+{
+  static bool value = detail::get_bool_value("Runtime.enable_flat",false);
+  return value;
+}
+
 /**
  * Enable / Disable kernel driver scheduling when running in hardware.
  * If disabled, xrt will be scheduling either using the software scheduler
@@ -390,7 +408,13 @@ get_ert()
 inline bool
 get_ert_polling()
 {
-  static bool value = detail::get_bool_value("Runtime.ert_polling",false);
+  /**
+   * enable_flat flag is added for embedded platforms where it load full bitstream after boot.
+   * This feature does not support interrupt mode as interrupt controller exist in pl 
+   * and is configured at boot time. 
+   * So if enable_flat is true, polling mode should be enabled by default.
+   */
+  static bool value = get_enable_flat() || detail::get_bool_value("Runtime.ert_polling",false);
   return value;
 }
 

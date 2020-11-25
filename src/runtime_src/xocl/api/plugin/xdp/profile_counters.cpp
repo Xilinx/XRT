@@ -139,7 +139,7 @@ namespace {
     return cu_idx ;
   }
 
-  static unsigned int get_cu_index(const xrt::command* cmd)
+  static unsigned int get_cu_index(const xrt_xocl::command* cmd)
   {
     auto& packet = cmd->get_packet() ;
     auto masks = get_num_cu_masks(packet[0]) ;
@@ -175,7 +175,7 @@ namespace xocl {
 
     // These are the functions on the XOCL side that gets called when
     //  execution contexts start and stop
-    void log_cu_start(const xrt::command* cmd, 
+    void log_cu_start(const xrt_xocl::command* cmd, 
 		      const xocl::execution_context* ctx)
     {
       if (!counter_cu_execution_cb) return ;
@@ -205,7 +205,7 @@ namespace xocl {
       }
     }
     
-    void log_cu_end(const xrt::command* cmd,
+    void log_cu_end(const xrt_xocl::command* cmd,
 		    const xocl::execution_context* ctx)
     {
       // Check for software emulation logging of compute unit ends as well
@@ -503,10 +503,13 @@ namespace xocl {
       {
 	if (auto mem = arg->get_memory_object())
 	{
+	  /*
 	  if (arg->is_progvar() && 
 	      arg->get_address_qualifier() == CL_KERNEL_ARG_ADDRESS_GLOBAL)
 	    continue ;
-	  else if (mem->is_resident(device))
+	  else 
+	  */
+	  if (mem->is_resident(device))
 	    continue ;
 	  else if (!(mem->get_flags() & 
 		     (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS)))

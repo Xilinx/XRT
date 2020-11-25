@@ -135,6 +135,7 @@ struct sched_exec_core {
 	unsigned int               cu_isr;
 	unsigned int               configured;
 
+
 	/* Bitmap tracks busy(1)/free(0) slots in cmd_slots*/
 	u32                        slot_status[MAX_U32_SLOT_MASKS];
 	unsigned int               num_slot_masks; /* ((num_slots-1)>>5)+1 */
@@ -157,6 +158,7 @@ struct sched_exec_core {
 	struct sched_ops          *ops;
 	struct task_struct        *cq_thread;
 	wait_queue_head_t          cq_wait_queue;
+	atomic_t                   cq_intc;
 
 	struct task_struct        *timer_task;
 
@@ -180,6 +182,11 @@ struct sched_exec_core {
 struct scheduler {
 	struct task_struct        *sched_thread;
 	unsigned int               use_count;
+	// KDS CMD Stats
+	atomic_t 		   num_pending;
+	atomic_t 		   num_running;
+	atomic_t 		   num_received;
+	atomic_t 		   num_notified;
 
 	wait_queue_head_t          wait_queue;
 	unsigned int               error;

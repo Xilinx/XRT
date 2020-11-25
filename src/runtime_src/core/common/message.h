@@ -18,6 +18,7 @@
 #define xrtcore_message_h_
 #include "core/common/config.h"
 #include "core/common/config_reader.h"
+#include "core/include/xrt.h"
 #include <string>
 #include <cstdio>
 #include <vector>
@@ -27,20 +28,23 @@ namespace xrt_core { namespace message {
 //modeled based on syslog severity.
 enum class severity_level : unsigned short
 {
-  XRT_EMERGENCY,
-  XRT_ALERT,
-  XRT_CRITICAL,
-  XRT_ERROR,
-  XRT_WARNING,
-  XRT_NOTICE,
-  XRT_INFO,
-  XRT_DEBUG
+  emergency = xrtLogMsgLevel::XRT_EMERGENCY,
+  alert     = xrtLogMsgLevel::XRT_ALERT,
+  critical  = xrtLogMsgLevel::XRT_CRITICAL,
+  error     = xrtLogMsgLevel::XRT_ERROR,
+  warning   = xrtLogMsgLevel::XRT_WARNING,
+  notice    = xrtLogMsgLevel::XRT_NOTICE,
+  info      = xrtLogMsgLevel::XRT_INFO,
+  debug     = xrtLogMsgLevel::XRT_DEBUG
 };
 
 
 XRT_CORE_COMMON_EXPORT
 void
 send(severity_level l, const char* tag, const char* msg);
+
+void
+sendv(severity_level l, const char* tag, const char* format, va_list args);
 
 inline void
 send(severity_level l, const std::string& tag, const std::string& msg)
@@ -58,7 +62,7 @@ send(severity_level l, const char* tag, const char* format, Args ... args)
   if (ver >= lev) {
     auto sz = snprintf(nullptr, 0, format, args ...);
     if (sz < 0) {
-      send(severity_level::XRT_ERROR, tag, "Illegal arguments in log format string");
+      send(severity_level::error, tag, "Illegal arguments in log format string");
       return;
     }
     

@@ -15,6 +15,7 @@
  */
 
 #include "xclbin.h"
+#include "ert_fa.h"
 
 #include "xocl/config.h"
 #include "xocl/core/debug.h"
@@ -305,7 +306,7 @@ private:
           if (nm=="printf_buffer")
             return arg_type::printf;
           else if (nm.find("__xcl_gv_")==0)
-            return arg_type::progvar;
+            throw xocl::error(CL_INVALID_BINARY, "Global program variables are not supported");
           else
             return arg_type::rtinfo;
         }
@@ -325,6 +326,7 @@ private:
       for (auto& xml_arg : xml_kernel) {
         if (xml_arg.first != "arg")
           continue;
+
         std::string nm = xml_arg.second.get<std::string>("<xmlattr>.name");
         std::string id = xml_arg.second.get<std::string>("<xmlattr>.id");
         std::string port = xml_arg.second.get<std::string>("<xmlattr>.port");
@@ -345,10 +347,9 @@ private:
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.hostOffset"))
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.hostSize"))
+            ,0    // fa_desc_offset computed separately
             ,xml_arg.second.get<std::string>("<xmlattr>.type","")
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.memSize",""))
-            ,0   // progvar base addr computed separately
-            ,""  // progvar linkage computed separately
             ,type
             ,&m_symbol
            });
@@ -435,40 +436,30 @@ private:
       }
     }
 
+    // For FA style kernels compute the descriptor entry offsets for
+    // each argument and total size of descriptor.
     void
-    fix_progvar()
+    fix_fadesc()
     {
-      // This is a pile of mess reversed engineered for clCreateProgramWithBinary
+      auto protocol = xml_kernel.get<std::string>("<xmlattr>.hwControlProtocol","");
+      if (protocol != "fast_adapter")
+        return;
+
+      // Remove last argument which is "nextDescriptorAddr" and
+      // not set by user
+      m_symbol.arguments.pop_back();
+      
+      size_t desc_offset = 0;
       for (auto& arg : m_symbol.arguments) {
-        if (arg.atype!=arg_type::progvar || arg.address_qualifier!=1)
+        if (arg.id.empty())
           continue;
-        assert(arg.baseaddr==0);
 
-        // get port name of progvar
-        auto& pvport = arg.port;
-
-        // Get one kernel instance (doesn't matter which one)
-        auto kinst = xml_kernel.get<std::string>("instance.<xmlattr>.name");
-
-        // Find connection matching srcInst=kinstnm and srcPort=pvport
-        // and get its dst instance
-        auto& xml_conn = m_core->get_connection_or_error(kinst,pvport);
-        auto dstinst = xml_conn.get<std::string>("<xmlattr>.dstInst");
-
-        // Find memory instance with name==dstinst
-        auto& xml_meminst = m_core->get_meminst_or_error(dstinst);
-
-        // Get the base addr remap
-        for (auto& xml_remap : xml_meminst) {
-          if (xml_remap.first != "addrRemap")
-            continue;
-          arg.baseaddr = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
-          arg.linkage = xml_meminst.get<std::string>("<xmlattr>.linkage");
-          break;
-        }
-
-        XOCL_DEBUG(std::cout,"xclbin progvar: ",arg.name," baseaddr: ",arg.baseaddr," linkage: ",arg.linkage,"\n");
+        arg.fa_desc_offset = desc_offset;
+        desc_offset += arg.size + sizeof(ert_fa_desc_entry);
+        m_symbol.fa_num_inputs++;
+        m_symbol.fa_input_entry_bytes += arg.size;
       }
+      m_symbol.fa_desc_bytes = sizeof(ert_fa_descriptor) + desc_offset;
     }
 
     // The kernel symbol is exposed by the xclbin interface.  The
@@ -482,10 +473,10 @@ private:
 
       init_args();
       fix_rtinfo();
-      fix_progvar();
       init_instances();
       init_stringtable();
       init_workgroup();
+      fix_fadesc();
 
       m_symbol.name = m_name;
       m_symbol.attributes = xml_kernel.get<std::string>("<xmlattr>.attributes","");

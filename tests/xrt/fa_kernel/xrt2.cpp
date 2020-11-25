@@ -21,6 +21,7 @@
 #include <cstring>
 #include <ctime>
 #include <chrono>
+#include <numeric>
 
 #include "experimental/xrt_device.h"
 #include "experimental/xrt_kernel.h"
@@ -29,13 +30,6 @@
 #ifdef _WIN32
 # pragma warning ( disable : 4244 )
 #endif
-
-
-/**
- * Runs an OpenCL kernel which writes known 16 integers into a 64 byte
- * buffer. Does not use OpenCL runtime but directly exercises the HAL
- * driver API.
- */
 
 static void usage()
 {
@@ -84,19 +78,24 @@ struct job_type
 
   job_type(const xrt::device& device, const xrt::kernel& aes)
     : run(aes)
-    , in(device, len, 0, aes.group_id(0))
-    , out(device, len, 0, aes.group_id(2))
-    , out_status(device, len, 0, aes.group_id(4))
+    , in(device, len, aes.group_id(0))
+    , out(device, len, aes.group_id(2))
+    , out_status(device, len, aes.group_id(4))
   {
     auto in_data = in.map<uint32_t*>();
     std::iota(in_data, in_data + len/sizeof(uint32_t), 0);
     in.sync(XCL_BO_SYNC_BO_TO_DEVICE , len, 0);
+
+    // seed the run object with all arguments requires
+    // starting and waiting for one run.
+    run(in, len, out, len, out_status, aes_key, aes_iv);
+    run.wait();
   }
 
   void
   start()
   {
-    run(in, len, out, len, out_status, aes_key, aes_iv);
+    run.start();
   }
 
   void
@@ -151,8 +150,8 @@ run(std::vector<job_type>& cmds, size_t total)
 static void
 run(const xrt::device& device, xrt::kernel& aes)
 {
-  std::vector<size_t> cmds_per_run = { 16, 100, 1000, 10000, 100000, 1000000 };
-  size_t expected_cmds = 10000;
+  std::vector<size_t> cmds_per_run = { 100, 1000, 10000, 100000, 1000000 };
+  size_t expected_cmds = 1000;
 
   std::vector<job_type> jobs;
   jobs.reserve(expected_cmds);
@@ -177,9 +176,7 @@ run(int argc, char** argv)
   }
 
   std::string xclbin_fnm;
-  bool verbose = false;
   unsigned int device_index = 0;
-  bool random = false;
 
   std::vector<std::string> args(argv+1,argv+argc);
   std::string cur;
@@ -187,14 +184,6 @@ run(int argc, char** argv)
     if (arg == "-h") {
       usage();
       return 1;
-    }
-    else if (arg == "-v") {
-      verbose = true;
-      continue;
-    }
-    else if (cur == "-r") {
-      random = true;
-      continue;
     }
 
     if (arg[0] == '-') {
@@ -215,7 +204,7 @@ run(int argc, char** argv)
 
   auto device = xrt::device{device_index};
   auto uuid = device.load_xclbin(xclbin_fnm);
-  auto aes = xrt::kernel{device, uuid, "fa_aes_xts2_rtl_enc"};
+  auto aes = xrt::kernel{device, uuid, "fa_aes_xts2_rtl_dec"};
 
   run(device, aes);
 

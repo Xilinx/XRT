@@ -17,6 +17,7 @@
 #ifndef xma_utils_app_h_
 #define xma_utils_app_h_
 #include <streambuf>
+#include "plg/xmasess.h"
 
 namespace xma_core { namespace utils {
 
@@ -28,6 +29,10 @@ typedef struct streambuf: public std::streambuf {
 
 void get_session_cmd_load();
 void get_system_info();
+
+//Check if it is a valid xma session
+//return: XMA_SUCCESS - if valid; XMA_ERROR - otherwise
+int32_t check_xma_session(const XmaSession &s_handle);
 
 } // namespace utils
 } // namespace xma_core

@@ -42,24 +42,30 @@ namespace po = boost::program_options;
 #include "tools/common/ReportFirewall.h"
 #include "tools/common/ReportDebugIpStatus.h"
 #include "tools/common/ReportElectrical.h"
-#include "tools/common/ReportFan.h"
+#include "tools/common/ReportMechanical.h"
 #include "tools/common/ReportAie.h"
 #include "tools/common/ReportMemory.h"
 #include "tools/common/ReportThermal.h"
+#include "tools/common/ReportAsyncError.h"
 // #include "tools/common/ReportPlatform.h"
 
-// Note: Please insert the reports in the order to be displayed (current alphabetical)
-static const ReportCollection fullReportCollection = {
-  std::make_shared<ReportElectrical>(),
-  std::make_shared<ReportFan>(),
-  std::make_shared<ReportAie>(),
-  std::make_shared<ReportMemory>(),
-  std::make_shared<ReportFirewall>(),
-  std::make_shared<ReportHost>(),
-  std::make_shared<ReportCu>(),
-  std::make_shared<ReportThermal>(),
-  std::make_shared<ReportDebugIpStatus>()
-};
+// Note: Please insert the reports in the order to be displayed (alphabetical)
+  static ReportCollection fullReportCollection = {
+  // Common reports
+    std::make_shared<ReportAie>(),
+    std::make_shared<ReportMemory>(),
+    std::make_shared<ReportHost>(),
+    std::make_shared<ReportCu>(),
+    std::make_shared<ReportDebugIpStatus>(),
+    std::make_shared<ReportAsyncError>(),
+  // Native only reports
+  #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
+    std::make_shared<ReportElectrical>(),
+    std::make_shared<ReportMechanical>(),
+    std::make_shared<ReportFirewall>(),
+    std::make_shared<ReportThermal>(),
+  #endif
+  };
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -82,7 +88,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   XBU::verbose("SubCommand: examine");
 
   // -- Build up the report & format options
-  const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'verbose' option*/);
+  const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'all' option*/);
   const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
 
   // Option Variables
@@ -104,7 +110,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   ;
 
   po::options_description hiddenOptions("Hidden Options");  
-  commonOptions.add_options()
+  hiddenOptions.add_options()
     ("element,e", boost::program_options::value<decltype(elementsFilter)>(&elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
   ;
 
@@ -121,7 +127,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    throw; // Re-throw exception
+    return;
   }
 
   // Check to see if help was requested 
@@ -163,6 +169,19 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
           missingReports.push_back(report->getReportName());
       }
       if (!missingReports.empty()) {
+
+        auto dev_pt = XBU::get_available_devices(true);
+        if(dev_pt.empty())
+          std::cout << "0 devices found" << std::endl;
+        else 
+          std::cout << "Device list" << std::endl;
+
+        for(auto& kd : dev_pt) {
+          boost::property_tree::ptree& dev = kd.second;
+          std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
+          std::cout << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
+        }
+        
         std::cout << boost::format("Warning: Due to missing devices, the following reports will not be generated:\n");
         for (const auto & report : missingReports) 
           std::cout << boost::format("         - %s\n") % report;
@@ -172,6 +191,11 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp(commonOptions, hiddenOptions);
+    return;
+  }
+  catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
     return;
   }
 

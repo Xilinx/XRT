@@ -152,7 +152,6 @@ module_loader(const std::string& module_name,
               std::function<void ()> warning_function,
               std::function<int ()> error_function)
 {
-#ifdef XRT_CORE_BUILD_WITH_DL
   if (error_function)
     // Check prerequirements for this particular plugin.  If they are
     // not met, then return before we do any linking
@@ -172,7 +171,6 @@ module_loader(const std::string& module_name,
   // Explicitly do not close the handle.  We need these dynamic
   // symbols to remain open and linked through the rest of the
   // execution
-#endif
 }
 
 shim_loader::

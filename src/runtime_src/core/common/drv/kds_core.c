@@ -1,10 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
+ *
+ * This file is dual-licensed; you may select either the GNU General Public
+ * License version 2 or Apache License, Version 2.0.
  */
 
 #include <linux/slab.h>
@@ -387,7 +390,9 @@ int kds_init_sched(struct kds_sched *kds)
 	mutex_init(&kds->cu_mgmt.lock);
 	kds->num_client = 0;
 	kds->bad_state = 0;
-	kds->ert_disable = 0;
+	/* At this point, I don't know if ERT subdev exist or not */
+	kds->ert_disable = true;
+	kds->ini_disable = false;
 
 	return 0;
 }
@@ -614,7 +619,10 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		/* a special handling for m2m cu :( */
 		if (kds->cu_mgmt.num_cdma && !client->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
-			test_and_clear_bit(i, client->cu_bitmap);
+			if (!test_and_clear_bit(i, client->cu_bitmap)) {
+				kds_err(client, "never reserved cmda");
+				return -EINVAL;
+			}
 			mutex_lock(&kds->cu_mgmt.lock);
 			--kds->cu_mgmt.cu_refs[i];
 			mutex_unlock(&kds->cu_mgmt.lock);
@@ -733,19 +741,68 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 {
 	kds->ert = ert;
-	/* Do anything necessary */
+	/* By default enable ERT if it exist */
+	kds->ert_disable = false;
 	return 0;
 }
 
 int kds_fini_ert(struct kds_sched *kds)
 {
-	/* TODO: implement this */
 	return 0;
 }
 
 void kds_reset(struct kds_sched *kds)
 {
 	kds->bad_state = 0;
+	kds->ert_disable = true;
+	kds->ini_disable = false;
+}
+
+static int kds_fa_assign_plram(struct kds_sched *kds)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	u32 total_sz = 0;
+	u32 num_slots;
+	u32 size;
+	u64 bar_addr;
+	u64 dev_addr;
+	int ret = 0;
+	int i;
+	void __iomem *vaddr;
+
+	for (i = 0; i < cu_mgmt->num_cus; i++) {
+		if (!xrt_is_fa(cu_mgmt->xcus[i], &size))
+			continue;
+
+		total_sz += size;
+		/* Release old resoruces if exist */
+		xrt_fa_cfg_update(cu_mgmt->xcus[i], 0, 0, 0, 0);
+	}
+
+	total_sz = round_up_to_next_power2(total_sz);
+
+	if (kds->plram.size < total_sz)
+		return -EINVAL;
+
+	num_slots = kds->plram.size / total_sz;
+
+	bar_addr = kds->plram.bar_paddr;
+	dev_addr = kds->plram.dev_paddr;
+	vaddr = kds->plram.vaddr;
+	for (i = 0; i < cu_mgmt->num_cus; i++) {
+		if (!xrt_is_fa(cu_mgmt->xcus[i], &size))
+			continue;
+
+		/* The updated FA CU would release when it is removed */
+		ret = xrt_fa_cfg_update(cu_mgmt->xcus[i], bar_addr, dev_addr, vaddr, num_slots);
+		if (ret)
+			return ret;
+		bar_addr += size * num_slots;
+		dev_addr += size * num_slots;
+		vaddr += size * num_slots;
+	}
+
+	return 0;
 }
 
 int kds_cfg_update(struct kds_sched *kds)
@@ -755,21 +812,33 @@ int kds_cfg_update(struct kds_sched *kds)
 	int ret = 0;
 	int i;
 
-	if (!kds->cu_intr_cap)
-		return 0;
+	/* Update PLRAM CU */
+	if (kds->plram.dev_paddr) {
+		ret = kds_fa_assign_plram(kds);
+		if (ret)
+			return -EINVAL;
+		/* ERT doesn't understand Fast adapter
+		 * Host crash at around configure command if ERT is enabled.
+		 * TODO: Support fast adapter in ERT?
+		 */
+		kds->ert_disable = true;
+	}
 
-	for (i = 0; i < cu_mgmt->num_cus; i++) {
-		if (cu_mgmt->cu_intr[i] == kds->cu_intr)
-			continue;
+	/* Update CU interrupt mode */
+	if (kds->cu_intr_cap) {
+		for (i = 0; i < cu_mgmt->num_cus; i++) {
+			if (cu_mgmt->cu_intr[i] == kds->cu_intr)
+				continue;
 
-		xcu = cu_mgmt->xcus[i];
-		ret = xrt_cu_cfg_update(xcu, kds->cu_intr);
-		if (!ret)
-			cu_mgmt->cu_intr[i] = kds->cu_intr;
-		else if (ret == -ENOSYS) {
-			/* CU doesn't support interrupt */
-			cu_mgmt->cu_intr[i] = 0;
-			ret = 0;
+			xcu = cu_mgmt->xcus[i];
+			ret = xrt_cu_cfg_update(xcu, kds->cu_intr);
+			if (!ret)
+				cu_mgmt->cu_intr[i] = kds->cu_intr;
+			else if (ret == -ENOSYS) {
+				/* CU doesn't support interrupt */
+				cu_mgmt->cu_intr[i] = 0;
+				ret = 0;
+			}
 		}
 	}
 
@@ -870,9 +939,35 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
 	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
 
-	/* Skip first 4 control registers */
+	/* Copy resigter map into info and isize is the size of info in bytes.
+	 *
+	 * Based on ert.h, ecmd->count is the number of words following header.
+	 * In ert_start_kernel_cmd, the CU register map size is
+	 * (count - (1 + extra_cu_masks)) and I would like to Skip
+	 * first 4 control registers
+	 */
 	xcmd->isize = (ecmd->count - xcmd->num_mask - 4) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
+}
+
+void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+			  struct kds_command *xcmd)
+{
+	xcmd->opcode = OP_START;
+
+	xcmd->execbuf = (u32 *)ecmd;
+
+	xcmd->cu_mask[0] = ecmd->cu_mask;
+	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
+	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+
+	/* Copy descriptor into info and isize is the size of info in bytes.
+	 *
+	 * Based on ert.h, ecmd->count is the number of words following header.
+	 * The descriptor size is (count - (1 + extra_cu_masks)).
+	 */
+	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
+	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 }
 
 /**

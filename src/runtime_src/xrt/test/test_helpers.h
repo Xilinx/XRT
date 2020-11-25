@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,7 +21,7 @@
 #include <iosfwd>
 #include <chrono>
 
-namespace xrt { 
+namespace xrt_xocl { 
 
 class device;
 
@@ -82,14 +82,14 @@ emptyOrValue(const char* cstr)
   return cstr ? cstr : "";
 }
 
-// Construct xrt::device objects from loaded hal::device drivers
+// Construct xrt_xocl::device objects from loaded hal::device drivers
 // if predicate is satisfied
-// Predicate: [](const xrt::hal::device&) { ... }
+// Predicate: [](const xrt_xocl::hal::device&) { ... }
 template <typename UnaryPredicate>
-std::vector<xrt::device>
+std::vector<xrt_xocl::device>
 loadDevices(UnaryPredicate pred)
 {
-  std::vector<xrt::device> devices;
+  std::vector<xrt_xocl::device> devices;
   auto haldevices = hal::loadDevices();
   for (auto& hal : haldevices) { // unique_ptr<hal::device>
     if (pred(*hal.get()))
@@ -98,11 +98,11 @@ loadDevices(UnaryPredicate pred)
   return std::move(devices);
 }
 
-// construct xrt::device objects from loaded hal::device drivers
-inline std::vector<xrt::device>
+// construct xrt_xocl::device objects from loaded hal::device drivers
+inline std::vector<xrt_xocl::device>
 loadDevices()
 {
-  return loadDevices([](const xrt::hal::device& hal){return true;});
+  return loadDevices([](const xrt_xocl::hal::device& hal){return true;});
 }
 
 }}

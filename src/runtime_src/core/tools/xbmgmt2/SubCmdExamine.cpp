@@ -16,7 +16,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "SubCmdStatus.h"
+#include "SubCmdExamine.h"
 #include "core/common/error.h"
 
 // Utilities
@@ -46,8 +46,8 @@ static const ReportCollection fullReportCollection = {
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-SubCmdStatus::SubCmdStatus(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("status", 
+SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("examine", 
              "Returns detail information for the specified device.")
 {
   const std::string longDescription = "This command will 'examine' the state of the system/device and will"
@@ -60,12 +60,12 @@ SubCmdStatus::SubCmdStatus(bool _isHidden, bool _isDepricated, bool _isPrelimina
 }
 
 void
-SubCmdStatus::execute(const SubCmdOptions& _options) const
+SubCmdExamine::execute(const SubCmdOptions& _options) const
 {
-  XBU::verbose("SubCommand: status");
+  XBU::verbose("SubCommand: examine");
 
   // -- Build up the report & format options
-  const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'verbose' option*/);
+  const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'all' option*/);
   const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
 
   // Option Variables
@@ -101,7 +101,7 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    throw; // Re-throw exception
+    return;
   }
 
   // Check to see if help was requested 
@@ -152,6 +152,11 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp(commonOptions, hiddenOptions);
+    return;
+  }
+  catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
     return;
   }
 

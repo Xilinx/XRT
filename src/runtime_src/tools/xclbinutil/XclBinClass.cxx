@@ -380,7 +380,7 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName,
   {
     // Determine file size
     ofXclBin.seekg(0, ofXclBin.end);
-    static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize percision is greater then 64 bits");
+    static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize precision is greater then 64 bits");
     std::streamsize streamSize = (std::streamsize) ofXclBin.tellg();
 
     // Update Header
@@ -476,7 +476,6 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   std::stringstream ss;
   ss.write((char*) memBuffer.get(), bufferSize);
 
-  // TODO: Catch the exception (if any) from this call and produce a nice message
   try {
     boost::property_tree::read_json(ss, _mirrorData);
   } catch (boost::property_tree::json_parser_error &e) {
@@ -675,15 +674,17 @@ XclBin::removeSection(const std::string & _sSectionToRemove)
   }
 
   removeSection(pSection);
+  pSection = nullptr;
 
   std::string indexEntry;
   if (!sectionIndexName.empty()) {
     indexEntry = "[" + sectionIndexName + "]";
   }
+
   std::cout << std::endl << XUtil::format("Section '%s%s'(%d) was successfully removed",
-                                          pSection->getSectionKindAsString().c_str(), 
+                                          _sSectionToRemove.c_str(), 
                                           indexEntry.c_str(),
-                                          pSection->getSectionKind()) << std::endl;
+                                          _eKind) << std::endl;
 }
 
 
@@ -971,7 +972,7 @@ XclBin::addSections(ParameterSectionData &_PSD)
     throw std::runtime_error(errMsg);
   }
 
-  //  Add a new element to the collection and parse the jason file
+  //  Add a new element to the collection and parse the JSON file
   XUtil::TRACE("Reading JSON File: '" + sJSONFileName + '"');
   boost::property_tree::ptree pt;
   try {
@@ -1049,7 +1050,7 @@ XclBin::appendSections(ParameterSectionData &_PSD)
     throw std::runtime_error(errMsg);
   }
 
-  //  Add a new element to the collection and parse the jason file
+  //  Add a new element to the collection and parse the JSON file
   XUtil::TRACE("Reading JSON File: '" + sJSONFileName + '"');
   boost::property_tree::ptree pt;
   try {

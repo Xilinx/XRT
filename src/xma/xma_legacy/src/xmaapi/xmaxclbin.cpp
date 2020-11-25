@@ -14,11 +14,12 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include <stdio.h>
+#include <cstdio>
 #include <fstream>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <cstring>
+#include <cstdlib>
+#include <cstdint>
+#include "core/common/xclbin_parser.h"
 #include "xclbin.h"
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
@@ -96,7 +97,7 @@ static int get_xclbin_mem_topology(char *buffer, XmaXclbinInfo *xclbin_info)
     //int rc = XMA_SUCCESS;
     axlf *xclbin = reinterpret_cast<axlf *>(buffer);
 
-    const axlf_section_header *ip_hdr = xclbin::get_axlf_section(xclbin, MEM_TOPOLOGY);
+    const axlf_section_header *ip_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
     if (ip_hdr)
     {
         char *data = &buffer[ip_hdr->m_sectionOffset];
@@ -131,7 +132,7 @@ static int get_xclbin_connectivity(char *buffer, XmaXclbinInfo *xclbin_info)
     //int rc = XMA_SUCCESS;
     axlf *xclbin = reinterpret_cast<axlf *>(buffer);
 
-    const axlf_section_header *ip_hdr = xclbin::get_axlf_section(xclbin, CONNECTIVITY);
+    const axlf_section_header *ip_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_CONNECTIVITY);
     if (ip_hdr)
     {
         char *data = &buffer[ip_hdr->m_sectionOffset];
@@ -175,7 +176,10 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
     for(uint32_t c = 0; c < info->number_of_connections; c++)
     {
         XmaAXLFConnectivity *xma_conn = &info->connectivity[c];
-        map[xma_conn->m_ip_layout_index] |= 1 << (xma_conn->mem_data_index + 1);
+        // Adding one to mem_data_index is misleading as the bitset
+        // position no longer prepresents the mem_data_index. The off
+        // by one however is compensated by xam_xclbin_map2ddr()
+        map[xma_conn->m_ip_layout_index] |= static_cast<uint64_t>(1) << (xma_conn->mem_data_index + 1);
     }
     memcpy(info->ip_ddr_mapping,map,MAX_KERNEL_CONFIGS*sizeof(uint64_t));
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCONNECTIONS (bitmap 63<-0)\n");

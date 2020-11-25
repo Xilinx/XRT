@@ -80,18 +80,16 @@ namespace xdphalinterface {
 
   void register_hal_interface_callbacks(void* handle)
   {
-#ifdef XRT_CORE_BUILD_WITH_DL
     typedef void (*ftype)(unsigned int, void*) ;
     cb = (ftype)(xrt_core::dlsym(handle, "hal_api_interface_cb_func")) ;
     if (xrt_core::dlerror() != NULL) cb = nullptr ;
-#endif
   }
 
   int error_hal_interface_callbacks()
   {
     if (xrt_core::config::get_profile())
     {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING,
+      xrt_core::message::send(xrt_core::message::severity_level::warning,
 			      "XRT",
 			      std::string("Both profile=true and profile_api=true set in xrt.ini config. Currently these flows are not supported to work together. Hence, retrieving profile results using APIs will not be available in this run.  To enable profiling with APIs, please set profile_api=true only and re-run.")) ;
       return 1 ;
@@ -101,13 +99,11 @@ namespace xdphalinterface {
 
   void load_xdp_hal_interface_plugin_library(HalPluginConfig* )
   {
-#ifdef XRT_CORE_BUILD_WITH_DL
     static xrt_core::module_loader
       xdp_hal_interface_loader("xdp_hal_api_interface_plugin",
 			       register_hal_interface_callbacks,
 			       nullptr, // warning function
 			       error_hal_interface_callbacks) ;
-#endif
   }
 
 }

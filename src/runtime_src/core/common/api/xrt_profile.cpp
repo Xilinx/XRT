@@ -32,12 +32,11 @@
 
 namespace xrt { namespace profile {
 
-  user_range::user_range(const std::string& label,
-			 const std::string& tooltip) : active(true)
+  user_range::user_range(const char* label, const char* tooltip) : active(true)
   {
     id = static_cast<uint32_t>(xrt_core::utils::issue_id()) ;
 
-    xrtURStart(id, label.c_str(), tooltip.c_str()) ;
+    xrtURStart(id, label, tooltip) ;
   }
 
   user_range::user_range() : id(0), active(false)
@@ -49,14 +48,13 @@ namespace xrt { namespace profile {
     if (active) xrtUREnd(id) ;
   }
 
-  void user_range::start(const std::string& label, 
-			 const std::string& tooltip)
+  void user_range::start(const char* label, const char* tooltip)
   {
     // Handle case where start is called while started
     if (active) xrtUREnd(id) ;
 
     id = static_cast<uint32_t>(xrt_core::utils::issue_id()) ;
-    xrtURStart(id, label.c_str(), tooltip.c_str()) ;
+    xrtURStart(id, label, tooltip) ;
     active = true ;
   }
 
@@ -127,7 +125,7 @@ extern "C"
     }
     catch(const std::exception& ex)
     {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR,
+      xrt_core::message::send(xrt_core::message::severity_level::error,
 			      "XRT",
 			      ex.what()) ;
     }
@@ -142,7 +140,7 @@ extern "C"
     }
     catch(const std::exception& ex)
     {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR,
+      xrt_core::message::send(xrt_core::message::severity_level::error,
 			      "XRT",
 			      ex.what()) ;
     }
@@ -157,7 +155,7 @@ extern "C"
     }
     catch(const std::exception& ex)
     {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR,
+      xrt_core::message::send(xrt_core::message::severity_level::error,
 			      "XRT",
 			      ex.what()) ;
     }

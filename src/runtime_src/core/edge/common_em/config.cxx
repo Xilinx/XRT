@@ -16,6 +16,7 @@
 
 #include "config.h"
 #include "core/common/config_reader.h"
+#include "core/common/xclbin_parser.h"
 #include <errno.h>
 #include <unistd.h>
 #include <string>
@@ -97,6 +98,7 @@ namespace xclemulation{
 
   void config::populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap)
   {
+    setenv("HW_EM_DISABLE_LATENCY", "true", true);
     for (auto i : mEnvironmentNameValueMap)
     {
       std::string name  = i.first;
@@ -175,7 +177,7 @@ namespace xclemulation{
       else if (name == "ENABLE_GMEM_LATENCY" || name == "enable_gmem_latency") {
         //This is then new INI option that sets the ENV HW_EM_DISABLE_LATENCY to appropriate value before 
         //launching simulation
-        bool val = getBoolValue(value, true);
+        bool val = getBoolValue(value, false);
         if (val) {
           setenv("HW_EM_DISABLE_LATENCY", "false", true);
         } else {
@@ -884,4 +886,44 @@ namespace xclemulation{
     ifs.close();
     return false;
   }
+
+  //Get CU index from IP_LAYOUT section for corresponding kernel name
+  int getIPName2Index(const char *name, const char* buffer)
+  {
+    std::string errmsg;
+    const uint64_t bad_addr = -1;
+  
+    if (!buffer)
+    {
+      errmsg = "ERROR: getIPName2Index - can't load ip_layout section";
+      std::cerr << errmsg << std::endl;
+      return -EINVAL;
+    }
+
+    auto map = reinterpret_cast<const ::ip_layout*>(buffer);
+    if (map->m_count < 0) {
+      errmsg = "ERROR: getIPName2Index - invalid ip_layout section content";
+      std::cerr << errmsg << std::endl;
+      return -EINVAL;
+    }
+    //Find out base address of the kernel in IP_LAYOUT section in XCLBIN
+    uint64_t addr = bad_addr;
+    for (int i = 0; i < map->m_count; i++) {
+      if (strncmp((char *)map->m_ip_data[i].m_name, name,
+        sizeof(map->m_ip_data[i].m_name)) == 0) {
+        addr = map->m_ip_data[i].m_base_address;
+        break;
+      }
+    } 
+    if (addr == bad_addr)
+      return -EINVAL;
+    //get all CU index vector for the correspodning ip_layout buffer.
+    auto cus = xrt_core::xclbin::get_cus(map);
+    auto itr = std::find(cus.begin(), cus.end(), addr);
+    if (itr == cus.end())
+      return -ENOENT;
+
+    return std::distance(cus.begin(), itr);
+  }
+
 }

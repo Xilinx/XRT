@@ -76,14 +76,14 @@ namespace xocl {
 
 class platform::xrt_device_manager
 {
-  std::vector<xrt::device>  m_all; // owner
-  std::vector<xrt::device*> m_hw;
-  std::vector<xrt::device*> m_hwem;
-  std::vector<xrt::device*> m_swem;
+  std::vector<xrt_xocl::device>  m_all; // owner
+  std::vector<xrt_xocl::device*> m_hw;
+  std::vector<xrt_xocl::device*> m_hwem;
+  std::vector<xrt_xocl::device*> m_swem;
 
 public:
   xrt_device_manager()
-    : m_all(xrt::loadDevices())
+    : m_all(xrt_xocl::loadDevices())
   {
     if (m_all.empty())
       throw xocl::error(CL_DEVICE_NOT_FOUND,"No devices found");
@@ -126,10 +126,10 @@ public:
     return !m_hwem.empty();
   }
 
-  xrt::device*
+  xrt_xocl::device*
   get_swem_device()
   {
-    xrt::device* dev = nullptr;
+    xrt_xocl::device* dev = nullptr;
     if (has_swem_devices()) {
       dev = m_swem.back();
       m_swem.pop_back();
@@ -137,10 +137,10 @@ public:
     return dev;
   }
 
-  xrt::device*
+  xrt_xocl::device*
   get_hwem_device()
   {
-    xrt::device* dev = nullptr;
+    xrt_xocl::device* dev = nullptr;
     if (has_hwem_devices()) {
       dev = m_hwem.back();
       m_hwem.pop_back();
@@ -148,10 +148,10 @@ public:
     return dev;
   }
 
-  xrt::device*
+  xrt_xocl::device*
   get_hw_device()
   {
-    xrt::device* dev = nullptr;
+    xrt_xocl::device* dev = nullptr;
     if (has_hw_devices()) {
       dev = m_hw.back();
       m_hw.pop_back();
@@ -159,16 +159,16 @@ public:
     return dev;
   }
 
-  xrt::device*
+  xrt_xocl::device*
   get_hwem_device(const std::string& name)
   {
     auto itr = std::find_if(m_hwem.begin(),m_hwem.end(),
-                            [&name](const xrt::device* dev) {
+                            [&name](const xrt_xocl::device* dev) {
                               return dev->getName()==name;
                             });
     if (itr==m_hwem.end())
       return nullptr;
-    xrt::device* dev = *itr;
+    xrt_xocl::device* dev = *itr;
     m_hwem.erase(itr);
     return dev;
   }
@@ -206,7 +206,7 @@ platform()
 
   //User can target either emulation or board. Not both at the same time.
   if (!is_emulation() && m_device_mgr->has_hw_devices()) {
-    while (xrt::device* hw_device = m_device_mgr->get_hw_device()) {
+    while (xrt_xocl::device* hw_device = m_device_mgr->get_hw_device()) {
       auto udev = std::make_unique<xocl::device>(this,hw_device);
       auto dev = udev.release();
       add_device(dev);
@@ -215,7 +215,7 @@ platform()
   }
 
   try {
-    xrt::scheduler::start();
+    xrt_xocl::scheduler::start();
   }
   catch(const std::exception&) {
     throw error(CL_OUT_OF_HOST_MEMORY,"failed to allocate platform event_scheduler");
@@ -227,7 +227,7 @@ platform::
 {
   XOCL_DEBUG(std::cout,"xocl::platform::~platform(",m_uid,")\n");
   try {
-    xrt::scheduler::stop();
+    xrt_xocl::scheduler::stop();
     g_platform = nullptr;
   }
   catch (const std::exception& ex) {

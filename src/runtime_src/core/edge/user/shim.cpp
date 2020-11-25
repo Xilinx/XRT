@@ -55,6 +55,14 @@
 
 namespace {
 
+template <typename ...Args>
+void
+xclLog(xrtLogMsgLevel level, const char* format, Args&&... args)
+{
+  auto slvl = static_cast<xrt_core::message::severity_level>(level);
+  xrt_core::message::send(slvl, "XRT", format, std::forward<Args>(args)...);
+}
+
 constexpr size_t
 operator"" _gb(unsigned long long value)
 {
@@ -87,6 +95,8 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
 }
 
 namespace ZYNQ {
+//initializing static member
+std::map<uint64_t, uint32_t *> shim::mKernelControl;
 
 shim::
 shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
@@ -114,6 +124,10 @@ shim::
 ~shim()
 {
   xclLog(XRT_INFO, "XRT", "%s", __func__);
+
+//  xdphal::finish_flush_device(handle) ;
+  xdpaie::finish_flush_aie_device(this) ;
+  xdpaiectr::end_aie_ctr_poll(this);
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -155,7 +169,7 @@ mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets)
         int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
         if (result) {
           xclLog(XRT_ERROR, "XRT", "%s: Failed to find CU info 0x%lx", __func__, offset_it->first);
-          return -1;
+          return -errno;
         }
         size_t psize = getpagesize();
         ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*psize);
@@ -321,7 +335,7 @@ xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek)
   xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, src %p, size %ld, seek %ld", __func__, boHandle, src, size, seek);
   xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
 
-  return result;
+  return result ? -errno : result;
 }
 
 int
@@ -334,7 +348,7 @@ xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip)
   xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, dst %p, size %ld, skip %ld", __func__, boHandle, dst, size, skip);
   xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
 
-  return result;
+  return result ? -errno : result;
 }
 
 void *
@@ -392,6 +406,7 @@ xclGetDeviceInfo2(xclDeviceInfo2 *info)
 
   info->mDDRBankCount = 1;
   info->mOCLFrequency[0] = mKernelClockFreq;
+  info->mTimeStamp = 0;
 
 #if defined(__aarch64__)
   info->mNumCDMA = 1;
@@ -427,7 +442,7 @@ xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t off
   xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, dir %d, size %ld, offset %ld", __func__, boHandle, dir, size, offset);
   xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
 
-  return result;
+  return result ? -errno : result;
 }
 
 int
@@ -499,10 +514,21 @@ xclLoadAxlf(const axlf *buffer)
    * some v++ param).  User need to add enable_pr=false in xrt.ini.
    */
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
+  auto is_flat_platform = (buffer->m_header.m_mode == XCLBIN_FLAT ) ? true : false;
   auto is_pr_enabled = xrt_core::config::get_enable_pr(); //default value is true
+  auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
 
   if (is_pr_platform && is_pr_enabled)
     flags = DRM_ZOCL_PLATFORM_PR;
+  /*
+   * If platform is a PR-platform, Following check will fail. Dont download the
+   * full bitstream
+   *
+   * If its non-PR-platform and enable_flat=true in xrt.ini. Download the full
+   * bitstream.
+   */
+  else if (is_flat_platform && is_flat_enabled)
+    flags = DRM_ZOCL_PLATFORM_FLAT;
 
     drm_zocl_axlf axlf_obj = {
       .za_xclbin_ptr = const_cast<axlf *>(buffer),
@@ -551,7 +577,7 @@ xclLoadAxlf(const axlf *buffer)
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
   xclLog(XRT_INFO, "XRT", "%s: flags 0x%x, return %d", __func__, flags, ret);
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
@@ -600,7 +626,7 @@ xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
 
   xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, size %x, paddr 0x%lx", __func__, boHandle, info.size, info.paddr);
 
-  return result;
+  return result ? -errno : result;
 }
 
 bool
@@ -637,7 +663,7 @@ xclExecBuf(unsigned int cmdBO)
   xclLog(XRT_DEBUG, "XRT", "%s: cmdBO handle %d, ioctl return %d", __func__, cmdBO, result);
   if (result == -EDEADLK)
       xclLog(XRT_ERROR, "XRT", "CU might hang, please reset device");
-  return result;
+  return result ? -errno : result;
 }
 
 int
@@ -699,6 +725,25 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
   return 0;
 }
 
+// Get the maximum bandwidth for host reads from the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double
+shim::
+xclGetReadMaxBandwidthMBps()
+{
+  return 9600.0;
+}
+
+// Get the maximum bandwidth for host writes to the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double
+shim::
+xclGetWriteMaxBandwidthMBps()
+{
+  return 9600.0;
+}
+
+
 int
 shim::
 xclSKGetCmd(xclSKCmd *cmd)
@@ -717,7 +762,7 @@ xclSKGetCmd(xclSKCmd *cmd)
     snprintf(cmd->krnl_name, ZOCL_MAX_NAME_LENGTH, "%s", scmd.name);
   }
 
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
@@ -734,19 +779,21 @@ xclAIEGetCmd(xclAIECmd *cmd)
     snprintf(cmd->info, scmd.size, "%s", scmd.info);
   }
 
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
 shim::
 xclAIEPutCmd(xclAIECmd *cmd)
 {
+  int ret;
   drm_zocl_aie_cmd scmd;
 
   scmd.opcode = cmd->opcode;
   scmd.size = cmd->size;
   snprintf(scmd.info, cmd->size, "%s",cmd->info);
-  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_PUTCMD, &scmd);
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_PUTCMD, &scmd);
+  return ret ? -errno : ret;
 }
 
 int
@@ -758,7 +805,7 @@ xclSKCreate(unsigned int boHandle, uint32_t cu_idx)
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_CREATE, &scmd);
 
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
@@ -780,7 +827,7 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_REPORT, &scmd);
 
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
@@ -829,8 +876,7 @@ xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
   };
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
-  // return ret ? -errno : ret; // wait for PR-3018 to be merged  return ret ? -errno : ret;
-  return 0;
+  return ret ? -errno : ret;
 }
 
 int
@@ -963,7 +1009,7 @@ xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags)
 
   xclLog(XRT_DEBUG, "XRT", "%s: IP index %d, flags 0x%x", __func__, ipIndex, flags);
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
-  return ret;
+  return (ret < 0) ? -errno : ret;
 }
 
 int
@@ -972,59 +1018,6 @@ xclCloseIPInterruptNotify(int fd)
 {
   xclLog(XRT_DEBUG, "XRT", "%s: fd %d", __func__, fd);
   close(fd);
-  return 0;
-}
-
-inline int
-shim::
-xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...)
-{
-  va_list args;
-  va_start(args, format);
-  int ret = xclLogMsg(level, tag, format, args);
-  va_end(args);
-
-  return ret;
-}
-
-int
-shim::
-xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
-{
-  static auto verbosity = xrt_core::config::get_verbosity();
-  if (level <= verbosity) {
-    va_list args_bak;
-    // vsnprintf will mutate va_list so back it up
-    va_copy(args_bak, args);
-    int len = std::vsnprintf(nullptr, 0, format, args_bak);
-    va_end(args_bak);
-
-    if (len < 0) {
-      //illegal arguments
-      std::string err_str = "ERROR: Illegal arguments in log format string. ";
-      err_str.append(std::string(format));
-      xrt_core::message::send((xrt_core::message::severity_level)level, tag,
-                              err_str);
-      return len;
-    }
-    ++len; //To include null terminator
-
-    std::vector<char> buf(len);
-    len = std::vsnprintf(buf.data(), len, format, args);
-
-    if (len < 0) {
-      //error processing arguments
-      std::string err_str =
-        "ERROR: When processing arguments in log format string. ";
-      err_str.append(std::string(format));
-      xrt_core::message::send((xrt_core::message::severity_level)level, tag,
-                              err_str.c_str());
-      return len;
-    }
-    xrt_core::message::send((xrt_core::message::severity_level)level, tag,
-                            buf.data());
-  }
-
   return 0;
 }
 
@@ -1431,7 +1424,7 @@ xclErrorInject(uint16_t num, uint16_t driver, uint16_t  severity, uint16_t modul
   drm_zocl_error_inject ecmd = {ZOCL_ERROR_OP_INJECT, num, driver, severity, module, eclass};
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_ERROR_INJECT, &ecmd);
-  return ret;
+  return ret ? -errno : ret;
 }
 
 int
@@ -1442,7 +1435,7 @@ xclErrorClear()
   drm_zocl_error_inject ecmd = {ZOCL_ERROR_OP_CLEAR_ALL};
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_ERROR_INJECT, &ecmd);
-  return ret;
+  return ret ? -errno : ret;
 }
 
 #ifdef XRT_ENABLE_AIE
@@ -1497,6 +1490,8 @@ resetAIEArray(drm_zocl_aie_reset &reset)
 unsigned
 xclProbe()
 {
+  PROBE_CB;
+
   int fd = open("/dev/dri/renderD128", O_RDWR);
   if (fd < 0) {
     return 0;
@@ -1526,6 +1521,16 @@ xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
 {
   try {
     //std::cout << "xclOpen called" << std::endl;
+    if (deviceIndex >= xclProbe()) {
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+                       std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
+      return nullptr;
+    }
+
+#ifndef __HWEM__
+    OPEN_CB;
+#endif
+
     auto handle = new ZYNQ::shim(deviceIndex, logFileName, level);
     if (!ZYNQ::shim::handleCheck(handle)) {
       delete handle;
@@ -1547,6 +1552,10 @@ xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
 void
 xclClose(xclDeviceHandle handle)
 {
+#ifndef __HWEM__
+  CLOSE_CB;
+#endif
+
   //std::cout << "xclClose called" << std::endl;
   if (ZYNQ::shim::handleCheck(handle)) {
     delete ((ZYNQ::shim *) handle);
@@ -1556,6 +1565,9 @@ xclClose(xclDeviceHandle handle)
 unsigned int
 xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
+#ifndef __HWEM__
+  ALLOC_BO_CB;
+#endif
   //std::cout << "xclAllocBO called " << std::endl;
   //std::cout << "xclAllocBO size:  "  << size << std::endl;
   //std::cout << "xclAllocBO handle " << handle << std::endl;
@@ -1569,6 +1581,9 @@ xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 unsigned int
 xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
+#ifndef __HWEM__
+  ALLOC_USERPTR_BO_CB;
+#endif
   //std::cout << "xclAllocUserPtrBO called.. " << handle << std::endl;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
@@ -1590,6 +1605,9 @@ xclGetHostBO(xclDeviceHandle handle, uint64_t paddr, size_t size)
 void
 xclFreeBO(xclDeviceHandle handle, unsigned int boHandle)
 {
+#ifndef __HWEM__
+  FREE_BO_CB;
+#endif
   //std::cout << "xclFreeBO called" << std::endl;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
@@ -1601,6 +1619,9 @@ size_t
 xclWriteBO(xclDeviceHandle handle, unsigned int boHandle, const void *src,
            size_t size, size_t seek)
 {
+#ifndef __HWEM__
+  WRITE_BO_CB;
+#endif
 
   //std::cout << "xclWriteBO called" << std::endl;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
@@ -1613,6 +1634,10 @@ size_t
 xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
           size_t size, size_t skip)
 {
+#ifndef __HWEM__
+  READ_BO_CB;
+#endif
+
   //std::cout << "xclReadBO called" << std::endl;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
@@ -1623,6 +1648,10 @@ xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
 void *
 xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
+#ifndef __HWEM__
+  MAP_BO_CB;
+#endif
+
   //std::cout << "xclMapBO called" << std::endl;
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
@@ -1644,6 +1673,10 @@ int
 xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
           size_t size, size_t offset)
 {
+#ifndef __HWEM__
+  SYNC_BO_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1654,6 +1687,10 @@ int
 xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
           unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
+#ifndef __HWEM__
+  COPY_BO_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1684,20 +1721,17 @@ int
 xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
 #ifndef __HWEM__
-#ifdef ENABLE_HAL_PROFILING
   LOAD_XCLBIN_CB ;
-#endif
 #endif
 
   try {
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
 #ifndef __HWEM__
-#ifdef ENABLE_HAL_PROFILING
-  xdphal::flush_device(handle) ;
-  xdpaie::flush_aie_device(handle) ;
+    xdphal::flush_device(handle) ;
+    xdpaie::flush_aie_device(handle) ;
 #endif
-#endif
+
 
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
     if (ret) {
@@ -1719,15 +1753,6 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     if (xrt_core::xclbin::is_pdi_only(buffer))
         return 0;
 
-
-#ifndef __HWEM__
-#ifdef ENABLE_HAL_PROFILING
-  xdphal::update_device(handle) ;
-  xdpaie::update_aie_device(handle);
-  xdpaiectr::update_aie_device(handle);
-#endif
-#endif
-
     ret = xrt_core::scheduler::init(handle, buffer);
     if (ret) {
       printf("Scheduler init failed\n");
@@ -1743,7 +1768,12 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       printf("Map Debug IPs Failed\n");
       return ret;
     }
+
 #ifndef __HWEM__
+    xdphal::update_device(handle) ;
+    xdpaie::update_aie_device(handle);
+    xdpaiectr::update_aie_device(handle);
+
     START_DEVICE_PROFILING_CB(handle);
 #endif
     return 0;
@@ -1761,6 +1791,10 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 size_t
 xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
+#ifndef __HWEM__
+  WRITE_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1770,6 +1804,10 @@ xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const v
 size_t
 xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
+#ifndef __HWEM__
+  READ_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1788,6 +1826,10 @@ xclGetDeviceInfo2(xclDeviceHandle handle, xclDeviceInfo2 *info)
 int
 xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)
 {
+#ifndef __HWEM__
+  GET_BO_PROP_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1803,6 +1845,10 @@ xclVersion ()
 int
 xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 {
+#ifndef __HWEM__
+  EXEC_BUF_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1812,6 +1858,10 @@ xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 int
 xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
+#ifndef __HWEM__
+  EXEC_WAIT_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1875,6 +1925,22 @@ xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
   return drv->xclGetDeviceClockFreqMHz();
 }
 
+double
+xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+}
+
+
 int
 xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
 {
@@ -1927,6 +1993,10 @@ xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
 int
 xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
+#ifndef __HWEM__
+  OPEN_CONTEXT_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -EINVAL;
@@ -1935,6 +2005,10 @@ xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipInd
 int
 xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
+#ifndef __HWEM__
+  CLOSE_CONTEXT_CB;
+#endif
+
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;
 }
@@ -2002,12 +2076,20 @@ xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned short 
 int
 xclLockDevice(xclDeviceHandle handle)
 {
+#ifndef __HWEM__
+  LOCK_DEVICE_CB;
+#endif
+
   return 0;
 }
 
 int
 xclUnlockDevice(xclDeviceHandle handle)
 {
+#ifndef __HWEM__
+  UNLOCK_DEVICE_CB;
+#endif
+
   return 0;
 }
 
@@ -2043,15 +2125,23 @@ xclRemoveAndScanFPGA()
 
 ssize_t
 xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf,
-              size_t size, uint64_t offset)
+              size_t count, uint64_t offset)
 {
+#ifndef __HWEM__
+  UNMGD_PREAD_CB;
+#endif
+
   return -ENOSYS;
 }
 
 ssize_t
 xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf,
-               size_t size, uint64_t offset)
+               size_t count, uint64_t offset)
 {
+#ifndef __HWEM__
+  UNMGD_PWRITE_CB;
+#endif
+
   return -ENOSYS;
 }
 
@@ -2180,20 +2270,13 @@ xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
           const char* format, ...)
 {
   static auto verbosity = xrt_core::config::get_verbosity();
-  if (level <= verbosity) {
-    va_list args;
-    va_start(args, format);
-    int ret = -1;
-    if (handle) {
-      ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-      ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
-    } else {
-      ret = ZYNQ::shim::xclLogMsg(level, tag, format, args);
-    }
-    va_end(args);
+  if (level > verbosity)
+    return 0;
 
-    return ret;
-  }
+  va_list args;
+  va_start(args, format);
+  xrt_core::message::sendv(static_cast<xrt_core::message::severity_level>(level), tag, format, args);
+  va_end(args);
 
   return 0;
 }

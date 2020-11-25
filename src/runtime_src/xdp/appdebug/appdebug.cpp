@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -125,7 +125,7 @@ std::string event_dependencies_to_string(std::vector<xocl::event*>&& dependencie
 namespace appdebug {
 
 // Call back function to be called when a command is sent to the scheduler
-void cb_scheduler_cmd_start (const xrt::command* aCommand, const xocl::execution_context* aContext)
+void cb_scheduler_cmd_start (const xrt_xocl::command* aCommand, const xocl::execution_context* aContext)
 {
   //update the datastructure associated with the given event
   try {
@@ -143,7 +143,7 @@ void cb_scheduler_cmd_start (const xrt::command* aCommand, const xocl::execution
 
 
 // Call back function to be called when a command is finished
-void cb_scheduler_cmd_done (const xrt::command* aCommand, const xocl::execution_context* aContext)
+void cb_scheduler_cmd_done (const xrt_xocl::command* aCommand, const xocl::execution_context* aContext)
 {
   //update the datastructure associated with the given event
   try {
@@ -950,26 +950,6 @@ getArgValueString(const xocl::event* aEvent)
     }
   }
 
-  //Now collect the progvars
-  size_t eventargitint = 0;
-
-  for (auto& arg : ctx->get_progvar_argument_range()) {
-    uint64_t physaddr = 0;
-    std::string bank;
-    if (eventargitint == 0) sstr << "ProgVars: ";
-    if (auto mem = arg->get_memory_object()) {
-      xocl::xocl(mem)->try_get_address_bank(physaddr, bank);
-    }
-    //progvars are prefixed "__xcl_gv_", remove them before printing
-    std::string argname = arg->get_name();
-    std::string progvar_prefix = "__xcl_gv_";
-    if (argname.find(progvar_prefix)!= std::string::npos) {
-      argname = argname.substr(progvar_prefix.length());
-    }
-    sstr << argname <<  " = 0x" << std::hex << physaddr << " " << std::dec;
-    ++eventargitint;
-  }
-
   return sstr.str();
 }
 
@@ -1026,7 +1006,7 @@ clGetKernelInfo()
 bool
 isAppdebugEnabled()
 {
-  return xrt::config::get_app_debug();
+  return xrt_xocl::config::get_app_debug();
 }
 
 uint32_t getIPCountAddrNames(std::string& devUserName, int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
@@ -1232,8 +1212,8 @@ clGetDebugCounters() {
     if (device->is_active()) {
       //memset(&debugResults,0, sizeof(xclDebugCountersResults));
       //At this point we deal with only one deviceyy
-      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_AIM, &debugResults);
-      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      device->get_xdevice()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_AIM, &debugResults);
+      sysfs_open_path = device->get_xdevice()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
     }
   }
@@ -1386,8 +1366,8 @@ clGetDebugStreamCounters()
     if (device->is_active())
     {
       // At this point, we are dealing with only one device
-      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_ASM, &streamingDebugCounters);
-      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      device->get_xdevice()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_ASM, &streamingDebugCounters);
+      sysfs_open_path = device->get_xdevice()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_ASM, &streamingDebugCounters);
     }
   }
@@ -1587,8 +1567,8 @@ clGetDebugAccelMonitorCounters()
     if (device->is_active())
     {
       // At this point, we are dealing with only one device
-      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_AM, &amCounters);
-      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      device->get_xdevice()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_AM, &amCounters);
+      sysfs_open_path = device->get_xdevice()->getSysfsPath(subdev, entry).get();
       // ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_AM, &amCounters);
     }
   }
@@ -1809,8 +1789,8 @@ clGetDebugCheckers() {
     if (device->is_active()) {
       //memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
       //At this point we deal with only one deviceyy
-      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
-      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      device->get_xdevice()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
+      sysfs_open_path = device->get_xdevice()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
     }
   }

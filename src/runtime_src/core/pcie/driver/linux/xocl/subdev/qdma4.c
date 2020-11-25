@@ -1700,8 +1700,17 @@ static long qdma4_stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 
 	XOCL_DRM_GEM_OBJECT_GET(&xobj->base);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
+#if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
+        dmabuf = drm_gem_prime_export(&xobj->base, flags);
+#else
 	dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
                                &xobj->base, flags);
+#endif
+#else
+        dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
+                               &xobj->base, flags);
+#endif
 #else
 	dmabuf = drm_gem_prime_export(&xobj->base, flags);
 #endif

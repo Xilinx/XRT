@@ -12,6 +12,7 @@ set(XBMGMT_SRC ${XBMGMT_FILES})
 add_executable(xbmgmt ${XBMGMT_SRC})
 
 target_link_libraries(xbmgmt
+  PRIVATE
   xrt_core_static
   xrt_coreutil_static
   pthread

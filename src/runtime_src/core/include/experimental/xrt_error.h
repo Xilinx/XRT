@@ -24,7 +24,7 @@
 #ifdef __cplusplus
 #include <string>
 
-namespace xrt { 
+namespace xrt {
 
 class error_impl;
 class error
@@ -37,6 +37,7 @@ public:
    * @device:   Device to get last errors from
    * @ecl:      Error class to retrieve error from
    */
+  XCL_DRIVER_DLLESPEC
   error(const xrt::device& device, xrtErrorClass ecl);
 
   /**
@@ -48,6 +49,7 @@ public:
    * Allow construction of error from manually retrieved
    * error code and timestamp
    */
+  XCL_DRIVER_DLLESPEC
   error(xrtErrorCode ecl, xrtErrorTime timestamp);
 
   /**
@@ -55,14 +57,25 @@ public:
    *
    * Return:  Error timestamp
    */
+  XCL_DRIVER_DLLESPEC
   xrtErrorTime
   get_timestamp() const;
+
+  /**
+   * get_error_code() - Get the error code for this error
+   *
+   * Return:  Underlying xrt error code
+   */
+  XCL_DRIVER_DLLESPEC
+  xrtErrorCode
+  get_error_code() const;
 
   /**
    * to_string() - Convert error object into a formatted string
    *
    * Return:  Formatted string for error
    */
+  XCL_DRIVER_DLLESPEC
   std::string
   to_string() const;
 
@@ -84,6 +97,7 @@ private:
  *
  * Return:        0 on success or appropriate XRT error code.
  */
+XCL_DRIVER_DLLESPEC
 int
 xrtErrorGetLast(xrtDeviceHandle handle, xrtErrorClass ecl, xrtErrorCode* error, uint64_t* timestamp);
 
@@ -102,6 +116,7 @@ xrtErrorGetLast(xrtDeviceHandle handle, xrtErrorClass ecl, xrtErrorCode* error, 
  * return the message length, which can then be used to allocate the
  * output buffer itself.
  */
+XCL_DRIVER_DLLESPEC
 int
 xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, size_t* out_len);
 
