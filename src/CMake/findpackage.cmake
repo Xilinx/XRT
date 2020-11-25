@@ -39,11 +39,3 @@ install(
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
   )
 
-# Generate xrt-build-tree-targets.cmake
-# This file is not installed
-# It is only used when you are testing with XRT sourced from your local build
-export(
-  EXPORT xrt-targets
-  NAMESPACE ${PROJECT_NAME}::
-  FILE "${CMAKE_CURRENT_BINARY_DIR}/${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}/xrt-build-tree-targets.cmake"
-  )
