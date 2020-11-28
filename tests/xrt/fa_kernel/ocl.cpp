@@ -90,7 +90,7 @@ struct job_type
     0x38f1817d,
     0x32ccb7db,
     0xa6ef0e05
-  }; 
+  };
 
   static constexpr size_t len = 4096;
 
@@ -223,17 +223,17 @@ run(std::vector<job_type>& cmds, size_t total)
         ++issued;
       }
     }
-        
+
     if (++i == cmds.size())
       i = 0;
   }
 
   auto end = std::chrono::high_resolution_clock::now();
-  return (std::chrono::duration_cast<std::chrono::microseconds>(end - start)).count();
-  
+  return static_cast<double>((std::chrono::duration_cast<std::chrono::microseconds>(end - start)).count());
+
 }
 
-static int
+static void
 run(cl_context context, cl_command_queue queue, cl_kernel kernel)
 {
   std::vector<size_t> cmds_per_run = { 16, 100, 1000, 10000, 100000, 1000000 };
@@ -253,7 +253,7 @@ run(cl_context context, cl_command_queue queue, cl_kernel kernel)
   }
 }
 
-static int
+static void
 run(const std::string& fnm)
 {
   // Init OCL
@@ -296,10 +296,10 @@ run(const std::string& fnm)
   clReleaseContext(context);
   clReleaseDevice(device);
   std::for_each(devices.begin(),devices.end(),[](cl_device_id d){clReleaseDevice(d);});
-  return 0;
 }
 
-int run(int argc, char** argv)
+void
+run(int argc, char** argv)
 {
   std::vector<std::string> args(argv+1,argv+argc);
 
@@ -309,7 +309,7 @@ int run(int argc, char** argv)
   for (auto& arg : args) {
     if (arg == "-h") {
       usage();
-      return 1;
+      return;
     }
 
     if (arg[0] == '-') {
@@ -324,8 +324,6 @@ int run(int argc, char** argv)
   }
 
   run(xclbin_fnm);
-
-  return 0;
 }
 
 int
