@@ -2616,10 +2616,19 @@ QSFP_CONTROL(1)
 QSFP_CONTROL(2)
 QSFP_CONTROL(3)
 
-static BIN_ATTR_WO(qsfp0_control, 0);
-static BIN_ATTR_WO(qsfp1_control, 0);
-static BIN_ATTR_WO(qsfp2_control, 0);
-static BIN_ATTR_WO(qsfp3_control, 0);
+#define QSFP_CONTROL_ATTR(PORT)                                                 \
+static struct bin_attribute bin_attr_qsfp##PORT##_control = {                   \
+	.attr = {                                                               \
+		.name = "qsfp##PORT##_control",                                 \
+		.mode = 0600                                                    \
+	},                                                                      \
+	.write = qsfp##PORT##_control_write,                                    \
+	.size = 0                                                               \
+};
+QSFP_CONTROL_ATTR(0);
+QSFP_CONTROL_ATTR(1);
+QSFP_CONTROL_ATTR(2);
+QSFP_CONTROL_ATTR(3);
 
 /* qsfp_io_conifg, e.g. qsfp0_io_config */
 #define QSFP_IO_CONFIG_READ(PORT) \
@@ -2644,11 +2653,27 @@ static ssize_t qsfp##PORT##_io_config_write(   		                        \
 
 QSFP_IO_CONFIG_READ(0);
 QSFP_IO_CONFIG_READ(1);
+QSFP_IO_CONFIG_READ(2);
+QSFP_IO_CONFIG_READ(3);
 QSFP_IO_CONFIG_WRITE(0);
 QSFP_IO_CONFIG_WRITE(1);
+QSFP_IO_CONFIG_WRITE(2);
+QSFP_IO_CONFIG_WRITE(3);
 
-static BIN_ATTR_RW(qsfp0_io_config, 0);
-static BIN_ATTR_RW(qsfp1_io_config, 0);
+#define QSFP_IO_CONFIG_ATTR(PORT)                                               \
+static struct bin_attribute bin_attr_qsfp##PORT##_io_config = {                 \
+	.attr = {                                                               \
+		.name = "qsfp##PORT##_io_config",                               \
+		.mode = 0600                                                    \
+	},                                                                      \
+	.read = qsfp##PORT##_io_config_read,                                    \
+	.write = qsfp##PORT##_io_config_write,                                  \
+	.size = 0                                                               \
+};
+QSFP_IO_CONFIG_ATTR(0);
+QSFP_IO_CONFIG_ATTR(1);
+QSFP_IO_CONFIG_ATTR(2);
+QSFP_IO_CONFIG_ATTR(3);
 
 static struct bin_attribute *xmc_bin_attrs[] = {
 	&bin_dimm_temp_by_mem_topology_attr,
@@ -2662,6 +2687,8 @@ static struct bin_attribute *xmc_bin_attrs[] = {
 	&bin_attr_qsfp3_control,
 	&bin_attr_qsfp0_io_config,
 	&bin_attr_qsfp1_io_config,
+	&bin_attr_qsfp2_io_config,
+	&bin_attr_qsfp3_io_config,
 	NULL,
 };
 
