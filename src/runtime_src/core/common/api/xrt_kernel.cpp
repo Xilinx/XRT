@@ -959,7 +959,7 @@ class kernel_impl
     // assert ( ips.size() >= 1);
     auto ctrl = IP_CONTROL((ips[0]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
     for (size_t idx = 1; idx < ips.size(); ++idx)
-      if (IP_CONTROL((ips[0]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) != ctrl)
+      if (IP_CONTROL((ips[idx]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) != ctrl)
         throw std::runtime_error("CU control protocol mismatch");
 
     return ctrl;
@@ -1214,6 +1214,24 @@ class run_impl
       desc_entry->arg_size = arg.size();
       auto count = std::min(arg.size() / sizeof(uint32_t), value.size());
       std::copy_n(value.begin(), count, desc_entry->arg_value);
+    }
+  };
+
+  //Soft Kernel Arg setter
+  struct sk_arg_setter : arg_setter
+  {
+    sk_arg_setter(uint32_t* data)
+      : arg_setter(data)
+    {}
+
+    //Soft kernel regmap size and arguments are unknown; xclbin doesn't have this info
+    virtual void
+    set_arg_value(const uint8_t* args, const uint32_t size) //sizein bytes from 0x0
+    {
+      if (size > 4092) {//From user max is 4092; First 32 bits are exclusive for SKD
+        throw xrt_core::error(-EINVAL, "Max soft kernel regamp size is 4092 bytes");
+      }
+      std::memcpy((uint8_t*)data, args, size);
     }
   };
 
