@@ -250,7 +250,8 @@ struct ert_configure_cmd {
   uint32_t rw_shared:1;
   uint32_t kds_30:1;
   uint32_t dmsg:1;
-  uint32_t unusedf:21;
+  uint32_t echo:1;
+  uint32_t unusedf:20;
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */
