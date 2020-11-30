@@ -60,6 +60,13 @@ static int    sched_loop_cnt;
 static struct scheduler g_sched0;
 static struct sched_ops penguin_ops;
 static struct sched_ops ps_ert_ops;
+#define SK_CRASHED -1
+#define SK_ERROR -2
+#define SK_DONE 1
+#define SK_RUNNING 2
+#define AP_DONE 2
+#define AP_START 1
+
 
 /**
  * List of free sched_cmd objects.
@@ -1454,13 +1461,31 @@ cu_done(struct sched_cmd *cmd)
 	return false;
 }
 
-inline int
+//Copy soft kernel return code to execBO
+static inline void
+copy_sk_return(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct soft_krnl *sk = zdev->soft_kernel;
+	struct soft_cu *scu;
+	uint32_t *cu_regfile;
+	struct ert_start_kernel_cmd *skc;
+
+	skc = (struct ert_start_kernel_cmd *)cmd->packet;
+	scu = sk->sk_cu[cmd->cu_idx];
+	cu_regfile = scu->sc_vregs;
+
+        skc->data[skc->extra_cu_masks + 1] = cu_regfile[1];
+}
+
+inline int32_t
 scu_done(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int cu_idx = cmd->cu_idx;
 	struct soft_krnl *sk = zdev->soft_kernel;
 	u32 *virt_addr;
+        int32_t ret = SK_ERROR;
 
 	/* We simulate hard CU here.
 	 * done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
@@ -1468,26 +1493,29 @@ scu_done(struct sched_cmd *cmd)
 	 * checking for 0x10 is sufficient.
 	 */
 	mutex_lock(&sk->sk_lock);
-	if (!sk->sk_cu[cu_idx]) {
+	if (!sk->sk_cu[cu_idx]) {//Soft kernel has crashed
 		mutex_unlock(&sk->sk_lock);
-		return true;
+		return SK_CRASHED;
 	}
 	virt_addr = sk->sk_cu[cu_idx]->sc_vregs;
 	SCHED_DEBUG("-> %s (,%d) checks scu at address 0x%p\n",
 	    __func__, cu_idx, virt_addr);
-	if (*virt_addr & 2) {
+	if (*virt_addr & AP_DONE) {//Soft kernel is done
 		unsigned int mask_idx = cu_mask_idx(cu_idx);
 		unsigned int pos = cu_idx_in_mask(cu_idx);
 
+                copy_sk_return(cmd);
 		zdev->exec->scu_status[mask_idx] ^= 1 << pos;
-		*virt_addr &= ~2;
+		*virt_addr &= ~AP_DONE;
+                if ((int32_t)virt_addr[1] >= 0)
+                    ret = SK_DONE;
 		mutex_unlock(&sk->sk_lock);
 		SCHED_DEBUG("<- %s returns 1\n", __func__);
-		return true;
+		return ret;
 	}
 	mutex_unlock(&sk->sk_lock);
 	SCHED_DEBUG("<- %s returns 0\n", __func__);
-	return false;
+	return SK_RUNNING;
 }
 
 inline int
@@ -2707,6 +2735,7 @@ static void
 ps_ert_query(struct sched_cmd *cmd)
 {
 	u32 opc = opcode(cmd);
+        int32_t ret = 0;
 
 	SCHED_DEBUG("-> %s() slot_idx=%d\n", __func__, cmd->slot_idx);
 	switch (opc) {
@@ -2722,8 +2751,24 @@ ps_ert_query(struct sched_cmd *cmd)
 		break;
 
 	case ERT_SK_START:
-		if (scu_done(cmd))
+		ret = scu_done(cmd);
+                switch (ret) {
+                    case SK_CRASHED:
+			mark_cmd_complete(cmd, ERT_CMD_STATE_SKCRASHED);
+                        break;
+                    case SK_ERROR:
+			mark_cmd_complete(cmd, ERT_CMD_STATE_SKERROR);
+                        break;
+                    case SK_DONE:
 			mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
+                        break;
+                    case SK_RUNNING:
+                        break;
+                    default:
+		        mark_cmd_complete(cmd, ERT_CMD_STATE_ERROR);
+		        DRM_ERROR("unknown opcode %d", opc);
+                        break;
+                }
 		break;
 
 	case ERT_START_CU:
