@@ -101,6 +101,9 @@ ifeq ($(SYMBOL),1)
 	ccflags-y += -g
 endif
 
+ccflags-$(CONFIG_FPGA) += -DENABLE_FPGA_MGR_SUPPORT
+ccflags-y += $(ccflags-m)
+
 all:
 	echo $(PWD)
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
