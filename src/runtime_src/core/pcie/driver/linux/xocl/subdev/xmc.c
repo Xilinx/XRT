@@ -336,6 +336,10 @@ struct xmc_pkt_hdr {
 #define CMC_OP_READ_QSFP_VALIDATE_LOW_SPEED_IO  0xD
 #define CMC_OP_WRITE_QSFP_VALIDATE_LOW_SPEED_IO 0xE
 
+#define CMC_OP_READ_QSFP_MAXLEN		128 /* In bytes */
+#define CMC_OP_WRITE_QSFP_MAXLEN	13
+#define CMC_OP_IO_CONTROL_MAXLEN	1
+
 #define CMC_OP_QSFP_DIAG_OFFSET 	0x14
 #define CMC_OP_QSFP_IO_OFFSET           0x8
 
@@ -360,18 +364,18 @@ struct xmc_pkt_qsfp_diag_read_op {
 	u32 upper_page;
 	u32 lower_page;
 	u32 data_size;
-	u32 data[1];
+	u8 data[1];
 };
 
 struct xmc_pkt_qsfp_diag_write_op {
 	u32 port;
 	u32 data_size;
-	u32 data[1];
+	u8 data[1];
 };
 
 struct xmc_pkt_qsfp_io_rw_op {
 	u32 port;
-	u32 data[1];
+	u8 data[1];
 };
 
 struct xmc_pkt {
@@ -2619,8 +2623,8 @@ QSFP_CONTROL(3)
 #define QSFP_CONTROL_ATTR(PORT)                                                 \
 static struct bin_attribute bin_attr_qsfp##PORT##_control = {                   \
 	.attr = {                                                               \
-		.name = "qsfp##PORT##_control",                                 \
-		.mode = 0600                                                    \
+		.name = "qsfp" #PORT "_control",                                \
+		.mode = 0200                                                    \
 	},                                                                      \
 	.write = qsfp##PORT##_control_write,                                    \
 	.size = 0                                                               \
@@ -2663,7 +2667,7 @@ QSFP_IO_CONFIG_WRITE(3);
 #define QSFP_IO_CONFIG_ATTR(PORT)                                               \
 static struct bin_attribute bin_attr_qsfp##PORT##_io_config = {                 \
 	.attr = {                                                               \
-		.name = "qsfp##PORT##_io_config",                               \
+		.name = "qsfp" #PORT "_io_config",                           \
 		.mode = 0600                                                    \
 	},                                                                      \
 	.read = qsfp##PORT##_io_config_read,                                    \
@@ -4550,7 +4554,7 @@ xmc_qsfp_io_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_
 		return 0;
 
 	/* read done, exit */
-	if (off >= count)
+	if (off >= CMC_OP_IO_CONTROL_MAXLEN)
 		return 0;
 
 	mutex_lock(&xmc->mbx_lock);
@@ -4576,7 +4580,7 @@ xmc_qsfp_io_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_
 	}
 	mutex_unlock(&xmc->mbx_lock);
 
-	return count;
+	return CMC_OP_IO_CONTROL_MAXLEN;
 out:
 	mutex_unlock(&xmc->mbx_lock);
 	return 0;
@@ -4591,16 +4595,16 @@ xmc_qsfp_io_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 	if (!xmc_qsfp_supported(xmc) || off != 0)
 		return 0;
 
-	if (count > sizeof(u32)) {
-		xocl_err(&xmc->pdev->dev, "cannot write more than %ld bytes",
-			sizeof(u32));
+	if (count > CMC_OP_IO_CONTROL_MAXLEN) {
+		xocl_err(&xmc->pdev->dev, "cannot write more than %d bytes",
+			CMC_OP_IO_CONTROL_MAXLEN);
 		return 0;
 	}
 
 	mutex_lock(&xmc->mbx_lock);
 
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = CMC_OP_READ_QSFP_VALIDATE_LOW_SPEED_IO;
+	xmc->mbx_pkt.hdr.op = CMC_OP_WRITE_QSFP_VALIDATE_LOW_SPEED_IO;
 	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_io_rw_op);
 	xmc->mbx_pkt.qsfp_io.port = port;
 	memcpy(xmc->mbx_pkt.qsfp_io.data, buffer, count);
@@ -4625,8 +4629,8 @@ xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t c
 	if (!xmc_qsfp_supported(xmc))
 		return 0;
 
-	/* read done exit */
-	if (off >= count)
+	/* exit after reading enough data */
+	if (off >= CMC_OP_READ_QSFP_MAXLEN)
 		return 0;
 
 	mutex_lock(&xmc->mbx_lock);
@@ -4671,7 +4675,7 @@ xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t c
 	}
 
 	mutex_unlock(&xmc->mbx_lock);
-	return count;
+	return data_size;
 out:
 	mutex_unlock(&xmc->mbx_lock);
 	return 0;
@@ -4688,6 +4692,9 @@ xmc_qsfp_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t 
 
 	max_data_size = XMC_PKT_MAX_PAYLOAD_SZ * sizeof(u32) -
 		offsetof(struct xmc_pkt_qsfp_diag_write_op, data);
+	if (max_data_size > CMC_OP_WRITE_QSFP_MAXLEN)
+		max_data_size = CMC_OP_WRITE_QSFP_MAXLEN;
+
 	if (count > max_data_size) {
 		xocl_err(&xmc->pdev->dev, "cannot write more then %ld bytes",
 			max_data_size);
@@ -4697,9 +4704,9 @@ xmc_qsfp_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t 
 	mutex_lock(&xmc->mbx_lock);
 
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = CMC_OP_READ_QSFP_DIAGNOSTICS;
-	xmc->mbx_pkt.hdr.payload_sz = offsetof(struct xmc_pkt_qsfp_diag_write_op, data) +
-		count;
+	xmc->mbx_pkt.hdr.op = CMC_OP_WRITE_QSFP_CONTROL;
+	xmc->mbx_pkt.hdr.payload_sz =
+		offsetof(struct xmc_pkt_qsfp_diag_write_op, data) + count;
 	xmc->mbx_pkt.qsfp_diag_w.port = port;
 	xmc->mbx_pkt.qsfp_diag_w.data_size = count;
 	memcpy(xmc->mbx_pkt.qsfp_diag_w.data, buffer, count);
