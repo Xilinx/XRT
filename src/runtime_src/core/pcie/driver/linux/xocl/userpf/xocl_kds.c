@@ -419,7 +419,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			}
 			xcmd->inkern_cb->func = (void (*)(unsigned long, int))
 						args_cb->cb_func;
-			xcmd->inkern_cb->data = args_cb->cb_data;
+			xcmd->inkern_cb->data = (void *)args_cb->cb_data;
 		}
 	}
 
