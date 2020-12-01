@@ -170,6 +170,7 @@ get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
 
 } // xrt
 
+#ifdef XRT_ENABLE_AIE
 ////////////////////////////////////////////////////////////////
 // xrt_aie_device C++ API implmentations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
@@ -184,6 +185,7 @@ reset_array()
 }
 
 }} // namespace aie, xrt
+#endif
 
 ////////////////////////////////////////////////////////////////
 // xrt_device API implmentations (xrt_device.h)

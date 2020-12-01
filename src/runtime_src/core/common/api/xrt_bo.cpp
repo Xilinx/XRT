@@ -244,11 +244,13 @@ public:
     sync(XCL_BO_SYNC_BO_TO_DEVICE, sz, dst_offset);
   }
 
+#ifdef XRT_ENABLE_AIE
   void
   sync(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
   {
     device->sync_aie_bo(bo, port.c_str(), dir, sz, offset);
   }
+#endif
 
   virtual void
   sync(xclBOSyncDirection dir, size_t sz, size_t offset)
@@ -731,6 +733,7 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 
 } // xrt
 
+#ifdef XRT_ENABLE_AIE
 ////////////////////////////////////////////////////////////////
 // xrt_aie_bo C++ API implmentations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
@@ -746,6 +749,7 @@ sync(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
 }
 
 }} // namespace aie, xrt
+#endif
 
 ////////////////////////////////////////////////////////////////
 // xrt_bo API implmentations (xrt_bo.h)
