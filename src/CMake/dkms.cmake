@@ -235,6 +235,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/msix_xdma.c
   xocl/subdev/ert_user.c
   xocl/subdev/ert_30.c
+  xocl/subdev/ert_versal.c
   xocl/subdev/pcie_firewall.c
   xocl/Makefile
   )

@@ -95,7 +95,7 @@
 #define NODE_REMAP_P2P "ep_remap_p2p_00"
 #define NODE_DDR4_RESET_GATE "ep_ddr_mem_srsr_gate_00"
 #define NODE_ADDR_TRANSLATOR "ep_remap_data_c2h_00"
-#define NODE_MAILBOX_XRT "ep_mailbox_user_to_ert_00"
+#define NODE_MAILBOX_USER_TO_ERT "ep_mailbox_user_to_ert_00"
 #define NODE_PMC_INTR	"ep_pmc_intr_00"
 #define NODE_PMC_MUX	"ep_pmc_mux_00"
 #define NODE_ERT_UARTLITE "ep_ert_debug_uart_00"
@@ -108,11 +108,15 @@
 #define NODE_PS_RESET_CTRL "ep_reset_ps_00"
 #define NODE_ICAP_CONTROLLER "ep_iprog_ctrl_00"
 
+#define PROP_BARM_CTRL "axi_bram_ctrl"
 #define PROP_HWICAP "axi_hwicap"
 #define PROP_PDI_CONFIG "pdi_config_mem"
 #define PROP_SHELL_KDMA "shell_utils_kdma"
 #define PROP_CMC_U2 "cmc_regmap_u2"
-#define PROP_CMC_DEFAULT "axi_bram_ctrl"
+#define PROP_CMC_DEFAULT PROP_BARM_CTRL
+#define PROP_ERT_LEGACY PROP_BARM_CTRL
+#define PROP_ERT_CQ "ert_command_queue"
+#define PROP_VERSAL_CQ "versal_command_queue"
 
 #define RESNAME_GATEPLP		NODE_GATE_PLP
 #define RESNAME_PCIEMON		NODE_PCIE_MON
