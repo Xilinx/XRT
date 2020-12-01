@@ -852,6 +852,10 @@ class kernel_impl
   size_t fa_output_entry_bytes = 0;    // Fast adapter output desc bytes
   size_t num_cumasks = 1;              // Required number of command cu masks
   uint32_t protocol = 0;               // Default opcode
+  //TODO For soft kernel; kernel type variable
+  // OR use new protocol type for soft kernels
+  //bool is_soft_kernel;
+  // args will be zero size vector for soft kernel
 
   // Compute data for FAST_ADAPTER descriptor use (see ert_fa.h)
   //
@@ -1046,6 +1050,10 @@ public:
 
     // set kernel protocol
     protocol = get_ip_control(ips);
+    //TODO for soft kernel
+    //either based on protocol type or kernel type variable
+    //For soft kernel args vector is of size zero
+    //Only allow setting of full regmap
 
     // Collect ip_layout index of the selected CUs so that xclbin
     // connectivity section can be used to gather memory group index
@@ -1224,6 +1232,11 @@ class run_impl
       : arg_setter(data)
     {}
 
+    virtual void
+    set_arg_value(const argument& arg, const arg_range<uint32_t>& value)
+    {
+      throw xrt_core::error("Invalid arguments. For soft kernels set full regmap");
+    }
     //Soft kernel regmap size and arguments are unknown; xclbin doesn't have this info
     virtual void
     set_arg_value(const uint8_t* args, const uint32_t size) //sizein bytes from 0x0
@@ -1238,6 +1251,11 @@ class run_impl
   std::unique_ptr<arg_setter>
   make_arg_setter()
   {
+    /* TODO for soft kernel
+    * if  (kernel->get_ip_control_protocol() == SOFT_KERNEL)
+    *     return std::make_unique<fa_arg_setter>(data);
+    *     OR select based on kernel type variable in kernel class
+    */
     if (kernel->get_ip_control_protocol() == FAST_ADAPTER)
       return std::make_unique<fa_arg_setter>(data);
     else
