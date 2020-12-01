@@ -1454,7 +1454,7 @@ cu_done(struct sched_cmd *cmd)
 	return false;
 }
 
-//Copy soft kernel return code to execBO
+/* Copy soft kernel return code to execBO */
 static inline void
 copy_sk_return(struct sched_cmd *cmd)
 {
@@ -1468,7 +1468,9 @@ copy_sk_return(struct sched_cmd *cmd)
 	scu = sk->sk_cu[cmd->cu_idx];
 	cu_regfile = scu->sc_vregs;
 
-	skc->data[skc->extra_cu_masks + 1] = cu_regfile[1];
+        /* Reusing regmap for return code */
+        /* In future consider adding dedicated field for return code in ert_start_kernel_cmd struct */
+	skc->data[skc->extra_cu_masks] = cu_regfile[1];
 }
 
 inline int32_t
