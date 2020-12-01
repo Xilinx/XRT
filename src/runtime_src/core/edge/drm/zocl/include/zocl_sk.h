@@ -18,6 +18,10 @@
 #define	MAX_SOFT_KERNEL		128
 
 #define	ZOCL_SCU_FLAGS_RELEASE	1
+#define SK_CRASHED -1
+#define SK_ERROR -2
+#define SK_DONE 1
+#define SK_RUNNING 2
 
 struct soft_cu {
 	void			*sc_vregs;
