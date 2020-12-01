@@ -133,6 +133,7 @@ struct xocl_ert_30 {
 
 	uint32_t 		ert_dmsg;
 	uint32_t		echo;
+	uint32_t		intr;
 };
 
 static ssize_t name_show(struct device *dev,
@@ -195,11 +196,32 @@ static ssize_t ert_echo_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(ert_echo);
 
+static ssize_t ert_intr_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_ert_30 *ert_30 = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	mutex_lock(&ert_30->lock);
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 2) {
+		xocl_err(&to_platform_device(dev)->dev,
+			"usage: echo 0 or 1 > ert_intr");
+		return -EINVAL;
+	}
+
+	ert_30->intr = val;
+
+	mutex_unlock(&ert_30->lock);
+	return count;
+}
+static DEVICE_ATTR_WO(ert_intr);
+
 static struct attribute *ert_30_attrs[] = {
 	&dev_attr_name.attr,
 	&dev_attr_ert_dmsg.attr,
 	&dev_attr_snap_shot.attr,
 	&dev_attr_ert_echo.attr,
+	&dev_attr_ert_intr.attr,
 	NULL,
 };
 
@@ -637,6 +659,7 @@ static int ert_cfg_cmd(struct xocl_ert_30 *ert_30, struct ert_30_command *ecmd)
 
 	cfg->dmsg = ert_30->ert_dmsg;
 	cfg->echo = ert_30->echo;
+	cfg->intr = ert_30->intr;
 
 	// The KDS side of of the scheduler is now configured.  If ERT is
 	// enabled, then the configure command will be started asynchronously
