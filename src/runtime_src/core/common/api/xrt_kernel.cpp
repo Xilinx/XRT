@@ -1188,6 +1188,9 @@ class run_impl
 
     virtual void
     set_arg_value(const argument& arg, const arg_range<uint32_t>& value) = 0;
+
+    virtual void
+    set_sk_args(const uint8_t* args, const uint32_t size) = 0;
   };
 
   // AP_CTRL_HS, AP_CTRL_CHAIN
@@ -1197,6 +1200,11 @@ class run_impl
       : arg_setter(data)
     {}
 
+    virtual void
+    set_sk_args(const uint8_t* args, const uint32_t size)
+    {
+      throw xrt_core::error("Invalid arguments. Reserved for soft kernels");
+    }
     virtual void
     set_arg_value(const argument& arg, const arg_range<uint32_t>& value)
     {
@@ -1213,6 +1221,11 @@ class run_impl
       : arg_setter(data)
     {}
 
+    virtual void
+    set_sk_args(const uint8_t* args, const uint32_t size)
+    {
+      throw xrt_core::error("Invalid arguments. Reserved for soft kernels");
+    }
     virtual void
     set_arg_value(const argument& arg, const arg_range<uint32_t>& value)
     {
@@ -1239,7 +1252,7 @@ class run_impl
     }
     //Soft kernel regmap size and arguments are unknown; xclbin doesn't have this info
     virtual void
-    set_arg_value(const uint8_t* args, const uint32_t size) //sizein bytes from 0x0
+    set_sk_args(const uint8_t* args, const uint32_t size) //sizein bytes from 0x0
     {
       if (size > 4092) {//From user max is 4092; First 32 bits are exclusive for SKD
         throw xrt_core::error(-EINVAL, "Max soft kernel regamp size is 4092 bytes");
@@ -1332,6 +1345,14 @@ public:
   {
     arg.set(arg_setter.get(), args);
   }
+
+  void
+  set_sk_args(const uint8_t* args, const uint32_t size)
+  {
+    //TODO This is allowed only for soft kernels
+    arg_setter->set_sk_args(args, size);
+  }
+
 
   void
   set_arg_at_index(size_t index, const xrt::bo& bo)
