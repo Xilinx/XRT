@@ -1,7 +1,11 @@
 # -----------------------------------------------------------------------------
 
+if(NOT WIN32)
 if ((${LINUX_FLAVOR} STREQUAL SUSE))
 set(Boost_USE_STATIC_LIBS OFF)               # find dynamic libraries
+else()
+set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
+endif()
 else()
 set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 endif()
