@@ -35,6 +35,7 @@ private:
     const xma_core::plg::session&  base; // base session class
     XmaFilterProperties   filter_props; // client requested filter properties
     XmaFilterPlugin      *filter_plugin{nullptr}; // pointer to plugin interface
+    std::string      tag; //tag for log messages
  
 public:
   //send input frame to filter cu for processing
@@ -53,6 +54,10 @@ public:
   //This is optional for plugins; some plugins may not implement this functions interface
   int32_t
   get_status(XmaParameter *param, int32_t num_params) const;
+
+  //Send log msg to XRT API
+  void
+  logmsg(XmaLogLevelType level, const char *msg, ...) const;
 
   filter_session(const XmaFilterProperties *props, const xma_core::plg::session& sess);//host app can be C; user input is Filter Properties
   ~filter_session();
