@@ -236,14 +236,20 @@ kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
 	int ret = 0;
 
-	if (xcmd->opcode != OP_CONFIG)
+	switch (xcmd->opcode) {
+	case OP_START:
 		ret = kds_cu_dispatch(cu_mgmt, xcmd);
-	else {
+		break;
+	case OP_CONFIG:
 		ret = kds_cu_config(cu_mgmt, xcmd);
 		if (ret == 0) {
 			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
 			xcmd->cb.free(xcmd);
 		}
+		break;
+	default:
+		ret = -EINVAL;
+		kds_err(xcmd->client, "Unknown opcode");
 	}
 
 	return ret;
@@ -258,17 +264,26 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 
 	/* BUG_ON(!ert || !ert->submit); */
 
-	if (xcmd->opcode == OP_START) {
+	switch (xcmd->opcode) {
+	case OP_START:
 		/* KDS should select a CU and set it in cu_mask */
 		cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
 		if (cu_idx < 0)
 			return cu_idx;
 		xcmd->cu_idx = cu_idx;
-	} else {
+		break;
+	case OP_CONFIG:
 		/* Configure command define CU index */
 		ret = kds_cu_config(&kds->cu_mgmt, xcmd);
 		if (ret)
 			return ret;
+		break;
+	case OP_CONFIG_SK:
+	case OP_START_SK:
+		break;
+	default:
+		kds_err(xcmd->client, "Unknown opcode");
+		return -EINVAL;
 	}
 
 	ert->submit(ert, xcmd);
