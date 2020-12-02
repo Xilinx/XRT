@@ -62,6 +62,8 @@
     ((struct ert_start_kernel_cmd *)(pkg))
 #define to_copybo_pkg(pkg) \
     ((struct ert_start_copybo_cmd *)(pkg))
+#define to_cfg_sk_pkg(pkg) \
+    ((struct ert_configure_sk_cmd *)(pkg))
 
 /**
  * struct ert_packet: ERT generic packet format

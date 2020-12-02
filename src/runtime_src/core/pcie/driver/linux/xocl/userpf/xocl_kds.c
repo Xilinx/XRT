@@ -147,6 +147,25 @@ static int copybo_ecmd2xcmd(struct xocl_dev *xdev, struct drm_file *filp,
 	return 0;
 }
 
+static int
+sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
+	     struct kds_command *xcmd)
+{
+	if (XDEV(xdev)->kds.ert_disable) {
+		userpf_err(xdev, "Soft kernels cannot be used if ERT is off");
+		return -EINVAL;
+	}
+
+	if (ecmd->opcode == ERT_SK_START)
+		xcmd->opcode = OP_START_SK;
+	else
+		xcmd->opcode = OP_CONFIG_SK;
+
+	xcmd->execbuf = (u32 *)ecmd;
+
+	return 0;
+}
+
 static inline void
 xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
 {
@@ -395,6 +414,13 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			xcmd->cb.free(xcmd);
 			return (ret < 0)? ret : 0;
 		}
+		break;
+	case ERT_SK_CONFIG:
+	case ERT_SK_UNCONFIG:
+	case ERT_SK_START:
+		ret = sk_ecmd2xcmd(xdev, ecmd, xcmd);
+		if (ret)
+			goto out;
 		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");

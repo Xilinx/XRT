@@ -22,6 +22,8 @@
 enum kds_opcode {
 	OP_CONFIG = 0,
 	OP_START,
+	OP_CONFIG_SK, /* TODO: There is a plan to remove softkernel config and unconfig command */
+	OP_START_SK,
 };
 
 enum kds_status {

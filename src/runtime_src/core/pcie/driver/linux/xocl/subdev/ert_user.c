@@ -231,10 +231,10 @@ ert_release_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 	if (ecmd->slot_idx == no_index)
 		return;
 
-	if (cmd_opcode(ecmd) == OP_CONFIG) {
+	if (cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK) {
 		ERTUSER_DBG(ert_user, "do nothing %s\n", __func__);
 		ert_user->ctrl_busy = false;
-		ert_user->config = true;	
+		ert_user->config = true;
 	} else {
 		ERTUSER_DBG(ert_user, "ecmd->slot_idx %d\n", ecmd->slot_idx);
 		ert_release_slot_idx(ert_user, ecmd->slot_idx);
@@ -415,7 +415,7 @@ static int
 ert20_acquire_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 {
 	// slot 0 is reserved for ctrl commands
-	if (cmd_opcode(ecmd) == OP_CONFIG) {
+	if (cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK) {
 		set_bit(0, ert_user->slot_status);
 
 		if (ert_user->ctrl_busy) {
@@ -582,16 +582,16 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 		slot_addr = ecmd->slot_idx * (ert_user->cq_range/ert_user->num_slots);
 
 		ERTUSER_DBG(ert_user, "%s slot_addr %x\n", __func__, slot_addr);
-		if (cmd_opcode(ecmd) == OP_CONFIG) {
-			xocl_memcpy_toio(ert_user->cq_base + slot_addr + 4,
-				  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
-		} else {
+		if (cmd_opcode(ecmd) == OP_START) {
 			// write kds selected cu_idx in first cumask (first word after header)
 			iowrite32(ecmd->xcmd->cu_idx, ert_user->cq_base + slot_addr + 4);
 
 			// write remaining packet (past header and cuidx)
 			xocl_memcpy_toio(ert_user->cq_base + slot_addr + 8,
 					 ecmd->xcmd->execbuf+2, (epkt->count-1)*sizeof(u32));
+		} else {
+			xocl_memcpy_toio(ert_user->cq_base + slot_addr + 4,
+				  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
 		}
 
 		iowrite32(epkt->header, ert_user->cq_base + slot_addr);
