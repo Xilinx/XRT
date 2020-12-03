@@ -49,13 +49,17 @@ bus_children = {}
 #path of the ps_ready sysfs node of the FPGA
 ps_ready = {}
 
+#path of the serial_num sysfs node of FPGA user PF
+#serial num is being used to accurately identify which 2 FPGAs are on same card
+serial_num = {}
+
 rootDir = "/sys/bus/pci/devices/"
 
 #get all above "node vs bus" mappings of xilinx FPGAs 
 def get_node_bus_mapping():
     subdir = os.listdir(rootDir)
     for subdirName in subdir:
-        if re.search("^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.0$", subdirName) == None:
+        if re.search("^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[01]$", subdirName) == None:
             continue
         with open(os.path.join(rootDir, subdirName, "vendor")) as f : vendor = f.read()
         if vendor.strip() != "0x10ee":
@@ -64,8 +68,14 @@ def get_node_bus_mapping():
         for fname in files:
             if re.search("^processor_system.+$", fname) != None:
                 ps_ready[subdirName] = os.path.join(rootDir, subdirName, fname, "ps_ready")
+                #print("%s: %s " % (subdirName, ps_ready[subdirName]))
                 break
-        #print("%s: %s " % (subdirName, ps_ready[subdirName]))
+            if re.search("^xmc\.u.+$", fname) != None:
+                serial_num[subdirName] = os.path.join(rootDir, subdirName, fname, "serial_num")
+                #print("%s: %s " % (subdirName, serial_num[subdirName]))
+                break
+        if not os.path.exists(os.path.join(rootDir, subdirName, "dparent")):
+            continue
         files = os.listdir(os.path.join(rootDir, subdirName, "dparent"))
         for fname in files:
             if re.search("^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-7]:pcie.+$", fname) != None:
@@ -76,6 +86,19 @@ def get_node_bus_mapping():
                 if bus not in bus_children:
                     bus_children[bus] = []
                 bus_children[bus].append(subdirName);
+
+#get buddy FPGA on same card
+def get_buddy(user):
+    #print(serial_num)
+    with open(serial_num[user]) as f : sn = f.read()
+    mgmt = user[:len(user)-1] + "0"
+    nodes_in_cards = bus_children[node_bus_mapping[mgmt]]
+    for node in nodes_in_cards:
+        buddy_user = node[:len(node)-1] + "1"
+        with open(serial_num[buddy_user]) as f : buddy_sn = f.read()
+        if buddy_user != user and sn == buddy_sn:
+            return buddy_user
+    return None
 
 #do pcie node remove and rescan
 def run(cmdline):
@@ -140,8 +163,7 @@ def main():
             sys.exit(1)
 
         #print(node_parent_mapping)
-        nodes_in_cards = bus_children[node_bus_mapping[mgmt]]
-        #print(nodes_in_cards)
+        buddy_user = get_buddy(user)
         print("Card level reset. This will reset all FPGAs on the card")
         print("All existing processes will be killed.")
         while not args.yes:
@@ -152,30 +174,43 @@ def main():
                 break
         #steps to do card level reset
         #1. kill processes running on both cards
-        #2. trigger SBR
-        #3. remove nodes of that FPGA
-        #4. rescan pcie 
-        #5. wait back online
-        for node in nodes_in_cards:
-            user = node[:len(node)-1] + "1"
-            print("shutdown: %s" % user)
-            run("echo 2 > " + os.path.join(rootDir, user, "shutdown"))
+        #2. remove FPGA that SBR is not being issued on
+        #3. trigger SBR on specified FPGA
+        #4. remove nodes of specified FPGA
+        #5. rescan pcie 
+        #6. wait back online
+
+        #1
+        print("shutdown: %s" % user)
+        run("echo 2 > " + os.path.join(rootDir, user, "shutdown"))
+        #2
+        if buddy_user:
+            print("shutdown: %s" % buddy_user)
+            run("echo 2 > " + os.path.join(rootDir, buddy_user, "shutdown"))
+            buddy_mgmt = buddy_user[:len(buddy_user)-1] + "0"
+            print("remove: %s, %s" % (buddy_user, buddy_mgmt))
+            run("echo 1 > " + os.path.join(rootDir, buddy_user, "remove"))
+            run("echo 1 > " + os.path.join(rootDir, buddy_mgmt, "remove"))
+        #3
         print("SBR reset...")
         run("echo 1 > " + os.path.join(rootDir, mgmt, "sbr_toggle"))
         time.sleep(3)
-        for node in nodes_in_cards:
-            user = node[:len(node)-1] + "1"
-            print("remove: %s, %s" % (user, node))
-            run("echo 1 > " + os.path.join(rootDir, user, "remove"))
-            run("echo 1 > " + os.path.join(rootDir, node, "remove"))
+        #4
+        print("remove: %s, %s" % (user, mgmt))
+        run("echo 1 > " + os.path.join(rootDir, user, "remove"))
+        run("echo 1 > " + os.path.join(rootDir, mgmt, "remove"))
+        #5
         print("rescan pci")
         run("echo 1 > /sys/bus/pci/rescan")
         time.sleep(1)
+        #6
         print("wait FPGAs back on line")
-        for node in nodes_in_cards:
-            user = node[:len(node)-1] + "1"
-            wait_ps_online(node)
-            wait_xocl_online(user)
+        wait_ps_online(mgmt)
+        wait_xocl_online(user)
+        if buddy_user:
+            buddy_mgmt = buddy_user[:len(buddy_user)-1] + "0"
+            wait_ps_online(buddy_mgmt)
+            wait_xocl_online(buddy_user)
 
     except (subprocess.TimeoutExpired):
         #xbutil reset timeout, try remove it
