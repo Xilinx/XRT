@@ -4708,7 +4708,7 @@ xmc_qsfp_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t 
 	xmc->mbx_pkt.hdr.payload_sz =
 		offsetof(struct xmc_pkt_qsfp_diag_write_op, data) + count;
 	xmc->mbx_pkt.qsfp_diag_w.port = port;
-	xmc->mbx_pkt.qsfp_diag_w.data_size = count;
+	xmc->mbx_pkt.qsfp_diag_w.data_size = (u32)count;
 	memcpy(xmc->mbx_pkt.qsfp_diag_w.data, buffer, count);
 	ret = xmc_send_pkt(xmc);
 	if (ret)
