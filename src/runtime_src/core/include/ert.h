@@ -368,6 +368,8 @@ enum ert_cmd_state {
   ERT_CMD_STATE_SUBMITTED = 7,
   ERT_CMD_STATE_TIMEOUT = 8,
   ERT_CMD_STATE_NORESPONSE = 9,
+  ERT_CMD_STATE_SKERROR = 10, //Check for error return code from Soft Kernel
+  ERT_CMD_STATE_SKCRASHED = 11, //Soft kernel has crashed
   ERT_CMD_STATE_MAX, // Always the last one
 };
 
