@@ -204,6 +204,10 @@ static value_type dmsg                      = 0;
  */
 static value_type echo                      = 0;
 
+static value_type intr                      = 0;
+
+static value_type polling                   = 1;
+
 // Struct slot_info is per command slot in command queue
 struct slot_info
 {
@@ -244,6 +248,7 @@ static size_type cu_usage[max_cus];
 // Only 'num_cus' lower bits are used
 static bitset_type cu_status;
 
+static bitset_type slot_submitted;
 
 static bitset_type cu_ready;
 
@@ -382,12 +387,12 @@ struct disable_interrupt_guard
 {
   disable_interrupt_guard()
   {
-    if (kds_30 || cq_status_enabled)
+    if (!polling || cq_status_enabled)
       write_reg(ERT_INTC_MER_ADDR,0x0); // interrupt controller master disable
   }
   ~disable_interrupt_guard()
   {
-    if (kds_30 || cq_status_enabled)
+    if (!polling || cq_status_enabled)
       write_reg(ERT_INTC_MER_ADDR,0x3); // interrupt controller master enable
   }
 };
@@ -451,6 +456,7 @@ setup()
   CTRL_DEBUGF("kds_30=%d\r\n",kds_30);
   CTRL_DEBUGF("dmsg=%d\r\n",dmsg);
   CTRL_DEBUGF("echo=%d\r\n",echo);
+  CTRL_DEBUGF("polling=%d\r\n",polling);
 
   // Initialize command slots
   for (size_type i=0; i<num_slots; ++i) {
@@ -472,6 +478,7 @@ setup()
   cu_status.reset();
   cu_ready.reset();
   cu_done.reset();
+  slot_submitted.reset();
 
   // Initialize cu_slot_usage
   for (size_type i=0; i<num_cus; ++i) {
@@ -514,7 +521,8 @@ setup()
   cu_interrupt_mask.reset();
   bitmask_type intc_ier_mask = 0;
 
-  if (kds_30) {
+  if (kds_30 && intr) {
+
     for (size_type cu=0; cu<num_cus; ++cu) {
       if (cu_idx_to_ctrl(cu) == AP_CTRL_NONE)
         continue;
@@ -777,6 +785,9 @@ configure_mb(size_type slot_idx)
   kds_30 = (features & 0x100)!=0;
   dmsg = (features & 0x200)!=0;
   echo = (features & 0x400)!=0;
+  intr = (features & 0x800)!=0;
+  polling = (!intr && (dataflow_enabled || kds_30));
+
   // CU base address
   for (size_type i=0; i<num_cus; ++i) {
     u32 addr = read_reg(slot.slot_addr + 0x18 + (i<<2));
@@ -803,7 +814,7 @@ exit_mb(size_type slot_idx)
   auto& slot = command_slots[slot_idx];
   CTRL_DEBUGF("exit_mb slot(%d) header=0x%x\r\n",slot_idx,slot.header_value);
 
-  if (kds_30) {
+  if (kds_30 && intr) {
     write_reg(ERT_INTC_CU_0_31_MER,0);            // interrupt controller master disable
     write_reg(ERT_INTC_CU_32_63_MER,0);           // interrupt controller master disable
     write_reg(ERT_INTC_CU_64_95_MER,0);           // interrupt controller master disable
@@ -1087,7 +1098,7 @@ scheduler_v30_loop()
       // In dataflow mode ERT is polling CUs for completion after
       // host has started CU or acknowleged completion.  Ctrl cmds
       // are processed in normal flow.
-      if (dataflow_enabled && slot_idx>0 && !kds_30) {
+      if (polling && slot_idx>0 && !kds_30) {
 
         size_type cuidx = slot_idx-1;  // compensate for reserved slot (0)
         // Check if host has started or continued this CU
@@ -1115,35 +1126,59 @@ scheduler_v30_loop()
         notify_host(slot_idx);
         continue;
       }
-#if 0
-      if (dataflow_enabled && slot_idx>0 && kds_30) {
-        size_type cuidx = slot_idx-1;  // compensate for reserved slot (0)
-        // Check if host has started or continued this CU
-        if (!cu_status[cuidx]) {
+
+      if (polling && slot_idx>0 && kds_30) {
+
+        addr_type addr = cu_section_addr(slot.slot_addr);
+        slot.cu_idx = read_reg(addr);
+        if (!cu_status[slot.cu_idx]) {
           auto cqvalue = read_reg(slot.slot_addr);
 
-          if (cqvalue & (AP_START|AP_CONTINUE)) {
-            write_reg(slot.slot_addr,0x0); // clear
-            ERT_DEBUGF("slot.slot_addr 0x%x enable cu(%d) cqvalue(0x%x)\r\n", slot.slot_addr,cuidx,cqvalue);
-            cu_status[cuidx] = !cu_status[cuidx]; // enable polling of this CU
+          if (cqvalue & (AP_START)) {
+             write_reg(slot.slot_addr,0x0); // clear
+            if (echo) {
+              // clear command queue
+              notify_host(slot_idx);
+              continue;              
+            }
+
+            slot_submitted[slot_idx] = !slot_submitted[slot_idx];
+            // kick start kernel
+            slot.header_value = cqvalue;
+            slot.regmap_addr = regmap_section_addr(slot.header_value,slot.slot_addr);
+            slot.regmap_size = regmap_size(slot.header_value);
+
+            if (slot.opcode==ERT_EXEC_WRITE)
+              // Out of order configuration
+              configure_cu_ooo(cu_idx_to_addr(slot.cu_idx),slot.regmap_addr,slot.regmap_size);
+            else
+              configure_cu(cu_idx_to_addr(slot.cu_idx),slot.regmap_addr,slot.regmap_size);
+
+            cu_status[slot.cu_idx] = !cu_status[slot.cu_idx]; // enable polling of this CU
+            set_cu_info(slot.cu_idx,slot_idx); // record which slot cu associated with
+
           }
         }
 
-        if (!cu_status[cuidx])
+        if (!cu_status[slot.cu_idx] || !slot_submitted[slot_idx])
           continue; // CU is not used
 
-        auto cuvalue = read_reg(cu_idx_to_addr(cuidx));
-        ERT_DEBUGF("cuidx %d, cuvalue(0x%x)\r\n",cuidx,cuvalue);
+        auto cuvalue = read_reg(cu_idx_to_addr(slot.cu_idx));
         if (!(cuvalue & (AP_DONE)))
           continue;
 
-        cu_status[cuidx] = !cu_status[cuidx]; // disable polling until host re-enables
+        slot_submitted[slot_idx] = !slot_submitted[slot_idx];
+        cu_status[slot.cu_idx] = !cu_status[slot.cu_idx]; // disable polling until host re-enables
 
         // wake up host
         notify_host(slot_idx);
+
+        write_reg(cu_idx_to_addr(slot.cu_idx), AP_CONTINUE);
+        write_reg(cu_idx_to_addr(slot.cu_idx)+0xC, 0x1);
+
         continue;
       }
-#endif
+
       if (!cq_status_enabled && ((slot.header_value & 0xF) == 0x4)) { // free
         if (!free_to_new(slot_idx))
           continue;
@@ -1181,7 +1216,6 @@ static inline void cu_hls_ctrl_check(size_type cmd_idx)
     if (cuvalue & (AP_DONE)) {
       DMSGF("AP_DONE \r\n");
       cu_done[cmd_idx] = 1;
-      //cu_status[0] = !cu_status[0];
       write_reg(cu_idx_to_addr(cmd_idx), AP_CONTINUE);
       write_reg(cu_idx_to_addr(cmd_idx)+0xC, 0x1);
     }
