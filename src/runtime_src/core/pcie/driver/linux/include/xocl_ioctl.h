@@ -311,7 +311,7 @@ struct drm_xocl_sync_bo_cb {
  * used with DRM_IOCTL_XOCL_INFO_BO IOCTL
  *
  * @handle:	bo handle
- * @flags:      Unused
+ * @flags:      flags passed while create bo
  * @size:	Size of buffer object (out)
  * @paddr:	Physical address (out)
  */
