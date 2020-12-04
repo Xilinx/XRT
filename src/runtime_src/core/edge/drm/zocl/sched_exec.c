@@ -1468,10 +1468,8 @@ copy_sk_return(struct sched_cmd *cmd)
 	scu = sk->sk_cu[cmd->cu_idx];
 	cu_regfile = scu->sc_vregs;
 
-	/* Reusing regmap for return code */
-	/* In future consider adding dedicated field for return code in ert_start_kernel_cmd struct */
-	if (skc->count > 1)
-		skc->data[skc->extra_cu_masks] = cu_regfile[1];
+	/* payload used for return code; payload & cu_mask are not used during cmd completion steps*/
+	skc->return_code = cu_regfile[1];
 }
 
 inline int32_t
