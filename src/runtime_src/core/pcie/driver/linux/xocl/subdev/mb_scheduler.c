@@ -2532,7 +2532,6 @@ static inline void
 exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
 	//For soft kernels get cmd state and return_code
-	sarab
 	uint32_t cmd_state = ERT_CMD_STATE_COMPLETED;
 	if (cmd_type(xcmd) == ERT_SCU) {
 		struct xocl_ert *xert = exec_is_ert(exec) ? exec->ert : NULL;
