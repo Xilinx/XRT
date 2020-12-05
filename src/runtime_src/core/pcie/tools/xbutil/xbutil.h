@@ -1746,7 +1746,8 @@ public:
                 if(map->m_mem_data[i].m_size < (blockSize/1024)) {
                     if (verbose)
                         std::cout << "WARNING: unable to perform DMA Test on " << map->m_mem_data[i].m_tag
-                            << ". Cannot allocate " << blockSize << " on " << map->m_mem_data[i].m_size
+                            << ". Cannot allocate " << xrt_core::utils::unit_convert(blockSize)
+                            << " on " << xrt_core::utils::unit_convert(map->m_mem_data[i].m_size * 1024)
                             << " sized bank." << std::endl;
                     result = -EOPNOTSUPP;
                     continue;
