@@ -419,8 +419,10 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	case ERT_SK_UNCONFIG:
 	case ERT_SK_START:
 		ret = sk_ecmd2xcmd(xdev, ecmd, xcmd);
-		if (ret)
+		if (ret) {
+			xcmd->cb.free(xcmd);
 			goto out;
+		}
 		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");
