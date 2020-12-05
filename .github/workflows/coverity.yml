@@ -1,0 +1,43 @@
+on: workflow_dispatch
+
+jobs:
+  xrt_coverity_scan:
+    runs-on: ubuntu-latest
+    # Only run in main repository as Coverity scans are limitted              
+    if: github.repository == 'Xilinx/XRT'
+    steps:
+    - name: Checkout XRT
+      uses: actions/checkout@v2
+    - name: Download and extract Coverity Build Tool
+      run: |
+        wget -q https://scan.coverity.com/download/cxx/linux64 --post-data "token=$TOKEN&project=Xilinx/XRT" -O cov-analysis-linux64.tar.gz
+        mkdir cov-analysis-linux64
+        tar xzf cov-analysis-linux64.tar.gz --strip 1 -C cov-analysis-linux64
+      env:
+        TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo src/runtime_src/tools/scripts/xrtdeps.sh
+    - name: Build with cov-build
+      run: |
+        export PATH=`pwd`/cov-analysis-linux64/bin:$PATH
+        cov-build --dir cov-int build/build.sh -opt -verbose -driver
+    - name: Submit the results to Coverity Scan
+      run: |
+        tar czvf xrt.tgz cov-int
+        curl \
+          --form project=Xilinx/XRT \
+          --form token=$TOKEN \
+          --form email=runtime@xilinx.com \
+          --form file=@xrt.tgz \
+          --form version=trunk \
+          --form description=$(git rev-parse --short HEAD) \
+          https://scan.coverity.com/builds?project=Xilinx/XRT
+      env:
+        TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+    - name: Upload Coverity imed
+      uses: actions/upload-artifact@v1
+      with:
+        name: cov-int-file
+        path: xrt.tgz
