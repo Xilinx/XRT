@@ -8,7 +8,16 @@ jobs:
     steps:
     - name: Checkout XRT
       uses: actions/checkout@v2
+    - name: Store sha
+      run: echo ${{ github-sha }} > sha
+    - name: Compare sha
+      uses: actions/cache@v2
+      id: cache-sha
+      with:
+        path: sha
+        key: commit-${{ github.sha }}
     - name: Download and extract Coverity Build Tool
+      if: steps.cache-sha.outputs.cache-hit == 'true'
       run: |
         wget -q https://scan.coverity.com/download/cxx/linux64 --post-data "token=$TOKEN&project=Xilinx/XRT" -O cov-analysis-linux64.tar.gz
         mkdir cov-analysis-linux64
@@ -16,14 +25,17 @@ jobs:
       env:
         TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
     - name: Install dependencies
+      if: steps.cache-sha.outputs.cache-hit == 'true'
       run: |
         sudo apt update
         sudo src/runtime_src/tools/scripts/xrtdeps.sh
     - name: Build with cov-build
+      if: steps.cache-sha.outputs.cache-hit == 'true'
       run: |
         export PATH=`pwd`/cov-analysis-linux64/bin:$PATH
         cov-build --dir cov-int build/build.sh -opt -verbose -driver
     - name: Submit the results to Coverity Scan
+      if: steps.cache-sha.outputs.cache-hit == 'true'
       run: |
         tar czvf xrt.tgz cov-int
         curl \
@@ -32,11 +44,13 @@ jobs:
           --form email=runtime@xilinx.com \
           --form file=@xrt.tgz \
           --form version=trunk \
-          --form description=$(git rev-parse --short HEAD) \
+          --form description=$SHA \
           https://scan.coverity.com/builds?project=Xilinx/XRT
       env:
         TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+        SHA: $(git rev-parse --short HEAD)
     - name: Upload Coverity imed
+      if: steps.cache-sha.outputs.cache-hit == 'true'
       uses: actions/upload-artifact@v1
       with:
         name: cov-int-file
