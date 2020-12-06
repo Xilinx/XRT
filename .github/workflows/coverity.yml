@@ -48,7 +48,7 @@ jobs:
           https://scan.coverity.com/builds?project=Xilinx/XRT
       env:
         TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
-        SHA: $(git rev-parse --short HEAD)
+        SHA: ${{ github.sha }}
     - name: Upload Coverity imed
       if: steps.cache-sha.outputs.cache-hit != 'true'
       uses: actions/upload-artifact@v1
