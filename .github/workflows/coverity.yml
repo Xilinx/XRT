@@ -9,7 +9,7 @@ jobs:
     - name: Checkout XRT
       uses: actions/checkout@v2
     - name: Store sha
-      run: echo ${{ github-sha }} > sha
+      run: echo ${{ github.sha }} > sha
     - name: Compare sha
       uses: actions/cache@v2
       id: cache-sha
