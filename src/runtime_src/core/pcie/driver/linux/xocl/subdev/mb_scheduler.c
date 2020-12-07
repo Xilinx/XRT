@@ -2531,8 +2531,8 @@ exec_mark_cmd_state(struct exec_core *exec, struct xocl_cmd *xcmd, enum ert_cmd_
 static inline void
 exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
-	//For soft kernels get cmd state and return_code
-	uint32_t cmd_state = ERT_CMD_STATE_COMPLETED;
+	/* For soft kernels get cmd state and return_code */
+	enum ert_cmd_state cmd_state = ERT_CMD_STATE_COMPLETED;
 	if (cmd_type(xcmd) == ERT_SCU) {
 		struct xocl_ert *xert = exec_is_ert(exec) ? exec->ert : NULL;
 		if (xert) {
@@ -2540,10 +2540,9 @@ exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
 			struct ert_start_kernel_cmd *pkt = xcmd->ert_cu;
 			xocl_memcpy_fromio((void*)&pkt->return_code, xert->cq_base + slot_addr, 2 * sizeof(u32));
 			cmd_state = pkt->state;
-			pkt->return_code = pkt->data[0];
-			
+			pkt->return_code = (int32_t)pkt->data[0];
 		}
-        }
+	}
 	exec_mark_cmd_state(exec, xcmd,
 			    xcmd->aborted ? ERT_CMD_STATE_ABORT : cmd_state);
 }

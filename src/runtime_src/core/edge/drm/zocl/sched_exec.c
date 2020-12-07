@@ -1468,7 +1468,8 @@ copy_sk_return(struct sched_cmd *cmd)
 	scu = sk->sk_cu[cmd->cu_idx];
 	cu_regfile = scu->sc_vregs;
 
-	/* payload used for return code; payload & cu_mask are not used during cmd completion steps*/
+	/* payload used for return code; payload & cu_mask are not used 
+	 * during cmd completion steps */
 	skc->return_code = cu_regfile[1];
 }
 
@@ -2719,7 +2720,7 @@ static struct sched_ops penguin_ops = {
 };
 
 static void
-mark_sk_complete(const struct sched_cmd *cmd, int32_t ret)
+mark_sk_complete(struct sched_cmd *cmd, int32_t ret)
 {
 	switch (ret) {
 		case SK_CRASHED:
