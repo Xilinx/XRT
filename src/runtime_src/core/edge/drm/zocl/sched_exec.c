@@ -1468,8 +1468,10 @@ copy_sk_return(struct sched_cmd *cmd)
 	scu = sk->sk_cu[cmd->cu_idx];
 	cu_regfile = scu->sc_vregs;
 
-	/* payload used for return code; payload & cu_mask are not used 
-	 * during cmd completion steps */
+	/**
+	 * payload used for return code; payload & cu_mask are not used 
+	 * during cmd completion steps 
+	 */
 	skc->return_code = cu_regfile[1];
 }
 
@@ -2722,6 +2724,8 @@ static struct sched_ops penguin_ops = {
 static void
 mark_sk_complete(struct sched_cmd *cmd, int32_t ret)
 {
+	struct ert_start_kernel_cmd *skc;
+	skc = (struct ert_start_kernel_cmd *)cmd->packet;
 	switch (ret) {
 		case SK_CRASHED:
 			mark_cmd_complete(cmd, ERT_CMD_STATE_SKCRASHED);
@@ -2738,6 +2742,16 @@ mark_sk_complete(struct sched_cmd *cmd, int32_t ret)
 			mark_cmd_complete(cmd, ERT_CMD_STATE_ERROR);
 			DRM_ERROR("unknown soft kernel return code %d", ret);
 			break;
+	}
+	if (ret != SK_RUNNING) {
+		struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+		struct zocl_ert_dev *ert = zdev->ert;
+		struct ert_packet *packet;
+		unsigned int slot_sz;
+		slot_sz = slot_size(zdev->ddev);
+		packet = ert->cq_ioremap + (cmd->cq_slot_idx * slot_sz);
+
+		memcpy_toio(packet, &skc->header, 2 * sizeof(u32));
 	}
 }
 /**

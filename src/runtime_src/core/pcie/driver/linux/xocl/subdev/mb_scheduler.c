@@ -2538,9 +2538,10 @@ exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
 		if (xert) {
 			uint32_t slot_addr = xcmd->slot_idx * xert->slot_size;
 			struct ert_start_kernel_cmd *pkt = xcmd->ert_cu;
-			xocl_memcpy_fromio((void*)&pkt->return_code, xert->cq_base + slot_addr, 2 * sizeof(u32));
-			cmd_state = pkt->state;
-			pkt->return_code = (int32_t)pkt->data[0];
+			struct ert_start_kernel_cmd tmp_pkt;
+			xocl_memcpy_fromio((void*)&tmp_pkt.header, xert->cq_base + slot_addr, 2 * sizeof(u32));
+			cmd_state = tmp_pkt.state;
+			pkt->return_code = tmp_pkt.return_code;
 		}
 	}
 	exec_mark_cmd_state(exec, xcmd,
