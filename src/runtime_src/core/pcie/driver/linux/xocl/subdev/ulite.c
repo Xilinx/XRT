@@ -595,7 +595,7 @@ int __init xocl_init_ulite(void)
 	return ret;
 }
 
-void xocl_fini_ulite(void)
+void __exit xocl_fini_ulite(void)
 {
 	platform_driver_unregister(&ulite_platform_driver);
 	uart_unregister_driver(&xcl_ulite_driver);
