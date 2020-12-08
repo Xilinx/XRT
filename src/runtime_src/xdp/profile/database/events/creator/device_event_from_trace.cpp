@@ -79,6 +79,13 @@ namespace xdp {
         uint32_t stallExtEvent = trace.TraceID & XAM_TRACE_STALL_EXT_MASK;
 
         Monitor* mon  = db->getStaticInfo().getAMonitor(deviceId, s);   
+	if (!mon) {
+	  // In hardware emulation, there might be monitors inserted
+	  //  that don't show up in the debug ip layout.  These are added
+	  //  for their own debugging purposes and we should ignore any
+	  //  packets we see from them.
+	  continue ;
+	}
         int32_t  cuId = mon->cuIndex;
         
         if(cuEvent) {
@@ -170,6 +177,13 @@ namespace xdp {
           s = trace.TraceID/2;
 
           Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, s);  
+	  if (!mon) {
+	    // In hardware emulation, there might be monitors inserted
+	    //  that don't show up in the debug ip layout.  These are added
+	    //  for their own debugging purposes and we should ignore any
+	    //  packets we see from them.
+	    continue ;
+	  }
           int32_t  cuId = mon->cuIndex;
 
           // KERNEL_READ
@@ -202,6 +216,13 @@ namespace xdp {
           s = trace.TraceID/2;
 
           Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, s);   
+	  if (!mon) {
+	    // In hardware emulation, there might be monitors inserted
+	    //  that don't show up in the debug ip layout.  These are added
+	    //  for their own debugging purposes and we should ignore any
+	    //  packets we see from them.
+	    continue ;
+	  }
           int32_t  cuId = mon->cuIndex;
 
           if(trace.EventType == XCL_PERF_MON_START_EVENT) {
@@ -233,6 +254,13 @@ namespace xdp {
         s = trace.TraceID - MIN_TRACE_ID_ASM;
 
         Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, s);
+	if (!mon) {
+	  // In hardware emulation, there might be monitors inserted
+	  //  that don't show up in the debug ip layout.  These are added
+	  //  for their own debugging purposes and we should ignore any
+	  //  packets we see from them.
+	  continue ;
+	}
         int32_t  cuId = mon->cuIndex;
 
         bool isSingle    = trace.EventFlags & 0x10;
