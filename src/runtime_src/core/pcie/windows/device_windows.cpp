@@ -24,6 +24,7 @@
 #include "core/include/xclfeatures.h"
 
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 #include <type_traits>
 #include <string>
 #include <iostream>
@@ -74,21 +75,6 @@ struct ready
   }
 };
 
-struct xmc_sc_presence
-{
-  using result_type = bool;
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return true;
-  }
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return true;
-  }
-};
 
 struct firewall
 {
@@ -684,7 +670,18 @@ struct devinfo
     case key_type::board_name:
       return static_cast<query::board_name::result_type>(info.ShellName);
     case key_type::is_mfg:
-      return (static_cast<query::board_name::result_type>(info.ShellName).find("GOLDEN") != std::string::npos) ? true : false;
+	{
+		auto shell = static_cast<query::board_name::result_type>(info.ShellName);
+		boost::to_upper(shell);
+		return (shell.find("GOLDEN") != std::string::npos) ? true : false;
+	}
+	case key_type::xmc_sc_presence:
+	{
+		//xmc is not present in golden image
+		auto shell = static_cast<query::board_name::result_type>(info.ShellName);
+		boost::to_upper(shell);
+		return (shell.find("GOLDEN") != std::string::npos) ? false : true;
+	}
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -1106,7 +1103,7 @@ initialize_query_table()
   emplace_function0_getter<query::is_ready,                  ready>();
   emplace_function0_getter<query::board_name,                devinfo>();
   emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
-  emplace_function0_getter<query::xmc_sc_presence,           xmc_sc_presence>();
+  emplace_function0_getter<query::xmc_sc_presence,           devinfo>();
   emplace_function0_getput<query::data_retention,            data_retention>();
   emplace_function0_getter<query::is_recovery,               recovery>();
 }
