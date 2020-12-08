@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  * Author(s): Min Ma	<min.ma@xilinx.com>
  *          : Larry Liu	<yliu@xilinx.com>
  *
@@ -250,7 +250,7 @@ static int createSoftKernelFile(uint64_t paddr, size_t size, uint32_t cuidx)
     syslog(LOG_ERR, "Cannot initialize XRT.\n");
     return -1;
   }
-    
+
   boHandle = xclGetHostBO(handle, paddr, size);
   buf = xclMapBO(handle, boHandle, false);
   if (!buf) {
@@ -266,7 +266,7 @@ static int createSoftKernelFile(uint64_t paddr, size_t size, uint32_t cuidx)
     if (path[i] == '/') {
       path[i] = '\0';
       if (access(path, F_OK) != 0) {
-        if (mkdir(path, 0644) != 0) {
+        if (mkdir(path, 0744) != 0) {
           syslog(LOG_ERR, "Cannot create soft kernel file.\n");
           return -1;
         }
@@ -341,6 +341,7 @@ void configSoftKernel(xclSKCmd *cmd)
     if (pid == 0) {
       char path[XRT_MAX_PATH_LENGTH];
       char proc_name[PNAME_LEN] = {};
+
       /* Install Signal Handler for the Child Processes/Soft-Kernels */
       struct sigaction act;
       act.sa_handler = sigLog;
