@@ -4332,16 +4332,8 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 
 		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
 		if (tmp_str) {
-			/*
-			 * Start with sc version being the same as expected
-			 * sc version. This should be good enough for shells
-			 * with no sc at all. Later, sc version can be loaded
-			 * from HW, if there is one available.
-			 */
 			strncpy(xmc->exp_bmc_ver, tmp_str,
 				sizeof(xmc->exp_bmc_ver) - 1);
-			strncpy(xmc->bmc_ver, tmp_str,
-				sizeof(xmc->bmc_ver) - 1);
 		}
 
 		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc, false)))
