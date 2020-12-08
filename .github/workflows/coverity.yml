@@ -1,5 +1,8 @@
-on: workflow_dispatch
-
+on:
+  # scheduled workflows run on the latest commit on the default or base branch
+  schedule:
+    - cron: '0 0/12 * * *'
+    
 jobs:
   xrt_coverity_scan:
     runs-on: ubuntu-latest

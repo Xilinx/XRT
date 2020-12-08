@@ -3,18 +3,6 @@ language: cpp
 
 matrix:
   include:
-  - os: linux
-    env:
-      - CONFIGURATION=linux/amd64
-      - secure: lnoyS+cRbhWxwX/VrinmWA3GcUzcuCNWfN05Eu+FhoZJC4N01e35ZWQZGIZ2mtp/avqfL8DMwB7/9yin8QjmqqrLYVNIBNvYfviFk7VuqfbBAM42kqBtR7enzQMzfZhkPqBvkx5NBPN6Sk2sNTojgYj5o9iVpDOjX1xbb9DlyWZ72B1QzRtJKuSJ8bAxmJqqfrOnCGwCpR1ZPfXqUxAvJBjZd/24QXmVsX69aKP4nVOXM1lGXmxUSKWxdGRBr8DsPtW9lqad+MrpjDwFwvgS6Xc1idrkT309bwm+yMnhsqpdyKIJU2/oCJ4m5m5NbViiffAV7RtDOICRNIDXbtv5roCa+kKFgXyiknvlkUVBBqqwDwRGiryR5Iq5WSfx16PdppG7ZLuIzcREORXLw4p1quo8qDAuq81WruwfqGEUDoBM3jRmpa45CNcR1nfkroNwzSX9T2mRc8Rzz4XaInG/tYmWeE23AiMIQjGy1Ig1kkY1Qr7bo5BvlpvX0biG7C6UqC3GnLO2couZ7zbkqUFSmIPTqK841pwYRus9woAsCLvt6VKoRqfE260QUF9DibMwxdv8igBqHJ1t7CnWCfQv/ZR7im83gOvJRNGVwOD01+gMmbQl0gi876kV6vquP5bO+OzKXhoaB74Yk8LBXat9mfBvJEw6cVjawkV5nN4Bc6E="
-    addons:
-      coverity_scan:
-        project:
-          name: "Xilinx/XRT"
-          description: "Xilinx Runtime"
-        notification_email: runtime@xilinx.com
-        build_command: "./build.sh -driver"
-        branch_pattern: master
 
 # For true bionic on ppc64le we should specify os as plain linux instead of linux-ppc64le. However, Travis
 # CI has a bug where linux-headers on Bionic and Focal are not available which breaks XRT build. Specifying
@@ -39,11 +27,10 @@ matrix:
       - CONFIGURATION=linux/amd64
 
 before_script:
-  - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
   - sudo ./src/runtime_src/tools/scripts/xrtdeps.sh
   - cd build
 
 before_install:
   - sudo apt-get update
 
-script: if [ "$COVERITY_SCAN_BRANCH" != 1 ]; then ./build.sh -driver; fi
+script: ./build.sh -driver
