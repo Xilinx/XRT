@@ -2544,6 +2544,7 @@ exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
 			//Possible to upgrade XRT on host without changing zocl on PS
 			if (cmd_state < ERT_CMD_STATE_COMPLETED) {//It is old zocl
 				cmd_state = ERT_CMD_STATE_COMPLETED;
+				pkt->return_code = -ENODATA;//return code is missing
 			} else {//It is new zocl
 				pkt->return_code = tmp_pkt.return_code;
 			}
