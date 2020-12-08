@@ -1216,9 +1216,8 @@ int xcldev::device::runTestCase(const std::string& py,
         }
 
         cmd = xrtTestCasePath + " " + xclbinPath + " -d " + std::to_string(m_idx);
-    }
-    //OLD FLOW:
-    else { 
+
+    } else { //OLD FLOW:
         xrtTestCasePath += py;    
         xclbinPath += xclbin;
 
@@ -1228,10 +1227,11 @@ int xcldev::device::runTestCase(const std::string& py,
             // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
             std::string logic_uuid, errmsg;
             pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuid);
+
             // Only skip the test if it nonDFX platform and the accelerator doesn't exist. 
             // All other conditions should generate an error.
             if (!logic_uuid.empty() && xclbin.compare("verify.xclbin") == 0) {
-                output += "Verify xclbin not available. Skipping validation.";
+                output += "Verify xclbin not available or shell partition is not programmed. Skipping validation.";
                 return -EOPNOTSUPP;
             }
             //if bandwidth xclbin isn't present, skip the test
