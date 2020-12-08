@@ -3025,7 +3025,7 @@ static int engine_init(struct xdma_engine *engine, struct xdma_dev *xdev,
 	engine->channel = channel;
 
 	/* set cpu for engine */
-	engine->cpu_idx = channel;
+	engine->cpu_idx = channel % num_online_cpus();
 
 	/* engine interrupt request bit */
 	engine->irq_bitmask = (1 << XDMA_ENG_IRQ_NUM) - 1;
