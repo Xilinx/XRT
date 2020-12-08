@@ -124,7 +124,10 @@ struct ert_start_kernel_cmd {
   };
 
   /* payload */
-  uint32_t cu_mask;          /* mandatory cu mask */
+  union {
+    uint32_t cu_mask;          /* mandatory cu mask */
+    int32_t return_code;      /* return code from soft kernel*/
+  };
   uint32_t data[1];          /* count-1 number of words */
 };
 
