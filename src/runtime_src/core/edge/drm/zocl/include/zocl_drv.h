@@ -124,6 +124,7 @@ struct drm_zocl_bo {
 	struct drm_zocl_exec_metadata  metadata;
 	unsigned int                   bank;
 	uint32_t                       flags;
+	unsigned int                   user_flags;
 };
 
 struct drm_zocl_copy_bo {
