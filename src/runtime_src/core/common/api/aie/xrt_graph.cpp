@@ -249,22 +249,26 @@ run(uint32_t iterations)
 
 void
 graph::
-wait(int timeout_ms)
+wait(std::chrono::milliseconds timeout_ms)
 {
-  if (timeout_ms == 0)
+  if (timeout_ms.count() == 0)
     handle->wait(static_cast<uint64_t>(0));
   else
-    handle->wait(timeout_ms);
+    handle->wait(static_cast<int>(timeout_ms.count()));
 }
 
 void
 graph::
-suspend(uint64_t cycles)
+wait(uint64_t cycles)
 {
-  if (cycles == 0)
-    handle->suspend();
-  else
-    wait(cycles);
+  handle->wait(cycles);
+}
+
+void
+graph::
+suspend()
+{
+  handle->suspend();
 }
 
 void

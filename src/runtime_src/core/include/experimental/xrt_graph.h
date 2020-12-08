@@ -19,6 +19,8 @@
 #ifndef _XRT_GRAPH_H_
 #define _XRT_GRAPH_H_
 
+#include <chrono>
+
 #include "xrt.h"
 #include "experimental/xrt_uuid.h"
 #include "experimental/xrt_bo.h"
@@ -87,35 +89,46 @@ public:
   run(uint32_t iterations = 0);
 
   /**
-   * wait_done() - Wait for specified milliseconds for graph to complete.
+   * wait() - Wait for specified milliseconds for graph to complete.
    *
    * @param timeout_ms
    *  Timeout in milliseconds
    *
-   * Wait for done status for all the tiles in graph. The default timeout
-   * of 0ms indicates blocking until run completes.
+   * Wait for done status for all the tiles in graph.
+   * Zero millisecond indicates blocking until run completes.
    *
    * The current thread will block until graph run completes or timeout.
    */
   void
-  wait(int timeout_ms = 0);
+  wait(std::chrono::milliseconds timeout_ms);
 
   /**
-   * suspend() - Wait for graph to complete for specified AIE cycles and
-   *             then suspend the graph.
+   * wait() - Wait for graph to complete for specified AIE cycles and
+   *          then suspend the graph.
+   *
+   * @param cycles
+   *  AIE cycles to wait since last run starts.
    *
    * Wait a given AIE cycle since the last graph run and then pause the
    * graph. If graph already runs more than the given cycles, stop the
    * graph immediately.
    *
-   * This API is for graph that is running forever or graph that has
-   * multi-rate core(s);
-   * Zero AIE cycle means suspend the graph immediately.
+   * This API with non-zero AIE cycles is for graph that is running
+   * forever or graph that has multi-rate core(s);
+   * Zero AIE cycle indicates blocking until run completes.
    *
    * The current thread will block until graph is paused.
    */
   void
-  suspend(uint64_t cycles = 0);
+  wait(uint64_t cycles = 0);
+
+  /**
+   * suspend() - Suspend a running graph.
+   *
+   * Suspend graph execution.
+   */
+  void
+  suspend();
 
   /**
    * resume() - Resume a suspended graph.
