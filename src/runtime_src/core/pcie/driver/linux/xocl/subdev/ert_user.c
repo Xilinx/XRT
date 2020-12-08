@@ -48,6 +48,8 @@
 		DRM_INFO("packet(0x%p) execbuf[%d] = 0x%x\n", data, i, data[i]); \
 })
 
+extern int kds_echo;
+
 struct ert_user_event {
 	struct mutex		  lock;
 	void			 *client;
@@ -58,6 +60,7 @@ struct ert_user_command {
 	struct kds_command *xcmd;
 	struct list_head    list;
 	uint32_t	slot_idx;
+	bool		completed;
 };
 
 struct xocl_ert_user {
@@ -99,7 +102,7 @@ struct xocl_ert_user {
 	struct semaphore	sem;
 	/* submitted queue */
 	struct ert_user_command	*submit_queue[ERT_MAX_SLOTS];
-	spinlock_t		sq_lock;
+	struct list_head	sq;
 	u32			num_sq;
 
 
@@ -109,6 +112,8 @@ struct xocl_ert_user {
 	struct ert_user_event	ev;
 
 	struct task_struct	*thread;
+
+	u32			echo;
 };
 
 static const unsigned int no_index = -1;
@@ -122,9 +127,40 @@ static ssize_t name_show(struct device *dev,
 }
 
 static DEVICE_ATTR_RO(name);
+static ssize_t snap_shot_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
 
+	return sprintf(buf, "pending:%d, running:%d, submit:%d complete:%d\n", ert_user->num_pq, ert_user->num_rq, ert_user->num_sq
+		,ert_user->num_cq);
+}
+
+static ssize_t ert_echo_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	mutex_lock(&ert_user->lock);
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 2) {
+		xocl_err(&to_platform_device(dev)->dev,
+			"usage: echo 0 or 1 > ert_echo");
+		return -EINVAL;
+	}
+
+	ert_user->echo = val;
+
+	mutex_unlock(&ert_user->lock);
+	return count;
+}
+static DEVICE_ATTR_WO(ert_echo);
+
+static DEVICE_ATTR_RO(snap_shot);
 static struct attribute *ert_user_attrs[] = {
 	&dev_attr_name.attr,
+	&dev_attr_snap_shot.attr,
+	&dev_attr_ert_echo.attr,
 	NULL,
 };
 
@@ -134,12 +170,12 @@ static struct attribute_group ert_user_attr_group = {
 
 static void ert_user_free_cmd(struct ert_user_command* ecmd)
 {
-	vfree(ecmd);
+	kfree(ecmd);
 }
 
 static struct ert_user_command* ert_user_alloc_cmd(struct kds_command *xcmd)
 {
-	struct ert_user_command* ecmd = vzalloc(sizeof(struct ert_user_command));
+	struct ert_user_command* ecmd = kzalloc(sizeof(struct ert_user_command), GFP_KERNEL);
 
 	if (!ecmd)
 		return NULL;
@@ -184,32 +220,6 @@ flush_queue(struct list_head *q, u32 *len, int status, void *client)
 	}
 }
 
-/* Use for flush submit queue */
-static void
-flush_submit_queue(struct xocl_ert_user *ert_user, u32 *len, int status, void *client)
-{
-	struct kds_command *xcmd;
-	struct ert_user_command *ecmd;
-	u32 i = 0;
-	unsigned long flags;
-
-
-	spin_lock_irqsave(&ert_user->sq_lock, flags);
-	for ( i = 0; i < ERT_MAX_SLOTS; ++i ) {
-		ecmd = ert_user->submit_queue[i];
-		if (ecmd) {
-			xcmd = ecmd->xcmd;
-			if (client && client != xcmd->client)
-				continue;
-			xcmd->cb.notify_host(xcmd, status);
-			xcmd->cb.free(xcmd);
-			ert_user->submit_queue[i] = NULL;
-			ert_user_free_cmd(ecmd);
-			--ert_user->num_sq;
-		}
-	}
-	spin_unlock_irqrestore(&ert_user->sq_lock, flags);
-}
 /*
  * release_slot_idx() - Release specified slot idx
  */
@@ -250,27 +260,52 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 {
 	struct kds_command *xcmd;
 	struct ert_user_command *ecmd;
-	unsigned long flags = 0;
 
 	if (!ert_user->num_cq)
 		return;
 
 	ERTUSER_DBG(ert_user, "-> %s\n", __func__);
-	spin_lock_irqsave(&ert_user->sq_lock, flags);
-	/* Notify host and free command */
-	ecmd = list_first_entry(&ert_user->cq, struct ert_user_command, list);
-	xcmd = ecmd->xcmd;
-	ERTUSER_DBG(ert_user, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
-	ert_release_slot(ert_user, ecmd);
-	list_del(&ecmd->list);
-	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
-	xcmd->cb.free(xcmd);
-	ert_user_free_cmd(ecmd);
-	--ert_user->num_cq;
-	spin_unlock_irqrestore(&ert_user->sq_lock, flags);
+	while (ert_user->num_cq) {
+		ecmd = list_first_entry(&ert_user->cq, struct ert_user_command, list);
+		list_del(&ecmd->list);
+		xcmd = ecmd->xcmd;
+		ert_release_slot(ert_user, ecmd);
+		xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+		xcmd->cb.free(xcmd);
+		ert_user_free_cmd(ecmd);
+		--ert_user->num_cq;
+	}
 	ERTUSER_DBG(ert_user, "<- %s\n", __func__);
 }
 
+/**
+ * process_ert_sq() - Process cmd witch is submitted
+ * @ert_user: Target XRT CU
+ */
+static inline void process_ert_sq(struct xocl_ert_user *ert_user)
+{
+	struct kds_command *xcmd;
+	struct ert_user_command *ecmd, *next;
+
+	if (!ert_user->num_sq)
+		return;
+
+	ERTUSER_DBG(ert_user, "-> %s\n", __func__);
+	list_for_each_entry_safe(ecmd, next, &ert_user->sq, list) {
+		if (ecmd->completed) {
+			xcmd = ecmd->xcmd;
+			ERTUSER_DBG(ert_user, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
+			list_move_tail(&ecmd->list, &ert_user->cq);
+			--ert_user->num_sq;
+			++ert_user->num_cq;
+			ert_user->submit_queue[ecmd->slot_idx] = NULL;
+			/* If it's the first completed command, up the semaphore */
+			if (ert_user->num_cq == 1)
+				up(&ert_user->sem);
+		}
+	}
+	ERTUSER_DBG(ert_user, "<- %s\n", __func__);
+}
 /**
  * mask_idx32() - Slot mask idx index for a given slot_idx
  *
@@ -296,24 +331,17 @@ ert_user_isr(int irq, void *arg)
 	ERTUSER_DBG(ert_user, "-> xocl_user_event %d\n", irq);
 	xdev = xocl_get_xdev(ert_user->pdev);
 
-	if (irq>=ERT_MAX_SLOTS)
-		return IRQ_HANDLED;
+	BUG_ON(irq>=ERT_MAX_SLOTS);
 
 	if (!ert_user->polling_mode) {
-
-		spin_lock(&ert_user->sq_lock);
 		ecmd = ert_user->submit_queue[irq];
-		if (ecmd) {
-			ert_user->submit_queue[irq] = NULL;
-			list_add_tail(&ecmd->list, &ert_user->cq);
-			ERTUSER_DBG(ert_user, "move to cq\n");
-			--ert_user->num_sq;
-			++ert_user->num_cq;			
-		}
-
-		spin_unlock(&ert_user->sq_lock);
+		if (ecmd)
+			ecmd->completed = true;
+		else
+			ERTUSER_DBG(ert_user, "not in submitted queue %d\n", irq);
 
 		up(&ert_user->sem);
+
 		/* wake up all scheduler ... currently one only */
 #if 0
 		if (xs->stop)
@@ -332,15 +360,15 @@ ert_user_isr(int irq, void *arg)
 }
 
 /**
- * process_ert_sq() - Process submitted queue
+ * process_ert_sq_polling() - Process submitted queue
  * @ert_user: Target XRT CU
  */
-static inline void process_ert_sq(struct xocl_ert_user *ert_user)
+static inline void process_ert_sq_polling(struct xocl_ert_user *ert_user)
 {
+	struct kds_command *xcmd;
 	struct ert_user_command *ecmd;
 	u32 mask = 0;
 	u32 slot_idx = 0, section_idx = 0;
-	unsigned long flags;
 	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
 
 	if (!ert_user->num_sq)
@@ -360,19 +388,16 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 			if (!mask)
 				break;
 			if (mask & 0x1) {
-				spin_lock_irqsave(&ert_user->sq_lock, flags);
-				if (ert_user->submit_queue[cmd_idx]) {
-					ecmd = ert_user->submit_queue[cmd_idx];
-
-					ert_user->submit_queue[cmd_idx] = NULL;
-					list_add_tail(&ecmd->list, &ert_user->cq);
-					ERTUSER_DBG(ert_user, "move to cq\n");
+				ecmd = ert_user->submit_queue[cmd_idx];
+				if (ecmd) {
+					xcmd = ecmd->xcmd;
+					ERTUSER_DBG(ert_user, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
+					list_move_tail(&ecmd->list, &ert_user->cq);
 					--ert_user->num_sq;
 					++ert_user->num_cq;
+					ert_user->submit_queue[cmd_idx] = NULL;
 				} else
 					ERTUSER_DBG(ert_user, "ERR: submit queue slot is empty\n");
-
-				spin_unlock_irqrestore(&ert_user->sq_lock, flags);
 			}
 		}
 	}
@@ -507,6 +532,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	if (XDEV(xdev)->priv.flags & XOCL_DSAFLAG_CUDMA_OFF)
 		cfg->cu_dma = 0;
 
+	cfg->echo = ert_user->echo;
 	// The KDS side of of the scheduler is now configured.  If ERT is
 	// enabled, then the configure command will be started asynchronously
 	// on ERT.  The shceduler is not marked configured until ERT has
@@ -541,7 +567,6 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 	u32 slot_addr = 0, i;
 	struct ert_packet *epkt = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
-	unsigned long flags;
 
 	if (!ert_user->num_rq)
 		return 0;
@@ -582,20 +607,29 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 		slot_addr = ecmd->slot_idx * (ert_user->cq_range/ert_user->num_slots);
 
 		ERTUSER_DBG(ert_user, "%s slot_addr %x\n", __func__, slot_addr);
-		if (cmd_opcode(ecmd) == OP_START) {
-			// write kds selected cu_idx in first cumask (first word after header)
-			iowrite32(ecmd->xcmd->cu_idx, ert_user->cq_base + slot_addr + 4);
 
-			// write remaining packet (past header and cuidx)
-			xocl_memcpy_toio(ert_user->cq_base + slot_addr + 8,
-					 ecmd->xcmd->execbuf+2, (epkt->count-1)*sizeof(u32));
+		ert_user->submit_queue[ecmd->slot_idx] = ecmd;
+		list_move_tail(&ecmd->list, &ert_user->sq);
+		--ert_user->num_rq;
+		++ert_user->num_sq;
+
+		if (kds_echo) {
+			ecmd->completed = true;
 		} else {
-			xocl_memcpy_toio(ert_user->cq_base + slot_addr + 4,
-				  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
+			if (cmd_opcode(ecmd) == OP_CONFIG) {
+				xocl_memcpy_toio(ert_user->cq_base + slot_addr + 4,
+					  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
+			} else {
+				// write kds selected cu_idx in first cumask (first word after header)
+				iowrite32(ecmd->xcmd->cu_idx, ert_user->cq_base + slot_addr + 4);
+
+				// write remaining packet (past header and cuidx)
+				xocl_memcpy_toio(ert_user->cq_base + slot_addr + 8,
+						 ecmd->xcmd->execbuf+2, (epkt->count-1)*sizeof(u32));
+			}
+
+			iowrite32(epkt->header, ert_user->cq_base + slot_addr);
 		}
-
-		iowrite32(epkt->header, ert_user->cq_base + slot_addr);
-
 		if (ert_user->cq_intr) {
 			u32 mask_idx = mask_idx32(ecmd->slot_idx);
 			u32 cq_int_addr = (mask_idx << 2);
@@ -605,12 +639,6 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 					mask, cq_int_addr);
 			xocl_intc_ert_write32(xdev, mask, cq_int_addr);
 		}
-		spin_lock_irqsave(&ert_user->sq_lock, flags);
-		ert_user->submit_queue[ecmd->slot_idx] = ecmd;
-		list_del(&ecmd->list);
-		--ert_user->num_rq;
-		++ert_user->num_sq;
-		spin_unlock_irqrestore(&ert_user->sq_lock, flags);
 	}
 
 	return 1;
@@ -665,8 +693,9 @@ static inline void process_event(struct xocl_ert_user *ert_user)
 
 	/* Let's check submitted commands one more time */
 	process_ert_sq(ert_user);
+	process_ert_sq_polling(ert_user);
 	if (ert_user->num_sq) {
-		flush_submit_queue(ert_user, &ert_user->num_sq, KDS_ABORT, client);
+		flush_queue(&ert_user->sq, &ert_user->num_sq, KDS_ABORT, client);
 		ert_user->ev.state = ERT_STATE_BAD;
 	}
 
@@ -736,13 +765,16 @@ int ert_user_thread(void *data)
 		 * - process_ert_sq will check CU status, which is thru slow bus
 		 */
 		process_ert_cq(ert_user);
+
 		process_ert_sq(ert_user);
+		process_ert_sq_polling(ert_user);
 		process_event(ert_user);
 
 		if (ert_user->bad_state)
 			break;
 
-
+		if (ert_user->num_rq)
+			continue;
 		/* ert polling mode goes to sleep only if it doesn't have to poll
 		 * submitted queue to check the completion
 		 * ert interrupt mode goes to sleep if there is no cmd to be submitted
@@ -761,10 +793,7 @@ int ert_user_thread(void *data)
 	if (!ert_user->bad_state)
 		return ret;
 
-	/* CU in bad state mode, abort all new commands */
-	flush_submit_queue(ert_user, &ert_user->num_sq, KDS_ABORT, NULL);
-
-	flush_queue(&ert_user->cq, &ert_user->num_cq, KDS_ABORT, NULL);
+	flush_queue(&ert_user->sq, &ert_user->num_sq, KDS_ABORT, NULL);
 	while (!ert_user->stop) {
 		flush_queue(&ert_user->rq, &ert_user->num_rq, KDS_ABORT, NULL);
 		process_event(ert_user);
@@ -896,8 +925,7 @@ static int ert_user_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&ert_user->rq);
 
 	/* Initialize submit queue lock*/
-	spin_lock_init(&ert_user->sq_lock);
-
+	INIT_LIST_HEAD(&ert_user->sq);
 	/* Initialize completed queue */
 	INIT_LIST_HEAD(&ert_user->cq);
 
