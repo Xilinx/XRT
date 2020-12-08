@@ -277,7 +277,17 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		ret = kds_cu_config(&kds->cu_mgmt, xcmd);
 		if (ret)
 			return ret;
-		break;
+
+		mutex_lock(&ert->lock);
+		if (!ert->configured)
+			ert->submit(ert, xcmd);
+		else {
+			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+			xcmd->cb.free(xcmd);
+		}
+		ert->configured = 1;
+		mutex_unlock(&ert->lock);
+		return 0;
 	case OP_CONFIG_SK:
 	case OP_START_SK:
 		break;
@@ -758,6 +768,8 @@ int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 	kds->ert = ert;
 	/* By default enable ERT if it exist */
 	kds->ert_disable = false;
+	mutex_init(&ert->lock);
+	ert->configured = 1;
 	return 0;
 }
 
@@ -856,6 +868,9 @@ int kds_cfg_update(struct kds_sched *kds)
 			}
 		}
 	}
+
+	if (kds->ert)
+		kds->ert->configured = 0;
 
 	return ret;
 }
@@ -963,6 +978,7 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	 */
 	xcmd->isize = (ecmd->count - xcmd->num_mask - 4) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
+	ecmd->type = ERT_CU;
 }
 
 void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
@@ -983,6 +999,7 @@ void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	 */
 	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
+	ecmd->type = ERT_CTRL;
 }
 
 /**
