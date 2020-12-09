@@ -1691,7 +1691,8 @@ public:
         }
         const mem_topology *map = (mem_topology *)buf.data();
 
-        std::string hbm_mem_size = xrt_core::utils::unit_convert(map->m_count*(map->m_mem_data[0].m_size << 10));
+        std::string hbm_mem_size = xrt_core::utils::unit_convert(get_hbm_mem_size(map));
+
         if (verbose) {
             std::cout << "INFO: DMA test on [" << m_idx << "]: "<< name() << "\n";
             if (hbm_mem_size.compare(std::string("0 Byte")) != 0)
@@ -1836,6 +1837,18 @@ public:
         return GB(ddr_size)*ddr_bank_count / (1024 * 1024);
     }
 
+    size_t get_hbm_mem_size(const mem_topology *map) {
+        long long hbm_size = 0;
+
+        for (int i = 0; i < map->m_count; ++i) {
+            std::string mtag(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
+
+            if (mtag.compare(0, 3, std::string("HBM")) == 0)
+                hbm_size += (map->m_mem_data[i].m_size << 10);
+        }
+
+        return hbm_size;
+    }
 
    //Debug related functionality.
     uint32_t getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames);
