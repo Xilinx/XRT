@@ -20,6 +20,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_bo.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_bo.h"
+#include "core/include/experimental/xrt_aie.h"
 #include "bo.h"
 
 #include "device_int.h"
@@ -242,6 +243,14 @@ public:
     // sync modified host buffer to device
     sync(XCL_BO_SYNC_BO_TO_DEVICE, sz, dst_offset);
   }
+
+#ifdef XRT_ENABLE_AIE
+  void
+  sync(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
+  {
+    device->sync_aie_bo(bo, port.c_str(), dir, sz, offset);
+  }
+#endif
 
   virtual void
   sync(xclBOSyncDirection dir, size_t sz, size_t offset)
@@ -723,6 +732,24 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 }
 
 } // xrt
+
+#ifdef XRT_ENABLE_AIE
+////////////////////////////////////////////////////////////////
+// xrt_aie_bo C++ API implmentations (xrt_aie.h)
+////////////////////////////////////////////////////////////////
+namespace xrt { namespace aie {
+
+void
+bo::
+sync(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
+{
+  auto handle = get_handle();
+
+  handle->sync(*this, port, dir, sz, offset);
+}
+
+}} // namespace aie, xrt
+#endif
 
 ////////////////////////////////////////////////////////////////
 // xrt_bo API implmentations (xrt_bo.h)

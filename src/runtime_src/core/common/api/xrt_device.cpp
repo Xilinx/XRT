@@ -17,10 +17,11 @@
 
 // This file implements XRT xclbin APIs as declared in
 // core/include/experimental/xrt_device.h
-#define XCL_DRIVER_DLL_EXPORT  // exporting xrt_bo.h
+#define XCL_DRIVER_DLL_EXPORT  // exporting xrt_device.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 
 #include "core/include/experimental/xrt_device.h"
+#include "core/include/experimental/xrt_aie.h"
 
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -168,6 +169,23 @@ get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
 }
 
 } // xrt
+
+#ifdef XRT_ENABLE_AIE
+////////////////////////////////////////////////////////////////
+// xrt_aie_device C++ API implmentations (xrt_aie.h)
+////////////////////////////////////////////////////////////////
+namespace xrt { namespace aie {
+
+void
+device::
+reset_array()
+{
+  auto handle = get_handle();
+  handle->reset_aie();
+}
+
+}} // namespace aie, xrt
+#endif
 
 ////////////////////////////////////////////////////////////////
 // xrt_device API implmentations (xrt_device.h)

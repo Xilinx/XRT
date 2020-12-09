@@ -25,6 +25,94 @@
 #include "experimental/xrt_device.h"
 #include "experimental/xrt_graph.h"
 
+#ifdef __cplusplus
+
+namespace xrt { namespace aie {
+
+class device : public xrt::device
+{
+public:
+  /**
+   * device() - Constructor a device that has AIE.
+   *
+   * @param arg
+   *  Arguments to construct a device (xrt_device.h).
+   */
+  template <typename ...Args>
+  device(Args&&... args)
+    : xrt::device(std::forward<Args>(args)...)
+  {}
+
+  /**
+   * reset_array() - Reset AIE array
+   *
+   * Reset AIE array. This operation will
+   *   Clock gate all the columns;
+   *   Reset all the columns;
+   *   Reset shim;
+   *   Write '0' to all the data and program memories.
+   */
+  void reset_array();
+};
+
+class bo : public xrt::bo
+{
+public:
+  /**
+   * bo() - Constructor BO that is used for AIE GMIO.
+   *
+   * @param arg
+   *  Arguments to construct BO (xrt_bo.h).
+   */
+  template <typename ...Args>
+  bo(Args&&... args)
+    : xrt::bo(std::forward<Args>(args)...)
+  {}
+
+  /**
+   * sync() - Transfer data between BO and Shim DMA channel.
+   *
+   * @param port
+   *  GMIO port name.
+   * @param dir
+   *  GM to AIE or AIE to GM
+   * @param sz
+   *  Size of data to transfer
+   * @param offset
+   *  Offset within BO
+   *
+   * Syncronize the buffer contents from BO offset to offset + sz
+   * between GMIO and AIE.
+   *
+   * The current thread will block until the transfer is completed.
+   */
+  void sync(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset);
+
+  /**
+   * sync() - Transfer data between BO and Shim DMA channel.
+   *
+   * @param port
+   *  GMIO port name.
+   * @param dir
+   *  GM to AIE or AIE to GM
+   *
+   * Syncronize the whole buffer contents between GMIO and AIE.
+   *
+   * The current thread will block until the transfer is completed.
+   */
+  void sync(const std::string& port, xclBOSyncDirection dir)
+  {
+    sync(port, dir, size(), 0);
+  }
+};
+
+}} // aie, xrt
+
+/// @cond
+extern "C" {
+
+#endif
+
 /**
  * xrtAIESyncBO() - Transfer data between DDR and Shim DMA channel
  *
@@ -60,5 +148,11 @@ xrtSyncBOAIE(xrtDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
 /* Provide this API for backward compatibility. */
 int
 xrtResetAIEArray(xrtDeviceHandle handle);
+
+/// @endcond
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

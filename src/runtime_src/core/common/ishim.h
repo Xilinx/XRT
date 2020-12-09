@@ -146,13 +146,13 @@ struct ishim
   read_graph_rtp(xclGraphHandle handle, const char* port, char* buffer, size_t size) = 0;
 
   virtual void
-  sync_aie_bo(xrtBufferHandle bohdl, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
+  sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
 
   virtual void
   reset_aie() = 0;
 
   virtual void
-  sync_aie_bo_nb(xrtBufferHandle bohdl, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
+  sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
 
   virtual void
   wait_gmio(const char *gmioName) = 0;
@@ -450,9 +450,9 @@ struct shim : public DeviceType
   }
 
   virtual void
-  sync_aie_bo(xrtBufferHandle bohdl, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
+  sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
   {
-    if (auto ret = xclSyncBOAIE(DeviceType::get_device_handle(), bohdl, gmioName, dir, size, offset))
+    if (auto ret = xclSyncBOAIE(DeviceType::get_device_handle(), bo, gmioName, dir, size, offset))
       throw error(ret, "fail to sync aie bo");
   }
 
@@ -464,9 +464,9 @@ struct shim : public DeviceType
   }
 
   virtual void
-  sync_aie_bo_nb(xrtBufferHandle bohdl, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
+  sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
   {
-    if (auto ret = xclSyncBOAIENB(DeviceType::get_device_handle(), bohdl, gmioName, dir, size, offset))
+    if (auto ret = xclSyncBOAIENB(DeviceType::get_device_handle(), bo, gmioName, dir, size, offset))
       throw error(ret, "fail to sync aie non-blocking bo");
   }
 
