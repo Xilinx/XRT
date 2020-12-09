@@ -117,13 +117,15 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   // Workaround: if the uuid is empty, remove clear the vector
   try {
     logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
-    if (!logic_uuids.empty() && logic_uuids.front().empty())
-      logic_uuids.clear();
+	logic_uuids.erase(
+		std::remove_if(logic_uuids.begin(), logic_uuids.end(),
+						[](const std::string& s) { return s.empty(); }));
     } catch (...) {}
   try {
     interface_uuids = xrt_core::device_query<xrt_core::query::interface_uuids>(device);
-    if (!interface_uuids.empty() && interface_uuids.front().empty())
-      interface_uuids.clear();
+	interface_uuids.erase(
+		std::remove_if(interface_uuids.begin(), interface_uuids.end(),
+			[](const std::string& s) { return s.empty(); }));
     } catch (...) {}
   
   
