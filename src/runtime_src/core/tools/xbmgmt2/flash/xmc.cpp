@@ -552,12 +552,8 @@ bool XMC_Flasher::isBMCReady()
 bool XMC_Flasher::hasSC()
 {
     bool sc_presence = false;
-    //this shouldn't be needed
-    bool is_mfg =  xrt_core::device_query<xrt_core::query::is_mfg>(m_device);
-    if (!is_mfg) {
-        try {
-            sc_presence = xrt_core::device_query<xrt_core::query::xmc_sc_presence>(m_device);
-        } catch (...) {}
-    }
+    try {
+        sc_presence = xrt_core::device_query<xrt_core::query::xmc_sc_presence>(m_device);
+    } catch (...) {}
     return sc_presence;
 }
