@@ -7,5 +7,6 @@ var searchData=
   ['size',['size',['../classxrt_1_1bo.html#af1606fb5b8e71a072ad1101516f66975',1,'xrt::bo']]],
   ['start',['start',['../classxrt_1_1run.html#ada025d6709796a6ea20182e5b720a96b',1,'xrt::run']]],
   ['state',['state',['../classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac',1,'xrt::run']]],
+  ['svm',['svm',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda924ff83ff1e671bacfb07ff12b845703',1,'xrt::bo']]],
   ['sync',['sync',['../classxrt_1_1bo.html#ab682cbb4ee9d69be401b202d17209e16',1,'xrt::bo::sync(xclBOSyncDirection dir, size_t sz, size_t offset)'],['../classxrt_1_1bo.html#ad7a85fc088e5da29a930e934c45f57e8',1,'xrt::bo::sync(xclBOSyncDirection dir)']]]
 ];

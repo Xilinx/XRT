@@ -307,7 +307,7 @@
             
             
               <div class="version">
-                2020.1
+                Master
               </div>
             
           
@@ -814,7 +814,13 @@
 <dl class="cpp enumerator">
 <dt id="_CPPv4N3xrt2bo5flags3p2pE">
 <span id="_CPPv3N3xrt2bo5flags3p2pE"></span><span id="_CPPv2N3xrt2bo5flags3p2pE"></span><span class="target" id="classxrt_1_1bo_1ad6a4bb086ce3b1023df8671c29a1d1dda705bcf0e77bc8b6fc8e66cbf3c055e6c"></span><em class="property">enumerator </em><code class="sig-name descname">p2p</code><a class="headerlink" href="#_CPPv4N3xrt2bo5flags3p2pE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Create a BO for peer-to-peer use</p>
+<dd><p>Create a BO for peer-to-peer use </p>
+</dd></dl>
+
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt2bo5flags3svmE">
+<span id="_CPPv3N3xrt2bo5flags3svmE"></span><span id="_CPPv2N3xrt2bo5flags3svmE"></span><span class="target" id="classxrt_1_1bo_1ad6a4bb086ce3b1023df8671c29a1d1dda924ff83ff1e671bacfb07ff12b845703"></span><em class="property">enumerator </em><code class="sig-name descname">svm</code><a class="headerlink" href="#_CPPv4N3xrt2bo5flags3svmE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Create a BO for SVM (supported on specific platforms only)</p>
 <p>The flags used by <a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a> are compatible with XCL style flags as define in <code class="docutils literal notranslate"><span class="pre">xrt_mem.h</span></code> </p>
 </dd></dl>
 
@@ -942,6 +948,18 @@
 <dt id="_CPPv4N3xrt2boaSERR2bo">
 <span id="_CPPv3N3xrt2boaSERR2bo"></span><span id="_CPPv2N3xrt2boaSERR2bo"></span><span id="xrt::bo::assign-operator__boRR"></span><span class="target" id="classxrt_1_1bo_1a48d12a22e98eb9b355f32922c6b27402"></span><a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo">bo</a> &amp;<code class="sig-name descname">operator=</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo">bo</a> &amp;&amp;<em>rhs</em><span class="sig-paren">)</span> = default<a class="headerlink" href="#_CPPv4N3xrt2boaSERR2bo" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>operator= () - Move assignment </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt2boeqERK2bo">
+<span id="_CPPv3NK3xrt2boeqERK2bo"></span><span id="_CPPv2NK3xrt2boeqERK2bo"></span><span id="xrt::bo::eq-operator__boCRC"></span><span class="target" id="classxrt_1_1bo_1a138b3bdb54f8b5190c61bf5b36963c30"></span>bool <code class="sig-name descname">operator==</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo">bo</a> &amp;<em>rhs</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt2boeqERK2bo" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>operator== () - Compare operator </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt2bocvbEv">
+<span id="_CPPv3NK3xrt2bocvbEv"></span><span id="_CPPv2NK3xrt2bocvbEv"></span><span id="xrt::bo::castto-b-operatorC"></span><span class="target" id="classxrt_1_1bo_1ae1d3edf6c9a7a60e4975f631a39809dd"></span><code class="sig-name descname">operator bool</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt2bocvbEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>operator bool() - Check if bo handle is valid </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -2341,7 +2359,7 @@ Support states are: ERT_CMD_STATE_COMPLETED (to be extended)</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on November 05, 2020.
+        Last updated on December 10, 2020.
       </span>
 
     </p>
