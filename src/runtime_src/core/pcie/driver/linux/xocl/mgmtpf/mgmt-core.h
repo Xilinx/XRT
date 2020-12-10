@@ -154,6 +154,10 @@ struct xclmgmt_dev {
 
 	/* programming shell flag */
 	u32 rp_program;
+
+	u32 orig_mask;
+	u16 pci_cmd;
+	u16 devctl;
 };
 
 extern int health_check;

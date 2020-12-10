@@ -441,6 +441,7 @@ struct xocl_work {
 	int			op;
 };
 
+#define SERIAL_NUM_LEN	32
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
 	int			dev_minor;
@@ -494,6 +495,13 @@ struct xocl_dev_core {
 	 */
 	int			ksize;
 	char			*kernels;
+	/*
+	 * u30 reset relies on working SC and SN info. SN is read and saved in
+	 * parent device so that even if for some reason the xmc is offline
+	 * the card can still be reset.
+	 * Having SN info available also implies there is a working SC
+	 */
+	char			serial_num[SERIAL_NUM_LEN];
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -826,6 +834,7 @@ struct xocl_mb_funcs {
 	int (*get_data)(struct platform_device *pdev, enum xcl_group_kind kind, void *buf);
 	int (*xmc_access)(struct platform_device *pdev, enum xocl_xmc_flags flags);
 	void (*clock_status)(struct platform_device *pdev, bool *latched);
+	void (*get_serial_num)(struct platform_device *pdev);
 };
 
 #define	MB_DEV(xdev)		\
@@ -859,6 +868,8 @@ struct xocl_mb_funcs {
 #define xocl_xmc_clock_status(xdev, latched)		\
 	(MB_CB(xdev, clock_status) ? MB_OPS(xdev)->clock_status(MB_DEV(xdev), latched) : -ENODEV)
 
+#define xocl_xmc_get_serial_num(xdev)		\
+	(MB_CB(xdev, get_serial_num) ? MB_OPS(xdev)->get_serial_num(MB_DEV(xdev)) : -ENODEV)
 /* ERT FW callbacks */
 #define ERT_DEV(xdev)							\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, XOCL_MB_ERT).pldev
@@ -903,7 +914,7 @@ static inline void xocl_mb_reset(xdev_handle_t xdev)
 struct xocl_ps_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*reset)(struct platform_device *pdev, int type);
-	void (*wait)(struct platform_device *pdev);
+	int (*wait)(struct platform_device *pdev);
 };
 
 #define	PS_DEV(xdev)		\
@@ -920,7 +931,7 @@ struct xocl_ps_funcs {
 #define	xocl_ps_sys_reset(xdev)			\
 	(PS_CB(xdev, reset) ? PS_OPS(xdev)->reset(PS_DEV(xdev), 3) : NULL)
 #define	xocl_ps_wait(xdev)			\
-	(PS_CB(xdev, reset) ? PS_OPS(xdev)->wait(PS_DEV(xdev)) : NULL)
+	(PS_CB(xdev, reset) ? PS_OPS(xdev)->wait(PS_DEV(xdev)) : -ENODEV)
 
 
 /* dna callbacks */
@@ -1925,6 +1936,8 @@ struct xocl_pcie_firewall_funcs {
 #define xocl_pcie_firewall_unblock(xdev, pf, bar)			\
 	(PCIE_FIREWALL_CB(xdev) ? PCIE_FIREWALL_OPS(xdev)->unblock(PCIE_FIREWALL_DEV(xdev), pf, bar) : -ENODEV)
 
+#define xocl_get_buddy_fpga(lro, fn) \
+	(bus_for_each_dev(&pci_bus_type, NULL, lro, fn)) 
 /* subdev functions */
 int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 	struct xocl_pci_funcs *pci_ops);

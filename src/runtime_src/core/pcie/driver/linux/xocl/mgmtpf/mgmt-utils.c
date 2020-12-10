@@ -22,7 +22,12 @@
 
 #define XCLMGMT_RESET_MAX_RETRY		10
 
-static void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
+static void xclmgmt_reset_pci(struct xclmgmt_dev *lro, unsigned long period);
+static void xclmgmt_reset_pci_pre(struct xclmgmt_dev *lro);
+static void xclmgmt_reset_pci_post(struct xclmgmt_dev *lro);
+static int pci_fundamental_reset_pre(struct xclmgmt_dev *lro);
+static int pci_fundamental_reset_real(struct xclmgmt_dev *lro, unsigned long period);
+static int pci_fundamental_reset_post(struct xclmgmt_dev *lro);
 /**
  * @returns: NULL if AER apability is not found walking up to the root port
  *         : pci_dev ptr to the port which is AER capable.
@@ -229,13 +234,11 @@ static int xocl_set_master_on(struct xclmgmt_dev *lro)
  * This method is known to work better.
  */
 
-long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
+long xclmgmt_hot_reset_pre(struct xclmgmt_dev *lro, bool force)
 {
 	long err = 0;
 	const char *ep_name;
 	struct pci_dev *pdev = lro->pci_dev;
-	struct xocl_board_private *dev_info = &lro->core.priv;
-	int retry = 0;
 
 	if (!pdev->bus || !pdev->bus->self) {
 		mgmt_err(lro, "Unable to identify device root port for card %d",
@@ -270,19 +273,39 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_AF);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_AXIGATE);
+		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_PS);
 		/* request XMC/ERT to stop */
 		xocl_mb_stop(lro);
 		/* If the PCIe board has PS */
 		xocl_ps_sys_reset(lro);
 #if defined(__PPC64__)
-		pci_fundamental_reset(lro);
+		pci_fundamental_reset_pre(lro);
 #else
-		xclmgmt_reset_pci(lro);
+		xclmgmt_reset_pci_pre(lro);
 #endif
+	} else {
+		mgmt_warn(lro, "PCI Hot reset is not supported on this board.");
+	}
+done:
+	return err;
+}
 
+long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
+{
+	long err = 0;
+	struct xocl_board_private *dev_info = &lro->core.priv;
+	int retry = 0;
+
+	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
+#if defined(__PPC64__)
+		pci_fundamental_reset_post(lro);
+#else
+		xclmgmt_reset_pci_post(lro);
+#endif
 		/* restart XMC/ERT */
 		xocl_mb_reset(lro);
 		/* If the PCIe board has PS. This could take 50 seconds */
+		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_PS);
 		xocl_ps_wait(lro);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_AF);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
@@ -326,8 +349,95 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	else if (!force)
 		xclmgmt_connect_notify(lro, true);
 
-done:
 	return err;
+}
+
+/*
+ * On u30, there are 2 FPGAs, due to the issue of
+ * https://jira.xilinx.com/browse/ALVEO-266
+ * reset either FPGA will cause the other one being reset too.
+ * A workaround is required to handle this case
+ */
+static int xclmgmt_get_buddy_cb(struct device *dev, void *data)
+{
+	struct xclmgmt_dev *src_xdev = *(struct xclmgmt_dev **)(data);
+	struct xclmgmt_dev *tgt_xdev;
+
+	/*
+	 * skip
+	 * 1.non xilinx device
+	 * 2.itself
+	 * 3.other devcies not being droven by same driver. using func id
+	 * may not handle u25 where there is another device on same card 
+	 */
+	if (!dev || to_pci_dev(dev)->vendor != 0x10ee ||
+	   	XOCL_DEV_ID(to_pci_dev(dev)) ==
+		XOCL_DEV_ID(src_xdev->core.pdev) ||
+		strcmp(dev->driver->name, "xclmgmt")) 
+		return 0;
+
+	tgt_xdev = dev_get_drvdata(dev);
+	if (src_xdev && tgt_xdev && strcmp(src_xdev->core.serial_num, "") &&
+		strcmp(tgt_xdev->core.serial_num, "") &&
+		!strcmp(src_xdev->core.serial_num, tgt_xdev->core.serial_num)) {
+	       *(struct xclmgmt_dev **)data = tgt_xdev;
+		mgmt_info(src_xdev, "2nd FPGA found on same card: %x:%x.%x",
+			to_pci_dev(dev)->bus->number,
+			PCI_SLOT(to_pci_dev(dev)->devfn),
+			PCI_FUNC(to_pci_dev(dev)->devfn));
+       		return 1;
+	}
+	return 0;
+}
+
+/*
+ * For u30 with 2 FPGAs on one card, the POR pin for each FPGA are
+ * physically connected together. Reset whichever will cause the other
+ * one also being reset. So the logics here are
+ * 1. before SBR is issued, if there are 2 FPGAs, do the preparations on
+ *    both
+ * 2. issue SBR on only one FPGA
+ * 3. restore both after SBR
+ *
+ * Also, during reset, the pcie linkdown will last, in worst case, 3-5s
+ * for the u30 card with PS/PL   
+ */
+#define ONE_FPGA_RESET_SLEEP 1
+#define DUAL_FPGA_RESET_SLEEP 5
+long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
+{
+	long err = 0;
+	struct xclmgmt_dev *buddy_lro = lro;
+
+	/*
+	 * if 2nd FPGA is found, buddy_lro is set as lro of the other
+	 * one, otherwise, it is set as null
+	 */
+	if (!xocl_get_buddy_fpga(&buddy_lro, xclmgmt_get_buddy_cb))
+		buddy_lro = NULL;
+
+	if (buddy_lro) {
+		err = xclmgmt_hot_reset_pre(buddy_lro, force);
+		if (err)
+			return err;
+	}
+	err = xclmgmt_hot_reset_pre(lro, force);
+	if (err)
+		return err;
+
+#if defined(__PPC64__)
+	pci_fundamental_reset_real(lro, buddy_lro ? DUAL_FPGA_RESET_SLEEP :
+		ONE_FPGA_RESET_SLEEP);
+#else
+	xclmgmt_reset_pci(lro, buddy_lro ? DUAL_FPGA_RESET_SLEEP :
+		ONE_FPGA_RESET_SLEEP);
+#endif
+	if (buddy_lro) {
+		err = xclmgmt_hot_reset_post(buddy_lro, force);
+		if (err)
+			return err;
+	}
+	return xclmgmt_hot_reset_post(lro, force);
 }
 
 static void xocl_save_config_space(struct pci_dev *pdev, u32 *saved_config)
@@ -422,11 +532,9 @@ static void xocl_pci_restore_config_all(struct xclmgmt_dev *lro)
 /*
  * Inspired by GenWQE driver, card_base.c
  */
-int pci_fundamental_reset(struct xclmgmt_dev *lro)
+static int pci_fundamental_reset_pre(struct xclmgmt_dev *lro)
 {
 	int rc;
-	u32 orig_mask;
-	u8 hot;
 	struct pci_dev *pci_dev = lro->pci_dev;
 
 	/*
@@ -438,11 +546,22 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	/* Save pci config space for botht the pf's */
 	xocl_pci_save_config_all(lro);
 
-	rc = pcie_mask_surprise_down(pci_dev, &orig_mask);
+	rc = pcie_mask_surprise_down(pci_dev, &lro->orig_mask);
 	if (rc)
-		goto done;
-	printk(KERN_INFO "%s: pci_fundamental_reset 1\n", DRV_NAME);
+		goto fail;
+	return rc;
+fail:
+	printk(KERN_INFO "%s: pcie mask surprise down failed\n", DRV_NAME);
+	xocl_pci_restore_config_all(lro);
 
+	return rc;
+}
+
+static int pci_fundamental_reset_real(struct xclmgmt_dev *lro, unsigned long period)
+{
+	int rc;
+	u8 hot;
+	struct pci_dev *pci_dev = lro->pci_dev;
 #if defined(__PPC64__)
 	/*
 	 * On PPC64LE use pcie_warm_reset which will cause the FPGA to
@@ -457,7 +576,7 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	if (rc)
 		goto done;
 	/* Wait for 2s to reload flash and train the link */
-	msleep(2000);
+	msleep(period);
 #else
 	rc = xocl_icap_reset_bitstream(lro);
 	if (rc)
@@ -473,24 +592,40 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	msleep(500);
 #endif
 done:
+	return rc;
+}
+
+static int pci_fundamental_reset_post(struct xclmgmt_dev *lro)
+{
+	int rc;
+	struct pci_dev *pci_dev = lro->pci_dev;
 	printk(KERN_INFO "%s: pci_fundamental_reset done routine\n", DRV_NAME);
 
 	/* restore pci config space for botht the pf's */
-	rc = pcie_unmask_surprise_down(pci_dev, orig_mask);
+	rc = pcie_unmask_surprise_down(pci_dev, lro->orig_mask);
 
 	xocl_pci_restore_config_all(lro);
 
 	return rc;
 }
 
-static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
+int pci_fundamental_reset(struct xclmgmt_dev *lro)
+{
+	int rc;
+
+	rc = pci_fundamental_reset_pre(lro);
+	if (rc)
+		return rc;
+	(void) pci_fundamental_reset_real(lro, 2000);
+	return pci_fundamental_reset_post(lro);
+}
+
+static void xclmgmt_reset_pci_pre(struct xclmgmt_dev *lro)
 {
 	struct pci_dev *pdev = lro->pci_dev;
 	struct pci_bus *bus;
-	u8 pci_bctl;
-	u16 pci_cmd, devctl;
 
-	mgmt_info(lro, "Reset PCI");
+	mgmt_info(lro, "Reset PCI pre");
 
 	/* what if user PF in VM ? */
 	xocl_pci_save_config_all(lro);
@@ -510,12 +645,21 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	 * The quick solution is to temporarily disable the SERR reporting of
 	 * switch port during SBR.
 	 */
-	pci_read_config_word(bus->self, PCI_COMMAND, &pci_cmd);
-	pci_write_config_word(bus->self, PCI_COMMAND, (pci_cmd & ~PCI_COMMAND_SERR));
-	pcie_capability_read_word(bus->self, PCI_EXP_DEVCTL, &devctl);
+	pci_read_config_word(bus->self, PCI_COMMAND, &lro->pci_cmd);
+	pci_write_config_word(bus->self, PCI_COMMAND, (lro->pci_cmd & ~PCI_COMMAND_SERR));
+	pcie_capability_read_word(bus->self, PCI_EXP_DEVCTL, &lro->devctl);
 	pcie_capability_write_word(bus->self, PCI_EXP_DEVCTL,
-					   (devctl & ~PCI_EXP_DEVCTL_FERE));
+					   (lro->devctl & ~PCI_EXP_DEVCTL_FERE));
+}
 
+static void xclmgmt_reset_pci(struct xclmgmt_dev *lro, unsigned long period)
+{
+	struct pci_dev *pdev = lro->pci_dev;
+	struct pci_bus *bus;
+	u8 pci_bctl;
+
+	mgmt_info(lro, "Reset PCI");
+	bus = pdev->bus;
 	pci_read_config_byte(bus->self, PCI_BRIDGE_CONTROL, &pci_bctl);
 	pci_bctl |= PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
@@ -523,10 +667,20 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	msleep(100);
 	pci_bctl &= ~PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
-	ssleep(1);
+	ssleep(period);
+}
 
-	pcie_capability_write_word(bus->self, PCI_EXP_DEVCTL, devctl);
-	pci_write_config_word(bus->self, PCI_COMMAND, pci_cmd);
+static void xclmgmt_reset_pci_post(struct xclmgmt_dev *lro)
+{
+	struct pci_dev *pdev = lro->pci_dev;
+	struct pci_bus *bus;
+
+	mgmt_info(lro, "Reset PCI post");
+	bus = pdev->bus;
+
+	pci_write_config_word(bus->self, PCI_COMMAND, (lro->pci_cmd | PCI_COMMAND_SERR));
+	pcie_capability_write_word(bus->self, PCI_EXP_DEVCTL,
+					   (lro->devctl | PCI_EXP_DEVCTL_FERE));
 
 	pci_enable_device(pdev);
 
