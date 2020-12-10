@@ -60,7 +60,7 @@ MODULE_PARM_DESC(desc_blen_max,
  * maintains a list of the xdma devices
  */
 static LIST_HEAD(xdev_list);
-static DEFINE_MUTEX(xdev_mutex);
+static DEFINE_SPINLOCK(xdev_lock);
 
 static LIST_HEAD(xdev_rcu_list);
 static DEFINE_SPINLOCK(xdev_rcu_lock);
@@ -83,7 +83,9 @@ static inline unsigned int incr_ptr_idx(unsigned int cur, unsigned int incr,
 
 static inline void xdev_list_add(struct xdma_dev *xdev)
 {
-	mutex_lock(&xdev_mutex);
+	unsigned long flags;
+
+	spin_lock_irqsave(&xdev_lock, flags);
 	if (list_empty(&xdev_list))
 		xdev->idx = 0;
 	else {
@@ -93,7 +95,7 @@ static inline void xdev_list_add(struct xdma_dev *xdev)
 		xdev->idx = last->idx + 1;
 	}
 	list_add_tail(&xdev->list_head, &xdev_list);
-	mutex_unlock(&xdev_mutex);
+	spin_unlock_irqrestore(&xdev_lock, flags);
 
 	dbg_init("dev %s, xdev 0x%p, xdma idx %d.\n",
 		dev_name(&xdev->pdev->dev), xdev, xdev->idx);
@@ -107,9 +109,11 @@ static inline void xdev_list_add(struct xdma_dev *xdev)
 
 static inline void xdev_list_remove(struct xdma_dev *xdev)
 {
-	mutex_lock(&xdev_mutex);
+	unsigned long flags;
+
+	spin_lock_irqsave(&xdev_lock, flags);
 	list_del(&xdev->list_head);
-	mutex_unlock(&xdev_mutex);
+	spin_unlock_irqrestore(&xdev_lock, flags);
 
 	spin_lock(&xdev_rcu_lock);
 	list_del_rcu(&xdev->rcu_node);
@@ -120,15 +124,16 @@ static inline void xdev_list_remove(struct xdma_dev *xdev)
 static struct xdma_dev *xdev_find_by_pdev(struct pci_dev *pdev)
 {
         struct xdma_dev *xdev, *tmp;
+	unsigned long flags;
 
-        mutex_lock(&xdev_mutex);
+	spin_lock_irqsave(&xdev_lock, flags);
         list_for_each_entry_safe(xdev, tmp, &xdev_list, list_head) {
                 if (xdev->pdev == pdev) {
-                        mutex_unlock(&xdev_mutex);
+			spin_unlock_irqrestore(&xdev_lock, flags);
                         return xdev;
                 }
         }
-        mutex_unlock(&xdev_mutex);
+	spin_unlock_irqrestore(&xdev_lock, flags);
         return NULL;
 }
 
@@ -923,16 +928,16 @@ static int process_completions(struct xdma_engine *engine,
 
 		if (req->sw_desc_cnt == req->desc_completed) {
 			list_del(&req->entry);
-			spin_unlock(&engine->req_list_lock);
 			if (req->cb && req->cb->io_done) {
 				struct xdma_io_cb *cb = req->cb;
 
 				cb->done_bytes = req->done;
+				spin_unlock(&engine->req_list_lock);
 				cb->io_done((unsigned long)cb->private, 0);
+				spin_lock(&engine->req_list_lock);
 				xdma_request_release(engine->xdev, req);
 			} else
 				wake_up(&req->arbtr_wait);
-			spin_lock(&engine->req_list_lock);
 		}
 		spin_unlock(&engine->req_list_lock);
 	}
@@ -3025,7 +3030,7 @@ static int engine_init(struct xdma_engine *engine, struct xdma_dev *xdev,
 	engine->channel = channel;
 
 	/* set cpu for engine */
-	engine->cpu_idx = channel;
+	engine->cpu_idx = channel % num_online_cpus();
 
 	/* engine interrupt request bit */
 	engine->irq_bitmask = (1 << XDMA_ENG_IRQ_NUM) - 1;
@@ -3213,15 +3218,12 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 	}
 	rv = xdma_process_requests(engine, req);
 
+	spin_lock(&engine->req_list_lock);
 	/* Read length of completed transfer */
 	done = req->done;
 	if (rv < 0) {
-		spin_lock(&engine->req_list_lock);
-
-
 		if (req->sw_desc_cnt > req->desc_completed)
 			list_del(&req->entry);
-		spin_unlock(&engine->req_list_lock);
 		pr_err("Request Processing failed, :%u/%u/%u\n",
 		       req->sw_desc_cnt, req->sw_desc_idx, req->desc_completed);
 		goto unmap_sgl;
@@ -3229,6 +3231,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 
 unmap_sgl:
 	xdma_request_release(engine->xdev, req);
+	spin_unlock(&engine->req_list_lock);
 	if (rv < 0)
 		return rv;
 

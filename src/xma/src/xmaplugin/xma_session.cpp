@@ -37,5 +37,25 @@ session::alloc_buf() const
   return XMA_ERROR;
 }
 
+int32_t
+session::get_session_id() const
+{
+  return session_id;
+}
+
+std::string
+session::get_cu_name() const
+{
+  //TODO
+  return "ERROR: Invalid CU";
+}
+
+int32_t
+session::get_dev_id() const
+{
+  //TODO
+  return XMA_ERROR;
+}
+
 
 }} //namespace xma_core->plg

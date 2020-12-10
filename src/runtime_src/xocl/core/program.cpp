@@ -101,25 +101,6 @@ get_target() const
   return xclbin::target_type::invalid;
 }
 
-std::vector<std::string>
-program::
-get_progvar_names() const
-{
-  if (auto device = get_first_device()) {
-    std::vector<std::string> progvars;
-    auto metadata = device->get_xclbin();
-    for (auto& name : get_kernel_names()) {
-      auto& symbol = metadata.lookup_kernel(name);
-      for (auto& arg : symbol.arguments)
-        if (arg.atype == xclbin::symbol::arg::argtype::progvar)
-          progvars.push_back(arg.name);
-    }
-    return progvars;
-  }
-
-  return {};
-}
-
 xclbin
 program::
 get_xclbin(const device* d) const

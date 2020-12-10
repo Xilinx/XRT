@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -41,7 +41,7 @@
 
 namespace {
 
-using command_type = std::shared_ptr<xrt::command>;
+using command_type = std::shared_ptr<xrt_xocl::command>;
 using command_queue_type = std::list<command_type>;
 
 ////////////////////////////////////////////////////////////////
@@ -49,7 +49,7 @@ using command_queue_type = std::list<command_type>;
 // and notifier.  This allows the scheduler to continue
 // while host callback can be processed in the background
 ////////////////////////////////////////////////////////////////
-static xrt::task::queue notify_queue;
+static xrt_xocl::task::queue notify_queue;
 static std::thread notifier;
 static bool threaded_notification = true;
 
@@ -61,11 +61,11 @@ static std::condition_variable s_work;
 static bool s_running = false;
 static bool s_stop = false;
 static std::exception_ptr s_exception;
-static std::map<const xrt::device*, command_queue_type> s_device_cmds;
-static std::map<const xrt::device*, std::thread> s_device_monitor_threads;
+static std::map<const xrt_xocl::device*, command_queue_type> s_device_cmds;
+static std::map<const xrt_xocl::device*, std::thread> s_device_monitor_threads;
 
 inline bool
-is_51_dsa(const xrt::device* device)
+is_51_dsa(const xrt_xocl::device* device)
 {
   auto nm = device->getName();
   return (nm.find("_5_1")!=std::string::npos || nm.find("u200_xdma_201820_1")!=std::string::npos);
@@ -74,7 +74,7 @@ is_51_dsa(const xrt::device* device)
 inline ert_cmd_state
 get_command_state(const command_type& cmd)
 {
-  ert_packet* epacket = xrt::command_cast<ert_packet*>(cmd.get());
+  ert_packet* epacket = xrt_xocl::command_cast<ert_packet*>(cmd.get());
   return static_cast<ert_cmd_state>(epacket->state);
 }
 
@@ -90,7 +90,7 @@ check(const command_type& cmd)
   if (!is_command_done(cmd))
     return false;
 
-  XRT_DEBUG(std::cout,"xrt::kds::command(",cmd->get_uid(),") [running->done]\n");
+  XRT_DEBUG(std::cout,"xrt_xocl::kds::command(",cmd->get_uid(),") [running->done]\n");
   if (!threaded_notification) {
     cmd->notify(ERT_CMD_STATE_COMPLETED);
     return true;
@@ -100,14 +100,14 @@ check(const command_type& cmd)
     c->notify(ERT_CMD_STATE_COMPLETED);
   };
 
-  xrt::task::createF(notify_queue,notify,cmd);
+  xrt_xocl::task::createF(notify_queue,notify,cmd);
   return true;
 }
 
 static void
 launch(command_type cmd)
 {
-  XRT_DEBUG(std::cout,"xrt::kds::command(",cmd->get_uid(),") [new->submitted->running]\n");
+  XRT_DEBUG(std::cout,"xrt_xocl::kds::command(",cmd->get_uid(),") [new->submitted->running]\n");
 
   auto device = cmd->get_device();
   auto& submitted_cmds = s_device_cmds[device]; // safe since inserted in init
@@ -137,7 +137,7 @@ launch(command_type cmd)
 }
 
 static void
-monitor_loop(const xrt::device* device)
+monitor_loop(const xrt_xocl::device* device)
 {
   unsigned long loops = 0;           // number of outer loops
   unsigned long sleeps = 0;          // number of sleeps
@@ -183,18 +183,18 @@ monitor_loop(const xrt::device* device)
 
 
 static void
-monitor(const xrt::device* device)
+monitor(const xrt_xocl::device* device)
 {
   try {
     monitor_loop(device);
   }
   catch (const std::exception& ex) {
     std::string msg = std::string("kds command monitor died unexpectedly: ") + ex.what();
-    xrt::send_exception_message(msg.c_str());
+    xrt_xocl::send_exception_message(msg.c_str());
     s_exception = std::current_exception();
   }
   catch (...) {
-    xrt::send_exception_message("kds command monitor died unexpectedly");
+    xrt_xocl::send_exception_message("kds command monitor died unexpectedly");
     s_exception = std::current_exception();
   }
 }
@@ -202,7 +202,7 @@ monitor(const xrt::device* device)
 } // namespace
 
 
-namespace xrt { namespace kds {
+namespace xrt_xocl { namespace kds {
 
 void
 schedule(const command_type& cmd)
@@ -218,7 +218,7 @@ start()
 
   std::lock_guard<std::mutex> lk(s_mutex);
   if (threaded_notification)
-    notifier = std::move(xrt_core::thread(xrt::task::worker,std::ref(notify_queue)));
+    notifier = std::move(xrt_core::thread(xrt_xocl::task::worker,std::ref(notify_queue)));
   s_running = true;
 }
 
@@ -245,7 +245,7 @@ stop()
 }
 
 void
-init(xrt::device* device)
+init(xrt_xocl::device* device)
 {
   // create a submitted command queue for this device if necessary,
   // create a command monitor thread for this device if necessary

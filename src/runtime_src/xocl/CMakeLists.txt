@@ -58,6 +58,7 @@ add_library(xilinxopencl SHARED
   )
 
 target_link_libraries(xilinxopencl
+  PRIVATE
   xrt++
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
@@ -79,6 +80,7 @@ set_target_properties(xilinxopencl
   )
 
 target_link_libraries(xilinxopencl
+  PRIVATE
   xrt++
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
@@ -99,11 +101,13 @@ endif ()
 # )
 
 install(TARGETS xilinxopencl
+  EXPORT xrt-targets
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
 install(TARGETS xilinxopencl
+  EXPORT xrt-targets-dev
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )

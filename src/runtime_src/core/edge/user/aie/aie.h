@@ -101,10 +101,10 @@ public:
     XAie_DevInst *getDevInst();
 
     void
-    sync_bo(xrtBufferHandle bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
+    sync_bo(xrt::bo& bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     void
-    sync_bo_nb(xrtBufferHandle bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset);
+    sync_bo_nb(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     void
     wait_gmio(const std::string& gmioName);
@@ -122,7 +122,7 @@ public:
     stop_profiling(int phdl);
 
     void
-    prepare_bd(BD& bd, xrtBufferHandle& bo);
+    prepare_bd(BD& bd, xrt::bo& bo);
 
     void
     clear_bd(BD& bd);
@@ -136,7 +136,7 @@ private:
     std::vector<EventRecord> eventRecords;
 
     void
-    submit_sync_bo(xrtBufferHandle bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset);
+    submit_sync_bo(xrt::bo& bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     /* Wait for all the BD transfers for a given channel */
     void
@@ -180,5 +180,4 @@ struct BD_scope {
 
 }
 
-uint64_t xrtBOAddress(xrtBufferHandle bhdl);
 #endif

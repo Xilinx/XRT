@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -76,7 +76,7 @@ clGetExtensionFunctionAddressForPlatform(cl_platform_id platform ,
     LOP_LOG_FUNCTION_CALL;
     return xocl::clGetExtensionFunctionAddressForPlatform(platform,func_name);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
   }
   catch (const std::exception& ex) {

@@ -7,27 +7,20 @@ set(XILINX_XRT $ENV{XILINX_XRT})
 set(XRT_CORE_LIBRARY xrt_core)
 set(MODE hw)
 
+set(XRT_DIR ${XILINX_XRT}/share/cmake/XRT)
+message("XRT_DIR=${XRT_DIR}")
+find_package(XRT)
+
+set(xrt_core_LIBRARY XRT::xrt_core)
+set(xrt_coreutil_LIBRARY XRT::xrt_coreutil)
+set(xrt_xilinxopencl_LIBRARY XRT::xilinxopencl)
+
 if (DEFINED ENV{XCL_EMULATION_MODE})
   set(MODE $ENV{XCL_EMULATION_MODE})
   string(REPLACE "_" "" XCL_EMU_SUFFIX ${MODE})
-  set(XRT_CORE_LIBRARY xrt_${XCL_EMU_SUFFIX})
-  message("=============== XRT_CORE_LIB=${XRT_CORE_LIBRARY}")
+  set(xrt_core_LIBRARY XRT::xrt_${XCL_EMU_SUFFIX})
+  message("=============== XRT_CORE_LIB=${xrt_core_LIBRARY}")
 endif()
-
-find_library(xrt_core_LIBRARY
-  NAMES ${XRT_CORE_LIBRARY}
-  HINTS "${XILINX_XRT}/lib")
-message("xrt_core_LIBRARY=${xrt_core_LIBRARY}")
-
-find_library(xrt_coreutil_LIBRARY
-  NAMES xrt_coreutil
-  HINTS "${XILINX_XRT}/lib")
-message("xrt_coreutil_LIBRARY=${xrt_coreutil_LIBRARY}")
-
-find_library(xrt_xilinxopencl_LIBRARY
-  NAMES xilinxopencl
-  HINTS "${XILINX_XRT}/lib")
-message("xrt_xilinxopencl_LIBRARY=${xrt_xilinxopencl_LIBRARY}")
 
 if (NOT WIN32)
 find_library(uuid_LIBRARY
@@ -35,6 +28,7 @@ find_library(uuid_LIBRARY
 message("uuid_LIBRARY=${uuid_LIBRARY}")
 endif (NOT WIN32)
 
+# need to export from package
 include_directories(${XILINX_XRT}/include)
 
 if (NOT DEFINED ${INSTALL_DIR})

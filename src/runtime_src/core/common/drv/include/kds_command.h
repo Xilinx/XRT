@@ -22,6 +22,8 @@
 enum kds_opcode {
 	OP_CONFIG = 0,
 	OP_START,
+	OP_CONFIG_SK, /* TODO: There is a plan to remove softkernel config and unconfig command */
+	OP_START_SK,
 };
 
 enum kds_status {
@@ -39,10 +41,8 @@ struct kds_cmd_ops {
 };
 
 struct in_kernel_cb {
-	struct work_struct work;
 	void (*func)(unsigned long cb_data, int err);
 	void *data;
-	int  cmd_state;
 };
 
 /**

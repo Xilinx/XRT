@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,7 +21,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace xrt {
+namespace xrt_xocl {
 
 class error : public std::runtime_error
 {
@@ -52,7 +52,7 @@ public:
 inline void
 send_exception_message(const char* msg)
 {
-  message::send(message::severity_level::XRT_ERROR, msg);
+  message::send(message::severity_level::error, msg);
 }
 
 } // xrt

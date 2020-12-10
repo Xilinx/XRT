@@ -35,17 +35,6 @@ using joined_range = boost::range::joined_range<Range1,Range2>;
 template <typename StdPairRange>
 using value_range = boost::select_second_const_range<StdPairRange>;
 
-
-// Example of filtered range
-//  filtered_range<argument_vector_type,argument_filter_type>
-//  get_progvar_argument_range() const
-//  {
-//    argument_filter_type filter = [](const argument_value_type& arg) { return arg->is_progvar(); };
-//    return boost::adaptors::filter(m_args, filter);
-//  }
-template <typename Range, typename Predicate>
-using filtered_range = boost::filtered_range<Predicate,const Range>;
-
 template <typename Container>
 auto
 get_range(const Container& c) -> range<typename Container::const_iterator>

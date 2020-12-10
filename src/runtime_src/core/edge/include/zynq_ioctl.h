@@ -200,11 +200,13 @@ struct drm_zocl_sync_bo {
  * used with DRM_IOCTL_ZOCL_INFO_BO ioctl
  *
  * @handle:	GEM object handle
+ * @flags:	User BO flags
  * @size:	Size of BO
  * @paddr:	physical address
  */
 struct drm_zocl_info_bo {
 	uint32_t	handle;
+	uint32_t	flags;
 	uint64_t	size;
 	uint64_t	paddr;
 };

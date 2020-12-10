@@ -22,7 +22,18 @@
 #include <drm/drm_backport.h>
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
+#if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
+#include <drm/drm_device.h>
+#include <drm/drm_file.h>
+#include <drm/drm_ioctl.h>
+#include <drm/drm_drv.h>
+#else
 #include <drm/drmP.h>
+#endif
+#else
+#include <drm/drmP.h>
+#endif
 #else
 #include <drm/drm_device.h>
 #include <drm/drm_file.h>
@@ -50,6 +61,11 @@
 #include "lib/libfdt/libfdt.h"
 #include <linux/firmware.h>
 #include "kds_core.h"
+#if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
+#include <linux/sched/signal.h>
+#endif
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 #define ioremap_nocache		ioremap
@@ -1828,6 +1844,7 @@ struct xocl_p2p_funcs {
 	int (*get_bar_paddr)(struct platform_device *pdev, ulong bank_addr,
 			     ulong bank_size, ulong *bar_paddr);
 	int (*adjust_mem_topo)(struct platform_device *pdev, void *mem_topo);
+	int (*mem_reclaim)(struct platform_device *pdev);
 };
 #define	P2P_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_P2P).pldev
 #define	P2P_OPS(xdev)				\
@@ -1869,6 +1886,9 @@ struct xocl_p2p_funcs {
 #define xocl_p2p_adjust_mem_topo(xdev, mem_topo)			\
 	(P2P_CB(xdev) ?					\
 	 P2P_OPS(xdev)->adjust_mem_topo(P2P_DEV(xdev), mem_topo) : -ENODEV)
+#define xocl_p2p_mem_reclaim(xdev)					\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->mem_reclaim(P2P_DEV(xdev)) : -ENODEV)
 
 /* Each P2P chunk we set up must be at least 256MB */
 #define XOCL_P2P_CHUNK_SHIFT		28
@@ -2127,6 +2147,9 @@ void xocl_fini_ert(void);
 
 int __init xocl_init_xmc(void);
 void xocl_fini_xmc(void);
+
+int __init xocl_init_xmc_u2(void);
+void xocl_fini_xmc_u2(void);
 
 int __init xocl_init_dna(void);
 void xocl_fini_dna(void);

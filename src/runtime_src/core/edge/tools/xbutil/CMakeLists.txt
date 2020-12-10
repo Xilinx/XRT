@@ -12,8 +12,9 @@ add_executable(xbutil ${XRT_EDGE_TOOLS_XBUTIL_FILES})
 
 if (DEFINED XRT_AIE_BUILD)
   target_link_libraries(xbutil
-    xrt_core_static
-    xrt_coreutil_static
+    PRIVATE
+    xrt_core
+    xrt_coreutil
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     pthread
@@ -26,8 +27,9 @@ if (DEFINED XRT_AIE_BUILD)
     )
 else()
   target_link_libraries(xbutil
-    xrt_core_static
-    xrt_coreutil_static
+    PRIVATE
+    xrt_core
+    xrt_coreutil
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     pthread

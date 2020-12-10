@@ -192,6 +192,16 @@ static const std::map<int, std::string> oemid_map = {
     {0x2b79, "Google"}
 };
 
+inline bool isHostMem(const char *tag)
+{
+	return strncmp(tag, "HOST", 4) == 0;
+}
+
+inline bool isHostMem(const unsigned char *tag)
+{
+	return isHostMem(reinterpret_cast<const char *>(tag));
+}
+
 static const std::string getOEMID(std::string oemid)
 {
     unsigned int oemIDValue = 0;
@@ -1681,7 +1691,8 @@ public:
         }
         const mem_topology *map = (mem_topology *)buf.data();
 
-        std::string hbm_mem_size = xrt_core::utils::unit_convert(map->m_count*(map->m_mem_data[0].m_size << 10));
+        std::string hbm_mem_size = xrt_core::utils::unit_convert(get_hbm_mem_size(map));
+
         if (verbose) {
             std::cout << "INFO: DMA test on [" << m_idx << "]: "<< name() << "\n";
             if (hbm_mem_size.compare(std::string("0 Byte")) != 0)
@@ -1727,7 +1738,7 @@ public:
             if(map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
 
-            if(!strncmp((const char*)map->m_mem_data[i].m_tag, "HOST", 4))
+            if(isHostMem(map->m_mem_data[i].m_tag))
                 continue;
 
             if(map->m_mem_data[i].m_used) {
@@ -1736,7 +1747,8 @@ public:
                 if(map->m_mem_data[i].m_size < (blockSize/1024)) {
                     if (verbose)
                         std::cout << "WARNING: unable to perform DMA Test on " << map->m_mem_data[i].m_tag
-                            << ". Cannot allocate " << blockSize << " on " << map->m_mem_data[i].m_size
+                            << ". Cannot allocate " << xrt_core::utils::unit_convert(blockSize)
+                            << " on " << xrt_core::utils::unit_convert(map->m_mem_data[i].m_size * 1024)
                             << " sized bank." << std::endl;
                     result = -EOPNOTSUPP;
                     continue;
@@ -1825,6 +1837,18 @@ public:
         return GB(ddr_size)*ddr_bank_count / (1024 * 1024);
     }
 
+    size_t get_hbm_mem_size(const mem_topology *map) {
+        long long hbm_size = 0;
+
+        for (int i = 0; i < map->m_count; ++i) {
+            std::string mtag(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
+
+            if (mtag.compare(0, 3, std::string("HBM")) == 0)
+                hbm_size += (map->m_mem_data[i].m_size << 10);
+        }
+
+        return hbm_size;
+    }
 
    //Debug related functionality.
     uint32_t getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames);

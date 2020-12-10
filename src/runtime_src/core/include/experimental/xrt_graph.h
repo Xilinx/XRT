@@ -19,12 +19,191 @@
 #ifndef _XRT_GRAPH_H_
 #define _XRT_GRAPH_H_
 
+#include <chrono>
+
 #include "xrt.h"
 #include "experimental/xrt_uuid.h"
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_device.h"
 
 typedef void *xrtGraphHandle;
+
+#ifdef __cplusplus
+
+namespace xrt {
+
+/*!
+ * @class graph
+ *
+ * The graph object represents an abstraction exported by aietool matching
+ * a specified name.
+ * The graph is created by finding matching graph name in the currently
+ * loaded xclbin.
+ */
+class graph_impl;
+class graph
+{
+public:
+  /**
+   * graph() - Constructor from a device, xclbin and graph name
+   *
+   * @param device
+   *  Device on which the graph should execute
+   * @param xclbin_id
+   *  UUID of the xclbin with the graph
+   * @param name
+   *  Name of graph to construct
+   */
+  graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name);
+
+  /**
+   * reset() - Reset a graph.
+   *
+   * Reset graph by disabling tiles and enable tiles reset
+   */
+  void
+  reset() const;
+
+  /**
+   * get_timestamp() - Get timestamp of a graph.
+   *
+   * @return
+   * Timestamp in AIE cycle
+   */
+  uint64_t
+  get_timestamp() const;
+
+  /**
+   * run() - Start graph execution.
+   *
+   * @param iterations
+   *  Number of iterations the graph should run.
+   *
+   * Start the graph execution with given iterations.
+   *
+   * The default iterations of 0 indicates start the graph execution by
+   * default, run forever; or run a fixed number of iterations if specified
+   * during compilation time.
+   */
+  void
+  run(uint32_t iterations = 0);
+
+  /**
+   * wait() - Wait for specified milliseconds for graph to complete.
+   *
+   * @param timeout_ms
+   *  Timeout in milliseconds
+   *
+   * Wait for done status for all the tiles in graph.
+   * Zero millisecond indicates blocking until run completes.
+   *
+   * The current thread will block until graph run completes or timeout.
+   */
+  void
+  wait(std::chrono::milliseconds timeout_ms);
+
+  /**
+   * wait() - Wait for graph to complete for specified AIE cycles and
+   *          then suspend the graph.
+   *
+   * @param cycles
+   *  AIE cycles to wait since last run starts.
+   *
+   * Wait a given AIE cycle since the last graph run and then pause the
+   * graph. If graph already runs more than the given cycles, stop the
+   * graph immediately.
+   *
+   * This API with non-zero AIE cycles is for graph that is running
+   * forever or graph that has multi-rate core(s);
+   * Zero AIE cycle indicates blocking until run completes.
+   *
+   * The current thread will block until graph is paused.
+   */
+  void
+  wait(uint64_t cycles = 0);
+
+  /**
+   * suspend() - Suspend a running graph.
+   *
+   * Suspend graph execution.
+   */
+  void
+  suspend();
+
+  /**
+   * resume() - Resume a suspended graph.
+   *
+   * Resume graph execution which was paused by suspend() or wait(cycles) APIs
+   */
+  void
+  resume();
+
+  /**
+   * end() - Wait for graph to complete for specified AIE cycles and then
+   * terminate the graph.
+   *
+   * @param cycles
+   *  AIE cycles to wait since last run starts.
+   *
+   * Wait a given AIE cycle since the last graph run and then terminate
+   * the graph. If graph already runs more than the given cycles, terminate
+   * the graph immediately.
+   *
+   * This API with non-zero AIE cycle is for graph that is running forever
+   * or graph that has multi-rate core(s); zero AIE cycle means busy wait
+   * until graph is done.
+   *
+   * The current thread will block until graph is terminated.
+   */
+  void
+  end(uint64_t cycles = 0);
+
+  /**
+   * update() - Update graph Run Time Parameters.
+   *
+   * @param port_name
+   *  Hierarchical name of RTP port.
+   * @param arg
+   *  The argument to set.
+   */
+  template<typename ArgType>
+  void
+  update(const std::string& port_name, ArgType&& arg)
+  {
+    update_port(port_name, &arg, sizeof(arg));
+  }
+
+  /**
+   * read() - Read graph Run Time Parameters value.
+   *
+   * @param port_name
+   *  Hierarchical name of RTP port.
+   * @param arg
+   *  The RTP value is written to.
+   */
+  template<typename ArgType>
+  void
+  read(const std::string& port_name, ArgType& arg)
+  {
+    read_port(port_name, &arg, sizeof(arg));
+  }
+
+private:
+  std::shared_ptr<graph_impl> handle;
+
+  void
+  update_port(const std::string& port_name, const void* value, size_t bytes);
+
+  void
+  read_port(const std::string& port_name, void* value, size_t bytes);
+};
+
+} // namespace xrt
+
+/// @cond
+extern "C" {
+
+#endif
 
 /**
  * xrtGraphOpen() - Open a graph and obtain its handle.
@@ -181,5 +360,11 @@ xrtGraphUpdateRTP(xrtGraphHandle gh, const char *hierPathPort, const char *buffe
  */
 int
 xrtGraphReadRTP(xrtGraphHandle gh, const char *hierPathPort, char *buffer, size_t size);
+
+/// @endcond
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

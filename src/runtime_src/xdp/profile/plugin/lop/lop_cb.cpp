@@ -32,7 +32,7 @@ namespace xdp {
   {
     // Since these are OpenCL level events, we must use the OpenCL
     //  level time functions to get the proper value of time zero.
-    double timestamp = xrt::time_ns() ;
+    double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
     if (queueAddress != 0) 
@@ -52,7 +52,7 @@ namespace xdp {
 				      long long queueAddress,
 				      unsigned int functionID)
   {
-    double timestamp = xrt::time_ns() ;
+    double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
     uint64_t start = (db->getDynamicInfo()).matchingStart(functionID) ;
@@ -67,7 +67,7 @@ namespace xdp {
 
   static void lop_read(unsigned int XRTEventId, bool isStart)
   {
-    double timestamp = xrt::time_ns() ;
+    double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
     
     uint64_t start = 0 ;
@@ -84,7 +84,7 @@ namespace xdp {
 
   static void lop_write(unsigned int XRTEventId, bool isStart)
   {
-    double timestamp = xrt::time_ns() ;
+    double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
     uint64_t start = 0 ;
@@ -101,7 +101,7 @@ namespace xdp {
 
   static void lop_kernel_enqueue(unsigned int XRTEventId, bool isStart)
   {
-    double timestamp = xrt::time_ns() ;
+    double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
     uint64_t start = 0 ;

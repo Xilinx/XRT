@@ -30,11 +30,11 @@
 #include <mutex>
 #include <algorithm>
 
-// Opaque handle to xrt::device
-// The handle can be static_cast to xrt::device
+// Opaque handle to xrt_xocl::device
+// The handle can be static_cast to xrt_xocl::device
 struct xrt_device {};
 
-namespace xrt {
+namespace xrt_xocl {
 
 /**
  * Runtime level device class.
@@ -47,8 +47,8 @@ class device : public xrt_device
 {
 public:
   using verbosity_level = hal::verbosity_level;
-  using BufferObjectHandle = hal::BufferObjectHandle;
-  using ExecBufferObjectHandle = hal::ExecBufferObjectHandle;
+  using buffer_object_handle = hal::buffer_object_handle;
+  using execbuffer_object_handle = hal::execbuffer_object_handle;
   using direction = hal::device::direction;
   using memoryDomain = hal::device::Domain;
   using queue_type = hal::queue_type;
@@ -174,11 +174,13 @@ public:
   void
   close();
 
-  device_handle
-  get_handle() const
-  {
-    return m_hal->get_handle();
-  }
+  xclDeviceHandle
+  get_xcl_handle() const
+  { return m_hal->get_xcl_handle(); }
+
+  xrt::device
+  get_xrt_device() const
+  { return m_hal->get_xrt_device(); }
 
   void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
@@ -196,27 +198,13 @@ public:
   release_cu_context(size_t cuidx)
   { release_cu_context(m_uuid,cuidx); }
 
-  ExecBufferObjectHandle
+  execbuffer_object_handle
   allocExecBuffer(size_t sz)
   {
     return m_hal->allocExecBuffer(sz);
   }
 
-  BufferObjectHandle
-  alloc(size_t sz, void* userptr)
-  {
-    auto bo = m_hal->alloc(sz,userptr);
-    if (!bo) {
-      bo = m_hal->alloc(sz);
-    }
-    return bo;
-  }
-
-  BufferObjectHandle
-  alloc(size_t sz)
-  { return m_hal->alloc(sz); }
-
-  BufferObjectHandle
+  buffer_object_handle
   alloc(size_t sz, memoryDomain domain, uint64_t memoryIndex, void* user_ptr)
   { return m_hal->alloc(sz, domain, memoryIndex, user_ptr); }
 
@@ -235,17 +223,13 @@ public:
    * @return
    *  A handle to the new buffer object
    */
-  BufferObjectHandle
-  alloc(const BufferObjectHandle& bo, size_t sz, size_t offset)
+  buffer_object_handle
+  alloc(const buffer_object_handle& bo, size_t sz, size_t offset)
   { return m_hal->alloc(bo,sz,offset); }
 
   void*
   alloc_svm(size_t sz)
   { return m_hal->alloc_svm(sz); }
-
-  void
-  free(const BufferObjectHandle& bo)
-  { m_hal->free(bo); }
 
   void
   free_svm(void* svm_ptr)
@@ -269,7 +253,7 @@ public:
    */
   // write from bo at offset,sz to device
   event // ssize_t
-  write(const BufferObjectHandle& bo, const void* buffer, size_t sz, size_t offset,bool async=false)
+  write(const buffer_object_handle& bo, const void* buffer, size_t sz, size_t offset,bool async=false)
   { return m_hal->write(bo,buffer,sz,offset,async); }
 
   /**
@@ -288,7 +272,7 @@ public:
    *   Event with ssize_t value type with actual number of bytes read
    */
   event // ssize_t
-  read(const BufferObjectHandle& bo, void* buffer, size_t sz, size_t offset,bool async=false)
+  read(const buffer_object_handle& bo, void* buffer, size_t sz, size_t offset,bool async=false)
   { return m_hal->read(bo,buffer,sz,offset,async); }
 
   /**
@@ -299,7 +283,7 @@ public:
    * @param
    */
   event // ssize_t
-  sync(const BufferObjectHandle& bo, size_t sz, size_t offset, direction dir, bool async=true)
+  sync(const buffer_object_handle& bo, size_t sz, size_t offset, direction dir, bool async=true)
   { return m_hal->sync(bo,sz,offset,dir,async); }
 
   /**
@@ -310,11 +294,11 @@ public:
    * @param
    */
   event // ssize_t
-  copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz, size_t dst_offset, size_t src_offset)
+  copy(const buffer_object_handle& dst_bo, const buffer_object_handle& src_bo, size_t sz, size_t dst_offset, size_t src_offset)
   { return m_hal->copy(dst_bo,src_bo,sz,dst_offset,src_offset); }
 
   void
-  fill_copy_pkt(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo
+  fill_copy_pkt(const buffer_object_handle& dst_bo, const buffer_object_handle& src_bo
                 ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt)
   { return m_hal->fill_copy_pkt(dst_bo,src_bo,sz,dst_offset,src_offset,pkt); }
 
@@ -359,7 +343,7 @@ public:
    *   Event with void* host ptr at requested offset
    */
   void*
-  map(const BufferObjectHandle& bo)
+  map(const buffer_object_handle& bo)
   {
     void* p = m_hal->map(bo);
     retain(bo);
@@ -375,7 +359,7 @@ public:
    *   Handle to buffer object to map
    */
   void
-  unmap(const BufferObjectHandle& bo)
+  unmap(const buffer_object_handle& bo)
   {
     // TODO: We need to track if user fully unmapped the object or only
     // part of the BO before calling release.
@@ -384,11 +368,11 @@ public:
   }
 
   void*
-  map(const ExecBufferObjectHandle& bo)
+  map(const execbuffer_object_handle& bo)
   { return m_hal->map(bo); }
 
   void
-  unmap(const ExecBufferObjectHandle& bo)
+  unmap(const execbuffer_object_handle& bo)
   { m_hal->unmap(bo); }
 
   /**
@@ -398,7 +382,7 @@ public:
    *   0 on success, throws on error.
    */
   int
-  exec_buf(const ExecBufferObjectHandle& bo)
+  exec_buf(const execbuffer_object_handle& bo)
   { return m_hal->exec_buf(bo); }
 
   int
@@ -412,7 +396,7 @@ public:
    *   false otherwise
    */
   virtual bool
-  is_imported(const BufferObjectHandle& boh) const
+  is_imported(const buffer_object_handle& boh) const
   {
     return m_hal->is_imported(boh);
   }
@@ -428,7 +412,7 @@ public:
    *   std::runtime_error if buffer object is unknown to this device
    */
   uint64_t
-  getDeviceAddr(const BufferObjectHandle& boh)
+  getDeviceAddr(const buffer_object_handle& boh)
   {
     return m_hal->getDeviceAddr(boh);
   }
@@ -447,7 +431,7 @@ public:
    * @return
    *   Fd as integer
    */
-  int getMemObjectFd(const BufferObjectHandle& boh)
+  int getMemObjectFd(const buffer_object_handle& boh)
   {
     //TODO: check for the device match, Success/Fail
     return m_hal->getMemObjectFd(boh);
@@ -471,38 +455,20 @@ public:
    * @return
    *   Handle to imported buffer
    */
-  BufferObjectHandle getBufferFromFd(const int fd, size_t& size, unsigned flags)
+  buffer_object_handle getBufferFromFd(const int fd, size_t& size, unsigned flags)
   {
     //TODO: check for the device match, Success/Fail
     return m_hal->getBufferFromFd(fd, size, flags);
   }
 
-  /**
-   * Import a bo into this device. The importing device will create another
-   * bo which will internally track the imported bo. Note that the imported
-   * bo's data will not be automatically flushed to importing device -- use
-   * on the importing device sync() for that.
-   *
-   * @param bo
-   *   Handle to buffer object to map
-   * @return
-   *   BufferObjectHandle usable in the context of importing device
-   */
-
-  BufferObjectHandle
-  import(const BufferObjectHandle& bo)
-  {
-    return m_hal->import(bo);
-  }
-
 #if 0
   // read what ever is in bo, copy to user
   void
-  read_cache(const BufferObjectHandle& bo,void* user);
+  read_cache(const buffer_object_handle& bo,void* user);
 
   // read what ever is in user, copy to bo
   void
-  write_cache(const BufferObjectHandle& bo,void* user);
+  write_cache(const buffer_object_handle& bo,void* user);
 #endif
 
 //Streaming APIs
@@ -567,17 +533,17 @@ public:
   };
 
 private:
-  void retain(const BufferObjectHandle& bo)
+  void retain(const buffer_object_handle& bo)
   {
     std::lock_guard<std::mutex> buflk(m_buffers_mutex);
     m_buffers.push_back(bo);
   }
-  void release(const BufferObjectHandle& bo)
+  void release(const buffer_object_handle& bo)
   {
     std::lock_guard<std::mutex> buflk(m_buffers_mutex);
     auto itr = std::find_if(m_buffers.begin(),m_buffers.end(),
-                            [&bo](const BufferObjectHandle& boh) {
-                              return bo.get() == boh.get();
+                            [&bo](const buffer_object_handle& boh) {
+                              return bo == boh;
                             });
     if (itr==m_buffers.end())
       throw std::runtime_error("Buffer object not mapped");
@@ -585,24 +551,6 @@ private:
   }
 
 public:
-  /**
-   * Lock the device
-   */
-  hal::operations_result<int>
-  lockDevice()
-  {
-    return m_hal->lockDevice();
-  }
-
-  /**
-   * Unlock the device
-   */
-  hal::operations_result<int>
-  unlockDevice()
-  {
-    return m_hal->unlockDevice();
-  }
-
   /**
    * Load an xclbin
    *
@@ -906,22 +854,22 @@ public:
 private:
 
   std::unique_ptr<hal::device> m_hal;
-  std::vector<BufferObjectHandle> m_buffers;
+  std::vector<buffer_object_handle> m_buffers;
   mutable std::mutex m_buffers_mutex;
-  xrt::uuid m_uuid;
+  xrt_xocl::uuid m_uuid;
   bool m_setup_done;
 };
 
 /**
- * Construct xrt::device objects from matching hal devices
+ * Construct xrt_xocl::device objects from matching hal devices
  *
  * @param pred
- *   Unary predicate to limit construction of xrt::devices from
- *   xrt::hal::devices that match the predicate.  The predicate
+ *   Unary predicate to limit construction of xrt_xocl::devices from
+ *   xrt_xocl::hal::devices that match the predicate.  The predicate
  *   is called with a std::string representing the hal device
  *   driver name.
  * @return
- *   Rvalue container of xrt::device objects.
+ *   Rvalue container of xrt_xocl::device objects.
  */
 template <typename UnaryPredicate>
 std::vector<device>
@@ -937,10 +885,10 @@ loadDevices(UnaryPredicate pred)
 }
 
 /**
- * Construct xrt::device objects from all hal devices
+ * Construct xrt_xocl::device objects from all hal devices
  *
  * @return
- *   Rvalue container of xrt::device objects
+ *   Rvalue container of xrt_xocl::device objects
  */
 inline
 std::vector<device>

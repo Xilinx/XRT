@@ -640,5 +640,10 @@ int32_t check_all_execbo(XmaSession s_handle) {
     return XMA_SUCCESS;
 }
 
+void logmsg(XmaLogLevelType level, const std::string& tag, const std::string& msg) {
+    //TODO
+    return;
+}
+
 } // namespace utils
 } // namespace xma_core

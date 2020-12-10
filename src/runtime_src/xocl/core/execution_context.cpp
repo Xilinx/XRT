@@ -63,24 +63,24 @@ add_command_done_callback(command_callback_function_type fcn)
 
 
 inline void
-run_start_callbacks(const xrt::command* cmd, const execution_context* ctx)
+run_start_callbacks(const xrt_xocl::command* cmd, const execution_context* ctx)
 {
   for (auto& cb : cmd_start_cb)
     cb(cmd,ctx);
 }
 
 inline void
-run_done_callbacks(const xrt::command* cmd, const execution_context* ctx)
+run_done_callbacks(const xrt_xocl::command* cmd, const execution_context* ctx)
 {
   for (auto& cb : cmd_done_cb)
     cb(cmd,ctx);
 }
 
-struct execution_context::start_kernel : xrt::command
+struct execution_context::start_kernel : xrt_xocl::command
 {
 public:
-  start_kernel(xrt::device* xdevice, xocl::execution_context* ec, ert_cmd_opcode opcode)
-    : xrt::command(xdevice,opcode), m_ec(ec)
+  start_kernel(xrt_xocl::device* xdevice, xocl::execution_context* ec, ert_cmd_opcode opcode)
+    : xrt_xocl::command(xdevice,opcode), m_ec(ec)
   {}
   virtual void start() const
   {
@@ -195,7 +195,7 @@ add_compute_units(device* device)
   }
 
   if (m_cus.empty())
-    throw xrt::error(CL_INVALID_KERNEL,
+    throw xrt_xocl::error(CL_INVALID_KERNEL,
                      "kernel '"
                      + m_kernel->get_name()
                      + "' has no compute units to execute job '"
@@ -231,14 +231,14 @@ write(const command_type& cmd)
   auto data_size = packet.size() - 1; // subtract header
 
   // Construct command header
-  auto epacket = xrt::command_cast<ert_packet*>(cmd.get());
+  auto epacket = xrt_xocl::command_cast<ert_packet*>(cmd.get());
   epacket->count = data_size;
   epacket->type  = ERT_CU;
 
   // Max number size is 4KB
   auto size = packet.bytes();
   if (size > 0x1000) {
-    throw xrt::error(CL_OUT_OF_RESOURCES
+    throw xrt_xocl::error(CL_OUT_OF_RESOURCES
                      , std::string("control buffer size '")
                      + std::to_string(size/static_cast<double>(0x400))
                      + std::string("KB' exceeds maximum value of 4KB"));
@@ -256,7 +256,7 @@ write(const command_type& cmd)
       ostr << "0x" << std::uppercase << std::setfill('0') << std::setw(8) << std::hex << packet[i] << std::dec << "\n";
   }
 
-  xrt::scheduler::schedule(cmd);
+  xrt_xocl::scheduler::schedule(cmd);
   return true;
 }
 
@@ -397,7 +397,7 @@ start()
 
   // Construct command packet and send to hardware
   auto opcode = get_opcode();
-  auto cmd = std::make_shared<start_kernel>(m_device->get_xrt_device(),this,opcode);
+  auto cmd = std::make_shared<start_kernel>(m_device->get_xdevice(),this,opcode);
   ++m_active;
 
   auto& packet = cmd->get_packet();
@@ -477,16 +477,6 @@ start()
     }
   }
 
-  for (auto& arg : m_kernel->get_progvar_argument_range()) {
-    uint64_t physaddr = 0;
-    if (auto mem = arg->get_memory_object()) {
-      auto boh = mem->get_buffer_object_or_error(m_device);
-      physaddr = m_device->get_boh_addr(boh);
-    }
-    assert(arg->get_arginfo_range().size()==1);
-    fill_regmap(regmap,offset,opcode,ctrl,&physaddr,arg->get_size(),arg->get_arginfo_range());
-  }
-
   // Set runtime arguments as required
   size3 local_id {0,0,0};
   uint64_t printf_buffer_addr = 0;
@@ -541,7 +531,7 @@ start()
 
 bool
 execution_context::
-done(const xrt::command*)
+done(const xrt_xocl::command*)
 {
   // Care must be taken not to mark event complete and later reference
   // any data members of context which is owned (and deleted) with event

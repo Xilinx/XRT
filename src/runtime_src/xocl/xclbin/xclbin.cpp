@@ -306,7 +306,7 @@ private:
           if (nm=="printf_buffer")
             return arg_type::printf;
           else if (nm.find("__xcl_gv_")==0)
-            return arg_type::progvar;
+            throw xocl::error(CL_INVALID_BINARY, "Global program variables are not supported");
           else
             return arg_type::rtinfo;
         }
@@ -350,8 +350,6 @@ private:
             ,0    // fa_desc_offset computed separately
             ,xml_arg.second.get<std::string>("<xmlattr>.type","")
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.memSize",""))
-            ,0   // progvar base addr computed separately
-            ,""  // progvar linkage computed separately
             ,type
             ,&m_symbol
            });
@@ -438,42 +436,6 @@ private:
       }
     }
 
-    void
-    fix_progvar()
-    {
-      // This is a pile of mess reversed engineered for clCreateProgramWithBinary
-      for (auto& arg : m_symbol.arguments) {
-        if (arg.atype!=arg_type::progvar || arg.address_qualifier!=1)
-          continue;
-        assert(arg.baseaddr==0);
-
-        // get port name of progvar
-        auto& pvport = arg.port;
-
-        // Get one kernel instance (doesn't matter which one)
-        auto kinst = xml_kernel.get<std::string>("instance.<xmlattr>.name");
-
-        // Find connection matching srcInst=kinstnm and srcPort=pvport
-        // and get its dst instance
-        auto& xml_conn = m_core->get_connection_or_error(kinst,pvport);
-        auto dstinst = xml_conn.get<std::string>("<xmlattr>.dstInst");
-
-        // Find memory instance with name==dstinst
-        auto& xml_meminst = m_core->get_meminst_or_error(dstinst);
-
-        // Get the base addr remap
-        for (auto& xml_remap : xml_meminst) {
-          if (xml_remap.first != "addrRemap")
-            continue;
-          arg.baseaddr = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
-          arg.linkage = xml_meminst.get<std::string>("<xmlattr>.linkage");
-          break;
-        }
-
-        XOCL_DEBUG(std::cout,"xclbin progvar: ",arg.name," baseaddr: ",arg.baseaddr," linkage: ",arg.linkage,"\n");
-      }
-    }
-
     // For FA style kernels compute the descriptor entry offsets for
     // each argument and total size of descriptor.
     void
@@ -511,7 +473,6 @@ private:
 
       init_args();
       fix_rtinfo();
-      fix_progvar();
       init_instances();
       init_stringtable();
       init_workgroup();

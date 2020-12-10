@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  * Author(s): Min Ma	<min.ma@xilinx.com>
  *          : Larry Liu	<yliu@xilinx.com>
  *
@@ -19,17 +19,20 @@
 #include <dlfcn.h>
 #include <execinfo.h>
 #include <string.h>
+#include <cstdarg>
 #include <sys/wait.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
 
 #include "sk_types.h"
 #include "sk_daemon.h"
-#include "xclhal2_mpsoc.h"
+#include "core/common/config_reader.h"
+#include "core/common/message.h"
+#include "core/edge/user/shim.h"
 
 xclDeviceHandle devHdl;
 
-unsigned int getHostBO(unsigned long paddr, size_t size)
+static unsigned int getHostBO(unsigned long paddr, size_t size)
 {
   unsigned int boHandle;
 
@@ -38,19 +41,35 @@ unsigned int getHostBO(unsigned long paddr, size_t size)
   return boHandle;
 }
 
-void *mapBO(unsigned int boHandle, bool write)
+static void *mapBO(unsigned int boHandle, bool write)
 {
   void *buf;
   buf = xclMapBO(devHdl, boHandle, write);
   return buf;
 }
 
-void freeBO(unsigned int boHandle)
+static void freeBO(unsigned int boHandle)
 {
   xclFreeBO(devHdl, boHandle);
 }
 
-int getBufferFd(unsigned int boHandle)
+static int logMsg(xrtLogMsgLevel level, const char* tag,
+		       const char* format, ...)
+{
+  static auto verbosity = xrt_core::config::get_verbosity();
+  if (level > verbosity) {
+    return 0;
+  }
+  va_list args;
+  va_start(args, format);
+  int ret = -1;
+  xrt_core::message::sendv(static_cast<xrt_core::message::severity_level>(level), tag, format, args);
+  va_end(args);
+
+  return 0;
+}
+
+static int getBufferFd(unsigned int boHandle)
 {
     return xclExportBO(devHdl, boHandle);
 }
@@ -94,7 +113,7 @@ static int destroySoftKernel(unsigned int boh, void *mapAddr)
  * This function calls XRT interface to notify a soft kenel is idle
  * and wait for next command.
  */
-int waitNextCmd(uint32_t cu_idx)
+static int waitNextCmd(uint32_t cu_idx)
 {
   return xclSKReport(devHdl, cu_idx, XRT_SCU_STATE_DONE);
 }
@@ -104,7 +123,7 @@ int waitNextCmd(uint32_t cu_idx)
  * file. By mapping the reg file BO, we get the process's memory
  * address for the soft kernel argemnts.
  */
-void *getKernelArg(unsigned int boHdl, uint32_t cu_idx)
+static void *getKernelArg(unsigned int boHdl, uint32_t cu_idx)
 {
   return xclMapBO(devHdl, boHdl, false);
 }
@@ -130,7 +149,8 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   void *sk_handle;
   kernel_t kernel;
   struct sk_operations ops;
-  unsigned *args_from_host;
+  uint32_t *args_from_host;
+  int32_t kernel_return;
   unsigned int boh;
   int ret;
 
@@ -162,6 +182,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   ops.mapBO         = &mapBO;
   ops.freeBO        = &freeBO;
   ops.getBufferFd   = &getBufferFd;
+  ops.logMsg        = &logMsg;
 
   args_from_host = (unsigned *)getKernelArg(boh, cu_idx);
   if (args_from_host == MAP_FAILED) {
@@ -181,11 +202,12 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
     }
 
     /* Reg file indicates the kernel should not be running. */
-    if (args_from_host[0] != 0x1)
-      continue;
+    if (!(args_from_host[0] & 0x1))
+      continue; //AP_START bit is not set; New Cmd is not available
 
     /* Start run the soft kernel. */
-    kernel(&args_from_host[1], &ops);
+    kernel_return = kernel(&args_from_host[1], &ops);
+    args_from_host[1] = (uint32_t)kernel_return;
   }
 
   dlclose(sk_handle);
@@ -228,7 +250,7 @@ static int createSoftKernelFile(uint64_t paddr, size_t size, uint32_t cuidx)
     syslog(LOG_ERR, "Cannot initialize XRT.\n");
     return -1;
   }
-    
+
   boHandle = xclGetHostBO(handle, paddr, size);
   buf = xclMapBO(handle, boHandle, false);
   if (!buf) {
@@ -244,7 +266,7 @@ static int createSoftKernelFile(uint64_t paddr, size_t size, uint32_t cuidx)
     if (path[i] == '/') {
       path[i] = '\0';
       if (access(path, F_OK) != 0) {
-        if (mkdir(path, 0644) != 0) {
+        if (mkdir(path, 0744) != 0) {
           syslog(LOG_ERR, "Cannot create soft kernel file.\n");
           return -1;
         }
@@ -319,6 +341,7 @@ void configSoftKernel(xclSKCmd *cmd)
     if (pid == 0) {
       char path[XRT_MAX_PATH_LENGTH];
       char proc_name[PNAME_LEN] = {};
+
       /* Install Signal Handler for the Child Processes/Soft-Kernels */
       struct sigaction act;
       act.sa_handler = sigLog;

@@ -59,6 +59,7 @@ xclmgmt-y := \
 	../subdev/clock.o \
 	../subdev/mig.o \
 	../subdev/xmc.o \
+	../subdev/xmc_u2.o \
 	../subdev/dna.o \
 	../subdev/fmgr.o \
 	../subdev/mgmt_msix.o \
@@ -99,6 +100,9 @@ endif
 ifeq ($(SYMBOL),1)
 	ccflags-y += -g
 endif
+
+ccflags-$(CONFIG_FPGA) += -DENABLE_FPGA_MGR_SUPPORT
+ccflags-y += $(ccflags-m)
 
 all:
 	echo $(PWD)

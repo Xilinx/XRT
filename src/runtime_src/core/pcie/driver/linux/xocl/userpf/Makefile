@@ -63,6 +63,7 @@ xocl-y := \
 	../subdev/icap.o \
 	../subdev/clock.o \
 	../subdev/xmc.o \
+	../subdev/xmc_u2.o \
 	../subdev/firewall.o \
 	../subdev/mig.o \
 	../subdev/dna.o \

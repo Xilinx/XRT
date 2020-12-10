@@ -35,6 +35,7 @@ private:
     const xma_core::plg::session&  base; // base session class
     XmaDecoderProperties   decoder_props; // client requested decoder properties
     XmaDecoderPlugin      *decoder_plugin{nullptr}; // pointer to plugin interface
+    std::string      tag; //tag for log messages
  
 public:
   //send input encoder pkt to decoder cu for processing
@@ -51,6 +52,10 @@ public:
   //Use input is blank XmaFrameProperties
   void 
   get_properties(XmaFrameProperties *fprops);
+
+  //Send log msg to XRT API
+  void
+  logmsg(XmaLogLevelType level, const char *msg, ...) const;
 
   dec_session(const XmaDecoderProperties *props, const xma_core::plg::session& sess);//host app can be C; user input is Decoder Properties
   ~dec_session();

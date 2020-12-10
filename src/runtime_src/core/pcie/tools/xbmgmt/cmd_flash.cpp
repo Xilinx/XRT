@@ -271,7 +271,8 @@ static int writeSCImage(Flasher &flasher, const char *file)
 }
 
 // Update SC firmware on the board.
-static int updateSC(unsigned index, const char *file, bool cardlevel = true)
+static int updateSC(unsigned index, const char *file,
+    bool cardlevel = true, bool force = false)
 {
     int ret = 0;
     Flasher flasher(index);
@@ -282,7 +283,7 @@ static int updateSC(unsigned index, const char *file, bool cardlevel = true)
     std::string errmsg;
     auto mgmt_dev = pcidev::get_dev(index, false);
     mgmt_dev->sysfs_get<bool>("", "mfg", errmsg, is_mfg, false);
-    if (is_mfg) {
+    if (is_mfg || force) {
         return writeSCImage(flasher, file);
     }
 
@@ -917,10 +918,12 @@ static int sc(int argc, char *argv[])
     unsigned index = UINT_MAX;
     std::string file;
     bool cardlevel = true;
+    bool force = false;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "path", required_argument, nullptr, '1' },
         { "no_cardlevel", no_argument, nullptr, '2' },
+        { "force", no_argument, nullptr, '3' },
         { nullptr, 0, nullptr, 0 },
     };
 
@@ -941,6 +944,9 @@ static int sc(int argc, char *argv[])
         case '2':
             cardlevel = false;
             break;
+        case '3':
+            force = true;
+            break;
         default:
             return -EINVAL;
         }
@@ -949,7 +955,7 @@ static int sc(int argc, char *argv[])
     if (file.empty() || index == UINT_MAX)
         return -EINVAL;
 
-    int ret = updateSC(index, file.c_str(), cardlevel);
+    int ret = updateSC(index, file.c_str(), cardlevel, force);
     if (ret)
         return ret;
 

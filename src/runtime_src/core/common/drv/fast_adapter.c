@@ -258,8 +258,6 @@ void xrt_cu_fa_fini(struct xrt_cu *xcu)
 	if (xcu->core) {
 		if (core->vaddr)
 			iounmap(core->vaddr);
-		if (core->plram)
-			iounmap(core->plram);
 		kfree(xcu->core);
 	}
 }

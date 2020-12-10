@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,8 +25,8 @@
 # pragma warning ( disable : 4996 4706 )
 #endif
 
-namespace hal = xrt::hal;
-namespace hal2 = xrt::hal2;
+namespace hal = xrt_xocl::hal;
+namespace hal2 = xrt_xocl::hal2;
 namespace bfs = boost::filesystem;
 
 namespace {
@@ -155,7 +155,7 @@ createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int
 
 } // namespace
 
-namespace xrt { namespace hal {
+namespace xrt_xocl { namespace hal {
 
 device::
 device()
@@ -191,7 +191,7 @@ loadDevices()
   if (!xrt.empty() && is_emulation() && !is_sw_emulation()) {
     directoryOrError(xrt);
 
-    auto hw_em_driver_path = xrt::config::get_hw_em_driver();
+    auto hw_em_driver_path = xrt_xocl::config::get_hw_em_driver();
     if (hw_em_driver_path == "null") {
       auto p = dllpath(xrt,"xrt_hwemu");
       if (isDLL(p))
@@ -205,7 +205,7 @@ loadDevices()
   if (!xrt.empty() && is_emulation() && is_sw_emulation()) {
     directoryOrError(xrt);
 
-    auto sw_em_driver_path = xrt::config::get_sw_em_driver();
+    auto sw_em_driver_path = xrt_xocl::config::get_sw_em_driver();
     if (sw_em_driver_path == "null") {
       auto p = dllpath(xrt,"xrt_swemu");
       if (isDLL(p))

@@ -36,6 +36,22 @@ MODULE_PARM_DESC(kds_mode,
  */
 int kds_echo = 0;
 
+static void xocl_kds_fa_clear(struct xocl_dev *xdev)
+{
+	struct drm_xocl_bo *bo = NULL;
+
+	if (XDEV(xdev)->kds.plram.bo) {
+		bo = XDEV(xdev)->kds.plram.bo;
+		iounmap(XDEV(xdev)->kds.plram.vaddr);
+		xocl_drm_free_bo(&bo->base);
+		XDEV(xdev)->kds.plram.bo = NULL;
+		XDEV(xdev)->kds.plram.bar_paddr = 0;
+		XDEV(xdev)->kds.plram.dev_paddr = 0;
+		XDEV(xdev)->kds.plram.vaddr = 0;
+		XDEV(xdev)->kds.plram.size = 0;
+	}
+}
+
 static int
 get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
 	     uint32_t bo_hdl, size_t off, size_t size, uint64_t *paddrp)
@@ -127,6 +143,25 @@ static int copybo_ecmd2xcmd(struct xocl_dev *xdev, struct drm_file *filp,
 	ecmd->type = ERT_CU;
 
 	start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+
+	return 0;
+}
+
+static int
+sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
+	     struct kds_command *xcmd)
+{
+	if (XDEV(xdev)->kds.ert_disable) {
+		userpf_err(xdev, "Soft kernels cannot be used if ERT is off");
+		return -EINVAL;
+	}
+
+	if (ecmd->opcode == ERT_SK_START)
+		xcmd->opcode = OP_START_SK;
+	else
+		xcmd->opcode = OP_CONFIG_SK;
+
+	xcmd->execbuf = (u32 *)ecmd;
 
 	return 0;
 }
@@ -264,22 +299,13 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 
 	if (xcmd->inkern_cb) {
-		schedule_work(&xcmd->inkern_cb->work);
+		int error = (status == ERT_CMD_STATE_COMPLETED)?0:-EFAULT;
+		xcmd->inkern_cb->func((unsigned long)xcmd->inkern_cb->data, error);
+		kfree(xcmd->inkern_cb);
 	} else {
 		atomic_inc(&client->event);
 		wake_up_interruptible(&client->waitq);
 	}
-}
-
-static void xocl_execbuf_completion(struct work_struct *work)
-{
-	struct in_kernel_cb *inkern_cb = container_of(work,
-						struct in_kernel_cb, work);
-	int error = (inkern_cb->cmd_state == ERT_CMD_STATE_COMPLETED) ?
-			0 : -EFAULT;
-
-	if (inkern_cb->func)
-		inkern_cb->func((unsigned long)inkern_cb->data, error);
 }
 
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
@@ -389,6 +415,15 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			return (ret < 0)? ret : 0;
 		}
 		break;
+	case ERT_SK_CONFIG:
+	case ERT_SK_UNCONFIG:
+	case ERT_SK_START:
+		ret = sk_ecmd2xcmd(xdev, ecmd, xcmd);
+		if (ret) {
+			xcmd->cb.free(xcmd);
+			goto out;
+		}
+		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");
 		xcmd->cb.free(xcmd);
@@ -413,8 +448,6 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			xcmd->inkern_cb->func = (void (*)(unsigned long, int))
 						args_cb->cb_func;
 			xcmd->inkern_cb->data = (void *)args_cb->cb_data;
-			INIT_WORK(&xcmd->inkern_cb->work,
-						xocl_execbuf_completion);
 		}
 	}
 
@@ -532,15 +565,7 @@ int xocl_kds_stop(struct xocl_dev *xdev)
 
 int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 {
-	struct drm_xocl_bo *bo = NULL;
-
-	bo = XDEV(xdev)->kds.plram.bo;
-	if (bo) {
-		iounmap(XDEV(xdev)->kds.plram.vaddr);
-		xocl_drm_free_bo(&bo->base);
-	}
-
-	XDEV(xdev)->kds.plram.bo = NULL;
+	xocl_kds_fa_clear(xdev);
 
 	/* We do not need to reset kds core if xclbin_id is null */
 	if (!xclbin_id)
@@ -596,7 +621,7 @@ static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index)
 	return mem_data_idx;
 }
 
-static void xocl_detect_fa_plram(struct xocl_dev *xdev)
+static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 {
 	struct ip_layout    *ip_layout = NULL;
 	struct mem_topology *mem_topo = NULL;
@@ -607,6 +632,7 @@ static void xocl_detect_fa_plram(struct xocl_dev *xdev)
 	uint64_t base_addr;
 	void __iomem *vaddr;
 	ulong bar_paddr = 0;
+	int ret = 0;
 
 	/* Detect Fast adapter and descriptor plram
 	 * Assume only one PLRAM would be used for descriptor
@@ -638,8 +664,11 @@ static void xocl_detect_fa_plram(struct xocl_dev *xdev)
 
 	base_addr = mem_topo->m_mem_data[mem_idx].m_base_address;
 	size = mem_topo->m_mem_data[mem_idx].m_size * 1024;
-	if (xocl_p2p_get_bar_paddr(xdev, base_addr, size, &bar_paddr))
+	ret = xocl_p2p_get_bar_paddr(xdev, base_addr, size, &bar_paddr);
+	if (ret) {
+		userpf_err(xdev, "Cannot get p2p BAR address");
 		goto done;
+	}
 
 	/* To avoid user to allocate buffer on this descriptor dedicated mameory
 	 * bank, create a buffer object to reserve the bank.
@@ -647,13 +676,18 @@ static void xocl_detect_fa_plram(struct xocl_dev *xdev)
 	args.size = size;
 	args.flags = XCL_BO_FLAGS_P2P | mem_idx;
 	bo = xocl_drm_create_bo(XOCL_DRM(xdev), size, args.flags);
-	if (IS_ERR(bo))
+	if (IS_ERR(bo)) {
+		userpf_err(xdev, "Cannot create bo for fast adapter");
+		ret = -ENOMEM;
 		goto done;
+	}
 
 	vaddr = ioremap_wc(bar_paddr, size);
-
-	if (!vaddr)
+	if (!vaddr) {
+		userpf_err(xdev, "Map failed");
+		ret = -ENOMEM;
 		goto done;
+	}
 
 	XDEV(xdev)->kds.plram.bo = bo;
 	XDEV(xdev)->kds.plram.bar_paddr = bar_paddr;
@@ -664,11 +698,12 @@ static void xocl_detect_fa_plram(struct xocl_dev *xdev)
 done:
 	XOCL_PUT_MEM_TOPOLOGY(xdev);
 	XOCL_PUT_IP_LAYOUT(xdev);
+	return ret;
 }
 
 int xocl_kds_update(struct xocl_dev *xdev)
 {
-	struct drm_xocl_bo *bo = NULL;
+	int ret = 0;
 
 	/* Detect if ERT subsystem is able to support CU to host interrupt
 	 * This support is added since ERT ver3.0
@@ -683,18 +718,11 @@ int xocl_kds_update(struct xocl_dev *xdev)
 		XDEV(xdev)->kds.cu_intr_cap = 1;
 	}
 
-	if (XDEV(xdev)->kds.plram.bo) {
-		bo = XDEV(xdev)->kds.plram.bo;
-		iounmap(XDEV(xdev)->kds.plram.vaddr);
-		xocl_drm_free_bo(&bo->base);
-		XDEV(xdev)->kds.plram.bo = NULL;
-		XDEV(xdev)->kds.plram.bar_paddr = 0;
-		XDEV(xdev)->kds.plram.dev_paddr = 0;
-		XDEV(xdev)->kds.plram.vaddr = 0;
-		XDEV(xdev)->kds.plram.size = 0;
-	}
+	xocl_kds_fa_clear(xdev);
 
-	xocl_detect_fa_plram(xdev);
+	ret = xocl_detect_fa_plram(xdev);
+	if (ret)
+		return ret;
 
 	/* By default, use ERT */
 	XDEV(xdev)->kds.cu_intr = 0;

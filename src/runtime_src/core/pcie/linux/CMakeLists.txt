@@ -42,6 +42,7 @@ set_target_properties(xrt_core PROPERTIES
   SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(xrt_core
+  PRIVATE
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
@@ -52,12 +53,13 @@ target_link_libraries(xrt_core
   )
 
 install(TARGETS xrt_core
+  EXPORT xrt-targets
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
 install(TARGETS xrt_core
+  EXPORT xrt-targets-dev
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )
-

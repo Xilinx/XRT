@@ -6,12 +6,7 @@ include_directories(
 
 if (NOT WIN32)
   include_directories(${DRM_INCLUDE_DIRS})
-else()
-set(Boost_USE_STATIC_LIBS     ON)
-set(Boost_USE_MULTITHREADED   ON)
-find_package(Boost REQUIRED COMPONENTS system filesystem )
-include_directories(${Boost_INCLUDE_DIRS})
-endif (NOT WIN32)
+endif()
 
 set(XRT_XRT_DEVICE_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/device")
 set(XRT_XRT_SCHED_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/scheduler")
@@ -52,6 +47,7 @@ add_library(xrt++ SHARED
   )
 
 target_link_libraries(xrt++
+  PRIVATE
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
@@ -61,11 +57,13 @@ set_target_properties(xrt++ PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
 install(TARGETS xrt++
+  EXPORT xrt-targets
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
 install(TARGETS xrt++
+  EXPORT xrt-targets-dev
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )

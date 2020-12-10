@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,6 +25,7 @@
 
 #include "core/common/memalign.h"
 #include "core/common/unistd.h"
+#include "core/include/experimental/xrt_bo.h"
 
 #include <map>
 
@@ -46,7 +47,7 @@ class memory : public refcount, public _cl_mem
   using memidx_type = xclbin::memidx_type;
 
 protected:
-  using buffer_object_handle = xrt::device::BufferObjectHandle;
+  using buffer_object_handle = xrt_xocl::device::buffer_object_handle;
   using buffer_object_map_type = std::map<const device*,buffer_object_handle>;
   using bomap_type = std::map<const device*,buffer_object_handle>;
   using bomap_value_type = bomap_type::value_type;
@@ -384,14 +385,6 @@ public:
    */
   buffer_object_handle
   try_get_buffer_object_or_error(const device* device) const;
-
-  /**
-   * Get buffer object or create with arguments.
-   *
-   * Used for progvar memory objects exclusively.
-   */
-  virtual buffer_object_handle
-  get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memidx);
 
   /**
    * Check if buffer is resident on any device
@@ -741,9 +734,6 @@ public:
   virtual buffer_object_handle
   get_buffer_object(device* device);
 
-  virtual buffer_object_handle
-  get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memoryIndex);
-
 private:
 
   void populate_image_info(image_info& info) {
@@ -852,7 +842,7 @@ get_xlnx_ext_argidx(cl_mem_flags flags, const void* host_ptr)
 inline unsigned int
 get_ocl_flags(cl_mem_flags flags)
 {
-  return ( flags & ~(CL_MEM_EXT_PTR_XILINX | CL_MEM_PROGVAR) );
+  return ( flags & ~(CL_MEM_EXT_PTR_XILINX) );
 }
 
 } // xocl

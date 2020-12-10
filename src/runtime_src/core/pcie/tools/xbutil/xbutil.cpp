@@ -98,7 +98,7 @@ check_os_release(const std::vector<std::string> kernel_versions, std::ostream &o
         if (release.find(ver) != std::string::npos)
             return true;
     }
-    ostr << "WARNING: Kernel verison " << release << " is not officially supported. "
+    ostr << "WARNING: Kernel version " << release << " is not officially supported. "
         << kernel_versions.back() << " is the latest supported version" << std::endl;
     return false;
 }
@@ -109,7 +109,7 @@ is_supported_kernel_version(std::ostream &ostr)
     std::vector<std::string> ubuntu_kernel_versions =
         { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0", "5.4.0" };
     std::vector<std::string> centos_rh_kernel_versions =
-        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062", "3.10.0-1127", "4.18.0-147", "4.18.0-193" };
+        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062", "3.10.0-1127", "4.18.0-147", "4.18.0-193", "4.18.0-240" };
     const std::string os = sensor_tree::get<std::string>("system.linux", "N/A");
 
     if(os.find("Ubuntu") != std::string::npos)
@@ -1215,10 +1215,9 @@ int xcldev::device::runTestCase(const std::string& py,
             return -ENOENT;
         }
 
-        cmd = xrtTestCasePath + " " + xclbinPath;
-    }
-    //OLD FLOW:
-    else { 
+        cmd = xrtTestCasePath + " " + xclbinPath + " -d " + std::to_string(m_idx);
+
+    } else { //OLD FLOW:
         xrtTestCasePath += py;    
         xclbinPath += xclbin;
 
@@ -1228,10 +1227,11 @@ int xcldev::device::runTestCase(const std::string& py,
             // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
             std::string logic_uuid, errmsg;
             pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuid);
+
             // Only skip the test if it nonDFX platform and the accelerator doesn't exist. 
             // All other conditions should generate an error.
             if (!logic_uuid.empty() && xclbin.compare("verify.xclbin") == 0) {
-                output += "Verify xclbin not available. Skipping validation.";
+                output += "Verify xclbin not available or shell partition is not programmed. Skipping validation.";
                 return -EOPNOTSUPP;
             }
             //if bandwidth xclbin isn't present, skip the test
@@ -2072,9 +2072,9 @@ int xcldev::xclP2p(int argc, char *argv[])
     if (ret)
         std::cout << "Config P2P failed" << std::endl;
     else if (p2p_enable)
-        std::cout << "P2P is enabled" << std::endl;
+        std::cout << "Please WARM reboot to enable p2p now." << std::endl;
     else
-        std::cout << "P2P is disabled" << std::endl;
+        std::cout << "Please WARM reboot to disable p2p now." << std::endl;
 
     return 0;
 }
@@ -2317,6 +2317,9 @@ int xcldev::device::testM2m()
     }
 
     for(int32_t i = 0; i < map->m_count; i++) {
+        if (isHostMem(map->m_mem_data[i].m_tag))
+            continue;
+
         if(map->m_mem_data[i].m_used &&
             map->m_mem_data[i].m_size * 1024 >= m2mBoSize) {
             /* use u8 m_type field to as bank index */

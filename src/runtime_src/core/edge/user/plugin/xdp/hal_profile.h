@@ -254,12 +254,12 @@ void warning_hal_callbacks() ;
 #define READ_CB  xdphal::ReadCallLogger  read_call_logger(handle, size /*, space, offset, hostBuf*/);
 #define REG_WRITE_CB xdphal::RegWriteCallLogger reg_write_call_logger(handle, ipIndex, offset);
 #define REG_READ_CB  xdphal::RegReadCallLogger  reg_read_call_logger(handle, ipIndex, offset);
-#define PROBE_CB xdphal::ProbeCallLogger probe_call_logger();
+#define PROBE_CB xdphal::ProbeCallLogger probe_call_logger;
 #define LOCK_DEVICE_CB   xdphal::LockDeviceCallLogger   lock_device_call_logger(handle);
 #define UNLOCK_DEVICE_CB xdphal::UnLockDeviceCallLogger unlock_device_call_logger(handle);
-#define OPEN_CB  xdphal::OpenCallLogger  open_call_logger();
+#define OPEN_CB  xdphal::OpenCallLogger  open_call_logger;
 #define CLOSE_CB xdphal::CloseCallLogger close_call_logger(handle);
-#define OPEN_CONTEXT_CB  xdphal::OpenContextCallLogger  open_context_call_logger();
+#define OPEN_CONTEXT_CB  xdphal::OpenContextCallLogger  open_context_call_logger;
 #define CLOSE_CONTEXT_CB xdphal::CloseContextCallLogger close_context_call_logger(handle);
 #define LOAD_XCLBIN_CB   xdphal::LoadXclbinCallLogger xclbin_call_logger(handle, buffer) ;
 

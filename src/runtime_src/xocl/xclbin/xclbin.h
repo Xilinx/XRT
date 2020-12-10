@@ -55,7 +55,7 @@ public:
   {
     // Wrap data associated with a kernel argument
     struct arg {
-      enum class argtype { indexed, printf, progvar, rtinfo };
+      enum class argtype { indexed, printf, rtinfo };
       std::string name;
       size_t address_qualifier;
       std::string id;
@@ -68,8 +68,6 @@ public:
       size_t fa_desc_offset;// fast adapter desc entry offseet
       std::string type;
       size_t memsize;
-      size_t baseaddr;      // progvar base addr
-      std::string linkage;  // progvar linkage per meminst
       argtype atype;        // optimization to avoid repeated string cmp
       symbol* host;
 

@@ -71,9 +71,8 @@ else()
 endif()
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
 
-if(Boost_VERSION_STRING VERSION_LESS 1.64.0)
-  add_definitions (-DBOOST_PRE_1_64=1)
-endif()
+# Boost_VERSION_STRING is not working properly, use our own macro
+set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})
 
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
@@ -83,7 +82,7 @@ INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
 
 # --- XRT Variables ---
-set (XRT_INSTALL_DIR           "${CMAKE_INSTALL_PREFIX}/xrt")
+set (XRT_INSTALL_DIR           "xrt")
 set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")
 set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
@@ -178,6 +177,9 @@ include (CMake/pkgconfig.cmake)
 
 # --- Coverity Support ---
 include (CMake/coverity.cmake)
+
+# --- Find Package Support ---
+include (CMake/findpackage.cmake)
 
 set (CTAGS "${CMAKE_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
 include (CMake/tags.cmake)

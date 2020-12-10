@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
@@ -74,7 +74,7 @@ clGetMemObjectFromFd(cl_context context,
 
   size_t size = 0;
   unsigned int iflags = static_cast<unsigned int>(flags);
-  if (auto boh = xdevice->get_xrt_device()->getBufferFromFd(fd, size, iflags)) {
+  if (auto boh = xdevice->get_xdevice()->getBufferFromFd(fd, size, iflags)) {
     auto buffer = std::make_unique<xocl::buffer>(xcontext, flags, size, nullptr);
     // set fields in cl_buffer
     buffer->set_ext_flags(get_xlnx_ext_flags(flags,nullptr));
@@ -82,21 +82,6 @@ clGetMemObjectFromFd(cl_context context,
     buffer->update_buffer_object_map(xdevice,boh);
     *mem = buffer.release();
     return CL_SUCCESS;
-
-    //Sarab: How to handle importing buffer which is on multiple devices?
-    //That will need to change update_buffer_object_mao functions as well..
-
-
-    // allocate device buffer object if context has only one device
-    // and if this is not a progvar (clCreateProgramWithBinary)
-    /*
-    if (!(flags & CL_MEM_PROGVAR)) {
-      if (auto device = singleContextDevice(context)) {
-        buffer->get_buffer_object(device);
-      }
-    }
-    */
-
   }
 
   throw error(CL_INVALID_MEM_OBJECT, "CreateBufferFromFd: Unable to get MemObject Handle from FD");
@@ -116,7 +101,7 @@ clGetMemObjectFromFd(cl_context context,
   try {
     return xocl::clGetMemObjectFromFd(context, device, flags, fd, mem);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get_code();
   }

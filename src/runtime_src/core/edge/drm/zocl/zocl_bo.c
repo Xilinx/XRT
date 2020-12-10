@@ -223,7 +223,7 @@ free:
 	return ERR_PTR(err);
 }
 
-int
+static struct drm_zocl_bo *
 zocl_create_svm_bo(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_create_bo *args = data;
@@ -233,11 +233,11 @@ zocl_create_svm_bo(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	if ((args->flags & ZOCL_BO_FLAGS_COHERENT) ||
 			(args->flags & ZOCL_BO_FLAGS_CMA))
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 
 	args->flags |= ZOCL_BO_FLAGS_SVM;
 	if (!(args->flags & ZOCL_BO_FLAGS_SVM))
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 
 	bo = zocl_create_bo(dev, args->size, args->flags);
 	bo->flags |= ZOCL_BO_FLAGS_SVM;
@@ -245,7 +245,7 @@ zocl_create_svm_bo(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	if (IS_ERR(bo)) {
 		DRM_DEBUG("object creation failed\n");
-		return PTR_ERR(bo);
+		return bo;
 	}
 	bo->pages = drm_gem_get_pages(&bo->gem_base);
 	if (IS_ERR(bo->pages)) {
@@ -280,11 +280,11 @@ zocl_create_svm_bo(struct drm_device *dev, void *data, struct drm_file *filp)
 	/* Update memory usage statistics */
 	zocl_update_mem_stat(dev->dev_private, args->size, 1, bo->bank);
 
-	return ret;
+	return bo;
 
 out_free:
 	zocl_free_bo(&bo->gem_base);
-	return ret;
+	return ERR_PTR(ret);
 }
 
 int
@@ -295,11 +295,18 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct drm_zocl_bo *bo;
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	unsigned int bank;
+	uint32_t user_flags;
 
+	user_flags = args->flags;
 	args->flags = zocl_convert_bo_uflags(args->flags);
 
-	if (zdev->domain)
-		return zocl_create_svm_bo(dev, data, filp);
+	if (zdev->domain) {
+		bo = zocl_create_svm_bo(dev, data, filp);
+		if (IS_ERR(bo))
+			return PTR_ERR(bo);
+		bo->user_flags = user_flags;
+		return 0;
+	}
 
 	bank = GET_MEM_BANK(args->flags);
 
@@ -324,7 +331,10 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		/* If cacheable is not set, make sure we set COHERENT. */
 		args->flags |= ZOCL_BO_FLAGS_COHERENT;
 	} else if (!(args->flags & ZOCL_BO_FLAGS_CMA)) {
-		/* We do not support allocating cacheable BO from PL-DDR or LPDDR */
+		/*
+		 * We do not support allocating cacheable BO from PL-DDR or
+		 * LPDDR
+		 */
 		DRM_WARN("Cache is not supported and turned off for PL-DDR or LPDDR\n");
 		args->flags &= ~ZOCL_BO_FLAGS_CACHEABLE;
 	}
@@ -360,6 +370,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		}
 	}
 
+	bo->user_flags = user_flags;
 	zocl_describe(bo);
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->cma_base.base);
 
@@ -677,6 +688,7 @@ int zocl_info_bo_ioctl(struct drm_device *dev,
 
 	bo = to_zocl_bo(gem_obj);
 	zocl_bo_describe(bo, &args->size, &args->paddr);
+	args->flags = bo->user_flags;
 
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 

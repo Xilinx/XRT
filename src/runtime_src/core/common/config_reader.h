@@ -145,8 +145,7 @@ get_container()
 inline std::string
 get_data_transfer_trace()
 {
-  static std::string value = 
-    detail::get_string_value("Debug.data_transfer_trace","off");
+  static std::string value = detail::get_string_value("Debug.data_transfer_trace","off");
   return value;
 }
 
@@ -287,16 +286,14 @@ get_use_xclbin_group_sections()
 inline std::string
 get_logging()
 {
-  // Allow this configure value to change on the fly
-  std::string value = detail::get_string_value("Runtime.runtime_log","console");
+  static std::string value = detail::get_string_value("Runtime.runtime_log","console");
   return value;
 }
 
 inline unsigned int
 get_verbosity()
 {
-  // Allow this configure value to change on the fly
-  unsigned int value = detail::get_uint_value("Runtime.verbosity",4);
+  static unsigned int value = detail::get_uint_value("Runtime.verbosity",4);
   return value;
 }
 

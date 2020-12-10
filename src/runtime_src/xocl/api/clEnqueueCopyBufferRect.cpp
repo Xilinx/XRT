@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -247,7 +247,7 @@ clEnqueueCopyBufferRect(cl_command_queue     command_queue ,
   //memcpy
   {
     auto device = xocl(command_queue)->get_device();
-    auto xdevice = device->get_xrt_device();
+    auto xdevice = device->get_xdevice();
     auto src_boh = xocl(src_buffer)->get_buffer_object(device);
     auto dst_boh = xocl(dst_buffer)->get_buffer_object(device);
     void* host_ptr_src = xdevice->map(src_boh);
@@ -305,7 +305,7 @@ clEnqueueCopyBufferRect(cl_command_queue     command_queue ,
        num_events_in_wait_list,event_wait_list,event_parameter);
 
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get_code();
   }

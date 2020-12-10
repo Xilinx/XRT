@@ -184,8 +184,6 @@ namespace xdp {
   };
 
   struct DeviceInfo {
-    bool isReady;
-
     double clockRateMHz;
     struct PlatformInfo platformInfo;
 
@@ -198,15 +196,16 @@ namespace xdp {
 
     std::map<int32_t, Memory*> memoryInfo;
 
-    /* Maps for AM, AIM, ASM Monitor with slotID as the key.
+    /* Maps for AM, AIM, ASM Monitor (enabled for trace) with slotID as the key.
      * Contains only user space monitors, but no shell monitor (e.g. shell AIM/ASM)
      */
     std::map<uint64_t, Monitor*>  amMap;
     std::map<uint64_t, Monitor*>  aimMap;
     std::map<uint64_t, Monitor*>  asmMap;
 
-    std::vector<Monitor*>  shellAIMList;
-    std::vector<Monitor*>  shellASMList;
+    std::vector<Monitor*>  noTraceAMs;
+    std::vector<Monitor*>  noTraceAIMs;
+    std::vector<Monitor*>  noTraceASMs;
 
     std::vector<Monitor*>      nocList;
     std::vector<AIECounter*>   aieList;
@@ -214,6 +213,9 @@ namespace xdp {
 
     bool hasFloatingAIM = false;
     bool hasFloatingASM = false;
+    bool isReady          = false;
+    bool isAIEcounterRead = false;
+    bool isGMIORead       = false;
 
     uint32_t numTracePLIO = 0;
 
@@ -291,6 +293,34 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false; 
       return deviceInfo[deviceId]->isReady;
+    }
+
+    bool isAIECounterRead(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false; 
+      return deviceInfo[deviceId]->isAIEcounterRead;
+    }
+
+    void setIsAIECounterRead(uint64_t deviceId, bool val)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return; 
+      deviceInfo[deviceId]->isAIEcounterRead = val;
+    }
+
+    void setIsGMIORead(uint64_t deviceId, bool val)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return; 
+      deviceInfo[deviceId]->isGMIORead = val;
+    }
+
+    bool isGMIORead(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false; 
+      return deviceInfo[deviceId]->isGMIORead;
     }
 
     double getClockRateMHz(uint64_t deviceId)
@@ -374,7 +404,7 @@ namespace xdp {
       return deviceInfo[deviceId]->memoryInfo[memId];
     }
 
-    // Includes User Space AM only
+    // Includes only User Space AM enabled for trace
     inline uint64_t getNumAM(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -382,7 +412,7 @@ namespace xdp {
       return deviceInfo[deviceId]->amMap.size();
     }
 
-    /* Includes User Space AIM only; but no shell AIM
+    /* Includes only User Space AIM enabled for trace; but no shell AIM
      * Note : May not match xdp::DeviceIntf::getNumMonitors(XCL_PERF_MON_MEMORY)
      *        as that includes both user-space and shell AIM
      */
@@ -393,7 +423,7 @@ namespace xdp {
       return deviceInfo[deviceId]->aimMap.size();
     }
 
-    /* Includes User Space ASM only; but no shell ASM
+    /* Includes only User Space ASM enabled for trace; but no shell ASM
      * Note : May not match xdp::DeviceIntf::getNumMonitors(XCL_PERF_MON_STR)
      *        as that includes both user-space and shell ASM
      */
@@ -491,7 +521,7 @@ namespace xdp {
 					  freq, mod, aieName) ;
     }
 
-    // Includes User Space AIM only, but no shell AIM
+    // Includes only User Space AIM enabled for trace, but no shell AIM
     inline std::map<uint64_t, Monitor*>* getAIMonitors(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -499,7 +529,7 @@ namespace xdp {
       return &(deviceInfo[deviceId]->aimMap);
     }
 
-    // Includes User Space ASM only, but no shell ASM
+    // Includes only User Space ASM enabled for trace, but no shell ASM
     inline std::map<uint64_t, Monitor*>* getASMonitors(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())

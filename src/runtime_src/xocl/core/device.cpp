@@ -56,7 +56,7 @@ to_hex(void* addr)
 static void
 unaligned_message(void* addr)
 {
-  xrt::message::send(xrt::message::severity_level::XRT_WARNING,
+  xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,
                      "unaligned host pointer '"
                      + to_hex(addr)
                      + "' detected, this leads to extra memcpy");
@@ -65,7 +65,7 @@ unaligned_message(void* addr)
 static void
 userptr_bad_alloc_message(void* addr)
 {
-  xrt::message::send(xrt::message::severity_level::XRT_INFO,
+  xrt_xocl::message::send(xrt_xocl::message::severity_level::info,
                      "might be noncontiguous host pointer '"
                      + to_hex(addr)
                      + "' detected, check dmesg for more information."
@@ -75,50 +75,12 @@ userptr_bad_alloc_message(void* addr)
 }
 
 static void
-default_allocation_message(const xocl::device* device,const xocl::memory* mem,
-                           const xrt::device::BufferObjectHandle& boh)
-{
-  if (!boh)
-    return;
-
-  auto mask = device->get_boh_memidx(boh);
-  xocl::device::memidx_type memidx = 0;
-  for (size_t idx=0; idx<mask.size(); ++idx) {
-    if (mask.test(idx)) {
-      memidx = idx;
-      break;
-    }
-  }
-
-  std::stringstream str;
-  str << "Host buffer (" << mem->get_uid() << ") "
-      << "has no bank assignment and is not used as kernel argument "
-      << "before first enqueue operation; "
-      << "allocating in default memory bank '" << memidx << "'.";
-
-  if (xrt::config::get_feature_toggle("Runtime.strict_bank_rule"))
-    throw std::runtime_error(str.str());
-  else
-    xrt::message::send(xrt::message::severity_level::XRT_WARNING,str.str());
-}
-
-static void
-default_bad_allocation_message(const xocl::device* device,const xocl::memory* mem)
-{
-  std::stringstream str;
-  str << "Host buffer (" << mem->get_uid() << ") "
-      << "has no bank assignment and is not used as kernel argument "
-      << "before first enqueue operation.";
-  xrt::message::send(xrt::message::severity_level::XRT_ERROR,str.str());
-}
-
-static void
 host_copy_message(const xocl::memory* dst, const xocl::memory* src)
 {
   std::stringstream str;
   str << "Reverting to host copy for src buffer(" << src->get_uid() << ") "
       << "to dst buffer(" << dst->get_uid() << ")";
-  xrt::message::send(xrt::message::severity_level::XRT_WARNING,str.str());
+  xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,str.str());
 }
 
 XOCL_UNUSED static void
@@ -127,7 +89,7 @@ cmd_copy_message(const xocl::memory* dst, const xocl::memory* src)
   std::stringstream str;
   str << "No M2M, reverting to command based copying for src buffer(" << src->get_uid() << ") "
       << "to dst buffer(" << dst->get_uid() << ")";
-  xrt::message::send(xrt::message::severity_level::XRT_WARNING,str.str());
+  xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,str.str());
 }
 
 static void
@@ -137,13 +99,13 @@ buffer_resident_or_error(const xocl::memory* buffer, const xocl::device* device)
     throw std::runtime_error("buffer ("
                              + std::to_string(buffer->get_uid())
                              + ") is not resident in device ("
-                             + std::to_string(device->get_uid()) + ")");
+                             + std::to_string(device->get_uid()) + ") so migration from device to host fails");
 }
 
 // Copy hbuf to ubuf if necessary
 static void
 sync_to_ubuf(xocl::memory* buffer, size_t offset, size_t size,
-             xrt::device* xdevice, const xrt::device::BufferObjectHandle& boh)
+             xrt_xocl::device* xdevice, const xocl::device::buffer_object_handle& boh)
 {
   if (!buffer->need_extra_sync())
     return;
@@ -163,7 +125,7 @@ sync_to_ubuf(xocl::memory* buffer, size_t offset, size_t size,
 // Copy ubuf to hbuf if necessary
 static void
 sync_to_hbuf(xocl::memory* buffer, size_t offset, size_t size,
-             xrt::device* xdevice, const xrt::device::BufferObjectHandle& boh)
+             xrt_xocl::device* xdevice, const xocl::device::buffer_object_handle& boh)
 {
   if (!buffer->need_extra_sync())
     return;
@@ -227,7 +189,7 @@ init_scheduler(xocl::device* device)
   if (!program)
     throw xocl::error(CL_INVALID_PROGRAM,"Cannot initialize MBS before program is loadded");
 
-  xrt::scheduler::init(device->get_xrt_device());
+  xrt_xocl::scheduler::init(device->get_xdevice());
 }
 
 }
@@ -268,35 +230,21 @@ device::
 get_handle() const
 {
   if (m_xdevice)
-    return m_xdevice->get_handle();
+    return m_xdevice->get_xcl_handle();
   throw xocl::error(CL_INVALID_DEVICE, "No device handle");
 }
 
-void
-device::
-track(const memory* mem)
-{
-#if 0
-  // not yet enabled.  need memory.cpp to use and ensure calls to free
-  // also proper handling of mem objects imported and gotten from
-  // xclGetMemObjectFromFD (should go through xocl::device, not directly
-  // to xrt::device)
-  std::lock_guard<std::mutex> lk(m_mutex);
-  m_memobjs.insert(mem);
-#endif
-}
-
-xrt::device::memoryDomain
+xrt_xocl::device::memoryDomain
 get_mem_domain(const memory* mem)
 {
   if (mem->is_device_memory_only())
-    return xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM;
+    return xrt_xocl::device::memoryDomain::XRT_DEVICE_ONLY_MEM;
   else if (mem->is_device_memory_only_p2p())
-    return xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM_P2P;
+    return xrt_xocl::device::memoryDomain::XRT_DEVICE_ONLY_MEM_P2P;
   else if (mem->is_host_only())
-    return xrt::device::memoryDomain::XRT_HOST_ONLY_MEM;
+    return xrt_xocl::device::memoryDomain::XRT_HOST_ONLY_MEM;
 
-  return xrt::device::memoryDomain::XRT_DEVICE_RAM;
+  return xrt_xocl::device::memoryDomain::XRT_DEVICE_RAM;
 }
 
 void
@@ -307,7 +255,7 @@ clear_connection(connidx_type conn)
   m_metadata.clear_connection(conn);
 }
 
-xrt::device::BufferObjectHandle
+device::buffer_object_handle
 device::
 alloc(memory* mem, memidx_type memidx)
 {
@@ -318,8 +266,7 @@ alloc(memory* mem, memidx_type memidx)
   if (is_aligned_ptr(host_ptr)) {
     aligned_flag = true;
     try {
-      auto boh = m_xdevice->alloc(sz,xrt::device::memoryDomain::XRT_DEVICE_RAM,memidx,host_ptr);
-      track(mem);
+      auto boh = m_xdevice->alloc(sz,xrt_xocl::device::memoryDomain::XRT_DEVICE_RAM,memidx,host_ptr);
       return boh;
     }
     catch (const std::bad_alloc&) {
@@ -330,7 +277,6 @@ alloc(memory* mem, memidx_type memidx)
   auto domain = get_mem_domain(mem);
 
   auto boh = m_xdevice->alloc(sz,domain,memidx,nullptr);
-  track(mem);
 
   // Handle unaligned user ptr or bad alloc host_ptr
   if (host_ptr) {
@@ -344,50 +290,13 @@ alloc(memory* mem, memidx_type memidx)
 
     m_xdevice->unmap(boh);
   }
-  return boh;
-}
-
-xrt::device::BufferObjectHandle
-device::
-alloc(memory* mem)
-{
-  auto host_ptr = mem->get_host_ptr();
-  auto sz = mem->get_size();
-  bool aligned_flag = false;
-
-  if (is_aligned_ptr(host_ptr)) {
-    aligned_flag = true;
-    try {
-      auto boh = m_xdevice->alloc(sz,host_ptr);
-      track(mem);
-      return boh;
-    }
-    catch (const std::bad_alloc&) {
-      userptr_bad_alloc_message(host_ptr);
-    }
-  }
-
-  auto boh = m_xdevice->alloc(sz);
-  // Handle unaligned user ptr or bad alloc host_ptr
-  if (host_ptr) {
-    if (!aligned_flag)
-      unaligned_message(host_ptr);
-    mem->set_extra_sync();
-    auto bo_host_ptr = m_xdevice->map(boh);
-    // No need to copy data to a CL_MEM_WRITE_ONLY buffer
-    if (!(mem->get_flags() & CL_MEM_WRITE_ONLY))
-        memcpy(bo_host_ptr, host_ptr, sz);
-
-    m_xdevice->unmap(boh);
-  }
-  track(mem);
   return boh;
 }
 
 int
 device::
-get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs,
-           const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream, int32_t& conn)
+get_stream(xrt_xocl::device::stream_flags flags, xrt_xocl::device::stream_attrs attrs,
+           const cl_mem_ext_ptr_t* ext, xrt_xocl::device::stream_handle* stream, int32_t& conn)
 {
   uint64_t route = std::numeric_limits<uint64_t>::max();
   uint64_t flow = std::numeric_limits<uint64_t>::max();
@@ -444,7 +353,7 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs,
 
 int
 device::
-close_stream(xrt::device::stream_handle stream, int connidx)
+close_stream(xrt_xocl::device::stream_handle stream, int connidx)
 {
   assert(connidx!=-1);
   clear_connection(connidx);
@@ -453,55 +362,55 @@ close_stream(xrt::device::stream_handle stream, int connidx)
 
 ssize_t
 device::
-write_stream(xrt::device::stream_handle stream, const void* ptr, size_t size, xrt::device::stream_xfer_req* req)
+write_stream(xrt_xocl::device::stream_handle stream, const void* ptr, size_t size, xrt_xocl::device::stream_xfer_req* req)
 {
   return m_xdevice->writeStream(stream, ptr, size, req);
 }
 
 ssize_t
 device::
-read_stream(xrt::device::stream_handle stream, void* ptr, size_t size, xrt::device::stream_xfer_req* req)
+read_stream(xrt_xocl::device::stream_handle stream, void* ptr, size_t size, xrt_xocl::device::stream_xfer_req* req)
 {
   return m_xdevice->readStream(stream, ptr, size, req);
 }
 
-xrt::device::stream_buf
+xrt_xocl::device::stream_buf
 device::
-alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle)
+alloc_stream_buf(size_t size, xrt_xocl::device::stream_buf_handle* handle)
 {
   return m_xdevice->allocStreamBuf(size,handle);
 }
 
 int
 device::
-free_stream_buf(xrt::device::stream_buf_handle handle)
+free_stream_buf(xrt_xocl::device::stream_buf_handle handle)
 {
   return m_xdevice->freeStreamBuf(handle);
 }
 
 int
 device::
-poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout)
+poll_streams(xrt_xocl::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout)
 {
   return m_xdevice->pollStreams(comps, min,max,actual,timeout);
 }
 
 int
 device::
-poll_stream(xrt::device::stream_handle stream, xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout)
+poll_stream(xrt_xocl::device::stream_handle stream, xrt_xocl::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout)
 {
   return m_xdevice->pollStream(stream, comps, min,max,actual,timeout);
 }
 
 int
 device::
-set_stream_opt(xrt::device::stream_handle stream, int type, uint32_t val)
+set_stream_opt(xrt_xocl::device::stream_handle stream, int type, uint32_t val)
 {
   return m_xdevice->setStreamOpt(stream, type, val);
 }
 
 device::
-device(platform* pltf, xrt::device* xdevice)
+device(platform* pltf, xrt_xocl::device* xdevice)
   : m_uid(uid_count++), m_platform(pltf), m_xdevice(xdevice)
 {
   XOCL_DEBUG(std::cout,"xocl::device::device(",m_uid,")\n");
@@ -561,13 +470,6 @@ lock()
   if (!m_parent.get())
     m_xdevice->open();
   
-  // First time, but only hw devices need locking
-  if (!is_emulation_mode()) {
-    auto rv = m_xdevice->lockDevice();
-    if (rv.valid() && rv.get())
-      throw  xocl::error(CL_DEVICE_NOT_AVAILABLE,"could not lock device");
-  }
-
   // All good, return increment lock count
   return ++m_locks;
 }
@@ -581,13 +483,6 @@ unlock()
   if (!m_locks || --m_locks)
     return m_locks;
 
-  // Last locked was released, now unlock hw device if any
-  if (!is_emulation_mode()) {
-    auto rv = m_xdevice->unlockDevice();
-    if (rv.valid() && rv.get())
-      throw  xocl::error(CL_DEVICE_NOT_AVAILABLE,"could not unlock device");
-  }
-
   // sub-device should unlock the parent
   if (m_parent.get())
     m_parent->unlock();
@@ -599,41 +494,12 @@ unlock()
   return m_locks; // 0
 }
 
-xrt::device::BufferObjectHandle
-device::
-allocate_buffer_object(memory* mem)
-{
-  if (mem->get_flags() & CL_MEM_REGISTER_MAP)
-    return nullptr;
-
-  // sub buffer
-  if (auto parent = mem->get_sub_buffer_parent()) {
-    auto boh = parent->get_buffer_object(this);
-    auto offset = mem->get_sub_buffer_offset();
-    auto size = mem->get_size();
-    return m_xdevice->alloc(boh,size,offset);
-  }
-
-  // Else just allocated on any bank
-  XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in default bank\n");
-
-  try {
-    auto boh = alloc(mem);
-    default_allocation_message(this,mem,boh);
-    return boh;
-  }
-  catch (const std::bad_alloc&) {
-    default_bad_allocation_message(this,mem);
-    throw;
-  }
-}
-
-xrt::device::BufferObjectHandle
+device::buffer_object_handle
 device::
 allocate_buffer_object(memory* mem, memidx_type memidx)
 {
   if (memidx==-1)
-    return allocate_buffer_object(mem);
+    throw std::runtime_error("Unexpected error memidx == -1");
 
   if (mem->get_flags() & CL_MEM_REGISTER_MAP)
     throw std::runtime_error("Cannot allocate register map buffer on bank");
@@ -678,23 +544,23 @@ is_imported(const memory* mem) const
   return boh ? m_xdevice->is_imported(boh) : false;
 }
 
-xrt::device::BufferObjectHandle
+device::buffer_object_handle
 device::
-allocate_buffer_object(memory* mem, xrt::device::memoryDomain domain, uint64_t memoryIndex, void* user_ptr)
+allocate_buffer_object(memory* mem, xrt_xocl::device::memoryDomain domain, uint64_t memidx, void* user_ptr)
 {
-  return m_xdevice->alloc(mem->get_size(),domain,memoryIndex,user_ptr);
+  return m_xdevice->alloc(mem->get_size(),domain,memidx,user_ptr);
 }
 
 uint64_t
 device::
-get_boh_addr(const xrt::device::BufferObjectHandle& boh) const
+get_boh_addr(const buffer_object_handle& boh) const
 {
   return m_xdevice->getDeviceAddr(boh);
 }
 
 device::memidx_bitmask_type
 device::
-get_boh_memidx(const xrt::device::BufferObjectHandle& boh) const
+get_boh_memidx(const buffer_object_handle& boh) const
 {
   auto addr = get_boh_addr(boh);
   auto bset = m_metadata.mem_address_to_memidx(addr);
@@ -706,7 +572,7 @@ get_boh_memidx(const xrt::device::BufferObjectHandle& boh) const
 
 std::string
 device::
-get_boh_banktag(const xrt::device::BufferObjectHandle& boh) const
+get_boh_banktag(const buffer_object_handle& boh) const
 {
   auto addr = get_boh_addr(boh);
   auto memidx = m_metadata.mem_address_to_first_memidx(addr);
@@ -743,31 +609,31 @@ get_cu_memidx() const
   return m_cu_memidx;
 }
 
-xrt::device::BufferObjectHandle
+device::buffer_object_handle
 device::
-import_buffer_object(const device* src_device, const xrt::device::BufferObjectHandle& src_boh)
+import_buffer_object(const device* src_device, const buffer_object_handle& src_boh)
 {
-  // Consider moving to xrt::device
+  // Consider moving to xrt_xocl::device
 
   // Export from exporting device (src_device)
-  auto fd = src_device->get_xrt_device()->getMemObjectFd(src_boh);
+  auto fd = src_device->get_xdevice()->getMemObjectFd(src_boh);
 
   // Import into this device
   size_t size=0;
-  return get_xrt_device()->getBufferFromFd(fd,size,1);
+  return get_xdevice()->getBufferFromFd(fd,size,1);
 }
 
 void*
 device::
 map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, void* assert_result, bool nosync)
 {
-  xrt::device::BufferObjectHandle boh;
+  buffer_object_handle boh;
 
   // If buffer is resident it must be refreshed unless CL_MAP_INVALIDATE_REGION
   // is specified in which case host will discard current content
   if (!nosync && !(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this) && !buffer->no_host_memory()) {
     boh = buffer->get_buffer_object_or_error(this);
-    m_xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
+    m_xdevice->sync(boh,size,offset,xrt_xocl::hal::device::direction::DEVICE2HOST,false);
   }
 
   if (!boh)
@@ -833,7 +699,7 @@ unmap_buffer(memory* buffer, void* mapped_ptr)
     if (auto ubuf = static_cast<char*>(buffer->get_host_ptr()))
       m_xdevice->write(boh,ubuf+offset,size,offset,false);
     if (buffer->is_resident(this) && !buffer->no_host_memory())
-      m_xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
+      m_xdevice->sync(boh,size,offset,xrt_xocl::hal::device::direction::HOST2DEVICE,false);
   }
 }
 
@@ -849,18 +715,18 @@ migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
   if (flags & CL_MIGRATE_MEM_OBJECT_HOST) {
     buffer_resident_or_error(buffer,this);
     auto boh = buffer->get_buffer_object_or_error(this);
-    m_xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
+    m_xdevice->sync(boh,buffer->get_size(),0,xrt_xocl::hal::device::direction::DEVICE2HOST,false);
     sync_to_ubuf(buffer,0,buffer->get_size(),m_xdevice,boh);
     return;
   }
 
   // Host to device for kernel args and clEnqueueMigrateMemObjects
   // Get or create the buffer object on this device.
-  xrt::device::BufferObjectHandle boh = buffer->get_buffer_object(this);
+  buffer_object_handle boh = buffer->get_buffer_object(this);
 
   // Sync from host to device to make make buffer resident of this device
   sync_to_hbuf(buffer,0,buffer->get_size(),m_xdevice,boh);
-  m_xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
+  m_xdevice->sync(boh,buffer->get_size(), 0, xrt_xocl::hal::device::direction::HOST2DEVICE,false);
   // Now buffer is resident on this device and migrate is complete
   buffer->set_resident(this);
 }
@@ -880,7 +746,7 @@ write_buffer(memory* buffer, size_t offset, size_t size, const void* ptr)
   if (buffer->is_resident(this) && !buffer->no_host_memory())
     // Sync new written data to device at offset
     // HAL performs read/modify write if necesary
-    m_xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
+    m_xdevice->sync(boh,size,offset,xrt_xocl::hal::device::direction::HOST2DEVICE,false);
 }
 
 void
@@ -892,7 +758,7 @@ read_buffer(memory* buffer, size_t offset, size_t size, void* ptr)
   if (buffer->is_resident(this) && !buffer->no_host_memory())
     // Sync back from device at offset to buffer object
     // HAL performs skip/copy read if necesary
-    m_xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
+    m_xdevice->sync(boh,size,offset,xrt_xocl::hal::device::direction::DEVICE2HOST,false);
 
   // Read data from buffer object at offset
   m_xdevice->read(boh,ptr,size,offset,false);
@@ -917,7 +783,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
         m_xdevice->copy(dboh, sboh, sz, doff, soff);
         c->done();
       };
-      m_xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
+      m_xdevice->schedule(cb,xrt_xocl::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
       // Driver fills dst buffer same as migrate_buffer does, hence dst buffer
       // is resident after KDMA is done even if host does explicitly migrate.
       dst_buffer->set_resident(this);
@@ -934,7 +800,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
 
   // Copy via driver if p2p or device has kdma
   if (!is_sw_emulation() && (imported || get_num_cdmas())) {
-    auto cppkt = xrt::command_cast<ert_start_copybo_cmd*>(cmd);
+    auto cppkt = xrt_xocl::command_cast<ert_start_copybo_cmd*>(cmd);
     auto src_boh = src_buffer->get_buffer_object(this);
     auto dst_boh = dst_buffer->get_buffer_object(this);
     try {
@@ -970,7 +836,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
       }
     };
     XOCL_DEBUG(std::cout,"xocl::device::copy_buffer schedules host copy\n");
-    m_xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
+    m_xdevice->schedule(cb,xrt_xocl::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
     return;
   }
 
@@ -1041,7 +907,7 @@ rw_image(device* device,
          ,char* read_to,const char* write_from)
 {
   auto boh = image->get_buffer_object(device);
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
 
   size_t image_offset = image->get_image_data_offset()
     + image->get_image_bytes_per_pixel()*origin[0]
@@ -1093,7 +959,7 @@ write_image(memory* image,const size_t* origin,const size_t* region,size_t row_p
   // Sync newly writte data to device if image is resident
   if (image->is_resident(this) && !image->no_host_memory()) {
     auto boh = image->get_buffer_object_or_error(this);
-    get_xrt_device()->sync(boh, image->get_size(), 0,xrt::hal::device::direction::HOST2DEVICE,false);
+    get_xdevice()->sync(boh, image->get_size(), 0,xrt_xocl::hal::device::direction::HOST2DEVICE,false);
   }
 }
 
@@ -1104,7 +970,7 @@ read_image(memory* image,const size_t* origin,const size_t* region,size_t row_pi
   // Sync back from device if image is resident
   if (image->is_resident(this) && !image->no_host_memory()) {
     auto boh = image->get_buffer_object_or_error(this);
-    get_xrt_device()->sync(boh,image->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
+    get_xdevice()->sync(boh,image->get_size(),0,xrt_xocl::hal::device::direction::DEVICE2HOST,false);
   }
 
   // Now read from image into ptr
@@ -1117,7 +983,7 @@ read_register(memory* mem, size_t offset,void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
     throw xocl::error(CL_INVALID_OPERATION,"read_register requires mem object with CL_MEM_REGISTER_MAP");
-  get_xrt_device()->read_register(offset,ptr,size);
+  get_xdevice()->read_register(offset,ptr,size);
 }
 
 void
@@ -1126,7 +992,7 @@ write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
     throw xocl::error(CL_INVALID_OPERATION,"write_register requires mem object with CL_MEM_REGISTER_MAP");
-  get_xrt_device()->write_register(offset,ptr,size);
+  get_xdevice()->write_register(offset,ptr,size);
 }
 
 void
@@ -1164,7 +1030,7 @@ load_program(program* program)
   xocl::profile::reset(top);
 
   // programmming
-  if (xrt::config::get_xclbin_programing()) {
+  if (xrt_xocl::config::get_xclbin_programing()) {
     auto xbrv = m_xdevice->loadXclBin(top);
     if (xbrv.valid() && xbrv.get()){
       if(xbrv.get() == -EACCES)
@@ -1228,7 +1094,7 @@ bool
 device::
 acquire_context(const compute_unit* cu) const
 {
-  static bool shared = xrt::config::get_exclusive_cu_context() ? false : true;
+  static bool shared = xrt_xocl::config::get_exclusive_cu_context() ? false : true;
 
   std::lock_guard<std::mutex> lk(m_mutex);
   if (cu->m_context_type != compute_unit::context_type::none)
@@ -1263,7 +1129,7 @@ size_t
 device::
 get_num_cdmas() const
 {
-  return xrt::config::get_cdma() ? m_xdevice->get_cdma_count() : 0;
+  return xrt_xocl::config::get_cdma() ? m_xdevice->get_cdma_count() : 0;
 }
 
 xclbin

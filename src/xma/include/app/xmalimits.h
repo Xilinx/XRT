@@ -17,6 +17,7 @@
 #ifndef _XMA_LIMITS_H
 #define _XMA_LIMITS_H
 
+#define MAX_FRAME_W_H            0x4000 //16384; Max Frame wdith or height
 #define MAX_SCALER_OUTPUTS       8
 #define MAX_FILTER_OUTPUTS      MAX_SCALER_OUTPUTS
 #define MAX_PLUGIN_NAME         256

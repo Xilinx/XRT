@@ -20,8 +20,9 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_bo.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_bo.h"
-
+#include "core/include/experimental/xrt_aie.h"
 #include "bo.h"
+
 #include "device_int.h"
 #include "kernel_int.h"
 #include "core/common/device.h"
@@ -35,7 +36,7 @@
 #include <set>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 )
+# pragma warning( disable : 4244 4100)
 #endif
 
 namespace {
@@ -73,7 +74,7 @@ is_aligned_ptr(void* p)
 inline void
 send_exception_message(const char* msg)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+  xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
 }
 
 inline void
@@ -139,7 +140,7 @@ public:
   }
 
   xclBufferHandle
-  get_handle() const
+  get_xcl_handle() const
   {
     return handle;
   }
@@ -194,7 +195,7 @@ public:
     try {
       auto m2m = xrt_core::device_query<xrt_core::query::m2m>(get_device());
       if (xrt_core::query::m2m::to_bool(m2m)) {
-        device->copy_bo(get_handle(), src->get_handle(), sz, dst_offset, src_offset);
+        device->copy_bo(get_xcl_handle(), src->get_xcl_handle(), sz, dst_offset, src_offset);
         return;
       }
     }
@@ -204,12 +205,12 @@ public:
     // try copying with kdma
     try {
       xrt_core::kernel_int::copy_bo_with_kdma
-        (device, sz, get_handle(), dst_offset, src->get_handle(), src_offset);
+        (device, sz, get_xcl_handle(), dst_offset, src->get_xcl_handle(), src_offset);
       return;
     }
     catch (const std::exception& ex) {
       auto fmt = boost::format("Reverting to host copy of buffers (%s)") % ex.what();
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT",  fmt.str());
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",  fmt.str());
     }
 
     // revert to copying through host
@@ -242,6 +243,14 @@ public:
     // sync modified host buffer to device
     sync(XCL_BO_SYNC_BO_TO_DEVICE, sz, dst_offset);
   }
+
+#ifdef XRT_ENABLE_AIE
+  void
+  sync(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
+  {
+    device->sync_aie_bo(bo, port.c_str(), dir, sz, offset);
+  }
+#endif
 
   virtual void
   sync(xclBOSyncDirection dir, size_t sz, size_t offset)
@@ -383,17 +392,11 @@ class buffer_nodma : public bo_impl
 
 public:
   buffer_nodma(xclDeviceHandle dhdl, xclBufferHandle hbuf, xclBufferHandle dbuf, size_t sz)
-  try : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
+    : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
   {
 
     device = xrt_core::get_userpf_device(dhdl);
     handle = dbuf;
-  }
-  catch (const std::exception& ex) {
-    auto fmt = boost::format("Failed to allocate host memory buffer (%s), make sure host bank is enabled "
-                             "(see xbutil host_mem --enable ...)") % ex.what();
-    send_exception_message(fmt.str());
-    throw;
   }
 
   virtual void*
@@ -409,10 +412,10 @@ public:
   {
     if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
       // dst, src, size, dst_offset, src_offset
-      device->copy_bo(m_device_only.get_handle(), m_host_only.get_handle(), sz, offset, offset);
+      device->copy_bo(m_device_only.get_xcl_handle(), m_host_only.get_xcl_handle(), sz, offset, offset);
     else
       // dst, src, size, dst_offset, src_offset
-      device->copy_bo(m_host_only.get_handle(), m_device_only.get_handle(), sz, offset, offset);
+      device->copy_bo(m_host_only.get_xcl_handle(), m_device_only.get_xcl_handle(), sz, offset, offset);
   }
 };
 
@@ -536,10 +539,18 @@ alloc_hbuf(xclDeviceHandle dhdl, xrt_core::aligned_ptr_type&& hbuf, size_t sz, x
 static std::shared_ptr<xrt::bo_impl>
 alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 {
-  auto hbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
-  auto dbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
-  auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz);
-  return boh;
+  try {
+    auto hbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
+    auto dbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
+    auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz);
+    return boh;
+  }
+  catch (const std::exception& ex) {
+    auto fmt = boost::format("Failed to allocate host memory buffer (%s), make sure host bank is enabled "
+                             "(see xbutil host_mem --enable ...)") % ex.what();
+    send_exception_message(fmt.str());
+    throw;
+  }
 }
 
 static std::shared_ptr<xrt::bo_impl>
@@ -611,6 +622,26 @@ address(xrtBufferHandle handle)
   return boh->get_address();
 }
 
+void
+fill_copy_pkt(const xrt::bo& dst, const xrt::bo& src, size_t sz,
+              size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt)
+{
+#ifndef _WIN32
+  auto dst_boh = dst.get_handle();
+  auto src_boh = src.get_handle();
+  ert_fill_copybo_cmd(pkt, src_boh->get_xcl_handle(), dst_boh->get_xcl_handle(), src_offset, dst_offset, sz);
+#else
+  throw std::runtime_error("ert_fill_copybo_cmd not implemented on windows");
+#endif
+}
+
+bool
+is_imported(const xrt::bo& bo)
+{
+  auto boh = bo.get_handle();
+  return boh->is_imported();
+}
+
 }} // namespace bo, xrt_core
 
 
@@ -637,6 +668,11 @@ bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
 bo::
 bo(const bo& parent, size_t size, size_t offset)
   : handle(sub_buffer(parent.handle, size, offset))
+{}
+
+bo::
+bo(xrtBufferHandle xhdl)
+  : handle(get_boh(xhdl))
 {}
 
 size_t
@@ -696,6 +732,24 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 }
 
 } // xrt
+
+#ifdef XRT_ENABLE_AIE
+////////////////////////////////////////////////////////////////
+// xrt_aie_bo C++ API implmentations (xrt_aie.h)
+////////////////////////////////////////////////////////////////
+namespace xrt { namespace aie {
+
+void
+bo::
+sync(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
+{
+  auto handle = get_handle();
+
+  handle->sync(*this, port, dir, sz, offset);
+}
+
+}} // namespace aie, xrt
+#endif
 
 ////////////////////////////////////////////////////////////////
 // xrt_bo API implmentations (xrt_bo.h)

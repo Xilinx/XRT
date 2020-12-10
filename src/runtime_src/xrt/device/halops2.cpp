@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,7 +17,7 @@
 #include "halops2.h"
 #include "core/common/dlfcn.h"
 
-namespace xrt { namespace hal2 {
+namespace xrt_xocl { namespace hal2 {
 
 operations::
 operations(const std::string &fileName, void *fileHandle, unsigned int count)

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -353,13 +353,10 @@ action_ndrange_migrate(cl_event event, cl_kernel kernel)
   auto device = command_queue->get_device();
 
   // Calculate total size and grab first address & bank
-  // NOTE: argument must be: NOT a progvar, NOT write only, and NOT resident
+  // NOTE: argument must be: NOT write only, and NOT resident
   for (auto& arg : xocl::xocl(kernel)->get_argument_range()) {
     if (auto mem = arg->get_memory_object()) {
-      if (arg->is_progvar() && arg->get_address_qualifier()==CL_KERNEL_ARG_ADDRESS_GLOBAL)
-        // DO NOTHING: progvars are not transfered
-        continue;
-      else if (mem->is_resident(device))
+      if (mem->is_resident(device))
         continue;
       else if (!(mem->get_flags() & (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS))) {
         if (totalSize == 0) {
@@ -454,13 +451,13 @@ function_call_logger(const char* function, long long address)
   //This call here should occur just once per application run
   if (!s_load_xdp) {
     s_load_xdp = true;
-    if (xrt::config::get_profile()) {
-      xrt::hal::load_xdp();
+    if (xrt_xocl::config::get_profile()) {
+      xrt_xocl::hal::load_xdp();
     }
 #ifdef _WIN32
     // Application debug not supported on Windows
 #else
-    if (xrt::config::get_app_debug()) {
+    if (xrt_xocl::config::get_app_debug()) {
       xocl::appdebug::load_xdp_app_debug() ;
     }
 #endif

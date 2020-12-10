@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,7 +19,7 @@
 
 #include "xrt/util/error.h"
 
-namespace xrt {
+namespace xrt_xocl {
 
 /**
  * Event class providing an abstraction over different event implementations.
@@ -45,7 +45,7 @@ namespace xrt {
  *   };
  *
  *   myevent ev = ...;
- *   xrt::event ev(std::move(myevent));
+ *   xrt_xocl::event ev(std::move(myevent));
  *   int i = ev.get<int>();
  */
 class event
@@ -158,7 +158,7 @@ public:
   {
     value_holder<ValueType>* vt = value_cast<ValueType>();
     if (!vt)
-      throw xrt::error("invalid event cast");
+      throw xrt_xocl::error("invalid event cast");
     return vt->get();
   }
 };

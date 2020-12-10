@@ -27,12 +27,12 @@ namespace xdp {
   // This function gets called in a callback at the OpenCL layer.
   //  It could be either hardware or hardware emulation.  In either case,
   //  we call the same higher level function.
-  static void updateDeviceOpenCL(xrt::device* handle)
+  static void updateDeviceOpenCL(xrt_xocl::device* handle)
   {
     deviceOffloadPluginInstance.updateDevice(handle) ;
   }
 
-  static void flushDeviceOpenCL(xrt::device* handle)
+  static void flushDeviceOpenCL(xrt_xocl::device* handle)
   {
     deviceOffloadPluginInstance.flushDevice(handle) ;
   }
@@ -43,11 +43,11 @@ namespace xdp {
 extern "C"
 void updateDeviceOpenCL(void* handle)
 {
-  xdp::updateDeviceOpenCL(static_cast<xrt::device*>(handle)) ;
+  xdp::updateDeviceOpenCL(static_cast<xrt_xocl::device*>(handle)) ;
 }
 
 extern "C"
 void flushDeviceOpenCL(void* handle)
 {
-  xdp::flushDeviceOpenCL(static_cast<xrt::device*>(handle)) ;
+  xdp::flushDeviceOpenCL(static_cast<xrt_xocl::device*>(handle)) ;
 }

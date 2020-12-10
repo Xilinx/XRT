@@ -32,7 +32,7 @@ namespace xdp {
   {
   private:
     // I have to keep a shared pointer to the platform to make sure
-    //  no xrt::device objects are deleted before we read them at 
+    //  no xrt_xocl::device objects are deleted before we read them at 
     //  the end of execution.
     std::shared_ptr<xocl::platform> platform ; 
 

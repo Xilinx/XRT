@@ -28,15 +28,6 @@ endif()
 
 include (CMake/glibc.cmake)
 
-# Trick to get the Boost Version string and one version greater
-SET(Boost_MINOR_VERSION_ONEGREATER "${Boost_MINOR_VERSION}")
-MATH(EXPR Boost_MINOR_VERSION_ONEGREATER "1 + ${Boost_MINOR_VERSION}")
-SET(Boost_VER_STR "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}")
-SET(Boost_VER_STR_ONEGREATER "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION_ONEGREATER}")
-SET(XRT_BOOST_VER_STR "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION}")
-
-message("cpackLin XRT_BOOST_VER_STR=${XRT_BOOST_VER_STR}")
-
 SET(PACKAGE_KIND "TGZ")
 if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   execute_process(
@@ -93,7 +84,7 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
     SET(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_XRT_PACKAGE_DEPENDS})
   endif()
 
-elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora)")
+elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora|SUSE)")
   execute_process(
     COMMAND uname -m
     OUTPUT_VARIABLE CPACK_ARCH
@@ -121,7 +112,11 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora)")
   SET(CPACK_RPM_CONTAINER_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/container/prerm")
   SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/local" "/usr/src" "/opt" "/etc/OpenCL" "/etc/OpenCL/vendors" "/usr/lib" "/usr/lib/pkgconfig" "/usr/lib64/pkgconfig" "/lib" "/lib/firmware")
   SET(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}")
-  SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, redhat-lsb-core, dkms >= 2.5.0, python3 >= 3.6")
+  if (${LINUX_FLAVOR} MATCHES "^(SUSE)")
+    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, lsb-release, dkms >= 2.2.0, python3 >= 3.6")
+  else()
+    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, redhat-lsb-core, dkms >= 2.5.0, python3 >= 3.6")
+  endif()
 
   if (${XRT_DEV_COMPONENT} STREQUAL "xrt")
     # xrt is also development package

@@ -246,7 +246,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
     else if ((suffix.compare(XSABIN_FILE_SUFFIX) == 0) ||
              (suffix.compare(DSABIN_FILE_SUFFIX) == 0))
     {
-        std::ifstream in(file);
+        std::ifstream in(file, std::ios::binary);
         if (!in.is_open())
         {
             std::cout << "Can't open " << filename << std::endl;

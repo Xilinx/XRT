@@ -106,10 +106,13 @@
 #define NODE_INTC_CU_03 "ep_intc_cu_03"
 #define NODE_HOSTMEM_BANK0 "ep_c2h_data_00"
 #define NODE_PS_RESET_CTRL "ep_reset_ps_00"
+#define NODE_ICAP_CONTROLLER "ep_iprog_ctrl_00"
 
 #define PROP_HWICAP "axi_hwicap"
 #define PROP_PDI_CONFIG "pdi_config_mem"
 #define PROP_SHELL_KDMA "shell_utils_kdma"
+#define PROP_CMC_U2 "cmc_regmap_u2"
+#define PROP_CMC_DEFAULT "axi_bram_ctrl"
 
 #define RESNAME_GATEPLP		NODE_GATE_PLP
 #define RESNAME_PCIEMON		NODE_PCIE_MON

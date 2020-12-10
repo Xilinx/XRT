@@ -4,11 +4,6 @@ include_directories(
 
 if (NOT WIN32)
 include_directories(${DRM_INCLUDE_DIRS})
-else()
-set(Boost_USE_STATIC_LIBS     ON)
-set(Boost_USE_MULTITHREADED   ON)
-find_package(Boost REQUIRED COMPONENTS system filesystem )
-include_directories(${Boost_INCLUDE_DIRS})
 endif (NOT WIN32)
 
 file(GLOB XRT_CORE_COMMON_LIB_FILES
@@ -50,20 +45,24 @@ set_target_properties(xrt_coreutil PROPERTIES VERSION ${XRT_VERSION_STRING}
 message("bfl=${Boost_FILESYSTEM_LIBRARY}")
 
 target_link_libraries(xrt_coreutil
+  PRIVATE
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   )
 
 if (NOT WIN32)
-  target_link_libraries(xrt_coreutil uuid pthread dl)
+  # xrt_uuid.h depends on uuid
+  target_link_libraries(xrt_coreutil PRIVATE pthread dl PUBLIC uuid)
 endif()
 
 install(TARGETS xrt_coreutil
+  EXPORT xrt-targets
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
 install(TARGETS xrt_coreutil
+  EXPORT xrt-targets-dev
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )

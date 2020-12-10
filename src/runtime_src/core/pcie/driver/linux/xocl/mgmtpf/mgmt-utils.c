@@ -264,6 +264,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	 */
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
 		xocl_subdev_destroy_by_level(lro, XOCL_SUBDEV_LEVEL_URP);
+		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_UARTLITE);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_FLASH);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
@@ -287,6 +288,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_FLASH);
+		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_UARTLITE);
 	} else {
 		mgmt_warn(lro, "PCI Hot reset is not supported on this board.");
 	}

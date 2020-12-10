@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -143,7 +143,7 @@ template <typename F, typename ...Args>
 inline void
 set_event_action(xocl::event* event, F&& f, Args&&... args)
 {
-  if (xrt::config::get_profile())
+  if (xrt_xocl::config::get_profile())
     event->set_profile_action(f(std::forward<Args>(args)...));
 }
 

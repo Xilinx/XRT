@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,14 +24,14 @@
 #include <cstring>
 #include <list>
 
-using namespace xrt::test;
+using namespace xrt_xocl::test;
 
 namespace {
 
-static int transferSizeTest(xrt::hal2::device* hal, size_t alignment, unsigned maxSize)
+static int transferSizeTest(xrt_xocl::hal2::device* hal, size_t alignment, unsigned maxSize)
 {
-  xrt::test::AlignedAllocator<unsigned> buf1(alignment, maxSize);
-  xrt::test::AlignedAllocator<unsigned> buf2(alignment, maxSize);
+  xrt_xocl::test::AlignedAllocator<unsigned> buf1(alignment, maxSize);
+  xrt_xocl::test::AlignedAllocator<unsigned> buf2(alignment, maxSize);
 
   unsigned *writeBuffer = buf1.getBuffer();
   unsigned *readBuffer = buf2.getBuffer();
@@ -53,14 +53,14 @@ static int transferSizeTest(xrt::hal2::device* hal, size_t alignment, unsigned m
     }
     std::cout << "Size " << size << " B\n";
     uint64_t pos = hal->allocDeviceBuffer(size);
-    auto t1 = hal->addTaskM(&xrt::hal2::device::copyBufferHost2Device,xrt::hal::queue_type::write,pos, writeBuffer, size,0);
+    auto t1 = hal->addTaskM(&xrt_xocl::hal2::device::copyBufferHost2Device,xrt_xocl::hal::queue_type::write,pos, writeBuffer, size,0);
     std::memset(readBuffer, 0, size);
     if (t1.get() < 0) {
       std::cout << "FAILED TEST\n";
       std::cout << size << " B write failed\n";
       return 1;
     }
-    auto t2 = hal->addTaskM(&xrt::hal2::device::copyBufferDevice2Host,xrt::hal::queue_type::read,readBuffer, pos, size,0);
+    auto t2 = hal->addTaskM(&xrt_xocl::hal2::device::copyBufferDevice2Host,xrt_xocl::hal::queue_type::read,readBuffer, pos, size,0);
     if (t2.get() < 0) {
       std::cout << "FAILED TEST\n";
       std::cout << size << " B read failed\n";
@@ -78,7 +78,7 @@ static int transferSizeTest(xrt::hal2::device* hal, size_t alignment, unsigned m
   return 0;
 }
 
-static int transferBenchmarkTest(xrt::hal2::device* hal, size_t alignment, unsigned blockSize, unsigned count)
+static int transferBenchmarkTest(xrt_xocl::hal2::device* hal, size_t alignment, unsigned blockSize, unsigned count)
 {
   AlignedAllocator<unsigned> buf1(alignment, blockSize);
   AlignedAllocator<unsigned> buf2(alignment, blockSize);
@@ -98,7 +98,7 @@ static int transferBenchmarkTest(xrt::hal2::device* hal, size_t alignment, unsig
 
   std::cout << "Running benchmark tests...\nWriting/reading " << count << " blocks of " << blockSize / 1024 << " KB\n";
   for (int i = 0; i < count; i++) {
-    auto t1 = hal->addTaskM(&xrt::hal2::device::allocDeviceBuffer,xrt::hal::queue_type::misc,blockSize);
+    auto t1 = hal->addTaskM(&xrt_xocl::hal2::device::allocDeviceBuffer,xrt_xocl::hal::queue_type::misc,blockSize);
     uint64_t writeOffset = t1.get();
     //uint64_t writeOffset = hal->allocDeviceBuffer(blockSize);
     if (writeOffset == -1) {
@@ -108,7 +108,7 @@ static int transferBenchmarkTest(xrt::hal2::device* hal, size_t alignment, unsig
     }
     deviceHandleList.push_back(writeOffset);
 
-    auto t2 = hal->addTaskM(&xrt::hal2::device::copyBufferHost2Device,xrt::hal::queue_type::write,writeOffset,writeBuffer,blockSize,0);
+    auto t2 = hal->addTaskM(&xrt_xocl::hal2::device::copyBufferHost2Device,xrt_xocl::hal::queue_type::write,writeOffset,writeBuffer,blockSize,0);
     //size_t result = hal->copyBufferHost2Device(writeOffset, writeBuffer, blockSize,0);
     std::memset(readBuffer, 0, blockSize);
     ssize_t result = t2.get();
@@ -118,7 +118,7 @@ static int transferBenchmarkTest(xrt::hal2::device* hal, size_t alignment, unsig
       return 1;
     }
 
-    auto t3 = hal->addTaskM(&xrt::hal2::device::copyBufferDevice2Host,xrt::hal::queue_type::read,readBuffer, writeOffset, blockSize,0);
+    auto t3 = hal->addTaskM(&xrt_xocl::hal2::device::copyBufferDevice2Host,xrt_xocl::hal::queue_type::read,readBuffer, writeOffset, blockSize,0);
     //result = hal->copyBufferDevice2Host(readBuffer, writeOffset, blockSize,0);
     result = t3.get();
     if (result < 0) {
@@ -137,12 +137,12 @@ static int transferBenchmarkTest(xrt::hal2::device* hal, size_t alignment, unsig
   totalData = 0;
   Timer myclock;
 
-  std::vector<xrt::task::event<ssize_t>> events;
+  std::vector<xrt_xocl::task::event<ssize_t>> events;
 
   for (std::list<uint64_t>::const_iterator i = deviceHandleList.begin(), e = deviceHandleList.end(); i != e; ++i) {
     uint64_t writeOffset = *i;
-    events.push_back(hal->addTaskM(&xrt::hal2::device::copyBufferHost2Device,xrt::hal::queue_type::write,writeOffset, writeBuffer, blockSize,0));
-    events.push_back(hal->addTaskM(&xrt::hal2::device::copyBufferDevice2Host,xrt::hal::queue_type::read,readBuffer, writeOffset, blockSize,0));
+    events.push_back(hal->addTaskM(&xrt_xocl::hal2::device::copyBufferHost2Device,xrt_xocl::hal::queue_type::write,writeOffset, writeBuffer, blockSize,0));
+    events.push_back(hal->addTaskM(&xrt_xocl::hal2::device::copyBufferDevice2Host,xrt_xocl::hal::queue_type::read,readBuffer, writeOffset, blockSize,0));
     totalData += blockSize;
   }
 
@@ -176,10 +176,10 @@ BOOST_AUTO_TEST_SUITE ( test_hal2_bw_async )
 
 BOOST_AUTO_TEST_CASE( test_hal2_bw_async1 )
 {
-  auto devices = xrt::hal::loadDevices();
-  xrt::hal::device* pcie_device = 0;
+  auto devices = xrt_xocl::hal::loadDevices();
+  xrt_xocl::hal::device* pcie_device = 0;
   for (auto& device : devices) {
-    device->open("device.log",xrt::hal::verbosity_level::quiet);
+    device->open("device.log",xrt_xocl::hal::verbosity_level::quiet);
 
     device->printDeviceInfo(std::cout) << "\n";
     std::string libraryName = device->getDriverLibraryName();
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE( test_hal2_bw_async1 )
       pcie_device = device.get();
   }
 
-  xrt::hal2::device* hal2 = dynamic_cast<xrt::hal2::device*>(pcie_device);
+  xrt_xocl::hal2::device* hal2 = dynamic_cast<xrt_xocl::hal2::device*>(pcie_device);
   
   size_t alignment = 128;
   if (hal2) {

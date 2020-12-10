@@ -38,6 +38,7 @@
 #include "core/include/ert_fa.h"
 #include "core/include/xclbin.h"
 #include <algorithm>
+#include <array>
 #include <bitset>
 #include <condition_variable>
 #include <chrono>
@@ -256,7 +257,10 @@ public:
   static std::shared_ptr<ip_context>
   open(xrt_core::device* device, const xrt::uuid& xclbin_id, const ip_data* ip, unsigned int ipidx, access_mode am)
   {
-    static std::vector<std::weak_ptr<ip_context>> ips(128);
+    static std::mutex mutex;
+    static std::map<xrt_core::device*, std::array<std::weak_ptr<ip_context>, 128>> dev2ips;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto& ips = dev2ips[device];
     auto ipctx = ips[ipidx].lock();
     if (!ipctx) {
       ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id.get(), ip, ipidx, am));
@@ -1147,7 +1151,9 @@ public:
   const argument&
   get_arg(size_t argidx) const
   {
-    return args.at(argidx);
+    auto& arg = args.at(argidx);
+    arg.valid_or_error();
+    return arg;
   }
 };
 
@@ -1662,7 +1668,7 @@ xrtRunStart(xrtRunHandle rhdl)
 inline void
 send_exception_message(const char* msg)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+  xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
 }
 
 } // namespace

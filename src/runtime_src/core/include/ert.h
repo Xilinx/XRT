@@ -62,6 +62,8 @@
     ((struct ert_start_kernel_cmd *)(pkg))
 #define to_copybo_pkg(pkg) \
     ((struct ert_start_copybo_cmd *)(pkg))
+#define to_cfg_sk_pkg(pkg) \
+    ((struct ert_configure_sk_cmd *)(pkg))
 
 /**
  * struct ert_packet: ERT generic packet format
@@ -122,7 +124,10 @@ struct ert_start_kernel_cmd {
   };
 
   /* payload */
-  uint32_t cu_mask;          /* mandatory cu mask */
+  union {
+    uint32_t cu_mask;          /* mandatory cu mask */
+    int32_t return_code;      /* return code from soft kernel*/
+  };
   uint32_t data[1];          /* count-1 number of words */
 };
 
@@ -180,7 +185,7 @@ struct ert_start_copybo_cmd {
   uint32_t state:4;          /* [3-0], must be ERT_CMD_STATE_NEW */
   uint32_t unused:6;         /* [9-4] */
   uint32_t extra_cu_masks:2; /* [11-10], = 3 */
-  uint32_t count:11;         /* [22-12], = 15, exclude 'arg' */
+  uint32_t count:11;         /* [22-12], = 16, exclude 'arg' */
   uint32_t opcode:5;         /* [27-23], = ERT_START_COPYBO */
   uint32_t type:4;           /* [31-27], = ERT_DEFAULT */
   uint32_t cu_mask[4];       /* mandatory cu masks */
@@ -191,7 +196,8 @@ struct ert_start_copybo_cmd {
   uint32_t dst_addr_lo;      /* low 32 bit of dst addr */
   uint32_t dst_addr_hi;      /* high 32 bit of dst addr */
   uint32_t dst_bo_hdl;       /* dst bo handle, cleared by driver */
-  uint32_t size;             /* size in bytes */
+  uint32_t size;             /* size in bytes low 32 bit*/
+  uint32_t size_hi;          /* size in bytes high 32 bit*/
   void     *arg;             /* pointer to aux data for KDS */
 };
 
@@ -249,7 +255,9 @@ struct ert_configure_cmd {
   uint32_t rw_shared:1;
   uint32_t kds_30:1;
   uint32_t dmsg:1;
-  uint32_t unusedf:21;
+  uint32_t echo:1;
+  uint32_t intr:1;
+  uint32_t unusedf:19;
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */
@@ -363,6 +371,8 @@ enum ert_cmd_state {
   ERT_CMD_STATE_SUBMITTED = 7,
   ERT_CMD_STATE_TIMEOUT = 8,
   ERT_CMD_STATE_NORESPONSE = 9,
+  ERT_CMD_STATE_SKERROR = 10, //Check for error return code from Soft Kernel
+  ERT_CMD_STATE_SKCRASHED = 11, //Soft kernel has crashed
   ERT_CMD_STATE_MAX, // Always the last one
 };
 
@@ -641,7 +651,7 @@ ert_fill_copybo_cmd(struct ert_start_copybo_cmd *pkt, uint32_t src_bo,
 {
   pkt->state = ERT_CMD_STATE_NEW;
   pkt->extra_cu_masks = 3;
-  pkt->count = 15;
+  pkt->count = 16;
   pkt->opcode = ERT_START_COPYBO;
   pkt->type = ERT_DEFAULT;
   pkt->cu_mask[0] = 0;
@@ -655,6 +665,7 @@ ert_fill_copybo_cmd(struct ert_start_copybo_cmd *pkt, uint32_t src_bo,
   pkt->dst_addr_hi = (dst_offset >> 32) & 0xFFFFFFFF;
   pkt->dst_bo_hdl = dst_bo;
   pkt->size = size;
+  pkt->size_hi = 0; /* set to 0 explicitly */
   pkt->arg = 0;
 }
 static inline uint64_t

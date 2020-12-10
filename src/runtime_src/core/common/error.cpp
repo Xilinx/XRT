@@ -23,13 +23,13 @@ namespace xrt_core {
 void
 send_exception_message(const char* msg, const char* tag)
 {
-  message::send(message::severity_level::XRT_ERROR, tag, msg);
+  message::send(message::severity_level::error, tag, msg);
 }
 
 void
 send_exception_message(const std::string& msg, const char* tag)
 {
-  message::send(message::severity_level::XRT_ERROR, tag, msg);
+  message::send(message::severity_level::error, tag, msg);
 }
 
 } // xrt_core

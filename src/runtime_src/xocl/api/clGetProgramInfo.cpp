@@ -118,22 +118,6 @@ clGetProgramInfo(cl_program         program,
         buffer.as<char>() = str;
       }
       break;
-    case CL_PROGRAM_BUFFERS_XILINX:
-      //Xilinx Host Accessible Program Scope Globals vendor extension
-      //external progvar
-      //return semicolon separated list of host accessible program scope globals
-      {
-        std::string str;
-        for (auto& pvar : xocl(program)->get_progvar_names()) {
-            //demangle __xcl_gv prefix
-            std::string demangled = pvar.substr(9);
-            str.append(demangled).append(1,';');
-          }
-        if (!str.empty())
-          str.pop_back();
-        buffer.as<char>() = str;
-      }
-      break;
     default:
       throw xocl::error(CL_INVALID_VALUE,"clGetProgramInfo invalid param_name");
       break;

@@ -125,7 +125,7 @@ extern "C"
     }
     catch(const std::exception& ex)
     {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR,
+      xrt_core::message::send(xrt_core::message::severity_level::error,
 			      "XRT",
 			      ex.what()) ;
     }
@@ -140,7 +140,7 @@ extern "C"
     }
     catch(const std::exception& ex)
     {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR,
+      xrt_core::message::send(xrt_core::message::severity_level::error,
 			      "XRT",
 			      ex.what()) ;
     }
@@ -155,7 +155,7 @@ extern "C"
     }
     catch(const std::exception& ex)
     {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR,
+      xrt_core::message::send(xrt_core::message::severity_level::error,
 			      "XRT",
 			      ex.what()) ;
     }

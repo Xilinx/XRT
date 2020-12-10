@@ -1283,7 +1283,6 @@ check_p2p_config(const std::shared_ptr<pci_device>& dev, std::string &err)
     }
     else if (rbar != -1 && rbar > bar) {
       ret = P2P_CONFIG_REBOOT;
-      err = "Please WARM reboot to enable p2p now.";
     }
     else if (remap > 0 && remap != bar) {
       ret = P2P_CONFIG_ERROR;

@@ -112,8 +112,6 @@ typedef struct cl_mem_ext_ptr_t {
 #ifdef PMD_OCL
 # define CL_REGISTER_MAP CL_MEM_REGISTER_MAP
 #endif
-/* Delay device side buffer allocation for progvars */
-#define CL_MEM_PROGVAR                              (1 << 28)
 
 /* Additional cl_device_partition_property */
 #define CL_DEVICE_PARTITION_BY_CONNECTIVITY         (1 << 31)
@@ -459,9 +457,6 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
 #define XCL_MEM_TOPOLOGY                (1<<31)
 #define XCL_MEM_EXT_P2P_BUFFER          (1<<30)
 #define XCL_MEM_EXT_HOST_ONLY           (1<<29)
-//cl_program_info
-//accepted by the <flags> paramete of clGetProrgamInfo
-#define CL_PROGRAM_BUFFERS_XILINX       0x1180
 
 /**
  * clGetKernelInfo() - kernel information

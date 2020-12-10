@@ -83,6 +83,7 @@ struct drm_xocl_bo {
 	unsigned              dma_nsg;
 	unsigned              flags;
 	unsigned              mem_idx;
+	unsigned	      user_flags;
 };
 
 struct drm_xocl_unmgd {

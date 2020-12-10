@@ -13,6 +13,7 @@
 * License for the specific language governing permissions and limitations
 * under the License.
 */
+#include "cmdlineparser.h"
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <math.h>
@@ -20,11 +21,22 @@
 #include <xcl2.hpp>
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
+  if (argc < 2) {
     std::cout << "Usage: " << argv[0] << " <Platform Test Area Path>"
-              << std::endl;
+              << "<optional> -d device_id" << std::endl;
     return EXIT_FAILURE;
   }
+
+  // Command Line Parser
+  sda::utils::CmdLineParser parser;
+
+  // Switches
+  //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
+  parser.addSwitch("--device", "-d", "device id", "0");
+  parser.parse(argc, argv);
+
+  // Read settings
+  unsigned int dev_id = stoi(parser.value("device"));
 
   int NUM_KERNEL;
   std::string test_path = argv[1];
@@ -69,48 +81,44 @@ int main(int argc, char **argv) {
   // and will return the pointer to file buffer.
   auto fileBuf = xcl::read_binary_file(binaryFile);
   cl::Program::Binaries bins{{fileBuf.data(), fileBuf.size()}};
-  bool valid_device = false;
-  for (unsigned int i = 0; i < devices.size(); i++) {
-    auto device = devices[i];
-    // Creating Context and Command Queue for selected Device
-    OCL_CHECK(err,
-              context = cl::Context(device, nullptr, nullptr, nullptr, &err));
-    OCL_CHECK(err,
-              q = cl::CommandQueue(context, device,
-                                   CL_QUEUE_PROFILING_ENABLE |
-                                       CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
-                                   &err));
-    std::cout << "Trying to program device[" << i
-              << "]: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
-    cl::Program program(context, {device}, bins, nullptr, &err);
-    if (err != CL_SUCCESS) {
-      std::cout << "Failed to program device[" << i << "] with xclbin file!\n";
-    } else {
-      std::cout << "Device[" << i << "]: program successful!\n";
-      for (int i = 0; i < NUM_KERNEL; i++) {
-        std::string cu_id = std::to_string(i + 1);
-        std::string krnl_name_full =
-            krnl_name + ":{" + "slavebridge_" + cu_id + "}";
-
-        printf("Creating a kernel [%s] for CU(%d)\n", krnl_name_full.c_str(),
-               i + 1);
-
-        // Here Kernel object is created by specifying kernel name along with
-        // compute unit.
-        // For such case, this kernel object can only access the specific
-        // Compute unit
-
-        OCL_CHECK(err,
-                  krnls[i] = cl::Kernel(program, krnl_name_full.c_str(), &err));
-      }
-
-      valid_device = true;
-      break; // we break because we found a valid device
-    }
+  if (dev_id >= devices.size()) {
+    std::cout << "The device_id provided using -d flag is outside the range of "
+                 "available devices\n";
+    return EXIT_FAILURE;
   }
-  if (!valid_device) {
-    std::cout << "Failed to program any device found, exit!\n";
-    exit(EXIT_FAILURE);
+  auto device = devices[dev_id];
+  // Creating Context and Command Queue for selected Device
+  OCL_CHECK(err,
+            context = cl::Context(device, nullptr, nullptr, nullptr, &err));
+  OCL_CHECK(err,
+            q = cl::CommandQueue(context, device,
+                                 CL_QUEUE_PROFILING_ENABLE |
+                                     CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
+                                 &err));
+  std::cout << "Trying to program device[" << dev_id
+            << "]: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
+  cl::Program program(context, {device}, bins, nullptr, &err);
+  if (err != CL_SUCCESS) {
+    std::cout << "Failed to program device[" << dev_id
+              << "] with xclbin file!\n";
+  } else {
+    std::cout << "Device[" << dev_id << "]: program successful!\n";
+    for (int i = 0; i < NUM_KERNEL; i++) {
+      std::string cu_id = std::to_string(i + 1);
+      std::string krnl_name_full =
+          krnl_name + ":{" + "slavebridge_" + cu_id + "}";
+
+      printf("Creating a kernel [%s] for CU(%d)\n", krnl_name_full.c_str(),
+             i + 1);
+
+      // Here Kernel object is created by specifying kernel name along with
+      // compute unit.
+      // For such case, this kernel object can only access the specific
+      // Compute unit
+
+      OCL_CHECK(err,
+                krnls[i] = cl::Kernel(program, krnl_name_full.c_str(), &err));
+    }
   }
 
   double max_throughput = 0;
@@ -233,3 +241,4 @@ int main(int argc, char **argv) {
 
   return EXIT_SUCCESS;
 }
+
