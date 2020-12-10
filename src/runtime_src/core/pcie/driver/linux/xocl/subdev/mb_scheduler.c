@@ -2541,7 +2541,14 @@ exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
 			struct ert_start_kernel_cmd tmp_pkt;
 			xocl_memcpy_fromio((void*)&tmp_pkt.header, xert->cq_base + slot_addr, 2 * sizeof(u32));
 			cmd_state = tmp_pkt.state;
-			pkt->return_code = tmp_pkt.return_code;
+			/* Possible to upgrade XRT on host without changing zocl on PS */
+			if (cmd_state < ERT_CMD_STATE_COMPLETED) {
+				/* It is old shell */
+				cmd_state = ERT_CMD_STATE_COMPLETED;
+				pkt->return_code = -ENODATA;/* return code is missing */
+			} else {/* It is new shell like: xilinx-u30-gen3x4-base_1 */
+				pkt->return_code = tmp_pkt.return_code;
+			}
 		}
 	}
 	exec_mark_cmd_state(exec, xcmd,
