@@ -39,6 +39,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/mgmtpf/mgmt-core.c
   xocl/mgmtpf/mgmt-cw.c
   xocl/mgmtpf/mgmt-utils.c
+  xocl/mgmtpf/mgmt-bifurcation-reset.c
   xocl/mgmtpf/mgmt-ioctl.c
   xocl/mgmtpf/mgmt-sysfs.c
   xocl/mgmtpf/mgmt-core.h

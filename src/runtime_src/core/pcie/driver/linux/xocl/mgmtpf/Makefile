@@ -80,6 +80,7 @@ xclmgmt-y := \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
+	mgmt-bifurcation-reset.o \
 	mgmt-ioctl.o \
 	mgmt-sysfs.o
 
