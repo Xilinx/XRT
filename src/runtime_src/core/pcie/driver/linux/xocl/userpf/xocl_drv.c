@@ -351,18 +351,18 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
 
-	if (flag & XOCL_RESET_SHUTDOWN)
-		xocl_reset_notify(xdev->core.pdev, true);
-
-	if (flag & XOCL_RESET_NO)
-		goto failed_notify;
-
 	/* On powerpc, it does not have secondary level bus reset.
 	 * Instead, it uses fundemantal reset which does not allow mailbox polling
 	 * xrt_reset_syncup might have to be true on power pc.
 	 */
 
 	if (!xrt_reset_syncup) {
+		if (flag & XOCL_RESET_SHUTDOWN)
+			xocl_reset_notify(xdev->core.pdev, true);
+
+		if (flag & XOCL_RESET_NO)
+			return 0;
+
 		xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 			&ret, &resplen, NULL, NULL, 0);
 		/* userpf will back online till receiving mgmtpf notification */
@@ -372,6 +372,8 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
+
+	xocl_reset_notify(xdev->core.pdev, true);
 
 	/*
 	 * return value indicates how mgmtpf side handles hot reset request
