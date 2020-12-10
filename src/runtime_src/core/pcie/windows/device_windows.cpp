@@ -670,18 +670,18 @@ struct devinfo
     case key_type::board_name:
       return static_cast<query::board_name::result_type>(info.ShellName);
     case key_type::is_mfg:
-	{
-		auto shell = static_cast<query::board_name::result_type>(info.ShellName);
-		boost::to_upper(shell);
-		return (shell.find("GOLDEN") != std::string::npos) ? true : false;
-	}
-	case key_type::xmc_sc_presence:
-	{
-		//xmc is not present in golden image
-		auto shell = static_cast<query::board_name::result_type>(info.ShellName);
-		boost::to_upper(shell);
-		return (shell.find("GOLDEN") != std::string::npos) ? false : true;
-	}
+      {
+        auto shell = static_cast<query::board_name::result_type>(info.ShellName);
+        boost::to_upper(shell);
+        return (shell.find("GOLDEN") != std::string::npos) ? true : false;
+      }
+    case key_type::xmc_sc_presence:
+      {
+        //xmc is not present in golden image
+        auto shell = static_cast<query::board_name::result_type>(info.ShellName);
+        boost::to_upper(shell);
+        return (shell.find("GOLDEN") != std::string::npos) ? false : true;
+      }
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }

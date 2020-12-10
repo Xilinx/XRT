@@ -112,21 +112,20 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
 
   //Flashable partition running on FPGA
   std::vector<std::string> logic_uuids, interface_uuids;
-  // the vectors are being populated by empty strings when uuids are not available on windows
-  // this needs to be fixed when the concept of multiple uuids comes into play
-  // Workaround: if the uuid is empty, remove clear the vector
+  // the vectors are being populated by empty strings
+  // Fix: remove empty uuids
   try {
     logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
-	logic_uuids.erase(
-		std::remove_if(logic_uuids.begin(), logic_uuids.end(),
-						[](const std::string& s) { return s.empty(); }));
-    } catch (...) {}
+    logic_uuids.erase(
+      std::remove_if(logic_uuids.begin(), logic_uuids.end(),
+                      [](const std::string& s) { return s.empty(); }));
+  } catch (...) {}
   try {
     interface_uuids = xrt_core::device_query<xrt_core::query::interface_uuids>(device);
-	interface_uuids.erase(
-		std::remove_if(interface_uuids.begin(), interface_uuids.end(),
-			[](const std::string& s) { return s.empty(); }));
-    } catch (...) {}
+  interface_uuids.erase(
+  std::remove_if(interface_uuids.begin(), interface_uuids.end(),
+                  [](const std::string& s) { return s.empty(); }));
+  } catch (...) {}
   
   
   boost::property_tree::ptree pt_current_shell;
