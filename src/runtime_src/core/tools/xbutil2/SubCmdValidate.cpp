@@ -248,7 +248,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
   if(!logic_uuid.empty() && !boost::filesystem::exists(xclbinPath)) {
     //if bandwidth xclbin isn't present, skip the test
-    logger(_ptTest, "Details", "Verify xclbin not available. Skipping validation.");
+    logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
     _ptTest.put("status", "skipped");
     return;
   }
