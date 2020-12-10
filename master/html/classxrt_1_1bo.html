@@ -81,7 +81,8 @@ Public Types</h2></td></tr>
 <a class="el" href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1ddac50c88b7e991886fcc6a60e4ba12a375">flags::device_only</a> = XRT_BO_FLAGS_DEV_ONLY, 
 <a class="el" href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda58a6d9caf38ddb91ad23015bcfc97abd">flags::host_only</a> = XRT_BO_FLAGS_HOST_ONLY, 
 <br />
-&#160;&#160;<a class="el" href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda705bcf0e77bc8b6fc8e66cbf3c055e6c">flags::p2p</a> = XRT_BO_FLAGS_P2P
+&#160;&#160;<a class="el" href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda705bcf0e77bc8b6fc8e66cbf3c055e6c">flags::p2p</a> = XRT_BO_FLAGS_P2P, 
+<a class="el" href="classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda924ff83ff1e671bacfb07ff12b845703">flags::svm</a> = XRT_BO_FLAGS_SVM
 <br />
  }</td></tr>
 <tr class="separator:ad6a4bb086ce3b1023df8671c29a1d1dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -108,6 +109,10 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:ace5346587d9b1facd6a34ea160d26862"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a48d12a22e98eb9b355f32922c6b27402"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1bo.html">bo</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#a48d12a22e98eb9b355f32922c6b27402">operator=</a> (<a class="el" href="classxrt_1_1bo.html">bo</a> &amp;&amp;rhs)=default</td></tr>
 <tr class="separator:a48d12a22e98eb9b355f32922c6b27402"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a138b3bdb54f8b5190c61bf5b36963c30"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#a138b3bdb54f8b5190c61bf5b36963c30">operator==</a> (const <a class="el" href="classxrt_1_1bo.html">bo</a> &amp;rhs) const</td></tr>
+<tr class="separator:a138b3bdb54f8b5190c61bf5b36963c30"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae1d3edf6c9a7a60e4975f631a39809dd"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#ae1d3edf6c9a7a60e4975f631a39809dd">operator bool</a> () const</td></tr>
+<tr class="separator:ae1d3edf6c9a7a60e4975f631a39809dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af1606fb5b8e71a072ad1101516f66975"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#af1606fb5b8e71a072ad1101516f66975">size</a> () const</td></tr>
 <tr class="separator:af1606fb5b8e71a072ad1101516f66975"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2b1832f158dd96cf86fe6dd72c6be9fd"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html#a2b1832f158dd96cf86fe6dd72c6be9fd">address</a> () const</td></tr>
@@ -168,7 +173,9 @@ Public Member Functions</h2></td></tr>
 </td></tr>
 <tr><td class="fieldname"><a id="ad6a4bb086ce3b1023df8671c29a1d1dda58a6d9caf38ddb91ad23015bcfc97abd"></a>host_only&#160;</td><td class="fielddoc"><p>Create a BO with a host side buffer only </p>
 </td></tr>
-<tr><td class="fieldname"><a id="ad6a4bb086ce3b1023df8671c29a1d1dda705bcf0e77bc8b6fc8e66cbf3c055e6c"></a>p2p&#160;</td><td class="fielddoc"><p>Create a BO for peer-to-peer use</p>
+<tr><td class="fieldname"><a id="ad6a4bb086ce3b1023df8671c29a1d1dda705bcf0e77bc8b6fc8e66cbf3c055e6c"></a>p2p&#160;</td><td class="fielddoc"><p>Create a BO for peer-to-peer use </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ad6a4bb086ce3b1023df8671c29a1d1dda924ff83ff1e671bacfb07ff12b845703"></a>svm&#160;</td><td class="fielddoc"><p>Create a BO for SVM (supported on specific platforms only)</p>
 <p>The flags used by <a class="el" href="classxrt_1_1bo.html">xrt::bo</a> are compatible with XCL style flags as define in <code>xrt_mem.h</code> </p>
 </td></tr>
 </table>
@@ -735,6 +742,32 @@ template&lt;typename MapType &gt; </div>
 
 </div>
 </div>
+<a id="ae1d3edf6c9a7a60e4975f631a39809dd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae1d3edf6c9a7a60e4975f631a39809dd">&#9670;&nbsp;</a></span>operator bool()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">xrt::bo::operator bool </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">explicit</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>operator bool() - Check if bo handle is valid </p>
+
+</div>
+</div>
 <a id="a48d12a22e98eb9b355f32922c6b27402"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a48d12a22e98eb9b355f32922c6b27402">&#9670;&nbsp;</a></span>operator=()</h2>
 
@@ -759,6 +792,33 @@ template&lt;typename MapType &gt; </div>
 </table>
 </div><div class="memdoc">
 <p>operator= () - Move assignment </p>
+
+</div>
+</div>
+<a id="a138b3bdb54f8b5190c61bf5b36963c30"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a138b3bdb54f8b5190c61bf5b36963c30">&#9670;&nbsp;</a></span>operator==()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool xrt::bo::operator== </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="classxrt_1_1bo.html">bo</a> &amp;&#160;</td>
+          <td class="paramname"><em>rhs</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>operator== () - Compare operator </p>
 
 </div>
 </div>
