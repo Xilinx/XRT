@@ -20,6 +20,7 @@
 #define XCLMGMT_RESET_MAX_RETRY		10
 #define DUAL_FPGA_RESET_SLEEP		5
 
+#if !defined(__PPC64__)
 static void xclmgmt_reset_pci_pre(struct xclmgmt_dev *lro)
 {
 	struct pci_dev *pdev = lro->pci_dev;
@@ -209,6 +210,7 @@ static long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
 
 	return err;
 }
+#endif
 
 /*
  * For u30 with 2 FPGAs on one card, the POR pin for each FPGA are
@@ -228,7 +230,7 @@ long xclmgmt_hot_reset_bifurcation(struct xclmgmt_dev *lro,
 	long err = 0;
 
 #if defined(__PPC64__)
-	return -ENOTSUP;
+	return -ENOTSUPP;
 #else
 	err = xclmgmt_hot_reset_pre(buddy_lro, force);
 	if (err)
