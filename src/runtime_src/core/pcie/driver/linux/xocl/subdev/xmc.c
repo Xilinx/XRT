@@ -481,6 +481,7 @@ static bool scaling_condition_check(struct xocl_xmc *xmc);
 static const struct file_operations xmc_fops;
 static bool is_sc_fixed(struct xocl_xmc *xmc);
 static void clock_status_check(struct platform_device *pdev, bool *latched);
+static void xmc_get_serial_num(struct platform_device *pdev);
 static ssize_t xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer,
 	loff_t off, size_t count, int lp, int up);
 static ssize_t xmc_qsfp_write(struct xocl_xmc *xmc, int port, char *buffer,
@@ -3736,7 +3737,8 @@ static struct xocl_mb_funcs xmc_ops = {
 	.stop			= stop_xmc,
 	.get_data		= xmc_get_data,
 	.xmc_access             = xmc_access,
-	.clock_status			= clock_status_check,
+	.clock_status		= clock_status_check,
+	.get_serial_num		= xmc_get_serial_num,
 };
 
 static void xmc_unload_board_info(struct xocl_xmc *xmc)
@@ -4262,6 +4264,18 @@ static void clock_status_check(struct platform_device *pdev, bool *latched)
 	}
 }
 
+
+static void xmc_get_serial_num(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	mutex_lock(&xmc->mbx_lock);
+	xmc_load_board_info(xmc);
+	mutex_unlock(&xmc->mbx_lock);
+	if (strlen(xmc->serial_num))
+		memcpy(XDEV(xocl_get_xdev(pdev))->serial_num, xmc->serial_num,
+			SERIAL_NUM_LEN);
+}
+
 static bool xmc_has_dynamic_mac(uint32_t *bdinfo_raw, uint32_t bd_info_sz)
 {
 	size_t len;
@@ -4339,8 +4353,6 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc, false)))
 			return -EINVAL;
 
-		if (!xmc->mbx_offset)
-			return -ENODEV;
 		/* Load new info from HW. */
 		memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
 		xmc->mbx_pkt.hdr.op = XPO_BOARD_INFO;

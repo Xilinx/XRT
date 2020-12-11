@@ -126,17 +126,18 @@ done:
 }
 
 /* Wait Processor system goes into ready status */
-static void ps_wait(struct platform_device *pdev)
+static int ps_wait(struct platform_device *pdev)
 {
 	struct xocl_ps *ps;
 	u32 reg;
 	int retry = 0;
+	int ret = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	xocl_info(&pdev->dev, "Wait Processor System ready...");
 	ps = platform_get_drvdata(pdev);
 	if (!ps)
-		return;
+		return -ENODEV;
 
 	mutex_lock(&ps->ps_lock);
 	do {
@@ -144,9 +145,13 @@ static void ps_wait(struct platform_device *pdev)
 		msleep(WAIT_INTERVAL);
 	} while(retry++ < MAX_WAIT && !(reg & ERT_READY_MASK));
 
-	if (retry >= MAX_WAIT)
+	if (retry >= MAX_WAIT) {
 		xocl_err(&pdev->dev, "PS wait time out");
-	xocl_info(&pdev->dev, "Processor System ready in %d retries", retry);
+		ret = -ETIME;
+	} else {
+		xocl_info(&pdev->dev, "Processor System ready in %d retries",
+			retry);
+	}
 
 	/* set POR bits again after reset */
 	if (xocl_subdev_is_vsec(xdev)) {
@@ -156,6 +161,7 @@ static void ps_wait(struct platform_device *pdev)
 	}
 
 	mutex_unlock(&ps->ps_lock);
+	return ret;
 }
 
 static struct xocl_ps_funcs ps_ops = {

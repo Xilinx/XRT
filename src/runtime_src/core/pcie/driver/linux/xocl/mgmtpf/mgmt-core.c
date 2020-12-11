@@ -1323,6 +1323,20 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	xocl_pmc_enable_reset(lro);
 
+	/*
+	 * For u30 whose reset relies on SC, and the cmc is running on ps, we
+	 * need to wait for ps ready and read & save the S/N from SC.
+	 * ps ready may take ~1 min after powerup, this is not big deal for
+	 * machine code boot since when the driver get loaded, the ps may be
+	 * ready already. For driver reload after machine is up, since ps
+	 * doesn't reboot during host driver reload, no wait required here.
+	 *
+	 * Even if sc is reflashed after driver load, we don't expect the
+	 * S/N would change
+	 */
+	if (!xocl_ps_wait(lro))
+		xocl_xmc_get_serial_num(lro);
+
 	return 0;
 
 err_init_sysfs:

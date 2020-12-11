@@ -351,15 +351,17 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
 
-	if (flag & XOCL_RESET_NO)
-		goto failed_notify;
 	/* On powerpc, it does not have secondary level bus reset.
 	 * Instead, it uses fundemantal reset which does not allow mailbox polling
 	 * xrt_reset_syncup might have to be true on power pc.
 	 */
 
 	if (!xrt_reset_syncup) {
-		xocl_reset_notify(xdev->core.pdev, true);
+		if (flag & XOCL_RESET_SHUTDOWN)
+			xocl_reset_notify(xdev->core.pdev, true);
+
+		if (flag & XOCL_RESET_NO)
+			return 0;
 
 		xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 			&ret, &resplen, NULL, NULL, 0);
@@ -426,12 +428,59 @@ failed_notify:
 	return ret;
 }
 
+/*
+ * On u30, there are 2 FPGAs, due to the issue of
+ * https://jira.xilinx.com/browse/ALVEO-266
+ * reset either FPGA will cause the other one being reset too.
+ * A workaround is required to handle this case
+ */
+static int xocl_get_buddy_cb(struct device *dev, void *data)
+{
+	struct xocl_dev *src_xdev = *(struct xocl_dev **)(data);
+	struct xocl_dev *tgt_xdev;
+
+	/*
+	 * skip
+	 * 1.non xilinx device
+	 * 2.itself
+	 * 3.other devcies not being droven by same driver. using func id
+	 * may not handle u25 where there is another device on same card 
+	 */
+	if (!dev || to_pci_dev(dev)->vendor != 0x10ee ||
+	   	XOCL_DEV_ID(to_pci_dev(dev)) ==
+		XOCL_DEV_ID(src_xdev->core.pdev) ||
+		strcmp(dev->driver->name, "xocl")) 
+		return 0;
+
+	tgt_xdev = dev_get_drvdata(dev);
+	if (src_xdev && tgt_xdev && strcmp(src_xdev->core.serial_num, "") &&
+		strcmp(tgt_xdev->core.serial_num, "") &&
+		!strcmp(src_xdev->core.serial_num, tgt_xdev->core.serial_num)) {
+	       *(struct xocl_dev **)data = tgt_xdev;
+		xocl_xdev_info(src_xdev, "2nd FPGA found on same card: %x:%x:%x",
+			to_pci_dev(dev)->bus->number,
+			PCI_SLOT(to_pci_dev(dev)->devfn),
+			PCI_FUNC(to_pci_dev(dev)->devfn));
+       		return 1;
+	}
+	return 0;
+}
+
+/*
+ * mutex lock to prevent multile reset from happening simutaniously
+ * this is necessary for case where there are multiple FPGAs on same
+ * card, and reset one also triggers reset on others.
+ * to simplify, just don't allow reset to any multiple FPGAs happen 
+ */
+static DEFINE_MUTEX(xocl_reset_mutex);
+
 /* pci driver callbacks */
 static void xocl_work_cb(struct work_struct *work)
 {
 	struct xocl_work *_work = (struct xocl_work *)to_delayed_work(work);
 	struct xocl_dev *xdev = container_of(_work,
 			struct xocl_dev, core.works[_work->op]);
+	struct xocl_dev *buddy_xdev = xdev;
 
 	if (XDEV(xdev)->shutdown && _work->op != XOCL_WORK_ONLINE) {
 		xocl_xdev_info(xdev, "device is shutdown please hotplug");
@@ -440,7 +489,19 @@ static void xocl_work_cb(struct work_struct *work)
 
 	switch (_work->op) {
 	case XOCL_WORK_RESET:
-		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE);
+		/*
+		 * if 2nd FPGA is found, buddy_xdev is set as xdev of the other
+		 * one, otherwise, it is set as null
+		 */
+		mutex_lock(&xocl_reset_mutex);
+		if (!xocl_get_buddy_fpga(&buddy_xdev, xocl_get_buddy_cb))
+			buddy_xdev = NULL;
+		if (buddy_xdev)
+			(void) xocl_hot_reset(buddy_xdev, XOCL_RESET_FORCE |
+				XOCL_RESET_SHUTDOWN | XOCL_RESET_NO);
+		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE |
+			       	XOCL_RESET_SHUTDOWN);
+		mutex_unlock(&xocl_reset_mutex);
 		break;
 	case XOCL_WORK_SHUTDOWN_WITH_RESET:
 		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE |
@@ -450,9 +511,8 @@ static void xocl_work_cb(struct work_struct *work)
 		break;
 	case XOCL_WORK_SHUTDOWN_WITHOUT_RESET:
 		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE |
-			XOCL_RESET_SHUTDOWN | XOCL_RESET_NO);
-		/* mark device offline. Only hotplug is allowed. */
-		XDEV(xdev)->shutdown = true;
+			XOCL_RESET_NO);
+		/* Only kill applitions running on FPGA. */
 		break;
 	case XOCL_WORK_ONLINE:
 		xocl_reset_notify(xdev->core.pdev, false);
@@ -510,6 +570,12 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	(void) xocl_mailbox_set(xdev, CHAN_STATE, resp->conn_flags);
 	(void) xocl_mailbox_set(xdev, CHAN_SWITCH, resp->chan_switch);
 	(void) xocl_mailbox_set(xdev, COMM_ID, (u64)(uintptr_t)resp->comm_id);
+
+	/*
+	 * we assume the FPGA is in good state and we can get & save S/N
+	 * do it here in case we can't do it when we want to reset for u30
+	 */
+	xocl_xmc_get_serial_num(xdev);
 
 	userpf_info(xdev, "ch_state 0x%llx, ret %d\n", resp->conn_flags, ret);
 

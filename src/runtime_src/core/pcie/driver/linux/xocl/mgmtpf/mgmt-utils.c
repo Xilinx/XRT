@@ -183,7 +183,7 @@ static int xocl_match_slot_and_wait(struct device *dev, void *data)
 	return ret;
 }
 
-static int xocl_wait_master_off(struct xclmgmt_dev *lro)
+int xocl_wait_master_off(struct xclmgmt_dev *lro)
 {
 	return bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_wait);
 }
@@ -219,9 +219,47 @@ static int xocl_match_slot_set_master(struct device *dev, void *data)
 	return ret;
 }
 
-static int xocl_set_master_on(struct xclmgmt_dev *lro)
+int xocl_set_master_on(struct xclmgmt_dev *lro)
 {
 	return bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_set_master);
+}
+
+/*
+ * On u30, there are 2 FPGAs, due to the issue of
+ * https://jira.xilinx.com/browse/ALVEO-266
+ * reset either FPGA will cause the other one being reset too.
+ * A workaround is required to handle this case
+ */
+static int xclmgmt_get_buddy_cb(struct device *dev, void *data)
+{
+	struct xclmgmt_dev *src_xdev = *(struct xclmgmt_dev **)(data);
+	struct xclmgmt_dev *tgt_xdev;
+
+	/*
+	 * skip
+	 * 1.non xilinx device
+	 * 2.itself
+	 * 3.other devcies not being droven by same driver. using func id
+	 * may not handle u25 where there is another device on same card 
+	 */
+	if (!dev || to_pci_dev(dev)->vendor != 0x10ee ||
+	   	XOCL_DEV_ID(to_pci_dev(dev)) ==
+		XOCL_DEV_ID(src_xdev->core.pdev) ||
+		strcmp(dev->driver->name, "xclmgmt")) 
+		return 0;
+
+	tgt_xdev = dev_get_drvdata(dev);
+	if (src_xdev && tgt_xdev && strcmp(src_xdev->core.serial_num, "") &&
+		strcmp(tgt_xdev->core.serial_num, "") &&
+		!strcmp(src_xdev->core.serial_num, tgt_xdev->core.serial_num)) {
+	       *(struct xclmgmt_dev **)data = tgt_xdev;
+		mgmt_info(src_xdev, "2nd FPGA found on same card: %x:%x.%x",
+			to_pci_dev(dev)->bus->number,
+			PCI_SLOT(to_pci_dev(dev)->devfn),
+			PCI_FUNC(to_pci_dev(dev)->devfn));
+       		return 1;
+	}
+	return 0;
 }
 
 /**
@@ -236,6 +274,16 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	struct pci_dev *pdev = lro->pci_dev;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	int retry = 0;
+	struct xclmgmt_dev *buddy_lro = lro;
+
+	/*
+	 * if 2nd FPGA is found, buddy_lro is set as lro of the other
+	 * one, otherwise, it is set as null
+	 */
+	if (!xocl_get_buddy_fpga(&buddy_lro, xclmgmt_get_buddy_cb))
+		buddy_lro = NULL;
+	if (buddy_lro)
+		return xclmgmt_hot_reset_bifurcation(lro, buddy_lro, force);
 
 	if (!pdev->bus || !pdev->bus->self) {
 		mgmt_err(lro, "Unable to identify device root port for card %d",
@@ -355,7 +403,7 @@ static int xocl_match_slot_and_save(struct device *dev, void *data)
 	return 0;
 }
 
-static void xocl_pci_save_config_all(struct xclmgmt_dev *lro)
+void xocl_pci_save_config_all(struct xclmgmt_dev *lro)
 {
 	bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_save);
 }
@@ -414,7 +462,7 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 	return 0;
 }
 
-static void xocl_pci_restore_config_all(struct xclmgmt_dev *lro)
+void xocl_pci_restore_config_all(struct xclmgmt_dev *lro)
 {
 	bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_restore);
 }
