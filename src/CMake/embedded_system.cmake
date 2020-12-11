@@ -40,9 +40,8 @@ set(LINUX_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
 
 find_package(Boost REQUIRED COMPONENTS system filesystem )
 
-if(Boost_VERSION_STRING VERSION_LESS 1.64.0)
-  add_definitions (-DBOOST_PRE_1_64=1)
-endif()
+# Boost_VERSION_STRING is not working properly, use our own macro
+set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})
 
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
