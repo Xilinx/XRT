@@ -616,16 +616,16 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 		if (kds_echo) {
 			ecmd->completed = true;
 		} else {
-			if (cmd_opcode(ecmd) == OP_CONFIG) {
-				xocl_memcpy_toio(ert_user->cq_base + slot_addr + 4,
-					  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
-			} else {
+			if (cmd_opcode(ecmd) == OP_START) {
 				// write kds selected cu_idx in first cumask (first word after header)
 				iowrite32(ecmd->xcmd->cu_idx, ert_user->cq_base + slot_addr + 4);
 
 				// write remaining packet (past header and cuidx)
 				xocl_memcpy_toio(ert_user->cq_base + slot_addr + 8,
 						 ecmd->xcmd->execbuf+2, (epkt->count-1)*sizeof(u32));
+			} else {
+				xocl_memcpy_toio(ert_user->cq_base + slot_addr + 4,
+					  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
 			}
 
 			iowrite32(epkt->header, ert_user->cq_base + slot_addr);

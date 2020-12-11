@@ -156,10 +156,13 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 		return -EINVAL;
 	}
 
-	if (ecmd->opcode == ERT_SK_START)
+	if (ecmd->opcode == ERT_SK_START) {
 		xcmd->opcode = OP_START_SK;
-	else
+		ecmd->type = ERT_SCU;
+	} else {
 		xcmd->opcode = OP_CONFIG_SK;
+		ecmd->type = ERT_CTRL;
+	}
 
 	xcmd->execbuf = (u32 *)ecmd;
 

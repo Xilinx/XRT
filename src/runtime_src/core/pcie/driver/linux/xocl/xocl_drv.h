@@ -2037,7 +2037,7 @@ static inline int xocl_kds_fini_ert(xdev_handle_t xdev)
 
 /* context helpers */
 extern struct mutex xocl_drvinst_mutex;
-extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
+extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 64];
 
 void *xocl_drvinst_alloc(struct device *dev, u32 size);
 void xocl_drvinst_release(void *data, void **hdl);

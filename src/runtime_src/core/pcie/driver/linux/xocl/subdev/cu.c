@@ -167,10 +167,13 @@ static int cu_probe(struct platform_device *pdev)
 	struct kernel_info *krnl_info;
 	struct xrt_cu_arg *args = NULL;
 	int err = 0;
-	void *hdl;
 	int i;
 
-	xcu = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_cu));
+	/* Not using xocl_drvinst_alloc here. Because it would quickly run out
+	 * of memory when there are a lot of cards. Since user cannot open CU
+	 * subdevice, the normal way to allocate device is good enough.
+	 */
+	xcu = devm_kzalloc(&pdev->dev, sizeof(*xcu), GFP_KERNEL);
 	if (!xcu)
 		return -ENOMEM;
 
@@ -304,8 +307,6 @@ err1:
 	vfree(res);
 err:
 	vfree(args);
-	xocl_drvinst_release(xcu, &hdl);
-	xocl_drvinst_free(hdl);
 	return err;
 }
 
@@ -315,7 +316,6 @@ static int cu_remove(struct platform_device *pdev)
 	struct xrt_cu_info *info;
 	struct xocl_cu *xcu;
 	int err;
-	void *hdl;
 
 	xcu = platform_get_drvdata(pdev);
 	if (!xcu)
@@ -351,10 +351,7 @@ static int cu_remove(struct platform_device *pdev)
 	if (info->args)
 		vfree(info->args);
 
-	xocl_drvinst_release(xcu, &hdl);
-
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(hdl);
 
 	return 0;
 }
