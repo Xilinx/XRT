@@ -989,9 +989,11 @@ static void xocl_cma_mem_free(struct xocl_dev *xdev, uint32_t idx)
 		cma_mem->sgt = NULL;
 	}
 
-	if (cma_mem->vaddr) {
-		dma_free_coherent(&xdev->core.pdev->dev, cma_mem->size, cma_mem->vaddr, cma_mem->paddr);
-		cma_mem->vaddr = NULL;
+	if (cma_mem->regular_page) {
+		dma_unmap_page(&xdev->core.pdev->dev, cma_mem->paddr,
+			cma_mem->size, PCI_DMA_BIDIRECTIONAL);
+		__free_pages(cma_mem->regular_page, get_order(cma_mem->size));
+		cma_mem->regular_page = NULL;
 	} else if (cma_mem->pages) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
 		release_pages(cma_mem->pages, cma_mem->size >> PAGE_SHIFT);
@@ -1193,8 +1195,7 @@ done:
 	return ret;
 }
 
-static struct page **xocl_virt_addr_get_pages(void *vaddr, int npages)
-
+static struct page **xocl_phy_addr_get_pages(dma_addr_t dma_addr, int npages)
 {
 	struct page *p, **pages;
 	int i;
@@ -1205,7 +1206,7 @@ static struct page **xocl_virt_addr_get_pages(void *vaddr, int npages)
 		return ERR_PTR(-ENOMEM);
 
 	for (i = 0; i < npages; i++) {
-		p = virt_to_page(vaddr + offset);
+		p = pfn_to_page(PHYS_PFN(dma_addr + offset));
 		pages[i] = p;
 		if (IS_ERR(p))
 			goto fail;
@@ -1220,37 +1221,46 @@ fail:
 
 static int xocl_cma_mem_alloc_by_idx(struct xocl_dev *xdev, uint64_t size, uint32_t idx)
 {
-	int ret = 0;
-	uint64_t page_count;
+	struct device *dev = &xdev->core.pdev->dev;
 	struct xocl_cma_memory *cma_mem = &xdev->cma_bank->cma_mem[idx];
-	struct page **pages = NULL;
+	int order = get_order(size);
+	struct page *page;
 	dma_addr_t dma_addr;
+	int node = dev_to_node(dev);
 
-	page_count = (size) >> PAGE_SHIFT;
+	page = alloc_pages_node(node, GFP_HIGHUSER, order);
+	if (unlikely(!page))
+		DRM_ERROR("Unable to alloc numa pages, %d", order);
+	if (!page)
+		page = alloc_pages(GFP_HIGHUSER, order);
 
-	cma_mem->vaddr = dma_alloc_coherent(&xdev->core.pdev->dev, size, &dma_addr, GFP_KERNEL);
-
-	if (!cma_mem->vaddr) {
-		DRM_ERROR("Unable to alloc %llx bytes CMA buffer", size);
-		ret = -ENOMEM;
-		goto done;
+	if (unlikely(!page)) {
+		DRM_ERROR("Unable to alloc pages, %d", order);
+		return -ENOMEM;
 	}
 
-	pages = xocl_virt_addr_get_pages(cma_mem->vaddr, size >> PAGE_SHIFT);
-	if (IS_ERR(pages)) {
-		ret = PTR_ERR(pages);
-		goto done;
+	dma_addr = dma_map_page(dev, page, 0, size,
+		PCI_DMA_BIDIRECTIONAL);
+	if (unlikely(dma_mapping_error(dev, dma_addr))) {
+		DRM_ERROR("Unable to dma map pages");
+		__free_pages(page, order);
+		return -EFAULT;
 	}
 
-	cma_mem->pages = pages;
+	cma_mem->pages = xocl_phy_addr_get_pages(dma_addr,
+		roundup(PAGE_SIZE, size));
+
+	if (!cma_mem->pages) {
+		dma_unmap_page(dev, dma_addr, size, PCI_DMA_BIDIRECTIONAL);
+		__free_pages(page, order);
+		return -ENOMEM;
+	}
+
+	cma_mem->regular_page = page;
 	cma_mem->paddr = dma_addr;
 	cma_mem->size = size;
 
-done:
-	if (ret)
-		xocl_cma_mem_free(xdev, idx);
-
-	return ret;
+	return 0;
 }
 
 static void __xocl_cma_bank_free(struct xocl_dev *xdev)
