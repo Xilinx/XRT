@@ -252,8 +252,16 @@ write(const command_type& cmd)
          << ") global_id(" << m_cu_global_id[0] << "," << m_cu_global_id[1] << "," << m_cu_global_id[2]
          << ") group_id(" << m_cu_group_id[0] << "," << m_cu_group_id[1] << "," << m_cu_group_id[2]
          << ")\n";
+    ostr << std::uppercase << std::setfill('0') << std::setw(3);
+    ostr << "pkt->header    = 0x"
+         << std::setw(8) << std::hex << packet[0] << std::dec << "\n";
+    for (size_t i=1; i<packet.size(); ++i)
+      ostr << "pkt->data[" << std::setw(3) << i-1 << "] = 0x"
+           << std::setw(8) << std::hex << packet[i] << std::dec << "\n";
+#if 0
     for (size_t i=0; i<packet.size(); ++i)
       ostr << "0x" << std::uppercase << std::setfill('0') << std::setw(8) << std::hex << packet[i] << std::dec << "\n";
+#endif
   }
 
   xrt_xocl::scheduler::schedule(cmd);

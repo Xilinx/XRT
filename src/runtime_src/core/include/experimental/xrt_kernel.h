@@ -310,11 +310,18 @@ class run
   }
 
 public:
+  /// @cond
   std::shared_ptr<run_impl>
   get_handle() const
   {
     return handle;
   }
+
+  // backdoor access to command packet
+  XCL_DRIVER_DLLESPEC
+  ert_packet*
+  get_ert_packet() const;
+  /// @endcond
 
 private:
   std::shared_ptr<run_impl> handle;
@@ -367,7 +374,13 @@ class kernel
    * @var exclusive
    *  CUs are owned exclusively by this process
    */
-  enum class cu_access_mode : bool { exclusive = false, shared = true };
+  enum class cu_access_mode : uint8_t { exclusive = 0, shared = 1, none = 2 };
+
+  /**
+   * kernel() - Construct for empty kernel
+   */
+  kernel()
+  {}
 
   /**
    * kernel() - Constructor from a device and xclbin

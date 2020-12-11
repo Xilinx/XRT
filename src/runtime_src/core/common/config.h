@@ -39,4 +39,12 @@
 # define XRT_CORE_COMMON_EXPORT
 #endif
 
+#ifdef __GNUC__
+# define XRT_CORE_UNUSED __attribute__((unused))
+#endif
+
+#ifdef _WIN32
+# define XRT_CORE_UNUSED
+#endif
+
 #endif
