@@ -1090,6 +1090,16 @@ unload_program(const program* program)
   }
 }
 
+const compute_unit*
+device::
+get_compute_unit(unsigned int cuidx) const
+{
+  for (auto cu : m_computeunits)
+    if (cu->get_index() == cuidx)
+      return cu.get();
+  return nullptr;
+}
+
 bool
 device::
 acquire_context(const compute_unit* cu) const

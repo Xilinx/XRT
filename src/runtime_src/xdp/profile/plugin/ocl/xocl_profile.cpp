@@ -22,6 +22,7 @@
 #include "xdp/profile/profile_config.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xrt/device/hal.h"
+#include "core/common/api/kernel_int.h"
 #include "xclbin.h"
 #include <regex>
 #include <cctype>
@@ -29,33 +30,16 @@
 
 namespace xdp { namespace xoclp {
 
-// Number of CU masks in packet
-uint32_t
-get_num_cu_masks(uint32_t header)
+// Index of CU used to execute command. This is not necessarily the
+// proper CU since a command may have the option to execute on
+// multiple CUs and only scheduler knows which one was picked
+static unsigned int
+get_cu_index(const xrt::run& run)
 {
-  return ((1 + (header >> 10)) & 0x3);
-}
-
-// Index of bit set to one on a 32 bit mask
-uint32_t
-get_cu_index_mask(uint32_t cumask)
-{
-  uint32_t cu_idx = 0;
-  for (; (cumask & 0x1)==0; ++cu_idx, cumask >>= 1);
-  return cu_idx;
-}
-
-// Index of CU used to execute command
-unsigned int
-get_cu_index(const xrt_xocl::command* cmd)
-{
-  auto& packet = cmd->get_packet();
-  auto masks = get_num_cu_masks(packet[0]);
-
-  for (unsigned int i=0; i < masks; ++i) {
-    if (auto cumask = packet[i+1])
-      return get_cu_index_mask(cumask) + 32*i;
-  }
+  auto& cumask = xrt_core::kernel_int::get_cumask(run);
+  for (size_t bit = 0; bit < cumask.size(); ++bit)
+    if (cumask.test(bit))
+      return bit;
   return 0;
 }
 
@@ -63,7 +47,7 @@ get_cu_index(const xrt_xocl::command* cmd)
 // Compute unit profiling callbacks
 ////////////////////////////////////////////////////////////////
 
-void get_cu_start(const xrt_xocl::command* cmd, const xocl::execution_context* ctx)
+void get_cu_start(const xocl::execution_context* ctx, const xrt::run& run)
 {
   //auto packet = cmd->get_packet();
   auto kernel = ctx->get_kernel();
@@ -86,8 +70,8 @@ void get_cu_start(const xrt_xocl::command* cmd, const xocl::execution_context* c
   std::string xname = xclbin.project_name();
   std::string kname  = kernel->get_name();
 
-  unsigned int cuIndex = get_cu_index(cmd);
-  auto cu = ctx->get_compute_unit(cuIndex);
+  unsigned int cuIndex = get_cu_index(run);
+  auto cu = device->get_compute_unit(cuIndex);
   uint64_t objId = reinterpret_cast<uint64_t>(cu);
   uint64_t eventId = reinterpret_cast<uint64_t>(event);
   std::string cuName = (cu) ? cu->get_name() : kname;
@@ -100,7 +84,7 @@ void get_cu_start(const xrt_xocl::command* cmd, const xocl::execution_context* c
                           workGroupSize, localWorkDim, cuName);
 }
 
-void get_cu_done(const xrt_xocl::command* cmd, const xocl::execution_context* ctx)
+void get_cu_done(const xocl::execution_context* ctx, const xrt::run& run)
 {
   //auto packet = cmd->get_packet();
   auto kernel = ctx->get_kernel();
@@ -123,8 +107,8 @@ void get_cu_done(const xrt_xocl::command* cmd, const xocl::execution_context* ct
   std::string xname = xclbin.project_name();
   std::string kname  = kernel->get_name();
 
-  unsigned int cuIndex = get_cu_index(cmd);
-  auto cu = ctx->get_compute_unit(cuIndex);
+  unsigned int cuIndex = get_cu_index(run);
+  auto cu = device->get_compute_unit(cuIndex);
   uint64_t objId = reinterpret_cast<uint64_t>(cu);
   uint64_t eventId = reinterpret_cast<uint64_t>(event);
   std::string cuName = (cu) ? cu->get_name() : kname;

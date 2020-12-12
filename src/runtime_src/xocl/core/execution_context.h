@@ -22,6 +22,7 @@
 #include "xocl/core/compute_unit.h"
 
 #include "xrt/scheduler/command.h"
+#include "core/include/xclbin.h"
 #include <mutex>
 #include <array>
 #include <algorithm>
@@ -51,15 +52,9 @@ class event;
  */
 class execution_context
 {
-  struct start_kernel;
-
 public:
-  using command_type = std::shared_ptr<xrt_xocl::command>;
-  using packet_type = xrt_xocl::command::packet_type;
-  using regmap_type = packet_type;
-  using word_type = packet_type::word_type;
-
   using size = std::size_t;
+  using size1 = size;
   using size3 = std::array<size,3>;
 
 private:
@@ -87,17 +82,21 @@ private:
   // The device associated with this context
   device* m_device;
 
-  // Kernel state
-  using argument_vector_type = std::vector<std::unique_ptr<xocl::kernel::argument>>;
-  using argument_iterator_type = argument_vector_type::const_iterator;
-  argument_vector_type m_kernel_args;
+  // Number of compute units in the run object
+  size_t m_num_cus = 0;
 
-  bool m_dataflow = false;
+  // Control protocol
+  IP_CONTROL m_control = IP_CONTROL(0);
 
-  // The context maintains a list of kernel compute units represented
-  // by xcl::cu.  These cus (their base addresses) are used in the command
-  // that starts the mbs.
-  std::vector<const compute_unit*> m_cus;
+  // The kernel run object to be started and managed by this context
+  xrt::run m_run;
+
+  // For work-group reuse
+  std::vector<xrt::run> m_freeruns;
+
+  // For active runs, to keep a reference to cloned run objects
+  // while they are active
+  std::map<const void*, xrt::run> m_activeruns;
 
   // Number of active start_kernel commands in this context
   size_t m_active = 0;
@@ -108,66 +107,57 @@ private:
 
   std::mutex m_mutex;
 
-  /**
-   * Add the device's matching compute units
-   */
+  // Set global argument on xrt::run object
   void
-  add_compute_units(xocl::device* device);
+  set_global_arg_at_index(xrt::run&, size_t index, const xocl::memory* mem);
 
-  bool
-  write(const command_type& cmd);
-
+  // Set printf specific argument on xrt::run object
   void
-  encode_compute_units(packet_type& pkt);
+  set_rtinfo_printf(xrt::run&, const xocl::kernel::rtinfo::arg_range&, const xocl::memory*);
 
-  /**
-   * Control type, IP_CONTROL per xclbin ip_layout
-   */
-  uint32_t
-  cu_control_type() const;
+  // Set OpenCL specific runtime argument
+  void
+  set_rtinfo_arg1(xrt::run&, const xocl::kernel::rtinfo::arg_range&, size1);
 
-  /**
-   * Fill the Fast Adapter descriptor when 
-   * kernel control type is FAST_ADAPTER
-   */
-  size_t
-  fill_fa_desc(void* data);
+  // Set OpenCL specific runtime argument
+  void
+  set_rtinfo_arg3(xrt::run&, const xocl::kernel::rtinfo::arg_range&, size3);
 
-  /**
-   * Opcode for command object
-   */
-  ert_cmd_opcode
-  get_opcode() const;
+  // Set OpenCL specific runtime argument
+  void
+  set_rtinfo_args(xrt::run&);
 
-  /**
-   * Update workgroup accounting.
-   */
+  // Run object to use for starting work group
+  xrt::run
+  get_free_run();
+
+  // Mark a run as actice
+  void
+  mark_active(const xrt::run& run);
+
+  // Mark a run as inactive
+  xrt::run
+  mark_inactive(const void* key);
+
+  // Update workgroup accounting.
   void
   update_work();
 
+  // Start a workgroup
   void
   start();
 
-  /**
-   * Callback to indicate a start_kernel command is done.
-   *
-   * @return true if execution context is done, false otherwise.
-   *   A return value of true, implies that this context can no longer
-   *   be used.
-   */
-  bool
-  done(const xrt_xocl::command* cmd);
 
 public:
-  /**
-   * Construct the execution context
-   *
-   * This is called indirectly from clEnqueuNDRangeKernel via the
-   * cl_event::set_execution_context (api/event.cpp)
-   *
-   * The contructor creates objects of the embedded compute_unit
-   * class and adds these to the xrt infrastruture.
-   */
+  // Callback for completed kernel run execution
+  bool
+  done(const void*);
+
+public:
+  // Construct execution context
+  //
+  // This is called indirectly from clEnqueuNDRangeKernel via the
+  // cl_event::set_execution_context (api/event.cpp)
   execution_context(device* device
                     ,kernel* kd
                     ,event* event
@@ -176,24 +166,32 @@ public:
                     ,const size_t* global_work_size
                     ,const size_t* local_work_size);
 
+
+  ~execution_context();
+
+  // Unique id of this object
   unsigned long
   get_uid() const
   {
     return m_uid;
   }
 
+  //
   const size_t*
   get_global_work_size() const
   { return m_gsize.data(); }
 
+  //
   size_t
   get_global_work_size(unsigned int d) const
   { return m_gsize[d]; }
 
+  //
   const size_t*
   get_local_work_size() const
   { return m_lsize.data(); }
 
+  //
   size_t
   get_num_work_groups () const
   {
@@ -205,80 +203,37 @@ public:
     return num;
   }
 
-  xocl::range<argument_iterator_type>
-  get_indexed_argument_range() const
-  {
-    return m_kernel->get_indexed_argument_range();
-  }
-
-  /**
-   * Get the kernel for this context
-   *
-   * @return
-   *  Raw pointer to kernel object
-   */
+  // Kernel object associated with this context
   const kernel*
   get_kernel() const
   {
     return m_kernel.get();
   }
 
-  /**
-   * Get the kernel event associated with this context
-   *
-   * @return
-   *   The event associated with this execution_context
-   */
+  // Get the kernel event associated with this context
   const event*
   get_event() const
   {
     return m_event;
   }
 
-  /**
-   * Translate a cu index into a compute_unit object
-   *
-   * @param cu_idx
-   *   Index of cu
-   * @return
-   *   Pointer to compute unit object that maps to cu_idx, nullptr
-   *   if no mapping
-   */
-  XRT_XOCL_EXPORT
-  const compute_unit*
-  get_compute_unit(unsigned int cu_idx) const;
-
-  /**
-   * Start execution context.
-   *
-   * The context is started through event trigger action as
-   * soon as an event changes state to CL_SUBMITTED.
-   *
-   * The context creates scheduler commands and submits
-   * these commands to the command queue.
-   *
-   * @return
-   *    true if last work group was started, false otherwise
-   */
+  // Start execution context.
+  //
+  // The context is started through event trigger action as
+  // soon as an event changes state to CL_SUBMITTED.
   bool
   execute();
 };
 
-/**
- * Callback function type for kernel command callbacks
- */
-using command_callback_function_type = std::function<void(const xrt_xocl::command*,const execution_context*)>;
+// Callback function type for kernel command callbacks
+using command_callback_function_type = std::function<void(const execution_context*, const xrt::run&)>;
 
-/**
- * Register function to invoke when a kernel command is constructed
- */
+// Register function to invoke when a kernel command is constructed
 XRT_XOCL_EXPORT
 void
 add_command_start_callback(command_callback_function_type fcn);
 
-/**
- * Register function to invoke when a kernel command completes
- */
+// Register function to invoke when a kernel command completes
 XRT_XOCL_EXPORT
 void
 add_command_done_callback(command_callback_function_type fcn);

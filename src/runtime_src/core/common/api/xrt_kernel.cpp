@@ -20,6 +20,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_kernel.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_kernel.h"
+#include "kernel_int.h"
 
 #include "command.h"
 #include "exec.h"
@@ -48,7 +49,7 @@
 #include <memory>
 #include <mutex>
 #include <stdexcept>
-#include <sstream>
+#include <fstream>
 #include <type_traits>
 #include <utility>
 using namespace std::chrono_literals;
@@ -128,14 +129,19 @@ XRT_CORE_UNUSED // debug enabled function
 std::string
 debug_cmd_packet(const ert_packet* pkt)
 {
-  std::ostringstream ostr;
+  static auto fnm = std::getenv("MBS_PRINT_REGMAP");
+  if (!fnm)
+    return "";
+
+  std::ofstream ostr(fnm,std::ios::app);
+  //std::ostringstream ostr;
   ostr << std::uppercase << std::setfill('0') << std::setw(3);
   ostr << "pkt->header    = 0x"
        << std::setw(8) << std::hex << pkt->header << std::dec << "\n";
   for (size_t i = 0; i < pkt->count; ++i)
     ostr << "pkt->data[" << std::setw(3) << i << "] = 0x"
          << std::setw(8) << std::hex << pkt->data[i] << std::dec << "\n";
-  return ostr.str();
+  return fnm;
 }
 
 // Helper class for representing an in-memory kernel argument.  User
@@ -159,10 +165,19 @@ class arg_range
   const ValueType* uval;
   size_t words;
 
+  // Arguments must be 4 byte aligned, yet 'char b' arguments should
+  // be accepted from host code.  Need to round up to copy at least
+  // a single word
+  size_t
+  round_up(size_t bytes)
+  {
+    return bytes + sizeof(ValueType) - (bytes % sizeof(ValueType));
+  }
+
 public:
   arg_range(const void* value, size_t bytes)
     : uval(reinterpret_cast<const ValueType*>(value))
-    , words(bytes / sizeof(ValueType))
+    , words(round_up(bytes) / sizeof(ValueType))
   {}
 
   const ValueType*
@@ -536,16 +551,22 @@ public:
       if (!m_callbacks)
         m_callbacks = std::make_unique<callback_list>();
       m_callbacks->emplace_back(std::move(fcn));
-      complete = m_done;
       auto pkt = get_ert_packet();
       state = static_cast<ert_cmd_state>(pkt->state);
-      if (complete && state < ERT_CMD_STATE_COMPLETED)
-        throw std::runtime_error("Unexpected state");
+      complete = m_done && state >= ERT_CMD_STATE_COMPLETED;
     }
 
     // lock must not be helt while calling callback function
     if (complete)
       m_callbacks.get()->back()(state);
+  }
+
+  // Remove last added callback
+  void
+  pop_callback()
+  {
+    if (m_callbacks && m_callbacks->size())
+      m_callbacks->pop_back();
   }
 
   // set_event() - enqueued notifcation of event
@@ -779,12 +800,10 @@ private:
 
   struct global_type : iarg
   {
-    xrt_core::device* core_device;
     size_t size;   // size in bytes of argument per xclbin
 
-    global_type(xrt_core::device* dev, size_t bytes)
-      : core_device(dev)
-      , size(bytes)
+    global_type(size_t bytes)
+      : size(bytes)
     {}
 
     virtual std::vector<uint32_t>
@@ -841,7 +860,7 @@ public:
     : arg(std::move(rhs.arg)), content(std::move(rhs.content))
   {}
 
-  argument(xrt_core::device* dev, xarg&& karg)
+  argument(xarg&& karg)
     : arg(std::move(karg))
   {
     // Determine type
@@ -873,14 +892,22 @@ public:
       break;
     }
     case xarg::argtype::global :
-      content = std::make_unique<global_type>(dev, arg.size);
+    case xarg::argtype::constant :
+      content = std::make_unique<global_type>(arg.size);
       break;
-    case xarg::argtype::stream :
+    case xarg::argtype::local :  // local memory
+    case xarg::argtype::stream : // stream connection
       content = std::make_unique<null_type>();
       break;
     default:
       throw std::runtime_error("Unexpected error");
     }
+  }
+
+  const xarg&
+  get_xarg() const
+  {
+    return arg;
   }
 
   void
@@ -945,6 +972,10 @@ public:
   bool
   is_output() const
   { return arg.dir == direction::output; }
+
+  xarg::argtype
+  type() const
+  { return arg.type; }
 };
 
 } // namespace
@@ -1060,6 +1091,7 @@ class kernel_impl
     kcmd->count = num_cumasks + regmap_size;
     kcmd->opcode = (protocol == FAST_ADAPTER) ? ERT_START_FA : ERT_START_CU;
     kcmd->type = ERT_CU;
+    kcmd->state = ERT_CMD_STATE_NEW;
   }
 
   void
@@ -1132,7 +1164,7 @@ public:
     // compute regmap size, convert to typed argument
     for (auto& arg : xrt_core::xclbin::get_kernel_arguments(xml_section.first, xml_section.second, name)) {
       regmap_size = std::max(regmap_size, (arg.offset + arg.size) / 4);
-      args.emplace_back(device->get_core_device(), std::move(arg));
+      args.emplace_back(std::move(arg));
     }
 
     // amend args with computed data based on kernel protocol
@@ -1252,10 +1284,11 @@ public:
   }
 
   const argument&
-  get_arg(size_t argidx) const
+  get_arg(size_t argidx, bool nocheck=false) const
   {
     auto& arg = args.at(argidx);
-    arg.valid_or_error();
+    if (!nocheck)
+      arg.valid_or_error();
     return arg;
   }
 };
@@ -1322,6 +1355,13 @@ class run_impl
     }
   };
 
+  static uint32_t
+  create_uid()
+  {
+    static std::atomic<uint32_t> count {0};
+    return count++;
+  }
+
   std::unique_ptr<arg_setter>
   make_arg_setter()
   {
@@ -1358,6 +1398,20 @@ class run_impl
     ips.erase(itr,ips.end());
     encode_cumasks = true;
   }
+
+  // Clone the commmand packet of another run_impl
+  // Used when constructing a run_impl from another run_impl
+  // for concurrent execution
+  uint32_t*
+  clone_command_data(const run_impl* rhs)
+  {
+    auto pkt = cmd->get_ert_packet();
+    auto rhs_pkt = rhs->cmd->get_ert_packet();
+    pkt->header = rhs_pkt->header;
+    pkt->state = ERT_CMD_STATE_NEW;
+    std::copy_n(rhs_pkt->data, rhs_pkt->count, pkt->data);
+    return pkt->data + (rhs->data - rhs_pkt->data);
+  }
   
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
@@ -1366,14 +1420,27 @@ class run_impl
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
   uint32_t* data;                         // command argument data payload @0x0
+  uint32_t uid;                           // internal unique id for debug
   std::unique_ptr<arg_setter> arg_setter; // helper to populate payload data
   bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
 
 public:
+  uint32_t
+  get_uid() const
+  {
+    return uid;
+  }
+
   void
   add_callback(callback_function_type fcn)
   {
     cmd->add_callback(fcn);
+  }
+
+  void
+  pop_callback()
+  {
+    cmd->pop_callback();
   }
 
   // set_event() - enqueued notifcation of event
@@ -1410,8 +1477,31 @@ public:
     , core_device(kernel->get_core_device())      // cache core device
     , cmd(std::make_shared<kernel_command>(kernel->get_device()))
     , data(kernel->initialize_command(cmd.get())) // default encodes CUs
+    , uid(create_uid())
     , arg_setter(make_arg_setter())
-  {}
+  {
+    XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
+  }
+
+  // Clones a run impl, so that the clone can be executed concurrently
+  // with the clonee.
+  run_impl(const run_impl* rhs)
+    : kernel(rhs->kernel)
+    , ips(rhs->ips)
+    , cumask(rhs->cumask)
+    , core_device(rhs->core_device)
+    , cmd(std::make_shared<kernel_command>(kernel->get_device()))
+    , data(clone_command_data(rhs))
+    , uid(create_uid())
+    , arg_setter(make_arg_setter())
+  {
+    XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
+  }
+
+  ~run_impl()
+  {
+    XRT_DEBUGF("run_impl::~run_impl(%d)\n" , uid);
+  }
 
   kernel_impl*
   get_kernel() const
@@ -1424,6 +1514,12 @@ public:
   get_ert_cmd()
   {
     return cmd->get_ert_cmd<ERT_COMMAND_TYPE>();
+  }
+
+  const std::bitset<128>&
+  get_cumask() const
+  {
+    return cumask;
   }
 
   void
@@ -1500,7 +1596,7 @@ public:
     auto pkt = cmd->get_ert_packet();
     pkt->state = ERT_CMD_STATE_NEW;
 
-    //XRT_PRINTF("cmd packet:\n%s\n", debug_cmd_packet(pkt).c_str());
+    XRT_DEBUGF("command packet debug (see file (%s))\n", debug_cmd_packet(pkt).c_str());
     
     cmd->run();
   }
@@ -1872,6 +1968,54 @@ copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
 #endif
 }
 
+void    
+visit_args(const xrt::run& run, const arg_visitor& visit)
+{
+  auto kimpl = run.get_handle()->get_kernel();
+  size_t index = 0;
+  for (const auto& arg : kimpl->get_args())
+    visit(arg.get_xarg(), index++);
+}
+
+xrt_core::xclbin::kernel_argument::argtype
+arg_type_at_index(const xrt::kernel& kernel, size_t argidx)
+{
+  auto& arg = kernel.get_handle()->get_arg(argidx);
+  return arg.type();
+}
+
+void
+set_arg_at_index(const xrt::run& run, size_t idx, const void* value, size_t bytes)
+{
+  auto rimpl = run.get_handle();
+  auto& arg = rimpl->get_kernel()->get_arg(idx, true);
+  rimpl->set_arg_value(arg, value, bytes);
+}
+
+xrt::run
+clone(const xrt::run& run)
+{
+  return std::make_shared<xrt::run_impl>(run.get_handle().get());
+}
+
+const std::bitset<128>&
+get_cumask(const xrt::run& run)
+{
+  return run.get_handle()->get_cumask();
+}
+
+void
+pop_callback(const xrt::run& run)
+{
+  run.get_handle()->pop_callback();
+}
+    
+IP_CONTROL
+get_control_protocol(const xrt::run& run)
+{
+  return run.get_handle()->get_kernel()->get_ip_control_protocol();
+}
+
 }} // kernel_int, xrt_core
 
 
@@ -1939,12 +2083,19 @@ update_arg_at_index(int index, const xrt::bo& glb)
 void
 run::
 add_callback(ert_cmd_state state,
-             std::function<void(const run&, ert_cmd_state, void*)> fcn,
+             std::function<void(const void*, ert_cmd_state, void*)> fcn,
              void* data)
 {
+  XRT_DEBUGF("run::add_callback run(%d)\n", handle->get_uid());
   if (state != ERT_CMD_STATE_COMPLETED)
     throw xrt_core::error(-EINVAL, "xrtRunSetCallback state may only be ERT_CMD_STATE_COMPLETED");
-  handle->add_callback([=](ert_cmd_state state) { fcn(*this, state, data); });
+  // The function callback is passed a key that uniquely identifies
+  // run objects referring to the same implmentation.  This allows
+  // upstream to associate key with some run object that represents
+  // the key. Note that the callback cannot pass *this (xrt::run) as
+  // these objects are transient.
+  auto key = handle.get();
+  handle->add_callback([=](ert_cmd_state state) { fcn(key, state, data); });
 }
 
 void

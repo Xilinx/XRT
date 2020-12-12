@@ -22,6 +22,8 @@
 #include "xocl/core/memory.h"
 #include "xocl/xclbin/xclbin.h"
 
+#include "core/include/experimental/xrt_kernel.h"
+
 #include "xrt/util/td.h"
 #include <limits>
 
@@ -39,7 +41,53 @@ class compute_unit;
 class kernel : public refcount, public _cl_kernel
 {
   using memidx_bitmask_type = xclbin::memidx_bitmask_type;
+  using memory_vector_type = std::vector<ptr<memory>>;
+  using memory_iterator_type = ptr_iterator<memory_vector_type::iterator>;
+
 public:
+
+  // class rtinfo - Collects OpenCL specific runtime control arguments
+  //
+  // This is used to post process xrt::kernel arguments extracting
+  // the OpenCL specific internal non-indexed arguments
+  class rtinfo
+  {
+  public:
+    // rtinfo argument types, some are single component other multiple
+    enum class key_type { dim, goff, gsize, lsize, ngrps, gid, lid, grid, printf };
+
+    using key_iterator = std::set<key_type>::const_iterator;
+    using arg_iterator = std::multimap<key_type, size_t>::const_iterator;
+    using arg_range = std::pair<arg_iterator, arg_iterator>;
+
+    void
+    insert(key_type key, size_t argidx)
+    {
+      keys.insert(key);
+      args.emplace(std::make_pair(key, argidx));
+    }
+    
+    key_iterator
+    begin_key() const
+    { return keys.begin(); }
+  
+    key_iterator
+    end_key() const
+    { return keys.end(); }
+
+    const std::set<key_type>&
+    key_range() const
+    { return keys; }
+
+    arg_range
+    value_range(key_type key) const
+    { return args.equal_range(key); }
+
+  private:
+    std::set<key_type> keys;              // keys per xclbin
+    std::multimap<key_type, size_t> args; // components for key
+  };
+
   /**
    * class argument is a class hierarchy that represents a kernel
    * object argument constructed from xclbin::symbol::arg meta data.
@@ -487,22 +535,25 @@ public:
   }
 
   void
-  set_argument(unsigned long idx, size_t sz, const void* arg)
-  {
-    m_indexed_args.at(idx)->set(idx,sz,arg);
-  }
+  set_glb_arg_at_index(unsigned long idx, const void* value, size_t sz);
 
   void
-  set_svm_argument(unsigned long idx, size_t sz, const void* arg)
-  {
-    m_indexed_args.at(idx)->set_svm(sz,arg);
-  }
+  set_scalar_arg_at_index(unsigned long idx, const void* value, size_t sz);
 
   void
-  set_printf_argument(size_t sz, const void* arg)
-  {
-    m_printf_args.at(0)->set(sz,arg);
-  }
+  set_local_arg_at_index(unsigned long idx, const void* value, size_t sz);
+
+  void
+  set_stream_arg_at_index(unsigned long idx, const void* value, size_t sz);
+
+  void
+  set_argument(unsigned long idx, size_t sz, const void* arg);
+
+  void
+  set_svm_argument(unsigned long idx, size_t sz, const void* arg);
+
+  void
+  set_printf_argument(size_t sz, const void* arg);
 
   /**
    * Get range of all arguments that have a dynamic value
@@ -521,15 +572,6 @@ public:
   get_indexed_argument_range() const
   {
     return range<argument_iterator_type>(m_indexed_args.begin(),m_indexed_args.end());
-  }
-
-  /**
-   * @return Range of printf arguments
-   */
-  range<argument_iterator_type>
-  get_printf_argument_range() const
-  {
-    return range<argument_iterator_type>(m_printf_args.begin(),m_printf_args.end());
   }
 
   /**
@@ -566,6 +608,35 @@ public:
   {
     return m_cus.size();
   }
+
+  //
+  const xrt::kernel&
+  get_xrt_kernel(const device* device = nullptr) const;
+
+  const xrt::run&
+  get_xrt_run(const device* device = nullptr) const;
+
+  //
+  range<memory_iterator_type>
+  get_memory_range()
+  {
+    return range<memory_iterator_type>(m_global_args.begin(), m_global_args.end());
+  }
+
+  //
+  const memory*
+  get_printf_arg() const
+  {
+    return m_printf_arg.get();
+  }
+
+  //
+  const rtinfo&
+  get_rtinfo() const
+  {
+    return m_rtinfo;
+  }
+  
 
   /**
    * Get the set of memory banks an argument can connect to given the
@@ -633,6 +704,17 @@ private:
   argument_vector_type m_indexed_args;
   argument_vector_type m_printf_args;
   argument_vector_type m_rtinfo_args;
+
+  // One run object per device in m_program
+  struct xkr { xrt::kernel xkernel; xrt::run xrun; };
+  std::map<const device*, xkr> m_xruns;
+
+  // Map rtinfo arg to xrt::kernel args index
+  rtinfo m_rtinfo;
+
+  // Global arguments unresolved until enqueue
+  std::vector<ptr<memory>> m_global_args;
+  ptr<memory> m_printf_arg;
 };
 
 namespace kernel_utils {
