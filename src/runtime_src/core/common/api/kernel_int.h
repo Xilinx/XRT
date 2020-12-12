@@ -21,6 +21,11 @@
 // This file defines implementation extensions to the XRT Kernel APIs.
 #include "core/include/experimental/xrt_kernel.h"
 
+#include "core/common/config.h"
+#include "core/common/xclbin_parser.h"
+
+#include <bitset>
+
 namespace xrt_core { namespace kernel_int {
 
 // Provide access to kdma command based BO copy Used by xrt::bo::copy.
@@ -32,6 +37,42 @@ copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
                   xclBufferHandle dst_bo, size_t dst_offset,
                   xclBufferHandle src_bo, size_t src_offset);
 
-}} // device_int, xrt_core
+using arg_visitor = std::function<void(const xrt_core::xclbin::kernel_argument&, size_t)>;
+
+XRT_CORE_COMMON_EXPORT
+void
+visit_args(const xrt::run&, const arg_visitor&);
+
+XRT_CORE_COMMON_EXPORT
+xrt_core::xclbin::kernel_argument::argtype
+arg_type_at_index(const xrt::kernel& kernel, size_t idx);
+
+XRT_CORE_COMMON_EXPORT
+void
+set_arg_at_index(const xrt::run& run, size_t idx, const void* value, size_t bytes);
+
+XRT_CORE_COMMON_EXPORT
+xrt::run
+clone(const xrt::run& run);
+
+XRT_CORE_COMMON_EXPORT
+const std::bitset<128>&
+get_cumask(const xrt::run& run);
+
+inline size_t
+get_num_cus(const xrt::run& run)
+{
+  return get_cumask(run).count();
+}
+
+XRT_CORE_COMMON_EXPORT
+IP_CONTROL
+get_control_protocol(const xrt::run& run);
+
+XRT_CORE_COMMON_EXPORT
+void
+pop_callback(const xrt::run& run);
+
+}} // kernel_int, xrt_core
 
 #endif

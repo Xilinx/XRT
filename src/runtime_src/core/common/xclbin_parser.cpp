@@ -627,7 +627,9 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
       });
     }
 
-    std::sort(args.begin(), args.end(), [](auto& a1, auto& a2) { return a1.index < a2.index; });
+    // stable sort to preserve order of multi-component arguments
+    // for example global_size, local_size, etc.
+    std::stable_sort(args.begin(), args.end(), [](auto& a1, auto& a2) { return a1.index < a2.index; });
     break;
   }
   return args;

@@ -19,6 +19,8 @@
 #include "context.h"
 #include "device.h"
 #include "compute_unit.h"
+
+#include "core/common/api/kernel_int.h"
 #include "core/common/xclbin_parser.h"
 
 #include <sstream>
@@ -32,6 +34,18 @@
 #endif
 
 namespace xocl {
+
+static std::map<std::string, kernel::rtinfo::key_type> s2rtinfo = {
+  { "work_dim", kernel::rtinfo::key_type::dim },
+  { "global_offset", kernel::rtinfo::key_type::goff },
+  { "global_size", kernel::rtinfo::key_type::gsize },
+  { "local_size", kernel::rtinfo::key_type::lsize },
+  { "num_groups", kernel::rtinfo::key_type::ngrps },
+  { "global_id", kernel::rtinfo::key_type::gid },
+  { "local_id", kernel::rtinfo::key_type::lid },
+  { "group_id", kernel::rtinfo::key_type::grid },
+  { "printf_buffer", kernel::rtinfo::key_type::printf },
+};
 
 std::string
 kernel::
@@ -288,6 +302,31 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
 
   XOCL_DEBUG(std::cout,"xocl::kernel::kernel(",m_uid,")\n");
 
+  // Construct kernel run object for each device
+  for (auto device: prog->get_device_range()) {
+    xrt::kernel xkernel(device->get_xrt_device(), prog->get_xclbin_uuid(device), name);
+    m_xruns.emplace(std::make_pair(device, xkr{xkernel, xrt::run(xkernel)})); // {device, xrt::run(xkernel)});
+  }
+
+  // Capture OCL specific runtime infomational parameters from any of the 
+  // run objects associated with this kernel.
+  using xarg = xrt_core::xclbin::kernel_argument;
+  size_t num_args = 0;
+  auto args_visitor = [&num_args, this] (const xarg& arg, size_t index) {
+    ++num_args;
+    if (arg.index != xarg::no_index)
+      return;
+    auto itr = s2rtinfo.find(arg.name);
+    if (itr == s2rtinfo.end())
+      return;
+    this->m_rtinfo.insert(itr->second, index);
+  };
+  xrt_core::kernel_int::visit_args(get_xrt_run(), args_visitor);
+  
+  m_global_args.resize(num_args);
+
+
+
   for (auto& arg : m_symbol.arguments) {
     switch (arg.atype) {
     case xclbin::symbol::arg::argtype::printf:
@@ -337,6 +376,7 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
         m_cus.push_back(scu.get());
   if (m_cus.empty())
     throw std::runtime_error("No kernel compute units matching '" + name + "'");
+
 }
 
 kernel::
@@ -344,6 +384,133 @@ kernel::
 {
   XOCL_DEBUG(std::cout,"xocl::kernel::~kernel(",m_uid,")\n");
 }
+
+void
+kernel::
+set_glb_arg_at_index(unsigned long idx, const void* cvalue, size_t sz)
+{
+  // clear existing cached global arg if any
+  m_global_args[idx] = nullptr;
+
+  if (sz != sizeof(cl_mem))
+    throw error(CL_INVALID_ARG_SIZE,"Invalid constant_argument size for kernel arg");
+  auto value = const_cast<void*>(cvalue);
+  auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
+  auto xmem = m_global_args[idx] = xocl(mem);
+
+  // associate this memory object with this kernel object
+  assign_buffer_to_argidx(xmem.get(), idx);
+}
+
+void
+kernel::
+set_scalar_arg_at_index(unsigned long idx, const void* cvalue, size_t sz)
+{
+  for (const auto& v : m_xruns) {
+    auto& run = v.second.xrun;
+    xrt_core::kernel_int::set_arg_at_index(run, idx, cvalue, sz);
+  }
+}
+
+void
+kernel::
+set_local_arg_at_index(unsigned long idx, const void* cvalue, size_t sz)
+{
+  if (cvalue!=nullptr)
+    throw xocl::error(CL_INVALID_ARG_VALUE,"CL_KERNEL_ARG_ADDRESS_LOCAL value!=nullptr");
+  // arg_size is the size in bytes of the local memory
+  // todo: curently fixed at 16K, but should come from kernel.xml
+  if (sz == 0 || sz > 1024*16)
+    throw xocl::error(CL_INVALID_ARG_SIZE,"CL_KERNEL_ARG_ADDRESS_LOCAL wrong size:" + std::to_string(sz));
+}
+
+void
+kernel::
+set_stream_arg_at_index(unsigned long idx, const void* cvalue, size_t sz)
+{
+  //PTR_SIZE
+  if (sz != sizeof(cl_mem))
+    throw error(CL_INVALID_ARG_SIZE,"Invalid stream_argument size for kernel arg");
+  if(cvalue != nullptr)
+    throw error(CL_INVALID_VALUE,"Invalid stream_argument value for kernel arg, it should be null");
+}
+
+void
+kernel::
+set_argument(unsigned long idx, size_t sz, const void* value)
+{
+  // cache kernel argument type at index
+  using xarg = xrt_core::xclbin::kernel_argument;
+  auto argtype = xrt_core::kernel_int::arg_type_at_index(get_xrt_kernel(), idx);
+
+  // iterate all devices
+  switch (argtype) {
+  case xarg::argtype::constant:
+  case xarg::argtype::global:
+    set_glb_arg_at_index(idx, value, sz);
+    break;
+  case xarg::argtype::scalar:
+    set_scalar_arg_at_index(idx, value, sz);
+    break;
+  case xarg::argtype::local:
+    set_local_arg_at_index(idx, value, sz);
+    break;
+  case xarg::argtype::stream:
+    set_stream_arg_at_index(idx, value, sz);
+    break;
+  }
+
+  // Remove
+  m_indexed_args.at(idx)->set(idx,sz,value);
+}
+
+void
+kernel::
+set_svm_argument(unsigned long idx, size_t sz, const void* cvalue)
+{
+  for (const auto& v : m_xruns) {
+    auto& run = v.second.xrun;
+    xrt_core::kernel_int::set_arg_at_index(run, idx, cvalue, sz);
+  }
+
+  // Remove
+  m_indexed_args.at(idx)->set_svm(sz,cvalue);
+}
+
+void
+kernel::
+set_printf_argument(size_t sz, const void* cvalue)
+{
+  if (sz != sizeof(cl_mem))
+    throw error(CL_INVALID_ARG_SIZE,"Invalid constant_argument size for kernel arg");
+  auto value = const_cast<void*>(cvalue);
+  auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
+  m_printf_arg = xocl(mem);  // retains ownership of mem
+
+  // Remove
+  m_printf_args.at(0)->set(sz,cvalue);
+}
+
+const xrt::kernel&
+kernel::
+get_xrt_kernel(const device* device) const
+{
+  auto itr = device ? m_xruns.find(device) : m_xruns.begin();
+  if (itr == m_xruns.end())
+    throw std::runtime_error("No kernel run object for device");
+  return (*itr).second.xkernel;
+}
+
+const xrt::run&
+kernel::
+get_xrt_run(const device* device) const
+{
+  auto itr = device ? m_xruns.find(device) : m_xruns.begin();
+  if (itr == m_xruns.end())
+    throw std::runtime_error("No kernel run object for device");
+  return (*itr).second.xrun;
+}
+ 
 
 kernel::memidx_bitmask_type
 kernel::

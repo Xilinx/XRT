@@ -125,7 +125,7 @@ std::string event_dependencies_to_string(std::vector<xocl::event*>&& dependencie
 namespace appdebug {
 
 // Call back function to be called when a command is sent to the scheduler
-void cb_scheduler_cmd_start (const xrt_xocl::command* aCommand, const xocl::execution_context* aContext)
+void cb_scheduler_cmd_start (const xocl::execution_context* aContext, const xrt::run&)
 {
   //update the datastructure associated with the given event
   try {
@@ -143,7 +143,7 @@ void cb_scheduler_cmd_start (const xrt_xocl::command* aCommand, const xocl::exec
 
 
 // Call back function to be called when a command is finished
-void cb_scheduler_cmd_done (const xrt_xocl::command* aCommand, const xocl::execution_context* aContext)
+void cb_scheduler_cmd_done (const xocl::execution_context* aContext, const xrt::run&)
 {
   //update the datastructure associated with the given event
   try {
@@ -921,7 +921,8 @@ getArgValueString(const xocl::event* aEvent)
 {
   std::stringstream sstr;
   auto ctx = aEvent->get_execution_context();
-  for (auto& arg : ctx->get_indexed_argument_range()) {
+  auto kernel = ctx->get_kernel();
+  for (auto& arg : kernel->get_indexed_argument_range()) {
     auto address_space = arg->get_address_space();
     if (address_space == xocl::kernel::argument::addr_space_type::SPIR_ADDRSPACE_PRIVATE)
     {

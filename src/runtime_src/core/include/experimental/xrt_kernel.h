@@ -158,16 +158,21 @@ class run
    *
    * The function is called when the run object changes state to
    * argument state or any error state.  Only
-   * ``ERT_CMD_STATE_COMPLETED`` is supported currently.
+   * ``ERT_CMD_STATE_COMPLETED`` is supported currently. 
+   *
+   * The function object's first parameter is a unique 'key'
+   * for this xrt::run object implmentation on which the callback
+   * was added. This 'key' can be used to identify an actual run
+   * object that refers to the implementaion that is maybe shared
+   * by multiple xrt::run objects.
    *
    * Any number of callbacks are supported.
    */
   XCL_DRIVER_DLLESPEC
   void
   add_callback(ert_cmd_state state,
-               std::function<void(const run&, ert_cmd_state, void*)> callback,
+               std::function<void(const void*, ert_cmd_state, void*)> callback,
                void* data);
-
 
   /**
    * set_event() - Add event for enqueued operations
@@ -192,6 +197,20 @@ class run
   operator bool() const
   {
     return handle != nullptr;
+  }
+
+  /**
+   * operator < () - Weak ordering
+   *
+   * @rhs
+   *  Object to compare with
+   * @return
+   *  True if object is ordered less that compared with other
+   */
+  bool
+  operator < (const xrt::run& rhs) const
+  {
+    return handle < rhs.handle;
   }
 
   /**
@@ -316,6 +335,11 @@ public:
   {
     return handle;
   }
+
+  // run() - Construct run object from a pimpl
+  run(std::shared_ptr<run_impl> impl)
+    : handle(std::move(impl))
+  {}
 
   // backdoor access to command packet
   XCL_DRIVER_DLLESPEC

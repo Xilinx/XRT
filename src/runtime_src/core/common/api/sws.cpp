@@ -424,6 +424,7 @@ public:
     }
     else {
       // write register map consecutively from CU base
+      regmap[0] = 0; // clear ctrl register stale data if cmd reuse
       xdev->xwrite(addr,regmap,size*4);
     }
 

@@ -24,6 +24,7 @@
 #include "xocl/core/object.h"
 #include "xocl/core/command_queue.h"
 #include "xocl/core/execution_context.h"
+#include "core/include/experimental/xrt_kernel.h"
 #include <utility>
 #include <string>
 #include <set>
@@ -31,8 +32,8 @@
 #include <mutex>
 
 namespace appdebug {
-void cb_scheduler_cmd_start (const xrt_xocl::command*,const xocl::execution_context*);
-void cb_scheduler_cmd_done (const xrt_xocl::command*,const xocl::execution_context*);
+void cb_scheduler_cmd_start (const xocl::execution_context*, const xrt::run&);
+void cb_scheduler_cmd_done (const xocl::execution_context*, const xrt::run&);
 
 template <typename T>
 class app_debug_track {
