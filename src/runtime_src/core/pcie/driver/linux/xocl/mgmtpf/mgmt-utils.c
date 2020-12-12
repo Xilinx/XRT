@@ -242,14 +242,14 @@ static int xclmgmt_get_buddy_cb(struct device *dev, void *data)
 	 * 3.other devcies not being droven by same driver. using func id
 	 * may not handle u25 where there is another device on same card 
 	 */
-	if (!dev || to_pci_dev(dev)->vendor != 0x10ee ||
+	if (!src_xdev || !dev || to_pci_dev(dev)->vendor != 0x10ee ||
 	   	XOCL_DEV_ID(to_pci_dev(dev)) ==
 		XOCL_DEV_ID(src_xdev->core.pdev) ||
 		strcmp(dev->driver->name, "xclmgmt")) 
 		return 0;
 
 	tgt_xdev = dev_get_drvdata(dev);
-	if (src_xdev && tgt_xdev && strcmp(src_xdev->core.serial_num, "") &&
+	if (tgt_xdev && strcmp(src_xdev->core.serial_num, "") &&
 		strcmp(tgt_xdev->core.serial_num, "") &&
 		!strcmp(src_xdev->core.serial_num, tgt_xdev->core.serial_num)) {
 	       *(struct xclmgmt_dev **)data = tgt_xdev;
