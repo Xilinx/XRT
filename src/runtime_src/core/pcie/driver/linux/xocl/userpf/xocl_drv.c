@@ -1195,7 +1195,7 @@ done:
 	return ret;
 }
 
-static struct page **xocl_phy_addr_get_pages(dma_addr_t dma_addr, int npages)
+static struct page **xocl_phy_addr_get_pages(uint64_t paddr, int npages)
 {
 	struct page *p, **pages;
 	int i;
@@ -1206,7 +1206,7 @@ static struct page **xocl_phy_addr_get_pages(dma_addr_t dma_addr, int npages)
 		return ERR_PTR(-ENOMEM);
 
 	for (i = 0; i < npages; i++) {
-		p = pfn_to_page(PHYS_PFN(dma_addr + offset));
+		p = pfn_to_page(PHYS_PFN(paddr + offset));
 		pages[i] = p;
 		if (IS_ERR(p))
 			goto fail;
@@ -1247,8 +1247,8 @@ static int xocl_cma_mem_alloc_by_idx(struct xocl_dev *xdev, uint64_t size, uint3
 		return -EFAULT;
 	}
 
-	cma_mem->pages = xocl_phy_addr_get_pages(dma_addr,
-		roundup(PAGE_SIZE, size));
+	cma_mem->pages = xocl_phy_addr_get_pages(PFN_PHYS(page_to_pfn(page)),
+		roundup(PAGE_SIZE, size) >> PAGE_SHIFT);
 
 	if (!cma_mem->pages) {
 		dma_unmap_page(dev, dma_addr, size, PCI_DMA_BIDIRECTIONAL);
@@ -1277,7 +1277,8 @@ static void __xocl_cma_bank_free(struct xocl_dev *xdev)
 static int xocl_cma_mem_alloc(struct xocl_dev *xdev, uint64_t size)
 {
 	int ret = 0;
-	uint64_t i = 0, page_sz;
+	uint64_t page_sz;
+	int64_t i = 0;
 	uint64_t page_num = xocl_addr_translator_get_entries_num(xdev);
 	uint64_t *phys_addrs = NULL, cma_mem_size = 0;
 
@@ -1301,10 +1302,11 @@ static int xocl_cma_mem_alloc(struct xocl_dev *xdev, uint64_t size)
 	for (; i < page_num; ++i) {
 		ret = xocl_cma_mem_alloc_by_idx(xdev, page_sz, i);
 		if (ret) {
-			ret = -ENOMEM;
+			xdev->cma_bank->entry_num = i;
 			goto done;
 		}
 	}
+	xdev->cma_bank->entry_num = page_num;
 
 	phys_addrs = vzalloc(page_num*sizeof(uint64_t));
 	if (!phys_addrs) {
@@ -1336,12 +1338,12 @@ static int xocl_cma_mem_alloc(struct xocl_dev *xdev, uint64_t size)
 	if (ret)
 		goto done;
 
-	xdev->cma_bank->entry_num = page_num;
 	xdev->cma_bank->entry_sz = page_sz;
 
 	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, page_sz, page_num);
 done:	
 	vfree(phys_addrs);
+
 	return ret;
 }
 
