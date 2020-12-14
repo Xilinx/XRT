@@ -141,13 +141,13 @@ fi
 source $PETALINUX/settings.sh 
 
 if [[ $AARCH = $aarch64_dir ]]; then
-    PETA_BSP="$PETALINUX/../../bsp/internal/zynqmp/zynqmp-common-v2020.2-final.bsp"
+    PETA_BSP="$PETALINUX/../../bsp/internal/zynqmp/zynqmp-common-v$PETALINUX_VER-final.bsp"
     YOCTO_MACHINE="zynqmp-generic"
 elif [[ $AARCH = $aarch32_dir ]]; then
-    PETA_BSP="$PETALINUX/../../bsp/internal/zynq/zynq-rootfs-common-v2020.2-final.bsp"
+    PETA_BSP="$PETALINUX/../../bsp/internal/zynq/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
     YOCTO_MACHINE="zynq-generic"
 elif [[ $AARCH = $versal_dir ]]; then
-    PETA_BSP="$PETALINUX/../../bsp/internal/versal/versal-rootfs-common-v2020.2-final.bsp"
+    PETA_BSP="$PETALINUX/../../bsp/internal/versal/versal-rootfs-common-v$PETALINUX_VER-final.bsp"
     YOCTO_MACHINE="versal-generic"
 else
     error "$AARCH not exist"
