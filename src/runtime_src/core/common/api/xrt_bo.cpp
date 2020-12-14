@@ -416,6 +416,11 @@ public:
     : bo_impl(dhdl, bhdl, sz)
   {}
 
+  virtual void*
+  get_hbuf() const
+  {
+    throw xrt_core::error(-EINVAL, "device only buffer has no host buffer");
+  }
 };
 
 class buffer_nodma : public bo_impl
@@ -570,6 +575,14 @@ alloc_hbuf(xclDeviceHandle dhdl, xrt_core::aligned_ptr_type&& hbuf, size_t sz, x
 }
 
 static std::shared_ptr<xrt::bo_impl>
+alloc_dbuf(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
+{
+  auto handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
+  auto boh = std::make_shared<xrt::buffer_dbuf>(dhdl, handle, sz);
+  return boh;
+}
+
+static std::shared_ptr<xrt::bo_impl>
 alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 {
   try {
@@ -600,11 +613,12 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 #endif
   case XCL_BO_FLAGS_CACHEABLE:
   case XCL_BO_FLAGS_SVM:
-  case XCL_BO_FLAGS_DEV_ONLY:
   case XCL_BO_FLAGS_HOST_ONLY:
   case XCL_BO_FLAGS_P2P:
   case XCL_BO_FLAGS_EXECBUF:
     return alloc_kbuf(dhdl, sz, flags, grp);
+  case XCL_BO_FLAGS_DEV_ONLY:
+    return alloc_dbuf(dhdl, sz, flags, grp);
   default:
     throw std::runtime_error("Unknown buffer type");
   }
