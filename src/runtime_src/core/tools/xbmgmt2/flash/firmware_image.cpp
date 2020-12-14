@@ -465,7 +465,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
         std::cout << "Can't open " << file << std::endl;
         return;
     }
-    streampos bufsize = in_file.tellg();
+    auto bufsize = in_file.tellg();
     in_file.seekg(0);
 
     std::string fn(file);
