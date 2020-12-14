@@ -818,9 +818,13 @@ void *shim::xclMapBO(unsigned int boHandle, bool write)
         return nullptr;
     }
 
-    return mDev->mmap(mUserHandle, info.size,
+    auto val = mDev->mmap(mUserHandle, info.size,
         (write ? (PROT_READ | PROT_WRITE) : PROT_READ), MAP_SHARED,
         mapInfo.offset);
+
+    return val == reinterpret_cast<void*>(-1)
+      ? nullptr
+      : val;
 }
 
 /*
