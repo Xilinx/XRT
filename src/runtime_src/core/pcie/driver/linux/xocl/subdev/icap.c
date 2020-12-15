@@ -340,7 +340,7 @@ static void icap_read_from_peer(struct platform_device *pdev)
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	(void) xocl_peer_request(xdev,
-		mb_req, reqlen, &xcl_hwicap, &resp_len, NULL, NULL, 0);
+		mb_req, reqlen, &xcl_hwicap, &resp_len, NULL, NULL, 0, 0);
 
 	icap_set_data(icap, &xcl_hwicap);
 
@@ -1865,7 +1865,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	timeout = max((size_t)timeout, 50UL);
 
 	(void) xocl_peer_request(xdev, mb_req, data_len,
-		&msgerr, &resplen, NULL, NULL, timeout);
+		&msgerr, &resplen, NULL, NULL, timeout, 0);
 
 	vfree(mb_req);
 
