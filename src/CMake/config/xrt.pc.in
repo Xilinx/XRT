@@ -1,4 +1,4 @@
-prefix=@XRT_INSTALL_DIR@
+prefix=@CMAKE_INSTALL_PREFIX@/@XRT_INSTALL_DIR@
 exec_prefix=${prefix}
 libdir=${prefix}/lib
 includedir=${prefix}/include
