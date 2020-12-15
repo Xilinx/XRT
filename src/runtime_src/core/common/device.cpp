@@ -75,8 +75,9 @@ get_xclbin_uuid() const
   catch (const query::no_such_key&) {
   }
 
-  // Emulation mode likely
-  return uuid();
+  // Emulation mode likely, just return m_xclbin_uuid which reflects
+  // the uuid of the xclbin loaded by this process.
+  return m_xclbin_uuid;
 }
 
 void
