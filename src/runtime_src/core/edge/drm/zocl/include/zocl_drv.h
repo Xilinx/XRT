@@ -65,7 +65,9 @@
 /* drm_gem_object_put_unlocked was introduced with Kernel 4.12 and backported to
  * Red Hat 7.5
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+	#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 	#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
 #elif defined(RHEL_RELEASE_CODE)
 	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 5)
