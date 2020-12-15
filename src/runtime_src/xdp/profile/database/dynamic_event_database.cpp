@@ -201,19 +201,23 @@ namespace xdp {
     }
   }
 
-  void VPDynamicDatabase::setCounterResults(uint64_t deviceId, 
+  void VPDynamicDatabase::setCounterResults(const uint64_t deviceId,
+					    xrt_core::uuid uuid,
 					    xclCounterResults& values)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
+    std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;
 
-    deviceCounters[deviceId] = values ;
+    deviceCounters[index] = values ;
   }
 
-  xclCounterResults VPDynamicDatabase::getCounterResults(uint64_t deviceId)
+  xclCounterResults VPDynamicDatabase::getCounterResults(uint64_t deviceId,
+							 xrt_core::uuid uuid)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
+    std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;
 
-    return deviceCounters[deviceId] ;
+    return deviceCounters[index] ;
   }
 
   void VPDynamicDatabase::addOpenCLMapping(uint64_t openclID,

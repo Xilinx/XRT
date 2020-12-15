@@ -25,6 +25,9 @@ namespace xdp {
   {
   private:
 
+  protected:
+    virtual void emulationSetup() ;
+
   public:
     OpenCLTraceProfilingPlugin() ;
     ~OpenCLTraceProfilingPlugin() ;

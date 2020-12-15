@@ -233,9 +233,9 @@ namespace xdp {
 
   void DeviceOffloadPlugin::readCounters()
   {
-    uint64_t i = 0 ;
     for (auto o : offloaders)
     {
+      uint64_t deviceId = o.first ;
       xclCounterResults results ;
       std::get<2>(o.second)->readCounters(results) ;
 
@@ -244,9 +244,11 @@ namespace xdp {
       //  and we are reading nothing but 0's
       if (nonZero(results))
       {
-	(db->getDynamicInfo()).setCounterResults(i, results) ;
+	DeviceInfo* deviceInfo = (db->getStaticInfo()).getDeviceInfo(deviceId);
+	if (deviceInfo != nullptr) {
+	  (db->getDynamicInfo()).setCounterResults(deviceId, deviceInfo->currentXclbinUUID(), results) ;
+	}
       }
-      ++i ;
     }
   }
 

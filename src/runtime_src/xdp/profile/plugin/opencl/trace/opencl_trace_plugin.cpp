@@ -23,10 +23,6 @@ namespace xdp {
   {
     db->registerPlugin(this) ;
 
-    // OpenCL could be running hardware emulation or software emulation, 
-    //  so be sure to account for any peculiarities here.
-    emulationSetup() ;
-
     // Add a single writer for the OpenCL host trace
     writers.push_back(new OpenCLTraceWriter("opencl_trace.csv")) ;
     (db->getStaticInfo()).addOpenedFile("opencl_trace.csv", "VP_TRACE") ;
@@ -36,6 +32,10 @@ namespace xdp {
   {
     if (VPDatabase::alive())
     {
+      // OpenCL could be running hardware emulation or software emulation, 
+      //  so be sure to account for any peculiarities here.
+      emulationSetup() ;
+
       // We were destroyed before the database, so write the writers
       //  and unregister ourselves from the database
       for (auto w : writers)
@@ -43,6 +43,16 @@ namespace xdp {
 	w->write(false) ;
       }
       db->unregisterPlugin(this) ;
+    }
+  }
+
+  void OpenCLTraceProfilingPlugin::emulationSetup()
+  {
+    XDPPlugin::emulationSetup() ;
+
+    char* internalsTrace = getenv("VITIS_KERNEL_TRACE_FILENAME") ;
+    if (internalsTrace != nullptr) {
+      (db->getStaticInfo()).addOpenedFile(internalsTrace, "KERNEL_TRACE") ;
     }
   }
 }

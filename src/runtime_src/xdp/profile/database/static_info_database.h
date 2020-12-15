@@ -22,6 +22,7 @@
 #include <mutex>
 #include <vector>
 #include <string>
+#include <list>
 
 #include "xdp/config.h"
 #include "core/common/system.h"
@@ -116,7 +117,11 @@ namespace xdp {
     // A mapping of arguments to memory resources
     std::map<int32_t, std::vector<int32_t>> connections ;
 
+    // The slot ID inside the counter results structure for this CU
     int32_t amId;
+
+    // All of the slot IDs inside the counter results structure for any
+    //  monitors attached to this CU
     std::vector<uint32_t> aimIds;
     std::vector<uint32_t> asmIds;
 
@@ -165,11 +170,6 @@ namespace xdp {
     XDP_EXPORT ~ComputeUnitInstance() ;
   } ;
 
-  struct PlatformInfo {
-    uint64_t    kdmaCount;
-    std::string deviceName;
-  };
-
   struct Memory {
     uint8_t     type;
     int32_t     index;
@@ -188,22 +188,47 @@ namespace xdp {
     {}
   };
 
+  struct XclbinInfo {
+    // Choose reasonable defaults
+    double maxReadBW = 0.0 ;
+    double maxWriteBW = 0.0 ;
+    double clockRateMHz = 300 ;
+    bool usesTs2mm = false ;
+
+    // We have to use string instead of xrt_core::uuid due to emulation
+    xrt_core::uuid uuid ; 
+    std::string name ;
+    std::map<int32_t, ComputeUnitInstance*> cus ;
+    std::map<int32_t, Memory*> memoryInfo ;
+
+    ~XclbinInfo() {
+      for (auto& i : cus) {
+	delete i.second ;
+      }
+      cus.clear() ;
+      for (auto& i : memoryInfo) {
+	delete i.second ;
+      }
+      memoryInfo.clear() ;
+    }
+  } ;
+
   struct DeviceInfo {
+    // ****** Known information regardless of loaded XCLBIN ******
     uint64_t deviceId ;
-    double maxReadBW ;
-    double maxWriteBW ;
-    double clockRateMHz;
-    bool usesTs2mm ;
-    struct PlatformInfo platformInfo;
+    std::string deviceName ;
+    std::string ctxInfo ;
+    DeviceIntf* deviceIntf = nullptr;
+    uint64_t kdmaCount     = 0 ;
+    bool isEdgeDevice      = false ;
+    bool isReady           = false;
+    bool isAIEcounterRead  = false;
+    bool isGMIORead        = false;
 
-    DeviceIntf* deviceIntf;
-    xrt_core::uuid loadedXclbinUUID;
+    // ****** Information specific all previously loaded XCLBINs ******
+    std::vector<XclbinInfo*> loadedXclbins ;
 
-    std::string loadedXclbin;
-    std::string ctxInfo;
-    std::map<int32_t, ComputeUnitInstance*> cus;
-
-    std::map<int32_t, Memory*> memoryInfo;
+    // ****** Information specific to the currently loaded XCLBIN ******
 
     /* Maps for AM, AIM, ASM Monitor (enabled for trace) with slotID as the key.
      * Contains only user space monitors, but no shell monitor (e.g. shell AIM/ASM)
@@ -226,12 +251,54 @@ namespace xdp {
 
     bool hasFloatingAIM   = false;
     bool hasFloatingASM   = false;
-    bool isEdgeDevice     = false ;
-    bool isReady          = false;
-    bool isAIEcounterRead = false;
-    bool isGMIORead       = false;
-
     uint32_t numTracePLIO = 0;
+
+    void addXclbin(XclbinInfo* xclbin) {
+      loadedXclbins.push_back(xclbin) ;
+    }
+
+    inline xrt_core::uuid currentXclbinUUID() {
+      if (loadedXclbins.size() <= 0)
+	return xrt_core::uuid() ;
+      return loadedXclbins.back()->uuid ; 
+    }
+
+    void cleanCurrentXclbinInfo() {
+      numTracePLIO = 0 ;
+      hasFloatingAIM = false ;
+      hasFloatingASM = false ;
+      for(auto& i : amMap) {
+	delete i.second;
+      }
+      amMap.clear();
+      for(auto& i : aimMap) {
+	delete i.second;
+      }
+      aimMap.clear();
+      for(auto& i : asmMap) {
+	delete i.second;
+      }
+      asmMap.clear();
+      
+      // Do not delete the monitors in the complete lists, they
+      //  are just pointers to objects owned by other data structures
+      aimList.clear() ;
+      amList.clear() ;
+      asmList.clear() ;
+      
+      for(auto i : nocList) {
+	delete i;
+      }
+      nocList.clear();
+      for(auto i : aieList) {
+	delete i;
+      }
+      aieList.clear();
+      for(auto i : gmioList) {
+	delete i;
+      }
+      gmioList.clear();
+    }
 
     bool hasDMAMonitor() {
       for (auto aim : aimList) {
@@ -310,9 +377,8 @@ namespace xdp {
     bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Helper functions that fill in device information
-    //bool setXclbinUUID(DeviceInfo*, const std::shared_ptr<xrt_core::device>& device);
-    bool setXclbinName(DeviceInfo*, const std::shared_ptr<xrt_core::device>& device);
-    bool initializeComputeUnits(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
+    bool setXclbinName(XclbinInfo*, const std::shared_ptr<xrt_core::device>& device);
+    bool initializeComputeUnits(XclbinInfo*, const std::shared_ptr<xrt_core::device>&);
     bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
 
   public:
@@ -392,20 +458,23 @@ namespace xdp {
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 300; 
-      return deviceInfo[deviceId]->clockRateMHz;
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
+	return 300 ;
+      return deviceInfo[deviceId]->loadedXclbins.back()->clockRateMHz;
+      //return deviceInfo[deviceId]->clockRateMHz;
     }
 
-    void setDeviceName(uint64_t deviceId, std::string name)
+    void setDeviceName(uint64_t deviceId, const std::string& name)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return; 
-      deviceInfo[deviceId]->platformInfo.deviceName = name;
+      deviceInfo[deviceId]->deviceName = name;
     }
     std::string getDeviceName(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return std::string(""); 
-      return deviceInfo[deviceId]->platformInfo.deviceName; 
+      return deviceInfo[deviceId]->deviceName; 
     }
 
     void setDeviceIntf(uint64_t deviceId, DeviceIntf* devIntf)
@@ -426,71 +495,94 @@ namespace xdp {
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return;
-      deviceInfo[deviceId]->platformInfo.kdmaCount = num;
+      deviceInfo[deviceId]->kdmaCount = num;
     }
     uint64_t getKDMACount(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
-      return deviceInfo[deviceId]->platformInfo.kdmaCount; 
+      return deviceInfo[deviceId]->kdmaCount; 
     }
 
     void setMaxReadBW(uint64_t deviceId, double bw)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end()) return ;
-      deviceInfo[deviceId]->maxReadBW = bw ;
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return ;
+      deviceInfo[deviceId]->loadedXclbins.back()->maxReadBW = bw ;
+      //deviceInfo[deviceId]->maxReadBW = bw ;
     }
 
     double getMaxReadBW(uint64_t deviceId)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end()) return 0 ;
-      return deviceInfo[deviceId]->maxReadBW ;
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return 0 ;
+      return deviceInfo[deviceId]->loadedXclbins.back()->maxReadBW ;
+      //return deviceInfo[deviceId]->maxReadBW ;
     }
 
     void setMaxWriteBW(uint64_t deviceId, double bw)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end()) return ;
-      deviceInfo[deviceId]->maxWriteBW = bw ;
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return ;
+      deviceInfo[deviceId]->loadedXclbins.back()->maxWriteBW = bw ;
+      //deviceInfo[deviceId]->maxWriteBW = bw ;
     }
 
     double getMaxWriteBW(uint64_t deviceId)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end()) return 0 ;
-      return deviceInfo[deviceId]->maxWriteBW ;
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return 0 ;
+      return deviceInfo[deviceId]->loadedXclbins.back()->maxWriteBW ;
+      //return deviceInfo[deviceId]->maxWriteBW ;
     }
 
     std::string getXclbinName(uint64_t deviceId) { 
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return std::string(""); 
-      return deviceInfo[deviceId]->loadedXclbin; 
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
+	return std::string("") ;
+      return deviceInfo[deviceId]->loadedXclbins.back()->name; 
+      //return deviceInfo[deviceId]->loadedXclbin; 
     }
 
     ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return deviceInfo[deviceId]->cus[cuId];
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
+	return nullptr ;
+      return deviceInfo[deviceId]->loadedXclbins.back()->cus[cuId] ;
+      //return deviceInfo[deviceId]->cus[cuId];
     }
 
     inline std::map<int32_t, ComputeUnitInstance*>* getCUs(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return &(deviceInfo[deviceId]->cus);
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
+	return nullptr ;
+      return &(deviceInfo[deviceId]->loadedXclbins.back()->cus) ;
+      //return &(deviceInfo[deviceId]->cus);
     }
 
     inline std::map<int32_t, Memory*>* getMemoryInfo(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return &(deviceInfo[deviceId]->memoryInfo);
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
+	return nullptr ;
+      return &(deviceInfo[deviceId]->loadedXclbins.back()->memoryInfo) ;
+      //return &(deviceInfo[deviceId]->memoryInfo);
     }
 
     Memory* getMemory(uint64_t deviceId, int32_t memId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return deviceInfo[deviceId]->memoryInfo[memId];
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
+	return nullptr ;
+      return deviceInfo[deviceId]->loadedXclbins.back()->memoryInfo[memId] ;
+      //return deviceInfo[deviceId]->memoryInfo[memId];
     }
 
     // Includes only User Space AM enabled for trace
@@ -630,6 +722,8 @@ namespace xdp {
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return;
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
+	return ;
 
       size_t count = 0;
       /* User space AM in sorted order of their slotIds.
@@ -638,7 +732,7 @@ namespace xdp {
       for(auto mon : deviceInfo[deviceId]->amMap) {
         if(count >= size)
           return;
-        auto cu = deviceInfo[deviceId]->cus[mon.second->cuIndex];
+        auto cu = deviceInfo[deviceId]->loadedXclbins.back()->cus[mon.second->cuIndex];
         config[count] = cu->dataflowEnabled();
         ++count;
       }
@@ -655,6 +749,8 @@ namespace xdp {
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return;
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
+	return ;
 
       size_t count = 0;
       /* User space AM in sorted order of their slotIds.
@@ -663,7 +759,7 @@ namespace xdp {
       for(auto mon : deviceInfo[deviceId]->amMap) {
         if(count >= size)
           return;
-        auto cu = deviceInfo[deviceId]->cus[mon.second->cuIndex];
+        auto cu = deviceInfo[deviceId]->loadedXclbins.back()->cus[mon.second->cuIndex];
         config[count] = cu->faEnabled();
         ++count;
       }

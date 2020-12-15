@@ -76,7 +76,7 @@ get_xclbin_uuid() const
   }
 
   // Emulation mode likely
-  return uuid();
+  return m_xclbin_uuid;
 }
 
 void

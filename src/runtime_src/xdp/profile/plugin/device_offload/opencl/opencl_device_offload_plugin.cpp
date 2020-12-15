@@ -66,6 +66,25 @@ namespace {
 
     return memoryName.substr(0, memoryName.find_last_of("[")) ;
   }
+
+  static std::string
+  debugIPLayoutPath(xrt_xocl::device* device)
+  {
+    std::string path = device->getDebugIPlayoutPath().get() ;
+
+    if (xdp::getFlowMode() == xdp::HW_EMU) {
+      // Full paths to the hardware emulation debug_ip_layout for different
+      //  xclbins on the same device are different.  On disk, they are laid
+      //  out as follows:
+      // .run/<pid>/hw_em/device_0/binary_0/debug_ip_layout
+      // .run/<pid>/hw_em/device_0/binary_1/debug_ip_layout
+      //  Since both of these should refer to the same device, we only use
+      //  the path up to the device name.
+      path = path.substr(0, path.find_last_of("/") - 1) ;
+      path = path.substr(0, path.find_last_of("/") - 1) ;
+    }
+    return path ;
+  }
 } // end anonymous namespace
 
 namespace xdp {
@@ -146,7 +165,7 @@ namespace xdp {
 
     xrt_xocl::device* device = static_cast<xrt_xocl::device*>(d) ;
 
-    std::string path = device->getDebugIPlayoutPath().get() ;
+    std::string path = debugIPLayoutPath(device) ;
 
     uint64_t deviceId = db->addDevice(path) ;
     
@@ -176,16 +195,14 @@ namespace xdp {
     // The OpenCL level expects an xrt_xocl::device to be passed in
     xrt_xocl::device* device = static_cast<xrt_xocl::device*>(d) ;
 
-    // In both hardware and hardware emulation, the debug ip layout path
-    //  is used as a unique identifier of the physical device
-    std::string path = device->getDebugIPlayoutPath().get() ;
+    std::string path = debugIPLayoutPath(device) ;
 
     uint64_t deviceId = 0;
+
     try {
       deviceId = db->getDeviceId(path) ;
     }
-    catch(std::exception& e)
-    {
+    catch(std::exception& e) {
       // This is the first time we encountered this particular device
       addDevice(path) ;
     }
@@ -243,7 +260,7 @@ namespace xdp {
     // OpenCL specific info 1: Argument lists for each monitor
     // *******************************************************
     DeviceInfo* storedDevice = (db->getStaticInfo()).getDeviceInfo(deviceId) ;
-    for (auto iter : storedDevice->cus)
+    for (auto iter : storedDevice->loadedXclbins.back()->cus)
     {
       ComputeUnitInstance* cu = iter.second ;
 

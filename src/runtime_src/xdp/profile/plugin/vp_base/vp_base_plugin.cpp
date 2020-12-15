@@ -47,10 +47,13 @@ namespace xdp {
 
   void XDPPlugin::emulationSetup()
   {
+    static bool waveformSetup = false ;
+    if (waveformSetup) return ;
+    waveformSetup = true ;
+
     // For hardware emulation flows, check to see if there is a wdb and wcfg
     char* wdbFile = getenv("VITIS_WAVEFORM_WDB_FILENAME") ;
-    if (wdbFile != nullptr)
-    {
+    if (wdbFile != nullptr) {
       (db->getStaticInfo()).addOpenedFile(wdbFile, "WAVEFORM_DATABASE") ;
 
       // Also the wcfg

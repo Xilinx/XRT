@@ -26,10 +26,6 @@ namespace xdp {
   {
     db->registerPlugin(this) ;
 
-    // OpenCL could be running hardware emulation or software emulation,
-    //  so be sure to account for any peculiarities here.
-    emulationSetup() ;
-
     writers.push_back(new OpenCLSummaryWriter("opencl_summary.csv")) ;
     (db->getStaticInfo()).addOpenedFile("opencl_summary.csv", "PROFILE_SUMMARY") ;
 
@@ -40,6 +36,10 @@ namespace xdp {
   {
     if (VPDatabase::alive())
     {
+      // OpenCL could be running hardware emulation or software emulation,
+      //  so be sure to account for any peculiarities here.
+      emulationSetup() ;
+
       // Before writing, make sure that counters are read.
       db->broadcast(VPDatabase::READ_COUNTERS, nullptr) ;
       for (auto w : writers)
@@ -47,6 +47,16 @@ namespace xdp {
 	w->write(false) ;
       }
       db->unregisterPlugin(this) ;
+    }
+  }
+
+  void OpenCLCountersProfilingPlugin::emulationSetup()
+  {
+    XDPPlugin::emulationSetup() 
+;
+    char* internalsSummary = getenv("VITIS_KERNEL_PROFILE_FILENAME") ;
+    if (internalsSummary != nullptr) {
+      (db->getStaticInfo()).addOpenedFile(internalsSummary, "KERNEL_PROFILE");
     }
   }
 

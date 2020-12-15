@@ -28,6 +28,9 @@ namespace xdp {
   private:
     std::shared_ptr<xocl::platform> platform ;
 
+  protected:
+    virtual void emulationSetup() ;
+
   public:
     OpenCLCountersProfilingPlugin() ;
     ~OpenCLCountersProfilingPlugin() ;
