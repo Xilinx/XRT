@@ -59,6 +59,7 @@ namespace xclemulation{
     mMemLogs = false;
     mLaunchWaveform = DEBUG_MODE::OFF;
     mDontRun = false;
+    mNewMbscheduler = true;
     mSimDir = "";
     mUserPreSimScript = "";
     mPacketSize = 0x800000;
@@ -150,6 +151,10 @@ namespace xclemulation{
       else if(name == "dont_run")
       {
         setDontRun(getBoolValue(value,false));
+      }
+      else if(name == "new_mbscheduler")
+      {
+        setNewMbscheduler(getBoolValue(value,false));
       }
       else if (name == "user_pre_sim_script") {
         setUserPreSimScript(value);
