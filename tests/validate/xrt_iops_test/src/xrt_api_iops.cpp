@@ -3,7 +3,6 @@
 #include <vector>
 #include <chrono>
 #include <thread>
-#include <getopt.h>
 
 #include "xilutil.hpp"
 #include "experimental/xrt_device.h"
@@ -31,13 +30,8 @@ static void usage(char *prog)
     << "    -t       number of threads\n"
     << "    -l       length of queue (send how many commands without waiting)\n"
     << "    -a       total amount of commands per thread\n"
+    << "    -v       verbose result\n"
     << std::endl;
-}
-
-static void usage_and_exit(char *prog)
-{
-  usage(prog);
-  exit(0);
 }
 
 double runTest(std::vector<xrt::run>& cmds, unsigned int total, arg_t &arg)
@@ -171,36 +165,46 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
 
 int _main(int argc, char* argv[])
 {
+  if (argc < 3) {
+    usage(argv[0]);
+    return 1;
+  }
+
   std::string xclbin_fn;
   int dev_id = 0;
   int queueLength = 128;
   unsigned total = 50000;
   int threadNumber = 2;
-  char c;
 
-  while ((c = getopt(argc, argv, "k:d:l:t:a:h")) != -1) {
-    switch (c) {
-      case 'k':
-        xclbin_fn = optarg; 
-        break;
-      case 'd':
-        dev_id = std::stoi(optarg);
-        break;
-      case 't':
-        threadNumber = std::stoi(optarg);
-        break;
-      case 'l':
-        queueLength = std::stoi(optarg);
-        break;
-      case 'a':
-        total = std::stoi(optarg);
-        break;
-      case 'v':
-        verbose = true;
-        break;
-      case 'h':
-        usage_and_exit(argv[0]);
+  std::vector<std::string> args(argv + 1, argv + argc);
+  std::string cur;
+  for (auto& arg : args) {
+    if (arg == "-h") {
+      usage(argv[0]);
+      return 1;
     }
+    else if (arg == "-v") {
+      verbose = true;
+      continue;
+    }
+
+    if (arg[0] == '-') {
+      cur = arg;
+      continue;
+    }
+
+    if (cur == "-k")
+      xclbin_fn = arg;
+    else if (cur == "-d")
+      dev_id = std::stoi(arg);
+    else if (cur == "-t")
+      threadNumber = std::stoi(arg);
+    else if (cur == "-l")
+      queueLength = std::stoi(arg);
+    else if (cur == "-a")
+      total = std::stoi(arg);
+    else
+      throw std::runtime_error("Unknown option value " + cur + " " + arg);
   }
 
   /* Sanity check */

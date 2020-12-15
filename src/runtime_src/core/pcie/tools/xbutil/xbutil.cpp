@@ -1165,7 +1165,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
 }
 
 int xcldev::device::runTestCase(const std::string& py,
-    const std::string& xclbin, std::string& output, const std::string &args = std::string())
+    const std::string& xclbin, std::string& output, const std::string &args = "")
 {
     struct stat st;
 
@@ -1220,7 +1220,8 @@ int xcldev::device::runTestCase(const std::string& py,
 
         cmd = xrtTestCasePath + " " + xclbinPath + " -d " + std::to_string(m_idx);
 
-    } else if (py.find(".exe") == std::string::npos) { //OLD FLOW:
+    }
+    else if (py.find(".exe") == std::string::npos) { //OLD FLOW:
         // Use suffix ".exe" to identify special test case is not ideal. Let's do it for now.
         // We could refine this once need.
         xrtTestCasePath += py;    
@@ -1261,7 +1262,8 @@ int xcldev::device::runTestCase(const std::string& py,
         }
 
         cmd = "/usr/bin/python3 " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
-    } else {
+    }
+    else {
         xrtTestCasePath += py;
         xclbinPath += xclbin;
 

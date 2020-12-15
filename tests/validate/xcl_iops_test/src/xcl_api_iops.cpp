@@ -5,8 +5,6 @@
 #include <memory>
 #include <chrono>
 #include <thread>
-#include <sys/mman.h>
-#include <getopt.h>
 
 #include "xilutil.hpp"
 #include "xrt.h"
@@ -17,8 +15,8 @@ using ms_t = std::chrono::microseconds;
 using Clock = std::chrono::high_resolution_clock;
 
 struct task_info {
-    unsigned                boh;
-    unsigned                exec_bo;
+    unsigned int            boh;
+    unsigned int            exec_bo;
     ert_start_kernel_cmd   *ecmd;
 };
 
@@ -37,18 +35,13 @@ barrier barrier;
 
 static void usage(char *prog)
 {
-    std::cout << "Usage: " << prog << " <xclbin> -d <dev id> [options]\n"
+    std::cout << "Usage: " << prog << " -k <xclbin> -d <dev id> [options]\n"
               << "options:\n"
               << "    -t       number of threads\n"
               << "    -l       length of queue (send how many commands without waiting)\n"
               << "    -a       total amount of commands per thread\n"
+              << "    -v       verbose result\n"
               << std::endl;
-}
-
-static void usage_and_exit(char *prog)
-{
-    usage(prog);
-    exit(0);
 }
 
 static std::vector<char>
@@ -127,7 +120,7 @@ void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info
             break;
         }
         cmd.ecmd = reinterpret_cast<ert_start_kernel_cmd *>(xclMapBO(handle, cmd.exec_bo, true));
-        if (cmd.ecmd == MAP_FAILED) {
+        if (!cmd.ecmd) {
             std::cout << "Could not map more exec buf" << std::endl;
             xclFreeBO(handle, cmd.boh);
             xclFreeBO(handle, cmd.exec_bo);
@@ -205,7 +198,7 @@ int testSingleThread(int dev_id, std::string &xclbin_fn)
 
     for (auto& cmd : cmds) {
         xclFreeBO(handle, cmd->boh);
-        munmap(cmd->ecmd, 4096);
+        xclUnmapBO(handle, cmd->exec_bo, cmd->ecmd);
         xclFreeBO(handle, cmd->exec_bo);
     }
 
@@ -254,7 +247,7 @@ void runTestThread(arg_t &arg)
 
     for (auto& cmd : cmds) {
         xclFreeBO(handle, cmd->boh);
-        munmap(cmd->ecmd, 4096);
+        xclUnmapBO(handle, cmd->exec_bo, cmd->ecmd);
         xclFreeBO(handle, cmd->exec_bo);
     }
 
@@ -313,36 +306,46 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
 
 int _main(int argc, char* argv[])
 {
+    if (argc < 3) {
+        usage(argv[0]);
+        return 1;
+    }
+
     std::string xclbin_fn;
     int dev_id = 0;
     int queueLength = 128;
     unsigned total = 50000;
     int threadNumber = 2;
-    char c;
 
-    while ((c = getopt(argc, argv, "k:d:l:t:a:vh")) != -1) {
-        switch (c) {
-            case 'k':
-                xclbin_fn = optarg; 
-                break;
-            case 'd':
-                dev_id = std::stoi(optarg);
-                break;
-            case 't':
-                threadNumber = std::stoi(optarg);
-                break;
-            case 'l':
-                queueLength = std::stoi(optarg);
-                break;
-            case 'a':
-                total = std::stoi(optarg);
-                break;
-            case 'v':
-                verbose = true;
-                break;
-            case 'h':
-                usage_and_exit(argv[0]);
+    std::vector<std::string> args(argv + 1, argv + argc);
+    std::string cur;
+    for (auto& arg : args) {
+        if (arg == "-h") {
+            usage(argv[0]);
+            return 1;
         }
+        else if (arg == "-v") {
+            verbose = true;
+            continue;
+        }
+
+        if (arg[0] == '-') {
+            cur = arg;
+            continue;
+        }
+
+        if (cur == "-k")
+            xclbin_fn = arg;
+        else if (cur == "-d")
+            dev_id = std::stoi(arg);
+        else if (cur == "-t")
+            threadNumber = std::stoi(arg);
+        else if (cur == "-l")
+            queueLength = std::stoi(arg);
+        else if (cur == "-a")
+            total = std::stoi(arg);
+        else
+            throw std::runtime_error("Unknown option value " + cur + " " + arg);
     }
 
     /* Sanity check */
