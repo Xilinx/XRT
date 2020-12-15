@@ -137,7 +137,7 @@ static void xocl_mig_cache_read_from_peer(struct xocl_dev *xdev)
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	ret = xocl_peer_request(xdev,
-		mb_req, reqlen, mig_ecc, &resp_len, NULL, NULL, 0);
+		mb_req, reqlen, mig_ecc, &resp_len, NULL, NULL, 0, 0);
 
 	if (!ret)
 		set_mig_cache_data(xdev, mig_ecc);
@@ -313,7 +313,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 
 	userpf_info(xdev, "request mgmtpf to program prp");
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
-		&ret, &resplen, NULL, NULL, 0);
+		&ret, &resplen, NULL, NULL, 0, 0);
 	if (mbret)
 		ret = mbret;
 	if (ret) {
@@ -364,14 +364,14 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 			return 0;
 
 		xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
-			&ret, &resplen, NULL, NULL, 0);
+			&ret, &resplen, NULL, NULL, 0, 6);
 		/* userpf will back online till receiving mgmtpf notification */
 
 		return 0;
 	}
 
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
-		&ret, &resplen, NULL, NULL, 0);
+		&ret, &resplen, NULL, NULL, 0, 0);
 
 	xocl_reset_notify(xdev->core.pdev, true);
 
@@ -566,7 +566,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	mb_conn->version = XCL_MB_PROTOCOL_VER;
 
 	ret = xocl_peer_request(xdev, mb_req, reqlen, resp, &resplen,
-		NULL, NULL, 0);
+		NULL, NULL, 0, 0);
 	(void) xocl_mailbox_set(xdev, CHAN_STATE, resp->conn_flags);
 	(void) xocl_mailbox_set(xdev, CHAN_SWITCH, resp->chan_switch);
 	(void) xocl_mailbox_set(xdev, COMM_ID, (u64)(uintptr_t)resp->comm_id);
@@ -627,7 +627,7 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 
 	if (err == 0) {
 		err = xocl_peer_request(xdev, req, reqlen,
-			&msg, &resplen, NULL, NULL, 0);
+			&msg, &resplen, NULL, NULL, 0, 0);
 		if (err == 0)
 			err = msg;
 	}
@@ -814,7 +814,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 		subdev_peer.offset = offset;
 		ret = xocl_peer_request(xdev, mb_req, reqlen,
-			resp, &resp_len, NULL, NULL, 0);
+			resp, &resp_len, NULL, NULL, 0, 0);
 		if (ret)
 			goto failed;
 
