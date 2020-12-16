@@ -101,7 +101,10 @@
 /* drm_gem_object_put_unlocked and drm_gem_object_get were introduced with Linux
  * 4.12 and backported to Red Hat 7.5.
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+	#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put
+	#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_get
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
 	#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_get
 #elif defined(RHEL_RELEASE_CODE)
