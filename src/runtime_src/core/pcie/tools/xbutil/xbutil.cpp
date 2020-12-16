@@ -1165,7 +1165,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
 }
 
 int xcldev::device::runTestCase(const std::string& py,
-    const std::string& xclbin, std::string& output)
+    const std::string& xclbin, std::string& output, const std::string &args = "")
 {
     struct stat st;
 
@@ -1208,6 +1208,9 @@ int xcldev::device::runTestCase(const std::string& py,
             { "host_mem_23_bandwidth.py", "slavebridge.exe" }
         };
         
+        if (test_map.find(py) == test_map.end())
+            return -EOPNOTSUPP;
+
         xrtTestCasePath += test_map.find(py)->second;
         // in case the user is trying to run a new platform with an XRT which doesn't support the new platform pkg
         if (!boost::filesystem::exists(xrtTestCasePath)) {
@@ -1217,7 +1220,10 @@ int xcldev::device::runTestCase(const std::string& py,
 
         cmd = xrtTestCasePath + " " + xclbinPath + " -d " + std::to_string(m_idx);
 
-    } else { //OLD FLOW:
+    }
+    else if (py.find(".exe") == std::string::npos) { //OLD FLOW:
+        // Use suffix ".exe" to identify special test case is not ideal. Let's do it for now.
+        // We could refine this once need.
         xrtTestCasePath += py;    
         xclbinPath += xclbin;
 
@@ -1256,6 +1262,12 @@ int xcldev::device::runTestCase(const std::string& py,
         }
 
         cmd = "/usr/bin/python3 " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    }
+    else {
+        xrtTestCasePath += py;
+        xclbinPath += xclbin;
+
+        cmd = xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx) + args;
     }
     return runShellCmd(cmd, output);
 }
@@ -1578,13 +1590,11 @@ int xcldev::device::validate(bool quick, bool hidden)
         return withWarning ? 1 : 0;
 
     // Perform IOPS test
-    if(hidden) {
-        retVal = runOneTest("IOPS test",
+    retVal = runOneTest("IOPS test",
             std::bind(&xcldev::device::iopsTest, this));
-        withWarning = withWarning || (retVal == 1);
-        if (retVal < 0)
-            return retVal;
-    }
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Perform DMA test
     retVal = runOneTest("DMA test",
@@ -2346,182 +2356,37 @@ int xcldev::device::testM2m()
 /*
  * iops test
  */
-struct exec_struct {
-    unsigned out_bo_handle;
-    char* output_bo_ptr;
-    unsigned int out_size;
-    unsigned exec_bo_handle;
-    ert_start_kernel_cmd* exec_bo_ptr;
-    unsigned int exec_size;
-};
-
-static int
-get_first_used_mem(unsigned int idx)
-{
-    std::string errmsg;
-    std::vector<char> buf;
-    auto dev = pcidev::get_dev(idx);
-    int first_used_mem = -1;
-
-    if (dev == nullptr)
-        return -EINVAL;
-
-    dev->sysfs_get("icap", "mem_topology", errmsg, buf);
-
-    const mem_topology *map = (mem_topology *)buf.data();
-    if (buf.empty() || map->m_count == 0) {
-        std::cout << "WARNING: 'mem_topology' invalid, "
-            << "unable to perform IOPS Test. Has the bitstream been loaded? "
-            << "See 'xbutil program'." << std::endl;
-        return -EINVAL;
-    }
-    for (int i = 0; i < map->m_count; i++) {
-        if (map->m_mem_data[i].m_used) {
-            first_used_mem = i;
-            break;
-        }
-    }
-    return first_used_mem;
-}
-
-static void
-iops_free_unmap_bo(xclDeviceHandle handle, unsigned boh,
-    void * boptr, size_t boSize)
-{
-    if(boptr != nullptr)
-        munmap(boptr, boSize);
-    if(boh != NULLBO)
-        xclFreeBO(handle, boh);
-}
-
-static void
-iops_alloc_init_bo(xclDeviceHandle handle, int bank, exec_struct* info)
-{
-    info->out_size = 20;
-    info->exec_size = 4096;
-    info->out_bo_handle = xclAllocBO(handle, info->out_size, 0, bank);
-    if (info->out_bo_handle == NULLBO)
-        throw std::runtime_error("Cannot obtain BO handle");
-
-    info->output_bo_ptr = reinterpret_cast<char *>(xclMapBO(handle, info->out_bo_handle, true));
-    if (info->output_bo_ptr == nullptr) {
-        iops_free_unmap_bo(handle, info->out_bo_handle, info->output_bo_ptr, info->out_size);
-        throw std::runtime_error("Cannot obtain output BO");
-    }
-
-    memset(info->output_bo_ptr, 'o', info->out_size);
-    if(xclSyncBO(handle, info->out_bo_handle, XCL_BO_SYNC_BO_TO_DEVICE, info->out_size, 0)) {
-        iops_free_unmap_bo(handle, info->out_bo_handle, info->output_bo_ptr, info->out_size);
-        throw std::runtime_error("Cannot sync output BO to device");
-    }
-
-    xclBOProperties prop;
-    if(xclGetBOProperties(handle, info->out_bo_handle, &prop)) {
-        iops_free_unmap_bo(handle, info->exec_bo_handle, info->exec_bo_ptr, info->exec_size);
-        throw std::runtime_error("Cannot obtain BO dev address");
-    }
-    uint64_t boh_address = prop.paddr;
-
-    info->exec_bo_handle = xclAllocBO(handle, info->exec_size, 0, XCL_BO_FLAGS_EXECBUF);
-    info->exec_bo_ptr = reinterpret_cast<ert_start_kernel_cmd *>(xclMapBO(handle, info->exec_bo_handle, true));
-    if (info->exec_bo_ptr == nullptr) {
-        iops_free_unmap_bo(handle, info->exec_bo_handle, info->exec_bo_ptr, info->exec_size);
-        throw std::runtime_error("Cannot obtain exec buf BO");
-    }
-    std::memset(info->exec_bo_ptr, 0, info->exec_size);
-
-    //construct the exec buffer cmd to start the kernel.
-    int rsz = 19; // regmap array size
-    info->exec_bo_ptr->state = 0;
-    info->exec_bo_ptr->opcode = ERT_START_CU;
-    info->exec_bo_ptr->count = rsz;
-    info->exec_bo_ptr->cu_mask = (0x1 << 0);
-    info->exec_bo_ptr->data[rsz - 3] = boh_address;
-    info->exec_bo_ptr->data[rsz - 2] = (boh_address >> 32);
-}
-
-static void
-execute_cmds(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& cmds,
-    double& duration)
-{
-    auto start = std::chrono::high_resolution_clock::now();
-    for (auto& c : cmds) {
-        if(xclExecBuf(handle, c->exec_bo_handle))
-            throw std::runtime_error("Unable to issue exec buf");
-    }
-    for (auto& c : cmds) {
-        // c->wait();
-        while (c->exec_bo_ptr->state < ERT_CMD_STATE_COMPLETED) {
-            while (xclExecWait(handle, -1) == 0);
-        }
-        if(c->exec_bo_ptr->state != ERT_CMD_STATE_COMPLETED)
-            throw std::runtime_error("CU execution failed");
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-    duration = (std::chrono::duration_cast<std::chrono::microseconds>
-    (end - start)).count();
-}
-
-static void
-run_iops_test(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& cmds,
-    std::vector<double>& iops_list, int first_used_mem, unsigned int cmd_per_batch)
-{
-    double duration = 0;
-    double total = 0;
-    for (unsigned int i = 0; i < cmd_per_batch; i++) {
-        exec_struct info = {0};
-        iops_alloc_init_bo(handle, first_used_mem, &info);
-        auto p = std::make_shared<exec_struct>(info);
-        cmds.push_back(p);
-    }
-
-    // Execute the cmds 5 times and get average duration
-    for (int i = 0; i < 5; i++) {
-        execute_cmds(handle, cmds, duration);
-        total += duration;
-    }
-    duration = total / 5.0;
-
-    //verify
-    for(auto& c : cmds) {
-        if(xclSyncBO(handle, c->out_bo_handle, XCL_BO_SYNC_BO_FROM_DEVICE, c->out_size, 0))
-            throw std::runtime_error("Cannot sync output BO from device");
-        if (strncmp(c->output_bo_ptr, "Hello World", 11))
-            throw std::runtime_error("Bad output result after CU execution");
-    }
-    iops_list.push_back(cmds.size() * 1000 * 1000 / duration);
-    std::cout << "Commands: " << cmds.size() << " iops: " << (cmds.size() * 1000 * 1000 / duration) << std::endl;
-}
-
 int
 xcldev::device::iopsTest()
 {
+    std::string output;
 
-    xclbin_lock xclbin_lock(m_handle, m_idx);
-    int first_used_mem = get_first_used_mem(m_idx);
+    int ret = runTestCase(std::string("xrt_iops_test.exe"), std::string("verify.xclbin"),
+                output, std::string(" -t 1 -l 128 -a 500000"));
 
-    if(first_used_mem == -1)
-        return -EINVAL;
-
-    std::vector<std::shared_ptr<exec_struct>> cmds;
-    std::vector<unsigned int> cmd_per_batch = { 10,40,50,900,1000,2000,3000,4000,5000,10000 }; //b
-    std::vector<double> iops_list;
-
-    if(xclOpenContext(m_handle, xclbin_lock.m_uuid, 0, true))
-            throw std::runtime_error("Cannot create context");
-
-    //run different combinations
-    for(const auto& b : cmd_per_batch) {
-        run_iops_test(m_handle, cmds, iops_list, first_used_mem, b);
+    if (ret != 0) {
+        std::cout << output << std::endl;
+        return ret;
     }
 
-    // release all BOs
-    for(auto& c : cmds) {
-        iops_free_unmap_bo(m_handle, c->out_bo_handle, c->output_bo_ptr, c->out_size);
-        iops_free_unmap_bo(m_handle, c->exec_bo_handle, c->exec_bo_ptr, c->exec_size);
+    if (output.find("Overall Commands") == std::string::npos) {
+        std::cout << output << std::endl;
+        ret = -EINVAL;
     }
+    std::cout << output << std::endl;
+    return 0;
+}
 
-    xclCloseContext(m_handle, xclbin_lock.m_uuid, 0);
+int
+xcldev::device::iopsTestWithArgs(const std::string& name, const std::string& args)
+{
+    std::string output;
+
+    int ret = runTestCase(name, std::string("verify.xclbin"), output, args);
+    if (ret != 0)
+        return ret;
+
+    std::cout << output << std::endl;
     return 0;
 }
 
@@ -2531,6 +2396,8 @@ int xcldev::xclScheduler(int argc, char *argv[])
         {"echo", required_argument, 0, 'e'},
         {"kds_schedule", required_argument, 0, 'k'},
         {"cu_intr", required_argument, 0, xcldev::KDS_CU_INTERRUPT},
+        {"test", required_argument, 0, xcldev::KDS_TEST},
+        {"args", required_argument, 0, xcldev::KDS_ARGS},
         {0, 0, 0, 0}
     };
     const char* short_opts = "d:e:k:";
@@ -2540,6 +2407,8 @@ int xcldev::xclScheduler(int argc, char *argv[])
     int kds_echo = -1;
     int ert_disable = -1;
     int cu_intr = -1;
+    std::string test;
+    std::string args;
 
     int ret = isSudo();
     if (ret)
@@ -2566,6 +2435,12 @@ int xcldev::xclScheduler(int argc, char *argv[])
             break;
         case xcldev::KDS_CU_INTERRUPT:
             cu_intr = std::atoi(optarg);
+            break;
+        case xcldev::KDS_TEST:
+            test = optarg;
+            break;
+        case xcldev::KDS_ARGS:
+            args = optarg;
             break;
         default:
             /* This is hidden command, silently exit */
@@ -2607,6 +2482,33 @@ int xcldev::xclScheduler(int argc, char *argv[])
         std::string kds_interrupt;
         pcidev::get_dev(index)->sysfs_get( "", "kds_interrupt", errmsg, kds_interrupt);
         std::cout << "Device[" << index << "] interrupt mode: " << kds_interrupt << std::endl;
+    }
+
+    std::unique_ptr<device> dev = xclGetDevice(index);
+    if (!dev) {
+        std::cout << "ERROR: Can't open card[" << index << "]" << std::endl;
+        return -ENOENT;
+    }
+
+    if (!test.empty()) {
+        int ret = 0;
+        if (test.compare("xcl_iops") == 0) {
+            test = "xcl_iops_test.exe";
+        } else if (test.compare("xrt_iops") == 0) {
+            test = "xcl_iops_test.exe";
+        } else {
+            std::cout << "ERROR:Unknown test" << std::endl;
+            return -EINVAL;
+        }
+
+        args = " " + args;
+        ret = dev->iopsTestWithArgs(test, args);
+        if (ret == -EOPNOTSUPP)
+            std::cout << "Test not support" << std::endl;
+        else if (ret < 0)
+            std::cout << "Test failed" << std::endl;
+        else
+            std::cout << "Test completed" << std::endl;
     }
 
     return 0;

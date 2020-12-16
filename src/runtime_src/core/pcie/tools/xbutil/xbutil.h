@@ -128,6 +128,8 @@ enum cmacommand {
 };
 enum kdscommand {
     KDS_CU_INTERRUPT = 0x0,
+    KDS_TEST,
+    KDS_ARGS,
 };
 
 enum class cu_stat : unsigned short {
@@ -1955,12 +1957,13 @@ public:
     int testP2p(void);
     int testM2m(void);
     int iopsTest(void);
+    int iopsTestWithArgs(const std::string& name, const std::string& args);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
     // all output from the run into "output"
     // Note: exe should assume index to be 0 without -d
-    int runTestCase(const std::string& exe, const std::string& xclbin, std::string& output);
+    int runTestCase(const std::string& exe, const std::string& xclbin, std::string& output, const std::string &args);
 
     int scVersionTest(void);
     int pcieLinkTest(void);
