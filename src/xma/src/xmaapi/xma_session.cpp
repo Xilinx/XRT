@@ -19,11 +19,33 @@
 namespace xma_core {
 namespace plg {
 
+session::session(int32_t s_id, XmaSessionType s_type, int32_t c_id, const xrt::device& x_dev, const xrt::uuid& xclbin_uid, const std::string& cu_name)
+:session_id{s_id}, session_type{s_type},
+channel_id{c_id}, xrt_device{x_dev}, 
+xrt_kernel{x_dev, xclbin_uid, cu_name}
+{
+  std::memset(&hw_session, 0 , sizeof(XmaHwSession));
+  //hw_session will be modifed below
+  //TODO
+}
+
 int32_t
-session::alloc_buf() const
+session::get_session_id() const
+{
+  return session_id;
+}
+
+std::string
+session::get_cu_name() const
 {
   //TODO
+  return "ERROR: Invalid CU";
+}
 
+int32_t
+session::get_dev_id() const
+{
+  //TODO
   return XMA_ERROR;
 }
 
