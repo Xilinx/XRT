@@ -505,10 +505,16 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 
     // Now collect the devices and add them to the collection
     for(xrt_core::device::id_type index = 0; index < total; ++index) {
-      if(_inUserDomain)
-        _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
-      else
-        _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
+      try {
+        if(_inUserDomain)
+          _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
+        else
+          _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
+      } catch (...) { 
+        /* If the device is not available, quietly ignore it
+           Use case: when a device is being reset in parallel */
+      }
+      
     }
 
     return;
