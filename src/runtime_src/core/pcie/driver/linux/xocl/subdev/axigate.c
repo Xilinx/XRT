@@ -30,6 +30,35 @@ struct axi_gate {
 	void		__iomem *base;
 	int			level;
 	char			ep_name[128];
+	bool			sysfs_created;
+};
+
+static ssize_t name_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct axi_gate *gate = platform_get_drvdata(to_platform_device(dev));
+
+	return snprintf(buf, sizeof(gate->ep_name), "%s\n", gate->ep_name);
+}
+static DEVICE_ATTR_RO(name);
+
+static ssize_t level_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct axi_gate *gate = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", gate->level);
+}
+static DEVICE_ATTR_RO(level);
+
+static struct attribute *axigate_attributes[] = {
+	&dev_attr_name.attr,
+	&dev_attr_level.attr,
+	NULL
+};
+
+static const struct attribute_group axigate_attrgroup = {
+	.attrs = axigate_attributes,
 };
 
 #define reg_rd(g, r)					\
@@ -129,6 +158,9 @@ static int axigate_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	if (gate->sysfs_created)
+		sysfs_remove_group(&pdev->dev.kobj, &axigate_attrgroup);
+
 	if (gate->base)
 		iounmap(gate->base);
 
@@ -143,7 +175,8 @@ static int axigate_probe(struct platform_device *pdev)
 	struct axi_gate *gate;
 	struct resource *res;
 	xdev_handle_t xdev;
-	int ret;
+	char *p;
+	int ret, len;
 
 	gate = devm_kzalloc(&pdev->dev, sizeof(*gate), GFP_KERNEL);
 	if (!gate)
@@ -160,8 +193,13 @@ static int axigate_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	if (res->name && strlen(res->name))
-		strncpy(gate->ep_name, res->name, sizeof(gate->ep_name) - 1);
+	if (res->name && strlen(res->name)) {
+		p = strchr(res->name, ' ');
+		len = p ? ((ulong)p - (ulong)res->name) :
+			sizeof(gate->ep_name) - 1;
+
+		strncpy(gate->ep_name, res->name, len);
+	}
 
 	gate->base = ioremap_nocache(res->start,
 		res->end - res->start + 1);
@@ -177,6 +215,13 @@ static int axigate_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto failed;
 	}
+
+	ret = sysfs_create_group(&pdev->dev.kobj, &axigate_attrgroup);
+	if (ret) {
+		xocl_err(&pdev->dev, "create attr group failed: %d", ret);
+		goto failed;
+	}
+	gate->sysfs_created = true;
 
 	mutex_init(&gate->gate_lock);
 
