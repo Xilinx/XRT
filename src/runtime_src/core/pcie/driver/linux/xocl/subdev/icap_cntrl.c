@@ -17,6 +17,7 @@
 #include <linux/iommu.h>
 
 #define ICAP_PROGRAMMING_REG		0x0
+#define ICAP_PROGRAMMING_WBSTAR_LOC	4
 #define ICAP_PROGRAMMING_REG_ENABLE	0x1
 
 #define	READ_REG32(icap_cntrl, off)			\
@@ -53,6 +54,7 @@ static ssize_t load_flash_addr_store(struct device *dev,
 	}
 
 	mutex_lock(&ic->icap_cntrl_lock);
+	addr = addr << ICAP_PROGRAMMING_WBSTAR_LOC;
 	WRITE_REG32(ic, addr, ICAP_PROGRAMMING_REG);
 	mutex_unlock(&ic->icap_cntrl_lock);
 
@@ -71,7 +73,7 @@ static ssize_t load_flash_addr_show(struct device *dev,
 	}
 
 	val = READ_REG32(ic, ICAP_PROGRAMMING_REG);
-	val = val >> 4;
+	val = val >> ICAP_PROGRAMMING_WBSTAR_LOC;
 
 	return sprintf(buf, "0x%x\n", val);
 }
