@@ -110,7 +110,11 @@ void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info
             break;
         }
         xclBOProperties prop;
-        xclGetBOProperties(handle, cmd.boh, &prop);
+        if (xclGetBOProperties(handle, cmd.boh, &prop)) {
+            std::cout << "Could not get bo properties" << std::endl;
+            xclFreeBO(handle, cmd.boh);
+            break;
+        }
         uint64_t boh_addr = prop.paddr;
 
         cmd.exec_bo = xclAllocBO(handle, 4096, 0, XCL_BO_FLAGS_EXECBUF);
