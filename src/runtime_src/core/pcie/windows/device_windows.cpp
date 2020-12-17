@@ -603,6 +603,51 @@ struct info
   static result_type
   mgmt(const xrt_core::device* device, key_type key)
   {
+    auto init_pcie_info = [](const xrt_core::device* dev) {
+      XCLMGMT_IOC_DEVICE_PCI_INFO info = { 0 };
+      mgmtpf::get_pcie_info(dev->get_mgmt_handle(), &info);
+      return info;
+    };
+
+    static std::map<const xrt_core::device*, XCLMGMT_IOC_DEVICE_PCI_INFO> info_map;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = info_map.find(device);
+    if (it == info_map.end()) {
+      auto ret = info_map.emplace(device,init_pcie_info(device));
+      it = ret.first;
+    }
+
+    auto& info = (*it).second;
+
+    switch (key) {
+    case key_type::pcie_vendor:
+      return static_cast<query::pcie_vendor::result_type>(info.pcie_info.vendor);
+    case key_type::pcie_device:
+      return static_cast<query::pcie_device::result_type>(info.pcie_info.device);
+    case key_type::pcie_subsystem_vendor:
+      return static_cast<query::pcie_subsystem_vendor::result_type>(info.pcie_info.subsystem_vendor);
+    case key_type::pcie_subsystem_id:
+      return static_cast<query::pcie_subsystem_id::result_type>(info.pcie_info.subsystem_device);
+    default:
+      throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
+    }
+  }
+};
+
+struct xmc
+{
+  using result_type = boost::any;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    throw std::runtime_error("xmc register base is not implemented on user windows");
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
     auto init_device_info = [](const xrt_core::device* dev) {
       XCLMGMT_IOC_DEVICE_INFO info = { 0 };
       mgmtpf::get_device_info(dev->get_mgmt_handle(), &info);
@@ -621,14 +666,6 @@ struct info
     auto& info = (*it).second;
 
     switch (key) {
-    case key_type::pcie_vendor:
-      return static_cast<query::pcie_vendor::result_type>(info.pcie_info.vendor);
-    case key_type::pcie_device:
-      return static_cast<query::pcie_device::result_type>(info.pcie_info.device);
-    case key_type::pcie_subsystem_vendor:
-      return static_cast<query::pcie_subsystem_vendor::result_type>(info.pcie_info.subsystem_vendor);
-    case key_type::pcie_subsystem_id:
-      return static_cast<query::pcie_subsystem_id::result_type>(info.pcie_info.subsystem_device);
     case key_type::xmc_reg_base:
       return info.xmc_offset;
     default:
@@ -1027,7 +1064,7 @@ initialize_query_table()
   emplace_function0_getter<query::pcie_subsystem_id,         info>();
   emplace_function0_getter<query::interface_uuids,           uuid>();
   emplace_function0_getter<query::logic_uuids,               uuid>();
-  emplace_function0_getter<query::xmc_reg_base,              info>();
+  emplace_function0_getter<query::xmc_reg_base,              xmc>();
   emplace_function0_getter<query::pcie_bdf,                  bdf>();
   emplace_function0_getter<query::rom_vbnv,                  rom>();
   emplace_function0_getter<query::rom_ddr_bank_size_gb,      rom>();

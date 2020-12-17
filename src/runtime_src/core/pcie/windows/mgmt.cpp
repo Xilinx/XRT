@@ -349,6 +349,25 @@ get_data_retention(uint32_t* value)
         throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_DATA_RETENTION failed");
 }
 
+void
+get_pcie_info(XCLMGMT_IOC_DEVICE_PCI_INFO* value)
+{
+  DWORD bytes = 0;
+  
+  auto status = DeviceIoControl
+      (m_hdl,
+      XCLMGMT_OID_GET_DEVICE_PCI_INFO,    //ioctl code
+      nullptr,                            //in buffer
+      0,                                   //in buffer size
+      value,                               //out buffer
+      sizeof(XCLMGMT_IOC_DEVICE_PCI_INFO), //out buffer size
+      &bytes,                              //size of the data returned 
+      nullptr);                            //ptr to overlapped struct (for async operations)
+  
+  if (!status || (bytes != sizeof(XCLMGMT_IOC_DEVICE_PCI_INFO)))
+    throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_DEVICE_PCI_INFO failed");
+}
+
 
 }; // struct mgmt
 
@@ -544,6 +563,15 @@ get_data_retention(xclDeviceHandle hdl, uint32_t* value)
     send(xrt_core::message::severity_level::debug, "XRT", "get_data_retention()");
   auto mgmt = get_mgmt_object(hdl);
   mgmt->get_data_retention(value);
+}
+
+void
+get_pcie_info(xclDeviceHandle hdl, XCLMGMT_IOC_DEVICE_PCI_INFO* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "get_pcie_info()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->get_pcie_info(value);
 }
 
 } // mgmt
