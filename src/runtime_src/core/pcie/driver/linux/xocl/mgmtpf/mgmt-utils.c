@@ -768,6 +768,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 	if (xocl_subdev_is_vsec_recovery(lro)) {
 		mgmt_info(lro, "Skip load_fdt for vsec Golden image");
+		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 		return 0;
 	}
 
