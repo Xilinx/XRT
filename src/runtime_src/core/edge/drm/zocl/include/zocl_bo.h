@@ -39,6 +39,9 @@
 #define ZOCL_BO_FLAGS_P2P		(1 << 30)
 #define ZOCL_BO_FLAGS_EXECBUF		(1 << 31)
 
+#define ZOCL_PAGE_SIZE			4096 /* DRM page size requirement is multiple of 4096 */
+#define ZOCL_PAGE_SIZE_M1		0xFFF
+
 /* BO types we support */
 #define ZOCL_BO_NORMAL	(XRT_DRV_BO_HOST_MEM | XRT_DRM_SHMEM | \
 			XRT_DRV_BO_DRM_ALLOC)

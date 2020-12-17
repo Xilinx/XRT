@@ -808,8 +808,9 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 		DRM_ERROR("Buffer at out side of reserved memory region\n");
 		return -ENOMEM;
 	}
-	if (args->size < 4096) {
-		DRM_ERROR("Buffer size smaller than 4096 is not allowed\n");
+	if (args->size & ZOCL_PAGE_SIZE_M1 != 0) {
+		//DRM requirement
+		DRM_ERROR("Buffer size must be multiple of 4096\n");
 		return -ENOMEM;
 	}
 
