@@ -965,6 +965,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 			goto err_sched;
 	}
 
+	if (zdev->ert)
+		zdev->watchdog_thread = kthread_run(zocl_watchdog_thread, zdev,
+			"zocl_watchdog");
 	return 0;
 
 /* error out in exact reverse order of init */
@@ -1000,6 +1003,11 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 
 	if (zdev->fpga_mgr)
 		fpga_mgr_put(zdev->fpga_mgr);
+
+	if (zdev->ert) {
+		if (zdev->watchdog_thread)
+			kthread_stop(zdev->watchdog_thread);
+	}
 
 	if (kds_mode == 0)
 		sched_fini_exec(drm);

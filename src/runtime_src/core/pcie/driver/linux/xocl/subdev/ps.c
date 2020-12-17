@@ -41,11 +41,37 @@
 #define PS_RESET        0xc
 #define POR_RESET       0x3
 
+/*
+ * register at offset 0xc, upper 16 bits are being used for the watchdog
+ * purpose, lower 16 bits are being used to show reset status
+ *
+ * Among the 16 bits for watchdog, the upper 8 bits are used as counter and
+ * the lower 8 bits are used to show the state of individual part.
+ *
+ * The counter will be increased by 1 every check and gone back to 0 once
+ * overflow. This happens only when each piece we are monitoring is healthy.
+ *
+ * The pieces we are monitoring so far include,
+ * skd,
+ * cmc,
+ * cq thread
+ * sched thread
+ *
+ */
 #define RESET_REG_C	0xC
+/* watchdog freq should be same to that defind in zocl_watchdog.c */
+#define ZOCL_WATCHDOG_FREQ (3000)
 
 #define ERT_READY_MASK  0x8
 #define RES_DONE_MASK   0x4
 #define RES_TYPE_MASK   0x3
+#define COUNTER_MASK		0xff000000
+#define RESET_MASK		0xffff
+#define SKD_BIT_SHIFT		16
+#define CMC_BIT_SHIFT		17
+#define CQ_THD_BIT_SHIFT	18
+#define SCHED_THD_BIT_SHIFT	19
+#define COUNTER_BITS_SHIFT	24
 
 #define SK_RESET	0x1
 
@@ -189,8 +215,62 @@ static ssize_t ps_ready_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(ps_ready);
 
+static ssize_t ps_watchdog_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_ps *ps = platform_get_drvdata(to_platform_device(dev));
+	ssize_t count = 0;
+	u32 reg0, reg;
+	bool alive = false;
+
+	mutex_lock(&ps->ps_lock);
+	reg0 = READ_REG32(ps, RESET_REG_C);
+	msleep(ZOCL_WATCHDOG_FREQ);
+	reg = READ_REG32(ps, RESET_REG_C);
+	mutex_unlock(&ps->ps_lock);
+
+	if ((reg & COUNTER_MASK) &&
+		(reg0 & COUNTER_MASK) != (reg & COUNTER_MASK))
+		alive = true;
+	if (alive)
+		count = sprintf(buf, "ps healthy: 1\n");
+	else
+		count = sprintf(buf, "ps healthy: 0\n");
+
+	/*
+	 * counter 0 means the watchdong thread exits. eg. ps reboot,
+	 * zocl unload, etc. In this case, don't show other info
+	 */
+	if (!(reg & COUNTER_MASK))
+		return count;
+
+	if (reg & (1 << SKD_BIT_SHIFT))
+		count += sprintf(buf + count, "skd: running\n");
+	else
+		count += sprintf(buf + count, "skd: not running\n");
+
+	if (reg & (1 << CMC_BIT_SHIFT))
+		count += sprintf(buf + count, "cmc: running\n");
+	else
+		count += sprintf(buf + count, "cmc: not running\n");
+
+	if (reg & (1 << CQ_THD_BIT_SHIFT))
+		count += sprintf(buf + count, "cq thread: running\n");
+	else
+		count += sprintf(buf + count, "cq thread: not running\n");
+
+	if (reg & (1 << SCHED_THD_BIT_SHIFT))
+		count += sprintf(buf + count, "sched thread: running\n");
+	else
+		count += sprintf(buf + count, "sched thread: not running\n");
+
+	return count;
+}
+static DEVICE_ATTR_RO(ps_watchdog);
+
 static struct attribute *ps_attrs[] = {
 	&dev_attr_ps_ready.attr,
+	&dev_attr_ps_watchdog.attr,
 	NULL,
 };
 

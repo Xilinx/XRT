@@ -57,7 +57,7 @@ static irqreturn_t sched_cq_isr(int irq, void *arg);
 #define MAX_SCHED_LOOP 8
 static int    sched_loop_cnt;
 
-static struct scheduler g_sched0;
+struct scheduler g_sched0;
 static struct sched_ops penguin_ops;
 static struct sched_ops ps_ert_ops;
 
@@ -3259,6 +3259,7 @@ cq_check(void *data)
 		}
 		schedule();
 	}
+	DRM_INFO("cq_thread exits!!\n");
 	SCHED_DEBUG("<- %s", __func__);
 	return 0;
 }

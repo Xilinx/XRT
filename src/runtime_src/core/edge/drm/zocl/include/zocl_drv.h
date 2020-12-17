@@ -255,6 +255,8 @@ struct zocl_cu_ops {
 	int (*submit)(struct platform_device *pdev, struct kds_command *xcmd);
 };
 
+int zocl_watchdog_thread(void *data);
+
 static inline int
 zocl_cu_submit_xcmd(struct drm_zocl_dev *zdev, int i, struct kds_command *xcmd)
 {
