@@ -2467,6 +2467,10 @@ int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection 
   SYNC_BO_CB ;
 
     xocl::shim *drv = xocl::shim::handleCheck(handle);
+    if (size == 0) {
+      //Nothing to do
+      return 0;
+    }
     return drv ? drv->xclSyncBO(boHandle, dir, size, offset) : -ENODEV;
 }
 
