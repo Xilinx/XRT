@@ -192,7 +192,7 @@ int testSingleThread(int dev_id, std::string &xclbin_fn)
         double duration = runTest(handle, cmds, num_cmds, arg[0]);
 #endif
         std::cout << "Commands: " << std::setw(7) << num_cmds
-                  << " iops: " << (num_cmds * 1000.0 * 1000.0 / duration)
+                  << " IOPS: " << (num_cmds * 1000.0 * 1000.0 / duration)
                   << std::endl;
     }
 
@@ -290,7 +290,7 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
             std::cout << "Thread " << arg[i].thread_id
                 << " Commands: " << std::setw(7) << total
                 << std::setprecision(0) << std::fixed
-                << " iops: " << (total * 1000000.0 / duration)
+                << " IOPS: " << (total * 1000000.0 / duration)
                 << std::endl;
         }
         overallCommands += total;
@@ -299,7 +299,7 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
     duration = (std::chrono::duration_cast<ms_t>(end - start)).count();
     std::cout << "Overall Commands: " << std::setw(7) << overallCommands
               << std::setprecision(0) << std::fixed
-              << " iops: " << (overallCommands * 1000000.0 / duration)
+              << " IOPS: " << (overallCommands * 1000000.0 / duration)
               << std::endl;
     return 0;
 }

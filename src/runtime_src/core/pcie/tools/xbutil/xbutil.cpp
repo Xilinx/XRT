@@ -2375,8 +2375,8 @@ xcldev::device::iopsTest()
         ret = -EINVAL;
     }
 
-    // Find start and end point of "iops: xxxxxx" substring
-    auto sp = output.find("iops:");
+    // Find start and end point of "IOPS: xxxxxx" substring
+    auto sp = output.find("IOPS:");
     auto ep = output.find("\n", sp);
     if (sp == std::string::npos || ep == std::string::npos) {
         std::cout << "IOPS print result unexpected" << std::endl;
