@@ -28,6 +28,7 @@ namespace xdp {
 class DeviceEventCreatorFromTrace
 {
   uint64_t deviceId = 0;
+  XclbinInfo* xclbin = nullptr ;
   VPDatabase* db = nullptr;
 
   std::vector<uint64_t>  traceIDs;

@@ -34,11 +34,21 @@ namespace xdp {
     std::string xrtVersion;
     std::string toolVersion;
 
-    std::map<int32_t,  uint32_t> cuBucketIdMap;
-    std::map<uint32_t, uint32_t> aimBucketIdMap;
-    std::map<uint32_t, uint32_t> asmBucketIdMap;
+    std::map<std::pair<XclbinInfo*, int32_t>,  uint32_t> cuBucketIdMap;
+    std::map<std::pair<XclbinInfo*, uint32_t>, uint32_t> aimBucketIdMap;
+    std::map<std::pair<XclbinInfo*, uint32_t>, uint32_t> asmBucketIdMap;
 
     uint64_t deviceId;
+
+    // Helper functions for individual parts of the STRUCTURE section
+    void writeDeviceStructure() ;
+    void writeLoadedXclbinsStructure() ;
+    void writeSingleXclbinStructure(XclbinInfo* xclbin, uint32_t& rowCount) ;
+    void writeCUExecutionStructure(XclbinInfo* xclbin, ComputeUnitInstance* cu, uint32_t& rowCount);
+    void writeCUMemoryTransfersStructure(XclbinInfo* xclbin, ComputeUnitInstance* cu, uint32_t& rowCount) ;
+    void writeCUStreamTransfersStructure(XclbinInfo* xclbin, ComputeUnitInstance* cu, uint32_t& rowCount) ;
+    void writeFloatingMemoryTransfersStructure(XclbinInfo* xclbin, uint32_t& rowCount) ;
+    void writeFloatingStreamTransfersStructure(XclbinInfo* xclbin, uint32_t& rowCount) ;
 
   protected:
     virtual void writeHeader() ;

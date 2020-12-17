@@ -31,12 +31,14 @@ namespace xdp {
     traceClockRateMHz = db->getStaticInfo().getClockRateMHz(deviceId);
     clockTrainSlope = 1000.0/traceClockRateMHz;
 
-    traceIDs.resize(db->getStaticInfo().getNumAM(deviceId));
-    cuStarts.resize(db->getStaticInfo().getNumAM(deviceId));
-    amLastTrans.resize(db->getStaticInfo().getNumAM(deviceId));
+    xclbin = (db->getStaticInfo()).getCurrentlyLoadedXclbin(devId) ;
 
-    aimLastTrans.resize(db->getStaticInfo().getNumAIM(deviceId));
-    asmLastTrans.resize(db->getStaticInfo().getNumASM(deviceId));
+    traceIDs.resize(db->getStaticInfo().getNumAM(deviceId, xclbin));
+    cuStarts.resize(db->getStaticInfo().getNumAM(deviceId, xclbin));
+    amLastTrans.resize(db->getStaticInfo().getNumAM(deviceId, xclbin));
+
+    aimLastTrans.resize(db->getStaticInfo().getNumAIM(deviceId, xclbin));
+    asmLastTrans.resize(db->getStaticInfo().getNumASM(deviceId, xclbin));
   }
 
   void DeviceEventCreatorFromTrace::createDeviceEvents(xclTraceResultsVector& traceVector)
@@ -48,6 +50,7 @@ namespace xdp {
     if(!VPDatabase::alive()) {
       return;
     }
+
     uint64_t timestamp = 0;
     for(unsigned int i=0; i < traceVector.mLength; i++) {
       auto& trace = traceVector.mArray[i];
@@ -78,7 +81,7 @@ namespace xdp {
         uint32_t stallStrEvent = trace.TraceID & XAM_TRACE_STALL_STR_MASK;
         uint32_t stallExtEvent = trace.TraceID & XAM_TRACE_STALL_EXT_MASK;
 
-        Monitor* mon  = db->getStaticInfo().getAMonitor(deviceId, s);   
+        Monitor* mon  = db->getStaticInfo().getAMonitor(deviceId, xclbin, s);
 	if (!mon) {
 	  // In hardware emulation, there might be monitors inserted
 	  //  that don't show up in the debug ip layout.  These are added
@@ -176,7 +179,7 @@ namespace xdp {
         if(!(trace.TraceID & 1)) { // read packet
           s = trace.TraceID/2;
 
-          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, s);  
+          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, xclbin, s);
 	  if (!mon) {
 	    // In hardware emulation, there might be monitors inserted
 	    //  that don't show up in the debug ip layout.  These are added
@@ -215,7 +218,7 @@ namespace xdp {
           // KERNEL_WRITE
           s = trace.TraceID/2;
 
-          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, s);   
+          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, xclbin, s);
 	  if (!mon) {
 	    // In hardware emulation, there might be monitors inserted
 	    //  that don't show up in the debug ip layout.  These are added
@@ -253,7 +256,7 @@ namespace xdp {
       else if(ASMPacket) {
         s = trace.TraceID - MIN_TRACE_ID_ASM;
 
-        Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, s);
+        Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, s);
 	if (!mon) {
 	  // In hardware emulation, there might be monitors inserted
 	  //  that don't show up in the debug ip layout.  These are added
@@ -321,7 +324,7 @@ namespace xdp {
       uint64_t cuLastTimestamp  = amLastTrans[amIndex];
 
       // get CU Id for the current slot
-      Monitor* am = db->getStaticInfo().getAMonitor(deviceId, amIndex);
+      Monitor* am = db->getStaticInfo().getAMonitor(deviceId, xclbin, amIndex);
       int32_t  cuId = am->cuIndex;
 
       // Check if any memory port on current CU had a trace packet
@@ -333,7 +336,7 @@ namespace xdp {
         if(cuLastTimestamp >= aimLastTrans[aimIndex]) {
           continue;
         }
-        Monitor* aim = db->getStaticInfo().getAIMonitor(deviceId, aimIndex);
+        Monitor* aim = db->getStaticInfo().getAIMonitor(deviceId, xclbin, aimIndex);
         if(cuId != aim->cuIndex) {
           // current AIM attached to a different CU, so continue
           continue;
@@ -351,7 +354,7 @@ namespace xdp {
         if(cuLastTimestamp >= asmLastTrans[asmIndex]) {
           continue;
         }
-        Monitor* asM = db->getStaticInfo().getASMonitor(deviceId, asmIndex);
+        Monitor* asM = db->getStaticInfo().getASMonitor(deviceId, xclbin, asmIndex);
         if(cuId != asM->cuIndex) {
           // current ASM attached to a different CU, so continue
           continue;

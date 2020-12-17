@@ -260,7 +260,8 @@ namespace xdp {
     // OpenCL specific info 1: Argument lists for each monitor
     // *******************************************************
     DeviceInfo* storedDevice = (db->getStaticInfo()).getDeviceInfo(deviceId) ;
-    for (auto iter : storedDevice->loadedXclbins.back()->cus)
+    XclbinInfo* xclbin = storedDevice->loadedXclbins.back() ;
+    for (auto iter : xclbin->cus)
     {
       ComputeUnitInstance* cu = iter.second ;
 
@@ -284,7 +285,7 @@ namespace xdp {
       for (size_t i = 0 ; i < AIMIds->size() ; ++i)
       {
 	uint32_t AIMIndex = (*AIMIds)[i] ;
-	Monitor* monitor = (db->getStaticInfo()).getAIMonitor(deviceId, AIMIndex) ;
+	Monitor* monitor = (db->getStaticInfo()).getAIMonitor(deviceId, xclbin, AIMIndex) ;
 	if (!monitor) continue ;
 
 	// Construct the argument list of each port
@@ -317,7 +318,7 @@ namespace xdp {
       for (size_t i = 0 ; i < ASMIds->size() ; ++i)
       {
 	uint32_t ASMIndex = (*ASMIds)[i] ;
-	Monitor* monitor = (db->getStaticInfo()).getASMonitor(deviceId, ASMIndex) ;
+	Monitor* monitor = (db->getStaticInfo()).getASMonitor(deviceId, xclbin, ASMIndex) ;
 	if (!monitor) continue ;
 
 	// Construct the argument list of each port

@@ -47,21 +47,22 @@ namespace xdp {
     LOP_KERNEL_ENQUEUE   = 23,
 
     // PL events
-    KERNEL                = 30,
-    KERNEL_STALL          = 31,
-    KERNEL_STALL_EXT_MEM  = 32,
-    KERNEL_STALL_DATAFLOW = 33,
-    KERNEL_STALL_PIPE     = 34,
-    KERNEL_READ           = 35,
-    KERNEL_WRITE          = 36,
-    KERNEL_STREAM_READ    = 37,
+    KERNEL                     = 30,
+    KERNEL_STALL               = 31,
+    KERNEL_STALL_EXT_MEM       = 32,
+    KERNEL_STALL_DATAFLOW      = 33,
+    KERNEL_STALL_PIPE          = 34,
+    KERNEL_READ                = 35,
+    KERNEL_WRITE               = 36,
+    KERNEL_STREAM_READ         = 37,
     KERNEL_STREAM_READ_STALL   = 38,
     KERNEL_STREAM_READ_STARVE  = 39,
-    KERNEL_STREAM_WRITE   = 40,
+    KERNEL_STREAM_WRITE        = 40,
     KERNEL_STREAM_WRITE_STALL  = 41,
     KERNEL_STREAM_WRITE_STARVE = 42,
-    HOST_READ             = 43,
-    HOST_WRITE            = 44,
+    HOST_READ                  = 43,
+    HOST_WRITE                 = 44,
+    XCLBIN_END                 = 45,
 
     // AIE events
 

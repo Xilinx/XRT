@@ -124,6 +124,9 @@ namespace xdp {
     XDP_EXPORT VPDynamicDatabase(VPDatabase* d) ;
     XDP_EXPORT ~VPDynamicDatabase() ;
 
+    // For multiple xclbin designs
+    XDP_EXPORT void markXclbinEnd(uint64_t deviceId) ;
+
     // Add an event in sorted order in the database
     XDP_EXPORT void addEvent(VTFEvent* event) ;
 

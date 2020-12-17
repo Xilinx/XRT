@@ -123,4 +123,14 @@ namespace xdp {
   {
   }
 
+  XclbinEnd::XclbinEnd(uint64_t s_id, double ts, uint64_t devId, uint32_t monId)
+    : VTFDeviceEvent(s_id, ts, XCLBIN_END, devId, monId)
+  {
+    // Just a marker to know when an xclbin has been completely flushed
+  }
+
+  XclbinEnd::~XclbinEnd()
+  {
+  }
+
 } // end namespace xdp

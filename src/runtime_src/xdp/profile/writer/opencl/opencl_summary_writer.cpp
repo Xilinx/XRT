@@ -488,7 +488,6 @@ namespace xdp {
 	xclCounterResults values =
 	  (db->getDynamicInfo()).getCounterResults(deviceId, xclbin->uuid) ;
 
-
 	// For every compute unit in the xclbin
 	for (auto cuInfo : xclbin->cus)
 	{
@@ -706,7 +705,7 @@ namespace xdp {
 	  std::vector<uint32_t>* aimMonitors = (cu.second)->getAIMs() ;
 	  for (auto aimMonitorId : (*aimMonitors))
 	  {
-	    Monitor* monitor = (db->getStaticInfo()).getAIMonitor(device->deviceId, aimMonitorId) ;
+	    Monitor* monitor = (db->getStaticInfo()).getAIMonitor(device->deviceId, xclbin, aimMonitorId) ;
 
 	    auto writeTranx = values.WriteTranx[aimMonitorId] ;
 	    auto readTranx = values.ReadTranx[aimMonitorId] ;
@@ -827,7 +826,7 @@ namespace xdp {
 	  for (auto asmMonitorId : (*asmMonitors))
 	  {
 	    //if (monitor->type != AXI_STREAM_MONITOR) continue ;
-	    Monitor* monitor = (db->getStaticInfo()).getASMonitor(device->deviceId, asmMonitorId) ;
+	    Monitor* monitor = (db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmMonitorId) ;
 
 	    uint64_t numTranx = values.StrNumTranx[ASMIndex] ;
 
@@ -1560,12 +1559,12 @@ namespace xdp {
 	{
 	  for (auto aimId : *((cu.second)->getAIMs()))
 	  {
-	    Monitor* monitor = (t->db->getStaticInfo()).getAIMonitor(device->deviceId, aimId);
+	    Monitor* monitor = (t->db->getStaticInfo()).getAIMonitor(device->deviceId, xclbin, aimId);
 	    accelCounter[monitor->type] += 1;
 	  }
 	  for (auto asmId : *((cu.second)->getASMs()))
 	  {
-	    Monitor* monitor = (t->db->getStaticInfo()).getASMonitor(device->deviceId, asmId);
+	    Monitor* monitor = (t->db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmId);
 	    accelCounter[monitor->type] += 1;
 	  }
 	}
@@ -1765,14 +1764,14 @@ namespace xdp {
 	  std::vector<uint32_t>* asmIds = (cu.second)->getASMs() ;
 	  for (auto aim : (*aimIds))
 	  {
-	    Monitor* monitor = (t->db->getStaticInfo()).getAIMonitor(device->deviceId, aim) ;
+	    Monitor* monitor = (t->db->getStaticInfo()).getAIMonitor(device->deviceId, xclbin, aim) ;
 	    (t->fout) << "PORT_BIT_WIDTH" << ","
 		      << (cu.second)->getName() << "/" << monitor->args << ","
 		      << monitor->portWidth << "," << std::endl ;
 	  }
 	  for (auto asmId : (*asmIds))
 	  {
-	    Monitor* monitor = (t->db->getStaticInfo()).getASMonitor(device->deviceId, asmId) ;
+	    Monitor* monitor = (t->db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmId) ;
 	    (t->fout) << "PORT_BIT_WIDTH" << ","
 		      << (cu.second)->getName() << "/" << monitor->args << ","
 		      << monitor->portWidth << "," << std::endl ;

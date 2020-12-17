@@ -25,8 +25,10 @@
 #include <list>
 
 #include "xdp/config.h"
+#include "xdp/profile/device/device_intf.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+
 
 namespace xdp {
 
@@ -194,12 +196,21 @@ namespace xdp {
     double maxWriteBW = 0.0 ;
     double clockRateMHz = 300 ;
     bool usesTs2mm = false ;
+    bool hasFloatingAIM = false;
+    bool hasFloatingASM = false;
+    DeviceIntf* deviceIntf = nullptr;
 
-    // We have to use string instead of xrt_core::uuid due to emulation
     xrt_core::uuid uuid ; 
     std::string name ;
     std::map<int32_t, ComputeUnitInstance*> cus ;
     std::map<int32_t, Memory*> memoryInfo ;
+
+    /* Maps for AM, AIM, ASM Monitor (enabled for trace) with slotID as the key.
+     * Contains only user space monitors, but no shell monitor (e.g. shell AIM/ASM)
+     */
+    std::map<uint64_t, Monitor*>  amMap;
+    std::map<uint64_t, Monitor*>  aimMap;
+    std::map<uint64_t, Monitor*>  asmMap;
 
     ~XclbinInfo() {
       for (auto& i : cus) {
@@ -210,6 +221,20 @@ namespace xdp {
 	delete i.second ;
       }
       memoryInfo.clear() ;
+      for(auto& i : amMap) {
+	delete i.second;
+      }
+      amMap.clear();
+      for(auto& i : aimMap) {
+	delete i.second;
+      }
+      aimMap.clear();
+      for(auto& i : asmMap) {
+	delete i.second;
+      }
+      asmMap.clear();
+
+      if (deviceIntf) delete deviceIntf ;
     }
   } ;
 
@@ -218,7 +243,6 @@ namespace xdp {
     uint64_t deviceId ;
     std::string deviceName ;
     std::string ctxInfo ;
-    DeviceIntf* deviceIntf = nullptr;
     uint64_t kdmaCount     = 0 ;
     bool isEdgeDevice      = false ;
     bool isReady           = false;
@@ -233,9 +257,11 @@ namespace xdp {
     /* Maps for AM, AIM, ASM Monitor (enabled for trace) with slotID as the key.
      * Contains only user space monitors, but no shell monitor (e.g. shell AIM/ASM)
      */
+    /*
     std::map<uint64_t, Monitor*>  amMap;
     std::map<uint64_t, Monitor*>  aimMap;
     std::map<uint64_t, Monitor*>  asmMap;
+    */
 
     std::vector<Monitor*>  noTraceAMs;
     std::vector<Monitor*>  noTraceAIMs;
@@ -249,12 +275,96 @@ namespace xdp {
     std::vector<AIECounter*>   aieList;
     std::vector<TraceGMIO*>    gmioList;
 
-    bool hasFloatingAIM   = false;
-    bool hasFloatingASM   = false;
     uint32_t numTracePLIO = 0;
 
+    XclbinInfo* currentXclbin() {
+      if (loadedXclbins.size() <= 0)
+	return nullptr ;
+      return loadedXclbins.back() ;
+    }
+
     void addXclbin(XclbinInfo* xclbin) {
+      if (loadedXclbins.size() > 0) {
+	if (loadedXclbins.back()->deviceIntf != nullptr) {
+	  delete loadedXclbins.back()->deviceIntf ;
+	  loadedXclbins.back()->deviceIntf = nullptr ;
+	}
+      }
       loadedXclbins.push_back(xclbin) ;
+    }
+
+    bool hasFloatingAIM(XclbinInfo* xclbin) {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return bin->hasFloatingAIM ;
+      }
+      return false ;
+    }
+
+    bool hasFloatingASM(XclbinInfo* xclbin) {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return bin->hasFloatingASM ;
+      }
+      return false ;
+    }
+
+    inline uint64_t getNumAM(XclbinInfo* xclbin) {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return bin->amMap.size() ;
+      }
+      return 0 ;
+    }
+
+    inline uint64_t getNumAIM(XclbinInfo* xclbin) {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return bin->aimMap.size() ;
+      }
+      return 0 ;
+    }
+
+    inline uint64_t getNumASM(XclbinInfo* xclbin) {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return bin->asmMap.size() ;
+      }
+      return 0 ;
+    }
+
+    inline Monitor* getAMonitor(XclbinInfo* xclbin, uint64_t slotID) {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return bin->amMap[slotID] ;
+      }
+      return nullptr ;
+    }
+
+    inline Monitor* getAIMonitor(XclbinInfo* xclbin, uint64_t slotID) {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return bin->aimMap[slotID] ;
+      }
+      return nullptr ;
+    }
+
+    inline Monitor* getASMonitor(XclbinInfo* xclbin, uint64_t slotID) {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return bin->asmMap[slotID] ;
+      }
+      return nullptr ;
+    }
+
+    // Includes only User Space AIM enabled for trace, but no shell AIM
+    inline std::map<uint64_t, Monitor*>* getAIMonitors(XclbinInfo* xclbin)
+    {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return &(bin->aimMap) ;
+      }
+      return nullptr ;
+    }
+
+    // Includes only User Space ASM enabled for trace, but no shell ASM
+    inline std::map<uint64_t, Monitor*>* getASMonitors(XclbinInfo* xclbin)
+    {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return &(bin->asmMap) ;
+      }
+      return nullptr ;
     }
 
     inline xrt_core::uuid currentXclbinUUID() {
@@ -263,23 +373,13 @@ namespace xdp {
       return loadedXclbins.back()->uuid ; 
     }
 
+    std::vector<XclbinInfo*> getLoadedXclbins() {
+      return loadedXclbins ;
+    }
+
     void cleanCurrentXclbinInfo() {
       numTracePLIO = 0 ;
-      hasFloatingAIM = false ;
-      hasFloatingASM = false ;
-      for(auto& i : amMap) {
-	delete i.second;
-      }
-      amMap.clear();
-      for(auto& i : aimMap) {
-	delete i.second;
-      }
-      aimMap.clear();
-      for(auto& i : asmMap) {
-	delete i.second;
-      }
-      asmMap.clear();
-      
+
       // Do not delete the monitors in the complete lists, they
       //  are just pointers to objects owned by other data structures
       aimList.clear() ;
@@ -419,6 +519,13 @@ namespace xdp {
       return deviceInfo[deviceId];
     }
 
+    inline XclbinInfo* getCurrentlyLoadedXclbin(uint64_t deviceId)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+	return nullptr ;
+      return deviceInfo[deviceId]->currentXclbin() ;
+    }
+
     bool isDeviceReady(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -481,14 +588,16 @@ namespace xdp {
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return; 
-      deviceInfo[deviceId]->deviceIntf = devIntf;
+      if (deviceInfo[deviceId]->currentXclbin() == nullptr)
+	return ;
+      deviceInfo[deviceId]->currentXclbin()->deviceIntf = devIntf ;
     }
 
     DeviceIntf* getDeviceIntf(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return deviceInfo[deviceId]->deviceIntf; 
+      return deviceInfo[deviceId]->currentXclbin()->deviceIntf; 
     }
 
     void setKDMACount(uint64_t deviceId, uint64_t num)
@@ -545,6 +654,14 @@ namespace xdp {
       //return deviceInfo[deviceId]->loadedXclbin; 
     }
 
+    std::vector<XclbinInfo*> getLoadedXclbins(uint64_t deviceId) {
+      if (deviceInfo.find(deviceId) == deviceInfo.end()) {
+	std::vector<XclbinInfo*> blank ;
+	return blank ;
+      }
+      return deviceInfo[deviceId]->getLoadedXclbins() ;
+    }
+
     ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -586,33 +703,33 @@ namespace xdp {
     }
 
     // Includes only User Space AM enabled for trace
-    inline uint64_t getNumAM(uint64_t deviceId)
+    inline uint64_t getNumAM(uint64_t deviceId, XclbinInfo* xclbin)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
-      return deviceInfo[deviceId]->amMap.size();
+      return deviceInfo[deviceId]->getNumAM(xclbin);
     }
 
     /* Includes only User Space AIM enabled for trace; but no shell AIM
      * Note : May not match xdp::DeviceIntf::getNumMonitors(XCL_PERF_MON_MEMORY)
      *        as that includes both user-space and shell AIM
      */
-    inline uint64_t getNumAIM(uint64_t deviceId)
+    inline uint64_t getNumAIM(uint64_t deviceId, XclbinInfo* xclbin)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
-      return deviceInfo[deviceId]->aimMap.size();
+      return deviceInfo[deviceId]->getNumAIM(xclbin);
     }
 
     /* Includes only User Space ASM enabled for trace; but no shell ASM
      * Note : May not match xdp::DeviceIntf::getNumMonitors(XCL_PERF_MON_STR)
      *        as that includes both user-space and shell ASM
      */
-    inline uint64_t getNumASM(uint64_t deviceId)
+    inline uint64_t getNumASM(uint64_t deviceId, XclbinInfo* xclbin)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
-      return deviceInfo[deviceId]->asmMap.size();
+      return deviceInfo[deviceId]->getNumASM(xclbin);
     }
 
     inline uint64_t getNumNOC(uint64_t deviceId)
@@ -636,25 +753,25 @@ namespace xdp {
       return deviceInfo[deviceId]->gmioList.size();
     }
 
-    inline Monitor* getAIMonitor(uint64_t deviceId, uint64_t slotID)
+    inline Monitor* getAMonitor(uint64_t deviceId, XclbinInfo* xclbin, uint64_t slotID)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return deviceInfo[deviceId]->aimMap[slotID];
+      return deviceInfo[deviceId]->getAMonitor(xclbin, slotID) ;
     }
 
-    inline Monitor* getAMonitor(uint64_t deviceId, uint64_t slotID)
+    inline Monitor* getAIMonitor(uint64_t deviceId, XclbinInfo* xclbin, uint64_t slotID)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return deviceInfo[deviceId]->amMap[slotID];
+      return deviceInfo[deviceId]->getAIMonitor(xclbin, slotID);
     }
 
-    inline Monitor* getASMonitor(uint64_t deviceId, uint64_t slotID)
+    inline Monitor* getASMonitor(uint64_t deviceId, XclbinInfo* xclbin, uint64_t slotID)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return deviceInfo[deviceId]->asmMap[slotID];
+      return deviceInfo[deviceId]->getASMonitor(xclbin, slotID);
     }
 
     inline Monitor* getNOC(uint64_t deviceId, uint64_t idx)
@@ -703,19 +820,19 @@ namespace xdp {
     }
 
     // Includes only User Space AIM enabled for trace, but no shell AIM
-    inline std::map<uint64_t, Monitor*>* getAIMonitors(uint64_t deviceId)
+    inline std::map<uint64_t, Monitor*>* getAIMonitors(uint64_t deviceId, XclbinInfo* xclbin)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return &(deviceInfo[deviceId]->aimMap);
+      return deviceInfo[deviceId]->getAIMonitors(xclbin);
     }
 
     // Includes only User Space ASM enabled for trace, but no shell ASM
-    inline std::map<uint64_t, Monitor*>* getASMonitors(uint64_t deviceId)
+    inline std::map<uint64_t, Monitor*>* getASMonitors(uint64_t deviceId, XclbinInfo* xclbin)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return &(deviceInfo[deviceId]->asmMap);
+      return deviceInfo[deviceId]->getASMonitors(xclbin) ;
     }
 
     inline void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size)
@@ -729,7 +846,7 @@ namespace xdp {
       /* User space AM in sorted order of their slotIds.
        * Matches with sorted list of AM in xdp::DeviceIntf
        */   
-      for(auto mon : deviceInfo[deviceId]->amMap) {
+      for(auto mon : deviceInfo[deviceId]->loadedXclbins.back()->amMap) {
         if(count >= size)
           return;
         auto cu = deviceInfo[deviceId]->loadedXclbins.back()->cus[mon.second->cuIndex];
@@ -756,7 +873,7 @@ namespace xdp {
       /* User space AM in sorted order of their slotIds.
        * Matches with sorted list of AM in xdp::DeviceIntf
        */   
-      for(auto mon : deviceInfo[deviceId]->amMap) {
+      for(auto mon : deviceInfo[deviceId]->loadedXclbins.back()->amMap) {
         if(count >= size)
           return;
         auto cu = deviceInfo[deviceId]->loadedXclbins.back()->cus[mon.second->cuIndex];
@@ -772,18 +889,18 @@ namespace xdp {
       return deviceInfo[deviceId]->ctxInfo;
     }
 
-    inline bool hasFloatingAIM(uint64_t deviceId)
+    inline bool hasFloatingAIM(uint64_t deviceId, XclbinInfo* xclbin)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false;
-      return deviceInfo[deviceId]->hasFloatingAIM;
+      return deviceInfo[deviceId]->hasFloatingAIM(xclbin);
     }
 
-    inline bool hasFloatingASM(uint64_t deviceId)
+    inline bool hasFloatingASM(uint64_t deviceId, XclbinInfo* xclbin)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false;
-      return deviceInfo[deviceId]->hasFloatingASM;
+      return deviceInfo[deviceId]->hasFloatingASM(xclbin);
     }
 
     inline uint64_t getNumTracePLIO(uint64_t deviceId)

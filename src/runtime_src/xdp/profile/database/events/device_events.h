@@ -141,6 +141,15 @@ namespace xdp {
     XDP_EXPORT ~HostWrite() ;
   } ;
 
+  class XclbinEnd : public VTFDeviceEvent
+  {
+  private:
+    XclbinEnd() = delete ;
+  public:
+    XDP_EXPORT XclbinEnd(uint64_t s_id, double ts, uint64_t devId, uint32_t monId) ;
+    XDP_EXPORT ~XclbinEnd() ;
+  } ;
+
 } // end namespace xdp
 
 #endif

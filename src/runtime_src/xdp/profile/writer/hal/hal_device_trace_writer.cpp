@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#if 0
+
 #include "xdp/profile/writer/hal/hal_device_trace_writer.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/device_events.h"
@@ -264,3 +266,5 @@ namespace xdp {
   }
 
 } // end namespace xdp
+
+#endif

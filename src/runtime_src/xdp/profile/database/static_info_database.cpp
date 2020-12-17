@@ -38,7 +38,6 @@
 
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -94,7 +93,7 @@ namespace xdp {
 
   DeviceInfo::~DeviceInfo()
   {
-    delete deviceIntf;
+    //delete deviceIntf;
 
     for (auto& i : loadedXclbins) {
       delete i ;
@@ -111,6 +110,7 @@ namespace xdp {
     }
     memoryInfo.clear();
     */
+    /*
     for(auto& i : amMap) {
       delete i.second;
     }
@@ -123,7 +123,7 @@ namespace xdp {
       delete i.second;
     }
     asmMap.clear();
-
+    */
     // Do not delete the monitors in the complete lists, they
     //  are just pointers to objects owned by other data structures
     aimList.clear() ;
@@ -231,6 +231,14 @@ namespace xdp {
        */
       return;
     }
+    
+    // We need to update the device, but if we had an xclbin previously loaded
+    //  then we need to mark it
+    if ((deviceInfo.find(deviceId) != deviceInfo.end()) &&
+	deviceInfo[deviceId]->loadedXclbins.size() >= 1) {
+      (db->getDynamicInfo()).markXclbinEnd(deviceId) ;
+    }
+
     DeviceInfo* devInfo = nullptr ;
     auto itr = deviceInfo.find(deviceId);
     if (itr == deviceInfo.end()) {
@@ -485,7 +493,7 @@ namespace xdp {
             mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
             if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_AM)) {
               uint64_t slotID = (index - MIN_TRACE_ID_AM) / 16;
-              devInfo->amMap.emplace(slotID, mon);
+              devInfo->loadedXclbins.back()->amMap.emplace(slotID, mon);
               cuObj->setAccelMon(slotID);
             } else {
               devInfo->noTraceAMs.push_back(mon);
@@ -524,12 +532,12 @@ namespace xdp {
         // If the AIM is an User Space AIM with trace enabled i.e. either connected to a CU or floating but not shell AIM
         if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_AIM)) {
           uint64_t slotID = (index - MIN_TRACE_ID_AIM) / 2;
-          devInfo->aimMap.emplace(slotID, mon);
+          devInfo->loadedXclbins.back()->aimMap.emplace(slotID, mon);
           if(cuObj) {
             cuObj->addAIM(slotID);
           } else {
             // If not connected to CU and not a shell monitor, then a floating monitor
-            devInfo->hasFloatingAIM = true;
+            devInfo->loadedXclbins.back()->hasFloatingAIM = true;
           }
         } else {
           devInfo->noTraceAIMs.push_back(mon);
@@ -573,12 +581,12 @@ namespace xdp {
         // If the ASM is an User Space ASM with trace enabled i.e. either connected to a CU or floating but not shell ASM
         if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_ASM)) {
           uint64_t slotID = (index - MIN_TRACE_ID_ASM);
-          devInfo->asmMap.emplace(slotID, mon);
+          devInfo->loadedXclbins.back()->asmMap.emplace(slotID, mon);
           if(cuObj) {
             cuObj->addASM(slotID);
           } else {
             // If not connected to CU and not a shell monitor, then a floating monitor
-            devInfo->hasFloatingASM = true;
+            devInfo->loadedXclbins.back()->hasFloatingASM = true;
           }
         } else {
           devInfo->noTraceASMs.push_back(mon);

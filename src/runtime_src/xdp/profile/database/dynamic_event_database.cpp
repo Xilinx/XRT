@@ -20,6 +20,8 @@
 #include "xdp/profile/database/dynamic_event_database.h"
 #include "xdp/profile/database/events/device_events.h"
 
+#include "core/common/time.h"
+
 #include <iostream>
 
 namespace xdp {
@@ -55,6 +57,11 @@ namespace xdp {
       }
       device.second.clear();
     }
+  }
+
+  void VPDynamicDatabase::markXclbinEnd(uint64_t deviceId)
+  {
+    addDeviceEvent(deviceId, new XclbinEnd(0, (double)(xrt_core::time_ns())/1e6, 0, 0)) ;
   }
 
   void VPDynamicDatabase::addHostEvent(VTFEvent* event)
