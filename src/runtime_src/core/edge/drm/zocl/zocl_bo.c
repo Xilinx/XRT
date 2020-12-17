@@ -803,19 +803,18 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 	u64 host_mem_end = zdev->host_mem + zdev->host_mem_len;
 	int ret;
 
+	if (args->size == 0) {
+		DRM_ERROR("Buffer size must be greater than zero\n");
+		return -EINVAL;
+	}
 	if (!(host_mem_start <= args->paddr &&
 	      args->paddr + args->size <= host_mem_end)) {
 		DRM_ERROR("Buffer at out side of reserved memory region\n");
 		return -ENOMEM;
 	}
-	if (args->size == 0) {
-		DRM_ERROR("Buffer size must be greater than zero\n");
-		return -EINVAL;
-	}
-	args->size = PAGE_ALIGN(args->size);
-	if (!PAGE_ALIGNED(args->paddr)) {
+	if (!PAGE_ALIGNED(args->paddr) || !PAGE_ALIGNED(args->size)) {
 		/* DRM requirement */
-		DRM_ERROR("Buffer addr must be page aligned to page_size. paddr: 0x%llx\n", args->paddr);
+		DRM_ERROR("Buffer paddr & size must be page aligned to page_size. paddr: 0x%llx, size: 0x%lx\n", args->paddr, args->size);
 		return -EINVAL;
 	}
 
