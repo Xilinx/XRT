@@ -814,7 +814,7 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 	}
 	args->size = PAGE_ALIGN(args->size);
 	if (!PAGE_ALIGNED(args->paddr)) {
-		//DRM requirement
+		/* DRM requirement */
 		DRM_ERROR("Buffer addr must be page aligned to page_size. paddr: 0x%llx\n", args->paddr);
 		return -EINVAL;
 	}
