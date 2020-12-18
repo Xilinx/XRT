@@ -250,32 +250,6 @@ struct board
   }
 };
 
-struct xmc
-{
-  using result_type = uint64_t;
-
-  static result_type
-  get(const xrt_core::device* dev, key_type key)
-  {
-    if(key == query::key_type::xmc_status)
-      return query::xmc_status::result_type(1);
-    throw std::runtime_error
-      ("Invalid query request (" + std::to_string(static_cast<qtype>(key)) + ")");
-  }
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return get(device,key);
-  }
-
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return get(device,key);
-  }
-};
-
 struct sensor
 {
   using result_type = boost::any;
@@ -668,6 +642,8 @@ struct xmc
     switch (key) {
     case key_type::xmc_reg_base:
       return info.xmc_offset;
+	case key_type::xmc_status:
+	  return query::xmc_status::result_type(1); //hardcoded
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
