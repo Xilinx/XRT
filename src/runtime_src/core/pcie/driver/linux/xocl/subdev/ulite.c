@@ -23,8 +23,7 @@
 #include "mgmt-ioctl.h"
 
 #define ULITE_NAME		"ttyXRTUL"
-#define ULITE_NR_UARTS		8
-
+#define ULITE_NR_UARTS		64
 /* ---------------------------------------------------------------------
  * Register definitions
  *
