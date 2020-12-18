@@ -1507,6 +1507,11 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	xocl_fill_dsa_priv(xdev, (struct xocl_board_private *)ent->driver_data);
 
+	if (xocl_subdev_is_vsec_recovery(xdev)) {
+		xocl_err(&pdev->dev, "recovery image, return");
+		return 0;
+	}
+
 	for (i = XOCL_WORK_RESET; i < XOCL_WORK_NUM; i++) {
 		INIT_DELAYED_WORK(&xdev->core.works[i].work, xocl_work_cb);
 		xdev->core.works[i].op = i;
