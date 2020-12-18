@@ -2365,7 +2365,8 @@ xcldev::device::iopsTest()
                 output, std::string(" -t 1 -l 128 -a 500000"));
 
     if (ret != 0) {
-        std::cout << output << std::endl;
+        if (!output.empty())
+            std::cout << output << std::endl;
         return ret;
     }
 
@@ -2373,7 +2374,15 @@ xcldev::device::iopsTest()
         std::cout << output << std::endl;
         ret = -EINVAL;
     }
-    std::cout << output << std::endl;
+
+    // Find start and end point of "IOPS: xxxxxx" substring
+    auto sp = output.find("IOPS:");
+    auto ep = output.find("\n", sp);
+    if (sp == std::string::npos || ep == std::string::npos) {
+        std::cout << "IOPS print result unexpected" << std::endl;
+        ret = -EINVAL;
+    }
+    std::cout << "Maximum " << output.substr(sp, ep - sp) << std::endl;
     return 0;
 }
 

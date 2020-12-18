@@ -110,7 +110,11 @@ void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info
             break;
         }
         xclBOProperties prop;
-        xclGetBOProperties(handle, cmd.boh, &prop);
+        if (xclGetBOProperties(handle, cmd.boh, &prop)) {
+            std::cout << "Could not get bo properties" << std::endl;
+            xclFreeBO(handle, cmd.boh);
+            break;
+        }
         uint64_t boh_addr = prop.paddr;
 
         cmd.exec_bo = xclAllocBO(handle, 4096, 0, XCL_BO_FLAGS_EXECBUF);
@@ -192,7 +196,7 @@ int testSingleThread(int dev_id, std::string &xclbin_fn)
         double duration = runTest(handle, cmds, num_cmds, arg[0]);
 #endif
         std::cout << "Commands: " << std::setw(7) << num_cmds
-                  << " iops: " << (num_cmds * 1000.0 * 1000.0 / duration)
+                  << " IOPS: " << (num_cmds * 1000.0 * 1000.0 / duration)
                   << std::endl;
     }
 
@@ -290,7 +294,7 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
             std::cout << "Thread " << arg[i].thread_id
                 << " Commands: " << std::setw(7) << total
                 << std::setprecision(0) << std::fixed
-                << " iops: " << (total * 1000000.0 / duration)
+                << " IOPS: " << (total * 1000000.0 / duration)
                 << std::endl;
         }
         overallCommands += total;
@@ -299,7 +303,7 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
     duration = (std::chrono::duration_cast<ms_t>(end - start)).count();
     std::cout << "Overall Commands: " << std::setw(7) << overallCommands
               << std::setprecision(0) << std::fixed
-              << " iops: " << (overallCommands * 1000000.0 / duration)
+              << " IOPS: " << (overallCommands * 1000000.0 / duration)
               << std::endl;
     return 0;
 }
