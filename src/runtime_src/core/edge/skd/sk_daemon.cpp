@@ -122,10 +122,13 @@ static int waitNextCmd(uint32_t cu_idx)
  * The arguments for soft kernel CU to run is copied into its reg
  * file. By mapping the reg file BO, we get the process's memory
  * address for the soft kernel argemnts.
+ *
+ * Note: since we are reusing reg file BO to store soft kernel
+ * return value, we need to map the BO as writable.
  */
 static void *getKernelArg(unsigned int boHdl, uint32_t cu_idx)
 {
-  return xclMapBO(devHdl, boHdl, false);
+  return xclMapBO(devHdl, boHdl, true);
 }
 
 xclDeviceHandle initXRTHandle(unsigned deviceIndex)
