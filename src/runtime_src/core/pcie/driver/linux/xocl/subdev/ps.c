@@ -166,10 +166,11 @@ static int ps_wait(struct platform_device *pdev)
 		return -ENODEV;
 
 	mutex_lock(&ps->ps_lock);
-	do {
+	reg = READ_REG32(ps, RESET_REG_C);
+	while(retry++ < MAX_WAIT && !(reg & ERT_READY_MASK)) {
 		reg = READ_REG32(ps, RESET_REG_C);
 		msleep(WAIT_INTERVAL);
-	} while(retry++ < MAX_WAIT && !(reg & ERT_READY_MASK));
+	}
 
 	if (retry >= MAX_WAIT) {
 		xocl_err(&pdev->dev, "PS wait time out");
