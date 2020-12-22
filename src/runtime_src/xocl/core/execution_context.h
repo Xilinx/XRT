@@ -113,15 +113,15 @@ private:
 
   // Set printf specific argument on xrt::run object
   void
-  set_rtinfo_printf(xrt::run&, const xocl::kernel::rtinfo::arg_range&, const xocl::memory*);
+  set_rtinfo_printf(xrt::run&, size_t index, const xocl::memory*);
 
   // Set OpenCL specific runtime argument
   void
-  set_rtinfo_arg1(xrt::run&, const xocl::kernel::rtinfo::arg_range&, size1);
+  set_rtinfo_arg1(xrt::run&, size_t index, size1);
 
   // Set OpenCL specific runtime argument
   void
-  set_rtinfo_arg3(xrt::run&, const xocl::kernel::rtinfo::arg_range&, size3);
+  set_rtinfo_arg3(xrt::run&, size_t index, size3);
 
   // Set OpenCL specific runtime argument
   void

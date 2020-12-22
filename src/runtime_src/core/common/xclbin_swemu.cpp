@@ -26,6 +26,10 @@
 #include <string>
 #include <stdexcept>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4996 4267)
+#endif
+
 namespace {
 
 namespace pt = boost::property_tree;
@@ -164,7 +168,7 @@ get_connectivity(const axlf* top, const ip_layout* ip_layout)
 }
 
 static std::vector<char>
-get_mem_topology(const axlf* top)
+get_mem_topology(const axlf*)
 {
   std::vector<char> vec (sizeof(mem_topology));
   auto mem_topology = reinterpret_cast<::mem_topology*>(vec.data());
@@ -201,8 +205,8 @@ get_axlf_section(const device* device, const axlf* top, axlf_section_kind kind)
     return get_ip_layout(top);
   default:
     return {};
-  }    
+  }
 }
-      
-      
+
+
 }}} // swemu, xclbin, xrt_core

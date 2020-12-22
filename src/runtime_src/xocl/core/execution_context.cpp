@@ -77,13 +77,10 @@ set_global_arg_at_index(xrt::run& run, size_t argidx, const xocl::memory* mem)
 
 void
 execution_context::
-set_rtinfo_printf(xrt::run& run, const xocl::kernel::rtinfo::arg_range& range, const xocl::memory* printf_buffer)
+set_rtinfo_printf(xrt::run& run, size_t arginfo_idx, const xocl::memory* printf_buffer)
 {
   if (!printf_buffer)
     return;
-
-  if (std::distance(range.first, range.second) != 1)
-    throw std::runtime_error("set_rtinfo_printf: unexpected rtinfo error");
 
   // This computes the offset that gets added to a physical printf buffer
   // address for a given workgroup. Necessary so we have a different
@@ -102,33 +99,23 @@ set_rtinfo_printf(xrt::run& run, const xocl::kernel::rtinfo::arg_range& range, c
   auto printf_buffer_offset = group_id * local_buffer_size;
   auto xbo = printf_buffer->get_buffer_object_or_error(m_device);
   auto addr = xbo.address() + printf_buffer_offset;
-  auto itr = range.first;
-  xrt_core::kernel_int::set_arg_at_index(run, itr->second, &addr, sizeof(addr));
-}
-
-
-
-void
-execution_context::
-set_rtinfo_arg1(xrt::run& run, const xocl::kernel::rtinfo::arg_range& range, size1 value)
-{
-  if (std::distance(range.first, range.second) != 1)
-    throw std::runtime_error("set_rtinfo_arg1: unexpected rtinfo error");
-
-  auto itr = range.first;
-  xrt_core::kernel_int::set_arg_at_index(run, itr->second, &value, sizeof(value));
+  xrt_core::kernel_int::set_arg_at_index(run, arginfo_idx, &addr, sizeof(addr));
 }
 
 void
 execution_context::
-set_rtinfo_arg3(xrt::run& run, const xocl::kernel::rtinfo::arg_range& range, size3 value3)
+set_rtinfo_arg1(xrt::run& run, size_t arginfo_idx, size1 value)
 {
-  if (std::distance(range.first, range.second) != 3)
-    throw std::runtime_error("set_rtinfo_arg3: unexpected rtinfo error");
+  xrt_core::kernel_int::set_arg_at_index(run, arginfo_idx, &value, sizeof(value));
+}
 
-  for (auto itr = range.first; itr!= range.second; ++itr) {
-    auto value = value3[std::distance(range.first, itr)];
-    xrt_core::kernel_int::set_arg_at_index(run, itr->second, &value, sizeof(value));
+void
+execution_context::
+set_rtinfo_arg3(xrt::run& run, size_t arginfo_idx, size3 value3)
+{
+  for (auto idx = 0; idx < 3; ++idx) {
+    auto value = value3[idx];
+    xrt_core::kernel_int::set_arg_at_index(run, idx + arginfo_idx, &value, sizeof(value));
   }
 }
 
@@ -136,46 +123,57 @@ void
 execution_context::
 set_rtinfo_args(xrt::run& run)
 {
-  const auto& rtinfo = m_kernel->get_rtinfo();  // multimap
-  for (auto& key : rtinfo.key_range()) {
-    const auto& range = rtinfo.value_range(key);
-    switch (key) {
-    case xocl::kernel::rtinfo::key_type::dim:
-      set_rtinfo_arg1(run, range, m_dim);
+  for (auto& arg : m_kernel->get_rtinfo_xargument_range()) {
+    switch (arg->get_rtinfo_type()) {
+    case xocl::kernel::rtinfo_type::dim:
+      set_rtinfo_arg1(run, arg->get_arginfo_idx(), m_dim);
       break;
-    case xocl::kernel::rtinfo::key_type::goff:
-      set_rtinfo_arg3(run, range, m_goffset);
+    case xocl::kernel::rtinfo_type::goff:
+      set_rtinfo_arg3(run, arg->get_arginfo_idx(), m_goffset);
       break;
-    case xocl::kernel::rtinfo::key_type::gsize:
-      set_rtinfo_arg3(run, range, m_gsize);
+    case xocl::kernel::rtinfo_type::gsize:
+      set_rtinfo_arg3(run, arg->get_arginfo_idx(), m_gsize);
       break;
-    case xocl::kernel::rtinfo::key_type::lsize:
-      set_rtinfo_arg3(run, range, m_lsize);
+    case xocl::kernel::rtinfo_type::lsize:
+      set_rtinfo_arg3(run, arg->get_arginfo_idx(), m_lsize);
       break;
-    case xocl::kernel::rtinfo::key_type::ngrps: {
+    case xocl::kernel::rtinfo_type::ngrps: {
       size3 num_workgroups {0,0,0};
       for (auto d : {0,1,2})
         if (m_lsize[d])
           num_workgroups[d] = m_gsize[d] / m_lsize[d];
-      set_rtinfo_arg3(run, range, num_workgroups);
+      set_rtinfo_arg3(run, arg->get_arginfo_idx(), num_workgroups);
       break;
     }
-    case xocl::kernel::rtinfo::key_type::gid:
-      set_rtinfo_arg3(run, range, m_cu_global_id);
+    case xocl::kernel::rtinfo_type::gid:
+      set_rtinfo_arg3(run, arg->get_arginfo_idx(), m_cu_global_id);
       break;
-    case xocl::kernel::rtinfo::key_type::lid: {
+    case xocl::kernel::rtinfo_type::lid: {
       size3 local_id {0,0,0};
-      set_rtinfo_arg3(run, range, local_id);
+      set_rtinfo_arg3(run, arg->get_arginfo_idx(), local_id);
       break;
     }
-    case xocl::kernel::rtinfo::key_type::grid:
-      set_rtinfo_arg3(run, range, m_cu_group_id);
+    case xocl::kernel::rtinfo_type::grid:
+      set_rtinfo_arg3(run, arg->get_arginfo_idx(), m_cu_group_id);
       break;
-    case xocl::kernel::rtinfo::key_type::printf:
-      set_rtinfo_printf(run, range, m_kernel->get_printf_arg());
+    case xocl::kernel::rtinfo_type::printf:
+      throw std::runtime_error("internal error: rtinfo may not contain printf arg");
       break;
     }
   }
+
+  // printf
+  for (auto& arg : m_kernel->get_printf_xargument_range()) {
+    switch (arg->get_rtinfo_type()) {
+    case xocl::kernel::rtinfo_type::printf:
+      set_rtinfo_printf(run, arg->get_arginfo_idx(), arg->get_memory_object());
+      break;
+    default:
+      throw std::runtime_error("internal error: printf may not contain rtinfo arg");
+      break;
+    }
+  }
+  
 }
 
 execution_context::
@@ -205,9 +203,9 @@ execution_context(device* device
   m_run.add_callback(ERT_CMD_STATE_COMPLETED, run_done, this);
 
   // populate run object with global kernel arguments
-  int argidx = 0;
-  for (const auto& mem : m_kernel->get_memory_range()) {
-    if (mem)
+  size_t argidx = 0;
+  for (auto& arg : m_kernel->get_indexed_xargument_range()) {
+    if (auto mem = arg->get_memory_object())
       set_global_arg_at_index(m_run, argidx, mem);
     ++argidx;
   }

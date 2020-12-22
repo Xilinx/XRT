@@ -189,7 +189,7 @@ namespace xocl {
       // Only check to see if any of the memory objects are going
       //  to move.
       bool writeWillHappen = false ;
-      for (auto& arg : xocl::xocl(kernel)->get_argument_range())
+      for (auto& arg : xocl::xocl(kernel)->get_xargument_range())
       {
 	auto mem = arg->get_memory_object() ;
 	if (mem != nullptr && !(mem->is_resident()))

@@ -345,7 +345,7 @@ action_ndrange_migrate(cl_event event,cl_kernel kernel)
 
   // Create buffer objects for all arguments
   std::vector<xocl::memory*> kernel_args;
-  for (auto& arg : xocl::xocl(kernel)->get_argument_range()) {
+  for (auto& arg : xocl::xocl(kernel)->get_xargument_range()) {
     if (auto mem = arg->get_memory_object()) {
       mem->get_buffer_object(device);
       kernel_args.push_back(mem);

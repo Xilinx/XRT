@@ -45,8 +45,7 @@ validOrError(cl_kernel          kernel ,
   detail::kernel::validOrError(kernel);
 
   // CL_INVALID_ARG_INDEX if arg_indx is not a valid argument index.
-  auto argrange = xocl::xocl(kernel)->get_indexed_argument_range();
-  if (arg_indx >= argrange.size())
+  if (arg_indx >= xocl::xocl(kernel)->get_indexed_xargument_range().size())
     throw xocl::error(CL_INVALID_ARG_INDEX,"clGetKernelArgInfo: invalid arg idx (" + std::to_string(arg_indx) + ")\n");
 
   // CL_INVALID_VALUE if param_name is not valid, or if size in bytes
@@ -69,25 +68,23 @@ clGetKernelArgInfo(cl_kernel          kernel ,
   validOrError(kernel,arg_indx,param_name,param_value_size,param_value,param_value_size_ret);
 
   xocl::param_buffer buffer { param_value, param_value_size, param_value_size_ret };
-
-  auto argrange = xocl::xocl(kernel)->get_indexed_argument_range();
-  auto& arg = argrange[arg_indx];
+  const xrt_core::xclbin::kernel_argument* arginfo = xocl::xocl(kernel)->get_arg_info(arg_indx);
 
   switch(param_name) {
     case CL_KERNEL_ARG_ADDRESS_QUALIFIER:
-      buffer.as<cl_kernel_arg_address_qualifier>() = arg->get_address_qualifier();
+      buffer.as<cl_kernel_arg_address_qualifier>() = static_cast<cl_kernel_arg_address_qualifier>(arginfo->type);
       break;
     case CL_KERNEL_ARG_ACCESS_QUALIFIER:
       buffer.as<cl_kernel_arg_access_qualifier>() = 0;
       break;
     case CL_KERNEL_ARG_TYPE_NAME:
-      buffer.as<char>() = "";
+      buffer.as<char>() = arginfo->hosttype;
       break;
     case CL_KERNEL_ARG_NAME:
-      buffer.as<char>() = arg->get_name();
+      buffer.as<char>() = arginfo->name;
       break;
     case CL_KERNEL_ARG_OFFSET:
-      buffer.as<size_t>() = arg->get_offset();
+      buffer.as<size_t>() = arginfo->offset;
       break;
     default:
       throw error(CL_INVALID_VALUE,"clGetKernelArgInfo: invalid param_name");

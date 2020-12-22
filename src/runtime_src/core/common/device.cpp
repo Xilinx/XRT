@@ -31,6 +31,10 @@
 #include <iostream>
 #include <fstream>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4996 )
+#endif
+
 namespace {
 
 static bool
@@ -99,10 +103,10 @@ register_axlf(const axlf* top)
 {
   m_axlf_sections.clear();
   m_xclbin_uuid = uuid(top->m_header.uuid);
-  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, 
-                               ASK_GROUP_CONNECTIVITY, ASK_GROUP_TOPOLOGY, 
+  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY,
+                               ASK_GROUP_CONNECTIVITY, ASK_GROUP_TOPOLOGY,
                                MEM_TOPOLOGY, DEBUG_IP_LAYOUT, SYSTEM_METADATA, CLOCK_FREQ_TOPOLOGY};
-  
+
   for (auto kind : kinds) {
     auto hdr = xrt_core::xclbin::get_axlf_section(top, kind);
 
@@ -152,7 +156,7 @@ get_ert_slots(const char* xml_data, size_t xml_size) const
   const size_t max_slots = 128;  // TODO: get from device driver
   const size_t min_slots = 16;   // TODO: get from device driver
   size_t cq_size = ERT_CQ_SIZE;  // TODO: get from device driver
-  
+
   // xrt.ini overrides all (defaults to 0)
   if (auto size = config::get_ert_slotsize()) {
     // 128 slots max (4 status registers)

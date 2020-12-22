@@ -39,6 +39,7 @@ struct kernel_argument
   size_t index = no_index;
   size_t offset = 0;
   size_t size = 0;
+  size_t hostsize = 0;
   size_t fa_desc_offset = 0;
   argtype type;
   direction dir;

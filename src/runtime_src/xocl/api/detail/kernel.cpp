@@ -45,7 +45,7 @@ validOrError(const cl_device_id device, const cl_kernel kernel)
 void
 validArgsOrError(const cl_kernel kernel)
 {
-  for (auto& arg : xocl(kernel)->get_indexed_argument_range())
+  for (const auto& arg : xocl(kernel)->get_indexed_xargument_range())
     if (!arg->is_set())
       throw xocl::error(CL_INVALID_KERNEL_ARGS,"Kernel arg '" + arg->get_name() + "' is not set");
 }

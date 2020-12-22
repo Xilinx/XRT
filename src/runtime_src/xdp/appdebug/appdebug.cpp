@@ -915,40 +915,70 @@ clGetClMems()
   return adv;
 }
 
-static
-std::string
+static std::string
+getScalarArgValue(const xocl::kernel* kernel, const xocl::kernel::xargument* arg)
+{
+  std::stringstream sstr;
+  std::vector<uint32_t> value = xrt_core::kernel_int::get_arg_value(kernel->get_xrt_run(nullptr), arg->get_argidx());
+  const uint8_t* data = reinterpret_cast<uint8_t*>(value.data());
+  auto bytes = value.size() * sizeof(uint32_t);
+  auto hostsize = arg->get_hostsize();
+  if (bytes < hostsize)
+    return "bad scalar argument value";
+
+  auto hosttype = arg->get_hosttype();
+  if (hosttype == "float" || hosttype == "double") {
+    if (hostsize == 64)
+      sstr << *(reinterpret_cast<const double*>(data));
+    else
+      sstr << *(reinterpret_cast<const float*>(data));
+  }
+  else {
+    sstr << "0x";
+    for (int i = hostsize - 1; i >= 0; --i) 
+      sstr << std::hex << std::setw(2) << std::setfill('0') << data[i];
+  }
+  
+  return sstr.str();
+}
+
+static std::string
+getGlobalArgValue(const xocl::kernel* kernel, const xocl::kernel::xargument* arg)
+{
+  std::stringstream sstr;
+  if (auto mem = arg->get_memory_object()) {
+    uint64_t physaddr = 0;
+    std::string bank = "";
+    xocl::xocl(mem)->try_get_address_bank(physaddr, bank);
+    sstr << "0x" << std::hex << physaddr << std::dec << "(Bank-" << bank << ")";
+  }
+  return sstr.str();
+}
+
+static std::string
 getArgValueString(const xocl::event* aEvent)
 {
   std::stringstream sstr;
   auto ctx = aEvent->get_execution_context();
   auto kernel = ctx->get_kernel();
-  for (auto& arg : kernel->get_indexed_argument_range()) {
-    auto address_space = arg->get_address_space();
-    if (address_space == xocl::kernel::argument::addr_space_type::SPIR_ADDRSPACE_PRIVATE)
-    {
-      //auto arginforange = arg->get_arginfo_range();
-      //sstr << arg->get_name() << " = " << getscalarval((const void*)arg->get_value(), arg->get_size(),arginforange) << " ";
-      sstr << arg->get_name() << " = " << arg->get_string_value() << " ";
-    } else if (address_space == xocl::kernel::argument::addr_space_type::SPIR_ADDRSPACE_PIPES) {
-      sstr << arg->get_name() << " = " << "stream arg " << std::dec;
-
-    } else if (address_space == xocl::kernel::argument::addr_space_type::SPIR_ADDRSPACE_GLOBAL
-            || address_space == xocl::kernel::argument::addr_space_type::SPIR_ADDRSPACE_CONSTANT)
-    {
-      uint64_t physaddr = 0;
-      std::string bank = "";
-      if (auto mem = arg->get_memory_object()) {
-        xocl::xocl(mem)->try_get_address_bank(physaddr, bank);
-      }
-
-      sstr << arg->get_name() << " = 0x" << std::hex << physaddr << std::dec << "(Bank-";
-      sstr << bank;
-      sstr <<  ") ";
+  for (auto& arg : kernel->get_indexed_xargument_range()) {
+    sstr << arg->get_name() << " = ";
+    switch (arg->get_argtype()) {
+    case xrt_core::xclbin::kernel_argument::argtype::scalar:
+      sstr << getScalarArgValue(kernel, arg.get());
+      break;
+    case xrt_core::xclbin::kernel_argument::argtype::global:
+    case xrt_core::xclbin::kernel_argument::argtype::constant:
+      sstr << getGlobalArgValue(kernel, arg.get());
+      break;
+    case xrt_core::xclbin::kernel_argument::argtype::stream:
+      sstr << "stream arg";
+      break;
+    case xrt_core::xclbin::kernel_argument::argtype::local:
+      sstr << "local arg";
+      break;
     }
-    else if (address_space == xocl::kernel::argument::addr_space_type::SPIR_ADDRSPACE_LOCAL)
-    {
-      sstr << arg->get_name() << " = " << "local arg " << std::dec;
-    }
+    sstr << " ";
   }
 
   return sstr.str();

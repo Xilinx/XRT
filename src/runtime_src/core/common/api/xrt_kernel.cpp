@@ -127,7 +127,7 @@ constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
 
 XRT_CORE_UNUSED // debug enabled function
 std::string
-debug_cmd_packet(const ert_packet* pkt)
+debug_cmd_packet(const std::string& msg, const ert_packet* pkt)
 {
   static auto fnm = std::getenv("MBS_PRINT_REGMAP");
   if (!fnm)
@@ -135,6 +135,7 @@ debug_cmd_packet(const ert_packet* pkt)
 
   std::ofstream ostr(fnm,std::ios::app);
   //std::ostringstream ostr;
+  ostr << msg << "\n";
   ostr << std::uppercase << std::setfill('0') << std::setw(3);
   ostr << "pkt->header    = 0x"
        << std::setw(8) << std::hex << pkt->header << std::dec << "\n";
@@ -159,25 +160,31 @@ debug_cmd_packet(const ert_packet* pkt)
 //
 // The key here is that arg_range is zero-copy, it simply wraps caller
 // storage used from the argument while provide an iterator interface.
+//
+// Note that in order to avoid ABR, host size (bytes) must be multiple
+// sizeof(ValueType).  It is tempting to use ValueType matching the
+// kernel register entry size (uint32_t), but host size can be byte
+// aligned (e.g. single char) and if rounded up to sizeof(ValueType)
+// it would result in reading junk data past the allocated bytes.
 template <typename ValueType>
 class arg_range
 {
   const ValueType* uval;
   size_t words;
 
-  // Arguments must be 4 byte aligned, yet 'char b' arguments should
-  // be accepted from host code.  Need to round up to copy at least
-  // a single word
+  // Number of bytes must multiple of sizeof(ValueType)
   size_t
-  round_up(size_t bytes)
+  validate_bytes(size_t bytes)
   {
-    return bytes + sizeof(ValueType) - (bytes % sizeof(ValueType));
+    if (bytes % sizeof(ValueType))
+      throw std::runtime_error("arg_range unaligned bytes");
+    return bytes;
   }
 
 public:
   arg_range(const void* value, size_t bytes)
     : uval(reinterpret_cast<const ValueType*>(value))
-    , words(round_up(bytes) / sizeof(ValueType))
+    , words(validate_bytes(bytes) / sizeof(ValueType))
   {}
 
   const ValueType*
@@ -733,7 +740,7 @@ public:
   struct setter
   {
     virtual void
-    set_arg_value(const argument& arg, const arg_range<uint32_t>& value) = 0;
+    set_arg_value(const argument& arg, const arg_range<uint8_t>& value) = 0;
   };
 
 private:
@@ -770,7 +777,7 @@ private:
     set(setter* setter, const argument& arg, std::va_list* args) const
     {
       HostType value = va_arg(*args, VaArgType);
-      setter->set_arg_value(arg, arg_range<uint32_t>{&value, sizeof(value)});
+      setter->set_arg_value(arg, arg_range<uint8_t>{&value, sizeof(value)});
     }
   };
 
@@ -794,7 +801,7 @@ private:
     set(setter* setter, const argument& arg, std::va_list* args) const
     {
       HostType* value = va_arg(*args, VaArgType*);
-      setter->set_arg_value(arg, arg_range<uint32_t>{value, size});
+      setter->set_arg_value(arg, arg_range<uint8_t>{value, size});
     }
   };
 
@@ -824,7 +831,7 @@ private:
 
       auto bo = va_arg(*args, xrtBufferHandle);
       auto addr = xrt_core::bo::address(bo);
-      setter->set_arg_value(arg, arg_range<uint32_t>{&addr, sizeof(addr)});
+      setter->set_arg_value(arg, arg_range<uint8_t>{&addr, sizeof(addr)});
     }
   };
 
@@ -1187,6 +1194,12 @@ public:
     return data;
   }
 
+  std::string
+  get_name() const
+  {
+    return name;
+  }
+
   const std::bitset<128>&
   get_cumask() const
   {
@@ -1310,14 +1323,17 @@ class run_impl
   // protocol.
   struct arg_setter : argument::setter
   {
-    uint32_t* data;
+    uint8_t* data;
 
     arg_setter(uint32_t* d)
-      : data(d)
+      : data(reinterpret_cast<uint8_t*>(d))
     {}
 
     virtual void
-    set_arg_value(const argument& arg, const arg_range<uint32_t>& value) = 0;
+    set_arg_value(const argument& arg, const arg_range<uint8_t>& value) = 0;
+
+    virtual arg_range<uint8_t>
+    get_arg_value(const argument& arg) = 0;
   };
 
   // AP_CTRL_HS, AP_CTRL_CHAIN
@@ -1328,11 +1344,18 @@ class run_impl
     {}
 
     virtual void
-    set_arg_value(const argument& arg, const arg_range<uint32_t>& value)
+    set_arg_value(const argument& arg, const arg_range<uint8_t>& value)
     {
-      auto cmdidx = arg.offset() / 4;
-      auto count = std::min(arg.size() / sizeof(uint32_t), value.size());
+      auto cmdidx = arg.offset();
+      auto count = std::min(arg.size(), value.size());
       std::copy_n(value.begin(), count, data + cmdidx);
+    }
+
+    virtual arg_range<uint8_t>
+    get_arg_value(const argument& arg)
+    {
+      auto cmdidx = arg.offset();
+      return { data + cmdidx, arg.size() };
     }
   };
 
@@ -1344,14 +1367,22 @@ class run_impl
     {}
 
     virtual void
-    set_arg_value(const argument& arg, const arg_range<uint32_t>& value)
+    set_arg_value(const argument& arg, const arg_range<uint8_t>& value)
     {
       auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
       auto desc_entry = reinterpret_cast<ert_fa_desc_entry*>(desc->data + arg.fa_desc_offset() / sizeof(uint32_t));
       desc_entry->arg_offset = arg.offset();
       desc_entry->arg_size = arg.size();
-      auto count = std::min(arg.size() / sizeof(uint32_t), value.size());
-      std::copy_n(value.begin(), count, desc_entry->arg_value);
+      auto count = std::min(arg.size(), value.size());
+      std::copy_n(value.begin(), count, reinterpret_cast<uint8_t*>(desc_entry->arg_value));
+    }
+
+    virtual arg_range<uint8_t>
+    get_arg_value(const argument& arg)
+    {
+      auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
+      auto desc_entry = reinterpret_cast<ert_fa_desc_entry*>(desc->data + arg.fa_desc_offset() / sizeof(uint32_t));
+      return { reinterpret_cast<uint8_t*>(desc_entry->arg_value), arg.size() };
     }
   };
 
@@ -1522,8 +1553,14 @@ public:
     return cumask;
   }
 
+  arg_range<uint8_t>
+  get_arg_value(const argument& arg)
+  {
+    return arg_setter->get_arg_value(arg);
+  }
+
   void
-  set_arg_value(const argument& arg, const arg_range<uint32_t>& value)
+  set_arg_value(const argument& arg, const arg_range<uint8_t>& value)
   {
     arg_setter->set_arg_value(arg, value);
   }
@@ -1531,7 +1568,7 @@ public:
   void
   set_arg_value(const argument& arg, const void* value, size_t bytes)
   {
-    set_arg_value(arg, arg_range<uint32_t>{value, bytes});
+    set_arg_value(arg, arg_range<uint8_t>{value, bytes});
   }
 
   void
@@ -1596,7 +1633,7 @@ public:
     auto pkt = cmd->get_ert_packet();
     pkt->state = ERT_CMD_STATE_NEW;
 
-    XRT_DEBUGF("command packet debug (see file (%s))\n", debug_cmd_packet(pkt).c_str());
+    XRT_DEBUGF("command packet debug (see file (%s))\n", debug_cmd_packet(kernel->get_name(), pkt).c_str());
     
     cmd->run();
   }
@@ -1666,7 +1703,7 @@ public:
   }
 
   void
-  update_arg_value(const argument& arg, const arg_range<uint32_t>& value)
+  update_arg_value(const argument& arg, const arg_range<uint8_t>& value)
   {
     reset_cmd();
 
@@ -1697,7 +1734,7 @@ public:
   void
   update_arg_value(const argument& arg, const void* value, size_t bytes)
   {
-    update_arg_value(arg, arg_range<uint32_t>{value, std::min(arg.size(), bytes)});
+    update_arg_value(arg, arg_range<uint8_t>{value, std::min(arg.size(), bytes)});
   }
 
   void
@@ -1968,15 +2005,6 @@ copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
 #endif
 }
 
-void    
-visit_args(const xrt::run& run, const arg_visitor& visit)
-{
-  auto kimpl = run.get_handle()->get_kernel();
-  size_t index = 0;
-  for (const auto& arg : kimpl->get_args())
-    visit(arg.get_xarg(), index++);
-}
-
 xrt_core::xclbin::kernel_argument::argtype
 arg_type_at_index(const xrt::kernel& kernel, size_t argidx)
 {
@@ -2014,6 +2042,37 @@ IP_CONTROL
 get_control_protocol(const xrt::run& run)
 {
   return run.get_handle()->get_kernel()->get_ip_control_protocol();
+}
+
+  std::vector<const xclbin::kernel_argument*>
+get_args(const xrt::kernel& kernel)
+{
+  const auto& args = kernel.get_handle()->get_args();
+  std::vector<const xclbin::kernel_argument*> vec;
+  for (const auto& arg : args)
+    vec.push_back(&arg.get_xarg());
+  return vec;
+}
+
+const xclbin::kernel_argument*
+get_arg_info(const xrt::run& run, size_t argidx)
+{
+  auto& arg = run.get_handle()->get_kernel()->get_arg(argidx);
+  return &arg.get_xarg();
+}
+
+std::vector<uint32_t>
+get_arg_value(const xrt::run& run, size_t argidx)
+{
+  const auto rimpl = run.get_handle();
+  const auto kimpl = rimpl->get_kernel();
+
+  // get argument info from kernel and value from run
+  const auto& arg = kimpl->get_arg(argidx);
+  auto value = rimpl->get_arg_value(arg);
+  std::vector<uint32_t> vec(value.size());
+  std::copy_n(value.begin(), value.size(), vec.data());
+  return vec;
 }
 
 }} // kernel_int, xrt_core

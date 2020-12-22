@@ -621,6 +621,7 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
          ,index
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.size"))
+         ,convert(xml_arg.second.get<std::string>("<xmlattr>.hostSize"))
          ,0  // fa_desc_offset post computed if necessary
          ,kernel_argument::argtype(xml_arg.second.get<size_t>("<xmlattr>.addressQualifier"))
          ,kernel_argument::direction(kernel_argument::direction::input)

@@ -35,17 +35,26 @@
 
 namespace xocl {
 
-static std::map<std::string, kernel::rtinfo::key_type> s2rtinfo = {
-  { "work_dim", kernel::rtinfo::key_type::dim },
-  { "global_offset", kernel::rtinfo::key_type::goff },
-  { "global_size", kernel::rtinfo::key_type::gsize },
-  { "local_size", kernel::rtinfo::key_type::lsize },
-  { "num_groups", kernel::rtinfo::key_type::ngrps },
-  { "global_id", kernel::rtinfo::key_type::gid },
-  { "local_id", kernel::rtinfo::key_type::lid },
-  { "group_id", kernel::rtinfo::key_type::grid },
-  { "printf_buffer", kernel::rtinfo::key_type::printf },
+static std::map<std::string, kernel::rtinfo_type> s2rtinfo = {
+  { "work_dim",      kernel::rtinfo_type::dim },
+  { "global_offset", kernel::rtinfo_type::goff },
+  { "global_size",   kernel::rtinfo_type::gsize },
+  { "local_size",    kernel::rtinfo_type::lsize },
+  { "num_groups",    kernel::rtinfo_type::ngrps },
+  { "global_id",     kernel::rtinfo_type::gid },
+  { "local_id",      kernel::rtinfo_type::lid },
+  { "group_id",      kernel::rtinfo_type::grid },
+  { "printf_buffer", kernel::rtinfo_type::printf },
 };
+
+static kernel::rtinfo_type
+get_rtinfo_type(const std::string& key)
+{
+  auto itr = s2rtinfo.find(key);
+  if (itr != s2rtinfo.end())
+    return itr->second;
+  throw std::runtime_error("No such rtinfo key: " + key);
+}
 
 std::string
 kernel::
@@ -58,7 +67,7 @@ connectivity_debug() const
   str << "|" << line << "|\n";
   const char* hdr1 = "argument index | memory index";
   str << "| " << hdr1 << " |\n";
-  for (auto& arg : get_indexed_argument_range()) {
+  for (auto& arg : get_indexed_xargument_range()) {
     if (auto mem = arg->get_memory_object()) {
       str << "| " << std::setw(strlen("argument index")) << arg->get_argidx()
           << " | " << std::setw(strlen("memory index"))
@@ -69,224 +78,68 @@ connectivity_debug() const
   return str.str();
 }
 
-std::unique_ptr<kernel::argument>
-kernel::argument::
-create(arginfo_type arg, kernel* kernel)
-{
-  switch (arg->address_qualifier) {
-  case 0:
-    return std::make_unique<kernel::scalar_argument>(arg,kernel);
-    break;
-  case 1:
-    return std::make_unique<kernel::global_argument>(arg,kernel);
-    break;
-  case 2:
-    return std::make_unique<kernel::constant_argument>(arg,kernel);
-    break;
-  case 3:
-    return std::make_unique<kernel::local_argument>(arg,kernel);
-    break;
-  case 4:
-    //Indexed 4 implies stream
-    return std::make_unique<kernel::stream_argument>(arg,kernel);
-    break;
-  default:
-    throw xocl::error(CL_INVALID_BINARY,"invalid address qualifier: "
-                      + std::to_string(arg->address_qualifier)
-                      + "(id: " + arg->id +")");
-  }
-}
-
-cl_kernel_arg_address_qualifier
-kernel::argument::
-get_address_qualifier() const
-{
-  switch (get_address_space()) {
-  case addr_space_type::SPIR_ADDRSPACE_PRIVATE:
-    return CL_KERNEL_ARG_ADDRESS_PRIVATE;
-  case addr_space_type::SPIR_ADDRSPACE_GLOBAL:
-    return CL_KERNEL_ARG_ADDRESS_GLOBAL;
-  case addr_space_type::SPIR_ADDRSPACE_CONSTANT:
-    return CL_KERNEL_ARG_ADDRESS_CONSTANT;
-  case addr_space_type::SPIR_ADDRSPACE_LOCAL:
-    return CL_KERNEL_ARG_ADDRESS_LOCAL;
-  case addr_space_type::SPIR_ADDRSPACE_PIPES:
-    return CL_KERNEL_ARG_ADDRESS_PRIVATE;
-  default:
-    throw std::runtime_error("kernel::argument::get_address_qualifier: internal error");
-  }
-}
-
-std::unique_ptr<kernel::argument>
-kernel::scalar_argument::
-clone()
-{
-  return std::make_unique<scalar_argument>(*this);
-}
-
-size_t
-kernel::scalar_argument::
-add(arginfo_type arg)
-{
-  m_components.push_back(arg);
-  m_sz += arg->hostsize;
-  return m_sz;
-}
+kernel::xargument::
+~xargument()
+{}
 
 void
-kernel::scalar_argument::
-set(size_t size, const void* cvalue)
+kernel::scalar_xargument::
+set(const void* cvalue, size_t sz)
 {
-  if (size != m_sz)
+  if (sz != m_sz)
     throw error(CL_INVALID_ARG_SIZE,"Invalid scalar argument size, expected "
-                + std::to_string(m_sz) + " got " + std::to_string(size));
-  // construct vector from iterator range.
-  // the value can be gathered with m_value.data()
-  // the value bytes can be manipulated with std:: algorithms
-  auto value = const_cast<void*>(cvalue);
-  m_value = { reinterpret_cast<uint8_t*>(value), reinterpret_cast<uint8_t*>(value) + size };
+                + std::to_string(m_sz) + " got " + std::to_string(sz));
+
+  m_kernel->set_run_arg_at_index(m_arginfo->index, cvalue, sz);
   m_set = true;
 }
 
-const std::string
-kernel::scalar_argument::
-get_string_value() const
-{
-  std::stringstream sstr;
-  size_t size = get_size();
-  auto arginforange = get_arginfo_range();
-  const unsigned char* cdata = reinterpret_cast<const unsigned char*>(get_value());
-  std::vector<unsigned char> host_data(cdata,cdata+size);
-  // For each component of the argument
-  auto count = std::distance(arginforange.begin(), arginforange.end());
-  if (count > 1) sstr << "{ ";
-
-  for (auto arginfo : arginforange) {
-    const unsigned char* component = host_data.data() + arginfo->hostoffset;
-    sstr << arginfo->get_string_value(component) << " ";
-  }
-  if (count > 1) sstr << "}";
-  return sstr.str();
-}
-
-std::unique_ptr<kernel::argument>
-kernel::global_argument::
-clone()
-{
-  return std::make_unique<global_argument>(*this);
-}
-
 void
-kernel::global_argument::
-set(size_t size, const void* cvalue)
+kernel::global_xargument::
+set(const void* cvalue, size_t sz)
 {
-  if (size != sizeof(cl_mem))
+  if (sz != sizeof(cl_mem))
     throw error(CL_INVALID_ARG_SIZE,"Invalid global_argument size for kernel arg");
 
   auto value = const_cast<void*>(cvalue);
   auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
 
   m_buf = xocl(mem);
-  if (m_argidx < std::numeric_limits<unsigned long>::max())
-    m_kernel->assign_buffer_to_argidx(m_buf.get(),m_argidx);
+  if (m_arginfo->index != m_arginfo->no_index)
+    m_kernel->assign_buffer_to_argidx(m_buf.get(),m_arginfo->index);
   m_set = true;
 }
 
 void
-kernel::global_argument::
-set_svm(size_t size, const void* cvalue)
+kernel::global_xargument::
+set_svm(const void* cvalue, size_t sz)
 {
-  if (size != sizeof(void*))
+  if (sz != sizeof(void*))
     throw error(CL_INVALID_ARG_SIZE,"Invalid global_argument size for svm kernel arg");
-
-  auto value = const_cast<void*>(cvalue);
-
-  m_svm_buf = value;
+  m_kernel->set_run_arg_at_index(m_arginfo->index, cvalue, sz);
   m_set = true;
 }
 
-std::unique_ptr<kernel::argument>
-kernel::local_argument::
-clone()
-{
-  return std::make_unique<local_argument>(*this);
-}
-
 void
-kernel::local_argument::
-set(size_t size, const void* value)
+kernel::local_xargument::
+set(const void* cvalue, size_t sz)
 {
-  if (value!=nullptr)
+  if (cvalue != nullptr)
     throw xocl::error(CL_INVALID_ARG_VALUE,"CL_KERNEL_ARG_ADDRESS_LOCAL value!=nullptr");
   // arg_size is the size in bytes of the local memory
   // todo: curently fixed at 16K, but should come from kernel.xml
-  if (size == 0 || size > 1024*16)
-    throw xocl::error(CL_INVALID_ARG_SIZE,"CL_KERNEL_ARG_ADDRESS_LOCAL wrong size:" + std::to_string(size));
+  if (sz == 0 || sz > 1024*16)
+    throw xocl::error(CL_INVALID_ARG_SIZE,"CL_KERNEL_ARG_ADDRESS_LOCAL wrong size:" + std::to_string(sz));
 
   m_set = true;
 }
 
-std::unique_ptr<kernel::argument>
-kernel::constant_argument::
-clone()
-{
-  return std::make_unique<constant_argument>(*this);
-}
-
 void
-kernel::constant_argument::
-set(size_t size, const void* cvalue)
-{
-  if (size != sizeof(cl_mem))
-    throw error(CL_INVALID_ARG_SIZE,"Invalid constant_argument size for kernel arg");
-  auto value = const_cast<void*>(cvalue);
-  auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
-  m_buf = xocl(mem);
-  m_kernel->assign_buffer_to_argidx(m_buf.get(),m_argidx);
-  m_set = true;
-}
-
-std::unique_ptr<kernel::argument>
-kernel::image_argument::
-clone()
-{
-  return std::make_unique<image_argument>(*this);
-}
-
-void
-kernel::image_argument::
-set(size_t size, const void* value)
-{
-  throw std::runtime_error("not implemented");
-}
-
-std::unique_ptr<kernel::argument>
-kernel::sampler_argument::
-clone()
-{
-  return std::make_unique<sampler_argument>(*this);
-}
-
-void
-kernel::sampler_argument::
-set(size_t size, const void* value)
-{
-  throw std::runtime_error("not implemented");
-}
-
-std::unique_ptr<kernel::argument>
-kernel::stream_argument::
-clone()
-{
-  return std::make_unique<stream_argument>(*this);
-}
-
-void
-kernel::stream_argument::
-set(size_t size, const void* cvalue)
+kernel::stream_xargument::
+set(const void* cvalue, size_t sz)
 {
   //PTR_SIZE
-  if (size != sizeof(cl_mem))
+  if (sz != sizeof(cl_mem))
     throw error(CL_INVALID_ARG_SIZE,"Invalid stream_argument size for kernel arg");
   if(cvalue != nullptr)
     throw error(CL_INVALID_VALUE,"Invalid stream_argument value for kernel arg, it should be null");
@@ -308,64 +161,51 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
     m_xruns.emplace(std::make_pair(device, xkr{xkernel, xrt::run(xkernel)})); // {device, xrt::run(xkernel)});
   }
 
-  // Capture OCL specific runtime infomational parameters from any of the 
-  // run objects associated with this kernel.
-  using xarg = xrt_core::xclbin::kernel_argument;
-  size_t num_args = 0;
-  auto args_visitor = [&num_args, this] (const xarg& arg, size_t index) {
-    ++num_args;
-    if (arg.index != xarg::no_index)
-      return;
-    auto itr = s2rtinfo.find(arg.name);
-    if (itr == s2rtinfo.end())
-      return;
-    this->m_rtinfo.insert(itr->second, index);
-  };
-  xrt_core::kernel_int::visit_args(get_xrt_run(), args_visitor);
-  
-  m_global_args.resize(num_args);
+  // Iterate all kernel args and process runtime infomational
+  // parameters from any of the run objects associated with this
+  // kernel.
+  m_arginfo = std::move(xrt_core::kernel_int::get_args(get_xrt_kernel()));
+  size_t idx = 0;
+  for (auto itr = m_arginfo.begin(); itr != m_arginfo.end(); ++itr, ++idx) {
+    auto arg = (*itr);
 
-
-
-  for (auto& arg : m_symbol.arguments) {
-    switch (arg.atype) {
-    case xclbin::symbol::arg::argtype::printf:
-      if (m_printf_args.size())
-        throw xocl::error(CL_INVALID_BINARY,"Only one printf argument allowed");
-      m_printf_args.emplace_back(argument::create(&arg,this));
-      break;
-    case xclbin::symbol::arg::argtype::rtinfo:
-    {
-      assert(arg.id.empty());
-      auto nm = arg.name;
-      auto itr = range_find(m_rtinfo_args,
-                            [&nm](const argument_value_type& arg)
-                            { return arg->get_name()==nm; });
-      if (itr==m_rtinfo_args.end())
-        m_rtinfo_args.emplace_back(argument::create(&arg,this));
-      else
-        (*itr)->add(&arg);
-      break;
+    // indexed arguemnts
+    if (arg->index != xarg::no_index) {
+      switch (arg->type) {
+      case xarg::argtype::scalar :
+        if (arg->index == m_indexed_xargs.size())
+          m_indexed_xargs.emplace_back(std::make_unique<scalar_xargument>(this, arg));
+        else
+          m_indexed_xargs.back()->add(arg);  // multi compoment arg, eg. long2, long4, etc.
+        break;
+      case xarg::argtype::global :
+      case xarg::argtype::constant :
+        m_indexed_xargs.emplace_back(std::make_unique<global_xargument>(this, arg));
+        break;
+      case xarg::argtype::local :
+        m_indexed_xargs.emplace_back(std::make_unique<local_xargument>(this, arg));
+        break;
+      case xarg::argtype::stream :
+        m_indexed_xargs.emplace_back(std::make_unique<stream_xargument>(this, arg));
+        break;
+      }
     }
-    case xclbin::symbol::arg::argtype::indexed:
-    {
-      assert(!arg.id.empty());
-      auto idx  = std::stoul(arg.id,0,0);
-      if (idx==m_indexed_args.size())
-        // next argument
-        m_indexed_args.emplace_back(argument::create(&arg,this));
-      else if (idx<m_indexed_args.size())
-        // previous argument a second time (e.g. 229_vadd-long)
-        // scalar vector, e.g. long2, long4, etc.
-        // need to resize existing arg.
-        m_indexed_args[idx]->add(&arg);
-      else
-        throw xocl::error(CL_INVALID_BINARY,"Wrong kernel argument index: " + arg.id);
-      break;
+
+    // non-indexed argument, rtinfo or printf
+    else {
+      auto rtt = get_rtinfo_type(arg->name);
+      switch (rtt) {
+        case rtinfo_type::printf:
+          m_printf_xargs.emplace_back(std::make_unique<printf_xargument>(this, arg, idx));
+          break;
+        default:  // rtinfo scalar
+          if (m_rtinfo_xargs.size() && rtt == m_rtinfo_xargs.back()->get_rtinfo_type())
+            m_rtinfo_xargs.back()->add(arg);  // multi compoment size_t[3]
+          else
+            m_rtinfo_xargs.emplace_back(std::make_unique<rtinfo_xargument>(this, arg, rtt, idx));
+          break;
+      }
     }
-    default:
-      throw std::runtime_error("Internal error creating kernel arguments");
-    } // switch (arg.atype)
   }
 
   auto cus = kernel_utils::get_cu_names(name);
@@ -387,108 +227,49 @@ kernel::
 
 void
 kernel::
-set_glb_arg_at_index(unsigned long idx, const void* cvalue, size_t sz)
-{
-  // clear existing cached global arg if any
-  m_global_args[idx] = nullptr;
-
-  if (sz != sizeof(cl_mem))
-    throw error(CL_INVALID_ARG_SIZE,"Invalid constant_argument size for kernel arg");
-  auto value = const_cast<void*>(cvalue);
-  auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
-  auto xmem = m_global_args[idx] = xocl(mem);
-
-  // associate this memory object with this kernel object
-  assign_buffer_to_argidx(xmem.get(), idx);
-}
-
-void
-kernel::
-set_scalar_arg_at_index(unsigned long idx, const void* cvalue, size_t sz)
+set_run_arg_at_index(unsigned long idx, const void* cvalue, size_t sz)
 {
   for (const auto& v : m_xruns) {
     auto& run = v.second.xrun;
     xrt_core::kernel_int::set_arg_at_index(run, idx, cvalue, sz);
   }
-}
-
-void
-kernel::
-set_local_arg_at_index(unsigned long idx, const void* cvalue, size_t sz)
-{
-  if (cvalue!=nullptr)
-    throw xocl::error(CL_INVALID_ARG_VALUE,"CL_KERNEL_ARG_ADDRESS_LOCAL value!=nullptr");
-  // arg_size is the size in bytes of the local memory
-  // todo: curently fixed at 16K, but should come from kernel.xml
-  if (sz == 0 || sz > 1024*16)
-    throw xocl::error(CL_INVALID_ARG_SIZE,"CL_KERNEL_ARG_ADDRESS_LOCAL wrong size:" + std::to_string(sz));
-}
-
-void
-kernel::
-set_stream_arg_at_index(unsigned long idx, const void* cvalue, size_t sz)
-{
-  //PTR_SIZE
-  if (sz != sizeof(cl_mem))
-    throw error(CL_INVALID_ARG_SIZE,"Invalid stream_argument size for kernel arg");
-  if(cvalue != nullptr)
-    throw error(CL_INVALID_VALUE,"Invalid stream_argument value for kernel arg, it should be null");
 }
 
 void
 kernel::
 set_argument(unsigned long idx, size_t sz, const void* value)
 {
-  // cache kernel argument type at index
-  using xarg = xrt_core::xclbin::kernel_argument;
-  auto argtype = xrt_core::kernel_int::arg_type_at_index(get_xrt_kernel(), idx);
-
-  // iterate all devices
-  switch (argtype) {
-  case xarg::argtype::constant:
-  case xarg::argtype::global:
-    set_glb_arg_at_index(idx, value, sz);
-    break;
-  case xarg::argtype::scalar:
-    set_scalar_arg_at_index(idx, value, sz);
-    break;
-  case xarg::argtype::local:
-    set_local_arg_at_index(idx, value, sz);
-    break;
-  case xarg::argtype::stream:
-    set_stream_arg_at_index(idx, value, sz);
-    break;
-  }
-
-  // Remove
-  m_indexed_args.at(idx)->set(idx,sz,value);
+  m_indexed_xargs.at(idx)->set(value, sz);
 }
 
 void
 kernel::
 set_svm_argument(unsigned long idx, size_t sz, const void* cvalue)
 {
-  for (const auto& v : m_xruns) {
-    auto& run = v.second.xrun;
-    xrt_core::kernel_int::set_arg_at_index(run, idx, cvalue, sz);
-  }
-
-  // Remove
-  m_indexed_args.at(idx)->set_svm(sz,cvalue);
+  m_indexed_xargs.at(idx)->set_svm(cvalue, sz);
 }
 
 void
 kernel::
 set_printf_argument(size_t sz, const void* cvalue)
 {
-  if (sz != sizeof(cl_mem))
-    throw error(CL_INVALID_ARG_SIZE,"Invalid constant_argument size for kernel arg");
-  auto value = const_cast<void*>(cvalue);
-  auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
-  m_printf_arg = xocl(mem);  // retains ownership of mem
+  m_printf_xargs.at(0)->set(cvalue, sz);
+}
 
-  // Remove
-  m_printf_args.at(0)->set(sz,cvalue);
+const xrt_core::xclbin::kernel_argument*
+kernel::
+get_arg_info(unsigned long idx) const
+{
+  return m_arginfo.at(idx);
+}
+
+std::vector<uint32_t>
+kernel::
+get_arg_value(unsigned long idx) const
+{
+  // use arbitrary run
+  const auto& run = get_xrt_run(nullptr);
+  return xrt_core::kernel_int::get_arg_value(run, idx);
 }
 
 const xrt::kernel&
@@ -511,7 +292,6 @@ get_xrt_run(const device* device) const
   return (*itr).second.xrun;
 }
  
-
 kernel::memidx_bitmask_type
 kernel::
 get_memidx(const device* device, unsigned int argidx) const

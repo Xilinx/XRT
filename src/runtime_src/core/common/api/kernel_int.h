@@ -25,6 +25,8 @@
 #include "core/common/xclbin_parser.h"
 
 #include <bitset>
+#include <cstdint>
+#include <vector>
 
 namespace xrt_core { namespace kernel_int {
 
@@ -37,11 +39,17 @@ copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
                   xclBufferHandle dst_bo, size_t dst_offset,
                   xclBufferHandle src_bo, size_t src_offset);
 
-using arg_visitor = std::function<void(const xrt_core::xclbin::kernel_argument&, size_t)>;
+XRT_CORE_COMMON_EXPORT
+std::vector<const xclbin::kernel_argument*>
+get_args(const xrt::kernel&);
 
 XRT_CORE_COMMON_EXPORT
-void
-visit_args(const xrt::run&, const arg_visitor&);
+const xclbin::kernel_argument*
+get_arg_info(const xrt::run& run, size_t argidx);
+
+XRT_CORE_COMMON_EXPORT
+std::vector<uint32_t>
+get_arg_value(const xrt::run&, size_t argidx);
 
 XRT_CORE_COMMON_EXPORT
 xrt_core::xclbin::kernel_argument::argtype

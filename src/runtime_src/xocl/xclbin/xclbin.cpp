@@ -347,7 +347,6 @@ private:
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.hostOffset"))
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.hostSize"))
-            ,0    // fa_desc_offset computed separately
             ,xml_arg.second.get<std::string>("<xmlattr>.type","")
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.memSize",""))
             ,type
@@ -436,32 +435,6 @@ private:
       }
     }
 
-    // For FA style kernels compute the descriptor entry offsets for
-    // each argument and total size of descriptor.
-    void
-    fix_fadesc()
-    {
-      auto protocol = xml_kernel.get<std::string>("<xmlattr>.hwControlProtocol","");
-      if (protocol != "fast_adapter")
-        return;
-
-      // Remove last argument which is "nextDescriptorAddr" and
-      // not set by user
-      m_symbol.arguments.pop_back();
-      
-      size_t desc_offset = 0;
-      for (auto& arg : m_symbol.arguments) {
-        if (arg.id.empty())
-          continue;
-
-        arg.fa_desc_offset = desc_offset;
-        desc_offset += arg.size + sizeof(ert_fa_desc_entry);
-        m_symbol.fa_num_inputs++;
-        m_symbol.fa_input_entry_bytes += arg.size;
-      }
-      m_symbol.fa_desc_bytes = sizeof(ert_fa_descriptor) + desc_offset;
-    }
-
     // The kernel symbol is exposed by the xclbin interface.  The
     // majority of the work done in this file is to populate the
     // symbol data members.  Seems like a lot of work to do little!
@@ -476,7 +449,6 @@ private:
       init_instances();
       init_stringtable();
       init_workgroup();
-      fix_fadesc();
 
       m_symbol.name = m_name;
       m_symbol.attributes = xml_kernel.get<std::string>("<xmlattr>.attributes","");
@@ -1062,49 +1034,6 @@ xclbin::
 clear_connection(connidx_type conn)
 {
   return impl_or_error()->m_sections.clear_connection(conn);
-}
-
-unsigned int
-xclbin::
-conformance_rename_kernel(const std::string& hash)
-{
-  assert(std::getenv("XCL_CONFORMANCE"));
-  return impl_or_error()->m_xml.conformance_rename_kernel(hash);
-}
-
-std::vector<std::string>
-xclbin::
-conformance_kernel_hashes() const
-{
-  return impl_or_error()->m_xml.conformance_kernel_hashes();
-}
-
-// Convert kernel arg data to string per type of argument
-// Interpret the passed data pointer as per the type of the arg and
-// return a string representation of it.
-std::string
-xclbin::symbol::arg::
-get_string_value(const unsigned char* data) const
-{
-  std::stringstream sstr;
-  if ( (type == "float") || (type == "double") ) {
-    //Handle float/double by casting
-    if (hostsize == 64)
-      sstr << *(reinterpret_cast<const double*> (data));
-    else
-      sstr << *(reinterpret_cast<const float*> (data));
-  }
-  else {
-    //Integral type: char,short,int,long and their unsigned versions
-    //Handle all integral types here
-    sstr << "0x";
-    for (int i = hostsize-1; i >= 0; --i) {
-      //data[i] has to be sent in as an integer to the ostream,
-      //if not data[i] gets interpreted as character (ie. non-ascii characters in output)
-      sstr << std::hex << std::setw(2) << std::setfill('0') << (unsigned int)data[i];
-    }
-  }
-  return sstr.str();
 }
 
 } // xocl
