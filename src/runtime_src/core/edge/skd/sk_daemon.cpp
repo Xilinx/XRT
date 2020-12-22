@@ -341,6 +341,9 @@ void configSoftKernel(xclSKCmd *cmd)
      * kernel image.
      */
     pid = fork();
+    if (pid > 0)
+      signal(SIGCHLD,SIG_IGN);
+
     if (pid == 0) {
       char path[XRT_MAX_PATH_LENGTH];
       char proc_name[PNAME_LEN] = {};
@@ -378,9 +381,6 @@ void configSoftKernel(xclSKCmd *cmd)
       syslog(LOG_INFO, "Kernel %s was terminated\n", cmd->krnl_name);
       exit(EXIT_SUCCESS);
     }
-
-    if (pid > 0)
-      signal(SIGCHLD,SIG_IGN);
 
     if (pid < 0)
       syslog(LOG_ERR, "Unable to create soft kernel process( %d)\n", i);
