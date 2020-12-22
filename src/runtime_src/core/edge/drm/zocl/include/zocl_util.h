@@ -148,16 +148,7 @@ struct drm_zocl_dev {
 	char			*kernels;
 	struct zocl_error	zdev_error;
 	struct zocl_aie		*aie;
-
-	/*
-	 * Watchdog thread monitoring the state of skd/cmc/cq/sched.
-	 * This is only working in ert mode. And in this mode, kds mode
-	 * is not working, which means there is no handling thread per cu.
-	 * In the future if per thread cu is enabled, since those threads
-	 * are created after xclbin is loaded, we may need a list to
-	 * maitain all of the thread to be monitored.
-	 */
-	struct task_struct      *watchdog_thread;
+	struct zocl_watchdog_dev *watchdog;
 };
 
 int zocl_kds_update(struct drm_zocl_dev *zdev);

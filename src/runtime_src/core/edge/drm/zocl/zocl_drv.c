@@ -869,6 +869,18 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
 	}
 
+	subdev = zocl_find_pdev("reset_ps");
+	if (subdev) {
+		DRM_INFO("reset_ps found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res) {
+			DRM_ERROR("The base address of reset_ps is not found or 0\n");
+			return -EINVAL;
+		}
+
+		zdev->watchdog = platform_get_drvdata(subdev);
+	}
+
 	/* For Non PR platform, there is not need to have FPGA manager
 	 * For PR platform, the FPGA manager is required. No good way to
 	 * determin if it is a PR platform at probe.
@@ -965,9 +977,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 			goto err_sched;
 	}
 
-	if (zdev->ert)
-		zdev->watchdog_thread = kthread_run(zocl_watchdog_thread, zdev,
-			"zocl_watchdog");
 	return 0;
 
 /* error out in exact reverse order of init */
@@ -1004,11 +1013,6 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	if (zdev->fpga_mgr)
 		fpga_mgr_put(zdev->fpga_mgr);
 
-	if (zdev->ert) {
-		if (zdev->watchdog_thread)
-			kthread_stop(zdev->watchdog_thread);
-	}
-
 	if (kds_mode == 0)
 		sched_fini_exec(drm);
 
@@ -1044,6 +1048,7 @@ static struct platform_driver zocl_drm_private_driver = {
 
 static struct platform_driver *const drivers[] = {
 	&zocl_ert_driver,
+	&zocl_watchdog_driver,
 	&zocl_ospi_versal_driver,
 	&cu_driver,
 };

@@ -30,6 +30,7 @@
 #include "zocl_bo.h"
 #include "zocl_dma.h"
 #include "zocl_ospi_versal.h"
+#include "zocl_watchdog.h"
 #include "xrt_cu.h"
 
 #if defined(CONFIG_ARM64)
@@ -254,8 +255,6 @@ extern struct platform_driver cu_driver;
 struct zocl_cu_ops {
 	int (*submit)(struct platform_device *pdev, struct kds_command *xcmd);
 };
-
-int zocl_watchdog_thread(void *data);
 
 static inline int
 zocl_cu_submit_xcmd(struct drm_zocl_dev *zdev, int i, struct kds_command *xcmd)

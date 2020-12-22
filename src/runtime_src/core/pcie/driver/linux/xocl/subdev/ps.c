@@ -59,7 +59,7 @@
  *
  */
 #define RESET_REG_C	0xC
-/* watchdog freq should be same to that defind in zocl_watchdog.c */
+/* watchdog freq should be same to that defined in zocl_watchdog.h */
 #define ZOCL_WATCHDOG_FREQ (3000)
 
 #define ERT_READY_MASK  0x8

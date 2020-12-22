@@ -41,6 +41,7 @@ zocl-y := \
 	zocl_sysfs.o \
 	zocl_ioctl.o \
 	zocl_ert.o \
+	zocl_watchdog.o \
 	zocl_drv.o \
 	zocl_bo.o \
 	zocl_dma.o \
