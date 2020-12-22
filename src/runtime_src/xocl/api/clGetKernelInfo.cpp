@@ -75,7 +75,7 @@ clGetKernelInfo(cl_kernel        kernel,
       buffer.as<char>() = xocl(kernel)->get_name();
       break;
     case CL_KERNEL_NUM_ARGS:
-      buffer.as<cl_uint>() = xocl(kernel)->get_indexed_argument_range().size();
+      buffer.as<cl_uint>() = xocl(kernel)->get_indexed_xargument_range().size();
       break;
     case CL_KERNEL_REFERENCE_COUNT:
       buffer.as<cl_uint>() = xocl(kernel)->count();

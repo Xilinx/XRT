@@ -354,7 +354,7 @@ action_ndrange_migrate(cl_event event, cl_kernel kernel)
 
   // Calculate total size and grab first address & bank
   // NOTE: argument must be: NOT write only, and NOT resident
-  for (auto& arg : xocl::xocl(kernel)->get_argument_range()) {
+  for (auto& arg : xocl::xocl(kernel)->get_xargument_range()) {
     if (auto mem = arg->get_memory_object()) {
       if (mem->is_resident(device))
         continue;

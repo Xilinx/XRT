@@ -37,7 +37,7 @@ static unsigned int
 get_cu_index(const xrt::run& run)
 {
   auto& cumask = xrt_core::kernel_int::get_cumask(run);
-  for (size_t bit = 0; bit < cumask.size(); ++bit)
+  for (unsigned int bit = 0; bit < cumask.size(); ++bit)
     if (cumask.test(bit))
       return bit;
   return 0;
