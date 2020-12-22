@@ -22,6 +22,7 @@
 #include "query_requests.h"
 #include "config_reader.h"
 #include "xclbin_parser.h"
+#include "xclbin_swemu.h"
 #include "core/include/xrt.h"
 #include "core/include/xclbin.h"
 #include "core/include/ert.h"
@@ -29,6 +30,18 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+
+namespace {
+
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  return swem;
+}
+
+}
 
 namespace xrt_core {
 
@@ -89,8 +102,17 @@ register_axlf(const axlf* top)
   axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, 
                                ASK_GROUP_CONNECTIVITY, ASK_GROUP_TOPOLOGY, 
                                MEM_TOPOLOGY, DEBUG_IP_LAYOUT, SYSTEM_METADATA, CLOCK_FREQ_TOPOLOGY};
+  
   for (auto kind : kinds) {
     auto hdr = xrt_core::xclbin::get_axlf_section(top, kind);
+
+    // software emulation xclbin does not have all sections
+    // create the necessary ones
+    if (!hdr && is_sw_emulation()) {
+      auto data = xrt_core::xclbin::swemu::get_axlf_section(this, top, kind);
+      if (!data.empty())
+        m_axlf_sections.emplace(kind, std::move(data));
+    }
 
     if (!hdr)
       continue;
