@@ -12,13 +12,14 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "device.cpp"
   "error.cpp"
   "message.cpp"
-  "time.cpp"
-  "xclbin_parser.cpp"
+  "module_loader.cpp"
   "sensor.cpp"
   "system.cpp"
-  "utils.cpp"
   "thread.cpp"
-  "module_loader.cpp"
+  "time.cpp"
+  "utils.cpp"
+  "xclbin_parser.cpp"
+  "xclbin_swemu.cpp"
   "api/*.cpp"
   )
 
