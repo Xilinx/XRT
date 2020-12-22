@@ -338,9 +338,8 @@ void configSoftKernel(xclSKCmd *cmd)
      * kernel image.
      */
     pid = fork();
-    if (pid > 0) {
+    if (pid > 0)
       signal(SIGCHLD,SIG_IGN);
-    }
 
     if (pid == 0) {
       char path[XRT_MAX_PATH_LENGTH];
