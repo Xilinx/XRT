@@ -1080,6 +1080,7 @@ cu_stat(struct sched_cmd *cmd)
 	int pkt_idx = 0;
 	int max_idx = (slot_size(cmd->ddev) >> 2) - 1;
 	int i;
+	struct pid *p_tmp;
 
 	SCHED_DEBUG("-> %s cq_slot_idx %d\n", __func__, cmd->cq_slot_idx);
 	slot_idx = cmd->cq_slot_idx;
@@ -1119,10 +1120,16 @@ cu_stat(struct sched_cmd *cmd)
 
 	/* indevidual SK CU status */
 	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
-		if (sk->sk_cu[i])
-			pkg->data[pkt_idx++] = (exec->scu_status[cu_mask_idx(i)] &
-				(1 << (i % sizeof(exec->scu_status[0])))) ? 1 : 0;
-		else
+		p_tmp = NULL;
+		if (sk->sk_cu[i]) {
+			/* xbutil to check if process is alive */
+			p_tmp = find_get_pid(sk->sk_cu[i]->sc_pid);
+			if (p_tmp)
+				pkg->data[pkt_idx++] = (exec->scu_status[cu_mask_idx(i)] &
+					(1 << (i % sizeof(exec->scu_status[0])))) ? 1 : 0;
+			else
+				pkg->data[pkt_idx++] = -1; //soft cu has crashed
+		} else
 			pkg->data[pkt_idx++] = -1; //soft cu has crashed
 	}
 
