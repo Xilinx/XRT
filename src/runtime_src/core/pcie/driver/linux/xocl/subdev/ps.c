@@ -167,7 +167,7 @@ static int ps_wait(struct platform_device *pdev)
 
 	mutex_lock(&ps->ps_lock);
 	reg = READ_REG32(ps, RESET_REG_C);
-	while(retry++ < MAX_WAIT && !(reg & ERT_READY_MASK)) {
+	while(!(reg & ERT_READY_MASK) && retry++ < MAX_WAIT) {
 		reg = READ_REG32(ps, RESET_REG_C);
 		msleep(WAIT_INTERVAL);
 	}
@@ -191,9 +191,49 @@ static int ps_wait(struct platform_device *pdev)
 	return ret;
 }
 
+static void ps_check_healthy(struct platform_device *pdev)
+{
+	struct xocl_ps *ps;
+	u32 reg0, reg;
+
+	ps = platform_get_drvdata(pdev);
+	if (!ps)
+		return;
+
+	mutex_lock(&ps->ps_lock);
+	reg0 = READ_REG32(ps, RESET_REG_C);
+	msleep_interruptible(ZOCL_WATCHDOG_FREQ);
+	reg = READ_REG32(ps, RESET_REG_C);
+	mutex_unlock(&ps->ps_lock);
+
+	/* healthy */
+	if ((reg & COUNTER_MASK) &&
+		(reg0 & COUNTER_MASK) != (reg & COUNTER_MASK))
+		return;
+
+	/* not healthy */
+	if (!(reg & COUNTER_MASK)) {
+		xocl_warn(&pdev->dev, "ps: zocl is not loaded");
+		return;
+	}
+
+	if (!(reg & (1 << SKD_BIT_SHIFT)))
+		xocl_warn(&pdev->dev, "ps: skd is not running");
+
+	if (!(reg & (1 << CMC_BIT_SHIFT)))
+		xocl_warn(&pdev->dev, "ps: cmc is not running");
+
+	if (!(reg & (1 << CQ_THD_BIT_SHIFT)))
+		xocl_warn(&pdev->dev, "ps: cq thread is not running");
+
+	if (!(reg & (1 << SCHED_THD_BIT_SHIFT)))
+		xocl_warn(&pdev->dev, "ps: sched thread is not running");
+}
+
 static struct xocl_ps_funcs ps_ops = {
 	.reset		= ps_reset,
 	.wait		= ps_wait,
+	.check_healthy	= ps_check_healthy,
 };
 
 static ssize_t ps_ready_show(struct device *dev,

@@ -918,6 +918,7 @@ struct xocl_ps_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*reset)(struct platform_device *pdev, int type);
 	int (*wait)(struct platform_device *pdev);
+	void (*check_healthy)(struct platform_device *pdev);
 };
 
 #define	PS_DEV(xdev)		\
@@ -935,6 +936,8 @@ struct xocl_ps_funcs {
 	(PS_CB(xdev, reset) ? PS_OPS(xdev)->reset(PS_DEV(xdev), 3) : NULL)
 #define	xocl_ps_wait(xdev)			\
 	(PS_CB(xdev, reset) ? PS_OPS(xdev)->wait(PS_DEV(xdev)) : -ENODEV)
+#define	xocl_ps_check_healthy(xdev)			\
+	(PS_CB(xdev, check_healthy) ? PS_OPS(xdev)->check_healthy(PS_DEV(xdev)) : true)
 
 
 /* dna callbacks */

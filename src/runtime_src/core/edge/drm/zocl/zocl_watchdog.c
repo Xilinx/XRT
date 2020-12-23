@@ -53,7 +53,7 @@ static void watchdog_config(struct zocl_watchdog_dev *watchdog,
 	if (!counter)
 		counter++;
 
-	//only update counter when everything is running
+	/* only update counter when everything is running */
 	if (cfg.skd_run && cfg.cmc_run && cfg.cq_thread_run &&
 		cfg.sched_thread_run) {
 		if (counter == (COUNTER_MASK >> COUNTER_BITS_SHIFT))

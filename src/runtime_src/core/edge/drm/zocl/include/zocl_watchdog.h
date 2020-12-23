@@ -47,7 +47,7 @@
  * cq thread
  * sched thread
  *
- * So far when zocl is runnign in ert mode, we don't support kds. If in future
+ * So far when zocl is running in ert mode, we don't support kds. If in future
  * we do support kds, which means, we may not need sched thread and create
  * per cu thread, and since the per cu thread is created when the xclbin is
  * created, the watchdog thread may not know those thread before hand.

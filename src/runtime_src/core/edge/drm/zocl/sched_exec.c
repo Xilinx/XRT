@@ -3312,16 +3312,10 @@ static int watchdog_thread(void *data)
 
 		rcu_read_lock();
 		for_each_process(tsk) {
-			if (!strcmp(tsk->comm, "skd")) {
-				/*DRM_INFO("skd(pid: %d) is running\n",
-					task_pid_nr(tsk));*/
+			if (!strcmp(tsk->comm, "skd"))
 				cfg.skd_run = true;
-			}
-			if (!strncmp(tsk->comm, CMC, strlen(CMC))) {
-				/*DRM_INFO("cmc(pid: %d) is running\n",
-					task_pid_nr(tsk));*/
+			if (!strncmp(tsk->comm, CMC, strlen(CMC)))
 				cfg.cmc_run = true;
-			}
 		}
 		rcu_read_unlock();
 
@@ -3334,24 +3328,19 @@ static int watchdog_thread(void *data)
 		if (zdev->exec && zdev->exec->cq_thread &&
 			zdev->exec->cq_thread->state != TASK_DEAD)
 			cfg.cq_thread_run = true;
-		/* DRM_WARN("ert kthread state: %lx\n",
-			zdev->exec->cq_thread->state);*/
 
 		if (g_sched0.sched_thread &&
 			g_sched0.sched_thread->state != TASK_DEAD)
 			cfg.sched_thread_run = true;
-		/*DRM_WARN("sched kthread state: %lx\n",
-			g_sched0.sched_thread->state);*/
 
 		watchdog->ops->config(watchdog, cfg);
-		msleep(ZOCL_WATCHDOG_FREQ);
+		msleep_interruptible(ZOCL_WATCHDOG_FREQ);
 		schedule();
 	}
 	watchdog->ops->fini(watchdog);
 exit:
-	zdev->exec->watchdog_thread = NULL;
+	DRM_INFO("watchdog thread exits!!\n");
 	return 0;
-
 }
 
 static inline void init_exec(struct sched_exec_core *exec_core)
@@ -3431,8 +3420,10 @@ sched_init_exec(struct drm_device *drm)
 
 		init_waitqueue_head(&exec_core->cq_wait_queue);
 		exec_core->cq_thread = kthread_run(cq_check, zdev, name);
-		exec_core->watchdog_thread = kthread_run(watchdog_thread, zdev,
-			"zocl_watchdog");
+		if (zdev->watchdog)
+			exec_core->watchdog_thread =
+				kthread_run(watchdog_thread, zdev,
+				"zocl_watchdog");
 	}
 
 	SCHED_DEBUG("<- %s\n", __func__);
