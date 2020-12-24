@@ -106,6 +106,16 @@ namespace xdp {
     fout << "Dynamic_Row_Summary," << ++rowCount
 	 << ",Executions,Execution in accelerator " 
 	 << cu->getName() << std::endl;
+
+    // Only for HW EMU : check later
+    size_t pos = xclbin->name.find('.');
+    fout << "Optional_Function_Internal,User Functions,Function activity in accelerator " << cu->getName() 
+         << "," << rowCount
+         << "," << (db->getStaticInfo()).getDeviceName(deviceId) << "-0"
+         << "," << xclbin->name.substr(0, pos)
+         << "," << cu->getKernelName()
+         << "," << cu->getName() << std::endl;
+
     std::pair<XclbinInfo*, int32_t> index =
       std::make_pair(xclbin, cu->getIndex()) ;
     cuBucketIdMap[index] = rowCount;

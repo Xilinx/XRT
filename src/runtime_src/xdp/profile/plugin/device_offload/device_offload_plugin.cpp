@@ -217,7 +217,7 @@ namespace xdp {
     if (data_transfer_trace == "coarse") traceOption |= 0x1 ;
     
     // Bit 2: 1 = Device trace enabled, 0 = Device trace disabled
-    if (data_transfer_trace != "off")    traceOption |= 0x2 ;
+    if (data_transfer_trace != "off" && data_transfer_trace != "accel")    traceOption |= 0x2 ;
     
     // Bit 3: 1 = Pipe stalls enabled, 0 = Pipe stalls disabled
     if (stall_trace == "pipe" || stall_trace == "all") traceOption |= 0x4 ;

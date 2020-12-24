@@ -921,7 +921,7 @@ namespace xdp {
       {
       
       uint64_t AIMIndex = 0 ;
-      for (auto monitor : device->aimList)
+      for (auto monitor : device->currentXclbin()->aimList)
       {
 	if (monitor->name.find("Host to Device") != std::string::npos)
 	{
@@ -1049,7 +1049,7 @@ namespace xdp {
       for (auto xclbin : device->loadedXclbins)
 	{
       uint64_t AIMIndex = 0 ;
-      for (auto monitor : device->aimList)
+      for (auto monitor : device->currentXclbin()->aimList)
       {
 	if (monitor->name.find("Peer to Peer") != std::string::npos)
 	{
@@ -1177,7 +1177,7 @@ namespace xdp {
       for (auto xclbin : device->loadedXclbins)
 	{
       uint64_t AIMIndex = 0 ;
-      for (auto monitor : device->aimList)
+      for (auto monitor : device->currentXclbin()->aimList)
       {
 	if (monitor->name.find("Memory to Memory") != std::string::npos)
 	{

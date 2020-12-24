@@ -198,13 +198,17 @@ namespace xdp {
     std::string path = debugIPLayoutPath(device) ;
 
     uint64_t deviceId = 0;
-
-    try {
-      deviceId = db->getDeviceId(path) ;
-    }
-    catch(std::exception& e) {
-      // This is the first time we encountered this particular device
-      addDevice(path) ;
+    if(getFlowMode() == HW && (xrt_core::config::get_timeline_trace() || 
+          xrt_core::config::get_data_transfer_trace() != "off" ||
+          xrt_core::config::get_stall_trace()  != "off" ||
+          xrt_core::config::get_device_trace() != "off")) {
+      try {
+        deviceId = db->getDeviceId(path) ;
+      }
+      catch(std::exception& e) {
+        // This is the first time we encountered this particular device
+        addDevice(path) ;
+      }
     }
 
     deviceId = db->addDevice(path) ;
@@ -237,9 +241,18 @@ namespace xdp {
 
     configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;
-    configureTraceIP(devInterface) ;
-    if (getFlowMode() == HW || getFlowMode() == HW_EMU)
+
+    if(getFlowMode() == HW && (xrt_core::config::get_timeline_trace() || 
+          xrt_core::config::get_data_transfer_trace() != "off" ||
+          xrt_core::config::get_stall_trace()  != "off" ||
+          xrt_core::config::get_device_trace() != "off")) {
+      configureTraceIP(devInterface);
       devInterface->clockTraining() ;
+    }
+    if(getFlowMode() == HW_EMU) {
+      configureTraceIP(devInterface);
+      devInterface->clockTraining();
+    }
     devInterface->startCounters() ;
 
     // Disable AMs for unsupported features

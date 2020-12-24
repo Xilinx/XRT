@@ -271,6 +271,13 @@ get_opencl_summary()
 }
 
 inline bool
+get_opencl_device_counter()
+{
+  static bool value = (get_profile()) ? true : detail::get_bool_value("Debug.opencl_device_counter", false);
+  return value;
+}
+
+inline bool
 get_aie_trace()
 {
   static bool value = detail::get_bool_value("Debug.aie_trace", false);

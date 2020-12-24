@@ -241,6 +241,7 @@ namespace xocl {
 	    xrt_core::config::get_opencl_trace())
 	  load_xdp_opencl_trace() ;
 	if (xrt_core::config::get_data_transfer_trace() != "off" ||
+            xrt_core::config::get_opencl_device_counter() ||
 	    xrt_core::config::get_device_trace() != "off")
 	  load_xdp_device_offload() ;
       }

@@ -93,47 +93,11 @@ namespace xdp {
 
   DeviceInfo::~DeviceInfo()
   {
-    //delete deviceIntf;
-
     for (auto& i : loadedXclbins) {
       delete i ;
     }
     loadedXclbins.clear() ;
 
-    /*
-    for(auto& i : cus) {
-      delete i.second;
-    }
-    cus.clear();
-    for(auto& i : memoryInfo) {
-      delete i.second;
-    }
-    memoryInfo.clear();
-    */
-    /*
-    for(auto& i : amMap) {
-      delete i.second;
-    }
-    amMap.clear();
-    for(auto& i : aimMap) {
-      delete i.second;
-    }
-    aimMap.clear();
-    for(auto& i : asmMap) {
-      delete i.second;
-    }
-    asmMap.clear();
-    */
-    // Do not delete the monitors in the complete lists, they
-    //  are just pointers to objects owned by other data structures
-    aimList.clear() ;
-    amList.clear() ;
-    asmList.clear() ;
-
-    for(auto i : nocList) {
-      delete i;
-    }
-    nocList.clear();
     for(auto i : aieList) {
       delete i;
     }
@@ -496,10 +460,10 @@ namespace xdp {
               devInfo->loadedXclbins.back()->amMap.emplace(slotID, mon);
               cuObj->setAccelMon(slotID);
             } else {
-              devInfo->noTraceAMs.push_back(mon);
+              devInfo->loadedXclbins.back()->noTraceAMs.push_back(mon);
             }
 	    // Also add it to the list of all AMs
-	    devInfo->amList.push_back(mon);
+	    devInfo->loadedXclbins.back()->amList.push_back(mon);
             if(debugIpData->m_properties & XAM_STALL_PROPERTY_MASK) {
               cuObj->setStallEnabled(true);
             }
@@ -540,10 +504,10 @@ namespace xdp {
             devInfo->loadedXclbins.back()->hasFloatingAIM = true;
           }
         } else {
-          devInfo->noTraceAIMs.push_back(mon);
+          devInfo->loadedXclbins.back()->noTraceAIMs.push_back(mon);
         }
 	// Also add it to the list of all AIMs
-	devInfo->aimList.push_back(mon) ;
+	devInfo->loadedXclbins.back()->aimList.push_back(mon) ;
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
         size_t pos = name.find('/');
@@ -589,10 +553,10 @@ namespace xdp {
             devInfo->loadedXclbins.back()->hasFloatingASM = true;
           }
         } else {
-          devInfo->noTraceASMs.push_back(mon);
+          devInfo->loadedXclbins.back()->noTraceASMs.push_back(mon);
         }
 	// Also add it to the list of all ASM monitors
-	devInfo->asmList.push_back(mon) ;
+	devInfo->loadedXclbins.back()->asmList.push_back(mon) ;
       } else if (debugIpData->m_type == TRACE_S2MM) {
 	devInfo->loadedXclbins.back()->usesTs2mm = true ;
       } else if(debugIpData->m_type == AXI_NOC) {
@@ -601,11 +565,11 @@ namespace xdp {
 
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
                           readTrafficClass, writeTrafficClass);
-        devInfo->nocList.push_back(mon);
+        devInfo->loadedXclbins.back()->nocList.push_back(mon);
         // nocList in xdp::DeviceIntf is sorted; Is that required here?
       } else if(debugIpData->m_type == TRACE_S2MM && (debugIpData->m_properties & 0x1)) {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
-        devInfo->numTracePLIO++;
+        devInfo->loadedXclbins.back()->numTracePLIO++;
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }

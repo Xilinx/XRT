@@ -212,6 +212,18 @@ namespace xdp {
     std::map<uint64_t, Monitor*>  aimMap;
     std::map<uint64_t, Monitor*>  asmMap;
 
+    std::vector<Monitor*>  noTraceAMs;
+    std::vector<Monitor*>  noTraceAIMs;
+    std::vector<Monitor*>  noTraceASMs;
+
+    std::vector<Monitor*> aimList;
+    std::vector<Monitor*> amList;
+    std::vector<Monitor*> asmList;
+
+    uint32_t numTracePLIO = 0;
+
+    std::vector<Monitor*>      nocList;
+
     ~XclbinInfo() {
       for (auto& i : cus) {
 	delete i.second ;
@@ -221,18 +233,35 @@ namespace xdp {
 	delete i.second ;
       }
       memoryInfo.clear() ;
-      for(auto& i : amMap) {
-	delete i.second;
-      }
+
+      // Clear the map with monitors enabled for trace
       amMap.clear();
-      for(auto& i : aimMap) {
-	delete i.second;
-      }
       aimMap.clear();
-      for(auto& i : asmMap) {
-	delete i.second;
-      }
       asmMap.clear();
+
+      // Clear the list with monitors not enabled trace
+      noTraceAMs.clear();
+      noTraceAIMs.clear();
+      noTraceASMs.clear();
+
+      // Delete the monitors using the all inclusive monitor list
+      for(auto& i : amList) {
+	delete i;
+      }
+      amList.clear();
+      for(auto& i : aimList) {
+	delete i;
+      }
+      aimList.clear();
+      for(auto& i : asmList) {
+	delete i;
+      }
+      asmList.clear();
+
+      for(auto& i : nocList) {
+        delete i;
+      }
+      nocList.clear();
 
       if (deviceIntf) delete deviceIntf ;
     }
@@ -254,28 +283,8 @@ namespace xdp {
 
     // ****** Information specific to the currently loaded XCLBIN ******
 
-    /* Maps for AM, AIM, ASM Monitor (enabled for trace) with slotID as the key.
-     * Contains only user space monitors, but no shell monitor (e.g. shell AIM/ASM)
-     */
-    /*
-    std::map<uint64_t, Monitor*>  amMap;
-    std::map<uint64_t, Monitor*>  aimMap;
-    std::map<uint64_t, Monitor*>  asmMap;
-    */
-
-    std::vector<Monitor*>  noTraceAMs;
-    std::vector<Monitor*>  noTraceAIMs;
-    std::vector<Monitor*>  noTraceASMs;
-
-    std::vector<Monitor*> aimList ;
-    std::vector<Monitor*> amList ;
-    std::vector<Monitor*> asmList ;
-
-    std::vector<Monitor*>      nocList;
     std::vector<AIECounter*>   aieList;
     std::vector<TraceGMIO*>    gmioList;
-
-    uint32_t numTracePLIO = 0;
 
     XclbinInfo* currentXclbin() {
       if (loadedXclbins.size() <= 0)
@@ -328,6 +337,13 @@ namespace xdp {
       return 0 ;
     }
 
+    inline uint64_t getNumNOC(XclbinInfo* xclbin) {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return bin->nocList.size() ;
+      }
+      return 0 ;
+    }
+
     inline Monitor* getAMonitor(XclbinInfo* xclbin, uint64_t slotID) {
       for (auto bin : loadedXclbins) {
 	if (bin == xclbin) return bin->amMap[slotID] ;
@@ -345,6 +361,13 @@ namespace xdp {
     inline Monitor* getASMonitor(XclbinInfo* xclbin, uint64_t slotID) {
       for (auto bin : loadedXclbins) {
 	if (bin == xclbin) return bin->asmMap[slotID] ;
+      }
+      return nullptr ;
+    }
+
+    inline Monitor* getNOC(XclbinInfo* xclbin, uint64_t idx) {
+      for (auto bin : loadedXclbins) {
+	if (bin == xclbin) return bin->nocList[idx] ;
       }
       return nullptr ;
     }
@@ -378,18 +401,7 @@ namespace xdp {
     }
 
     void cleanCurrentXclbinInfo() {
-      numTracePLIO = 0 ;
 
-      // Do not delete the monitors in the complete lists, they
-      //  are just pointers to objects owned by other data structures
-      aimList.clear() ;
-      amList.clear() ;
-      asmList.clear() ;
-      
-      for(auto i : nocList) {
-	delete i;
-      }
-      nocList.clear();
       for(auto i : aieList) {
 	delete i;
       }
@@ -401,7 +413,10 @@ namespace xdp {
     }
 
     bool hasDMAMonitor() {
-      for (auto aim : aimList) {
+      if(!currentXclbin()) {
+        return false;
+      }
+      for (auto aim : currentXclbin()->aimList) {
 	if (aim->name.find("Host to Device") != std::string::npos)
 	  return true ;
       }
@@ -409,7 +424,10 @@ namespace xdp {
     }
 
     bool hasDMABypassMonitor() {
-      for (auto aim : aimList) {
+      if(!currentXclbin()) {
+        return false;
+      }
+      for (auto aim : currentXclbin()->aimList) {
 	if (aim->name.find("Peer to Peer") != std::string::npos)
 	  return true ;
       }
@@ -417,7 +435,10 @@ namespace xdp {
     }
 
     bool hasKDMAMonitor() {
-      for (auto aim : aimList) {
+      if(!currentXclbin()) {
+        return false;
+      }
+      for (auto aim : currentXclbin()->aimList) {
 	if (aim->name.find("Memory to Memory") != std::string::npos)
 	  return true ;
       }
@@ -732,11 +753,11 @@ namespace xdp {
       return deviceInfo[deviceId]->getNumASM(xclbin);
     }
 
-    inline uint64_t getNumNOC(uint64_t deviceId)
+    inline uint64_t getNumNOC(uint64_t deviceId, XclbinInfo* xclbin)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
-      return deviceInfo[deviceId]->nocList.size();
+      return deviceInfo[deviceId]->getNumNOC(xclbin);
     }
 
     inline uint64_t getNumAIECounter(uint64_t deviceId)
@@ -774,11 +795,11 @@ namespace xdp {
       return deviceInfo[deviceId]->getASMonitor(xclbin, slotID);
     }
 
-    inline Monitor* getNOC(uint64_t deviceId, uint64_t idx)
+    inline Monitor* getNOC(uint64_t deviceId, XclbinInfo* xclbin, uint64_t idx)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
-      return deviceInfo[deviceId]->nocList[idx];
+      return deviceInfo[deviceId]->getNOC(xclbin, idx);
     }
 
     inline AIECounter* getAIECounter(uint64_t deviceId, uint64_t idx)
@@ -907,7 +928,9 @@ namespace xdp {
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
-      return deviceInfo[deviceId]->numTracePLIO;
+      if(deviceInfo[deviceId]->loadedXclbins.empty())
+        return 0;
+      return deviceInfo[deviceId]->loadedXclbins.back()->numTracePLIO;
     }
 
     inline uint64_t getNumAIETraceStream(uint64_t deviceId)
@@ -915,8 +938,10 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
 
-      if(deviceInfo[deviceId]->numTracePLIO)
-        return deviceInfo[deviceId]->numTracePLIO;
+      uint64_t numAIETraceStream = getNumTracePLIO(deviceId);
+      if(numAIETraceStream)
+        return numAIETraceStream;
+
       return deviceInfo[deviceId]->gmioList.size();
     }
 
