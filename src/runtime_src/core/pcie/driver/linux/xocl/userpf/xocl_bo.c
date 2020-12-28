@@ -1756,7 +1756,7 @@ int xocl_map_kern_mem_ioctl(struct drm_device *dev,
 		for (i = 0; i < page_count; i++)
 			xobj->pages[i] = virt_to_page(args->addr+i*PAGE_SIZE);
 
-		xobj->sgt = drm_prime_pages_to_sg(xobj->pages, page_count);
+		xobj->sgt = xocl_prime_pages_to_sg(dev, xobj->pages, page_count);
 		if (IS_ERR(xobj->sgt)) {
 			ret = PTR_ERR(xobj->sgt);
 			goto out0;
