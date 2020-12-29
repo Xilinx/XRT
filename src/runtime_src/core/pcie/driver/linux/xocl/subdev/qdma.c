@@ -1602,7 +1602,7 @@ static long qdma_stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 		goto failed;
 	}
 
-	xobj->sgt = drm_prime_pages_to_sg((XOCL_DRM(xdev))->ddev, xobj->pages,
+	xobj->sgt = xocl_prime_pages_to_sg((XOCL_DRM(xdev))->ddev, xobj->pages,
 		xobj->base.size >> PAGE_SHIFT);
 	if (IS_ERR(xobj->sgt)) {
 		ret = PTR_ERR(xobj->sgt);
