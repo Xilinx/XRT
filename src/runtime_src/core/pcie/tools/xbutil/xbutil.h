@@ -1543,10 +1543,16 @@ public:
               }
               int cu_i = xclIPName2Index(m_handle, cu_n.c_str());
               if (cu_i < 0) {
-                ostr << "CU: ";
-              } else {
-                ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: ";
-              }
+                std::size_t found = cu_n.rfind("scu");
+                if (found != std::string::npos) {
+                  auto scu_i = std::stoi(cu_n.substr(found + 4));
+                  cu_n = cu_n.substr(0, found - 1);
+                  ostr << "SCU[" << std::right << std::setw(2) << std::dec << scu_i << "]: ";
+                } else
+                  ostr << "CU: ";
+              } else
+                ostr << "CU[" << std::right << std::setw(3) << cu_i << "]: ";
+
               ostr << std::left << std::setw(32) << cu_n
                    << "@" << std::setw(18) << std::hex << cu_ba
                    << cu_s << std::endl;
