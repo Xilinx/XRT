@@ -107,6 +107,7 @@ register_axlf(const axlf* top)
                                ASK_GROUP_CONNECTIVITY, ASK_GROUP_TOPOLOGY,
                                MEM_TOPOLOGY, DEBUG_IP_LAYOUT, SYSTEM_METADATA, CLOCK_FREQ_TOPOLOGY};
 
+  // cache xclbin sections
   for (auto kind : kinds) {
     auto hdr = xrt_core::xclbin::get_axlf_section(top, kind);
 
@@ -124,6 +125,22 @@ register_axlf(const axlf* top)
     auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
     std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
     m_axlf_sections.emplace(kind , std::move(data));
+  }
+
+  // encode / compress memory connections, a mapping from mem_topology
+  // memory index to encoded index.  The compressed indices facilitate
+  // small sized std::bitset for representing kernel argument connectivity
+  if (auto mem_topology = get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY)) {
+    std::vector<size_t> enc(mem_topology->m_count, std::numeric_limits<size_t>::max());
+    for (int32_t midx = 0, eidx = 0; midx < mem_topology->m_count; ++midx) {
+      const auto& mem = mem_topology->m_mem_data[midx];
+      if (!mem.m_used)
+        continue;
+      if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
+        continue;
+      enc[midx] = eidx++;
+    }
+    m_memidx_encoding = std::move(enc);
   }
 }
 
@@ -147,6 +164,15 @@ get_axlf_section_or_error(axlf_section_kind section, const uuid& xclbin_id) cons
   if (ret.first != nullptr)
     return ret;
   throw std::runtime_error("no such xclbin section");
+}
+
+const std::vector<size_t>&
+device::
+get_memidx_encoding(const uuid& xclbin_id) const
+{
+  if (xclbin_id && xclbin_id != m_xclbin_uuid)
+    throw std::runtime_error("xclbin id mismatch");
+  return m_memidx_encoding;
 }
 
 std::pair<size_t, size_t>

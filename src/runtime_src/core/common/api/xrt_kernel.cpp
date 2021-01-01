@@ -145,6 +145,12 @@ debug_cmd_packet(const std::string& msg, const ert_packet* pkt)
   return fnm;
 }
 
+inline IP_CONTROL
+get_ip_control(const ip_data* ip)
+{
+  return IP_CONTROL((ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+}
+
 // Helper class for representing an in-memory kernel argument.  User
 // calls kernel(arg1, arg2, ...).  This class stores the address of
 // the kernel argument as provided by user and its size in number of
@@ -274,6 +280,45 @@ struct device_type
   }
 };
 
+// struct encoded_bitset - Sparse bit set
+//
+// Used to represent compressed mem_topology indidices of an xclbin.
+// Many entries are unused and can be ignored, yet section size
+// (indices) can be arbitrary long.  The encoding is a mapping from
+// original index to compressed index.
+//
+// Using this encoded bitset allows a smaller sized std::bitset
+// to be used for representing memory connectivity, where as a
+// uncompressed bitset would require 1000s of entries.
+template <size_t size>
+class encoded_bitset
+{
+public:
+  encoded_bitset()
+  {}
+
+  // Encoding is represented using a vector  that maps
+  // the original index to the encoded (compressed) index.
+  encoded_bitset(const std::vector<size_t>* enc)
+    : m_encoding(enc)
+  {}
+
+  void
+  set(size_t idx)
+  {
+    m_bitset.set(m_encoding ? m_encoding->at(idx) : idx);
+  }
+
+  bool
+  test(size_t idx) const
+  {
+    return m_bitset.test(m_encoding ? m_encoding->at(idx) : idx);
+  }
+
+private:
+  const std::vector<size_t>* m_encoding = nullptr;
+  std::bitset<size> m_bitset;
+};
 
 // struct ip_context - Manages process access to CUs
 //
@@ -288,23 +333,28 @@ struct device_type
 class ip_context
 {
   // class connectivy - Represents argument connectiviy to memory banks
-  //  
-  // TODO: compress the connectivity bitset to ignore unused memory banks
+  //
+  // The argument connectivity is represented using a compressed bitset
+  // where unused mem_topology entries have been removed.  This allows
+  // for a much smaller bitset to represented all possible connectivity
+  //
+  // @connections: connectivity for each ip argument
+  // @default_connection: default connectivity for an argument
   class connectivity
   {
     static constexpr int32_t no_memidx = -1;
-    static constexpr size_t max_connections = 128;
-    std::vector<std::bitset<max_connections>> connections; // sorted argidx
-    std::vector<int32_t> default_connection;               // sorted argidx
+    static constexpr size_t max_connections = 64;
+    std::vector<encoded_bitset<max_connections>> connections; // indexed by argidx
+    std::vector<int32_t> default_connection;                  // indexed by argidx
 
     // Resize the vectors if neccessary
     void
-    resize(size_t size)
+    resize(size_t size, const std::vector<size_t>* encoding)
     {
       if (connections.size() >= size)
         return;
 
-      connections.resize(size);
+      connections.resize(size, {encoding});
       default_connection.resize(size, no_memidx);
     }
 
@@ -312,8 +362,13 @@ class ip_context
     connectivity()
     {}
 
-    connectivity(const ::connectivity* conn, int32_t ipidx)
+    // @device: core device
+    // @conn: connectivity section of xclbin
+    // @ipidx: index of the ip for which connectivity data is created
+    connectivity(const xrt_core::device* device, const xrt::uuid& xclbin_id, int32_t ipidx)
     {
+      const auto& memidx_encoding = device->get_memidx_encoding(xclbin_id);
+      auto conn = device->get_axlf_section_or_error<const ::connectivity*>(ASK_GROUP_CONNECTIVITY, xclbin_id);
       // Compute the connections for IP with specified index
       for (int count = 0; count < conn->m_count; ++count) {
         auto& cxn  = conn->m_connection[count];
@@ -322,7 +377,13 @@ class ip_context
 
         auto argidx = cxn.arg_index;
         auto memidx = cxn.mem_data_index;
-        resize(argidx + 1);
+
+        // disregard memory indices that do not map to a memory mapped bank
+        // this could be streaming connections
+        if (memidx_encoding.at(memidx) == std::numeric_limits<size_t>::max())
+          continue;
+
+        resize(argidx + 1, &memidx_encoding);
         connections[argidx].set(memidx);
 
         // default connections is largest memidx to account for groups
@@ -330,20 +391,24 @@ class ip_context
       }
     }
 
+    // Get default memory index of an argument.  The default index is
+    // the the largest memory index of a connection for specified argument.
     int32_t
     get_arg_memidx(size_t argidx) const
     {
       return default_connection[argidx];
     }
 
+    // Validate that specified memory index is a valid connection for
+    // argument identified by 'argidx'
     bool
     valid_arg_connection(size_t argidx, size_t memidx) const
     {
       return connections[argidx].test(memidx);
     }
   };
-  
-  
+
+
 public:
   using access_mode = xrt::kernel::cu_access_mode;
   constexpr static unsigned int virtual_cu_idx = std::numeric_limits<unsigned int>::max();
@@ -353,14 +418,12 @@ public:
   // @device:    Device on which context should opened
   // @xclbin_id: UUID of xclbin containeing the IP definition
   // @ip:        The ip_data defintion for this IP from the xclbin
-  // @conn:      The connectivity section from xclbin
-  // @cuidx:     Sorted index of CU used when populating cmd pkt
   // @ipidx:     Index of IP in the IP_LAYOUT section of xclbin
+  // @cuidx:     Sorted index of CU used when populating cmd pkt
   // @am:        Access mode, how this CU should be opened
   static std::shared_ptr<ip_context>
   open(xrt_core::device* device, const xrt::uuid& xclbin_id,
-       const ip_data* ip, const ::connectivity* conn,
-       unsigned int ipidx, unsigned int cuidx, access_mode am)
+       const ip_data* ip, unsigned int ipidx, unsigned int cuidx, access_mode am)
   {
     static std::mutex mutex;
     static std::map<xrt_core::device*, std::array<std::weak_ptr<ip_context>, 128>> dev2ips;
@@ -368,7 +431,7 @@ public:
     auto& ips = dev2ips[device];
     auto ipctx = ips[cuidx].lock();
     if (!ipctx) {
-      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ip, conn, ipidx, cuidx, am));
+      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ip, ipidx, cuidx, am));
       ips[cuidx] = ipctx;
     }
 
@@ -458,10 +521,9 @@ public:
 private:
   // regular CU
   ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id,
-             const ip_data* ip, const ::connectivity* conn,
-             unsigned int ipindex, unsigned int cuindex, access_mode am)
+             const ip_data* ip, unsigned int ipindex, unsigned int cuindex, access_mode am)
     : device(dev), xid(xclbin_id)
-    , args(conn, ipindex), cuidx(cuindex)
+    , args(dev, xclbin_id, ipindex), cuidx(cuindex)
     , address(ip->m_base_address), size(64_kb), access(am)
   {
     if (access != access_mode::none)
@@ -474,8 +536,8 @@ private:
   {
     device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(access));
   }
-    
-  xrt_core::device* device; // 
+
+  xrt_core::device* device; //
   xrt::uuid xid;            // xclbin uuid
   connectivity args;        // argument memory connections
   unsigned int cuidx;       // cu index for execution
@@ -486,7 +548,7 @@ private:
 
 // Remove when c++17
 constexpr int32_t ip_context::connectivity::no_memidx;
-  
+
 // class kernel_command - Immplements command API expected by schedulers
 //
 // The kernel command is
@@ -1027,7 +1089,7 @@ class kernel_impl
     // remove last argument which is "nextDescriptorAddr" and
     // not set by user
     args.pop_back();
-    
+
     size_t desc_offset = 0;
 
     // process inputs, compute descriptor entry offset
@@ -1082,10 +1144,12 @@ class kernel_impl
   IP_CONTROL
   get_ip_control(const std::vector<const ip_data*>& ips)
   {
-    // assert ( ips.size() >= 1);
-    auto ctrl = IP_CONTROL((ips[0]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+    if (ips.empty())
+      return AP_CTRL_NONE;
+
+    auto ctrl = ::get_ip_control(ips[0]);
     for (size_t idx = 1; idx < ips.size(); ++idx)
-      if (IP_CONTROL((ips[0]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) != ctrl)
+      if (IP_CONTROL((ips[idx]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) != ctrl)
         throw std::runtime_error("CU control protocol mismatch");
 
     return ctrl;
@@ -1112,7 +1176,6 @@ class kernel_impl
     desc->output_entry_bytes = fa_output_entry_bytes;
   }
 
-
 public:
   // kernel_type - constructor
   //
@@ -1131,10 +1194,6 @@ public:
       throw std::runtime_error("No ip layout available to construct kernel, make sure xclbin is loaded");
     auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);
 
-    // connectivity section for CU memory connectivity, permissible for section to not exist
-    auto connectivity_section = device->core_device->get_axlf_section(ASK_GROUP_CONNECTIVITY, xclbin_id);
-    auto connectivity = reinterpret_cast<const ::connectivity*>(connectivity_section.first);
-
     // xml section for kernel arguments
     auto xml_section = device->core_device->get_axlf_section(EMBEDDED_METADATA, xclbin_id);
     if (!xml_section.first)
@@ -1147,12 +1206,14 @@ public:
 
     auto all_cus = xrt_core::xclbin::get_cus(ip_layout);  // sort order
     for (const ip_data* cu : kernel_cus) {
+      if (::get_ip_control(cu) == AP_CTRL_NONE)
+        continue;
       auto itr = std::find(all_cus.begin(), all_cus.end(), cu->m_base_address);
       if (itr == all_cus.end())
         throw std::runtime_error("unexpected error");
       auto cuidx = std::distance(all_cus.begin(), itr);         // sort order index
       auto ipidx = std::distance(ip_layout->m_ip_data, cu); // ip_layout index
-      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, cu, connectivity, ipidx, cuidx, am));
+      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, cu, ipidx, cuidx, am));
       cumask.set(cuidx);
       num_cumasks = std::max<size_t>(num_cumasks, (cuidx / 32) + 1);
     }
@@ -1206,7 +1267,7 @@ public:
     return cumask;
   }
 
-  size_t 
+  size_t
   get_num_cumasks() const
   {
     return num_cumasks;
@@ -1443,7 +1504,7 @@ class run_impl
     std::copy_n(rhs_pkt->data, rhs_pkt->count, pkt->data);
     return pkt->data + (rhs->data - rhs_pkt->data);
   }
-  
+
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
   std::vector<ipctx> ips;                 // ips controlled by this run object
@@ -1634,7 +1695,7 @@ public:
     pkt->state = ERT_CMD_STATE_NEW;
 
     XRT_DEBUGF("command packet debug (see file (%s))\n", debug_cmd_packet(kernel->get_name(), pkt).c_str());
-    
+
     cmd->run();
   }
 
@@ -2037,7 +2098,7 @@ pop_callback(const xrt::run& run)
 {
   run.get_handle()->pop_callback();
 }
-    
+
 IP_CONTROL
 get_control_protocol(const xrt::run& run)
 {
