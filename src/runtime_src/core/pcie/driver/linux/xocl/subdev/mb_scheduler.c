@@ -4294,11 +4294,15 @@ static int config_scu(struct platform_device *pdev,
 	for (i = scmd->start_cuidx; i < scmd->start_cuidx + scmd->num_cus;
 	    i++) {
 		if (scmd->opcode == ERT_SK_CONFIG) {
+			char scu_name[32];
 			if (strlen(xert->scu_name[i]) > 0)
 				continue;
 			exec->num_sk_cus++;
-			strncpy(xert->scu_name[i], (char *)scmd->sk_name,
-				sizeof(xert->scu_name[0]) - 1);
+			/* Add "scu_idx#" suffix to identify softkernel */
+			strncpy(scu_name, (char *)scmd->sk_name,
+				sizeof(xert->scu_name[0]) - 8);
+			snprintf(xert->scu_name[i], 32, "%s:scu_%d",
+				scu_name, i);
 		} else {
 			if (strlen(xert->scu_name[i]) == 0)
 				continue;

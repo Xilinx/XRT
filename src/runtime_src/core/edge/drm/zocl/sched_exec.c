@@ -1120,8 +1120,10 @@ cu_stat(struct sched_cmd *cmd)
 	/* indevidual SK CU status */
 	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
 		if (sk->sk_cu[i])
-			pkg->data[pkt_idx++] = (exec->scu_status[cu_mask_idx(i)] &
-				(1 << (i % sizeof(exec->scu_status[0])))) ? 1 : 0;
+			pkg->data[pkt_idx++] =
+			    (exec->scu_status[cu_mask_idx(i)] &
+			    (1 << (i % (sizeof(exec->scu_status[0]) * 8)))) ?
+			    1 : 0;
 		else
 			pkg->data[pkt_idx++] = -1; //soft cu has crashed
 	}
