@@ -1119,6 +1119,7 @@ cu_stat(struct sched_cmd *cmd)
 	}
 
 	/* indevidual SK CU status */
+	mutex_lock(&sk->sk_lock);
 	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
 		p_tmp = NULL;
 		if (sk->sk_cu[i]) {
@@ -1132,6 +1133,7 @@ cu_stat(struct sched_cmd *cmd)
 		} else
 			pkg->data[pkt_idx++] = -1; //soft cu has crashed
 	}
+	mutex_unlock(&sk->sk_lock);
 
 	/* Command slot status
 	 * Hard code QUEUED state. When a NEW command is found,
