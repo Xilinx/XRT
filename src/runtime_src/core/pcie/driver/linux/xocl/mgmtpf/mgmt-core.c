@@ -516,6 +516,8 @@ static int health_check_cb(void *data)
 
 	(void) xocl_clock_status(lro, &latched);
 
+	xocl_ps_check_healthy(lro);
+
 	/*
 	 * UCS doesn't exist on U2, and U2 CMC firmware uses different
 	 * methodology to report clock shutdown status.

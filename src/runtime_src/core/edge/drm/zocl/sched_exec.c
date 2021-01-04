@@ -17,10 +17,13 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/sched.h>
+#include <linux/sched/signal.h>
+#include <linux/sched/task.h>
 #include "ert.h"
 #include "sched_exec.h"
 #include "zocl_sk.h"
 #include "zocl_xclbin.h"
+#include "zocl_watchdog.h"
 #include "xclbin.h"
 
 //#define SCHED_VERBOSE
@@ -51,6 +54,7 @@
 #endif
 
 static int cq_check(void *data);
+static int watchdog_thread(void *data);
 static irqreturn_t sched_cq_isr(int irq, void *arg);
 
 /* Scheduler call schedule() every MAX_SCHED_LOOP loop*/
@@ -3290,6 +3294,57 @@ static irqreturn_t sched_cq_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+static int watchdog_thread(void *data)
+{
+	struct drm_zocl_dev *zdev = data;
+	struct zocl_watchdog_dev *watchdog = zdev->watchdog;
+
+	if (!watchdog)
+		goto exit;
+
+	watchdog->ops->init(watchdog);
+	while (!kthread_should_stop()) {
+		struct watchdog_cfg cfg = {
+			.skd_run = false,
+			.cmc_run = false,
+			.cq_thread_run = false,
+			.sched_thread_run = false,
+		} ;
+		struct task_struct *tsk;
+
+		rcu_read_lock();
+		for_each_process(tsk) {
+			if (!strcmp(tsk->comm, "skd"))
+				cfg.skd_run = true;
+			if (!strncmp(tsk->comm, CMC, strlen(CMC)))
+				cfg.cmc_run = true;
+		}
+		rcu_read_unlock();
+
+		/*
+		 * Notes:
+		 * 1. We don't expect the sched thread and cq thread exit, so
+		 *    we don't need a lock when checking the thread state.
+		 * 2. Other than TASK_DEAD, what else state should be monitor?
+		 */
+		if (zdev->exec && zdev->exec->cq_thread &&
+			zdev->exec->cq_thread->state != TASK_DEAD)
+			cfg.cq_thread_run = true;
+
+		if (g_sched0.sched_thread &&
+			g_sched0.sched_thread->state != TASK_DEAD)
+			cfg.sched_thread_run = true;
+
+		watchdog->ops->config(watchdog, cfg);
+		msleep_interruptible(ZOCL_WATCHDOG_FREQ);
+		schedule();
+	}
+	watchdog->ops->fini(watchdog);
+exit:
+	DRM_INFO("watchdog thread exits!!\n");
+	return 0;
+}
+
 static inline void init_exec(struct sched_exec_core *exec_core)
 {
 	unsigned int i;
@@ -3367,6 +3422,10 @@ sched_init_exec(struct drm_device *drm)
 
 		init_waitqueue_head(&exec_core->cq_wait_queue);
 		exec_core->cq_thread = kthread_run(cq_check, zdev, name);
+		if (zdev->watchdog)
+			exec_core->watchdog_thread =
+				kthread_run(watchdog_thread, zdev,
+				"zocl_watchdog");
 	}
 
 	SCHED_DEBUG("<- %s\n", __func__);
@@ -3415,6 +3474,9 @@ int sched_fini_exec(struct drm_device *drm)
 	SCHED_DEBUG("-> %s\n", __func__);
 
 	fini_configure(drm);
+
+	if (zdev->exec->watchdog_thread)
+		kthread_stop(zdev->exec->watchdog_thread);
 
 	if (zdev->exec->cq_thread)
 		kthread_stop(zdev->exec->cq_thread);
