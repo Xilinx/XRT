@@ -60,6 +60,14 @@ is_hw_emulation()
   return hwem;
 }
 
+static bool
+is_noop_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool noop = xem ? (std::strcmp(xem,"noop")==0) : false;
+  return noop;
+}
+
 static std::string
 shim_name()
 {
@@ -79,6 +87,9 @@ shim_name()
       ? "xrt_swemu"
       : sw_em_driver_path;
   }
+
+  if (is_noop_emulation())
+    return "xrt_noop";
 
   throw std::runtime_error("Unexected error creating shim library name");
 }

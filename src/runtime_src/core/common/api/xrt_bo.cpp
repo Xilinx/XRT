@@ -43,6 +43,14 @@
 namespace {
 
 static bool
+is_noop_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool noop = xem ? (std::strcmp(xem,"noop")==0) : false;
+  return noop;
+}
+
+static bool
 is_nodma(xclDeviceHandle xhdl)
 {
   auto core_device = xrt_core::get_userpf_device(xhdl);
@@ -115,8 +123,11 @@ private:
     xclBOProperties prop;
     device->get_bo_properties(handle, &prop);
     addr = prop.paddr;
-    //grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
+    grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
 
+    if (is_noop_emulation())
+      return;
+    
     // Remove when driver returns the flags that were used to ctor the bo
     auto mem_topo = device->get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
     grpid = xrt_core::xclbin::address_to_memidx(mem_topo, addr);

@@ -58,6 +58,9 @@ void debug(std::ostream& ostr, T&& t, Args&&... args)
   ostr << time_ns() << ": " << t;
   debug_notime(ostr,std::forward<Args>(args)...);
 }
+template <typename ...Args>
+void sink(Args&&... args)
+{}
 
 /**
  * Format debug print to stdout
@@ -87,11 +90,15 @@ xassert(const std::string& file, const std::string& line, const std::string& fun
 # define XRT_PRINT(...) xrt_core::debug(__VA_ARGS__)
 # define XRT_DEBUGF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
 # define XRT_PRINTF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
+# define XRT_DEBUG_CALL(...) xrt_core::call(__VA_ARGS__);
+# define XRT_CALL(...) xrt_core::sink(__VA_ARGS__);
 #else
 # define XRT_DEBUG(...)
 # define XRT_PRINT(...) xrt_core::debug(__VA_ARGS__)
 # define XRT_DEBUGF(...)
 # define XRT_PRINTF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
+# define XRT_DEBUG_CALL(...)
+# define XRT_CALL(...) xrt_core::sink(__VA_ARGS__);
 #endif
 
 #define XRT_ASSERT(expr,msg) ((expr) ? ((void)0) : xrt_core::xassert(__FILE__,std::to_string(__LINE__),__FUNCTION__,#expr))
