@@ -202,7 +202,7 @@ static void cu_hls_enable_intr(void *core, u32 intr_type)
 static void cu_hls_disable_intr(void *core, u32 intr_type)
 {
 	struct xrt_cu_hls *cu_hls = core;
-	u32 orig = cu_read32(cu_hls, ISR);
+	u32 orig = cu_read32(cu_hls, IER);
 	/* if bit 0 of intr_type is set, it means disable ap_done,
 	 * same to bit 1 for ap_ready.
 	 */

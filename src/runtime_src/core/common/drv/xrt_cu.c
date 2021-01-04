@@ -328,6 +328,7 @@ int xrt_cu_intr_thread(void *data)
 		if (xcu->num_sq) {
 			if (down_interruptible(&xcu->sem_cu))
 				ret = -ERESTARTSYS;
+			xrt_cu_check(xcu);
 			__process_sq(xcu);
 		}
 
@@ -612,7 +613,7 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Bad state:        %d\n",
 			xcu->bad_state);
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Current credit:   %d\n",
-			xcu->funcs->peek_credit(xcu->core));
+			xrt_cu_peek_credit(xcu));
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "CU status:        0x%x\n",
 			xcu->status);
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "sleep cnt:        %d\n",
