@@ -33,11 +33,12 @@
 #include "core/common/unistd.h"
 #include "core/common/xclbin_parser.h"
 
+#include <cstdlib>
 #include <map>
 #include <set>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4100)
+# pragma warning( disable : 4244 4100 4996 )
 #endif
 
 namespace {
@@ -119,7 +120,7 @@ public:
 private:
   void
   get_bo_properties() const
-  { 
+  {
     xclBOProperties prop;
     device->get_bo_properties(handle, &prop);
     addr = prop.paddr;
@@ -127,7 +128,7 @@ private:
 
     if (is_noop_emulation())
       return;
-    
+
     // Remove when driver returns the flags that were used to ctor the bo
     auto mem_topo = device->get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
     grpid = xrt_core::xclbin::address_to_memidx(mem_topo, addr);
@@ -293,7 +294,7 @@ public:
   {
     if (addr == no_addr)
       get_bo_properties();
-    
+
     return addr;
   }
 
@@ -415,7 +416,7 @@ public:
   {
     return bo_impl::no_group;
   }
-  
+
 };
 
 // class buffer_dbuf - device only buffer
