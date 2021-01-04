@@ -148,6 +148,7 @@ struct drm_zocl_dev {
 	char			*kernels;
 	struct zocl_error	zdev_error;
 	struct zocl_aie		*aie;
+	struct zocl_watchdog_dev *watchdog;
 };
 
 int zocl_kds_update(struct drm_zocl_dev *zdev);

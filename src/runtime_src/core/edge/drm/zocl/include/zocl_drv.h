@@ -30,6 +30,7 @@
 #include "zocl_bo.h"
 #include "zocl_dma.h"
 #include "zocl_ospi_versal.h"
+#include "zocl_watchdog.h"
 #include "xrt_cu.h"
 
 #if defined(CONFIG_ARM64)
