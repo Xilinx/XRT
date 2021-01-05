@@ -255,16 +255,35 @@ struct device_type
 {
   std::shared_ptr<xrt_core::device> core_device;
   xrt_core::bo_cache exec_buffer_cache;
+  uint32_t uid; // internal unique id for debug
+
+  static uint32_t
+  create_uid()
+  {
+    static std::atomic<uint32_t> count {0};
+    return count++;
+  }
 
   device_type(xrtDeviceHandle dhdl)
     : core_device(xrt_core::device_int::get_core_device(dhdl))
     , exec_buffer_cache(core_device->get_device_handle(), 128)
-  {}
+    , uid(create_uid())
+  {
+    XRT_DEBUGF("device_type::device_type(%d)\n", uid);
+  }
 
   device_type(const std::shared_ptr<xrt_core::device>& cdev)
     : core_device(cdev)
     , exec_buffer_cache(core_device->get_device_handle(), 128)
-  {}
+    , uid(create_uid())
+  {
+    XRT_DEBUGF("device_type::device_type(%d)\n", uid);
+  }
+
+  ~device_type()
+  {
+    XRT_DEBUGF("device_type::~device_type(%d)\n", uid);
+  }
 
   template <typename CommandType>
   xrt_core::bo_cache::cmd_bo<CommandType>
@@ -560,7 +579,7 @@ public:
   using callback_list = std::vector<callback_function_type>;
 
 public:
-  kernel_command(device_type* dev)
+  kernel_command(const std::shared_ptr<device_type>& dev)
     : m_device(dev)
     , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
     , m_done(true)
@@ -767,7 +786,7 @@ public:
   }
 
 private:
-  device_type* m_device = nullptr;
+  std::shared_ptr<device_type> m_device;
   mutable std::shared_ptr<xrt::event_impl> m_event;
   execbuf_type m_execbuf; // underlying execution buffer
   unsigned int m_uid = 0;
@@ -1073,6 +1092,7 @@ class kernel_impl
   size_t fa_output_entry_bytes = 0;    // Fast adapter output desc bytes
   size_t num_cumasks = 1;              // Required number of command cu masks
   uint32_t protocol = 0;               // Default opcode
+  uint32_t uid;                        // internal unique id for debug
 
   // Compute data for FAST_ADAPTER descriptor use (see ert_fa.h)
   //
@@ -1176,6 +1196,13 @@ class kernel_impl
     desc->output_entry_bytes = fa_output_entry_bytes;
   }
 
+  static uint32_t
+  create_uid()
+  {
+    static std::atomic<uint32_t> count {0};
+    return count++;
+  }
+
 public:
   // kernel_type - constructor
   //
@@ -1187,7 +1214,10 @@ public:
     : device(std::move(dev))                                   // share ownership
     , name(nm.substr(0,nm.find(":")))                          // filter instance names
     , vctx(ip_context::open_virtual_cu(device->core_device.get(), xclbin_id))
+    , uid(create_uid())
   {
+    XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n" , uid);
+
     // ip_layout section for collecting CUs
     auto ip_section = device->core_device->get_axlf_section(IP_LAYOUT, xclbin_id);
     if (!ip_section.first)
@@ -1237,6 +1267,11 @@ public:
 
     // amend args with computed data based on kernel protocol
     amend_args();
+  }
+
+  ~kernel_impl()
+  {
+    XRT_DEBUGF("kernel_impl::~kernel_impl(%d)\n" , uid);
   }
 
   // Initialize kernel command and return pointer to payload
@@ -1339,10 +1374,10 @@ public:
       out[n] = read_register(offset + n * 4, true);
   }
 
-  device_type*
+  const std::shared_ptr<device_type>&
   get_device() const
   {
-    return device.get();
+    return device;
   }
 
   xrt_core::device*
@@ -2052,7 +2087,7 @@ copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
   // Construct a kernel command to copy bo.  Kernel commands
   // must be shared ptrs
   auto dev = get_device(core_device);
-  auto cmd = std::make_shared<kernel_command>(dev.get());
+  auto cmd = std::make_shared<kernel_command>(dev);
 
   // Get and fill the underlying packet
   auto pkt = cmd->get_ert_cmd<ert_start_copybo_cmd*>();
