@@ -38,6 +38,7 @@
 #include "plugin/xdp/profile.h"
 #include "plugin/xdp/lop.h"
 
+#include <array>
 #include <sstream>
 #include <CL/opencl.h>
 
@@ -56,7 +57,7 @@ cb_BufferReturned(cl_event event, cl_int status, void *data);
 
 static xocl::ptr<xocl::memory>
 createPrintfBuffer(cl_context context, cl_kernel kernel,
-                   const std::vector<size_t>& gsz, const std::vector<size_t>& lsz);
+                   const std::array<size_t,3>& gsz, const std::array<size_t,3>& lsz);
 
 static cl_event
 enqueueInitializePrintfBuffer(cl_kernel kernel, cl_command_queue queue,cl_mem mem);
@@ -276,20 +277,6 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   // err_checking: this code is highly fragile and it was suggested that we make minimal changes to this section.
   // We are not really able to disable error checks completely because the error checks are heavily intertwined
   // with the functionality in this section. Here is a good trade-off.
-  if(xocl::config::api_checks()) {
-    //XCL_CONFORMANCECOLLECT mode
-    //write out the kernel sources in clCreateKernel and fail quickly in clEnqueueNDRange
-    //skip build in clBuildProgram
-    if (getenv("XCL_CONFORMANCECOLLECT")) {
-      if (event_parameter) {
-        auto uevent = xocl::create_soft_event(0,-1);
-        xocl::assign(event_parameter,uevent.get());
-        uevent->set_status(CL_COMPLETE);
-      }
-      return CL_INVALID_KERNEL;
-    }
-
-  } // error checking end
 
   auto compile_wgs_range = xocl::xocl(kernel)->get_compile_wg_size_range();
   bool reqd_work_group_size_set =
@@ -303,9 +290,9 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
     (max_wgs_range[0]!=0 && max_wgs_range[1]==0 && max_wgs_range[2]==0);
 
   //MAXIMAL DIMENSION WORK DIMENSIONS
-  std::vector<size_t> global_work_offset_3D = {0,0,0};
-  std::vector<size_t> global_work_size_3D = {1,1,1};
-  std::vector<size_t> local_work_size_3D = {1,1,1};
+  std::array<size_t, 3> global_work_offset_3D = {0,0,0};
+  std::array<size_t, 3> global_work_size_3D = {1,1,1};
+  std::array<size_t, 3> local_work_size_3D = {1,1,1};
   for (cl_uint work_dim_it=0; work_dim_it < work_dim; ++work_dim_it) {
     if (global_work_offset)
       global_work_offset_3D[work_dim_it] = global_work_offset[work_dim_it];
@@ -434,10 +421,10 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 
   // execution context
   auto device = ueEvent->get_command_queue()->get_device();
-    ueEvent->set_execution_context
+  ueEvent->set_execution_context
       (std::make_unique<execution_context>
        (device,xocl(kernel),xocl(eEvent),work_dim,global_work_offset_3D.data(),global_work_size_3D.data(),local_work_size_3D.data()));
-    xocl::enqueue::set_event_action(ueEvent.get(),xocl::enqueue::action_ndrange_execute);
+  xocl::enqueue::set_event_action(ueEvent.get(),xocl::enqueue::action_ndrange_execute);
 
   xocl::profile::set_event_action(ueEvent.get(),xocl::profile::action_ndrange,eEvent,kernel);
   xocl::appdebug::set_event_action(ueEvent.get(),xocl::appdebug::action_ndrange,eEvent,kernel);
@@ -525,7 +512,7 @@ void CL_CALLBACK cb_BufferReturned(cl_event event, cl_int status, void *data)
 // Allocate device printf buffer if printf is needed for this workgroup.
 xocl::ptr<xocl::memory>
 createPrintfBuffer(cl_context context, cl_kernel kernel
-                   ,const std::vector<size_t>& gsz, const std::vector<size_t>& lsz)
+                   ,const std::array<size_t,3>& gsz, const std::array<size_t,3>& lsz)
 {
   auto mem = XCL::Printf::kernelHasPrintf(kernel)
     ? clCreateBuffer(context, CL_MEM_READ_WRITE,XCL::Printf::getPrintfBufferSize(gsz,lsz),nullptr,nullptr)

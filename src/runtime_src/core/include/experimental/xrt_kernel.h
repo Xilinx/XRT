@@ -330,7 +330,7 @@ class run
 
 public:
   /// @cond
-  std::shared_ptr<run_impl>
+  const std::shared_ptr<run_impl>&
   get_handle() const
   {
     return handle;
@@ -528,7 +528,7 @@ class kernel
 
 public:
   /// @cond
-  std::shared_ptr<kernel_impl>
+  const std::shared_ptr<kernel_impl>&
   get_handle() const
   {
     return handle;

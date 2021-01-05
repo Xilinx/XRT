@@ -611,7 +611,7 @@ public:
   // Add a callback, synchronize with concurrent state change
   // Call the callback if command is complete.
   void
-  add_callback(callback_function_type fcn)
+  add_callback(callback_function_type&& fcn)
   {
     bool complete = false;
     ert_cmd_state state;
@@ -1524,9 +1524,9 @@ public:
   }
 
   void
-  add_callback(callback_function_type fcn)
+  add_callback(callback_function_type&& fcn)
   {
-    cmd->add_callback(fcn);
+    cmd->add_callback(std::move(fcn));
   }
 
   void
@@ -1910,7 +1910,7 @@ get_device(const xrt::device& xdev)
 //
 // The lifetime of a kernel object is shared ownerhip. The object
 // is shared with host application and run objects.
-static std::shared_ptr<xrt::kernel_impl>
+static const std::shared_ptr<xrt::kernel_impl>&
 get_kernel(xrtKernelHandle khdl)
 {
   auto itr = kernels.find(khdl);
@@ -1976,7 +1976,7 @@ xrtKernelClose(xrtKernelHandle khdl)
 xrtRunHandle
 xrtRunOpen(xrtKernelHandle khdl)
 {
-  auto kernel = get_kernel(khdl);
+  const auto& kernel = get_kernel(khdl);
   auto run = std::make_unique<xrt::run_impl>(kernel);
   auto handle = run.get();
   runs.emplace(std::make_pair(handle,std::move(run)));
@@ -2076,7 +2076,7 @@ arg_type_at_index(const xrt::kernel& kernel, size_t argidx)
 void
 set_arg_at_index(const xrt::run& run, size_t idx, const void* value, size_t bytes)
 {
-  auto rimpl = run.get_handle();
+  const auto& rimpl = run.get_handle();
   auto& arg = rimpl->get_kernel()->get_arg(idx, true);
   rimpl->set_arg_value(arg, value, bytes);
 }
@@ -2125,7 +2125,7 @@ get_arg_info(const xrt::run& run, size_t argidx)
 std::vector<uint32_t>
 get_arg_value(const xrt::run& run, size_t argidx)
 {
-  const auto rimpl = run.get_handle();
+  const auto& rimpl = run.get_handle();
   const auto kimpl = rimpl->get_kernel();
 
   // get argument info from kernel and value from run
@@ -2335,8 +2335,7 @@ int
 xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
 {
   try {
-    auto kernel = get_kernel(khdl);
-    return kernel->group_id(argno);
+    return get_kernel(khdl)->group_id(argno);
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -2352,8 +2351,7 @@ uint32_t
 xrtKernelArgOffset(xrtKernelHandle khdl, int argno)
 {
   try {
-    auto kernel = get_kernel(khdl);
-    return kernel->arg_offset(argno);
+    return get_kernel(khdl)->arg_offset(argno);
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -2369,8 +2367,7 @@ int
 xrtKernelReadRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t* datap)
 {
   try {
-    auto kernel = get_kernel(khdl);
-    *datap = kernel->read_register(offset);
+    *datap = get_kernel(khdl)->read_register(offset);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -2388,8 +2385,7 @@ int
 xrtKernelWriteRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t data)
 {
   try {
-    auto kernel = get_kernel(khdl);
-    kernel->write_register(offset, data);
+    get_kernel(khdl)->write_register(offset, data);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -2616,6 +2612,6 @@ xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
 void
 xrtRunGetArgVPP(xrt::run run, int index, void* value, size_t bytes)
 {
-  auto rimpl = run.get_handle();
+  const auto& rimpl = run.get_handle();
   rimpl->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
 }

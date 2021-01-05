@@ -336,8 +336,8 @@ unsigned int getWorkItemPrintfBufferSize();
 
 // Returns the printf buffer size in bytes. By spec this should be 1MB/kernel for 
 // the full profile. 
-size_t getPrintfBufferSize(const std::vector<size_t>& globalSize,
-                           const std::vector<size_t>& localSize);
+size_t getPrintfBufferSize(const std::array<size_t,3>& globalSize,
+                           const std::array<size_t,3>& localSize);
 
 /////////////////////////////////////////////////////////////////////////
 

@@ -347,12 +347,18 @@ action_ndrange_migrate(cl_event event,cl_kernel kernel)
   std::vector<xocl::memory*> kernel_args;
   for (auto& arg : xocl::xocl(kernel)->get_xargument_range()) {
     if (auto mem = arg->get_memory_object()) {
+      if (mem->is_resident(device))
+        continue;
       mem->get_buffer_object(device);
       kernel_args.push_back(mem);
     }
   }
 
-  return [kernel_args](xocl::event* ev) {
+  // Avoid complicated enqueue action if nothing to do
+  if (kernel_args.empty())
+    return [](xocl::event* ev) { ev->set_status(CL_COMPLETE); };
+
+  return [kernel_args{std::move(kernel_args)}](xocl::event* ev) {
     XOCL_DEBUG(std::cout,"launching ndrange migrate DMA event(",ev->get_uid(),")\n");
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();

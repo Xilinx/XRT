@@ -71,7 +71,7 @@ void
 execution_context::
 set_global_arg_at_index(xrt::run& run, size_t argidx, const xocl::memory* mem)
 {
-  auto xbo = mem->get_buffer_object_or_error(m_device);
+  const auto& xbo = mem->get_buffer_object_or_error(m_device);
   run.set_arg(argidx, xbo);
 }
 
