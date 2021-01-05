@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <limits>
 #include <bitset>
+#include <cstring>
 
 // version is a git hash passed in from build script
 // default for builds that bypass build script
@@ -199,6 +200,8 @@ static value_type mb_host_interrupt_enabled = 0;
 static value_type cu_dma_52                 = 0;
 static value_type cdma_enabled              = 0;
 static value_type dataflow_enabled          = 0;
+static value_type kds_30                    = 0;
+static value_type echo                      = 0;
 
 // Struct slot_info is per command slot in command queue
 struct slot_info
@@ -239,6 +242,9 @@ static size_type cu_usage[max_cus];
 // Bitmask indicating status of CUs. (0) idle, (1) running.
 // Only 'num_cus' lower bits are used
 static bitset_type cu_status;
+
+// Bitmask indicates the slot is submitted or not: (0) not submitted, (1) submitted
+static bitset_type slot_submitted;
 
 // Bitmask for interrupt enabled CUs.  (0) no interrupt (1) enabled
 static bitset_type cu_interrupt_mask;
@@ -424,9 +430,12 @@ setup()
 {
   CTRL_DEBUG("-> setup\n");
 
-  // In dataflow number of slots is number of CUs plus ctrl slot (0),
+  // In dataflow mode, the number of slots of kds 2.0 is number of CUs plus ctrl slot (0) 
+  // the number of slot of kds 3.0 as many slots as possible per slot_size
   // otherwise its as many slots as possible per slot_size
-  num_slots = dataflow_enabled ? num_cus+1 : ERT_CQ_SIZE / slot_size;
+  num_slots = dataflow_enabled ? 
+                  kds_30 ? ERT_CQ_SIZE / slot_size : num_cus+1 
+                  : ERT_CQ_SIZE / slot_size;
   num_slot_masks = ((num_slots-1)>>5) + 1;
   num_cu_masks = ((num_cus-1)>>5) + 1;
 
@@ -463,6 +472,7 @@ setup()
     ERT_UNUSED volatile auto val = read_reg(STATUS_REGISTER_ADDR[i]);
 
   cu_status.reset();
+  slot_submitted.reset();
 
   // Initialize cu_slot_usage
   for (size_type i=0; i<num_cus; ++i) {
@@ -623,8 +633,10 @@ configure_cu(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
 {
   // write register map, starting at base + 0x10
   // 0x4, 0x8, 0xc used for interrupt, which is initialized in setup
-  for (size_type idx = 4; idx < regmap_size; ++idx)
-    write_reg(cu_addr + (idx << 2), read_reg(regmap_addr + (idx << 2)));
+  uint32_t *addr_ptr = (uint32_t *)(uintptr_t)cu_addr;
+  uint32_t *regmap_ptr = (uint32_t *)(uintptr_t)regmap_addr;
+
+  memcpy(addr_ptr+4, regmap_ptr+4, regmap_size);
 
   // start kernel at base + 0x0
   write_reg(cu_addr, 0x1);
@@ -823,6 +835,8 @@ configure_mb(size_type slot_idx)
   cq_status_enabled = (features & 0x10)!=0;
   cdma_enabled = (features & 0x20)!=0;
   dataflow_enabled = (features & 0x40)!=0;
+  kds_30 = (features & 0x100)!=0;
+  echo = (features & 0x400)!=0;
 #ifndef ERT_HW_EMU
   cu_dma_52 = (features & 0x80000000)!=0;
 #else
@@ -1134,11 +1148,10 @@ scheduler_loop()
 #ifdef ERT_HW_EMU
       reg_access_wait();
 #endif
-
       // In dataflow mode ERT is polling CUs for completion after
       // host has started CU or acknowleged completion.  Ctrl cmds
       // are processed in normal flow.
-      if (dataflow_enabled && slot_idx>0) {
+      if (dataflow_enabled && slot_idx>0 && !kds_30) {
         size_type cuidx = slot_idx-1;  // compensate for reserved slot (0)
 
         // Check if host has started or continued this CU
@@ -1172,6 +1185,58 @@ scheduler_loop()
 
         // wake up host
         notify_host(slot_idx);
+        continue;
+      }
+
+      if (dataflow_enabled && slot_idx>0 && kds_30) {
+        addr_type addr = cu_section_addr(slot.slot_addr);
+        slot.cu_idx = read_reg(addr);
+
+        if (!cu_status[slot.cu_idx]) {
+          auto cqvalue = read_reg(slot.slot_addr);
+
+          if (cqvalue & (AP_START)) {
+            write_reg(slot.slot_addr,0x0); // clear
+            if (echo) {
+              // clear command queue
+              notify_host(slot_idx);
+              continue;              
+            }
+
+            slot_submitted[slot_idx] = !slot_submitted[slot_idx];
+            // kick start kernel
+            slot.header_value = cqvalue;
+            slot.regmap_addr = regmap_section_addr(slot.header_value,slot.slot_addr);
+            slot.regmap_size = regmap_size(slot.header_value);
+
+            if (slot.opcode==ERT_EXEC_WRITE)
+              // Out of order configuration
+              configure_cu_ooo(cu_idx_to_addr(slot.cu_idx),slot.regmap_addr,slot.regmap_size);
+            else
+              configure_cu(cu_idx_to_addr(slot.cu_idx),slot.regmap_addr,slot.regmap_size);
+
+            cu_status[slot.cu_idx] = !cu_status[slot.cu_idx]; // enable polling of this CU
+            set_cu_info(slot.cu_idx,slot_idx); // record which slot cu associated with
+
+          }
+        }
+
+        if (!cu_status[slot.cu_idx] || !slot_submitted[slot_idx])
+          continue; // CU is not used
+
+        auto cuvalue = read_reg(cu_idx_to_addr(slot.cu_idx));
+        if (!(cuvalue & (AP_DONE|AP_IDLE)))
+          continue;
+
+        slot_submitted[slot_idx] = !slot_submitted[slot_idx];
+        cu_status[slot.cu_idx] = !cu_status[slot.cu_idx]; // disable polling until host re-enables
+
+        // wake up host
+        notify_host(slot_idx);
+
+        write_reg(cu_idx_to_addr(slot.cu_idx), AP_CONTINUE);
+        write_reg(cu_idx_to_addr(slot.cu_idx)+0xC, 0x1);
+
         continue;
       }
 
