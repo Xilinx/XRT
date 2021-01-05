@@ -24,6 +24,7 @@
 
 #define ULITE_NAME		"ttyXRTUL"
 #define ULITE_NR_UARTS		64
+
 /* ---------------------------------------------------------------------
  * Register definitions
  *
@@ -315,7 +316,8 @@ static void ulite_shutdown(struct uart_port *port)
 	struct uartlite_data *pdata = port->private_data;
 
 	mutex_lock(&pdata->lock);
-	pdata->console_opened--;
+	if (pdata->console_opened)
+		pdata->console_opened--;
 	if (!pdata->console_opened)
 		(void)kthread_stop(pdata->thread);
 
@@ -549,7 +551,9 @@ static int ulite_remove(struct platform_device *pdev)
 	pdata = port->private_data;
 	if (!pdata)
 		return ret;
+
 	pdata->console_opened = 0;
+	(void)kthread_stop(pdata->thread);
 	ret = uart_remove_one_port(pdata->xcl_ulite_driver, port);
 	platform_set_drvdata(pdev, NULL);
 	port->mapbase = 0;
