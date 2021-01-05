@@ -339,7 +339,6 @@ xclFreeBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 int
 xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  return 0;
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclSyncBO()");
   auto shim = get_shim_object(handle);
