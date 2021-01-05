@@ -27,6 +27,31 @@
 #include <string>
 #include <vector>
 
+unsigned long
+time_ns()
+{
+  static auto zero = std::chrono::high_resolution_clock::now();
+  auto now = std::chrono::high_resolution_clock::now();
+  auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
+  return static_cast<unsigned long>(integral_duration);
+}
+
+class time_guard
+{
+  unsigned long zero = 0;
+  unsigned long& tally;
+public:
+  explicit
+  time_guard(unsigned long& t)
+    : zero(time_ns()), tally(t)
+  {}
+
+  ~time_guard()
+  {
+    tally += time_ns() - zero;
+  }
+};
+
 static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
@@ -101,6 +126,8 @@ struct job_type
   cl_command_queue queue = nullptr;
   cl_kernel kernel = nullptr;
 
+  cl_event kevent = nullptr;
+
   cl_mem in;
   cl_mem out;
   cl_mem out_status;
@@ -164,40 +191,33 @@ struct job_type
     ++runs;
     busy = true;
 
+    //std::cout << "s" << std::flush;
+
     cl_int err = CL_SUCCESS;
-    cl_event kevent = nullptr;
 
     static size_t global[3] = {1,0,0};
     static size_t local[3] = {1,0,0};
 
     err = clEnqueueNDRangeKernel(queue, kernel, 1, nullptr, global, local, 0, nullptr, &kevent);
     if (err) throw_if_error(err,"failed to execute job " + std::to_string(id));
-    clSetEventCallback(kevent,CL_COMPLETE,&kernel_done,this);
   }
 
   void
-  mark_done()
+  wait()
   {
+    if (!busy)
+      throw std::runtime_error("job was not started");
+    
+    clWaitForEvents(1, &kevent);
+    clReleaseEvent(kevent);
+    //std::cout << "d" << std::flush;
     busy = false;
-  }
-
-  bool
-  is_done() const
-  {
-    return !busy;
   }
 };
 
 constexpr uint32_t job_type::aes_key[16];
 constexpr uint32_t job_type::aes_iv[4];
 constexpr size_t job_type::len;
-
-static void
-kernel_done(cl_event event, cl_int status, void* data)
-{
-  reinterpret_cast<job_type*>(data)->mark_done();
-  clReleaseEvent(event);
-}
 
 static double
 run(std::vector<job_type>& cmds, size_t total)
@@ -214,14 +234,14 @@ run(std::vector<job_type>& cmds, size_t total)
 
   while (completed < total) {
     auto& cmd = cmds[i];
+    cmd.wait();
 
-    if (cmd.is_done()) {
-      ++completed;
-      // cmd.verify()
-      if (issued < total) {
-        cmd.start();
-        ++issued;
-      }
+    // cmds[i].verify()
+
+    ++completed;
+    if (issued < total) {
+      cmd.start();
+      ++issued;
     }
 
     if (++i == cmds.size())
@@ -285,7 +305,7 @@ run(const std::string& fnm)
   cl_int status = CL_SUCCESS;
   auto program = clCreateProgramWithBinary(context,1,&device,&size,&data,&status,&err);
   throw_if_error(err,"failed to create program");
-  auto kernel = clCreateKernel(program,"fa_aes_xts2_rtl_enc",&err);
+  auto kernel = clCreateKernel(program,"fa_aes_xts2_rtl_dec",&err);
   throw_if_error(err,"failed to allocate kernel object");
 
   run(context,queue,kernel);

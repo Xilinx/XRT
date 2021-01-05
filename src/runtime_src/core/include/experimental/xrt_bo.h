@@ -210,6 +210,12 @@ public:
   bo(const bo& rhs) = default;
 
   /**
+   * operator= () - Copy assignment
+   */
+  bo&
+  operator=(const bo& rhs) = default;
+
+  /**
    * bo() - Move ctor
    */
   bo(bo&& rhs) = default;
@@ -428,7 +434,7 @@ public:
 
 public:
   /// @cond
-  std::shared_ptr<bo_impl>
+  const std::shared_ptr<bo_impl>&
   get_handle() const
   {
     return handle;

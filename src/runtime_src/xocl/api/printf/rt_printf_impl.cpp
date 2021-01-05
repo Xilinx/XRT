@@ -1160,7 +1160,7 @@ unsigned int getWorkItemPrintfBufferSize()
   return 2048;
 }
 
-size_t getPrintfBufferSize(const std::vector<size_t>& globalSize, const std::vector<size_t>& localSize)
+size_t getPrintfBufferSize(const std::array<size_t,3>& globalSize, const std::array<size_t,3>& localSize)
 {
   static bool msg_printed = false;
   size_t totalLocal = 1;
