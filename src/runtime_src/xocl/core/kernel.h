@@ -197,8 +197,6 @@ public:
   const std::string&
   get_name() const
   {
-    if (m_name != m_symbol.name)
-      throw std::runtime_error("Internal error: unexpected name mismatch");
     return m_name;
   }
 
