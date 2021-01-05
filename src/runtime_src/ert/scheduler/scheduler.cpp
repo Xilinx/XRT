@@ -1225,7 +1225,6 @@ scheduler_loop()
           continue; // CU is not used
 
         auto cuvalue = read_reg(cu_idx_to_addr(slot.cu_idx));
-        //DMSGF("cuidx %d slot_idx %d, cuvalue(0x%x)\r\n",slot.cu_idx,slot_idx,cuvalue);
         if (!(cuvalue & (AP_DONE|AP_IDLE)))
           continue;
 
