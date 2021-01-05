@@ -33,14 +33,23 @@
 #include "core/common/unistd.h"
 #include "core/common/xclbin_parser.h"
 
+#include <cstdlib>
 #include <map>
 #include <set>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4100)
+# pragma warning( disable : 4244 4100 4996 )
 #endif
 
 namespace {
+
+static bool
+is_noop_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool noop = xem ? (std::strcmp(xem,"noop")==0) : false;
+  return noop;
+}
 
 static bool
 is_nodma(xclDeviceHandle xhdl)
@@ -111,11 +120,14 @@ public:
 private:
   void
   get_bo_properties() const
-  { 
+  {
     xclBOProperties prop;
     device->get_bo_properties(handle, &prop);
     addr = prop.paddr;
-    //grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
+    grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
+
+    if (is_noop_emulation())
+      return;
 
     // Remove when driver returns the flags that were used to ctor the bo
     auto mem_topo = device->get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
@@ -282,7 +294,7 @@ public:
   {
     if (addr == no_addr)
       get_bo_properties();
-    
+
     return addr;
   }
 
@@ -404,7 +416,7 @@ public:
   {
     return bo_impl::no_group;
   }
-  
+
 };
 
 // class buffer_dbuf - device only buffer

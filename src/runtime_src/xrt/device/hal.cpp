@@ -112,6 +112,22 @@ is_sw_emulation()
   return swem;
 }
 
+static bool
+is_hw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool hwem = xem ? (std::strcmp(xem,"hw_emu")==0) : false;
+  return hwem;
+}
+
+static bool
+is_noop_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool noop = xem ? (std::strcmp(xem,"noop")==0) : false;
+  return noop;
+}
+
 // Open the HAL implementation dll and construct a hal::device for
 // each board detected by the implementation
 static void
@@ -188,7 +204,7 @@ loadDevices()
       createHalDevices(devices,p.string());
   }
 
-  if (!xrt.empty() && is_emulation() && !is_sw_emulation()) {
+  if (!xrt.empty() && is_hw_emulation()) {
     directoryOrError(xrt);
 
     auto hw_em_driver_path = xrt_xocl::config::get_hw_em_driver();
@@ -202,7 +218,7 @@ loadDevices()
       createHalDevices(devices,hw_em_driver_path);
   }
 
-  if (!xrt.empty() && is_emulation() && is_sw_emulation()) {
+  if (!xrt.empty() && is_sw_emulation()) {
     directoryOrError(xrt);
 
     auto sw_em_driver_path = xrt_xocl::config::get_sw_em_driver();
@@ -214,6 +230,13 @@ loadDevices()
 
     if (isDLL(sw_em_driver_path))
       createHalDevices(devices,sw_em_driver_path);
+  }
+
+  if (!xrt.empty() && is_noop_emulation()) {
+    directoryOrError(xrt);
+    auto p = dllpath(xrt,"xrt_noop");
+    if (isDLL(p))
+      createHalDevices(devices,p.string());
   }
 
   if (xrt.empty())

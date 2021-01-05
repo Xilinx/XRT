@@ -1694,7 +1694,7 @@ public:
     auto pkt = cmd->get_ert_packet();
     pkt->state = ERT_CMD_STATE_NEW;
 
-    XRT_DEBUGF("command packet debug (see file (%s))\n", debug_cmd_packet(kernel->get_name(), pkt).c_str());
+    XRT_DEBUG_CALL(debug_cmd_packet(kernel->get_name(), pkt));
 
     cmd->run();
   }
