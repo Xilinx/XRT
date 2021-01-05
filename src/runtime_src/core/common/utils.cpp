@@ -43,37 +43,41 @@ parse_cu_status(unsigned int val)
 {
   char delim = '(';
   std::string status;
-  if (val & 0x1) {
-    status += delim;
-    status += "START";
-    delim = '|';
-  }
-  if (val & 0x2) {
-    status += delim;
-    status += "DONE";
-    delim = '|';
-  }
-  if (val & 0x4) {
-    status += delim;
-    status += "IDLE";
-    delim = '|';
-  }
-  if (val & 0x8) {
-    status += delim;
-    status += "READY";
-    delim = '|';
-  }
-  if (val & 0x10) {
-    status += delim;
-    status += "RESTART";
-    delim = '|';
-  }
-  if (status.size())
-    status += ')';
+  if (val == (uint32_t)-1) //Crashed soft kernel status is -1
+    status = "(CRASHED)";
   else if (val == 0x0)
     status = "(--)";
-  else
-    status = "(UNKNOWN)";
+  else {
+    if (val & 0x1) {
+      status += delim;
+      status += "START";
+      delim = '|';
+    }
+    if (val & 0x2) {
+      status += delim;
+      status += "DONE";
+      delim = '|';
+    }
+    if (val & 0x4) {
+      status += delim;
+      status += "IDLE";
+      delim = '|';
+    }
+    if (val & 0x8) {
+      status += delim;
+      status += "READY";
+      delim = '|';
+    }
+    if (val & 0x10) {
+      status += delim;
+      status += "RESTART";
+      delim = '|';
+    }
+    if (status.size())
+      status += ')';
+    else 
+      status = "(UNKNOWN)";
+  }
   return status;
 }
 

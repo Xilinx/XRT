@@ -4871,7 +4871,7 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 		for (;idx < (exec->num_cus + exec->num_sk_cus); ++idx) {
 			sz += sprintf(buf+sz, "CU[@0x0] : %d status : %d name : %s\n",
 				      ert_cu_usage(xert, idx),
-				      ert_cu_status(xert, idx) ? AP_START : AP_IDLE,
+				      ert_cu_status(xert, idx),
 				      xert->scu_name[idx - exec->num_cus]);
 		}
 	}
