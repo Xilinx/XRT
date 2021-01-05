@@ -18,6 +18,7 @@
 
 #include "rt_printf_impl.h"
 
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
