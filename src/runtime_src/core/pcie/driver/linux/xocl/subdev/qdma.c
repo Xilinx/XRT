@@ -895,9 +895,6 @@ static void cmpl_aio_cancel(struct work_struct *work)
 static void queue_req_release_resource(struct qdma_stream_queue *queue,
 		struct qdma_stream_req_cb *reqcb)
 {
-	if (!reqcb->xobj)
-		return;
-
 	if (reqcb->is_unmgd) {
 		xdev_handle_t xdev = xocl_get_xdev(queue->qdma->pdev);
 
@@ -906,6 +903,7 @@ static void queue_req_release_resource(struct qdma_stream_queue *queue,
 			    				     DMA_TO_DEVICE);
 		xocl_finish_unmgd(&reqcb->unmgd);
 	} else {
+		BUG_ON(!reqcb->xobj);
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&reqcb->xobj->base);
 	}
 
@@ -1103,11 +1101,10 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 		}
 
 		req->sgt = unmgd.sgt;
-		if (kiocb) {
-			memcpy(&reqcb->unmgd, &unmgd, sizeof (unmgd));
-			reqcb->is_unmgd = true;
-			reqcb->nsg = nents;
-		}
+
+		memcpy(&reqcb->unmgd, &unmgd, sizeof (unmgd));
+		reqcb->is_unmgd = true;
+		reqcb->nsg = nents;
 	}
 
 	spin_lock_bh(&queue->req_lock);
