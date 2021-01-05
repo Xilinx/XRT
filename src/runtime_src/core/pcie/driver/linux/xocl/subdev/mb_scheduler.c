@@ -2223,18 +2223,16 @@ exec_stop(struct exec_core *exec)
 }
 
 static irqreturn_t
-versal_isr(int irq, void *arg)
+versal_isr(void *arg)
 {
 	struct exec_core *exec = (struct exec_core *)arg;
 	SCHED_DEBUGF("-> %s %d\n", __func__, irq);
 
 	if (exec) {
-		xocl_mailbox_versal_handle_intr(exec_get_xdev(exec));
-
 		if (!exec->polling_mode)
 			scheduler_intr(exec->scheduler);
 		else
-			userpf_err(exec_get_xdev(exec), "unhandled isr irq %d", irq);
+			userpf_err(exec_get_xdev(exec), "unhandled %s", __func__);
 	}
 
 	SCHED_DEBUGF("<- %s\n", __func__);
@@ -2247,14 +2245,6 @@ exec_isr(int irq, void *arg)
 	struct exec_core *exec = (struct exec_core *)arg;
 
 	SCHED_DEBUGF("-> xocl_user_event %d\n", irq);
-
-	/*
-	 * versal_isr is registered here,
-	 * but versal interrupt is enabled by mailbox_versal subdev.
-	 * Note: should be separated from exec_isr in new scheduler.
-	 */
-	if (exec && XOCL_DSA_IS_VERSAL(exec_get_xdev(exec)))
-		return versal_isr(irq, arg);
 
 	if (exec && !exec->polling_mode) {
 
@@ -2350,10 +2340,14 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	exec->uid = count++;
 
 	if (!kds_mode) {
-		for (i = 0; i < exec->intr_num; i++) {
-			xocl_user_interrupt_reg(xdev, i+exec->intr_base, exec_isr, exec);
-			xocl_user_interrupt_config(xdev, i + exec->intr_base, true);
-		}
+		if (XOCL_DSA_IS_VERSAL(xdev)) {
+			xocl_mailbox_versal_request_intr(xdev, versal_isr, exec);
+		} else {
+			for (i = 0; i < exec->intr_num; i++) {
+				xocl_user_interrupt_reg(xdev, i+exec->intr_base, exec_isr, exec);
+				xocl_user_interrupt_config(xdev, i + exec->intr_base, true);
+			}
+		}	
 	}
 
 	exec_reset(exec, &uuid_null);
@@ -5001,10 +4995,15 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	destroy_workqueue(exec->completion_wq);
 
 	if (!kds_mode) {
-		for (i = 0; i < exec->intr_num; i++) {
-			xocl_user_interrupt_config(xdev, i + exec->intr_base, false);
-			xocl_user_interrupt_reg(xdev, i + exec->intr_base, NULL, NULL);
+		if (XOCL_DSA_IS_VERSAL(xdev)) {
+			xocl_mailbox_versal_free_intr(xdev);
+		} else {
+			for (i = 0; i < exec->intr_num; i++) {
+				xocl_user_interrupt_config(xdev, i + exec->intr_base, false);
+				xocl_user_interrupt_reg(xdev, i + exec->intr_base, NULL, NULL);
+			}
 		}
+
 	}
 	mutex_destroy(&exec->exec_lock);
 

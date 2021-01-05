@@ -1243,7 +1243,8 @@ static void msg_timer_on(struct mailbox_msg *msg, u32 ttl)
 		if (is_rx_msg(msg)) {
 			ttl = MSG_RX_DEFAULT_TTL;
 		} else {
-			ttl = max(BYTE_TO_MB(msg->mbm_len) * MSG_TX_PER_MB_TTL, msg->mbm_ttl);
+			ttl = max((u32)(BYTE_TO_MB(msg->mbm_len) * MSG_TX_PER_MB_TTL),
+				msg->mbm_ttl);
 		}
 	}
 
@@ -1587,7 +1588,7 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	reqmsg->mbm_cb_arg = NULL;
 	reqmsg->mbm_req_id = (uintptr_t)reqmsg->mbm_data;
 	reqmsg->mbm_flags |= XCL_MB_REQ_FLAG_REQUEST;
-	reqmsg->mbm_ttl = max(tx_ttl, MSG_TX_DEFAULT_TTL);
+	reqmsg->mbm_ttl = max(tx_ttl, (u32)MSG_TX_DEFAULT_TTL);
 
 	respmsg = alloc_msg(resp, *resplen);
 	if (!respmsg)

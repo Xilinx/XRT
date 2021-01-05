@@ -1525,9 +1525,10 @@ struct xocl_mailbox_versal_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*set)(struct platform_device *pdev, u32 data);
 	int (*get)(struct platform_device *pdev, u32 *data);
-	int (*enable_intr)(struct platform_device *pdev);
-	int (*disable_intr)(struct platform_device *pdev);
-	int (*handle_intr)(struct platform_device *pdev);
+	int (*request_intr)(struct platform_device *pdev,
+			    irqreturn_t (*handler)(void *arg),
+			    void *arg);
+	int (*free_intr)(struct platform_device *pdev);
 };
 #define	MAILBOX_VERSAL_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX_VERSAL).pldev
@@ -1545,15 +1546,14 @@ struct xocl_mailbox_versal_funcs {
 	(MAILBOX_VERSAL_READY(xdev, get)	\
 	? MAILBOX_VERSAL_OPS(xdev)->get(MAILBOX_VERSAL_DEV(xdev), \
 	data) : -ENODEV)
-#define	xocl_mailbox_versal_enable_intr(xdev)	\
-	(MAILBOX_VERSAL_READY(xdev, enable_intr)	\
-	? MAILBOX_VERSAL_OPS(xdev)->enable_intr(MAILBOX_VERSAL_DEV(xdev)) : -ENODEV)
-#define	xocl_mailbox_versal_disable_intr(xdev)	\
-	(MAILBOX_VERSAL_READY(xdev, disable_intr)	\
-	? MAILBOX_VERSAL_OPS(xdev)->disable_intr(MAILBOX_VERSAL_DEV(xdev)) : -ENODEV)
-#define	xocl_mailbox_versal_handle_intr(xdev)	\
-	(MAILBOX_VERSAL_READY(xdev, handle_intr)	\
-	? MAILBOX_VERSAL_OPS(xdev)->handle_intr(MAILBOX_VERSAL_DEV(xdev)) : -ENODEV)
+#define xocl_mailbox_versal_request_intr(xdev, handler, arg) \
+	(MAILBOX_VERSAL_READY(xdev, request_intr) ? \
+	MAILBOX_VERSAL_OPS(xdev)->request_intr(MAILBOX_VERSAL_DEV(xdev), handler, arg) : \
+	-ENODEV)
+#define xocl_mailbox_versal_free_intr(xdev) \
+	(MAILBOX_VERSAL_READY(xdev, free_intr) ? \
+	MAILBOX_VERSAL_OPS(xdev)->free_intr(MAILBOX_VERSAL_DEV(xdev)) : \
+	-ENODEV)
 
 /* srsr callbacks */
 struct xocl_srsr_funcs {
@@ -1683,6 +1683,11 @@ enum ert_gpio_cfg {
 	MB_WAKEUP,
 	MB_SLEEP,
 	MB_STATUS,
+};
+
+struct xocl_ert_versal_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (* configured)(struct platform_device *pdev);
 };
 
 struct xocl_ert_user_funcs {
@@ -2268,6 +2273,9 @@ void xocl_fini_ert_user(void);
 
 int __init xocl_init_ert_30(void);
 void xocl_fini_ert_30(void);
+
+int __init xocl_init_ert_versal(void);
+void xocl_fini_ert_versal(void);
 
 int __init xocl_init_pcie_firewall(void);
 void xocl_fini_pcie_firewall(void);
