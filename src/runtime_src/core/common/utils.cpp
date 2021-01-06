@@ -43,32 +43,32 @@ parse_cu_status(unsigned int val)
 {
   char delim = '(';
   std::string status;
-  if (val == (uint32_t)-1) //Crashed soft kernel status is -1
+  if (val == std::numeric_limits<uint32_t>::max()) //Crashed soft kernel status is -1
     status = "(CRASHED)";
   else if (val == 0x0)
     status = "(--)";
   else {
-    if (val & 0x1) {
+    if (val & CU_AP_START) {
       status += delim;
       status += "START";
       delim = '|';
     }
-    if (val & 0x2) {
+    if (val & CU_AP_DONE) {
       status += delim;
       status += "DONE";
       delim = '|';
     }
-    if (val & 0x4) {
+    if (val & CU_AP_IDLE) {
       status += delim;
       status += "IDLE";
       delim = '|';
     }
-    if (val & 0x8) {
+    if (val & CU_AP_READY) {
       status += delim;
       status += "READY";
       delim = '|';
     }
-    if (val & 0x10) {
+    if (val & CU_AP_CONTINUE) {
       status += delim;
       status += "RESTART";
       delim = '|';

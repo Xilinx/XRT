@@ -468,8 +468,6 @@ public:
             uint32_t status = parseComputeUnitStat(custat, i, cu_stat::stat);
             uint32_t usage = parseComputeUnitStat(custat, i, cu_stat::usage);
 	    auto name = parseComputeUnitName(custat, i);
-            if (!status)
-                status = 0x4;//zero is idle for soft kernels; zocl only send 0,1,-1 status
 
 	    boost::property_tree::ptree ptCu;
             ptCu.put( "name",         name );
