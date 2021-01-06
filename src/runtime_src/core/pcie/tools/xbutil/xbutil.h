@@ -463,6 +463,7 @@ public:
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
 
+        //Soft kernel info below
         for (unsigned int i = computeUnits.size(); i < parseComputeUnitNum(custat); i++) {
             uint32_t status = parseComputeUnitStat(custat, i, cu_stat::stat);
             uint32_t usage = parseComputeUnitStat(custat, i, cu_stat::usage);

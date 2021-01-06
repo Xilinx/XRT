@@ -25,6 +25,14 @@
 #include <functional>
 #include <iostream>
 
+/* HLS CU bit status */
+#define CU_AP_START	(0x1 << 0)
+#define CU_AP_DONE	(0x1 << 1)
+#define CU_AP_IDLE	(0x1 << 2)
+#define CU_AP_READY	(0x1 << 3)
+#define CU_AP_CONTINUE	(0x1 << 4)
+#define CU_AP_RESET	(0x1 << 5)
+
 namespace xrt_core { namespace utils {
 
 /**

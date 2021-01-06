@@ -4849,6 +4849,7 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	struct xocl_ert *xert = exec_is_ert(exec) ? exec->ert : NULL;
 	unsigned int idx = 0;
 	ssize_t sz = 0;
+	int32_t cu_status = -1;
 
 	// No need to lock exec, cu stats are computed and cached.
 	// Even if xclbin is swapped, the data reflects the xclbin on
@@ -4863,9 +4864,12 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	if (xert) {
 		/* soft kernel CUs */
 		for (;idx < (exec->num_cus + exec->num_sk_cus); ++idx) {
+			cu_status = ert_cu_status(xert, idx);
+			if (!cu_status)
+				cu_status = AP_IDLE;
 			sz += sprintf(buf+sz, "CU[@0x0] : %d status : %d name : %s\n",
 				      ert_cu_usage(xert, idx),
-				      ert_cu_status(xert, idx) ? AP_START : AP_IDLE,
+				      cu_status,
 				      xert->scu_name[idx - exec->num_cus]);
 		}
 	}
@@ -4898,7 +4902,10 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	for (idx = 0; idx < exec->num_cus + exec->num_sk_cus; ++idx) {
 		if (idx > 0)
 			sz += sprintf(buf+sz, ",");
-		sz += sprintf(buf+sz, "%d", ert_cu_status(xert, idx));
+		cu_status = ert_cu_status(xert, idx);
+		if (!cu_status)
+			cu_status = AP_IDLE;
+		sz += sprintf(buf+sz, "%d", cu_status);
 	}
 
 	sz += sprintf(buf+sz, "}\nERT scheduler CQ state : {");
