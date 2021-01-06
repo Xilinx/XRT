@@ -391,12 +391,8 @@ deviceId2index()
   return 0;
 }
 
-/*
- * Parse the bdf passed in by the user to an index
- * DDDD:BB:DD.F where domain and function are optional
- */
-static uint16_t
-bdf2index(const std::string& bdfstr, bool _inUserDomain)
+std::string
+str_available_devs(bool _inUserDomain)
 {
   //gather available devices for user to pick from
   std::stringstream available_devs;
@@ -406,9 +402,18 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
     boost::property_tree::ptree& dev = kd.second;
     available_devs << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
   }
+  return available_devs.str();
+}
 
+/*
+ * Parse the bdf passed in by the user to an index
+ * DDDD:BB:DD.F where domain and function are optional
+ */
+static uint16_t
+bdf2index(const std::string& bdfstr, bool _inUserDomain)
+{
   if(!std::regex_match(bdfstr,std::regex("[A-Za-z0-9:.]+")))
-    throw std::runtime_error("Invalid BDF format. Please specify valid BDF" + available_devs.str());
+    throw std::runtime_error("Invalid BDF format. Please specify valid BDF" + str_available_devs(_inUserDomain));
 
   std::vector<std::string> tokens; 
   boost::split(tokens, bdfstr, boost::is_any_of(":")); 
@@ -420,7 +425,7 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
   // check if we have 2-3 tokens: domain, bus, device.function
   // domain is optional
   if(tokens.size() <= 1 || tokens.size() > 3)
-    throw std::runtime_error(boost::str(boost::format("Invalid BDF '%s'. Please spcify the BDF using 'DDDD:BB:DD.F' format") % bdfstr) + available_devs.str());
+    throw std::runtime_error(boost::str(boost::format("Invalid BDF '%s'. Please spcify the BDF using 'DDDD:BB:DD.F' format") % bdfstr) + str_available_devs(_inUserDomain));
 
   std::reverse(std::begin(tokens), std::end(tokens));
 
@@ -453,7 +458,7 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
       return i;
   }
 
-  throw std::runtime_error(boost::str(boost::format("Specified device BDF '%s' not found") % bdfstr) + available_devs.str());
+  throw std::runtime_error(boost::str(boost::format("Specified device BDF '%s' not found") % bdfstr) + str_available_devs(_inUserDomain));
 }
 
 /*
