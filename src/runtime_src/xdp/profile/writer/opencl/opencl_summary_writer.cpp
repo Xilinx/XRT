@@ -1520,9 +1520,10 @@ namespace xdp {
     {
       std::string deviceName = device->deviceName ;
       uint64_t execTime = (t->db->getStats()).getDeviceActiveTime(deviceName) ;
+      
       (t->fout) << "DEVICE_EXEC_TIME" << "," 
 		<< deviceName << ","
-		<< execTime  << "," << std::endl ;
+		<< ((double)execTime / 1e06)  << "," << std::endl ;
     }
   }
 
