@@ -145,6 +145,10 @@ namespace xdp {
       runSummary->write(false) ;
       delete runSummary ;
     }
+
+    for (auto iter : deviceInfo) {
+      delete iter.second ;
+    }
   }
 
   std::vector<std::string> VPStaticDatabase::getDeviceNames()

@@ -19,6 +19,8 @@
 #include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_trace_logger.h"
 
+#include "core/common/message.h"
+
 namespace xdp {
 
 DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
@@ -148,8 +150,14 @@ void DeviceTraceOffload::read_trace_fifo()
     auto property = dev_intf->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
     auto fifo_size = GetDeviceTraceBufferSize(property);
 
-    if (num_packets >= fifo_size)
+    if (num_packets >= fifo_size) {
       m_trbuf_full = true;
+
+      // Send warning message
+      const char* msg = "Trace FIFO is full because of too many events. Device trace could be incomplete. Please use 'coarse' option for data_transfer_trace or turn off Stall profiling";
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+
+    }
 
   }
 }
@@ -192,8 +200,13 @@ void DeviceTraceOffload::read_trace_s2mm()
     deviceTraceLogger->processTraceData(m_trace_vector);
     m_trace_vector = {};
 
-    if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false)
+    if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false) {
       m_trbuf_full = true;
+
+      // Send warning message
+      const char* msg = "Trace buffer is full. Device trace could be incomplete.";
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
+    }
 
     if (bytes != m_trbuf_chunk_sz)
       break;
