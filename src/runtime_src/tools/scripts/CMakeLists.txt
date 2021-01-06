@@ -12,8 +12,7 @@ set (XRT_SCRIPTS
   plp_program.sh)
 
 set(XBRESET
-  _scflash.py
-  _xbreset.py)
+  _scflash.py)
 else()
 
 set(XRT_SETUP_SCRIPTS
