@@ -72,6 +72,7 @@ MODULE_PARM_DESC(xrt_reset_syncup,
 static void xocl_mb_connect(struct xocl_dev *xdev);
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch);
+static int identify_bar(struct xocl_dev *xdev);
 
 static void set_mig_cache_data(struct xocl_dev *xdev, struct xcl_mig_ecc *mig_ecc)
 {
@@ -873,11 +874,19 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 	xocl_subdev_offline_all(xdev);
 	xocl_subdev_destroy_all(xdev);
+
+	ret = identify_bar(xdev);
+	if (ret) {
+		userpf_err(xdev, "failed to identify bar");
+		goto failed;
+	}
+
 	ret = xocl_subdev_create_all(xdev);
 	if (ret) {
 		userpf_err(xdev, "create subdev failed %d", ret);
 		goto failed;
 	}
+
 	ret = xocl_p2p_init(xdev);
 	if (ret) {
 		userpf_err(xdev, "failed to init p2p memory");
@@ -942,7 +951,10 @@ int xocl_p2p_init(struct xocl_dev *xdev)
 	return 0;
 }
 
-static int identify_bar(struct xocl_dev *xdev)
+/*
+ * Legacy platform uses bar_len to identify user bar.
+ */
+static int identify_bar_legacy(struct xocl_dev *xdev)
 {
 	struct pci_dev *pdev = xdev->core.pdev;
 	resource_size_t bar_len;
@@ -964,12 +976,53 @@ static int identify_bar(struct xocl_dev *xdev)
 	return 0;
 }
 
+/*
+ * For data driven platform, ep_mailbox_user_00 indicates user bar.
+ * Remap the user bar based on bar id from device tree medadata (dts).
+ */
+static int identify_bar_by_dts(struct xocl_dev *xdev)
+{
+	struct pci_dev *pdev = xdev->core.pdev;
+	int ret;
+	int bar_id;
+	int i;
+	resource_size_t bar_len;
+
+	BUG_ON(!XOCL_DEV_HAS_DEVICE_TREE(xdev));
+
+	ret = xocl_subdev_get_baridx(xdev, NODE_MAILBOX_USER, IORESOURCE_MEM,
+		&bar_id);
+	if (ret)
+		return ret;
+
+	bar_len = pci_resource_len(pdev, bar_id);
+
+	xdev->core.bar_addr = ioremap_nocache(
+		pci_resource_start(pdev, bar_id), bar_len);
+	if (!xdev->core.bar_addr)
+		return -EIO;
+
+	xdev->core.bar_idx = bar_id;
+	xdev->core.bar_size = bar_len;
+
+	xocl_xdev_info(xdev, "user bar:%d size: %lld", bar_id, bar_len);
+	return 0;
+}
+
 static void unmap_bar(struct xocl_dev *xdev)
 {
 	if (xdev->core.bar_addr) {
 		iounmap(xdev->core.bar_addr);
 		xdev->core.bar_addr = NULL;
 	}
+}
+
+static int identify_bar(struct xocl_dev *xdev)
+{
+	unmap_bar(xdev);
+	return XOCL_DEV_HAS_DEVICE_TREE(xdev) ?
+		identify_bar_by_dts(xdev) :
+		identify_bar_legacy(xdev);
 }
 
 void xocl_userpf_remove(struct pci_dev *pdev)
