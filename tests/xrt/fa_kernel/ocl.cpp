@@ -27,31 +27,6 @@
 #include <string>
 #include <vector>
 
-unsigned long
-time_ns()
-{
-  static auto zero = std::chrono::high_resolution_clock::now();
-  auto now = std::chrono::high_resolution_clock::now();
-  auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
-  return static_cast<unsigned long>(integral_duration);
-}
-
-class time_guard
-{
-  unsigned long zero = 0;
-  unsigned long& tally;
-public:
-  explicit
-  time_guard(unsigned long& t)
-    : zero(time_ns()), tally(t)
-  {}
-
-  ~time_guard()
-  {
-    tally += time_ns() - zero;
-  }
-};
-
 static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
@@ -191,15 +166,12 @@ struct job_type
     ++runs;
     busy = true;
 
-    //std::cout << "s" << std::flush;
-
-    cl_int err = CL_SUCCESS;
-
     static size_t global[3] = {1,0,0};
     static size_t local[3] = {1,0,0};
 
-    err = clEnqueueNDRangeKernel(queue, kernel, 1, nullptr, global, local, 0, nullptr, &kevent);
+    auto err = clEnqueueNDRangeKernel(queue, kernel, 1, nullptr, global, local, 0, nullptr, &kevent);
     if (err) throw_if_error(err,"failed to execute job " + std::to_string(id));
+    //std::cout << "s" << std::flush;
   }
 
   void
@@ -210,8 +182,8 @@ struct job_type
     
     clWaitForEvents(1, &kevent);
     clReleaseEvent(kevent);
-    //std::cout << "d" << std::flush;
     busy = false;
+    //std::cout << "d" << std::flush;
   }
 };
 
@@ -256,7 +228,7 @@ run(std::vector<job_type>& cmds, size_t total)
 static void
 run(cl_context context, cl_command_queue queue, cl_kernel kernel)
 {
-  std::vector<size_t> cmds_per_run = { 16, 100, 1000, 10000, 100000, 1000000 };
+  std::vector<size_t> cmds_per_run = { 100, 1000, 10000, 100000, 1000000 };
   size_t expected_cmds = 10000;
 
   std::vector<job_type> jobs;

@@ -121,7 +121,7 @@ private:
 
   // Set OpenCL specific runtime argument
   void
-  set_rtinfo_arg3(xrt::run&, size_t index, size3);
+  set_rtinfo_arg3(xrt::run&, size_t index, const size3&);
 
   // Set OpenCL specific runtime argument
   void
