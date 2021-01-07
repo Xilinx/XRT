@@ -111,7 +111,7 @@ set_rtinfo_arg1(xrt::run& run, size_t arginfo_idx, size1 value)
 
 void
 execution_context::
-set_rtinfo_arg3(xrt::run& run, size_t arginfo_idx, size3 value3)
+set_rtinfo_arg3(xrt::run& run, size_t arginfo_idx, const size3& value3)
 {
   for (auto idx = 0; idx < 3; ++idx) {
     auto value = value3[idx];
