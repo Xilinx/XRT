@@ -777,6 +777,39 @@ end:
 	return ret;
 }
 
+int xocl_subdev_get_baridx(xdev_handle_t xdev_hdl, char *res_name,
+	u32 type, int *bar_idx)
+{
+	struct xocl_subdev_info *subdev_info = NULL;
+	int i, j, subdev_num, ret = -EINVAL;
+
+	xocl_lock_xdev(xdev_hdl);
+	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
+	if (!subdev_info)
+		return ret;
+
+	for (i = 0; i < subdev_num; i++) {
+		for (j = 0; j < subdev_info[i].num_res; j++) {
+			if (subdev_info[i].bar_idx &&
+			    (subdev_info[i].res[j].flags & type) &&
+			    subdev_info[i].res[j].name &&
+			    !strncmp(subdev_info[i].res[j].name, res_name,
+			    strlen(res_name))) {
+				*bar_idx = subdev_info[i].bar_idx[j];
+				ret = 0;
+				goto end;
+			}
+		}
+	}
+
+end:
+	xocl_unlock_xdev(xdev_hdl);
+	if (subdev_info)
+		vfree(subdev_info);
+
+	return ret;
+}
+
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
@@ -813,6 +846,7 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 	}
 
 	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
+
 	/* create subdevices */
 	for (i = 0; i < subdev_num; i++) {
 		ret = __xocl_subdev_create(xdev_hdl, &subdev_info[i]);

@@ -274,6 +274,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 	((pci_domain_nr(pdev->bus) << 16) |	\
 	PCI_DEVID(pdev->bus->number, pdev->devfn))
 
+#define XOCL_DEV_HAS_DEVICE_TREE(xdev) 		\
+	(XDEV(xdev)->fdt_blob != NULL)
+
 #define XOCL_ARE_HOP 0x400000000ull
 
 #define XOCL_XILINX_VEN 0x10EE
@@ -1991,6 +1994,8 @@ void xocl_subdev_unregister(struct platform_device *pldev);
 
 int xocl_subdev_get_resource(xdev_handle_t xdev_hdl,
 		char *res_name, u32 type, struct resource *res);
+int xocl_subdev_get_baridx(xdev_handle_t xdev_hdl,
+		char *res_name, u32 type, int *bar_idx);
 
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
 void xocl_clear_pci_errors(xdev_handle_t xdev_hdl);
