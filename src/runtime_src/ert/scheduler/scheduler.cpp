@@ -633,11 +633,15 @@ configure_cu(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
 {
   // write register map, starting at base + 0x10
   // 0x4, 0x8, 0xc used for interrupt, which is initialized in setup
+#ifdef ERT_HW_EMU
+  for (size_type idx = 4; idx < regmap_size; ++idx)
+    write_reg(cu_addr + (idx << 2), read_reg(regmap_addr + (idx << 2)));
+#else
   uint32_t *addr_ptr = (uint32_t *)(uintptr_t)cu_addr;
   uint32_t *regmap_ptr = (uint32_t *)(uintptr_t)regmap_addr;
 
   memcpy(addr_ptr+4, regmap_ptr+4, regmap_size);
-
+#endif
   // start kernel at base + 0x0
   write_reg(cu_addr, 0x1);
 }
