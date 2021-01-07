@@ -24,6 +24,7 @@
 
 #define ULITE_NAME		"ttyXRTUL"
 #define ULITE_NR_UARTS		64
+
 /* ---------------------------------------------------------------------
  * Register definitions
  *
@@ -55,7 +56,7 @@ struct uartlite_data {
 	const struct uartlite_reg_ops	*reg_ops;
 	struct uart_driver	*xcl_ulite_driver;
 	struct uart_port	*port;
-	u32			console_opened;
+	atomic_t		console_opened;
 	struct task_struct	*thread;
 	struct mutex 		lock;
 };
@@ -239,7 +240,7 @@ static int ulite_thread(void *data)
 	struct uart_port *port = pdata->port;
 	int ret = 0;
 
-	while (pdata->console_opened) {
+	while (atomic_read(&pdata->console_opened) && !kthread_should_stop()) {
 		ulite_worker(port);
 		/* 115200bps / 9bits * 2 sampling rate 
 		 * 25600Hz, we should sleep less than 40us
@@ -297,10 +298,20 @@ static void ulite_break_ctl(struct uart_port *port, int ctl)
 static int ulite_startup(struct uart_port *port)
 {
 	struct uartlite_data *pdata = port->private_data;
+	int ret = 0;
 
 	mutex_lock(&pdata->lock);
-	pdata->console_opened++;
+	atomic_inc(&pdata->console_opened);
 	pdata->thread = kthread_run(ulite_thread, pdata, "ulite_thread");
+
+	if (IS_ERR(pdata->thread)) {
+		dev_err(port->dev, "fail to create thread\n");
+		atomic_dec_if_positive(&pdata->console_opened);
+		ret = PTR_ERR(pdata->thread);
+		pdata->thread = NULL;
+		mutex_unlock(&pdata->lock);
+		return ret;
+	}
 
 	uart_out32(ULITE_CONTROL_RST_RX | ULITE_CONTROL_RST_TX,
 		ULITE_CONTROL, port);
@@ -315,9 +326,11 @@ static void ulite_shutdown(struct uart_port *port)
 	struct uartlite_data *pdata = port->private_data;
 
 	mutex_lock(&pdata->lock);
-	pdata->console_opened--;
-	if (!pdata->console_opened)
+	atomic_dec_if_positive(&pdata->console_opened);
+	if (atomic_read(&pdata->console_opened)) {
 		(void)kthread_stop(pdata->thread);
+		pdata->thread = NULL;
+	}
 
 	uart_out32(0, ULITE_CONTROL, port);
 	uart_in32(ULITE_CONTROL, port); /* dummy */
@@ -516,6 +529,7 @@ static int ulite_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, port);
 	mutex_init(&pdata->lock);
+	atomic_set(&pdata->console_opened, 0);
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &ulite_attr_group);
 	if (ret) {
@@ -549,7 +563,11 @@ static int ulite_remove(struct platform_device *pdev)
 	pdata = port->private_data;
 	if (!pdata)
 		return ret;
-	pdata->console_opened = 0;
+
+	atomic_set(&pdata->console_opened, 0);
+	if (pdata->thread)
+		kthread_stop(pdata->thread);
+
 	ret = uart_remove_one_port(pdata->xcl_ulite_driver, port);
 	platform_set_drvdata(pdev, NULL);
 	port->mapbase = 0;
