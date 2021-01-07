@@ -70,7 +70,8 @@ namespace xdp {
                            uint64_t devId, uint32_t monId, int32_t cuIdx);
     XDP_EXPORT ~KernelEvent();
 
-    virtual int32_t getCUId() { return cuId; }
+    XDP_EXPORT virtual int32_t getCUId() { return cuId; }
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   };
 
   class KernelStall : public KernelEvent

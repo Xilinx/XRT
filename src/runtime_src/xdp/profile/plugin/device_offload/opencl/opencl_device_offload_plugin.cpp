@@ -198,10 +198,11 @@ namespace xdp {
     std::string path = debugIPLayoutPath(device) ;
 
     uint64_t deviceId = 0;
-    if(getFlowMode() == HW && (xrt_core::config::get_timeline_trace() || 
-          xrt_core::config::get_data_transfer_trace() != "off" ||
-          xrt_core::config::get_stall_trace()  != "off" ||
-          xrt_core::config::get_device_trace() != "off")) {
+    if((getFlowMode() == HW || getFlowMode() == HW_EMU) && 
+       (xrt_core::config::get_timeline_trace() || 
+	xrt_core::config::get_data_transfer_trace() != "off" ||
+	xrt_core::config::get_stall_trace()  != "off" ||
+	xrt_core::config::get_device_trace() != "off")) {
       try {
         deviceId = db->getDeviceId(path) ;
       }
