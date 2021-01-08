@@ -640,7 +640,7 @@ configure_cu(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
   uint32_t *addr_ptr = (uint32_t *)(uintptr_t)cu_addr;
   uint32_t *regmap_ptr = (uint32_t *)(uintptr_t)regmap_addr;
 
-  memcpy(addr_ptr+4, regmap_ptr+4, regmap_size);
+  memcpy(addr_ptr+4, regmap_ptr+4, (regmap_size-4)<<2);
 #endif
   // start kernel at base + 0x0
   write_reg(cu_addr, 0x1);
