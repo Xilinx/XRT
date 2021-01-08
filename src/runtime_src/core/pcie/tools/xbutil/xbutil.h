@@ -1526,12 +1526,16 @@ public:
         ostr << "Xclbin UUID\n"
              << sensor_tree::get<std::string>( "board.xclbin.uuid", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "Compute Unit Status\n";
+        ostr << std::setw(41) << "Compute Unit Status"
+             << std::setw(18) << "Addr"
+             << std::setw(14) << "Status"
+             << std::setw(14) << "Usage" << std::endl;
+
         try {
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
-              std::string cu_n, cu_s, cu_ba;
+              std::string cu_n, cu_s, cu_ba, cu_u;
               for (auto& subv : v.second) {
                 if( subv.first == "name" ) {
                   cu_n = subv.second.get_value<std::string>();
@@ -1540,6 +1544,9 @@ public:
                   cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
                 } else if( subv.first == "status" ) {
                   cu_s = subv.second.get_value<std::string>();
+                } else if( subv.first == "usage" ) {
+                  auto usage = subv.second.get_value<uint32_t>();
+                  cu_u = (usage == (uint32_t)-1) ? "N/A" : sensor_tree::pretty<uint32_t>(usage, "N/A");
                 }
               }
               int cu_i = xclIPName2Index(m_handle, cu_n.c_str());
@@ -1555,8 +1562,9 @@ public:
                 ostr << "CU[" << std::right << std::setw(3) << cu_i << "]: ";
 
               ostr << std::left << std::setw(32) << cu_n
-                   << "@" << std::setw(18) << std::hex << cu_ba
-                   << cu_s << std::endl;
+                   << "@" << std::setw(18) << cu_ba
+                   << std::setw(14) << cu_s 
+                   << std::setw(14) << cu_u << std::endl;
             }
           }
         }
