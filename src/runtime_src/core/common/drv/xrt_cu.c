@@ -325,7 +325,7 @@ int xrt_cu_intr_thread(void *data)
 		if (process_rq(xcu))
 			continue;
 
-		if (xcu->num_sq) {
+		if (xcu->num_sq || is_zero_credit(xcu)) {
 			if (down_interruptible(&xcu->sem_cu))
 				ret = -ERESTARTSYS;
 			xrt_cu_check(xcu);
@@ -473,7 +473,7 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 	return err;
 }
 
-/* 
+/*
  * If KDS has to manage PLRAM resources, we should come up with a better design.
  * Ideally, CU subdevice should request for plram resource instead of KDS assign
  * plram resource to CU.
