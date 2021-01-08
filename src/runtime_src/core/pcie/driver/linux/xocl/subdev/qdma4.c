@@ -275,7 +275,7 @@ static ssize_t stat_show(struct device *dev, struct device_attribute *da,
         __SHOW_MEMBER(pstat, pending_requests);
         __SHOW_MEMBER(pstat, complete_bytes);
         __SHOW_MEMBER(pstat, complete_requests);
-#endif 
+#endif
         return off;
 }
 static DEVICE_ATTR_RO(stat);
@@ -492,7 +492,7 @@ static void fill_qdma_request_sgl(struct qdma_request *req, struct sg_table *sgt
 
 	req->sgcnt = sgcnt;
 	for_each_sg(sgt->sgl, sg, sgcnt, i) {
-		sgl->next = sgl + 1;	
+		sgl->next = sgl + 1;
 		sgl->pg = sg_page(sg);
 		sgl->offset = sg->offset;
 		sgl->len = sg_dma_len(sg);
@@ -521,21 +521,21 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 
 	chan = &qdma->chans[write][channel];
 
-	dir = write ? DMA_TO_DEVICE : DMA_FROM_DEVICE; 
+	dir = write ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
 	nents = pci_map_sg(XDEV(xdev)->pdev, sgt->sgl, sgt->orig_nents, dir);
         if (!nents) {
 		xocl_err(&pdev->dev, "map sgl failed, sgt 0x%p.\n", sgt);
 		return -EIO;
 	}
 	sgt->nents = nents;
-	
+
 	req = kzalloc(sizeof(struct qdma_request) +
 		      nents * sizeof(struct qdma_sw_sg),
 			GFP_KERNEL);
 	if (!req) {
 		xocl_err(&pdev->dev, "qdma req. OOM, sgl %u.\n", nents);
 		return -ENOMEM;
-	}	
+	}
 	req->write = write;
 	req->count = len;
 	req->ep_addr = paddr;
@@ -1027,7 +1027,7 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 		return -EINVAL;
 	}
 
-	ioreq = kzalloc(sizeof(struct qdma_stream_ioreq) + 
+	ioreq = kzalloc(sizeof(struct qdma_stream_ioreq) +
 			reqcnt * (sizeof(struct qdma_request) +
 				    sizeof(struct qdma_stream_req_cb) +
 				sizeof(struct qdma_sw_sg)),
@@ -1181,7 +1181,7 @@ if (nents != 1) {
 	else
 #endif
 		ret = qdma4_request_submit(qdma->dma_hndl, queue->queue,
-					  iocb->reqv); 
+					  iocb->reqv);
 
 error_out:
 	if (ret < 0 || !kiocb) {
@@ -1437,7 +1437,7 @@ static int queue_close(struct inode *inode, struct file *file)
 	struct qdma_stream_queue *queue;
 
 	queue = (struct qdma_stream_queue *)file->private_data;
-	if (!queue) 
+	if (!queue)
 		return 0;
 
 	queue_flush(queue);
@@ -1542,7 +1542,7 @@ static long qdma4_stream_ioctl_create_queue(struct xocl_qdma *qdma,
 	ret = stmc_queue_context_setup(&qdma->stm_dev, qconf, &queue->sqconf,
 					req.flowid, req.rid);
 	if (ret < 0) {
-		xocl_err(&qdma->pdev->dev, 
+		xocl_err(&qdma->pdev->dev,
 			"%s STM prog. Queue failed ret = %ld",
 			qconf->name, ret);
 		goto failed;
@@ -1667,7 +1667,7 @@ static long qdma4_stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 		goto failed;
 	}
 
-	xobj->sgt = drm_prime_pages_to_sg(xobj->pages,
+	xobj->sgt = xocl_prime_pages_to_sg((XOCL_DRM(xdev))->ddev, xobj->pages,
 		xobj->base.size >> PAGE_SHIFT);
 	if (IS_ERR(xobj->sgt)) {
 		ret = PTR_ERR(xobj->sgt);
@@ -1870,7 +1870,7 @@ static int qdma4_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, qdma);
 
 	for (i = 0, res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		res;	
+		res;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
 		if (!strncmp(res->name, NODE_QDMA4, strlen(NODE_QDMA4))) {
 			ret = xocl_ioaddr_to_baroff(xdev, res->start, &dma_bar,

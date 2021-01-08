@@ -32,8 +32,11 @@ MODULE_PARM_DESC(p2p_max_bar_size,
 #elif KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE && \
 	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0))
 #define P2P_API_V1
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+#elif KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0))
 #define P2P_API_V2
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+#define P2P_API_V3
 #elif defined(RHEL_RELEASE_VERSION) /* CentOS/RedHat specific check */
 
 #if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 3) && \
@@ -43,6 +46,10 @@ MODULE_PARM_DESC(p2p_max_bar_size,
 #define P2P_API_V2
 #endif
 
+#endif
+
+#if defined(P2P_API_V3)
+#warning "P2P not ported to Linux kernel 5.10"
 #endif
 
 #if defined(P2P_API_V1) || defined(P2P_API_V2)
@@ -365,7 +372,7 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 		percpu_ref_exit(pref);
 	} else {
 		chk->xpmc_va = devm_memremap_pages(dev, &res,
-			&chk->xpmc_percpu_ref, NULL);	
+			&chk->xpmc_percpu_ref, NULL);
 		ret = devm_add_action_or_reset(dev,
 			p2p_percpu_ref_kill, pref);
 		if (ret != 0) {
@@ -496,7 +503,7 @@ static void p2p_read_addr_mgmtpf(struct p2p *p2p)
 	}
 	p2p_info(p2p, "sending req %d to peer: bar_len=%lld, bar_addr=%lld",
 		XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR,
-		mb_p2p->p2p_bar_len, mb_p2p->p2p_bar_addr); 
+		mb_p2p->p2p_bar_len, mb_p2p->p2p_bar_addr);
 
 	ret = xocl_peer_request(xdev, mb_req, reqlen, &ret,
 		&resplen, NULL, NULL, 0, 0);
@@ -604,7 +611,7 @@ static int p2p_mem_init(struct p2p *p2p)
 	pa = pci_resource_start(pcidev, p2p->p2p_bar_idx);
 	chunks = p2p->p2p_mem_chunks;
 	for (i = 0; i < p2p->p2p_mem_chunk_num; i++) {
-		chunks[i].xpmc_pa = pa + XOCL_P2P_CHUNK_SIZE * i; 
+		chunks[i].xpmc_pa = pa + XOCL_P2P_CHUNK_SIZE * i;
 		chunks[i].xpmc_size = XOCL_P2P_CHUNK_SIZE;
 		init_completion(&chunks[i].xpmc_comp);
 	}
