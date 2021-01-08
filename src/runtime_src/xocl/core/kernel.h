@@ -123,7 +123,7 @@ class kernel : public refcount, public _cl_kernel
   {
   public:
     stream_xargument(kernel* kernel, const arginfo_type* ainfo)
-      : xargument(kernel, ainfo) {}
+      : xargument(kernel, ainfo) { m_set = true; }
     virtual void set(const void* value, size_t sz);
   };
 
