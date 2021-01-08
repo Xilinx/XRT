@@ -18,6 +18,7 @@
 #define OPENCL_TRACE_WRITER_DOT_H
 
 #include <map>
+#include <vector>
 
 #include "xdp/profile/writer/vp_base/vp_trace_writer.h"
 
@@ -36,6 +37,10 @@ namespace xdp {
     std::map<std::string, int> enqueueBuckets ;
 
     void setupBuckets() ;
+
+    // A helper function to collapse dependency chains when some events
+    //  are missing.
+    void collapseDependencyChains(std::map<uint64_t, std::vector<uint64_t>>& d);
 
     void writeHumanReadableHeader() ;
     void writeHumanReadableStructure() ;

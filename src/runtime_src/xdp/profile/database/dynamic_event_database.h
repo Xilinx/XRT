@@ -99,7 +99,7 @@ namespace xdp {
     // For dependencies in OpenCL, we will have to store a mapping of
     //  every OpenCL ID to an eventID.  This is a mapping from
     //  OpenCL event IDs to XDP event IDs.
-    std::map<uint64_t, uint64_t> openclEventMap ;
+    std::map<uint64_t, std::pair<uint64_t, uint64_t>> openclEventMap ;
     std::map<uint64_t, std::vector<uint64_t>> dependencyMap ;
 
     // For AIE Trace events
@@ -159,11 +159,10 @@ namespace xdp {
     XDP_EXPORT void dumpStringTable(std::ofstream& fout) ;
 
     // OpenCL mappings and dependencies
-    XDP_EXPORT void addOpenCLMapping(uint64_t openclID, uint64_t eventID) ;
-    XDP_EXPORT uint64_t lookupOpenCLMapping(uint64_t openclID)
-    {
-      return openclEventMap[openclID] ;
-    }
+    XDP_EXPORT void addOpenCLMapping(uint64_t openclID, uint64_t eventID, uint64_t startID) ;
+    XDP_EXPORT std::pair<uint64_t, uint64_t>
+    lookupOpenCLMapping(uint64_t openclID) ;
+
     XDP_EXPORT void addDependencies(uint64_t eventID,
 				    const std::vector<uint64_t>& openclIDs) ;
     XDP_EXPORT void addDependency(uint64_t id, uint64_t dependency) ;
