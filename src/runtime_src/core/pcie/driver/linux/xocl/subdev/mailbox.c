@@ -432,7 +432,7 @@ static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
 }
 
 int mailbox_request(struct platform_device *, void *, size_t,
-	void *, size_t *, mailbox_msg_cb_t, void *, u32);
+	void *, size_t *, mailbox_msg_cb_t, void *, u32, u32);
 int mailbox_post_notify(struct platform_device *, void *, size_t);
 int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data);
 
@@ -1243,8 +1243,7 @@ static void msg_timer_on(struct mailbox_msg *msg, u32 ttl)
 		if (is_rx_msg(msg)) {
 			ttl = MSG_RX_DEFAULT_TTL;
 		} else {
-			ttl = max(BYTE_TO_MB(msg->mbm_len) * MSG_TX_PER_MB_TTL,
-				MSG_TX_DEFAULT_TTL);
+			ttl = max(BYTE_TO_MB(msg->mbm_len) * MSG_TX_PER_MB_TTL, msg->mbm_ttl);
 		}
 	}
 
@@ -1453,7 +1452,7 @@ static ssize_t mailbox_show(struct device *dev,
 
 	req.req = XCL_MAILBOX_REQ_TEST_READ;
 	ret = mailbox_request(to_platform_device(dev), &req, sizeof(req),
-		mbx->mbx_tst_rx_msg, &respsz, NULL, NULL, 0);
+		mbx->mbx_tst_rx_msg, &respsz, NULL, NULL, 0, 0);
 	if (ret) {
 		MBX_ERR(mbx, "failed to read test msg from peer: %d", ret);
 	} else if (respsz > 0) {
@@ -1559,7 +1558,7 @@ static bool req_is_sw(struct platform_device *pdev, enum xcl_mailbox_request req
  */
 int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	void *resp, size_t *resplen, mailbox_msg_cb_t cb,
-	void *cbarg, u32 resp_ttl)
+	void *cbarg, u32 resp_ttl, u32 tx_ttl)
 {
 	int rv = -ENOMEM;
 	struct mailbox *mbx = platform_get_drvdata(pdev);
@@ -1588,6 +1587,7 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	reqmsg->mbm_cb_arg = NULL;
 	reqmsg->mbm_req_id = (uintptr_t)reqmsg->mbm_data;
 	reqmsg->mbm_flags |= XCL_MB_REQ_FLAG_REQUEST;
+	reqmsg->mbm_ttl = max(tx_ttl, MSG_TX_DEFAULT_TTL);
 
 	respmsg = alloc_msg(resp, *resplen);
 	if (!respmsg)
