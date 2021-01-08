@@ -845,7 +845,7 @@ int qdma_trq_c2h_config(struct xlnx_dma_dev *xdev);
 
 #define QDMA_REG_GLBL_ERR_STAT				0x248
 #define QDMA_REG_GLBL_ERR_MASK				0x24C
-#define QDMA_REG_GLBL_ERR_MASK_VALUE			0xFFFU
+#define QDMA_REG_GLBL_ERR_MASK_VALUE			0x1FFFFU
 #define		QDMA_REG_GLBL_F_ERR_RAM_SBE			0
 #define		QDMA_REG_GLBL_F_ERR_RAM_DBE			1
 #define		QDMA_REG_GLBL_F_ERR_DSC				2
@@ -856,8 +856,8 @@ int qdma_trq_c2h_config(struct xlnx_dma_dev *xdev);
 #define		QDMA_REG_GLBL_F_ERR_C2H_MM_1		7
 #define		QDMA_REG_GLBL_F_ERR_C2H_ST			8
 #define		QDMA_REG_GLBL_F_ERR_IND_CTXT_CMD	9
-#define		QDMA_REG_GLBL_F_ERR_BDG				10
-#define		QDMA_REG_GLBL_F_ERR_H2C_ST			11
+#define		QDMA_REG_GLBL_F_ERR_BDG				15
+#define		QDMA_REG_GLBL_F_ERR_H2C_ST			16
 
 
 /* Global Descriptor Error */
