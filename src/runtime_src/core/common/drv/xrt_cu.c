@@ -326,10 +326,17 @@ int xrt_cu_intr_thread(void *data)
 			continue;
 
 		if (xcu->num_sq || is_zero_credit(xcu)) {
-			if (down_interruptible(&xcu->sem_cu))
-				ret = -ERESTARTSYS;
+			//usleep_range(1, 3);
 			xrt_cu_check(xcu);
+			if (!xcu->done_cnt || !xcu->ready_cnt) {
+				xcu->sleep_cnt++;
+				if (down_interruptible(&xcu->sem_cu))
+					ret = -ERESTARTSYS;
+				xrt_cu_check(xcu);
+			}
 			__process_sq(xcu);
+			if (xcu->num_rq && !is_zero_credit(xcu))
+				continue;
 		}
 
 		process_cq(xcu);
@@ -343,7 +350,6 @@ int xrt_cu_intr_thread(void *data)
 			continue;
 
 		if (!xcu->num_sq && !xcu->num_cq) {
-			xcu->sleep_cnt++;
 			if (down_interruptible(&xcu->sem))
 				ret = -ERESTARTSYS;
 		}

@@ -382,7 +382,6 @@ struct xrt_cu_hls {
 	int			 credits;
 	int			 run_cnts;
 	bool			 ctrl_chain;
-	bool			 intr_en;
 	spinlock_t		 cu_lock;
 	u32			 done;
 	u32			 ready;
