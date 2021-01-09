@@ -20,3 +20,8 @@ jobs:
         sudo src/runtime_src/tools/scripts/xrtdeps.sh
     - name: Build
       run: cd build && chmod +x build.sh ; ./build.sh
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: deb
+        path: build/Release/xrt_*.deb
