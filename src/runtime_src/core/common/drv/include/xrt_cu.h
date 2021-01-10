@@ -375,12 +375,16 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf);
 ssize_t show_cu_info(struct xrt_cu *xcu, char *buf);
 
 /* CU Implementations */
+#define to_cu_hls(core) ((struct xrt_cu_hls *)(core))
 struct xrt_cu_hls {
 	void __iomem		*vaddr;
 	int			 max_credits;
 	int			 credits;
 	int			 run_cnts;
 	bool			 ctrl_chain;
+	spinlock_t		 cu_lock;
+	u32			 done;
+	u32			 ready;
 };
 
 int xrt_cu_hls_init(struct xrt_cu *xcu);

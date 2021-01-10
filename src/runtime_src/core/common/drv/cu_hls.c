@@ -141,10 +141,11 @@ cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 static inline void
 cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 {
-	u32 ctrl_reg;
+	u32 ctrl_reg = 0;
 	u32 done_reg = 0;
 	u32 ready_reg = 0;
 	u32 used_credit;
+	unsigned long flags;
 
 	used_credit = cu_hls->max_credits - cu_hls->credits;
 
@@ -154,19 +155,30 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 	if (!used_credit && !cu_hls->run_cnts)
 		return;
 
-	ctrl_reg  = cu_read32(cu_hls, CTRL);
+	/* HLS ap_ctrl_chain reqiured software to set ap_continue before
+	 * clear interrupt. Otherwise, the clear would failed.
+	 * So, we have to make ap_continue and clear interrupt as atomic.
+	 */
+	spin_lock_irqsave(&cu_hls->cu_lock, flags);
+	done_reg  = cu_hls->done;
+	ready_reg = cu_hls->ready;
+	cu_hls->done = 0;
+	cu_hls->ready = 0;
+
+	ctrl_reg = cu_read32(cu_hls, CTRL);
 
 	/* if there is submitted tasks, then check if ap_start bit is clear
 	 * See comments in cu_hls_start().
 	 */
-	if (used_credit && !(ctrl_reg & CU_AP_START))
+	if (!ready_reg && used_credit && !(ctrl_reg & CU_AP_START))
 		ready_reg = 1;
 
 	if (ctrl_reg & CU_AP_DONE) {
-		done_reg = 1;
+		done_reg += 1;
 		cu_hls->run_cnts--;
 		cu_write32(cu_hls, CTRL, CU_AP_CONTINUE);
 	}
+	spin_unlock_irqrestore(&cu_hls->cu_lock, flags);
 
 	status->num_done  = done_reg;
 	status->num_ready = ready_reg;
@@ -202,7 +214,7 @@ static void cu_hls_enable_intr(void *core, u32 intr_type)
 static void cu_hls_disable_intr(void *core, u32 intr_type)
 {
 	struct xrt_cu_hls *cu_hls = core;
-	u32 orig = cu_read32(cu_hls, ISR);
+	u32 orig = cu_read32(cu_hls, IER);
 	/* if bit 0 of intr_type is set, it means disable ap_done,
 	 * same to bit 1 for ap_ready.
 	 */
@@ -226,6 +238,8 @@ static u32 cu_hls_clear_intr(void *core)
 	 */
 	if (cu_hls->max_credits == 1) {
 		u32 isr;
+		u32 ctrl_reg = 0;
+		unsigned long flags;
 
 		/*
 		 * The old HLS adapter.
@@ -241,6 +255,23 @@ static u32 cu_hls_clear_intr(void *core)
 		 * trigger interrupt.
 		 */
 		isr = cu_read32(cu_hls, ISR);
+
+		/* See comment in cu_hls_ctrl_chain_check() */
+		if (cu_hls->ctrl_chain) {
+			spin_lock_irqsave(&cu_hls->cu_lock, flags);
+			if (isr & CU_INTR_READY)
+				cu_hls->ready++;
+
+			if (isr & CU_INTR_DONE) {
+				ctrl_reg = cu_read32(cu_hls, CTRL);
+				if (ctrl_reg & CU_AP_DONE) {
+					cu_hls->done++;
+					cu_write32(cu_hls, CTRL, CU_AP_CONTINUE);
+				}
+			}
+			spin_unlock_irqrestore(&cu_hls->cu_lock, flags);
+		}
+
 		cu_write32(cu_hls, ISR, isr);
 		return isr;
 	}
@@ -296,6 +327,9 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 	core->credits = core->max_credits;
 	core->run_cnts = 0;
 	core->ctrl_chain = (xcu->info.protocol == CTRL_CHAIN)? true : false;
+	spin_lock_init(&core->cu_lock);
+	core->done = 0;
+	core->ready = 0;
 
 	xcu->status = cu_read32(core, CTRL);
 	xcu->core = core;
