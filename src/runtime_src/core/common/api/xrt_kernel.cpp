@@ -1168,9 +1168,14 @@ class kernel_impl
       return AP_CTRL_NONE;
 
     auto ctrl = ::get_ip_control(ips[0]);
-    for (size_t idx = 1; idx < ips.size(); ++idx)
-      if (IP_CONTROL((ips[idx]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) != ctrl)
+    for (size_t idx = 1; idx < ips.size(); ++idx) {
+      auto ctrlatidx = ::get_ip_control(ips[idx]);
+      if (ctrlatidx == ctrl)
+        continue;
+      if (ctrlatidx != AP_CTRL_CHAIN && ctrlatidx != AP_CTRL_HS)
         throw std::runtime_error("CU control protocol mismatch");
+      ctrl = AP_CTRL_HS; // mix of CHAIN and HS is recorded as AP_CTRL_HS
+    }
 
     return ctrl;
   }
