@@ -8,9 +8,7 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - name: Install dependencies
@@ -18,10 +16,26 @@ jobs:
       run: |
         sudo apt update
         sudo src/runtime_src/tools/scripts/xrtdeps.sh
-    - name: Build
+    - name: XRT Build
       run: cd build && chmod +x build.sh ; ./build.sh
-    - name: Archive production artifacts
-      uses: actions/upload-artifact@v2
+    - name: Cache
+      id: deb-cache
+      uses: actions/cache@v2
       with:
-        name: deb
-        path: build/Release/xrt_*.deb
+        path: build/Release/
+        key: test-${{ runner.os }}-${{ github.run_id }}
+#   archive:
+#     runs-on: ubuntu-latest
+#     needs: [build]
+#     steps:
+#     - name: Archive production artifacts
+#       uses: actions/upload-artifact@v2
+#       with:
+#         name: deb
+#         path: build/Release/xrt_*.deb
+  install:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Install xrt debs
+        run: sudo apt-get install -y test-${{ runner.os }}-${{ github.run_id }}
