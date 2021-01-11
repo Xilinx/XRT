@@ -17,6 +17,11 @@
 #include "xdp/profile/plugin/opencl/trace/opencl_trace_plugin.h"
 #include "xdp/profile/writer/opencl/opencl_trace_writer.h"
 
+#ifdef _WIN32
+/* Disable warning on Windows for use of std::getenv */
+#pragma warning (disable : 4996)
+#endif
+
 namespace xdp {
 
   OpenCLTraceProfilingPlugin::OpenCLTraceProfilingPlugin() : XDPPlugin()

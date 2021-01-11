@@ -78,8 +78,8 @@ namespace xdp {
 			  const char* memoryResource,
 			  size_t bufferSize,
 			  bool isP2P,
-			  unsigned long long int* dependencies,
-			  uint64_t numDependencies)
+			  unsigned long long int* /*dependencies*/,
+			  uint64_t /*numDependencies*/)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -117,8 +117,8 @@ namespace xdp {
 			   const char* memoryResource,
 			   size_t bufferSize,
 			   bool isP2P,
-			   unsigned long long int* dependencies,
-			   uint64_t numDependencies)
+			   unsigned long long int* /*dependencies*/,
+			   uint64_t /*numDependencies*/)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -158,8 +158,8 @@ namespace xdp {
 			  const char* dstMemoryResource,
 			  size_t bufferSize,
 			  bool isP2P,
-			  unsigned long long int* dependencies,
-			  uint64_t numDependencies)
+			  unsigned long long int* /*dependencies*/,
+			  uint64_t /*numDependencies*/)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -202,8 +202,8 @@ namespace xdp {
 			     size_t workgroupConfigurationY,
 			     size_t workgroupConfigurationZ,
 			     size_t workgroupSize,
-			     unsigned long long int* dependencies,
-			     uint64_t numDependencies)
+			     unsigned long long int* /*dependencies*/,
+			     uint64_t /*numDependencies*/)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;

@@ -38,7 +38,7 @@ namespace xdp {
     //  handles) we need to open all the devices and keep our own handles
     //  to them.
     std::vector<void*> deviceHandles ;
-    std::map<uint32_t, void*> deviceIdToHandle ;
+    std::map<uint64_t, void*> deviceIdToHandle ;
 
   public:
     XDP_EXPORT HALDeviceOffloadPlugin() ;

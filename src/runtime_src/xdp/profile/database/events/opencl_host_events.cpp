@@ -28,7 +28,7 @@ namespace xdp {
 			       uint64_t bName, 
 			       uint64_t kName,
 			       uint64_t wgc,
-			       int wgs,
+			       size_t wgs,
 			       const char* enqueueId) :
     VTFEvent(s_id, ts, KERNEL_ENQUEUE),
     deviceName(dName), binaryName(bName), kernelName(kName),

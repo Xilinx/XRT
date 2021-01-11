@@ -204,7 +204,7 @@ namespace xdp {
         devInterface->setDevice(new HalDevice(ownedHandle)) ;
         devInterface->readDebugIPlayout() ;      
       }
-      catch(std::exception& e)
+      catch(std::exception& /*e*/)
       {
         // Read debug IP layout could throw an exception
         delete devInterface ;

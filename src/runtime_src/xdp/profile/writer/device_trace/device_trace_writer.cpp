@@ -200,7 +200,7 @@ namespace xdp {
 	continue;
       }
 
-      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, i) ;
+      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i)) ;
       aimBucketIdMap[index] = ++rowCount;
       fout << "Group_Start," << aim->name  << " AXI Memory Monitor,Read/Write data transfers over AXI Memory Mapped " << aim->name << std::endl;
       fout << "Static_Row,"  << rowCount   << ",Read transfers,Read transfers for "  << aim->name << std::endl;
@@ -230,7 +230,7 @@ namespace xdp {
 	continue;
       }
 
-      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, i) ;
+      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i)) ;
       asmBucketIdMap[index] = ++rowCount;
       fout << "Group_Start," << asM->name  << " AXI Stream Monitor,Read/Write data transfers over AXI Stream " << asM->name << std::endl;
       fout << "Static_Row,"  << rowCount   << ",Stream Port,AXI Stream Read/Write transaction over " << asM->name << std::endl;

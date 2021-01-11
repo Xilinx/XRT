@@ -282,7 +282,7 @@ namespace xdp {
     }
   }
 
-  void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* blob)
+  void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
   {
     if (!active) return ;
 
@@ -298,7 +298,7 @@ namespace xdp {
     }
   }
 
-  void DeviceOffloadPlugin::clearOffloader(uint32_t deviceId)
+  void DeviceOffloadPlugin::clearOffloader(uint64_t deviceId)
   {
     if(offloaders.find(deviceId) == offloaders.end()) {
       return;

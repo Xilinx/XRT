@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "xocl/core/platform.h"
 #include "xocl/core/device.h"
 

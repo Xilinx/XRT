@@ -35,6 +35,11 @@
 #include "core/common/time.h"
 #include "core/common/config_reader.h"
 
+#ifdef _WIN32
+/* Disable warning for use of localtime */
+#pragma warning(disable : 4996)
+#endif
+
 namespace xdp {
 
   OpenCLSummaryWriter::OpenCLSummaryWriter(const char* filename)
@@ -407,9 +412,9 @@ namespace xdp {
       std::string globalWorkGroup = (std::get<2>(stat.first)) ;
 
       double averageTime = (stat.second).averageTime ;
-      double totalTime   = (stat.second).totalTime ;
-      double minTime     = (stat.second).minTime ;
-      double maxTime     = (stat.second).maxTime ;
+      double totalTime   = static_cast<double>((stat.second).totalTime) ;
+      double minTime     = static_cast<double>((stat.second).minTime) ;
+      double maxTime     = static_cast<double>((stat.second).maxTime) ;
       uint64_t execCount = (stat.second).numExecutions ;
 
       // Temporarily, just strip away the _# of the compute unit to get
@@ -1900,7 +1905,7 @@ namespace xdp {
     }
   }
 
-  void OpenCLSummaryWriter::guidanceKernelBufferInfo(OpenCLSummaryWriter* t)
+  void OpenCLSummaryWriter::guidanceKernelBufferInfo(OpenCLSummaryWriter* /*t*/)
   {
     // This reports the memory bank, argument, alignment, and size of 
     //  each buffer.
@@ -1914,7 +1919,7 @@ namespace xdp {
     */
   }
 
-  void OpenCLSummaryWriter::guidanceTraceBufferFull(OpenCLSummaryWriter* t)
+  void OpenCLSummaryWriter::guidanceTraceBufferFull(OpenCLSummaryWriter* /*t*/)
   {
     // TODO
     // This has a race condition.  If we are dumping profile summary 

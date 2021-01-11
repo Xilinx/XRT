@@ -82,7 +82,7 @@ namespace xdp {
 
     virtual void broadcast(VPDatabase::MessageType msg, void* blob) ;
 
-    void clearOffloader(uint32_t deviceId);
+    void clearOffloader(uint64_t deviceId);
     void clearOffloaders();
   } ;
 

@@ -36,7 +36,7 @@ namespace xdp {
     uint64_t binaryName ; // string
     uint64_t kernelName ; // string
     uint64_t workgroupConfiguration ; // string
-    int workgroupSize ;
+    size_t workgroupSize ;
 
     std::string identifier ;
 
@@ -44,7 +44,7 @@ namespace xdp {
   public:
     XDP_EXPORT KernelEnqueue(uint64_t s_id, double ts, 
 			     uint64_t dName, uint64_t bName, uint64_t kName,
-			     uint64_t wgc, int wgs,
+			     uint64_t wgc, size_t wgs,
 			     const char* enqueueId) ;
 
     XDP_EXPORT ~KernelEnqueue() ;
