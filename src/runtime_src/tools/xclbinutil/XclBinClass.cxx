@@ -395,7 +395,8 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName,
   // Close file
   ofXclBin.close();
 
-  std::cout << XUtil::format("Successfully wrote (%ld bytes) to the output file: %s", m_xclBinHeader.m_header.m_length, _binaryFileName.c_str()).c_str() << std::endl;
+  XUtil::QUIET(XUtil::format("Successfully wrote (%ld bytes) to the output file: %s", 
+                             m_xclBinHeader.m_header.m_length, _binaryFileName.c_str()));
 }
 
 
@@ -681,10 +682,10 @@ XclBin::removeSection(const std::string & _sSectionToRemove)
     indexEntry = "[" + sectionIndexName + "]";
   }
 
-  std::cout << std::endl << XUtil::format("Section '%s%s'(%d) was successfully removed",
-                                          _sSectionToRemove.c_str(), 
-                                          indexEntry.c_str(),
-                                          _eKind) << std::endl;
+  XUtil::QUIET("");
+  XUtil::QUIET(XUtil::format("Section '%s%s'(%d) was successfully removed",
+                             _sSectionToRemove.c_str(), indexEntry.c_str(),
+                             _eKind));
 }
 
 
@@ -723,10 +724,11 @@ XclBin::replaceSection(ParameterSectionData &_PSD)
   pSection->setName(sBaseName);
 
   XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
-                                          pSection->getSectionKindAsString().c_str(), pSection->getSectionKind(),
-                                          pSection->getSize(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()).c_str() << std::endl;
+  XUtil::QUIET("");
+  XUtil::QUIET(XUtil::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
+                             pSection->getSectionKindAsString().c_str(), pSection->getSectionKind(),
+                             pSection->getSize(),
+                             _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()));
 }
 
 void
@@ -863,12 +865,13 @@ XclBin::addSubSection(ParameterSectionData &_PSD)
     optionalIndex = XUtil::format("[%s]", pSection->getSectionIndexName().c_str());
   }
 
-  std::cout << std::endl << XUtil::format("Section: '%s%s-%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
-                                          sSectionAddedName.c_str(), 
-                                          optionalIndex.c_str(),
-                                          sSubSection.c_str(), pSection->getSectionKind(),
-                                          pSection->getSize(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()).c_str() << std::endl;
+  XUtil::QUIET("");
+  XUtil::QUIET(XUtil::format("Section: '%s%s-%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
+                             sSectionAddedName.c_str(), 
+                             optionalIndex.c_str(),
+                             sSubSection.c_str(), pSection->getSectionKind(),
+                             pSection->getSize(),
+                             _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()));
 }
 
 
@@ -928,10 +931,11 @@ XclBin::addSection(ParameterSectionData &_PSD)
       && (_PSD.getFormatType() == Section::FT_RAW));
 
   if ((!bAllowZeroSize) && (pSection->getSize() == 0)) {
-    std::cout << std::endl << XUtil::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'", 
-                                          pSection->getSectionKindAsString().c_str(), 
-                                          pSection->getSectionKind(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()).c_str() << std::endl;
+    XUtil::QUIET("");
+    XUtil::QUIET(XUtil::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'", 
+                               pSection->getSectionKindAsString().c_str(), 
+                               pSection->getSectionKind(),
+                               _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()));
     delete pSection;
     pSection = nullptr;
     return;
@@ -943,10 +947,11 @@ XclBin::addSection(ParameterSectionData &_PSD)
   std::string sSectionAddedName = pSection->getSectionKindAsString();
 
   XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", sSectionAddedName.c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
-                                          sSectionAddedName.c_str(), pSection->getSectionKind(),
-                                          pSection->getSize(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()).c_str() << std::endl;
+  XUtil::QUIET("");
+  XUtil::QUIET(XUtil::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
+                             sSectionAddedName.c_str(), pSection->getSectionKind(),
+                             pSection->getSize(),
+                             _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()));
 }
 
 
@@ -1010,10 +1015,11 @@ XclBin::addSections(ParameterSectionData &_PSD)
     pSection = Section::createSectionObjectOfKind(eKind);
     pSection->readJSONSectionImage(pt);
     if (pSection->getSize() == 0) {
-      std::cout << std::endl << XUtil::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'", 
-                                            pSection->getSectionKindAsString().c_str(), 
-                                            pSection->getSectionKind(),
-                                            _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()).c_str() << std::endl;
+      XUtil::QUIET("");
+      XUtil::QUIET(XUtil::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'", 
+                                 pSection->getSectionKindAsString().c_str(), 
+                                 pSection->getSectionKind(),
+                                 _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()));
       delete pSection;
       pSection = nullptr;
       continue;
@@ -1021,10 +1027,11 @@ XclBin::addSections(ParameterSectionData &_PSD)
     addSection(pSection);
     updateHeaderFromSection(pSection);
     XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-    std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nFormat : %s\nFile   : '%s'", 
-                                          pSection->getSectionKindAsString().c_str(), 
-                                          pSection->getSectionKind(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()).c_str() << std::endl;
+    XUtil::QUIET("");
+    XUtil::QUIET(XUtil::format("Section: '%s'(%d) was successfully added.\nFormat : %s\nFile   : '%s'", 
+                               pSection->getSectionKindAsString().c_str(), 
+                               pSection->getSectionKind(),
+                               _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()));
   }
 }
 
@@ -1104,10 +1111,11 @@ XclBin::appendSections(ParameterSectionData &_PSD)
 
 
     XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully appended to.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-    std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully appended to.\nFormat : %s\nFile   : '%s'", 
-                                          pSection->getSectionKindAsString().c_str(), 
-                                          pSection->getSectionKind(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()).c_str() << std::endl;
+    XUtil::QUIET("");
+    XUtil::QUIET(XUtil::format("Section: '%s'(%d) was successfully appended to.\nFormat : %s\nFile   : '%s'", 
+                               pSection->getSectionKindAsString().c_str(), 
+                               pSection->getSectionKind(),
+                               _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()));
   }
 }
 
@@ -1168,10 +1176,11 @@ XclBin::dumpSubSection(ParameterSectionData &_PSD)
 
   pSection->dumpSubSection(oDumpFile, sSubSection, _PSD.getFormatType());
   XUtil::TRACE(XUtil::format("Section '%s' (%d) dumped.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'", 
-                                          pSection->getSectionKindAsString().c_str(), 
-                                          pSection->getSectionKind(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
+  XUtil::QUIET("");
+  XUtil::QUIET(XUtil::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'", 
+                             pSection->getSectionKindAsString().c_str(), 
+                             pSection->getSectionKind(),
+                             _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()));
 }
 
 
@@ -1226,10 +1235,11 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
 
   pSection->dumpContents(oDumpFile, _PSD.getFormatType());
   XUtil::TRACE(XUtil::format("Section '%s' (%d) dumped.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'", 
-                                          pSection->getSectionKindAsString().c_str(), 
-                                          pSection->getSectionKind(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
+  XUtil::QUIET("");
+  XUtil::QUIET(XUtil::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'", 
+                             pSection->getSectionKindAsString().c_str(), 
+                             pSection->getSectionKind(),
+                             _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()));
 }
 
 void 
@@ -1260,7 +1270,7 @@ XclBin::dumpSections(ParameterSectionData &_PSD)
         boost::property_tree::ptree pt;
         for (auto pSection : m_sections) {
           std::string sectionName = pSection->getSectionKindAsString();
-          std::cout << "Examining: '" + sectionName << std::endl;
+          XUtil::TRACE(std::string("Examining: '") + sectionName + "'");
           pSection->getPayload(pt);
         }
 
@@ -1276,8 +1286,9 @@ XclBin::dumpSections(ParameterSectionData &_PSD)
       break;
   }
 
-  std::cout << std::endl << XUtil::format("Successfully wrote all of sections which support the format '%s' to the file: '%s'", 
-                                          _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
+  XUtil::QUIET("");
+  XUtil::QUIET(XUtil::format("Successfully wrote all of sections which support the format '%s' to the file: '%s'", 
+                             _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()));
 }
 
 std::string
@@ -1432,7 +1443,7 @@ XclBin::setKeyValue(const std::string & _keyValue)
       if (keyvalue.get<std::string>("key") == sKey) {
          keyvalue.put("value", sValue);
          bKeyFound = true;
-         std::cout << "Updating key '" + sKey + "' to '" + sValue + "'" << std::endl;
+         XUtil::QUIET(std::string("Updating key '") + sKey + "' to '" + sValue + "'");
          break;
       }
     }
@@ -1443,7 +1454,7 @@ XclBin::setKeyValue(const std::string & _keyValue)
       keyValue.put("key", sKey);
       keyValue.put("value", sValue);
       keyValues.push_back(keyValue);
-      std::cout << "Creating new key '" + sKey + "' with the value '" + sValue + "'" << std::endl;
+      XUtil::QUIET(std::string("Creating new key '") + sKey + "' with the value '" + sValue + "'");
     }
 
     // Now create a new tree to add back into the section
@@ -1491,7 +1502,7 @@ XclBin::removeKey(const std::string & _sKey)
    for (unsigned int index = 0; index < keyValues.size(); ++index) {
       if (keyValues[index].get<std::string>("key") == _sKey) {
          bKeyFound = true;
-         std::cout << "Removing key '" + _sKey + "'" << std::endl;
+         XUtil::QUIET(std::string("Removing key '") + _sKey + "'");
          keyValues.erase(keyValues.begin() + index);
          break;
       }
