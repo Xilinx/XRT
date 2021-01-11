@@ -301,7 +301,6 @@ namespace hwemu {
 
             uint32_t   intr_base;
             uint32_t   intr_num;
-            bool	   needs_reset;
 
             uint32_t   uid;
             uint32_t   num_cus;

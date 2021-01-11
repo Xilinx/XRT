@@ -236,7 +236,6 @@ namespace hwemu {
         cu_bitmap.set(cuidx);
     }
 
-
     /*****************************************************
      * xocl_cu member functions
      *****************************************************/
@@ -244,6 +243,18 @@ namespace hwemu {
     xocl_cu::xocl_cu(HwEmShim* dev)
     {
         this->xdevice = dev;
+        this->error = false;
+        this->idx = 0;
+        this->uid = 0;
+        this->control = 0;
+        this->dataflow = 0;
+        this->base = 0;
+        this->addr = 0;
+        this->polladdr = 0;
+        this->ap_check = 0;
+        this->ctrlreg = 0;
+        this->done_cnt = 0;
+        this->run_cnt = 0;
     }
 
     void xocl_cu::cu_init(unsigned int idx, uint64_t base, uint64_t addr, uint64_t polladdr)
@@ -251,7 +262,7 @@ namespace hwemu {
         this->error = false;
         this->idx = idx;
         this->control = (addr & 0x7); // bits [2-0]
-        this->dataflow = (addr & 0x7) == AP_CHAIN;
+        this->dataflow = 0;
         this->base = base;
         this->addr = addr & ~0xff;  // clear encoded handshake and context
         this->polladdr = polladdr;
@@ -260,7 +271,6 @@ namespace hwemu {
         this->done_cnt = 0;
         this->run_cnt = 0;
     }
-
 
     uint64_t xocl_cu::cu_base_addr()
     {
@@ -477,6 +487,13 @@ namespace hwemu {
         this->num_slots = 0;
         this->slot_size = 0;
         this->cq_intr = false;
+        this->uid = 0;
+        this->cq_size = 0;
+        this->ctrl_busy = false;
+        this->version = 0;
+        for (uint32_t idx = 0; idx < MAX_SLOTS; ++idx) {
+            this->command_queue[idx] = NULL;
+        }
     }
 
     xocl_ert::~xocl_ert()
@@ -1151,19 +1168,19 @@ namespace hwemu {
      */
     int exec_core::exec_execute_copybo_cmd(xocl_cmd *xcmd)
     {
+#if 0
         SCHED_DEBUGF("-> %s\n", __func__);
         int ret = 0;
-        assert(false);
-#if 0
         struct ert_start_copybo_cmd *ecmd = xcmd->ert_cp;
         struct drm_file *filp = (struct drm_file *)ecmd->arg;
         struct drm_device *ddev = filp->minor->dev;
 
         SCHED_DEBUGF("-> %s(%d,%lu)\n", __func__, this->uid, xcmd->uid);
         ret = xocl_copy_import_bo(ddev, filp, ecmd);
-#endif
         SCHED_DEBUGF("<- %s\n", __func__);
         return ret == 0 ? 0 : 1;
+#endif
+        return 0;
     }
 
     /*
@@ -1796,10 +1813,12 @@ namespace hwemu {
             if ((min_load_count = load_count) == 0)
                 break;
         }
-
-        this->pending_cu_queue[cuidx].push(xcmd);
-        xcmd->set_cu(cuidx);
-        ++this->cu_load_count[cuidx];
+        
+        if (cuidx < MAX_CUS) {
+          this->pending_cu_queue[cuidx].push(xcmd);
+          xcmd->set_cu(cuidx);
+          ++this->cu_load_count[cuidx];
+        }
         SCHED_DEBUGF("<- %s cuidx(%d) load(%d)\n", __func__, cuidx, this->cu_load_count[cuidx]);
         return true;
     }
@@ -1997,6 +2016,7 @@ namespace hwemu {
             scheduler_thread->join(); //! Wait untill scheduler_thread exits
         }
 
+        delete exec;
         SCHED_DEBUGF("scheduler_thread exited\n");
     }
 
