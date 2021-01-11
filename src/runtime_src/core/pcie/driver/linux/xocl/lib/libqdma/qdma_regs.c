@@ -503,11 +503,11 @@ int qdma_device_attributes_get(struct xlnx_dma_dev *xdev)
 				MISC_CAP_FLR_PRESENT_MASK) >>
 				MISC_CAP_FLR_PRESENT_SHIFT;
 
-	v1 = __read_reg(xdev, QDMA_REG_GLBL_MDMA_CHANNEL);
-	mm_c2h_flag = (v1 & MDMA_CHANNEL_MM_C2H_ENABLED_MASK) ? 1 : 0;
-	mm_h2c_flag = (v1 & MDMA_CHANNEL_MM_H2C_ENABLED_MASK) ? 1 : 0;
-	st_c2h_flag = (v1 & MDMA_CHANNEL_ST_C2H_ENABLED_MASK) ? 1 : 0;
-	st_h2c_flag = (v1 & MDMA_CHANNEL_ST_H2C_ENABLED_MASK) ? 1 : 0;
+	v1 = __read_reg(xdev, QDMA_REG_GLBL_STRM_CHANNEL);
+	mm_c2h_flag = (v1 & STRM_CHANNEL_MM_C2H_ENABLED_MASK) ? 1 : 0;
+	mm_h2c_flag = (v1 & STRM_CHANNEL_MM_H2C_ENABLED_MASK) ? 1 : 0;
+	st_c2h_flag = (v1 & STRM_CHANNEL_ST_C2H_ENABLED_MASK) ? 1 : 0;
+	st_h2c_flag = (v1 & STRM_CHANNEL_ST_H2C_ENABLED_MASK) ? 1 : 0;
 
 	xdev->mm_mode_en = (mm_c2h_flag && mm_h2c_flag) ? 1 : 0;
 	xdev->st_mode_en = (st_c2h_flag && st_h2c_flag) ? 1 : 0;
