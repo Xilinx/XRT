@@ -22,9 +22,10 @@
 
 
 #include <iostream>
+#include <cstdlib>
 
 #ifdef _WIN32
-#pragma warning ( disable : 4267 4245 )
+#pragma warning ( disable : 4267 4245 4996 )
 #endif
 
 namespace {
