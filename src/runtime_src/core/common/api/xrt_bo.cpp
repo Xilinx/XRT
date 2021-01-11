@@ -76,7 +76,7 @@ get_alignment()
 }
 
 inline  bool
-is_aligned_ptr(void* p)
+is_aligned_ptr(const void* p)
 {
   return p && (reinterpret_cast<uintptr_t>(p) % get_alignment())==0;
 }
@@ -703,6 +703,18 @@ is_imported(const xrt::bo& bo)
 {
   const auto& boh = bo.get_handle();
   return boh->is_imported();
+}
+
+bool
+is_aligned_ptr(const void* ptr)
+{
+  return ::is_aligned_ptr(ptr);
+}
+
+size_t
+alignment()
+{
+  return ::get_alignment();
 }
 
 }} // namespace bo, xrt_core
