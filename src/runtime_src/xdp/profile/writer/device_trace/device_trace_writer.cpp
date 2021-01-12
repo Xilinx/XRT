@@ -17,6 +17,7 @@
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/device_events.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
 
@@ -40,10 +41,16 @@ namespace xdp {
   void DeviceTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
+    std::string targetRun;
+    if(xdp::getFlowMode() == xdp::HW) {
+      targetRun = "System Run";
+    } else if(xdp::getFlowMode() == xdp::HW_EMU) {
+      targetRun = "Hardware Emulation";
+    }
     fout << "XRT  Version," << xrtVersion  << std::endl
          << "Tool Version," << toolVersion << std::endl
          << "Platform," << (db->getStaticInfo()).getDeviceName(deviceId) << std::endl
-         << "Target,System Run" << std::endl;    // hardcoded for now
+         << "Target," << targetRun << std::endl;
   }
 
   // This function writes the portion of the structure that is true for
@@ -107,14 +114,15 @@ namespace xdp {
 	 << ",Executions,Execution in accelerator " 
 	 << cu->getName() << std::endl;
 
-    // Only for HW EMU : check later
-    size_t pos = xclbin->name.find('.');
-    fout << "Optional_Function_Internal,User Functions,Function activity in accelerator " << cu->getName() 
-         << "," << rowCount
-         << "," << (db->getStaticInfo()).getDeviceName(deviceId) << "-0"
-         << "," << xclbin->name.substr(0, pos)
-         << "," << cu->getKernelName()
-         << "," << cu->getName() << std::endl;
+    if(xdp::getFlowMode() == xdp::HW_EMU) {
+      size_t pos = xclbin->name.find('.');
+      fout << "Optional_Function_Internal,User Functions,Function activity in accelerator " << cu->getName() 
+           << "," << rowCount
+           << "," << (db->getStaticInfo()).getDeviceName(deviceId) << "-0"
+           << "," << xclbin->name.substr(0, pos)
+           << "," << cu->getKernelName()
+           << "," << cu->getName() << std::endl;
+    }
 
     std::pair<XclbinInfo*, int32_t> index =
       std::make_pair(xclbin, cu->getIndex()) ;
