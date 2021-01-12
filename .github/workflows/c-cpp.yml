@@ -22,16 +22,8 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: xrt-deb
-        path: build/Release/xrt_*xrt.deb
-  archive:
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
-    - name: Archive production artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: deb
         path: build/Release/xrt_*.deb
+
   install:
     runs-on: ubuntu-latest
     needs: [build]
