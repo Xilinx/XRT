@@ -571,7 +571,7 @@ int qdma_trq_c2h_config(struct xlnx_dma_dev *xdev)
 					QDMA_C2H_PFCH_CFG_EVT_QCNT_TH_SHIFT);
 	__write_reg(xdev, QDMA_C2H_PFCH_CFG, reg);
 
-	cpml_coal_depth = __read_reg(xdev, QDMA_C2H_CMPT_COAL_BUF_DEPTH);
+	cpml_coal_depth = __read_reg(xdev, QDMA_C2H_CMPT_COAL_BUF_DEPTH) - 2;
 	reg = (cpml_coal_depth << QDMA_C2H_CMPT_COAL_CFG_MAX_BUF_SZ_SHIFT) |
 			(25 << QDMA_C2H_CMPT_COAL_CFG_TICK_VAL_SHIFT) |
 			(5 << QDMA_C2H_CMPT_COAL_CFG_TICK_CNT_SHIFT);
