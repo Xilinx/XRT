@@ -293,9 +293,10 @@ namespace xdp {
       { return commandQueuesAreOOO ; }
     inline void setCommandQueueOOO(uint64_t cq, bool value)
       { commandQueuesAreOOO[cq] = value ; }
-    uint64_t getDeviceActiveTime(const std::string& deviceName) ;
+    XDP_EXPORT uint64_t getDeviceActiveTime(const std::string& deviceName) ;
 
     // Functions specific to compute unit executions
+    XDP_EXPORT
     std::vector<std::pair<std::string, TimeStatistics>> 
     getComputeUnitExecutionStats(const std::string& cuName) ;
 

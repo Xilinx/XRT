@@ -208,7 +208,7 @@ namespace xdp {
 	continue;
       }
 
-      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, i) ;
+      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i)) ;
       aimBucketIdMap[index] = ++rowCount;
       fout << "Group_Start," << aim->name  << " AXI Memory Monitor,Read/Write data transfers over AXI Memory Mapped " << aim->name << std::endl;
       fout << "Static_Row,"  << rowCount   << ",Read transfers,Read transfers for "  << aim->name << std::endl;
@@ -238,7 +238,7 @@ namespace xdp {
 	continue;
       }
 
-      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, i) ;
+      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i)) ;
       asmBucketIdMap[index] = ++rowCount;
       fout << "Group_Start," << asM->name  << " AXI Stream Monitor,Read/Write data transfers over AXI Stream " << asM->name << std::endl;
       fout << "Static_Row,"  << rowCount   << ",Stream Port,AXI Stream Read/Write transaction over " << asM->name << std::endl;
@@ -294,9 +294,23 @@ namespace xdp {
       if (XCLBIN_END == eventType) {
 	// If we hit the end of an xclbin's execution, then increment xclbins
 	xclbin = loadedXclbins[++xclbinIndex] ;
-      } else if(KERNEL == eventType || KERNEL_STALL_EXT_MEM == eventType
-                                    || KERNEL_STALL_DATAFLOW == eventType
-                                    || KERNEL_STALL_PIPE == eventType) {
+      } else if (KERNEL == eventType) {
+	KernelEvent* kernelEvent = dynamic_cast<KernelEvent*>(deviceEvent) ;
+	std::pair<XclbinInfo*, int32_t> index =
+	  std::make_pair(xclbin, cuId) ;
+	kernelEvent->dump(fout, cuBucketIdMap[index] + eventType - KERNEL) ;
+	// Also output the tool tips
+	for (auto iter : xclbin->cus) {
+	  ComputeUnitInstance* cu = iter.second ;
+	  if (cu->getAccelMon() == cuId) {
+	    fout << "," << db->getDynamicInfo().addString(cu->getKernelName());
+	    fout << "," << db->getDynamicInfo().addString(cu->getName());
+	  }
+	}
+	fout << std::endl ;
+      } else if(KERNEL_STALL_EXT_MEM == eventType
+		|| KERNEL_STALL_DATAFLOW == eventType
+		|| KERNEL_STALL_PIPE == eventType) {
 	std::pair<XclbinInfo*, int32_t> index =
 	  std::make_pair(xclbin, cuId) ;
         deviceEvent->dump(fout, cuBucketIdMap[index] + eventType - KERNEL);
@@ -334,6 +348,8 @@ namespace xdp {
 
   void DeviceTraceWriter::write(bool openNewFile)
   {
+    initialize() ;
+
     writeHeader() ;
     fout << std::endl ;
     writeStructure() ;
@@ -346,6 +362,20 @@ namespace xdp {
     fout << std::endl ;
 
     if (openNewFile) switchFiles() ;
+  }
+
+  void DeviceTraceWriter::initialize()
+  {
+    std::vector<XclbinInfo*> loadedXclbins =
+      (db->getStaticInfo()).getLoadedXclbins(deviceId) ;
+
+    for (auto xclbin : loadedXclbins) {
+      for (auto iter : xclbin->cus) {
+	ComputeUnitInstance* cu = iter.second ;
+	db->getDynamicInfo().addString(cu->getKernelName()) ;
+	db->getDynamicInfo().addString(cu->getName()) ;
+      }
+    }
   }
 
 } // end namespace xdp

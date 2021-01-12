@@ -14,11 +14,18 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "xocl/core/platform.h"
 #include "xocl/core/device.h"
 
 #include "xdp/profile/plugin/opencl/counters/opencl_counters_plugin.h"
 #include "xdp/profile/writer/opencl/opencl_summary_writer.h"
+
+#ifdef _WIN32
+/* Disable warning for use of std::getenv */
+#pragma warning (disable : 4996)
+#endif
 
 namespace xdp {
 

@@ -149,18 +149,56 @@ namespace xdp {
     fout << "DEPENDENCIES" << std::endl ;
     std::map<uint64_t, std::vector<uint64_t>> dependencies = 
       (db->getDynamicInfo()).getDependencyMap() ;
+
+    collapseDependencyChains(dependencies) ;
+
     for (auto dependency : dependencies)
     {
-      // Dependency is a map from XRT event ID to a vector of XRT event IDs
       for (auto dependent : dependency.second)
       {
-	uint64_t firstValue = 
+	// We have logged all of the dependencies of XRT side events.
+	//  There is the possibility that these events don't correspond to
+	//  any XDP event that we have logged.  We should just ignore those
+	//  dependencies.
+	std::pair<uint64_t, uint64_t> firstValue =
 	  (db->getDynamicInfo()).lookupOpenCLMapping(dependency.first) ;
-	uint64_t secondValue = 
+	std::pair<uint64_t, uint64_t> secondValue =
 	  (db->getDynamicInfo()).lookupOpenCLMapping(dependent) ;
 
-	if (firstValue != 0 && secondValue != 0)
-	  fout << firstValue << "," << secondValue << std::endl ;
+	// We are specifying where arrows appear in the final visualization
+	//  between two transactions.  There are four separate events,
+	//  we need to output the end event ID of the first transaction
+	//  followed by the start event ID of the second transaction.
+	if (firstValue.second != 0 && secondValue.first != 0)
+	  fout << secondValue.first << "," << firstValue.second << std::endl ;
+      }
+    }
+  }
+
+  void OpenCLTraceWriter::collapseDependencyChains(std::map<uint64_t, std::vector<uint64_t>>& dependencies)
+  {
+    // The purpose of this function is to collapse dependency chains such
+    //  as 3->4 and 4->5 to 3->5 when we do not have any mapping for 4
+
+    std::pair<uint64_t, uint64_t> zero = std::make_pair(0, 0) ;
+
+    for (auto iter : dependencies) {
+      auto xrtID = iter.first ;
+
+      std::pair<uint64_t, uint64_t> mapping =
+	(db->getDynamicInfo()).lookupOpenCLMapping(xrtID) ;
+      if (mapping == zero)
+	continue ;
+
+      // If we are here, then we know the first ID does have a mapping to XDP
+      for (auto dependentID : iter.second) {
+	std::pair<uint64_t, uint64_t> depMapping =
+	  (db->getDynamicInfo()).lookupOpenCLMapping(dependentID) ;
+	if (depMapping == zero) {
+	  for (auto chainedID : dependencies[dependentID]) {
+	    dependencies[xrtID].push_back(chainedID) ;
+	  }
+	}
       }
     }
   }

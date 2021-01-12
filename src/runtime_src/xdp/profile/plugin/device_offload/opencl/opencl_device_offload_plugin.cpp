@@ -42,7 +42,7 @@ namespace {
   {
     std::string memoryName = "" ;
     try {
-      uint64_t index = (uint64_t)(std::stoi(arg_id)) ;
+      unsigned int index = (unsigned int)(std::stoi(arg_id)) ;
       auto memidx_mask = cu->get_memidx(index) ;
       for (unsigned int memidx = 0 ; memidx < memidx_mask.size() ; ++memidx)
       {
@@ -198,14 +198,15 @@ namespace xdp {
     std::string path = debugIPLayoutPath(device) ;
 
     uint64_t deviceId = 0;
-    if(getFlowMode() == HW && (xrt_core::config::get_timeline_trace() || 
-          xrt_core::config::get_data_transfer_trace() != "off" ||
-          xrt_core::config::get_stall_trace()  != "off" ||
-          xrt_core::config::get_device_trace() != "off")) {
+    if((getFlowMode() == HW || getFlowMode() == HW_EMU) && 
+       (xrt_core::config::get_timeline_trace() || 
+	xrt_core::config::get_data_transfer_trace() != "off" ||
+	xrt_core::config::get_stall_trace()  != "off" ||
+	xrt_core::config::get_device_trace() != "off")) {
       try {
         deviceId = db->getDeviceId(path) ;
       }
-      catch(std::exception& e) {
+      catch(std::exception& /*e*/) {
         // This is the first time we encountered this particular device
         addDevice(path) ;
       }
@@ -230,7 +231,7 @@ namespace xdp {
         devInterface->setDevice(new XrtDevice(device)) ;
         devInterface->readDebugIPlayout() ;
       }
-      catch(std::exception& e)
+      catch(std::exception& /*e*/)
       {
         // Read debug IP Layout could throw an exception
         delete devInterface ;

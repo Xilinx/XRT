@@ -90,8 +90,7 @@ queue(event* ev)
   }
 
   if (ooo) {
-    for (auto b: m_barriers)
-    {
+    for (auto b: m_barriers) {
       b->chain(ev);
       xocl::profile::log_dependency(ev->get_uid(), b->get_uid()) ;
     }

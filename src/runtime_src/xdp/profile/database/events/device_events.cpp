@@ -66,6 +66,12 @@ namespace xdp {
   {
   }
 
+  void KernelEvent::dump(std::ofstream& fout, uint32_t bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    // Don't dump endline.  The writer will add tool tips for this event type
+  }
+
   KernelStall::KernelStall(uint64_t s_id, double ts, VTFEventType ty,
                            uint64_t devId, uint32_t monId, int32_t cuIdx)
              : KernelEvent(s_id, ts, ty, devId, monId, cuIdx),

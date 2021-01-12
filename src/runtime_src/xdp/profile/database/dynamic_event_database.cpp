@@ -228,10 +228,19 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addOpenCLMapping(uint64_t openclID,
-					   uint64_t eventID)
+					   uint64_t eventID,
+					   uint64_t startID)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
-    openclEventMap[openclID] = eventID ;
+    openclEventMap[openclID] = std::make_pair(eventID, startID) ;
+  }
+
+  std::pair<uint64_t, uint64_t>
+  VPDynamicDatabase::lookupOpenCLMapping(uint64_t openclID)
+  {
+    if (openclEventMap.find(openclID) == openclEventMap.end())
+      return std::make_pair(0, 0) ;
+    return openclEventMap[openclID] ;
   }
 
   void VPDynamicDatabase::addDependencies(uint64_t eventID,

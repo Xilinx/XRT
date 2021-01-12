@@ -65,6 +65,7 @@ namespace xdp {
     (db->getDynamicInfo()).addEvent(event) ;
   }
 
+  // The XRT event "id" cannot start until the XRT event "dependency" has ended
   static void add_dependency(uint64_t id, uint64_t dependency)
   {
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -77,8 +78,8 @@ namespace xdp {
 			  const char* memoryResource,
 			  size_t bufferSize,
 			  bool isP2P,
-			  unsigned long long int* dependencies,
-			  uint64_t numDependencies)
+			  unsigned long long int* /*dependencies*/,
+			  uint64_t /*numDependencies*/)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -96,18 +97,18 @@ namespace xdp {
 			       bufferSize) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
-    (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId()) ;
     if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
-
-    if (dependencies != nullptr && numDependencies > 0)
-    {
-      std::vector<uint64_t> dependentEvents ;
-      for (uint32_t i = 0 ; i < numDependencies ; ++i)
-      {
-	dependentEvents.push_back(static_cast<uint64_t>(dependencies[i])) ;
-      }
-      (db->getDynamicInfo()).addDependencies(id, dependentEvents);
+    else {
+      (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }
+
+    /*
+    if (dependencies != nullptr && numDependencies > 0) {
+      for (uint32_t i = 0 ; i < numDependencies ; ++i) {
+	(db->getDynamicInfo()).addDependency(static_cast<uint64_t>(dependencies[i]), id) ;
+      }
+    }
+    */
   }
 
   static void action_write(uint64_t id,
@@ -116,8 +117,8 @@ namespace xdp {
 			   const char* memoryResource,
 			   size_t bufferSize,
 			   bool isP2P,
-			   unsigned long long int* dependencies,
-			   uint64_t numDependencies)
+			   unsigned long long int* /*dependencies*/,
+			   uint64_t /*numDependencies*/)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -135,18 +136,18 @@ namespace xdp {
 			       bufferSize) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
-    (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId()) ;
     if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
-
-    if (dependencies != nullptr && numDependencies > 0)
-    {
-      std::vector<uint64_t> dependentEvents ;
-      for (uint32_t i = 0 ; i < numDependencies ; ++i)
-      {
-	dependentEvents.push_back(static_cast<uint64_t>(dependencies[i])) ;
-      }
-      (db->getDynamicInfo()).addDependencies(id, dependentEvents);
+    else {
+      (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }
+
+    /*
+    if (dependencies != nullptr && numDependencies > 0) {
+      for (uint32_t i = 0 ; i < numDependencies ; ++i) {
+	(db->getDynamicInfo()).addDependency(static_cast<uint64_t>(dependencies[i]), id) ;
+      }
+    }
+    */
   }
 
   static void action_copy(uint64_t id,
@@ -157,8 +158,8 @@ namespace xdp {
 			  const char* dstMemoryResource,
 			  size_t bufferSize,
 			  bool isP2P,
-			  unsigned long long int* dependencies,
-			  uint64_t numDependencies)
+			  unsigned long long int* /*dependencies*/,
+			  uint64_t /*numDependencies*/)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -178,19 +179,18 @@ namespace xdp {
 			   bufferSize) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
-    (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId()) ;
     if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
-
-    if (dependencies != nullptr && numDependencies > 0)
-    {
-      std::vector<uint64_t> dependentEvents ;
-      for (uint32_t i = 0 ; i < numDependencies ; ++i)
-      {
-	dependentEvents.push_back(static_cast<uint64_t>(dependencies[i])) ;
-      }
-      (db->getDynamicInfo()).addDependencies(id, 
-					     dependentEvents);
+    else {
+      (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }
+
+    /*
+    if (dependencies != nullptr && numDependencies > 0) {
+      for (uint32_t i = 0 ; i < numDependencies ; ++i) {
+	(db->getDynamicInfo()).addDependency(static_cast<uint64_t>(dependencies[i]), id) ;
+      }
+    }
+    */
   }
   
   static void action_ndrange(uint64_t id,
@@ -202,8 +202,8 @@ namespace xdp {
 			     size_t workgroupConfigurationY,
 			     size_t workgroupConfigurationZ,
 			     size_t workgroupSize,
-			     unsigned long long int* dependencies,
-			     uint64_t numDependencies)
+			     unsigned long long int* /*dependencies*/,
+			     uint64_t /*numDependencies*/)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -237,19 +237,19 @@ namespace xdp {
 			enqueueIdentifier == "" ? nullptr : enqueueIdentifier.c_str()) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
-    (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId()) ;
-    if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
 
-    if (dependencies != nullptr && numDependencies > 0)
-    {
-      std::vector<uint64_t> dependentEvents ;
-      for (uint32_t i = 0 ; i < numDependencies ; ++i)
-      {
-	dependentEvents.push_back(static_cast<uint64_t>(dependencies[i])) ;
-      }
-      (db->getDynamicInfo()).addDependencies(id,
-					     dependentEvents);
+    if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
+    else {
+      (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }
+
+    /*
+    if (dependencies != nullptr && numDependencies > 0) {
+      for (uint32_t i = 0 ; i < numDependencies ; ++i) {
+	(db->getDynamicInfo()).addDependency(static_cast<uint64_t>(dependencies[i]), id) ;
+      }
+    }
+    */
   }
 
 } // end namespace xdp
