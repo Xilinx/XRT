@@ -25,6 +25,7 @@
 
 #include "core/common/memalign.h"
 #include "core/common/unistd.h"
+#include "core/common/api/bo.h"
 #include "core/include/experimental/xrt_bo.h"
 
 #include <map>
@@ -510,7 +511,7 @@ public:
     : memory(ctx,flags) ,m_size(sz), m_host_ptr(host_ptr)
   {
     // device is unknown so alignment requirement has to be hardwired
-    const size_t alignment = xrt_core::getpagesize();
+    const size_t alignment = xrt_core::bo::alignment();
 
     if (flags & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))
       // allocate sufficiently aligned memory and reassign m_host_ptr

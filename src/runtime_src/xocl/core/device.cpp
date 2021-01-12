@@ -25,6 +25,7 @@
 #include "xrt/scheduler/scheduler.h"
 #include "xrt/util/config_reader.h"
 
+#include "core/common/api/bo.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
@@ -195,6 +196,20 @@ init_scheduler(xocl::device* device)
 }
 
 namespace xocl {
+
+size_t
+device::
+get_alignment() const
+{
+  return xrt_core::bo::alignment();
+}
+
+bool
+device::
+is_aligned_ptr(const void* ptr) const
+{
+  return xrt_core::bo::is_aligned_ptr(ptr);
+}
 
 std::string
 device::
