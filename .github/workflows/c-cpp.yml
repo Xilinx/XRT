@@ -19,7 +19,7 @@ jobs:
 #     - name: XRT Build
 #       run: cd build && chmod +x build.sh ; ./build.sh
     - name: Download a deb file
-      run: mkdir -p build; apt-get install -y wget unzip; wget https://github.com/abalasa/XRT-1/suites/1796150837/artifacts/34424391; unzip deb.zip 
+      run: mkdir -p build; sudo apt-get install -y wget unzip; wget https://github.com/abalasa/XRT-1/suites/1796150837/artifacts/34424391; unzip deb.zip 
     - name: Stash files
       uses: actions/upload-artifact@v2
       with:
