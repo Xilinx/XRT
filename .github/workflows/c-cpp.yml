@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: XRT Build/Install Test CI
 
 on:
   push:
