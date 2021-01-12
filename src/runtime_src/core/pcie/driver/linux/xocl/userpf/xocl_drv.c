@@ -985,7 +985,6 @@ static int identify_bar_by_dts(struct xocl_dev *xdev)
 	struct pci_dev *pdev = xdev->core.pdev;
 	int ret;
 	int bar_id;
-	int i;
 	resource_size_t bar_len;
 
 	BUG_ON(!XOCL_DEV_HAS_DEVICE_TREE(xdev));
