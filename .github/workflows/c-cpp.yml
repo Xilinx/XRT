@@ -11,20 +11,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-#     - name: Install dependencies
-#       if: steps.cache-sha.outputs.cache-hit != 'true'
-#       run: |
-#         sudo apt update
-#         sudo src/runtime_src/tools/scripts/xrtdeps.sh
-#     - name: XRT Build
-#       run: cd build && chmod +x build.sh ; ./build.sh
-    - name: Download a deb file
-      run: mkdir -p build; wget --no-check-certificate https://download.teamviewer.com/download/linux/teamviewer_amd64.deb 
+    - name: Install dependencies
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      run: |
+        sudo apt update
+        sudo src/runtime_src/tools/scripts/xrtdeps.sh
+    - name: XRT Build
+      run: cd build && chmod +x build.sh ; ./build.sh
     - name: Stash files
       uses: actions/upload-artifact@v2
       with:
         name: xrt-deb
-        path: ./*.deb
+        path: build/Release/xrt_*xrt.deb
 #   archive:
 #     runs-on: ubuntu-latest
 #     needs: [build]
@@ -38,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     steps:
-      - name: Download math result for job 1
+      - name: Download XRT debs
         uses: actions/download-artifact@v2
         with:
           name: xrt-deb
