@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
   parser.parse(argc, argv);
 
   // Read settings
-  unsigned int dev_id = stoi(parser.value("device"));
+  std::string dev_id = parser.value("device");
 
   std::string test_path = argv[1];
 
@@ -81,26 +81,37 @@ int main(int argc, char **argv) {
   auto fileBuf = xcl::read_binary_file(binaryFile);
   cl::Program::Binaries bins{{fileBuf.data(), fileBuf.size()}};
 
-  if (dev_id >= devices.size()) {
-    std::cout << "The device_id provided using -d flag is outside the range of "
-                 "available devices\n";
-    return EXIT_FAILURE;
+  int found = dev_id.find(":");
+  cl::Device device;
+  if (found == -1) {
+    uint32_t device_index = stoi(dev_id);
+    if (device_index >= devices.size()) {
+      std::cout
+          << "The device_index provided using -d flag is outside the range of "
+             "available devices\n";
+      return EXIT_FAILURE;
+    }
+    device = devices[device_index];
+  } else {
+    if (xcl::is_emulation()) {
+      std::cout << "Device bdf is not supported for the emulation flow\n";
+      return EXIT_FAILURE;
+    }
+    device = xcl::find_device_bdf(dev_id);
   }
 
-  auto device = devices[dev_id];
   // Creating Context and Command Queue for selected Device
   OCL_CHECK(err,
             context = cl::Context(device, nullptr, nullptr, nullptr, &err));
   OCL_CHECK(err, q = cl::CommandQueue(context, device,
                                       CL_QUEUE_PROFILING_ENABLE, &err));
-  std::cout << "Trying to program device[" << dev_id
-            << "]: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
+  std::cout << "Trying to program device " << device.getInfo<CL_DEVICE_NAME>()
+            << std::endl;
   cl::Program program(context, {device}, bins, nullptr, &err);
   if (err != CL_SUCCESS) {
-    std::cout << "Failed to program device[" << dev_id
-              << "] with xclbin file!\n";
+    std::cout << "Failed to program device with xclbin file!\n";
   } else {
-    std::cout << "Device[" << dev_id << "]: program successful!\n";
+    std::cout << "Device program successful!\n";
     OCL_CHECK(err, krnl_verify = cl::Kernel(program, "verify", &err));
   }
 
@@ -123,4 +134,3 @@ int main(int argc, char **argv) {
   std::cout << "TEST PASSED\n";
   return 0;
 }
-

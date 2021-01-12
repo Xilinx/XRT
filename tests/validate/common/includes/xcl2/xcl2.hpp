@@ -1,18 +1,19 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+* Copyright (C) 2020 Xilinx, Inc
+*
+* Licensed under the Apache License, Version 2.0 (the "License"). You may
+* not use this file except in compliance with the License. A copy of the
+* License is located at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+* License for the specific language governing permissions and limitations
+* under the License.
+*/
+
 #pragma once
 
 #define CL_HPP_CL_1_2_DEFAULT_BUILD
@@ -88,6 +89,8 @@ template <typename T> struct aligned_allocator {
 namespace xcl {
 std::vector<cl::Device> get_xil_devices();
 std::vector<cl::Device> get_devices(const std::string &vendor_name);
+cl::Device find_device_bdf(const std::string & bdf);
+std::string convertSize(size_t size);
 std::vector<unsigned char>
 read_binary_file(const std::string &xclbin_file_name);
 bool is_emulation();
