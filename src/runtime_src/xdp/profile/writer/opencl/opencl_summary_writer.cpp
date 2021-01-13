@@ -575,12 +575,14 @@ namespace xdp {
 	uint64_t j = 0 ;      
 	for (auto cu : (xclbin->cus))
 	{
+          double deviceCyclesMsec = (double)(xclbin->clockRateMHz * 1000.0);
+
 	  fout << (cu.second)->getName()     << "," 
 	       << values.CuExecCount[j]      << ","
-	       << values.CuExecCycles[j]     << ","
-	       << values.CuStallIntCycles[j] << ","
-	       << values.CuStallExtCycles[j] << ","
-	       << values.CuStallStrCycles[j] << std::endl ;
+	       << (values.CuExecCycles[j] / deviceCyclesMsec)     << ","
+	       << (values.CuStallIntCycles[j] / deviceCyclesMsec) << ","
+	       << (values.CuStallExtCycles[j] / deviceCyclesMsec) << ","
+	       << (values.CuStallStrCycles[j] / deviceCyclesMsec) << std::endl ;
 	  ++j ;
 	}
       }
@@ -626,8 +628,10 @@ namespace xdp {
       }
       else
       {
-	double transferRate = 
-	  (double)((read.second).totalSize)/(double)((read.second).totalTime) ;
+        double totalTimeInS  = (double)((read.second).totalTime / 1e09);
+        double totalSizeInMB = (double)((read.second).totalSize / 1e06);
+        double transferRate  = totalSizeInMB / totalTimeInS; 
+
 	double maxReadBW =
 	  (db->getStaticInfo()).getMaxReadBW(read.first.second) ;
 	double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
@@ -638,8 +642,8 @@ namespace xdp {
 	     << transferRate << ","
 	     << aveBWUtil << ","
 	     << ((double)((read.second).averageSize) / 1000.0) << ","
-	     << (read.second).totalTime << ","
-	     << (read.second).averageTime << "," << std::endl ;
+	     << ((read.second).totalTime / 1e06) << ","
+	     << ((read.second).averageTime / 1e06) << "," << std::endl ;
       }
     }
 
@@ -662,8 +666,10 @@ namespace xdp {
       }
       else
       {
-	double transferRate = 
-	  (double)((write.second).totalSize)/(double)((write.second).totalTime);
+        double totalTimeInS  = (double)((write.second).totalTime / 1e09);
+        double totalSizeInMB = (double)((write.second).totalSize / 1e06);
+        double transferRate  = totalSizeInMB / totalTimeInS; 
+
 	double maxWriteBW =
 	  (db->getStaticInfo()).getMaxWriteBW(write.first.second);
 	double aveBWUtil = (100.0 * transferRate) / maxWriteBW ;
@@ -674,8 +680,8 @@ namespace xdp {
 	     << transferRate << ","
 	     << aveBWUtil << ","
 	     << ((double)((write.second).averageSize) / 1000.0) << ","
-	     << (write.second).totalTime << ","
-	     << (write.second).averageTime << "," << std::endl ;
+	     << ((write.second).totalTime / 1e06) << ","
+	     << ((write.second).averageTime / 1e06) << "," << std::endl ;
       }
     }
   }
