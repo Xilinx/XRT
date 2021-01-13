@@ -251,11 +251,11 @@ namespace hwemu {
         this->error = false;
         this->idx = idx;
         this->control = (addr & 0x7); // bits [2-0]
-        this->dataflow = (addr & 0x7) == AP_CHAIN;
+        this->dataflow = (addr & 0x7) == AP_CTRL_CHAIN;
         this->base = base;
         this->addr = addr & ~0xff;  // clear encoded handshake and context
         this->polladdr = polladdr;
-        this->ap_check = (control == AP_CHAIN) ? (AP_DONE) : (AP_DONE | AP_IDLE);
+        this->ap_check = (control == AP_CTRL_CHAIN) ? (AP_DONE) : (AP_DONE | AP_IDLE);
         this->ctrlreg = 0;
         this->done_cnt = 0;
         this->run_cnt = 0;
@@ -274,7 +274,7 @@ namespace hwemu {
 
     bool xocl_cu::cu_dataflow()
     {
-        return (control == AP_CHAIN);
+        return (control == AP_CTRL_CHAIN);
     }
 
     bool xocl_cu::cu_valid()
@@ -427,15 +427,15 @@ namespace hwemu {
 
         // in ert poll mode request ERT to poll CU
         if (polladdr) {
-            SCHED_DEBUGF("+ @0x%lx\n", this->cu_polladdr());
+            SCHED_DEBUGF("polladdr  @0x%lx\n", this->cu_polladdr());
             iowrite32(AP_START, polladdr);
         }
 
         cu_cmdq.push(xcmd);
         ++run_cnt;
         	
-        //SCHED_DEBUGF("<- %s cu(%d) started xcmd(%lu) done(%d) run(%d)\n",
-//		     __func__, xcu->idx, xcmd->uid, xcu->done_cnt, xcu->run_cnt);
+        SCHED_DEBUGF("<- %s cu(%d) started xcmd(%lu) done(%d) run(%d) ctrlreg(%d)\n",
+		     __func__, idx, xcmd->uid, done_cnt, run_cnt, ctrlreg);
 
         return true;
     }
@@ -1730,7 +1730,7 @@ namespace hwemu {
         uint32_t total = 0;
         uint32_t prev = 0;
 
-        //SCHED_PRINTF("-> %s first_cu(%d) start_cu(%d)\n", __func__, first_cu, start_cu);
+        SCHED_DEBUGF("-> %s first_cu(%d) start_cu(%d)\n", __func__, first_cu, start_cu);
 
         do {
             prev = total;
@@ -1944,6 +1944,8 @@ namespace hwemu {
                 --this->num_running_cmds;
                 iter = this->running_cmd_queue.erase(iter);
                 exec_cmd_free(xcmd); 
+            } else {
+                iter++;
             }
         }
         SCHED_DEBUGF("<- %s\n", __func__);
@@ -2184,7 +2186,7 @@ namespace hwemu {
         xcmd->set_state(ERT_CMD_STATE_NEW);
 
         {
-            std::lock_guard<std::mutex> lk(pending_cmds_mutex);
+            //std::lock_guard<std::mutex> lk(pending_cmds_mutex);
             pending_cmds.push_back(xcmd);
         }
 
@@ -2212,6 +2214,7 @@ namespace hwemu {
      */
     int xocl_scheduler::add_bo_cmd(xclemulation::drm_xocl_bo *buf)
     {
+        std::lock_guard<std::mutex> lk(pending_cmds_mutex);
         //! Get the command from boost object pool
         xocl_cmd *xcmd = cmd_pool.construct();
 

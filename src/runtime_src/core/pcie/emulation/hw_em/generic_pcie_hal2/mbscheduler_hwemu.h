@@ -24,7 +24,6 @@ namespace hwemu {
     static const unsigned AP_DONE  = 2;
     static const unsigned AP_IDLE  = 4;
     static const unsigned AP_READY = 0x8;
-    static const unsigned AP_CHAIN  = 0x10;
     static const unsigned AP_CONTINUE = 0x10;
 
     //! Forward declaration 
