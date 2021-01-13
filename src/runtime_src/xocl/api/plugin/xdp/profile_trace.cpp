@@ -23,6 +23,7 @@
 #include "core/common/utils.h"
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 
 #include "xocl/core/command_queue.h"
 #include "xocl/core/program.h"
@@ -235,11 +236,21 @@ namespace xocl {
       {
 	s_load_detailed_profile = true ;
 	if (xrt_core::config::get_profile() ||
-	    xrt_core::config::get_opencl_summary())
+	    xrt_core::config::get_opencl_summary()) {
+          if(xrt_core::config::get_profile()) {
+            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+              std::string("\"profile\" configuration in xrt.ini will be deprecated in next release. Please use \"opencl_summary=true\" to enable OpenCl profiling and \"opencl_device_counter=true\" for device counter data in OpenCl profile summary."));
+          }
 	  load_xdp_opencl_counters() ;
+        }
 	if (xrt_core::config::get_timeline_trace() ||
-	    xrt_core::config::get_opencl_trace())
+	    xrt_core::config::get_opencl_trace()) {
+          if(xrt_core::config::get_timeline_trace()) {
+            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+              std::string("\"timeline_trace\" configuration in xrt.ini will be deprecated in next release. Please use \"opencl_trace=true\" to enable OpenCl Trace."));
+          }
 	  load_xdp_opencl_trace() ;
+        }
 	if (xrt_core::config::get_data_transfer_trace() != "off" ||
             xrt_core::config::get_opencl_device_counter() ||
 	    xrt_core::config::get_device_trace() != "off")
