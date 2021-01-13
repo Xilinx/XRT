@@ -226,7 +226,7 @@ static void ulite_worker(struct uart_port *port)
 		busy |= ulite_transmit(port, stat);
 		spin_unlock_irqrestore(&port->lock, flags);
 		n++;
-	} while (busy);
+	} while (busy && !kthread_should_stop());
 
 	/* work done? */
 	if (n > 1)
