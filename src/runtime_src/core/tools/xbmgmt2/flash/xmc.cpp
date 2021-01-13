@@ -87,8 +87,7 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
 
         try {
             mRegBase = xrt_core::device_query<xrt_core::query::xmc_reg_base>(m_device);
-        }
-        catch (...) {}
+        } catch (...) {}
     }
     if (mRegBase == 0)
         mRegBase = XMC_REG_BASE;

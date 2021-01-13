@@ -27,11 +27,11 @@
 #include "xclbin.h"
 #define XCLMGMT_NUM_SUPPORTED_CLOCKS    4
 
- //
- // Xilinx driver interface GUID
- //
+//
+// Xilinx driver interface GUID
+//
 DEFINE_GUID(GUID_XILINX_PF_INTERFACE,
-	0xd5bf220b, 0xf9c4, 0x415d, 0xbf, 0xac, 0x8, 0x6e, 0xbd, 0x65, 0x3f, 0x8f);
+    0xd5bf220b, 0xf9c4, 0x415d, 0xbf, 0xac, 0x8, 0x6e, 0xbd, 0x65, 0x3f, 0x8f);
 
 #define XCLMGMT_REG_NAME               L"Xclmgmt"
 #define XCLMGMT_SERIAL_NUMBER_REG_NAME L"SerialNumber"
@@ -40,25 +40,25 @@ DEFINE_GUID(GUID_XILINX_PF_INTERFACE,
 // Xilinx driver IOCTL definitions
 //
 enum XCLMGMT_IOC_TYPES {
-	XCLMGMT_IOC_INFO,
-	XCLMGMT_IOC_FREQ_SCALE,
-	XCLMGMT_IOC_OCL_RESET,
-	XCLMGMT_IOC_HOT_RESET,
-	XCLMGMT_IOC_REBOOT,
-	XCLMGMT_IOC_ICAP_DOWNLOAD_AXLF,
-	XCLMGMT_IOC_ERR_INFO,
-	XCLMGMT_IOC_GET_BAR_ADDR,
-	XCLMGMT_IOC_GET_DEVICE_INFO,
-	XCLMGMT_IOC_SET_VLAN_INFO,
-	XCLMGMT_IOC_GET_QSPI_INFO,
-	XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF,
-	XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF_STATUS,
-	XCLMGMT_IOC_GET_UUID_INFO,
-	XCLMGMT_IOC_SET_DATA_RETENTION,
-	XCLMGMT_IOC_GET_DATA_RETENTION,
-	XCLMGMT_IOC_PRP_FORCE_ICAP_PROGRAM_AXLF,
-	XCLMGMT_IOC_GET_DEVICE_PCI_INFO,
-	XCLMGMT_IOC_MAX
+    XCLMGMT_IOC_INFO,
+    XCLMGMT_IOC_FREQ_SCALE,
+    XCLMGMT_IOC_OCL_RESET,
+    XCLMGMT_IOC_HOT_RESET,
+    XCLMGMT_IOC_REBOOT,
+    XCLMGMT_IOC_ICAP_DOWNLOAD_AXLF,
+    XCLMGMT_IOC_ERR_INFO,
+    XCLMGMT_IOC_GET_BAR_ADDR,
+    XCLMGMT_IOC_GET_DEVICE_INFO,
+    XCLMGMT_IOC_SET_VLAN_INFO,
+    XCLMGMT_IOC_GET_QSPI_INFO,
+    XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF,
+    XCLMGMT_IOC_PRP_ICAP_PROGRAM_AXLF_STATUS,
+    XCLMGMT_IOC_GET_UUID_INFO,
+    XCLMGMT_IOC_SET_DATA_RETENTION,
+    XCLMGMT_IOC_GET_DATA_RETENTION,
+    XCLMGMT_IOC_PRP_FORCE_ICAP_PROGRAM_AXLF,
+    XCLMGMT_IOC_GET_DEVICE_PCI_INFO,
+    XCLMGMT_IOC_MAX
 };
 
 /* IOC_INFO takes struct xclmgmt_ioc_device_info */
@@ -104,94 +104,94 @@ enum XCLMGMT_IOC_TYPES {
 #pragma pack(push)
 #pragma pack(1)
 typedef struct {
-	CHAR   SerialNumber[16];
-	CHAR   ShellName[64];
-	CHAR   ShellFilename[64];
-	CHAR   BMCVersion[16];
-	CHAR   MacAddress[20];
-	UINT32 VlanTag;
+    CHAR   SerialNumber[16];
+    CHAR   ShellName[64];
+    CHAR   ShellFilename[64];
+    CHAR   BMCVersion[16];
+    CHAR   MacAddress[20];
+    UINT32 VlanTag;
 } XCLMGMT_DEVICE_INFO, *PXCLMGMT_DEVICE_INFO;
 #pragma pack(pop)
 
 #pragma warning(disable:4201) // nameless struct/union warning
 typedef union _DRIVER_VERSION
 {
-	struct
-	{
-		/* [Minor Version Number] Indicates the minor version is �0�. */
-		USHORT MNR;
-		/* [Major Version Number] Indicates the major version is �1�. */
-		USHORT MJR;
-	};
-	ULONG AsUlong;
+    struct
+    {
+        /* [Minor Version Number] Indicates the minor version is "0". */
+        USHORT MNR;
+        /* [Major Version Number] Indicates the major version is "1". */
+        USHORT MJR;
+    };
+    ULONG AsUlong;
 } DRIVER_VERSION, *PDRIVER_VERSION;
 #pragma warning(default:4201) // nameless struct/union warning
 typedef struct pcie_config_info {
-	USHORT vendor;
-	USHORT device;
-	USHORT subsystem_vendor;
-	USHORT subsystem_device;
-	USHORT pcie_link_width;
-	USHORT pcie_link_speed;
+    USHORT vendor;
+    USHORT device;
+    USHORT subsystem_vendor;
+    USHORT subsystem_device;
+    USHORT pcie_link_width;
+    USHORT pcie_link_speed;
 }PCIE_CONFIG_INFO, *PPCIE_CONFIG_INFO;
 
 typedef struct sysmon_info {
-	UINT32 temp;
-	UINT32 temp_min;
-	UINT32 temp_max;
-	UINT32 vcc;
-	UINT32 vcc_min;
-	UINT32 vcc_max;
-	UINT32 vcc_aux;
-	UINT32 vcc_aux_min;
-	UINT32 vcc_aux_max;
-	UINT32 vcc_bram;
-	UINT32 vcc_bram_min;
-	UINT32 vcc_bram_max;
+    UINT32 temp;
+    UINT32 temp_min;
+    UINT32 temp_max;
+    UINT32 vcc;
+    UINT32 vcc_min;
+    UINT32 vcc_max;
+    UINT32 vcc_aux;
+    UINT32 vcc_aux_min;
+    UINT32 vcc_aux_max;
+    UINT32 vcc_bram;
+    UINT32 vcc_bram_min;
+    UINT32 vcc_bram_max;
 }SYSMON_INFO, *PSYSMON_INFO;
 
 typedef struct xclmgmt_ioc_device_pci_info {
-	PCIE_CONFIG_INFO pcie_info;
+    PCIE_CONFIG_INFO pcie_info;
 }XCLMGMT_IOC_DEVICE_PCI_INFO, *PXCLMGMT_IOC_DEVICE_PCI_INFO;
 
 typedef struct xclmgmt_ioc_device_info {
-	DRIVER_VERSION   version;
-	ULONGLONG        feature_id;
-	ULONGLONG        time_stamp;
-	USHORT           ddr_channel_num;
-	USHORT           ddr_channel_size;
-	CHAR             vbnv[64];
-	CHAR             fpga[64];
-	SYSMON_INFO      sysmoninfo;
-	UINT32           ocl_frequency[XCLMGMT_NUM_SUPPORTED_CLOCKS];
-	bool             mig_calibration[4];
-	USHORT           num_clocks;
-	ULONGLONG        xmc_offset;
-	struct FeatureRomHeader rom_hdr;
+    DRIVER_VERSION   version;
+    ULONGLONG        feature_id;
+    ULONGLONG        time_stamp;
+    USHORT           ddr_channel_num;
+    USHORT           ddr_channel_size;
+    CHAR             vbnv[64];
+    CHAR             fpga[64];
+    SYSMON_INFO      sysmoninfo;
+    UINT32           ocl_frequency[XCLMGMT_NUM_SUPPORTED_CLOCKS];
+    bool             mig_calibration[4];
+    USHORT           num_clocks;
+    ULONGLONG        xmc_offset;
+    struct FeatureRomHeader rom_hdr;
 }XCLMGMT_IOC_DEVICE_INFO, *PXCLMGMT_IOC_DEVICE_INFO;
 
 /* Structure used to save 2RP related UUID information */
 typedef struct xclmgmt_ioc_uuid_info {
-	CHAR             blp_logic_uuid[64];
-	CHAR             blp_interface_uuid[64];
-	CHAR             plp_logic_uuid[64];
-	CHAR             plp_interface_uuid[64];
+    CHAR             blp_logic_uuid[64];
+    CHAR             blp_interface_uuid[64];
+    CHAR             plp_logic_uuid[64];
+    CHAR             plp_interface_uuid[64];
 }XCLMGMT_IOC_UUID_INFO, *PXCLMGMT_IOC_UUID_INFO;
 
 struct rp_download {
-	USHORT rp_type;
-	axlf *axlf_buf;
+    USHORT rp_type;
+    axlf *axlf_buf;
 };
 enum {
-	RP_DOWNLOAD_NORMAL,
-	RP_DOWNLOAD_DRY,
-	RP_DOWNLOAD_FORCE,
-	RP_DOWNLOAD_CLEAR,
+    RP_DOWNLOAD_NORMAL,
+    RP_DOWNLOAD_DRY,
+    RP_DOWNLOAD_FORCE,
+    RP_DOWNLOAD_CLEAR,
 };
 
 //PRP download status
 enum {
-	RP_DOWNLOAD_IN_PROGRESS,
-	RP_DOWLOAD_SUCCESS,
-	RP_DOWLOAD_FAILED,
+    RP_DOWNLOAD_IN_PROGRESS,
+    RP_DOWLOAD_SUCCESS,
+    RP_DOWLOAD_FAILED,
 };

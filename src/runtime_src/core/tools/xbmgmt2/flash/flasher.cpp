@@ -295,15 +295,8 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
         std::cout << "Shell on FPGA is unknown" << std::endl;
     }
 
-    //To-do: remove is_mfg check once pcie info is available
-    bool is_mfg = false;
-    is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(m_device);
-    uint16_t vendor_id = 0;
-    uint16_t device_id = 0;
-    if (!is_mfg) {
-        vendor_id = xrt_core::device_query<xrt_core::query::pcie_vendor>(m_device);
-        device_id = xrt_core::device_query<xrt_core::query::pcie_device>(m_device);
-    }
+    auto vendor_id = xrt_core::device_query<xrt_core::query::pcie_vendor>(m_device);
+    auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(m_device);
 
     // Obtain installed DSA info.
     // std::cout << "ON Board: " << onBoard.vendor << " " << onBoard.board << " " << vendor_id << " " << device_id << std::endl;

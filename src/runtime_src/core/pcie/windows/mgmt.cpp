@@ -356,16 +356,14 @@ get_pcie_info(XCLMGMT_IOC_DEVICE_PCI_INFO* value)
   
   auto status = DeviceIoControl
       (m_hdl,
-      XCLMGMT_OID_GET_DEVICE_PCI_INFO,    //ioctl code
-	  value,							   //in buffer
-	  sizeof(XCLMGMT_IOC_DEVICE_PCI_INFO), //in buffer size
+      XCLMGMT_OID_GET_DEVICE_PCI_INFO,     //ioctl code
+      value,                               //in buffer
+      sizeof(XCLMGMT_IOC_DEVICE_PCI_INFO), //in buffer size
       value,                               //out buffer
       sizeof(XCLMGMT_IOC_DEVICE_PCI_INFO), //out buffer size
       &bytes,                              //size of the data returned 
       nullptr);                            //ptr to overlapped struct (for async operations)
-  std::cout << "DBG status: " << status << std::endl;
-  std::cout << "DBG bytes: " << bytes << std::endl;
-  std::cout << "DBG: " << sizeof(XCLMGMT_IOC_DEVICE_PCI_INFO) << std::endl;
+
   if (!status || (bytes != sizeof(XCLMGMT_IOC_DEVICE_PCI_INFO)))
     throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_DEVICE_PCI_INFO failed");
 }
