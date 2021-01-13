@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2018-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -33,6 +33,7 @@ struct ip_node {
 	int off;
 	bool used;
 	bool match;
+	char name_cache[128];
 };
 
 static void *msix_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
@@ -735,20 +736,19 @@ static struct xocl_subdev_map subdev_map[] = {
 		.devinfo_cb = NULL,
 		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
-#if 0
 	{
 		.id = XOCL_SUBDEV_XFER_VERSAL,
 		.dev_name = XOCL_XFER_VERSAL,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_FPGA_CONFIG, .regmap_name = PROP_PDI_CONFIG},
+			{.res_name = NODE_FPGA_CONFIG_01, .regmap_name = PROP_PDI_CONFIG},
 			{NULL},
 		},
 		.required_ip = 1,
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
-#endif
 	{
 		.id = XOCL_SUBDEV_ICAP,
 		.dev_name = XOCL_ICAP,
@@ -981,7 +981,7 @@ int xocl_fdt_overlay(void *fdt, int target,
 
 	fdt_for_each_subnode(subnode, fdto, node) {
 		const char *name = fdt_get_name(fdto, subnode, NULL);
-		char temp[64];
+		char temp[128];
 		int nnode = -FDT_ERR_EXISTS;
 		int level;
 
@@ -994,9 +994,15 @@ int xocl_fdt_overlay(void *fdt, int target,
 				level++;
 			}
 		} else {
-			nnode = fdt_add_subnode(fdt, target, name);
+			val = fdt_getprop(fdto, subnode, PROP_IO_OFFSET, NULL);
+			if (val)
+				snprintf(temp, sizeof(temp), "%s@%llx", name, be64_to_cpu(*(u64 *)val));
+			else
+				strncpy(temp, name, sizeof(temp));
+			nnode = fdt_add_subnode(fdt, target, temp);
 			if (nnode == -FDT_ERR_EXISTS) {
-				nnode = fdt_subnode_offset(fdt, target, name);
+				pr_info("overlaying node %s", temp);
+				nnode = fdt_subnode_offset(fdt, target, temp);
 				if (nnode == -FDT_ERR_NOTFOUND)
 					return -FDT_ERR_INTERNAL;
 			}
@@ -1189,8 +1195,15 @@ static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 found:
 	if (ip) {
 		int cplen;
+		const char *ipname;
+		char *end;
 
-		ip->name = fdt_get_name(blob, node, NULL);
+		ipname = fdt_get_name(blob, node, NULL);
+		strncpy(ip->name_cache, ipname, sizeof(ip->name_cache));
+		ip->name = ip->name_cache;
+		end = strchr(ip->name, '@');
+		if (end)
+			*end = 0;
 
 		/* Get Version */
 		prop = fdt_getprop(blob, node, PROP_COMPATIBLE, &cplen);
@@ -1223,7 +1236,7 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 	 *  if platform is NULL, just use name to compare;
 	 *  if platform is available, use name + platform to compare;
 	 */
-	for (i = 0; i < ip_num; i++) {
+	for (i = 0; i < ip_num; i++, ip++) {
 		if (ip->name && strlen(ipname) > 0 && !ip->used &&
 		    ip->level >= min_level && ip->level <= max_level &&
 		    !strncmp(ip->name, ipname, strlen(ipname))) {
@@ -1234,8 +1247,8 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 			else
 				break;
 		}
-		ip++;
 	}
+
 	if (i == ip_num)
 		return 0;
 
@@ -1284,7 +1297,6 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 
 	for (res = &map_p->res_array[0]; res && res->res_name != NULL;
 	    res = &map_p->res_array[++i]) {
-
 		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res->res_name,
 		    map_p->min_level, map_p->max_level,
 		    subdev, ip, ip_num, res->regmap_name);
@@ -1726,7 +1738,7 @@ int xocl_fdt_get_hostmem(xdev_handle_t xdev_hdl, void *blob, u64 *base,
 		offset = fdt_next_node(blob, offset, NULL)) {
 		ipname = fdt_get_name(blob, offset, NULL);
 		if (ipname && strncmp(ipname, NODE_HOSTMEM_BANK0,
-		    strlen(NODE_HOSTMEM_BANK0) + 1) == 0)
+		    strlen(NODE_HOSTMEM_BANK0)) == 0)
 			break;
 	}
 	if (offset < 0)

@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver XCLBIN parser
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: David Zhang <davidzha@xilinx.com>
  *
@@ -70,4 +70,11 @@ int
 xrt_xclbin_get_section(const struct axlf *xclbin,
 	enum axlf_section_kind kind, void **data, uint64_t *len);
 
-#endif
+struct axlf_section_header *
+xrt_xclbin_get_section_hdr_next(struct axlf *xclbin,
+	enum axlf_section_kind kind, struct axlf_section_header *cur);
+
+int xrt_xclbin_get_section_num(const struct axlf *xclbin,
+	enum axlf_section_kind kind);
+
+#endif /* _XRT_XCLBIN_H */
