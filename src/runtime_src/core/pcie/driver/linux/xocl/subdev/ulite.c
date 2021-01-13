@@ -326,8 +326,8 @@ static void ulite_shutdown(struct uart_port *port)
 	struct uartlite_data *pdata = port->private_data;
 
 	mutex_lock(&pdata->lock);
-	atomic_dec_if_positive(&pdata->console_opened);
 	if (atomic_read(&pdata->console_opened)) {
+		atomic_dec_if_positive(&pdata->console_opened);
 		(void)kthread_stop(pdata->thread);
 		pdata->thread = NULL;
 	}
