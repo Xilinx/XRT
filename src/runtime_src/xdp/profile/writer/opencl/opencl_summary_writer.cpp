@@ -637,7 +637,7 @@ namespace xdp {
     fout << "Data Transfer: Host to Global Memory" << std::endl ;
 
     // Column headers
-    fout << "Context: Number of Devices"        << ","
+    fout << "Context:Number of Devices"         << ","
 	 << "Transfer Type"                     << ","
 	 << "Number Of Buffer Transfers"        << ","
 	 << "Transfer Rate (MB/s)"              << ","
