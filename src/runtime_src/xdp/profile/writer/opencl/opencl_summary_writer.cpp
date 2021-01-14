@@ -95,6 +95,12 @@ namespace xdp {
     }
     {
       std::stringstream setting ;
+      setting << "XRT_INI_SETTING,opencl_device_counter," 
+	      << xrt_core::config::get_opencl_device_counter() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
       setting << "XRT_INI_SETTING,timeline_trace," 
 	      << xrt_core::config::get_timeline_trace() ;
       iniSettings.push_back(setting.str()) ;
@@ -127,6 +133,12 @@ namespace xdp {
       std::stringstream setting ;
       setting << "XRT_INI_SETTING,power_profile,"
 	      << xrt_core::config::get_power_profile() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,power_profile_interval_ms,"
+	      << xrt_core::config::get_power_profile_interval_ms() ;
       iniSettings.push_back(setting.str()) ;
     }
     {
@@ -167,8 +179,38 @@ namespace xdp {
     }
     {
       std::stringstream setting ;
-      setting << "XRT_INI_SETTING,launch_waveform,"
+      setting << "XRT_INI_SETTING,debug_mode,"
 	      << xrt_core::config::get_launch_waveform() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,aie_trace,"
+	      << xrt_core::config::get_aie_trace() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,aie_trace_buffer_size,"
+	      << xrt_core::config::get_aie_trace_buffer_size() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,aie_profile,"
+	      << xrt_core::config::get_aie_profile() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,aie_profile_interval_us,"
+	      << xrt_core::config::get_aie_profile_interval_us() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,vitis_ai_profile,"
+	      << xrt_core::config::get_vitis_ai_profile() ;
       iniSettings.push_back(setting.str()) ;
     }
   }
