@@ -12,6 +12,8 @@
 
 #define XCU_INFO(xcu, fmt, arg...) \
 	xocl_info(&xcu->pdev->dev, fmt "\n", ##arg)
+#define XCU_WARN(xcu, fmt, arg...) \
+	xocl_warn(&xcu->pdev->dev, fmt "\n", ##arg)
 #define XCU_ERR(xcu, fmt, arg...) \
 	xocl_err(&xcu->pdev->dev, fmt "\n", ##arg)
 #define XCU_DBG(xcu, fmt, arg...) \
@@ -157,6 +159,46 @@ irqreturn_t cu_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+static int cu_add_args(struct xocl_cu *xcu, struct kernel_info *kinfo)
+{
+	struct xrt_cu_arg *args = NULL;
+	int i;
+
+	/* If there is no detail kernel information, maybe it is a manualy
+	 * created xclbin. Print warning and let it go through
+	 */
+	if (!kinfo) {
+		XCU_WARN(xcu, "CU %s metadata not found, xclbin maybe corrupted",
+			 xcu->base.info.iname);
+		xcu->base.info.num_args = 0;
+		xcu->base.info.args = NULL;
+		return 0;
+	}
+
+	args = vmalloc(sizeof(struct xrt_cu_arg) * kinfo->anums);
+	if (!args)
+		return -ENOMEM;
+
+	if (kinfo) {
+		for (i = 0; i < kinfo->anums; i++) {
+			strcpy(args[i].name, kinfo->args[i].name);
+			args[i].offset = kinfo->args[i].offset;
+			args[i].size = kinfo->args[i].size;
+			args[i].dir = kinfo->args[i].dir;
+		}
+		xcu->base.info.num_args = kinfo->anums;
+		xcu->base.info.args = args;
+	}
+
+	return 0;
+}
+
+static void cu_del_args(struct xocl_cu *xcu)
+{
+	if (xcu->base.info.args)
+		vfree(xcu->base.info.args);
+}
+
 static int cu_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -197,24 +239,9 @@ static int cu_probe(struct platform_device *pdev)
 
 	if (!xcu->base.info.is_m2m) {
 		krnl_info = xocl_query_kernel(xdev, info->kname);
-		if (!krnl_info) {
-			err = -EFAULT;
+		err = cu_add_args(xcu, krnl_info);
+		if (err)
 			goto err;
-		}
-		/* Populate kernel argument information */
-		args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
-		if (!args) {
-			err = -ENOMEM;
-			goto err;
-		}
-		for (i = 0; i < krnl_info->anums; i++) {
-			strcpy(args[i].name, krnl_info->args[i].name);
-			args[i].offset = krnl_info->args[i].offset;
-			args[i].size = krnl_info->args[i].size;
-			args[i].dir = krnl_info->args[i].dir;
-		}
-		xcu->base.info.num_args = krnl_info->anums;
-		xcu->base.info.args = args;
 	} else {
 		/* M2M CU has 3 arguments */
 		args = vmalloc(sizeof(struct xrt_cu_arg) * 3);
@@ -347,8 +374,7 @@ static int cu_remove(struct platform_device *pdev)
 	if (xcu->base.res)
 		vfree(xcu->base.res);
 
-	if (info->args)
-		vfree(info->args);
+	cu_del_args(xcu);
 
 	platform_set_drvdata(pdev, NULL);
 
