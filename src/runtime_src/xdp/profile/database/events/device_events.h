@@ -84,6 +84,7 @@ namespace xdp {
     XDP_EXPORT KernelStall(uint64_t s_id, double ts, VTFEventType ty,
                            uint64_t devId, uint32_t monId, int32_t cuIdx);
     XDP_EXPORT ~KernelStall();
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
   } ;
 
   class DeviceMemoryAccess : public VTFDeviceEvent

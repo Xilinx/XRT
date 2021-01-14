@@ -84,6 +84,12 @@ namespace xdp {
   {
   }
 
+  void KernelStall::dump(std::ofstream& fout, uint32_t bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    fout << std::endl;
+  }
+
   DeviceMemoryAccess::DeviceMemoryAccess(uint64_t s_id, double ts, VTFEventType ty,
                                          uint64_t devId, uint32_t monId, int32_t cuIdx)
                     : VTFDeviceEvent(s_id, ts, ty, devId, monId),
