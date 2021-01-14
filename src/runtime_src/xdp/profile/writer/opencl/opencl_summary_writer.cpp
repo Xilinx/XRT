@@ -637,7 +637,7 @@ namespace xdp {
     fout << "Data Transfer: Host to Global Memory" << std::endl ;
 
     // Column headers
-    fout << "Context: Number of Devices"        << ","
+    fout << "Context:Number of Devices"         << ","
 	 << "Transfer Type"                     << ","
 	 << "Number Of Buffer Transfers"        << ","
 	 << "Transfer Rate (MB/s)"              << ","
@@ -1569,14 +1569,22 @@ namespace xdp {
   {
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
 
-    for (auto device : deviceInfos)
-    {
+    for (auto device : deviceInfos) {
       std::string deviceName = device->deviceName ;
       uint64_t execTime = (t->db->getStats()).getDeviceActiveTime(deviceName) ;
       
       (t->fout) << "DEVICE_EXEC_TIME" << "," 
 		<< deviceName << ","
 		<< ((double)execTime / 1e06)  << "," << std::endl ;
+    }
+
+    if (getFlowMode() == SW_EMU) {
+      std::string deviceName =
+	(t->db->getStaticInfo()).getSoftwareEmulationDeviceName() ;
+      uint64_t execTime = (t->db->getStats()).getDeviceActiveTime(deviceName) ;
+      (t->fout) << "DEVICE_EXEC_TIME"        << ","
+		<< deviceName                << ","
+		<< ((double)execTime / 1e06) << "," << std::endl ;
     }
   }
 
@@ -1703,6 +1711,9 @@ namespace xdp {
       if (hasPLRAM) break ;
     }
 
+    // Today, all devices in SW emulation are assumed to have PLRAM
+    if (getFlowMode() == SW_EMU) hasPLRAM = true ;
+
     (t->fout) << "PLRAM_DEVICE" << ","
 	      << "all" << ","
 	      << (uint64_t)(hasPLRAM) << "," << std::endl ;
@@ -1730,6 +1741,16 @@ namespace xdp {
       if (hasHBM) break ;
     }
 
+    // To match backward compatability, we will have to check the name
+    if (getFlowMode() == SW_EMU) {
+      std::string deviceName =
+	(t->db->getStaticInfo()).getSoftwareEmulationDeviceName() ;
+
+      if (deviceName.find("u280") != std::string::npos ||
+          deviceName.find("u50") != std::string::npos)
+	hasHBM = true ;
+    }
+
     (t->fout) << "HBM_DEVICE" << ","
 	      << "all" << ","
 	      << (uint64_t)(hasHBM) << "," << std::endl ;
@@ -1748,18 +1769,17 @@ namespace xdp {
 	hasKDMA = true ;
 	break ;
       }
-      // We previously had a few hard-coded KDMA platform checks.  If
-      //  necessary we can do the same here.
-      /*
-      std::string deviceName = device->deviceName ;
+    }
+
+    // To match backward compatability, we will have to check the name
+    if (getFlowMode() == SW_EMU) {
+      std::string deviceName =
+	(t->db->getStaticInfo()).getSoftwareEmulationDeviceName() ;
+
       if (deviceName.find("xilinx_u200_xdma_201830_2") != std::string::npos ||
           deviceName.find("xilinx_u200_xdma_201830_3") != std::string::npos ||
 	  deviceName.find("xilinx_vcu1525_xdma_201830_2") != std::string::npos)
-      {
 	hasKDMA = true ;
-	break ;
-      }
-      */
     }
 
     (t->fout) << "KDMA_DEVICE" << ","
@@ -1790,6 +1810,17 @@ namespace xdp {
       }
     }
 
+    if (getFlowMode() == SW_EMU) {
+      std::string deviceName =
+	(t->db->getStaticInfo()).getSoftwareEmulationDeviceName() ;
+      if (deviceName.find("xilinx_u200_xdma_201830_2") != std::string::npos ||
+	  deviceName.find("xilinx_u200_xdma_201830_3") != std::string::npos ||
+	  deviceName.find("xilinx_u250_xdma_201830_2") != std::string::npos ||
+	  deviceName.find("samsung")                   != std::string::npos ||
+	  deviceName.find("xilinx_vcu1525_xdma_201830_2") != std::string::npos)
+	hasP2P = true ;
+    }
+
     (t->fout) << "P2P_DEVICE" << ","
 	      << "all" << ","
 	      << (uint64_t)(hasP2P) << "," << std::endl ;
@@ -1808,23 +1839,20 @@ namespace xdp {
   {
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
     
-    for (auto device : deviceInfos)
-    {
-      for (auto xclbin : device->loadedXclbins)
-      {
-	for (auto cu : xclbin->cus)
-	{
+    for (auto device : deviceInfos) {
+      for (auto xclbin : device->loadedXclbins) {
+	for (auto cu : xclbin->cus) {
 	  std::vector<uint32_t>* aimIds = (cu.second)->getAIMs() ;
 	  std::vector<uint32_t>* asmIds = (cu.second)->getASMs() ;
-	  for (auto aim : (*aimIds))
-	  {
+
+	  for (auto aim : (*aimIds)) {
 	    Monitor* monitor = (t->db->getStaticInfo()).getAIMonitor(device->deviceId, xclbin, aim) ;
 	    (t->fout) << "PORT_BIT_WIDTH" << ","
 		      << (cu.second)->getName() << "/" << monitor->port << ","
 		      << monitor->portWidth << "," << std::endl ;
 	  }
-	  for (auto asmId : (*asmIds))
-	  {
+
+	  for (auto asmId : (*asmIds)) {
 	    Monitor* monitor = (t->db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmId) ;
 	    (t->fout) << "PORT_BIT_WIDTH" << ","
 		      << (cu.second)->getName() << "/" << monitor->args << ","
@@ -1842,15 +1870,20 @@ namespace xdp {
 
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
     std::map<std::string, uint64_t> kernelCounts ;
-    
-    for (auto device : deviceInfos) {
-      for (auto xclbin : device->loadedXclbins) {
-	for (auto cu : xclbin->cus) {
-	  if (kernelCounts.find((cu.second)->getKernelName()) == kernelCounts.end()) {
-	    kernelCounts[(cu.second)->getKernelName()] = 1 ;
-	  }
-	  else {
-	    kernelCounts[(cu.second)->getKernelName()] += 1 ;
+
+    if (getFlowMode() == SW_EMU) {
+      kernelCounts = (t->db->getStaticInfo()).getSoftwareEmulationCUCounts() ;
+    }
+    else {
+      for (auto device : deviceInfos) {
+	for (auto xclbin : device->loadedXclbins) {
+	  for (auto cu : xclbin->cus) {
+	    if (kernelCounts.find((cu.second)->getKernelName()) == kernelCounts.end()) {
+	      kernelCounts[(cu.second)->getKernelName()] = 1 ;
+	    }
+	    else {
+	      kernelCounts[(cu.second)->getKernelName()] += 1 ;
+	    }
 	  }
 	}
       }

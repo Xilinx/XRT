@@ -95,8 +95,7 @@ namespace xdp {
     //  don't do anything
     if (!active) return ;
 
-    // Software emulation currently has no device support
-    if (getFlowMode() == SW_EMU) return ;
+    // Software emulation currently has minimal device support for guidance
 
     // Since we are using xocl and xrt level objects in this plugin,
     //  we need a pointer to the shared platform to make sure the
@@ -108,7 +107,10 @@ namespace xdp {
   OpenCLDeviceOffloadPlugin::~OpenCLDeviceOffloadPlugin()
   {
     if (!active) return ;
-    if (getFlowMode() == SW_EMU) return ;
+    if (getFlowMode() == SW_EMU) {
+      updateSWEmulationGuidance() ;
+      return ;
+    }
 
     if (VPDatabase::alive())
     {
@@ -161,7 +163,10 @@ namespace xdp {
   void OpenCLDeviceOffloadPlugin::flushDevice(void* d)
   {
     if (!active) return ;
-    if (getFlowMode() == SW_EMU) return ;
+    if (getFlowMode() == SW_EMU) {
+      updateSWEmulationGuidance() ;
+      return ;
+    }
 
     xrt_xocl::device* device = static_cast<xrt_xocl::device*>(d) ;
 
@@ -361,6 +366,17 @@ namespace xdp {
 	  monitor->portWidth = arg.port_width ;
 	}
 	monitor->args = arguments ;
+      }
+    }
+  }
+
+  void OpenCLDeviceOffloadPlugin::updateSWEmulationGuidance()
+  {
+    // There is just some software emulation specific information
+    //  we need to add in order to handle guidance rules
+    for (auto xrt_device_id : platform->get_device_range()) {
+      for (auto& cu : xocl::xocl(xrt_device_id)->get_cus()) {
+	(db->getStaticInfo()).addSoftwareEmulationCUInstance(cu->get_kernel_name()) ;
       }
     }
   }

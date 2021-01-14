@@ -42,6 +42,7 @@ namespace xdp {
     std::set<uint64_t> deviceIdsToBeFlushed ;
 
     void updateOpenCLInfo(uint64_t deviceId) ;
+    void updateSWEmulationGuidance() ;
 
   public:
     XDP_EXPORT OpenCLDeviceOffloadPlugin() ;
