@@ -365,9 +365,9 @@ get_pcie_info(XCLMGMT_IOC_DEVICE_PCI_INFO* value)
       nullptr);                            //ptr to overlapped struct (for async operations)
 
   if (!status)
-    throw std::runtime_error(boost::format("DeviceIoControl XCLMGMT_OID_GET_DEVICE_PCI_INFO failed with status %d") % status);
+    throw std::runtime_error(boost::str(boost::format("DeviceIoControl XCLMGMT_OID_GET_DEVICE_PCI_INFO failed with status %d") % status));
   if (bytes != sizeof(XCLMGMT_IOC_DEVICE_PCI_INFO))
-    throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_DEVICE_PCI_INFO failed. Received %d bytes when %d bytes were expected.") % bytes % sizeof(XCLMGMT_IOC_DEVICE_PCI_INFO));
+    throw std::runtime_error(boost::str(boost::format("DeviceIoControl XCLMGMT_OID_GET_DEVICE_PCI_INFO failed. Received %d bytes when %d bytes were expected.") % bytes % sizeof(XCLMGMT_IOC_DEVICE_PCI_INFO)));
 }
 
 
