@@ -1933,6 +1933,8 @@ namespace xdp {
       }
     }
 
+    if (getFlowMode() == SW_EMU) memType = "NA" ;
+
     (t->fout) << "TRACE_MEMORY" << ","
 	      << "all" << ","
 	      << memType << "," << std::endl ;
