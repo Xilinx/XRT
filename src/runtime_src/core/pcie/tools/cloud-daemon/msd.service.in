@@ -6,7 +6,7 @@ ConditionDirectoryNotEmpty=/dev/xfpga
 
 [Service]
 Type=simple
-ExecStart=${XRT_INSTALL_DIR}/bin/msd
+ExecStart=${CMAKE_INSTALL_PREFIX}/${XRT_INSTALL_BIN_DIR}/msd
 Restart=on-failure
 
 [Install]
