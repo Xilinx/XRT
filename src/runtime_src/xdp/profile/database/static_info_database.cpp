@@ -522,6 +522,8 @@ namespace xdp {
         // associate with the first CU
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
+
+        std::string portName;
         
         for(auto cu : devInfo->loadedXclbins.back()->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
@@ -530,12 +532,23 @@ namespace xdp {
             break;
           }
         }
-        if(-1 == cuId) {
+        if(-1 != cuId) {
+          size_t pos1 = name.find('-');
+          if(std::string::npos != pos1) {
+            portName = name.substr(pos+1, pos1-pos-1);
+          }
+        } else { /* (-1 == cuId) */
           pos = name.find("-");
           if(std::string::npos != pos) {
             pos = name.find_first_not_of(" ", pos+1);
             monCuName = name.substr(pos);
             pos = monCuName.find('/');
+
+            size_t pos1 = monCuName.find('-');
+            if(std::string::npos != pos1) {
+              portName = monCuName.substr(pos+1, pos1-pos-1);
+            }
+
             monCuName = monCuName.substr(0, pos);
 
             for(auto cu : devInfo->loadedXclbins.back()->cus) {
@@ -549,6 +562,7 @@ namespace xdp {
         }
 
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
+        mon->port = portName;
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
         }

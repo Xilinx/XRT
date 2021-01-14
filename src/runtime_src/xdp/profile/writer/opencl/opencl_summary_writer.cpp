@@ -1855,7 +1855,7 @@ namespace xdp {
 	  for (auto asmId : (*asmIds)) {
 	    Monitor* monitor = (t->db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmId) ;
 	    (t->fout) << "PORT_BIT_WIDTH" << ","
-		      << (cu.second)->getName() << "/" << monitor->args << ","
+		      << (cu.second)->getName() << "/" << monitor->port << ","
 		      << monitor->portWidth << "," << std::endl ;
 	  }
 	}
