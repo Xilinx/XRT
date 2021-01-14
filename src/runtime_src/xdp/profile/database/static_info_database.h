@@ -43,8 +43,9 @@ namespace xdp {
     int32_t     cuIndex;
     int32_t     memIndex;
     std::string name;
-    std::string args ; // For OpenCL monitors associated with a port on a CU
-    uint64_t    portWidth ; // For OpenCL monitors associated with a port
+    std::string args; // For OpenCL monitors associated with a port on a CU
+    std::string port;
+    uint64_t    portWidth; // For OpenCL monitors associated with a port
     bool        isRead;
 
     Monitor(uint8_t ty, uint64_t idx, const char* n, int32_t cuId = -1, int32_t memId = -1)
@@ -54,6 +55,7 @@ namespace xdp {
         memIndex(memId),
         name(n),
         args(""),
+        port(""),
         portWidth(0),
         isRead(false)
     {}

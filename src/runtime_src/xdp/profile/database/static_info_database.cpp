@@ -479,8 +479,13 @@ namespace xdp {
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
 
-        pos = name.find('-');
-        std::string memName = name.substr(pos+1);
+        std::string memName;
+        std::string portName;
+        size_t pos1 = name.find('-');
+        if(pos1 != std::string::npos) {
+          memName = name.substr(pos1+1);
+          portName = name.substr(pos+1, pos1-pos-1);
+        }
 
         int32_t memId = -1;
         for(auto cu : devInfo->loadedXclbins.back()->cus) {
@@ -497,6 +502,7 @@ namespace xdp {
           }
         }
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
+        mon->port = portName;
         // If the AIM is an User Space AIM with trace enabled i.e. either connected to a CU or floating but not shell AIM
         if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_AIM)) {
           uint64_t slotID = (index - MIN_TRACE_ID_AIM) / 2;

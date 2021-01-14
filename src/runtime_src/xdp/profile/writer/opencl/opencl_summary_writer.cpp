@@ -1820,7 +1820,7 @@ namespace xdp {
 	  {
 	    Monitor* monitor = (t->db->getStaticInfo()).getAIMonitor(device->deviceId, xclbin, aim) ;
 	    (t->fout) << "PORT_BIT_WIDTH" << ","
-		      << (cu.second)->getName() << "/" << monitor->args << ","
+		      << (cu.second)->getName() << "/" << monitor->port << ","
 		      << monitor->portWidth << "," << std::endl ;
 	  }
 	  for (auto asmId : (*asmIds))
