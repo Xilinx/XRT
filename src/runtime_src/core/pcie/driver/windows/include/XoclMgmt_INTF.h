@@ -1,5 +1,5 @@
 ﻿/*
- *  Copyright (C) 2018-2019, Xilinx Inc.  All rights reserved.
+ *  Copyright (C) 2018-2021, Xilinx Inc.  All rights reserved.
  *
  *  Author(s):
  *  Arpit Patel <arpitp@xilinx.com>
@@ -150,10 +150,12 @@ typedef struct sysmon_info {
     UINT32 vcc_bram_max;
 }SYSMON_INFO, *PSYSMON_INFO;
 
+/* Structure available for golden */
 typedef struct xclmgmt_ioc_device_pci_info {
     PCIE_CONFIG_INFO pcie_info;
 }XCLMGMT_IOC_DEVICE_PCI_INFO, *PXCLMGMT_IOC_DEVICE_PCI_INFO;
 
+/* Structure not available for golden */
 typedef struct xclmgmt_ioc_device_info {
     DRIVER_VERSION   version;
     ULONGLONG        feature_id;

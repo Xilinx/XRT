@@ -642,8 +642,8 @@ struct xmc
     switch (key) {
     case key_type::xmc_reg_base:
       return info.xmc_offset;
-	case key_type::xmc_status:
-	  return query::xmc_status::result_type(1); //hardcoded
+	  case key_type::xmc_status:
+	    return query::xmc_status::result_type(1); //hardcoded
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -691,8 +691,10 @@ struct devinfo
     case key_type::xmc_sc_presence:
       {
         //xmc is not present in golden image
+        //inverse logic of is_mfg
         auto shell = static_cast<query::board_name::result_type>(info.ShellName);
         boost::to_upper(shell);
+        //sample strings: xilinx_u250_GOLDEN, xilinx_u250_gen3x16_base, xilinx_u250_xdma_201830_3
         return (shell.find("GOLDEN") != std::string::npos) ? false : true;
       }
     default:
