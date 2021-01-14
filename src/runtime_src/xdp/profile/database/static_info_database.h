@@ -479,6 +479,7 @@ namespace xdp {
 
     // For OpenCL software emulation, we need a tiny bit of device info
     std::string softwareEmulationDeviceName ; 
+    std::map<std::string, uint64_t> softwareEmulationCUCounts ;
 
     /* Device Specific Information mapped to the Unique Device Id
      * Device Information contains :
@@ -522,6 +523,15 @@ namespace xdp {
       { return softwareEmulationDeviceName ; }
     inline void setSoftwareEmulationDeviceName(const std::string& name)
       { softwareEmulationDeviceName = name ; }
+    inline std::map<std::string, uint64_t> getSoftwareEmulationCUCounts()
+      { return softwareEmulationCUCounts ; }
+    inline void addSoftwareEmulationCUInstance(const std::string& kernelName) {
+      if (softwareEmulationCUCounts.find(kernelName) ==
+	  softwareEmulationCUCounts.end())
+	softwareEmulationCUCounts[kernelName] = 1 ;
+      else
+	softwareEmulationCUCounts[kernelName] += 1 ;
+    }
     inline void setNumDevices(uint64_t contextId, uint64_t numDevices)
     {
       contextIdToNumDevices[contextId] = numDevices ;

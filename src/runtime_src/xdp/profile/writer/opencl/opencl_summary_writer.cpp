@@ -1870,15 +1870,20 @@ namespace xdp {
 
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
     std::map<std::string, uint64_t> kernelCounts ;
-    
-    for (auto device : deviceInfos) {
-      for (auto xclbin : device->loadedXclbins) {
-	for (auto cu : xclbin->cus) {
-	  if (kernelCounts.find((cu.second)->getKernelName()) == kernelCounts.end()) {
-	    kernelCounts[(cu.second)->getKernelName()] = 1 ;
-	  }
-	  else {
-	    kernelCounts[(cu.second)->getKernelName()] += 1 ;
+
+    if (getFlowMode() == SW_EMU) {
+      kernelCounts = (t->db->getStaticInfo()).getSoftwareEmulationCUCounts() ;
+    }
+    else {
+      for (auto device : deviceInfos) {
+	for (auto xclbin : device->loadedXclbins) {
+	  for (auto cu : xclbin->cus) {
+	    if (kernelCounts.find((cu.second)->getKernelName()) == kernelCounts.end()) {
+	      kernelCounts[(cu.second)->getKernelName()] = 1 ;
+	    }
+	    else {
+	      kernelCounts[(cu.second)->getKernelName()] += 1 ;
+	    }
 	  }
 	}
       }
