@@ -17,6 +17,8 @@ jobs:
     - name: Install dependencies
       if: steps.cache-sha.outputs.cache-hit != 'true'
       run: |
+        whoami
+        env
         sudo apt update
         sudo src/runtime_src/tools/scripts/xrtdeps.sh
     - name: XRT Build
