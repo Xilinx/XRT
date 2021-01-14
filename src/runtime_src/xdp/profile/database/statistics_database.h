@@ -280,6 +280,8 @@ namespace xdp {
     inline void setContextEnabled()          { contextEnabled = true ; }
     inline uint64_t getMaxExecutions(const std::string& kernelName)
       { return maxExecutions[kernelName] ; }
+    inline std::map<std::string, uint64_t>& getAllMaxExecutions()
+      { return maxExecutions ; }
     inline void logMaxExecutions(const std::string& kernelName, uint64_t num)
     { 
       if (maxExecutions.find(kernelName) == maxExecutions.end())

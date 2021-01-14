@@ -1957,6 +1957,18 @@ namespace xdp {
 	}
       }
     }
+
+    // For software emulation, we have this information but it isn't associated
+    //  with kernel names
+    if (getFlowMode() == SW_EMU) {
+      std::map<std::string, uint64_t> maxExecutions =
+	(t->db->getStats()).getAllMaxExecutions() ;
+      for (auto iter : maxExecutions) {
+	(t->fout) << "MAX_PARALLEL_KERNEL_ENQUEUES" << ","
+		  << (iter.first)                   << ","
+		  << (iter.second)                  << "," << std::endl ;
+      }
+    }
   }
 
   void OpenCLSummaryWriter::guidanceCommandQueueOOO(OpenCLSummaryWriter* t)
