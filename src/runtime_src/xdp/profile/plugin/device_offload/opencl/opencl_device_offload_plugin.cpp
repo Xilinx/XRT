@@ -107,10 +107,7 @@ namespace xdp {
   OpenCLDeviceOffloadPlugin::~OpenCLDeviceOffloadPlugin()
   {
     if (!active) return ;
-    if (getFlowMode() == SW_EMU) {
-      updateSWEmulationGuidance() ;
-      return ;
-    }
+    if (getFlowMode() == SW_EMU) return ;
 
     if (VPDatabase::alive())
     {
@@ -163,10 +160,7 @@ namespace xdp {
   void OpenCLDeviceOffloadPlugin::flushDevice(void* d)
   {
     if (!active) return ;
-    if (getFlowMode() == SW_EMU) {
-      updateSWEmulationGuidance() ;
-      return ;
-    }
+    if (getFlowMode() == SW_EMU) return ;
 
     xrt_xocl::device* device = static_cast<xrt_xocl::device*>(d) ;
 
@@ -195,7 +189,10 @@ namespace xdp {
   void OpenCLDeviceOffloadPlugin::updateDevice(void* d)
   {
     if (!active) return ;
-    if (getFlowMode() == SW_EMU) return ;
+    if (getFlowMode() == SW_EMU){
+      updateSWEmulationGuidance() ;
+      return ;
+    }
 
     // The OpenCL level expects an xrt_xocl::device to be passed in
     xrt_xocl::device* device = static_cast<xrt_xocl::device*>(d) ;
@@ -372,11 +369,24 @@ namespace xdp {
 
   void OpenCLDeviceOffloadPlugin::updateSWEmulationGuidance()
   {
+    if (platform == nullptr) return ; 
     // There is just some software emulation specific information
     //  we need to add in order to handle guidance rules
     for (auto xrt_device_id : platform->get_device_range()) {
       for (auto& cu : xocl::xocl(xrt_device_id)->get_cus()) {
 	(db->getStaticInfo()).addSoftwareEmulationCUInstance(cu->get_kernel_name()) ;
+      }
+    }
+
+    for (auto device: platform->get_device_range()) {
+      auto mem_tp = device->get_axlf_section<const mem_topology*>(axlf_section_kind::MEM_TOPOLOGY) ;
+      if (!mem_tp) continue ;
+      std::string devName = device->get_unique_name() ;
+      for (int i = 0 ; i < mem_tp->m_count ; ++i) {
+	std::string mem_tag(reinterpret_cast<const char*>(mem_tp->m_mem_data[i].m_tag));
+	if (mem_tag.rfind("bank", 0) == 0)
+	  mem_tag = "DDR[" + mem_tag.substr(4,4) + "]";
+	(db->getStaticInfo()).addSoftwareEmulationMemUsage(devName + "|" + mem_tag, mem_tp->m_mem_data[i].m_used) ;
       }
     }
   }
