@@ -1952,8 +1952,14 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceMaxParallelKernelEnqueues(OpenCLSummaryWriter* t)
   {
-    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    auto maxExecs = (t->db->getStats()).getAllMaxExecutions();
 
+    for(auto mExec : maxExecs) {
+      (t->fout) << "MAX_PARALLEL_KERNEL_ENQUEUES" << ","
+                << mExec.first  << ","
+                << mExec.second << "," << std::endl;
+    }
+#if 0
     for (auto device : deviceInfos) {
       for (auto xclbin : device->loadedXclbins) {
 	for (auto cuInfo : xclbin->cus) {
@@ -1979,6 +1985,7 @@ namespace xdp {
 		  << (iter.second)                  << "," << std::endl ;
       }
     }
+#endif
   }
 
   void OpenCLSummaryWriter::guidanceCommandQueueOOO(OpenCLSummaryWriter* t)
