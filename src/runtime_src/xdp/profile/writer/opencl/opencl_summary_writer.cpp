@@ -1929,19 +1929,21 @@ namespace xdp {
   {
     std::string memType = "FIFO" ;
 
-    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
-    
-    for (auto device : deviceInfos) {
-      for (auto xclbin : device->loadedXclbins) {
-	if (xclbin->usesTs2mm)
-	{
-	  memType = "TS2MM" ;
-	  break ;
-	}
+    if(HW_EMU == getFlowMode() || SW_EMU == getFlowMode()) {
+      memType = "NA";
+    } else {
+      auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+ 
+      for (auto device : deviceInfos) {
+        for (auto xclbin : device->loadedXclbins) {
+          if (xclbin->usesTs2mm)
+          {
+            memType = "TS2MM" ;
+            break ;
+          }
+        }
       }
     }
-
-    if (getFlowMode() == SW_EMU) memType = "NA" ;
 
     (t->fout) << "TRACE_MEMORY" << ","
 	      << "all" << ","
