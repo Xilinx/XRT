@@ -20,7 +20,7 @@ jobs:
         whoami
         env
         sudo apt update
-        sudo src/runtime_src/tools/scripts/xrtdeps.sh
+        sudo src/runtime_src/tools/scripts/xrtdeps.sh -docker
     - name: XRT Build
       run: cd build && chmod +x build.sh ; ./build.sh
     - name: Stash files
