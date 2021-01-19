@@ -1003,8 +1003,6 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 		}
 
 	} else {
-		
-		read_bdinfo_from_peer(pdev);
 		if (!xmc->bdinfo_raw)
 			return;
 
@@ -4418,10 +4416,22 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
 			return 0;
-		} else {
-			vfree(xmc->bdinfo_raw);
-			xmc->bdinfo_raw = NULL;
 		}
+
+		vfree(xmc->bdinfo_raw);
+		xmc->bdinfo_raw = NULL;
+
+		/*
+		 * If boardinfo can't be read out, it is likely either PF
+		 * mailbox or the CMC mailbox timed out, don't try to read
+		 * it again and again in this same context, othereise, the
+		 * xocl driver may be considered as hang (120s no response)
+		 * defined by
+		 * /proc/sys/kernel/hung_task_timeout_secs"
+		 */
+		read_bdinfo_from_peer(xmc->pdev);
+		if (!xmc->bdinfo_raw)
+			return -EINVAL;
 
 		xmc_bdinfo(xmc->pdev, SER_NUM, (u32 *)xmc->serial_num);
 		xmc_bdinfo(xmc->pdev, MAC_ADDR0, (u32 *)xmc->mac_addr0);
