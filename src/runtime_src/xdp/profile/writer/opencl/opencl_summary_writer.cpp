@@ -1978,14 +1978,16 @@ namespace xdp {
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
 
     for (auto device : deviceInfos) {
+      std::string deviceName = device->deviceName ;
       for (auto xclbin : device->loadedXclbins) {
-	for (auto memory : xclbin->memoryInfo) {
-	  if ((memory.second)->name.find("PLRAM") != std::string::npos) {
-	    (t->fout) << "PLRAM_SIZE_BYTES" << ","
-		      << (memory.second)->name << ","
-		      << (memory.second)->size << "," << std::endl ;
-	  }
-	}
+        for (auto memory : xclbin->memoryInfo) {
+          if ((memory.second)->name.find("PLRAM") != std::string::npos) {
+            (t->fout) << "PLRAM_SIZE_BYTES," 
+                      << deviceName << ","
+                      << (memory.second)->size*1024 << "," << std::endl;
+             break;
+          }
+        }
       }
     }
   }
