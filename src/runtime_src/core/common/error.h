@@ -24,47 +24,75 @@
 
 namespace xrt_core {
 
-class error : public std::runtime_error
+// class system_error - Propagation of OS system errors
+//
+// Use system_error for system (OS) propagation of errors.  Convert
+// shim level OS errors into a system_error
+class system_error : public std::system_error
 {
-  int m_code;
 public:
-  error(int ec, const std::string& what = "")
-    : std::runtime_error(what), m_code(ec)
+  system_error(int ec, const std::error_category& cat, const std::string& what = "")
+    : std::system_error(std::abs(ec), cat, what)
+  {}
+  
+  explicit
+  system_error(int ec, const std::string& what = "")
+    : system_error(ec, std::system_category(), what)
   {}
 
-  explicit
-  error(const std::string& what)
-    : std::runtime_error(what), m_code(0)
-  {}
+  // Retrive underlying code for return plain error code
+  int
+  value() const
+  {
+    return code().value();
+  }
 
   int
   get() const
   {
-    return m_code;
+    return value();
   }
 
-  unsigned int
+  int
   get_code() const
   {
-    return get();
+    return value();
   }
 };
 
-class system_error : public std::system_error
+// class generic_error - Propagation of generic errors
+//
+// Use generic_error for propagation of error codes originating
+// in user space.   Error codes are expected to POSIX error
+// codes.
+class generic_error : public system_error
 {
 public:
-  system_error(int ec, const std::string& what = "")
-    : std::system_error(ec, std::system_category(), what)
+  explicit
+  generic_error(int ec, const std::string& what = "")
+    : system_error(std::abs(ec), std::generic_category(), what)
   {}
 };
 
-class generic_error : public std::system_error
+// User space error with POSIX error code
+// Same as generic_error except default EINVAL ctor from message
+class error : public generic_error
 {
 public:
-  generic_error(int ec, const std::string& what = "")
-    : std::system_error(ec, std::generic_category(), what)
+  explicit
+  error(int ec, const std::string& what = "")
+    : generic_error(std::abs(ec), what)
+  {}
+
+  explicit
+  error(const std::string& what)
+    : generic_error(EINVAL, what)
   {}
 };
+
+// Internal unexpected error
+using internal_error = std::runtime_error;
+ 
 
 XRT_CORE_COMMON_EXPORT
 void

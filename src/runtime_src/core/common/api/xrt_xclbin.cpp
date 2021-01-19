@@ -967,11 +967,9 @@ xrtXclbinAllocFilename(const char* filename)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }
@@ -990,11 +988,9 @@ xrtXclbinAllocRawData(const char* data, int size)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }
@@ -1038,15 +1034,11 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    // Set errno globally
-    errno = ex.get();
     return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    // Set errno globally
-    errno = 0;
-    return 0;
+    return -1;
   }
 }
 
@@ -1063,15 +1055,11 @@ xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    // Set errno globally
-    errno = ex.get();
     return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    // Set errno globally
-    errno = 0;
-    return 0;
+    return -1;
   }
 }
 
@@ -1097,15 +1085,11 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    // Set errno globally
-    errno = ex.get();
     return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    // Set errno globally
-    errno = 0;
-    return 0;
+    return -1;
   }
 }
 
@@ -1129,7 +1113,7 @@ xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
-   return -1;
+    return -1;
   }
 }
 
