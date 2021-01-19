@@ -1609,49 +1609,57 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceNumMonitors(OpenCLSummaryWriter* t)
   {
-    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
-    std::map<uint8_t, uint64_t> accelCounter ;
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos();
+    struct MonInfo {
+      std::string type;
+      uint64_t numTotal;
+      uint64_t numTraceEnabled;
+
+      MonInfo(std::string s, uint64_t total, uint64_t trace)
+        : type(s), numTotal(total), numTraceEnabled(trace)
+      {}
+      ~MonInfo() {}
+    };
+
+    std::map<uint8_t, MonInfo*> monitors;
+
+    monitors[ACCEL_MONITOR]      = new MonInfo("XCL_PERF_MON_ACCEL", 0, 0);
+    monitors[AXI_MM_MONITOR]     = new MonInfo("XCL_PERF_MON_MEMORY", 0, 0);
+    monitors[AXI_STREAM_MONITOR] = new MonInfo("XCL_PERF_MON_STR", 0, 0);
 
     for (auto device : deviceInfos)
     {
       for (auto xclbin : device->loadedXclbins)
       {
-	// Collect the number of the different types of monitors
-	for (auto cu : xclbin->cus)
-	{
-	  for (auto aimId : *((cu.second)->getAIMs()))
-	  {
-	    Monitor* monitor = (t->db->getStaticInfo()).getAIMonitor(device->deviceId, xclbin, aimId);
-	    accelCounter[monitor->type] += 1;
-	  }
-	  for (auto asmId : *((cu.second)->getASMs()))
-	  {
-	    Monitor* monitor = (t->db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmId);
-	    accelCounter[monitor->type] += 1;
-	  }
-	}
+
+        monitors[ACCEL_MONITOR]->numTotal += xclbin->amList.size();
+        monitors[ACCEL_MONITOR]->numTraceEnabled += xclbin->amMap.size();
+
+        monitors[AXI_MM_MONITOR]->numTotal += xclbin->aimList.size();
+        monitors[AXI_MM_MONITOR]->numTraceEnabled += xclbin->aimMap.size();
+
+        monitors[AXI_STREAM_MONITOR]->numTotal += xclbin->asmList.size();
+        monitors[AXI_STREAM_MONITOR]->numTraceEnabled += xclbin->asmMap.size();
+        
       }
 
-      for (auto numCounters : accelCounter)
+      for (auto mon : monitors)
       {
-	std::string accelType = "" ;
-	switch(numCounters.first)
-	{
-	case ACCEL_MONITOR:      accelType = "XCL_PERF_MON_ACCEL" ;  break ;
-	case AXI_MM_MONITOR:     accelType = "XCL_PERF_MON_MEMORY" ; break ;
-	case AXI_STREAM_MONITOR: accelType = "XCL_PERF_MON_STR" ;    break ;
-	default:                 accelType = "other" ;               break ;
-	}
+        (t->fout) << "NUM_MONITORS" << ","
+                  << device->deviceName << "|"
+                  << (mon.second)->type << "|"
+                  << (mon.second)->numTraceEnabled << ","
+                  << (mon.second)->numTotal << "," << std::endl;
 
-	(t->fout) << "NUM_MONITORS" << ","
-		  << device->deviceName 
-		  << "|"
-		  << accelType
-		  << "|"
-		  << (numCounters.second) << ","
-		  << (numCounters.second) << "," << std::endl ;
+        // Reset the numbers
+        (mon.second)->numTotal        = 0;
+        (mon.second)->numTraceEnabled = 0;
       }
     }
+    for(auto mon : monitors) {
+      delete mon.second;
+    }
+    monitors.clear(); 
   }
 
   void OpenCLSummaryWriter::guidanceMigrateMem(OpenCLSummaryWriter* t)
@@ -1865,7 +1873,7 @@ namespace xdp {
 	  for (auto asmId : (*asmIds)) {
 	    Monitor* monitor = (t->db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmId) ;
 	    (t->fout) << "PORT_BIT_WIDTH" << ","
-		      << (cu.second)->getName() << "/" << monitor->args << ","
+		      << (cu.second)->getName() << "/" << monitor->port << ","
 		      << monitor->portWidth << "," << std::endl ;
 	  }
 	}
@@ -1931,19 +1939,21 @@ namespace xdp {
   {
     std::string memType = "FIFO" ;
 
-    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
-    
-    for (auto device : deviceInfos) {
-      for (auto xclbin : device->loadedXclbins) {
-	if (xclbin->usesTs2mm)
-	{
-	  memType = "TS2MM" ;
-	  break ;
-	}
+    if(HW_EMU == getFlowMode() || SW_EMU == getFlowMode()) {
+      memType = "NA";
+    } else {
+      auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+ 
+      for (auto device : deviceInfos) {
+        for (auto xclbin : device->loadedXclbins) {
+          if (xclbin->usesTs2mm)
+          {
+            memType = "TS2MM" ;
+            break ;
+          }
+        }
       }
     }
-
-    if (getFlowMode() == SW_EMU) memType = "NA" ;
 
     (t->fout) << "TRACE_MEMORY" << ","
 	      << "all" << ","
@@ -1952,8 +1962,14 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceMaxParallelKernelEnqueues(OpenCLSummaryWriter* t)
   {
-    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    auto maxExecs = (t->db->getStats()).getAllMaxExecutions();
 
+    for(auto mExec : maxExecs) {
+      (t->fout) << "MAX_PARALLEL_KERNEL_ENQUEUES" << ","
+                << mExec.first  << ","
+                << mExec.second << "," << std::endl;
+    }
+#if 0
     for (auto device : deviceInfos) {
       for (auto xclbin : device->loadedXclbins) {
 	for (auto cuInfo : xclbin->cus) {
@@ -1979,6 +1995,7 @@ namespace xdp {
 		  << (iter.second)                  << "," << std::endl ;
       }
     }
+#endif
   }
 
   void OpenCLSummaryWriter::guidanceCommandQueueOOO(OpenCLSummaryWriter* t)
