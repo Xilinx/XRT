@@ -1694,6 +1694,16 @@ namespace xdp {
 	}
       }
     }
+
+    if (getFlowMode() == SW_EMU) {
+      std::map<std::string, bool> memUsage =
+	(t->db->getStaticInfo()).getSoftwareEmulationMemUsage() ;
+      for (auto iter : memUsage) {
+	(t->fout) << "MEMORY_USAGE" << ","
+		  << iter.first     << ","
+		  << iter.second    << "," << std::endl ;
+      }
+    }
   }
 
   void OpenCLSummaryWriter::guidancePLRAMDevice(OpenCLSummaryWriter* t)
