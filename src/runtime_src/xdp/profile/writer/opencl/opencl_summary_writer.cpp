@@ -1959,33 +1959,6 @@ namespace xdp {
                 << mExec.first  << ","
                 << mExec.second << "," << std::endl;
     }
-#if 0
-    for (auto device : deviceInfos) {
-      for (auto xclbin : device->loadedXclbins) {
-	for (auto cuInfo : xclbin->cus) {
-	  std::string kernelName = (cuInfo.second)->getKernelName() ;
-	  uint64_t maxExecutions = 
-	    (t->db->getStats()).getMaxExecutions(kernelName) ;
-
-	  (t->fout) << "MAX_PARALLEL_KERNEL_ENQUEUES" << ","
-		    << kernelName << ","
-		    << maxExecutions << "," << std::endl ;
-	}
-      }
-    }
-
-    // For software emulation, we have this information but it isn't associated
-    //  with kernel names
-    if (getFlowMode() == SW_EMU) {
-      std::map<std::string, uint64_t> maxExecutions =
-	(t->db->getStats()).getAllMaxExecutions() ;
-      for (auto iter : maxExecutions) {
-	(t->fout) << "MAX_PARALLEL_KERNEL_ENQUEUES" << ","
-		  << (iter.first)                   << ","
-		  << (iter.second)                  << "," << std::endl ;
-      }
-    }
-#endif
   }
 
   void OpenCLSummaryWriter::guidanceCommandQueueOOO(OpenCLSummaryWriter* t)
