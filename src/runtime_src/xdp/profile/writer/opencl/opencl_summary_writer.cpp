@@ -1982,6 +1982,7 @@ namespace xdp {
   void OpenCLSummaryWriter::guidancePLRAMSizeBytes(OpenCLSummaryWriter* t)
   {
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    bool done = false;
 
     for (auto device : deviceInfos) {
       std::string deviceName = device->deviceName ;
@@ -1991,10 +1992,14 @@ namespace xdp {
             (t->fout) << "PLRAM_SIZE_BYTES," 
                       << deviceName << ","
                       << (memory.second)->size*1024 << "," << std::endl;
+             done = true;
+             /* To match old flow iand tools, print PLRAM_SIZE_BYTES for the first match only */
              break;
           }
         }
+        if(done) break;
       }
+      if(done) break;
     }
   }
 
