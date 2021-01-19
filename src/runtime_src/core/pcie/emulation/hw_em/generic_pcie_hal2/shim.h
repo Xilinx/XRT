@@ -36,7 +36,6 @@
 
 #include "mem_model.h"
 #include "mbscheduler.h"
-#include "mbscheduler_hwemu.h"
 #endif
 
 #include <sys/param.h>
@@ -336,7 +335,6 @@ using addr_type = uint64_t;
       // HAL2 RELATED member variables end
       exec_core* mCore;
       MBScheduler* mMBSch;
-      hwemu::xocl_scheduler* m_scheduler;
 
       // Information extracted from platform linker (for profile/debug)
       bool mIsDebugIpLayoutRead = false;

@@ -376,14 +376,9 @@ namespace xclhwemhal2 {
       }
       mFirstBinary = false;
     }
-    if(xclemulation::config::getInstance()->isNewMbscheduler()) {
-        m_scheduler = new hwemu::xocl_scheduler(this);
-    }
-    else {
-        mCore = new exec_core;
-        mMBSch = new MBScheduler(this);
-        mMBSch->init_scheduler_thread();
-    }
+    mCore = new exec_core;
+    mMBSch = new MBScheduler(this);
+    mMBSch->init_scheduler_thread();
 
     delete[] zipFile;
     delete[] debugFile;
@@ -1648,10 +1643,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         delete mMBSch;
         mMBSch = NULL;
       }
-      if(m_scheduler)
-      {
-          delete m_scheduler;
-      }
       PRINTENDFUNC;
       if (mLogStream.is_open()) {
         mLogStream.close();
@@ -1717,10 +1708,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         mCore = NULL;
         delete mMBSch;
         mMBSch = NULL;
-      }
-      if(m_scheduler)
-      {
-          delete m_scheduler;
       }
       return 0;
     }
@@ -1823,10 +1810,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       delete mMBSch;
       mMBSch = NULL;
     }
-    if(m_scheduler)
-    {
-        delete m_scheduler;
-    }
 
     return 0;
   }
@@ -1869,10 +1852,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mCore = NULL;
       delete mMBSch;
       mMBSch = NULL;
-    }
-    if(m_scheduler)
-    {
-        delete m_scheduler;
     }
     if(mDataSpace)
     {
@@ -2027,7 +2006,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bXPR = _xpr;
     mCore = nullptr;
     mMBSch = nullptr; 
-    m_scheduler = nullptr;
     mIsDebugIpLayoutRead = false;
     mIsDeviceProfiling = false;
     mMemoryProfilingNumberSlots = 0;
@@ -2879,30 +2857,15 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
   }
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
-
-  if(xclemulation::config::getInstance()->isNewMbscheduler()) 
+  if(!mMBSch || !bo)
   {
-      if(!m_scheduler || !bo)
-      {
-          PRINTENDFUNC;
-          return -1;
-      }
-      int ret = m_scheduler->add_exec_buffer(bo);
-      PRINTENDFUNC;
-      return ret;
+    PRINTENDFUNC;
+    return -1;
   }
-  else {
-      if(!mMBSch || !bo)
-      {
-          PRINTENDFUNC;
-          return -1;
-      }
-      int ret = mMBSch->add_exec_buffer(mCore, bo);
-      PRINTENDFUNC;
-      return ret;
-  }
+  int ret = mMBSch->add_exec_buffer(mCore, bo);
+  PRINTENDFUNC;
+  return ret;
 }
-
 
 int HwEmShim::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
 {
