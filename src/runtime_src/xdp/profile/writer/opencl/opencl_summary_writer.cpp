@@ -1739,18 +1739,15 @@ namespace xdp {
     
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
 
-    for (auto device : deviceInfos)
-    {
-      for (auto xclbin : device->loadedXclbins)
-      {
-	for (auto memory : xclbin->memoryInfo)
-	{
-	  if ((memory.second)->type == MEM_HBM)
-	  {
-	    hasHBM = true ;
-	    break ;
-	  }
-	}
+    for (auto device : deviceInfos) {
+      for (auto xclbin : device->loadedXclbins) {
+        for (auto memory : xclbin->memoryInfo) {
+          if((memory.second)->name.find("HBM") != std::string::npos) {
+            hasHBM = true ;
+            break ;
+	      }
+        }
+        if (hasHBM) break ;
       }
       if (hasHBM) break ;
     }
@@ -1762,12 +1759,12 @@ namespace xdp {
 
       if (deviceName.find("u280") != std::string::npos ||
           deviceName.find("u50") != std::string::npos)
-	hasHBM = true ;
+        hasHBM = true ;
     }
 
     (t->fout) << "HBM_DEVICE" << ","
-	      << "all" << ","
-	      << (uint64_t)(hasHBM) << "," << std::endl ;
+              << "all" << ","
+              << (uint64_t)(hasHBM) << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceKDMADevice(OpenCLSummaryWriter* t)
