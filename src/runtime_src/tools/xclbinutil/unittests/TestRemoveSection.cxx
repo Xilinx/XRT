@@ -16,7 +16,7 @@ TEST(RemoveSection, RemoveBitstream) {
 
    // Get the file of interest
    boost::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
-   sampleXclbin.append("sample_1_2018.2.xclbin");
+   sampleXclbin /= "sample_1_2018.2.xclbin";
 
    xclBin.readXclBinBinary(sampleXclbin.string(), false /* bMigrateForward */);
 

@@ -24,8 +24,6 @@ fi
 # -- End of the unit tests
 echo ">>> End of unit test <<<" >> "$log_file"
 
-errorCode=1
-
 # On failure, report the log file to the console
 if test $errorCode -ne 0
 then

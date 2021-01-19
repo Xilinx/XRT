@@ -17,7 +17,7 @@ TEST(MetaData, AddingMissingFile) {
 TEST(MetaData, AddingValidFile) {
   // Get the file of interest
   boost::filesystem::path sampleMetadata(TestUtilities::getResourceDir());
-  sampleMetadata.append("metadata.json");
+  sampleMetadata /= "metadata.json";
 
   const std::string formattedString = std::string("BUILD_METADATA:JSON:") + sampleMetadata.string();
   ParameterSectionData psd(formattedString);
