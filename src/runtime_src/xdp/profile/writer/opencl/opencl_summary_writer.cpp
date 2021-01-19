@@ -1712,19 +1712,15 @@ namespace xdp {
     
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
 
-    for (auto device : deviceInfos)
-    {
-      for (auto xclbin : device->loadedXclbins)
-      {
-	for (auto memory : xclbin->memoryInfo)
-	{
-	  if ((memory.second)->type == MEM_BRAM || 
-	      (memory.second)->type == MEM_URAM)
-	  {
-	    hasPLRAM = true ;
-	    break ;
-	  }
-	}
+    for (auto device : deviceInfos) {
+      for (auto xclbin : device->loadedXclbins) {
+        for (auto memory : xclbin->memoryInfo) {
+          if((memory.second)->name.find("PLRAM") != std::string::npos) {
+            hasPLRAM = true ;
+            break ;
+	      }
+        }
+        if (hasPLRAM) break ;
       }
       if (hasPLRAM) break ;
     }
@@ -1733,8 +1729,8 @@ namespace xdp {
     if (getFlowMode() == SW_EMU) hasPLRAM = true ;
 
     (t->fout) << "PLRAM_DEVICE" << ","
-	      << "all" << ","
-	      << (uint64_t)(hasPLRAM) << "," << std::endl ;
+              << "all" << ","
+              << (uint64_t)(hasPLRAM) << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceHBMDevice(OpenCLSummaryWriter* t)
