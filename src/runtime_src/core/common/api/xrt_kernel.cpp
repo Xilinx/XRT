@@ -415,7 +415,7 @@ class ip_context
     int32_t
     get_arg_memidx(size_t argidx) const
     {
-      return default_connection[argidx];
+      return default_connection.at(argidx);
     }
 
     // Validate that specified memory index is a valid connection for
