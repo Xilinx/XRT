@@ -4289,11 +4289,25 @@ static int config_scu(struct platform_device *pdev,
 	    i++) {
 		if (scmd->opcode == ERT_SK_CONFIG) {
 			char scu_name[32];
+			int slen;
+
 			if (strlen(xert->scu_name[i]) > 0)
 				continue;
 			exec->num_sk_cus++;
-			/* Add "scu_idx#" suffix to identify softkernel */
-			strncpy(scu_name, (char *)scmd->sk_name,
+
+			/*
+			 * Add "scu_idx#" suffix to identify softkernel
+			 *
+			 * And limit SCU name to the last 11 characters
+			 * to fit kds_custat sysfs node into PAGE_SIZE
+			 * with no more than 64 SCUs.
+			 */
+			slen = strlen((char*)scmd->sk_name);
+			if (slen > 11)
+				slen -= 11;
+			else
+				slen = 0;
+			strncpy(scu_name, ((char *)scmd->sk_name) + slen,
 				sizeof(xert->scu_name[0]) - 8);
 			snprintf(xert->scu_name[i], 32, "%s:scu_%d",
 				scu_name, i);
@@ -4850,12 +4864,21 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	unsigned int idx = 0;
 	ssize_t sz = 0;
 	int32_t cu_status = -1;
+	char *tembuf;
+
+	/*
+	 * Allocate a temporary buffer to prevent custat exceed PAGE_SIZE.
+	 * 3 PAGE_SIZE is big enough to hold maximum 128 CUs + 128 SCUs
+	 */
+	tembuf = vzalloc(PAGE_SIZE * 3);
+	if (!tembuf)
+		return 0;
 
 	// No need to lock exec, cu stats are computed and cached.
 	// Even if xclbin is swapped, the data reflects the xclbin on
 	// which is was computed above.
 	for (idx = 0; idx < exec->num_cus; ++idx) {
-		sz += sprintf(buf+sz, "CU[@0x%x] : %d status : %d\n",
+		sz += sprintf(tembuf+sz, "CU[@0x%x] : %d status : %d\n",
 		    exec_cu_base_addr(exec, idx),
 		    xert ? ert_cu_usage(xert, idx) : exec_cu_usage(exec, idx),
 		    exec_cu_status(exec, idx));
@@ -4867,61 +4890,67 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 			cu_status = ert_cu_status(xert, idx);
 			if (!cu_status)
 				cu_status = AP_IDLE;
-			sz += sprintf(buf+sz, "CU[@0x0] : %d status : %d name : %s\n",
+			sz += sprintf(tembuf+sz, "CU[@0x0] : %d status : %d name : %s\n",
 				      ert_cu_usage(xert, idx),
 				      cu_status,
 				      xert->scu_name[idx - exec->num_cus]);
 		}
 	}
 
-	sz += sprintf(buf+sz, "KDS number of pending commands: %d\n", exec_num_pending(exec));
+	sz += sprintf(tembuf+sz, "KDS number of pending commands: %d\n", exec_num_pending(exec));
 
 	if (!xert) {
-		sz += sprintf(buf+sz, "KDS number of running commands: %d\n", exec_num_running(exec));
+		sz += sprintf(tembuf+sz, "KDS number of running commands: %d\n", exec_num_running(exec));
 		goto out;
 	}
 
-	sz += sprintf(buf+sz, "CQ usage : {");
+	sz += sprintf(tembuf+sz, "CQ usage : {");
 	for (idx = 0; idx < xert->num_slots; ++idx)
-		sz += sprintf(buf+sz, "%s%d", (idx > 0 ? "," : ""), ert_cq_slot_usage(xert, idx));
-	sz += sprintf(buf+sz, "}\n");
+		sz += sprintf(tembuf+sz, "%s%d", (idx > 0 ? "," : ""), ert_cq_slot_usage(xert, idx));
+	sz += sprintf(tembuf+sz, "}\n");
 
-	sz += sprintf(buf+sz, "CQ mirror state : {");
+	sz += sprintf(tembuf+sz, "CQ mirror state : {");
 	for (idx = 0; idx < xert->num_slots; ++idx) {
 		if (idx == 0) { // ctrl slot should be ignored
-			sz += sprintf(buf+sz, "-");
+			sz += sprintf(tembuf+sz, "-");
 			continue;
 		}
-		sz += sprintf(buf+sz, ",%d", ert_cq_slot_busy(xert, idx));
+		sz += sprintf(tembuf+sz, ",%d", ert_cq_slot_busy(xert, idx));
 	}
-	sz += sprintf(buf+sz, "}\n");
+	sz += sprintf(tembuf+sz, "}\n");
 
-	sz += sprintf(buf+sz, "ERT scheduler version : 0x%x\n", ert_version(xert));
-	sz += sprintf(buf+sz, "ERT number of submitted commands: %d\n", exec_num_running(exec));
-	sz += sprintf(buf+sz, "ERT scheduler CU state : {");
+	sz += sprintf(tembuf+sz, "ERT scheduler version : 0x%x\n", ert_version(xert));
+	sz += sprintf(tembuf+sz, "ERT number of submitted commands: %d\n", exec_num_running(exec));
+	sz += sprintf(tembuf+sz, "ERT scheduler CU state : {");
 	for (idx = 0; idx < exec->num_cus + exec->num_sk_cus; ++idx) {
 		if (idx > 0)
-			sz += sprintf(buf+sz, ",");
+			sz += sprintf(tembuf+sz, ",");
 		cu_status = ert_cu_status(xert, idx);
 		if (!cu_status)
 			cu_status = AP_IDLE;
-		sz += sprintf(buf+sz, "%d", cu_status);
+		sz += sprintf(tembuf+sz, "%d", cu_status);
 	}
 
-	sz += sprintf(buf+sz, "}\nERT scheduler CQ state : {");
+	sz += sprintf(tembuf+sz, "}\nERT scheduler CQ state : {");
 	for (idx = 0; idx < xert->num_slots; ++idx) {
 		if (idx == 0) { // ctrl slot should be ignored
-			sz += sprintf(buf+sz, "-");
+			sz += sprintf(tembuf+sz, "-");
 			continue;
 		}
-		sz += sprintf(buf+sz, ",%d", ert_cq_slot_status(xert, idx));
+		sz += sprintf(tembuf+sz, ",%d", ert_cq_slot_status(xert, idx));
 	}
-	sz += sprintf(buf+sz, "}\n");
+	sz += sprintf(tembuf+sz, "}\n");
 
 out:
 	if (sz)
-		buf[sz++] = 0;
+		tembuf[sz++] = 0;
 
+	if (sz >= (ssize_t)PAGE_SIZE)
+		sz = 0;
+	else
+		memcpy(buf, tembuf, sz);
+
+	vfree(tembuf);
 	return sz;
 }
 static DEVICE_ATTR_RO(kds_custat);
