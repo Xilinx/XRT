@@ -449,7 +449,7 @@ static int xocl_get_buddy_cb(struct device *dev, void *data)
 	 */
 	if (!src_xdev || !dev || to_pci_dev(dev)->vendor != 0x10ee ||
 	   	XOCL_DEV_ID(to_pci_dev(dev)) ==
-		XOCL_DEV_ID(src_xdev->core.pdev) ||
+		XOCL_DEV_ID(src_xdev->core.pdev) || !dev->driver ||
 		strcmp(dev->driver->name, "xocl")) 
 		return 0;
 
