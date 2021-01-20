@@ -627,7 +627,7 @@ namespace xocl {
       cl_mem mem0 = nullptr ;
 
       // See how many of the arguments will be migrated and mark them
-      for (auto& arg : xkernel->get_argument_range())
+      for (auto& arg : xkernel->get_xargument_range())
       {
 	if (auto mem = arg->get_memory_object())
 	{
