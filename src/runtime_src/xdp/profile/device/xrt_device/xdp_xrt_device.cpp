@@ -106,14 +106,6 @@ void XrtDevice::free(size_t xdpBoHandle)
 {
   if (!xdpBoHandle) return;
   auto idx = xdpBoHandle - 1;
-  // OpenCL must explicilty unmap, otherwise there is a stray 
-  //  pointer that is stored in the shared platform that causes problems
-  //  at end of execution
-  try {
-    mXrtDevice->unmap(m_bos[idx]) ;
-  } catch (...) {
-    // If the unmapping failed, we don't need to do anything else
-  }
   m_bos[idx] = xrt::bo{};
 }
 
