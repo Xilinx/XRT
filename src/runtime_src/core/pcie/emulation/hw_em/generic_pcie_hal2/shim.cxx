@@ -25,6 +25,9 @@
 #include <boost/lexical_cast.hpp>
 #include "core/common/xclbin_parser.h"
 #include "xcl_perfmon_parameters.h"
+#include <mutex>
+#include <set>
+
 #define SEND_RESP2QDMA() \
     { \
         auto raw_response_header    = std::make_unique<char[]>(ri_len); \
@@ -90,6 +93,55 @@ namespace xclhwemhal2 {
   const unsigned HwEmShim::CONTROL_AP_CONTINUE  = 0x10;
   const unsigned HwEmShim::REG_BUFF_SIZE = 0x4;
   void messagesThread(xclhwemhal2::HwEmShim* inst);
+
+  // Maintain a list of all currently open device handles.
+  //
+  // xclClose removes a handle from the list.  At static destruction
+  // the list of still open handles is iterated and devices are
+  // manually closed.  This ensures xclClose is called for all opened
+  // devices even when upper level code (OpenCL in particular) doesn't
+  // close all acquired resources.
+  //
+  // The static handles must be descructed before other static data
+  // members, so it is important device_handles::handles is defined
+  // after above initializations.  Order of static destruciton is in
+  // reverse order of construction.
+  //
+  // Ideally all statics should be managed in the unnamed namespace of
+  // this compilation unit and not be data members of the shim class.
+  namespace device_handles {
+    static std::mutex mutex;
+    static std::set<xclDeviceHandle> handles;
+
+    inline void
+    add(xclDeviceHandle hdl)
+    {
+      std::lock_guard<std::mutex> lk(mutex);
+      handles.insert(hdl);
+    }
+
+    inline void
+    remove(xclDeviceHandle hdl)
+    {
+      std::lock_guard<std::mutex> lk(mutex);
+      handles.erase(hdl);
+    }
+    
+    struct X
+    {
+      ~X()
+      {
+        auto end = handles.end();
+        for (auto itr = handles.begin(); itr != end;) {
+          xclClose(*itr);  // removes handle from handles
+          itr = handles.begin();
+        }
+      }
+    };
+
+    static X x;  
+  }
+  
   Event::Event()
   {
     awlen = 0;
@@ -1633,6 +1685,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // The core device must correspond to open and close, so
     // reset here rather than in destructor
     mCoreDevice.reset();
+    device_handles::remove(this);
 
     if (!sock)
     {
@@ -2374,6 +2427,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // The core device must correspond to open and close, so
     // create here rather than in constructor
     mCoreDevice = xrt_core::hwemu::get_userpf_device(this, mDeviceIndex);
+
+    device_handles::add(this);
   }
 
 /**********************************************HAL2 API's START HERE **********************************************/
