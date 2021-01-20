@@ -1712,19 +1712,15 @@ namespace xdp {
     
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
 
-    for (auto device : deviceInfos)
-    {
-      for (auto xclbin : device->loadedXclbins)
-      {
-	for (auto memory : xclbin->memoryInfo)
-	{
-	  if ((memory.second)->type == MEM_BRAM || 
-	      (memory.second)->type == MEM_URAM)
-	  {
-	    hasPLRAM = true ;
-	    break ;
-	  }
-	}
+    for (auto device : deviceInfos) {
+      for (auto xclbin : device->loadedXclbins) {
+        for (auto memory : xclbin->memoryInfo) {
+          if((memory.second)->name.find("PLRAM") != std::string::npos) {
+            hasPLRAM = true ;
+            break ;
+	      }
+        }
+        if (hasPLRAM) break ;
       }
       if (hasPLRAM) break ;
     }
@@ -1733,8 +1729,8 @@ namespace xdp {
     if (getFlowMode() == SW_EMU) hasPLRAM = true ;
 
     (t->fout) << "PLRAM_DEVICE" << ","
-	      << "all" << ","
-	      << (uint64_t)(hasPLRAM) << "," << std::endl ;
+              << "all" << ","
+              << (uint64_t)(hasPLRAM) << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceHBMDevice(OpenCLSummaryWriter* t)
@@ -1743,18 +1739,15 @@ namespace xdp {
     
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
 
-    for (auto device : deviceInfos)
-    {
-      for (auto xclbin : device->loadedXclbins)
-      {
-	for (auto memory : xclbin->memoryInfo)
-	{
-	  if ((memory.second)->type == MEM_HBM)
-	  {
-	    hasHBM = true ;
-	    break ;
-	  }
-	}
+    for (auto device : deviceInfos) {
+      for (auto xclbin : device->loadedXclbins) {
+        for (auto memory : xclbin->memoryInfo) {
+          if((memory.second)->name.find("HBM") != std::string::npos) {
+            hasHBM = true ;
+            break ;
+	      }
+        }
+        if (hasHBM) break ;
       }
       if (hasHBM) break ;
     }
@@ -1766,12 +1759,12 @@ namespace xdp {
 
       if (deviceName.find("u280") != std::string::npos ||
           deviceName.find("u50") != std::string::npos)
-	hasHBM = true ;
+        hasHBM = true ;
     }
 
     (t->fout) << "HBM_DEVICE" << ","
-	      << "all" << ","
-	      << (uint64_t)(hasHBM) << "," << std::endl ;
+              << "all" << ","
+              << (uint64_t)(hasHBM) << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceKDMADevice(OpenCLSummaryWriter* t)
@@ -1969,33 +1962,6 @@ namespace xdp {
                 << mExec.first  << ","
                 << mExec.second << "," << std::endl;
     }
-#if 0
-    for (auto device : deviceInfos) {
-      for (auto xclbin : device->loadedXclbins) {
-	for (auto cuInfo : xclbin->cus) {
-	  std::string kernelName = (cuInfo.second)->getKernelName() ;
-	  uint64_t maxExecutions = 
-	    (t->db->getStats()).getMaxExecutions(kernelName) ;
-
-	  (t->fout) << "MAX_PARALLEL_KERNEL_ENQUEUES" << ","
-		    << kernelName << ","
-		    << maxExecutions << "," << std::endl ;
-	}
-      }
-    }
-
-    // For software emulation, we have this information but it isn't associated
-    //  with kernel names
-    if (getFlowMode() == SW_EMU) {
-      std::map<std::string, uint64_t> maxExecutions =
-	(t->db->getStats()).getAllMaxExecutions() ;
-      for (auto iter : maxExecutions) {
-	(t->fout) << "MAX_PARALLEL_KERNEL_ENQUEUES" << ","
-		  << (iter.first)                   << ","
-		  << (iter.second)                  << "," << std::endl ;
-      }
-    }
-#endif
   }
 
   void OpenCLSummaryWriter::guidanceCommandQueueOOO(OpenCLSummaryWriter* t)
@@ -2013,17 +1979,24 @@ namespace xdp {
   void OpenCLSummaryWriter::guidancePLRAMSizeBytes(OpenCLSummaryWriter* t)
   {
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    bool done = false;
 
     for (auto device : deviceInfos) {
+      std::string deviceName = device->deviceName ;
       for (auto xclbin : device->loadedXclbins) {
-	for (auto memory : xclbin->memoryInfo) {
-	  if ((memory.second)->name.find("PLRAM") != std::string::npos) {
-	    (t->fout) << "PLRAM_SIZE_BYTES" << ","
-		      << (memory.second)->name << ","
-		      << (memory.second)->size << "," << std::endl ;
-	  }
-	}
+        for (auto memory : xclbin->memoryInfo) {
+          if ((memory.second)->name.find("PLRAM") != std::string::npos) {
+            (t->fout) << "PLRAM_SIZE_BYTES," 
+                      << deviceName << ","
+                      << (memory.second)->size*1024 << "," << std::endl;
+             done = true;
+             /* To match old flow iand tools, print PLRAM_SIZE_BYTES for the first match only */
+             break;
+          }
+        }
+        if(done) break;
       }
+      if(done) break;
     }
   }
 
