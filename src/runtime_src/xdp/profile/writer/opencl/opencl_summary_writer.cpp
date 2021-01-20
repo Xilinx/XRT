@@ -1770,32 +1770,32 @@ namespace xdp {
   void OpenCLSummaryWriter::guidanceKDMADevice(OpenCLSummaryWriter* t)
   {
     bool hasKDMA = false ;
-    
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
 
-    for (auto device : deviceInfos)
-    {
-      if (device->kdmaCount > 0)
-      {
-	hasKDMA = true ;
-	break ;
+    for (auto device : deviceInfos) {
+      std::string deviceName = device->deviceName;
+      if(deviceName.find("xilinx_u200_xdma_201830_2") != std::string::npos
+         || deviceName.find("xilinx_u200_xdma_201830_3") != std::string::npos
+         || deviceName.find("xilinx_vcu1525_xdma_201830_2") != std::string::npos) {
+        hasKDMA = true;
+        break;
       }
     }
 
     // To match backward compatability, we will have to check the name
     if (getFlowMode() == SW_EMU) {
       std::string deviceName =
-	(t->db->getStaticInfo()).getSoftwareEmulationDeviceName() ;
+           (t->db->getStaticInfo()).getSoftwareEmulationDeviceName() ;
 
       if (deviceName.find("xilinx_u200_xdma_201830_2") != std::string::npos ||
           deviceName.find("xilinx_u200_xdma_201830_3") != std::string::npos ||
-	  deviceName.find("xilinx_vcu1525_xdma_201830_2") != std::string::npos)
-	hasKDMA = true ;
+          deviceName.find("xilinx_vcu1525_xdma_201830_2") != std::string::npos)
+        hasKDMA = true ;
     }
 
     (t->fout) << "KDMA_DEVICE" << ","
-	      << "all" << ","
-	      << (uint64_t)(hasKDMA) << "," << std::endl ;
+              << "all" << ","
+              << (uint64_t)(hasKDMA) << "," << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceP2PDevice(OpenCLSummaryWriter* t)
