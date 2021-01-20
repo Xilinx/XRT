@@ -275,6 +275,54 @@ fd_package_list()
     )
 }
 
+
+suse_package_list()
+{
+   SUSE_LIST=(\
+     lsb-release \
+     libboost_filesystem1_66_0-devel \
+     libboost_program_options1_66_0-devel \
+     cmake \
+     curl \
+     dkms \
+     gcc \
+     gcc-c++ \
+     gdb \
+     git \
+     glibc-devel-static \
+     gnuplot \
+     libgnutls-devel \
+     json-glib-devel \
+     libdrm-devel \
+     libjpeg8-devel \
+     libpng12-devel \
+     libtiff-devel \
+     libuuid-devel \
+     libxml2-devel \
+     libyaml-devel \
+     make \
+     ncurses-devel \
+     libopenssl-devel \
+     pciutils \
+     perl \
+     pkg-config \
+     protobuf-devel \
+     python \
+     python3-pip \
+     rpm-build \
+     strace \
+     unzip \
+     zlib-devel-static \
+     libcurl-devel \
+     libopenssl-devel \
+     opencl-cpp-headers \
+     libudev-devel \
+     dmidecode \
+     kernel-devel \
+     kernel-devel \
+   )
+}
+
 update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
@@ -283,6 +331,8 @@ update_package_list()
         rh_package_list
     elif [ $FLAVOR == "fedora" ]; then
         fd_package_list
+    elif [ $FLAVOR == "sles" ]; then
+        suse_package_list
     else
         echo "unknown OS flavor $FLAVOR"
         exit 1
@@ -302,6 +352,14 @@ validate()
 
     if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
         rpm -q "${RH_LIST[@]}"
+        if [ $? == 0 ] ; then
+            # Validate we have OpenCL 2.X headers installed
+            rpm -q -i opencl-headers | grep '^Version' | grep ': 2\.'
+        fi
+    fi
+
+    if [ $FLAVOR == "sles" ]; then
+        rpm -q "${SUSE_LIST[@]}"
         if [ $? == 0 ] ; then
             # Validate we have OpenCL 2.X headers installed
             rpm -q -i opencl-headers | grep '^Version' | grep ': 2\.'
@@ -446,6 +504,11 @@ install()
     if [ $FLAVOR == "fedora" ]; then
         echo "Installing Fedora packages..."
         yum install -y "${FD_LIST[@]}"
+    fi
+
+    if [ $FLAVOR == "sles" ] ; then
+        echo "Installing SUSE packages..."
+        ${SUDO} zypper install -y "${SUSE_LIST[@]}"
     fi
 
     # Install pybind11 for building the XRT python bindings

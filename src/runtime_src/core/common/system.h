@@ -108,7 +108,10 @@ public:
   }
 
   virtual void
-  program_plp(const device* dev, const std::vector<char> &buffer) const = 0;
+  program_plp(const device*, const std::vector<char>&) const
+  {
+    throw std::runtime_error("plp program is not supported");
+  }
 }; // system
 
 /**

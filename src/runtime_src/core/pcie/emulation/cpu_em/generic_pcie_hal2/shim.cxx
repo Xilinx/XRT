@@ -32,6 +32,7 @@ namespace xclcpuemhal2 {
 
   std::map<unsigned int, CpuemShim*> devices;
   unsigned int CpuemShim::mBufferCount = 0;
+  unsigned int GraphType::mGraphHandle = 0;
   std::map<int, std::tuple<std::string,int,void*> > CpuemShim::mFdToFileNameMap;
   bool CpuemShim::mFirstBinary = true;
   const unsigned CpuemShim::TAG = 0X586C0C6C; // XL OpenCL X->58(ASCII), L->6C(ASCII), O->0 C->C L->6C(ASCII);
@@ -507,6 +508,12 @@ namespace xclcpuemhal2 {
     if(header)
     {
       resetProgram();
+      std::string logFilePath = xrt_core::config::get_hal_logging();
+      if (!logFilePath.empty()) {
+        mLogStream.open(logFilePath);
+        mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
+        mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+      }
 
     if( mFirstBinary )
     {
@@ -519,8 +526,9 @@ namespace xclcpuemhal2 {
       char *sharedlib = nullptr;
       int sharedliblength = 0;
       char* memTopology = nullptr;
-      ssize_t memTopologySize = 0;
-
+      size_t memTopologySize = 0;
+      char* emuData = nullptr;
+      size_t emuDataSize = 0;
       //check header
       if (!memcmp(xclbininmemory, "xclbin0", 8))
       {
@@ -540,6 +548,12 @@ namespace xclcpuemhal2 {
           memTopologySize = sec->m_sectionSize;
           memTopology = new char[memTopologySize];
           memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);
+        }
+        //Extract EMULATION_DATA from XCLBIN       
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, EMULATION_DATA)) {
+          emuDataSize = sec->m_sectionSize;
+          emuData = new char[emuDataSize];
+          memcpy(emuData, xclbininmemory + sec->m_sectionOffset, emuDataSize);
         }
       }
       else
@@ -642,6 +656,26 @@ namespace xclcpuemhal2 {
         mSWSch = new SWScheduler(this);
         mSWSch->init_scheduler_thread();
       }
+
+      //Extract EMULATION_DATA from XCLBIN
+      if ((emuData != nullptr) && (emuDataSize > 1)) {
+        std::unique_ptr<char[]> emuDataFileName(new char[1024]);
+#ifndef _WINDOWS
+        // TODO: Windows build support
+        // getpid is defined in unistd.h
+        std::sprintf(emuDataFileName.get(), "%s/emuDataFile", binaryDirectory.c_str());
+#endif
+        std::ofstream os(emuDataFileName.get());
+        os.write(emuData, emuDataSize);
+        os.close();
+        std::string emuDataFilePath(emuDataFileName.get());
+        systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
+        
+        delete[]emuData;
+        emuData = NULL;
+      }
+
       bool ack = true;
       bool verbose = false;
       if(mLogStream.is_open())
@@ -1911,5 +1945,138 @@ int CpuemShim::deviceQuery(key_type queryKey) {
 }
 
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
+
+/******************************* XRT Graph API's **************************************************/
+/**
+* xrtGraphInit() - Initialize  graph
+*/
+int CpuemShim::xrtGraphInit(void * gh) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  auto graphname = ghPtr->getGraphName();
+  xclGraphInit_RPC_CALL(xclGraphInit, graphhandle, graphname);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphRun() - Start a graph execution
+*/
+int CpuemShim::xrtGraphRun(void * gh, uint32_t iterations) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphRun_RPC_CALL(xclGraphRun, graphhandle, iterations);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphWait() -  Wait a given AIE cycle since the last xrtGraphRun and
+*                   then stop the graph. If cycle is 0, busy wait until graph
+*                   is done. If graph already run more than the given
+*                   cycle, stop the graph immediateley.
+*/
+int CpuemShim::xrtGraphWait(void * gh) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphWait_RPC_CALL(xclGraphWait, graphhandle);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphEnd() - Wait a given AIE cycle since the last xrtGraphRun and
+*                 then end the graph. If cycle is 0, busy wait until graph
+*                 is done before end the graph. If graph already run more
+*                 than the given cycle, stop the graph immediately and end it.
+*
+* @gh:              Handle to graph previously opened with xrtGraphOpen.
+* @cycle:           AIE cycle should wait since last xrtGraphRun. 0 for
+*                   wait until graph is done.
+*
+* Return:          0 on success, -1 on timeout.
+*
+* Note: This API with non-zero AIE cycle is for graph that is running
+* forever or graph that has multi-rate core(s).
+*/
+int CpuemShim::xrtGraphEnd(void * gh) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphEnd_RPC_CALL(xclGraphEnd, graphhandle);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphUpdateRTP() - Update RTP value of port with hierarchical name
+*
+* @gh:              Handle to graph previously opened with xrtGraphOpen.
+* @hierPathPort:    hierarchial name of RTP port.
+* @buffer:          pointer to the RTP value.
+* @size:            size in bytes of the RTP value.
+*
+* Return:          0 on success, -1 on error.
+*/
+int CpuemShim::xrtGraphUpdateRTP(void * gh, const char *hierPathPort, const char *buffer, size_t size) {
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphUpdateRTP_RPC_CALL(xclGraphUpdateRTP, graphhandle, hierPathPort, buffer, size);
+  PRINTENDFUNC
+    return 0;
+}
+
+/**
+* xrtGraphUpdateRTP() - Read RTP value of port with hierarchical name
+*
+* @gh:              Handle to graph previously opened with xrtGraphOpen.
+* @hierPathPort:    hierarchial name of RTP port.
+* @buffer:          pointer to the buffer that RTP value is copied to.
+* @size:            size in bytes of the RTP value.
+*
+* Return:          0 on success, -1 on error.
+*
+* Note: Caller is reponsible for allocating enough memory for RTP value
+*       being copied to.
+*/
+int CpuemShim::xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size) {
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphReadRTP_RPC_CALL(xclGraphReadRTP, graphhandle, hierPathPort, buffer, size);
+  PRINTENDFUNC
+    return 0;
+}
+/******************************* XRT Graph API's End here**************************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }

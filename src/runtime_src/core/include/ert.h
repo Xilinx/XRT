@@ -62,6 +62,8 @@
     ((struct ert_start_kernel_cmd *)(pkg))
 #define to_copybo_pkg(pkg) \
     ((struct ert_start_copybo_cmd *)(pkg))
+#define to_cfg_sk_pkg(pkg) \
+    ((struct ert_configure_sk_cmd *)(pkg))
 
 /**
  * struct ert_packet: ERT generic packet format
@@ -122,7 +124,10 @@ struct ert_start_kernel_cmd {
   };
 
   /* payload */
-  uint32_t cu_mask;          /* mandatory cu mask */
+  union {
+    uint32_t cu_mask;          /* mandatory cu mask */
+    int32_t return_code;      /* return code from soft kernel*/
+  };
   uint32_t data[1];          /* count-1 number of words */
 };
 
@@ -250,7 +255,9 @@ struct ert_configure_cmd {
   uint32_t rw_shared:1;
   uint32_t kds_30:1;
   uint32_t dmsg:1;
-  uint32_t unusedf:21;
+  uint32_t echo:1;
+  uint32_t intr:1;
+  uint32_t unusedf:19;
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */
@@ -364,6 +371,8 @@ enum ert_cmd_state {
   ERT_CMD_STATE_SUBMITTED = 7,
   ERT_CMD_STATE_TIMEOUT = 8,
   ERT_CMD_STATE_NORESPONSE = 9,
+  ERT_CMD_STATE_SKERROR = 10, //Check for error return code from Soft Kernel
+  ERT_CMD_STATE_SKCRASHED = 11, //Soft kernel has crashed
   ERT_CMD_STATE_MAX, // Always the last one
 };
 

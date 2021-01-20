@@ -262,7 +262,7 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	/**
 	 * vmf_*** functions returning VM_FAULT_XXX values.(all positive values)
 	 * vm_*** functions returning 0 on success and errno on failure. (Zero or negative)
-	 */ 
+	 */
 	if (ret > 0) {
 		/* Comes here only in vmf_*** case. */
 		return ret;
@@ -271,8 +271,8 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	/**
 	 *  Comes here only in vm_*** case.
 	 *  When two threads enter this function at the same time, the first thread will
-	 *  successfully insert the page. The second thread will call the insert page, 
-	 *  but gets back -EBUSY (-16) since the page has already been inserted. So should 
+	 *  successfully insert the page. The second thread will call the insert page,
+	 *  but gets back -EBUSY (-16) since the page has already been inserted. So should
 	 *  treat -EBUSY as success
 	 */
 	switch (ret) {
@@ -390,8 +390,8 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(XOCL_FREE_CMA, xocl_free_cma_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 
-/* LINUX KERNEL-SPACE IOCTLS - The following entries are meant to be 
- * accessible only from Linux Kernel and need be grouped to at the end 
+/* LINUX KERNEL-SPACE IOCTLS - The following entries are meant to be
+ * accessible only from Linux Kernel and need be grouped to at the end
  * of this array.
  * New IOCTLS meant for Userspace access needs to be defined above these
  * comments.
@@ -449,7 +449,11 @@ static struct drm_driver mm_drm_driver = {
 	.postclose			= xocl_client_release,
 	.open				= xocl_client_open,
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+	.gem_free_object_unlocked       = xocl_free_object,
+#else
 	.gem_free_object		= xocl_free_object,
+#endif
 	.gem_vm_ops			= &xocl_vm_ops,
 
 	.ioctls				= xocl_ioctls,
@@ -982,4 +986,3 @@ done:
 	xocl_info(drm_p->ddev->dev, "ret %d", err);
 	return err;
 }
-

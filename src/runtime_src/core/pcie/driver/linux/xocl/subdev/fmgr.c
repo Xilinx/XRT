@@ -21,7 +21,7 @@
  * kernels do not support FPGA Mgr yet.
  */
 #include <linux/version.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0) && !defined(RHEL_RELEASE_VERSION)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0) && defined(ENABLE_FPGA_MGR_SUPPORT)
 #define FPGA_MGR_SUPPORT
 #include <linux/fpga/fpga-mgr.h>
 #endif

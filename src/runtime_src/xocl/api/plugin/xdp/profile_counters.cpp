@@ -21,6 +21,7 @@
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 #include "core/common/dlfcn.h"
+#include "core/include/experimental/xrt_kernel.h"
 
 #include "xocl/core/command_queue.h"
 #include "xocl/core/program.h"
@@ -127,28 +128,15 @@ namespace xocl {
 // This anonymous namespace is for helper functions used in this file
 namespace {
 
-  static uint32_t get_num_cu_masks(uint32_t header)
+  // Index of CU used to execute command. This is not necessarily the
+  // proper CU since a command may have the option to execute on
+  // multiple CUs and only scheduler knows which one was picked
+  static unsigned int get_cu_index(const xrt::run& run)
   {
-    return ((1 + (header >> 10)) & 0x3) ;
-  }
-
-  static uint32_t get_cu_index_mask(uint32_t cumask)
-  {
-    uint32_t cu_idx = 0 ;
-    for (; (cumask & 0x1) == 0 ; ++cu_idx, cumask >>= 1) ;
-    return cu_idx ;
-  }
-
-  static unsigned int get_cu_index(const xrt_xocl::command* cmd)
-  {
-    auto& packet = cmd->get_packet() ;
-    auto masks = get_num_cu_masks(packet[0]) ;
-
-    for (unsigned int i = 0 ; i < masks ; ++i)
-    {
-      if (auto cumask = packet[i+1])
-	return get_cu_index_mask(cumask) + 32 * i ;
-    }
+    auto& cumask = xrt_core::kernel_int::get_cumask(run) ;
+    for (size_t bit = 0; bit < cumask.size(); ++bit)
+      if (cumask.test(bit))
+	return bit;
     return 0 ;
   }
 
@@ -175,14 +163,14 @@ namespace xocl {
 
     // These are the functions on the XOCL side that gets called when
     //  execution contexts start and stop
-    void log_cu_start(const xrt_xocl::command* cmd, 
-		      const xocl::execution_context* ctx)
+    void log_cu_start(const xocl::execution_context* ctx,
+		      const xrt::run& run)
     {
       if (!counter_cu_execution_cb) return ;
 
       // Check for software emulation logging of compute unit starts as well
-      unsigned int cuIndex = get_cu_index(cmd) ;
-      auto cu = ctx->get_compute_unit(cuIndex) ;
+      unsigned int cuIndex = get_cu_index(run) ;
+      auto cu = ctx->get_event()->get_command_queue()->get_device()->get_compute_unit(cuIndex) ;
       if (cu)
       {
 	auto localDim = ctx->get_local_work_size() ;
@@ -205,14 +193,14 @@ namespace xocl {
       }
     }
     
-    void log_cu_end(const xrt_xocl::command* cmd,
-		    const xocl::execution_context* ctx)
+    void log_cu_end(const xocl::execution_context* ctx,
+		    const xrt::run& run)
     {
       // Check for software emulation logging of compute unit ends as well
       if (counter_cu_execution_cb)
       {
-	unsigned int cuIndex = get_cu_index(cmd) ;
-	auto cu = ctx->get_compute_unit(cuIndex) ;
+	unsigned int cuIndex = get_cu_index(run) ;
+	auto cu = ctx->get_event()->get_command_queue()->get_device()->get_compute_unit(cuIndex) ;
 	if (cu)
 	{
 	  auto localDim = ctx->get_local_work_size() ;
@@ -499,7 +487,7 @@ namespace xocl {
       size_t totalSize = 0 ;
 
       // See how many of the arguments will be migrated and mark them
-      for (auto& arg : xkernel->get_argument_range())
+      for (auto& arg : xkernel->get_xargument_range())
       {
 	if (auto mem = arg->get_memory_object())
 	{

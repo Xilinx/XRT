@@ -818,9 +818,13 @@ void *shim::xclMapBO(unsigned int boHandle, bool write)
         return nullptr;
     }
 
-    return mDev->mmap(mUserHandle, info.size,
+    auto val = mDev->mmap(mUserHandle, info.size,
         (write ? (PROT_READ | PROT_WRITE) : PROT_READ), MAP_SHARED,
         mapInfo.offset);
+
+    return val == reinterpret_cast<void*>(-1)
+      ? nullptr
+      : val;
 }
 
 /*
@@ -2463,6 +2467,10 @@ int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection 
   SYNC_BO_CB ;
 
     xocl::shim *drv = xocl::shim::handleCheck(handle);
+    if (size == 0) {
+      //Nothing to do
+      return 0;
+    }
     return drv ? drv->xclSyncBO(boHandle, dir, size, offset) : -ENODEV;
 }
 

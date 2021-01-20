@@ -35,6 +35,7 @@ private:
     const xma_core::plg::session&  base; // base session class
     XmaScalerProperties   scaler_props; // client requested scaler properties
     XmaScalerPlugin      *scaler_plugin{nullptr}; // pointer to plugin interface
+    std::string      tag; //tag for log messages
  
 public:
   int32_t
@@ -46,6 +47,9 @@ public:
   void 
   set_default_filter_coeff(const XmaScalerFilterProperties *props);
 
+  //Send log msg to XRT API
+  void
+  logmsg(XmaLogLevelType level, const char *msg, ...) const;
 
   sc_session(const XmaScalerProperties *props, const xma_core::plg::session& sess);//host app can be C; user input is Scaler Properties
   ~sc_session();

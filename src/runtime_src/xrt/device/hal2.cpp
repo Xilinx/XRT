@@ -505,7 +505,9 @@ getBufferFromFd(int fd, size_t& size, unsigned flags)
 {
 #ifndef _WIN32
   auto export_handle = static_cast<xclBufferExportHandle>(fd);
-  return xrt::bo{m_handle, export_handle};
+  xrt::bo bo{m_handle, export_handle};
+  size = bo.size();
+  return bo;
 #else
   throw std::runtime_error("ImportBO function not supported on windows");
 #endif

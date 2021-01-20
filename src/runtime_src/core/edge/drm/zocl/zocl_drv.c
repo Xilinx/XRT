@@ -762,7 +762,11 @@ static struct drm_driver zocl_driver = {
 #endif
 	.open                      = zocl_client_open,
 	.postclose                 = zocl_client_release,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+	.gem_free_object_unlocked  = zocl_free_bo,
+#else
 	.gem_free_object           = zocl_free_bo,
+#endif
 	.gem_vm_ops                = &zocl_bo_vm_ops,
 	.gem_create_object         = zocl_gem_create_object,
 	.prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
@@ -863,6 +867,18 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 		zdev->res_start = res->start;
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
+	}
+
+	subdev = zocl_find_pdev("reset_ps");
+	if (subdev) {
+		DRM_INFO("reset_ps found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res) {
+			DRM_ERROR("The base address of reset_ps is not found or 0\n");
+			return -EINVAL;
+		}
+
+		zdev->watchdog = platform_get_drvdata(subdev);
 	}
 
 	/* For Non PR platform, there is not need to have FPGA manager
@@ -1032,6 +1048,7 @@ static struct platform_driver zocl_drm_private_driver = {
 
 static struct platform_driver *const drivers[] = {
 	&zocl_ert_driver,
+	&zocl_watchdog_driver,
 	&zocl_ospi_versal_driver,
 	&cu_driver,
 };

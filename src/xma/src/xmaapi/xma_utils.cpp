@@ -57,6 +57,8 @@ namespace xma_core {
         { ert_cmd_state::ERT_CMD_STATE_SUBMITTED, "SUBMITTED"},
         { ert_cmd_state::ERT_CMD_STATE_TIMEOUT, "TIMEOUT"},
         { ert_cmd_state::ERT_CMD_STATE_NORESPONSE, "NORESPONSE"},
+        { ert_cmd_state::ERT_CMD_STATE_SKERROR, "SKERROR"},
+        { ert_cmd_state::ERT_CMD_STATE_SKCRASHED, "SKCRASHED"},
         { ert_cmd_state::ERT_CMD_STATE_MAX, "MAX"}
     };
 
@@ -564,9 +566,9 @@ int32_t check_all_execbo(XmaSession s_handle) {
                     } else if (cu_cmd->state == ERT_CMD_STATE_ERROR ||
                     	       cu_cmd->state == ERT_CMD_STATE_ABORT ||
                     	       cu_cmd->state == ERT_CMD_STATE_TIMEOUT ||
-                    	       cu_cmd->state == ERT_CMD_STATE_NORESPONSE) {
+                    	       cu_cmd->state >= ERT_CMD_STATE_NORESPONSE) {
                         //Check for invalid/error execo state
-                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE. state=%s", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xma_core::get_cu_cmd_state(cu_cmd).c_str());
                     }
                 }
             }
@@ -604,9 +606,9 @@ int32_t check_all_execbo(XmaSession s_handle) {
                     } else if (cu_cmd->state == ERT_CMD_STATE_ERROR ||
                     	       cu_cmd->state == ERT_CMD_STATE_ABORT ||
                     	       cu_cmd->state == ERT_CMD_STATE_TIMEOUT ||
-                    	       cu_cmd->state == ERT_CMD_STATE_NORESPONSE) {
+                    	       cu_cmd->state >= ERT_CMD_STATE_NORESPONSE) {
                         //Check for invalid/error execo state
-                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE. state=%s", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xma_core::get_cu_cmd_state(cu_cmd).c_str());
                     } else {
                         ebo_it++;
                     }

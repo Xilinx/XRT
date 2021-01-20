@@ -248,7 +248,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
   if(!logic_uuid.empty() && !boost::filesystem::exists(xclbinPath)) {
     //if bandwidth xclbin isn't present, skip the test
-    logger(_ptTest, "Details", "Verify xclbin not available. Skipping validation.");
+    logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
     _ptTest.put("status", "skipped");
     return;
   }
@@ -587,7 +587,7 @@ kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
 {
   //please append the new supported versions
   const std::vector<std::string> ubuntu_kernel_versions = { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0" };
-  const std::vector<std::string> centos_rh_kernel_versions = { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062", "3.10.0-1127", "4.18.0-147", "4.18.0-193" };
+  const std::vector<std::string> centos_rh_kernel_versions = { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1160.11.1", "3.10.0-1062", "3.10.0-1127", "4.9.184-35", "4.18.0-147", "4.18.0-193" };
 
   boost::property_tree::ptree _pt_host;
   std::make_shared<ReportHost>()->getPropertyTreeInternal(_dev.get(), _pt_host);

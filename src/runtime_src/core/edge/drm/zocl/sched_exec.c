@@ -17,10 +17,13 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/sched.h>
+#include <linux/sched/signal.h>
+#include <linux/sched/task.h>
 #include "ert.h"
 #include "sched_exec.h"
 #include "zocl_sk.h"
 #include "zocl_xclbin.h"
+#include "zocl_watchdog.h"
 #include "xclbin.h"
 
 //#define SCHED_VERBOSE
@@ -51,6 +54,7 @@
 #endif
 
 static int cq_check(void *data);
+static int watchdog_thread(void *data);
 static irqreturn_t sched_cq_isr(int irq, void *arg);
 
 /* Scheduler call schedule() every MAX_SCHED_LOOP loop*/
@@ -1080,6 +1084,7 @@ cu_stat(struct sched_cmd *cmd)
 	int pkt_idx = 0;
 	int max_idx = (slot_size(cmd->ddev) >> 2) - 1;
 	int i;
+	struct pid *p_tmp;
 
 	SCHED_DEBUG("-> %s cq_slot_idx %d\n", __func__, cmd->cq_slot_idx);
 	slot_idx = cmd->cq_slot_idx;
@@ -1118,13 +1123,23 @@ cu_stat(struct sched_cmd *cmd)
 	}
 
 	/* indevidual SK CU status */
+	mutex_lock(&sk->sk_lock);
 	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
-		if (sk->sk_cu[i])
-			pkg->data[pkt_idx++] = (exec->scu_status[cu_mask_idx(i)] &
-				(1 << (i % sizeof(exec->scu_status[0])))) ? 1 : 0;
-		else
+		p_tmp = NULL;
+		if (sk->sk_cu[i]) {
+			/* xbutil to check if process is alive */
+			p_tmp = find_get_pid(sk->sk_cu[i]->sc_pid);
+			if (p_tmp)
+  			pkg->data[pkt_idx++] =
+			    (exec->scu_status[cu_mask_idx(i)] &
+			    (1 << (i % (sizeof(exec->scu_status[0]) * 8)))) ?
+			    1 : 0;
+			else
+				pkg->data[pkt_idx++] = -1; //soft cu has crashed
+		} else
 			pkg->data[pkt_idx++] = -1; //soft cu has crashed
 	}
+	mutex_unlock(&sk->sk_lock);
 
 	/* Command slot status
 	 * Hard code QUEUED state. When a NEW command is found,
@@ -1454,13 +1469,35 @@ cu_done(struct sched_cmd *cmd)
 	return false;
 }
 
-inline int
+/* Copy soft kernel return code to execBO */
+static inline void
+copy_sk_return(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct soft_krnl *sk = zdev->soft_kernel;
+	struct soft_cu *scu;
+	uint32_t *cu_regfile;
+	struct ert_start_kernel_cmd *skc;
+
+	skc = (struct ert_start_kernel_cmd *)cmd->packet;
+	scu = sk->sk_cu[cmd->cu_idx];
+	cu_regfile = scu->sc_vregs;
+
+	/**
+	 * payload used for return code; payload & cu_mask are not used 
+	 * during cmd completion steps 
+	 */
+	skc->return_code = cu_regfile[1];
+}
+
+inline int32_t
 scu_done(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int cu_idx = cmd->cu_idx;
 	struct soft_krnl *sk = zdev->soft_kernel;
 	u32 *virt_addr;
+	int32_t ret = SK_ERROR;
 
 	/* We simulate hard CU here.
 	 * done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
@@ -1468,26 +1505,29 @@ scu_done(struct sched_cmd *cmd)
 	 * checking for 0x10 is sufficient.
 	 */
 	mutex_lock(&sk->sk_lock);
-	if (!sk->sk_cu[cu_idx]) {
+	if (!sk->sk_cu[cu_idx]) {//Soft kernel has crashed
 		mutex_unlock(&sk->sk_lock);
-		return true;
+		return SK_CRASHED;
 	}
 	virt_addr = sk->sk_cu[cu_idx]->sc_vregs;
 	SCHED_DEBUG("-> %s (,%d) checks scu at address 0x%p\n",
 	    __func__, cu_idx, virt_addr);
-	if (*virt_addr & 2) {
+	if (*virt_addr & CU_AP_DONE) {//Soft kernel is done
 		unsigned int mask_idx = cu_mask_idx(cu_idx);
 		unsigned int pos = cu_idx_in_mask(cu_idx);
 
+		copy_sk_return(cmd);
 		zdev->exec->scu_status[mask_idx] ^= 1 << pos;
-		*virt_addr &= ~2;
+		*virt_addr &= ~CU_AP_DONE;
+		if ((int32_t)virt_addr[1] >= 0)
+			ret = SK_DONE;
 		mutex_unlock(&sk->sk_lock);
 		SCHED_DEBUG("<- %s returns 1\n", __func__);
-		return true;
+		return ret;
 	}
 	mutex_unlock(&sk->sk_lock);
 	SCHED_DEBUG("<- %s returns 0\n", __func__);
-	return false;
+	return SK_RUNNING;
 }
 
 inline int
@@ -2696,6 +2736,39 @@ static struct sched_ops penguin_ops = {
 	.query = penguin_query,
 };
 
+static void
+mark_sk_complete(struct sched_cmd *cmd, int32_t ret)
+{
+	struct ert_start_kernel_cmd *skc;
+	skc = (struct ert_start_kernel_cmd *)cmd->packet;
+	switch (ret) {
+		case SK_CRASHED:
+			mark_cmd_complete(cmd, ERT_CMD_STATE_SKCRASHED);
+			break;
+		case SK_ERROR:
+			mark_cmd_complete(cmd, ERT_CMD_STATE_SKERROR);
+			break;
+		case SK_DONE:
+			mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
+			break;
+		case SK_RUNNING:
+			break;
+		default:
+			mark_cmd_complete(cmd, ERT_CMD_STATE_ERROR);
+			DRM_ERROR("unknown soft kernel return code %d", ret);
+			break;
+	}
+	if (ret != SK_RUNNING) {
+		struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+		struct zocl_ert_dev *ert = zdev->ert;
+		struct ert_packet *packet;
+		unsigned int slot_sz;
+		slot_sz = slot_size(zdev->ddev);
+		packet = ert->cq_ioremap + (cmd->cq_slot_idx * slot_sz);
+
+		memcpy_toio(packet, &skc->header, 2 * sizeof(u32));
+	}
+}
 /**
  * ps_ert_query() - Check command status of argument command
  *
@@ -2707,6 +2780,7 @@ static void
 ps_ert_query(struct sched_cmd *cmd)
 {
 	u32 opc = opcode(cmd);
+	int32_t ret = 0;
 
 	SCHED_DEBUG("-> %s() slot_idx=%d\n", __func__, cmd->slot_idx);
 	switch (opc) {
@@ -2722,8 +2796,8 @@ ps_ert_query(struct sched_cmd *cmd)
 		break;
 
 	case ERT_SK_START:
-		if (scu_done(cmd))
-			mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
+		ret = scu_done(cmd);
+		mark_sk_complete(cmd, ret);
 		break;
 
 	case ERT_START_CU:
@@ -3229,6 +3303,57 @@ static irqreturn_t sched_cq_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+static int watchdog_thread(void *data)
+{
+	struct drm_zocl_dev *zdev = data;
+	struct zocl_watchdog_dev *watchdog = zdev->watchdog;
+
+	if (!watchdog)
+		goto exit;
+
+	watchdog->ops->init(watchdog);
+	while (!kthread_should_stop()) {
+		struct watchdog_cfg cfg = {
+			.skd_run = false,
+			.cmc_run = false,
+			.cq_thread_run = false,
+			.sched_thread_run = false,
+		} ;
+		struct task_struct *tsk;
+
+		rcu_read_lock();
+		for_each_process(tsk) {
+			if (!strcmp(tsk->comm, "skd"))
+				cfg.skd_run = true;
+			if (!strncmp(tsk->comm, CMC, strlen(CMC)))
+				cfg.cmc_run = true;
+		}
+		rcu_read_unlock();
+
+		/*
+		 * Notes:
+		 * 1. We don't expect the sched thread and cq thread exit, so
+		 *    we don't need a lock when checking the thread state.
+		 * 2. Other than TASK_DEAD, what else state should be monitor?
+		 */
+		if (zdev->exec && zdev->exec->cq_thread &&
+			zdev->exec->cq_thread->state != TASK_DEAD)
+			cfg.cq_thread_run = true;
+
+		if (g_sched0.sched_thread &&
+			g_sched0.sched_thread->state != TASK_DEAD)
+			cfg.sched_thread_run = true;
+
+		watchdog->ops->config(watchdog, cfg);
+		msleep_interruptible(ZOCL_WATCHDOG_FREQ);
+		schedule();
+	}
+	watchdog->ops->fini(watchdog);
+exit:
+	DRM_INFO("watchdog thread exits!!\n");
+	return 0;
+}
+
 static inline void init_exec(struct sched_exec_core *exec_core)
 {
 	unsigned int i;
@@ -3306,6 +3431,10 @@ sched_init_exec(struct drm_device *drm)
 
 		init_waitqueue_head(&exec_core->cq_wait_queue);
 		exec_core->cq_thread = kthread_run(cq_check, zdev, name);
+		if (zdev->watchdog)
+			exec_core->watchdog_thread =
+				kthread_run(watchdog_thread, zdev,
+				"zocl_watchdog");
 	}
 
 	SCHED_DEBUG("<- %s\n", __func__);
@@ -3354,6 +3483,9 @@ int sched_fini_exec(struct drm_device *drm)
 	SCHED_DEBUG("-> %s\n", __func__);
 
 	fini_configure(drm);
+
+	if (zdev->exec->watchdog_thread)
+		kthread_stop(zdev->exec->watchdog_thread);
 
 	if (zdev->exec->cq_thread)
 		kthread_stop(zdev->exec->cq_thread);

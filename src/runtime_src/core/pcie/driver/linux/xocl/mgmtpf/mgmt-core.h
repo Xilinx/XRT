@@ -154,6 +154,9 @@ struct xclmgmt_dev {
 
 	/* programming shell flag */
 	u32 rp_program;
+
+	u16 pci_cmd;
+	u16 devctl;
 };
 
 extern int health_check;
@@ -174,6 +177,10 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
 int pci_fundamental_reset(struct xclmgmt_dev *lro);
 
 long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force);
+int xocl_wait_master_off(struct xclmgmt_dev *lro);
+int xocl_set_master_on(struct xclmgmt_dev *lro);
+void xocl_pci_save_config_all(struct xclmgmt_dev *lro);
+void xocl_pci_restore_config_all(struct xclmgmt_dev *lro);
 void xdma_reset(struct pci_dev *pdev, bool prepare);
 void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
 
@@ -186,6 +193,9 @@ void xclmgmt_ocl_reset(struct xclmgmt_dev *lro);
 void xclmgmt_ert_reset(struct xclmgmt_dev *lro);
 void xclmgmt_softkernel_reset(struct xclmgmt_dev *lro);
 
+/* bifurcation-reset.c */
+long xclmgmt_hot_reset_bifurcation(struct xclmgmt_dev *lro,
+	struct xclmgmt_dev *buddy_lro, bool force);
 /* firewall.c */
 void init_firewall(struct xclmgmt_dev *lro);
 void xclmgmt_killall_processes(struct xclmgmt_dev *lro);

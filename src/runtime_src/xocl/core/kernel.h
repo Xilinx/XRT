@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,6 +22,9 @@
 #include "xocl/core/memory.h"
 #include "xocl/xclbin/xclbin.h"
 
+#include "core/include/experimental/xrt_kernel.h"
+#include "core/common/api/kernel_int.h"
+
 #include "xrt/util/td.h"
 #include <limits>
 
@@ -39,331 +42,121 @@ class compute_unit;
 class kernel : public refcount, public _cl_kernel
 {
   using memidx_bitmask_type = xclbin::memidx_bitmask_type;
-public:
-  /**
-   * class argument is a class hierarchy that represents a kernel
-   * object argument constructed from xclbin::symbol::arg meta data.
-   *
-   * The class is in flux, and will change much as upstream cu_ffa
-   * and execution context are adapated.
-   */
-  class argument
+  using memory_vector_type = std::vector<ptr<memory>>;
+  using memory_iterator_type = ptr_iterator<memory_vector_type::iterator>;
+
+ public:
+  // OpenCL specific runtime argument types
+  enum class rtinfo_type { dim, goff, gsize, lsize, ngrps, gid, lid, grid, printf };
+
+  // Kernel arguments constructed from xclbin meta data.  Captures
+  // argument types and data needed for OpenCL configuration of
+  // xrt::run objects.
+  class xargument
   {
   public:
-    using argtype = xclbin::symbol::arg::argtype;
-    using arginfo_type = const xclbin::symbol::arg*;
-    using arginfo_vector_type = std::vector<arginfo_type>;
-    using arginfo_iterator_type = const arginfo_type*;
-    using arginfo_range_type = range<arginfo_iterator_type>;
-    using memidx_type = xclbin::memidx_type;
+    using arginfo_type = xrt_core::xclbin::kernel_argument;
 
-    enum class addr_space_type : unsigned short {
-      SPIR_ADDRSPACE_PRIVATE=0,
-      SPIR_ADDRSPACE_GLOBAL=1,
-      SPIR_ADDRSPACE_CONSTANT=2,
-      SPIR_ADDRSPACE_LOCAL=3,
-      SPIR_ADDRSPACE_PIPES=4
-    };
+    xargument(kernel* kernel, const arginfo_type* ainfo)
+      : m_kernel(kernel), m_arginfo(ainfo) {}
 
-  private:
-    /**
-     * Get the type of the argument
-     * enum class argtype { indexed, printf, rtinfo };
-     */
-    virtual argtype
-    get_argtype() const
-    { throw std::runtime_error("not implemented"); }
+    virtual ~xargument();
 
-  public:
-
-    argument(kernel* kernel) : m_kernel(kernel) {}
-
-    bool
-    is_set() const
-    { return m_set; }
-
-    void
-    set(unsigned long argidx, size_t sz, const void* arg)
-    {
-      m_argidx = argidx;
-      set(sz,arg);
-    }
-
-    /**
-     * @return
-     *   The kernel argument index of this argument
-     */
-    unsigned long
-    get_argidx() const
-    {
-      return m_argidx;
-    }
-
-    /**
-     * Get argument address qualifier
-     *
-     * This is a simple translation of address space per
-     * get_address_space
-     */
-    cl_kernel_arg_address_qualifier
-    get_address_qualifier() const;
-
-    bool
-    is_indexed() const
-    { return get_argtype()==argtype::indexed; }
-
-    bool
-    is_printf() const
-    { return get_argtype()==argtype::printf; }
-
-    bool
-    is_rtinfo() const
-    { return get_argtype()==argtype::rtinfo; }
-
-    virtual ~argument() {}
-
-    /**
-     * Clone an argument when a kernel object is bound to an
-     * execution context.   This allows the same kernel object
-     * to be used by multiple contexts at the same time, per
-     * OpenCL requirements.
-     *
-     * Asserts that the argument has been set, otherwise
-     * it makes no sense to clone it.
-     */
-    virtual std::unique_ptr<argument>
-    clone() = 0;
-
-    /**
-     * Set an argument (clSetKernelArg) to some value.
-     */
-    virtual void
-    set(size_t sz, const void* arg) = 0;
-
-    /**
-     * Set an svm argument (clSetKernelArgSVMPointer) to some value.
-     */
-    virtual void
-    set_svm(size_t sz, const void* arg)
-    { throw std::runtime_error("not implemented"); }
-
-    /**
-     * Add a component to an existing argument.
-     *
-     * Implemented for scalar args only.  Some arguments, e.g. long2,
-     * int4, etc. are associated with mutiple arginfo meta entries.
-     *
-     * @param arg
-     *   The arginfo meta data for this component of the argument
-     * @return
-     *   Argument size after component was added.
-     */
-    virtual size_t
-    add(arginfo_type arg)
-    { throw xocl::error(CL_INVALID_BINARY,"Cannot add component to argument"); }
-
-    /**
-     */
-    virtual addr_space_type
-    get_address_space() const
-    { throw std::runtime_error("not implemented"); }
-
-    /**
-     * Get argument name
-     */
-    virtual std::string
-    get_name() const
-    { throw std::runtime_error("not implemented"); }
-
-    /**
-     * Get the backing memory object of the argument if any.
-     *
-     * Implmented for constant and global args.
-     *
-     * @return
-     *   xocl::memory pointer or nullptr if argument is not backed
-     *   by a cl_mem object
-     */
-    virtual memory*
-    get_memory_object() const
+    virtual void set(const void* value, size_t sz)
+    { throw error(CL_INVALID_BINARY, "Cannot set argument"); }
+    virtual void set_svm(const void* value, size_t sz)
+    { throw error(CL_INVALID_BINARY, "Cannot set svm argument"); }
+    virtual void add(const arginfo_type* ainfo)
+    { throw error(CL_INVALID_BINARY, "Cannot add component to argument"); }
+    virtual memory* get_memory_object() const
     { return nullptr; }
+    virtual size_t get_arginfo_idx() const 
+    { throw error(CL_INVALID_BINARY, "arginfo index not accessible"); }
+    virtual rtinfo_type get_rtinfo_type() const
+    { throw error(CL_INVALID_BINARY, "rtinfo type not accessible"); }
 
-    /**
-     * Get the svm pointer
-     *
-     * Implmented for global args.
-     *
-     * @return
-     *   void* pointer or nullptr if argument is not svm
-     */
-    virtual void*
-    get_svm_object() const
-    { throw std::runtime_error("not implemented"); }
-
-    /**
-     *
-     */
-    virtual size_t
-    get_size() const
-    { return 0; }
-
-    /**
-     */
-    virtual const void*
-    get_value() const
-    { return nullptr; }
-
-    virtual const std::string
-    get_string_value() const
-    { throw std::runtime_error("not implemented"); }
-
-    virtual size_t
-    get_offset() const
-    { throw std::runtime_error("not implemented"); }
-
-    /**
-     * Get component argument info range
-     */
-    virtual arginfo_range_type
-    get_arginfo_range() const
-    { throw std::runtime_error("not implemented"); }
-
-    static std::unique_ptr<kernel::argument>
-      create(arginfo_type arg,kernel* kernel);
+    size_t get_argidx() const { return m_arginfo->index; }
+    size_t get_hostsize() const { return m_arginfo->hostsize; }
+    bool is_set() const { return m_set; }
+    std::string get_name() const { return m_arginfo->name; }
+    std::string get_hosttype() const { return m_arginfo->hosttype; }
+    arginfo_type::argtype get_argtype() const { return m_arginfo->type; }
 
   protected:
-    kernel* m_kernel = nullptr;
-    unsigned long m_argidx = std::numeric_limits<unsigned long>::max();
+    kernel* m_kernel;
+    const arginfo_type* m_arginfo;
     bool m_set = false;
   };
 
-  class scalar_argument : public argument
+  class scalar_xargument : public xargument
   {
   public:
-    scalar_argument(arginfo_type arg,kernel* kernel)
-      : argument(kernel), m_sz(arg->hostsize)
-    {
-      m_components.push_back(arg);
-    }
-    virtual std::string get_name() const { return (*m_components.begin())->name; }
-    virtual argtype get_argtype() const  { return (*m_components.begin())->atype; }
-    virtual addr_space_type get_address_space() const { return addr_space_type::SPIR_ADDRSPACE_PRIVATE; }
-    virtual std::unique_ptr<argument> clone();
-    virtual size_t add(arginfo_type arg);
-    virtual void set(size_t sz, const void* arg);
-    virtual size_t get_size() const { return m_sz; }
-    virtual const void* get_value() const { return m_value.data(); }
-    virtual size_t get_offset() const { return (*m_components.begin())->offset; }
-    virtual const std::string get_string_value() const;
-    virtual arginfo_range_type get_arginfo_range() const
-    { return arginfo_range_type(m_components.data(),m_components.data()+m_components.size()); }
+    scalar_xargument(kernel* kernel, const arginfo_type* ainfo)
+      : xargument(kernel, ainfo), m_sz(ainfo->hostsize) {}
+    virtual void set(const void* value, size_t sz);
+    virtual void add(const arginfo_type* ainfo) { m_sz += ainfo->hostsize; }
   private:
-    size_t m_sz;
-    std::vector<uint8_t> m_value;
-
-    // components of the argument (long2, int4, etc)
-    arginfo_vector_type m_components;
+    size_t m_sz = 0;   // > m_arginfo.hostsize if components (long2)
   };
 
-  class global_argument : public argument
+  class global_xargument : public xargument
   {
   public:
-    global_argument(arginfo_type arg, kernel* kernel)
-      : argument(kernel), m_arg_info(arg) {}
-    virtual argtype get_argtype() const { return m_arg_info->atype; }
-    virtual std::string get_name() const { return m_arg_info->name; }
-    virtual addr_space_type get_address_space() const { return addr_space_type::SPIR_ADDRSPACE_GLOBAL; }
-    virtual std::unique_ptr<argument> clone();
-    void set(size_t sz, const void* arg) ;
-    void set_svm(size_t sz, const void* arg) ;
+    global_xargument(kernel* kernel, const arginfo_type* ainfo)
+      : xargument(kernel, ainfo) {}
+    virtual void set(const void* value, size_t sz);
+    virtual void set_svm(const void* value, size_t sz);
     virtual memory* get_memory_object() const { return m_buf.get(); }
-    virtual void* get_svm_object() const { return m_svm_buf; }
-    virtual size_t get_size() const { return sizeof(memory*); }
-    virtual const void* get_value() const { return m_buf.get(); }
-    virtual size_t get_offset() const { return m_arg_info->offset; }
-    virtual arginfo_range_type get_arginfo_range() const
-    { return arginfo_range_type(&m_arg_info,&m_arg_info+1); }
   private:
     ptr<memory> m_buf;   // retain ownership
-    void* m_svm_buf = nullptr;
-    arginfo_type m_arg_info;
   };
 
-  class local_argument : public argument
+  class local_xargument : public xargument
   {
   public:
-    local_argument(arginfo_type arg, kernel* kernel)
-      : argument(kernel), m_arg_info(arg) {}
-    virtual argtype get_argtype() const { return m_arg_info->atype; }
-    virtual std::string get_name() const { return m_arg_info->name; }
-    virtual addr_space_type get_address_space() const { return addr_space_type::SPIR_ADDRSPACE_LOCAL; }
-    virtual size_t get_offset() const { return m_arg_info->offset; }
-    virtual std::unique_ptr<argument> clone();
-    virtual void set(size_t sz, const void* arg);
-    virtual arginfo_range_type get_arginfo_range() const
-    { return arginfo_range_type(&m_arg_info,&m_arg_info+1); }
+    local_xargument(kernel* kernel, const arginfo_type* ainfo)
+      : xargument(kernel, ainfo) {}
+    virtual void set(const void* value, size_t sz);
+  };
+
+  class stream_xargument : public xargument
+  {
+  public:
+    stream_xargument(kernel* kernel, const arginfo_type* ainfo)
+      : xargument(kernel, ainfo) { m_set = true; }
+    virtual void set(const void* value, size_t sz);
+  };
+
+  class rtinfo_xargument : public scalar_xargument
+  {
+  public:
+    rtinfo_xargument(kernel* kernel, const arginfo_type* ainfo, rtinfo_type rtt, size_t index)
+      : scalar_xargument(kernel, ainfo), m_rtinfo_type(rtt), m_arginfo_idx(index)
+    {}
+    virtual rtinfo_type get_rtinfo_type() const { return m_rtinfo_type; }
+    virtual size_t get_arginfo_idx() const { return m_arginfo_idx; }
   private:
-    arginfo_type m_arg_info;
+    rtinfo_type m_rtinfo_type;
+    size_t m_arginfo_idx;
   };
 
-  class constant_argument : public argument
+  class printf_xargument : public global_xargument
   {
   public:
-    constant_argument(arginfo_type arg, kernel* kernel)
-      : argument(kernel), m_arg_info(arg) {}
-    virtual std::string get_name() const { return m_arg_info->name; }
-    virtual argtype get_argtype() const { return m_arg_info->atype; }
-    virtual addr_space_type get_address_space() const { return addr_space_type::SPIR_ADDRSPACE_CONSTANT; }
-    virtual std::unique_ptr<argument> clone();
-    virtual void set(size_t sz, const void* arg);
-    virtual memory* get_memory_object() const { return m_buf.get(); }
-    virtual size_t get_size() const { return sizeof(memory*); }
-    virtual size_t get_offset() const { return m_arg_info->offset; }
-    virtual const void* get_value() const { return m_buf.get(); }
-    virtual arginfo_range_type get_arginfo_range() const
-    { return arginfo_range_type(&m_arg_info,&m_arg_info+1); }
+    printf_xargument(kernel* kernel, const arginfo_type* ainfo, size_t index)
+      : global_xargument(kernel, ainfo), m_arginfo_idx(index)
+    {}
+    virtual rtinfo_type get_rtinfo_type() const { return rtinfo_type::printf; }
+    virtual size_t get_arginfo_idx() const { return m_arginfo_idx; }
   private:
-    ptr<memory> m_buf;  // retain ownership
-    arginfo_type m_arg_info;
-  };
-
-  class image_argument : public argument
-  {
-  public:
-    image_argument(arginfo_type arg, kernel* kernel)
-      : argument(kernel) {}
-    virtual std::unique_ptr<argument> clone();
-    virtual void set(size_t sz, const void* arg);
-  };
-
-  class sampler_argument : public argument
-  {
-  public:
-    sampler_argument(arginfo_type arg, kernel* kernel)
-      : argument(kernel) {}
-    virtual std::unique_ptr<argument> clone();
-    virtual void set(size_t sz, const void* arg);
-  };
-
-  class stream_argument : public argument
-  {
-  public:
-    stream_argument(arginfo_type arg, kernel* kernel)
-      : argument(kernel), m_arg_info(arg) { m_set = true; }
-    virtual std::unique_ptr<argument> clone();
-    virtual void set(size_t sz, const void* arg);
-    virtual argtype get_argtype() const { return m_arg_info->atype; }
-    virtual addr_space_type get_address_space() const { return addr_space_type::SPIR_ADDRSPACE_PIPES; }
-  private:
-    arginfo_type m_arg_info;
+    size_t m_arginfo_idx;
   };
 
 private:
-  using argument_value_type = std::unique_ptr<argument>;
-  using argument_vector_type = std::vector<argument_value_type>;
-  using argument_iterator_type = argument_vector_type::const_iterator;
-  using argument_filter_type = std::function<bool(const argument_value_type&)>;
-
+  using xargument_value_type = std::unique_ptr<xargument>;
+  using xargument_vector_type = std::vector<xargument_value_type>;
+  using xargument_iterator_type = xargument_vector_type::const_iterator;
+  using xargument_filter_type = std::function<bool(const xargument_value_type&)>;
 public:
   // only program constructs kernels, but private doesn't work as long
   // std::make_unique is used
@@ -374,68 +167,37 @@ public:
 public:
   virtual ~kernel();
 
-  /**
-   * @return
-   *   Unique id for this kernel object
-   */
+  // Get unique id for this kernel object
   unsigned int
   get_uid() const
   {
     return m_uid;
   }
 
-  /**
-   * @return
-   *   Unique id for the kernel symbol associated with this object
-   */
+  // Get unique id for the kernel symbol associated with this object
   unsigned int
   get_symbol_uid() const
   {
     return m_symbol.uid;
   }
 
-  /**
-   * @return
-   *   The kernel symbol used to create this kernel
-   */
-  const xclbin::symbol&
-  get_symbol() const
-  {
-    return m_symbol;
-  }
-
+  // Get the program used to construct this kernel object
   program*
   get_program() const
   {
     return m_program.get();
   }
 
+  // Get the context associated with the program from which
+  // this kernel was contructed
   context*
   get_context() const;
 
-  /**
-   * @return
-   *   Name of kernel
-   */
+  // Get name of kernel
   const std::string&
   get_name() const
   {
-    return m_symbol.name;
-  }
-
-  /**
-   * @return
-   *   Name of kernel
-   */
-  const std::string&
-  get_name_from_constructor() const
-  {
-    // Remove this function, it is not needed
-    // Remove m_name from data members
-    // Fix ctor
-    if (m_name != m_symbol.name)
-      throw std::runtime_error("Internal Error");
-    return get_name();
+    return m_name;
   }
 
   const std::string&
@@ -450,18 +212,14 @@ public:
     return m_symbol.workgroupsize;
   }
 
-  /**
-   * Get compile work group size per xclbin
-   */
+  // Get compile work group size per xclbin
   range<const size_t*>
   get_compile_wg_size_range() const
   {
     return range<const size_t*>(m_symbol.compileworkgroupsize,m_symbol.compileworkgroupsize+3);
   }
 
-  /**
-   * Get max work group size per xclbin
-   */
+  //  Get max work group size per xclbin
   range<const size_t*>
   get_max_wg_size_range() const
   {
@@ -477,7 +235,7 @@ public:
   bool
   has_printf() const
   {
-    return m_printf_args.size()>0;
+    return m_printf_xargs.size()>0;
   }
 
   bool
@@ -486,123 +244,112 @@ public:
     return false;
   }
 
+  // Arguments (except global cl_mem) are set directly on the run
+  // object in the kernel register map.  This avoids any local copies
+  // of the data and simplifies starting of the kernel
   void
-  set_argument(unsigned long idx, size_t sz, const void* arg)
-  {
-    m_indexed_args.at(idx)->set(idx,sz,arg);
-  }
+  set_run_arg_at_index(unsigned long idx, const void* cvalue, size_t sz);
 
+  // Set kernel argument value for specified argument
   void
-  set_svm_argument(unsigned long idx, size_t sz, const void* arg)
-  {
-    m_indexed_args.at(idx)->set_svm(sz,arg);
-  }
+  set_argument(unsigned long idx, size_t sz, const void* arg);
 
+  // Set the svm virtual memory argument 
   void
-  set_printf_argument(size_t sz, const void* arg)
+  set_svm_argument(unsigned long idx, size_t sz, const void* arg);
+
+  // Set the printf global cl_memory argument 
+  void
+  set_printf_argument(size_t sz, const void* arg);
+
+  // Get argument info meta data for specified argument
+  const xrt_core::xclbin::kernel_argument*
+  get_arg_info(unsigned long idx) const;
+
+  // Get argument value (if any) for specified argument
+  std::vector<uint32_t>
+  get_arg_value(unsigned long idx) const;
+
+  // Get iterateble range of all kernel arguments
+  joined_range<const xargument_vector_type, const xargument_vector_type>
+  get_xargument_range() const
   {
-    m_printf_args.at(0)->set(sz,arg);
+    return boost::join(m_indexed_xargs,m_printf_xargs);
   }
 
-  /**
-   * Get range of all arguments that have a dynamic value
-   * rtinfo args and progvars do not matter, they are static per kernel
-   */
-  joined_range<const argument_vector_type, const argument_vector_type>
-  get_argument_range() const
+  const xargument_vector_type&
+  get_indexed_xargument_range() const
   {
-    return boost::join(m_indexed_args,m_printf_args);
+    return m_indexed_xargs;
   }
 
-  /**
-   * @return Range of indexed arguments
-   */
-  range<argument_iterator_type>
-  get_indexed_argument_range() const
+  const xargument_vector_type&
+  get_rtinfo_xargument_range() const
   {
-    return range<argument_iterator_type>(m_indexed_args.begin(),m_indexed_args.end());
+    return m_rtinfo_xargs;
   }
 
-  /**
-   * @return Range of printf arguments
-   */
-  range<argument_iterator_type>
-  get_printf_argument_range() const
+  const xargument_vector_type&
+  get_printf_xargument_range() const
   {
-    return range<argument_iterator_type>(m_printf_args.begin(),m_printf_args.end());
+    return m_printf_xargs;
   }
 
-  /**
-   * Get rtinfo args.
-   *
-   * This is used by cu_ffa, it does contain printf args, but only the
-   * static part of the printf is used in cu_ffa.  Feels awkward, but
-   * must wait for better cu_ffa refactoring
-   *
-   * @return Range of rtinfo arguments
-   */
-  joined_range<const argument_vector_type, const argument_vector_type>
-  get_rtinfo_argument_range() const
-  {
-    return boost::join(m_printf_args,m_rtinfo_args);
-  }
-
-  /**
-   * @return
-   *  List of CUs that can be used by this kernel object
-   */
+  // Get list of CUs that can be used by this kernel object
   std::vector<const compute_unit*>
   get_cus() const
   {
     return m_cus;
   }
 
-  /**
-   * @return
-   *  Number of CUs that can be used by this kernel object
-   */
+  // Get number of CUs that can be used by this kernel object
   size_t
   get_num_cus() const
   {
     return m_cus.size();
   }
 
-  /**
-   * Get the set of memory banks an argument can connect to given the
-   * current set of kernel compute units for specified device
-   *
-   * @param dev
-   *  Targeted device for connectivity check
-   * @param argidx
-   *  The argument index to check connectivity for
-   * @return
-   *  Bitset with mapping indicies to possible bank connections
-   */
+  // The the underlying xrt::kernel object for specified device
+  // Default to first kernel object.
+  const xrt::kernel&
+  get_xrt_kernel(const device* device = nullptr) const;
+
+  // The the underlying xrt::run object for specified device
+  // Default to first run object.
+  const xrt::run&
+  get_xrt_run(const device* device = nullptr) const;
+
+
+  // Get the set of memory banks an argument can connect to given the
+  // current set of kernel compute units for specified device
+  //
+  // @param dev
+  //  Targeted device for connectivity check
+  // @param argidx
+  //  The argument index to check connectivity for
+  // @return
+  //  Bitset with mapping indicies to possible bank connections
   memidx_bitmask_type
   get_memidx(const device* dev, unsigned int arg) const;
 
-  /**
-   * Validate current list of CUs that can be used by this kernel
-   *
-   * Internal validated list of CUs is updated / trimmed to those that
-   * support argument at @argidx connected to memory bank at @memidx
-   *
-   * @param dev
-   *  Targeted device for connectivity check
-   * @param argidx
-   *  The argument index to validate
-   * @param memidx
-   *  The memory index that must be used by argument
-   */
+  // Validate current list of CUs that can be used by this kernel
+  //
+  // Internal validated list of CUs is updated / trimmed to those that
+  // support argument at @argidx connected to memory bank at @memidx
+  //
+  // @param dev
+  //  Targeted device for connectivity check
+  // @param argidx
+  //  The argument index to validate
+  // @param memidx
+  //  The memory index that must be used by argument
   size_t
   validate_cus(const device* dev, unsigned long argidx, int memidx) const;
 
-  /**
-   * Error message for exceptions when connectivity checks fail
-   *
-   * @return
-   *   Current kernel argument connectivity
-   */
+  // Error message for exceptions when connectivity checks fail
+  //
+  // @return
+  //  Current kernel argument connectivity
   std::string
   connectivity_debug() const;
 
@@ -630,9 +377,18 @@ private:
   ptr<program> m_program;     // retain reference
   std::string m_name;
   const xclbin::symbol& m_symbol;
-  argument_vector_type m_indexed_args;
-  argument_vector_type m_printf_args;
-  argument_vector_type m_rtinfo_args;
+
+  xargument_vector_type m_indexed_xargs;
+  xargument_vector_type m_rtinfo_xargs;
+  xargument_vector_type m_printf_xargs;
+
+  // One run object per device in m_program
+  struct xkr { xrt::kernel xkernel; xrt::run xrun; };
+  std::map<const device*, xkr> m_xruns;
+
+  // Arguments in indexed order per xrt::kernel object
+  using xarg = xrt_core::xclbin::kernel_argument;
+  std::vector<const xarg*> m_arginfo;
 };
 
 namespace kernel_utils {

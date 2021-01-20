@@ -22,6 +22,7 @@
 #include "query_requests.h"
 #include "config_reader.h"
 #include "xclbin_parser.h"
+#include "xclbin_swemu.h"
 #include "core/include/xrt.h"
 #include "core/include/xclbin.h"
 #include "core/include/ert.h"
@@ -29,6 +30,22 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+
+#ifdef _WIN32
+#pragma warning ( disable : 4996 )
+#endif
+
+namespace {
+
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  return swem;
+}
+
+}
 
 namespace xrt_core {
 
@@ -85,11 +102,21 @@ register_axlf(const axlf* top)
 {
   m_axlf_sections.clear();
   m_xclbin_uuid = uuid(top->m_header.uuid);
-  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, 
-                               ASK_GROUP_CONNECTIVITY, ASK_GROUP_TOPOLOGY, 
+  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY,
+                               ASK_GROUP_CONNECTIVITY, ASK_GROUP_TOPOLOGY,
                                MEM_TOPOLOGY, DEBUG_IP_LAYOUT, SYSTEM_METADATA, CLOCK_FREQ_TOPOLOGY};
+
+  // cache xclbin sections
   for (auto kind : kinds) {
     auto hdr = xrt_core::xclbin::get_axlf_section(top, kind);
+
+    // software emulation xclbin does not have all sections
+    // create the necessary ones
+    if (!hdr && is_sw_emulation()) {
+      auto data = xrt_core::xclbin::swemu::get_axlf_section(this, top, kind);
+      if (!data.empty())
+        m_axlf_sections.emplace(kind, std::move(data));
+    }
 
     if (!hdr)
       continue;
@@ -97,6 +124,22 @@ register_axlf(const axlf* top)
     auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
     std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
     m_axlf_sections.emplace(kind , std::move(data));
+  }
+
+  // encode / compress memory connections, a mapping from mem_topology
+  // memory index to encoded index.  The compressed indices facilitate
+  // small sized std::bitset for representing kernel argument connectivity
+  if (auto mem_topology = get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY)) {
+    std::vector<size_t> enc(mem_topology->m_count, std::numeric_limits<size_t>::max());
+    for (int32_t midx = 0, eidx = 0; midx < mem_topology->m_count; ++midx) {
+      const auto& mem = mem_topology->m_mem_data[midx];
+      if (!mem.m_used)
+        continue;
+      if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
+        continue;
+      enc[midx] = eidx++;
+    }
+    m_memidx_encoding = std::move(enc);
   }
 }
 
@@ -122,6 +165,15 @@ get_axlf_section_or_error(axlf_section_kind section, const uuid& xclbin_id) cons
   throw std::runtime_error("no such xclbin section");
 }
 
+const std::vector<size_t>&
+device::
+get_memidx_encoding(const uuid& xclbin_id) const
+{
+  if (xclbin_id && xclbin_id != m_xclbin_uuid)
+    throw std::runtime_error("xclbin id mismatch");
+  return m_memidx_encoding;
+}
+
 std::pair<size_t, size_t>
 device::
 get_ert_slots(const char* xml_data, size_t xml_size) const
@@ -129,7 +181,7 @@ get_ert_slots(const char* xml_data, size_t xml_size) const
   const size_t max_slots = 128;  // TODO: get from device driver
   const size_t min_slots = 16;   // TODO: get from device driver
   size_t cq_size = ERT_CQ_SIZE;  // TODO: get from device driver
-  
+
   // xrt.ini overrides all (defaults to 0)
   if (auto size = config::get_ert_slotsize()) {
     // 128 slots max (4 status registers)

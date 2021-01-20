@@ -236,14 +236,20 @@ kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
 	int ret = 0;
 
-	if (xcmd->opcode != OP_CONFIG)
+	switch (xcmd->opcode) {
+	case OP_START:
 		ret = kds_cu_dispatch(cu_mgmt, xcmd);
-	else {
+		break;
+	case OP_CONFIG:
 		ret = kds_cu_config(cu_mgmt, xcmd);
 		if (ret == 0) {
 			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
 			xcmd->cb.free(xcmd);
 		}
+		break;
+	default:
+		ret = -EINVAL;
+		kds_err(xcmd->client, "Unknown opcode");
 	}
 
 	return ret;
@@ -258,17 +264,36 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 
 	/* BUG_ON(!ert || !ert->submit); */
 
-	if (xcmd->opcode == OP_START) {
+	switch (xcmd->opcode) {
+	case OP_START:
 		/* KDS should select a CU and set it in cu_mask */
 		cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
 		if (cu_idx < 0)
 			return cu_idx;
 		xcmd->cu_idx = cu_idx;
-	} else {
+		break;
+	case OP_CONFIG:
 		/* Configure command define CU index */
 		ret = kds_cu_config(&kds->cu_mgmt, xcmd);
 		if (ret)
 			return ret;
+
+		mutex_lock(&ert->lock);
+		if (!ert->configured)
+			ert->submit(ert, xcmd);
+		else {
+			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+			xcmd->cb.free(xcmd);
+		}
+		ert->configured = 1;
+		mutex_unlock(&ert->lock);
+		return 0;
+	case OP_CONFIG_SK:
+	case OP_START_SK:
+		break;
+	default:
+		kds_err(xcmd->client, "Unknown opcode");
+		return -EINVAL;
 	}
 
 	ert->submit(ert, xcmd);
@@ -743,6 +768,8 @@ int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 	kds->ert = ert;
 	/* By default enable ERT if it exist */
 	kds->ert_disable = false;
+	mutex_init(&ert->lock);
+	ert->configured = 1;
 	return 0;
 }
 
@@ -841,6 +868,9 @@ int kds_cfg_update(struct kds_sched *kds)
 			}
 		}
 	}
+
+	if (kds->ert)
+		kds->ert->configured = 0;
 
 	return ret;
 }
@@ -948,6 +978,7 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	 */
 	xcmd->isize = (ecmd->count - xcmd->num_mask - 4) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
+	ecmd->type = ERT_CU;
 }
 
 void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
@@ -968,6 +999,7 @@ void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	 */
 	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
+	ecmd->type = ERT_CTRL;
 }
 
 /**

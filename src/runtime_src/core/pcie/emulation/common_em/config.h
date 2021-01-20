@@ -162,6 +162,7 @@ namespace xclemulation{
       inline void enableOOBChecks(bool oobChecks)               { mOOBChecks        = oobChecks;     }
       inline void enableMemLogs (bool memLogs)                  { mMemLogs          = memLogs;       }
       inline void setDontRun( bool dontRun)                     { mDontRun          = dontRun;       }
+      inline void setNewMbscheduler(bool mbscheduler)           { mNewMbscheduler   = mbscheduler;   }
       inline void setPacketSize( unsigned int packetSize)       { mPacketSize       = packetSize;    }
       inline void setMaxTraceCount( unsigned int maxTraceCount) { mMaxTraceCount    = maxTraceCount; }
       inline void setPaddingFactor( unsigned int paddingFactor) { mPaddingFactor    = paddingFactor; }
@@ -188,6 +189,7 @@ namespace xclemulation{
       inline bool isOOBChecksEnabled()          const { return mOOBChecks;      }
       inline bool isMemLogsEnabled()            const { return mMemLogs;        }
       inline bool isDontRun()                   const { return mDontRun;        }
+      inline bool isNewMbscheduler()            const { return mNewMbscheduler; }
       inline unsigned int getPacketSize()       const { return mPacketSize;     }
       inline unsigned int getMaxTraceCount()    const { return mMaxTraceCount;  }
       inline unsigned int getPaddingFactor()    const { if(!mOOBChecks) return 0; return mPaddingFactor;  }
@@ -223,6 +225,7 @@ namespace xclemulation{
       bool mOOBChecks;
       bool mMemLogs;
       bool mDontRun;
+      bool mNewMbscheduler;
       DEBUG_MODE mLaunchWaveform;
       std::string mSimDir;
       std::string mUserPreSimScript;

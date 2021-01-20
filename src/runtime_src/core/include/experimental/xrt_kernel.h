@@ -158,16 +158,21 @@ class run
    *
    * The function is called when the run object changes state to
    * argument state or any error state.  Only
-   * ``ERT_CMD_STATE_COMPLETED`` is supported currently.
+   * ``ERT_CMD_STATE_COMPLETED`` is supported currently. 
+   *
+   * The function object's first parameter is a unique 'key'
+   * for this xrt::run object implmentation on which the callback
+   * was added. This 'key' can be used to identify an actual run
+   * object that refers to the implementaion that is maybe shared
+   * by multiple xrt::run objects.
    *
    * Any number of callbacks are supported.
    */
   XCL_DRIVER_DLLESPEC
   void
   add_callback(ert_cmd_state state,
-               std::function<void(const run&, ert_cmd_state, void*)> callback,
+               std::function<void(const void*, ert_cmd_state, void*)> callback,
                void* data);
-
 
   /**
    * set_event() - Add event for enqueued operations
@@ -192,6 +197,20 @@ class run
   operator bool() const
   {
     return handle != nullptr;
+  }
+
+  /**
+   * operator < () - Weak ordering
+   *
+   * @rhs
+   *  Object to compare with
+   * @return
+   *  True if object is ordered less that compared with other
+   */
+  bool
+  operator < (const xrt::run& rhs) const
+  {
+    return handle < rhs.handle;
   }
 
   /**
@@ -310,11 +329,23 @@ class run
   }
 
 public:
-  std::shared_ptr<run_impl>
+  /// @cond
+  const std::shared_ptr<run_impl>&
   get_handle() const
   {
     return handle;
   }
+
+  // run() - Construct run object from a pimpl
+  run(std::shared_ptr<run_impl> impl)
+    : handle(std::move(impl))
+  {}
+
+  // backdoor access to command packet
+  XCL_DRIVER_DLLESPEC
+  ert_packet*
+  get_ert_packet() const;
+  /// @endcond
 
 private:
   std::shared_ptr<run_impl> handle;
@@ -367,7 +398,13 @@ class kernel
    * @var exclusive
    *  CUs are owned exclusively by this process
    */
-  enum class cu_access_mode : bool { exclusive = false, shared = true };
+  enum class cu_access_mode : uint8_t { exclusive = 0, shared = 1, none = 2 };
+
+  /**
+   * kernel() - Construct for empty kernel
+   */
+  kernel()
+  {}
 
   /**
    * kernel() - Constructor from a device and xclbin
@@ -491,7 +528,7 @@ class kernel
 
 public:
   /// @cond
-  std::shared_ptr<kernel_impl>
+  const std::shared_ptr<kernel_impl>&
   get_handle() const
   {
     return handle;

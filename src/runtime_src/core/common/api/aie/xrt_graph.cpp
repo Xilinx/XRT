@@ -21,6 +21,7 @@
 // core/include/experimental/xrt_graph.h -- end user APIs
 // core/include/xcl_graph.h -- shim level APIs
 #include "core/include/experimental/xrt_aie.h"
+#include "core/include/experimental/xrt_bo.h"
 #include "core/include/xcl_graph.h"
 
 #include "core/include/experimental/xrt_device.h"
@@ -132,6 +133,15 @@ open_graph(xrtDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* graph_nam
 }
 
 static std::shared_ptr<xrt::graph_impl>
+open_graph(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name)
+{
+  auto device = xrt_core::get_userpf_device(dhdl);
+  auto handle = device->open_graph(xclbin_id.get(), name.c_str());
+  auto ghdl = std::make_shared<xrt::graph_impl>(device, handle);
+  return ghdl;
+}
+
+static std::shared_ptr<xrt::graph_impl>
 get_graph_hdl(xrtGraphHandle graph_handle)
 {
   auto itr = graph_cache.find(graph_handle);
@@ -151,7 +161,8 @@ static void
 sync_aie_bo(xrtDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   auto device = xrt_core::device_int::get_core_device(dhdl);
-  device->sync_aie_bo(bohdl, gmio_name, dir, size, offset);
+  auto bo = xrt::bo(bohdl);
+  device->sync_aie_bo(bo, gmio_name, dir, size, offset);
 }
 
 static void
@@ -165,7 +176,8 @@ static void
 sync_aie_bo_nb(xrtDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   auto device = xrt_core::device_int::get_core_device(dhdl);
-  device->sync_aie_bo_nb(bohdl, gmio_name, dir, size, offset);
+  auto bo = xrt::bo(bohdl);
+  device->sync_aie_bo_nb(bo, gmio_name, dir, size, offset);
 }
 
 static void
@@ -203,6 +215,91 @@ send_exception_message(const char* msg)
 }
 
 }
+
+//////////////////////////////////////////////////////////////
+// xrt_graph C++ API implementations (xrt_graph.h)
+//////////////////////////////////////////////////////////////
+namespace xrt {
+
+graph::
+graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name)
+  : handle(open_graph(device, xclbin_id, name))
+{}
+
+void
+graph::
+reset() const
+{
+  handle->reset();
+}
+
+uint64_t
+graph::
+get_timestamp() const
+{
+  return (handle->get_timestamp());
+}
+
+void
+graph::
+run(uint32_t iterations)
+{
+  handle->run(iterations);
+}
+
+void
+graph::
+wait(std::chrono::milliseconds timeout_ms)
+{
+  if (timeout_ms.count() == 0)
+    handle->wait(static_cast<uint64_t>(0));
+  else
+    handle->wait(static_cast<int>(timeout_ms.count()));
+}
+
+void
+graph::
+wait(uint64_t cycles)
+{
+  handle->wait(cycles);
+}
+
+void
+graph::
+suspend()
+{
+  handle->suspend();
+}
+
+void
+graph::
+resume()
+{
+  handle->resume();
+}
+
+void
+graph::
+end(uint64_t cycles)
+{
+  handle->end(cycles);
+}
+
+void
+graph::
+update_port(const std::string& port_name, const void* value, size_t bytes)
+{
+  handle->update_rtp(port_name.c_str(), reinterpret_cast<const char*>(value), bytes);
+}
+
+void
+graph::
+read_port(const std::string& port_name, void* value, size_t bytes)
+{
+  handle->read_rtp(port_name.c_str(), reinterpret_cast<char *>(value), bytes);
+}
+
+} // namespace xrt
 
 ////////////////////////////////////////////////////////////////
 // xrt_aie API implementations (xrt_aie.h, xrt_graph.h)

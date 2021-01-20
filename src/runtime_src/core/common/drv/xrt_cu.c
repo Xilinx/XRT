@@ -325,10 +325,18 @@ int xrt_cu_intr_thread(void *data)
 		if (process_rq(xcu))
 			continue;
 
-		if (xcu->num_sq) {
-			if (down_interruptible(&xcu->sem_cu))
-				ret = -ERESTARTSYS;
+		if (xcu->num_sq || is_zero_credit(xcu)) {
+			//usleep_range(1, 3);
+			xrt_cu_check(xcu);
+			if (!xcu->done_cnt || !xcu->ready_cnt) {
+				xcu->sleep_cnt++;
+				if (down_interruptible(&xcu->sem_cu))
+					ret = -ERESTARTSYS;
+				xrt_cu_check(xcu);
+			}
 			__process_sq(xcu);
+			if (xcu->num_rq && !is_zero_credit(xcu))
+				continue;
 		}
 
 		process_cq(xcu);
@@ -342,7 +350,6 @@ int xrt_cu_intr_thread(void *data)
 			continue;
 
 		if (!xcu->num_sq && !xcu->num_cq) {
-			xcu->sleep_cnt++;
 			if (down_interruptible(&xcu->sem))
 				ret = -ERESTARTSYS;
 		}
@@ -472,7 +479,7 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 	return err;
 }
 
-/* 
+/*
  * If KDS has to manage PLRAM resources, we should come up with a better design.
  * Ideally, CU subdevice should request for plram resource instead of KDS assign
  * plram resource to CU.
@@ -612,7 +619,7 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Bad state:        %d\n",
 			xcu->bad_state);
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Current credit:   %d\n",
-			xcu->funcs->peek_credit(xcu->core));
+			xrt_cu_peek_credit(xcu));
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "CU status:        0x%x\n",
 			xcu->status);
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "sleep cnt:        %d\n",

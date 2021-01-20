@@ -159,7 +159,7 @@ void log_buffer_guidance(xocl::event* event, cl_kernel kernel)
   std::string arg_name;
 
   auto kname = xocl::xocl(kernel)->get_name();
-  for (auto& arg : xocl::xocl(kernel)->get_argument_range()) {
+  for (auto& arg : xocl::xocl(kernel)->get_xargument_range()) {
 
     try {
       arg_name = arg->get_name();

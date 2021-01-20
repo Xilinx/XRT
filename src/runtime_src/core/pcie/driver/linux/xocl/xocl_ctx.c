@@ -21,7 +21,7 @@
  * helper functions to protect driver private data
  */
 DEFINE_MUTEX(xocl_drvinst_lock);
-struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
+struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 64];
 
 void *xocl_drvinst_alloc(struct device *dev, u32 size)
 {

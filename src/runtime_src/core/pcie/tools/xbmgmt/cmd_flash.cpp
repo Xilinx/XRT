@@ -395,6 +395,21 @@ static int resetShell(unsigned index, bool force)
     if(!flasher.isValid())
         return -EINVAL;
 
+    // Hack: u30 doesn't support factory reset yet
+    // To be removed after in
+    auto mgmt_dev = pcidev::get_dev(index, false);
+    std::string errmsg, vbnv;
+    mgmt_dev->sysfs_get( "rom", "VBNV", errmsg, vbnv );
+    if (!errmsg.empty()) {
+        std::cerr << errmsg << std::endl;
+        return -EINVAL;
+    }
+    
+    if (vbnv.find("_u30_") != std::string::npos) {
+        std::cout << "Factory reset is not currently supported on U30.\n" << std::endl;
+        return -ECANCELED;
+    }
+
     std::cout << "CAUTION: Resetting Card [" << flasher.sGetDBDF() <<
         "] back to factory mode." << std::endl;
     if(!force && !canProceed())

@@ -128,6 +128,8 @@ enum cmacommand {
 };
 enum kdscommand {
     KDS_CU_INTERRUPT = 0x0,
+    KDS_TEST,
+    KDS_ARGS,
 };
 
 enum class cu_stat : unsigned short {
@@ -461,6 +463,7 @@ public:
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
 
+        //Soft kernel info below
         for (unsigned int i = computeUnits.size(); i < parseComputeUnitNum(custat); i++) {
             uint32_t status = parseComputeUnitStat(custat, i, cu_stat::stat);
             uint32_t usage = parseComputeUnitStat(custat, i, cu_stat::usage);
@@ -1523,12 +1526,16 @@ public:
         ostr << "Xclbin UUID\n"
              << sensor_tree::get<std::string>( "board.xclbin.uuid", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "Compute Unit Status\n";
+        ostr << std::setw(41) << "Compute Unit Status"
+             << std::setw(18) << "Addr"
+             << std::setw(14) << "Status"
+             << std::setw(14) << "Usage" << std::endl;
+
         try {
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
-              std::string cu_n, cu_s, cu_ba;
+              std::string cu_n, cu_s, cu_ba, cu_u;
               for (auto& subv : v.second) {
                 if( subv.first == "name" ) {
                   cu_n = subv.second.get_value<std::string>();
@@ -1537,17 +1544,27 @@ public:
                   cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
                 } else if( subv.first == "status" ) {
                   cu_s = subv.second.get_value<std::string>();
+                } else if( subv.first == "usage" ) {
+                  auto usage = subv.second.get_value<uint32_t>();
+                  cu_u = (usage == (uint32_t)-1) ? "N/A" : sensor_tree::pretty<uint32_t>(usage, "N/A");
                 }
               }
               int cu_i = xclIPName2Index(m_handle, cu_n.c_str());
               if (cu_i < 0) {
-                ostr << "CU: ";
-              } else {
-                ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: ";
-              }
+                std::size_t found = cu_n.rfind("scu");
+                if (found != std::string::npos) {
+                  auto scu_i = std::stoi(cu_n.substr(found + 4));
+                  cu_n = cu_n.substr(0, found - 1);
+                  ostr << "SCU[" << std::right << std::setw(2) << std::dec << scu_i << "]: ";
+                } else
+                  ostr << "CU: ";
+              } else
+                ostr << "CU[" << std::right << std::setw(3) << cu_i << "]: ";
+
               ostr << std::left << std::setw(32) << cu_n
-                   << "@" << std::setw(18) << std::hex << cu_ba
-                   << cu_s << std::endl;
+                   << "@" << std::setw(18) << cu_ba
+                   << std::setw(14) << cu_s 
+                   << std::setw(14) << cu_u << std::endl;
             }
           }
         }
@@ -1691,7 +1708,8 @@ public:
         }
         const mem_topology *map = (mem_topology *)buf.data();
 
-        std::string hbm_mem_size = xrt_core::utils::unit_convert(map->m_count*(map->m_mem_data[0].m_size << 10));
+        std::string hbm_mem_size = xrt_core::utils::unit_convert(get_hbm_mem_size(map));
+
         if (verbose) {
             std::cout << "INFO: DMA test on [" << m_idx << "]: "<< name() << "\n";
             if (hbm_mem_size.compare(std::string("0 Byte")) != 0)
@@ -1746,7 +1764,8 @@ public:
                 if(map->m_mem_data[i].m_size < (blockSize/1024)) {
                     if (verbose)
                         std::cout << "WARNING: unable to perform DMA Test on " << map->m_mem_data[i].m_tag
-                            << ". Cannot allocate " << blockSize << " on " << map->m_mem_data[i].m_size
+                            << ". Cannot allocate " << xrt_core::utils::unit_convert(blockSize)
+                            << " on " << xrt_core::utils::unit_convert(map->m_mem_data[i].m_size * 1024)
                             << " sized bank." << std::endl;
                     result = -EOPNOTSUPP;
                     continue;
@@ -1835,6 +1854,18 @@ public:
         return GB(ddr_size)*ddr_bank_count / (1024 * 1024);
     }
 
+    size_t get_hbm_mem_size(const mem_topology *map) {
+        long long hbm_size = 0;
+
+        for (int i = 0; i < map->m_count; ++i) {
+            std::string mtag(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
+
+            if (mtag.compare(0, 3, std::string("HBM")) == 0)
+                hbm_size += (map->m_mem_data[i].m_size << 10);
+        }
+
+        return hbm_size;
+    }
 
    //Debug related functionality.
     uint32_t getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames);
@@ -1941,12 +1972,13 @@ public:
     int testP2p(void);
     int testM2m(void);
     int iopsTest(void);
+    int iopsTestWithArgs(const std::string& name, const std::string& args);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
     // all output from the run into "output"
     // Note: exe should assume index to be 0 without -d
-    int runTestCase(const std::string& exe, const std::string& xclbin, std::string& output);
+    int runTestCase(const std::string& exe, const std::string& xclbin, std::string& output, const std::string &args);
 
     int scVersionTest(void);
     int pcieLinkTest(void);

@@ -10,6 +10,7 @@ if(NOT WIN32)
   if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
     # Emulation flow only works on x86_64
     add_subdirectory(emulation)
+    add_subdirectory(noop)
   endif()
 else()
   add_subdirectory(windows)

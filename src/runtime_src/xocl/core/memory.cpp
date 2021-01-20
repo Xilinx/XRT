@@ -22,12 +22,21 @@
 
 
 #include <iostream>
+#include <cstdlib>
 
 #ifdef _WIN32
-#pragma warning ( disable : 4267 4245 )
+#pragma warning ( disable : 4267 4245 4996 )
 #endif
 
 namespace {
+
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  return swem;
+}
 
 // Hack to determine if a context is associated with exactly one
 // device.  Additionally, in emulation mode, the device must be
@@ -249,6 +258,13 @@ get_ext_memidx_nolock(const xclbin& xclbin) const
         m_memidx = -1;
     }
   }
+
+  // In software emulation all connections must default to memory
+  // index 0 to reflect the connectiviy in the internally created
+  // CONNECTIVITY section (core/common/xclbin_swemu.cpp)
+  if (m_memidx > 0 && is_sw_emulation())
+    m_memidx = 0;
+
   return m_memidx;
 }
 

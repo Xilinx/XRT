@@ -38,12 +38,17 @@ private:
     xma_core::plg::session&  base; // base session class
     XmaEncoderProperties  encoder_props; // properties specified by app
     XmaEncoderPlugin     *encoder_plugin{nullptr}; // link to XMA encoder plugin
+    std::string      tag; //tag for log messages
 
 public:
   int32_t
   send_frame() const; //send frame to encoder cu for processing
   int32_t
   recv_data() const; //recv encoder output; TODO; Only template at present
+
+  //Send log msg to XRT API
+  void
+  logmsg(XmaLogLevelType level, const char *msg, ...) const;
 
   enc_session(XmaEncoderProperties *props, xma_core::plg::session& sess);//host app can be C; user input is Enc Properties
   ~enc_session();

@@ -19,6 +19,7 @@
 
 #include "xocl/core/event.h"
 #include "xocl/core/execution_context.h"
+#include "core/include/experimental/xrt_kernel.h"
 
 namespace xocl {
 
@@ -46,10 +47,10 @@ namespace xocl {
       counter_action_migrate(cl_uint num_mem_objects, const cl_mem* mem_objects, cl_mem_migration_flags flags) ;
     std::function<void (xocl::event*, cl_int, const std::string&)>
       counter_action_ndrange_migrate(cl_event event, cl_kernel kernel);
-    void log_cu_start(const xrt_xocl::command* cmd, 
-		      const xocl::execution_context* ctx) ;
-    void log_cu_end(const xrt_xocl::command* cmd, 
-		    const xocl::execution_context* ctx) ;
+    void log_cu_start(const xocl::execution_context* ctx,
+		      const xrt::run& run) ;
+    void log_cu_end(const xocl::execution_context* ctx,
+		    const xrt::run& run); 
     void mark_objects_released() ;
 
     // Functions for loading the counters plugin

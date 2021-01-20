@@ -132,6 +132,8 @@ struct xocl_ert_30 {
 	struct task_struct	*thread;
 
 	uint32_t 		ert_dmsg;
+	uint32_t		echo;
+	uint32_t		intr;
 };
 
 static ssize_t name_show(struct device *dev,
@@ -142,6 +144,17 @@ static ssize_t name_show(struct device *dev,
 }
 
 static DEVICE_ATTR_RO(name);
+
+static ssize_t snap_shot_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_30 *ert_30 = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "pending:%d, running:%d, submit:%d complete:%d\n", ert_30->num_pq, ert_30->num_rq, ert_30->num_sq
+		,ert_30->num_cq);
+}
+
+static DEVICE_ATTR_RO(snap_shot);
 
 static ssize_t ert_dmsg_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
@@ -163,9 +176,52 @@ static ssize_t ert_dmsg_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(ert_dmsg);
 
+static ssize_t ert_echo_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_ert_30 *ert_30 = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	mutex_lock(&ert_30->lock);
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 2) {
+		xocl_err(&to_platform_device(dev)->dev,
+			"usage: echo 0 or 1 > ert_echo");
+		return -EINVAL;
+	}
+
+	ert_30->echo = val;
+
+	mutex_unlock(&ert_30->lock);
+	return count;
+}
+static DEVICE_ATTR_WO(ert_echo);
+
+static ssize_t ert_intr_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_ert_30 *ert_30 = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	mutex_lock(&ert_30->lock);
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 2) {
+		xocl_err(&to_platform_device(dev)->dev,
+			"usage: echo 0 or 1 > ert_intr");
+		return -EINVAL;
+	}
+
+	ert_30->intr = val;
+
+	mutex_unlock(&ert_30->lock);
+	return count;
+}
+static DEVICE_ATTR_WO(ert_intr);
+
 static struct attribute *ert_30_attrs[] = {
 	&dev_attr_name.attr,
 	&dev_attr_ert_dmsg.attr,
+	&dev_attr_snap_shot.attr,
+	&dev_attr_ert_echo.attr,
+	&dev_attr_ert_intr.attr,
 	NULL,
 };
 
@@ -308,7 +364,7 @@ ert_release_slot(struct xocl_ert_30 *ert_30, struct ert_30_command *ecmd)
 	if (ecmd->slot_idx == no_index)
 		return;
 
-	if (cmd_opcode(ecmd) == OP_CONFIG) {
+	if (cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK) {
 		ERTUSER_DBG(ert_30, "do nothing %s\n", __func__);
 		ert_30->ctrl_busy = false;
 		ert_30->config = true;	
@@ -509,7 +565,7 @@ static int
 ert30_acquire_slot(struct xocl_ert_30 *ert_30, struct ert_30_command *ecmd)
 {
 	// slot 0 is reserved for ctrl commands
-	if (cmd_opcode(ecmd) == OP_CONFIG) {
+	if (cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK) {
 		set_bit(0, ert_30->slot_status);
 
 		if (ert_30->ctrl_busy) {
@@ -602,6 +658,8 @@ static int ert_cfg_cmd(struct xocl_ert_30 *ert_30, struct ert_30_command *ecmd)
 		cfg->cu_dma = 0;
 
 	cfg->dmsg = ert_30->ert_dmsg;
+	cfg->echo = ert_30->echo;
+	cfg->intr = ert_30->intr;
 
 	// The KDS side of of the scheduler is now configured.  If ERT is
 	// enabled, then the configure command will be started asynchronously
@@ -676,21 +734,26 @@ static inline int process_ert_rq(struct xocl_ert_30 *ert_30)
 		}
 		slot_addr = ecmd->slot_idx * (ert_30->cq_range/ert_30->num_slots);
 
+		/* Hardware could be pretty fast, add to sq before touch the CQ_status or cmd queue*/
+		list_move_tail(&ecmd->list, &ert_30->sq);
+		ert_30->submit_queue[ecmd->slot_idx] = ecmd;
+		--ert_30->num_rq;
+		++ert_30->num_sq;
+
 		ERTUSER_DBG(ert_30, "%s slot_addr %x\n", __func__, slot_addr);
 		if (kds_echo) {
 			ecmd->completed = true;
 		} else {
-			if (cmd_opcode(ecmd) == OP_CONFIG) {
-				xocl_memcpy_toio(ert_30->cq_base + slot_addr + 4,
-					  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
-
-			} else {
+			if (cmd_opcode(ecmd) == OP_START) {
 				// write kds selected cu_idx in first cumask (first word after header)
 				iowrite32(ecmd->xcmd->cu_idx, ert_30->cq_base + slot_addr + 4);
 
 				// write remaining packet (past header and cuidx)
 				xocl_memcpy_toio(ert_30->cq_base + slot_addr + 8,
 						 ecmd->xcmd->execbuf+2, (epkt->count-1)*sizeof(u32));
+			} else {
+				xocl_memcpy_toio(ert_30->cq_base + slot_addr + 4,
+					  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
 			}
 
 			iowrite32(epkt->header, ert_30->cq_base + slot_addr);
@@ -704,10 +767,6 @@ static inline int process_ert_rq(struct xocl_ert_30 *ert_30)
 					mask, cq_int_addr);
 			xocl_intc_ert_write32(xdev, mask, cq_int_addr);
 		}
-		list_move_tail(&ecmd->list, &ert_30->sq);
-		ert_30->submit_queue[ecmd->slot_idx] = ecmd;
-		--ert_30->num_rq;
-		++ert_30->num_sq;
 	}
 
 	return 1;

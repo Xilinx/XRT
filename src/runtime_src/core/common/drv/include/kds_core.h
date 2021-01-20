@@ -111,6 +111,8 @@ struct kds_cu_mgmt {
 /* ERT core */
 struct kds_ert {
 	void (* submit)(struct kds_ert *ert, struct kds_command *xcmd);
+	struct mutex		  lock;
+	int			  configured;
 };
 
 struct plram_info {

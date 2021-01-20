@@ -1376,9 +1376,10 @@ static int clock_remove(struct platform_device *pdev)
 	mutex_destroy(&clock->clock_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, clock);
 
 	CLOCK_INFO(clock, "successfully removed Clock subdev");
+	devm_kfree(&pdev->dev, clock);
+
 	return 0;
 }
 
