@@ -52,6 +52,14 @@ is_noop_emulation()
 }
 
 static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swemu = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
+  return swemu;
+}
+
+static bool
 is_nodma(xclDeviceHandle xhdl)
 {
   auto core_device = xrt_core::get_userpf_device(xhdl);
@@ -126,7 +134,7 @@ private:
     addr = prop.paddr;
     grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
 
-    if (is_noop_emulation())
+    if (is_noop_emulation() || is_sw_emulation())
       return;
 
     // Remove when driver returns the flags that were used to ctor the bo
