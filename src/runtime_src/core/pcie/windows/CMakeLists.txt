@@ -47,11 +47,13 @@ target_link_libraries(xrt_core
 # ARCHIVE target. All Windows-based systems including Cygwin are DLL
 # platforms.
 install(TARGETS xrt_core
+  EXPORT xrt-targets
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
 install(TARGETS xrt_core
+  EXPORT xrt-targets-dev
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )

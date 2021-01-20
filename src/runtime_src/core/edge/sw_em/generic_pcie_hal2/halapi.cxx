@@ -776,7 +776,7 @@ xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size
 }
 
 int
-xclSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   return 0;
 }
@@ -788,7 +788,7 @@ xclResetAIEArray(xclDeviceHandle handle)
 }
 
 int
-xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   return 0;
 }

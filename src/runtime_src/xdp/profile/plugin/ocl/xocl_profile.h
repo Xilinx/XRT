@@ -34,26 +34,18 @@
 #include "xocl/core/program.h"
 #include "xocl/core/range.h"
 #include "xocl/core/execution_context.h"
+#include "core/include/experimental/xrt_kernel.h"
 #include <map>
 #include <memory>
 #include <cmath>
 #include <string>
 
 namespace xdp { namespace xoclp {
-//
-// CU profiling callbacks
-//
-uint32_t
-get_num_cu_masks(uint32_t header);
-uint32_t
-get_cu_index_mask(uint32_t cumask);
-unsigned int
-get_cu_index(const xrt_xocl::command* cmd);
 
 void
-get_cu_start(const xrt_xocl::command* cmd, const xocl::execution_context* ctx);
+get_cu_start(const xocl::execution_context* ctx, const xrt::run& run);
 void
-get_cu_done(const xrt_xocl::command* cmd, const xocl::execution_context* ctx);
+get_cu_done(const xocl::execution_context* ctx, const xrt::run& run);
 
 //
 // Platform

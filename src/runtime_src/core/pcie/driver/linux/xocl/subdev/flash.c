@@ -196,6 +196,23 @@ static size_t micron_code2sectors(u8 code)
 	return max_sectors;
 }
 
+/*
+ * QSPI IP on some of the old shell/golden does not support
+ * QSPI_CMD_EXT_QUAD_WRITE, but driver does not know if IP is new or old.
+ * Since we only use micron chip on old boards, we'll just use different
+ * write cmd for micron and macronix chip.
+ */
+
+static u8 micron_write_cmd(void)
+{
+	return QSPI_CMD_QUAD_WRITE;
+}
+
+static u8 macronix_write_cmd(void)
+{
+	return QSPI_CMD_EXT_QUAD_WRITE;
+}
+
 static size_t macronix_code2sectors(u8 code)
 {
 	if (code < 0x38 || code > 0x3c)
@@ -215,10 +232,17 @@ static struct qspi_flash_vendor {
 	u8 vendor_id;
 	const char *vendor_name;
 	size_t (*code2sectors)(u8 code);
+	u8 (*write_cmd)(void);
 	int (*configure)(struct xocl_flash *flash);
 } vendors[] = {
-	{ 0x20, "micron", micron_code2sectors, micron_configure},
-	{ 0xc2, "macronix", macronix_code2sectors, macronix_configure},
+	{
+		0x20, "micron", micron_code2sectors,
+		micron_write_cmd, micron_configure
+	},
+	{
+		0xc2, "macronix", macronix_code2sectors,
+		macronix_write_cmd, macronix_configure
+	},
 };
 
 struct qspi_flash_addr {
@@ -848,7 +872,7 @@ static int flash_fifo_wr(struct xocl_flash *flash,
 	flash_offset2faddr(off, &faddr);
 
 	ret = flash_setup_io_cmd_header(flash,
-		QSPI_CMD_EXT_QUAD_WRITE, &faddr, &header_len);
+		flash->vendor->write_cmd(), &faddr, &header_len);
 	if (ret)
 		return ret;
 

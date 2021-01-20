@@ -67,3 +67,6 @@ include (CMake/version.cmake)
 
 message ("------------ xrt install dir: ${XRT_INSTALL_DIR}")
 add_subdirectory(runtime_src)
+
+# --- Find Package Support ---
+include (CMake/findpackage.cmake)

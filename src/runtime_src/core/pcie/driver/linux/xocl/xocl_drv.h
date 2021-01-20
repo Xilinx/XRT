@@ -101,7 +101,10 @@
 /* drm_gem_object_put_unlocked and drm_gem_object_get were introduced with Linux
  * 4.12 and backported to Red Hat 7.5.
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+	#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put
+	#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_get
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
 	#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_get
 #elif defined(RHEL_RELEASE_CODE)
@@ -270,6 +273,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define	XOCL_DEV_ID(pdev)			\
 	((pci_domain_nr(pdev->bus) << 16) |	\
 	PCI_DEVID(pdev->bus->number, pdev->devfn))
+
+#define XOCL_DEV_HAS_DEVICE_TREE(xdev) 		\
+	(XDEV(xdev)->fdt_blob != NULL)
 
 #define XOCL_ARE_HOP 0x400000000ull
 
@@ -441,6 +447,7 @@ struct xocl_work {
 	int			op;
 };
 
+#define SERIAL_NUM_LEN	32
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
 	int			dev_minor;
@@ -494,6 +501,13 @@ struct xocl_dev_core {
 	 */
 	int			ksize;
 	char			*kernels;
+	/*
+	 * u30 reset relies on working SC and SN info. SN is read and saved in
+	 * parent device so that even if for some reason the xmc is offline
+	 * the card can still be reset.
+	 * Having SN info available also implies there is a working SC
+	 */
+	char			serial_num[SERIAL_NUM_LEN];
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -826,6 +840,7 @@ struct xocl_mb_funcs {
 	int (*get_data)(struct platform_device *pdev, enum xcl_group_kind kind, void *buf);
 	int (*xmc_access)(struct platform_device *pdev, enum xocl_xmc_flags flags);
 	void (*clock_status)(struct platform_device *pdev, bool *latched);
+	void (*get_serial_num)(struct platform_device *pdev);
 };
 
 #define	MB_DEV(xdev)		\
@@ -859,6 +874,8 @@ struct xocl_mb_funcs {
 #define xocl_xmc_clock_status(xdev, latched)		\
 	(MB_CB(xdev, clock_status) ? MB_OPS(xdev)->clock_status(MB_DEV(xdev), latched) : -ENODEV)
 
+#define xocl_xmc_get_serial_num(xdev)		\
+	(MB_CB(xdev, get_serial_num) ? MB_OPS(xdev)->get_serial_num(MB_DEV(xdev)) : -ENODEV)
 /* ERT FW callbacks */
 #define ERT_DEV(xdev)							\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, XOCL_MB_ERT).pldev
@@ -903,7 +920,8 @@ static inline void xocl_mb_reset(xdev_handle_t xdev)
 struct xocl_ps_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*reset)(struct platform_device *pdev, int type);
-	void (*wait)(struct platform_device *pdev);
+	int (*wait)(struct platform_device *pdev);
+	void (*check_healthy)(struct platform_device *pdev);
 };
 
 #define	PS_DEV(xdev)		\
@@ -920,7 +938,9 @@ struct xocl_ps_funcs {
 #define	xocl_ps_sys_reset(xdev)			\
 	(PS_CB(xdev, reset) ? PS_OPS(xdev)->reset(PS_DEV(xdev), 3) : NULL)
 #define	xocl_ps_wait(xdev)			\
-	(PS_CB(xdev, reset) ? PS_OPS(xdev)->wait(PS_DEV(xdev)) : NULL)
+	(PS_CB(xdev, reset) ? PS_OPS(xdev)->wait(PS_DEV(xdev)) : -ENODEV)
+#define	xocl_ps_check_healthy(xdev)			\
+	(PS_CB(xdev, check_healthy) ? PS_OPS(xdev)->check_healthy(PS_DEV(xdev)) : true)
 
 
 /* dna callbacks */
@@ -1092,7 +1112,7 @@ struct xocl_mailbox_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*request)(struct platform_device *pdev, void *req,
 		size_t reqlen, void *resp, size_t *resplen,
-		mailbox_msg_cb_t cb, void *cbarg, u32 timeout);
+		mailbox_msg_cb_t cb, void *cbarg, u32 rx_timeout, u32 tx_timeout);
 	int (*post_notify)(struct platform_device *pdev, void *req, size_t len);
 	int (*post_response)(struct platform_device *pdev,
 		enum xcl_mailbox_request req, u64 reqid, void *resp, size_t len);
@@ -1106,9 +1126,9 @@ struct xocl_mailbox_funcs {
 	((struct xocl_mailbox_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).ops)
 #define MAILBOX_READY(xdev, cb)	\
 	(MAILBOX_DEV(xdev) && MAILBOX_OPS(xdev) && MAILBOX_OPS(xdev)->cb)
-#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg, timeout)	\
+#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg, rx_timeout, tx_timeout)	\
 	(MAILBOX_READY(xdev, request) ? MAILBOX_OPS(xdev)->request(MAILBOX_DEV(xdev), \
-	req, reqlen, resp, resplen, cb, cbarg, timeout) : -ENODEV)
+	req, reqlen, resp, resplen, cb, cbarg, rx_timeout, tx_timeout) : -ENODEV)
 #define	xocl_peer_response(xdev, req, reqid, buf, len)			\
 	(MAILBOX_READY(xdev, post_response) ? MAILBOX_OPS(xdev)->post_response(	\
 	MAILBOX_DEV(xdev), req, reqid, buf, len) : -ENODEV)
@@ -1508,9 +1528,10 @@ struct xocl_mailbox_versal_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*set)(struct platform_device *pdev, u32 data);
 	int (*get)(struct platform_device *pdev, u32 *data);
-	int (*enable_intr)(struct platform_device *pdev);
-	int (*disable_intr)(struct platform_device *pdev);
-	int (*handle_intr)(struct platform_device *pdev);
+	int (*request_intr)(struct platform_device *pdev,
+			    irqreturn_t (*handler)(void *arg),
+			    void *arg);
+	int (*free_intr)(struct platform_device *pdev);
 };
 #define	MAILBOX_VERSAL_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX_VERSAL).pldev
@@ -1528,15 +1549,14 @@ struct xocl_mailbox_versal_funcs {
 	(MAILBOX_VERSAL_READY(xdev, get)	\
 	? MAILBOX_VERSAL_OPS(xdev)->get(MAILBOX_VERSAL_DEV(xdev), \
 	data) : -ENODEV)
-#define	xocl_mailbox_versal_enable_intr(xdev)	\
-	(MAILBOX_VERSAL_READY(xdev, enable_intr)	\
-	? MAILBOX_VERSAL_OPS(xdev)->enable_intr(MAILBOX_VERSAL_DEV(xdev)) : -ENODEV)
-#define	xocl_mailbox_versal_disable_intr(xdev)	\
-	(MAILBOX_VERSAL_READY(xdev, disable_intr)	\
-	? MAILBOX_VERSAL_OPS(xdev)->disable_intr(MAILBOX_VERSAL_DEV(xdev)) : -ENODEV)
-#define	xocl_mailbox_versal_handle_intr(xdev)	\
-	(MAILBOX_VERSAL_READY(xdev, handle_intr)	\
-	? MAILBOX_VERSAL_OPS(xdev)->handle_intr(MAILBOX_VERSAL_DEV(xdev)) : -ENODEV)
+#define xocl_mailbox_versal_request_intr(xdev, handler, arg) \
+	(MAILBOX_VERSAL_READY(xdev, request_intr) ? \
+	MAILBOX_VERSAL_OPS(xdev)->request_intr(MAILBOX_VERSAL_DEV(xdev), handler, arg) : \
+	-ENODEV)
+#define xocl_mailbox_versal_free_intr(xdev) \
+	(MAILBOX_VERSAL_READY(xdev, free_intr) ? \
+	MAILBOX_VERSAL_OPS(xdev)->free_intr(MAILBOX_VERSAL_DEV(xdev)) : \
+	-ENODEV)
 
 /* srsr callbacks */
 struct xocl_srsr_funcs {
@@ -1666,6 +1686,11 @@ enum ert_gpio_cfg {
 	MB_WAKEUP,
 	MB_SLEEP,
 	MB_STATUS,
+};
+
+struct xocl_ert_versal_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (* configured)(struct platform_device *pdev);
 };
 
 struct xocl_ert_user_funcs {
@@ -1925,6 +1950,8 @@ struct xocl_pcie_firewall_funcs {
 #define xocl_pcie_firewall_unblock(xdev, pf, bar)			\
 	(PCIE_FIREWALL_CB(xdev) ? PCIE_FIREWALL_OPS(xdev)->unblock(PCIE_FIREWALL_DEV(xdev), pf, bar) : -ENODEV)
 
+#define xocl_get_buddy_fpga(lro, fn) \
+	(bus_for_each_dev(&pci_bus_type, NULL, lro, fn)) 
 /* subdev functions */
 int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 	struct xocl_pci_funcs *pci_ops);
@@ -1967,6 +1994,8 @@ void xocl_subdev_unregister(struct platform_device *pldev);
 
 int xocl_subdev_get_resource(xdev_handle_t xdev_hdl,
 		char *res_name, u32 type, struct resource *res);
+int xocl_subdev_get_baridx(xdev_handle_t xdev_hdl,
+		char *res_name, u32 type, int *bar_idx);
 
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
 void xocl_clear_pci_errors(xdev_handle_t xdev_hdl);
@@ -2037,7 +2066,7 @@ static inline int xocl_kds_fini_ert(xdev_handle_t xdev)
 
 /* context helpers */
 extern struct mutex xocl_drvinst_mutex;
-extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
+extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 64];
 
 void *xocl_drvinst_alloc(struct device *dev, u32 size);
 void xocl_drvinst_release(void *data, void **hdl);
@@ -2249,6 +2278,9 @@ void xocl_fini_ert_user(void);
 
 int __init xocl_init_ert_30(void);
 void xocl_fini_ert_30(void);
+
+int __init xocl_init_ert_versal(void);
+void xocl_fini_ert_versal(void);
 
 int __init xocl_init_pcie_firewall(void);
 void xocl_fini_pcie_firewall(void);

@@ -42,7 +42,7 @@ struct drm_xocl_exec_metadata {
 struct xocl_cma_memory {
 	uint64_t		paddr;
 	struct page		**pages;
-	void 			*vaddr;
+	struct page		*regular_page;
 	uint64_t		size;
 	struct sg_table 	*sgt;
 };
@@ -83,6 +83,7 @@ struct drm_xocl_bo {
 	unsigned              dma_nsg;
 	unsigned              flags;
 	unsigned              mem_idx;
+	unsigned	      user_flags;
 };
 
 struct drm_xocl_unmgd {
@@ -124,6 +125,17 @@ int xocl_gem_fault(struct vm_fault *vmf);
 #else
 int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
 #endif
+
+static inline struct sg_table *xocl_prime_pages_to_sg(struct drm_device *dev,
+						      struct page **pages, unsigned int nr_pages)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+	return drm_prime_pages_to_sg(dev, pages, nr_pages);
+#else
+	(void)dev;
+	return drm_prime_pages_to_sg(pages, nr_pages);
+#endif
+}
 
 static inline struct drm_xocl_bo *to_xocl_bo(struct drm_gem_object *bo)
 {

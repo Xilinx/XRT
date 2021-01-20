@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  * Author(s): Min Ma	<min.ma@xilinx.com>
  *          : Larry Liu	<yliu@xilinx.com>
  *
@@ -122,10 +122,13 @@ static int waitNextCmd(uint32_t cu_idx)
  * The arguments for soft kernel CU to run is copied into its reg
  * file. By mapping the reg file BO, we get the process's memory
  * address for the soft kernel argemnts.
+ *
+ * Note: since we are reusing reg file BO to store soft kernel
+ * return value, we need to map the BO as writable.
  */
 static void *getKernelArg(unsigned int boHdl, uint32_t cu_idx)
 {
-  return xclMapBO(devHdl, boHdl, false);
+  return xclMapBO(devHdl, boHdl, true);
 }
 
 xclDeviceHandle initXRTHandle(unsigned deviceIndex)
@@ -149,7 +152,8 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   void *sk_handle;
   kernel_t kernel;
   struct sk_operations ops;
-  unsigned *args_from_host;
+  uint32_t *args_from_host;
+  int32_t kernel_return;
   unsigned int boh;
   int ret;
 
@@ -201,11 +205,12 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
     }
 
     /* Reg file indicates the kernel should not be running. */
-    if (args_from_host[0] != 0x1)
-      continue;
+    if (!(args_from_host[0] & 0x1))
+      continue; //AP_START bit is not set; New Cmd is not available
 
     /* Start run the soft kernel. */
-    kernel(&args_from_host[1], &ops);
+    kernel_return = kernel(&args_from_host[1], &ops);
+    args_from_host[1] = (uint32_t)kernel_return;
   }
 
   dlclose(sk_handle);
@@ -248,7 +253,7 @@ static int createSoftKernelFile(uint64_t paddr, size_t size, uint32_t cuidx)
     syslog(LOG_ERR, "Cannot initialize XRT.\n");
     return -1;
   }
-    
+
   boHandle = xclGetHostBO(handle, paddr, size);
   buf = xclMapBO(handle, boHandle, false);
   if (!buf) {
@@ -264,7 +269,7 @@ static int createSoftKernelFile(uint64_t paddr, size_t size, uint32_t cuidx)
     if (path[i] == '/') {
       path[i] = '\0';
       if (access(path, F_OK) != 0) {
-        if (mkdir(path, 0644) != 0) {
+        if (mkdir(path, 0744) != 0) {
           syslog(LOG_ERR, "Cannot create soft kernel file.\n");
           return -1;
         }
@@ -336,9 +341,13 @@ void configSoftKernel(xclSKCmd *cmd)
      * kernel image.
      */
     pid = fork();
+    if (pid > 0)
+      signal(SIGCHLD,SIG_IGN);
+
     if (pid == 0) {
       char path[XRT_MAX_PATH_LENGTH];
       char proc_name[PNAME_LEN] = {};
+
       /* Install Signal Handler for the Child Processes/Soft-Kernels */
       struct sigaction act;
       act.sa_handler = sigLog;
@@ -372,9 +381,6 @@ void configSoftKernel(xclSKCmd *cmd)
       syslog(LOG_INFO, "Kernel %s was terminated\n", cmd->krnl_name);
       exit(EXIT_SUCCESS);
     }
-
-    if (pid > 0)
-      signal(SIGCHLD,SIG_IGN);
 
     if (pid < 0)
       syslog(LOG_ERR, "Unable to create soft kernel process( %d)\n", i);

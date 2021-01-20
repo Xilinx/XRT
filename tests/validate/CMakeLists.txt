@@ -17,3 +17,7 @@ endif()
 add_subdirectory(verify_test)
 add_subdirectory(bandwidth_test)
 add_subdirectory(slavebridge_test)
+
+# Special iops performance test cases
+add_subdirectory(xcl_iops_test)
+add_subdirectory(xrt_iops_test)

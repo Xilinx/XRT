@@ -72,7 +72,7 @@ static std::atomic<bool> stop{true};
 // Forward declaration of event callback function for event of last
 // copy stage of a job.
 static void
-kernel_done(const xrt::run& run, ert_cmd_state state, void* data);
+kernel_done(const void*, ert_cmd_state state, void* data);
 
 // Data for a single job
 struct job_type
@@ -163,7 +163,7 @@ struct job_type
 };
 
 static void
-kernel_done(const xrt::run& run, ert_cmd_state state, void* data)
+kernel_done(const void*, ert_cmd_state state, void* data)
 {
   reinterpret_cast<job_type*>(data)->done();
 }

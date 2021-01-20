@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018-2020, Xilinx Inc
+ *  Copyright (C) 2018-2021, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -262,6 +262,7 @@ enum {
 #define	XOCL_MSIX_XDMA		"msix_xdma"
 #define	XOCL_ERT_USER		"ert_user"
 #define	XOCL_ERT_30		"ert_30"
+#define	XOCL_ERT_VERSAL		"ert_versal"
 #define	XOCL_M2M		"m2m"
 #define	XOCL_PCIE_FIREWALL	"pcie_firewall"
 
@@ -278,6 +279,7 @@ enum subdev_id {
 	XOCL_SUBDEV_IORES,
 	XOCL_SUBDEV_FLASH,
 	XOCL_SUBDEV_MAILBOX,
+	XOCL_SUBDEV_MAILBOX_VERSAL,
 	XOCL_SUBDEV_P2P,
 	XOCL_SUBDEV_MB_SCHEDULER,
 	XOCL_SUBDEV_XVC_PUB,
@@ -293,7 +295,6 @@ enum subdev_id {
 	XOCL_SUBDEV_DNA,
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
-	XOCL_SUBDEV_MAILBOX_VERSAL,
 	XOCL_SUBDEV_XFER_VERSAL,
 	XOCL_SUBDEV_CLOCK,
 	XOCL_SUBDEV_AIM,
@@ -315,6 +316,7 @@ enum subdev_id {
 	XOCL_SUBDEV_ICAP_CNTRL,
 	XOCL_SUBDEV_ERT_30,
 	XOCL_SUBDEV_ERT_USER,
+	XOCL_SUBDEV_ERT_VERSAL,
 	XOCL_SUBDEV_NUM
 };
 
@@ -750,7 +752,7 @@ struct xocl_subdev_map {
 	((struct resource []) {				\
 		{					\
 			.start	= 0x0,			\
-			.end	= 0x0FFFF,		\
+			.end	= 0x00FFF,		\
 			.flags	= IORESOURCE_MEM,	\
 		}					\
 	})
@@ -3456,11 +3458,11 @@ struct xocl_subdev_map {
 		.priv_data = &XOCL_BOARD_U50_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5044, PCI_ANY_ID,					\
-		.vbnv = "xilinx_vck5000",				\
+		.vbnv = "xilinx_vck5000-es1",				\
 		.priv_data = &XOCL_BOARD_VERSAL_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5045, PCI_ANY_ID,					\
-		.vbnv = "xilinx_vck5000",				\
+		.vbnv = "xilinx_vck5000-es1",				\
 		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5050, PCI_ANY_ID,                                   \

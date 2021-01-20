@@ -195,6 +195,30 @@ memidx_to_name(const mem_topology* mem_topology,  int32_t midx)
 }
 
 int32_t
+address_to_memidx(const mem_topology* mem_topology, uint64_t address)
+{
+  if (is_sw_emulation())
+    return 0;  // default bank in software emulation
+  
+  // Reserve look for preferred group id
+  for (int idx = mem_topology->m_count-1; idx >= 0; --idx) {
+    auto& mem = mem_topology->m_mem_data[idx];
+    if (!mem.m_used)
+      continue;
+    if (mem.m_type == MEM_STREAMING)
+      continue;
+    if (mem.m_type == MEM_STREAMING_CONNECTION)
+      continue;
+    if (address < mem.m_base_address)
+      continue;
+    if (address > (mem.m_base_address + mem.m_size * 1024))
+      continue;
+    return idx;
+  }
+  return std::numeric_limits<int32_t>::max();
+}
+
+int32_t
 get_first_used_mem(const axlf* top)
 {
   auto mem_topology = axlf_section_type<const ::mem_topology*>::get(top,axlf_section_kind::MEM_TOPOLOGY);
@@ -597,13 +621,16 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
          ,index
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.size"))
+         ,convert(xml_arg.second.get<std::string>("<xmlattr>.hostSize"))
          ,0  // fa_desc_offset post computed if necessary
          ,kernel_argument::argtype(xml_arg.second.get<size_t>("<xmlattr>.addressQualifier"))
          ,kernel_argument::direction(kernel_argument::direction::input)
       });
     }
 
-    std::sort(args.begin(), args.end(), [](auto& a1, auto& a2) { return a1.index < a2.index; });
+    // stable sort to preserve order of multi-component arguments
+    // for example global_size, local_size, etc.
+    std::stable_sort(args.begin(), args.end(), [](auto& a1, auto& a2) { return a1.index < a2.index; });
     break;
   }
   return args;

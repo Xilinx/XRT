@@ -80,6 +80,7 @@ xclmgmt-y := \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
+	mgmt-bifurcation-reset.o \
 	mgmt-ioctl.o \
 	mgmt-sysfs.o
 
@@ -100,6 +101,9 @@ endif
 ifeq ($(SYMBOL),1)
 	ccflags-y += -g
 endif
+
+ccflags-$(CONFIG_FPGA) += -DENABLE_FPGA_MGR_SUPPORT
+ccflags-y += $(ccflags-m)
 
 all:
 	echo $(PWD)

@@ -90,7 +90,7 @@ struct job_type
     0x38f1817d,
     0x32ccb7db,
     0xa6ef0e05
-  }; 
+  };
 
   static constexpr size_t len = 4096;
 
@@ -100,6 +100,8 @@ struct job_type
   cl_context context = nullptr;
   cl_command_queue queue = nullptr;
   cl_kernel kernel = nullptr;
+
+  cl_event kevent = nullptr;
 
   cl_mem in;
   cl_mem out;
@@ -164,40 +166,30 @@ struct job_type
     ++runs;
     busy = true;
 
-    cl_int err = CL_SUCCESS;
-    cl_event kevent = nullptr;
-
     static size_t global[3] = {1,0,0};
     static size_t local[3] = {1,0,0};
 
-    err = clEnqueueNDRangeKernel(queue, kernel, 1, nullptr, global, local, 0, nullptr, &kevent);
+    auto err = clEnqueueNDRangeKernel(queue, kernel, 1, nullptr, global, local, 0, nullptr, &kevent);
     if (err) throw_if_error(err,"failed to execute job " + std::to_string(id));
-    clSetEventCallback(kevent,CL_COMPLETE,&kernel_done,this);
+    //std::cout << "s" << std::flush;
   }
 
   void
-  mark_done()
+  wait()
   {
+    if (!busy)
+      throw std::runtime_error("job was not started");
+    
+    clWaitForEvents(1, &kevent);
+    clReleaseEvent(kevent);
     busy = false;
-  }
-
-  bool
-  is_done() const
-  {
-    return !busy;
+    //std::cout << "d" << std::flush;
   }
 };
 
 constexpr uint32_t job_type::aes_key[16];
 constexpr uint32_t job_type::aes_iv[4];
 constexpr size_t job_type::len;
-
-static void
-kernel_done(cl_event event, cl_int status, void* data)
-{
-  reinterpret_cast<job_type*>(data)->mark_done();
-  clReleaseEvent(event);
-}
 
 static double
 run(std::vector<job_type>& cmds, size_t total)
@@ -214,29 +206,29 @@ run(std::vector<job_type>& cmds, size_t total)
 
   while (completed < total) {
     auto& cmd = cmds[i];
+    cmd.wait();
 
-    if (cmd.is_done()) {
-      ++completed;
-      // cmd.verify()
-      if (issued < total) {
-        cmd.start();
-        ++issued;
-      }
+    // cmds[i].verify()
+
+    ++completed;
+    if (issued < total) {
+      cmd.start();
+      ++issued;
     }
-        
+
     if (++i == cmds.size())
       i = 0;
   }
 
   auto end = std::chrono::high_resolution_clock::now();
-  return (std::chrono::duration_cast<std::chrono::microseconds>(end - start)).count();
-  
+  return static_cast<double>((std::chrono::duration_cast<std::chrono::microseconds>(end - start)).count());
+
 }
 
-static int
+static void
 run(cl_context context, cl_command_queue queue, cl_kernel kernel)
 {
-  std::vector<size_t> cmds_per_run = { 16, 100, 1000, 10000, 100000, 1000000 };
+  std::vector<size_t> cmds_per_run = { 100, 1000, 10000, 100000, 1000000 };
   size_t expected_cmds = 10000;
 
   std::vector<job_type> jobs;
@@ -253,7 +245,7 @@ run(cl_context context, cl_command_queue queue, cl_kernel kernel)
   }
 }
 
-static int
+static void
 run(const std::string& fnm)
 {
   // Init OCL
@@ -285,7 +277,7 @@ run(const std::string& fnm)
   cl_int status = CL_SUCCESS;
   auto program = clCreateProgramWithBinary(context,1,&device,&size,&data,&status,&err);
   throw_if_error(err,"failed to create program");
-  auto kernel = clCreateKernel(program,"fa_aes_xts2_rtl_enc",&err);
+  auto kernel = clCreateKernel(program,"fa_aes_xts2_rtl_dec",&err);
   throw_if_error(err,"failed to allocate kernel object");
 
   run(context,queue,kernel);
@@ -296,10 +288,10 @@ run(const std::string& fnm)
   clReleaseContext(context);
   clReleaseDevice(device);
   std::for_each(devices.begin(),devices.end(),[](cl_device_id d){clReleaseDevice(d);});
-  return 0;
 }
 
-int run(int argc, char** argv)
+void
+run(int argc, char** argv)
 {
   std::vector<std::string> args(argv+1,argv+argc);
 
@@ -309,7 +301,7 @@ int run(int argc, char** argv)
   for (auto& arg : args) {
     if (arg == "-h") {
       usage();
-      return 1;
+      return;
     }
 
     if (arg[0] == '-') {
@@ -324,8 +316,6 @@ int run(int argc, char** argv)
   }
 
   run(xclbin_fnm);
-
-  return 0;
 }
 
 int

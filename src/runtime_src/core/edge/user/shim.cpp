@@ -617,10 +617,10 @@ unsigned int
 shim::
 xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
 {
-  drm_zocl_info_bo info = {boHandle, 0, 0};
+  drm_zocl_info_bo info = {boHandle, 0, 0, 0};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_BO, &info);
   properties->handle = info.handle;
-  properties->flags  = DRM_ZOCL_BO_FLAGS_COHERENT | DRM_ZOCL_BO_FLAGS_CMA;
+  properties->flags  = info.flags;
   properties->size   = info.size;
   properties->paddr  = info.paddr;
 

@@ -27,7 +27,7 @@ firmwareImage::firmwareImage(const char *file) :
         std::cout << "Can't open " << file << std::endl;
         return;
     }
-    streampos bufsize = in.tellg();
+    auto bufsize = in.tellg();
     in.seekg(0);
 
     // For non-dsabin file, the entire file is the image.

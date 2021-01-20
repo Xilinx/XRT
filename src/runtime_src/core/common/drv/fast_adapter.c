@@ -30,6 +30,9 @@
 #define CDAR		0x18
 #define FDR		0x1C
 
+#define ENABLE  1
+#define DISABLE 0
+
 extern int kds_echo;
 
 static inline u32 cu_read32(struct xrt_cu_fa *cu, u32 reg)
@@ -154,17 +157,25 @@ static void cu_fa_check(void *core, struct xcu_status *status)
 
 static void cu_fa_enable_intr(void *core, u32 intr_type)
 {
+	struct xrt_cu_fa *cu_fa = core;
+
+	cu_write32(cu_fa, IER, ENABLE);
 	return;
 }
 
 static void cu_fa_disable_intr(void *core, u32 intr_type)
 {
+	struct xrt_cu_fa *cu_fa = core;
+
+	cu_write32(cu_fa, IER, DISABLE);
 	return;
 }
 
 static u32 cu_fa_clear_intr(void *core)
 {
-	return 0;
+	struct xrt_cu_fa *cu_fa = core;
+
+	return cu_read32(cu_fa, ISR);
 }
 
 static struct xcu_funcs xrt_cu_fa_funcs = {

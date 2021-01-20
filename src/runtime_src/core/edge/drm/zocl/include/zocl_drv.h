@@ -30,6 +30,7 @@
 #include "zocl_bo.h"
 #include "zocl_dma.h"
 #include "zocl_ospi_versal.h"
+#include "zocl_watchdog.h"
 #include "xrt_cu.h"
 
 #if defined(CONFIG_ARM64)
@@ -65,7 +66,9 @@
 /* drm_gem_object_put_unlocked was introduced with Kernel 4.12 and backported to
  * Red Hat 7.5
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+	#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 	#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
 #elif defined(RHEL_RELEASE_CODE)
 	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 5)
@@ -124,6 +127,7 @@ struct drm_zocl_bo {
 	struct drm_zocl_exec_metadata  metadata;
 	unsigned int                   bank;
 	uint32_t                       flags;
+	unsigned int                   user_flags;
 };
 
 struct drm_zocl_copy_bo {

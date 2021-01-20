@@ -31,7 +31,7 @@ struct kernel_argument
 {
   static constexpr size_t no_index { std::numeric_limits<size_t>::max() };
   // numbering must match that of meta data addressQualifier
-  enum class argtype { scalar = 0, global = 1, stream = 4 };
+  enum class argtype { scalar = 0, global = 1, constant=2, local=3, stream = 4 };
   enum class direction { input = 0, output = 1};
 
   std::string name;
@@ -39,6 +39,7 @@ struct kernel_argument
   size_t index = no_index;
   size_t offset = 0;
   size_t size = 0;
+  size_t hostsize = 0;
   size_t fa_desc_offset = 0;
   argtype type;
   direction dir;
@@ -115,6 +116,12 @@ memidx_to_name(const mem_topology* mem, int32_t midx);
  */
 int32_t
 get_first_used_mem(const axlf* top);
+
+/**
+ * address_to_memidx() - Map memory address to memory bank index
+ */
+int32_t
+address_to_memidx(const mem_topology* mem, uint64_t address);
 
 /**
  * get_max_cu_size() - Compute max register map size of CUs in xclbin

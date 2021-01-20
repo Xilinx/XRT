@@ -36,6 +36,15 @@ address(const xrt::bo& bo);
 uint64_t
 address(xrtBufferHandle handle);
 
+/**
+ * group_id() - Get the memory bank index of BO
+ *
+ * @bo:       Buffer object
+ * Return:    Memory bank index where BO is allocated
+ */
+int32_t
+group_id(const xrt::bo& bo);
+
 // Fill the ERT copy BO command packet
 XRT_CORE_COMMON_EXPORT
 void
@@ -46,6 +55,14 @@ fill_copy_pkt(const xrt::bo& dst, const xrt::bo& src, size_t sz,
 XRT_CORE_COMMON_EXPORT
 bool
 is_imported(const xrt::bo& bo);
+
+XRT_CORE_COMMON_EXPORT
+bool
+is_aligned_ptr(const void* ptr);
+
+XRT_CORE_COMMON_EXPORT
+size_t
+alignment();
 
 }} // namespace bo, xrt_core
 

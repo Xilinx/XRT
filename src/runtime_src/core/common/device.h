@@ -239,6 +239,13 @@ public:
     return reinterpret_cast<SectionType>(get_axlf_section_or_error(section, xclbin_id).first);
   }
 
+  // get_memidx_encoding() - An encoding compressing mem topology indices
+  //
+  // Returned container is indexed by mem_topology index and maps to
+  // encoded index.
+  const std::vector<size_t>&
+  get_memidx_encoding(const uuid& xclbin_id = uuid()) const;
+
   /**
    * get_ert_slots() - Get number of ERT CQ slots
    *
@@ -300,6 +307,7 @@ public:
   // cache xclbin meta data loaded by this process
   uuid m_xclbin_uuid;
   std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
+  std::vector<size_t> m_memidx_encoding;
 };
 
 /**

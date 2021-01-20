@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Xilinx Inc - All rights reserved
+ * Copyright (C) 2015-2020, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -27,7 +27,7 @@ extern "C" {
 #define	XRT_MAX_NAME_LENGTH	32
 #define	XRT_MAX_PATH_LENGTH	255
 
-#define	SOFT_KERNEL_FILE_PATH	"/lib/firmware/xilinx/softkernel/"
+#define	SOFT_KERNEL_FILE_PATH	"/home/softkernel/softkernel/"
 #define	SOFT_KERNEL_FILE_NAME	"sk"
 
 #define	SOFT_KERNEL_REG_SIZE	4096

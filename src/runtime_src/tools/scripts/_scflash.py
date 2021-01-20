@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
- Copyright (C) 2020 Xilinx, Inc
+ Copyright (C) 2020-2021 Xilinx, Inc
  Author(s): Brian Xu (brianx@xlinx.com)
 
  Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -49,6 +49,10 @@ bus_children = {}
 #path of the ps_ready sysfs node of the FPGA
 ps_ready = {}
 
+#path of the serial_num sysfs node of FPGA user PF
+#serial num is being used to accurately identify which 2 FPGAs are on same card
+serial_num = {}
+
 #path of the sc_is_fixed sysfs node of the FPGA
 sc_is_fixed = {}
 
@@ -59,7 +63,7 @@ xbmgmt = "/opt/xilinx/xrt/bin/unwrapped/xbmgmt"
 def get_node_bus_mapping():
     subdir = os.listdir(rootDir)
     for subdirName in subdir:
-        if re.search("^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.0$", subdirName) == None:
+        if re.search("^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[01]$", subdirName) == None:
             continue
         with open(os.path.join(rootDir, subdirName, "vendor")) as f : vendor = f.read()
         if vendor.strip() != "0x10ee":
@@ -68,9 +72,16 @@ def get_node_bus_mapping():
         for fname in files:
             if re.search("^processor_system.+$", fname) != None:
                 ps_ready[subdirName] = os.path.join(rootDir, subdirName, fname, "ps_ready")
-            if re.search("^xmc.+$", fname) != None:
+                #print("%s: %s " % (subdirName, ps_ready[subdirName]))
+            if re.search("^xmc\.m.+$", fname) != None:
                 sc_is_fixed[subdirName] = os.path.join(rootDir, subdirName, fname, "sc_is_fixed")
-        #print("%s: %s " % (subdirName, ps_ready[subdirName]))
+                #print("%s: %s " % (subdirName, sc_is_fixed[subdirName]))
+            if re.search("^xmc\.u.+$", fname) != None:
+                serial_num[subdirName] = os.path.join(rootDir, subdirName, fname, "serial_num")
+                #print("%s: %s " % (subdirName, serial_num[subdirName]))
+                break
+        if not os.path.exists(os.path.join(rootDir, subdirName, "dparent")):
+            continue
         files = os.listdir(os.path.join(rootDir, subdirName, "dparent"))
         for fname in files:
             if re.search("^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-7]:pcie.+$", fname) != None:
@@ -80,6 +91,23 @@ def get_node_bus_mapping():
                 if bus not in bus_children:
                     bus_children[bus] = []
                 bus_children[bus].append(subdirName);
+
+#get buddy FPGA on same card
+def get_buddy(user):
+    #print(serial_num)
+    with open(serial_num[user]) as f : sn = f.read()
+
+    if sn == "":
+        return None
+
+    mgmt = user[:len(user)-1] + "0"
+    nodes_in_cards = bus_children[node_bus_mapping[mgmt]]
+    for node in nodes_in_cards:
+        buddy_user = node[:len(node)-1] + "1"
+        with open(serial_num[buddy_user]) as f : buddy_sn = f.read()
+        if buddy_user != user and sn == buddy_sn:
+            return buddy_user
+    return None
 
 #call 'xbmgmt' to do the real flash
 def run_xbmgmt(cmdline):
@@ -91,39 +119,10 @@ def run_xbmgmt(cmdline):
     if err:
         print(err.decode("utf-8"))
 
-#call 'xbmgmt reset'
-def run_reset(cmdline):
-    print(cmdline)
-    p1 = subprocess.Popen(["echo", "y"], stdout=subprocess.PIPE)
-    p2 = subprocess.Popen(cmdline, stdout=subprocess.PIPE, stdin=p1.stdout)
-    p1.stdout.close()
-    p2.communicate(timeout=90)[0]
-
 #do pcie node remove and rescan
 def run_pcie(cmdline):
     #print(cmdline)
     subprocess.call(cmdline, shell=True)
-
-#wait ps on FPGA back online
-def wait_ps_online(mgmt):
-    while True:
-        with open(ps_ready[mgmt]) as f : ready = f.read()
-        if ready.strip() == '0':
-            time.sleep(3)
-            continue
-        print("%s ps ready" % mgmt)
-        break
-
-#wait FPGA back online
-def wait_xocl_online(user):
-    while True:
-        with open(os.path.join(rootDir, user, "dev_offline")) as f : ready = f.read()
-        if ready.strip() == '1':
-            time.sleep(1)
-            continue
-        print("%s host online" % user)
-        break
-
 
 def main():
     desc = textwrap.dedent('''\
@@ -163,8 +162,13 @@ def main():
             print("ERROR: Is %s a FPGA node?" % user)
             sys.exit(1)
 
+        with open(sc_is_fixed[mgmt]) as f : fixed = f.read()
+        if fixed.strip() == "1":
+            print("ERROR: %s has fixed sc!" % mgmt)
+            sys.exit(1)
+
         #print(node_parent_mapping)
-        nodes_in_cards = bus_children[node_bus_mapping[mgmt]]
+        buddy_user = get_buddy(user)
         #print(nodes_in_cards)
         print("This will reflash sc on the card")
         print("All existing processes will be killed.")
@@ -175,33 +179,34 @@ def main():
             if line == "y":
                 break
         #steps to flash sc
-        #1. kill processes running on the other FPGA
+        #1. kill processes running on the both FPGAs
+        #Note: since get FPGAs on same card relies on the S/N info, which in turn
+        #      relies on a working SC, so it is possible that we can't get S/N info
+        #      and hence get FPGA pair on same card before flashing. In this case,
+        #      we just don't try to kill processes running on the buddy FPGA. This
+        #      should be fine
         #2. call 'xbmgmt flash' on the specified FPGA
         #3. call 'xbmgmt reset --ert' on the 'fixed sc' FPGA to reboot cmc
         #   this step 3 is a workaround to https://jira.xilinx.com/browse/CR-1076187
         #4. wait for FPGAs back online
+        # steps 3 & 4 are not needed anymore since CR-1076187 has been fixed. this
+        # will save some time for the sc flash
         #Note: since this python is called by xbmgmt, so we can't do a card reset
         #      here, otherwise, card reset will remove the xclmgmt which is still
         #      being used by the calling xbmgmt.
-        for node in nodes_in_cards:
-            user = node[:len(node)-1] + "1"
-            print("shutdown: %s" % user)
-            run_pcie("echo 2 > " + os.path.join(rootDir, user, "shutdown"))
+        #      The other reason we don't do a card reset before sc flash is, the
+        #      (new) card reset solution rely on a working SC to report S/N info, so
+        #      there is a chicken-and-egg problem here
+
+        #1
+        print("shutdown: %s" % user)
+        run_pcie("echo 2 > " + os.path.join(rootDir, user, "shutdown"))
+        if buddy_user:
+            print("shutdown: %s" % buddy_user)
+            run_pcie("echo 2 > " + os.path.join(rootDir, buddy_user, "shutdown"))
+        #2
         print("sc flash...")
         run_xbmgmt([xbmgmt, "flash", "--sc_firmware", "--path", args.path, "--card", mgmt, "--no_cardlevel"])
-        time.sleep(1)
-        print("ERT reset...")
-        for node in nodes_in_cards:
-            with open(sc_is_fixed[node]) as f : fixed_sc = f.read()
-            if fixed_sc.strip() != "1":
-                continue
-            run_reset([xbmgmt, "reset", "--ert", "--card", node])
-        time.sleep(1)
-        print("wait FPGAs back on line")
-        for node in nodes_in_cards:
-            user = node[:len(node)-1] + "1"
-            wait_ps_online(node)
-            wait_xocl_online(user)
     except Exception as e:
         print(e)
 
