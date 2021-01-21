@@ -2,7 +2,7 @@
 /*
  * A GEM style device manager for MPSoC based OpenCL accelerators.
  *
- * Copyright (C) 2017-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2017-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Soren Soe   <soren.soe@xilinx.com>
@@ -2766,9 +2766,10 @@ mark_sk_complete(struct sched_cmd *cmd, int32_t ret)
 		slot_sz = slot_size(zdev->ddev);
 		packet = ert->cq_ioremap + (cmd->cq_slot_idx * slot_sz);
 
-		memcpy_toio(packet, &skc->header, 2 * sizeof(u32));
+		memcpy_toio(packet->data, &skc->return_code, sizeof(u32));
 	}
 }
+
 /**
  * ps_ert_query() - Check command status of argument command
  *
