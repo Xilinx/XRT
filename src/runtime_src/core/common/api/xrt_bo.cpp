@@ -38,7 +38,7 @@
 #include <set>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4100 4996 )
+# pragma warning( disable : 4244 4100 4996 4505 )
 #endif
 
 namespace {
