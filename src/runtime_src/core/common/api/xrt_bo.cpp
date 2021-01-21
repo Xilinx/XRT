@@ -38,11 +38,12 @@
 #include <set>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4100 4996 )
+# pragma warning( disable : 4244 4100 4996 4505 )
 #endif
 
 namespace {
 
+XRT_CORE_UNUSED
 static bool
 is_noop_emulation()
 {
@@ -51,6 +52,7 @@ is_noop_emulation()
   return noop;
 }
 
+XRT_CORE_UNUSED
 static bool
 is_sw_emulation()
 {
@@ -134,12 +136,11 @@ private:
     addr = prop.paddr;
     grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
 
-    if (is_noop_emulation() || is_sw_emulation())
-      return;
-
+#ifdef _WIN32 // All shims minus windows return proper flags
     // Remove when driver returns the flags that were used to ctor the bo
     auto mem_topo = device->get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
     grpid = xrt_core::xclbin::address_to_memidx(mem_topo, addr);
+#endif
   }
 
 protected:
