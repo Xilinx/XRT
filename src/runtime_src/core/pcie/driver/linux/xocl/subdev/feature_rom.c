@@ -579,7 +579,7 @@ static int get_header_from_peer(struct feature_rom *rom)
 	struct resource res;
 	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
 	int offset = 0;
-	const u64 *io_off;
+	const u64 *io_off = NULL;
 
 	header = XOCL_GET_SUBDEV_PRIV(&rom->pdev->dev);
 	if (!header)
@@ -588,17 +588,24 @@ static int get_header_from_peer(struct feature_rom *rom)
 	memcpy(&rom->header, header, sizeof(*header));
 
 	xocl_xdev_info(xdev, "Searching CDMA in dtb.");
-	offset = xocl_fdt_path_offset(xdev, XDEV(xdev)->fdt_blob, "/" NODE_ENDPOINTS "/" RESNAME_KDMA);
-	if (offset) {
-		io_off = xocl_fdt_getprop(xdev, XDEV(xdev)->fdt_blob, offset, PROP_IO_OFFSET, NULL);
-		res.start = be64_to_cpu(io_off[0]);
-                rom->header.FeatureBitMap |= CDMA;
-		memset(rom->header.CDMABaseAddress, 0,
-			sizeof(rom->header.CDMABaseAddress));
-		rom->header.CDMABaseAddress[0] = (uint32_t)res.start;
-		xocl_xdev_info(xdev, "CDMA is on, CU offset: 0x%x",
-				rom->header.CDMABaseAddress[0]);
+	offset = xocl_fdt_path_offset(xdev, XDEV(xdev)->fdt_blob,
+				      "/" NODE_ENDPOINTS "/" RESNAME_KDMA);
+	if (!offset)
+		return 0;
+
+	io_off = xocl_fdt_getprop(xdev, XDEV(xdev)->fdt_blob, offset,
+				  PROP_IO_OFFSET, NULL);
+	if (!io_off) {
+		xocl_xdev_err(xdev, "dtb maybe corrupted\n");
+		return -EINVAL;
 	}
+	res.start = be64_to_cpu(io_off[0]);
+	rom->header.FeatureBitMap |= CDMA;
+	memset(rom->header.CDMABaseAddress, 0,
+	       sizeof(rom->header.CDMABaseAddress));
+	rom->header.CDMABaseAddress[0] = (uint32_t)res.start;
+	xocl_xdev_info(xdev, "CDMA is on, CU offset: 0x%x",
+		       rom->header.CDMABaseAddress[0]);
 
 	return 0;
 }
