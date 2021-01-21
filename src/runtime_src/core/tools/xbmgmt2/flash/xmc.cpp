@@ -76,17 +76,19 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
     bool is_mfg = false;
     is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(m_device);
     if (!is_mfg) {
-      try {
-        val = xrt_core::device_query<xrt_core::query::xmc_status>(m_device);
-    } catch (...) { return; }
-      if (!(val & 1)) {
-        mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
-        goto nosup;
-      }
+        try {
+            val = xrt_core::device_query<xrt_core::query::xmc_status>(m_device);
+        }
+        catch (...) { return; }
+        if (!(val & 1)) {
+            mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
+            return;
+        }
+
+        try {
+            mRegBase = xrt_core::device_query<xrt_core::query::xmc_reg_base>(m_device);
+        } catch (...) {}
     }
-    try {
-        mRegBase = xrt_core::device_query<xrt_core::query::xmc_reg_base>(m_device);
-    } catch (...) {}
     if (mRegBase == 0)
         mRegBase = XMC_REG_BASE;
 
@@ -94,24 +96,22 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
     if (val != XMC_MAGIC_NUM) {
       mProbingErrMsg << "Failed to detect XMC, bad magic number: "
                      << std::hex << val << std::dec;
-      goto nosup;
+      return;
     }
 
     val = readReg(XMC_REG_OFF_VER);
     if (val < XMC_BASE_VERSION) {
         mProbingErrMsg << "Found unsupported XMC version: " << val;
-        goto nosup;
+        return;
     }
 
     val = readReg(XMC_REG_OFF_FEATURE);
     if (val & XMC_PKT_SUPPORT_MASK) {
         mProbingErrMsg << "XMC packet buffer is not supported";
-        goto nosup;
+        return;
     }
 
     mPktBufOffset = readReg(XMC_REG_OFF_PKT_OFFSET);
-nosup:
-    return;
 }
 
 XMC_Flasher::~XMC_Flasher()
@@ -553,6 +553,6 @@ bool XMC_Flasher::hasSC()
     bool sc_presence = false;
     try {
         sc_presence = xrt_core::device_query<xrt_core::query::xmc_sc_presence>(m_device);
-    } catch(...) { }
+    } catch (...) {}
     return sc_presence;
 }
