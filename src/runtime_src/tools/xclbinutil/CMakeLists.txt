@@ -61,11 +61,14 @@ SET(TEST_SUITE_NAME "xclbinutil")
 
 # OpenSSL encryption is only supported on linux
 if(NOT WIN32)
-  # -- Test Signing of the xclbin image using a CER formatted certificate
-  xrt_add_test("signing_xclbin_CER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinCER.py")
+  # Python is currently not installed on Edge builds
+  if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+    # -- Test Signing of the xclbin image using a CER formatted certificate
+    xrt_add_test("signing_xclbin_CER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinCER.py")
 
-  # -- Test Signing of the xclbin image using a DER formatted certificate
-  xrt_add_test("signing_xclbin_DER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinDER.py")
+    # -- Test Signing of the xclbin image using a DER formatted certificate
+    xrt_add_test("signing_xclbin_DER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinDER.py")
+  endif()
 endif()
 
 
