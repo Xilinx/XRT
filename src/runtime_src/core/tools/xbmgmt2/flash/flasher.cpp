@@ -243,9 +243,10 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
     //         std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
     //     }
     // }
-    if (is_mfg)
-    {
-       mGoldenVer = xrt_core::device_query<xrt_core::query::mfg_ver>(dev);
+    if (is_mfg) {
+        try {
+            mGoldenVer = xrt_core::device_query<xrt_core::query::mfg_ver>(dev);
+        } catch (...) {}
     }
     //else
     //{
