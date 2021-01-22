@@ -1612,6 +1612,20 @@ namespace xdp {
         }
       }
     }
+
+    if (getFlowMode() == SW_EMU) {
+      std::map<std::tuple<std::string, std::string, std::string>,
+	       TimeStatistics> cuStats =
+	(t->db->getStats()).getComputeUnitExecutionStats() ;
+
+      for (auto iter : cuStats) {
+	(t->fout) << "CU_CALLS" << ","
+		  << (t->db->getStaticInfo()).getSoftwareEmulationDeviceName()
+		  << "|" 
+		  << std::get<0>(iter.first) << "," 
+		  << iter.second.numExecutions << "," << std::endl ;
+      }
+    }
   }
 
   void OpenCLSummaryWriter::guidanceNumMonitors(OpenCLSummaryWriter* t)
