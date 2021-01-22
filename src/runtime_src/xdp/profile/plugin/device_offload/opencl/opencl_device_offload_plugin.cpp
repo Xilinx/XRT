@@ -389,5 +389,29 @@ namespace xdp {
 	(db->getStaticInfo()).addSoftwareEmulationMemUsage(devName + "|" + mem_tag, mem_tp->m_mem_data[i].m_used) ;
       }
     }
+
+    std::set<std::string> bitWidthStrings ;
+    for (auto device : platform->get_device_range()) {
+      for (auto& cu : xocl::xocl(device)->get_cus()) {
+	for (auto arg : cu->get_symbol()->arguments) {
+	  if ((arg.address_qualifier != 1  && arg.address_qualifier != 4) ||
+	      arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
+	    continue ;
+	  std::string bitWidth = "" ;
+	  bitWidth += cu->get_name() ;
+	  bitWidth += "/" ;
+	  bitWidth += arg.port ;
+	  std::transform(bitWidth.begin(), bitWidth.end(), bitWidth.begin(),
+			 [](char c) { return (char)std::tolower(c); }) ;
+	  bitWidth += "," ;
+	  bitWidth += std::to_string(arg.port_width) ;
+	  bitWidthStrings.emplace(bitWidth) ;
+	}
+      }
+    }
+    for (auto iter : bitWidthStrings) {
+      (db->getStaticInfo()).addSoftwareEmulationPortBitWidth(iter) ;
+    }
+
   }
 } // end namespace xdp

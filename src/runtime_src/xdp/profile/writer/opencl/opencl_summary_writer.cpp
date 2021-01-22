@@ -1872,6 +1872,13 @@ namespace xdp {
 	}
       }
     }
+    if (getFlowMode() == SW_EMU) {
+      std::vector<std::string> portBitWidths =
+	(t->db->getStaticInfo()).getSoftwareEmulationPortBitWidths() ;
+      for (auto width : portBitWidths) {
+	(t->fout) << "PORT_BIT_WIDTH" << "," << width << "," << std::endl ;
+      }
+    }
   }
 
   void OpenCLSummaryWriter::guidanceKernelCount(OpenCLSummaryWriter* t)
