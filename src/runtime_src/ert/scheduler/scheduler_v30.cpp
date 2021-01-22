@@ -781,10 +781,10 @@ static inline void
 cu_state_check(size_type slot_idx)
 {
   auto& slot = command_slots[slot_idx];
-  auto cuvalue = read_reg(cu_idx_to_addr(slot.cu_idx));
 
   // check this CU if done
   if (cu_status[slot.cu_idx]) {
+    auto cuvalue = read_reg(cu_idx_to_addr(slot.cu_idx));
     if (cuvalue & (AP_DONE)) {
       auto cu_slot = cu_slot_usage[slot.cu_idx];
 
