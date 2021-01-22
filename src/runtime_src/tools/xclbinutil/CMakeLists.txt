@@ -6,6 +6,9 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 # Signing xclbin images are currently only support on Linux
 if(NOT WIN32)
   find_package(OpenSSL REQUIRED)
+  if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+    find_package(PythonInterp REQUIRED)
+  endif()
 endif()
 
 # -----------------------------------------------------------------------------

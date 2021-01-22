@@ -1,4 +1,3 @@
-find_package(PythonInterp REQUIRED)
 include(FindUnixCommands)
 
 # Make the unit test run directory
