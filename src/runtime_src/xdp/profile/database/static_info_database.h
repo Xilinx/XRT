@@ -483,6 +483,7 @@ namespace xdp {
     std::string softwareEmulationDeviceName ; 
     std::map<std::string, uint64_t> softwareEmulationCUCounts ;
     std::map<std::string, bool> softwareEmulationMemUsage ;
+    std::vector<std::string> softwareEmulationPortBitWidths ;
 
     /* Device Specific Information mapped to the Unique Device Id
      * Device Information contains :
@@ -539,6 +540,10 @@ namespace xdp {
       { return softwareEmulationMemUsage ;}
     inline void addSoftwareEmulationMemUsage(const std::string& mem, bool used)
       { softwareEmulationMemUsage[mem] = used ; }
+    inline std::vector<std::string>& getSoftwareEmulationPortBitWidths()
+      { return softwareEmulationPortBitWidths ; }
+    inline void addSoftwareEmulationPortBitWidth(const std::string& s)
+      { softwareEmulationPortBitWidths.push_back(s) ; }
     inline void setNumDevices(uint64_t contextId, uint64_t numDevices)
     {
       contextIdToNumDevices[contextId] = numDevices ;
