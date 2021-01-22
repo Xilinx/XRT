@@ -148,16 +148,13 @@ namespace xdp {
   std::vector<std::pair<std::string, TimeStatistics>>
   VPStatisticsDatabase::getComputeUnitExecutionStats(const std::string& cuName)
   {
-    std::vector<std::pair<std::string, TimeStatistics>> calls ;
-    for (auto element : computeUnitExecutionStats)
-    {
-      if (cuName == std::get<0>(element.first))
-      {
-	calls.push_back(std::make_pair(std::get<2>(element.first),
-				       element.second)) ;
+    std::vector<std::pair<std::string, TimeStatistics>> calls;
+    for (auto element : computeUnitExecutionStats) {
+      if (0 == cuName.compare(std::get<0>(element.first))) {
+        calls.push_back(std::make_pair(std::get<2>(element.first), element.second));
       }
     }
-    return calls ;
+    return calls;
   }
 
   uint64_t VPStatisticsDatabase::getDeviceActiveTime(const std::string& deviceName)

@@ -1591,18 +1591,25 @@ namespace xdp {
   void OpenCLSummaryWriter::guidanceCUCalls(OpenCLSummaryWriter* t)
   {
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
-    
-    for (auto device : deviceInfos)
-    {
-      for (auto xclbin : device->loadedXclbins)
-      {
-	for (auto cu : xclbin->cus)
-	{
-	  (t->fout) << "CU_CALLS" << ","
-		    << ((cu.second)->getName()) << ","
-		    << 0 // TODO: Execution count
-		    << "," << std::endl ;
-	}
+ 
+    for (auto device : deviceInfos) {
+      for (auto xclbin : device->loadedXclbins) {
+        for (auto cu : xclbin->cus) {
+          std::string cuName = (cu.second)->getName();
+          std::vector<std::pair<std::string, TimeStatistics>> cuCalls = 
+                               (t->db->getStats()).getComputeUnitExecutionStats(cuName);
+
+          uint64_t execCount = 0;
+          for(auto cuCall : cuCalls) {
+            execCount += cuCall.second.numExecutions;
+          }
+
+          (t->fout) << "CU_CALLS" << ","
+                    << device->deviceName << "|"
+                    << ((cu.second)->getName()) << ","
+                    << execCount
+                    << "," << std::endl ;
+        }
       }
     }
   }
