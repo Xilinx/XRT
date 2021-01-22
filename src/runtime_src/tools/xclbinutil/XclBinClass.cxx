@@ -330,13 +330,14 @@ XclBin::updateUUID() {
     std::random_device device;
     std::mt19937_64 randomGen(device());
 
-    *(uint64_t *) (&m_xclBinHeader.m_header.uuid[0]) = randomGen();
-    *(uint64_t *) (&m_xclBinHeader.m_header.uuid[8]) = randomGen();
+    // Create a 16 byte value
+    std::stringstream uuidStream;
+    uuidStream << std::setfill ('0') << std::setw(sizeof(uint64_t)*2) << std::hex << randomGen();
+    uuidStream << std::setfill ('0') << std::setw(sizeof(uint64_t)*2) << std::hex << randomGen();
 
-    std::string sUUID("");
-    XUtil::binaryBufferToHexString(m_xclBinHeader.m_header.uuid, sizeof(axlf_header::uuid), sUUID);
+    XUtil::hexStringToBinaryBuffer(uuidStream.str(), m_xclBinHeader.m_header.uuid, sizeof(axlf_header::uuid));
 
-    XUtil::TRACE(XUtil::format("Updated xclbin UUID to: '%s'", sUUID.c_str()).c_str());
+    XUtil::TRACE(XUtil::format("Updated xclbin UUID to: '%s'", uuidStream.str().c_str()).c_str());
 }
 
 void
