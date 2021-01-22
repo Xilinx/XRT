@@ -17,11 +17,11 @@ def main():
   execCmd(step, cmd)
 
   step = "2) Create an empty unsigned xclbin"
-  cmd = [xclbinutil, "--output", "unsigned_empty.xclbin", "--force", "--skip-uuid-insertion"]
+  cmd = [xclbinutil, "--output", "unsigned_empty.xclbin", "--force"]
   execCmd(step, cmd)
 
   step = "3) Sign the xclbin (DER)"
-  cmd = [xclbinutil, "--input", "unsigned_empty.xclbin", "--private-key", "private.key", "--certificate", "certificate.der", "--output", "signed_empty.xclbin", "--force", "--skip-uuid-insertion"]
+  cmd = [xclbinutil, "--input", "unsigned_empty.xclbin", "--private-key", "private.key", "--certificate", "certificate.der", "--output", "signed_empty.xclbin", "--force"]
   execCmd(step, cmd)
 
   step = "4) Validate xclbin (DER)"

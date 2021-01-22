@@ -24,8 +24,8 @@
 
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_io.hpp>       // for to_string
-#include <boost/uuid/uuid_generators.hpp> // generators
 #include <boost/filesystem.hpp>
+#include <random>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -327,14 +327,16 @@ XclBin::writeXclBinBinaryMirrorData(std::fstream& _ostream,
 
 void
 XclBin::updateUUID() {
-    static_assert (sizeof(boost::uuids::uuid) == 16, "ERROR: UUID size mismatch");
-    static_assert (sizeof(axlf_header::uuid) == 16, "ERROR: UUID size mismatch");
+    std::random_device device;
+    std::mt19937_64 randomGen(device());
 
-    boost::uuids::uuid uuid = boost::uuids::random_generator()();
+    *(uint64_t *) (&m_xclBinHeader.m_header.uuid[0]) = randomGen();
+    *(uint64_t *) (&m_xclBinHeader.m_header.uuid[8]) = randomGen();
 
-    // Copy the values to the UUID structure
-    memcpy((void *) &m_xclBinHeader.m_header.uuid, (void *)&uuid, sizeof(axlf_header::rom_uuid));
-    XUtil::TRACE("Updated xclbin UUID");
+    std::string sUUID("");
+    XUtil::binaryBufferToHexString(m_xclBinHeader.m_header.uuid, sizeof(axlf_header::uuid), sUUID);
+
+    XUtil::TRACE(XUtil::format("Updated xclbin UUID to: '%s'", sUUID.c_str()).c_str());
 }
 
 void
