@@ -1792,11 +1792,6 @@ int xcldev::xclReset(int argc, char *argv[])
             int ret = str2index(optarg, index);
             if (ret != 0)
                 return ret;
-            if (index >= pcidev::get_dev_total()) {
-                std::cout << "ERROR: index " << index << " out of range"
-                    << std::endl;
-                return -EINVAL;
-            }
             break;
         }
         default:
@@ -1806,6 +1801,11 @@ int xcldev::xclReset(int argc, char *argv[])
     }
     if (optind != argc) {
         std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    if (index >= pcidev::get_dev_total()) {
+        std::cout << "ERROR: index " << index << " out of range" << std::endl;
         return -EINVAL;
     }
 
