@@ -55,7 +55,9 @@ namespace xdp {
 				   uint64_t commandQueueId,
 				   const char* deviceName,
 				   const char* globalWorkSize,
-				   const char* localWorkSize)
+				   const char* localWorkSize,
+				   const char** buffers,
+				   uint64_t numBuffers)
   {
     static std::map<std::string, std::queue<uint64_t> > storedTimestamps ;
 
@@ -104,7 +106,9 @@ namespace xdp {
 					  deviceName,
 					  startTime,
 					  globalWorkSize,
-					  localWorkSize) ;
+					  localWorkSize,
+					  buffers,
+					  numBuffers) ;
     }
   }
 
@@ -269,7 +273,9 @@ void log_kernel_execution(const char* kernelName,
 			  unsigned long long int commandQueueId,
 			  const char* deviceName,
 			  const char* globalWorkSize,
-			  const char* localWorkSize)
+			  const char* localWorkSize,
+			  const char** buffers,
+			  unsigned long long int numBuffers)
 {
   xdp::log_kernel_execution(kernelName,
 			    isStart,
@@ -278,7 +284,9 @@ void log_kernel_execution(const char* kernelName,
 			    static_cast<uint64_t>(commandQueueId),
 			    deviceName,
 			    globalWorkSize,
-			    localWorkSize) ;
+			    localWorkSize,
+			    buffers,
+			    static_cast<uint64_t>(numBuffers)) ;
 }
 
 extern "C"

@@ -241,7 +241,9 @@ namespace xdp {
 						const std::string& deviceName,
 						uint64_t startTime,
 						const std::string& globalWorkSize,
-						const std::string& localWorkSize)
+						const std::string& localWorkSize,
+						const char** buffers,
+						uint64_t numBuffers)
   {
     if (kernelExecutionStats.find(kernelName) == kernelExecutionStats.end())
     {
@@ -262,6 +264,16 @@ namespace xdp {
     exec.globalWorkSize = globalWorkSize ;
     exec.localWorkSize = localWorkSize ;
     addTopKernelExecution(exec) ;
+
+    // Also keep track of kernel buffers
+    if (bufferInfo.find(kernelName) == bufferInfo.end()) {
+      std::vector<std::string> blank ;
+      bufferInfo[kernelName] = blank ;
+      for (uint64_t i = 0 ; i < numBuffers ; ++i) {
+	std::string convert = buffers[i] ;
+	bufferInfo[kernelName].push_back(convert) ;
+      }
+    }
   }
 
   void VPStatisticsDatabase::logComputeUnitExecution(const std::string& computeUnitName,

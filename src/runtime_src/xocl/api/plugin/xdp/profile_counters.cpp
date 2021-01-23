@@ -45,7 +45,9 @@ namespace xocl {
 			unsigned long long int,
 			const char*,
 			const char*,
-			const char*)> counter_kernel_execution_cb ;
+			const char*,
+			const char**,
+			unsigned long long int)> counter_kernel_execution_cb ;
     std::function<void (const char*,
 			const char*,
 			const char*,
@@ -79,7 +81,7 @@ namespace xocl {
 	(etype)(xrt_core::dlsym(handle, "log_function_call_end")) ;
       if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
       
-      typedef void (*ktype)(const char*, bool, unsigned long long int, unsigned long long int, unsigned long long int, const char* ,const char*, const char*) ;
+      typedef void (*ktype)(const char*, bool, unsigned long long int, unsigned long long int, unsigned long long int, const char* ,const char*, const char*, const char**, unsigned long long int) ;
       counter_kernel_execution_cb =
 	(ktype)(xrt_core::dlsym(handle, "log_kernel_execution")) ;
       if (xrt_core::dlerror() != NULL) counter_kernel_execution_cb = nullptr ;
@@ -441,7 +443,9 @@ namespace xocl {
 					     0,
 					     "",
 					     "",
-					     "") ;
+					     "",
+					     nullptr,
+					     0) ;
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
@@ -463,13 +467,59 @@ namespace xocl {
 		   std::to_string(globalDim[1]) + ":" +
 		   std::to_string(globalDim[2]) ;
 
+		 // For buffer guidance, create strings for each
+		 //  argument mapped to memory
+		 std::vector<std::string> memoryInfo ;
+		 auto device = queue->get_device() ;
+
+		 for (auto& arg : xkernel->get_xargument_range()) {
+		   try {
+		     xocl::memory* mem = arg->get_memory_object() ;
+		     if (!mem) continue ;
+
+		     auto mem_id = mem->get_memidx() ;
+		     std::string mem_tag =
+		       device->get_xclbin().memidx_to_banktag(mem_id) ;
+		     if (mem_tag.rfind("bank", 0) == 0)
+		       mem_tag = "DDR[" + mem_tag.substr(4,4) + "]" ;
+
+		     std::string bufferInfo = "" ;
+		     bufferInfo += kernelName ;
+		     bufferInfo += "|" ;
+		     bufferInfo += arg->get_name() ;
+		     bufferInfo += "|" ;
+		     bufferInfo += mem_tag ;
+		     bufferInfo += "|" ;
+		     bufferInfo += std::to_string(mem->is_aligned()) ;
+		     bufferInfo += "," ;
+		     bufferInfo += std::to_string(mem->get_size()) ;
+		     
+		     memoryInfo.push_back(bufferInfo) ;
+		   } catch (...) {
+		     continue ;
+		   }
+		 }
+
+		 // Convert to C-style so we can pass to the plugin cleanly
+		 const char** buffers = nullptr ;
+		 if (memoryInfo.size() != 0) {
+		   buffers = new const char*[memoryInfo.size()] ;
+		   for (uint64_t i = 0 ; i < memoryInfo.size() ; ++i) {
+		     buffers[i] = memoryInfo[i].c_str() ;
+		   }
+		 }
+
 		 counter_kernel_execution_cb(kernelName.c_str(), false,
 					     reinterpret_cast<uint64_t>(kernel),
 					     contextId,
 					     static_cast<uint64_t>(queue->get_uid()),
 					     deviceName.c_str(),
 					     globalWorkgroupSize.c_str(),
-					     localWorkgroupSize.c_str()) ;
+					     localWorkgroupSize.c_str(),
+					     buffers,
+					     memoryInfo.size()) ;
+
+		 if (buffers != nullptr) delete [] buffers ;
 	       }
 	     } ;
     }

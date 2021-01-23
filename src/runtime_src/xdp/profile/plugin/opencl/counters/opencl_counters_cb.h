@@ -36,7 +36,9 @@ void log_kernel_execution(const char* kernelName,
 			  unsigned long long int commandQueueId,
 			  const char* deviceName,
 			  const char* globalWorkSize,
-			  const char* localWorkSize) ;
+			  const char* localWorkSize,
+			  const char** buffers,
+			  unsigned long long int numBuffers) ;
 
 extern "C"
 void log_compute_unit_execution(const char* cuName,

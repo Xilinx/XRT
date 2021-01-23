@@ -2028,18 +2028,16 @@ namespace xdp {
     }
   }
 
-  void OpenCLSummaryWriter::guidanceKernelBufferInfo(OpenCLSummaryWriter* /*t*/)
+  void OpenCLSummaryWriter::guidanceKernelBufferInfo(OpenCLSummaryWriter* t)
   {
     // This reports the memory bank, argument, alignment, and size of 
     //  each buffer.
 
-    // TODO
-
-    // uint64_t -> std::vector<std::string>
-    /*
-    (t->fout) << "KERNEL_BUFFER_INFO" << ","
-	      << std::endl ;
-    */
+    for (auto& iter : (t->db->getStats()).getBufferInfo()) {
+      for (auto& info : iter.second) {
+	(t->fout) << "KERNEL_BUFFER_INFO" << "," << info << "," << std::endl ;
+      }
+    }
   }
 
   void OpenCLSummaryWriter::guidanceTraceBufferFull(OpenCLSummaryWriter* /*t*/)

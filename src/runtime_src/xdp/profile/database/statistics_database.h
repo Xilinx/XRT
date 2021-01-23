@@ -193,6 +193,7 @@ namespace xdp {
     // Statistics on kernel enqueues and executions
     std::map<std::string, TimeStatistics> kernelExecutionStats ;
     std::map<std::string, uint64_t> maxExecutions ; // per kernel
+    std::map<std::string, std::vector<std::string>> bufferInfo ;
     
     // Statistics on compute unit enqueues and executions
     //  The tuple is cuName, localWorkGroupConfig, globalWorkgroupConfig
@@ -291,6 +292,8 @@ namespace xdp {
       }
       if (num > maxExecutions[kernelName]) maxExecutions[kernelName] = num ;
     }
+    inline std::map<std::string, std::vector<std::string>>& getBufferInfo() 
+      { return bufferInfo ; }
     inline std::map<uint64_t, bool>& getCommandQueuesAreOOO()
       { return commandQueuesAreOOO ; }
     inline void setCommandQueueOOO(uint64_t cq, bool value)
@@ -324,7 +327,9 @@ namespace xdp {
 				       const std::string& deviceName,
 				       uint64_t startTime,
 				       const std::string& globalWorkSize,
-				       const std::string& localWorkSize) ;
+				       const std::string& localWorkSize,
+				       const char** buffers,
+				       uint64_t numBuffers) ;
     XDP_EXPORT void logComputeUnitExecution(const std::string& computeUnitName,
 					    const std::string& localWorkGroup,
 					    const std::string& globalWorkGroup,
