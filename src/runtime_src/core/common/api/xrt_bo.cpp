@@ -419,13 +419,6 @@ public:
   {
     return hbuf;
   }
-
-  virtual uint64_t
-  get_group_id() const
-  {
-    return bo_impl::no_group;
-  }
-
 };
 
 // class buffer_dbuf - device only buffer
