@@ -294,9 +294,13 @@ void xclClose(xclDeviceHandle handle)
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return ;
-  drv->xclClose();
-  if (xclhwemhal2::HwEmShim::handleCheck(handle) && xclhwemhal2::devices.size() == 0) {
-    delete ((xclhwemhal2::HwEmShim *)handle);
+  try {
+    drv->xclClose();
+    if (xclhwemhal2::HwEmShim::handleCheck(handle) && xclhwemhal2::devices.size() == 0)
+      delete ((xclhwemhal2::HwEmShim *)handle);
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
   }
 }
 
