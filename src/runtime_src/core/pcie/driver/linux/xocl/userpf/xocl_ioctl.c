@@ -604,7 +604,7 @@ skip1:
 		xocl_p2p_refresh_rbar(xdev);
 
 	/* The finial step is to update KDS configuration */
-	if (kds_mode)
+	if (!err && kds_mode)
 		err = xocl_kds_update(xdev);
 
 done:
