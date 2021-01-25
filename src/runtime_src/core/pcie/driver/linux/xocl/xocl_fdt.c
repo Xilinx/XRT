@@ -1784,11 +1784,17 @@ const struct axlf_section_header *xocl_axlf_section_header(
 {
 	const struct axlf_section_header	*hdr = NULL;
 	int	i;
+	u32 num_sect = top->m_header.m_numSections;
 
 	xocl_xdev_info(xdev_hdl,
 		"trying to find section header for axlf section %d", kind);
 
-	for (i = 0; i < top->m_header.m_numSections; i++) {
+	if (num_sect > XCLBIN_MAX_NUM_SECTION) {
+		xocl_xdev_err(xdev_hdl, "too many sections: %d", num_sect);
+		return NULL;
+	}
+
+	for (i = 0; i < num_sect; i++) {
 		xocl_xdev_info(xdev_hdl, "saw section header: %d",
 			top->m_sections[i].m_sectionKind);
 		if (top->m_sections[i].m_sectionKind == kind) {
