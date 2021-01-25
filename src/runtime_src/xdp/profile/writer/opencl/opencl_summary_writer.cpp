@@ -2076,6 +2076,20 @@ namespace xdp {
 		  << 512 << "," << std::endl ;	  
       }
     }
+
+    if (getFlowMode() == SW_EMU) {
+      std::string deviceName =
+	(t->db->getStaticInfo()).getSoftwareEmulationDeviceName() ;
+      (t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
+		<< deviceName << "|HBM" << ","
+		<< 256 << "," << std::endl ;
+      (t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
+		<< deviceName << "|DDR" << ","
+		<< 512 << "," << std::endl ;
+      (t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
+		<< deviceName << "|PLRAM" << ","
+		<< 512 << "," << std::endl ;	  
+    }
   }
 
   void OpenCLSummaryWriter::guidanceXrtIniSetting(OpenCLSummaryWriter* t)
