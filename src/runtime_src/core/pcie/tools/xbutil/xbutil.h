@@ -1619,11 +1619,10 @@ public:
         int length = stream.tellg();
         stream.seekg(0, stream.beg);
 
-        char *buffer = new char[length];
-        stream.read(buffer, length);
-        const xclBin *header = (const xclBin *)buffer;
+        std::vector<char> buffer(length);
+        stream.read(buffer.data(), length);
+        auto header = reinterpret_cast<const xclBin *>(buffer.data());
         int result = xclLoadXclBin(m_handle, header);
-        delete [] buffer;
 
         return result;
     }
