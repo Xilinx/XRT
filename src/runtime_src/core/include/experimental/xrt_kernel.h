@@ -57,6 +57,28 @@ class kernel;
 class event_impl;
 
 /*!
+ * @class autostart
+ *
+ * @brief 
+ * xrt::autostart is a specific type used as template argument.
+ *
+ * @details 
+ * When implicitly starting a kernel through templated operator, the
+ * first argument can specified as xrt::autostart indicating the
+ * number of iterations the kernel run should perform.
+ *
+ * The default iterations, or xrt::autostart constructed with the
+ * value 0, represents a for-ever running kernel.
+ * 
+ * When a kernel is auto-started, the running kernel can be manipulated
+ * through a \ref xrt::mailbox object.
+ */
+struct autostart
+{
+  unsigned int iterations = 0;
+};
+
+/*!
  * @class run 
  *
  * @brief 
@@ -98,6 +120,47 @@ class run
   XCL_DRIVER_DLLESPEC
   void
   start();
+
+  /**
+   * start() - Start execution of a run
+   *
+   * @param iterations  
+   *   Number of times to iterate the same run.  
+   *
+   * An iteration count of zero means that the kernel should run
+   * forever, or until explicitly stopped using ``stop()``.
+   *
+   * This function is asynchronous, run status must be expclicit
+   * checked or ``wait()`` must be used to wait for the run to
+   * complete.
+   *
+   * The kernel run object is complete only after all iterations have
+   * completed, or until run object has been explicitly stopped.
+   *
+   * Changing kernel arguments ``set_arg()`` while the kernel is running
+   * has undefined behavior.  To synchronize change of arguments, please
+   * use \ref xrt::mailbox.
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  start(const autostart& iterations);
+
+  /**
+   * stop() - Stop kernel run object at next safe iteration
+   *
+   * If the kernel run object has been started by specifying 
+   * an iteration count, then this function can be used to 
+   * stop the iteration early.  
+   *
+   * The function is synchronous and waits for the kernel
+   * run object to complete.
+   *
+   * If the kernel is not iterating, then calling this funciton
+   * is the same as calling ``wait()``.
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  stop();
 
   /**
    * wait() - Wait for a run to complete execution
@@ -328,6 +391,31 @@ class run
     start();
   }
 
+  /**
+   * operator() - Set all kernel arguments and start the run
+   *
+   * @param count
+   *  Iteration count specifying number of iterations of the run
+   * @param args
+   *  Kernel arguments
+   *
+   * Use this API to explicitly set all kernel arguments and 
+   * start kernel execution for specified number of iterations.
+   *
+   * An iteration count of '1' invokes the kernel once and is the
+   * default behavior when ``autostart`` is not specified.
+   *
+   * The run is complete only after all iterations have completed or
+   * when the kernel has been explicitly stopped using ``stop()``.
+   */
+  template<typename ...Args>
+  void
+  operator() (autostart&& count, Args&&... args)
+  {
+    set_arg(0, std::forward<Args>(args)...);
+    start(count);
+  }
+
 public:
   /// @cond
   const std::shared_ptr<run_impl>&
@@ -374,7 +462,148 @@ private:
     set_arg(++argno, std::forward<Args>(args)...);
   }
 };
- 
+
+/*!
+ * @class mailbox
+ *
+ * A mailbox represents a copy of kernel arguments and kernel return
+ * values.  Through a mailbox object, kernel arguments can be modified
+ * while a kernel in running in auto-restart mode.  The mailbox copy
+ * of kernel arguments and results are changed only while the kernel
+ * is paused in between iterations.
+ * 
+ * The \ref xrt::run object can be started in iteration mode, where the
+ * kernel is iterated infinitely or for specified number of iterations.
+ *
+ * Kernels supporting auto-restart are automaticaly restarted in HW, but 
+ * even kernels without direct support for auto-restart can be iterated
+ * through the APIs, albeit less efficiently.
+ */
+
+class mailbox_impl;
+class mailbox
+{
+  /**
+   */
+ public:
+  /**
+   * mailbox() - Construct mailbox from a \ref xrt::run object.
+   *
+   * It is an error to construct a mailbox from a run object that
+   * is associated with multiple compute units.  In other words
+   * a mailbox is 1-1 with a compute unit that is managed by the
+   * argument run object.
+   */
+  XCL_DRIVER_DLLESPEC
+  mailbox(const run& run);
+
+  /**
+   * read() - Read kernel arguments into mailbox copy
+   *
+   * If the kernel (run) is currently running, then the run object is
+   * paused before copying the kernel arguments.  The kernel is
+   * started again after the arguments have been copied.
+   *
+   * This function invalidates any argument data returned through
+   * ``get_arg`` function.
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  read();
+
+  /**
+   * write() - Write the mailbox copy of kernel arguments to run object
+   *
+   * If the kernel (run) is currently running, then the run object is
+   * paused before copying the mailbox arguments to the kernel.  The
+   * kernel is started again after the arguments have been copied.
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  write();
+
+  /**
+   * get_arg() - Returns the mailbox copy of an argument
+   *
+   * @param index
+   *  Index of kernel argument to read
+   * @return
+   *  The raw data and size of data
+   *
+   * The argument data returned is a direct reference to the mailbox
+   * copy of the data.  It is valid only until the mailbox is updated
+   * again.
+   *
+   * Subject to deprecation in favor of type safe version.
+   */
+  XCL_DRIVER_DLLESPEC
+  std::pair<const void*, size_t>
+  get_arg(int index) const;
+  
+  /**
+   * set_arg() - Set a specific kernel global argument in the mailbox
+   *
+   * @param index
+   *  Index of kernel argument to set
+   * @param boh
+   *  The global buffer argument value to set (lvalue).
+   * 
+   * Use this API to queue up a new kernel argument value that can
+   * be written to the kernel using ``write()``.
+   */
+  void
+  set_arg(int index, xrt::bo& boh)
+  {
+    set_arg_at_index(index, boh);
+  }
+
+  /**
+   * set_arg - xrt::bo variant for const lvalue
+   */
+  void
+  set_arg(int index, const xrt::bo& boh)
+  {
+    set_arg_at_index(index, boh);
+  }
+
+  /**
+   * set_arg - xrt::bo variant for rvalue
+   */
+  void
+  set_arg(int index, xrt::bo&& boh)
+  {
+    set_arg_at_index(index, boh);
+  }
+
+  /**
+   * set_arg() - Set a specific kernel scalar argument in the mailbox
+   *
+   * @param index
+   *  Index of kernel argument to set
+   * @param arg        
+   *  The scalar argument value to set.
+   * 
+   * Use this API to queue up a new kernel scalar arguments value that
+   * can be written to the kernel using ``write()``.
+   */
+  template <typename ArgType>
+  void
+  set_arg(int index, ArgType&& arg)
+  {
+    set_arg_at_index(index, &arg, sizeof(arg));
+  }
+
+ private:
+  std::shared_ptr<mailbox_impl> handle;
+
+  XCL_DRIVER_DLLESPEC
+  void
+  set_arg_at_index(int index, const void* value, size_t bytes);
+
+  XCL_DRIVER_DLLESPEC
+  void
+  set_arg_at_index(int index, const xrt::bo&);
+};
 
 /*!
  * @class kernel

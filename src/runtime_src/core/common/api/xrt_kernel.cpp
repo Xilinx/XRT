@@ -580,15 +580,33 @@ public:
   using callback_function_type = std::function<void(ert_cmd_state)>;
   using callback_list = std::vector<callback_function_type>;
 
+  static uint32_t
+  create_uid()
+  {
+    static std::atomic<uint32_t> count {0};
+    return count++;
+  }
+
 public:
   kernel_command(const std::shared_ptr<device_type>& dev)
     : m_device(dev)
     , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
+    , m_uid(create_uid())
     , m_done(true)
   {
-    static unsigned int count = 0;
-    m_uid = count++;
     XRT_DEBUGF("kernel_command::kernel_command(%d)\n", m_uid);
+  }
+
+  kernel_command(const kernel_command* rhs)
+    : m_device(rhs->m_device)
+    , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
+    , m_uid(create_uid())
+    , m_done(true)
+  {
+    XRT_DEBUGF("kernel_command::kernel_command(%d) copy\n", m_uid);
+    auto srcpkt = rhs->get_ert_packet();
+    auto dstpkt = get_ert_packet();
+    std::memcpy(dstpkt, srcpkt, srcpkt->count + 1);
   }
 
   ~kernel_command()
@@ -709,21 +727,63 @@ public:
       (*cb)(state);
   }
 
-  // Submit the command for execution
+  // Submit the command for execution repeated count times
+  // A count of 0, means run the kernel for infinity
+  // If this kernel is repeating, then it is managed, because
+  // notify() is the function that restarts the kernel
   void
-  run()
+  run(uint64_t count)
   {
     {
       std::lock_guard<std::mutex> lk(m_mutex);
       if (!m_done)
         throw std::runtime_error("bad command state, can't launch");
-      m_managed = (m_callbacks && !m_callbacks->empty());
+      m_count = --count;  // infinite run is 0 - 1; not quite infinite
+      m_managed = (m_count || (m_callbacks && !m_callbacks->empty()));
       m_done = false;
     }
     if (m_managed)
       xrt_core::exec::managed_start(this);
     else
       xrt_core::exec::unmanaged_start(this);
+  }
+
+  // Submit the command for execution a single time
+  void
+  run()
+  {
+    run(1);
+  }
+
+  // Restart this command if necessary
+  void
+  restart()
+  {
+    {
+      std::lock_guard<std::mutex> lk(m_mutex);
+      if (m_done || !m_count)
+        return;
+      --m_count;
+    }
+    if (m_managed)
+      xrt_core::exec::managed_start(this);
+    else
+      xrt_core::exec::unmanaged_start(this);
+  }
+
+  // Stop the kernel if it is running in restart mode
+  uint64_t
+  stop()
+  {
+    uint64_t remaining_count = 0;
+    {
+      std::lock_guard<std::mutex> lk(m_mutex);
+      remaining_count = m_count;
+      m_count = 0;
+    }
+    wait();
+
+    return remaining_count;
   }
 
   // Wait for command completion
@@ -739,8 +799,7 @@ public:
       xrt_core::exec::unmanaged_wait(this);
     }
 
-    auto pkt = get_ert_packet();
-    return static_cast<ert_cmd_state>(pkt->state);
+    return state_nolock();
   }
 
   ert_cmd_state
@@ -755,9 +814,26 @@ public:
       xrt_core::exec::unmanaged_wait(this);
     }
 
+    return state_nolock();
+  }
+
+  ert_cmd_state
+  state_nolock() const
+  {
+    if (!m_done)
+      return ERT_CMD_STATE_RUNNING;
+
     auto pkt = get_ert_packet();
     return static_cast<ert_cmd_state>(pkt->state);
   }
+
+  ert_cmd_state
+  state() const
+  {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    return state_nolock();
+  }
+   
 
   ////////////////////////////////////////////////////////////////
   // Implement xrt_core::command API
@@ -783,14 +859,19 @@ public:
   virtual void
   notify(ert_cmd_state s)
   {
-    bool complete = false;
+    bool complete = false; // m_done can go false while complete is true
     bool callbacks = false;
-    if (s>=ERT_CMD_STATE_COMPLETED) {
+    if (s >= ERT_CMD_STATE_COMPLETED) {
       std::lock_guard<std::mutex> lk(m_mutex);
       XRT_DEBUGF("kernel_command::notify() m_uid(%d) m_state(%d)\n", m_uid, s);
-      complete = m_done = true;
+
+      if (s > ERT_CMD_STATE_COMPLETED)
+        m_count = 0; // abort auto restart on error
+      
+      complete = m_done = (m_count == 0);
       callbacks = (m_callbacks && !m_callbacks->empty());
-      if (m_event)
+      
+      if (complete && m_event)
         xrt_core::enqueue::done(m_event.get());
     }
 
@@ -803,16 +884,20 @@ public:
       // holds the lifeline to this command object which could end up
       // being deleted when the event is cleared.
       m_event = nullptr;
+      return;
     }
+
+    restart();
   }
 
 private:
   std::shared_ptr<device_type> m_device;
   mutable std::shared_ptr<xrt::event_impl> m_event;
   execbuf_type m_execbuf; // underlying execution buffer
-  unsigned int m_uid = 0;
+  uint64_t m_count = 1;   // run the same command this many times
+  uint32_t m_uid = 0;
   bool m_managed = false;
-  bool m_done = false;
+  bool m_done = false;    // true only after m_count becomes 0;
 
   mutable std::mutex m_mutex;
   mutable std::condition_variable m_exec_done;
@@ -1317,6 +1402,13 @@ public:
     return data;
   }
 
+  // kernel register map size in bytes
+  size_t
+  get_regmap_size() const
+  {
+    return regmap_size;
+  }
+
   std::string
   get_name() const
   {
@@ -1438,17 +1530,18 @@ public:
 // its own execution buffer (ert command object)
 class run_impl
 {
+  friend class mailbox_impl;
   using ipctx = std::shared_ptr<ip_context>;
 
   // Helper hierarchy to set argument value per control protocol type
   // The @data member is the payload to be populated with argument
   // value.  The interpretation of the payload depends on the control
   // protocol.
-  struct arg_setter : argument::setter
+  struct run_arg_setter : argument::setter
   {
     uint8_t* data;
 
-    arg_setter(uint32_t* d)
+    run_arg_setter(uint32_t* d)
       : data(reinterpret_cast<uint8_t*>(d))
     {}
 
@@ -1460,10 +1553,10 @@ class run_impl
   };
 
   // AP_CTRL_HS, AP_CTRL_CHAIN
-  struct hs_arg_setter : arg_setter
+  struct hs_arg_setter : run_arg_setter
   {
     hs_arg_setter(uint32_t* data)
-      : arg_setter(data)
+      : run_arg_setter(data)
     {}
 
     virtual void
@@ -1483,10 +1576,10 @@ class run_impl
   };
 
   // FAST_ADAPTER
-  struct fa_arg_setter : arg_setter
+  struct fa_arg_setter : run_arg_setter
   {
     fa_arg_setter(uint32_t* data)
-      : arg_setter(data)
+      : run_arg_setter(data)
     {}
 
     virtual void
@@ -1516,13 +1609,13 @@ class run_impl
     return count++;
   }
 
-  std::unique_ptr<arg_setter>
-  make_arg_setter()
+  std::unique_ptr<run_arg_setter>
+  make_arg_setter(uint32_t* regmap)
   {
     if (kernel->get_ip_control_protocol() == FAST_ADAPTER)
-      return std::make_unique<fa_arg_setter>(data);
+      return std::make_unique<fa_arg_setter>(regmap);
     else
-      return std::make_unique<hs_arg_setter>(data);
+      return std::make_unique<hs_arg_setter>(regmap);
   }
 
   void
@@ -1567,16 +1660,17 @@ class run_impl
     return pkt->data + (rhs->data - rhs_pkt->data);
   }
 
+private:
   using callback_function_type = std::function<void(ert_cmd_state)>;
-  std::shared_ptr<kernel_impl> kernel;    // shared ownership
-  std::vector<ipctx> ips;                 // ips controlled by this run object
-  std::bitset<128> cumask;                // cumask for command execution
-  xrt_core::device* core_device;          // convenience, in scope of kernel
-  std::shared_ptr<kernel_command> cmd;    // underlying command object
-  uint32_t* data;                         // command argument data payload @0x0
-  uint32_t uid;                           // internal unique id for debug
-  std::unique_ptr<arg_setter> arg_setter; // helper to populate payload data
-  bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
+  std::shared_ptr<kernel_impl> kernel;        // shared ownership
+  std::vector<ipctx> ips;                     // ips controlled by this run object
+  std::bitset<128> cumask;                    // cumask for command execution
+  xrt_core::device* core_device;              // convenience, in scope of kernel
+  std::shared_ptr<kernel_command> cmd;        // underlying command object
+  uint32_t* data;                             // command argument data payload @0x0
+  uint32_t uid;                               // internal unique id for debug
+  std::unique_ptr<run_arg_setter> arg_setter; // helper to populate payload data
+  bool encode_cumasks = false;                // indicate if cmd cumasks must be re-encoded
 
 public:
   uint32_t
@@ -1632,7 +1726,7 @@ public:
     , cmd(std::make_shared<kernel_command>(kernel->get_device()))
     , data(kernel->initialize_command(cmd.get())) // default encodes CUs
     , uid(create_uid())
-    , arg_setter(make_arg_setter())
+    , arg_setter(make_arg_setter(data))
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
@@ -1647,7 +1741,7 @@ public:
     , cmd(std::make_shared<kernel_command>(kernel->get_device()))
     , data(clone_command_data(rhs))
     , uid(create_uid())
-    , arg_setter(make_arg_setter())
+    , arg_setter(make_arg_setter(data))
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
@@ -1741,9 +1835,8 @@ public:
     }
   }
 
-  // start() - start the run object (execbuf)
   void
-  start()
+  start(unsigned int count)
   {
     // If this run object's cus were filtered compared to kernel cus
     // then update the command packet encoded cus.
@@ -1758,7 +1851,21 @@ public:
 
     XRT_DEBUG_CALL(debug_cmd_packet(kernel->get_name(), pkt));
 
-    cmd->run();
+    cmd->run(count);
+  }
+
+  // start() - start the run object (execbuf)
+  void
+  start()
+  {
+    start(1);
+  }
+
+  // stop() - stop the run object, return remaining count
+  uint64_t
+  stop()
+  {
+    return cmd->stop();
   }
 
   // wait() - wait for execution to complete
@@ -1780,6 +1887,91 @@ public:
   get_ert_packet() const
   {
     return cmd->get_ert_packet();
+  }
+};
+
+// May need different implementaiton depending on whether or not
+// mailbox is supported.  This implementaiton is POC for kernels
+// without mailbox and without auto restart
+class mailbox_impl
+{
+  run_impl* run;
+  kernel_impl* kernel;
+  std::shared_ptr<kernel_command> cmd;                  // command to populate with updates
+  uint32_t* data;                                       // command argument data payload @0x0
+  std::unique_ptr<run_impl::run_arg_setter> arg_setter; // helper to populate payload data
+
+public:
+  mailbox_impl(run_impl* r)
+    : run(r)
+    , kernel(run->get_kernel())
+    , cmd(std::make_shared<kernel_command>(r->cmd.get()))
+    , data(kernel->initialize_command(cmd.get())) // possible mailbox starts a different offset??
+    , arg_setter(run->make_arg_setter(data)) 
+  {
+    // throw if more than one CU
+  }
+
+  // Stop kernel and read directly from kernel register map
+  void
+  read()
+  {
+    // Stop the kernel if necessary
+    auto iter = run->stop();
+
+    // AXI read from CU starting at offset of first argument
+    auto& arg = kernel->get_arg(0);
+    auto offset_bytes = arg.offset();
+    auto offset_words = arg.offset() / sizeof(uint32_t);
+    auto count_words = kernel->get_regmap_size() - offset_words;
+    kernel->read_register_n(offset_bytes, count_words, data + offset_words);
+
+    // Restart the kernel if necessary
+    if (iter)
+      run->start(iter);
+  }
+
+  // Stop kernel and write to the run objects command object
+  void
+  write()
+  {
+    auto iter = run->stop();
+    
+    // Overwrite run->data with updated data at offset of first argument
+    auto& arg = kernel->get_arg(0);
+    auto offset_words = arg.offset() / sizeof(uint32_t);
+    auto count_words = kernel->get_regmap_size() - offset_words;
+    std::copy_n(data + offset_words, count_words, run->data + offset_words);
+
+    if (iter)
+      run->start(iter);
+  }
+
+  void
+  set_arg_value(const argument& arg, const arg_range<uint8_t>& value)
+  {
+    arg_setter->set_arg_value(arg, value);
+  }
+
+  void
+  set_arg_at_index(int index, const void* value, size_t bytes)
+  {
+    auto& arg = kernel->get_arg(index);
+    set_arg_value(arg, arg_range<uint8_t>{value, bytes});
+  }
+
+  void
+  set_arg_at_index(int index, const xrt::bo& bo)
+  {
+    auto value = xrt_core::bo::address(bo);
+    set_arg_at_index(index, &value, sizeof(value));
+  }
+
+  std::pair<void*, size_t>
+  get_arg_at_index(int index)
+  {
+    auto& arg = kernel->get_arg(index);
+    return std::make_pair(data + arg.offset() / sizeof(uint64_t), arg.size());
   }
 };
 
@@ -2167,7 +2359,7 @@ get_control_protocol(const xrt::run& run)
   return run.get_handle()->get_kernel()->get_ip_control_protocol();
 }
 
-  std::vector<const xclbin::kernel_argument*>
+std::vector<const xclbin::kernel_argument*>
 get_args(const xrt::kernel& kernel)
 {
   const auto& args = kernel.get_handle()->get_args();
@@ -2206,6 +2398,9 @@ get_arg_value(const xrt::run& run, size_t argidx)
 ////////////////////////////////////////////////////////////////
 namespace xrt {
 
+////////////////////////////////////////////////////////////////
+// xrt::run
+////////////////////////////////////////////////////////////////
 run::
 run(const kernel& krnl)
   : handle(std::make_shared<run_impl>(krnl.get_handle()))
@@ -2216,6 +2411,20 @@ run::
 start()
 {
   handle->start();
+}
+
+void
+run::
+start(const autostart& count)
+{
+  handle->start(count.iterations);
+}
+
+void
+run::
+stop()
+{
+  handle->stop();
 }
 
 ert_cmd_state
@@ -2294,6 +2503,52 @@ get_ert_packet() const
   return handle->get_ert_packet();
 }
 
+////////////////////////////////////////////////////////////////
+// xrt::mailbox
+////////////////////////////////////////////////////////////////
+xrt::mailbox::
+mailbox(const xrt::run& run)
+  : handle(std::make_shared<mailbox_impl>(run.get_handle().get()))
+{}
+
+void
+xrt::mailbox::
+read()
+{
+  handle->read();
+}
+
+void
+xrt::mailbox::
+write()
+{
+  handle->write();
+}
+
+std::pair<const void*, size_t>
+xrt::mailbox::
+get_arg(int index) const
+{
+  return handle->get_arg_at_index(index);
+}
+
+void
+xrt::mailbox::
+set_arg_at_index(int index, const xrt::bo& bo)
+{
+  handle->set_arg_at_index(index, bo);
+}
+    
+void
+xrt::mailbox::
+set_arg_at_index(int index, const void* value, size_t bytes)
+{
+  handle->set_arg_at_index(index, value, bytes);
+}
+
+////////////////////////////////////////////////////////////////
+// xrt::kernel
+////////////////////////////////////////////////////////////////
 kernel::
 kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
   : handle(std::make_shared<kernel_impl>
