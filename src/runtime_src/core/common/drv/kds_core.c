@@ -375,16 +375,15 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	if (!kds->ert_disable)
 		goto skip;
 
-	/* Before close, make sure no remain commands in CU's queue.
-	 * There is no reason to sleep 500ms :)
-	 */
-	while (xrt_cu_abort(cu_mgmt->xcus[cu_idx], client) == -EAGAIN)
-		msleep(500);
-
-	do {
-		msleep(100);
-		state = xrt_cu_abort_done(cu_mgmt->xcus[cu_idx]);
-	} while (!state);
+	/* Before close, make sure no remain commands in CU's queue. */
+	while(1) {
+		state = xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
+		if (state == -EAGAIN) {
+			msleep(100);
+			continue;
+		}
+		break;
+	}
 
 	if (state == CU_STATE_BAD) {
 		kds_info(client, "CU(%d) hangs, please reset device", cu_idx);

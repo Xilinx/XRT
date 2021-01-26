@@ -13,6 +13,22 @@
 #include <linux/delay.h>
 #include "xrt_cu.h"
 
+static int handle_timer_event(struct xrt_cu *xcu)
+{
+	int ret = 0;
+
+	if (!test_bit(0, &xcu->tick))
+		return 0;
+
+	if (xcu->ttl == 0)
+		ret = -ETIME;
+	else
+		xcu->ttl--;
+
+	clear_bit(0, &xcu->tick);
+	return 0;
+}
+
 /* Use for flush queue */
 static inline void
 flush_queue(struct list_head *q, u32 *len, int status, void *client)
@@ -41,6 +57,10 @@ static inline void process_cq(struct xrt_cu *xcu)
 {
 	struct kds_command *xcmd;
 
+	/* Do this check first because the client might have no command */
+	if (xcu->ev_marker && (xcu->ev.done & EV_RQ) && (xcu->ev.done & EV_SQ))
+		xcu->ev.done |= EV_CQ;
+
 	if (!xcu->num_cq)
 		return;
 
@@ -52,7 +72,7 @@ static inline void process_cq(struct xrt_cu *xcu)
 	 */
 	while (xcu->num_cq) {
 		xcmd = list_first_entry(&xcu->cq, struct kds_command, list);
-		xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+		xcmd->cb.notify_host(xcmd, xcmd->status);
 		list_del(&xcmd->list);
 		xcmd->cb.free(xcmd);
 		--xcu->num_cq;
@@ -66,6 +86,9 @@ static inline void process_cq(struct xrt_cu *xcu)
 static inline void __process_sq(struct xrt_cu *xcu)
 {
 	struct kds_command *xcmd;
+	struct kds_command *next;
+	void *client;
+	int ret = 0;
 	u64 time;
 
 	/* CU is ready to accept more commands
@@ -93,10 +116,51 @@ static inline void __process_sq(struct xrt_cu *xcu)
 	/* Move all of the completed commands to completed queue */
 	while (xcu->done_cnt && xcu->num_sq) {
 		xcmd = list_first_entry(&xcu->sq, struct kds_command, list);
+		xcmd->status = KDS_COMPLETED;
 		list_move_tail(&xcmd->list, &xcu->cq);
 		--xcu->num_sq;
 		++xcu->num_cq;
 		--xcu->done_cnt;
+	}
+
+	if (xcu->ev_marker) {
+		client = xcu->ev.client;
+		list_for_each_entry(xcmd, &xcu->sq, list) {
+			if (client == xcmd->client) {
+				ret = -EBUSY;
+				break;
+			}
+		}
+
+		if (!ret) {
+			xcu->ev.done |= EV_SQ;
+			xcu->ev.state = CU_STATE_GOOD;
+			return;
+		}
+
+		/* Start timer then continue process */
+		if (xcu->ttl == CU_MAX_TTL) {
+			xcu->ttl = CU_EXEC_DEFAULT_TTL;
+			return;
+		}
+
+		ret = handle_timer_event(xcu);
+		if (ret == -ETIME) {
+			xcu_warn(xcu, "CU(%d) timeout in %ld seconds\n",
+				 xcu->info.cu_idx, CU_EXEC_DEFAULT_TTL);
+			list_for_each_entry_safe(xcmd, next, &xcu->sq, list) {
+				if (client != xcmd->client)
+					continue;
+
+				xcmd->status = KDS_ABORT;
+				list_move_tail(&xcmd->list, &xcu->sq);
+				--xcu->num_sq;
+				++xcu->num_cq;
+			}
+			xcu->ttl = CU_MAX_TTL;
+			xcu->ev.done |= EV_SQ;
+			xcu->ev.state = CU_STATE_BAD;
+		}
 	}
 }
 
@@ -110,7 +174,7 @@ static inline void process_sq(struct xrt_cu *xcu)
 	 * not ready for next command. In this case, check CU status
 	 * to get ready count.
 	 */
-	if (!xcu->num_sq && !is_zero_credit(xcu))
+	if (!xcu->num_sq && !is_zero_credit(xcu) && !xcu->ev_marker)
 		return;
 
 	/* If no command is running on the hardware,
@@ -131,6 +195,23 @@ static inline void process_sq(struct xrt_cu *xcu)
 static inline int process_rq(struct xrt_cu *xcu)
 {
 	struct kds_command *xcmd;
+	struct kds_command *next;
+	void *client;
+
+	/* Do this check first because the client might have no command */
+	if (xcu->ev_marker) {
+		client = xcu->ev.client;
+		list_for_each_entry_safe(xcmd, next, &xcu->rq, list) {
+			if (client != xcmd->client)
+				continue;
+
+			xcmd->status = KDS_ABORT;
+			list_move_tail(&xcmd->list, &xcu->cq);
+			--xcu->num_rq;
+			++xcu->num_cq;
+		}
+		xcu->ev.done |= EV_RQ;
+	}
 
 	if (!xcu->num_rq)
 		return 0;
@@ -198,43 +279,18 @@ static inline void process_pq(struct xrt_cu *xcu)
  */
 static inline void process_event(struct xrt_cu *xcu)
 {
-	void *client = NULL;
-	struct kds_command *xcmd;
-
-	mutex_lock(&xcu->ev.lock);
-	if (!xcu->ev.client)
-		goto done;
-
-	client = xcu->ev.client;
-
-	flush_queue(&xcu->rq, &xcu->num_rq, KDS_ABORT, client);
-
-	/* Let's check submitted commands one more time */
-	process_sq(xcu);
-	if (xcu->num_sq) {
-		/* This rarely happens */
-		list_for_each_entry(xcmd, &xcu->sq, list) {
-			if (xcmd->client == client) {
-				/* It is possible to print 'hang' command
-				 * details for debug. Should we?
-				 */
-				xcu->ev.state = CU_STATE_BAD;
-				break;
-			}
-		}
-		flush_queue(&xcu->sq, &xcu->num_sq, KDS_ABORT, client);
+	if (xcu->ev_marker && xcu->ev.done == EV_DONE) {
+		xcu->ev_marker = 0;
+		complete(&xcu->ev_comp);
 	}
 
-	while (xcu->num_cq)
-		process_cq(xcu);
+	if (!xcu->ev.client)
+		return;
 
-	/* Maybe pending queue has commands of this client */
-	process_pq(xcu);
-	flush_queue(&xcu->rq, &xcu->num_rq, KDS_ABORT, client);
-
-	if (!xcu->ev.state)
-		xcu->ev.state = CU_STATE_GOOD;
-done:
+	/* While ev_marker is set, CU thread is the owner of ev struct */
+	mutex_lock(&xcu->ev.lock);
+	if (xcu->ev.client && !xcu->ev.done)
+		xcu->ev_marker = 1;
 	mutex_unlock(&xcu->ev.lock);
 }
 
@@ -244,6 +300,7 @@ int xrt_cu_polling_thread(void *data)
 	int ret = 0;
 
 	xcu_info(xcu, "start");
+	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 	while (!xcu->stop) {
 		/* Make sure to submit as many commands as possible.
 		 * This is why we call continue here. This is important to make
@@ -260,6 +317,11 @@ int xrt_cu_polling_thread(void *data)
 		process_cq(xcu);
 		process_sq(xcu);
 		process_event(xcu);
+		/* In normal case, don't access pending queue when running queue
+		 * is not empty.
+		 */
+		if (xcu->ev_marker)
+			process_pq(xcu);
 
 		if (xcu->bad_state)
 			break;
@@ -269,7 +331,7 @@ int xrt_cu_polling_thread(void *data)
 		 * The interval is configurable and it should be determin by
 		 * kernel execution.
 		 * If threshold is -1, then this is a busy loop to check CU
-		 * statue.
+		 * status.
 		 */
 		if (xrt_cu_peek_credit(xcu) <= xcu->busy_threshold)
 			usleep_range(xcu->interval_min, xcu->interval_max);
@@ -284,29 +346,16 @@ int xrt_cu_polling_thread(void *data)
 				ret = -ERESTARTSYS;
 		}
 
-		process_pq(xcu);
-	}
-
-	if (!xcu->bad_state) {
-		xcu_info(xcu, "end");
-		return ret;
-	}
-
-	xcu_info(xcu, "bad state handling");
-	/* CU in bad state mode, abort all new commands */
-	flush_queue(&xcu->sq, &xcu->num_sq, KDS_ABORT, NULL);
-	flush_queue(&xcu->cq, &xcu->num_cq, KDS_ABORT, NULL);
-	while (!xcu->stop) {
-		flush_queue(&xcu->rq, &xcu->num_rq, KDS_ABORT, NULL);
 		process_event(xcu);
-
-		if (down_interruptible(&xcu->sem))
-			ret = -ERESTARTSYS;
-
 		process_pq(xcu);
 	}
+	del_timer_sync(&xcu->timer);
 
-	xcu_info(xcu, "end handling");
+	if (xcu->bad_state)
+		ret = -EBUSY;
+
+	xcu_info(xcu, "CU[%d] thread end, bad state %d\n",
+		 xcu->info.cu_idx, xcu->bad_state);
 	return ret;
 }
 
@@ -316,6 +365,7 @@ int xrt_cu_intr_thread(void *data)
 	int ret = 0;
 
 	xcu_info(xcu, "start");
+	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 	xrt_cu_enable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
 	while (!xcu->stop) {
 		/* Make sure to submit as many commands as possible.
@@ -335,12 +385,16 @@ int xrt_cu_intr_thread(void *data)
 				xrt_cu_check(xcu);
 			}
 			__process_sq(xcu);
-			if (xcu->num_rq && !is_zero_credit(xcu))
-				continue;
 		}
 
 		process_cq(xcu);
 		process_event(xcu);
+		/* In normal case, don't access pending queue when running queue
+		 * is not empty.
+		 */
+		if (xcu->ev_marker)
+			process_pq(xcu);
+
 
 		if (xcu->bad_state)
 			break;
@@ -354,30 +408,17 @@ int xrt_cu_intr_thread(void *data)
 				ret = -ERESTARTSYS;
 		}
 
+		process_event(xcu);
 		process_pq(xcu);
 	}
 	xrt_cu_disable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
+	del_timer_sync(&xcu->timer);
 
-	if (!xcu->bad_state) {
-		xcu_info(xcu, "end");
-		return ret;
-	}
+	if (xcu->bad_state)
+		ret = -EBUSY;
 
-	xcu_info(xcu, "bad state handling");
-	/* CU in bad state mode, abort all new commands */
-	flush_queue(&xcu->sq, &xcu->num_sq, KDS_ABORT, NULL);
-	flush_queue(&xcu->cq, &xcu->num_cq, KDS_ABORT, NULL);
-	while (!xcu->stop) {
-		flush_queue(&xcu->rq, &xcu->num_rq, KDS_ABORT, NULL);
-		process_event(xcu);
-
-		if (down_interruptible(&xcu->sem))
-			ret = -ERESTARTSYS;
-
-		process_pq(xcu);
-	}
-
-	xcu_info(xcu, "end handling");
+	xcu_info(xcu, "CU[%d] thread end, bad state %d\n",
+		 xcu->info.cu_idx, xcu->bad_state);
 	return ret;
 }
 
@@ -417,11 +458,18 @@ int xrt_cu_abort(struct xrt_cu *xcu, void *client)
 
 	xcu->ev.client = client;
 	xcu->ev.state = 0;
-
-done:
+	xcu->ev.done = 0;
 	mutex_unlock(&xcu->ev.lock);
+
 	up(&xcu->sem);
 	up(&xcu->sem_cu);
+	wait_for_completion(&xcu->ev_comp);
+
+	mutex_lock(&xcu->ev.lock);
+	ret = xcu->ev.state;
+	xcu->ev.client = NULL;
+done:
+	mutex_unlock(&xcu->ev.lock);
 	return ret;
 }
 
@@ -549,6 +597,25 @@ void xrt_cu_set_bad_state(struct xrt_cu *xcu)
 	xcu->bad_state = 1;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+static void cu_timer(unsigned long data)
+{
+	struct xrt_cu *xcu = (struct xrt_cu *)data;
+#else
+static void cu_timer(struct timer_list *t)
+{
+	struct xrt_cu *xcu = from_timer(xcu, t, timer);
+#endif
+
+	xcu_dbg(xcu, "%s tick\n", xcu->info.iname);
+
+	set_bit(0, &xcu->tick);
+	up(&xcu->sem);
+	up(&xcu->sem_cu);
+
+	mod_timer(&xcu->timer, jiffies + CU_TIMER);
+}
+
 int xrt_cu_init(struct xrt_cu *xcu)
 {
 	int err = 0;
@@ -574,10 +641,18 @@ int xrt_cu_init(struct xrt_cu *xcu)
 
 	mutex_init(&xcu->ev.lock);
 	xcu->ev.client = NULL;
+	xcu->ev_marker = 0;
+	init_completion(&xcu->ev_comp);
 	/* default timeout, 0 means infinity */
 	xcu->run_timeout = 0;
 	sema_init(&xcu->sem, 0);
 	sema_init(&xcu->sem_cu, 0);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+	setup_timer(&xcu->timer, cu_timer, (unsigned long)xcu);
+#else
+	timer_setup(&xcu->timer, cu_timer, 0);
+#endif
+	xcu->ttl = CU_MAX_TTL;
 	/* A CU maybe doesn't support interrupt, polling */
 	xcu->thread = kthread_run(xrt_cu_polling_thread, xcu, name);
 	if (IS_ERR(xcu->thread)) {

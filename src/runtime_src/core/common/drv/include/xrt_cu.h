@@ -17,6 +17,7 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/semaphore.h>
+#include <linux/completion.h>
 #include <linux/spinlock.h>
 #include <linux/io.h>
 #include <linux/kthread.h>
@@ -37,10 +38,18 @@
 
 #define xcu_info(xcu, fmt, args...)			\
 	dev_info(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
+#define xcu_warn(xcu, fmt, args...)			\
+	dev_warn(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
 #define xcu_err(xcu, fmt, args...)			\
 	dev_err(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
 #define xcu_dbg(xcu, fmt, args...)			\
 	dev_dbg(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
+
+/* XRT CU timer macros */
+#define CU_TIMER		(HZ / 10) /* in jiffies */
+#define CU_SEC2TIMER(t)		((t) * HZ / CU_TIMER)
+#define CU_EXEC_DEFAULT_TTL	5UL	/* in seconds, any idea on proper timeout? */
+#define CU_MAX_TTL		0xFFFFFFFF /* disable timer */
 
 /* HLS CU macros */
 #define CU_AP_START	(0x1 << 0)
@@ -202,11 +211,17 @@ struct xrt_cu_info {
 	char			 kname[32];
 };
 
+#define EV_RQ	0x1
+#define EV_SQ	0x2
+#define EV_CQ	0x4
+#define EV_DONE	0x7
+
 #define CU_STATE_GOOD  0x1
 #define CU_STATE_BAD   0x2
 struct xrt_cu_event {
 	struct mutex		  lock;
 	void			 *client;
+	u32			  done;
 	int			  state;
 };
 
@@ -249,6 +264,13 @@ struct xrt_cu {
 	u32			  interval_max;
 	struct kds_command	 *old_cmd;
 	struct xrt_cu_event	  ev;
+	u32			  ev_marker;
+	struct completion	  ev_comp;
+
+	struct timer_list	  timer;
+	u32			  ttl;
+	unsigned long		  tick;
+
 	/**
 	 * @funcs:
 	 *
