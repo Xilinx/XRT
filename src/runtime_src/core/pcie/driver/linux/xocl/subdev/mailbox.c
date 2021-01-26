@@ -228,7 +228,8 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define	MAILBOX_TIMER		(HZ / 50) /* in jiffies */
 #define	MAILBOX_SEC2TIMER(s)	((s) * HZ / MAILBOX_TIMER)
 #define	MSG_RX_DEFAULT_TTL	20UL	/* in seconds */
-#define	MSG_TX_DEFAULT_TTL	2UL	/* in seconds */
+#define	MSG_HW_TX_DEFAULT_TTL	2UL	/* in seconds */
+#define	MSG_SW_TX_DEFAULT_TTL	6UL	/* in seconds */
 #define	MSG_TX_PER_MB_TTL	1UL	/* in seconds */
 #define	MSG_MAX_TTL		0xFFFFFFFF /* used to disable timer */
 #define	TEST_MSG_LEN		128
@@ -274,6 +275,7 @@ struct mailbox_msg {
 	mailbox_msg_cb_t	mbm_cb;
 	void			*mbm_cb_arg;
 	u32			mbm_flags;
+	u32			mbm_timeout_in_sec; /* timeout set by user */
 	u32			mbm_ttl;
 	bool			mbm_chan_sw;
 };
@@ -787,6 +789,7 @@ static struct mailbox_msg *alloc_msg(void *buf, size_t len)
 	msg->mbm_len = len;
 	msg->mbm_ttl = MSG_MAX_TTL;
 	msg->mbm_chan_sw = false;
+	msg->mbm_timeout_in_sec = 0;
 	init_completion(&msg->mbm_complete);
 
 	return msg;
@@ -1242,10 +1245,23 @@ static void msg_timer_on(struct mailbox_msg *msg, u32 ttl)
 	if (ttl == 0) {
 		if (is_rx_msg(msg)) {
 			ttl = MSG_RX_DEFAULT_TTL;
+		} else if (msg->mbm_chan_sw) {
+			/*
+			 * Time spent for s/w mailbox tx includes,
+			 * 1. several ctx
+			 * 2. memory copy xclbin from kernel to user
+			 * So 6s should be long enough for xclbin allowed
+			 */
+			ttl = MSG_SW_TX_DEFAULT_TTL;
 		} else {
-			ttl = max((u32)(BYTE_TO_MB(msg->mbm_len) * MSG_TX_PER_MB_TTL),
-				msg->mbm_ttl);
+			/*
+			 * For h/w mailbox, we set ttl of one pkt and reset it
+			 * for each new pkt being sent. The whole msg will be
+			 * discard once a single pkt is timed out
+			 */
+			ttl = MSG_HW_TX_DEFAULT_TTL;
 		}
+
 	}
 
 	msg->mbm_ttl = MAILBOX_SEC2TIMER(ttl);
@@ -1261,7 +1277,7 @@ static void dequeue_tx_msg(struct mailbox_channel *ch)
 	if (!ch->mbc_cur_msg)
 		return;
 
-	msg_timer_on(ch->mbc_cur_msg, 0);
+	msg_timer_on(ch->mbc_cur_msg, ch->mbc_cur_msg->mbm_timeout_in_sec);
 }
 
 /* Check if TX channel is ready for next msg. */
@@ -1588,7 +1604,7 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	reqmsg->mbm_cb_arg = NULL;
 	reqmsg->mbm_req_id = (uintptr_t)reqmsg->mbm_data;
 	reqmsg->mbm_flags |= XCL_MB_REQ_FLAG_REQUEST;
-	reqmsg->mbm_ttl = max(tx_ttl, (u32)MSG_TX_DEFAULT_TTL);
+	reqmsg->mbm_timeout_in_sec = tx_ttl;
 
 	respmsg = alloc_msg(resp, *resplen);
 	if (!respmsg)
