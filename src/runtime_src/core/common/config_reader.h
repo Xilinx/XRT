@@ -476,6 +476,13 @@ get_feature_toggle(const std::string& feature)
   return detail::get_bool_value(feature.c_str(),false);
 }
 
+inline unsigned int
+get_noop_completion_delay_us()
+{
+  static unsigned int delay = detail::get_uint_value("Runtime.noop_completion_delay_us", 0);
+  return delay;
+}
+
 /**
  * Set CMD BO cache size. CUrrently it is only used in xclCopyBO()
  */
