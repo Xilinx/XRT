@@ -590,7 +590,7 @@ static int get_header_from_peer(struct feature_rom *rom)
 	xocl_xdev_info(xdev, "Searching CDMA in dtb.");
 	offset = xocl_fdt_path_offset(xdev, XDEV(xdev)->fdt_blob,
 				      "/" NODE_ENDPOINTS "/" RESNAME_KDMA);
-	if (!offset)
+	if (offset < 0)
 		return 0;
 
 	io_off = xocl_fdt_getprop(xdev, XDEV(xdev)->fdt_blob, offset,
