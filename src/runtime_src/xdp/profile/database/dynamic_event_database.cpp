@@ -32,7 +32,7 @@ namespace xdp {
     // For low overhead profiling, we will reserve space for 
     //  a set number of events.  This won't change HAL or OpenCL 
     //  profiling either.
-    hostEvents.reserve(100);
+    //hostEvents.reserve(100);
   }
 
   VPDynamicDatabase::~VPDynamicDatabase()
@@ -48,7 +48,7 @@ namespace xdp {
     aieTraceData.clear();
 
     for (auto event : hostEvents) {
-      delete event;
+      delete event.second;
     }
 
     for (auto device : deviceEvents) {
@@ -68,19 +68,22 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
-    hostEvents.push_back(event) ;
+    event->setEventId(eventId++) ;
+    hostEvents.emplace(event->getTimestamp(), event) ;
+    //hostEvents.push_back(event) ;
   }
 
   void VPDynamicDatabase::addDeviceEvent(uint64_t deviceId, VTFEvent* event)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
+
+    event->setEventId(eventId++) ;
     deviceEvents[deviceId].emplace(event->getTimestamp(), event) ;
   }
 
   void VPDynamicDatabase::addEvent(VTFEvent* event)
   {
     if (event == nullptr) return ;
-    event->setEventId(eventId++) ;
 
     if (event->isDeviceEvent())
     {
@@ -152,7 +155,7 @@ namespace xdp {
     // For now, go through both host events and device events.
     for (auto e : hostEvents)
     {
-      if (filter(e)) collected.push_back(e) ;
+      if (filter(e.second)) collected.push_back(e.second) ;
     }
 
     for (auto dev : deviceEvents)
@@ -173,7 +176,7 @@ namespace xdp {
 
     for (auto e : hostEvents)
     {
-      if (filter(e)) collected.push_back(e) ;
+      if (filter(e.second)) collected.push_back(e.second) ;
     }
     return collected ;
   }
@@ -182,7 +185,7 @@ namespace xdp {
   {
     std::vector<VTFEvent*> events;
     for(auto e : hostEvents) {
-      events.push_back(e);
+      events.push_back(e.second);
     }
     return events;
   }

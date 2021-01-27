@@ -68,7 +68,8 @@ namespace xdp {
     //  will come in sequential order.  For this, we can use 
     //  a simple vector.  For low overhead profiling, we can provide
     //  capability to have this be preallocated.
-    std::vector<VTFEvent*> hostEvents ;
+    //std::vector<VTFEvent*> hostEvents ;
+    std::multimap<double, VTFEvent*> hostEvents ;
 
     // Every device will have its own set of events.  Since the actual
     //  hardware might shuffle the order of events we have to make sure
