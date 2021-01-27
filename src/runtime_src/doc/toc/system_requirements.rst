@@ -33,6 +33,9 @@ To build a custom XRT package, please refer to page :ref:`build.rst` for depende
 XRT Software Stack for Embedded Platforms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+XRT software stack requires Linux kernel 3.10+. 
+Compiling host code with XRT OpenCL API requires GCC with C++11 features; Compiling host code with XRT native API requires GCC with C++14 features. 
+
 XRT needs to be installed on the development environment (rootfs or sysroot) and deployment environment (rootfs) of embedded platforms.
 
 If embedded processor native compile is to be used, XRT, xrt-dev and GCC needs to be installed on the target embedded system rootfs.
