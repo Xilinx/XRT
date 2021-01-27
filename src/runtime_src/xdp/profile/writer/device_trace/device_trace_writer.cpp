@@ -153,14 +153,19 @@ namespace xdp {
       std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, cuAIM) ;
       aimBucketIdMap[index] = ++rowCount ;
 
+      std::string portAndArgs = aim->name ;
+      portAndArgs += " (" ;
+      portAndArgs += aim->args ;
+      portAndArgs += ")" ;
+
       // Read : KERNEL_READ
       fout << "Group_Start,Read,Read data transfers between " << cu->getName() << " and Global Memory over " << aim->name << std::endl;
-      fout << "Static_Row," << rowCount << "," << aim->name << ",Read Data Transfers " << std::endl;
+      fout << "Static_Row," << rowCount << "," << portAndArgs << ",Read Data Transfers " << std::endl;
       fout << "Group_End,Read" << std::endl;
 
       // Write : KERNEL_WRITE
       fout << "Group_Start,Write,Write data transfers between " << cu->getName() << " and Global Memory over " << aim->name << std::endl;
-      fout << "Static_Row," << ++rowCount << "," << aim->name << ",Write Data Transfers " << std::endl;
+      fout << "Static_Row," << ++rowCount << "," << portAndArgs << ",Write Data Transfers " << std::endl;
       fout << "Group_End,Write" << std::endl;
     }
   }
