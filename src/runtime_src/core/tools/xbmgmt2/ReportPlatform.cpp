@@ -118,13 +118,13 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
     logic_uuids.erase(
       std::remove_if(logic_uuids.begin(), logic_uuids.end(),	
-                      [](const std::string& s) { return s.empty(); }));
+                      [](const std::string& s) { return s.empty(); }), logic_uuids.end());
   } catch (...) {}
   try {
     interface_uuids = xrt_core::device_query<xrt_core::query::interface_uuids>(device);
     interface_uuids.erase(
       std::remove_if(interface_uuids.begin(), interface_uuids.end(),	
-                  [](const std::string& s) { return s.empty(); }));
+                  [](const std::string& s) { return s.empty(); }), interface_uuids.end());
   } catch (...) {}
   
   
