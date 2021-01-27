@@ -17,9 +17,6 @@ XRT Software Stack for PCIe Accelerator Cards
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 XRT software stack requires Linux kernel 3.10+. 
-Compiling host code with XRT native C++ API requires GCC with C++14 features. 
-Since C++14 is introduced to GCC from 4.9.0, on old GCC versions, c++1y needs to be used instead of c++14.
-Requirements of building XRT is documented on page :ref:`build.rst`.
 
 The XRT software stack is tested on RHEL/CentOS and Ubuntu. 
 For the detailed list of supported OS, please refer to the specific release versions of `UG1451 XRT Release Notes <https://www.xilinx.com/search/site-keyword-search.html#q=ug1451>`_. 
@@ -33,8 +30,7 @@ To build a custom XRT package, please refer to page :ref:`build.rst` for depende
 XRT Software Stack for Embedded Platforms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-XRT software stack requires Linux kernel 3.10+. 
-Compiling host code with XRT native C++ API requires GCC with C++14 features. 
+XRT software stack requires Linux kernel 3.10+. XRT for embedded platforms is tested with PetaLinux.
 
 XRT needs to be installed on the development environment (rootfs or sysroot) and deployment environment (rootfs) of embedded platforms.
 
