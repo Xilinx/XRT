@@ -78,14 +78,12 @@ launch(xrt_core::command* cmd)
   auto device = cmd->get_device();
   auto& submitted_cmds = s_device_cmds[device]; // safe since inserted in init
 
-  command_queue_type::const_iterator pos;
-
   // Store command so completion can be tracked.  Make sure this is
   // done prior to exec_buf as exec_wait can otherwise be missed.
+  // See detailed explanation in monitor loop.
   {
     std::lock_guard<std::mutex> lk(s_mutex);
     submitted_cmds.push_back(cmd);
-    s_work.notify_all();
   }
 
   // Submit the command
@@ -96,66 +94,92 @@ launch(xrt_core::command* cmd)
     // Remove the pending command
     std::lock_guard<std::mutex> lk(s_mutex);
     assert(get_command_state(cmd)==ERT_CMD_STATE_NEW);
-    submitted_cmds.pop_back();
+    if (!submitted_cmds.empty())
+      submitted_cmds.pop_back();
     throw;
   }
+
+  // This is somewhat expensive, it is better to have this after the
+  // exec_buf call so that actual execution doesn't have to wait.
+  s_work.notify_one();
 }
 
 static void
 monitor_loop(const xrt_core::device* device)
 {
-  unsigned long loops = 0;           // number of outer loops
-  unsigned long sleeps = 0;          // number of sleeps
-
   // thread safe access, since guaranteed to be inserted in init
   auto& submitted_cmds = s_device_cmds[device];
-  std::vector<xrt_core::command*> completed_cmds;
+  std::vector<xrt_core::command*> busy_cmds;
+  std::vector<xrt_core::command*> running_cmds;
 
   while (1) {
-    ++loops;
-
+    // Larger wait synchronized with launch()
     {
-      {
-        std::unique_lock<std::mutex> lk(s_mutex);
-
-        // Larger wait
-        while (!s_stop && submitted_cmds.empty()) {
-          ++sleeps;
-          s_work.wait(lk);
-        }
-      }
-
-      if (s_stop)
-        return;
-
-      // Finer wait
-      while (device->exec_wait(1000)==0) {}
-
-      {
-        std::lock_guard<std::mutex> lk(s_mutex);
-        auto size = submitted_cmds.size();
-        for (size_t idx=0; idx<size; ++idx) {
-          auto cmd = submitted_cmds[idx];
-          if (!completed(cmd))
-            continue;
-
-          completed_cmds.push_back(cmd);
-          auto last = submitted_cmds.back();
-          if (last != cmd)
-            submitted_cmds[idx--] = last;
-          submitted_cmds.pop_back();
-          --size;
-        }
-      }
-
-      // Notify host outside lock
-      for (auto cmd : completed_cmds)
-        notify_host(cmd);
-      completed_cmds.clear();
+      std::unique_lock<std::mutex> lk(s_mutex);
+      while (!s_stop && running_cmds.empty() && submitted_cmds.empty())
+        s_work.wait(lk);
     }
-  }
-}
 
+    if (s_stop)
+      return;
+
+    // Finer wait
+    while (device->exec_wait(1000)==0) {}
+
+    // Drain submitted commands.  It is important that this comes
+    // after exec_wait and is synchronized with launch() that added
+    // to submitted_cmds.
+    //
+    // Scenario if before exec_wait is that a new command was added
+    // to submitted_cmds and exec_buf immediately after the critical
+    // section above and that the command completion happens in the
+    // exec_wait call. If submitted_cmds was drained, in for example
+    // above critical section, before the call to exec_wait it would
+    // not be in running_cmds and would not be notified of
+    // completion.
+    //
+    // The sequence is very important.  It must be guaranteed that
+    // exec_wait will never return for a command that is not yet
+    // in either running_cmds or submitted_cmds.
+    {
+      std::lock_guard<std::mutex> lk(s_mutex);
+      std::copy(submitted_cmds.begin(), submitted_cmds.end(), std::back_inserter(running_cmds));
+      submitted_cmds.clear();
+    }
+    // At this point running_cmds is guaranteed to contain the
+    // command(s) for which exec_wait returned.
+
+#if 0
+    // Out of order processing
+    auto size = running_cmds.size();
+    for (size_t idx=0; idx<size; ++idx) {
+      auto cmd = running_cmds[idx];
+      if (!completed(cmd))
+        continue;
+
+      notify_host(cmd);
+      auto last = running_cmds.back();
+      if (last != cmd)
+        running_cmds[idx--] = last;
+      running_cmds.pop_back();
+      --size;
+    }
+#endif
+
+#if 1
+    // Preserve order of processing
+    for (auto cmd : running_cmds) {
+      if (completed(cmd))
+        notify_host(cmd);
+      else
+        busy_cmds.push_back(cmd);
+    }
+
+    running_cmds.swap(busy_cmds);
+    busy_cmds.clear();
+#endif
+  } // while (1)
+}
 
 static void
 monitor(const xrt_core::device* device)

@@ -772,10 +772,10 @@ public:
       complete = m_done = true;
       if (m_event)
         xrt_core::enqueue::done(m_event.get());
-      m_exec_done.notify_all();  // CAN THIS BE MOVED TO END AFTER CALLBACKS?
     }
 
     if (complete) {
+      m_exec_done.notify_all();
       run_callbacks(s);
 
       // Clear the event if any.  This must be last since if used, it
