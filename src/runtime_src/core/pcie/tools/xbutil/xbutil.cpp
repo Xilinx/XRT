@@ -109,7 +109,7 @@ is_supported_kernel_version(std::ostream &ostr)
     std::vector<std::string> ubuntu_kernel_versions =
         { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0", "5.4.0" };
     std::vector<std::string> centos_rh_kernel_versions =
-        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1160.11.1", "3.10.0-1062", "3.10.0-1127", "4.9.184-35", "4.18.0-147", "4.18.0-193", "4.18.0-240" };
+        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1160.11.1", "3.10.0-1062", "3.10.0-1127", "4.9.184", "4.9.184-35", "4.18.0-147", "4.18.0-193", "4.18.0-240" };
     const std::string os = sensor_tree::get<std::string>("system.linux", "N/A");
 
     if(os.find("Ubuntu") != std::string::npos)
