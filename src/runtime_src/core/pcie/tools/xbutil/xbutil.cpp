@@ -2504,7 +2504,7 @@ int xcldev::xclScheduler(int argc, char *argv[])
         if (test.compare("xcl_iops") == 0) {
             test = "xcl_iops_test.exe";
         } else if (test.compare("xrt_iops") == 0) {
-            test = "xcl_iops_test.exe";
+            test = "xrt_iops_test.exe";
         } else {
             std::cout << "ERROR:Unknown test" << std::endl;
             return -EINVAL;
