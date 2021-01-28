@@ -42,7 +42,7 @@ struct drm_xocl_exec_metadata {
 struct xocl_cma_memory {
 	uint64_t		paddr;
 	struct page		**pages;
-	void 			*vaddr;
+	struct page		*regular_page;
 	uint64_t		size;
 	struct sg_table 	*sgt;
 };
