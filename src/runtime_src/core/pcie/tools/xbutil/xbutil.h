@@ -1555,6 +1555,8 @@ public:
                 if (found != std::string::npos) {
                   auto scu_i = std::stoi(cu_n.substr(found + 4));
                   cu_n = cu_n.substr(0, found - 1);
+                  cu_n.append("_"); //Append instance number to name
+                  cu_n.append(std::to_string(scu_i));
                   ostr << "SCU[" << std::right << std::setw(2) << std::dec << scu_i << "]: ";
                 } else
                   ostr << "CU: ";
