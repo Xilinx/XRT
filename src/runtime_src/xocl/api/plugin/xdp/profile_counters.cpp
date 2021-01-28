@@ -602,5 +602,100 @@ namespace xocl {
 	       }
 	     } ;
     }
+
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    counter_action_map(cl_mem buffer, cl_map_flags flags)
+    {
+      return [buffer, flags](xocl::event* e, cl_int status, const std::string&)
+	{
+	  if (!counter_action_read_cb) return ;
+	  if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	  // Ignore if mapping an invalidated region
+	  if (flags & CL_MAP_WRITE_INVALIDATE_REGION) return ;
+
+	  // If the buffer is not resident on device, don't record this
+	  auto xmem = xocl::xocl(buffer) ;
+	  auto queue = e->get_command_queue() ;
+	  auto device = queue->get_device() ;
+	  if (!(xmem->is_resident(device))) return ;
+
+	  uint64_t contextId = e->get_context()->get_uid() ;
+	  uint64_t numDevices = e->get_context()->num_devices() ;
+	  std::string deviceName = device->get_name() ;
+
+	  auto ext_flags = xmem->get_ext_flags() ;
+	  bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+
+	  uint64_t address = get_memory_address(buffer) ;
+
+	  if (status == CL_RUNNING) {
+	    counter_action_read_cb(contextId,
+				   numDevices,
+				   deviceName.c_str(),
+				   0,
+				   true,
+				   isP2P,
+				   address,
+				   static_cast<uint64_t>(queue->get_uid()));
+	  }
+	  else if (status == CL_COMPLETE) {
+	    counter_action_read_cb(contextId,
+				   numDevices,
+				   deviceName.c_str(),
+				   xmem->get_size(),
+				   false,
+				   isP2P,
+				   address,
+				   static_cast<uint64_t>(queue->get_uid())) ;
+	  }
+	} ;
+    }
+
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    counter_action_unmap(cl_mem buffer)
+    {
+      return [buffer](xocl::event* e, cl_int status, const std::string&)
+	{
+	  if (!counter_action_write_cb) return ;
+	  if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	  auto xmem = xocl::xocl(buffer) ;
+
+	  // If P2P transfer, don't record this transfer
+	  if (xmem->no_host_memory()) return ;
+
+	  // If the buffer is not resident on device, don't record this
+	  auto queue = e->get_command_queue() ;
+	  auto device = queue->get_device() ;
+	  if (!(xmem->is_resident(device))) return ;
+
+	  uint64_t contextId = e->get_context()->get_uid() ;
+	  std::string deviceName = device->get_name() ;
+	  auto ext_flags = xmem->get_ext_flags() ;
+	  bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+
+	  uint64_t address = get_memory_address(buffer) ;
+
+	  if (status == CL_RUNNING) {
+	    counter_action_write_cb(contextId,
+				    deviceName.c_str(),
+				    0,
+				    true,
+				    isP2P,
+				    address,
+				    static_cast<uint64_t>(queue->get_uid()));
+	  }
+	  else if (status == CL_COMPLETE) {
+	    counter_action_write_cb(contextId,
+				    deviceName.c_str(),
+				    xmem->get_size(),
+				    false,
+				    isP2P,
+				    address,
+				    static_cast<uint64_t>(queue->get_uid())) ;
+	  }
+	} ;
+    }
   } // end namespace profile
 } // end namespace xocl
