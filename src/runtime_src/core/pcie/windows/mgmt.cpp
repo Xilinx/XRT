@@ -571,7 +571,7 @@ void
 get_pcie_info(xclDeviceHandle hdl, XCLMGMT_IOC_DEVICE_PCI_INFO* value)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::debug, "XRT", "get_pcie_info()");
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_pcie_info()");
   auto mgmt = get_mgmt_object(hdl);
   mgmt->get_pcie_info(value);
 }
