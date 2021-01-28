@@ -218,6 +218,7 @@ namespace xdp {
     std::vector<Monitor*>  noTraceAIMs;
     std::vector<Monitor*>  noTraceASMs;
 
+    // These contain all of the instances.  This is necessary for counters.
     std::vector<Monitor*> aimList;
     std::vector<Monitor*> amList;
     std::vector<Monitor*> asmList;
@@ -889,10 +890,10 @@ namespace xdp {
       /* User space AM in sorted order of their slotIds.
        * Matches with sorted list of AM in xdp::DeviceIntf
        */   
-      for(auto mon : deviceInfo[deviceId]->loadedXclbins.back()->amMap) {
+      for(auto mon : deviceInfo[deviceId]->loadedXclbins.back()->amList) {
         if(count >= size)
           return;
-        auto cu = deviceInfo[deviceId]->loadedXclbins.back()->cus[mon.second->cuIndex];
+        auto cu = deviceInfo[deviceId]->loadedXclbins.back()->cus[mon->cuIndex];
         config[count] = cu->dataflowEnabled();
         ++count;
       }
@@ -916,10 +917,10 @@ namespace xdp {
       /* User space AM in sorted order of their slotIds.
        * Matches with sorted list of AM in xdp::DeviceIntf
        */   
-      for(auto mon : deviceInfo[deviceId]->loadedXclbins.back()->amMap) {
+      for(auto mon : deviceInfo[deviceId]->loadedXclbins.back()->amList) {
         if(count >= size)
           return;
-        auto cu = deviceInfo[deviceId]->loadedXclbins.back()->cus[mon.second->cuIndex];
+        auto cu = deviceInfo[deviceId]->loadedXclbins.back()->cus[mon->cuIndex];
         config[count] = cu->faEnabled();
         ++count;
       }

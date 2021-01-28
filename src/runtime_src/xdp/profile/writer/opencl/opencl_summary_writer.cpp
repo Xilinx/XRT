@@ -753,91 +753,90 @@ namespace xdp {
       for (auto xclbin : device->loadedXclbins)
       {
 	xclCounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
-	for (auto cu : xclbin->cus)
-	{
-	  std::vector<uint32_t>* aimMonitors = (cu.second)->getAIMs() ;
-	  for (auto aimMonitorId : (*aimMonitors))
-	  {
-	    Monitor* monitor = (db->getStaticInfo()).getAIMonitor(device->deviceId, xclbin, aimMonitorId) ;
 
-	    auto writeTranx = values.WriteTranx[aimMonitorId] ;
-	    auto readTranx = values.ReadTranx[aimMonitorId] ;
+	// Counter results don't use the slotID.  Instead, they are filled
+	//  in the struct in the order in which we found them.
+	uint64_t monitorId = 0 ;
+	for (auto monitor : xclbin->aimList) {
+	  if (monitor->cuIndex == -1) {
+	    // This AIM is either a shell or floating 
+	    ++monitorId ;
+	    continue ;
+	  }
 
-	    uint64_t totalReadBusyCycles = values.ReadBusyCycles[aimMonitorId] ;
-	    uint64_t totalWriteBusyCycles = values.WriteBusyCycles[aimMonitorId] ;
+	  auto writeTranx = values.WriteTranx[monitorId] ;
+	  auto readTranx  = values.ReadTranx[monitorId] ;
 
-	    double totalReadTime = 
-	      (double)(totalReadBusyCycles) / (1000.0 * xclbin->clockRateMHz) ;
-	    double totalWriteTime =
-	      (double)(totalWriteBusyCycles) / (1000.0 * xclbin->clockRateMHz) ;
-	    
-	    // Use the name of the monitor to determine the port and memory
-	    std::string portName = "" ;
-	    std::string memoryName = "" ;
-	    
-	    size_t slashPosition = (monitor->name).find("/") ;
-	    if (slashPosition != std::string::npos)
-	    {
-	      auto position = slashPosition + 1 ;
-	      auto length = (monitor->name).size() - position ;
+	  uint64_t totalReadBusyCycles  = values.ReadBusyCycles[monitorId] ;
+	  uint64_t totalWriteBusyCycles = values.WriteBusyCycles[monitorId] ;
 
-	      // Split the monitor name into port and memory position
-	      std::string lastHalf = (monitor->name).substr(position, length) ;
+	  double totalReadTime = 
+	    (double)(totalReadBusyCycles) / (1000.0 * xclbin->clockRateMHz) ;
+	  double totalWriteTime =
+	    (double)(totalWriteBusyCycles) / (1000.0 * xclbin->clockRateMHz) ;
+
+	  // Use the name of the monitor to determine the port and memory
+	  std::string portName   = "" ;
+	  std::string memoryName = "" ;
+	  size_t slashPosition = (monitor->name).find("/") ;
+	  if (slashPosition != std::string::npos) {
+	    auto position = slashPosition + 1 ;
+	    auto length = (monitor->name).size() - position ;
+
+	    // Split the monitor name into port and memory position
+	    std::string lastHalf = (monitor->name).substr(position, length) ;
 	      
-	      size_t dashPosition = lastHalf.find("-") ;
-	      if (dashPosition != std::string::npos)
-	      {
-		auto remainingLength = lastHalf.size() - dashPosition - 1 ;
-		portName = lastHalf.substr(0, dashPosition) ;
-		memoryName = lastHalf.substr(dashPosition + 1, remainingLength);
-	      }
-	      else
-	      {
-		portName = lastHalf ;
-	      }
+	    size_t dashPosition = lastHalf.find("-") ;
+	    if (dashPosition != std::string::npos) {
+	      auto remainingLength = lastHalf.size() - dashPosition - 1 ;
+	      portName = lastHalf.substr(0, dashPosition) ;
+	      memoryName = lastHalf.substr(dashPosition + 1, remainingLength);
 	    }
-
-	    if (writeTranx > 0)
-	    {
-	      double transferRate = (totalWriteTime == 0.0) ? 0 :
-		(double)(values.WriteBytes[aimMonitorId]) / (1000.0 * totalWriteTime);
-	      double aveBW =
-		(100.0 * transferRate) / xclbin->maxWriteBW ;
-	      if (aveBW > 100.0) aveBW = 100.0 ;
-
-	      fout << (device->deviceName) << ","
-		   << (cu.second)->getName() << "/" << portName << ","
-		   << (monitor->args) << ","
-		   << memoryName << ","
-		   << "WRITE" << ","
-		   << writeTranx << ","
-		   << transferRate << ","
-		   << aveBW << ","
-		   << (double)(values.WriteBytes[aimMonitorId] / writeTranx) / 1000.0 << ","
-		   << (values.WriteLatency[aimMonitorId] / writeTranx) << "," 
-		   << std::endl ;
+	    else {
+	      portName = lastHalf ;
 	    }
-	    if (readTranx > 0)
-	    {
+	  }
+	  if (writeTranx > 0) {
+	    double transferRate = (totalWriteTime == 0.0) ? 0 :
+	      (double)(values.WriteBytes[monitorId]) / (1000.0 * totalWriteTime);
+	    double aveBW =
+	      (100.0 * transferRate) / xclbin->maxWriteBW ;
+	    if (aveBW > 100.0) aveBW = 100.0 ;
+
+	    fout << (device->deviceName) << ","
+		 << xclbin->cus[monitor->cuIndex]->getName() << "/"
+		 << portName << ","
+		 << (monitor->args) << ","
+		 << memoryName << ","
+		 << "WRITE" << ","
+		 << writeTranx << ","
+		 << transferRate << ","
+		 << aveBW << ","
+		 << (double)(values.WriteBytes[monitorId] / writeTranx) / 1000.0 << ","
+		 << (values.WriteLatency[monitorId] / writeTranx) << "," 
+		 << std::endl ;
+	  }
+	  if (readTranx > 0) {
 	      double transferRate = (totalReadTime == 0.0) ? 0 :
-		(double)(values.ReadBytes[aimMonitorId]) / (1000.0 * totalReadTime);
+		(double)(values.ReadBytes[monitorId]) / (1000.0 * totalReadTime);
 	      double aveBW =
 		(100.0 * transferRate) / xclbin->maxReadBW ;
 	      if (aveBW > 100.0) aveBW = 100.0 ;
 
 	      fout << (device->deviceName) << ","
-		   << (cu.second)->getName() << "/" << portName << ","
+		   << xclbin->cus[monitor->cuIndex]->getName() << "/"
+		   << portName << ","
 		   << (monitor->args) << ","
 		   << memoryName << ","
 		   << "READ" << ","
 		   << readTranx << ","
 		   << transferRate << ","
 		   << aveBW << ","
-		   << (double)(values.ReadBytes[aimMonitorId] / readTranx) / 1000.0 << ","
-		   << (values.ReadLatency[aimMonitorId] / readTranx) << "," 
+		   << (double)(values.ReadBytes[monitorId] / readTranx) / 1000.0 << ","
+		   << (values.ReadLatency[monitorId] / readTranx) << "," 
 		   << std::endl ;
-	    }
 	  }
+	  ++monitorId ;
 	}
       }
     }
