@@ -184,6 +184,9 @@ namespace xdp {
     readCounters() ;
 
     deviceIdsToBeFlushed.erase(deviceId) ;
+
+    clearOffloader(deviceId) ;
+    (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(deviceId) ;
   }
 
   void OpenCLDeviceOffloadPlugin::updateDevice(void* d)

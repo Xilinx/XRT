@@ -162,6 +162,9 @@ namespace xdp {
       }
     }
     readCounters() ;
+
+    clearOffloader(deviceId) ;
+    (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(deviceId) ;
   }
 
   void HALDeviceOffloadPlugin::updateDevice(void* userHandle)

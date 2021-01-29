@@ -570,6 +570,18 @@ namespace xdp {
       return deviceInfo[deviceId]->currentXclbin() ;
     }
 
+    inline void deleteCurrentlyUsedDeviceInterface(uint64_t deviceId)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+	return ;
+      XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+      if (!xclbin) return ;
+      if (xclbin->deviceIntf) {
+	delete xclbin->deviceIntf ;
+	xclbin->deviceIntf = nullptr ;
+      }
+    }
+
     bool isDeviceReady(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
