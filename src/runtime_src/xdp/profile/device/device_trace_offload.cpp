@@ -24,11 +24,13 @@
 namespace xdp {
 
 DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
-                                   DeviceTraceLogger* dTraceLogger,
-                                   uint64_t sleep_interval_ms,
-                                   uint64_t trbuf_sz,
-                                   bool start_thread)
+				       DeviceTraceLogger* dTraceLogger,
+				       uint64_t sleep_interval_ms,
+				       uint64_t trbuf_sz,
+				       bool start_thread,
+				       bool e_trace)
                    : continuous(start_thread),
+		     enable_trace(e_trace),
 		     sleep_interval_ms(sleep_interval_ms),
                      m_trbuf_alloc_sz(trbuf_sz),
                      dev_intf(dInt),
@@ -150,7 +152,7 @@ void DeviceTraceOffload::read_trace_fifo()
     auto property = dev_intf->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
     auto fifo_size = GetDeviceTraceBufferSize(property);
 
-    if (num_packets >= fifo_size) {
+    if (num_packets >= fifo_size && enable_trace) {
       m_trbuf_full = true;
 
       // Send warning message

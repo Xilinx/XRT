@@ -183,11 +183,15 @@ namespace xdp {
     TraceLoggerCreatingDeviceEvents* logger = 
       new TraceLoggerCreatingDeviceEvents(deviceId) ;
 
+    bool enable_device_trace = xrt_core::config::get_timeline_trace() ||
+      xrt_core::config::get_data_transfer_trace() != "off" ;
+
     DeviceTraceOffload* offloader = 
       new DeviceTraceOffload(devInterface, logger,
-                         continuous_trace_interval_ms, // offload_sleep_ms,
-                         trace_buffer_size,            // trbuf_size,
-                         continuous_trace);            // start_thread
+			     continuous_trace_interval_ms, // offload_sleep_ms,
+			     trace_buffer_size,            // trbuf_size,
+			     continuous_trace,             // start_thread
+			     enable_device_trace);
 
     bool init_successful = offloader->read_trace_init() ;
     if (!init_successful) {
