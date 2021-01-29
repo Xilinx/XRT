@@ -15,6 +15,7 @@
 #include <linux/vmalloc.h>
 #include <linux/device.h>
 #include <linux/delay.h>
+//#include <linux/cache.h>
 #include "kds_core.h"
 
 /* for sysfs */
@@ -215,6 +216,9 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 out:
 	++cu_mgmt->cu_usage[index];
 	mutex_unlock(&cu_mgmt->lock);
+	client->s_cnt[index]++;
+	xcmd->cu_idx = index;
+	//printk("minm cu(%d) s_cnt %ld\n", xcmd->cu_idx, client->s_cnt[xcmd->cu_idx]);
 	return index;
 }
 
@@ -270,7 +274,6 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
 		if (cu_idx < 0)
 			return cu_idx;
-		xcmd->cu_idx = cu_idx;
 		break;
 	case OP_CONFIG:
 		/* Configure command define CU index */
@@ -359,7 +362,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	int cu_idx = info->cu_idx;
-	int state;
+	unsigned long outstanding;
 
 	if (cu_idx >= cu_mgmt->num_cus) {
 		kds_err(client, "CU(%d) not found", cu_idx);
@@ -376,24 +379,28 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		goto skip;
 
 	/* Before close, make sure no remain commands in CU's queue. */
-	while(1) {
-		state = xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
-		if (state == -EAGAIN) {
-			msleep(100);
-			continue;
-		}
-		break;
-	}
+	outstanding = client->s_cnt[cu_idx] - client->c_cnt[cu_idx];
+	if (!outstanding)
+		goto skip;
 
-	if (state == CU_STATE_BAD) {
-		kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
-		/* No lock to protect bad_state.
-		 * If a new client doesn't get the updated status and send commands,
-		 * those commands would failed with TIMEOUT state.
-		 */
-		kds->bad_state = 1;
-		xrt_cu_set_bad_state(cu_mgmt->xcus[cu_idx]);
-	}
+	kds_warn(client, "%d outstanding command on CU(%d)",
+		 outstanding, cu_idx);
+
+	xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
+	/* sub-device that handle command should do abort with a timeout */
+	do {
+		msleep(500);
+		outstanding = client->s_cnt[cu_idx] - client->c_cnt[cu_idx];
+	} while(outstanding);
+	xrt_cu_abort_done(cu_mgmt->xcus[cu_idx], client);
+
+	/* No lock to protect bad_state.
+	 * If a new client doesn't get the updated status and send commands,
+	 * those commands would failed with TIMEOUT state.
+	 */
+	kds->bad_state = 1;
+	xrt_cu_set_bad_state(cu_mgmt->xcus[cu_idx]);
+	kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
 
 skip:
 	/* cu_mgmt->cu_refs is the critical section of multiple clients */
@@ -448,6 +455,7 @@ struct kds_command *kds_alloc_command(struct kds_client *client, u32 size)
 
 	xcmd->client = client;
 	xcmd->type = 0;
+	xcmd->cu_idx = -1;
 
 #if PRE_ALLOC
 	xcmd->info = client->infos + sizeof(u32) * 128;

@@ -211,20 +211,10 @@ struct xrt_cu_info {
 	char			 kname[32];
 };
 
-#define EV_RQ	0x1
-#define EV_SQ	0x2
-#define EV_CQ	0x4
-#define EV_DONE	0x7
-
 #define CU_STATE_GOOD  0x1
 #define CU_STATE_BAD   0x2
-struct xrt_cu_event {
-	struct mutex		  lock;
-	void			 *client;
-	u32			  done;
-	int			  state;
-};
 
+/* Supported event type */
 struct xrt_cu {
 	struct device		 *dev;
 	struct xrt_cu_info	  info;
@@ -263,9 +253,9 @@ struct xrt_cu {
 	u32			  interval_min;
 	u32			  interval_max;
 	struct kds_command	 *old_cmd;
-	struct xrt_cu_event	  ev;
-	u32			  ev_marker;
-	struct completion	  ev_comp;
+
+	struct mutex		  ev_lock;
+	struct list_head	  events;
 
 	struct timer_list	  timer;
 	u32			  ttl;
@@ -383,8 +373,8 @@ u32 round_up_to_next_power2(u32 size)
  * 3. Check if submitted command is completed or not
  */
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
-int xrt_cu_abort(struct xrt_cu *xcu, void *client);
-int xrt_cu_abort_done(struct xrt_cu *xcu);
+int xrt_cu_abort(struct xrt_cu *xcu, struct kds_client *client);
+int xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client);
 int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr);
 int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr, u32 num_slots);
 int xrt_is_fa(struct xrt_cu *xcu, u32 *size);
