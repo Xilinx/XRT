@@ -682,7 +682,19 @@ XBUtilities::produce_reports( xrt_core::device_collection _devices,
       auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
       ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
       if (_schemaVersion == Report::SchemaVersion::text) {
-        auto platform = xrt_core::device_query<xrt_core::query::rom_vbnv>(device);
+        bool is_mfg = false;
+        try {
+          is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
+        } catch (...) {}
+        
+        //if factory mode
+        std::string platform = "";
+          if (is_mfg) {
+            platform = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN";
+          }
+          else {
+            platform = xrt_core::device_query<xrt_core::query::rom_vbnv>(device);
+          }
         std::string dev_desc = (boost::format("%d/%d [%s] : %s\n") % ++dev_idx % _devices.size() % ptDevice.get<std::string>("device_id") % platform).str();
         _ostream << std::string(dev_desc.length(), '-') << std::endl;
         _ostream << dev_desc;
