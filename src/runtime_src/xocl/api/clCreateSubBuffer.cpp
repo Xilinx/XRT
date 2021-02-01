@@ -19,9 +19,7 @@
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
 #include "detail/memory.h"
-//#include "plugin/xdp/profile.h"
 #include "plugin/xdp/profile_v2.h"
-#include "plugin/xdp/lop.h"
 
 
 namespace xocl {

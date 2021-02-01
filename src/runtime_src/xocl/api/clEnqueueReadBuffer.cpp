@@ -29,8 +29,6 @@
 #include "detail/context.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile_v2.h"
-//#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -98,7 +96,6 @@ clEnqueueReadBuffer(cl_command_queue   command_queue,
   auto uevent = xocl::create_hard_event
     (command_queue,CL_COMMAND_READ_BUFFER,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action(uevent.get(),xocl::enqueue::action_read_buffer,buffer,offset,size,ptr);
-  //xocl::profile::set_event_action(uevent.get(),xocl::profile::action_read,buffer,offset,size,false);
   xocl::profile::set_event_action(uevent.get(), xocl::profile::action_read, buffer) ;
   xocl::profile::counters::set_event_action(uevent.get(), xocl::profile::counter_action_read, buffer) ;
 #ifndef _WIN32

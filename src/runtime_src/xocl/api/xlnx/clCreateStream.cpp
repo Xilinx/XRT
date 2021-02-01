@@ -20,8 +20,6 @@
 #include <CL/opencl.h>
 
 #include "plugin/xdp/profile_v2.h"
-//#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
 
 // Copyright 2018-2020 Xilinx, Inc. All rights reserved.
 

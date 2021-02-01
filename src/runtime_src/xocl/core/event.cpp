@@ -21,7 +21,6 @@
 #include "xrt/config.h"
 #include "xrt/util/task.h"
 
-//#include "xocl/api/plugin/xdp/profile.h"
 #include "xocl/api/plugin/xdp/profile_v2.h"
 
 #include <iostream>
@@ -82,7 +81,6 @@ event(command_queue* cq, context* ctx, cl_command_type cmd, cl_uint num_deps, co
     profile::log_dependency(get_uid(), xocl(dep)->get_uid()) ;
   }
   debug::add_dependencies(this,num_deps,deps);
-  //profile::log_dependencies(this, num_deps, deps);
 }
 
 event::
@@ -130,7 +128,6 @@ set_status(cl_int s)
   trigger_profile_action(m_status, "") ;
   trigger_profile_counter_action(m_status, "") ;
   trigger_lop_action(m_status) ;
-  //profile::log(this,m_status);
 
   if (complete) {
     // Run callbacks before notifying the event and before removing it from queue
@@ -165,7 +162,6 @@ queue(bool blocking_submit)
       trigger_profile_action(m_status, "") ;
       trigger_profile_counter_action(m_status, "") ;
       trigger_lop_action(m_status) ;
-      //profile::log(this,m_status);
       time_set(CL_QUEUED);
     }
   }
@@ -204,7 +200,6 @@ submit()
     trigger_profile_action(m_status, "") ;
     trigger_profile_counter_action(m_status, "") ;
     trigger_lop_action(m_status) ;
-    //profile::log(this,m_status);
     time_set(CL_SUBMITTED);
   }
 

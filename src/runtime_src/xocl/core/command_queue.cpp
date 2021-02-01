@@ -19,7 +19,6 @@
 #include "device.h"
 #include "event.h"
 
-//#include "xocl/api/plugin/xdp/profile.h"
 #include "xocl/api/plugin/xdp/profile_v2.h"
 
 #include <algorithm>
@@ -85,8 +84,6 @@ queue(event* ev)
     m_last_queued_event->chain(ev);
 
     xocl::profile::log_dependency(ev->get_uid(), m_last_queued_event->get_uid()) ;
-    //auto tmp_lval = static_cast<cl_event>(m_last_queued_event.get());
-    //xocl::profile::log_dependencies(ev, 1, &tmp_lval);
   }
 
   if (ooo) {
@@ -94,7 +91,6 @@ queue(event* ev)
       b->chain(ev);
       xocl::profile::log_dependency(ev->get_uid(), b->get_uid()) ;
     }
-    //xocl::profile::log_dependencies(ev, m_barriers.size(), reinterpret_cast<cl_event*>(m_barriers.data()) );
 
     if (ev->get_command_type()==CL_COMMAND_BARRIER)
       m_barriers.push_back(ev);

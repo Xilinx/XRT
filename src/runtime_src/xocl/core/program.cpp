@@ -21,7 +21,6 @@
 #include "platform.h" // for get_install_root
 #include "error.h"
 
-//#include "xocl/api/plugin/xdp/profile.h"
 #include "xocl/api/plugin/xdp/profile_v2.h"
 
 #include <boost/filesystem/operations.hpp>
@@ -49,8 +48,6 @@ program(context* ctx, const std::string& source)
 
   XOCL_DEBUG(std::cout,"xocl::program::program(",m_uid,")\n");
   m_context->add_program(this);
-  // Reset profiling flag
-  //xocl::profile::reset_device_profiling();
 }
 
 program::
@@ -76,7 +73,6 @@ program::
   try {
     // Before deleting program, do a final read of counters
     // and force flush of trace buffers
-    //xocl::profile::end_device_profiling();
     xocl::profile::mark_objects_released() ;
 
     for(auto d : get_device_range())
