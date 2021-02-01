@@ -661,7 +661,6 @@ static struct xocl_subdev_map subdev_map[] = {
 		.dev_name = XOCL_IORES2,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = RESNAME_MEMCALIB},
-			{.res_name = RESNAME_KDMA},
 			{.res_name = RESNAME_DDR4_RESET_GATE},
 			{NULL},
 		},
@@ -678,7 +677,6 @@ static struct xocl_subdev_map subdev_map[] = {
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = RESNAME_PCIEMON},
 			{.res_name = RESNAME_MEMCALIB},
-			{.res_name = RESNAME_KDMA},
 			{.res_name = RESNAME_DDR4_RESET_GATE},
 			{.res_name = RESNAME_ICAP_RESET},
 			{NULL},
