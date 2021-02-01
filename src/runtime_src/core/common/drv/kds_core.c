@@ -374,25 +374,29 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		return -EINVAL;
 	}
 
-	/* TODO: finish ERT abort process later */
-	if (!kds->ert_disable)
-		goto skip;
-
 	/* Before close, make sure no remain commands in CU's queue. */
 	outstanding = client->s_cnt[cu_idx] - client->c_cnt[cu_idx];
 	if (!outstanding)
 		goto skip;
 
-	kds_warn(client, "%d outstanding command on CU(%d)",
+	kds_warn(client, "%ld outstanding command(s) on CU(%d)",
 		 outstanding, cu_idx);
 
-	xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
+	if (!kds->ert_disable)
+		kds->ert->abort(kds->ert, client, cu_idx);
+	else
+		xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
+
 	/* sub-device that handle command should do abort with a timeout */
 	do {
 		msleep(500);
 		outstanding = client->s_cnt[cu_idx] - client->c_cnt[cu_idx];
 	} while(outstanding);
-	xrt_cu_abort_done(cu_mgmt->xcus[cu_idx], client);
+
+	if (!kds->ert_disable)
+		kds->ert->abort_done(kds->ert, client, cu_idx);
+	else
+		xrt_cu_abort_done(cu_mgmt->xcus[cu_idx], client);
 
 	/* No lock to protect bad_state.
 	 * If a new client doesn't get the updated status and send commands,
@@ -770,6 +774,24 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 	return -ENODEV;
 }
 
+static void ert_dummy_submit(struct kds_ert *ert, struct kds_command *xcmd)
+{
+	kds_err(xcmd->client, "ert submit op not implemented\n");
+	return;
+}
+
+static void ert_dummy_abort(struct kds_ert *ert, struct kds_client *client, int cu_idx)
+{
+	kds_err(client, "ert abort op not implemented\n");
+	return;
+}
+
+static void ert_dummy_abort_done(struct kds_ert *ert, struct kds_client *client, int cu_idx)
+{
+	kds_err(client, "ert abort_done op not implemented\n");
+	return;
+}
+
 int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 {
 	kds->ert = ert;
@@ -777,6 +799,16 @@ int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 	kds->ert_disable = false;
 	mutex_init(&ert->lock);
 	ert->configured = 1;
+
+	if (!ert->submit)
+		ert->submit = ert_dummy_submit;
+
+	if (!ert->abort)
+		ert->abort = ert_dummy_abort;
+
+	if (!ert->abort_done)
+		ert->abort_done = ert_dummy_abort_done;
+
 	return 0;
 }
 

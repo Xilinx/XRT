@@ -67,6 +67,10 @@ struct kds_command {
 	u32			 num_mask;
 	u32			 payload_type;
 	u64			 start;
+
+	unsigned int		 tick;
+	u32			 ttl;
+
 	struct kds_cmd_ops	 cb;
 	/* execbuf is used to update the header
 	 * of execbuf when notifying host

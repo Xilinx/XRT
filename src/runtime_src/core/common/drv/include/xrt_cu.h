@@ -46,7 +46,7 @@
 	dev_dbg(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
 
 /* XRT CU timer macros */
-#define CU_TIMER		(HZ / 10) /* in jiffies */
+#define CU_TIMER		(HZ / 2) /* in jiffies */
 #define CU_SEC2TIMER(t)		((t) * HZ / CU_TIMER)
 #define CU_EXEC_DEFAULT_TTL	5UL	/* in seconds, any idea on proper timeout? */
 #define CU_MAX_TTL		0xFFFFFFFF /* disable timer */
@@ -258,8 +258,7 @@ struct xrt_cu {
 	struct list_head	  events;
 
 	struct timer_list	  timer;
-	u32			  ttl;
-	unsigned long		  tick;
+	atomic_t		  tick;
 
 	/**
 	 * @funcs:
@@ -373,8 +372,8 @@ u32 round_up_to_next_power2(u32 size)
  * 3. Check if submitted command is completed or not
  */
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
-int xrt_cu_abort(struct xrt_cu *xcu, struct kds_client *client);
-int xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client);
+void xrt_cu_abort(struct xrt_cu *xcu, struct kds_client *client);
+void xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client);
 int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr);
 int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr, u32 num_slots);
 int xrt_is_fa(struct xrt_cu *xcu, u32 *size);
