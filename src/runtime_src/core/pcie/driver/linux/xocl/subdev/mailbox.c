@@ -565,7 +565,7 @@ static void mailbox_dump_debug(struct mailbox *mbx)
 
 static void mailbox_dbg_collect(struct mailbox *mbx, int rec_type, int checkpoint)
 {
-	struct mailbox_dbg_rec *rec;
+	struct mailbox_dbg_rec *rec = NULL;
 
 	switch (rec_type) {
 	case MAILBOX_INTR_REC:
@@ -583,6 +583,9 @@ static void mailbox_dbg_collect(struct mailbox *mbx, int rec_type, int checkpoin
 		mbx->mbx_cur_rcv_rec++;
 		mbx->mbx_cur_rcv_rec %= MAX_RECS;
 		break;
+	default:
+		MBX_ERR(mbx, "unknown record type: %d", rec_type);
+		return;
 	}
 
 	rec->mir_ts = local_clock();

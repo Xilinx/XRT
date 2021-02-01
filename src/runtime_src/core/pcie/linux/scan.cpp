@@ -1080,7 +1080,7 @@ get_axlf_section(const std::string& filename, int kind, std::shared_ptr<char>& b
   }
   // Reread axlf from dsabin file, including all sections headers.
   // Sanity check for number of sections coming from user input file
-  if (a.m_header.m_numSections > 10000)
+  if (a.m_header.m_numSections > XCLBIN_MAX_NUM_SECTION)
     return -EINVAL;
 
   sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);
