@@ -69,7 +69,6 @@ struct kds_command {
 	u64			 start;
 
 	unsigned int		 tick;
-	u32			 ttl;
 
 	struct kds_cmd_ops	 cb;
 	/* execbuf is used to update the header

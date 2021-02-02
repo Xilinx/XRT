@@ -45,10 +45,9 @@
 	dev_dbg(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
 
 /* XRT CU timer macros */
-#define CU_TIMER		(HZ / 2) /* in jiffies */
-#define CU_SEC2TIMER(t)		((t) * HZ / CU_TIMER)
-#define CU_EXEC_DEFAULT_TTL	5UL	/* in seconds, any idea on proper timeout? */
-#define CU_MAX_TTL		0xFFFFFFFF /* disable timer */
+#define CU_TICKS_PER_SEC	2
+#define CU_TIMER		(HZ / CU_TICKS_PER_SEC) /* in jiffies */
+#define CU_EXEC_DEFAULT_TTL	(5UL * CU_TICKS_PER_SEC)
 
 /* HLS CU macros */
 #define CU_AP_START	(0x1 << 0)
@@ -372,11 +371,10 @@ u32 round_up_to_next_power2(u32 size)
  */
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
 void xrt_cu_abort(struct xrt_cu *xcu, struct kds_client *client);
-void xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client);
+bool xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client);
 int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr);
 int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr, u32 num_slots);
 int xrt_is_fa(struct xrt_cu *xcu, u32 *size);
-bool xrt_cu_is_bad_state(struct xrt_cu *xcu);
 
 int  xrt_cu_init(struct xrt_cu *xcu);
 void xrt_cu_fini(struct xrt_cu *xcu);

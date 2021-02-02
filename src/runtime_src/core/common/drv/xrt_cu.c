@@ -128,7 +128,7 @@ static inline void __process_sq(struct xrt_cu *xcu)
 	ev_client = first_event_client_or_null(xcu);
 	list_for_each_entry_safe(xcmd, next, &xcu->sq, list) {
 		if (xcu->done_cnt) {
-			/* Done commands have priority */
+			/* Done command has priority */
 			xcmd->status = KDS_COMPLETED;
 			--xcu->done_cnt;
 		} else if (unlikely(ev_client)) {
@@ -140,12 +140,11 @@ static inline void __process_sq(struct xrt_cu *xcu)
 			/* Record CU tick to start timeout counting */
 			if (!xcmd->tick) {
 				xcmd->tick = tick;
-				xcmd->ttl = CU_SEC2TIMER(CU_EXEC_DEFAULT_TTL);
 				continue;
 			}
 
 			/* If xcmd haven't timeout */
-			if (tick - xcmd->tick < xcmd->ttl)
+			if (tick - xcmd->tick < CU_EXEC_DEFAULT_TTL)
 				continue;
 
 			xcmd->status = KDS_TIMEOUT;
@@ -416,7 +415,7 @@ done:
  * @client: The client tries to abort commands
  *
  */
-void xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client)
+bool xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client)
 {
 	struct kds_client *curr;
 	struct kds_client *next;
@@ -435,6 +434,8 @@ void xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client)
 
 done:
 	mutex_unlock(&xcu->ev_lock);
+
+	return xcu->bad_state;
 }
 
 int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
@@ -535,11 +536,6 @@ int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr,
 			 cu_fa->num_slots : cu_fa->max_credits;
 
 	return 0;
-}
-
-bool xrt_cu_is_bad_state(struct xrt_cu *xcu)
-{
-	return xcu->bad_state;
 }
 
 int xrt_cu_init(struct xrt_cu *xcu)

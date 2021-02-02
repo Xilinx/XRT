@@ -217,6 +217,12 @@ out:
 	mutex_unlock(&cu_mgmt->lock);
 	client->s_cnt[index]++;
 	xcmd->cu_idx = index;
+	/* Before it go, make sure selected CU is still opening. */
+	if (unlikely(!test_bit(index, client->cu_bitmap))) {
+		client->s_cnt[index]--;
+		index = -EAGAIN;
+	}
+
 	return index;
 }
 
@@ -225,7 +231,9 @@ kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
 	int cu_idx;
 
-	cu_idx = acquire_cu_idx(cu_mgmt, xcmd);
+	do {
+		cu_idx = acquire_cu_idx(cu_mgmt, xcmd);
+	} while(cu_idx == -EAGAIN);
 	if (cu_idx < 0)
 		return cu_idx;
 
@@ -269,7 +277,9 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 	switch (xcmd->opcode) {
 	case OP_START:
 		/* KDS should select a CU and set it in cu_mask */
-		cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
+		do {
+			cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
+		} while(cu_idx == -EAGAIN);
 		if (cu_idx < 0)
 			return cu_idx;
 		break;
@@ -392,13 +402,10 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		outstanding = client->s_cnt[cu_idx] - client->c_cnt[cu_idx];
 	} while(outstanding);
 
-	if (!kds->ert_disable) {
-		kds->ert->abort_done(kds->ert, client, cu_idx);
-		bad_state = kds->ert->is_bad_state(kds->ert);
-	} else {
-		xrt_cu_abort_done(cu_mgmt->xcus[cu_idx], client);
-		bad_state = xrt_cu_is_bad_state(cu_mgmt->xcus[cu_idx]);
-	}
+	if (!kds->ert_disable)
+		bad_state = kds->ert->abort_done(kds->ert, client, cu_idx);
+	else
+		bad_state = xrt_cu_abort_done(cu_mgmt->xcus[cu_idx], client);
 
 	if (bad_state) {
 		kds->bad_state = 1;
@@ -791,11 +798,6 @@ static void ert_dummy_abort_done(struct kds_ert *ert, struct kds_client *client,
 	return;
 }
 
-static bool ert_dummy_is_bad_state(struct kds_ert *ert)
-{
-	return true;
-}
-
 int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 {
 	kds->ert = ert;
@@ -812,9 +814,6 @@ int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 
 	if (!ert->abort_done)
 		ert->abort_done = ert_dummy_abort_done;
-
-	if (!ert->is_bad_state)
-		ert->is_bad_state = ert_dummy_is_bad_state;
 
 	return 0;
 }
