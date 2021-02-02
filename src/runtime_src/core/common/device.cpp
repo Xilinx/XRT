@@ -93,7 +93,7 @@ get_xclbin_uuid() const
   }
 
   // Emulation mode likely, just return m_xclbin_uuid which reflects
-  // the uuid of the xcbin loaded by this process.
+  // the uuid of the xclbin loaded by this process.
   return m_xclbin_uuid;
 }
 
