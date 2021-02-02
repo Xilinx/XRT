@@ -149,14 +149,6 @@ get_data_transfer_trace()
   return value;
 }
 
-inline std::string
-get_device_trace()
-{
-  static std::string value =
-    detail::get_string_value("Debug.device_trace", "off");
-  return value;
-}
-
 inline bool
 get_power_profile()
 {

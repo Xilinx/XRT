@@ -232,29 +232,28 @@ namespace xocl {
       //  but this provides us a common place where all OpenCL applications
       //  can safely load them.
       static bool s_load_detailed_profile = false ;
-      if (!s_load_detailed_profile)
-      {
-	s_load_detailed_profile = true ;
-	if (xrt_core::config::get_profile() ||
-	    xrt_core::config::get_opencl_summary()) {
+      if (!s_load_detailed_profile) {
+        s_load_detailed_profile = true ;
+        if (xrt_core::config::get_profile() ||
+            xrt_core::config::get_opencl_summary()) {
           if(xrt_core::config::get_profile()) {
             xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-              std::string("\"profile\" configuration in xrt.ini will be deprecated in next release. Please use \"opencl_summary=true\" to enable OpenCl profiling and \"opencl_device_counter=true\" for device counter data in OpenCl profile summary."));
+                std::string("\"profile\" configuration in xrt.ini will be deprecated in next release. Please use \"opencl_summary=true\" to enable OpenCl profiling and \"opencl_device_counter=true\" for device counter data in OpenCl profile summary."));
           }
-	  load_xdp_opencl_counters() ;
+          load_xdp_opencl_counters() ;
         }
-	if (xrt_core::config::get_timeline_trace() ||
-	    xrt_core::config::get_opencl_trace()) {
+        if (xrt_core::config::get_timeline_trace() ||
+            xrt_core::config::get_opencl_trace()) {
           if(xrt_core::config::get_timeline_trace()) {
             xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-              std::string("\"timeline_trace\" configuration in xrt.ini will be deprecated in next release. Please use \"opencl_trace=true\" to enable OpenCl Trace."));
+                std::string("\"timeline_trace\" configuration in xrt.ini will be deprecated in next release. Please use \"opencl_trace=true\" to enable OpenCl Trace."));
           }
-	  load_xdp_opencl_trace() ;
+          load_xdp_opencl_trace() ;
         }
-	if (xrt_core::config::get_data_transfer_trace() != "off" ||
-            xrt_core::config::get_opencl_device_counter() ||
-	    xrt_core::config::get_device_trace() != "off")
-	  load_xdp_device_offload() ;
+        if (xrt_core::config::get_data_transfer_trace() != "off" ||
+            xrt_core::config::get_opencl_device_counter()) {
+          load_xdp_device_offload() ;
+        }
       }
 
       // Log the trace for this function

@@ -210,8 +210,6 @@ namespace xdp {
     // Collect all the profiling options from xrt.ini
     std::string data_transfer_trace = 
       xrt_core::config::get_data_transfer_trace() ;
-    if (data_transfer_trace == "off")
-      data_transfer_trace = xrt_core::config::get_device_trace() ;
     std::string stall_trace = xrt_core::config::get_stall_trace() ;
 
     // Set up the hardware trace option

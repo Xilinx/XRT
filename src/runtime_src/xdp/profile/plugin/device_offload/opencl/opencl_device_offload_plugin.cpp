@@ -204,10 +204,9 @@ namespace xdp {
 
     uint64_t deviceId = 0;
     if((getFlowMode() == HW || getFlowMode() == HW_EMU) && 
-       (xrt_core::config::get_timeline_trace() || 
-	xrt_core::config::get_data_transfer_trace() != "off" ||
-	xrt_core::config::get_stall_trace()  != "off" ||
-	xrt_core::config::get_device_trace() != "off")) {
+          (xrt_core::config::get_timeline_trace() || 
+           xrt_core::config::get_data_transfer_trace() != "off" ||
+           xrt_core::config::get_stall_trace()  != "off")) {
       try {
         deviceId = db->getDeviceId(path) ;
       }
@@ -250,8 +249,7 @@ namespace xdp {
 
     if(getFlowMode() == HW && (xrt_core::config::get_timeline_trace() || 
           xrt_core::config::get_data_transfer_trace() != "off" ||
-          xrt_core::config::get_stall_trace()  != "off" ||
-          xrt_core::config::get_device_trace() != "off")) {
+          xrt_core::config::get_stall_trace()  != "off")) {
       configureTraceIP(devInterface);
       devInterface->clockTraining() ;
     }

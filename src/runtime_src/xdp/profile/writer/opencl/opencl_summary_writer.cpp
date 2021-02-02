@@ -119,12 +119,6 @@ namespace xdp {
     }
     {
       std::stringstream setting ;
-      setting << "XRT_INI_SETTING,device_trace,"
-	      << xrt_core::config::get_device_trace() ;
-      iniSettings.push_back(setting.str()) ;
-    }
-    {
-      std::stringstream setting ;
       setting << "XRT_INI_SETTING,data_transfer_trace,"
 	      << xrt_core::config::get_data_transfer_trace() ;
       iniSettings.push_back(setting.str()) ;
