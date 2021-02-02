@@ -4976,12 +4976,11 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 out:
 	tembuf[sz++] = 0;
 	if (sz >= (ssize_t)PAGE_SIZE) {
-		sz = PAGE_SIZE-50; //save truncated CU status
+		sz = PAGE_SIZE - 30; /* save truncated CU status */
 		truncated = true;
 	}
 	if (truncated) {
 		sz += sprintf(tembuf+sz, "\n.. TRUNCATED ..\n");
-		tembuf[sz++] = 0;
 		tembuf[sz++] = 0;
 	}
 	tembuf[PAGE_SIZE-1] = 0;
