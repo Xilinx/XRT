@@ -58,7 +58,11 @@ int zocl_iommu_map_bo(struct drm_device *dev, struct drm_zocl_bo *bo)
 	ssize_t err;
 
 	/* Create scatter gather list from user's pages */
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(5, 9, 0)
 	bo->sgt = drm_prime_pages_to_sg(bo->pages, bo_size >> PAGE_SHIFT);
+#else
+	bo->sgt = drm_prime_pages_to_sg(dev, bo->pages, bo_size >> PAGE_SHIFT);
+#endif
 	if (IS_ERR(bo->sgt)) {
 		bo->uaddr = 0;
 		return PTR_ERR(bo->sgt);
@@ -254,7 +258,11 @@ zocl_create_svm_bo(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 
 	bo_size = bo->gem_base.size;
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(5, 9, 0)
 	bo->sgt = drm_prime_pages_to_sg(bo->pages, bo_size >> PAGE_SHIFT);
+#else
+	bo->sgt = drm_prime_pages_to_sg(dev, bo->pages, bo_size >> PAGE_SHIFT);
+#endif
 	if (IS_ERR(bo->sgt))
 		goto out_free;
 
@@ -428,7 +436,11 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		goto out0;
 	}
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(5, 9, 0)
 	bo->cma_base.sgt = drm_prime_pages_to_sg(pages, page_count);
+#else
+	bo->cma_base.sgt = drm_prime_pages_to_sg(dev, pages, page_count);
+#endif
 	if (IS_ERR(bo->cma_base.sgt)) {
 		ret = PTR_ERR(bo->cma_base.sgt);
 		goto out0;
