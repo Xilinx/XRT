@@ -906,6 +906,7 @@ DeviceIntf::~DeviceIntf()
     if (!addr)
       return nullptr;
     mDevice->sync(bufHandle, bytes, offset, xdp::Device::direction::DEVICE2HOST);
+    mDevice->unmap(bufHandle);
     return static_cast<char*>(addr) + offset;
   }
 
