@@ -77,6 +77,7 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t 
 
 bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
+    std::bitset<MAX_XILINX_KERNELS> cu_mask_32bits(0xFFFFFFFF);
     if (hwcfg == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "hwcfg is NULL\n");
         return false;
@@ -266,13 +267,13 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             dev_tmp1.kernels[d1].cu_index_ert = cu_index_ert;
             //dev_tmp1.kernels[d1].cu_mask0 = cu_mask & 0xFFFFFFFF;
             //dev_tmp1.kernels[d1].cu_mask1 = ((uint64_t)(cu_mask >> 32)) & 0xFFFFFFFF;
-            dev_tmp1.kernels[d1].cu_mask0 = cu_mask.to_ulong();
+            dev_tmp1.kernels[d1].cu_mask0 = (cu_mask & cu_mask_32bits).to_ulong();
             cu_mask = cu_mask >> 32;
-            dev_tmp1.kernels[d1].cu_mask1 = cu_mask.to_ulong();
+            dev_tmp1.kernels[d1].cu_mask1 = (cu_mask & cu_mask_32bits).to_ulong();
             cu_mask = cu_mask >> 32;
-            dev_tmp1.kernels[d1].cu_mask2 = cu_mask.to_ulong();
+            dev_tmp1.kernels[d1].cu_mask2 = (cu_mask & cu_mask_32bits).to_ulong();
             cu_mask = cu_mask >> 32;
-            dev_tmp1.kernels[d1].cu_mask3 = cu_mask.to_ulong();
+            dev_tmp1.kernels[d1].cu_mask3 = (cu_mask & cu_mask_32bits).to_ulong();
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask0: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask0);
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask1: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask1);
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask2: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask2);
@@ -284,13 +285,13 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         std::bitset<MAX_XILINX_KERNELS> cu_mask_tmp;
         for (uint32_t d1 = info.number_of_hardware_kernels; d1 < info.number_of_kernels; d1++) {
             cu_mask_tmp = cu_mask;
-            dev_tmp1.kernels[d1].cu_mask0 = cu_mask_tmp.to_ulong();
+            dev_tmp1.kernels[d1].cu_mask0 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
             cu_mask_tmp = cu_mask_tmp >> 32;
-            dev_tmp1.kernels[d1].cu_mask1 = cu_mask_tmp.to_ulong();
+            dev_tmp1.kernels[d1].cu_mask1 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
             cu_mask_tmp = cu_mask_tmp >> 32;
-            dev_tmp1.kernels[d1].cu_mask2 = cu_mask_tmp.to_ulong();
+            dev_tmp1.kernels[d1].cu_mask2 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
             cu_mask_tmp = cu_mask_tmp >> 32;
-            dev_tmp1.kernels[d1].cu_mask3 = cu_mask_tmp.to_ulong();
+            dev_tmp1.kernels[d1].cu_mask3 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
 
             cu_mask = cu_mask << 1;
         }
