@@ -3,6 +3,9 @@
 Xilinx OpenCL extension
 ***********************
 
+Please follow the general OpenCL guidelines to compile host applications that uses XRT OpenCL API with Xilinx OpenCL extensions. 
+Xilinx OpenCL extension doesn't require additional compiler features. Normally C99 or C++11 would be good.
+
 All the OpenCL extensions are described in the file ``src/include/1_2/CL/cl_ext_xilinx.h``
 
 

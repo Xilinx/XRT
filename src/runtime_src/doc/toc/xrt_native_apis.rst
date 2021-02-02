@@ -5,7 +5,9 @@ XRT Native APIs
 
 From 2020.2 release XRT provides a new XRT API set in C, C++, and Python flavor. This document introduces the usability of C and C++ APIs.
 
-To use the native XRT APIs, the host application must link with the **xrt_coreutil** library.
+To use the native XRT APIs, the host application must link with the **xrt_coreutil** library. 
+Compiling host code with XRT native C++ API requires C++ standard with -std=c++14 or newer. 
+On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++14 is introduced to GCC from 4.9.0.
 
 Example g++ command
 
