@@ -587,7 +587,7 @@ kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
 {
   //please append the new supported versions
   const std::vector<std::string> ubuntu_kernel_versions = { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0" };
-  const std::vector<std::string> centos_rh_kernel_versions = { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1160.11.1", "3.10.0-1062", "3.10.0-1127", "4.9.184-35", "4.18.0-147", "4.18.0-193" };
+  const std::vector<std::string> centos_rh_kernel_versions = { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1160.11.1", "3.10.0-1062", "3.10.0-1127", "4.9.184", "4.9.184-35", "4.18.0-147", "4.18.0-193" };
 
   boost::property_tree::ptree _pt_host;
   std::make_shared<ReportHost>()->getPropertyTreeInternal(_dev.get(), _pt_host);

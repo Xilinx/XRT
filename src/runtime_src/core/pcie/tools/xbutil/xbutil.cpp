@@ -109,7 +109,7 @@ is_supported_kernel_version(std::ostream &ostr)
     std::vector<std::string> ubuntu_kernel_versions =
         { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0", "5.4.0" };
     std::vector<std::string> centos_rh_kernel_versions =
-        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1160.11.1", "3.10.0-1062", "3.10.0-1127", "4.9.184-35", "4.18.0-147", "4.18.0-193", "4.18.0-240" };
+        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1160.11.1", "3.10.0-1062", "3.10.0-1127", "4.9.184", "4.9.184-35", "4.18.0-147", "4.18.0-193", "4.18.0-240" };
     const std::string os = sensor_tree::get<std::string>("system.linux", "N/A");
 
     if(os.find("Ubuntu") != std::string::npos)
@@ -1792,11 +1792,6 @@ int xcldev::xclReset(int argc, char *argv[])
             int ret = str2index(optarg, index);
             if (ret != 0)
                 return ret;
-            if (index >= pcidev::get_dev_total()) {
-                std::cout << "ERROR: index " << index << " out of range"
-                    << std::endl;
-                return -EINVAL;
-            }
             break;
         }
         default:
@@ -1806,6 +1801,11 @@ int xcldev::xclReset(int argc, char *argv[])
     }
     if (optind != argc) {
         std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    if (index >= pcidev::get_dev_total()) {
+        std::cout << "ERROR: index " << index << " out of range" << std::endl;
         return -EINVAL;
     }
 
@@ -2504,7 +2504,7 @@ int xcldev::xclScheduler(int argc, char *argv[])
         if (test.compare("xcl_iops") == 0) {
             test = "xcl_iops_test.exe";
         } else if (test.compare("xrt_iops") == 0) {
-            test = "xcl_iops_test.exe";
+            test = "xrt_iops_test.exe";
         } else {
             std::cout << "ERROR:Unknown test" << std::endl;
             return -EINVAL;

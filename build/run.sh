@@ -115,6 +115,7 @@ if [[ "X$xrt" != "X" && -d "$xrt" ]] ; then
  export XILINX_XRT=${XILINX_XRT:=$xrt}
  export LD_LIBRARY_PATH=$XILINX_XRT/lib
  export PATH=$XILINX_XRT/bin:${PATH}
+ export OCL_ICD_VENDORS=$XILINX_XRT/lib/libxilinxopencl.so
 fi
 
 if [[ "X$vitis" != "X" && -d "$vitis" ]] ; then
@@ -138,6 +139,7 @@ echo "XILINX_XRT=$XILINX_XRT"
 echo "XILINX_VITIS=$XILINX_VITIS"
 echo "XILINX_VIVADO=$XILINX_VIVADO"
 echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+echo "OCL_ICD_VENDORS=$OCL_ICD_VENDORS"
 echo "PATH=$PATH"
 
 $cmd

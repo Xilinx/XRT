@@ -314,6 +314,7 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
     mDev = dev;
 
     std::string err;
+    flash_base = 0;
     try {
         flash_base = xrt_core::device_query<xrt_core::query::flash_bar_offset>(mDev.get());
     }

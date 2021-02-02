@@ -24,6 +24,7 @@
 #include "core/include/xclfeatures.h"
 
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 #include <type_traits>
 #include <string>
 #include <iostream>
@@ -74,21 +75,6 @@ struct ready
   }
 };
 
-struct xmc_sc_presence
-{
-  using result_type = bool;
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return true;
-  }
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return true;
-  }
-};
 
 struct firewall
 {
@@ -261,32 +247,6 @@ struct board
     throw std::runtime_error("query request ("
                              + std::to_string(static_cast<qtype>(key))
                              + ") not supported for mgmtpf on windows");
-  }
-};
-
-struct xmc
-{
-  using result_type = uint64_t;
-
-  static result_type
-  get(const xrt_core::device* dev, key_type key)
-  {
-    if(key == query::key_type::xmc_status)
-      return query::xmc_status::result_type(1);
-    throw std::runtime_error
-      ("Invalid query request (" + std::to_string(static_cast<qtype>(key)) + ")");
-  }
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return get(device,key);
-  }
-
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return get(device,key);
   }
 };
 
@@ -617,6 +577,51 @@ struct info
   static result_type
   mgmt(const xrt_core::device* device, key_type key)
   {
+    auto init_pcie_info = [](const xrt_core::device* dev) {
+      XCLMGMT_IOC_DEVICE_PCI_INFO info = { 0 };
+      mgmtpf::get_pcie_info(dev->get_mgmt_handle(), &info);
+      return info;
+    };
+
+    static std::map<const xrt_core::device*, XCLMGMT_IOC_DEVICE_PCI_INFO> info_map;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = info_map.find(device);
+    if (it == info_map.end()) {
+      auto ret = info_map.emplace(device,init_pcie_info(device));
+      it = ret.first;
+    }
+
+    auto& info = (*it).second;
+
+    switch (key) {
+    case key_type::pcie_vendor:
+      return static_cast<query::pcie_vendor::result_type>(info.pcie_info.vendor);
+    case key_type::pcie_device:
+      return static_cast<query::pcie_device::result_type>(info.pcie_info.device);
+    case key_type::pcie_subsystem_vendor:
+      return static_cast<query::pcie_subsystem_vendor::result_type>(info.pcie_info.subsystem_vendor);
+    case key_type::pcie_subsystem_id:
+      return static_cast<query::pcie_subsystem_id::result_type>(info.pcie_info.subsystem_device);
+    default:
+      throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
+    }
+  }
+};
+
+struct xmc
+{
+  using result_type = boost::any;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    throw std::runtime_error("xmc register base is not implemented on user windows");
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
     auto init_device_info = [](const xrt_core::device* dev) {
       XCLMGMT_IOC_DEVICE_INFO info = { 0 };
       mgmtpf::get_device_info(dev->get_mgmt_handle(), &info);
@@ -635,16 +640,10 @@ struct info
     auto& info = (*it).second;
 
     switch (key) {
-    case key_type::pcie_vendor:
-      return static_cast<query::pcie_vendor::result_type>(info.pcie_info.vendor);
-    case key_type::pcie_device:
-      return static_cast<query::pcie_device::result_type>(info.pcie_info.device);
-    case key_type::pcie_subsystem_vendor:
-      return static_cast<query::pcie_subsystem_vendor::result_type>(info.pcie_info.subsystem_vendor);
-    case key_type::pcie_subsystem_id:
-      return static_cast<query::pcie_subsystem_id::result_type>(info.pcie_info.subsystem_device);
     case key_type::xmc_reg_base:
       return info.xmc_offset;
+	  case key_type::xmc_status:
+	    return query::xmc_status::result_type(1); //hardcoded
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -684,7 +683,20 @@ struct devinfo
     case key_type::board_name:
       return static_cast<query::board_name::result_type>(info.ShellName);
     case key_type::is_mfg:
-      return (static_cast<query::board_name::result_type>(info.ShellName).find("GOLDEN") != std::string::npos) ? true : false;
+      {
+        auto shell = static_cast<query::board_name::result_type>(info.ShellName);
+        boost::to_upper(shell);
+        return (shell.find("GOLDEN") != std::string::npos) ? true : false;
+      }
+    case key_type::xmc_sc_presence:
+      {
+        //xmc is not present in golden image
+        //inverse logic of is_mfg
+        auto shell = static_cast<query::board_name::result_type>(info.ShellName);
+        boost::to_upper(shell);
+        //sample strings: xilinx_u250_GOLDEN, xilinx_u250_gen3x16_base, xilinx_u250_xdma_201830_3
+        return (shell.find("GOLDEN") != std::string::npos) ? false : true;
+      }
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -1030,7 +1042,7 @@ initialize_query_table()
   emplace_function0_getter<query::pcie_subsystem_id,         info>();
   emplace_function0_getter<query::interface_uuids,           uuid>();
   emplace_function0_getter<query::logic_uuids,               uuid>();
-  emplace_function0_getter<query::xmc_reg_base,              info>();
+  emplace_function0_getter<query::xmc_reg_base,              xmc>();
   emplace_function0_getter<query::pcie_bdf,                  bdf>();
   emplace_function0_getter<query::rom_vbnv,                  rom>();
   emplace_function0_getter<query::rom_ddr_bank_size_gb,      rom>();
@@ -1106,7 +1118,7 @@ initialize_query_table()
   emplace_function0_getter<query::is_ready,                  ready>();
   emplace_function0_getter<query::board_name,                devinfo>();
   emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
-  emplace_function0_getter<query::xmc_sc_presence,           xmc_sc_presence>();
+  emplace_function0_getter<query::xmc_sc_presence,           devinfo>();
   emplace_function0_getput<query::data_retention,            data_retention>();
   emplace_function0_getter<query::is_recovery,               recovery>();
 }

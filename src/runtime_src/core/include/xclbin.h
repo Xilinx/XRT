@@ -231,6 +231,7 @@ extern "C" {
         uint32_t m_numSections;             /* Number of section headers */
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct axlf_header) == 152, "axlf_header structure no longer is 152 bytes in size");
+    #define XCLBIN_MAX_NUM_SECTION    0x10000
 
     struct axlf {
         char m_magic[8];                            /* Should be "xclbin2\0"  */

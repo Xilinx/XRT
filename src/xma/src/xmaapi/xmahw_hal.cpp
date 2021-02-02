@@ -77,7 +77,6 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t 
 
 bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
-    XmaXclbinInfo info;
     if (hwcfg == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "hwcfg is NULL\n");
         return false;
@@ -90,6 +89,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
 
     /* Download the requested image to the associated device */
     for (int32_t i = 0; i < num_parms; i++) {
+        XmaXclbinInfo info;
         int32_t dev_index = devXclbins[i].device_id;
         if (dev_index >= hwcfg->num_devices || dev_index < 0) {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Illegal dev_index for xclbin to load into. dev_index = %d\n",
