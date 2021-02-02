@@ -792,10 +792,10 @@ static void ert_dummy_abort(struct kds_ert *ert, struct kds_client *client, int 
 	return;
 }
 
-static void ert_dummy_abort_done(struct kds_ert *ert, struct kds_client *client, int cu_idx)
+static bool ert_dummy_abort_done(struct kds_ert *ert, struct kds_client *client, int cu_idx)
 {
 	kds_err(client, "ert abort_done op not implemented\n");
-	return;
+	return false;
 }
 
 int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
