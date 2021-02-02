@@ -15,7 +15,6 @@
 #include <linux/vmalloc.h>
 #include <linux/device.h>
 #include <linux/delay.h>
-//#include <linux/cache.h>
 #include "kds_core.h"
 
 /* for sysfs */
@@ -218,7 +217,6 @@ out:
 	mutex_unlock(&cu_mgmt->lock);
 	client->s_cnt[index]++;
 	xcmd->cu_idx = index;
-	//printk("minm cu(%d) s_cnt %ld\n", xcmd->cu_idx, client->s_cnt[xcmd->cu_idx]);
 	return index;
 }
 
@@ -363,6 +361,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	int cu_idx = info->cu_idx;
 	unsigned long outstanding;
+	bool bad_state = false;
 
 	if (cu_idx >= cu_mgmt->num_cus) {
 		kds_err(client, "CU(%d) not found", cu_idx);
@@ -393,18 +392,18 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		outstanding = client->s_cnt[cu_idx] - client->c_cnt[cu_idx];
 	} while(outstanding);
 
-	if (!kds->ert_disable)
+	if (!kds->ert_disable) {
 		kds->ert->abort_done(kds->ert, client, cu_idx);
-	else
+		bad_state = kds->ert->is_bad_state(kds->ert);
+	} else {
 		xrt_cu_abort_done(cu_mgmt->xcus[cu_idx], client);
+		bad_state = xrt_cu_is_bad_state(cu_mgmt->xcus[cu_idx]);
+	}
 
-	/* No lock to protect bad_state.
-	 * If a new client doesn't get the updated status and send commands,
-	 * those commands would failed with TIMEOUT state.
-	 */
-	kds->bad_state = 1;
-	xrt_cu_set_bad_state(cu_mgmt->xcus[cu_idx]);
-	kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
+	if (bad_state) {
+		kds->bad_state = 1;
+		kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
+	}
 
 skip:
 	/* cu_mgmt->cu_refs is the critical section of multiple clients */
@@ -792,6 +791,11 @@ static void ert_dummy_abort_done(struct kds_ert *ert, struct kds_client *client,
 	return;
 }
 
+static bool ert_dummy_is_bad_state(struct kds_ert *ert)
+{
+	return true;
+}
+
 int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 {
 	kds->ert = ert;
@@ -808,6 +812,9 @@ int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 
 	if (!ert->abort_done)
 		ert->abort_done = ert_dummy_abort_done;
+
+	if (!ert->is_bad_state)
+		ert->is_bad_state = ert_dummy_is_bad_state;
 
 	return 0;
 }

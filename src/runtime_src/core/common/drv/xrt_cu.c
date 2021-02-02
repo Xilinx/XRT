@@ -149,6 +149,8 @@ static inline void __process_sq(struct xrt_cu *xcu)
 				continue;
 
 			xcmd->status = KDS_TIMEOUT;
+			/* Mark this CU as bad state */
+			xcu->bad_state = true;
 		} else
 			break;
 
@@ -198,7 +200,7 @@ static inline int process_rq(struct xrt_cu *xcu)
 	xcmd = list_first_entry(&xcu->rq, struct kds_command, list);
 
 	ev_client = first_event_client_or_null(xcu);
-	if (ev_client && (ev_client == xcmd->client)) {
+	if (unlikely(xcu->bad_state || (ev_client == xcmd->client))) {
 		xcmd->status = KDS_ABORT;
 		dst_q = &xcu->cq;
 		dst_len = &xcu->num_cq;
@@ -535,9 +537,9 @@ int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr,
 	return 0;
 }
 
-void xrt_cu_set_bad_state(struct xrt_cu *xcu)
+bool xrt_cu_is_bad_state(struct xrt_cu *xcu)
 {
-	xcu->bad_state = 1;
+	return xcu->bad_state;
 }
 
 int xrt_cu_init(struct xrt_cu *xcu)
