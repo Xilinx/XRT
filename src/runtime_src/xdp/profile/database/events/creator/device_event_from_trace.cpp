@@ -52,6 +52,8 @@ namespace xdp {
     }
 
     uint64_t timestamp = 0;
+    double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
+
     for(unsigned int i=0; i < traceVector.mLength; i++) {
       auto& trace = traceVector.mArray[i];
       
@@ -206,6 +208,7 @@ namespace xdp {
               db->getDynamicInfo().addEvent(memEvent);
               db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
               matchingStart = memEvent;
+              hostTimestamp += halfCycleTimeInMs;
             }
             // add end event
             memEvent = new DeviceMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_READ, deviceId, s, cuId);
@@ -243,6 +246,7 @@ namespace xdp {
               db->getDynamicInfo().addEvent(memEvent);
               db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
               matchingStart = memEvent;
+              hostTimestamp += halfCycleTimeInMs;
             }
             // add end event
             memEvent = new DeviceMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_WRITE, deviceId, s, cuId);
@@ -297,6 +301,7 @@ namespace xdp {
             db->getDynamicInfo().addEvent(strmEvent);
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, strmEvent);
             matchingStart = strmEvent;
+            hostTimestamp += halfCycleTimeInMs;
           }
           // add end event
           strmEvent = new DeviceStreamAccess(matchingStart->getEventId(), hostTimestamp, streamEventType, deviceId, s, cuId);
