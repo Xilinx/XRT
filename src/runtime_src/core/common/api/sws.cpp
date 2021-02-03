@@ -91,6 +91,12 @@ const value_type AP_CONTINUE = 0x10;
 static bool cu_trace_enabled = false;
 
 ////////////////////////////////////////////////////////////////
+// Command completion for unmanaged commands
+////////////////////////////////////////////////////////////////
+static std::mutex s_cmd_complete_mutex;
+static std::condition_variable s_cmd_complete_cond;
+
+////////////////////////////////////////////////////////////////
 // Forward declarations
 ////////////////////////////////////////////////////////////////
 class xocl_scheduler;
@@ -165,6 +171,7 @@ public:
   {
     auto retain = m_cmd->shared_from_this();
     m_cmd->notify(ERT_CMD_STATE_COMPLETED);
+    s_cmd_complete_cond.notify_one();
   }
 
   // Notify of start of cu with idx
@@ -827,7 +834,7 @@ scheduler_loop()
 namespace xrt_core { namespace sws {
 
 void
-schedule(xrt_core::command* cmd)
+managed_start(xrt_core::command* cmd)
 {
   auto device = cmd->get_device();
 
@@ -839,6 +846,19 @@ schedule(xrt_core::command* cmd)
   s_pending_cmds.push_back(xcmd);
   ++s_num_pending;
   scheduler->notify();
+}
+
+// The software scheduler manages all command execution but upper
+// level code may still use poll mode execution without knowing that
+// sws only uses push.  This function simply waits until push has
+// notified host of a command completion.
+void
+unmanaged_wait(const xrt_core::command* cmd)
+{
+  auto ert_pkt = cmd->get_ert_packet();
+  std::unique_lock<std::mutex> lk(s_cmd_complete_mutex);
+  while (ert_pkt->state < ERT_CMD_STATE_COMPLETED)
+    s_cmd_complete_cond.wait(lk);
 }
 
 void

@@ -12,7 +12,7 @@ CPPFLAGS += -g
 endif
 
 CPPFLAGS += -I${XRT_PATH}/include
-CPPLFLAGS += -L${XRT_PATH}/lib -lxrt_core -lxrt_coreutil -luuid
+CPPLFLAGS += -L${XRT_PATH}/lib
 
 .PHONY: all clean
 
@@ -22,10 +22,10 @@ all: xrt_api_iops xcl_api_iops
 	g++ -std=c++14 -c ${CPPFLAGS} -o $@ $^
 
 xrt_api_iops: xrt_api_iops.o
-	g++ $^ ${CPPLFLAGS} -o $@
+	g++ $^ ${CPPLFLAGS} -lxrt_coreutil -luuid -o $@
 
 xcl_api_iops: xcl_api_iops.o
-	g++ $^ ${CPPLFLAGS} -o $@
+	g++ $^ ${CPPLFLAGS} -lxrt_coreutil -lxrt_core -luuid -o $@
 
 clean:
 	rm -rf *_iops *.o

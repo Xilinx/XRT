@@ -14,7 +14,13 @@
  * under the License.
  */
 
-// driver includes
+////////////////////////////////////////////////////////////////
+// This test uses push scheduling on multiple threads threads that
+// each use xrt::run::wait() for checking kernel completion.  The
+// purpose of the test is to validate that xclExecWait (via
+// xrt::run::wait()) is thread safe without missing kernel completions
+////////////////////////////////////////////////////////////////
+
 #include "xrt.h"
 #include "experimental/xrt_kernel.h"
 #include "experimental/xrt_bo.h"
@@ -44,6 +50,7 @@ static void usage()
   std::cout << "usage: %s [options] \n\n";
   std::cout << "  -k <bitstream>\n";
   std::cout << "  -d <device_index>\n";
+  std::cout << "  -t <threads>\n";
   std::cout << "";
   std::cout << "  [--jobs <number>]: number of concurrently scheduled jobs\n";
   std::cout << "  [--cus <number>]: number of cus to use (default: 8) (max: 8)\n";
@@ -68,11 +75,6 @@ get_kernel_name(size_t cus)
 // Flag to stop job rescheduling.  Is set to true after
 // specified number of seconds.
 static std::atomic<bool> stop{true};
-
-// Forward declaration of event callback function for event of last
-// copy stage of a job.
-static void
-kernel_done(const void*, ert_cmd_state state, void* data);
 
 // Data for a single job
 struct job_type
@@ -131,68 +133,51 @@ struct job_type
   void
   run()
   {
-    ++runs;
-    if (!r) {
-      running = true;
-      r = xrt::run(k);
-      r.add_callback(ERT_CMD_STATE_COMPLETED, kernel_done, this);
-      r(a, b, ELEMENTS);
-    }
-    else if (!stop)
-      r.start();
-  }
+    while (1) {
+      if (!r)
+        r = k(a, b, ELEMENTS);
+      else
+        r.start();
 
-  bool
-  done()
-  {
-    if (!stop) {
-      run();
-      return false;
-    }
-
-    running = false;
-    return true;
-  }
-
-  void
-  wait()
-  {
-    // Must wait for callback to complete
-    while (running)
       r.wait();
+      ++runs;
+
+      if (stop)
+        break;
+    }
   }
 };
 
-static void
-kernel_done(const void*, ert_cmd_state state, void* data)
+static size_t
+run_async(const xrt::device& device, const xrt::kernel& kernel)
 {
-  reinterpret_cast<job_type*>(data)->done();
+  job_type job {device, kernel};
+  job.run();
+  return job.runs;
 }
 
 static int
-run(xrtDeviceHandle device, const xrt::kernel& kernel, size_t num_jobs, size_t seconds)
+run(const xrt::device& device, const xrt::kernel& kernel, size_t num_jobs, size_t seconds)
 {
-  std::vector<job_type> jobs;
+  std::vector<std::future<size_t>> jobs;
   jobs.reserve(num_jobs);
-  for (int i=0; i<num_jobs; ++i)
-    jobs.emplace_back(device, kernel);
 
   stop = (seconds == 0) ? true : false;
-  std::for_each(jobs.begin(),jobs.end(),[](job_type& j){j.run();});
+
+  for (int i=0; i<num_jobs; ++i)
+    jobs.emplace_back(std::async(std::launch::async, run_async, device, kernel));
 
   std::this_thread::sleep_for(std::chrono::seconds(seconds));
   stop=true;
 
-  // Drain jobs
-  for (auto& job : jobs)
-    job.wait();
-
   size_t total = 0;
   for (auto& job : jobs) {
-    total += job.runs;
+    auto val = job.get();
+    total += val;
+    std::cout << "job count: " << val << "\n";
   }
 
-  std::cout << "xrtx: ";
+  std::cout << "xrtxx-mt: ";
   std::cout << "jobsize cus seconds total = "
             << num_jobs << " "
             << compute_units << " "

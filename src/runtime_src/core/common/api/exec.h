@@ -31,7 +31,16 @@ class command;
 namespace sws {
 
 void
-schedule(command* cmd);
+managed_start(command* cmd);
+
+inline void
+unmanaged_start(command* cmd)
+{
+  managed_start(cmd);
+}
+
+void
+unmanaged_wait(const command* cmd);
 
 void
 start();
@@ -50,7 +59,13 @@ init(xrt_core::device* device);
 namespace kds {
 
 void
-schedule(command* cmd);
+managed_start(command* cmd);
+
+void
+unmanaged_start(command* cmd);
+
+void
+unmanaged_wait(const command* cmd);
 
 void
 start();
@@ -64,11 +79,28 @@ init(xrt_core::device* device);
 } // kds
 
 namespace exec {
-/**
- * Schedule a command for execution on either sws or mbs
- */
+
+// Schedule a command for execution on either sws or kds. Use push
+// execution, meaning host will be notified of command completion This
+// function start / schedules the argument command for execution and
+// manages completion using execution monitor
 void
-schedule(command* cmd);
+managed_start(command* cmd);
+
+// Schedule a command for execution on either sws or kds. Use poll
+// execution, meaning host must explicitly call unmanaged_wait() to
+// wait for command completion.  This function starts / schedules
+// argument command for exectution but doesn't manage completion.  The
+// command must be checked for completion manually.
+void
+unmanaged_start(command* cmd);
+
+// Wait for a command to complete execution.  This function must be
+// called in poll mode (unmanaged) scheduling, and is safe to call in
+// push mode.  The function provides a thread safe interface to
+// exec_waq and by passes execution monitor used in managed execution
+void
+unmanaged_wait(const command* cmd);
 
 void
 start();

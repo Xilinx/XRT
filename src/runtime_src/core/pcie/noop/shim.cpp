@@ -17,9 +17,12 @@
 #define XRT_CORE_PCIE_NOOP_SOURCE
 #include "shim.h"
 #include "core/include/ert.h"
+#include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/task.h"
+#include "core/common/thread.h"
 
 #include <cstdio>
 #include <mutex>
@@ -103,7 +106,88 @@ free(unsigned int handle)
   h2b.erase(itr);
 }
 
-} // bo
+} // buffer
+
+// Simulate asynchronous command completion.
+//
+// Command handles are added to a producer/consumer queue A worker
+// thread pretends to run the command and marks it complete only if
+// the command was enqueue some constant time before now.
+namespace cmd {
+
+static unsigned int completion_delay_us = 0;
+static xrt_core::task::queue running_queue;
+static std::thread completer;
+static std::atomic<uint64_t> completion_count {0};
+
+struct cmd_type
+{
+  xclBufferHandle handle;
+  unsigned long queue_time;
+  cmd_type(xclBufferHandle h)
+    : handle(h), queue_time(xrt_core::time_ns())
+  {}
+};
+
+static void
+init()
+{
+  if ( (completion_delay_us = xrt_core::config::get_noop_completion_delay_us()) )
+    completer = std::move(xrt_core::thread(xrt_core::task::worker, std::ref(running_queue)));
+}
+
+static void
+stop()
+{
+  if (completion_delay_us) {
+    running_queue.stop();
+    completer.join();
+  }
+}
+
+static void
+wait()
+{
+  while (!completion_count) ;
+  --completion_count;
+}
+
+static void
+mark_cmd_handle_complete(xclBufferHandle handle)
+{
+  //XRT_PRINTF("handle(%d) is complete\n", handle);
+  auto hbuf = buffer::map(handle);
+  auto cmd = reinterpret_cast<ert_packet*>(hbuf);
+  cmd->state = ERT_CMD_STATE_COMPLETED;
+  ++completion_count;
+}
+
+static void
+mark_cmd_complete(cmd_type ct)
+{
+  while (xrt_core::time_ns() - ct.queue_time < completion_delay_us * 1000);
+  mark_cmd_handle_complete(ct.handle);
+}
+
+static void
+add(xclBufferHandle handle)
+{
+  if (completion_delay_us)
+    xrt_core::task::createF(running_queue, mark_cmd_complete, cmd_type(handle));
+  else
+    mark_cmd_handle_complete(handle);
+}
+
+struct X
+{
+  X() { init(); }
+  ~X() { stop(); }
+};
+
+static X x;
+
+} // cmd
+
   
 struct shim
 {
@@ -172,15 +256,14 @@ struct shim
   int
   exec_buf(buffer_handle_type handle)
   {
-    auto hbuf = buffer::map(handle);
-    auto cmd = reinterpret_cast<ert_packet*>(hbuf);
-    cmd->state = ERT_CMD_STATE_COMPLETED;
+    cmd::add(handle);
     return 0;
   }
 
   int
   exec_wait(int msec)
   {
+    cmd::wait();
     return 1;
   }
 
@@ -253,7 +336,7 @@ get_shim_object(xclDeviceHandle handle)
   return reinterpret_cast<shim*>(handle);
 }
 
-}
+} // namespace
 
 // Basic
 unsigned int

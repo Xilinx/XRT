@@ -12,10 +12,10 @@ XRTBUILD=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 # and Vivado tools in addition to using XRT.
 
 # Set to location of your preferred SDx install
-vitis=/proj/xbuilds/2019.2_released/installs/lin64/Vitis/2019.2
+vitis=/proj/xbuilds/2020.2_released/installs/lin64/Vitis/2020.2
 
 # Set to location of your preferred Vivado install
-vivado=/proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2
+vivado=/proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2
 
 ext=.o
 rel="Release"
@@ -34,6 +34,7 @@ usage()
     echo "[-conf]                    Run conformance mode testing"
     echo "[-ini <path>]              Set SDACCEL_INI_PATH"
     echo "[-vitis <path>]            Specify Vitis install (default: $vitis)"
+    echo "[-vivado <path>]           Specify Vivado install (default: $vivado)"
     echo "[-xrt <path>]              Path to XRT install (default: $XRTBUILD/opt/xilinx/xrt)"
     echo "[-ldp <path>]              Prepend path to LD_LIBRARY_PATH"
     echo "[--]                       End option parsing for this script invocation"
@@ -68,6 +69,11 @@ while [ $# -gt 0 ]; do
         -vitis)
             shift
             vitis=$1
+            shift
+            ;;
+        -vivado)
+            shift
+            vivado=$1
             shift
             ;;
         -ini)
