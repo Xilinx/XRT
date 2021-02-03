@@ -4863,8 +4863,10 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	struct xocl_ert *xert = exec_is_ert(exec) ? exec->ert : NULL;
 	unsigned int idx = 0;
 	ssize_t sz = 0;
+	ssize_t sz_tmp = 0;
 	int32_t cu_status = -1;
 	char *tembuf;
+	bool truncated = false;
 
 	/*
 	 * Allocate a temporary buffer to prevent custat exceed PAGE_SIZE.
@@ -4890,25 +4892,44 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 			cu_status = ert_cu_status(xert, idx);
 			if (!cu_status)
 				cu_status = AP_IDLE;
+			sz_tmp = sz;
 			sz += sprintf(tembuf+sz, "CU[@0x0] : %d status : %d name : %s\n",
 				      ert_cu_usage(xert, idx),
 				      cu_status,
 				      xert->scu_name[idx - exec->num_cus]);
+			if (sz >= PAGE_SIZE) {
+				sz = sz_tmp;
+				truncated = true;
+				goto out;
+			}
 		}
 	}
 
+	sz_tmp = sz;
 	sz += sprintf(tembuf+sz, "KDS number of pending commands: %d\n", exec_num_pending(exec));
+	if (sz >= PAGE_SIZE) {
+		sz = sz_tmp;
+		truncated = true;
+		goto out;
+	}
 
 	if (!xert) {
 		sz += sprintf(tembuf+sz, "KDS number of running commands: %d\n", exec_num_running(exec));
 		goto out;
 	}
 
+	sz_tmp = sz;
 	sz += sprintf(tembuf+sz, "CQ usage : {");
 	for (idx = 0; idx < xert->num_slots; ++idx)
 		sz += sprintf(tembuf+sz, "%s%d", (idx > 0 ? "," : ""), ert_cq_slot_usage(xert, idx));
 	sz += sprintf(tembuf+sz, "}\n");
+	if (sz >= PAGE_SIZE) {
+		sz = sz_tmp;
+		truncated = true;
+		goto out;
+	}
 
+	sz_tmp = sz;
 	sz += sprintf(tembuf+sz, "CQ mirror state : {");
 	for (idx = 0; idx < xert->num_slots; ++idx) {
 		if (idx == 0) { // ctrl slot should be ignored
@@ -4918,7 +4939,13 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 		sz += sprintf(tembuf+sz, ",%d", ert_cq_slot_busy(xert, idx));
 	}
 	sz += sprintf(tembuf+sz, "}\n");
+	if (sz >= PAGE_SIZE) {
+		sz = sz_tmp;
+		truncated = true;
+		goto out;
+	}
 
+	sz_tmp = sz;
 	sz += sprintf(tembuf+sz, "ERT scheduler version : 0x%x\n", ert_version(xert));
 	sz += sprintf(tembuf+sz, "ERT number of submitted commands: %d\n", exec_num_running(exec));
 	sz += sprintf(tembuf+sz, "ERT scheduler CU state : {");
@@ -4940,15 +4967,24 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 		sz += sprintf(tembuf+sz, ",%d", ert_cq_slot_status(xert, idx));
 	}
 	sz += sprintf(tembuf+sz, "}\n");
+	if (sz >= PAGE_SIZE) {
+		sz = sz_tmp;
+		truncated = true;
+		goto out;
+	}
 
 out:
-	if (sz)
+	tembuf[sz++] = 0;
+	if (sz >= (ssize_t)PAGE_SIZE) {
+		sz = PAGE_SIZE - 30; /* save truncated CU status */
+		truncated = true;
+	}
+	if (truncated) {
+		sz += sprintf(tembuf+sz, "\n.. TRUNCATED ..\n");
 		tembuf[sz++] = 0;
-
-	if (sz >= (ssize_t)PAGE_SIZE)
-		sz = 0;
-	else
-		memcpy(buf, tembuf, sz);
+	}
+	tembuf[PAGE_SIZE-1] = 0;
+	memcpy(buf, tembuf, PAGE_SIZE);
 
 	vfree(tembuf);
 	return sz;
