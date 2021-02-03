@@ -138,7 +138,7 @@ namespace {
     auto& cumask = xrt_core::kernel_int::get_cumask(run) ;
     for (size_t bit = 0; bit < cumask.size(); ++bit)
       if (cumask.test(bit))
-	return bit;
+	return static_cast<unsigned int>(bit);
     return 0 ;
   }
 
