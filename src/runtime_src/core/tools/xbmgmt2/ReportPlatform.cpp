@@ -157,7 +157,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
 
   std::string sc_ver;
   try {
-    sc_ver = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(device);
+    sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(device);
   } catch (...) {}
   if(sc_ver.empty())
     sc_ver = info.mBMCVer;
