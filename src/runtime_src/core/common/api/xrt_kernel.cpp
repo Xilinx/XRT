@@ -636,6 +636,8 @@ public:
     ert_cmd_state state;
     {
       std::lock_guard<std::mutex> lk(m_mutex);
+      if (!m_managed && !m_done)
+        throw xrt_core::error(ENOTSUP, "Cannot add callback to running unmanaged command");
       if (!m_callbacks)
         m_callbacks = std::make_unique<callback_list>();
       m_callbacks->emplace_back(std::move(fcn));
@@ -713,18 +715,27 @@ public:
       std::lock_guard<std::mutex> lk(m_mutex);
       if (!m_done)
         throw std::runtime_error("bad command state, can't launch");
+      m_managed = (m_callbacks && !m_callbacks->empty());
       m_done = false;
     }
-    xrt_core::exec::schedule(this);
+    if (m_managed)
+      xrt_core::exec::managed_start(this);
+    else
+      xrt_core::exec::unmanaged_start(this);
   }
 
   // Wait for command completion
   ert_cmd_state
   wait() const
   {
-    std::unique_lock<std::mutex> lk(m_mutex);
-    while (!m_done)
-      m_exec_done.wait(lk);
+    if (m_managed) {
+      std::unique_lock<std::mutex> lk(m_mutex);
+      while (!m_done)
+        m_exec_done.wait(lk);
+    }
+    else {
+      xrt_core::exec::unmanaged_wait(this);
+    }
 
     auto pkt = get_ert_packet();
     return static_cast<ert_cmd_state>(pkt->state);
@@ -733,9 +744,14 @@ public:
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
-    std::unique_lock<std::mutex> lk(m_mutex);
-    while (!m_done)
-      m_exec_done.wait_for(lk, timeout_ms);
+    if (m_managed) {
+      std::unique_lock<std::mutex> lk(m_mutex);
+      while (!m_done)
+        m_exec_done.wait_for(lk, timeout_ms);
+    }
+    else {
+      xrt_core::exec::unmanaged_wait(this);
+    }
 
     auto pkt = get_ert_packet();
     return static_cast<ert_cmd_state>(pkt->state);
@@ -766,17 +782,20 @@ public:
   notify(ert_cmd_state s)
   {
     bool complete = false;
+    bool callbacks = false;
     if (s>=ERT_CMD_STATE_COMPLETED) {
       std::lock_guard<std::mutex> lk(m_mutex);
       XRT_DEBUGF("kernel_command::notify() m_uid(%d) m_state(%d)\n", m_uid, s);
       complete = m_done = true;
+      callbacks = (m_callbacks && !m_callbacks->empty());
       if (m_event)
         xrt_core::enqueue::done(m_event.get());
-      m_exec_done.notify_all();  // CAN THIS BE MOVED TO END AFTER CALLBACKS?
     }
 
     if (complete) {
-      run_callbacks(s);
+      m_exec_done.notify_all();
+      if (callbacks)
+        run_callbacks(s);
 
       // Clear the event if any.  This must be last since if used, it
       // holds the lifeline to this command object which could end up
@@ -790,6 +809,7 @@ private:
   mutable std::shared_ptr<xrt::event_impl> m_event;
   execbuf_type m_execbuf; // underlying execution buffer
   unsigned int m_uid = 0;
+  bool m_managed = false;
   bool m_done = false;
 
   mutable std::mutex m_mutex;

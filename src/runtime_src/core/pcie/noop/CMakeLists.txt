@@ -33,6 +33,7 @@ set_target_properties(xrt_noop PROPERTIES VERSION ${XRT_VERSION_STRING}
 target_link_libraries(xrt_noop
   PRIVATE
   xrt_coreutil
+  pthread
   )
 
 install(TARGETS xrt_noop
