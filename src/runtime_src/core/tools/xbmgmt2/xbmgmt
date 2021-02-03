@@ -7,23 +7,64 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   exit $?
 fi
 
+declare -A RSTOPT=( \
+	["--hot"]="xbmgmt" \
+	["--kernel"]="xbmgmt" \
+	["--ecc"]="xbmgmt" \
+	["--softkernel"]="xbmgmt" \
+	["--ert"]="xbmgmt" \
+	["--card"]="xbmgmt" \
+	["--force"]="xbmgmt" \
+	["--device"]="xbmgmt2" \
+	["--type"]="xbmgmt2" \
+	["--help"]="xbmgmt2" \
+	["-d"]="xbmgmt2" \
+	["-r"]="xbmgmt2" \
+	["-h"]="xbmgmt2" \
+    )
+
+declare -A COMMANDS=( \
+	["help"]="xbmgmt" \
+	["version"]="xbmgmt" \
+	["--version"]="xbmgmt" \
+	["scan"]="xbmgmt" \
+	["flash"]="xbmgmt" \
+	["-lash"]="xbmgmt" \
+	["reset"]="RSTOPT" \
+	["clock"]="xbmgmt" \
+	["partition"]="xbmgmt" \
+	["config"]="xbmgmt" \
+	["nifd"]="xbmgmt" \
+	["hotplug"]="xbmgmt" \
+	["examine"]="xbmgmt2" \
+	["program"]="xbmgmt2" \
+	["advanced"]="xbmgmt2" \
+	["--help"]="xbmgmt2" \
+	["--verbose"]="xbmgmt2" \
+	["--batch"]="xbmgmt2" \
+	["-h"]="xbmgmt2" \
+	["-v"]="xbmgmt2" \
+	["-b"]="xbmgmt2" \
+    )
+
+
 # Working variables
 XRT_PROG=xbmgmt
 
 # Determine which version of xbmgmt should be used
 # Check to see environment variable is NOT set
-if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then 
+if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then
   XRT_PROG=xbmgmt
 elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
      XRT_PROG=xbmgmt2
 fi
 
-# -- Examine the options
+# -- Examine the options and look for -new/--new
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    # Indicates that the new version of xbutil (e.g., xbutil2) should be used
+    # Indicates that the new version of xbmgmt (e.g., xbmgmt2) should be used
     -new|--new)
       XRT_PROG=xbmgmt2
       shift
@@ -36,6 +77,22 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+
+# If user did not specify -new/--new then attempt to determine if user
+# wants to use classic or new by peeking inside the command line
+if [ ${XRT_PROG} == "xbmgmt" ]; then
+  XRT_PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+  # Check if user passed some bogus command line when we should
+  # default to new tool
+  if [ ${XRT_PROG} == "RSTOPT" ]; then
+    RSTOPT=${!XRT_PROG}
+    echo "----- ${RSTOPT} ------"
+    XRT_PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]}
+  fi
+  if [ -z ${XRT_PROG} ]; then
+    XRT_PROG=xbmgmt2
+  fi
+fi
 
 # Friendly message
 if [ ${XRT_PROG} == "xbmgmt2" ]; then
