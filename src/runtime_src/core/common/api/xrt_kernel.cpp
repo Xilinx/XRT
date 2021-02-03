@@ -387,7 +387,9 @@ class ip_context
     connectivity(const xrt_core::device* device, const xrt::uuid& xclbin_id, int32_t ipidx)
     {
       const auto& memidx_encoding = device->get_memidx_encoding(xclbin_id);
-      auto conn = device->get_axlf_section_or_error<const ::connectivity*>(ASK_GROUP_CONNECTIVITY, xclbin_id);
+      auto conn = device->get_axlf_section<const ::connectivity*>(ASK_GROUP_CONNECTIVITY, xclbin_id);
+      if (!conn)
+        return;
       // Compute the connections for IP with specified index
       for (int count = 0; count < conn->m_count; ++count) {
         auto& cxn  = conn->m_connection[count];
