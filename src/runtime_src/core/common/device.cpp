@@ -136,7 +136,10 @@ register_axlf(const axlf* top)
       const auto& mem = mem_topology->m_mem_data[midx];
       if (!mem.m_used)
         continue;
-      if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
+      // skip types that are of no interest for global connection
+      // however in software emulation the connectivity seciton
+      // can be incorrect see (CR-1086919) so keep even these.
+      if (!is_sw_emulation() && (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION))
         continue;
       enc[midx] = eidx++;
     }

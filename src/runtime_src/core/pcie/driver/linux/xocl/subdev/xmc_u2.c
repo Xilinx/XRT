@@ -2045,7 +2045,7 @@ static ssize_t scaling_governor_show(struct device *dev,
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 mode;
-	char val[20];
+	char val[20] = { 0 };
 	bool cs_en;
 
 	cs_en = scaling_condition_check(xmc);

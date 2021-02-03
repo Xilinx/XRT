@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018-2020, Xilinx Inc
+ *  Copyright (C) 2018-2021, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -279,6 +279,7 @@ enum subdev_id {
 	XOCL_SUBDEV_IORES,
 	XOCL_SUBDEV_FLASH,
 	XOCL_SUBDEV_MAILBOX,
+	XOCL_SUBDEV_MAILBOX_VERSAL,
 	XOCL_SUBDEV_P2P,
 	XOCL_SUBDEV_MB_SCHEDULER,
 	XOCL_SUBDEV_XVC_PUB,
@@ -294,7 +295,6 @@ enum subdev_id {
 	XOCL_SUBDEV_DNA,
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
-	XOCL_SUBDEV_MAILBOX_VERSAL,
 	XOCL_SUBDEV_XFER_VERSAL,
 	XOCL_SUBDEV_CLOCK,
 	XOCL_SUBDEV_AIM,

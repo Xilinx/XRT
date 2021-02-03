@@ -38,17 +38,27 @@
 #include <set>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4100 4996 )
+# pragma warning( disable : 4244 4100 4996 4505 )
 #endif
 
 namespace {
 
+XRT_CORE_UNUSED
 static bool
 is_noop_emulation()
 {
   static auto xem = std::getenv("XCL_EMULATION_MODE");
   static bool noop = xem ? (std::strcmp(xem,"noop")==0) : false;
   return noop;
+}
+
+XRT_CORE_UNUSED
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swemu = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
+  return swemu;
 }
 
 static bool
@@ -126,12 +136,11 @@ private:
     addr = prop.paddr;
     grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
 
-    if (is_noop_emulation())
-      return;
-
+#ifdef _WIN32 // All shims minus windows return proper flags
     // Remove when driver returns the flags that were used to ctor the bo
     auto mem_topo = device->get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
     grpid = xrt_core::xclbin::address_to_memidx(mem_topo, addr);
+#endif
   }
 
 protected:
@@ -410,13 +419,6 @@ public:
   {
     return hbuf;
   }
-
-  virtual uint64_t
-  get_group_id() const
-  {
-    return bo_impl::no_group;
-  }
-
 };
 
 // class buffer_dbuf - device only buffer

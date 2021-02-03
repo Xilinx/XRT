@@ -200,6 +200,9 @@
 #include <linux/ioctl.h>
 #include "../xocl_drv.h"
 #include "mailbox_proto.h"
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+#include <linux/sched/clock.h>
+#endif
 
 int mailbox_no_intr;
 module_param(mailbox_no_intr, int, (S_IRUGO|S_IWUSR));
@@ -228,7 +231,8 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define	MAILBOX_TIMER		(HZ / 50) /* in jiffies */
 #define	MAILBOX_SEC2TIMER(s)	((s) * HZ / MAILBOX_TIMER)
 #define	MSG_RX_DEFAULT_TTL	20UL	/* in seconds */
-#define	MSG_TX_DEFAULT_TTL	2UL	/* in seconds */
+#define	MSG_HW_TX_DEFAULT_TTL	2UL	/* in seconds */
+#define	MSG_SW_TX_DEFAULT_TTL	6UL	/* in seconds */
 #define	MSG_TX_PER_MB_TTL	1UL	/* in seconds */
 #define	MSG_MAX_TTL		0xFFFFFFFF /* used to disable timer */
 #define	TEST_MSG_LEN		128
@@ -274,6 +278,7 @@ struct mailbox_msg {
 	mailbox_msg_cb_t	mbm_cb;
 	void			*mbm_cb_arg;
 	u32			mbm_flags;
+	u32			mbm_timeout_in_sec; /* timeout set by user */
 	u32			mbm_ttl;
 	bool			mbm_chan_sw;
 };
@@ -363,6 +368,22 @@ enum {
 	MBX_STATE_STARTED
 };
 
+struct mailbox_dbg_rec {
+	u64		mir_ts;
+	u32		mir_st_reg;
+	u32		mir_is_reg;
+	u32		mir_ip_reg;
+	u32		checkpoint;
+};
+
+enum {
+	MAILBOX_INTR_REC,
+	MAILBOX_SND_REC,
+	MAILBOX_RCV_REC
+};
+
+#define MAX_RECS		10
+
 /*
  * The mailbox softstate.
  */
@@ -408,6 +429,13 @@ struct mailbox {
 	bool			mbx_peer_dead;
 	uint64_t		mbx_opened;
 	uint32_t		mbx_state;
+
+	struct mailbox_dbg_rec	mbx_intr_recs[MAX_RECS];
+	u32			mbx_cur_intr_rec;
+	struct mailbox_dbg_rec	mbx_snd_recs[MAX_RECS];
+	u32			mbx_cur_snd_rec;
+	struct mailbox_dbg_rec	mbx_rcv_recs[MAX_RECS];
+	u32			mbx_cur_rcv_rec;
 };
 
 static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
@@ -482,6 +510,91 @@ static bool is_rx_msg(struct mailbox_msg *msg)
 	return is_rx_chan(msg->mbm_ch);
 }
 
+static void mailbox_dump_debug(struct mailbox *mbx)
+{
+	struct mailbox_dbg_rec *rec;
+	unsigned long rem_nsec;
+	u64 ts;
+	int i, idx;
+
+	rec = mbx->mbx_intr_recs;
+	idx = mbx->mbx_cur_intr_rec;
+	for (i = 0; i < MAX_RECS; i++) {
+		ts = rec[idx].mir_ts;
+		rem_nsec = do_div(ts, 1000000000);
+		MBX_INFO(mbx, "intr(%d) [%5lu.%06lu], is 0x%x, st 0x%x, ip 0x%x",
+			rec[idx].checkpoint,
+			(unsigned long)ts, rem_nsec / 1000,
+			rec[idx].mir_is_reg, rec[idx].mir_st_reg,
+			rec[idx].mir_ip_reg);
+		idx++;
+		idx %= MAX_RECS;
+	}
+	rec = mbx->mbx_snd_recs;
+	idx = mbx->mbx_cur_snd_rec;
+	for (i = 0; i < MAX_RECS; i++) {
+		ts = rec[idx].mir_ts;
+		rem_nsec = do_div(ts, 1000000000);
+		MBX_INFO(mbx, "send(%d) [%5lu.%06lu], is 0x%x, st 0x%x, ip 0x%x",
+			rec[idx].checkpoint,
+			(unsigned long)ts, rem_nsec / 1000,
+			rec[idx].mir_is_reg, rec[idx].mir_st_reg,
+			rec[idx].mir_ip_reg);
+		idx++;
+		idx %= MAX_RECS;
+	}
+	rec = mbx->mbx_rcv_recs;
+	idx = mbx->mbx_cur_rcv_rec;
+	for (i = 0; i < MAX_RECS; i++) {
+		ts = rec[idx].mir_ts;
+		rem_nsec = do_div(ts, 1000000000);
+		MBX_INFO(mbx, "recv(%d) [%5lu.%06lu], is 0x%x, st 0x%x, ip 0x%x",
+			rec[idx].checkpoint,
+			(unsigned long)ts, rem_nsec / 1000,
+			rec[idx].mir_is_reg, rec[idx].mir_st_reg,
+			rec[idx].mir_ip_reg);
+		idx++;
+		idx %= MAX_RECS;
+	}
+
+	MBX_INFO(mbx, "Curr, is 0x%x, st 0x%x, ip 0x%x",
+		mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_is),
+		mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status),
+		mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_ip));
+}
+
+static void mailbox_dbg_collect(struct mailbox *mbx, int rec_type, int checkpoint)
+{
+	struct mailbox_dbg_rec *rec = NULL;
+
+	switch (rec_type) {
+	case MAILBOX_INTR_REC:
+		rec = &mbx->mbx_intr_recs[mbx->mbx_cur_intr_rec];
+		mbx->mbx_cur_intr_rec++;
+		mbx->mbx_cur_intr_rec %= MAX_RECS;
+		break;
+	case MAILBOX_SND_REC:
+		rec = &mbx->mbx_snd_recs[mbx->mbx_cur_snd_rec];
+		mbx->mbx_cur_snd_rec++;
+		mbx->mbx_cur_snd_rec %= MAX_RECS;
+		break;
+	case MAILBOX_RCV_REC:
+		rec = &mbx->mbx_rcv_recs[mbx->mbx_cur_rcv_rec];
+		mbx->mbx_cur_rcv_rec++;
+		mbx->mbx_cur_rcv_rec %= MAX_RECS;
+		break;
+	default:
+		MBX_ERR(mbx, "unknown record type: %d", rec_type);
+		return;
+	}
+
+	rec->mir_ts = local_clock();
+	rec->mir_is_reg = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_is);
+	rec->mir_st_reg = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
+	rec->mir_ip_reg = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_ip);
+	rec->checkpoint = checkpoint;
+}
+
 irqreturn_t mailbox_isr(int irq, void *arg)
 {
 	struct mailbox *mbx = (struct mailbox *)arg;
@@ -489,6 +602,7 @@ irqreturn_t mailbox_isr(int irq, void *arg)
 
 	MBX_DBG(mbx, "intr status: 0x%x", is);
 
+	mailbox_dbg_collect(mbx, MAILBOX_INTR_REC, 1);
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_is, FLAG_STI | FLAG_RTI);
 
 	/* notify both RX and TX channel anyway */
@@ -636,6 +750,7 @@ void timeout_msg(struct mailbox_channel *ch)
 			MBX_WARN(mbx, "found outstanding msg time'd out");
 			if (!mbx->mbx_peer_dead) {
 				MBX_WARN(mbx, "peer becomes dead");
+				mailbox_dump_debug(mbx);
 				/* Peer is not active any more. */
 				mbx->mbx_peer_dead = true;
 			}
@@ -787,6 +902,7 @@ static struct mailbox_msg *alloc_msg(void *buf, size_t len)
 	msg->mbm_len = len;
 	msg->mbm_ttl = MSG_MAX_TTL;
 	msg->mbm_chan_sw = false;
+	msg->mbm_timeout_in_sec = 0;
 	init_completion(&msg->mbm_complete);
 
 	return msg;
@@ -898,6 +1014,7 @@ static void chan_recv_pkt(struct mailbox_channel *ch)
 
 	BUG_ON(valid_pkt(pkt));
 
+	mailbox_dbg_collect(mbx, MAILBOX_RCV_REC, 2);
 	/* Picking up a packet from HW. */
 	for (i = 0; i < PACKET_SIZE; i++) {
 		while ((mailbox_reg_rd(mbx,
@@ -924,6 +1041,7 @@ static void chan_send_pkt(struct mailbox_channel *ch)
 
 	MBX_DBG(mbx, "sending pkt: type=0x%x", pkt->hdr.type);
 
+	mailbox_dbg_collect(mbx, MAILBOX_SND_REC, 1);
 	/* Pushing a packet into HW. */
 	for (i = 0; i < PACKET_SIZE; i++) {
 		mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_wrdata,
@@ -1076,6 +1194,7 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 	bool eom = false, read_hw = false;
 	u32 st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
 
+	mailbox_dbg_collect(mbx, MAILBOX_RCV_REC, 1);
 	/* Check if a packet is ready for reading. */
 	if (st == 0xffffffff) {
 		/* Device is still being reset. */
@@ -1242,10 +1361,23 @@ static void msg_timer_on(struct mailbox_msg *msg, u32 ttl)
 	if (ttl == 0) {
 		if (is_rx_msg(msg)) {
 			ttl = MSG_RX_DEFAULT_TTL;
+		} else if (msg->mbm_chan_sw) {
+			/*
+			 * Time spent for s/w mailbox tx includes,
+			 * 1. several ctx
+			 * 2. memory copy xclbin from kernel to user
+			 * So 6s should be long enough for xclbin allowed
+			 */
+			ttl = MSG_SW_TX_DEFAULT_TTL;
 		} else {
-			ttl = max((u32)(BYTE_TO_MB(msg->mbm_len) * MSG_TX_PER_MB_TTL),
-				msg->mbm_ttl);
+			/*
+			 * For h/w mailbox, we set ttl of one pkt and reset it
+			 * for each new pkt being sent. The whole msg will be
+			 * discard once a single pkt is timed out
+			 */
+			ttl = MSG_HW_TX_DEFAULT_TTL;
 		}
+
 	}
 
 	msg->mbm_ttl = MAILBOX_SEC2TIMER(ttl);
@@ -1261,7 +1393,7 @@ static void dequeue_tx_msg(struct mailbox_channel *ch)
 	if (!ch->mbc_cur_msg)
 		return;
 
-	msg_timer_on(ch->mbc_cur_msg, 0);
+	msg_timer_on(ch->mbc_cur_msg, ch->mbc_cur_msg->mbm_timeout_in_sec);
 }
 
 /* Check if TX channel is ready for next msg. */
@@ -1588,7 +1720,7 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	reqmsg->mbm_cb_arg = NULL;
 	reqmsg->mbm_req_id = (uintptr_t)reqmsg->mbm_data;
 	reqmsg->mbm_flags |= XCL_MB_REQ_FLAG_REQUEST;
-	reqmsg->mbm_ttl = max(tx_ttl, (u32)MSG_TX_DEFAULT_TTL);
+	reqmsg->mbm_timeout_in_sec = tx_ttl;
 
 	respmsg = alloc_msg(resp, *resplen);
 	if (!respmsg)

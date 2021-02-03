@@ -1019,6 +1019,9 @@ zocl_xclbin_cus_support_intr(struct drm_zocl_dev *zdev)
 
 	for (i = 0; i < zdev->ip->m_count; ++i) {
 		ip = &zdev->ip->m_ip_data[i];
+		if (xclbin_protocol(ip->properties) == AP_CTRL_NONE) {
+			continue;
+		}
 		if (!(ip->properties & 0x1)) {
 			return false;
 		}

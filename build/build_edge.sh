@@ -41,7 +41,7 @@ install_recipes()
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
-        echo 'PV = "202020.2.9.0"' >> $XRT_BB
+        echo 'PV = "202110.2.9.0"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
         echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=da5408f748bce8a9851dac18e66f4bcf \' >> $XRT_BB
         echo '                    file://runtime_src/core/edge/drm/zocl/LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8 "' >> $XRT_BB
@@ -53,7 +53,7 @@ install_recipes()
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
         echo "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $ZOCL_BB
-        echo 'PV = "202020.2.9.0"' >> $ZOCL_BB
+        echo 'PV = "202110.2.9.0"' >> $ZOCL_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $ZOCL_BB
         echo 'LIC_FILES_CHKSUM = "file://LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8"' >> $ZOCL_BB
         echo 'pkg_postinst_ontarget_${PN}() {' >> $ZOCL_BB
@@ -239,10 +239,10 @@ echo `ls xrt-2*` >> $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt
 echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh"
 xrt_dbg=`ls xrt-dbg*`
 zocl_dbg=`ls zocl-dbg*`
-echo dnf install -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh
+echo dnf --disablerepo=\"*\" install -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh
 
 echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh"
-echo dnf reinstall -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh
+echo dnf --disablerepo=\"*\" reinstall -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh
 
 cp $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
 cp $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
