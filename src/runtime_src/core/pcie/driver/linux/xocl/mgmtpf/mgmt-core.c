@@ -1339,6 +1339,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!xocl_ps_wait(lro))
 		xocl_xmc_get_serial_num(lro);
 
+	xocl_drvinst_set_offline(lro, false);
 	return 0;
 
 err_init_sysfs:

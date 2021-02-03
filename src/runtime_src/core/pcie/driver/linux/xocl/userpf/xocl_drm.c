@@ -535,6 +535,7 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 #endif
 
 	xocl_drvinst_set_filedev(drm_p, ddev);
+	xocl_drvinst_set_offline(drm_p, false);
 	return drm_p;
 
 failed:
