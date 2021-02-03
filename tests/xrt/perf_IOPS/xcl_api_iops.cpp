@@ -40,18 +40,26 @@ load_file_to_memory(const std::string& fn)
     return bin;
 }
 
-double runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& cmds,
-               unsigned int total)
+int
+startCmd(xclDeviceHandle handle, task_info* cmd)
+{
+  cmd->ecmd->state = ERT_CMD_STATE_NEW;
+  return xclExecBuf(handle, cmd->exec_bo);
+}
+
+double
+runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& cmds,
+        unsigned int total)
 {
     int i = 0;
     unsigned int issued = 0, completed = 0;
     auto start = std::chrono::high_resolution_clock::now();
 
     for (auto& cmd : cmds) {
-        if (xclExecBuf(handle, cmd->exec_bo))
-            throw std::runtime_error("Unable to issue exec buf");
+        if (startCmd(handle, cmd.get()))
+          throw std::runtime_error("Unable to issue exec buf");
         if (++issued == total)
-            break;
+          break;
     }
 
     while (completed < total) {
@@ -64,7 +72,7 @@ double runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& 
         
         completed++;
         if (issued < total) {
-            if (xclExecBuf(handle, cmds[i]->exec_bo))
+            if (startCmd(handle, cmds[i].get()))
                 throw std::runtime_error("Unable to issue exec buf");
             issued++;
         }
@@ -82,7 +90,7 @@ int testSingleThread(xclDeviceHandle handle, xuid_t uuid, int bank)
     std::vector<std::shared_ptr<task_info>> cmds;
     /* The command would incease */
     std::vector<unsigned int> cmds_per_run = { 10,50,100,200,500,1000,1500,2000,3000,5000,10000,50000,100000,500000,1000000 };
-    int expected_cmds = 100000;
+    int expected_cmds = 10000;
 
     if (xclOpenContext(handle, uuid, 0, true))
         throw std::runtime_error("Cound not open context");
@@ -141,7 +149,7 @@ int testSingleThread(xclDeviceHandle handle, xuid_t uuid, int bank)
 
     for (auto& cmd : cmds) {
         xclFreeBO(handle, cmd->boh);
-        munmap(cmd->ecmd, 4096);
+        xclUnmapBO(handle, cmd->exec_bo, cmd->ecmd);
         xclFreeBO(handle, cmd->exec_bo);
     }
 
