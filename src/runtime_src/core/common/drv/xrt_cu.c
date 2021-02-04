@@ -353,6 +353,14 @@ int xrt_cu_intr_thread(void *data)
 			xrt_cu_check(xcu);
 			if (!xcu->done_cnt || !xcu->ready_cnt) {
 				xcu->sleep_cnt++;
+				/* Don't use down_interruptible() here.
+				 * If CU hang, this thread would keep waiting.
+				 * Host application is not able to exit since
+				 * there are outstading commands.
+				 *
+				 * CU_TIMER is runing at low frequence. For
+				 * normal CU, it will unlikely timeout.
+				 */
 				if (down_timeout(&xcu->sem_cu, CU_TIMER))
 					ret = -ERESTARTSYS;
 				xrt_cu_check(xcu);

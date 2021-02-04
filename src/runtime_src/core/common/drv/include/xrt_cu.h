@@ -45,6 +45,7 @@
 	dev_dbg(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
 
 /* XRT CU timer macros */
+/* A low frequence timer per CU to check if CU/command timeout */
 #define CU_TICKS_PER_SEC	2
 #define CU_TIMER		(HZ / CU_TICKS_PER_SEC) /* in jiffies */
 #define CU_EXEC_DEFAULT_TTL	(5UL * CU_TICKS_PER_SEC)
