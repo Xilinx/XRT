@@ -313,6 +313,8 @@ namespace xdp {
     getComputeUnitExecutionStats(const std::string& cuName) ;
 
     // User level event functions
+    inline bool eventInformationPresent() { return eventCounts.size() != 0 ; }
+    inline bool rangeInformationPresent() { return rangeCounts.size() != 0 ; }
     XDP_EXPORT void addEventCount(const char* label);
     XDP_EXPORT void addRangeCount(std::pair<const char*, const char*> desc);
     XDP_EXPORT void recordRangeDuration(std::pair<const char*, const char*> desc, uint64_t duration) ;

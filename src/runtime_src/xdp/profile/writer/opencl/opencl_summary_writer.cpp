@@ -1512,6 +1512,8 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeUserLevelEvents()
   {
+    if (!(db->getStats()).eventInformationPresent()) return ;
+
     fout << "User Level Events" << std::endl ;
     fout << "Label" << ","
 	 << "Count" << ","
@@ -1528,6 +1530,8 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeUserLevelRanges()
   {
+    if (!(db->getStats()).rangeInformationPresent()) return ;
+
     fout << "User Level Ranges" << std::endl ;
     fout << "Label"   << ","
 	 << "Tooltip" << ","
