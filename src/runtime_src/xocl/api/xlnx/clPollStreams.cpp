@@ -18,7 +18,7 @@
 #include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 #include "xocl/core/device.h"
 #include <CL/opencl.h>
 
@@ -67,6 +67,7 @@ clPollStreams(cl_device_id               device,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clPollStreams
       (device,completions,min_num_completion,max_num_completion,actual_num_completion,timeout,errcode_ret);
   }

@@ -39,7 +39,7 @@ namespace xdp {
 
     // If there is something that is common amongst all plugins when
     //  dealing with emulation flows.
-    XDP_EXPORT void emulationSetup() ;
+    XDP_EXPORT virtual void emulationSetup() ;
 
   public:
     XDP_EXPORT XDPPlugin() ;
@@ -53,8 +53,8 @@ namespace xdp {
 
     // Messages may be broadcast from the database to all plugins using
     //  this function
-    XDP_EXPORT void broadcast(VPDatabase::MessageType msg,
-			      void* blob = nullptr) ;
+    XDP_EXPORT virtual void broadcast(VPDatabase::MessageType msg,
+				      void* blob = nullptr) ;
   } ;
 
 }

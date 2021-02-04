@@ -24,7 +24,10 @@
 namespace xdp {
 
   VPStatisticsDatabase::VPStatisticsDatabase(VPDatabase* d) :
-    db(d), firstKernelStartTime(0.0)
+    db(d), numMigrateMemCalls(0), numHostP2PTransfers(0),
+    numObjectsReleased(0), contextEnabled(false),
+    totalHostReadTime(0), totalHostWriteTime(0), totalBufferStartTime(0),
+    totalBufferEndTime(0), firstKernelStartTime(0.0), lastKernelEndTime(0.0)
   {
   }
 
@@ -32,8 +35,138 @@ namespace xdp {
   {
   }
 
+  void VPStatisticsDatabase::addTopHostRead(BufferTransferStats& transfer)
+  {
+    // Edge case: First read.
+    if (topHostReads.size() == 0)
+    {
+      topHostReads.push_back(transfer) ;
+      return ;
+    }
+    
+    // Standard case: Insert in sorted order
+    bool inserted = false ;
+    for (std::list<BufferTransferStats>::iterator iter = topHostReads.begin() ;
+	 iter != topHostReads.end() ;
+	 ++iter)
+    {
+      if (transfer.getDuration() > (*iter).getDuration())
+      {
+	topHostReads.insert(iter, transfer) ;
+	inserted = true ;
+	break ;
+      }
+    }
+
+    // Edge case: Transfer is smaller than currently stored values
+    if (!inserted)
+    {
+      topHostReads.push_back(transfer) ;
+    }
+
+    // Clean up any extra elements
+    while (topHostReads.size() > numTopTransfers)
+    {
+      topHostReads.pop_back() ;
+    }
+  }
+
+  void VPStatisticsDatabase::addTopHostWrite(BufferTransferStats& transfer)
+  {
+    // Edge case: First write.
+    if (topHostWrites.size() == 0)
+    {
+      topHostWrites.push_back(transfer) ;
+      return ;
+    }
+    
+    // Standard case: Insert in sorted order
+    bool inserted = false ;
+    for (std::list<BufferTransferStats>::iterator iter = topHostWrites.begin() ;
+	 iter != topHostWrites.end() ;
+	 ++iter)
+    {
+      if (transfer.getDuration() > (*iter).getDuration())
+      {
+	topHostWrites.insert(iter, transfer) ;
+	inserted = true ;
+	break ;
+      }
+    }
+
+    // Edge case: Transfer is smaller than currently stored values
+    if (!inserted)
+    {
+      topHostWrites.push_back(transfer) ;
+    }
+
+    // Clean up any extra elements
+    while (topHostWrites.size() > numTopTransfers)
+    {
+      topHostWrites.pop_back() ;
+    }
+  }
+
+  void VPStatisticsDatabase::addTopKernelExecution(KernelExecutionStats& exec)
+  {
+    // Edge case: First execution
+    if (topKernelExecutions.size() == 0)
+    {
+      topKernelExecutions.push_back(exec) ;
+      return ;
+    }
+    
+    // Standard case: Insert in sorted order
+    bool inserted = false ;
+    for (std::list<KernelExecutionStats>::iterator iter = topKernelExecutions.begin() ;
+	 iter != topKernelExecutions.end() ;
+	 ++iter)
+    {
+      if (exec.duration > (*iter).duration)
+      {
+	topKernelExecutions.insert(iter, exec) ;
+	inserted = true ;
+	break ;
+      }
+    }
+
+    // Edge case: Transfer is smaller than currently stored values
+    if (!inserted)
+    {
+      topKernelExecutions.push_back(exec) ;
+    }
+
+    // Clean up any extra elements
+    while (topKernelExecutions.size() > numTopKernelExecutions)
+    {
+      topKernelExecutions.pop_back() ;
+    }
+  }
+
+  // For a given CU identified by name, collect all the global work group
+  //  configurations + statistics
+  std::vector<std::pair<std::string, TimeStatistics>>
+  VPStatisticsDatabase::getComputeUnitExecutionStats(const std::string& cuName)
+  {
+    std::vector<std::pair<std::string, TimeStatistics>> calls;
+    for (auto element : computeUnitExecutionStats) {
+      if (0 == cuName.compare(std::get<0>(element.first))) {
+        calls.push_back(std::make_pair(std::get<2>(element.first), element.second));
+      }
+    }
+    return calls;
+  }
+
+  uint64_t VPStatisticsDatabase::getDeviceActiveTime(const std::string& deviceName)
+  {
+    if (deviceActiveTimes.find(deviceName) == deviceActiveTimes.end())
+      return 0 ;
+    std::pair<uint64_t, uint64_t> time = deviceActiveTimes[deviceName] ;
+    return time.second - time.first ;
+  }
+
   void VPStatisticsDatabase::logFunctionCallStart(const std::string& name,
-						   double timestamp)
+						  double timestamp)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
@@ -51,6 +184,9 @@ namespace xdp {
     {
       callCount[key].push_back(value) ;
     }
+
+    // OpenCL specific information 
+    if (name == "clEnqueueMigrateMemObjects") addMigrateMemCall() ;
   }
 
   void VPStatisticsDatabase::logFunctionCallEnd(const std::string& name,
@@ -80,8 +216,34 @@ namespace xdp {
     (memoryStats[deviceId]).channels[channelNum].totalByteCount += count;
   }
 
+  void VPStatisticsDatabase::logDeviceActiveTime(const std::string& deviceName,
+						 uint64_t startTime,
+						 uint64_t endTime)
+  {
+    if (deviceActiveTimes.find(deviceName) == deviceActiveTimes.end())
+    {
+      std::pair<uint64_t, uint64_t> execution =
+	std::make_pair(startTime, endTime) ;
+      deviceActiveTimes[deviceName] = execution ;
+    }
+    else
+    {
+      // Don't change the start time, only update the end time
+      deviceActiveTimes[deviceName].second = endTime ;
+    }
+  }
+
   void VPStatisticsDatabase::logKernelExecution(const std::string& kernelName,
-						 double executionTime)
+						uint64_t executionTime,
+						uint64_t kernelInstanceAddress,
+						uint64_t contextId,
+						uint64_t commandQueueId,
+						const std::string& deviceName,
+						uint64_t startTime,
+						const std::string& globalWorkSize,
+						const std::string& localWorkSize,
+						const char** buffers,
+						uint64_t numBuffers)
   {
     if (kernelExecutionStats.find(kernelName) == kernelExecutionStats.end())
     {
@@ -89,11 +251,105 @@ namespace xdp {
       kernelExecutionStats[kernelName] = blank ;
     }
     (kernelExecutionStats[kernelName]).update(executionTime) ;
+
+    // Also keep track of top kernel executions
+    KernelExecutionStats exec ;
+    exec.kernelInstanceAddress = kernelInstanceAddress ;
+    exec.kernelName = kernelName ;
+    exec.contextId = contextId ;
+    exec.commandQueueId = commandQueueId ;
+    exec.deviceName = deviceName ;
+    exec.startTime = startTime ;
+    exec.duration = executionTime ;
+    exec.globalWorkSize = globalWorkSize ;
+    exec.localWorkSize = localWorkSize ;
+    addTopKernelExecution(exec) ;
+
+    // Also keep track of kernel buffers
+    if (bufferInfo.find(kernelName) == bufferInfo.end()) {
+      std::vector<std::string> blank ;
+      bufferInfo[kernelName] = blank ;
+      for (uint64_t i = 0 ; i < numBuffers ; ++i) {
+	std::string convert = buffers[i] ;
+	bufferInfo[kernelName].push_back(convert) ;
+      }
+    }
   }
 
-  void VPStatisticsDatabase::logComputeUnitExecution(const std::string& /*computeUnitName*/, 
-						      double /*executionTime*/)
+  void VPStatisticsDatabase::logComputeUnitExecution(const std::string& computeUnitName,
+						     const std::string& localWorkGroup,
+						     const std::string& globalWorkGroup,
+						     uint64_t executionTime)
   {
+    std::tuple<std::string, std::string, std::string> combinedName =
+      std::make_tuple(computeUnitName, localWorkGroup, globalWorkGroup) ;
+
+    if (computeUnitExecutionStats.find(combinedName) == computeUnitExecutionStats.end())
+    {
+      TimeStatistics blank ;
+      computeUnitExecutionStats[combinedName] = blank ;
+    }
+    (computeUnitExecutionStats[combinedName]).update(executionTime) ;
+  }
+
+  void VPStatisticsDatabase::logHostRead(uint64_t contextId, uint64_t deviceId,
+					 uint64_t size, uint64_t startTime,
+					 uint64_t transferTime,
+					 uint64_t address,
+					 uint64_t commandQueueId)
+  {
+    std::pair<uint64_t, uint64_t> identifier = 
+      std::make_pair(contextId, deviceId) ;
+    
+    if (hostReads.find(identifier) == hostReads.end())
+    {
+      BufferStatistics blank ;
+      hostReads[identifier] = blank ;
+    }
+
+    hostReads[identifier].update(size, transferTime) ;
+
+    totalHostReadTime += transferTime ;
+
+    // Also keep track of the top host reads
+    BufferTransferStats transfer ;
+    transfer.size = size ;
+    transfer.address = address ;
+    transfer.contextId = contextId ;
+    transfer.commandQueueId = commandQueueId ;
+    transfer.startTime = startTime ;
+    transfer.duration = transferTime ;
+    addTopHostRead(transfer) ;
+  }
+
+  void VPStatisticsDatabase::logHostWrite(uint64_t contextId, uint64_t deviceId,
+					  uint64_t size, uint64_t startTime,
+					  uint64_t transferTime,
+					  uint64_t address,
+					  uint64_t commandQueueId)
+  {
+    std::pair<uint64_t, uint64_t> identifier = 
+      std::make_pair(contextId, deviceId) ;
+    
+    if (hostWrites.find(identifier) == hostWrites.end())
+    {
+      BufferStatistics blank ;
+      hostWrites[identifier] = blank ;
+    }
+
+    hostWrites[identifier].update(size, transferTime) ;
+
+    totalHostWriteTime += transferTime ;
+
+    // Also keep track of the top host writes
+    BufferTransferStats transfer ;
+    transfer.size = size ;
+    transfer.address = address ;
+    transfer.contextId = contextId ;
+    transfer.commandQueueId = commandQueueId ;
+    transfer.startTime = startTime ;
+    transfer.duration = transferTime ;
+    addTopHostWrite(transfer) ;
   }
 
   void VPStatisticsDatabase::updateCounters(uint64_t /*deviceId*/,

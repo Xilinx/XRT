@@ -70,7 +70,8 @@ namespace xdp {
                            uint64_t devId, uint32_t monId, int32_t cuIdx);
     XDP_EXPORT ~KernelEvent();
 
-    virtual int32_t getCUId() { return cuId; }
+    XDP_EXPORT virtual int32_t getCUId() { return cuId; }
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   };
 
   class KernelStall : public KernelEvent
@@ -83,6 +84,7 @@ namespace xdp {
     XDP_EXPORT KernelStall(uint64_t s_id, double ts, VTFEventType ty,
                            uint64_t devId, uint32_t monId, int32_t cuIdx);
     XDP_EXPORT ~KernelStall();
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
   } ;
 
   class DeviceMemoryAccess : public VTFDeviceEvent
@@ -139,6 +141,15 @@ namespace xdp {
   public:
     XDP_EXPORT HostWrite(uint64_t s_id, double ts, uint64_t devId, uint32_t monId) ;
     XDP_EXPORT ~HostWrite() ;
+  } ;
+
+  class XclbinEnd : public VTFDeviceEvent
+  {
+  private:
+    XclbinEnd() = delete ;
+  public:
+    XDP_EXPORT XclbinEnd(uint64_t s_id, double ts, uint64_t devId, uint32_t monId) ;
+    XDP_EXPORT ~XclbinEnd() ;
   } ;
 
 } // end namespace xdp

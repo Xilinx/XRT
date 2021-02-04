@@ -25,8 +25,7 @@
 
 #include "enqueue.h"
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 
 #include <CL/opencl.h>
 
@@ -88,8 +87,8 @@ clEnqueueUnmapMemObject(cl_command_queue  command_queue,
     (command_queue,CL_COMMAND_UNMAP_MEM_OBJECT,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_unmap_buffer,memobj,mapped_ptr);
-  xocl::profile::set_event_action
-    (uevent.get(),xocl::profile::action_unmap,memobj);
+  xocl::profile::set_event_action(uevent.get(), xocl::profile::action_unmap, memobj) ;
+  xocl::profile::counters::set_event_action(uevent.get(), xocl::profile::counter_action_unmap, memobj) ;
   xocl::appdebug::set_event_action
     (uevent.get(),xocl::appdebug::action_unmap,memobj);
 

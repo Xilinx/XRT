@@ -28,8 +28,7 @@
 #include "api.h"
 #include "enqueue.h"
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -155,8 +154,7 @@ clEnqueueCopyBuffer(cl_command_queue    command_queue,
     (command_queue,CL_COMMAND_COPY_BUFFER,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_copy_buffer,src_buffer,dst_buffer,src_offset,dst_offset,size);
-  xocl::profile::set_event_action
-    (uevent.get(),xocl::profile::action_copy,src_buffer,dst_buffer,src_offset,dst_offset,size,true);
+  xocl::profile::set_event_action(uevent.get(), xocl::profile::action_copy, src_buffer, dst_buffer) ;
   xocl::appdebug::set_event_action
     (uevent.get(),xocl::appdebug::action_copybuf,src_buffer,dst_buffer,src_offset,dst_offset,size);
 

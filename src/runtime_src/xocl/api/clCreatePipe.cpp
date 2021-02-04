@@ -26,8 +26,7 @@
 #include "detail/memory.h"
 
 #include "api.h"
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 #include <CL/opencl.h>
 #include <cstdlib>
 #include <mutex>

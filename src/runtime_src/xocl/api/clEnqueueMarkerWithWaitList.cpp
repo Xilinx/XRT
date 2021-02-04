@@ -19,8 +19,7 @@
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"
 #include "detail/event.h"
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 #include <CL/opencl.h>
 
 #ifdef _WIN32

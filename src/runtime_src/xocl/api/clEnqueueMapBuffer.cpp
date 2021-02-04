@@ -25,8 +25,7 @@
 #include "enqueue.h"
 #include <iostream>
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
@@ -74,7 +73,8 @@ clEnqueueMapBuffer(cl_command_queue command_queue,
 
   void* result = nullptr;
   enqueue::set_event_action(uevent.get(),enqueue::action_map_buffer,uevent.get(),buffer,map_flags,offset,size,&result);
-  profile::set_event_action(uevent.get(),profile::action_map,buffer,map_flags);
+  profile::set_event_action(uevent.get(), profile::action_map, buffer, map_flags);
+  xocl::profile::counters::set_event_action(uevent.get(), xocl::profile::counter_action_map, buffer, map_flags);
   xocl::appdebug::set_event_action(uevent.get(),xocl::appdebug::action_map,buffer,map_flags);
 
   uevent->queue();

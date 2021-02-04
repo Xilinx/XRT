@@ -60,7 +60,7 @@ namespace xdp {
                        TraceLoggerCreatingDeviceEvents*,
                        DeviceIntf*> DeviceData ;
 
-    std::map<uint32_t, DeviceData> offloaders;
+    std::map<uint64_t, DeviceData> offloaders;
 
     XDP_EXPORT void addDevice(const std::string& sysfsPath) ;
     XDP_EXPORT void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;
@@ -68,6 +68,8 @@ namespace xdp {
     XDP_EXPORT void configureCtx(uint64_t deviceId, DeviceIntf* devInterface) ;
     XDP_EXPORT void addOffloader(uint64_t deviceId, DeviceIntf* devInterface) ;
     XDP_EXPORT void configureTraceIP(DeviceIntf* devInterface) ;
+
+    XDP_EXPORT void readCounters() ;
 
   public:
     XDP_EXPORT DeviceOffloadPlugin() ;
@@ -78,7 +80,9 @@ namespace xdp {
     virtual void flushDevice(void* device) = 0 ;
     virtual void updateDevice(void* device) = 0 ;
 
-    void clearOffloader(uint32_t deviceId);
+    virtual void broadcast(VPDatabase::MessageType msg, void* blob) ;
+
+    void clearOffloader(uint64_t deviceId);
     void clearOffloaders();
   } ;
 

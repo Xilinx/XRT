@@ -17,8 +17,7 @@
 // Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 #include "xocl/core/event.h"
 #include "detail/event.h"
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 #include <CL/opencl.h>
 
 namespace xocl {

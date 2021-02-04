@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#if 0
+
 #ifndef xocl_api_profile_h
 #define xocl_api_profile_h
 
@@ -206,3 +208,4 @@ end_device_profiling();
 #endif
 
 
+#endif

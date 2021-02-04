@@ -718,6 +718,7 @@ cb_init()
 }
 
 void register_xocl_profile_callbacks() {
+  /*
   xocl::profile::register_cb_action_read (cb_action_read);
   xocl::profile::register_cb_action_write (cb_action_write);
   xocl::profile::register_cb_action_map (cb_action_map);
@@ -742,6 +743,7 @@ void register_xocl_profile_callbacks() {
   xocl::profile::register_cb_end_device_profiling(cb_end_device_profiling);
 
   xocl::command_queue::register_constructor_callbacks(xdp::cb_log_command_queue);
+  */
 }
 } // xdp
 

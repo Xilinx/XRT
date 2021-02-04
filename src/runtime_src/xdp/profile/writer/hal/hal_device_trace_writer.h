@@ -13,6 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#if 0
 
 #ifndef HAL_DEVICE_TRACE_WRITER_DOT_H
 #define HAL_DEVICE_TRACE_WRITER_DOT_H
@@ -63,5 +64,7 @@ namespace xdp {
   } ;
 
 } // end namespace xdp
+
+#endif
 
 #endif

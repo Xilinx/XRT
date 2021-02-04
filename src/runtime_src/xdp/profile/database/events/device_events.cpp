@@ -66,6 +66,12 @@ namespace xdp {
   {
   }
 
+  void KernelEvent::dump(std::ofstream& fout, uint32_t bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    // Don't dump endline.  The writer will add tool tips for this event type
+  }
+
   KernelStall::KernelStall(uint64_t s_id, double ts, VTFEventType ty,
                            uint64_t devId, uint32_t monId, int32_t cuIdx)
              : KernelEvent(s_id, ts, ty, devId, monId, cuIdx),
@@ -76,6 +82,12 @@ namespace xdp {
 
   KernelStall::~KernelStall()
   {
+  }
+
+  void KernelStall::dump(std::ofstream& fout, uint32_t bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    fout << std::endl;
   }
 
   DeviceMemoryAccess::DeviceMemoryAccess(uint64_t s_id, double ts, VTFEventType ty,
@@ -120,6 +132,16 @@ namespace xdp {
   }
 
   HostWrite::~HostWrite()
+  {
+  }
+
+  XclbinEnd::XclbinEnd(uint64_t s_id, double ts, uint64_t devId, uint32_t monId)
+    : VTFDeviceEvent(s_id, ts, XCLBIN_END, devId, monId)
+  {
+    // Just a marker to know when an xclbin has been completely flushed
+  }
+
+  XclbinEnd::~XclbinEnd()
   {
   }
 

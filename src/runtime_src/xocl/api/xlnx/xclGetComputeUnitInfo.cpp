@@ -21,7 +21,7 @@
 
 #include "detail/kernel.h"
 
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 #include <CL/cl_ext_xilinx.h>
 
@@ -119,6 +119,7 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::xclGetComputeUnitInfo
       (kernel,cu_id,param_name,param_value_size,param_value,param_value_size_ret);
   }

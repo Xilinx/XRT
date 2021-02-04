@@ -35,7 +35,7 @@ CallLogger::CallLogger(uint64_t id)
   hal_plugins_loaded = true ;
 
   // This hook is responsible for loading all of the HAL level plugins
-  if (xrt_core::config::get_xrt_profile()) {
+  if (xrt_core::config::get_xrt_trace()) {
     load_xdp_plugin_library(nullptr) ;
   }
 

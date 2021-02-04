@@ -32,22 +32,27 @@ namespace xdp {
   class KernelEnqueue : public VTFEvent
   {
   private:
-    uint64_t deviceName ;
-    uint64_t binaryName ;
-    uint64_t kernelName ;
-    uint64_t workgroupConfiguration ;
-    uint64_t workgroupSize ;
-    uint64_t eventString ;
-    uint64_t stageString ;
-    uint64_t objId ;
-    size_t size ;
+    uint64_t deviceName ; // string
+    uint64_t binaryName ; // string
+    uint64_t kernelName ; // string
+    uint64_t workgroupConfiguration ; // string
+    size_t workgroupSize ;
+
+    std::string identifier ;
 
     KernelEnqueue() = delete ;
   public:
-    XDP_EXPORT KernelEnqueue(uint64_t s_id, double ts);
+    XDP_EXPORT KernelEnqueue(uint64_t s_id, double ts, 
+			     uint64_t dName, uint64_t bName, uint64_t kName,
+			     uint64_t wgc, size_t wgs,
+			     const char* enqueueId) ;
+
     XDP_EXPORT ~KernelEnqueue() ;
 
+    inline std::string getIdentifier() { return identifier ; }
+
     virtual bool isHostEvent() { return true ; }
+    virtual bool isOpenCLHostEvent() { return true ; }
     
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
@@ -66,17 +71,17 @@ namespace xdp {
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
+  /*
   class CUEnqueue : public VTFEvent
   {
   private:
+    // These will be used to determine the bucket in the writer
     uint64_t deviceName ;
     uint64_t binaryName ;
     uint64_t kernelName ;
     uint64_t workgroupConfiguration ;
     uint64_t cuName ;
-    uint64_t eventString ;
-    uint64_t stageString ;
-    uint64_t objId ;
+    //uint64_t objId ;
     size_t size ;
     uint64_t cuId ;
 
@@ -87,23 +92,11 @@ namespace xdp {
 
     virtual bool isHostEvent() { return true ; } 
   } ;
-
-  class BufferTransfer : public VTFEvent
+  */
+  class BufferTransfer : public VTFEvent // For HAL level
   {
   private:
-    #if 0
-    uint64_t stageString ;
-    uint64_t eventString ;
-    #endif
     size_t size ;
-    #if 0
-    uint64_t srcAddress ;
-    uint64_t srcBank ;
-    uint64_t dstAddress ;
-    uint64_t dstBank ;
-    std::thread::id threadId ;
-    uint64_t bufferId ;
-    #endif
 
     BufferTransfer() = delete ;
   public:
@@ -112,6 +105,51 @@ namespace xdp {
     XDP_EXPORT ~BufferTransfer() ;
 
     virtual bool isHostEvent() { return true ; } 
+
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+  } ;
+
+  class OpenCLBufferTransfer : public VTFEvent
+  {
+  private:
+    std::thread::id threadId ;
+    uint64_t deviceAddress ;
+    uint64_t memoryResource ; // string
+    size_t bufferSize ;
+
+    OpenCLBufferTransfer() = delete ;
+  public:
+    XDP_EXPORT OpenCLBufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
+				    uint64_t address, uint64_t resource,
+				    size_t size) ;
+    XDP_EXPORT ~OpenCLBufferTransfer() ;
+
+    virtual bool isHostEvent()       { return true ; }
+    virtual bool isOpenCLHostEvent() { return true ; }
+
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+  } ;
+
+  class OpenCLCopyBuffer : public VTFEvent
+  {
+  private:
+    std::thread::id threadId ;
+    uint64_t srcDeviceAddress ;
+    uint64_t srcMemoryResource ; // string
+    uint64_t dstDeviceAddress ;
+    uint64_t dstMemoryResource ; // string
+    size_t bufferSize ;
+
+    OpenCLCopyBuffer() = delete ;
+  public:
+    XDP_EXPORT OpenCLCopyBuffer(uint64_t s_id, double ts, VTFEventType ty,
+				uint64_t srcAddress, uint64_t srcResource,
+				uint64_t dstAddress, uint64_t dstResource,
+				size_t size) ;
+    XDP_EXPORT ~OpenCLCopyBuffer() ;
+
+    virtual bool isHostEvent()       { return true ; }
+    virtual bool isOpenCLHostEvent() { return true ; }
 
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;

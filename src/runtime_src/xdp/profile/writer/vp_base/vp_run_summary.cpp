@@ -55,6 +55,8 @@ namespace xdp {
 
     if (!fout) return ;
 
+    
+
     // Collect all the files that have been created in this host execution
     //  run and dump their information in the run summary file
     std::vector<std::pair<std::string, std::string> > files = 
@@ -95,6 +97,15 @@ namespace xdp {
       ptFiles.push_back(std::make_pair("", ptFile)) ;
     }
     ptRunSummary.add_child("files", ptFiles) ;
+
+    // Add the system diagram information if available
+    std::string systemDiagram = (db->getStaticInfo()).getSystemDiagram() ;
+    if (systemDiagram != "")
+    {
+      boost::property_tree::ptree ptSystemDiagram ;
+      ptSystemDiagram.put("payload_16bitEnc", systemDiagram.c_str()) ;
+      ptRunSummary.add_child("system_diagram", ptSystemDiagram) ;
+    }
 
     boost::property_tree::write_json(fout, ptRunSummary, true) ;
   }

@@ -25,8 +25,7 @@
 #include "detail/command_queue.h"
 #include "detail/memory.h"
 #include "detail/event.h"
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
