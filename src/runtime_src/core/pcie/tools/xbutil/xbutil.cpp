@@ -26,6 +26,7 @@
 #include <getopt.h>
 #include <sys/mman.h>
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
 
 #include "xbutil.h"
 #include "base.h"
@@ -1218,7 +1219,11 @@ int xcldev::device::runTestCase(const std::string& py,
             return -ENOENT;
         }
 
-        cmd = xrtTestCasePath + " " + xclbinPath + " -d " + std::to_string(m_idx);
+        //get bdf from index
+        auto device = pcidev::get_dev(m_idx);
+        std::string bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % device->domain % device->bus % device->dev % device->func);
+
+        cmd = xrtTestCasePath + " " + xclbinPath + " -d " + bdf;
 
     }
     else if (py.find(".exe") == std::string::npos) { //OLD FLOW:
