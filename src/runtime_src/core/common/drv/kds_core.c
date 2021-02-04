@@ -384,12 +384,9 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	/* Before close, make sure no remain commands in CU's queue. */
-	outstanding = client->s_cnt[cu_idx] - client->c_cnt[cu_idx];
+	outstanding = client->s_cnt[cu_idx] - READ_ONCE(client->c_cnt[cu_idx]);
 	if (!outstanding)
 		goto skip;
-
-	kds_warn(client, "%ld outstanding command(s) on CU(%d)",
-		 outstanding, cu_idx);
 
 	if (!kds->ert_disable)
 		kds->ert->abort(kds->ert, client, cu_idx);
@@ -398,8 +395,10 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 
 	/* sub-device that handle command should do abort with a timeout */
 	do {
+		kds_warn(client, "%ld outstanding command(s) on CU(%d)",
+			 outstanding, cu_idx);
 		msleep(500);
-		outstanding = client->s_cnt[cu_idx] - client->c_cnt[cu_idx];
+		outstanding = client->s_cnt[cu_idx] - READ_ONCE(client->c_cnt[cu_idx]);
 	} while(outstanding);
 
 	if (!kds->ert_disable)

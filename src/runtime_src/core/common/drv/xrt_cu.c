@@ -261,8 +261,9 @@ int xrt_cu_polling_thread(void *data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
 	int ret = 0;
+	int loop_cnt = 0;
 
-	xcu_info(xcu, "start");
+	xcu_info(xcu, "CU[%d] start", xcu->info.cu_idx);
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 	while (!xcu->stop) {
 		/* Make sure to submit as many commands as possible.
@@ -290,11 +291,30 @@ int xrt_cu_polling_thread(void *data)
 		if (xrt_cu_peek_credit(xcu) <= xcu->busy_threshold)
 			usleep_range(xcu->interval_min, xcu->interval_max);
 
+		/* TODO: Without schedule(), we see unexpected stuck when a host
+		 * application is killed or randomly call exit. This can be
+		 * reproduced with a slow kernel, which take more than 1 second
+		 * to execute one command. Phenomenon observed so far:
+		 * 1. Let host code random exit when commands are still running.
+		 * 2. strace shows exit_group systemcall on the screen
+		 * 3. stuck for a while
+		 * 4. dmesg shows drm_release is called
+		 *
+		 * Need more efforts to re-compile linux kernel to debug.
+		 * Will check this later.
+		 */
+		/* Avoid large num_rq leads to more 120 sec blocking */
+		if (++loop_cnt == 8) {
+			loop_cnt = 0;
+			schedule();
+		}
+
 		/* Continue until run queue empty */
 		if (xcu->num_rq)
 			continue;
 
 		if (!xcu->num_sq && !xcu->num_cq) {
+			loop_cnt = 0;
 			xcu->sleep_cnt++;
 			if (down_interruptible(&xcu->sem))
 				ret = -ERESTARTSYS;
@@ -316,8 +336,9 @@ int xrt_cu_intr_thread(void *data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
 	int ret = 0;
+	int loop_cnt = 0;
 
-	xcu_info(xcu, "start");
+	xcu_info(xcu, "CU[%d] start", xcu->info.cu_idx);
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 	xrt_cu_enable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
 	while (!xcu->stop) {
@@ -329,11 +350,10 @@ int xrt_cu_intr_thread(void *data)
 			continue;
 
 		if (xcu->num_sq || is_zero_credit(xcu)) {
-			//usleep_range(1, 3);
 			xrt_cu_check(xcu);
 			if (!xcu->done_cnt || !xcu->ready_cnt) {
 				xcu->sleep_cnt++;
-				if (down_interruptible(&xcu->sem_cu))
+				if (down_timeout(&xcu->sem_cu, CU_TIMER))
 					ret = -ERESTARTSYS;
 				xrt_cu_check(xcu);
 			}
@@ -342,11 +362,18 @@ int xrt_cu_intr_thread(void *data)
 
 		process_cq(xcu);
 
+		/* Avoid large num_rq leads to more 120 sec blocking */
+		if (++loop_cnt == 8) {
+			loop_cnt = 0;
+			schedule();
+		}
+
 		/* Continue until run queue empty */
 		if (xcu->num_rq)
 			continue;
 
 		if (!xcu->num_sq && !xcu->num_cq) {
+			loop_cnt = 0;
 			if (down_interruptible(&xcu->sem))
 				ret = -ERESTARTSYS;
 		}
