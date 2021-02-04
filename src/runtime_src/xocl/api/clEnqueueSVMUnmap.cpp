@@ -15,8 +15,6 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"
@@ -27,7 +25,9 @@
 
 #include "enqueue.h"
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -76,7 +76,7 @@ clEnqueueSVMUnmap(cl_command_queue  command_queue,
                event_wait_list,event);
 
   auto uevent = xocl::create_hard_event
-    (command_queue,CL_COMMAND_SVM_UNMAP,num_events_in_wait_list,event_wait_list); 
+    (command_queue,CL_COMMAND_SVM_UNMAP,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_unmap_svm_buffer,svm_ptr);
   //xocl::profile::set_event_action
@@ -100,6 +100,7 @@ clEnqueueSVMUnmap(cl_command_queue  command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueSVMUnmap
       (command_queue,svm_ptr,num_events_in_wait_list,event_wait_list,event);
   }
@@ -112,6 +113,3 @@ clEnqueueSVMUnmap(cl_command_queue  command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
-

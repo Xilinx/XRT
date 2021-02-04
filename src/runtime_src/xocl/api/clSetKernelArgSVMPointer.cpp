@@ -15,14 +15,16 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/kernel.h"
 #include "detail/kernel.h"
-
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 #include <cstdlib>
-#include "plugin/xdp/profile.h"
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 )
+#endif
 
 namespace xocl {
 
@@ -76,6 +78,7 @@ clSetKernelArgSVMPointer(cl_kernel    kernel,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clSetKernelArgSVMPointer(kernel, arg_index, arg_value);
   }
   catch (const xocl::error& ex) {
@@ -94,5 +97,3 @@ clSetKernelArgSVMPointer(cl_kernel    kernel,
     return CL_OUT_OF_RESOURCES;
   }
 }
-
-

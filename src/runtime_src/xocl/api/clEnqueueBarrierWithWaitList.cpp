@@ -15,8 +15,6 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"
@@ -24,7 +22,12 @@
 #include "detail/event.h"
 
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
 // Enqueues a barrier command which waits for either a list of events
 // to complete, or if the list is empty it waits for all commands
@@ -38,7 +41,7 @@
 
 namespace xocl {
 
-static void 
+static void
 validOrError(cl_command_queue  command_queue ,
              cl_uint            num_events_in_wait_list ,
              const cl_event *   event_wait_list ,
@@ -72,7 +75,7 @@ clEnqueueBarrierWithWaitList(cl_command_queue  command_queue ,
                              cl_event *         event_parameter )
 {
   validOrError(command_queue,num_events_in_wait_list,event_wait_list,event_parameter);
-  
+
   // If the list is empty it waits for all commands previously
   // enqueued in command_queue to complete before it completes.
   xocl::ptr<xocl::event> uevent;
@@ -116,6 +119,7 @@ clEnqueueBarrierWithWaitList(cl_command_queue  command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueBarrierWithWaitList
       (command_queue,num_events_in_wait_list,event_wait_list,event_parameter);
   }
@@ -128,5 +132,3 @@ clEnqueueBarrierWithWaitList(cl_command_queue  command_queue ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,23 +14,53 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "xocl/core/memory.h"
+#include "core/common/memalign.h"
 
 #include "detail/context.h"
 #include "detail/memory.h"
 
-#include "xrt/util/memory.h"
 #include "api.h"
-#include "impl/cpu_pipes.h"
-
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 #include <cstdlib>
-#include "plugin/xdp/profile.h"
+#include <mutex>
+#include <deque>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4200 4505 )
+#endif
+
+namespace {
+
+struct cpu_pipe_reserve_id_t {
+  std::size_t head;
+  std::size_t tail;
+  std::size_t next;
+  unsigned int size;
+  unsigned int ref;
+};
+
+struct cpu_pipe_t {
+  std::mutex rd_mutex;
+  std::mutex wr_mutex;
+  std::size_t pkt_size;
+  std::size_t pipe_size;
+  std::size_t head;
+  std::size_t tail;
+
+  std::deque<cpu_pipe_reserve_id_t*> rd_rids;
+  std::deque<cpu_pipe_reserve_id_t*> wr_rids;
+
+  char buf[0];
+};
+
+}
 
 namespace xocl {
 
@@ -71,12 +101,9 @@ validOrError(cl_context                context,
   if (!pipe_packet_size)
     //throw error(CL_INVALID_PIPE_SIZE,"pipe_packet_size must be > 0");
     throw error(CL_INVALID_VALUE,"pipe_packet_size must be > 0");
-  auto dr = xocl(context)->get_device_range();
-  if (std::any_of(dr.begin(),dr.end(),
-       [pipe_packet_size](device* d)
-       {return pipe_packet_size > getDevicePipeMaxPacketSize(d); }))
-    //throw error(CL_INVALID_PIPE_SIZE,"pipe_packet_size must be <= max packet size for all devices");
-    throw error(CL_INVALID_VALUE,"pipe_packet_size must be <= max packet size for all devices");
+  for (auto d : xocl(context)->get_device_range())
+    if (pipe_packet_size > getDevicePipeMaxPacketSize(d))
+      throw error(CL_INVALID_VALUE,"pipe_packet_size must be <= max packet size for all devices");
 
   // CL_MEM_OBJECT_ALLOCATION_FAILURE if there is a failure to
   // allocate memory for the pipe object.
@@ -98,13 +125,13 @@ clCreatePipe(cl_context                context,
 {
   validOrError(context,flags,pipe_packet_size,pipe_max_packets,properties,errcode_ret);
 
-  auto upipe = xrt::make_unique<xocl::pipe>(xocl::xocl(context),flags,pipe_packet_size,pipe_max_packets);
+  auto upipe = std::make_unique<xocl::pipe>(xocl::xocl(context),flags,pipe_packet_size,pipe_max_packets);
 
   // TODO: here we allocate a pipe even if it isn't a memory mapped pipe,
   // it would be nice to not allocate the pipe if it's a hardware pipe.
   size_t nbytes = upipe->get_pipe_packet_size() * (upipe->get_pipe_max_packets()+8);
   void* user_ptr=nullptr;
-  int status = posix_memalign(&user_ptr, 128, (sizeof(cpu_pipe_t)+nbytes));
+  int status = xrt_core::posix_memalign(&user_ptr, 128, (sizeof(cpu_pipe_t)+nbytes));
   if (status)
     throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE);
   upipe->set_pipe_host_ptr(user_ptr);
@@ -125,10 +152,11 @@ clCreatePipe(cl_context                context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreatePipe
       (context,flags,pipe_packet_size,pipe_max_packets,properties,errcode_ret);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,ex.get_code());
   }

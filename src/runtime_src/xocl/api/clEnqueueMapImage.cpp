@@ -15,20 +15,18 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
-
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
 static void
 validOrError(cl_command_queue   command_queue ,
-             cl_mem             image , 
-             cl_bool            blocking_map , 
-             cl_map_flags       map_flags , 
+             cl_mem             image ,
+             cl_bool            blocking_map ,
+             cl_map_flags       map_flags ,
              const size_t *     origin ,
              const size_t *     region ,
              size_t *           image_row_pitch ,
@@ -108,9 +106,9 @@ validOrError(cl_command_queue   command_queue ,
 
 static void*
 clEnqueueMapImage(cl_command_queue   command_queue ,
-                  cl_mem             image , 
-                  cl_bool            blocking_map , 
-                  cl_map_flags       map_flags , 
+                  cl_mem             image ,
+                  cl_bool            blocking_map ,
+                  cl_map_flags       map_flags ,
                   const size_t *     origin ,
                   const size_t *     region ,
                   size_t *           image_row_pitch ,
@@ -129,9 +127,9 @@ clEnqueueMapImage(cl_command_queue   command_queue ,
 
 void*
 clEnqueueMapImage(cl_command_queue   command_queue ,
-                  cl_mem             image , 
-                  cl_bool            blocking_map , 
-                  cl_map_flags       map_flags , 
+                  cl_mem             image ,
+                  cl_bool            blocking_map ,
+                  cl_map_flags       map_flags ,
                   const size_t *     origin ,
                   const size_t *     region ,
                   size_t *           image_row_pitch ,
@@ -143,6 +141,7 @@ clEnqueueMapImage(cl_command_queue   command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueMapImage
       (command_queue,image,blocking_map,map_flags,origin,region,image_row_pitch,image_slice_pitch
        ,num_events_in_wait_list,event_wait_list,event,errcode_ret);
@@ -157,6 +156,3 @@ clEnqueueMapImage(cl_command_queue   command_queue ,
   }
   return nullptr;
 }
-
-
-

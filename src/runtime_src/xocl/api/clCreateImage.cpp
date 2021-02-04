@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,19 +14,23 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "xocl/core/memory.h"
-#include "xrt/util/memory.h"
 #include "detail/memory.h"
 #include "detail/context.h"
-
+#include "plugin/xdp/profile_v2.h"
+//#include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+#include <CL/opencl.h>
 #include <cstdlib>
-#include "plugin/xdp/profile.h"
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 )
+#endif
 
 namespace {
 
@@ -519,12 +523,6 @@ mkImageCore (cl_context context,
     adjusted_row_pitch = w*bpp;
     if(adjusted_row_pitch < row_pitch && (user_ptr) != nullptr)
 	adjusted_row_pitch = row_pitch;
-    if (image_type == CL_MEM_OBJECT_IMAGE2D && buffer) {
-      if(adjusted_row_pitch < row_pitch) {
-        adjusted_row_pitch = row_pitch;
-      }
-      adjusted_h = h;
-    }
 
     //Till we have native h/w support.
     if(adjusted_h==0)
@@ -533,17 +531,11 @@ mkImageCore (cl_context context,
     //Initialize the size.
     sz = adjusted_row_pitch * adjusted_h * depth;
 
-    if(image_type == CL_MEM_OBJECT_IMAGE1D_BUFFER)
-	throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage: Image1D buffer");
-
-    if (image_type == CL_MEM_OBJECT_IMAGE2D && buffer)
-	throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage: Image2D buffer");
-
     if(user_ptr)
 	throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage: Image1D buffer");
 
     //cxt, flags, sz, w, h, depth , row, slice, "image_type", *format, xlnx_fmt, bpp
-    auto ubuffer = xrt::make_unique<xocl::image>(xocl::xocl(context),flags,sz,w,h,depth,
+    auto ubuffer = std::make_unique<xocl::image>(xocl::xocl(context),flags,sz,w,h,depth,
 	    adjusted_row_pitch,adjusted_slice_pitch,bpp,image_type,*format,user_ptr);
 
     cl_mem image = ubuffer.get();
@@ -565,15 +557,12 @@ mkImageCore (cl_context context,
     //set fields in cl_buffer
     //
     unsigned memExtension = 0;
-    xocl::xocl(image)->add_ext_flags(memExtension);
+    xocl::xocl(image)->set_ext_flags(memExtension);
 
     // allocate device buffer object if context has only one device
     // and if this is not a progvar (clCreateProgramWithBinary)
-    if (!(flags & CL_MEM_PROGVAR)) {
-	if (auto device = singleContextDevice(context)) {
-	    xocl::xocl(image)->get_buffer_object(device);
-	}
-    }
+    if (auto device = singleContextDevice(context))
+      xocl::xocl(image)->get_buffer_object(device);
 
     xocl::assign(errcode_ret,CL_SUCCESS);
     return ubuffer.release();
@@ -588,7 +577,6 @@ mkImageFromBuffer(cl_context             context,
 {
   //This will call mkImageCore() function after modifying the arguments of desc.
   throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage, buffer type");
-  return nullptr;
 }
 
 static cl_mem
@@ -669,10 +657,11 @@ clCreateImage(cl_context              context,
 {
     try {
       PROFILE_LOG_FUNCTION_CALL;
+      LOP_LOG_FUNCTION_CALL;
       return xocl::clCreateImage
         (context,flags,image_format,image_desc,host_ptr,errcode_ret);
     }
-    catch (const xrt::error& ex) {
+    catch (const xrt_xocl::error& ex) {
 	xocl::send_exception_message(ex.what());
 	xocl::assign(errcode_ret,ex.get_code());
     }

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,18 +14,17 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
-#include "xrt/util/memory.h"
 #include "detail/memory.h"
 #include "detail/context.h"
 
 #include <bitset>
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace {
 
@@ -76,7 +75,7 @@ void clSVMFree(cl_context     context,
   // If a NULL pointer is passed in svm_pointer, no action occurs.
   if (svm_pointer) {
     if (auto device = singleContextDevice(context)) {
-      device->get_xrt_device()->free_svm(svm_pointer);
+      device->get_xdevice()->free_svm(svm_pointer);
     }
   }
 
@@ -97,10 +96,11 @@ void clSVMFree(cl_context     context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     xocl::clSVMFree
       (context,svm_pointer);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
   }
   catch (const std::exception& ex) {

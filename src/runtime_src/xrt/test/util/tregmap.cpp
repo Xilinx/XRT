@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,7 +26,7 @@ BOOST_AUTO_TEST_CASE( test_regmap1 )
 {
   {
     using word = uint32_t;
-    using regmap_type = xrt::regmap<word,10,4096>;
+    using regmap_type = xrt_xocl::regmap<word,10,4096>;
     regmap_type regmap;
     BOOST_CHECK_EQUAL(regmap.size(),0);
     BOOST_CHECK_EQUAL(regmap.bytes(),0);
@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE( test_regmap1 )
 
   {
     using word = uint32_t;
-    using regmap_type = xrt::regmap<word,4096,128>;
+    using regmap_type = xrt_xocl::regmap<word,4096,128>;
     regmap_type regmap;
     BOOST_CHECK_EQUAL(regmap.size(),0);
     BOOST_CHECK_EQUAL(regmap.bytes(),0);
@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE( test_regmap1 )
 
   {
     using word = uint64_t;
-    using regmap_type = xrt::regmap<word,4096>;
+    using regmap_type = xrt_xocl::regmap<word,4096>;
     regmap_type regmap;
     BOOST_CHECK_EQUAL(regmap.size(),0);
     BOOST_CHECK_EQUAL(regmap.bytes(),0);

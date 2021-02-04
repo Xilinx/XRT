@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,7 +19,21 @@
 #include "xrt/device/device.h"
 #include <cstdlib>
 
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+#endif
+
 namespace {
+
+static bool
+is_windows()
+{
+#ifdef _WIN32
+    return true;
+#else
+    return false;
+#endif
+}
 
 static bool
 emulation_mode()
@@ -39,8 +53,9 @@ is_sw_emulation()
 
 inline bool
 kds_enabled(bool forceoff=false)
-{
-  static bool enabled = !is_sw_emulation() && xrt::config::get_kds();
+{  
+  bool iskdsemu = is_sw_emulation() ? (xrt_core::config::get_flag_kds_sw_emu() ? false : true) : false;
+  static bool enabled = !iskdsemu && xrt_xocl::config::get_kds() && !xrt_xocl::config::get_feature_toggle("Runtime.sws") && !is_windows() ;
   if (forceoff)
     enabled = false;
   return enabled;
@@ -48,7 +63,7 @@ kds_enabled(bool forceoff=false)
 
 // Force disabling of kds if emulation and 5.0 DSA
 static void
-emu_50_disable_kds(const xrt::device* device)
+emu_50_disable_kds(const xrt_xocl::device* device)
 {
   static bool done = false;
   if (!done) {
@@ -64,47 +79,19 @@ emu_50_disable_kds(const xrt::device* device)
       return;
 
     // stop kds thread
-    xrt::scheduler::stop();
+    xrt_xocl::scheduler::stop();
 
     // force kds off
     kds_enabled(true/*forceoff*/);
 
     // restart scheduler thread
-    xrt::scheduler::start();
-  }
-}
-
-  // Force disabling of kds if aws 5.0 device
-static void
-aws_50_disable_kds(const xrt::device* device)
-{
-  static bool done = false;
-  if (!done) {
-    done = true;
-
-    if (!kds_enabled())
-      return;
-
-    if (device->getName().find("xilinx_aws")==std::string::npos)
-      return;
-
-    if (device->getName().find("_5_0")==std::string::npos)
-      return;
-
-    // stop kds thread
-    xrt::scheduler::stop();
-
-    // force kds off
-    kds_enabled(true/*forceoff*/);
-
-    // restart scheduler thread
-    xrt::scheduler::start();
+    xrt_xocl::scheduler::start();
   }
 }
 
 }
 
-namespace xrt {  namespace scheduler {
+namespace xrt_xocl {  namespace scheduler {
 
 void
 start()
@@ -139,15 +126,14 @@ schedule(const command_type& cmd)
 }
 
 void
-init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_t cu_offset, size_t cu_base_addr, const std::vector<uint32_t>& cu_addr_map)
+init(xrt_xocl::device* device)
 {
   emu_50_disable_kds(device);
-  aws_50_disable_kds(device);
 
   if (kds_enabled())
-    kds::init(device,regmap_size,cu_isr,num_cus,cu_offset,cu_base_addr,cu_addr_map);
+    kds::init(device);
   else
-    sws::init(device,regmap_size,num_cus,cu_offset,cu_base_addr,cu_addr_map);
+    sws::init(device);
 }
 
 }} // scheduler,xrt

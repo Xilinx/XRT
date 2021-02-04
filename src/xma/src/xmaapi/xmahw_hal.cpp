@@ -19,90 +19,28 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <vector>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include <xclhal2.h>
-//#include <xclbin.h>
+#include "xrt.h"
 #include "app/xmaerror.h"
+#include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
-#include "lib/xmahw_hal.h"
 #include "lib/xmahw_private.h"
+#include <dlfcn.h>
+#include <iostream>
+#include <bitset>
+#include "ert.h"
 
-#define xma_logmsg(f_, ...) printf((f_), ##__VA_ARGS__)
+//#define xma_logmsg(f_, ...) printf((f_), ##__VA_ARGS__)
+#define XMAAPI_MOD "xmahw_hal"
 
-typedef struct XmaHALDevice
-{
-    xclDeviceHandle    handle;
-    xclDeviceInfo2     info;
-} XmaHALDevice;
-
-/* Private helper functions */
-static int get_device_list(XmaHALDevice   *xlnx_devices,
-                           uint32_t       *device_count);
-
-static void set_hw_cfg(uint32_t        device_count,
-                       XmaHALDevice   *xlnx_devices,
-                       XmaHwCfg       *hwcfg);
-
-static int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *xclbin_mem);
-
-static int get_max_dev_id(XmaSystemCfg *systemcfg);
-
-int get_device_list(XmaHALDevice   *xlnx_devices,
-                    uint32_t       *device_count)
-{
-    int32_t      rc = 0;
-    uint32_t     i;
-
-    *device_count = xclProbe();
-    for (i = 0; i < *device_count; i++)
-    {
-        xlnx_devices[i].handle = xclOpen(i, NULL, XCL_QUIET);
-        printf("get_device_list xclOpen handle = %p\n",
-            xlnx_devices[i].handle);
-        rc = xclGetDeviceInfo2(xlnx_devices[i].handle, &xlnx_devices[i].info);
-        if (rc != 0)
-        {
-            xma_logmsg("xclGetDeviceInfo2 failed for device id: %d, rc=%d\n",
-                        i, rc);
-            break;
-        }
-    }
-
-    return rc;
-}
-
-void set_hw_cfg(uint32_t        device_count,
-                XmaHALDevice   *xlnx_devices,
-                XmaHwCfg       *hwcfg)
-{
-    XmaHwHAL *hwhal = NULL;
-    uint32_t   i;
-
-    hwcfg->num_devices = device_count;
-
-    for (i = 0; i < device_count; i++)
-    {
-        strcpy(hwcfg->devices[i].dsa, xlnx_devices[i].info.mName);
-        hwhal = (XmaHwHAL*)malloc(sizeof(XmaHwHAL));
-        memset(hwhal, 0, sizeof(XmaHwHAL));
-        hwhal->dev_handle = xlnx_devices[i].handle;
-        hwcfg->devices[i].handle = hwhal;
-    }
-}
+using namespace std;
 
 int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *buffer)
 {
     int rc;
 
-    rc = xclLockDevice(dev_handle);
-    if (rc != 0)
-    {
-        printf("Failed to lock device\n");
-        return rc;
-    }
     printf("load_xclbin_to_device handle = %p\n", dev_handle);
     rc = xclLoadXclBin(dev_handle, (const xclBin*)buffer);
     if (rc != 0)
@@ -111,136 +49,267 @@ int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *buffer)
     return rc;
 }
 
-int get_max_dev_id(XmaSystemCfg *systemcfg)
-{
-    int max_dev_id = -1;
-    int i, d;
-
-    for (i = 0; i < systemcfg->num_images; i++)
-        for (d = 0; d < systemcfg->imagecfg[i].num_devices; d++)
-            if (systemcfg->imagecfg[i].device_id_map[d] > max_dev_id)
-                max_dev_id = systemcfg->imagecfg[i].device_id_map[d];
-
-    return max_dev_id;
-}
-
 /* Public function implementation */
 int hal_probe(XmaHwCfg *hwcfg)
 {
-    XmaHALDevice   xlnx_devices[MAX_XILINX_DEVICES];
-    uint32_t       device_count;
-
-    xma_logmsg("Using HAL layer\n");
-
-    /* There can be up to 16 Xilinx devices in a platform */
-    if (get_device_list(xlnx_devices, &device_count) != 0)
+    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Using HAL layer\n");
+    if (hwcfg == NULL) 
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "ERROR: hwcfg is NULL\n");
         return XMA_ERROR;
+    }
 
-    /* Populate the XmaHwCfg */
-    set_hw_cfg(device_count, xlnx_devices, hwcfg);
+    hwcfg->num_devices = xclProbe();
+    if (hwcfg->num_devices < 1) 
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "ERROR: No Xilinx device found\n");
+        return XMA_ERROR;
+    }
 
     return XMA_SUCCESS;
 }
 
-bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
+bool hal_is_compatible(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
-    int32_t num_devices_requested = 0;
-    int32_t i;
-    int32_t max_dev_id;
-
-    max_dev_id = get_max_dev_id(systemcfg);
-
-    /* Get number of devices requested in configuration */
-    for (i = 0; i < systemcfg->num_images; i++)
-        num_devices_requested += systemcfg->imagecfg[i].num_devices;
-
-    /* Check number of devices requested is not greater than number in HW */
-    if (num_devices_requested > hwcfg->num_devices ||
-        max_dev_id > (hwcfg->num_devices - 1))
-    {
-        xma_logmsg("Requested %d devices but only %d devices found\n",
-                   num_devices_requested, hwcfg->num_devices);
-        xma_logmsg("Max device id specified in YAML cfg %d\n", max_dev_id);
-        return false;
-    }
-
-    /* For each of the requested devices, check that the DSA name matches */
-    for (i = 0; i < num_devices_requested; i++)
-    {
-        if (strcmp(systemcfg->dsa, hwcfg->devices[i].dsa) != 0)
-        {
-            xma_logmsg("DSA mismatch: requested %s found %s\n",
-                       systemcfg->dsa, hwcfg->devices[i].dsa);
-            return false;
-        }
-    }
-
     return true;
 }
 
-bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
+
+bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
-    std::string   xclbinpath = systemcfg->xclbinpath;
-    XmaXclbinInfo info;
-    int32_t ddr_table[] = {0, 3, 1, 2};
+    std::bitset<MAX_XILINX_KERNELS> cu_mask_32bits(0xFFFFFFFF);
+    if (hwcfg == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "hwcfg is NULL\n");
+        return false;
+    }
+
+    if (num_parms > hwcfg->num_devices) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Num of Xilinx device is less than num of XmaXclbinParameters as input\n");
+        return false;
+    }
 
     /* Download the requested image to the associated device */
-    /* Make sure to program the reference clock prior to download */
-    for (int32_t i = 0; i < systemcfg->num_images; i++)
-    {
-        std::string xclbin = systemcfg->imagecfg[i].xclbin;
-        std::string xclfullname = xclbinpath + "/" + xclbin;
-        char *buffer = xma_xclbin_file_open(xclfullname.c_str());
-        if (!buffer)
-        {
-            xma_logmsg("Could not open xclbin file %s\n",
-                       xclfullname.c_str());
+    for (int32_t i = 0; i < num_parms; i++) {
+        XmaXclbinInfo info;
+        int32_t dev_index = devXclbins[i].device_id;
+        if (dev_index >= hwcfg->num_devices || dev_index < 0) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Illegal dev_index for xclbin to load into. dev_index = %d\n",
+                       dev_index);
             return false;
         }
+        if (devXclbins[i].xclbin_name == NULL) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "No xclbin provided for dev_index = %d\n",
+                       dev_index);
+            return false;
+        }
+        std::string xclbin = std::string(devXclbins[i].xclbin_name);
+        std::vector<char> xclbin_buffer = xma_xclbin_file_open(xclbin);
+        char *buffer = xclbin_buffer.data();
+
         int32_t rc = xma_xclbin_info_get(buffer, &info);
         if (rc != XMA_SUCCESS)
         {
-            xma_logmsg("Could not get info for xclbin file %s\n",
-                       xclfullname.c_str());
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not get info for xclbin file %s\n",
+                       xclbin.c_str());
             return false;
         }
 
-        for (int32_t d = 0; d < systemcfg->imagecfg[i].num_devices; d++)
-        {
-            int32_t dev_id = systemcfg->imagecfg[i].device_id_map[d];
-            XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_id].handle;
+        hwcfg->devices.emplace_back(XmaHwDevice{});
 
-            for (int32_t k = 0, t = 0;
-                 t < MAX_KERNEL_CONFIGS &&
-                 k < systemcfg->imagecfg[i].num_kernelcfg_entries; k++)
-            {
-                for (int32_t x = 0;
-                     x < systemcfg->imagecfg[i].kernelcfg[k].instances;
-                     x++, t++)
-                {
-                    strcpy((char*)hwcfg->devices[dev_id].kernels[t].name,
-                       (const char*)info.ip_layout[t].kernel_name);
-                    hwcfg->devices[dev_id].kernels[t].base_address =
-                       info.ip_layout[t].base_addr;
-                    int32_t ddr_bank = systemcfg->imagecfg[i].kernelcfg[k].ddr_map[x];
-                    hwcfg->devices[dev_id].kernels[t].ddr_bank = ddr_table[ddr_bank];
-                    printf("ddr_table value = %d\n",
-                        hwcfg->devices[dev_id].kernels[t].ddr_bank);
-                }
+        XmaHwDevice& dev_tmp1 = hwcfg->devices.back();
+
+        dev_tmp1.handle = xclOpen(dev_index, NULL, XCL_QUIET);
+        if (dev_tmp1.handle == NULL){
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to open device  id: %d\n", dev_index);
+            return false;
+        }
+
+        dev_tmp1.dev_index = dev_index;
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "xclOpen handle = %p\n", dev_tmp1.handle);
+        /* This is adding to start delay
+        rc = xclGetDeviceInfo2(dev_tmp1.handle, &dev_tmp1.info);
+        if (rc != 0)
+        {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "xclGetDeviceInfo2 failed for device id: %d, rc=%d\n", dev_index, rc);
+            return false;
+        }
+        */
+
+        /* Always attempt download xclbin */
+        rc = load_xclbin_to_device(dev_tmp1.handle, buffer);
+        if (rc != 0) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
+                        xclbin.c_str(), dev_index);
+            return false;
+        }
+
+        uuid_copy(dev_tmp1.uuid, info.uuid); 
+        dev_tmp1.number_of_cus = info.number_of_kernels;
+        dev_tmp1.number_of_mem_banks = info.number_of_mem_banks;
+        if (dev_tmp1.number_of_cus > MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
+                        xclbin.c_str(), dev_index);
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA & XRT supports max of %d CUs but xclbin has %d number of CUs\n", MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS, dev_tmp1.number_of_cus);
+            return false;
+        }
+        if (dev_tmp1.number_of_mem_banks > MAX_DDR_MAP) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d mem banks\n", MAX_DDR_MAP);
+            return false;
+        }
+        dev_tmp1.kernels.reserve(dev_tmp1.number_of_cus);
+        dev_tmp1.ddrs.reserve(dev_tmp1.number_of_mem_banks);
+        dev_tmp1.number_of_hardware_kernels = info.number_of_hardware_kernels;
+
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\nFor device id: %d; DDRs are:", dev_index);
+        auto& xma_mem_topology = info.mem_topology;
+        for (uint32_t d = 0; d < info.number_of_mem_banks; d++) {
+            dev_tmp1.ddrs.emplace_back(XmaHwMem{});
+            XmaHwMem& tmp1 = dev_tmp1.ddrs.back();
+            memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
+            xma_mem_topology[d].m_tag.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
+
+            tmp1.base_address = xma_mem_topology[d].m_base_address;
+            tmp1.size_kb = xma_mem_topology[d].m_size;
+            tmp1.size_mb = tmp1.size_kb / 1024;
+            tmp1.size_gb = tmp1.size_mb / 1024;
+            if (xma_mem_topology[d].m_used == 1 &&
+                tmp1.size_kb != 0 &&
+                (xma_mem_topology[d].m_type == MEM_TYPE::MEM_DDR3 || 
+                xma_mem_topology[d].m_type == MEM_TYPE::MEM_DDR4 ||
+                xma_mem_topology[d].m_type == MEM_TYPE::MEM_DRAM ||
+                xma_mem_topology[d].m_type == MEM_TYPE::MEM_HBM)
+                ) {
+                tmp1.in_use = true;
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - size: %lu KB", d, (char*)tmp1.name, tmp1.size_kb);
+            } else {
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - Unused/Unused Type", d, (char*)tmp1.name);
+
             }
-            if (hw_configured)
-                continue;
-            /* Download xclbin first */
-            rc = load_xclbin_to_device(hal->dev_handle, buffer);
-            if (rc != 0)
-            {
-                xma_logmsg("Could not download xclbin file %s to device %d\n",
-                           xclfullname.c_str(),
-                           systemcfg->imagecfg[i].device_id_map[d]);
+        }
+
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\nFor device id: %d; CUs are:", dev_index);
+        for (uint32_t d = 0; d < info.number_of_kernels; d++) {
+            dev_tmp1.kernels.emplace_back(XmaHwKernel{});
+            XmaHwKernel& tmp1 = dev_tmp1.kernels.back();
+            memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
+            info.ip_layout[d].kernel_name.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
+
+            tmp1.base_address = info.ip_layout[d].base_addr;
+            tmp1.cu_index = (int32_t)d;
+            if (info.ip_layout[d].soft_kernel) {
+                tmp1.soft_kernel = true;
+                tmp1.default_ddr_bank = 0;
+            } else {
+                tmp1.arg_start = info.ip_layout[d].arg_start;
+                tmp1.regmap_size = info.ip_layout[d].regmap_size;
+
+                if (info.ip_layout[d].kernel_channels) {
+                    tmp1.kernel_channels = true;
+                    tmp1.max_channel_id = info.ip_layout[d].max_channel_id;
+                }
+                //Allow default ddr_bank of -1; When CU is not connected to any ddr
+                xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.default_ddr_bank, info.has_mem_groups);
+
+                //XMA now supports multiple DDR Banks per Kernel
+                tmp1.ip_ddr_mapping = info.ip_ddr_mapping[d];
+                for(uint32_t c = 0; c < info.number_of_connections; c++)
+                {
+                    auto& xma_conn = info.connectivity[c];
+                    if (xma_conn.m_ip_layout_index == (int32_t)d) {
+                        tmp1.CU_arg_to_mem_info.emplace(xma_conn.arg_index, xma_conn.mem_data_index);
+                        //Assume that this mem is definetly in use
+                        if ((uint32_t)xma_conn.mem_data_index < dev_tmp1.number_of_mem_banks && xma_conn.mem_data_index > 0) {
+                            dev_tmp1.ddrs[xma_conn.mem_data_index].in_use = true;
+                        }
+                    }
+                }
+
+                if (tmp1.default_ddr_bank < 0) {
+                    xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD,"\tCU# %d - %s - default DDR bank: NONE", d, (char*)tmp1.name);
+                } else {
+                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - default DDR bank:%d", d, (char*)tmp1.name, tmp1.default_ddr_bank);
+                }
+                /* Not to open context on all CUs
+                Will open during session_create
+                if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context to this CU\n");
+                    return false;
+                }
+                */
+            }
+        }
+
+        std::bitset<MAX_XILINX_KERNELS> cu_mask;
+        uint64_t base_addr1 = 0;
+        uint32_t cu_index_ert = 0;
+        for (uint32_t d1 = 0; d1 < info.number_of_hardware_kernels; d1++) {
+            base_addr1 = dev_tmp1.kernels[d1].base_address;
+            //uint64_t cu_mask = 1;
+            cu_mask.reset();
+            cu_mask.set(0);
+            cu_index_ert = 0;
+
+            for (uint32_t d2 = 0; d2 < info.number_of_hardware_kernels; d2++) {
+                if (base_addr1 == info.cu_addrs_sorted[d2]) {
+                    break;
+                }
+                cu_mask = cu_mask << 1;
+                cu_index_ert++;
+                /*
+                if (d1 != d2) {
+                    if (dev_tmp1.kernels[d2].base_address < base_addr1) {
+                        cu_mask = cu_mask << 1;
+                        cu_index_ert++;
+                    }
+                }
+                */
+            }
+            dev_tmp1.kernels[d1].cu_index_ert = cu_index_ert;
+            //dev_tmp1.kernels[d1].cu_mask0 = cu_mask & 0xFFFFFFFF;
+            //dev_tmp1.kernels[d1].cu_mask1 = ((uint64_t)(cu_mask >> 32)) & 0xFFFFFFFF;
+            dev_tmp1.kernels[d1].cu_mask0 = (cu_mask & cu_mask_32bits).to_ulong();
+            cu_mask = cu_mask >> 32;
+            dev_tmp1.kernels[d1].cu_mask1 = (cu_mask & cu_mask_32bits).to_ulong();
+            cu_mask = cu_mask >> 32;
+            dev_tmp1.kernels[d1].cu_mask2 = (cu_mask & cu_mask_32bits).to_ulong();
+            cu_mask = cu_mask >> 32;
+            dev_tmp1.kernels[d1].cu_mask3 = (cu_mask & cu_mask_32bits).to_ulong();
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask0: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask0);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask1: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask1);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask2: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask2);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask3: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask3);
+        }
+
+        cu_mask.reset();
+        cu_mask.set(0);
+        std::bitset<MAX_XILINX_KERNELS> cu_mask_tmp;
+        for (uint32_t d1 = info.number_of_hardware_kernels; d1 < info.number_of_kernels; d1++) {
+            cu_mask_tmp = cu_mask;
+            dev_tmp1.kernels[d1].cu_mask0 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
+            cu_mask_tmp = cu_mask_tmp >> 32;
+            dev_tmp1.kernels[d1].cu_mask1 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
+            cu_mask_tmp = cu_mask_tmp >> 32;
+            dev_tmp1.kernels[d1].cu_mask2 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
+            cu_mask_tmp = cu_mask_tmp >> 32;
+            dev_tmp1.kernels[d1].cu_mask3 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
+
+            cu_mask = cu_mask << 1;
+        }
+
+        if (dev_tmp1.number_of_hardware_kernels > 0) {
+            //Avoid virtual cu context as it takes 40 millisec
+            xclOpenContext(dev_tmp1.handle, info.uuid, dev_tmp1.kernels[0].cu_index_ert, true);
+            dev_tmp1.kernels[0].context_opened = true;
+        } else {
+            //Opening virtual CU context as some applications may use soft kernels only
+            //But this takes 40 millisec
+            if (xclOpenContext(dev_tmp1.handle, info.uuid, -1, true) != 0) {
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open virtual CU context\n");
                 return false;
             }
         }
     }
+
     return true;
 }
 

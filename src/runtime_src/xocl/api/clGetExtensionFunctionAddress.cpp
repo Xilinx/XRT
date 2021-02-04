@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,16 +14,17 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
+#include "xocl/core/platform.h"
 
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
+#include <CL/opencl.h>
 #include <string>
 
 namespace xocl {
@@ -42,11 +43,7 @@ static void*
 clGetExtensionFunctionAddress(const char *func_name)
 {
   validOrError(func_name);
-
-  if (std::string(func_name)!="clIcdGetPlatformIDsKHR")
-    return nullptr;
-
-  return (void *)clIcdGetPlatformIDsKHR;
+  return clGetExtensionFunctionAddressForPlatform(get_global_platform(), func_name);
 }
 
 } // xocl
@@ -56,9 +53,10 @@ clGetExtensionFunctionAddress(const char *func_name)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetExtensionFunctionAddress(func_name);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
   }
   catch (const std::exception& ex) {
@@ -66,5 +64,3 @@ clGetExtensionFunctionAddress(const char *func_name)
   }
   return nullptr;
 }
-
-

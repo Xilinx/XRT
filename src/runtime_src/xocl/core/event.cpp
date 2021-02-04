@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,12 +20,15 @@
 
 #include "xrt/config.h"
 #include "xrt/util/task.h"
-#include "xrt/util/memory.h"
 
-#include "xocl/api/plugin/xdp/profile.h"
+#include "xocl/api/plugin/xdp/profile_v2.h"
 
 #include <iostream>
 #include <cassert>
+
+#ifdef _WIN32
+#pragma warning ( disable : 4189 4505 )
+#endif
 
 namespace {
 
@@ -75,9 +78,9 @@ event(command_queue* cq, context* ctx, cl_command_type cmd, cl_uint num_deps, co
   for (auto dep : get_range(deps,deps+num_deps)) {
     XOCL_DEBUG(std::cout,"event(",m_uid,") depends on event(",xocl(dep)->get_uid(),")\n");
     xocl(dep)->chain(this);
+    profile::log_dependency(get_uid(), xocl(dep)->get_uid()) ;
   }
   debug::add_dependencies(this,num_deps,deps);
-  profile::log_dependencies(this, num_deps, deps);
 }
 
 event::
@@ -122,7 +125,9 @@ set_status(cl_int s)
   //Make the profile logging calls before notifying the event
   //and before removing it from queue. Otherwise the main could exit
   //deleting datastrucutres while the profile call is ongoing (CR-1003505)
-  profile::log(this,m_status);
+  trigger_profile_action(m_status, "") ;
+  trigger_profile_counter_action(m_status, "") ;
+  trigger_lop_action(m_status) ;
 
   if (complete) {
     // Run callbacks before notifying the event and before removing it from queue
@@ -154,7 +159,9 @@ queue(bool blocking_submit)
     if (queued) {
       XOCL_DEBUG(std::cout,"event(",m_uid,") [",to_string(m_status),"->",to_string(CL_QUEUED),"]\n");
       m_status = CL_QUEUED;
-      profile::log(this,m_status);
+      trigger_profile_action(m_status, "") ;
+      trigger_profile_counter_action(m_status, "") ;
+      trigger_lop_action(m_status) ;
       time_set(CL_QUEUED);
     }
   }
@@ -190,7 +197,9 @@ submit()
 
     XOCL_DEBUG(std::cout,"event(",m_uid,") [",to_string(m_status),"->",to_string(CL_SUBMITTED),"]\n");
     m_status = CL_SUBMITTED;
-    profile::log(this,m_status);
+    trigger_profile_action(m_status, "") ;
+    trigger_profile_counter_action(m_status, "") ;
+    trigger_lop_action(m_status) ;
     time_set(CL_SUBMITTED);
   }
 
@@ -263,7 +272,7 @@ add_callback(callback_function_type fcn)
     std::lock_guard<std::mutex> lk(m_mutex);
     if ((complete=(m_status==CL_COMPLETE))==false) {
       if (!m_callbacks)
-        m_callbacks = xrt::make_unique<callback_list>();
+        m_callbacks = std::make_unique<callback_list>();
       m_callbacks->emplace_back(std::move(fcn));
     }
   }
@@ -332,9 +341,8 @@ chain(event* ev)
 
 bool
 event::
-chains(const event* ev) const
+chains_nolock(const event* ev) const
 {
-  std::lock_guard<std::mutex> lk(m_mutex);
   return std::find(m_chain.begin(),m_chain.end(),ev)!=m_chain.end();
 }
 
@@ -342,7 +350,7 @@ bool
 event::
 waits_on(const event* ev) const
 {
-  return ev->chains(this);
+  return ev->chains_nolock(this);
 }
 
 bool
@@ -423,7 +431,7 @@ create_event(command_queue* cq, context* ctx, cl_command_type cmd, cl_uint num_d
   using edpw_event = event_with_debugging<epw_event>; // debug event with profiling and waitlist
 
   assert(!cq || cq->get_context()==ctx);
-  static bool app_debug = xrt::config::get_app_debug();
+  static bool app_debug = xrt_xocl::config::get_app_debug();
 
   ptr<event> retval;
 

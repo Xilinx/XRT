@@ -1,0 +1,36 @@
+sudo: enabled
+language: cpp
+
+matrix:
+  include:
+
+# For true bionic on ppc64le we should specify os as plain linux instead of linux-ppc64le. However, Travis
+# CI has a bug where linux-headers on Bionic and Focal are not available which breaks XRT build. Specifying
+# linux-ppc64le reverts to xenial irrespective of dist saying bionic.
+# https://travis-ci.community/t/kernel-headers-not-available-in-ppc64-and-arm64/5974/10
+  - os: linux-ppc64le
+    arch: ppc64le
+    dist: bionic
+    env:
+      - CONFIGURATION=linux/ppc64le
+
+  - os: linux
+    arch: arm64
+    dist: bionic
+    env:
+      - CONFIGURATION=linux/arm64
+
+  - os: linux
+    arch: amd64
+    dist: focal
+    env:
+      - CONFIGURATION=linux/amd64
+
+before_script:
+  - sudo ./src/runtime_src/tools/scripts/xrtdeps.sh
+  - cd build
+
+before_install:
+  - sudo apt-get update
+
+script: ./build.sh -driver

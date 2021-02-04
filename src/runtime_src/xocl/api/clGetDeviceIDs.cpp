@@ -15,14 +15,14 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/cl.h>
+#include "xocl/config.h"
 #include "xocl/core/platform.h"
 #include "xocl/core/device.h"
 #include "detail/platform.h"
 #include "detail/device.h"
 #include "api.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/cl.h>
 
 namespace {
 
@@ -91,8 +91,8 @@ static cl_int clGetDeviceIDs(cl_platform_id platform,
     }
   }
 
-  else if (device_type==CL_DEVICE_TYPE_CPU 
-           || device_type==CL_DEVICE_TYPE_GPU 
+  else if (device_type==CL_DEVICE_TYPE_CPU
+           || device_type==CL_DEVICE_TYPE_GPU
            || device_type==CL_DEVICE_TYPE_ACCELERATOR) {
     for (auto checkagainst_device : xplatform->get_device_range()) {
       if(getDeviceType(checkagainst_device)==device_type) {
@@ -122,12 +122,13 @@ clGetDeviceIDs(cl_platform_id   platform,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::
       clGetDeviceIDs(platform,device_type, num_entries, devices, num_devices);
   }
   catch (const xocl::error& ex) {
     // suppress messages if icd loader is asking for CPU or GPU
-    if (ex.get_code()!=static_cast<unsigned int>(CL_DEVICE_NOT_FOUND) 
+    if (ex.get_code()!=static_cast<unsigned int>(CL_DEVICE_NOT_FOUND)
         || (device_type!=CL_DEVICE_TYPE_CPU && device_type!=CL_DEVICE_TYPE_GPU))
       xocl::send_exception_message(ex.what());
     return ex.get_code();
@@ -137,5 +138,3 @@ clGetDeviceIDs(cl_platform_id   platform,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

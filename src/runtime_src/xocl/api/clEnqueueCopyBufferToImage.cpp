@@ -16,11 +16,11 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
+#include "plugin/xdp/profile_v2.h"
 
-#include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -113,7 +113,7 @@ clEnqueueCopyBufferToImage (cl_command_queue command_queue,
 } // xocl
 
 
-cl_int 
+cl_int
 clEnqueueCopyBufferToImage (cl_command_queue command_queue,
                             cl_mem           src_buffer,
                             cl_mem           dst_image,
@@ -126,6 +126,7 @@ clEnqueueCopyBufferToImage (cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueCopyBufferToImage
       (command_queue,src_buffer,dst_image,src_offset,dst_origin,region
        ,num_events_in_wait_list,event_wait_list,event);
@@ -140,5 +141,3 @@ clEnqueueCopyBufferToImage (cl_command_queue command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

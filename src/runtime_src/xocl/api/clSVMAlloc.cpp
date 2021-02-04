@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,18 +14,17 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
-#include "xrt/util/memory.h"
 #include "detail/memory.h"
 #include "detail/context.h"
 
 #include <bitset>
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace {
 
@@ -37,7 +36,7 @@ namespace {
 // emulation mode before clCreateProgramWithBinary->loadBinary has
 // been called.  The call to loadBinary can end up switching the
 // device from swEm to hwEm.
-// 
+//
 // In non emulation mode it is sufficient to check that the context
 // has only one device.
 static xocl::device*
@@ -93,18 +92,15 @@ clSVMAlloc(cl_context       context,
 
   validOrError(context,flags,size,alignment);
 
-  if (!(flags & CL_MEM_PROGVAR)) {
-    if (auto device = singleContextDevice(context)) {
-      return device->get_xrt_device()->alloc_svm(size);
-    }
-  }
-
+  if (auto device = singleContextDevice(context))
+      return device->get_xdevice()->alloc_svm(size);
+  
   return nullptr;
 }
 
 } // xocl
 
-void* 
+void*
 clSVMAlloc(cl_context       context,
            cl_svm_mem_flags flags,
            size_t           size,
@@ -112,10 +108,11 @@ clSVMAlloc(cl_context       context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clSVMAlloc
       (context,flags,size,alignment);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
   }
   catch (const std::exception& ex) {
@@ -123,5 +120,3 @@ clSVMAlloc(cl_context       context,
   }
   return nullptr;
 }
-
-// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,33 +17,13 @@
 #ifndef xrt_util_time_h_
 #define xrt_util_time_h_
 
-namespace xrt {
+#include "xrt/config.h"
+#include "core/common/time.h"
 
-/**
- * @return
- *   nanoseconds since first call
- */
-unsigned long
-time_ns();
+namespace xrt_xocl {
 
-/**
- * Simple time guard to accumulate scoped time
- */
-class time_guard
-{
-  unsigned long zero = 0;
-  unsigned long& tally;
-public:
-  explicit
-  time_guard(unsigned long& t)
-    : zero(time_ns()), tally(t)
-  {}
-
-  ~time_guard()
-  {
-    tally += time_ns() - zero;
-  }
-};
+using xrt_core::time_ns;
+using xrt_core::time_guard;
 
 } // xocl
 

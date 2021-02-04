@@ -16,22 +16,21 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/param.h"
 #include "xocl/core/error.h"
 #include "xocl/core/context.h"
 #include "xocl/core/memory.h"
-
 #include "detail/memory.h"
+#include "plugin/xdp/profile_v2.h"
 
-#include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
 static void
 validOrError(cl_mem           memobj,
-             cl_mem_info      param_name, 
+             cl_mem_info      param_name,
              size_t           param_value_size,
              void *           param_value,
              size_t *         param_value_size_ret)
@@ -72,7 +71,7 @@ validOrError(cl_mem           memobj,
 
 static cl_int
 clGetMemObjectInfo(cl_mem           memobj,
-                   cl_mem_info      param_name, 
+                   cl_mem_info      param_name,
                    size_t           param_value_size,
                    void *           param_value,
                    size_t *         param_value_size_ret )
@@ -110,15 +109,8 @@ clGetMemObjectInfo(cl_mem           memobj,
       buffer.as<size_t>() = xocl(memobj)->get_sub_buffer_offset();
       break;
     case CL_MEM_BANK:
-      {
-        size_t idx = 0;
-        auto memidx_mask = xocl(memobj)->get_memidx();
-        for (idx=0; idx<memidx_mask.size(); ++idx)
-          if (memidx_mask.test(idx))
-            break;
-        buffer.as<int>() = idx;
-        break;
-      }
+      buffer.as<int>() = xocl(memobj)->get_memidx();
+      break;
     default:
       throw error(CL_INVALID_VALUE,"clGetMemObjectInfo invalud param name");
       break;
@@ -131,13 +123,14 @@ clGetMemObjectInfo(cl_mem           memobj,
 
 cl_int
 clGetMemObjectInfo(cl_mem           memobj,
-                   cl_mem_info      param_name, 
+                   cl_mem_info      param_name,
                    size_t           param_value_size,
                    void *           param_value,
                    size_t *         param_value_size_ret)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetMemObjectInfo
       (memobj,param_name,param_value_size,param_value,param_value_size_ret);
   }
@@ -150,5 +143,3 @@ clGetMemObjectInfo(cl_mem           memobj,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

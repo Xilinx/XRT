@@ -15,19 +15,16 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/cl.h>
+#include "xocl/config.h"
 #include "xocl/core/device.h"
 #include "detail/device.h"
 #include "api.h"
-#include "plugin/xdp/profile.h"
-#include "xrt/util/memory.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/cl.h>
 
-namespace {
-
-
-
-}
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
 namespace xocl {
 
@@ -57,7 +54,7 @@ validOrError(cl_device_id                        in_device,
   // by the device.
   if (!properties)
     throw error(CL_INVALID_VALUE,"No device partitioning property provided");
-  
+
   // Support CL_DEVICE_PARTITION_EQUALLY
   if (properties[0] == CL_DEVICE_PARTITION_EQUALLY) {
     if (properties[1] != 1)
@@ -101,7 +98,7 @@ validOrError(cl_device_id                        in_device,
 
 }
 
-static cl_int 
+static cl_int
 clCreateSubDevices(cl_device_id                        in_device,
                    const cl_device_partition_property* properties,
                    cl_uint                             num_entries,
@@ -117,7 +114,7 @@ clCreateSubDevices(cl_device_id                        in_device,
     cus.push_back(cuin);
     ++count;
     if (out_devices) {
-      auto sd  = xrt::make_unique<device>(xocl(in_device),cus);
+      auto sd  = std::make_unique<device>(xocl(in_device),cus);
       *out_devices = sd.release();
       ++out_devices;
     }
@@ -140,6 +137,7 @@ clCreateSubDevices(cl_device_id                         in_device,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateSubDevices
       (in_device,properties,num_entries,out_devices,num_devices);
   }
@@ -152,5 +150,3 @@ clCreateSubDevices(cl_device_id                         in_device,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,14 +14,13 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/event.h"
 #include "detail/context.h"
-
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -43,7 +42,7 @@ validOrError(cl_context context,
 }
 
 static cl_event
-clCreateUserEvent(cl_context context, 
+clCreateUserEvent(cl_context context,
                   cl_int*    errcode_ret)
 {
   validOrError(context,errcode_ret);
@@ -65,9 +64,10 @@ clCreateUserEvent(cl_context     context ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateUserEvent(context,errcode_ret);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,ex.get_code());
   }
@@ -77,5 +77,3 @@ clCreateUserEvent(cl_context     context ,
   }
   return nullptr;
 }
-
-

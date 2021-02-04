@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,7 +24,7 @@ BOOST_AUTO_TEST_SUITE ( test_device )
 
 BOOST_AUTO_TEST_CASE( test_device1 )
 {
-  auto devices = xrt::test::loadDevices();
+  auto devices = xrt_xocl::test::loadDevices();
 
   for (auto& device : devices) {
     std::string libraryName = device.getDriverLibraryName();

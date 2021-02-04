@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,20 +14,17 @@
  * under the License.
  */
 
-// Debug of xocl 
-// 
+// Debug of xocl
+//
 // Enabled via sdaccel.ini
 //
 // [Debug] xocl_debug       --- enable debugging  (false)
 // [Debug] xocl_log         --- log file for debugging (xocl.log)
 // [Debug] xocl_event_begin --- first event to log (0)
 // [Debug] xocl_event_end   --- last event to log (999999)
-
 #include "debug.h"
 #include "time.h"
 #include "event.h"
-
-#include "xrt/config.h"
 
 #include <mutex>
 #include <vector>
@@ -37,13 +34,17 @@
 #include <cstdarg>
 #include <cstdio>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4244 4706 )
+#endif
+
 namespace {
 
 static bool s_debug_on = false;
 static std::string s_debug_log;
 static unsigned long s_zero = xocl::time_ns();
 
-// Event information 
+// Event information
 namespace event {
 
 static unsigned int s_start_id = 0;
@@ -62,7 +63,7 @@ struct info
 
   // print this record
   // event# commandtype queued submitted running complete [dependencies]*
-  std::ostream& print(std::ostream& ostr, unsigned int id)
+  std::ostream& print(std::ostream& ostr, size_t id)
   {
     if (!m_times[CL_RUNNING])
         m_times[CL_RUNNING] = m_times[CL_COMPLETE];
@@ -83,8 +84,8 @@ static std::vector<info> s_info;
 static void
 init()
 {
-  s_start_id = xrt::config::detail::get_uint_value("Debug.xocl_event_begin",0);
-  s_end_id = xrt::config::detail::get_uint_value("Debug.xocl_event_end",1000);
+  s_start_id = xrt_xocl::config::detail::get_uint_value("Debug.xocl_event_begin",0);
+  s_end_id = xrt_xocl::config::detail::get_uint_value("Debug.xocl_event_end",1000);
 
   s_info.reserve(s_end_id-s_start_id+1);
 }
@@ -108,8 +109,8 @@ id2idx(unsigned int id)
   return idx;
 }
 
-inline unsigned int
-idx2id(unsigned int idx)
+inline size_t
+idx2id(size_t idx)
 {
   return idx + s_start_id;
 }
@@ -167,8 +168,8 @@ print()
 //
 // [Debug] xocl_debug --- enable debugging  (false)
 // [Debug] xocl_log --- log file for debugging (xocl.log)
-// 
-// This function must be after main(), since it uses xrt::config
+//
+// This function must be after main(), since it uses xrt_xocl::config
 // which relies on static global initialization
 static bool
 init()
@@ -179,11 +180,11 @@ init()
 
   called = true;
 
-  if (!(s_debug_on = xrt::config::get_xocl_debug()))
+  if (!(s_debug_on = xrt_xocl::config::get_xocl_debug()))
     return false;
 
-  s_debug_log = xrt::config::detail::get_string_value("Debug.xocl_log","xocl.log");
-  
+  s_debug_log = xrt_xocl::config::detail::get_string_value("Debug.xocl_log","xocl.log");
+
   ::event::init();
 
   // reset time zero
@@ -211,11 +212,11 @@ static shutdown sd;
 }
 
 // External API
-namespace xocl { 
+namespace xocl {
 
 namespace debug {
 
-void 
+void
 time_log(xocl::event* event, cl_int status, cl_ulong ns)
 {
   static bool debug = init();
@@ -272,5 +273,3 @@ logf(const char* format, ...)
 #endif
 
 } // xocl
-
-

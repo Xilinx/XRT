@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE( test_thread1 )
 {
   std::string ini(__FILE__);
   ini += ".ini";
-  xrt::config::detail::debug(std::cout,ini);
+  xrt_xocl::config::detail::debug(std::cout,ini);
 
   bool stop=false;
   std::vector<std::thread> threads;
@@ -43,15 +43,15 @@ BOOST_AUTO_TEST_CASE( test_thread1 )
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     while (!stop) {
       XRT_PRINT(std::cout,"thread(",std::this_thread::get_id(),") on CPU(",sched_getcpu(),")\n");
-      auto start = xrt::time_ns();
-      while ((xrt::time_ns() - start)*1e-6 < 1000) ;
+      auto start = xrt_xocl::time_ns();
+      while ((xrt_xocl::time_ns() - start)*1e-6 < 1000) ;
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
   };
 
   try {
     for (int i=0;i<10; ++i)
-      threads.push_back(xrt::thread(worker));
+      threads.push_back(xrt_xocl::thread(worker));
     std::this_thread::sleep_for(std::chrono::seconds(5));
     XRT_PRINT(std::cout,"setting stop=true\n");
     stop = true;

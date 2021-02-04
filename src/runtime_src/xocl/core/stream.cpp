@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2019 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,34 +34,44 @@ stream::
 stream::get_stream(device* device)
 {
   m_device = device;
-  return device->get_stream(m_flags, m_attrs, m_ext, &m_handle);
+  return device->get_stream(m_flags, m_attrs, m_ext, &m_handle, m_connidx);
 }
 
 ssize_t 
 stream
-::read(device* device, void* ptr, size_t offset, size_t size, stream_xfer_req* req)
+::read(void* ptr, size_t size, stream_xfer_req* req)
 {
-  if(device != m_device)
-    throw xocl::error(CL_INVALID_OPERATION,"Stream read on a bad device");
-  return m_device->read_stream(m_handle, ptr, offset, size, req);
+  return m_device->read_stream(m_handle, ptr, size, req);
 }
 
 ssize_t 
 stream
-::write(device* device, const void* ptr, size_t offset, size_t size, stream_xfer_req* req)
+::write(const void* ptr, size_t size, stream_xfer_req* req)
 {
-  if(device != m_device)
-    throw xocl::error(CL_INVALID_OPERATION,"Stream write on a bad device");
-  return m_device->write_stream(m_handle, ptr, offset, size, req);
+  return m_device->write_stream(m_handle, ptr, size, req);
 }
 
 int
 stream::
 stream::close()
 {
-  return m_device->close_stream(m_handle);
+  assert(m_connidx!=-1);
+  return m_device->close_stream(m_handle,m_connidx);
 }
 
+int 
+stream
+::poll_stream(xrt_xocl::device::stream_xfer_completions *comps, int min, int max, int *actual, int timeout)
+{
+  return m_device->poll_stream(m_handle, comps, min, max, actual, timeout);
+}
+
+int 
+stream
+::set_stream_opt(int type, uint32_t val)
+{
+  return m_device->set_stream_opt(m_handle, type, val);
+}
 
 int 
 stream_mem::

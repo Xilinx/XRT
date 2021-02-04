@@ -16,16 +16,14 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/param.h"
 #include "xocl/core/error.h"
 #include "xocl/core/sampler.h"
 #include "xocl/core/context.h"
-
 #include "detail/sampler.h"
-
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -40,7 +38,7 @@ validOrError(cl_sampler          sampler ,
   // CL_INVALID_VALUE if param_name is not valid, or if size in bytes
   // specified by param_value_size is < size of return type as
   // described in the table above and param_value is not NULL
-  
+
   // CL_INVALID_SAMPLER if sampler is a not a valid sampler object.
   detail::sampler::validOrError(sampler);
 
@@ -98,6 +96,7 @@ clGetSamplerInfo(cl_sampler          sampler ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetSamplerInfo
       (sampler,param_name,param_value_size,param_value,param_value_size_ret);
   }
@@ -110,5 +109,3 @@ clGetSamplerInfo(cl_sampler          sampler ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

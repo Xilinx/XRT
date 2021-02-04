@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
@@ -43,7 +43,7 @@ validOrError(cl_mem mem,
   if (size != sizeof(uintptr_t))
     throw error(CL_INVALID_VALUE,"size of address argument must be sizeof(uintptr_t)");
 
-  if (xocl(mem)->get_buffer_object_or_null(xocl(device)) == nullptr)
+  if (!xocl(mem)->get_buffer_object_or_null(xocl(device)))
     throw error(CL_INVALID_MEM_OBJECT,"mem object is not associated with device");
 }
 
@@ -56,7 +56,7 @@ clGetMemObjDeviceAddress(cl_mem mem,
   validOrError(mem,device,size,address);
 
   if (auto boh = xocl(mem)->get_buffer_object_or_null(xocl(device))) {
-    auto xdevice = xocl(device)->get_xrt_device();
+    auto xdevice = xocl(device)->get_xdevice();
     auto addr = reinterpret_cast<uintptr_t*>(address);
     *addr = xdevice->getDeviceAddr(boh);
     return CL_SUCCESS;
@@ -78,7 +78,7 @@ clGetMemObjDeviceAddress(cl_mem mem,
   try {
     return xocl::clGetMemObjDeviceAddress(mem,device,size,address);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get_code();
   }

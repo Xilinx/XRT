@@ -21,11 +21,10 @@
 #include "xocl/core/device.h"
 #include "xocl/core/range.h"
 #include "xocl/core/error.h"
-#include "xrt/util/memory.h"
 
 #include "detail/context.h"
 #include "detail/device.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
@@ -50,7 +49,7 @@ clCreateProgramWithBuiltInKernels(cl_context          context ,
                                   cl_int *            errcode_ret )
 {
   validOrError(context,num_devices,device_list,kernel_names);
-  auto program = xrt::make_unique<xocl::program>(xocl::xocl(context));
+  auto program = std::make_unique<xocl::program>(xocl::xocl(context));
   for (auto d : xocl::get_range(device_list,device_list+num_devices)) {
     program->add_device(xocl(d));
   }
@@ -73,6 +72,7 @@ clCreateProgramWithBuiltInKernels(cl_context          context ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateProgramWithBuiltInKernels
       (context, num_devices, device_list, kernel_names, errcode_ret);
   }

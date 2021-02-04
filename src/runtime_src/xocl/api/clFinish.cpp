@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,7 +23,7 @@
 #include <iostream>
 
 #include "xocl/config.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
@@ -32,7 +32,7 @@ validOrError(const cl_command_queue command_queue)
 {
   if(!config::api_checks())
     return;
-  detail::command_queue::validOrError(command_queue); 
+  detail::command_queue::validOrError(command_queue);
 }
 
 static cl_int
@@ -49,10 +49,11 @@ cl_int
 clFinish(cl_command_queue command_queue)
 {
   try {
-    PROFILE_LOG_FUNCTION_CALL
+    PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clFinish(command_queue);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get_code();
   }
@@ -60,9 +61,4 @@ clFinish(cl_command_queue command_queue)
     xocl::send_exception_message(ex.what());
     return CL_OUT_OF_HOST_MEMORY;
   }
-  return CL_SUCCESS;
 }
-
-
-
-

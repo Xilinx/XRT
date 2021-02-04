@@ -17,12 +17,10 @@
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
-
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -32,11 +30,11 @@ clCreateImage2D(cl_context              context,
                 const cl_image_format * image_format,
                 size_t                  image_width,
                 size_t                  image_height,
-                size_t                  image_row_pitch, 
+                size_t                  image_row_pitch,
                 void *                  host_ptr,
                 cl_int *                errcode_ret)
 {
-  throw error(CL_XILINX_UNIMPLEMENTED);
+  throw error(CL_XILINX_UNIMPLEMENTED,"Not implemented");
 }
 
 } // xocl
@@ -47,12 +45,13 @@ clCreateImage2D(cl_context              context,
                 const cl_image_format * image_format,
                 size_t                  image_width,
                 size_t                  image_height,
-                size_t                  image_row_pitch, 
+                size_t                  image_row_pitch,
                 void *                  host_ptr,
                 cl_int *                errcode_ret)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateImage2D(context,flags,image_format,image_width,image_height,
                                  image_row_pitch,host_ptr,errcode_ret);
   }
@@ -66,7 +65,3 @@ clCreateImage2D(cl_context              context,
   }
   return nullptr;
 }
-
-
-
-

@@ -15,10 +15,10 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
+#include "xocl/config.h"
 #include "xocl/core/error.h"
 #include "detail/device.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
@@ -31,7 +31,7 @@ validOrError(cl_device_id device)
   detail::device::validOrError(device);
 }
 
-static cl_int 
+static cl_int
 clRetainDevice(cl_device_id device)
 {
   validOrError(device);
@@ -47,6 +47,7 @@ clRetainDevice(cl_device_id device)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clRetainDevice(device);
   }
   catch (const xocl::error& ex) {
@@ -58,5 +59,3 @@ clRetainDevice(cl_device_id device)
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

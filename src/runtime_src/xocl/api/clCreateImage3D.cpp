@@ -18,11 +18,11 @@
 
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
+#include "plugin/xdp/profile_v2.h"
 
-#include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -30,15 +30,15 @@ static cl_mem
 clCreateImage3D(cl_context              context,
                 cl_mem_flags            flags,
                 const cl_image_format * image_format,
-                size_t                  image_width, 
+                size_t                  image_width,
                 size_t                  image_height,
-                size_t                  image_depth, 
-                size_t                  image_row_pitch, 
-                size_t                  image_slice_pitch, 
+                size_t                  image_depth,
+                size_t                  image_row_pitch,
+                size_t                  image_slice_pitch,
                 void *                  host_ptr,
                 cl_int *                errcode_ret)
 {
-  throw error(CL_XILINX_UNIMPLEMENTED);
+  throw error(CL_XILINX_UNIMPLEMENTED,"Not implemented");
 }
 
 } //xocl
@@ -48,16 +48,17 @@ cl_mem
 clCreateImage3D(cl_context              context,
                 cl_mem_flags            flags,
                 const cl_image_format * image_format,
-                size_t                  image_width, 
+                size_t                  image_width,
                 size_t                  image_height,
-                size_t                  image_depth, 
-                size_t                  image_row_pitch, 
-                size_t                  image_slice_pitch, 
+                size_t                  image_depth,
+                size_t                  image_row_pitch,
+                size_t                  image_slice_pitch,
                 void *                  host_ptr,
                 cl_int *                errcode_ret)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateImage3D
       (context,flags,image_format,image_width,image_height,image_depth,
        image_row_pitch, image_slice_pitch, host_ptr,errcode_ret);
@@ -72,7 +73,3 @@ clCreateImage3D(cl_context              context,
   }
   return nullptr;
 }
-
-
-
-

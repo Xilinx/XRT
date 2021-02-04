@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,7 +16,7 @@
 
 #ifndef xocl_core_program_h_
 #define xocl_core_program_h_
-
+#include "xocl/config.h"
 #include "xocl/core/object.h"
 #include "xocl/core/refcount.h"
 #include "xocl/core/range.h"
@@ -25,6 +25,12 @@
 #include <vector>
 #include <map>
 #include <functional>
+
+#ifdef _WIN32
+# pragma warning( push )
+# pragma warning ( disable : 4996 )
+#endif
+
 
 namespace xocl {
 
@@ -88,6 +94,13 @@ public:
     return range<device_const_iterator_type>(m_devices.begin(),m_devices.end());
   }
 
+  device*
+  get_first_device() const
+  {
+    auto itr = range_find(m_devices,[](auto& d) { return d.get() != nullptr; });
+    return (itr != m_devices.end()) ? (*itr).get() : nullptr;
+  }
+
   context*
   get_context() const
   {
@@ -100,9 +113,6 @@ public:
     return m_source;
   }
 
-  /**
-   * For conformance flow only
-   */
   size_t
   num_devices() const
   {
@@ -119,15 +129,6 @@ public:
   }
 
   /**
-   * Return a list of progvar names in this program
-   *
-   * @return
-   *   List of std::strings corresponding to names of the prog vars
-   */
-  std::vector<std::string>
-  get_progvar_names() const;
-
-  /**
    * Return the xclbin for argument device
    *
    * @param d
@@ -135,8 +136,16 @@ public:
    * @return
    *   The xclbin associated with the device
    */
+  XRT_XOCL_EXPORT
   xclbin
   get_xclbin(const device* d) const;
+
+  /**
+   * @return
+   *   The uuid of xclbin for argument device
+   */
+  xrt_core::uuid
+  get_xclbin_uuid(const device* d) const;
 
   /**
    * Return the xclbin binary for argument device
@@ -146,8 +155,8 @@ public:
    * @return
    *   The xclbin binary object associated with the device
    */
-  xclbin::binary_type
-  get_binary(const device* d) const;
+  std::pair<const char*, const char*>
+  get_xclbin_binary(const device* d) const;
 
   /**
    * Return the target type for this program
@@ -191,13 +200,7 @@ public:
    * the program would not be wellformed.
    */
   unsigned int
-  get_num_kernels() const
-  {
-    auto itr = m_binaries.begin();
-    return itr!=m_binaries.end()
-      ? (*itr).second.num_kernels()
-      : 0;
-  }
+  get_num_kernels() const;
 
   /**
    * Get list of names of kernels in this program.
@@ -206,23 +209,10 @@ public:
    * the program would not be wellformed.
    */
   std::vector<std::string>
-  get_kernel_names() const
-  {
-    auto itr = m_binaries.begin();
-    if (itr != m_binaries.end())
-      return (*itr).second.kernel_names();
-
-    std::vector<std::string> names;
-    return names;
-  }
+  get_kernel_names() const;
 
   bool
-  has_kernel(const std::string& kname) const
-  {
-    auto kernels = get_kernel_names();
-    return range_find(kernels,[&kname](const std::string& s){return s==kname;})!=kernels.end();
-
-  }
+  has_kernel(const std::string& kname) const;
 
   /**
    * Create a kernel.
@@ -299,27 +289,6 @@ public:
       return CL_BUILD_NONE;
   }
 
-  ////////////////////////////////////////////////////////////////
-  // Conformance helpers
-  ////////////////////////////////////////////////////////////////
-  unsigned int
-  conformance_rename_kernel(const std::string& hash)
-  {
-    assert(std::getenv("XCL_CONFORMANCE"));
-    unsigned int retval = 0;
-    for (auto& e : m_binaries)
-      retval += e.second.conformance_rename_kernel(hash);
-    //assert(retval==1);
-    return retval;
-  }
-
-  void
-  set_source(const std::string& source)
-  {
-    assert(std::getenv("XCL_CONFORMANCE"));
-    m_source = source;
-  }
-
   void
   build(const std::vector<device*>& devices,const std::string& options);
 
@@ -329,30 +298,17 @@ private:
   ptr<context> m_context;
   device_vector_type m_devices;
 
-  std::map<const device*,xclbin> m_binaries;
+  std::map<const device*,std::vector<char>> m_binaries;
   std::map<const device*,std::string> m_options;
   std::map<const device*,std::string> m_logs;    // build *error* logs
 
   std::string m_source;
-public:
-  // conformance
-  std::string conformance_binaryfilename;
-  std::string conformance_binaryhash;
 };
 
-/**
- * Get a locked range of current program objects.
- *
- * Do not attempt to create program objects while holding on to the
- * returned range, a deadlock would follow.
- *
- * This function is used in conformance mode.  May disappear if better
- * alternative is found.
- */
-using program_iterator_type = std::vector<program*>::iterator;
-range_lock<program_iterator_type>
-get_global_programs();
-
 } // xocl
+
+#ifdef _WIN32
+# pragma warning( pop )
+#endif
 
 #endif

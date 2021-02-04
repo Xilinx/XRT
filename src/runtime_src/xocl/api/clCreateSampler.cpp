@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,33 +14,31 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 #include "xocl/config.h"
 #include "xocl/core/object.h"
-
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
 namespace xocl {
- 
+
 static void
 validOrError(cl_context           context ,
-             cl_bool              normalized_coords , 
-             cl_addressing_mode   addressing_mode , 
+             cl_bool              normalized_coords ,
+             cl_addressing_mode   addressing_mode ,
              cl_filter_mode       filter_mode ,
              cl_int *             errcode_ret )
 
 {
   if( !xocl::config::api_checks())
     return;
-  
+
 }
 
 static cl_sampler
 clCreateSampler(cl_context           context ,
-                cl_bool              normalized_coords , 
-                cl_addressing_mode   addressing_mode , 
+                cl_bool              normalized_coords ,
+                cl_addressing_mode   addressing_mode ,
                 cl_filter_mode       filter_mode ,
                 cl_int *             errcode_ret )
 
@@ -55,17 +53,18 @@ clCreateSampler(cl_context           context ,
 
 cl_sampler
 clCreateSampler(cl_context           context ,
-                cl_bool              normalized_coords , 
-                cl_addressing_mode   addressing_mode , 
+                cl_bool              normalized_coords ,
+                cl_addressing_mode   addressing_mode ,
                 cl_filter_mode       filter_mode ,
                 cl_int *             errcode_ret )
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateSampler
       (context,normalized_coords,addressing_mode,filter_mode,errcode_ret);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,ex.get_code());
   }
@@ -75,6 +74,3 @@ clCreateSampler(cl_context           context ,
   }
   return nullptr;
 }
-
-
-
