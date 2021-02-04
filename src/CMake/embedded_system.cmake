@@ -57,16 +57,6 @@ if (DEFINED CROSS_COMPILE)
   set(CMAKE_INSTALL_RPATH "${sysroot}/usr/lib:${sysroot}/lib:${sysroot}/usr/lib/aarch64-linux-gnu")
 endif()
 
-# Release OpenCL extension headers
-set(XRT_CL_EXT_SRC
-  include/1_2/CL/cl_ext_xilinx.h
-  include/1_2/CL/cl_ext.h)
-install (FILES ${XRT_CL_EXT_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL)
-message("-- XRT CL extension header files")
-foreach (header ${XRT_CL_EXT_SRC})
-  message("-- ${header}")
-endforeach()
-
 add_compile_options("-DXRT_EDGE")
 
 # Let yocto handle license files in the standard way

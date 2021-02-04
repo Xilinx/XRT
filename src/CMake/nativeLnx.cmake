@@ -98,15 +98,6 @@ set (XRT_NAMELINK_SKIP NAMELINK_SKIP)
 #  bin/../lib, lib/xrt/module/../.., bin/unwrapped/../../lib
 SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib${LIB_SUFFFIX}:$ORIGIN/../..:$ORIGIN/../../lib${LIB_SUFFIX}")
 
-# --- Release: OpenCL extension headers ---
-set(XRT_CL_EXT_SRC
-  include/1_2/CL/cl_ext_xilinx.h
-  include/1_2/CL/cl_ext.h)
-install (FILES ${XRT_CL_EXT_SRC}
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL
-  COMPONENT ${XRT_DEV_COMPONENT}
-)
-
 # --- Release: eula ---
 file(GLOB XRT_EULA
   "license/*.txt"
