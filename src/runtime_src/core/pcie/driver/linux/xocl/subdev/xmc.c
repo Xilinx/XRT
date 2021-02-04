@@ -4083,7 +4083,7 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 	 * we need check and update the mbx offset.
 	 */
 	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
-	if (!val) {
+	if (!val || val == 0xdeadfa11) {
 		xocl_err(&xmc->pdev->dev, "CMC mailbox is not ready");
 		return -EIO;
 	}
