@@ -570,6 +570,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 		subdev->ops = NULL;
 		return -EAGAIN;
 	}
+	xocl_drvinst_set_offline(platform_get_drvdata(subdev->pldev), false);
 	xocl_lock_xdev(xdev_hdl);
 	subdev->hold = false;
 	subdev->state = XOCL_SUBDEV_STATE_ACTIVE;

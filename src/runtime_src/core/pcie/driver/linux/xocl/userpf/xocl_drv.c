@@ -1687,6 +1687,8 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
+	xocl_drvinst_set_offline(xdev, false);
+
 	return 0;
 
 failed:

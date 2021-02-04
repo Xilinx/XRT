@@ -42,6 +42,7 @@ void *xocl_drvinst_alloc(struct device *dev, u32 size)
 
 	drvinstp->dev = dev;
 	drvinstp->size = size;
+	drvinstp->offline = true;
 	init_completion(&drvinstp->comp);
 	atomic_set(&drvinstp->ref, 1);
 	INIT_LIST_HEAD(&drvinstp->open_procs);
