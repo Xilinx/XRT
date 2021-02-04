@@ -43,6 +43,13 @@ namespace xdp {
 				    (db->getDynamicInfo()).addString(tooltipStr)) ;
     (db->getDynamicInfo()).addEvent(event) ;
     (db->getDynamicInfo()).markStart(functionID, event->getEventId()) ;
+
+    // Record information for statistics
+    std::pair<const char*, const char*> desc =
+      std::make_pair(labelStr, tooltipStr) ;
+
+    (db->getDynamicInfo()).markRange(functionID, desc, timestamp) ;
+    (db->getStats()).addRangeCount(desc);
   }
 
   static void user_event_end_cb(unsigned int functionID)
@@ -58,6 +65,12 @@ namespace xdp {
 				    0) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
+
+    // Record information for statistics
+    std::tuple<const char*, const char*, uint64_t> desc =
+      (db->getDynamicInfo()).matchingRange(functionID) ;
+    std::pair<const char*, const char*> str = { std::get<0>(desc), std::get<1>(desc) } ;
+    (db->getStats()).recordRangeDuration(str, timestamp - std::get<2>(desc)) ;
   }
 
   static void user_event_happened_cb(const char* label)
@@ -72,6 +85,8 @@ namespace xdp {
 
     VTFEvent* event = new UserMarker(0, timestamp, l) ;
     (db->getDynamicInfo()).addEvent(event) ;
+
+    (db->getStats()).addEventCount(label);
   }
 
 } // end namespace xdp

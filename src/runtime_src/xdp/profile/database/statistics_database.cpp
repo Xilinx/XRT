@@ -165,6 +165,41 @@ namespace xdp {
     return time.second - time.first ;
   }
 
+  void VPStatisticsDatabase::addEventCount(const char* label)
+  {
+    if (eventCounts.find(label) == eventCounts.end()) {
+      eventCounts[label] = 0 ;
+    }
+
+    eventCounts[label] += 1 ;
+  }
+
+  void VPStatisticsDatabase::addRangeCount(std::pair<const char*, const char*> desc)
+  {
+    if (rangeCounts.find(desc) == rangeCounts.end()) {
+      rangeCounts[desc] = 0 ;
+    }
+
+    rangeCounts[desc] += 1 ;
+  }
+
+  void VPStatisticsDatabase::recordRangeDuration(std::pair<const char*, const char*> desc, uint64_t duration)
+  {
+    if (minRangeDurations.find(desc) == minRangeDurations.end()) {
+      // First time seeing this particular range
+      minRangeDurations[desc]   = duration ;
+      maxRangeDurations[desc]   = duration ;
+      totalRangeDurations[desc] = duration ;
+    }
+    else {
+      if (duration < minRangeDurations[desc])
+	minRangeDurations[desc] = duration ;
+      if (duration > maxRangeDurations[desc])
+	maxRangeDurations[desc] = duration ;
+      totalRangeDurations[desc] += duration ;
+    }
+  }
+
   void VPStatisticsDatabase::logFunctionCallStart(const std::string& name,
 						  double timestamp)
   {

@@ -83,6 +83,8 @@ namespace xdp {
     void writeTopKernelExecution() ;
     void writeTopMemoryWrites() ;
     void writeTopMemoryReads() ;
+    void writeUserLevelEvents() ;
+    void writeUserLevelRanges() ;
     void writeGuidance() ;
 
   public:
