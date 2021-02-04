@@ -19,6 +19,7 @@
 #include <linux/device.h>
 #include <linux/uuid.h>
 
+#include "kds_client.h"
 #include "kds_command.h"
 #include "xrt_cu.h"
 
@@ -26,10 +27,10 @@
 	dev_info(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
 #define kds_err(client, fmt, args...)			\
 	dev_err(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
+#define kds_warn(client, fmt, args...)			\
+	dev_warn(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
 #define kds_dbg(client, fmt, args...)			\
 	dev_dbg(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
-
-#define PRE_ALLOC 0
 
 enum kds_type {
 	KDS_CU		= 0,
@@ -52,49 +53,6 @@ struct kds_ctx_info {
 	u32		  flags;
 };
 
-/**
- * struct kds_client: Manage user client
- * Whenever user applciation open the device, a client would be created.
- * A client will keep alive util application close the device or being killed.
- * The client could open multiple contexts to access compute resources.
- *
- * @link: Client is added to list in KDS scheduler
- * @dev:  Device
- * @pid:  Client process ID
- * @lock: Mutex to protext context related members
- * @xclbin_id: UUID of xclbin cache
- * @num_ctx: Number of context that opened
- * @virt_cu_ref: Reference count of virtual CU
- * @cu_bitmap: bitmap of opening CU
- * @waitq: Wait queue for poll client
- * @event: Events to notify user client
- */
-struct kds_client {
-	struct list_head	  link;
-	struct device	         *dev;
-	struct pid	         *pid;
-	struct mutex		  lock;
-	void			 *xclbin_id;
-	int			  num_ctx;
-	int			  virt_cu_ref;
-	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
-#if PRE_ALLOC
-	u32			  max_xcmd;
-	u32			  xcmd_idx;
-	void			 *xcmds;
-	void			 *infos;
-#endif
-	/*
-	 * "waitq" and "event" are modified in thread that is completing them.
-	 * In order to prevent false sharing, they need to be in different
-	 * cache lines. Hence we add a "padding" in between (assuming 128-byte
-	 * is big enough for most CPU architectures).
-	 */
-	u64			  padding[16];
-	wait_queue_head_t	  waitq;
-	atomic_t		  event;
-};
-
 /* the MSB of cu_refs is used for exclusive flag */
 #define CU_EXCLU_MASK		0x80000000
 struct kds_cu_mgmt {
@@ -111,6 +69,8 @@ struct kds_cu_mgmt {
 /* ERT core */
 struct kds_ert {
 	void (* submit)(struct kds_ert *ert, struct kds_command *xcmd);
+	void (* abort)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
+	bool (* abort_done)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
 	struct mutex		  lock;
 	int			  configured;
 };

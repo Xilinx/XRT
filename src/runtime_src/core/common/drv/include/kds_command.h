@@ -52,7 +52,8 @@ struct in_kernel_cb {
  */
 struct kds_command {
 	struct kds_client	*client;
-	u32			cu_idx;
+	int			 status;
+	int			 cu_idx;
 	u32			 type;
 	u32			 opcode;
 	struct list_head	 list;
@@ -66,6 +67,9 @@ struct kds_command {
 	u32			 num_mask;
 	u32			 payload_type;
 	u64			 start;
+
+	unsigned int		 tick;
+
 	struct kds_cmd_ops	 cb;
 	/* execbuf is used to update the header
 	 * of execbuf when notifying host

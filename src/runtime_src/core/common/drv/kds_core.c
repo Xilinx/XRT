@@ -215,6 +215,14 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 out:
 	++cu_mgmt->cu_usage[index];
 	mutex_unlock(&cu_mgmt->lock);
+	client->s_cnt[index]++;
+	xcmd->cu_idx = index;
+	/* Before it go, make sure selected CU is still opening. */
+	if (unlikely(!test_bit(index, client->cu_bitmap))) {
+		client->s_cnt[index]--;
+		index = -EAGAIN;
+	}
+
 	return index;
 }
 
@@ -223,7 +231,9 @@ kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
 	int cu_idx;
 
-	cu_idx = acquire_cu_idx(cu_mgmt, xcmd);
+	do {
+		cu_idx = acquire_cu_idx(cu_mgmt, xcmd);
+	} while(cu_idx == -EAGAIN);
 	if (cu_idx < 0)
 		return cu_idx;
 
@@ -267,10 +277,11 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 	switch (xcmd->opcode) {
 	case OP_START:
 		/* KDS should select a CU and set it in cu_mask */
-		cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
+		do {
+			cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
+		} while(cu_idx == -EAGAIN);
 		if (cu_idx < 0)
 			return cu_idx;
-		xcmd->cu_idx = cu_idx;
 		break;
 	case OP_CONFIG:
 		/* Configure command define CU index */
@@ -359,7 +370,8 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	int cu_idx = info->cu_idx;
-	int state;
+	unsigned long outstanding;
+	bool bad_state = false;
 
 	if (cu_idx >= cu_mgmt->num_cus) {
 		kds_err(client, "CU(%d) not found", cu_idx);
@@ -371,29 +383,32 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		return -EINVAL;
 	}
 
-	/* TODO: finish ERT abort process later */
-	if (!kds->ert_disable)
+	/* Before close, make sure no remain commands in CU's queue. */
+	outstanding = client->s_cnt[cu_idx] - READ_ONCE(client->c_cnt[cu_idx]);
+	if (!outstanding)
 		goto skip;
 
-	/* Before close, make sure no remain commands in CU's queue.
-	 * There is no reason to sleep 500ms :)
-	 */
-	while (xrt_cu_abort(cu_mgmt->xcus[cu_idx], client) == -EAGAIN)
-		msleep(500);
+	if (!kds->ert_disable)
+		kds->ert->abort(kds->ert, client, cu_idx);
+	else
+		xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
 
+	/* sub-device that handle command should do abort with a timeout */
 	do {
-		msleep(100);
-		state = xrt_cu_abort_done(cu_mgmt->xcus[cu_idx]);
-	} while (!state);
+		kds_warn(client, "%ld outstanding command(s) on CU(%d)",
+			 outstanding, cu_idx);
+		msleep(500);
+		outstanding = client->s_cnt[cu_idx] - READ_ONCE(client->c_cnt[cu_idx]);
+	} while(outstanding);
 
-	if (state == CU_STATE_BAD) {
-		kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
-		/* No lock to protect bad_state.
-		 * If a new client doesn't get the updated status and send commands,
-		 * those commands would failed with TIMEOUT state.
-		 */
+	if (!kds->ert_disable)
+		bad_state = kds->ert->abort_done(kds->ert, client, cu_idx);
+	else
+		bad_state = xrt_cu_abort_done(cu_mgmt->xcus[cu_idx], client);
+
+	if (bad_state) {
 		kds->bad_state = 1;
-		xrt_cu_set_bad_state(cu_mgmt->xcus[cu_idx]);
+		kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
 	}
 
 skip:
@@ -449,6 +464,7 @@ struct kds_command *kds_alloc_command(struct kds_client *client, u32 size)
 
 	xcmd->client = client;
 	xcmd->type = 0;
+	xcmd->cu_idx = -1;
 
 #if PRE_ALLOC
 	xcmd->info = client->infos + sizeof(u32) * 128;
@@ -763,6 +779,24 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 	return -ENODEV;
 }
 
+static void ert_dummy_submit(struct kds_ert *ert, struct kds_command *xcmd)
+{
+	kds_err(xcmd->client, "ert submit op not implemented\n");
+	return;
+}
+
+static void ert_dummy_abort(struct kds_ert *ert, struct kds_client *client, int cu_idx)
+{
+	kds_err(client, "ert abort op not implemented\n");
+	return;
+}
+
+static bool ert_dummy_abort_done(struct kds_ert *ert, struct kds_client *client, int cu_idx)
+{
+	kds_err(client, "ert abort_done op not implemented\n");
+	return false;
+}
+
 int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 {
 	kds->ert = ert;
@@ -770,6 +804,16 @@ int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 	kds->ert_disable = false;
 	mutex_init(&ert->lock);
 	ert->configured = 1;
+
+	if (!ert->submit)
+		ert->submit = ert_dummy_submit;
+
+	if (!ert->abort)
+		ert->abort = ert_dummy_abort;
+
+	if (!ert->abort_done)
+		ert->abort_done = ert_dummy_abort_done;
+
 	return 0;
 }
 

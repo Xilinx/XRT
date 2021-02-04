@@ -37,10 +37,18 @@
 
 #define xcu_info(xcu, fmt, args...)			\
 	dev_info(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
+#define xcu_warn(xcu, fmt, args...)			\
+	dev_warn(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
 #define xcu_err(xcu, fmt, args...)			\
 	dev_err(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
 #define xcu_dbg(xcu, fmt, args...)			\
 	dev_dbg(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
+
+/* XRT CU timer macros */
+/* A low frequence timer per CU to check if CU/command timeout */
+#define CU_TICKS_PER_SEC	2
+#define CU_TIMER		(HZ / CU_TICKS_PER_SEC) /* in jiffies */
+#define CU_EXEC_DEFAULT_TTL	(5UL * CU_TICKS_PER_SEC)
 
 /* HLS CU macros */
 #define CU_AP_START	(0x1 << 0)
@@ -204,12 +212,8 @@ struct xrt_cu_info {
 
 #define CU_STATE_GOOD  0x1
 #define CU_STATE_BAD   0x2
-struct xrt_cu_event {
-	struct mutex		  lock;
-	void			 *client;
-	int			  state;
-};
 
+/* Supported event type */
 struct xrt_cu {
 	struct device		 *dev;
 	struct xrt_cu_info	  info;
@@ -248,7 +252,13 @@ struct xrt_cu {
 	u32			  interval_min;
 	u32			  interval_max;
 	struct kds_command	 *old_cmd;
-	struct xrt_cu_event	  ev;
+
+	struct mutex		  ev_lock;
+	struct list_head	  events;
+
+	struct timer_list	  timer;
+	atomic_t		  tick;
+
 	/**
 	 * @funcs:
 	 *
@@ -361,12 +371,11 @@ u32 round_up_to_next_power2(u32 size)
  * 3. Check if submitted command is completed or not
  */
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
-int xrt_cu_abort(struct xrt_cu *xcu, void *client);
-int xrt_cu_abort_done(struct xrt_cu *xcu);
+void xrt_cu_abort(struct xrt_cu *xcu, struct kds_client *client);
+bool xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client);
 int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr);
 int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr, u32 num_slots);
 int xrt_is_fa(struct xrt_cu *xcu, u32 *size);
-void xrt_cu_set_bad_state(struct xrt_cu *xcu);
 
 int  xrt_cu_init(struct xrt_cu *xcu);
 void xrt_cu_fini(struct xrt_cu *xcu);
