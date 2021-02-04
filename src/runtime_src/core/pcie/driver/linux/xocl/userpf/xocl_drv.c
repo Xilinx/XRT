@@ -1609,16 +1609,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "failed to init drm mm");
 		goto failed;
 	}
-	ret = xocl_init_sysfs(xdev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to init sysfs");
-		goto failed;
-	}
-	ret = xocl_init_persist_sysfs(xdev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to init persist sysfs");
-		goto failed;
-	}
 
 	/* Launch the mailbox server. */
 	ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
@@ -1635,6 +1625,25 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	/* store link width & speed stats */
 	store_pcie_link_info(xdev);
+
+	/*
+	 * sysfs has to be the last thing to init because xbutil
+	 * relies it to report if the card is ready. Driver should
+	 * only announce ready after syncing metadata and creating
+	 * all subdevices
+	 */
+	ret = xocl_init_sysfs(xdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to init sysfs");
+		goto failed;
+	}
+	ret = xocl_init_persist_sysfs(xdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to init persist sysfs");
+		goto failed;
+	}
+
+	xocl_drvinst_set_offline(xdev, false);
 
 	return 0;
 
