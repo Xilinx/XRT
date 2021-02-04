@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "xdp/profile/plugin/device_offload/hal/hal_device_offload_cb.h"
 #include "xdp/profile/plugin/device_offload/hal/hal_device_offload_plugin.h"
 

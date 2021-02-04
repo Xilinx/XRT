@@ -16,9 +16,10 @@
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "xocl/core/device.h"
+#include "xocl/core/kernel.h"
 #include <CL/opencl.h>
 
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 // Copyright 2018-2020 Xilinx, Inc. All rights reserved.
 
@@ -63,6 +64,7 @@ clCreateStream(cl_device_id           device,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateStream
       (device,flags,attributes,ext,errcode_ret);
   }

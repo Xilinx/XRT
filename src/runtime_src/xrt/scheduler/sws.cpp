@@ -913,7 +913,7 @@ init(xrt_xocl::device* xdev)
   // Slots are computed by device, its a function of device properties
   auto slots = cdev->get_ert_slots(xml_data, xml_size).first;
 
-  cu_trace_enabled = xrt_xocl::config::get_profile();
+  cu_trace_enabled = xrt_xocl::config::get_profile() || xrt_xocl::config::get_opencl_summary();
 
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert

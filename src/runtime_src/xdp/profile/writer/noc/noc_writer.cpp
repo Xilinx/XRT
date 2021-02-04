@@ -54,9 +54,10 @@ namespace xdp {
          << "write_traffic_class" << ","
          << std::endl;
 
-    auto numNOC = (db->getStaticInfo()).getNumNOC(mDeviceIndex);
+    XclbinInfo* currentXclbin = db->getStaticInfo().getCurrentlyLoadedXclbin(mDeviceIndex);
+    auto numNOC = (db->getStaticInfo()).getNumNOC(mDeviceIndex, currentXclbin);
     for (uint64_t n=0; n < numNOC; n++) {
-      auto noc = (db->getStaticInfo()).getNOC(mDeviceIndex, n);
+      auto noc = (db->getStaticInfo()).getNOC(mDeviceIndex, currentXclbin, n);
 
       // TODO: either make these members more generic or add new ones
       auto readTrafficClass = noc->cuIndex;

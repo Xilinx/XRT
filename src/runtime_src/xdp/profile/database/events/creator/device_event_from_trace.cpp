@@ -17,6 +17,7 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/database/events/creator/device_event_from_trace.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
 
@@ -30,12 +31,14 @@ namespace xdp {
     traceClockRateMHz = db->getStaticInfo().getClockRateMHz(deviceId);
     clockTrainSlope = 1000.0/traceClockRateMHz;
 
-    traceIDs.resize(db->getStaticInfo().getNumAM(deviceId));
-    cuStarts.resize(db->getStaticInfo().getNumAM(deviceId));
-    amLastTrans.resize(db->getStaticInfo().getNumAM(deviceId));
+    xclbin = (db->getStaticInfo()).getCurrentlyLoadedXclbin(devId) ;
 
-    aimLastTrans.resize(db->getStaticInfo().getNumAIM(deviceId));
-    asmLastTrans.resize(db->getStaticInfo().getNumASM(deviceId));
+    traceIDs.resize(db->getStaticInfo().getNumAM(deviceId, xclbin));
+    cuStarts.resize(db->getStaticInfo().getNumAM(deviceId, xclbin));
+    amLastTrans.resize(db->getStaticInfo().getNumAM(deviceId, xclbin));
+
+    aimLastTrans.resize(db->getStaticInfo().getNumAIM(deviceId, xclbin));
+    asmLastTrans.resize(db->getStaticInfo().getNumASM(deviceId, xclbin));
   }
 
   void DeviceEventCreatorFromTrace::createDeviceEvents(xclTraceResultsVector& traceVector)
@@ -47,7 +50,10 @@ namespace xdp {
     if(!VPDatabase::alive()) {
       return;
     }
+
     uint64_t timestamp = 0;
+    double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
+
     for(unsigned int i=0; i < traceVector.mLength; i++) {
       auto& trace = traceVector.mArray[i];
       
@@ -77,7 +83,14 @@ namespace xdp {
         uint32_t stallStrEvent = trace.TraceID & XAM_TRACE_STALL_STR_MASK;
         uint32_t stallExtEvent = trace.TraceID & XAM_TRACE_STALL_EXT_MASK;
 
-        Monitor* mon  = db->getStaticInfo().getAMonitor(deviceId, s);   
+        Monitor* mon  = db->getStaticInfo().getAMonitor(deviceId, xclbin, s);
+	if (!mon) {
+	  // In hardware emulation, there might be monitors inserted
+	  //  that don't show up in the debug ip layout.  These are added
+	  //  for their own debugging purposes and we should ignore any
+	  //  packets we see from them.
+	  continue ;
+	}
         int32_t  cuId = mon->cuIndex;
         
         if(cuEvent) {
@@ -95,6 +108,7 @@ namespace xdp {
             event = new KernelEvent(e->getEventId(), hostTimestamp, KERNEL, deviceId, s, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
+	    (db->getStats()).setLastKernelEndTime(hostTimestamp) ;
           } else {
             // start event
             event = new KernelEvent(0, hostTimestamp, KERNEL, deviceId, s, cuId);
@@ -105,6 +119,8 @@ namespace xdp {
             if(1 == cuStarts[s].size()) {
               traceIDs[s] = 0;	// When current CU starts, reset stall status
             }
+	    if (db->getStats().getFirstKernelStartTime() == 0.0)
+	      (db->getStats()).setFirstKernelStartTime(hostTimestamp) ;
           }
         }
  
@@ -165,7 +181,14 @@ namespace xdp {
         if(!(trace.TraceID & 1)) { // read packet
           s = trace.TraceID/2;
 
-          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, s);  
+          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, xclbin, s);
+	  if (!mon) {
+	    // In hardware emulation, there might be monitors inserted
+	    //  that don't show up in the debug ip layout.  These are added
+	    //  for their own debugging purposes and we should ignore any
+	    //  packets we see from them.
+	    continue ;
+	  }
           int32_t  cuId = mon->cuIndex;
 
           // KERNEL_READ
@@ -185,6 +208,7 @@ namespace xdp {
               db->getDynamicInfo().addEvent(memEvent);
               db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
               matchingStart = memEvent;
+              hostTimestamp += halfCycleTimeInMs;
             }
             // add end event
             memEvent = new DeviceMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_READ, deviceId, s, cuId);
@@ -197,7 +221,14 @@ namespace xdp {
           // KERNEL_WRITE
           s = trace.TraceID/2;
 
-          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, s);   
+          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, xclbin, s);
+	  if (!mon) {
+	    // In hardware emulation, there might be monitors inserted
+	    //  that don't show up in the debug ip layout.  These are added
+	    //  for their own debugging purposes and we should ignore any
+	    //  packets we see from them.
+	    continue ;
+	  }
           int32_t  cuId = mon->cuIndex;
 
           if(trace.EventType == XCL_PERF_MON_START_EVENT) {
@@ -215,6 +246,7 @@ namespace xdp {
               db->getDynamicInfo().addEvent(memEvent);
               db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
               matchingStart = memEvent;
+              hostTimestamp += halfCycleTimeInMs;
             }
             // add end event
             memEvent = new DeviceMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_WRITE, deviceId, s, cuId);
@@ -228,7 +260,14 @@ namespace xdp {
       else if(ASMPacket) {
         s = trace.TraceID - MIN_TRACE_ID_ASM;
 
-        Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, s);
+        Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, s);
+	if (!mon) {
+	  // In hardware emulation, there might be monitors inserted
+	  //  that don't show up in the debug ip layout.  These are added
+	  //  for their own debugging purposes and we should ignore any
+	  //  packets we see from them.
+	  continue ;
+	}
         int32_t  cuId = mon->cuIndex;
 
         bool isSingle    = trace.EventFlags & 0x10;
@@ -262,6 +301,7 @@ namespace xdp {
             db->getDynamicInfo().addEvent(strmEvent);
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, strmEvent);
             matchingStart = strmEvent;
+            hostTimestamp += halfCycleTimeInMs;
           }
           // add end event
           strmEvent = new DeviceStreamAccess(matchingStart->getEventId(), hostTimestamp, streamEventType, deviceId, s, cuId);
@@ -289,7 +329,7 @@ namespace xdp {
       uint64_t cuLastTimestamp  = amLastTrans[amIndex];
 
       // get CU Id for the current slot
-      Monitor* am = db->getStaticInfo().getAMonitor(deviceId, amIndex);
+      Monitor* am = db->getStaticInfo().getAMonitor(deviceId, xclbin, amIndex);
       int32_t  cuId = am->cuIndex;
 
       // Check if any memory port on current CU had a trace packet
@@ -301,7 +341,7 @@ namespace xdp {
         if(cuLastTimestamp >= aimLastTrans[aimIndex]) {
           continue;
         }
-        Monitor* aim = db->getStaticInfo().getAIMonitor(deviceId, aimIndex);
+        Monitor* aim = db->getStaticInfo().getAIMonitor(deviceId, xclbin, aimIndex);
         if(cuId != aim->cuIndex) {
           // current AIM attached to a different CU, so continue
           continue;
@@ -319,7 +359,7 @@ namespace xdp {
         if(cuLastTimestamp >= asmLastTrans[asmIndex]) {
           continue;
         }
-        Monitor* asM = db->getStaticInfo().getASMonitor(deviceId, asmIndex);
+        Monitor* asM = db->getStaticInfo().getASMonitor(deviceId, xclbin, asmIndex);
         if(cuId != asM->cuIndex) {
           // current ASM attached to a different CU, so continue
           continue;
@@ -360,11 +400,11 @@ namespace xdp {
       y2 = static_cast <double> (hostTimestamp);
       x2 = static_cast <double> (deviceTimestamp);
       // slope in ns/cycle
-//      if (isDeviceFlow) {
+      if (xdp::getFlowMode() == HW) {
         clockTrainSlope = 1000.0/traceClockRateMHz;
-//      } else {
-//        clockTrainSlope = (y2 - y1) / (x2 - x1);
-//      }
+      } else {
+        clockTrainSlope = (y2 - y1) / (x2 - x1);
+      }
       clockTrainOffset = y2 - clockTrainSlope * x2;
       // next time update x1, y1
       y1 = 0.0;

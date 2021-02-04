@@ -21,10 +21,10 @@
 #include "xocl/core/param.h"
 #include "xocl/core/error.h"
 #include "xocl/core/event.h"
+#include "xocl/core/command_queue.h"
 #include "xocl/config.h"
 #include "detail/event.h"
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 

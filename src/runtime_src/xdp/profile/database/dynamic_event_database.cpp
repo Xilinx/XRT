@@ -20,6 +20,8 @@
 #include "xdp/profile/database/dynamic_event_database.h"
 #include "xdp/profile/database/events/device_events.h"
 
+#include "core/common/time.h"
+
 #include <iostream>
 
 namespace xdp {
@@ -30,7 +32,7 @@ namespace xdp {
     // For low overhead profiling, we will reserve space for 
     //  a set number of events.  This won't change HAL or OpenCL 
     //  profiling either.
-    hostEvents.reserve(100);
+    //hostEvents.reserve(100);
   }
 
   VPDynamicDatabase::~VPDynamicDatabase()
@@ -46,7 +48,7 @@ namespace xdp {
     aieTraceData.clear();
 
     for (auto event : hostEvents) {
-      delete event;
+      delete event.second;
     }
 
     for (auto device : deviceEvents) {
@@ -57,23 +59,31 @@ namespace xdp {
     }
   }
 
+  void VPDynamicDatabase::markXclbinEnd(uint64_t deviceId)
+  {
+    addDeviceEvent(deviceId, new XclbinEnd(0, (double)(xrt_core::time_ns())/1e6, 0, 0)) ;
+  }
+
   void VPDynamicDatabase::addHostEvent(VTFEvent* event)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
-    hostEvents.push_back(event) ;
+    event->setEventId(eventId++) ;
+    hostEvents.emplace(event->getTimestamp(), event) ;
+    //hostEvents.push_back(event) ;
   }
 
   void VPDynamicDatabase::addDeviceEvent(uint64_t deviceId, VTFEvent* event)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
+
+    event->setEventId(eventId++) ;
     deviceEvents[deviceId].emplace(event->getTimestamp(), event) ;
   }
 
   void VPDynamicDatabase::addEvent(VTFEvent* event)
   {
     if (event == nullptr) return ;
-    event->setEventId(eventId++) ;
 
     if (event->isDeviceEvent())
     {
@@ -145,7 +155,7 @@ namespace xdp {
     // For now, go through both host events and device events.
     for (auto e : hostEvents)
     {
-      if (filter(e)) collected.push_back(e) ;
+      if (filter(e.second)) collected.push_back(e.second) ;
     }
 
     for (auto dev : deviceEvents)
@@ -159,11 +169,23 @@ namespace xdp {
     return collected ;
   }
 
+  std::vector<VTFEvent*> VPDynamicDatabase::filterHostEvents(std::function<bool(VTFEvent*)> filter)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::vector<VTFEvent*> collected ;
+
+    for (auto e : hostEvents)
+    {
+      if (filter(e.second)) collected.push_back(e.second) ;
+    }
+    return collected ;
+  }
+
   std::vector<VTFEvent*> VPDynamicDatabase::getHostEvents()
   {
     std::vector<VTFEvent*> events;
     for(auto e : hostEvents) {
-      events.push_back(e);
+      events.push_back(e.second);
     }
     return events;
   }
@@ -187,6 +209,66 @@ namespace xdp {
     {
       fout << s.second << "," << s.first.c_str() << std::endl ;
     }
+  }
+
+  void VPDynamicDatabase::setCounterResults(const uint64_t deviceId,
+					    xrt_core::uuid uuid,
+					    xclCounterResults& values)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;
+
+    deviceCounters[index] = values ;
+  }
+
+  xclCounterResults VPDynamicDatabase::getCounterResults(uint64_t deviceId,
+							 xrt_core::uuid uuid)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;
+
+    return deviceCounters[index] ;
+  }
+
+  void VPDynamicDatabase::addOpenCLMapping(uint64_t openclID,
+					   uint64_t eventID,
+					   uint64_t startID)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    openclEventMap[openclID] = std::make_pair(eventID, startID) ;
+  }
+
+  std::pair<uint64_t, uint64_t>
+  VPDynamicDatabase::lookupOpenCLMapping(uint64_t openclID)
+  {
+    if (openclEventMap.find(openclID) == openclEventMap.end())
+      return std::make_pair(0, 0) ;
+    return openclEventMap[openclID] ;
+  }
+
+  void VPDynamicDatabase::addDependencies(uint64_t eventID,
+					  const std::vector<uint64_t>& openclIDs)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    dependencyMap[eventID] = openclIDs ;
+  }
+
+  void VPDynamicDatabase::addDependency(uint64_t id, uint64_t dependency)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    if (dependencyMap.find(id) == dependencyMap.end())
+    {
+      std::vector<uint64_t> blank ;
+      dependencyMap[id] = blank ;
+    }
+    (dependencyMap[id]).push_back(dependency) ;
+  }
+
+  std::map<uint64_t, std::vector<uint64_t>>
+  VPDynamicDatabase::getDependencyMap()
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    return dependencyMap ;
   }
 
   void VPDynamicDatabase::addAIETraceData(uint64_t deviceId,

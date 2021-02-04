@@ -53,7 +53,7 @@ public:
     XDP_EXPORT
     DeviceTraceOffload(DeviceIntf* dInt, DeviceTraceLogger* dTraceLogger,
                        uint64_t offload_sleep_ms, uint64_t trbuf_sz,
-                       bool start_thread = true);
+                       bool start_thread = true, bool e_trace = true);
     XDP_EXPORT
     virtual ~DeviceTraceOffload();
     XDP_EXPORT
@@ -94,11 +94,14 @@ public:
       requested_offload_rate = m_circ_buf_cur_rate;
       return m_use_circ_buf;
     };
+    inline bool continuous_offload() { return continuous ; }
 
 private:
     std::mutex status_lock;
     OffloadThreadStatus status = OffloadThreadStatus::IDLE;
     std::thread offload_thread;
+    bool continuous = false ;
+    bool enable_trace = true ;
 
     uint64_t sleep_interval_ms;
     uint64_t m_trbuf_alloc_sz;

@@ -24,6 +24,7 @@
 #include "xocl/core/program.h"
 #include "xocl/core/context.h"
 #include "xocl/core/execution_context.h"
+#include "xocl/core/command_queue.h"
 
 #include "detail/command_queue.h"
 #include "detail/kernel.h"
@@ -35,8 +36,7 @@
 #include "printf/rt_printf.h"
 
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 
 #include <array>
 #include <sstream>
@@ -405,7 +405,8 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 
   // Migration action and enqueing
   xocl::enqueue::set_event_action(umEvent.get(),xocl::enqueue::action_ndrange_migrate,mEvent,kernel);
-  xocl::profile::set_event_action(umEvent.get(),xocl::profile::action_ndrange_migrate,mEvent,kernel);
+  xocl::profile::set_event_action(umEvent.get(), xocl::profile::action_ndrange_migrate, mEvent, kernel) ;
+  xocl::profile::counters::set_event_action(umEvent.get(), xocl::profile::counter_action_ndrange_migrate, mEvent, kernel) ;
   xocl::appdebug::set_event_action(umEvent.get(),xocl::appdebug::action_ndrange_migrate,mEvent,kernel);
 
 #ifndef _WIN32
@@ -426,7 +427,8 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
        (device,xocl(kernel),xocl(eEvent),work_dim,global_work_offset_3D.data(),global_work_size_3D.data(),local_work_size_3D.data()));
   xocl::enqueue::set_event_action(ueEvent.get(),xocl::enqueue::action_ndrange_execute);
 
-  xocl::profile::set_event_action(ueEvent.get(),xocl::profile::action_ndrange,eEvent,kernel);
+    xocl::profile::set_event_action(ueEvent.get(), xocl::profile::action_ndrange, eEvent, kernel);
+    xocl::profile::counters::set_event_action(ueEvent.get(), xocl::profile::counter_action_ndrange, kernel) ;
   xocl::appdebug::set_event_action(ueEvent.get(),xocl::appdebug::action_ndrange,eEvent,kernel);
 
 #ifndef _WIN32

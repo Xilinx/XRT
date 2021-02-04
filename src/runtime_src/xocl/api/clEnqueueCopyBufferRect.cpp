@@ -29,7 +29,7 @@
 #include "enqueue.h"
 #include "khronos/khronos.h"
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 #include <CL/opencl.h>
 
@@ -299,6 +299,7 @@ clEnqueueCopyBufferRect(cl_command_queue     command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueCopyBufferRect
       (command_queue,src_buffer,dst_buffer,src_origin,dst_origin,region,
        src_row_pitch,src_slice_pitch,dst_row_pitch,dst_slice_pitch,

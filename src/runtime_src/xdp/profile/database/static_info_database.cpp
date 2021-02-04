@@ -38,8 +38,8 @@
 
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 #include "core/include/xclbin.h"
 #include "core/include/xclperf.h"
@@ -91,37 +91,13 @@ namespace xdp {
     connections[argIdx].push_back(memIdx);
   }
 
-
   DeviceInfo::~DeviceInfo()
   {
-    delete deviceIntf;
+    for (auto& i : loadedXclbins) {
+      delete i ;
+    }
+    loadedXclbins.clear() ;
 
-    for(auto& i : cus) {
-      delete i.second;
-    }
-    cus.clear();
-    for(auto& i : memoryInfo) {
-      delete i.second;
-    }
-    memoryInfo.clear();
-
-    for(auto& i : amMap) {
-      delete i.second;
-    }
-    amMap.clear();
-    for(auto& i : aimMap) {
-      delete i.second;
-    }
-    aimMap.clear();
-    for(auto& i : asmMap) {
-      delete i.second;
-    }
-    asmMap.clear();
-
-    for(auto i : nocList) {
-      delete i;
-    }
-    nocList.clear();
     for(auto i : aieList) {
       delete i;
     }
@@ -150,13 +126,16 @@ namespace xdp {
       aieList.push_back(aie);
   }
 
-  VPStaticDatabase::VPStaticDatabase(VPDatabase* d) : db(d), runSummary(nullptr)
+  VPStaticDatabase::VPStaticDatabase(VPDatabase* d) :
+    db(d), runSummary(nullptr), systemDiagram(""),
+    softwareEmulationDeviceName("")
   {
 #ifdef _WIN32
     pid = _getpid() ;
 #else
     pid = static_cast<int>(getpid()) ;
 #endif
+    applicationStartTime = 0 ;
   }
 
   VPStaticDatabase::~VPStaticDatabase()
@@ -166,6 +145,44 @@ namespace xdp {
       runSummary->write(false) ;
       delete runSummary ;
     }
+
+    for (auto iter : deviceInfo) {
+      delete iter.second ;
+    }
+  }
+
+  std::vector<std::string> VPStaticDatabase::getDeviceNames()
+  {
+    std::vector<std::string> deviceNames ;
+    for (auto device : deviceInfo)
+    {
+      deviceNames.push_back((device.second)->deviceName) ;
+    }
+
+    return deviceNames ;
+  }
+
+  std::vector<DeviceInfo*> VPStaticDatabase::getDeviceInfos()
+  {
+    std::vector<DeviceInfo*> infos ;
+    for (auto device : deviceInfo)
+    {
+      infos.push_back(device.second) ;
+    }
+    return infos ;
+  }
+
+  bool VPStaticDatabase::hasStallInfo()
+  {
+    for (auto device : deviceInfo)
+    {
+      if ((device.second)->loadedXclbins.size() <= 0) continue ;
+      for (auto cu : (device.second)->loadedXclbins.back()->cus)
+      {
+	if ((cu.second)->stallEnabled()) return true ;
+      }
+    }
+    return false ;
   }
 
   // This function is called whenever a device is loaded with an 
@@ -182,11 +199,31 @@ namespace xdp {
        */
       return;
     }
+    
+    // We need to update the device, but if we had an xclbin previously loaded
+    //  then we need to mark it
+    if ((deviceInfo.find(deviceId) != deviceInfo.end()) &&
+	deviceInfo[deviceId]->loadedXclbins.size() >= 1) {
+      (db->getDynamicInfo()).markXclbinEnd(deviceId) ;
+    }
 
-    DeviceInfo *devInfo = new DeviceInfo();
-    devInfo->platformInfo.kdmaCount = 0;
+    DeviceInfo* devInfo = nullptr ;
+    auto itr = deviceInfo.find(deviceId);
+    if (itr == deviceInfo.end()) {
+      // This is the first time this device was loaded with an xclbin
+      devInfo = new DeviceInfo();
+      devInfo->deviceId = deviceId ;
+      if (isEdge()) devInfo->isEdgeDevice = true ;
+      deviceInfo[deviceId] = devInfo ;
 
-    deviceInfo[deviceId] = devInfo;    // update this at the end ??
+    } else {
+      // This is a previously used device being reloaded with a new xclbin
+      devInfo = itr->second ;
+      devInfo->cleanCurrentXclbinInfo() ;
+    }
+    
+    XclbinInfo* currentXclbin = new XclbinInfo() ;
+    currentXclbin->uuid = device->get_xclbin_uuid() ;
 
     const clock_freq_topology* clockSection = device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
 
@@ -196,23 +233,26 @@ namespace xdp {
         if(clk->m_type != CT_DATA) {
           continue;
         }
-        devInfo->clockRateMHz = clk->m_freq_Mhz;
+	currentXclbin->clockRateMHz = clk->m_freq_Mhz ;
       }
     } else {
-      devInfo->clockRateMHz = 300;
+      currentXclbin->clockRateMHz = 300;
     }
     /* Configure AMs if context monitoring is supported
      * else disable alll AMs on this device
      */
     devInfo->ctxInfo = xrt_core::config::get_kernel_channel_info();
 
-//    if (!setXclbinUUID(devInfo, device)) return;
-    if (!setXclbinName(devInfo, device)) return;
-    if (!initializeComputeUnits(devInfo, device)) return ;
+    if (!setXclbinName(currentXclbin, device)) return;
+    if (!initializeComputeUnits(currentXclbin, device)) return ;
+
+    devInfo->addXclbin(currentXclbin) ;
+
     if (!initializeProfileMonitors(devInfo, device)) return ;
-    devInfo->isReady = true;
   }
 
+  // Return true if we should reset the device information.
+  // Return false if we should not reset device information
   bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
   {
     std::lock_guard<std::mutex> lock(dbLock);
@@ -220,31 +260,32 @@ namespace xdp {
     auto itr = deviceInfo.find(deviceId);
     if(itr != deviceInfo.end()) {
       DeviceInfo *devInfo = itr->second;
-      if(device->get_xclbin_uuid() == devInfo->loadedXclbinUUID) {
-        // loading same xclbin multiple times ?
-        return false;
+      // Are we attempting to load the same xclbin multiple times?
+      if (devInfo->loadedXclbins.size() > 0 &&
+	  device->get_xclbin_uuid() == devInfo->loadedXclbins.back()->uuid) {
+	return false ;
       }
-      delete itr->second;
-      deviceInfo.erase(deviceId);
     }
     return true;
   }
 
-#if 0
-  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
-  {
-    devInfo->loadedXclbinUUID = device->get_xclbin_uuid();
-    return true;
-  }
-#endif
-
-  bool VPStaticDatabase::setXclbinName(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
+  bool VPStaticDatabase::setXclbinName(XclbinInfo* currentXclbin, const std::shared_ptr<xrt_core::device>& device)
   {
     // Get SYSTEM_METADATA section
     std::pair<const char*, size_t> systemMetadata = device->get_axlf_section(SYSTEM_METADATA);
     const char* systemMetadataSection = systemMetadata.first;
     size_t      systemMetadataSz      = systemMetadata.second;
     if(systemMetadataSection == nullptr) return false;
+
+    // For now, also update the System metadata for the run summary.
+    //  TODO: Expand this so that multiple devices and multiple xclbins
+    //  don't overwrite the single system diagram information
+    std::ostringstream buf ;
+    for (size_t index = 0 ; index < systemMetadataSz ; ++index)
+    {
+      buf << std::hex << std::setw(2) << std::setfill('0') << (unsigned int)(systemMetadataSection[index]);
+    }
+    systemDiagram = buf.str() ;
 
     try {
       std::stringstream ss;
@@ -254,17 +295,17 @@ namespace xdp {
       boost::property_tree::ptree pt;
       boost::property_tree::read_json(ss, pt);
 
-      devInfo->loadedXclbin = pt.get<std::string>("system_diagram_metadata.xclbin.generated_by.xclbin_name", "");
-      if(!devInfo->loadedXclbin.empty()) {
-        devInfo->loadedXclbin += ".xclbin";
+      currentXclbin->name = pt.get<std::string>("system_diagram_metadata.xclbin.generated_by.xclbin_name", "");
+      if(!currentXclbin->name.empty()) {
+        currentXclbin->name += ".xclbin";
       }
     } catch(...) {
-      // keep default value in "devInfo->loadedXclbin" i.e. empty string
+      // keep default value in "currentXclbin.name" i.e. empty string
     }
     return true;
   }
 
-  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
+  bool VPStaticDatabase::initializeComputeUnits(XclbinInfo* currentXclbin, const std::shared_ptr<xrt_core::device>& device)
   {
     // Get IP_LAYOUT section 
     const ip_layout* ipLayoutSection = device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
@@ -284,7 +325,7 @@ namespace xdp {
         continue;
       }
       cu = new ComputeUnitInstance(i, cuName);
-      devInfo->cus[i] = cu;
+      currentXclbin->cus[i] = cu ;
       if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
         cu->setDataflowEnabled(true);
       } else
@@ -299,8 +340,8 @@ namespace xdp {
 
     for(int32_t i = 0; i < memTopologySection->m_count; i++) {
       const struct mem_data* memData = &(memTopologySection->m_mem_data[i]);
-      devInfo->memoryInfo[i] = new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
-                                          reinterpret_cast<const char*>(memData->m_tag));
+      currentXclbin->memoryInfo[i] = new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
+                                          reinterpret_cast<const char*>(memData->m_tag), memData->m_used);
     }
 
     // Look into the connectivity section and load information about Compute Units and their Memory connections
@@ -313,7 +354,7 @@ namespace xdp {
     for(int32_t i = 0; i < connectivitySection->m_count; i++) {
       const struct connection* connctn = &(connectivitySection->m_connection[i]);
 
-      if(devInfo->cus.find(connctn->m_ip_layout_index) == devInfo->cus.end()) {
+      if(currentXclbin->cus.find(connctn->m_ip_layout_index) == currentXclbin->cus.end()) {
         const struct ip_data* ipData = &(ipLayoutSection->m_ip_data[connctn->m_ip_layout_index]);
         if(ipData->m_type != IP_KERNEL) {
           // error ?
@@ -327,7 +368,7 @@ namespace xdp {
           continue;
         }
         cu = new ComputeUnitInstance(connctn->m_ip_layout_index, cuName);
-        devInfo->cus[connctn->m_ip_layout_index] = cu;
+        currentXclbin->cus[connctn->m_ip_layout_index] = cu;
         if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
           cu->setDataflowEnabled(true);
         } else
@@ -335,14 +376,14 @@ namespace xdp {
           cu->setFaEnabled(true);
         }
       } else {
-        cu = devInfo->cus[connctn->m_ip_layout_index];
+        cu = currentXclbin->cus[connctn->m_ip_layout_index];
       }
 
-      if(devInfo->memoryInfo.find(connctn->mem_data_index) == devInfo->memoryInfo.end()) {
+      if(currentXclbin->memoryInfo.find(connctn->mem_data_index) == currentXclbin->memoryInfo.end()) {
         const struct mem_data* memData = &(memTopologySection->m_mem_data[connctn->mem_data_index]);
-        devInfo->memoryInfo[connctn->mem_data_index]
+        currentXclbin->memoryInfo[connctn->mem_data_index]
                  = new Memory(memData->m_type, connctn->mem_data_index,
-                              memData->m_base_address, memData->m_size, reinterpret_cast<const char*>(memData->m_tag));
+                              memData->m_base_address, memData->m_size, reinterpret_cast<const char*>(memData->m_tag), memData->m_used);
       }
       cu->addConnection(connctn->arg_index, connctn->mem_data_index);
     }
@@ -366,13 +407,25 @@ namespace xdp {
       auto kernelNameItem    = kernel.second.get_child("<xmlattr>");
       std::string kernelName = kernelNameItem.get<std::string>("name", "");
 
-      auto workGroupSz = kernel.second.get_child("compileWorkGroupSize");
-      std::string x = workGroupSz.get<std::string>("<xmlattr>.x", "");
-      std::string y = workGroupSz.get<std::string>("<xmlattr>.y", "");
-      std::string z = workGroupSz.get<std::string>("<xmlattr>.z", "");
+      std::string x ;
+      std::string y ;
+      std::string z ;
+
+      try {
+	auto workGroupSz = kernel.second.get_child("compileWorkGroupSize");
+	x = workGroupSz.get<std::string>("<xmlattr>.x", "");
+	y = workGroupSz.get<std::string>("<xmlattr>.y", "");
+	z = workGroupSz.get<std::string>("<xmlattr>.z", "");
+      } catch (...) {
+	// RTL kernels might not have this information, so if the fetch
+	//  fails default to 1:1:1
+	x = "1" ;
+	y = "1" ;
+	z = "1" ;
+      }
 
       // Find the ComputeUnitInstance
-      for(auto cuItr : devInfo->cus) {
+      for(auto cuItr : currentXclbin->cus) {
         if(0 != cuItr.second->getKernelName().compare(kernelName)) {
           continue;
         }
@@ -401,18 +454,20 @@ namespace xdp {
       ComputeUnitInstance* cuObj = nullptr;
       // find CU
       if(debugIpData->m_type == ACCEL_MONITOR) {
-        for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->loadedXclbins.back()->cus) {
           if(0 == name.compare(cu.second->getName())) {
             cuObj = cu.second;
             cuId = cu.second->getIndex();
             mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
             if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_AM)) {
               uint64_t slotID = (index - MIN_TRACE_ID_AM) / 16;
-              devInfo->amMap.emplace(slotID, mon);
+              devInfo->loadedXclbins.back()->amMap.emplace(slotID, mon);
               cuObj->setAccelMon(slotID);
             } else {
-              devInfo->noTraceAMs.push_back(mon);
+              devInfo->loadedXclbins.back()->noTraceAMs.push_back(mon);
             }
+	    // Also add it to the list of all AMs
+	    devInfo->loadedXclbins.back()->amList.push_back(mon);
             if(debugIpData->m_properties & XAM_STALL_PROPERTY_MASK) {
               cuObj->setStallEnabled(true);
             }
@@ -424,58 +479,79 @@ namespace xdp {
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
 
-        pos = name.find('-');
-        std::string memName = name.substr(pos+1);
+        std::string memName;
+        std::string portName;
+        size_t pos1 = name.find('-');
+        if(pos1 != std::string::npos) {
+          memName = name.substr(pos1+1);
+          portName = name.substr(pos+1, pos1-pos-1);
+        }
 
         int32_t memId = -1;
-        for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->loadedXclbins.back()->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
             break;
           }
         }
-        for(auto mem : devInfo->memoryInfo) {
+        for(auto mem : devInfo->loadedXclbins.back()->memoryInfo) {
           if(0 == memName.compare(mem.second->name)) {
             memId = mem.second->index;
             break;
           }
         }
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
+        mon->port = portName;
         // If the AIM is an User Space AIM with trace enabled i.e. either connected to a CU or floating but not shell AIM
         if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_AIM)) {
           uint64_t slotID = (index - MIN_TRACE_ID_AIM) / 2;
-          devInfo->aimMap.emplace(slotID, mon);
+          devInfo->loadedXclbins.back()->aimMap.emplace(slotID, mon);
           if(cuObj) {
             cuObj->addAIM(slotID);
           } else {
             // If not connected to CU and not a shell monitor, then a floating monitor
-            devInfo->hasFloatingAIM = true;
+            devInfo->loadedXclbins.back()->hasFloatingAIM = true;
           }
         } else {
-          devInfo->noTraceAIMs.push_back(mon);
+          devInfo->loadedXclbins.back()->noTraceAIMs.push_back(mon);
         }
+	// Also add it to the list of all AIMs
+	devInfo->loadedXclbins.back()->aimList.push_back(mon) ;
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
+
+        std::string portName;
         
-        for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->loadedXclbins.back()->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
             break;
           }
         }
-        if(-1 == cuId) {
+        if(-1 != cuId) {
+          size_t pos1 = name.find('-');
+          if(std::string::npos != pos1) {
+            portName = name.substr(pos+1, pos1-pos-1);
+          }
+        } else { /* (-1 == cuId) */
           pos = name.find("-");
           if(std::string::npos != pos) {
             pos = name.find_first_not_of(" ", pos+1);
             monCuName = name.substr(pos);
             pos = monCuName.find('/');
+
+            size_t pos1 = monCuName.find('-');
+            if(std::string::npos != pos1) {
+              portName = monCuName.substr(pos+1, pos1-pos-1);
+            }
+
             monCuName = monCuName.substr(0, pos);
 
-            for(auto cu : devInfo->cus) {
+            for(auto cu : devInfo->loadedXclbins.back()->cus) {
               if(0 == monCuName.compare(cu.second->getName())) {
                 cuId = cu.second->getIndex();
                 cuObj = cu.second;
@@ -486,33 +562,38 @@ namespace xdp {
         }
 
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
+        mon->port = portName;
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
         }
         // If the ASM is an User Space ASM with trace enabled i.e. either connected to a CU or floating but not shell ASM
         if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_ASM)) {
           uint64_t slotID = (index - MIN_TRACE_ID_ASM);
-          devInfo->asmMap.emplace(slotID, mon);
+          devInfo->loadedXclbins.back()->asmMap.emplace(slotID, mon);
           if(cuObj) {
             cuObj->addASM(slotID);
           } else {
             // If not connected to CU and not a shell monitor, then a floating monitor
-            devInfo->hasFloatingASM = true;
+            devInfo->loadedXclbins.back()->hasFloatingASM = true;
           }
         } else {
-          devInfo->noTraceASMs.push_back(mon);
+          devInfo->loadedXclbins.back()->noTraceASMs.push_back(mon);
         }
+	// Also add it to the list of all ASM monitors
+	devInfo->loadedXclbins.back()->asmList.push_back(mon) ;
+      } else if (debugIpData->m_type == TRACE_S2MM) {
+	devInfo->loadedXclbins.back()->usesTs2mm = true ;
       } else if(debugIpData->m_type == AXI_NOC) {
         uint8_t readTrafficClass  = debugIpData->m_properties >> 2;
         uint8_t writeTrafficClass = debugIpData->m_properties & 0x3;
 
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
                           readTrafficClass, writeTrafficClass);
-        devInfo->nocList.push_back(mon);
+        devInfo->loadedXclbins.back()->nocList.push_back(mon);
         // nocList in xdp::DeviceIntf is sorted; Is that required here?
       } else if(debugIpData->m_type == TRACE_S2MM && (debugIpData->m_properties & 0x1)) {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
-        devInfo->numTracePLIO++;
+        devInfo->loadedXclbins.back()->numTracePLIO++;
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }
@@ -543,6 +624,12 @@ namespace xdp {
       runSummary = new VPRunSummaryWriter("xclbin.ex.run_summary") ;
     }
     runSummary->write(false) ;
+  }
+
+  void VPStaticDatabase::addEnqueuedKernel(const std::string& identifier)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    enqueuedKernels.emplace(identifier) ;
   }
 
 }

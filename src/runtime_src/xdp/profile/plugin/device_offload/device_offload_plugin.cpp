@@ -18,6 +18,7 @@
 
 #include <string>
 #include <sstream>
+#include <cstring>
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/device_offload/device_offload_plugin.h"
@@ -27,6 +28,56 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+
+// Anonymous namespace for helper functions
+namespace {
+
+  static bool nonZero(xclCounterResults& values)
+  {
+    // Check AIM stats
+    for (uint64_t i = 0 ; i < XAIM_MAX_NUMBER_SLOTS ; ++i)
+    {
+      if (values.WriteBytes[i]      != 0) return true ;
+      if (values.WriteTranx[i]      != 0) return true ;
+      if (values.WriteLatency[i]    != 0) return true ;
+      if (values.WriteMinLatency[i] != 0) return true ;
+      if (values.WriteMaxLatency[i] != 0) return true ;
+      if (values.ReadBytes[i]       != 0) return true ;
+      if (values.ReadTranx[i]       != 0) return true ;
+      if (values.ReadLatency[i]     != 0) return true ;
+      if (values.ReadMinLatency[i]  != 0) return true ;
+      if (values.ReadMaxLatency[i]  != 0) return true ;
+      if (values.ReadBusyCycles[i]  != 0) return true ;
+      if (values.WriteBusyCycles[i] != 0) return true ;
+    }
+
+    // Check AM stats
+    for (uint64_t i = 0 ; i < XAM_MAX_NUMBER_SLOTS ; ++i)
+    {
+      if (values.CuExecCount[i]       != 0) return true ;
+      if (values.CuExecCycles[i]      != 0) return true ;
+      if (values.CuBusyCycles[i]      != 0) return true ;
+      if (values.CuMaxParallelIter[i] != 0) return true ;
+      if (values.CuStallExtCycles[i]  != 0) return true ;
+      if (values.CuStallStrCycles[i]  != 0) return true ;
+      if (values.CuMinExecCycles[i]   != 0) return true ;
+      if (values.CuMaxExecCycles[i]   != 0) return true ;
+    }
+
+    // Check ASM stats
+    for (uint64_t i = 0 ; i < XASM_MAX_NUMBER_SLOTS ; ++i)
+    {
+      if (values.StrNumTranx[i]     != 0) return true ;
+      if (values.StrDataBytes[i]    != 0) return true ;
+      if (values.StrBusyCycles[i]   != 0) return true ;
+      if (values.StrStallCycles[i]  != 0) return true ;
+      if (values.StrStarveCycles[i] != 0) return true ;
+    }
+
+    return false ;
+  }
+
+} // end anonymous namespace
 
 namespace xdp {
 
@@ -132,11 +183,15 @@ namespace xdp {
     TraceLoggerCreatingDeviceEvents* logger = 
       new TraceLoggerCreatingDeviceEvents(deviceId) ;
 
+    bool enable_device_trace = xrt_core::config::get_timeline_trace() ||
+      xrt_core::config::get_data_transfer_trace() != "off" ;
+
     DeviceTraceOffload* offloader = 
       new DeviceTraceOffload(devInterface, logger,
-                         continuous_trace_interval_ms, // offload_sleep_ms,
-                         trace_buffer_size,            // trbuf_size,
-                         continuous_trace);            // start_thread
+			     continuous_trace_interval_ms, // offload_sleep_ms,
+			     trace_buffer_size,            // trbuf_size,
+			     continuous_trace,             // start_thread
+			     enable_device_trace);
 
     bool init_successful = offloader->read_trace_init() ;
     if (!init_successful) {
@@ -164,7 +219,7 @@ namespace xdp {
     if (data_transfer_trace == "coarse") traceOption |= 0x1 ;
     
     // Bit 2: 1 = Device trace enabled, 0 = Device trace disabled
-    if (data_transfer_trace != "off")    traceOption |= 0x2 ;
+    if (data_transfer_trace != "off" && data_transfer_trace != "accel")    traceOption |= 0x2 ;
     
     // Bit 3: 1 = Pipe stalls enabled, 0 = Pipe stalls disabled
     if (stall_trace == "pipe" || stall_trace == "all") traceOption |= 0x4 ;
@@ -178,6 +233,27 @@ namespace xdp {
     devInterface->startTrace(traceOption) ;
   }
 
+  void DeviceOffloadPlugin::readCounters()
+  {
+    for (auto o : offloaders)
+    {
+      uint64_t deviceId = o.first ;
+      xclCounterResults results ;
+      std::get<2>(o.second)->readCounters(results) ;
+
+      // Only store this in the dynamic database if there is valid data.
+      //  In the case of hardware emulation the simulation could have exited
+      //  and we are reading nothing but 0's
+      if (nonZero(results))
+      {
+	DeviceInfo* deviceInfo = (db->getStaticInfo()).getDeviceInfo(deviceId);
+	if (deviceInfo != nullptr) {
+	  (db->getDynamicInfo()).setCounterResults(deviceId, deviceInfo->currentXclbinUUID(), results) ;
+	}
+      }
+    }
+  }
+
   void DeviceOffloadPlugin::writeAll(bool openNewFiles)
   {
     if (!active) return ;
@@ -188,8 +264,19 @@ namespace xdp {
     //  and write our writers.
     for (auto o : offloaders)
     {
-      (std::get<0>(o.second))->read_trace() ;
-    }    
+      auto offloader = std::get<0>(o.second) ;
+      if (offloader->continuous_offload())
+      {
+	offloader->stop_offload() ;
+      }
+      else
+      {
+	offloader->read_trace() ;
+      }
+    }
+
+    // Also, store away the counter results
+    readCounters() ;
 
     for (auto w : writers)
     {
@@ -197,7 +284,23 @@ namespace xdp {
     }
   }
 
-  void DeviceOffloadPlugin::clearOffloader(uint32_t deviceId)
+  void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
+  {
+    if (!active) return ;
+
+    switch(msg)
+    {
+    case VPDatabase::READ_COUNTERS:
+      {
+	readCounters() ;
+      }
+      break ;
+    default:
+      break ;
+    }
+  }
+
+  void DeviceOffloadPlugin::clearOffloader(uint64_t deviceId)
   {
     if(offloaders.find(deviceId) == offloaders.end()) {
       return;
@@ -223,5 +326,5 @@ namespace xdp {
     }
     offloaders.clear();
   }
-  
+
 } // end namespace xdp

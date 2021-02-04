@@ -82,6 +82,7 @@ namespace xdp {
       //  do a final flush of our devices, then write
       //  all of our writers, then finally unregister ourselves
       //  from the database.
+
       for (auto o : offloaders)
       {
         auto offloader = std::get<0>(o.second) ;
@@ -98,7 +99,20 @@ namespace xdp {
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         }
 
+	if (offloader->continuous_offload())
+        {
+	  offloader->stop_offload() ;
+	}
+	else
+	{
+	  offloader->read_trace() ;
+	  offloader->read_trace_end() ;
+	}
       }
+
+      // Also, store away the counter results
+      readCounters() ;
+
       for (auto w : writers)
       {
         w->write(false) ;
@@ -137,8 +151,20 @@ namespace xdp {
 
     if (offloaders.find(deviceId) != offloaders.end())
     {
-      std::get<0>(offloaders[deviceId])->read_trace() ;
-    }    
+      auto offloader = std::get<0>(offloaders[deviceId]) ;
+      if (offloader->continuous_offload())
+      {
+	offloader->stop_offload() ;
+      }
+      else
+      {
+	offloader->read_trace() ;
+      }
+    }
+    readCounters() ;
+
+    clearOffloader(deviceId) ;
+    (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(deviceId) ;
   }
 
   void HALDeviceOffloadPlugin::updateDevice(void* userHandle)
@@ -181,7 +207,7 @@ namespace xdp {
         devInterface->setDevice(new HalDevice(ownedHandle)) ;
         devInterface->readDebugIPlayout() ;      
       }
-      catch(std::exception& e)
+      catch(std::exception& /*e*/)
       {
         // Read debug IP layout could throw an exception
         delete devInterface ;
@@ -198,6 +224,12 @@ namespace xdp {
     configureCtx(deviceId, devInterface) ;
 
     devInterface->clockTraining() ;
+    devInterface->startCounters() ;
+
+    // Once the device has been set up, add additional information to 
+    //  the static database
+    (db->getStaticInfo()).setMaxReadBW(deviceId, devInterface->getMaxBwRead()) ;
+    (db->getStaticInfo()).setMaxWriteBW(deviceId, devInterface->getMaxBwWrite());
   }
   
 } // end namespace xdp
