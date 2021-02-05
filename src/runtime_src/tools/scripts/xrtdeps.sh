@@ -71,6 +71,7 @@ rh_package_list()
      gnutls-devel \
      gtest-devel \
      json-glib-devel \
+     libcurl-devel \
      libdrm-devel \
      libjpeg-turbo-devel \
      libstdc++-static \
@@ -88,15 +89,14 @@ rh_package_list()
      pciutils \
      perl \
      pkgconfig \
-     protobuf-devel \
      protobuf-compiler \
+     protobuf-devel \
+     python3 \
+     python3-pip \
      rpm-build \
      strace \
      unzip \
      zlib-static \
-     libcurl-devel \
-     python3 \
-     python3-pip \
     )
 
     if [ $FLAVOR == "amzn" ]; then
@@ -156,16 +156,19 @@ ub_package_list()
      libboost-dev \
      libboost-filesystem-dev \
      libboost-program-options-dev \
+     libcurl4-openssl-dev \
      libdrm-dev \
+     libgtest-dev \
      libjpeg-dev \
      libjson-glib-dev \
-     libgtest-dev \
      libncurses5-dev \
      libopencv-core-dev \
      libpng-dev \
      libprotoc-dev \
      libssl-dev \
+     libsystemd-dev \
      libtiff5-dev \
+     libudev-dev \
      libyaml-dev \
      linux-libc-dev \
      lm-sensors \
@@ -173,24 +176,21 @@ ub_package_list()
      make \
      ocl-icd-dev \
      ocl-icd-libopencl1 \
-     opencl-headers \
      ocl-icd-opencl-dev \
-     perl \
+     opencl-headers \
      pciutils \
+     perl \
      pkg-config \
      protobuf-compiler \
+     python3 \
+     python3-breathe \
+     python3-pip \
+     python3-sphinx \
+     python3-sphinx-rtd-theme \
      sphinx-common \
      strace \
      unzip \
      uuid-dev \
-     libcurl4-openssl-dev \
-     libudev-dev \
-     libsystemd-dev \
-     python3 \
-     python3-pip \
-     python3-sphinx \
-     python3-sphinx-rtd-theme \
-     python3-breathe \
     )
 
     if [ $docker == 0 ] && [ $sysroot == 0 ]; then
@@ -222,6 +222,7 @@ fd_package_list()
      cppcheck \
      curl \
      dkms \
+     dmidecode \
      gcc \
      gcc-c++ \
      gdb \
@@ -231,10 +232,15 @@ fd_package_list()
      gnutls-devel \
      gtest-devel \
      json-glib-devel \
+     kernel-devel-$(uname -r) \
+     kernel-headers-$(uname -r) \
+     libcurl-devel \
      libdrm-devel \
      libjpeg-turbo-devel \
+     libpng12-devel \
      libstdc++-static \
      libtiff-devel \
+     libudev-devel \
      libuuid-devel \
      libyaml-devel \
      lm_sensors \
@@ -245,33 +251,25 @@ fd_package_list()
      opencl-headers \
      opencv \
      openssl-devel \
+     openssl-static \
      pciutils \
      perl \
      pkgconfig \
-     protobuf-devel \
      protobuf-compiler \
-     redhat-lsb \
-     rpm-build \
-     strace \
-     unzip \
-     zlib-static \
-     libcurl-devel \
-     openssl-devel \
-     systemd-devel \
-     python3 \
-     python3-pip \
-     systemd-devel \
-     libpng12-devel \
-     libudev-devel \
-     kernel-devel-$(uname -r) \
-     kernel-headers-$(uname -r) \
-     openssl-static \
+     protobuf-devel \
      protobuf-static \
      python \
      python-pip \
-     #docs need
      python2-sphinx \
-     dmidecode \
+     python3 \
+     python3-pip \
+     redhat-lsb \
+     rpm-build \
+     strace \
+     systemd-devel \
+     systemd-devel \
+     unzip \
+     zlib-static \
     )
 }
 
@@ -279,30 +277,36 @@ fd_package_list()
 suse_package_list()
 {
    SUSE_LIST=(\
-     lsb-release \
-     libboost_filesystem1_66_0-devel \
-     libboost_program_options1_66_0-devel \
      cmake \
      curl \
      dkms \
+     dmidecode \
      gcc \
      gcc-c++ \
      gdb \
      git \
      glibc-devel-static \
      gnuplot \
-     libgnutls-devel \
      json-glib-devel \
+     kernel-devel \
+     kernel-devel \
+     libboost_filesystem1_66_0-devel \
+     libboost_program_options1_66_0-devel \
+     libcurl-devel \
      libdrm-devel \
+     libgnutls-devel \
      libjpeg8-devel \
+     libopenssl-devel \
      libpng12-devel \
      libtiff-devel \
+     libudev-devel \
      libuuid-devel \
      libxml2-devel \
      libyaml-devel \
+     lsb-release \
      make \
      ncurses-devel \
-     libopenssl-devel \
+     opencl-cpp-headers \
      pciutils \
      perl \
      pkg-config \
@@ -313,13 +317,6 @@ suse_package_list()
      strace \
      unzip \
      zlib-devel-static \
-     libcurl-devel \
-     libopenssl-devel \
-     opencl-cpp-headers \
-     libudev-devel \
-     dmidecode \
-     kernel-devel \
-     kernel-devel \
    )
 }
 

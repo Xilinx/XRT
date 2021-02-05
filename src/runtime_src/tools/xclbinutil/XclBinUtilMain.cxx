@@ -127,16 +127,10 @@ void insertTargetMode(const std::string & _sTarget, std::vector<std::string> & _
 }
 
 
-static bool bQuiet = false;
-void QUIET(const std::string _msg){
-  if (bQuiet == false) {
-    std::cout << _msg.c_str() << std::endl;
-  }
-}
-
 // Program entry point
 int main_(int argc, const char** argv) {
   bool bVerbose = false;
+  bool bQuiet = false;
   bool bTrace = false;
   bool bMigrateForward = false;
   bool bListNames = false;
@@ -288,6 +282,7 @@ int main_(int argc, const char** argv) {
 
   // Examine the options
   XUtil::setVerbose(bTrace);
+  XUtil::setQuiet(bQuiet);
 
   if (bVersion) {
     FormattedOutput::reportVersion();
@@ -404,10 +399,10 @@ int main_(int argc, const char** argv) {
   drcCheckFiles(inputFiles, outputFiles, bForce);
 
   if (sOutputFile.empty()) {
-    QUIET("------------------------------------------------------------------------------");
-    QUIET("Warning: The option '--output' has not been specified. All operations will    ");
-    QUIET("         be done in memory with the exception of the '--dump-section' command.");
-    QUIET("------------------------------------------------------------------------------");
+    XUtil::QUIET("------------------------------------------------------------------------------");
+    XUtil::QUIET("Warning: The option '--output' has not been specified. All operations will    ");
+    XUtil::QUIET("         be done in memory with the exception of the '--dump-section' command.");
+    XUtil::QUIET("------------------------------------------------------------------------------");
   }
 
   // Dump the signature
@@ -434,7 +429,7 @@ int main_(int argc, const char** argv) {
       throw std::runtime_error(errMsg);
     }
     XUtil::addSignature(sInputFile, sOutputFile, sSignature, "");
-    QUIET("Exiting");
+    XUtil::QUIET("Exiting");
     return RC_SUCCESS;
   }
 
@@ -444,7 +439,7 @@ int main_(int argc, const char** argv) {
       throw std::runtime_error(errMsg);
     }
     XUtil::reportSignature(sInputFile);
-    QUIET("Exiting");
+    XUtil::QUIET("Exiting");
     return RC_SUCCESS;
   }
 
@@ -458,17 +453,17 @@ int main_(int argc, const char** argv) {
       throw std::runtime_error(errMsg);
     }
     XUtil::removeSignature(sInputFile, sOutputFile);
-    QUIET("Exiting");
+    XUtil::QUIET("Exiting");
     return RC_SUCCESS;
   }
 
   // -- Read in the xclbin image --
   XclBin xclBin;
   if (!sInputFile.empty()) {
-    QUIET("Reading xclbin file into memory.  File: " + sInputFile);
+    XUtil::QUIET("Reading xclbin file into memory.  File: " + sInputFile);
     xclBin.readXclBinBinary(sInputFile, bMigrateForward);
   } else {
-    QUIET("Creating a default 'in-memory' xclbin image.");
+    XUtil::QUIET("Creating a default 'in-memory' xclbin image.");
   }
 
   // -- DRC checks --
@@ -568,7 +563,7 @@ int main_(int argc, const char** argv) {
     }
   }
 
-  QUIET("Leaving xclbinutil.");
+  XUtil::QUIET("Leaving xclbinutil.");
 
   return RC_SUCCESS;
 }
