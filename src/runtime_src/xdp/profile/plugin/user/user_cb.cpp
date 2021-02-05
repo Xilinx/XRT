@@ -30,34 +30,47 @@ namespace xdp {
 				  const char* label,
 				  const char* tooltip) 
   {
-    double timestamp = xrt_core::time_ns() ;
+    uint64_t timestamp = xrt_core::time_ns() ;
     VPDatabase* db = userEventsPluginInstance.getDatabase() ;
 
     const char* labelStr   = (label == nullptr)   ? "" : label ;
     const char* tooltipStr = (tooltip == nullptr) ? "" : tooltip ;
 
     VTFEvent* event = new UserRange(0, 
-				    timestamp, 
+				    static_cast<double>(timestamp), 
 				    true, // isStart
 				    (db->getDynamicInfo()).addString(labelStr),
 				    (db->getDynamicInfo()).addString(tooltipStr)) ;
     (db->getDynamicInfo()).addEvent(event) ;
     (db->getDynamicInfo()).markStart(functionID, event->getEventId()) ;
+
+    // Record information for statistics
+    std::pair<const char*, const char*> desc =
+      std::make_pair(labelStr, tooltipStr) ;
+
+    (db->getDynamicInfo()).markRange(functionID, desc, timestamp) ;
+    (db->getStats()).addRangeCount(desc);
   }
 
   static void user_event_end_cb(unsigned int functionID)
   {
-    double timestamp = xrt_core::time_ns() ;
+    uint64_t timestamp = xrt_core::time_ns() ;
     VPDatabase* db = userEventsPluginInstance.getDatabase() ;
 
     uint64_t start = (db->getDynamicInfo()).matchingStart(functionID) ;
     VTFEvent* event = new UserRange(start, 
-				    timestamp, 
+				    static_cast<double>(timestamp), 
 				    false, // isStart
 				    0,
 				    0) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
+
+    // Record information for statistics
+    std::tuple<const char*, const char*, uint64_t> desc =
+      (db->getDynamicInfo()).matchingRange(functionID) ;
+    std::pair<const char*, const char*> str = { std::get<0>(desc), std::get<1>(desc) } ;
+    (db->getStats()).recordRangeDuration(str, timestamp - std::get<2>(desc)) ;
   }
 
   static void user_event_happened_cb(const char* label)
@@ -72,6 +85,8 @@ namespace xdp {
 
     VTFEvent* event = new UserMarker(0, timestamp, l) ;
     (db->getDynamicInfo()).addEvent(event) ;
+
+    (db->getStats()).addEventCount(label);
   }
 
 } // end namespace xdp

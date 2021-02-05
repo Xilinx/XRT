@@ -137,6 +137,32 @@ namespace xdp {
     return 0 ;
   }
 
+  void VPDynamicDatabase::markRange(uint64_t functionID,
+				    std::pair<const char*, const char*> desc,
+				    uint64_t startTimestamp)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::tuple<const char*, const char*, uint64_t> triple;
+    std::get<0>(triple) = desc.first ;
+    std::get<1>(triple) = desc.second ;
+    std::get<2>(triple) = startTimestamp ;
+    userMap[functionID] = triple ;
+  }
+
+  std::tuple<const char*, const char*, uint64_t>
+  VPDynamicDatabase::matchingRange(uint64_t functionID)
+  {
+    std::tuple<const char*, const char*, uint64_t> value ;
+    std::get<0>(value) = "" ;
+    std::get<1>(value) = "" ;
+    std::get<2>(value) = 0 ;
+    if (userMap.find(functionID) != userMap.end()) {
+      value = userMap[functionID] ;
+      userMap.erase(functionID) ;
+    }
+    return value ;
+  }
+
   uint64_t VPDynamicDatabase::addString(const std::string& value)
   {
     if (stringTable.find(value) == stringTable.end())

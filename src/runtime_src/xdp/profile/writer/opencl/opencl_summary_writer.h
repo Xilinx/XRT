@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -83,6 +83,8 @@ namespace xdp {
     void writeTopKernelExecution() ;
     void writeTopMemoryWrites() ;
     void writeTopMemoryReads() ;
+    void writeUserLevelEvents() ;
+    void writeUserLevelRanges() ;
     void writeGuidance() ;
 
   public:

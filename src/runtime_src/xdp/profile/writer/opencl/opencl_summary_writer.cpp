@@ -1510,6 +1510,63 @@ namespace xdp {
     }
   }
 
+  void OpenCLSummaryWriter::writeUserLevelEvents()
+  {
+    if (!(db->getStats()).eventInformationPresent()) return ;
+
+    fout << "User Level Events" << std::endl ;
+    fout << "Label" << ","
+	 << "Count" << ","
+	 << std::endl ;
+
+    std::map<const char*, uint64_t>& counts = (db->getStats()).getEventCounts();
+    for (auto iter : counts) {
+      const char* label = (iter.first == nullptr) ? " " : iter.first ;
+      fout << label       << ","
+	   << iter.second << ","
+	   << std::endl ;
+    }
+  }
+
+  void OpenCLSummaryWriter::writeUserLevelRanges()
+  {
+    if (!(db->getStats()).rangeInformationPresent()) return ;
+
+    fout << "User Level Ranges" << std::endl ;
+    fout << "Label"   << ","
+	 << "Tooltip" << ","
+	 << "Count"   << ","
+	 << "Min Duration (ms)" << ","
+	 << "Max Duration (ms)" << ","
+	 << "Total Time Duration (ms)" << ","
+	 << "Average Duration (ms)" << ","
+	 << std::endl ;
+
+    std::map<std::pair<const char*, const char*>, uint64_t>& counts =
+      (db->getStats()).getRangeCounts() ;
+    std::map<std::pair<const char*, const char*>, uint64_t>& minDurations =
+      (db->getStats()).getMinRangeDurations() ;
+    std::map<std::pair<const char*, const char*>, uint64_t>& maxDurations =
+      (db->getStats()).getMaxRangeDurations() ;
+    std::map<std::pair<const char*, const char*>, uint64_t>& totalDurations =
+      (db->getStats()).getTotalRangeDurations() ;
+
+    for (auto iter : counts) {
+      const char* label =
+	(iter.first.first == nullptr) ? " " : iter.first.first;
+      const char* tooltip =
+	(iter.first.second == nullptr) ? " " : iter.first.second ;
+      fout << label       << ","
+	   << tooltip     << ","
+	   << iter.second << ","
+	   << (double)minDurations[iter.first] / 1e06 << ","
+	   << (double)maxDurations[iter.first] / 1e06 << ","
+	   << (double)totalDurations[iter.first] / 1e06<< ","
+	   << ((double)totalDurations[iter.first]/(double)(iter.second)) / 1e06 << ","
+	   << std::endl ;
+    }
+  }
+
   void OpenCLSummaryWriter::writeGuidance()
   {
     // Caption
@@ -1550,6 +1607,8 @@ namespace xdp {
     writeTopKernelExecution() ;                       fout << std::endl ;
     writeTopMemoryWrites() ;                          fout << std::endl ;
     writeTopMemoryReads() ;                           fout << std::endl ;
+    writeUserLevelEvents() ;                          fout << std::endl ;
+    writeUserLevelRanges() ;                          fout << std::endl ;
     writeGuidance() ;
 
     if (openNewFile)
