@@ -30,14 +30,14 @@ namespace xdp {
 				  const char* label,
 				  const char* tooltip) 
   {
-    double timestamp = xrt_core::time_ns() ;
+    uint64_t timestamp = xrt_core::time_ns() ;
     VPDatabase* db = userEventsPluginInstance.getDatabase() ;
 
     const char* labelStr   = (label == nullptr)   ? "" : label ;
     const char* tooltipStr = (tooltip == nullptr) ? "" : tooltip ;
 
     VTFEvent* event = new UserRange(0, 
-				    timestamp, 
+				    static_cast<double>(timestamp), 
 				    true, // isStart
 				    (db->getDynamicInfo()).addString(labelStr),
 				    (db->getDynamicInfo()).addString(tooltipStr)) ;
@@ -54,12 +54,12 @@ namespace xdp {
 
   static void user_event_end_cb(unsigned int functionID)
   {
-    double timestamp = xrt_core::time_ns() ;
+    uint64_t timestamp = xrt_core::time_ns() ;
     VPDatabase* db = userEventsPluginInstance.getDatabase() ;
 
     uint64_t start = (db->getDynamicInfo()).matchingStart(functionID) ;
     VTFEvent* event = new UserRange(start, 
-				    timestamp, 
+				    static_cast<double>(timestamp), 
 				    false, // isStart
 				    0,
 				    0) ;
