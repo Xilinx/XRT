@@ -576,7 +576,7 @@ static void mailbox_dbg_collect(struct mailbox *mbx, int rec_type)
 	rec->mir_is_reg = is;
 	rec->mir_st_reg = st;
 	rec->mir_ip_reg = ip;
-	rec->mir_count++;
+	rec->mir_count = 0;
 }
 
 irqreturn_t mailbox_isr(int irq, void *arg)
