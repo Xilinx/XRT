@@ -2224,11 +2224,6 @@ namespace hwemu {
 
     int xocl_scheduler::convert_execbuf(xocl_cmd* xcmd)
     {
-        size_t src_off;
-        size_t dst_off;
-        size_t sz;
-        uint64_t src_addr = -1; 
-        uint64_t dst_addr = -1; 
         struct ert_start_copybo_cmd *scmd = xcmd->ert_cp;
 
         /* CU style commands must specify CU type */
@@ -2239,25 +2234,25 @@ namespace hwemu {
         if (scmd->opcode != ERT_START_COPYBO)
             return 0;
 
-        sz = ert_copybo_size(scmd);
+        size_t sz = ert_copybo_size(scmd);
 
-        src_off = ert_copybo_src_offset(scmd);
-        xclemulation::drm_xocl_bo* sBo = device->xclGetBoByHandle(scmd->src_bo_hdl);
+        size_t src_off = ert_copybo_src_offset(scmd);
+        xclemulation::drm_xocl_bo* s_bo = device->xclGetBoByHandle(scmd->src_bo_hdl);
 
-        dst_off = ert_copybo_dst_offset(scmd);
-        xclemulation::drm_xocl_bo* dBo = device->xclGetBoByHandle(scmd->dst_bo_hdl);
+        size_t dst_off = ert_copybo_dst_offset(scmd);
+        xclemulation::drm_xocl_bo* d_bo = device->xclGetBoByHandle(scmd->dst_bo_hdl);
 
-        if(!sBo && !dBo)
-        {
+        if(!s_bo && !d_bo)
             return -EINVAL;
-        }
 
-        if(sBo)
-            src_addr = sBo->base;
-        if(dBo)
-            dst_addr = dBo->base;
+        uint64_t src_addr = -1; 
+        uint64_t dst_addr = -1; 
+        if(s_bo)
+            src_addr = s_bo->base;
+        if(d_bo)
+            dst_addr = d_bo->base;
 
-        if (( !sBo || !dBo || device->isImported(scmd->src_bo_hdl) || device->isImported(scmd->dst_bo_hdl)) )
+        if (( !s_bo || !d_bo || device->isImported(scmd->src_bo_hdl) || device->isImported(scmd->dst_bo_hdl)) )
         {
             int ret =  device->xclCopyBO(scmd->dst_bo_hdl, scmd->src_bo_hdl , sz , dst_off, src_off);
             scmd->type = ERT_KDS_LOCAL;
@@ -2309,7 +2304,10 @@ namespace hwemu {
         SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
 
         xcmd->bo_init(buf);
-        convert_execbuf(xcmd);
+        if(convert_execbuf(xcmd)) {
+            SCHED_DEBUGF("<- %s ret(1) opcode(%d) type(%d)\n", __func__, xcmd->opcode(), xcmd->type());
+            return 1;
+        }
 
         if (add_xcmd(xcmd)) {
             SCHED_DEBUGF("<- %s ret(1) opcode(%d) type(%d)\n", __func__, xcmd->opcode(), xcmd->type());

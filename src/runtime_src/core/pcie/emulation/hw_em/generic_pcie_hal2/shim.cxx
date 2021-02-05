@@ -1704,6 +1704,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(m_scheduler)
       {
           delete m_scheduler;
+          m_scheduler = nullptr;
       }
       PRINTENDFUNC;
       if (mLogStream.is_open()) {
@@ -1774,6 +1775,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(m_scheduler)
       {
           delete m_scheduler;
+          m_scheduler = nullptr;
       }
       return 0;
     }
@@ -1879,6 +1881,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(m_scheduler)
     {
         delete m_scheduler;
+        m_scheduler = nullptr;
     }
 
     return 0;
@@ -1926,6 +1929,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(m_scheduler)
     {
         delete m_scheduler;
+        m_scheduler = nullptr;
     }
     if(mDataSpace)
     {
