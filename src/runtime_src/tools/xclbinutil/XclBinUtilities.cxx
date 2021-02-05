@@ -41,12 +41,31 @@
 namespace XUtil = XclBinUtilities;
 
 static bool m_bVerbose = false;
+static bool m_bQuiet = false;
 
 void
 XclBinUtilities::setVerbose(bool _bVerbose) {
   m_bVerbose = _bVerbose;
   TRACE("Verbosity enabled");
 }
+
+void
+XclBinUtilities::setQuiet(bool _bQuiet) {
+  m_bQuiet = _bQuiet;
+  TRACE(m_bQuiet ? "Quiet enabled" : "Quiet disabled");
+}
+
+bool
+XclBinUtilities::isQuiet() {
+  return m_bQuiet;
+}
+
+void XclBinUtilities::QUIET(const std::string &_msg) {
+  if (m_bQuiet == false) {
+    std::cout << _msg.c_str() << std::endl;
+  }
+}
+
 
 void
 XclBinUtilities::TRACE(const std::string& _msg, bool _endl) {

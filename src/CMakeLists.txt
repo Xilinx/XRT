@@ -5,6 +5,9 @@ ENABLE_TESTING()
 
 SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
+# Include supporting CMake functions
+include(CMake/unitTestSupport.cmake)
+
 # Exported interface into XRT for include from implemenation
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src
