@@ -243,8 +243,14 @@ namespace xdp {
      */
     devInfo->ctxInfo = xrt_core::config::get_kernel_channel_info();
 
-    if (!setXclbinName(currentXclbin, device)) return;
-    if (!initializeComputeUnits(currentXclbin, device)) return ;
+    if (!setXclbinName(currentXclbin, device)) {
+      delete currentXclbin ;
+      return;
+    }
+    if (!initializeComputeUnits(currentXclbin, device)) {
+      delete currentXclbin ;
+      return ;
+    }
 
     devInfo->addXclbin(currentXclbin) ;
 

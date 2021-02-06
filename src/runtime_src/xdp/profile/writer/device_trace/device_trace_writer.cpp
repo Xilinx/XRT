@@ -301,6 +301,7 @@ namespace xdp {
 	xclbin = loadedXclbins[++xclbinIndex] ;
       } else if (KERNEL == eventType) {
 	KernelEvent* kernelEvent = dynamic_cast<KernelEvent*>(deviceEvent) ;
+	if (kernelEvent == nullptr) continue ; // Coverity - In case dynamic cast fails
 	std::pair<XclbinInfo*, int32_t> index =
 	  std::make_pair(xclbin, cuId) ;
 	kernelEvent->dump(fout, cuBucketIdMap[index] + eventType - KERNEL) ;
