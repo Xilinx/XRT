@@ -177,6 +177,7 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 			ret = PTR_ERR(sip->si_bo);
 			DRM_ERROR("%s Failed to allocate BO: %d\n",
 			    __func__, ret);
+			mutex_unlock(&sk->sk_lock);
 			return ret;
 		}
 
