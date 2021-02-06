@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,6 +23,7 @@
 #include "config_reader.h"
 #include "xclbin_parser.h"
 #include "xclbin_swemu.h"
+#include "core/common/api/xclbin_int.h"
 #include "core/include/xrt.h"
 #include "core/include/xclbin.h"
 #include "core/include/ert.h"
@@ -94,38 +95,38 @@ get_xclbin_uuid() const
 
   // Emulation mode likely, just return m_xclbin_uuid which reflects
   // the uuid of the xclbin loaded by this process.
-  return m_xclbin_uuid;
+  return m_xclbin ? m_xclbin.get_uuid() : uuid{};
 }
 
+// Unforunately there are two independent entry points into loading an
+// xclbin.  One is this function via xrt::device::load_xclbin(), the
+// other is xclLoadXclBin(). The two entrypoints converge in
+// register_axlf() upon successful xclbin loading. It is possible for
+// register_axlf() to be called without the call originating from this
+// function, so special managing of m_xclbin data member is required.
+void
+device::
+load_xclbin(const xrt::xclbin& xclbin)
+{
+  try {
+    m_xclbin = xclbin;
+    load_axlf(xclbin.get_axlf());
+  }
+  catch (const std::exception&) {
+    m_xclbin = {};
+  }
+}
+
+// This function is called after an axlf has been succesfully loaded
+// by the shim layer API xclLoadXclBin().  Since xclLoadXclBin() can
+// be called explicitly by end-user code, the callback is necessary in
+// order to register current axlf as the xrt::xclbin data member.
 void
 device::
 register_axlf(const axlf* top)
 {
-  m_axlf_sections.clear();
-  m_xclbin_uuid = uuid(top->m_header.uuid);
-  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY,
-                               ASK_GROUP_CONNECTIVITY, ASK_GROUP_TOPOLOGY,
-                               MEM_TOPOLOGY, DEBUG_IP_LAYOUT, SYSTEM_METADATA, CLOCK_FREQ_TOPOLOGY, BUILD_METADATA};
-
-  // cache xclbin sections
-  for (auto kind : kinds) {
-    auto hdr = xrt_core::xclbin::get_axlf_section(top, kind);
-
-    // software emulation xclbin does not have all sections
-    // create the necessary ones
-    if (!hdr && is_sw_emulation()) {
-      auto data = xrt_core::xclbin::swemu::get_axlf_section(this, top, kind);
-      if (!data.empty())
-        m_axlf_sections.emplace(kind, std::move(data));
-    }
-
-    if (!hdr)
-      continue;
-
-    auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
-    std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-    m_axlf_sections.emplace(kind , std::move(data));
-  }
+  if (!m_xclbin || m_xclbin.get_uuid() != uuid(top->m_header.uuid))
+      m_xclbin = xrt::xclbin{top};
 
   // encode / compress memory connections, a mapping from mem_topology
   // memory index to encoded index.  The compressed indices facilitate
@@ -151,12 +152,9 @@ std::pair<const char*, size_t>
 device::
 get_axlf_section(axlf_section_kind section, const uuid& xclbin_id) const
 {
-  if (xclbin_id && xclbin_id != m_xclbin_uuid)
+  if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
     throw std::runtime_error("xclbin id mismatch");
-  auto itr = m_axlf_sections.find(section);
-  return itr != m_axlf_sections.end()
-    ? std::make_pair((*itr).second.data(), (*itr).second.size())
-    : std::make_pair(nullptr, 0);
+  return xrt_core::xclbin_int::get_axlf_section(m_xclbin, section);
 }
 
 std::pair<const char*, size_t>
@@ -173,7 +171,7 @@ const std::vector<size_t>&
 device::
 get_memidx_encoding(const uuid& xclbin_id) const
 {
-  if (xclbin_id && xclbin_id != m_xclbin_uuid)
+  if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
     throw std::runtime_error("xclbin id mismatch");
   return m_memidx_encoding;
 }
