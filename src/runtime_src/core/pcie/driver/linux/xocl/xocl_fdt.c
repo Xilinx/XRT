@@ -33,7 +33,6 @@ struct ip_node {
 	int off;
 	bool used;
 	bool match;
-	char name_cache[128];
 };
 
 static void *msix_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
@@ -981,7 +980,7 @@ int xocl_fdt_overlay(void *fdt, int target,
 
 	fdt_for_each_subnode(subnode, fdto, node) {
 		const char *name = fdt_get_name(fdto, subnode, NULL);
-		char temp[128];
+		char temp[64];
 		int nnode = -FDT_ERR_EXISTS;
 		int level;
 
@@ -994,15 +993,9 @@ int xocl_fdt_overlay(void *fdt, int target,
 				level++;
 			}
 		} else {
-			val = fdt_getprop(fdto, subnode, PROP_IO_OFFSET, NULL);
-			if (val)
-				snprintf(temp, sizeof(temp), "%s@%llx", name, be64_to_cpu(*(u64 *)val));
-			else
-				strncpy(temp, name, sizeof(temp));
-			nnode = fdt_add_subnode(fdt, target, temp);
+			nnode = fdt_add_subnode(fdt, target, name);
 			if (nnode == -FDT_ERR_EXISTS) {
-				pr_info("overlaying node %s", temp);
-				nnode = fdt_subnode_offset(fdt, target, temp);
+				nnode = fdt_subnode_offset(fdt, target, name);
 				if (nnode == -FDT_ERR_NOTFOUND)
 					return -FDT_ERR_INTERNAL;
 			}
@@ -1195,15 +1188,8 @@ static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 found:
 	if (ip) {
 		int cplen;
-		const char *ipname;
-		char *end;
 
-		ipname = fdt_get_name(blob, node, NULL);
-		strncpy(ip->name_cache, ipname, sizeof(ip->name_cache));
-		ip->name = ip->name_cache;
-		end = strchr(ip->name, '@');
-		if (end)
-			*end = 0;
+		ip->name = fdt_get_name(blob, node, NULL);
 
 		/* Get Version */
 		prop = fdt_getprop(blob, node, PROP_COMPATIBLE, &cplen);
@@ -1248,7 +1234,6 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 				break;
 		}
 	}
-
 	if (i == ip_num)
 		return 0;
 
@@ -1297,6 +1282,7 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 
 	for (res = &map_p->res_array[0]; res && res->res_name != NULL;
 	    res = &map_p->res_array[++i]) {
+
 		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res->res_name,
 		    map_p->min_level, map_p->max_level,
 		    subdev, ip, ip_num, res->regmap_name);
@@ -1738,7 +1724,7 @@ int xocl_fdt_get_hostmem(xdev_handle_t xdev_hdl, void *blob, u64 *base,
 		offset = fdt_next_node(blob, offset, NULL)) {
 		ipname = fdt_get_name(blob, offset, NULL);
 		if (ipname && strncmp(ipname, NODE_HOSTMEM_BANK0,
-		    strlen(NODE_HOSTMEM_BANK0)) == 0)
+		    strlen(NODE_HOSTMEM_BANK0) + 1) == 0)
 			break;
 	}
 	if (offset < 0)
