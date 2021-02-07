@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (C) 2020-2021 Xilinx, Inc.
+#
+
 # -- Detect a Windows environment and automatically switch to the .bat file
 if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   trap "" INT
@@ -7,6 +12,11 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   exit $?
 fi
 
+DEFAULT=xbmgmt
+XBMGMT=xbmgmt
+XBMGMT2=xbmgmt2
+
+# Table to resolve reset sub-command based on switch passed to reset
 declare -A RSTOPT=( \
 	["--hot"]="xbmgmt" \
 	["--kernel"]="xbmgmt" \
@@ -23,33 +33,36 @@ declare -A RSTOPT=( \
 	["-h"]="xbmgmt2" \
     )
 
+# In the following table "reset" points to a second table by name
+# Note that reset is valid both for classic and next generation tool
+# and hence requires a second lookup to resolve between xbmgmt and xbmgmt2
 declare -A COMMANDS=( \
-	["help"]="xbmgmt" \
-	["version"]="xbmgmt" \
-	["--version"]="xbmgmt" \
-	["scan"]="xbmgmt" \
-	["flash"]="xbmgmt" \
-	["-lash"]="xbmgmt" \
+	["help"]="XBMGMT" \
+	["version"]="XBMGMT" \
+	["--version"]="XBMGMT" \
+	["scan"]="XBMGMT" \
+	["flash"]="XBMGMT" \
+	["-lash"]="XBMGMT" \
 	["reset"]="RSTOPT" \
-	["clock"]="xbmgmt" \
-	["partition"]="xbmgmt" \
-	["config"]="xbmgmt" \
-	["nifd"]="xbmgmt" \
-	["hotplug"]="xbmgmt" \
-	["examine"]="xbmgmt2" \
-	["program"]="xbmgmt2" \
-	["advanced"]="xbmgmt2" \
-	["--help"]="xbmgmt2" \
-	["--verbose"]="xbmgmt2" \
-	["--batch"]="xbmgmt2" \
-	["-h"]="xbmgmt2" \
-	["-v"]="xbmgmt2" \
-	["-b"]="xbmgmt2" \
+	["clock"]="XBMGMT" \
+	["partition"]="XBMGMT" \
+	["config"]="XBMGMT" \
+	["nifd"]="XBMGMT" \
+	["hotplug"]="XBMGMT" \
+	["examine"]="XBMGMT2" \
+	["program"]="XBMGMT2" \
+	["advanced"]="XBMGMT2" \
+	["--help"]="XBMGMT2" \
+	["--verbose"]="XBMGMT2" \
+	["--batch"]="XBMGMT2" \
+	["-h"]="XBMGMT2" \
+	["-v"]="XBMGMT2" \
+	["-b"]="XBMGMT2" \
     )
 
 
 # Working variables
-XRT_PROG=xbmgmt
+XRT_PROG=${DEFAULT}
 
 # Determine which version of xbmgmt should be used
 # Check to see environment variable is NOT set
@@ -81,16 +94,23 @@ done
 # If user did not specify -new/--new then attempt to determine if user
 # wants to use classic or new by peeking inside the command line
 if [ ${XRT_PROG} == "xbmgmt" ]; then
-  XRT_PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
-  # Check if user passed some bogus command line when we should
-  # default to new tool
-  if [ ${XRT_PROG} == "RSTOPT" ]; then
-    RSTOPT=${!XRT_PROG}
-    echo "----- ${RSTOPT} ------"
-    XRT_PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]}
+  if [ -z ${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]} ]; then
+    # If the subcommand is bogus point to default utility
+    PROG=${DEFAULT}
+  else
+    # Get a named reference to the value pointed by the string returned
+    declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
   fi
-  if [ -z ${XRT_PROG} ]; then
-    XRT_PROG=xbmgmt2
+  # Check if we are dealing with an ambiguous sub-command where we should look for
+  # next command line switch to resolve ambiguity
+  if [ ${#PROG[@]} -gt 1 ] && [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
+    # Use the second table with the next command line token to look up
+    XRT_PROG=${PROG[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+  # It is an ambiguous sub-command and there are no additional hints so default to DEFAULT
+  elif [ ${#PROG[@]} -gt 1 ]; then
+    XRT_PROG=${DEFAULT}
+  else
+    XRT_PROG=${PROG}
   fi
 fi
 
