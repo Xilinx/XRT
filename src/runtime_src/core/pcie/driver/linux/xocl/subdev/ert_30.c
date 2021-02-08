@@ -38,8 +38,8 @@
 #define SWITCH_TO_CU_INTR	0x1
 #define SWITCH_TO_ERT_INTR	~SWITCH_TO_CU_INTR
 
-#define FORCE_MB_SLEEP		0x2
-#define WAKE_MB_UP		~FORCE_MB_SLEEP
+#define WAKE_MB_UP		0x2
+#define CLEAR_MB_WAKEUP		~WAKE_MB_UP
 
 
 #ifdef SCHED_VERBOSE
@@ -256,10 +256,12 @@ static uint32_t ert_30_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg 
 		xocl_intc_set_mode(xocl_get_xdev(pdev), CU_INTR);
 		break;
 	case MB_WAKEUP:
-		val &= WAKE_MB_UP;
+		val |= WAKE_MB_UP;
 		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
 		break;
 	case MB_SLEEP:
+		val &= CLEAR_MB_WAKEUP;
+		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
 		/* TODO: submit an EXIT command to ERT thread */
 		iowrite32(ERT_EXIT_CMD, ert_30->cq_base);
 		ret = ioread32(ert_30->cfg_gpio+GPIO_CFG_STA_CHANNEL);
