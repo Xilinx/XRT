@@ -98,32 +98,28 @@ done
 # declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
 
 if [ ${XRT_PROG} == "xbmgmt" ]; then
-  if [ -z ${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]} ]; then
-    # If the subcommand is bogus (table look is null) point to default utility
-    PROG=${DEFAULT}
-  else
-    PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
-    case ${PROG} in
-      XBMGMT | XBMGMT2)
-        # Get named reference to the value pointed by the string returned
-        XRT_PROG=${!PROG}
-        ;;
-      RSTOPT)
-        # We have an ambiguous sub-command, use the next token/switch to
-        # disambiguate by a second look up
-        if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
-          XRT_PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
-        else
-          # User did not provide switch to the sub-command so we cannot
-          # disabmiguate, default to DEFAULT
-          XRT_PROG=${DEFAULT}
-        fi
-        ;;
-      *)
+  PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+  case ${PROG} in
+    XBMGMT | XBMGMT2)
+      # Get named reference to the value pointed by the string returned
+      XRT_PROG=${!PROG}
+      ;;
+    RSTOPT)
+      # We have an ambiguous sub-command, use the next token/switch to
+      # disambiguate by a second look up
+      if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
+        XRT_PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+      else
+        # User did not provide switch to the sub-command so we cannot
+        # disabmiguate, default to DEFAULT
         XRT_PROG=${DEFAULT}
-        ;;
-    esac
-  fi
+      fi
+      ;;
+    *)
+      # Bogus sub-command which failed lookup
+      XRT_PROG=${DEFAULT}
+      ;;
+  esac
 fi
 
 # Friendly message
