@@ -530,7 +530,12 @@ int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 
 	switch (op) {
 	case DRM_XOCL_CTX:
+		/* Open/close context would lock/unlock bitstream.
+		 * This and download xclbin are mutually exclusive.
+		 */
+		mutex_lock(&xdev->dev_lock);
 		ret = xocl_context_ioctl(xdev, data, filp);
+		mutex_unlock(&xdev->dev_lock);
 		break;
 	case DRM_XOCL_EXECBUF:
 		ret = xocl_command_ioctl(xdev, data, filp, false);

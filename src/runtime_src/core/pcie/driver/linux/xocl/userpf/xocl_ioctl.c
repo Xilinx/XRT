@@ -410,37 +410,6 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 
 	/*
-	 * Coupling scheduler(context, exec BOs) at this place is a bad idea.
-	 *
-	 * The load xclbin and lock xclbin operation are separated.
-	 * The xclbin was locked until a context was opened and unlocked until
-	 * all of the contexts were closed.
-	 * If some processes are downloading the same xclbin. Only the first
-	 * one could reach below lines.
-	 * If some processes are downloading different xclbins. The second one
-	 * got dev_lock could go here.  Let's see if ICAP could protect the
-	 * sequence of download xclbin and open context on downloaded xclbin.
-	 *
-	 * If open context locked bitstream, xocl_icap_download_axlf() would
-	 * failed later on, since the bitstream is busy.
-	 * If xocl_icap_download_axlf() successed, open context on prev xclbin
-	 * would fail. This is the same as current implementation. This is the
-	 * cost that we have to pay if we are not able to lock xclbin after
-	 * loaded it.
-	 *
-	 * After all, ICAP subdevice does everything to protect xclbin. If
-	 * scheduler is ready to work on a new xclbin, like all of contexts are
-	 * closed, it should only notice ICAP not here.
-	 *
-	 * "Note that icap subdevice also maintains xclbin ref count, which is
-	 * used to lock down xclbin on mgmt pf side."
-	 * I found this statement is not correct anymore. The ref count is using
-	 * on user pf side.
-	 */
-	if (kds_mode)
-		goto skip1;
-
-	/*
 	 * Support for multiple processes
 	 * 1. We lock &xdev->dev_lock so no new contexts can be opened and no
 	 *    live contexts can be closed
@@ -452,12 +421,26 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	 * Note that icap subdevice also maintains xclbin ref count, which is
 	 * used to lock down xclbin on mgmt pf side.
 	 */
-	if (xocl_xclbin_in_use(xdev)) {
-		err = -EBUSY;
-		goto done;
+	if (!kds_mode) {
+		if (xocl_xclbin_in_use(xdev)) {
+			err = -EBUSY;
+			goto done;
+		}
+	} else {
+		/*
+		 * 1. We locked &xdev->dev_lock so no new contexts can be opened
+		 *    and no contexts can be closed
+		 * 2. A opened context would lock bitstream and hold it. Directly
+		 *    ask icap if bitstream is locked
+		 * 3. If all contexts are closed, new kds would make sure all
+		 *    relative exec BO are released
+		 */
+		if (xocl_icap_bitstream_is_locked(xdev)) {
+			err = -EBUSY;
+			goto done;
+		}
 	}
 
-skip1:
 	/* Really need to download, sanity check xclbin, first. */
 	if (xocl_xrt_version_check(xdev, &bin_obj, true)) {
 		userpf_err(xdev, "Xclbin isn't supported by current XRT\n");
