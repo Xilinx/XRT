@@ -579,38 +579,39 @@ static inline void process_ert_sq_polling(struct xocl_ert_30 *ert_30)
 	}
 
 	ev_client = first_event_client_or_null(ert_30);
-	if (unlikely(ev_client)) {
-		for (slot_idx = 0; slot_idx < ert_30->num_slots; ++slot_idx) {
-			ecmd = ert_30->submit_queue[slot_idx];
-			if (!ecmd)
-				continue;
-			xcmd = ecmd->xcmd;
+	if (likely(!ev_client))
+		return;
 
-			/* Client event happens rarely */
-			if (xcmd->client != ev_client)
-				continue;
+	for (slot_idx = 0; slot_idx < ert_30->num_slots; ++slot_idx) {
+		ecmd = ert_30->submit_queue[slot_idx];
+		if (!ecmd)
+			continue;
+		xcmd = ecmd->xcmd;
 
-			tick = atomic_read(&ert_30->tick);
-			/* Record CU tick to start timeout counting */
-			if (!xcmd->tick) {
-				xcmd->tick = tick;
-				continue;
-			}
+		/* Client event happens rarely */
+		if (xcmd->client != ev_client)
+			continue;
 
-			/* If xcmd haven't timeout */
-			if (tick - xcmd->tick < ERT_EXEC_DEFAULT_TTL)
-				continue;
-
-			ecmd->status = KDS_TIMEOUT;
-			/* Mark this CU as bad state */
-			ert_30->bad_state = true;
-
-			ERTUSER_DBG(ert_30, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
-			list_move_tail(&ecmd->list, &ert_30->cq);
-			--ert_30->num_sq;
-			++ert_30->num_cq;
-			ert_30->submit_queue[slot_idx] = NULL;
+		tick = atomic_read(&ert_30->tick);
+		/* Record CU tick to start timeout counting */
+		if (!xcmd->tick) {
+			xcmd->tick = tick;
+			continue;
 		}
+
+		/* If xcmd haven't timeout */
+		if (tick - xcmd->tick < ERT_EXEC_DEFAULT_TTL)
+			continue;
+
+		ecmd->status = KDS_TIMEOUT;
+		/* Mark this CU as bad state */
+		ert_30->bad_state = true;
+
+		ERTUSER_DBG(ert_30, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
+		list_move_tail(&ecmd->list, &ert_30->cq);
+		--ert_30->num_sq;
+		++ert_30->num_cq;
+		ert_30->submit_queue[slot_idx] = NULL;
 	}
 
 }
@@ -793,7 +794,7 @@ static inline int process_ert_rq(struct xocl_ert_30 *ert_30)
 
 		if (unlikely(ert_30->bad_state || (ev_client == xcmd->client))) {
 			ERTUSER_ERR(ert_30, "%s abort\n", __func__);
-			ecmd->status = KDS_ABORT;
+			ecmd->status = KDS_ERROR;
 			list_move_tail(&ecmd->list, &ert_30->cq);
 			--ert_30->num_rq;
 			++ert_30->num_cq;
