@@ -63,7 +63,10 @@ zocl_ctx_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	int ret = 0;
 
 	if (kds_mode == 1) {
-		return zocl_context_ioctl(zdev, data, filp);
+		mutex_lock(&zdev->zdev_xclbin_lock);
+		ret = zocl_context_ioctl(zdev, data, filp);
+		mutex_unlock(&zdev->zdev_xclbin_lock);
+		return ret;
 	}
 
 	if (args->op == ZOCL_CTX_OP_OPEN_GCU_FD) {

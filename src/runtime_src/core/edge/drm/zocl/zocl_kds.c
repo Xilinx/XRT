@@ -74,7 +74,7 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 		client->xclbin_id = vzalloc(sizeof(*id));
 		if (!client->xclbin_id) {
 			ret = -ENOMEM;
-			goto out;
+			goto out1;
 		}
 		uuid_copy(client->xclbin_id, id);
 	}
@@ -85,12 +85,13 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	zocl_ctx_to_info(args, &info);
 	ret = kds_add_context(&zdev->kds, client, &info);
 
-out:
+out1:
 	if (!client->num_ctx) {
 		vfree(client->xclbin_id);
 		client->xclbin_id = NULL;
 		(void) zocl_unlock_bitstream(zdev, id);
 	}
+out:
 	mutex_unlock(&client->lock);
 	vfree(id);
 	return ret;
@@ -188,6 +189,9 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		ecmd->state = ERT_CMD_STATE_ABORT;
 
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
+
+	if (xcmd->cu_idx >= 0)
+		client->c_cnt[xcmd->cu_idx]++;
 
 	atomic_inc(&client->event);
 	wake_up_interruptible(&client->waitq);
