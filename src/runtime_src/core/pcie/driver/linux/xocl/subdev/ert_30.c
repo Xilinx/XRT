@@ -16,6 +16,8 @@
  */
 
 #include "../xocl_drv.h"
+#include "kds_client.h"
+
 #define	ERT_MAX_SLOTS		128
 
 #define	ERT_STATE_GOOD		0x1
@@ -41,6 +43,11 @@
 #define WAKE_MB_UP		0x2
 #define CLEAR_MB_WAKEUP		~WAKE_MB_UP
 
+/* XRT ERT timer macros */
+/* A low frequence timer for ERT to check if command timeout */
+#define ERT_TICKS_PER_SEC	2
+#define ERT_TIMER		(HZ / ERT_TICKS_PER_SEC) /* in jiffies */
+#define ERT_EXEC_DEFAULT_TTL	(5UL * ERT_TICKS_PER_SEC)
 
 #ifdef SCHED_VERBOSE
 #define	ERTUSER_ERR(ert_30, fmt, arg...)	\
@@ -79,6 +86,7 @@ struct ert_30_command {
 	struct list_head    list;
 	uint32_t	slot_idx;
 	bool		completed;
+	uint32_t	status;
 };
 
 struct xocl_ert_30 {
@@ -127,7 +135,11 @@ struct xocl_ert_30 {
 	u32			stop;
 	bool			bad_state;
 
-	struct ert_30_event	ev;
+	struct mutex		ev_lock;
+	struct list_head	events;
+
+	struct timer_list	timer;
+	atomic_t		tick;
 
 	struct task_struct	*thread;
 
@@ -323,28 +335,40 @@ cmd_opcode(struct ert_30_command *ecmd)
 	return ecmd->xcmd->opcode;
 }
 
-
-/* Use for flush queue */
-static inline void
-flush_queue(struct list_head *q, u32 *len, int status, void *client)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+static void ert_timer(unsigned long data)
 {
-	struct kds_command *xcmd;
-	struct ert_30_command *ecmd, *next;
+	struct xocl_ert_30 *ert_30 = (struct xocl_ert_30 *)data;
+#else
+static void ert_timer(struct timer_list *t)
+{
+	struct xocl_ert_30 *ert_30 = from_timer(ert_30, t, timer);
+#endif
 
-	if (*len == 0)
-		return;
+	atomic_inc(&ert_30->tick);
 
-	list_for_each_entry_safe(ecmd, next, q, list) {
-		xcmd = ecmd->xcmd;
-		if (client && client != xcmd->client)
-			continue;
-		xcmd->cb.notify_host(xcmd, status);
-		list_del(&ecmd->list);
-		xcmd->cb.free(xcmd);
-		ert_30_free_cmd(ecmd);
-		--(*len);
-	}
+	mod_timer(&ert_30->timer, jiffies + ERT_TIMER);
 }
+
+static inline struct kds_client *
+first_event_client_or_null(struct xocl_ert_30 *ert_30)
+{
+	struct kds_client *curr = NULL;
+
+	if (list_empty(&ert_30->events))
+		return NULL;
+
+	mutex_lock(&ert_30->ev_lock);
+	if (list_empty(&ert_30->events))
+		goto done;
+
+	curr = list_first_entry(&ert_30->events, struct kds_client, ev_entry);
+
+done:
+	mutex_unlock(&ert_30->ev_lock);
+	return curr;
+}
+
 /*
  * release_slot_idx() - Release specified slot idx
  */
@@ -396,7 +420,7 @@ static inline void process_ert_cq(struct xocl_ert_30 *ert_30)
 		list_del(&ecmd->list);
 		xcmd = ecmd->xcmd;
 		ert_release_slot(ert_30, ecmd);
-		xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+		xcmd->cb.notify_host(xcmd, ecmd->status);
 		xcmd->cb.free(xcmd);
 		ert_30_free_cmd(ecmd);
 		--ert_30->num_cq;
@@ -408,29 +432,52 @@ static inline void process_ert_cq(struct xocl_ert_30 *ert_30)
 
 /**
  * process_ert_sq() - Process cmd witch is submitted
- * @ert_30: Target XRT CU
+ * @ert_30: Target XRT ERT
  */
 static inline void process_ert_sq(struct xocl_ert_30 *ert_30)
 {
 	struct kds_command *xcmd;
 	struct ert_30_command *ecmd, *next;
+	struct kds_client *ev_client = NULL;
+	unsigned int tick;
 
 	if (!ert_30->num_sq)
 		return;
 
-	ERTUSER_DBG(ert_30, "-> %s\n", __func__);
+	ev_client = first_event_client_or_null(ert_30);
+
 	list_for_each_entry_safe(ecmd, next, &ert_30->sq, list) {
+		xcmd = ecmd->xcmd;
 		if (ecmd->completed) {
-			xcmd = ecmd->xcmd;
-			ERTUSER_DBG(ert_30, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
-			list_move_tail(&ecmd->list, &ert_30->cq);
-			--ert_30->num_sq;
-			++ert_30->num_cq;
-			ert_30->submit_queue[ecmd->slot_idx] = NULL;
-			/* If it's the first completed command, up the semaphore */
-			if (ert_30->num_cq == 1)
-				up(&ert_30->sem);
-		}
+			ecmd->status = KDS_COMPLETED;
+		} else if (unlikely(ev_client)) {
+			/* Client event happens rarely */
+			if (xcmd->client != ev_client)
+				continue;
+
+			tick = atomic_read(&ert_30->tick);
+			/* Record command tick to start timeout counting */
+			if (!xcmd->tick) {
+				xcmd->tick = tick;
+				continue;
+			}
+
+			/* If xcmd haven't timeout */
+			if (tick - xcmd->tick < ERT_EXEC_DEFAULT_TTL)
+				continue;
+
+			ecmd->status = KDS_TIMEOUT;
+			/* Mark ERT as bad state */
+			ert_30->bad_state = true;
+		} else
+			continue;
+
+		ERTUSER_DBG(ert_30, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
+		list_move_tail(&ecmd->list, &ert_30->cq);
+		--ert_30->num_sq;
+		++ert_30->num_cq;
+		ert_30->submit_queue[ecmd->slot_idx] = NULL;
+
 	}
 	ERTUSER_DBG(ert_30, "<- %s\n", __func__);
 }
@@ -488,7 +535,7 @@ ert_30_isr(int irq, void *arg)
 
 /**
  * process_ert_sq_polling() - Process submitted queue
- * @ert_30: Target XRT CU
+ * @ert_30: Target XRT ERT
  */
 static inline void process_ert_sq_polling(struct xocl_ert_30 *ert_30)
 {
@@ -496,7 +543,9 @@ static inline void process_ert_sq_polling(struct xocl_ert_30 *ert_30)
 	struct ert_30_command *ecmd;
 	u32 mask = 0;
 	u32 slot_idx = 0, section_idx = 0;
+	struct kds_client *ev_client = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(ert_30->pdev);
+	unsigned int tick;
 
 	if (!ert_30->num_sq)
 		return;
@@ -528,6 +577,43 @@ static inline void process_ert_sq_polling(struct xocl_ert_30 *ert_30)
 			}
 		}
 	}
+
+	ev_client = first_event_client_or_null(ert_30);
+	if (likely(!ev_client))
+		return;
+
+	for (slot_idx = 0; slot_idx < ert_30->num_slots; ++slot_idx) {
+		ecmd = ert_30->submit_queue[slot_idx];
+		if (!ecmd)
+			continue;
+		xcmd = ecmd->xcmd;
+
+		/* Client event happens rarely */
+		if (xcmd->client != ev_client)
+			continue;
+
+		tick = atomic_read(&ert_30->tick);
+		/* Record CU tick to start timeout counting */
+		if (!xcmd->tick) {
+			xcmd->tick = tick;
+			continue;
+		}
+
+		/* If xcmd haven't timeout */
+		if (tick - xcmd->tick < ERT_EXEC_DEFAULT_TTL)
+			continue;
+
+		ecmd->status = KDS_TIMEOUT;
+		/* Mark this CU as bad state */
+		ert_30->bad_state = true;
+
+		ERTUSER_DBG(ert_30, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
+		list_move_tail(&ecmd->list, &ert_30->cq);
+		--ert_30->num_sq;
+		++ert_30->num_cq;
+		ert_30->submit_queue[slot_idx] = NULL;
+	}
+
 }
 
 /*
@@ -686,9 +772,9 @@ static int ert_cfg_cmd(struct xocl_ert_30 *ert_30, struct ert_30_command *ecmd)
 }
 /**
  * process_ert_rq() - Process run queue
- * @ert_30: Target XRT CU
+ * @ert_30: Target XRT ERT
  *
- * Return: return 0 if run queue is empty or no credit
+ * Return: return 0 if run queue is empty or no available slot
  *	   Otherwise, return 1
  */
 static inline int process_ert_rq(struct xocl_ert_30 *ert_30)
@@ -697,23 +783,32 @@ static inline int process_ert_rq(struct xocl_ert_30 *ert_30)
 	u32 slot_addr = 0, i;
 	struct ert_packet *epkt = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(ert_30->pdev);
+	struct kds_client *ev_client = NULL;
 
 	if (!ert_30->num_rq)
 		return 0;
 
+	ev_client = first_event_client_or_null(ert_30);
 	list_for_each_entry_safe(ecmd, next, &ert_30->rq, list) {
+		struct kds_command *xcmd = ecmd->xcmd;
+
+		if (unlikely(ert_30->bad_state || (ev_client == xcmd->client))) {
+			ERTUSER_ERR(ert_30, "%s abort\n", __func__);
+			ecmd->status = KDS_ERROR;
+			list_move_tail(&ecmd->list, &ert_30->cq);
+			--ert_30->num_rq;
+			++ert_30->num_cq;
+			continue;
+		}
 
 		if (cmd_opcode(ecmd) == OP_CONFIG) {
 			if (ert_cfg_cmd(ert_30, ecmd)) {
-				struct kds_command *xcmd;
 
 				ERTUSER_ERR(ert_30, "%s config cmd error\n", __func__);
-				list_del(&ecmd->list);
-				xcmd = ecmd->xcmd;
-				xcmd->cb.notify_host(xcmd, KDS_ABORT);
-				xcmd->cb.free(xcmd);
-				ert_30_free_cmd(ecmd);
+				ecmd->status = KDS_ABORT;
+				list_move_tail(&ecmd->list, &ert_30->cq);
 				--ert_30->num_rq;
+				++ert_30->num_cq;
 				continue;
 			}
 		}
@@ -776,7 +871,7 @@ static inline int process_ert_rq(struct xocl_ert_30 *ert_30)
 
 /**
  * process_ert_rq() - Process pending queue
- * @ert_30: Target XRT CU
+ * @ert_30: Target XRT ERT
  *
  * Move all of the pending queue commands to the tail of run queue
  * and re-initialized pending queue
@@ -800,52 +895,8 @@ static inline void process_ert_pq(struct xocl_ert_30 *ert_30)
 	spin_unlock_irqrestore(&ert_30->pq_lock, flags);
 }
 
-/**
- * process_event() - Process event
- * @ert_30: Target XRT CU
- *
- * This is used to process low frequency events.
- * For example, client abort event would happen when closing client.
- * Before the client close, make sure all of the client commands have
- * been handle properly.
- */
-static inline void process_event(struct xocl_ert_30 *ert_30)
-{
-	void *client = NULL;
-
-	mutex_lock(&ert_30->ev.lock);
-	if (!ert_30->ev.client)
-		goto done;
-
-	client = ert_30->ev.client;
-
-	flush_queue(&ert_30->rq, &ert_30->num_rq, KDS_ABORT, client);
-
-	/* Let's check submitted commands one more time */
-	process_ert_sq(ert_30);
-	process_ert_sq_polling(ert_30);
-	if (ert_30->num_sq) {
-		flush_queue(&ert_30->sq, &ert_30->num_sq, KDS_ABORT, client);
-		ert_30->ev.state = ERT_STATE_BAD;
-	}
-
-	while (ert_30->num_cq)
-		process_ert_cq(ert_30);
-
-	/* Maybe pending queue has commands of this client */
-	process_ert_pq(ert_30);
-	flush_queue(&ert_30->pq, &ert_30->num_pq, KDS_ABORT, client);
-
-	if (!ert_30->ev.state)
-		ert_30->ev.state = ERT_STATE_GOOD;
-done:
-	mutex_unlock(&ert_30->ev.lock);
-}
-
-
 static void ert_30_reset(struct xocl_ert_30 *ert_30)
 {
-	process_event(ert_30);
 	bitmap_zero(ert_30->slot_status, ERT_MAX_SLOTS);
 }
 
@@ -878,8 +929,12 @@ static void ert_30_submit(struct kds_ert *ert, struct kds_command *xcmd)
 int ert_30_thread(void *data)
 {
 	struct xocl_ert_30 *ert_30 = (struct xocl_ert_30 *)data;
-	int ret = 0;
-	bool polling_sleep = false, intr_sleep = false;
+ 	int ret = 0;
+	bool polling_sleep = false, intr_sleep = false, no_completed_cmd = false, 
+		cant_submit = false, no_need_to_fetch_new_cmd = false, no_event = false;
+
+
+	mod_timer(&ert_30->timer, jiffies + ERT_TIMER);
 
 	while (!ert_30->stop) {
 		/* Make sure to submit as many commands as possible.
@@ -894,100 +949,104 @@ int ert_30_thread(void *data)
 		 * - while handling completed queue, running command might done
 		 * - process_ert_sq_polling will check CU status, which is thru slow bus
 		 */
-		process_ert_cq(ert_30);
-
 		process_ert_sq(ert_30);
 		process_ert_sq_polling(ert_30);
-		process_event(ert_30);
 
-		if (ert_30->bad_state)
-			break;
-
-		if (ert_30->num_rq)
-			continue;
+		process_ert_cq(ert_30);
 
 		/* ert polling mode goes to sleep only if it doesn't have to poll
 		 * submitted queue to check the completion
 		 * ert interrupt mode goes to sleep if there is no cmd to be submitted
 		 * OR submitted queue is full
 		 */
-		intr_sleep = (!ert_30->num_rq || ert_30->num_sq == (ert_30->num_slots-1));
+		no_completed_cmd = !ert_30->num_cq;
+		cant_submit = !ert_30->num_rq || (ert_30->num_sq == (ert_30->num_slots-1));
+		no_need_to_fetch_new_cmd = ert_30->num_rq !=0 || !ert_30->num_pq;
+
+		intr_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && cant_submit;
 		polling_sleep = (ert_30->polling_mode && !ert_30->num_sq);
-		if (intr_sleep || polling_sleep)
+		no_event = first_event_client_or_null(ert_30) == NULL;
+
+		/* If any event occured, we should drain all the related commands ASAP
+		 * It only goes to sleep if there is no event
+		 */
+		if (no_event && (intr_sleep || polling_sleep))
 			if (down_interruptible(&ert_30->sem))
 				ret = -ERESTARTSYS;
 
 		process_ert_pq(ert_30);
 	}
+	del_timer_sync(&ert_30->timer);
 
 	if (!ert_30->bad_state)
-		return ret;
-
-	/* CU in bad state mode, abort all new commands */
-	flush_queue(&ert_30->sq, &ert_30->num_sq, KDS_ABORT, NULL);
-	while (!ert_30->stop) {
-		flush_queue(&ert_30->rq, &ert_30->num_rq, KDS_ABORT, NULL);
-		process_event(ert_30);
-
-		if (down_interruptible(&ert_30->sem))
-			ret = -ERESTARTSYS;
-
-		process_ert_pq(ert_30);
-	}
+		ret = -EBUSY;
 
 	return ret;
 }
 
 /**
- * xocl_ert_30_abort() - Sent an abort event to CU thread
- * @ert_30: Target XRT CU
+ * xocl_ert_30_abort() - Sent an abort event to ERT thread
+ * @ert_30: Target XRT ERT
  * @client: The client tries to abort commands
  *
- * This is used to ask CU thread to abort all commands from the client.
+ * This is used to ask ERT thread to abort all commands from the client.
  */
-int xocl_ert_30_abort(struct xocl_ert_30 *ert_30, void *client)
+static void xocl_ert_30_abort(struct kds_ert *ert, struct kds_client *client, int cu_idx)
 {
-	int ret = 0;
+	struct kds_client *curr;
+	struct xocl_ert_30 *ert_30 = container_of(ert, struct xocl_ert_30, ert);
 
-	mutex_lock(&ert_30->ev.lock);
-	if (ert_30->ev.client) {
-		ret = -EAGAIN;
-		goto done;
+	mutex_lock(&ert_30->ev_lock);
+	if (list_empty(&ert_30->events))
+		goto add_event;
+
+	/* avoid re-add the same client */
+	list_for_each_entry(curr, &ert_30->events, ev_entry) {
+		if (client == curr)
+			goto done;
 	}
 
-	ert_30->ev.client = client;
-	ert_30->ev.state = 0;
-
-done:
-	mutex_unlock(&ert_30->ev.lock);
+add_event:
+	client->ev_type = EV_ABORT;
+	list_add_tail(&client->ev_entry, &ert_30->events);
+	/* The process thread may asleep, we should wake it up if 
+	 * abort event takes place
+	 */
 	up(&ert_30->sem);
-	return ret;
+done:
+	mutex_unlock(&ert_30->ev_lock);
 }
 
 /**
  * xocl_ert_30_abort() - Get done flag of abort
- * @ert_30: Target XRT CU
+ * @ert_30: Target XRT ERT
  *
  * Use this to wait for abort event done
  */
-int xocl_ert_30_abort_done(struct xocl_ert_30 *ert_30)
+static bool xocl_ert_30_abort_done(struct kds_ert *ert, struct kds_client *client, int cu_idx)
 {
-	int state = 0;
+	struct kds_client *curr;
+	struct kds_client *next;
+	struct xocl_ert_30 *ert_30 = container_of(ert, struct xocl_ert_30, ert);
 
-	mutex_lock(&ert_30->ev.lock);
-	if (ert_30->ev.state) {
-		ert_30->ev.client = NULL;
-		state = ert_30->ev.state;
+	mutex_lock(&ert_30->ev_lock);
+	if (list_empty(&ert_30->events))
+		goto done;
+
+	list_for_each_entry_safe(curr, next, &ert_30->events, ev_entry) {
+		if (client != curr)
+			continue;
+
+		list_del(&curr->ev_entry);
+		break;
 	}
-	mutex_unlock(&ert_30->ev.lock);
 
-	return state;
+done:
+	mutex_unlock(&ert_30->ev_lock);
+
+	return ert_30->bad_state;
 }
 
-void xocl_ert_30_set_bad_state(struct xocl_ert_30 *ert_30)
-{
-	ert_30->bad_state = 1;
-}
 
 static int ert_30_remove(struct platform_device *pdev)
 {
@@ -1052,11 +1111,19 @@ static int ert_30_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&ert_30->cq);
 	INIT_LIST_HEAD(&ert_30->sq);
 
-	mutex_init(&ert_30->ev.lock);
-	ert_30->ev.client = NULL;
+	mutex_init(&ert_30->ev_lock);
+	INIT_LIST_HEAD(&ert_30->events);
 
 	sema_init(&ert_30->sem, 0);
-	ert_30->thread = kthread_run(ert_30_thread, ert_30, "xrt_thread");
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+	setup_timer(&ert_30->timer, ert_timer, (unsigned long)ert_30);
+#else
+	timer_setup(&ert_30->timer, ert_timer, 0);
+#endif
+	atomic_set(&ert_30->tick, 0);
+
+	ert_30->thread = kthread_run(ert_30_thread, ert_30, "ert_thread");
 
 	platform_set_drvdata(pdev, ert_30);
 	mutex_init(&ert_30->lock);
@@ -1107,6 +1174,8 @@ static int ert_30_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "create ert_30 sysfs attrs failed: %d", err);
 	}
 	ert_30->ert.submit = ert_30_submit;
+	ert_30->ert.abort = xocl_ert_30_abort;
+	ert_30->ert.abort_done = xocl_ert_30_abort_done;
 	xocl_kds_init_ert(xdev, &ert_30->ert);
 
 done:
