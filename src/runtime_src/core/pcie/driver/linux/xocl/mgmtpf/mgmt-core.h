@@ -157,6 +157,10 @@ struct xclmgmt_dev {
 
 	u16 pci_cmd;
 	u16 devctl;
+
+	/* preloaded xclbin */
+	char* preload_xclbin;
+	size_t preload_xclbin_length;
 };
 
 extern int health_check;
