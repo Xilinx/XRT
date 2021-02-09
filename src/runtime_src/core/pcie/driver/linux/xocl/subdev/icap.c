@@ -2640,7 +2640,7 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 done:
 	mutex_unlock(&icap->icap_lock);
 	icap_xclbin_rd_unlock(icap);
-	return 0;
+	return err;
 }
 
 static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id)
@@ -2685,7 +2685,7 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id)
 done:
 	mutex_unlock(&icap->icap_lock);
 	icap_xclbin_rd_unlock(icap);
-	return 0;
+	return err;
 }
 
 static bool icap_bitstream_is_locked(struct platform_device *pdev)
