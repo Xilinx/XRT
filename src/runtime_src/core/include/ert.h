@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2019-2020, Xilinx Inc
+ *  Copyright (C) 2019-2021, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -126,9 +126,9 @@ struct ert_start_kernel_cmd {
   /* payload */
   union {
     uint32_t cu_mask;          /* mandatory cu mask */
-    int32_t return_code;      /* return code from soft kernel*/
+    int32_t return_code;       /* return code from soft kernel*/
   };
-  uint32_t data[1];          /* count-1 number of words */
+  uint32_t data[1];            /* count-1 number of words */
 };
 
 /**
@@ -264,21 +264,31 @@ struct ert_configure_cmd {
   uint32_t data[1];
 };
 
+/*
+ * Note: We need to put maximum 128 soft kernel image
+ *       in one config command (1024 DWs including header).
+ *       So each one needs to be smaller than 8 DWs.
+ *
+ * @start_cuidx:     start index of compute units of each image
+ * @num_cus:         number of compute units of each image
+ * @sk_name:         symbol name of soft kernel of each image
+ */
+struct config_sk_image {
+  uint32_t start_cuidx;
+  uint32_t num_cus;
+  uint32_t sk_name[5];
+};
+
 /**
  * struct ert_configure_sk_cmd: ERT configure soft kernel command format
  *
  * @state:           [3-0] current state of a command
- * @count:           [22-12] number of words in payload (13 DWords)
+ * @count:           [22-12] number of words in payload
  * @opcode:          [27-23] 1, opcode for configure
  * @type:            [31-27] 0, type of configure
  *
- * @start_cuidx:     start index of compute units
- * @sk_type:         type of soft kernel.
- * @num_cus:         number of compute units in program
- * @sk_size:         size in bytes of soft kernel image
- * @sk_name:         symbol name of soft kernel
- * @sk_addr:         soft kernel image's physical address (little endian)
- */
+ * @num_image:       number of images
+*/
 struct ert_configure_sk_cmd {
   union {
     struct {
@@ -292,12 +302,8 @@ struct ert_configure_sk_cmd {
   };
 
   /* payload */
-  uint32_t start_cuidx:16;
-  uint32_t sk_type:16;
-  uint32_t num_cus;
-  uint32_t sk_size;		/* soft kernel size */
-  uint32_t sk_name[8];		/* soft kernel name */
-  uint64_t sk_addr;
+  uint32_t num_image;
+  struct config_sk_image image[1];
 };
 
 /**

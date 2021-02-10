@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  * Author(s): Min Ma	<min.ma@xilinx.com>
  *          : Larry Liu	<yliu@xilinx.com>
  *
@@ -31,6 +31,6 @@
 #include "xclhal2_mpsoc.h"
 
 xclDeviceHandle initXRTHandle(unsigned deviceIndex);
-void configSoftKernel(xclSKCmd *cmd);
+void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd);
 
 #endif
