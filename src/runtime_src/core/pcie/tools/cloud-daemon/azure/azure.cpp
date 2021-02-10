@@ -73,7 +73,7 @@ int init(mpd_plugin_callbacks *cbs)
         syslog(LOG_INFO, "azure: no device found");
         return ret;
     }
-    if (cbs) 
+    if (cbs)
     {
         // init curl
         int curlInit = curl_global_init(CURL_GLOBAL_ALL);
@@ -83,7 +83,17 @@ int init(mpd_plugin_callbacks *cbs)
         if (!private_ip.empty())
             restip_endpoint = private_ip;
         syslog(LOG_INFO, "azure restserver ip: %s\n", restip_endpoint.c_str());
+
         fpga_serial_number = AzureDev::get_serial_number();
+        if ((fpga_serial_number.empty()) ||
+            (total != fpga_serial_number.size()) ||
+            (std::find(fpga_serial_number.begin(), fpga_serial_number.end(), "")
+             != fpga_serial_number.end())) {
+            syslog(LOG_INFO, "azure: exiting due to one or more devices serial
+                              number not found\n");
+            return 1;
+        }
+
         // hook functions
         cbs->mpc_cookie = NULL;
         cbs->get_remote_msd_fd = get_remote_msd_fd;

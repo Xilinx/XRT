@@ -278,7 +278,7 @@ void Mpd::start()
         }
         int ret = (*plugin_init)(&plugin_cbs);
         if (ret != 0)
-            syslog(LOG_ERR, "mpd plugin_init failed: %d", ret);
+            syslog(LOG_ERR, "mpd plugin_init failed: %d, restart the mpd service", ret);
     }
 }
 
