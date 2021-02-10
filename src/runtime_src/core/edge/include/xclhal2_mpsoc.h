@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2015-2021, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -37,9 +37,8 @@ struct xclSKCmd {
     uint32_t	opcode;
     uint32_t	start_cuidx;
     uint32_t	cu_nums;
-    uint64_t	xclbin_paddr;
-    size_t	xclbin_size;
     char	krnl_name[XRT_MAX_NAME_LENGTH];
+    int		bohdl;
 };
 
 struct xclAIECmd {

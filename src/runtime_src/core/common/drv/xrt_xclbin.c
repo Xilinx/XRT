@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver XCLBIN parser
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: David Zhang <davidzha@xilinx.com>
  *
@@ -240,6 +240,47 @@ xrt_xclbin_section_info(const struct axlf *xclbin, enum axlf_section_kind kind,
 	*size = memHeader->m_sectionSize;
 
 	return 0;
+}
+
+struct axlf_section_header *
+xrt_xclbin_get_section_hdr_next(struct axlf *xclbin,
+	enum axlf_section_kind kind, struct axlf_section_header *cur)
+{
+	int i;
+	int found = -1;
+	bool match = false;
+
+	for (i = 0; i < xclbin->m_header.m_numSections; i++) {
+		if (xclbin->m_sections[i].m_sectionKind == kind) {
+			if (match)
+				return &xclbin->m_sections[i];
+
+			if (&xclbin->m_sections[i] == cur) {
+				match = true;
+				found = -1;
+				continue;
+			} else
+				found = (found < 0 ? i : found);
+		}
+	}
+
+	if (found < 0)
+		return NULL;
+
+	return &xclbin->m_sections[found];
+}
+
+int xrt_xclbin_get_section_num(const struct axlf *xclbin,
+	enum axlf_section_kind kind)
+{
+	int i, cnt = 0;
+
+	for (i = 0; i < xclbin->m_header.m_numSections; i++) {
+		if (xclbin->m_sections[i].m_sectionKind == kind)
+			cnt++;
+	}
+
+	return cnt;
 }
 
 /* caller should free the allocated memory for **data */

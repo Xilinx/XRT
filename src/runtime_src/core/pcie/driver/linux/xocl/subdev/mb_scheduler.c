@@ -1787,6 +1787,8 @@ struct exec_core {
 	bool		           cq_interrupt;
 	bool		           configure_active;
 	bool		           configured;
+	bool		           scu_configure_active;
+	bool		           scu_configured;
 	bool		           stopped;
 	bool		           flush;
 	/* WORKAROUND: allow xclRegWrite/xclRegRead access shared CU */
@@ -1942,6 +1944,18 @@ exec_cfg(struct exec_core *exec)
 {
 }
 
+static int
+exec_scu_cfg_cmd(struct exec_core *exec)
+{
+	if (exec->scu_configured) {
+		DRM_INFO("scu is already configured for this device\n");
+		return 1;
+	}
+
+	exec->scu_configure_active = true;
+
+	return 0;
+}
 
 /*
  * to be automated
@@ -2140,6 +2154,8 @@ exec_reset(struct exec_core *exec, const xuid_t *xclbin_id)
 	exec->cq_interrupt = false;
 	exec->configure_active = false;
 	exec->configured = false;
+	exec->scu_configure_active = false;
+	exec->scu_configured = false;
 	exec->stopped = false;
 	exec->flush = false;
 	exec->ops = &penguin_ops;
@@ -2419,6 +2435,12 @@ exec_finish_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	if (cmd_opcode(xcmd) == ERT_CONFIGURE) {
 		exec->configured = true;
 		exec->configure_active = false;
+		return 0;
+	}
+
+	if (cmd_opcode(xcmd) == ERT_SK_CONFIG) {
+		exec->scu_configured = true;
+		exec->scu_configure_active = false;
 		return 0;
 	}
 
@@ -3137,6 +3159,14 @@ exec_submit_ctrl_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	// configure command should configure kds succesfully or be abandoned
 	if (cmd_opcode(xcmd) == ERT_CONFIGURE && (exec->configure_active || exec_cfg_cmd(exec, xcmd))) {
+		cmd_set_state(xcmd, ERT_CMD_STATE_ERROR);
+		exec_abort_cmd(exec, xcmd);
+		SCHED_DEBUGF("<- %s returns false\n", __func__);
+		return false;
+	}
+
+	if (cmd_opcode(xcmd) == ERT_SK_CONFIG &&
+	    (exec->scu_configure_active || exec_scu_cfg_cmd(exec))) {
 		cmd_set_state(xcmd, ERT_CMD_STATE_ERROR);
 		exec_abort_cmd(exec, xcmd);
 		SCHED_DEBUGF("<- %s returns false\n", __func__);
@@ -4269,9 +4299,9 @@ static int config_scu(struct platform_device *pdev,
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	struct xocl_ert *xert = exec_is_ert(exec) ? exec->ert : NULL;
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-	int i;
+	int i, j;
 
-	if (scmd->opcode != ERT_SK_CONFIG && scmd->opcode != ERT_SK_UNCONFIG)
+	if (scmd->opcode != ERT_SK_CONFIG)
 		return 0;
 
 	if (!xert) {//ini of ert=false is checked here; KDS mode is not allowed
@@ -4279,19 +4309,15 @@ static int config_scu(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	if (scmd->start_cuidx + scmd->num_cus > MAX_CUS) {
-		userpf_err(xdev, "beyond max scu %d, start %d, num %d",
-			MAX_CUS, scmd->start_cuidx, scmd->num_cus);
-		return -EINVAL;
-	}
+	for (i = 0; i < scmd->num_image; i++) {
+		struct config_sk_image *cp = &scmd->image[i];
 
-	for (i = scmd->start_cuidx; i < scmd->start_cuidx + scmd->num_cus;
-	    i++) {
-		if (scmd->opcode == ERT_SK_CONFIG) {
+		for (j = cp->start_cuidx; j < cp->start_cuidx + cp->num_cus;
+		    j++) {
 			char scu_name[32];
 			int slen;
 
-			if (strlen(xert->scu_name[i]) > 0)
+			if (strlen(xert->scu_name[j]) > 0)
 				continue;
 			exec->num_sk_cus++;
 
@@ -4302,20 +4328,15 @@ static int config_scu(struct platform_device *pdev,
 			 * to fit kds_custat sysfs node into PAGE_SIZE
 			 * with no more than 64 SCUs.
 			 */
-			slen = strlen((char*)scmd->sk_name);
+			slen = strlen((char*)cp->sk_name);
 			if (slen > 11)
 				slen -= 11;
 			else
 				slen = 0;
-			strncpy(scu_name, ((char *)scmd->sk_name) + slen,
+			strncpy(scu_name, ((char *)cp->sk_name) + slen,
 				sizeof(xert->scu_name[0]) - 8);
-			snprintf(xert->scu_name[i], 32, "%s:scu_%d",
-				scu_name, i);
-		} else {
-			if (strlen(xert->scu_name[i]) == 0)
-				continue;
-			exec->num_sk_cus--;
-			xert->scu_name[i][0] = 0;
+			snprintf(xert->scu_name[j], 32, "%s:scu_%d",
+				scu_name, j);
 		}
 	}
 
@@ -4628,6 +4649,8 @@ reconfig(struct platform_device *pdev)
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	exec->configure_active = false;
 	exec->configured = false;
+	exec->scu_configure_active = false;
+	exec->scu_configured = false;
 	return 0;
 }
 
@@ -4854,7 +4877,6 @@ kds_numcdmas_show(struct device *dev, struct device_attribute *attr, char *buf)
 	return sprintf(buf, "%d\n", cdmas);
 }
 static DEVICE_ATTR_RO(kds_numcdmas);
-
 
 static ssize_t
 kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
