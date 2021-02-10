@@ -260,7 +260,6 @@ enum {
 #define	XOCL_ICAP_CNTRL		"icap_controller"
 #define	XOCL_VERSION_CTRL	"version_control"
 #define	XOCL_MSIX_XDMA		"msix_xdma"
-#define	XOCL_ERT_USER		"ert_user"
 #define	XOCL_ERT_30		"ert_30"
 #define	XOCL_ERT_VERSAL		"ert_versal"
 #define	XOCL_M2M		"m2m"
@@ -315,7 +314,6 @@ enum subdev_id {
 	XOCL_SUBDEV_PMC,
 	XOCL_SUBDEV_ICAP_CNTRL,
 	XOCL_SUBDEV_ERT_30,
-	XOCL_SUBDEV_ERT_USER,
 	XOCL_SUBDEV_ERT_VERSAL,
 	XOCL_SUBDEV_NUM
 };
@@ -1682,7 +1680,7 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define XOCL_RES_ERT_USER				\
+#define XOCL_RES_ERT_30					\
 		((struct resource []) {			\
 			{				\
 			.start	= ERT_CQ_BASE_ADDR,	\
@@ -1692,12 +1690,12 @@ struct xocl_subdev_map {
 			},				\
 		})
 
-#define	XOCL_DEVINFO_ERT_USER				\
+#define	XOCL_DEVINFO_ERT_30				\
 	{						\
-		XOCL_SUBDEV_ERT_USER,			\
-		XOCL_ERT_USER,				\
-		XOCL_RES_ERT_USER,			\
-		ARRAY_SIZE(XOCL_RES_ERT_USER),		\
+		XOCL_SUBDEV_ERT_30,			\
+		XOCL_ERT_30,				\
+		XOCL_RES_ERT_30,			\
+		ARRAY_SIZE(XOCL_RES_ERT_30),		\
 		&XOCL_RES_SCHEDULER_PRIV,		\
 		sizeof(struct xocl_ert_sched_privdata),	\
 		.override_idx = -1,			\
@@ -1934,7 +1932,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_INTC,				\
-			XOCL_DEVINFO_ERT_USER,				\
+			XOCL_DEVINFO_ERT_30,				\
 		})
 
 #define	USER_RES_DSA52_U2					\
@@ -1949,7 +1947,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER_U2,			\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_INTC,				\
-			XOCL_DEVINFO_ERT_USER,				\
+			XOCL_DEVINFO_ERT_30,				\
 		})
 
 #define USER_RES_SMARTN							\

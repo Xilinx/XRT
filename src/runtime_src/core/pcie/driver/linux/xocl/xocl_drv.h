@@ -1693,21 +1693,6 @@ struct xocl_ert_versal_funcs {
 	int (* configured)(struct platform_device *pdev);
 };
 
-struct xocl_ert_user_funcs {
-	struct xocl_subdev_funcs common_funcs;
-	int (* configured)(struct platform_device *pdev);
-};
-#define	ERT_USER_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).pldev
-#define ERT_USER_OPS(xdev)  \
-	((struct xocl_ert_user_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).ops)
-#define ERT_USER_CB(xdev, cb)  \
-	(ERT_USER_DEV(xdev) && ERT_USER_OPS(xdev) && ERT_USER_OPS(xdev)->cb)
-
-#define xocl_ert_user_configured(xdev) \
-	(ERT_USER_CB(xdev, configured) ? \
-	 ERT_USER_OPS(xdev)->configured(ERT_USER_DEV(xdev)) : \
-	 -ENODEV)
-
 struct xocl_ert_30_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (* configured)(struct platform_device *pdev);
@@ -2272,9 +2257,6 @@ void xocl_fini_version_control(void);
 
 int __init xocl_init_msix_xdma(void);
 void xocl_fini_msix_xdma(void);
-
-int __init xocl_init_ert_user(void);
-void xocl_fini_ert_user(void);
 
 int __init xocl_init_ert_30(void);
 void xocl_fini_ert_30(void);
