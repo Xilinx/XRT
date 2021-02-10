@@ -19,19 +19,19 @@ XBMGMT2=xbmgmt2
 
 # Table to resolve reset sub-command based on switch passed to reset
 declare -A RSTOPT=( \
-        ["--hot"]="xbmgmt" \
-        ["--kernel"]="xbmgmt" \
-        ["--ecc"]="xbmgmt" \
-        ["--softkernel"]="xbmgmt" \
-        ["--ert"]="xbmgmt" \
-        ["--card"]="xbmgmt" \
-        ["--force"]="xbmgmt" \
-        ["--device"]="xbmgmt2" \
-        ["--type"]="xbmgmt2" \
-        ["--help"]="xbmgmt2" \
-        ["-d"]="xbmgmt2" \
-        ["-r"]="xbmgmt2" \
-        ["-h"]="xbmgmt2" \
+        ["--hot"]="XBMGMT" \
+        ["--kernel"]="XBMGMT" \
+        ["--ecc"]="XBMGMT" \
+        ["--softkernel"]="XBMGMT" \
+        ["--ert"]="XBMGMT" \
+        ["--card"]="XBMGMT" \
+        ["--force"]="XBMGMT" \
+        ["--device"]="XBMGMT2" \
+        ["--type"]="XBMGMT2" \
+        ["--help"]="XBMGMT2" \
+        ["-d"]="XBMGMT2" \
+        ["-r"]="XBMGMT2" \
+        ["-h"]="XBMGMT2" \
     )
 
 # In the following table "reset" points to a second table by name
@@ -94,8 +94,10 @@ done
 
 # If user did not specify -new/--new then attempt to determine if user
 # wants to use classic or new by peeking inside the command line
-# Ideally with bash nameref the following case/esac would not be necessary
+# Ideally with bash 'nameref' the case/esac would not be necessary and
+# we should be able to deref in one step using helper declaration like
 # declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+# However RHEL 7.X still uses bash 4.2 which does not support nameref :-(
 
 if [ ${XRT_PROG} == "xbmgmt" ]; then
   PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
@@ -108,7 +110,8 @@ if [ ${XRT_PROG} == "xbmgmt" ]; then
       # We have an ambiguous sub-command, use the next token/switch to
       # disambiguate by a second look up
       if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
-        XRT_PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+        PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+        XRT_PROG=${!PROG}
       else
         # User did not provide switch to the sub-command so we cannot
         # disabmiguate, default to DEFAULT
