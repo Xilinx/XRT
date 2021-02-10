@@ -280,7 +280,7 @@ void Mpd::start()
         if (ret != 0) {
             syslog(LOG_ERR, "mpd plugin_init failed: %d, restart the mpd service", ret);
             throw std::runtime_error("can't start due to plugin_init failed");
-		}
+        }
     }
 }
 

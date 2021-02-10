@@ -89,8 +89,7 @@ int init(mpd_plugin_callbacks *cbs)
             (total != fpga_serial_number.size()) ||
             (std::find(fpga_serial_number.begin(), fpga_serial_number.end(), "")
              != fpga_serial_number.end())) {
-            syslog(LOG_INFO, "azure: exiting due to one or more devices serial
-                              number not found\n");
+            syslog(LOG_INFO, "azure: exiting due to one or more devices serial number not found\n");
             return 1;
         }
 
