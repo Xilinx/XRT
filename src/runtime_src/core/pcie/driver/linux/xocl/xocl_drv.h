@@ -1264,6 +1264,7 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid);
+	bool (*ocl_bitstream_is_locked)(struct platform_device *pdev);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
 	int (*get_xclbin_metadata)(struct platform_device *pdev,
@@ -1326,6 +1327,10 @@ enum {
 #define	xocl_icap_unlock_bitstream(xdev, uuid)				\
 	(ICAP_CB(xdev, ocl_unlock_bitstream) ?				\
 	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid) :	\
+	-ENODEV)
+#define	xocl_icap_bitstream_is_locked(xdev)			\
+	(ICAP_CB(xdev, ocl_bitstream_is_locked) ?			\
+	ICAP_OPS(xdev)->ocl_bitstream_is_locked(ICAP_DEV(xdev)) :	\
 	-ENODEV)
 #define xocl_icap_refresh_addrs(xdev)					\
 	(ICAP_CB(xdev, refresh_addrs) ?					\

@@ -638,6 +638,18 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 			ret = -EBUSY;
 			goto out0;
 		}
+	} else {
+		/* 1. We locked &zdev->zdev_xclbin_lock so that no new contexts
+		 * can be opened and/or closed
+		 * 2. A opened context would lock bitstream and hold it.
+		 * 3. If all contexts are closed, new kds would make sure all
+		 * relative exec BO are released
+		 */
+		if (zocl_xclbin_refcount(zdev) > 0) {
+			DRM_ERROR("Current xclbin is in-use, can't change");
+			ret = -EBUSY;
+			goto out0;
+		}
 	}
 
 	/* uuid is null means first time load xclbin */

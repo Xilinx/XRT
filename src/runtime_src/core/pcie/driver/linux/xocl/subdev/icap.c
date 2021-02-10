@@ -2640,7 +2640,7 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 done:
 	mutex_unlock(&icap->icap_lock);
 	icap_xclbin_rd_unlock(icap);
-	return 0;
+	return err;
 }
 
 static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id)
@@ -2685,7 +2685,15 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id)
 done:
 	mutex_unlock(&icap->icap_lock);
 	icap_xclbin_rd_unlock(icap);
-	return 0;
+	return err;
+}
+
+static bool icap_bitstream_is_locked(struct platform_device *pdev)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+
+	/* This operation let caller glance at if bitstream is locked */
+	return icap_bitstream_in_use(icap);
 }
 
 static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
@@ -2996,6 +3004,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.xclbin_validate_clock_req = icap_xclbin_validate_clock_req,
 	.ocl_lock_bitstream = icap_lock_bitstream,
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
+	.ocl_bitstream_is_locked = icap_bitstream_is_locked,
 	.get_data = icap_get_data,
 	.get_xclbin_metadata = icap_get_xclbin_metadata,
 	.put_xclbin_metadata = icap_put_xclbin_metadata,

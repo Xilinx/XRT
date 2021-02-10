@@ -199,7 +199,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		uuid = vzalloc(sizeof(*uuid));
 		if (!uuid) {
 			ret = -ENOMEM;
-			goto out;
+			goto out1;
 		}
 		uuid_copy(uuid, &args->xclbin_id);
 		client->xclbin_id = uuid;
@@ -211,12 +211,14 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	xocl_ctx_to_info(args, &info);
 	ret = kds_add_context(&XDEV(xdev)->kds, client, &info);
 
-out:
+out1:
+	/* If client still has no opened context at this point */
 	if (!client->num_ctx) {
 		vfree(client->xclbin_id);
 		client->xclbin_id = NULL;
 		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
 	}
+out:
 	mutex_unlock(&client->lock);
 	return ret;
 }
@@ -530,7 +532,12 @@ int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 
 	switch (op) {
 	case DRM_XOCL_CTX:
+		/* Open/close context would lock/unlock bitstream.
+		 * This and download xclbin are mutually exclusive.
+		 */
+		mutex_lock(&xdev->dev_lock);
 		ret = xocl_context_ioctl(xdev, data, filp);
+		mutex_unlock(&xdev->dev_lock);
 		break;
 	case DRM_XOCL_EXECBUF:
 		ret = xocl_command_ioctl(xdev, data, filp, false);
