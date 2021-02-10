@@ -160,7 +160,7 @@ struct xclmgmt_dev {
 
 	/* preloaded xclbin */
 	char* preload_xclbin;
-	size_t preload_xclbin_length;
+	atomic_t cache_xclbin;
 };
 
 extern int health_check;

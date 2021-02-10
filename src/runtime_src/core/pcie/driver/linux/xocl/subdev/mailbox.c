@@ -1280,7 +1280,7 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 		return true;
 	case PKT_MSG_START:
 		if (ch->mbc_cur_msg) {
-			MBX_DBG(mbx, "Received partial msg (id 0x%llx)\n",
+			MBX_WARN(mbx, "Received partial msg (id 0x%llx)\n",
 				ch->mbc_cur_msg->mbm_req_id);
 			chan_msg_done(ch, -EBADMSG);
 		}
@@ -1291,18 +1291,18 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 			pkt->body.msg_start.msg_size);
 
 		if (!ch->mbc_cur_msg) {
-			MBX_DBG(mbx, "got unexpected msg start pkt\n");
+			MBX_WARN(mbx, "got unexpected msg start pkt\n");
 			reset_pkt(pkt);
 		}
 		break;
 	case PKT_MSG_BODY:
 		if (!ch->mbc_cur_msg) {
-			MBX_DBG(mbx, "got unexpected msg body pkt\n");
+			MBX_WARN(mbx, "got unexpected msg body pkt\n");
 			reset_pkt(pkt);
 		}
 		break;
 	default:
-		MBX_DBG(mbx, "invalid mailbox pkt type: %d\n", type);
+		MBX_WARN(mbx, "invalid mailbox pkt type: %d\n", type);
 		reset_pkt(pkt);
 		return true;
 	}

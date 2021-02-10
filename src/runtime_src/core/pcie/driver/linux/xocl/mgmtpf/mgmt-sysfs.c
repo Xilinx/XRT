@@ -218,7 +218,7 @@ static ssize_t dev_offline_show(struct device *dev,
 
 static DEVICE_ATTR(dev_offline, 0444, dev_offline_show, NULL);
 
-static ssize_t disable_mailbox_channel_store(struct device *dev,
+static ssize_t config_mailbox_channel_disable_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
@@ -232,18 +232,18 @@ static ssize_t disable_mailbox_channel_store(struct device *dev,
 
 	return count;
 }
-static ssize_t disable_mailbox_channel_show(struct device *dev,
+static ssize_t config_mailbox_channel_disable_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	uint64_t ch_switch = 0;
+	uint64_t ch_disable = 0;
 
-	(void) xocl_mailbox_get(lro, CHAN_DISABLE, &ch_switch);
-	return sprintf(buf, "0x%llx\n", ch_switch);
+	(void) xocl_mailbox_get(lro, CHAN_DISABLE, &ch_disable);
+	return sprintf(buf, "0x%llx\n", ch_disable);
 }
-static DEVICE_ATTR(disable_mailbox_channel, 0644,
-	disable_mailbox_channel_show,
-	disable_mailbox_channel_store);
+static DEVICE_ATTR(config_mailbox_channel_disable, 0644,
+	config_mailbox_channel_disable_show,
+	config_mailbox_channel_disable_store);
 
 static ssize_t config_mailbox_channel_switch_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
@@ -465,6 +465,34 @@ static ssize_t sbr_toggle_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(sbr_toggle);
 
+static ssize_t cache_xclbin_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", atomic_read(&lro->cache_xclbin));
+}
+
+static ssize_t cache_xclbin_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	u32 val;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+
+	if (val)
+		atomic_set(&lro->cache_xclbin, 1);
+	else
+		atomic_set(&lro->cache_xclbin, 0);
+
+	return count;
+}
+static DEVICE_ATTR(cache_xclbin, 0644,
+	cache_xclbin_show,
+	cache_xclbin_store);
+
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
 	&dev_attr_error.attr,
@@ -485,7 +513,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_flash_type.attr,
 	&dev_attr_board_name.attr,
 	&dev_attr_dev_offline.attr,
-	&dev_attr_disable_mailbox_channel.attr,
+	&dev_attr_config_mailbox_channel_disable.attr,
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_rp_program.attr,
@@ -493,6 +521,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_mgmt_reset.attr,
 	&dev_attr_sbr_toggle.attr,
+	&dev_attr_cache_xclbin.attr,
 	NULL,
 };
 
@@ -569,70 +598,9 @@ static struct bin_attribute userpf_blob_attr = {
 	.size = 0
 };
 
-static size_t _preload_image_write(char **image, size_t sz,
-		char *buffer, loff_t off, size_t count)
-{
-	char *tmp_buf;
-	size_t total;
-
-	if (off == 0) {
-		if (*image)
-			vfree(*image);
-		*image = vmalloc(count);
-		if (!*image)
-			return 0;
-
-		memcpy(*image, buffer, count);
-		return count;
-	}
-
-	total = off + count;
-	if (total > sz) {
-		tmp_buf = vmalloc(total);
-		if (!tmp_buf) {
-			vfree(*image);
-			*image = NULL;
-			return 0;
-		}
-		memcpy(tmp_buf, *image, sz);
-		vfree(*image);
-		sz = total;
-	} else {
-		tmp_buf = *image;
-	}
-
-	memcpy(tmp_buf + off, buffer, count);
-	*image = tmp_buf;
-
-	return sz;
-}
-
-
-static ssize_t preload_image_write(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
-{
-	struct xclmgmt_dev *lro =
-		dev_get_drvdata(container_of(kobj, struct device, kobj));
-
-	lro->preload_xclbin_length = _preload_image_write(&lro->preload_xclbin,
-		lro->preload_xclbin_length, buffer, off, count);
-
-	return lro->preload_xclbin_length ? count : -ENOMEM;
-}
-
-static struct bin_attribute preload_image_attr = {
-	.attr = {
-		.name = "preload_image",
-		.mode = 0200
-	},
-	.write = preload_image_write,
-	.size = 0
-};
-
 static struct bin_attribute  *mgmt_bin_attrs[] = {
 	&userpf_blob_attr,
 	&fdt_blob_attr,
-	&preload_image_attr,
 	NULL,
 };
 
