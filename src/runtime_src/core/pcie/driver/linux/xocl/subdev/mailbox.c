@@ -1033,8 +1033,8 @@ static bool check_recv_pkt_rate(struct mailbox *mbx)
 	if (mbx->mbx_recv_in_last_window < RECV_WINDOW_SIZE)
 		return true;
 
-	rate = (mbx->mbx_recv_in_last_window << 2) * NSEC_PER_SEC /
-		(ktime_get() - mbx->mbx_recv_t_start);
+	rate = (mbx->mbx_recv_in_last_window << 2) * MSEC_PER_SEC /
+		ktime_ms_delta(ktime_get(), mbx->mbx_recv_t_start);
 	mbx->mbx_recv_in_last_window = 0;
 	if (rate > RECV_RATE_THRESHOLD) {
 		MBX_WARN(mbx, "Seeing unexpected high recv pkt rate: %ld B/s"
