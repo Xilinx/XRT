@@ -304,7 +304,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 
 	if (xcmd->cu_idx >= 0)
-		client->c_cnt[xcmd->cu_idx]++;
+		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
 		int error = (status == ERT_CMD_STATE_COMPLETED)?0:-EFAULT;
