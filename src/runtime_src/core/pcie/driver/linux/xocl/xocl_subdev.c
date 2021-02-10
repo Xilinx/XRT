@@ -1655,9 +1655,6 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		} else if (sdev_info->id == XOCL_SUBDEV_INTC && kds_mode == 0) {
 			sdev_info->res = NULL;
 			sdev_info->num_res = 0;
-		} else if (sdev_info->id == XOCL_SUBDEV_ERT_30 && kds_mode == 0) {
-			sdev_info->res = NULL;
-			sdev_info->num_res = 0;
 		} else if (sdev_info->id == XOCL_SUBDEV_ERT_USER && kds_mode == 0) {
 			sdev_info->res = NULL;
 			sdev_info->num_res = 0;
