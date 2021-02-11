@@ -726,7 +726,7 @@ public:
             ss_base_addr << "0x" << std::hex << map->m_mem_data[i].m_base_address;
 
             ptMem.put( "type",      str );
-            ptMem.put( "temp",      (i >= temp_size) ? XCL_NO_SENSOR_DEV : temp[i]);
+            ptMem.put( "temp",      (i >= temp_size) ? XCL_INVALID_SENSOR_VAL : temp[i]);
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "base_addr", ss_base_addr.str());
