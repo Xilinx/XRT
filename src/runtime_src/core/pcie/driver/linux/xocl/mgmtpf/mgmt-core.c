@@ -516,15 +516,16 @@ static int health_check_cb(void *data)
 
 	(void) xocl_clock_status(lro, &latched);
 
-	xocl_ps_check_healthy(lro);
-
 	/*
 	 * UCS doesn't exist on U2, and U2 CMC firmware uses different
 	 * methodology to report clock shutdown status.
 	 */
 	xocl_xmc_clock_status(lro, &latched);
 
-	check_sensor(lro);
+	if (latched)
+		goto reset;
+
+	xocl_ps_check_healthy(lro);
 
 	/* Check PCIe Link Toggle */
 	check_pcie_link_toggle(lro, 0);
@@ -537,6 +538,7 @@ static int health_check_cb(void *data)
 	 */
 	tripped = xocl_af_check(lro, NULL);
 
+reset:
 	if (latched || tripped) {
 		if (!lro->reset_requested) {
 			mgmt_err(lro, "Card is in a Bad state, notify userpf");
@@ -546,6 +548,8 @@ static int health_check_cb(void *data)
 				lro->reset_requested = true;
 		} else
 			mgmt_err(lro, "Card requires pci hot reset");
+	} else {
+		check_sensor(lro);
 	}
 
 	return 0;
