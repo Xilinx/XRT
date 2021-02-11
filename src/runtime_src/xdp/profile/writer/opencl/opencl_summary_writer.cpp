@@ -885,18 +885,15 @@ namespace xdp {
             if (dashPosition != std::string::npos)
             {
               std::string firstHalf = (monitor->name).substr(0, dashPosition);
-              std::string secondHalf =
-              (monitor->name).substr(dashPosition + 1,
-              (monitor->name).size()-dashPosition-1) ;
+              std::string secondHalf = (monitor->name).substr(dashPosition + 1,
+                  (monitor->name).size()-dashPosition-1) ;
               size_t slashPosition = firstHalf.find("/") ;
-              masterPort = firstHalf.substr(0, slashPosition) ;
-              masterArgs = firstHalf.substr(slashPosition + 1,
-              firstHalf.size()-slashPosition-1) ;
+              masterPort = firstHalf;
+              masterArgs = firstHalf.substr(slashPosition + 1, firstHalf.size()-slashPosition-1) ;
               
               slashPosition = secondHalf.find("/") ;
-              slavePort = secondHalf.substr(0, slashPosition) ;
-              slaveArgs = secondHalf.substr(slashPosition + 1,
-              secondHalf.size()-slashPosition-1) ;
+              slavePort = secondHalf;
+              slaveArgs = secondHalf.substr(slashPosition + 1, secondHalf.size()-slashPosition-1) ;
             }
             
             double transferTime =
