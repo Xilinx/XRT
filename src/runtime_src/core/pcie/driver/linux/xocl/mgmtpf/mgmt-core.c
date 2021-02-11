@@ -896,7 +896,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
 		}
-		ret = xocl_icap_download_axlf(lro, xclbin);
+		ret = xocl_xclbin_download(lro, xclbin);
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
 		break;
@@ -944,7 +944,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case XCL_MAILBOX_REQ_USER_PROBE: {
 		struct xcl_mailbox_conn_resp *resp = NULL;
 		struct xcl_mailbox_conn *conn = (struct xcl_mailbox_conn *)req->data;
-		uint64_t ch_switch = 0;
+		uint64_t ch_switch = 0, ch_disable = 0;
 
 		if (payload_len < sizeof(*conn)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
@@ -959,12 +959,14 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 
 		xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
+		xocl_mailbox_get(lro, CHAN_DISABLE, &ch_disable);
 		resp->version = min(XCL_MB_PROTOCOL_VER, conn->version);
 		resp->conn_flags |= XCL_MB_PEER_READY;
 		/* Same domain check only applies when everything is thru HW. */
 		if (!ch_switch && xclmgmt_is_same_domain(lro, conn))
 			resp->conn_flags |= XCL_MB_PEER_SAME_DOMAIN;
 		resp->chan_switch = ch_switch;
+		resp->chan_disable = ch_disable;
 		(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)resp->comm_id);
 		(void) xocl_peer_response(lro, req->req, msgid, resp,
 			sizeof(struct xcl_mailbox_conn_resp));
@@ -1415,6 +1417,9 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 		vfree(lro->userpf_blob);
 	if (lro->core.blp_blob)
 		vfree(lro->core.blp_blob);
+
+	if (lro->preload_xclbin)
+		vfree(lro->preload_xclbin);
 
 	dev_set_drvdata(&pdev->dev, NULL);
 

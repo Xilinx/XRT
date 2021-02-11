@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: Max Zhen <maxz@xilinx.com>
  *
@@ -210,6 +210,16 @@ MODULE_PARM_DESC(mailbox_no_intr,
 	"Disable mailbox interrupt and do timer-driven msg passing");
 
 #define	PACKET_SIZE	16 /* Number of DWORD. */
+
+/*
+ * monitor real receive pkt rate for every 8k Bytes.
+ * if the rate is higher than 1MB/s, we think user is trying to
+ * transfer xclbin on h/w mailbox, if higher than 1.8MB/s, we think
+ * user is doing DOS attack. Neither is allowd. We set a threshold
+ * 600000B/s and don't expect any normal msg transfer exceeds it
+ */
+#define	RECV_WINDOW_SIZE	0x800 /* Number of DWORD. */
+#define	RECV_RATE_THRESHOLD	600000
 
 #define	FLAG_STI	(1 << 0)
 #define	FLAG_RTI	(1 << 1)
@@ -431,8 +441,17 @@ struct mailbox {
 	size_t			mbx_req_sz;
 	bool			mbx_req_stop;
 
+	/* used to calculate recv pkt rate */
+	ktime_t			mbx_recv_t_start;
+	size_t			mbx_recv_in_last_window;
+
+	/* recv metrics */
+	size_t			mbx_recv_raw_bytes;
+	size_t			mbx_recv_req[XCL_MAILBOX_REQ_MAX];
+
 	uint32_t		mbx_prot_ver;
 	uint64_t		mbx_ch_state;
+	uint64_t		mbx_ch_disable;
 	uint64_t		mbx_ch_switch;
 	char			mbx_comm_id[XCL_COMM_ID_SIZE];
 	uint32_t		mbx_proto_ver;
@@ -990,7 +1009,44 @@ static void listen_wq_fini(struct mailbox *mbx)
 	}
 }
 
-static void chan_recv_pkt(struct mailbox_channel *ch)
+/*
+ * No big trunk of data are expected to be transferred on h/w mailbox. If this
+ * happens, it is probably
+ *     1. user in vm is trying to load xclbin
+ *     2. user in vm is trying to DOS attack
+ * mgmt should disable the mailbox interrupt when this happens. Test shows one
+ * whole cpu will be burned out if this keeps on going 
+ * A 'xbmgmt reset --hot' is required to recover it once the interrupt is
+ * disabled
+ *
+ * The way to check this is to calculate the receive pkg rate by measuring
+ * time spent for every 8k bytes received.
+ */
+static bool check_recv_pkt_rate(struct mailbox *mbx)
+{
+	size_t rate;
+
+	if (!mbx->mbx_recv_in_last_window)
+		mbx->mbx_recv_t_start = ktime_get();
+
+	mbx->mbx_recv_in_last_window += PACKET_SIZE;
+	if (mbx->mbx_recv_in_last_window < RECV_WINDOW_SIZE)
+		return true;
+
+	rate = (mbx->mbx_recv_in_last_window << 2) * MSEC_PER_SEC /
+		ktime_ms_delta(ktime_get(), mbx->mbx_recv_t_start);
+	mbx->mbx_recv_in_last_window = 0;
+	if (rate > RECV_RATE_THRESHOLD) {
+		MBX_WARN(mbx, "Seeing unexpected high recv pkt rate: %ld B/s"
+			", mailbox is stopped!!", rate);
+		mailbox_disable_intr_mode(mbx, false);
+		return false;
+	}
+
+	return true;
+}
+
+static bool chan_recv_pkt(struct mailbox_channel *ch)
 {
 	int i, retry = 10;
 	struct mailbox *mbx = ch->mbc_parent;
@@ -1013,6 +1069,9 @@ static void chan_recv_pkt(struct mailbox_channel *ch)
 		reset_pkt(pkt);
 	else
 		MBX_DBG(mbx, "received pkt: type=0x%x", pkt->hdr.type);
+
+	mbx->mbx_recv_raw_bytes += (PACKET_SIZE << 2);
+	return check_recv_pkt_rate(mbx);
 }
 
 static void chan_send_pkt(struct mailbox_channel *ch)
@@ -1061,6 +1120,7 @@ static int chan_pkt2msg(struct mailbox_channel *ch)
 
 	if (cnt > msg->mbm_len - ch->mbc_bytes_done) {
 		MBX_ERR(mbx, "invalid mailbox packet size\n");
+		reset_pkt(pkt);
 		return -EBADMSG;
 	}
 
@@ -1194,7 +1254,21 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 		return false;
 	}
 
-	chan_recv_pkt(ch);
+	/*
+	 * Don't trust the peer. If we think the peer is doing something
+	 * malicious, we disable interrupt and don't handle the pkts. Once
+	 * this happened, user can't use mailbox anymore before admin manually
+	 * recovers the mailbox by doing 'xbmgmt reset --hot --card xxx'
+	 * This is the protection at the pkt layer. The malicious user can
+	 * still escape the protection here by carefully control the sending
+	 * pkt rate. At msg layer, we have another type of protection -- we
+	 * discard those msg requests which are disabled by admin. eg,
+	 * xclbin download (type 0x8) is not expected to show up on h/w mailbox
+	 */
+	if (!chan_recv_pkt(ch)) {
+		reset_pkt(pkt);
+		return false;
+	}
 	type = pkt->hdr.type & PKT_TYPE_MASK;
 	eom = ((pkt->hdr.type & PKT_TYPE_MSG_END) != 0);
 
@@ -1206,7 +1280,7 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 		return true;
 	case PKT_MSG_START:
 		if (ch->mbc_cur_msg) {
-			MBX_ERR(mbx, "Received partial msg (id 0x%llx)\n",
+			MBX_WARN(mbx, "Received partial msg (id 0x%llx)\n",
 				ch->mbc_cur_msg->mbm_req_id);
 			chan_msg_done(ch, -EBADMSG);
 		}
@@ -1217,18 +1291,18 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 			pkt->body.msg_start.msg_size);
 
 		if (!ch->mbc_cur_msg) {
-			MBX_ERR(mbx, "got unexpected msg start pkt\n");
+			MBX_WARN(mbx, "got unexpected msg start pkt\n");
 			reset_pkt(pkt);
 		}
 		break;
 	case PKT_MSG_BODY:
 		if (!ch->mbc_cur_msg) {
-			MBX_ERR(mbx, "got unexpected msg body pkt\n");
+			MBX_WARN(mbx, "got unexpected msg body pkt\n");
 			reset_pkt(pkt);
 		}
 		break;
 	default:
-		MBX_ERR(mbx, "invalid mailbox pkt type: %d\n", type);
+		MBX_WARN(mbx, "invalid mailbox pkt type: %d\n", type);
 		reset_pkt(pkt);
 		return true;
 	}
@@ -1361,7 +1435,6 @@ static void msg_timer_on(struct mailbox_msg *msg, u32 ttl)
 			 */
 			ttl = MSG_HW_TX_DEFAULT_TTL;
 		}
-
 	}
 
 	msg->mbm_ttl = MAILBOX_SEC2TIMER(ttl);
@@ -1635,17 +1708,116 @@ static ssize_t intr_mode_store(struct device *dev,
 
 static DEVICE_ATTR_WO(intr_mode);
 
+static ssize_t recv_metrics_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct mailbox *mbx = platform_get_drvdata(pdev);
+	ssize_t count = 0;
+	int i;
+
+	count += sprintf(buf + count, "raw bytes received: %ld\n",
+		mbx->mbx_recv_raw_bytes);
+	for (i = 0; i < XCL_MAILBOX_REQ_MAX; i++) {
+		count += sprintf(buf + count, "req[%d] received: %ld\n",
+			i, mbx->mbx_recv_req[i]);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR_RO(recv_metrics);
+
 static struct attribute *mailbox_attrs[] = {
 	&dev_attr_mailbox.attr,
 	&dev_attr_mailbox_ctl.attr,
 	&dev_attr_mailbox_pkt.attr,
 	&dev_attr_connection.attr,
 	&dev_attr_intr_mode.attr,
+	&dev_attr_recv_metrics.attr,
+	NULL,
+};
+
+/*
+ * This is used to mimic DOS attack from user in VM. User can dump a bin file
+ * say, a xclbin, to this sysfs node, there would be flood of pkts reaching
+ * the other side. User can compose a meaningful mailbox msg and save in binary
+ * format and send to peer through this node.
+ */
+static ssize_t mbx_send_raw_pkt(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
+{
+#define MAX_RETRY 6
+	int i;
+	size_t sent = 0;
+	bool hw_ready;
+	u32 st;
+	u32 retry = MAX_RETRY;
+	struct mailbox *mbx =
+		dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	while (sent + (PACKET_SIZE << 2) <= count) {
+		st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
+		hw_ready = ((st != 0xffffffff) && ((st & STATUS_STA) != 0));
+		if (!hw_ready && retry) {
+			retry--;
+			udelay(10);
+			continue;
+		}
+		if (!retry)
+			return sent;
+		for (i = 0; i < PACKET_SIZE; i++) {
+			mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_wrdata,
+				*(((u32 *)buffer) + (sent >> 2) + i));
+		}
+		sent += (PACKET_SIZE << 2);
+		retry = MAX_RETRY;
+	}
+
+	/* send remaining if any */
+	if (sent < count) {
+		u32 tmp[PACKET_SIZE];
+
+		retry = MAX_RETRY;
+		st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
+		hw_ready = ((st != 0xffffffff) && ((st & STATUS_STA) != 0));
+		while (!hw_ready && retry) {
+			retry--;
+			udelay(10);
+			st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
+			hw_ready = ((st != 0xffffffff) && ((st & STATUS_STA) != 0));
+		}
+		if (!retry)
+			return sent;
+
+		memset(tmp, 0, sizeof(tmp));
+		memcpy(tmp, buffer + sent, count - sent);
+		for (i = 0; i < PACKET_SIZE; i++) {
+			mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_wrdata, tmp[i]);
+		}
+	}
+
+	return count;
+}
+
+static struct bin_attribute bin_attr_raw_pkt_send = {
+	.attr = {
+		.name = "raw_pkt_send",
+		.mode = 0200
+	},
+	.read = NULL,
+	.write = mbx_send_raw_pkt,
+	.size = 0
+};
+
+static struct bin_attribute *mailbox_bin_attrs[] = {
+	&bin_attr_raw_pkt_send,
 	NULL,
 };
 
 static const struct attribute_group mailbox_attrgroup = {
 	.attrs = mailbox_attrs,
+	.bin_attrs = mailbox_bin_attrs,
 };
 
 static void dft_post_msg_cb(void *arg, void *buf, size_t len, u64 id, int err,
@@ -1656,6 +1828,15 @@ static void dft_post_msg_cb(void *arg, void *buf, size_t len, u64 id, int err,
 	if (!err)
 		return;
 	MBX_ERR(msg->mbm_ch->mbc_parent, "failed to post msg, err=%d", err);
+}
+
+static bool req_is_disabled(struct platform_device *pdev,
+	enum xcl_mailbox_request req)
+{
+	uint64_t ch_disable = 0;
+
+	(void) mailbox_get(pdev, CHAN_DISABLE, &ch_disable);
+	return (ch_disable & (1 << req));
 }
 
 static bool req_is_sw(struct platform_device *pdev, enum xcl_mailbox_request req)
@@ -1681,6 +1862,9 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_msg *reqmsg = NULL, *respmsg = NULL;
 	bool sw_ch = req_is_sw(pdev, ((struct xcl_mailbox_req *)req)->req);
+
+	if (req_is_disabled(pdev, ((struct xcl_mailbox_req *)req)->req))
+		return -EFAULT;
 
 	MBX_INFO(mbx, "sending request: %d via %s",
 		((struct xcl_mailbox_req *)req)->req, (sw_ch ? "SW" : "HW"));
@@ -1768,6 +1952,8 @@ int mailbox_post_notify(struct platform_device *pdev, void *buf, size_t len)
 	struct mailbox_msg *msg = NULL;
 	bool sw_ch = req_is_sw(pdev, ((struct xcl_mailbox_req *)buf)->req);
 
+	if (req_is_disabled(pdev, ((struct xcl_mailbox_req *)buf)->req))
+		return -EFAULT;
 	/* No checking for peer's liveness for posted msgs. */
 
 	MBX_DBG(mbx, "posting request: %d via %s",
@@ -1804,6 +1990,8 @@ int mailbox_post_response(struct platform_device *pdev,
 	struct mailbox_msg *msg = NULL;
 	bool sw_ch = req_is_sw(pdev, req);
 
+	if (req_is_disabled(pdev, req))
+		return -EFAULT;
 	MBX_INFO(mbx, "posting response for: %d via %s",
 		req, sw_ch ? "SW" : "HW");
 
@@ -1835,6 +2023,12 @@ static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
 	int rc;
 	const char *recvstr = "received request from peer";
 	const char *sendstr = "sending test msg to peer";
+
+	mbx->mbx_recv_req[req->req]++;
+	if (req_is_disabled(mbx->mbx_pdev, req->req)) {
+		MBX_WARN(mbx, "req %d is received on disabled channel", req->req);
+		return;
+	}
 
 	if (req->req == XCL_MAILBOX_REQ_TEST_READ) {
 		MBX_INFO(mbx, "%s: %d", recvstr, req->req);
@@ -2025,6 +2219,9 @@ int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data)
 	case CHAN_STATE:
 		*data = mbx->mbx_ch_state;
 		break;
+	case CHAN_DISABLE:
+		*data = mbx->mbx_ch_disable;
+		break;
 	case CHAN_SWITCH:
 		*data = mbx->mbx_ch_switch;
 		break;
@@ -2054,6 +2251,11 @@ int mailbox_set(struct platform_device *pdev, enum mb_kind kind, u64 data)
 	case CHAN_STATE:
 		mutex_lock(&mbx->mbx_lock);
 		mbx->mbx_ch_state = data;
+		mutex_unlock(&mbx->mbx_lock);
+		break;
+	case CHAN_DISABLE:
+		mutex_lock(&mbx->mbx_lock);
+		mbx->mbx_ch_disable = data;
 		mutex_unlock(&mbx->mbx_lock);
 		break;
 	case CHAN_SWITCH:
