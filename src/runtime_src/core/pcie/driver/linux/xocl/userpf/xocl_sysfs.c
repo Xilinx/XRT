@@ -479,6 +479,17 @@ static ssize_t mailbox_connect_state_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(mailbox_connect_state);
 
+static ssize_t config_mailbox_channel_disable_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	uint64_t ret = 0;
+
+	xocl_mailbox_get(xdev, CHAN_DISABLE, &ret);
+	return sprintf(buf, "0x%llx\n", ret);
+}
+static DEVICE_ATTR_RO(config_mailbox_channel_disable);
+
 static ssize_t config_mailbox_channel_switch_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -505,6 +516,7 @@ static ssize_t ready_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	uint64_t ch_state = 0, ret = 0, daemon_state = 0;
+	uint64_t ch_disable = 0, ch_switch = 0;
 
 	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 
@@ -513,12 +525,27 @@ static ssize_t ready_show(struct device *dev,
 	else {
 		/*
 		 * If xocl and xclmgmt are not in the same daemon,
-		 * mark the card as ready only when both MB channel
-		 * and daemon are ready
+		 * mark the card as ready when
+		 *  1. both MB channel and daemon are ready
+		 *  This is for case cloud vendor controls the xclbin download,
+		 *  like azure, aws F1
+		 *  2. MB channel is ready
+		 *     and
+		 *     all sw channels are off
+		 *     and
+		 *     some channels are disabled	
+		 *  This is for case where msd/mpd(and plugin) are not required,
+		 *  like aws V1, download xclbin is not allowed so no need to
+		 *  setup mpd & plugin. In this case, admin must disable some
+		 *  channels, typically 0x8, otherwise, if user run validate, 
+		 *  the xclbins would be loaded through h/w mailbox, and would
+		 *  end up whole mailbox being disabled.
 		 */
 		xocl_mailbox_get(xdev, DAEMON_STATE, &daemon_state);
-		ret = ((ch_state & XCL_MB_PEER_READY) && daemon_state)
-			? 1 : 0;
+		xocl_mailbox_get(xdev, CHAN_SWITCH, &ch_switch);
+		xocl_mailbox_get(xdev, CHAN_DISABLE, &ch_disable);
+		ret = ((ch_state & XCL_MB_PEER_READY) && (daemon_state ||
+			(!ch_switch && ch_disable))) ? 1 : 0;
 	}
 
 	return sprintf(buf, "0x%llx\n", ret);
@@ -641,6 +668,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_link_speed_max.attr,
 	&dev_attr_link_width_max.attr,
 	&dev_attr_mailbox_connect_state.attr,
+	&dev_attr_config_mailbox_channel_disable.attr,
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_ready.attr,

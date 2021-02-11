@@ -16,6 +16,7 @@
 #include "mgmt-core.h"
 #include <linux/module.h>
 #include "../xocl_drv.h"
+#include "../xocl_xclbin.h"
 
 #define XCLMGMT_RESET_MAX_RETRY		10
 #define DUAL_FPGA_RESET_SLEEP		5
@@ -203,6 +204,9 @@ static long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
 	xocl_thread_start(lro);
 
 	xocl_clear_pci_errors(lro);
+
+	if (lro->preload_xclbin)
+		xocl_xclbin_download(lro, lro->preload_xclbin);
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
 	else if (!force)

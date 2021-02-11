@@ -439,6 +439,7 @@ struct xocl_xmc {
 	u64			cache_expire_secs;
 	struct xcl_sensor	*cache;
 	ktime_t			cache_expires;
+	ktime_t			bdinfo_retry;
 	u32			sc_presence;
 
 	/* XMC mailbox support. */
@@ -4412,11 +4413,23 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		vfree(bdinfo_raw);
 	} else {
 
+		ktime_t now = ktime_get_boottime();
 		if (xmc->bdinfo_loaded &&
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
 			return 0;
 		}
+
+		/*
+		 * If bdinfo is not loaded, probably something uncommon has
+		 * happened. keep trying load boardinfo through mailbox doesn't
+		 * make sense. In this case, we limit the interval of load
+		 * boardinfo to 1s by default
+		 */
+		if (ktime_compare(now, xmc->bdinfo_retry) < 0)
+			return 0;
+		xmc->bdinfo_retry = ktime_add(now,
+			ktime_set(xmc->cache_expire_secs, 0));
 
 		vfree(xmc->bdinfo_raw);
 		xmc->bdinfo_raw = NULL;

@@ -570,6 +570,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 		NULL, NULL, 0, 0);
 	(void) xocl_mailbox_set(xdev, CHAN_STATE, resp->conn_flags);
 	(void) xocl_mailbox_set(xdev, CHAN_SWITCH, resp->chan_switch);
+	(void) xocl_mailbox_set(xdev, CHAN_DISABLE, resp->chan_disable);
 	(void) xocl_mailbox_set(xdev, COMM_ID, (u64)(uintptr_t)resp->comm_id);
 
 	/*
