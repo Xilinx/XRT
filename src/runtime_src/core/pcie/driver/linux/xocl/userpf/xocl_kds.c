@@ -199,7 +199,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		uuid = vzalloc(sizeof(*uuid));
 		if (!uuid) {
 			ret = -ENOMEM;
-			goto out;
+			goto out1;
 		}
 		uuid_copy(uuid, &args->xclbin_id);
 		client->xclbin_id = uuid;
@@ -211,12 +211,14 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	xocl_ctx_to_info(args, &info);
 	ret = kds_add_context(&XDEV(xdev)->kds, client, &info);
 
-out:
+out1:
+	/* If client still has no opened context at this point */
 	if (!client->num_ctx) {
 		vfree(client->xclbin_id);
 		client->xclbin_id = NULL;
 		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
 	}
+out:
 	mutex_unlock(&client->lock);
 	return ret;
 }
@@ -300,6 +302,9 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		ecmd->state = ERT_CMD_STATE_ABORT;
 
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
+
+	if (xcmd->cu_idx >= 0)
+		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
 		int error = (status == ERT_CMD_STATE_COMPLETED)?0:-EFAULT;
@@ -527,7 +532,12 @@ int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 
 	switch (op) {
 	case DRM_XOCL_CTX:
+		/* Open/close context would lock/unlock bitstream.
+		 * This and download xclbin are mutually exclusive.
+		 */
+		mutex_lock(&xdev->dev_lock);
 		ret = xocl_context_ioctl(xdev, data, filp);
+		mutex_unlock(&xdev->dev_lock);
 		break;
 	case DRM_XOCL_EXECBUF:
 		ret = xocl_command_ioctl(xdev, data, filp, false);
@@ -713,7 +723,7 @@ int xocl_kds_update(struct xocl_dev *xdev)
 	 *
 	 * So, please make sure this is called after subdev init.
 	 */
-	if (xocl_ert_30_ert_intr_cfg(xdev) == -ENODEV) {
+	if (xocl_ert_user_ert_intr_cfg(xdev) == -ENODEV) {
 		userpf_info(xdev, "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
 	} else {

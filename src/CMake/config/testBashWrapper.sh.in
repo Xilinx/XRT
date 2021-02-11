@@ -1,0 +1,52 @@
+#!/bin/bash
+# This is an automated generated script that is used run XRT unit tests
+# and capture the resulting outputs
+
+# Working variables
+log_file="@RUN_BASE_LOG@"
+setup_script="@SETUP_SCRIPT@"
+test_directory="@TEST_DIRECTORY@"
+
+# -- Create our log file
+echo ">>> Start of unit test <<<" > "$log_file"
+
+# -- Prepare the test environment
+. $setup_script >> "$log_file" 2>&1
+errorCode=$?
+
+# -- Execute the test
+if test $errorCode -eq 0
+then
+  @TEST_COMMAND@ >> "$log_file" 2>&1
+  errorCode=$?
+fi
+
+# -- End of the unit tests
+echo ">>> End of unit test <<<" >> "$log_file"
+
+# On failure, report the log file to the console
+if test $errorCode -ne 0
+then
+  cat "$log_file"
+fi
+
+
+# Header info
+echo " " | tee -a "$log_file"
+echo "========================================================================" | tee -a "$log_file"
+echo "Test Directory    :" "$test_directory" | tee -a "$log_file"
+echo "Log File          :" "$log_file" | tee -a "$log_file"
+
+# Determine test status
+echo 'Error Return Code :' $errorCode | tee -a "$log_file"
+
+if test $errorCode -ne 0
+then
+  echo 'Test Status       : FAILED' | tee -a "$log_file"
+else
+  echo 'Test Status       : PASSED' | tee -a "$log_file"
+fi
+
+echo "========================================================================" | tee -a "$log_file"
+
+exit $errorCode

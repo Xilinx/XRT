@@ -1,7 +1,6 @@
+
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
- * Author(s): Min Ma	<min.ma@xilinx.com>
- *          : Larry Liu	<yliu@xilinx.com>
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,21 +15,17 @@
  * under the License.
  */
 
-#ifndef __SK_RUNNER_H_
-#define __SK_RUNNER_H_
+#ifndef __GLOBALS_h_
+#define __GLOBALS_h_
+#include <string>
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <syslog.h>
+namespace TestUtilities {
 
-#include "xclhal2_mpsoc.h"
+  void setResourceDir(const std::string &resourceDir);
+  std::string getResourceDir();
 
-xclDeviceHandle initXRTHandle(unsigned deviceIndex);
-void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd);
+  void setIsQuiet(bool isQuiet);
+  bool isQuiet();
+}
 
 #endif

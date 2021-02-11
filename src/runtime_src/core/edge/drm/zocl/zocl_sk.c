@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Larry Liu       <yliu@xilinx.com>
@@ -41,19 +41,40 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	list_del(&scmd->skc_list);
 	mutex_unlock(&sk->sk_lock);
 
-	kdata->opcode = scmd->skc_packet->opcode;
+	kdata->opcode = scmd->skc_opcode;
 
 	if (kdata->opcode == ERT_SK_CONFIG) {
-		struct ert_configure_sk_cmd *cmd;
+		struct config_sk_image *cmd;
+		u32 bohdl = 0xffffffff;
+		int i, ret;
+
+		cmd = scmd->skc_packet;
+
+		for (i = 0; i < sk->sk_nimg; i++) {
+			if (cmd->start_cuidx > sk->sk_img[i].si_end)
+				continue;
+
+			if (sk->sk_img[i].si_bohdl >= 0) {
+				bohdl = sk->sk_img[i].si_bohdl;
+				break;
+			}
+
+			ret = drm_gem_handle_create(filp,
+			    &sk->sk_img[i].si_bo->cma_base.base, &bohdl);
+
+			if (ret) {
+				DRM_WARN("%s Failed create BO handle: %d\n",
+				    __func__, ret);
+				bohdl = 0xffffffff;
+			}
+
+			break;
+		}
 
 		/* Copy the command to ioctl caller */
-		cmd = (struct ert_configure_sk_cmd *)scmd->skc_packet;
 		kdata->start_cuidx = cmd->start_cuidx;
 		kdata->cu_nums = cmd->num_cus;
-		kdata->size = cmd->sk_size;
-
-		/* soft kernel's physical address (little endian) */
-		kdata->paddr = cmd->sk_addr;
+		kdata->bohdl = bohdl;
 
 		snprintf(kdata->name, ZOCL_MAX_NAME_LENGTH, "%s",
 		    (char *)cmd->sk_name);
@@ -140,7 +161,7 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 
 	scu = sk->sk_cu[args->cu_idx];
 	if (!scu) {
-		DRM_ERROR("CU %d does not exist. \n", cu_idx);
+		DRM_ERROR("CU %d does not exist.\n", cu_idx);
 		mutex_unlock(&sk->sk_lock);
 		return -EINVAL;
 	}
@@ -166,17 +187,10 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 			return ret;
 		}
 
-		if (ret || scu->sc_flags & ZOCL_SCU_FLAGS_RELEASE) {
-			/*
-			 * If we are interrupted or explictly
-			 * told to exit.
-			 */
-			ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(scu->gem_obj);
-			kfree(sk->sk_cu[args->cu_idx]);
-			sk->sk_cu[args->cu_idx] = NULL;
-
+		if (ret) {
+			/* We are interrupted */
 			mutex_unlock(&sk->sk_lock);
-			return ret ? ret : -ESRCH;
+			return ret;
 		}
 
 		/* Clear Bit 1 and set Bit 0 */
@@ -203,7 +217,7 @@ zocl_init_soft_kernel(struct drm_device *drm)
 	struct drm_zocl_dev *zdev = drm->dev_private;
 	struct soft_krnl *sk;
 
-	sk = devm_kzalloc(drm->dev, sizeof (*sk), GFP_KERNEL);
+	sk = devm_kzalloc(drm->dev, sizeof(*sk), GFP_KERNEL);
 	if (!sk)
 		return -ENOMEM;
 
@@ -221,6 +235,7 @@ zocl_fini_soft_kernel(struct drm_device *drm)
 	struct drm_zocl_dev *zdev = drm->dev_private;
 	struct soft_krnl *sk;
 	u32 cu_idx;
+	int i;
 
 	sk = zdev->soft_kernel;
 	mutex_lock(&sk->sk_lock);
@@ -232,6 +247,11 @@ zocl_fini_soft_kernel(struct drm_device *drm)
 		kfree(sk->sk_cu[cu_idx]);
 		sk->sk_cu[cu_idx] = NULL;
 	}
+
+	for (i = 0; i < sk->sk_nimg; i++)
+		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&sk->sk_img[i].si_bo->gem_base);
+	kfree(sk->sk_img);
+
 	mutex_unlock(&sk->sk_lock);
 	mutex_destroy(&sk->sk_lock);
 }
