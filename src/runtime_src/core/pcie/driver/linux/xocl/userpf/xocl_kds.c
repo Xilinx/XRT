@@ -723,7 +723,7 @@ int xocl_kds_update(struct xocl_dev *xdev)
 	 *
 	 * So, please make sure this is called after subdev init.
 	 */
-	if (xocl_ert_30_ert_intr_cfg(xdev) == -ENODEV) {
+	if (xocl_ert_user_ert_intr_cfg(xdev) == -ENODEV) {
 		userpf_info(xdev, "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
 	} else {
