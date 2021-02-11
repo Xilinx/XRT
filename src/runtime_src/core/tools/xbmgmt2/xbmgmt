@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (C) 2020-2021 Xilinx, Inc.
+#
+
 # -- Detect a Windows environment and automatically switch to the .bat file
 if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   trap "" INT
@@ -7,23 +13,72 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   exit $?
 fi
 
+DEFAULT=xbmgmt
+XBMGMT=xbmgmt
+XBMGMT2=xbmgmt2
+
+# Table to resolve reset sub-command based on switch passed to reset
+declare -A RSTOPT=( \
+        ["--hot"]="XBMGMT" \
+        ["--kernel"]="XBMGMT" \
+        ["--ecc"]="XBMGMT" \
+        ["--softkernel"]="XBMGMT" \
+        ["--ert"]="XBMGMT" \
+        ["--card"]="XBMGMT" \
+        ["--force"]="XBMGMT" \
+        ["--device"]="XBMGMT2" \
+        ["--type"]="XBMGMT2" \
+        ["--help"]="XBMGMT2" \
+        ["-d"]="XBMGMT2" \
+        ["-r"]="XBMGMT2" \
+        ["-h"]="XBMGMT2" \
+    )
+
+# In the following table "reset" points to a second table by name
+# Note that reset is valid both for classic and next generation tool
+# and hence requires a second lookup to resolve between xbmgmt and xbmgmt2
+declare -A COMMANDS=( \
+        ["help"]="XBMGMT" \
+        ["version"]="XBMGMT" \
+        ["--version"]="XBMGMT" \
+        ["scan"]="XBMGMT" \
+        ["flash"]="XBMGMT" \
+        ["-lash"]="XBMGMT" \
+        ["reset"]="RSTOPT" \
+        ["clock"]="XBMGMT" \
+        ["partition"]="XBMGMT" \
+        ["config"]="XBMGMT" \
+        ["nifd"]="XBMGMT" \
+        ["hotplug"]="XBMGMT" \
+        ["examine"]="XBMGMT2" \
+        ["program"]="XBMGMT2" \
+        ["advanced"]="XBMGMT2" \
+        ["--help"]="XBMGMT2" \
+        ["--verbose"]="XBMGMT2" \
+        ["--batch"]="XBMGMT2" \
+        ["-h"]="XBMGMT2" \
+        ["-v"]="XBMGMT2" \
+        ["-b"]="XBMGMT2" \
+    )
+
+
 # Working variables
-XRT_PROG=xbmgmt
+XRT_PROG=${DEFAULT}
 
 # Determine which version of xbmgmt should be used
 # Check to see environment variable is NOT set
-if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then 
+if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then
   XRT_PROG=xbmgmt
 elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
      XRT_PROG=xbmgmt2
 fi
 
-# -- Examine the options
+# Examine the options and look for -new/--new
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    # Indicates that the new version of xbutil (e.g., xbutil2) should be used
+    # Indicates that the new version of xbmgmt (e.g., xbmgmt2) should be used
     -new|--new)
       XRT_PROG=xbmgmt2
       shift
@@ -36,6 +91,39 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+
+# If user did not specify -new/--new then attempt to determine if user
+# wants to use classic or new by peeking inside the command line
+# Ideally with bash 'nameref' the case/esac would not be necessary and
+# we should be able to deref in one step using helper declaration like
+# declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+# However RHEL 7.X still uses bash 4.2 which does not support nameref :-(
+
+if [ ${XRT_PROG} == "xbmgmt" ]; then
+  PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+  case ${PROG} in
+    XBMGMT | XBMGMT2)
+      # Get named reference to the value pointed by the string returned
+      XRT_PROG=${!PROG}
+      ;;
+    RSTOPT)
+      # We have an ambiguous sub-command, use the next token/switch to
+      # disambiguate by a second look up
+      if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
+        PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+        XRT_PROG=${!PROG}
+      else
+        # User did not provide switch to the sub-command so we cannot
+        # disabmiguate, default to DEFAULT
+        XRT_PROG=${DEFAULT}
+      fi
+      ;;
+    *)
+      # Bogus sub-command which failed lookup
+      XRT_PROG=${DEFAULT}
+      ;;
+  esac
+fi
 
 # Friendly message
 if [ ${XRT_PROG} == "xbmgmt2" ]; then
