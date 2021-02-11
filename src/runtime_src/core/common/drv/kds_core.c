@@ -62,7 +62,7 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
 				xcu->info.kname, xcu->info.iname,
 				xcu->info.addr, xcu->status,
-				cu_mgmt->cu_usage[i]);
+				cu_stat_read(cu_mgmt, usage[i]));
 	}
 	mutex_unlock(&cu_mgmt->lock);
 
@@ -96,8 +96,8 @@ ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 	for (i = 0; i < cu_mgmt->num_cus; ++i) {
 		shared = !(cu_mgmt->cu_refs[i] & CU_EXCLU_MASK);
 		ref = cu_mgmt->cu_refs[i] & ~CU_EXCLU_MASK;
-		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt,
-				i, cu_mgmt->cu_usage[i], shared, ref,
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
+				cu_stat_read(cu_mgmt, usage[i]), shared, ref,
 				(cu_mgmt->cu_intr[i])? "enable" : "disable");
 	}
 	mutex_unlock(&cu_mgmt->lock);
@@ -178,6 +178,8 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	uint8_t valid_cus[MAX_CUS];
 	int num_valid = 0;
 	uint8_t index;
+	u64 usage;
+	u64 min_usage;
 	int i;
 
 	num_marked = cu_mask_to_cu_idx(xcmd, user_cus);
@@ -196,30 +198,27 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 
 	if (num_valid == 1) {
 		index = valid_cus[0];
-		mutex_lock(&cu_mgmt->lock);
 		goto out;
 	} else if (num_valid == 0) {
 		kds_err(client, "All CUs in mask are out of context");
 		return -EINVAL;
 	}
 
-	/* There are more than one valid candidate
-	 * TODO: test if the lock impact the performance on multi processes
-	 */
-	mutex_lock(&cu_mgmt->lock);
+	/* Find out the CU with minimum usage */
 	for (i = 1, index = valid_cus[0]; i < num_valid; ++i) {
-		if (cu_mgmt->cu_usage[valid_cus[i]] < cu_mgmt->cu_usage[index])
+		usage = cu_stat_read(cu_mgmt, usage[valid_cus[i]]);
+		min_usage = cu_stat_read(cu_mgmt, usage[index]);
+		if (usage < min_usage)
 			index = valid_cus[i];
 	}
 
 out:
-	++cu_mgmt->cu_usage[index];
-	mutex_unlock(&cu_mgmt->lock);
-	client->s_cnt[index]++;
+	cu_stat_inc(cu_mgmt, usage[index]);
+	client_stat_inc(client, s_cnt[index]);
 	xcmd->cu_idx = index;
 	/* Before it go, make sure selected CU is still opening. */
 	if (unlikely(!test_bit(index, client->cu_bitmap))) {
-		client->s_cnt[index]--;
+		client_stat_dec(client, s_cnt[index]);
 		index = -EAGAIN;
 	}
 
@@ -370,7 +369,8 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	int cu_idx = info->cu_idx;
-	unsigned long outstanding;
+	unsigned long submitted;
+	unsigned long completed;
 	bool bad_state = false;
 
 	if (cu_idx >= cu_mgmt->num_cus) {
@@ -384,8 +384,9 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	/* Before close, make sure no remain commands in CU's queue. */
-	outstanding = client->s_cnt[cu_idx] - READ_ONCE(client->c_cnt[cu_idx]);
-	if (!outstanding)
+	submitted = client_stat_read(client, s_cnt[cu_idx]);
+	completed = client_stat_read(client, c_cnt[cu_idx]);
+	if (submitted == completed)
 		goto skip;
 
 	if (!kds->ert_disable)
@@ -396,10 +397,11 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	/* sub-device that handle command should do abort with a timeout */
 	do {
 		kds_warn(client, "%ld outstanding command(s) on CU(%d)",
-			 outstanding, cu_idx);
+			 submitted - completed, cu_idx);
 		msleep(500);
-		outstanding = client->s_cnt[cu_idx] - READ_ONCE(client->c_cnt[cu_idx]);
-	} while(outstanding);
+		submitted = client_stat_read(client, s_cnt[cu_idx]);
+		completed = client_stat_read(client, c_cnt[cu_idx]);
+	} while (submitted != completed);
 
 	if (!kds->ert_disable)
 		bad_state = kds->ert->abort_done(kds->ert, client, cu_idx);
@@ -425,6 +427,10 @@ skip:
 
 int kds_init_sched(struct kds_sched *kds)
 {
+	kds->cu_mgmt.cu_stats = alloc_percpu(struct cu_stats);
+	if (!kds->cu_mgmt.cu_stats)
+		return -ENOMEM;
+
 	INIT_LIST_HEAD(&kds->clients);
 	mutex_init(&kds->lock);
 	mutex_init(&kds->cu_mgmt.lock);
@@ -441,6 +447,8 @@ void kds_fini_sched(struct kds_sched *kds)
 {
 	mutex_destroy(&kds->lock);
 	mutex_destroy(&kds->cu_mgmt.lock);
+
+	free_percpu(kds->cu_mgmt.cu_stats);
 }
 
 struct kds_command *kds_alloc_command(struct kds_client *client, u32 size)
@@ -526,6 +534,10 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 
 int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 {
+	client->stats = alloc_percpu(struct client_stats);
+	if (!client->stats)
+		return -ENOMEM;
+
 	client->pid = get_pid(task_pid(current));
 	mutex_init(&client->lock);
 
@@ -602,6 +614,8 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	if (!kds->num_client)
 		kds->cu_mgmt.configured = 0;
 	mutex_unlock(&kds->lock);
+
+	free_percpu(client->stats);
 }
 
 int kds_add_context(struct kds_sched *kds, struct kds_client *client,
@@ -767,7 +781,7 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 
 		--cu_mgmt->num_cus;
 		cu_mgmt->xcus[i] = NULL;
-		cu_mgmt->cu_usage[i] = 0;
+		cu_stat_write(cu_mgmt, usage[i], 0);
 
 		/* m2m cu */
 		if (xcu->info.intr_id == M2M_CU_ID)

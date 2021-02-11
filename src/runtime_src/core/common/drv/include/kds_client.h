@@ -20,10 +20,12 @@
 #include <linux/uuid.h>
 
 #include "xrt_cu.h"
+#include "kds_stat.h"
 
 #define PRE_ALLOC 0
 
 #define EV_ABORT	0x1
+
 
 /**
  * struct kds_client: Manage user client
@@ -51,12 +53,15 @@ struct kds_client {
 	int			  num_ctx;
 	int			  virt_cu_ref;
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
+	/* Per client statistics. Use percpu variable for two reasons
+	 * 1. no lock is need while modifying these counters
+	 * 2. do not need to worry about cache false share
+	 */
+	struct client_stats __percpu *stats;
 
 	struct list_head	  ev_entry;
 	int			  ev_type;
 
-	/* Per CU counter that counts when a command is submitted to CU */
-	unsigned long		  s_cnt[MAX_CUS] ____cacheline_aligned_in_smp;
 #if PRE_ALLOC
 	u32			  max_xcmd;
 	u32			  xcmd_idx;
@@ -68,10 +73,18 @@ struct kds_client {
 	 * In order to prevent false sharing, they need to be in different
 	 * cache lines.
 	 */
-	/* Per CU counter that counts when a command is completed or error */
-	unsigned long		  c_cnt[MAX_CUS] ____cacheline_aligned_in_smp;
-	wait_queue_head_t	  waitq;
+	wait_queue_head_t	  waitq ____cacheline_aligned_in_smp;
 	atomic_t		  event;
 };
+
+/* Macros to operates client statistics */
+#define client_stat_read(client, field) \
+	stat_read((client)->stats, field)
+
+#define client_stat_inc(client, field) \
+	this_stat_inc((client)->stats, field)
+
+#define client_stat_dec(client, field) \
+	this_stat_dec((client)->stats, field)
 
 #endif

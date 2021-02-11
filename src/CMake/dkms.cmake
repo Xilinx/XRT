@@ -275,6 +275,7 @@ SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
   common/drv/include/kds_client.h
   common/drv/include/xrt_cu.h
   common/drv/include/xrt_xclbin.h
+  common/drv/include/kds_stat.h
   )
 
 SET (XRT_DKMS_ABS_SRCS)
