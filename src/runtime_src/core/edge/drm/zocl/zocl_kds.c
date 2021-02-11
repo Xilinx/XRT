@@ -191,7 +191,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 
 	if (xcmd->cu_idx >= 0)
-		client->c_cnt[xcmd->cu_idx]++;
+		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
 
 	atomic_inc(&client->event);
 	wake_up_interruptible(&client->waitq);
