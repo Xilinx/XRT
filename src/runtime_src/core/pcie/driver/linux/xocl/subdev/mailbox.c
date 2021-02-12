@@ -363,6 +363,7 @@ struct mailbox_channel {
 	/*
 	 * Software channel settings
 	 */
+	bool			sw_chan_wq_inited;
 	wait_queue_head_t	sw_chan_wq;
 	struct mutex		sw_chan_mutex;
 	void			*sw_chan_buf;
@@ -933,8 +934,10 @@ static void chan_fini(struct mailbox_channel *ch)
 	}
 
 	mutex_lock(&ch->sw_chan_mutex);
-	if (ch->sw_chan_buf != NULL)
+	if (ch->sw_chan_buf != NULL)  {
 		vfree(ch->sw_chan_buf);
+		ch->sw_chan_buf = NULL;
+	}
 	mutex_unlock(&ch->sw_chan_mutex);
 
 	msg = ch->mbc_cur_msg;
@@ -972,7 +975,10 @@ static int chan_init(struct mailbox *mbx, enum mailbox_chan_type type,
 	mutex_lock(&ch->sw_chan_mutex);
 	cleanup_sw_ch(ch);
 	mutex_unlock(&ch->sw_chan_mutex);
-	init_waitqueue_head(&ch->sw_chan_wq);
+	if (!ch->sw_chan_wq_inited) {
+		init_waitqueue_head(&ch->sw_chan_wq);
+		ch->sw_chan_wq_inited = true;
+	}
 	atomic_set(&ch->sw_num_pending_msg, 0);
 
 	/* One timer for one channel. */
