@@ -244,8 +244,8 @@ namespace xdp {
     devInfo->ctxInfo = xrt_core::config::get_kernel_channel_info();
 
     if (!setXclbinName(currentXclbin, device)) {
-      delete currentXclbin ;
-      return;
+      // If there is no SYSTEM_METADATA section, use a default name
+      currentXclbin->name = "default.xclbin" ;
     }
     if (!initializeComputeUnits(currentXclbin, device)) {
       delete currentXclbin ;
