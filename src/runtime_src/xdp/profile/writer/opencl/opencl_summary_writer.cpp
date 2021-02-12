@@ -1002,7 +1002,7 @@ namespace xdp {
 	    {
 	      fout << (totalWriteTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
@@ -1042,7 +1042,7 @@ namespace xdp {
 	    {
 	      fout << (totalReadTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
@@ -1130,7 +1130,7 @@ namespace xdp {
 	    {
 	      fout << (totalWriteTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
@@ -1170,7 +1170,7 @@ namespace xdp {
 	    {
 	      fout << (totalReadTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
@@ -1258,7 +1258,7 @@ namespace xdp {
 	    {
 	      fout << (totalWriteTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
@@ -1298,7 +1298,7 @@ namespace xdp {
 	    {
 	      fout << (totalReadTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
