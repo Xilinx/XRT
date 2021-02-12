@@ -875,6 +875,10 @@ namespace xdp {
             Monitor* monitor = (db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmMonitorId) ;
             
             uint64_t numTranx = values.StrNumTranx[ASMIndex] ;
+            uint64_t busyCycles = values.StrBusyCycles[ASMIndex];
+            if(0 >= busyCycles || 0 == numTranx) {
+              continue;
+            }
             
             std::string masterPort = "" ;
             std::string slavePort = "" ;
@@ -896,16 +900,15 @@ namespace xdp {
               slaveArgs = secondHalf.substr(slashPosition + 1, secondHalf.size()-slashPosition-1) ;
             }
             
-            double transferTime =
-            values.StrBusyCycles[ASMIndex] / xclbin->clockRateMHz ;
-            double transferRate = (transferTime == 0.0) ? 0 :
-            values.StrDataBytes[ASMIndex] / transferTime ;
+            double transferTime = busyCycles / xclbin->clockRateMHz ;
+            double transferRate = (transferTime == 0.0) ? 0 : values.StrDataBytes[ASMIndex] / transferTime ;
             
             double linkStarve =
-            (double)(values.StrStarveCycles[ASMIndex]) / (double)(values.StrBusyCycles[ASMIndex]) * 100.0 ;
+                (double)(values.StrStarveCycles[ASMIndex]) / (double)(busyCycles) * 100.0 ;
             double linkStall =
-            (double)(values.StrStallCycles[ASMIndex]) / (double)(values.StrBusyCycles[ASMIndex]) * 100.0 ;
+                (double)(values.StrStallCycles[ASMIndex]) / (double)(busyCycles) * 100.0 ;
             double linkUtil = 100.0 - linkStarve - linkStall ;
+            double avgSizeInKB = ((values.StrDataBytes[ASMIndex] / numTranx)) / 1000.0;
             
             fout << (device->deviceName) << ","
                  << masterPort << ","
@@ -914,10 +917,10 @@ namespace xdp {
                  << slaveArgs << ","
                  << numTranx << ","
                  << transferRate << ","
-                 << (values.StrDataBytes[ASMIndex] / numTranx) << ","
+                 << avgSizeInKB << ","
                  << linkUtil << "," 
-                 << (values.StrStarveCycles[ASMIndex]) << ","
-                 << (values.StrStallCycles[ASMIndex]) << ","
+                 << linkStarve << ","
+                 << linkStall << ","
                  << std::endl ;
             
             ++ASMIndex ;
