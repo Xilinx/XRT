@@ -364,8 +364,10 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 		if (flag & XOCL_RESET_NO)
 			return 0;
 
-		xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
+		mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 			&ret, &resplen, NULL, NULL, 0, 6);
+		if (mbret)
+			xocl_reset_notify(xdev->core.pdev, false);
 		/* userpf will back online till receiving mgmtpf notification */
 
 		return 0;
