@@ -265,29 +265,75 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   // log xclbin path for debugging purposes
   logger(_ptTest, "Xclbin", xclbinPath);
 
-  //check if testcase is present
-  std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
-  boost::filesystem::path xrt_path(xrtTestCasePath);
-  if (!boost::filesystem::exists(xrt_path)) {
-    logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
-    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-    _ptTest.put("status", "failed");
-    return;
-  }
-  // log testcase path for debugging purposes
-  logger(_ptTest, "Testcase", xrtTestCasePath);
+  auto json_exists = [xclbinPath]() { 
+    return boost::filesystem::exists(xclbinPath + "platform.json") ? true : false; 
+  };
 
-  std::vector<std::string> args = { "-k", xclbinPath, "-d", std::to_string(_dev.get()->get_device_id()) };
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
-  int exit_code = XBU::runPythonScript(xrtTestCasePath, args, os_stdout, os_stderr);
-  if (exit_code != 0) {
-    logger(_ptTest, "Error", os_stdout.str());
-    logger(_ptTest, "Error", os_stderr.str());
-    _ptTest.put("status", "failed");
+
+  if(json_exists()) {
+    //map old testcase names to new testcase names
+    static const std::map<std::string, std::string> test_map = {
+      { "22_verify.py",             "validate.exe"    },
+      { "23_bandwidth.py",          "kernel_bw.exe"   },
+      { "host_mem_23_bandwidth.py", "slavebridge.exe" }
+    };
+        
+    if (test_map.find(py) == test_map.end()) {
+      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % py));
+      _ptTest.put("status", "failed");
+      return;
+    }
+    
+    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_map.find(py)->second;
+    boost::filesystem::path xrt_path(xrtTestCasePath);
+    if (!boost::filesystem::exists(xrt_path)) {
+      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+      logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+      _ptTest.put("status", "failed");
+      return;
+    }
+
+    // log testcase path for debugging purposes
+    logger(_ptTest, "Testcase", xrtTestCasePath);
+
+    std::vector<std::string> args = { "-k", xclbinPath, "-d", 
+                                      xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
+    int exit_code = XBU::runScript("bash", xrtTestCasePath, args, os_stdout, os_stderr);
+    if (exit_code != 0) {
+      logger(_ptTest, "Error", os_stdout.str());
+      logger(_ptTest, "Error", os_stderr.str());
+      _ptTest.put("status", "failed");
+    }
+    else {
+      _ptTest.put("status", "passed");
+    }
   }
-  else {
-    _ptTest.put("status", "passed");
+  else {  
+    //check if testcase is present
+    std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
+    boost::filesystem::path xrt_path(xrtTestCasePath);
+    if (!boost::filesystem::exists(xrt_path)) {
+      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+      logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+      _ptTest.put("status", "failed");
+      return;
+    }
+    // log testcase path for debugging purposes
+    logger(_ptTest, "Testcase", xrtTestCasePath);
+
+    std::vector<std::string> args = { "-k", xclbinPath, "-d", std::to_string(_dev.get()->get_device_id()) };
+    
+    int exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
+    if (exit_code != 0) {
+      logger(_ptTest, "Error", os_stdout.str());
+      logger(_ptTest, "Error", os_stderr.str());
+      _ptTest.put("status", "failed");
+    }
+    else {
+      _ptTest.put("status", "passed");
+    }
   }
 
   // Get out max thruput for bandwidth testcase
