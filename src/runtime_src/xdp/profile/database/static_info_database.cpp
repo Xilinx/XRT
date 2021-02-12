@@ -151,6 +151,63 @@ namespace xdp {
     }
   }
 
+  bool VPStaticDatabase::validXclbin(void* devHandle)
+  {
+    std::shared_ptr<xrt_core::device> device =
+      xrt_core::get_userpf_device(devHandle);
+
+    // If this xclbin was built with tools before the 2019.2 release, we
+    //  do not support profiling
+    std::pair<const char*, size_t> buildMetadata =
+      device->get_axlf_section(BUILD_METADATA);
+    const char* buildMetadataSection = buildMetadata.first;
+    size_t      buildMetadataSz      = buildMetadata.second;
+    if (buildMetadataSection != nullptr) {
+      std::stringstream ss ;
+      ss.write(buildMetadataSection, buildMetadataSz) ;
+
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+
+      std::string version =
+	pt.get<std::string>("build_metadata.xclbin.generated_by.version", "") ;
+
+      if (version == "" || version.find(".") == std::string::npos)
+	return false ;
+
+      auto firstDotPosition = version.find(".") ;
+      std::string major = version.substr(0, firstDotPosition) ;
+
+      auto secondDotPosition = version.find(".", firstDotPosition + 1);
+      std::string minor ;
+      if (secondDotPosition != std::string::npos) {
+	minor = version.substr(firstDotPosition + 1,
+			       secondDotPosition - (firstDotPosition + 1)) ;
+      }
+      else {
+	minor = version.substr(firstDotPosition + 1,
+			       version.size() - (firstDotPosition + 1)) ;
+      }
+
+      int majorValue ;
+      int minorValue ;
+
+      std::stringstream convert ;
+      convert << major ;
+      convert >> majorValue >> std::ws ;
+      convert.clear() ;
+      convert << minor ;
+      convert >> minorValue >> std::ws ;
+
+      if (majorValue < 2019) return false ;
+      if (majorValue == 2019 && minorValue < 2) return false ;
+      return true ;
+    }
+
+    // If the build section does not exist, then this is not a valid xclbin
+    return false ;
+  }
+
   std::vector<std::string> VPStaticDatabase::getDeviceNames()
   {
     std::vector<std::string> deviceNames ;

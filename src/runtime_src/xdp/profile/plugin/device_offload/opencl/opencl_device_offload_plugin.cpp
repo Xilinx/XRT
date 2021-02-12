@@ -20,6 +20,7 @@
 
 // Includes from xrt_coreutil
 #include "core/common/system.h"
+#include "core/common/message.h"
 
 // Includes from xilinxopencl
 #include "xocl/core/platform.h"
@@ -220,6 +221,13 @@ namespace xdp {
 
     clearOffloader(deviceId);
 
+    if (!(db->getStaticInfo()).validXclbin(device->get_xcl_handle())) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning,
+			      "XRT",
+			      "Device profiling is no longer supported on this xclbin.  To enable device profiling please rebuild with the current version of the tools.") ;
+      return ;
+    }
+
     // Update the static database with all the information that will
     //  be needed later.
     (db->getStaticInfo()).updateDevice(deviceId, device->get_xcl_handle()) ;
@@ -277,7 +285,9 @@ namespace xdp {
     // OpenCL specific info 1: Argument lists for each monitor
     // *******************************************************
     DeviceInfo* storedDevice = (db->getStaticInfo()).getDeviceInfo(deviceId) ;
-    XclbinInfo* xclbin = storedDevice->loadedXclbins.back() ;
+    if (storedDevice == nullptr) return ;
+    XclbinInfo* xclbin = storedDevice->currentXclbin() ;
+    if (xclbin == nullptr) return ;
     for (auto iter : xclbin->cus)
     {
       ComputeUnitInstance* cu = iter.second ;

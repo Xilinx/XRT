@@ -22,6 +22,7 @@
 
 // For HAL applications
 #include "core/common/xrt_profiling.h"
+#include "core/common/message.h"
 
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
 
@@ -185,6 +186,13 @@ namespace xdp {
     void* ownedHandle = deviceIdToHandle[deviceId] ;
   
     clearOffloader(deviceId); 
+
+    if (!(db->getStaticInfo()).validXclbin(userHandle)) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning,
+			      "XRT",
+			      "Device profiling is no longer supported on this xclbin.  to enable dvice profiling please rebuild with the current version of the tools.") ;
+      return ;
+    }
     
     // Update the static database with all the information that
     //  will be needed later
