@@ -352,6 +352,29 @@ struct ert_abort_cmd {
   };
 };
 
+
+
+struct ert_mb_validate_cmd {
+  union {
+    struct {
+      uint32_t state:4;          /* [3-0]   */
+      uint32_t unused:11;        /* [14-4]  */
+      uint32_t idx:8;            /* [22-15] */
+      uint32_t opcode:5;         /* [27-23] */
+      uint32_t type:4;           /* [31-27] */
+    };
+    uint32_t header;
+  };
+  uint32_t timestamp;
+  uint32_t cq_read_single;
+  uint32_t cq_write_single;
+  uint32_t cu_read_single;
+  uint32_t cu_write_single;
+  uint32_t memcpy_128;
+  uint32_t memcpy_512;
+  uint32_t irq_latency;
+};
+
 /**
  * ERT command state
  *
@@ -414,6 +437,7 @@ enum ert_cmd_opcode {
   ERT_SK_UNCONFIG   = 10,
   ERT_INIT_CU       = 11,
   ERT_START_FA      = 12,
+  ERT_CLK_CALIB     = 13,
 };
 
 /**
@@ -641,6 +665,13 @@ uint32_t ert_base_addr = 0;
 #define ERT_INTC_CU_96_127_IER            (ERT_INTC_CU_96_127_ADDR + 0x8)  /* enable */
 #define ERT_INTC_CU_96_127_IAR            (ERT_INTC_CU_96_127_ADDR + 0x0C) /* acknowledge */
 #define ERT_INTC_CU_96_127_MER            (ERT_INTC_CU_96_127_ADDR + 0x1C) /* master enable */
+
+
+#if defined(ERT_BUILD_V30)
+# define ERT_CLK_COUNTER_ADDR              0x1F70000
+#else
+# define ERT_CLK_COUNTER_ADDR              0x0
+#endif
 
 /*
 * Used in driver and user space code

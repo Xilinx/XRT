@@ -146,16 +146,21 @@ struct xocl_ert_user {
 	uint32_t 		ert_dmsg;
 	uint32_t		echo;
 	uint32_t		intr;
+	uint32_t		clock_timestamp;
 };
 
-static ssize_t name_show(struct device *dev,
+static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd);
+static uint32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type);
+
+static ssize_t clock_timestamp_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
 {
-	//struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
-	return sprintf(buf, "ert_user");
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%u\n", ert_user->clock_timestamp);
 }
 
-static DEVICE_ATTR_RO(name);
+static DEVICE_ATTR_RO(clock_timestamp);
 
 static ssize_t snap_shot_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
@@ -229,7 +234,7 @@ static ssize_t ert_intr_store(struct device *dev,
 static DEVICE_ATTR_WO(ert_intr);
 
 static struct attribute *ert_user_attrs[] = {
-	&dev_attr_name.attr,
+	&dev_attr_clock_timestamp.attr,
 	&dev_attr_ert_dmsg.attr,
 	&dev_attr_snap_shot.attr,
 	&dev_attr_ert_echo.attr,
@@ -374,6 +379,11 @@ done:
 	return curr;
 }
 
+static inline bool ert_special_cmd(struct ert_user_command *ecmd)
+{
+	return cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK 
+		|| cmd_opcode(ecmd) == OP_CLK_CALIB;
+}
 /*
  * release_slot_idx() - Release specified slot idx
  */
@@ -395,7 +405,7 @@ ert_release_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 	if (ecmd->slot_idx == no_index)
 		return;
 
-	if (cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK) {
+	if (ert_special_cmd(ecmd)) {
 		ERTUSER_DBG(ert_user, "do nothing %s\n", __func__);
 		ert_user->ctrl_busy = false;
 		ert_user->config = true;	
@@ -404,6 +414,21 @@ ert_release_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 		ert_release_slot_idx(ert_user, ecmd->slot_idx);
 	}
 	ecmd->slot_idx = no_index;
+}
+
+
+static void
+ert_post_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
+{
+	struct ert_mb_validate_cmd cmd = {0}; 
+
+	if (unlikely(ert_special_cmd(ecmd)))
+		return;
+
+	if (cmd_opcode(ecmd) == OP_CLK_CALIB) {
+		memcpy(&cmd, ert_user->cq_base, sizeof(struct ert_mb_validate_cmd));
+		ert_user->clock_timestamp = cmd.timestamp;
+	}
 }
 
 /**
@@ -424,6 +449,7 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 		ecmd = list_first_entry(&ert_user->cq, struct ert_user_command, list);
 		list_del(&ecmd->list);
 		xcmd = ecmd->xcmd;
+		ert_post_process(ert_user, ecmd);
 		ert_release_slot(ert_user, ecmd);
 		xcmd->cb.notify_host(xcmd, ecmd->status);
 		xcmd->cb.free(xcmd);
@@ -516,8 +542,11 @@ ert_user_isr(int irq, void *arg)
 	if (!ert_user->polling_mode) {
 
 		ecmd = ert_user->submit_queue[irq];
-		if (ecmd)
+		if (ecmd) {
 			ecmd->completed = true;
+		} else {
+			ERTUSER_ERR(ert_user, "not in submitted queue %d\n", irq);
+		}
 
 		up(&ert_user->sem);
 		/* wake up all scheduler ... currently one only */
@@ -658,7 +687,7 @@ static int
 ert_acquire_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 {
 	// slot 0 is reserved for ctrl commands
-	if (cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK) {
+	if (ert_special_cmd(ecmd)) {
 		set_bit(0, ert_user->slot_status);
 
 		if (ert_user->ctrl_busy) {
