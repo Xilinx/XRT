@@ -816,6 +816,9 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 				++ert_user->num_cq;
 				continue;
 			}
+		} else if (cmd_opcode(ecmd) == OP_START) {
+			if (ert_user->ctrl_busy || !ert_user->config)
+				return 0;
 		}
 
 		if (ert_acquire_slot(ert_user, ecmd) == no_index) {
