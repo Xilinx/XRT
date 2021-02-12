@@ -867,19 +867,18 @@ namespace xdp {
           //std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
           std::vector<uint32_t>* asmMonitors = (cu.second)->getASMs() ;
           
-          uint64_t ASMIndex = 0 ;
           //for (auto monitor : monitors)
           for (auto asmMonitorId : (*asmMonitors))
           {
             //if (monitor->type != AXI_STREAM_MONITOR) continue ;
             Monitor* monitor = (db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmMonitorId) ;
             
-            uint64_t numTranx = values.StrNumTranx[ASMIndex] ;
-            uint64_t busyCycles = values.StrBusyCycles[ASMIndex];
-            if(0 >= busyCycles || 0 == numTranx) {
+            uint64_t numTranx = values.StrNumTranx[asmMonitorId] ;
+            uint64_t busyCycles = values.StrBusyCycles[asmMonitorId];
+            if(0 == numTranx) {
               continue;
             }
-            
+ 
             std::string masterPort = "" ;
             std::string slavePort = "" ;
             std::string masterArgs = "" ;
@@ -901,14 +900,14 @@ namespace xdp {
             }
             
             double transferTime = busyCycles / xclbin->clockRateMHz ;
-            double transferRate = (transferTime == 0.0) ? 0 : values.StrDataBytes[ASMIndex] / transferTime ;
+            double transferRate = (transferTime == 0.0) ? 0 : values.StrDataBytes[asmMonitorId] / transferTime ;
             
-            double linkStarve =
-                (double)(values.StrStarveCycles[ASMIndex]) / (double)(busyCycles) * 100.0 ;
-            double linkStall =
-                (double)(values.StrStallCycles[ASMIndex]) / (double)(busyCycles) * 100.0 ;
+            double linkStarve = (0 == busyCycles) ? 0 : 
+                (double)(values.StrStarveCycles[asmMonitorId]) / (double)(busyCycles) * 100.0 ;
+            double linkStall = (0 == busyCycles) ? 0 : 
+                (double)(values.StrStallCycles[asmMonitorId]) / (double)(busyCycles) * 100.0 ;
             double linkUtil = 100.0 - linkStarve - linkStall ;
-            double avgSizeInKB = ((values.StrDataBytes[ASMIndex] / numTranx)) / 1000.0;
+            double avgSizeInKB = ((values.StrDataBytes[asmMonitorId] / numTranx)) / 1000.0;
             
             fout << (device->deviceName) << ","
                  << masterPort << ","
@@ -922,8 +921,6 @@ namespace xdp {
                  << linkStarve << ","
                  << linkStall << ","
                  << std::endl ;
-            
-            ++ASMIndex ;
           }
         }
       }
