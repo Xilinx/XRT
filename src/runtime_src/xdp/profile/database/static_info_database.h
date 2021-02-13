@@ -512,7 +512,7 @@ namespace xdp {
     VPStaticDatabase(VPDatabase* d) ;
     ~VPStaticDatabase() ;
 
-    bool validXclbin(void* devHandle) ;
+    XDP_EXPORT bool validXclbin(void* devHandle) ;
 
     // Getters and setters
     inline int getPid() { return pid ; }
