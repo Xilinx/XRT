@@ -88,6 +88,7 @@ alloc_xrt_buffer (xclDeviceHandle handle, unsigned int size,
     buffer->phy_addr = p.paddr;
   }
   buffer->size = size;
+  printf("Allocating Xrt Memory.  Phy Addr : %lx, Size %d, user ptr %p, bo %d\n", buffer->phy_addr, buffer->size, (void *)buffer->user_ptr, buffer->bo);
   return 0;
 }
 
@@ -230,6 +231,67 @@ error:
   return -1;
 }
 
+void hexDump (const char * desc, const void * addr, const int len) {
+    int i;
+    unsigned char buff[17];
+    const unsigned char * pc = (const unsigned char *)addr;
+
+    // Output description if given.
+
+    if (desc != NULL)
+        printf ("%s:\n", desc);
+
+    // Length checks.
+
+    if (len == 0) {
+        printf("  ZERO LENGTH\n");
+        return;
+    }
+    else if (len < 0) {
+        printf("  NEGATIVE LENGTH: %d\n", len);
+        return;
+    }
+
+    // Process every byte in the data.
+
+    for (i = 0; i < len; i++) {
+        // Multiple of 16 means new line (with line offset).
+
+        if ((i % 16) == 0) {
+            // Don't print ASCII buffer for the "zeroth" line.
+
+            if (i != 0)
+                printf ("  %s\n", buff);
+
+            // Output the offset.
+
+            printf ("  %04x ", i);
+        }
+
+        // Now the hex code for the specific character.
+        printf (" %02x", pc[i]);
+
+        // And buffer a printable ASCII character for later.
+
+        if ((pc[i] < 0x20) || (pc[i] > 0x7e)) // isprint() may be better.
+            buff[i % 16] = '.';
+        else
+            buff[i % 16] = pc[i];
+        buff[(i % 16) + 1] = '\0';
+    }
+
+    // Pad out last line if not exactly 16 characters.
+
+    while ((i % 16) != 0) {
+        printf ("   ");
+        i++;
+    }
+
+    // And print the final ASCII buffer.
+
+    printf ("  %s\n", buff);
+}
+
 int
 send_softkernel_command (xclDeviceHandle handle, xrt_buffer * sk_ert_buf,
     unsigned int *payload, unsigned int num_idx, unsigned int cu_mask,
@@ -252,6 +314,7 @@ send_softkernel_command (xclDeviceHandle handle, xrt_buffer * sk_ert_buf,
   ert_cmd->state = ERT_CMD_STATE_NEW;
   ert_cmd->opcode = ERT_SK_START;
 
+  printf("%s : sk_ert_buf %p, payload %p, num_idx %d, cu_mask %x, timeout %d, bo %d\n", __func__, (void *)sk_ert_buf, (void *)payload, num_idx, cu_mask, timeout, sk_ert_buf->bo);
 
   ert_cmd->extra_cu_masks = 3;
 
@@ -277,6 +340,7 @@ send_softkernel_command (xclDeviceHandle handle, xrt_buffer * sk_ert_buf,
   }
 
 
+  hexDump("Payload", payload, num_idx * sizeof (unsigned int));
   ert_cmd->count = num_idx + 4;
   memcpy (&ert_cmd->data[3], payload, num_idx * sizeof (unsigned int));
 
