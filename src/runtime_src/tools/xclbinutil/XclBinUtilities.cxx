@@ -49,6 +49,11 @@ XclBinUtilities::setVerbose(bool _bVerbose) {
   TRACE("Verbosity enabled");
 }
 
+bool
+XclBinUtilities::getVerbose() {
+  return m_bVerbose;
+}
+
 void
 XclBinUtilities::setQuiet(bool _bQuiet) {
   m_bQuiet = _bQuiet;

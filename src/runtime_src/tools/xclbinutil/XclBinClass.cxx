@@ -718,6 +718,7 @@ XclBin::replaceSection(ParameterSectionData &_PSD)
 
   pSection->purgeBuffers();
 
+  pSection->setPathAndName(sSectionFileName);
   pSection->readPayload(iSectionFile, _PSD.getFormatType());
 
   updateHeaderFromSection(pSection);
@@ -923,6 +924,7 @@ XclBin::addSection(ParameterSectionData &_PSD)
   }
 
   // Read in the data
+  pSection->setPathAndName(sSectionFileName);
   pSection->readPayload(iSectionFile, _PSD.getFormatType());
 
   // Post-cleanup

@@ -31,6 +31,8 @@ endif()
 file(GLOB XCLBINUTIL_FILES
   "DTC*.cxx"
   "FDT*.cxx"
+  "CBOR.cxx"
+  "RapidJsonUtilities.cxx"
   "FormattedOutput.cxx"
   "ParameterSectionData.cxx"
   "Section.cxx"     # Note: Due to linking dependency issue, this entry needs to be before the other sections
@@ -54,7 +56,7 @@ if(NOT WIN32)
   target_link_libraries(${XCLBINUTIL_NAME} PRIVATE crypto)
 endif()
 
-target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES} )
+target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES})
 
 install (TARGETS ${XCLBINUTIL_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
@@ -71,6 +73,10 @@ if(NOT WIN32)
 
     # -- Test Signing of the xclbin image using a DER formatted certificate
     xrt_add_test("signing_xclbin_DER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinDER.py")
+
+    # -- Test SmartNic Section
+    set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic")
+    xrt_add_test("smartnic" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic/SectionSmartNicSchema.py ${TEST_OPTIONS}")
   endif()
 endif()
 

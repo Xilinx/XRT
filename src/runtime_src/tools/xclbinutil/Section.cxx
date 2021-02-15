@@ -390,6 +390,18 @@ Section::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   throw std::runtime_error(errMsg);
 }
 
+void 
+Section::setPathAndName(const std::string& _pathAndName)
+{
+  m_pathAndName = _pathAndName;
+}
+
+const std::string &
+Section::getPathAndName() const
+{
+  return m_pathAndName;
+}
+
 
 void 
 Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
