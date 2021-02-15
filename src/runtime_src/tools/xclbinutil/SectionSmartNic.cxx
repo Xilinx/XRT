@@ -144,7 +144,7 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
                                     std::vector<std::string>& byteFileEntries,
                                     rapidjson::Document::AllocatorType& allocator,
                                     const std::string& relativeFromDir) {
-  XUtil::TRACE(boost::str(boost::format("-- Scope: %s") % scope));
+  XUtil::TRACE((boost::format("-- Scope: %s") % scope).str());
 
   // A dictionary
   if (aValue.IsObject()) {

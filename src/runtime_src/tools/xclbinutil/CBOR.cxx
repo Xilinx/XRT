@@ -55,7 +55,7 @@ std::string
 XclBinUtilities::encode_major_type(const MajorTypes majorType,
                                    const uint64_t count) 
 {
-  XUtil::TRACE(boost::str(boost::format("CBOR: [Encode] %s(%d), Count: %d") % enum_to_string(majorType) % majorType % count));
+  XUtil::TRACE((boost::format("CBOR: [Encode] %s(%d), Count: %d") % enum_to_string(majorType) % majorType % count).str());
 
   // This method doesn't support Primitive types
   if (majorType == MT_PRIMITIVES)
@@ -183,7 +183,7 @@ XclBinUtilities::get_next_type_and_count(std::istream& istr,
     unsigned int payloadBytes = (commandByte & 0x7) + 1;
 
     if (payloadBytes > sizeof(uint64_t))
-      throw std::runtime_error(boost::str(boost::format("Error: Unsupported payload value: 0x%x") % (payloadBytes - 1)));
+      throw std::runtime_error((boost::format("Error: Unsupported payload value: 0x%x") % (payloadBytes - 1)).str());
 
     // Decode the count size (big endian)
     count = 0;
@@ -198,6 +198,6 @@ XclBinUtilities::get_next_type_and_count(std::istream& istr,
     count = commandByte & 0x1F;   // Tiny Encoded.  Bits 5 - 1.
   }
 
-  XUtil::TRACE(boost::str(boost::format("CBOR: [Decode] %s(%d), Count: %d") % enum_to_string(majorType) % majorType % count));
+  XUtil::TRACE((boost::format("CBOR: [Decode] %s(%d), Count: %d") % enum_to_string(majorType) % majorType % count).str());
 }
 

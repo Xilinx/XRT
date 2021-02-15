@@ -76,7 +76,7 @@ void recursive_transformation(const std::string& scope,
 // Algorithm:
 //    Only look for endpoints in the JSON graph and those points need to be strings
 {
-  XUtil::TRACE(boost::str(boost::format("-- Scope: %s") % scope));
+  XUtil::TRACE((boost::format("-- Scope: %s") % scope).str());
 
   // A dictionary
   if (itrObject->value.IsObject()) {
@@ -113,14 +113,14 @@ void recursive_transformation(const std::string& scope,
       // Determine if this is a negative value
       auto negativeCount = std::count(workingString.begin(), workingString.end(), '-');
       if (negativeCount > 1) {
-        std::string errMsg = boost::str(boost::format("Error: Multiple negative (e.g., '-') found: '%s'") % workingString);
+        std::string errMsg = (boost::format("Error: Multiple negative (e.g., '-') found: '%s'") % workingString).str();
         throw std::runtime_error(errMsg);
       }
 
       // Negative Value
       if (negativeCount == 1) {
         if (workingString.find_first_not_of("-0123456789") != std::string::npos) {
-          std::string errMsg =  boost::str(boost::format("Error: Malformed negative integer: '%s'") % workingString);
+          std::string errMsg =  (boost::format("Error: Malformed negative integer: '%s'") % workingString).str();
           throw std::runtime_error(errMsg);
         }
 
@@ -128,7 +128,7 @@ void recursive_transformation(const std::string& scope,
       } else {
         // Positive Value
         if (workingString.find_first_not_of("0123456789") != std::string::npos) {
-          std::string errMsg = boost::str(boost::format("Error: Malformed integer: '%s'") % workingString);
+          std::string errMsg = (boost::format("Error: Malformed integer: '%s'") % workingString).str();
           throw std::runtime_error(errMsg);
         }
 
@@ -157,7 +157,7 @@ recursive_write_cbor(const std::string& scope,
                      const rapidjson::Value& attribute,
                      const XUtil::KeyTypeCollection& keyTypeCollection,
                      std::ostringstream& buffer) {
-  XUtil::TRACE(boost::str(boost::format("-- Scope: %s") % scope));
+  XUtil::TRACE((boost::format("-- Scope: %s") % scope).str());
 
   // Serialize the MAP of items (Note: Objects are maps)
   if (attribute.IsObject()) {
