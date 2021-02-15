@@ -69,8 +69,20 @@ def fileCompare(file1, file2):
     raise Exception("Error: The following file does not exist: '" + file2 +"'")
 
   if not filecmp.cmp(file1, file2):
-    print ("File1 : "+ file1)
-    print ("File2 : "+ file2)
+    # Print out the contents of file 1
+    print ("\nFile1 : "+ file1)
+    print ("vvvvv")
+    with open(file1) as f: 
+       print f.read()
+    print ("^^^^^")
+
+    # Print out the contents of file 1
+    print ("\nFile2 : "+ file2)
+    print ("vvvvv")
+    with open(file2) as f: 
+       print f.read()
+    print ("^^^^^")
+
     raise Exception("Error: The two files are not identical")
 
 def execCmd(pretty_name, cmd):
