@@ -7,12 +7,81 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   exit $?
 fi
 
+DEFAULT=xbutil
+XBUTIL=xbutil
+XBUTIL2=xbutil2
+
 # Working variables
 XRT_PROG=xbutil
 
+# Table to resolve reset sub-command based on switch passed to reset
+declare -A RSTOPT=( \
+        ["--device"]="XBUTIL2" \
+        ["--type"]="XBUTIL2" \
+        ["--help"]="XBUTIL2" \
+        ["-d"]="DEVICE" \
+        ["-r"]="XBUTIL2" \
+        ["-h"]="XBUTIL2" \
+    )
+
+declare -A PROGOPT=( \
+        ["-p"]="XBUTIL" \
+        ["--user"]="XBUTIL2" \
+	["-u"]="XBUTIL2" \
+        ["--shell"]="XBUTIL2" \
+	["-s"]="XBUTIL2" \
+	["--base"]="XBUTIL2" \
+	["-b"]="XBUTIL2" \
+        ["--device"]="XBUTIL2" \
+        ["--help"]="XBUTIL2" \
+        ["-d"]="DEVICE" \
+        ["-h"]="XBUTIL2" \
+    )
+# In the following table "reset" points to a second table by name
+# Note that reset is valid both for classic and next generation tool
+# and hence requires a second lookup to resolve between xbutil and xbutil2
+declare -A COMMANDS=( \
+        ["help"]="XBUTIL" \
+        ["version"]="XBUTIL" \
+        ["--version"]="XBUTIL" \
+	["program"]="PROGOPT" \
+	["clock"]="XBUTIL" \
+	["boot"]="XBUTIL" \
+	["query"]="XBUTIL" \
+	["dump"]="XBUTIL" \
+	["run"]="XBUTIL" \
+	["fan"]="XBUTIL" \
+	["dmatest"]="XBUTIL" \
+	["list"]="XBUTIL" \
+	["scan"]="XBUTIL" \
+	["mem"]="XBUTIL" \
+	["dd"]="XBUTIL" \
+	["status"]="XBUTIL" \
+	["m2mtest"]="XBUTIL" \
+        ["flash"]="XBUTIL" \
+        ["validate"]="XBUTIL" \
+        ["top"]="XBUTIL" \
+        ["reset"]="RSTOPT" \
+        ["p2p"]="XBUTIL" \
+        ["host_mem"]="XBUTIL" \
+        ["scheduler"]="XBUTIL" \
+        ["examine"]="XBUTIL2" \
+        ["validate"]="XBUTIL2" \
+        ["advanced"]="XBUTIL2" \
+        ["reset"]="XBUTIL2" \
+        ["--help"]="XBUTIL2" \
+        ["--verbose"]="XBUTIL2" \
+        ["--batch"]="XBUTIL2" \
+        ["-h"]="XBUTIL2" \
+        ["-v"]="XBUTIL2" \
+        ["-b"]="XBUTIL2" \
+    )
+
+INTRE='^[0-9]+$'
+
 # Determine which version of xbutil should be used
 # Check to see environment variable is NOT set
-if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then 
+if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then
   XRT_PROG=xbutil
 elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
      XRT_PROG=xbutil2
@@ -36,6 +105,61 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+
+# If user did not specify -new/--new then attempt to determine if user
+# wants to use classic or new by peeking inside the command line
+# Ideally with bash 'nameref' the case/esac would not be necessary and
+# we should be able to deref in one step using helper declaration like
+# declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+# However RHEL 7.X still uses bash 4.2 which does not support nameref :-(
+
+if [ ${XRT_PROG} == "xbutil" ]; then
+  PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+  case ${PROG} in
+    XBUTIL | XBUTIL2)
+      # Get named reference to the value pointed by the string returned
+      XRT_PROG=${!PROG}
+      ;;
+    RSTOPT)
+      # We have an ambiguous sub-command, use the next token/switch to
+      # disambiguate by a second look up
+      if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
+        PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+	if [ ${PROG} == "DEVICE" ] && [ ${XRTWRAP_PROG_ARGS[2]} =~ ${INTRE} ]; then
+	  PROG="XBUTIL"
+	else
+	  PROG="XBUTIL2"
+	fi
+        XRT_PROG=${!PROG}
+      else
+        # User did not provide switch to the sub-command so we cannot
+        # disabmiguate, default to DEFAULT
+        XRT_PROG=${DEFAULT}
+      fi
+      ;;
+    PROGOPT)
+      # We have an ambiguous sub-command, use the next token/switch to
+      # disambiguate by a second look up
+      if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
+        PROG=${PROGOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+	if [[ ${PROG} == "DEVICE" ]] && [[ ${XRTWRAP_PROG_ARGS[2]} =~ ${INTRE} ]]; then
+	  PROG="XBUTIL"
+	else
+	  PROG="XBUTIL2"
+	fi
+        XRT_PROG=${!PROG}
+      else
+        # User did not provide switch to the sub-command so we cannot
+        # disabmiguate, default to DEFAULT
+        XRT_PROG=${DEFAULT}
+      fi
+      ;;
+    *)
+      # Bogus sub-command which failed lookup
+      XRT_PROG=${DEFAULT}
+      ;;
+  esac
+fi
 
 # Friendly message
 if [ ${XRT_PROG} == "xbutil2" ]; then
