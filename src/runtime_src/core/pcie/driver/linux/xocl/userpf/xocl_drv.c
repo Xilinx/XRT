@@ -366,11 +366,9 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 
 		mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 			&ret, &resplen, NULL, NULL, 0, 6);
-		if (mbret)
-			xocl_reset_notify(xdev->core.pdev, false);
 		/* userpf will back online till receiving mgmtpf notification */
 
-		return 0;
+		return mbret;
 	}
 
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
@@ -484,6 +482,7 @@ static void xocl_work_cb(struct work_struct *work)
 	struct xocl_dev *xdev = container_of(_work,
 			struct xocl_dev, core.works[_work->op]);
 	struct xocl_dev *buddy_xdev = xdev;
+	int ret;
 
 	if (XDEV(xdev)->shutdown && _work->op != XOCL_WORK_ONLINE) {
 		xocl_xdev_info(xdev, "device is shutdown please hotplug");
@@ -500,11 +499,16 @@ static void xocl_work_cb(struct work_struct *work)
 		if (!xocl_get_buddy_fpga(&buddy_xdev, xocl_get_buddy_cb))
 			buddy_xdev = NULL;
 		if (buddy_xdev)
-			(void) xocl_hot_reset(buddy_xdev, XOCL_RESET_FORCE |
+			ret = xocl_hot_reset(buddy_xdev, XOCL_RESET_FORCE |
 				XOCL_RESET_SHUTDOWN | XOCL_RESET_NO);
-		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE |
+		ret = xocl_hot_reset(xdev, XOCL_RESET_FORCE |
 			       	XOCL_RESET_SHUTDOWN);
 		mutex_unlock(&xocl_reset_mutex);
+		if (ret) {
+			xocl_xdev_err(xdev, "reset failed with error %d", ret);
+			xocl_reset_notify(xdev->core.pdev, false);
+			xocl_drvinst_set_offline(xdev->core.drm, false);
+		}
 		break;
 	case XOCL_WORK_SHUTDOWN_WITH_RESET:
 		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE |
