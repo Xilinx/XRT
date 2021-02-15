@@ -29,6 +29,7 @@ namespace XUtil = XclBinUtilities;
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/hex.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
 
 // Need to convert between boost property trees and rapid json
 #include <rapidjson/stringbuffer.h>
