@@ -3,6 +3,7 @@ import os
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import filecmp
+import json
 
 # Start of our unit test
 # -- main() -------------------------------------------------------------------
@@ -42,7 +43,7 @@ def main():
   execCmd(step, cmd)
 
   # Validate that the round trip files are identical
-  fileCompare(inputJSON, outputJSON)
+  jsonFileCompare(inputJSON, outputJSON)
 
   # ---------------------------------------------------------------------------
 
@@ -56,47 +57,38 @@ def main():
   execCmd(step, cmd)
 
   # Validate that the output file matches expectation
-  fileCompare(expectedJSON, outputJSON)
+  jsonFileCompare(expectedJSON, outputJSON)
 
   # If the code gets this far, all is good.
   return False
 
-# Compare the two files line by line.  
-# Doing do removes the "hidden EOL" characters
-def cmpLines(file1, file2):
-  line1 = line2 = True                          # Initial our variables
-  with open(file1, 'r') as f1, open(file2, 'r') as f2:
-    while line1 and line2:
-      line1 = f1.readline()
-      line2 = f2.readline()
-      if line1 != line2:
-        return False
-  return True
-
-
-def fileCompare(file1, file2):
+def jsonFileCompare(file1, file2):
   if not os.path.isfile(file1):
-    raise Exception("Error: The following file does not exist: '" + file1 +"'")
+    raise Exception("Error: The following json file does not exist: '" + file1 +"'")
+
+  with open(file1) as f:
+    data1 = json.dumps(json.load(f), indent=2)
 
   if not os.path.isfile(file2):
-    raise Exception("Error: The following file does not exist: '" + file2 +"'")
+    raise Exception("Error: The following json file does not exist: '" + file2 +"'")
 
-  if not cmpLines(file1, file2):
-    # Print out the contents of file 1
-    print ("\nFile1 : "+ file1)
-    print ("vvvvv")
-    with open(file1) as f: 
-       print f.read()
-    print ("^^^^^")
+  with open(file2) as f:
+    data2 = json.dumps(json.load(f), indent=2)
 
-    # Print out the contents of file 1
-    print ("\nFile2 : "+ file2)
-    print ("vvvvv")
-    with open(file2) as f: 
-       print f.read()
-    print ("^^^^^")
+  if data1 != data2:
+      # Print out the contents of file 1
+      print ("\nFile1 : "+ file1)
+      print ("vvvvv")
+      print (data1)
+      print ("^^^^^")
 
-    raise Exception("Error: The two files are not identical")
+      # Print out the contents of file 1
+      print ("\nFile2 : "+ file2)
+      print ("vvvvv")
+      print (data2)
+      print ("^^^^^")
+
+      raise Exception("Error: The two files are not the same")
 
 def execCmd(pretty_name, cmd):
   print(pretty_name)
