@@ -1,8 +1,11 @@
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <vector>
 #include <chrono>
 #include <thread>
+
+#include "cmdlineparser.h"
 
 #include "xilutil.hpp"
 #include "experimental/xrt_device.h"
@@ -20,13 +23,20 @@ typedef struct task_args {
   Clock::time_point end;
 } arg_t;
 
+struct krnl_info {
+    std::string     name;
+    bool            new_style;
+};
+
 bool verbose = false;
 barrier barrier;
+struct krnl_info krnl = {"hello", false};
 
 static void usage(char *prog)
 {
-  std::cout << "Usage: " << prog << " -k <xclbin> -d <dev id> [options]\n"
+  std::cout << "Usage: " << prog << " <Platform Test Area Path> [options]\n"
     << "options:\n"
+    << "    -d       device index\n"
     << "    -t       number of threads\n"
     << "    -l       length of queue (send how many commands without waiting)\n"
     << "    -a       total amount of commands per thread\n"
@@ -118,7 +128,7 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
 
   auto device = xrt::device(dev_id);
   auto uuid = device.load_xclbin(xclbin_fn);
-  auto hello = xrt::kernel(device, uuid.get(), "hello");
+  auto hello = xrt::kernel(device, uuid.get(), krnl.name);
 
   barrier.init(threadNumber + 1);
 
@@ -159,69 +169,67 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
   std::cout << "Overall Commands: " << std::setw(7) << overallCommands
             << std::setprecision(0) << std::fixed
             << " IOPS: " << (overallCommands * 1000000.0 / duration)
+            << " (" << krnl.name << ")"
             << std::endl;
   return 0;
 }
 
 int _main(int argc, char* argv[])
 {
-  if (argc < 3) {
+  if (argc < 2) {
     usage(argv[0]);
-    return 1;
+    throw std::runtime_error("Number of argument should not less than 2");
   }
 
-  std::string xclbin_fn;
-  int dev_id = 0;
-  int queueLength = 128;
-  unsigned total = 50000;
-  int threadNumber = 2;
+  // Command Line Parser
+  sda::utils::CmdLineParser parser;
 
-  std::vector<std::string> args(argv + 1, argv + argc);
-  std::string cur;
-  for (auto& arg : args) {
-    if (arg == "-h") {
-      usage(argv[0]);
-      return 1;
-    }
-    else if (arg == "-v") {
-      verbose = true;
-      continue;
-    }
+  // Switches
+  //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
+  parser.addSwitch("--kernel",  "-k", "kernel (imply old style verify.xclbin is used)", "");
+  parser.addSwitch("--device",  "-d", "device id", "0");
+  parser.addSwitch("--threads", "-t", "number of threads", "2");
+  parser.addSwitch("--length",  "-l", "length of queue", "128");
+  parser.addSwitch("--total",   "-a", "total amount of commands per thread", "50000");
+  parser.addSwitch("--verbose", "-v", "verbose output", "", true);
+  parser.parse(argc, argv);
 
-    if (arg[0] == '-') {
-      cur = arg;
-      continue;
-    }
-
-    if (cur == "-k")
-      xclbin_fn = arg;
-    else if (cur == "-d")
-      dev_id = std::stoi(arg);
-    else if (cur == "-t")
-      threadNumber = std::stoi(arg);
-    else if (cur == "-l")
-      queueLength = std::stoi(arg);
-    else if (cur == "-a")
-      total = std::stoi(arg);
-    else
-      throw std::runtime_error("Unknown option value " + cur + " " + arg);
+  /* Could be BDF or device index */
+  std::string device_str = parser.value("device");
+  int threadNumber = parser.value_to_int("threads");
+  int queueLength = parser.value_to_int("length");
+  int total = parser.value_to_int("total");
+  std::string xclbin_fn = parser.value("kernel");
+  if (xclbin_fn.empty()) {
+      std::string test_path = argv[1];
+      xclbin_fn = test_path + "/verify.xclbin";
+      krnl.name = "verify";
+      krnl.new_style = true;
   }
+  verbose = parser.isValid("verbose");
 
   /* Sanity check */
-  if (dev_id < 0)
-    throw std::runtime_error("Negative device ID");
+  std::ifstream infile(xclbin_fn);
+  if (!infile.good())
+    throw std::runtime_error("Wrong xclbin file " + xclbin_fn);
 
   if (queueLength <= 0)
     throw std::runtime_error("Negative/Zero queue length");
 
+  if (total <= 0)
+    throw std::runtime_error("Negative/Zero total command number");
+
   if (threadNumber <= 0)
     throw std::runtime_error("Invalid thread number");
 
-  //printf("The system has %d device(s)\n", xclProbe());
-  auto device = xrt::device(dev_id);
-  auto uuid = device.load_xclbin(xclbin_fn);
+  int dev_id = 0;
+  if (device_str.find(":") == std::string::npos) {
+    dev_id = std::stoi(device_str);
+    if (dev_id < 0)
+      throw std::runtime_error("Negative device index");
+  } else
+    throw std::runtime_error("Not support BDF");
 
-  //testSingleThread(dev_id, xclbin_fn);
   testMultiThreads(dev_id, xclbin_fn, threadNumber, queueLength, total);
 
   return 0;
@@ -231,7 +239,7 @@ int main(int argc, char *argv[])
 {
   try {
     _main(argc, argv);
-    return 0;
+    return EXIT_SUCCESS;
   }
   catch (const std::exception& ex) {
     std::cout << "TEST FAILED: " << ex.what() << std::endl;
@@ -240,5 +248,5 @@ int main(int argc, char *argv[])
     std::cout << "TEST FAILED" << std::endl;
   }
 
-  return 1;
+  return EXIT_FAILURE;
 };

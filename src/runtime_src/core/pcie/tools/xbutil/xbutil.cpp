@@ -1174,7 +1174,9 @@ int xcldev::device::runTestCase(const std::string& py,
         static const std::map<std::string, std::string> test_map = {
             { "22_verify.py",             "validate.exe"    },
             { "23_bandwidth.py",          "kernel_bw.exe"   },
-            { "host_mem_23_bandwidth.py", "slavebridge.exe" }
+            { "host_mem_23_bandwidth.py", "slavebridge.exe" },
+            { "xrt_iops_test.exe",        "xrt_iops_test.exe" },
+            { "xcl_iops_test.exe",        "xcl_iops_test.exe" }
         };
         
         if (test_map.find(py) == test_map.end())
@@ -1191,7 +1193,12 @@ int xcldev::device::runTestCase(const std::string& py,
         auto device = pcidev::get_dev(m_idx);
         std::string bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % device->domain % device->bus % device->dev % device->func);
 
-        cmd = xrtTestCasePath + " " + xclbinPath + " -d " + bdf;
+        // Other new flow test cases are using OpenCL APIs, which can find device by BDF.
+        // If XRT and XCL APIs support open device by BDF, we can unify below two cmds.
+        if (py.find("xrt_iops_test") || py.find("xcl_iops_test"))
+            cmd = xrtTestCasePath + " " + xclbinPath + " -d " + std::to_string(m_idx) + " " + args;
+        else
+            cmd = xrtTestCasePath + " " + xclbinPath + " -d " + bdf;
 
     }
     else if (py.find(".exe") == std::string::npos) { //OLD FLOW:
@@ -2337,7 +2344,7 @@ xcldev::device::iopsTest()
         std::cout << "IOPS print result unexpected" << std::endl;
         ret = -EINVAL;
     }
-    std::cout << "Maximum " << output.substr(sp, ep - sp) << std::endl;
+    std::cout << "\rMaximum " << output.substr(sp, ep - sp) << std::endl;
     return 0;
 }
 
