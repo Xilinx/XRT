@@ -224,7 +224,7 @@ namespace xdp {
     if (!(db->getStaticInfo()).validXclbin(device->get_xcl_handle())) {
       std::string msg =
 	"Device profiling is only supported on xclbins built using " ;
-      msg += (db->getStaticInfo()).earliestSupportedToolVersion() ;
+      msg += std::to_string((db->getStaticInfo()).earliestSupportedToolVersion()) ;
       msg += " tools or later.  To enable device profiling please rebuild." ;
 
       xrt_core::message::send(xrt_core::message::severity_level::warning,

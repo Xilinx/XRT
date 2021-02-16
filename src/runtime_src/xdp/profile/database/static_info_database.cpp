@@ -179,8 +179,8 @@ namespace xdp {
       //  or multiple decimal points and return only the major number
       //  and minor number and strips away the revision.
       double majorAndMinor = std::stod(version, nullptr) ;
-      if (majorAndMinor < std::stod(earliestSupportedToolVersion()))
-	return false ;
+      if (majorAndMinor < earliestSupportedToolVersion())
+        return false ;
 
       return true ;
     }
