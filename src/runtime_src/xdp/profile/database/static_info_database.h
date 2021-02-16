@@ -513,6 +513,7 @@ namespace xdp {
     ~VPStaticDatabase() ;
 
     XDP_EXPORT bool validXclbin(void* devHandle) ;
+    inline std::string earliestSupportedToolVersion() { return "2019.2" ; }
 
     // Getters and setters
     inline int getPid() { return pid ; }

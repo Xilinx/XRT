@@ -188,9 +188,14 @@ namespace xdp {
     clearOffloader(deviceId); 
 
     if (!(db->getStaticInfo()).validXclbin(userHandle)) {
+      std::string msg =
+	"Device profiling is only supported on xclbins built using " ;
+      msg += (db->getStaticInfo()).earliestSupportedToolVersion() ;
+      msg += " tools or later.  To enable device profiling please rebuild." ;
+
       xrt_core::message::send(xrt_core::message::severity_level::warning,
 			      "XRT",
-			      "Device profiling is no longer supported on this xclbin.  to enable dvice profiling please rebuild with the current version of the tools.") ;
+			      msg) ;
       return ;
     }
     

@@ -175,32 +175,13 @@ namespace xdp {
       if (version == "" || version.find(".") == std::string::npos)
 	return false ;
 
-      auto firstDotPosition = version.find(".") ;
-      std::string major = version.substr(0, firstDotPosition) ;
+      // The stod function handles strings that have one decimal point
+      //  or multiple decimal points and return only the major number
+      //  and minor number and strips away the revision.
+      double majorAndMinor = std::stod(version, nullptr) ;
+      if (majorAndMinor < std::stod(earliestSupportedToolVersion()))
+	return false ;
 
-      auto secondDotPosition = version.find(".", firstDotPosition + 1);
-      std::string minor ;
-      if (secondDotPosition != std::string::npos) {
-	minor = version.substr(firstDotPosition + 1,
-			       secondDotPosition - (firstDotPosition + 1)) ;
-      }
-      else {
-	minor = version.substr(firstDotPosition + 1,
-			       version.size() - (firstDotPosition + 1)) ;
-      }
-
-      int majorValue ;
-      int minorValue ;
-
-      std::stringstream convert ;
-      convert << major ;
-      convert >> majorValue >> std::ws ;
-      convert.clear() ;
-      convert << minor ;
-      convert >> minorValue >> std::ws ;
-
-      if (majorValue < 2019) return false ;
-      if (majorValue == 2019 && minorValue < 2) return false ;
       return true ;
     }
 
