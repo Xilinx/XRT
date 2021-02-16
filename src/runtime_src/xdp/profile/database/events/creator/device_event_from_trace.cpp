@@ -34,21 +34,12 @@ namespace xdp {
     xclbin = (db->getStaticInfo()).getCurrentlyLoadedXclbin(devId) ;
 
     auto numAM = (db->getStaticInfo()).getNumAM(deviceId, xclbin) ;
+    traceIDs.resize(numAM);
+    cuStarts.resize(numAM);
+    amLastTrans.resize(numAM);
 
-    if (numAM > 0) {
-      traceIDs.resize(numAM) ;
-      cuStarts.resize(numAM) ;
-      amLastTrans.resize(numAM) ;
-    }
-
-    auto numAIM = (db->getStaticInfo()).getNumAIM(deviceId, xclbin) ;
-    if (numAIM > 0) {
-      aimLastTrans.resize(numAIM);
-    }
-    auto numASM = (db->getStaticInfo()).getNumASM(deviceId, xclbin) ;
-    if (numASM > 0) {
-      asmLastTrans.resize(numASM);
-    }
+    aimLastTrans.resize((db->getStaticInfo()).getNumAIM(deviceId, xclbin)) ;
+    asmLastTrans.resize((db->getStaticInfo()).getNumASM(deviceId, xclbin)) ;
   }
 
   void DeviceEventCreatorFromTrace::createDeviceEvents(xclTraceResultsVector& traceVector)
