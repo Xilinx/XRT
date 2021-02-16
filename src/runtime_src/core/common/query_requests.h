@@ -968,7 +968,6 @@ struct max_shared_host_mem_aperture_bytes : request
 
   virtual boost::any
   get(const device*) const = 0;
-
 };
 
 struct status_mig_calibrated : request

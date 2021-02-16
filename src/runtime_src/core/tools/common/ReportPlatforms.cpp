@@ -127,17 +127,20 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
   controller.put_child("satellite_controller", sc);
   controller.put_child("card_mgmt_controller", cmc);
   pt_platform.put_child("controller", controller);
-
-  boost::property_tree::ptree pt_clocks;
+  
   auto raw = xrt_core::device_query<qr::clock_freq_topology_raw>(dev);
-  auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
-  for(int i = 0; i < clock_topology->m_count; i++) {
-    boost::property_tree::ptree clock;
-    clock.add("id", clock_topology->m_clock_freq[i].m_name);
-    clock.add("freq_mhz", clock_topology->m_clock_freq[i].m_freq_Mhz);
-    pt_clocks.push_back(std::make_pair("", clock));
+  if(!raw.empty()) {
+    boost::property_tree::ptree pt_clocks;
+    auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
+    for(int i = 0; i < clock_topology->m_count; i++) {
+      boost::property_tree::ptree clock;
+      clock.add("id", clock_topology->m_clock_freq[i].m_name);
+      clock.add("desc", XBUtilities::parse_clock_id(clock_topology->m_clock_freq[i].m_name));
+      clock.add("freq_mhz", clock_topology->m_clock_freq[i].m_freq_Mhz);
+      pt_clocks.push_back(std::make_pair("", clock));
+    }
+    pt_platform.put_child("clocks", pt_clocks);
   }
-  pt_platform.put_child("clocks", pt_clocks);
   
   auto macs = mac_addresses(dev);
   if(!macs.empty())
@@ -175,15 +178,19 @@ ReportPlatforms::writeReport( const xrt_core::device * dev,
     output << boost::format("  %-20s : %s \n") % "P2P Status" % pt_status.get<std::string>("p2p_status");
 
     boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
+    if(!clocks.empty())
+      output << "Clocks\n";
     for(auto& kv : clocks) {
       boost::property_tree::ptree& pt_clock = kv.second;
-      output << boost::format("  %-20s : %s MHz\n") % pt_clock.get<std::string>("id") % pt_clock.get<std::string>("freq_mhz");
+      output << boost::format("    %-20s : %s MHz\n") % pt_clock.get<std::string>("desc") % pt_clock.get<std::string>("freq_mhz");
     }
 
     boost::property_tree::ptree& macs = pt_platform.get_child("macs", empty_ptree);
+    if(!macs.empty())
+      output << "Mac Addresses\n";
     for(auto& kv : macs) {
       boost::property_tree::ptree& pt_mac = kv.second;
-      output << boost::format("  %-20s : %s\n") % "Mac Address" % pt_mac.get<std::string>("address");
+      output << boost::format("    %-20s : %s\n") % "" % pt_mac.get<std::string>("address");
     }
   }
   

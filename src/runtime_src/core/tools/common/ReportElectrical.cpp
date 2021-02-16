@@ -63,7 +63,7 @@ static std::string
 lvl_to_power_watts(unsigned int lvl)
 {
   std::vector<std::string> powers{ "75", "150", "225" };
-  return lvl < powers.size() ? powers[lvl] : "0";
+  return lvl < powers.size() ? powers[lvl] : "N/A";
 }
 
 void

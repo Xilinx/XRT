@@ -32,6 +32,7 @@ namespace {
 namespace query = xrt_core::query;
 using pdev = std::shared_ptr<pcidev::pci_device>;
 using key_type = query::key_type;
+const static int LEGACY_COUNT = 4;
 
 inline pdev
 get_pcidev(const xrt_core::device* device)
@@ -90,7 +91,7 @@ struct mac_addr_list
     auto pdev = get_pcidev(device);
 
     //legacy code exposes only 4 mac addr sysfs nodes (0-3)
-    for (int i=0; i < 4; i++) {
+    for (int i=0; i < LEGACY_COUNT; i++) {
       std::string addr, errmsg;
       pdev->sysfs_get("xmc", "mac_addr"+std::to_string(i), errmsg, addr);
       list.push_back(addr);

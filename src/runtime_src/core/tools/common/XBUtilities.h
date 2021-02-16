@@ -130,7 +130,11 @@ namespace XBUtilities {
    * Return: Manufacturer's name
    */
   std::string 
-  parse_oem_id(std::string oemid);
+  parse_oem_id(const std::string& oemid);
+
+  std::string 
+  parse_clock_id(const std::string& id);
+
 };
 
 #endif
