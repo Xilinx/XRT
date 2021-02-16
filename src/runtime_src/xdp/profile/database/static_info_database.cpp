@@ -151,6 +151,44 @@ namespace xdp {
     }
   }
 
+  bool VPStaticDatabase::validXclbin(void* devHandle)
+  {
+    std::shared_ptr<xrt_core::device> device =
+      xrt_core::get_userpf_device(devHandle);
+
+    // If this xclbin was built with tools before the 2019.2 release, we
+    //  do not support profiling
+    std::pair<const char*, size_t> buildMetadata =
+      device->get_axlf_section(BUILD_METADATA);
+    const char* buildMetadataSection = buildMetadata.first;
+    size_t      buildMetadataSz      = buildMetadata.second;
+    if (buildMetadataSection != nullptr) {
+      std::stringstream ss ;
+      ss.write(buildMetadataSection, buildMetadataSz) ;
+
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+
+      std::string version =
+	pt.get<std::string>("build_metadata.xclbin.generated_by.version", "") ;
+
+      if (version == "" || version.find(".") == std::string::npos)
+	return false ;
+
+      // The stod function handles strings that have one decimal point
+      //  or multiple decimal points and return only the major number
+      //  and minor number and strips away the revision.
+      double majorAndMinor = std::stod(version, nullptr) ;
+      if (majorAndMinor < earliestSupportedToolVersion())
+        return false ;
+
+      return true ;
+    }
+
+    // If the build section does not exist, then this is not a valid xclbin
+    return false ;
+  }
+
   std::vector<std::string> VPStaticDatabase::getDeviceNames()
   {
     std::vector<std::string> deviceNames ;
