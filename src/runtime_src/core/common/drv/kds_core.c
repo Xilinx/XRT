@@ -300,6 +300,7 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		return 0;
 	case OP_CONFIG_SK:
 	case OP_START_SK:
+	case OP_CLK_CALIB:
 		break;
 	default:
 		kds_err(xcmd->client, "Unknown opcode");
