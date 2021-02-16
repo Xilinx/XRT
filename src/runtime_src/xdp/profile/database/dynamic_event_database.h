@@ -120,7 +120,12 @@ namespace xdp {
     // Since events can be logged from multiple threads simultaneously,
     //  we have to maintain exclusivity
     std::mutex dbLock ;
-    std::mutex deviceDbLock ;
+    std::mutex deviceEventsLock ;
+    std::mutex hostEventsLock ;
+    std::mutex aieLock ;
+    std::mutex powerLock ;
+    std::mutex nocLock ;
+    std::mutex ctrLock ;
 
     //std::map<uint64_t, uint64_t> traceIDMap;
 
