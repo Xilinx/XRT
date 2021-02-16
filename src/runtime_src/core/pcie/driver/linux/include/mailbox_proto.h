@@ -298,9 +298,9 @@ struct xcl_mailbox_conn_resp {
 	uint32_t version;
 	uint32_t reserved;
 	uint64_t conn_flags;
-	uint64_t chan_disable;
 	uint64_t chan_switch;
 	char comm_id[XCL_COMM_ID_SIZE];
+	uint64_t chan_disable;
 };
 
 #define	XCL_MB_STATE_ONLINE		(1UL << 0)
