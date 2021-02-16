@@ -33,8 +33,8 @@
 
 class SectionSmartNic : public Section {
  public:
-  SectionSmartNic();
-  virtual ~SectionSmartNic();
+  SectionSmartNic() = default;
+  virtual ~SectionSmartNic() = default;
 
  public:
   virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;

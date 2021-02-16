@@ -28,21 +28,21 @@ std::string
 XclBinUtilities::enum_to_string(MajorTypes const majorType) 
 {
   switch (majorType) {
-    case MT_POSITIVE_INTEGER:
+    case MajorTypes::positive_integer:
       return "Positive Integer";
-    case MT_NEGATIVE_INTEGER:
+    case MajorTypes::negative_integer:
       return "Negative Integer";
-    case MT_BYTE_STRING:
+    case MajorTypes::byte_string:
       return "Byte String";
-    case MT_TEXT_STRING:
+    case MajorTypes::text_string:
       return "Text String";
-    case MT_ARRAY_OF_ITEMS:
+    case MajorTypes::array_of_items:
       return "Array of Items";
-    case MT_MAP_OF_ITEMS:
+    case MajorTypes::map_of_items:
       return "Map of Items";
-    case MT_SEMANTIC_TAG:
+    case MajorTypes::semantic_tag:
       return "Semantic Tag";
-    case MT_PRIMITIVES:
+    case MajorTypes::primitives:
       return "Primitives";
   }
 
@@ -55,10 +55,10 @@ std::string
 XclBinUtilities::encode_major_type(const MajorTypes majorType,
                                    const uint64_t count) 
 {
-  XUtil::TRACE((boost::format("CBOR: [Encode] %s(%d), Count: %d") % enum_to_string(majorType) % majorType % count).str());
+  XUtil::TRACE((boost::format("CBOR: [Encode] %s(%d), Count: %d") % enum_to_string(majorType) % static_cast<uint8_t>(majorType) % count).str());
 
   // This method doesn't support Primitive types
-  if (majorType == MT_PRIMITIVES)
+  if (majorType == MajorTypes::primitives)
     throw std::runtime_error("Error: CBOR Major Type Primitive (0b111) is not supported by the encode_major_type() method.");
 
   // Our working array
@@ -67,7 +67,7 @@ XclBinUtilities::encode_major_type(const MajorTypes majorType,
 
   // -- Encode the major type to the first byte
   //   Bits 8, 7, 6 represent Major Type
-  byte_array.push_back(static_cast<uint8_t>(majorType << 5));
+  byte_array.push_back(static_cast<uint8_t>(majorType) << 5);
 
   // -- Encode the size of items
   if (count <= MAX_TINY_SIZE) {                              // -- Encode Tiny (bits 5 - 1)
@@ -103,19 +103,19 @@ XclBinUtilities::encode_major_type(const MajorTypes majorType,
 std::string
 XclBinUtilities::encode_positive_integer(const uint64_t intValue) 
 {
-  return encode_major_type(MT_POSITIVE_INTEGER, intValue);
+  return encode_major_type(MajorTypes::positive_integer, intValue);
 }
 
 std::string
 XclBinUtilities::encode_negative_integer(const uint64_t intValue) 
 {
-  return encode_major_type(MT_NEGATIVE_INTEGER, intValue);
+  return encode_major_type(MajorTypes::negative_integer, intValue);
 }
 
 std::string
 XclBinUtilities::encode_text_string(const std::string& text_string) 
 {
-  std::string encodeBuf = encode_major_type(MT_TEXT_STRING, text_string.length());
+  std::string encodeBuf = encode_major_type(MajorTypes::text_string, text_string.length());
   encodeBuf += text_string;
 
   return encodeBuf;
@@ -124,7 +124,7 @@ XclBinUtilities::encode_text_string(const std::string& text_string)
 std::string
 XclBinUtilities::encode_byte_string(const std::string& byte_string) 
 {
-  std::string encodeBuf = encode_major_type(MT_BYTE_STRING, byte_string.length());
+  std::string encodeBuf = encode_major_type(MajorTypes::byte_string, byte_string.length());
   encodeBuf += byte_string;
 
   return encodeBuf;
@@ -135,7 +135,7 @@ static
 void
 read_buffer(std::istream& istr, uint8_t* outBuffer, uint64_t size) 
 {
-  istr.read(static_cast<char*>((void*)outBuffer), size);
+  istr.read(reinterpret_cast<char*>(outBuffer), size);
 
   if (istr.eof())
     throw std::runtime_error("Error: Unexpected end of the CBOR image buffer.");
@@ -198,6 +198,6 @@ XclBinUtilities::get_next_type_and_count(std::istream& istr,
     count = commandByte & 0x1F;   // Tiny Encoded.  Bits 5 - 1.
   }
 
-  XUtil::TRACE((boost::format("CBOR: [Decode] %s(%d), Count: %d") % enum_to_string(majorType) % majorType % count).str());
+  XUtil::TRACE((boost::format("CBOR: [Decode] %s(%d), Count: %d") % enum_to_string(majorType) % static_cast<uint8_t>(majorType) % count).str());
 }
 

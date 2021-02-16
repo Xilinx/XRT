@@ -29,16 +29,16 @@
 
 namespace XclBinUtilities {
 
-typedef enum {
-  MT_POSITIVE_INTEGER = 0,
-  MT_NEGATIVE_INTEGER = 1,
-  MT_BYTE_STRING      = 2,
-  MT_TEXT_STRING      = 3,
-  MT_ARRAY_OF_ITEMS   = 4,
-  MT_MAP_OF_ITEMS     = 5,
-  MT_SEMANTIC_TAG     = 6,
-  MT_PRIMITIVES       = 7
-} MajorTypes;
+enum class MajorTypes{
+  positive_integer = 0,
+  negative_integer = 1,
+  byte_string      = 2,
+  text_string      = 3,
+  array_of_items   = 4,
+  map_of_items     = 5,
+  semantic_tag     = 6,
+  primitives       = 7
+};
 
 std::string enum_to_string(const MajorTypes majorType);
 std::string encode_major_type(const MajorTypes majorType, const uint64_t count);

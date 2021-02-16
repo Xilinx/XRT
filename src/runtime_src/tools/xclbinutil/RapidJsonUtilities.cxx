@@ -162,7 +162,7 @@ recursive_write_cbor(const std::string& scope,
   // Serialize the MAP of items (Note: Objects are maps)
   if (attribute.IsObject()) {
     auto mapSize = attribute.MemberCount();
-    buffer << XUtil::encode_major_type(XUtil::MT_MAP_OF_ITEMS, mapSize);
+    buffer << XUtil::encode_major_type(XUtil::MajorTypes::map_of_items, mapSize);
 
     for (auto itr = attribute.MemberBegin(); itr != attribute.MemberEnd(); ++itr) {
       buffer << XUtil::encode_text_string(itr->name.GetString());
@@ -175,7 +175,7 @@ recursive_write_cbor(const std::string& scope,
   if (attribute.IsArray()) {
     // Add array
     auto arraySize = attribute.Size();
-    buffer << XUtil::encode_major_type(XUtil::MT_ARRAY_OF_ITEMS, arraySize);
+    buffer << XUtil::encode_major_type(XUtil::MajorTypes::array_of_items, arraySize);
 
     // Add array elements
     for (auto itr = attribute.Begin(); itr != attribute.End(); ++itr) {
@@ -224,7 +224,7 @@ XclBinUtilities::write_cbor(rapidjson::Document& doc,
 
 
   // The root is a mapping of pairs
-  buffer << XUtil::encode_major_type(XUtil::MT_MAP_OF_ITEMS, mapSize);
+  buffer << XUtil::encode_major_type(XUtil::MajorTypes::map_of_items, mapSize);
 
   // Add the pair mapping
   for (auto itr = doc.MemberBegin(); itr != doc.MemberEnd(); ++itr) {
@@ -242,27 +242,27 @@ recursive_read_cbor(std::istream& istr,
   XclBinUtilities::get_next_type_and_count(istr, majorType, count);
 
   switch (majorType) {
-    case XclBinUtilities::MT_POSITIVE_INTEGER:
+    case XclBinUtilities::MajorTypes::positive_integer:
       aValue.SetUint64(count);
       break;
 
-    case XclBinUtilities::MT_NEGATIVE_INTEGER:
+    case XclBinUtilities::MajorTypes::negative_integer:
       aValue.SetInt64(-count);
       break;
 
-    case XclBinUtilities::MT_BYTE_STRING: {
+    case XclBinUtilities::MajorTypes::byte_string: {
         std::string byteString = boost::algorithm::hex(XclBinUtilities::get_string(istr, count));
         aValue.SetString(byteString.data(), byteString.size(), allocator);
       }
       break;
 
-    case XclBinUtilities::MT_TEXT_STRING: {
+    case XclBinUtilities::MajorTypes::text_string: {
         std::string textString = XclBinUtilities::get_string(istr, count);
         aValue.SetString(textString.data(), textString.size(), allocator);
       }
       break;
 
-    case XclBinUtilities::MT_ARRAY_OF_ITEMS:
+    case XclBinUtilities::MajorTypes::array_of_items:
       aValue.SetArray();
       for (uint64_t index = 0; index < count; ++index) {
         rapidjson::Value arrayItem;
@@ -271,7 +271,7 @@ recursive_read_cbor(std::istream& istr,
       }
       break;
 
-    case XclBinUtilities::MT_MAP_OF_ITEMS: {
+    case XclBinUtilities::MajorTypes::map_of_items: {
         aValue.SetObject();
         for (uint64_t index = 0; index < count; ++index) {
           // Get the key string
@@ -290,11 +290,11 @@ recursive_read_cbor(std::istream& istr,
       }
       break;
 
-    case XclBinUtilities::MT_SEMANTIC_TAG:
+    case XclBinUtilities::MajorTypes::semantic_tag:
       throw std::runtime_error("Error: Decoding CBOR Major Type 'Semantic Tag' is not supported.");
       break;
 
-    case XclBinUtilities::MT_PRIMITIVES:
+    case XclBinUtilities::MajorTypes::primitives:
       throw std::runtime_error("Error: Decoding CBOR Major Type 'Primitives' is not supported.");
       break;
   }
@@ -307,7 +307,7 @@ XclBinUtilities::read_cbor(std::istream& istr,
   uint64_t count = 0;
 
   XclBinUtilities::get_next_type_and_count(istr, majorType, count);
-  if (majorType != MT_MAP_OF_ITEMS)
+  if (majorType !=MajorTypes:: map_of_items)
     throw std::runtime_error("Error: CBOR images does not start with Major Type 5 'Map of Items'");
 
   // We are working with a map of items, indicate so in the document

@@ -35,8 +35,8 @@ typedef enum {
   DType_BYTE_STRING
 } DType;
 
-typedef std::pair<std::string, DType> KeyTypePair;
-typedef std::vector<KeyTypePair> KeyTypeCollection;
+using KeyTypePair = std::pair<std::string, DType>;
+using KeyTypeCollection = std::vector<KeyTypePair>;
 
 void transform_to_primatives(rapidjson::Document& doc, const KeyTypeCollection& keyTypeCollection);
 void write_cbor(rapidjson::Document& doc, const KeyTypeCollection& keyTypeCollection, std::ostringstream& buffer);

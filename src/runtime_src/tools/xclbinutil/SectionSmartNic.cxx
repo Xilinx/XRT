@@ -47,14 +47,6 @@ namespace XUtil = XclBinUtilities;
 SectionSmartNic::_init SectionSmartNic::_initializer;
 
 
-SectionSmartNic::SectionSmartNic() {
-  // Empty
-}
-
-SectionSmartNic::~SectionSmartNic() {
-  // Empty
-}
-
 bool
 SectionSmartNic::doesSupportAddFormatType(FormatType _eFormatType) const {
   if ((_eFormatType == FT_JSON) ||
@@ -117,8 +109,7 @@ read_file_into_buffer(const std::string& fileName,
   filePath /= fileName;
 
   // Open the file
-  std::ifstream file;
-  file.open(filePath.string(), std::ifstream::in | std::ifstream::binary);
+  std::ifstream file(filePath.string(), std::ifstream::in | std::ifstream::binary);
   if (!file.is_open())
     throw std::runtime_error("ERROR: Unable to open the file for reading: " + fileName);
 
@@ -132,10 +123,8 @@ read_file_into_buffer(const std::string& fileName,
   file.read(buffer.data(), fileSize);
 
   // Make sure that the entire buffer was read
-  if (file.gcount() != (std::streamsize)fileSize)
+  if (file.gcount() != fileSize)
     throw std::runtime_error("ERROR: Input stream for the binary buffer is smaller then the expected size.");
-
-  file.close();
 }
 
 static
@@ -304,7 +293,7 @@ SectionSmartNic::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
   // Write the contents to given output stream
   std::string aString = buffer.str();
-  _buf.write(reinterpret_cast<const char*>(aString.data()), aString.length());
+  _buf.write(aString.data(), aString.length());
 }
 
 
