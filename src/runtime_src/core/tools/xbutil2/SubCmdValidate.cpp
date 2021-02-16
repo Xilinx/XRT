@@ -264,9 +264,9 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   }
   // log xclbin path for debugging purposes
   logger(_ptTest, "Xclbin", xclbinPath);
-
-  auto json_exists = [xclbinPath]() { 
-    return boost::filesystem::exists(xclbinPath + "platform.json") ? true : false; 
+  auto json_exists = [xclbinPath]() {
+    boost::filesystem::path test_dir(xclbinPath);
+    return boost::filesystem::exists(test_dir.parent_path().string() + "/platform.json") ? true : false;
   };
 
   std::ostringstream os_stdout;
@@ -298,9 +298,10 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     // log testcase path for debugging purposes
     logger(_ptTest, "Testcase", xrtTestCasePath);
 
-    std::vector<std::string> args = { "-k", xclbinPath, "-d", 
+    boost::filesystem::path test_dir(xclbinPath);
+    std::vector<std::string> args = { test_dir.parent_path().string(), "-d",
                                       xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
-    int exit_code = XBU::runScript("bash", xrtTestCasePath, args, os_stdout, os_stderr);
+    int exit_code = XBU::runScript("sh", xrtTestCasePath, args, os_stdout, os_stderr);
     if (exit_code != 0) {
       logger(_ptTest, "Error", os_stdout.str());
       logger(_ptTest, "Error", os_stderr.str());
@@ -310,7 +311,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
       _ptTest.put("status", "passed");
     }
   }
-  else {  
+  else {
     //check if testcase is present
     std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
     boost::filesystem::path xrt_path(xrtTestCasePath);
