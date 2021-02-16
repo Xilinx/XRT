@@ -60,7 +60,7 @@ populate_sensor(const xrt_core::device * device, const std::string loc_id, const
  * 2 -> 225W
  */
 static std::string
-lvl_to_power_watts(unsigned int lvl)
+lvl_to_power_watts(uint64_t lvl)
 {
   std::vector<std::string> powers{ "75", "150", "225" };
   return lvl < powers.size() ? powers[lvl] : "N/A";

@@ -162,8 +162,8 @@ ReportPlatforms::writeReport( const xrt_core::device * dev,
 
   output << "Platform\n";
   boost::property_tree::ptree& platforms = pt.get_child("platforms", empty_ptree);
-  for(auto& kv : platforms) {
-    boost::property_tree::ptree& pt_platform = kv.second;
+  for(auto& kp : platforms) {
+    boost::property_tree::ptree& pt_platform = kp.second;
     boost::property_tree::ptree& pt_static_region = pt_platform.get_child("static_region");
     output << boost::format("  %-20s : %s \n") % "XSA Name" % pt_static_region.get<std::string>("vbnv");
     output << boost::format("  %-20s : %s \n") % "FPGA Name" % pt_static_region.get<std::string>("fpga_name");
@@ -180,16 +180,16 @@ ReportPlatforms::writeReport( const xrt_core::device * dev,
     boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
     if(!clocks.empty())
       output << "Clocks\n";
-    for(auto& kv : clocks) {
-      boost::property_tree::ptree& pt_clock = kv.second;
+    for(auto& kc : clocks) {
+      boost::property_tree::ptree& pt_clock = kc.second;
       output << boost::format("    %-20s : %s MHz\n") % pt_clock.get<std::string>("desc") % pt_clock.get<std::string>("freq_mhz");
     }
 
     boost::property_tree::ptree& macs = pt_platform.get_child("macs", empty_ptree);
     if(!macs.empty())
       output << "Mac Addresses\n";
-    for(auto& kv : macs) {
-      boost::property_tree::ptree& pt_mac = kv.second;
+    for(auto& km : macs) {
+      boost::property_tree::ptree& pt_mac = km.second;
       output << boost::format("    %-20s : %s\n") % "" % pt_mac.get<std::string>("address");
     }
   }

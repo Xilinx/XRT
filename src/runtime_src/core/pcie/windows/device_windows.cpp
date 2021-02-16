@@ -222,10 +222,10 @@ struct board
     switch (key) {
     case key_type::xmc_serial_num:
       return query::xmc_serial_num::result_type(reinterpret_cast<const char*>(info.serial_num));
-    case key_type::xmc_bmc_version:
-      return query::xmc_bmc_version::result_type(reinterpret_cast<const char*>(info.bmc_ver));
-    case key_type::xmc_max_power:
-      return query::xmc_max_power::result_type(info.max_power);
+    case key_type::xmc_sc_version:
+      return query::xmc_sc_version::result_type(reinterpret_cast<const char*>(info.bmc_ver));
+    case key_type::max_power_level:
+		return query::max_power_level ::result_type(info.max_power);
     case key_type::fan_fan_presence:
       return query::fan_fan_presence::result_type(info.fan_presence == 0 ? "P" : "A");
     default:
@@ -1100,8 +1100,8 @@ initialize_query_table()
   emplace_function0_getter<query::xmc_version,               sensor>();
   emplace_function0_getter<query::xmc_status,                xmc>();
   emplace_function0_getter<query::xmc_serial_num,            board>();
-  emplace_function0_getter<query::xmc_max_power,             board>();
-  emplace_function0_getter<query::xmc_bmc_version,           board>();
+  emplace_function0_getter<query::max_power_level,           board>();
+  emplace_function0_getter<query::xmc_sc_version,            board>();
   emplace_function0_getter<query::fan_fan_presence,          board>();
   emplace_function2_getter<query::mig_ecc_enabled,           mig>();
   emplace_function2_getter<query::mig_ecc_status,            mig>();
