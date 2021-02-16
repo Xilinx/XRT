@@ -204,6 +204,7 @@ static long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
 	xocl_thread_start(lro);
 
 	xocl_clear_pci_errors(lro);
+	store_pcie_link_info(lro);
 
 	if (lro->preload_xclbin)
 		xocl_xclbin_download(lro, lro->preload_xclbin);
