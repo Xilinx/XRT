@@ -25,7 +25,7 @@
 typedef void (*xocl_execbuf_callback)(unsigned long data, int error);
 
 #define IS_HOST_MEM(m_tag)	(!strncmp(m_tag, "HOST[0]", 7))
-#define IS_PLRAM(m_tag)		(!strncmp(m_tag, "PLRAM[0]", 8))
+#define IS_PLRAM(m_tag)		(!strncmp(m_tag, "PLRAM[", 6))
 
 /**
  * struct drm_xocl_exec_metadata - Meta data for exec bo
