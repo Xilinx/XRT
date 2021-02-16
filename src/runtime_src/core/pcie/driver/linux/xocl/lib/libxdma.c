@@ -30,6 +30,8 @@
 
 extern unsigned int desc_blen_max;
 
+#define xocl_pr_info(fmt, args...)				\
+	printk(KERN_DEBUG pr_fmt(fmt), ##args)
 
 /* Module Parameters */
 static unsigned int poll_mode;
@@ -142,7 +144,7 @@ static inline int debug_check_dev_hndl(const char *fname, struct pci_dev *pdev,
 
 	xdev = xdev_find_by_pdev(pdev);
 	if (!xdev) {
-		pr_info("%s pdev 0x%p, hndl 0x%p, NO match found!\n",
+		xocl_pr_info("%s pdev 0x%p, hndl 0x%p, NO match found!\n",
 			fname, pdev, hndl);
 		return -EINVAL;
 	}
@@ -190,30 +192,30 @@ static void check_nonzero_interrupt_status(struct xdma_dev *xdev)
 
 	w = read_register(&reg->user_int_enable);
 	if (w)
-		pr_info("%s xdma%d user_int_enable = 0x%08x\n",
+		xocl_pr_info("%s xdma%d user_int_enable = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 
 	w = read_register(&reg->channel_int_enable);
 	if (w)
-	pr_info("%s xdma%d channel_int_enable = 0x%08x\n",
+	xocl_pr_info("%s xdma%d channel_int_enable = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 
 	w = read_register(&reg->user_int_request);
 	if (w)
-		pr_info("%s xdma%d user_int_request = 0x%08x\n",
+		xocl_pr_info("%s xdma%d user_int_request = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 	w = read_register(&reg->channel_int_request);
 	if (w)
-		pr_info("%s xdma%d channel_int_request = 0x%08x\n",
+		xocl_pr_info("%s xdma%d channel_int_request = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 
 	w = read_register(&reg->user_int_pending);
 	if (w)
-		pr_info("%s xdma%d user_int_pending = 0x%08x\n",
+		xocl_pr_info("%s xdma%d user_int_pending = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 	w = read_register(&reg->channel_int_pending);
 	if (w)
-		pr_info("%s xdma%d channel_int_pending = 0x%08x\n",
+		xocl_pr_info("%s xdma%d channel_int_pending = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 }
 
@@ -325,35 +327,35 @@ static void engine_reg_dump(struct xdma_engine *engine)
 	BUG_ON(!engine);
 
 	w = read_register(&engine->regs->identifier);
-	pr_info("%s: ioread32(0x%p) = 0x%08x (id).\n",
+	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (id).\n",
 		engine->name, &engine->regs->identifier, w);
 	w &= BLOCK_ID_MASK;
 	if (w != BLOCK_ID_HEAD) {
-		pr_info("%s: engine id missing, 0x%08x exp. & 0x%x = 0x%x\n",
+		xocl_pr_info("%s: engine id missing, 0x%08x exp. & 0x%x = 0x%x\n",
 			 engine->name, w, BLOCK_ID_MASK, BLOCK_ID_HEAD);
 		return;
 	}
 	/* extra debugging; inspect complete engine set of registers */
 	w = read_register(&engine->regs->status);
-	pr_info("%s: ioread32(0x%p) = 0x%08x (status).\n",
+	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (status).\n",
 		engine->name, &engine->regs->status, w);
 	w = read_register(&engine->regs->control);
-	pr_info("%s: ioread32(0x%p) = 0x%08x (control)\n",
+	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (control)\n",
 		engine->name, &engine->regs->control, w);
 	w = read_register(&engine->sgdma_regs->first_desc_lo);
-	pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_lo)\n",
+	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_lo)\n",
 		engine->name, &engine->sgdma_regs->first_desc_lo, w);
 	w = read_register(&engine->sgdma_regs->first_desc_hi);
-	pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_hi)\n",
+	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_hi)\n",
 		engine->name, &engine->sgdma_regs->first_desc_hi, w);
 	w = read_register(&engine->sgdma_regs->first_desc_adjacent);
-	pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_adjacent).\n",
+	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_adjacent).\n",
 		engine->name, &engine->sgdma_regs->first_desc_adjacent, w);
 	w = read_register(&engine->regs->completed_desc_count);
-	pr_info("%s: ioread32(0x%p) = 0x%08x (completed_desc_count).\n",
+	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (completed_desc_count).\n",
 		engine->name, &engine->regs->completed_desc_count, w);
 	w = read_register(&engine->regs->interrupt_enable_mask);
-	pr_info("%s: ioread32(0x%p) = 0x%08x (interrupt_enable_mask)\n",
+	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (interrupt_enable_mask)\n",
 		engine->name, &engine->regs->interrupt_enable_mask, w);
 }
 
@@ -448,7 +450,7 @@ static void engine_status_dump(struct xdma_engine *engine)
 	}
 
 	buf[len - 1] = '\0';
-	pr_info("%s\n", buffer);
+	xocl_pr_info("%s\n", buffer);
 }
 
 static u32 engine_status_read(struct xdma_engine *engine, bool clear, bool dump)
@@ -974,7 +976,7 @@ static struct xdma_request_cb *xdma_request_alloc(struct sg_table *sgt)
 			memset(req, 0, size);
 	}
 	if (!req) {
-		pr_info("OOM, %u sw_desc, %u.\n", sdesc_nr, size);
+		xocl_pr_info("OOM, %u sw_desc, %u.\n", sdesc_nr, size);
 		return NULL;
 	}
 
@@ -1102,7 +1104,7 @@ static int queue_request(struct xdma_engine *engine,
 
 	xdev = engine->xdev;
 	if (xdma_device_flag_check(xdev, XDEV_FLAG_OFFLINE)) {
-		pr_info("dev 0x%p offline\n", xdev);
+		xocl_pr_info("dev 0x%p offline\n", xdev);
 		return -EBUSY;
 	}
 
@@ -1111,7 +1113,7 @@ static int queue_request(struct xdma_engine *engine,
 
 	/* engine is being shutdown; do not accept new transfers */
 	if (engine->shutdown & ENGINE_SHUTDOWN_REQUEST) {
-		pr_info("engine %s offline\n", engine->name);
+		xocl_pr_info("engine %s offline\n", engine->name);
 		rv = -EBUSY;
 		goto shutdown;
 	}
@@ -1523,7 +1525,7 @@ loop_again:
 		result_cidx = engine->result_cidx;
 		result_virt = engine->cyclic_result + result_cidx;
 		while ((result_virt->status & 0xFFFF0000) == 0x52B40000) {
-			pr_info("received packet of length = %u/0x%x",
+			xocl_pr_info("received packet of length = %u/0x%x",
 				result_virt->length, result_virt->status);
 			desc_count += (result_virt->length + PAGE_SIZE -1) >>
 					PAGE_SHIFT;
@@ -2055,10 +2057,10 @@ static resource_size_t map_single_bar(struct xdma_dev *xdev,
 	 * BARs with length 0. Note that start MAY be 0!
 	 * USER and P2P bar (size >= 32M)
 	 */
-	pr_info("map bar %d, len %lld\n", idx, bar_len);
+	xocl_pr_info("map bar %d, len %lld\n", idx, bar_len);
 	/* do not map BARs with length 0. Note that start MAY be 0! */
 	if (!bar_len || bar_len >= (1 << 25)) {
-		pr_info("BAR #%d is not present - skipping\n", idx);
+		xocl_pr_info("BAR #%d is not present - skipping\n", idx);
 		return 0;
 	}
 
@@ -2072,7 +2074,7 @@ static resource_size_t map_single_bar(struct xdma_dev *xdev,
 
 	/* BAR size exceeds maximum desired mapping? */
 	if (bar_len > INT_MAX) {
-		pr_info("Limit BAR %d mapping from %llu to %d bytes\n", idx,
+		xocl_pr_info("Limit BAR %d mapping from %llu to %d bytes\n", idx,
 			(u64)bar_len, INT_MAX);
 		map_len = (resource_size_t)INT_MAX;
 	}
@@ -2084,11 +2086,11 @@ static resource_size_t map_single_bar(struct xdma_dev *xdev,
 	xdev->bar[idx] = pci_iomap(dev, idx, map_len);
 
 	if (!xdev->bar[idx]) {
-		pr_info("Could not map BAR %d.\n", idx);
+		xocl_pr_info("Could not map BAR %d.\n", idx);
 		return -1;
 	}
 
-	pr_info("BAR%d at 0x%llx mapped at 0x%p, length=%llu(/%llu)\n", idx,
+	xocl_pr_info("BAR%d at 0x%llx mapped at 0x%p, length=%llu(/%llu)\n", idx,
 		(u64)bar_start, xdev->bar[idx], (u64)map_len, (u64)bar_len);
 
 	return (resource_size_t)map_len;
@@ -2145,7 +2147,7 @@ static void identify_bars(struct xdma_dev *xdev, int *bar_id_list, int num_bars,
 	BUG_ON(!xdev);
 	BUG_ON(!bar_id_list);
 
-	pr_info("xdev 0x%p, bars %d, config at %d.\n",
+	xocl_pr_info("xdev 0x%p, bars %d, config at %d.\n",
 		xdev, num_bars, config_bar_pos);
 
 	switch (num_bars) {
@@ -2159,7 +2161,7 @@ static void identify_bars(struct xdma_dev *xdev, int *bar_id_list, int num_bars,
 		} else if (config_bar_pos == 1) {
 			xdev->user_bar_idx = bar_id_list[0];
 		} else {
-			pr_info("2, XDMA config BAR unexpected %d.\n",
+			xocl_pr_info("2, XDMA config BAR unexpected %d.\n",
 				config_bar_pos);
 		}
 		break;
@@ -2172,19 +2174,19 @@ static void identify_bars(struct xdma_dev *xdev, int *bar_id_list, int num_bars,
 			/* bypass bar at the last bar */
 			xdev->bypass_bar_idx = bar_id_list[num_bars - 1];
 		} else {
-			pr_info("3/4, XDMA config BAR unexpected %d.\n",
+			xocl_pr_info("3/4, XDMA config BAR unexpected %d.\n",
 				config_bar_pos);
 		}
 		break;
 
 	default:
 		/* Should not occur - warn user but safe to continue */
-		pr_info("Unexpected # BARs (%d), XDMA config BAR only.\n",
+		xocl_pr_info("Unexpected # BARs (%d), XDMA config BAR only.\n",
 			num_bars);
 		break;
 
 	}
-	pr_info("%d BARs: config %d, user %d, bypass %d.\n",
+	xocl_pr_info("%d BARs: config %d, user %d, bypass %d.\n",
 		num_bars, config_bar_pos, xdev->user_bar_idx,
 		xdev->bypass_bar_idx);
 }
@@ -2216,7 +2218,7 @@ static int map_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 			if (is_config_bar(xdev, i)) {
 				xdev->config_bar_idx = i;
 				config_bar_pos = bar_id_idx;
-				pr_info("config bar %d, pos %d.\n",
+				xocl_pr_info("config bar %d, pos %d.\n",
 					xdev->config_bar_idx, config_bar_pos);
 			}
 		}
@@ -2227,7 +2229,7 @@ static int map_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 
 	/* The XDMA config BAR must always be present */
 	if (xdev->config_bar_idx < 0) {
-		pr_info("Failed to detect XDMA config BAR\n");
+		xocl_pr_info("Failed to detect XDMA config BAR\n");
 		rv = -EINVAL;
 		goto fail;
 	}
@@ -2321,7 +2323,7 @@ static int enable_msi_msix(struct xdma_dev *xdev, struct pci_dev *pdev)
 		if (rv < 0)
 			dbg_init("Couldn't enable MSI-X mode: %d\n", rv);
 
-		pr_info("request vectors: h2c %d, c2h %d, user %d\n",
+		xocl_pr_info("request vectors: h2c %d, c2h %d, user %d\n",
 			xdev->h2c_channel_max,
 			xdev->c2h_channel_max, xdev->user_max);
 
@@ -2349,7 +2351,7 @@ static void pci_check_intr_pend(struct pci_dev *pdev)
 
 	pci_read_config_word(pdev, PCI_STATUS, &v);
 	if (v & PCI_STATUS_INTERRUPT) {
-		pr_info("%s PCI STATUS Interrupt pending 0x%x.\n",
+		xocl_pr_info("%s PCI STATUS Interrupt pending 0x%x.\n",
                         dev_name(&pdev->dev), v);
 		pci_write_config_word(pdev, PCI_STATUS, PCI_STATUS_INTERRUPT);
 	}
@@ -2367,7 +2369,7 @@ static void pci_keep_intx_enabled(struct pci_dev *pdev)
 	pci_read_config_word(pdev, PCI_COMMAND, &pcmd);
 	pcmd_new = pcmd & ~PCI_COMMAND_INTX_DISABLE;
 	if (pcmd_new != pcmd) {
-		pr_info("%s: clear INTX_DISABLE, 0x%x -> 0x%x.\n",
+		xocl_pr_info("%s: clear INTX_DISABLE, 0x%x -> 0x%x.\n",
 			dev_name(&pdev->dev), pcmd, pcmd_new);
 		pci_write_config_word(pdev, PCI_COMMAND, pcmd_new);
 	}
@@ -2487,7 +2489,7 @@ static int irq_msix_channel_setup(struct xdma_dev *xdev)
 				vector, rv, engine->name);
 			return rv;
 		}
-		pr_info("engine %s, irq#%d.\n", engine->name, vector);
+		xocl_pr_info("engine %s, irq#%d.\n", engine->name, vector);
 		engine->msix_irq_line = vector;
 	}
 
@@ -2501,11 +2503,11 @@ static int irq_msix_channel_setup(struct xdma_dev *xdev)
 		rv = request_irq(vector, xdma_channel_irq, 0, xdev->mod_name,
 				 engine);
 		if (rv) {
-			pr_info("requesti irq#%d failed %d, engine %s.\n",
+			xocl_pr_info("requesti irq#%d failed %d, engine %s.\n",
 				vector, rv, engine->name);
 			return rv;
 		}
-		pr_info("engine %s, irq#%d.\n", engine->name, vector);
+		xocl_pr_info("engine %s, irq#%d.\n", engine->name, vector);
 		engine->msix_irq_line = vector;
 	}
 
@@ -2554,11 +2556,11 @@ static int irq_msix_user_setup(struct xdma_dev *xdev)
 		rv = request_irq(vector, xdma_user_irq, 0, xdev->mod_name,
 				&xdev->user_irq[i]);
 		if (rv) {
-			pr_info("user %d couldn't use IRQ#%d, %d\n",
+			xocl_pr_info("user %d couldn't use IRQ#%d, %d\n",
 				i, vector, rv);
 			break;
 		}
-		pr_info("%d-USR-%d, IRQ#%d with 0x%p\n", xdev->idx, i, vector,
+		xocl_pr_info("%d-USR-%d, IRQ#%d with 0x%p\n", xdev->idx, i, vector,
 			&xdev->user_irq[i]);
         }
 
@@ -2673,12 +2675,12 @@ static void dump_desc(struct xdma_desc *desc_virt)
 	dummy = field_name[0];
 
 	for (j = 0; j < 8; j += 1) {
-		pr_info("0x%08lx/0x%02lx: 0x%08x 0x%08x %s\n",
+		xocl_pr_info("0x%08lx/0x%02lx: 0x%08x 0x%08x %s\n",
 			 (uintptr_t)p, (uintptr_t)p & 15, (int)*p,
 			 le32_to_cpu(*p), field_name[j]);
 		p++;
 	}
-	pr_info("\n");
+	xocl_pr_info("\n");
 }
 
 #endif /* __LIBXDMA_DEBUG__ */
@@ -3086,11 +3088,11 @@ static void sgt_dump(struct sg_table *sgt)
 	int i;
 	struct scatterlist *sg = sgt->sgl;
 
-	pr_info("sgt 0x%p, sgl 0x%p, nents %u/%u.\n",
+	xocl_pr_info("sgt 0x%p, sgl 0x%p, nents %u/%u.\n",
 		sgt, sgt->sgl, sgt->nents, sgt->orig_nents);
 
 	for (i = 0; i < sgt->orig_nents; i++, sg = sg_next(sg))
-		pr_info("%d, 0x%p, pg 0x%p,%u+%u, dma 0x%llx,%u.\n",
+		xocl_pr_info("%d, 0x%p, pg 0x%p,%u+%u, dma 0x%llx,%u.\n",
 			i, sg, sg_page(sg), sg->offset, sg->length,
 			sg_dma_address(sg), sg_dma_len(sg));
 }
@@ -3099,11 +3101,11 @@ static void xdma_request_cb_dump(struct xdma_request_cb *req)
 {
 	int i;
 
-	pr_info("request 0x%p, total %u, ep 0x%llx, sw_desc %u, sgt 0x%p.\n",
+	xocl_pr_info("request 0x%p, total %u, ep 0x%llx, sw_desc %u, sgt 0x%p.\n",
 		req, req->total_len, req->ep_addr, req->sw_desc_cnt, req->sgt);
 	sgt_dump(req->sgt);
 	for (i = 0; i < req->sw_desc_cnt; i++)
-		pr_info("%d/%u, 0x%llx, %u.\n",
+		xocl_pr_info("%d/%u, 0x%llx, %u.\n",
 			i, req->sw_desc_cnt, req->sdesc[i].addr,
 			req->sdesc[i].len);
 }
@@ -3173,7 +3175,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 	if (!dma_mapped) {
 		nents = pci_map_sg(xdev->pdev, sg, sgt->orig_nents, dir);
 		if (!nents) {
-			pr_info("map sgl failed, sgt 0x%p.\n", sgt);
+			xocl_pr_info("map sgl failed, sgt 0x%p.\n", sgt);
 			return -EIO;
 		}
 		sgt->nents = nents;
@@ -3396,7 +3398,7 @@ static struct xdma_dev *alloc_dev_instance(struct pci_dev *pdev)
 	/* allocate zeroed device book keeping structure */
 	xdev = kzalloc(sizeof(struct xdma_dev), GFP_KERNEL);
 	if (!xdev) {
-		pr_info("OOM, xdma_dev.\n");
+		xocl_pr_info("OOM, xdma_dev.\n");
 		return NULL;
 	}
 	spin_lock_init(&xdev->lock);
@@ -3572,7 +3574,7 @@ static int probe_for_engine(struct xdma_dev *xdev, enum dma_data_direction dir,
 	/* allocate and initialize engine */
 	rv = engine_init(engine, xdev, offset, dir, channel);
 	if (rv != 0) {
-		pr_info("failed to create AXI %s %d engine.\n",
+		xocl_pr_info("failed to create AXI %s %d engine.\n",
 			dir == DMA_TO_DEVICE ? "H2C" : "C2H",
 			channel);
 		return rv;
@@ -3649,7 +3651,7 @@ static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 	if (pos > 0)
 		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &cap);
 	else {
-		pr_info("pdev 0x%p, unable to access pcie cap.\n", pdev);
+		xocl_pr_info("pdev 0x%p, unable to access pcie cap.\n", pdev);
 		return -EACCES;
 	}
 #endif
@@ -3658,7 +3660,7 @@ static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 		return 0;
 
 	/* extended tag not enabled */
-	pr_info("0x%p EXT_TAG disabled.\n", pdev);
+	xocl_pr_info("0x%p EXT_TAG disabled.\n", pdev);
 
 #if 0
 	/* Confirmed with Karen. This code is needed when ExtTag is disabled.
@@ -3670,7 +3672,7 @@ static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 	 * If ExtTag need to be disabled for your system, please enable this.
 	 */
 	if (xdev->config_bar_idx < 0) {
-		pr_info("pdev 0x%p, xdev 0x%p, config bar UNKNOWN.\n",
+		xocl_pr_info("pdev 0x%p, xdev 0x%p, config bar UNKNOWN.\n",
 				pdev, xdev);
 		return -EINVAL;
 	}
@@ -3693,7 +3695,7 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	struct xdma_dev *xdev = NULL;
 	int rv = 0;
 
-	pr_info("%s device %s, 0x%p.\n", mname, dev_name(&pdev->dev), pdev);
+	xocl_pr_info("%s device %s, 0x%p.\n", mname, dev_name(&pdev->dev), pdev);
 
 	/* allocate zeroed device book keeping structure */
 	xdev = alloc_dev_instance(pdev);
@@ -3727,7 +3729,7 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 
 	/* if extended tag check failed, enable it */
 	if (pci_check_extended_tag(xdev, pdev)) {
-		pr_info("ExtTag is disabled, try enable it.\n");
+		xocl_pr_info("ExtTag is disabled, try enable it.\n");
 		pci_enable_capability(pdev, PCI_EXP_DEVCTL_EXT_TAG);
 	}
 
@@ -3863,7 +3865,7 @@ void xdma_device_offline(struct pci_dev *pdev, void *dev_hndl)
 	if (debug_check_dev_hndl(__func__, pdev, dev_hndl) < 0)
 		return;
 
-pr_info("pdev 0x%p, xdev 0x%p.\n", pdev, xdev);
+	xocl_pr_info("pdev 0x%p, xdev 0x%p.\n", pdev, xdev);
 	xdma_device_flag_set(xdev, XDEV_FLAG_OFFLINE);
 
 	/* wait for all engines to be idle */
@@ -3902,7 +3904,7 @@ pr_info("pdev 0x%p, xdev 0x%p.\n", pdev, xdev);
 	read_interrupts(xdev);
 	irq_teardown(xdev);
 
-	pr_info("xdev 0x%p, done.\n", xdev);
+	xocl_pr_info("xdev 0x%p, done.\n", xdev);
 }
 
 void xdma_device_online(struct pci_dev *pdev, void *dev_hndl)
@@ -3918,7 +3920,7 @@ void xdma_device_online(struct pci_dev *pdev, void *dev_hndl)
 	if (debug_check_dev_hndl(__func__, pdev, dev_hndl) < 0)
 		return;
 
-pr_info("pdev 0x%p, xdev 0x%p.\n", pdev, xdev);
+	xocl_pr_info("pdev 0x%p, xdev 0x%p.\n", pdev, xdev);
 
 	for (i  = 0; i < xdev->h2c_channel_max; i++) {
 		engine = &xdev->engine_h2c[i];
@@ -3950,7 +3952,7 @@ pr_info("pdev 0x%p, xdev 0x%p.\n", pdev, xdev);
 	}
 
 	xdma_device_flag_clear(xdev, XDEV_FLAG_OFFLINE);
-pr_info("xdev 0x%p, done.\n", xdev);
+	xocl_pr_info("xdev 0x%p, done.\n", xdev);
 }
 
 int xdma_device_restart(struct pci_dev *pdev, void *dev_hndl)
@@ -3963,7 +3965,7 @@ int xdma_device_restart(struct pci_dev *pdev, void *dev_hndl)
 	if (debug_check_dev_hndl(__func__, pdev, dev_hndl) < 0)
 		return -EINVAL;
 
-	pr_info("NOT implemented, 0x%p.\n", xdev);
+	xocl_pr_info("NOT implemented, 0x%p.\n", xdev);
 	return -EINVAL;
 }
 
