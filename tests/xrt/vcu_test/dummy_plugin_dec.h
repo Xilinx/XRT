@@ -4,14 +4,14 @@
 #include <stdint.h>
 #include "xrt_utils.h"
 
-#define XCLBIN_PATH "./xclbin/aws.xclbin"
+#define XCLBIN_PATH "/usr/local/lib/aws.xclbin"
 static const int ERT_CMD_SIZE = 4096;
-#define boolean int 
+#define int int 
 #define TRUE 0
 #define FALSE -1
 #define MAX_IBUFFS 2
 #define MEM_BANK 0
-#define MEM_MAX_SIZE 3342336 // GST Specific
+#define OUT_MEM_SIZE 3342336 // GST Specific
 
 #define ERT_CMD_DATA_LEN 1024
 #define CMD_EXEC_TIMEOUT 1000
@@ -28,12 +28,12 @@ enum cmd_type
   VCU_DEINIT,
 };
 
-enum XrtFlowReturn
+typedef enum _XrtFlowReturn
 {
   XRT_FLOW_OK = 0,
   XRT_FLOW_EOS,
   XRT_FLOW_ERROR,
-};
+} XrtFlowReturn;
 
 typedef struct _XlnxOutputBuffer
 {
@@ -99,10 +99,9 @@ typedef struct _XrtIvas_XVCUDecPrivate
   xrt_buffer *in_xrt_bufs[MAX_IBUFFS];  /* input encoded stream will be copied to this */
   xrt_buffer *dec_cfg_buf;
   xrt_buffer *dec_out_bufs_handle;
-  boolean init_done;
-  boolean flush_done;          /* to make sure FLUSH cmd issued to softkernel while exiting */
-  boolean deinit_done;
-  boolean outbufs_allocated;
+  int init_done;
+  int flush_done;          /* to make sure FLUSH cmd issued to softkernel while exiting */
+  int deinit_done;
   uint32_t num_out_bufs;
   size_t out_buf_size;
   uint32_t max_ibuf_size;
@@ -113,17 +112,14 @@ typedef struct _XrtIvas_XVCUDecPrivate
 
 typedef struct _XrtIvas_XVCUDec
 {
-  //GstVideoDecoder parent;
   XrtIvas_XVCUDecPrivate *priv;
-  //XlnxCodecType codec_type;
-  //GstVideoCodecState *input_state;
-  //GstVideoInfo out_vinfo;
+  uint32_t input_buf_size;
 
   /* properties */
   char *xclbin_path;
   char *sk_name;
   char *sk_lib_path;
-  boolean low_latency;
+  int low_latency;
   uint32_t num_entropy_bufs;
   uint32_t bit_depth;
   int sk_start_idx;
@@ -131,12 +127,6 @@ typedef struct _XrtIvas_XVCUDec
   int dev_index;
 } XrtIvas_XVCUDec;
 
-typedef struct _XrtVideoDecoder
-{
-	XrtIvas_XVCUDec *dec;
-
-} XrtVideoDecoder;
-
-int vcu_dec_test();
+int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx);
 
 #endif

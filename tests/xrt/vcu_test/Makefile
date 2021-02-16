@@ -4,26 +4,25 @@ endif
 
 XRT_PATH=${XILINX_XRT}
 
-CPPFLAGS :=
-CPPLFLAGS :=
+CFLAGS := -Wno-unused-parameter -Wall -Wextra
+CLFLAGS :=
 
 ifeq (${debug}, 1)
-CPPFLAGS += -g
+CFLAGS += -g
 endif
-CPPFLAGS += -g
 
-CPPFLAGS += -I${XRT_PATH}/include
-CPPLFLAGS += -L${XRT_PATH}/lib -lxrt_core -lxrt_coreutil -luuid
+CFLAGS += -I${XRT_PATH}/include
+CLFLAGS += -L${XRT_PATH}/lib -lxrt_core -lxrt_coreutil -luuid
 
 .PHONY: all clean
 
 all: vcu_test
 
-%.o: %.cpp
-	g++ -std=c++11 -c ${CPPFLAGS} -o $@ $^
+%.o: %.c
+	gcc -c ${CFLAGS} -o $@ $^
 
-vcu_test: vcu_test.o dummy_plugin_dec.o xrt_utils.o
-	g++ $^ ${CPPLFLAGS} -o $@
+vcu_test: main.o dummy_plugin_dec.o xrt_utils.o
+	gcc $^ ${CLFLAGS} -o $@
 
 clean:
-	rm -rf user_polling *.o
+	rm -rf vcu_test *.o
