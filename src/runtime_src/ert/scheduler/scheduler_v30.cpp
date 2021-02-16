@@ -237,6 +237,30 @@ struct slot_info
   size_type regmap_size = 0;
 };
 
+struct mb_validation
+{
+  value_type place_holder = 0;
+
+  value_type timestamp = 0;
+
+  value_type cq_read_single = 0;
+
+  value_type cq_write_single = 0;
+
+  value_type cu_read_single = 0;
+
+  value_type cu_write_single = 0;
+
+  value_type memcpy_128 = 0;
+
+  value_type memcpy_512 = 0;
+
+  value_type irq_latency = 0;
+
+};
+
+static mb_validation mb_bist;
+
 // Fixed sized map from slot_idx -> slot info
 static slot_info command_slots[max_slots];
 
@@ -385,6 +409,13 @@ idx_to_mask(size_type idx, size_type mask_idx)
   return idx_in_mask(idx,mask_idx)
     ? 1 << (idx-(mask_idx<<5))
     : 0;
+}
+
+
+static value_type
+read_clk_counter(void)
+{
+  return read_reg(ERT_CLK_COUNTER_ADDR);
 }
 
 // scope guard for disabling interrupts
@@ -991,6 +1022,22 @@ abort_mb(size_type slot_idx)
   return true;
 }
 
+
+static bool
+clock_calib_mb(value_type slot_idx)
+{
+  auto& slot = command_slots[slot_idx];
+  void *addr_ptr = (void *)(uintptr_t)(slot.slot_addr);
+
+  mb_bist.timestamp = read_clk_counter();
+
+  slot.header_value = (slot.header_value & ~0xF) | 0x4;
+  memcpy(addr_ptr, &mb_bist, sizeof(struct mb_validation));
+  notify_host(slot_idx);
+  return true;
+}
+
+
 /**
  * Process special command.
  *
@@ -1010,6 +1057,8 @@ process_special_command(value_type opcode, size_type slot_idx)
     return exit_mb(slot_idx);
   if (opcode==ERT_ABORT)
     return abort_mb(slot_idx);
+  if (opcode==ERT_CLK_CALIB)
+    return clock_calib_mb(slot_idx);
   return false;
 }
 

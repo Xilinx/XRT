@@ -1,0 +1,117 @@
+{
+    "smartnic": {
+        "schema_version": {
+            "major": "5",
+            "minor": "1",
+            "patch": "2"
+        },
+        "extensions": [
+            {
+                "version_info": {
+                    "uuid": "0682DB00FEAE4E158D6DD74AA38BBC91",
+                    "minor": "2",
+                    "patch": "3"
+                },
+                "instance_name": "plugin_1:instance_1",
+                "info": [
+                    {
+                        "title": "My Special Plugin"
+                    },
+                    {
+                        "creator": "Xilinx Engineer"
+                    },
+                    {
+                        "subject": "Demo"
+                    },
+                    {
+                        "description": "This is a special demo plugin"
+                    },
+                    {
+                        "publisher": "Xilinx"
+                    },
+                    {
+                        "date": "1997-07-16T19:20:30.45+01:00"
+                    },
+                    {
+                        "type": "Networking accelerator"
+                    },
+                    {
+                        "format": "SmartNIC plugin"
+                    },
+                    {
+                        "identifier": "6511BA546-32A"
+                    },
+                    {
+                        "source": "Special Company"
+                    },
+                    {
+                        "language": "de-CH-1901"
+                    },
+                    {
+                        "relation": "Networking"
+                    },
+                    {
+                        "coverage": "Security"
+                    },
+                    {
+                        "rights": "Xilinx Copyright 2021"
+                    }
+                ],
+                "features": "22",
+                "cam_instances": [
+                    {
+                        "name": "foo_my_cam_instance_1",
+                        "id": "0",
+                        "config": "8E66D3D94B354472AC95030EB88E9844CE88AD344DA749E0A3352E313B394B07",
+                        "driver_index": "0"
+                    }
+                ],
+                "address_mapping": {
+                    "offset": "1024",
+                    "aperture_size_bytes": "1024"
+                },
+                "setup": {
+                    "ebpf": "0BDFF1DE05A94A6FB5739B8E6CB034A1B9AFE8A4F05147B3AC9F763A60A500C7"
+                },
+                "background_proc": {
+                    "ebpf": "C1F3E37C54C14BDFB93AD2D71C8348E2C1F3E37C54C14BDFB93AD2D71C8348E2"
+                },
+                "tear_down": {
+                    "ebpf": "B7C5C32F37D947AA872C37AE6841C817B7C5C32F37D947AA872C37AE6841C817"
+                },
+                "messages": [
+                    {
+                        "id": "2",
+                        "name": "my_message",
+                        "param_size_bytes": "3",
+                        "ebpf": "D9273567385345F184290D7C8210B4C9D9273567385345F184290D7C8210B4C9"
+                    }
+                ],
+                "resource_classes": [
+                    {
+                        "name": "my_resource",
+                        "description": "This is my resource",
+                        "max_count": "3",
+                        "memory_size_bytes": "256",
+                        "dtor": "701AD27500A549218A6874DF38BC1239701AD27500A549218A6874DF38BC1239"
+                    }
+                ],
+                "global_memory_size_bytes": "1024",
+                "per_handle_memory_size_bytes": "16"
+            }
+        ],
+        "softhub_connections": [
+            {
+                "version": "2",
+                "id": "1"
+            }
+        ],
+        "cam_drivers": [
+            {
+                "compatible_version": "2",
+                "driver": "6AB73545FC6D425FAF3531259D68A4C96AB73545FC6D425FAF3531259D68A4C9",
+                "signature": "140D75F84FAD4832AAAD40ECF9E7998B140D75F84FAD4832AAAD40ECF9E7998B"
+            }
+        ]
+    }
+}

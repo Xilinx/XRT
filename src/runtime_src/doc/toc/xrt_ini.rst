@@ -221,8 +221,7 @@ Emulation Group
 |                           |                            |                                                   |
 |                           |                            |Default: true                                      |
 +---------------------------+----------------------------+---------------------------------------------------+
-|launch_waveform            |  [off|batch|gui]           |Specify how the waveform is saved and displayed    |
-|                           |                            |during emulation:                                  |
+|debug_mode                 |  [off|batch|gui|gdb]       |Specify how the waveform is saved and displayed    |
 |                           |                            |                                                   |
 |                           |                            |   - off: Do not launch simulator waveform GUI, and|
 |                           |                            |     do not save wdb file                          |
@@ -230,6 +229,7 @@ Emulation Group
 |                           |                            |     but save wdb file                             |
 |                           |                            |   - gui: Launch simulator waveform GUI, and save  |
 |                           |                            |     wdb file                                      |
+|                           |                            |   = gdb: Launch gdb mode                          |
 |                           |                            |                                                   |
 |                           |                            |Default: off                                       |
 |                           |                            |                                                   |

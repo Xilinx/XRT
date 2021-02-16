@@ -136,9 +136,12 @@ namespace xdp {
       }
       else if (e->isKernelEnqueue())
       {
-        // Construct the name
-        KernelEnqueue* ke = dynamic_cast<KernelEnqueue*>(e.get()) ;
-        bucket = enqueueBuckets[ke->getIdentifier()] ;
+	// Construct the name
+	KernelEnqueue* ke = dynamic_cast<KernelEnqueue*>(e.get()) ;
+	if (ke != nullptr)
+	  bucket = enqueueBuckets[ke->getIdentifier()] ;
+	else
+	  bucket = generalAPIBucket; // Should never happen
       }
       e->dump(fout, bucket) ;
     }
