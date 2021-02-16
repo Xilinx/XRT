@@ -62,7 +62,8 @@ namespace xdp {
     virtual void write(bool openNewFile = true) = 0 ;
     virtual bool isDeviceWriter() { return false ; } 
     virtual DeviceIntf* device() { return nullptr ; } 
-    virtual bool isSameDevice(void* /*handle*/) { return false ; } 
+    virtual bool isSameDevice(void* /*handle*/) { return false ; }
+    virtual std::string getcurrentFileName() { return currentFileName ; }
   } ;
 
 }

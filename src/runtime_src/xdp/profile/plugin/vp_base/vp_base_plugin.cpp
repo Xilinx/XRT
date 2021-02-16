@@ -35,6 +35,7 @@ namespace xdp {
   {
     if ((db->getStaticInfo()).getApplicationStartTime() == 0)
       (db->getStaticInfo()).setApplicationStartTime(xrt_core::time_ns()) ;
+    is_write_thread_active = false;
   }
 
   XDPPlugin::~XDPPlugin()
@@ -83,6 +84,46 @@ namespace xdp {
       break ;
     }
     */
+  }
+
+  void XDPPlugin::writeContinuous(unsigned int interval, std::string type)
+  {
+    is_write_thread_active = true;
+    while (writeCondWaitFor(std::chrono::seconds(interval))) {
+      for (auto w : writers) {
+        w->write(true) ;
+        (db->getStaticInfo()).addOpenedFile(w->getcurrentFileName().c_str(), type) ;
+      }
+    }
+
+    // Do a final write
+    for (auto w : writers) {
+        w->write(false) ;
+    }
+  }
+
+  void XDPPlugin::startWrite(unsigned int interval, std::string type)
+  {
+    if (is_write_thread_active)
+      return;
+    write_thread = std::thread(&XDPPlugin::writeContinuous, this, interval, type);
+  }
+
+  void XDPPlugin::endWrite()
+  {
+    if (is_write_thread_active) {
+      // Ask writer thread to quit
+      {
+        std::lock_guard<std::mutex> l(mtx_writer);
+        stop_writer = true;
+      }
+      cv_writer.notify_one();
+      write_thread.join();
+      is_write_thread_active = false;
+    } else {
+      for (auto w : writers)
+        w->write(false) ;
+    }
   }
 
 }

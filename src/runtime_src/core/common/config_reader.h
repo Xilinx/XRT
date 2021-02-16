@@ -220,6 +220,13 @@ get_continuous_trace_interval_ms()
   return value;
 }
 
+inline unsigned int
+get_trace_dump_interval_s()
+{
+  static unsigned int value = detail::get_uint_value("Debug.trace_dump_interval_s",5);
+  return value;
+}
+
 inline std::string
 get_trace_buffer_size()
 {

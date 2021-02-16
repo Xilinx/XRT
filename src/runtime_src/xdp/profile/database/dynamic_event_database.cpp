@@ -53,7 +53,7 @@ namespace xdp {
 
     for (auto device : deviceEvents) {
       for (auto multimapEntry : device.second) {
-	    delete multimapEntry.second;
+            delete multimapEntry.second;
       }
       device.second.clear();
     }
@@ -75,7 +75,7 @@ namespace xdp {
 
   void VPDynamicDatabase::addDeviceEvent(uint64_t deviceId, VTFEvent* event)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::lock_guard<std::mutex> deviceDbLock(dbLock) ;
 
     event->setEventId(eventId++) ;
     deviceEvents[deviceId].emplace(event->getTimestamp(), event) ;
@@ -138,8 +138,8 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::markRange(uint64_t functionID,
-				    std::pair<const char*, const char*> desc,
-				    uint64_t startTimestamp)
+                                    std::pair<const char*, const char*> desc,
+                                    uint64_t startTimestamp)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
     std::tuple<const char*, const char*, uint64_t> triple;
@@ -184,11 +184,12 @@ namespace xdp {
       if (filter(e.second)) collected.push_back(e.second) ;
     }
 
+    std::lock_guard<std::mutex> deviceLock(deviceDbLock) ;
     for (auto dev : deviceEvents)
     {
       for (auto multiMapEntry : dev.second)
       {
-	if (filter(multiMapEntry.second)) collected.push_back(multiMapEntry.second) ;
+        if (filter(multiMapEntry.second)) collected.push_back(multiMapEntry.second) ;
       }
     }
 
@@ -203,6 +204,18 @@ namespace xdp {
     for (auto e : hostEvents)
     {
       if (filter(e.second)) collected.push_back(e.second) ;
+    }
+    return collected ;
+  }
+
+  std::vector<std::unique_ptr<VTFEvent>> VPDynamicDatabase::filterEraseHostEvents(std::function<bool(VTFEvent*)> filter)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::vector<std::unique_ptr<VTFEvent>> collected ;
+
+    for (auto it=hostEvents.begin(); it!=hostEvents.end(); it++) {
+      if (filter(it->second)) collected.emplace_back(it->second);
+      hostEvents.erase(it);
     }
     return collected ;
   }
@@ -228,6 +241,21 @@ namespace xdp {
     return events;
   }
 
+  std::vector<std::unique_ptr<VTFEvent>> VPDynamicDatabase::getEraseDeviceEvents(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceDbLock) ;
+    std::vector<std::unique_ptr<VTFEvent>> events;
+    if(deviceEvents.find(deviceId) == deviceEvents.end()) {
+      return events;
+    }
+    auto& mmap = deviceEvents[deviceId];
+    for (auto it=mmap.begin(); it!=mmap.end(); it++) {
+      events.emplace_back(it->second);
+      mmap.erase(it);
+    }
+    return events;
+  }
+
   void VPDynamicDatabase::dumpStringTable(std::ofstream& fout)
   {
     // Windows compilation fails unless c_str() is used
@@ -238,8 +266,8 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::setCounterResults(const uint64_t deviceId,
-					    xrt_core::uuid uuid,
-					    xclCounterResults& values)
+                                            xrt_core::uuid uuid,
+                                            xclCounterResults& values)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
     std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;
@@ -248,7 +276,7 @@ namespace xdp {
   }
 
   xclCounterResults VPDynamicDatabase::getCounterResults(uint64_t deviceId,
-							 xrt_core::uuid uuid)
+                                                         xrt_core::uuid uuid)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
     std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;
@@ -257,8 +285,8 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addOpenCLMapping(uint64_t openclID,
-					   uint64_t eventID,
-					   uint64_t startID)
+                                           uint64_t eventID,
+                                           uint64_t startID)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
     openclEventMap[openclID] = std::make_pair(eventID, startID) ;
@@ -273,7 +301,7 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addDependencies(uint64_t eventID,
-					  const std::vector<uint64_t>& openclIDs)
+                                          const std::vector<uint64_t>& openclIDs)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
     dependencyMap[eventID] = openclIDs ;
