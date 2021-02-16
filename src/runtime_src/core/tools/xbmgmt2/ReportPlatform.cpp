@@ -83,14 +83,15 @@ get_installed_partitions(std::string interface_uuid)
     // Find the UUID that it exposes for other partitions
     for(unsigned int j = 1; j < installedDSA.uuids.size(); j++){
       //check if the interface UUID is resolution of BLP
-      if(interface_uuid.compare(installedDSA.uuids[j]) == 0)
+      if(interface_uuid.compare(installedDSA.uuids[j]) != 0)
         continue;
       pt_plp.put("interface-uuid", XBU::string_to_UUID(installedDSA.uuids[j]));
     }
     pt_plp.put("file", installedDSA.file);
-    std::cout << std::endl;
 
-    pt_plps.push_back( std::make_pair("", pt_plp) );
+    //if the partition doesn't resolve the passed in BLP, don't add it to the list
+    if(!pt_plp.get<std::string>("interface-uuid", "").empty())
+      pt_plps.push_back( std::make_pair("", pt_plp) );
   }
   return pt_plps;
 }

@@ -28,9 +28,9 @@ namespace qr = xrt_core::query;
 static std::map<int, std::string> p2p_config_map = {
   { 0, "disabled" },
   { 1, "enabled" },
-  { 2, "reboot" },
-  { 3, "not supported" },
-  { 4, "error" },
+  { 2, "error" },
+  { 3, "reboot" },
+  { 4, "not supported" },
 };
 
 /**
@@ -135,7 +135,7 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
     for(int i = 0; i < clock_topology->m_count; i++) {
       boost::property_tree::ptree clock;
       clock.add("id", clock_topology->m_clock_freq[i].m_name);
-      clock.add("desc", XBUtilities::parse_clock_id(clock_topology->m_clock_freq[i].m_name));
+      clock.add("description", XBUtilities::parse_clock_id(clock_topology->m_clock_freq[i].m_name));
       clock.add("freq_mhz", clock_topology->m_clock_freq[i].m_freq_Mhz);
       pt_clocks.push_back(std::make_pair("", clock));
     }
@@ -182,7 +182,7 @@ ReportPlatforms::writeReport( const xrt_core::device * dev,
       output << "Clocks\n";
     for(auto& kc : clocks) {
       boost::property_tree::ptree& pt_clock = kc.second;
-      output << boost::format("    %-20s : %s MHz\n") % pt_clock.get<std::string>("desc") % pt_clock.get<std::string>("freq_mhz");
+      output << boost::format("    %-20s : %s MHz\n") % pt_clock.get<std::string>("description") % pt_clock.get<std::string>("freq_mhz");
     }
 
     boost::property_tree::ptree& macs = pt_platform.get_child("macs", empty_ptree);
