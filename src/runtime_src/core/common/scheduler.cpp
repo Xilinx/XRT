@@ -104,6 +104,10 @@ namespace xrt_core { namespace scheduler {
 int
 init(xclDeviceHandle handle, const axlf* top)
 {
+  /* TODO: At the end of the day, ERT configure would move to driver
+   * and become a step of xclbin download.
+   * Please do not add more configure options in this place.
+   */
   auto execbo = create_exec_bo(handle,0x1000);
   auto ecmd = reinterpret_cast<ert_configure_cmd*>(execbo->data);
   ecmd->state = ERT_CMD_STATE_NEW;

@@ -588,7 +588,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	/* The finial step is to update KDS configuration */
 	if (!err && kds_mode)
-		err = xocl_kds_update(xdev);
+		err = xocl_kds_update(xdev, axlf_ptr->kds_cfg);
 
 done:
 	if (size < 0)

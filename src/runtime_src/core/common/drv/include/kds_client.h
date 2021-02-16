@@ -75,6 +75,7 @@ struct kds_client {
 	 */
 	wait_queue_head_t	  waitq ____cacheline_aligned_in_smp;
 	atomic_t		  event;
+	struct completion	  comp;
 };
 
 /* Macros to operates client statistics */

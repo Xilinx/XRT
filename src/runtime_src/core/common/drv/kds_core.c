@@ -542,6 +542,7 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 	client->pid = get_pid(task_pid(current));
 	mutex_init(&client->lock);
 
+	init_completion(&client->comp);
 	init_waitqueue_head(&client->waitq);
 	atomic_set(&client->event, 0);
 
@@ -794,6 +795,27 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 	return -ENODEV;
 }
 
+int kds_get_cu_total(struct kds_sched *kds)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+
+	return cu_mgmt->num_cus;
+}
+
+u32 kds_get_cu_addr(struct kds_sched *kds, int idx)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+
+	return cu_mgmt->xcus[idx]->info.addr;
+}
+
+u32 kds_get_cu_proto(struct kds_sched *kds, int idx)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+
+	return cu_mgmt->xcus[idx]->info.protocol;
+}
+
 static void ert_dummy_submit(struct kds_ert *ert, struct kds_command *xcmd)
 {
 	kds_err(xcmd->client, "ert submit op not implemented\n");
@@ -989,6 +1011,25 @@ u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 	*plist = pl;
 out:
 	return count;
+}
+
+struct kds_client *kds_get_client(struct kds_sched *kds, pid_t pid)
+{
+	struct kds_client *client = NULL;
+	struct kds_client *curr;
+
+	mutex_lock(&kds->lock);
+	if (list_empty(&kds->clients))
+		goto done;
+
+	list_for_each_entry(curr, &kds->clients, link) {
+		if (pid_nr(curr->pid) == pid)
+			client = curr;
+	}
+
+done:
+	mutex_unlock(&kds->lock);
+	return client;
 }
 
 /* User space execbuf command related functions below */
