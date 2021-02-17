@@ -301,24 +301,6 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
 }
 
 /*
- * helper function for kernelVersionTest
- */
-static void
-checkOSRelease(const std::vector<std::string> kernel_versions, const std::string& release,
-                boost::property_tree::ptree& _ptTest)
-{
-  for (const auto& ver : kernel_versions) {
-    if (release.find(ver) != std::string::npos) {
-      _ptTest.put("status", "passed");
-      return;
-    }
-  }
-  _ptTest.put("status", "passed");
-  logger(_ptTest, "Warning", boost::str(boost::format("Kernel version %s is not officially supported. %s is the latest supported version")
-                            % release % kernel_versions.back()));
-}
-
-/*
  * helper function for M2M and P2P test
  */
 static void
@@ -583,38 +565,12 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
  * TEST #1
  */
 void
-kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
-{
-  //please append the new supported versions
-  const std::vector<std::string> ubuntu_kernel_versions = { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0" };
-  const std::vector<std::string> centos_rh_kernel_versions = { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1160.11.1", "3.10.0-1062", "3.10.0-1127", "4.9.184", "4.9.184-35", "4.18.0-147", "4.18.0-193" };
-
-  boost::property_tree::ptree _pt_host;
-  std::make_shared<ReportHost>()->getPropertyTreeInternal(_dev.get(), _pt_host);
-  const std::string os = _pt_host.get<std::string>("host.os.distribution");
-  const std::string release = _pt_host.get<std::string>("host.os.release");
-
-  if(os.find("Ubuntu") != std::string::npos) {
-    checkOSRelease(ubuntu_kernel_versions, release, _ptTest);
-  }
-  else if(os.find("Red Hat") != std::string::npos || os.find("CentOS") != std::string::npos) {
-    checkOSRelease(centos_rh_kernel_versions, release, _ptTest);
-  }
-  else {
-    _ptTest.put("status", "failed");
-  }
-}
-
-/*
- * TEST #2
- */
-void
 auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   const std::vector<std::string> auxPwrRequiredDevice = { "VCU1525", "U200", "U250", "U280" };
 
   std::string name = xrt_core::device_query<xrt_core::query::xmc_board_name>(_dev);
-  uint64_t max_power = xrt_core::device_query<xrt_core::query::xmc_max_power>(_dev);
+  uint64_t max_power = xrt_core::device_query<xrt_core::query::max_power_level>(_dev);
 
   //check if device has aux power connector
   bool auxDevice = false;
@@ -640,7 +596,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
 }
 
 /*
- * TEST #3
+ * TEST #2
  */
 void
 pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -658,15 +614,15 @@ pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree
 }
 
 /*
- * TEST #4
+ * TEST #3
  */
 void
 scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-  auto sc_ver = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_dev);
+  auto sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(_dev);
   std::string exp_sc_ver = "";
   try{
-    exp_sc_ver = xrt_core::device_query<xrt_core::query::expected_bmc_version>(_dev);
+    exp_sc_ver = xrt_core::device_query<xrt_core::query::expected_sc_version>(_dev);
   } catch(...) {}
 
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
@@ -678,7 +634,7 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
 }
 
 /*
- * TEST #5
+ * TEST #4
  */
 void
 verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -687,7 +643,7 @@ verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_
 }
 
 /*
- * TEST #6
+ * TEST #5
  */
 void
 dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -737,7 +693,7 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 }
 
 /*
- * TEST #7
+ * TEST #6
  */
 void
 bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -755,7 +711,7 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
 }
 
 /*
- * TEST #8
+ * TEST #7
  */
 void
 p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -766,7 +722,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
   std::string msg;
   xclbin_lock xclbin_lock(_dev);
-  XBU::check_p2p_config(_dev, msg);
+  XBU::check_p2p_config(_dev.get(), msg);
 
   if(msg.find("Error") == 0) {
     logger(_ptTest, "Error", msg.substr(msg.find(':')+1));
@@ -807,7 +763,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 }
 
 /*
- * TEST #9
+ * TEST #8
  */
 void
 m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -859,7 +815,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 }
 
 /*
- * TEST #10
+ * TEST #9
  */
 void
 hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -902,7 +858,6 @@ struct TestCollection {
 * create test suite
 */
 static std::vector<TestCollection> testSuite = {
-  { create_init_test("Kernel version", "Check if kernel version is supported by XRT", ""), kernelVersionTest },
   { create_init_test("Aux connection", "Check if auxiliary power is connected", ""), auxConnectionTest },
   { create_init_test("PCIE link", "Check if PCIE link is active", ""), pcieLinkTest },
   { create_init_test("SC version", "Check if SC firmware is up-to-date", ""), scVersionTest },
@@ -993,7 +948,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::proper
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
   _ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
   _ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
-  _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_bmc_version>(device));
+  _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_sc_version>(device));
   _ptTree.put("platform_id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
   if (schemaVersion == Report::SchemaVersion::text) {
     _ostream << boost::format("Validate device[%s]\n") % _ptTree.get<std::string>("device_id");
@@ -1097,7 +1052,7 @@ getTestNameDescriptions(bool addAdditionOptions)
   // 'verbose' option
   if (addAdditionOptions) {
     reportDescriptionCollection.emplace_back("all", "All known validate tests will be executed (default)");
-    reportDescriptionCollection.emplace_back("quick", "Only the first 5 tests will be executed");
+    reportDescriptionCollection.emplace_back("quick", "Only the first 4 tests will be executed");
   }
 
   // report names and discription
@@ -1240,8 +1195,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
     if (testsToRun[0] == "quick") {
       testObjectsToRun.push_back(&testSuite[index]);
-      // Only the first 5 should be processed
-      if (index == 4)
+      // Only the first 3 should be processed
+      if (index == 3)
         break;
     }
 

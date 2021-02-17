@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  * Author(s): Min Ma	<min.ma@xilinx.com>
  *          : Larry Liu	<yliu@xilinx.com>
  *
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 
     switch (cmd.opcode) {
     case ERT_SK_CONFIG:
-      configSoftKernel(&cmd);
+      configSoftKernel(handle, &cmd);
       break;
     default:
       syslog(LOG_WARNING, "Unknow management command, ignore it");
@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
     }
   }
 
+  xclClose(handle);
   syslog(LOG_INFO, "Daemon stop\n");
   closelog();
 

@@ -639,6 +639,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     std::vector<Flasher> flasher_list;
     for (const auto & dev : deviceCollection) {
+      // Hack: u30 doesn't support factory reset yet
+      if(xrt_core::device_query<xrt_core::query::interface_uuids>(dev).empty()) {
+        std::cout << "****************************************************\n";
+        std::cout << "Factory reset is currently not supported on U30.\n";
+        std::cout << "****************************************************\n\n";
+        return;
+      }
       //collect information of all the cards that will be reset
       Flasher flasher(dev->get_device_id());
       if(!flasher.isValid()) {

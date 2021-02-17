@@ -79,10 +79,10 @@ enum class key_type
   xmc_version,
   xmc_board_name,
   xmc_serial_num,
-  xmc_max_power,
+  max_power_level,
   xmc_sc_presence,
-  xmc_bmc_version,
-  expected_bmc_version,
+  xmc_sc_version,
+  expected_sc_version,
   xmc_status,
   xmc_reg_base,
   xmc_scaling_enabled,
@@ -98,6 +98,7 @@ enum class key_type
   idcode,
   data_retention,
   sec_level,
+  max_shared_host_mem_aperture_bytes,
 
   status_mig_calibrated,
   p2p_config,
@@ -161,6 +162,11 @@ enum class key_type
   vcc_aux_pmc_millivolts,
   vcc_ram_millivolts,
   int_vcc_io_millivolts,
+  mac_contiguous_num,
+  mac_addr_first,
+  mac_addr_list,
+  oem_id,
+
   firewall_detect_level,
   firewall_status,
   firewall_time_sec,
@@ -187,6 +193,8 @@ enum class key_type
   interface_uuids,
   logic_uuids,
   rp_program_status,
+  cpu_affinity,
+  shared_host_mem,
 
   aie_metadata,
   graph_status,
@@ -282,7 +290,7 @@ struct pcie_subsystem_id : request
   static std::string
   to_string(result_type val)
   {
-    return boost::str(boost::format("0x%x") % val);
+    return boost::str(boost::format("0x%04x") % val);
   }
 };
 
@@ -700,11 +708,11 @@ struct xmc_serial_num : request
   }
 };
 
-struct xmc_max_power : request
+struct max_power_level : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::xmc_max_power;
-  static const char* name() { return "max_power"; }
+  static const key_type key = key_type::max_power_level;
+  static const char* name() { return "max_power_level"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -732,10 +740,10 @@ struct xmc_sc_presence : request
   }
 };
 
-struct xmc_bmc_version : request
+struct xmc_sc_version : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::xmc_bmc_version;
+  static const key_type key = key_type::xmc_sc_version;
   static const char* name() { return "sc_version"; }
 
   virtual boost::any
@@ -748,10 +756,10 @@ struct xmc_bmc_version : request
   }
 };
 
-struct expected_bmc_version : request
+struct expected_sc_version : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::expected_bmc_version;
+  static const key_type key = key_type::expected_sc_version;
   static const char* name() { return "expected_sc_version"; }
 
   virtual boost::any
@@ -951,6 +959,15 @@ struct sec_level : request
 
   virtual void
   put(const device*, const boost::any&) const = 0;
+};
+
+struct max_shared_host_mem_aperture_bytes : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::max_shared_host_mem_aperture_bytes;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct status_mig_calibrated : request
@@ -1712,6 +1729,46 @@ struct int_vcc_io_millivolts : request
   }
 };
 
+struct mac_contiguous_num : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::mac_contiguous_num;
+  static const char* name() { return "mac_contiguous_num"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct mac_addr_first : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::mac_addr_first;
+  static const char* name() { return "mac_addr_first"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct mac_addr_list : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::mac_addr_list;
+  static const char* name() { return "mac_addr_list"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct oem_id : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::oem_id;
+  static const char* name() { return "oem_id"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct firewall_detect_level : request
 {
   using result_type = uint64_t;
@@ -1970,6 +2027,25 @@ struct rp_program_status : request
   {
     return (value != 0) ? false : true;
   }
+};
+
+struct cpu_affinity : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::cpu_affinity;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct shared_host_mem : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::shared_host_mem;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
 };
 
 struct noop : request

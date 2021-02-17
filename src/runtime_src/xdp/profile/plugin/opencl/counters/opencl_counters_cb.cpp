@@ -18,6 +18,7 @@
 
 #include <map>
 #include <queue>
+#include <mutex>
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/opencl/counters/opencl_counters_cb.h"
@@ -60,6 +61,7 @@ namespace xdp {
 				   uint64_t numBuffers)
   {
     static std::map<std::string, std::queue<uint64_t> > storedTimestamps ;
+    static std::mutex timestampLock ;
 
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
@@ -77,6 +79,7 @@ namespace xdp {
       (db->getStaticInfo()).setSoftwareEmulationDeviceName(deviceName) ;
     }
 
+    std::lock_guard<std::mutex> lock(timestampLock) ;
     if (isStart)
     {
       (storedTimestamps[kernelName]).push(timestamp) ;
@@ -119,6 +122,7 @@ namespace xdp {
   {
     static std::map<std::tuple<std::string, std::string, std::string>, 
 		    uint64_t> storedTimestamps ;
+    static std::mutex timestampLock ;
 
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
@@ -132,6 +136,7 @@ namespace xdp {
     std::tuple<std::string, std::string, std::string> combinedName =
       std::make_tuple(cuName, localWorkGroup, globalWorkGroup) ;
 
+    std::lock_guard<std::mutex> lock(timestampLock) ;
     if (isStart)
     {
       storedTimestamps[combinedName] = timestamp ;
@@ -159,6 +164,7 @@ namespace xdp {
   {
     static std::map<std::pair<uint64_t, std::string>, uint64_t> 
       storedTimestamps ;
+    static std::mutex timestampLock ;
 
     std::pair<uint64_t, std::string> identifier =
       std::make_pair(contextId, std::string(deviceName)) ;
@@ -177,6 +183,7 @@ namespace xdp {
       (db->getStats()).setTotalBufferStartTime(timestamp) ;
     (db->getStats()).setTotalBufferEndTime(timestamp) ;
 
+    std::lock_guard<std::mutex> lock(timestampLock) ;
     if (isStart)
     {
       storedTimestamps[identifier] = timestamp ;
@@ -205,6 +212,7 @@ namespace xdp {
   {
     static std::map<std::pair<uint64_t, std::string>, uint64_t> 
       storedTimestamps ;
+    static std::mutex timestampLock ;
 
     std::pair<uint64_t, std::string> identifier =
       std::make_pair(contextId, std::string(deviceName)) ;
@@ -223,6 +231,7 @@ namespace xdp {
       (db->getStats()).setTotalBufferStartTime(timestamp) ;
     (db->getStats()).setTotalBufferEndTime(timestamp) ;
 
+    std::lock_guard<std::mutex> lock(timestampLock) ;
     if (isStart)
     {
       storedTimestamps[identifier] = timestamp ;

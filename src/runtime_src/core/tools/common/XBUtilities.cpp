@@ -662,7 +662,7 @@ XBUtilities::get_uuids(const void *dtbuf)
 }
 
 int
-XBUtilities::check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std::string &msg)
+XBUtilities::check_p2p_config(const xrt_core::device* _dev, std::string &msg)
 {
   std::vector<std::string> config;
   try {
@@ -771,3 +771,46 @@ XBUtilities::string_to_UUID(std::string str)
 
   return uuid;
 }
+
+static const std::map<int, std::string> oemid_map = {
+  {0x10da, "Xilinx"},
+  {0x02a2, "Dell"},
+  {0x12a1, "IBM"},
+  {0xb85c, "HP"},
+  {0x2a7c, "Super Micro"},
+  {0x4a66, "Lenovo"},
+  {0xbd80, "Inspur"},
+  {0x12eb, "Amazon"},
+  {0x2b79, "Google"}
+};
+
+std::string 
+XBUtilities::parse_oem_id(const std::string& oemid)
+{
+  unsigned int oem_id_val = 0;
+  std::stringstream ss;
+
+  try {
+    ss << std::hex << oemid;
+    ss >> oem_id_val;
+  } catch (const std::exception&) {
+    //failed to parse oemid to hex value, ignore erros and print original value
+  }
+
+  auto oemstr = oemid_map.find(oem_id_val);
+  return oemstr != oemid_map.end() ? oemstr->second : "N/A";
+}
+
+static const std::map<std::string, std::string> clock_map = {
+  {"DATA_CLK", "Data"},
+  {"KERNEL_CLK", "Kernel"},
+  {"SYSTEM_CLK", "System"},
+};
+
+std::string 
+XBUtilities::parse_clock_id(const std::string& id)
+{
+  auto clock_str = clock_map.find(id);
+  return clock_str != clock_map.end() ? clock_str->second : "N/A";
+}
+

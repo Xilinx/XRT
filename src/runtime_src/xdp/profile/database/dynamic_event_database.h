@@ -91,6 +91,10 @@ namespace xdp {
     //  as in API calls.  This will match a function ID to event IDs.
     std::map<uint64_t, uint64_t> startMap ;
 
+    // Data structure mapping function IDs of user level ranges to
+    //  the label and tooltip
+    std::map<uint64_t, std::tuple<const char*, const char*, uint64_t>> userMap ;
+
     // For device events
     std::map<uint64_t, std::list<VTFEvent*>> deviceEventStartMap;
 
@@ -134,6 +138,12 @@ namespace xdp {
     // For API events, find the event id of the start event for an end event
     XDP_EXPORT void markStart(uint64_t functionID, uint64_t eventID) ;
     XDP_EXPORT uint64_t matchingStart(uint64_t functionID) ;
+
+    // For user level events, find the label and tooltip associated
+    XDP_EXPORT void markRange(uint64_t functionID,
+			      std::pair<const char*, const char*> desc,
+			      uint64_t startTimestamp) ;
+    XDP_EXPORT std::tuple<const char*, const char*, uint64_t> matchingRange(uint64_t functionID) ;
 
     // For Device Events, find matching start for end event
     XDP_EXPORT void markDeviceEventStart(uint64_t slotID, VTFEvent* event);

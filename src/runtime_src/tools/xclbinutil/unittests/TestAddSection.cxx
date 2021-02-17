@@ -1,6 +1,8 @@
-#include <gtest/gtest.h>
 #include "ParameterSectionData.h"
 #include "XclBinClass.h"
+#include "globals.h"
+#include <gtest/gtest.h>
+#include <boost/filesystem.hpp>
 
 TEST(AddSection, AddClearingBitstream) {
    XclBin xclBin;
@@ -10,14 +12,18 @@ TEST(AddSection, AddClearingBitstream) {
    enum axlf_section_kind _eKind;
    Section::translateSectionKindStrToKind(sSection, _eKind);
 
-   xclBin.readXclBinBinary("unittests/test_data/sample_1_2018.2.xclbin", false /* bMigrateForward */);
+   // Get the file of interest
+   boost::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
+   sampleXclbin /= "sample_1_2018.2.xclbin";
+
+   xclBin.readXclBinBinary(sampleXclbin.string(), false /* bMigrateForward */);
 
    // Check to see if section exists
    const Section * pSection = xclBin.findSection(_eKind);
    ASSERT_EQ(pSection, nullptr) << "Section '" << sSection << "' found.";
 
    // Remove Section
-   const std::string formattedString = "CLEARING_BITSTREAM:RAW:unittests/test_data/sample_1_2018.2.xclbin";
+   const std::string formattedString = std::string("CLEARING_BITSTREAM:RAW:") + sampleXclbin.string();
    ParameterSectionData psd(formattedString);
    xclBin.addSection(psd);
 

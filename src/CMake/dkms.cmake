@@ -234,7 +234,6 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/version_ctrl.c
   xocl/subdev/msix_xdma.c
   xocl/subdev/ert_user.c
-  xocl/subdev/ert_30.c
   xocl/subdev/ert_versal.c
   xocl/subdev/pcie_firewall.c
   xocl/Makefile
@@ -276,6 +275,7 @@ SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
   common/drv/include/kds_client.h
   common/drv/include/xrt_cu.h
   common/drv/include/xrt_xclbin.h
+  common/drv/include/kds_stat.h
   )
 
 SET (XRT_DKMS_ABS_SRCS)
