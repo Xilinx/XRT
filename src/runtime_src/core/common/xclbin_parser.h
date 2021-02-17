@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,6 +36,7 @@ struct kernel_argument
 
   std::string name;
   std::string hosttype;
+  std::string port;
   size_t index = no_index;
   size_t offset = 0;
   size_t size = 0;
@@ -47,8 +48,8 @@ struct kernel_argument
 
 struct kernel_object
 {
-    std::string name;
-    std::vector<kernel_argument> args;
+  std::string name;
+  std::vector<kernel_argument> args;
 };
 
 /**
@@ -265,6 +266,15 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
 XRT_CORE_COMMON_EXPORT
 std::vector<kernel_argument>
 get_kernel_arguments(const axlf* top, const std::string& kname);
+
+/**
+ * get_kernels() - Get meta data for all kernels
+ *
+ * Return: List of struct kernel_object
+ */
+XRT_CORE_COMMON_EXPORT
+std::vector<kernel_object>
+get_kernels(const char* xml_data, size_t xml_size);
 
 /**
  * get_kernels() - Get meta data for all kernels

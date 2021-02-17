@@ -8,7 +8,8 @@ if (NOT DEFINED XRT_VALIDATE_DIR)
 endif()
 
 if (NOT WIN32)
-  add_executable(${TESTNAME} src/xcl_api_iops.cpp)
+  include_directories(../common/includes/cmdparser ../common/includes/logger)
+  add_executable(${TESTNAME} ../common/includes/cmdparser/cmdlineparser.cpp ../common/includes/logger/logger.cpp src/xcl_api_iops.cpp)
   target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY} pthread ${xrt_coreutil_LIBRARY} ${xrt_core_LIBRARY})
   install(TARGETS ${TESTNAME}
     RUNTIME DESTINATION ${XRT_VALIDATE_DIR})

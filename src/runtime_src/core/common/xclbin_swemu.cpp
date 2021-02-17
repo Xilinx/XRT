@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -208,5 +208,22 @@ get_axlf_section(const device* device, const axlf* top, axlf_section_kind kind)
   }
 }
 
+std::vector<char>
+get_axlf_section(const axlf* top, const ::ip_layout* ip_layout, axlf_section_kind kind)
+{
+
+  switch (kind) {
+  case MEM_TOPOLOGY:
+  case ASK_GROUP_TOPOLOGY:
+    return get_mem_topology(top);
+  case CONNECTIVITY:
+  case ASK_GROUP_CONNECTIVITY:
+    return get_connectivity(top, ip_layout);
+  case IP_LAYOUT:
+    return get_ip_layout(top);
+  default:
+    return {};
+  }
+}
 
 }}} // swemu, xclbin, xrt_core

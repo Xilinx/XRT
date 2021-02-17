@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
@@ -292,11 +292,11 @@ unsigned int
 shim::
 xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
-  (void)flags;
-  drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, DRM_ZOCL_BO_FLAGS_USERPTR};
+  flags |= DRM_ZOCL_BO_FLAGS_USERPTR;
+  drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
 
-  xclLog(XRT_DEBUG, "XRT", "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, DRM_ZOCL_BO_FLAGS_USERPTR);
+  xclLog(XRT_DEBUG, "XRT", "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, flags);
   xclLog(XRT_INFO, "XRT", "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
   return info.handle;
@@ -743,7 +743,6 @@ xclGetWriteMaxBandwidthMBps()
   return 9600.0;
 }
 
-
 int
 shim::
 xclSKGetCmd(xclSKCmd *cmd)
@@ -752,13 +751,11 @@ xclSKGetCmd(xclSKCmd *cmd)
   drm_zocl_sk_getcmd scmd;
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_GETCMD, &scmd);
-
   if (!ret) {
     cmd->opcode = scmd.opcode;
     cmd->start_cuidx = scmd.start_cuidx;
     cmd->cu_nums = scmd.cu_nums;
-    cmd->xclbin_paddr = scmd.paddr;
-    cmd->xclbin_size = scmd.size;
+    cmd->bohdl = scmd.bohdl;
     snprintf(cmd->krnl_name, ZOCL_MAX_NAME_LENGTH, "%s", scmd.name);
   }
 

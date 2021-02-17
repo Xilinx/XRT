@@ -1,5 +1,5 @@
-/**
- * Copyright (C) 2019-2020 Xilinx, Inc
+/*
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,15 +18,17 @@
 #define XRT_CORE_DEVICE_H
 
 #include "config.h"
-#include "query.h"
+
 #include "error.h"
 #include "ishim.h"
+#include "query.h"
+#include "query_reset.h"
 #include "scope_guard.h"
 #include "uuid.h"
-#include "core/include/xrt.h"
-#include "query_reset.h"
 
-// Please keep eternal include file dependencies to a minimum
+#include "core/include/xrt.h"
+#include "core/include/experimental/xrt_xclbin.h"
+
 #include <cstdint>
 #include <vector>
 #include <string>
@@ -35,6 +37,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional/optional.hpp>
 
+// TODO: don't seem to belong here and definitely not as #defines
 #define XILINX_ID  0x10ee
 #define ARISTA_ID  0x3475
 #define INVALID_ID 0xffff
@@ -48,7 +51,6 @@ using device_collection = std::vector<std::shared_ptr<xrt_core::device>>;
  */
 class device : public ishim
 {
-
 public:
   // device index type
   using id_type = unsigned int;
@@ -188,9 +190,23 @@ public:
   }
 
   /**
-   * register_axlf() - Callback from shim after AXLF has been loaded.
+   * load_xclbin() - Load an xclbin object on this device
    *
-   * This function extracts meta data sections as needed.
+   * This function loads argument xclbin.  It is the entry point for
+   * xrt::device::load_xclbin() APIs variants.  The function keeps a
+   * reference to the argument xclbin.
+   */
+  XRT_CORE_COMMON_EXPORT
+  void
+  load_xclbin(const xrt::xclbin& xclbin);
+
+  /**
+   * register_axlf() - Callback from shim after AXLF succesfully loaded
+   *
+   * This function is called after an axlf has been succesfully loaded
+   * by the shim layer API xclLoadXclBin().  Since xclLoadXclBin() can
+   * be called explicitly by end-user code, the callback is necessary
+   * in order to register current axlf with the device object
    */
   XRT_CORE_COMMON_EXPORT
   void
@@ -239,10 +255,12 @@ public:
     return reinterpret_cast<SectionType>(get_axlf_section_or_error(section, xclbin_id).first);
   }
 
-  // get_memidx_encoding() - An encoding compressing mem topology indices
-  //
-  // Returned container is indexed by mem_topology index and maps to
-  // encoded index.
+  /**
+   * get_memidx_encoding() - An encoding compressing mem topology indices
+   *
+   * Returned container is indexed by mem_topology index and maps to
+   * encoded index.
+   */
   const std::vector<size_t>&
   get_memidx_encoding(const uuid& xclbin_id = uuid()) const;
 
@@ -304,10 +322,8 @@ public:
   id_type m_device_id;
   mutable boost::optional<bool> m_nodma = boost::none;
 
-  // cache xclbin meta data loaded by this process
-  uuid m_xclbin_uuid;
-  std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
-  std::vector<size_t> m_memidx_encoding;
+  std::vector<size_t> m_memidx_encoding; // compressed mem_toplogy indices
+  xrt::xclbin m_xclbin;                  // currently loaded xclbin
 };
 
 /**

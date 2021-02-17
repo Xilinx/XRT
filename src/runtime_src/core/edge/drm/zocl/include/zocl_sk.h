@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Larry Liu <yliu@xilinx.com>
@@ -18,10 +18,12 @@
 #define	MAX_SOFT_KERNEL		128
 
 #define	ZOCL_SCU_FLAGS_RELEASE	1
-#define SK_CRASHED -1
-#define SK_ERROR -2
-#define SK_DONE 1
-#define SK_RUNNING 2
+
+#define SK_CRASHED		-1
+#define SK_ERROR		-2
+#define SK_NOTEXIST		-3
+#define SK_DONE			1
+#define SK_RUNNING		2
 
 struct soft_cu {
 	void			*sc_vregs;
@@ -46,6 +48,13 @@ struct soft_cu {
 	uint32_t		sc_parent_pid;
 };
 
+struct scu_image {
+	uint32_t		si_start;	/* start instance # */
+	uint32_t		si_end;		/* end instance # */
+	int			si_bohdl;	/* BO handle */
+	struct drm_zocl_bo	*si_bo;		/* BO to hold the image */
+};
+
 struct soft_krnl {
 	struct list_head	sk_cmd_list;
 	struct mutex		sk_lock;
@@ -57,12 +66,15 @@ struct soft_krnl {
 	 */
 	uint32_t		sk_ncus;
 
+	uint32_t		sk_nimg;
+	struct scu_image	*sk_img;
 	wait_queue_head_t	sk_wait_queue;
 };
 
 struct soft_krnl_cmd {
 	struct list_head	skc_list;
-	struct ert_packet	*skc_packet;
+	uint32_t		skc_opcode;
+	struct config_sk_image	*skc_packet;
 };
 
 int zocl_init_soft_kernel(struct drm_device *drm);

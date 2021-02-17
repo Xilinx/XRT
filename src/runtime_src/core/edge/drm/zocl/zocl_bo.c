@@ -403,13 +403,16 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct drm_zocl_userptr_bo *args = data;
 	struct page **pages;
 	unsigned int sg_count;
+	uint32_t user_flags;
+
+	user_flags = args->flags;
 
 	if (offset_in_page(args->addr)) {
 		DRM_ERROR("User ptr not PAGE aligned\n");
 		return -EINVAL;
 	}
 
-	if (args->flags & ZOCL_BO_FLAGS_EXECBUF) {
+	if (user_flags & ZOCL_BO_FLAGS_EXECBUF) {
 		DRM_ERROR("Exec buf could not be a user buffer\n");
 		return -EINVAL;
 	}
@@ -474,6 +477,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	bo->flags |= ZOCL_BO_FLAGS_USERPTR;
 
+	bo->user_flags = user_flags;
 	zocl_describe(bo);
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->cma_base.base);
 

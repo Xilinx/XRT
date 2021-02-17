@@ -47,7 +47,8 @@ namespace po = boost::program_options;
 #include "tools/common/ReportMemory.h"
 #include "tools/common/ReportThermal.h"
 #include "tools/common/ReportAsyncError.h"
-// #include "tools/common/ReportPlatform.h"
+#include "tools/common/ReportPlatforms.h"
+#include "tools/common/ReportPcieInfo.h"
 
 // Note: Please insert the reports in the order to be displayed (alphabetical)
   static ReportCollection fullReportCollection = {
@@ -58,6 +59,8 @@ namespace po = boost::program_options;
     std::make_shared<ReportCu>(),
     std::make_shared<ReportDebugIpStatus>(),
     std::make_shared<ReportAsyncError>(),
+    std::make_shared<ReportPcieInfo>(),
+    std::make_shared<ReportPlatforms>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     std::make_shared<ReportElectrical>(),

@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -72,6 +72,7 @@
 #define NODE_CLK_KERNEL3 "ep_aclk_hbm_00"
 #define NODE_KDMA_CTRL "ep_kdma_ctrl_00"
 #define NODE_FPGA_CONFIG "ep_fpga_configuration_00"
+#define NODE_FPGA_CONFIG_01 "ep_fpga_configuration_01"
 #define NODE_ICAP_RESET "ep_icap_reset_00"
 #define NODE_ERT_SCHED "ep_ert_sched_00"
 #define NODE_XDMA "ep_xdma_00"
@@ -105,6 +106,7 @@
 #define NODE_INTC_CU_02 "ep_intc_cu_02"
 #define NODE_INTC_CU_03 "ep_intc_cu_03"
 #define NODE_HOSTMEM_BANK0 "ep_c2h_data_00"
+#define NODE_RESERVED_PSMEM "ep_reserved_ps_mem"
 #define NODE_PS_RESET_CTRL "ep_reset_ps_00"
 #define NODE_ICAP_CONTROLLER "ep_iprog_ctrl_00"
 
