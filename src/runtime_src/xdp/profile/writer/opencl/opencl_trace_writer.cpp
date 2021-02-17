@@ -138,7 +138,10 @@ namespace xdp {
       {
 	// Construct the name
 	KernelEnqueue* ke = dynamic_cast<KernelEnqueue*>(e) ;
-	bucket = enqueueBuckets[ke->getIdentifier()] ;
+	if (ke != nullptr)
+	  bucket = enqueueBuckets[ke->getIdentifier()] ;
+	else
+	  bucket = generalAPIBucket; // Should never happen
       }
       e->dump(fout, bucket) ;
     }

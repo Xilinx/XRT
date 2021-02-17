@@ -570,6 +570,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 		NULL, NULL, 0, 0);
 	(void) xocl_mailbox_set(xdev, CHAN_STATE, resp->conn_flags);
 	(void) xocl_mailbox_set(xdev, CHAN_SWITCH, resp->chan_switch);
+	(void) xocl_mailbox_set(xdev, CHAN_DISABLE, resp->chan_disable);
 	(void) xocl_mailbox_set(xdev, COMM_ID, (u64)(uintptr_t)resp->comm_id);
 
 	/*
@@ -1742,7 +1743,6 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_lapc,
 	xocl_init_msix_xdma,
 	xocl_init_ert_user,
-	xocl_init_ert_30,
 	xocl_init_ert_versal,
 	xocl_init_m2m,
 };
@@ -1780,7 +1780,6 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_lapc,
 	xocl_fini_msix_xdma,
 	xocl_fini_ert_user,
-	xocl_fini_ert_30,
 	xocl_fini_ert_versal,
 	xocl_fini_m2m,
 	/* Remove intc sub-device after CU/ERT sub-devices */

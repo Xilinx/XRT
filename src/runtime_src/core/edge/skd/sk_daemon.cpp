@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  * Author(s): Min Ma	<min.ma@xilinx.com>
  *          : Larry Liu	<yliu@xilinx.com>
  *
@@ -133,12 +133,7 @@ static void *getKernelArg(unsigned int boHdl, uint32_t cu_idx)
 
 xclDeviceHandle initXRTHandle(unsigned deviceIndex)
 {
-  if (deviceIndex >= xclProbe()) {
-    syslog(LOG_ERR, "Cannot find device index %d specified.\n", deviceIndex);
-    return NULL;
-  }
-
-  return(xclOpen(deviceIndex, NULL, XCL_QUIET));
+  return xclOpen(deviceIndex, NULL, XCL_QUIET);
 }
 
 /*
@@ -158,6 +153,10 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   int ret;
 
   devHdl = initXRTHandle(0);
+  if (!devHdl) {
+	  syslog(LOG_ERR, "Cannot open XRT device.\n");
+	  return;
+  }
 
   ret = createSoftKernel(&boh, cu_idx);
   if (ret) {
@@ -215,6 +214,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 
   dlclose(sk_handle);
   (void) destroySoftKernel(boh, args_from_host);
+  xclClose(devHdl);
 }
 
 static inline void getSoftKernelPathName(uint32_t cu_idx, char *path)
@@ -239,25 +239,26 @@ static inline void getSoftKernelPath(char *path)
  * cuidx  : CU index. The file will be name bease on fixed path
  *          and name plus the CU index.
  */
-static int createSoftKernelFile(uint64_t paddr, size_t size, uint32_t cuidx)
+static int createSoftKernelFile(xclDeviceHandle handle, uint32_t cuidx,
+	int bohdl)
 {
-  xclDeviceHandle handle;
   unsigned int boHandle;
   FILE *fptr;
   void *buf;
   char path[XRT_MAX_PATH_LENGTH];
   int len, i;
 
-  handle = initXRTHandle(0);
-  if (!handle) {
-    syslog(LOG_ERR, "Cannot initialize XRT.\n");
+  xclBOProperties prop;
+  if (xclGetBOProperties(handle, bohdl, &prop)) {
+    syslog(LOG_ERR, "Cannot get BO info.\n");
+    xclFreeBO(handle, bohdl);
     return -1;
   }
 
-  boHandle = xclGetHostBO(handle, paddr, size);
-  buf = xclMapBO(handle, boHandle, false);
+  buf = xclMapBO(handle, bohdl, false);
   if (!buf) {
-    syslog(LOG_ERR, "Cannot map xlcbin BO.\n");
+    syslog(LOG_ERR, "Cannot map softkernel BO.\n");
+    xclFreeBO(handle, bohdl);
     return -1;
   }
 
@@ -284,18 +285,23 @@ static int createSoftKernelFile(uint64_t paddr, size_t size, uint32_t cuidx)
   fptr = fopen(path, "w+b");
   if (fptr == NULL) {
      syslog(LOG_ERR, "Cannot create file: %s\n", path);
+     munmap(buf, prop.size);
+     xclFreeBO(handle, bohdl);
      return -1;
   }
 
   /* copy the soft kernel to file */
-  if (fwrite(buf, size, 1, fptr) != 1) {
+  if (fwrite(buf, prop.size, 1, fptr) != 1) {
     syslog(LOG_ERR, "Fail to write to file %s.\n", path);
     fclose(fptr);
+    munmap(buf, prop.size);
+    xclFreeBO(handle, bohdl);
     return -1;
   }
 
   fclose(fptr);
-  xclClose(handle);
+  munmap(buf, prop.size);
+  xclFreeBO(handle, bohdl);
 
   return 0;
 }
@@ -326,13 +332,12 @@ static void sigLog(const int sig)
 }
 
 #define PNAME_LEN	(16)
-void configSoftKernel(xclSKCmd *cmd)
+void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd)
 {
   pid_t pid;
   uint32_t i;
 
-  if (createSoftKernelFile(cmd->xclbin_paddr, cmd->xclbin_size,
-          cmd->start_cuidx) != 0)
+  if (createSoftKernelFile(handle, cmd->start_cuidx, cmd->bohdl) != 0)
     return;
 
   for (i = cmd->start_cuidx; i < cmd->start_cuidx + cmd->cu_nums; i++) {

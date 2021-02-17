@@ -680,6 +680,7 @@ XBUtilities::produce_reports( xrt_core::device_collection _devices,
     for (const auto & device : _devices) {
       boost::property_tree::ptree ptDevice;
       auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+      ptDevice.put("interface_type", "pcie");
       ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
       if (_schemaVersion == Report::SchemaVersion::text) {
         bool is_mfg = false;

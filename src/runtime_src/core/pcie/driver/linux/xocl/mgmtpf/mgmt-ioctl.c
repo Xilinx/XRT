@@ -16,6 +16,7 @@
  */
 
 #include "mgmt-core.h"
+#include "../xocl_xclbin.h"
 
 static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg)
 {
@@ -92,12 +93,32 @@ static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 		return -ENOMEM;
 
 	if (copy_from_user((void *)copy_buffer, ioc_obj.xclbin,
-		copy_buffer_size))
-		ret = -EFAULT;
-	else
-		ret = xocl_icap_download_axlf(lro, copy_buffer);
+		copy_buffer_size)) {
+		vfree(copy_buffer);
+		return -EFAULT;
+	}
 
-	vfree(copy_buffer);
+	ret = xocl_xclbin_download(lro, copy_buffer);
+	if (ret) {
+		vfree(copy_buffer);
+		return ret;
+	}
+
+	/*
+	 * aws v1 requires preloading xclbin through xbmgmt. this preloaded
+	 * xclbin may also need to be cached in xclmgmt.
+	 * once cached, the xclbin cached will be freed next time a new xclbin
+	 * is to be loaded or xclmgmt is unloaded.
+	 */
+	if (lro->preload_xclbin) {
+		vfree(lro->preload_xclbin);
+		lro->preload_xclbin = NULL;
+	}
+	if (atomic_read(&lro->cache_xclbin))
+		lro->preload_xclbin = copy_buffer;
+	else
+		vfree(copy_buffer);
+
 	return ret;
 }
 

@@ -22,6 +22,7 @@
 #include "kds_client.h"
 #include "kds_command.h"
 #include "xrt_cu.h"
+#include "kds_stat.h"
 
 #define kds_info(client, fmt, args...)			\
 	dev_info(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
@@ -62,9 +63,21 @@ struct kds_cu_mgmt {
 	int			  num_cdma;
 	u32			  cu_intr[MAX_CUS];
 	u32			  cu_refs[MAX_CUS];
-	u64			  cu_usage[MAX_CUS];
+	struct cu_stats __percpu *cu_stats;
 	int			  configured;
 };
+
+#define cu_stat_read(cu_mgmt, field) \
+	stat_read((cu_mgmt)->cu_stats, field)
+
+#define cu_stat_write(cu_mgmt, field, val) \
+	stat_write((cu_mgmt)->cu_stats, field, val)
+
+#define cu_stat_inc(cu_mgmt, field) \
+	this_stat_inc((cu_mgmt)->cu_stats, field)
+
+#define cu_stat_dec(cu_mgmt, field) \
+	this_stat_dec((cu_mgmt)->cu_stats, field)
 
 /* ERT core */
 struct kds_ert {

@@ -596,8 +596,10 @@ int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
 	if (err)
 		return 0;
 
-	if (drm_p->mm == NULL)
-		return -EINVAL;
+	if (drm_p->mm == NULL) {
+		err = -EINVAL;
+		goto out;
+	}
 
 	start_addr = grp_topology->m_mem_data[mem_id].m_base_address;
 	end_addr = start_addr + grp_topology->m_mem_data[mem_id].m_size * 1024;
@@ -610,6 +612,7 @@ int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
 					   start_addr, end_addr, 0);
 #endif
 
+out:
 	XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
 	return err;
 
