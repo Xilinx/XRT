@@ -570,7 +570,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
   const std::vector<std::string> auxPwrRequiredDevice = { "VCU1525", "U200", "U250", "U280" };
 
   std::string name = xrt_core::device_query<xrt_core::query::xmc_board_name>(_dev);
-  uint64_t max_power = xrt_core::device_query<xrt_core::query::xmc_max_power>(_dev);
+  uint64_t max_power = xrt_core::device_query<xrt_core::query::max_power_level>(_dev);
 
   //check if device has aux power connector
   bool auxDevice = false;
@@ -619,10 +619,10 @@ pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree
 void
 scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-  auto sc_ver = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_dev);
+  auto sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(_dev);
   std::string exp_sc_ver = "";
   try{
-    exp_sc_ver = xrt_core::device_query<xrt_core::query::expected_bmc_version>(_dev);
+    exp_sc_ver = xrt_core::device_query<xrt_core::query::expected_sc_version>(_dev);
   } catch(...) {}
 
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
@@ -722,7 +722,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
   std::string msg;
   xclbin_lock xclbin_lock(_dev);
-  XBU::check_p2p_config(_dev, msg);
+  XBU::check_p2p_config(_dev.get(), msg);
 
   if(msg.find("Error") == 0) {
     logger(_ptTest, "Error", msg.substr(msg.find(':')+1));
@@ -948,7 +948,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::proper
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
   _ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
   _ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
-  _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_bmc_version>(device));
+  _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_sc_version>(device));
   _ptTree.put("platform_id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
   if (schemaVersion == Report::SchemaVersion::text) {
     _ostream << boost::format("Validate device[%s]\n") % _ptTree.get<std::string>("device_id");

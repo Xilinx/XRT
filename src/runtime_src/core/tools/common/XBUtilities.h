@@ -112,7 +112,7 @@ namespace XBUtilities {
    */
   std::vector<std::string> get_uuids(const void *dtbuf);
 
-  int check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std::string &err);
+  int check_p2p_config(const xrt_core::device* _dev, std::string &err);
 
   xrt_core::query::reset_type str_to_reset_obj(const std::string& str);
 
@@ -122,6 +122,19 @@ namespace XBUtilities {
    * Returns: 00000000-0000-0000-0000-000000000000 formatted uuid
    */
   std::string string_to_UUID(std::string str);
+
+  /**
+   * OEM ID is a unique number called as the 
+   * Private Enterprise Number (PEN) maintained by IANA
+   * 
+   * Return: Manufacturer's name
+   */
+  std::string 
+  parse_oem_id(const std::string& oemid);
+
+  std::string 
+  parse_clock_id(const std::string& id);
+
 };
 
 #endif
