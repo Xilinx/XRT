@@ -4321,18 +4321,8 @@ static int config_scu(struct platform_device *pdev,
 				continue;
 			exec->num_sk_cus++;
 
-			/*
-			 * Add "scu_idx#" suffix to identify softkernel
-			 *
-			 * And limit SCU name to the last 11 characters
-			 * to fit kds_custat sysfs node into PAGE_SIZE
-			 * with no more than 64 SCUs.
-			 */
+			/* Add "scu_idx#" suffix to identify PS kernel */
 			slen = strlen((char*)cp->sk_name);
-			if (slen > 11)
-				slen -= 11;
-			else
-				slen = 0;
 			strncpy(scu_name, ((char *)cp->sk_name) + slen,
 				sizeof(xert->scu_name[0]) - 8);
 			snprintf(xert->scu_name[j], 32, "%s:scu_%d",
@@ -4909,16 +4899,16 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	}
 
 	if (xert) {
-		/* soft kernel CUs */
+		/* PS kernel CUs */
 		for (;idx < (exec->num_cus + exec->num_sk_cus); ++idx) {
 			cu_status = ert_cu_status(xert, idx);
 			if (!cu_status)
 				cu_status = AP_IDLE;
 			sz_tmp = sz;
-			sz += sprintf(tembuf+sz, "CU[@0x0] : %d status : %d name : %s\n",
+			sz += sprintf(tembuf+sz, "CU[@0x0] : %d status : %d\n",
 				      ert_cu_usage(xert, idx),
-				      cu_status,
-				      xert->scu_name[idx - exec->num_cus]);
+				      cu_status);
+
 			if (sz >= PAGE_SIZE) {
 				sz = sz_tmp;
 				truncated = true;

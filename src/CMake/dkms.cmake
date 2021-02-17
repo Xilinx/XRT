@@ -248,6 +248,7 @@ SET (XRT_DKMS_DRIVER_INCLUDES
   include/profile_ioctl.h
   include/mailbox_proto.h
   include/flash_xrt_data.h
+  include/ps_kernel.h
   )
 
 # includes relative to core

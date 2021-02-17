@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2017-2020 Xilinx, Inc. All rights reserved.
+ *  Copyright (C) 2017-2021 Xilinx, Inc. All rights reserved.
  *  Author: Sonal Santan
  *  Code copied verbatim from SDAccel xcldma kernel mode driver
  *
@@ -30,6 +30,7 @@
 #include "../xocl_drv.h"
 #include "../xocl_drm.h"
 #include "mgmt-ioctl.h"
+#include "ps_kernel.h"
 
 #if PF == MGMTPF
 int kds_mode = 0;
@@ -151,6 +152,7 @@ struct icap {
 	struct mem_topology	*group_topo;
 	struct ip_layout	*ip_layout;
 	struct debug_ip_layout	*debug_layout;
+	struct ps_kernel_node	*ps_kernel;
 	struct connectivity	*connectivity;
 	struct connectivity	*group_connectivity;
 	uint64_t		max_host_mem_aperture;
@@ -1228,6 +1230,9 @@ static void icap_clean_axlf_section(struct icap *icap,
 	case IP_LAYOUT:
 		target = (void **)&icap->ip_layout;
 		break;
+	case SOFT_KERNEL:
+		target = (void **)&icap->ps_kernel;
+		break;
 	case MEM_TOPOLOGY:
 		target = (void **)&icap->mem_topo;
 		break;
@@ -1264,6 +1269,7 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 
 	uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
 	icap_clean_axlf_section(icap, IP_LAYOUT);
+	icap_clean_axlf_section(icap, SOFT_KERNEL);
 	icap_clean_axlf_section(icap, MEM_TOPOLOGY);
 	icap_clean_axlf_section(icap, ASK_GROUP_TOPOLOGY);
 	icap_clean_axlf_section(icap, DEBUG_IP_LAYOUT);
@@ -2337,6 +2343,7 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 
 	/* TODO: ignoring any return value or just -ENODEV? */
 	icap_cache_bitstream_axlf_section(pdev, xclbin, IP_LAYOUT);
+	icap_cache_bitstream_axlf_section(pdev, xclbin, SOFT_KERNEL);
 	icap_cache_bitstream_axlf_section(pdev, xclbin, CONNECTIVITY);
 	icap_cache_bitstream_axlf_section(pdev, xclbin,
 		DEBUG_IP_LAYOUT);
@@ -2696,6 +2703,48 @@ static bool icap_bitstream_is_locked(struct platform_device *pdev)
 	return icap_bitstream_in_use(icap);
 }
 
+static int icap_cache_ps_kernel_axlf_section(const struct axlf *xclbin,
+	void **data)
+{
+	struct axlf_section_header *header = NULL;
+	struct ps_kernel_node *pnode;
+	char *blob = (char *)xclbin;
+	int count;
+	int idx = 0;
+
+	count = xrt_xclbin_get_section_num(xclbin, SOFT_KERNEL);
+	if (count == 0)
+		return -EINVAL;
+
+	*data = vzalloc(sizeof(struct ps_kernel_node) +
+	    sizeof(struct ps_kernel_data) * (count - 1));
+	if (*data == NULL)
+		return -ENOMEM;
+
+	pnode = (struct ps_kernel_node *)(*data);
+	pnode->pkn_count = count;
+
+	header = xrt_xclbin_get_section_hdr_next(xclbin, SOFT_KERNEL,
+	    header);
+	while (header) {
+		struct soft_kernel *sp =
+		    (struct soft_kernel *)&blob[header->m_sectionOffset];
+		char *begin = (char *)sp;
+
+		strncpy(pnode->pkn_data[idx].pkd_sym_name,
+		    begin + sp->mpo_symbol_name,
+		    PS_KERNEL_NAME_LENGTH - 1);
+		pnode->pkn_data[idx].pkd_num_instances =
+		    sp->m_num_instances;
+
+		idx++;
+		header = xrt_xclbin_get_section_hdr_next(xclbin,
+		    SOFT_KERNEL, header);
+	}
+
+	return 0;
+}
+
 static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 	const struct axlf *xclbin, enum axlf_section_kind kind)
 {
@@ -2711,6 +2760,9 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 	switch (kind) {
 	case IP_LAYOUT:
 		target = (void **)&icap->ip_layout;
+		break;
+	case SOFT_KERNEL:
+		target = (void **)&icap->ps_kernel;
 		break;
 	case MEM_TOPOLOGY:
 		target = (void **)&icap->mem_topo;
@@ -2739,6 +2791,11 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 	if (target && *target) {
 		vfree(*target);
 		*target = NULL;
+	}
+
+	if (kind == SOFT_KERNEL) {
+		err = icap_cache_ps_kernel_axlf_section(xclbin, target);
+		goto done;
 	}
 
 	err = xrt_xclbin_get_section(xclbin, kind, target, &section_size);
@@ -3440,6 +3497,51 @@ static struct bin_attribute ip_layout_attr = {
 	.size = 0
 };
 
+/* PS kernel */
+static ssize_t icap_read_ps_kernel(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	struct icap *icap;
+	u32 nread = 0;
+	size_t size = 0;
+	int err = 0;
+
+	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if (!icap || !icap->ps_kernel)
+		return nread;
+
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return nread;
+
+	size = sizeof(struct ps_kernel_node) + sizeof(struct ps_kernel_data) *
+	    (icap->ps_kernel->pkn_count - 1);
+	if (offset >= size)
+		goto unlock;
+
+	if (count < size - offset)
+		nread = count;
+	else
+		nread = size - offset;
+
+	memcpy(buffer, ((char *)icap->ps_kernel) + offset, nread);
+
+unlock:
+	icap_xclbin_rd_unlock(icap);
+	return nread;
+}
+
+static struct bin_attribute ps_kernel_attr = {
+	.attr = {
+		.name = "ps_kernel",
+		.mode = 0444
+	},
+	.read = icap_read_ps_kernel,
+	.write = NULL,
+	.size = 0
+};
+
 /* -Connectivity-- */
 static ssize_t icap_read_connectivity(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
@@ -3733,6 +3835,7 @@ static struct bin_attribute rp_bit_attr = {
 static struct bin_attribute *icap_bin_attrs[] = {
 	&debug_ip_layout_attr,
 	&ip_layout_attr,
+	&ps_kernel_attr,
 	&connectivity_attr,
 	&group_connectivity_attr,
 	&mem_topology_attr,
