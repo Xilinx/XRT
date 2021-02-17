@@ -330,7 +330,10 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     std::vector<std::string> args = { "-k", xclbinPath, "-d", std::to_string(_dev.get()->get_device_id()) };
     
     int exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
-    if (exit_code != 0) {
+    if (exit_code == EOPNOTSUPP) {
+      _ptTest.put("status", "skipped");
+    }
+    else if (exit_code == EXIT_FAILURE) {
       logger(_ptTest, "Error", os_stdout.str());
       logger(_ptTest, "Error", os_stderr.str());
       _ptTest.put("status", "failed");
