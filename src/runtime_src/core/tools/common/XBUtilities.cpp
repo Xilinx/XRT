@@ -813,4 +813,3 @@ XBUtilities::parse_clock_id(const std::string& id)
   auto clock_str = clock_map.find(id);
   return clock_str != clock_map.end() ? clock_str->second : "N/A";
 }
-
