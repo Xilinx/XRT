@@ -99,7 +99,7 @@ namespace xdp {
     }
   }
 
-  void XDPPlugin::startWrite(unsigned int interval, std::string type)
+  void XDPPlugin::startWriteThread(unsigned int interval, std::string type)
   {
     if (is_write_thread_active)
       return;

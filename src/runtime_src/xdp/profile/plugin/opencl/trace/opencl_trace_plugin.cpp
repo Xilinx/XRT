@@ -39,7 +39,7 @@ namespace xdp {
     // TODO: Enable once vp analyze works
     if (continuous_trace && false) {
       trace_dump_int_s = xrt_core::config::get_trace_dump_interval_s();
-      XDPPlugin::startWrite(trace_dump_int_s, "VP_TRACE");
+      XDPPlugin::startWriteThread(trace_dump_int_s, "VP_TRACE");
     }
   }
 

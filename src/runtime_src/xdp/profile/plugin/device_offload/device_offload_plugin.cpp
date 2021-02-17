@@ -126,7 +126,7 @@ namespace xdp {
     (db->getStaticInfo()).addOpenedFile(filename.c_str(), "VP_TRACE") ;
 
     if (continuous_trace) {
-      XDPPlugin::startWrite(trace_dump_int_s, "VP_TRACE");
+      XDPPlugin::startWriteThread(trace_dump_int_s, "VP_TRACE");
     }
   }
 

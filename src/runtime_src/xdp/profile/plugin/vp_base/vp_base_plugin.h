@@ -63,7 +63,7 @@ namespace xdp {
     //  dealing with emulation flows.
     XDP_EXPORT virtual void emulationSetup() ;
 
-    XDP_EXPORT void startWrite(unsigned int interval, std::string type);
+    XDP_EXPORT void startWriteThread(unsigned int interval, std::string type);
     XDP_EXPORT void endWrite(bool openNewFiles);
 
   public:
