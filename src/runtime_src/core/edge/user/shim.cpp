@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
@@ -743,7 +743,6 @@ xclGetWriteMaxBandwidthMBps()
   return 9600.0;
 }
 
-
 int
 shim::
 xclSKGetCmd(xclSKCmd *cmd)
@@ -752,13 +751,11 @@ xclSKGetCmd(xclSKCmd *cmd)
   drm_zocl_sk_getcmd scmd;
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_GETCMD, &scmd);
-
   if (!ret) {
     cmd->opcode = scmd.opcode;
     cmd->start_cuidx = scmd.start_cuidx;
     cmd->cu_nums = scmd.cu_nums;
-    cmd->xclbin_paddr = scmd.paddr;
-    cmd->xclbin_size = scmd.size;
+    cmd->bohdl = scmd.bohdl;
     snprintf(cmd->krnl_name, ZOCL_MAX_NAME_LENGTH, "%s", scmd.name);
   }
 

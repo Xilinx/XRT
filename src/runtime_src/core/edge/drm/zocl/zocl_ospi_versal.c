@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Larry Liu <yliu@xilinx.com>
@@ -425,6 +425,8 @@ static int zocl_ov_thread(void *data)
 
 static const struct of_device_id zocl_ospi_versal_of_match[] = {
 	{ .compatible = "xlnx,ospi_versal",
+	},
+	{ .compatible = "xlnx,mpsoc_ocm",
 	},
 	{ /* end of table */ },
 };

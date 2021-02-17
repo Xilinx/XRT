@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2018-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -735,20 +735,19 @@ static struct xocl_subdev_map subdev_map[] = {
 		.devinfo_cb = NULL,
 		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
-#if 0
 	{
 		.id = XOCL_SUBDEV_XFER_VERSAL,
 		.dev_name = XOCL_XFER_VERSAL,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_FPGA_CONFIG, .regmap_name = PROP_PDI_CONFIG},
+			{.res_name = NODE_FPGA_CONFIG_01, .regmap_name = PROP_PDI_CONFIG},
 			{NULL},
 		},
 		.required_ip = 1,
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
-#endif
 	{
 		.id = XOCL_SUBDEV_ICAP,
 		.dev_name = XOCL_ICAP,
@@ -1223,7 +1222,7 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 	 *  if platform is NULL, just use name to compare;
 	 *  if platform is available, use name + platform to compare;
 	 */
-	for (i = 0; i < ip_num; i++) {
+	for (i = 0; i < ip_num; i++, ip++) {
 		if (ip->name && strlen(ipname) > 0 && !ip->used &&
 		    ip->level >= min_level && ip->level <= max_level &&
 		    !strncmp(ip->name, ipname, strlen(ipname))) {
@@ -1234,7 +1233,6 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 			else
 				break;
 		}
-		ip++;
 	}
 	if (i == ip_num)
 		return 0;

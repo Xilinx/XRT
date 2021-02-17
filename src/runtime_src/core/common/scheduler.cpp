@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -87,36 +87,6 @@ create_exec_bo(xclDeviceHandle handle, size_t sz)
   return buffer(ubo.release(),delBO);
 }
 
-/**
- * create_data_bo() - create a buffer object for data
- *
- * @device: Device to associated with the buffer object should be allocated
- * @sz: Size of the buffer object
- * @flags: Flags for allocating buffer
- * Return: Shared pointer to the allocated and mapped buffer object
- */
-static buffer
-create_data_bo(xclDeviceHandle handle, size_t sz, uint32_t flags)
-{
-  auto delBO = [](buffer_object* bo) {
-    xclUnmapBO(bo->dev, bo->bo, bo->data);
-    xclFreeBO(bo->dev, bo->bo);
-    delete bo;
-  };
-
-  auto ubo = std::make_unique<buffer_object>();
-  ubo->dev = handle;
-  ubo->bo = xclAllocBO(ubo->dev, sz, 0, flags);
-  ubo->data = xclMapBO(ubo->dev, ubo->bo, true /*write*/);
-
-  if (xclGetBOProperties(ubo->dev, ubo->bo, &ubo->prop))
-    throw std::runtime_error("Failed to get BO properties");
-
-  ubo->size = sz;
-  std::memset(reinterpret_cast<ert_packet*>(ubo->data), 0, sz);
-  return buffer(ubo.release(), delBO);
-}
-
 } // unnamed
 
 namespace xrt_core { namespace scheduler {
@@ -174,7 +144,7 @@ init(xclDeviceHandle handle, const axlf* top)
   auto sks = xclbin::get_softkernels(top);
 
   if (!sks.empty()) {
-    // config soft kernel
+    // config PS kernel
     auto flags = xclbin::get_first_used_mem(top);
     if (flags < 0)
       throw std::runtime_error("unable to get available memory bank");
@@ -182,33 +152,31 @@ init(xclDeviceHandle handle, const axlf* top)
     ert_configure_sk_cmd* scmd;
     scmd = reinterpret_cast<ert_configure_sk_cmd*>(execbo->data);
 
+    std::memset(scmd, 0, 0x1000);
+    scmd->state = ERT_CMD_STATE_NEW;
+    scmd->opcode = ERT_SK_CONFIG;
+    scmd->type = ERT_CTRL;
+    scmd->num_image = sks.size();
+    scmd->count = scmd->num_image * sizeof(struct config_sk_image) / 4 + 1;
+
     uint32_t start_cuidx = 0;
+    uint32_t img_idx = 0;
     for (const auto& sk:sks) {
-      auto skbo = create_data_bo(handle, sk.size, flags);
-
-      std::memset(scmd, 0, 0x1000);
-      scmd->state = ERT_CMD_STATE_NEW;
-      scmd->opcode = ERT_SK_CONFIG;
-      ecmd->type = ERT_CTRL;
-      scmd->count = sizeof (ert_configure_sk_cmd) / 4 - 1;
-      scmd->start_cuidx = start_cuidx;
-      scmd->num_cus = sk.ninst;
-      sk.symbol_name.copy(reinterpret_cast<char*>(scmd->sk_name), 31);
-      scmd->sk_addr = skbo->prop.paddr;
-      scmd->sk_size = skbo->prop.size;
-      std::memcpy(skbo->data, sk.sk_buf, sk.size);
-      if (xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, sk.size, 0))
-	    throw std::runtime_error("unable to synch BO to device");
-
-      if (xclExecBuf(handle,execbo->bo))
-        throw std::runtime_error("unable to issue xclExecBuf");
-
-      // wait for command to complete
-      while (scmd->state < ERT_CMD_STATE_COMPLETED)
-        while (xclExecWait(handle,1000)==0) ;
+      scmd->image[img_idx].start_cuidx = start_cuidx;
+      scmd->image[img_idx].num_cus = sk.ninst;
+      // sk name is limited to 19 bytes (ert.h)
+      sk.symbol_name.copy(reinterpret_cast<char*>(scmd->image[img_idx].sk_name), 19);
 
       start_cuidx += sk.ninst;
+      img_idx++;
     }
+
+    if (xclExecBuf(handle,execbo->bo))
+      throw std::runtime_error("unable to issue xclExecBuf");
+
+    // wait for command to complete
+    while (scmd->state < ERT_CMD_STATE_COMPLETED)
+      while (xclExecWait(handle,1000)==0) ;
   }
 
   xclCloseContext(handle,uuid,std::numeric_limits<unsigned int>::max());
