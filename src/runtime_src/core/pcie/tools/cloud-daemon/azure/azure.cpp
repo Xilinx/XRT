@@ -73,13 +73,9 @@ int init(mpd_plugin_callbacks *cbs)
         syslog(LOG_INFO, "azure: no device found");
         return ret;
     }
-    if (cbs)
+    if (cbs) 
     {
         // init curl
-        int retry = 3;
-        struct timespec ts;
-        long msecs;
-
         int curlInit = curl_global_init(CURL_GLOBAL_ALL);
         if (curlInit != 0)
             syslog(LOG_ERR, "mpd cannot initalize curl: %d", curlInit);
@@ -87,28 +83,7 @@ int init(mpd_plugin_callbacks *cbs)
         if (!private_ip.empty())
             restip_endpoint = private_ip;
         syslog(LOG_INFO, "azure restserver ip: %s\n", restip_endpoint.c_str());
-        while (retry > 0) {
-            fpga_serial_number = AzureDev::get_serial_number();
-            if ((fpga_serial_number.empty()) ||
-                (total != fpga_serial_number.size()) ||
-                (std::find(fpga_serial_number.begin(), fpga_serial_number.end(), "")
-                 != fpga_serial_number.end())) {
-                if (retry--) {
-                     fpga_serial_number.clear();
-                     syslog(LOG_INFO, "azure: retrying for devices serial number list\n");
-                     msecs = 500;
-                     ts.tv_sec = msecs / 1000;
-                     ts.tv_nsec = (msecs % 1000) * 1000000;
-                     nanosleep(&ts, NULL);
-                }
-           }
-           else
-                break;
-        }
-        if (retry <= 0) {
-            syslog(LOG_INFO, "azure: exiting due to one or more device's serial number not found\n");
-            return 1;
-        }
+        fpga_serial_number = AzureDev::get_serial_number();
         // hook functions
         cbs->mpc_cookie = NULL;
         cbs->get_remote_msd_fd = get_remote_msd_fd;
