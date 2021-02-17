@@ -32,11 +32,14 @@ declare -A PROGOPT=( \
 	["-s"]="XBUTIL2" \
 	["--base"]="XBUTIL2" \
 	["-b"]="XBUTIL2" \
+	["--cache"]="XBUTIL2" \
+	["-c"]="XBUTIL2" \
         ["--device"]="XBUTIL2" \
         ["--help"]="XBUTIL2" \
         ["-d"]="DEVICE" \
         ["-h"]="XBUTIL2" \
     )
+
 # In the following table "reset" points to a second table by name
 # Note that reset is valid both for classic and next generation tool
 # and hence requires a second lookup to resolve between xbutil and xbutil2
@@ -68,7 +71,6 @@ declare -A COMMANDS=( \
         ["examine"]="XBUTIL2" \
         ["validate"]="XBUTIL2" \
         ["advanced"]="XBUTIL2" \
-        ["reset"]="XBUTIL2" \
         ["--help"]="XBUTIL2" \
         ["--verbose"]="XBUTIL2" \
         ["--batch"]="XBUTIL2" \
@@ -79,6 +81,26 @@ declare -A COMMANDS=( \
 
 INTRE='^[0-9]+$'
 
+
+function parse_device_arg() {
+    local RESULT="DEFAULT"
+    case $1 in
+	XBUTIL)
+	    RESULT="XBUTIL"
+	;;
+	XBUTIL2)
+	    RESULT="XBUTIL2"
+	;;
+	DEVICE)
+	if [[ -n $2 ]] && [[ $2 =~ ${INTRE} ]]; then
+	    RESULT="XBUTIL"
+	elif [[ -n $2 ]]; then
+	    RESULT="XBUTIL2"
+	fi
+	;;
+    esac
+    PROG=${RESULT}
+}
 # Determine which version of xbutil should be used
 # Check to see environment variable is NOT set
 if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then
@@ -117,48 +139,32 @@ if [ ${XRT_PROG} == "xbutil" ]; then
   PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
   case ${PROG} in
     XBUTIL | XBUTIL2)
-      # Get named reference to the value pointed by the string returned
-      XRT_PROG=${!PROG}
       ;;
     RSTOPT)
       # We have an ambiguous sub-command, use the next token/switch to
-      # disambiguate by a second look up
+	# disambiguate by a second look up
+      PROG="DEFAULT"
       if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
-        PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
-	if [ ${PROG} == "DEVICE" ] && [ ${XRTWRAP_PROG_ARGS[2]} =~ ${INTRE} ]; then
-	  PROG="XBUTIL"
-	else
-	  PROG="XBUTIL2"
-	fi
-        XRT_PROG=${!PROG}
-      else
-        # User did not provide switch to the sub-command so we cannot
-        # disabmiguate, default to DEFAULT
-        XRT_PROG=${DEFAULT}
+          PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+	  parse_device_arg ${PROG} ${XRTWRAP_PROG_ARGS[2]}
       fi
       ;;
     PROGOPT)
       # We have an ambiguous sub-command, use the next token/switch to
-      # disambiguate by a second look up
+	# disambiguate by a second look up
+      PROG="DEFAULT"
       if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
-        PROG=${PROGOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
-	if [[ ${PROG} == "DEVICE" ]] && [[ ${XRTWRAP_PROG_ARGS[2]} =~ ${INTRE} ]]; then
-	  PROG="XBUTIL"
-	else
-	  PROG="XBUTIL2"
-	fi
-        XRT_PROG=${!PROG}
-      else
-        # User did not provide switch to the sub-command so we cannot
-        # disabmiguate, default to DEFAULT
-        XRT_PROG=${DEFAULT}
+          PROG=${PROGOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+	  parse_device_arg ${PROG} ${XRTWRAP_PROG_ARGS[2]}
       fi
       ;;
     *)
       # Bogus sub-command which failed lookup
-      XRT_PROG=${DEFAULT}
+	PROG="DEFAULT"
       ;;
   esac
+  # Get named reference to the value pointed by the string returned
+  XRT_PROG=${!PROG}
 fi
 
 # Friendly message
