@@ -69,10 +69,7 @@ namespace xdp {
   {
     // Base functionality is just to have all writers write.  Derived
     //  classes might have to do more.
-    for (auto w : writers)
-    {
-      w->write(openNewFiles) ;
-    }
+    endWrite(openNewFiles);
   }
 
   void XDPPlugin::broadcast(VPDatabase::MessageType /*msg*/, void* /*blob*/)
@@ -109,7 +106,7 @@ namespace xdp {
     write_thread = std::thread(&XDPPlugin::writeContinuous, this, interval, type);
   }
 
-  void XDPPlugin::endWrite()
+  void XDPPlugin::endWrite(bool openNewFiles)
   {
     if (is_write_thread_active) {
       // Ask writer thread to quit
@@ -122,7 +119,7 @@ namespace xdp {
       is_write_thread_active = false;
     } else {
       for (auto w : writers)
-        w->write(false) ;
+        w->write(openNewFiles) ;
     }
   }
 

@@ -114,7 +114,7 @@ namespace xdp {
       // Also, store away the counter results
       readCounters() ;
 
-      XDPPlugin::endWrite();
+      XDPPlugin::endWrite(false);
       db->unregisterPlugin(this) ;
     }
 

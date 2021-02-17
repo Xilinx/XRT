@@ -136,7 +136,7 @@ namespace xdp {
         }
       }
 
-      XDPPlugin::endWrite();
+      XDPPlugin::endWrite(false);
       db->unregisterPlugin(this) ;
     } // If db alive
     clearOffloaders();

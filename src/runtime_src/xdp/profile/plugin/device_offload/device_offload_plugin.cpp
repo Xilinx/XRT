@@ -284,7 +284,7 @@ namespace xdp {
     // Also, store away the counter results
     readCounters() ;
 
-    XDPPlugin::endWrite();
+    XDPPlugin::endWrite(openNewFiles);
   }
 
   void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)

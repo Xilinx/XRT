@@ -64,7 +64,7 @@ namespace xdp {
     XDP_EXPORT virtual void emulationSetup() ;
 
     XDP_EXPORT void startWrite(unsigned int interval, std::string type);
-    XDP_EXPORT void endWrite();
+    XDP_EXPORT void endWrite(bool openNewFiles);
 
   public:
     XDP_EXPORT XDPPlugin() ;
