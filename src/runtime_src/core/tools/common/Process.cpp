@@ -214,8 +214,8 @@ XBUtilities::runScript( const std::string & env,
 
   // Build the environment variables
   // Copy the existing environment
-  boost::process::environment env = boost::this_process::environment();
-  env.erase("XCL_EMULATION_MODE");
+  boost::process::environment _env = boost::this_process::environment();
+  _env.erase("XCL_EMULATION_MODE");
 
   // Please fix: Should be a busy bar and NOT a progress bar
   ProgressBar run_test("Running Test", max_test_duration, XBUtilities::is_esc_enabled(), std::cout); 
@@ -227,7 +227,7 @@ XBUtilities::runScript( const std::string & env,
                                         cmdArgs, 
                                         boost::process::std_out > ip_stdout,
                                         boost::process::std_err > ip_stderr,
-                                        env);
+                                        _env);
 
   // Wait for the process to finish and update the busy bar
   unsigned int counter = 0;
