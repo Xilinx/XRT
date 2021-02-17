@@ -77,6 +77,7 @@ enum xcl_mailbox_request {
 	XCL_MAILBOX_REQ_CHG_SHELL =		13,
 	XCL_MAILBOX_REQ_PROGRAM_SHELL =		14,
 	XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =	15,
+	XCL_MAILBOX_REQ_MAX,
 	/* Version 0 OP code ends */
 };
 
@@ -187,6 +188,7 @@ struct xcl_sensor {
 	uint32_t vol_vccaux_pmc;
 	uint32_t vol_vccram;
 	uint32_t power_warn;
+	uint32_t qspi_status;
 };
 
 /**
@@ -298,6 +300,7 @@ struct xcl_mailbox_conn_resp {
 	uint64_t conn_flags;
 	uint64_t chan_switch;
 	char comm_id[XCL_COMM_ID_SIZE];
+	uint64_t chan_disable;
 };
 
 #define	XCL_MB_STATE_ONLINE		(1UL << 0)
