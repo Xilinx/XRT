@@ -20,6 +20,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_kernel.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_kernel.h"
+#include "core/include/experimental/plugin/xdp/native_profile.h"
 #include "kernel_int.h"
 
 #include "command.h"
@@ -2343,6 +2344,7 @@ offset(int argno) const
 xrtKernelHandle
 xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::shared);
   }
@@ -2355,6 +2357,7 @@ xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name
 xrtKernelHandle
 xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::exclusive);
   }
@@ -2367,6 +2370,7 @@ xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const c
 int
 xrtKernelClose(xrtKernelHandle khdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     api::xrtKernelClose(khdl);
     return 0;
@@ -2384,6 +2388,7 @@ xrtKernelClose(xrtKernelHandle khdl)
 xrtRunHandle
 xrtRunOpen(xrtKernelHandle khdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return api::xrtRunOpen(khdl);
   }
@@ -2396,6 +2401,7 @@ xrtRunOpen(xrtKernelHandle khdl)
 int
 xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return get_kernel(khdl)->group_id(argno);
   }
@@ -2412,6 +2418,7 @@ xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
 uint32_t
 xrtKernelArgOffset(xrtKernelHandle khdl, int argno)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return get_kernel(khdl)->arg_offset(argno);
   }
@@ -2428,6 +2435,7 @@ xrtKernelArgOffset(xrtKernelHandle khdl, int argno)
 int
 xrtKernelReadRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t* datap)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     *datap = get_kernel(khdl)->read_register(offset);
     return 0;
@@ -2446,6 +2454,7 @@ xrtKernelReadRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t* datap)
 int
 xrtKernelWriteRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t data)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     get_kernel(khdl)->write_register(offset, data);
     return 0;
@@ -2463,6 +2472,7 @@ xrtKernelWriteRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t data)
 xrtRunHandle
 xrtKernelRun(xrtKernelHandle khdl, ...)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto handle = xrtRunOpen(khdl);
     auto run = get_run(handle);
@@ -2485,6 +2495,7 @@ xrtKernelRun(xrtKernelHandle khdl, ...)
 int
 xrtRunClose(xrtRunHandle rhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     api::xrtRunClose(rhdl);
     return 0;
@@ -2502,6 +2513,7 @@ xrtRunClose(xrtRunHandle rhdl)
 ert_cmd_state
 xrtRunState(xrtRunHandle rhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return api::xrtRunState(rhdl);
   }
@@ -2514,6 +2526,7 @@ xrtRunState(xrtRunHandle rhdl)
 ert_cmd_state
 xrtRunWait(xrtRunHandle rhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return api::xrtRunWait(rhdl, 0);
   }
@@ -2526,6 +2539,7 @@ xrtRunWait(xrtRunHandle rhdl)
 ert_cmd_state
 xrtRunWaitFor(xrtRunHandle rhdl, unsigned int timeout_ms)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return api::xrtRunWait(rhdl, timeout_ms);
   }
@@ -2540,6 +2554,7 @@ xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
                   void (* pfn_state_notify)(xrtRunHandle, ert_cmd_state, void*),
                   void* data)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     api::xrtRunSetCallback(rhdl, state, pfn_state_notify, data);
     return 0;
@@ -2557,6 +2572,7 @@ xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
 int
 xrtRunStart(xrtRunHandle rhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     api::xrtRunStart(rhdl);
     return 0;
@@ -2574,6 +2590,7 @@ xrtRunStart(xrtRunHandle rhdl)
 int
 xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto upd = get_run_update(rhdl);
 
@@ -2596,6 +2613,7 @@ xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
 int
 xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto upd = get_run_update(rhdl);
     upd->update_arg_at_index(index, value, bytes);
@@ -2614,6 +2632,7 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
 int
 xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto run = get_run(rhdl);
 
@@ -2637,6 +2656,7 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
 int
 xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto run = get_run(rhdl);
     run->set_arg_at_index(index, value, bytes);
@@ -2655,6 +2675,7 @@ xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
 int
 xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto run = get_run(rhdl);
     run->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
@@ -2674,6 +2695,7 @@ xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
 void
 xrtRunGetArgVPP(xrt::run run, int index, void* value, size_t bytes)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   const auto& rimpl = run.get_handle();
   rimpl->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
 }

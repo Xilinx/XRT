@@ -20,6 +20,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/experimental/plugin/xdp/native_profile.h"
 
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -222,6 +223,7 @@ get_xclbin_data(xrtXclbinHandle handle)
 xrtXclbinHandle
 xrtXclbinAllocFilename(const char* filename)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto xclbin = std::make_shared<xrt::xclbin_impl>(filename);
     auto handle = xclbin.get();
@@ -242,6 +244,7 @@ xrtXclbinAllocFilename(const char* filename)
 xrtXclbinHandle
 xrtXclbinAllocRawData(const char* data, int size)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     std::vector<char> raw_data(data, data + size);
     auto xclbin = std::make_shared<xrt::xclbin_impl>(raw_data);
@@ -263,6 +266,7 @@ xrtXclbinAllocRawData(const char* data, int size)
 int
 xrtXclbinFreeHandle(xrtXclbinHandle handle)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     free_xclbin(handle);
     return 0;
@@ -316,6 +320,7 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames)
 int
 xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto xclbin = get_xclbin(handle);
     const std::string& xsaname = xclbin->get_xsa_name();
@@ -344,6 +349,7 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
 int
 xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto xclbin = get_xclbin(handle);
     auto result = xclbin->get_uuid();
@@ -367,6 +373,7 @@ xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
 int
 xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto xclbin = get_xclbin(handle);
     auto& result = xclbin->get_data();
@@ -401,6 +408,7 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
 int
 xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto device = xrt_core::get_userpf_device(dhdl);
     auto uuid = device->get_xclbin_uuid();

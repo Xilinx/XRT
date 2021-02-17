@@ -69,6 +69,7 @@ namespace xdp {
     // XRT host level events
     API_CALL             = 50,
     HAL_API_CALL         = 51,
+    NATIVE_API_CALL      = 52,
   } ;
 
   class VTFEvent
@@ -97,10 +98,11 @@ namespace xdp {
     inline VTFEventType getEventType()         { return type; }
 
     // Functions that can be used as filters
-    virtual bool isUserEvent()   { return false ; }
-    virtual bool isOpenCLAPI()   { return false ; } 
-    virtual bool isHALAPI()      { return false ; }
-    virtual bool isHostEvent()   { return false ; }
+    virtual bool isUserEvent()       { return false ; }
+    virtual bool isOpenCLAPI()       { return false ; } 
+    virtual bool isHALAPI()          { return false ; }
+    virtual bool isHostEvent()       { return false ; }
+    virtual bool isNativeHostEvent() { return false ; } 
     virtual bool isOpenCLHostEvent()
       { return type == READ_BUFFER  || type == READ_BUFFER_P2P  ||
                type == WRITE_BUFFER || type == WRITE_BUFFER_P2P ||

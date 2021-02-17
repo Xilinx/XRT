@@ -43,6 +43,8 @@ set(XRT_XDP_PROFILE_HAL_DEVICE_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/devi
 set(XRT_XDP_PROFILE_XRT_DEVICE_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/xrt_device")
 set(XRT_XDP_PROFILE_LOP_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/lop")
 set(XRT_XDP_PROFILE_LOP_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/lop")
+set(XRT_XDP_PROFILE_NATIVE_PLUGIN_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/native")
+set(XRT_XDP_PROFILE_NATIVE_WRITER_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/native")
 set(XRT_XDP_PROFILE_OPENCL_TRACE_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/opencl/trace")
 set(XRT_XDP_PROFILE_OPENCL_TRACE_WRITER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/opencl")
 set(XRT_XDP_PROFILE_OPENCL_COUNTERS_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/opencl/counters")
@@ -176,6 +178,13 @@ file(GLOB XRT_XDP_PROFILE_LOP_PLUGIN_FILES
   "${XRT_XDP_PROFILE_LOP_WRITER_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_PROFILE_NATIVE_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_NATIVE_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_NATIVE_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_NATIVE_WRITER_DIR}/*.h"
+  "${XRT_XDP_PROFILE_NATIVE_WRITER_DIR}/*.cpp"
+  )
+
 file(GLOB XRT_XDP_PROFILE_OPENCL_TRACE_PLUGIN_FILES
   "${XRT_XDP_PROFILE_OPENCL_TRACE_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_OPENCL_TRACE_PLUGIN_DIR}/*.cpp"
@@ -270,6 +279,7 @@ install (TARGETS xdp_core
 add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
 add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
 add_library(xdp_lop_plugin MODULE ${XRT_XDP_PROFILE_LOP_PLUGIN_FILES})
+add_library(xdp_native_plugin MODULE ${XRT_XDP_PROFILE_NATIVE_PLUGIN_FILES})
 add_library(xdp_opencl_trace_plugin MODULE ${XRT_XDP_PROFILE_OPENCL_TRACE_PLUGIN_FILES})
 add_library(xdp_opencl_counters_plugin MODULE ${XRT_XDP_PROFILE_OPENCL_COUNTERS_PLUGIN_FILES})
 add_library(xdp_user_plugin MODULE ${XRT_XDP_PROFILE_USER_PLUGIN_FILES})
@@ -279,6 +289,7 @@ add_library(xdp_hal_device_offload_plugin MODULE ${XRT_XDP_HAL_PROFILE_DEVICE_OF
 add_dependencies(xdp_hal_plugin xdp_core xrt_core xrt_coreutil)
 add_dependencies(xdp_hal_api_interface_plugin xdp_core xrt_core xrt_coreutil)
 add_dependencies(xdp_lop_plugin xdp_core xrt_coreutil)
+add_dependencies(xdp_native_plugin xdp_core xrt_coreutil)
 add_dependencies(xdp_opencl_trace_plugin xdp_core xrt_coreutil)
 add_dependencies(xdp_opencl_counters_plugin xdp_core xrt_coreutil xilinxopencl)
 add_dependencies(xdp_user_plugin xdp_core xrt_coreutil)
@@ -288,6 +299,7 @@ add_dependencies(xdp_hal_device_offload_plugin xdp_core xrt_core xrt_coreutil)
 target_link_libraries(xdp_hal_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
 target_link_libraries(xdp_hal_api_interface_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
 target_link_libraries(xdp_lop_plugin PRIVATE xdp_core xrt_coreutil)
+target_link_libraries(xdp_native_plugin PRIVATE xdp_core xrt_coreutil)
 target_link_libraries(xdp_opencl_trace_plugin PRIVATE xdp_core xrt_coreutil)
 target_link_libraries(xdp_opencl_counters_plugin PRIVATE xdp_core xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_user_plugin PRIVATE xdp_core xrt_coreutil)
@@ -297,6 +309,7 @@ target_link_libraries(xdp_hal_device_offload_plugin PRIVATE xdp_core xrt_core xr
 set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_lop_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+set_target_properties(xdp_native_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_opencl_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_opencl_counters_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_user_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -306,6 +319,7 @@ set_target_properties(xdp_hal_device_offload_plugin PROPERTIES VERSION ${XRT_VER
 install (TARGETS xdp_hal_plugin
                  xdp_hal_api_interface_plugin
                  xdp_lop_plugin
+		 xdp_native_plugin
                  xdp_opencl_trace_plugin
                  xdp_opencl_counters_plugin
                  xdp_user_plugin

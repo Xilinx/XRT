@@ -181,6 +181,31 @@ namespace xdp {
     return collected ;
   }
 
+  // If this function is called, the event ownership is passed to the caller
+  std::vector<VTFEvent*> VPDynamicDatabase::filterAndRemoveHostEvents(std::function<bool(VTFEvent*)> filter)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::vector<VTFEvent*> collected ;
+
+    for (auto e : hostEvents) {
+      if (filter(e.second)) {
+	collected.push_back(e.second) ;
+      }
+    }
+
+    for (std::multimap<double, VTFEvent*>::iterator i = hostEvents.begin() ;
+	 i != hostEvents.end() ; ) {
+      if (filter((*i).second)) {
+	std::multimap<double, VTFEvent*>::iterator j = i ;
+	++i ;
+	hostEvents.erase(j) ;
+      }
+      else ++i ;
+    }
+
+    return collected ;
+  }
+
   std::vector<VTFEvent*> VPDynamicDatabase::getHostEvents()
   {
     std::vector<VTFEvent*> events;

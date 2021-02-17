@@ -20,6 +20,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_error.h"
+#include "core/include/experimental/plugin/xdp/native_profile.h"
 
 #include "device_int.h"
 #include "error_int.h"
@@ -280,6 +281,7 @@ to_string() const
 int
 xrtErrorGetLast(xrtDeviceHandle dhdl, xrtErrorClass ecl, xrtErrorCode* error, uint64_t* timestamp)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto handle = xrt::error_impl(xrt_core::device_int::get_core_device(dhdl).get(), ecl);
     *error = handle.get_error_code();
@@ -300,6 +302,7 @@ xrtErrorGetLast(xrtDeviceHandle dhdl, xrtErrorClass ecl, xrtErrorCode* error, ui
 int
 xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, size_t* out_len)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto str = error_code_to_string(error);
 

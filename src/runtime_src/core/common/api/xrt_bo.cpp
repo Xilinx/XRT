@@ -21,6 +21,7 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_bo.h"
 #include "core/include/experimental/xrt_aie.h"
+#include "core/include/experimental/plugin/xdp/native_profile.h"
 #include "bo.h"
 
 #include "device_int.h"
@@ -833,6 +834,7 @@ sync(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
 xrtBufferHandle
 xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto boh = alloc(get_xcl_device_handle(dhdl), userptr, size, flags, grp);
     bo_cache[boh.get()] = boh;
@@ -852,6 +854,7 @@ xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
 xrtBufferHandle
 xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto boh = alloc(get_xcl_device_handle(dhdl), size, flags, grp);
     bo_cache[boh.get()] = boh;
@@ -871,6 +874,7 @@ xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGro
 xrtBufferHandle
 xrtBOSubAlloc(xrtBufferHandle phdl, size_t sz, size_t offset)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     const auto& parent = get_boh(phdl);
     auto boh = sub_buffer(parent, sz, offset);
@@ -892,6 +896,7 @@ xrtBOSubAlloc(xrtBufferHandle phdl, size_t sz, size_t offset)
 xrtBufferHandle
 xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto boh = alloc(get_xcl_device_handle(dhdl), ehdl);
     bo_cache[boh.get()] = boh;
@@ -911,6 +916,7 @@ xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl)
 xclBufferExportHandle
 xrtBOExport(xrtBufferHandle bhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return get_boh(bhdl)->export_buffer();
   }
@@ -928,6 +934,7 @@ xrtBOExport(xrtBufferHandle bhdl)
 int
 xrtBOFree(xrtBufferHandle bhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     free_bo(bhdl);
     return 0;
@@ -945,6 +952,7 @@ xrtBOFree(xrtBufferHandle bhdl)
 size_t
 xrtBOSize(xrtBufferHandle bhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return get_boh(bhdl)->get_size();
   }
@@ -963,6 +971,7 @@ xrtBOSize(xrtBufferHandle bhdl)
 int
 xrtBOSync(xrtBufferHandle bhdl, xclBOSyncDirection dir, size_t size, size_t offset)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     get_boh(bhdl)->sync(dir, size, offset);
     return 0;
@@ -980,6 +989,7 @@ xrtBOSync(xrtBufferHandle bhdl, xclBOSyncDirection dir, size_t size, size_t offs
 void*
 xrtBOMap(xrtBufferHandle bhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return get_boh(bhdl)->get_hbuf();
   }
@@ -997,6 +1007,7 @@ xrtBOMap(xrtBufferHandle bhdl)
 int
 xrtBOWrite(xrtBufferHandle bhdl, const void* src, size_t size, size_t seek)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     get_boh(bhdl)->write(src, size, seek);
     return 0;
@@ -1014,6 +1025,7 @@ xrtBOWrite(xrtBufferHandle bhdl, const void* src, size_t size, size_t seek)
 int
 xrtBORead(xrtBufferHandle bhdl, void* dst, size_t size, size_t skip)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     get_boh(bhdl)->read(dst, size, skip);
     return 0;
@@ -1031,6 +1043,7 @@ xrtBORead(xrtBufferHandle bhdl, void* dst, size_t size, size_t skip)
 int
 xrtBOCopy(xrtBufferHandle dhdl, xrtBufferHandle shdl, size_t sz, size_t dst_offset, size_t src_offset)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     const auto& dst = get_boh(dhdl);
     const auto& src = get_boh(shdl);
@@ -1051,6 +1064,7 @@ xrtBOCopy(xrtBufferHandle dhdl, xrtBufferHandle shdl, size_t sz, size_t dst_offs
 uint64_t
 xrtBOAddress(xrtBufferHandle bhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     return get_boh(bhdl)->get_address();
   }

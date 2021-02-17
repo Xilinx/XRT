@@ -22,6 +22,7 @@
 
 #include "core/include/experimental/xrt_device.h"
 #include "core/include/experimental/xrt_aie.h"
+#include "core/include/experimental/plugin/xdp/native_profile.h"
 
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -193,6 +194,7 @@ reset_array()
 xrtDeviceHandle
 xrtDeviceOpen(unsigned int index)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto device = xrt_core::get_userpf_device(index);
     device_cache[device.get()] = device;
@@ -212,6 +214,7 @@ xrtDeviceOpen(unsigned int index)
 int
 xrtDeviceClose(xrtDeviceHandle dhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     free_device(dhdl);
     return 0;
@@ -229,6 +232,7 @@ xrtDeviceClose(xrtDeviceHandle dhdl)
 int
 xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto device = get_device(dhdl);
     device->load_xclbin(xclbin);
@@ -247,6 +251,7 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin)
 int
 xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto device = get_device(dhdl);
     auto xclbin = read_xclbin(fnm);
@@ -266,6 +271,7 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
 int
 xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto device = get_device(dhdl);
     auto& xclbin = xrt_core::xclbin_int::get_xclbin_data(xhdl);
@@ -285,6 +291,7 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 int
 xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto device = get_device(dhdl);
     auto uuid = device->get_xclbin_uuid();
@@ -304,6 +311,7 @@ xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
 xclDeviceHandle
 xrtDeviceToXclDevice(xrtDeviceHandle dhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto device = get_device(dhdl);
     return device->get_device_handle();
@@ -322,6 +330,7 @@ xrtDeviceToXclDevice(xrtDeviceHandle dhdl)
 xrtDeviceHandle
 xrtDeviceOpenFromXcl(xclDeviceHandle dhdl)
 {
+  NATIVE_LOG_FUNCTION_CALL ;
   try {
     auto device = xrt_core::get_userpf_device(dhdl);
 
