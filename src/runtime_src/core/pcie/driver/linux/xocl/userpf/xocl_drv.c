@@ -772,6 +772,8 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	bool offline = false;
 	int ret = 0;
 
+	store_pcie_link_info(xdev);
+
 	ret = xocl_drvinst_get_offline(xdev->core.drm, &offline);
 	if (ret == -ENODEV || offline) {
 		userpf_info(xdev, "online current devices");
