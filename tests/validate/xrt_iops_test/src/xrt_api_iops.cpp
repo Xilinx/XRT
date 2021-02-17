@@ -73,38 +73,6 @@ double runTest(std::vector<xrt::run>& cmds, unsigned int total, arg_t &arg)
   return (std::chrono::duration_cast<ms_t>(arg.end - arg.start)).count();
 }
 
-int testSingleThread(int dev_id, std::string &xclbin_fn)
-{
-  /* The command would incease */
-  std::vector<unsigned int> cmds_per_run = { 50000,100000,500000,1000000 };
-  int expected_cmds = 128;
-  std::vector<arg_t> arg(1);
-
-  auto device = xrt::device(dev_id);
-  auto uuid = device.load_xclbin(xclbin_fn);
-
-  auto hello = xrt::kernel(device, uuid.get(), "hello");
-
-  arg[0].thread_id = 0;
-  /* Create 'expected_cmds' commands if possible */
-  std::vector<xrt::run> cmds;
-  for (int i = 0; i < expected_cmds; i++) {
-    auto run = xrt::run(hello);
-    run.set_arg(0, xrt::bo(device, 20, hello.group_id(0)));
-    cmds.push_back(std::move(run));
-  }
-  std::cout << "Allocated commands, expect " << expected_cmds << ", created " << cmds.size() << std::endl;
-
-  for (auto num_cmds : cmds_per_run) {
-    double duration = runTest(cmds, num_cmds, arg[0]);
-    std::cout << "Commands: " << std::setw(7) << num_cmds
-      << " IOPS: " << (num_cmds * 1000.0 * 1000.0 / duration)
-      << std::endl;
-  }
-
-  return 0;
-}
-
 void runTestThread(xrt::device &device, xrt::kernel &hello, arg_t &arg)
 {
   std::vector<xrt::run> cmds;
@@ -121,12 +89,17 @@ void runTestThread(xrt::device &device, xrt::kernel &hello, arg_t &arg)
   barrier.wait();
 }
 
-int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int queueLength, unsigned int total)
+int testMultiThreads(std::string &dev, std::string &xclbin_fn, int threadNumber, int queueLength, unsigned int total)
 {
   std::thread threads[threadNumber];
   std::vector<arg_t> arg(threadNumber);
+  xrt::device device;
 
-  auto device = xrt::device(dev_id);
+  if (dev.find(":") == std::string::npos) {
+    device = xrt::device(std::stoi(dev));
+  } else
+    throw std::runtime_error("Not support BDF");
+
   auto uuid = device.load_xclbin(xclbin_fn);
   auto hello = xrt::kernel(device, uuid.get(), krnl.name);
 
@@ -222,15 +195,7 @@ int _main(int argc, char* argv[])
   if (threadNumber <= 0)
     throw std::runtime_error("Invalid thread number");
 
-  int dev_id = 0;
-  if (device_str.find(":") == std::string::npos) {
-    dev_id = std::stoi(device_str);
-    if (dev_id < 0)
-      throw std::runtime_error("Negative device index");
-  } else
-    throw std::runtime_error("Not support BDF");
-
-  testMultiThreads(dev_id, xclbin_fn, threadNumber, queueLength, total);
+  testMultiThreads(device_str, xclbin_fn, threadNumber, queueLength, total);
 
   return 0;
 }

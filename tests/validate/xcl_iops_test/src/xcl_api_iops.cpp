@@ -10,6 +10,8 @@
 
 #include "xilutil.hpp"
 #include "xrt.h"
+/* Get internal shim API "xclOpenByBDF" */
+#include "shim_int.h"
 #include "ert.h"
 #include "xclbin.h"
 
@@ -24,9 +26,9 @@ struct task_info {
 
 typedef struct task_args {
     int thread_id;
-    int dev_id;
     int queueLength;
     unsigned int total;
+    std::string dev_str;
     std::string xclbin_fn;
     Clock::time_point start;
     Clock::time_point end;
@@ -160,74 +162,6 @@ void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info
     //std::cout << "Allocated commands, expect " << expected_cmds << ", created " << cmds.size() << std::endl;
 }
 
-int testSingleThread(int dev_id, std::string &xclbin_fn)
-{
-    xclDeviceHandle handle;
-    xuid_t uuid;
-    int bank = 0;
-    std::vector<std::shared_ptr<task_info>> cmds;
-    /* The command would incease */
-    std::vector<unsigned int> cmds_per_run = { 50000,100000,500000,1000000 };
-    /* There is performance and reach maximum FD limited issue */
-    //int expected_cmds = 100000;
-    int expected_cmds = 128;
-    std::vector<arg_t> arg(1);
-
-    handle = xclOpen(dev_id, "", XCL_QUIET);
-    if (!handle) {
-        printf("Could not open device\n");
-        return 1;
-    }
-
-    auto xclbin = load_file_to_memory(xclbin_fn);
-    auto top = reinterpret_cast<const axlf*>(xclbin.data());
-    auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
-    auto topology = reinterpret_cast<mem_topology*>(xclbin.data() + topo->m_sectionOffset);
-    if (xclLoadXclBin(handle, top))
-        throw std::runtime_error("Bitstream download failed");
-
-    uuid_copy(uuid, top->m_header.uuid);
-
-    for (int i = 0; i < topology->m_count; ++i) {
-        if (topology->m_mem_data[i].m_used) {
-            bank = i;
-            break;
-        }
-    }
-
-    if (xclOpenContext(handle, uuid, 0, true))
-        throw std::runtime_error("Cound not open context");
-
-    /* Create 'expected_cmds' commands if possible */
-    fillCmdVector(handle, cmds, bank, expected_cmds);
-
-    arg[0].thread_id = 0;
-    for (auto& num_cmds : cmds_per_run) {
-#if 0
-        double total = 0;
-        for (int i = 0; i < 5; i++) {
-            total += runTest(handle, cmds, num_cmds);
-        }
-        double duration = total / 5;
-#else
-        double duration = runTest(handle, cmds, num_cmds, arg[0]);
-#endif
-        std::cout << "Commands: " << std::setw(7) << num_cmds
-                  << " IOPS: " << (num_cmds * 1000.0 * 1000.0 / duration)
-                  << std::endl;
-    }
-
-    for (auto& cmd : cmds) {
-        xclFreeBO(handle, cmd->boh);
-        xclUnmapBO(handle, cmd->exec_bo, cmd->ecmd);
-        xclFreeBO(handle, cmd->exec_bo);
-    }
-
-    xclCloseContext(handle, uuid, 0);
-    xclClose(handle);
-    return 0;
-}
-
 void runTestThread(arg_t &arg)
 {
     xclDeviceHandle handle;
@@ -235,7 +169,11 @@ void runTestThread(arg_t &arg)
     int bank = 0;
     std::vector<std::shared_ptr<task_info>> cmds;
 
-    handle = xclOpen(arg.dev_id, "", XCL_QUIET);
+    if (arg.dev_str.find(":") == std::string::npos)
+        handle = xclOpen(std::stoi(arg.dev_str), "", XCL_QUIET);
+    else
+        handle = xclOpenByBDF(arg.dev_str.c_str(), "", XCL_QUIET);
+
     if (!handle)
         throw std::runtime_error("Could not open device");
 
@@ -275,7 +213,7 @@ void runTestThread(arg_t &arg)
     xclCloseContext(handle, uuid, 0);
 }
 
-int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int queueLength, unsigned int total)
+int testMultiThreads(std::string &dev, std::string &xclbin_fn, int threadNumber, int queueLength, unsigned int total)
 {
     std::thread threads[threadNumber];
     std::vector<arg_t> arg(threadNumber);
@@ -284,7 +222,7 @@ int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int q
 
     for (int i = 0; i < threadNumber; i++) {
         arg[i].thread_id = i;
-        arg[i].dev_id = dev_id;
+        arg[i].dev_str = dev;
         arg[i].queueLength = queueLength;
         arg[i].total = total;
         arg[i].xclbin_fn = xclbin_fn;
@@ -374,15 +312,7 @@ int _main(int argc, char* argv[])
     if (threadNumber <= 0)
         throw std::runtime_error("Invalid thread number");
 
-    int dev_id = 0;
-    if (device_str.find(":") == std::string::npos) {
-        dev_id = std::stoi(device_str);
-        if (dev_id < 0)
-            throw std::runtime_error("Negative device index");
-    } else
-        throw std::runtime_error("Not support BDF");
-
-    testMultiThreads(dev_id, xclbin_fn, threadNumber, queueLength, total);
+    testMultiThreads(device_str, xclbin_fn, threadNumber, queueLength, total);
 
     return 0;
 }
