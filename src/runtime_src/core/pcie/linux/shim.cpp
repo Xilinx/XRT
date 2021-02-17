@@ -38,6 +38,7 @@
 
 #include "xclbin.h"
 #include "ert.h"
+#include "shim_int.h"
 
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 
@@ -2269,6 +2270,45 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
     }
 
     return static_cast<xclDeviceHandle>(handle);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+
+  return nullptr;
+}
+
+xclDeviceHandle
+xclOpenByBDF(const char *bdf, const char*, xclVerbosityLevel)
+{
+  try {
+    unsigned int i = 0;
+    std::string target_bdf = bdf;
+    for (auto dev = pcidev::get_dev(i); dev; i++, dev = pcidev::get_dev(i)) {
+      // [dddd:bb:dd.f]
+      std::string dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->domain % dev->bus % dev->dev % dev->func);
+
+      if (dev_bdf == target_bdf) {
+        OPEN_CB;
+
+        xocl::shim *handle = new xocl::shim(i);
+
+        if (handle->handleCheck(handle) == 0) {
+          xrt_core::send_exception_message(strerror(errno) +
+            std::string(" Device index ") + std::to_string(i));
+          return nullptr;
+        }
+
+        return static_cast<xclDeviceHandle>(handle);
+      }
+    }
+      
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+      std::string("Cannot find bdf " + target_bdf + " \n"));
+    return nullptr;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
