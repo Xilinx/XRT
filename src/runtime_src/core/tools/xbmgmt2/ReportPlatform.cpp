@@ -107,7 +107,6 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   BoardInfo info;
   f.getBoardInfo(info);
   //create information tree for a device
-  pt_platform.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
   pt_platform.put("flash_type", xrt_core::device_query<xrt_core::query::flash_type>(device)); 
   pt_platform.put("hardware.serial_num", info.mSerialNum);
 
@@ -217,9 +216,6 @@ ReportPlatform::writeReport( const xrt_core::device * device,
 {
   boost::property_tree::ptree pt;
   getPropertyTreeInternal(device, pt);
-
-  output << boost::format("%s : [%s]\n") % "Device" % pt.get<std::string>("platform.bdf");
-  output << std::endl;
 
   output << "Flash properties\n";
   output << fmtBasic % "Type" % pt.get<std::string>("platform.flash_type", "N/A");
