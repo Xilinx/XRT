@@ -1,5 +1,5 @@
-/**
- * Copyright (C) 2020 Xilinx, Inc
+/*
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,5 +27,12 @@ namespace xrt_core { namespace xclbin { namespace swemu {
 // software emulation.
 std::vector<char>
 get_axlf_section(const device* device, const axlf* top, axlf_section_kind kind);
+
+// For xrt_xclbin.cpp
+// ip_layout will be nullptr, until it has been created.  It must be
+// created before this API can be used to create connectivity section.
+// See comments in code that use this API
+std::vector<char>
+get_axlf_section(const axlf* top, const ::ip_layout* ip_layout, axlf_section_kind kind);
 
 }}} // swemu, xclbin, xrt_core
