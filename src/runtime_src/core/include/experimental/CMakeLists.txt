@@ -16,7 +16,7 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
 
 install (FILES ${XRT_EXPERIMENTAL_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/experimental COMPONENT ${XRT_DEV_COMPONENT})
 
-message("-- XRT experimental header files")
-foreach (header ${XRT_EXPERIMENTAL_HEADER_SRC})
-  message("-- ${header}")
-endforeach()
+set(XRT_EXPERIMENTAL_DETAIL_HEADER_SRC
+  detail/pimpl.h)
+  
+install (FILES ${XRT_EXPERIMENTAL_DETAIL_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/experimental/detail COMPONENT ${XRT_DEV_COMPONENT})

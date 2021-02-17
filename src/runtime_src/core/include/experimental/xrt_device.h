@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -124,7 +124,7 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   uuid
-  load_xclbin(const struct axlf* xclbin);
+  load_xclbin(const axlf* xclbin);
 
   /**
    * load_xclbin() - Read and load an xclbin file
@@ -280,7 +280,7 @@ xrtDeviceClose(xrtDeviceHandle dhdl);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin);
+xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const axlf* xclbin);
 
 /**
  * xrtDeviceLoadXclbinFile() - Read and load an xclbin file
