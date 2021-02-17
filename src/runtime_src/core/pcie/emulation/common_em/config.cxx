@@ -59,7 +59,7 @@ namespace xclemulation{
     mMemLogs = false;
     mLaunchWaveform = DEBUG_MODE::OFF;
     mDontRun = false;
-    mNewMbscheduler = true;
+    mNewMbscheduler = false;
     mSimDir = "";
     mUserPreSimScript = "";
     mPacketSize = 0x800000;
