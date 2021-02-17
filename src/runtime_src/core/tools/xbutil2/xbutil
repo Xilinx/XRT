@@ -1,5 +1,14 @@
 #!/bin/bash
 
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (C) 2020-2021 Xilinx, Inc.
+#
+# xbutil loader which automatically switches between classic and next
+# generation xbutil utility. The current default is classic xbutil tool.
+#
+
 # -- Detect a Windows environment and automatically switch to the .bat file
 if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   trap "" INT
@@ -55,9 +64,10 @@ declare -A PROGOPT=( \
         ["-h"]="XBUTIL2" \
     )
 
-# In the following table "reset" points to a second table by name
-# Note that reset is valid both for classic and next generation tool
-# and hence requires a second lookup to resolve between xbutil and xbutil2
+# In the following table "reset", "program" and "validate" point to a second
+# table by name. Note that reset, program and validate are valid both for
+# classic and next generation tool and hence requires a second lookup to resolve
+# between xbutil and xbutil2
 declare -A COMMANDS=( \
         ["help"]="XBUTIL" \
         ["version"]="XBUTIL" \
