@@ -52,6 +52,20 @@ populate_sensor(const xrt_core::device * device, const std::string loc_id, const
   return pt;
 }
 
+/**
+ * device query returns a level which 
+ * need to be converted to human readable power in watts
+ * 0 -> 75W
+ * 1 -> 150W
+ * 2 -> 225W
+ */
+static std::string
+lvl_to_power_watts(uint64_t lvl)
+{
+  std::vector<std::string> powers{ "75", "150", "225" };
+  return lvl < powers.size() ? powers[lvl] : "N/A";
+}
+
 void
 ReportElectrical::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
                                               boost::property_tree::ptree &_pt) const
@@ -66,7 +80,15 @@ ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
-  
+  std::string power_watts;
+  try {
+    auto power_level = xrt_core::device_query<qr::max_power_level>(_pDevice);
+    power_watts = lvl_to_power_watts(power_level);
+  }
+  catch (...) {
+    power_watts = "N/A";
+  }
+  pt.put("power_consumption_max_watts", power_watts);
   pt.put("power_consumption_watts", XBUtilities::format_base10_shiftdown6(xrt_core::device_query<qr::power_microwatts>(_pDevice)));
   boost::property_tree::ptree sensor_array;
   sensor_array.push_back(std::make_pair("", 
@@ -138,6 +160,7 @@ ReportElectrical::writeReport( const xrt_core::device * _pDevice,
 
   _output << "Electrical\n";
   boost::property_tree::ptree& electricals = _pt.get_child("electrical.power_rails", empty_ptree);
+  _output << boost::format("  %-22s: %s Watts\n") % "Max Power" % _pt.get<std::string>("electrical.power_consumption_max_watts");
   _output << boost::format("  %-22s: %s Watts\n\n") % "Power" % _pt.get<std::string>("electrical.power_consumption_watts");
   _output << boost::format("  %-22s: %6s   %6s\n") % "Power Rails" % "Voltage" % "Current";
   for(auto& kv : electricals) {
