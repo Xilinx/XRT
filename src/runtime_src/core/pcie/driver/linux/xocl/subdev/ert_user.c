@@ -422,7 +422,7 @@ ert_post_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 {
 	struct ert_mb_validate_cmd cmd = {0}; 
 
-	if (unlikely(ert_special_cmd(ecmd)))
+	if (likely(!ert_special_cmd(ecmd)))
 		return;
 
 	if (cmd_opcode(ecmd) == OP_CLK_CALIB) {
