@@ -631,7 +631,7 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return false;
   }
-  char *boptr = (char *)xclMapBO(handle, boh, true);
+  auto boptr = reinterpret_cast<char *>xclMapBO(handle, boh, true);
   if (boptr == nullptr) {
     _ptTest.put("status", "failed");
     logger(_ptTest, "Error", "Couldn't map BO");
