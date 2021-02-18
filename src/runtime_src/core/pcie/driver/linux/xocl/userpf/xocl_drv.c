@@ -366,13 +366,24 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 
 		mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 			&ret, &resplen, NULL, NULL, 0, 6);
-		/* userpf will back online till receiving mgmtpf notification */
-		if (mbret || ret) {
-			userpf_err(xdev, "reset request failed, mbret: %d, peer resp: %d", mbret,
-					   ret);
+		/*
+		 * Check the return values mbret & ret (mpd (peer) side response) and confirm
+		 * reset request success.
+		 * MPD acknowledge the reset request with below responses, and it can be
+		 * read from ret variable.
+		 *  -E_EMPTY_SN (2040): indicates that MPD doesn't have serial number associated
+		 *  with this device. So, aborting the reset request. This case hits
+		 *  when vm boots & it is ready before the mgmt side is ready.
+		 *  -ESHUTDOWN (108): indicates that MPD forwards reset requests to mgmt
+		 *  successfully.
+		 */
+		if (mbret || (ret && ret != -ESHUTDOWN)) {
+			userpf_err(xdev, "reset request failed, mbret: %d, peer resp: %d",
+					   mbret, ret);
 			xocl_reset_notify(xdev->core.pdev, false);
 			xocl_drvinst_set_offline(xdev->core.drm, false);
 		}
+		/* userpf will back online till receiving mgmtpf notification */
 		return 0;
 	}
 
