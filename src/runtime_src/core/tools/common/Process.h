@@ -21,10 +21,12 @@
 
 namespace XBUtilities {
   unsigned int
-    runPythonScript( const std::string & script, 
-                 const std::vector<std::string> & args,
-                 std::ostringstream & os_stdout,
-                 std::ostringstream & os_stderr);
+    runScript( 
+               const std::string & env, 
+               const std::string & script, 
+               const std::vector<std::string> & args,
+               std::ostringstream & os_stdout,
+               std::ostringstream & os_stderr);
 };
 
 #endif

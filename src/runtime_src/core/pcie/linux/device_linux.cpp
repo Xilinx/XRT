@@ -318,6 +318,7 @@ initialize_query_table()
   emplace_sysfs_get<query::xmc_serial_num>                     ("xmc", "serial_num");
   emplace_sysfs_get<query::max_power_level>                    ("xmc", "max_power");
   emplace_sysfs_get<query::xmc_sc_presence>                    ("xmc", "sc_presence");
+  emplace_sysfs_get<query::is_sc_fixed>                        ("xmc", "sc_is_fixed");
   emplace_sysfs_get<query::xmc_sc_version>                     ("xmc", "bmc_ver");
   emplace_sysfs_get<query::expected_sc_version>                ("xmc", "exp_bmc_ver");
   emplace_sysfs_get<query::xmc_status>                         ("xmc", "status");
