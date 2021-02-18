@@ -265,8 +265,12 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   // log xclbin path for debugging purposes
   logger(_ptTest, "Xclbin", xclbinPath);
   auto json_exists = [xclbinPath]() {
+    const static std::string platform_metadata = "/platform.json";
     boost::filesystem::path test_dir(xclbinPath);
-    return boost::filesystem::exists(test_dir.parent_path().string() + "/platform.json") ? true : false;
+    std::string platform_json_path(test_dir.parent_path().string() + platform_metadata);
+    return boost::filesystem::exists(platform_json_path) ? true : false;
+    // boost::filesystem::path test_dir(xclbinPath);
+    // return boost::filesystem::exists(test_dir.parent_path().string() + "/platform.json") ? true : false;
   };
 
   std::ostringstream os_stdout;
@@ -299,8 +303,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     logger(_ptTest, "Testcase", xrtTestCasePath);
 
     boost::filesystem::path test_dir(xclbinPath);
-    std::vector<std::string> args = { test_dir.parent_path().string(), "-d",
-                                      xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
+    std::vector<std::string> args = { test_dir.parent_path().string(), 
+                                      "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     int exit_code = XBU::runScript("sh", xrtTestCasePath, args, os_stdout, os_stderr);
     if (exit_code == EOPNOTSUPP) {
       _ptTest.put("status", "skipped");
@@ -327,7 +331,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     // log testcase path for debugging purposes
     logger(_ptTest, "Testcase", xrtTestCasePath);
 
-    std::vector<std::string> args = { "-k", xclbinPath, "-d", std::to_string(_dev.get()->get_device_id()) };
+    std::vector<std::string> args = { "-k", xclbinPath, 
+                                      "-d", std::to_string(_dev.get()->get_device_id()) };
     
     int exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
     if (exit_code == EOPNOTSUPP) {
