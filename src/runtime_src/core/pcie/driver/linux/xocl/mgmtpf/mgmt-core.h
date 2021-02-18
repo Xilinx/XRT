@@ -176,6 +176,7 @@ void get_pcie_link_info(struct xclmgmt_dev *lro,
 	unsigned short *width, unsigned short *speed, bool is_cap);
 
 void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
+void store_pcie_link_info(struct xclmgmt_dev *lro);
 
 /* utils.c */
 int pci_fundamental_reset(struct xclmgmt_dev *lro);
