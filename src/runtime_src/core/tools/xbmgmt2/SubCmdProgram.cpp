@@ -539,11 +539,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
-    ("partition", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
+    ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the partition.")
-    ("update", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images.  Value values:\n"
+    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images."/*  Value values:\n"
                                                                          "  ALL   - All images will be updated"
-                                                                     /*  "  FLASH - Flash image\n"
+                                                                         "  FLASH - Flash image\n"
                                                                          "  SC    - Satellite controller"*/)
     ("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Control (MSP432) will not be reverted for a golden image does not exist.")
