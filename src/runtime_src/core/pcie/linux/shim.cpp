@@ -2282,33 +2282,10 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 }
 
 xclDeviceHandle
-xclOpenByBDF(const char *bdf, const char*, xclVerbosityLevel)
+xclOpenByBDF(const char *bdf)
 {
   try {
-    unsigned int i = 0;
-    std::string target_bdf = bdf;
-    for (auto dev = pcidev::get_dev(i); dev; i++, dev = pcidev::get_dev(i)) {
-      // [dddd:bb:dd.f]
-      std::string dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->domain % dev->bus % dev->dev % dev->func);
-
-      if (dev_bdf == target_bdf) {
-        OPEN_CB;
-
-        xocl::shim *handle = new xocl::shim(i);
-
-        if (handle->handleCheck(handle) == 0) {
-          xrt_core::send_exception_message(strerror(errno) +
-            std::string(" Device index ") + std::to_string(i));
-          return nullptr;
-        }
-
-        return static_cast<xclDeviceHandle>(handle);
-      }
-    }
-      
-    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
-      std::string("Cannot find bdf " + target_bdf + " \n"));
-    return nullptr;
+    return xclOpen(xrt_core::pcie_linux::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());

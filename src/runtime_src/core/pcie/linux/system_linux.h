@@ -30,6 +30,9 @@ public:
   void
   get_os_info(boost::property_tree::ptree &pt);
 
+  device::id_type
+  get_device_id(const std::string& str) const;
+
   std::pair<device::id_type, device::id_type>
   get_total_devices(bool is_user) const;
 
@@ -64,6 +67,14 @@ namespace pcie_linux {
  */
 std::shared_ptr<device>
 get_userpf_device(device::handle_type device_handle, device::id_type id);
+
+/**
+ * get_device_id_from_bdf() - 
+ * Force singleton initialization from static linking
+ * with libxrt_core.
+ */
+device::id_type
+get_device_id_from_bdf(const std::string& bdf);
 
 } // pcie_linux
 

@@ -43,7 +43,7 @@ static void usage()
 {
   std::cout << "usage: %s [options] \n\n";
   std::cout << "  -k <bitstream>\n";
-  std::cout << "  -d <device_index>\n";
+  std::cout << "  -d <bdf | device_index>\n";
   std::cout << "";
   std::cout << "  [--jobs <number>]: number of concurrently scheduled jobs\n";
   std::cout << "  [--cus <number>]: number of cus to use (default: 8) (max: 8)\n";
@@ -207,7 +207,7 @@ int run(int argc, char** argv)
   std::vector<std::string> args(argv+1,argv+argc);
 
   std::string xclbin_fnm;
-  unsigned int device_index = 0;
+  std::string device_id = "0";
   size_t secs = 0;
   size_t jobs = 1;
   size_t cus  = 1;
@@ -225,7 +225,7 @@ int run(int argc, char** argv)
     }
 
     if (cur == "-d")
-      device_index = std::stoi(arg);
+      device_id = arg;
     else if (cur == "-k")
       xclbin_fnm = arg;
     else if (cur == "--jobs")
@@ -238,7 +238,7 @@ int run(int argc, char** argv)
       throw std::runtime_error("bad argument '" + cur + " " + arg + "'");
   }
 
-  auto device = xrt::device(device_index);
+  auto device = xrt::device(device_id);
   auto uuid = device.load_xclbin(xclbin_fnm);
 
   compute_units = cus = std::min(cus, compute_units);

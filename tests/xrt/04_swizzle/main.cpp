@@ -30,7 +30,7 @@ static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
-    std::cout << "  -d <device_index>\n";
+    std::cout << "  -d <bdf | index> (default: 0)\n";
     std::cout << "  -v\n";
     std::cout << "  -h\n\n";
     std::cout << "";
@@ -46,7 +46,7 @@ int run(int argc, char** argv)
 
   std::string xclbin_fnm;
   bool verbose = false;
-  unsigned int device_index = 0;
+  std::string device_index = "0";
 
   std::vector<std::string> args(argv+1,argv+argc);
   std::string cur;
@@ -68,7 +68,7 @@ int run(int argc, char** argv)
     if (cur == "-k")
       xclbin_fnm = arg;
     else if (cur == "-d")
-      device_index = std::stoi(arg);
+      device_index = arg;
     else
       throw std::runtime_error("Unknown option value " + cur + " " + arg);
   }

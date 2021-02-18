@@ -222,8 +222,17 @@ get_bdf() const
   auto lk = const_cast<device*>(this)->lock_guard();
 
   auto core_device = m_xdevice->get_core_device();
-  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(core_device);
-  return xrt_core::query::pcie_bdf::to_string(bdf);
+
+  try {
+    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(core_device);
+    return xrt_core::query::pcie_bdf::to_string(bdf);
+  }
+  catch (const xrt_core::error& ex) {
+  }
+
+  // Provides valid functionality for devices that are
+  // not identified by bdf
+  return std::to_string(core_device->get_device_id());
 }
 
 bool

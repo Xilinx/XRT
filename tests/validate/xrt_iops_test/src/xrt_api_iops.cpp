@@ -32,7 +32,7 @@ bool verbose = false;
 barrier barrier;
 struct krnl_info krnl = {"hello", false};
 
-static void usage(char *prog)
+static void usage(const char *prog)
 {
   std::cout << "Usage: " << prog << " <Platform Test Area Path> [options]\n"
     << "options:\n"
@@ -73,7 +73,7 @@ double runTest(std::vector<xrt::run>& cmds, unsigned int total, arg_t &arg)
   return (std::chrono::duration_cast<ms_t>(arg.end - arg.start)).count();
 }
 
-void runTestThread(xrt::device &device, xrt::kernel &hello, arg_t &arg)
+void runTestThread(const xrt::device& device, const xrt::kernel& hello, arg_t& arg)
 {
   std::vector<xrt::run> cmds;
 
@@ -89,17 +89,12 @@ void runTestThread(xrt::device &device, xrt::kernel &hello, arg_t &arg)
   barrier.wait();
 }
 
-int testMultiThreads(std::string &dev, std::string &xclbin_fn, int threadNumber, int queueLength, unsigned int total)
+int testMultiThreads(const std::string& dev, const std::string& xclbin_fn, int threadNumber, int queueLength, unsigned int total)
 {
   std::thread threads[threadNumber];
   std::vector<arg_t> arg(threadNumber);
-  xrt::device device;
 
-  if (dev.find(":") == std::string::npos) {
-    device = xrt::device(std::stoi(dev));
-  } else
-    throw std::runtime_error("Not support BDF");
-
+  xrt::device device(dev);
   auto uuid = device.load_xclbin(xclbin_fn);
   auto hello = xrt::kernel(device, uuid.get(), krnl.name);
 

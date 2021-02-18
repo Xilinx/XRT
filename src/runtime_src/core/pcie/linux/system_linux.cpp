@@ -168,6 +168,25 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put_child("libraries", _ptLibInfo);
 }
 
+device::id_type
+system_linux::
+get_device_id(const std::string& bdf) const
+{
+  // Treat non bdf as device index
+  if (bdf.find_first_not_of("0123456789") == std::string::npos)
+    return system::get_device_id(bdf);
+    
+  unsigned int i = 0;
+  for (auto dev = pcidev::get_dev(i); dev; i++, dev = pcidev::get_dev(i)) {
+      // [dddd:bb:dd.f]
+      auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->domain % dev->bus % dev->dev % dev->func);
+      if (dev_bdf == bdf)
+        return i;
+  }
+
+  throw xrt_core::system_error(EINVAL, "No such device '" + bdf + "'");
+}
+
 std::pair<device::id_type, device::id_type>
 system_linux::
 get_total_devices(bool is_user) const
@@ -245,6 +264,13 @@ get_userpf_device(device::handle_type device_handle, device::id_type id)
 {
   singleton_instance(); // force loading if necessary
   return xrt_core::get_userpf_device(device_handle, id);
+}
+
+device::id_type
+get_device_id_from_bdf(const std::string& bdf)
+{
+  singleton_instance(); // force loading if necessary
+  return xrt_core::get_device_id(bdf);
 }
 
 } // pcie_linux
