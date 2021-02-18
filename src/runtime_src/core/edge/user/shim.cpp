@@ -292,11 +292,11 @@ unsigned int
 shim::
 xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
-  (void)flags;
-  drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, DRM_ZOCL_BO_FLAGS_USERPTR};
+  flags |= DRM_ZOCL_BO_FLAGS_USERPTR;
+  drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
 
-  xclLog(XRT_DEBUG, "XRT", "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, DRM_ZOCL_BO_FLAGS_USERPTR);
+  xclLog(XRT_DEBUG, "XRT", "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, flags);
   xclLog(XRT_INFO, "XRT", "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
   return info.handle;

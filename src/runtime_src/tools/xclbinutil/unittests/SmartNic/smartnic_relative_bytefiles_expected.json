@@ -1,0 +1,117 @@
+{
+    "smartnic": {
+        "schema_version": {
+            "major": "5",
+            "minor": "1",
+            "patch": "2"
+        },
+        "extensions": [
+            {
+                "version_info": {
+                    "uuid": "0682DB00FEAE4E158D6DD74AA38BBC91",
+                    "minor": "2",
+                    "patch": "3"
+                },
+                "instance_name": "plugin_1:instance_1",
+                "info": [
+                    {
+                        "title": "My Special Plugin"
+                    },
+                    {
+                        "creator": "Xilinx Engineer"
+                    },
+                    {
+                        "subject": "Demo"
+                    },
+                    {
+                        "description": "This is a special demo plugin"
+                    },
+                    {
+                        "publisher": "Xilinx"
+                    },
+                    {
+                        "date": "1997-07-16T19:20:30.45+01:00"
+                    },
+                    {
+                        "type": "Networking accelerator"
+                    },
+                    {
+                        "format": "SmartNIC plugin"
+                    },
+                    {
+                        "identifier": "6511BA546-32A"
+                    },
+                    {
+                        "source": "Special Company"
+                    },
+                    {
+                        "language": "de-CH-1901"
+                    },
+                    {
+                        "relation": "Networking"
+                    },
+                    {
+                        "coverage": "Security"
+                    },
+                    {
+                        "rights": "Xilinx Copyright 2021"
+                    }
+                ],
+                "features": "22",
+                "cam_instances": [
+                    {
+                        "name": "foo_my_cam_instance_1",
+                        "id": "0",
+                        "config_file": "dummy_bytefile.txt",
+                        "driver_index": "0"
+                    }
+                ],
+                "address_mapping": {
+                    "offset": "1024",
+                    "aperture_size_bytes": "1024"
+                },
+                "setup": {
+                    "ebpf": "44756D6D7920427974652046696C650A"
+                },
+                "background_proc": {
+                    "ebpf": "44756D6D7920427974652046696C650A"
+                },
+                "tear_down": {
+                    "ebpf": "44756D6D7920427974652046696C650A"
+                },
+                "messages": [
+                    {
+                        "id": "2",
+                        "name": "my_message",
+                        "param_size_bytes": "3",
+                        "ebpf": "44756D6D7920427974652046696C650A"
+                    }
+                ],
+                "resource_classes": [
+                    {
+                        "name": "my_resource",
+                        "description": "This is my resource",
+                        "max_count": "3",
+                        "memory_size_bytes": "256",
+                        "dtor": "44756D6D7920427974652046696C650A"
+                    }
+                ],
+                "global_memory_size_bytes": "1024",
+                "per_handle_memory_size_bytes": "16"
+            }
+        ],
+        "softhub_connections": [
+            {
+                "version": "2",
+                "id": "1"
+            }
+        ],
+        "cam_drivers": [
+            {
+                "compatible_version": "2",
+                "driver": "44756D6D7920427974652046696C650A",
+                "signature": "44756D6D7920427974652046696C650A"
+            }
+        ]
+    }
+}

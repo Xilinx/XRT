@@ -55,8 +55,6 @@ namespace xdp {
 
     if (!fout) return ;
 
-    
-
     // Collect all the files that have been created in this host execution
     //  run and dump their information in the run summary file
     std::vector<std::pair<std::string, std::string> > files = 

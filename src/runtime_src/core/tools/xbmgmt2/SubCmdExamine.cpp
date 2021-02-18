@@ -37,11 +37,22 @@ namespace po = boost::program_options;
 // ---- Reports ------
 #include "tools/common/Report.h"
 #include "tools/common/ReportHost.h"
+#include "tools/common/ReportFirewall.h"
+#include "tools/common/ReportMechanical.h"
+#include "tools/common/ReportMailbox.h"
 #include "ReportPlatform.h"
 
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
 static const ReportCollection fullReportCollection = {
-  std::make_shared<ReportPlatform>()
+  // Common reports
+    std::make_shared<ReportHost>(),
+    std::make_shared<ReportPlatform>(),
+  // Native only reports
+  #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
+    std::make_shared<ReportMechanical>(),
+    std::make_shared<ReportFirewall>(),
+    std::make_shared<ReportMailbox>()
+  #endif
 };
 
 // ----- C L A S S   M E T H O D S -------------------------------------------

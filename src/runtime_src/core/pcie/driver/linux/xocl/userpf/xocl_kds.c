@@ -432,6 +432,10 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			goto out;
 		}
 		break;
+	case ERT_CLK_CALIB:
+		xcmd->execbuf = (u32 *)ecmd;
+		xcmd->opcode = OP_CLK_CALIB;
+		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");
 		xcmd->cb.free(xcmd);

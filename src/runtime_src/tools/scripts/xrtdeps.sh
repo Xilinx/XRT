@@ -93,6 +93,7 @@ rh_package_list()
      protobuf-devel \
      python3 \
      python3-pip \
+     rapidjson-devel \
      rpm-build \
      strace \
      unzip \
@@ -180,6 +181,7 @@ ub_package_list()
      opencl-headers \
      pciutils \
      perl \
+     rapidjson-dev \
      pkg-config \
      protobuf-compiler \
      python3 \
@@ -264,6 +266,7 @@ fd_package_list()
      python3 \
      python3-pip \
      redhat-lsb \
+     rapidjson-devel \
      rpm-build \
      strace \
      systemd-devel \
@@ -313,6 +316,7 @@ suse_package_list()
      protobuf-devel \
      python \
      python3-pip \
+     rapidjson-devel \
      rpm-build \
      strace \
      unzip \

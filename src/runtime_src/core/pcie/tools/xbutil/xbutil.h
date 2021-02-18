@@ -1114,6 +1114,28 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
         sensor_tree::put( "board.xclbin.uuid", xclbinid );
 
+	// qspi write protection status
+	// byte 0:
+	//   0: status not available, 1: status available
+	// byte 1 primary qspi(if status available):
+	//   1: write protect enable, 2: write protect disable
+	// byte 2 recovery qspi(if status available):
+	//   1: write protect enable, 2: write protect disable
+	std::string qspi_status;
+	pcidev::get_dev(m_idx)->sysfs_get("xmc", "qspi_status", errmsg, qspi_status);
+	int qspi_status_i = std::atoi(qspi_status.c_str());
+	if ((qspi_status_i & 0xff) == 1) {
+		std::string wp;
+		int reg = (qspi_status_i & 0xff00) >> 8;
+		sensor_tree::put("board.qspi_wp_status.primary", reg == 1 ? "enable": reg == 2 ? "disable" : "invalid");
+		reg = (qspi_status_i & 0xff0000) >> 16;
+		sensor_tree::put("board.qspi_wp_status.recovery", reg == 1 ? "enable": reg == 2 ? "disable" : "invalid");
+	} else {
+		sensor_tree::put("board.qspi_wp_status.primary", "N/A");
+		sensor_tree::put("board.qspi_wp_status.recovery", "N/A");
+	}
+
+
         uint32_t kds_mode;
         pcidev::get_dev(m_idx)->sysfs_get<uint32_t>("", "kds_mode", errmsg, kds_mode, 0);
         if (!kds_mode) {
@@ -1282,6 +1304,10 @@ public:
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.max_host_mem_aperture", "N/A" )
              << std::endl;
 
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "QSPI Write Protection Status\n";
+        ostr << "Primary: " << sensor_tree::get<std::string>( "board.qspi_wp_status.primary") << std::endl;
+        ostr << "Recovery: " << sensor_tree::get<std::string>( "board.qspi_wp_status.recovery") << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";

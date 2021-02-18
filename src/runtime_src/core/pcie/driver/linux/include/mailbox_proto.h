@@ -188,6 +188,7 @@ struct xcl_sensor {
 	uint32_t vol_vccaux_pmc;
 	uint32_t vol_vccram;
 	uint32_t power_warn;
+	uint32_t qspi_status;
 };
 
 /**

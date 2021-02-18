@@ -264,30 +264,88 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   }
   // log xclbin path for debugging purposes
   logger(_ptTest, "Xclbin", xclbinPath);
+  auto json_exists = [xclbinPath]() {
+    const static std::string platform_metadata = "/platform.json";
+    boost::filesystem::path test_dir(xclbinPath);
+    std::string platform_json_path(test_dir.parent_path().string() + platform_metadata);
+    return boost::filesystem::exists(platform_json_path) ? true : false;
+    // boost::filesystem::path test_dir(xclbinPath);
+    // return boost::filesystem::exists(test_dir.parent_path().string() + "/platform.json") ? true : false;
+  };
 
-  //check if testcase is present
-  std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
-  boost::filesystem::path xrt_path(xrtTestCasePath);
-  if (!boost::filesystem::exists(xrt_path)) {
-    logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
-    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-    _ptTest.put("status", "failed");
-    return;
-  }
-  // log testcase path for debugging purposes
-  logger(_ptTest, "Testcase", xrtTestCasePath);
-
-  std::vector<std::string> args = { "-k", xclbinPath, "-d", std::to_string(_dev.get()->get_device_id()) };
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
-  int exit_code = XBU::runPythonScript(xrtTestCasePath, args, os_stdout, os_stderr);
-  if (exit_code != 0) {
-    logger(_ptTest, "Error", os_stdout.str());
-    logger(_ptTest, "Error", os_stderr.str());
-    _ptTest.put("status", "failed");
+
+  if(json_exists()) {
+    //map old testcase names to new testcase names
+    static const std::map<std::string, std::string> test_map = {
+      { "22_verify.py",             "validate.exe"    },
+      { "23_bandwidth.py",          "kernel_bw.exe"   },
+      { "host_mem_23_bandwidth.py", "slavebridge.exe" }
+    };
+        
+    if (test_map.find(py) == test_map.end()) {
+      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % py));
+      _ptTest.put("status", "failed");
+      return;
+    }
+    
+    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_map.find(py)->second;
+    boost::filesystem::path xrt_path(xrtTestCasePath);
+    if (!boost::filesystem::exists(xrt_path)) {
+      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+      logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+      _ptTest.put("status", "failed");
+      return;
+    }
+
+    // log testcase path for debugging purposes
+    logger(_ptTest, "Testcase", xrtTestCasePath);
+
+    boost::filesystem::path test_dir(xclbinPath);
+    std::vector<std::string> args = { test_dir.parent_path().string(), 
+                                      "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
+    int exit_code = XBU::runScript("sh", xrtTestCasePath, args, os_stdout, os_stderr);
+    if (exit_code == EOPNOTSUPP) {
+      _ptTest.put("status", "skipped");
+    }
+    else if (exit_code == EXIT_FAILURE) {
+      logger(_ptTest, "Error", os_stdout.str());
+      logger(_ptTest, "Error", os_stderr.str());
+      _ptTest.put("status", "failed");
+    }
+    else {
+      _ptTest.put("status", "passed");
+    }
   }
   else {
-    _ptTest.put("status", "passed");
+    //check if testcase is present
+    std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
+    boost::filesystem::path xrt_path(xrtTestCasePath);
+    if (!boost::filesystem::exists(xrt_path)) {
+      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+      logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+      _ptTest.put("status", "failed");
+      return;
+    }
+    // log testcase path for debugging purposes
+    logger(_ptTest, "Testcase", xrtTestCasePath);
+
+    std::vector<std::string> args = { "-k", xclbinPath, 
+                                      "-d", std::to_string(_dev.get()->get_device_id()) };
+    
+    int exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
+    if (exit_code == EOPNOTSUPP) {
+      _ptTest.put("status", "skipped");
+    }
+    else if (exit_code == EXIT_FAILURE) {
+      logger(_ptTest, "Error", os_stdout.str());
+      logger(_ptTest, "Error", os_stderr.str());
+      _ptTest.put("status", "failed");
+    }
+    else {
+      _ptTest.put("status", "passed");
+    }
   }
 
   // Get out max thruput for bandwidth testcase
@@ -570,7 +628,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
   const std::vector<std::string> auxPwrRequiredDevice = { "VCU1525", "U200", "U250", "U280" };
 
   std::string name = xrt_core::device_query<xrt_core::query::xmc_board_name>(_dev);
-  uint64_t max_power = xrt_core::device_query<xrt_core::query::xmc_max_power>(_dev);
+  uint64_t max_power = xrt_core::device_query<xrt_core::query::max_power_level>(_dev);
 
   //check if device has aux power connector
   bool auxDevice = false;
@@ -619,10 +677,10 @@ pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree
 void
 scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-  auto sc_ver = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_dev);
+  auto sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(_dev);
   std::string exp_sc_ver = "";
   try{
-    exp_sc_ver = xrt_core::device_query<xrt_core::query::expected_bmc_version>(_dev);
+    exp_sc_ver = xrt_core::device_query<xrt_core::query::expected_sc_version>(_dev);
   } catch(...) {}
 
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
@@ -722,7 +780,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
   std::string msg;
   xclbin_lock xclbin_lock(_dev);
-  XBU::check_p2p_config(_dev, msg);
+  XBU::check_p2p_config(_dev.get(), msg);
 
   if(msg.find("Error") == 0) {
     logger(_ptTest, "Error", msg.substr(msg.find(':')+1));
@@ -948,7 +1006,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::proper
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
   _ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
   _ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
-  _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_bmc_version>(device));
+  _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_sc_version>(device));
   _ptTree.put("platform_id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
   if (schemaVersion == Report::SchemaVersion::text) {
     _ostream << boost::format("Validate device[%s]\n") % _ptTree.get<std::string>("device_id");

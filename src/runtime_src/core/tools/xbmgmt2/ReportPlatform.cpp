@@ -83,14 +83,15 @@ get_installed_partitions(std::string interface_uuid)
     // Find the UUID that it exposes for other partitions
     for(unsigned int j = 1; j < installedDSA.uuids.size(); j++){
       //check if the interface UUID is resolution of BLP
-      if(interface_uuid.compare(installedDSA.uuids[j]) == 0)
+      if(interface_uuid.compare(installedDSA.uuids[j]) != 0)
         continue;
       pt_plp.put("interface-uuid", XBU::string_to_UUID(installedDSA.uuids[j]));
     }
     pt_plp.put("file", installedDSA.file);
-    std::cout << std::endl;
 
-    pt_plps.push_back( std::make_pair("", pt_plp) );
+    //if the partition doesn't resolve the passed in BLP, don't add it to the list
+    if(!pt_plp.get<std::string>("interface-uuid", "").empty())
+      pt_plps.push_back( std::make_pair("", pt_plp) );
   }
   return pt_plps;
 }
@@ -106,7 +107,6 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   BoardInfo info;
   f.getBoardInfo(info);
   //create information tree for a device
-  pt_platform.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
   pt_platform.put("flash_type", xrt_core::device_query<xrt_core::query::flash_type>(device)); 
   pt_platform.put("hardware.serial_num", info.mSerialNum);
 
@@ -157,7 +157,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
 
   std::string sc_ver;
   try {
-    sc_ver = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(device);
+    sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(device);
   } catch (...) {}
   if(sc_ver.empty())
     sc_ver = info.mBMCVer;
@@ -216,9 +216,6 @@ ReportPlatform::writeReport( const xrt_core::device * device,
 {
   boost::property_tree::ptree pt;
   getPropertyTreeInternal(device, pt);
-
-  output << boost::format("%s : [%s]\n") % "Device" % pt.get<std::string>("platform.bdf");
-  output << std::endl;
 
   output << "Flash properties\n";
   output << fmtBasic % "Type" % pt.get<std::string>("platform.flash_type", "N/A");

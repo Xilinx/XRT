@@ -106,6 +106,7 @@
 #define	XMC_CLK_THROTTLING_TEMP_MGMT_REG	 0xB28
 #define	XMC_CLK_THROTTLING_TEMP_MGMT_REG_OVRD_MASK 0xFF
 #define	XMC_CLK_THROTTLING_TEMP_MGMT_REG_TEMP_OVRD_EN (1 << 31)
+#define	XMC_QSPI_STATUS_REG		0xC48
 #define	XMC_CORE_VERSION_REG		0xC4C
 #define	XMC_OEM_ID_REG                  0xC50
 #define	XMC_HOST_POWER_THRESHOLD_BASE_REG	0xE68
@@ -733,7 +734,10 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			READ_SENSOR(xmc, XMC_VCCRAM_REG, val, val_kind);
 			break;
 		case XMC_POWER_WARN:
-			READ_SENSOR(xmc, XMC_POWER_WARN_REG, val, val_kind);
+			safe_read32(xmc, XMC_POWER_WARN_REG, val);
+			break;
+		case XMC_QSPI_STATUS:
+			safe_read32(xmc, XMC_QSPI_STATUS_REG, val);
 			break;
 		default:
 			break;
@@ -897,6 +901,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			break;
 		case XMC_POWER_WARN:
 			*val = xmc->cache->power_warn;
+			break;
+		case XMC_QSPI_STATUS:
+			*val = xmc->cache->qspi_status;
 			break;
 		default:
 			break;
@@ -1167,6 +1174,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_sensor(pdev, XMC_VCCAUX_PMC, &sensors->vol_vccaux_pmc, SENSOR_INS);
 		xmc_sensor(pdev, XMC_VCCRAM, &sensors->vol_vccram, SENSOR_INS);
 		xmc_sensor(pdev, XMC_POWER_WARN, &sensors->power_warn, SENSOR_INS);
+		xmc_sensor(pdev, XMC_QSPI_STATUS, &sensors->qspi_status, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
@@ -1391,6 +1399,7 @@ SENSOR_SYSFS_NODE(xmc_vccaux, XMC_VCCAUX);
 SENSOR_SYSFS_NODE(xmc_vccaux_pmc, XMC_VCCAUX_PMC);
 SENSOR_SYSFS_NODE(xmc_vccram, XMC_VCCRAM);
 SENSOR_SYSFS_NODE(xmc_power_warn, XMC_POWER_WARN);
+SENSOR_SYSFS_NODE(xmc_qspi_status, XMC_QSPI_STATUS);
 
 static ssize_t xmc_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -1476,7 +1485,8 @@ static DEVICE_ATTR_RO(core_version);
 	&dev_attr_xmc_vccaux.attr,					\
 	&dev_attr_xmc_vccaux_pmc.attr,					\
 	&dev_attr_xmc_vccram.attr,					\
-	&dev_attr_xmc_power_warn.attr
+	&dev_attr_xmc_power_warn.attr,					\
+	&dev_attr_xmc_qspi_status.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.

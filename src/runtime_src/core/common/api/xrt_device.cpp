@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -61,26 +61,6 @@ free_device(xrtDeviceHandle dhdl)
     throw xrt_core::error(-EINVAL, "No such device handle");
 }
 
-static std::vector<char>
-read_xclbin(const std::string& fnm)
-{
-  if (fnm.empty())
-    throw std::runtime_error("No xclbin specified");
-
-  // load the file
-  std::ifstream stream(fnm);
-  if (!stream)
-    throw std::runtime_error("Failed to open file '" + fnm + "' for reading");
-
-  stream.seekg(0, stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0, stream.beg);
-
-  std::vector<char> header(size);
-  stream.read(header.data(), size);
-  return header;
-}
-
 inline void
 send_exception_message(const char* msg)
 {
@@ -127,25 +107,26 @@ uuid
 device::
 load_xclbin(const struct axlf* top)
 {
-  handle->load_xclbin(top);
-  return uuid(top->m_header.uuid);
+  xrt::xclbin xclbin{top};
+  handle->load_xclbin(xclbin);
+  return xclbin.get_uuid();
 }
 
 uuid
 device::
 load_xclbin(const std::string& fnm)
 {
-  auto xclbin = read_xclbin(fnm);
-  auto top = reinterpret_cast<const axlf*>(xclbin.data());
-  return load_xclbin(top);
+  xrt::xclbin xclbin{fnm};
+  handle->load_xclbin(xclbin);
+  return xclbin.get_uuid();
 }
 
 uuid
 device::
 load_xclbin(const xclbin& xclbin)
 {
-  auto top = reinterpret_cast<const axlf*>(xclbin.get_data().data());
-  return load_xclbin(top);
+  handle->load_xclbin(xclbin);
+  return xclbin.get_uuid();
 }
 
 uuid
@@ -227,9 +208,10 @@ xrtDeviceClose(xrtDeviceHandle dhdl)
 }
 
 int
-xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin)
+xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const axlf* top)
 {
   try {
+    xrt::xclbin xclbin{top};
     auto device = get_device(dhdl);
     device->load_xclbin(xclbin);
     return 0;
@@ -248,9 +230,9 @@ int
 xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
 {
   try {
+    xrt::xclbin xclbin{fnm};
     auto device = get_device(dhdl);
-    auto xclbin = read_xclbin(fnm);
-    device->load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
+    device->load_xclbin(xclbin);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -268,8 +250,7 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 {
   try {
     auto device = get_device(dhdl);
-    auto& xclbin = xrt_core::xclbin_int::get_xclbin_data(xhdl);
-    device->load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
+    device->load_xclbin(xrt_core::xclbin_int::get_xclbin(xhdl));
     return 0;
   }
   catch (const xrt_core::error& ex) {

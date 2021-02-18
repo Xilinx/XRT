@@ -93,6 +93,8 @@ namespace xdp {
     continuous_trace = xrt_core::config::get_continuous_trace() ;
     continuous_trace_interval_ms = 
       xrt_core::config::get_continuous_trace_interval_ms() ;
+    trace_dump_int_s =
+      xrt_core::config::get_trace_dump_interval_s();
   }
 
   DeviceOffloadPlugin::~DeviceOffloadPlugin()
@@ -115,17 +117,21 @@ namespace xdp {
       "device_trace_" + std::to_string(deviceId) + ".csv" ;
       
     writers.push_back(new DeviceTraceWriter(filename.c_str(),
-					    deviceId,
-					    version,
-					    creationTime,
-					    xrtVersion,
-					    toolVersion)) ;
+                                            deviceId,
+                                            version,
+                                            creationTime,
+                                            xrtVersion,
+                                            toolVersion)) ;
 
     (db->getStaticInfo()).addOpenedFile(filename.c_str(), "VP_TRACE") ;
+
+    if (continuous_trace) {
+      XDPPlugin::startWriteThread(trace_dump_int_s, "VP_TRACE");
+    }
   }
 
   void DeviceOffloadPlugin::configureDataflow(uint64_t deviceId,
-					      DeviceIntf* devInterface)
+                                              DeviceIntf* devInterface)
   {
     uint32_t numAM = devInterface->getNumMonitors(XCL_PERF_MON_ACCEL) ;
     bool* dataflowConfig = new bool[numAM] ;
@@ -136,7 +142,7 @@ namespace xdp {
   }
 
   void DeviceOffloadPlugin::configureFa(uint64_t deviceId,
-					      DeviceIntf* devInterface)
+                                        DeviceIntf* devInterface)
   {
     uint32_t numAM = devInterface->getNumMonitors(XCL_PERF_MON_ACCEL) ;
     bool* FaConfig = new bool[numAM] ;
@@ -147,7 +153,7 @@ namespace xdp {
   }
 
   void DeviceOffloadPlugin::configureCtx(uint64_t deviceId,
-					      DeviceIntf* devInterface)
+                                        DeviceIntf* devInterface)
   {
     auto ctxInfo = (db->getStaticInfo()).getCtxInfo(deviceId) ;
     devInterface->configAmContext(ctxInfo);
@@ -156,7 +162,7 @@ namespace xdp {
   // It is the responsibility of the child class to instantiate the appropriate
   //  device interface based on the level (OpenCL or HAL)
   void DeviceOffloadPlugin::addOffloader(uint64_t deviceId,
-					 DeviceIntf* devInterface)
+                                         DeviceIntf* devInterface)
   {
     if (!active) return ;
 
@@ -188,10 +194,10 @@ namespace xdp {
 
     DeviceTraceOffload* offloader = 
       new DeviceTraceOffload(devInterface, logger,
-			     continuous_trace_interval_ms, // offload_sleep_ms,
-			     trace_buffer_size,            // trbuf_size,
-			     continuous_trace,             // start_thread
-			     enable_device_trace);
+                             continuous_trace_interval_ms, // offload_sleep_ms,
+                             trace_buffer_size,            // trbuf_size,
+                             continuous_trace,             // start_thread
+                             enable_device_trace);
 
     bool init_successful = offloader->read_trace_init() ;
     if (!init_successful) {
@@ -246,10 +252,10 @@ namespace xdp {
       //  and we are reading nothing but 0's
       if (nonZero(results))
       {
-	DeviceInfo* deviceInfo = (db->getStaticInfo()).getDeviceInfo(deviceId);
-	if (deviceInfo != nullptr) {
-	  (db->getDynamicInfo()).setCounterResults(deviceId, deviceInfo->currentXclbinUUID(), results) ;
-	}
+        DeviceInfo* deviceInfo = (db->getStaticInfo()).getDeviceInfo(deviceId);
+        if (deviceInfo != nullptr) {
+          (db->getDynamicInfo()).setCounterResults(deviceId, deviceInfo->currentXclbinUUID(), results) ;
+        }
       }
     }
   }
@@ -267,21 +273,18 @@ namespace xdp {
       auto offloader = std::get<0>(o.second) ;
       if (offloader->continuous_offload())
       {
-	offloader->stop_offload() ;
+        offloader->stop_offload() ;
       }
       else
       {
-	offloader->read_trace() ;
+        offloader->read_trace() ;
       }
     }
 
     // Also, store away the counter results
     readCounters() ;
 
-    for (auto w : writers)
-    {
-      w->write(openNewFiles) ;
-    }
+    XDPPlugin::endWrite(openNewFiles);
   }
 
   void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
@@ -292,7 +295,7 @@ namespace xdp {
     {
     case VPDatabase::READ_COUNTERS:
       {
-	readCounters() ;
+        readCounters() ;
       }
       break ;
     default:

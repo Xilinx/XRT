@@ -42,7 +42,8 @@ namespace appdebug {
     if (!initFunc)
     {
       std::string errMsg = "Failed to initialize XDP application debug library, 'initAppdebug' symbol not found.\n";
-      errMsg += xrt_core::dlerror() ;
+      const char* dlMsg = xrt_core::dlerror() ;
+      if (dlMsg != nullptr) errMsg += dlMsg ;
       throw std::runtime_error(errMsg.c_str()) ;
     }
 

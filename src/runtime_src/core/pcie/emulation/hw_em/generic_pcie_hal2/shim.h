@@ -116,7 +116,9 @@ using addr_type = uint64_t;
       void xclFreeBO(unsigned int boHandle);
       ssize_t xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset);
       ssize_t xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset);
-      static int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
+
+      static int xcl_LogMsg(xrtLogMsgLevel level, const char* tag, const char* format, ...);
+      static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
 
       //P2P Support
       int xclExportBO(unsigned int boHandle);
@@ -125,6 +127,8 @@ using addr_type = uint64_t;
 
       //MB scheduler related API's
       int xclExecBuf( unsigned int cmdBO);
+      int xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list);
+
       int xclRegisterEventNotify( unsigned int userInterrupt, int fd);
       int xclExecWait( int timeoutMilliSec);
       struct exec_core* getExecCore() { return mCore; }

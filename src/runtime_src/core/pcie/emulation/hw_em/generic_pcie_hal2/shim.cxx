@@ -2937,31 +2937,77 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
   }
-  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
 
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
+  int ret=-1;
   if(xclemulation::config::getInstance()->isNewMbscheduler()) 
   {
       if(!m_scheduler || !bo)
       {
           PRINTENDFUNC;
-          return -1;
+          return ret;
       }
-      int ret = m_scheduler->add_exec_buffer(bo);
+      ret = m_scheduler->add_exec_buffer(bo);
       PRINTENDFUNC;
       return ret;
   }
   else {
-      if(!mMBSch || !bo)
-      {
-          PRINTENDFUNC;
-          return -1;
-      }
-      int ret = mMBSch->add_exec_buffer(mCore, bo);
+    if(!mMBSch || !bo)
+    {
       PRINTENDFUNC;
       return ret;
+    }
+    ret = mMBSch->add_exec_buffer(mCore, bo);
+    PRINTENDFUNC;
   }
+  return ret;
 }
 
+/*
+ * xclExecBuf()
+ */
+int HwEmShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
+{
+  if (mLogStream.is_open())
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << ", " << num_bo_in_wait_list << ", " << bo_wait_list << std::endl;
+  }
+
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
+
+  xcl_LogMsg(XRT_INFO, "", "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d",
+            __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);
+
+  if (num_bo_in_wait_list > MAX_DEPS) {
+    xcl_LogMsg(XRT_ERROR, "", "%s, Incorrect argument. Max num of BOs in wait_list: %d",
+        __func__, MAX_DEPS);
+
+    return -EINVAL;
+  }
+
+  /*int ret;
+  unsigned int bwl[8] = {0};
+  std::memcpy(bwl,bo_wait_list,num_bo_in_wait_list*sizeof(unsigned int));
+  drm_xocl_execbuf exec = {0, cmdBO, bwl[0],bwl[1],bwl[2],bwl[3],bwl[4],bwl[5],bwl[6],bwl[7]};
+  ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
+  return ret ? -errno : ret;*/
+  
+  int ret=-1;
+  if(xclemulation::config::getInstance()->isNewMbscheduler()) 
+  {
+      if(!m_scheduler || !bo)
+      {
+          PRINTENDFUNC;
+          return ret;
+      }
+      ret = m_scheduler->add_exec_buffer(bo);
+      PRINTENDFUNC;
+  } else { 
+    ret = mMBSch->add_exec_buffer(mCore, bo);
+    PRINTENDFUNC;
+  }
+  return ret;
+}
 
 int HwEmShim::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
 {
@@ -3398,7 +3444,6 @@ void * HwEmShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
  */
 int HwEmShim::xclFreeQDMABuf(uint64_t buf_hdl)
 {
-
   if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
@@ -3407,10 +3452,19 @@ int HwEmShim::xclFreeQDMABuf(uint64_t buf_hdl)
   return 0;//TODO
 }
 
+int HwEmShim::xcl_LogMsg(xrtLogMsgLevel level, const char* tag, const char* format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  int ret = xclLogMsg(level, tag, format, args);
+  va_end(args);
+  return ret;
+}
+
 /*
  * xclLogMsg()
  */
-int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1)
+int HwEmShim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1)
 {
     int len = std::vsnprintf(nullptr, 0, format, args1);
 

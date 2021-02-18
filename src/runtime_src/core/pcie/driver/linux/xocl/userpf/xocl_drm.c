@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: Jan Stephan <j.stephan@hzdr.de>
  *
@@ -186,6 +186,64 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	 * mmap of that particular CU register space.
 	 */
 	return xocl_native_mmap(filp, vma);
+}
+
+static bool is_mem_region_valid(struct xocl_drm *drm_p,
+		struct mem_data *mem_data)
+{
+	struct xocl_dev *xdev = drm_p->xdev;
+	void *blob;
+	int offset;
+	const u64 *prop;
+	u64 start, end, mem_start, mem_end;
+	const char *ipname;
+	int found = 0;
+
+	if (!XOCL_DSA_IS_MPSOC(xdev) && !XOCL_DSA_IS_VERSAL(xdev))
+		return true;
+
+	/* PLRAM does not have to be accessed by PS */
+	if (IS_PLRAM(mem_data->m_tag))
+		return true;
+
+	blob = XDEV(xdev)->fdt_blob;
+	if (!blob)
+		return true;
+
+	for (offset = fdt_next_node(blob, -1, NULL);
+	    offset >= 0;
+	    offset = fdt_next_node(blob, offset, NULL)) {
+		ipname = fdt_get_name(blob, offset, NULL);
+		if (ipname && strncmp(ipname, NODE_RESERVED_PSMEM,
+		    strlen(NODE_RESERVED_PSMEM)))
+			continue;
+
+		found = 1;
+
+		prop = fdt_getprop(blob, offset, PROP_IO_OFFSET, NULL);
+		if (!prop)
+			continue;
+
+		start = be64_to_cpu(prop[0]);
+		end = start + be64_to_cpu(prop[1]);
+		mem_start = mem_data->m_base_address;
+		mem_end = mem_start + mem_data->m_size * 1024;
+
+		/*
+		 * Memory region in mem_topology needs to match or
+		 * be inside the PS reserved memory region.
+		 */
+		if (mem_start >= start && mem_end <= end)
+			return true;
+	}
+
+	if (!found)
+		return true;
+
+	xocl_err(drm_p->ddev->dev,
+	    "Topology memory range does not match reserved PS memory\n");
+
+	return false;
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
@@ -922,6 +980,9 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 			continue;
 
 		if (XOCL_IS_STREAM(topo, i))
+			continue;
+
+		if (!is_mem_region_valid(drm_p, mem_data))
 			continue;
 
 		xocl_info(drm_p->ddev->dev, "Allocating Memory Bank: %s", mem_data->m_tag);
