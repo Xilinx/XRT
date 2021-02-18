@@ -86,10 +86,11 @@ testCaseProgressReporter(std::shared_ptr<XBUtilities::ProgressBar> run_test, boo
 }
 
 unsigned int
-XBUtilities::runPythonScript( const std::string & script, 
-                 const std::vector<std::string> & args,
-                 std::ostringstream & os_stdout,
-                 std::ostringstream & os_stderr)
+XBUtilities::runScript( const std::string & env, 
+                        const std::string & script, 
+                        const std::vector<std::string> & args,
+                        std::ostringstream & os_stdout,
+                        std::ostringstream & os_stderr)
 {
   // Fix environment variables before running test case
   setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
@@ -100,7 +101,11 @@ XBUtilities::runPythonScript( const std::string & script,
 
   std::ostringstream args_str;
   std::copy(args.begin(), args.end(), std::ostream_iterator<std::string>(args_str, " "));
-  std::string cmd = "/usr/bin/python3 " + script + " " + args_str.str();
+  std::string cmd;
+  if(env.compare("python") == 0) {
+    cmd = "/usr/bin/python3 ";
+  }
+  cmd += script + " " + args_str.str();
 
   int stderr_fds[2];
   if (pipe(stderr_fds)== -1) {
@@ -161,20 +166,39 @@ XBUtilities::runPythonScript( const std::string & script,
 }
 #else
 
-unsigned int
-XBUtilities::runPythonScript( const std::string & script, 
-                 const std::vector<std::string> & args,
-                 std::ostringstream & os_stdout,
-                 std::ostringstream & os_stderr)
+
+
+boost::filesystem::path
+findEnvPath(const std::string & env)
 {
-  // Find the python executable
-  boost::filesystem::path pythonAbsPath = boost::process::search_path("py");  
-  if (pythonAbsPath.string().empty()) 
-    pythonAbsPath = boost::process::search_path("python");   
+  boost::filesystem::path absPath;
+  if(env.compare("python") == 0) {
+    // Find the python executable
+    absPath = boost::process::search_path("py");  
+    if (absPath.string().empty()) 
+      absPath = boost::process::search_path("python");   
 
-  if (pythonAbsPath.string().empty()) 
-    throw std::runtime_error("Error: Python executable not found in search path.");
+    if (absPath.string().empty()) 
+      throw std::runtime_error("Error: Python executable not found in search path.");
+  }
+  else {
+    absPath = boost::process::search_path("sh");
+    if (absPath.string().empty()) 
+      throw std::runtime_error("Error: Shell environment not found.");
+  }
 
+  return absPath;
+}
+
+unsigned int
+XBUtilities::runScript( const std::string & env,
+                        const std::string & script, 
+                        const std::vector<std::string> & args,
+                        std::ostringstream & os_stdout,
+                        std::ostringstream & os_stderr)
+{
+  auto envPath = findEnvPath(env);
+  
   // Make sure the script exists
   if ( !boost::filesystem::exists( script ) ) {
     std::string errMsg = (boost::format("Error: Given python script does not exist: '%s'") % script).str();
@@ -190,8 +214,8 @@ XBUtilities::runPythonScript( const std::string & script,
 
   // Build the environment variables
   // Copy the existing environment
-  boost::process::environment env = boost::this_process::environment();
-  env.erase("XCL_EMULATION_MODE");
+  boost::process::environment _env = boost::this_process::environment();
+  _env.erase("XCL_EMULATION_MODE");
 
   // Please fix: Should be a busy bar and NOT a progress bar
   ProgressBar run_test("Running Test", max_test_duration, XBUtilities::is_esc_enabled(), std::cout); 
@@ -199,11 +223,11 @@ XBUtilities::runPythonScript( const std::string & script,
   // Execute the python script and capture the outputs
   boost::process::ipstream ip_stdout;
   boost::process::ipstream ip_stderr;
-  boost::process::child runningProcess( pythonAbsPath, 
+  boost::process::child runningProcess( envPath, 
                                         cmdArgs, 
                                         boost::process::std_out > ip_stdout,
                                         boost::process::std_err > ip_stderr,
-                                        env);
+                                        _env);
 
   // Wait for the process to finish and update the busy bar
   unsigned int counter = 0;
