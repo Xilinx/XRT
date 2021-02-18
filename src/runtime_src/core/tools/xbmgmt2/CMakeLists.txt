@@ -16,6 +16,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/XBHelpMenus.cpp"
   "../common/OptionOptions.cpp"
   "../common/ProgressBar.cpp"
+  "../common/Process.cpp"
   "../common/Report*.cpp"
 )
 
@@ -76,6 +77,7 @@ target_link_libraries(${XBMGMT2_NAME}
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   ${Boost_PROGRAM_OPTIONS_LIBRARY}
+  pthread
   uuid
   dl
   )

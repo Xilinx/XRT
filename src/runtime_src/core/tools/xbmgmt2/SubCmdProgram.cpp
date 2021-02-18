@@ -20,6 +20,7 @@
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
 #include "tools/common/ProgressBar.h"
+#include "tools/common/Process.h"
 namespace XBU = XBUtilities;
 
 #include "xrt.h"
@@ -133,6 +134,14 @@ update_shell(unsigned int index, const std::string& flashType,
   std::cout << "****************************************************\n";
 }
 
+static std::string 
+getBDF(unsigned int index)
+{
+  auto dev =xrt_core::get_mgmtpf_device(index);
+  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
+  return xrt_core::query::pcie_bdf::to_string(bdf);
+}
+
 /*
  * Update SC firmware on the board
  */
@@ -142,6 +151,28 @@ update_SC(unsigned int  index, const std::string& file)
   Flasher flasher(index);
   if(!flasher.isValid())
     throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
+
+  auto dev = xrt_core::get_mgmtpf_device(index);
+  //if SC is fixed, stop flashing immidiately
+  if (xrt_core::device_query<xrt_core::query::is_sc_fixed>(dev)) {
+    throw xrt_core::error("Flashing a fixed SC is not allowed");
+  }
+  //don't trigger reset for u30. let python helper handle everything
+  
+  if (xrt_core::device_query<xrt_core::query::rom_vbnv>(dev).find("_u30_") != std::string::npos) {
+    std::ostringstream os_stdout;
+    std::ostringstream os_stderr;
+    const std::string scFlashPath = "/opt/xilinx/xrt/bin/unwrapped/_scflash.py";
+    std::vector<std::string> args = { "-y", "-d", getBDF(index), "-p", file };
+    
+    int exit_code = XBU::runScript("python", scFlashPath, args, os_stdout, os_stderr);
+
+    if (exit_code != 0) {
+      std::string err_msg = "ERROR: " + os_stdout.str() + "\n" + os_stderr.str() + "\n";
+      throw xrt_core::error(err_msg);
+    }
+    return;
+  }
 
   std::unique_ptr<firmwareImage> bmc =
     std::make_unique<firmwareImage>(file.c_str(), BMC_FIRMWARE);
@@ -318,14 +349,6 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
     return -EINVAL;
 
   return 0;
-}
-
-static std::string 
-getBDF(unsigned int index)
-{
-  auto dev =xrt_core::get_mgmtpf_device(index);
-  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
-  return xrt_core::query::pcie_bdf::to_string(bdf);
 }
 
 /* 
