@@ -16,6 +16,7 @@
 
 #include "xdp/profile/plugin/lop/lop_plugin.h"
 #include "xdp/profile/writer/lop/low_overhead_trace_writer.h"
+#include "core/common/config_reader.h"
 
 namespace xdp {
 
@@ -140,6 +141,13 @@ namespace xdp {
     {
       (db->getDynamicInfo()).addString(api) ;
     }
+    auto continuous_trace =
+      xrt_core::config::get_continuous_trace() ;
+    // TODO: Enable once vp analyze works
+    if (continuous_trace && false) {
+      auto trace_dump_int_s = xrt_core::config::get_trace_dump_interval_s();
+      XDPPlugin::startWriteThread(trace_dump_int_s, "VP_TRACE");
+    }
   }
 
   LowOverheadProfilingPlugin::~LowOverheadProfilingPlugin()
@@ -148,10 +156,8 @@ namespace xdp {
     {
       // We were destroyed before the database, so write the writers
       //  and unregister ourselves from the database
-      for (auto w : writers)
-      {
-	w->write(false) ;
-      }
+      XDPPlugin::endWrite(false);
+
       db->unregisterPlugin(this) ;
     }
   }

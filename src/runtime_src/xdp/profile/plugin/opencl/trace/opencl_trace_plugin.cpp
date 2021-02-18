@@ -16,6 +16,7 @@
 
 #include "xdp/profile/plugin/opencl/trace/opencl_trace_plugin.h"
 #include "xdp/profile/writer/opencl/opencl_trace_writer.h"
+#include "core/common/config_reader.h"
 
 #ifdef _WIN32
 /* Disable warning on Windows for use of std::getenv */
@@ -31,6 +32,15 @@ namespace xdp {
     // Add a single writer for the OpenCL host trace
     writers.push_back(new OpenCLTraceWriter("opencl_trace.csv")) ;
     (db->getStaticInfo()).addOpenedFile("opencl_trace.csv", "VP_TRACE") ;
+
+    // Continuous writing of opencl trace
+    continuous_trace =
+      xrt_core::config::get_continuous_trace() ;
+    // TODO: Enable once vp analyze works
+    if (continuous_trace && false) {
+      trace_dump_int_s = xrt_core::config::get_trace_dump_interval_s();
+      XDPPlugin::startWriteThread(trace_dump_int_s, "VP_TRACE");
+    }
   }
 
   OpenCLTraceProfilingPlugin::~OpenCLTraceProfilingPlugin()
@@ -43,10 +53,7 @@ namespace xdp {
 
       // We were destroyed before the database, so write the writers
       //  and unregister ourselves from the database
-      for (auto w : writers)
-      {
-	w->write(false) ;
-      }
+      XDPPlugin::endWrite(false);
       db->unregisterPlugin(this) ;
     }
   }
@@ -60,4 +67,5 @@ namespace xdp {
       (db->getStaticInfo()).addOpenedFile(internalsTrace, "KERNEL_TRACE") ;
     }
   }
+
 }

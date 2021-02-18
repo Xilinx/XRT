@@ -23,6 +23,7 @@
 #include <vector>
 #include <fstream>
 #include <functional>
+#include <memory>
 
 #include "xdp/profile/database/events/vtf_event.h"
 
@@ -119,6 +120,12 @@ namespace xdp {
     // Since events can be logged from multiple threads simultaneously,
     //  we have to maintain exclusivity
     std::mutex dbLock ;
+    std::mutex deviceEventsLock ;
+    std::mutex hostEventsLock ;
+    std::mutex aieLock ;
+    std::mutex powerLock ;
+    std::mutex nocLock ;
+    std::mutex ctrLock ;
 
     //std::map<uint64_t, uint64_t> traceIDMap;
 
@@ -159,6 +166,9 @@ namespace xdp {
 
     XDP_EXPORT std::vector<VTFEvent*> getHostEvents();
     XDP_EXPORT std::vector<VTFEvent*> getDeviceEvents(uint64_t deviceId);
+    // Erase events from db and transfer ownership to caller
+    XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> filterEraseHostEvents(std::function<bool(VTFEvent*)> filter);
+    XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> getEraseDeviceEvents(uint64_t deviceId);
 
     XDP_EXPORT void setCounterResults(uint64_t deviceId,
 				      xrt_core::uuid uuid,
