@@ -198,6 +198,7 @@ enum class key_type
 
   aie_metadata,
   graph_status,
+  mailbox_metrics,
   noop
 
 };
@@ -2046,6 +2047,22 @@ struct shared_host_mem : request
   virtual boost::any
   get(const device*) const = 0;
 
+};
+
+struct mailbox_metrics : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::mailbox_metrics;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
+  }
 };
 
 struct noop : request
