@@ -13,8 +13,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-#define XRT_CORE_COMMON_SOURCE
+#define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
+#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "device.h"
 #include "error.h"
 #include "utils.h"

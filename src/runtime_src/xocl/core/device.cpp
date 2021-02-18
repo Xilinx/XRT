@@ -213,7 +213,7 @@ is_aligned_ptr(const void* ptr) const
 
 std::string
 device::
-get_bdf() const 
+get_bdf() const
 {
   if (!m_xdevice)
     throw xocl::error(CL_INVALID_DEVICE, "No BDF");
@@ -227,7 +227,7 @@ get_bdf() const
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(core_device);
     return xrt_core::query::pcie_bdf::to_string(bdf);
   }
-  catch (const xrt_core::error& ex) {
+  catch (const xrt_core::error&) {
   }
 
   // Provides valid functionality for devices that are
@@ -237,7 +237,7 @@ get_bdf() const
 
 bool
 device::
-is_nodma() const 
+is_nodma() const
 {
   if (!m_xdevice)
     throw xocl::error(CL_INVALID_DEVICE, "Can't check for nodma");
@@ -493,7 +493,7 @@ lock()
   // Open the underlying device if not sub device
   if (!m_parent.get())
     m_xdevice->open();
-  
+
   // All good, return increment lock count
   return ++m_locks;
 }
@@ -818,7 +818,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
     // enable when m2m is the norm
     // cmd_copy_message(src_buffer, dst_buffer);
   }
-  
+
   // Check if any of the buffers are imported
   bool imported = is_imported(src_buffer) || is_imported(dst_buffer);
 
