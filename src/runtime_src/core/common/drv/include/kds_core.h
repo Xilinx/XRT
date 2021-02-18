@@ -122,6 +122,7 @@ struct kds_sched {
 	u32			cu_intr_cap;
 	u32			cu_intr;
 	struct plram_info	plram;
+	struct completion	comp;
 };
 
 int kds_init_sched(struct kds_sched *kds);

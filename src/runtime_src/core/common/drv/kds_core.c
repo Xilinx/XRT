@@ -440,6 +440,7 @@ int kds_init_sched(struct kds_sched *kds)
 	/* At this point, I don't know if ERT subdev exist or not */
 	kds->ert_disable = true;
 	kds->ini_disable = false;
+	init_completion(&kds->comp);
 
 	return 0;
 }
@@ -473,7 +474,7 @@ struct kds_command *kds_alloc_command(struct kds_client *client, u32 size)
 
 	xcmd->client = client;
 	xcmd->type = 0;
-	xcmd->cu_idx = -1;
+	xcmd->cu_idx = DEFAULT_INDEX;
 
 #if PRE_ALLOC
 	xcmd->info = client->infos + sizeof(u32) * 128;
@@ -542,7 +543,6 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 	client->pid = get_pid(task_pid(current));
 	mutex_init(&client->lock);
 
-	init_completion(&client->comp);
 	init_waitqueue_head(&client->waitq);
 	atomic_set(&client->event, 0);
 
@@ -795,6 +795,7 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 	return -ENODEV;
 }
 
+/* Do not use this function when xclbin can be changed */
 int kds_get_cu_total(struct kds_sched *kds)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
@@ -802,6 +803,7 @@ int kds_get_cu_total(struct kds_sched *kds)
 	return cu_mgmt->num_cus;
 }
 
+/* Do not use this function when xclbin can be changed */
 u32 kds_get_cu_addr(struct kds_sched *kds, int idx)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
@@ -809,6 +811,7 @@ u32 kds_get_cu_addr(struct kds_sched *kds, int idx)
 	return cu_mgmt->xcus[idx]->info.addr;
 }
 
+/* Do not use this function when xclbin can be changed */
 u32 kds_get_cu_proto(struct kds_sched *kds, int idx)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;

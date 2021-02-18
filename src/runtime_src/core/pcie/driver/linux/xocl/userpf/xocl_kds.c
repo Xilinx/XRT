@@ -723,8 +723,8 @@ done:
 
 static void xocl_cfg_notify(struct kds_command *xcmd, int status)
 {
-	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
 
 	if (status == KDS_COMPLETED)
 		ecmd->state = ERT_CMD_STATE_COMPLETED;
@@ -735,7 +735,7 @@ static void xocl_cfg_notify(struct kds_command *xcmd, int status)
 	else if (status == KDS_ABORT)
 		ecmd->state = ERT_CMD_STATE_ABORT;
 
-	complete(&client->comp);
+	complete(&kds->comp);
 }
 
 /* Construct ERT config command and wait for completion */
@@ -751,6 +751,7 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	int ret = 0;
 	int i;
 
+	/* TODO: Use hard code size is not ideal. Let's refine this later */
 	ecmd = vmalloc(0x1000);
 	if (!ecmd)
 		return -ENOMEM;
@@ -804,12 +805,13 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	xcmd->type = KDS_ERT;
 	cfg_ecmd2xcmd(ecmd, xcmd);
 	xcmd->cb.notify_host = xocl_cfg_notify;
+	xcmd->priv = kds;
 
 	ret = kds_add_command(kds, xcmd);
 	if (ret)
 		goto out;
 
-	ret = wait_for_completion_interruptible(&client->comp);
+	ret = wait_for_completion_interruptible(&kds->comp);
 	if (ret == -ERESTARTSYS && !kds->ert_disable) {
 		int bad_state;
 
@@ -818,7 +820,7 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 			userpf_info(xdev, "ERT cfg command not finished");
 			msleep(500);
 		} while (ecmd->state < ERT_CMD_STATE_COMPLETED);
-		bad_state = kds->ert->abort_done(kds->ert, client, -1);
+		bad_state = kds->ert->abort_done(kds->ert, client, DEFAULT_INDEX);
 		if (bad_state)
 			kds->bad_state = 1;
 	}
