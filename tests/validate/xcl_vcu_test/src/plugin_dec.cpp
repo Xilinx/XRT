@@ -273,6 +273,9 @@ gstivas_xvcudec_close (XrtIvas_XVCUDec *dec)
   /* Close XRT context */
   xclCloseContext (priv->xcl_handle, priv->xclbinId, 0);
   xclClose (priv->xcl_handle);
+
+  if (priv)
+    free (priv);
 }
 
 static int
@@ -297,7 +300,7 @@ xvcudec_preinit (XrtIvas_XVCUDec * dec)
   if (iret != 0) {
     ERROR_PRINT ("synbo failed - %d, reason : %s\n", iret,
         strerror (errno));
-    goto error;
+    return FALSE;
   }
 
   /* update decoder config params */
@@ -329,7 +332,7 @@ xvcudec_preinit (XrtIvas_XVCUDec * dec)
   if (iret != 0) {
     ERROR_PRINT ("syncbo failed - %d, reason : %s\n", iret,
         strerror (errno));
-    goto error;
+    return FALSE;
   }
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
@@ -348,12 +351,12 @@ xvcudec_preinit (XrtIvas_XVCUDec * dec)
   if (iret < 0) {
     ERROR_PRINT ("failed to send VCU_PREINIT command to softkernel - %d, reason : %s\n",
         iret, strerror (errno));
-    goto error;
+    return FALSE;
   } else {
     bret = xvcudec_check_softkernel_response (dec, payload_buf);
     if (bret != TRUE) {
       ERROR_PRINT ("softkernel pre-initialization failed\n");
-      goto error;
+      return FALSE;
     }
   }
 
@@ -366,9 +369,6 @@ xvcudec_preinit (XrtIvas_XVCUDec * dec)
   DEBUG_PRINT ("VCU pre-initialization successful..\n");  
 
   return TRUE;
-
-error:
-  return FALSE;
 }
 
 static int
@@ -393,7 +393,7 @@ xvcudec_init (XrtIvas_XVCUDec * dec)
   if (iret != 0) {
     ERROR_PRINT ("syncbo failed - %d, reason : %s", iret,
         strerror (errno));
-    goto error;
+    return FALSE;
   }
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
@@ -410,7 +410,7 @@ xvcudec_init (XrtIvas_XVCUDec * dec)
         XCL_BO_DEVICE_RAM, MEM_BANK, priv->in_xrt_bufs[i]);
     if (iret < 0) {
       ERROR_PRINT ("failed to allocate input buffer..");
-      goto error;
+      return FALSE;
     }
 
     payload_data[num_idx++] = priv->in_xrt_bufs[i]->phy_addr & 0xFFFFFFFF;
@@ -429,12 +429,12 @@ xvcudec_init (XrtIvas_XVCUDec * dec)
   if (iret < 0) {
     ERROR_PRINT ("failed to send VCU_INIT command to softkernel - %d, reason : %s\n",
         iret, strerror (errno));
-    goto error;
+    return FALSE;
   } else {
     bret = xvcudec_check_softkernel_response (dec, payload_buf);
     if (bret != TRUE) {
       ERROR_PRINT ("softkernel initialization failed\n");
-      goto error;
+      return FALSE;
     }
   }
 
@@ -443,9 +443,6 @@ xvcudec_init (XrtIvas_XVCUDec * dec)
   DEBUG_PRINT ("VCU initialization successful..\n");  
   
   return TRUE;
-
-error:
-  return FALSE;
 }
 
 static XrtFlowReturn
@@ -508,7 +505,7 @@ xvcudec_send_flush (XrtIvas_XVCUDec * dec)
   if (iret != 0) {
     ERROR_PRINT ("synbo failed - %d, reason : %s", iret,
         strerror (errno));
-    goto error;
+    return FALSE;
   }
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
@@ -522,12 +519,12 @@ xvcudec_send_flush (XrtIvas_XVCUDec * dec)
       payload_data, num_idx, dec->sk_cur_idx, CMD_EXEC_TIMEOUT);
   if (iret < 0) {
     ERROR_PRINT ("failed to send VCU_FLUSH command to softkernel - %d", iret);
-    goto error;
+    return FALSE;
   } else {
     bret = xvcudec_check_softkernel_response (dec, payload_buf);
     if (bret != TRUE) {
       ERROR_PRINT ("softkernel flush failed");
-      goto error;
+      return FALSE;
     }
   }
 
@@ -535,9 +532,6 @@ xvcudec_send_flush (XrtIvas_XVCUDec * dec)
   priv->flush_done = TRUE;
 
   return TRUE;
-
-error:
-  return FALSE;
 }
 
 static int
@@ -564,7 +558,7 @@ xvcudec_deinit (XrtIvas_XVCUDec * dec)
   if (iret != 0) {
     ERROR_PRINT ("synbo failed - %d, reason : %s", iret,
         strerror (errno));
-    goto error;
+    return FALSE;
   }
   
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
@@ -581,14 +575,11 @@ xvcudec_deinit (XrtIvas_XVCUDec * dec)
   if (iret < 0) {
     ERROR_PRINT ("failed to send VCU_DEINIT command to softkernel - %d, reason : %s",
         iret, strerror (errno));
-    goto error;
+    return FALSE;
   }
 
   DEBUG_PRINT ("Successfully deinitialized softkernel\n");
   return TRUE;
-
-error:
-  return FALSE;
 }
 
 static int
@@ -662,7 +653,7 @@ xvcudec_prepare_send_frame (XrtIvas_XVCUDec * dec, void *inbuf,
         strerror (errno));
     ERROR_PRINT ("failed to sync PUSH command payload to device. reason : %s\n",
             strerror (errno));
-    goto error;
+    return FALSE;
   }
 
   *payload_num_idx = num_idx;
@@ -670,9 +661,6 @@ xvcudec_prepare_send_frame (XrtIvas_XVCUDec * dec, void *inbuf,
   DEBUG_PRINT ("Input command prepared successfully..\n");
 
   return TRUE;
-
-error:
-  return FALSE;
 }
 
 static XrtFlowReturn
@@ -697,8 +685,7 @@ xvcudec_receive_out_frames (XrtIvas_XVCUDec * dec, uint8_t *out_buffer, uint32_t
   if (iret != 0) {
     ERROR_PRINT ("synbo failed - %d, reason : %s", iret,
         strerror (errno));
-    fret = XRT_FLOW_ERROR;
-    goto exit;
+    return XRT_FLOW_ERROR;
   }
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
@@ -715,14 +702,12 @@ xvcudec_receive_out_frames (XrtIvas_XVCUDec * dec, uint8_t *out_buffer, uint32_t
   if (iret < 0) {
     ERROR_PRINT ("failed to send VCU_RECEIVE command to softkernel - %d, reason : %s",
         iret, strerror (errno));
-    fret = XRT_FLOW_ERROR;
-    goto exit;
+    return XRT_FLOW_ERROR;
   } else {
     bret = xvcudec_check_softkernel_response (dec, payload_buf);
     if (bret != TRUE) {
       ERROR_PRINT ("softkernel receive frame failed");
-      fret = XRT_FLOW_ERROR;
-      goto exit;
+      return XRT_FLOW_ERROR;
     }
   }
 
@@ -852,7 +837,7 @@ gstivas_xvcudec_finish (XrtIvas_XVCUDec *dec, uint8_t *out_buffer, uint32_t *out
   // TODO: add support when decoder not negotiated
   bret = xvcudec_send_flush (dec);
   if (bret != TRUE) {
-    goto error;
+    return XRT_FLOW_ERROR;
   }
 
   do {
@@ -865,9 +850,6 @@ gstivas_xvcudec_finish (XrtIvas_XVCUDec *dec, uint8_t *out_buffer, uint32_t *out
   }
 
   return XRT_FLOW_OK;
-
-error:
-  return XRT_FLOW_ERROR;
 }
 
 static void
@@ -956,7 +938,7 @@ xvcudec_open (XrtIvas_XVCUDec *dec, const char *xclbin_path, int sk_idx, int dev
   priv = (XrtIvas_XVCUDecPrivate *) calloc (1, sizeof (XrtIvas_XVCUDecPrivate));
   if (!priv) {
     ERROR_PRINT ("failed to allocate private memory structure");
-    goto error;
+    return FALSE;
   }
 
   dec->priv = priv;
@@ -981,16 +963,13 @@ xvcudec_open (XrtIvas_XVCUDec *dec, const char *xclbin_path, int sk_idx, int dev
   iret = xrt_initialization (dec);
   if (iret == FALSE) {
     ERROR_PRINT ("xrt initialization failed!!\n");
-    goto error;
+    if (dec->priv)
+      free (dec->priv);
+
+    return FALSE;
   }
 
   return TRUE;
-
-error:
-  if (dec->priv)
-    free (dec->priv);
-
-  return FALSE;
 }
 
 
@@ -1131,6 +1110,9 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   return TRUE;
 
 error:
+  if (dec->priv)
+    free (dec->priv);
+
   if (dec)
     free (dec);
 
