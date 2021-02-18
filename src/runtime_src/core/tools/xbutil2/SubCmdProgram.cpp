@@ -63,7 +63,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest. A value of 'all' indicates that every found device should be programmed.")
-    ("program,p", boost::program_options::value<std::string>(&xclbin), "The name (and path) of the xclbin to be loaded")
+    ("user,u", boost::program_options::value<std::string>(&xclbin), "The name (and path) of the xclbin to be loaded")
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
