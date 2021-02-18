@@ -623,7 +623,8 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
 static bool
 bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, boost::property_tree::ptree& _ptTest)
 {
-  int ret, bo_size = 0x1000;
+  int ret;
+  const uint32_t bo_size = 0x1000;
   xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_EXECBUF);
 
   if (boh == NULLBO) {
@@ -631,7 +632,7 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return false;
   }
-  auto boptr = reinterpret_cast<char *>xclMapBO(handle, boh, true);
+  auto boptr = reinterpret_cast<char *>(xclMapBO(handle, boh, true));
   if (boptr == nullptr) {
     _ptTest.put("status", "failed");
     logger(_ptTest, "Error", "Couldn't map BO");
@@ -662,22 +663,22 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
 static bool 
 clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle handle, boost::property_tree::ptree& _ptTest)
 {
-  int sleep_secs = 2, one_million = 1000000;
+  const int sleep_secs = 2, one_million = 1000000;
 
   if(!bist_alloc_execbuf_and_wait(handle, ERT_CLK_CALIB, _ptTest))
     return false;
 
-  uint64_t start = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
+  auto start = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
 
   std::this_thread::sleep_for(std::chrono::seconds(sleep_secs));
 
   if(!bist_alloc_execbuf_and_wait(handle, ERT_CLK_CALIB, _ptTest))
     return false;
 
-  uint64_t end = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
+  auto end = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
 
   /* Calculate the clock frequency in MHz*/
-  double freq = ((end + ULONG_MAX - start) & (ULONG_MAX)) / (sleep_secs*one_million);
+  double freq = ((end + std::numeric_limits<unsigned long>::max() - start) & std::numeric_limits<unsigned long>::max()) / (sleep_secs*one_million);
   logger(_ptTest, "Details", boost::str(boost::format("ERT clock frequency: %.1f MHz") % freq));
 
   return true;
@@ -969,7 +970,6 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
     return;
   }
 
-  std::string msg;
   xclbin_lock xclbin_lock(_dev);
 
   if (clock_calibration(_dev, _dev->get_device_handle(), _ptTest))
