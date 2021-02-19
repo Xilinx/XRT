@@ -678,7 +678,7 @@ clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle
   auto end = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
 
   /* Calculate the clock frequency in MHz*/
-  double freq = static_cast<double>(((end + std::numeric_limits<unsigned long>::max() - start) & std::numeric_limits<unsigned long>::max()) / (1.0 * sleep_secs*one_million);
+  double freq = static_cast<double>(((end + std::numeric_limits<unsigned long>::max() - start) & std::numeric_limits<unsigned long>::max())) / (1.0 * sleep_secs*one_million);
   logger(_ptTest, "Details", boost::str(boost::format("ERT clock frequency: %.1f MHz") % freq));
 
   return true;
