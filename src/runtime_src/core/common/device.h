@@ -292,6 +292,8 @@ public:
 
   virtual void reset(query::reset_type&) const {}
 
+  virtual void load_xclbin(std::vector<char> &buffer) const{}
+
   /**
    * open() - opens a device with an fd which can be used for non pcie read/write
    * xospiversal and xspi use this
