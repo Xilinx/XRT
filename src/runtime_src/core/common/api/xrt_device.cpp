@@ -99,6 +99,11 @@ device(unsigned int index)
 {}
 
 device::
+device(const std::string& bdf)
+  : device(xrt_core::get_device_id(bdf))
+{}
+
+device::
 device(xclDeviceHandle dhdl)
   : handle(xrt_core::get_userpf_device(dhdl))
 {}
@@ -178,6 +183,23 @@ xrtDeviceOpen(unsigned int index)
     auto device = xrt_core::get_userpf_device(index);
     device_cache[device.get()] = device;
     return device.get();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
+}
+
+xrtDeviceHandle
+xrtDeviceOpenByBDF(const char* bdf)
+{
+  try {
+    return xrtDeviceOpen(xrt_core::get_device_id(bdf));
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());

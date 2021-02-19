@@ -57,6 +57,19 @@ system()
   singleton = this;
 }
 
+// get_device_id() -  Default conversion of device string
+// Redefined in systems that support BDF.
+device::id_type
+system::
+get_device_id(const std::string& str) const
+{
+  size_t pos = 0;
+  auto id = std::stoul(str, &pos);
+  if (pos != str.length())
+    throw xrt_core::system_error(EINVAL, "Invalid device string '" + str + "'");
+  return static_cast<device::id_type>(id);
+}
+
 static void
 load_shim()
 {
@@ -168,6 +181,12 @@ std::pair<uint64_t, uint64_t>
 get_total_devices(bool is_user)
 {
   return instance().get_total_devices(is_user);
+}
+
+device::id_type
+get_device_id(const std::string& str)
+{
+  return instance().get_device_id(str);
 }
 
 system::monitor_access_type
