@@ -327,6 +327,31 @@ failed:
 	return ret;
 }
 
+/*
+ * Reset command should support following cases
+ * case 1) When device is not in ready state
+ *  - xbutil should not send any request to the xocl.
+ *  - It should just return fail status from userspace itself
+ * case 2) When device is ready & device offline status is true
+ *  - Need to check when we hit this case
+ * case 3) When device is ready & online
+ *  a) If xocl unable to communicate to mgmt/mpd
+ *     - xocl should reenable all the sub-devices and mark the device online/ready.
+ *  b) If reset Channel is disabled
+ *     - xocl should reenable all the sub-devices and mark the device online/ready.
+ *  c) Reset is issued to mpd, but mpd doesn’t have serial number of requested device
+ *     - MPD returns E_EMPTY serial number error code to xocl
+ *     - xocl should reenable all the sub-devices and mark the device online/ready.
+ *  d) Reset is issued to mgmt/mpd, but mgmt/mpd unable to reset properly
+ *     - xocl gets a ESHUTDOWN response from mgmt/mpd,
+ *     - xocl assumes that reset is successful,
+ *     - xbutil waits on the device ready state in a loop.
+ *     - xbutil reset would be in waiting state forever.
+ *     - Need to handle this case to exit xbutil reset gracefully.
+ *  e) Reset is issued to mgmt/mpd, but mgmt/mpd reset properly
+ *     - xocl gets a ESHUTDOWN response from mgmt/mpd,
+ *     - Device becomes ready and xbutil reset successful.
+ */
 int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 {
 	int ret = 0, mbret = 0;
@@ -364,10 +389,26 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 		if (flag & XOCL_RESET_NO)
 			return 0;
 
-		xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
+		mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 			&ret, &resplen, NULL, NULL, 0, 6);
+		/*
+		 * Check the return values mbret & ret (mpd (peer) side response) and confirm
+		 * reset request success.
+		 * MPD acknowledge the reset request with below responses, and it can be
+		 * read from ret variable.
+		 *  -E_EMPTY_SN (2040): indicates that MPD doesn't have serial number associated
+		 *  with this device. So, aborting the reset request. This case hits
+		 *  when vm boots & it is ready before the mgmt side is ready.
+		 *  -ESHUTDOWN (108): indicates that MPD forwards reset requests to mgmt
+		 *  successfully.
+		 */
+		if (mbret || (ret && ret != -ESHUTDOWN)) {
+			userpf_err(xdev, "reset request failed, mbret: %d, peer resp: %d",
+					   mbret, ret);
+			xocl_reset_notify(xdev->core.pdev, false);
+			xocl_drvinst_set_offline(xdev->core.drm, false);
+		}
 		/* userpf will back online till receiving mgmtpf notification */
-
 		return 0;
 	}
 
