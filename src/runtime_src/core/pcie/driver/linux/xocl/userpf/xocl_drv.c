@@ -338,12 +338,12 @@ failed:
  *  a) If xocl unable to communicate to mgmt/mpd
  *     - xocl should reenable all the sub-devices and mark the device online/ready.
  *  b) If reset Channel is disabled
- *	   - xocl should reenable all the sub-devices and mark the device online/ready.
- *	c) Reset is issued to mpd, but mpd doesn’t have serial number of requested device
- *	   - MPD returns E_EMPTY serial number error code to xocl
- *	   - xocl should reenable all the sub-devices and mark the device online/ready.
- *	d) Reset is issued to mgmt/mpd, but mgmt/mpd unable to reset properly
- *	   - xocl gets a ESHUTDOWN response from mgmt/mpd,
+ *     - xocl should reenable all the sub-devices and mark the device online/ready.
+ *  c) Reset is issued to mpd, but mpd doesn’t have serial number of requested device
+ *     - MPD returns E_EMPTY serial number error code to xocl
+ *     - xocl should reenable all the sub-devices and mark the device online/ready.
+ *  d) Reset is issued to mgmt/mpd, but mgmt/mpd unable to reset properly
+ *     - xocl gets a ESHUTDOWN response from mgmt/mpd,
  *     - xocl assumes that reset is successful,
  *     - xbutil waits on the device ready state in a loop.
  *     - xbutil reset would be in waiting state forever.
