@@ -389,6 +389,30 @@ struct drm_xocl_kinfo_bo {
 };
 
 /**
+ * struct drm_xocl_kds - KDS user configuration
+ *
+ * @slot_size:	CQ slot size
+ * @ert:	enable embedded HW scheduler
+ * @polling:	poll for command completion
+ * @cu_dma:	enable CUDMA custom module for HW scheduler
+ * @cu_isr:	enable CUISR custom module for HW scheduler
+ * @cq_int:	enable interrupt from host to HW scheduler
+ * @dataflow:	enable dataflow mode
+ * @rw_shared:	allow xclRegWrite/xclRegRead access shared CU
+ */
+struct drm_xocl_kds {
+	uint32_t slot_size;
+	uint32_t ert:1;
+	uint32_t polling:1;
+	uint32_t cu_dma:1;
+	uint32_t cu_isr:1;
+	uint32_t cq_int:1;
+	uint32_t dataflow:1;
+	uint32_t rw_shared:1;
+	uint32_t unused:25;
+};
+
+/**
  * struct drm_xocl_axlf - load xclbin (AXLF) device image
  * used with DRM_IOCTL_XOCL_READ_AXLF ioctl
  * NOTE: This ioctl will be removed in next release
@@ -401,6 +425,7 @@ struct drm_xocl_axlf {
 	struct axlf		*xclbin;
 	int			 ksize;
 	char			*kernels;
+	struct drm_xocl_kds	 kds_cfg;
 };
 
 /**

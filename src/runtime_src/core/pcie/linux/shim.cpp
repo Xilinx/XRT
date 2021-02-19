@@ -1422,6 +1422,28 @@ int shim::xclLoadAxlf(const axlf *buffer)
         off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
     }
 
+    /* To make download xclbin and configure KDS/ERT as an atomic operation. */
+    axlf_obj.kds_cfg.ert = xrt_core::config::get_ert();
+    axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
+    axlf_obj.kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
+    axlf_obj.kds_cfg.cu_isr = xrt_core::config::get_ert_cuisr() && xrt_core::xclbin::get_cuisr(buffer);
+    axlf_obj.kds_cfg.cq_int = xrt_core::config::get_ert_cqint();
+    axlf_obj.kds_cfg.dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow") || xrt_core::xclbin::get_dataflow(buffer);
+    axlf_obj.kds_cfg.rw_shared = xrt_core::config::get_rw_shared();
+
+    /* TODO: In scheduler.cpp init() function, it use get_ert_slots(void) to get slot size.
+     * But we cannot do this here, since the xclbin is not registered.
+     * Currently, emulation flow use get_ert_slots() as well.
+     * We will consider how to better determine slot size in new kds.
+     */
+    //axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots().second;
+    auto xml_hdr = xrt_core::xclbin::get_axlf_section(buffer, EMBEDDED_METADATA);
+    if (!xml_hdr)
+        throw std::runtime_error("No xml metadata in xclbin");
+    auto xml_size = xml_hdr->m_sectionSize;
+    auto xml_data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) + xml_hdr->m_sectionOffset);
+    axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots(xml_data, xml_size).second;
+
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
     if(ret)
         return -errno;
