@@ -389,7 +389,7 @@ public:
             return -EINVAL;
 
         for (unsigned int i = 0; i < map->pkn_count; i++)
-                psKernels.emplace_back(map->pkn_data[i]);
+            psKernels.emplace_back(map->pkn_data[i]);
 
         return 0;
     }
@@ -428,11 +428,11 @@ public:
        uint32_t cu_count = 0;
 
        if (custat.empty())
-          return 0; 
+          return 0;
 
        //CU or Soft Kernel CU syntax
        //    CU[@0x1400000] : 0 status : 4
-       //    CU[@0x0] : 0 status : 4 name : kernel1
+       //    CU[@0x0] : 0 status : 4
        //
        for (auto& line : custat) {
            cu_count += std::strncmp(line.c_str(), "CU[", 3) ? 0 : 1;
@@ -450,7 +450,7 @@ public:
 
        //CU or Soft Kernel CU syntax
        //    CU[@0x1400000] : 0 status : 4
-       //    CU[@0x0] : 0 status : 4 name : kernel1
+       //    CU[@0x0] : 0 status : 4
        //
        for (auto& line : custat) {
            i += std::strncmp(line.c_str(), "CU[", 3) ? 0 : 1;

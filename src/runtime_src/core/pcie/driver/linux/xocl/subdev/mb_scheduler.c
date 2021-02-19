@@ -4315,15 +4315,13 @@ static int config_scu(struct platform_device *pdev,
 		for (j = cp->start_cuidx; j < cp->start_cuidx + cp->num_cus;
 		    j++) {
 			char scu_name[32];
-			int slen;
 
 			if (strlen(xert->scu_name[j]) > 0)
 				continue;
 			exec->num_sk_cus++;
 
 			/* Add "scu_idx#" suffix to identify PS kernel */
-			slen = strlen((char*)cp->sk_name);
-			strncpy(scu_name, ((char *)cp->sk_name) + slen,
+			strncpy(scu_name, ((char *)cp->sk_name),
 				sizeof(xert->scu_name[0]) - 8);
 			snprintf(xert->scu_name[j], 32, "%s:scu_%d",
 				scu_name, j);
