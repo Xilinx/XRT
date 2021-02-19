@@ -49,18 +49,37 @@ public:
   {}
 
   /**
-   * device() - Constructor with user host buffer and flags
+   * device() - Constructor from device index
    *
    * @param didx
    *  Device index
+   *
+   * Throws if no device is found matching the specified index.
    */
   XCL_DRIVER_DLLESPEC
   explicit
   device(unsigned int didx);
 
+  /**
+   * device() - Constructor from string
+   *
+   * @param str
+   *  String identifying the device to open.  
+   *
+   * If the string is in BDF format it matched against devices
+   * installed on the system.  Otherwise the string is assumed
+   * to be a device index.
+   * 
+   * Throws if string format is invalid or no matching device is
+   * found.
+   */
+  XCL_DRIVER_DLLESPEC
+  explicit
+  device(const std::string& bdf);
+
   /// @cond
   /**
-   * device() - Constructor with user host buffer and flags
+   * device() - Constructor from device index
    *
    * @param didx
    *  Device index
@@ -244,6 +263,16 @@ extern "C" {
 XCL_DRIVER_DLLESPEC
 xrtDeviceHandle
 xrtDeviceOpen(unsigned int index);
+
+/**
+ * xrtDeviceOpenByBDF() - Open a device and obtain its handle
+ *
+ * @bdf:           PCIe BDF identifying the device to open
+ * Return:         Handle representing the opened device, or nullptr on error
+ */
+XCL_DRIVER_DLLESPEC
+xrtDeviceHandle
+xrtDeviceOpenByBDF(const char* bdf);
 
 /**
  * xrtDeviceOpenFromXcl() - Open a device from a shim xclDeviceHandle

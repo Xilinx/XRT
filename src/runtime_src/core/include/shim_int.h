@@ -53,15 +53,12 @@ extern "C" {
  * xclOpenByBDF() - Open a device and obtain its handle by PCI BDF
  *
  * @bdf:           Deice PCE BDF
- * @logFileName:   Log file to use for optional logging
- * @level:         Severity level of messages to log
  *
  * Return:         Device handle
  */
 XCL_DRIVER_DLLESPEC
 xclDeviceHandle
-xclOpenByBDF(const char *bdf, const char *logFileName,
-        enum xclVerbosityLevel level);
+xclOpenByBDF(const char *bdf);
 
 #ifdef __cplusplus
 }

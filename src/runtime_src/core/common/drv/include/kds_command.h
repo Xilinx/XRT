@@ -46,6 +46,11 @@ struct in_kernel_cb {
 	void *data;
 };
 
+/* Default cu index of a command.
+ * Some command are not CU specific, it would keep to be default index.
+ */
+#define DEFAULT_INDEX -1
+
 /**
  * struct kds_command: KDS command struct
  * @client: the client that the command belongs to
@@ -68,6 +73,7 @@ struct kds_command {
 	u32			 num_mask;
 	u32			 payload_type;
 	u64			 start;
+	void			*priv;
 
 	unsigned int		 tick;
 
