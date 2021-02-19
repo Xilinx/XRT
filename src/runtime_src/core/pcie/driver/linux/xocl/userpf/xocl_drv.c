@@ -327,6 +327,31 @@ failed:
 	return ret;
 }
 
+/*
+ * Reset command should support following cases
+ * case 1) When device is not in ready state
+ *  - xbutil should not send any request to the xocl.
+ *  - It should just return fail status from userspace itself
+ * case 2) When device is ready & device offline status is true
+ *  - Need to check when we hit this case
+ * case 3) When device is ready & online
+ *  a) If xocl unable to communicate to mgmt/mpd
+ *     - xocl should reenable all the sub-devices and mark the device online/ready.
+ *  b) If reset Channel is disabled
+ *	   - xocl should reenable all the sub-devices and mark the device online/ready.
+ *	c) Reset is issued to mpd, but mpd doesn’t have serial number of requested device
+ *	   - MPD returns E_EMPTY serial number error code to xocl
+ *	   - xocl should reenable all the sub-devices and mark the device online/ready.
+ *	d) Reset is issued to mgmt/mpd, but mgmt/mpd unable to reset properly
+ *	   - xocl gets a ESHUTDOWN response from mgmt/mpd,
+ *     - xocl assumes that reset is successful,
+ *     - xbutil waits on the device ready state in a loop.
+ *     - xbutil reset would be in waiting state forever.
+ *     - Need to handle this case to exit xbutil reset gracefully.
+ *  e) Reset is issued to mgmt/mpd, but mgmt/mpd reset properly
+ *     - xocl gets a ESHUTDOWN response from mgmt/mpd,
+ *     - Device becomes ready and xbutil reset successful.
+ */
 int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 {
 	int ret = 0, mbret = 0;
