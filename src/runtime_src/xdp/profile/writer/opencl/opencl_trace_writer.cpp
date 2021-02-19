@@ -30,7 +30,7 @@ namespace xdp {
                    "1.0", 
                    getCurrentDateTime(), 
                    9 /* ns */),
-    generalAPIBucket(-1), readBucket(-1), writeBucket(-1)
+    generalAPIBucket(-1), readBucket(-1), writeBucket(-1), copyBucket(-1)
   {
   }
 
@@ -51,6 +51,8 @@ namespace xdp {
     readBucket = rowID ;
     ++rowID ;
     writeBucket = rowID ;
+    ++rowID ;
+    copyBucket = rowID ;
     ++rowID ;
     for (auto e : (db->getStaticInfo()).getEnqueuedKernels())
     {
@@ -89,6 +91,9 @@ namespace xdp {
     fout << "Dynamic_Row," << writeBucket
          << ",Write,Write data transfer from host to global memory"
          << std::endl ;
+    fout << "Dynamic_Row," << copyBucket
+	 << ",Copy,Copy data transfers from global memory to global memory"
+	 << std::endl ;
     fout << "Group_End,Data Transfer" << std::endl ;
     fout << "Group_Start,Kernel Enqueues" << std::endl ;
     //fout << "Dynamic_Row_Summary," << enqueueSummaryBucket 
@@ -133,6 +138,9 @@ namespace xdp {
       else if (e->isWriteBuffer())
       {
         bucket = writeBucket ;
+      }
+      else if (e->isCopyBuffer()) {
+	bucket = copyBucket ;
       }
       else if (e->isKernelEnqueue())
       {
