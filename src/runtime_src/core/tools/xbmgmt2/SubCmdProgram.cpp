@@ -743,22 +743,19 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     std::ifstream stream(xclbin, std::ios::binary);
     if (!stream)
-      throw xrt_core::error(boost::str(boost::format("Could not open %s for reding") % xclbin));
+      throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % xclbin));
 
     stream.seekg(0,stream.end);
     ssize_t size = stream.tellg();
     stream.seekg(0,stream.beg);
 
-    std::vector<char> raw(size);
-    stream.read(raw.data(), size);
-    std::string v(raw.data(),raw.data()+7);
-    if (v != "xclbin2")
-      throw xrt_core::error(boost::str(boost::format("Bad binary version '%s'") % v));
+    std::vector<char> xclbin_buffer(size);
+    stream.read(xclbin_buffer.data(), size);
     
     auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
     std::cout << "Downloading xclbin on device [" << bdf << "]..." << std::endl;
-    dev->load_xclbin(raw);
-    std::cout << boost::str(boost::format("INFO: Successfully downloaded xclbin \n\n"));
+    dev->load_xclbin(xclbin_buffer);
+    std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;
 
     return;
 }
