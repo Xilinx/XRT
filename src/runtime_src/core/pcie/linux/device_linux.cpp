@@ -514,7 +514,7 @@ close(int dev_handle) const
 void
 device_linux::
 load_xclbin(std::vector<char> &buffer) const {
-  static const xclbin_magic_value = 7;
+  static const int xclbin_magic_value = 7;
   std::string xclbin_magic_str(buffer.data(), buffer.data() + xclbin_magic_value);
   if (xclbin_magic_str != "xclbin2")
     throw xrt_core::error(boost::str(boost::format("Bad binary version '%s'") % xclbin_magic_str));
