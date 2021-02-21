@@ -347,16 +347,12 @@ static int csr_read32(struct platform_device *pdev, u32 off)
 {
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
 
-	WARN_ON(intc->ert[off>>2].enabled_cnt > 0);
-
 	return ioread32(intc->csr_base + off);
 }
 
 static void csr_write32(struct platform_device *pdev, u32 val, u32 off)
 {
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
-
-	WARN_ON(intc->ert[off>>2].enabled_cnt > 0);
 
 	iowrite32(val, intc->csr_base + off);
 }

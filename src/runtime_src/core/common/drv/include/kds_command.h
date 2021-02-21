@@ -26,6 +26,7 @@ enum kds_opcode {
 	OP_START_SK,
 	OP_CLK_CALIB,
 	OP_VALIDATE,
+	OP_GET_STAT,
 };
 
 enum kds_status {
