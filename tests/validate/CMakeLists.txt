@@ -20,4 +20,5 @@ add_subdirectory(slavebridge_test)
 
 # Special iops performance test cases
 add_subdirectory(xcl_iops_test)
+add_subdirectory(xcl_vcu_test)
 add_subdirectory(xrt_iops_test)
