@@ -439,6 +439,10 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		xcmd->execbuf = (u32 *)ecmd;
 		xcmd->opcode = OP_CLK_CALIB;
 		break;
+	case ERT_MB_VALIDATE:
+		xcmd->execbuf = (u32 *)ecmd;
+		xcmd->opcode = OP_VALIDATE;
+		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");
 		xcmd->cb.free(xcmd);

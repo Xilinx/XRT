@@ -354,7 +354,7 @@ struct ert_abort_cmd {
 
 
 
-struct ert_mb_validate_cmd {
+struct ert_validate_cmd {
   union {
     struct {
       uint32_t state:4;          /* [3-0]   */
@@ -438,6 +438,7 @@ enum ert_cmd_opcode {
   ERT_INIT_CU       = 11,
   ERT_START_FA      = 12,
   ERT_CLK_CALIB     = 13,
+  ERT_MB_VALIDATE   = 14,
 };
 
 /**
