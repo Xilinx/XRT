@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  * Author: Sonal Santan, Ryan Radjabi
  * Simple command line utility to inetract with SDX PCIe devices
  *
@@ -36,6 +36,7 @@
 #include "core/pcie/common/dmatest.h"
 #include "core/pcie/common/memaccess.h"
 #include "core/pcie/common/dd.h"
+#include "core/pcie/driver/linux/include/ps_kernel.h"
 #include "core/common/utils.h"
 #include "core/common/time.h"
 #include "core/common/sensor.h"
@@ -369,6 +370,30 @@ public:
         return 0;
     }
 
+    int getPSKernels(std::vector<ps_kernel_data> &psKernels) const
+    {
+        std::string errmsg;
+        std::vector<char> buf;
+
+        pcidev::get_dev(m_idx)->sysfs_get("icap", "ps_kernel", errmsg, buf);
+
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+        if (buf.empty())
+            return 0;
+
+        const ps_kernel_node *map = (ps_kernel_node *)buf.data();
+        if(map->pkn_count < 0)
+            return -EINVAL;
+
+        for (unsigned int i = 0; i < map->pkn_count; i++)
+            psKernels.emplace_back(map->pkn_data[i]);
+
+        return 0;
+    }
+
     /* Old kds style */
     uint32_t parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu_stat kind) const
     {
@@ -403,11 +428,11 @@ public:
        uint32_t cu_count = 0;
 
        if (custat.empty())
-          return 0; 
+          return 0;
 
        //CU or Soft Kernel CU syntax
        //    CU[@0x1400000] : 0 status : 4
-       //    CU[@0x0] : 0 status : 4 name : kernel1
+       //    CU[@0x0] : 0 status : 4
        //
        for (auto& line : custat) {
            cu_count += std::strncmp(line.c_str(), "CU[", 3) ? 0 : 1;
@@ -425,7 +450,7 @@ public:
 
        //CU or Soft Kernel CU syntax
        //    CU[@0x1400000] : 0 status : 4
-       //    CU[@0x0] : 0 status : 4 name : kernel1
+       //    CU[@0x0] : 0 status : 4
        //
        for (auto& line : custat) {
            i += std::strncmp(line.c_str(), "CU[", 3) ? 0 : 1;
@@ -464,17 +489,32 @@ public:
         }
 
         //Soft kernel info below
+        std::vector<ps_kernel_data> psKernels;
+        if (getPSKernels(psKernels) < 0) {
+            std::cout << "WARNING: 'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.\n";
+            return 0;
+        }
+
+        int psk_inst = 0;
+        uint32_t num_scu = 0;
         for (unsigned int i = computeUnits.size(); i < parseComputeUnitNum(custat); i++) {
             uint32_t status = parseComputeUnitStat(custat, i, cu_stat::stat);
             uint32_t usage = parseComputeUnitStat(custat, i, cu_stat::usage);
-	    auto name = parseComputeUnitName(custat, i);
+            std::string name = psKernels.at(psk_inst).pkd_sym_name;
+            name += ":scu_" + std::to_string(i - computeUnits.size());
 
-	    boost::property_tree::ptree ptCu;
+            boost::property_tree::ptree ptCu;
             ptCu.put( "name",         name );
             ptCu.put( "base_address", 0 );
             ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
+
+            num_scu++;
+            if (num_scu == psKernels.at(psk_inst).pkd_num_instances) {
+                num_scu = 0;
+                psk_inst++;
+            }
         }
 
         return 0;

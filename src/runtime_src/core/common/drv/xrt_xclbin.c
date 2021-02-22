@@ -243,7 +243,7 @@ xrt_xclbin_section_info(const struct axlf *xclbin, enum axlf_section_kind kind,
 }
 
 struct axlf_section_header *
-xrt_xclbin_get_section_hdr_next(struct axlf *xclbin,
+xrt_xclbin_get_section_hdr_next(const struct axlf *xclbin,
 	enum axlf_section_kind kind, struct axlf_section_header *cur)
 {
 	int i;
@@ -253,7 +253,7 @@ xrt_xclbin_get_section_hdr_next(struct axlf *xclbin,
 	for (i = 0; i < xclbin->m_header.m_numSections; i++) {
 		if (xclbin->m_sections[i].m_sectionKind == kind) {
 			if (match)
-				return &xclbin->m_sections[i];
+				return (struct axlf_section_header *)&xclbin->m_sections[i];
 
 			if (&xclbin->m_sections[i] == cur) {
 				match = true;
@@ -267,7 +267,7 @@ xrt_xclbin_get_section_hdr_next(struct axlf *xclbin,
 	if (found < 0)
 		return NULL;
 
-	return &xclbin->m_sections[found];
+	return (struct axlf_section_header *)&xclbin->m_sections[found];
 }
 
 int xrt_xclbin_get_section_num(const struct axlf *xclbin,
