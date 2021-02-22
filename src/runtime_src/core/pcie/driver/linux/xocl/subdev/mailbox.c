@@ -1869,8 +1869,11 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	struct mailbox_msg *reqmsg = NULL, *respmsg = NULL;
 	bool sw_ch = req_is_sw(pdev, ((struct xcl_mailbox_req *)req)->req);
 
-	if (req_is_disabled(pdev, ((struct xcl_mailbox_req *)req)->req))
+	if (req_is_disabled(pdev, ((struct xcl_mailbox_req *)req)->req)) {
+		MBX_WARN(mbx, "req %d is received on disabled channel, err: %d",
+				 ((struct xcl_mailbox_req *)req)->req, -EFAULT);
 		return -EFAULT;
+	}
 
 	MBX_INFO(mbx, "sending request: %d via %s",
 		((struct xcl_mailbox_req *)req)->req, (sw_ch ? "SW" : "HW"));

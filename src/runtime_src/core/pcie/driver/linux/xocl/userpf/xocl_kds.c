@@ -15,14 +15,19 @@
  */
 #include "xclbin.h"
 
+#ifdef KDS_VERBOSE
 #define print_ecmd_info(ecmd) \
 do {\
 	int i;\
-	printk("%s: ecmd header 0x%x\n", __func__, ecmd->header);\
-	for (i = 0; i < ecmd->count; i++) {\
-		printk("%s: ecmd data[%d] 0x%x\n", __func__, i, ecmd->data[i]);\
+	struct ert_packet *packet = (struct ert_packet *)ecmd;\
+	printk("%s: ecmd header 0x%x\n", __func__, packet->header);\
+	for (i = 0; i < packet->count; i++) {\
+		printk("%s: ecmd data[%d] 0x%x\n", __func__, i, packet->data[i]);\
 	}\
 } while(0)
+#else
+#define print_ecmd_info(ecmd)
+#endif
 
 void xocl_describe(const struct drm_xocl_bo *xobj);
 
@@ -368,9 +373,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	}
 	xcmd->cb.free = kds_free_command;
 
-#if 0
 	print_ecmd_info(ecmd);
-#endif
 
 	/* xcmd->type is the only thing determine who to handle this command.
 	 * If ERT is supported, use ERT as default handler.
@@ -718,7 +721,126 @@ done:
 	return ret;
 }
 
-int xocl_kds_update(struct xocl_dev *xdev)
+static void xocl_cfg_notify(struct kds_command *xcmd, int status)
+{
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
+
+	if (status == KDS_COMPLETED)
+		ecmd->state = ERT_CMD_STATE_COMPLETED;
+	else if (status == KDS_ERROR)
+		ecmd->state = ERT_CMD_STATE_ERROR;
+	else if (status == KDS_TIMEOUT)
+		ecmd->state = ERT_CMD_STATE_TIMEOUT;
+	else if (status == KDS_ABORT)
+		ecmd->state = ERT_CMD_STATE_ABORT;
+
+	complete(&kds->comp);
+}
+
+/* Construct ERT config command and wait for completion */
+static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
+{
+	struct kds_client *client;
+	struct ert_configure_cmd *ecmd;
+	struct kds_command *xcmd;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	pid_t pid = pid_nr(get_pid(task_pid(current)));
+	int num_cu = kds_get_cu_total(&XDEV(xdev)->kds);
+	u32 base_addr = 0xFFFFFFFF;
+	int ret = 0;
+	int i;
+
+	/* TODO: Use hard code size is not ideal. Let's refine this later */
+	ecmd = vmalloc(0x1000);
+	if (!ecmd)
+		return -ENOMEM;
+
+	client = kds_get_client(kds, pid);
+	BUG_ON(!client);
+
+	/* Fill header */
+	ecmd->state = ERT_CMD_STATE_NEW;
+	ecmd->opcode = ERT_CONFIGURE;
+	ecmd->type = ERT_CTRL;
+	ecmd->count = 5 + num_cu;
+
+	ecmd->num_cus	= num_cu;
+	ecmd->cu_shift	= 16;
+	ecmd->slot_size	= cfg.slot_size;
+	ecmd->ert	= cfg.ert;
+	ecmd->polling	= cfg.polling;
+	ecmd->cu_dma	= cfg.cu_dma;
+	ecmd->cu_isr	= cfg.cu_isr;
+	ecmd->cq_int	= cfg.cq_int;
+	ecmd->dataflow	= cfg.dataflow;
+	ecmd->rw_shared	= cfg.rw_shared;
+
+	/* Fill CU address */
+	for (i = 0; i < num_cu; i++) {
+		u32 cu_addr;
+		u32 proto;
+
+		cu_addr = kds_get_cu_addr(kds, i);
+		if (base_addr > cu_addr)
+			base_addr = cu_addr;
+
+		/* encode handshaking control in lower unused address bits [2-0] */
+		proto = kds_get_cu_proto(kds, i);
+		cu_addr |= proto;
+		ecmd->data[i] = cu_addr;
+	}
+	ecmd->cu_base_addr = base_addr;
+
+	xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
+	if (!xcmd) {
+		userpf_err(xdev, "Failed to alloc xcmd\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+	xcmd->cb.free = kds_free_command;
+
+	print_ecmd_info(ecmd);
+
+	xcmd->type = KDS_ERT;
+	cfg_ecmd2xcmd(ecmd, xcmd);
+	xcmd->cb.notify_host = xocl_cfg_notify;
+	xcmd->priv = kds;
+
+	ret = kds_add_command(kds, xcmd);
+	if (ret)
+		goto out;
+
+	ret = wait_for_completion_interruptible(&kds->comp);
+	if (ret == -ERESTARTSYS && !kds->ert_disable) {
+		int bad_state;
+
+		kds->ert->abort(kds->ert, client, -1);
+		do {
+			userpf_info(xdev, "ERT cfg command not finished");
+			msleep(500);
+		} while (ecmd->state < ERT_CMD_STATE_COMPLETED);
+		bad_state = kds->ert->abort_done(kds->ert, client, DEFAULT_INDEX);
+		if (bad_state)
+			kds->bad_state = 1;
+	}
+
+	if (ecmd->state == ERT_CMD_STATE_COMPLETED) {
+		userpf_info(xdev, "Cfg command completed");
+		ret = 0;
+	} else if (ecmd->state > ERT_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Cfg command state %d", ecmd->state);
+		ret = -EINVAL;
+	}
+out:
+	vfree(ecmd);
+	return ret;
+}
+
+/* The xocl_kds_update function sould be called after xclbin is
+ * downloaded. Do not use this function in other place.
+ */
+int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
 	int ret = 0;
 
@@ -738,10 +860,24 @@ int xocl_kds_update(struct xocl_dev *xdev)
 	xocl_kds_fa_clear(xdev);
 
 	ret = xocl_detect_fa_plram(xdev);
-	if (ret)
-		return ret;
+	if (ret) {
+		userpf_info(xdev, "Detect FA plram failed, ret %d", ret);
+		goto out;
+	}
 
 	/* By default, use ERT */
 	XDEV(xdev)->kds.cu_intr = 0;
-	return kds_cfg_update(&XDEV(xdev)->kds);
+	ret = kds_cfg_update(&XDEV(xdev)->kds);
+	if (ret) {
+		userpf_info(xdev, "KDS configure update failed, ret %d", ret);
+		goto out;
+	}
+
+	/* Construct and send configure command */
+	ret = xocl_config_ert(xdev, cfg);
+	if (ret)
+		userpf_info(xdev, "Config command failed, ret %d", ret);
+
+out:
+	return ret;
 }

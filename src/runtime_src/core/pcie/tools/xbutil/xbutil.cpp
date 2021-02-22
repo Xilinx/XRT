@@ -1768,6 +1768,10 @@ int xcldev::xclReset(int argc, char *argv[])
 
     std::string vbnv, errmsg;
     auto dev = pcidev::get_dev(index);
+    if (!dev->is_ready) {
+        std::cerr << "device [" << index << "] is not ready, reset command exiting" << std::endl;
+        return -EINVAL;
+    }
     dev->sysfs_get( "rom", "VBNV", errmsg, vbnv );
     if (!errmsg.empty()) {
         std::cerr << errmsg << std::endl;

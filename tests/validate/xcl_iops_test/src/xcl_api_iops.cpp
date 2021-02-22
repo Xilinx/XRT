@@ -172,7 +172,7 @@ void runTestThread(arg_t &arg)
     if (arg.dev_str.find(":") == std::string::npos)
         handle = xclOpen(std::stoi(arg.dev_str), "", XCL_QUIET);
     else
-        handle = xclOpenByBDF(arg.dev_str.c_str(), "", XCL_QUIET);
+        handle = xclOpenByBDF(arg.dev_str.c_str());
 
     if (!handle)
         throw std::runtime_error("Could not open device");

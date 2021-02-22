@@ -52,6 +52,22 @@ public:
   get_devices(boost::property_tree::ptree&) const {}
 
   /**
+   * get_device_id() - Convert string to device index
+   *
+   * Default implementation converts argument string to device index.
+   *
+   * Implement in specialized classes for conversion of special
+   * device string formats, e.g. BDF.
+   *
+   * The native APIs have a xrt::device constructor that takes
+   * a string.  The implementation of that constructor relies
+   * on this function converting the string to a device index.
+   */
+  XRT_CORE_COMMON_EXPORT
+  virtual device::id_type
+  get_device_id(const std::string& str) const;
+
+  /**
    */
   virtual std::pair<device::id_type, device::id_type>
   get_total_devices(bool is_user = true) const = 0;
@@ -146,6 +162,21 @@ get_devices(boost::property_tree::ptree& pt);
 XRT_CORE_COMMON_EXPORT
 std::pair<uint64_t, uint64_t>
 get_total_devices(bool is_user);
+
+/**
+ * get_device_id() - Convert str to device index
+ *
+ * This function supports string formatted as BDF for systems where
+ * BDF is used.  By default the function converts the argument string
+ * to a number.
+ *
+ * The native APIs have a xrt::device constructor that takes a string
+ * argument.  The implementation of that constructor relies on this
+ * function converting a bdf to a device index.
+ */
+XRT_CORE_COMMON_EXPORT
+device::id_type
+get_device_id(const std::string& str);
 
 /**
  * get_userpf_device() - Open and create device specified by index
