@@ -521,8 +521,7 @@ load_xclbin(MemoryBuffer &buffer) const {
   int ret = 0;
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = file_open("", O_RDWR);
-    auto x = const_cast<char*>(buffer.data());
-    xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>(x) };
+    xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer.data()) ) };
     ret = pcidev::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
   } catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), "Failed to open device");
