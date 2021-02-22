@@ -513,9 +513,11 @@ close(int dev_handle) const
 
 void
 device_linux::
-load_xclbin(MemoryBuffer &buffer) const {
+load_xclbin(const MemoryBuffer &buffer) const {
   //resolves to xclbin2
   const char xclbin_magic_str[] = { 0x78, 0x63, 0x6c, 0x62, 0x69, 0x6e, 0x32 };
+  if (buffer.size() < sizeof(xclbin_magic_str))
+    throw xrt_core::error("Xclbin is smaller than expected");
   if (std::memcmp(buffer.data(), xclbin_magic_str, sizeof(xclbin_magic_str)) != 0)
     throw xrt_core::error(boost::str(boost::format("Bad binary version '%s'") % xclbin_magic_str));
   int ret = 0;
