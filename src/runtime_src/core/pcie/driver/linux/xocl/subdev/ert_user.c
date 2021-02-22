@@ -345,7 +345,7 @@ static uint32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cf
 		ERTUSER_ERR(ert_user, "%s ERT config gpio not found\n", __func__);
 		return 0;
 	}
-
+	mutex_lock(&ert_user->lock);
 	val = ioread32(ert_user->cfg_gpio);
 
 	switch (type) {
@@ -384,7 +384,7 @@ static uint32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cf
 	default:
 		break;
 	}
-
+	mutex_unlock(&ert_user->lock);
 	return ret;
 }
 
