@@ -52,7 +52,7 @@ public:
   virtual int  open(const std::string& subdev, int flag) const;
   virtual void close(int dev_handle) const;
   virtual void reset(const char*, const char*, const char*) const;
-  virtual void load_xclbin(std::vector<char> &buffer) const;
+  virtual void load_xclbin(MemoryBuffer &buffer) const;
 
 private:
   // Private look up function for concrete query::request
