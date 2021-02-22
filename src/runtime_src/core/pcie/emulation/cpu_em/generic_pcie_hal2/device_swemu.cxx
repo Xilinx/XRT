@@ -65,6 +65,9 @@ emplace_func0_request()
 static void
 initialize_query_table()
 {
+  emplace_func0_request<query::clock_freqs_mhz, xclemulation::query::device_info>();
+  emplace_func0_request<query::kds_numcdmas, xclemulation::query::device_info>();
+  emplace_func0_request<query::pcie_bdf, xclemulation::query::device_info>();
   emplace_func0_request<query::m2m, device_query>();
   emplace_func0_request<query::nodma, device_query>();
   emplace_func0_request<query::rom_vbnv, xclemulation::query::device_info>();

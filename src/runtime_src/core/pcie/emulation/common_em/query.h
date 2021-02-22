@@ -60,6 +60,16 @@ struct device_info
     auto& info = (*it).second;
 
     switch (key) {
+    case key_type::clock_freqs_mhz: {
+      xrt_core::query::clock_freqs_mhz::result_type freqs;
+      std::transform(std::begin(info.mOCLFrequency), std::end(info.mOCLFrequency), std::back_inserter(freqs),
+                     [](auto val) { return std::to_string(val); });
+      return freqs;
+    }
+    case key_type::kds_numcdmas:
+      return static_cast<xrt_core::query::kds_numcdmas::result_type>(info.mNumCDMA);
+    case key_type::pcie_bdf:
+      return xrt_core::query::pcie_bdf::result_type{0,device->get_device_id(),0};
     case key_type::rom_vbnv:
       return std::string(info.mName, strnlen(info.mName, sizeof(info.mName)));
     default:
