@@ -200,6 +200,7 @@ enum class key_type
   aie_metadata,
   graph_status,
   mailbox_metrics,
+  clock_timestamp,
   noop
 
 };
@@ -2063,7 +2064,15 @@ struct shared_host_mem : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
 
+struct clock_timestamp : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::clock_timestamp;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct mailbox_metrics : request
