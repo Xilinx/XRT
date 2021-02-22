@@ -22,8 +22,6 @@
 #include "xrt_cu.h"
 #include "kds_stat.h"
 
-#define PRE_ALLOC 0
-
 #define EV_ABORT	0x1
 
 
@@ -62,12 +60,6 @@ struct kds_client {
 	struct list_head	  ev_entry;
 	int			  ev_type;
 
-#if PRE_ALLOC
-	u32			  max_xcmd;
-	u32			  xcmd_idx;
-	void			 *xcmds;
-	void			 *infos;
-#endif
 	/*
 	 * Below are modified when the other thread is completing commands.
 	 * In order to prevent false sharing, they need to be in different

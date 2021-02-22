@@ -226,12 +226,10 @@ struct xrt_cu {
 	 * Pending Q is used in thread that is submitting CU cmds.
 	 * Other Qs are used in thread that is completing them.
 	 * In order to prevent false sharing, they need to be in different
-	 * cache lines. Hence we add a "padding" in between (assuming 128-byte
-	 * is big enough for most CPU architectures).
+	 * cache lines.
 	 */
-	u64			  padding[16];
 	/* run queue */
-	struct list_head	  rq;
+	struct list_head	  rq ____cacheline_aligned_in_smp;
 	u32			  num_rq;
 	/* submitted queue */
 	struct list_head	  sq;

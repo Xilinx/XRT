@@ -3000,6 +3000,9 @@ static int icap_get_xclbin_metadata(struct platform_device *pdev,
 	case XCLBIN_UUID:
 		*buf = &icap->icap_bitstream_uuid;
 		break;
+	case SOFT_KERNEL:
+		*buf = icap->ps_kernel;
+		break;
 	default:
 		break;
 	}

@@ -75,7 +75,6 @@ struct kds_cu_mgmt {
 	u32			  cu_intr[MAX_CUS];
 	u32			  cu_refs[MAX_CUS];
 	struct cu_stats __percpu *cu_stats;
-	int			  configured;
 };
 
 #define cu_stat_read(cu_mgmt, field) \
@@ -95,8 +94,6 @@ struct kds_ert {
 	void (* submit)(struct kds_ert *ert, struct kds_command *xcmd);
 	void (* abort)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
 	bool (* abort_done)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
-	struct mutex		  lock;
-	int			  configured;
 };
 
 struct plram_info {
@@ -159,6 +156,8 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info);
 int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd);
+/* Use this function in xclbin download flow for config commands */
+int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd);
 
 struct kds_command *kds_alloc_command(struct kds_client *client, u32 size);
 

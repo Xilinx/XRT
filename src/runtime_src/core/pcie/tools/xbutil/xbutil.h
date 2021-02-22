@@ -547,7 +547,7 @@ public:
 
             // Check if we have 5 tokens: cu_index, name, addr, status, usage
             if (std::distance(tokens.begin(), tokens.end()) != 5) {
-                std::cout << "WARNING: 'kds_scustat_raw' has no expect tokens, stop parsing.\n";
+                std::cout << "WARNING: 'kds_custat_raw' has no expect tokens, stop parsing.\n";
                 break;
             }
 
