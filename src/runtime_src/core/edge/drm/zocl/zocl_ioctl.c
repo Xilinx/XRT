@@ -63,9 +63,11 @@ zocl_ctx_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	int ret = 0;
 
 	if (kds_mode == 1) {
-		mutex_lock(&zdev->zdev_xclbin_lock);
+		/* Do not acquire zdev_xclbin_lock like zocl_xclbin_ctx().
+		 * New KDS would lock bitstream when open the fist context.
+		 * The lock bitstream would exclude read_axlf_ioctl().
+		 */
 		ret = zocl_context_ioctl(zdev, data, filp);
-		mutex_unlock(&zdev->zdev_xclbin_lock);
 		return ret;
 	}
 
