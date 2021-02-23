@@ -4903,7 +4903,6 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 			sz += sprintf(tembuf+sz, "CU[@0x0] : %d status : %d\n",
 				      ert_cu_usage(xert, idx),
 				      cu_status);
-			}
 		}
 	}
 
