@@ -24,6 +24,7 @@
 #include <fstream>
 #include <functional>
 #include <memory>
+#include <atomic>
 
 #include "xdp/profile/database/events/vtf_event.h"
 
@@ -86,7 +87,7 @@ namespace xdp {
 
     // A unique event id for every event added to the database.
     //  It starts with 1 so we can use 0 as an indicator of NULL
-    uint64_t eventId ;
+    std::atomic<uint64_t> eventId ;
 
     // Data structure for matching start events with end events, 
     //  as in API calls.  This will match a function ID to event IDs.
@@ -119,13 +120,18 @@ namespace xdp {
 
     // Since events can be logged from multiple threads simultaneously,
     //  we have to maintain exclusivity
-    std::mutex dbLock ;
-    std::mutex deviceEventsLock ;
-    std::mutex hostEventsLock ;
     std::mutex aieLock ;
     std::mutex powerLock ;
     std::mutex nocLock ;
     std::mutex ctrLock ;
+
+    // Event loggers and filters
+    std::mutex deviceEventsLock ;
+    std::mutex hostEventsLock ;
+
+    // Trace parser states and other metadata data structures
+    std::mutex deviceLock ;
+    std::mutex hostLock ;
 
     //std::map<uint64_t, uint64_t> traceIDMap;
 
