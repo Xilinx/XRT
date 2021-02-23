@@ -501,7 +501,6 @@ public:
             uint32_t status = parseComputeUnitStat(custat, i, cu_stat::stat);
             uint32_t usage = parseComputeUnitStat(custat, i, cu_stat::usage);
             std::string name = psKernels.at(psk_inst).pkd_sym_name;
-            //name += ":scu_" + std::to_string(i - computeUnits.size());
             name += ":scu_" + std::to_string(num_scu);
 
             boost::property_tree::ptree ptCu;
