@@ -875,7 +875,10 @@ done:
  *   4) wait for hbm calibration done
  *
  * Note:
- * Violate this flow will cause random firewall trip.
+ * 1) Violate this flow will cause random firewall trip.
+ * 2) Flat shell: gating logic is not available on these shells.
+ *    - So, do not call axigate freeze/free apis for these shells.
+ *    - Updating clock freqs without calling axigate apis.
  */
 static int clock_ocl_freqscaling(struct clock *clock, bool force, int level,
                                  bool freeze)
