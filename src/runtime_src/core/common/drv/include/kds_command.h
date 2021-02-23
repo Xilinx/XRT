@@ -24,6 +24,7 @@ enum kds_opcode {
 	OP_START,
 	OP_CONFIG_SK, /* TODO: There is a plan to remove softkernel config and unconfig command */
 	OP_START_SK,
+	OP_GET_STAT,
 };
 
 enum kds_status {
@@ -66,6 +67,7 @@ struct kds_command {
 	u32			 num_mask;
 	u32			 payload_type;
 	u64			 start;
+	void			*priv;
 	struct kds_cmd_ops	 cb;
 	/* execbuf is used to update the header
 	 * of execbuf when notifying host
