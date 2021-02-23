@@ -26,6 +26,8 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
+
 #include "xclbin_int.h" // Non public xclbin APIs
 
 #include <map>
@@ -66,6 +68,50 @@ send_exception_message(const char* msg)
 {
   xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
 }
+
+// Helper functions for extracting xrt_core::device query request values
+namespace query {
+
+// Return the raw value of a query_request.  Compile type validation
+// that the query request result type matches the xrt::info::device
+// return type
+template <xrt::info::device param, typename QueryRequestType>
+boost::any
+raw(const xrt_core::device* device)
+{
+  static_assert(std::is_same<
+                typename QueryRequestType::result_type,
+                typename xrt::info::param_traits<xrt::info::device, param>::return_type
+                >::value, "query type mismatch");
+  return device->query<QueryRequestType>();
+}
+
+// Return the converted query request.  Conversion is per converter
+// argument Compile type validation that the query request result type
+// matches the xrt::info::device return type
+template <xrt::info::device param, typename QueryRequestType, typename Converter>
+boost::any
+to_value(const xrt_core::device* device, Converter conv)
+{
+  auto val = conv(xrt_core::device_query<QueryRequestType>(device));
+  static_assert(std::is_same<
+                decltype(val),
+                typename xrt::info::param_traits<xrt::info::device, param>::return_type
+                >::value, "query type mismatch");
+  return val;
+}
+
+// Return the query request as a std::string using the
+// query_request::to_string converter. Compile time asserts that
+// xrt::info::device param return type is std::string
+template <xrt::info::device param, typename QueryRequestType>
+boost::any
+to_string(const xrt_core::device* device)
+{
+  return to_value<param, QueryRequestType>(device, [](const auto& q) { return QueryRequestType::to_string(q); });
+}
+
+} // query
 
 } // unnamed namespace
 
@@ -152,6 +198,40 @@ device::
 get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
 {
   return handle->get_axlf_section_or_error(section, uuid);
+}
+
+boost::any
+device::
+get_info(info::device param) const
+{
+  switch (param) {
+  case info::device::name :                   // std::string
+    return query::raw<info::device::name, xrt_core::query::rom_vbnv>(handle.get());
+  case info::device::bdf :                    // std::string
+    return query::to_string<info::device::bdf, xrt_core::query::pcie_bdf>(handle.get());
+  case info::device::kdma :                   // uint32_t
+    return query::raw<info::device::kdma, xrt_core::query::kds_numcdmas>(handle.get());
+  case info::device::max_clock_frequency_mhz: // unsigned long
+    return query::to_value<info::device::max_clock_frequency_mhz, xrt_core::query::clock_freqs_mhz>
+      (handle.get(), [](const auto& freqs) {
+        unsigned long max = 0;
+        for (const auto& val : freqs) { max = std::max(max, std::stoul(val)); }
+        return max;
+      });
+  case info::device::m2m :                    // bool
+    try {
+      return query::to_value<info::device::m2m, xrt_core::query::m2m>
+        (handle.get(), [](const auto& val) { return bool(val); });
+    }
+    catch (const std::exception&) {
+      return false;
+    }
+  case info::device::nodma :                  // bool
+    return query::to_value<info::device::nodma, xrt_core::query::nodma>
+      (handle.get(), [](const auto& val) { return bool(val); });
+  }
+
+  throw std::runtime_error("internal error: unreachable");
 }
 
 } // xrt
