@@ -1196,25 +1196,13 @@ static long axlf_set_freqscaling(struct icap *icap)
 	    icap->xclbin_clock_freq_topology, 0);
 }
 
-static int icap_download_bitstream(struct icap *icap, struct axlf *axlf)
+static int icap_download_bitstream(struct icap *icap, const struct axlf *axlf)
 {
 	long err = 0;
 
 	icap_freeze_axi_gate(icap);
-	/* xclbin generated for the flat shell contains MCS files which
-	 * includes the accelerator these MCS files should have been already
-	 * flashed into the device using xbmgmt tool we dont need to reprogram
-	 * the xclbin for the FLAT shells.
-	 * TODO: Currently , There is no way to check whether the programmed
-	 * xclbin matches with this xclbin or not
-	 */
-	if (axlf->m_header.m_mode != XCLBIN_FLAT) {
-		err = icap_download_hw(icap, axlf);
-	} else {
-		uuid_copy(&icap->icap_bitstream_uuid, &axlf->m_header.uuid);
-		ICAP_INFO(icap, "xclbin is generated for flat shell, dont need to program the bitstream ");
-	}
 
+	err = icap_download_hw(icap, axlf);
 	/*
 	 * Perform frequency scaling since PR download can silenty overwrite
 	 * MMCM settings in static region changing the clock frequencies
@@ -1223,7 +1211,8 @@ static int icap_download_bitstream(struct icap *icap, struct axlf *axlf)
 	 * changed.
 	 */
 	if (!err) {
-		err = xocl_clock_freq_rescaling(xocl_get_xdev(icap->icap_pdev), true);
+		err = xocl_clock_freq_rescaling(xocl_get_xdev(icap->icap_pdev), true,
+										true);
 		err = (err == -ENODEV) ? 0 : err;
 	}
 
@@ -2157,25 +2146,37 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool s
 	if (retention) {
 		err = icap_reset_ddr_gate_pin(icap);
 		if (err == -ENODEV)
-			ICAP_INFO(icap, "No ddr gate pin");
+			ICAP_INFO(icap, "No ddr gate pin, err: %d", err);
 		else if (err) {
-			ICAP_ERR(icap, "not able to reset ddr gate pin");
+			ICAP_ERR(icap, "not able to reset ddr gate pin, err: %d", err);
 			goto out;
 		}
 	}
 
-	err = icap_download_bitstream(icap, xclbin);
-	if (err) {
-		ICAP_ERR(icap, "not able to download bitstream, err: %d", err);
-		goto out;
+	/* xclbin generated for the flat shell contains MCS files which
+	 * includes the accelerator these MCS files should have been already
+	 * flashed into the device using xbmgmt tool we dont need to reprogram
+	 * the xclbin for the FLAT shells.
+	 * TODO: Currently , There is no way to check whether the programmed
+	 * xclbin matches with this xclbin or not
+	 */
+	if (xclbin->m_header.m_mode != XCLBIN_FLAT) {
+		err = icap_download_bitstream(icap, xclbin);
+		if (err)
+			goto out;
+	} else {
+		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
+		ICAP_INFO(icap, "xclbin is generated for flat shell, dont need to program the bitstream ");
+		err = xocl_clock_freq_rescaling(xocl_get_xdev(icap->icap_pdev), true,
+										false);
+		if (err)
+			ICAP_ERR(icap, "not able to configure clocks, err: %d", err);
 	}
 
 	/* calibrate hbm and ddr should be performed when resources are ready */
 	err = icap_create_post_download_subdevs(icap->icap_pdev, xclbin);
-	if (err) {
-		ICAP_ERR(icap, "hbm & ddr calib failed, err: %d", err);
+	if (err)
 		goto out;
-	}
 
 	/*
 	 * Perform the following exact sequence to avoid firewall trip.
