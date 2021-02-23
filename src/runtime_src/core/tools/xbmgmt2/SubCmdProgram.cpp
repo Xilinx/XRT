@@ -530,6 +530,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   std::vector<std::string> device;
   std::string plp = "";
   std::string update = "";
+  std::string xclbin = "";
   std::string flashType = "";
   std::vector<std::string> image;
   bool revertToGolden = false;
@@ -545,6 +546,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                          "  ALL   - All images will be updated"
                                                                          "  FLASH - Flash image\n"
                                                                          "  SC    - Satellite controller"*/)
+    ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
+                                                                      "  Name (and path) of the xclbin.")
     ("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Control (MSP432) will not be reverted for a golden image does not exist.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
@@ -729,6 +732,33 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     }
     throw xrt_core::error("uuid does not match BLP");
   }
+
+  // -- process "user" option ---------------------------------------
+  if(!xclbin.empty()) {
+    XBU::verbose(boost::str(boost::format("  xclbin: %s") % xclbin));
+    //only 1 card and name
+    if(deviceCollection.size() > 1)
+      throw xrt_core::error("Please specify a single device");
+    auto dev = deviceCollection.front();
+
+    std::ifstream stream(xclbin, std::ios::binary);
+    if (!stream)
+      throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % xclbin));
+
+    stream.seekg(0,stream.end);
+    ssize_t size = stream.tellg();
+    stream.seekg(0,stream.beg);
+
+    std::vector<char> xclbin_buffer(size);
+    stream.read(xclbin_buffer.data(), size);
+    
+    auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
+    std::cout << "Downloading xclbin on device [" << bdf << "]..." << std::endl;
+    dev->load_xclbin(xclbin_buffer);
+    std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;
+
+    return;
+}
 
   std::cout << "\nERROR: Missing flash operation.  No action taken.\n\n";
   printHelp(commonOptions, hiddenOptions);

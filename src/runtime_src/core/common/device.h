@@ -45,6 +45,7 @@
 namespace xrt_core {
 
 using device_collection = std::vector<std::shared_ptr<xrt_core::device>>;
+using MemoryBuffer = std::vector<char>;
 
 /**
  * class device - interface to support OS agnositic operations on a device
@@ -291,6 +292,8 @@ public:
   virtual void write(uint64_t, const void*, uint64_t) const {}
 
   virtual void reset(query::reset_type&) const {}
+
+  virtual void load_xclbin(const MemoryBuffer &) const{}
 
   /**
    * open() - opens a device with an fd which can be used for non pcie read/write
