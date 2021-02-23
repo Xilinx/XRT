@@ -36,12 +36,12 @@
 #include "core/pcie/common/dmatest.h"
 #include "core/pcie/common/memaccess.h"
 #include "core/pcie/common/dd.h"
-#include "core/pcie/driver/linux/include/ps_kernel.h"
 #include "core/common/utils.h"
 #include "core/common/time.h"
 #include "core/common/sensor.h"
 #include "core/pcie/linux/scan.h"
 #include "core/pcie/linux/shim.h"
+#include "ps_kernel.h"
 #include "xclbin.h"
 #include "core/common/xrt_profiling.h"
 #include <version.h>
@@ -384,7 +384,7 @@ public:
         if (buf.empty())
             return 0;
 
-        const ps_kernel_node *map = (ps_kernel_node *)buf.data();
+        const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
         if(map->pkn_count < 0)
             return -EINVAL;
 
