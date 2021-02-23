@@ -419,6 +419,11 @@ initialize_query_table()
   emplace_sysfs_get<query::cpu_affinity>                     ("", "local_cpulist");
   emplace_sysfs_get<query::mailbox_metrics>                  ("mailbox", "recv_metrics");
   emplace_sysfs_get<query::clock_timestamp>                  ("ert_user", "clock_timestamp");
+  emplace_sysfs_getput<query::ert_sleep>                     ("ert_user", "mb_sleep");
+  emplace_sysfs_get<query::ert_cq_read>                      ("ert_user", "cq_read_cnt");
+  emplace_sysfs_get<query::ert_cq_write>                     ("ert_user", "cq_write_cnt");
+  emplace_sysfs_get<query::ert_cu_read>                      ("ert_user", "cu_read_cnt");
+  emplace_sysfs_get<query::ert_cu_write>                     ("ert_user", "cu_write_cnt");
 
   emplace_func0_request<query::pcie_bdf,                     bdf>();
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();

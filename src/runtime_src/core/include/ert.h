@@ -370,9 +370,6 @@ struct ert_validate_cmd {
   uint32_t cq_write_single;
   uint32_t cu_read_single;
   uint32_t cu_write_single;
-  uint32_t memcpy_128;
-  uint32_t memcpy_512;
-  uint32_t irq_latency;
 };
 
 /**
