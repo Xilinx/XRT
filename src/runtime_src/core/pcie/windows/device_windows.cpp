@@ -1207,4 +1207,8 @@ close(int dev_handle) const
 {
 }
 
+void
+device_windows::
+load_xclbin(const MemoryBuffer &buffer) const {}
+
 } // xrt_core
