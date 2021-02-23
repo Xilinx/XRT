@@ -2731,8 +2731,12 @@ static int icap_cache_ps_kernel_axlf_section(const struct axlf *xclbin,
 		    (struct soft_kernel *)&blob[header->m_sectionOffset];
 		char *begin = (char *)sp;
 
+                /* save mpo_name for use with xbutil query cmd
+                 * mpo_name is unique to a xclbin
+                 * symbol name is for use inside skd
+                 */
 		strncpy(pnode->pkn_data[idx].pkd_sym_name,
-		    begin + sp->mpo_symbol_name,
+		    begin + sp->mpo_name,
 		    PS_KERNEL_NAME_LENGTH - 1);
 		pnode->pkn_data[idx].pkd_num_instances =
 		    sp->m_num_instances;
