@@ -1211,8 +1211,7 @@ static int icap_download_bitstream(struct icap *icap, const struct axlf *axlf)
 	 * changed.
 	 */
 	if (!err) {
-		err = xocl_clock_freq_rescaling(xocl_get_xdev(icap->icap_pdev), true,
-										true);
+		err = xocl_clock_freq_rescaling(xocl_get_xdev(icap->icap_pdev), true, true);
 		err = (err == -ENODEV) ? 0 : err;
 	}
 
@@ -2167,8 +2166,7 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool s
 	} else {
 		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
 		ICAP_INFO(icap, "xclbin is generated for flat shell, dont need to program the bitstream ");
-		err = xocl_clock_freq_rescaling(xocl_get_xdev(icap->icap_pdev), true,
-										false);
+		err = xocl_clock_freq_rescaling(xocl_get_xdev(icap->icap_pdev), true, false);
 		if (err)
 			ICAP_ERR(icap, "not able to configure clocks, err: %d", err);
 	}
