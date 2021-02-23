@@ -1009,13 +1009,13 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
   try {
    ert_cfg_gpio = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
   } catch(...) {
-      logger(_ptTest, "Warning", "ERT validate is not available");
+      logger(_ptTest, "Details", "ERT validate is not available");
       _ptTest.put("status", "skip");
       return;
   }
 
   if (ert_cfg_gpio < 0) {
-      logger(_ptTest, "Warning", "This platform does not support ERT validate feature");
+      logger(_ptTest, "Details", "This platform does not support ERT validate feature");
       _ptTest.put("status", "skip");
       return;
   }
