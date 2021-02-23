@@ -146,7 +146,9 @@ struct xocl_ert_user {
 	uint32_t 		ert_dmsg;
 	uint32_t		echo;
 	uint32_t		intr;
-	uint32_t		clock_timestamp;
+
+	/* ert validate result cache*/
+	struct ert_validate_cmd ert_valid;
 };
 
 static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd);
@@ -157,7 +159,7 @@ static ssize_t clock_timestamp_show(struct device *dev,
 {
 	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
 
-	return sprintf(buf, "%u\n", ert_user->clock_timestamp);
+	return sprintf(buf, "%u\n", ert_user->ert_valid.timestamp);
 }
 
 static DEVICE_ATTR_RO(clock_timestamp);
@@ -233,12 +235,98 @@ static ssize_t ert_intr_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(ert_intr);
 
+static ssize_t mb_sleep_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	u32 go_sleep;
+
+	if (kstrtou32(buf, 10, &go_sleep) == -EINVAL || go_sleep > 2) {
+		xocl_err(&to_platform_device(dev)->dev,
+			"usage: echo 0 or 1 > mb_sleep");
+		return -EINVAL;
+	}
+
+	if (go_sleep)
+		ert_user_gpio_cfg(pdev, MB_SLEEP);
+	else
+		ert_user_gpio_cfg(pdev, MB_WAKEUP);
+
+	return count;
+}
+
+static ssize_t mb_sleep_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+
+	return sprintf(buf, "%d", ert_user_gpio_cfg(pdev, MB_STATUS));
+}
+
+static DEVICE_ATTR_RW(mb_sleep);
+
+static ssize_t cq_read_cnt_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", ert_user->ert_valid.cq_read_single);
+}
+
+static DEVICE_ATTR_RO(cq_read_cnt);
+
+static ssize_t cq_write_cnt_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", ert_user->ert_valid.cq_write_single);
+}
+
+static DEVICE_ATTR_RO(cq_write_cnt);
+
+static ssize_t cu_read_cnt_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", ert_user->ert_valid.cu_read_single);
+}
+
+static DEVICE_ATTR_RO(cu_read_cnt);
+
+static ssize_t cu_write_cnt_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", ert_user->ert_valid.cu_write_single);
+}
+
+static DEVICE_ATTR_RO(cu_write_cnt);
+
+static ssize_t memcpy_cnt_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", ert_user->ert_valid.memcpy_128);
+}
+
+static DEVICE_ATTR_RO(memcpy_cnt);
+
 static struct attribute *ert_user_attrs[] = {
 	&dev_attr_clock_timestamp.attr,
 	&dev_attr_ert_dmsg.attr,
 	&dev_attr_snap_shot.attr,
 	&dev_attr_ert_echo.attr,
 	&dev_attr_ert_intr.attr,
+	&dev_attr_mb_sleep.attr,
+	&dev_attr_cq_read_cnt.attr,
+	&dev_attr_cq_write_cnt.attr,
+	&dev_attr_cu_read_cnt.attr,
+	&dev_attr_cu_write_cnt.attr,
+	&dev_attr_memcpy_cnt.attr,
 	NULL,
 };
 
@@ -257,7 +345,7 @@ static uint32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cf
 		ERTUSER_ERR(ert_user, "%s ERT config gpio not found\n", __func__);
 		return 0;
 	}
-
+	mutex_lock(&ert_user->lock);
 	val = ioread32(ert_user->cfg_gpio);
 
 	switch (type) {
@@ -296,7 +384,7 @@ static uint32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cf
 	default:
 		break;
 	}
-
+	mutex_unlock(&ert_user->lock);
 	return ret;
 }
 
@@ -382,7 +470,7 @@ done:
 static inline bool ert_special_cmd(struct ert_user_command *ecmd)
 {
 	return cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK 
-		|| cmd_opcode(ecmd) == OP_CLK_CALIB;
+		|| cmd_opcode(ecmd) == OP_CLK_CALIB || cmd_opcode(ecmd) == OP_VALIDATE;
 }
 /*
  * release_slot_idx() - Release specified slot idx
@@ -420,15 +508,13 @@ ert_release_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 static void
 ert_post_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 {
-	struct ert_mb_validate_cmd cmd = {0}; 
-
 	if (likely(!ert_special_cmd(ecmd)))
 		return;
 
-	if (cmd_opcode(ecmd) == OP_CLK_CALIB) {
-		memcpy(&cmd, ert_user->cq_base, sizeof(struct ert_mb_validate_cmd));
-		ert_user->clock_timestamp = cmd.timestamp;
-	}
+	if (cmd_opcode(ecmd) == OP_CLK_CALIB || cmd_opcode(ecmd) == OP_VALIDATE)
+		memcpy(&ert_user->ert_valid, ert_user->cq_base, sizeof(struct ert_validate_cmd));
+
+	return;
 }
 
 /**

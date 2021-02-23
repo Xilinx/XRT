@@ -639,7 +639,7 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
     return false;
   }
 
-  auto ecmd = reinterpret_cast<ert_mb_validate_cmd*>(boptr);
+  auto ecmd = reinterpret_cast<ert_validate_cmd*>(boptr);
 
   std::memset(ecmd, 0, bo_size);
   ecmd->opcode = opcode;

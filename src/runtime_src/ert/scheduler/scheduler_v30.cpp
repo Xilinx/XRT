@@ -284,6 +284,9 @@ static bitset_type cu_ready;
 static bitset_type cu_done;
 // Bitmask for interrupt enabled CUs.  (0) no interrupt (1) enabled
 static bitset_type cu_interrupt_mask;
+
+static value_type memcpy_test_dummy[128];
+
 #ifndef ERT_HW_EMU
 /**
  * Utility to read a 32 bit value from any axi-lite peripheral
@@ -1022,6 +1025,63 @@ abort_mb(size_type slot_idx)
   return true;
 }
 
+static inline void 
+repetition_write(addr_type addr, value_type loop_cnt)
+{
+  while (loop_cnt--)
+    write_reg(addr, 0x0);
+}
+
+static inline void 
+repetition_read(addr_type addr, value_type loop_cnt)
+{
+  while (loop_cnt--)
+    read_reg(addr);
+}
+
+static bool
+validate_mb(value_type slot_idx)
+{
+  auto& slot = command_slots[slot_idx];
+  value_type start_t, end_t, cnt = 1024;
+  void *addr_ptr = (void *)(uintptr_t)(slot.slot_addr);
+
+  start_t = read_clk_counter();
+  memcpy(memcpy_test_dummy, addr_ptr, 128);
+  end_t = read_clk_counter();
+  mb_bist.memcpy_128 =  end_t-start_t;
+
+  start_t = read_clk_counter();
+  memcpy(memcpy_test_dummy, addr_ptr, 512);
+  end_t = read_clk_counter();
+  mb_bist.memcpy_512 =  end_t-start_t;
+
+  start_t = read_clk_counter();
+  repetition_read(slot.slot_addr, cnt);
+  end_t = read_clk_counter();
+  mb_bist.cq_read_single = (end_t-start_t)/cnt;
+   
+  start_t = read_clk_counter();
+  repetition_write(slot.slot_addr, cnt);
+  end_t = read_clk_counter();
+  mb_bist.cq_write_single = (end_t-start_t)/cnt;
+
+  start_t = read_clk_counter();
+  repetition_read(cu_idx_to_addr(0), cnt);
+  end_t = read_clk_counter();
+  mb_bist.cu_read_single = (end_t-start_t)/cnt;
+
+  start_t = read_clk_counter();
+  repetition_write(cu_idx_to_addr(0), cnt);
+  end_t = read_clk_counter();
+  mb_bist.cu_write_single = (end_t-start_t)/cnt; 
+
+  slot.header_value = (slot.header_value & ~0xF) | 0x4;
+
+  memcpy(addr_ptr, &mb_bist, sizeof(struct mb_validation));
+  notify_host(slot_idx);
+  return true;
+}
 
 static bool
 clock_calib_mb(value_type slot_idx)
@@ -1059,6 +1119,8 @@ process_special_command(value_type opcode, size_type slot_idx)
     return abort_mb(slot_idx);
   if (opcode==ERT_CLK_CALIB)
     return clock_calib_mb(slot_idx);
+  if (opcode==ERT_MB_VALIDATE)
+    return validate_mb(slot_idx);
   return false;
 }
 
