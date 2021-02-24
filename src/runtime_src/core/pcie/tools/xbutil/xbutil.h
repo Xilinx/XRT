@@ -501,7 +501,7 @@ public:
             uint32_t status = parseComputeUnitStat(custat, i, cu_stat::stat);
             uint32_t usage = parseComputeUnitStat(custat, i, cu_stat::usage);
             std::string name = psKernels.at(psk_inst).pkd_sym_name;
-            name += ":scu_" + std::to_string(i - computeUnits.size());
+            name += ":scu_" + std::to_string(num_scu);
 
             boost::property_tree::ptree ptCu;
             ptCu.put( "name",         name );
@@ -1598,6 +1598,7 @@ public:
              << std::setw(14) << "Usage" << std::endl;
 
         try {
+          uint32_t scu_index = 0;
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
@@ -1621,7 +1622,10 @@ public:
                 if (found != std::string::npos) {
                   auto scu_i = std::stoi(cu_n.substr(found + 4));
                   cu_n = cu_n.substr(0, found - 1);
-                  ostr << "SCU[" << std::right << std::setw(2) << std::dec << scu_i << "]: ";
+                  cu_n.append("_");
+                  cu_n.append(std::to_string(scu_i));
+                  ostr << "SCU[" << std::right << std::setw(2) << std::dec << scu_index << "]: ";
+                  scu_index++;
                 } else
                   ostr << "CU: ";
               } else
