@@ -1189,7 +1189,7 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	(__idx >= 0 ? (CLOCK_DEV_INFO(xdev, __idx).level) : -ENODEV); 	\
 })
 
-#define	xocl_clock_freq_rescaling(xdev, force)				\
+#define	xocl_clock_freq_rescaling(xdev, force)					\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);					\
 	(CLOCK_CB(xdev, __idx, freq_rescaling) ?				\

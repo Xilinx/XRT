@@ -877,8 +877,10 @@ done:
  * Note:
  * 1) Violate this flow will cause random firewall trip.
  * 2) Flat shell: gating logic is not available on these shells.
- *    - So, do not call axigate freeze/free apis for these shells.
- *    - Updating clock freqs without calling axigate apis.
+ *    - So, do not call axigate freeze/free apis for these shells or,
+ *    ignore axigate return value -ENODEV for flat shell
+ *    - Update clock freqs even when axigate returns ENODEV error for flat
+ *    shell.
  */
 static int clock_ocl_freqscaling(struct clock *clock, bool force, int level)
 {
