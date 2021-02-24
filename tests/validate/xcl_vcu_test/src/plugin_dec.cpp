@@ -285,6 +285,7 @@ xvcudec_preinit (XrtIvas_XVCUDec * dec)
   sk_payload_data *payload_buf;
   dec_params_t *dec_cfg;
   unsigned int payload_data[ERT_CMD_DATA_LEN];
+  struct timespec init_time;
   unsigned int num_idx = 0;
   int bret = FALSE;
   int iret = 0;
@@ -336,7 +337,16 @@ xvcudec_preinit (XrtIvas_XVCUDec * dec)
   }
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
+  clock_gettime (CLOCK_MONOTONIC, &init_time);
+  priv->timestamp = ((init_time.tv_sec * 1e6) + (init_time.tv_nsec/1e3));
+
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_PREINIT;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
@@ -399,6 +409,12 @@ xvcudec_init (XrtIvas_XVCUDec * dec)
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
 
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_INIT;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
@@ -510,6 +526,12 @@ xvcudec_send_flush (XrtIvas_XVCUDec * dec)
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_FLUSH;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
@@ -563,6 +585,12 @@ xvcudec_deinit (XrtIvas_XVCUDec * dec)
   
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_DEINIT;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
@@ -630,6 +658,12 @@ xvcudec_prepare_send_frame (XrtIvas_XVCUDec * dec, void *inbuf,
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_PUSH;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
@@ -690,6 +724,12 @@ xvcudec_receive_out_frames (XrtIvas_XVCUDec * dec, uint8_t *out_buffer, uint32_t
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_RECEIVE;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
