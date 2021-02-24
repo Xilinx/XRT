@@ -1155,7 +1155,7 @@ struct xocl_clock_funcs {
 		unsigned short *freq, int id);
 	int (*get_freq_counter_khz)(struct platform_device *pdev,
 		unsigned int *value, int id);
-	int (*freq_rescaling)(struct platform_device *pdev, bool force, bool freeze);
+	int (*freq_rescaling)(struct platform_device *pdev, bool force);
 	int (*freq_scaling_by_request)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
 	int (*freq_scaling_by_topo)(struct platform_device *pdev,
@@ -1189,11 +1189,11 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	(__idx >= 0 ? (CLOCK_DEV_INFO(xdev, __idx).level) : -ENODEV); 	\
 })
 
-#define	xocl_clock_freq_rescaling(xdev, force, freeze)				\
+#define	xocl_clock_freq_rescaling(xdev, force)				\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);					\
 	(CLOCK_CB(xdev, __idx, freq_rescaling) ?				\
-	CLOCK_OPS(xdev, __idx)->freq_rescaling(CLOCK_DEV(xdev, __idx), force, freeze) :	\
+	CLOCK_OPS(xdev, __idx)->freq_rescaling(CLOCK_DEV(xdev, __idx), force) :	\
 	-ENODEV); \
 })
 #define	xocl_clock_get_freq(xdev, region, freqs, num_freqs)		\

@@ -880,8 +880,7 @@ done:
  *    - So, do not call axigate freeze/free apis for these shells.
  *    - Updating clock freqs without calling axigate apis.
  */
-static int clock_ocl_freqscaling(struct clock *clock, bool force, int level,
-                                 bool freeze)
+static int clock_ocl_freqscaling(struct clock *clock, bool force, int level)
 {
 	int i, err = 0;
 	u32 curr[CLOCK_MAX_NUM_CLOCKS] = { 0 };
@@ -890,12 +889,11 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force, int level,
 	for (i = 0; i < CLOCK_MAX_NUM_CLOCKS; i++)
 		curr[i] = clock_get_freq_impl(clock, i);
 
-	if (freeze)
-		err = clock_freeze_axi_gate(clock, level);
+	err = clock_freeze_axi_gate(clock, level);
+	err = (err == -ENODEV) ? 0 : err;
 	if (!err) {
 		err = clock_ocl_freqscaling_impl(clock, force, curr, level);
-		if (freeze)
-			clock_free_axi_gate(clock, level);
+		clock_free_axi_gate(clock, level);
 	}
 
 	CLOCK_INFO(clock, "level: %d return: %d", level, err);
@@ -911,7 +909,7 @@ static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs)
 
 	err = clock_update_freqs_request(clock, freqs, num_freqs);
 	if (!err)
-		err = clock_ocl_freqscaling(clock, false, CLOCK_DEV_LEVEL(xdev), true);
+		err = clock_ocl_freqscaling(clock, false, CLOCK_DEV_LEVEL(xdev));
 
 	CLOCK_INFO(clock, "returns %d", err);
 	return err;
@@ -958,15 +956,14 @@ done:
 	return err;
 }
 
-static int clock_freq_rescaling(struct platform_device *pdev, bool force,
-                                bool freeze)
+static int clock_freq_rescaling(struct platform_device *pdev, bool force)
 {
 	struct clock *clock = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 	int err;
 
 	mutex_lock(&clock->clock_lock);
-	err =  clock_ocl_freqscaling(clock, force, CLOCK_DEV_LEVEL(xdev), freeze);
+	err =  clock_ocl_freqscaling(clock, force, CLOCK_DEV_LEVEL(xdev));
 	mutex_unlock(&clock->clock_lock);
 
 	CLOCK_INFO(clock, "ret: %d.", err);
