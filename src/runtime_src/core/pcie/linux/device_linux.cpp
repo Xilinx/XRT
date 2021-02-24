@@ -514,17 +514,17 @@ close(int dev_handle) const
 
 void
 device_linux::
-load_xclbin(const MemoryBuffer &buffer) const {
+xclmgmt_load_xclbin(const char* buffer) const {
   //resolves to xclbin2
   const char xclbin_magic_str[] = { 0x78, 0x63, 0x6c, 0x62, 0x69, 0x6e, 0x32 };
-  if (buffer.size() < sizeof(xclbin_magic_str))
+  if (sizeof(buffer) < sizeof(xclbin_magic_str))
     throw xrt_core::error("Xclbin is smaller than expected");
-  if (std::memcmp(buffer.data(), xclbin_magic_str, sizeof(xclbin_magic_str)) != 0)
+  if (std::memcmp(buffer, xclbin_magic_str, sizeof(xclbin_magic_str)) != 0)
     throw xrt_core::error(boost::str(boost::format("Bad binary version '%s'") % xclbin_magic_str));
   int ret = 0;
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = file_open("", O_RDWR);
-    xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer.data()) ) };
+    xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer) ) };
     ret = pcidev::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
   } catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), "Failed to open device");
