@@ -28,6 +28,7 @@
 
 struct ps_kernel_data {
 	char		pkd_sym_name[PS_KERNEL_NAME_LENGTH];
+	char		pkd_name[PS_KERNEL_NAME_LENGTH];
 	uint32_t	pkd_num_instances;
 };
 

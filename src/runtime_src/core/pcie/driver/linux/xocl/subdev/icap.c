@@ -2736,6 +2736,9 @@ static int icap_cache_ps_kernel_axlf_section(const struct axlf *xclbin,
                  * symbol name is for use inside skd
                  */
 		strncpy(pnode->pkn_data[idx].pkd_sym_name,
+		    begin + sp->mpo_symbol_name,
+		    PS_KERNEL_NAME_LENGTH - 1);
+		strncpy(pnode->pkn_data[idx].pkd_name,
 		    begin + sp->mpo_name,
 		    PS_KERNEL_NAME_LENGTH - 1);
 		pnode->pkn_data[idx].pkd_num_instances =
