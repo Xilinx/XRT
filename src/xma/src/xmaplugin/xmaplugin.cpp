@@ -986,7 +986,6 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
             if (g_xma_singleton->cpu_mode == XMA_CPU_MODE1) {
                 std::unique_lock<std::mutex> lk(priv1->m_mutex);
                 priv1->kernel_done_or_free.wait(lk);
-                lk.unlock();
             } else if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
                 std::this_thread::yield();
             } else {
