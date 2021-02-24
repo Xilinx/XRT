@@ -754,7 +754,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     
     auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
     std::cout << "Downloading xclbin on device [" << bdf << "]..." << std::endl;
-    dev->load_xclbin(xclbin_buffer);
+    dev->xclmgmt_load_xclbin(xclbin_buffer.data());
     std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;
 
     return;
