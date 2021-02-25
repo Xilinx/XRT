@@ -174,9 +174,10 @@ findEnvPath(const std::string & env)
   boost::filesystem::path absPath;
   if(env.compare("python") == 0) {
     // Find the python executable
-    absPath = boost::process::search_path("py");  
+    absPath = boost::process::search_path("py");
+    // Find python3 path on linux
     if (absPath.string().empty()) 
-      absPath = boost::process::search_path("python");   
+      absPath = boost::process::search_path("python3");   
 
     if (absPath.string().empty()) 
       throw std::runtime_error("Error: Python executable not found in search path.");
