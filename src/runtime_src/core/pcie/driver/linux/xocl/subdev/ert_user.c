@@ -1006,6 +1006,7 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 	struct ert_user_command *ecmd, *next;
 	u32 slot_addr = 0;
 	struct ert_packet *epkt = NULL;
+	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
 	struct kds_client *ev_client = NULL;
 	u32 mask_idx, cq_int_addr, mask;
 
