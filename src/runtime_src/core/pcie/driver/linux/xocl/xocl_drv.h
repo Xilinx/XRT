@@ -1368,6 +1368,8 @@ enum {
 	(xocl_icap_get_xclbin_metadata(xdev, CONNECTIVITY_AXLF, (void **)&conn))
 #define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
 	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
+#define XOCL_GET_PS_KERNEL(xdev, ps_kernel)						\
+	(xocl_icap_get_xclbin_metadata(xdev, SOFT_KERNEL, (void **)&ps_kernel))
 
 
 #define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
@@ -1379,6 +1381,8 @@ enum {
 #define XOCL_PUT_CONNECTIVITY(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_XCLBIN_ID(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_PS_KERNEL(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 
 #define XOCL_IS_DDR_USED(topo, ddr) 			\

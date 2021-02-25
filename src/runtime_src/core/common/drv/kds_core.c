@@ -66,10 +66,36 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 	}
 	mutex_unlock(&cu_mgmt->lock);
 
-	if (sz < PAGE_SIZE - 1)
-		buf[sz++] = 0;
-	else
-		buf[PAGE_SIZE - 1] = 0;
+	return sz;
+}
+
+/* Each line is a PS kernel, format:
+ * "idx kernel_name status usage"
+ */
+ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
+{
+	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
+	char *cu_fmt = "%d,%s,0x%x,%u\n";
+	ssize_t sz = 0;
+	int i;
+
+	/* TODO: The number of PS kernel could be 64 or even more.
+	 * Sysfs has PAGE_SIZE limit, which keep bother us in old KDS.
+	 * In 128 PS kernels case, each line is average 32 bytes.
+	 * The kernel name is no more than 19 bytes.
+	 *
+	 * Old KDS shows FPGA Kernel and PS kernel in one file.
+	 * So, this separate kds_scustat_raw is better.
+	 *
+	 * But in the worst case, this is still not good enough.
+	 */
+	mutex_lock(&scu_mgmt->lock);
+	for (i = 0; i < scu_mgmt->num_cus; ++i) {
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
+				scu_mgmt->name[i], scu_mgmt->status[i],
+				scu_mgmt->usage[i]);
+	}
+	mutex_unlock(&scu_mgmt->lock);
 
 	return sz;
 }
@@ -89,8 +115,6 @@ ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 			kds->cu_intr_cap);
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Interrupt mode: %s\n",
 			(kds->cu_intr)? "cu" : "ert");
-	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Configured: %d\n",
-			cu_mgmt->configured);
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Number of CUs: %d\n",
 			cu_mgmt->num_cus);
 	for (i = 0; i < cu_mgmt->num_cus; ++i) {
@@ -101,11 +125,6 @@ ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 				(cu_mgmt->cu_intr[i])? "enable" : "disable");
 	}
 	mutex_unlock(&cu_mgmt->lock);
-
-	if (sz < PAGE_SIZE - 1)
-		buf[sz++] = 0;
-	else
-		buf[PAGE_SIZE - 1] = 0;
 
 	return sz;
 }
@@ -134,29 +153,36 @@ get_cu_by_addr(struct kds_cu_mgmt *cu_mgmt, u32 addr)
 }
 
 static int
-kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
+kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 {
-	struct kds_client *client = xcmd->client;
-	int ret = 0;
+	struct ert_configure_sk_cmd *scmd;
+	int i, j;
 
-	/* This is no-op. The new KDS doesn't need configure command.
-	 * But ERT 2.0 flow still need configure command.
-	 *
-	 * KDS could construct ERT configure command but not sure when.
-	 * Before figure this out, keep this function.
-	 */
-	mutex_lock(&cu_mgmt->lock);
+	scmd = (struct ert_configure_sk_cmd *)xcmd->execbuf;
+	for (i = 0; i < scmd->num_image; i++) {
+		struct config_sk_image *cp = &scmd->image[i];
 
-	if (cu_mgmt->configured) {
-		kds_info(client, "CU already configured in KDS\n");
-		goto out;
+		for (j = 0; j < cp->num_cus; j++) {
+			int scu_idx = j + cp->start_cuidx;
+
+			/* TODO: Why continue? */
+			if (strlen(scu_mgmt->name[scu_idx]) > 0)
+				continue;
+
+			/*
+			 * TODO: Need consider size limit of the name.
+			 * In case PAGE_SIZE sysfs node cannot show all
+			 * SCUs (more than 64 SCUs or up to 128).
+			 */
+			strncpy(scu_mgmt->name[scu_idx], (char *)cp->sk_name,
+				sizeof(scu_mgmt->name[0]));
+
+			scu_mgmt->num_cus++;
+			scu_mgmt->usage[i] = 0;
+		}
 	}
 
-	cu_mgmt->configured = 1;
-
-out:
-	mutex_unlock(&cu_mgmt->lock);
-	return ret;
+	return 0;
 }
 
 /**
@@ -250,11 +276,10 @@ kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 		ret = kds_cu_dispatch(cu_mgmt, xcmd);
 		break;
 	case OP_CONFIG:
-		ret = kds_cu_config(cu_mgmt, xcmd);
-		if (ret == 0) {
-			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
-			xcmd->cb.free(xcmd);
-		}
+		/* No need to config for KDS mode */
+	case OP_GET_STAT:
+		xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+		xcmd->cb.free(xcmd);
 		break;
 	default:
 		ret = -EINVAL;
@@ -282,23 +307,19 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		if (cu_idx < 0)
 			return cu_idx;
 		break;
-	case OP_CONFIG:
-		/* Configure command define CU index */
-		ret = kds_cu_config(&kds->cu_mgmt, xcmd);
+	case OP_CONFIG_SK:
+		ret = kds_scu_config(&kds->scu_mgmt, xcmd);
 		if (ret)
 			return ret;
-
-		mutex_lock(&ert->lock);
-		if (!ert->configured)
-			ert->submit(ert, xcmd);
-		else {
+		break;
+	case OP_GET_STAT:
+		if (!kds->scu_mgmt.num_cus) {
 			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
 			xcmd->cb.free(xcmd);
+			return 0;
 		}
-		ert->configured = 1;
-		mutex_unlock(&ert->lock);
-		return 0;
-	case OP_CONFIG_SK:
+		break;
+	case OP_CONFIG:
 	case OP_START_SK:
 	case OP_CLK_CALIB:
 	case OP_VALIDATE:
@@ -436,6 +457,7 @@ int kds_init_sched(struct kds_sched *kds)
 	INIT_LIST_HEAD(&kds->clients);
 	mutex_init(&kds->lock);
 	mutex_init(&kds->cu_mgmt.lock);
+	mutex_init(&kds->scu_mgmt.lock);
 	kds->num_client = 0;
 	kds->bad_state = 0;
 	/* At this point, I don't know if ERT subdev exist or not */
@@ -456,53 +478,34 @@ void kds_fini_sched(struct kds_sched *kds)
 
 struct kds_command *kds_alloc_command(struct kds_client *client, u32 size)
 {
-#if PRE_ALLOC
-	struct kds_command *xcmds;
-#endif
 	struct kds_command *xcmd;
 
-	/* TODO: Allocate buffer on critical path is not good
-	 * Consider kmem_cache_alloc()
-	 */
-#if PRE_ALLOC
-	xcmds = client->xcmds;
-	xcmd = &xcmds[client->xcmd_idx];
-#else
 	xcmd = kzalloc(sizeof(struct kds_command), GFP_KERNEL);
 	if (!xcmd)
 		return NULL;
-#endif
 
 	xcmd->client = client;
 	xcmd->type = 0;
-	xcmd->cu_idx = DEFAULT_INDEX;
+	xcmd->cu_idx = NO_INDEX;
+	xcmd->opcode = OP_NONE;
+	xcmd->status = KDS_NEW;
 
-#if PRE_ALLOC
-	xcmd->info = client->infos + sizeof(u32) * 128;
-	++client->xcmd_idx;
-	client->xcmd_idx &= (client->max_xcmd - 1);
-#else
 	xcmd->info = kzalloc(size, GFP_KERNEL);
 	if (!xcmd->info) {
 		kfree(xcmd);
 		return NULL;
 	}
-#endif
 
 	return xcmd;
 }
 
 void kds_free_command(struct kds_command *xcmd)
 {
-#if PRE_ALLOC
-	return;
-#else
-	if (xcmd) {
-		kfree(xcmd->info);
-		kfree(xcmd);
-		xcmd = NULL;
-	}
-#endif
+	if (xcmd)
+		return;
+
+	kfree(xcmd->info);
+	kfree(xcmd);
 }
 
 int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
@@ -535,6 +538,32 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 	return err;
 }
 
+int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
+{
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct kds_client *client = xcmd->client;
+	int bad_state;
+	int ret = 0;
+
+	ret = kds_add_command(kds, xcmd);
+	if (ret)
+		return ret;
+
+	ret = wait_for_completion_interruptible(&kds->comp);
+	if (ret == -ERESTARTSYS && !kds->ert_disable) {
+		kds->ert->abort(kds->ert, client, NO_INDEX);
+		do {
+			kds_info(xcmd->client, "Command not finished");
+			msleep(500);
+		} while (ecmd->state < ERT_CMD_STATE_COMPLETED);
+		bad_state = kds->ert->abort_done(kds->ert, client, NO_INDEX);
+		if (bad_state)
+			kds->bad_state = 1;
+	}
+
+	return 0;
+}
+
 int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 {
 	client->stats = alloc_percpu(struct client_stats);
@@ -551,21 +580,6 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 	list_add_tail(&client->link, &kds->clients);
 	kds->num_client++;
 	mutex_unlock(&kds->lock);
-
-#if PRE_ALLOC
-	client->max_xcmd = 0x8000;
-	client->xcmd_idx = 0;
-	client->xcmds = vzalloc(sizeof(struct kds_command) * client->max_xcmd);
-	if (!client->xcmds) {
-		kds_err(client, "cound not allocate xcmds");
-		return -ENOMEM;
-	}
-	client->infos = vzalloc(sizeof(u32) * 128 * client->max_xcmd);
-	if (!client->infos) {
-		kds_err(client, "cound not allocate infos");
-		return -ENOMEM;
-	}
-#endif
 
 	return 0;
 }
@@ -599,11 +613,6 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 {
-#if PRE_ALLOC
-	vfree(client->xcmds);
-	vfree(client->infos);
-#endif
-
 	/* Release client's resources */
 	if (client->num_ctx)
 		_kds_fini_client(kds, client);
@@ -614,8 +623,6 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	mutex_lock(&kds->lock);
 	list_del(&client->link);
 	kds->num_client--;
-	if (!kds->num_client)
-		kds->cu_mgmt.configured = 0;
 	mutex_unlock(&kds->lock);
 
 	free_percpu(client->stats);
@@ -843,8 +850,6 @@ int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
 	kds->ert = ert;
 	/* By default enable ERT if it exist */
 	kds->ert_disable = false;
-	mutex_init(&ert->lock);
-	ert->configured = 1;
 
 	if (!ert->submit)
 		ert->submit = ert_dummy_submit;
@@ -865,9 +870,15 @@ int kds_fini_ert(struct kds_sched *kds)
 
 void kds_reset(struct kds_sched *kds)
 {
+	int idx;
+
 	kds->bad_state = 0;
 	kds->ert_disable = true;
 	kds->ini_disable = false;
+
+	/* TODO: Do we still need this in new KDS? */
+	for (idx = 0; idx < MAX_CUS; ++idx)
+		kds->scu_mgmt.name[idx][0] = 0;
 }
 
 static int kds_fa_assign_plram(struct kds_sched *kds)
@@ -953,9 +964,6 @@ int kds_cfg_update(struct kds_sched *kds)
 			}
 		}
 	}
-
-	if (kds->ert)
-		kds->ert->configured = 0;
 
 	return ret;
 }

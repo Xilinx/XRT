@@ -20,17 +20,20 @@
 #define KEY_VAL 1
 
 enum kds_opcode {
-	OP_CONFIG = 0,
+	OP_NONE = 0,
+	OP_CONFIG,
 	OP_START,
 	OP_CONFIG_SK, /* TODO: There is a plan to remove softkernel config and unconfig command */
 	OP_START_SK,
 	OP_CLK_CALIB,
 	OP_VALIDATE,
+	OP_GET_STAT,
 };
 
 enum kds_status {
-	KDS_COMPLETED	= 0,
-	KDS_ERROR	= 1,
+	KDS_NEW = 0,
+	KDS_COMPLETED,
+	KDS_ERROR,
 	KDS_ABORT,
 	KDS_TIMEOUT,
 };
@@ -47,10 +50,8 @@ struct in_kernel_cb {
 	void *data;
 };
 
-/* Default cu index of a command.
- * Some command are not CU specific, it would keep to be default index.
- */
-#define DEFAULT_INDEX -1
+/* Default cu index of a command */
+#define NO_INDEX -1
 
 /**
  * struct kds_command: KDS command struct
