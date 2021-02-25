@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['kernel',['kernel',['../classxrt_1_1kernel.html',1,'xrt']]]
+  ['device',['device',['../classxrt_1_1device.html',1,'xrt']]]
 ];

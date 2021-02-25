@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['normal',['normal',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1ddafea087517c26fadd409bd4b9dc642555',1,'xrt::bo']]]
+  ['exclusive',['exclusive',['../classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6aa4293995cfbfa9ce60ce71ade2ff75f7',1,'xrt::kernel']]]
 ];

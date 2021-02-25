@@ -360,6 +360,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Kernel Types</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
@@ -471,7 +472,31 @@
 <h2 id="X">X</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="xmakernels.main.html#c.xma_enc_session_create">xma_enc_session_create (C function)</a>, <a href="xmakernels.main.html#c.xma_enc_session_create">[1]</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_enc_session_destroy">xma_enc_session_destroy (C function)</a>, <a href="xmakernels.main.html#c.xma_enc_session_destroy">[1]</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_enc_session_recv_data">xma_enc_session_recv_data (C function)</a>, <a href="xmakernels.main.html#c.xma_enc_session_recv_data">[1]</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_enc_session_send_frame">xma_enc_session_send_frame (C function)</a>, <a href="xmakernels.main.html#c.xma_enc_session_send_frame">[1]</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_filter_session_create">xma_filter_session_create (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_filter_session_destroy">xma_filter_session_destroy (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_filter_session_recv_frame">xma_filter_session_recv_frame (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_filter_session_send_frame">xma_filter_session_send_frame (C function)</a>
+</li>
       <li><a href="xma.main.html#c.xma_initialize">xma_initialize (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_kernel_session_create">xma_kernel_session_create (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_kernel_session_destroy">xma_kernel_session_destroy (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_kernel_session_read">xma_kernel_session_read (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_kernel_session_write">xma_kernel_session_write (C function)</a>
 </li>
       <li><a href="xma.main.html#c.xma_plg_buffer_alloc">xma_plg_buffer_alloc (C function)</a>
 </li>
@@ -492,6 +517,16 @@
       <li><a href="xma.main.html#c.xma_plg_is_work_item_done">xma_plg_is_work_item_done (C function)</a>
 </li>
       <li><a href="xma.main.html#c.xma_plg_schedule_work_item">xma_plg_schedule_work_item (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_scaler_default_filter_coeff_set">xma_scaler_default_filter_coeff_set (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_scaler_session_create">xma_scaler_session_create (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_scaler_session_destroy">xma_scaler_session_destroy (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_scaler_session_recv_frame_list">xma_scaler_session_recv_frame_list (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_scaler_session_send_frame">xma_scaler_session_send_frame (C function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2boE">xrt::bo (C++ class)</a>
 </li>
@@ -521,7 +556,7 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bocvbEv">xrt::bo::operator bool (C++ function)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt2boaSERR2bo">xrt::bo::operator= (C++ function)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2boaSERK2bo">xrt::bo::operator= (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2boaSERR2bo">[1]</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt2boeqERK2bo">xrt::bo::operator== (C++ function)</a>
 </li>
@@ -535,9 +570,9 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6deviceE">xrt::device (C++ class)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceE15xclDeviceHandle">xrt::device::device (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceERK6device">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceERR6device">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceEj">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceEv">[4]</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceE15xclDeviceHandle">xrt::device::device (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceERK6device">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceERKNSt6stringE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceERR6device">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceEj">[4]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceEv">[5]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEv">xrt::device::get_info (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4I0ENK3xrt6device18get_xclbin_sectionE11SectionType17axlf_section_kindRK4uuid">xrt::device::get_xclbin_section (C++ function)</a>
 </li>
@@ -555,10 +590,12 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel8group_idEi">xrt::kernel::group_id (C++ function)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode">xrt::kernel::kernel (C++ function)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode">xrt::kernel::kernel (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelEv">[1]</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel6offsetEi">xrt::kernel::offset (C++ function)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xrt_native.main.html#_CPPv4IDpEN3xrt6kernelclE3runDpRR4Args">xrt::kernel::operator() (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel13read_registerE8uint32_t">xrt::kernel::read_register (C++ function)</a>
@@ -567,11 +604,13 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt3runE">xrt::run (C++ class)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvRK3run13ert_cmd_statePvEEEPv">xrt::run::add_callback (C++ function)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvPKv13ert_cmd_statePvEEEPv">xrt::run::add_callback (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt3runcvbEv">xrt::run::operator bool (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4IDpEN3xrt3runclEvDpRR4Args">xrt::run::operator() (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3runltERKN3xrt3runE">xrt::run::operator&lt; (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt3run3runERK6kernel">xrt::run::run (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run3runEv">[1]</a>
 </li>
@@ -589,17 +628,97 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbinE">xrt::xclbin (C++ class)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin12get_cu_namesEv">xrt::xclbin::get_cu_names (C++ function)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3argE">xrt::xclbin::arg (C++ class)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin8get_dataEv">xrt::xclbin::get_data (C++ function)</a>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3arg13get_host_typeEv">xrt::xclbin::arg::get_host_type (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3arg8get_memsEv">xrt::xclbin::arg::get_mems (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3arg8get_nameEv">xrt::xclbin::arg::get_name (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3arg10get_offsetEv">xrt::xclbin::arg::get_offset (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3arg8get_portEv">xrt::xclbin::arg::get_port (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3arg8get_sizeEv">xrt::xclbin::arg::get_size (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin8get_axlfEv">xrt::xclbin::get_axlf (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin6get_ipERKNSt6stringE">xrt::xclbin::get_ip (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin7get_ipsEv">xrt::xclbin::get_ips (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin10get_kernelERKNSt6stringE">xrt::xclbin::get_kernel (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin11get_kernelsEv">xrt::xclbin::get_kernels (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin8get_uuidEv">xrt::xclbin::get_uuid (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin12get_xsa_nameEv">xrt::xclbin::get_xsa_name (C++ function)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbinaSERR6xclbin">xrt::xclbin::operator= (C++ function)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin2ipE">xrt::xclbin::ip (C++ class)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERK6xclbin">xrt::xclbin::xclbin (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERKNSt6stringE">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERKNSt6vectorIcEE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERR6xclbin">[3]</a>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin2ip7get_argE7int32_t">xrt::xclbin::ip::get_arg (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin2ip8get_argsEv">xrt::xclbin::ip::get_args (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin2ip16get_base_addressEv">xrt::xclbin::ip::get_base_address (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin2ip8get_nameEv">xrt::xclbin::ip::get_name (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin2ip12get_num_argsEv">xrt::xclbin::ip::get_num_args (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6kernelE">xrt::xclbin::kernel (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin6kernel7get_argE7int32_t">xrt::xclbin::kernel::get_arg (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin6kernel8get_argsEv">xrt::xclbin::kernel::get_args (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin6kernel6get_cuERKNSt6stringE">xrt::xclbin::kernel::get_cu (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin6kernel7get_cusEv">xrt::xclbin::kernel::get_cus (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin6kernel8get_nameEv">xrt::xclbin::kernel::get_name (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin6kernel12get_num_argsEv">xrt::xclbin::kernel::get_num_args (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3memE">xrt::xclbin::mem (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3mem16get_base_addressEv">xrt::xclbin::mem::get_base_address (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3mem9get_indexEv">xrt::xclbin::mem::get_index (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3mem11get_size_kbEv">xrt::xclbin::mem::get_size_kb (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3mem7get_tagEv">xrt::xclbin::mem::get_tag (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3mem8get_typeEv">xrt::xclbin::mem::get_type (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3mem8get_usedEv">xrt::xclbin::mem::get_used (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_typeE">xrt::xclbin::mem::memory_type (C++ enum)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type3areE">xrt::xclbin::mem::memory_type::are (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4bramE">xrt::xclbin::mem::memory_type::bram (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4ddr3E">xrt::xclbin::mem::memory_type::ddr3 (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4ddr4E">xrt::xclbin::mem::memory_type::ddr4 (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4dramE">xrt::xclbin::mem::memory_type::dram (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type3hbmE">xrt::xclbin::mem::memory_type::hbm (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type19preallocated_globalE">xrt::xclbin::mem::memory_type::preallocated_global (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type9streamingE">xrt::xclbin::mem::memory_type::streaming (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type20streaming_connectionE">xrt::xclbin::mem::memory_type::streaming_connection (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4uramE">xrt::xclbin::mem::memory_type::uram (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinENSt10shared_ptrI11xclbin_implEE">xrt::xclbin::xclbin (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinEPK4axlf">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERKNSt6stringE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERKNSt6vectorIcEE">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinEv">[4]</a>
 </li>
   </ul></td>
 </tr></table>
@@ -625,7 +744,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on December 10, 2020.
+        Last updated on February 24, 2021.
       </span>
 
     </p>

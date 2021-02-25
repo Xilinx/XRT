@@ -65,7 +65,9 @@ $(function() {
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#namespaces">Namespaces</a> &#124;
-<a href="#typedef-members">Typedefs</a>  </div>
+<a href="#typedef-members">Typedefs</a> &#124;
+<a href="#enum-members">Enumerations</a> &#124;
+<a href="#func-members">Functions</a>  </div>
   <div class="headertitle">
 <div class="title">xrt_device.h File Reference</div>  </div>
 </div><!--header-->
@@ -73,13 +75,15 @@ $(function() {
 <div class="textblock"><code>#include &quot;xrt.h&quot;</code><br />
 <code>#include &quot;experimental/xrt_uuid.h&quot;</code><br />
 <code>#include &quot;<a class="el" href="xrt__xclbin_8h_source.html">experimental/xrt_xclbin.h</a>&quot;</code><br />
+<code>#include &quot;experimental/detail/param_traits.h&quot;</code><br />
 <code>#include &lt;memory&gt;</code><br />
+<code>#include &lt;boost/any.hpp&gt;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for xrt_device.h:</div>
 <div class="dyncontent">
 <div class="center"><img src="xrt__device_8h__incl.png" border="0" usemap="#_2scratch_2home_2udayd_2PREPARE__DOC_2XRT_2src_2runtime__src_2core_2include_2experimental_2xrt__device_8h" alt=""/></div>
 <map name="_2scratch_2home_2udayd_2PREPARE__DOC_2XRT_2src_2runtime__src_2core_2include_2experimental_2xrt__device_8h" id="_2scratch_2home_2udayd_2PREPARE__DOC_2XRT_2src_2runtime__src_2core_2include_2experimental_2xrt__device_8h">
-<area shape="rect" id="node4" href="xrt__xclbin_8h.html" title="experimental/xrt_xclbin.h" alt="" coords="201,124,367,151"/>
+<area shape="rect" id="node4" href="xrt__xclbin_8h.html" title="experimental/xrt_xclbin.h" alt="" coords="241,131,407,158"/>
 </map>
 </div>
 </div><div class="textblock"><div class="dynheader">
@@ -104,11 +108,42 @@ Namespaces</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:namespacexrt"><td class="memItemLeft" align="right" valign="top"> &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt.html">xrt</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:namespacexrt_1_1info"><td class="memItemLeft" align="right" valign="top"> &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt_1_1info.html">xrt::info</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
 <tr class="memitem:adfe3b0114657bf4f06299bf397c0d4e0"><td class="memItemLeft" align="right" valign="top">typedef void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="xrt__device_8h.html#adfe3b0114657bf4f06299bf397c0d4e0">xrtDeviceHandle</a></td></tr>
 <tr class="separator:adfe3b0114657bf4f06299bf397c0d4e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="enum-members"></a>
+Enumerations</h2></td></tr>
+<tr class="memitem:a7a27ce3a06c2a28f53579eb4f02a829a"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829a">xrt::info::device</a> : unsigned int { <br />
+&#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aab068931cc450442b63f5b3d276ea4297">xrt::info::device::name</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa865fe807bb0ed8ffba5fcfd7c12269f5">xrt::info::device::bdf</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4a5263ee73e272dfe715a2183814b60a">xrt::info::device::kdma</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aacd6586634142c1d1c7e85e35d96d329f">xrt::info::device::max_clock_frequency_mhz</a>, 
+<br />
+&#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4d65d483f53fd19eea5625721976b41e">xrt::info::device::m2m</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa360c16c37a28c145390c2155a4640dde">xrt::info::device::nodma</a>
+<br />
+ }</td></tr>
+<tr class="separator:a7a27ce3a06c2a28f53579eb4f02a829a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
+Functions</h2></td></tr>
+<tr class="memitem:aac29753bb62b709c0983ceea832f7a5d"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt_1_1info.html#aac29753bb62b709c0983ceea832f7a5d">xrt::info::XRT_INFO_PARAM_TRAITS</a> (device::name, std::string)</td></tr>
+<tr class="separator:aac29753bb62b709c0983ceea832f7a5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c7bd6eb024d94ecf5b540c4c61b6248"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt_1_1info.html#a1c7bd6eb024d94ecf5b540c4c61b6248">xrt::info::XRT_INFO_PARAM_TRAITS</a> (device::bdf, std::string)</td></tr>
+<tr class="separator:a1c7bd6eb024d94ecf5b540c4c61b6248"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab66dd21e0d393fe3841be5ee7964fd2b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt_1_1info.html#ab66dd21e0d393fe3841be5ee7964fd2b">xrt::info::XRT_INFO_PARAM_TRAITS</a> (device::kdma, std::uint32_t)</td></tr>
+<tr class="separator:ab66dd21e0d393fe3841be5ee7964fd2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3e3ddfd53db25f63e44c3fb0a8221dbd"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt_1_1info.html#a3e3ddfd53db25f63e44c3fb0a8221dbd">xrt::info::XRT_INFO_PARAM_TRAITS</a> (device::max_clock_frequency_mhz, unsigned long)</td></tr>
+<tr class="separator:a3e3ddfd53db25f63e44c3fb0a8221dbd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a25e16cc689838d68180d184c9e635189"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt_1_1info.html#a25e16cc689838d68180d184c9e635189">xrt::info::XRT_INFO_PARAM_TRAITS</a> (device::m2m, bool)</td></tr>
+<tr class="separator:a25e16cc689838d68180d184c9e635189"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af45486b9d1137c5be75ea820640722a1"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt_1_1info.html#af45486b9d1137c5be75ea820640722a1">xrt::info::XRT_INFO_PARAM_TRAITS</a> (device::nodma, bool)</td></tr>
+<tr class="separator:af45486b9d1137c5be75ea820640722a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Typedef Documentation</h2>
 <a id="adfe3b0114657bf4f06299bf397c0d4e0"></a>

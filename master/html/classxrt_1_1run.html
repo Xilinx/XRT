@@ -89,12 +89,14 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a788df7565091221de5376d6c1d4a5f24"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3baec6b476f99e4e10a06044690558ac"><td class="memItemLeft" align="right" valign="top">ert_cmd_state&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac">state</a> () const</td></tr>
 <tr class="separator:a3baec6b476f99e4e10a06044690558ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8663745cecc0493049c75ff346e89cff"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a8663745cecc0493049c75ff346e89cff">add_callback</a> (ert_cmd_state <a class="el" href="classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac">state</a>, std::function&lt; void(const <a class="el" href="classxrt_1_1run.html">run</a> &amp;, ert_cmd_state, void *)&gt; callback, void *data)</td></tr>
-<tr class="separator:a8663745cecc0493049c75ff346e89cff"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a268c7ad2d9bab32d6ba2878a0b00c628"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a268c7ad2d9bab32d6ba2878a0b00c628">add_callback</a> (ert_cmd_state <a class="el" href="classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac">state</a>, std::function&lt; void(const void *, ert_cmd_state, void *)&gt; callback, void *data)</td></tr>
+<tr class="separator:a268c7ad2d9bab32d6ba2878a0b00c628"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a607e0d5e9cd6ef23679ec7918264a925"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a607e0d5e9cd6ef23679ec7918264a925">set_event</a> (const std::shared_ptr&lt; event_impl &gt; &amp;event) const</td></tr>
 <tr class="separator:a607e0d5e9cd6ef23679ec7918264a925"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa768dd562f3d84242644134c79c83e46"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#aa768dd562f3d84242644134c79c83e46">operator bool</a> () const</td></tr>
 <tr class="separator:aa768dd562f3d84242644134c79c83e46"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af17b3aebcbcfc41859e109515fae3557"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#af17b3aebcbcfc41859e109515fae3557">operator&lt;</a> (const <a class="el" href="classxrt_1_1run.html">xrt::run</a> &amp;rhs) const</td></tr>
+<tr class="separator:af17b3aebcbcfc41859e109515fae3557"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8a86a2d453010753756d590e2032e21a"><td class="memTemplParams" colspan="2">template&lt;typename ArgType &gt; </td></tr>
 <tr class="memitem:a8a86a2d453010753756d590e2032e21a"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg</a> (int index, ArgType &amp;&amp;arg)</td></tr>
 <tr class="separator:a8a86a2d453010753756d590e2032e21a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -112,8 +114,6 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a66b075fdd181319c5edbdd4e04db109f"><td class="memTemplParams" colspan="2">template&lt;typename ... Args&gt; </td></tr>
 <tr class="memitem:a66b075fdd181319c5edbdd4e04db109f"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">operator()</a> (Args &amp;&amp;... args)</td></tr>
 <tr class="separator:a66b075fdd181319c5edbdd4e04db109f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a614b842d658d0f036649fc59822ef2c6"><td class="memItemLeft" align="right" valign="top">std::shared_ptr&lt; run_impl &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a614b842d658d0f036649fc59822ef2c6">get_handle</a> () const</td></tr>
-<tr class="separator:a614b842d658d0f036649fc59822ef2c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><a class="el" href="classxrt_1_1run.html" title="xrt::run represents one execution of a kernel ">xrt::run</a> represents one execution of a kernel </p>
@@ -181,8 +181,8 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="a8663745cecc0493049c75ff346e89cff"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8663745cecc0493049c75ff346e89cff">&#9670;&nbsp;</a></span>add_callback()</h2>
+<a id="a268c7ad2d9bab32d6ba2878a0b00c628"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a268c7ad2d9bab32d6ba2878a0b00c628">&#9670;&nbsp;</a></span>add_callback()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -196,7 +196,7 @@ Public Member Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::function&lt; void(const <a class="el" href="classxrt_1_1run.html">run</a> &amp;, ert_cmd_state, void *)&gt;&#160;</td>
+          <td class="paramtype">std::function&lt; void(const void *, ert_cmd_state, void *)&gt;&#160;</td>
           <td class="paramname"><em>callback</em>, </td>
         </tr>
         <tr>
@@ -212,7 +212,7 @@ Public Member Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<p><a class="el" href="classxrt_1_1run.html#a8663745cecc0493049c75ff346e89cff">add_callback()</a> - Add a callback function for run state</p>
+<p><a class="el" href="classxrt_1_1run.html#a268c7ad2d9bab32d6ba2878a0b00c628">add_callback()</a> - Add a callback function for run state</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">state</td><td>State to invoke callback on </td></tr>
@@ -222,32 +222,8 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 <p>The function is called when the run object changes state to argument state or any error state. Only <code>ERT_CMD_STATE_COMPLETED</code> is supported currently.</p>
+<p>The function object's first parameter is a unique 'key' for this <a class="el" href="classxrt_1_1run.html" title="xrt::run represents one execution of a kernel ">xrt::run</a> object implmentation on which the callback was added. This 'key' can be used to identify an actual run object that refers to the implementaion that is maybe shared by multiple <a class="el" href="classxrt_1_1run.html" title="xrt::run represents one execution of a kernel ">xrt::run</a> objects.</p>
 <p>Any number of callbacks are supported. </p>
-
-</div>
-</div>
-<a id="a614b842d658d0f036649fc59822ef2c6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a614b842d658d0f036649fc59822ef2c6">&#9670;&nbsp;</a></span>get_handle()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::shared_ptr&lt;run_impl&gt; xrt::run::get_handle </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td> const</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
 
 </div>
 </div>
@@ -311,6 +287,34 @@ template&lt;typename ... Args&gt; </div>
   </dd>
 </dl>
 <p>Use this API to explicitly set all kernel arguments and start kernel execution. </p>
+
+</div>
+</div>
+<a id="af17b3aebcbcfc41859e109515fae3557"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af17b3aebcbcfc41859e109515fae3557">&#9670;&nbsp;</a></span>operator<()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool xrt::run::operator&lt; </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="classxrt_1_1run.html">xrt::run</a> &amp;&#160;</td>
+          <td class="paramname"><em>rhs</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>operator &lt; () - Weak ordering</p>
+<p>Object to compare with </p><dl class="section return"><dt>Returns</dt><dd>True if object is ordered less that compared with other </dd></dl>
 
 </div>
 </div>

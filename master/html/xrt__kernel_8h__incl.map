@@ -1,5 +1,5 @@
 <map id="/scratch/home/udayd/PREPARE_DOC/XRT/src/runtime_src/core/include/experimental/xrt_kernel.h" name="/scratch/home/udayd/PREPARE_DOC/XRT/src/runtime_src/core/include/experimental/xrt_kernel.h">
-<area shape="rect" id="node4" href="$xrt__bo_8h.html" title="experimental/xrt_bo.h" alt="" coords="5,199,152,225"/>
-<area shape="rect" id="node7" href="$xrt__device_8h.html" title="experimental/xrt_device.h" alt="" coords="377,124,548,151"/>
-<area shape="rect" id="node9" href="$xrt__xclbin_8h.html" title="experimental/xrt_xclbin.h" alt="" coords="379,199,546,225"/>
+<area shape="rect" id="node4" href="$xrt__bo_8h.html" title="experimental/xrt_bo.h" alt="" coords="213,124,360,151"/>
+<area shape="rect" id="node7" href="$xrt__device_8h.html" title="experimental/xrt_device.h" alt="" coords="553,124,724,151"/>
+<area shape="rect" id="node9" href="$xrt__xclbin_8h.html" title="experimental/xrt_xclbin.h" alt="" coords="715,206,882,233"/>
 </map>

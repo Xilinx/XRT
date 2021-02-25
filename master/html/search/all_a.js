@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['map',['map',['../classxrt_1_1bo.html#a7778be10aa42a273b879657c35b81f95',1,'xrt::bo::map()'],['../classxrt_1_1bo.html#a45ad31292051d5d37766b1c635a9dc33',1,'xrt::bo::map()']]],
-  ['memory_5fgroup',['memory_group',['../namespacexrt.html#a0b5c34a203355370d2901d9e6100f287',1,'xrt']]]
+  ['load_5fxclbin',['load_xclbin',['../classxrt_1_1device.html#a3da36f551e9df2e03022ff783c751365',1,'xrt::device::load_xclbin(const axlf *xclbin)'],['../classxrt_1_1device.html#a87f89d9b835a93363bd62921ff620a3e',1,'xrt::device::load_xclbin(const std::string &amp;xclbin_fnm)'],['../classxrt_1_1device.html#aa8145e572253df58e8572eb22b002fc8',1,'xrt::device::load_xclbin(const xrt::xclbin &amp;xclbin)']]]
 ];

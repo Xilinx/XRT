@@ -370,6 +370,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Kernel Types</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
@@ -793,10 +794,9 @@ file called emulation_debug.log</p>
 <p>Default: true</p>
 </td>
 </tr>
-<tr class="row-even"><td><p>launch_waveform</p></td>
-<td><p>[off|batch|gui]</p></td>
-<td><p>Specify how the waveform is saved and displayed
-during emulation:</p>
+<tr class="row-even"><td><p>debug_mode</p></td>
+<td><p>[off|batch|gui|gdb]</p></td>
+<td><p>Specify how the waveform is saved and displayed</p>
 <blockquote>
 <div><ul class="simple">
 <li><p>off: Do not launch simulator waveform GUI, and
@@ -806,6 +806,7 @@ but save wdb file</p></li>
 <li><p>gui: Launch simulator waveform GUI, and save
 wdb file</p></li>
 </ul>
+<p>= gdb: Launch gdb mode</p>
 </div></blockquote>
 <p>Default: off</p>
 <blockquote>
@@ -860,7 +861,7 @@ support timeout specified in clPollStreams command</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on December 10, 2020.
+        Last updated on February 24, 2021.
       </span>
 
     </p>

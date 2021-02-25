@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['cacheable',['cacheable',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1ddad11c8d0e0e9aff8112241b7920b24fb2',1,'xrt::bo']]]
+  ['are',['are',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa4015e9ce43edfb0668ddaa973ebc7e87',1,'xrt::xclbin::mem']]]
 ];
