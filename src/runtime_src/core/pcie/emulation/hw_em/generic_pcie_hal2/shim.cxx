@@ -2739,37 +2739,36 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
 
   if ( deviceQuery(key_type::m2m) && getM2MAddress() != 0 ) {
 
-    //fill the hostbuf with the src offset and dest offset and size offset
-    char* hostBuf = new char[M2M_KERNEL_ARGS_SIZE];
+    char hostBuf[M2M_KERNEL_ARGS_SIZE];
     std::memset(hostBuf, 0, M2M_KERNEL_ARGS_SIZE);
 
-    // src and dest addresses construction
+    //src and dest addresses construction
     uint64_t src_addr = sBO->base + src_offset;
     uint64_t dest_addr = dBO->base + dst_offset;
 
-    std::memcpy(hostBuf+0x10, (unsigned char*)&src_addr, 8); // copying the src address to the hostbuf to the specified offset by M2M IP
-    std::memcpy(hostBuf+0x18, (unsigned char*)&dest_addr, 8);  // copying the dest address to the hostbuf to the specified offset by M2M IP
-    std::memcpy(hostBuf+0x20, (unsigned char*)&size, 4); // copying the size address to the hostbuf to the specified offset by M2M IP
+    //fill the hostbuf with the src offset and dest offset and size offset
+    std::memcpy(hostBuf+0x10, (unsigned char*)&src_addr, 8); //copying the src address to the hostbuf to the specified offset by M2M IP
+    std::memcpy(hostBuf+0x18, (unsigned char*)&dest_addr, 8);  //copying the dest address to the hostbuf to the specified offset by M2M IP
+    std::memcpy(hostBuf+0x20, (unsigned char*)&size, 4); //copying the size address to the hostbuf to the specified offset by M2M IP
 
     //Configuring the kernel with hostbuf by providing the Base address of the IP
     if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, M2M_KERNEL_ARGS_SIZE) != M2M_KERNEL_ARGS_SIZE) {
       std::cerr << "ERROR: Failed to write to args to the m2m IP" << std::endl;
     }
 
-    hostBuf[0] = 0x1; // filling the hostbuf with the start info
+    hostBuf[0] = 0x1; //filling the hostbuf with the start info
     //Starting the kernel
     if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, 4) != 4) {
       std::cerr << "ERROR: Failed to start the m2m kernel" << std::endl;
     }
 
     do {
-      // Read the status of the kernel by polling the hostBuf pointer
+      //Read the status of the kernel by polling the hostBuf[0]
       //check for the base_address is either 4 or 6
       xclRead(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, 4);
     } while (!(hostBuf[0] & (CONTROL_AP_DONE | CONTROL_AP_IDLE)) );
 
     PRINTENDFUNC;
-    delete hostBuf;
     return 0;
   }
 
