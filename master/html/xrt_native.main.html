@@ -374,6 +374,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Kernel Types</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
@@ -546,14 +547,30 @@
 <dl class="cpp function">
 <dt id="_CPPv4N3xrt6device6deviceEj">
 <span id="_CPPv3N3xrt6device6deviceEj"></span><span id="_CPPv2N3xrt6device6deviceEj"></span><span id="xrt::device::device__unsigned-i"></span><span class="target" id="classxrt_1_1device_1a4b62fd21eb3eb17d2ecd7f6cb87bbe99"></span><code class="sig-name descname">device</code><span class="sig-paren">(</span>unsigned int <em>didx</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6device6deviceEj" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1device_1a8aed87ac6bdfad69f5e68ca97c23b8dd"><span class="std std-ref">device()</span></a> - Constructor with user host buffer and flags</p>
-<p><dl class="simple">
+<dd><p><a class="reference internal" href="#classxrt_1_1device_1a8aed87ac6bdfad69f5e68ca97c23b8dd"><span class="std std-ref">device()</span></a> - Constructor from device index</p>
+<p><p>Throws if no device is found matching the specified index. </p>
+<dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">didx</span></code>: Device index </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">didx</span></code>: Device index</p></li>
 </ul>
 </dd>
 </dl>
 </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4N3xrt6device6deviceERKNSt6stringE">
+<span id="_CPPv3N3xrt6device6deviceERKNSt6stringE"></span><span id="_CPPv2N3xrt6device6deviceERKNSt6stringE"></span><span id="xrt::device::device__ssCR"></span><span class="target" id="classxrt_1_1device_1a5cf77cd44b07eb0d2a04b5f6f61519d6"></span><code class="sig-name descname">device</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>bdf</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6device6deviceERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1device_1a8aed87ac6bdfad69f5e68ca97c23b8dd"><span class="std std-ref">device()</span></a> - Constructor from string</p>
+<p><p>If the string is in BDF format it matched against devices installed on the system. Otherwise the string is assumed to be a device index.</p>
+<dl class="simple">
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">str</span></code>: String identifying the device to open.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+<p>Throws if string format is invalid or no matching device is found. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -590,9 +607,17 @@
 </dd></dl>
 
 <dl class="cpp function">
+<dt id="_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEv">
+<span id="_CPPv3I_N4info6deviceEENK3xrt6device8get_infoEv"></span><span id="_CPPv2I_N4info6deviceEENK3xrt6device8get_infoEv"></span>template&lt;info::device <code class="sig-name descname">param</code>&gt;<br /><span class="target" id="classxrt_1_1device_1a0db28f39fce7a94f84c31da71b6939fc"></span>info::param_traits&lt;info::device, <a class="reference internal" href="#_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEv" title="xrt::device::get_info::param">param</a>&gt;::return_type <code class="sig-name descname">get_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1device_1a0db28f39fce7a94f84c31da71b6939fc"><span class="std std-ref">get_info()</span></a> - Retrieve device parameter information</p>
+<p>This function is templated on the enumeration value as defined in the enumeration xrt::info::device.</p>
+<p>The return type of the parameter is based on the instantiated param_traits for the given param enumeration supplied as template argument, see namespace xrt::info </p>
+</dd></dl>
+
+<dl class="cpp function">
 <dt id="_CPPv4N3xrt6device11load_xclbinEPK4axlf">
-<span id="_CPPv3N3xrt6device11load_xclbinEPK4axlf"></span><span id="_CPPv2N3xrt6device11load_xclbinEPK4axlf"></span><span id="xrt::device::load_xclbin__axlfCP"></span><span class="target" id="classxrt_1_1device_1ac0a2bd62e5037d5c49519f1b4d745525"></span>uuid <code class="sig-name descname">load_xclbin</code><span class="sig-paren">(</span><em class="property">const</em> <em class="property">struct</em> axlf *<em>xclbin</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6device11load_xclbinEPK4axlf" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1device_1ac0a2bd62e5037d5c49519f1b4d745525"><span class="std std-ref">load_xclbin()</span></a> - Load an xclbin</p>
+<span id="_CPPv3N3xrt6device11load_xclbinEPK4axlf"></span><span id="_CPPv2N3xrt6device11load_xclbinEPK4axlf"></span><span id="xrt::device::load_xclbin__axlfCP"></span><span class="target" id="classxrt_1_1device_1a3da36f551e9df2e03022ff783c751365"></span>uuid <code class="sig-name descname">load_xclbin</code><span class="sig-paren">(</span><em class="property">const</em> axlf *<em>xclbin</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6device11load_xclbinEPK4axlf" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1device_1a3da36f551e9df2e03022ff783c751365"><span class="std std-ref">load_xclbin()</span></a> - Load an xclbin</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>UUID of argument xclbin </p>
 </dd>
@@ -607,7 +632,7 @@
 <dl class="cpp function">
 <dt id="_CPPv4N3xrt6device11load_xclbinERKNSt6stringE">
 <span id="_CPPv3N3xrt6device11load_xclbinERKNSt6stringE"></span><span id="_CPPv2N3xrt6device11load_xclbinERKNSt6stringE"></span><span id="xrt::device::load_xclbin__ssCR"></span><span class="target" id="classxrt_1_1device_1a87f89d9b835a93363bd62921ff620a3e"></span>uuid <code class="sig-name descname">load_xclbin</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>xclbin_fnm</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6device11load_xclbinERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1device_1ac0a2bd62e5037d5c49519f1b4d745525"><span class="std std-ref">load_xclbin()</span></a> - Read and load an xclbin file</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1device_1a3da36f551e9df2e03022ff783c751365"><span class="std std-ref">load_xclbin()</span></a> - Read and load an xclbin file</p>
 <p><p>This function reads the file from disk and loads the xclbin. Using this function allows one time allocation of data that needs to be kept in memory. </p>
 <dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>UUID of argument xclbin</p>
@@ -623,7 +648,7 @@
 <dl class="cpp function">
 <dt id="_CPPv4N3xrt6device11load_xclbinERKN3xrt6xclbinE">
 <span id="_CPPv3N3xrt6device11load_xclbinERKN3xrt6xclbinE"></span><span id="_CPPv2N3xrt6device11load_xclbinERKN3xrt6xclbinE"></span><span id="xrt::device::load_xclbin__xrt::xclbinCR"></span><span class="target" id="classxrt_1_1device_1aa8145e572253df58e8572eb22b002fc8"></span>uuid <code class="sig-name descname">load_xclbin</code><span class="sig-paren">(</span><em class="property">const</em> xrt::<a class="reference internal" href="#_CPPv4N3xrt6xclbinE" title="xrt::xclbin">xclbin</a> &amp;<em>xclbin</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6device11load_xclbinERKN3xrt6xclbinE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1device_1ac0a2bd62e5037d5c49519f1b4d745525"><span class="std std-ref">load_xclbin()</span></a> - load an xclin from an xclbin object</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1device_1a3da36f551e9df2e03022ff783c751365"><span class="std std-ref">load_xclbin()</span></a> - load an xclin from an xclbin object</p>
 <p><p>This function uses the specified </p>
 <a class="reference internal" href="#classxrt_1_1xclbin"><span class="std std-ref">xrt::xclbin</span></a> object created by caller. The <a class="reference internal" href="#classxrt_1_1xclbin"><span class="std std-ref">xrt::xclbin</span></a> object must contain the complete axlf structure. <dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>UUID of argument xclbin</p>
@@ -641,7 +666,7 @@
 <span id="_CPPv3NK3xrt6device15get_xclbin_uuidEv"></span><span id="_CPPv2NK3xrt6device15get_xclbin_uuidEv"></span><span id="xrt::device::get_xclbin_uuidC"></span><span class="target" id="classxrt_1_1device_1a9d4a06515146cdd333d27385ad529aed"></span>uuid <code class="sig-name descname">get_xclbin_uuid</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6device15get_xclbin_uuidEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1device_1a9d4a06515146cdd333d27385ad529aed"><span class="std std-ref">get_xclbin_uuid()</span></a> - Get UUID of xclbin image loaded on device</p>
 <p><p>Note that current UUID can be different from the UUID of the xclbin loaded by this process using </p>
-<a class="reference internal" href="#classxrt_1_1device_1ac0a2bd62e5037d5c49519f1b4d745525"><span class="std std-ref">load_xclbin()</span></a> <dl class="simple">
+<a class="reference internal" href="#classxrt_1_1device_1a3da36f551e9df2e03022ff783c751365"><span class="std std-ref">load_xclbin()</span></a> <dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>UUID of currently loaded xclbin</p>
 </dd>
 </dl>
@@ -671,13 +696,35 @@
 
 <dl class="cpp class">
 <dt id="_CPPv4N3xrt6xclbinE">
-<span id="_CPPv3N3xrt6xclbinE"></span><span id="_CPPv2N3xrt6xclbinE"></span><span id="xrt::xclbin"></span><span class="target" id="classxrt_1_1xclbin"></span><em class="property">class </em><code class="sig-prename descclassname">xrt<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">xclbin</code><a class="headerlink" href="#_CPPv4N3xrt6xclbinE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><div class="breathe-sectiondef docutils container">
+<span id="_CPPv3N3xrt6xclbinE"></span><span id="_CPPv2N3xrt6xclbinE"></span><span id="xrt::xclbin"></span><span class="target" id="classxrt_1_1xclbin"></span><em class="property">class </em><code class="sig-prename descclassname">xrt<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">xclbin</code> : <em class="property">public</em> detail::pimpl&lt;xclbin_impl&gt;<a class="headerlink" href="#_CPPv4N3xrt6xclbinE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin"><span class="std std-ref">xrt::xclbin</span></a> represents an xclbin, provides APIs for inspection it. </p>
+<p>The xclbin object is typically constructed by the user with a file, or it can be constructed from cached meta data obtained from driver or elsewhere.</p>
+<p>If the xclbin object is constructed from a complete xclbin, then it can be used by <a class="reference internal" href="#classxrt_1_1device"><span class="std std-ref">xrt::device</span></a> to program the xclbin onto the device.</p>
+<p>If the xclbin was created from cached meta data, then the xclbin can be used for partial introspection primarily.</p>
+<p>First-class objects and class navigation</p>
+<p>All meta data is rooted at <a class="reference internal" href="#classxrt_1_1xclbin"><span class="std std-ref">xrt::xclbin</span></a> . From the xclbin object <a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel"><span class="std std-ref">xrt::xclbin::kernel</span></a> or <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> objects can be constructed.</p>
+<p>The xrt:xclbin::kernel is a concept modelled only in the xclbin XML metadata, it corresponds to a function that can be executed by one or more compute units modelled by <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> objects. An <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> object corresponds to an entry the xclbin IP_LAYOUT section, so the <a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel"><span class="std std-ref">xrt::xclbin::kernel</span></a> object is just a grouping of one or more of these.</p>
+<p>In many cases the kernel concept is not needed, thus <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> objects corresponding to entries in the xclbin IP_LAYOUT sections can be accessed directly.</p>
+<p>An <a class="reference internal" href="#classxrt_1_1xclbin_1_1arg"><span class="std std-ref">xrt::xclbin::arg</span></a> object corresponds to one or more entries in the xclbin CONNECTIVITY section decorated with additional meta data (offset, size, type, etc) from the XML section if available. An argument object represents a specific kernel or ip argument, and if the argument is a global buffer, then it may connect to one or more memory objects.</p>
+<p>Finally the <a class="reference internal" href="#classxrt_1_1xclbin_1_1mem"><span class="std std-ref">xrt::xclbin::mem</span></a> object corresponds to an entry in the MEM_TOPOLOGY section of the xclbin. </p>
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="cpp function">
+<dt id="_CPPv4N3xrt6xclbin6xclbinEv">
+<span id="_CPPv3N3xrt6xclbin6xclbinEv"></span><span id="_CPPv2N3xrt6xclbin6xclbinEv"></span><span id="xrt::xclbin::xclbin"></span><span class="target" id="classxrt_1_1xclbin_1a53ec38c813e53ef8582f36ecbe726e63"></span><code class="sig-name descname">xclbin</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a53ec38c813e53ef8582f36ecbe726e63"><span class="std std-ref">xclbin()</span></a> - Construct empty xclbin object </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4N3xrt6xclbin6xclbinENSt10shared_ptrI11xclbin_implEE">
+<span id="_CPPv3N3xrt6xclbin6xclbinENSt10shared_ptrI11xclbin_implEE"></span><span id="_CPPv2N3xrt6xclbin6xclbinENSt10shared_ptrI11xclbin_implEE"></span><span id="xrt::xclbin::xclbin__std::shared_ptr:xclbin_impl:"></span><span class="target" id="classxrt_1_1xclbin_1a46fc3d9548fbbcb4c3f7243c5fbee089"></span><code class="sig-name descname">xclbin</code><span class="sig-paren">(</span>std::shared_ptr&lt;xclbin_impl&gt; <em>handle</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinENSt10shared_ptrI11xclbin_implEE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a53ec38c813e53ef8582f36ecbe726e63"><span class="std std-ref">xclbin()</span></a> - Construct from handle </p>
+</dd></dl>
+
 <dl class="cpp function">
 <dt id="_CPPv4N3xrt6xclbin6xclbinERKNSt6stringE">
 <span id="_CPPv3N3xrt6xclbin6xclbinERKNSt6stringE"></span><span id="_CPPv2N3xrt6xclbin6xclbinERKNSt6stringE"></span><span id="xrt::xclbin::xclbin__ssCR"></span><span class="target" id="classxrt_1_1xclbin_1a4c24708c27ac85e382ef026b0dfa2270"></span><code class="sig-name descname">xclbin</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>filename</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a4c24708c27ac85e382ef026b0dfa2270"><span class="std std-ref">xclbin()</span></a> - Constructor from an xclbin filename</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a53ec38c813e53ef8582f36ecbe726e63"><span class="std std-ref">xclbin()</span></a> - Constructor from an xclbin filename</p>
 <p><p>The xclbin file must be accessible by the application. An exception is thrown file not found </p>
 <dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
@@ -691,7 +738,7 @@
 <dl class="cpp function">
 <dt id="_CPPv4N3xrt6xclbin6xclbinERKNSt6vectorIcEE">
 <span id="_CPPv3N3xrt6xclbin6xclbinERKNSt6vectorIcEE"></span><span id="_CPPv2N3xrt6xclbin6xclbinERKNSt6vectorIcEE"></span><span id="xrt::xclbin::xclbin__std::vector:c:CR"></span><span class="target" id="classxrt_1_1xclbin_1afc9cd922c779cffa0f87f17fd498143d"></span><code class="sig-name descname">xclbin</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;char&gt; &amp;<em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinERKNSt6vectorIcEE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a4c24708c27ac85e382ef026b0dfa2270"><span class="std std-ref">xclbin()</span></a> - Constructor from raw data</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a53ec38c813e53ef8582f36ecbe726e63"><span class="std std-ref">xclbin()</span></a> - Constructor from raw data</p>
 <p><p>The raw data of the xclbin can be deleted after calling the constructor. </p>
 <dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
@@ -703,30 +750,65 @@
 </dd></dl>
 
 <dl class="cpp function">
-<dt id="_CPPv4N3xrt6xclbin6xclbinERK6xclbin">
-<span id="_CPPv3N3xrt6xclbin6xclbinERK6xclbin"></span><span id="_CPPv2N3xrt6xclbin6xclbinERK6xclbin"></span><span id="xrt::xclbin::xclbin__xclbinCR"></span><span class="target" id="classxrt_1_1xclbin_1a5e08e87a721f40567bf55bbfd4c11635"></span><code class="sig-name descname">xclbin</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4N3xrt6xclbin6xclbinERK6xclbin" title="xrt::xclbin::xclbin">xclbin</a> &amp;<em>rhs</em><span class="sig-paren">)</span> = default<a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinERK6xclbin" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a4c24708c27ac85e382ef026b0dfa2270"><span class="std std-ref">xclbin()</span></a> - Copy ctor </p>
+<dt id="_CPPv4N3xrt6xclbin6xclbinEPK4axlf">
+<span id="_CPPv3N3xrt6xclbin6xclbinEPK4axlf"></span><span id="_CPPv2N3xrt6xclbin6xclbinEPK4axlf"></span><span id="xrt::xclbin::xclbin__axlfCP"></span><span class="target" id="classxrt_1_1xclbin_1ad8b24ec146087a16ea963d1a84aed18e"></span><code class="sig-name descname">xclbin</code><span class="sig-paren">(</span><em class="property">const</em> axlf *<em>top</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinEPK4axlf" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a53ec38c813e53ef8582f36ecbe726e63"><span class="std std-ref">xclbin()</span></a> - Constructor from raw data</p>
+<p><dl class="simple">
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">top</span></code>: Raw data of xclbin file as axlf* </p></li>
+</ul>
+</dd>
+</dl>
+</p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt id="_CPPv4N3xrt6xclbin6xclbinERR6xclbin">
-<span id="_CPPv3N3xrt6xclbin6xclbinERR6xclbin"></span><span id="_CPPv2N3xrt6xclbin6xclbinERR6xclbin"></span><span id="xrt::xclbin::xclbin__xclbinRR"></span><span class="target" id="classxrt_1_1xclbin_1a29329e8e7954492a180abaa0012af472"></span><code class="sig-name descname">xclbin</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3xrt6xclbin6xclbinERR6xclbin" title="xrt::xclbin::xclbin">xclbin</a> &amp;&amp;<em>rhs</em><span class="sig-paren">)</span> = default<a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinERR6xclbin" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a4c24708c27ac85e382ef026b0dfa2270"><span class="std std-ref">xclbin()</span></a> - Move ctor </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4N3xrt6xclbinaSERR6xclbin">
-<span id="_CPPv3N3xrt6xclbinaSERR6xclbin"></span><span id="_CPPv2N3xrt6xclbinaSERR6xclbin"></span><span id="xrt::xclbin::assign-operator__xclbinRR"></span><span class="target" id="classxrt_1_1xclbin_1a7fdadc0504074cff758efeb30aecd58a"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbinE" title="xrt::xclbin">xclbin</a> &amp;<code class="sig-name descname">operator=</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3xrt6xclbinE" title="xrt::xclbin">xclbin</a> &amp;&amp;<em>rhs</em><span class="sig-paren">)</span> = default<a class="headerlink" href="#_CPPv4N3xrt6xclbinaSERR6xclbin" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>operator= () - Move assignment </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4NK3xrt6xclbin12get_cu_namesEv">
-<span id="_CPPv3NK3xrt6xclbin12get_cu_namesEv"></span><span id="_CPPv2NK3xrt6xclbin12get_cu_namesEv"></span><span id="xrt::xclbin::get_cu_namesC"></span><span class="target" id="classxrt_1_1xclbin_1a9d8b36a87241a41cb8c0bc5ca9f63408"></span>std::vector&lt;std::string&gt; <code class="sig-name descname">get_cu_names</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin12get_cu_namesEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a9d8b36a87241a41cb8c0bc5ca9f63408"><span class="std std-ref">get_cu_names()</span></a> - Get CU names of xclbin</p>
-<p><p>An exception is thrown if the data is missing. </p>
+<dt id="_CPPv4NK3xrt6xclbin11get_kernelsEv">
+<span id="_CPPv3NK3xrt6xclbin11get_kernelsEv"></span><span id="_CPPv2NK3xrt6xclbin11get_kernelsEv"></span><span id="xrt::xclbin::get_kernelsC"></span><span class="target" id="classxrt_1_1xclbin_1ac8cc2768327b7456e943d97f2d5b8a27"></span>std::vector&lt;<a class="reference internal" href="#_CPPv4N3xrt6xclbin6kernelE" title="xrt::xclbin::kernel">kernel</a>&gt; <code class="sig-name descname">get_kernels</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin11get_kernelsEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1ac8cc2768327b7456e943d97f2d5b8a27"><span class="std std-ref">get_kernels()</span></a> - Get list of kernels from xclbin.</p>
+<p><p>Kernels are extracted from embedded XML metadata in the xclbin. A kernel groups one or more compute units. A kernel has arguments from which offset, type, etc can be retrived. </p>
 <dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>A list of CU Names in order of increasing base address.</p>
+<dt><strong>Return</strong></dt><dd><p>A list of <a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel"><span class="std std-ref">xrt::xclbin::kernel</span></a> from xclbin.</p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin10get_kernelERKNSt6stringE">
+<span id="_CPPv3NK3xrt6xclbin10get_kernelERKNSt6stringE"></span><span id="_CPPv2NK3xrt6xclbin10get_kernelERKNSt6stringE"></span><span id="xrt::xclbin::get_kernel__ssCRC"></span><span class="target" id="classxrt_1_1xclbin_1a1517929bd43700d26af073a94a0b1761"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin6kernelE" title="xrt::xclbin::kernel">kernel</a> <code class="sig-name descname">get_kernel</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>name</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin10get_kernelERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a1517929bd43700d26af073a94a0b1761"><span class="std std-ref">get_kernel()</span></a> - Get a kernel by name from xclbin</p>
+<p><p>A matching kernel is extracted from embedded XML metadata in the xclbin. A kernel groups one or more compute units. A kernel has arguments from which offset, type, etc can be retrived. </p>
+<dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>The matching kernel from the xclbin or error if no matching kernel is found.</p>
+</dd>
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code>: Name of kernel to get </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin7get_ipsEv">
+<span id="_CPPv3NK3xrt6xclbin7get_ipsEv"></span><span id="_CPPv2NK3xrt6xclbin7get_ipsEv"></span><span id="xrt::xclbin::get_ipsC"></span><span class="target" id="classxrt_1_1xclbin_1ac539bf90de9be3b9e4ba202b70cbba40"></span>std::vector&lt;<a class="reference internal" href="#_CPPv4N3xrt6xclbin2ipE" title="xrt::xclbin::ip">ip</a>&gt; <code class="sig-name descname">get_ips</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin7get_ipsEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1ac539bf90de9be3b9e4ba202b70cbba40"><span class="std std-ref">get_ips()</span></a> - Get a list of IPs from the xclbin</p>
+<p><p>The returned </p>
+<a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> objects are extracted from the IP_LAYOUT section of the xclbin. <dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>A list of <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> objects from xclbin</p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin6get_ipERKNSt6stringE">
+<span id="_CPPv3NK3xrt6xclbin6get_ipERKNSt6stringE"></span><span id="_CPPv2NK3xrt6xclbin6get_ipERKNSt6stringE"></span><span id="xrt::xclbin::get_ip__ssCRC"></span><span class="target" id="classxrt_1_1xclbin_1a0fd663b528ded292023776bbdb4c2a9c"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin2ipE" title="xrt::xclbin::ip">ip</a> <code class="sig-name descname">get_ip</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>name</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6get_ipERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a0fd663b528ded292023776bbdb4c2a9c"><span class="std std-ref">get_ip()</span></a> - Get a list of IPs from the xclbin</p>
+<p><p>The returned </p>
+<a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> object is extracted from the IP_LAYOUT section of the xclbin. <dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>A list of <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> objects from xclbin</p>
 </dd>
 </dl>
 </p>
@@ -735,10 +817,10 @@
 <dl class="cpp function">
 <dt id="_CPPv4NK3xrt6xclbin12get_xsa_nameEv">
 <span id="_CPPv3NK3xrt6xclbin12get_xsa_nameEv"></span><span id="_CPPv2NK3xrt6xclbin12get_xsa_nameEv"></span><span id="xrt::xclbin::get_xsa_nameC"></span><span class="target" id="classxrt_1_1xclbin_1a523c96967160da1a6abf7f8029afac5f"></span>std::string <code class="sig-name descname">get_xsa_name</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin12get_xsa_nameEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a523c96967160da1a6abf7f8029afac5f"><span class="std std-ref">get_xsa_name()</span></a> - Get Xilinx Support Archive (XSA) Name of xclbin</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a523c96967160da1a6abf7f8029afac5f"><span class="std std-ref">get_xsa_name()</span></a> - Get Xilinx Support Archive (XSA) name of xclbin</p>
 <p><p>An exception is thrown if the data is missing. </p>
 <dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>Name of XSA</p>
+<dt><strong>Return</strong></dt><dd><p>Name of XSA (vbnv name)</p>
 </dd>
 </dl>
 </p>
@@ -757,18 +839,379 @@
 </dd></dl>
 
 <dl class="cpp function">
-<dt id="_CPPv4NK3xrt6xclbin8get_dataEv">
-<span id="_CPPv3NK3xrt6xclbin8get_dataEv"></span><span id="_CPPv2NK3xrt6xclbin8get_dataEv"></span><span id="xrt::xclbin::get_dataC"></span><span class="target" id="classxrt_1_1xclbin_1ae42f763648fdf9680afb908ffe5392b1"></span><em class="property">const</em> std::vector&lt;char&gt; &amp;<code class="sig-name descname">get_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin8get_dataEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1ae42f763648fdf9680afb908ffe5392b1"><span class="std std-ref">get_data()</span></a> - Get the raw data of the xclbin</p>
+<dt id="_CPPv4NK3xrt6xclbin8get_axlfEv">
+<span id="_CPPv3NK3xrt6xclbin8get_axlfEv"></span><span id="_CPPv2NK3xrt6xclbin8get_axlfEv"></span><span id="xrt::xclbin::get_axlfC"></span><span class="target" id="classxrt_1_1xclbin_1a9fe1ec500f446eb20f404aa1cab3d31c"></span><em class="property">const</em> axlf *<code class="sig-name descname">get_axlf</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin8get_axlfEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a9fe1ec500f446eb20f404aa1cab3d31c"><span class="std std-ref">get_axlf()</span></a> - Get the axlf data of the xclbin</p>
 <p><p>An exception is thrown if the data is missing. </p>
 <dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>The raw data of the xclbin</p>
+<dt><strong>Return</strong></dt><dd><p>The axlf data of the xclbin object</p>
 </dd>
 </dl>
 </p>
 </dd></dl>
 
 </div>
+<dl class="cpp class">
+<dt id="_CPPv4N3xrt6xclbin3argE">
+<span id="_CPPv3N3xrt6xclbin3argE"></span><span id="_CPPv2N3xrt6xclbin3argE"></span><span id="xrt::xclbin::arg"></span><span class="target" id="classxrt_1_1xclbin_1_1arg"></span><em class="property">class </em><code class="sig-name descname">arg</code> : <em class="property">public</em> detail::pimpl&lt;arg_impl&gt;<a class="headerlink" href="#_CPPv4N3xrt6xclbin3argE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>class arg - <a class="reference internal" href="#classxrt_1_1xclbin_1_1arg"><span class="std std-ref">xrt::xclbin::arg</span></a> represents a compute unit argument </p>
+<p>The argument object constructed from the xclbin connectivity section. An argument is connected to a memory bank or a memory group, which dictates where in device memory a global buffer used with this kernel argument must be allocated. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3arg8get_nameEv">
+<span id="_CPPv3NK3xrt6xclbin3arg8get_nameEv"></span><span id="_CPPv2NK3xrt6xclbin3arg8get_nameEv"></span><span id="xrt::xclbin::arg::get_nameC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1a65941a31d2bcd97939452c7e050f2cc9"></span>std::string <code class="sig-name descname">get_name</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg8get_nameEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a65941a31d2bcd97939452c7e050f2cc9"><span class="std std-ref">get_name()</span></a> - Get argument name</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Name of argument. </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3arg8get_memsEv">
+<span id="_CPPv3NK3xrt6xclbin3arg8get_memsEv"></span><span id="_CPPv2NK3xrt6xclbin3arg8get_memsEv"></span><span id="xrt::xclbin::arg::get_memsC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1ae039158375adb0e3dddaf1de4d9c376b"></span>std::vector&lt;<a class="reference internal" href="#_CPPv4N3xrt6xclbin3memE" title="xrt::xclbin::mem">mem</a>&gt; <code class="sig-name descname">get_mems</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg8get_memsEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1ae039158375adb0e3dddaf1de4d9c376b"><span class="std std-ref">get_mems()</span></a> - Get list of device memories from xclbin.</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>A list of <a class="reference internal" href="#classxrt_1_1xclbin_1_1mem"><span class="std std-ref">xrt::xclbin::mem</span></a> objects to which this argument is connected. </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3arg8get_portEv">
+<span id="_CPPv3NK3xrt6xclbin3arg8get_portEv"></span><span id="_CPPv2NK3xrt6xclbin3arg8get_portEv"></span><span id="xrt::xclbin::arg::get_portC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1acfb387ff009c11d18f5eede905e43204"></span>std::string <code class="sig-name descname">get_port</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg8get_portEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1acfb387ff009c11d18f5eede905e43204"><span class="std std-ref">get_port()</span></a> - Get port name of this argument</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Port name </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3arg8get_sizeEv">
+<span id="_CPPv3NK3xrt6xclbin3arg8get_sizeEv"></span><span id="_CPPv2NK3xrt6xclbin3arg8get_sizeEv"></span><span id="xrt::xclbin::arg::get_sizeC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1a6d3a81ce7223bec8983482ad86dd6adf"></span>uint64_t <code class="sig-name descname">get_size</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg8get_sizeEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a6d3a81ce7223bec8983482ad86dd6adf"><span class="std std-ref">get_size()</span></a> - Argument size in bytes</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Argument size </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3arg10get_offsetEv">
+<span id="_CPPv3NK3xrt6xclbin3arg10get_offsetEv"></span><span id="_CPPv2NK3xrt6xclbin3arg10get_offsetEv"></span><span id="xrt::xclbin::arg::get_offsetC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1a5a6ee715484db8638b6221b4b32f0883"></span>uint64_t <code class="sig-name descname">get_offset</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg10get_offsetEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a5a6ee715484db8638b6221b4b32f0883"><span class="std std-ref">get_offset()</span></a> - Argument offset</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Argument offset </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3arg13get_host_typeEv">
+<span id="_CPPv3NK3xrt6xclbin3arg13get_host_typeEv"></span><span id="_CPPv2NK3xrt6xclbin3arg13get_host_typeEv"></span><span id="xrt::xclbin::arg::get_host_typeC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1a9b4d4ae4c4aace3003c3acbde25509db"></span>std::string <code class="sig-name descname">get_host_type</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg13get_host_typeEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a9b4d4ae4c4aace3003c3acbde25509db"><span class="std std-ref">get_host_type()</span></a> - Get the argument host type</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Argument host type </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp class">
+<dt id="_CPPv4N3xrt6xclbin2ipE">
+<span id="_CPPv3N3xrt6xclbin2ipE"></span><span id="_CPPv2N3xrt6xclbin2ipE"></span><span id="xrt::xclbin::ip"></span><span class="target" id="classxrt_1_1xclbin_1_1ip"></span><em class="property">class </em><code class="sig-name descname">ip</code> : <em class="property">public</em> detail::pimpl&lt;ip_impl&gt;<a class="headerlink" href="#_CPPv4N3xrt6xclbin2ipE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> represents a IP in an xclbin. </p>
+<p>The ip corresponds to an entry in the IP_LAYOUT section of the xclbin. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin2ip8get_nameEv">
+<span id="_CPPv3NK3xrt6xclbin2ip8get_nameEv"></span><span id="_CPPv2NK3xrt6xclbin2ip8get_nameEv"></span><span id="xrt::xclbin::ip::get_nameC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1a54a875884cecc8d34deac6ba6abee23b"></span>std::string <code class="sig-name descname">get_name</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip8get_nameEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a54a875884cecc8d34deac6ba6abee23b"><span class="std std-ref">get_name()</span></a> - Get name of IP</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>IP name. </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin2ip12get_num_argsEv">
+<span id="_CPPv3NK3xrt6xclbin2ip12get_num_argsEv"></span><span id="_CPPv2NK3xrt6xclbin2ip12get_num_argsEv"></span><span id="xrt::xclbin::ip::get_num_argsC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1a13e867a001c6b0ff50ff586cd8635955"></span>size_t <code class="sig-name descname">get_num_args</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip12get_num_argsEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a13e867a001c6b0ff50ff586cd8635955"><span class="std std-ref">get_num_args()</span></a> - Number of arguments</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Number of arguments for this IP per CONNECTIVITY section </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin2ip8get_argsEv">
+<span id="_CPPv3NK3xrt6xclbin2ip8get_argsEv"></span><span id="_CPPv2NK3xrt6xclbin2ip8get_argsEv"></span><span id="xrt::xclbin::ip::get_argsC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1a14a9fec0ed940e1afbb81ff2dcdbd96e"></span>std::vector&lt;<a class="reference internal" href="#_CPPv4N3xrt6xclbin3argE" title="xrt::xclbin::arg">arg</a>&gt; <code class="sig-name descname">get_args</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip8get_argsEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a14a9fec0ed940e1afbb81ff2dcdbd96e"><span class="std std-ref">get_args()</span></a> - Get list of IP arguments</p>
+<p><p>An argument may have multiple memory connections </p>
+<dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>A list sorted of <a class="reference internal" href="#classxrt_1_1xclbin_1_1arg"><span class="std std-ref">xclbin::arg</span></a> sorted by argument indices</p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin2ip7get_argE7int32_t">
+<span id="_CPPv3NK3xrt6xclbin2ip7get_argE7int32_t"></span><span id="_CPPv2NK3xrt6xclbin2ip7get_argE7int32_t"></span><span id="xrt::xclbin::ip::get_arg__int32_tC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1a62bf76c1246a4face6174aebd9d11e86"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin3argE" title="xrt::xclbin::arg">arg</a> <code class="sig-name descname">get_arg</code><span class="sig-paren">(</span>int32_t <em>index</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip7get_argE7int32_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a62bf76c1246a4face6174aebd9d11e86"><span class="std std-ref">get_arg()</span></a> - Get argument at index.</p>
+<p><p>The argument may have multiple memory connections </p>
+<dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>The argument a specified index</p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin2ip16get_base_addressEv">
+<span id="_CPPv3NK3xrt6xclbin2ip16get_base_addressEv"></span><span id="_CPPv2NK3xrt6xclbin2ip16get_base_addressEv"></span><span id="xrt::xclbin::ip::get_base_addressC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1abb83f977227c8dd3a212b721df5980ab"></span>uint64_t <code class="sig-name descname">get_base_address</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip16get_base_addressEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1abb83f977227c8dd3a212b721df5980ab"><span class="std std-ref">get_base_address()</span></a> - Get the base address of the cu</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>The base address of the IP </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp class">
+<dt id="_CPPv4N3xrt6xclbin6kernelE">
+<span id="_CPPv3N3xrt6xclbin6kernelE"></span><span id="_CPPv2N3xrt6xclbin6kernelE"></span><span id="xrt::xclbin::kernel"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel"></span><em class="property">class </em><code class="sig-name descname">kernel</code> : <em class="property">public</em> detail::pimpl&lt;kernel_impl&gt;<a class="headerlink" href="#_CPPv4N3xrt6xclbin6kernelE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin6kernel8get_nameEv">
+<span id="_CPPv3NK3xrt6xclbin6kernel8get_nameEv"></span><span id="_CPPv2NK3xrt6xclbin6kernel8get_nameEv"></span><span id="xrt::xclbin::kernel::get_nameC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1aa5af8049e3ffc3131575b2b2830d7f3d"></span>std::string <code class="sig-name descname">get_name</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel8get_nameEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1aa5af8049e3ffc3131575b2b2830d7f3d"><span class="std std-ref">get_name()</span></a> - Get kernel name</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>The name of the kernel </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin6kernel7get_cusEv">
+<span id="_CPPv3NK3xrt6xclbin6kernel7get_cusEv"></span><span id="_CPPv2NK3xrt6xclbin6kernel7get_cusEv"></span><span id="xrt::xclbin::kernel::get_cusC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1a613a09678d939532288ad7876b9bb13d"></span>std::vector&lt;<a class="reference internal" href="#_CPPv4N3xrt6xclbin2ipE" title="xrt::xclbin::ip">ip</a>&gt; <code class="sig-name descname">get_cus</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel7get_cusEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1a613a09678d939532288ad7876b9bb13d"><span class="std std-ref">get_cus()</span></a> - Get list of cu from kernel.</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>A list of <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> objects corresponding the compute units for this kernel object. </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin6kernel6get_cuERKNSt6stringE">
+<span id="_CPPv3NK3xrt6xclbin6kernel6get_cuERKNSt6stringE"></span><span id="_CPPv2NK3xrt6xclbin6kernel6get_cuERKNSt6stringE"></span><span id="xrt::xclbin::kernel::get_cu__ssCRC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1ac008331e7c7d85f0abeb13bbc6db725a"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin2ipE" title="xrt::xclbin::ip">ip</a> <code class="sig-name descname">get_cu</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>name</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel6get_cuERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1ac008331e7c7d85f0abeb13bbc6db725a"><span class="std std-ref">get_cu()</span></a> - Get compute unit by name</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>The xct::xclbin::ip object matching the specified name, or error if not present. </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin6kernel12get_num_argsEv">
+<span id="_CPPv3NK3xrt6xclbin6kernel12get_num_argsEv"></span><span id="_CPPv2NK3xrt6xclbin6kernel12get_num_argsEv"></span><span id="xrt::xclbin::kernel::get_num_argsC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1aaffa94e74e6e990284931305e9adb987"></span>size_t <code class="sig-name descname">get_num_args</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel12get_num_argsEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1aaffa94e74e6e990284931305e9adb987"><span class="std std-ref">get_num_args()</span></a> - Number of arguments</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Number of arguments for this kernel. </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin6kernel8get_argsEv">
+<span id="_CPPv3NK3xrt6xclbin6kernel8get_argsEv"></span><span id="_CPPv2NK3xrt6xclbin6kernel8get_argsEv"></span><span id="xrt::xclbin::kernel::get_argsC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1a7cf639b4e3432161cabdf21428254526"></span>std::vector&lt;<a class="reference internal" href="#_CPPv4N3xrt6xclbin3argE" title="xrt::xclbin::arg">arg</a>&gt; <code class="sig-name descname">get_args</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel8get_argsEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1a7cf639b4e3432161cabdf21428254526"><span class="std std-ref">get_args()</span></a> - Get list of kernel arguments</p>
+<p><p>An argument may have multiple memory connections </p>
+<dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>A list sorted of <a class="reference internal" href="#classxrt_1_1xclbin_1_1arg"><span class="std std-ref">xclbin::arg</span></a> sorted by argument indices</p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin6kernel7get_argE7int32_t">
+<span id="_CPPv3NK3xrt6xclbin6kernel7get_argE7int32_t"></span><span id="_CPPv2NK3xrt6xclbin6kernel7get_argE7int32_t"></span><span id="xrt::xclbin::kernel::get_arg__int32_tC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1af9ab604bab7d080bd98a8376941f98b2"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin3argE" title="xrt::xclbin::arg">arg</a> <code class="sig-name descname">get_arg</code><span class="sig-paren">(</span>int32_t <em>index</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel7get_argE7int32_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1af9ab604bab7d080bd98a8376941f98b2"><span class="std std-ref">get_arg()</span></a> - Get kernel argument at index.</p>
+<p><p>The memory connections of an argument is the union of the connections for each compute unit for that particular argument. In other words, for each connection of the argument returned by </p>
+<code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1af9ab604bab7d080bd98a8376941f98b2"><span class="std std-ref"><span class="pre">get_arg()</span></span></a></code> there is at least one compute unit that has that connection. <dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>The <a class="reference internal" href="#classxrt_1_1xclbin_1_1arg"><span class="std std-ref">xrt::xclbin::arg</span></a> object at specified argument index.</p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp class">
+<dt id="_CPPv4N3xrt6xclbin3memE">
+<span id="_CPPv3N3xrt6xclbin3memE"></span><span id="_CPPv2N3xrt6xclbin3memE"></span><span id="xrt::xclbin::mem"></span><span class="target" id="classxrt_1_1xclbin_1_1mem"></span><em class="property">class </em><code class="sig-name descname">mem</code> : <em class="property">public</em> detail::pimpl&lt;mem_impl&gt;<a class="headerlink" href="#_CPPv4N3xrt6xclbin3memE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem"><span class="std std-ref">xrt::xclbin::mem</span></a> represents a physical device memory bank </p>
+<p>A memory object is constructed from an entry in the MEM_TOPOLOGY section of an xclbin. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric">Public Types</p>
+<dl class="cpp enum">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_typeE">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_typeE"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_typeE"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525f"></span><em class="property">enum </em><code class="sig-name descname">memory_type</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_typeE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><ul class="simple">
+<li><p>type of memory</p></li>
+</ul>
+</p>
+<p>See xclbin.h </p>
+<p><em>Values:</em></p>
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_type4ddr3E">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_type4ddr3E"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type4ddr3E"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525fa9ea5bdd29692f10540ec3ce4d8ba97f5"></span><em class="property">enumerator </em><code class="sig-name descname">ddr3</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type4ddr3E" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_type4ddr4E">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_type4ddr4E"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type4ddr4E"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525fa59a98898efc5226d57d2da1e7c4444d4"></span><em class="property">enumerator </em><code class="sig-name descname">ddr4</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type4ddr4E" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_type4dramE">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_type4dramE"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type4dramE"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525fafb5914622a6a9112bc77a767112a6dfc"></span><em class="property">enumerator </em><code class="sig-name descname">dram</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type4dramE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_type9streamingE">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_type9streamingE"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type9streamingE"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525faabb0256a318439745ab0b343d64b9ba0"></span><em class="property">enumerator </em><code class="sig-name descname">streaming</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type9streamingE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_type19preallocated_globalE">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_type19preallocated_globalE"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type19preallocated_globalE"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525fa57fd539060b8a2bf98cd42880f8846d2"></span><em class="property">enumerator </em><code class="sig-name descname">preallocated_global</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type19preallocated_globalE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_type3areE">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_type3areE"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type3areE"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525fa4015e9ce43edfb0668ddaa973ebc7e87"></span><em class="property">enumerator </em><code class="sig-name descname">are</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type3areE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_type3hbmE">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_type3hbmE"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type3hbmE"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525fae65e9faeec18c95733e43fb7b188ad85"></span><em class="property">enumerator </em><code class="sig-name descname">hbm</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type3hbmE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_type4bramE">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_type4bramE"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type4bramE"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525fae4fa3adecabcf036f6f95da68bfe76bb"></span><em class="property">enumerator </em><code class="sig-name descname">bram</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type4bramE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_type4uramE">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_type4uramE"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type4uramE"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525fa2d7c24ccabd5da82aa90c666185c369d"></span><em class="property">enumerator </em><code class="sig-name descname">uram</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type4uramE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_type20streaming_connectionE">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_type20streaming_connectionE"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type20streaming_connectionE"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525fa61a2f203e2ab90e668be5b244ff0215e"></span><em class="property">enumerator </em><code class="sig-name descname">streaming_connection</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type20streaming_connectionE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3mem7get_tagEv">
+<span id="_CPPv3NK3xrt6xclbin3mem7get_tagEv"></span><span id="_CPPv2NK3xrt6xclbin3mem7get_tagEv"></span><span id="xrt::xclbin::mem::get_tagC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4980c74f81239e91e6a403cec2b27225"></span>std::string <code class="sig-name descname">get_tag</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem7get_tagEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>get_name() - Get tag name</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Memory tag name </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3mem16get_base_addressEv">
+<span id="_CPPv3NK3xrt6xclbin3mem16get_base_addressEv"></span><span id="_CPPv2NK3xrt6xclbin3mem16get_base_addressEv"></span><span id="xrt::xclbin::mem::get_base_addressC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4fb8dcb441828b14ec068d7207ebc2e0"></span>uint64_t <code class="sig-name descname">get_base_address</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem16get_base_addressEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1a4fb8dcb441828b14ec068d7207ebc2e0"><span class="std std-ref">get_base_address()</span></a> - Get the base address of the memory bank</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Base address of the memory bank, or -1 for invalid base address </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3mem11get_size_kbEv">
+<span id="_CPPv3NK3xrt6xclbin3mem11get_size_kbEv"></span><span id="_CPPv2NK3xrt6xclbin3mem11get_size_kbEv"></span><span id="xrt::xclbin::mem::get_size_kbC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a9a125d6e97fc4458547c27c08d43603e"></span>uint64_t <code class="sig-name descname">get_size_kb</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem11get_size_kbEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>get_size() - Get the size of the memory in KB</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Size of memory in KB, or -1 for invalid size </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3mem8get_usedEv">
+<span id="_CPPv3NK3xrt6xclbin3mem8get_usedEv"></span><span id="_CPPv2NK3xrt6xclbin3mem8get_usedEv"></span><span id="xrt::xclbin::mem::get_usedC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a959eb7e49018ae72ab6029a06617a73f"></span>bool <code class="sig-name descname">get_used</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem8get_usedEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1a959eb7e49018ae72ab6029a06617a73f"><span class="std std-ref">get_used()</span></a> - Get used status of the memory</p>
+<p><p>A value of false indicates that no buffer can be allocated in this memory bank. </p>
+<dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>True of this memory bank is used by kernels in the xclbin or false otherwise.</p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3mem8get_typeEv">
+<span id="_CPPv3NK3xrt6xclbin3mem8get_typeEv"></span><span id="_CPPv2NK3xrt6xclbin3mem8get_typeEv"></span><span id="xrt::xclbin::mem::get_typeC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1af39986bcb9942e0f4e5c553e0ac74434"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin3mem11memory_typeE" title="xrt::xclbin::mem::memory_type">memory_type</a> <code class="sig-name descname">get_type</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem8get_typeEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1af39986bcb9942e0f4e5c553e0ac74434"><span class="std std-ref">get_type()</span></a> - Get the type of the memory</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Memory type </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt6xclbin3mem9get_indexEv">
+<span id="_CPPv3NK3xrt6xclbin3mem9get_indexEv"></span><span id="_CPPv2NK3xrt6xclbin3mem9get_indexEv"></span><span id="xrt::xclbin::mem::get_indexC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a193679b9234d832daf567655637eaa0b"></span>int32_t <code class="sig-name descname">get_index</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem9get_indexEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1a193679b9234d832daf567655637eaa0b"><span class="std std-ref">get_index()</span></a> - Get the index of the memory</p>
+<p><p>The returned index can be used when allocating buffers using </p>
+<a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a> provided the memory bank is connected / used. <dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Index of the memory within the memory topology</p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -936,6 +1379,12 @@
 <dt id="_CPPv4N3xrt2bo2boERK2bo">
 <span id="_CPPv3N3xrt2bo2boERK2bo"></span><span id="_CPPv2N3xrt2bo2boERK2bo"></span><span id="xrt::bo::bo__boCR"></span><span class="target" id="classxrt_1_1bo_1a4301f9918d770cefb78a9d78c1699a33"></span><code class="sig-name descname">bo</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4N3xrt2bo2boERK2bo" title="xrt::bo::bo">bo</a> &amp;<em>rhs</em><span class="sig-paren">)</span> = default<a class="headerlink" href="#_CPPv4N3xrt2bo2boERK2bo" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Copy ctor </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4N3xrt2boaSERK2bo">
+<span id="_CPPv3N3xrt2boaSERK2bo"></span><span id="_CPPv2N3xrt2boaSERK2bo"></span><span id="xrt::bo::assign-operator__boCR"></span><span class="target" id="classxrt_1_1bo_1a5ef99d90f58e1112c3c8714539e4803b"></span><a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo">bo</a> &amp;<code class="sig-name descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4N3xrt2boE" title="xrt::bo">bo</a> &amp;<em>rhs</em><span class="sig-paren">)</span> = default<a class="headerlink" href="#_CPPv4N3xrt2boaSERK2bo" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>operator= () - Copy assignment </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -1158,9 +1607,15 @@
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="cpp function">
+<dt id="_CPPv4N3xrt6kernel6kernelEv">
+<span id="_CPPv3N3xrt6kernel6kernelEv"></span><span id="_CPPv2N3xrt6kernel6kernelEv"></span><span id="xrt::kernel::kernel"></span><span class="target" id="classxrt_1_1kernel_1a80de053578d27cb63e23c6709cff0173"></span><code class="sig-name descname">kernel</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6kernel6kernelEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1kernel_1a80de053578d27cb63e23c6709cff0173"><span class="std std-ref">kernel()</span></a> - Construct for empty kernel </p>
+</dd></dl>
+
+<dl class="cpp function">
 <dt id="_CPPv4N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode">
 <span id="_CPPv3N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode"></span><span id="_CPPv2N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode"></span><span id="xrt::kernel::kernel__xrt::deviceCR.xrt::uuidCR.ssCR.cu_access_mode"></span><span class="target" id="classxrt_1_1kernel_1a32cc9ecb08ec3c5da84d3d6b10b3a074"></span><code class="sig-name descname">kernel</code><span class="sig-paren">(</span><em class="property">const</em> xrt::<a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device">device</a> &amp;<em>device</em>, <em class="property">const</em> xrt::uuid &amp;<em>xclbin_id</em>, <em class="property">const</em> std::string &amp;<em>name</em>, cu_access_mode <em>mode</em> = cu_access_mode::shared<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1kernel_1a32cc9ecb08ec3c5da84d3d6b10b3a074"><span class="std std-ref">kernel()</span></a> - Constructor from a device and xclbin</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1kernel_1a80de053578d27cb63e23c6709cff0173"><span class="std std-ref">kernel()</span></a> - Constructor from a device and xclbin</p>
 <p><p>The kernel name must uniquely identify compatible kernel instances (compute units). Optionally specify which kernel instance(s) to open using “kernelname:{instancename1,instancename2,…}” syntax. The compute units are default opened with shared access, meaning that other kernels and other process will have shared access to same compute units. </p>
 <dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
@@ -1339,9 +1794,9 @@
 </dd></dl>
 
 <dl class="cpp function">
-<dt id="_CPPv4N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvRK3run13ert_cmd_statePvEEEPv">
-<span id="_CPPv3N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvRK3run13ert_cmd_statePvEEEPv"></span><span id="_CPPv2N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvRK3run13ert_cmd_statePvEEEPv"></span><span class="target" id="classxrt_1_1run_1a8663745cecc0493049c75ff346e89cff"></span>void <code class="sig-name descname">add_callback</code><span class="sig-paren">(</span>ert_cmd_state <em>state</em>, std::function&lt;void<span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4N3xrt3runE" title="xrt::run">run</a>&amp;, ert_cmd_state, void*<span class="sig-paren">)</span>&gt; <em>callback</em>, void *<em>data</em>, <span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvRK3run13ert_cmd_statePvEEEPv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1run_1a8663745cecc0493049c75ff346e89cff"><span class="std std-ref">add_callback()</span></a> - Add a callback function for run state</p>
+<dt id="_CPPv4N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvPKv13ert_cmd_statePvEEEPv">
+<span id="_CPPv3N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvPKv13ert_cmd_statePvEEEPv"></span><span id="_CPPv2N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvPKv13ert_cmd_statePvEEEPv"></span><span class="target" id="classxrt_1_1run_1a268c7ad2d9bab32d6ba2878a0b00c628"></span>void <code class="sig-name descname">add_callback</code><span class="sig-paren">(</span>ert_cmd_state <em>state</em>, std::function&lt;void<span class="sig-paren">(</span><em class="property">const</em> void*, ert_cmd_state, void*<span class="sig-paren">)</span>&gt; <em>callback</em>, void *<em>data</em>, <span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvPKv13ert_cmd_statePvEEEPv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1a268c7ad2d9bab32d6ba2878a0b00c628"><span class="std std-ref">add_callback()</span></a> - Add a callback function for run state</p>
 <p><p>The function is called when the run object changes state to argument state or any error state. Only </p>
 <code class="docutils literal notranslate"><span class="pre">ERT_CMD_STATE_COMPLETED</span></code> is supported currently.<dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
@@ -1352,6 +1807,7 @@
 </dd>
 </dl>
 </p>
+<p>The function object’s first parameter is a unique ‘key’ for this <a class="reference internal" href="#classxrt_1_1run"><span class="std std-ref">xrt::run</span></a> object implmentation on which the callback was added. This ‘key’ can be used to identify an actual run object that refers to the implementaion that is maybe shared by multiple <a class="reference internal" href="#classxrt_1_1run"><span class="std std-ref">xrt::run</span></a> objects.</p>
 <p>Any number of callbacks are supported. </p>
 </dd></dl>
 
@@ -1375,6 +1831,17 @@
 <dd><p>operator bool() - Check if run handle is valid</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>True if run is associated with kernel object, false otherwise </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK3xrt3runltERKN3xrt3runE">
+<span id="_CPPv3NK3xrt3runltERKN3xrt3runE"></span><span id="_CPPv2NK3xrt3runltERKN3xrt3runE"></span><span id="xrt::run::lt-operator__xrt::runCRC"></span><span class="target" id="classxrt_1_1run_1af17b3aebcbcfc41859e109515fae3557"></span>bool <code class="sig-name descname">operator&lt;</code><span class="sig-paren">(</span><em class="property">const</em> xrt::<a class="reference internal" href="#_CPPv4N3xrt3runE" title="xrt::run">run</a> &amp;<em>rhs</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt3runltERKN3xrt3runE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>operator &lt; () - Weak ordering</p>
+<p>Object to compare with <dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>True if object is ordered less that compared with other </p>
 </dd>
 </dl>
 </p>
@@ -1520,6 +1987,18 @@
 
 <dl class="c function">
 <dt>
+<code class="sig-name descname">XRT_INFO_PARAM_TRAITS ( device::name,  std::string)</code></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">device::name</span></code></dt><dd><p><em>undescribed</em></p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">std::string</span></code></dt><dd><p><em>undescribed</em></p>
+</dd>
+</dl>
+<dl class="c function">
+<dt>
 <code class="sig-name descname">XCL_DRIVER_DLLESPEC xrtDeviceHandle xrtDeviceOpen (unsigned int index)</code></dt>
 <dd><p>Open a device and obtain its handle</p>
 </dd></dl>
@@ -1527,6 +2006,19 @@
 <p><strong>Parameters</strong></p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">index</span></code></dt><dd><p>Device index</p>
+</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>Handle representing the opened device, or nullptr on error</p>
+<dl class="c function">
+<dt>
+<code class="sig-name descname">XCL_DRIVER_DLLESPEC xrtDeviceHandle xrtDeviceOpenByBDF (const char * bdf)</code></dt>
+<dd><p>Open a device and obtain its handle</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">bdf</span></code></dt><dd><p>PCIe BDF identifying the device to open</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -1561,7 +2053,7 @@ nolonger needed.</p>
 <p>0 on success, error otherwise</p>
 <dl class="c function">
 <dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xrtDeviceLoadXclbin (xrtDeviceHandle dhdl, const struct axlf * xclbin)</code></dt>
+<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xrtDeviceLoadXclbin (xrtDeviceHandle dhdl, const axlf * xclbin)</code></dt>
 <dd><p>Load an xclbin image</p>
 </dd></dl>
 
@@ -1569,7 +2061,7 @@ nolonger needed.</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt><dd><p>Handle to device previously opened with xrtDeviceOpen</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">xclbin</span></code></dt><dd><p>Pointer to complete axlf in memory image</p>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">xclbin</span></code></dt><dd><p>Pointer to complete axlf in memory image</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -1644,6 +2136,19 @@ the xclbin loaded by this process using <strong>load_xclbin()</strong></p>
 <p><strong>Parameters</strong></p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">filename</span></code></dt><dd><p>path to the xclbin file</p>
+</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>xrtXclbinHandle on success or NULL with errno set</p>
+<dl class="c function">
+<dt>
+<code class="sig-name descname">XCL_DRIVER_DLLESPEC xrtXclbinHandle xrtXclbinAllocAxlf (const axlf * top_axlf)</code></dt>
+<dd><p>Allocate a xclbin using an axlf</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">top_axlf</span></code></dt><dd><p>an axlf</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -2359,7 +2864,7 @@ Support states are: ERT_CMD_STATE_COMPLETED (to be extended)</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on December 10, 2020.
+        Last updated on February 24, 2021.
       </span>
 
     </p>

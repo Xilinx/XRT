@@ -362,6 +362,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Kernel Types</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul class="current">
@@ -917,6 +918,44 @@ xclbin image</p></td>
 </dl>
 <dl class="c type">
 <dt>
+<code class="sig-name descname">struct drm_xocl_kds</code></dt>
+<dd><p>KDS user configuration</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_kds {
+  uint32_t slot_size;
+  uint32_t ert:1;
+  uint32_t polling:1;
+  uint32_t cu_dma:1;
+  uint32_t cu_isr:1;
+  uint32_t cq_int:1;
+  uint32_t dataflow:1;
+  uint32_t rw_shared:1;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">slot_size</span></code></dt><dd><p>CQ slot size</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">ert</span></code></dt><dd><p>enable embedded HW scheduler</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">polling</span></code></dt><dd><p>poll for command completion</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_dma</span></code></dt><dd><p>enable CUDMA custom module for HW scheduler</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_isr</span></code></dt><dd><p>enable CUISR custom module for HW scheduler</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cq_int</span></code></dt><dd><p>enable interrupt from host to HW scheduler</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dataflow</span></code></dt><dd><p>enable dataflow mode</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">rw_shared</span></code></dt><dd><p>allow xclRegWrite/xclRegRead access shared CU</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt>
 <code class="sig-name descname">struct drm_xocl_axlf</code></dt>
 <dd><p>load xclbin (AXLF) device image used with DRM_IOCTL_XOCL_READ_AXLF ioctl</p>
 </dd></dl>
@@ -1266,7 +1305,7 @@ for automatic event dependency handling by ERT</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on December 10, 2020.
+        Last updated on February 24, 2021.
       </span>
 
     </p>

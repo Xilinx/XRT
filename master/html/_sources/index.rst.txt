@@ -50,6 +50,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    xrt_native_apis.rst
    xrt_native.main.rst
    xma.main.rst
+   xmakernels.main.rst
 
 
 .. toctree::

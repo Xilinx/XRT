@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['kernel',['kernel',['../classxrt_1_1kernel.html',1,'xrt::kernel'],['../classxrt_1_1kernel.html#a32cc9ecb08ec3c5da84d3d6b10b3a074',1,'xrt::kernel::kernel()']]]
+  ['ip',['ip',['../classxrt_1_1xclbin_1_1ip.html',1,'xrt::xclbin::ip'],['../classxrt_1_1xclbin_1_1ip.html#ab397cedf62a711796e1caa3a113fe423',1,'xrt::xclbin::ip::ip()'],['../classxrt_1_1xclbin_1_1ip.html#a63654d4fbfef294c3df0d219be16ec0b',1,'xrt::xclbin::ip::ip(std::shared_ptr&lt; ip_impl &gt; handle)']]]
 ];

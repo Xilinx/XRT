@@ -71,8 +71,10 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &quot;xrt.h&quot;</code><br />
+<code>#include &quot;xclbin.h&quot;</code><br />
 <code>#include &quot;experimental/xrt_uuid.h&quot;</code><br />
-<code>#include &lt;memory&gt;</code><br />
+<code>#include &quot;experimental/detail/pimpl.h&quot;</code><br />
+<code>#include &lt;utility&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &lt;string&gt;</code><br />
 </div><div class="textblock"><div class="dynheader">
@@ -97,6 +99,18 @@ This graph shows which files directly or indirectly include this file:</div>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html">xrt::xclbin</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classxrt_1_1xclbin.html" title="xrt::xclbin represents an xclbin, provides APIs for inspection it. ">xrt::xclbin</a> represents an xclbin, provides APIs for inspection it.  <a href="classxrt_1_1xclbin.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1mem.html">xrt::xclbin::mem</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classxrt_1_1xclbin_1_1mem.html" title="xrt::xclbin::mem represents a physical device memory bank ">xrt::xclbin::mem</a> represents a physical device memory bank  <a href="classxrt_1_1xclbin_1_1mem.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1arg.html">xrt::xclbin::arg</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">class arg - <a class="el" href="classxrt_1_1xclbin_1_1arg.html" title="class arg - xrt::xclbin::arg represents a compute unit argument ">xrt::xclbin::arg</a> represents a compute unit argument  <a href="classxrt_1_1xclbin_1_1arg.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1ip.html">xrt::xclbin::ip</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classxrt_1_1xclbin_1_1ip.html" title="xrt::xclbin::ip represents a IP in an xclbin. ">xrt::xclbin::ip</a> represents a IP in an xclbin.  <a href="classxrt_1_1xclbin_1_1ip.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1kernel.html">xrt::xclbin::kernel</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>

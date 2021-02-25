@@ -362,6 +362,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Kernel Types</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul class="current">
@@ -923,9 +924,8 @@ units.</p></td>
   uint32_t opcode;
   uint32_t start_cuidx;
   uint32_t cu_nums;
-  size_t size;
-  uint64_t paddr;
   char name;
+  uint32_t bohdl;
 };
 </pre></div>
 </div>
@@ -937,11 +937,9 @@ units.</p></td>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">cu_nums</span></code></dt><dd><p>number of compute units in program</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>size in bytes of soft kernel image</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt><dd><p>soft kernel image’s physical address (little endian)</p>
-</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>symbol name of soft kernel</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">bohdl</span></code></dt><dd><p>BO to hold soft kernel image</p>
 </dd>
 </dl>
 <dl class="c type">
@@ -1038,7 +1036,7 @@ units.</p></td>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on December 10, 2020.
+        Last updated on February 24, 2021.
       </span>
 
     </p>
