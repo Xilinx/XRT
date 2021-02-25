@@ -99,6 +99,7 @@ typedef struct _XrtIvas_XVCUDecPrivate
   xrt_buffer *in_xrt_bufs[MAX_IBUFFS];  /* input encoded stream will be copied to this */
   xrt_buffer *dec_cfg_buf;
   xrt_buffer *dec_out_bufs_handle;
+  uint64_t timestamp; /* get current time when sending PREINIT command */
   int init_done;
   int flush_done;          /* to make sure FLUSH cmd issued to softkernel while exiting */
   int deinit_done;
