@@ -63,6 +63,7 @@ static struct mpd_plugin_callbacks plugin_cbs;
 static std::map<std::string, std::atomic<bool>> threads_handling;
 static std::map<std::string, enum Hotplug_state> state_machine;
 static std::map<std::string, std::shared_ptr<Msgq<queue_msg>>> threads_msgq;
+static std::map<std::string, std::string>dev_maj_min;
 udev* mpd_hotplug;
 udev_monitor* mpd_hotplug_monitor;
 
@@ -225,7 +226,7 @@ void Mpd::update_profile_subdev_to_container(const std::string &sysfs_name,
     const std::string &subdev_name,
     const std::string &suffix)
 {
-    std::string major_minor = get_xocl_major_minor(sysfs_name);
+    std::string major_minor = dev_maj_min[sysfs_name];
     std::string path;
     if (device_in_container(major_minor, path)) {
         path.replace(path.rfind(".") + 1, suffix.size(), suffix);
@@ -306,6 +307,7 @@ void Mpd::run()
      */
     for (size_t i = 0; i < total; i++) {
         std::string sysfs_name = pcidev::get_dev(i, true)->sysfs_name;
+	dev_maj_min[sysfs_name] = get_xocl_major_minor(sysfs_name);
         state_machine[sysfs_name] = MAILBOX_ADDED;
     }
 
