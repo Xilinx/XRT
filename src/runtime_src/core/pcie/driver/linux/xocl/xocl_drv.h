@@ -1707,7 +1707,7 @@ struct xocl_ert_versal_funcs {
 struct xocl_ert_user_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (* configured)(struct platform_device *pdev);
-	uint32_t (* gpio_cfg)(struct platform_device *pdev, enum ert_gpio_cfg type);
+	int32_t (* gpio_cfg)(struct platform_device *pdev, enum ert_gpio_cfg type);
 };
 #define	ERT_USER_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).pldev
 #define ERT_USER_OPS(xdev)  \

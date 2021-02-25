@@ -154,7 +154,7 @@ struct xocl_ert_user {
 };
 
 static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd);
-static uint32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type);
+static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type);
 
 static ssize_t clock_timestamp_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
@@ -307,16 +307,6 @@ static ssize_t cu_write_cnt_show(struct device *dev,
 
 static DEVICE_ATTR_RO(cu_write_cnt);
 
-static ssize_t memcpy_cnt_show(struct device *dev,
-			   struct device_attribute *attr, char *buf)
-{
-	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
-
-	return sprintf(buf, "%d\n", ert_user->ert_valid.memcpy_128);
-}
-
-static DEVICE_ATTR_RO(memcpy_cnt);
-
 static struct attribute *ert_user_attrs[] = {
 	&dev_attr_clock_timestamp.attr,
 	&dev_attr_ert_dmsg.attr,
@@ -328,7 +318,6 @@ static struct attribute *ert_user_attrs[] = {
 	&dev_attr_cq_write_cnt.attr,
 	&dev_attr_cu_read_cnt.attr,
 	&dev_attr_cu_write_cnt.attr,
-	&dev_attr_memcpy_cnt.attr,
 	NULL,
 };
 
@@ -336,16 +325,16 @@ static struct attribute_group ert_user_attr_group = {
 	.attrs = ert_user_attrs,
 };
 
-static uint32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type)
+static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type)
 {
 	struct xocl_ert_user *ert_user = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
-	uint32_t ret = 0, val = 0;
+	int32_t ret = 0, val = 0;
 	int i;
 
 	if (!ert_user->cfg_gpio) {
 		ERTUSER_ERR(ert_user, "%s ERT config gpio not found\n", __func__);
-		return 0;
+		return -ENODEV;
 	}
 	mutex_lock(&ert_user->lock);
 	val = ioread32(ert_user->cfg_gpio);
