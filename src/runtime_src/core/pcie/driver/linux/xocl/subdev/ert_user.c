@@ -105,7 +105,7 @@ struct xocl_ert_user {
 	/* Configure dynamically */ 
 	unsigned int		num_slots;
 	bool			cq_intr;
-	bool			config;
+	bool			is_configured;
 	bool			ctrl_busy;
 	// Bitmap tracks busy(1)/free(0) slots in command_queue
 	DECLARE_BITMAP(slot_status, ERT_MAX_SLOTS);
@@ -384,7 +384,7 @@ static int ert_user_configured(struct platform_device *pdev)
 {
 	struct xocl_ert_user *ert_user = platform_get_drvdata(pdev);
 
-	return ert_user->config;
+	return ert_user->is_configured;
 }
 
 static struct xocl_ert_user_funcs ert_user_ops = {
@@ -548,7 +548,6 @@ ert_release_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 	if (ert_special_cmd(ecmd)) {
 		ERTUSER_DBG(ert_user, "do nothing %s\n", __func__);
 		ert_user->ctrl_busy = false;
-		ert_user->config = true;	
 	} else {
 		ERTUSER_DBG(ert_user, "ecmd->slot_idx %d\n", ecmd->slot_idx);
 		ert_release_slot_idx(ert_user, ecmd->slot_idx);
@@ -563,8 +562,17 @@ ert_post_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 	if (likely(!ert_special_cmd(ecmd)))
 		return;
 
-	if (cmd_opcode(ecmd) == OP_CLK_CALIB || cmd_opcode(ecmd) == OP_VALIDATE)
+	switch (cmd_opcode(ecmd)) {
+	case OP_VALIDATE:
+	case OP_CLK_CALIB:
 		memcpy(&ert_user->ert_valid, ert_user->cq_base, sizeof(struct ert_validate_cmd));
+		break;
+	case OP_CONFIG:
+		ert_user->is_configured = true;
+		break;
+	default:
+		break;
+	}
 
 	return;
 }
@@ -971,6 +979,21 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 
 	return 0;
 }
+static inline void ert_intc_enable(struct xocl_ert_user *ert_user, bool enable){
+	uint32_t i;
+	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
+
+	for (i = 0; i < ert_user->num_slots; i++) {
+		if (enable) {
+			xocl_intc_ert_request(xdev, i, ert_user_isr, ert_user);
+			xocl_intc_ert_config(xdev, i, true);
+		} else {
+			xocl_intc_ert_config(xdev, i, false);
+			xocl_intc_ert_request(xdev, i, NULL, NULL);
+		}
+	}
+}
+
 /**
  * process_ert_rq() - Process run queue
  * @ert_user: Target XRT ERT
@@ -981,9 +1004,8 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 {
 	struct ert_user_command *ecmd, *next;
-	u32 slot_addr = 0, i;
+	u32 slot_addr = 0;
 	struct ert_packet *epkt = NULL;
-	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
 	struct kds_client *ev_client = NULL;
 	u32 mask_idx, cq_int_addr, mask;
 
@@ -1021,12 +1043,10 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 
 		//sched_debug_packet(epkt, epkt->count+sizeof(epkt->header)/sizeof(u32));
 
-		if (cmd_opcode(ecmd) == OP_CONFIG && !ert_user->polling_mode) {
-			for (i = 0; i < ert_user->num_slots; i++) {
-				xocl_intc_ert_request(xdev, i, ert_user_isr, ert_user);
-				xocl_intc_ert_config(xdev, i, true);
-			}
-
+		if (cmd_opcode(ecmd) == OP_CONFIG) {
+			ert_user->is_configured = false;
+			if (!ert_user->polling_mode)
+				ert_intc_enable(ert_user, true);
 		}
 		slot_addr = ecmd->slot_idx * (ert_user->cq_range/ert_user->num_slots);
 
@@ -1261,8 +1281,6 @@ static int ert_user_remove(struct platform_device *pdev)
 {
 	struct xocl_ert_user *ert_user;
 	void *hdl;
-	u32 i = 0;
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	ert_user = platform_get_drvdata(pdev);
 	if (!ert_user) {
@@ -1280,10 +1298,7 @@ static int ert_user_remove(struct platform_device *pdev)
 	if (ert_user->cq_base)
 		iounmap(ert_user->cq_base);
 
-	for (i = 0; i < ert_user->num_slots; i++) {
-		xocl_intc_ert_config(xdev, i, false);
-		xocl_intc_ert_request(xdev, i, NULL, NULL);
-	}
+	ert_intc_enable(ert_user, false);
 
 	ert_user->stop = 1;
 	up(&ert_user->sem);
