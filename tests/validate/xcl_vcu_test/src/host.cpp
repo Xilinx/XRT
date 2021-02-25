@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
 
   std::string test_path = argv[1];
 
-  std::string b_file = "/verify_sk.xclbin";
+  std::string b_file = "/verify.xclbin";
   std::string binaryFile = test_path + b_file;
   std::ifstream infile(binaryFile);
   if (!infile.good()) {
