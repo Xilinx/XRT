@@ -1,5 +1,5 @@
-Migration from Legacy XMA to Current XMA
-========================================
+Migration from Legacy XMA
+=========================
 
 Summary of changes
 ------------------
@@ -52,21 +52,21 @@ In current XMA the API ``xma_plg_buffer_write`` does not accept host pointer any
 Buffer Read: ``xma_plg_buffer_read`` 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In **19.1**, the API ``xma_plg_buffer_read.`` used to copy data to the host pointer after DMA transfer.
+In legacy XMA, the API ``xma_plg_buffer_read.`` used to copy data to the host pointer after DMA transfer.
 
-In **19.2**, the API ``xma_plg_buffer_read`` does not accept host pointer any longer. If desired, the user has to copy from the buffer to the host pointer. **The API now only performs DMA transfer from device to host**.             
+In current XMA, the API ``xma_plg_buffer_read`` does not accept host pointer any longer. If desired, the user has to copy from the buffer to the host pointer. **The API now only performs DMA transfer from device to host**.             
  
 Scalar/Register Write: ``xma_plg_register_prep_write``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In **19.2**, the API ``xma_plg_register_prep_write`` works directly on ``XMASession`` instead of ``XmaHwSession``. This API has to be guarded between ``xma_plg_kernel_lock_regmap`` and ``xma_plg_kernel_unlock_regmap`` APIs. 
+In current XMA, the API ``xma_plg_register_prep_write`` works directly on ``XMASession`` instead of ``XmaHwSession``. This API has to be guarded between ``xma_plg_kernel_lock_regmap`` and ``xma_plg_kernel_unlock_regmap`` APIs. 
 
 **Note**: The API ``xma_plg_register_prep_write`` is not needed if the new scheduling API ``xma_plg_schedule_work_item_with_args`` is used.   
 
 Kernel Scheduling: ``xma_plg_schedule_work_item``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Now in **19.2**, the kernel scheduling API ``xma_plg_schedule_work_item`` has to be guarded between ``xma_plg_kernel_lock_regmap`` and ``xma_plg_kernel_unlock_regmap`` APIs.  
+In the current XMA, the kernel scheduling API ``xma_plg_schedule_work_item`` has to be guarded between ``xma_plg_kernel_lock_regmap`` and ``xma_plg_kernel_unlock_regmap`` APIs.  
 
 **Note**: If using new scheduling API ``xma_plg_schedule_work_item_with_args`` the above locking and unlocking APIs are not required.
 
@@ -76,18 +76,18 @@ Application Code Migration
 XMA Initialize Function: ``xma_initlialize``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In **19.1**, the API ``xma_initlialize`` used to take YAML configuration file. 
+In legacy XMA, the API ``xma_initlialize`` used to take YAML configuration file. 
 
-In **19.2**, the usage of **YAML file has been obsoleted**. The API ``xma_initlialize`` takes device information and XCLBIN through new datatype: ``XmaXclbinParameter``   
+In current XMA, the usage of **YAML file has been obsoleted**. The API ``xma_initlialize`` takes device information and XCLBIN through new datatype: ``XmaXclbinParameter``   
 
 Expanded Plugin Properties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Plugin properties have been expanded in **19.2** to contain more information.
+Plugin properties have been expanded in current XMA to contain more information.
 
-For example, compare ``XmaEncoderProperties`` between 19.1 and 19.2 XRT versions.      
+For example, compare ``XmaEncoderProperties`` between legacy and current XRT versions.      
 
-Now in **19.2**, more fields have been added.                                
+Now in current XMA, more fields have been added.                                
 
      - Device index (Should be passed from the application level)                
      - Compute Unit index (Should be determined at the application level)                                      

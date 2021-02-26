@@ -22,9 +22,6 @@ Create Session
 Each kernel class (i.e. encoder, filter, decoder, scaler, filter, kernel)
 requires different properties to be specified before a session can be created.
 
-See the document for the corresponding module for more details for a given
-kernel type:
-
 1. xmadec
 2. xmaenc
 3. xmafilter
