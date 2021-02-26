@@ -1932,9 +1932,14 @@ int CpuemShim::xclIPName2Index(const char *name)
 
 void CpuemShim::constructQueryTable() {
   if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-    mQueryTable[key_type::m2m] = mPlatformData.get<std::string>("plp.m2m");
-    std::string dmaVal = mPlatformData.get<std::string>("plp.dma");
-    mQueryTable[key_type::nodma] = (dmaVal == "none" ? "enabled" : "disabled");
+    if (mPlatformData.get_optional<std::string>("plp.m2m").is_initialized()) {
+      mQueryTable[key_type::m2m] = mPlatformData.get<std::string>("plp.m2m");
+    }
+
+    if (mPlatformData.get_optional<std::string>("plp.dma").is_initialized()) {
+      std::string dmaVal = mPlatformData.get<std::string>("plp.dma");
+      mQueryTable[key_type::nodma] = (dmaVal == "none" ? "enabled" : "disabled");
+    }
   }
 }
 
