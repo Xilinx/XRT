@@ -11,7 +11,7 @@ Xbutil
 ~~~~~~
 
 +-----------+-----------+----------------+---------------+
-|Subcommand | Subcommand|option          |Option         |
+|Subcommand | Subcommand|Option          |Option         |
 |Legacy     | New       |Legacy          |New            |
 +===========+===========+================+===============+
 |           |           |                |               |
@@ -116,7 +116,7 @@ Xbmgmt
 ~~~~~~
 
 +-----------+-----------+----------------+---------------+
-|Subcommand | Subcommand|Required option |Required option|
+|Subcommand | Subcommand|Option          |Option         |
 |Legacy     | New       |Legacy          |New            |
 +===========+===========+================+===============+
 |           |           |                |               |
