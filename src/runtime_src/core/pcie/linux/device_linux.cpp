@@ -84,11 +84,11 @@ struct kds_cu_info
 /**
  * qspi write protection status
  * byte 0:
- *   0: status not available, 1: status available
+ *   '0': status not available, '1': status available
  * byte 1 primary qspi(if status available):
- *   1: write protect enable, 2: write protect disable
+ *   '1': write protect enable, '2': write protect disable
  * byte 2 recovery qspi(if status available):
- *   1: write protect enable, 2: write protect disable
+ *   '1': write protect enable, '2': write protect disable
  */
 struct qspi_status
 {
@@ -105,15 +105,14 @@ struct qspi_status
       throw std::runtime_error(errmsg);
 
     std::string primary, recovery;
-    for (auto x : status_str) {
-      int status_byte = x - '0';
-      if(status_byte == 0)
+    for (auto status_byte : status_str) {
+      if(status_byte == '0')
         return std::pair<std::string, std::string>("N/A", "N/A");
 
       if(primary.empty())
-        primary = status_byte == 1 ? "Enabled": status_byte == 2 ? "Disabled" : "Invalid";
+        primary = status_byte == '1' ? "Enabled": status_byte == '2' ? "Disabled" : "Invalid";
       else
-        recovery = status_byte == 1 ? "Enabled": status_byte == 2 ? "Disabled" : "Invalid";
+        recovery = status_byte == '1' ? "Enabled": status_byte == '2' ? "Disabled" : "Invalid";
     }
     return std::pair<std::string, std::string>(primary, recovery);
   }
