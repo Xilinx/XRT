@@ -1,7 +1,7 @@
 .. _xbtools_map.rst:
 
-Xbutil/Xbmgmt: Mapping of legacy to new subcommands
-***************************************************
+Legacy to new map
+*****************
 
 This document maps the legacy ``xbutil``/``xbmgmt`` commands to the new ``xbutil``/``xbmgmt`` commands. It lists out the new ``xbutil``/``xbmgmt`` calls that replace the existing calls.
 
@@ -11,7 +11,7 @@ Xbutil
 ~~~~~~
 
 +-----------+-----------+----------------+---------------+
-|Subcommand | Subcommand|Required option |Required option|
+|Subcommand | Subcommand|option          |Option         |
 |Legacy     | New       |Legacy          |New            |
 +===========+===========+================+===============+
 |           |           |                |               |
@@ -27,8 +27,8 @@ Xbutil
 |           |           |                |               |
 +-----------+-----------+----------------+---------------+
 |           |           |                |               |
-|           |           |(N/A)	         |--run          |
-|           |           |                | "testname"	 |
+|           |           |(N/A)	         | --run         |
+|           |           |                | <testname>	 |
 +-----------+-----------+----------------+---------------+
 |           |           |                |               |
 |           |           |(N/A)	         |--format	 |
@@ -71,7 +71,7 @@ Xbutil
 |           |           |-d <bdf>        |               |
 +-----------+-----------+----------------+---------------+
 |           |           |                |               |
-|           |           | -p <xclbin>	 | --user        |
+|           |           | -p <xclbin>	 |--user         |
 |           |           |                |<xclbin>	 |
 +-----------+-----------+----------------+---------------+
 |           |           |                |               |
@@ -81,8 +81,8 @@ Xbutil
 |           |           |                |               |
 |           |           |--enable,       | --p2p         |
 |           |           |--disable,      | <ENABLE,      |
-|           |           |--validate	 |  DISABLE,     |
-|           |           |                |  VALIDATE>	 |	
+|           |           |--validate	 | DISABLE,      |
+|           |           |                | VALIDATE>	 |	
 +-----------+-----------+----------------+---------------+
 
 
@@ -128,7 +128,7 @@ Xbmgmt
 |           |           |                |               |
 +-----------+-----------+----------------+---------------+
 |           |           |                |               |
-|           |           | --update       |(N/A)          |
+|           |           | --update       |N/A            |
 |           |           | --shell <name> |		 |
 +-----------+-----------+----------------+---------------+
 |           |           |                |               |
