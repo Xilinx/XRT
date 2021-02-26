@@ -273,6 +273,11 @@ public:
   virtual void write(uint64_t, const void*, uint64_t) const {}
 
   virtual void reset(query::reset_type&) const {}
+ 
+  /**
+   * xclmgmt_load_xclbin() - loads the xclbin through the mgmt pf
+   */
+  virtual void xclmgmt_load_xclbin(const char*) const{}
 
   /**
    * open() - opens a device with an fd which can be used for non pcie read/write
