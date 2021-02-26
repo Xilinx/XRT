@@ -1,9 +1,9 @@
 .. _xmakernels.main.rst:
 
-XMA Kernel Types
-~~~~~~~~~~~~~~~~
+XMA Upper Edge API Library
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-XMA Framework supports five types of kernel
+XMA upper edge APIs can be divided based on the following five types of kernel
 
   1. Encoder
   2. Decoder
