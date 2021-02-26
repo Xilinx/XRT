@@ -32,10 +32,10 @@ do {\
 
 void xocl_describe(const struct drm_xocl_bo *xobj);
 
-int kds_mode = 0;
+int kds_mode = 1;
 module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(kds_mode,
-		 "enable new KDS (0 = disable (default), 1 = enable)");
+		 "enable new KDS (0 = disable, 1 = enable (default))");
 
 /* kds_echo also impact mb_scheduler.c, keep this as global.
  * Let's move it to struct kds_sched in the future.
