@@ -42,9 +42,9 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    xma_user_guide.rst
    xma_apps_dev.rst
    xma_plugin_dev.rst
-   xma_19.2.rst
    xmakernels.main.rst
    xma.main.rst
+   xma_19.2.rst
 
 .. toctree::
    :maxdepth: 1
