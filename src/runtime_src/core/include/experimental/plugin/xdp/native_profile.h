@@ -24,33 +24,34 @@
 
 namespace xdpnative {
 
-  // The top level function that loads the library.  This should only
-  //  be executed once
-  void load_xdp_native() ;
+// The functions responsible for loading and linking the plugin
+void load_xdp_native() ;
+void register_native_functions(void* handle) ;
+void native_warning_function() ;
 
-  void register_native_functions(void* handle) ;
+// An instance of the native_api_call_logger class will be created
+//  in every function we are monitoring.  The constructor marks the
+//  start time, and the destructor marks the end time
+class native_api_call_logger
+{
+ private:
+  unsigned int m_funcid ;
+  const char* m_name = nullptr ;
+  const char* m_type = nullptr ;
+ public:
+  native_api_call_logger(const char* function, const char* type = nullptr) ;
+  ~native_api_call_logger() ;
+} ;
 
-  void native_warning_function() ;
-
-  class NativeFunctionCallLogger
-  {
-  private:
-    unsigned int m_funcid ;
-    const char* m_name = nullptr ;
-    const char* m_type = nullptr ;
-  public:
-    NativeFunctionCallLogger(const char* function, const char* type = nullptr) ;
-    ~NativeFunctionCallLogger() ;
-  } ;
-
-  // In order to capture object functions like constructors, we need
-  //  two different hooks
-  void profiling_start(void* object, const char* function, const char* type);
-  void profiling_end(void* object, const char* function, const char* type);
+// Additionally, we need two hooks to capture the time spent in the
+//  initializer list of C++ object constructors we are monitoring.
+void profiling_start(void* object, const char* function, const char* type);
+void profiling_end(void* object, const char* function, const char* type);
 
 } // end namespace xdpnative
 
-#define NATIVE_LOG_FUNCTION_CALL xdpnative::NativeFunctionCallLogger LogObject(__func__);
-#define NATIVE_MEMBER_LOG_FUNCTION_CALL xdpnative::NativeFunctionCallLogger LogObject(__func__, typeid(*this).name());
+// Helpful macros to instantiate our objects
+#define NATIVE_LOG_FUNCTION_CALL xdpnative::native_api_call_logger LogObject(__func__);
+#define NATIVE_MEMBER_LOG_FUNCTION_CALL xdpnative::native_api_call_logger LogObject(__func__, typeid(*this).name());
 
 #endif
