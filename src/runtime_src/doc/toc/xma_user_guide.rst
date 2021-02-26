@@ -333,7 +333,7 @@ The general initialization sequence that is common to all kernel classes is as f
 
 
 Runtime Frame and Data Processing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Most kernel types include routines to consume data and then produce data from
 host memory buffers.  Depending on the nature of the kernel, you may be
 required to send a frame and then receive data or vice versa.
@@ -356,7 +356,7 @@ perform control functions and/or other functions not easily represented by
 any of the other kernel classes.
 
 Cleanup
-~~~~~~~~~~~~
+~~~~~~~
 When runtime video processing has concluded, the application should destroy
 each session.  Doing so will free the session to be used by another thread or
 process and ensure that the kernel plugin has the opportunity to perform
@@ -368,10 +368,13 @@ proper cleanup/closing procedures.
 4. xma_filter_session_destroy()
 5. xma_kernel_session_destroy()
 
-See XMA copy_encoder & copy_filter examples for more info.
+Standalone Example
+~~~~~~~~~~~~~~~~~~
+
+See XMA copy_encoder_ example for an standalone working example of encoder kernel type.
 
 Plugin Development Guide
------------------------------
+------------------------
 
 The XMA Plugin Interface is used to write software capable of managing a
 specific video kernel hardware resource.  The plugin interface consists of a
@@ -584,3 +587,4 @@ Compiling ffmpeg or host aplication with libxma2api:
 --enable-gpl \
 --enable-nonfree
 
+.. _copy_encoder: https://github.com/Xilinx/xma-samples
