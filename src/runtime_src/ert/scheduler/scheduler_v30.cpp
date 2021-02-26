@@ -664,7 +664,15 @@ configure_cu(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
   uint32_t *addr_ptr = (uint32_t *)(uintptr_t)cu_addr;
   uint32_t *regmap_ptr = (uint32_t *)(uintptr_t)regmap_addr;
 
-  memcpy(addr_ptr+4, regmap_ptr+4, (regmap_size-4)<<2);
+  /* We know for-loop is 2% slower than memcpy().
+   * But unstable behavior are observed when using memcpy().
+   * Sometimes, it does not fully configure all registers.
+   * We failed to find a stable pattern to use memcpy().
+   * Don't waste your life to it again.
+   */
+  //memcpy(addr_ptr+4, regmap_ptr+4, (regmap_size-4)<<2);
+  for (size_type i = 4; i < regmap_size; ++i)
+    *(addr_ptr + i) = *(regmap_ptr + i);
 #endif
   // start kernel at base + 0x0
   write_reg(cu_addr, 0x1);
