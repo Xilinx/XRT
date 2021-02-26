@@ -71,7 +71,7 @@ xrt_xclbin_get_section(const struct axlf *xclbin,
 	enum axlf_section_kind kind, void **data, uint64_t *len);
 
 struct axlf_section_header *
-xrt_xclbin_get_section_hdr_next(struct axlf *xclbin,
+xrt_xclbin_get_section_hdr_next(const struct axlf *xclbin,
 	enum axlf_section_kind kind, struct axlf_section_header *cur);
 
 int xrt_xclbin_get_section_num(const struct axlf *xclbin,
