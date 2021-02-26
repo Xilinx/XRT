@@ -1,5 +1,5 @@
-XMA 19.2 Migration
-==================
+Migration from Legacy XMA to Current XMA
+========================================
 
 Summary of changes
 ------------------
@@ -31,9 +31,9 @@ The following changes have been incorporated in the main plugin structures: ``Xm
 Buffer Creation: ``xma_plg_buffer_alloc``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In **19.1**, the buffer creation process was complex. It was needed to specify all buffer properties such as buffer size, physical address, handle when creating the buffer.
+In legacy XMA, the buffer creation process was complex. It was needed to specify all buffer properties such as buffer size, physical address, handle when creating the buffer.
 
-In **19.2**, the buffer creation process is simplified
+In current XMA, the buffer creation process is simplified
 
    - A new type ``XmaBufferObj`` is introduced
    - Function ``xma_plg_buffer_alloc`` is changed
@@ -45,9 +45,9 @@ In **19.2**, the buffer creation process is simplified
 Buffer Write: ``xma_plg_buffer_write``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In **19.1**, the API ``xma_plg_buffer_write`` was used to copy data from the host pointer followed by the DMA transfer. 
+In legacy XMA the API ``xma_plg_buffer_write`` was used to copy data from the host pointer followed by the DMA transfer. 
 
-In **19.2**, the API ``xma_plg_buffer_write`` does not accept host pointer any longer. If desired, the user has to copy from the host pointer to the buffer. **The API now only performs DMA transfer from host to device**. 
+In current XMA the API ``xma_plg_buffer_write`` does not accept host pointer any longer. If desired, the user has to copy from the host pointer to the buffer. **The API now only performs DMA transfer from host to device**. 
 
 Buffer Read: ``xma_plg_buffer_read`` 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -94,3 +94,38 @@ Now in **19.2**, more fields have been added.
      - Channel id (Each channel should be passed with unique id from the application level)                                                      
      - DDR bank index (Set -1 if auto-detection is desired)            
      - Plugin lib path                                                  
+
+
+List of details changes
+~~~~~~~~~~~~~~~~~~~~~~~
+
+1. YAML configuration file is not used by XMA
+2. Resource management is not handled by XMA
+
+   a. So channel_id for multi-channel kernels must be handled in host video application (like ffmpeg)
+   b. channel_id is input to XMA in session_create API as part of the properties argument
+   c. See XRM for resource management details
+
+3. MPSoC PL & soft kernels are supported in XMA
+4. Direct register read & write is not available
+5. DataFlow kernels are supported
+6. ZeroCopy support has changed. See below for details
+7. BufferObject added. See below for details
+8. XmaFrame & XmaDataBuffer can use device buffers instead of host only memory
+9. Support for device_only buffers
+10. Session creation & destroy APIs are thread safe now
+11. Multi-process support is from XRT
+12. schedule_work_item  API changed to return CUCmdObj
+13. New API xma_plg_schedule_cu_cmd & xma_plg_cu_cmd_status can be used instead of schedule_work_item
+14. In a session if using xma_plg_cu_cmd_status then do NOT use xma_plg_is_work_item_done in same session
+15. Supports up to 128 CUs per device
+16. CU register map size < 4KB
+17. By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session
+18. For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info
+19. XMA now support multiple ddr bank per plugin. See below for info on xma_plg_buffer_alloc_arg_num()
+20. XMA version check API added to plugin struct. See below for details
+21. New session type XMA_ADMIN for non-video applications to control multiple CUs in single session. See below for details
+22. get_session_cmd_load(): Get CU command load of various sessions relative to each other. Printed to log file
+23. CU command load of all session is automatically sent to log file at end of the application
+24. This gives info on which sessions (or CUs) are more busy compared to other sessions (or CUs)
+25. QDMA platform: Host to kernel streams will be supported by XMA in future. See below for more details

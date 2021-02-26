@@ -1,38 +1,6 @@
 ===========================================
 Xilinx Media Accelerator (XMA)
 ===========================================
-Major XMA Changes in 2019.2 Release:
-
-1. YAML configuration file is not used by XMA
-2. Resource management is not handled by XMA
-
-   a. So channel_id for multi-channel kernels must be handled in host video application (like ffmpeg)
-   b. channel_id is input to XMA in session_create API as part of the properties argument
-   c. See XRM for resource management details
-
-3. MPSoC PL & soft kernels are supported in XMA
-4. Direct register read & write is not available
-5. DataFlow kernels are supported
-6. ZeroCopy support has changed. See below for details
-7. BufferObject added. See below for details
-8. XmaFrame & XmaDataBuffer can use device buffers instead of host only memory
-9. Support for device_only buffers
-10. Session creation & destroy APIs are thread safe now
-11. Multi-process support is from XRT
-12. schedule_work_item  API changed to return CUCmdObj
-13. New API xma_plg_schedule_cu_cmd & xma_plg_cu_cmd_status can be used instead of schedule_work_item
-14. In a session if using xma_plg_cu_cmd_status then do NOT use xma_plg_is_work_item_done in same session
-15. Supports up to 128 CUs per device
-16. CU register map size < 4KB
-17. By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session
-18. For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info
-19. XMA now support multiple ddr bank per plugin. See below for info on xma_plg_buffer_alloc_arg_num()
-20. XMA version check API added to plugin struct. See below for details
-21. New session type XMA_ADMIN for non-video applications to control multiple CUs in single session. See below for details
-22. get_session_cmd_load(): Get CU command load of various sessions relative to each other. Printed to log file
-23. CU command load of all session is automatically sent to log file at end of the application
-24. This gives info on which sessions (or CUs) are more busy compared to other sessions (or CUs)
-25. QDMA platform: Host to kernel streams will be supported by XMA in future. See below for more details
 
 Introduction
 ---------------
