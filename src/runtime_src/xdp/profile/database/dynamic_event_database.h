@@ -176,6 +176,9 @@ namespace xdp {
     XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> filterEraseHostEvents(std::function<bool(VTFEvent*)> filter);
     XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> getEraseDeviceEvents(uint64_t deviceId);
 
+    XDP_EXPORT bool deviceEventsExist(uint64_t deviceId);
+    XDP_EXPORT bool hostEventsExist(std::function<bool(VTFEvent*)> filter);
+
     XDP_EXPORT void setCounterResults(uint64_t deviceId,
 				      xrt_core::uuid uuid,
 				      xclCounterResults& values) ;

@@ -269,8 +269,25 @@ namespace xdp {
     else               writeBinaryDependencies() ;
   }
 
+  bool OpenCLTraceWriter::traceEventsExist()
+  {
+    return (
+      db->getDynamicInfo().hostEventsExist (
+        [](VTFEvent* e)
+        {
+          return e->isOpenCLHostEvent();
+        }
+      )
+    );
+  }
+
   bool OpenCLTraceWriter::write(bool openNewFile)
   {
+    if (openNewFile && !traceEventsExist()) {
+      std::cout << "No new opencl trace data.. Skipping new file"<< std::endl;
+      return false;
+    }
+
     // Before writing, set up our information for structures
     setupBuckets() ;
     //setupCommandQueueBuckets() ;

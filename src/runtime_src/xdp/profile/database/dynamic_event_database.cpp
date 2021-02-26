@@ -239,6 +239,22 @@ namespace xdp {
     return events;
   }
 
+  bool VPDynamicDatabase::hostEventsExist(std::function<bool(VTFEvent*)> filter)
+  {
+    std::lock_guard<std::mutex> lock(hostEventsLock) ;
+    for (auto it=hostEvents.begin(); it!=hostEvents.end(); it++) {
+      if (filter(it->second))
+        return true;
+    }
+    return false;
+  }
+
+  bool VPDynamicDatabase::deviceEventsExist(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceEventsLock) ;
+    return !(deviceEvents[deviceId].empty());
+  }
+
   std::vector<VTFEvent*> VPDynamicDatabase::getDeviceEvents(uint64_t deviceId)
   {
     std::vector<VTFEvent*> events;

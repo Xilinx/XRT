@@ -36,6 +36,7 @@ namespace xdp {
     int enqueueBucket ;
 
     void setupBuckets() ;
+    bool traceEventsExist();
 
     void writeHumanReadableHeader() ;
     void writeHumanReadableStructure() ;

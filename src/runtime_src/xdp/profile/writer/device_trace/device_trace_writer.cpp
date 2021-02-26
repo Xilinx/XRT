@@ -346,8 +346,17 @@ namespace xdp {
     // No dependencies in device events
   }
 
+  bool DeviceTraceWriter::traceEventsExist()
+  {
+    return (db->getDynamicInfo()).deviceEventsExist(deviceId);
+  }
+
   bool DeviceTraceWriter::write(bool openNewFile)
   {
+    if (openNewFile && !traceEventsExist()) {
+      return false;
+    }
+
     initialize() ;
 
     writeHeader() ;

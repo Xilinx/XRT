@@ -73,6 +73,17 @@ namespace xdplop {
     }
   }
 
+  bool check_lop_trace()
+  {
+    if (xrt_xocl::config::get_opencl_trace() || xrt_xocl::config::get_timeline_trace())
+    {
+      xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,
+			 "Both low overhead profiling and OpenCL trace are enabled. Disabling LOP trace as it cannot be used together with OpenCL trace\n") ;
+      return false;
+    }
+    return true;
+  }
+
   LOPFunctionCallLogger::LOPFunctionCallLogger(const char* function) :
     LOPFunctionCallLogger(function, 0)
   {    
@@ -87,8 +98,10 @@ namespace xdplop {
     if (!s_load_lop)
     {
       s_load_lop = true ;
-      if (xrt_core::config::get_lop_trace()) 
-	load_xdp_lop() ;
+      // In case of a conflict, mark lop plugin as loaded without actually loading the plugin
+      if (xrt_core::config::get_lop_trace() && check_lop_trace()) {
+        load_xdp_lop() ;
+      }
     }
 
     // Log the stats for this function

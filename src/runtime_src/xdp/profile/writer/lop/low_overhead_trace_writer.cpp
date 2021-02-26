@@ -192,8 +192,25 @@ namespace xdp {
     else               writeBinaryDependencies() ;
   }
 
+  bool LowOverheadTraceWriter::traceEventsExist()
+  {
+    return (
+      db->getDynamicInfo().hostEventsExist (
+        [](VTFEvent* e)
+        {
+          return e->isOpenCLAPI() ||
+                 e->isLOPHostEvent() ;
+        }
+      )
+    );
+  }
+
   bool LowOverheadTraceWriter::write(bool openNewFile)
   {
+    if (openNewFile && !traceEventsExist()) {
+      return false;
+    }
+
     // Before writing, set up our information for structures
     setupBuckets() ;
     //setupCommandQueueBuckets() ;

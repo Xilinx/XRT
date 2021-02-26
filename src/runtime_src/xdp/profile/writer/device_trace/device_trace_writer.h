@@ -43,6 +43,7 @@ namespace xdp {
     // Helper function for making sure the database has enough information
     //  to print out all of the information it will need.
     void initialize() ;
+    bool traceEventsExist() ;
 
     // Helper functions for individual parts of the STRUCTURE section
     void writeDeviceStructure() ;
