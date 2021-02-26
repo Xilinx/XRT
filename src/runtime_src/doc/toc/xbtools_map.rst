@@ -5,7 +5,7 @@ Legacy to new map
 
 This document maps the legacy ``xbutil``/``xbmgmt`` commands to the new ``xbutil``/``xbmgmt`` commands. It lists out the new ``xbutil``/``xbmgmt`` calls that replace the existing calls.
 
-Note: The new utilities are complete redesign and architecture, hence there maynot be exact 1-to-1 mapping. However, these new utilities are and their help menus are also very descriptive so please refer to them whenever the need be
+Note: The new utilities are complete redesign and architecture, hence there maynot be exact 1-to-1 mapping. However, help menus of these new utilities are also very descriptive so please refer to them whenever needed.
 
 Xbutil
 ~~~~~~
