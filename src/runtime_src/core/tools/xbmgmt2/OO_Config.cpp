@@ -153,7 +153,7 @@ show_device_conf(xrt_core::device* device)
     auto scaling_enabled = xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(device);
     std::cout << boost::format("  %-33s: %s\n") % "Runtime clock scaling enabled" % scaling_enabled;
   }
-  catch (const std::exception& ex) {
+  catch (...) {
     //safe to ignore. These sysfs nodes are not present for u30
   }
 
@@ -161,7 +161,7 @@ show_device_conf(xrt_core::device* device)
     auto scaling_override = xrt_core::device_query<xrt_core::query::xmc_scaling_override>(device);
     std::cout << boost::format("  %-33s: %s\n") % "Scaling threshold power override" % scaling_override;
   }
-  catch (const std::exception& ex) {
+  catch (...) {
     //safe to ignore. These sysfs nodes are not present for u30
   }
 
