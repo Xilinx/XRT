@@ -44,7 +44,7 @@ namespace xdp {
     fout << "STRUCTURE" << std::endl ;
     fout << "Group_Start,Host APIs" << std::endl ;
     fout << "Group_Start,Native XRT API Calls" << std::endl ;
-    fout << "Dynamic_Row" << 1 << ",General,API Events" << std::endl ;
+    fout << "Dynamic_Row," << 1 << ",General,API Events" << std::endl ;
     fout << "Group_End,Native XRT API Calls" << std::endl ;
     fout << "Group_End,Host APIs" << std::endl ;
   }
