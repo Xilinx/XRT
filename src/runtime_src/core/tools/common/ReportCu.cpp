@@ -95,6 +95,57 @@ populate_cus(const xrt_core::device *device)
   return pt;
 }
 
+boost::property_tree::ptree
+populate_cus_new(const xrt_core::device *device)
+{
+  boost::property_tree::ptree pt;
+  // tuple <index, name, base_addr, status, usage>
+  std::vector<std::tuple<uint32_t, std::string, uint64_t, uint32_t, uint64_t>> cu_stats;
+  // tuple <index, name, status, usage>
+  std::vector<std::tuple<uint32_t, std::string, uint32_t, uint64_t>> scu_stats;
+
+  try {
+    cu_stats  = xrt_core::device_query<qr::kds_cu_stat>(device);
+    scu_stats = xrt_core::device_query<qr::kds_scu_stat>(device);
+  } catch (const std::exception& ex) {
+    pt.put("error_msg", ex.what());
+    return pt;
+  }
+
+  if (cu_stats.empty()) {
+    return pt;
+  }
+
+  for (auto& stat : cu_stats) {
+    std::string name   = std::get<1>(stat);
+    uint64_t base_addr = std::get<2>(stat);
+    uint32_t status    = std::get<3>(stat);
+    uint32_t usage     = std::get<4>(stat);
+
+    boost::property_tree::ptree ptCu;
+    ptCu.put( "name",           name);
+    ptCu.put( "base_address",   boost::str(boost::format("0x%x") % base_addr));
+    ptCu.put( "usage",          usage);
+    ptCu.add_child( std::string("status"),	get_cu_status(status));
+    pt.push_back(std::make_pair("", ptCu));
+  }
+
+  for (auto& stat : scu_stats) {
+    std::string name   = std::get<1>(stat);
+    uint32_t status    = std::get<2>(stat);
+    uint32_t usage     = std::get<3>(stat);
+
+    boost::property_tree::ptree ptCu;
+    ptCu.put( "name",           name);
+    ptCu.put( "base_address",   "0x0");
+    ptCu.put( "usage",          usage);
+    ptCu.add_child( std::string("status"),	get_cu_status(status));
+    pt.push_back(std::make_pair("", ptCu));
+  }
+
+  return pt;
+}
+
 void
 ReportCu::getPropertyTreeInternal(const xrt_core::device * _pDevice, 
                                               boost::property_tree::ptree &_pt) const
@@ -108,8 +159,20 @@ void
 ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice, 
                                            boost::property_tree::ptree &_pt) const
 {
+  uint32_t kds_mode;
+
+  /* sysfs attribute kds_mode: 1 - new KDS; 0 - old KDS */
+  try {
+    kds_mode = xrt_core::device_query<qr::kds_mode>(_pDevice);
+  } catch (const std::exception& ex){
+    kds_mode = 0;
+  }
+
   // There can only be 1 root node
-  _pt.add_child("compute_units", populate_cus(_pDevice));
+  if (kds_mode == 0) // Old kds
+      _pt.add_child("compute_units", populate_cus(_pDevice));
+  else // new kds
+      _pt.add_child("compute_units", populate_cus_new(_pDevice));
 }
 
 void 

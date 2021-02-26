@@ -27,6 +27,7 @@
 #include <map>
 #include <functional>
 #include <boost/format.hpp>
+#include <boost/tokenizer.hpp>
 
 namespace {
 
@@ -50,6 +51,106 @@ struct bdf
   {
     auto pdev = get_pcidev(device);
     return std::make_tuple(pdev->bus,pdev->dev,pdev->func);
+  }
+};
+
+struct kds_cu_stat
+{
+  using result_type = query::kds_cu_stat::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> stats;
+    std::string errmsg;
+
+    // The kds_custat_raw is printing in formatted string of each line
+    // Format: "%d,%s:%s,0x%lx,0x%x,%lu"
+    // Using comma as separator.
+    pdev->sysfs_get("", "kds_custat_raw", errmsg, stats);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+
+    result_type cuStats;
+    for (auto& line : stats) {
+      boost::char_separator<char> sep(",");
+      // 5 tokens: index, name, addr, status, usage
+      tokenizer tokens(line, sep);
+      std::string name;
+      uint32_t index = 0;
+      uint64_t base_addr = 0;
+      uint32_t status = 0;
+      uint64_t usage = 0;
+      const int radix = 16;
+
+      // In case kds_custat_raw is corrupted, which will be driver issue
+      if (std::distance(tokens.begin(), tokens.end()) != 5)
+          break;
+
+      tokenizer::iterator tok_it = tokens.begin();
+      index     = std::stoi(std::string(*tok_it++));
+      name      = std::string(*tok_it++);
+      base_addr = std::stoull(std::string(*tok_it++), nullptr, radix);
+      status    = std::stoul(std::string(*tok_it++), nullptr, radix);
+      usage     = std::stoul(std::string(*tok_it++));
+
+      cuStats.push_back(std::make_tuple(index, name, base_addr, status, usage));
+    }
+
+    return cuStats;
+  }
+};
+
+struct kds_scu_stat
+{
+  using result_type = query::kds_scu_stat::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> stats;
+    std::string errmsg;
+
+    // The kds_scustat_raw is printing in formatted string of each line
+    // Format: "%d,%s:%s,0x%x,%lu"
+    // Using comma as separator.
+    pdev->sysfs_get("", "kds_scustat_raw", errmsg, stats);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+
+    result_type cuStats;
+    for (auto& line : stats) {
+      boost::char_separator<char> sep(",");
+      // 4 tokens: index, name, status, usage
+      tokenizer tokens(line, sep);
+      std::string name;
+      uint32_t index = 0;
+      uint32_t status = 0;
+      uint64_t usage = 0;
+      const int radix = 16;
+
+      // In case kds_scustat_raw is corrupted, which will be driver issue
+      if (std::distance(tokens.begin(), tokens.end()) != 4)
+          break;
+
+      tokenizer::iterator tok_it = tokens.begin();
+      index     = std::stoi(std::string(*tok_it++));
+      name      = std::string(*tok_it++);
+      status    = std::stoul(std::string(*tok_it++), nullptr, radix);
+      usage     = std::stoul(std::string(*tok_it++));
+      // TODO: Let's avoid this special handling for PS kernel name
+      name = name + ":scu_" + std::to_string(index);
+
+      cuStats.push_back(std::make_tuple(index, name, status, usage));
+    }
+
+    return cuStats;
   }
 };
 
@@ -424,6 +525,10 @@ initialize_query_table()
   emplace_sysfs_get<query::ert_cq_write>                     ("ert_user", "cq_write_cnt");
   emplace_sysfs_get<query::ert_cu_read>                      ("ert_user", "cu_read_cnt");
   emplace_sysfs_get<query::ert_cu_write>                     ("ert_user", "cu_write_cnt");
+
+  emplace_sysfs_get<query::kds_mode>                         ("", "kds_mode");
+  emplace_func0_request<query::kds_cu_stat,                  kds_cu_stat>();
+  emplace_func0_request<query::kds_scu_stat,                 kds_scu_stat>();
 
   emplace_func0_request<query::pcie_bdf,                     bdf>();
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();
