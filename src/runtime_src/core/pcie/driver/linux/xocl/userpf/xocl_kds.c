@@ -519,7 +519,7 @@ out1:
 out:
 	/* Don't forget to put gem object if error happen */
 	if (ret < 0)
-		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 	return ret;
 }
 
@@ -910,9 +910,9 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 
 		image->start_cuidx = start_cuidx;
 		image->num_cus = scu_data->pkd_num_instances;
-		image->sk_name[4] = 0;
 		strncpy((char *)image->sk_name, scu_data->pkd_sym_name,
-			PS_KERNEL_NAME_LENGTH);
+			PS_KERNEL_NAME_LENGTH - 1);
+		((char *)image->sk_name)[PS_KERNEL_NAME_LENGTH - 1] = 0;
 
 		start_cuidx += image->num_cus;
 		img_idx++;

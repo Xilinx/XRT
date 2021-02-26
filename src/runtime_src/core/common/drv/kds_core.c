@@ -501,7 +501,7 @@ struct kds_command *kds_alloc_command(struct kds_client *client, u32 size)
 
 void kds_free_command(struct kds_command *xcmd)
 {
-	if (xcmd)
+	if (!xcmd)
 		return;
 
 	kfree(xcmd->info);
