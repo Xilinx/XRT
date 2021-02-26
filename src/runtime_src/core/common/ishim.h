@@ -18,6 +18,7 @@
 #define core_common_ishim_h
 
 #include "xrt.h"
+#include "experimental/xrt_graph.h"
 #include "experimental/xrt-next.h"
 #include "experimental/xrt_bo.h"
 #include "xcl_graph.h"
@@ -110,7 +111,7 @@ struct ishim
 
 #ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
-  open_graph(const xuid_t, const char*) = 0;
+  open_graph(const xuid_t, const char*, xrt::graph::access_mode am) = 0;
 
   virtual void
   close_graph(xclGraphHandle handle) = 0;
@@ -367,9 +368,9 @@ struct shim : public DeviceType
 
 #ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
-  open_graph(const xuid_t uuid, const char *gname)
+  open_graph(const xuid_t uuid, const char *gname, xrt::graph::access_mode am)
   {
-    if (auto ghdl = xclGraphOpen(DeviceType::get_device_handle(), uuid, gname))
+    if (auto ghdl = xclGraphOpen(DeviceType::get_device_handle(), uuid, gname, am))
       return ghdl;
 
     throw std::runtime_error("failed to open graph");

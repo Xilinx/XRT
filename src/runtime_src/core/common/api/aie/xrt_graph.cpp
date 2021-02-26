@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -124,19 +124,19 @@ namespace {
 static std::map<xrtGraphHandle, std::shared_ptr<xrt::graph_impl>> graph_cache;
 
 static std::shared_ptr<xrt::graph_impl>
-open_graph(xrtDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* graph_name)
+open_graph(xrtDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* graph_name, xrt::graph::access_mode am)
 {
   auto device = xrt_core::device_int::get_core_device(dhdl);
-  auto handle = device->open_graph(xclbin_uuid, graph_name);
+  auto handle = device->open_graph(xclbin_uuid, graph_name, am);
   auto ghdl = std::make_shared<xrt::graph_impl>(device, handle);
   return ghdl;
 }
 
 static std::shared_ptr<xrt::graph_impl>
-open_graph(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name)
+open_graph(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, xrt::graph::access_mode am)
 {
   auto device = xrt_core::get_userpf_device(dhdl);
-  auto handle = device->open_graph(xclbin_id.get(), name.c_str());
+  auto handle = device->open_graph(xclbin_id.get(), name.c_str(), am);
   auto ghdl = std::make_shared<xrt::graph_impl>(device, handle);
   return ghdl;
 }
@@ -223,7 +223,7 @@ namespace xrt {
 
 graph::
 graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name)
-  : handle(open_graph(device, xclbin_id, name))
+  : handle(open_graph(device, xclbin_id, name, xrt::graph::access_mode::primary))
 {}
 
 void
@@ -309,7 +309,35 @@ xrtGraphHandle
 xrtGraphOpen(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
 {
   try {
-    auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name);
+    auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::primary);
+    graph_cache[hdl.get()] = hdl;
+    return hdl.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
+}
+
+xrtGraphHandle
+xrtGraphOpenExclusive(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
+{
+  try {
+    auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::exclusive);
+    graph_cache[hdl.get()] = hdl;
+    return hdl.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
+}
+
+xrtGraphHandle
+xrtGraphOpenShared(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
+{
+  try {
+    auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::shared);
     graph_cache[hdl.get()] = hdl;
     return hdl.get();
   }

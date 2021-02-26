@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -45,6 +45,15 @@ struct tile_type
  */
 std::vector<tile_type>
 get_tiles(const xrt_core::device* device, const std::string& graph_name);
+
+/**
+ * get_graph_id() - get graph id from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ * @graph: name of graph to extract id for
+ */
+int
+get_graph_id(const xrt_core::device* device, const std::string& graph_name);
 
 struct rtp_type
 {

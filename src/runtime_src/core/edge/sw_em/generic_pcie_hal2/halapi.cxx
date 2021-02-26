@@ -705,7 +705,7 @@ int xclIPName2Index(xclDeviceHandle handle, const char *name)
 // Temporary place holder for XRT shim level Graph APIs
 
 void*
-xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph)
+xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph, xrt::graph::access_mode am)
 {
   return nullptr;
 }

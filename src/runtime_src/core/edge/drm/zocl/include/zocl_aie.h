@@ -43,6 +43,12 @@ struct zocl_aie {
 	struct workqueue_struct *wq;	/* AIE work queue */
 };
 
+struct zocl_graph_ctx_node {
+	struct list_head	link;
+	u32			ctx_code;
+	u32			gid;
+};
+
 #ifdef __NONE_PETALINUX__
 
 #define AIE_ERROR_CATEGORY_SATURATION		0U
