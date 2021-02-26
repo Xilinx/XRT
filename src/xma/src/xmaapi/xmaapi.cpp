@@ -304,6 +304,19 @@ void xma_get_session_cmd_load() {
     xma_core::utils::get_session_cmd_load();
 }
 
+//Return num of xilinx devices on x86 host
+int32_t xma_num_devices() {
+    int32_t ret = XMA_ERROR;
+    if (!g_xma_singleton->xma_initialized) {
+        ret = xma_core::utils::load_libxrt();
+        if (ret == XMA_ERROR) {
+            std::cout << "XMA FATAL: Unable to load XRT library" << std::endl;
+            return XMA_ERROR;
+        }
+    }
+    return xclProbe();
+}
+
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
     int32_t ret;
