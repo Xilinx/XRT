@@ -200,8 +200,10 @@ changes. Instead, it is up to the upper level media framework functions to
 convert buffers into the appropriate XMA buffer.
 The sections that follow will describe the layers of the API in more detail and
 provide examples of how these functions are called from both the perspective of
-an application and from the perspective of an XMA plugin. For the low-level
-details of the APIs, please consult the doxygen documentation.
+an application and from the perspective of an XMA plugin. 
+
+For the low-level details of the APIs, please consult the doxygen documentation.
+`xmacore </src/runtime_src/doc/toc/xma.main.rst>`_
 
 
 Sequence of Operations
