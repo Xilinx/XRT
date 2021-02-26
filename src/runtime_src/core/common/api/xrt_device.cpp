@@ -32,6 +32,7 @@
 #include <map>
 #include <vector>
 #include <fstream>
+#include <typeinfo>
 
 #ifdef _WIN32
 # pragma warning( disable : 4244 )
@@ -90,6 +91,21 @@ send_exception_message(const char* msg)
 
 } // unnamed namespace
 
+namespace xdp {
+
+DeviceProfileStart::
+DeviceProfileStart(void* object, const char* function, const char* type)
+{
+  xdpnative::profiling_start(object, function, type);
+}
+
+DeviceProfileEnd::
+DeviceProfileEnd(void* object, const char* function, const char* type)
+{
+  xdpnative::profiling_end(object, function, type);
+}
+}
+
 namespace xrt_core { namespace device_int {
 
 std::shared_ptr<xrt_core::device>
@@ -116,18 +132,23 @@ namespace xrt {
 
 device::
 device(unsigned int index)
-  : handle(xrt_core::get_userpf_device(index))
+  : profiling_start(this, __func__, typeid(*this).name()),
+    handle(xrt_core::get_userpf_device(index)),
+    profiling_end(this, __func__, typeid(*this).name())
 {}
 
 device::
 device(xclDeviceHandle dhdl)
-  : handle(xrt_core::get_userpf_device(dhdl))
+  : profiling_start(this, __func__, typeid(*this).name()),
+    handle(xrt_core::get_userpf_device(dhdl)),
+    profiling_end(this, __func__, typeid(*this).name())
 {}
 
 uuid
 device::
 load_xclbin(const struct axlf* top)
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   handle->load_xclbin(top);
   return uuid(top->m_header.uuid);
 }
@@ -153,6 +174,7 @@ uuid
 device::
 get_xclbin_uuid() const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   return handle->get_xclbin_uuid();
 }
 
@@ -162,10 +184,19 @@ operator xclDeviceHandle() const
   return handle->get_device_handle();
 }
 
+void
+device::
+reset()
+{
+  NATIVE_MEMBER_LOG_FUNCTION_CALL;
+  handle.reset();
+}
+
 std::pair<const char*, size_t>
 device::
 get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   return handle->get_axlf_section_or_error(section, uuid);
 }
 

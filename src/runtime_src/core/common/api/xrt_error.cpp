@@ -36,6 +36,7 @@
 #include <string>
 #include <map>
 #include <cstring>
+#include <typeinfo>
 
 #ifdef _WIN32
 # pragma warning( disable : 4996)
@@ -170,6 +171,22 @@ error_time_to_string(xrtErrorTime time)
 
 } // namespace
 
+namespace xdp {
+
+ErrorProfileStart::
+ErrorProfileStart(void* object, const char* function, const char* type)
+{
+  xdpnative::profiling_start(object, function, type);
+}
+
+ErrorProfileEnd::
+ErrorProfileEnd(void* object, const char* function, const char* type)
+{
+  xdpnative::profiling_end(object, function, type);
+}
+
+}
+
 namespace xrt_core { namespace error_int {
 
 void
@@ -243,18 +260,23 @@ namespace xrt {
 
 error::
 error(const xrt::device& device, xrtErrorClass ecl)
-  : handle(std::make_shared<error_impl>(device.get_handle().get(), ecl))
+  : profiling_start(this, __func__, typeid(*this).name()),
+    handle(std::make_shared<error_impl>(device.get_handle().get(), ecl)),
+    profiling_end(this, __func__, typeid(*this).name())
 {}
 
 error::
 error(xrtErrorCode code, xrtErrorTime timestamp)
-  : handle(std::make_shared<error_impl>(code, timestamp))
+  : profiling_start(this, __func__, typeid(*this).name()),
+    handle(std::make_shared<error_impl>(code, timestamp)),
+    profiling_end(this, __func__, typeid(*this).name())
 {}
 
 xrtErrorTime
 error::
 get_timestamp() const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   return handle->get_timestamp();
 }
 
@@ -262,6 +284,7 @@ xrtErrorCode
 error::
 get_error_code() const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   return handle->get_error_code();
 }
 
@@ -269,6 +292,7 @@ std::string
 error::
 to_string() const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   return handle->to_string();
 }
 

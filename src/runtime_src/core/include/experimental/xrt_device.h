@@ -33,6 +33,21 @@ typedef void* xrtDeviceHandle;
   
 #ifdef __cplusplus
 
+namespace xdp {
+  class DeviceProfileStart
+  {
+  public:
+    DeviceProfileStart() {}
+    DeviceProfileStart(void* object, const char* function, const char* type);
+  } ;
+  class DeviceProfileEnd
+  {
+  public:
+    DeviceProfileEnd() {}
+    DeviceProfileEnd(void* object, const char* function, const char* type);
+  } ;
+}
+
 namespace xrt_core {
 class device;
 }
@@ -208,10 +223,7 @@ public:
   }
 
   void
-  reset()
-  {
-    handle.reset();
-  }
+  reset();
 
   explicit
   operator bool() const
@@ -226,7 +238,9 @@ private:
   get_xclbin_section(axlf_section_kind section, const uuid& uuid) const;
 
 private:
+  xdp::DeviceProfileStart profiling_start;
   std::shared_ptr<xrt_core::device> handle;
+  xdp::DeviceProfileEnd profiling_end;
 };
 
 } // namespace xrt

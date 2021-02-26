@@ -20,6 +20,31 @@
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
 
+#include <map>
+
+#ifndef _WIN32
+#include <cxxabi.h>
+#endif
+
+namespace {
+
+  static std::string full_name(const char* type, const char* function)
+  {
+    if (type == nullptr) return function ;
+
+#ifdef _WIN32
+    std::string combine = type ;
+#else
+    int status = 0 ;
+    std::string combined = abi::__cxa_demangle(type, nullptr, nullptr, &status);
+    if (status != 0) combined = "" ;
+#endif
+    combined += "::" ;
+    combined += function ;
+    return combined ;
+  }
+} // end anonymous namespace
+
 namespace xdpnative {
 
   void load_xdp_native()
@@ -46,8 +71,8 @@ namespace xdpnative {
   {
   }
 
-  NativeFunctionCallLogger::NativeFunctionCallLogger(const char* function) :
-    m_name(function)
+  NativeFunctionCallLogger::NativeFunctionCallLogger(const char* function, const char* type) :
+    m_name(function), m_type(type)
   {
     static bool s_load_native = false ;
     if (!s_load_native) {
@@ -57,14 +82,46 @@ namespace xdpnative {
     }
 
     m_funcid = xrt_core::utils::issue_id() ;
-    if (function_start_cb)
-      function_start_cb(m_name, m_funcid) ;
+    if (function_start_cb) {
+      if (m_type != nullptr)
+	function_start_cb(full_name(m_type, m_name).c_str(), m_funcid) ;
+      else
+	function_start_cb(m_name, m_funcid) ;
+    }
   }
 
   NativeFunctionCallLogger::~NativeFunctionCallLogger()
   {
-    if (function_end_cb)
-      function_end_cb(m_name, m_funcid) ;
+    if (function_end_cb) {
+      if (m_type != nullptr)
+	function_end_cb(full_name(m_type, m_name).c_str(), m_funcid) ;
+      else
+	function_end_cb(m_name, m_funcid) ;
+    }
+  }
+
+  static std::map<void*, unsigned int> storage;
+
+  void profiling_start(void* object, const char* function, const char* type)
+  {
+    if (function_start_cb) {
+      auto id = xrt_core::utils::issue_id() ;
+
+      storage[object] = id ;
+      
+      std::string combined = full_name(type, function) ;
+      function_start_cb(combined.c_str(), id) ;
+    }
+  }
+
+  void profiling_end(void* object, const char* function, const char* type)
+  {
+    if (function_end_cb) {
+      auto id = storage[object] ;
+
+      std::string combined = full_name(type, function) ;
+      function_end_cb(combined.c_str(), id) ;
+    }
   }
 
 } // end namespace xdpnative

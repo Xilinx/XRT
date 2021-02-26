@@ -53,6 +53,7 @@
 #include <fstream>
 #include <type_traits>
 #include <utility>
+#include <typeinfo>
 using namespace std::chrono_literals;
 
 #ifdef _WIN32
@@ -1090,6 +1091,33 @@ public:
 };
 
 } // namespace
+
+namespace xdp {
+
+RunProfileStart::
+RunProfileStart(void* object, const char* function, const char* type)
+{
+  xdpnative::profiling_start(object, function, type);
+}
+
+RunProfileEnd::
+RunProfileEnd(void* object, const char* function, const char* type)
+{
+  xdpnative::profiling_end(object, function, type);
+}
+
+KernelProfileStart::
+KernelProfileStart(void* object, const char* function, const char* type)
+{
+  xdpnative::profiling_start(object, function, type);
+}
+
+KernelProfileEnd::
+KernelProfileEnd(void* object, const char* function, const char* type)
+{
+  xdpnative::profiling_end(object, function, type);
+}
+}
 
 namespace xrt {
 
@@ -2209,13 +2237,16 @@ namespace xrt {
 
 run::
 run(const kernel& krnl)
-  : handle(std::make_shared<run_impl>(krnl.get_handle()))
+  : profiling_start(this, __func__, typeid(*this).name()),
+    handle(std::make_shared<run_impl>(krnl.get_handle())),
+    profiling_end(this, __func__, typeid(*this).name())
 {}
 
 void
 run::
 start()
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;  
   handle->start();
 }
 
@@ -2223,6 +2254,7 @@ ert_cmd_state
 run::
 wait(const std::chrono::milliseconds& timeout_ms) const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   return handle->wait(timeout_ms);
 }
 
@@ -2230,6 +2262,7 @@ ert_cmd_state
 run::
 state() const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   return handle->state();
 }
 
@@ -2269,6 +2302,8 @@ add_callback(ert_cmd_state state,
              std::function<void(const void*, ert_cmd_state, void*)> fcn,
              void* data)
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+
   XRT_DEBUGF("run::add_callback run(%d)\n", handle->get_uid());
   if (state != ERT_CMD_STATE_COMPLETED)
     throw xrt_core::error(-EINVAL, "xrtRunSetCallback state may only be ERT_CMD_STATE_COMPLETED");
@@ -2285,6 +2320,7 @@ void
 run::
 set_event(const std::shared_ptr<event_impl>& event) const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   handle->set_event(event);
 }
 
@@ -2292,25 +2328,31 @@ ert_packet*
 run::
 get_ert_packet() const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   return handle->get_ert_packet();
 }
 
 kernel::
 kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
-  : handle(std::make_shared<kernel_impl>
-      (get_device(xdev), xclbin_id, name, mode))
+  : profiling_start(this, __func__, typeid(*this).name()),
+    handle(std::make_shared<kernel_impl>
+       (get_device(xdev), xclbin_id, name, mode)),
+    profiling_end(this, __func__, typeid(*this).name())
 {}
 
 kernel::
 kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
-  : handle(std::make_shared<kernel_impl>
-      (get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode))
+  : profiling_start(this, __func__, typeid(*this).name()),
+    handle(std::make_shared<kernel_impl>
+       (get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode)),
+    profiling_end(this, __func__, typeid(*this).name())
 {}
 
 uint32_t
 kernel::
 read_register(uint32_t offset) const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   return handle->read_register(offset);
 }
 
@@ -2318,6 +2360,7 @@ void
 kernel::
 write_register(uint32_t offset, uint32_t data)
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   handle->write_register(offset, data);
 }
 
@@ -2326,6 +2369,7 @@ int
 kernel::
 group_id(int argno) const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   return handle->group_id(argno);
 }
 
@@ -2333,6 +2377,7 @@ uint32_t
 kernel::
 offset(int argno) const
 {
+  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
   return handle->arg_offset(argno);
 }
 

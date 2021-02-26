@@ -37,13 +37,20 @@ namespace xdpnative {
   private:
     unsigned int m_funcid ;
     const char* m_name = nullptr ;
+    const char* m_type = nullptr ;
   public:
-    NativeFunctionCallLogger(const char* function) ;
+    NativeFunctionCallLogger(const char* function, const char* type = nullptr) ;
     ~NativeFunctionCallLogger() ;
   } ;
+
+  // In order to capture object functions like constructors, we need
+  //  two different hooks
+  void profiling_start(void* object, const char* function, const char* type);
+  void profiling_end(void* object, const char* function, const char* type);
 
 } // end namespace xdpnative
 
 #define NATIVE_LOG_FUNCTION_CALL xdpnative::NativeFunctionCallLogger LogObject(__func__);
+#define NATIVE_MEMBER_LOG_FUNCTION_CALL xdpnative::NativeFunctionCallLogger LogObject(__func__, typeid(*this).name());
 
 #endif
