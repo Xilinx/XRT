@@ -32,7 +32,7 @@ namespace xdp {
   {    
   }
 
-  void PowerProfilingWriter::write(bool openNewFile)
+  bool PowerProfilingWriter::write(bool openNewFile)
   {
     // Write header
     fout << "Target device: " << deviceName << std::endl ;
@@ -76,6 +76,7 @@ namespace xdp {
       }
       fout << std::endl ;
     }
+    return true;
   }
 
 } // end namespace xdp

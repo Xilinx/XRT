@@ -69,7 +69,7 @@ namespace xdp {
     
     ~DeviceTraceWriter() ;
 
-    virtual void write(bool openNewFile) ;
+    virtual bool write(bool openNewFile) ;
     virtual bool isDevice() { return true ; } 
   } ;
 

@@ -62,7 +62,7 @@ namespace xdp {
     LowOverheadTraceWriter(const char* filename) ;
     ~LowOverheadTraceWriter() ;
 
-    virtual void write(bool openNewFile) ;
+    virtual bool write(bool openNewFile) ;
   } ;
 
 }

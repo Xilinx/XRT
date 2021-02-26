@@ -18,8 +18,11 @@
 
 #include "xdp/profile/writer/vp_base/vp_trace_writer.h"
 #include "xdp/profile/database/database.h"
+#include <iostream>
 
 namespace xdp {
+
+  std::atomic<unsigned int> VPTraceWriter::traceIDCtr{0};
 
   VPTraceWriter::VPTraceWriter(const char* filename,
 				 const std::string& v,
@@ -29,6 +32,7 @@ namespace xdp {
     version(v), creationTime(c), resolution(r),
     humanReadable(true)
   {
+    setUniqueTraceID();
   }
 
   VPTraceWriter::~VPTraceWriter()

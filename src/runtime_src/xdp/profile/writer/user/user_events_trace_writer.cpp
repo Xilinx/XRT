@@ -77,7 +77,7 @@ namespace xdp {
     // No dependencies in user events
   }
 
-  void UserEventsTraceWriter::write(bool openNewFile)
+  bool UserEventsTraceWriter::write(bool openNewFile)
   {
     writeHeader() ;
     fout << std::endl ;
@@ -90,6 +90,8 @@ namespace xdp {
     writeDependencies() ;
 
     if (openNewFile) switchFiles() ;
+
+    return true;
   }
 
 } // end namespace xdp

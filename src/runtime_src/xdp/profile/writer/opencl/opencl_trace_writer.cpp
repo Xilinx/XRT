@@ -26,9 +26,9 @@
 namespace xdp {
 
   OpenCLTraceWriter::OpenCLTraceWriter(const char* filename) :
-    VPTraceWriter(filename, 
-                   "1.0", 
-                   getCurrentDateTime(), 
+    VPTraceWriter(filename,
+                   "1.1",
+                   getCurrentDateTime(),
                    9 /* ns */),
     generalAPIBucket(-1), readBucket(-1), writeBucket(-1), copyBucket(-1)
   {
@@ -66,7 +66,8 @@ namespace xdp {
   void OpenCLTraceWriter::writeHumanReadableHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "XRT Version," << getToolVersion() << std::endl ;
+    fout << "TraceID," << traceID << std::endl
+         << "XRT Version," << getToolVersion() << std::endl ;
   }
 
   void OpenCLTraceWriter::writeHumanReadableStructure()
@@ -268,7 +269,7 @@ namespace xdp {
     else               writeBinaryDependencies() ;
   }
 
-  void OpenCLTraceWriter::write(bool openNewFile)
+  bool OpenCLTraceWriter::write(bool openNewFile)
   {
     // Before writing, set up our information for structures
     setupBuckets() ;
@@ -286,6 +287,8 @@ namespace xdp {
     if (humanReadable) fout << std::endl ;
 
     if (openNewFile) switchFiles() ;
+
+    return true;
   }
 
 }

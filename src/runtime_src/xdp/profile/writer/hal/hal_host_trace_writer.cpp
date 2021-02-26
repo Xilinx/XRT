@@ -98,7 +98,7 @@ namespace xdp {
     // No dependencies in HAL events
   }
 
-  void HALHostTraceWriter::write(bool openNewFile)
+  bool HALHostTraceWriter::write(bool openNewFile)
   {
     writeHeader() ;
     fout << std::endl ;
@@ -112,6 +112,7 @@ namespace xdp {
     fout << std::endl ;
 
     if (openNewFile) switchFiles() ;
+    return true;
   }
 
 }

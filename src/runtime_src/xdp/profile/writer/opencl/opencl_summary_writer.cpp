@@ -1580,7 +1580,7 @@ namespace xdp {
     } 
   }
 
-  void OpenCLSummaryWriter::write(bool openNewFile)
+  bool OpenCLSummaryWriter::write(bool openNewFile)
   {
     writeHeader() ;                                 fout << std::endl ;
     writeAPICallSummary() ;                         fout << std::endl ;
@@ -1612,6 +1612,7 @@ namespace xdp {
     {
       switchFiles() ;
     }
+    return true;
   }
 
   void OpenCLSummaryWriter::guidanceDeviceExecTime(OpenCLSummaryWriter* t)

@@ -37,7 +37,7 @@ namespace xdp {
     ~VPRunSummaryWriter() ;
 
     XDP_EXPORT
-    virtual void write(bool openNewFile) ;
+    virtual bool write(bool openNewFile) ;
 
     virtual bool isRunSummaryWriter() { return true ; }
   } ;

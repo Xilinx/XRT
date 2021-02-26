@@ -249,7 +249,7 @@ namespace xdp {
     // No dependencies in device events
   }
 
-  void HALDeviceTraceWriter::write(bool openNewFile)
+  bool HALDeviceTraceWriter::write(bool openNewFile)
   {
     writeHeader() ;
     fout << std::endl ;
@@ -263,6 +263,7 @@ namespace xdp {
     fout << std::endl ;
 
     if (openNewFile) switchFiles() ;
+    return true;
   }
 
 } // end namespace xdp
