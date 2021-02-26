@@ -220,6 +220,51 @@ flush_queue(struct list_head *q, u32 *len, int status, void *client)
 	}
 }
 
+static inline int
+ert_return_size(struct ert_user_command *ecmd, int max_size)
+{
+	int ret;
+
+	/* Different opcode has different size of return info */
+	switch (cmd_opcode(ecmd)) {
+	case OP_GET_STAT:
+		ret = max_size;
+		break;
+	default:
+		ret = 0;
+	};
+
+	return ret;
+}
+
+/* ERT would return some information when notify host. Ex. PS kernel start and
+ * get CU stat commands. In this case, need read CQ slot to get return info.
+ *
+ * TODO:
+ * Assume there are 64 PS kernel and 2 nornal CUs. The ERT_CU_STAT command
+ * requires more than (64+2)*2*4 = 528 bytes (without consider other info).
+ * In this case, the slot size needs to be 1K and maximum 64 CQ slots.
+ *
+ * In old kds, to avoid buffer overflow, it silently truncate return value.
+ * Luckily there is always use 16 slots in old kds.
+ * But truncate is definitly not ideal, this should be fixed in new KDS.
+ */
+static inline void
+ert_get_return(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
+{
+	u32 slot_addr;
+	int slot_size = ert_user->cq_range / ert_user->num_slots;
+	int size;
+
+	size = ert_return_size(ecmd, slot_size);
+	if (!size)
+		return;
+
+	slot_addr = ecmd->slot_idx * slot_size;
+	xocl_memcpy_fromio(ecmd->xcmd->execbuf, ert_user->cq_base + slot_addr, size);
+}
+
+
 /*
  * release_slot_idx() - Release specified slot idx
  */
@@ -241,7 +286,8 @@ ert_release_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 	if (ecmd->slot_idx == no_index)
 		return;
 
-	if (cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK) {
+	if (cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK
+	    || cmd_opcode(ecmd) == OP_GET_STAT) {
 		ERTUSER_DBG(ert_user, "do nothing %s\n", __func__);
 		ert_user->ctrl_busy = false;
 		ert_user->config = true;
@@ -294,6 +340,7 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 	list_for_each_entry_safe(ecmd, next, &ert_user->sq, list) {
 		if (ecmd->completed) {
 			xcmd = ecmd->xcmd;
+			ert_get_return(ert_user, ecmd);
 			ERTUSER_DBG(ert_user, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
 			list_move_tail(&ecmd->list, &ert_user->cq);
 			--ert_user->num_sq;
@@ -391,6 +438,7 @@ static inline void process_ert_sq_polling(struct xocl_ert_user *ert_user)
 				ecmd = ert_user->submit_queue[cmd_idx];
 				if (ecmd) {
 					xcmd = ecmd->xcmd;
+					ert_get_return(ert_user, ecmd);
 					ERTUSER_DBG(ert_user, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
 					list_move_tail(&ecmd->list, &ert_user->cq);
 					--ert_user->num_sq;
@@ -440,7 +488,8 @@ static int
 ert20_acquire_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 {
 	// slot 0 is reserved for ctrl commands
-	if (cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK) {
+	if (cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK
+	    || cmd_opcode(ecmd) == OP_GET_STAT) {
 		set_bit(0, ert_user->slot_status);
 
 		if (ert_user->ctrl_busy) {

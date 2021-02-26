@@ -66,10 +66,36 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 	}
 	mutex_unlock(&cu_mgmt->lock);
 
-	if (sz < PAGE_SIZE - 1)
-		buf[sz++] = 0;
-	else
-		buf[PAGE_SIZE - 1] = 0;
+	return sz;
+}
+
+/* Each line is a PS kernel, format:
+ * "idx kernel_name status usage"
+ */
+ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
+{
+	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
+	char *cu_fmt = "%d,%s,0x%x,%u\n";
+	ssize_t sz = 0;
+	int i;
+
+	/* TODO: The number of PS kernel could be 64 or even more.
+	 * Sysfs has PAGE_SIZE limit, which keep bother us in old KDS.
+	 * In 128 PS kernels case, each line is average 32 bytes.
+	 * The kernel name is no more than 19 bytes.
+	 *
+	 * Old KDS shows FPGA Kernel and PS kernel in one file.
+	 * So, this separate kds_scustat_raw is better.
+	 *
+	 * But in the worst case, this is still not good enough.
+	 */
+	mutex_lock(&scu_mgmt->lock);
+	for (i = 0; i < scu_mgmt->num_cus; ++i) {
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
+				scu_mgmt->name[i], scu_mgmt->status[i],
+				scu_mgmt->usage[i]);
+	}
+	mutex_unlock(&scu_mgmt->lock);
 
 	return sz;
 }
@@ -157,6 +183,39 @@ kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 out:
 	mutex_unlock(&cu_mgmt->lock);
 	return ret;
+}
+
+static int
+kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
+{
+	struct ert_configure_sk_cmd *scmd;
+	int i, j;
+
+	scmd = (struct ert_configure_sk_cmd *)xcmd->execbuf;
+	for (i = 0; i < scmd->num_image; i++) {
+		struct config_sk_image *cp = &scmd->image[i];
+
+		for (j = 0; j < cp->num_cus; j++) {
+			int scu_idx = j + cp->start_cuidx;
+
+			/* TODO: Why continue? */
+			if (strlen(scu_mgmt->name[scu_idx]) > 0)
+				continue;
+
+			/*
+			 * TODO: Need consider size limit of the name.
+			 * In case PAGE_SIZE sysfs node cannot show all
+			 * SCUs (more than 64 SCUs or up to 128).
+			 */
+			strncpy(scu_mgmt->name[scu_idx], (char *)cp->sk_name,
+				sizeof(scu_mgmt->name[0]));
+
+			scu_mgmt->num_cus++;
+			scu_mgmt->usage[i] = 0;
+		}
+	}
+
+	return 0;
 }
 
 /**
@@ -247,6 +306,10 @@ kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 			xcmd->cb.free(xcmd);
 		}
 		break;
+	case OP_GET_STAT:
+		xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+		xcmd->cb.free(xcmd);
+		break;
 	default:
 		ret = -EINVAL;
 		kds_err(xcmd->client, "Unknown opcode");
@@ -289,6 +352,17 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		mutex_unlock(&ert->lock);
 		return 0;
 	case OP_CONFIG_SK:
+		ret = kds_scu_config(&kds->scu_mgmt, xcmd);
+		if (ret)
+			return ret;
+		break;
+	case OP_GET_STAT:
+		if (!kds->scu_mgmt.num_cus) {
+			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+			xcmd->cb.free(xcmd);
+			return 0;
+		}
+		break;
 	case OP_START_SK:
 		break;
 	default:
@@ -413,6 +487,7 @@ int kds_init_sched(struct kds_sched *kds)
 	INIT_LIST_HEAD(&kds->clients);
 	mutex_init(&kds->lock);
 	mutex_init(&kds->cu_mgmt.lock);
+	mutex_init(&kds->scu_mgmt.lock);
 	kds->num_client = 0;
 	kds->bad_state = 0;
 	/* At this point, I don't know if ERT subdev exist or not */
@@ -780,9 +855,14 @@ int kds_fini_ert(struct kds_sched *kds)
 
 void kds_reset(struct kds_sched *kds)
 {
+	int idx;
+
 	kds->bad_state = 0;
 	kds->ert_disable = true;
 	kds->ini_disable = false;
+
+	for (idx = 0; idx < MAX_CUS; ++idx)
+		kds->scu_mgmt.name[idx][0] = 0;
 }
 
 static int kds_fa_assign_plram(struct kds_sched *kds)

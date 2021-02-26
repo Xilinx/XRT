@@ -95,6 +95,17 @@ struct kds_client {
 	atomic_t		  event;
 };
 
+/* TODO: PS kernel is very different with FPGA kernel.
+ * Let's see if we can unify them later.
+ */
+struct kds_scu_mgmt {
+	struct mutex		  lock;
+	int			  num_cus;
+	u32			  status[MAX_CUS];
+	u32			  usage[MAX_CUS];
+	char			  name[MAX_CUS][32];
+};
+
 /* the MSB of cu_refs is used for exclusive flag */
 #define CU_EXCLU_MASK		0x80000000
 struct kds_cu_mgmt {
@@ -143,6 +154,7 @@ struct kds_sched {
 	struct mutex		lock;
 	bool			bad_state;
 	struct kds_cu_mgmt	cu_mgmt;
+	struct kds_scu_mgmt	scu_mgmt;
 	struct kds_ert	       *ert;
 	bool			ini_disable;
 	bool			ert_disable;
@@ -179,4 +191,5 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 		   int kds_mode, u32 clients, int *echo);
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf);
 ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf);
+ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf);
 #endif

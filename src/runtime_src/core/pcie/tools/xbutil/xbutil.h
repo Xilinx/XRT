@@ -523,9 +523,18 @@ public:
     /* new KDS which supported CU subdevice */
     int parseCUSubdevStat() const
     {
+        if (!std::getenv("XCL_SKIP_CU_READ"))
+          schedulerUpdateStat();
+
         using tokenizer = boost::tokenizer< boost::char_separator<char> >;
         std::vector<std::string> custat;
         std::string errmsg;
+        std::string name(":");
+        uint32_t usage = 0;
+        uint32_t status = 0;
+        int cu_idx = 0;
+        int off_idx = 0;
+        int radix = 16;
 
         // The kds_custat_raw is printing in formatted string of each line
         // Format: "%d,%s:%s,0x%llx,0x%x,%llu"
@@ -533,24 +542,21 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get("", "kds_custat_raw", errmsg, custat);
         for (auto& line : custat) {
             boost::char_separator<char> sep(",");
-            std::string name(":");
             unsigned long long paddr = 0;
-            uint32_t usage = 0;
-            uint32_t status = 0;
-            int cu_idx = 0;
-            int radix = 16;
             tokenizer tokens(line, sep);
 
             // Check if we have 5 tokens: cu_index, name, addr, status, usage
-            if (std::distance(tokens.begin(), tokens.end()) == 5) {
-                tokenizer::iterator tok_it = tokens.begin();
-                cu_idx = std::stoi(std::string(*tok_it++));
-                name = std::string(*tok_it++);
-                paddr = std::stoull(std::string(*tok_it++), nullptr, radix);
-                status = std::stoul(std::string(*tok_it++), nullptr, radix);
-                usage = std::stoul(std::string(*tok_it++));
-            } else
+            if (std::distance(tokens.begin(), tokens.end()) != 5) {
+                std::cout << "WARNING: 'kds_custat_raw' has no expect tokens, stop parsing.\n";
                 break;
+            }
+
+            tokenizer::iterator tok_it = tokens.begin();
+            cu_idx = std::stoi(std::string(*tok_it++));
+            name = std::string(*tok_it++);
+            paddr = std::stoull(std::string(*tok_it++), nullptr, radix);
+            status = std::stoul(std::string(*tok_it++), nullptr, radix);
+            usage = std::stoul(std::string(*tok_it++));
 
             boost::property_tree::ptree ptCu;
             ptCu.put( "name",         name );
@@ -558,6 +564,40 @@ public:
             ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(cu_idx)), ptCu );
+        }
+
+        // Count PS kernel index in the sensor_tree with offset
+        off_idx = cu_idx;
+
+        // PS kernel info
+        // The kds_scustat_raw is printing in formatted string of each line
+        // Format: "%d,%s,0x%x,%u"
+        // Using comma as separator.
+        pcidev::get_dev(m_idx)->sysfs_get("", "kds_scustat_raw", errmsg, custat);
+        for (auto& line : custat) {
+            boost::char_separator<char> sep(",");
+
+            tokenizer tokens(line, sep);
+            // Check if we have 4 tokens: cu_index, name, status, usage
+            if (std::distance(tokens.begin(), tokens.end()) != 4) {
+                std::cout << "WARNING: 'kds_scustat_raw' has no expect tokens, stop parsing.\n";
+                break;
+            }
+
+            tokenizer::iterator tok_it = tokens.begin();
+            cu_idx = std::stoi(std::string(*tok_it++));
+            name = std::string(*tok_it++);
+            status = std::stoul(std::string(*tok_it++), nullptr, radix);
+            usage = std::stoul(std::string(*tok_it++));
+            // TODO: Let's avoid this special handling for PS kernel name
+            name = name + ":scu_" + std::to_string(cu_idx);
+
+            boost::property_tree::ptree ptCu;
+            ptCu.put( "name",         name );
+            ptCu.put( "base_address", 0 );
+            ptCu.put( "usage",        usage );
+            ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
+            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(off_idx + cu_idx)), ptCu );
         }
 
         return 0;

@@ -285,10 +285,67 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 	return ret;
 }
 
+/**
+ * New ERT populates:
+ * [1  ]      : header
+ * [1  ]      : custat version
+ * [1  ]      : ert git version
+ * [1  ]      : number of cq slots
+ * [1  ]      : number of cus
+ * [#numcus]  : cu execution stats (number of executions)
+ * [#numcus]  : cu status (1: running, 0: idle)
+ * [#slots]   : command queue slot status
+ *
+ * Old ERT populates
+ * [1  ]      : header
+ * [#numcus]  : cu execution stats (number of executions)
+ */
+static inline void read_ert_stat(struct kds_command *xcmd)
+{
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
+	int num_cu  = kds->cu_mgmt.num_cus;
+	int num_scu = kds->scu_mgmt.num_cus;
+	int off_idx;
+	int i;
+
+	/* New KDS handle FPGA CU statistic on host not ERT */
+	if (ecmd->data[0] != 0x51a10000)
+		return;
+
+	/* Only need PS kernel info, which is after FPGA CUs */
+	mutex_lock(&kds->scu_mgmt.lock);
+	/* Skip header and FPGA CU stats. off_idx points to PS kernel stats */
+	off_idx = 4 + num_cu;
+	for (i = 0; i < num_scu; i++)
+		kds->scu_mgmt.usage[i] = ecmd->data[off_idx + i];
+
+	/* off_idx points to PS kernel status */
+	off_idx += num_scu + num_cu;
+	for (i = 0; i < num_scu; i++) {
+		if (ecmd->data[off_idx + i])
+			kds->scu_mgmt.status[i] = CU_AP_START;
+		else
+			kds->scu_mgmt.status[i] = CU_AP_IDLE;
+	}
+	mutex_unlock(&kds->scu_mgmt.lock);
+}
+
 static void notify_execbuf(struct kds_command *xcmd, int status)
 {
 	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+
+	if (xcmd->opcode == OP_START_SK) {
+		/* For PS kernel get cmd state and return_code */
+		struct ert_start_kernel_cmd *scmd;
+
+		scmd = (struct ert_start_kernel_cmd *)ecmd;
+		if (scmd->state < ERT_CMD_STATE_COMPLETED)
+			/* It is old shell, return code is missing */
+			scmd->return_code = -ENODATA;
+	} else if (xcmd->opcode == OP_GET_STAT)
+		read_ert_stat(xcmd);
 
 	if (status == KDS_COMPLETED)
 		ecmd->state = ERT_CMD_STATE_COMPLETED;
@@ -426,6 +483,11 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			xcmd->cb.free(xcmd);
 			goto out;
 		}
+		break;
+	case ERT_CU_STAT:
+		xcmd->execbuf = (u32 *)ecmd;
+		xcmd->opcode = OP_GET_STAT;
+		xcmd->priv = &XDEV(xdev)->kds;
 		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");
