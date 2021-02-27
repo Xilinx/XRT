@@ -26,6 +26,7 @@
 #include "core/tools/common/Process.h"
 #include "core/common/query_requests.h"
 #include "core/pcie/common/dmatest.h"
+#include "core/include/ert.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -619,6 +620,108 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
   return true;
 }
 
+static bool
+bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, boost::property_tree::ptree& _ptTest)
+{
+  int ret;
+  const uint32_t bo_size = 0x1000;
+  xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_EXECBUF);
+
+  if (boh == NULLBO) {
+    _ptTest.put("status", "failed");
+    logger(_ptTest, "Error", "Couldn't allocate BO");
+    return false;
+  }
+  auto boptr = reinterpret_cast<char *>(xclMapBO(handle, boh, true));
+  if (boptr == nullptr) {
+    _ptTest.put("status", "failed");
+    logger(_ptTest, "Error", "Couldn't map BO");
+    return false;
+  }
+
+  auto ecmd = reinterpret_cast<ert_validate_cmd*>(boptr);
+
+  std::memset(ecmd, 0, bo_size);
+  ecmd->opcode = opcode;
+  ecmd->type = ERT_CTRL;
+
+  if (xclExecBuf(handle,boh)) {
+      logger(_ptTest, "Error", "Couldn't map BO");
+      return false;
+  }
+
+  do {
+      ret = xclExecWait(handle, 1);
+      if (ret == -1)
+          break;
+  }
+  while (ecmd->state < ERT_CMD_STATE_COMPLETED);
+
+  return true;
+}
+
+static bool 
+clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle handle, boost::property_tree::ptree& _ptTest)
+{
+  const int sleep_secs = 2, one_million = 1000000;
+
+  if(!bist_alloc_execbuf_and_wait(handle, ERT_CLK_CALIB, _ptTest))
+    return false;
+
+  auto start = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
+
+  std::this_thread::sleep_for(std::chrono::seconds(sleep_secs));
+
+  if(!bist_alloc_execbuf_and_wait(handle, ERT_CLK_CALIB, _ptTest))
+    return false;
+
+  auto end = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
+
+  /* Calculate the clock frequency in MHz*/
+  double freq = static_cast<double>(((end + std::numeric_limits<unsigned long>::max() - start) & std::numeric_limits<unsigned long>::max())) / (1.0 * sleep_secs*one_million);
+  logger(_ptTest, "Details", boost::str(boost::format("ERT clock frequency: %.1f MHz") % freq));
+
+  return true;
+}
+
+static bool 
+ert_validate(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle handle, boost::property_tree::ptree& _ptTest)
+{
+  if(!bist_alloc_execbuf_and_wait(handle, ERT_MB_VALIDATE, _ptTest))
+    return false;
+
+  auto cq_write_cnt = xrt_core::device_query<xrt_core::query::ert_cq_write>(_dev);
+  auto cq_read_cnt = xrt_core::device_query<xrt_core::query::ert_cq_read>(_dev);
+  auto cu_write_cnt = xrt_core::device_query<xrt_core::query::ert_cu_write>(_dev);
+  auto cu_read_cnt = xrt_core::device_query<xrt_core::query::ert_cu_read>(_dev);
+
+  logger(_ptTest, "Details",  boost::str(boost::format("CQ read %4d bytes: %4d cycles") % 4 % cq_read_cnt));
+  logger(_ptTest, "Details",  boost::str(boost::format("CQ write%4d bytes: %4d cycles") % 4 % cq_write_cnt));
+  logger(_ptTest, "Details",  boost::str(boost::format("CU read %4d bytes: %4d cycles") % 4 % cu_read_cnt));
+  logger(_ptTest, "Details",  boost::str(boost::format("CU write%4d bytes: %4d cycles") % 4 % cu_write_cnt));
+
+  const uint32_t go_sleep = 1, wake_up = 0;
+  xrt_core::device_update<xrt_core::query::ert_sleep>(_dev.get(), go_sleep);
+  auto mb_status = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
+  if (!mb_status) {
+      _ptTest.put("status", "failed");
+      logger(_ptTest, "Error", "Failed to put ERT to sleep");
+      return false;
+  }
+
+  xrt_core::device_update<xrt_core::query::ert_sleep>(_dev.get(), wake_up);
+  auto mb_sleep = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
+  if (mb_sleep) {
+      _ptTest.put("status", "failed");
+      logger(_ptTest, "Error", "Failed to wake up ERT");
+      return false;
+  }
+
+  logger(_ptTest, "Details",  boost::str(boost::format("ERT sleep/wake successfully")));
+
+
+  return true;
+}
 /*
  * TEST #1
  */
@@ -896,6 +999,46 @@ hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost:
 }
 
 /*
+ * TEST #10
+ */
+void
+bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+  /* We can only test ert validate on SSv3 platform, skip if it's not a SSv3 platform */
+  int32_t ert_cfg_gpio = 0;
+  try {
+   ert_cfg_gpio = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
+  } catch(...) {
+      logger(_ptTest, "Details", "ERT validate is not available");
+      _ptTest.put("status", "skip");
+      return;
+  }
+
+  if (ert_cfg_gpio < 0) {
+      logger(_ptTest, "Details", "This platform does not support ERT validate feature");
+      _ptTest.put("status", "skip");
+      return;
+  }
+
+  if(!search_and_program_xclbin(_dev, _ptTest)) {
+    return;
+  }
+
+  xclbin_lock xclbin_lock(_dev);
+
+  if (!clock_calibration(_dev, _dev->get_device_handle(), _ptTest))
+     _ptTest.put("status", "failed");
+
+  if (!ert_validate(_dev, _dev->get_device_handle(), _ptTest))
+    _ptTest.put("status", "failed");
+
+
+  _ptTest.put("status", "passed");
+
+}
+
+
+/*
 * helper function to initialize test info
 */
 static boost::property_tree::ptree
@@ -924,7 +1067,8 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
   { create_init_test("Peer to peer bar", "Run P2P test", "bandwidth.xclbin"), p2pTest },
   { create_init_test("Memory to memory DMA", "Run M2M test", "bandwidth.xclbin"), m2mTest },
-  { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest }
+  { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
+  { create_init_test("bist", "Run BIST test", "verify.xclbin"), bistTest }
 };
 
 /*
@@ -947,6 +1091,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
                       test_status& status, std::ostream & _ostream)
 {
   std::string _status = test.get<std::string>("status");
+  std::string prev_tag = "";
   auto color = EscapeCodes::FGC_PASS;
   bool warn = false;
   bool error = false;
@@ -954,7 +1099,13 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   try {
     for (const auto& dict : test.get_child("log")) {
       for (const auto& kv : dict.second) {
-        _ostream<< boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>();
+        if (kv.first.compare(prev_tag)) {
+          prev_tag = kv.first;
+          _ostream<< boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>();
+        }
+        else
+          _ostream<< boost::format("    %-24s  %s\n") % "\0" % kv.second.get_value<std::string>();
+
         if (boost::iequals(kv.first, "warning"))
           warn = true;
         else if (boost::iequals(kv.first, "error"))

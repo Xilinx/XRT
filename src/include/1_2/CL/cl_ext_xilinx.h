@@ -517,10 +517,15 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
  * @CL_DEVICE_NODMA
  * @type: cl_bool
  * Return: True if underlying device is NODMA
+ *
+ * @CL_DEVICE_KDMA_COUNT
+ * @type: cl_uint
+ * Return: Number of kernel DMA blocks supported by device
  */
 #define CL_DEVICE_PCIE_BDF              0x1120  // BUS/DEVICE/FUNCTION
 #define CL_DEVICE_HANDLE                0x1121  // XRT device handle
 #define CL_DEVICE_NODMA                 0x1122  // NODMA device check
+#define CL_DEVICE_KDMA_COUNT            0x1123  // KDMA blocks
 
 // valid target types (CR962714)
 typedef cl_uint cl_program_target_type;

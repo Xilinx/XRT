@@ -117,6 +117,8 @@ namespace xdp {
     virtual bool isWriteBuffer() { return type == WRITE_BUFFER || 
 	                                  type == WRITE_BUFFER_P2P ||
 	                                  type == LOP_WRITE_BUFFER ; }
+    virtual bool isCopyBuffer() { return type == COPY_BUFFER ||
+                                         type == COPY_BUFFER_P2P ; }
     virtual bool isKernelEnqueue() { return type == KERNEL_ENQUEUE ||
 	                                    type == LOP_KERNEL_ENQUEUE ; }
 

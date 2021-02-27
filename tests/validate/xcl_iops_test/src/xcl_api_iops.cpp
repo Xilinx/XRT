@@ -10,6 +10,7 @@
 
 #include "xilutil.hpp"
 #include "xrt.h"
+#include "experimental/xrt-next.h"
 /* Get internal shim API "xclOpenByBDF" */
 #include "shim_int.h"
 #include "ert.h"
@@ -37,6 +38,7 @@ typedef struct task_args {
 struct krnl_info {
     std::string     name;
     bool            new_style;
+    int             cu_idx;
 };
 
 bool verbose = false;
@@ -153,7 +155,7 @@ void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info
 
         cmd.ecmd->opcode = ERT_START_CU;
         cmd.ecmd->count = rsz;
-        cmd.ecmd->cu_mask = 0x1;
+        cmd.ecmd->cu_mask = 0x1 << krnl.cu_idx;
         cmd.ecmd->data[rsz - 1] = boh_addr;
         cmd.ecmd->data[rsz] = boh_addr >> 32;
 
@@ -193,7 +195,13 @@ void runTestThread(arg_t &arg)
         }
     }
 
-    if (xclOpenContext(handle, uuid, 0, true))
+    // CU name shoue be "hello:hello_1" or "verify:verify_1"
+    std::string cu_name = krnl.name + ":" + krnl.name + "_1";
+    krnl.cu_idx = xclIPName2Index(handle, cu_name.c_str());
+    if (krnl.cu_idx < 0)
+        throw std::runtime_error(cu_name + " not found");
+
+    if (xclOpenContext(handle, uuid, krnl.cu_idx, true))
         throw std::runtime_error("Cound not open context");
 
     fillCmdVector(handle, cmds, bank, arg.queueLength);

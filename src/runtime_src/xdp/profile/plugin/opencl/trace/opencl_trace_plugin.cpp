@@ -25,7 +25,8 @@
 
 namespace xdp {
 
-  OpenCLTraceProfilingPlugin::OpenCLTraceProfilingPlugin() : XDPPlugin()
+  OpenCLTraceProfilingPlugin::OpenCLTraceProfilingPlugin() :
+    XDPPlugin(), trace_dump_int_s(5)
   {
     db->registerPlugin(this) ;
 

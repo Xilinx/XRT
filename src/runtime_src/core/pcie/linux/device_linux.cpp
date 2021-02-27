@@ -17,6 +17,7 @@
 
 #include "device_linux.h"
 #include "core/common/query_requests.h"
+#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 #include "common/utils.h"
 #include "xrt.h"
@@ -417,6 +418,12 @@ initialize_query_table()
   emplace_sysfs_get<query::shared_host_mem>                  ("address_translator", "host_mem_size");
   emplace_sysfs_get<query::cpu_affinity>                     ("", "local_cpulist");
   emplace_sysfs_get<query::mailbox_metrics>                  ("mailbox", "recv_metrics");
+  emplace_sysfs_get<query::clock_timestamp>                  ("ert_user", "clock_timestamp");
+  emplace_sysfs_getput<query::ert_sleep>                     ("ert_user", "mb_sleep");
+  emplace_sysfs_get<query::ert_cq_read>                      ("ert_user", "cq_read_cnt");
+  emplace_sysfs_get<query::ert_cq_write>                     ("ert_user", "cq_write_cnt");
+  emplace_sysfs_get<query::ert_cu_read>                      ("ert_user", "cu_read_cnt");
+  emplace_sysfs_get<query::ert_cu_write>                     ("ert_user", "cu_write_cnt");
 
   emplace_func0_request<query::pcie_bdf,                     bdf>();
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();
@@ -508,6 +515,29 @@ device_linux::
 close(int dev_handle) const
 {
   pcidev::get_dev(get_device_id(), false)->close(dev_handle);
+}
+
+void
+device_linux::
+xclmgmt_load_xclbin(const char* buffer) const {
+  //resolves to xclbin2
+  const char xclbin_magic_str[] = { 0x78, 0x63, 0x6c, 0x62, 0x69, 0x6e, 0x32 };
+  if (sizeof(buffer) < sizeof(xclbin_magic_str))
+    throw xrt_core::error("Xclbin is smaller than expected");
+  if (std::memcmp(buffer, xclbin_magic_str, sizeof(xclbin_magic_str)) != 0)
+    throw xrt_core::error(boost::str(boost::format("Bad binary version '%s'") % xclbin_magic_str));
+  int ret = 0;
+  try {
+    xrt_core::scope_value_guard<int, std::function<void()>> fd = file_open("", O_RDWR);
+    xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer) ) };
+    ret = pcidev::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+  } catch (const std::exception& e) {
+    xrt_core::send_exception_message(e.what(), "Failed to open device");
+  }
+
+  if(ret == -errno) {
+    throw error(ret, "Failed to download xclbin");
+  }
 }
 
 } // xrt_core
