@@ -18,7 +18,6 @@
 #define VP_TRACE_WRITER_DOT_H
 
 #include <string>
-#include <unistd.h>
 #include <atomic>
 
 #include "xdp/profile/writer/vp_base/vp_writer.h"
