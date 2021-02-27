@@ -53,35 +53,35 @@ typedef void * xrtRunHandle;
 
 namespace xdp {
 
-class RunProfileStart
+class run_profile_start
 {
  public:
-  RunProfileStart() {}
-  RunProfileStart(void* object, const char* function, const char* type);
+  run_profile_start() {}
+  run_profile_start(void* object, const char* function, const char* type);
 };
 
-class RunProfileEnd
+class run_profile_end
 {
  public:
-  RunProfileEnd() {}
-  RunProfileEnd(void* object, const char* function, const char* type);
+  run_profile_end() {}
+  run_profile_end(void* object, const char* function, const char* type);
 };
 
-class KernelProfileStart
+class kernel_profile_start
 {
  public:
-  KernelProfileStart() {}
-  KernelProfileStart(void* object, const char* function, const char* type);
+  kernel_profile_start() {}
+  kernel_profile_start(void* object, const char* function, const char* type);
 };
 
-class KernelProfileEnd
+class kernel_profile_end
 {
  public:
-  KernelProfileEnd() {}
-  KernelProfileEnd(void* object, const char* function, const char* type);
+  kernel_profile_end() {}
+  kernel_profile_end(void* object, const char* function, const char* type);
 };
 
-}
+} // end namespace xdp
 
 namespace xrt {
 
@@ -380,9 +380,9 @@ public:
   /// @endcond
 
 private:
-  xdp::RunProfileStart profiling_start;
+  xdp::run_profile_start profiling_start;
   std::shared_ptr<run_impl> handle;
-  xdp::RunProfileEnd profiling_end;
+  xdp::run_profile_end profiling_end;
 
   XCL_DRIVER_DLLESPEC
   void
@@ -570,9 +570,9 @@ public:
   /// @endcond
 
 private:
-  xdp::KernelProfileStart profiling_start;
+  xdp::kernel_profile_start profiling_start;
   std::shared_ptr<kernel_impl> handle;
-  xdp::KernelProfileEnd profiling_end;
+  xdp::kernel_profile_end profiling_end;
 };
 
 /// @cond

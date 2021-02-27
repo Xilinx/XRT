@@ -51,17 +51,17 @@ typedef uint32_t xrtMemoryGroup;
 
 namespace xdp {
 
-class BOProfileStart
+class bo_profile_start
 {
  public:
-  BOProfileStart() {}
-  BOProfileStart(void* object, const char* function, const char* type);
+  bo_profile_start() {}
+  bo_profile_start(void* object, const char* function, const char* type);
 } ;
-class BOProfileEnd
+class bo_profile_end
 {
  public:
-  BOProfileEnd() {}
-  BOProfileEnd(void* object, const char* function, const char* type);
+  bo_profile_end() {}
+  bo_profile_end(void* object, const char* function, const char* type);
 } ;
 
 }
@@ -463,9 +463,9 @@ public:
   bo(xrtBufferHandle);
   /// @endcond
 private:
-  xdp::BOProfileStart profiling_start ;
+  xdp::bo_profile_start profiling_start ;
   std::shared_ptr<bo_impl> handle;
-  xdp::BOProfileEnd profiling_end ;
+  xdp::bo_profile_end profiling_end ;
 };
 
 } // namespace xrt

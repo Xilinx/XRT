@@ -35,20 +35,20 @@ typedef void* xrtXclbinHandle;
 #ifdef __cplusplus
 namespace xdp {
 
-class XclbinProfileStart
+class xclbin_profile_start
 {
  public:
-  XclbinProfileStart() {}
-  XclbinProfileStart(void* object, const char* function, const char* type);
+  xclbin_profile_start() {}
+  xclbin_profile_start(void* object, const char* function, const char* type);
 };
-class XclbinProfileEnd
+class xclbin_profile_end
 {
  public:
-  XclbinProfileEnd() {}
-  XclbinProfileEnd(void* object, const char* function, const char* type);
+  xclbin_profile_end() {}
+  xclbin_profile_end(void* object, const char* function, const char* type);
 };
 
-}
+} // end namespace xdp
 
 namespace xrt {
 
@@ -147,9 +147,9 @@ public:
   get_data() const;
 
 private:
-  xdp::XclbinProfileStart profiling_start;
+  xdp::xclbin_profile_start profiling_start;
   std::shared_ptr<xclbin_impl> handle;
-  xdp::XclbinProfileEnd profiling_end;
+  xdp::xclbin_profile_end profiling_end;
 };
 
 } // namespace xrt

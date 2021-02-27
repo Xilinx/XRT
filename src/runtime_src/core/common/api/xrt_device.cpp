@@ -93,18 +93,18 @@ send_exception_message(const char* msg)
 
 namespace xdp {
 
-DeviceProfileStart::
-DeviceProfileStart(void* object, const char* function, const char* type)
+device_profile_start::
+device_profile_start(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_start(object, function, type);
 }
 
-DeviceProfileEnd::
-DeviceProfileEnd(void* object, const char* function, const char* type)
+device_profile_end::
+device_profile_end(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_end(object, function, type);
 }
-}
+} // end namespace xdp
 
 namespace xrt_core { namespace device_int {
 

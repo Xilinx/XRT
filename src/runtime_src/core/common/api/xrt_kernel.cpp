@@ -1094,30 +1094,30 @@ public:
 
 namespace xdp {
 
-RunProfileStart::
-RunProfileStart(void* object, const char* function, const char* type)
+run_profile_start::
+run_profile_start(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_start(object, function, type);
 }
 
-RunProfileEnd::
-RunProfileEnd(void* object, const char* function, const char* type)
+run_profile_end::
+run_profile_end(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_end(object, function, type);
 }
 
-KernelProfileStart::
-KernelProfileStart(void* object, const char* function, const char* type)
+kernel_profile_start::
+kernel_profile_start(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_start(object, function, type);
 }
 
-KernelProfileEnd::
-KernelProfileEnd(void* object, const char* function, const char* type)
+kernel_profile_end::
+kernel_profile_end(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_end(object, function, type);
 }
-}
+} // end namespace xdp
 
 namespace xrt {
 

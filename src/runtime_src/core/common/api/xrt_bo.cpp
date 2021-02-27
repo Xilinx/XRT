@@ -109,14 +109,14 @@ send_exception_message(const std::string& msg)
 
 namespace xdp {
 
-BOProfileStart::
-BOProfileStart(void* object, const char* function, const char* type)
+bo_profile_start::
+bo_profile_start(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_start(object, function, type);
 }
 
-BOProfileEnd::
-BOProfileEnd(void* object, const char* function, const char* type)
+bo_profile_end::
+bo_profile_end(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_end(object, function, type);
 }

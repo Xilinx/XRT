@@ -173,19 +173,19 @@ error_time_to_string(xrtErrorTime time)
 
 namespace xdp {
 
-ErrorProfileStart::
-ErrorProfileStart(void* object, const char* function, const char* type)
+error_profile_start::
+error_profile_start(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_start(object, function, type);
 }
 
-ErrorProfileEnd::
-ErrorProfileEnd(void* object, const char* function, const char* type)
+error_profile_end::
+error_profile_end(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_end(object, function, type);
 }
 
-}
+} // end namespace xdp
 
 namespace xrt_core { namespace error_int {
 

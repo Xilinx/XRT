@@ -39,18 +39,18 @@
 #endif
 
 namespace xdp {
-XclbinProfileStart::
-XclbinProfileStart(void* object, const char* function, const char* type)
+xclbin_profile_start::
+xclbin_profile_start(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_start(object, function, type);
 }
 
-XclbinProfileEnd::
-XclbinProfileEnd(void* object, const char* function, const char* type)
+xclbin_profile_end::
+xclbin_profile_end(void* object, const char* function, const char* type)
 {
   xdpnative::profiling_end(object, function, type);
 }
-}
+} // end namespace xdp
 
 namespace xrt {
 

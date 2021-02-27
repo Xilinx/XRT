@@ -26,21 +26,21 @@
 
 namespace xdp {
 
-class ErrorProfileStart
+class error_profile_start
 {
  public:
-  ErrorProfileStart() {}
-  ErrorProfileStart(void* object, const char* function, const char* type);
+  error_profile_start() {}
+  error_profile_start(void* object, const char* function, const char* type);
 } ;
 
-class ErrorProfileEnd
+class error_profile_end
 {
  public:
-  ErrorProfileEnd() {}
-  ErrorProfileEnd(void* object, const char* function, const char* type);
+  error_profile_end() {}
+  error_profile_end(void* object, const char* function, const char* type);
 } ;
 
-}
+} // end namespace xdp
 
 namespace xrt {
 
@@ -98,9 +98,9 @@ public:
   to_string() const;
 
 private:
-  xdp::ErrorProfileStart profiling_start;
+  xdp::error_profile_start profiling_start;
   std::shared_ptr<error_impl> handle;
-  xdp::ErrorProfileEnd profiling_end;
+  xdp::error_profile_end profiling_end;
 };
 
 } // xrt
