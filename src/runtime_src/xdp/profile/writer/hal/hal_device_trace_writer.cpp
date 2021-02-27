@@ -47,7 +47,8 @@ namespace xdp {
   void HALDeviceTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "XRT  Version," << xrtVersion  << std::endl
+    fout << "TraceID," << traceID << std::endl
+         << "XRT  Version," << xrtVersion  << std::endl
          << "Tool Version," << toolVersion << std::endl
          << "Platform," << (db->getStaticInfo()).getDeviceName(deviceId) << std::endl
          << "Target,System Run" << std::endl;    // hardcoded for now

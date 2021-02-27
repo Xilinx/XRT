@@ -57,9 +57,7 @@ namespace xdp {
     virtual bool isKernel() { return false ; } 
 
     // Return a unique ID everytime we're called
-    void setUniqueTraceID() {
-      traceID = static_cast<unsigned int>(getpid()) + traceIDCtr++;
-    }
+    XDP_EXPORT void setUniqueTraceID();
 
   public:
     XDP_EXPORT VPTraceWriter(const char* filename, const std::string& v,

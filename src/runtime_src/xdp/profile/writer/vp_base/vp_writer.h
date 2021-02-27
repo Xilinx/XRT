@@ -19,7 +19,6 @@
 
 #include <fstream>
 #include <string>
-#include <iostream>
 
 #include "xdp/config.h"
 

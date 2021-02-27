@@ -20,6 +20,12 @@
 #include "xdp/profile/database/database.h"
 #include <iostream>
 
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
+
 namespace xdp {
 
   std::atomic<unsigned int> VPTraceWriter::traceIDCtr{0};
@@ -54,6 +60,17 @@ namespace xdp {
          << "Resolution,ms" << std::endl
          << "Min Resolution," << (resolution == 6 ? "us" : "ns") << std::endl
          << "Trace Version," << version << std::endl; 
+  }
+
+  void VPTraceWriter::setUniqueTraceID()
+  {
+    unsigned int pid;
+    #ifdef _WIN32
+    pid = static_cast<unsigned int>(_getpid()) ;
+    #else
+    pid = static_cast<int>(getpid()) ;
+    #endif
+    traceID = pid + traceIDCtr++;
   }
 
 }

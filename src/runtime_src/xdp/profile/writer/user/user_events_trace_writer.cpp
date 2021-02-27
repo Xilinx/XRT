@@ -25,7 +25,7 @@ namespace xdp {
 
   UserEventsTraceWriter::UserEventsTraceWriter(const char* filename) :
     VPTraceWriter(filename,
-		  "1.0",
+		  "1.1",
 		  getCurrentDateTime(),
 		  9 /* ns */),
     bucketId(1)
@@ -39,6 +39,7 @@ namespace xdp {
   void UserEventsTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
+    fout << "TraceID," << traceID << std::endl;
   }
 
   void UserEventsTraceWriter::writeStructure()

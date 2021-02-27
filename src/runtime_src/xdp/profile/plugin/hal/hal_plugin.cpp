@@ -38,7 +38,7 @@ namespace xdp {
   {
     db->registerPlugin(this) ;
 
-    std::string version = "1.0" ;
+    std::string version = "1.1" ;
 
     std::string creationTime = xdp::getCurrentDateTime() ;
     std::string xrtVersion   = xdp::getXRTVersion() ;

@@ -284,7 +284,6 @@ namespace xdp {
   bool OpenCLTraceWriter::write(bool openNewFile)
   {
     if (openNewFile && !traceEventsExist()) {
-      std::cout << "No new opencl trace data.. Skipping new file"<< std::endl;
       return false;
     }
 

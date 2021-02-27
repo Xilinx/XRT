@@ -78,7 +78,7 @@ namespace xdplop {
     if (xrt_xocl::config::get_opencl_trace() || xrt_xocl::config::get_timeline_trace())
     {
       xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,
-			 "Both low overhead profiling and OpenCL trace are enabled. Disabling LOP trace as it cannot be used together with OpenCL trace\n") ;
+			 "Both low overhead profiling and OpenCL trace are enabled. Disabling LOP trace as it cannot be used together with OpenCL trace.\n") ;
       return false;
     }
     return true;
