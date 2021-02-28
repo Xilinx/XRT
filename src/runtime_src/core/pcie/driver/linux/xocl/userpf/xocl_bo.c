@@ -1481,6 +1481,7 @@ static void xocl_free_sgt_callback(unsigned long cb_hndl, int err)
 	if (cb_func)
 		cb_func((unsigned long)cb_data->orig_data, err);
 
+	kfree(cb_data);
 }
 
 int xocl_sync_bo_callback_ioctl(struct drm_device *dev,
@@ -1606,8 +1607,6 @@ clear:
 	}
 
 out:
-	if (cb_data_alloced)
-		kfree(cb_data);
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 	return ret;
 }
