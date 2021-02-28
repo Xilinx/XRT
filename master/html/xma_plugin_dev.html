@@ -58,8 +58,8 @@
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Building the XRT Software Stack" href="build.html" />
-    <link rel="prev" title="XRT and Vitis™ Platform Overview" href="platforms.html" /> 
+    <link rel="next" title="XMA Upper Edge API Library" href="xmakernels.main.html" />
+    <link rel="prev" title="Application Development Guide" href="xma_apps_dev.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -333,14 +333,9 @@
             
             
               <p class="caption"><span class="caption-text">Introduction</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">System Requirements</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#host-platform-for-pcie-accelerator-cards">Host Platform for PCIe Accelerator Cards</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xrt-software-stack-for-pcie-accelerator-cards">XRT Software Stack for PCIe Accelerator Cards</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xrt-software-stack-for-embedded-platforms">XRT Software Stack for Embedded Platforms</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
@@ -356,10 +351,18 @@
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Plugin Development Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#initalization">Initalization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#handling-incoming-application-data">Handling Incoming Application Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sending-output-to-the-application">Sending Output to the Application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#termination">Termination</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#zerocopy-special-case">Zerocopy Special Case</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#standalone-example">Standalone Example</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
@@ -414,9 +417,9 @@
             
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
-				  <li class="toctree-l1"><a href="_sources/system_requirements.rst.txt"
+				  <li class="toctree-l1"><a href="_sources/xma_plugin_dev.rst.txt"
 						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/system_requirements.rst"
+					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xma_plugin_dev.rst"
 						   rel="nofollow">View on GitHub</a></li>						
 				</ul>
           
@@ -462,13 +465,13 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>System Requirements</li>
+      <li>Plugin Development Guide</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/system_requirements.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/xma_plugin_dev.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -481,34 +484,177 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="system-requirements">
-<span id="system-requirements-rst"></span><h1>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="host-platform-for-pcie-accelerator-cards">
-<h2>Host Platform for PCIe Accelerator Cards<a class="headerlink" href="#host-platform-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
+  <div class="section" id="plugin-development-guide">
+<h1>Plugin Development Guide<a class="headerlink" href="#plugin-development-guide" title="Permalink to this headline">¶</a></h1>
+<p>The XMA Plugin Interface is used to write software capable of managing a
+specific video kernel hardware resource.  The plugin interface consists of a
+library for moving data between device memory and host memory and accessing
+hardware registers.  Additionally, standard interfaces are defined to
+represent various video kernel archtypes such as encoders, decoders, and
+filters.</p>
+<p>The plugin developer, by implementing a given plugin interface, permits XMA
+to translate requests from XMA applications into hardware-specific actions
+(i.e. register programming, buffer processing). The XMA plugin is akin to a
+software ‘driver’ in this regard.</p>
+<p>The first step in developing an XMA plugin requires you to decide which XMA
+kernel interface accurately represents the type of hardware kernel for which
+you seek to provide support:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 49%" />
+<col style="width: 51%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Kernel Type</p></th>
+<th class="head"><p>XMA Plugin Interface</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Encoders (VP9, H.264, H.265)</p></td>
+<td><p>xmaplgenc</p></td>
+</tr>
+<tr class="row-odd"><td><p>Decoders (VP9, H.264, H.265)</p></td>
+<td><p>xmaplgdec</p></td>
+</tr>
+<tr class="row-even"><td><p>Filters (colorspace converter, scalers)</p></td>
+<td><p>xmaplgfilter or xmaplgscaler</p></td>
+</tr>
+<tr class="row-odd"><td><p>Scalers</p></td>
+<td><p>xmaplgscaler</p></td>
+</tr>
+<tr class="row-even"><td><p>Other (embedded cpu)</p></td>
+<td><p>xmaplgkernel</p></td>
+</tr>
+</tbody>
+</table>
+<p>Once selected, the job of the plugin author is to implement the interface
+for the given kernel thus providing a mapping between the xma_app_intf and
+the kernel.  Most callbacks specified are implicitly mandatory with some exceptions
+which will be noted below.</p>
+<p>Your plugin will be compiled into a shared object library and linked to the
+kernel via create_session properties:</p>
+<p>All plugin code must include xmaplugin.h</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>#include &lt;xmaplugin.h&gt;
+</pre></div>
+</div>
+<p>This will provide the plugin code access to all data structures necessary
+to author XMA plugin code.  This includes access to the structures used
+by the xma_app_intf as xmaplugin.h includes xma.h.</p>
+<p>What follows is a general description of what is expected of a plugin in
+response to the xma_app_intf.</p>
+<p>From the application perspective, the following operations
+will be peformed:</p>
 <ol class="arabic simple">
-<li><p>x86_64</p></li>
-<li><p>AARCH64</p></li>
-<li><p>PPC64LE</p></li>
+<li><p>Create session</p></li>
+<li><p>Send data/frame or write**</p></li>
+<li><p>Receive data/frame or read**</p></li>
+<li><p>Destroy</p></li>
 </ol>
-<p>Supported Xilinx® Accelerator Cards are listed in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">XRT and Vitis™ Platform Overview</span></a>.</p>
+<p>** in the case of a non-video kernel</p>
+<p>Steps 2 and 3 will form the runtime processing of frames/data and likely
+repeated for as long as there is data to be processed.</p>
+<p>A general mapping between the application interface and plugin interface:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 40%" />
+<col style="width: 60%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Application Call</p></th>
+<th class="head"><p>Plugin Callbacks Invoked</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>session_create()</p></td>
+<td><p>init()</p></td>
+</tr>
+<tr class="row-odd"><td><p>send_(data|frame)()</p></td>
+<td><p>send_(data|frame)()</p></td>
+</tr>
+<tr class="row-even"><td><p>recv_(data|frame)()</p></td>
+<td><p>recv_(data|frame)()</p></td>
+</tr>
+<tr class="row-odd"><td><p>destroy()</p></td>
+<td><p>close()</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="initalization">
+<h2>Initalization<a class="headerlink" href="#initalization" title="Permalink to this headline">¶</a></h2>
+<p>Initialization is the time for a plugin to perform one or more of the
+following:</p>
+<ol class="arabic simple">
+<li><p>allocate device buffers to handle input data as well as output data</p></li>
+<li><p>initalize the state of the kernel</p></li>
+</ol>
+<p>When a session has been created in response to an application request,
+XMA will allocate plugin data that
+is session-specific.</p>
+<p>XmaSession-&gt;plugin_data member is
+available to plugin to store the necessary session-specific
+state as necessary. There is no need to free these data structures during
+termination; XMA frees this data for you.</p>
+<p>To allocate buffers necessary to handle both incoming and outgoing
+data, please see</p>
+<ol class="arabic simple">
+<li><p>xma_plg_buffer_alloc(): Allocate device buffer on default session ddr_bank</p></li>
+<li><p>xma_plg_buffer_alloc_arg_num(): Allocate device buffer on ddr_bank connected to a kernel argument</p></li>
+</ol>
 </div>
-<div class="section" id="xrt-software-stack-for-pcie-accelerator-cards">
-<h2>XRT Software Stack for PCIe Accelerator Cards<a class="headerlink" href="#xrt-software-stack-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
-<p>XRT software stack requires Linux kernel 3.10+.</p>
-<p>The XRT software stack is tested on RHEL/CentOS and Ubuntu.
-For the detailed list of supported OS, please refer to the specific release versions of <a class="reference external" href="https://www.xilinx.com/search/site-keyword-search.html#q=ug1451">UG1451 XRT Release Notes</a>.</p>
-<p>XRT is needed on both application development and deployment environments.</p>
-<p>To install XRT on the host, please refer to page <a class="reference internal" href="install.html#install-rst"><span class="std std-ref">XRT Installation</span></a> for dependencies installation steps and XRT installation steps.</p>
-<p>To build a custom XRT package, please refer to page <a class="reference internal" href="build.html#build-rst"><span class="std std-ref">Building the XRT Software Stack</span></a> for dependencies installation steps and building steps.</p>
+<div class="section" id="handling-incoming-application-data">
+<h2>Handling Incoming Application Data<a class="headerlink" href="#handling-incoming-application-data" title="Permalink to this headline">¶</a></h2>
+<p>For each kernel type, there is an application interface to send data to be
+proceessed (i.e. encoded, decoded, or otherwised transformed).
+Data being sent by an application to the kernel will result in the invocation
+of your send()/write() callback.</p>
+<p>The most common operation within the plugin is to copy data from host
+memory to device memory so that it may be operated on by the kernel.
+Subsequently, the kernel must be programmed to know which device buffer
+contains the data to be processed and programmed appropriately.</p>
+<p>The XMA Plugin library call xma_plg_buffer_write() can be used to copy
+host data to device data.</p>
+<p>xma_plg_schedule_cu_cmd() or xma_plg_schedule_work_item() can be used to program
+the kernel registers and start kernel processing.</p>
 </div>
-<div class="section" id="xrt-software-stack-for-embedded-platforms">
-<h2>XRT Software Stack for Embedded Platforms<a class="headerlink" href="#xrt-software-stack-for-embedded-platforms" title="Permalink to this headline">¶</a></h2>
-<p>XRT software stack requires Linux kernel 3.10+. XRT for embedded platforms is tested with PetaLinux.</p>
-<p>XRT needs to be installed on the development environment (rootfs or sysroot) and deployment environment (rootfs) of embedded platforms.</p>
-<p>If embedded processor native compile is to be used, XRT, xrt-dev and GCC needs to be installed on the target embedded system rootfs.</p>
-<p>If application is developed on a server with cross compiling technique, XRT needs to be installed into sysroot. The application can be cross compiled against the sysroot.
-XRT for server is not required on the cross compile server.</p>
-<p>The embedded platform for deployment should have XRT and ZOCL installed. For details about building embedded platforms please refer to <a class="reference internal" href="yocto.html#yocto-rst"><span class="std std-ref">XRT Setup for Embedded Flow</span></a>.</p>
+<div class="section" id="sending-output-to-the-application">
+<h2>Sending Output to the Application<a class="headerlink" href="#sending-output-to-the-application" title="Permalink to this headline">¶</a></h2>
+<p>For each kernel type, there is an application interface to request processed
+data (i.e. encoded, decoded, otherwise transformed) by the kernel.  Data
+being requested by an application from the kernel will invoke your
+recv()/read() callback implementation.</p>
+<p>The most common operation within the plugin is to copy data from device
+memory back to host memory so that it may be processed by the application.
+Subsequently, the kernel may be prepared for new data to arrive for processing.</p>
+<p>The XMA Plugin library call xma_plg_buffer_read() can be used to copy
+host data to device data.</p>
+</div>
+<div class="section" id="termination">
+<h2>Termination<a class="headerlink" href="#termination" title="Permalink to this headline">¶</a></h2>
+<p>When an XMA application has concluded data processing, it will destroy its
+kernel session.  Your close() callback will be invoked to perform the necessary
+cleanup.  Your close() implementation should free any buffers that were
+allocated in device memory during your init() via xma_plg_buffer_free().
+Freeing XmaSession-&gt;plugin_data is not necessary
+as this will be done by the XMA library.</p>
+</div>
+<div class="section" id="zerocopy-special-case">
+<h2>Zerocopy Special Case<a class="headerlink" href="#zerocopy-special-case" title="Permalink to this headline">¶</a></h2>
+<p>Encoders are capable of receiving data directly from upstream video processing
+kernels such as filters or scalers.  In such a case, it may improve the
+the performance of a video processing pipeline that includes both a filter and
+an encoder to exchange data directly within device memory rather than have
+the filter copy data back to a host buffer only to be re-copied from the host
+to the device buffer of the downstream encoder.  This double-copy can be
+avoided if the two kernels can share a buffer within the device memory; a
+buffer that serves as an ‘output’ buffer for the filter but an ‘input’
+buffer for the encoder. This optimization is known as ‘zerocopy’.</p>
+<p>Use XRM for system resource reservation such that zero-copy is possible
+XmaFrame with device only buffer can be output of plugins supporting zero-copy and feeding zero-copy enabled plugin/s
+Plugins may use dev_index, bank_index &amp; device_only info from BufferObject to enable or disable zero-copy</p>
+</div>
+<div class="section" id="standalone-example">
+<h2>Standalone Example<a class="headerlink" href="#standalone-example" title="Permalink to this headline">¶</a></h2>
+<p>See XMA <a class="reference external" href="https://github.com/Xilinx/xma-samples">copy_encoder</a> example for an standalone working example of encoder kernel type.</p>
 </div>
 </div>
 
@@ -528,10 +674,10 @@ XRT for server is not required on the cross compile server.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="build.html" class="btn btn-neutral float-right" title="Building the XRT Software Stack" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xmakernels.main.html" class="btn btn-neutral float-right" title="XMA Upper Edge API Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="platforms.html" class="btn btn-neutral float-left" title="XRT and Vitis™ Platform Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xma_apps_dev.html" class="btn btn-neutral float-left" title="Application Development Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

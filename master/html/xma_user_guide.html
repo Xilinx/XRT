@@ -58,7 +58,7 @@
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="XMA 19.2 Migration" href="xma_19.2.html" />
+    <link rel="next" title="Application Development Guide" href="xma_apps_dev.html" />
     <link rel="prev" title="Configuration File xrt.ini" href="xrt_ini.html" /> 
 	</head>
 	<body>
@@ -352,30 +352,19 @@
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Xilinx Media Accelerator (XMA)</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">XMA Overview</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xma-application-interface-overview">XMA Application Interface Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xma-plugin-interface-overview">XMA Plugin Interface Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#sequence-of-operations">Sequence of Operations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#execution-model">Execution model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#application-development-guide">Application Development Guide</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#initialization">Initialization</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#create-session">Create Session</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#runtime-frame-and-data-processing">Runtime Frame and Data Processing</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#cleanup">Cleanup</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#plugin-development-guide">Plugin Development Guide</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#initalization">Initalization</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#handling-incoming-application-data">Handling Incoming Application Data</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#sending-output-to-the-application">Sending Output to the Application</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#termination">Termination</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#zerocopy-special-case">Zerocopy Special Case</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
 </ul>
 <p class="caption"><span class="caption-text">User API Library</span></p>
 <ul>
@@ -383,8 +372,6 @@
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Kernel Types</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
@@ -404,6 +391,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -476,7 +464,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Xilinx Media Accelerator (XMA)</li>
+      <li>XMA Overview</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -495,42 +483,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="xilinx-media-accelerator-xma">
-<h1>Xilinx Media Accelerator (XMA)<a class="headerlink" href="#xilinx-media-accelerator-xma" title="Permalink to this headline">¶</a></h1>
-<p>Major XMA Changes in 2019.2 Release:</p>
-<ol class="arabic simple">
-<li><p>YAML configuration file is not used by XMA</p></li>
-<li><p>Resource management is not handled by XMA</p>
-<ol class="loweralpha simple">
-<li><p>So channel_id for multi-channel kernels must be handled in host video application (like ffmpeg)</p></li>
-<li><p>channel_id is input to XMA in session_create API as part of the properties argument</p></li>
-<li><p>See XRM for resource management details</p></li>
-</ol>
-</li>
-<li><p>MPSoC PL &amp; soft kernels are supported in XMA</p></li>
-<li><p>Direct register read &amp; write is not available</p></li>
-<li><p>DataFlow kernels are supported</p></li>
-<li><p>ZeroCopy support has changed. See below for details</p></li>
-<li><p>BufferObject added. See below for details</p></li>
-<li><p>XmaFrame &amp; XmaDataBuffer can use device buffers instead of host only memory</p></li>
-<li><p>Support for device_only buffers</p></li>
-<li><p>Session creation &amp; destroy APIs are thread safe now</p></li>
-<li><p>Multi-process support is from XRT</p></li>
-<li><p>schedule_work_item  API changed to return CUCmdObj</p></li>
-<li><p>New API xma_plg_schedule_cu_cmd &amp; xma_plg_cu_cmd_status can be used instead of schedule_work_item</p></li>
-<li><p>In a session if using xma_plg_cu_cmd_status then do NOT use xma_plg_is_work_item_done in same session</p></li>
-<li><p>Supports up to 128 CUs per device</p></li>
-<li><p>CU register map size &lt; 4KB</p></li>
-<li><p>By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session</p></li>
-<li><p>For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info</p></li>
-<li><p>XMA now support multiple ddr bank per plugin. See below for info on xma_plg_buffer_alloc_arg_num()</p></li>
-<li><p>XMA version check API added to plugin struct. See below for details</p></li>
-<li><p>New session type XMA_ADMIN for non-video applications to control multiple CUs in single session. See below for details</p></li>
-<li><p>get_session_cmd_load(): Get CU command load of various sessions relative to each other. Printed to log file</p></li>
-<li><p>CU command load of all session is automatically sent to log file at end of the application</p></li>
-<li><p>This gives info on which sessions (or CUs) are more busy compared to other sessions (or CUs)</p></li>
-<li><p>QDMA platform: Host to kernel streams will be supported by XMA in future. See below for more details</p></li>
-</ol>
+  <div class="section" id="xma-overview">
+<h1>XMA Overview<a class="headerlink" href="#xma-overview" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="introduction">
 <h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
 <p>The Xilinx Media Accelerator (XMA) library (libxmaapi) is a host interface
@@ -574,9 +528,6 @@ a video stream when the end of the stream is found.  Also depicted in the
 diagram is the XMA Framework.  The XMA Framework is responsible for
 delegating requests to the appropriate plugin, and selecting user requested
 resources based on session creation requests.</p>
-<p>See the <a class="reference internal" href="#application-development-guide">Application Development Guide</a> for more information about utilizing the XMA
-application interface to development your own stand alone or integrated
-applications.</p>
 </div>
 <div class="section" id="xma-plugin-interface-overview">
 <h2>XMA Plugin Interface Overview<a class="headerlink" href="#xma-plugin-interface-overview" title="Permalink to this headline">¶</a></h2>
@@ -680,8 +631,7 @@ changes. Instead, it is up to the upper level media framework functions to
 convert buffers into the appropriate XMA buffer.
 The sections that follow will describe the layers of the API in more detail and
 provide examples of how these functions are called from both the perspective of
-an application and from the perspective of an XMA plugin. For the low-level
-details of the APIs, please consult the doxygen documentation.</p>
+an application and from the perspective of an XMA plugin.</p>
 </div>
 <div class="section" id="sequence-of-operations">
 <h2>Sequence of Operations<a class="headerlink" href="#sequence-of-operations" title="Permalink to this headline">¶</a></h2>
@@ -763,278 +713,6 @@ should be used to start the kernel with supplied kernel arguments</p>
 <p><strong>xma_plg_is_work_item_done</strong> should be used to check if kernel has completed atleast one work item (previously submitted by xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item).</p>
 <p><strong>xma_plg_cu_cmd_status</strong> should be used to check status of kernel commands supplied as list of commands in argument (previously submitted by xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item).</p>
 </div>
-<div class="section" id="application-development-guide">
-<h2>Application Development Guide<a class="headerlink" href="#application-development-guide" title="Permalink to this headline">¶</a></h2>
-<p>The XMA application interface is used to provide an API that can
-be used to control video accelerators.  The XMA API operations
-fall into four categories:</p>
-<ol class="arabic simple">
-<li><p>Initialization</p></li>
-<li><p>Create session</p></li>
-<li><p>Runtime frame/data processing</p></li>
-<li><p>Cleanup</p></li>
-</ol>
-<div class="section" id="initialization">
-<h3>Initialization<a class="headerlink" href="#initialization" title="Permalink to this headline">¶</a></h3>
-<p>The first act an application must perform is that of initialization of the
-system environment.  This is accomplished by calling xma_initialize() and
-passing in device and xclbin info.</p>
-</div>
-<div class="section" id="create-session">
-<h3>Create Session<a class="headerlink" href="#create-session" title="Permalink to this headline">¶</a></h3>
-<p>Each kernel class (i.e. encoder, filter, decoder, scaler, filter, kernel)
-requires different properties to be specified before a session can be created.</p>
-<p>See the document for the corresponding module for more details for a given
-kernel type:</p>
-<ol class="arabic simple">
-<li><p>xmadec</p></li>
-<li><p>xmaenc</p></li>
-<li><p>xmafilter</p></li>
-<li><p>xmascaler</p></li>
-<li><p>xmakernel</p></li>
-</ol>
-<p>The general initialization sequence that is common to all kernel classes is as follows:</p>
-<ol class="arabic simple">
-<li><p>define key type-specific properties of the kernel to be initialized</p></li>
-<li><p>call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())</p></li>
-</ol>
-</div>
-<div class="section" id="runtime-frame-and-data-processing">
-<h3>Runtime Frame and Data Processing<a class="headerlink" href="#runtime-frame-and-data-processing" title="Permalink to this headline">¶</a></h3>
-<p>Most kernel types include routines to consume data and then produce data from
-host memory buffers.  Depending on the nature of the kernel, you may be
-required to send a frame and then receive data or vice versa.
-XMA defines buffer data structures that correspond to frames (XmaFrame)
-or data (XmaFrameData). These buffer structures are used to communicate
-with the kernel application APIs and include addresses to host memory.  The XMA Application Interface includes
-functions to allocate data from host or device memory and create these containers for
-you.  See xmabuffers.h for additional information.</p>
-<p>Some routines, such as that of the encoder, may require multiple frames of
-data before recv_data() can be called.  You must consult the API to ensure
-you check for the correct return code to know how to proceed.  In the case of
-the encoder, calling xma_enc_session_send_frame() may return XMA_SEND_MORE_DATA
-which is an indication that calling recv_data() will not yield any data as
-more frames must be sent before any output data can be received.</p>
-<p>Of special note is the XmaKernel plugin type.  This kernel type is a generic
-type and not necessarily video-specific. It is used to represent kernels that
-perform control functions and/or other functions not easily represented by
-any of the other kernel classes.</p>
-</div>
-<div class="section" id="cleanup">
-<h3>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this headline">¶</a></h3>
-<p>When runtime video processing has concluded, the application should destroy
-each session.  Doing so will free the session to be used by another thread or
-process and ensure that the kernel plugin has the opportunity to perform
-proper cleanup/closing procedures.</p>
-<ol class="arabic simple">
-<li><p>xma_enc_session_destroy()</p></li>
-<li><p>xma_dec_session_destroy()</p></li>
-<li><p>xma_scaler_session_destroy()</p></li>
-<li><p>xma_filter_session_destroy()</p></li>
-<li><p>xma_kernel_session_destroy()</p></li>
-</ol>
-<p>See XMA copy_encoder &amp; copy_filter examples for more info.</p>
-</div>
-</div>
-<div class="section" id="plugin-development-guide">
-<h2>Plugin Development Guide<a class="headerlink" href="#plugin-development-guide" title="Permalink to this headline">¶</a></h2>
-<p>The XMA Plugin Interface is used to write software capable of managing a
-specific video kernel hardware resource.  The plugin interface consists of a
-library for moving data between device memory and host memory and accessing
-hardware registers.  Additionally, standard interfaces are defined to
-represent various video kernel archtypes such as encoders, decoders, and
-filters.</p>
-<p>The plugin developer, by implementing a given plugin interface, permits XMA
-to translate requests from XMA applications into hardware-specific actions
-(i.e. register programming, buffer processing). The XMA plugin is akin to a
-software ‘driver’ in this regard.</p>
-<p>The first step in developing an XMA plugin requires you to decide which XMA
-kernel interface accurately represents the type of hardware kernel for which
-you seek to provide support:</p>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 49%" />
-<col style="width: 51%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Kernel Type</p></th>
-<th class="head"><p>XMA Plugin Interface</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>Encoders (VP9, H.264, H.265)</p></td>
-<td><p>xmaplgenc</p></td>
-</tr>
-<tr class="row-odd"><td><p>Decoders (VP9, H.264, H.265)</p></td>
-<td><p>xmaplgdec</p></td>
-</tr>
-<tr class="row-even"><td><p>Filters (colorspace converter, scalers)</p></td>
-<td><p>xmaplgfilter or xmaplgscaler</p></td>
-</tr>
-<tr class="row-odd"><td><p>Scalers</p></td>
-<td><p>xmaplgscaler</p></td>
-</tr>
-<tr class="row-even"><td><p>Other (embedded cpu)</p></td>
-<td><p>xmaplgkernel</p></td>
-</tr>
-</tbody>
-</table>
-<p>Once selected, the job of the plugin author is to implement the interface
-for the given kernel thus providing a mapping between the xma_app_intf and
-the kernel.  Most callbacks specified are implicitly mandatory with some exceptions
-which will be noted below.</p>
-<p>Your plugin will be compiled into a shared object library and linked to the
-kernel via create_session properties:</p>
-<p>All plugin code must include xmaplugin.h</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>#include &lt;xmaplugin.h&gt;
-</pre></div>
-</div>
-<p>This will provide the plugin code access to all data structures necessary
-to author XMA plugin code.  This includes access to the structures used
-by the xma_app_intf as xmaplugin.h includes xma.h.</p>
-<p>What follows is a general description of what is expected of a plugin in
-response to the xma_app_intf.</p>
-<p>From the application perspective, the following operations
-will be peformed:</p>
-<ol class="arabic simple">
-<li><p>Create session</p></li>
-<li><p>Send data/frame or write**</p></li>
-<li><p>Receive data/frame or read**</p></li>
-<li><p>Destroy</p></li>
-</ol>
-<p>** in the case of a non-video kernel</p>
-<p>Steps 2 and 3 will form the runtime processing of frames/data and likely
-repeated for as long as there is data to be processed.</p>
-<p>A general mapping between the application interface and plugin interface:</p>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 40%" />
-<col style="width: 60%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Application Call</p></th>
-<th class="head"><p>Plugin Callbacks Invoked</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>session_create()</p></td>
-<td><p>init()</p></td>
-</tr>
-<tr class="row-odd"><td><p>send_(data|frame)()</p></td>
-<td><p>send_(data|frame)()</p></td>
-</tr>
-<tr class="row-even"><td><p>recv_(data|frame)()</p></td>
-<td><p>recv_(data|frame)()</p></td>
-</tr>
-<tr class="row-odd"><td><p>destroy()</p></td>
-<td><p>close()</p></td>
-</tr>
-</tbody>
-</table>
-<div class="section" id="initalization">
-<h3>Initalization<a class="headerlink" href="#initalization" title="Permalink to this headline">¶</a></h3>
-<p>Initialization is the time for a plugin to perform one or more of the
-following:</p>
-<ol class="arabic simple">
-<li><p>allocate device buffers to handle input data as well as output data</p></li>
-<li><p>initalize the state of the kernel</p></li>
-</ol>
-<p>When a session has been created in response to an application request,
-XMA will allocate plugin data that
-is session-specific.</p>
-<p>XmaSession-&gt;plugin_data member is
-available to plugin to store the necessary session-specific
-state as necessary. There is no need to free these data structures during
-termination; XMA frees this data for you.</p>
-<p>To allocate buffers necessary to handle both incoming and outgoing
-data, please see</p>
-<ol class="arabic simple">
-<li><p>xma_plg_buffer_alloc(): Allocate device buffer on default session ddr_bank</p></li>
-<li><p>xma_plg_buffer_alloc_arg_num(): Allocate device buffer on ddr_bank connected to a kernel argument</p></li>
-</ol>
-</div>
-<div class="section" id="handling-incoming-application-data">
-<h3>Handling Incoming Application Data<a class="headerlink" href="#handling-incoming-application-data" title="Permalink to this headline">¶</a></h3>
-<p>For each kernel type, there is an application interface to send data to be
-proceessed (i.e. encoded, decoded, or otherwised transformed).
-Data being sent by an application to the kernel will result in the invocation
-of your send()/write() callback.</p>
-<p>The most common operation within the plugin is to copy data from host
-memory to device memory so that it may be operated on by the kernel.
-Subsequently, the kernel must be programmed to know which device buffer
-contains the data to be processed and programmed appropriately.</p>
-<p>The XMA Plugin library call xma_plg_buffer_write() can be used to copy
-host data to device data.</p>
-<p>xma_plg_schedule_cu_cmd() or xma_plg_schedule_work_item() can be used to program
-the kernel registers and start kernel processing.</p>
-</div>
-<div class="section" id="sending-output-to-the-application">
-<h3>Sending Output to the Application<a class="headerlink" href="#sending-output-to-the-application" title="Permalink to this headline">¶</a></h3>
-<p>For each kernel type, there is an application interface to request processed
-data (i.e. encoded, decoded, otherwise transformed) by the kernel.  Data
-being requested by an application from the kernel will invoke your
-recv()/read() callback implementation.</p>
-<p>The most common operation within the plugin is to copy data from device
-memory back to host memory so that it may be processed by the application.
-Subsequently, the kernel may be prepared for new data to arrive for processing.</p>
-<p>The XMA Plugin library call xma_plg_buffer_read() can be used to copy
-host data to device data.</p>
-</div>
-<div class="section" id="termination">
-<h3>Termination<a class="headerlink" href="#termination" title="Permalink to this headline">¶</a></h3>
-<p>When an XMA application has concluded data processing, it will destroy its
-kernel session.  Your close() callback will be invoked to perform the necessary
-cleanup.  Your close() implementation should free any buffers that were
-allocated in device memory during your init() via xma_plg_buffer_free().
-Freeing XmaSession-&gt;plugin_data is not necessary
-as this will be done by the XMA library.</p>
-</div>
-<div class="section" id="zerocopy-special-case">
-<h3>Zerocopy Special Case<a class="headerlink" href="#zerocopy-special-case" title="Permalink to this headline">¶</a></h3>
-<p>Encoders are capable of receiving data directly from upstream video processing
-kernels such as filters or scalers.  In such a case, it may improve the
-the performance of a video processing pipeline that includes both a filter and
-an encoder to exchange data directly within device memory rather than have
-the filter copy data back to a host buffer only to be re-copied from the host
-to the device buffer of the downstream encoder.  This double-copy can be
-avoided if the two kernels can share a buffer within the device memory; a
-buffer that serves as an ‘output’ buffer for the filter but an ‘input’
-buffer for the encoder. This optimization is known as ‘zerocopy’.</p>
-<p>Use XRM for system resource reservation such that zero-copy is possible
-XmaFrame with device only buffer can be output of plugins supporting zero-copy and feeding zero-copy enabled plugin/s
-Plugins may use dev_index, bank_index &amp; device_only info from BufferObject to enable or disable zero-copy</p>
-<p>See XMA copy_encoder &amp; copy_filter examples for more info.</p>
-<p>For stateful/multi-channel kernels (eg decodre, encoder):</p>
-<ol class="arabic simple">
-<li><p>Use dataflow kernels with context/channels for best performance. Use HLS/RTL Wizard with appropriate settings to generate these kernels in 2019.2 release toolset.</p></li>
-<li><p>All work items within a channel are treated as FIFO. Kernel must maintain this order for a channel.</p></li>
-<li><p>See spec for kernels with dataflow with channels. Kernel regamp registers at offset 0x10 (channel_id input to kernel) and 0x14 (channel_id output from kernel) must be supported by kernels.</p></li>
-<li><p>Use xrt_ini settings (dataflow; kernel_channels) to enable dataflow kernel with channels</p></li>
-</ol>
-<p>QDMA Platform:</p>
-<ol class="arabic simple">
-<li><p>Host to kernel streams will be supported by XMA in future</p></li>
-<li><p>Pre defined commands packets maybe used to implement streaming kenels with standard command interface</p></li>
-<li><p>Pre define command format will be provided</p></li>
-</ol>
-<p>Using DRM (Digital Right Management) IPs:</p>
-<ol class="arabic simple">
-<li><p>For register read/write use XRT APIs from libxrt_core</p></li>
-<li><p>Use APIs xclRead &amp; xclWrite. APIs are depricated and will be removed in 2020.2 release</p></li>
-<li><p>xclRegRead/Write APIs may NOT work for DRM IPs depending on application setup/use-case</p></li>
-<li><p>Register read/write is discouraged</p></li>
-<li><p>DRM solution/setup without register read/write is preferred</p></li>
-<li><p>DRM solution/setup using standard XMA APis is preferred</p></li>
-<li><p>DRM IP as independent kernel should meet above suggestions</p></li>
-</ol>
-<p>Compiling ffmpeg or host aplication with libxma2api:</p>
-<ol class="arabic simple">
-<li><p>GCC link flag to use: -Wl,–unresolved-symbols=ignore-in-shared-libs</p></li>
-<li><p>Example ffmpeg configure cmd:</p></li>
-</ol>
-<p>./configure –prefix=/root_path/ffmpeg/build –pkg-config-flags=”–static” –extra-cflags=’-I/opt/xilinx/xrt/include/xma2 -I/root_path/ffmpeg/build/include’ –extra-ldflags=’-L/opt/xilinx/xrt/lib -L/root_path/ffmpeg/build/lib’ –extra-libs=’-Wl,–unresolved-symbols=ignore-in-shared-libs -lxma2api -lpthread -ldl’ –bindir=/root_path/ffmpeg/bin –enable-pthreads –enable-shared –enable-libxma2api –enable-pic –enable-gpl –enable-nonfree</p>
-</div>
-</div>
 </div>
 
 
@@ -1053,7 +731,7 @@ Plugins may use dev_index, bank_index &amp; device_only info from BufferObject t
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="xma_19.2.html" class="btn btn-neutral float-right" title="XMA 19.2 Migration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xma_apps_dev.html" class="btn btn-neutral float-right" title="Application Development Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="xrt_ini.html" class="btn btn-neutral float-left" title="Configuration File xrt.ini" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -1066,7 +744,7 @@ Plugins may use dev_index, bank_index &amp; device_only info from BufferObject t
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on February 24, 2021.
+        Last updated on February 28, 2021.
       </span>
 
     </p>

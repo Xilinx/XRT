@@ -58,8 +58,8 @@
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Alveo™ Platform Loading Overview" href="platforms_partitions.html" />
-    <link rel="prev" title="XMA Core Library" href="xma.main.html" /> 
+    <link rel="next" title="XMA Lower Edge API Library" href="xma.main.html" />
+    <link rel="prev" title="Plugin Development Guide" href="xma_plugin_dev.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -351,18 +351,11 @@
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
-</ul>
-<p class="caption"><span class="caption-text">User API Library</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">XMA Kernel Types</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">XMA Upper Edge API Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#encoder">Encoder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#decoder">Decoder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#scaler">Scaler</a></li>
@@ -370,6 +363,15 @@
 <li class="toctree-l2"><a class="reference internal" href="#kernel">Kernel</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
@@ -389,6 +391,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -461,7 +464,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>XMA Kernel Types</li>
+      <li>XMA Upper Edge API Library</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -480,9 +483,32 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="xma-kernel-types">
-<span id="xmakernels-main-rst"></span><h1>XMA Kernel Types<a class="headerlink" href="#xma-kernel-types" title="Permalink to this headline">¶</a></h1>
-<p>XMA Framework supports five types of kernel</p>
+  <div class="section" id="xma-upper-edge-api-library">
+<span id="xmakernels-main-rst"></span><h1>XMA Upper Edge API Library<a class="headerlink" href="#xma-upper-edge-api-library" title="Permalink to this headline">¶</a></h1>
+<p><strong>XMA Application Interface</strong></p>
+<p>The interface used by stand-alone XMA applications or plugins</p>
+<dl class="c function">
+<dt id="c.xma_initialize">
+int32_t <code class="sig-name descname">xma_initialize</code><span class="sig-paren">(</span>XmaXclbinParameter *<em>devXclbins</em>, int32_t <em>num_parms</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_initialize" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Initialie XMA Library and devices</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaXclbinParameter</span> <span class="pre">*</span> <span class="pre">devXclbins</span></code></dt><dd><p>array of device index and full path of xclbin to program the device with.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">num_parms</span></code></dt><dd><p>Number of elements in above array input</p>
+</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div><p>This is the entry point routine for utilzing the XMA library and must be
+the first call within any application before calling any other XMA APIs.
+Each device specified will be  programmed with provided xclbin(s).</p>
+</div></blockquote>
+<p><strong>Return</strong></p>
+<p>XMA_SUCCESS or XMa_ERROR</p>
+<p><strong>XMA upper edge APIs can be divided based on the following five types of kernel</strong></p>
 <blockquote>
 <div><ol class="arabic simple">
 <li><p>Encoder</p></li>
@@ -515,9 +541,9 @@ session.  The encoder session contains state information used by the
 encoder plugin to manage the hardware associated with a Xilinx accelerator
 device.  Prior to creating an encoder session the media framework is
 responsible for initializing the XMA using the function
-<a class="reference internal" href="xma.main.html#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>.  The initialize function should be called by the
+<a class="reference internal" href="#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>.  The initialize function should be called by the
 media framework early in the framework initialization to ensure that all
-resources have been configured.  Ideally, the  <a class="reference internal" href="xma.main.html#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>
+resources have been configured.  Ideally, the  <a class="reference internal" href="#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>
 function should be called from the <code class="xref c c-func docutils literal notranslate"><span class="pre">main()</span></code> function of the media framework
 in order to guarantee it is only called once.</p>
 </div></blockquote>
@@ -661,9 +687,9 @@ session.  The encoder session contains state information used by the
 encoder plugin to manage the hardware associated with a Xilinx accelerator
 device.  Prior to creating an encoder session the media framework is
 responsible for initializing the XMA using the function
-<a class="reference internal" href="xma.main.html#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>.  The initialize function should be called by the
+<a class="reference internal" href="#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>.  The initialize function should be called by the
 media framework early in the framework initialization to ensure that all
-resources have been configured.  Ideally, the  <a class="reference internal" href="xma.main.html#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>
+resources have been configured.  Ideally, the  <a class="reference internal" href="#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>
 function should be called from the <code class="xref c c-func docutils literal notranslate"><span class="pre">main()</span></code> function of the media framework
 in order to guarantee it is only called once.</p>
 </div></blockquote>
@@ -807,9 +833,9 @@ session.  The scaler session contains state information used by the
 scaler plugin to manage the hardware associated with a Xilinx accelerator
 device.  Prior to creating a scaler session the media framework is
 responsible for initializing the XMA using the function
-<strong>ref</strong> <a class="reference internal" href="xma.main.html#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>.  The initialize function should be called by the
+<strong>ref</strong> <a class="reference internal" href="#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>.  The initialize function should be called by the
 media framework early in the framework initialization to ensure that all
-resources have been configured.  Ideally, the <strong>ref</strong> <a class="reference internal" href="xma.main.html#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>
+resources have been configured.  Ideally, the <strong>ref</strong> <a class="reference internal" href="#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>
 function should be called from the <code class="xref c c-func docutils literal notranslate"><span class="pre">main()</span></code> function of the media framework
 in order to guarantee it is only called once.</p>
 </div></blockquote>
@@ -1217,10 +1243,10 @@ int32_t <code class="sig-name descname">xma_kernel_session_read</code><span clas
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="platforms_partitions.html" class="btn btn-neutral float-right" title="Alveo™ Platform Loading Overview" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xma.main.html" class="btn btn-neutral float-right" title="XMA Lower Edge API Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xma.main.html" class="btn btn-neutral float-left" title="XMA Core Library" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xma_plugin_dev.html" class="btn btn-neutral float-left" title="Plugin Development Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -1230,7 +1256,7 @@ int32_t <code class="sig-name descname">xma_kernel_session_read</code><span clas
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on February 24, 2021.
+        Last updated on February 28, 2021.
       </span>
 
     </p>
