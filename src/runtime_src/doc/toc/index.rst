@@ -40,6 +40,10 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    :caption: Video Acceleration Using XMA
 
    xma_user_guide.rst
+   xma_apps_dev.rst
+   xma_plugin_dev.rst
+   xmakernels.main.rst
+   xma.main.rst
    xma_19.2.rst
 
 .. toctree::
@@ -49,8 +53,6 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    opencl_extension.rst
    xrt_native_apis.rst
    xrt_native.main.rst
-   xma.main.rst
-   xmakernels.main.rst
 
 
 .. toctree::
