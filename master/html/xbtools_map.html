@@ -58,8 +58,8 @@
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Building the XRT Software Stack" href="build.html" />
-    <link rel="prev" title="XRT and Vitis™ Platform Overview" href="platforms.html" /> 
+    <link rel="next" title="XRT Setup for Embedded Flow" href="yocto.html" />
+    <link rel="prev" title="Xbmgmt Next Generation" href="xbmgmt2.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -333,14 +333,9 @@
             
             
               <p class="caption"><span class="caption-text">Introduction</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">System Requirements</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#host-platform-for-pcie-accelerator-cards">Host Platform for PCIe Accelerator Cards</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xrt-software-stack-for-pcie-accelerator-cards">XRT Software Stack for PCIe Accelerator Cards</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xrt-software-stack-for-embedded-platforms">XRT Software Stack for Embedded Platforms</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
@@ -383,13 +378,23 @@
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Legacy to new map</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#xbutil">Xbutil</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#misc-subcommands">Misc subcommands</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#xbmgmt">Xbmgmt</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Misc subcommands</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -414,9 +419,9 @@
             
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
-				  <li class="toctree-l1"><a href="_sources/system_requirements.rst.txt"
+				  <li class="toctree-l1"><a href="_sources/xbtools_map.rst.txt"
 						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/system_requirements.rst"
+					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xbtools_map.rst"
 						   rel="nofollow">View on GitHub</a></li>						
 				</ul>
           
@@ -462,13 +467,13 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>System Requirements</li>
+      <li>Legacy to new map</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/system_requirements.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/xbtools_map.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -481,34 +486,308 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="system-requirements">
-<span id="system-requirements-rst"></span><h1>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="host-platform-for-pcie-accelerator-cards">
-<h2>Host Platform for PCIe Accelerator Cards<a class="headerlink" href="#host-platform-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
-<ol class="arabic simple">
-<li><p>x86_64</p></li>
-<li><p>AARCH64</p></li>
-<li><p>PPC64LE</p></li>
-</ol>
-<p>Supported Xilinx® Accelerator Cards are listed in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">XRT and Vitis™ Platform Overview</span></a>.</p>
+  <div class="section" id="legacy-to-new-map">
+<span id="xbtools-map-rst"></span><h1>Legacy to new map<a class="headerlink" href="#legacy-to-new-map" title="Permalink to this headline">¶</a></h1>
+<p>This document maps the legacy <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands to the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands. It lists out the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> calls that replace the existing calls.</p>
+<p>Note: The new utilities are complete redesign and architecture, hence there maynot be exact 1-to-1 mapping. However, help menus of these new utilities are also very descriptive so please refer to them whenever needed.</p>
+<div class="section" id="xbutil">
+<h2>Xbutil<a class="headerlink" href="#xbutil" title="Permalink to this headline">¶</a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21%" />
+<col style="width: 21%" />
+<col style="width: 30%" />
+<col style="width: 28%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Subcommand
+Legacy</p></th>
+<th class="head"><p>Subcommand
+New</p></th>
+<th class="head"><p>Option
+Legacy</p></th>
+<th class="head"><p>Option
+New</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>reset</p></td>
+<td><p>reset</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-odd"><td><p>validate</p></td>
+<td><p>validate</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>-q</p></td>
+<td><p>–run quick</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td></td>
+<td><p>(N/A)</p></td>
+<td><p>–run
+&lt;testname&gt;</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>(N/A)</p></td>
+<td><p>–format</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td></td>
+<td><p>(N/A)</p></td>
+<td><p>–output</p></td>
+</tr>
+<tr class="row-even"><td><p>scan</p></td>
+<td><p>examine</p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p>query</p></td>
+<td><p>examine</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>(N/A)</p></td>
+<td><p>–report all</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td></td>
+<td></td>
+<td><p>–report
+&lt;lists&gt;</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>(N/A)</p></td>
+<td><p>–output</p></td>
+</tr>
+<tr class="row-odd"><td><p>dump</p></td>
+<td><p>examine</p></td>
+<td><p>(N/A)</p></td>
+<td><p>–format</p></td>
+</tr>
+<tr class="row-even"><td><p>top</p></td>
+<td><p>top</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-odd"><td><p>program</p></td>
+<td><p>program</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>-p &lt;xclbin&gt;</p></td>
+<td><p>–user
+&lt;xclbin&gt;</p></td>
+</tr>
+<tr class="row-odd"><td><p>p2p</p></td>
+<td><p>advanced</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>–enable,
+–disable,
+–validate</p></td>
+<td><p>–p2p
+&lt;ENABLE,
+DISABLE,
+VALIDATE&gt;</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="misc-subcommands">
+<h3>Misc subcommands<a class="headerlink" href="#misc-subcommands" title="Permalink to this headline">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 31%" />
+<col style="width: 69%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Subcommand
+Legacy</p></th>
+<th class="head"><p>Subcommand
+New</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>clock</p></td>
+<td><p>Obsoleted</p></td>
+</tr>
+<tr class="row-odd"><td><p>dmatest</p></td>
+<td><p>validate –run DMA</p></td>
+</tr>
+<tr class="row-even"><td><p>m2mtest</p></td>
+<td><p>validate –run “Memory to memory DMA”</p></td>
+</tr>
+<tr class="row-odd"><td><p>version</p></td>
+<td><p>examine</p></td>
+</tr>
+<tr class="row-even"><td><p>status</p></td>
+<td><p>examine -r debug-ip-status</p></td>
+</tr>
+<tr class="row-odd"><td><p>mem –read</p></td>
+<td><p>advanced –read-mem</p></td>
+</tr>
+<tr class="row-even"><td><p>mem –write</p></td>
+<td><p>advanced –write-mem</p></td>
+</tr>
+<tr class="row-odd"><td><p>host_mem</p></td>
+<td><p>Under construction</p></td>
+</tr>
+</tbody>
+</table>
 </div>
-<div class="section" id="xrt-software-stack-for-pcie-accelerator-cards">
-<h2>XRT Software Stack for PCIe Accelerator Cards<a class="headerlink" href="#xrt-software-stack-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
-<p>XRT software stack requires Linux kernel 3.10+.</p>
-<p>The XRT software stack is tested on RHEL/CentOS and Ubuntu.
-For the detailed list of supported OS, please refer to the specific release versions of <a class="reference external" href="https://www.xilinx.com/search/site-keyword-search.html#q=ug1451">UG1451 XRT Release Notes</a>.</p>
-<p>XRT is needed on both application development and deployment environments.</p>
-<p>To install XRT on the host, please refer to page <a class="reference internal" href="install.html#install-rst"><span class="std std-ref">XRT Installation</span></a> for dependencies installation steps and XRT installation steps.</p>
-<p>To build a custom XRT package, please refer to page <a class="reference internal" href="build.html#build-rst"><span class="std std-ref">Building the XRT Software Stack</span></a> for dependencies installation steps and building steps.</p>
 </div>
-<div class="section" id="xrt-software-stack-for-embedded-platforms">
-<h2>XRT Software Stack for Embedded Platforms<a class="headerlink" href="#xrt-software-stack-for-embedded-platforms" title="Permalink to this headline">¶</a></h2>
-<p>XRT software stack requires Linux kernel 3.10+. XRT for embedded platforms is tested with PetaLinux.</p>
-<p>XRT needs to be installed on the development environment (rootfs or sysroot) and deployment environment (rootfs) of embedded platforms.</p>
-<p>If embedded processor native compile is to be used, XRT, xrt-dev and GCC needs to be installed on the target embedded system rootfs.</p>
-<p>If application is developed on a server with cross compiling technique, XRT needs to be installed into sysroot. The application can be cross compiled against the sysroot.
-XRT for server is not required on the cross compile server.</p>
-<p>The embedded platform for deployment should have XRT and ZOCL installed. For details about building embedded platforms please refer to <a class="reference internal" href="yocto.html#yocto-rst"><span class="std std-ref">XRT Setup for Embedded Flow</span></a>.</p>
+<div class="section" id="xbmgmt">
+<h2>Xbmgmt<a class="headerlink" href="#xbmgmt" title="Permalink to this headline">¶</a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21%" />
+<col style="width: 21%" />
+<col style="width: 30%" />
+<col style="width: 28%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Subcommand
+Legacy</p></th>
+<th class="head"><p>Subcommand
+New</p></th>
+<th class="head"><p>Option
+Legacy</p></th>
+<th class="head"><p>Option
+New</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>flash</p></td>
+<td><p>program</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td></td>
+<td><p>–update</p></td>
+<td><p>–base</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>–update
+–shell &lt;name&gt;</p></td>
+<td><p>N/A</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td></td>
+<td><p>–shell
+–primary &lt;name&gt;</p></td>
+<td><p>–base
+–image xsabin</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>–flash_type
+&lt;flash-type&gt;</p></td>
+<td><p>–flash_type
+&lt;flash-type&gt;</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td></td>
+<td><p>–factory_reset</p></td>
+<td><p>–revert-to-gol
+den</p></td>
+</tr>
+<tr class="row-even"><td><p>partition</p></td>
+<td><p>program</p></td>
+<td><p>–name &lt;name&gt;</p></td>
+<td><p>–shell &lt;name&gt;</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td></td>
+<td><p>–path &lt;&gt;</p></td>
+<td><p>–user &lt;&gt;</p></td>
+</tr>
+<tr class="row-even"><td><p>(N/A)</p></td>
+<td><p>examine</p></td>
+<td><p>N/A</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td></td>
+<td><p>N/A</p></td>
+<td><p>–report all</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>N/A</p></td>
+<td><p>–report &lt;list&gt;</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td></td>
+<td><p>N/A</p></td>
+<td><p>–format</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>N/A</p></td>
+<td><p>–output</p></td>
+</tr>
+<tr class="row-odd"><td><p>reset</p></td>
+<td><p>reset</p></td>
+<td><p>-d &lt;device_id&gt;,
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>N/A</p></td>
+<td><p>–type &lt;type&gt;</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="id1">
+<h3>Misc subcommands<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 53%" />
+<col style="width: 47%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Subcommand
+Legacy</p></th>
+<th class="head"><p>Subcommand
+New</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>flash –scan</p></td>
+<td><p>examine</p></td>
+</tr>
+<tr class="row-odd"><td><p>partition –scan</p></td>
+<td><p>examine</p></td>
+</tr>
+<tr class="row-even"><td><p>version</p></td>
+<td><p>examine -r host</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 </div>
 
@@ -528,10 +807,10 @@ XRT for server is not required on the cross compile server.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="build.html" class="btn btn-neutral float-right" title="Building the XRT Software Stack" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="yocto.html" class="btn btn-neutral float-right" title="XRT Setup for Embedded Flow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="platforms.html" class="btn btn-neutral float-left" title="XRT and Vitis™ Platform Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xbmgmt2.html" class="btn btn-neutral float-left" title="Xbmgmt Next Generation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

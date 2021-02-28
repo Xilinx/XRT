@@ -59,7 +59,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Xilinx OpenCL extension" href="opencl_extension.html" />
-    <link rel="prev" title="Xilinx Media Accelerator (XMA)" href="xma_user_guide.html" /> 
+    <link rel="prev" title="XMA Lower Edge API Library" href="xma.main.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -352,8 +352,12 @@
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">XMA 19.2 Migration</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Migration from Legacy XMA</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#summary-of-changes">Summary of changes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#plugin-code-migration">Plugin code Migration</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#plugin-structure-change">Plugin Structure Change</a></li>
@@ -367,6 +371,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#application-code-migration">Application Code Migration</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#xma-initialize-function-xma-initlialize">XMA Initialize Function: <code class="docutils literal notranslate"><span class="pre">xma_initlialize</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#expanded-plugin-properties">Expanded Plugin Properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#list-of-details-changes">List of details changes</a></li>
 </ul>
 </li>
 </ul>
@@ -378,8 +383,6 @@
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Kernel Types</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
@@ -399,6 +402,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -471,7 +475,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>XMA 19.2 Migration</li>
+      <li>Migration from Legacy XMA</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -490,8 +494,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="xma-19-2-migration">
-<h1>XMA 19.2 Migration<a class="headerlink" href="#xma-19-2-migration" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="migration-from-legacy-xma">
+<h1>Migration from Legacy XMA<a class="headerlink" href="#migration-from-legacy-xma" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="summary-of-changes">
 <h2>Summary of changes<a class="headerlink" href="#summary-of-changes" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
@@ -532,8 +536,8 @@
 </div>
 <div class="section" id="buffer-creation-xma-plg-buffer-alloc">
 <h3>Buffer Creation: <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc</span></code><a class="headerlink" href="#buffer-creation-xma-plg-buffer-alloc" title="Permalink to this headline">¶</a></h3>
-<p>In <strong>19.1</strong>, the buffer creation process was complex. It was needed to specify all buffer properties such as buffer size, physical address, handle when creating the buffer.</p>
-<p>In <strong>19.2</strong>, the buffer creation process is simplified</p>
+<p>In legacy XMA, the buffer creation process was complex. It was needed to specify all buffer properties such as buffer size, physical address, handle when creating the buffer.</p>
+<p>In current XMA, the buffer creation process is simplified</p>
 <blockquote>
 <div><ul>
 <li><p>A new type <code class="docutils literal notranslate"><span class="pre">XmaBufferObj</span></code> is introduced</p></li>
@@ -551,22 +555,22 @@
 </div>
 <div class="section" id="buffer-write-xma-plg-buffer-write">
 <h3>Buffer Write: <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_write</span></code><a class="headerlink" href="#buffer-write-xma-plg-buffer-write" title="Permalink to this headline">¶</a></h3>
-<p>In <strong>19.1</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_write</span></code> was used to copy data from the host pointer followed by the DMA transfer.</p>
-<p>In <strong>19.2</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_write</span></code> does not accept host pointer any longer. If desired, the user has to copy from the host pointer to the buffer. <strong>The API now only performs DMA transfer from host to device</strong>.</p>
+<p>In legacy XMA the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_write</span></code> was used to copy data from the host pointer followed by the DMA transfer.</p>
+<p>In current XMA the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_write</span></code> does not accept host pointer any longer. If desired, the user has to copy from the host pointer to the buffer. <strong>The API now only performs DMA transfer from host to device</strong>.</p>
 </div>
 <div class="section" id="buffer-read-xma-plg-buffer-read">
 <h3>Buffer Read: <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_read</span></code><a class="headerlink" href="#buffer-read-xma-plg-buffer-read" title="Permalink to this headline">¶</a></h3>
-<p>In <strong>19.1</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_read.</span></code> used to copy data to the host pointer after DMA transfer.</p>
-<p>In <strong>19.2</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_read</span></code> does not accept host pointer any longer. If desired, the user has to copy from the buffer to the host pointer. <strong>The API now only performs DMA transfer from device to host</strong>.</p>
+<p>In legacy XMA, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_read.</span></code> used to copy data to the host pointer after DMA transfer.</p>
+<p>In current XMA, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_read</span></code> does not accept host pointer any longer. If desired, the user has to copy from the buffer to the host pointer. <strong>The API now only performs DMA transfer from device to host</strong>.</p>
 </div>
 <div class="section" id="scalar-register-write-xma-plg-register-prep-write">
 <h3>Scalar/Register Write: <code class="docutils literal notranslate"><span class="pre">xma_plg_register_prep_write</span></code><a class="headerlink" href="#scalar-register-write-xma-plg-register-prep-write" title="Permalink to this headline">¶</a></h3>
-<p>In <strong>19.2</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_register_prep_write</span></code> works directly on <code class="docutils literal notranslate"><span class="pre">XMASession</span></code> instead of <code class="docutils literal notranslate"><span class="pre">XmaHwSession</span></code>. This API has to be guarded between <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_lock_regmap</span></code> and <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_unlock_regmap</span></code> APIs.</p>
+<p>In current XMA, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_register_prep_write</span></code> works directly on <code class="docutils literal notranslate"><span class="pre">XMASession</span></code> instead of <code class="docutils literal notranslate"><span class="pre">XmaHwSession</span></code>. This API has to be guarded between <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_lock_regmap</span></code> and <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_unlock_regmap</span></code> APIs.</p>
 <p><strong>Note</strong>: The API <code class="docutils literal notranslate"><span class="pre">xma_plg_register_prep_write</span></code> is not needed if the new scheduling API <code class="docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item_with_args</span></code> is used.</p>
 </div>
 <div class="section" id="kernel-scheduling-xma-plg-schedule-work-item">
 <h3>Kernel Scheduling: <code class="docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item</span></code><a class="headerlink" href="#kernel-scheduling-xma-plg-schedule-work-item" title="Permalink to this headline">¶</a></h3>
-<p>Now in <strong>19.2</strong>, the kernel scheduling API <code class="docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item</span></code> has to be guarded between <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_lock_regmap</span></code> and <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_unlock_regmap</span></code> APIs.</p>
+<p>In the current XMA, the kernel scheduling API <code class="docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item</span></code> has to be guarded between <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_lock_regmap</span></code> and <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_unlock_regmap</span></code> APIs.</p>
 <p><strong>Note</strong>: If using new scheduling API <code class="docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item_with_args</span></code> the above locking and unlocking APIs are not required.</p>
 </div>
 </div>
@@ -574,14 +578,14 @@
 <h2>Application Code Migration<a class="headerlink" href="#application-code-migration" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="xma-initialize-function-xma-initlialize">
 <h3>XMA Initialize Function: <code class="docutils literal notranslate"><span class="pre">xma_initlialize</span></code><a class="headerlink" href="#xma-initialize-function-xma-initlialize" title="Permalink to this headline">¶</a></h3>
-<p>In <strong>19.1</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_initlialize</span></code> used to take YAML configuration file.</p>
-<p>In <strong>19.2</strong>, the usage of <strong>YAML file has been obsoleted</strong>. The API <code class="docutils literal notranslate"><span class="pre">xma_initlialize</span></code> takes device information and XCLBIN through new datatype: <code class="docutils literal notranslate"><span class="pre">XmaXclbinParameter</span></code></p>
+<p>In legacy XMA, the API <code class="docutils literal notranslate"><span class="pre">xma_initlialize</span></code> used to take YAML configuration file.</p>
+<p>In current XMA, the usage of <strong>YAML file has been obsoleted</strong>. The API <code class="docutils literal notranslate"><span class="pre">xma_initlialize</span></code> takes device information and XCLBIN through new datatype: <code class="docutils literal notranslate"><span class="pre">XmaXclbinParameter</span></code></p>
 </div>
 <div class="section" id="expanded-plugin-properties">
 <h3>Expanded Plugin Properties<a class="headerlink" href="#expanded-plugin-properties" title="Permalink to this headline">¶</a></h3>
-<p>Plugin properties have been expanded in <strong>19.2</strong> to contain more information.</p>
-<p>For example, compare <code class="docutils literal notranslate"><span class="pre">XmaEncoderProperties</span></code> between 19.1 and 19.2 XRT versions.</p>
-<p>Now in <strong>19.2</strong>, more fields have been added.</p>
+<p>Plugin properties have been expanded in current XMA to contain more information.</p>
+<p>For example, compare <code class="docutils literal notranslate"><span class="pre">XmaEncoderProperties</span></code> between legacy and current XRT versions.</p>
+<p>Now in current XMA, more fields have been added.</p>
 <blockquote>
 <div><ul class="simple">
 <li><p>Device index (Should be passed from the application level)</p></li>
@@ -591,6 +595,42 @@
 <li><p>Plugin lib path</p></li>
 </ul>
 </div></blockquote>
+</div>
+<div class="section" id="list-of-details-changes">
+<h3>List of details changes<a class="headerlink" href="#list-of-details-changes" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li><p>YAML configuration file is not used by XMA</p></li>
+<li><p>Resource management is not handled by XMA</p>
+<ol class="loweralpha simple">
+<li><p>So channel_id for multi-channel kernels must be handled in host video application (like ffmpeg)</p></li>
+<li><p>channel_id is input to XMA in session_create API as part of the properties argument</p></li>
+<li><p>See XRM for resource management details</p></li>
+</ol>
+</li>
+<li><p>MPSoC PL &amp; soft kernels are supported in XMA</p></li>
+<li><p>Direct register read &amp; write is not available</p></li>
+<li><p>DataFlow kernels are supported</p></li>
+<li><p>ZeroCopy support has changed. See below for details</p></li>
+<li><p>BufferObject added. See below for details</p></li>
+<li><p>XmaFrame &amp; XmaDataBuffer can use device buffers instead of host only memory</p></li>
+<li><p>Support for device_only buffers</p></li>
+<li><p>Session creation &amp; destroy APIs are thread safe now</p></li>
+<li><p>Multi-process support is from XRT</p></li>
+<li><p>schedule_work_item  API changed to return CUCmdObj</p></li>
+<li><p>New API xma_plg_schedule_cu_cmd &amp; xma_plg_cu_cmd_status can be used instead of schedule_work_item</p></li>
+<li><p>In a session if using xma_plg_cu_cmd_status then do NOT use xma_plg_is_work_item_done in same session</p></li>
+<li><p>Supports up to 128 CUs per device</p></li>
+<li><p>CU register map size &lt; 4KB</p></li>
+<li><p>By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session</p></li>
+<li><p>For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info</p></li>
+<li><p>XMA now support multiple ddr bank per plugin. See below for info on xma_plg_buffer_alloc_arg_num()</p></li>
+<li><p>XMA version check API added to plugin struct. See below for details</p></li>
+<li><p>New session type XMA_ADMIN for non-video applications to control multiple CUs in single session. See below for details</p></li>
+<li><p>get_session_cmd_load(): Get CU command load of various sessions relative to each other. Printed to log file</p></li>
+<li><p>CU command load of all session is automatically sent to log file at end of the application</p></li>
+<li><p>This gives info on which sessions (or CUs) are more busy compared to other sessions (or CUs)</p></li>
+<li><p>QDMA platform: Host to kernel streams will be supported by XMA in future. See below for more details</p></li>
+</ol>
 </div>
 </div>
 </div>
@@ -614,7 +654,7 @@
         <a href="opencl_extension.html" class="btn btn-neutral float-right" title="Xilinx OpenCL extension" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xma_user_guide.html" class="btn btn-neutral float-left" title="Xilinx Media Accelerator (XMA)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xma.main.html" class="btn btn-neutral float-left" title="XMA Lower Edge API Library" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -624,7 +664,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on February 24, 2021.
+        Last updated on February 28, 2021.
       </span>
 
     </p>
