@@ -507,7 +507,7 @@ static struct drm_driver mm_drm_driver = {
 	.postclose			= xocl_client_release,
 	.open				= xocl_client_open,
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 	.gem_free_object_unlocked       = xocl_free_object,
 #else
 	.gem_free_object		= xocl_free_object,
