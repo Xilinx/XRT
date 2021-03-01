@@ -647,9 +647,6 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 	if (!ert_user->num_sq)
 		return;
 
-	if (ert_user->polling_mode)
-		return;
-
 	ev_client = first_event_client_or_null(ert_user);
 
 	list_for_each_entry_safe(ecmd, next, &ert_user->sq, list) {
@@ -758,9 +755,6 @@ static inline void process_ert_sq_polling(struct xocl_ert_user *ert_user)
 	unsigned int tick;
 
 	if (!ert_user->num_sq)
-		return;
-
-	if (!ert_user->polling_mode)
 		return;
 
 	for (section_idx = 0; section_idx < 4; ++section_idx) {
@@ -1167,7 +1161,7 @@ int ert_user_thread(void *data)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)data;
  	int ret = 0;
-	bool polling_sleep = false, no_action_need = false, no_completed_cmd = false, 
+	bool polling_sleep = false, intr_sleep = false, no_completed_cmd = false, no_submmited_cmd = false,
 		cant_submit = false, no_need_to_fetch_new_cmd = false, no_event = false;
 
 
@@ -1186,8 +1180,11 @@ int ert_user_thread(void *data)
 		 * - while handling completed queue, running command might done
 		 * - process_ert_sq_polling will check CU status, which is thru slow bus
 		 */
-		process_ert_sq(ert_user);
-		process_ert_sq_polling(ert_user);
+
+		if (ert_user->polling_mode)
+			process_ert_sq_polling(ert_user);
+		else
+			process_ert_sq(ert_user);
 
 		process_ert_cq(ert_user);
 
@@ -1204,17 +1201,23 @@ int ert_user_thread(void *data)
 		no_completed_cmd = !ert_user->num_cq;
 		cant_submit = !ert_user->num_rq || (ert_user->num_sq == (ert_user->num_slots-1));
 		no_need_to_fetch_new_cmd = ert_user->num_rq !=0 || !ert_user->num_pq;
+		no_submmited_cmd = !ert_user->num_sq;
 
-		no_action_need = no_completed_cmd || no_need_to_fetch_new_cmd || cant_submit;
-		polling_sleep = !(ert_user->polling_mode && ert_user->num_sq);
+		polling_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && no_submmited_cmd;
+		intr_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && cant_submit;
+
 		no_event = first_event_client_or_null(ert_user) == NULL;
 
 		/* If any event occured, we should drain all the related commands ASAP
 		 * It only goes to sleep if there is no event
 		 */
-		if (no_event && no_action_need && polling_sleep)
+		if (ert_user->polling_mode && no_event && polling_sleep) {
 			if (down_interruptible(&ert_user->sem))
 				ret = -ERESTARTSYS;
+		} else if (!ert_user->polling_mode && no_event && intr_sleep) {
+			if (down_interruptible(&ert_user->sem))
+				ret = -ERESTARTSYS;
+		}
 
 		process_ert_pq(ert_user);
 	}
@@ -1412,6 +1415,10 @@ static int ert_user_probe(struct platform_device *pdev)
 	ert_user->ert.abort_done = xocl_ert_user_abort_done;
 	xocl_kds_init_ert(xdev, &ert_user->ert);
 
+	/* Enable interrupt by default */
+	ert_user->num_slots = 128;
+	ert_user->polling_mode = false;
+	ert_intc_enable(ert_user, true);
 done:
 	if (err) {
 		ert_user_remove(pdev);
