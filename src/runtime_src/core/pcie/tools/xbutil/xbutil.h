@@ -1861,7 +1861,7 @@ public:
         }
 
         for(int32_t i = 0; i < map->m_count; i++) {
-            if(map->m_mem_data[i].m_type == MEM_STREAMING)
+            if(map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION)
                 continue;
 
             if(isHostMem(map->m_mem_data[i].m_tag))

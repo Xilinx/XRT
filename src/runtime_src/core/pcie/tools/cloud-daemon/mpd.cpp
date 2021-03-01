@@ -63,6 +63,7 @@ static struct mpd_plugin_callbacks plugin_cbs;
 static std::map<std::string, std::atomic<bool>> threads_handling;
 static std::map<std::string, enum Hotplug_state> state_machine;
 static std::map<std::string, std::shared_ptr<Msgq<queue_msg>>> threads_msgq;
+static std::map<std::string, std::string>dev_maj_min;
 udev* mpd_hotplug;
 udev_monitor* mpd_hotplug_monitor;
 
@@ -116,6 +117,10 @@ private:
 std::string Mpd::get_xocl_major_minor(const std::string &sysfs_name)
 {
     std::string sysfs_base = "/sys/bus/pci/devices/";
+
+    if (!file_exist(sysfs_base + sysfs_name + "/drm"))
+            return "";
+
     boost::filesystem::directory_iterator dir(sysfs_base + sysfs_name + "/drm"), end;
     while (dir != end) {
         std::string fn = dir->path().filename().string();
@@ -225,7 +230,7 @@ void Mpd::update_profile_subdev_to_container(const std::string &sysfs_name,
     const std::string &subdev_name,
     const std::string &suffix)
 {
-    std::string major_minor = get_xocl_major_minor(sysfs_name);
+    std::string major_minor = dev_maj_min[sysfs_name];
     std::string path;
     if (device_in_container(major_minor, path)) {
         path.replace(path.rfind(".") + 1, suffix.size(), suffix);
@@ -306,6 +311,14 @@ void Mpd::run()
      */
     for (size_t i = 0; i < total; i++) {
         std::string sysfs_name = pcidev::get_dev(i, true)->sysfs_name;
+	std::string major_minor;;
+	major_minor = get_xocl_major_minor(sysfs_name);
+
+	if (!major_minor.empty())
+		dev_maj_min[sysfs_name] =  major_minor;
+	else
+            syslog(LOG_INFO, "could not read major:minor number for %s", sysfs_name.c_str());
+
         state_machine[sysfs_name] = MAILBOX_ADDED;
     }
 
