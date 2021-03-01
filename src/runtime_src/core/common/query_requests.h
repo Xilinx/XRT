@@ -674,8 +674,15 @@ struct kds_mode : request
 
 struct kds_cu_stat : request
 {
-  // Returning CUs statistic as <index, name, base_addr, status, usages>
-  using result_type = std::vector<std::tuple<uint32_t, std::string, uint64_t, uint32_t, uint64_t>>;
+  struct data {
+    uint32_t index;
+    std::string name;
+    uint64_t base_addr;
+    uint32_t status;
+    uint64_t usages;
+  };
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
   static const key_type key = key_type::kds_cu_stat;
 
   virtual boost::any
@@ -684,8 +691,14 @@ struct kds_cu_stat : request
 
 struct kds_scu_stat : request
 {
-  // Returning PS kernel statistic as <index, name, status, usages>
-  using result_type = std::vector<std::tuple<uint32_t, std::string, uint32_t, uint64_t>>;
+  struct data {
+    uint32_t index;
+    std::string name;
+    uint32_t status;
+    uint64_t usages;
+  };
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
   static const key_type key = key_type::kds_scu_stat;
 
   virtual boost::any

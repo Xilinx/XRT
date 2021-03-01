@@ -57,6 +57,7 @@ struct bdf
 struct kds_cu_stat
 {
   using result_type = query::kds_cu_stat::result_type;
+  using data_type = query::kds_cu_stat::data_type;
 
   static result_type
   get(const xrt_core::device* device, key_type)
@@ -77,27 +78,21 @@ struct kds_cu_stat
     result_type cuStats;
     for (auto& line : stats) {
       boost::char_separator<char> sep(",");
-      // 5 tokens: index, name, addr, status, usage
       tokenizer tokens(line, sep);
-      std::string name;
-      uint32_t index = 0;
-      uint64_t base_addr = 0;
-      uint32_t status = 0;
-      uint64_t usage = 0;
-      const int radix = 16;
 
-      // In case kds_custat_raw is corrupted, which will be driver issue
       if (std::distance(tokens.begin(), tokens.end()) != 5)
-          break;
+        throw std::runtime_error("CU statistic sysfs node corrupted");
 
+      data_type data;
+      const int radix = 16;
       tokenizer::iterator tok_it = tokens.begin();
-      index     = std::stoi(std::string(*tok_it++));
-      name      = std::string(*tok_it++);
-      base_addr = std::stoull(std::string(*tok_it++), nullptr, radix);
-      status    = std::stoul(std::string(*tok_it++), nullptr, radix);
-      usage     = std::stoul(std::string(*tok_it++));
+      data.index     = std::stoi(std::string(*tok_it++));
+      data.name      = std::string(*tok_it++);
+      data.base_addr = std::stoull(std::string(*tok_it++), nullptr, radix);
+      data.status    = std::stoul(std::string(*tok_it++), nullptr, radix);
+      data.usages    = std::stoul(std::string(*tok_it++));
 
-      cuStats.push_back(std::make_tuple(index, name, base_addr, status, usage));
+      cuStats.push_back(data);
     }
 
     return cuStats;
@@ -107,6 +102,7 @@ struct kds_cu_stat
 struct kds_scu_stat
 {
   using result_type = query::kds_scu_stat::result_type;
+  using data_type = query::kds_scu_stat::data_type;
 
   static result_type
   get(const xrt_core::device* device, key_type)
@@ -127,27 +123,22 @@ struct kds_scu_stat
     result_type cuStats;
     for (auto& line : stats) {
       boost::char_separator<char> sep(",");
-      // 4 tokens: index, name, status, usage
       tokenizer tokens(line, sep);
-      std::string name;
-      uint32_t index = 0;
-      uint32_t status = 0;
-      uint64_t usage = 0;
-      const int radix = 16;
 
-      // In case kds_scustat_raw is corrupted, which will be driver issue
       if (std::distance(tokens.begin(), tokens.end()) != 4)
-          break;
+        throw std::runtime_error("PS kernel statistic sysfs node corrupted");
 
+      data_type data;
+      const int radix = 16;
       tokenizer::iterator tok_it = tokens.begin();
-      index     = std::stoi(std::string(*tok_it++));
-      name      = std::string(*tok_it++);
-      status    = std::stoul(std::string(*tok_it++), nullptr, radix);
-      usage     = std::stoul(std::string(*tok_it++));
+      data.index  = std::stoi(std::string(*tok_it++));
+      data.name   = std::string(*tok_it++);
+      data.status = std::stoul(std::string(*tok_it++), nullptr, radix);
+      data.usages = std::stoul(std::string(*tok_it++));
       // TODO: Let's avoid this special handling for PS kernel name
-      name = name + ":scu_" + std::to_string(index);
+      data.name = data.name + ":scu_" + std::to_string(data.index);
 
-      cuStats.push_back(std::make_tuple(index, name, status, usage));
+      cuStats.push_back(data);
     }
 
     return cuStats;

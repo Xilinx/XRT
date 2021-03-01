@@ -99,10 +99,10 @@ boost::property_tree::ptree
 populate_cus_new(const xrt_core::device *device)
 {
   boost::property_tree::ptree pt;
-  // tuple <index, name, base_addr, status, usage>
-  std::vector<std::tuple<uint32_t, std::string, uint64_t, uint32_t, uint64_t>> cu_stats;
-  // tuple <index, name, status, usage>
-  std::vector<std::tuple<uint32_t, std::string, uint32_t, uint64_t>> scu_stats;
+  using cu_data_type = qr::kds_cu_stat::data_type;
+  using scu_data_type = qr::kds_scu_stat::data_type;
+  std::vector<cu_data_type> cu_stats;
+  std::vector<scu_data_type> scu_stats;
 
   try {
     cu_stats  = xrt_core::device_query<qr::kds_cu_stat>(device);
@@ -112,34 +112,21 @@ populate_cus_new(const xrt_core::device *device)
     return pt;
   }
 
-  if (cu_stats.empty()) {
-    return pt;
-  }
-
   for (auto& stat : cu_stats) {
-    std::string name   = std::get<1>(stat);
-    uint64_t base_addr = std::get<2>(stat);
-    uint32_t status    = std::get<3>(stat);
-    uint32_t usage     = std::get<4>(stat);
-
     boost::property_tree::ptree ptCu;
-    ptCu.put( "name",           name);
-    ptCu.put( "base_address",   boost::str(boost::format("0x%x") % base_addr));
-    ptCu.put( "usage",          usage);
-    ptCu.add_child( std::string("status"),	get_cu_status(status));
+    ptCu.put( "name",           stat.name);
+    ptCu.put( "base_address",   boost::str(boost::format("0x%x") % stat.base_addr));
+    ptCu.put( "usage",          stat.usages);
+    ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
     pt.push_back(std::make_pair("", ptCu));
   }
 
   for (auto& stat : scu_stats) {
-    std::string name   = std::get<1>(stat);
-    uint32_t status    = std::get<2>(stat);
-    uint32_t usage     = std::get<3>(stat);
-
     boost::property_tree::ptree ptCu;
-    ptCu.put( "name",           name);
+    ptCu.put( "name",           stat.name);
     ptCu.put( "base_address",   "0x0");
-    ptCu.put( "usage",          usage);
-    ptCu.add_child( std::string("status"),	get_cu_status(status));
+    ptCu.put( "usage",          stat.usages);
+    ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
     pt.push_back(std::make_pair("", ptCu));
   }
 
