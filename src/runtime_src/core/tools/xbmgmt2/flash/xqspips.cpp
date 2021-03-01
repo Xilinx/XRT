@@ -1378,7 +1378,7 @@ bool XQSPIPS_Flasher::writeFlashReg(unsigned commandCode, unsigned value, unsign
     return Status;
 }
 
-int XQSPIPS_Flasher::xclTestXQSpiPS(int index)
+int XQSPIPS_Flasher::xclTestXQSpiPS(int)
 {
     TEST_MODE = false;
 
