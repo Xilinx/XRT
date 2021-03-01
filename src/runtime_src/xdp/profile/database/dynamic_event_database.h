@@ -23,6 +23,8 @@
 #include <vector>
 #include <fstream>
 #include <functional>
+#include <memory>
+#include <atomic>
 
 #include "xdp/profile/database/events/vtf_event.h"
 
@@ -85,7 +87,7 @@ namespace xdp {
 
     // A unique event id for every event added to the database.
     //  It starts with 1 so we can use 0 as an indicator of NULL
-    uint64_t eventId ;
+    std::atomic<uint64_t> eventId ;
 
     // Data structure for matching start events with end events, 
     //  as in API calls.  This will match a function ID to event IDs.
@@ -118,7 +120,18 @@ namespace xdp {
 
     // Since events can be logged from multiple threads simultaneously,
     //  we have to maintain exclusivity
-    std::mutex dbLock ;
+    std::mutex aieLock ;
+    std::mutex powerLock ;
+    std::mutex nocLock ;
+    std::mutex ctrLock ;
+
+    // Event loggers and filters
+    std::mutex deviceEventsLock ;
+    std::mutex hostEventsLock ;
+
+    // Trace parser states and other metadata data structures
+    std::mutex deviceLock ;
+    std::mutex hostLock ;
 
     //std::map<uint64_t, uint64_t> traceIDMap;
 
@@ -156,10 +169,12 @@ namespace xdp {
     //  events based upon the filter passed in
     XDP_EXPORT std::vector<VTFEvent*> filterEvents(std::function<bool(VTFEvent*)> filter);
     XDP_EXPORT std::vector<VTFEvent*> filterHostEvents(std::function<bool(VTFEvent*)> filter);
-    XDP_EXPORT std::vector<VTFEvent*> filterAndRemoveHostEvents(std::function<bool(VTFEvent*)> filter);
 
     XDP_EXPORT std::vector<VTFEvent*> getHostEvents();
     XDP_EXPORT std::vector<VTFEvent*> getDeviceEvents(uint64_t deviceId);
+    // Erase events from db and transfer ownership to caller
+    XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> filterEraseHostEvents(std::function<bool(VTFEvent*)> filter);
+    XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> getEraseDeviceEvents(uint64_t deviceId);
 
     XDP_EXPORT void setCounterResults(uint64_t deviceId,
 				      xrt_core::uuid uuid,

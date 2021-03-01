@@ -57,17 +57,15 @@ namespace xdp {
 
   void NativeTraceWriter::writeTraceEvents()
   {
-    std::vector<VTFEvent*> APIEvents = 
-      (db->getDynamicInfo()).filterAndRemoveHostEvents( [](VTFEvent* e)
-							{
-							  return e->isNativeHostEvent();
-							} 
-							) ;
-
+    std::vector<std::unique_ptr<VTFEvent>> APIEvents = 
+      (db->getDynamicInfo()).filterEraseHostEvents([](VTFEvent* e)
+                                                   {
+                                                     return e->isNativeHostEvent() ;
+                                                   }
+                                                  ) ;
     fout << "EVENTS" << std::endl ;
-    for (auto e : APIEvents) {
+    for (auto& e : APIEvents) {
       e->dump(fout, 1) ; // 1 is the only bucket
-      delete e ;
     }
   }
 

@@ -24,14 +24,14 @@
 namespace xdp {
 
 DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
-				       DeviceTraceLogger* dTraceLogger,
-				       uint64_t sleep_interval_ms,
-				       uint64_t trbuf_sz,
-				       bool start_thread,
-				       bool e_trace)
+                                       DeviceTraceLogger* dTraceLogger,
+                                       uint64_t sleep_interval_ms,
+                                       uint64_t trbuf_sz,
+                                       bool start_thread,
+                                       bool e_trace)
                    : continuous(start_thread),
-		     enable_trace(e_trace),
-		     sleep_interval_ms(sleep_interval_ms),
+                     enable_trace(e_trace),
+                     sleep_interval_ms(sleep_interval_ms),
                      m_trbuf_alloc_sz(trbuf_sz),
                      dev_intf(dInt),
                      deviceTraceLogger(dTraceLogger)

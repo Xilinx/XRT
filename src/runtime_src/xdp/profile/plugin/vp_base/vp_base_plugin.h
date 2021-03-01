@@ -21,6 +21,10 @@
 
 #include "xdp/profile/database/database.h"
 #include "xdp/config.h"
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+#include <atomic>
 
 namespace xdp {
 
@@ -29,6 +33,24 @@ namespace xdp {
 
   class XDPPlugin
   {
+  private:
+    // Continuous write functionality
+    std::atomic<bool> is_write_thread_active;
+    std::thread write_thread;
+    // Trace dump thread control
+    bool stop_writer = false;
+    std::mutex mtx_writer;
+    std::condition_variable cv_writer;
+    // Returns false if stop_trace_dump == true.
+    // Stops trace writing thread when host program is ending
+    // even if the thread is asleep
+    template<class Duration>
+    bool writeCondWaitFor(Duration duration) {
+      std::unique_lock<std::mutex> lk(mtx_writer);
+      return !cv_writer.wait_for(lk, duration, [this]() { return stop_writer; });
+    }
+    void writeContinuous(unsigned int interval, std::string type);
+
   protected:
     // A link to the single instance of the database that all plugins
     //  refer to.
@@ -40,6 +62,9 @@ namespace xdp {
     // If there is something that is common amongst all plugins when
     //  dealing with emulation flows.
     XDP_EXPORT virtual void emulationSetup() ;
+
+    XDP_EXPORT void startWriteThread(unsigned int interval, std::string type);
+    XDP_EXPORT void endWrite(bool openNewFiles);
 
   public:
     XDP_EXPORT XDPPlugin() ;

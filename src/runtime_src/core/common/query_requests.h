@@ -81,6 +81,7 @@ enum class key_type
   xmc_serial_num,
   max_power_level,
   xmc_sc_presence,
+  is_sc_fixed,
   xmc_sc_version,
   expected_sc_version,
   xmc_status,
@@ -88,6 +89,7 @@ enum class key_type
   xmc_scaling_enabled,
   xmc_scaling_override,
   xmc_scaling_reset,
+  xmc_qspi_status,
 
   m2m,
   error,
@@ -198,8 +200,16 @@ enum class key_type
 
   aie_metadata,
   graph_status,
-  noop
+  mailbox_metrics,
 
+  clock_timestamp,
+  ert_sleep,
+  ert_cq_write,
+  ert_cq_read,
+  ert_cu_write,
+  ert_cu_read,
+
+  noop
 };
 
 class no_such_key : public std::exception
@@ -740,7 +750,23 @@ struct xmc_sc_presence : request
   }
 };
 
+struct is_sc_fixed : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::is_sc_fixed;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "true" : "false";
+  }
+};
+
 struct xmc_sc_version : request
+
 {
   using result_type = std::string;
   static const key_type key = key_type::xmc_sc_version;
@@ -824,6 +850,16 @@ struct xmc_scaling_reset : request
 
   virtual void
   put(const device*, const boost::any&) const = 0;
+};
+
+struct xmc_qspi_status : request
+{
+  // Returning qspi write protection status as <primary qspi, recovery qspi>
+  using result_type = std::pair<std::string, std::string>;
+  static const key_type key = key_type::xmc_qspi_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct m2m : request
@@ -2045,7 +2081,82 @@ struct shared_host_mem : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
 
+struct clock_timestamp : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::clock_timestamp;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct mailbox_metrics : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::mailbox_metrics;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
+  }
+};
+
+struct ert_sleep : request
+{
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::ert_sleep;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+};
+
+struct ert_cq_read : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cq_read;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct ert_cq_write : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cq_write;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct ert_cu_read : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cu_read;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct ert_cu_write : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cu_write;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct noop : request

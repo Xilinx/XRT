@@ -26,9 +26,9 @@ namespace xdp {
 
   LowOverheadTraceWriter::LowOverheadTraceWriter(const char* filename) :
     VPTraceWriter(filename, 
-		   "1.0", 
-		   getCurrentDateTime(), 
-		   9 /* ns */),
+                   "1.0", 
+                   getCurrentDateTime(), 
+                   9 /* ns */),
     generalAPIBucket(-1), readBucket(-1), writeBucket(-1), enqueueBucket(-1)
   {
   }
@@ -68,25 +68,25 @@ namespace xdp {
     fout << "Group_Start,Host APIs" << std::endl ;
     fout << "Group_Start,OpenCL API Calls" << std::endl ;
     fout << "Dynamic_Row," << generalAPIBucket
-	 << ",General,API Events not associated with a Queue" << std::endl ;
+         << ",General,API Events not associated with a Queue" << std::endl ;
 
     for (auto a : (db->getStaticInfo()).getCommandQueueAddresses())
     {
       fout << "Static_Row," << commandQueueToBucket[a] << ",Queue 0x" 
-	   << std::hex << a << ",API events associated with the command queue"
-	   << std::dec << std::endl ;
+           << std::hex << a << ",API events associated with the command queue"
+           << std::dec << std::endl ;
     }
     fout << "Group_End,OpenCL API Calls" << std::endl ;
     fout << "Group_Start,Data Transfer" << std::endl ;
     fout << "Dynamic_Row," << readBucket 
-	 << ",Read,Read data transfers from global memory to host" 
-	 << std::endl ;
+         << ",Read,Read data transfers from global memory to host" 
+         << std::endl ;
     fout << "Dynamic_Row," << writeBucket
-	 << ",Write,Write data transfer from host to global memory"
-	 << std::endl ;
+         << ",Write,Write data transfer from host to global memory"
+         << std::endl ;
     fout << "Group_End,Data Transfer" << std::endl ;
     fout << "Dynamic_Row_Summary," << enqueueBucket 
-	 << ",Kernel Enqueues,Activity in kernel enqueues" << std::endl ;
+         << ",Kernel Enqueues,Activity in kernel enqueues" << std::endl ;
     fout << "Group_End,Host APIs" << std::endl ;
   }
 
@@ -99,33 +99,33 @@ namespace xdp {
   void LowOverheadTraceWriter::writeHumanReadableTraceEvents()
   {
     fout << "EVENTS" << std::endl ;
-    std::vector<VTFEvent*> APIEvents = 
-      (db->getDynamicInfo()).filterEvents( [](VTFEvent* e)
-					   {
-					     return e->isOpenCLAPI() ||
-					            e->isLOPHostEvent() ;
-					   }
-					 ) ;
-    for (auto e : APIEvents)
+    auto APIEvents = 
+      (db->getDynamicInfo()).filterEraseHostEvents( [](VTFEvent* e)
+                                           {
+                                             return e->isOpenCLAPI() ||
+                                                    e->isLOPHostEvent() ;
+                                           }
+                                         ) ;
+    for (auto& e : APIEvents)
     {
       int bucket = 0 ;
-      if (e->isOpenCLAPI() && (dynamic_cast<OpenCLAPICall*>(e) != nullptr))
+      if (e->isOpenCLAPI() && (dynamic_cast<OpenCLAPICall*>(e.get()) != nullptr))
       {
-	bucket = commandQueueToBucket[dynamic_cast<OpenCLAPICall*>(e)->getQueueAddress()] ;
-	// If there was no command queue, put it in the general bucket
-	if (bucket == 0) bucket = generalAPIBucket ;
+        bucket = commandQueueToBucket[dynamic_cast<OpenCLAPICall*>(e.get())->getQueueAddress()] ;
+        // If there was no command queue, put it in the general bucket
+        if (bucket == 0) bucket = generalAPIBucket ;
       }
       else if (e->isReadBuffer())
       {
-	bucket = readBucket ;
+        bucket = readBucket ;
       }
       else if (e->isWriteBuffer())
       {
-	bucket = writeBucket ;
+        bucket = writeBucket ;
       }
       else if (e->isKernelEnqueue())
       {
-	bucket = enqueueBucket ;
+        bucket = enqueueBucket ;
       }
       e->dump(fout, bucket) ;
     }

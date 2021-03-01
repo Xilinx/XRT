@@ -253,6 +253,7 @@ SET (XRT_DKMS_DRIVER_INCLUDES
 # includes relative to core
 SET (XRT_DKMS_CORE_INCLUDES
   include/ert.h
+  include/ps_kernel.h
   include/xclfeatures.h
   include/xclbin.h
   include/xclerr.h

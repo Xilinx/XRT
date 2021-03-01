@@ -23,6 +23,8 @@
 #define	ERT_STATE_GOOD		0x1
 #define	ERT_STATE_BAD		0x2
 
+#define CQ_STATUS_OFFSET	(ERT_CQ_STATUS_REGISTER_ADDR - ERT_CSR_ADDR)
+
 //#define	SCHED_VERBOSE	1
 /* ERT gpio config has two channels 
  * CHANNEL 0 is control channel :
@@ -146,18 +148,20 @@ struct xocl_ert_user {
 	uint32_t 		ert_dmsg;
 	uint32_t		echo;
 	uint32_t		intr;
-	uint32_t		clock_timestamp;
+
+	/* ert validate result cache*/
+	struct ert_validate_cmd ert_valid;
 };
 
 static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd);
-static uint32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type);
+static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type);
 
 static ssize_t clock_timestamp_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
 {
 	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
 
-	return sprintf(buf, "%u\n", ert_user->clock_timestamp);
+	return sprintf(buf, "%u\n", ert_user->ert_valid.timestamp);
 }
 
 static DEVICE_ATTR_RO(clock_timestamp);
@@ -233,12 +237,87 @@ static ssize_t ert_intr_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(ert_intr);
 
+static ssize_t mb_sleep_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	u32 go_sleep;
+
+	if (kstrtou32(buf, 10, &go_sleep) == -EINVAL || go_sleep > 2) {
+		xocl_err(&to_platform_device(dev)->dev,
+			"usage: echo 0 or 1 > mb_sleep");
+		return -EINVAL;
+	}
+
+	if (go_sleep)
+		ert_user_gpio_cfg(pdev, MB_SLEEP);
+	else
+		ert_user_gpio_cfg(pdev, MB_WAKEUP);
+
+	return count;
+}
+
+static ssize_t mb_sleep_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+
+	return sprintf(buf, "%d", ert_user_gpio_cfg(pdev, MB_STATUS));
+}
+
+static DEVICE_ATTR_RW(mb_sleep);
+
+static ssize_t cq_read_cnt_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", ert_user->ert_valid.cq_read_single);
+}
+
+static DEVICE_ATTR_RO(cq_read_cnt);
+
+static ssize_t cq_write_cnt_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", ert_user->ert_valid.cq_write_single);
+}
+
+static DEVICE_ATTR_RO(cq_write_cnt);
+
+static ssize_t cu_read_cnt_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", ert_user->ert_valid.cu_read_single);
+}
+
+static DEVICE_ATTR_RO(cu_read_cnt);
+
+static ssize_t cu_write_cnt_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", ert_user->ert_valid.cu_write_single);
+}
+
+static DEVICE_ATTR_RO(cu_write_cnt);
+
 static struct attribute *ert_user_attrs[] = {
 	&dev_attr_clock_timestamp.attr,
 	&dev_attr_ert_dmsg.attr,
 	&dev_attr_snap_shot.attr,
 	&dev_attr_ert_echo.attr,
 	&dev_attr_ert_intr.attr,
+	&dev_attr_mb_sleep.attr,
+	&dev_attr_cq_read_cnt.attr,
+	&dev_attr_cq_write_cnt.attr,
+	&dev_attr_cu_read_cnt.attr,
+	&dev_attr_cu_write_cnt.attr,
 	NULL,
 };
 
@@ -246,18 +325,18 @@ static struct attribute_group ert_user_attr_group = {
 	.attrs = ert_user_attrs,
 };
 
-static uint32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type)
+static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type)
 {
 	struct xocl_ert_user *ert_user = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
-	uint32_t ret = 0, val = 0;
+	int32_t ret = 0, val = 0;
 	int i;
 
 	if (!ert_user->cfg_gpio) {
 		ERTUSER_ERR(ert_user, "%s ERT config gpio not found\n", __func__);
-		return 0;
+		return -ENODEV;
 	}
-
+	mutex_lock(&ert_user->lock);
 	val = ioread32(ert_user->cfg_gpio);
 
 	switch (type) {
@@ -296,7 +375,7 @@ static uint32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cf
 	default:
 		break;
 	}
-
+	mutex_unlock(&ert_user->lock);
 	return ret;
 }
 
@@ -379,10 +458,70 @@ done:
 	return curr;
 }
 
+static inline int
+ert_return_size(struct ert_user_command *ecmd, int max_size)
+{
+	int ret;
+
+	/* Different opcode has different size of return info */
+	switch (cmd_opcode(ecmd)) {
+	case OP_GET_STAT:
+		ret = max_size;
+		break;
+	case OP_START_SK:
+		ret = 2 * sizeof(u32);
+		break;
+	default:
+		ret = 0;
+	};
+
+	return ret;
+}
+
+/* ERT would return some information when notify host. Ex. PS kernel start and
+ * get CU stat commands. In this case, need read CQ slot to get return info.
+ *
+ * TODO:
+ * Assume there are 64 PS kernel and 2 nornal CUs. The ERT_CU_STAT command
+ * requires more than (64+2)*2*4 = 528 bytes (without consider other info).
+ * In this case, the slot size needs to be 1K and maximum 64 CQ slots.
+ *
+ * In old kds, to avoid buffer overflow, it silently truncate return value.
+ * Luckily there is always use 16 slots in old kds.
+ * But truncate is definitly not ideal, this should be fixed in new KDS.
+ */
+static inline void
+ert_get_return(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
+{
+	u32 slot_addr;
+	int slot_size = ert_user->cq_range / ert_user->num_slots;
+	int size;
+
+	size = ert_return_size(ecmd, slot_size);
+	if (!size)
+		return;
+
+	slot_addr = ecmd->slot_idx * slot_size;
+	xocl_memcpy_fromio(ecmd->xcmd->execbuf, ert_user->cq_base + slot_addr, size);
+}
+
 static inline bool ert_special_cmd(struct ert_user_command *ecmd)
 {
-	return cmd_opcode(ecmd) == OP_CONFIG || cmd_opcode(ecmd) == OP_CONFIG_SK 
-		|| cmd_opcode(ecmd) == OP_CLK_CALIB;
+	bool ret;
+
+	switch (cmd_opcode(ecmd)) {
+	case OP_CONFIG:
+	case OP_CONFIG_SK:
+	case OP_GET_STAT:
+	case OP_CLK_CALIB:
+	case OP_VALIDATE:
+		ret = true;
+		break;
+	default:
+		ret = false;
+	}
+
+	return ret;
 }
 /*
  * release_slot_idx() - Release specified slot idx
@@ -420,15 +559,13 @@ ert_release_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 static void
 ert_post_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 {
-	struct ert_mb_validate_cmd cmd = {0}; 
-
-	if (unlikely(ert_special_cmd(ecmd)))
+	if (likely(!ert_special_cmd(ecmd)))
 		return;
 
-	if (cmd_opcode(ecmd) == OP_CLK_CALIB) {
-		memcpy(&cmd, ert_user->cq_base, sizeof(struct ert_mb_validate_cmd));
-		ert_user->clock_timestamp = cmd.timestamp;
-	}
+	if (cmd_opcode(ecmd) == OP_CLK_CALIB || cmd_opcode(ecmd) == OP_VALIDATE)
+		memcpy(&ert_user->ert_valid, ert_user->cq_base, sizeof(struct ert_validate_cmd));
+
+	return;
 }
 
 /**
@@ -480,6 +617,7 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 	list_for_each_entry_safe(ecmd, next, &ert_user->sq, list) {
 		xcmd = ecmd->xcmd;
 		if (ecmd->completed) {
+			ert_get_return(ert_user, ecmd);
 			ecmd->status = KDS_COMPLETED;
 		} else if (unlikely(ev_client)) {
 			/* Client event happens rarely */
@@ -601,6 +739,8 @@ static inline void process_ert_sq_polling(struct xocl_ert_user *ert_user)
 				ecmd = ert_user->submit_queue[cmd_idx];
 				if (ecmd) {
 					xcmd = ecmd->xcmd;
+					ert_get_return(ert_user, ecmd);
+					ecmd->status = KDS_COMPLETED;
 					ERTUSER_DBG(ert_user, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
 					list_move_tail(&ecmd->list, &ert_user->cq);
 					--ert_user->num_sq;
@@ -818,6 +958,7 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 	struct ert_packet *epkt = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
 	struct kds_client *ev_client = NULL;
+	u32 mask_idx, cq_int_addr, mask;
 
 	if (!ert_user->num_rq)
 		return 0;
@@ -845,10 +986,8 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 				++ert_user->num_cq;
 				continue;
 			}
-		} else if (cmd_opcode(ecmd) == OP_START) {
-			if (ert_user->ctrl_busy || !ert_user->config)
-				return 0;
-		}
+		} else if (cmd_opcode(ecmd) == OP_START)
+			BUG_ON(ert_user->ctrl_busy || !ert_user->config);
 
 		if (ert_acquire_slot(ert_user, ecmd) == no_index) {
 			ERTUSER_DBG(ert_user, "%s not slot available\n", __func__);
@@ -892,15 +1031,26 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 
 			iowrite32(epkt->header, ert_user->cq_base + slot_addr);
 		}
-		if (ert_user->cq_intr) {
-			u32 mask_idx = mask_idx32(ecmd->slot_idx);
-			u32 cq_int_addr = (mask_idx << 2);
-			u32 mask = 1 << idx_in_mask32(ecmd->slot_idx, mask_idx);
 
-			ERTUSER_DBG(ert_user, "++ mb_submit writes slot mask 0x%x to CQ_INT register at addr 0x%x\n",
-					mask, cq_int_addr);
-			xocl_intc_ert_write32(xdev, mask, cq_int_addr);
-		}
+		/*
+		 * Always try to trigger interrupt to embedded scheduler.
+		 * The reason is, the ert configure cmd is also sent to MB/PS through cq,
+		 * and at the time the new ert configure cmd is sent, host doesn't know
+		 * MB/PS is running in cq polling or interrupt mode. eg, if MB/PS is in
+		 * cq interrupt mode, new ert configure is cq polling mode, but the new
+		 * ert configure cmd has to be received by MB/PS throught interrupt mode
+		 *
+		 * Setting the bit in cq status register when MB/PS is in cq polling mode
+		 * doesn't do harm since the interrupt is disabled and MB/PS will not read
+		 * the register
+		 */
+		mask_idx = mask_idx32(ecmd->slot_idx);
+		cq_int_addr = CQ_STATUS_OFFSET + (mask_idx << 2);
+		mask = 1 << idx_in_mask32(ecmd->slot_idx, mask_idx);
+
+		ERTUSER_DBG(ert_user, "++ mb_submit writes slot mask 0x%x to CQ_INT register at addr 0x%x\n",
+			    mask, cq_int_addr);
+		xocl_intc_ert_write32(xdev, mask, cq_int_addr);
 	}
 
 	return 1;

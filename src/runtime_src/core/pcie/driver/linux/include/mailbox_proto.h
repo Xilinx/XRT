@@ -189,8 +189,10 @@ struct xcl_sensor {
 	uint32_t vol_vccram;
 	uint32_t power_warn;
 	uint32_t qspi_status;
+	uint32_t heartbeat_count;
+	uint64_t heartbeat_err_time;
+	uint32_t heartbeat_err_code;
 };
-
 /**
  * struct xcl_hwicap - Data structure used to fetch ICAP group
  */
@@ -298,9 +300,9 @@ struct xcl_mailbox_conn_resp {
 	uint32_t version;
 	uint32_t reserved;
 	uint64_t conn_flags;
-	uint64_t chan_disable;
 	uint64_t chan_switch;
 	char comm_id[XCL_COMM_ID_SIZE];
+	uint64_t chan_disable;
 };
 
 #define	XCL_MB_STATE_ONLINE		(1UL << 0)

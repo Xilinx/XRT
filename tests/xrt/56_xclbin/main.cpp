@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -28,55 +28,80 @@
 // This value is shared with worgroup size in kernel.cl
 constexpr auto COUNT = 1024;
 
-static void usage()
+static void
+usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
-    std::cout << "  [-d <index>]       (default: 0)\n";
-    std::cout << "  [-v]\n";
     std::cout << "  [-h]\n\n";
     std::cout << "* Bitstream is required\n";
 }
 
-static int run(const xrt::device& device, const xrt::uuid& uuid, const std::string& cuName)
+std::ostream&
+operator << (std::ostream& ostr, const xrt::xclbin::arg& arg)
 {
-  const size_t DATA_SIZE = COUNT * sizeof(int);
-
-  auto simple = xrt::kernel(device, uuid.get(), cuName);
-  auto bo0 = xrt::bo(device, DATA_SIZE, simple.group_id(0));
-  auto bo1 = xrt::bo(device, DATA_SIZE, simple.group_id(1));
-  auto bo0_map = bo0.map<int*>();
-  auto bo1_map = bo1.map<int*>();
-  std::fill(bo0_map, bo0_map + COUNT, 0);
-  std::fill(bo1_map, bo1_map + COUNT, 0);
-
-  // Fill our data sets with pattern
-  int foo = 0x10;
-  int bufReference[COUNT];
-  for (int i = 0; i < COUNT; ++i) {
-    bo0_map[i] = 0;
-    bo1_map[i] = i;
-    bufReference[i] = i + i * foo;
+  ostr << "argument:       " << arg.get_name() << "\n";
+  ostr << "hosttype:       " << arg.get_host_type() << "\n";
+  ostr << "port:           " << arg.get_port() << "\n";
+  ostr << "size (bytes):   0x" << std::hex << arg.get_size() << std::dec << "\n";
+  ostr << "offset:         0x" << std::hex << arg.get_offset() << std::dec << "\n";
+  for (const auto& mem : arg.get_mems()) {
+    ostr << "mem tag:        " << mem.get_tag() << "\n";
+    ostr << "mem index:      " << mem.get_index() << "\n";
+    ostr << "mem size (kb):  0x" << std::hex << mem.get_size_kb() << std::dec << "\n";
+    ostr << "mem base addr:  0x" << std::hex << mem.get_base_address() << std::dec << "\n";
   }
-
-  bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
-  bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
-
-  auto run = simple(bo0, bo1, 0x10);
-  run.wait();
-
-  //Get the output;
-  std::cout << "Get the output data from the device" << std::endl;
-  bo0.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0);
-
-  // Validate our results
-  if (std::memcmp(bo0_map, bufReference, DATA_SIZE))
-    throw std::runtime_error("Value read back does not match reference");
-
-  return 0;
+  return ostr;
 }
 
-int
+std::ostream&
+operator << (std::ostream& ostr, const xrt::xclbin::ip& cu)
+{
+  ostr << "instance name:    " << cu.get_name() << "\n";
+  ostr << "base address:     0x" << std::hex << cu.get_base_address() << std::dec << "\n";
+
+  // ip arguments
+  for (const auto& arg : cu.get_args())
+    ostr << arg << '\n';
+
+  return ostr;
+}
+
+std::ostream&
+operator << (std::ostream& ostr, const xrt::xclbin::kernel& kernel)
+{
+  // kernel function
+  ostr << kernel.get_name() << "(\n";
+  size_t argidx = 0;
+  for (const auto& arg : kernel.get_args()) {
+    if (argidx++)
+      ostr << ",\n";
+    ostr << arg.get_host_type() << " " << arg.get_name();
+  }
+  ostr << "\n)\n\n";
+
+  // kernel compute units
+  for (const auto& cu : kernel.get_cus())
+    ostr << cu << '\n';
+
+  return ostr;
+}
+
+void
+run(const std::string& xclbin_fnm)
+{
+  // Construct xclbin from fnm
+  std::cout << "================================================================\n";
+  auto xclbin = xrt::xclbin(xclbin_fnm);
+  auto uuid = xclbin.get_uuid();
+  std::cout << xclbin_fnm << "\n";
+  std::cout << "uuid(" << uuid.to_string() << ")\n\n";
+
+  for (auto& kernel : xclbin.get_kernels())
+    std::cout << kernel << '\n';
+}
+
+int 
 run(int argc, char** argv)
 {
   if (argc < 3) {
@@ -108,45 +133,32 @@ run(int argc, char** argv)
       throw std::runtime_error("Unknown option value " + cur + " " + arg);
   }
 
+
   if (xclbin_fnm.empty())
     throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
 
-  auto xclbin = xrt::xclbin(xclbin_fnm); // C++ API, construct xclbin object from filename
+  run(xclbin_fnm);
 
-  std::vector<std::string> cu_names = xclbin.get_cu_names();
- 
-  for (auto& cu : cu_names)
-    std::cout << cu << " ";
-  std::cout << std::endl;
-
-  if (cu_names[0] != "simple:simple_1")
-    throw std::runtime_error("FAILED_TEST\nCould not read correct kernel name, expected: simple:simple_1");
-
-  std::vector<char> data = xclbin.get_data();
-  for(int i = 0; i < 7; ++i)
-    std::cout << data[i] << " ";
-  std::cout << std::endl;
-
-  auto device = xrt::device(device_index);
-  auto uuid = device.load_xclbin(xclbin);
-
-  run(device, uuid, cu_names[0]);
   return 0;
 }
 
 int main(int argc, char** argv)
 {
   try {
-    auto ret = run(argc, argv);
-    std::cout << "PASSED TEST\n";
-    return ret;
+    if (!run(argc, argv))
+      std::cout << "PASSED TEST\n";
+    return 0;
   }
-  catch (std::exception const& e) {
-    std::cout << "Exception: " << e.what() << "\n";
-    std::cout << "FAILED TEST\n";
-    return 1;
+  catch (const std::system_error& ex) {
+    std::cout << "TEST FAILED: " << ex.what() << '\n';
+    return ex.code().value();
   }
-
-  std::cout << "PASSED TEST\n";
-  return 0;
+  catch (const std::exception& ex) {
+    std::cout << "TEST FAILED: " << ex.what() << '\n';
+    return EXIT_FAILURE;
+  }
+  catch (...) {
+    std::cout << "TEST FAILED for unknown reason\n";
+    return EXIT_FAILURE; 
+  }
 }

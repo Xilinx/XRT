@@ -50,7 +50,7 @@ namespace xrt { namespace profile {
      * upon construction.
      */
     XCL_DRIVER_DLLESPEC
-    user_range(const char* label, const char* tooltip) ;
+    user_range(const char* label, const char* tooltip = nullptr) ;
 
     /**
      * user_range() - Copy constructor
@@ -91,7 +91,7 @@ namespace xrt { namespace profile {
      * range and start a new one.
      */
     XCL_DRIVER_DLLESPEC
-    void start(const char* label, const char* tooltip) ;
+    void start(const char* label, const char* tooltip = nullptr) ;
 
     /**
      * end() - Mark the end position of a user range
@@ -145,7 +145,7 @@ extern "C" {
  *
  */
 XCL_DRIVER_DLLESPEC
-void xrtURStart(unsigned int id, const char* label, const char* tooltip) ;
+void xrtURStart(unsigned int id, const char* label, const char* tooltip = nullptr) ;
 
 /**
  * xrtUREnd() - Mark the end time in the user code of a range

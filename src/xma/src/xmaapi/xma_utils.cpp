@@ -623,6 +623,7 @@ int32_t check_all_execbo(XmaSession s_handle) {
             }
             if (notify_work_item_done_1plus) {
                 priv1->work_item_done_1plus.notify_one();//Unblock one thread;Though only one is used anyway
+                priv1->kernel_done_or_free.notify_all();
                 if (priv1->slowest_element) {
                     std::this_thread::yield();
                 }

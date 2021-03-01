@@ -17,6 +17,7 @@
 
 #include "device_linux.h"
 #include "core/common/query_requests.h"
+#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 #include "common/utils.h"
 #include "xrt.h"
@@ -77,6 +78,43 @@ struct kds_cu_info
     }
 
     return cuStats;
+  }
+};
+
+/**
+ * qspi write protection status
+ * byte 0:
+ *   '0': status not available, '1': status available
+ * byte 1 primary qspi(if status available):
+ *   '1': write protect enable, '2': write protect disable
+ * byte 2 recovery qspi(if status available):
+ *   '1': write protect enable, '2': write protect disable
+ */
+struct qspi_status
+{
+  using result_type = query::xmc_qspi_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+  
+    std::string status_str, errmsg;
+    pdev->sysfs_get("xmc", "xmc_qspi_status", errmsg, status_str);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+
+    std::string primary, recovery;
+    for (auto status_byte : status_str) {
+      if(status_byte == '0')
+        return std::pair<std::string, std::string>("N/A", "N/A");
+
+      if(primary.empty())
+        primary = status_byte == '1' ? "Enabled": status_byte == '2' ? "Disabled" : "Invalid";
+      else
+        recovery = status_byte == '1' ? "Enabled": status_byte == '2' ? "Disabled" : "Invalid";
+    }
+    return std::pair<std::string, std::string>(primary, recovery);
   }
 };
 
@@ -318,6 +356,7 @@ initialize_query_table()
   emplace_sysfs_get<query::xmc_serial_num>                     ("xmc", "serial_num");
   emplace_sysfs_get<query::max_power_level>                    ("xmc", "max_power");
   emplace_sysfs_get<query::xmc_sc_presence>                    ("xmc", "sc_presence");
+  emplace_sysfs_get<query::is_sc_fixed>                        ("xmc", "sc_is_fixed");
   emplace_sysfs_get<query::xmc_sc_version>                     ("xmc", "bmc_ver");
   emplace_sysfs_get<query::expected_sc_version>                ("xmc", "exp_bmc_ver");
   emplace_sysfs_get<query::xmc_status>                         ("xmc", "status");
@@ -386,6 +425,7 @@ initialize_query_table()
   emplace_sysfs_get<query::mac_contiguous_num>                 ("xmc", "mac_contiguous_num");
   emplace_sysfs_get<query::mac_addr_first>                     ("xmc", "mac_addr_first");
   emplace_sysfs_get<query::oem_id>                             ("xmc", "xmc_oem_id");
+  emplace_func0_request<query::xmc_qspi_status,                qspi_status>();
   emplace_func0_request<query::mac_addr_list,                  mac_addr_list>();
 
   emplace_sysfs_get<query::firewall_detect_level>             ("firewall", "detected_level");
@@ -415,6 +455,13 @@ initialize_query_table()
   emplace_sysfs_getput<query::rp_program_status>             ("", "rp_program");
   emplace_sysfs_get<query::shared_host_mem>                  ("address_translator", "host_mem_size");
   emplace_sysfs_get<query::cpu_affinity>                     ("", "local_cpulist");
+  emplace_sysfs_get<query::mailbox_metrics>                  ("mailbox", "recv_metrics");
+  emplace_sysfs_get<query::clock_timestamp>                  ("ert_user", "clock_timestamp");
+  emplace_sysfs_getput<query::ert_sleep>                     ("ert_user", "mb_sleep");
+  emplace_sysfs_get<query::ert_cq_read>                      ("ert_user", "cq_read_cnt");
+  emplace_sysfs_get<query::ert_cq_write>                     ("ert_user", "cq_write_cnt");
+  emplace_sysfs_get<query::ert_cu_read>                      ("ert_user", "cu_read_cnt");
+  emplace_sysfs_get<query::ert_cu_write>                     ("ert_user", "cu_write_cnt");
 
   emplace_func0_request<query::pcie_bdf,                     bdf>();
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();
@@ -506,6 +553,29 @@ device_linux::
 close(int dev_handle) const
 {
   pcidev::get_dev(get_device_id(), false)->close(dev_handle);
+}
+
+void
+device_linux::
+xclmgmt_load_xclbin(const char* buffer) const {
+  //resolves to xclbin2
+  const char xclbin_magic_str[] = { 0x78, 0x63, 0x6c, 0x62, 0x69, 0x6e, 0x32 };
+  if (sizeof(buffer) < sizeof(xclbin_magic_str))
+    throw xrt_core::error("Xclbin is smaller than expected");
+  if (std::memcmp(buffer, xclbin_magic_str, sizeof(xclbin_magic_str)) != 0)
+    throw xrt_core::error(boost::str(boost::format("Bad binary version '%s'") % xclbin_magic_str));
+  int ret = 0;
+  try {
+    xrt_core::scope_value_guard<int, std::function<void()>> fd = file_open("", O_RDWR);
+    xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer) ) };
+    ret = pcidev::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+  } catch (const std::exception& e) {
+    xrt_core::send_exception_message(e.what(), "Failed to open device");
+  }
+
+  if(ret == -errno) {
+    throw error(ret, "Failed to download xclbin");
+  }
 }
 
 } // xrt_core

@@ -309,6 +309,9 @@ clGetDeviceInfo(cl_device_id   device,
   case CL_DEVICE_NODMA:
     buffer.as<cl_bool>() = xdevice->is_nodma();
     break;
+  case CL_DEVICE_KDMA_COUNT:
+    buffer.as<cl_uint>() = static_cast<cl_uint>(xdevice->get_num_cdmas());
+    break;
   default:
     throw error(CL_INVALID_VALUE,"clGetDeviceInfo: invalid param_name");
     break;

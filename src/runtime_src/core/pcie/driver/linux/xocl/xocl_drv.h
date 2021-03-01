@@ -101,10 +101,7 @@
 /* drm_gem_object_put_unlocked and drm_gem_object_get were introduced with Linux
  * 4.12 and backported to Red Hat 7.5.
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
-	#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put
-	#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_get
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
 	#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_get
 #elif defined(RHEL_RELEASE_CODE)
@@ -841,6 +838,7 @@ struct xocl_mb_funcs {
 	int (*xmc_access)(struct platform_device *pdev, enum xocl_xmc_flags flags);
 	void (*clock_status)(struct platform_device *pdev, bool *latched);
 	void (*get_serial_num)(struct platform_device *pdev);
+	void (*sensor_status)(struct platform_device *pdev);
 };
 
 #define	MB_DEV(xdev)		\
@@ -876,6 +874,9 @@ struct xocl_mb_funcs {
 
 #define xocl_xmc_get_serial_num(xdev)		\
 	(MB_CB(xdev, get_serial_num) ? MB_OPS(xdev)->get_serial_num(MB_DEV(xdev)) : -ENODEV)
+
+#define xocl_xmc_sensor_status(xdev)		\
+	(MB_CB(xdev, sensor_status) ? MB_OPS(xdev)->sensor_status(MB_DEV(xdev)) : -ENODEV)
 /* ERT FW callbacks */
 #define ERT_DEV(xdev)							\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, XOCL_MB_ERT).pldev
@@ -1097,6 +1098,9 @@ enum data_kind {
 	MAC_ADDR_FIRST,
 	XMC_POWER_WARN,
 	XMC_QSPI_STATUS,
+	XMC_HEARTBEAT_COUNT,
+	XMC_HEARTBEAT_ERR_TIME,
+	XMC_HEARTBEAT_ERR_CODE,
 };
 
 enum mb_kind {
@@ -1368,6 +1372,8 @@ enum {
 	(xocl_icap_get_xclbin_metadata(xdev, CONNECTIVITY_AXLF, (void **)&conn))
 #define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
 	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
+#define XOCL_GET_PS_KERNEL(xdev, ps_kernel)						\
+	(xocl_icap_get_xclbin_metadata(xdev, SOFT_KERNEL, (void **)&ps_kernel))
 
 
 #define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
@@ -1379,6 +1385,8 @@ enum {
 #define XOCL_PUT_CONNECTIVITY(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_XCLBIN_ID(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_PS_KERNEL(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 
 #define XOCL_IS_DDR_USED(topo, ddr) 			\
@@ -1703,7 +1711,7 @@ struct xocl_ert_versal_funcs {
 struct xocl_ert_user_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (* configured)(struct platform_device *pdev);
-	uint32_t (* gpio_cfg)(struct platform_device *pdev, enum ert_gpio_cfg type);
+	int32_t (* gpio_cfg)(struct platform_device *pdev, enum ert_gpio_cfg type);
 };
 #define	ERT_USER_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).pldev
 #define ERT_USER_OPS(xdev)  \

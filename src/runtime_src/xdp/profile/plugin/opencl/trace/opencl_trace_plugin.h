@@ -24,6 +24,8 @@ namespace xdp {
   class OpenCLTraceProfilingPlugin : public XDPPlugin
   {
   private:
+    bool continuous_trace ;
+    unsigned int trace_dump_int_s;
 
   protected:
     virtual void emulationSetup() ;

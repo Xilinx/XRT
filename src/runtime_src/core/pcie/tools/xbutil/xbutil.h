@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  * Author: Sonal Santan, Ryan Radjabi
  * Simple command line utility to inetract with SDX PCIe devices
  *
@@ -41,6 +41,7 @@
 #include "core/common/sensor.h"
 #include "core/pcie/linux/scan.h"
 #include "core/pcie/linux/shim.h"
+#include "ps_kernel.h"
 #include "xclbin.h"
 #include "core/common/xrt_profiling.h"
 #include <version.h>
@@ -369,6 +370,30 @@ public:
         return 0;
     }
 
+    int getPSKernels(std::vector<ps_kernel_data> &psKernels) const
+    {
+        std::string errmsg;
+        std::vector<char> buf;
+
+        pcidev::get_dev(m_idx)->sysfs_get("icap", "ps_kernel", errmsg, buf);
+
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+        if (buf.empty())
+            return 0;
+
+        const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
+        if(map->pkn_count < 0)
+            return -EINVAL;
+
+        for (unsigned int i = 0; i < map->pkn_count; i++)
+            psKernels.emplace_back(map->pkn_data[i]);
+
+        return 0;
+    }
+
     /* Old kds style */
     uint32_t parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu_stat kind) const
     {
@@ -403,11 +428,11 @@ public:
        uint32_t cu_count = 0;
 
        if (custat.empty())
-          return 0; 
+          return 0;
 
        //CU or Soft Kernel CU syntax
        //    CU[@0x1400000] : 0 status : 4
-       //    CU[@0x0] : 0 status : 4 name : kernel1
+       //    CU[@0x0] : 0 status : 4
        //
        for (auto& line : custat) {
            cu_count += std::strncmp(line.c_str(), "CU[", 3) ? 0 : 1;
@@ -425,7 +450,7 @@ public:
 
        //CU or Soft Kernel CU syntax
        //    CU[@0x1400000] : 0 status : 4
-       //    CU[@0x0] : 0 status : 4 name : kernel1
+       //    CU[@0x0] : 0 status : 4
        //
        for (auto& line : custat) {
            i += std::strncmp(line.c_str(), "CU[", 3) ? 0 : 1;
@@ -464,17 +489,32 @@ public:
         }
 
         //Soft kernel info below
+        std::vector<ps_kernel_data> psKernels;
+        if (getPSKernels(psKernels) < 0) {
+            std::cout << "WARNING: 'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.\n";
+            return 0;
+        }
+
+        int psk_inst = 0;
+        uint32_t num_scu = 0;
         for (unsigned int i = computeUnits.size(); i < parseComputeUnitNum(custat); i++) {
             uint32_t status = parseComputeUnitStat(custat, i, cu_stat::stat);
             uint32_t usage = parseComputeUnitStat(custat, i, cu_stat::usage);
-	    auto name = parseComputeUnitName(custat, i);
+            std::string name = psKernels.at(psk_inst).pkd_sym_name;
+            name += ":scu_" + std::to_string(num_scu);
 
-	    boost::property_tree::ptree ptCu;
+            boost::property_tree::ptree ptCu;
             ptCu.put( "name",         name );
             ptCu.put( "base_address", 0 );
             ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
+
+            num_scu++;
+            if (num_scu == psKernels.at(psk_inst).pkd_num_instances) {
+                num_scu = 0;
+                psk_inst++;
+            }
         }
 
         return 0;
@@ -483,9 +523,18 @@ public:
     /* new KDS which supported CU subdevice */
     int parseCUSubdevStat() const
     {
+        if (!std::getenv("XCL_SKIP_CU_READ"))
+          schedulerUpdateStat();
+
         using tokenizer = boost::tokenizer< boost::char_separator<char> >;
         std::vector<std::string> custat;
         std::string errmsg;
+        std::string name(":");
+        uint32_t usage = 0;
+        uint32_t status = 0;
+        int cu_idx = 0;
+        int off_idx = 0;
+        int radix = 16;
 
         // The kds_custat_raw is printing in formatted string of each line
         // Format: "%d,%s:%s,0x%llx,0x%x,%llu"
@@ -493,24 +542,21 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get("", "kds_custat_raw", errmsg, custat);
         for (auto& line : custat) {
             boost::char_separator<char> sep(",");
-            std::string name(":");
             unsigned long long paddr = 0;
-            uint32_t usage = 0;
-            uint32_t status = 0;
-            int cu_idx = 0;
-            int radix = 16;
             tokenizer tokens(line, sep);
 
             // Check if we have 5 tokens: cu_index, name, addr, status, usage
-            if (std::distance(tokens.begin(), tokens.end()) == 5) {
-                tokenizer::iterator tok_it = tokens.begin();
-                cu_idx = std::stoi(std::string(*tok_it++));
-                name = std::string(*tok_it++);
-                paddr = std::stoull(std::string(*tok_it++), nullptr, radix);
-                status = std::stoul(std::string(*tok_it++), nullptr, radix);
-                usage = std::stoul(std::string(*tok_it++));
-            } else
+            if (std::distance(tokens.begin(), tokens.end()) != 5) {
+                std::cout << "WARNING: 'kds_custat_raw' has no expect tokens, stop parsing.\n";
                 break;
+            }
+
+            tokenizer::iterator tok_it = tokens.begin();
+            cu_idx = std::stoi(std::string(*tok_it++));
+            name = std::string(*tok_it++);
+            paddr = std::stoull(std::string(*tok_it++), nullptr, radix);
+            status = std::stoul(std::string(*tok_it++), nullptr, radix);
+            usage = std::stoul(std::string(*tok_it++));
 
             boost::property_tree::ptree ptCu;
             ptCu.put( "name",         name );
@@ -518,6 +564,40 @@ public:
             ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(cu_idx)), ptCu );
+        }
+
+        // Count PS kernel index in the sensor_tree with offset
+        off_idx = cu_idx;
+
+        // PS kernel info
+        // The kds_scustat_raw is printing in formatted string of each line
+        // Format: "%d,%s,0x%x,%u"
+        // Using comma as separator.
+        pcidev::get_dev(m_idx)->sysfs_get("", "kds_scustat_raw", errmsg, custat);
+        for (auto& line : custat) {
+            boost::char_separator<char> sep(",");
+
+            tokenizer tokens(line, sep);
+            // Check if we have 4 tokens: cu_index, name, status, usage
+            if (std::distance(tokens.begin(), tokens.end()) != 4) {
+                std::cout << "WARNING: 'kds_scustat_raw' has no expect tokens, stop parsing.\n";
+                break;
+            }
+
+            tokenizer::iterator tok_it = tokens.begin();
+            cu_idx = std::stoi(std::string(*tok_it++));
+            name = std::string(*tok_it++);
+            status = std::stoul(std::string(*tok_it++), nullptr, radix);
+            usage = std::stoul(std::string(*tok_it++));
+            // TODO: Let's avoid this special handling for PS kernel name
+            name = name + ":scu_" + std::to_string(cu_idx);
+
+            boost::property_tree::ptree ptCu;
+            ptCu.put( "name",         name );
+            ptCu.put( "base_address", 0 );
+            ptCu.put( "usage",        usage );
+            ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
+            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(off_idx + cu_idx)), ptCu );
         }
 
         return 0;
@@ -1558,6 +1638,7 @@ public:
              << std::setw(14) << "Usage" << std::endl;
 
         try {
+          uint32_t scu_index = 0;
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
@@ -1581,7 +1662,10 @@ public:
                 if (found != std::string::npos) {
                   auto scu_i = std::stoi(cu_n.substr(found + 4));
                   cu_n = cu_n.substr(0, found - 1);
-                  ostr << "SCU[" << std::right << std::setw(2) << std::dec << scu_i << "]: ";
+                  cu_n.append("_");
+                  cu_n.append(std::to_string(scu_i));
+                  ostr << "SCU[" << std::right << std::setw(2) << std::dec << scu_index << "]: ";
+                  scu_index++;
                 } else
                   ostr << "CU: ";
               } else
@@ -1777,7 +1861,7 @@ public:
         }
 
         for(int32_t i = 0; i < map->m_count; i++) {
-            if(map->m_mem_data[i].m_type == MEM_STREAMING)
+            if(map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION)
                 continue;
 
             if(isHostMem(map->m_mem_data[i].m_tag))

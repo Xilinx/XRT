@@ -1,5 +1,5 @@
-/**
- * Copyright (C) 2019 Xilinx, Inc
+/*
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -97,7 +97,7 @@ struct ishim
   exec_wait(int timeout_ms) const = 0;
 
   virtual void
-  load_xclbin(const struct axlf*) = 0;
+  load_axlf(const axlf*) = 0;
 
   virtual void
   reclock(const uint16_t* target_freq_mhz) = 0;
@@ -338,7 +338,7 @@ struct shim : public DeviceType
   }
 
   virtual void
-  load_xclbin(const struct axlf* buffer)
+  load_axlf(const axlf* buffer)
   {
     if (auto ret = xclLoadXclBin(DeviceType::get_device_handle(), buffer))
       throw error(ret, "failed to load xclbin");

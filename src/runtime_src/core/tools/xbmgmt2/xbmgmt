@@ -5,6 +5,9 @@
 #
 # Copyright (C) 2020-2021 Xilinx, Inc.
 #
+# xbmgmt loader which automatically switches between classic and next
+# generation xbmgmt utility. The current default is classic xbmgmt tool.
+#
 
 # -- Detect a Windows environment and automatically switch to the .bat file
 if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then

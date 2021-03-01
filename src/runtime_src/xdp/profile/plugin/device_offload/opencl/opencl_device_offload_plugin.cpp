@@ -39,7 +39,7 @@
 namespace {
   static std::string 
   getMemoryNameFromID(const std::shared_ptr<xocl::compute_unit> cu,
-		      const std::string& arg_id)
+                      const std::string& arg_id)
   {
     std::string memoryName = "" ;
     try {
@@ -50,7 +50,7 @@ namespace {
         if (memidx_mask.test(memidx)) {
           // Get bank tag string from index
           memoryName = "DDR";
-	  auto device_id = cu->get_device() ;
+          auto device_id = cu->get_device() ;
           if (device_id->is_active())
             memoryName = device_id->get_xclbin().memidx_to_banktag(memidx);
           break;
@@ -118,31 +118,27 @@ namespace xdp {
       //  from the database.
       for (auto o : offloaders)
       {
-	uint64_t deviceId = o.first ;
-	
-	if (deviceIdsToBeFlushed.find(deviceId) != deviceIdsToBeFlushed.end())
-	{
-	  auto offloader = std::get<0>(o.second) ;
-	  if (offloader->continuous_offload())
-	  {
-	    offloader->stop_offload() ;
-	  }
-	  else
-	  {
-	    offloader->read_trace() ;
-	    offloader->read_trace_end() ;
-	  }
-	  readCounters() ;
-	}
+        uint64_t deviceId = o.first ;
+
+        if (deviceIdsToBeFlushed.find(deviceId) != deviceIdsToBeFlushed.end())
+        {
+          auto offloader = std::get<0>(o.second) ;
+          if (offloader->continuous_offload())
+          {
+            offloader->stop_offload() ;
+          }
+          else
+          {
+            offloader->read_trace() ;
+            offloader->read_trace_end() ;
+          }
+          readCounters() ;
+        }
       }
 
-      for (auto w : writers)
-      {
-	w->write(false) ;
-      }
+      XDPPlugin::endWrite(false);
       db->unregisterPlugin(this) ;
-    }
-
+    } // If db alive
     clearOffloaders();
 
   }
@@ -174,12 +170,12 @@ namespace xdp {
       auto offloader = std::get<0>(offloaders[deviceId]) ;
       if (offloader->continuous_offload())
       {
-	offloader->stop_offload() ;
+        offloader->stop_offload() ;
       }
       else
       {
-	offloader->read_trace() ;
-	offloader->read_trace_end() ;
+        offloader->read_trace() ;
+        offloader->read_trace_end() ;
       }
     }
     readCounters() ;
@@ -301,14 +297,14 @@ namespace xdp {
       std::shared_ptr<xocl::compute_unit> matchingCU ;
       for (auto xoclDeviceId : platform->get_device_range())
       {
-	for (auto& xoclCU : xocl::xocl(xoclDeviceId)->get_cus())
-	{
-	  if (xoclCU->get_name() == cu->getName())
-	  {
-	    matchingCU = xoclCU ;
-	    break ;
-	  }
-	}
+        for (auto& xoclCU : xocl::xocl(xoclDeviceId)->get_cus())
+        {
+          if (xoclCU->get_name() == cu->getName())
+          {
+            matchingCU = xoclCU ;
+            break ;
+          }
+        }
       }
 
       std::vector<uint32_t>* AIMIds = cu->getAIMs() ;
@@ -316,69 +312,69 @@ namespace xdp {
 
       for (size_t i = 0 ; i < AIMIds->size() ; ++i)
       {
-	uint32_t AIMIndex = (*AIMIds)[i] ;
-	Monitor* monitor = (db->getStaticInfo()).getAIMonitor(deviceId, xclbin, AIMIndex) ;
-	if (!monitor) continue ;
+        uint32_t AIMIndex = (*AIMIds)[i] ;
+        Monitor* monitor = (db->getStaticInfo()).getAIMonitor(deviceId, xclbin, AIMIndex) ;
+        if (!monitor) continue ;
 
-	// Construct the argument list of each port
-	std::string arguments = "" ;
-	for (auto arg : matchingCU->get_symbol()->arguments)
-	{
-	  if ((arg.address_qualifier != 1 && arg.address_qualifier != 4) ||
-	      arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
-	    continue ;
-	  // Is this particular argument attached to the right port?
-	  std::string lowerPort = arg.port ;
-	  std::transform(lowerPort.begin(), lowerPort.end(), lowerPort.begin(),
-			 [](char c) { return (char)(std::tolower(c)); }) ;
-	  if ((monitor->name).find(lowerPort) == std::string::npos)
-	    continue ;
+        // Construct the argument list of each port
+        std::string arguments = "" ;
+        for (auto arg : matchingCU->get_symbol()->arguments)
+        {
+          if ((arg.address_qualifier != 1 && arg.address_qualifier != 4) ||
+              arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
+            continue ;
+          // Is this particular argument attached to the right port?
+          std::string lowerPort = arg.port ;
+          std::transform(lowerPort.begin(), lowerPort.end(), lowerPort.begin(),
+                         [](char c) { return (char)(std::tolower(c)); }) ;
+          if ((monitor->name).find(lowerPort) == std::string::npos)
+            continue ;
 
-	  // Is this particular argument heading to the right memory?
-	  std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
-	  if ((monitor->name).find(memoryName) == std::string::npos)
-	    continue ;
-	  
-	  if (arguments != "") arguments += "|" ;
-	  arguments += arg.name ;
+          // Is this particular argument heading to the right memory?
+          std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
+          if ((monitor->name).find(memoryName) == std::string::npos)
+            continue ;
 
-	  // Also, set the port width for this monitor explicitly
-	  monitor->portWidth = arg.port_width ;
-	}
-	monitor->args = arguments ;
+          if (arguments != "") arguments += "|" ;
+          arguments += arg.name ;
+
+          // Also, set the port width for this monitor explicitly
+          monitor->portWidth = arg.port_width ;
+        }
+        monitor->args = arguments ;
       }
       for (size_t i = 0 ; i < ASMIds->size() ; ++i)
       {
-	uint32_t ASMIndex = (*ASMIds)[i] ;
-	Monitor* monitor = (db->getStaticInfo()).getASMonitor(deviceId, xclbin, ASMIndex) ;
-	if (!monitor) continue ;
+        uint32_t ASMIndex = (*ASMIds)[i] ;
+        Monitor* monitor = (db->getStaticInfo()).getASMonitor(deviceId, xclbin, ASMIndex) ;
+        if (!monitor) continue ;
 
-	// Construct the argument list of each port
-	std::string arguments = "" ;
-	for (auto arg : matchingCU->get_symbol()->arguments)
-	{
-	  if ((arg.address_qualifier != 1 && arg.address_qualifier != 4) ||
-	      arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
-	    continue ;
-	  // Is this particular argument attached to the right port?
-	  std::string lowerPort = arg.port ;
-	  std::transform(lowerPort.begin(), lowerPort.end(), lowerPort.begin(),
-			 [](char c) { return (char)(std::tolower(c)); }) ;
-	  if ((monitor->name).find(lowerPort) == std::string::npos)
-	    continue ;
+        // Construct the argument list of each port
+        std::string arguments = "" ;
+        for (auto arg : matchingCU->get_symbol()->arguments)
+        {
+          if ((arg.address_qualifier != 1 && arg.address_qualifier != 4) ||
+              arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
+            continue ;
+          // Is this particular argument attached to the right port?
+          std::string lowerPort = arg.port ;
+          std::transform(lowerPort.begin(), lowerPort.end(), lowerPort.begin(),
+                         [](char c) { return (char)(std::tolower(c)); }) ;
+          if ((monitor->name).find(lowerPort) == std::string::npos)
+            continue ;
 
-	  // Is this particular argument heading to the right memory?
-	  std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
-	  if ((monitor->name).find(memoryName) == std::string::npos)
-	    continue ;
-	  
-	  if (arguments != "") arguments += "|" ;
-	  arguments += arg.name ;
+          // Is this particular argument heading to the right memory?
+          std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
+          if ((monitor->name).find(memoryName) == std::string::npos)
+            continue ;
 
-	  // Also, set the port width for this monitor explicitly
-	  monitor->portWidth = arg.port_width ;
-	}
-	monitor->args = arguments ;
+          if (arguments != "") arguments += "|" ;
+          arguments += arg.name ;
+
+          // Also, set the port width for this monitor explicitly
+          monitor->portWidth = arg.port_width ;
+        }
+        monitor->args = arguments ;
       }
     }
   }
@@ -390,7 +386,7 @@ namespace xdp {
     //  we need to add in order to handle guidance rules
     for (auto xrt_device_id : platform->get_device_range()) {
       for (auto& cu : xocl::xocl(xrt_device_id)->get_cus()) {
-	(db->getStaticInfo()).addSoftwareEmulationCUInstance(cu->get_kernel_name()) ;
+        (db->getStaticInfo()).addSoftwareEmulationCUInstance(cu->get_kernel_name()) ;
       }
     }
 
@@ -399,30 +395,30 @@ namespace xdp {
       if (!mem_tp) continue ;
       std::string devName = device->get_unique_name() ;
       for (int i = 0 ; i < mem_tp->m_count ; ++i) {
-	std::string mem_tag(reinterpret_cast<const char*>(mem_tp->m_mem_data[i].m_tag));
-	if (mem_tag.rfind("bank", 0) == 0)
-	  mem_tag = "DDR[" + mem_tag.substr(4,4) + "]";
-	(db->getStaticInfo()).addSoftwareEmulationMemUsage(devName + "|" + mem_tag, mem_tp->m_mem_data[i].m_used) ;
+        std::string mem_tag(reinterpret_cast<const char*>(mem_tp->m_mem_data[i].m_tag));
+        if (mem_tag.rfind("bank", 0) == 0)
+          mem_tag = "DDR[" + mem_tag.substr(4,4) + "]";
+        (db->getStaticInfo()).addSoftwareEmulationMemUsage(devName + "|" + mem_tag, mem_tp->m_mem_data[i].m_used) ;
       }
     }
 
     std::set<std::string> bitWidthStrings ;
     for (auto device : platform->get_device_range()) {
       for (auto& cu : xocl::xocl(device)->get_cus()) {
-	for (auto arg : cu->get_symbol()->arguments) {
-	  if ((arg.address_qualifier != 1  && arg.address_qualifier != 4) ||
-	      arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
-	    continue ;
-	  std::string bitWidth = "" ;
-	  bitWidth += cu->get_name() ;
-	  bitWidth += "/" ;
-	  bitWidth += arg.port ;
-	  std::transform(bitWidth.begin(), bitWidth.end(), bitWidth.begin(),
-			 [](char c) { return (char)std::tolower(c); }) ;
-	  bitWidth += "," ;
-	  bitWidth += std::to_string(arg.port_width) ;
-	  bitWidthStrings.emplace(bitWidth) ;
-	}
+        for (auto arg : cu->get_symbol()->arguments) {
+          if ((arg.address_qualifier != 1  && arg.address_qualifier != 4) ||
+              arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
+            continue ;
+          std::string bitWidth = "" ;
+          bitWidth += cu->get_name() ;
+          bitWidth += "/" ;
+          bitWidth += arg.port ;
+          std::transform(bitWidth.begin(), bitWidth.end(), bitWidth.begin(),
+                         [](char c) { return (char)std::tolower(c); }) ;
+          bitWidth += "," ;
+          bitWidth += std::to_string(arg.port_width) ;
+          bitWidthStrings.emplace(bitWidth) ;
+        }
       }
     }
     for (auto iter : bitWidthStrings) {
