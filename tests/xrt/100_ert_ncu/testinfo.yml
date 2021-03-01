@@ -4,6 +4,7 @@ level: 6
 owner: soeren
 user:
   allowed_test_modes: [hw]
+  excl_platforms: [/.*u30_.*/]
   force_makefile: "--force"
   host_args: {all: -k kernel.xclbin --jobs 1024 --seconds 1 --cus 8 --ert}
   host_cflags: ' -g -std=c++14 -Wall -fmessage-length=0 -D_GLIBCXX_USE_CXX11_ABI=0 -I${HOST_SRC_PATH} -I${XILINX_XRT}/include -L${XILINX_XRT}/lib -Wl,-rpath-link,${XILINX_XRT}/lib -lstdc++ -ldl -luuid -lpthread -lrt -lxrt_core -lxrt_coreutil -lxilinxopencl '
