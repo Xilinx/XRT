@@ -949,7 +949,7 @@ xrt_initialization (XrtIvas_XVCUDec *dec)
     if (iret < 0)
       ERROR_PRINT ("failed to download xclbin %s]", dec->xclbin_path);
 
-    return iret;
+    return NOTSUPP;
   }
 
   if (xclOpenContext (priv->xcl_handle, priv->xclbinId, cu_index, true)) {
