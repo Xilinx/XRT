@@ -155,7 +155,7 @@ namespace xdp {
       aimBucketIdMap[index] = ++rowCount ;
 
       size_t pos = aim->name.find('/');
-      std::string portAndArgs = aim->name.substr(pos+1);
+      std::string portAndArgs = (std::string::npos != pos) ? aim->name.substr(pos+1) : aim->name;
       if(!aim->args.empty()) {
         portAndArgs += " (" + aim->args + ")";
       }
@@ -182,7 +182,7 @@ namespace xdp {
       asmBucketIdMap[index] = ++rowCount ;
 
       // KERNEL_STREAM_READ/WRITE
-      fout << "Group_Summary_Start," << ASM->name << ",AXI Stream transaction over " << ASM->name << std::endl;
+      fout << "Group_Start," << ASM->name << ",AXI Stream transaction over " << ASM->name << std::endl;
       fout << "Static_Row," << rowCount << ",Stream Activity,AXI Stream transactions over " << ASM->name << std::endl;
       fout << "Static_Row," << ++rowCount << ",Link Stall" << std::endl;
       fout << "Static_Row," << ++rowCount << ",Link Starve" << std::endl;
@@ -248,7 +248,7 @@ namespace xdp {
 
       std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i)) ;
       asmBucketIdMap[index] = ++rowCount;
-      fout << "Group_Summary_Start," << asM->name << ",AXI Stream transactions over " << asM->name << std::endl;
+      fout << "Group_Start," << asM->name << ",AXI Stream transactions over " << asM->name << std::endl;
       fout << "Static_Row," << rowCount << ",Stream Activity,AXI Stream transactions over " << asM->name << std::endl;
       fout << "Static_Row," << ++rowCount << ",Link Stall" << std::endl;
       fout << "Static_Row," << ++rowCount << ",Link Starve" << std::endl;
