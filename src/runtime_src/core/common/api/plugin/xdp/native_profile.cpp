@@ -23,24 +23,14 @@
 #include <map>
 #include <mutex>
 
-#ifndef _WIN32
-#include <cxxabi.h>
-#endif
-
 // Anonymous namespace for helper functions and global objects
 namespace {
 
 static std::string full_name(const char* type, const char* function)
 {
   if (type == nullptr) return function ;
-
-#ifdef _WIN32
+  
   std::string combined = type ;
-#else
-  int status = 0 ;
-  std::string combined = abi::__cxa_demangle(type, nullptr, nullptr, &status);
-  if (status != 0) combined = "" ;
-#endif
   combined += "::" ;
   combined += function ;
   return combined ;
@@ -81,7 +71,7 @@ void native_warning_function()
 
 native_api_call_logger::
 native_api_call_logger(const char* function, const char* type)
-  : m_name(function), m_type(type)
+  : m_funcid(0), m_name(function), m_type(type)
 {
   static bool s_load_native = false ;
   if (!s_load_native) {
@@ -90,8 +80,8 @@ native_api_call_logger(const char* function, const char* type)
       load_xdp_native() ;
   }
 
-  m_funcid = xrt_core::utils::issue_id() ;
   if (function_start_cb) {
+    m_funcid = xrt_core::utils::issue_id() ;
     if (m_type != nullptr)
       function_start_cb(full_name(m_type, m_name).c_str(), m_funcid) ;
     else

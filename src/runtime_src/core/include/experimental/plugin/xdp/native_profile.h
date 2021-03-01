@@ -52,6 +52,6 @@ void profiling_end(void* object, const char* function, const char* type);
 
 // Helpful macros to instantiate our objects
 #define NATIVE_LOG_FUNCTION_CALL xdpnative::native_api_call_logger LogObject(__func__);
-#define NATIVE_MEMBER_LOG_FUNCTION_CALL xdpnative::native_api_call_logger LogObject(__func__, typeid(*this).name());
+#define NATIVE_MEMBER_LOG_FUNCTION_CALL(X) xdpnative::native_api_call_logger LogObject(__func__, X);
 
 #endif

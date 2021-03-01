@@ -37,7 +37,6 @@
 #include <cstdlib>
 #include <map>
 #include <set>
-#include <typeinfo>
 
 #ifdef _WIN32
 # pragma warning( disable : 4244 4100 4996 4505 )
@@ -746,44 +745,44 @@ namespace xrt {
 
 bo::
 bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp)
-  : profiling_start(this, __func__, typeid(*this).name()),
+  : profiling_start(this, __func__, "xrt::bo"),
     handle(alloc(dhdl, userptr, sz, static_cast<xrtBufferFlags>(flags), grp)),
-    profiling_end(this, __func__, typeid(*this).name())
+    profiling_end(this, __func__, "xrt::bo")
 {}
 
 bo::
 bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp)
-  : profiling_start(this, __func__, typeid(*this).name()),
+  : profiling_start(this, __func__, "xrt::bo"),
     handle(alloc(dhdl, size, static_cast<xrtBufferFlags>(flags), grp)),
-    profiling_end(this, __func__, typeid(*this).name())
+    profiling_end(this, __func__, "xrt::bo")
 {}
 
 bo::
 bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
-  : profiling_start(this, __func__, typeid(*this).name()),
+  : profiling_start(this, __func__, "xrt::bo"),
     handle(alloc(dhdl, ehdl)),
-    profiling_end(this, __func__, typeid(*this).name())
+    profiling_end(this, __func__, "xrt::bo")
 {}
 
 bo::
 bo(const bo& parent, size_t size, size_t offset)
-  : profiling_start(this, __func__, typeid(*this).name()),
+  : profiling_start(this, __func__, "xrt::bo"),
     handle(sub_buffer(parent.handle, size, offset)),
-    profiling_end(this, __func__, typeid(*this).name())
+    profiling_end(this, __func__, "xrt::bo")
 {}
 
 bo::
 bo(xrtBufferHandle xhdl)
-  : profiling_start(this, __func__, typeid(*this).name()),
+  : profiling_start(this, __func__, "xrt::bo"),
     handle(get_boh(xhdl)),
-    profiling_end(this, __func__, typeid(*this).name())
+    profiling_end(this, __func__, "xrt::bo")
 {}
 
 size_t
 bo::
 size() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
   return handle->get_size();
 }
 
@@ -791,7 +790,7 @@ uint64_t
 bo::
 address() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
   return handle->get_address();
 }
 
@@ -799,7 +798,7 @@ xclBufferExportHandle
 bo::
 export_buffer()
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
   return handle->export_buffer();
 }
 
@@ -807,7 +806,7 @@ void
 bo::
 sync(xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
   handle->sync(dir, size, offset);
 }
 
@@ -815,7 +814,7 @@ void*
 bo::
 map()
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
   return handle->get_hbuf();
 }
 
@@ -823,7 +822,7 @@ void
 bo::
 write(const void* src, size_t size, size_t seek)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
   handle->write(src, size, seek);
 }
 
@@ -831,7 +830,7 @@ void
 bo::
 read(void* dst, size_t size, size_t skip)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
   handle->read(dst, size, skip);
 }
 
@@ -839,7 +838,7 @@ void
 bo::
 copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
   handle->copy(src.handle.get(), sz, src_offset, dst_offset);
 }
 

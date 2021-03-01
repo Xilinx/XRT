@@ -32,7 +32,6 @@
 #include <map>
 #include <vector>
 #include <fstream>
-#include <typeinfo>
 
 #ifdef _WIN32
 # pragma warning( disable : 4244 )
@@ -132,23 +131,23 @@ namespace xrt {
 
 device::
 device(unsigned int index)
-  : profiling_start(this, __func__, typeid(*this).name()),
+  : profiling_start(this, __func__, "xrt::device"),
     handle(xrt_core::get_userpf_device(index)),
-    profiling_end(this, __func__, typeid(*this).name())
+    profiling_end(this, __func__, "xrt::device")
 {}
 
 device::
 device(xclDeviceHandle dhdl)
-  : profiling_start(this, __func__, typeid(*this).name()),
+  : profiling_start(this, __func__, "xrt::device"),
     handle(xrt_core::get_userpf_device(dhdl)),
-    profiling_end(this, __func__, typeid(*this).name())
+    profiling_end(this, __func__, "xrt::device")
 {}
 
 uuid
 device::
 load_xclbin(const struct axlf* top)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::device") ;
   handle->load_xclbin(top);
   return uuid(top->m_header.uuid);
 }
@@ -174,7 +173,7 @@ uuid
 device::
 get_xclbin_uuid() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::device") ;
   return handle->get_xclbin_uuid();
 }
 
@@ -188,7 +187,7 @@ void
 device::
 reset()
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::device") ;
   handle.reset();
 }
 
@@ -196,7 +195,7 @@ std::pair<const char*, size_t>
 device::
 get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::device") ;
   return handle->get_axlf_section_or_error(section, uuid);
 }
 

@@ -29,7 +29,6 @@
 #include "core/include/xclbin.h"
 #include "core/common/xclbin_parser.h"
 #include <fstream>
-#include <typeinfo>
 
 #ifdef _WIN32
 # include "windows/uuid.h"
@@ -138,23 +137,23 @@ namespace xrt {
 
 xclbin::
 xclbin(const std::string& filename)
-  : profiling_start(this, __func__, typeid(*this).name()),
+  : profiling_start(this, __func__, "xrt::xclbin"),
     handle(std::make_shared<xclbin_impl>(filename)),
-    profiling_end(this, __func__, typeid(*this).name())
+    profiling_end(this, __func__, "xrt::xclbin")
 {}
 
 xclbin::
 xclbin(const std::vector<char>& data)
-  : profiling_start(this, __func__, typeid(*this).name()),
+  : profiling_start(this, __func__, "xrt::xclbin"),
     handle(std::make_shared<xclbin_impl>(data)),
-    profiling_end(this, __func__, typeid(*this).name())
+    profiling_end(this, __func__, "xrt::xclbin")
 {}
 
 std::vector<std::string>
 xclbin::
 get_cu_names() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::xclbin") ;
   return handle->get_cu_names();
 }
 
@@ -162,7 +161,7 @@ std::string
 xclbin::
 get_xsa_name() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::xclbin") ;
   return handle->get_xsa_name();
 }
 
@@ -170,7 +169,7 @@ uuid
 xclbin::
 get_uuid() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::xclbin") ;
   return handle->get_uuid();
 }
 
@@ -178,7 +177,7 @@ const std::vector<char>&
 xclbin::
 get_data() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL ;
+  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::xclbin") ;
   return handle->get_data();
 }
 
