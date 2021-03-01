@@ -45,7 +45,7 @@ namespace xdplop {
   void lop_warning_function() ;
 
   // Check and warn if opencl/timeline trace are enabled
-  bool check_lop_trace();
+  int lop_error_function();
   
   // Every OpenCL API we are interested in will have an instance
   //  of this class constructed at the start

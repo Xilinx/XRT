@@ -64,12 +64,7 @@ namespace xdp {
 
   void VPTraceWriter::setUniqueTraceID()
   {
-    unsigned int pid;
-    #ifdef _WIN32
-    pid = static_cast<unsigned int>(_getpid()) ;
-    #else
-    pid = static_cast<int>(getpid()) ;
-    #endif
+    unsigned int pid = static_cast<unsigned int>(db->getStaticInfo().getPid());
     traceID = pid + traceIDCtr++;
   }
 

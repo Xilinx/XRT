@@ -32,7 +32,8 @@ namespace xdplop {
     // Thread safe per C++-11
     static xrt_core::module_loader xdp_lop_loader("xdp_lop_plugin",
 						  register_lop_functions,
-						  lop_warning_function) ;
+						  lop_warning_function,
+              lop_error_function) ;
   }
 
   // All of the function pointers that will be dynamically linked from
@@ -73,15 +74,15 @@ namespace xdplop {
     }
   }
 
-  bool check_lop_trace()
+  int lop_error_function()
   {
     if (xrt_xocl::config::get_opencl_trace() || xrt_xocl::config::get_timeline_trace())
     {
       xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,
 			 "Both low overhead profiling and OpenCL trace are enabled. Disabling LOP trace as it cannot be used together with OpenCL trace.\n") ;
-      return false;
+      return 1;
     }
-    return true;
+    return 0;
   }
 
   LOPFunctionCallLogger::LOPFunctionCallLogger(const char* function) :
@@ -99,7 +100,7 @@ namespace xdplop {
     {
       s_load_lop = true ;
       // In case of a conflict, mark lop plugin as loaded without actually loading the plugin
-      if (xrt_core::config::get_lop_trace() && check_lop_trace()) {
+      if (xrt_core::config::get_lop_trace()) {
         load_xdp_lop() ;
       }
     }
