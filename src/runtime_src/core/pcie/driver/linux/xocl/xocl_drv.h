@@ -838,6 +838,7 @@ struct xocl_mb_funcs {
 	int (*xmc_access)(struct platform_device *pdev, enum xocl_xmc_flags flags);
 	void (*clock_status)(struct platform_device *pdev, bool *latched);
 	void (*get_serial_num)(struct platform_device *pdev);
+	void (*sensor_status)(struct platform_device *pdev);
 };
 
 #define	MB_DEV(xdev)		\
@@ -873,6 +874,9 @@ struct xocl_mb_funcs {
 
 #define xocl_xmc_get_serial_num(xdev)		\
 	(MB_CB(xdev, get_serial_num) ? MB_OPS(xdev)->get_serial_num(MB_DEV(xdev)) : -ENODEV)
+
+#define xocl_xmc_sensor_status(xdev)		\
+	(MB_CB(xdev, sensor_status) ? MB_OPS(xdev)->sensor_status(MB_DEV(xdev)) : -ENODEV)
 /* ERT FW callbacks */
 #define ERT_DEV(xdev)							\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, XOCL_MB_ERT).pldev
@@ -1094,6 +1098,9 @@ enum data_kind {
 	MAC_ADDR_FIRST,
 	XMC_POWER_WARN,
 	XMC_QSPI_STATUS,
+	XMC_HEARTBEAT_COUNT,
+	XMC_HEARTBEAT_ERR_TIME,
+	XMC_HEARTBEAT_ERR_CODE,
 };
 
 enum mb_kind {
