@@ -1,6 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
- * Author(s) : Min Ma
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,12 +18,12 @@
 #include <iostream>
 #include <cassert>
 #include <cstring>
+#include <array>
+#include <chrono>
 #include "xqspips.h"
 #include "core/common/query_requests.h"
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 #include "flasher.h"
-
-#include "unistd.h"
 
 #ifdef WINDOWS
 #define __func__ __FUNCTION__
@@ -211,6 +210,19 @@ static std::array<int,2> flashVendors = {
 };
 static int flashVendor = -1;
 
+/*
+ * Chronos sleep resolution on Windows is 1 ms which is exponentially bigger than
+ * the required sleep. This is a busy loop to mimick the accurate amount of sleep.
+ */
+static void delay(std::chrono::microseconds us)
+{
+	std::chrono::high_resolution_clock::time_point currTime;
+	const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+	do {
+		currTime = std::chrono::high_resolution_clock::now();
+	} while (std::chrono::duration<double>(currTime - startTime) < us);
+}
+
 /**
  * @brief XQSPIPS_Flasher::XQSPIPS_Flasher
  *
@@ -284,7 +296,7 @@ void XQSPIPS_Flasher::clearWriteBuffer(unsigned size)
     }
 }
 
-void XQSPIPS_Flasher::clearBuffers(unsigned size)
+void XQSPIPS_Flasher::clearBuffers(unsigned /*size*/)
 {
     clearReadBuffer(PAGE_SIZE);
     clearWriteBuffer(PAGE_SIZE);
@@ -330,9 +342,9 @@ uint32_t XQSPIPS_Flasher::selectSpiMode(uint8_t SpiMode)
 
 bool XQSPIPS_Flasher::waitGenFifoEmpty()
 {
-    long long delay = 0;
-    const timespec req = {0, 5000};
-    while (delay < 30000000000) {
+    std::chrono::high_resolution_clock::time_point currTime;
+    const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+    do {
         uint32_t StatusReg = XQSpiPS_GetStatusReg();
         if (StatusReg & XQSPIPSU_ISR_GENFIFOEMPTY_MASK) {
             return true;
@@ -340,18 +352,18 @@ bool XQSPIPS_Flasher::waitGenFifoEmpty()
 #if defined(_DEBUG)
         printHEX("Gen FIFO Not Empty", StatusReg);
 #endif
-        nanosleep(&req, 0);
-        delay += 5000;
-    }
+        delay(std::chrono::microseconds(5));
+        currTime = std::chrono::high_resolution_clock::now();
+    } while (std::chrono::duration<double>(currTime - startTime) < std::chrono::seconds(3));
     std::cout << "Unable to get Gen FIFO Empty" << std::endl;
     return false;
 }
 
 bool XQSPIPS_Flasher::waitTxEmpty()
 {
-    long long delay = 0;
-    const timespec req = {0, 5000};
-    while (delay < 30000000000) {
+    std::chrono::high_resolution_clock::time_point currTime;
+    const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+    do {
         uint32_t StatusReg = XQSpiPS_GetStatusReg();
         if (StatusReg & XQSPIPSU_ISR_TXEMPTY_MASK) {
             return true;
@@ -359,9 +371,9 @@ bool XQSPIPS_Flasher::waitTxEmpty()
 #if defined(_DEBUG)
         printHEX("TXD Not Empty", StatusReg);
 #endif
-        nanosleep(&req, 0);
-        delay += 5000;
-    }
+        delay(std::chrono::microseconds(5));
+        currTime = std::chrono::high_resolution_clock::now();
+    } while (std::chrono::duration<double>(currTime - startTime) < std::chrono::seconds(3));
     std::cout << "Unable to get Tx Empty" << std::endl;
     return false;
 }
@@ -408,7 +420,7 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
     int mismatched = 0;
 
     binStream.seekg(0, binStream.end);
-    total_size = binStream.tellg();
+    total_size = static_cast<int>(binStream.tellg());
     binStream.seekg(0, binStream.beg);
 
     std::cout << "INFO: ***BOOT.BIN has " << total_size << " bytes" << std::endl;
@@ -755,7 +767,7 @@ void XQSPIPS_Flasher::sendGenFifoEntryData(xqspips_msg_t *msg)
 
     /* Mode SPI/Dual/Quad */
     GenFifoEntry &= ~XQSPIPSU_GENFIFO_MODE_MASK;
-    GenFifoEntry |= selectSpiMode(msg->busWidth);
+    GenFifoEntry |= selectSpiMode(static_cast<uint8_t>(msg->busWidth));
 
     /* By default, use upper and lower CS and Bus */
     GenFifoEntry &= ~XQSPIPSU_GENFIFO_BUS_MASK;
@@ -926,8 +938,6 @@ bool XQSPIPS_Flasher::isFlashReady()
     xqspips_msg_t msgFlashStatus[2];
     uint8_t writeCmd = READ_STATUS_CMD;
     uint32_t StatusReg = 0;
-    const timespec req = {0, 20000};
-    long long delay = 0;
 
     msgFlashStatus[0].byteCount = 1;
     msgFlashStatus[0].busWidth = XQSPIPSU_SELECT_MODE_SPI;
@@ -937,7 +947,9 @@ bool XQSPIPS_Flasher::isFlashReady()
     msgFlashStatus[1].busWidth = XQSPIPSU_SELECT_MODE_SPI;
     msgFlashStatus[1].flags = XQSPIPSU_MSG_FLAG_RX | XQSPIPSU_MSG_FLAG_STRIPE;
 
-    while (delay < 30000000000) {
+    std::chrono::high_resolution_clock::time_point currTime;
+	const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+	do {
         msgFlashStatus[0].bufPtr = &writeCmd;
         msgFlashStatus[1].bufPtr = mReadBuffer;
         bool Status = finalTransfer(msgFlashStatus, 2);
@@ -955,9 +967,9 @@ bool XQSPIPS_Flasher::isFlashReady()
         if (!(StatusReg & FLASH_SR_BUSY_MASK)) {
             return true;
         }
-        nanosleep(&req, 0);
-        delay += 5000;
-    }
+        delay(std::chrono::microseconds(5));
+        currTime = std::chrono::high_resolution_clock::now();
+    } while (std::chrono::duration<double>(currTime - startTime) < std::chrono::seconds(3));
     std::cout << "Unable to get Flash Ready" << std::endl;
     return false;
 }
@@ -1294,7 +1306,7 @@ bool XQSPIPS_Flasher::readFlashReg(unsigned commandCode, unsigned bytes)
     if (!isFlashReady())
         return false;
 
-    mWriteBuffer[0] = commandCode;
+    mWriteBuffer[0] = static_cast<uint8_t>(commandCode);
 
     msgToFlash[0].bufPtr = mWriteBuffer;
     msgToFlash[0].byteCount = 1;
@@ -1334,7 +1346,7 @@ bool XQSPIPS_Flasher::writeFlashReg(unsigned commandCode, unsigned value, unsign
     if (!setWriteEnable())
         return false;
 
-    mWriteBuffer[0] = commandCode;
+    mWriteBuffer[0] = static_cast<uint8_t>(commandCode);
 
     switch (bytes) {
         case 0:
@@ -1434,8 +1446,8 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int index)
         else
             size = remain;
 
-        for (unsigned index = 0; index < size; index++) {
-            mWriteBuffer[index] = (uint8_t)index;
+        for (unsigned i = 0; i < size; i++) {
+            mWriteBuffer[i] = (uint8_t)i;
         }
 
         writeFlash(addr, size);
