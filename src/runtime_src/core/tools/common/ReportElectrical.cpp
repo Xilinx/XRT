@@ -114,6 +114,8 @@ ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice,
   sensor_array.push_back(std::make_pair("", 
     populate_sensor<qr::v1v2_vcc_bottom_millivolts, qr::noop>(_pDevice, "vcc_1v2_btm", "Vcc 1.2 Volts Bottom")));
   sensor_array.push_back(std::make_pair("", 
+    populate_sensor<qr::v1v8_millivolts, qr::noop>(_pDevice, "1v8_top", "1.8 Volts Top")));
+  sensor_array.push_back(std::make_pair("", 
     populate_sensor<qr::v0v9_vcc_millivolts, qr::noop>(_pDevice, "0v9_vcc", "0.9 Volts Vcc")));
   sensor_array.push_back(std::make_pair("", 
     populate_sensor<qr::v12v_sw_millivolts, qr::noop>(_pDevice, "12v_sw", "12 Volts SW")));
