@@ -173,14 +173,15 @@ XclBinUtilities::get_next_type_and_count(std::istream& istr,
   uint8_t commandByte = get_char(istr);
 
   // -- Get the command
-  majorType = static_cast<MajorTypes>(commandByte >> 5);
+  unsigned int majorTypeValue = commandByte >> 5;
+  majorType = static_cast<MajorTypes>(majorTypeValue);
 
   // -- Determine the count value
   // Are there extended payload bytes (Bits 5 & 4)
   if ((commandByte & 0x18) == 0x18) {
     // Payload size is in Bits 3, 2, 1.
     // Actual size is off by 1.
-    unsigned int payloadBytes = (commandByte & 0x7) + 1;
+    unsigned int payloadBytes = 1 << (commandByte & 0x7);
 
     if (payloadBytes > sizeof(uint64_t))
       throw std::runtime_error((boost::format("Error: Unsupported payload value: 0x%x") % (payloadBytes - 1)).str());
@@ -190,7 +191,8 @@ XclBinUtilities::get_next_type_and_count(std::istream& istr,
 
     // Create the integer value
     do {
-      count = (count << 8) + get_char(istr);
+      uint64_t aByte = get_char(istr);
+      count = (count << 8) + aByte;
     } while (--payloadBytes);
 
 
@@ -198,6 +200,7 @@ XclBinUtilities::get_next_type_and_count(std::istream& istr,
     count = commandByte & 0x1F;   // Tiny Encoded.  Bits 5 - 1.
   }
 
-  XUtil::TRACE((boost::format("CBOR: [Decode] %s(%d), Count: %d") % enum_to_string(majorType) % static_cast<uint8_t>(majorType) % count).str());
+
+  XUtil::TRACE((boost::format("CBOR: [Decode] %s(%d), Count: %d") % enum_to_string(majorType) % majorTypeValue % count).str());
 }
 

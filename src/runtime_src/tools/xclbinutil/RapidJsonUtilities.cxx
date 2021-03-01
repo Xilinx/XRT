@@ -258,6 +258,8 @@ recursive_read_cbor(std::istream& istr,
 
     case XclBinUtilities::MajorTypes::text_string: {
         std::string textString = XclBinUtilities::get_string(istr, count);
+
+        XUtil::TRACE((boost::format("               Text String: '%s'") % textString).str());
         aValue.SetString(textString.data(), textString.size(), allocator);
       }
       break;
