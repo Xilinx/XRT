@@ -35,7 +35,7 @@ static std::string full_name(const char* type, const char* function)
   if (type == nullptr) return function ;
 
 #ifdef _WIN32
-  std::string combine = type ;
+  std::string combined = type ;
 #else
   int status = 0 ;
   std::string combined = abi::__cxa_demangle(type, nullptr, nullptr, &status);
