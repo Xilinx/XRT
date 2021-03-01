@@ -944,9 +944,11 @@ xrt_initialization (XrtIvas_XVCUDec *dec)
   priv = dec->priv;
   dev_index = dec->dev_index;
 
-  if (download_xclbin (dec->xclbin_path, dev_index, NULL, &(priv->xcl_handle),
+  if (iret = download_xclbin (dec->xclbin_path, dev_index, NULL, &(priv->xcl_handle),
           &(priv->xclbinId))) {
-    ERROR_PRINT ("failed to download xclbin %s]n", dec->xclbin_path);
+    if (iret < 0)
+      ERROR_PRINT ("failed to download xclbin %s]", dec->xclbin_path);
+
     return iret;
   }
 
@@ -1001,12 +1003,16 @@ xvcudec_open (XrtIvas_XVCUDec *dec, const char *xclbin_path, int sk_idx, int dev
 
   /* Initialize Xrt and get the device context */
   iret = xrt_initialization (dec);
-  if (iret == FALSE) {
-    ERROR_PRINT ("xrt initialization failed!!\n");
-    if (dec->priv)
+  if (iret != TRUE) {
+    if (dec->priv) {
       free (dec->priv);
+      dec->priv = NULL;
+    }
 
-    return FALSE;
+    if (iret == FALSE) 
+      ERROR_PRINT ("xrt initialization failed!!\n");
+
+    return iret;
   }
 
   return TRUE;
@@ -1087,8 +1093,7 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
 
   /* Initialize xrt and open device */
   iret = xvcudec_open (dec, xclbin_path, sk_idx, dev_idx);
-  if (iret == FALSE) {
-    ERROR_PRINT ("xrt VCU decoder initialization failed!!\n");
+  if (iret != TRUE) {
     goto error;
   }
 
@@ -1105,6 +1110,7 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   fret = gstivas_xvcudec_handle_frame (dec, (uint8_t *)in_buffer, in_size);
   if (fret != XRT_FLOW_OK) {
     ERROR_PRINT ("VCU send command failed!!\n");
+    iret = FALSE;
     goto error;
   }
 
@@ -1112,6 +1118,7 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   out_buffer = (uint8_t *) calloc (1, OUT_MEM_SIZE);
   if (!out_buffer) {
     ERROR_PRINT ("failed to allocate output buffer memory");
+    iret = FALSE;
     goto error;
   }
 
@@ -1119,6 +1126,7 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   fret = gstivas_xvcudec_finish(dec, (uint8_t *)out_buffer, &out_size);
   if (fret != XRT_FLOW_OK) {
     ERROR_PRINT ("VCU receive command failed!!\n");
+    iret = FALSE;
     goto error;
   }
 
@@ -1159,5 +1167,5 @@ error:
   if (out_buffer)
     free (out_buffer);
 
-  return FALSE;
+  return iret;
 } 
