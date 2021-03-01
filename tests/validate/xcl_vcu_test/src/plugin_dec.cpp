@@ -944,7 +944,7 @@ xrt_initialization (XrtIvas_XVCUDec *dec)
   priv = dec->priv;
   dev_index = dec->dev_index;
 
-  if (iret = download_xclbin (dec->xclbin_path, dev_index, NULL, &(priv->xcl_handle),
+  if (iret = download_xclbin (dec->xclbin_path, dev_index, &cu_index, &(priv->xcl_handle),
           &(priv->xclbinId))) {
     if (iret < 0)
       ERROR_PRINT ("failed to download xclbin %s]", dec->xclbin_path);

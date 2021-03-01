@@ -18,6 +18,7 @@
 #include <string>
 #include <assert.h>
 #include "xrt_utils.h"
+#include "experimental/xrt-next.h"
 
 #define ERROR_PRINT(...) {\
   do {\
@@ -124,7 +125,7 @@ get_axlf_section2 (const struct axlf *top, enum axlf_section_kind kind)
 }
 
 int
-download_xclbin (const char *bit, unsigned deviceIndex, const char *halLog,
+download_xclbin (const char *bit, unsigned deviceIndex, int *cu_index,
     xclDeviceHandle * handle, uuid_t * xclbinId)
 {
   struct xclDeviceInfo2 deviceInfo;
@@ -143,7 +144,7 @@ download_xclbin (const char *bit, unsigned deviceIndex, const char *halLog,
     return iret;
   }
 
-  *handle = xclOpen (deviceIndex, halLog, XCL_INFO);
+  *handle = xclOpen (deviceIndex, NULL, XCL_INFO);
 
   if (xclGetDeviceInfo2 (*handle, &deviceInfo)) {
     ERROR_PRINT ("Device information not found");
@@ -219,12 +220,19 @@ download_xclbin (const char *bit, unsigned deviceIndex, const char *halLog,
     if (k_name.find("decoder") != std::string::npos) {
       DEBUG_PRINT ("index = %d, kernel name = %s, base_addr = %lx", i,
           layout->m_ip_data[i].m_name, layout->m_ip_data[i].m_base_address);
+
+      *cu_index = xclIPName2Index(*handle, k_name.c_str());
+      if (*cu_index < 0) {
+        DEBUG_PRINT ("Invalid compute unit");
+        iret = 1;
+        goto error;
+      }
       break;
     }
   }
 
   if (i == layout->m_count) {
-    DEBUG_PRINT ("No decoder compute unit found\n");
+    DEBUG_PRINT ("No decoder compute unit found");
     iret = 1;
     goto error;
   }
