@@ -647,6 +647,9 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 	if (!ert_user->num_sq)
 		return;
 
+	if (ert_user->polling_mode)
+		return;
+
 	ev_client = first_event_client_or_null(ert_user);
 
 	list_for_each_entry_safe(ecmd, next, &ert_user->sq, list) {
@@ -775,6 +778,7 @@ static inline void process_ert_sq_polling(struct xocl_ert_user *ert_user)
 				if (ecmd) {
 					xcmd = ecmd->xcmd;
 					ert_get_return(ert_user, ecmd);
+					ecmd->completed = true;
 					ecmd->status = KDS_COMPLETED;
 					ERTUSER_DBG(ert_user, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
 					list_move_tail(&ecmd->list, &ert_user->cq);
@@ -1046,7 +1050,9 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 
 		if (cmd_opcode(ecmd) == OP_CONFIG) {
 			ert_user->is_configured = false;
-			if (!ert_user->polling_mode)
+			if (ert_user->polling_mode)
+				ert_intc_enable(ert_user, false);
+			else
 				ert_intc_enable(ert_user, true);
 		}
 		slot_addr = ecmd->slot_idx * (ert_user->cq_range/ert_user->num_slots);
@@ -1161,7 +1167,7 @@ int ert_user_thread(void *data)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)data;
  	int ret = 0;
-	bool polling_sleep = false, intr_sleep = false, no_completed_cmd = false, 
+	bool polling_sleep = false, no_action_need = false, no_completed_cmd = false, 
 		cant_submit = false, no_need_to_fetch_new_cmd = false, no_event = false;
 
 
@@ -1185,23 +1191,28 @@ int ert_user_thread(void *data)
 
 		process_ert_cq(ert_user);
 
-		/* ert polling mode goes to sleep only if it doesn't have to poll
-		 * submitted queue to check the completion
-		 * ert interrupt mode goes to sleep if there is no cmd to be submitted
-		 * OR submitted queue is full
-		 */
+
+		/* When ert_thread should go to sleep to save CPU usage
+		 * 1. There is no event to be processed
+		 * 2. We don't have to process command when
+		 *    a. We can't submit cmd if we don't have cmd in running queue or submitted queue is full
+		 *    b. There is no cmd in pending queue or we still have cmds in running queue
+		 *    c. There is no cmd in completed queue
+		 * 3. We are not in polling mode and there is no cmd in submitted queue
+		 */  
+
 		no_completed_cmd = !ert_user->num_cq;
 		cant_submit = !ert_user->num_rq || (ert_user->num_sq == (ert_user->num_slots-1));
 		no_need_to_fetch_new_cmd = ert_user->num_rq !=0 || !ert_user->num_pq;
 
-		intr_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && cant_submit;
-		polling_sleep = (ert_user->polling_mode && !ert_user->num_sq);
+		no_action_need = no_completed_cmd || no_need_to_fetch_new_cmd || cant_submit;
+		polling_sleep = !(ert_user->polling_mode && ert_user->num_sq);
 		no_event = first_event_client_or_null(ert_user) == NULL;
 
 		/* If any event occured, we should drain all the related commands ASAP
 		 * It only goes to sleep if there is no event
 		 */
-		if (no_event && (intr_sleep || polling_sleep))
+		if (no_event && no_action_need && polling_sleep)
 			if (down_interruptible(&ert_user->sem))
 				ret = -ERESTARTSYS;
 
