@@ -89,6 +89,7 @@ enum class key_type
   xmc_scaling_enabled,
   xmc_scaling_override,
   xmc_scaling_reset,
+  xmc_qspi_status,
 
   m2m,
   error,
@@ -849,6 +850,16 @@ struct xmc_scaling_reset : request
 
   virtual void
   put(const device*, const boost::any&) const = 0;
+};
+
+struct xmc_qspi_status : request
+{
+  // Returning qspi write protection status as <primary qspi, recovery qspi>
+  using result_type = std::pair<std::string, std::string>;
+  static const key_type key = key_type::xmc_qspi_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct m2m : request

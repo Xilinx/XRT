@@ -81,6 +81,43 @@ struct kds_cu_info
   }
 };
 
+/**
+ * qspi write protection status
+ * byte 0:
+ *   '0': status not available, '1': status available
+ * byte 1 primary qspi(if status available):
+ *   '1': write protect enable, '2': write protect disable
+ * byte 2 recovery qspi(if status available):
+ *   '1': write protect enable, '2': write protect disable
+ */
+struct qspi_status
+{
+  using result_type = query::xmc_qspi_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+  
+    std::string status_str, errmsg;
+    pdev->sysfs_get("xmc", "xmc_qspi_status", errmsg, status_str);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+
+    std::string primary, recovery;
+    for (auto status_byte : status_str) {
+      if(status_byte == '0')
+        return std::pair<std::string, std::string>("N/A", "N/A");
+
+      if(primary.empty())
+        primary = status_byte == '1' ? "Enabled": status_byte == '2' ? "Disabled" : "Invalid";
+      else
+        recovery = status_byte == '1' ? "Enabled": status_byte == '2' ? "Disabled" : "Invalid";
+    }
+    return std::pair<std::string, std::string>(primary, recovery);
+  }
+};
+
 struct mac_addr_list
 {
   using result_type = query::mac_addr_list::result_type;
@@ -388,6 +425,7 @@ initialize_query_table()
   emplace_sysfs_get<query::mac_contiguous_num>                 ("xmc", "mac_contiguous_num");
   emplace_sysfs_get<query::mac_addr_first>                     ("xmc", "mac_addr_first");
   emplace_sysfs_get<query::oem_id>                             ("xmc", "xmc_oem_id");
+  emplace_func0_request<query::xmc_qspi_status,                qspi_status>();
   emplace_func0_request<query::mac_addr_list,                  mac_addr_list>();
 
   emplace_sysfs_get<query::firewall_detect_level>             ("firewall", "detected_level");
