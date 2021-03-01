@@ -20,12 +20,6 @@
 #include "xdp/profile/database/database.h"
 #include <iostream>
 
-#ifdef _WIN32
-#include <process.h>
-#else
-#include <unistd.h>
-#endif
-
 namespace xdp {
 
   std::atomic<unsigned int> VPTraceWriter::traceIDCtr{0};
