@@ -441,7 +441,8 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     g_xma_singleton->xma_thread1.detach();
     g_xma_singleton->xma_thread2.detach();
 
-    xma_init_sighandlers();
+    //Removed as causing problem with applications in JVM
+    //xma_init_sighandlers();
 
     g_xma_singleton->xma_initialized = true;
     return XMA_SUCCESS;
