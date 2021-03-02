@@ -154,7 +154,11 @@ namespace xdp {
       std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, cuAIM) ;
       aimBucketIdMap[index] = ++rowCount ;
 
-      std::string portAndArgs = aim->name + " (" + aim->args + ")";
+      size_t pos = aim->name.find('/');
+      std::string portAndArgs = (std::string::npos != pos) ? aim->name.substr(pos+1) : aim->name;
+      if(!aim->args.empty()) {
+        portAndArgs += " (" + aim->args + ")";
+      }
 
       // Data Transfers
       fout << "Group_Start," << portAndArgs << ",Data Transfers between " << cu->getName() << " and Global Memory over read and write channels of " << aim->name << std::endl;
@@ -178,11 +182,11 @@ namespace xdp {
       asmBucketIdMap[index] = ++rowCount ;
 
       // KERNEL_STREAM_READ/WRITE
-      fout << "Group_Start,Stream Transfers,AXI Stream transaction over " << ASM->name << std::endl;
-      fout << "Static_Row," << rowCount << "," << ASM->name << ",AXI Stream transactions over " << ASM->name << std::endl;
+      fout << "Group_Start," << ASM->name << ",AXI Stream transaction over " << ASM->name << std::endl;
+      fout << "Static_Row," << rowCount << ",Stream Activity,AXI Stream transactions over " << ASM->name << std::endl;
       fout << "Static_Row," << ++rowCount << ",Link Stall" << std::endl;
       fout << "Static_Row," << ++rowCount << ",Link Starve" << std::endl;
-      fout << "Group_End,Stream Transfers" << std::endl;
+      fout << "Group_End," << ASM->name << std::endl;
     }
   }
 
@@ -209,10 +213,15 @@ namespace xdp {
 
       std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i)) ;
       aimBucketIdMap[index] = ++rowCount;
-      fout << "Group_Start," << aim->name  << " AXI Memory Monitor,Read/Write data transfers over AXI Memory Mapped " << aim->name << std::endl;
-      fout << "Static_Row,"  << rowCount   << ",Read transfers,Read transfers for "  << aim->name << std::endl;
-      fout << "Static_Row,"  << ++rowCount << ",Write transfers,Write transfers for " << aim->name << std::endl;
-      fout << "Group_End,"   << aim->name  << " AXI Memory Monitor" << std::endl ;
+
+      std::string portAndArgs = aim->name;
+      if(!aim->args.empty()) {
+        portAndArgs += " (" + aim->args + ")";
+      }
+      fout << "Group_Start," << portAndArgs << ",Data Transfers over read and write channels of AXI Memory Mapped " << aim->name << std::endl;
+      fout << "Static_Row,"  << rowCount   << ",Read Channel,Read Data Transfers " << std::endl;
+      fout << "Static_Row,"  << ++rowCount << ",Write Channel,Write Data Transfers " << std::endl;
+      fout << "Group_End,"   << portAndArgs << std::endl ;
       i++;
     }
     fout << "Group_End,AXI Memory Monitors" << std::endl ;
@@ -239,11 +248,11 @@ namespace xdp {
 
       std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i)) ;
       asmBucketIdMap[index] = ++rowCount;
-      fout << "Group_Start," << asM->name  << " AXI Stream Monitor,Read/Write data transfers over AXI Stream " << asM->name << std::endl;
-      fout << "Static_Row,"  << rowCount   << ",Stream Port,AXI Stream Read/Write transaction over " << asM->name << std::endl;
-      fout << "Static_Row,"  << ++rowCount << ",Link Stall,Stall during transaction over " << asM->name << std::endl;
-      fout << "Static_Row,"  << ++rowCount << ",Link Starve,Starve during transaction over " << asM->name << std::endl;
-      fout << "Group_End,"   << asM->name  << " AXI Stream Monitor" << std::endl;
+      fout << "Group_Start," << asM->name << ",AXI Stream transactions over " << asM->name << std::endl;
+      fout << "Static_Row," << rowCount << ",Stream Activity,AXI Stream transactions over " << asM->name << std::endl;
+      fout << "Static_Row," << ++rowCount << ",Link Stall" << std::endl;
+      fout << "Static_Row," << ++rowCount << ",Link Starve" << std::endl;
+      fout << "Group_End," << asM->name << std::endl;
       i++;
     }
     fout << "Group_End,AXI Stream Monitors" << std::endl ;
