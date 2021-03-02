@@ -570,7 +570,7 @@ ert_post_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 }
 
 static inline bool
-ert_cmd_inspection(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
+ert_pre_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 {
 	bool bad_cmd = false;
 
@@ -1003,7 +1003,7 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 			continue;
 		}
 
-		if (ert_cmd_inspection(ert_user, ecmd)) {
+		if (ert_pre_process(ert_user, ecmd)) {
 			ERTUSER_ERR(ert_user, "%s bad cmd, opcode: %d\n", __func__, cmd_opcode(ecmd));
 			ecmd->status = KDS_ABORT;
 			list_move_tail(&ecmd->list, &ert_user->cq);
