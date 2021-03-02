@@ -148,10 +148,11 @@ ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice,
 {
   uint32_t kds_mode;
 
-  /* sysfs attribute kds_mode: 1 - new KDS; 0 - old KDS */
+  // sysfs attribute kds_mode: 1 - new KDS; 0 - old KDS
   try {
     kds_mode = xrt_core::device_query<qr::kds_mode>(_pDevice);
-  } catch (const std::exception& ex){
+  } catch (...){
+    // When kds_mode doesn't present, xocl driver supports old KDS
     kds_mode = 0;
   }
 
