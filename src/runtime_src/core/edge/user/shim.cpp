@@ -57,10 +57,10 @@ namespace {
 
 template <typename ...Args>
 void
-xclLog(xrtLogMsgLevel level, const char* format, Args&&... args)
+xclLog(xrtLogMsgLevel level, const char* tag, const char* format, Args&&... args)
 {
   auto slvl = static_cast<xrt_core::message::severity_level>(level);
-  xrt_core::message::send(slvl, "XRT", format, std::forward<Args>(args)...);
+  xrt_core::message::send(slvl, tag, format, std::forward<Args>(args)...);
 }
 
 constexpr size_t
