@@ -422,6 +422,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     g_xma_singleton->cpu_mode = xrt_core::config::get_xma_cpu_mode();
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA CPU Mode is: %d", g_xma_singleton->cpu_mode);
 
+    /* Remove signal handlers as causing problem with application in JVM
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Init signal and exit handlers\n");
     ret = std::atexit(xma_exit);
     if (ret) {
@@ -434,6 +435,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 
         return XMA_ERROR;
     }
+    */
 
     g_xma_singleton->xma_thread1 = std::thread(xma_thread1);
     g_xma_singleton->xma_thread2 = std::thread(xma_thread2);
