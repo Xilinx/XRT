@@ -787,16 +787,21 @@ zocl_cma_create(struct drm_device *dev, size_t size)
 	int ret;
 
 	gem_obj = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
-	if (!gem_obj)
+	if (!gem_obj) {
+		DRM_ERROR("cma_create: alloc failed\n");
 		return ERR_PTR(-ENOMEM);
+	}
 	cma_obj = container_of(gem_obj, struct drm_gem_cma_object, base);
 
 	ret = drm_gem_object_init(dev, gem_obj, size);
-	if (ret)
+	if (ret) {
+		DRM_ERROR("cma_create: gem_obj_init failed\n");
 		goto error;
+	}
 
 	ret = drm_gem_create_mmap_offset(gem_obj);
 	if (ret) {
+		DRM_ERROR("cma_create: gem_mmap_offset failed\n");
 		drm_gem_object_release(gem_obj);
 		goto error;
 	}
@@ -820,17 +825,17 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 	int ret;
 
 	if (args->size == 0) {
-		DRM_ERROR("Buffer size must be greater than zero\n");
+		DRM_ERROR("get_hbo: Buffer size must be greater than zero\n");
 		return -EINVAL;
 	}
 	if (!(host_mem_start <= args->paddr &&
 	      args->paddr + args->size <= host_mem_end)) {
-		DRM_ERROR("Buffer at out side of reserved memory region\n");
+		DRM_ERROR("get_hbo: Buffer at out side of reserved memory region\n");
 		return -ENOMEM;
 	}
 	if (!PAGE_ALIGNED(args->paddr) || !PAGE_ALIGNED(args->size)) {
 		/* DRM requirement */
-		DRM_ERROR("Buffer paddr & size must be page aligned to page_size. paddr: 0x%llx, size: 0x%lx\n", args->paddr, args->size);
+		DRM_ERROR("get_hbo: Buffer paddr & size must be page aligned to page_size. paddr: 0x%llx, size: 0x%lx\n", args->paddr, args->size);
 		return -EINVAL;
 	}
 
@@ -841,7 +846,7 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 	cma_obj->paddr = args->paddr;
 	cma_obj->vaddr = memremap(args->paddr, args->size, MEMREMAP_WB);
 	if (!cma_obj->vaddr) {
-		DRM_ERROR("failed to allocate buffer with size %zu\n",
+		DRM_ERROR("get_hbo: failed to allocate buffer with size %zu\n",
 			  args->size);
 		ret = -ENOMEM;
 		goto error;
@@ -855,7 +860,7 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 	ret = drm_gem_handle_create(filp, &bo->cma_base.base, &args->handle);
 	if (ret) {
 		drm_gem_cma_free_object(&bo->cma_base.base);
-		DRM_DEBUG("handle creation failed\n");
+		DRM_ERROR("get_hbo: gem handle creation failed\n");
 		return ret;
 	}
 
