@@ -18,8 +18,11 @@
 
 #include "xdp/profile/writer/vp_base/vp_trace_writer.h"
 #include "xdp/profile/database/database.h"
+#include <iostream>
 
 namespace xdp {
+
+  std::atomic<unsigned int> VPTraceWriter::traceIDCtr{0};
 
   VPTraceWriter::VPTraceWriter(const char* filename,
 				 const std::string& v,
@@ -29,6 +32,7 @@ namespace xdp {
     version(v), creationTime(c), resolution(r),
     humanReadable(true)
   {
+    setUniqueTraceID();
   }
 
   VPTraceWriter::~VPTraceWriter()
@@ -50,6 +54,12 @@ namespace xdp {
          << "Resolution,ms" << std::endl
          << "Min Resolution," << (resolution == 6 ? "us" : "ns") << std::endl
          << "Trace Version," << version << std::endl; 
+  }
+
+  void VPTraceWriter::setUniqueTraceID()
+  {
+    unsigned int pid = static_cast<unsigned int>(db->getStaticInfo().getPid());
+    traceID = pid + traceIDCtr++;
   }
 
 }
