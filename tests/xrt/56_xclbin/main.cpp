@@ -119,7 +119,7 @@ run(int argc, char** argv)
     std::cout << cu << " ";
   std::cout << std::endl;
 
-  if (cu_names[0] != "simple:simple_1")
+  if (cu_names[0] != "simple:simple")
     throw std::runtime_error("FAILED_TEST\nCould not read correct kernel name, expected: simple:simple_1");
 
   std::vector<char> data = xclbin.get_data();
