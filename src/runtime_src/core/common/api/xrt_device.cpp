@@ -70,6 +70,19 @@ send_exception_message(const char* msg)
   xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
 }
 
+// Necessary to disambiguate the call for profiling_wrapper
+static std::shared_ptr<xrt_core::device>
+alloc_device_index(unsigned int index)
+{
+  return xrt_core::get_userpf_device(index) ;
+}
+
+static std::shared_ptr<xrt_core::device>
+alloc_device_handle(xclDeviceHandle dhdl)
+{
+  return xrt_core::get_userpf_device(dhdl) ;
+}
+
 // Helper functions for extracting xrt_core::device query request values
 namespace query {
 
@@ -116,21 +129,6 @@ to_string(const xrt_core::device* device)
 
 } // unnamed namespace
 
-namespace xdp {
-
-device_profile_start::
-device_profile_start(void* object, const char* function, const char* type)
-{
-  xdpnative::profiling_start(object, function, type);
-}
-
-device_profile_end::
-device_profile_end(void* object, const char* function, const char* type)
-{
-  xdpnative::profiling_end(object, function, type);
-}
-} // end namespace xdp
-
 namespace xrt_core { namespace device_int {
 
 std::shared_ptr<xrt_core::device>
@@ -157,9 +155,8 @@ namespace xrt {
 
 device::
 device(unsigned int index)
-  : profiling_start(this, __func__, "xrt::device"),
-    handle(xrt_core::get_userpf_device(index)),
-    profiling_end(this, __func__, "xrt::device")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::device",
+	   alloc_device_index, index))
 {}
 
 device::
@@ -169,9 +166,8 @@ device(const std::string& bdf)
 
 device::
 device(xclDeviceHandle dhdl)
-  : profiling_start(this, __func__, "xrt::device"),
-    handle(xrt_core::get_userpf_device(dhdl)),
-    profiling_end(this, __func__, "xrt::device")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::device",
+	   alloc_device_handle, dhdl))
 {}
 
 uuid

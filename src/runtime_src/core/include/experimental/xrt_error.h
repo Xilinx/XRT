@@ -24,24 +24,6 @@
 #ifdef __cplusplus
 #include <string>
 
-namespace xdp {
-
-class error_profile_start
-{
- public:
-  error_profile_start() {}
-  error_profile_start(void* object, const char* function, const char* type);
-} ;
-
-class error_profile_end
-{
- public:
-  error_profile_end() {}
-  error_profile_end(void* object, const char* function, const char* type);
-} ;
-
-} // end namespace xdp
-
 namespace xrt {
 
 class error_impl;
@@ -98,9 +80,7 @@ public:
   to_string() const;
 
 private:
-  xdp::error_profile_start profiling_start;
   std::shared_ptr<error_impl> handle;
-  xdp::error_profile_end profiling_end;
 };
 
 } // xrt

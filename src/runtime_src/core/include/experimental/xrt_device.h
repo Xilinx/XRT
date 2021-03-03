@@ -35,23 +35,6 @@ typedef void* xrtDeviceHandle;
   
 #ifdef __cplusplus
 
-namespace xdp {
-
-class device_profile_start
-{
- public:
-  device_profile_start() {}
-  device_profile_start(void* object, const char* function, const char* type);
-} ;
-
-class device_profile_end
-{
- public:
-  device_profile_end() {}
-  device_profile_end(void* object, const char* function, const char* type);
-} ;
-} // end namespace xdp
-
 namespace xrt_core {
 class device;
 }
@@ -315,9 +298,7 @@ private:
   get_info(info::device param) const;
 
 private:
-  xdp::device_profile_start profiling_start;
   std::shared_ptr<xrt_core::device> handle;
-  xdp::device_profile_end profiling_end;
 };
 
 } // namespace xrt

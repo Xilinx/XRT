@@ -106,21 +106,6 @@ send_exception_message(const std::string& msg)
 
 } // namespace
 
-namespace xdp {
-
-bo_profile_start::
-bo_profile_start(void* object, const char* function, const char* type)
-{
-  xdpnative::profiling_start(object, function, type);
-}
-
-bo_profile_end::
-bo_profile_end(void* object, const char* function, const char* type)
-{
-  xdpnative::profiling_end(object, function, type);
-}
-}
-
 namespace xrt {
 
 // class bo_impl - Base class for buffer objects
@@ -655,13 +640,13 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
+alloc_userptr(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   return alloc_ubuf(dhdl, userptr, sz, flags, grp);
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
+alloc_import(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
 {
   return std::make_shared<xrt::buffer_import>(dhdl, ehdl);
 }
@@ -745,37 +730,32 @@ namespace xrt {
 
 bo::
 bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp)
-  : profiling_start(this, __func__, "xrt::bo"),
-    handle(alloc(dhdl, userptr, sz, static_cast<xrtBufferFlags>(flags), grp)),
-    profiling_end(this, __func__, "xrt::bo")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::bo",
+           alloc_userptr, dhdl, userptr, sz, static_cast<xrtBufferFlags>(flags), grp))
 {}
 
 bo::
 bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp)
-  : profiling_start(this, __func__, "xrt::bo"),
-    handle(alloc(dhdl, size, static_cast<xrtBufferFlags>(flags), grp)),
-    profiling_end(this, __func__, "xrt::bo")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::bo",
+           alloc, dhdl, size, static_cast<xrtBufferFlags>(flags), grp))
 {}
 
 bo::
 bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
-  : profiling_start(this, __func__, "xrt::bo"),
-    handle(alloc(dhdl, ehdl)),
-    profiling_end(this, __func__, "xrt::bo")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::bo",
+	   alloc_import, dhdl, ehdl))
 {}
 
 bo::
 bo(const bo& parent, size_t size, size_t offset)
-  : profiling_start(this, __func__, "xrt::bo"),
-    handle(sub_buffer(parent.handle, size, offset)),
-    profiling_end(this, __func__, "xrt::bo")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::bo",
+	   sub_buffer, parent.handle, size, offset))
 {}
 
 bo::
 bo(xrtBufferHandle xhdl)
-  : profiling_start(this, __func__, "xrt::bo"),
-    handle(get_boh(xhdl)),
-    profiling_end(this, __func__, "xrt::bo")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::bo",
+	   get_boh, xhdl))
 {}
 
 size_t
@@ -869,7 +849,7 @@ xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
 {
   NATIVE_LOG_FUNCTION_CALL ;
   try {
-    auto boh = alloc(get_xcl_device_handle(dhdl), userptr, size, flags, grp);
+    auto boh = alloc_userptr(get_xcl_device_handle(dhdl), userptr, size, flags, grp);
     bo_cache[boh.get()] = boh;
     return boh.get();
   }
@@ -931,7 +911,7 @@ xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl)
 {
   NATIVE_LOG_FUNCTION_CALL ;
   try {
-    auto boh = alloc(get_xcl_device_handle(dhdl), ehdl);
+    auto boh = alloc_import(get_xcl_device_handle(dhdl), ehdl);
     bo_cache[boh.get()] = boh;
     return boh.get();
   }

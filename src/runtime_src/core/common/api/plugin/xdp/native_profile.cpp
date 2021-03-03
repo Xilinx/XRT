@@ -23,7 +23,7 @@
 #include <map>
 #include <mutex>
 
-// Anonymous namespace for helper functions and global objects
+// Anonymous namespace for helper functions
 namespace {
 
 static std::string full_name(const char* type, const char* function)
@@ -35,11 +35,6 @@ static std::string full_name(const char* type, const char* function)
   combined += function ;
   return combined ;
 }
-
-// A map to keep track of starts/stops based on the object in a 
-//  multithreaded environment
-static std::map<void*, unsigned int> storage;
-static std::mutex storage_lock;
 
 } // end anonymous namespace
 
@@ -97,33 +92,6 @@ native_api_call_logger::
       function_end_cb(full_name(m_type, m_name).c_str(), m_funcid) ;
     else
       function_end_cb(m_name, m_funcid) ;
-  }
-}
-
-void profiling_start(void* object, const char* function, const char* type)
-{
-  if (function_start_cb) {
-    auto id = xrt_core::utils::issue_id() ;
-    
-    std::string combined = full_name(type, function) ;
-    function_start_cb(combined.c_str(), id) ;
-    
-    std::lock_guard<std::mutex> lock(storage_lock);
-    storage[object] = id ;
-  }
-}
-
-void profiling_end(void* object, const char* function, const char* type)
-{
-  if (function_end_cb) {
-    unsigned int id ;
-    {
-      std::lock_guard<std::mutex> lock(storage_lock) ;
-      id = storage[object] ;
-      storage.erase(object);
-    }
-    std::string combined = full_name(type, function) ;
-    function_end_cb(combined.c_str(), id) ;
   }
 }
 

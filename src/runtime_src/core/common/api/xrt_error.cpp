@@ -167,24 +167,20 @@ error_time_to_string(xrtErrorTime time)
   return std::to_string(time);
 }
 
+// Necessary for disambiguating the make_shared call in the profiling_wrapper
+static std::shared_ptr<xrt::error_impl>
+alloc_error_from_device(const xrt_core::device* device, xrtErrorClass ecl)
+{
+  return std::make_shared<xrt::error_impl>(device, ecl);
+}
+
+static std::shared_ptr<xrt::error_impl>
+alloc_error_from_code(xrtErrorCode ecode, xrtErrorTime timestamp)
+{
+  return std::make_shared<xrt::error_impl>(ecode, timestamp) ;
+}
 
 } // namespace
-
-namespace xdp {
-
-error_profile_start::
-error_profile_start(void* object, const char* function, const char* type)
-{
-  xdpnative::profiling_start(object, function, type);
-}
-
-error_profile_end::
-error_profile_end(void* object, const char* function, const char* type)
-{
-  xdpnative::profiling_end(object, function, type);
-}
-
-} // end namespace xdp
 
 namespace xrt_core { namespace error_int {
 
@@ -259,16 +255,14 @@ namespace xrt {
 
 error::
 error(const xrt::device& device, xrtErrorClass ecl)
-  : profiling_start(this, __func__, "xrt::error"),
-    handle(std::make_shared<error_impl>(device.get_handle().get(), ecl)),
-    profiling_end(this, __func__, "xrt::error")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::error",
+           alloc_error_from_device, device.get_handle().get(), ecl))
 {}
 
 error::
 error(xrtErrorCode code, xrtErrorTime timestamp)
-  : profiling_start(this, __func__, "xrt::error"),
-    handle(std::make_shared<error_impl>(code, timestamp)),
-    profiling_end(this, __func__, "xrt::error")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::error",
+	   alloc_error_from_code, code, timestamp))
 {}
 
 xrtErrorTime

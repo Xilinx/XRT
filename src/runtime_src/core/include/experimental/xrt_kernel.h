@@ -51,38 +51,6 @@ typedef void * xrtRunHandle;
 
 #ifdef __cplusplus
 
-namespace xdp {
-
-class run_profile_start
-{
- public:
-  run_profile_start() {}
-  run_profile_start(void* object, const char* function, const char* type);
-};
-
-class run_profile_end
-{
- public:
-  run_profile_end() {}
-  run_profile_end(void* object, const char* function, const char* type);
-};
-
-class kernel_profile_start
-{
- public:
-  kernel_profile_start() {}
-  kernel_profile_start(void* object, const char* function, const char* type);
-};
-
-class kernel_profile_end
-{
- public:
-  kernel_profile_end() {}
-  kernel_profile_end(void* object, const char* function, const char* type);
-};
-
-} // end namespace xdp
-
 namespace xrt {
 
 class kernel;
@@ -380,9 +348,7 @@ public:
   /// @endcond
 
 private:
-  xdp::run_profile_start profiling_start;
   std::shared_ptr<run_impl> handle;
-  xdp::run_profile_end profiling_end;
 
   XCL_DRIVER_DLLESPEC
   void
@@ -570,9 +536,7 @@ public:
   /// @endcond
 
 private:
-  xdp::kernel_profile_start profiling_start;
   std::shared_ptr<kernel_impl> handle;
-  xdp::kernel_profile_end profiling_end;
 };
 
 /// @cond

@@ -1091,33 +1091,6 @@ public:
 
 } // namespace
 
-namespace xdp {
-
-run_profile_start::
-run_profile_start(void* object, const char* function, const char* type)
-{
-  xdpnative::profiling_start(object, function, type);
-}
-
-run_profile_end::
-run_profile_end(void* object, const char* function, const char* type)
-{
-  xdpnative::profiling_end(object, function, type);
-}
-
-kernel_profile_start::
-kernel_profile_start(void* object, const char* function, const char* type)
-{
-  xdpnative::profiling_start(object, function, type);
-}
-
-kernel_profile_end::
-kernel_profile_end(void* object, const char* function, const char* type)
-{
-  xdpnative::profiling_end(object, function, type);
-}
-} // end namespace xdp
-
 namespace xrt {
 
 // struct kernel_type - The internals of an xrtKernelHandle
@@ -2039,6 +2012,22 @@ get_run_update(xrtRunHandle rhdl)
   return get_run_update(run);
 }
 
+// Necessary for profile wrapper because std::make_shared cannot be unambiguated
+static std::shared_ptr<xrt::run_impl>
+alloc_run(const std::shared_ptr<xrt::kernel_impl>& h)
+{
+  return std::make_shared<xrt::run_impl>(h);
+}
+
+static std::shared_ptr<xrt::kernel_impl>
+alloc_kernel(std::shared_ptr<device_type> dev,
+	     const xrt::uuid& xclbin_id,
+	     const std::string& name,
+	     xrt::kernel::cu_access_mode mode)
+{
+  return std::make_shared<xrt::kernel_impl>(dev, xclbin_id, name, mode) ;
+}
+
 ////////////////////////////////////////////////////////////////
 // Implementation helper for C API
 ////////////////////////////////////////////////////////////////
@@ -2236,9 +2225,8 @@ namespace xrt {
 
 run::
 run(const kernel& krnl)
-  : profiling_start(this, __func__, "xrt::run"),
-    handle(std::make_shared<run_impl>(krnl.get_handle())),
-    profiling_end(this, __func__, "xrt::run")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::run",
+					alloc_run, krnl.get_handle()))
 {}
 
 void
@@ -2333,18 +2321,14 @@ get_ert_packet() const
 
 kernel::
 kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
-  : profiling_start(this, __func__, "xrt::kernel"),
-    handle(std::make_shared<kernel_impl>
-       (get_device(xdev), xclbin_id, name, mode)),
-    profiling_end(this, __func__, "xrt::kernel")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::kernel",
+	   alloc_kernel, get_device(xdev), xclbin_id, name, mode))
 {}
 
 kernel::
 kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
-  : profiling_start(this, __func__, "xrt::kernel"),
-    handle(std::make_shared<kernel_impl>
-       (get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode)),
-    profiling_end(this, __func__, "xrt::kernel")
+  : handle(xdpnative::profiling_wrapper(__func__, "xrt::kernel",
+	   alloc_kernel, get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode))
 {}
 
 uint32_t
