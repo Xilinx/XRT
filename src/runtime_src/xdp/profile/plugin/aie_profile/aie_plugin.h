@@ -23,11 +23,14 @@
 #include <atomic>
 #include <iostream>
 
-#include "xdp/profile/plugin/aie_profile/aie_util.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/config.h"
 
 #include "core/common/device.h"
+
+extern "C" {
+#include <xaiengine.h>
+}
 
 namespace xdp {
 
@@ -56,7 +59,7 @@ namespace xdp {
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
     std::map<void*,std::thread> mThreadMap;
 
-    typedef std::tuple<uint32_t, uint32_t, std::string, uint32_t, uint32_t> AieCounter;
+    typedef std::tuple<uint32_t, uint32_t, std::string, XAie_Events, XAie_Events> AieCounter;
     enum e_aie_tile_type {COLUMN = 0, ROW, MODULE, START_EVENT, END_EVENT};
     
     // Storage for what user requests
@@ -65,12 +68,12 @@ namespace xdp {
     std::map<AieCounter, uint8_t> mCounterMap;
 
     std::set<std::string> mCoreMetricSets;
-    std::map<std::string, std::vector<uint32_t>> mCoreStartIDs;
-    std::map<std::string, std::vector<uint32_t>> mCoreEndIDs;
+    std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
+    std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
 
     std::set<std::string> mMemoryMetricSets;
-    std::map<std::string, std::vector<uint32_t>> mMemoryStartIDs;
-    std::map<std::string, std::vector<uint32_t>> mMemoryEndIDs;
+    std::map<std::string, std::vector<XAie_Events>> mMemoryStartIDs;
+    std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
   };
 
 } // end namespace xdp

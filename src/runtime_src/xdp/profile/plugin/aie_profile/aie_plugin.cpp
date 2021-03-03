@@ -34,10 +34,6 @@
 #include "core/edge/common/aie_parser.h"
 #endif
 
-extern "C" {
-#include <xaiengine.h>
-}
-
 namespace xdp {
 
   AIEProfilingPlugin::AIEProfilingPlugin() 
@@ -47,26 +43,26 @@ namespace xdp {
 
     // Pre-defined metric sets
     mCoreMetricSets = {"heat_map", "stalls", "execution"};
-    mCorestartEvents["heat_map"]    = {AIE_EVENT_ACTIVE, AIE_EVENT_CORE_STALL,
-                                    AIE_EVENT_MEMORY_STALL, AIE_EVENT_STREAM_STALL};
-    mCorestartEvents["stalls"]      = {AIE_EVENT_MEMORY_STALL, AIE_EVENT_STREAM_STALL,
-                                    AIE_EVENT_CASCADE_STALL, AIE_EVENT_LOCK_STALL};
-    mCorestartEvents["execution"]   = {AIE_EVENT_CALL_INSTRUCTION, AIE_EVENT_VECTOR_INSTRUCTION,
-                                    AIE_EVENT_LOAD_INSTRUCTION, AIE_EVENT_STORE_INSTRUCTION};
+    mCoreStartEvents["heat_map"]    = {XAIE_EVENT_ACTIVE_CORE, XAIE_EVENT_GROUP_CORE_STALL_CORE,
+                                       XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE};
+    mCoreStartEvents["stalls"]      = {XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE,
+                                       XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE};
+    mCoreStartEvents["execution"]   = {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_VECTOR_CORE,
+                                       XAIE_EVENT_INSTR_LOAD_CORE, XAIE_EVENT_INSTR_STORE_CORE};
     
-    mCoreendEvents["heat_map"]      = {AIE_EVENT_DISABLED, AIE_EVENT_COMBO0,
-                                    AIE_EVENT_MEMORY_STALL, AIE_EVENT_STREAM_STALL};
-    mCoreendEvents["stalls"]        = {AIE_EVENT_MEMORY_STALL, AIE_EVENT_STREAM_STALL,
-                                    AIE_EVENT_CASCADE_STALL, AIE_EVENT_LOCK_STALL};
-    mCoreendEvents["execution"]     = {AIE_EVENT_CALL_INSTRUCTION, AIE_EVENT_VECTOR_INSTRUCTION,
-                                    AIE_EVENT_LOAD_INSTRUCTION, AIE_EVENT_STORE_INSTRUCTION};
+    mCoreEndEvents["heat_map"]      = {XAIE_EVENT_DISABLED_CORE, XAIE_EVENT_COMBO0,
+                                       XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE};
+    mCoreEndEvents["stalls"]        = {XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE,
+                                       XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE};
+    mCoreEndEvents["execution"]     = {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_VECTOR_CORE,
+                                       XAIE_EVENT_INSTR_LOAD_CORE, XAIE_EVENT_INSTR_STORE_CORE};
 
     mMemoryMetricSets = {"dma_locks", "conflicts"};
-    mMemorystartEvents["dma_locks"] = {AIE_EVENT_GROUP_DMA, AIE_EVENT_GROUP_LOCKS};
-    mMemorystartEvents["conflicts"] = {AIE_EVENT_GROUP_CONFLICTS, AIE_EVENT_GROUP_ERRORS};
+    mMemoryStartEvents["dma_locks"] = {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM, XAIE_EVENT_GROUP_LOCK_MEM};
+    mMemoryStartEvents["conflicts"] = {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM};
     
-    mMemoryendEvents["dma_locks"]   = {AIE_EVENT_GROUP_DMA, AIE_EVENT_GROUP_LOCKS};
-    mMemoryendEvents["conflicts"]   = {AIE_EVENT_GROUP_CONFLICTS, AIE_EVENT_GROUP_ERRORS};
+    mMemoryEndEvents["dma_locks"]   = {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM, XAIE_EVENT_GROUP_LOCK_MEM};
+    mMemoryEndEvents["conflicts"]   = {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM};
 
     getPollingInterval();
   }
@@ -138,8 +134,8 @@ namespace xdp {
     }
 
     // Get vector of pre-defined metrics for this set
-    uint32_t startEvents = isCore ? mCorestartEvents[metricSet] : mMemorystartEvents[metricSet];
-    uint32_t endEvents   = isCore ?   mCoreendEvents[metricSet] :   mMemoryendEvents[metricSet];
+    auto startEvents = isCore ? mCoreStartEvents[metricSet] : mMemoryStartEvents[metricSet];
+    auto endEvents   = isCore ?   mCoreEndEvents[metricSet] :   mMemoryEndEvents[metricSet];
 
     if (vec.size() == 1) {
 #ifdef XRT_ENABLE_AIE
