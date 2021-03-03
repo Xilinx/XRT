@@ -2,7 +2,8 @@
 Checks:          >
 clang-diagnostic-*,
 clang-analyzer-*,
-cert-*,bugprone-*,
+cert-*,
+bugprone-*,
 clang-analyzer-*,
 concurrency-*,
 cppcoreguidelines-*,
