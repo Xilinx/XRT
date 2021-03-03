@@ -1,12 +1,3 @@
-# -----------------------------------------------------------------------------
-find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
-
-# -----------------------------------------------------------------------------
-
-include_directories(${CMAKE_BINARY_DIR})
-
-# -----------------------------------------------------------------------------
-
 # Collect files outside of this directory
 file(GLOB XBMGMT_V2_BASE_FILES
   "xbmgmt.cpp"
@@ -34,9 +25,7 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
 )
 
 # Merge the files into one collection
-set(XBMGMT_V2_FILES_SRCS ${XBMGMT_V2_BASE_FILES} ${XBMGMT_V2_SUBCMD_FILES})
-set(XBMGMT_V2_SRCS ${XBMGMT_V2_FILES_SRCS})
-
+set(XBMGMT_V2_SRCS ${XBMGMT_V2_BASE_FILES} ${XBMGMT_V2_SUBCMD_FILES})
 
 # Determine the name of the executable
 if(WIN32)
@@ -51,41 +40,44 @@ add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
 
 # Determine what functionality should be added
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  target_compile_definitions(${XBMGMT2_NAME} PUBLIC ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
+  target_compile_definitions(${XBMGMT2_NAME}
+    PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
 endif()
 
+# Static build is a Linux / Ubuntu option only
+if (XRT_STATIC_BUILD)
+  target_link_options(${XBMGMT2_NAME} PRIVATE "-static")
+  # Bypass FindBoost versions and just link explicitly with boost libraries
+  # The -static link option will pick the static libraries. 
+  target_link_libraries(${XBMGMT2_NAME}
+    PRIVATE
+    xrt_core_static
+    xrt_coreutil_static
+    boost_system
+    boost_filesystem
+    boost_program_options
+    -Wl,--whole-archive -lrt -lpthread -Wl,--no-whole-archive
+  )
+  set_target_properties(${XBMGMT2_NAME} PROPERTIES INSTALL_RPATH "")
+else()
+  target_link_libraries(${XBMGMT2_NAME}
+    PRIVATE
+    xrt_core
+    xrt_coreutil
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
+    ${Boost_PROGRAM_OPTIONS_LIBRARY}
+  )
+endif()
+  
 # Add the supporting libraries
 if(WIN32)
-target_link_libraries(${XBMGMT2_NAME}
-  PRIVATE
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
-  ${Boost_PROGRAM_OPTIONS_LIBRARY}
-  Boost::filesystem
-  Boost::program_options
-  Boost::system
-  ws2_32
-  xrt_core
-  xrt_coreutil
-  )
-
+  target_link_libraries(${XBMGMT2_NAME} PRIVATE ws2_32)
 else()
-target_link_libraries(${XBMGMT2_NAME}
-  PRIVATE
-  xrt_core
-  xrt_coreutil
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
-  ${Boost_PROGRAM_OPTIONS_LIBRARY}
-  pthread
-  uuid
-  dl
-  )
+  target_link_libraries(${XBMGMT2_NAME} PRIVATE pthread uuid dl)
 endif()
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   install (TARGETS ${XBMGMT2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
   install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
 endif()
-
-# -----------------------------------------------------------------------------
