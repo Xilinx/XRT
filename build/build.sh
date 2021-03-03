@@ -41,6 +41,7 @@ usage()
     echo "[-edge]                    Build edge of x64.  Turns off opt and dbg"
     echo "[-nocmake]                 Skip CMake call"
     echo "[-noctest]                 Skip unit tests"
+    echo "[-clangtidy]               Run clang-tidy as part of build"
     echo "[-docs]                    Enable documentation generation with sphinx"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-ccache]                  Build using RDI's compile cache"
@@ -64,7 +65,7 @@ ccache=0
 docs=0
 verbose=""
 driver=0
-clangtidy=0
+clangtidy="OFF"
 checkpatch=0
 jcore=$CORE
 opt=1
@@ -141,7 +142,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -clangtidy)
-            clangtidy=1
+            clangtidy="ON"
             shift
             ;;
         -verbose)
@@ -196,8 +197,8 @@ if [[ $dbg == 1 ]]; then
   mkdir -p $debug_dir
   cd $debug_dir
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
+	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src"
+	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src
   fi
 
   echo "make -j $jcore $verbose DESTDIR=$PWD install"
@@ -213,8 +214,8 @@ if [[ $opt == 1 ]]; then
   mkdir -p $release_dir
   cd $release_dir
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
+	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src"
+	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src
   fi
 
   if [[ $nobuild == 0 ]]; then
@@ -260,12 +261,7 @@ if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
   time make -j $jcore $verbose DESTDIR=$PWD
   cd $BUILDDIR
 fi
-    
-    
-if [[ $clangtidy == 1 ]]; then
-    echo "make clang-tidy"
-    make clang-tidy
-fi
+
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
