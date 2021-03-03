@@ -1,20 +1,9 @@
-find_program(CLANGTIDY run-clang-tidy)
-
-include(ProcessorCount)
-ProcessorCount(JOBS)
-if (JOBS EQUAL 0)
-   set(JOBS 1)
-endif ()
-
-if (NOT CLANGTIDY)
-  message (WARNING "-- run-clang-tidy not found, static code analysis disabled")
-else ()
-  message ("-- run-clang-tidy found, static code analysis enabled")
-# run-clang-tidy uses CMake generated compile_comands.json with -p switch
-  add_custom_target(
-    clang-tidy
-    COMMAND ${CLANGTIDY}
-    -j ${JOBS}
-    -p ${CMAKE_CURRENT_BINARY_DIR}
-    )
-endif ()
+IF((${CMAKE_VERSION} VERSION_GREATER "3.7.2") AND (CMAKE_BUILD_TYPE STREQUAL "Debug"))
+  find_program(CLANG_TIDY clang-tidy)
+  if(NOT CLANG_TIDY)
+    message(FATAL_ERROR "clang-tidy not found, static analysis disabled")
+  else()
+    message("-- Enabling clang-tidy")
+    set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=cert-*,bugprone-*,clang-analyzer-*,concurrency-*,cppcoreguidelines-*,hicpp-*,modernize-*")
+  endif()
+endif()
