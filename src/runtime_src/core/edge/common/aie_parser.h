@@ -38,6 +38,14 @@ struct tile_type
 };
 
 /**
+ * get_graphs() - get graph names from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+std::vector<std::string>
+get_graphs(const xrt_core::device* device);
+
+/**
  * get_tiles() - get tile data from xclbin AIE metadata
  *
  * @device: device with loaded meta data

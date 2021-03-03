@@ -139,9 +139,14 @@ namespace xdp {
 
     if (vec.size() == 1) {
 #ifdef XRT_ENABLE_AIE
+      // Capture all tiles across all graphs
       std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-      // TODO: how do we get all tiles regardless of graph name?
-      auto tiles = xrt_core::edge::aie::get_tiles(device.get(), "dummy");
+      auto graphs = xrt_core::edge::aie::get_graphs(device.get());
+      std::vector<edge::aie::tile_type> tiles;
+      for (auto& graph : graphs) {
+        auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
+        std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
+      }
 
       for (auto& tile : tiles) {
         for (int i=0; i < startEvents.size(); ++i) {

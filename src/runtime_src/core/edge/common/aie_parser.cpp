@@ -49,6 +49,19 @@ read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
   pt::read_json(aie_stream,aie_project);
 }
 
+std::vector<std::string>
+get_graphs(const pt::ptree& aie_meta)
+{
+  std::vector<std::string> graphs;
+
+  for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
+    std::string graphName = graph.second.get<std::string>("name");
+    graphs.push_back(graphName);
+  }
+
+  return graphs;
+}
+
 std::vector<tile_type>
 get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
 {
@@ -250,6 +263,18 @@ get_trace_gmio(const pt::ptree& aie_meta)
 } // namespace
 
 namespace xrt_core { namespace edge { namespace aie {
+
+std::vector<std::string>
+get_graphs(const xrt_core::device* device)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return std::vector<std::string>();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_graphs(aie_meta);
+}
 
 std::vector<tile_type>
 get_tiles(const xrt_core::device* device, const std::string& graph_name)
