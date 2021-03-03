@@ -41,11 +41,11 @@ int main(int argc, char** argv) {
 
   std::string test_path = argv[1];
 
-  std::string b_file = "/aws.xclbin";
+  std::string b_file = "/verify.xclbin";
   std::string binaryFile = test_path + b_file;
   std::ifstream infile(binaryFile);
   if (!infile.good()) {
-    std::cout << "\nNOT SUPPORTED" << std::endl;
+    std::cout << "NOT SUPPORTED" << std::endl;
     return EOPNOTSUPP;
   }
 
@@ -79,9 +79,13 @@ int main(int argc, char** argv) {
 
   // Harcoding the number of processes/instances 
   int ret = vcu_dec_test(binaryFile.c_str(), TEST_INSTANCE_ID, device_index);
-  if (ret != TRUE) {
+  if (ret == FALSE) {
     std::cout << "TEST FAILED\n";
     return EXIT_FAILURE;
+  }
+  else if (ret == NOTSUPP) {
+    std::cout << "NOT SUPPORTED\n" << std::endl;
+    return EOPNOTSUPP;
   }
 
   std::cout << "TEST PASSED\n";
