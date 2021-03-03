@@ -157,6 +157,8 @@ static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd);
 static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type);
 static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd);
 
+static void ert_intc_enable(struct xocl_ert_user *ert_user, bool enable);
+
 static ssize_t clock_timestamp_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
 {
@@ -345,7 +347,7 @@ static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg
 		val &= SWITCH_TO_ERT_INTR;
 		iowrite32(val, ert_user->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
 		for (i = 0; i < ert_user->num_slots; i++)
-			xocl_intc_ert_config(xdev, i, false);
+			xocl_intc_ert_config(xdev, i, true);
 		/* TODO: This could return error code -EBUSY. */
 		xocl_intc_set_mode(xocl_get_xdev(pdev), ERT_INTR);
 		break;
@@ -555,6 +557,62 @@ ert_release_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 	ecmd->slot_idx = no_index;
 }
 
+static void
+ert_cfg_host(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
+{
+	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
+	struct ert_configure_cmd *cfg = (struct ert_configure_cmd *)ecmd->xcmd->execbuf;
+	bool ert = (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) ? 1 :
+	    xocl_mb_sched_on(xdev);
+	bool ert_full = !cfg->dataflow;
+	bool ert_poll = cfg->dataflow;
+
+	BUG_ON(cmd_opcode(ecmd) != OP_CONFIG);
+	BUG_ON(!ert || !cfg->ert);
+
+	if (ecmd->status != KDS_COMPLETED)
+		return;
+
+	if (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) {
+		ERTUSER_INFO(ert_user, "MPSoC polling mode %d", cfg->polling);
+
+		// For MPSoC device, we will use ert_full if we are
+		// configured as ert mode even dataflow is configured.
+		// And we do not support ert_poll.
+		ert_full = true;
+		ert_poll = false;
+	}
+
+	ert_user->num_slots = ert_user->cq_range / cfg->slot_size;
+
+	// Adjust slot size for ert poll mode
+	if (ert_poll)
+		ert_user->num_slots = MAX_CUS;
+
+	if (ert_full && cfg->cu_dma && ert_user->num_slots > 32) {
+		// Max slot size is 32 because of cudma bug
+		ERTUSER_INFO(ert_user, "Limitting CQ size to 32 due to ERT CUDMA bug\n");
+		ert_user->num_slots = 32;
+	}
+
+	ert_user->polling_mode = cfg->polling;
+
+	if (ert_user->polling_mode)
+		ert_intc_enable(ert_user, false);
+	else
+		ert_intc_enable(ert_user, true);
+
+	ERTUSER_INFO(ert_user, "scheduler config ert completed, polling_mode(%d), slots(%d)\n"
+		 , ert_user->polling_mode
+		 , ert_user->num_slots);
+
+	// TODO: reset all queues
+	ert_user_reset(ert_user);
+
+	ert_user->is_configured = true;
+
+	return;
+}
 
 static inline void
 ert_post_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
@@ -568,7 +626,7 @@ ert_post_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 		memcpy(&ert_user->ert_valid, ert_user->cq_base, sizeof(struct ert_validate_cmd));
 		break;
 	case OP_CONFIG:
-		ert_user->is_configured = true;
+		ert_cfg_host(ert_user, ecmd);
 		break;
 	default:
 		break;
@@ -584,12 +642,13 @@ ert_pre_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 
 	switch (cmd_opcode(ecmd)) {
 	case OP_START:
-		BUG_ON(ert_user->ctrl_busy || !ert_user->config);
-		break;
+	case OP_START_SK:
+		BUG_ON(ert_user->ctrl_busy);
 	case OP_CLK_CALIB:
 	case OP_CONFIG_SK:
 	case OP_GET_STAT:
 	case OP_VALIDATE:
+		BUG_ON(!ert_user->is_configured);
 		bad_cmd = false;
 		break;
 	case OP_CONFIG:
@@ -884,20 +943,20 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	struct ert_configure_cmd *cfg = (struct ert_configure_cmd *)ecmd->xcmd->execbuf;
 	bool ert = (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) ? 1 :
 	    xocl_mb_sched_on(xdev);
-	bool ert_full = (ert && !cfg->dataflow);
-	bool ert_poll = (ert && cfg->dataflow);
+	bool ert_full = !cfg->dataflow;
+	bool ert_poll = cfg->dataflow;
 	unsigned int ert_num_slots = 0;
+
+	BUG_ON(!ert || !cfg->ert);
 
 	if (cmd_opcode(ecmd) != OP_CONFIG)
 		return -EINVAL;
 
 	if (major > 3) {
-		DRM_INFO("Unknown ERT major version, fallback to KDS mode\n");
-		ert_full = 0;
-		ert_poll = 0;
+		ERTUSER_ERR(ert_user, "Unknown ERT major version\n");
+		return -EINVAL;
 	}
 
-	ERTUSER_DBG(ert_user, "ert per feature rom = %d", ert);
 	ERTUSER_DBG(ert_user, "dsa52 = %d", dsa);
 
 	if (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) {
@@ -906,7 +965,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 		// For MPSoC device, we will use ert_full if we are
 		// configured as ert mode even dataflow is configured.
 		// And we do not support ert_poll.
-		ert_full = cfg->ert;
+		ert_full = true;
 		ert_poll = false;
 	}
 
@@ -924,27 +983,22 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 
 	if (ert_poll)
 		// Adjust slot size for ert poll mode
-		cfg->slot_size = ert_user->cq_range / MAX_CUS;
+		ert_num_slots = MAX_CUS;
 
 	if (ert_full && cfg->cu_dma && ert_num_slots > 32) {
 		// Max slot size is 32 because of cudma bug
 		ERTUSER_INFO(ert_user, "Limitting CQ size to 32 due to ERT CUDMA bug\n");
 		ert_num_slots = 32;
-		cfg->slot_size = ert_user->cq_range / ert_num_slots;
 	}
+
+	cfg->slot_size = ert_user->cq_range / ert_num_slots;
 
 	if (ert_poll) {
 		ERTUSER_INFO(ert_user, "configuring dataflow mode with ert polling\n");
-		cfg->slot_size = ert_user->cq_range / MAX_CUS;
 		cfg->cu_isr = 0;
 		cfg->cu_dma = 0;
-		ert_user->polling_mode = cfg->polling;
-		ert_user->num_slots = ert_user->cq_range / cfg->slot_size;
 	} else if (ert_full) {
 		ERTUSER_INFO(ert_user, "configuring embedded scheduler mode\n");
-		ert_user->cq_intr = cfg->cq_int;
-		ert_user->polling_mode = cfg->polling;
-		ert_user->num_slots = ert_user->cq_range / cfg->slot_size;
 		cfg->dsa52 = dsa;
 		cfg->cdma = cdma ? 1 : 0;
 	}
@@ -965,19 +1019,14 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	// xclbin while ERT asynchronous configure is running.
 	//exec->configure_active = true;
 
-	ERTUSER_INFO(ert_user, "scheduler config ert(%d), dataflow(%d), slots(%d), cudma(%d), cuisr(%d)\n"
-		 , ert_poll | ert_full
+	ERTUSER_INFO(ert_user, "scheduler config dataflow(%d), cudma(%d), cuisr(%d)\n"
 		 , cfg->dataflow
-		 , ert_user->num_slots
 		 , cfg->cu_dma ? 1 : 0
 		 , cfg->cu_isr ? 1 : 0);
 
-	// TODO: reset all queues
-	ert_user_reset(ert_user);
-
 	return 0;
 }
-static inline void ert_intc_enable(struct xocl_ert_user *ert_user, bool enable){
+static void ert_intc_enable(struct xocl_ert_user *ert_user, bool enable){
 	uint32_t i;
 	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
 
@@ -1041,14 +1090,7 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 		ERTUSER_DBG(ert_user, "%s op_code %d ecmd->slot_idx %d\n", __func__, cmd_opcode(ecmd), ecmd->slot_idx);
 
 		//sched_debug_packet(epkt, epkt->count+sizeof(epkt->header)/sizeof(u32));
-
-		if (cmd_opcode(ecmd) == OP_CONFIG) {
-			ert_user->is_configured = false;
-			if (ert_user->polling_mode)
-				ert_intc_enable(ert_user, false);
-			else
-				ert_intc_enable(ert_user, true);
-		}
+	
 		slot_addr = ecmd->slot_idx * (ert_user->cq_range/ert_user->num_slots);
 
 		/* Hardware could be pretty fast, add to sq before touch the CQ_status or cmd queue*/
@@ -1129,6 +1171,7 @@ static inline void process_ert_pq(struct xocl_ert_user *ert_user)
 static void ert_user_reset(struct xocl_ert_user *ert_user)
 {
 	bitmap_zero(ert_user->slot_status, ERT_MAX_SLOTS);
+	set_bit(0, ert_user->slot_status);
 }
 
 static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd)
@@ -1409,6 +1452,7 @@ static int ert_user_probe(struct platform_device *pdev)
 	err = sysfs_create_group(&pdev->dev.kobj, &ert_user_attr_group);
 	if (err) {
 		xocl_err(&pdev->dev, "create ert_user sysfs attrs failed: %d", err);
+		goto done;
 	}
 	ert_user->ert.submit = ert_user_submit;
 	ert_user->ert.abort = xocl_ert_user_abort;
