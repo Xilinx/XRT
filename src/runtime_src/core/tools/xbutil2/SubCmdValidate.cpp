@@ -282,7 +282,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     static const std::map<std::string, std::string> test_map = {
       { "22_verify.py",             "validate.exe"    },
       { "23_bandwidth.py",          "kernel_bw.exe"   },
-      { "host_mem_23_bandwidth.py", "slavebridge.exe" }
+      { "host_mem_23_bandwidth.py", "slavebridge.exe" },
+      { "xcl_vcu_test.exe",         "xcl_vcu_test.exe"}
     };
         
     if (test_map.find(py) == test_map.end()) {
@@ -1037,17 +1038,26 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
 
 }
 
+/*
+ * TEST #11
+ */
+void
+vcuKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+  runTestCase(_dev, "xcl_vcu_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
 
 /*
 * helper function to initialize test info
 */
 static boost::property_tree::ptree
-create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin, bool is_internal) {
+create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin, bool is_explicit = false) {
   boost::property_tree::ptree _ptTest;
   _ptTest.put("name", name);
   _ptTest.put("description", desc);
   _ptTest.put("xclbin", xclbin);
-  _ptTest.put("is_internal", is_internal);
+  _ptTest.put("explicit", is_explicit);
   return _ptTest;
 }
 
@@ -1060,16 +1070,17 @@ struct TestCollection {
 * create test suite
 */
 static std::vector<TestCollection> testSuite = {
-  { create_init_test("Aux connection", "Check if auxiliary power is connected", "", false), auxConnectionTest },
-  { create_init_test("PCIE link", "Check if PCIE link is active", "", false), pcieLinkTest },
-  { create_init_test("SC version", "Check if SC firmware is up-to-date", "", false), scVersionTest },
-  { create_init_test("Verify kernel", "Run 'Hello World' kernel test", "verify.xclbin", false), verifyKernelTest },
-  { create_init_test("DMA", "Run dma test", "verify.xclbin", false), dmaTest },
-  { create_init_test("Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin", false), bandwidthKernelTest },
-  { create_init_test("Peer to peer bar", "Run P2P test", "bandwidth.xclbin", false), p2pTest },
-  { create_init_test("Memory to memory DMA", "Run M2M test", "bandwidth.xclbin", false), m2mTest },
-  { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled", "bandwidth.xclbin", false), hostMemBandwidthKernelTest },
+  { create_init_test("Aux connection", "Check if auxiliary power is connected", ""), auxConnectionTest },
+  { create_init_test("PCIE link", "Check if PCIE link is active", ""), pcieLinkTest },
+  { create_init_test("SC version", "Check if SC firmware is up-to-date", ""), scVersionTest },
+  { create_init_test("Verify kernel", "Run 'Hello World' kernel test", "verify.xclbin"), verifyKernelTest },
+  { create_init_test("DMA", "Run dma test", "verify.xclbin"), dmaTest },
+  { create_init_test("Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
+  { create_init_test("Peer to peer bar", "Run P2P test", "bandwidth.xclbin"), p2pTest },
+  { create_init_test("Memory to memory DMA", "Run M2M test", "bandwidth.xclbin"), m2mTest },
+  { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest }
+  { create_init_test("vcu", "Run decoder test", "verify.xclbin"), vcuKernelTest },
 };
 
 /*

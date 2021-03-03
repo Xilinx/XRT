@@ -84,10 +84,12 @@
 #define	XMC_12V_AUX1_REG                0x2C0
 #define	XMC_VCCINT_TEMP_REG             0x2CC
 #define	XMC_3V3_AUX_I_REG               0x2F0
+#define	XMC_HEARTBEAT_REG               0x2FC
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
 #define	XMC_STATUS2_REG			0x30C
+#define	XMC_HEARTBEAT_ERR_CODE_REG	0x310
 #define	XMC_VCC1V2_I_REG                0x314
 #define	XMC_V12_IN_I_REG                0x320
 #define	XMC_V12_IN_AUX0_I_REG           0x32C
@@ -147,6 +149,7 @@
 #define	VALID_ID			0x74736574
 #define	XMC_CORE_SUPPORT_NOTUPGRADABLE	0x0c010004
 #define	XMC_CORE_SUPPORT_SENSOR_READY	0x0c010002
+#define	XMC_CORE_SUPPORT_HEARTBEAT	0x0c01001B
 #define	GPIO_RESET			0x0
 #define	GPIO_ENABLED			0x1
 #define	SENSOR_DATA_READY_MASK 		0x1
@@ -300,6 +303,18 @@ enum sc_mode {
 #define	XMC_HOST_MSG_MSP432_FW_LENGTH_ERR	0x04
 #define	XMC_HOST_MSG_BRD_INFO_MISSING_ERR	0x05
 
+struct xmc_heartbeat_err_code {
+	u32 xhe_error		: 16;
+	u32 xhe_last_sensor_id	: 8;
+	u32 xhe_sensor_no	: 8;
+};
+
+enum xmc_xhe_error {
+	XHE_NO_ERR = 0,
+	XHE_SINGLE_ERR = 1,
+	XHE_MULTI_ERR = 2,
+};
+
 enum xmc_packet_op {
 	XPO_UNKNOWN = 0,
 	XPO_MSP432_SEC_START,
@@ -442,6 +457,9 @@ struct xocl_xmc {
 	ktime_t			cache_expires;
 	ktime_t			bdinfo_retry;
 	u32			sc_presence;
+	u32			heartbeat_count;
+	u64			heartbeat_time;
+	bool			heartbeat_stall;
 
 	/* XMC mailbox support. */
 	struct mutex		mbx_lock;
@@ -481,7 +499,6 @@ static int xmc_load_board_info(struct xocl_xmc *xmc);
 static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags);
 static bool scaling_condition_check(struct xocl_xmc *xmc);
 static const struct file_operations xmc_fops;
-static bool is_sc_fixed(struct xocl_xmc *xmc);
 static void clock_status_check(struct platform_device *pdev, bool *latched);
 static void xmc_get_serial_num(struct platform_device *pdev);
 static ssize_t xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer,
@@ -574,7 +591,7 @@ static void safe_read_from_peer(struct xocl_xmc *xmc,
 }
 
 static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
-	u32 *val, enum sensor_val_kind val_kind)
+	void *val, enum sensor_val_kind val_kind)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 
@@ -739,6 +756,15 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case XMC_QSPI_STATUS:
 			safe_read32(xmc, XMC_QSPI_STATUS_REG, val);
 			break;
+		case XMC_HEARTBEAT_COUNT:
+			safe_read32(xmc, XMC_HEARTBEAT_REG, val);
+			break;
+		case XMC_HEARTBEAT_ERR_TIME:
+			*(u64 *)val = xmc->heartbeat_time;	
+			break;
+		case XMC_HEARTBEAT_ERR_CODE:
+			safe_read32(xmc, XMC_HEARTBEAT_ERR_CODE_REG, val);
+			break;
 		default:
 			break;
 		}
@@ -747,163 +773,172 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 
 		switch (kind) {
 		case DIMM0_TEMP:
-			*val = xmc->cache->dimm_temp0;
+			*(u32 *)val = xmc->cache->dimm_temp0;
 			break;
 		case DIMM1_TEMP:
-			*val = xmc->cache->dimm_temp1;
+			*(u32 *)val = xmc->cache->dimm_temp1;
 			break;
 		case DIMM2_TEMP:
-			*val = xmc->cache->dimm_temp2;
+			*(u32 *)val = xmc->cache->dimm_temp2;
 			break;
 		case DIMM3_TEMP:
-			*val = xmc->cache->dimm_temp3;
+			*(u32 *)val = xmc->cache->dimm_temp3;
 			break;
 		case FPGA_TEMP:
-			*val = xmc->cache->fpga_temp;
+			*(u32 *)val = xmc->cache->fpga_temp;
 			break;
 		case VOL_12V_PEX:
-			*val = xmc->cache->vol_12v_pex;
+			*(u32 *)val = xmc->cache->vol_12v_pex;
 			break;
 		case VOL_12V_AUX:
-			*val = xmc->cache->vol_12v_aux;
+			*(u32 *)val = xmc->cache->vol_12v_aux;
 			break;
 		case CUR_12V_PEX:
-			*val = xmc->cache->cur_12v_pex;
+			*(u32 *)val = xmc->cache->cur_12v_pex;
 			break;
 		case CUR_12V_AUX:
-			*val = xmc->cache->cur_12v_aux;
+			*(u32 *)val = xmc->cache->cur_12v_aux;
 			break;
 		case SE98_TEMP0:
-			*val = xmc->cache->se98_temp0;
+			*(u32 *)val = xmc->cache->se98_temp0;
 			break;
 		case SE98_TEMP1:
-			*val = xmc->cache->se98_temp1;
+			*(u32 *)val = xmc->cache->se98_temp1;
 			break;
 		case SE98_TEMP2:
-			*val = xmc->cache->se98_temp2;
+			*(u32 *)val = xmc->cache->se98_temp2;
 			break;
 		case FAN_TEMP:
-			*val = xmc->cache->fan_temp;
+			*(u32 *)val = xmc->cache->fan_temp;
 			break;
 		case FAN_RPM:
-			*val = xmc->cache->fan_rpm;
+			*(u32 *)val = xmc->cache->fan_rpm;
 			break;
 		case VOL_3V3_PEX:
-			*val = xmc->cache->vol_3v3_pex;
+			*(u32 *)val = xmc->cache->vol_3v3_pex;
 			break;
 		case VOL_3V3_AUX:
-			*val = xmc->cache->vol_3v3_aux;
+			*(u32 *)val = xmc->cache->vol_3v3_aux;
 			break;
 		case CUR_3V3_AUX:
-			*val = xmc->cache->cur_3v3_aux;
+			*(u32 *)val = xmc->cache->cur_3v3_aux;
 			break;
 		case VPP_BTM:
-			*val = xmc->cache->ddr_vpp_btm;
+			*(u32 *)val = xmc->cache->ddr_vpp_btm;
 			break;
 		case VPP_TOP:
-			*val = xmc->cache->ddr_vpp_top;
+			*(u32 *)val = xmc->cache->ddr_vpp_top;
 			break;
 		case VOL_5V5_SYS:
-			*val = xmc->cache->sys_5v5;
+			*(u32 *)val = xmc->cache->sys_5v5;
 			break;
 		case VOL_1V2_TOP:
-			*val = xmc->cache->top_1v2;
+			*(u32 *)val = xmc->cache->top_1v2;
 			break;
 		case VOL_1V2_BTM:
-			*val = xmc->cache->vcc1v2_btm;
+			*(u32 *)val = xmc->cache->vcc1v2_btm;
 			break;
 		case VOL_1V8:
-			*val = xmc->cache->vol_1v8;
+			*(u32 *)val = xmc->cache->vol_1v8;
 			break;
 		case VCC_0V9A:
-			*val = xmc->cache->mgt0v9avcc;
+			*(u32 *)val = xmc->cache->mgt0v9avcc;
 			break;
 		case VOL_12V_SW:
-			*val = xmc->cache->vol_12v_sw;
+			*(u32 *)val = xmc->cache->vol_12v_sw;
 			break;
 		case VTT_MGTA:
-			*val = xmc->cache->mgtavtt;
+			*(u32 *)val = xmc->cache->mgtavtt;
 			break;
 		case VOL_VCC_INT:
-			*val = xmc->cache->vccint_vol;
+			*(u32 *)val = xmc->cache->vccint_vol;
 			break;
 		case CUR_VCC_INT:
-			*val = xmc->cache->vccint_curr;
+			*(u32 *)val = xmc->cache->vccint_curr;
 			break;
 		case HBM_TEMP:
-			*val = xmc->cache->hbm_temp0;
+			*(u32 *)val = xmc->cache->hbm_temp0;
 			break;
 		case CAGE_TEMP0:
-			*val = xmc->cache->cage_temp0;
+			*(u32 *)val = xmc->cache->cage_temp0;
 			break;
 		case CAGE_TEMP1:
-			*val = xmc->cache->cage_temp1;
+			*(u32 *)val = xmc->cache->cage_temp1;
 			break;
 		case CAGE_TEMP2:
-			*val = xmc->cache->cage_temp2;
+			*(u32 *)val = xmc->cache->cage_temp2;
 			break;
 		case CAGE_TEMP3:
-			*val = xmc->cache->cage_temp3;
+			*(u32 *)val = xmc->cache->cage_temp3;
 			break;
 		case VCC_0V85:
-			*val = xmc->cache->vol_0v85;
+			*(u32 *)val = xmc->cache->vol_0v85;
 			break;
 		case VOL_VCC_3V3:
-			*val = xmc->cache->vol_3v3_vcc;
+			*(u32 *)val = xmc->cache->vol_3v3_vcc;
 			break;
 		case CUR_3V3_PEX:
-			*val = xmc->cache->cur_3v3_pex;
+			*(u32 *)val = xmc->cache->cur_3v3_pex;
 			break;
 		case CUR_VCC_0V85:
-			*val = xmc->cache->cur_0v85;
+			*(u32 *)val = xmc->cache->cur_0v85;
 			break;
 		case VOL_HBM_1V2:
-			*val = xmc->cache->vol_1v2_hbm;
+			*(u32 *)val = xmc->cache->vol_1v2_hbm;
 			break;
 		case VOL_VPP_2V5:
-			*val = xmc->cache->vol_2v5_vpp;
+			*(u32 *)val = xmc->cache->vol_2v5_vpp;
 			break;
 		case VOL_VCCINT_BRAM:
-			*val = xmc->cache->vccint_bram;
+			*(u32 *)val = xmc->cache->vccint_bram;
 			break;
 		case XMC_VER:
-			*val = xmc->cache->version;
+			*(u32 *)val = xmc->cache->version;
 			break;
 		case XMC_OEM_ID:
-			*val = xmc->cache->oem_id;
+			*(u32 *)val = xmc->cache->oem_id;
 			break;
 		case XMC_VCCINT_TEMP:
-			*val = xmc->cache->vccint_temp;
+			*(u32 *)val = xmc->cache->vccint_temp;
 			break;
 		case XMC_12V_AUX1:
-			*val = xmc->cache->vol_12v_aux1;
+			*(u32 *)val = xmc->cache->vol_12v_aux1;
 			break;
 		case XMC_VCC1V2_I:
-			*val = xmc->cache->vol_vcc1v2_i;
+			*(u32 *)val = xmc->cache->vol_vcc1v2_i;
 			break;
 		case XMC_V12_IN_I:
-			*val = xmc->cache->vol_v12_in_i;
+			*(u32 *)val = xmc->cache->vol_v12_in_i;
 			break;
 		case XMC_V12_IN_AUX0_I:
-			*val = xmc->cache->vol_v12_in_aux0_i;
+			*(u32 *)val = xmc->cache->vol_v12_in_aux0_i;
 			break;
 		case XMC_V12_IN_AUX1_I:
-			*val = xmc->cache->vol_v12_in_aux1_i;
+			*(u32 *)val = xmc->cache->vol_v12_in_aux1_i;
 			break;
 		case XMC_VCCAUX:
-			*val = xmc->cache->vol_vccaux;
+			*(u32 *)val = xmc->cache->vol_vccaux;
 			break;
 		case XMC_VCCAUX_PMC:
-			*val = xmc->cache->vol_vccaux_pmc;
+			*(u32 *)val = xmc->cache->vol_vccaux_pmc;
 			break;
 		case XMC_VCCRAM:
-			*val = xmc->cache->vol_vccram;
+			*(u32 *)val = xmc->cache->vol_vccram;
 			break;
 		case XMC_POWER_WARN:
-			*val = xmc->cache->power_warn;
+			*(u32 *)val = xmc->cache->power_warn;
 			break;
 		case XMC_QSPI_STATUS:
-			*val = xmc->cache->qspi_status;
+			*(u32 *)val = xmc->cache->qspi_status;
+			break;
+		case XMC_HEARTBEAT_COUNT:
+			*(u32 *)val = xmc->cache->heartbeat_count;
+			break;
+		case XMC_HEARTBEAT_ERR_TIME:
+			*(u64 *)val = xmc->cache->heartbeat_err_time;
+			break;
+		case XMC_HEARTBEAT_ERR_CODE:
+			*(u32 *)val = xmc->cache->heartbeat_err_code;
 			break;
 		default:
 			break;
@@ -1175,6 +1210,9 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_sensor(pdev, XMC_VCCRAM, &sensors->vol_vccram, SENSOR_INS);
 		xmc_sensor(pdev, XMC_POWER_WARN, &sensors->power_warn, SENSOR_INS);
 		xmc_sensor(pdev, XMC_QSPI_STATUS, &sensors->qspi_status, SENSOR_INS);
+		xmc_sensor(pdev, XMC_HEARTBEAT_COUNT, &sensors->heartbeat_count, SENSOR_INS);
+		xmc_sensor(pdev, XMC_HEARTBEAT_ERR_TIME, &sensors->heartbeat_err_time, SENSOR_INS);
+		xmc_sensor(pdev, XMC_HEARTBEAT_ERR_CODE, &sensors->heartbeat_err_code, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
@@ -1400,6 +1438,26 @@ SENSOR_SYSFS_NODE(xmc_vccaux_pmc, XMC_VCCAUX_PMC);
 SENSOR_SYSFS_NODE(xmc_vccram, XMC_VCCRAM);
 SENSOR_SYSFS_NODE(xmc_power_warn, XMC_POWER_WARN);
 SENSOR_SYSFS_NODE(xmc_qspi_status, XMC_QSPI_STATUS);
+SENSOR_SYSFS_NODE(xmc_heartbeat_count, XMC_HEARTBEAT_COUNT);
+SENSOR_SYSFS_NODE_FORMAT(xmc_heartbeat_err_code, XMC_HEARTBEAT_ERR_CODE, "0x%x\n");
+
+static ssize_t xmc_heartbeat_err_time_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u64 val = 0;
+	xmc_sensor(xmc->pdev, XMC_HEARTBEAT_ERR_TIME, &val, SENSOR_INS);
+	return sprintf(buf, "%llu\n", val);
+}
+static DEVICE_ATTR_RO(xmc_heartbeat_err_time);
+
+static ssize_t xmc_heartbeat_stall_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", xmc->heartbeat_stall);
+}
+static DEVICE_ATTR_RO(xmc_heartbeat_stall);
 
 static ssize_t xmc_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -1486,6 +1544,10 @@ static DEVICE_ATTR_RO(core_version);
 	&dev_attr_xmc_vccaux_pmc.attr,					\
 	&dev_attr_xmc_vccram.attr,					\
 	&dev_attr_xmc_power_warn.attr,					\
+	&dev_attr_xmc_heartbeat_count.attr,				\
+	&dev_attr_xmc_heartbeat_err_code.attr,				\
+	&dev_attr_xmc_heartbeat_err_time.attr,				\
+	&dev_attr_xmc_heartbeat_stall.attr,				\
 	&dev_attr_xmc_qspi_status.attr
 
 /*
@@ -1733,6 +1795,31 @@ static bool is_scaling_enabled(struct xocl_xmc *xmc)
 
 	reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
 	if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE)
+		return true;
+
+	return false;
+}
+
+static bool is_heartbeat_supported(struct xocl_xmc *xmc)
+{
+	u32 xmc_core_version;
+
+	safe_read32(xmc, XMC_CORE_VERSION_REG, &xmc_core_version);
+	return xmc_core_version >= XMC_CORE_SUPPORT_HEARTBEAT;
+}
+
+static bool is_sc_fixed(struct xocl_xmc *xmc)
+{
+	struct xmc_status status;
+	u32 xmc_core_version;
+
+	safe_read32(xmc, XMC_CORE_VERSION_REG, &xmc_core_version);
+	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+
+	if (xmc_core_version >= XMC_CORE_SUPPORT_NOTUPGRADABLE &&
+	    !status.invalid_sc &&
+	    (status.sc_mode == XMC_SC_BSL_MODE_SYNCED_SC_NOT_UPGRADABLE ||
+	     status.sc_mode == XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE))
 		return true;
 
 	return false;
@@ -3694,6 +3781,56 @@ fail:
 	return err;
 }
 
+static inline char*
+xmc_get_heartbeat_reason(enum xmc_xhe_error error_code)
+{
+	switch (error_code) {
+	case XHE_NO_ERR:
+		return "NO_ERR";
+	case XHE_SINGLE_ERR:
+		return "SINGLE_SENSOR_UPDATE_ERR";
+	case XHE_MULTI_ERR:
+		return "MULTIPLE_SENSOR_UPDATE_ERR";
+	default:
+		return "UNDEFINED_ERR";
+	}
+}
+
+static void sensor_status_check(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	struct xmc_heartbeat_err_code err_code = { 0 };
+	XOCL_TIMESPEC time;
+	u32 val;
+	
+	if (!is_heartbeat_supported(xmc))
+		return;
+
+	safe_read32(xmc, XMC_HEARTBEAT_REG, &val);
+	if (val != xmc->heartbeat_count) {
+		if (xmc->heartbeat_stall) {
+			xmc->heartbeat_stall = false;
+			xocl_info(&xmc->pdev->dev, "CMC sensor update resumed.");
+		}
+		xmc->heartbeat_count = val;
+		return;
+	}
+
+	/* cmc heartbeat count is stall, reporting */
+	if (xmc->heartbeat_stall)
+		return;
+
+	xmc->heartbeat_stall = true;
+	XOCL_GETTIME(&time);
+	xmc->heartbeat_time = (u64)time.tv_sec;
+	safe_read32(xmc, XMC_HEARTBEAT_ERR_CODE_REG, (u32 *)&err_code);
+
+	xocl_warn(&xmc->pdev->dev, "%s(0x%x), last sensor id: 0x%x, sensor number: %d",
+		xmc_get_heartbeat_reason(err_code.xhe_error), *(u32 *)&err_code,
+		err_code.xhe_last_sensor_id,
+		err_code.xhe_sensor_no);
+}
+
 static int xmc_offline(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
@@ -3748,6 +3885,7 @@ static struct xocl_mb_funcs xmc_ops = {
 	.xmc_access             = xmc_access,
 	.clock_status		= clock_status_check,
 	.get_serial_num		= xmc_get_serial_num,
+	.sensor_status		= sensor_status_check,
 };
 
 static void xmc_unload_board_info(struct xocl_xmc *xmc)
@@ -3853,6 +3991,16 @@ static int xmc_mapio_by_name(struct xocl_xmc *xmc, struct resource *res)
 	xmc->range[id] = res->end - res->start + 1;
 
 	return 0;
+}
+
+static void inline xmc_enable_sensor_heartbeat(struct xocl_xmc *xmc)
+{
+
+	if (!is_heartbeat_supported(xmc))
+		return;
+
+	xmc->heartbeat_stall = false;
+	safe_read32(xmc, XMC_HEARTBEAT_REG, &xmc->heartbeat_count);
 }
 
 static int xmc_probe(struct platform_device *pdev)
@@ -3981,6 +4129,8 @@ static int xmc_probe(struct platform_device *pdev)
 				xmc->state = XMC_STATE_ENABLED;
 		}
 	}
+
+	xmc_enable_sensor_heartbeat(xmc);
 
 	err = mgmt_sysfs_create_xmc(pdev);
 	if (err) {
@@ -4188,23 +4338,6 @@ static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 	return false;
 }
 
-static bool is_sc_fixed(struct xocl_xmc *xmc)
-{
-	struct xmc_status status;
-	u32 xmc_core_version;
-
-	safe_read32(xmc, XMC_CORE_VERSION_REG, &xmc_core_version);
-	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
-
-	if (xmc_core_version >= XMC_CORE_SUPPORT_NOTUPGRADABLE &&
-	    !status.invalid_sc &&
-	    (status.sc_mode == XMC_SC_BSL_MODE_SYNCED_SC_NOT_UPGRADABLE ||
-	     status.sc_mode == XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE))
-		return true;
-
-	return false;
-}
-
 static int smartnic_cmc_access(struct platform_device *pdev,
 	enum xocl_xmc_flags flags)
 {
@@ -4272,7 +4405,6 @@ static void clock_status_check(struct platform_device *pdev, bool *latched)
 		}
 	}
 }
-
 
 static void xmc_get_serial_num(struct platform_device *pdev)
 {

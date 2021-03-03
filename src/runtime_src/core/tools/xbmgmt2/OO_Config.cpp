@@ -142,37 +142,33 @@ show_device_conf(xrt_core::device* device)
   }
 
   try {
-    std::cout << "\tSecurity level: ";
     auto sec_level = xrt_core::device_query<xrt_core::query::sec_level>(device);
-    std::cout << sec_level << "\n";
+    std::cout << boost::format("  %-33s: %s\n") % "Security level" % sec_level;
   }
   catch (const std::exception& ex) {
     std::cout << ex.what() << "\n";
   }
 
   try {
-    std::cout << "\tRuntime clock scaling enabled status: ";
     auto scaling_enabled = xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(device);
-    std::cout << scaling_enabled << "\n";
+    std::cout << boost::format("  %-33s: %s\n") % "Runtime clock scaling enabled" % scaling_enabled;
   }
-  catch (const std::exception& ex) {
-    std::cout << ex.what() << "\n";
+  catch (...) {
+    //safe to ignore. These sysfs nodes are not present for u30
   }
 
   try {
-    std::cout << "\tScaling threshold power override: ";
     auto scaling_override = xrt_core::device_query<xrt_core::query::xmc_scaling_override>(device);
-    std::cout << scaling_override << "\n";
+    std::cout << boost::format("  %-33s: %s\n") % "Scaling threshold power override" % scaling_override;
   }
-  catch (const std::exception& ex) {
-    std::cout << ex.what() << "\n";
+  catch (...) {
+    //safe to ignore. These sysfs nodes are not present for u30
   }
 
   try {
-    std::cout << "\tData retention: ";
     auto value = xrt_core::device_query<xrt_core::query::data_retention>(device);
     auto data_retention = xrt_core::query::data_retention::to_bool(value);
-    std::cout << (data_retention ? "enabled" : "disabled") << "\n";
+    std::cout << boost::format("  %-33s: %s\n") % "Data retention" % (data_retention ? "enabled" : "disabled");
   }
   catch (const std::exception& ex) {
     std::cout << ex.what() << "\n";
