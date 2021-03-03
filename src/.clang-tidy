@@ -1,5 +1,15 @@
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*,cert-*,bugprone-*,clang-analyzer-*,concurrency-*,cppcoreguidelines-*,hicpp-*,modernize-*,-modernize-use-trailing-return-type,-cppcoreguidelines-pro-bounds-pointer-arithmetic'
+Checks:          >
+clang-diagnostic-*,
+clang-analyzer-*,
+cert-*,bugprone-*,
+clang-analyzer-*,
+concurrency-*,
+cppcoreguidelines-*,
+hicpp-*,
+modernize-*,
+-modernize-use-trailing-return-type,
+-cppcoreguidelines-pro-bounds-pointer-arithmetic
 WarningsAsErrors: ''
 HeaderFilterRegex: ''
 AnalyzeTemporaryDtors: false
