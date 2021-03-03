@@ -569,6 +569,8 @@ int32_t check_all_execbo(XmaSession s_handle) {
                     	       cu_cmd->state >= ERT_CMD_STATE_NORESPONSE) {
                         //Check for invalid/error execo state
                         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE. state=%s", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xma_core::get_cu_cmd_state(cu_cmd).c_str());
+                        std::cout << "XMA FATAL: Unexpected error ERT_CMD_STATE. Cmd state: " << xma_core::get_cu_cmd_state(cu_cmd) << std::endl;
+                        throw std::runtime_error("Unexpected ERT Cmd State");
                     }
                 }
             }
@@ -609,6 +611,8 @@ int32_t check_all_execbo(XmaSession s_handle) {
                     	       cu_cmd->state >= ERT_CMD_STATE_NORESPONSE) {
                         //Check for invalid/error execo state
                         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE. state=%s", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xma_core::get_cu_cmd_state(cu_cmd).c_str());
+                        std::cout << "XMA FATAL: Unexpected error ERT_CMD_STATE. Cmd state: " << xma_core::get_cu_cmd_state(cu_cmd) << std::endl;
+                        throw std::runtime_error("Unexpected ERT Cmd State");
                     } else {
                         ebo_it++;
                     }
