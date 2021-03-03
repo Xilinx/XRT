@@ -41,6 +41,9 @@ namespace xdp {
                 : XDPPlugin()
   {
     db->registerPlugin(this);
+
+    // Get trace metric set
+    metricSet = xrt_core::config::get_aie_trace_metrics();
   }
 
   AieTracePlugin::~AieTracePlugin()

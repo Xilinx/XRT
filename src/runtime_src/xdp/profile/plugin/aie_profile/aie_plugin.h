@@ -23,6 +23,7 @@
 #include <atomic>
 #include <iostream>
 
+#include "xdp/profile/plugin/aie_profile/aie_util.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/config.h"
 
@@ -42,17 +43,34 @@ namespace xdp {
     void endPollforDevice(void* handle);
 
   private:
+    void getPollingInterval();
+    void getMetrics(void* handle, bool isCore);
+
     void pollAIECounters(uint32_t index, void* handle);
     void endPoll();
 
   private:
-    // AIE profiling uses its own thread
-    unsigned int mPollingInterval;
-
-    std::map<void*,std::atomic<bool>> thread_ctrl_map;
-    std::map<void*,std::thread> thread_map;
-
     uint32_t mIndex = 0;
+    uint32_t mPollingInterval;
+
+    std::map<void*,std::atomic<bool>> mThreadCtrlMap;
+    std::map<void*,std::thread> mThreadMap;
+
+    typedef std::tuple<uint32_t, uint32_t, std::string, uint32_t, uint32_t> AieCounter;
+    enum e_aie_tile_type {COLUMN = 0, ROW, MODULE, START_EVENT, END_EVENT};
+    
+    // Storage for what user requests
+    std::set<AieCounter> mCounterSet;
+    // Storage for what is available on device
+    std::map<AieCounter, uint8_t> mCounterMap;
+
+    std::set<std::string> mCoreMetricSets;
+    std::map<std::string, std::vector<uint32_t>> mCoreStartIDs;
+    std::map<std::string, std::vector<uint32_t>> mCoreEndIDs;
+
+    std::set<std::string> mMemoryMetricSets;
+    std::map<std::string, std::vector<uint32_t>> mMemoryStartIDs;
+    std::map<std::string, std::vector<uint32_t>> mMemoryEndIDs;
   };
 
 } // end namespace xdp

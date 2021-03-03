@@ -29,6 +29,8 @@ namespace xdp {
   {
 
     private:
+      std::string metricSet;
+      
       std::vector<void*> deviceHandles;
       std::map<uint64_t, void*> deviceIdToHandle;
 

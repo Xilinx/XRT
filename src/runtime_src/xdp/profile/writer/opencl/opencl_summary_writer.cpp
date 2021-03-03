@@ -191,6 +191,12 @@ namespace xdp {
     }
     {
       std::stringstream setting ;
+      setting << "XRT_INI_SETTING,aie_trace_metrics,"
+	      << xrt_core::config::get_aie_trace_metrics() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
       setting << "XRT_INI_SETTING,aie_profile,"
 	      << xrt_core::config::get_aie_profile() ;
       iniSettings.push_back(setting.str()) ;
@@ -199,6 +205,18 @@ namespace xdp {
       std::stringstream setting ;
       setting << "XRT_INI_SETTING,aie_profile_interval_us,"
 	      << xrt_core::config::get_aie_profile_interval_us() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,aie_profile_core_metrics,"
+	      << xrt_core::config::get_aie_profile_core_metrics() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,aie_profile_memory_metrics,"
+	      << xrt_core::config::get_aie_profile_memory_metrics() ;
       iniSettings.push_back(setting.str()) ;
     }
     {
