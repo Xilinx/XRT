@@ -22,8 +22,8 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 
-#define PAGE_SIZE 256
-#define PAGE_8K   8192
+const static int PAGE_SIZE = 256;
+const static int PAGE_8K   = 8192;
 
 class XQSPIPS_Flasher
 {

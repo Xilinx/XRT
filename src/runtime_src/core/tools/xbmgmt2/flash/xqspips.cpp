@@ -24,6 +24,10 @@
 #include "core/common/query_requests.h"
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 #include "flasher.h"
+#include "core/tools/common/XBUtilities.h"
+#include "core/tools/common/ProgressBar.h"
+namespace XBU = XBUtilities;
+#include "boost/format.hpp"
 
 #ifdef WINDOWS
 #define __func__ __FUNCTION__
@@ -402,9 +406,7 @@ int XQSPIPS_Flasher::revertToMFG(void)
     enterOrExitFourBytesMode(ENTER_4B);
 
     // Sectoer size is defined by SECTOR_SIZE
-    std::cout << "Factory resetting " << std::flush;
     eraseSector(0, GOLDEN_BASE);
-    std::cout << std::endl;
     
     return 0;
 }
@@ -456,10 +458,8 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
     enterOrExitFourBytesMode(ENTER_4B);
 
     // Sectoer size is defined by SECTOR_SIZE
-    std::cout << "Erasing flash" << std::flush;
     eraseSector(0, GOLDEN_BASE);
     //eraseBulk();
-    std::cout << std::endl;
 
     pages = total_size / PAGE_SIZE;
     remain = total_size % PAGE_SIZE;
@@ -488,13 +488,13 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
     }
 #endif
 
-    std::cout << "Programming flash" << std::flush;
     beatCount = 0;
+    XBU::ProgressBar program_flash("Programming flash", static_cast<unsigned int>(pages), XBU::is_esc_enabled(), std::cout);
     for (int page = 0; page <= pages; page++) {
-        beatCount++;
-        if (beatCount % 4000 == 0) {
-            std::cout << "." << std::flush;
-        }
+        program_flash.update(beatCount++);
+        // if (beatCount % 4000 == 0) {
+        //     std::cout << "." << std::flush;
+        // }
 
         addr = page * PAGE_SIZE;
         if (page != pages)
@@ -505,7 +505,7 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
         binStream.read((char *)mWriteBuffer, size);
         writeFlash(addr, size);
     }
-    std::cout << std::endl;
+    program_flash.finish(true, "Flash programmed");
 
     /* Verify (just for debug) */
     binStream.seekg(0, binStream.beg);
@@ -522,13 +522,10 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
     remain = total_size % PAGE_SIZE;
     pages = total_size / PAGE_SIZE;
 
-    std::cout << "Verifying" << std::flush;
     beatCount = 0;
+    XBU::ProgressBar verify_flash("Verifying flash", static_cast<unsigned int>(pages), XBU::is_esc_enabled(), std::cout);
     for (int page = 0; page <= pages; page++) {
-        beatCount++;
-        if (beatCount % 4000 == 0) {
-            std::cout << "." << std::flush;
-        }
+        verify_flash.update(beatCount++);
 
         addr = page * PAGE_SIZE;
         if (page != pages)
@@ -549,9 +546,9 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
                 mismatched = 1;
         }
         if (mismatched)
-            std::cout << "Find mismatch at page " << page << std::endl;
+            verify_flash.finish(false, boost::str(boost::format("Mismatch found at %d page\n") % page));
     }
-    std::cout << std::endl;
+    verify_flash.finish(true, "Flash verified");
 
 #if SAVE_FILE
     of_flash.close();
@@ -1052,10 +1049,11 @@ bool XQSPIPS_Flasher::getFlashID()
     if(mReadBuffer[4] == 0xFF)
         return false;
 
-    for (int i = 0; i < IDCODE_READ_BYTES; i++) {
-        std::cout << "Idcode byte[" << i << "]=" << std::hex << (int)mReadBuffer[i] << std::dec << std::endl;
-        mReadBuffer[i] = 0;
-    }
+    // To-do: move to debug
+    // for (int i = 0; i < IDCODE_READ_BYTES; i++) {
+    //     std::cout << "Idcode byte[" << i << "]=" << std::hex << (int)mReadBuffer[i] << std::dec << std::endl;
+    //     mReadBuffer[i] = 0;
+    // }
 
     return true;
 }
@@ -1073,15 +1071,17 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
     int beatCount = 0;
     //roundup byteCount to next SECTOR boundary
     byteCount = (byteCount + SECTOR_SIZE - 1) & (~SECTOR_SIZE);
+    XBU::ProgressBar erase_flash("Erasing flash", static_cast<unsigned int>(byteCount / SECTOR_SIZE), XBU::is_esc_enabled(), std::cout);
     for (Sector = 0; Sector < (byteCount / SECTOR_SIZE); Sector++) {
 
         if(!isFlashReady())
             return false;
 
         beatCount++;
-        if (beatCount % 64 == 0) {
-            std::cout << "." << std::flush;
-        }
+        erase_flash.update(beatCount);
+        // if (beatCount % 64 == 0) {
+        //     std::cout << "." << std::flush;
+        // }
 
         if (mConnectMode == 0)
             realAddr = addr / 2;
@@ -1107,6 +1107,7 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
 
         addr += SECTOR_SIZE;
     }
+    erase_flash.finish(true, "Flash erased");
 
     if (TEST_MODE)
         std::cout << "Erase Flash done " << byteCount << " bytes" << std::endl;
@@ -1434,7 +1435,6 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int)
 
     std::cout << "Write " << total_size << " bytes" << std::endl;
 
-    std::cout << "earse flash" << std::endl;
     eraseSector(0, total_size);
     //eraseBulk();
 
