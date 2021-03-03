@@ -155,6 +155,7 @@ struct xocl_ert_user {
 
 static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd);
 static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type);
+static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd);
 
 static ssize_t clock_timestamp_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
@@ -556,7 +557,7 @@ ert_release_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 }
 
 
-static void
+static inline void
 ert_post_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 {
 	if (likely(!ert_special_cmd(ecmd)))
@@ -566,6 +567,32 @@ ert_post_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 		memcpy(&ert_user->ert_valid, ert_user->cq_base, sizeof(struct ert_validate_cmd));
 
 	return;
+}
+
+static inline bool
+ert_pre_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
+{
+	bool bad_cmd = false;
+
+	switch (cmd_opcode(ecmd)) {
+	case OP_START:
+		BUG_ON(ert_user->ctrl_busy || !ert_user->config);
+		break;
+	case OP_CLK_CALIB:
+	case OP_CONFIG_SK:
+	case OP_GET_STAT:
+	case OP_VALIDATE:
+		bad_cmd = false;
+		break;
+	case OP_CONFIG:
+		if (ert_cfg_cmd(ert_user, ecmd))
+			bad_cmd = true;
+		break;
+	default:
+		bad_cmd = true;
+	}
+
+	return bad_cmd;
 }
 
 /**
@@ -976,18 +1003,14 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 			continue;
 		}
 
-		if (cmd_opcode(ecmd) == OP_CONFIG) {
-			if (ert_cfg_cmd(ert_user, ecmd)) {
-
-				ERTUSER_ERR(ert_user, "%s config cmd error\n", __func__);
-				ecmd->status = KDS_ABORT;
-				list_move_tail(&ecmd->list, &ert_user->cq);
-				--ert_user->num_rq;
-				++ert_user->num_cq;
-				continue;
-			}
-		} else if (cmd_opcode(ecmd) == OP_START)
-			BUG_ON(ert_user->ctrl_busy || !ert_user->config);
+		if (ert_pre_process(ert_user, ecmd)) {
+			ERTUSER_ERR(ert_user, "%s bad cmd, opcode: %d\n", __func__, cmd_opcode(ecmd));
+			ecmd->status = KDS_ABORT;
+			list_move_tail(&ecmd->list, &ert_user->cq);
+			--ert_user->num_rq;
+			++ert_user->num_cq;
+			continue;
+		}
 
 		if (ert_acquire_slot(ert_user, ecmd) == no_index) {
 			ERTUSER_DBG(ert_user, "%s not slot available\n", __func__);
