@@ -49,7 +49,7 @@ typedef struct _xrt_buffer {
 
 int alloc_xrt_buffer (xclDeviceHandle handle, unsigned int size, enum xclBOKind bo_kind, unsigned flags, xrt_buffer *buffer);
 void free_xrt_buffer (xclDeviceHandle handle, xrt_buffer *buffer);
-int download_xclbin ( const char *bit, unsigned deviceIndex, const char* halLog, xclDeviceHandle *handle, uuid_t *xclbinId);
+int download_xclbin ( const char *bit, unsigned deviceIndex, int* cu_index, xclDeviceHandle *handle, uuid_t *xclbinId);
 int send_softkernel_command (xclDeviceHandle handle, xrt_buffer *sk_buf, unsigned int *payload, unsigned int num_idx, unsigned int cu_mask, int timeout);
 
 
