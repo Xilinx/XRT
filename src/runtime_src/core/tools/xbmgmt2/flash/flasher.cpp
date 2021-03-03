@@ -121,7 +121,17 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     }
     case QSPIPS:
     {
-        std::cout << "ERROR: QSPIPS mode is no longer supported." << std::endl;
+        XQSPIPS_Flasher xqspi_ps(m_device);
+        if (primary == nullptr)
+        {
+            retVal = xqspi_ps.revertToMFG();
+        }
+        else
+        {
+	    if(secondary != nullptr)
+            	std::cout << "Warning: QSPIPS mode does not support secondary file." << std::endl;
+            retVal = xqspi_ps.xclUpgradeFirmware(*primary);
+        }
         break;
     }
     case OSPIVERSAL:
