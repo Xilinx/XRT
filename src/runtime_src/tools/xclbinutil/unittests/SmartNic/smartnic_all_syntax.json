@@ -63,6 +63,7 @@
                         "name": "foo_my_cam_instance_1",
                         "id": "0",
                         "config": "8E66D3D94B354472AC95030EB88E9844CE88AD344DA749E0A3352E313B394B07",
+                        "base_address": "68719476736",
                         "driver_index": "0"
                     }
                 ],
