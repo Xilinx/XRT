@@ -39,7 +39,7 @@ namespace xdp {
     NativeTraceWriter(const char* filename) ;
     ~NativeTraceWriter() ;
 
-    virtual void write(bool openNewFile) ;
+    virtual bool write(bool openNewFile) ;
   } ;
 
 } // end namespace xdp

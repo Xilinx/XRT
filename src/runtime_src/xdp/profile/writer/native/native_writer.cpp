@@ -75,7 +75,7 @@ namespace xdp {
     // No dependencies in Native XRT APIs
   }
 
-  void NativeTraceWriter::write(bool openNewFile)
+  bool NativeTraceWriter::write(bool openNewFile)
   {
     writeHeader() ;       fout << std::endl ;
     writeStructure() ;    fout << std::endl ;
@@ -84,6 +84,8 @@ namespace xdp {
     writeDependencies() ; fout << std::endl ;
 
     if (openNewFile) switchFiles() ;
+
+    return true ;
   }
 
 } // end namespace xdp
