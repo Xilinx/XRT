@@ -1117,7 +1117,7 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   /* Allocate memory for final output buffer */
   out_buffer = (uint8_t *) calloc (1, OUT_MEM_SIZE);
   if (!out_buffer) {
-    ERROR_PRINT ("failed to allocate output buffer memory");
+    ERROR_PRINT ("failed to allocate output buffer memory\n");
     iret = FALSE;
     goto error;
   }
