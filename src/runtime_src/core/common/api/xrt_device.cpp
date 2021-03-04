@@ -155,7 +155,7 @@ namespace xrt {
 
 device::
 device(unsigned int index)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::device",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::device",
 	   alloc_device_index, index))
 {}
 
@@ -166,7 +166,7 @@ device(const std::string& bdf)
 
 device::
 device(xclDeviceHandle dhdl)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::device",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::device",
 	   alloc_device_handle, dhdl))
 {}
 
@@ -174,41 +174,41 @@ uuid
 device::
 load_xclbin(const struct axlf* top)
 {
-  xrt::xclbin xclbin{top};
-  // Wrapped handle->load_xclbin(xclbin)
-  xdpnative::profiling_wrapper_member(__func__, "xrt::device",
-  handle.get(), &xrt_core::device::load_xclbin, xclbin);
-  return xclbin.get_uuid();
+  return xdp::native::profiling_wrapper(__func__, "xrt::device", [this, top]{
+    xrt::xclbin xclbin{top};
+    handle->load_xclbin(xclbin);
+    return xclbin.get_uuid();
+  });
 }
 
 uuid
 device::
 load_xclbin(const std::string& fnm)
 {
-  xrt::xclbin xclbin{fnm};
-  // Wrapped handle->load_xclbin(xclbin)
-  xdpnative::profiling_wrapper_member(__func__, "xrt::device",
-  handle.get(), &xrt_core::device::load_xclbin, xclbin);
-  return xclbin.get_uuid();
+  return xdp::native::profiling_wrapper(__func__, "xrt::device", [this, fnm]{
+    xrt::xclbin xclbin{fnm};
+    handle->load_xclbin(xclbin);
+    return xclbin.get_uuid();
+  });
 }
 
 uuid
 device::
 load_xclbin(const xclbin& xclbin)
 {
-  // Wrapped handle->load_xclbin(xclbin)
-  xdpnative::profiling_wrapper_member(__func__, "xrt::device",
-  handle.get(), &xrt_core::device::load_xclbin, xclbin);
-  return xclbin.get_uuid();
+  return xdp::native::profiling_wrapper(__func__, "xrt::device", [this, xclbin]{
+    handle->load_xclbin(xclbin);
+    return xclbin.get_uuid();
+  });
 }
 
 uuid
 device::
 get_xclbin_uuid() const
 {
-  return
-    xdpnative::profiling_wrapper_member(__func__, "xrt::device",
-                                        handle.get(), &xrt_core::device::get_xclbin_uuid) ;
+  return xdp::native::profiling_wrapper(__func__, "xrt::device", [this]{
+    return handle->get_xclbin_uuid();
+  });
 }
 
 device::
@@ -228,10 +228,10 @@ std::pair<const char*, size_t>
 device::
 get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
 {
-  // Wrapped handle->get_axlf_section_or_error(section, uuid) with
-  // cast for disambiguation
-  return 
-    xdpnative::profiling_wrapper_member(__func__, "xrt::device", handle.get(), static_cast<std::pair<const char*, size_t> (xrt_core::device::*)(axlf_section_kind, const xrt::uuid&) const>(&xrt_core::device::get_axlf_section_or_error), section, uuid);
+  return xdp::native::profiling_wrapper(__func__, "xrt::device",
+    [this, section, uuid]{
+      return handle->get_axlf_section_or_error(section, uuid);
+    });
 }
 
 boost::any

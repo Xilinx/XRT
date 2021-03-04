@@ -2225,7 +2225,7 @@ namespace xrt {
 
 run::
 run(const kernel& krnl)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::run",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::run",
 					alloc_run, krnl.get_handle()))
 {}
 
@@ -2233,24 +2233,28 @@ void
 run::
 start()
 {
-  xdpnative::profiling_wrapper_member(__func__, "xrt::run",
-  handle.get(), &run_impl::start);
+  xdp::native::profiling_wrapper(__func__, "xrt::run", [this]{
+    handle->start();
+  });
 }
 
 ert_cmd_state
 run::
 wait(const std::chrono::milliseconds& timeout_ms) const
 {
-  return xdpnative::profiling_wrapper_member(__func__, "xrt::run",
-  handle.get(), &run_impl::wait, timeout_ms);
+  return xdp::native::profiling_wrapper(__func__, "xrt::run",
+    [this, timeout_ms] {
+      return handle->wait(timeout_ms);
+    });
 }
 
 ert_cmd_state
 run::
 state() const
 {
-  return xdpnative::profiling_wrapper_member(__func__, "xrt::run",
-  handle.get(), &run_impl::state);
+  return xdp::native::profiling_wrapper(__func__, "xrt::run", [this]{
+    return handle->state();
+  });
 }
 
 void
@@ -2305,27 +2309,29 @@ void
 run::
 set_event(const std::shared_ptr<event_impl>& event) const
 {
-  xdpnative::profiling_wrapper_member(__func__, "xrt::run",
-  handle.get(), &run_impl::set_event, event);
+  xdp::native::profiling_wrapper(__func__, "xrt::run", [this, event]{
+    handle->set_event(event);
+  });
 }
 
 ert_packet*
 run::
 get_ert_packet() const
 {
-  return xdpnative::profiling_wrapper_member(__func__, "xrt::run",
-  handle.get(), &run_impl::get_ert_packet);
+  return xdp::native::profiling_wrapper(__func__, "xrt::run", [this]{
+    return handle->get_ert_packet();
+  });
 }
 
 kernel::
 kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::kernel",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::kernel",
 	   alloc_kernel, get_device(xdev), xclbin_id, name, mode))
 {}
 
 kernel::
 kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::kernel",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::kernel",
 	   alloc_kernel, get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode))
 {}
 
@@ -2333,16 +2339,20 @@ uint32_t
 kernel::
 read_register(uint32_t offset) const
 {
-  return xdpnative::profiling_wrapper_member(__func__, "xrt::kernel",
-  handle.get(), &kernel_impl::read_register, offset, false);
+  return xdp::native::profiling_wrapper(__func__, "xrt::kernel", [this, offset]{
+    return handle->read_register(offset);
+  });
+  //  return xdp::native::profiling_wrapper_member(__func__, "xrt::kernel",
+  //handle.get(), &kernel_impl::read_register, offset, false);
 }
 
 void
 kernel::
 write_register(uint32_t offset, uint32_t data)
 {
-  xdpnative::profiling_wrapper_member(__func__, "xrt::kernel",
-  handle.get(), &kernel_impl::write_register, offset, data);
+  xdp::native::profiling_wrapper(__func__, "xrt::kernel", [this, offset, data]{
+    handle->write_register(offset, data);
+  });
 }
 
 
@@ -2350,16 +2360,18 @@ int
 kernel::
 group_id(int argno) const
 {
-  return xdpnative::profiling_wrapper_member(__func__, "xrt::kernel",
-  handle.get(), &kernel_impl::group_id, argno);
+  return xdp::native::profiling_wrapper(__func__, "xrt::kernel", [this, argno]{
+    return handle->group_id(argno);
+  });
 }
 
 uint32_t
 kernel::
 offset(int argno) const
 {
-  return xdpnative::profiling_wrapper_member(__func__, "xrt::kernel",
-  handle.get(), &kernel_impl::arg_offset, argno);
+  return xdp::native::profiling_wrapper(__func__, "xrt::kernel", [this, argno]{
+    return handle->arg_offset(argno);
+  });
 }
 
 } // namespace xrt

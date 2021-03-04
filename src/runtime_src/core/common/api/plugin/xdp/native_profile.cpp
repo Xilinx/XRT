@@ -20,9 +20,6 @@
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
 
-#include <map>
-#include <mutex>
-
 // Anonymous namespace for helper functions
 namespace {
 
@@ -38,7 +35,8 @@ static std::string full_name(const char* type, const char* function)
 
 } // end anonymous namespace
 
-namespace xdpnative {
+namespace xdp {
+namespace native {
 
 void load_xdp_native()
 {
@@ -55,17 +53,19 @@ void register_native_functions(void* handle)
   typedef void (*ftype)(const char*, unsigned long long int) ;
   function_start_cb =
     (ftype)(xrt_core::dlsym(handle, "native_function_start")) ;
-  if (xrt_core::dlerror() != NULL) function_start_cb = nullptr ;
+  if (xrt_core::dlerror() != nullptr)
+    function_start_cb = nullptr ;
 
   function_end_cb = (ftype)(xrt_core::dlsym(handle, "native_function_end")) ;
-  if (xrt_core::dlerror() != NULL) function_end_cb = nullptr ;
+  if (xrt_core::dlerror() != nullptr)
+    function_end_cb = nullptr ;
 }
 
 void native_warning_function()
 {}
 
-native_api_call_logger::
-native_api_call_logger(const char* function, const char* type)
+api_call_logger::
+api_call_logger(const char* function, const char* type)
   : m_funcid(0), m_name(function), m_type(type)
 {
   static bool s_load_native = false ;
@@ -84,8 +84,8 @@ native_api_call_logger(const char* function, const char* type)
   }
 }
 
-native_api_call_logger::
-~native_api_call_logger()
+api_call_logger::
+~api_call_logger()
 {
   if (function_end_cb) {
     if (m_type != nullptr)
@@ -95,5 +95,6 @@ native_api_call_logger::
   }
 }
 
-} // end namespace xdpnative
+} // end namespace native
+} // end namespace xdp
 

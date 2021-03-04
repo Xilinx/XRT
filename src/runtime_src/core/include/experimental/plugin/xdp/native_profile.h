@@ -24,7 +24,8 @@
  * Native XRT API (C layer) to the XDP plugin
  */
 
-namespace xdpnative {
+namespace xdp {
+namespace native {
 
 // The functions responsible for loading and linking the plugin
 void load_xdp_native() ;
@@ -34,46 +35,33 @@ void native_warning_function() ;
 // An instance of the native_api_call_logger class will be created
 //  in every function we are monitoring.  The constructor marks the
 //  start time, and the destructor marks the end time
-class native_api_call_logger
+class api_call_logger
 {
  private:
   uint64_t m_funcid ;
   const char* m_name = nullptr ;
   const char* m_type = nullptr ;
  public:
-  native_api_call_logger(const char* function, const char* type = nullptr) ;
-  ~native_api_call_logger() ;
+  api_call_logger(const char* function, const char* type = nullptr) ;
+  ~api_call_logger() ;
 } ;
 
-// For C++ object constructors, we also need a wrapper function to capture
-//  the time spent in the initializer of the handle
 template <typename Callable, typename ...Args>
 auto
 profiling_wrapper(const char* function, const char* type,
                   Callable&& f, Args&&...args)
 {
   if (xrt_core::config::get_native_xrt_trace()) {
-    native_api_call_logger log_object(function, type) ;
+    api_call_logger log_object(function, type) ;
     return f(std::forward<Args>(args)...) ;
   }
   return f(std::forward<Args>(args)...) ;
 }
 
-template <typename Instance, typename CallableMember, typename ...Args>
-auto
-profiling_wrapper_member(const char* function, const char* type,
-                         Instance&& i, CallableMember&& f, Args&&...args)
-{
-  if (xrt_core::config::get_native_xrt_trace()) {
-    native_api_call_logger log_object(function, type) ;
-    return (i->*f)(std::forward<Args>(args)...) ;
-  }
-  return (i->*f)(std::forward<Args>(args)...) ;
-}
-
-} // end namespace xdpnative
+} // end namespace native
+} // end namespace xdp
 
 // Helpful macros to instantiate our objects
-#define NATIVE_LOG_FUNCTION_CALL xdpnative::native_api_call_logger LogObject(__func__);
+#define NATIVE_LOG_FUNCTION_CALL xdp::native::api_call_logger LogObject(__func__);
 
 #endif

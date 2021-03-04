@@ -255,13 +255,13 @@ namespace xrt {
 
 error::
 error(const xrt::device& device, xrtErrorClass ecl)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::error",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::error",
            alloc_error_from_device, device.get_handle().get(), ecl))
 {}
 
 error::
 error(xrtErrorCode code, xrtErrorTime timestamp)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::error",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::error",
 	   alloc_error_from_code, code, timestamp))
 {}
 
@@ -269,29 +269,28 @@ xrtErrorTime
 error::
 get_timestamp() const
 {
-  return
-    xdpnative::profiling_wrapper_member(__func__, "xrt::error",
-    handle.get(), &error_impl::get_timestamp);
+  return xdp::native::profiling_wrapper(__func__, "xrt::error", [this]{
+    return handle->get_timestamp();
+  });
 }
 
 xrtErrorCode
 error::
 get_error_code() const
 {
-  return
-    xdpnative::profiling_wrapper_member(__func__, "xrt::error",
-    handle.get(), &error_impl::get_error_code);
+  return xdp::native::profiling_wrapper(__func__, "xrt::error", [this]{
+    return handle->get_error_code();
+  });
 }
 
 std::string
 error::
 to_string() const
 {
-  return
-    xdpnative::profiling_wrapper_member(__func__, "xrt::error",
-    handle.get(), &error_impl::to_string);
+  return xdp::native::profiling_wrapper(__func__, "xrt::error", [this]{
+    return handle->to_string();
+  });
 }
-
 
 } // namespace xrt
 

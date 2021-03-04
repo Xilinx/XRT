@@ -730,31 +730,31 @@ namespace xrt {
 
 bo::
 bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::bo",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::bo",
            alloc_userptr, dhdl, userptr, sz, static_cast<xrtBufferFlags>(flags), grp))
 {}
 
 bo::
 bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::bo",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::bo",
            alloc, dhdl, size, static_cast<xrtBufferFlags>(flags), grp))
 {}
 
 bo::
 bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::bo",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::bo",
 	   alloc_import, dhdl, ehdl))
 {}
 
 bo::
 bo(const bo& parent, size_t size, size_t offset)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::bo",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::bo",
 	   sub_buffer, parent.handle, size, offset))
 {}
 
 bo::
 bo(xrtBufferHandle xhdl)
-  : handle(xdpnative::profiling_wrapper(__func__, "xrt::bo",
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::bo",
 	   get_boh, xhdl))
 {}
 
@@ -762,72 +762,74 @@ size_t
 bo::
 size() const
 {
-  return
-    xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
-                                        handle.get(), &bo_impl::get_size);
+  return xdp::native::profiling_wrapper(__func__, "xrt::bo", [this]{
+    return handle->get_size();
+  }) ;
 }
 
 uint64_t
 bo::
 address() const
 {
-  return
-    xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
-                                        handle.get(), &bo_impl::get_address);
+  return xdp::native::profiling_wrapper(__func__, "xrt::bo", [this]{
+    return handle->get_address();
+  });
 }
 
 xclBufferExportHandle
 bo::
 export_buffer()
 {
-  return
-    xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
-                                        handle.get(), &bo_impl::export_buffer);
+  return xdp::native::profiling_wrapper(__func__, "xrt::bo", [this]{
+    return handle->export_buffer();
+  });
 }
 
 void
 bo::
 sync(xclBOSyncDirection dir, size_t size, size_t offset)
-{  
-  xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
-                                      handle.get(), &bo_impl::sync,
-                                      dir, size, offset);
+{
+  return xdp::native::profiling_wrapper(__func__, "xrt::bo",
+    [this, dir, size, offset]{
+      handle->sync(dir, size, offset);
+    });
 }
 
 void*
 bo::
 map()
 {
-  return
-    xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
-                                        handle.get(), &bo_impl::get_hbuf);
+  return xdp::native::profiling_wrapper(__func__, "xrt::bo", [this]{
+    return handle->get_hbuf();
+  });
 }
 
 void
 bo::
 write(const void* src, size_t size, size_t seek)
 {
-  xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
-                                      handle.get(), &bo_impl::write,
-                                      src, size, seek);
+  xdp::native::profiling_wrapper(__func__, "xrt::bo", [this, src, size, seek]{
+    handle->write(src, size, seek);
+  });
 }
 
 void
 bo::
 read(void* dst, size_t size, size_t skip)
 {
-  xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
-                                      handle.get(), &bo_impl::read,
-                                      dst, size, skip);
+  xdp::native::profiling_wrapper(__func__, "xrt::bo", [this, dst, size, skip]{
+    handle->read(dst, size, skip);
+  });
 }
 
 void
 bo::
 copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 {
-  xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
-                                      handle.get(), &bo_impl::copy,
-                                      src.handle.get(), sz, src_offset, dst_offset) ;
+  xdp::native::profiling_wrapper(__func__, "xrt::bo",
+    [this, src, sz, src_offset, dst_offset]{
+      handle->copy(src.handle.get(), sz, src_offset, dst_offset);
+    });
 }
 
 } // xrt
