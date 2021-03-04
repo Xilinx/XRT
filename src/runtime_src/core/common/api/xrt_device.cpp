@@ -22,7 +22,6 @@
 
 #include "core/include/experimental/xrt_device.h"
 #include "core/include/experimental/xrt_aie.h"
-#include "core/include/experimental/plugin/xdp/native_profile.h"
 
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -30,6 +29,7 @@
 #include "core/common/query_requests.h"
 
 #include "xclbin_int.h" // Non public xclbin APIs
+#include "native_profile.h"
 
 #include <map>
 #include <vector>

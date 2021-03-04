@@ -21,7 +21,7 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_bo.h"
 #include "core/include/experimental/xrt_aie.h"
-#include "core/include/experimental/plugin/xdp/native_profile.h"
+#include "native_profile.h"
 #include "bo.h"
 
 #include "device_int.h"

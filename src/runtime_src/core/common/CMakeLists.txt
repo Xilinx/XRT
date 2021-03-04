@@ -21,7 +21,6 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "xclbin_parser.cpp"
   "xclbin_swemu.cpp"
   "api/*.cpp"
-  "api/plugin/xdp/*.cpp"
   )
 
 if (DEFINED XRT_AIE_BUILD)

@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#include "core/include/experimental/plugin/xdp/native_profile.h"
+#include "native_profile.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 #include "core/common/dlfcn.h"

@@ -20,7 +20,6 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_xclbin.h"
-#include "core/include/experimental/plugin/xdp/native_profile.h"
 
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -30,6 +29,8 @@
 #include "core/common/xclbin_swemu.h"
 
 #include "core/include/xclbin.h"
+
+#include "native_profile.h"
 
 #include <fstream>
 #include <set>
