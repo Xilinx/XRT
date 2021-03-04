@@ -51,7 +51,8 @@ XAIE_EVENT_MEMORY_STALL_CORE,
     metricSets = {"functions", "functions_partial_stalls", "functions_all_stalls", "all"};
     
     // Pre-defined metric sets
-    // TODO: Do we need to know the profile counter #s used for combo events below?
+    // NOTE: last two events in each set are dependent on actual profile counter reserved
+    //
     // functions: "traced_events": [35, 36, 7, 8, 0, 0, 0, 0]
     // functions_partial_stalls: "traced_events": [35, 36, 24, 25, 26, 7, 8, 0]
     // functions_all_stalls: "traced_events": [35, 36, 23, 24, 25, 26, 7, 8]
@@ -69,19 +70,19 @@ XAIE_EVENT_MEMORY_STALL_CORE,
     //      },
     eventSets = {
       {"functions",                {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
-                                    XAIE_EVENT_COMBO_EVENT_2_CORE, XAIE_EVENT_COMBO_EVENT_3_CORE}},
+                                    XAIE_EVENT_PERF_CNT_2_CORE,    XAIE_EVENT_PERF_CNT_3_CORE}},
       {"functions_partial_stalls", {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
                                     XAIE_EVENT_STREAM_STALL_CORE, 
                                     XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE, 
-                                    XAIE_EVENT_COMBO_EVENT_2_CORE, XAIE_EVENT_COMBO_EVENT_3_CORE}},
+                                    XAIE_EVENT_PERF_CNT_2_CORE,    XAIE_EVENT_PERF_CNT_3_CORE}},
       {"functions_all_stalls",     {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
                                     XAIE_EVENT_MEMORY_STALL_CORE,  XAIE_EVENT_STREAM_STALL_CORE, 
                                     XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE, 
-                                    XAIE_EVENT_COMBO_EVENT_2_CORE, XAIE_EVENT_COMBO_EVENT_3_CORE}},
+                                    XAIE_EVENT_PERF_CNT_2_CORE,    XAIE_EVENT_PERF_CNT_3_CORE}},
       {"all",                      {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
                                     XAIE_EVENT_MEMORY_STALL_CORE,  XAIE_EVENT_STREAM_STALL_CORE, 
                                     XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE, 
-                                    XAIE_EVENT_COMBO_EVENT_2_CORE, XAIE_EVENT_COMBO_EVENT_3_CORE}}
+                                    XAIE_EVENT_PERF_CNT_2_CORE,    XAIE_EVENT_PERF_CNT_3_CORE}}
     };
   }
 
