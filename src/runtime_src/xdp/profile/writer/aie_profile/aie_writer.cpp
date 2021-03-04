@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "xdp/profile/writer/aie/aie_writer.h"
+#include "xdp/profile/writer/aie_profile/aie_writer.h"
 #include "xdp/profile/database/database.h"
 
 namespace xdp {

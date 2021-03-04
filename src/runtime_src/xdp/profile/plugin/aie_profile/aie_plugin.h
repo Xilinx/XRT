@@ -52,6 +52,9 @@ namespace xdp {
     void pollAIECounters(uint32_t index, void* handle);
     void endPoll();
 
+    void configureCoreCounters(uint32_t index, void* handle);
+    void configureMemCounters(uint32_t index, void* handle);
+
   private:
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;
@@ -72,7 +75,7 @@ namespace xdp {
     std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
 
     std::set<std::string> mMemoryMetricSets;
-    std::map<std::string, std::vector<XAie_Events>> mMemoryStartIDs;
+    std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
     std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
   };
 
