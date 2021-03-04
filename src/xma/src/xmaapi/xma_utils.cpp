@@ -569,6 +569,13 @@ int32_t check_all_execbo(XmaSession s_handle) {
                     	       cu_cmd->state >= ERT_CMD_STATE_NORESPONSE) {
                         //Check for invalid/error execo state
                         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE. state=%s", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xma_core::get_cu_cmd_state(cu_cmd).c_str());
+                        std::string err_tmp("XMA FATAL: Session id: ");
+                        err_tmp.append(std::to_string(s_handle.session_id));
+                        err_tmp.append(", type: ");
+                        err_tmp.append(xma_core::get_session_name(s_handle.session_type));
+                        err_tmp.append("; Unexpected ERT_CMD_STATE. state=");
+                        err_tmp.append(xma_core::get_cu_cmd_state(cu_cmd));
+                        throw std::runtime_error(err_tmp);
                     }
                 }
             }
@@ -609,6 +616,13 @@ int32_t check_all_execbo(XmaSession s_handle) {
                     	       cu_cmd->state >= ERT_CMD_STATE_NORESPONSE) {
                         //Check for invalid/error execo state
                         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE. state=%s", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xma_core::get_cu_cmd_state(cu_cmd).c_str());
+                        std::string err_tmp("XMA FATAL: Session id: ");
+                        err_tmp.append(std::to_string(s_handle.session_id));
+                        err_tmp.append(", type: ");
+                        err_tmp.append(xma_core::get_session_name(s_handle.session_type));
+                        err_tmp.append("; Unexpected ERT_CMD_STATE. state=");
+                        err_tmp.append(xma_core::get_cu_cmd_state(cu_cmd));
+                        throw std::runtime_error(err_tmp);
                     } else {
                         ebo_it++;
                     }
