@@ -62,11 +62,11 @@ execute_process(COMMAND ${UNAME} -r
 if (DEFINED ENV{XRT_BOOST_INSTALL})
   set(XRT_BOOST_INSTALL $ENV{XRT_BOOST_INSTALL})
   set(Boost_USE_STATIC_LIBS ON)
-  find_package(Boost 
+  find_package(Boost
     HINTS $ENV{XRT_BOOST_INSTALL}
     REQUIRED COMPONENTS system filesystem)
 else()
-  find_package(Boost 
+  find_package(Boost
     REQUIRED COMPONENTS system filesystem)
 endif()
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
@@ -116,6 +116,9 @@ include (CMake/ccache.cmake)
 message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR}) (Kernel ${LINUX_KERNEL_VERSION})")
 message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
 
+# --- Lint ---
+include (CMake/lint.cmake)
+
 add_subdirectory(runtime_src)
 
 #XMA settings START
@@ -146,9 +149,6 @@ message("-- XRT version: ${XRT_VERSION_STRING}")
 
 # -- CPack
 include (CMake/cpackLin.cmake)
-
-# --- Lint ---
-include (CMake/lint.cmake)
 
 set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
 
