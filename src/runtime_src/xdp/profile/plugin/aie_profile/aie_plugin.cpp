@@ -43,27 +43,34 @@ namespace xdp {
 
     // Pre-defined metric sets
     mCoreMetricSets = {"heat_map", "stalls", "execution"};
-    mCoreStartEvents["heat_map"]    = {XAIE_EVENT_ACTIVE_CORE, XAIE_EVENT_GROUP_CORE_STALL_CORE,
-                                       XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE};
-    mCoreStartEvents["stalls"]      = {XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE,
-                                       XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE};
-    mCoreStartEvents["execution"]   = {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_VECTOR_CORE,
-                                       XAIE_EVENT_INSTR_LOAD_CORE, XAIE_EVENT_INSTR_STORE_CORE};
-    
-    mCoreEndEvents["heat_map"]      = {XAIE_EVENT_DISABLED_CORE, XAIE_EVENT_COMBO0,
-                                       XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE};
-    mCoreEndEvents["stalls"]        = {XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE,
-                                       XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE};
-    mCoreEndEvents["execution"]     = {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_VECTOR_CORE,
-                                       XAIE_EVENT_INSTR_LOAD_CORE, XAIE_EVENT_INSTR_STORE_CORE};
+    mCoreStartEvents = {
+      {"heat_map",  {XAIE_EVENT_ACTIVE_CORE, XAIE_EVENT_GROUP_CORE_STALL_CORE,
+                     XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE}},
+      {"stalls",    {XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE,
+                     XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE}},
+      {"execution", {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_VECTOR_CORE,
+                     XAIE_EVENT_INSTR_LOAD_CORE, XAIE_EVENT_INSTR_STORE_CORE}}
+    };
+
+    mCoreEndEvents = {
+      {"heat_map",  {XAIE_EVENT_DISABLED_CORE, XAIE_EVENT_GROUP_CORE_STALL_CORE,
+                     XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE}},
+      {"stalls",    {XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE,
+                     XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE}},
+      {"execution", {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_VECTOR_CORE,
+                     XAIE_EVENT_INSTR_LOAD_CORE, XAIE_EVENT_INSTR_STORE_CORE}}
+    };
 
     mMemoryMetricSets = {"dma_locks", "conflicts"};
-    mMemoryStartEvents["dma_locks"] = {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM, XAIE_EVENT_GROUP_LOCK_MEM};
-    mMemoryStartEvents["conflicts"] = {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM};
+    mMemoryStartEvents = {
+      {"dma_locks", {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM, XAIE_EVENT_GROUP_LOCK_MEM}},
+      {"conflicts", {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}}
+    };
     
-    mMemoryEndEvents["dma_locks"]   = {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM, XAIE_EVENT_GROUP_LOCK_MEM};
-    mMemoryEndEvents["conflicts"]   = {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM};
-
+    mMemoryEndEvents = {
+      {"dma_locks", {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM, XAIE_EVENT_GROUP_LOCK_MEM}}, 
+      {"conflicts", {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}}
+    };
     getPollingInterval();
   }
 
@@ -142,7 +149,7 @@ namespace xdp {
       // Capture all tiles across all graphs
       std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
       auto graphs = xrt_core::edge::aie::get_graphs(device.get());
-      std::vector<edge::aie::tile_type> tiles;
+      std::vector<xrt_core::edge::aie::tile_type> tiles;
       for (auto& graph : graphs) {
         auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
         std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
@@ -359,6 +366,82 @@ namespace xdp {
 
     mThreadCtrlMap.clear();
     mThreadMap.clear();
+  }
+
+  void AIEProfilingPlugin::configureCoreCounters(uint32_t index, void* handle)
+  {
+    auto drv = ZYNQ::shim::handleCheck(handle);
+    if (!drv)
+      return;
+    auto aieArray = drv->getAieArray();
+    if (!aieArray)
+      return;
+    if (!(db->getStaticInfo().isDeviceReady(index)))
+      return;
+
+    auto numCounterTiles = db->getStaticInfo().getNumAIECounter(index);
+    for (uint64_t c=0; c < numCounterTiles; c++) {
+      auto ctr = db->getStaticInfo().getAIECounter(index, c);
+      if (!ctr)
+        continue;
+
+      auto tile = zynqaie::Resources::AIE::getAIETile(ctr->column, ctr->row);
+      if (!tile)
+        continue;
+
+      for ( int i=0; i < 4; i++) {
+        auto counterId = tile->coreModule.requestPerformanceCounter(index);
+        if (counterId == -1)
+          break;
+
+        XAie_Events startEvent = XAIE_EVENT_TRUE_CORE;
+        XAie_Events stopEvent = XAIE_EVENT_TRUE_CORE;
+        auto tileLocation = XAie_TileLoc(ctr->column, ctr->row+1);
+
+        XAie_PerfCounterControlSet(aieArray->getDevInst(), tileLocation, 
+                                    XAIE_CORE_MOD, counterId, startEvent, stopEvent);
+
+        std::cout << counterId << " id in tile: " << ctr->column << "," << ctr->row << std::endl;
+      }
+    }
+  }
+
+  void AIEProfilingPlugin::configureMemCounters(uint32_t index, void* handle)
+  {
+    auto drv = ZYNQ::shim::handleCheck(handle);
+    if (!drv)
+      return;
+    auto aieArray = drv->getAieArray();
+    if (!aieArray)
+      return;
+    if (!(db->getStaticInfo().isDeviceReady(index)))
+      return;
+
+    auto numCounterTiles = db->getStaticInfo().getNumAIECounter(index);
+    for (uint64_t c=0; c < numCounterTiles; c++) {
+      auto ctr = db->getStaticInfo().getAIECounter(index, c);
+      if (!ctr)
+        continue;
+
+      auto tile = zynqaie::Resources::AIE::getAIETile(ctr->column, ctr->row);
+      if (!tile)
+        continue;
+
+      for ( int i=0; i < 2; i++) {
+        auto counterId = tile->memoryModule.requestPerformanceCounter(index);
+        if (counterId == -1)
+          break;
+
+        XAie_Events startEvent = XAIE_EVENT_TRUE_MEM;
+        XAie_Events stopEvent = XAIE_EVENT_TRUE_MEM;
+        auto tileLocation = XAie_TileLoc(ctr->column, ctr->row+1);
+
+        XAie_PerfCounterControlSet(aieArray->getDevInst(), tileLocation, 
+                                    XAIE_MEM_MOD, counterId, startEvent, stopEvent);
+
+        std::cout << counterId << " id in tile: " << ctr->column << "," << ctr->row << std::endl;
+      }
+    }
   }
 
 } // end namespace xdp
