@@ -1379,8 +1379,10 @@ static int ert_user_probe(struct platform_device *pdev)
 	bool ert = xocl_ert_on(xdev);
 
 	/* If XOCL_DSAFLAG_MB_SCHE_OFF is set, we should not probe ert */
-	if (!ert)
+	if (!ert) {
+		xocl_warn(&pdev->dev, "Disable ERT flag overwrite, don't probe ert_user");
 		return -ENODEV;
+	}
 
 	ert_user = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_ert_user));
 	if (!ert_user)
