@@ -54,6 +54,7 @@
 #define CU_INTR_READY 0x2
 
 enum xcu_model {
+	XCU_NULL,
 	XCU_HLS,
 	XCU_ACC,
 	XCU_PLRAM,
@@ -375,6 +376,9 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf);
 ssize_t show_cu_info(struct xrt_cu *xcu, char *buf);
 
 /* CU Implementations */
+int xrt_cu_null_init(struct xrt_cu *xcu);
+void xrt_cu_null_fini(struct xrt_cu *xcu);
+
 #define to_cu_hls(core) ((struct xrt_cu_hls *)(core))
 struct xrt_cu_hls {
 	void __iomem		*vaddr;

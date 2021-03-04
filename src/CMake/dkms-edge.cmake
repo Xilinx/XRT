@@ -85,6 +85,7 @@ SET (XRT_DKMS_COMMON_XRT_DRV
   common/drv/kds_core.c
   common/drv/xrt_cu.c
   common/drv/cu_hls.c
+  common/drv/cu_null.c
   common/drv/cu_plram.c
   common/drv/xrt_xclbin.c
   common/drv/Makefile

@@ -203,7 +203,7 @@ static int cu_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_cu *xcu;
-	struct resource **res;
+	struct resource **res = NULL;
 	struct xrt_cu_info *info;
 	struct kernel_info *krnl_info;
 	struct xrt_cu_arg *args = NULL;
@@ -234,7 +234,11 @@ static int cu_probe(struct platform_device *pdev)
 		xcu->base.info.model = XCU_FA;
 		break;
 	default:
-		return -EINVAL;
+		XCU_WARN(xcu, "Unknown protocol");
+		/* Instead of error out, let's use a NULL model
+		 * to let other health CUs can still work.
+		 */
+		xcu->base.info.model = XCU_NULL;
 	}
 
 	if (!xcu->base.info.is_m2m) {
@@ -265,10 +269,19 @@ static int cu_probe(struct platform_device *pdev)
 		xcu->base.info.args = args;
 	}
 
-	res = vzalloc(sizeof(struct resource *) * xcu->base.info.num_res);
-	if (!res) {
-		err = -ENOMEM;
-		goto err;
+	if (xcu->base.info.num_res) {
+		res = vzalloc(sizeof(*res) * xcu->base.info.num_res);
+		if (!res) {
+			err = -ENOMEM;
+			goto err;
+		}
+	} else {
+		/* NOTE: This is U30 branch specific.
+		 * It might use manually hacked xclbin on U30 platform.
+		 * If CU resource goes wrong, use this approach to let other
+		 * health CUs still work.
+		 */
+		xcu->base.info.model = XCU_NULL;
 	}
 
 	for (i = 0; i < xcu->base.info.num_res; ++i) {
@@ -298,7 +311,7 @@ static int cu_probe(struct platform_device *pdev)
 		err = xrt_cu_fa_init(&xcu->base);
 		break;
 	default:
-		err = -EINVAL;
+		err = xrt_cu_null_init(&xcu->base);
 	}
 	if (err) {
 		XCU_ERR(xcu, "Not able to initial CU %p", xcu);
@@ -367,6 +380,8 @@ static int cu_remove(struct platform_device *pdev)
 	case XCU_FA:
 		xrt_cu_fa_fini(&xcu->base);
 		break;
+	default:
+		xrt_cu_null_fini(&xcu->base);
 	}
 
 	(void) xocl_kds_del_cu(xdev, &xcu->base);

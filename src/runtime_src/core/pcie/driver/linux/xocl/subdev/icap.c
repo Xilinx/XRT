@@ -1521,12 +1521,21 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 	for (i = 0; i < ip_layout->m_count; ++i) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
 		struct ip_data *ip = &ip_layout->m_ip_data[i];
+		u32 range;
 
 		if (ip->m_type != IP_KERNEL)
 			continue;
 
 		if (ip->m_base_address == 0xFFFFFFFF)
 			continue;
+
+		range = subdev_info.res[0].end - subdev_info.res[0].start;
+		/* If CU's address is not aligned, remove CU's resource */
+		if ((ip->m_base_address & range) != 0) {
+			subdev_info.num_res = 0;
+			subdev_info.res[0].start = 0;
+			subdev_info.res[0].end = 0;
+		}
 
 		memset(&info, 0, sizeof(info));
 		/* NOTE: Only support 64 instences in subdev framework */
