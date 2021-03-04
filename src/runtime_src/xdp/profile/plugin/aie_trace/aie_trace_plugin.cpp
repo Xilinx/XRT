@@ -42,8 +42,47 @@ namespace xdp {
   {
     db->registerPlugin(this);
 
-    // Get trace metric set
-    metricSet = xrt_core::config::get_aie_trace_metrics();
+XAIE_EVENT_MEMORY_STALL_CORE,
+	XAIE_EVENT_STREAM_STALL_CORE,
+	XAIE_EVENT_CASCADE_STALL_CORE,
+	XAIE_EVENT_LOCK_STALL_CORE
+
+    // Pre-defined metric sets
+    metricSets = {"functions", "functions_partial_stalls", "functions_all_stalls", "all"};
+    
+    // Pre-defined metric sets
+    // TODO: Do we need to know the profile counter #s used for combo events below?
+    // functions: "traced_events": [35, 36, 7, 8, 0, 0, 0, 0]
+    // functions_partial_stalls: "traced_events": [35, 36, 24, 25, 26, 7, 8, 0]
+    // functions_all_stalls: "traced_events": [35, 36, 23, 24, 25, 26, 7, 8]
+    // all: "traced_events": [35, 36, 23, 24, 25, 26, 7, 8]
+    //      "group_event_config": {
+    //          "2": 0,
+    //          "15": 0,
+    //          "22": 15,
+    //          "32": 12,
+    //          "46": 0,
+    //          "47": 0,
+    //          "73": 0,
+    //          "106": 0,
+    //          "123": 0
+    //      },
+    eventSets = {
+      {"functions",                {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_COMBO_EVENT_2_CORE, XAIE_EVENT_COMBO_EVENT_3_CORE}},
+      {"functions_partial_stalls", {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_STREAM_STALL_CORE, 
+                                    XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE, 
+                                    XAIE_EVENT_COMBO_EVENT_2_CORE, XAIE_EVENT_COMBO_EVENT_3_CORE}},
+      {"functions_all_stalls",     {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_MEMORY_STALL_CORE,  XAIE_EVENT_STREAM_STALL_CORE, 
+                                    XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE, 
+                                    XAIE_EVENT_COMBO_EVENT_2_CORE, XAIE_EVENT_COMBO_EVENT_3_CORE}},
+      {"all",                      {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_MEMORY_STALL_CORE,  XAIE_EVENT_STREAM_STALL_CORE, 
+                                    XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE, 
+                                    XAIE_EVENT_COMBO_EVENT_2_CORE, XAIE_EVENT_COMBO_EVENT_3_CORE}}
+    };
   }
 
   AieTracePlugin::~AieTracePlugin()
@@ -65,6 +104,64 @@ namespace xdp {
     }
   }
 
+  void AIETracePlugin::setMetrics(void* handle)
+  {
+    // Get AIE tiles and metric set
+    std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
+    if (metricsStr.empty())
+      return;
+
+    std::vector<std::string> vec;
+    boost::split(vec, metricsStr, boost::is_any_of(":"));
+
+    for (int i=0; i < vec.size(); ++i) {
+      boost::replace_all(vec.at(i), "{", "");
+      boost::replace_all(vec.at(i), "}", "");
+    }
+    
+    // Determine specification type based on vector size:
+    //   * Size = 1: All tiles
+    //     * aie_trace_metrics = <functions|functions_partial_stalls|functions_all_stalls|all>
+    //   * Size = 2: Single tile or kernel name (supported in future release)
+    //     * aie_trace_metrics = {<column>,<row>}:<functions|functions_partial_stalls|functions_all_stalls|all>
+    //     * aie_trace_metrics= <kernel name>:<functions|functions_partial_stalls|functions_all_stalls|all>
+    //   * Size = 3: Range of tiles (supported in future release)
+    //     * aie_trace_metrics= {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<functions|functions_partial_stalls|functions_all_stalls|all>
+    std::string metricSet = vec.at( vec.size()-1 );
+
+    if (metricSets.find(metricSet) == metricSets.end()) {
+      std::string defaultSet = "functions";
+      std::stringstream msg;
+      msg << "Unable to find AIE trace metric set " << metricSet 
+          << ". Using default of " << defaultSet << ".";
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+      metricSet = defaultSet;
+    }
+
+    // Get vector of pre-defined metrics for this set
+    auto events = eventSets[metricSet];
+
+#ifdef XRT_ENABLE_AIE
+    // Capture all tiles across all graphs
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    auto graphs = xrt_core::edge::aie::get_graphs(device.get());
+    std::vector<edge::aie::tile_type> tiles;
+    for (auto& graph : graphs) {
+      auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
+      std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
+    }
+
+    for (auto& tile : tiles) {
+      // TODO: Request 2 counters here
+
+      for (int i=0; i < events.size(); ++i) {
+        // TODO: Program ith trace metric for tile (tile.col, tile.row) using events.at(i)
+        // TODO: Program group event config (all only?)
+      }
+    }
+#endif
+  }
+
   void AieTracePlugin::updateAIEDevice(void* handle)
   {
     char pathBuf[512];
@@ -78,7 +175,7 @@ namespace xdp {
     deviceIdToHandle[deviceId] = handle;
     // handle is not added to "deviceHandles" as this is user provided handle, not owned by XDP
 
-    if(!(db->getStaticInfo()).isDeviceReady(deviceId)) {
+    if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // first delete the offloader, logger
       // Delete the old offloader as data is already from it
       if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
@@ -103,8 +200,11 @@ namespace xdp {
         }
       }
     }
+
 #ifdef XRT_ENABLE_AIE
-    if(!(db->getStaticInfo()).isGMIORead(deviceId)) {
+    setMetrics(handle);
+
+    if (!(db->getStaticInfo()).isGMIORead(deviceId)) {
       // Update the AIE specific portion of the device
       // When new xclbin is loaded, the xclbin specific datastructure is already recreated
       std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle) ;

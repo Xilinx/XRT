@@ -27,10 +27,7 @@ namespace xdp {
 
   class AieTracePlugin : public XDPPlugin
   {
-
     private:
-      std::string metricSet;
-      
       std::vector<void*> deviceHandles;
       std::map<uint64_t, void*> deviceIdToHandle;
 
@@ -39,6 +36,9 @@ namespace xdp {
                          DeviceIntf*> AIEData;
 
       std::map<uint32_t, AIEData>  aieOffloaders;
+
+      std::set<std::string> metricSets;
+      std::map<std::string, std::vector<XAie_Events>> eventSets;
 
     public:
       XDP_EXPORT
@@ -58,6 +58,9 @@ namespace xdp {
 
       XDP_EXPORT
       virtual void writeAll(bool openNewFiles);
+
+    private:
+      void setMetrics(void* handle);
   };
     
 }   
