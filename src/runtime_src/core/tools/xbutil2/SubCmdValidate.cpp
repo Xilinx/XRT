@@ -1052,11 +1052,12 @@ vcuKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
 * helper function to initialize test info
 */
 static boost::property_tree::ptree
-create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin) {
+create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin, bool is_explicit = false) {
   boost::property_tree::ptree _ptTest;
   _ptTest.put("name", name);
   _ptTest.put("description", desc);
   _ptTest.put("xclbin", xclbin);
+  _ptTest.put("explicit", is_explicit);
   return _ptTest;
 }
 
@@ -1078,8 +1079,8 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("Peer to peer bar", "Run P2P test", "bandwidth.xclbin"), p2pTest },
   { create_init_test("Memory to memory DMA", "Run M2M test", "bandwidth.xclbin"), m2mTest },
   { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
-  { create_init_test("bist", "Run BIST test", "verify.xclbin"), bistTest },
-  { create_init_test("vcu", "Run decoder test", "verify.xclbin"), vcuKernelTest },
+  { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
+  { create_init_test("vcu", "Run decoder test", "verify.xclbin"), vcuKernelTest }
 };
 
 /*
@@ -1409,6 +1410,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   for (unsigned index = 0; index < testSuite.size(); ++index) {
     if (testsToRun[0] == "all") {
+      if(testSuite[index].ptTest.get<bool>("explicit"))
+        continue;
       testObjectsToRun.push_back(&testSuite[index]);
       continue;
     }
