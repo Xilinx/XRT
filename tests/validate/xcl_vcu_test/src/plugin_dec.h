@@ -9,6 +9,7 @@ static const int ERT_CMD_SIZE = 4096;
 #define int int 
 #define TRUE 0
 #define FALSE -1
+#define NOTSUPP 1
 #define MAX_IBUFFS 2
 #define MEM_BANK 0
 #define OUT_MEM_SIZE 3342336 // GST Specific
