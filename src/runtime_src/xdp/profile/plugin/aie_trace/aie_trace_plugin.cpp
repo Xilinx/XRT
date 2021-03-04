@@ -51,8 +51,8 @@ XAIE_EVENT_MEMORY_STALL_CORE,
     metricSets = {"functions", "functions_partial_stalls", "functions_all_stalls", "all"};
     
     // Pre-defined metric sets
-    // NOTE: last two events in each set are dependent on actual profile counter reserved
     //
+    // **** Core Module Trace ****
     // functions: "traced_events": [35, 36, 7, 8, 0, 0, 0, 0]
     // functions_partial_stalls: "traced_events": [35, 36, 24, 25, 26, 7, 8, 0]
     // functions_all_stalls: "traced_events": [35, 36, 23, 24, 25, 26, 7, 8]
@@ -68,7 +68,8 @@ XAIE_EVENT_MEMORY_STALL_CORE,
     //          "106": 0,
     //          "123": 0
     //      },
-    eventSets = {
+    // NOTE: last two events in each set are dependent on actual profile counter reserved
+    coreEventSets = {
       {"functions",                {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
                                     XAIE_EVENT_PERF_CNT_2_CORE,    XAIE_EVENT_PERF_CNT_3_CORE}},
       {"functions_partial_stalls", {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
@@ -84,6 +85,39 @@ XAIE_EVENT_MEMORY_STALL_CORE,
                                     XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE, 
                                     XAIE_EVENT_PERF_CNT_2_CORE,    XAIE_EVENT_PERF_CNT_3_CORE}}
     };
+
+    // **** Memory Module Trace ****
+    // functions: "traced_events": [120, 119, 5, 6, 0, 0, 0, 0]
+    // functions_partial_stalls: "traced_events": [120, 119, 118, 117, 116, 5, 6, 0]
+    // functions_all_stalls: "traced_events": [120, 119, 118, 117, 116, 115, 5, 6]
+    // all: "traced_events": [120, 119, 5, 6, 0, 0, 0, 0]
+    memoryEventSets = {
+      {"functions",                {XAIE_EVENT_BROADCAST_13_MEM,   XAIE_EVENT_BROADCAST_12_MEM,
+                                    XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
+      {"functions_partial_stalls", {XAIE_EVENT_BROADCAST_13_MEM,   XAIE_EVENT_BROADCAST_12_MEM,
+                                    XAIE_EVENT_BROADCAST_11_MEM,   XAIE_EVENT_BROADCAST_10_MEM,
+                                    XAIE_EVENT_BROADCAST_9_MEM,
+                                    XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
+      {"functions_all_stalls",     {XAIE_EVENT_BROADCAST_13_MEM,   XAIE_EVENT_BROADCAST_12_MEM,
+                                    XAIE_EVENT_BROADCAST_11_MEM,   XAIE_EVENT_BROADCAST_10_MEM,
+                                    XAIE_EVENT_BROADCAST_9_MEM,    XAIE_EVENT_BROADCAST_8_MEM,
+                                    XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
+      {"all",                      {XAIE_EVENT_BROADCAST_13_MEM,   XAIE_EVENT_BROADCAST_12_MEM,
+                                    XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}}
+    };
+
+    // **** Core Module Counters ****
+    // NOTE: reset events are dependent on actual profile counter reserved
+    coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,     XAIE_EVENT_ACTIVE_CORE};
+    coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,   XAIE_EVENT_DISABLED_CORE};
+    coreCounterResetEvents   = {XAIE_EVENT_PERF_CNT_2_CORE, XAIE_EVENT_PERF_CNT_3_CORE};
+    coreCounterEventValues   = {1020, 1040400};
+
+    // **** Memory Module Counters ****
+    memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,        XAIE_EVENT_TRUE_MEM};
+    memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,        XAIE_EVENT_NONE_MEM};
+    memoryCounterResetEvents = {XAIE_EVENT_PERF_CNT_0_MEM,  XAIE_EVENT_PERF_CNT_1_MEM};
+    memoryCounterEventValues = {1020, 1040400};
   }
 
   AieTracePlugin::~AieTracePlugin()
@@ -140,7 +174,8 @@ XAIE_EVENT_MEMORY_STALL_CORE,
     }
 
     // Get vector of pre-defined metrics for this set
-    auto events = eventSets[metricSet];
+    auto coreEvents   = coreEventSets[metricSet];
+    auto memoryEvents = memoryEventSets[metricSet];
 
 #ifdef XRT_ENABLE_AIE
     // Capture all tiles across all graphs
@@ -153,11 +188,16 @@ XAIE_EVENT_MEMORY_STALL_CORE,
     }
 
     for (auto& tile : tiles) {
-      // TODO: Request 2 counters here
+      // TODO: Request 2 core counters here
+      // TODO: Request 2 memory counters here
 
-      for (int i=0; i < events.size(); ++i) {
-        // TODO: Program ith trace metric for tile (tile.col, tile.row) using events.at(i)
-        // TODO: Program group event config (all only?)
+      for (int i=0; i < coreEvents.size(); ++i) {
+        // TODO: Program ith trace metric for core module in tile (tile.col, tile.row) using coreEvents.at(i)
+      }
+
+      for (int i=0; i < memoryEvents.size(); ++i) {
+        // TODO: Program ith trace metric for memory module in tile (tile.col, tile.row) using memoryEvents.at(i)
+        // NOTE: handle broadcast events differently
       }
     }
 #endif
@@ -219,7 +259,7 @@ XAIE_EVENT_MEMORY_STALL_CORE,
 #endif
 
     uint64_t numAIETraceOutput = (db->getStaticInfo()).getNumAIETraceStream(deviceId);
-    if(0 == numAIETraceOutput) {
+    if (numAIETraceOutput == 0) {
       // no AIE Trace Stream to offload trace, so return
       std::string msg("Neither PLIO nor GMIO trace infrastucture is found in the given design. So, AIE event trace will not be available.");
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
@@ -227,7 +267,7 @@ XAIE_EVENT_MEMORY_STALL_CORE,
     }
 
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
-    if(nullptr == deviceIntf) {
+    if (deviceIntf == nullptr) {
       // If DeviceIntf is not already created, create a new one to communicate with physical device
       deviceIntf = new DeviceIntf();
       try {
