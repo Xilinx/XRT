@@ -95,6 +95,44 @@ populate_cus(const xrt_core::device *device)
   return pt;
 }
 
+boost::property_tree::ptree
+populate_cus_new(const xrt_core::device *device)
+{
+  boost::property_tree::ptree pt;
+  using cu_data_type = qr::kds_cu_stat::data_type;
+  using scu_data_type = qr::kds_scu_stat::data_type;
+  std::vector<cu_data_type> cu_stats;
+  std::vector<scu_data_type> scu_stats;
+
+  try {
+    cu_stats  = xrt_core::device_query<qr::kds_cu_stat>(device);
+    scu_stats = xrt_core::device_query<qr::kds_scu_stat>(device);
+  } catch (const std::exception& ex) {
+    pt.put("error_msg", ex.what());
+    return pt;
+  }
+
+  for (auto& stat : cu_stats) {
+    boost::property_tree::ptree ptCu;
+    ptCu.put( "name",           stat.name);
+    ptCu.put( "base_address",   boost::str(boost::format("0x%x") % stat.base_addr));
+    ptCu.put( "usage",          stat.usages);
+    ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
+    pt.push_back(std::make_pair("", ptCu));
+  }
+
+  for (auto& stat : scu_stats) {
+    boost::property_tree::ptree ptCu;
+    ptCu.put( "name",           stat.name);
+    ptCu.put( "base_address",   "0x0");
+    ptCu.put( "usage",          stat.usages);
+    ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
+    pt.push_back(std::make_pair("", ptCu));
+  }
+
+  return pt;
+}
+
 void
 ReportCu::getPropertyTreeInternal(const xrt_core::device * _pDevice, 
                                               boost::property_tree::ptree &_pt) const
@@ -108,8 +146,21 @@ void
 ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice, 
                                            boost::property_tree::ptree &_pt) const
 {
+  uint32_t kds_mode;
+
+  // sysfs attribute kds_mode: 1 - new KDS; 0 - old KDS
+  try {
+    kds_mode = xrt_core::device_query<qr::kds_mode>(_pDevice);
+  } catch (...){
+    // When kds_mode doesn't present, xocl driver supports old KDS
+    kds_mode = 0;
+  }
+
   // There can only be 1 root node
-  _pt.add_child("compute_units", populate_cus(_pDevice));
+  if (kds_mode == 0) // Old kds
+      _pt.add_child("compute_units", populate_cus(_pDevice));
+  else // new kds
+      _pt.add_child("compute_units", populate_cus_new(_pDevice));
 }
 
 void 
