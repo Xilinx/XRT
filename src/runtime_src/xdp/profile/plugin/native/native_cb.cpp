@@ -31,7 +31,6 @@ namespace xdp {
 
     VTFEvent* event = new NativeAPICall(0,
 					static_cast<double>(timestamp),
-					functionID,
 					(db->getDynamicInfo()).addString(functionName)) ;
     (db->getDynamicInfo()).addEvent(event);
     (db->getDynamicInfo()).markStart(functionID, event->getEventId()) ;
@@ -46,7 +45,6 @@ namespace xdp {
 
     VTFEvent* event = new NativeAPICall(start,
 					static_cast<double>(timestamp),
-					functionID,
 					(db->getDynamicInfo()).addString(functionName)) ;
     (db->getDynamicInfo()).addEvent(event) ;
   }

@@ -20,8 +20,7 @@
 
 namespace xdp {
 
-  NativeAPICall::NativeAPICall(uint64_t s_id, double ts, uint64_t f_id,
-			       uint64_t name) :
+  NativeAPICall::NativeAPICall(uint64_t s_id, double ts, uint64_t name) :
     APICall(s_id, ts, name, NATIVE_API_CALL)
   {
     

@@ -24,7 +24,7 @@ namespace xdp {
   class NativeAPICall : public APICall
   {
   public:
-    NativeAPICall(uint64_t s_id, double ts, uint64_t f_id, uint64_t name) ;
+    NativeAPICall(uint64_t s_id, double ts, uint64_t name) ;
     ~NativeAPICall() ;
 
     XDP_EXPORT virtual bool isNativeHostEvent() { return true ; } 
