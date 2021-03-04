@@ -28,7 +28,7 @@ namespace xdp {
 namespace native {
 
 // The functions responsible for loading and linking the plugin
-void load_xdp_native() ;
+bool load_xdp_native() ;
 void register_native_functions(void* handle) ;
 void native_warning_function() ;
 

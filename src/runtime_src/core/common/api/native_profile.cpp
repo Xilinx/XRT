@@ -18,7 +18,6 @@
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 #include "core/common/dlfcn.h"
-#include "core/common/config_reader.h"
 
 // Anonymous namespace for helper functions
 namespace {
@@ -38,11 +37,12 @@ static std::string full_name(const char* type, const char* function)
 namespace xdp {
 namespace native {
 
-void load_xdp_native()
+bool load_xdp_native()
 {
   static xrt_core::module_loader xdp_native_loader("xdp_native_plugin",
 						   register_native_functions,
 						   native_warning_function);
+  return true ;
 }
 
 std::function<void (const char*, unsigned long long int)> function_start_cb ;
@@ -68,14 +68,11 @@ api_call_logger::
 api_call_logger(const char* function, const char* type)
   : m_funcid(0), m_name(function), m_type(type)
 {
-  static bool s_load_native = false ;
-  if (!s_load_native) {
-    s_load_native = true ;
-    if (xrt_core::config::get_native_xrt_trace())
-      load_xdp_native() ;
-  }
+  // Since all api_call_logger objects exist inside the profiling_wrapper
+  // we don't need to check the config reader here (it's done already)
+  static bool s_load_native = load_xdp_native() ;
 
-  if (function_start_cb) {
+  if (function_start_cb && s_load_native) {
     m_funcid = xrt_core::utils::issue_id() ;
     if (m_type != nullptr)
       function_start_cb(full_name(m_type, m_name).c_str(), m_funcid) ;
