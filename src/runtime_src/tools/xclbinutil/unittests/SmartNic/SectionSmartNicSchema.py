@@ -59,6 +59,21 @@ def main():
   # Validate that the output file matches expectation
   jsonFileCompare(expectedJSON, outputJSON)
 
+
+  # ---------------------------------------------------------------------------
+
+  step = "3) Read in a raw cbor image and validate it against the expected JSON image."
+  inputCBOR = os.path.join(args.resource_dir, "cbor_image.raw")
+  outputJSON = "cbor_image.json"
+  expectedJSON = os.path.join(args.resource_dir,"cbor_image_expected.json")
+
+  cmd = [xclbinutil, "--add-section", "SMARTNIC:RAW:"+inputCBOR, "--dump-section", "SMARTNIC:JSON:"+outputJSON, "--force"]
+  execCmd(step, cmd)
+
+  # Validate that the output file matches expectation
+  jsonFileCompare(expectedJSON, outputJSON)
+
+
   # If the code gets this far, all is good.
   return False
 
