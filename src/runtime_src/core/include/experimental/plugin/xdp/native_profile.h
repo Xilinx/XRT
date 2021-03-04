@@ -59,10 +59,21 @@ profiling_wrapper(const char* function, const char* type,
   return f(std::forward<Args>(args)...) ;
 }
 
+template <typename Instance, typename CallableMember, typename ...Args>
+auto
+profiling_wrapper_member(const char* function, const char* type,
+                         Instance&& i, CallableMember&& f, Args&&...args)
+{
+  if (xrt_core::config::get_native_xrt_trace()) {
+    native_api_call_logger log_object(function, type) ;
+    return (i->*f)(std::forward<Args>(args)...) ;
+  }
+  return (i->*f)(std::forward<Args>(args)...) ;
+}
+
 } // end namespace xdpnative
 
 // Helpful macros to instantiate our objects
 #define NATIVE_LOG_FUNCTION_CALL xdpnative::native_api_call_logger LogObject(__func__);
-#define NATIVE_MEMBER_LOG_FUNCTION_CALL(X) xdpnative::native_api_call_logger LogObject(__func__, X);
 
 #endif

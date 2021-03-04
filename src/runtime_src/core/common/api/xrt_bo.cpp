@@ -762,64 +762,72 @@ size_t
 bo::
 size() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
-  return handle->get_size();
+  return
+    xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
+                                        handle.get(), &bo_impl::get_size);
 }
 
 uint64_t
 bo::
 address() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
-  return handle->get_address();
+  return
+    xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
+                                        handle.get(), &bo_impl::get_address);
 }
 
 xclBufferExportHandle
 bo::
 export_buffer()
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
-  return handle->export_buffer();
+  return
+    xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
+                                        handle.get(), &bo_impl::export_buffer);
 }
 
 void
 bo::
 sync(xclBOSyncDirection dir, size_t size, size_t offset)
-{
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
-  handle->sync(dir, size, offset);
+{  
+  xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
+                                      handle.get(), &bo_impl::sync,
+                                      dir, size, offset);
 }
 
 void*
 bo::
 map()
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
-  return handle->get_hbuf();
+  return
+    xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
+                                        handle.get(), &bo_impl::get_hbuf);
 }
 
 void
 bo::
 write(const void* src, size_t size, size_t seek)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
-  handle->write(src, size, seek);
+  xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
+                                      handle.get(), &bo_impl::write,
+                                      src, size, seek);
 }
 
 void
 bo::
 read(void* dst, size_t size, size_t skip)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
-  handle->read(dst, size, skip);
+  xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
+                                      handle.get(), &bo_impl::read,
+                                      dst, size, skip);
 }
 
 void
 bo::
 copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::bo") ;
-  handle->copy(src.handle.get(), sz, src_offset, dst_offset);
+  xdpnative::profiling_wrapper_member(__func__, "xrt::bo",
+                                      handle.get(), &bo_impl::copy,
+                                      src.handle.get(), sz, src_offset, dst_offset) ;
 }
 
 } // xrt

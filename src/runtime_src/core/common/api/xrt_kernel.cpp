@@ -2233,24 +2233,24 @@ void
 run::
 start()
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::run") ;
-  handle->start();
+  xdpnative::profiling_wrapper_member(__func__, "xrt::run",
+  handle.get(), &run_impl::start);
 }
 
 ert_cmd_state
 run::
 wait(const std::chrono::milliseconds& timeout_ms) const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::run") ;
-  return handle->wait(timeout_ms);
+  return xdpnative::profiling_wrapper_member(__func__, "xrt::run",
+  handle.get(), &run_impl::wait, timeout_ms);
 }
 
 ert_cmd_state
 run::
 state() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::run") ;
-  return handle->state();
+  return xdpnative::profiling_wrapper_member(__func__, "xrt::run",
+  handle.get(), &run_impl::state);
 }
 
 void
@@ -2289,8 +2289,6 @@ add_callback(ert_cmd_state state,
              std::function<void(const void*, ert_cmd_state, void*)> fcn,
              void* data)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::run") ;
-
   XRT_DEBUGF("run::add_callback run(%d)\n", handle->get_uid());
   if (state != ERT_CMD_STATE_COMPLETED)
     throw xrt_core::error(-EINVAL, "xrtRunSetCallback state may only be ERT_CMD_STATE_COMPLETED");
@@ -2307,16 +2305,16 @@ void
 run::
 set_event(const std::shared_ptr<event_impl>& event) const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::run") ;
-  handle->set_event(event);
+  xdpnative::profiling_wrapper_member(__func__, "xrt::run",
+  handle.get(), &run_impl::set_event, event);
 }
 
 ert_packet*
 run::
 get_ert_packet() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::run") ;
-  return handle->get_ert_packet();
+  return xdpnative::profiling_wrapper_member(__func__, "xrt::run",
+  handle.get(), &run_impl::get_ert_packet);
 }
 
 kernel::
@@ -2335,16 +2333,16 @@ uint32_t
 kernel::
 read_register(uint32_t offset) const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::kernel") ;
-  return handle->read_register(offset);
+  return xdpnative::profiling_wrapper_member(__func__, "xrt::kernel",
+  handle.get(), &kernel_impl::read_register, offset, false);
 }
 
 void
 kernel::
 write_register(uint32_t offset, uint32_t data)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::kernel") ;
-  handle->write_register(offset, data);
+  xdpnative::profiling_wrapper_member(__func__, "xrt::kernel",
+  handle.get(), &kernel_impl::write_register, offset, data);
 }
 
 
@@ -2352,16 +2350,16 @@ int
 kernel::
 group_id(int argno) const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::kernel") ;
-  return handle->group_id(argno);
+  return xdpnative::profiling_wrapper_member(__func__, "xrt::kernel",
+  handle.get(), &kernel_impl::group_id, argno);
 }
 
 uint32_t
 kernel::
 offset(int argno) const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::kernel") ;
-  return handle->arg_offset(argno);
+  return xdpnative::profiling_wrapper_member(__func__, "xrt::kernel",
+  handle.get(), &kernel_impl::arg_offset, argno);
 }
 
 } // namespace xrt

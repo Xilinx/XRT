@@ -269,24 +269,27 @@ xrtErrorTime
 error::
 get_timestamp() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::error") ;
-  return handle->get_timestamp();
+  return
+    xdpnative::profiling_wrapper_member(__func__, "xrt::error",
+    handle.get(), &error_impl::get_timestamp);
 }
 
 xrtErrorCode
 error::
 get_error_code() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::error") ;
-  return handle->get_error_code();
+  return
+    xdpnative::profiling_wrapper_member(__func__, "xrt::error",
+    handle.get(), &error_impl::get_error_code);
 }
 
 std::string
 error::
 to_string() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::error") ;
-  return handle->to_string();
+  return
+    xdpnative::profiling_wrapper_member(__func__, "xrt::error",
+    handle.get(), &error_impl::to_string);
 }
 
 

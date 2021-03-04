@@ -174,9 +174,10 @@ uuid
 device::
 load_xclbin(const struct axlf* top)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::device") ;
   xrt::xclbin xclbin{top};
-  handle->load_xclbin(xclbin);
+  // Wrapped handle->load_xclbin(xclbin)
+  xdpnative::profiling_wrapper_member(__func__, "xrt::device",
+  handle.get(), &xrt_core::device::load_xclbin, xclbin);
   return xclbin.get_uuid();
 }
 
@@ -184,9 +185,10 @@ uuid
 device::
 load_xclbin(const std::string& fnm)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::device") ;
   xrt::xclbin xclbin{fnm};
-  handle->load_xclbin(xclbin);
+  // Wrapped handle->load_xclbin(xclbin)
+  xdpnative::profiling_wrapper_member(__func__, "xrt::device",
+  handle.get(), &xrt_core::device::load_xclbin, xclbin);
   return xclbin.get_uuid();
 }
 
@@ -194,8 +196,9 @@ uuid
 device::
 load_xclbin(const xclbin& xclbin)
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::device") ;
-  handle->load_xclbin(xclbin);
+  // Wrapped handle->load_xclbin(xclbin)
+  xdpnative::profiling_wrapper_member(__func__, "xrt::device",
+  handle.get(), &xrt_core::device::load_xclbin, xclbin);
   return xclbin.get_uuid();
 }
 
@@ -203,8 +206,9 @@ uuid
 device::
 get_xclbin_uuid() const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::device") ;
-  return handle->get_xclbin_uuid();
+  return
+    xdpnative::profiling_wrapper_member(__func__, "xrt::device",
+                                        handle.get(), &xrt_core::device::get_xclbin_uuid) ;
 }
 
 device::
@@ -217,7 +221,6 @@ void
 device::
 reset()
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::device") ;
   handle.reset();
 }
 
@@ -225,8 +228,10 @@ std::pair<const char*, size_t>
 device::
 get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
 {
-  NATIVE_MEMBER_LOG_FUNCTION_CALL("xrt::device") ;
-  return handle->get_axlf_section_or_error(section, uuid);
+  // Wrapped handle->get_axlf_section_or_error(section, uuid) with
+  // cast for disambiguation
+  return 
+    xdpnative::profiling_wrapper_member(__func__, "xrt::device", handle.get(), static_cast<std::pair<const char*, size_t> (xrt_core::device::*)(axlf_section_kind, const xrt::uuid&) const>(&xrt_core::device::get_axlf_section_or_error), section, uuid);
 }
 
 boost::any
