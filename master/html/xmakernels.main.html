@@ -668,77 +668,75 @@ int32_t <code class="sig-name descname">xma_enc_session_recv_data</code><span cl
 <h2>Decoder<a class="headerlink" href="#decoder" title="Permalink to this headline">¶</a></h2>
 <p><strong>Introduction</strong></p>
 <blockquote>
-<div><p>The Xilinx media encoder API is comprised of two distinct interfaces:
+<div><p>The Xilinx media decoder API is comprised of two distinct interfaces:
 one interface for an external framework such as FFmpeg or a proprietary
 multi-media framework and the plugin interface used by Xilinx
 accelerator developers.  This section illustrates both interfaces
 starting with the external framework view and moving on to the plugin
 developers view.</p>
-<p>The external interface to the Xilinx video encoder is comprised of the
+<p>The external interface to the Xilinx video decoder is comprised of the
 following functions:</p>
 <ol class="arabic simple">
-<li><p><a class="reference internal" href="#c.xma_enc_session_create" title="xma_enc_session_create"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_create()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_enc_session_destroy" title="xma_enc_session_destroy"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_destroy()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_enc_session_send_frame" title="xma_enc_session_send_frame"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_send_frame()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_enc_session_recv_data" title="xma_enc_session_recv_data"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_recv_data()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#c.xma_dec_session_create" title="xma_dec_session_create"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_create()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#c.xma_dec_session_destroy" title="xma_dec_session_destroy"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_destroy()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#c.xma_dec_session_send_data" title="xma_dec_session_send_data"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_send_data()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#c.xma_dec_session_get_properties" title="xma_dec_session_get_properties"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_get_properties()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#c.xma_dec_session_recv_frame" title="xma_dec_session_recv_frame"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_recv_frame()</span></code></a></p></li>
 </ol>
-<p>A media framework (such as FFmpeg) is responsible for creating an encoder
-session.  The encoder session contains state information used by the
-encoder plugin to manage the hardware associated with a Xilinx accelerator
-device.  Prior to creating an encoder session the media framework is
+<p>A media framework (such as FFmpeg) is responsible for creating a decoder
+session.  The decoder session contains state information used by the
+decoder plugin to manage the hardware associated with a Xilinx accelerator
+device.  Prior to creating an decoder session the media framework is
 responsible for initializing the XMA using the function
 <a class="reference internal" href="#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>.  The initialize function should be called by the
 media framework early in the framework initialization to ensure that all
-resources have been configured.  Ideally, the  <a class="reference internal" href="#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>
+resources have been configured.  Ideally, the <a class="reference internal" href="#c.xma_initialize" title="xma_initialize"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_initialize()</span></code></a>
 function should be called from the <code class="xref c c-func docutils literal notranslate"><span class="pre">main()</span></code> function of the media framework
 in order to guarantee it is only called once.</p>
 </div></blockquote>
 <dl class="c type">
 <dt>
-<code class="sig-name descname">enum XmaEncoderType</code></dt>
-<dd><p>Value specifies the precise type of encoder kernel requested</p>
+<code class="sig-name descname">enum XmaDecoderType</code></dt>
+<dd><p>A decoder from this list forms part of a request for a specific decoder when creating a decoder session via xma_dec_session_create.</p>
 </dd></dl>
 
 <p><strong>Constants</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_H264_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_H264_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_HEVC_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_HEVC_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_VP9_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_VP9_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_AV1_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_AV1_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_COPY_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_JPG_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_JPG_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_MULTI_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_MULTI_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
 </dd>
 </dl>
 <dl class="c type">
 <dt>
-<code class="sig-name descname">struct XmaEncoderProperties</code></dt>
-<dd><p>Properities used to specify which encoder is requested and how the encoder should be initalized by the plugin driver</p>
+<code class="sig-name descname">struct XmaDecoderProperties</code></dt>
+<dd><p>Properities used to specify which decoder is requested and how the decoder should be initalized by the plugin driver</p>
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct XmaEncoderProperties {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct XmaDecoderProperties {
 };
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
 <dl class="c function">
-<dt>
-XmaEncoderSession *<code class="sig-name descname">xma_enc_session_create</code><span class="sig-paren">(</span>XmaEncoderProperties *<em>enc_props</em><span class="sig-paren">)</span><br /></dt>
-<dd><p>This function creates an encoder session and must be called prior to encoding a frame. A session reserves hardware resources for the duration of a video stream. The number of sessions allowed depends on a number of factors that include: resolution, frame rate, bit depth, and the capabilities of the hardware accelerator.</p>
+<dt id="c.xma_dec_session_create">
+XmaDecoderSession *<code class="sig-name descname">xma_dec_session_create</code><span class="sig-paren">(</span>XmaDecoderProperties *<em>dec_props</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_create" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>This function creates a decoder session and must be called prior to decoding data. A session reserves hardware resources for the duration of a video stream. The number of sessions allowed depends on a number of factors that include: resolution, frame rate, bit depth, and the capabilities of the hardware accelerator.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderProperties</span> <span class="pre">*</span> <span class="pre">enc_props</span></code></dt><dd><p>Pointer to a XmaEncoderProperties structure that
-contains the key configuration properties needed for
-finding available hardware resource.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderProperties</span> <span class="pre">*</span> <span class="pre">dec_props</span></code></dt><dd><p>Pointer to a XmaDecoderProperties structure that
+contains the key configuration properties, device &amp; cu index, etc</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -747,15 +745,15 @@ finding available hardware resource.</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
 <dl class="c function">
-<dt>
-int32_t <code class="sig-name descname">xma_enc_session_destroy</code><span class="sig-paren">(</span>XmaEncoderSession *<em>session</em><span class="sig-paren">)</span><br /></dt>
-<dd><p>This function destroys an encoder session that was previously created with the xm_enc_session_create function.</p>
+<dt id="c.xma_dec_session_destroy">
+int32_t <code class="sig-name descname">xma_dec_session_destroy</code><span class="sig-paren">(</span>XmaDecoderSession *<em>session</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_destroy" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>This function destroys a decoder session that was previously created with the xma_dec_session_create function.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to XmaEncoderSession created with
-xma_enc_session_create</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to XmaDecoderSession created with
+xma_dec_session_create</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -764,50 +762,54 @@ xma_enc_session_create</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
 <dl class="c function">
-<dt>
-int32_t <code class="sig-name descname">xma_enc_session_send_frame</code><span class="sig-paren">(</span>XmaEncoderSession *<em>session</em>, XmaFrame *<em>frame</em><span class="sig-paren">)</span><br /></dt>
-<dd><p>This function invokes plugin-&gt;send_frame fucntion assigned to this session which handles sending data to the hardware decoder.</p>
+<dt id="c.xma_dec_session_send_data">
+int32_t <code class="sig-name descname">xma_dec_session_send_data</code><span class="sig-paren">(</span>XmaDecoderSession *<em>session</em>, XmaDataBuffer *<em>data</em>, int32_t *<em>data_used</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_send_data" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>This function invokes plugin-&gt;send_data fucntion assigned to this session which handles sending data to the hardware decoder. Plugin and media framework (like FFMPEG) may handle events like errors, no empty lookup buffer, no output data, end of input stream, etc using XMA_FLUSH_AGAIN, XMA_TRY_AGAIN, XMA_SEND_MORE_DATA, XMA_EOS, XMA_ERROR, etc return codes</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xm_enc_sesssion_create</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xma_dec_sesssion_create</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt><dd><p>Pointer to a frame to be encoded.  If the encoder
-has buffered input, the input will need to be flushed.  To do so,
-an XmaFrame with a null pointer to the first data buffer will need
-to be sent until XMA_EOS is received (XmaFrame.data[0].buffer = NULL).</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDataBuffer</span> <span class="pre">*</span> <span class="pre">data</span></code></dt><dd><p>Pointer to a data buffer to be decoded</p>
 </dd>
-</dl>
-<p><strong>Description</strong></p>
-<p>Plugin and media framework (like FFMPEG) may handle events like
-errors, no empty lookup buffer, no output data, end of input stream, etc using
-XMA_FLUSH_AGAIN, XMA_TRY_AGAIN, XMA_SEND_MORE_DATA, XMA_EOS,
-XMA_ERROR, etc return codes</p>
-<p><strong>Return</strong></p>
-<p>XMA_SUCCESS on success; indicates that sufficient data has
-been received to begin producing output</p>
-<p>XMA_SEND_MORE_DATA if additional frames are needed before
-output can be received</p>
-<p>XMA_ERROR on error</p>
-<dl class="c function">
-<dt>
-int32_t <code class="sig-name descname">xma_enc_session_recv_data</code><span class="sig-paren">(</span>XmaEncoderSession *<em>session</em>, XmaDataBuffer *<em>data</em>, int32_t *<em>data_size</em><span class="sig-paren">)</span><br /></dt>
-<dd><p>This function invokes plugin-&gt;recv_data assigned to this session which handles obtaining output data from the hardware encoder. This function returns a data buffer along with the length of the buffer if one is available. This function is called after calling the function xm_enc_session_send_frame. If a data buffer is not ready to be returned, this function returns -1 and sets the length of the data buffer to 0. In addition, the data buffer pointer is set to NULL. If a data buffer is ready, the data_size will be set with a non-zero value and a pointer to the data buffer will be set to a non-NULL value.</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xm_enc_sesssion_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaDataBuffer</span> <span class="pre">*</span> <span class="pre">data</span></code></dt><dd><p>Pointer to a data buffer containing encoded data</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">data_size</span></code></dt><dd><p>Pointer to hold the size of the data buffer returned</p>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">data_used</span></code></dt><dd><p>Pointer to an integer to receive the amount of data used</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success.</p>
-<p>XMA_EOS when all data has been flushed from the encoder</p>
+<p>XMA_ERROR on error.</p>
+<dl class="c function">
+<dt id="c.xma_dec_session_get_properties">
+int32_t <code class="sig-name descname">xma_dec_session_get_properties</code><span class="sig-paren">(</span>XmaDecoderSession *<em>dec_session</em>, XmaFrameProperties *<em>fprops</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_get_properties" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>This function invokes plugin-&gt;get_properties assigned to this session which returns properties of the hardware decoder.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">dec_session</span></code></dt><dd><p>Pointer to session created by xma_dec_sesssion_create</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFrameProperties</span> <span class="pre">*</span> <span class="pre">fprops</span></code></dt><dd><p>Pointer to a frame properties structure to be filled in</p>
+</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>XMA_SUCCESS on success.</p>
+<p>XMA_ERROR on error.</p>
+<dl class="c function">
+<dt id="c.xma_dec_session_recv_frame">
+int32_t <code class="sig-name descname">xma_dec_session_recv_frame</code><span class="sig-paren">(</span>XmaDecoderSession *<em>session</em>, XmaFrame *<em>frame</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_recv_frame" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>This function invokes plugin-&gt;recv_frame assigned to this session which handles obtaining output frame from the hardware decoder. This function returns a frame if one is available. This function is called after calling the function xma_dec_session_send_data. If a frame is not ready to be returned, plugin function should return -1. In addition, the frame pointer should be set to NULL. If a frame is ready, a pointer to the frame will be set to a non-NULL value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xma_dec_sesssion_create</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt><dd><p>Pointer to a frame containing decoded data</p>
+</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>XMA_SUCCESS on success.</p>
 <p>XMA_ERROR on error.</p>
 </div>
 <div class="section" id="scaler">
@@ -1256,7 +1258,7 @@ int32_t <code class="sig-name descname">xma_kernel_session_read</code><span clas
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 01, 2021.
+        Last updated on March 04, 2021.
       </span>
 
     </p>
