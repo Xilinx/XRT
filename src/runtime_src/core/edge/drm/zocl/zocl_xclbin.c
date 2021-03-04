@@ -78,10 +78,10 @@ zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length)
 	}
 
 	/* Freeze PR ISOLATION IP for bitstream download */
-	iowrite32(0x0, map);
+	iowrite32(zdev->pr_isolation_freeze, map);
 	err = zocl_fpga_mgr_load(zdev, buffer, length, FPGA_MGR_PARTIAL_RECONFIG);
 	/* Unfreeze PR ISOLATION IP */
-	iowrite32(0x3, map);
+	iowrite32(zdev->pr_isolation_unfreeze, map);
 
 	iounmap(map);
 	return err;
