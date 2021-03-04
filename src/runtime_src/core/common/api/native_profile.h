@@ -21,7 +21,7 @@
 
 /**
  * This file contains the callback mechanisms for connecting the
- * Native XRT API (C layer) to the XDP plugin
+ * Native XRT API (C/C++ layer) to the XDP plugin
  */
 
 namespace xdp {
@@ -60,8 +60,5 @@ profiling_wrapper(const char* function, const char* type,
 
 } // end namespace native
 } // end namespace xdp
-
-// Helpful macros to instantiate our objects
-#define NATIVE_LOG_FUNCTION_CALL xdp::native::api_call_logger LogObject(__func__);
 
 #endif

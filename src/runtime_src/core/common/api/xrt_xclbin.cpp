@@ -957,148 +957,156 @@ read_xclbin(const std::string& fnm)
 xrtXclbinHandle
 xrtXclbinAllocFilename(const char* filename)
 {
-  NATIVE_LOG_FUNCTION_CALL ;
-  try {
-    auto xclbin = std::make_shared<xrt::xclbin_full>(filename);
-    auto handle = xclbin.get();
-    xclbins.emplace(handle, std::move(xclbin));
-    return handle;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    send_exception_message(ex.what());
-    errno = 0;
-  }
-  return nullptr;
+  return xdp::native::profiling_wrapper(__func__, nullptr, [filename]{
+    try {
+      auto xclbin = std::make_shared<xrt::xclbin_full>(filename);
+      auto handle = xclbin.get();
+      xclbins.emplace(handle, std::move(xclbin));
+      return handle;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      errno = ex.get();
+    }
+    catch (const std::exception& ex) {
+      send_exception_message(ex.what());
+      errno = 0;
+    }
+    return static_cast<xrt::xclbin_full*>(nullptr);
+  });
 }
 
 xrtXclbinHandle
 xrtXclbinAllocRawData(const char* data, int size)
 {
-  NATIVE_LOG_FUNCTION_CALL ;
-  try {
-    std::vector<char> raw_data(data, data + size);
-    auto xclbin = std::make_shared<xrt::xclbin_full>(raw_data);
-    auto handle = xclbin.get();
-    xclbins.emplace(handle, std::move(xclbin));
-    return handle;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    send_exception_message(ex.what());
-    errno = 0;
-  }
-  return nullptr;
+  return xdp::native::profiling_wrapper(__func__, nullptr, [data, size]{
+    try {
+      std::vector<char> raw_data(data, data + size);
+      auto xclbin = std::make_shared<xrt::xclbin_full>(raw_data);
+      auto handle = xclbin.get();
+      xclbins.emplace(handle, std::move(xclbin));
+      return handle;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      errno = ex.get();
+    }
+    catch (const std::exception& ex) {
+      send_exception_message(ex.what());
+      errno = 0;
+    }
+    return static_cast<xrt::xclbin_full*>(nullptr);
+  });
 }
 
 int
 xrtXclbinFreeHandle(xrtXclbinHandle handle)
 {
-  NATIVE_LOG_FUNCTION_CALL ;
-  try {
-    free_xclbin(handle);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get();
-  }
-  catch (const std::exception& ex) {
-    send_exception_message(ex.what());
-    return -1;
-  }
+  return xdp::native::profiling_wrapper(__func__, nullptr, [handle]{
+    try {
+      free_xclbin(handle);
+      return 0;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return ex.get();
+    }
+    catch (const std::exception& ex) {
+      send_exception_message(ex.what());
+      return -1;
+    }
+  });
 }
 
 
 int
 xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
 {
-  NATIVE_LOG_FUNCTION_CALL ;
-  try {
-    auto xclbin = get_xclbin(handle);
-    const std::string& xsaname = xclbin->get_xsa_name();
-    // populate ret_size if memory is allocated
-    if (ret_size)
-      *ret_size = xsaname.size();
-    // populate name if memory is allocated
-    if (name)
-      std::strncpy(name, xsaname.c_str(), size);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    // Set errno globally
-    errno = ex.get();
-    return ex.get();
-  }
-  catch (const std::exception& ex) {
-    send_exception_message(ex.what());
-    // Set errno globally
-    errno = 0;
-    return 0;
-  }
+  return xdp::native::profiling_wrapper(__func__, nullptr,
+  [handle, name, size, ret_size]{
+    try {
+      auto xclbin = get_xclbin(handle);
+      const std::string& xsaname = xclbin->get_xsa_name();
+      // populate ret_size if memory is allocated
+      if (ret_size)
+        *ret_size = xsaname.size();
+      // populate name if memory is allocated
+      if (name)
+        std::strncpy(name, xsaname.c_str(), size);
+      return 0;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      // Set errno globally
+      errno = ex.get();
+      return ex.get();
+    }
+    catch (const std::exception& ex) {
+      send_exception_message(ex.what());
+      // Set errno globally
+      errno = 0;
+      return 0;
+    }
+  });
 }
 
 int
 xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
 {
-  NATIVE_LOG_FUNCTION_CALL ;
-  try {
-    auto xclbin = get_xclbin(handle);
-    auto result = xclbin->get_uuid();
-    uuid_copy(ret_uuid, result.get());
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    // Set errno globally
-    errno = ex.get();
-    return ex.get();
-  }
-  catch (const std::exception& ex) {
-    send_exception_message(ex.what());
-    // Set errno globally
-    errno = 0;
-    return 0;
-  }
+  return xdp::native::profiling_wrapper(__func__, nullptr, [handle, ret_uuid]{
+    try {
+      auto xclbin = get_xclbin(handle);
+      auto result = xclbin->get_uuid();
+      uuid_copy(ret_uuid, result.get());
+      return 0;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      // Set errno globally
+      errno = ex.get();
+      return ex.get();
+    }
+    catch (const std::exception& ex) {
+      send_exception_message(ex.what());
+      // Set errno globally
+      errno = 0;
+      return 0;
+    }
+  });
 }
 
 int
 xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
 {
-  NATIVE_LOG_FUNCTION_CALL ;
-  try {
-    auto xclbin = get_xclbin(handle);
-    auto& result = xclbin->get_data();
-    int result_size = result.size();
-    // populate ret_size if memory is allocated
-    if (ret_size)
-      *ret_size = result_size;
-    // populate data if memory is allocated
-    if (data) {
-      auto size_tmp = std::min(size,result_size);
-      std::memcpy(data, result.data(), size_tmp);
+  return xdp::native::profiling_wrapper(__func__, nullptr,
+  [handle, data, size, ret_size]{
+    try {
+      auto xclbin = get_xclbin(handle);
+      auto& result = xclbin->get_data();
+      int result_size = result.size();
+      // populate ret_size if memory is allocated
+      if (ret_size)
+        *ret_size = result_size;
+      // populate data if memory is allocated
+      if (data) {
+        auto size_tmp = std::min(size,result_size);
+        std::memcpy(data, result.data(), size_tmp);
+      }
+      return 0;
     }
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    // Set errno globally
-    errno = ex.get();
-    return ex.get();
-  }
-  catch (const std::exception& ex) {
-    send_exception_message(ex.what());
-    // Set errno globally
-    errno = 0;
-    return 0;
-  }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      // Set errno globally
+      errno = ex.get();
+      return ex.get();
+    }
+    catch (const std::exception& ex) {
+      send_exception_message(ex.what());
+      // Set errno globally
+      errno = 0;
+      return 0;
+    }
+  });
 }
 
 ////////////////////////////////////////////////////////////////
@@ -1107,20 +1115,21 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
 int
 xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
 {
-  NATIVE_LOG_FUNCTION_CALL ;
-  try {
-    auto device = xrt_core::get_userpf_device(dhdl);
-    auto uuid = device->get_xclbin_uuid();
-    uuid_copy(out, uuid.get());
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -1;
-  }
+  return xdp::native::profiling_wrapper(__func__, nullptr, [dhdl, out]{
+    try {
+      auto device = xrt_core::get_userpf_device(dhdl);
+      auto uuid = device->get_xclbin_uuid();
+      uuid_copy(out, uuid.get());
+      return 0;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return ex.get();
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(ex.what());
+     return -1;
+    }
+  });
 }
 

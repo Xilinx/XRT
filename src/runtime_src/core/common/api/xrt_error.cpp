@@ -300,50 +300,54 @@ to_string() const
 int
 xrtErrorGetLast(xrtDeviceHandle dhdl, xrtErrorClass ecl, xrtErrorCode* error, uint64_t* timestamp)
 {
-  NATIVE_LOG_FUNCTION_CALL ;
-  try {
-    auto handle = xrt::error_impl(xrt_core::device_int::get_core_device(dhdl).get(), ecl);
-    *error = handle.get_error_code();
-    *timestamp = handle.get_timestamp();
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = 1;
-  }
-  return errno;
+  return xdp::native::profiling_wrapper(__func__, nullptr,
+  [dhdl, ecl, error, timestamp]{
+    try {
+      auto handle = xrt::error_impl(xrt_core::device_int::get_core_device(dhdl).get(), ecl);
+      *error = handle.get_error_code();
+      *timestamp = handle.get_timestamp();
+      return 0;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      errno = ex.get();
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(ex.what());
+      errno = 1;
+    }
+    return errno;
+  });
 }
 
 int
 xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, size_t* out_len)
 {
-  NATIVE_LOG_FUNCTION_CALL ;
-  try {
-    auto str = error_code_to_string(error);
+  return xdp::native::profiling_wrapper(__func__, nullptr,
+  [error, out, len, out_len]{
+    try {
+      auto str = error_code_to_string(error);
 
-    if (out_len)
-      *out_len = str.size() + 1;
+      if (out_len)
+        *out_len = str.size() + 1;
 
-    if (!out)
+      if (!out)
+        return 0;
+
+      auto cp_len = std::min(len-1, str.size());
+      std::strncpy(out, str.c_str(), cp_len);
+      out[cp_len] = 0;
+
       return 0;
-
-    auto cp_len = std::min(len-1, str.size());
-    std::strncpy(out, str.c_str(), cp_len);
-    out[cp_len] = 0;
-
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = 1;
-  }
-  return errno;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      errno = ex.get();
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(ex.what());
+      errno = 1;
+    }
+    return errno;
+  });
 }
