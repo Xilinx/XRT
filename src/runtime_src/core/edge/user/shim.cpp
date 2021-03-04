@@ -296,13 +296,8 @@ xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
   drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, DRM_ZOCL_BO_FLAGS_USERPTR};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
 
-<<<<<<< HEAD
-  xclLog(XRT_DEBUG, "XRT", "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, DRM_ZOCL_BO_FLAGS_USERPTR);
-  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
-=======
-  xclLog(XRT_DEBUG, "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, flags);
+  xclLog(XRT_DEBUG, "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, DRM_ZOCL_BO_FLAGS_USERPTR);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
->>>>>>> 2ef98a1... CR-1087396 fix for xclLog tag (#4828)
 
   return info.handle;
 }
