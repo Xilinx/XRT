@@ -27,6 +27,7 @@
 #include <map>
 #include <functional>
 #include <boost/format.hpp>
+#include <boost/tokenizer.hpp>
 
 namespace {
 
@@ -50,6 +51,97 @@ struct bdf
   {
     auto pdev = get_pcidev(device);
     return std::make_tuple(pdev->bus,pdev->dev,pdev->func);
+  }
+};
+
+struct kds_cu_stat
+{
+  using result_type = query::kds_cu_stat::result_type;
+  using data_type = query::kds_cu_stat::data_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> stats;
+    std::string errmsg;
+
+    // The kds_custat_raw is printing in formatted string of each line
+    // Format: "%d,%s:%s,0x%lx,0x%x,%lu"
+    // Using comma as separator.
+    pdev->sysfs_get("", "kds_custat_raw", errmsg, stats);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+
+    result_type cuStats;
+    for (auto& line : stats) {
+      boost::char_separator<char> sep(",");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 5)
+        throw std::runtime_error("CU statistic sysfs node corrupted");
+
+      data_type data;
+      const int radix = 16;
+      tokenizer::iterator tok_it = tokens.begin();
+      data.index     = std::stoi(std::string(*tok_it++));
+      data.name      = std::string(*tok_it++);
+      data.base_addr = std::stoull(std::string(*tok_it++), nullptr, radix);
+      data.status    = std::stoul(std::string(*tok_it++), nullptr, radix);
+      data.usages    = std::stoul(std::string(*tok_it++));
+
+      cuStats.push_back(data);
+    }
+
+    return cuStats;
+  }
+};
+
+struct kds_scu_stat
+{
+  using result_type = query::kds_scu_stat::result_type;
+  using data_type = query::kds_scu_stat::data_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> stats;
+    std::string errmsg;
+
+    // The kds_scustat_raw is printing in formatted string of each line
+    // Format: "%d,%s:%s,0x%x,%lu"
+    // Using comma as separator.
+    pdev->sysfs_get("", "kds_scustat_raw", errmsg, stats);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+
+    result_type cuStats;
+    for (auto& line : stats) {
+      boost::char_separator<char> sep(",");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 4)
+        throw std::runtime_error("PS kernel statistic sysfs node corrupted");
+
+      data_type data;
+      const int radix = 16;
+      tokenizer::iterator tok_it = tokens.begin();
+      data.index  = std::stoi(std::string(*tok_it++));
+      data.name   = std::string(*tok_it++);
+      data.status = std::stoul(std::string(*tok_it++), nullptr, radix);
+      data.usages = std::stoul(std::string(*tok_it++));
+      // TODO: Let's avoid this special handling for PS kernel name
+      data.name = data.name + ":scu_" + std::to_string(data.index);
+
+      cuStats.push_back(data);
+    }
+
+    return cuStats;
   }
 };
 
@@ -462,6 +554,10 @@ initialize_query_table()
   emplace_sysfs_get<query::ert_cq_write>                     ("ert_user", "cq_write_cnt");
   emplace_sysfs_get<query::ert_cu_read>                      ("ert_user", "cu_read_cnt");
   emplace_sysfs_get<query::ert_cu_write>                     ("ert_user", "cu_write_cnt");
+
+  emplace_sysfs_get<query::kds_mode>                         ("", "kds_mode");
+  emplace_func0_request<query::kds_cu_stat,                  kds_cu_stat>();
+  emplace_func0_request<query::kds_scu_stat,                 kds_scu_stat>();
 
   emplace_func0_request<query::pcie_bdf,                     bdf>();
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();

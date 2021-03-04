@@ -75,6 +75,9 @@ enum class key_type
   clock_freq_topology_raw,
   dma_stream,
   kds_cu_info,
+  kds_mode,
+  kds_cu_stat,
+  kds_scu_stat,
 
   xmc_version,
   xmc_board_name,
@@ -656,6 +659,48 @@ struct kds_cu_info : request
   // Returning CUs info as <base_addr, usages, status>
   using result_type = std::vector<std::tuple<uint64_t, uint32_t, uint32_t>>;
   static const key_type key = key_type::kds_cu_info;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct kds_mode : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::kds_mode;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct kds_cu_stat : request
+{
+  struct data {
+    uint32_t index;
+    std::string name;
+    uint64_t base_addr;
+    uint32_t status;
+    uint64_t usages;
+  };
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::kds_cu_stat;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct kds_scu_stat : request
+{
+  struct data {
+    uint32_t index;
+    std::string name;
+    uint32_t status;
+    uint64_t usages;
+  };
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::kds_scu_stat;
 
   virtual boost::any
   get(const device*) const = 0;
