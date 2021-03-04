@@ -107,6 +107,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   BoardInfo info;
   f.getBoardInfo(info);
   //create information tree for a device
+  pt_platform.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
   pt_platform.put("flash_type", xrt_core::device_query<xrt_core::query::flash_type>(device)); 
   pt_platform.put("hardware.serial_num", info.mSerialNum);
 

@@ -282,7 +282,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     static const std::map<std::string, std::string> test_map = {
       { "22_verify.py",             "validate.exe"    },
       { "23_bandwidth.py",          "kernel_bw.exe"   },
-      { "host_mem_23_bandwidth.py", "slavebridge.exe" }
+      { "host_mem_23_bandwidth.py", "slavebridge.exe" },
+      { "xcl_vcu_test.exe",         "xcl_vcu_test.exe"}
     };
         
     if (test_map.find(py) == test_map.end()) {
@@ -789,7 +790,7 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
     logger(_ptTest, "Warning", "SC firmware misatch");
     logger(_ptTest, "Warning", boost::str(boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.")
-                                          % sc_ver % exp_sc_ver % "Please use xbmgmt --new status to check the installed shell"));
+                                          % sc_ver % exp_sc_ver % "Please use xbmgmt examine to check the installed shell"));
   }
   _ptTest.put("status", "passed");
 }
@@ -1037,6 +1038,15 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
 
 }
 
+/*
+ * TEST #11
+ */
+void
+vcuKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+  runTestCase(_dev, "xcl_vcu_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
 
 /*
 * helper function to initialize test info
@@ -1068,7 +1078,8 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("Peer to peer bar", "Run P2P test", "bandwidth.xclbin"), p2pTest },
   { create_init_test("Memory to memory DMA", "Run M2M test", "bandwidth.xclbin"), m2mTest },
   { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
-  { create_init_test("bist", "Run BIST test", "verify.xclbin"), bistTest }
+  { create_init_test("bist", "Run BIST test", "verify.xclbin"), bistTest },
+  { create_init_test("vcu", "Run decoder test", "verify.xclbin"), vcuKernelTest },
 };
 
 /*

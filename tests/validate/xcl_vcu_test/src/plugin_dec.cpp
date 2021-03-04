@@ -285,6 +285,7 @@ xvcudec_preinit (XrtIvas_XVCUDec * dec)
   sk_payload_data *payload_buf;
   dec_params_t *dec_cfg;
   unsigned int payload_data[ERT_CMD_DATA_LEN];
+  struct timespec init_time;
   unsigned int num_idx = 0;
   int bret = FALSE;
   int iret = 0;
@@ -336,7 +337,16 @@ xvcudec_preinit (XrtIvas_XVCUDec * dec)
   }
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
+  clock_gettime (CLOCK_MONOTONIC, &init_time);
+  priv->timestamp = ((init_time.tv_sec * 1e6) + (init_time.tv_nsec/1e3));
+
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_PREINIT;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
@@ -399,6 +409,12 @@ xvcudec_init (XrtIvas_XVCUDec * dec)
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
 
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_INIT;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
@@ -510,6 +526,12 @@ xvcudec_send_flush (XrtIvas_XVCUDec * dec)
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_FLUSH;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
@@ -563,6 +585,12 @@ xvcudec_deinit (XrtIvas_XVCUDec * dec)
   
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_DEINIT;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
@@ -630,6 +658,12 @@ xvcudec_prepare_send_frame (XrtIvas_XVCUDec * dec, void *inbuf,
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_PUSH;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
@@ -690,6 +724,12 @@ xvcudec_receive_out_frames (XrtIvas_XVCUDec * dec, uint8_t *out_buffer, uint32_t
 
   memset (payload_data, 0, ERT_CMD_DATA_LEN * sizeof (int));
   payload_data[num_idx++] = 0;
+
+  payload_data[num_idx++] = VCU_RECEIVE;
+  payload_data[num_idx++] = getpid();
+  payload_data[num_idx++] = priv->timestamp & 0xFFFFFFFF;
+  payload_data[num_idx++] = (priv->timestamp  >> 32) & 0xFFFFFFFF;
+
   payload_data[num_idx++] = priv->sk_payload_buf->phy_addr & 0xFFFFFFFF;
   payload_data[num_idx++] =
       ((uint64_t) (priv->sk_payload_buf->phy_addr) >> 32) & 0xFFFFFFFF;
@@ -904,10 +944,12 @@ xrt_initialization (XrtIvas_XVCUDec *dec)
   priv = dec->priv;
   dev_index = dec->dev_index;
 
-  if (download_xclbin (dec->xclbin_path, dev_index, NULL, &(priv->xcl_handle),
+  if (iret = download_xclbin (dec->xclbin_path, dev_index, &cu_index, &(priv->xcl_handle),
           &(priv->xclbinId))) {
-    ERROR_PRINT ("failed to download xclbin %s]n", dec->xclbin_path);
-    return iret;
+    if (iret < 0)
+      ERROR_PRINT ("failed to download xclbin %s]", dec->xclbin_path);
+
+    return NOTSUPP;
   }
 
   if (xclOpenContext (priv->xcl_handle, priv->xclbinId, cu_index, true)) {
@@ -961,12 +1003,16 @@ xvcudec_open (XrtIvas_XVCUDec *dec, const char *xclbin_path, int sk_idx, int dev
 
   /* Initialize Xrt and get the device context */
   iret = xrt_initialization (dec);
-  if (iret == FALSE) {
-    ERROR_PRINT ("xrt initialization failed!!\n");
-    if (dec->priv)
+  if (iret != TRUE) {
+    if (dec->priv) {
       free (dec->priv);
+      dec->priv = NULL;
+    }
 
-    return FALSE;
+    if (iret == FALSE) 
+      ERROR_PRINT ("xrt initialization failed!!\n");
+
+    return iret;
   }
 
   return TRUE;
@@ -1047,8 +1093,7 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
 
   /* Initialize xrt and open device */
   iret = xvcudec_open (dec, xclbin_path, sk_idx, dev_idx);
-  if (iret == FALSE) {
-    ERROR_PRINT ("xrt VCU decoder initialization failed!!\n");
+  if (iret != TRUE) {
     goto error;
   }
 
@@ -1065,6 +1110,7 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   fret = gstivas_xvcudec_handle_frame (dec, (uint8_t *)in_buffer, in_size);
   if (fret != XRT_FLOW_OK) {
     ERROR_PRINT ("VCU send command failed!!\n");
+    iret = FALSE;
     goto error;
   }
 
@@ -1072,6 +1118,7 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   out_buffer = (uint8_t *) calloc (1, OUT_MEM_SIZE);
   if (!out_buffer) {
     ERROR_PRINT ("failed to allocate output buffer memory");
+    iret = FALSE;
     goto error;
   }
 
@@ -1079,6 +1126,7 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   fret = gstivas_xvcudec_finish(dec, (uint8_t *)out_buffer, &out_size);
   if (fret != XRT_FLOW_OK) {
     ERROR_PRINT ("VCU receive command failed!!\n");
+    iret = FALSE;
     goto error;
   }
 
@@ -1119,5 +1167,5 @@ error:
   if (out_buffer)
     free (out_buffer);
 
-  return FALSE;
+  return iret;
 } 

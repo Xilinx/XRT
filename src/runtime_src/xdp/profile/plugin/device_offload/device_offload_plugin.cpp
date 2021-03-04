@@ -108,7 +108,7 @@ namespace xdp {
     uint64_t deviceId = db->addDevice(sysfsPath) ;
 
     // When adding a device, also add a writer to dump the information
-    std::string version = "1.0" ;
+    std::string version = "1.1" ;
     std::string creationTime = xdp::getCurrentDateTime() ;
     std::string xrtVersion   = xdp::getXRTVersion() ;
     std::string toolVersion  = xdp::getToolVersion() ;

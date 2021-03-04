@@ -25,9 +25,9 @@
 namespace xdp {
 
   LowOverheadTraceWriter::LowOverheadTraceWriter(const char* filename) :
-    VPTraceWriter(filename, 
-                   "1.0", 
-                   getCurrentDateTime(), 
+    VPTraceWriter(filename,
+                   "1.1",
+                   getCurrentDateTime(),
                    9 /* ns */),
     generalAPIBucket(-1), readBucket(-1), writeBucket(-1), enqueueBucket(-1)
   {
@@ -59,7 +59,8 @@ namespace xdp {
   void LowOverheadTraceWriter::writeHumanReadableHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "XRT Version," << getToolVersion() << std::endl ;
+    fout << "TraceID," << traceID << std::endl
+         << "XRT Version," << getToolVersion() << std::endl ;
   }
 
   void LowOverheadTraceWriter::writeHumanReadableStructure()
@@ -191,8 +192,25 @@ namespace xdp {
     else               writeBinaryDependencies() ;
   }
 
-  void LowOverheadTraceWriter::write(bool openNewFile)
+  bool LowOverheadTraceWriter::traceEventsExist()
   {
+    return (
+      db->getDynamicInfo().hostEventsExist (
+        [](VTFEvent* e)
+        {
+          return e->isOpenCLAPI() ||
+                 e->isLOPHostEvent() ;
+        }
+      )
+    );
+  }
+
+  bool LowOverheadTraceWriter::write(bool openNewFile)
+  {
+    if (openNewFile && !traceEventsExist()) {
+      return false;
+    }
+
     // Before writing, set up our information for structures
     setupBuckets() ;
     //setupCommandQueueBuckets() ;
@@ -209,6 +227,7 @@ namespace xdp {
     if (humanReadable) fout << std::endl ;
 
     if (openNewFile) switchFiles() ;
+    return true;
   }
 
 

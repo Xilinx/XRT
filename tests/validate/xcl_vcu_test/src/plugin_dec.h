@@ -9,6 +9,7 @@ static const int ERT_CMD_SIZE = 4096;
 #define int int 
 #define TRUE 0
 #define FALSE -1
+#define NOTSUPP 1
 #define MAX_IBUFFS 2
 #define MEM_BANK 0
 #define OUT_MEM_SIZE 3342336 // GST Specific
@@ -99,6 +100,7 @@ typedef struct _XrtIvas_XVCUDecPrivate
   xrt_buffer *in_xrt_bufs[MAX_IBUFFS];  /* input encoded stream will be copied to this */
   xrt_buffer *dec_cfg_buf;
   xrt_buffer *dec_out_bufs_handle;
+  uint64_t timestamp; /* get current time when sending PREINIT command */
   int init_done;
   int flush_done;          /* to make sure FLUSH cmd issued to softkernel while exiting */
   int deinit_done;
