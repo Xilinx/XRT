@@ -24,7 +24,7 @@ Encoder
 Decoder
 -------
 
-.. include:: ../core/xmaencoder.rst
+.. include:: ../core/xmadecoder.rst
 
 
 Scaler
