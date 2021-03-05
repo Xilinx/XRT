@@ -33,15 +33,16 @@ install (
 # This will generate a file that details all targets we have marked for export
 # as part of the xrt-targets export group
 # It will provide information such as the library file names and locations post install
+if (NOT WIN32)
 install(
   EXPORT xrt-targets
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
   )
+endif()
 
 install(
   EXPORT xrt-dev-targets
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
   )
-
