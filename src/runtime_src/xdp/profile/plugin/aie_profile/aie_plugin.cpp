@@ -32,6 +32,7 @@
 
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/common/aie_parser.h"
+#include "core/edge/user/aie/AIEResources.h"
 #endif
 
 namespace xdp {
@@ -102,6 +103,8 @@ namespace xdp {
   bool AIEProfilingPlugin::setMetrics(uint64_t deviceId, void* handle)
   {
     bool runtimeCounters = false;
+
+#ifdef XRT_ENABLE_AIE
     auto drv = ZYNQ::shim::handleCheck(handle);
     if (!drv)
       return runtimeCounters;
@@ -145,6 +148,7 @@ namespace xdp {
       std::string metricSet  = vec.at( vec.size()-1 );
       std::string moduleName = isCore ? "core" : "memory";
 
+      // Ensure requested metric set is supported (if not, use default)
       if ((isCore && (mCoreMetricSets.find(metricSet) == mCoreMetricSets.end()))
           || (!isCore && (mMemoryMetricSets.find(metricSet) == mMemoryMetricSets.end()))) {
         std::string defaultSet = isCore ? "heat_map" : "dma_locks";
@@ -155,15 +159,10 @@ namespace xdp {
         metricSet = defaultSet;
       }
 
-      // Get vector of pre-defined metrics for this set
-      auto startEvents = isCore ? mCoreStartEvents[metricSet] : mMemoryStartEvents[metricSet];
-      auto endEvents   = isCore ?   mCoreEndEvents[metricSet] :   mMemoryEndEvents[metricSet];
-
       // Compile list of tiles based on how its specified in setting
       std::vector<xrt_core::edge::aie::tile_type> tiles;
 
       if (vec.size() == 1) {
-#ifdef XRT_ENABLE_AIE
         // Capture all tiles across all graphs
         std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
         auto graphs = xrt_core::edge::aie::get_graphs(device.get());
@@ -172,7 +171,6 @@ namespace xdp {
           auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
           std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
         }
-#endif
       }
       else if (vec.size() == 2) {
         std::vector<std::string> tileVec;
@@ -204,17 +202,42 @@ namespace xdp {
         }
       }
 
-      // Now iterate over tiles and metrics to configure counters
-      uint8_t resetEvent = 0;
-      uint32_t counterId = 0;
-      for (auto& tile : tiles) {
-        for (int i=0; i < startEvents.size(); ++i) {
-          // TODO: Configure ith counter in tile (tile.col, tile.row) using startEvents.at(i) and endEvents.at(i)
-          
-          uint8_t counterNumber = i;
-          std::string counterName = "AIE Counter " + std::to_string(counterId);
+      // Get vector of pre-defined metrics for this set
+      auto startEvents = isCore ? mCoreStartEvents[metricSet] : mMemoryStartEvents[metricSet];
+      auto endEvents   = isCore ?   mCoreEndEvents[metricSet] :   mMemoryEndEvents[metricSet];
 
-          (db->getStaticInfo()).addAIECounter(deviceId, counterId, tile.col, tile.row, counterNumber, 
+      // Iterate over tiles and metrics to configure all desired counters
+      uint8_t resetEvent = 0;
+      int counterId = 0;
+      auto moduleType = isCore ? XAIE_CORE_MOD : XAIE_MEM_MOD;
+
+      for (auto& tile : tiles) {
+        auto aieTile = zynqaie::Resources::AIE::getAIETile(tile.col, tile.row);
+        if (!aieTile)
+          continue;
+
+        for (int i=0; i < startEvents.size(); ++i) {
+#if 1
+          // Use old resource manager
+          auto counterNum = isCore ?
+              aieTile->coreModule.requestPerformanceCounter(deviceId); :
+              aieTile->memoryModule.requestPerformanceCounter(deviceId);
+          if (counterNum == -1)
+            break;
+          std::cout << "Using counter " << counterNum << " in tile: " << tile.col << "," << tile.row << std::endl;
+
+          auto tileLocation = XAie_TileLoc(tile.col, tile.row + 1);
+
+          XAie_PerfCounterControlSet(aieArray->getDevInst(), tileLocation, moduleType,
+                                     counterNum, startEvents.at(i), endEvents.at(i));
+#else
+          // TODO: Use new resource manager
+          // TODO: Configure ith counter in tile (tile.col, tile.row) using startEvents.at(i) and endEvents.at(i)
+          uint8_t counterNum = i;
+#endif
+
+          std::string counterName = "AIE Counter " + std::to_string(counterId);
+          (db->getStaticInfo()).addAIECounter(deviceId, counterId, tile.col, tile.row, counterNum, 
               startEvents.at(i), endEvents.at(i), resetEvent, clockFreqMhz, moduleName, counterName);
           counterId++;
         }
@@ -222,6 +245,7 @@ namespace xdp {
       
       runtimeCounters = true;
     } // for module
+#endif
 
     return runtimeCounters;
   }
@@ -314,8 +338,8 @@ namespace xdp {
         if (counters.empty()) {
           std::string msg = "AIE Profile Counters were not found for this design. "
                             "Please specify aie_profile_core_metrics and/or aie_profile_memory_metrics in your xrt.ini.";
-          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);               
-      }
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+        }
         else {
           for (auto& counter : counters) {
             (db->getStaticInfo()).addAIECounter(deviceId, counter.id, counter.column,
@@ -371,82 +395,6 @@ namespace xdp {
 
     mThreadCtrlMap.clear();
     mThreadMap.clear();
-  }
-
-  void AIEProfilingPlugin::configureCoreCounters(uint32_t index, void* handle)
-  {
-    auto drv = ZYNQ::shim::handleCheck(handle);
-    if (!drv)
-      return;
-    auto aieArray = drv->getAieArray();
-    if (!aieArray)
-      return;
-    if (!(db->getStaticInfo().isDeviceReady(index)))
-      return;
-
-    auto numCounterTiles = db->getStaticInfo().getNumAIECounter(index);
-    for (uint64_t c=0; c < numCounterTiles; c++) {
-      auto ctr = db->getStaticInfo().getAIECounter(index, c);
-      if (!ctr)
-        continue;
-
-      auto tile = zynqaie::Resources::AIE::getAIETile(ctr->column, ctr->row);
-      if (!tile)
-        continue;
-
-      for ( int i=0; i < 4; i++) {
-        auto counterId = tile->coreModule.requestPerformanceCounter(index);
-        if (counterId == -1)
-          break;
-
-        XAie_Events startEvent = XAIE_EVENT_TRUE_CORE;
-        XAie_Events stopEvent = XAIE_EVENT_TRUE_CORE;
-        auto tileLocation = XAie_TileLoc(ctr->column, ctr->row+1);
-
-        XAie_PerfCounterControlSet(aieArray->getDevInst(), tileLocation, 
-                                    XAIE_CORE_MOD, counterId, startEvent, stopEvent);
-
-        std::cout << counterId << " id in tile: " << ctr->column << "," << ctr->row << std::endl;
-      }
-    }
-  }
-
-  void AIEProfilingPlugin::configureMemCounters(uint32_t index, void* handle)
-  {
-    auto drv = ZYNQ::shim::handleCheck(handle);
-    if (!drv)
-      return;
-    auto aieArray = drv->getAieArray();
-    if (!aieArray)
-      return;
-    if (!(db->getStaticInfo().isDeviceReady(index)))
-      return;
-
-    auto numCounterTiles = db->getStaticInfo().getNumAIECounter(index);
-    for (uint64_t c=0; c < numCounterTiles; c++) {
-      auto ctr = db->getStaticInfo().getAIECounter(index, c);
-      if (!ctr)
-        continue;
-
-      auto tile = zynqaie::Resources::AIE::getAIETile(ctr->column, ctr->row);
-      if (!tile)
-        continue;
-
-      for ( int i=0; i < 2; i++) {
-        auto counterId = tile->memoryModule.requestPerformanceCounter(index);
-        if (counterId == -1)
-          break;
-
-        XAie_Events startEvent = XAIE_EVENT_TRUE_MEM;
-        XAie_Events stopEvent = XAIE_EVENT_TRUE_MEM;
-        auto tileLocation = XAie_TileLoc(ctr->column, ctr->row+1);
-
-        XAie_PerfCounterControlSet(aieArray->getDevInst(), tileLocation, 
-                                    XAIE_MEM_MOD, counterId, startEvent, stopEvent);
-
-        std::cout << counterId << " id in tile: " << ctr->column << "," << ctr->row << std::endl;
-      }
-    }
   }
 
 } // end namespace xdp
