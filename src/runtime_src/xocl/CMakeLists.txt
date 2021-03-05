@@ -69,8 +69,6 @@ target_link_libraries(xilinxopencl
   ${Boost_SYSTEM_LIBRARY}
   )
 
-set(XRT_XOCL_DEV_TARGETS xilinxopencl)
-
 else ()
 
 add_library(xilinxopencl SHARED $<TARGET_OBJECTS:xocl>)
@@ -99,8 +97,6 @@ target_link_libraries(xilinxopencl
   rt
   )
 
-set(XRT_XOCL_DEV_TARGETS xilinxopencl xilinxopencl_static)
-
 endif ()
 
 # install(TARGETS xilinxopencl
@@ -115,8 +111,8 @@ install(TARGETS xilinxopencl
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install(TARGETS ${XRT_XOCL_DEV_TARGETS}
-  EXPORT xrt-targets-dev
+install(TARGETS xilinxopencl xilinxopencl_static
+  EXPORT xrt-dev-targets
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )
