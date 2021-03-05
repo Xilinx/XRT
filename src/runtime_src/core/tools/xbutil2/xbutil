@@ -162,11 +162,7 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-
-echo "----- ${XRT_PROG} ------"
-echo "------ ${#XRTWRAP_PROG_ARGS[@]} -----"
-
-# If user did not specify -new/--new then attempt to determine if user
+# If user did not specify -old/--old then attempt to determine if user
 # wants to use classic or new by peeking inside the command line
 # Ideally with bash 'nameref' the case/esac would not be necessary and
 # we should be able to deref in one step using helper declaration like
