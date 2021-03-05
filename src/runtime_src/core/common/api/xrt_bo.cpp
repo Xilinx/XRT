@@ -827,7 +827,7 @@ bo::
 copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 {
   xdp::native::profiling_wrapper(__func__, "xrt::bo",
-    [this, src, sz, src_offset, dst_offset]{
+    [this, &src, sz, src_offset, dst_offset]{
       handle->copy(src.handle.get(), sz, src_offset, dst_offset);
     });
 }
@@ -857,264 +857,265 @@ sync(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
 xrtBufferHandle
 xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [dhdl, userptr, size, flags, grp]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [dhdl, userptr, size, flags, grp]{
       auto boh = alloc_userptr(get_xcl_device_handle(dhdl), userptr, size, flags, grp);
       bo_cache[boh.get()] = boh;
       return boh.get();
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      errno = 0;
-    }
-    return static_cast<xrt::bo_impl*>(nullptr);
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
+
 }
 
 xrtBufferHandle
 xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [dhdl, size, flags, grp]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [dhdl, size, flags, grp]{
       auto boh = alloc(get_xcl_device_handle(dhdl), size, flags, grp);
       bo_cache[boh.get()] = boh;
       return boh.get();
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      errno = 0;
-    }
-    return static_cast<xrt::bo_impl*>(nullptr);
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
 }
 
 xrtBufferHandle
 xrtBOSubAlloc(xrtBufferHandle phdl, size_t sz, size_t offset)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [phdl, sz, offset]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [phdl, sz, offset]{
       const auto& parent = get_boh(phdl);
       auto boh = sub_buffer(parent, sz, offset);
       bo_cache[boh.get()] = boh;
       return boh.get();
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      errno = 0;
-    }
-    return static_cast<xrt::bo_impl*>(nullptr);
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
 }
 
 xrtBufferHandle
 xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [dhdl, ehdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [dhdl, ehdl]{
       auto boh = alloc_import(get_xcl_device_handle(dhdl), ehdl);
       bo_cache[boh.get()] = boh;
       return boh.get();
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      errno = 0;
-    }
-    return static_cast<xrt::bo_impl*>(nullptr);
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
 }
 
 xclBufferExportHandle
 xrtBOExport(xrtBufferHandle bhdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [bhdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [bhdl]{
       return get_boh(bhdl)->export_buffer();
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      errno = 0;
-    }
-    return XRT_NULL_BO_EXPORT;
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return XRT_NULL_BO_EXPORT;
 }
 
 int
 xrtBOFree(xrtBufferHandle bhdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [bhdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [bhdl]{
       free_bo(bhdl);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return errno = 0;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
 }
 
 size_t
 xrtBOSize(xrtBufferHandle bhdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [bhdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [bhdl]{
       return get_boh(bhdl)->get_size();
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      errno = 0;
-    }
-    return static_cast<size_t>(0);
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return 0;
 }
 
 
 int
 xrtBOSync(xrtBufferHandle bhdl, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [bhdl, dir, size, offset]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [bhdl, dir, size, offset]{
       get_boh(bhdl)->sync(dir, size, offset);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return errno = 0;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
 }
 
 void*
 xrtBOMap(xrtBufferHandle bhdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [bhdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [bhdl]{
       return get_boh(bhdl)->get_hbuf();
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      errno = 0;
-    }
-    return static_cast<void*>(nullptr);
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
 }
 
 int
 xrtBOWrite(xrtBufferHandle bhdl, const void* src, size_t size, size_t seek)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [bhdl, src, size, seek]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [bhdl, src, size, seek]{
       get_boh(bhdl)->write(src, size, seek);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return errno = 0;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
 }
 
 int
 xrtBORead(xrtBufferHandle bhdl, void* dst, size_t size, size_t skip)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [bhdl, dst, size, skip]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [bhdl, dst, size, skip]{
       get_boh(bhdl)->read(dst, size, skip);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return errno = 0;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
 }
 
 int
 xrtBOCopy(xrtBufferHandle dhdl, xrtBufferHandle shdl, size_t sz, size_t dst_offset, size_t src_offset)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [dhdl, shdl, sz, dst_offset, src_offset]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [dhdl, shdl, sz, dst_offset, src_offset]{
       const auto& dst = get_boh(dhdl);
       const auto& src = get_boh(shdl);
       dst->copy(src.get(), sz, src_offset, dst_offset);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return errno = 0;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
 }
 
 
 uint64_t
 xrtBOAddress(xrtBufferHandle bhdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [bhdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [bhdl]{
       return get_boh(bhdl)->get_address();
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return static_cast<uint64_t>(errno = ex.get());
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return static_cast<uint64_t>(errno = 0);
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return static_cast<uint64_t>(errno = ex.get());
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return static_cast<uint64_t>(errno = 0);
+  }
 }

@@ -278,7 +278,7 @@ public:
     return handle;
   }
 
-  void
+  XCL_DRIVER_DLLESPEC void
   reset();
 
   explicit

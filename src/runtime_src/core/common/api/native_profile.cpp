@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XRT_CORE_COMMON_SOURCE
+
 #include "native_profile.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
@@ -37,18 +39,18 @@ static std::string full_name(const char* type, const char* function)
 namespace xdp {
 namespace native {
 
-bool load_xdp_native()
+bool load()
 {
   static xrt_core::module_loader xdp_native_loader("xdp_native_plugin",
-						   register_native_functions,
-						   native_warning_function);
+						   register_functions,
+						   warning_function);
   return true ;
 }
 
 std::function<void (const char*, unsigned long long int)> function_start_cb ;
 std::function<void (const char*, unsigned long long int)> function_end_cb ;
   
-void register_native_functions(void* handle)
+void register_functions(void* handle)
 {
   typedef void (*ftype)(const char*, unsigned long long int) ;
   function_start_cb =
@@ -61,7 +63,7 @@ void register_native_functions(void* handle)
     function_end_cb = nullptr ;
 }
 
-void native_warning_function()
+void warning_function()
 {}
 
 api_call_logger::
@@ -70,7 +72,7 @@ api_call_logger(const char* function, const char* type)
 {
   // Since all api_call_logger objects exist inside the profiling_wrapper
   // we don't need to check the config reader here (it's done already)
-  static bool s_load_native = load_xdp_native() ;
+  static bool s_load_native = load() ;
 
   if (function_start_cb && s_load_native) {
     m_funcid = xrt_core::utils::issue_id() ;

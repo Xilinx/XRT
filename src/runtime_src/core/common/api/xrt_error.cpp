@@ -300,32 +300,32 @@ to_string() const
 int
 xrtErrorGetLast(xrtDeviceHandle dhdl, xrtErrorClass ecl, xrtErrorCode* error, uint64_t* timestamp)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [dhdl, ecl, error, timestamp]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [dhdl, ecl, error, timestamp]{
       auto handle = xrt::error_impl(xrt_core::device_int::get_core_device(dhdl).get(), ecl);
       *error = handle.get_error_code();
       *timestamp = handle.get_timestamp();
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      xrt_core::send_exception_message(ex.what());
-      errno = 1;
-    }
-    return errno;
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = 1;
+  }
+  return errno;
 }
 
 int
 xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, size_t* out_len)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [error, out, len, out_len]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [error, out, len, out_len]{
       auto str = error_code_to_string(error);
 
       if (out_len)
@@ -339,15 +339,15 @@ xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, si
       out[cp_len] = 0;
 
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      errno = ex.get();
-    }
-    catch (const std::exception& ex) {
-      xrt_core::send_exception_message(ex.what());
-      errno = 1;
-    }
-    return errno;
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = 1;
+  }
+  return errno;
 }

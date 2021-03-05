@@ -17,6 +17,7 @@
 #ifndef NATIVE_PROFILE_DOT_H
 #define NATIVE_PROFILE_DOT_H
 
+#include "core/common/config.h"
 #include "core/common/config_reader.h"
 
 /**
@@ -28,9 +29,9 @@ namespace xdp {
 namespace native {
 
 // The functions responsible for loading and linking the plugin
-bool load_xdp_native() ;
-void register_native_functions(void* handle) ;
-void native_warning_function() ;
+bool load() ;
+void register_functions(void* handle) ;
+void warning_function() ;
 
 // An instance of the native_api_call_logger class will be created
 //  in every function we are monitoring.  The constructor marks the

@@ -2243,7 +2243,7 @@ run::
 wait(const std::chrono::milliseconds& timeout_ms) const
 {
   return xdp::native::profiling_wrapper(__func__, "xrt::run",
-    [this, timeout_ms] {
+    [this, &timeout_ms] {
       return handle->wait(timeout_ms);
     });
 }
@@ -2309,7 +2309,7 @@ void
 run::
 set_event(const std::shared_ptr<event_impl>& event) const
 {
-  xdp::native::profiling_wrapper(__func__, "xrt::run", [this, event]{
+  xdp::native::profiling_wrapper(__func__, "xrt::run", [this, &event]{
     handle->set_event(event);
   });
 }
@@ -2342,8 +2342,6 @@ read_register(uint32_t offset) const
   return xdp::native::profiling_wrapper(__func__, "xrt::kernel", [this, offset]{
     return handle->read_register(offset);
   });
-  //  return xdp::native::profiling_wrapper_member(__func__, "xrt::kernel",
-  //handle.get(), &kernel_impl::read_register, offset, false);
 }
 
 void
@@ -2382,227 +2380,225 @@ offset(int argno) const
 xrtKernelHandle
 xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [dhdl, xclbin_uuid, name]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [dhdl, xclbin_uuid, name]{
       return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::shared);
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return static_cast<void*>(XRT_NULL_HANDLE);
-    }
-  });
+    });
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
 }
 
 xrtKernelHandle
 xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [dhdl, xclbin_uuid, name]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [dhdl, xclbin_uuid, name]{
       return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::exclusive);
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return static_cast<void*>(XRT_NULL_HANDLE);
-    }
-  });
+    });
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
 }
 
 int
 xrtKernelClose(xrtKernelHandle khdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [khdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [khdl]{
       api::xrtKernelClose(khdl);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 xrtRunHandle
 xrtRunOpen(xrtKernelHandle khdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [khdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [khdl]{
       return api::xrtRunOpen(khdl);
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return static_cast<void*>(XRT_NULL_HANDLE);
-    }
-  });
+    });
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
 }
 
 int
 xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [khdl, argno]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [khdl, argno]{
       return get_kernel(khdl)->group_id(argno);
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 uint32_t
 xrtKernelArgOffset(xrtKernelHandle khdl, int argno)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [khdl, argno]{
-    try {
-      return static_cast<uint32_t>(get_kernel(khdl)->arg_offset(argno));
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return static_cast<uint32_t>(ex.get());
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return std::numeric_limits<uint32_t>::max();
-    }
-  });
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [khdl, argno]{
+      return get_kernel(khdl)->arg_offset(argno);
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return std::numeric_limits<uint32_t>::max();
+  }
 }
 
 int
 xrtKernelReadRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t* datap)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [khdl, offset, datap]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [khdl, offset, datap]{
       *datap = get_kernel(khdl)->read_register(offset);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
 xrtKernelWriteRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t data)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [khdl, offset, data]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [khdl, offset, data]{
       get_kernel(khdl)->write_register(offset, data);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 xrtRunHandle
 xrtKernelRun(xrtKernelHandle khdl, ...)
 {
-  std::va_list args;
-  std::va_list* argptr = &args ;
-  va_start(args, khdl);
-  auto result = xdp::native::profiling_wrapper(__func__, nullptr,
-  [khdl, argptr]{
-    try {
+  try {
+    std::va_list args;
+    std::va_list* argptr = &args ;
+    va_start(args, khdl);
+    auto result = xdp::native::profiling_wrapper(__func__, nullptr,
+    [khdl, argptr]{
       auto handle = xrtRunOpen(khdl);
       auto run = get_run(handle);
-
       run->set_all_args(argptr);
-
       run->start();
-
       return handle;
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return static_cast<void*>(XRT_NULL_HANDLE);
-    }
-  });
-  va_end(args);
-  return result;
+    });
+    va_end(args);
+    return result;
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
 }
 
 int
 xrtRunClose(xrtRunHandle rhdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
       api::xrtRunClose(rhdl);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 ert_cmd_state
 xrtRunState(xrtRunHandle rhdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
       return api::xrtRunState(rhdl);
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-    }
-    return ERT_CMD_STATE_ABORT;
-  });
+    });
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+  return ERT_CMD_STATE_ABORT;
 }
 
 ert_cmd_state
 xrtRunWait(xrtRunHandle rhdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
       return api::xrtRunWait(rhdl, 0);
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return ERT_CMD_STATE_ABORT;
-    }
-  });
+    });
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return ERT_CMD_STATE_ABORT;
+  }
 }
 
 ert_cmd_state
 xrtRunWaitFor(xrtRunHandle rhdl, unsigned int timeout_ms)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl, timeout_ms]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl, timeout_ms]{
       return api::xrtRunWait(rhdl, timeout_ms);
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return ERT_CMD_STATE_ABORT;
-    }
-  });
+    });
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return ERT_CMD_STATE_ABORT;
+  }
 }
 
 int
@@ -2610,156 +2606,155 @@ xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
                   void (* pfn_state_notify)(xrtRunHandle, ert_cmd_state, void*),
                   void* data)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [rhdl, state, pfn_state_notify, data]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [rhdl, state, pfn_state_notify, data]{
       api::xrtRunSetCallback(rhdl, state, pfn_state_notify, data);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
 xrtRunStart(xrtRunHandle rhdl)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
       api::xrtRunStart(rhdl);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
 xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
 {
-  std::va_list args;
-  std::va_list* argptr = &args;
-  va_start(args, index);
-  auto result = xdp::native::profiling_wrapper(__func__, nullptr,
-  [rhdl, index, argptr]{
-    try {
+  try {
+    std::va_list args;
+    std::va_list* argptr = &args;
+    va_start(args, index);
+    auto result = xdp::native::profiling_wrapper(__func__, nullptr,
+    [rhdl, index, argptr]{
       auto upd = get_run_update(rhdl);
-
       upd->update_arg_at_index(index, argptr);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
-  va_end(args);
-  return result;
+    });
+    va_end(args);
+    return result;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
 xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [rhdl, index, value, bytes]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [rhdl, index, value, bytes]{
       auto upd = get_run_update(rhdl);
       upd->update_arg_at_index(index, value, bytes);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
 xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
 {
-  std::va_list args;
-  std::va_list* argptr = &args ;
-  va_start(args, index);
-  auto result = xdp::native::profiling_wrapper(__func__, nullptr,
-  [rhdl, index, argptr]{
-    try {
+  try {
+    std::va_list args;
+    std::va_list* argptr = &args ;
+    va_start(args, index);
+    auto result = xdp::native::profiling_wrapper(__func__, nullptr,
+    [rhdl, index, argptr]{
       auto run = get_run(rhdl);
       run->set_arg_at_index(index, argptr);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
-  va_end(args);
-  return result ;
+    });
+    va_end(args);
+    return result ;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
 xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [rhdl, index, value, bytes]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [rhdl, index, value, bytes]{
       auto run = get_run(rhdl);
       run->set_arg_at_index(index, value, bytes);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
 xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
 {
-  return xdp::native::profiling_wrapper(__func__, nullptr,
-  [rhdl, index, value, bytes]{
-    try {
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [rhdl, index, value, bytes]{
       auto run = get_run(rhdl);
       run->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
       return 0;
-    }
-    catch (const xrt_core::error& ex) {
-      xrt_core::send_exception_message(ex.what());
-      return ex.get();
-    }
-    catch (const std::exception& ex) {
-      send_exception_message(ex.what());
-      return -1;
-    }
-  });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 void
