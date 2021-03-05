@@ -121,7 +121,7 @@ populate_cus_new(const xrt_core::device *device)
     ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
     cu_list.push_back(std::make_pair("", ptCu));
   }
-  pt.add_child("compute_units", cu_list);
+  pt.add_child("pl_compute_units", cu_list);
 
   boost::property_tree::ptree pscu_list;
   for (auto& stat : scu_stats) {
@@ -178,11 +178,11 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
   boost::format cuFmt("%-8s%-30s%-16s%-8s%-8s\n");
 
   //check if a valid CU report is generated
-  boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units.compute_units");
+  boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units.pl_compute_units");
   if(pt_cu.empty())
     return;
 
-  _output << "Compute Units" << std::endl;
+  _output << "PL Compute Units" << std::endl;
   _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
   try {
     int index = 0;
