@@ -16,7 +16,7 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   exit $?
 fi
 
-DEFAULT=xbmgmt
+DEFAULT=xbmgmt2
 XBMGMT=xbmgmt
 XBMGMT2=xbmgmt2
 
@@ -70,9 +70,7 @@ XRT_PROG=${DEFAULT}
 
 # Determine which version of xbmgmt should be used
 # Check to see environment variable is NOT set
-if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then
-  XRT_PROG=xbmgmt
-elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
+if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
      XRT_PROG=xbmgmt2
 fi
 
@@ -86,6 +84,11 @@ while [ $# -gt 0 ]; do
       XRT_PROG=xbmgmt2
       shift
       ;;
+    # Indicates that the classic version of xbutil should be used
+    -old|--old)
+	XRT_PROG=xbmgmt
+	shift
+	;;
     # Copy the options the remaining options
     *)
       XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
@@ -102,7 +105,7 @@ done
 # declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
 # However RHEL 7.X still uses bash 4.2 which does not support nameref :-(
 
-if [ ${XRT_PROG} == "xbmgmt" ]; then
+if [[ ${XRT_PROG} == "xbmgmt2" ]] && [[ ${#XRTWRAP_PROG_ARGS[@]} -gt 0 ]]; then
   PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
   case ${PROG} in
     XBMGMT | XBMGMT2)
