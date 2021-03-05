@@ -175,13 +175,8 @@ if [[ ${XRT_PROG} == "xbutil2" ]] && [[ ${#XRTWRAP_PROG_ARGS[@]} -gt 0 ]]; then
 	XBUTIL | XBUTIL2)
 	;;
 	RSTOPT)
-	    # We have an ambiguous sub-command, use the next token/switch to
-	    # disambiguate by a second look up
-	    PROG="DEFAULT"
-	    if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
-		PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
-		parse_device_arg ${PROG} ${XRTWRAP_PROG_ARGS[2]}
-	    fi
+	    # reset is only supported with classic xbutil for now
+	    PROG="XBUTIL"
 	    ;;
 	PROGOPT)
 	    # We have an ambiguous sub-command, use the next token/switch to
