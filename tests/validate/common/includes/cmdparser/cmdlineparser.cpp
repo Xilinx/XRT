@@ -110,7 +110,7 @@ bool CmdLineParser::addSwitch(const CmdSwitch &s) {
   if (s.istoggle) {
     cmd.default_value = string("false");
     cmd.value = cmd.default_value;
-    cmd.isvalid = true;
+    cmd.isvalid = false;
   } else {
     cmd.value = cmd.default_value;
     cmd.isvalid = false;

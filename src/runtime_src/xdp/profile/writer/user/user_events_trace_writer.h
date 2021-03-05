@@ -40,7 +40,7 @@ namespace xdp {
     UserEventsTraceWriter(const char* filename) ;
     ~UserEventsTraceWriter() ;
 
-    virtual void write(bool openNewFile) ;
+    virtual bool write(bool openNewFile) ;
     
   } ;
 

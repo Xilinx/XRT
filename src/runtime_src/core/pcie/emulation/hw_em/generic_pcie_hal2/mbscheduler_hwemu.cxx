@@ -2222,6 +2222,62 @@ namespace hwemu {
         return 0;
     }
 
+    int xocl_scheduler::convert_execbuf(xocl_cmd* xcmd)
+    {
+        struct ert_start_copybo_cmd *scmd = xcmd->ert_cp;
+
+        /* CU style commands must specify CU type */
+        if (scmd->opcode == ERT_START_CU || scmd->opcode == ERT_EXEC_WRITE)
+            scmd->type = ERT_CU;
+
+        /* Only convert COPYBO cmd for now. */
+        if (scmd->opcode != ERT_START_COPYBO)
+            return 0;
+
+        size_t sz = ert_copybo_size(scmd);
+
+        size_t src_off = ert_copybo_src_offset(scmd);
+        xclemulation::drm_xocl_bo* s_bo = device->xclGetBoByHandle(scmd->src_bo_hdl);
+
+        size_t dst_off = ert_copybo_dst_offset(scmd);
+        xclemulation::drm_xocl_bo* d_bo = device->xclGetBoByHandle(scmd->dst_bo_hdl);
+
+        if(!s_bo && !d_bo)
+            return -EINVAL;
+
+        uint64_t src_addr = -1; 
+        uint64_t dst_addr = -1; 
+        if(s_bo)
+            src_addr = s_bo->base;
+        if(d_bo)
+            dst_addr = d_bo->base;
+
+        if (( !s_bo || !d_bo || device->isImported(scmd->src_bo_hdl) || device->isImported(scmd->dst_bo_hdl)) )
+        {
+            int ret =  device->xclCopyBO(scmd->dst_bo_hdl, scmd->src_bo_hdl , sz , dst_off, src_off);
+            scmd->type = ERT_KDS_LOCAL;
+            return ret;
+        }
+
+        /* Both BOs are local, copy via KDMA CU */
+        if (exec->num_cdma == 0)
+            return -EINVAL;
+
+        if ((dst_addr + dst_off) % KDMA_BLOCK_SIZE ||
+                (src_addr + src_off) % KDMA_BLOCK_SIZE ||
+                sz % KDMA_BLOCK_SIZE)
+            return -EINVAL;
+
+        ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz / KDMA_BLOCK_SIZE);
+
+        for (unsigned int i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+            scmd->cu_mask[i / 32] |= 1 << (i % 32);
+
+        scmd->opcode = ERT_START_CU;
+        scmd->type = ERT_CU;
+
+        return 0;
+    }
 
     /**
      * add_bo_cmd() - Add a new buffer object command to pending list
@@ -2248,6 +2304,10 @@ namespace hwemu {
         SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
 
         xcmd->bo_init(buf);
+        if(convert_execbuf(xcmd)) {
+            SCHED_DEBUGF("<- %s ret(1) opcode(%d) type(%d)\n", __func__, xcmd->opcode(), xcmd->type());
+            return 1;
+        }
 
         if (add_xcmd(xcmd)) {
             SCHED_DEBUGF("<- %s ret(1) opcode(%d) type(%d)\n", __func__, xcmd->opcode(), xcmd->type());

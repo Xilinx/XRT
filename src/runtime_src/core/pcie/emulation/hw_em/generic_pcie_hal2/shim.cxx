@@ -92,6 +92,8 @@ namespace xclhwemhal2 {
   const unsigned HwEmShim::CONTROL_AP_IDLE  = 4;
   const unsigned HwEmShim::CONTROL_AP_CONTINUE  = 0x10;
   const unsigned HwEmShim::REG_BUFF_SIZE = 0x4;
+  const unsigned HwEmShim::M2M_KERNEL_ARGS_SIZE = 36;
+
   void messagesThread(xclhwemhal2::HwEmShim* inst);
 
   // Maintain a list of all currently open device handles.
@@ -1704,6 +1706,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(m_scheduler)
       {
           delete m_scheduler;
+          m_scheduler = nullptr;
       }
       PRINTENDFUNC;
       if (mLogStream.is_open()) {
@@ -1774,6 +1777,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(m_scheduler)
       {
           delete m_scheduler;
+          m_scheduler = nullptr;
       }
       return 0;
     }
@@ -1879,6 +1883,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(m_scheduler)
     {
         delete m_scheduler;
+        m_scheduler = nullptr;
     }
 
     return 0;
@@ -1926,6 +1931,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(m_scheduler)
     {
         delete m_scheduler;
+        m_scheduler = nullptr;
     }
     if(mDataSpace)
     {
@@ -2101,8 +2107,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   bool HwEmShim::isMBSchedulerEnabled()
   {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      std::string ertStr = mPlatformData.get<std::string>("plp.ert");
-      return (ertStr == "enabled" ? true : false);
+      if (mPlatformData.get_optional<std::string>("plp.ert").is_initialized()) {
+        std::string ertStr = mPlatformData.get<std::string>("plp.ert");
+        return (ertStr == "enabled" ? true : false);
+      }
     }
 
     bool mbSchEnabled = mFeatureRom.FeatureBitMap & FeatureBitMask::MB_SCHEDULER;
@@ -2112,9 +2120,15 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   void HwEmShim::constructQueryTable() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      mQueryTable[key_type::m2m] = mPlatformData.get<std::string>("plp.m2m");
-      std::string dmaVal = mPlatformData.get<std::string>("plp.dma");
-      mQueryTable[key_type::nodma] = (dmaVal == "none" ? "enabled" : "disabled");
+
+      if (mPlatformData.get_optional<std::string>("plp.m2m").is_initialized()) {
+        mQueryTable[key_type::m2m] = mPlatformData.get<std::string>("plp.m2m");
+      }
+      
+      if (mPlatformData.get_optional<std::string>("plp.dma").is_initialized()) {
+        std::string dmaVal = mPlatformData.get<std::string>("plp.dma");
+        mQueryTable[key_type::nodma] = (dmaVal == "none" ? "enabled" : "disabled");
+      }
     }
   }
 
@@ -2127,23 +2141,51 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   std::string HwEmShim::getERTVersion() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      return (mPlatformData.get<std::string>("plp.ertVersion"));
+      if (mPlatformData.get_optional<std::string>("plp.ertVersion").is_initialized()) {
+        return (mPlatformData.get<std::string>("plp.ertVersion"));
+      }
     }
     return "10";
   }
 
-  uint64_t HwEmShim::getErtCmdQAddress() {
+  uint64_t HwEmShim::getM2MAddress() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      return (boost::lexical_cast<uint64_t>(mPlatformData.get<std::string>("plp.ertCmdqBaseAddr")));
+      if (mPlatformData.get_optional<std::string>("plp.m2m_address").is_initialized()) {
+        std::stringstream streamSS;
+        streamSS << std::hex << mPlatformData.get<std::string>("plp.m2m_address"); 
+        uint64_t baseAddr_u;
+        streamSS >> baseAddr_u;
+        return baseAddr_u;
+      }
     }
-    return 0x0;
+    return 0;
+  }
+
+  uint64_t HwEmShim::getErtCmdQAddress() {
+
+    if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+      if (mPlatformData.get_optional<std::string>("plp.ertCmdqBaseAddr").is_initialized()) {
+        std::stringstream streamSS ;
+        streamSS << std::hex << mPlatformData.get<std::string>("plp.ertCmdqBaseAddr"); 
+        uint64_t baseAddr_u;
+        streamSS >> baseAddr_u;
+        return baseAddr_u;
+      }
+    }
+    return 0; 
   }
 
   uint64_t HwEmShim::getErtBaseAddress() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      return (boost::lexical_cast<uint64_t>(mPlatformData.get<std::string>("plp.ertBaseAddr")));
+      if (mPlatformData.get_optional<std::string>("plp.ertBaseAddr").is_initialized()) {
+        std::stringstream streamSS ;
+        streamSS << std::hex << mPlatformData.get<std::string>("plp.ertBaseAddr"); 
+        uint64_t baseAddr_u;
+        streamSS >> baseAddr_u;
+        return baseAddr_u;
+      }
     }
-    return 0x0;
+    return 0;
   }
 
   bool HwEmShim::isLegacyErt()
@@ -2172,8 +2214,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   bool HwEmShim::isCdmaEnabled()
   {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
-      int numCdma = boost::lexical_cast<int>(mPlatformData.get<std::string>("plp.numCdma"));
-      return (numCdma > 0 ? true : false);
+      if (mPlatformData.get_optional<std::string>("plp.numCdma").is_initialized()) {
+        int numCdma = boost::lexical_cast<int>(mPlatformData.get<std::string>("plp.numCdma"));
+        return (numCdma > 0 ? true : false);
+      }
     }
 
     return mFeatureRom.FeatureBitMap & FeatureBitMask::CDMA;
@@ -2183,7 +2227,13 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
       std::string cdmaAddrStr = "plp.cdmaBaseAddress" + std::to_string(index);
-      return (boost::lexical_cast<uint64_t>(mPlatformData.get<std::string>(cdmaAddrStr)));
+      if (mPlatformData.get_optional<std::string>(cdmaAddrStr).is_initialized()) {
+        std::stringstream streamSS ;
+        streamSS << std::hex << mPlatformData.get<std::string>(cdmaAddrStr); 
+        uint64_t baseAddr_u;
+        streamSS >> baseAddr_u;
+        return baseAddr_u;
+      }
     }
 
     return mFeatureRom.CDMABaseAddress[index];
@@ -2671,7 +2721,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << dst_boHandle
-      <<" , "<< src_boHandle << " , "<< size <<"," << dst_offset << "," <<src_offset<< std::endl;
+      << ", "<< src_boHandle << ", "<< size << ", " << dst_offset << ", " << src_offset<< std::endl;
   }
   xclemulation::drm_xocl_bo* sBO = xclGetBoByHandle(src_boHandle);
   if(!sBO)
@@ -2685,6 +2735,41 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   {
     PRINTENDFUNC;
     return -1;
+  }
+
+  if ( deviceQuery(key_type::m2m) && getM2MAddress() != 0 ) {
+
+    char hostBuf[M2M_KERNEL_ARGS_SIZE];
+    std::memset(hostBuf, 0, M2M_KERNEL_ARGS_SIZE);
+
+    //src and dest addresses construction
+    uint64_t src_addr = sBO->base + src_offset;
+    uint64_t dest_addr = dBO->base + dst_offset;
+
+    //fill the hostbuf with the src offset and dest offset and size offset
+    std::memcpy(hostBuf+0x10, (unsigned char*)&src_addr, 8); //copying the src address to the hostbuf to the specified offset by M2M IP
+    std::memcpy(hostBuf+0x18, (unsigned char*)&dest_addr, 8);  //copying the dest address to the hostbuf to the specified offset by M2M IP
+    std::memcpy(hostBuf+0x20, (unsigned char*)&size, 4); //copying the size address to the hostbuf to the specified offset by M2M IP
+
+    //Configuring the kernel with hostbuf by providing the Base address of the IP
+    if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, M2M_KERNEL_ARGS_SIZE) != M2M_KERNEL_ARGS_SIZE) {
+      std::cerr << "ERROR: Failed to write to args to the m2m IP" << std::endl;
+    }
+
+    hostBuf[0] = 0x1; //filling the hostbuf with the start info
+    //Starting the kernel
+    if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, 4) != 4) {
+      std::cerr << "ERROR: Failed to start the m2m kernel" << std::endl;
+    }
+
+    do {
+      //Read the status of the kernel by polling the hostBuf[0]
+      //check for the base_address is either 4 or 6
+      xclRead(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, 4);
+    } while (!(hostBuf[0] & (CONTROL_AP_DONE | CONTROL_AP_IDLE)) );
+
+    PRINTENDFUNC;
+    return 0;
   }
 
   // source buffer is host_only and destination buffer is device_only
@@ -2933,31 +3018,77 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
   }
-  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
 
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
+  int ret=-1;
   if(xclemulation::config::getInstance()->isNewMbscheduler()) 
   {
       if(!m_scheduler || !bo)
       {
           PRINTENDFUNC;
-          return -1;
+          return ret;
       }
-      int ret = m_scheduler->add_exec_buffer(bo);
+      ret = m_scheduler->add_exec_buffer(bo);
       PRINTENDFUNC;
       return ret;
   }
   else {
-      if(!mMBSch || !bo)
-      {
-          PRINTENDFUNC;
-          return -1;
-      }
-      int ret = mMBSch->add_exec_buffer(mCore, bo);
+    if(!mMBSch || !bo)
+    {
       PRINTENDFUNC;
       return ret;
+    }
+    ret = mMBSch->add_exec_buffer(mCore, bo);
+    PRINTENDFUNC;
   }
+  return ret;
 }
 
+/*
+ * xclExecBuf()
+ */
+int HwEmShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
+{
+  if (mLogStream.is_open())
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << ", " << num_bo_in_wait_list << ", " << bo_wait_list << std::endl;
+  }
+
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
+
+  xcl_LogMsg(XRT_INFO, "", "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d",
+            __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);
+
+  if (num_bo_in_wait_list > MAX_DEPS) {
+    xcl_LogMsg(XRT_ERROR, "", "%s, Incorrect argument. Max num of BOs in wait_list: %d",
+        __func__, MAX_DEPS);
+
+    return -EINVAL;
+  }
+
+  /*int ret;
+  unsigned int bwl[8] = {0};
+  std::memcpy(bwl,bo_wait_list,num_bo_in_wait_list*sizeof(unsigned int));
+  drm_xocl_execbuf exec = {0, cmdBO, bwl[0],bwl[1],bwl[2],bwl[3],bwl[4],bwl[5],bwl[6],bwl[7]};
+  ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
+  return ret ? -errno : ret;*/
+  
+  int ret=-1;
+  if(xclemulation::config::getInstance()->isNewMbscheduler()) 
+  {
+      if(!m_scheduler || !bo)
+      {
+          PRINTENDFUNC;
+          return ret;
+      }
+      ret = m_scheduler->add_exec_buffer(bo);
+      PRINTENDFUNC;
+  } else { 
+    ret = mMBSch->add_exec_buffer(mCore, bo);
+    PRINTENDFUNC;
+  }
+  return ret;
+}
 
 int HwEmShim::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
 {
@@ -3394,7 +3525,6 @@ void * HwEmShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
  */
 int HwEmShim::xclFreeQDMABuf(uint64_t buf_hdl)
 {
-
   if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
@@ -3403,10 +3533,19 @@ int HwEmShim::xclFreeQDMABuf(uint64_t buf_hdl)
   return 0;//TODO
 }
 
+int HwEmShim::xcl_LogMsg(xrtLogMsgLevel level, const char* tag, const char* format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  int ret = xclLogMsg(level, tag, format, args);
+  va_end(args);
+  return ret;
+}
+
 /*
  * xclLogMsg()
  */
-int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1)
+int HwEmShim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1)
 {
     int len = std::vsnprintf(nullptr, 0, format, args1);
 

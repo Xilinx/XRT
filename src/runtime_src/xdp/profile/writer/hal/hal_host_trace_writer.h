@@ -52,7 +52,7 @@ namespace xdp {
 		       const std::string& toolV);
     ~HALHostTraceWriter() ;
 
-    virtual void write(bool openNewFile) ;
+    virtual bool write(bool openNewFile) ;
   } ;
 
 }

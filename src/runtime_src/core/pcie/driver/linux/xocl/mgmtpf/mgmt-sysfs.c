@@ -218,6 +218,33 @@ static ssize_t dev_offline_show(struct device *dev,
 
 static DEVICE_ATTR(dev_offline, 0444, dev_offline_show, NULL);
 
+static ssize_t config_mailbox_channel_disable_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	uint64_t val;
+
+	if (kstrtoull(buf, 0, &val) < 0)
+		return -EINVAL;
+
+	(void) xocl_mailbox_set(lro, CHAN_DISABLE, val);
+	xclmgmt_connect_notify(lro, true);
+
+	return count;
+}
+static ssize_t config_mailbox_channel_disable_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	uint64_t ch_disable = 0;
+
+	(void) xocl_mailbox_get(lro, CHAN_DISABLE, &ch_disable);
+	return sprintf(buf, "0x%llx\n", ch_disable);
+}
+static DEVICE_ATTR(config_mailbox_channel_disable, 0644,
+	config_mailbox_channel_disable_show,
+	config_mailbox_channel_disable_store);
+
 static ssize_t config_mailbox_channel_switch_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
@@ -438,6 +465,34 @@ static ssize_t sbr_toggle_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(sbr_toggle);
 
+static ssize_t cache_xclbin_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", atomic_read(&lro->cache_xclbin));
+}
+
+static ssize_t cache_xclbin_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	u32 val;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+
+	if (val)
+		atomic_set(&lro->cache_xclbin, 1);
+	else
+		atomic_set(&lro->cache_xclbin, 0);
+
+	return count;
+}
+static DEVICE_ATTR(cache_xclbin, 0644,
+	cache_xclbin_show,
+	cache_xclbin_store);
+
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
 	&dev_attr_error.attr,
@@ -458,6 +513,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_flash_type.attr,
 	&dev_attr_board_name.attr,
 	&dev_attr_dev_offline.attr,
+	&dev_attr_config_mailbox_channel_disable.attr,
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_rp_program.attr,
@@ -465,6 +521,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_mgmt_reset.attr,
 	&dev_attr_sbr_toggle.attr,
+	&dev_attr_cache_xclbin.attr,
 	NULL,
 };
 

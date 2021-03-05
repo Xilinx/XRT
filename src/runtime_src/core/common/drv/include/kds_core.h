@@ -19,17 +19,19 @@
 #include <linux/device.h>
 #include <linux/uuid.h>
 
+#include "kds_client.h"
 #include "kds_command.h"
 #include "xrt_cu.h"
+#include "kds_stat.h"
 
 #define kds_info(client, fmt, args...)			\
 	dev_info(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
 #define kds_err(client, fmt, args...)			\
 	dev_err(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
+#define kds_warn(client, fmt, args...)			\
+	dev_warn(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
 #define kds_dbg(client, fmt, args...)			\
 	dev_dbg(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
-
-#define PRE_ALLOC 0
 
 enum kds_type {
 	KDS_CU		= 0,
@@ -52,47 +54,15 @@ struct kds_ctx_info {
 	u32		  flags;
 };
 
-/**
- * struct kds_client: Manage user client
- * Whenever user applciation open the device, a client would be created.
- * A client will keep alive util application close the device or being killed.
- * The client could open multiple contexts to access compute resources.
- *
- * @link: Client is added to list in KDS scheduler
- * @dev:  Device
- * @pid:  Client process ID
- * @lock: Mutex to protext context related members
- * @xclbin_id: UUID of xclbin cache
- * @num_ctx: Number of context that opened
- * @virt_cu_ref: Reference count of virtual CU
- * @cu_bitmap: bitmap of opening CU
- * @waitq: Wait queue for poll client
- * @event: Events to notify user client
+/* TODO: PS kernel is very different with FPGA kernel.
+ * Let's see if we can unify them later.
  */
-struct kds_client {
-	struct list_head	  link;
-	struct device	         *dev;
-	struct pid	         *pid;
+struct kds_scu_mgmt {
 	struct mutex		  lock;
-	void			 *xclbin_id;
-	int			  num_ctx;
-	int			  virt_cu_ref;
-	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
-#if PRE_ALLOC
-	u32			  max_xcmd;
-	u32			  xcmd_idx;
-	void			 *xcmds;
-	void			 *infos;
-#endif
-	/*
-	 * "waitq" and "event" are modified in thread that is completing them.
-	 * In order to prevent false sharing, they need to be in different
-	 * cache lines. Hence we add a "padding" in between (assuming 128-byte
-	 * is big enough for most CPU architectures).
-	 */
-	u64			  padding[16];
-	wait_queue_head_t	  waitq;
-	atomic_t		  event;
+	int			  num_cus;
+	u32			  status[MAX_CUS];
+	u32			  usage[MAX_CUS];
+	char			  name[MAX_CUS][32];
 };
 
 /* the MSB of cu_refs is used for exclusive flag */
@@ -104,15 +74,26 @@ struct kds_cu_mgmt {
 	int			  num_cdma;
 	u32			  cu_intr[MAX_CUS];
 	u32			  cu_refs[MAX_CUS];
-	u64			  cu_usage[MAX_CUS];
-	int			  configured;
+	struct cu_stats __percpu *cu_stats;
 };
+
+#define cu_stat_read(cu_mgmt, field) \
+	stat_read((cu_mgmt)->cu_stats, field)
+
+#define cu_stat_write(cu_mgmt, field, val) \
+	stat_write((cu_mgmt)->cu_stats, field, val)
+
+#define cu_stat_inc(cu_mgmt, field) \
+	this_stat_inc((cu_mgmt)->cu_stats, field)
+
+#define cu_stat_dec(cu_mgmt, field) \
+	this_stat_dec((cu_mgmt)->cu_stats, field)
 
 /* ERT core */
 struct kds_ert {
 	void (* submit)(struct kds_ert *ert, struct kds_command *xcmd);
-	struct mutex		  lock;
-	int			  configured;
+	void (* abort)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
+	bool (* abort_done)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
 };
 
 struct plram_info {
@@ -143,12 +124,14 @@ struct kds_sched {
 	struct mutex		lock;
 	bool			bad_state;
 	struct kds_cu_mgmt	cu_mgmt;
+	struct kds_scu_mgmt	scu_mgmt;
 	struct kds_ert	       *ert;
 	bool			ini_disable;
 	bool			ert_disable;
 	u32			cu_intr_cap;
 	u32			cu_intr;
 	struct plram_info	plram;
+	struct completion	comp;
 };
 
 int kds_init_sched(struct kds_sched *kds);
@@ -162,13 +145,19 @@ int kds_cfg_update(struct kds_sched *kds);
 int is_bad_state(struct kds_sched *kds);
 u32 kds_live_clients(struct kds_sched *kds, pid_t **plist);
 u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist);
+struct kds_client *kds_get_client(struct kds_sched *kds, pid_t pid);
 int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu);
 int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu);
+int kds_get_cu_total(struct kds_sched *kds);
+u32 kds_get_cu_addr(struct kds_sched *kds, int idx);
+u32 kds_get_cu_proto(struct kds_sched *kds, int idx);
 int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info);
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info);
 int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd);
+/* Use this function in xclbin download flow for config commands */
+int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd);
 
 struct kds_command *kds_alloc_command(struct kds_client *client, u32 size);
 
@@ -179,4 +168,5 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 		   int kds_mode, u32 clients, int *echo);
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf);
 ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf);
+ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf);
 #endif

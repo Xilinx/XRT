@@ -184,6 +184,13 @@ namespace xdp {
     std::map<std::pair<std::string, std::thread::id>,
              std::vector<std::pair<double, double>>> callCount ;
 
+    // **** User Level Event Statistics ****
+    std::map<const char*, uint64_t> eventCounts ;
+    std::map<std::pair<const char*, const char*>, uint64_t> rangeCounts ;
+    std::map<std::pair<const char*, const char*>, uint64_t> minRangeDurations ;
+    std::map<std::pair<const char*, const char*>, uint64_t> maxRangeDurations ;
+    std::map<std::pair<const char*, const char*>, uint64_t> totalRangeDurations;
+
     // **** HAL Statistics ****
     // For HAL, each device will have four different read/write
     //  channels that need to be kept track of.
@@ -304,6 +311,27 @@ namespace xdp {
     XDP_EXPORT
     std::vector<std::pair<std::string, TimeStatistics>> 
     getComputeUnitExecutionStats(const std::string& cuName) ;
+
+    // User level event functions
+    inline bool eventInformationPresent() { return eventCounts.size() != 0 ; }
+    inline bool rangeInformationPresent() { return rangeCounts.size() != 0 ; }
+    XDP_EXPORT void addEventCount(const char* label);
+    XDP_EXPORT void addRangeCount(std::pair<const char*, const char*> desc);
+    XDP_EXPORT void recordRangeDuration(std::pair<const char*, const char*> desc, uint64_t duration) ;
+    inline std::map<const char*, uint64_t>& getEventCounts()
+      { return eventCounts; }
+    inline std::map<std::pair<const char*, const char*>, uint64_t>&
+    getRangeCounts()
+      { return rangeCounts; }
+    inline std::map<std::pair<const char*, const char*>, uint64_t>&
+    getMinRangeDurations()
+      { return minRangeDurations; }
+    inline std::map<std::pair<const char*, const char*>, uint64_t>&
+    getMaxRangeDurations()
+      { return maxRangeDurations; }
+    inline std::map<std::pair<const char*, const char*>, uint64_t>&
+    getTotalRangeDurations()
+      { return totalRangeDurations; }
 
     // Logging Functions
     XDP_EXPORT void logFunctionCallStart(const std::string& name, 

@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 #include "XclBinClass.h"
 #include "ParameterSectionData.h"
+#include "globals.h"
 
 #include <string>
-
-using std::string;
+#include <boost/filesystem.hpp>
 
 TEST(MetaData, AddingMissingFile) {
   XclBin xclBin;
@@ -15,9 +15,14 @@ TEST(MetaData, AddingMissingFile) {
 }
 
 TEST(MetaData, AddingValidFile) {
-  XclBin xclBin;
-  const std::string formattedString = "BUILD_METADATA:JSON:unittests/test_data/metadata.json";
+  // Get the file of interest
+  boost::filesystem::path sampleMetadata(TestUtilities::getResourceDir());
+  sampleMetadata /= "metadata.json";
+
+  const std::string formattedString = std::string("BUILD_METADATA:JSON:") + sampleMetadata.string();
   ParameterSectionData psd(formattedString);
+
+  XclBin xclBin;
   xclBin.addSection(psd);
 }
 

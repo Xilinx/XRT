@@ -896,9 +896,16 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	}
 
 	if (ZOCL_PLATFORM_ARM64) {
+		zdev->pr_isolation_freeze = 0x0;
+		zdev->pr_isolation_unfreeze = 0x3;
 		if (of_property_read_u64(pdev->dev.of_node,
 		    "xlnx,pr-isolation-addr", &zdev->pr_isolation_addr))
 			zdev->pr_isolation_addr = 0;
+		if (of_property_read_bool(pdev->dev.of_node,
+		    "xlnx,pr-decoupler")) {
+			zdev->pr_isolation_freeze = 0x1;
+			zdev->pr_isolation_unfreeze = 0x0;
+		}
 	} else {
 		u32 prop_addr = 0;
 

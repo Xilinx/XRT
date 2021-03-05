@@ -26,6 +26,7 @@
 #include "core/tools/common/Process.h"
 #include "core/common/query_requests.h"
 #include "core/pcie/common/dmatest.h"
+#include "core/include/ert.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -264,30 +265,89 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   }
   // log xclbin path for debugging purposes
   logger(_ptTest, "Xclbin", xclbinPath);
+  auto json_exists = [xclbinPath]() {
+    const static std::string platform_metadata = "/platform.json";
+    boost::filesystem::path test_dir(xclbinPath);
+    std::string platform_json_path(test_dir.parent_path().string() + platform_metadata);
+    return boost::filesystem::exists(platform_json_path) ? true : false;
+    // boost::filesystem::path test_dir(xclbinPath);
+    // return boost::filesystem::exists(test_dir.parent_path().string() + "/platform.json") ? true : false;
+  };
 
-  //check if testcase is present
-  std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
-  boost::filesystem::path xrt_path(xrtTestCasePath);
-  if (!boost::filesystem::exists(xrt_path)) {
-    logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
-    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-    _ptTest.put("status", "failed");
-    return;
-  }
-  // log testcase path for debugging purposes
-  logger(_ptTest, "Testcase", xrtTestCasePath);
-
-  std::vector<std::string> args = { "-k", xclbinPath, "-d", std::to_string(_dev.get()->get_device_id()) };
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
-  int exit_code = XBU::runPythonScript(xrtTestCasePath, args, os_stdout, os_stderr);
-  if (exit_code != 0) {
-    logger(_ptTest, "Error", os_stdout.str());
-    logger(_ptTest, "Error", os_stderr.str());
-    _ptTest.put("status", "failed");
+
+  if(json_exists()) {
+    //map old testcase names to new testcase names
+    static const std::map<std::string, std::string> test_map = {
+      { "22_verify.py",             "validate.exe"    },
+      { "23_bandwidth.py",          "kernel_bw.exe"   },
+      { "host_mem_23_bandwidth.py", "slavebridge.exe" },
+      { "xcl_vcu_test.exe",         "xcl_vcu_test.exe"}
+    };
+        
+    if (test_map.find(py) == test_map.end()) {
+      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % py));
+      _ptTest.put("status", "failed");
+      return;
+    }
+    
+    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_map.find(py)->second;
+    boost::filesystem::path xrt_path(xrtTestCasePath);
+    if (!boost::filesystem::exists(xrt_path)) {
+      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+      logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+      _ptTest.put("status", "failed");
+      return;
+    }
+
+    // log testcase path for debugging purposes
+    logger(_ptTest, "Testcase", xrtTestCasePath);
+
+    boost::filesystem::path test_dir(xclbinPath);
+    std::vector<std::string> args = { test_dir.parent_path().string(), 
+                                      "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
+    int exit_code = XBU::runScript("sh", xrtTestCasePath, args, os_stdout, os_stderr);
+    if (exit_code == EOPNOTSUPP) {
+      _ptTest.put("status", "skipped");
+    }
+    else if (exit_code == EXIT_FAILURE) {
+      logger(_ptTest, "Error", os_stdout.str());
+      logger(_ptTest, "Error", os_stderr.str());
+      _ptTest.put("status", "failed");
+    }
+    else {
+      _ptTest.put("status", "passed");
+    }
   }
   else {
-    _ptTest.put("status", "passed");
+    //check if testcase is present
+    std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
+    boost::filesystem::path xrt_path(xrtTestCasePath);
+    if (!boost::filesystem::exists(xrt_path)) {
+      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+      logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+      _ptTest.put("status", "failed");
+      return;
+    }
+    // log testcase path for debugging purposes
+    logger(_ptTest, "Testcase", xrtTestCasePath);
+
+    std::vector<std::string> args = { "-k", xclbinPath, 
+                                      "-d", std::to_string(_dev.get()->get_device_id()) };
+    
+    int exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
+    if (exit_code == EOPNOTSUPP) {
+      _ptTest.put("status", "skipped");
+    }
+    else if (exit_code == EXIT_FAILURE) {
+      logger(_ptTest, "Error", os_stdout.str());
+      logger(_ptTest, "Error", os_stderr.str());
+      _ptTest.put("status", "failed");
+    }
+    else {
+      _ptTest.put("status", "passed");
+    }
   }
 
   // Get out max thruput for bandwidth testcase
@@ -298,24 +358,6 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
       logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
     }
   }
-}
-
-/*
- * helper function for kernelVersionTest
- */
-static void
-checkOSRelease(const std::vector<std::string> kernel_versions, const std::string& release,
-                boost::property_tree::ptree& _ptTest)
-{
-  for (const auto& ver : kernel_versions) {
-    if (release.find(ver) != std::string::npos) {
-      _ptTest.put("status", "passed");
-      return;
-    }
-  }
-  _ptTest.put("status", "passed");
-  logger(_ptTest, "Warning", boost::str(boost::format("Kernel version %s is not officially supported. %s is the latest supported version")
-                            % release % kernel_versions.back()));
 }
 
 /*
@@ -579,34 +621,110 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
   return true;
 }
 
-/*
- * TEST #1
- */
-void
-kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+static bool
+bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, boost::property_tree::ptree& _ptTest)
 {
-  //please append the new supported versions
-  const std::vector<std::string> ubuntu_kernel_versions = { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0" };
-  const std::vector<std::string> centos_rh_kernel_versions = { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1160.11.1", "3.10.0-1062", "3.10.0-1127", "4.9.184", "4.9.184-35", "4.18.0-147", "4.18.0-193" };
+  int ret;
+  const uint32_t bo_size = 0x1000;
+  xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_EXECBUF);
 
-  boost::property_tree::ptree _pt_host;
-  std::make_shared<ReportHost>()->getPropertyTreeInternal(_dev.get(), _pt_host);
-  const std::string os = _pt_host.get<std::string>("host.os.distribution");
-  const std::string release = _pt_host.get<std::string>("host.os.release");
-
-  if(os.find("Ubuntu") != std::string::npos) {
-    checkOSRelease(ubuntu_kernel_versions, release, _ptTest);
-  }
-  else if(os.find("Red Hat") != std::string::npos || os.find("CentOS") != std::string::npos) {
-    checkOSRelease(centos_rh_kernel_versions, release, _ptTest);
-  }
-  else {
+  if (boh == NULLBO) {
     _ptTest.put("status", "failed");
+    logger(_ptTest, "Error", "Couldn't allocate BO");
+    return false;
   }
+  auto boptr = reinterpret_cast<char *>(xclMapBO(handle, boh, true));
+  if (boptr == nullptr) {
+    _ptTest.put("status", "failed");
+    logger(_ptTest, "Error", "Couldn't map BO");
+    return false;
+  }
+
+  auto ecmd = reinterpret_cast<ert_validate_cmd*>(boptr);
+
+  std::memset(ecmd, 0, bo_size);
+  ecmd->opcode = opcode;
+  ecmd->type = ERT_CTRL;
+
+  if (xclExecBuf(handle,boh)) {
+      logger(_ptTest, "Error", "Couldn't map BO");
+      return false;
+  }
+
+  do {
+      ret = xclExecWait(handle, 1);
+      if (ret == -1)
+          break;
+  }
+  while (ecmd->state < ERT_CMD_STATE_COMPLETED);
+
+  return true;
 }
 
+static bool 
+clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle handle, boost::property_tree::ptree& _ptTest)
+{
+  const int sleep_secs = 2, one_million = 1000000;
+
+  if(!bist_alloc_execbuf_and_wait(handle, ERT_CLK_CALIB, _ptTest))
+    return false;
+
+  auto start = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
+
+  std::this_thread::sleep_for(std::chrono::seconds(sleep_secs));
+
+  if(!bist_alloc_execbuf_and_wait(handle, ERT_CLK_CALIB, _ptTest))
+    return false;
+
+  auto end = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
+
+  /* Calculate the clock frequency in MHz*/
+  double freq = static_cast<double>(((end + std::numeric_limits<unsigned long>::max() - start) & std::numeric_limits<unsigned long>::max())) / (1.0 * sleep_secs*one_million);
+  logger(_ptTest, "Details", boost::str(boost::format("ERT clock frequency: %.1f MHz") % freq));
+
+  return true;
+}
+
+static bool 
+ert_validate(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle handle, boost::property_tree::ptree& _ptTest)
+{
+  if(!bist_alloc_execbuf_and_wait(handle, ERT_MB_VALIDATE, _ptTest))
+    return false;
+
+  auto cq_write_cnt = xrt_core::device_query<xrt_core::query::ert_cq_write>(_dev);
+  auto cq_read_cnt = xrt_core::device_query<xrt_core::query::ert_cq_read>(_dev);
+  auto cu_write_cnt = xrt_core::device_query<xrt_core::query::ert_cu_write>(_dev);
+  auto cu_read_cnt = xrt_core::device_query<xrt_core::query::ert_cu_read>(_dev);
+
+  logger(_ptTest, "Details",  boost::str(boost::format("CQ read %4d bytes: %4d cycles") % 4 % cq_read_cnt));
+  logger(_ptTest, "Details",  boost::str(boost::format("CQ write%4d bytes: %4d cycles") % 4 % cq_write_cnt));
+  logger(_ptTest, "Details",  boost::str(boost::format("CU read %4d bytes: %4d cycles") % 4 % cu_read_cnt));
+  logger(_ptTest, "Details",  boost::str(boost::format("CU write%4d bytes: %4d cycles") % 4 % cu_write_cnt));
+
+  const uint32_t go_sleep = 1, wake_up = 0;
+  xrt_core::device_update<xrt_core::query::ert_sleep>(_dev.get(), go_sleep);
+  auto mb_status = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
+  if (!mb_status) {
+      _ptTest.put("status", "failed");
+      logger(_ptTest, "Error", "Failed to put ERT to sleep");
+      return false;
+  }
+
+  xrt_core::device_update<xrt_core::query::ert_sleep>(_dev.get(), wake_up);
+  auto mb_sleep = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
+  if (mb_sleep) {
+      _ptTest.put("status", "failed");
+      logger(_ptTest, "Error", "Failed to wake up ERT");
+      return false;
+  }
+
+  logger(_ptTest, "Details",  boost::str(boost::format("ERT sleep/wake successfully")));
+
+
+  return true;
+}
 /*
- * TEST #2
+ * TEST #1
  */
 void
 auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -614,7 +732,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
   const std::vector<std::string> auxPwrRequiredDevice = { "VCU1525", "U200", "U250", "U280" };
 
   std::string name = xrt_core::device_query<xrt_core::query::xmc_board_name>(_dev);
-  uint64_t max_power = xrt_core::device_query<xrt_core::query::xmc_max_power>(_dev);
+  uint64_t max_power = xrt_core::device_query<xrt_core::query::max_power_level>(_dev);
 
   //check if device has aux power connector
   bool auxDevice = false;
@@ -640,7 +758,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
 }
 
 /*
- * TEST #3
+ * TEST #2
  */
 void
 pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -658,27 +776,27 @@ pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree
 }
 
 /*
- * TEST #4
+ * TEST #3
  */
 void
 scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-  auto sc_ver = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_dev);
+  auto sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(_dev);
   std::string exp_sc_ver = "";
   try{
-    exp_sc_ver = xrt_core::device_query<xrt_core::query::expected_bmc_version>(_dev);
+    exp_sc_ver = xrt_core::device_query<xrt_core::query::expected_sc_version>(_dev);
   } catch(...) {}
 
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
     logger(_ptTest, "Warning", "SC firmware misatch");
     logger(_ptTest, "Warning", boost::str(boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.")
-                                          % sc_ver % exp_sc_ver % "Please use xbmgmt --new status to check the installed shell"));
+                                          % sc_ver % exp_sc_ver % "Please use xbmgmt examine to check the installed shell"));
   }
   _ptTest.put("status", "passed");
 }
 
 /*
- * TEST #5
+ * TEST #4
  */
 void
 verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -687,7 +805,7 @@ verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_
 }
 
 /*
- * TEST #6
+ * TEST #5
  */
 void
 dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -737,7 +855,7 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 }
 
 /*
- * TEST #7
+ * TEST #6
  */
 void
 bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -755,7 +873,7 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
 }
 
 /*
- * TEST #8
+ * TEST #7
  */
 void
 p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -766,7 +884,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
   std::string msg;
   xclbin_lock xclbin_lock(_dev);
-  XBU::check_p2p_config(_dev, msg);
+  XBU::check_p2p_config(_dev.get(), msg);
 
   if(msg.find("Error") == 0) {
     logger(_ptTest, "Error", msg.substr(msg.find(':')+1));
@@ -807,7 +925,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 }
 
 /*
- * TEST #9
+ * TEST #8
  */
 void
 m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -859,7 +977,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 }
 
 /*
- * TEST #10
+ * TEST #9
  */
 void
 hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
@@ -882,14 +1000,64 @@ hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost:
 }
 
 /*
+ * TEST #10
+ */
+void
+bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+  /* We can only test ert validate on SSv3 platform, skip if it's not a SSv3 platform */
+  int32_t ert_cfg_gpio = 0;
+  try {
+   ert_cfg_gpio = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
+  } catch(...) {
+      logger(_ptTest, "Details", "ERT validate is not available");
+      _ptTest.put("status", "skip");
+      return;
+  }
+
+  if (ert_cfg_gpio < 0) {
+      logger(_ptTest, "Details", "This platform does not support ERT validate feature");
+      _ptTest.put("status", "skip");
+      return;
+  }
+
+  if(!search_and_program_xclbin(_dev, _ptTest)) {
+    return;
+  }
+
+  xclbin_lock xclbin_lock(_dev);
+
+  if (!clock_calibration(_dev, _dev->get_device_handle(), _ptTest))
+     _ptTest.put("status", "failed");
+
+  if (!ert_validate(_dev, _dev->get_device_handle(), _ptTest))
+    _ptTest.put("status", "failed");
+
+
+  _ptTest.put("status", "passed");
+
+}
+
+/*
+ * TEST #11
+ */
+void
+vcuKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+  runTestCase(_dev, "xcl_vcu_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+
+/*
 * helper function to initialize test info
 */
 static boost::property_tree::ptree
-create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin) {
+create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin, bool is_explicit = false) {
   boost::property_tree::ptree _ptTest;
   _ptTest.put("name", name);
   _ptTest.put("description", desc);
   _ptTest.put("xclbin", xclbin);
+  _ptTest.put("explicit", is_explicit);
   return _ptTest;
 }
 
@@ -902,7 +1070,6 @@ struct TestCollection {
 * create test suite
 */
 static std::vector<TestCollection> testSuite = {
-  { create_init_test("Kernel version", "Check if kernel version is supported by XRT", ""), kernelVersionTest },
   { create_init_test("Aux connection", "Check if auxiliary power is connected", ""), auxConnectionTest },
   { create_init_test("PCIE link", "Check if PCIE link is active", ""), pcieLinkTest },
   { create_init_test("SC version", "Check if SC firmware is up-to-date", ""), scVersionTest },
@@ -911,7 +1078,9 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
   { create_init_test("Peer to peer bar", "Run P2P test", "bandwidth.xclbin"), p2pTest },
   { create_init_test("Memory to memory DMA", "Run M2M test", "bandwidth.xclbin"), m2mTest },
-  { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest }
+  { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
+  { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
+  { create_init_test("vcu", "Run decoder test", "verify.xclbin"), vcuKernelTest }
 };
 
 /*
@@ -934,6 +1103,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
                       test_status& status, std::ostream & _ostream)
 {
   std::string _status = test.get<std::string>("status");
+  std::string prev_tag = "";
   auto color = EscapeCodes::FGC_PASS;
   bool warn = false;
   bool error = false;
@@ -941,7 +1111,13 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   try {
     for (const auto& dict : test.get_child("log")) {
       for (const auto& kv : dict.second) {
-        _ostream<< boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>();
+        if (kv.first.compare(prev_tag)) {
+          prev_tag = kv.first;
+          _ostream<< boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>();
+        }
+        else
+          _ostream<< boost::format("    %-24s  %s\n") % "\0" % kv.second.get_value<std::string>();
+
         if (boost::iequals(kv.first, "warning"))
           warn = true;
         else if (boost::iequals(kv.first, "error"))
@@ -993,7 +1169,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::proper
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
   _ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
   _ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
-  _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_bmc_version>(device));
+  _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_sc_version>(device));
   _ptTree.put("platform_id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
   if (schemaVersion == Report::SchemaVersion::text) {
     _ostream << boost::format("Validate device[%s]\n") % _ptTree.get<std::string>("device_id");
@@ -1097,7 +1273,7 @@ getTestNameDescriptions(bool addAdditionOptions)
   // 'verbose' option
   if (addAdditionOptions) {
     reportDescriptionCollection.emplace_back("all", "All known validate tests will be executed (default)");
-    reportDescriptionCollection.emplace_back("quick", "Only the first 5 tests will be executed");
+    reportDescriptionCollection.emplace_back("quick", "Only the first 4 tests will be executed");
   }
 
   // report names and discription
@@ -1234,14 +1410,16 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   for (unsigned index = 0; index < testSuite.size(); ++index) {
     if (testsToRun[0] == "all") {
+      if(testSuite[index].ptTest.get<bool>("explicit"))
+        continue;
       testObjectsToRun.push_back(&testSuite[index]);
       continue;
     }
 
     if (testsToRun[0] == "quick") {
       testObjectsToRun.push_back(&testSuite[index]);
-      // Only the first 5 should be processed
-      if (index == 4)
+      // Only the first 3 should be processed
+      if (index == 3)
         break;
     }
 

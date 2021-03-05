@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -26,6 +26,8 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
+
 #include "xclbin_int.h" // Non public xclbin APIs
 
 #include <map>
@@ -61,31 +63,55 @@ free_device(xrtDeviceHandle dhdl)
     throw xrt_core::error(-EINVAL, "No such device handle");
 }
 
-static std::vector<char>
-read_xclbin(const std::string& fnm)
-{
-  if (fnm.empty())
-    throw std::runtime_error("No xclbin specified");
-
-  // load the file
-  std::ifstream stream(fnm);
-  if (!stream)
-    throw std::runtime_error("Failed to open file '" + fnm + "' for reading");
-
-  stream.seekg(0, stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0, stream.beg);
-
-  std::vector<char> header(size);
-  stream.read(header.data(), size);
-  return header;
-}
-
 inline void
 send_exception_message(const char* msg)
 {
   xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
 }
+
+// Helper functions for extracting xrt_core::device query request values
+namespace query {
+
+// Return the raw value of a query_request.  Compile type validation
+// that the query request result type matches the xrt::info::device
+// return type
+template <xrt::info::device param, typename QueryRequestType>
+boost::any
+raw(const xrt_core::device* device)
+{
+  static_assert(std::is_same<
+                typename QueryRequestType::result_type,
+                typename xrt::info::param_traits<xrt::info::device, param>::return_type
+                >::value, "query type mismatch");
+  return device->query<QueryRequestType>();
+}
+
+// Return the converted query request.  Conversion is per converter
+// argument Compile type validation that the query request result type
+// matches the xrt::info::device return type
+template <xrt::info::device param, typename QueryRequestType, typename Converter>
+boost::any
+to_value(const xrt_core::device* device, Converter conv)
+{
+  auto val = conv(xrt_core::device_query<QueryRequestType>(device));
+  static_assert(std::is_same<
+                decltype(val),
+                typename xrt::info::param_traits<xrt::info::device, param>::return_type
+                >::value, "query type mismatch");
+  return val;
+}
+
+// Return the query request as a std::string using the
+// query_request::to_string converter. Compile time asserts that
+// xrt::info::device param return type is std::string
+template <xrt::info::device param, typename QueryRequestType>
+boost::any
+to_string(const xrt_core::device* device)
+{
+  return to_value<param, QueryRequestType>(device, [](const auto& q) { return QueryRequestType::to_string(q); });
+}
+
+} // query
 
 } // unnamed namespace
 
@@ -119,6 +145,11 @@ device(unsigned int index)
 {}
 
 device::
+device(const std::string& bdf)
+  : device(xrt_core::get_device_id(bdf))
+{}
+
+device::
 device(xclDeviceHandle dhdl)
   : handle(xrt_core::get_userpf_device(dhdl))
 {}
@@ -127,25 +158,26 @@ uuid
 device::
 load_xclbin(const struct axlf* top)
 {
-  handle->load_xclbin(top);
-  return uuid(top->m_header.uuid);
+  xrt::xclbin xclbin{top};
+  handle->load_xclbin(xclbin);
+  return xclbin.get_uuid();
 }
 
 uuid
 device::
 load_xclbin(const std::string& fnm)
 {
-  auto xclbin = read_xclbin(fnm);
-  auto top = reinterpret_cast<const axlf*>(xclbin.data());
-  return load_xclbin(top);
+  xrt::xclbin xclbin{fnm};
+  handle->load_xclbin(xclbin);
+  return xclbin.get_uuid();
 }
 
 uuid
 device::
 load_xclbin(const xclbin& xclbin)
 {
-  auto top = reinterpret_cast<const axlf*>(xclbin.get_data().data());
-  return load_xclbin(top);
+  handle->load_xclbin(xclbin);
+  return xclbin.get_uuid();
 }
 
 uuid
@@ -166,6 +198,40 @@ device::
 get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
 {
   return handle->get_axlf_section_or_error(section, uuid);
+}
+
+boost::any
+device::
+get_info(info::device param) const
+{
+  switch (param) {
+  case info::device::name :                   // std::string
+    return query::raw<info::device::name, xrt_core::query::rom_vbnv>(handle.get());
+  case info::device::bdf :                    // std::string
+    return query::to_string<info::device::bdf, xrt_core::query::pcie_bdf>(handle.get());
+  case info::device::kdma :                   // uint32_t
+    return query::raw<info::device::kdma, xrt_core::query::kds_numcdmas>(handle.get());
+  case info::device::max_clock_frequency_mhz: // unsigned long
+    return query::to_value<info::device::max_clock_frequency_mhz, xrt_core::query::clock_freqs_mhz>
+      (handle.get(), [](const auto& freqs) {
+        unsigned long max = 0;
+        for (const auto& val : freqs) { max = std::max(max, std::stoul(val)); }
+        return max;
+      });
+  case info::device::m2m :                    // bool
+    try {
+      return query::to_value<info::device::m2m, xrt_core::query::m2m>
+        (handle.get(), [](const auto& val) { return bool(val); });
+    }
+    catch (const std::exception&) {
+      return false;
+    }
+  case info::device::nodma :                  // bool
+    return query::to_value<info::device::nodma, xrt_core::query::nodma>
+      (handle.get(), [](const auto& val) { return bool(val); });
+  }
+
+  throw std::runtime_error("internal error: unreachable");
 }
 
 } // xrt
@@ -209,6 +275,23 @@ xrtDeviceOpen(unsigned int index)
   return nullptr;
 }
 
+xrtDeviceHandle
+xrtDeviceOpenByBDF(const char* bdf)
+{
+  try {
+    return xrtDeviceOpen(xrt_core::get_device_id(bdf));
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
+}
+
 int
 xrtDeviceClose(xrtDeviceHandle dhdl)
 {
@@ -227,9 +310,10 @@ xrtDeviceClose(xrtDeviceHandle dhdl)
 }
 
 int
-xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin)
+xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const axlf* top)
 {
   try {
+    xrt::xclbin xclbin{top};
     auto device = get_device(dhdl);
     device->load_xclbin(xclbin);
     return 0;
@@ -248,9 +332,9 @@ int
 xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
 {
   try {
+    xrt::xclbin xclbin{fnm};
     auto device = get_device(dhdl);
-    auto xclbin = read_xclbin(fnm);
-    device->load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
+    device->load_xclbin(xclbin);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -268,8 +352,7 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 {
   try {
     auto device = get_device(dhdl);
-    auto& xclbin = xrt_core::xclbin_int::get_xclbin_data(xhdl);
-    device->load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
+    device->load_xclbin(xrt_core::xclbin_int::get_xclbin(xhdl));
     return 0;
   }
   catch (const xrt_core::error& ex) {

@@ -43,8 +43,6 @@ add_library(xrt_coreutil_static STATIC ${XRT_CORE_COMMON_LIB_FILES})
 set_target_properties(xrt_coreutil PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
-message("bfl=${Boost_FILESYSTEM_LIBRARY}")
-
 target_link_libraries(xrt_coreutil
   PRIVATE
   ${Boost_FILESYSTEM_LIBRARY}
@@ -62,8 +60,8 @@ install(TARGETS xrt_coreutil
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install(TARGETS xrt_coreutil
-  EXPORT xrt-targets-dev
+install(TARGETS xrt_coreutil xrt_coreutil_static
+  EXPORT xrt-dev-targets
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )

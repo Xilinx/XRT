@@ -91,36 +91,6 @@ static int str2index(const char *arg, unsigned& index)
     return 0;
 }
 
-static bool
-check_os_release(const std::vector<std::string> kernel_versions, std::ostream &ostr)
-{
-    const std::string release = sensor_tree::get<std::string>("system.release");
-    for (const auto& ver : kernel_versions) {
-        if (release.find(ver) != std::string::npos)
-            return true;
-    }
-    ostr << "WARNING: Kernel version " << release << " is not officially supported. "
-        << kernel_versions.back() << " is the latest supported version" << std::endl;
-    return false;
-}
-
-static bool
-is_supported_kernel_version(std::ostream &ostr)
-{
-    std::vector<std::string> ubuntu_kernel_versions =
-        { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0", "5.4.0" };
-    std::vector<std::string> centos_rh_kernel_versions =
-        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1160.11.1", "3.10.0-1062", "3.10.0-1127", "4.9.184", "4.9.184-35", "4.18.0-147", "4.18.0-193", "4.18.0-240" };
-    const std::string os = sensor_tree::get<std::string>("system.linux", "N/A");
-
-    if(os.find("Ubuntu") != std::string::npos)
-        return check_os_release(ubuntu_kernel_versions, ostr);
-    else if(os.find("Red Hat") != std::string::npos || os.find("CentOS") != std::string::npos)
-        return check_os_release(centos_rh_kernel_versions, ostr);
-
-    return true;
-}
-
 static void print_pci_info(std::ostream &ostr)
 {
     ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
@@ -141,8 +111,6 @@ static void print_pci_info(std::ostream &ostr)
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
         ostr << "WARNING: card(s) marked by '*' are not ready." << std::endl;
     }
-
-    is_supported_kernel_version(ostr);
 }
 
 static int xrt_xbutil_version_cmp()
@@ -1206,7 +1174,9 @@ int xcldev::device::runTestCase(const std::string& py,
         static const std::map<std::string, std::string> test_map = {
             { "22_verify.py",             "validate.exe"    },
             { "23_bandwidth.py",          "kernel_bw.exe"   },
-            { "host_mem_23_bandwidth.py", "slavebridge.exe" }
+            { "host_mem_23_bandwidth.py", "slavebridge.exe" },
+            { "xrt_iops_test.exe",        "xrt_iops_test.exe" },
+            { "xcl_iops_test.exe",        "xcl_iops_test.exe" }
         };
         
         if (test_map.find(py) == test_map.end())
@@ -1223,7 +1193,7 @@ int xcldev::device::runTestCase(const std::string& py,
         auto device = pcidev::get_dev(m_idx);
         std::string bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % device->domain % device->bus % device->dev % device->func);
 
-        cmd = xrtTestCasePath + " " + xclbinPath + " -d " + bdf;
+        cmd = xrtTestCasePath + " " + xclbinPath + " -d " + bdf + " " + args;
 
     }
     else if (py.find(".exe") == std::string::npos) { //OLD FLOW:
@@ -1526,18 +1496,6 @@ int xcldev::device::getXclbinuuid(uuid_t &uuid) {
     return 0;
 }
 
-int xcldev::device::kernelVersionTest(void)
-{
-    if (getenv_or_null("INTERNAL_BUILD")) {
-        std::cout << "Developer's build. Skipping validation" << std::endl;
-        return -EOPNOTSUPP;
-    }
-    if (!is_supported_kernel_version(std::cout)) {
-        return  1;
-    }
-    return 0;
-}
-
 /*
  * validate
  */
@@ -1546,12 +1504,6 @@ int xcldev::device::validate(bool quick, bool hidden)
     bool withWarning = false;
     int retVal = 0;
     auto dev = pcidev::get_dev(m_idx);
-
-    retVal = runOneTest("Kernel version check",
-            std::bind(&xcldev::device::kernelVersionTest, this));
-    withWarning = withWarning || (retVal == 1);
-    if (retVal < 0)
-        return retVal;
 
     retVal = runOneTest("AUX power connector check",
             std::bind(&xcldev::device::auxConnectionTest, this));
@@ -1816,6 +1768,10 @@ int xcldev::xclReset(int argc, char *argv[])
 
     std::string vbnv, errmsg;
     auto dev = pcidev::get_dev(index);
+    if (!dev->is_ready) {
+        std::cerr << "device [" << index << "] is not ready, reset command exiting" << std::endl;
+        return -EINVAL;
+    }
     dev->sysfs_get( "rom", "VBNV", errmsg, vbnv );
     if (!errmsg.empty()) {
         std::cerr << errmsg << std::endl;
@@ -2366,7 +2322,8 @@ xcldev::device::iopsTest()
 {
     std::string output;
 
-    int ret = runTestCase(std::string("xrt_iops_test.exe"), std::string("verify.xclbin"),
+    //TODO: use xrt_iops_test.exe after XRT API supports construct device by BDF
+    int ret = runTestCase(std::string("xcl_iops_test.exe"), std::string("verify.xclbin"),
                 output, std::string(" -t 1 -l 128 -a 500000"));
 
     if (ret != 0) {
@@ -2387,7 +2344,7 @@ xcldev::device::iopsTest()
         std::cout << "IOPS print result unexpected" << std::endl;
         ret = -EINVAL;
     }
-    std::cout << "Maximum " << output.substr(sp, ep - sp) << std::endl;
+    std::cout << "\rMaximum " << output.substr(sp, ep - sp) << std::endl;
     return 0;
 }
 

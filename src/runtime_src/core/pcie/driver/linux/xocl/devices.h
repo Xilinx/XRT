@@ -261,7 +261,6 @@ enum {
 #define	XOCL_VERSION_CTRL	"version_control"
 #define	XOCL_MSIX_XDMA		"msix_xdma"
 #define	XOCL_ERT_USER		"ert_user"
-#define	XOCL_ERT_30		"ert_30"
 #define	XOCL_ERT_VERSAL		"ert_versal"
 #define	XOCL_M2M		"m2m"
 #define	XOCL_PCIE_FIREWALL	"pcie_firewall"
@@ -314,7 +313,6 @@ enum subdev_id {
 	XOCL_SUBDEV_SPC,
 	XOCL_SUBDEV_PMC,
 	XOCL_SUBDEV_ICAP_CNTRL,
-	XOCL_SUBDEV_ERT_30,
 	XOCL_SUBDEV_ERT_USER,
 	XOCL_SUBDEV_ERT_VERSAL,
 	XOCL_SUBDEV_NUM
@@ -1682,7 +1680,7 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define XOCL_RES_ERT_USER				\
+#define XOCL_RES_ERT_USER					\
 		((struct resource []) {			\
 			{				\
 			.start	= ERT_CQ_BASE_ADDR,	\

@@ -18,6 +18,7 @@
 #define VP_TRACE_WRITER_DOT_H
 
 #include <string>
+#include <atomic>
 
 #include "xdp/profile/writer/vp_base/vp_writer.h"
 #include "xdp/config.h"
@@ -34,6 +35,7 @@ namespace xdp {
     // Also PID, which is stored in the database
     std::string creationTime ;
     uint16_t resolution ;
+    static std::atomic<unsigned int> traceIDCtr;
     
   protected:
     // Each new trace CSV file has the following sections
@@ -45,12 +47,16 @@ namespace xdp {
 
     // Trace formats can either be dumped as a binary or human readable
     bool humanReadable ;
+    unsigned int traceID = 0;
 
     // The different types of VTF file formats supported
     virtual bool isHost()   { return false ; }
     virtual bool isDevice() { return false ; }
     virtual bool isAIE()    { return false ; }
     virtual bool isKernel() { return false ; } 
+
+    // Return a unique ID everytime we're called
+    XDP_EXPORT void setUniqueTraceID();
 
   public:
     XDP_EXPORT VPTraceWriter(const char* filename, const std::string& v,

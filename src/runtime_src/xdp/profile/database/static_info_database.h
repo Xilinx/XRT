@@ -512,6 +512,9 @@ namespace xdp {
     VPStaticDatabase(VPDatabase* d) ;
     ~VPStaticDatabase() ;
 
+    XDP_EXPORT bool validXclbin(void* devHandle) ;
+    inline double earliestSupportedToolVersion() { return 2019.2 ; }
+
     // Getters and setters
     inline int getPid() { return pid ; }
     inline uint64_t getApplicationStartTime() { return applicationStartTime ; }
@@ -653,6 +656,8 @@ namespace xdp {
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
+      if (deviceInfo[deviceId]->currentXclbin() == nullptr)
+	return nullptr;
       return deviceInfo[deviceId]->currentXclbin()->deviceIntf; 
     }
 

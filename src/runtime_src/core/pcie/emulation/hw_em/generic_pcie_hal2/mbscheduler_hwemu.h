@@ -462,6 +462,7 @@ namespace hwemu {
             int   scheduler();
 
             int   add_xcmd(xocl_cmd *xcmd);
+            int   convert_execbuf(xocl_cmd* xcmd);
             int   add_bo_cmd(xclemulation::drm_xocl_bo *buf);
             int   add_exec_buffer(xclemulation::drm_xocl_bo *buf);
 

@@ -59,10 +59,12 @@ namespace xdp {
     XDP_EXPORT virtual ~VPWriter() ;
 
     virtual bool isRunSummaryWriter() { return false ; }
-    virtual void write(bool openNewFile = true) = 0 ;
+    // Return false to indicate no data was written
+    virtual bool write(bool openNewFile = true) = 0 ;
     virtual bool isDeviceWriter() { return false ; } 
     virtual DeviceIntf* device() { return nullptr ; } 
-    virtual bool isSameDevice(void* /*handle*/) { return false ; } 
+    virtual bool isSameDevice(void* /*handle*/) { return false ; }
+    virtual std::string getcurrentFileName() { return currentFileName ; }
   } ;
 
 }

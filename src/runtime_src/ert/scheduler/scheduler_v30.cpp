@@ -237,6 +237,24 @@ struct slot_info
   size_type regmap_size = 0;
 };
 
+struct mb_validation
+{
+  value_type place_holder = 0;
+
+  value_type timestamp = 0;
+
+  value_type cq_read_single = 0;
+
+  value_type cq_write_single = 0;
+
+  value_type cu_read_single = 0;
+
+  value_type cu_write_single = 0;
+
+};
+
+static mb_validation mb_bist;
+
 // Fixed sized map from slot_idx -> slot info
 static slot_info command_slots[max_slots];
 
@@ -260,6 +278,7 @@ static bitset_type cu_ready;
 static bitset_type cu_done;
 // Bitmask for interrupt enabled CUs.  (0) no interrupt (1) enabled
 static bitset_type cu_interrupt_mask;
+
 #ifndef ERT_HW_EMU
 /**
  * Utility to read a 32 bit value from any axi-lite peripheral
@@ -385,6 +404,13 @@ idx_to_mask(size_type idx, size_type mask_idx)
   return idx_in_mask(idx,mask_idx)
     ? 1 << (idx-(mask_idx<<5))
     : 0;
+}
+
+
+static value_type
+read_clk_counter(void)
+{
+  return read_reg(ERT_CLK_COUNTER_ADDR);
 }
 
 // scope guard for disabling interrupts
@@ -638,7 +664,15 @@ configure_cu(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
   uint32_t *addr_ptr = (uint32_t *)(uintptr_t)cu_addr;
   uint32_t *regmap_ptr = (uint32_t *)(uintptr_t)regmap_addr;
 
-  memcpy(addr_ptr+4, regmap_ptr+4, (regmap_size-4)<<2);
+  /* We know for-loop is 2% slower than memcpy().
+   * But unstable behavior are observed when using memcpy().
+   * Sometimes, it does not fully configure all registers.
+   * We failed to find a stable pattern to use memcpy().
+   * Don't waste your life to it again.
+   */
+  //memcpy(addr_ptr+4, regmap_ptr+4, (regmap_size-4)<<2);
+  for (size_type i = 4; i < regmap_size; ++i)
+    *(addr_ptr + i) = *(regmap_ptr + i);
 #endif
   // start kernel at base + 0x0
   write_reg(cu_addr, 0x1);
@@ -991,6 +1025,69 @@ abort_mb(size_type slot_idx)
   return true;
 }
 
+static inline void 
+repetition_write(addr_type addr, value_type loop_cnt)
+{
+  while (loop_cnt--)
+    write_reg(addr, 0x0);
+}
+
+static inline void 
+repetition_read(addr_type addr, value_type loop_cnt)
+{
+  while (loop_cnt--)
+    read_reg(addr);
+}
+
+static bool
+validate_mb(value_type slot_idx)
+{
+  auto& slot = command_slots[slot_idx];
+  value_type start_t, end_t, cnt = 1024;
+  void *addr_ptr = (void *)(uintptr_t)(slot.slot_addr);
+
+  start_t = read_clk_counter();
+  repetition_read(slot.slot_addr, cnt);
+  end_t = read_clk_counter();
+  mb_bist.cq_read_single = (end_t-start_t)/cnt;
+   
+  start_t = read_clk_counter();
+  repetition_write(slot.slot_addr, cnt);
+  end_t = read_clk_counter();
+  mb_bist.cq_write_single = (end_t-start_t)/cnt;
+
+  start_t = read_clk_counter();
+  repetition_read(cu_idx_to_addr(0), cnt);
+  end_t = read_clk_counter();
+  mb_bist.cu_read_single = (end_t-start_t)/cnt;
+
+  start_t = read_clk_counter();
+  repetition_write(cu_idx_to_addr(0), cnt);
+  end_t = read_clk_counter();
+  mb_bist.cu_write_single = (end_t-start_t)/cnt; 
+
+  slot.header_value = (slot.header_value & ~0xF) | 0x4;
+
+  memcpy(addr_ptr, &mb_bist, sizeof(struct mb_validation));
+  notify_host(slot_idx);
+  return true;
+}
+
+static bool
+clock_calib_mb(value_type slot_idx)
+{
+  auto& slot = command_slots[slot_idx];
+  void *addr_ptr = (void *)(uintptr_t)(slot.slot_addr);
+
+  mb_bist.timestamp = read_clk_counter();
+
+  slot.header_value = (slot.header_value & ~0xF) | 0x4;
+  memcpy(addr_ptr, &mb_bist, sizeof(struct mb_validation));
+  notify_host(slot_idx);
+  return true;
+}
+
+
 /**
  * Process special command.
  *
@@ -1010,6 +1107,10 @@ process_special_command(value_type opcode, size_type slot_idx)
     return exit_mb(slot_idx);
   if (opcode==ERT_ABORT)
     return abort_mb(slot_idx);
+  if (opcode==ERT_CLK_CALIB)
+    return clock_calib_mb(slot_idx);
+  if (opcode==ERT_MB_VALIDATE)
+    return validate_mb(slot_idx);
   return false;
 }
 

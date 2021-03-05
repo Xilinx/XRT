@@ -40,8 +40,6 @@
  */
 #define	ADC_CODE_TEMP_110           0xC36
 
-#define	SYSMON_TO_MILLDEGREE(val)		\
-	(((int64_t)(val) * 501374 >> 16) - 273678)
 #define	SYSMON_TO_MILLVOLT(val)			\
 	((val) * 1000 * 3 >> 16)
 
@@ -55,6 +53,18 @@ struct xocl_sysmon {
 	struct device		*hwmon_dev;
 	struct xocl_sysmon_privdata *priv_data;
 };
+
+/* For ultrascale+ cards use sysmon4 equation 2-11 from UG580 doc
+ * Also, sysmon register will have all F's once mgmtpf bar goes offline
+ * during card shutdown sequence, so ignoring all F's.
+ */
+int32_t SYSMON_TO_MILLDEGREE(u32 val)
+{
+	if (val == 0xFFFFFFFF)
+		return 0;
+
+	return (((int64_t)(val) * 509314 >> 16) - 280230);
+}
 
 static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 {
@@ -130,7 +140,7 @@ static ssize_t show_sysmon(struct platform_device *pdev, u32 prop, char *buf)
 	u32 val;
 
 	(void) get_prop(pdev, prop, &val);
-	return sprintf(buf, "%u\n", val);
+	return sprintf(buf, "%d\n", val);
 }
 
 /* sysfs support */

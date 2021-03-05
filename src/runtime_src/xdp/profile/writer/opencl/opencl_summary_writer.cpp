@@ -840,92 +840,89 @@ namespace xdp {
   {
     // Caption
     fout << "Data Transfer: Streams" << std::endl ;
-
+    
     // Column headers
     fout << "Device"                  << ","
-	 << "Master Port"             << ","
-	 << "Master Kernel Arguments" << ","
-	 << "Slave Port"              << ","
-	 << "Slave Kernel Arguments"  << ","
-	 << "Number Of Transfers"     << ","
-	 << "Transfer Rate (MB/s)"    << ","
-	 << "Average Size (KB)"       << ","
-	 << "Link Utilization (%)"    << ","
-	 << "Link Starve (%)"         << ","
-	 << "Link Stall (%)"          << "," 
-	 << std::endl ;
-
+         << "Master Port"             << ","
+         << "Master Kernel Arguments" << ","
+         << "Slave Port"              << ","
+         << "Slave Kernel Arguments"  << ","
+         << "Number Of Transfers"     << ","
+         << "Transfer Rate (MB/s)"    << ","
+         << "Average Size (KB)"       << ","
+         << "Link Utilization (%)"    << ","
+         << "Link Starve (%)"         << ","
+         << "Link Stall (%)"          << "," 
+         << std::endl ;
+    
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
-
-    for (auto device : infos)
+    
+    for (auto device : infos) 
     {
       for (auto xclbin : device->loadedXclbins)
       {
-	xclCounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
-	for (auto cu : xclbin->cus)
-	{
-	  //std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
-	  std::vector<uint32_t>* asmMonitors = (cu.second)->getASMs() ;
-	  
-	  uint64_t ASMIndex = 0 ;
-	  //for (auto monitor : monitors)
-	  for (auto asmMonitorId : (*asmMonitors))
-	  {
-	    //if (monitor->type != AXI_STREAM_MONITOR) continue ;
-	    Monitor* monitor = (db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmMonitorId) ;
-
-	    uint64_t numTranx = values.StrNumTranx[ASMIndex] ;
-
-	    std::string masterPort = "" ;
-	    std::string slavePort = "" ;
-	    std::string masterArgs = "" ;
-	    std::string slaveArgs = "" ;
-
-	    size_t dashPosition = (monitor->name).find("-") ;
-	    if (dashPosition != std::string::npos)
-	    {
-	      std::string firstHalf = (monitor->name).substr(0, dashPosition);
-	      std::string secondHalf =
-		(monitor->name).substr(dashPosition + 1,
-				       (monitor->name).size()-dashPosition-1) ;
-	      size_t slashPosition = firstHalf.find("/") ;
-	      masterPort = firstHalf.substr(0, slashPosition) ;
-	      masterArgs = firstHalf.substr(slashPosition + 1,
-					    firstHalf.size()-slashPosition-1) ;
-
-	      slashPosition = secondHalf.find("/") ;
-	      slavePort = secondHalf.substr(0, slashPosition) ;
-	      slaveArgs = secondHalf.substr(slashPosition + 1,
-					    secondHalf.size()-slashPosition-1) ;
-	    }
-
-	    double transferTime =
-	      values.StrBusyCycles[ASMIndex] / xclbin->clockRateMHz ;
-	    double transferRate = (transferTime == 0.0) ? 0 :
-	      values.StrDataBytes[ASMIndex] / transferTime ;
-
-	    double linkStarve =
-	      (double)(values.StrStarveCycles[ASMIndex]) / (double)(values.StrBusyCycles[ASMIndex]) * 100.0 ;
-	    double linkStall =
-	      (double)(values.StrStallCycles[ASMIndex]) / (double)(values.StrBusyCycles[ASMIndex]) * 100.0 ;
-	    double linkUtil = 100.0 - linkStarve - linkStall ;
-
-	    fout << (device->deviceName) << ","
-		 << masterPort << ","
-		 << masterArgs << ","
-		 << slavePort << ","
-		 << slaveArgs << ","
-		 << numTranx << ","
-		 << transferRate << ","
-		 << (values.StrDataBytes[ASMIndex] / numTranx) << ","
-		 << linkUtil << "," 
-		 << (values.StrStarveCycles[ASMIndex]) << ","
-		 << (values.StrStallCycles[ASMIndex]) << ","
-		 << std::endl ;
-
-	    ++ASMIndex ;
-	  }
-	}
+        xclCounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
+        for (auto cu : xclbin->cus)
+        {
+          //std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
+          std::vector<uint32_t>* asmMonitors = (cu.second)->getASMs() ;
+          
+          //for (auto monitor : monitors)
+          for (auto asmMonitorId : (*asmMonitors))
+          {
+            //if (monitor->type != AXI_STREAM_MONITOR) continue ;
+            Monitor* monitor = (db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmMonitorId) ;
+            
+            uint64_t numTranx = values.StrNumTranx[asmMonitorId] ;
+            uint64_t busyCycles = values.StrBusyCycles[asmMonitorId];
+            if(0 == numTranx) {
+              continue;
+            }
+ 
+            std::string masterPort = "" ;
+            std::string slavePort = "" ;
+            std::string masterArgs = "" ;
+            std::string slaveArgs = "" ;
+            
+            size_t dashPosition = (monitor->name).find("-") ;
+            if (dashPosition != std::string::npos)
+            {
+              std::string firstHalf = (monitor->name).substr(0, dashPosition);
+              std::string secondHalf = (monitor->name).substr(dashPosition + 1,
+                  (monitor->name).size()-dashPosition-1) ;
+              size_t slashPosition = firstHalf.find("/") ;
+              masterPort = firstHalf;
+              masterArgs = firstHalf.substr(slashPosition + 1, firstHalf.size()-slashPosition-1) ;
+              
+              slashPosition = secondHalf.find("/") ;
+              slavePort = secondHalf;
+              slaveArgs = secondHalf.substr(slashPosition + 1, secondHalf.size()-slashPosition-1) ;
+            }
+            
+            double transferTime = busyCycles / xclbin->clockRateMHz ;
+            double transferRate = (transferTime == 0.0) ? 0 : values.StrDataBytes[asmMonitorId] / transferTime ;
+            
+            double linkStarve = (0 == busyCycles) ? 0 : 
+                (double)(values.StrStarveCycles[asmMonitorId]) / (double)(busyCycles) * 100.0 ;
+            double linkStall = (0 == busyCycles) ? 0 : 
+                (double)(values.StrStallCycles[asmMonitorId]) / (double)(busyCycles) * 100.0 ;
+            double linkUtil = 100.0 - linkStarve - linkStall ;
+            double avgSizeInKB = ((values.StrDataBytes[asmMonitorId] / numTranx)) / 1000.0;
+            
+            fout << (device->deviceName) << ","
+                 << masterPort << ","
+                 << masterArgs << ","
+                 << slavePort << ","
+                 << slaveArgs << ","
+                 << numTranx << ","
+                 << transferRate << ","
+                 << avgSizeInKB << ","
+                 << linkUtil << "," 
+                 << linkStarve << ","
+                 << linkStall << ","
+                 << std::endl ;
+          }
+        }
       }
     }
   }
@@ -1005,7 +1002,7 @@ namespace xdp {
 	    {
 	      fout << (totalWriteTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
@@ -1045,7 +1042,7 @@ namespace xdp {
 	    {
 	      fout << (totalReadTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
@@ -1133,7 +1130,7 @@ namespace xdp {
 	    {
 	      fout << (totalWriteTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
@@ -1173,7 +1170,7 @@ namespace xdp {
 	    {
 	      fout << (totalReadTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
@@ -1261,7 +1258,7 @@ namespace xdp {
 	    {
 	      fout << (totalWriteTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
@@ -1301,7 +1298,7 @@ namespace xdp {
 	    {
 	      fout << (totalReadTime / 1e06) << "," ;
 	    }
-	    fout << (double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex]) << "," ;
+	    fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / 1000.0 << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
@@ -1510,6 +1507,63 @@ namespace xdp {
     }
   }
 
+  void OpenCLSummaryWriter::writeUserLevelEvents()
+  {
+    if (!(db->getStats()).eventInformationPresent()) return ;
+
+    fout << "User Level Events" << std::endl ;
+    fout << "Label" << ","
+	 << "Count" << ","
+	 << std::endl ;
+
+    std::map<const char*, uint64_t>& counts = (db->getStats()).getEventCounts();
+    for (auto iter : counts) {
+      const char* label = (iter.first == nullptr) ? " " : iter.first ;
+      fout << label       << ","
+	   << iter.second << ","
+	   << std::endl ;
+    }
+  }
+
+  void OpenCLSummaryWriter::writeUserLevelRanges()
+  {
+    if (!(db->getStats()).rangeInformationPresent()) return ;
+
+    fout << "User Level Ranges" << std::endl ;
+    fout << "Label"   << ","
+	 << "Tooltip" << ","
+	 << "Count"   << ","
+	 << "Min Duration (ms)" << ","
+	 << "Max Duration (ms)" << ","
+	 << "Total Time Duration (ms)" << ","
+	 << "Average Duration (ms)" << ","
+	 << std::endl ;
+
+    std::map<std::pair<const char*, const char*>, uint64_t>& counts =
+      (db->getStats()).getRangeCounts() ;
+    std::map<std::pair<const char*, const char*>, uint64_t>& minDurations =
+      (db->getStats()).getMinRangeDurations() ;
+    std::map<std::pair<const char*, const char*>, uint64_t>& maxDurations =
+      (db->getStats()).getMaxRangeDurations() ;
+    std::map<std::pair<const char*, const char*>, uint64_t>& totalDurations =
+      (db->getStats()).getTotalRangeDurations() ;
+
+    for (auto iter : counts) {
+      const char* label =
+	(iter.first.first == nullptr) ? " " : iter.first.first;
+      const char* tooltip =
+	(iter.first.second == nullptr) ? " " : iter.first.second ;
+      fout << label       << ","
+	   << tooltip     << ","
+	   << iter.second << ","
+	   << (double)minDurations[iter.first] / 1e06 << ","
+	   << (double)maxDurations[iter.first] / 1e06 << ","
+	   << (double)totalDurations[iter.first] / 1e06<< ","
+	   << ((double)totalDurations[iter.first]/(double)(iter.second)) / 1e06 << ","
+	   << std::endl ;
+    }
+  }
+
   void OpenCLSummaryWriter::writeGuidance()
   {
     // Caption
@@ -1526,7 +1580,7 @@ namespace xdp {
     } 
   }
 
-  void OpenCLSummaryWriter::write(bool openNewFile)
+  bool OpenCLSummaryWriter::write(bool openNewFile)
   {
     writeHeader() ;                                 fout << std::endl ;
     writeAPICallSummary() ;                         fout << std::endl ;
@@ -1550,12 +1604,15 @@ namespace xdp {
     writeTopKernelExecution() ;                       fout << std::endl ;
     writeTopMemoryWrites() ;                          fout << std::endl ;
     writeTopMemoryReads() ;                           fout << std::endl ;
+    writeUserLevelEvents() ;                          fout << std::endl ;
+    writeUserLevelRanges() ;                          fout << std::endl ;
     writeGuidance() ;
 
     if (openNewFile)
     {
       switchFiles() ;
     }
+    return true;
   }
 
   void OpenCLSummaryWriter::guidanceDeviceExecTime(OpenCLSummaryWriter* t)

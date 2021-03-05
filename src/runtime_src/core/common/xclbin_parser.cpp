@@ -1,5 +1,5 @@
-/**
- * Copyright (C) 2019-2020 Xilinx, Inc
+/*
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -618,6 +618,8 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
       args.emplace_back(kernel_argument{
           xml_arg.second.get<std::string>("<xmlattr>.name")
          ,xml_arg.second.get<std::string>("<xmlattr>.type", "no-type")
+
+            ,xml_arg.second.get<std::string>("<xmlattr>.port", "no-port")
          ,index
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.size"))
@@ -664,20 +666,24 @@ get_kernel_arguments(const axlf* top, const std::string& kname)
 }
 
 std::vector<kernel_object>
-get_kernels(const axlf* top)
+get_kernels(const char* xml_data, size_t xml_size)
 {
-  auto xml = get_xml_section(top);
   std::vector<kernel_object> kernels;
 
-  auto knames = get_kernel_names(xml.first, xml.second);
-  for (auto& kname : knames) {
-    kernels.emplace_back(kernel_object{
-       kname
-      ,get_kernel_arguments(xml.first, xml.second, kname)
-    });
+  auto knames = get_kernel_names(xml_data, xml_size);
+  for (auto& kname : get_kernel_names(xml_data, xml_size)) {
+    kernels.emplace_back
+      (kernel_object{kname,get_kernel_arguments(xml_data, xml_size, kname)});
   }
 
   return kernels;
+}
+
+std::vector<kernel_object>
+get_kernels(const axlf* top)
+{
+  auto xml = get_xml_section(top);
+  return get_kernels(xml.first, xml.second);
 }
 
 // PDI only XCLBIN has PDI section only;

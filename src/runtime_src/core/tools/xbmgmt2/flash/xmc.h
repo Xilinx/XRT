@@ -108,6 +108,8 @@ public:
     int xclUpgradeFirmware(std::istream& tiTxtStream);
     int xclGetBoardInfo(std::map<char, std::vector<char>>& info);
     const std::string probingErrMsg() { return mProbingErrMsg.str(); }
+    bool fixedSC();
+
 
 private:
     std::shared_ptr<xrt_core::device> m_device;

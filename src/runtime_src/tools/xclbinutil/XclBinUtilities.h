@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020 Xilinx, Inc
+ * Copyright (C) 2018, 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -133,6 +133,11 @@ bool getSignature(std::fstream& _istream, std::string& _sSignature, std::string&
 
 bool findBytesInStream(std::fstream& _istream, const std::string& _searchString, unsigned int& _foundOffset);
 void setVerbose(bool _bVerbose);
+bool getVerbose();
+void setQuiet(bool _bQuiet);
+bool isQuiet();
+
+void QUIET(const std::string& _msg);
 void TRACE(const std::string& _msg, bool _endl = true);
 void TRACE_PrintTree(const std::string& _msg, const boost::property_tree::ptree& _pt);
 void TRACE_BUF(const std::string& _msg, const char* _pData, uint64_t _size);

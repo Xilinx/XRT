@@ -145,6 +145,13 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
   return drv->xclExecBuf(cmdBO);
 }
 
+int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
+{
+    xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+    if (!drv) 
+      return -1;
+    return drv->xclExecBuf(cmdBO,num_bo_in_wait_list,bo_wait_list);
+}
 
 //defining following two functions as they gets called in scheduler init call
 int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
@@ -489,7 +496,7 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 {
   va_list args;
   va_start(args, format);
-  int ret = xclhwemhal2::HwEmShim::xclLogMsg(handle, level, tag, format, args);
+  int ret = xclhwemhal2::HwEmShim::xclLogMsg(level, tag, format, args);
   va_end(args);
   return ret;
 }

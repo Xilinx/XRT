@@ -149,6 +149,8 @@ struct drm_zocl_dev {
 	struct zocl_error	zdev_error;
 	struct zocl_aie		*aie;
 	struct zocl_watchdog_dev *watchdog;
+	u16			pr_isolation_freeze;
+	u16			pr_isolation_unfreeze;
 };
 
 int zocl_kds_update(struct drm_zocl_dev *zdev);

@@ -75,19 +75,24 @@ enum class key_type
   clock_freq_topology_raw,
   dma_stream,
   kds_cu_info,
+  kds_mode,
+  kds_cu_stat,
+  kds_scu_stat,
 
   xmc_version,
   xmc_board_name,
   xmc_serial_num,
-  xmc_max_power,
+  max_power_level,
   xmc_sc_presence,
-  xmc_bmc_version,
-  expected_bmc_version,
+  is_sc_fixed,
+  xmc_sc_version,
+  expected_sc_version,
   xmc_status,
   xmc_reg_base,
   xmc_scaling_enabled,
   xmc_scaling_override,
   xmc_scaling_reset,
+  xmc_qspi_status,
 
   m2m,
   error,
@@ -98,6 +103,7 @@ enum class key_type
   idcode,
   data_retention,
   sec_level,
+  max_shared_host_mem_aperture_bytes,
 
   status_mig_calibrated,
   p2p_config,
@@ -161,6 +167,11 @@ enum class key_type
   vcc_aux_pmc_millivolts,
   vcc_ram_millivolts,
   int_vcc_io_millivolts,
+  mac_contiguous_num,
+  mac_addr_first,
+  mac_addr_list,
+  oem_id,
+
   firewall_detect_level,
   firewall_status,
   firewall_time_sec,
@@ -187,11 +198,21 @@ enum class key_type
   interface_uuids,
   logic_uuids,
   rp_program_status,
+  cpu_affinity,
+  shared_host_mem,
 
   aie_metadata,
   graph_status,
-  noop
+  mailbox_metrics,
 
+  clock_timestamp,
+  ert_sleep,
+  ert_cq_write,
+  ert_cq_read,
+  ert_cu_write,
+  ert_cu_read,
+
+  noop
 };
 
 class no_such_key : public std::exception
@@ -282,7 +303,7 @@ struct pcie_subsystem_id : request
   static std::string
   to_string(result_type val)
   {
-    return boost::str(boost::format("0x%x") % val);
+    return boost::str(boost::format("0x%04x") % val);
   }
 };
 
@@ -643,6 +664,48 @@ struct kds_cu_info : request
   get(const device*) const = 0;
 };
 
+struct kds_mode : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::kds_mode;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct kds_cu_stat : request
+{
+  struct data {
+    uint32_t index;
+    std::string name;
+    uint64_t base_addr;
+    uint32_t status;
+    uint64_t usages;
+  };
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::kds_cu_stat;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct kds_scu_stat : request
+{
+  struct data {
+    uint32_t index;
+    std::string name;
+    uint32_t status;
+    uint64_t usages;
+  };
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::kds_scu_stat;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct clock_freq_topology_raw : request
 {
   using result_type = std::vector<char>;
@@ -700,11 +763,11 @@ struct xmc_serial_num : request
   }
 };
 
-struct xmc_max_power : request
+struct max_power_level : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::xmc_max_power;
-  static const char* name() { return "max_power"; }
+  static const key_type key = key_type::max_power_level;
+  static const char* name() { return "max_power_level"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -732,10 +795,26 @@ struct xmc_sc_presence : request
   }
 };
 
-struct xmc_bmc_version : request
+struct is_sc_fixed : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::is_sc_fixed;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "true" : "false";
+  }
+};
+
+struct xmc_sc_version : request
+
 {
   using result_type = std::string;
-  static const key_type key = key_type::xmc_bmc_version;
+  static const key_type key = key_type::xmc_sc_version;
   static const char* name() { return "sc_version"; }
 
   virtual boost::any
@@ -748,10 +827,10 @@ struct xmc_bmc_version : request
   }
 };
 
-struct expected_bmc_version : request
+struct expected_sc_version : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::expected_bmc_version;
+  static const key_type key = key_type::expected_sc_version;
   static const char* name() { return "expected_sc_version"; }
 
   virtual boost::any
@@ -816,6 +895,16 @@ struct xmc_scaling_reset : request
 
   virtual void
   put(const device*, const boost::any&) const = 0;
+};
+
+struct xmc_qspi_status : request
+{
+  // Returning qspi write protection status as <primary qspi, recovery qspi>
+  using result_type = std::pair<std::string, std::string>;
+  static const key_type key = key_type::xmc_qspi_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct m2m : request
@@ -951,6 +1040,15 @@ struct sec_level : request
 
   virtual void
   put(const device*, const boost::any&) const = 0;
+};
+
+struct max_shared_host_mem_aperture_bytes : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::max_shared_host_mem_aperture_bytes;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct status_mig_calibrated : request
@@ -1712,6 +1810,46 @@ struct int_vcc_io_millivolts : request
   }
 };
 
+struct mac_contiguous_num : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::mac_contiguous_num;
+  static const char* name() { return "mac_contiguous_num"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct mac_addr_first : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::mac_addr_first;
+  static const char* name() { return "mac_addr_first"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct mac_addr_list : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::mac_addr_list;
+  static const char* name() { return "mac_addr_list"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct oem_id : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::oem_id;
+  static const char* name() { return "oem_id"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct firewall_detect_level : request
 {
   using result_type = uint64_t;
@@ -1970,6 +2108,100 @@ struct rp_program_status : request
   {
     return (value != 0) ? false : true;
   }
+};
+
+struct cpu_affinity : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::cpu_affinity;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct shared_host_mem : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::shared_host_mem;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct clock_timestamp : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::clock_timestamp;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct mailbox_metrics : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::mailbox_metrics;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
+  }
+};
+
+struct ert_sleep : request
+{
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::ert_sleep;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+};
+
+struct ert_cq_read : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cq_read;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct ert_cq_write : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cq_write;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct ert_cu_read : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cu_read;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct ert_cu_write : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cu_write;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct noop : request
