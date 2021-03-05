@@ -22,14 +22,19 @@ if (DEFINED ENV{XCL_EMULATION_MODE})
   message("=============== XRT_CORE_LIB=${xrt_core_LIBRARY}")
 endif()
 
+# need to export from package
+include_directories(${XILINX_XRT}/include)
+
 if (NOT WIN32)
 find_library(uuid_LIBRARY
   NAMES uuid)
 message("uuid_LIBRARY=${uuid_LIBRARY}")
-endif (NOT WIN32)
+else()
+set(BOOST_ROOT C:/Xilinx/XRT/ext)
+find_package(Boost)
+include_directories(${Boost_INCLUDE_DIRS})
+endif(NOT WIN32)
 
-# need to export from package
-include_directories(${XILINX_XRT}/include)
 
 if (NOT DEFINED ${INSTALL_DIR})
   set(INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/${CMAKE_SYSTEM_NAME}/${CMAKE_BUILD_TYPE}/${MODE}")

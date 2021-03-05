@@ -38,7 +38,7 @@ endif(GIT_FOUND)
 set(LINUX_FLAVOR ${CMAKE_SYSTEM_NAME})
 set(LINUX_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
 
-find_package(Boost REQUIRED COMPONENTS system filesystem )
+find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 
 # Boost_VERSION_STRING is not working properly, use our own macro
 set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})
