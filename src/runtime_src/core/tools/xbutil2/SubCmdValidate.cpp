@@ -1255,7 +1255,7 @@ run_tests_on_devices( xrt_core::device_collection &deviceCollection,
 
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("validate",
-             "Validates the basic shell accelleration functionality")
+             "Validates the basic shell acceleration functionality")
 {
   const std::string longDescription = "Validates the given card by executing the platform's validate executable.";
   setLongDescription(longDescription);

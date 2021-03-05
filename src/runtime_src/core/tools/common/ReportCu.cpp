@@ -24,6 +24,24 @@
 
 namespace qr = xrt_core::query;
 
+enum class cu_type {
+  PL,
+  PS
+};
+
+static std::string 
+enum_to_str(cu_type type) {
+  switch(type) {
+    case cu_type::PL:
+      return "PL";
+    case cu_type::PS:
+      return "PS";
+    default:
+      break;
+  }
+  return "UNLNOWN";
+}
+
 boost::property_tree::ptree
 get_cu_status(uint32_t cu_status)
 {
@@ -112,16 +130,15 @@ populate_cus_new(const xrt_core::device *device)
     return pt;
   }
 
-  boost::property_tree::ptree cu_list;
   for (auto& stat : cu_stats) {
     boost::property_tree::ptree ptCu;
     ptCu.put( "name",           stat.name);
     ptCu.put( "base_address",   boost::str(boost::format("0x%x") % stat.base_addr));
     ptCu.put( "usage",          stat.usages);
+    ptCu.put( "compute_unit_type", enum_to_str(cu_type::PL));
     ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
-    cu_list.push_back(std::make_pair("", ptCu));
+    pt.push_back(std::make_pair("", ptCu));
   }
-  pt.add_child("pl_compute_units", cu_list);
 
   boost::property_tree::ptree pscu_list;
   for (auto& stat : scu_stats) {
@@ -129,10 +146,10 @@ populate_cus_new(const xrt_core::device *device)
     ptCu.put( "name",           stat.name);
     ptCu.put( "base_address",   "0x0");
     ptCu.put( "usage",          stat.usages);
+    ptCu.put( "compute_unit_type", enum_to_str(cu_type::PS));
     ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
-    pscu_list.push_back(std::make_pair("", ptCu));
+    pt.push_back(std::make_pair("", ptCu));
   }
-  pt.add_child("ps_compute_units", pscu_list);
 
   return pt;
 }
@@ -178,7 +195,7 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
   boost::format cuFmt("%-8s%-30s%-16s%-8s%-8s\n");
 
   //check if a valid CU report is generated
-  boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units.pl_compute_units");
+  boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units");
   if(pt_cu.empty())
     return;
 
@@ -188,6 +205,8 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
     int index = 0;
     for(auto& kv : pt_cu) {
       boost::property_tree::ptree& cu = kv.second;
+      if(cu.get<std::string>("compute_unit_type").compare("PL") != 0)
+        continue;
       std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
       uint32_t status_val = std::stoul(cu_status, nullptr, 16);
       _output << cuFmt % index++ %
@@ -200,17 +219,15 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
   }
   _output << std::endl;
 
-  //check if a valid PS kernel report is generated
-  boost::property_tree::ptree& pt_pscu = _pt.get_child("compute_units.ps_compute_units");
-  if(pt_pscu.empty())
-    return;
-
+  //PS kernel report
   _output << "PS Compute Units" << std::endl;
   _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
   try {
     int index = 0;
-    for(auto& kv : pt_pscu) {
+    for(auto& kv : pt_cu) {
       boost::property_tree::ptree& cu = kv.second;
+      if(cu.get<std::string>("compute_unit_type").compare("PS") != 0)
+        continue;
       std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
       uint32_t status_val = std::stoul(cu_status, nullptr, 16);
       _output << cuFmt % index++ %
