@@ -50,11 +50,8 @@ target_link_libraries(xrt_coreutil
   )
 
 if (NOT WIN32)
-  set(XRT_COREUTIL_DEV_TARGETS xrt_coreutil xrt_coreutil_static)
   # xrt_uuid.h depends on uuid
   target_link_libraries(xrt_coreutil PRIVATE pthread dl PUBLIC uuid)
-else()
-  set(XRT_COREUTIL_DEV_TARGETS xrt_coreutil)
 endif()
 
 install(TARGETS xrt_coreutil
@@ -63,8 +60,8 @@ install(TARGETS xrt_coreutil
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install(TARGETS ${XRT_COREUTIL_DEV_TARGETS}
-  EXPORT xrt-targets-dev
+install(TARGETS xrt_coreutil xrt_coreutil_static
+  EXPORT xrt-dev-targets
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )

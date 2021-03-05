@@ -52,21 +52,14 @@ target_link_libraries(xrt_core
   uuid
   )
 
-if (NOT WIN32)
-  set(XRT_CORE_LINUX_DEV_TARGETS xrt_core xrt_core_static)
-else()
-  set(XRT_CORE_LINUX_DEV_TARGETS xrt_core)
-endif()
-
-
 install(TARGETS xrt_core
   EXPORT xrt-targets
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install(TARGETS ${XRT_CORE_LINUX_DEV_TARGETS}
-  EXPORT xrt-targets-dev
+install(TARGETS xrt_core xrt_core_static
+  EXPORT xrt-dev-targets
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )
