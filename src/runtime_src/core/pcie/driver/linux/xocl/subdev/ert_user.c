@@ -1018,6 +1018,8 @@ static int ert_user_probe(struct platform_device *pdev)
 	ert_user->ert.submit = ert_user_submit;
 	xocl_kds_init_ert(xdev, &ert_user->ert);
 
+	/* Give it a default value to avoid divide by 0 crashed*/
+	ert_user->num_slots = 16;
 done:
 	if (err) {
 		ert_user_remove(pdev);
