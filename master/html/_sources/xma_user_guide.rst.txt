@@ -8,12 +8,13 @@ Introduction
 The Xilinx Media Accelerator (XMA) library (libxmaapi) is a host interface
 meant to simplify the development of applications managing and controlling
 video accelerators such as decoders, scalers, filters, and encoders. The
-libxmaapi is comprised of two API interfaces: an application interface and a
-plugin interface. The application API is a higher-level, generalized
-interface intended for application developers responsible for integrating
-control of Xilinx accelerators into software frameworks such as FFmpeg,
-GStreamer, or proprietary frameworks. The plugin API is a lower level
-interface intended for developers responsible for implementing hardware
+libxmaapi is comprised of two interfaces: an application interface and a
+plugin interface. At the application interface, the upper edge APIs are
+higher-level, generalized interfaces intended for application developers 
+responsible for integrating control of Xilinx accelerators into software 
+frameworks such as FFmpeg, GStreamer, or proprietary frameworks. On the 
+other hand, the plugin interface uses lower edge APIs, describing lower level
+interfaces intended for developers responsible for implementing hardware
 control of specific Xilinx acceleration kernels. In general, plugins are
 developed by kernel providers as these plugins are specialized user space
 drivers that are aware of the low-level hardware interface.
