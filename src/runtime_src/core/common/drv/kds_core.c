@@ -935,6 +935,8 @@ int kds_cfg_update(struct kds_sched *kds)
 	int ret = 0;
 	int i;
 
+	kds->scu_mgmt.num_cus = 0;
+
 	/* Update PLRAM CU */
 	if (kds->plram.dev_paddr) {
 		ret = kds_fa_assign_plram(kds);
