@@ -39,11 +39,9 @@ install(
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
   )
 
-if(WIN32)
 install(
-  EXPORT xrt-targets-dev
+  EXPORT xrt-dev-targets
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
   )
-endif()
 
