@@ -19,7 +19,9 @@
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
-#define 
+extern "C" {
+#include <xaiengine.h>
+}
 
 namespace xdp {
 

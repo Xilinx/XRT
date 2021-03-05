@@ -30,6 +30,7 @@
 
 #include "core/common/message.h"
 #include <iostream>
+#include <boost/algorithm/string.hpp>
 
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/common/aie_parser.h"
@@ -41,11 +42,6 @@ namespace xdp {
                 : XDPPlugin()
   {
     db->registerPlugin(this);
-
-XAIE_EVENT_MEMORY_STALL_CORE,
-	XAIE_EVENT_STREAM_STALL_CORE,
-	XAIE_EVENT_CASCADE_STALL_CORE,
-	XAIE_EVENT_LOCK_STALL_CORE
 
     // Pre-defined metric sets
     metricSets = {"functions", "functions_partial_stalls", "functions_all_stalls", "all"};
@@ -139,7 +135,7 @@ XAIE_EVENT_MEMORY_STALL_CORE,
     }
   }
 
-  void AIETracePlugin::setMetrics(void* handle)
+  void AieTracePlugin::setMetrics(void* handle)
   {
     // Get AIE tiles and metric set
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
@@ -181,7 +177,7 @@ XAIE_EVENT_MEMORY_STALL_CORE,
     // Capture all tiles across all graphs
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto graphs = xrt_core::edge::aie::get_graphs(device.get());
-    std::vector<edge::aie::tile_type> tiles;
+    std::vector<xrt_core::edge::aie::tile_type> tiles;
     for (auto& graph : graphs) {
       auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
       std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));

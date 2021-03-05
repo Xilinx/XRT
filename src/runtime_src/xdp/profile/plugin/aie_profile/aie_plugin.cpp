@@ -312,10 +312,10 @@ namespace xdp {
         auto counters = xrt_core::edge::aie::get_profile_counters(device.get());
 
         if (counters.empty()) {
--         std::string msg("AIE Profile Counters were not found for this design. \
--             Please specify aie_profile_core_metrics and/or aie_profile_memory_metrics in your xrt.ini.");
--         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);               
--       }
+          std::string msg = "AIE Profile Counters were not found for this design. "
+                            "Please specify aie_profile_core_metrics and/or aie_profile_memory_metrics in your xrt.ini.";
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);               
+      }
         else {
           for (auto& counter : counters) {
             (db->getStaticInfo()).addAIECounter(deviceId, counter.id, counter.column,
