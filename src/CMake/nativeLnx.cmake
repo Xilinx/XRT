@@ -54,20 +54,35 @@ execute_process(COMMAND ${LSB_RELEASE} -rs
 execute_process(COMMAND ${UNAME} -r
   OUTPUT_VARIABLE LINUX_KERNEL_VERSION
   OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+  )
+
+# Static linking creates and installs static tools and libraries. The
+# static libraries have system boost dependencies which must be
+# resolved in final target.  The tools (currently xbutil2 and xbmgmt2)
+# will be statically linked.
+option(XRT_STATIC_BUILD "Enable static building of XRT" OFF)
+if (DEFINED ENV{XRT_STATIC_BUILD})
+  CMAKE_MINIMUM_REQUIRED(VERSION 3.16.0)
+  message("-- Enabling static artifacts of XRT")
+  set(XRT_STATIC_BUILD ON)
+endif()
 
 # --- Boost ---
 #set(Boost_DEBUG 1)
 
+# Support building XRT with local build of Boost libraries. In
+# particular the script runtime_src/tools/script/boost.sh downloads
+# and builds static Boost libraries compiled with fPIC so that they
+# can be used to resolve symbols in XRT dynamic libraries.
 if (DEFINED ENV{XRT_BOOST_INSTALL})
   set(XRT_BOOST_INSTALL $ENV{XRT_BOOST_INSTALL})
   set(Boost_USE_STATIC_LIBS ON)
   find_package(Boost
     HINTS $ENV{XRT_BOOST_INSTALL}
-    REQUIRED COMPONENTS system filesystem)
+    REQUIRED COMPONENTS system filesystem program_options)
 else()
-  find_package(Boost
-    REQUIRED COMPONENTS system filesystem)
+  find_package(Boost 
+    REQUIRED COMPONENTS system filesystem program_options)
 endif()
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
 
@@ -91,11 +106,13 @@ set (XRT_VALIDATE_DIR          "${XRT_INSTALL_DIR}/test")
 set (XRT_NAMELINK_ONLY NAMELINK_ONLY)
 set (XRT_NAMELINK_SKIP NAMELINK_SKIP)
 
-
 # Define RPATH for embedding in libraries and executables.  This allows
 # package creation to automatically determine dependencies.
 # RPATH relative to location of binary:
 #  bin/../lib, lib/xrt/module/../.., bin/unwrapped/../../lib
+# Note, that in order to disable RPATH insertion for a specific
+# target (say a static executable), use
+#  set_target_properties(<target> PROPERTIES INSTALL_RPATH "")
 SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib${LIB_SUFFFIX}:$ORIGIN/../..:$ORIGIN/../../lib${LIB_SUFFIX}")
 
 # --- Release: eula ---
