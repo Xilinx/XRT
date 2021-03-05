@@ -80,21 +80,16 @@ namespace xdplop {
 
   LOPFunctionCallLogger::LOPFunctionCallLogger(const char* function, 
 					       long long int address) :
-    m_name(function), m_address(address)
+    m_funcid(0), m_name(function), m_address(address)
   {
-    // Load the LOP plugin if not already loaded
-    static bool s_load_lop = false ;
-    if (!s_load_lop)
-    {
-      s_load_lop = true ;
-      if (xrt_core::config::get_lop_trace()) 
-	load_xdp_lop() ;
-    }
+    // The LOP plugin should have been loaded since the OpenCL hooks
+    //  are all before the LOP hooks
 
-    // Log the stats for this function
-    m_funcid = xrt_core::utils::issue_id() ;
-    if (function_start_cb)
+    // Log the trace for this function
+    if (function_start_cb) {
+      m_funcid = xrt_core::utils::issue_id() ;
       function_start_cb(m_name, m_address, m_funcid) ;
+    }
   }
 
   LOPFunctionCallLogger::~LOPFunctionCallLogger()

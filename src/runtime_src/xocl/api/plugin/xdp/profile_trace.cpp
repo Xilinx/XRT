@@ -16,6 +16,7 @@
 
 #include <functional>
 
+#include "plugin/xdp/plugin_loader.h"
 #include "plugin/xdp/profile_counters.h" 
 #include "plugin/xdp/profile_trace.h"
 
@@ -29,9 +30,9 @@
 #include "xocl/core/program.h"
 #include "xocl/core/context.h"
 
-// The anonymous namespace is responsible for loading the XDP plugin
-namespace {
+namespace xdp {
 
+namespace opencl_trace {
   // ******** OpenCL Host Trace Plugin *********
 
   // All of the function pointers that will be dynamically linked to
@@ -145,7 +146,7 @@ namespace {
     // No warnings currently
   }
 
-  void load_xdp_opencl_trace()
+  void load()
   {
     static xrt_core::module_loader
       opencl_trace_loader("xdp_opencl_trace_plugin",
@@ -153,6 +154,9 @@ namespace {
 			  opencl_trace_warning_function) ;
   }
 
+} // end namespace opencl_trace
+
+namespace device_offload {
   // ******** OpenCL Device Trace Plugin *********
 
   std::function<void (void*)> update_device_cb ;
@@ -173,7 +177,7 @@ namespace {
     // No warnings at this level
   }
 
-  void load_xdp_device_offload()
+  void load()
   {
     static xrt_core::module_loader 
       xdp_device_offload_loader("xdp_device_offload_plugin",
@@ -181,7 +185,8 @@ namespace {
 				device_offload_warning_function) ;
   }
 
-} // end anonymous namespace
+} // end namespace device_offload
+} // end namespace xdp
 
 // Ths anonymous namespace is for helper functions used in this file
 namespace {
@@ -225,41 +230,19 @@ namespace xocl {
     }
 
     OpenCLAPILogger::OpenCLAPILogger(const char* function, uint64_t address) :
-      m_name(function), m_address(address)
+      m_funcid(0), m_name(function), m_address(address)
     {
       // Use the OpenCL API logger as the hook to load all of the OpenCL
       //  level XDP plugins.  Once loaded, they are completely independent,
       //  but this provides us a common place where all OpenCL applications
       //  can safely load them.
-      static bool s_load_detailed_profile = false ;
-      if (!s_load_detailed_profile) {
-        s_load_detailed_profile = true ;
-        if (xrt_core::config::get_profile() ||
-            xrt_core::config::get_opencl_summary()) {
-          if(xrt_core::config::get_profile()) {
-            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                std::string("\"profile\" configuration in xrt.ini will be deprecated in next release. Please use \"opencl_summary=true\" to enable OpenCl profiling and \"opencl_device_counter=true\" for device counter data in OpenCl profile summary."));
-          }
-          load_xdp_opencl_counters() ;
-        }
-        if (xrt_core::config::get_timeline_trace() ||
-            xrt_core::config::get_opencl_trace()) {
-          if(xrt_core::config::get_timeline_trace()) {
-            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                std::string("\"timeline_trace\" configuration in xrt.ini will be deprecated in next release. Please use \"opencl_trace=true\" to enable OpenCl Trace."));
-          }
-          load_xdp_opencl_trace() ;
-        }
-        if (xrt_core::config::get_data_transfer_trace() != "off" ||
-            xrt_core::config::get_opencl_device_counter()) {
-          load_xdp_device_offload() ;
-        }
-      }
+      static bool s_load_plugins = xdp::plugins::load() ;
 
       // Log the trace for this function
-      m_funcid = xrt_core::utils::issue_id() ;
-      if (function_start_cb)
-	function_start_cb(m_name, m_address, m_funcid) ;
+      if (xdp::opencl_trace::function_start_cb && s_load_plugins) {
+        m_funcid = xrt_core::utils::issue_id() ;
+	xdp::opencl_trace::function_start_cb(m_name, m_address, m_funcid) ;
+      }
 
       // Log the stats for this function
       if (counter_function_start_cb)
@@ -277,8 +260,8 @@ namespace xocl {
 
     OpenCLAPILogger::~OpenCLAPILogger()
     {
-      if (function_end_cb)
-	function_end_cb(m_name, m_address, m_funcid) ;
+      if (xdp::opencl_trace::function_end_cb)
+	xdp::opencl_trace::function_end_cb(m_name, m_address, m_funcid) ;
 
       if (counter_function_end_cb)
 	counter_function_end_cb(m_name) ;
@@ -287,8 +270,8 @@ namespace xocl {
     // ******** OpenCL Host Trace Callbacks *********
     void log_dependency(uint64_t id, uint64_t dependency)
     {
-      if (dependency_cb)
-	dependency_cb(static_cast<unsigned long long int>(id),
+      if (xdp::opencl_trace::dependency_cb)
+	xdp::opencl_trace::dependency_cb(static_cast<unsigned long long int>(id),
 		      static_cast<unsigned long long int>(dependency)) ;
     }
 
@@ -299,7 +282,7 @@ namespace xocl {
     {
       return [buffer](xocl::event* e, cl_int status, const std::string&) 
              {
-	       if (!read_cb) return ;
+	       if (!xdp::opencl_trace::read_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 	       
 	       // Before we cross over to XDP, collect all the 
@@ -331,7 +314,7 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 read_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 true,
 			 static_cast<unsigned long long int>(address),
 			 bank.c_str(),
@@ -345,7 +328,7 @@ namespace xocl {
 	       // For end events, just send the minimal information
 	       else if (status == CL_COMPLETE)
 	       {
-		 read_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 false,
 			 0,
 			 nullptr,
@@ -362,7 +345,7 @@ namespace xocl {
     {
       return [buffer](xocl::event* e, cl_int status, const std::string&)
 	     {
-	       if (!write_cb) return ;
+	       if (!xdp::opencl_trace::write_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 	       // Before we cross over to XDP, collect all the 
@@ -394,7 +377,7 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 write_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			  true,
 			  static_cast<unsigned long long int>(address),
 			  bank.c_str(),
@@ -408,7 +391,7 @@ namespace xocl {
 	       // For end events, just send the minimal information
 	       else if (status == CL_COMPLETE)
 	       {
-		 write_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			  false,
 			  0,
 			  nullptr,
@@ -426,7 +409,7 @@ namespace xocl {
     {
       return [buffer, flags](xocl::event* e, cl_int status, const std::string&)
 	     {
-	       if (!read_cb) return ;
+	       if (!xdp::opencl_trace::read_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 	       // Ignore if mapping an invalidated region
@@ -459,7 +442,7 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 read_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 true,
 			 static_cast<unsigned long long int>(address),
 			 bank.c_str(),
@@ -472,7 +455,7 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 read_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 false,
 			 0,
 			 nullptr,
@@ -499,7 +482,7 @@ namespace xocl {
 	// Read
 	return [mem0](xocl::event* e, cl_int status, const std::string&)
 	       {
-		 if (!read_cb) return ;
+		 if (!xdp::opencl_trace::read_cb) return ;
 		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 		 // Before we cross over to XDP, collect all the 
@@ -528,7 +511,7 @@ namespace xocl {
 		   get_dependency_information(dependencies, numDependencies, e);
 
 		   // Perform the callback
-		   read_cb(static_cast<unsigned long long int>(e->get_uid()),
+		   xdp::opencl_trace::read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			   true,
 			   static_cast<unsigned long long int>(address),
 			   bank.c_str(),
@@ -542,7 +525,7 @@ namespace xocl {
 		 // For end events, just send the minimal information
 		 else if (status == CL_COMPLETE)
 		 {
-		   read_cb(static_cast<unsigned long long int>(e->get_uid()),
+		   xdp::opencl_trace::read_cb(static_cast<unsigned long long int>(e->get_uid()),
 			   false,
 			   0,
 			   nullptr,
@@ -558,7 +541,7 @@ namespace xocl {
 	// Write
 	return [mem0](xocl::event* e, cl_int status, const std::string&)
 	       {
-		 if (!write_cb) return ;
+		 if (!xdp::opencl_trace::write_cb) return ;
 		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 		 // Before we cross over to XDP, collect all the 
@@ -587,7 +570,7 @@ namespace xocl {
 		   get_dependency_information(dependencies, numDependencies, e);
 		   
 		   // Perform the callback
-		   write_cb(static_cast<unsigned long long int>(e->get_uid()),
+		   xdp::opencl_trace::write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    true,
 			    static_cast<unsigned long long int>(address),
 			    bank.c_str(),
@@ -601,7 +584,7 @@ namespace xocl {
 		 // For end events, just send the minimal information
 		 else if (status == CL_COMPLETE)
 		 {
-		   write_cb(static_cast<unsigned long long int>(e->get_uid()),
+		   xdp::opencl_trace::write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    false,
 			    0,
 			    nullptr,
@@ -656,7 +639,7 @@ namespace xocl {
 
       return [mem0](xocl::event* e, cl_int status, const std::string&)
 	     {
-	       if (write_cb) return ;
+	       if (xdp::opencl_trace::write_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 		 // Before we cross over to XDP, collect all the 
@@ -685,7 +668,7 @@ namespace xocl {
 		   get_dependency_information(dependencies, numDependencies, e);
 		   
 		   // Perform the callback
-		   write_cb(static_cast<unsigned long long int>(e->get_uid()),
+		   xdp::opencl_trace::write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    true,
 			    static_cast<unsigned long long int>(address),
 			    bank.c_str(),
@@ -699,7 +682,7 @@ namespace xocl {
 		 // For end events, just send the minimal information
 		 else if (status == CL_COMPLETE)
 		 {
-		   write_cb(static_cast<unsigned long long int>(e->get_uid()),
+		   xdp::opencl_trace::write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    false,
 			    0,
 			    nullptr,
@@ -739,7 +722,7 @@ namespace xocl {
 
       return [workGroupSize, deviceName, kernelName, binaryName, localWorkDim](xocl::event* e, cl_int status, const std::string&) 
 	     {
-	       if (!ndrange_cb) return ;
+	       if (!xdp::opencl_trace::ndrange_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 	       if (status == CL_RUNNING)
@@ -749,7 +732,7 @@ namespace xocl {
 		 uint64_t numDependencies = 0 ;
 		 get_dependency_information(dependencies, numDependencies, e);
 
-		 ndrange_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::ndrange_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    true,
 			    deviceName.c_str(),
 			    binaryName.c_str(),
@@ -764,7 +747,7 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 ndrange_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::ndrange_cb(static_cast<unsigned long long int>(e->get_uid()),
 			    false,
 			    deviceName.c_str(),
 			    binaryName.c_str(),
@@ -785,7 +768,7 @@ namespace xocl {
     {
       return [buffer](xocl::event* e, cl_int status, const std::string&)
 	     {
-	       if (!write_cb) return ;
+	       if (!xdp::opencl_trace::write_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 	       auto xmem = xocl::xocl(buffer) ;
@@ -817,7 +800,7 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 write_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			  true,
 			  static_cast<unsigned long long int>(address),
 			  bank.c_str(),
@@ -830,7 +813,7 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 write_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::write_cb(static_cast<unsigned long long int>(e->get_uid()),
 			  false,
 			  0,
 			  nullptr,
@@ -847,7 +830,7 @@ namespace xocl {
     {      
       return [src_buffer, dst_buffer](xocl::event* e, cl_int status, const std::string&) 
 	     {
-	       if (!copy_cb) return ;
+	       if (!xdp::opencl_trace::copy_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 	       auto xSrcMem = xocl::xocl(src_buffer) ;
@@ -887,7 +870,7 @@ namespace xocl {
 		 // Get dependency information
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
-		 copy_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::copy_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 true,
 			 static_cast<unsigned long long int>(srcAddress),
 			 srcBank.c_str(),
@@ -902,7 +885,7 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 copy_cb(static_cast<unsigned long long int>(e->get_uid()),
+		 xdp::opencl_trace::copy_cb(static_cast<unsigned long long int>(e->get_uid()),
 			 false,
 			 0,
 			 nullptr,
@@ -919,14 +902,14 @@ namespace xocl {
     // ******** OpenCL Device Trace Callbacks *********
     void flush_device(xrt_xocl::device* handle)
     {
-      if (flush_device_cb)
-	flush_device_cb(handle) ;
+      if (xdp::device_offload::flush_device_cb)
+	xdp::device_offload::flush_device_cb(handle) ;
     }
 
     void update_device(xrt_xocl::device* handle)
     {
-      if (update_device_cb)
-	update_device_cb(handle) ;
+      if (xdp::device_offload::update_device_cb)
+	xdp::device_offload::update_device_cb(handle) ;
     }
 
   } // end namespace profile
