@@ -135,7 +135,7 @@ populate_cus_new(const xrt_core::device *device)
     ptCu.put( "name",           stat.name);
     ptCu.put( "base_address",   boost::str(boost::format("0x%x") % stat.base_addr));
     ptCu.put( "usage",          stat.usages);
-    ptCu.put( "compute_unit_type", enum_to_str(cu_type::PL));
+    ptCu.put( "type", enum_to_str(cu_type::PL));
     ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
     pt.push_back(std::make_pair("", ptCu));
   }
@@ -146,7 +146,7 @@ populate_cus_new(const xrt_core::device *device)
     ptCu.put( "name",           stat.name);
     ptCu.put( "base_address",   "0x0");
     ptCu.put( "usage",          stat.usages);
-    ptCu.put( "compute_unit_type", enum_to_str(cu_type::PS));
+    ptCu.put( "type", enum_to_str(cu_type::PS));
     ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
     pt.push_back(std::make_pair("", ptCu));
   }
@@ -205,7 +205,7 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
     int index = 0;
     for(auto& kv : pt_cu) {
       boost::property_tree::ptree& cu = kv.second;
-      if(cu.get<std::string>("compute_unit_type").compare("PL") != 0)
+      if(cu.get<std::string>("type").compare("PL") != 0)
         continue;
       std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
       uint32_t status_val = std::stoul(cu_status, nullptr, 16);
@@ -226,7 +226,7 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
     int index = 0;
     for(auto& kv : pt_cu) {
       boost::property_tree::ptree& cu = kv.second;
-      if(cu.get<std::string>("compute_unit_type").compare("PS") != 0)
+      if(cu.get<std::string>("type").compare("PS") != 0)
         continue;
       std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
       uint32_t status_val = std::stoul(cu_status, nullptr, 16);
