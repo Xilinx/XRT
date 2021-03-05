@@ -192,11 +192,11 @@ XAIE_EVENT_MEMORY_STALL_CORE,
       // TODO: Request 2 memory counters here
 
       for (int i=0; i < coreEvents.size(); ++i) {
-        // TODO: Program ith trace metric for core module in tile (tile.col, tile.row) using coreEvents.at(i)
+        // TODO: Configure ith trace metric for core module in tile (tile.col, tile.row) using coreEvents.at(i)
       }
 
       for (int i=0; i < memoryEvents.size(); ++i) {
-        // TODO: Program ith trace metric for memory module in tile (tile.col, tile.row) using memoryEvents.at(i)
+        // TODO: Configure ith trace metric for memory module in tile (tile.col, tile.row) using memoryEvents.at(i)
         // NOTE: handle broadcast events differently
       }
     }

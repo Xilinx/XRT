@@ -47,7 +47,7 @@ namespace xdp {
 
   private:
     void getPollingInterval();
-    void getMetrics(void* handle, bool isCore);
+    bool setMetrics(uint64_t deviceId, void* handle);
 
     void pollAIECounters(uint32_t index, void* handle);
     void endPoll();
@@ -61,14 +61,6 @@ namespace xdp {
 
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
     std::map<void*,std::thread> mThreadMap;
-
-    typedef std::tuple<uint32_t, uint32_t, std::string, XAie_Events, XAie_Events> AieCounter;
-    enum e_aie_tile_type {COLUMN = 0, ROW, MODULE, START_EVENT, END_EVENT};
-    
-    // Storage for what user requests
-    std::set<AieCounter> mCounterSet;
-    // Storage for what is available on device
-    std::map<AieCounter, uint8_t> mCounterMap;
 
     std::set<std::string> mCoreMetricSets;
     std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
