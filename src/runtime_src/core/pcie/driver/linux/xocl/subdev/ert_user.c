@@ -579,7 +579,7 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 		// For MPSoC device, we will use ert_full if we are
 		// configured as ert mode even dataflow is configured.
 		// And we do not support ert_poll.
-		ert_full = true;
+		ert_full = cfg->ert;
 		ert_poll = false;
 	}
 
@@ -965,7 +965,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 		// For MPSoC device, we will use ert_full if we are
 		// configured as ert mode even dataflow is configured.
 		// And we do not support ert_poll.
-		ert_full = true;
+		ert_full = cfg->ert;
 		ert_poll = false;
 	}
 
