@@ -108,7 +108,7 @@ namespace xdp {
     auto aieArray = drv->getAieArray();
     if (!aieArray)
       return runtimeCounters;
-    if (!(db->getStaticInfo().isDeviceReady(index)))
+    if (!(db->getStaticInfo().isDeviceReady(deviceId)))
       return runtimeCounters;
 
     // TODO: get AIE clock frequency even when compiler counters are not specified
