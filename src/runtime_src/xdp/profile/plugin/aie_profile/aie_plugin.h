@@ -28,6 +28,10 @@
 
 #include "core/common/device.h"
 
+#ifdef XRT_ENABLE_AIE
+#include "xaiefal/xaiefal.hpp"
+#endif
+
 extern "C" {
 #include <xaiengine.h>
 }
@@ -58,6 +62,8 @@ namespace xdp {
 
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
     std::map<void*,std::thread> mThreadMap;
+
+    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
 
     std::set<std::string> mCoreMetricSets;
     std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;

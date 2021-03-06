@@ -33,7 +33,10 @@
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/common/aie_parser.h"
 #include "core/edge/user/aie/AIEResources.h"
+#include "xaiefal/xaiefal.hpp"
 #endif
+
+#define USE_OLD_MANAGER 0
 
 namespace xdp {
 
@@ -114,6 +117,8 @@ namespace xdp {
     if (!(db->getStaticInfo().isDeviceReady(deviceId)))
       return runtimeCounters;
 
+    auto aieDevice = aieArray->getDevInst();
+	  
     // TODO: get AIE clock frequency even when compiler counters are not specified
     double clockFreqMhz = 1000.0;
 
@@ -212,15 +217,17 @@ namespace xdp {
       auto moduleType = isCore ? XAIE_CORE_MOD : XAIE_MEM_MOD;
 
       for (auto& tile : tiles) {
+#if USE_OLD_MANAGER
         auto aieTile = zynqaie::Resources::AIE::getAIETile(tile.col, tile.row);
         if (!aieTile)
           continue;
+#endif
 
         for (int i=0; i < startEvents.size(); ++i) {
-#if 1
+#if USE_OLD_MANAGER
           // Use old resource manager
           auto counterNum = isCore ?
-              aieTile->coreModule.requestPerformanceCounter(deviceId); :
+              aieTile->coreModule.requestPerformanceCounter(deviceId)  :
               aieTile->memoryModule.requestPerformanceCounter(deviceId);
           if (counterNum == -1)
             break;
@@ -228,12 +235,24 @@ namespace xdp {
 
           auto tileLocation = XAie_TileLoc(tile.col, tile.row + 1);
 
-          XAie_PerfCounterControlSet(aieArray->getDevInst(), tileLocation, moduleType,
+          XAie_PerfCounterControlSet(aieDevice, tileLocation, moduleType,
                                      counterNum, startEvents.at(i), endEvents.at(i));
 #else
-          // TODO: Use new resource manager
-          // TODO: Configure ith counter in tile (tile.col, tile.row) using startEvents.at(i) and endEvents.at(i)
-          uint8_t counterNum = i;
+          // Use new resource manager
+          auto perfCounter = isCore ?
+              aieDevice->tile(tile.col, tile.row).core().perfCounter() :
+              aieDevice->tile(tile.col, tile.row).memory().perfCounter();
+
+	        auto ret = perfCounter->initialize(moduleType, startEvents.at(i),
+		                                     moduleType, endEvents.at(i));
+	        if (ret != XAIE_OK) break;
+	        perfCounter->reserve();
+          if (ret != XAIE_OK) break;
+	        ret = perfCounter->start();
+          if (ret != XAIE_OK) break;
+
+          mPerfCounters.push_back(perfCounter);
+          counterNum = i;
 #endif
 
           std::string counterName = "AIE Counter " + std::to_string(counterId);
@@ -283,9 +302,16 @@ namespace xdp {
         values.push_back(aie->resetEvent);
 
         // Read counter value from device
-        XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row+1);
         uint32_t counterValue;
-        XAie_PerfCounterGet(aieArray->getDevInst(), tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
+#if USE_OLD_MANAGER
+        auto moduleType = (aie->module == "core") ? XAIE_CORE_MOD : XAIE_MEM_MOD;
+        XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row+1);
+        XAie_PerfCounterGet(aieArray->getDevInst(), tileLocation, moduleType, 
+                            aie->counterNumber, &counterValue);
+#else
+        auto perfCounter = mPerfCounters.at(c);
+        perfCounter->readResult(&counterValue);
+#endif
         values.push_back(counterValue);
 
         // Get timestamp in milliseconds
