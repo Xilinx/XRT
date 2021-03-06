@@ -14,6 +14,9 @@ find_package(XRT)
 set(xrt_core_LIBRARY XRT::xrt_core)
 set(xrt_coreutil_LIBRARY XRT::xrt_coreutil)
 set(xrt_xilinxopencl_LIBRARY XRT::xilinxopencl)
+set(xrt_core_static_LIBRARY XRT::xrt_core_static)
+set(xrt_coreutil_static_LIBRARY XRT::xrt_coreutil_static)
+set(xrt_xilinxopencl_static_LIBRARY XRT::xilinxopencl_static)
 
 if (DEFINED ENV{XCL_EMULATION_MODE})
   set(MODE $ENV{XCL_EMULATION_MODE})
@@ -22,8 +25,7 @@ if (DEFINED ENV{XCL_EMULATION_MODE})
   message("=============== XRT_CORE_LIB=${xrt_core_LIBRARY}")
 endif()
 
-# need to export from package
-include_directories(${XILINX_XRT}/include)
+include_directories(${XRT_INCLUDE_DIRS})
 
 if (NOT WIN32)
 find_library(uuid_LIBRARY
