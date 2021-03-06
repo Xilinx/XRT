@@ -40,18 +40,34 @@ add_compile_options("-DXRT_VERSION_MAJOR=\"${XRT_VERSION_MAJOR}\"")
 add_library(xrt_coreutil SHARED ${XRT_CORE_COMMON_LIB_FILES})
 add_library(xrt_coreutil_static STATIC ${XRT_CORE_COMMON_LIB_FILES})
 
-set_target_properties(xrt_coreutil PROPERTIES VERSION ${XRT_VERSION_STRING}
+set_target_properties(xrt_coreutil PROPERTIES
+  VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
+# Private dependencies for fully resolved dynamic xrt_coreutil
 target_link_libraries(xrt_coreutil
   PRIVATE
   ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
-  )
+  ${Boost_SYSTEM_LIBRARY})
+
+# Targets linking with xrt_coreutil_static must also link with boost
+# libraries used by coreutil.  These type of link dependencies are
+# known as INTERFACE dependencies.  Here the libraries are specified
+# by their system name so that static of target can pick static link
+# libraries of boost
+target_link_libraries(xrt_coreutil_static
+  INTERFACE
+  boost_filesystem
+  boost_system)
 
 if (NOT WIN32)
+  # Additional link dependencies for xrt_coreutil
   # xrt_uuid.h depends on uuid
   target_link_libraries(xrt_coreutil PRIVATE pthread dl PUBLIC uuid)
+
+  # Targets of xrt_coreutil_static must link with these additional
+  # system libraries
+  target_link_libraries(xrt_coreutil_static INTERFACE uuid dl rt pthread)
 endif()
 
 install(TARGETS xrt_coreutil

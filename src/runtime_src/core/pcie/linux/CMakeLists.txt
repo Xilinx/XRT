@@ -41,6 +41,7 @@ set_target_properties(xrt_core PROPERTIES
   VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
+# Private dependencies for fully resolved dynamic xrt_core
 target_link_libraries(xrt_core
   PRIVATE
   xrt_coreutil
@@ -50,6 +51,22 @@ target_link_libraries(xrt_core
   rt
   dl
   uuid
+  )
+
+# Targets linking with xrt_core_static must also link with additional
+# libraries to satisfy xrt_core_static dependencies. These type of
+# link dependencies are known as INTERFACE dependencies.  Here the
+# boost libraries are specified by their system name so that static of
+# target can pick static link libraries of boost
+target_link_libraries(xrt_core_static
+  INTERFACE
+  xrt_coreutil_static
+  boost_filesystem
+  boost_system
+  uuid
+  dl
+  rt
+  pthread
   )
 
 install(TARGETS xrt_core
