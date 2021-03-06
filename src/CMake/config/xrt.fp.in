@@ -9,6 +9,7 @@
 #   @PROJECT_NAME@_VERSION            - VERSION of this package in x.y.z format
 #   @PROJECT_NAME@_CMAKE_DIR          - Directory where this cmake module was found
 #   @PROJECT_NAME@_INCLUDE_DIRS       - Directory where @PROJECT_NAME@ headers are located.
+#   @PROJECT_NAME@_LINK_DIRS          - Directory where @PROJECT_NAME@ link libraries are located.
 #   @PROJECT_NAME@_CORE_LIBRARIES     - libraries to link against.
 #   @PROJECT_NAME@_COREUTIL_LIBRARIES - libraries to link against.
 #   @PROJECT_NAME@_OPENCL_LIBRARIES   - libraries to link against.
@@ -17,6 +18,7 @@
 @PACKAGE_INIT@
 
 set(@PROJECT_NAME@_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/xrt/include")
+set(@PROJECT_NAME@_LINK_DIRS "${PACKAGE_PREFIX_DIR}/xrt/lib")
 
 set(@PROJECT_NAME@_VERSION @XRT_VERSION_STRING@)
 
