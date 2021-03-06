@@ -943,6 +943,8 @@ struct xocl_ps_funcs {
 #define	xocl_ps_check_healthy(xdev)			\
 	(PS_CB(xdev, check_healthy) ? PS_OPS(xdev)->check_healthy(PS_DEV(xdev)) : true)
 
+#define xocl_ps_sched_on(xdev)	\
+	(!xocl_mb_sched_on(xdev) && (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)))
 
 /* dna callbacks */
 struct xocl_dna_funcs {
@@ -1739,6 +1741,10 @@ struct xocl_ert_user_funcs {
 	(ERT_USER_CB(xdev, gpio_cfg) ? \
 	 ERT_USER_OPS(xdev)->gpio_cfg(ERT_USER_DEV(xdev), INTR_TO_ERT) : \
 	 -ENODEV)
+
+#define xocl_ert_on(xdev) \
+	(xocl_mb_sched_on(xdev) || xocl_ps_sched_on(xdev))
+
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);

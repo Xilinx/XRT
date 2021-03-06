@@ -579,7 +579,7 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 		// For MPSoC device, we will use ert_full if we are
 		// configured as ert mode even dataflow is configured.
 		// And we do not support ert_poll.
-		ert_full = true;
+		ert_full = cfg->ert;
 		ert_poll = false;
 	}
 
@@ -965,7 +965,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 		// For MPSoC device, we will use ert_full if we are
 		// configured as ert mode even dataflow is configured.
 		// And we do not support ert_poll.
-		ert_full = true;
+		ert_full = cfg->ert;
 		ert_poll = false;
 	}
 
@@ -1376,11 +1376,13 @@ static int ert_user_probe(struct platform_device *pdev)
 	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_ert_sched_privdata *priv = NULL;
-	bool ert = xocl_mb_sched_on(xdev);
+	bool ert = xocl_ert_on(xdev);
 
 	/* If XOCL_DSAFLAG_MB_SCHE_OFF is set, we should not probe ert */
-	if (!ert)
+	if (!ert) {
+		xocl_warn(&pdev->dev, "Disable ERT flag overwrite, don't probe ert_user");
 		return -ENODEV;
+	}
 
 	ert_user = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_ert_user));
 	if (!ert_user)
