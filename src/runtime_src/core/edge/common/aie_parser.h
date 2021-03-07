@@ -26,6 +26,8 @@ class device;
 
 namespace edge { namespace aie {
 
+const int NON_EXIST_ID = -1;
+
 struct tile_type
 {
   uint16_t row;
@@ -51,6 +53,7 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name);
  *
  * @device: device with loaded meta data
  * @graph: name of graph to extract id for
+ * Return: Integer graph id or NON_EXIST_ID if given name is not found
  */
 int
 get_graph_id(const xrt_core::device* device, const std::string& graph_name);

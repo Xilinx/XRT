@@ -63,7 +63,7 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t uuid, const std::
 #endif
 
     id = xrt_core::edge::aie::get_graph_id(device.get(), name);
-    if (id < 0)
+    if (id == xrt_core::edge::aie::NON_EXIST_ID)
         throw xrt_core::error(-EINVAL, "Can not get id for Graph '" + name + "'");
 
     int ret = drv->openGraphContext(uuid, id, am);

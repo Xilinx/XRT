@@ -452,45 +452,45 @@ zocl_aie_graph_alloc_context(struct drm_zocl_dev *zdev, u32 gid, u32 ctx_code,
 			gnode = list_entry(gptr, struct zocl_graph_ctx_node,
 			    link);
 
-			if (gnode->gid == gid) {
-				if (ctx == client) {
-					/*
-					 * This graph has been opened by same
-					 * context.
-					 */
-					DRM_ERROR("Graph %d has been opened.\n",
-					    gid);
-					ret = -EINVAL;
-					goto out;
-				}
+			if (gnode->gid != gid)
+				continue;
 
-				if (gnode->ctx_code == ZOCL_CTX_EXCLUSIVE ||
-				    ctx_code == ZOCL_CTX_EXCLUSIVE) {
-					/*
-					 * This graph has been opened with
-					 * exclusive context or;
-					 * We request exclusive context but
-					 * this graph has been opened with
-					 * non-excluxive context
-					 */
-					DRM_ERROR("Graph %d only one exclusive context can be opened.\n",
-					    gid);
-					ret = -EBUSY;
-					goto out;
-				}
+			if (ctx == client) {
+				/*
+				 * This graph has been opened by same
+				 * context.
+				 */
+				DRM_ERROR("Graph %d has been opened.\n", gid);
+				ret = -EINVAL;
+				goto out;
+			}
 
-				if (gnode->ctx_code == ZOCL_CTX_PRIMARY &&
-				    ctx_code != ZOCL_CTX_SHARED) {
-					/*
-					 * This graph has been opened with
-					 * primary context but the request
-					 * is not shared context
-					 */
-					DRM_ERROR("Graph %d has been opened with primary context.\n",
-					    gid);
-					ret = -EBUSY;
-					goto out;
-				}
+			if (gnode->ctx_code == ZOCL_CTX_EXCLUSIVE ||
+			    ctx_code == ZOCL_CTX_EXCLUSIVE) {
+				/*
+				 * This graph has been opened with
+				 * exclusive context or;
+				 * We request exclusive context but
+				 * this graph has been opened with
+				 * non-excluxive context
+				 */
+				DRM_ERROR("Graph %d only one exclusive context can be opened.\n",
+				    gid);
+				ret = -EBUSY;
+				goto out;
+			}
+
+			if (gnode->ctx_code == ZOCL_CTX_PRIMARY &&
+			    ctx_code != ZOCL_CTX_SHARED) {
+				/*
+				 * This graph has been opened with
+				 * primary context but the request
+				 * is not shared context
+				 */
+				DRM_ERROR("Graph %d has been opened with primary context.\n",
+				    gid);
+				ret = -EBUSY;
+				goto out;
 			}
 		}
 		spin_unlock_irqrestore(&ctx->graph_list_lock, graph_flags);
