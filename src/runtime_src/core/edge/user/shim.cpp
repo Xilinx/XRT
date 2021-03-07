@@ -839,7 +839,7 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
     .uuid_size = sizeof (uuid_t) * sizeof (char),
     .cu_index = ipIndex,
     .flags = flags,
-    .handle = 0,
+    .handle = 0, 
     .op = ZOCL_CTX_OP_ALLOC_CTX,
   };
 
