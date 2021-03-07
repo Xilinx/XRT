@@ -1,0 +1,10 @@
+events:
+  pull_request:
+    - trustAnyone: false
+      paths:
+      	disallowed:
+          - ".github/**"
+          - ".github/protected-workflows.yml" # <-- Exteremly important. Only certain users should be able to change this file.
+    
+    # Authorize Org members regardless of what paths were changed.
+    - trustOrgMembers: true

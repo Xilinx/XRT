@@ -3,43 +3,126 @@ name: XRT Build/Install Test CI
 on:
   push:
     branches: [ master ]
-  pull_request:	
+  pull_request: 
     branches: [ master ]
 
 jobs:
-  build:
-    environment: Test
-    runs-on: ${{ matrix.os }}
+  build_lnx_matrix:
     strategy:
       matrix:
-        os: [ubuntu-16.04, ubuntu-18.04]
+        os: [centos74, centos8]
+    runs-on: self-hosted-docker-${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
     - name: Install dependencies
-      if: steps.cache-sha.outputs.cache-hit != 'true'
       run: |
-        whoami
-        env
-        sudo apt update
         sudo src/runtime_src/tools/scripts/xrtdeps.sh -docker
+    - name: XRT Centos74 Build
+      if: ${{ matrix.os == 'centos74' }}
+      run: |
+        source /proj/xbuilds/2021.1_daily_latest/installs/lin64/Vitis/2021.1/settings64.sh
+        cd build && chmod +x build.sh && scl enable devtoolset-9 -- bash -c ./build.sh
+      shell: bash
     - name: XRT Build
-      run: cd build && chmod +x build.sh ; ./build.sh
-    - name: Stash files
+      if: ${{ matrix.os == 'centos8' || matrix.os == 'ubuntu2004'  }}
+      run: |
+        source /proj/xbuilds/2021.1_daily_latest/installs/lin64/Vitis/2021.1/settings64.sh
+        cd build && chmod +x build.sh && ./build.sh
+      shell: bash
+    - name: Stash files Centos
+      if: ${{ matrix.os == 'centos74' || matrix.os == 'centos8'}}
+      uses: actions/upload-artifact@v2
+      with:
+        name: xrt-rpm-${{ matrix.os }}
+        path: build/Release/xrt_*-xrt.rpm
+    - name: Stash files Ubuntu
+      if: ${{ matrix.os == 'ubuntu2004' }}
       uses: actions/upload-artifact@v2
       with:
         name: xrt-deb-${{ matrix.os }}
-        path: build/Release/xrt_*.deb
-
-  install:
-    runs-on: ${{ matrix.os }}
+        path: build/Release/xrt_*-xrt.deb
+  
+  uninstall_lnx_xrt:
     strategy:
       matrix:
-        os: [ubuntu-16.04, ubuntu-18.04]
-    needs: [build]
+        os: [centos74]      
+    runs-on: self-hosted-${{ matrix.os }}
     steps:
-      - name: Download XRT debs
+      - name: Uninstall xrt rpms
+        run: ${{ secrets.SUDO }} yum remove -y xrt xrt-aws
+  
+  build_win_matrix:
+    strategy:
+      matrix:
+        os: [windows10]      
+    runs-on: self-hosted-${{ matrix.os }}
+    steps:
+      - name: XRT Windows Build
+        run: >-
+          call C:\"Program Files (x86)"\"Microsoft Visual Studio"\2017\Community\VC\Auxiliary\Build\vcvars64.bat &
+          cd build &
+          build.bat -release
+        shell: cmd
+      - name: Stash files Win10
+        uses: actions/upload-artifact@v2
+        with:
+         name: xrt-exe-${{ matrix.os }}
+         path: build\WRelease\xilinx\xrt\bin\unwrapped\*.exe
+  
+  board_reset:
+    runs-on: self-hosted-bf-runner
+    steps:
+      - name: Reset board
+        run: |
+          cd /scratch/bf-logs
+          ${{ secrets.BF_COMMAND }} --log-file /scratch/bf-logs/board_reset.log xrt-reset -n ${{ secrets.BF_HOST }}
+        shell: bash
+
+  install_lnx_matrix:
+    environment: Test
+    strategy:
+      matrix:
+        os: [centos74]        
+    runs-on: self-hosted-${{ matrix.os }}
+    needs: [build_lnx_matrix, uninstall_lnx_xrt]
+    steps:
+      - name: Download XRT rpms
         uses: actions/download-artifact@v2
         with:
-          name: xrt-deb-${{ matrix.os }}
-      - name: Install xrt debs
-        run: ls -al; sudo apt install -y ./*.deb
+          name: xrt-rpm-${{ matrix.os }}
+      - name: Install xrt rpms
+        run: ls -al; ${{ secrets.SUDO }} yum install -y ./*.rpm
+  
+  board_test:
+    environment: Test
+    runs-on: self-hosted-bf-runner
+    needs: [build_lnx_matrix, board_reset]
+    steps:
+      - name: Download XRT rpms
+        uses: actions/download-artifact@v2
+        with:
+          name: xrt-rpm-centos74
+          path: /tmp/test-artifacts
+      - name: Copy to bf 
+        run: |
+          scp /tmp/test-artifacts/*.rpm ${{ secrets.BF_HOST }}:/home/${{ secrets.BF_USER }}/xrt-test-artifacts
+      - name: Run on board
+        run: |
+          cd /scratch/bf-logs 
+          ${{ secrets.BF_COMMAND }} --log-file /scratch/bf-logs/test.OUTPUT xrt-test -n ${{ secrets.BF_HOST }} -p xilinx_u50_gen3x16_xdma_201920_3 -r 2020.3 -x /home/${{ secrets.BF_USER }}/xrt-test-artifacts/*-xrt.rpm --test_path ${{ secrets.PCIE_HW_TESTS_PATH }} --timeout 2400 --results-path /scratch/bf-logs/
+        shell: bash
+
+  hw_emulation_tests:
+    runs-on: self-hosted-centos74
+    needs: [install_lnx_matrix]
+    steps:
+      - name: Run HW Emulation tests
+        run: |
+          source /proj/xbuilds/2021.1_daily_latest/installs/lin64/Vitis/2021.1/settings64.sh
+          source /opt/xilinx/xrt/setup.sh
+          export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/proj/xbuilds/2021.1_daily_latest/installs/lin64/Vitis/2021.1/lib/lnx64.o/Default
+          cd /scratch/tests/PCIE_VITIS_DSV_XRT_hw_emu_lin_lin_x86_20210128_035800_XRT_XILINX_U50_GEN3X16_XDMA_201920_3_MISC_lnx64/
+          export XCL_EMULATION_MODE=hw_emu; ./host.exe -d acc -k kernel.xclbin
+          #cd /scratch/xrt_tests
+          #${{ secrets.PYTHON }} xrt.py --chooseEmu HW_EMU --runTest True
+        shell: bash
