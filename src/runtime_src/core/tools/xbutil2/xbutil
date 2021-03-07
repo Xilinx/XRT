@@ -31,6 +31,7 @@ declare -A VALOPT=( \
         ["--output"]="XBUTIL2" \
         ["--help"]="XBUTIL2" \
         ["-d"]="DEVICE" \
+        ["-q"]="XBUTIL" \
         ["-f"]="XBUTIL2" \
         ["-r"]="XBUTIL2" \
         ["-o"]="XBUTIL2" \
