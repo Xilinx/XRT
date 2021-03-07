@@ -834,14 +834,12 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
   unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
   int ret;
 
-  drm_zocl_ctx ctx = {
-    .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
-    .uuid_size = sizeof (uuid_t) * sizeof (char),
-    .cu_index = ipIndex,
-    .flags = flags,
-    .handle = 0,
-    .op = ZOCL_CTX_OP_ALLOC_CTX,
-  };
+  drm_zocl_ctx ctx = {0};
+  ctx.uuid_ptr = reinterpret_cast<uint64_t>(xclbinId);
+  ctx.uuid_size = sizeof (uuid_t) * sizeof (char);
+  ctx.cu_index = ipIndex;
+  ctx.flags = flags;
+  ctx.op = ZOCL_CTX_OP_ALLOC_CTX;
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
   return ret ? -errno : ret;
@@ -863,14 +861,11 @@ xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
     }
   }
 
-  drm_zocl_ctx ctx = {
-    .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
-    .uuid_size = sizeof (uuid_t) * sizeof (char),
-    .cu_index = ipIndex,
-    .flags = 0,
-    .handle = 0,
-    .op = ZOCL_CTX_OP_FREE_CTX,
-  };
+  drm_zocl_ctx ctx = {0};
+  ctx.uuid_ptr = reinterpret_cast<uint64_t>(xclbinId);
+  ctx.uuid_size = sizeof (uuid_t) * sizeof (char);
+  ctx.cu_index = ipIndex;
+  ctx.op = ZOCL_CTX_OP_FREE_CTX;
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
   return ret ? -errno : ret;
@@ -995,14 +990,10 @@ xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags)
 {
   int ret;
 
-  drm_zocl_ctx ctx = {
-    .uuid_ptr = 0,
-    .uuid_size = 0,
-    .cu_index = ipIndex,
-    .flags = flags,
-    .handle = 0,
-    .op = ZOCL_CTX_OP_OPEN_GCU_FD,
-  };
+  drm_zocl_ctx ctx = {0};
+  ctx.cu_index = ipIndex;
+  ctx.flags = flags;
+  ctx.op = ZOCL_CTX_OP_OPEN_GCU_FD;
 
   xclLog(XRT_DEBUG, "%s: IP index %d, flags 0x%x", __func__, ipIndex, flags);
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
@@ -1505,14 +1496,12 @@ openGraphContext(const uuid_t xclbinId, unsigned int graphId, xrt::graph::access
     return -EINVAL;
   }
 
-  drm_zocl_ctx ctx = {
-    .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
-    .uuid_size = sizeof (uuid_t) * sizeof (char),
-    .graph_id = graphId,
-    .flags = flags,
-    .handle = 0,
-    .op = ZOCL_CTX_OP_ALLOC_GRAPH_CTX,
-  };
+  drm_zocl_ctx ctx = {0};
+  ctx.uuid_ptr = reinterpret_cast<uint64_t>(xclbinId);
+  ctx.uuid_size = sizeof (uuid_t) * sizeof (char);
+  ctx.graph_id = graphId;
+  ctx.flags = flags;
+  ctx.op = ZOCL_CTX_OP_ALLOC_GRAPH_CTX;
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
   return ret ? -errno : ret;
@@ -1524,14 +1513,9 @@ closeGraphContext(unsigned int graphId)
 {
   int ret;
 
-  drm_zocl_ctx ctx = {
-    .uuid_ptr = 0,
-    .uuid_size = 0,
-    .graph_id = graphId,
-    .flags = 0,
-    .handle = 0,
-    .op = ZOCL_CTX_OP_FREE_GRAPH_CTX,
-  };
+  drm_zocl_ctx ctx = {0};
+  ctx.graph_id = graphId;
+  ctx.op = ZOCL_CTX_OP_FREE_GRAPH_CTX;
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
   return ret ? -errno : ret;
