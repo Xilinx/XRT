@@ -400,6 +400,37 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	}
 }
 
+static bool is_valid_execbuf(struct xocl_dev *xdev, struct drm_xocl_bo *xobj)
+{
+	struct ert_packet *ecmd;
+	int pkg_size;
+	bool op_valid;
+
+	if (!xocl_bo_execbuf(xobj)) {
+		userpf_err(xdev, "Command buffer is not exec buf\n");
+		return false;
+	}
+
+	if (xobj->base.size < sizeof(struct ert_packet *)) {
+		userpf_err(xdev, "exec buf is too small\n");
+		return false;
+	}
+
+	ecmd = (struct ert_packet *)xobj->vmapping;
+	pkg_size = sizeof(ecmd->header) + ecmd->count * sizeof(u32);
+	if (xobj->base.size < pkg_size) {
+		userpf_err(xdev, "payload size bigger than exec buf\n");
+		return false;
+	}
+
+	/* opcode specific validation */
+	op_valid = ert_valid_opcode(ecmd);
+	if (!op_valid)
+		userpf_err(xdev, "opcode(%d) is invalid\n", ecmd->opcode);
+
+	return op_valid;
+}
+
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			      struct drm_file *filp, bool in_kernel)
 {
@@ -430,7 +461,8 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	}
 
 	xobj = to_xocl_bo(obj);
-	if (!xocl_bo_execbuf(xobj)) {
+	if (!is_valid_execbuf(xdev, xobj)) {
+		userpf_err(xdev, "Invalid command\n");
 		ret = -EINVAL;
 		goto out;
 	}
