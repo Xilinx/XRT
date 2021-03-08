@@ -3,11 +3,11 @@
 Legacy to new map
 *****************
 
-This document maps the legacy ``xbutil``/``xbmgmt`` commands to the new ``xbutil``/``xbmgmt`` commands. It lists out the new ``xbutil``/``xbmgmt`` calls that replace the existing calls.
+This document maps the legacy ``xbutil``/``xbmgmt`` commands to the new ``xbutil``/``xbmgmt`` commands. It lists out the new ``xbutil``/``xbmgmt`` calls that replace the existing calls. A few points: 
 
- Note: 1) The new utilities are complete redesign and architecture, hence there may not be exact 1-to-1 mapping. 
-       2) The help menusi ``--help`` of these new utilities are also very descriptive so please refer to them whenever needed.
-       3) The opions have both short and long format, for example ``-d`` or ``--device``. However in the table below only longer format is used.
+ 1) The new utilities are complete redesign and architecture, hence there may not be exact 1-to-1 mapping. 
+ 2) The help menusi ``--help`` of these new utilities are also very descriptive so please refer to them whenever needed.
+ 3) The opions have both short and long format, for example ``-d`` or ``--device``. However in the table below only longer format is used.
 
 Xbutil
 ~~~~~~
