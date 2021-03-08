@@ -188,10 +188,8 @@ namespace xdp {
 
     // Iterate over all used/specified tiles
     for (auto& tile : tiles) {
-      auto  row    = tile.row;
+      auto  row    = tile.row + 1;
       auto  col    = tile.col;
-      // TODO: Do we need to add +1 here?
-      auto  loc    = XAie_TileLoc(col, row + 1);
       auto& core   = aieDevice.tile(col, row).core();
       auto& memory = aieDevice.tile(col, row).memory();
 
@@ -210,7 +208,7 @@ namespace xdp {
         XAie_LocType currLoc;
         XAie_ModuleType currModule;
 				uint32_t currNumber;
-        perfCounter->getRscId(currLoc, currModule, currNumber);
+        perfCounter->getRscId(&currLoc, &currModule, &currNumber);
         auto counterEvent = coreCounterResetEvents.at(currNumber);
         perfCounter->changeRstEvent(XAIE_CORE_MOD, counterEvent);
         coreEvents.push_back(counterEvent);
@@ -234,7 +232,7 @@ namespace xdp {
         XAie_LocType currLoc;
         XAie_ModuleType currModule;
 				uint32_t currNumber;
-        perfCounter->getRscId(currLoc, currModule, currNumber);
+        perfCounter->getRscId(&currLoc, &currModule, &currNumber);
         auto counterEvent = memoryCounterResetEvents.at(currNumber);
         perfCounter->changeRstEvent(XAIE_MEM_MOD, counterEvent);
         memoryEvents.push_back(counterEvent);

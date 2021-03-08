@@ -217,11 +217,15 @@ namespace xdp {
       auto moduleType = isCore ? XAIE_CORE_MOD : XAIE_MEM_MOD;
 
       for (auto& tile : tiles) {
+        // Use absolute HW row
+        auto row = tile.row + 1;
+        auto col = tile.col;
+        auto tile = aieDevice->tile(col, row);
+
         for (int i=0; i < startEvents.size(); ++i) {
           // Request counter from resource manager
-          auto perfCounter = isCore ?
-              aieDevice->tile(tile.col, tile.row).core().perfCounter() ;
-              aieDevice->tile(tile.col, tile.row).memory().perfCounter();
+          auto perfCounter = isCore ? 
+              tile.core().perfCounter() : tile.memory().perfCounter();
 
 	        auto ret = perfCounter->initialize(moduleType, startEvents.at(i),
                                              moduleType, endEvents.at(i));
@@ -235,7 +239,7 @@ namespace xdp {
           counterNum = i;
 
           std::string counterName = "AIE Counter " + std::to_string(counterId);
-          (db->getStaticInfo()).addAIECounter(deviceId, counterId, tile.col, tile.row, counterNum, 
+          (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, counterNum, 
               startEvents.at(i), endEvents.at(i), resetEvent, clockFreqMhz, moduleName, counterName);
           counterId++;
         }
@@ -282,8 +286,17 @@ namespace xdp {
 
         // Read counter value from device
         uint32_t counterValue;
-        auto perfCounter = mPerfCounters.at(c);
-        perfCounter->readResult(counterValue);
+        if (mPerfCounters.empty()) {
+          // Compiler-defined counters
+          // TODO: How do we safely read these?
+          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
+          XAie_PerfCounterGet(aieArray->getDevInst(), tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
+        }
+        else {
+          // Runtime-defined counters
+          auto perfCounter = mPerfCounters.at(c);
+          perfCounter->readResult(&counterValue);
+        }
         values.push_back(counterValue);
 
         // Get timestamp in milliseconds
@@ -341,7 +354,7 @@ namespace xdp {
         else {
           for (auto& counter : counters) {
             (db->getStaticInfo()).addAIECounter(deviceId, counter.id, counter.column,
-                counter.row, counter.counterNumber, counter.startEvent, counter.endEvent,
+                counter.row + 1, counter.counterNumber, counter.startEvent, counter.endEvent,
                 counter.resetEvent, counter.clockFreqMhz, counter.module, counter.name);
           }
         }
