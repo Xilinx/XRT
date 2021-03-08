@@ -45,7 +45,7 @@ namespace plugins {
     }
 
     if (xrt_core::config::get_lop_trace()) {
-      xdplop::load_xdp_lop() ;
+      xdp::lop::load() ;
     }
 
     if (xrt_core::config::get_data_transfer_trace() != "off" ||
