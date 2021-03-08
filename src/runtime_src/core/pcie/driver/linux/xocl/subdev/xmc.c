@@ -386,13 +386,6 @@ struct xmc_pkt_qsfp_diag_read_op {
 	u8 data[1];
 };
 
-/* depracted */
-struct xmc_pkt_qsfp_diag_write_op {
-	u32 port;
-	u32 data_size;
-	u8 data[1];
-};
-
 struct xmc_pkt_qsfp_io_rw_op {
 	u32 port;
 	u8 data[1];
@@ -414,7 +407,6 @@ struct xmc_pkt {
 		struct xmc_pkt_sector_start_op sector_start;
 		struct xmc_pkt_sector_data_op sector_data;
 		struct xmc_pkt_qsfp_diag_read_op qsfp_diag_r;
-		struct xmc_pkt_qsfp_diag_write_op qsfp_diag_w;
 		struct xmc_pkt_qsfp_io_rw_op qsfp_io;
 		struct xmc_pkt_qsfp_byte_rw_op qsfp_byte;
 	};
