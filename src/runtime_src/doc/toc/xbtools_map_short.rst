@@ -6,10 +6,10 @@ Legacy to new map
 This document maps the legacy ``xbutil``/``xbmgmt`` commands to the new ``xbutil``/``xbmgmt`` commands. It lists out the new ``xbutil``/``xbmgmt`` calls that replace the existing calls. A few points: 
 
  1) The new utilities are complete redesign and architecture, hence there may not be exact 1-to-1 mapping. 
- 2) The help menus (``--help``) of these new utilities are also very descriptive so please refer to them whenever needed.
- 3) The new command opions have both short and long format, for example ``-d`` or ``--device``. However in the table below only longer format is used for the new command options.
+ 2) The help menus (``--help``) of these new utilities have also been improved and are highly descriptive with regards to both the commands and options. Please refer to them as needed.
+ 3) The new command opions have both short and long format, for example ``-d`` or ``--device``. In the table below, only the longer option format is used.
 
-Xbutil
+xbutil
 ~~~~~~
 
 +------------+------------+-------------------+--------------------+
@@ -29,15 +29,15 @@ Xbutil
 |            |            |                   |                    |
 +------------+------------+-------------------+--------------------+
 |            |            |                   |                    |
-|            |            |(N/A)	      |``--run <testname>``|
+|            |            |n/a  	      |``--run <testname>``|
 |            |            |                   |                    |
 +------------+------------+-------------------+--------------------+
 |            |            |                   |                    |
-|            |            |(N/A)	      |``--format <>``	   |
+|            |            |n/a   	      |``--format <type>`` |
 |            |            |                   |                    |
 +------------+------------+-------------------+--------------------+
 |            |            |                   |                    |
-|            |            |(N/A)	      |``--output <>``     |
+|            |            |n/a   	      |``--output <file>`` |
 |            |            |                   |                    |
 +------------+------------+-------------------+--------------------+
 |            |            |                   |                    |
@@ -53,11 +53,11 @@ Xbutil
 |            |            |                   |          	   |
 +------------+------------+-------------------+--------------------+
 |            |            |                   |                    |
-|            |            |(N/A)              |``--output <>``	   |
+|            |            |n/a                |``--output <file>`` |
 |            |            |                   |                    |
 +------------+------------+-------------------+--------------------+
 |            |            |                   |                    |
-|``dump``    |``examine`` |(N/A)	      |``--format <>``     |
+|``dump``    |``examine`` |n/a   	      |``--format <type>`` |
 |            |            |                   |                    |
 +------------+------------+-------------------+--------------------+
 |            |            |                   |                    |
@@ -75,7 +75,7 @@ Xbutil
 
 
 
-Xbmgmt
+xbmgmt
 ~~~~~~
 
 +-------------+-----------+---------------------------+----------------------------------+
@@ -99,23 +99,27 @@ Xbmgmt
 |             |           |                           |                                  |
 +-------------+-----------+---------------------------+----------------------------------+
 |             |           |                           |                                  | 
-|``partition``|``program``|``--path <>``              |``--user <>``                     |	
+|``partition``|``program``|``-d <bdf>``               |``--device <bdf>``                |	
+|             |           |                           |                                  |
++-------------+-----------+---------------------------+----------------------------------+
+|             |           |                           |                                  | 
+|             |           |``--path <xclbin w/ path>``|``--user <xclbin w/ path>``       |	
 |             |           |                           |                                  |
 +-------------+-----------+---------------------------+----------------------------------+
 |             |           |                           |                                  |    
-|(N/A)	      |``examine``|(N/A)                      |``--device <bdf>``                |
+|n/a	      |``examine``|n/a                        |``--device <bdf>``                |
 |             |           |                           |                                  |
 +-------------+-----------+---------------------------+----------------------------------+
 |             |           |                           |                                  | 
-|             |           |(N/A)	              |``--report <list>``               |	
+|             |           |n/a  	              |``--report <list>``               |	
 |             |           |                           |                                  |
 +-------------+-----------+---------------------------+----------------------------------+
 |             |           |                           |                                  | 
-|             |           |(N/A)	              |``--format <>``                   |
+|             |           |n/a   	              |``--format <type>``               |
 |             |           |                           |                                  |
 +-------------+-----------+---------------------------+----------------------------------+
 |             |           |                           |                                  |
-|             |           |(N/A)	              |``--output <>``	                 |
+|             |           |n/a  	              |``--output <file>``               |
 |             |           |                           |                                  |
 +-------------+-----------+---------------------------+----------------------------------+
 |             |           |                           |                                  |    
