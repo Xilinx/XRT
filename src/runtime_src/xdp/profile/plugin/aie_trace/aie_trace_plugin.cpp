@@ -83,16 +83,14 @@ namespace xdp {
     };
 
     broadcastCoreConfig = {
-      {"functions", { 0,0,0,0,0,0,0,0,0,0,0,0,36,35,29,28}},
-      {"functions_partial_stalls", { 0,0,0,0,0,0,0,0,0,26,25,24,36,35,29,28}},
-      {"functions_all_stalls", { 0,0,0,0,0,0,0,0,26,25,22,23,36,35,29,28}},
-      {"all", { 0,0,0,0,0,0,11,73,87,83,79,75,22,32,29,28}}
+      {"functions", {36,35}},
+      {"functions_partial_stalls", {26,25,24,36,35}},
+      {"functions_all_stalls", {26,25,22,23,36,35}},
+      {"all", {22,32}}
     };
-    // These are broadcasted to memory module
-    coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE; // 122
-    coreTraceEndEvent = XAIE_EVENT_DISABLED_CORE; // 121
-    memoryTraceStartEvent = XAIE_EVENT_BROADCAST_15_MEM; // 122
-    memoryTraceEndEvent = XAIE_EVENT_BROADCAST_14_MEM; // 121
+    // These are also broadcasted to memory module
+    coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE; // 28
+    coreTraceEndEvent = XAIE_EVENT_DISABLED_CORE; // 29
 
     // **** Memory Module Trace ****
     // functions: "traced_events": [120, 119, 5, 6, 0, 0, 0, 0]
@@ -100,18 +98,10 @@ namespace xdp {
     // functions_all_stalls: "traced_events": [120, 119, 118, 117, 116, 115, 5, 6]
     // all: "traced_events": [120, 119, 5, 6, 0, 0, 0, 0]
     memoryEventSets = {
-      {"functions",                {XAIE_EVENT_BROADCAST_13_MEM,   XAIE_EVENT_BROADCAST_12_MEM,
-                                    XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
-      {"functions_partial_stalls", {XAIE_EVENT_BROADCAST_13_MEM,   XAIE_EVENT_BROADCAST_12_MEM,
-                                    XAIE_EVENT_BROADCAST_11_MEM,   XAIE_EVENT_BROADCAST_10_MEM,
-                                    XAIE_EVENT_BROADCAST_9_MEM,
-                                    XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
-      {"functions_all_stalls",     {XAIE_EVENT_BROADCAST_13_MEM,   XAIE_EVENT_BROADCAST_12_MEM,
-                                    XAIE_EVENT_BROADCAST_11_MEM,   XAIE_EVENT_BROADCAST_10_MEM,
-                                    XAIE_EVENT_BROADCAST_9_MEM,    XAIE_EVENT_BROADCAST_8_MEM,
-                                    XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
-      {"all",                      {XAIE_EVENT_BROADCAST_13_MEM,   XAIE_EVENT_BROADCAST_12_MEM,
-                                    XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}}
+      {"functions",                {XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
+      {"functions_partial_stalls", {XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
+      {"functions_all_stalls",     { XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
+      {"all",                      {XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}}
     };
 
     // **** Core Module Counters ****
@@ -183,7 +173,8 @@ namespace xdp {
 
     // Get vector of pre-defined metrics for this set
     auto coreEvents   = coreEventSets[metricSet];
-    auto memoryEvents = memoryEventSets[metricSet];
+    auto& memoryEvents = memoryEventSets[metricSet];
+    auto broadcastCoreEvents = broadcastCoreConfig[metricSet];
 
 #ifdef XRT_ENABLE_AIE
     // Capture all tiles across all graphs
@@ -200,10 +191,13 @@ namespace xdp {
       // TODO: Request 2 memory counters here
       auto row = tile.row;
       auto col = tile.col;
+      auto loc = XAie_TileLoc(col, row + 1);
+      auto& core = aieDevice.tile(col, row).core();
+      auto& memory = aieDevice.tile(col, row).memory();
 
       for (int i=0; i < coreCounterStartEvents.size(); ++i) {
         // TODO: Configure ith trace metric for core module in tile (tile.col, tile.row) using coreEvents.at(i)
-        auto perfCounter = aieDevice->tile(col, row).core().perfCounter() ;
+        auto perfCounter = core.perfCounter() ;
         auto ret = perfCounter->initialize(moduleType, coreCounterStartEvents.at(i),
 		                                     moduleType, coreCounterEndEvents.at(i));
 	        if (ret != XAIE_OK) break;
@@ -216,7 +210,7 @@ namespace xdp {
       for (int i=0; i < memoryCounterStartEvents.size(); ++i) {
         // TODO: Configure ith trace metric for memory module in tile (tile.col, tile.row) using memoryEvents.at(i)
         // NOTE: handle broadcast events differently
-        auto perfCounter = aieDevice->tile(col, row).memory().perfCounter() ;
+        auto perfCounter = memory.perfCounter() ;
         auto ret = perfCounter->initialize(moduleType, memoryCounterStartEvents.at(i),
 		                                     moduleType, memoryCounterEndEvents.at(i));
 	        if (ret != XAIE_OK) break;
@@ -229,14 +223,44 @@ namespace xdp {
       // Set broadcat events
       // It seems like there's no resource manager api to configure broadcast channels.
       // Todo: Ask Wendy how to do this.
-      auto broadcast = aieDevice.tile(col,row).core().broadcast();
-      auto ret = broadcast->reserve();
+      for (int i=0; i < broadcastCoreEvents.size(); ++i) {
+        auto broadcast = core.broadcast();
+        auto ret = broadcast->reserve();
+        if (ret != XAIE_OK) break;
+        uint8_t bcId = static_cast<uint8_t>(broadcast->getBc());
+        auto eventId = static_cast<XAie_Events>(broadcastCoreEvents[i]);
+        XAie_EventBroadcast(aieDevice, loc, XAIE_CORE_MOD, bcId, eventId);
+        // Save the broadcast ID to use in memory trace
+        XAie_Events event = 0;
+        broadcast->getEvent(loc, event);
+        memoryEventSets.push_back(event);
+      }
+
+      // Core start/stop boradcasts are used to trigger memory module
+      // Configure core broadcast and save these events
+      XAie_Events memBcStartEvent = 0 ;
+      XAie_Events memBcEndEvent = 0 ;
+      {
+        auto broadcast = core.broadcast();
+        auto ret = broadcast->reserve();
+        if (ret != XAIE_OK) break;
+        uint8_t bcId = static_cast<uint8_t>(broadcast->getBc());
+        broadcast->getEvent(loc, memBcStartEvent);
+        XAie_EventBroadcast(aieDevice, loc, XAIE_CORE_MOD, bcId, coreTraceStartEvent);
+        auto broadcast = core.broadcast();
+        auto ret = broadcast->reserve();
+        if (ret != XAIE_OK) break;
+        uint8_t bcId = static_cast<uint8_t>(broadcast->getBc());
+        // 28,29 not used in memory module trace
+        broadcast->getEvent(loc, memBcEndEvent);
+        XAie_EventBroadcast(aieDevice, loc, XAIE_CORE_MOD, bcId, coreTraceEndEvent);
+      }
 
       // Todo: Set combo events if applicable
 
       // Configure Core Tracing Events
       {
-        auto core_trace = aieDevice.tile(col, row).core().traceControl();
+        auto core_trace = core.traceControl();
         auto ret = core_trace->reserve();
         if (ret != XAIE_OK) break;
         for (int i=0; i < coreEvents.size(); i++) {
@@ -256,7 +280,7 @@ namespace xdp {
 
       // Configure Memory Tracing Events
       {
-        auto mem_trace = aieDevice.tile(col, row).memory().traceControl();
+        auto mem_trace = memory.traceControl();
         auto ret = mem_trace->reserve();
         if (ret != XAIE_OK) break;
         for (int i=0; i < memoryEvents.size(); i++) {
@@ -267,7 +291,7 @@ namespace xdp {
           if (ret != XAIE_OK) break;
         }
         // Figure this out based on what broadcast channel we got
-        ret = mem_trace->setCntrEvent(memoryTraceStartEvent, memoryTraceEndEvent);
+        ret = mem_trace->setCntrEvent(memBcStartEvent, memBcEndEvent);
         if (ret != XAIE_OK) break;
         ret = mem_trace->setMode(XAIE_TRACE_EVENT_TIME);
         if (ret != XAIE_OK) break;

@@ -82,8 +82,6 @@ namespace xdp {
       std::vector<XAie_Events> memoryCounterEndEvents;
       std::vector<XAie_Events> memoryCounterResetEvents;
       std::vector<uint32_t>    memoryCounterEventValues;
-      XAie_Events memoryTraceStartEvent;
-      XAie_Events memoryTraceEndEvent;
   };
     
 }   
