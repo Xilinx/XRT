@@ -197,6 +197,22 @@ get_plio(const pt::ptree& aie_meta)
   return plios;
 }
 
+double
+get_clock_freq_mhz(const pt::ptree& aie_meta)
+{
+  double clockFreqMhz = 1000.0;
+
+  // If counters not found, then return default value
+  auto counterTree = aie_meta.get_child_optional("aie_metadata.PerformanceCounter");
+  if (!counterTree)
+    return clockFreqMhz;
+
+  // Grab clock frequency
+  auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+  auto clockFreqMhz = dev_node.get<double>("AIEFrequency");
+  return clockFreqMhz;
+}
+
 std::vector<counter_type>
 get_profile_counter(const pt::ptree& aie_meta)
 {
@@ -322,6 +338,18 @@ get_plios(const xrt_core::device* device)
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_plio(aie_meta);
+}
+
+double
+get_clock_freq_mhz(const xrt_core::device* device)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return std::vector<counter_type>();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_clock_freq_mhz(aie_meta);
 }
 
 std::vector<counter_type>

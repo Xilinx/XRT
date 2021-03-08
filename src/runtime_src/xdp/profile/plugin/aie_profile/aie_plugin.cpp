@@ -36,46 +36,46 @@
 #include "xaiefal/xaiefal.hpp"
 #endif
 
-#define USE_OLD_MANAGER 0
-
 namespace xdp {
 
   AIEProfilingPlugin::AIEProfilingPlugin() 
       : XDPPlugin()
   {
     db->registerPlugin(this);
+    getPollingInterval();
 
+    //
     // Pre-defined metric sets
+    //
+    // **** Core Module Counters ****
     mCoreMetricSets = {"heat_map", "stalls", "execution"};
     mCoreStartEvents = {
-      {"heat_map",  {XAIE_EVENT_ACTIVE_CORE, XAIE_EVENT_GROUP_CORE_STALL_CORE,
-                     XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE}},
-      {"stalls",    {XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE,
-                     XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE}},
-      {"execution", {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_VECTOR_CORE,
-                     XAIE_EVENT_INSTR_LOAD_CORE, XAIE_EVENT_INSTR_STORE_CORE}}
+      {"heat_map",  {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
+                     XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE}},
+      {"stalls",    {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
+                     XAIE_EVENT_CASCADE_STALL_CORE,        XAIE_EVENT_LOCK_STALL_CORE}},
+      {"execution", {XAIE_EVENT_INSTR_CALL_CORE,           XAIE_EVENT_INSTR_VECTOR_CORE,
+                     XAIE_EVENT_INSTR_LOAD_CORE,           XAIE_EVENT_INSTR_STORE_CORE}}
     };
-
     mCoreEndEvents = {
-      {"heat_map",  {XAIE_EVENT_DISABLED_CORE, XAIE_EVENT_GROUP_CORE_STALL_CORE,
-                     XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE}},
-      {"stalls",    {XAIE_EVENT_MEMORY_STALL_CORE, XAIE_EVENT_STREAM_STALL_CORE,
-                     XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE}},
-      {"execution", {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_VECTOR_CORE,
-                     XAIE_EVENT_INSTR_LOAD_CORE, XAIE_EVENT_INSTR_STORE_CORE}}
+      {"heat_map",  {XAIE_EVENT_DISABLED_CORE,             XAIE_EVENT_GROUP_CORE_STALL_CORE,
+                     XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE}},
+      {"stalls",    {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
+                     XAIE_EVENT_CASCADE_STALL_CORE,        XAIE_EVENT_LOCK_STALL_CORE}},
+      {"execution", {XAIE_EVENT_INSTR_CALL_CORE,           XAIE_EVENT_INSTR_VECTOR_CORE,
+                     XAIE_EVENT_INSTR_LOAD_CORE,           XAIE_EVENT_INSTR_STORE_CORE}}
     };
 
+    // **** Memory Module Counters ****
     mMemoryMetricSets = {"dma_locks", "conflicts"};
     mMemoryStartEvents = {
-      {"dma_locks", {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM, XAIE_EVENT_GROUP_LOCK_MEM}},
+      {"dma_locks", {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}},
       {"conflicts", {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}}
     };
-    
     mMemoryEndEvents = {
-      {"dma_locks", {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM, XAIE_EVENT_GROUP_LOCK_MEM}}, 
+      {"dma_locks", {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}}, 
       {"conflicts", {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}}
     };
-    getPollingInterval();
   }
 
   AIEProfilingPlugin::~AIEProfilingPlugin()
@@ -118,9 +118,10 @@ namespace xdp {
       return runtimeCounters;
 
     auto aieDevice = aieArray->getDevInst();
-	  
-    // TODO: get AIE clock frequency even when compiler counters are not specified
-    double clockFreqMhz = 1000.0;
+	  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+
+    // Get AIE clock frequency
+    auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get())
 
     // Configure both core and memory module counters
     for (int module=0; module < 2; ++module) {
@@ -169,7 +170,6 @@ namespace xdp {
 
       if (vec.size() == 1) {
         // Capture all tiles across all graphs
-        std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
         auto graphs = xrt_core::edge::aie::get_graphs(device.get());
         
         for (auto& graph : graphs) {
@@ -217,34 +217,14 @@ namespace xdp {
       auto moduleType = isCore ? XAIE_CORE_MOD : XAIE_MEM_MOD;
 
       for (auto& tile : tiles) {
-#if USE_OLD_MANAGER
-        auto aieTile = zynqaie::Resources::AIE::getAIETile(tile.col, tile.row);
-        if (!aieTile)
-          continue;
-#endif
-
         for (int i=0; i < startEvents.size(); ++i) {
-#if USE_OLD_MANAGER
-          // Use old resource manager
-          auto counterNum = isCore ?
-              aieTile->coreModule.requestPerformanceCounter(deviceId)  :
-              aieTile->memoryModule.requestPerformanceCounter(deviceId);
-          if (counterNum == -1)
-            break;
-          std::cout << "Using counter " << counterNum << " in tile: " << tile.col << "," << tile.row << std::endl;
-
-          auto tileLocation = XAie_TileLoc(tile.col, tile.row + 1);
-
-          XAie_PerfCounterControlSet(aieDevice, tileLocation, moduleType,
-                                     counterNum, startEvents.at(i), endEvents.at(i));
-#else
-          // Use new resource manager
+          // Request counter from resource manager
           auto perfCounter = isCore ?
               aieDevice->tile(tile.col, tile.row).core().perfCounter() ;
               aieDevice->tile(tile.col, tile.row).memory().perfCounter();
 
 	        auto ret = perfCounter->initialize(moduleType, startEvents.at(i),
-		                                     moduleType, endEvents.at(i));
+                                             moduleType, endEvents.at(i));
 	        if (ret != XAIE_OK) break;
 	        ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
@@ -253,7 +233,6 @@ namespace xdp {
 
           mPerfCounters.push_back(perfCounter);
           counterNum = i;
-#endif
 
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, tile.col, tile.row, counterNum, 
@@ -303,15 +282,8 @@ namespace xdp {
 
         // Read counter value from device
         uint32_t counterValue;
-#if USE_OLD_MANAGER
-        auto moduleType = (aie->module == "core") ? XAIE_CORE_MOD : XAIE_MEM_MOD;
-        XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row+1);
-        XAie_PerfCounterGet(aieArray->getDevInst(), tileLocation, moduleType, 
-                            aie->counterNumber, &counterValue);
-#else
         auto perfCounter = mPerfCounters.at(c);
-        perfCounter->readResult(&counterValue);
-#endif
+        perfCounter->readResult(counterValue);
         values.push_back(counterValue);
 
         // Get timestamp in milliseconds

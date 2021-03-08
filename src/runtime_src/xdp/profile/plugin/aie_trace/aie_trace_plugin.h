@@ -54,6 +54,9 @@ namespace xdp {
       void setMetrics(void* handle);
 
     private:
+      // Trace Runtime Status
+      AieRC mConfigStatus = XAIE_OK;
+
       std::vector<void*> deviceHandles;
       std::map<uint64_t, void*> deviceIdToHandle;
 
@@ -63,25 +66,28 @@ namespace xdp {
 
       std::map<uint32_t, AIEData>  aieOffloaders;
 
-      // Trace Runtime Status
-      AieRC mCfgStatus = XAIE_OK;
-      // Trace metrics
+      // Types
+      typedef XAie_Events            EventType;
+      typedef std::vector<EventType> EventVector;
+      typedef std::vector<uint32_t>  ValueVector;
+
+      // Trace metrics      
       std::set<std::string> metricSets;
-      std::map<std::string, std::vector<XAie_Events>> coreEventSets;
-      std::map<std::string, std::vector<XAie_Events>> memoryEventSets;
+      std::map<std::string, EventVector> coreEventSets;
+      std::map<std::string, EventVector> memoryEventSets;
 
       // Counter metrics (same for all sets)
-      std::vector<XAie_Events> coreCounterStartEvents;
-      std::vector<XAie_Events> coreCounterEndEvents;
-      std::vector<XAie_Events> coreCounterResetEvents;
-      std::vector<uint32_t>    coreCounterEventValues;
-      XAie_Events coreTraceStartEvent;
-      XAie_Events coreTraceEndEvent;
+      EventType   coreTraceStartEvent;
+      EventType   coreTraceEndEvent;
+      EventVector coreCounterStartEvents;
+      EventVector coreCounterEndEvents;
+      EventVector coreCounterResetEvents;
+      ValueVector coreCounterEventValues;
 
-      std::vector<XAie_Events> memoryCounterStartEvents;
-      std::vector<XAie_Events> memoryCounterEndEvents;
-      std::vector<XAie_Events> memoryCounterResetEvents;
-      std::vector<uint32_t>    memoryCounterEventValues;
+      EventVector memoryCounterStartEvents;
+      EventVector memoryCounterEndEvents;
+      EventVector memoryCounterResetEvents;
+      ValueVector memoryCounterEventValues;
   };
     
 }   

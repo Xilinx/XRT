@@ -142,6 +142,14 @@ struct counter_type
 };
 
 /**
+ * get_clock_freq_mhz() - get clock frequency from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+double
+get_clock_freq_mhz(const xrt_core::device* device);
+
+/**
  * get_profile_counters() - get counter data from xclbin AIE metadata
  *
  * @device: device with loaded meta data

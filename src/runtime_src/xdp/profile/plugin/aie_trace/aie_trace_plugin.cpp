@@ -64,57 +64,56 @@ namespace xdp {
     //          "106": 0,
     //          "123": 0
     //      },
-    // NOTE: last two events in each set are dependent on actual profile counter reserved
+    // NOTE: these are supplemented with counter events as those are dependent on counter #
     coreEventSets = {
-      {"functions",                {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
-                                    XAIE_EVENT_PERF_CNT_2_CORE,    XAIE_EVENT_PERF_CNT_3_CORE}},
-      {"functions_partial_stalls", {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
+      {"functions",                {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
+      {"functions_partial_stalls", {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
                                     XAIE_EVENT_STREAM_STALL_CORE, 
-                                    XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE, 
-                                    XAIE_EVENT_PERF_CNT_2_CORE,    XAIE_EVENT_PERF_CNT_3_CORE}},
-      {"functions_all_stalls",     {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
-                                    XAIE_EVENT_MEMORY_STALL_CORE,  XAIE_EVENT_STREAM_STALL_CORE, 
-                                    XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE, 
-                                    XAIE_EVENT_PERF_CNT_2_CORE,    XAIE_EVENT_PERF_CNT_3_CORE}},
-      {"all",                      {XAIE_EVENT_INSTR_CALL_CORE,    XAIE_EVENT_INSTR_RETURN_CORE,
-                                    XAIE_EVENT_MEMORY_STALL_CORE,  XAIE_EVENT_STREAM_STALL_CORE, 
-                                    XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE, 
-                                    XAIE_EVENT_PERF_CNT_2_CORE,    XAIE_EVENT_PERF_CNT_3_CORE}}
+                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}},
+      {"functions_all_stalls",     {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_MEMORY_STALL_CORE,     XAIE_EVENT_STREAM_STALL_CORE, 
+                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}},
+      {"all",                      {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_MEMORY_STALL_CORE,     XAIE_EVENT_STREAM_STALL_CORE, 
+                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}}
     };
 
-    broadcastCoreConfig = {
-      {"functions", {36,35}},
-      {"functions_partial_stalls", {26,25,24,36,35}},
-      {"functions_all_stalls", {26,25,22,23,36,35}},
-      {"all", {22,32}}
-    };
-    // These are also broadcasted to memory module
-    coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE; // 28
-    coreTraceEndEvent = XAIE_EVENT_DISABLED_CORE; // 29
+    // These are also broadcast to memory module
+    coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
+    coreTraceEndEvent   = XAIE_EVENT_DISABLED_CORE;
 
     // **** Memory Module Trace ****
     // functions: "traced_events": [120, 119, 5, 6, 0, 0, 0, 0]
     // functions_partial_stalls: "traced_events": [120, 119, 118, 117, 116, 5, 6, 0]
     // functions_all_stalls: "traced_events": [120, 119, 118, 117, 116, 115, 5, 6]
     // all: "traced_events": [120, 119, 5, 6, 0, 0, 0, 0]
+    //
+    // NOTE: core events listed here are broadcast by the resource manager
+    // NOTE: these are supplemented with counter events as those are dependent on counter #
     memoryEventSets = {
-      {"functions",                {XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
-      {"functions_partial_stalls", {XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
-      {"functions_all_stalls",     { XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}},
-      {"all",                      {XAIE_EVENT_PERF_CNT_0_MEM,     XAIE_EVENT_PERF_CNT_1_MEM}}
+      {"functions",                {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
+      {"functions_partial_stalls", {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_STREAM_STALL_CORE, 
+                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}},
+      {"functions_all_stalls",     {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_MEMORY_STALL_CORE,     XAIE_EVENT_STREAM_STALL_CORE, 
+                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}},
+      {"all",                      {XAIE_EVENT_GROUP_CORE_STALL_CORE, XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}}
     };
 
     // **** Core Module Counters ****
     // NOTE: reset events are dependent on actual profile counter reserved
-    coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,     XAIE_EVENT_ACTIVE_CORE};
-    coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,   XAIE_EVENT_DISABLED_CORE};
-    coreCounterResetEvents   = {XAIE_EVENT_PERF_CNT_2_CORE, XAIE_EVENT_PERF_CNT_3_CORE};
+    coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_ACTIVE_CORE};
+    coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,             XAIE_EVENT_DISABLED_CORE};
+    coreCounterResetEvents   = {XAIE_EVENT_PERF_CNT_0_CORE,           XAIE_EVENT_PERF_CNT_1_CORE
+                                XAIE_EVENT_PERF_CNT_2_CORE,           XAIE_EVENT_PERF_CNT_3_CORE};
     coreCounterEventValues   = {1020, 1040400};
 
     // **** Memory Module Counters ****
-    memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,        XAIE_EVENT_TRUE_MEM};
-    memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,        XAIE_EVENT_NONE_MEM};
-    memoryCounterResetEvents = {XAIE_EVENT_PERF_CNT_0_MEM,  XAIE_EVENT_PERF_CNT_1_MEM};
+    // NOTE: reset events are dependent on actual profile counter reserved
+    memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                  XAIE_EVENT_TRUE_MEM};
+    memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                  XAIE_EVENT_NONE_MEM};
+    memoryCounterResetEvents = {XAIE_EVENT_PERF_CNT_0_MEM,            XAIE_EVENT_PERF_CNT_1_MEM};
     memoryCounterEventValues = {1020, 1040400};
   }
 
@@ -172,12 +171,13 @@ namespace xdp {
     }
 
     // Get vector of pre-defined metrics for this set
-    auto coreEvents   = coreEventSets[metricSet];
-    auto& memoryEvents = memoryEventSets[metricSet];
-    auto broadcastCoreEvents = broadcastCoreConfig[metricSet];
+    auto& coreEvents          = coreEventSets[metricSet];
+    auto& memoryEvents        = memoryEventSets[metricSet];
+    auto  broadcastCoreEvents = broadcastCoreConfig[metricSet];
 
 #ifdef XRT_ENABLE_AIE
     // Capture all tiles across all graphs
+    // NOTE: future releases will support the specification of tile subsets
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto graphs = xrt_core::edge::aie::get_graphs(device.get());
     std::vector<xrt_core::edge::aie::tile_type> tiles;
@@ -186,116 +186,107 @@ namespace xdp {
       std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
     }
 
+    // Iterate over all used/specified tiles
     for (auto& tile : tiles) {
-      // TODO: Request 2 core counters here
-      // TODO: Request 2 memory counters here
-      auto row = tile.row;
-      auto col = tile.col;
-      auto loc = XAie_TileLoc(col, row + 1);
-      auto& core = aieDevice.tile(col, row).core();
+      auto  row    = tile.row;
+      auto  col    = tile.col;
+      // TODO: Do we need to add +1 here?
+      auto  loc    = XAie_TileLoc(col, row + 1);
+      auto& core   = aieDevice.tile(col, row).core();
       auto& memory = aieDevice.tile(col, row).memory();
 
+      // Reserve and start two core module counters
       for (int i=0; i < coreCounterStartEvents.size(); ++i) {
-        // TODO: Configure ith trace metric for core module in tile (tile.col, tile.row) using coreEvents.at(i)
-        auto perfCounter = core.perfCounter() ;
-        auto ret = perfCounter->initialize(moduleType, coreCounterStartEvents.at(i),
-		                                     moduleType, coreCounterEndEvents.at(i));
-	        if (ret != XAIE_OK) break;
-	        ret = perfCounter->reserve();
-          if (ret != XAIE_OK) break;
-	        ret = perfCounter->start();
-          if (ret != XAIE_OK) break;
+        auto perfCounter = core.perfCounter();
+        auto ret = perfCounter->initialize(XAIE_CORE_MOD, coreCounterStartEvents.at(i),
+                                           XAIE_CORE_MOD, coreCounterEndEvents.at(i));
+        if (ret != XAIE_OK) break;
+        ret = perfCounter->reserve();
+
+        perfCounter->changeThreshold( coreCounterEventValues.at(i) );
+
+        // Set reset event based on counter number
+        // NOTE: store events for later use in trace
+        XAie_LocType currLoc;
+        XAie_ModuleType currModule;
+				uint32_t currNumber;
+        perfCounter->getRscId(currLoc, currModule, currNumber);
+        auto counterEvent = coreCounterResetEvents.at(currNumber);
+        perfCounter->changeRstEvent(XAIE_CORE_MOD, counterEvent);
+        coreEvents.push_back(counterEvent);
+
+        if (ret != XAIE_OK) break;
+        ret = perfCounter->start();
+        if (ret != XAIE_OK) break;
       }
 
+      // Reserve and start two memory module counters
       for (int i=0; i < memoryCounterStartEvents.size(); ++i) {
-        // TODO: Configure ith trace metric for memory module in tile (tile.col, tile.row) using memoryEvents.at(i)
-        // NOTE: handle broadcast events differently
-        auto perfCounter = memory.perfCounter() ;
-        auto ret = perfCounter->initialize(moduleType, memoryCounterStartEvents.at(i),
-		                                     moduleType, memoryCounterEndEvents.at(i));
-	        if (ret != XAIE_OK) break;
-	        ret = perfCounter->reserve();
-          if (ret != XAIE_OK) break;
-	        ret = perfCounter->start();
-          if (ret != XAIE_OK) break;
+        auto perfCounter = memory.perfCounter();
+        auto ret = perfCounter->initialize(XAIE_MEM_MOD, memoryCounterStartEvents.at(i),
+                                           XAIE_MEM_MOD, memoryCounterEndEvents.at(i));
+        if (ret != XAIE_OK) break;
+        ret = perfCounter->reserve();
+
+        perfCounter->changeThreshold( memoryCounterEventValues.at(i) );
+        
+        // Set reset event based on counter number
+        XAie_LocType currLoc;
+        XAie_ModuleType currModule;
+				uint32_t currNumber;
+        perfCounter->getRscId(currLoc, currModule, currNumber);
+        auto counterEvent = memoryCounterResetEvents.at(currNumber);
+        perfCounter->changeRstEvent(XAIE_MEM_MOD, counterEvent);
+        memoryEvents.push_back(counterEvent);
+
+        if (ret != XAIE_OK) break;
+        ret = perfCounter->start();
+        if (ret != XAIE_OK) break;
       }
 
-      // Set broadcat events
-      // It seems like there's no resource manager api to configure broadcast channels.
-      // Todo: Ask Wendy how to do this.
-      for (int i=0; i < broadcastCoreEvents.size(); ++i) {
-        auto broadcast = core.broadcast();
-        auto ret = broadcast->reserve();
-        if (ret != XAIE_OK) break;
-        uint8_t bcId = static_cast<uint8_t>(broadcast->getBc());
-        auto eventId = static_cast<XAie_Events>(broadcastCoreEvents[i]);
-        XAie_EventBroadcast(aieDevice, loc, XAIE_CORE_MOD, bcId, eventId);
-        // Save the broadcast ID to use in memory trace
-        XAie_Events event = 0;
-        broadcast->getEvent(loc, event);
-        memoryEventSets.push_back(event);
-      }
-
-      // Core start/stop boradcasts are used to trigger memory module
-      // Configure core broadcast and save these events
-      XAie_Events memBcStartEvent = 0 ;
-      XAie_Events memBcEndEvent = 0 ;
-      {
-        auto broadcast = core.broadcast();
-        auto ret = broadcast->reserve();
-        if (ret != XAIE_OK) break;
-        uint8_t bcId = static_cast<uint8_t>(broadcast->getBc());
-        broadcast->getEvent(loc, memBcStartEvent);
-        XAie_EventBroadcast(aieDevice, loc, XAIE_CORE_MOD, bcId, coreTraceStartEvent);
-        auto broadcast = core.broadcast();
-        auto ret = broadcast->reserve();
-        if (ret != XAIE_OK) break;
-        uint8_t bcId = static_cast<uint8_t>(broadcast->getBc());
-        // 28,29 not used in memory module trace
-        broadcast->getEvent(loc, memBcEndEvent);
-        XAie_EventBroadcast(aieDevice, loc, XAIE_CORE_MOD, bcId, coreTraceEndEvent);
-      }
-
-      // Todo: Set combo events if applicable
+      // TODO: Configure group/combo events if applicable
 
       // Configure Core Tracing Events
       {
-        auto core_trace = core.traceControl();
-        auto ret = core_trace->reserve();
+        auto coreTrace = core.traceControl();
+        auto ret = coreTrace->reserve();
         if (ret != XAIE_OK) break;
+
         for (int i=0; i < coreEvents.size(); i++) {
           uint8_t slot;
-          ret = core_trace->reserveTraceSlot(slot);
+          ret = coreTrace->reserveTraceSlot(slot);
           if (ret != XAIE_OK) break;
-          ret = core_trace->setTraceEvent(slot, coreEvents[i]);
+          ret = coreTrace->setTraceEvent(slot, coreEvents[i]);
           if (ret != XAIE_OK) break;
         }
-        ret = core_trace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
+        
+        ret = coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
         if (ret != XAIE_OK) break;
-        ret = core_trace->setMode(XAIE_TRACE_EVENT_TIME);
+        ret = coreTrace->setMode(XAIE_TRACE_EVENT_TIME);
         if (ret != XAIE_OK) break;
-        ret = core_trace->start();
+        ret = coreTrace->start();
         if (ret != XAIE_OK) break;
       }
 
       // Configure Memory Tracing Events
       {
-        auto mem_trace = memory.traceControl();
-        auto ret = mem_trace->reserve();
+        auto memoryTrace = memory.traceControl();
+        auto ret = memoryTrace->reserve();
         if (ret != XAIE_OK) break;
+        
         for (int i=0; i < memoryEvents.size(); i++) {
           uint8_t slot;
-          ret = mem_trace->reserveTraceSlot(slot);
+          ret = memoryTrace->reserveTraceSlot(slot);
           if (ret != XAIE_OK) break;
-          ret = mem_trace->setTraceEvent(slot, memoryEvents[i]);
+          ret = memoryTrace->setTraceEvent(slot, memoryEvents[i]);
           if (ret != XAIE_OK) break;
         }
-        // Figure this out based on what broadcast channel we got
-        ret = mem_trace->setCntrEvent(memBcStartEvent, memBcEndEvent);
+        
+        ret = memoryTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
         if (ret != XAIE_OK) break;
-        ret = mem_trace->setMode(XAIE_TRACE_EVENT_TIME);
+        ret = memoryTrace->setMode(XAIE_TRACE_EVENT_TIME);
         if (ret != XAIE_OK) break;
-        ret = mem_trace->start();
+        ret = memoryTrace->start();
         if (ret != XAIE_OK) break;
       }
     }
