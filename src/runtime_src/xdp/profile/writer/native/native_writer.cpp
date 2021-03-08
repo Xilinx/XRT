@@ -35,23 +35,23 @@ namespace xdp {
   void NativeTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "XRT Version," << getToolVersion() << std::endl ;
+    fout << "XRT Version," << getToolVersion() << "\n" ;
   }
 
   void NativeTraceWriter::writeStructure()
   {
     // There is only one bucket where all the APIs will go
-    fout << "STRUCTURE" << std::endl ;
-    fout << "Group_Start,Host APIs" << std::endl ;
-    fout << "Group_Start,Native XRT API Calls" << std::endl ;
-    fout << "Dynamic_Row," << 1 << ",General,API Events" << std::endl ;
-    fout << "Group_End,Native XRT API Calls" << std::endl ;
-    fout << "Group_End,Host APIs" << std::endl ;
+    fout << "STRUCTURE" << "\n" ;
+    fout << "Group_Start,Host APIs" << "\n" ;
+    fout << "Group_Start,Native XRT API Calls" << "\n" ;
+    fout << "Dynamic_Row," << 1 << ",General,API Events" << "\n" ;
+    fout << "Group_End,Native XRT API Calls" << "\n" ;
+    fout << "Group_End,Host APIs" << "\n" ;
   }
 
   void NativeTraceWriter::writeStringTable()
   {
-    fout << "MAPPING" << std::endl ;
+    fout << "MAPPING" << "\n" ;
     (db->getDynamicInfo()).dumpStringTable(fout) ;
   }
 
@@ -63,7 +63,7 @@ namespace xdp {
                                                      return e->isNativeHostEvent() ;
                                                    }
                                                   ) ;
-    fout << "EVENTS" << std::endl ;
+    fout << "EVENTS" << "\n" ;
     for (auto& e : APIEvents) {
       e->dump(fout, 1) ; // 1 is the only bucket
     }
@@ -71,17 +71,17 @@ namespace xdp {
 
   void NativeTraceWriter::writeDependencies()
   {
-    fout << "DEPENDENCIES" << std::endl ;
+    fout << "DEPENDENCIES" << "\n" ;
     // No dependencies in Native XRT APIs
   }
 
   bool NativeTraceWriter::write(bool openNewFile)
   {
-    writeHeader() ;       fout << std::endl ;
-    writeStructure() ;    fout << std::endl ;
-    writeStringTable() ;  fout << std::endl ;
-    writeTraceEvents() ;  fout << std::endl ;
-    writeDependencies() ; fout << std::endl ;
+    writeHeader() ;       fout << "\n" ;
+    writeStructure() ;    fout << "\n" ;
+    writeStringTable() ;  fout << "\n" ;
+    writeTraceEvents() ;  fout << "\n" ;
+    writeDependencies() ; fout << std::endl ; // Force a flush at the end
 
     if (openNewFile) switchFiles() ;
 
