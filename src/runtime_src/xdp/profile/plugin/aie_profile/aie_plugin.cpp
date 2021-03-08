@@ -240,13 +240,13 @@ namespace xdp {
 #else
           // Use new resource manager
           auto perfCounter = isCore ?
-              aieDevice->tile(tile.col, tile.row).core().perfCounter() :
+              aieDevice->tile(tile.col, tile.row).core().perfCounter() ;
               aieDevice->tile(tile.col, tile.row).memory().perfCounter();
 
 	        auto ret = perfCounter->initialize(moduleType, startEvents.at(i),
 		                                     moduleType, endEvents.at(i));
 	        if (ret != XAIE_OK) break;
-	        perfCounter->reserve();
+	        ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
 	        ret = perfCounter->start();
           if (ret != XAIE_OK) break;

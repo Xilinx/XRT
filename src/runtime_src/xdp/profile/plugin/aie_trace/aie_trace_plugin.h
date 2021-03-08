@@ -63,6 +63,8 @@ namespace xdp {
 
       std::map<uint32_t, AIEData>  aieOffloaders;
 
+      // Trace Runtime Status
+      AieRC mCfgStatus = XAIE_OK;
       // Trace metrics
       std::set<std::string> metricSets;
       std::map<std::string, std::vector<XAie_Events>> coreEventSets;
@@ -73,11 +75,15 @@ namespace xdp {
       std::vector<XAie_Events> coreCounterEndEvents;
       std::vector<XAie_Events> coreCounterResetEvents;
       std::vector<uint32_t>    coreCounterEventValues;
+      XAie_Events coreTraceStartEvent;
+      XAie_Events coreTraceEndEvent;
 
       std::vector<XAie_Events> memoryCounterStartEvents;
       std::vector<XAie_Events> memoryCounterEndEvents;
       std::vector<XAie_Events> memoryCounterResetEvents;
       std::vector<uint32_t>    memoryCounterEventValues;
+      XAie_Events memoryTraceStartEvent;
+      XAie_Events memoryTraceEndEvent;
   };
     
 }   

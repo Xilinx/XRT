@@ -68,6 +68,7 @@ namespace xdp {
     std::set<std::string> mCoreMetricSets;
     std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
     std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
+    std::map<std::string, std::vector<int>> broadcastCoreConfig;
 
     std::set<std::string> mMemoryMetricSets;
     std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
