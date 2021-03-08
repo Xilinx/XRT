@@ -925,3 +925,155 @@ xrtResetAIEArray(xclDeviceHandle handle)
     return -1;
   }*/
 }
+
+////////////////////////////////////////////////////////////////
+// Exposed for Cardano as extensions to xrt_aie.h
+////////////////////////////////////////////////////////////////
+/**
+* xrtSyncBOAIENB() - Transfer data between DDR and Shim DMA channel
+*
+* @handle:          Handle to the device
+* @bohdl:           BO handle.
+* @gmioName:        GMIO port name
+* @dir:             GM to AIE or AIE to GM
+* @size:            Size of data to synchronize
+* @offset:          Offset within the BO
+*
+* Return:          0 on success, or appropriate error number.
+*
+* Synchronize the buffer contents between GMIO and AIE.
+* Note: Upon return, the synchronization is submitted or error out
+*/
+int
+xrtSyncBOAIENB(xrtDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  //try {
+  //  sync_aie_bo_nb(handle, bohdl, gmioName, dir, size, offset);
+  //  return 0;
+  //}
+  //catch (const xrt_core::error& ex) {
+  //  xrt_core::send_exception_message(ex.what());
+  //  return ex.get();
+  //}
+  //catch (const std::exception& ex) {
+  //  send_exception_message(ex.what());
+  //  return -1;
+  //}
+  return 0;
+}
+
+/**
+* xrtGMIOWait() - Wait a shim DMA channel to be idle for a given GMIO port
+*
+* @handle:          Handle to the device
+* @gmioName:        GMIO port name
+*
+* Return:          0 on success, or appropriate error number.
+*/
+int
+xrtGMIOWait(xrtDeviceHandle handle, const char *gmioName)
+{
+  //try {
+  //  wait_gmio(handle, gmioName);
+  //  return 0;
+  //}
+  //catch (const xrt_core::error& ex) {
+  //  xrt_core::send_exception_message(ex.what());
+  //  return ex.get();
+  //}
+  //catch (const std::exception& ex) {
+  //  send_exception_message(ex.what());
+  //  return -1;
+  //}
+  return 0;
+}
+
+/**
+* xrtAIEStartProfiling() - Start AIE performance profiling
+*
+* @handle:          Handle to the device
+* @option:          Profiling option.
+* @port1Name:       Profiling port 1 name
+* @port2Name:       Profiling port 2 name
+* @value:           The number of bytes to trigger the profiling event
+*
+* Return:         An integer profiling handle on success,
+*                 or appropriate error number.
+*
+* This function configures the performance counters in AI Engine by given
+* port names and value. The port names and value will have different
+* meanings on different options.
+*
+* Note: Currently, the only supported io profiling option is
+*       io_stream_running_event_count (GMIO and PLIO)
+*/
+int
+xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value)
+{
+  //try {
+  //  return start_profiling(handle, option, port1Name, port2Name, value);
+  //}
+  //catch (const xrt_core::error& ex) {
+  //  xrt_core::send_exception_message(ex.what());
+  //  return ex.get();
+  //}
+  //catch (const std::exception& ex) {
+  //  send_exception_message(ex.what());
+  //  return -1;
+  //}
+  return 0;
+}
+
+/**
+* xrtAIEReadProfiling() - Read the current performance counter value
+*                         associated with the profiling handle.
+*
+* @handle:          Handle to the device
+* @pHandle:         Profiling handle.
+*
+* Return:         The performance counter value, or appropriate error number.
+*/
+uint64_t
+xrtAIEReadProfiling(xrtDeviceHandle handle, int pHandle)
+{
+/*  try {
+    return read_profiling(handle, pHandle);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }*/
+ return 0;
+}
+
+/**
+* xrtAIEStopProfiling() - Stop the current performance profiling
+*                         associated with the profiling handle and
+*                         release the corresponding hardware resources.
+*
+* @handle:          Handle to the device
+* @pHandle:         Profiling handle.
+*
+* Return:         0 on success, or appropriate error number.
+*/
+int
+xrtAIEStopProfiling(xrtDeviceHandle handle, int pHandle)
+{
+  //try {
+  //  stop_profiling(handle, pHandle);
+  //  return 0;
+  //}
+  //catch (const xrt_core::error& ex) {
+  //  xrt_core::send_exception_message(ex.what());
+  //  return ex.get();
+  //}
+  //catch (const std::exception& ex) {
+  //  send_exception_message(ex.what());
+  //  return -1;
+  //}
+  return 0;
+}
