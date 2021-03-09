@@ -352,17 +352,20 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		if (scmd->state < ERT_CMD_STATE_COMPLETED)
 			/* It is old shell, return code is missing */
 			scmd->return_code = -ENODATA;
-	} else if (xcmd->opcode == OP_GET_STAT)
-		read_ert_stat(xcmd);
+		status = scmd->state;
+	} else {
+		if (xcmd->opcode == OP_GET_STAT)
+			read_ert_stat(xcmd);
 
-	if (status == KDS_COMPLETED)
-		ecmd->state = ERT_CMD_STATE_COMPLETED;
-	else if (status == KDS_ERROR)
-		ecmd->state = ERT_CMD_STATE_ERROR;
-	else if (status == KDS_TIMEOUT)
-		ecmd->state = ERT_CMD_STATE_TIMEOUT;
-	else if (status == KDS_ABORT)
-		ecmd->state = ERT_CMD_STATE_ABORT;
+		if (status == KDS_COMPLETED)
+			ecmd->state = ERT_CMD_STATE_COMPLETED;
+		else if (status == KDS_ERROR)
+			ecmd->state = ERT_CMD_STATE_ERROR;
+		else if (status == KDS_TIMEOUT)
+			ecmd->state = ERT_CMD_STATE_TIMEOUT;
+		else if (status == KDS_ABORT)
+			ecmd->state = ERT_CMD_STATE_ABORT;
+	}
 
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 
