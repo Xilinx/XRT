@@ -669,7 +669,7 @@ XBUtilities::check_p2p_config(const xrt_core::device* _dev, std::string &msg)
     config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
   }
   catch (const std::runtime_error&) {
-    msg = "Error:P2P config failed. P2P is not available";
+    msg = "P2P config failed. P2P is not available";
     return static_cast<int>(p2p_config::not_supported);
   }
 
@@ -693,7 +693,7 @@ XBUtilities::check_p2p_config(const xrt_core::device* _dev, std::string &msg)
 
   //return the config with a message
   if (bar == -1) {
-    msg = "Error:P2P config failed. P2P is not supported. Can't find P2P BAR.";
+    msg = "P2P config failed. P2P is not supported. Can't find P2P BAR.";
     return static_cast<int>(p2p_config::not_supported);
   }
   else if (rbar != -1 && rbar > bar) {

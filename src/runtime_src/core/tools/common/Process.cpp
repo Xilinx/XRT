@@ -182,12 +182,6 @@ findEnvPath(const std::string & env)
     if (absPath.string().empty()) 
       throw std::runtime_error("Error: Python executable not found in search path.");
   }
-  else {
-    absPath = boost::process::search_path("sh");
-    if (absPath.string().empty()) 
-      throw std::runtime_error("Error: Shell environment not found.");
-  }
-
   return absPath;
 }
 
