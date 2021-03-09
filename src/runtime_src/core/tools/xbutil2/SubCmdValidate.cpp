@@ -283,7 +283,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
       { "22_verify.py",             "validate.exe"    },
       { "23_bandwidth.py",          "kernel_bw.exe"   },
       { "host_mem_23_bandwidth.py", "slavebridge.exe" },
-      { "xcl_vcu_test.exe",         "xcl_vcu_test.exe"}
+      { "xcl_vcu_test.exe",         "xcl_vcu_test.exe"},
+      { "xcl_iops_test.exe",        "xcl_iops_test.exe"}
     };
         
     if (test_map.find(py) == test_map.end()) {
@@ -335,8 +336,12 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
 
     std::vector<std::string> args = { "-k", xclbinPath, 
                                       "-d", std::to_string(_dev.get()->get_device_id()) };
-    
-    int exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
+    int exit_code;    
+    if (py.find(".exe")!=std::string::npos)
+      exit_code = XBU::runScript("", xrtTestCasePath, args, os_stdout, os_stderr);
+    else
+      exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
+
     if (exit_code == EOPNOTSUPP) {
       _ptTest.put("status", "skipped");
     }
@@ -356,6 +361,13 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     if (st != std::string::npos) {
       size_t end = os_stdout.str().find("\n", st);
       logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
+    }
+  }
+
+  if (py.compare("xcl_iops_test.exe") == 0) {
+    auto st = os_stdout.str().find("IOPS:");
+    if (st != std::string::npos) {
+      logger(_ptTest, "Details", os_stdout.str().substr(st));
     }
   }
 }
@@ -1047,6 +1059,14 @@ vcuKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
   runTestCase(_dev, "xcl_vcu_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
 }
 
+/*
+ * TEST #12
+ */
+void
+iopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+    runTestCase(_dev, "xcl_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
 
 /*
 * helper function to initialize test info
@@ -1075,6 +1095,7 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("SC version", "Check if SC firmware is up-to-date", ""), scVersionTest },
   { create_init_test("Verify kernel", "Run 'Hello World' kernel test", "verify.xclbin"), verifyKernelTest },
   { create_init_test("DMA", "Run dma test", "verify.xclbin"), dmaTest },
+  { create_init_test("iops", "Run xcl_iops test", "verify.xclbin"), iopsTest },
   { create_init_test("Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
   { create_init_test("Peer to peer bar", "Run P2P test", "bandwidth.xclbin"), p2pTest },
   { create_init_test("Memory to memory DMA", "Run M2M test", "bandwidth.xclbin"), m2mTest },
