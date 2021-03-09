@@ -49,9 +49,9 @@ void  main_(int argc, char** argv,
   // Build Options
   po::options_description globalOptions("Global Options");
   globalOptions.add_options()
-    ("help,h",    boost::program_options::bool_switch(&bHelp), "Help to use this application")
-    ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
-    ("batch,b",   boost::program_options::bool_switch(&bBatchMode), "Enable batch mode (disables escape characters)")
+    ("help",    boost::program_options::bool_switch(&bHelp), "Help to use this application")
+    ("verbose", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
+    ("batch",   boost::program_options::bool_switch(&bBatchMode), "Enable batch mode (disables escape characters)")
   ;
 
   // Hidden Options
