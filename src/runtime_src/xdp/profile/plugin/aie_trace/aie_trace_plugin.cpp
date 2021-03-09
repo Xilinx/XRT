@@ -20,6 +20,7 @@
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 
 #include "core/common/xrt_profiling.h"
+#include "core/edge/user/shim.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
@@ -105,7 +106,7 @@ namespace xdp {
     // NOTE: reset events are dependent on actual profile counter reserved
     coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_ACTIVE_CORE};
     coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,             XAIE_EVENT_DISABLED_CORE};
-    coreCounterResetEvents   = {XAIE_EVENT_PERF_CNT_0_CORE,           XAIE_EVENT_PERF_CNT_1_CORE
+    coreCounterResetEvents   = {XAIE_EVENT_PERF_CNT_0_CORE,           XAIE_EVENT_PERF_CNT_1_CORE,
                                 XAIE_EVENT_PERF_CNT_2_CORE,           XAIE_EVENT_PERF_CNT_3_CORE};
     coreCounterEventValues   = {1020, 1040400};
 
@@ -138,6 +139,15 @@ namespace xdp {
 
   void AieTracePlugin::setMetrics(void* handle)
   {
+    auto drv = ZYNQ::shim::handleCheck(handle);
+    if (!drv)
+      return;
+    auto aieArray = drv->getAieArray();
+    if (!aieArray)
+      return;
+    auto Aie = aieArray->getDevInst();
+    auto aieDevice = std::make_shared<xaiefal::XAieDev>(Aie, true);
+
     // Get AIE tiles and metric set
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty())
@@ -173,7 +183,6 @@ namespace xdp {
     // Get vector of pre-defined metrics for this set
     auto& coreEvents          = coreEventSets[metricSet];
     auto& memoryEvents        = memoryEventSets[metricSet];
-    auto  broadcastCoreEvents = broadcastCoreConfig[metricSet];
 
 #ifdef XRT_ENABLE_AIE
     // Capture all tiles across all graphs
@@ -190,8 +199,8 @@ namespace xdp {
     for (auto& tile : tiles) {
       auto  row    = tile.row + 1;
       auto  col    = tile.col;
-      auto& core   = aieDevice.tile(col, row).core();
-      auto& memory = aieDevice.tile(col, row).memory();
+      auto& core   = aieDevice->tile(col, row).core();
+      auto& memory = aieDevice->tile(col, row).mem();
 
       // Reserve and start two core module counters
       for (int i=0; i < coreCounterStartEvents.size(); ++i) {
@@ -208,7 +217,7 @@ namespace xdp {
         XAie_LocType currLoc;
         XAie_ModuleType currModule;
 				uint32_t currNumber;
-        perfCounter->getRscId(&currLoc, &currModule, &currNumber);
+        perfCounter->getRscId(currLoc, currModule, currNumber);
         auto counterEvent = coreCounterResetEvents.at(currNumber);
         perfCounter->changeRstEvent(XAIE_CORE_MOD, counterEvent);
         coreEvents.push_back(counterEvent);
@@ -232,7 +241,7 @@ namespace xdp {
         XAie_LocType currLoc;
         XAie_ModuleType currModule;
 				uint32_t currNumber;
-        perfCounter->getRscId(&currLoc, &currModule, &currNumber);
+        perfCounter->getRscId(currLoc, currModule, currNumber);
         auto counterEvent = memoryCounterResetEvents.at(currNumber);
         perfCounter->changeRstEvent(XAIE_MEM_MOD, counterEvent);
         memoryEvents.push_back(counterEvent);

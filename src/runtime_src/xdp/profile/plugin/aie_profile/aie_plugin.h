@@ -27,10 +27,7 @@
 #include "xdp/config.h"
 
 #include "core/common/device.h"
-
-#ifdef XRT_ENABLE_AIE
 #include "xaiefal/xaiefal.hpp"
-#endif
 
 extern "C" {
 #include <xaiengine.h>

@@ -18,6 +18,7 @@
 #define AIE_TRACE_PLUGIN_H
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xaiefal/xaiefal.hpp"
 
 extern "C" {
 #include <xaiengine.h>

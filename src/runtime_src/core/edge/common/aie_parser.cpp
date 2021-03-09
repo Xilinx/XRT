@@ -209,7 +209,7 @@ get_clock_freq_mhz(const pt::ptree& aie_meta)
 
   // Grab clock frequency
   auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
-  auto clockFreqMhz = dev_node.get<double>("AIEFrequency");
+  clockFreqMhz = dev_node.get<double>("AIEFrequency");
   return clockFreqMhz;
 }
 
@@ -345,7 +345,7 @@ get_clock_freq_mhz(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::vector<counter_type>();
+    return 1000.0;
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);

@@ -30,11 +30,8 @@
 
 #include <boost/algorithm/string.hpp>
 
-#ifdef XRT_ENABLE_AIE
 #include "core/edge/common/aie_parser.h"
 #include "core/edge/user/aie/AIEResources.h"
-#include "xaiefal/xaiefal.hpp"
-#endif
 
 namespace xdp {
 
@@ -107,7 +104,6 @@ namespace xdp {
   {
     bool runtimeCounters = false;
 
-#ifdef XRT_ENABLE_AIE
     auto drv = ZYNQ::shim::handleCheck(handle);
     if (!drv)
       return runtimeCounters;
@@ -117,11 +113,12 @@ namespace xdp {
     if (!(db->getStaticInfo().isDeviceReady(deviceId)))
       return runtimeCounters;
 
-    auto aieDevice = aieArray->getDevInst();
+    auto Aie = aieArray->getDevInst();
+    auto aieDevice = std::make_shared<xaiefal::XAieDev>(Aie, true);
 	  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
     // Get AIE clock frequency
-    auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get())
+    auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
 
     // Configure both core and memory module counters
     for (int module=0; module < 2; ++module) {
@@ -220,12 +217,12 @@ namespace xdp {
         // Use absolute HW row
         auto row = tile.row + 1;
         auto col = tile.col;
-        auto tile = aieDevice->tile(col, row);
+        auto& core = aieDevice->tile(col, row).core();
+        auto& memory = aieDevice->tile(col, row).mem();
 
         for (int i=0; i < startEvents.size(); ++i) {
           // Request counter from resource manager
-          auto perfCounter = isCore ? 
-              tile.core().perfCounter() : tile.memory().perfCounter();
+          auto perfCounter = isCore ? core.perfCounter() : memory.perfCounter();
 
 	        auto ret = perfCounter->initialize(moduleType, startEvents.at(i),
                                              moduleType, endEvents.at(i));
@@ -236,7 +233,7 @@ namespace xdp {
           if (ret != XAIE_OK) break;
 
           mPerfCounters.push_back(perfCounter);
-          counterNum = i;
+          int counterNum = i;
 
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, counterNum, 
@@ -247,7 +244,7 @@ namespace xdp {
       
       runtimeCounters = true;
     } // for module
-#endif
+
 
     return runtimeCounters;
   }
@@ -295,7 +292,7 @@ namespace xdp {
         else {
           // Runtime-defined counters
           auto perfCounter = mPerfCounters.at(c);
-          perfCounter->readResult(&counterValue);
+          perfCounter->readResult(counterValue);
         }
         values.push_back(counterValue);
 
@@ -331,7 +328,6 @@ namespace xdp {
       }
     }
 
-#ifdef XRT_ENABLE_AIE
     // Ensure we only read/configure once per xclbin
     if (!(db->getStaticInfo()).isAIECounterRead(deviceId)) {
       // Update the AIE specific portion of the device
@@ -362,7 +358,6 @@ namespace xdp {
 
       (db->getStaticInfo()).setIsAIECounterRead(deviceId, true);
     }
-#endif
 
     // Open the writer for this device
     struct xclDeviceInfo2 info;
