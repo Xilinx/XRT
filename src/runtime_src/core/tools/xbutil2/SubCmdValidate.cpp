@@ -311,13 +311,13 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     if (exit_code == EOPNOTSUPP) {
       _ptTest.put("status", "skipped");
     }
-    else if (exit_code == EXIT_FAILURE) {
+    else if (exit_code == EXIT_SUCCESS) {
+      _ptTest.put("status", "passed");
+    }
+    else {
       logger(_ptTest, "Error", os_stdout.str());
       logger(_ptTest, "Error", os_stderr.str());
       _ptTest.put("status", "failed");
-    }
-    else {
-      _ptTest.put("status", "passed");
     }
   }
   else {
