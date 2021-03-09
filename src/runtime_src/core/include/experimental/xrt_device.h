@@ -278,11 +278,8 @@ public:
     return handle;
   }
 
-  void
-  reset()
-  {
-    handle.reset();
-  }
+  XCL_DRIVER_DLLESPEC void
+  reset();
 
   explicit
   operator bool() const
