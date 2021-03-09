@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Larry Liu <yliu@xilinc.com>
@@ -17,6 +17,7 @@
 #include "zocl_aie.h"
 #include "xrt_xclbin.h"
 #include "xclbin.h"
+#include "sched_exec.h"
 
 #ifndef __NONE_PETALINUX__
 #include <linux/xlnx-ai-engine.h>
@@ -431,6 +432,137 @@ zocl_aie_reset(struct drm_zocl_dev *zdev)
 }
 
 int
+zocl_aie_graph_alloc_context(struct drm_zocl_dev *zdev, u32 gid, u32 ctx_code,
+	struct sched_client_ctx *client)
+{
+	struct list_head *cptr, *gptr;
+	struct zocl_graph_ctx_node *gnode;
+	struct sched_client_ctx *ctx;
+	unsigned long ctx_flags, graph_flags;
+	int ret;
+
+	spin_lock_irqsave(&zdev->exec->ctx_list_lock, ctx_flags);
+
+	list_for_each(cptr, &zdev->exec->ctx_list) {
+		ctx = list_entry(cptr, struct sched_client_ctx, link);
+
+		spin_lock_irqsave(&ctx->graph_list_lock, graph_flags);
+
+		list_for_each(gptr, &ctx->graph_list) {
+			gnode = list_entry(gptr, struct zocl_graph_ctx_node,
+			    link);
+
+			if (gnode->gid != gid)
+				continue;
+
+			if (ctx == client) {
+				/*
+				 * This graph has been opened by same
+				 * context.
+				 */
+				DRM_ERROR("Graph %d has been opened.\n", gid);
+				ret = -EINVAL;
+				goto out;
+			}
+
+			if (gnode->ctx_code == ZOCL_CTX_EXCLUSIVE ||
+			    ctx_code == ZOCL_CTX_EXCLUSIVE) {
+				/*
+				 * This graph has been opened with
+				 * exclusive context or;
+				 * We request exclusive context but
+				 * this graph has been opened with
+				 * non-excluxive context
+				 */
+				DRM_ERROR("Graph %d only one exclusive context can be opened.\n",
+				    gid);
+				ret = -EBUSY;
+				goto out;
+			}
+
+			if (gnode->ctx_code == ZOCL_CTX_PRIMARY &&
+			    ctx_code != ZOCL_CTX_SHARED) {
+				/*
+				 * This graph has been opened with
+				 * primary context but the request
+				 * is not shared context
+				 */
+				DRM_ERROR("Graph %d has been opened with primary context.\n",
+				    gid);
+				ret = -EBUSY;
+				goto out;
+			}
+		}
+		spin_unlock_irqrestore(&ctx->graph_list_lock, graph_flags);
+	}
+
+	gnode = kzalloc(sizeof(*gnode), GFP_KERNEL);
+	gnode->ctx_code = ctx_code;
+	gnode->gid = gid;
+	list_add_tail(&gnode->link, &client->graph_list);
+
+	spin_unlock_irqrestore(&zdev->exec->ctx_list_lock, ctx_flags);
+	return 0;
+
+out:
+	spin_unlock_irqrestore(&ctx->graph_list_lock, graph_flags);
+	spin_unlock_irqrestore(&zdev->exec->ctx_list_lock, ctx_flags);
+
+	return ret;
+}
+
+int
+zocl_aie_graph_free_context(struct drm_zocl_dev *zdev, u32 gid,
+	struct sched_client_ctx *client)
+{
+	struct list_head *gptr, *next;
+	struct zocl_graph_ctx_node *gnode;
+	unsigned long flags = 0;
+	int ret;
+
+	spin_lock_irqsave(&client->graph_list_lock, flags);
+
+	list_for_each_safe(gptr, next, &client->graph_list) {
+		gnode = list_entry(gptr, struct zocl_graph_ctx_node, link);
+
+		if (gnode->gid == gid) {
+			list_del(gptr);
+			kfree(gnode);
+			ret = 0;
+			goto out;
+		}
+	}
+
+	DRM_ERROR("Fail to close graph context: Graph %d does not exist.\n",
+	    gid);
+	ret = -EINVAL;
+
+out:
+	spin_unlock_irqrestore(&client->graph_list_lock, flags);
+	return ret;
+}
+
+void
+zocl_aie_graph_free_context_all(struct drm_zocl_dev *zdev,
+	struct sched_client_ctx *client)
+{
+	struct list_head *gptr, *next;
+	struct zocl_graph_ctx_node *gnode;
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&client->graph_list_lock, flags);
+
+	list_for_each_safe(gptr, next, &client->graph_list) {
+		gnode = list_entry(gptr, struct zocl_graph_ctx_node, link);
+
+		list_del(gptr);
+		kfree(gnode);
+	}
+
+	spin_unlock_irqrestore(&client->graph_list_lock, flags);
+}
+
+int
 zocl_aie_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	int ret;
@@ -446,7 +578,7 @@ zocl_aie_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	mutex_lock(&aie->aie_lock);
 	while (list_empty(&aie->aie_cmd_list)) {
 		mutex_unlock(&aie->aie_lock);
-		/* 
+		/*
  		 * Return greater than 0 if condition true before timeout,
  		 * 0 when time out, else -ERESTARTSYS.
  		 */

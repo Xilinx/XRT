@@ -278,19 +278,25 @@ struct drm_zocl_info_cu {
 enum drm_zocl_ctx_code {
 	ZOCL_CTX_OP_ALLOC_CTX = 0,
 	ZOCL_CTX_OP_FREE_CTX,
-	ZOCL_CTX_OP_OPEN_GCU_FD
+	ZOCL_CTX_OP_OPEN_GCU_FD,
+	ZOCL_CTX_OP_ALLOC_GRAPH_CTX,
+	ZOCL_CTX_OP_FREE_GRAPH_CTX
 };
 
 #define	ZOCL_CTX_NOOPS		0
 #define	ZOCL_CTX_SHARED		(1 << 0)
 #define	ZOCL_CTX_EXCLUSIVE	(1 << 1)
 #define	ZOCL_CTX_VERBOSE	(1 << 2)
+#define	ZOCL_CTX_PRIMARY	(1 << 3)
 #define	ZOCL_CTX_VIRT_CU_INDEX	0xffffffff
 
 struct drm_zocl_ctx {
 	uint64_t uuid_ptr;
 	uint64_t uuid_size;
-	uint32_t cu_index;
+	union {
+		uint32_t cu_index;
+		uint32_t graph_id;
+	};
 	uint32_t flags;
 	// unused, in future it would return context id
 	uint32_t handle;

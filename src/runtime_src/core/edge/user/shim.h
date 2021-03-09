@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
@@ -143,6 +143,8 @@ public:
   bool isAieRegistered();
   int getPartitionFd(drm_zocl_aie_fd &aiefd);
   int resetAIEArray(drm_zocl_aie_reset &reset);
+  int openGraphContext(const uuid_t xclbinId, unsigned int graphId, xrt::graph::access_mode am);
+  int closeGraphContext(unsigned int graphId);
 #endif
 
 private:

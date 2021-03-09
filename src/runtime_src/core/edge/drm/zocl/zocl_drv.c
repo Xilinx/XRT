@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -578,6 +578,8 @@ static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 		atomic_set(&fpriv->outstanding_execs, 0);
 		fpriv->abort = false;
 		fpriv->pid = get_pid(task_pid(current));
+		INIT_LIST_HEAD(&fpriv->graph_list);
+		spin_lock_init(&fpriv->graph_list_lock);
 		zocl_track_ctx(dev, fpriv);
 		DRM_INFO("Pid %d opened device\n", pid_nr(task_tgid(current)));
 	}
@@ -620,6 +622,9 @@ static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 			zocl_cu_status_print(&zdev->exec->zcu[i]);
 		}
 	}
+
+	/* Release graph context */
+	zocl_aie_graph_free_context_all(zdev, client);
 
 	put_pid(client->pid);
 	client->pid = NULL;

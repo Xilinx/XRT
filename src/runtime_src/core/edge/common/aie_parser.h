@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,6 +26,8 @@ class device;
 
 namespace edge { namespace aie {
 
+const int NON_EXIST_ID = -1;
+
 struct tile_type
 {
   uint16_t row;
@@ -45,6 +47,16 @@ struct tile_type
  */
 std::vector<tile_type>
 get_tiles(const xrt_core::device* device, const std::string& graph_name);
+
+/**
+ * get_graph_id() - get graph id from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ * @graph: name of graph to extract id for
+ * Return: Integer graph id or NON_EXIST_ID if given name is not found
+ */
+int
+get_graph_id(const xrt_core::device* device, const std::string& graph_name);
 
 struct rtp_type
 {

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -94,6 +94,20 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
   }
 
   return tiles;
+}
+
+int
+get_graph_id(const pt::ptree& aie_meta, const std::string& graph_name)
+{
+  for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
+    if (graph.second.get<std::string>("name") != graph_name)
+      continue;
+
+    int id = graph.second.get<int>("id");
+    return id;
+  }
+
+  return -1;
 }
 
 std::vector<rtp_type>
@@ -261,6 +275,18 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name)
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_tiles(aie_meta, graph_name);
+}
+
+int
+get_graph_id(const xrt_core::device* device, const std::string& graph_name)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return -1;
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_graph_id(aie_meta, graph_name);
 }
 
 std::vector<rtp_type>

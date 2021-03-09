@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  * Author(s): Larry Liu
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
@@ -49,7 +49,7 @@ zynqaie::Aie* getAieArray()
 namespace zynqaie {
 
 graph_type::
-graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::string& graph_name)
+graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t uuid, const std::string& graph_name, xrt::graph::access_mode am)
   : device(std::move(dev)), name(graph_name)
 {
 #ifndef __AIESIM__
@@ -61,6 +61,15 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::strin
 #else
     aieArray = getAieArray();
 #endif
+
+    id = xrt_core::edge::aie::get_graph_id(device.get(), name);
+    if (id == xrt_core::edge::aie::NON_EXIST_ID)
+        throw xrt_core::error(-EINVAL, "Can not get id for Graph '" + name + "'");
+
+    int ret = drv->openGraphContext(uuid, id, am);
+    if (ret)
+        throw xrt_core::error(ret, "Can not open Graph context");
+    access_mode = am;
 
     /* Initialize graph tile metadata */
     for (auto& tile : xrt_core::edge::aie::get_tiles(device.get(), name)) {
@@ -95,6 +104,7 @@ graph_type::
 {
 #ifndef __AIESIM__
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+    drv->closeGraphContext(id);
     drv->getAied()->deregisterGraph(this);
 #endif
 }
@@ -117,6 +127,9 @@ void
 graph_type::
 reset()
 {
+    if (access_mode == xrt::graph::access_mode::shared)
+        throw xrt_core::error(-EPERM, "Shared context can not reset graph");
+
     for (auto& tile : tiles) {
       XAie_LocType coreTile = XAie_TileLoc(tile.col, tile.row);
       XAie_CoreDisable(aieArray->getDevInst(), coreTile);
@@ -145,6 +158,9 @@ void
 graph_type::
 run()
 {
+    if (access_mode == xrt::graph::access_mode::shared)
+        throw xrt_core::error(-EPERM, "Shared context can not run graph");
+
     if (state != graph_state::stop && state != graph_state::reset)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is already running or has ended");
 
@@ -167,6 +183,9 @@ void
 graph_type::
 run(int iterations)
 {
+    if (access_mode == xrt::graph::access_mode::shared)
+        throw xrt_core::error(-EPERM, "Shared context can not run graph");
+
     if (state != graph_state::stop && state != graph_state::reset)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is already running or has ended");
 
@@ -194,6 +213,9 @@ void
 graph_type::
 wait_done(int timeout_ms)
 {
+    if (access_mode == xrt::graph::access_mode::shared)
+        throw xrt_core::error(-EPERM, "Shared context can not wait on graph");
+
     if (state == graph_state::stop)
       return;
 
@@ -245,6 +267,9 @@ void
 graph_type::
 wait()
 {
+    if (access_mode == xrt::graph::access_mode::shared)
+        throw xrt_core::error(-EPERM, "Shared context can not wait on graph");
+
     if (state == graph_state::stop)
         return;
 
@@ -271,6 +296,9 @@ void
 graph_type::
 wait(uint64_t cycle)
 {
+    if (access_mode == xrt::graph::access_mode::shared)
+        throw xrt_core::error(-EPERM, "Shared context can not wait on graph");
+
     if (state == graph_state::suspend)
         return;
 
@@ -303,6 +331,9 @@ void
 graph_type::
 suspend()
 {
+    if (access_mode == xrt::graph::access_mode::shared)
+        throw xrt_core::error(-EPERM, "Shared context can not suspend graph");
+
     if (state != graph_state::running)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running, cannot suspend");
 
@@ -318,6 +349,9 @@ void
 graph_type::
 resume()
 {
+    if (access_mode == xrt::graph::access_mode::shared)
+        throw xrt_core::error(-EPERM, "Shared context can not resume on graph");
+
     if (state != graph_state::suspend)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not suspended (wait(cycle)), cannot resume");
 
@@ -347,6 +381,9 @@ void
 graph_type::
 end()
 {
+    if (access_mode == xrt::graph::access_mode::shared)
+        throw xrt_core::error(-EPERM, "Shared context can not end graph");
+
     if (state != graph_state::running && state != graph_state::stop)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running or stop, cannot end");
 
@@ -380,6 +417,9 @@ void
 graph_type::
 end(uint64_t cycle)
 {
+    if (access_mode == xrt::graph::access_mode::shared)
+        throw xrt_core::error(-EPERM, "Shared context can not end graph");
+
     if (state != graph_state::running && state != graph_state::suspend)
         throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running or suspended, cannot end(cycle_timeout)");
 
@@ -410,6 +450,9 @@ update_rtp(const std::string& port, const char* buffer, size_t size)
     if (it == rtps.end())
       throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP port '" + port + "' not found");
     auto& rtp = it->second;
+
+    if (access_mode == xrt::graph::access_mode::shared && !rtp.is_async)
+        throw xrt_core::error(-EPERM, "Shared context can not update sync RTP");
 
     if (rtp.is_plrtp)
       throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP port '" + port + "' is not AIE RTP");
@@ -599,10 +642,10 @@ std::string value_or_empty(const char* s)
 }
 
 xclGraphHandle
-xclGraphOpen(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* name)
+xclGraphOpen(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* name, xrt::graph::access_mode am)
 {
   auto device = xrt_core::get_userpf_device(dhdl);
-  auto graph = std::make_shared<graph_type>(device, xclbin_uuid, name);
+  auto graph = std::make_shared<graph_type>(device, xclbin_uuid, name, am);
   auto handle = graph.get();
   graphs.emplace(std::make_pair(handle,std::move(graph)));
   return handle;
@@ -832,10 +875,10 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
 // Shim level Graph API implementations (xcl_graph.h)
 ////////////////////////////////////////////////////////////////
 xclGraphHandle
-xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph)
+xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph, xrt::graph::access_mode am)
 {
   try {
-    return api::xclGraphOpen(handle, xclbin_uuid, graph);
+    return api::xclGraphOpen(handle, xclbin_uuid, graph, am);
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
