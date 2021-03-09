@@ -278,6 +278,9 @@ public:
     if (!dst_hbuf)
       throw xrt_core::system_error(EINVAL, "No host side buffer in destination buffer");
 
+    // sync to src to ensure data integrity, logically const
+    const_cast<bo_impl*>(src)->sync(XCL_BO_SYNC_BO_FROM_DEVICE, sz, src_offset);
+
     // copy host side buffer
     std::memcpy(dst_hbuf + dst_offset, src_hbuf + src_offset, sz);
 

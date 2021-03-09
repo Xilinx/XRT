@@ -137,29 +137,14 @@ copy_buffer(xocl::event* event,xocl::device* device
             ,cl_mem src_buffer,cl_mem dst_buffer,size_t src_offset,size_t dst_offset,size_t size)
 {
   try {
-    auto cmd = std::make_shared<enqueue_command>(device,event,ERT_START_CU);
-    device->copy_buffer(xocl::xocl(src_buffer),xocl::xocl(dst_buffer),src_offset,dst_offset,size,cmd);
-  }
-  catch (const std::exception& ex) {
-    handle_device_exception(event,ex);
-  }
-}
-
-static void
-copy_p2p_buffer(xocl::event* event,xocl::device* device
-            ,cl_mem src_buffer,cl_mem dst_buffer,size_t src_offset,size_t dst_offset,size_t size)
-{
-  try {
     event->set_status(CL_RUNNING);
-    device->copy_p2p_buffer(xocl::xocl(src_buffer),xocl::xocl(dst_buffer),src_offset,dst_offset,size);
+    device->copy_buffer(xocl::xocl(src_buffer),xocl::xocl(dst_buffer),src_offset,dst_offset,size);
     event->set_status(CL_COMPLETE);
   }
   catch (const std::exception& ex) {
     handle_device_exception(event,ex);
   }
 }
-
-
 
 static void
 map_buffer(xocl::event* event,xocl::device* device
@@ -321,19 +306,6 @@ action_copy_buffer(cl_mem src_buffer,cl_mem dst_buffer,size_t src_offset,size_t 
     copy_buffer(ev,device,src_buffer,dst_buffer,src_offset,dst_offset,size);
   };
 }
-
-xocl::event::action_enqueue_type
-action_copy_p2p_buffer(cl_mem src_buffer,cl_mem dst_buffer,size_t src_offset,size_t dst_offset,size_t size)
-{
-  throw_if_error();
-  return [=](xocl::event* ev) {
-    auto command_queue = ev->get_command_queue();
-    auto device = command_queue->get_device();
-    auto xdevice = device->get_xdevice();
-    xdevice->schedule(copy_p2p_buffer,async_type::misc,ev,device,src_buffer,dst_buffer, src_offset, dst_offset, size);
-  };
-}
-
 
 xocl::event::action_enqueue_type
 action_ndrange_migrate(cl_event event,cl_kernel kernel)

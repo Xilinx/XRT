@@ -75,7 +75,7 @@ userptr_bad_alloc_message(void* addr)
                      + " instead of use CL_MEM_USE_HOST_PTR.");
 }
 
-static void
+XOCL_UNUSED static void
 host_copy_message(const xocl::memory* dst, const xocl::memory* src)
 {
   std::stringstream str;
@@ -793,89 +793,17 @@ read_buffer(memory* buffer, size_t offset, size_t size, void* ptr)
 
 void
 device::
-copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size, const cmd_type& cmd)
+copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size)
 {
-  // if m2m present then use xclCopyBO
   try {
-    auto core_device = m_xdevice->get_core_device();
-    auto m2m = xrt_core::device_query<xrt_core::query::m2m>(core_device);
-    if (xrt_core::query::m2m::to_bool(m2m)) {
-      auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz, const cmd_type& c) {
-        c->start();
-        auto sboh = sbuf->get_buffer_object(this);
-        auto dboh = dbuf->get_buffer_object(this);
-        m_xdevice->copy(dboh, sboh, sz, doff, soff);
-        c->done();
-      };
-      m_xdevice->schedule(cb,xrt_xocl::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
-      // Driver fills dst buffer same as migrate_buffer does, hence dst buffer
-      // is resident after KDMA is done even if host does explicitly migrate.
-      dst_buffer->set_resident(this);
-      return;
-    }
-  }
-  catch (...) {
-    // enable when m2m is the norm
-    // cmd_copy_message(src_buffer, dst_buffer);
-  }
-
-  // Check if any of the buffers are imported
-  bool imported = is_imported(src_buffer) || is_imported(dst_buffer);
-
-  // Copy via driver if p2p or device has kdma
-  if (!is_sw_emulation() && (imported || get_num_cdmas())) {
-    auto cppkt = xrt_xocl::command_cast<ert_start_copybo_cmd*>(cmd);
-    auto src_boh = src_buffer->get_buffer_object(this);
-    auto dst_boh = dst_buffer->get_buffer_object(this);
-    try {
-      m_xdevice->fill_copy_pkt(dst_boh,src_boh,size,dst_offset,src_offset,cppkt);
-      cmd->start();    // done() called by scheduler on success
-      cmd->execute();  // throws on error
-      XOCL_DEBUG(std::cout,"xocl::device::copy_buffer scheduled kdma copy\n");
-      // Driver fills dst buffer same as migrate_buffer does, hence dst buffer
-      // is resident after KDMA is done even if host does explicitly migrate.
-      dst_buffer->set_resident(this);
-      return;
-    }
-    catch (...) {
-      host_copy_message(dst_buffer,src_buffer);
-    }
-  }
-
-  // Copy via host of local buffers and no kdma and neither buffer is p2p (no shadow buffer in host)
-  if (!imported && !src_buffer->no_host_memory() && !dst_buffer->no_host_memory()) {
-    // non p2p BOs then copy through host
-    auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz,const cmd_type& c) {
-      try {
-        c->start();
-        char* hbuf_src = static_cast<char*>(map_buffer(sbuf,CL_MAP_READ,soff,sz,nullptr));
-        char* hbuf_dst = static_cast<char*>(map_buffer(dbuf,CL_MAP_WRITE_INVALIDATE_REGION,doff,sz,nullptr));
-        std::memcpy(hbuf_dst,hbuf_src,sz);
-        unmap_buffer(sbuf,hbuf_src);
-        unmap_buffer(dbuf,hbuf_dst);
-        c->done();
-      }
-      catch (const std::exception& ex) {
-        c->error(ex);
-      }
-    };
-    XOCL_DEBUG(std::cout,"xocl::device::copy_buffer schedules host copy\n");
-    m_xdevice->schedule(cb,xrt_xocl::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
+    auto src = src_buffer->get_buffer_object(this);
+    auto dst = dst_buffer->get_buffer_object(this);
+    
+    dst.copy(src, size, src_offset, dst_offset);
+    dst_buffer->set_resident(this);
     return;
   }
-
-  // Ideally all cases should be handled above regardless of flow
-  // target and buffer type.  Need to enhance emulation drivers to
-  // ensure this being the case.
-  if (is_sw_emulation()) {
-    // Old code path for p2p buffer xclEnqueueP2PCopy
-    if (imported) {
-      // old code path for p2p buffer
-      cmd->start();
-      copy_p2p_buffer(src_buffer,dst_buffer,src_offset,dst_offset,size);
-      cmd->done();
-      return;
-    }
+  catch (...) {
   }
 
   // Could not copy
@@ -890,24 +818,6 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   if (dst_buffer->no_host_memory())
     err << "The dst buffer is a device memory only buffer\n";
   err << "The targeted device has " << get_num_cdmas() << " KDMA kernels\n";
-  throw std::runtime_error(err.str());
-}
-
-void
-device::
-copy_p2p_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size)
-{
-  auto src_boh = src_buffer->get_buffer_object(this);
-  auto dst_boh = dst_buffer->get_buffer_object(this);
-  auto rv = m_xdevice->copy(dst_boh, src_boh, size, dst_offset, src_offset);
-  if (rv.get<int>() == 0)
-    return;
-
-  // Could not copy
-  std::stringstream err;
-  err << "copy_p2p_buffer failed "
-      << "src_buffer " << src_buffer->get_uid() << ") "
-      << "dst_buffer(" << dst_buffer->get_uid() << ")";
   throw std::runtime_error(err.str());
 }
 

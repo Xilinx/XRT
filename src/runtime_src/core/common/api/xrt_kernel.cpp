@@ -2128,6 +2128,9 @@ copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
                   xclBufferHandle src_bo, size_t src_offset)
 {
 #ifndef _WIN32
+  if (is_sw_emulation())
+    throw std::runtime_error("KDMA not support in software emulation");
+
   // Construct a kernel command to copy bo.  Kernel commands
   // must be shared ptrs
   auto dev = get_device(core_device);
@@ -2184,7 +2187,7 @@ get_control_protocol(const xrt::run& run)
   return run.get_handle()->get_kernel()->get_ip_control_protocol();
 }
 
-  std::vector<const xclbin::kernel_argument*>
+std::vector<const xclbin::kernel_argument*>
 get_args(const xrt::kernel& kernel)
 {
   const auto& args = kernel.get_handle()->get_args();

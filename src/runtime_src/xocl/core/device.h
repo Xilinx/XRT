@@ -393,15 +393,9 @@ public:
    *  The offset in buffer read from
    * @param size
    *  Number of bytes to copy
-   * @param cmd
-   *  Copy command buffer to be scheduled for execution
    */
   void
-  copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size, const cmd_type& cmd);
-
-  void
-  copy_p2p_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size);
-
+  copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size);
 
   /**
    * Fill size bytes of buffer at offset with specified pattern
