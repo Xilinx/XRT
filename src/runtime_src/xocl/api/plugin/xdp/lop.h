@@ -17,8 +17,6 @@
 #ifndef LOP_DOT_H
 #define LOP_DOT_H
 
-#ifndef _WIN32
-
 /**
  * This file contains the callback mechanisms for connecting the OpenCL
  * layer to the low overhead profiling XDP plugin.
@@ -32,36 +30,38 @@
 
 // This namespace contains the functions responsible for loading and
 //  linking the LOP functions.
-namespace xdplop {
+namespace xdp {
+namespace lop {
 
   // The top level function that loads the library.  This should
   //  only be executed once
-  void load_xdp_lop() ;
+  void load() ;
 
   // The function that makes connections via dynamic linking and dynamic symbols
-  void register_lop_functions(void* handle) ;
+  void register_functions(void* handle) ;
 
   // A function that outputs any warnings based upon status and configuration
-  void lop_warning_function() ;
+  void warning_function() ;
 
   // Check and warn if opencl/timeline trace are enabled
-  int lop_error_function();
+  int error_function();
   
   // Every OpenCL API we are interested in will have an instance
   //  of this class constructed at the start
-  class LOPFunctionCallLogger
+  class FunctionCallLogger
   {
   private:
-    unsigned int m_funcid ;
+    uint64_t m_funcid ;
     const char* m_name = nullptr ;
     long long int m_address = 0 ;
   public:
-    LOPFunctionCallLogger(const char* function) ;
-    LOPFunctionCallLogger(const char* function, long long int address) ;
-    ~LOPFunctionCallLogger() ;
+    FunctionCallLogger(const char* function) ;
+    FunctionCallLogger(const char* function, long long int address) ;
+    ~FunctionCallLogger() ;
   } ;
 
-} // end namespace xdplop
+} // end namespace lop
+} // end namespace xdp
 
 namespace xocl {
   namespace lop {
@@ -87,15 +87,7 @@ namespace xocl {
 } // end namespace xdp
 
 // Helpful defines
-#define LOP_LOG_FUNCTION_CALL xdplop::LOPFunctionCallLogger LOPObject(__func__);
-#define LOP_LOG_FUNCTION_CALL_WITH_QUEUE(Q) xdplop::LOPFunctionCallLogger LOPObject(__func__, (long long int)Q);
-
-#else
-// Due to Windows compiler issues, LOP is initially only supported on Linux
-
-#define LOP_LOG_FUNCTION_CALL
-#define LOP_LOG_FUNCTION_CALL_WITH_QUEUE(Q) 
-
-#endif
+#define LOP_LOG_FUNCTION_CALL xdp::lop::FunctionCallLogger LOPObject(__func__);
+#define LOP_LOG_FUNCTION_CALL_WITH_QUEUE(Q) xdp::lop::FunctionCallLogger LOPObject(__func__, (long long int)Q);
 
 #endif

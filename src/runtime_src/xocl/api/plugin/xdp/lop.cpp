@@ -14,39 +14,38 @@
  * under the License.
  */
 
-#ifndef _WIN32
-
 #include "lop.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 #include "core/common/dlfcn.h"
 
-namespace xdplop {
+namespace xdp {
+namespace lop {
 
   // The loading of the function should only happen once.  Since it 
   //  could theoretically be called from two user threads at once, we
   //  use an internal struct constructor that is thread safe to ensure
   //  it only happens once
-  void load_xdp_lop()
+  void load()
   {
     // Thread safe per C++-11
     static xrt_core::module_loader xdp_lop_loader("xdp_lop_plugin",
-						  register_lop_functions,
-						  lop_warning_function,
-              lop_error_function) ;
+						  register_functions,
+						  warning_function,
+                                                  error_function) ;
   }
 
   // All of the function pointers that will be dynamically linked from
   //  the XDP Plugin side
-  std::function<void (const char*, long long int, unsigned int)> function_start_cb;
-  std::function<void (const char*, long long int, unsigned int)> function_end_cb;
+  std::function<void (const char*, long long int, unsigned long long int)> function_start_cb;
+  std::function<void (const char*, long long int, unsigned long long int)> function_end_cb;
   std::function<void (unsigned int, bool)> read_cb ;
   std::function<void (unsigned int, bool)> write_cb ;
   std::function<void (unsigned int, bool)> enqueue_cb ;
 
-  void register_lop_functions(void* handle)
+  void register_functions(void* handle)
   {
-    typedef void (*ftype)(const char*, long long int, unsigned int) ;
+    typedef void (*ftype)(const char*, long long int, unsigned long long int) ;
     function_start_cb = (ftype)(xrt_core::dlsym(handle, "lop_function_start")) ;
     if (xrt_core::dlerror() != NULL) function_start_cb = nullptr ;    
 
@@ -65,7 +64,7 @@ namespace xdplop {
     if (xrt_core::dlerror() != NULL) enqueue_cb = nullptr ;
   }
 
-  void lop_warning_function()
+  void warning_function()
   {
     if (xrt_xocl::config::get_profile() || xrt_xocl::config::get_opencl_summary())
     {
@@ -74,7 +73,7 @@ namespace xdplop {
     }
   }
 
-  int lop_error_function()
+  int error_function()
   {
     if (xrt_xocl::config::get_opencl_trace() || xrt_xocl::config::get_timeline_trace())
     {
@@ -85,39 +84,33 @@ namespace xdplop {
     return 0;
   }
 
-  LOPFunctionCallLogger::LOPFunctionCallLogger(const char* function) :
-    LOPFunctionCallLogger(function, 0)
+  FunctionCallLogger::FunctionCallLogger(const char* function) :
+    FunctionCallLogger(function, 0)
   {    
   }
 
-  LOPFunctionCallLogger::LOPFunctionCallLogger(const char* function, 
-					       long long int address) :
-    m_name(function), m_address(address)
+  FunctionCallLogger::FunctionCallLogger(const char* function,
+                                         long long int address) :
+    m_funcid(0), m_name(function), m_address(address)
   {
-    // Load the LOP plugin if not already loaded
-    static bool s_load_lop = false ;
-    if (!s_load_lop)
-    {
-      s_load_lop = true ;
-      // In case of a conflict, mark lop plugin as loaded without actually loading the plugin
-      if (xrt_core::config::get_lop_trace()) {
-        load_xdp_lop() ;
-      }
-    }
+    // The LOP plugin should have been loaded since the OpenCL hooks
+    //  are all before the LOP hooks
 
-    // Log the stats for this function
-    m_funcid = xrt_core::utils::issue_id() ;
-    if (function_start_cb)
+    // Log the trace for this function
+    if (function_start_cb) {
+      m_funcid = xrt_core::utils::issue_id() ;
       function_start_cb(m_name, m_address, m_funcid) ;
+    }
   }
 
-  LOPFunctionCallLogger::~LOPFunctionCallLogger()
+  FunctionCallLogger::~FunctionCallLogger()
   {
     if (function_end_cb)
       function_end_cb(m_name, m_address, m_funcid) ;
   }
 
-} // end namespace xdplop
+} // end namespace lop
+} // end namespace xdp
 
 namespace xocl {
   namespace lop {
@@ -129,13 +122,13 @@ namespace xocl {
     {
       return [](xocl::event* e, cl_int status) 
 	{
-	  if (!xdplop::read_cb) return ;
+	  if (!xdp::lop::read_cb) return ;
 
 	  // Only keep track of the start and stop
 	  if (status == CL_RUNNING)
-	    xdplop::read_cb(e->get_uid(), true) ;
+	    xdp::lop::read_cb(e->get_uid(), true) ;
 	  else if (status == CL_COMPLETE) 
-	    xdplop::read_cb(e->get_uid(), false) ;
+	    xdp::lop::read_cb(e->get_uid(), false) ;
 	} ;
     }
 
@@ -144,13 +137,13 @@ namespace xocl {
     {
       return [](xocl::event* e, cl_int status)
 	{
-	  if (!xdplop::write_cb) return ;
+	  if (!xdp::lop::write_cb) return ;
 
 	  // Only keep track of the start and stop
 	  if (status == CL_RUNNING)
-	    xdplop::write_cb(e->get_uid(), true) ;
+	    xdp::lop::write_cb(e->get_uid(), true) ;
 	  else if (status == CL_COMPLETE) 
-	    xdplop::write_cb(e->get_uid(), false) ;
+	    xdp::lop::write_cb(e->get_uid(), false) ;
 	} ;
     }
 
@@ -161,24 +154,24 @@ namespace xocl {
       {
 	return [](xocl::event* e, cl_int status)
 	  {
-	    if (!xdplop::read_cb) return ;
+	    if (!xdp::lop::read_cb) return ;
 
 	    if (status == CL_RUNNING)
-	      xdplop::read_cb(e->get_uid(), true) ;
+	      xdp::lop::read_cb(e->get_uid(), true) ;
 	    else if (status == CL_COMPLETE)
-	      xdplop::read_cb(e->get_uid(), false) ;
+	      xdp::lop::read_cb(e->get_uid(), false) ;
 	  } ;
       }
       else
       {
 	return [](xocl::event* e, cl_int status)
 	  {
-	    if (!xdplop::write_cb) return ;
+	    if (!xdp::lop::write_cb) return ;
 
 	    if (status == CL_RUNNING)
-	      xdplop::write_cb(e->get_uid(), true) ;
+	      xdp::lop::write_cb(e->get_uid(), true) ;
 	    else if (status == CL_COMPLETE)
-	      xdplop::write_cb(e->get_uid(), false) ;
+	      xdp::lop::write_cb(e->get_uid(), false) ;
 	  } ;
       }
     }
@@ -188,12 +181,12 @@ namespace xocl {
     {
       return [](xocl::event* e, cl_int status)
 	{
-	  if (!xdplop::enqueue_cb) return ;
+	  if (!xdp::lop::enqueue_cb) return ;
 
 	  if (status == CL_RUNNING)
-	    xdplop::enqueue_cb(e->get_uid(), true) ;
+	    xdp::lop::enqueue_cb(e->get_uid(), true) ;
 	  else if (status == CL_COMPLETE)
-	    xdplop::enqueue_cb(e->get_uid(), false) ;
+	    xdp::lop::enqueue_cb(e->get_uid(), false) ;
 	} ;
     }
 
@@ -217,12 +210,12 @@ namespace xocl {
       {
 	return [](xocl::event* e, cl_int status)
 	{
-	  if (!xdplop::write_cb) return ;
+	  if (!xdp::lop::write_cb) return ;
 	  
 	  if (status == CL_RUNNING)
-	    xdplop::write_cb(e->get_uid(), true) ;
+	    xdp::lop::write_cb(e->get_uid(), true) ;
 	  else if (status == CL_COMPLETE)
-	    xdplop::write_cb(e->get_uid(), false) ;
+	    xdp::lop::write_cb(e->get_uid(), false) ;
 	} ;	
       }
       else
@@ -236,8 +229,3 @@ namespace xocl {
 
   } // end namespace lop
 } // end namespace xocl
-
-#else 
-// LOP is initially only supported on Linux
-
-#endif

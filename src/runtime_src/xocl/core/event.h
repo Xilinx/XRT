@@ -59,7 +59,7 @@ public:
   using action_enqueue_type = std::function<void (event*)>;
   using action_profile_type = std::function<void (event*, cl_int, const std::string&)>;
   using action_debug_type = std::function<void (event*)>;
-  using action_lop_type = std::function<void (event*, int)>;
+  using action_lop_type = std::function<void (event*, cl_int)>;
 
   event(command_queue* cq, context* ctx, cl_command_type cmd);
   event(command_queue* cq, context* ctx, cl_command_type cmd, cl_uint num_deps, const cl_event* deps);

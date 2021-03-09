@@ -28,7 +28,7 @@ namespace xdp {
 
   static void lop_cb_log_function_start(const char* functionName,
 					long long queueAddress,
-					unsigned int functionID)
+					unsigned long long int functionID)
   {
     // Since these are OpenCL level events, we must use the OpenCL
     //  level time functions to get the proper value of time zero.
@@ -50,7 +50,7 @@ namespace xdp {
 
   static void lop_cb_log_function_end(const char* functionName,
 				      long long queueAddress,
-				      unsigned int functionID)
+				      unsigned long long int functionID)
   {
     double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
@@ -125,14 +125,14 @@ namespace xdp {
 
 extern "C"
 void lop_function_start(const char* functionName, long long queueAddress,
-			unsigned int functionID)
+			unsigned long long int functionID)
 {
   xdp::lop_cb_log_function_start(functionName, queueAddress, functionID) ;
 }
 
 extern "C"
 void lop_function_end(const char* functionName, long long queueAddress,
-		      unsigned int functionID)
+		      unsigned long long int functionID)
 {
   xdp::lop_cb_log_function_end(functionName, queueAddress, functionID) ;
 }
