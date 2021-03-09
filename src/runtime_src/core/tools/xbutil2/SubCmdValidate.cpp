@@ -365,9 +365,9 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   }
 
   if (py.compare("xcl_iops_test.exe") == 0) {
-    auto sp = os_stdout.str().find("IOPS:");
-    if (sp != std::string::npos) {
-      logger(_ptTest, "Details", os_stdout.str().substr(sp));
+    auto st = os_stdout.str().find("IOPS:");
+    if (st != std::string::npos) {
+      logger(_ptTest, "Details", os_stdout.str().substr(st));
     }
   }
 }
@@ -1065,12 +1065,7 @@ vcuKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
 void
 iopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-  if(!search_and_program_xclbin(_dev, _ptTest)) {
-    return;
-  }
-
     runTestCase(_dev, "xcl_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
-
 }
 
 /*
