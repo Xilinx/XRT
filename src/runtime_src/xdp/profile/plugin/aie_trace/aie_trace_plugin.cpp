@@ -304,6 +304,10 @@ namespace xdp {
         }
         numTileCoreTraceEvents[numTraceEvents]++;
 
+        std::stringstream msg;
+        msg << "Reserved " << numTraceEvents " core trace events for AIE tile (" << col << "," << row << ").";
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+
         // Set overall start/end for trace capture
         ret = coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
         if (ret != XAIE_OK) break;
@@ -332,6 +336,10 @@ namespace xdp {
           numTraceEvents++;
         }
         numTileMemoryTraceEvents[numTraceEvents]++;
+
+        std::stringstream msg;
+        msg << "Reserved " << numTraceEvents " memory trace events for AIE tile (" << col << "," << row << ").";
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
         // Set overall start/end for trace capture
         // NOTE: since these are core events, they are broadcast by the resource manager
