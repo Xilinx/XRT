@@ -473,10 +473,13 @@ public:
   static std::shared_ptr<ip_context>
   open_virtual_cu(xrt_core::device* device, const xrt::uuid& xclbin_id)
   {
-    static std::weak_ptr<ip_context> vctx;
-    auto ipctx = vctx.lock();
+    static std::mutex mutex;
+    static std::map<xrt_core::device*, std::weak_ptr<ip_context>> dev2vip;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto& vip = dev2vip[device];
+    auto ipctx = vip.lock();
     if (!ipctx)
-      vctx = ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id));
+      vip = ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id));
     return ipctx;
   }
 
