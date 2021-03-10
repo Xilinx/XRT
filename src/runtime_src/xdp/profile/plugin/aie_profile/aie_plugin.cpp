@@ -33,6 +33,9 @@
 #include "core/edge/common/aie_parser.h"
 #include "core/edge/user/aie/AIEResources.h"
 
+#define NUM_CORE_COUNTERS   4
+#define NUM_MEMORY_COUNTERS 2
+
 namespace xdp {
 
   AIEProfilingPlugin::AIEProfilingPlugin() 
@@ -212,13 +215,17 @@ namespace xdp {
       uint8_t resetEvent = 0;
       int counterId = 0;
       auto moduleType = isCore ? XAIE_CORE_MOD : XAIE_MEM_MOD;
+      
+      int NUM_COUNTERS = isCore ? NUM_CORE_COUNTERS : NUM_MEMORY_COUNTERS;
+      int numTileCounters[NUM_COUNTERS+1] = {0};
 
       for (auto& tile : tiles) {
-        // Use absolute HW row
-        auto row = tile.row + 1;
+        int numCounters = 0;
         auto col = tile.col;
-        auto& core = aieDevice->tile(col, row).core();
-        auto& memory = aieDevice->tile(col, row).mem();
+        auto row = tile.row;
+        // NOTE: resource manager requires absolute row number
+        auto& core = aieDevice->tile(col, row + 1).core();
+        auto& memory = aieDevice->tile(col, row + 1).mem();
 
         for (int i=0; i < startEvents.size(); ++i) {
           // Request counter from resource manager
@@ -239,12 +246,29 @@ namespace xdp {
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, counterNum, 
               startEvents.at(i), endEvents.at(i), resetEvent, clockFreqMhz, moduleName, counterName);
           counterId++;
+          numCounters++;
         }
+
+        if (numCounters == 0) {
+          std::stringstream msg;
+          msg << "Unable to reserve profile counters for AIE tile (" << col << "," << row << ").";
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        }
+        numTileCounters[numCounters]++;
       }
       
+      // Report counters reserved per tile
+      std::stringstream msg;
+      msg << "AIE profile counters reserved in " << moduleName << " modules - ";
+      for (int n=0; n <= NUM_COUNTERS; ++n) {
+        if (numTileCounters[n] == 0) continue;
+        msg << n << ": " << numTileCounters[n] << " tiles";
+        if (n != NUM_COUNTERS) msg << ", ";
+      }
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
+
       runtimeCounters = true;
     } // for module
-
 
     return runtimeCounters;
   }
@@ -286,7 +310,7 @@ namespace xdp {
         if (mPerfCounters.empty()) {
           // Compiler-defined counters
           // TODO: How do we safely read these?
-          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
+          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row + 1);
           XAie_PerfCounterGet(aieArray->getDevInst(), tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
         }
         else {

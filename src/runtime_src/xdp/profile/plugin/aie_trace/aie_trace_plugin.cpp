@@ -37,6 +37,9 @@
 #include "core/edge/common/aie_parser.h"
 #endif
 
+#define NUM_CORE_TRACE_EVENTS   8
+#define NUM_MEMORY_TRACE_EVENTS 8
+
 namespace xdp {
 
   AieTracePlugin::AieTracePlugin()
@@ -184,7 +187,6 @@ namespace xdp {
     auto& coreEvents          = coreEventSets[metricSet];
     auto& memoryEvents        = memoryEventSets[metricSet];
 
-#ifdef XRT_ENABLE_AIE
     // Capture all tiles across all graphs
     // NOTE: future releases will support the specification of tile subsets
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
@@ -195,20 +197,29 @@ namespace xdp {
       std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
     }
 
+    int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
+    int numTileMemoryTraceEvents[NUM_MEMORY_TRACE_EVENTS+1] = {0};
+
     // Iterate over all used/specified tiles
     for (auto& tile : tiles) {
-      auto  row    = tile.row + 1;
       auto  col    = tile.col;
-      auto& core   = aieDevice->tile(col, row).core();
-      auto& memory = aieDevice->tile(col, row).mem();
+      auto  row    = tile.row;
+      // NOTE: resource manager requires absolute row number
+      auto& core   = aieDevice->tile(col, row + 1).core();
+      auto& memory = aieDevice->tile(col, row + 1).mem();
+      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> perfCounters;
 
-      // Reserve and start two core module counters
+      //
+      // 1. Reserve and start core module counters
+      //
+      int numCoreCounters = 0;
       for (int i=0; i < coreCounterStartEvents.size(); ++i) {
         auto perfCounter = core.perfCounter();
         auto ret = perfCounter->initialize(XAIE_CORE_MOD, coreCounterStartEvents.at(i),
                                            XAIE_CORE_MOD, coreCounterEndEvents.at(i));
         if (ret != XAIE_OK) break;
         ret = perfCounter->reserve();
+        if (ret != XAIE_OK) break;
 
         perfCounter->changeThreshold( coreCounterEventValues.at(i) );
 
@@ -222,18 +233,36 @@ namespace xdp {
         perfCounter->changeRstEvent(XAIE_CORE_MOD, counterEvent);
         coreEvents.push_back(counterEvent);
 
-        if (ret != XAIE_OK) break;
         ret = perfCounter->start();
         if (ret != XAIE_OK) break;
+
+        perfCounters.push_back(perfCounter);
+        numCoreCounters++;
       }
 
-      // Reserve and start two memory module counters
+      // Catch when core counters cannot be reserved: report, release, and continue
+      if (numCoreCounters < coreCounterStartEvents.size()) {
+        std::stringstream msg;
+        msg << "Unable to reserve " << coreCounterStartEvents.size()
+            << " core counters for AIE tile (" << col << "," << row << ") required for trace.";
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+
+        for (auto& perfCounter : perfCounters)
+          perfCounters->release();
+        continue;
+      }
+
+      //
+      // 2. Reserve and start memory module counters
+      //
+      int numMemoryCounters = 0;
       for (int i=0; i < memoryCounterStartEvents.size(); ++i) {
         auto perfCounter = memory.perfCounter();
         auto ret = perfCounter->initialize(XAIE_MEM_MOD, memoryCounterStartEvents.at(i),
                                            XAIE_MEM_MOD, memoryCounterEndEvents.at(i));
         if (ret != XAIE_OK) break;
         ret = perfCounter->reserve();
+        if (ret != XAIE_OK) break;
 
         perfCounter->changeThreshold( memoryCounterEventValues.at(i) );
         
@@ -246,27 +275,47 @@ namespace xdp {
         perfCounter->changeRstEvent(XAIE_MEM_MOD, counterEvent);
         memoryEvents.push_back(counterEvent);
 
-        if (ret != XAIE_OK) break;
         ret = perfCounter->start();
         if (ret != XAIE_OK) break;
+
+        perfCounters.push_back(perfCounter);
+        numMemoryCounters++;
       }
 
-      // TODO: Configure group/combo events if applicable
+      // Catch when memory counters cannot be reserved: report, release, and continue
+      if (numMemoryCounters < memoryCounterStartEvents.size()) {
+        std::stringstream msg;
+        msg << "Unable to reserve " << memoryCounterStartEvents.size()
+            << " memory counters for AIE tile (" << col << "," << row << ") required for trace.";
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        
+        for (auto& perfCounter : perfCounters)
+          perfCounters->release();
+        continue;
+      }
+      perfCounters.clear();
 
-      // Configure Core Tracing Events
+      //
+      // 3. Configure Core Tracing Events
+      //
+      // TODO: Configure group or combo events where applicable
       {
         auto coreTrace = core.traceControl();
         auto ret = coreTrace->reserve();
         if (ret != XAIE_OK) break;
 
+        int numTraceEvents = 0;
         for (int i=0; i < coreEvents.size(); i++) {
           uint8_t slot;
           ret = coreTrace->reserveTraceSlot(slot);
           if (ret != XAIE_OK) break;
           ret = coreTrace->setTraceEvent(slot, coreEvents[i]);
           if (ret != XAIE_OK) break;
+          numTraceEvents++;
         }
-        
+        numTileCoreTraceEvents[numTraceEvents]++;
+
+        // Set overall start/end for trace capture
         ret = coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
         if (ret != XAIE_OK) break;
         ret = coreTrace->setMode(XAIE_TRACE_EVENT_TIME);
@@ -275,20 +324,28 @@ namespace xdp {
         if (ret != XAIE_OK) break;
       }
 
-      // Configure Memory Tracing Events
+      //
+      // 4. Configure Memory Tracing Events
+      //
+      // TODO: Configure group or combo events where applicable
       {
         auto memoryTrace = memory.traceControl();
         auto ret = memoryTrace->reserve();
         if (ret != XAIE_OK) break;
         
+        int numTraceEvents = 0;
         for (int i=0; i < memoryEvents.size(); i++) {
           uint8_t slot;
           ret = memoryTrace->reserveTraceSlot(slot);
           if (ret != XAIE_OK) break;
           ret = memoryTrace->setTraceEvent(slot, memoryEvents[i]);
           if (ret != XAIE_OK) break;
+          numTraceEvents++;
         }
-        
+        numTileMemoryTraceEvents[numTraceEvents]++;
+
+        // Set overall start/end for trace capture
+        // NOTE: since these are core events, they are broadcast by the resource manager
         ret = memoryTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
         if (ret != XAIE_OK) break;
         ret = memoryTrace->setMode(XAIE_TRACE_EVENT_TIME);
@@ -297,7 +354,28 @@ namespace xdp {
         if (ret != XAIE_OK) break;
       }
     }
-#endif
+ 
+    // Report trace events reserved per tile
+    {
+      std::stringstream msg;
+      msg << "AIE trace events reserved in core modules - ";
+      for (int n=0; n <= NUM_CORE_TRACE_EVENTS; ++n) {
+        if (numTileCoreTraceEvents[n] == 0) continue;
+        msg << n << ": " << numTileCoreTraceEvents[n] << " tiles";
+        if (n != NUM_CORE_TRACE_EVENTS) msg << ", ";
+      }
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
+    }
+    {
+      std::stringstream msg;
+      msg << "AIE trace events reserved in memory modules - ";
+      for (int n=0; n <= NUM_MEMORY_TRACE_EVENTS; ++n) {
+        if (numTileMemoryTraceEvents[n] == 0) continue;
+        msg << n << ": " << numTileMemoryTraceEvents[n] << " tiles";
+        if (n != NUM_MEMORY_TRACE_EVENTS) msg << ", ";
+      }
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
+    }
   }
 
   void AieTracePlugin::updateAIEDevice(void* handle)
