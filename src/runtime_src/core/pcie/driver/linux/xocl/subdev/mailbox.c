@@ -832,7 +832,10 @@ static int chan_msg_enqueue(struct mailbox_channel *ch, struct mailbox_msg *msg)
 	MBX_DBG(ch->mbc_parent, "%s enqueuing msg, id=0x%llx\n",
 		ch_name(ch), msg->mbm_req_id);
 
-	BUG_ON(msg->mbm_req_id == INVALID_MSG_ID);
+	if (msg->mbm_req_id == INVALID_MSG_ID) {
+		MBX_WARN(ch->mbc_parent, "mailbox msg with invalid id detected\n");
+		return -EINVAL;
+	}
 
 	mutex_lock(&ch->mbc_mutex);
 	if (test_bit(MBXCS_BIT_STOP, &ch->mbc_state)) {
