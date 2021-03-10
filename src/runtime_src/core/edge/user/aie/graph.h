@@ -24,6 +24,8 @@
 #include "core/edge/common/aie_parser.h"
 #include "core/common/device.h"
 #include "experimental/xrt_graph.h"
+#include "common_layer/adf_api_config.h"
+#include "common_layer/adf_runtime_api.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -35,9 +37,6 @@ namespace zynqaie {
 class graph_type
 {
 public:
-    using tile_type = xrt_core::edge::aie::tile_type;
-    using rtp_type = xrt_core::edge::aie::rtp_type;
-
     graph_type(std::shared_ptr<xrt_core::device> device, const uuid_t xclbin_uuid, const std::string& name, xrt::graph::access_mode);
     ~graph_type();
 
@@ -107,7 +106,6 @@ private:
     int id;
     graph_state state;
     std::string name;
-    uint64_t startTime;
     xrt::graph::access_mode access_mode;
 
     /**
@@ -122,10 +120,10 @@ private:
      * A tile is represented by a pair of number <col, row>
      * It represents the tile position in the AIE array.
      */
-    std::vector<tile_type> tiles;
-
+    adf::graph_config graph_config;
+    std::shared_ptr<adf::graph_api> pAIEConfigAPI;
     /* This is the collections of rtps that are used. */
-    std::unordered_map<std::string, rtp_type> rtps;
+    std::unordered_map<std::string, adf::rtp_config> rtps;
 };
 
 }
