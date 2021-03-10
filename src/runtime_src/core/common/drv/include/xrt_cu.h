@@ -57,6 +57,8 @@
 #define CU_AP_READY	(0x1 << 3)
 #define CU_AP_CONTINUE	(0x1 << 4)
 #define CU_AP_RESET	(0x1 << 5)
+/* Special macro(s) which not defined by HLS CU */
+#define CU_AP_CRASHED	(0xFFFFFFFF)
 
 #define CU_INTR_DONE  0x1
 #define CU_INTR_READY 0x2
