@@ -167,11 +167,15 @@ namespace xdp {
 
   void VPStatisticsDatabase::addEventCount(const char* label)
   {
-    if (eventCounts.find(label) == eventCounts.end()) {
-      eventCounts[label] = 0 ;
+    std::string converted = "" ;
+    if (label != nullptr) {
+      converted = label ;
+    }
+    if (eventCounts.find(converted) == eventCounts.end()) {
+      eventCounts[converted] = 0 ;
     }
 
-    eventCounts[label] += 1 ;
+    eventCounts[converted] += 1 ;
   }
 
   void VPStatisticsDatabase::addRangeCount(std::pair<const char*, const char*> desc)
