@@ -1546,19 +1546,19 @@ xclProbe()
 
   int result = ioctl(fd, DRM_IOCTL_VERSION, &version);
   if (result) {
-    result = 0;
-    goto out;
+    close(fd);
+    delete []version.name;
+    delete []version.desc;
+    delete []version.date;
+    return 0;
   }
 
   result = std::strncmp(version.name, "zocl", 4);
-
-  result = ((result == 0) ? 1 : 0);
-out:
   close(fd);
   delete []version.name;
   delete []version.desc;
   delete []version.date;
-  return result;
+  return (result == 0) ? 1 : 0;
 }
 #endif
 
