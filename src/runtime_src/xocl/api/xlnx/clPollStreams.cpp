@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2019 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,18 +14,19 @@
  * under the License.
  */
 
-// Copyright 2018 Xilinx, Inc. All rights reserved.
-#include <CL/opencl.h>
+// Copyright 2018-2020 Xilinx, Inc. All rights reserved.
+#include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 #include "xocl/core/device.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
 static void
 validOrError(cl_device_id               device,
-	cl_streams_poll_req_completions*completions, 
+	cl_streams_poll_req_completions*completions,
 	cl_int                          min_num_completion,
 	cl_int                          max_num_completion,
 	cl_int*                         actual_num_completion,
@@ -33,20 +34,23 @@ validOrError(cl_device_id               device,
 	cl_int*                         errcode_ret)
 
 {
+  if (min_num_completion <= 0)
+    throw error(CL_INVALID_VALUE,"minimum number of completion argument must be greater than zero");
 }
 
-static cl_int 
+static cl_int
 clPollStreams(cl_device_id              device,
-	cl_streams_poll_req_completions*completions, 
+	cl_streams_poll_req_completions*completions,
 	cl_int                          min,
 	cl_int                          max,
 	cl_int*                         actual,
 	cl_int                          timeout,
 	cl_int*                         errcode_ret)
 {
+  int ret;
   validOrError(device,completions,min,max,actual,timeout,errcode_ret);
-  xocl::xocl(device)->poll_streams(completions,min,max,actual,timeout);
-  xocl::assign(errcode_ret,CL_SUCCESS);
+  ret = xocl::xocl(device)->poll_streams(completions,min,max,actual,timeout);
+  *errcode_ret = (ret < 0) ? ret : 0;
   return CL_SUCCESS;
 }
 
@@ -63,10 +67,11 @@ clPollStreams(cl_device_id               device,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clPollStreams
       (device,completions,min_num_completion,max_num_completion,actual_num_completion,timeout,errcode_ret);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,ex.get_code());
   }
@@ -76,4 +81,3 @@ clPollStreams(cl_device_id               device,
   }
   return CL_INVALID_VALUE;
 }
-

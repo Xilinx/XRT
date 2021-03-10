@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
@@ -22,6 +22,8 @@
 #include "xocl/core/context.h"
 #include "xocl/api/detail/memory.h"
 #include "xocl/api/detail/device.h"
+
+#include "CL/cl_ext_xilinx.h"
 
 namespace xocl {
 
@@ -48,9 +50,8 @@ clGetMemObjectFd(cl_mem mem,
   auto xmem = xocl(mem);
   auto context = xmem->get_context();
   for (auto device : context->get_device_range()) {
-    if (xmem->is_resident(device)) {
-      auto boh = xmem->get_buffer_object_or_error(device);
-      *fd = device->get_xrt_device()->getMemObjectFd(boh);
+    if (auto boh = xmem->get_buffer_object_or_null(device)) {
+      *fd = device->get_xdevice()->getMemObjectFd(boh);
       return CL_SUCCESS;
     }
   }
@@ -68,7 +69,7 @@ clGetMemObjectFd(cl_mem mem,
   try {
     return xocl::clGetMemObjectFd(mem, fd);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get_code();
   }
@@ -87,5 +88,3 @@ xclGetMemObjectFd(cl_mem mem,
 {
   return xlnx::clGetMemObjectFd(mem, fd);
 }
-
-

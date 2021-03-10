@@ -9,7 +9,7 @@
 #include "ert.h"
 #include "xclhal2.h"
 #include "xclbin.h"
-#include "xperf.h"
+#include "xma_profile.h"
 
 #include <fstream>
 #include <list>

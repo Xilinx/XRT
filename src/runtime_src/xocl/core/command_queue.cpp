@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,12 +19,15 @@
 #include "device.h"
 #include "event.h"
 
-#include "xocl/api/plugin/xdp/profile.h"
+#include "xocl/api/plugin/xdp/profile_v2.h"
 
 #include <algorithm>
 #include <iostream>
 #include <cassert>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4267 )
+#endif
 
 namespace {
 
@@ -42,7 +45,7 @@ command_queue(context* ctx, device* device, cl_command_queue_properties props)
   static unsigned int uid_count = 0;
   m_uid = uid_count++;
 
-  if (xrt::config::get_profile())
+  if (xrt_xocl::config::get_profile())
     m_props |= CL_QUEUE_PROFILING_ENABLE;
 
   XOCL_DEBUG(std::cout,"xocl::command_queue::command_queue(",m_uid,")\n");
@@ -80,15 +83,14 @@ queue(event* ev)
   if (!ooo && m_last_queued_event.get()) {
     m_last_queued_event->chain(ev);
 
-    auto tmp_lval = static_cast<cl_event>(m_last_queued_event.get());
-    xocl::profile::log_dependencies(ev, 1, &tmp_lval);
+    xocl::profile::log_dependency(ev->get_uid(), m_last_queued_event->get_uid()) ;
   }
 
   if (ooo) {
-    for (auto b: m_barriers)
+    for (auto b: m_barriers) {
       b->chain(ev);
-
-    xocl::profile::log_dependencies(ev, m_barriers.size(), reinterpret_cast<cl_event*>(m_barriers.data()) );
+      xocl::profile::log_dependency(ev->get_uid(), b->get_uid()) ;
+    }
 
     if (ev->get_command_type()==CL_COMMAND_BARRIER)
       m_barriers.push_back(ev);

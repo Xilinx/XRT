@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,16 +14,14 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
-
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
 #include "xocl/core/context.h"
 #include "xocl/core/command_queue.h"
 #include "detail/memory.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -44,32 +42,6 @@ clReleaseMemObject(cl_mem memobj)
   if (!xocl(memobj)->release())
     return CL_SUCCESS;
 
-  // Host Accessible Prorgam Scope Globals 
-  // Progrvars are deleted via kernel argument destruction through
-  // regular reference counting.  Here we just make sure progvars
-  // are not deleted via clReleaseMemObject.   
-  //
-  // The memobj is a progvar only if CL_MEM_EXT_PTR_XILINX is set.
-  // and it is not a bank assigned mem object.   If CL_MEM_EXT_PTR_XILINX
-  // is set, then the ext flags are stored with the memobj so it is
-  // sufficient to check that the ext flags if set are not bank specific.
-  auto ext_flags = xocl(memobj)->get_ext_flags();
-  //if (ext_flags && !((ext_flags >> 8) & 0xff)) {
-  if (ext_flags && !((ext_flags ) & 0xffffff)) {
-    XOCL_DEBUG(std::cout,"clReleaseMemObject on user buffer backed by external progvar, mem obj not deleted\n");
-    return CL_SUCCESS; 
-  }
-
-#if 0
-  // After the memobj reference count becomes zero *and* commands
-  // queued for execution on a command-queue(s) that use memobj have
-  // finished, the memory object is deleted.  Easiest is to just
-  // wait for all command queues.
-  auto context = xocl(memobj)->get_context();
-  for (auto command_queue : context->get_queue_range())
-    command_queue->wait();
-#endif
-
   delete xocl(memobj);
   return CL_SUCCESS;
 }
@@ -81,9 +53,10 @@ clReleaseMemObject(cl_mem memobj)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clReleaseMemObject(memobj);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get();
   }
@@ -92,5 +65,3 @@ clReleaseMemObject(cl_mem memobj)
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

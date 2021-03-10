@@ -16,20 +16,19 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
 #include "xocl/core/error.h"
 #include "xocl/core/param.h"
 #include "detail/memory.h"
-
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
 static void
 validOrError(cl_mem            image,
-             cl_image_info     param_name, 
+             cl_image_info     param_name,
              size_t            param_value_size,
              void *            param_value,
              size_t *          param_value_size_ret)
@@ -70,7 +69,7 @@ validOrError(cl_mem            image,
 
 static cl_int
 clGetImageInfo(cl_mem            image,
-               cl_image_info     param_name, 
+               cl_image_info     param_name,
                size_t            param_value_size,
                void *            param_value,
                size_t *          param_value_size_ret )
@@ -125,13 +124,14 @@ clGetImageInfo(cl_mem            image,
 
 cl_int
 clGetImageInfo(cl_mem            image,
-               cl_image_info     param_name, 
+               cl_image_info     param_name,
                size_t            param_value_size,
                void *            param_value,
                size_t *          param_value_size_ret)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetImageInfo
       (image,param_name,param_value_size,param_value,param_value_size_ret);
   }
@@ -144,5 +144,3 @@ clGetImageInfo(cl_mem            image,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

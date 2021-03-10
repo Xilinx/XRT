@@ -1,0 +1,72 @@
+#
+# Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+#
+# Authors:
+#
+# This software is licensed under the terms of the GNU General Public
+# License version 2, as published by the Free Software Foundation, and
+# may be copied, distributed, and modified under those terms.
+#
+# This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+ccflags-y	+= -D_QDMA4_DEBUGFS_
+
+xocl_lib-y	:= ../lib/libxdma.o
+xocl_lib-y	+=  \
+		../lib/libqdma/libqdma_config.o	\
+		../lib/libqdma/libqdma_export.o	\
+		../lib/libqdma/qdma_context.o	\
+		../lib/libqdma/qdma_debugfs.o	\
+		../lib/libqdma/qdma_debugfs_cmpt_queue.o	\
+		../lib/libqdma/qdma_debugfs_dev.o	\
+		../lib/libqdma/qdma_debugfs_queue.o	\
+		../lib/libqdma/qdma_descq.o	\
+		../lib/libqdma/qdma_device.o	\
+		../lib/libqdma/qdma_intr.o	\
+		../lib/libqdma/qdma_qconf_mgr.o	\
+		../lib/libqdma/qdma_regs.o	\
+		../lib/libqdma/qdma_request.o	\
+		../lib/libqdma/qdma_st_c2h.o	\
+		../lib/libqdma/qdma_thread.o	\
+		../lib/libqdma/thread.o	\
+		../lib/libqdma/xdev.o
+
+xocl_lib-y	+=  \
+		../lib/libqdma4/stmc.o	\
+		../lib/libqdma4/libqdma_config.o	\
+		../lib/libqdma4/libqdma_export.o   	\
+		../lib/libqdma4/qdma_context.o	\
+		../lib/libqdma4/qdma_debugfs.o	\
+		../lib/libqdma4/qdma_debugfs_dev.o	\
+		../lib/libqdma4/qdma_debugfs_queue.o	\
+		../lib/libqdma4/qdma_descq.o	\
+		../lib/libqdma4/qdma_device.o	\
+		../lib/libqdma4/qdma_intr.o	\
+		../lib/libqdma4/qdma_mbox.o	\
+		../lib/libqdma4/qdma_platform.o	\
+		../lib/libqdma4/qdma_regs.o	\
+		../lib/libqdma4/qdma_sriov.o	\
+		../lib/libqdma4/qdma_st_c2h.o	\
+		../lib/libqdma4/qdma_thread.o	\
+		../lib/libqdma4/thread.o	\
+		../lib/libqdma4/xdev.o	\
+		../lib/libqdma4/qdma_access_common.o	\
+		../lib/libqdma4/qdma_list.o	\
+		../lib/libqdma4/qdma_mbox_protocol.o	\
+		../lib/libqdma4/qdma_resource_mgmt.o	\
+		../lib/libqdma4/qdma_s80_hard_access.o	\
+		../lib/libqdma4/qdma_soft_access.o	\
+		../lib/libqdma4/eqdma_soft_access.o
+
+libfdt-y	:= ../lib/libfdt/fdt.o		\
+		../lib/libfdt/fdt_addresses.o	\
+		../lib/libfdt/fdt_empty_tree.o	\
+		../lib/libfdt/fdt_overlay.o	\
+		../lib/libfdt/fdt_ro.o		\
+		../lib/libfdt/fdt_rw.o		\
+		../lib/libfdt/fdt_strerror.o	\
+		../lib/libfdt/fdt_sw.o		\
+		../lib/libfdt/fdt_wip.o

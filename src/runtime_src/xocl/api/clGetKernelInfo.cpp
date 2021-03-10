@@ -16,18 +16,21 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/param.h"
 #include "xocl/core/error.h"
 #include "xocl/core/kernel.h"
 #include "xocl/core/program.h"
 #include "xocl/core/context.h"
+#include "xocl/core/compute_unit.h"
 #include "xocl/xclbin/xclbin.h"
-
 #include "detail/kernel.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
-#include "plugin/xdp/profile.h"
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
 namespace xocl {
 
@@ -71,7 +74,7 @@ clGetKernelInfo(cl_kernel        kernel,
       buffer.as<char>() = xocl(kernel)->get_name();
       break;
     case CL_KERNEL_NUM_ARGS:
-      buffer.as<cl_uint>() = xocl(kernel)->get_indexed_argument_range().size();
+      buffer.as<cl_uint>() = xocl(kernel)->get_indexed_xargument_range().size();
       break;
     case CL_KERNEL_REFERENCE_COUNT:
       buffer.as<cl_uint>() = xocl(kernel)->count();
@@ -86,11 +89,11 @@ clGetKernelInfo(cl_kernel        kernel,
       buffer.as<char>() = xocl(kernel)->get_attributes();
       break;
     case CL_KERNEL_COMPUTE_UNIT_COUNT:
-      buffer.as<cl_uint>() = xocl(kernel)->get_instance_names().size();
+      buffer.as<cl_uint>() = xocl(kernel)->get_cus().size();
       break;
-    case CL_KERNEL_INSTANCE_BASE_ADDRESS: 
-      for (auto& inst : xocl(kernel)->get_symbol().instances)
-        buffer.as<size_t>() = inst.base;
+    case CL_KERNEL_INSTANCE_BASE_ADDRESS:
+      for (auto cu : xocl(kernel)->get_cus())
+        buffer.as<size_t>() = cu->get_base_addr();
       break;
     default:
       throw error(CL_INVALID_VALUE,"clGetKernelInfo invalud param name");
@@ -111,6 +114,7 @@ clGetKernelInfo(cl_kernel        kernel,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetKernelInfo
       (kernel,param_name,param_value_size,param_value,param_value_size_ret);
   }
@@ -123,6 +127,3 @@ clGetKernelInfo(cl_kernel        kernel,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
-

@@ -1,0 +1,13 @@
+[Unit]
+Description=Xilinx Management Service Daemon (MSD)
+Wants=network-online.target
+After=network-online.target
+ConditionDirectoryNotEmpty=/dev/xfpga
+
+[Service]
+Type=simple
+ExecStart=${CMAKE_INSTALL_PREFIX}/${XRT_INSTALL_BIN_DIR}/msd
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

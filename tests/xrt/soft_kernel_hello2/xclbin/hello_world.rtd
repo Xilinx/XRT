@@ -1,0 +1,9 @@
+{
+  "soft_kernel_metadata": {
+    "mpo_name": "hello_world",
+    "mpo_version": "1.2.3",
+    "mpo_md5_value": "a794b17fb67e96cad73342598ec9dd45",
+    "mpo_symbol_name" : "hello_world",
+    "m_num_instances": 8
+  }
+}

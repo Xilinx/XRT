@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,9 +14,8 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/debug.h"
 #include "xocl/core/time.h"
@@ -25,6 +24,7 @@
 #include "xocl/core/program.h"
 #include "xocl/core/context.h"
 #include "xocl/core/execution_context.h"
+#include "xocl/core/command_queue.h"
 
 #include "detail/command_queue.h"
 #include "detail/kernel.h"
@@ -33,13 +33,18 @@
 #include "enqueue.h"
 #include "api.h"
 
-#include "xrt/util/memory.h"
-
 #include "printf/rt_printf.h"
 
-#include <sstream>
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+
+#include <array>
+#include <sstream>
+#include <CL/opencl.h>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 4245 )
+#endif
 
 namespace {
 
@@ -52,7 +57,7 @@ cb_BufferReturned(cl_event event, cl_int status, void *data);
 
 static xocl::ptr<xocl::memory>
 createPrintfBuffer(cl_context context, cl_kernel kernel,
-                   const std::vector<size_t>& gsz, const std::vector<size_t>& lsz);
+                   const std::array<size_t,3>& gsz, const std::array<size_t,3>& lsz);
 
 static cl_event
 enqueueInitializePrintfBuffer(cl_kernel kernel, cl_command_queue queue,cl_mem mem);
@@ -70,15 +75,6 @@ getDeviceAddressBits(cl_device_id device)
     return bits;
   xocl::api::clGetDeviceInfo(device,CL_DEVICE_ADDRESS_BITS,sizeof(cl_uint),&bits,nullptr);
   return bits;
-}
-
-static bool
-is_sw_emulation()
-{
-// TODO check for only sw_emu. Some github examples are using "true", Remove this check once all github examples are updated
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
-  return swem;
 }
 
 static size_t
@@ -194,7 +190,7 @@ validOrError(cl_command_queue command_queue,
   // specified by global_work_size is not evenly divisible by size of
   // work-group given by local_work_size or by the required work-
   // group size specified in the kernel source.
-  auto compile_wgs_range = xocl::xocl(kernel)->get_compile_wg_size_range();
+  auto compile_wgs_range = xkernel->get_compile_wg_size_range();
   bool reqd_work_group_size_set =
     std::any_of(compile_wgs_range.begin(),compile_wgs_range.end(),[](size_t sz) { return sz!=0; });
   for (cl_uint work_dim_it=0; work_dim_it < work_dim; ++work_dim_it) {
@@ -243,43 +239,6 @@ validOrError(cl_command_queue command_queue,
   // number of samplers used in kernel exceed CL_DEVICE_MAX_SAMPLERS
   // for device.
 
-  // CL_MEM_OBJECT_ALLOCATION_FAILURE if there is a failure to
-  // allocate memory for data store associated with image or buffer
-  // objects specified as arguments to kernel.
-  // XLNX: Check if kernel argument ddr match with cu(s) ddr connection
-  size_t argidx = 0;
-  for (auto& arg : xocl::xocl(kernel)->get_indexed_argument_range()) {
-    if (auto mem = arg->get_memory_object()) {
-      mem->get_buffer_object(xdevice); // make sure buffer is allocated on device
-      auto mem_memidx_mask = mem->get_memidx(xdevice);
-      for (auto& cu : xdevice->get_cu_range()) {
-        if (cu->get_symbol()->uid!=xkernel->get_symbol_uid())
-          continue;
-        auto cu_memidx_mask = cu->get_memidx(argidx);
-        if ((cu_memidx_mask & mem_memidx_mask).none()) {
-          std::stringstream ostr;
-          ostr << "Memory bank specified for kernel instance \""
-               << cu->get_name()
-               << "\" of kernel \""
-               << xkernel->get_name()
-               << "\" for argument name \"" << arg->get_name() << "\" "
-               << "does not match the connectivity from the xclbin.\n"
-               << "Memory bank mask specified for argument ";
-          if (mem_memidx_mask.any())
-            ostr << "is \"" << mem_memidx_mask << "\"";
-          else
-            ostr << "does not exist";
-          ostr << " while memory bank mask in xclbin is \"" << cu_memidx_mask << "\".";
-          XOCL_DEBUG(std::cout,ostr.str(),"\n");
-          if (!is_sw_emulation()) // pr Amit
-            throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,ostr.str());
-        }
-      }
-    }
-    ++argidx;
-  }
-
-
   // CL_INVALID_EVENT_WAIT_LIST if event_wait_list is NULL and
   // num_events_in_wait_list > 0, or event_wait_list is not NULL and
   // num_events_in_wait_list is 0, or if event objects in
@@ -318,20 +277,6 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   // err_checking: this code is highly fragile and it was suggested that we make minimal changes to this section.
   // We are not really able to disable error checks completely because the error checks are heavily intertwined
   // with the functionality in this section. Here is a good trade-off.
-  if(xocl::config::api_checks()) {
-    //XCL_CONFORMANCECOLLECT mode
-    //write out the kernel sources in clCreateKernel and fail quickly in clEnqueueNDRange
-    //skip build in clBuildProgram
-    if (getenv("XCL_CONFORMANCECOLLECT")) {
-      if (event_parameter) {
-        auto uevent = xocl::create_soft_event(0,-1);
-        xocl::assign(event_parameter,uevent.get());
-        uevent->set_status(CL_COMPLETE);
-      }
-      return CL_INVALID_KERNEL;
-    }
-
-  } // error checking end
 
   auto compile_wgs_range = xocl::xocl(kernel)->get_compile_wg_size_range();
   bool reqd_work_group_size_set =
@@ -345,9 +290,9 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
     (max_wgs_range[0]!=0 && max_wgs_range[1]==0 && max_wgs_range[2]==0);
 
   //MAXIMAL DIMENSION WORK DIMENSIONS
-  std::vector<size_t> global_work_offset_3D = {0,0,0};
-  std::vector<size_t> global_work_size_3D = {1,1,1};
-  std::vector<size_t> local_work_size_3D = {1,1,1};
+  std::array<size_t, 3> global_work_offset_3D = {0,0,0};
+  std::array<size_t, 3> global_work_size_3D = {1,1,1};
+  std::array<size_t, 3> local_work_size_3D = {1,1,1};
   for (cl_uint work_dim_it=0; work_dim_it < work_dim; ++work_dim_it) {
     if (global_work_offset)
       global_work_offset_3D[work_dim_it] = global_work_offset[work_dim_it];
@@ -440,13 +385,13 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   // Add printf buffer initialization to wait list to ensure this is forced to happen
   // before kernel execution starts in case we are running out of order.
   const cl_event* new_wait_list = event_wait_list;
-  cl_uint new_wait_list_size = num_events_in_wait_list;
+  auto new_wait_list_size = num_events_in_wait_list;
   std::vector<cl_event> printf_wait_list;
   if (printf_init_event) {
     std::copy(event_wait_list,event_wait_list+num_events_in_wait_list,std::back_inserter(printf_wait_list));
     printf_wait_list.push_back(printf_init_event);
     new_wait_list = printf_wait_list.data();
-    new_wait_list_size = printf_wait_list.size();
+    new_wait_list_size = static_cast<cl_uint>(printf_wait_list.size());
   }
 
   // Event for kernel arg migration (todo: experiment with multiple events, one pr arg)
@@ -460,8 +405,10 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 
   // Migration action and enqueing
   xocl::enqueue::set_event_action(umEvent.get(),xocl::enqueue::action_ndrange_migrate,mEvent,kernel);
-  xocl::profile::set_event_action(umEvent.get(),xocl::profile::action_ndrange_migrate,mEvent,kernel);
+  xocl::profile::set_event_action(umEvent.get(), xocl::profile::action_ndrange_migrate, mEvent, kernel) ;
+  xocl::profile::counters::set_event_action(umEvent.get(), xocl::profile::counter_action_ndrange_migrate, mEvent, kernel) ;
   xocl::appdebug::set_event_action(umEvent.get(),xocl::appdebug::action_ndrange_migrate,mEvent,kernel);
+  xocl::lop::set_event_action(umEvent.get(),xocl::lop::action_ndrange_migrate,kernel);
 
   // Schedule migration
   umEvent->queue();
@@ -472,13 +419,15 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 
   // execution context
   auto device = ueEvent->get_command_queue()->get_device();
-    ueEvent->set_execution_context
-      (xrt::make_unique<execution_context>
+  ueEvent->set_execution_context
+      (std::make_unique<execution_context>
        (device,xocl(kernel),xocl(eEvent),work_dim,global_work_offset_3D.data(),global_work_size_3D.data(),local_work_size_3D.data()));
-    xocl::enqueue::set_event_action(ueEvent.get(),xocl::enqueue::action_ndrange_execute);
+  xocl::enqueue::set_event_action(ueEvent.get(),xocl::enqueue::action_ndrange_execute);
 
-  xocl::profile::set_event_action(ueEvent.get(),xocl::profile::action_ndrange,eEvent,kernel);
+    xocl::profile::set_event_action(ueEvent.get(), xocl::profile::action_ndrange, eEvent, kernel);
+    xocl::profile::counters::set_event_action(ueEvent.get(), xocl::profile::counter_action_ndrange, kernel) ;
   xocl::appdebug::set_event_action(ueEvent.get(),xocl::appdebug::action_ndrange,eEvent,kernel);
+  xocl::lop::set_event_action(ueEvent.get(), xocl::lop::action_ndrange) ;
 
   // Schedule execution
   ueEvent->queue();
@@ -559,7 +508,7 @@ void CL_CALLBACK cb_BufferReturned(cl_event event, cl_int status, void *data)
 // Allocate device printf buffer if printf is needed for this workgroup.
 xocl::ptr<xocl::memory>
 createPrintfBuffer(cl_context context, cl_kernel kernel
-                   ,const std::vector<size_t>& gsz, const std::vector<size_t>& lsz)
+                   ,const std::array<size_t,3>& gsz, const std::array<size_t,3>& lsz)
 {
   auto mem = XCL::Printf::kernelHasPrintf(kernel)
     ? clCreateBuffer(context, CL_MEM_READ_WRITE,XCL::Printf::getPrintfBufferSize(gsz,lsz),nullptr,nullptr)
@@ -581,7 +530,7 @@ cl_event enqueueInitializePrintfBuffer(cl_kernel kernel, cl_command_queue queue,
 {
   cl_event event = nullptr;
   if ( XCL::Printf::kernelHasPrintf(kernel) ) {
-    std::unique_ptr<CallbackArgs> args = xrt::make_unique<CallbackArgs>();
+    std::unique_ptr<CallbackArgs> args = std::make_unique<CallbackArgs>();
     auto bufSize = xocl::xocl(mem)->get_size();
     args->kernel = xocl::xocl(kernel);
     args->mem = xocl::xocl(mem);
@@ -611,7 +560,7 @@ cl_int enqueueReadPrintfBuffer(cl_kernel kernel, cl_command_queue queue,
 {
   cl_int err = CL_SUCCESS;
   if ( XCL::Printf::kernelHasPrintf(kernel) ) {
-    std::unique_ptr<CallbackArgs> args = xrt::make_unique<CallbackArgs>();
+    std::unique_ptr<CallbackArgs> args = std::make_unique<CallbackArgs>();
     if ( !args ) {
       throw xocl::error(CL_OUT_OF_RESOURCES,"enqueueReadPrintfBuffer");
     }
@@ -652,12 +601,13 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueNDRangeKernel
       ( command_queue,kernel
        ,work_dim,global_work_offset,global_work_size,local_work_size
        ,num_events_in_wait_list,event_wait_list,event_parameter );
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get();
   }

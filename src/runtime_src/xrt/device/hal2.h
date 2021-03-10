@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,7 +19,11 @@
 
 #include "xrt/device/hal.h"
 #include "xrt/device/halops2.h"
-#include "xrt/device/PMDOperations.h"
+
+#include "experimental/xrt_device.h"
+#include "experimental/xrt_bo.h"
+
+#include "ert.h"
 
 #include <cassert>
 
@@ -28,14 +32,18 @@
 #include <cstring>
 #include <memory>
 #include <map>
+#include <array>
+#include <mutex>
 
-namespace xrt { namespace hal2 {
+#include <boost/optional/optional.hpp>
 
-namespace hal  = xrt::hal;
-namespace hal2 = xrt::hal2;
-using BufferObjectHandle = hal::BufferObjectHandle;
-using ExecBufferObjectHandle = hal::ExecBufferObjectHandle;
-using svmbomap_type = std::map<void *, BufferObjectHandle>;
+namespace xrt_xocl { namespace hal2 {
+
+namespace hal  = xrt_xocl::hal;
+namespace hal2 = xrt_xocl::hal2;
+using buffer_object_handle = hal::buffer_object_handle;
+using execbuffer_object_handle = hal::execbuffer_object_handle;
+using svmbomap_type = std::map<void *, buffer_object_handle>;
 using svmbomap_value_type = svmbomap_type::value_type;
 using svmbomap_iterator_type = svmbomap_type::iterator;
 
@@ -51,7 +59,7 @@ using svmbomap_iterator_type = svmbomap_type::iterator;
  * and aquired through the HAL API.
  */
 
-class device : public xrt::hal::device
+class device : public xrt_xocl::hal::device
 {
   // separate queues for read,write, and misc operations
   // primarily done so that independent operations can be serviced
@@ -64,72 +72,39 @@ class device : public xrt::hal::device
   std::shared_ptr<hal2::operations> m_ops;
   unsigned int m_idx;
 
-  hal2::device_handle m_handle;
-  hal2::device_info m_devinfo;
+  xrt::device m_handle;
+  mutable boost::optional<hal2::device_info> m_devinfo;
 
-  struct BufferObject : hal::buffer_object
-  {
-    unsigned int handle = 0xffffffff;
-    uint64_t deviceAddr = 0xffffffffffffffff;
-    void *hostAddr = nullptr;
-    size_t size = 0;
-    size_t offset = 0;
-    xclBOKind kind;
-    unsigned int flags = 0;
-    hal2::device_handle owner = nullptr;
-    BufferObjectHandle parent = nullptr;
-  };
+  mutable std::mutex m_mutex;
 
   struct ExecBufferObject : hal::exec_buffer_object
   {
-    unsigned int handle = 0xffffffff;
+    xclBufferHandle handle;
     void* data = nullptr;
     size_t size = 0;
     hal2::device_handle owner = nullptr;
   };
 
-  BufferObject*
-  getBufferObject(const BufferObjectHandle& boh) const;
-
   ExecBufferObject*
-  getExecBufferObject(const ExecBufferObjectHandle& boh) const;
+  getExecBufferObject(const execbuffer_object_handle& boh) const;
+
+  hal2::device_info*
+  get_device_info() const;
+
+  bool
+  open_nolock();
 
   void
-  openOrError() const
-  {
-    if (!m_handle)
-      throw std::runtime_error("hal::device is not open");
-  }
+  close_nolock();
 
-  int
-  getDeviceInfo(hal2::device_info *info)  const
-  {
-    std::memset(info,0,sizeof(hal2::device_info));
-#ifdef PMD_OCL
-    assert(0);
-    return 0;
-#else
-    return m_ops->mGetDeviceInfo(m_handle,info);
-#endif
-  }
+  hal2::device_info*
+  get_device_info_nolock() const;
 
   task::queue&
   get_queue(hal::queue_type qt)
   {
     return m_queue[static_cast<qtype>(qt)];
   }
-
-  /**
-   * emplace, erase, and find operations for m_svmbomap
-   */
-  virtual void
-  emplaceSVMBufferObjectMap(const BufferObjectHandle& boh, void* ptr);
-
-  virtual void
-  eraseSVMBufferObjectMap(void* ptr);
-
-  virtual BufferObjectHandle
-  svm_bo_lookup(void* ptr);
 
 public:
   /**
@@ -156,9 +131,11 @@ public:
     return task::createM(get_queue(qt),f,*this,std::forward<Args>(args)...);
   }
 
-#pragma GCC diagnostic push
-#if __GNUC__  >= 7
-#pragma GCC diagnostic ignored "-Wnoexcept-type"
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# if __GNUC__ >= 7
+#  pragma GCC diagnostic ignored "-Wnoexcept-type"
+# endif
 #endif
   template <typename F,typename ...Args>
   auto
@@ -166,7 +143,9 @@ public:
   {
     return task::createF(get_queue(qt),f,std::forward<Args>(args)...);
   }
-#pragma GCC diagnostic pop
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
 public:
   device(std::shared_ptr<hal2::operations> ops, unsigned int idx);
   ~device();
@@ -180,31 +159,42 @@ public:
   void
   setup();
 
+  /**
+   * Open the device.
+   *
+   * @return True if device was opened, false if already open
+   *
+   * Throws if device could not be opened
+   */
   virtual bool
-  open(const char* log, hal::verbosity_level level)
-  {
-    bool retval = false;
-    if (m_handle)
-      throw std::runtime_error("device is already open");
-#ifdef PMD_OCL
-    assert(0);
-#else
-    m_handle=m_ops->mOpen(m_idx,log,static_cast<hal2::verbosity_level>(level));
-    if (m_handle)
-      retval = true;
-#endif
-    getDeviceInfo(&m_devinfo);
-    return retval;
-  }
+  open();
 
   virtual void
-  close()
+  close();
+
+  virtual xclDeviceHandle
+  get_xcl_handle() const
   {
-    if (m_handle) {
-      m_ops->mClose(m_handle);
-      m_handle=nullptr;
-    }
+    return m_handle; // cast to xclDeviceHandle
   }
+
+  xrt::device
+  get_xrt_device() const
+  {
+    return m_handle;
+  }
+
+  std::shared_ptr<xrt_core::device>
+  get_core_device() const;
+
+  bool
+  is_nodma() const;
+
+  virtual void
+  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared);
+
+  virtual void
+  release_cu_context(const uuid& uuid,size_t cuidx);
 
   virtual task::queue*
   getQueue(hal::queue_type qt)
@@ -221,32 +211,31 @@ public:
   virtual std::string
   getName() const
   {
-    return m_devinfo.mName;
+    return get_device_info()->mName;
   }
 
   virtual unsigned int
   getBankCount() const
   {
-    return m_devinfo.mDDRBankCount;
+    return get_device_info()->mDDRBankCount;
   }
 
   virtual size_t
   getDdrSize() const override
   {
-    return m_devinfo.mDDRSize;
+    return get_device_info()->mDDRSize;
   }
 
   virtual size_t
   getAlignment() const
   {
-    openOrError();
-    return m_devinfo.mDataAlignment;
+    return get_device_info()->mDataAlignment;
   }
 
   virtual range<const unsigned short*>
   getClockFrequencies() const
   {
-    return {m_devinfo.mOCLFrequency,m_devinfo.mOCLFrequency+4};
+    return {get_device_info()->mOCLFrequency,get_device_info()->mOCLFrequency+4};
   }
 
   virtual std::ostream&
@@ -255,47 +244,42 @@ public:
   virtual size_t
   get_cdma_count() const
   {
-    return m_devinfo.mNumCDMA;
+    return get_device_info()->mNumCDMA;
   }
 
-  virtual ExecBufferObjectHandle
+  virtual execbuffer_object_handle
   allocExecBuffer(size_t sz);
 
-  virtual BufferObjectHandle
-  alloc(size_t sz);
-
-  virtual BufferObjectHandle
-  alloc(size_t sz,void* userptr);
-
-  virtual BufferObjectHandle
+  virtual buffer_object_handle
   alloc(size_t sz, Domain domain, uint64_t memoryIndex, void* user_ptr);
 
-  virtual BufferObjectHandle
-  alloc(const BufferObjectHandle& bo, size_t sz, size_t offset);
+  virtual buffer_object_handle
+  alloc(const buffer_object_handle& bo, size_t sz, size_t offset);
+
+  buffer_object_handle
+  alloc_nodma(size_t sz, Domain domain, uint64_t memory_index, void* userptr);
 
   virtual void*
   alloc_svm(size_t sz);
-
-  virtual BufferObjectHandle
-  import(const BufferObjectHandle& bo);
-
-  virtual void
-  free(const BufferObjectHandle& bo);
 
   virtual void
   free_svm(void* svm_ptr);
 
   virtual event
-  write(const BufferObjectHandle& bo, const void* buffer, size_t sz, size_t offset,bool async);
+  write(const buffer_object_handle& bo, const void* buffer, size_t sz, size_t offset,bool async);
 
   virtual event
-  read(const BufferObjectHandle& bo, void* buffer, size_t sz, size_t offset,bool async);
+  read(const buffer_object_handle& bo, void* buffer, size_t sz, size_t offset,bool async);
 
   virtual event
-  sync(const BufferObjectHandle& bo, size_t sz, size_t offset, direction dir, bool async);
+  sync(const buffer_object_handle& bo, size_t sz, size_t offset, direction dir, bool async);
 
   virtual event
-  copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz, size_t dst_offset, size_t src_offset);
+  copy(const buffer_object_handle& dst_bo, const buffer_object_handle& src_bo, size_t sz, size_t dst_offset, size_t src_offset);
+
+  virtual void
+  fill_copy_pkt(const buffer_object_handle& dst_boh, const buffer_object_handle& src_boh
+                ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt);
 
   virtual size_t
   read_register(size_t offset, void* buffer, size_t size);
@@ -304,19 +288,19 @@ public:
   write_register(size_t offset, const void* buffer, size_t size);
 
   virtual void*
-  map(const BufferObjectHandle& bo);
+  map(const buffer_object_handle& bo);
 
   virtual void
-  unmap(const BufferObjectHandle& bo);
+  unmap(const buffer_object_handle& bo);
 
   virtual void*
-  map(const ExecBufferObjectHandle& bo);
+  map(const execbuffer_object_handle& bo);
 
   virtual void
-  unmap(const ExecBufferObjectHandle& bo);
+  unmap(const execbuffer_object_handle& bo);
 
   virtual int
-  exec_buf(const ExecBufferObjectHandle& bo);
+  exec_buf(const execbuffer_object_handle& bo);
 
   virtual int
   exec_wait(int timeout_ms) const;
@@ -339,61 +323,43 @@ public:
   freeStreamBuf(hal::StreamBufHandle buf);
 
   virtual ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* req);
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* req);
 
   virtual ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req);
-
-  virtual int 
-  pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
-
-public:
-  virtual uint64_t
-  getDeviceAddr(const BufferObjectHandle& boh);
+  readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* req);
 
   virtual int
-  getMemObjectFd(const BufferObjectHandle& boh);
+  pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
 
-  virtual BufferObjectHandle
+  virtual int
+  pollStream(hal::StreamHandle stream, hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
+
+  virtual int
+  setStreamOpt(hal::StreamHandle stream, int type, uint32_t val);
+
+public:
+  virtual bool
+  is_imported(const buffer_object_handle& boh) const;
+
+  virtual uint64_t
+  getDeviceAddr(const buffer_object_handle& boh);
+
+  virtual int
+  getMemObjectFd(const buffer_object_handle& boh);
+
+  virtual buffer_object_handle
   getBufferFromFd(const int fd, size_t& size, unsigned flags);
 
 public:
   virtual hal::operations_result<int>
-  lockDevice()
-  {
-    if (!m_ops->mLockDevice)
-      return hal::operations_result<int>();
-    return m_ops->mLockDevice(m_handle);
-  }
-
-  virtual hal::operations_result<int>
-  unlockDevice()
-  {
-    if (!m_ops->mUnlockDevice)
-      return hal::operations_result<int>();
-    return m_ops->mUnlockDevice(m_handle);
-  }
-
-  virtual hal::operations_result<int>
-  loadXclBin(const xclBin* xclbin)
-  {
-    if (!m_ops->mLoadXclBin)
-      return hal::operations_result<int>();
-
-    hal::operations_result<int> ret = m_ops->mLoadXclBin(m_handle,xclbin);
-    // refresh device info on successful load
-    if (!ret.get())
-      getDeviceInfo(&m_devinfo);
-
-    return ret;
-  }
+  loadXclBin(const xclBin* xclbin);
 
   virtual bool
   hasBankAlloc() const
   {
     // PCIe DSAs have device DDRs which allow bank allocation/selection
     // Zynq PL based devices set device id to 0xffff.
-    return (m_devinfo.mDeviceId != 0xffff);
+    return (get_device_info()->mDeviceId != 0xffff);
   }
 
   virtual hal::operations_result<ssize_t>
@@ -494,6 +460,32 @@ public:
   }
 
   virtual hal::operations_result<void>
+  xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+  {
+    if (!m_ops->mRead)
+      return hal::operations_result<void>();
+    m_ops->mRead(m_handle, space, offset, hostBuf, size);
+    return hal::operations_result<void>(0);
+  }
+
+  virtual hal::operations_result<void>
+  xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+  {
+    if (!m_ops->mWrite)
+      return hal::operations_result<void>();
+    m_ops->mWrite(m_handle, space, offset, hostBuf, size);
+    return hal::operations_result<void>(0);
+  }
+
+  virtual hal::operations_result<ssize_t>
+  xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+  {
+    if (!m_ops->mUnmgdPread)
+      return hal::operations_result<ssize_t>();
+    return m_ops->mUnmgdPread(m_handle, flags, buf, count, offset);
+  }
+
+  virtual hal::operations_result<void>
   setProfilingSlots(xclPerfMonType type, uint32_t slots)
   {
     if (!m_ops->mSetProfilingSlots)
@@ -520,12 +512,20 @@ public:
     return hal::operations_result<void>(0);
   }
 
-  virtual hal::operations_result<void>
-  writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
+  virtual hal::operations_result<uint32_t>
+  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
   {
-    if (!m_ops->mWriteHostEvent)
+    if (!m_ops->mGetProfilingSlotProperties)
+      return hal::operations_result<uint32_t>();
+    return m_ops->mGetProfilingSlotProperties(m_handle,type,slotnum);
+  }
+
+  virtual hal::operations_result<void>
+  configureDataflow(xclPerfMonType type, unsigned *ip_config)
+  {
+    if (!m_ops->mConfigureDataflow)
       return hal::operations_result<void>();
-    m_ops->mWriteHostEvent(m_handle,type,id);
+    m_ops->mConfigureDataflow(m_handle,type, ip_config);
     return hal::operations_result<void>(0);
   }
 
@@ -560,6 +560,95 @@ public:
       return hal::operations_result<size_t>();
     return m_ops->mStopTrace(m_handle,type);
   }
+
+  virtual void*
+  getHalDeviceHandle() {
+    return m_handle;
+  }
+
+  virtual hal::operations_result<uint32_t>
+  getNumLiveProcesses()
+  {
+    if(!m_ops->mGetNumLiveProcesses)
+      return hal::operations_result<uint32_t>();
+    return m_ops->mGetNumLiveProcesses(m_handle);
+  }
+
+  virtual hal::operations_result<std::string>
+  getSysfsPath(const std::string& subdev, const std::string& entry)
+  {
+    if (!m_ops->mGetSysfsPath)
+      return hal::operations_result<std::string>();
+    constexpr size_t max_path = 256;
+    char path_buf[max_path];
+    if (m_ops->mGetSysfsPath(m_handle, subdev.c_str(), entry.c_str(), path_buf, max_path)) {
+      return hal::operations_result<std::string>();
+    }
+    path_buf[max_path - 1] = '\0';
+    std::string sysfs_path = std::string(path_buf);
+    return sysfs_path;
+  }
+
+  virtual hal::operations_result<std::string>
+  getSubdevPath(const std::string& subdev, uint32_t idx)
+  {
+    if (!m_ops->mGetSubdevPath)
+      return hal::operations_result<std::string>();
+    constexpr size_t max_path = 256;
+    char path_buf[max_path];
+    if (m_ops->mGetSubdevPath(m_handle, subdev.c_str(), idx, path_buf, max_path)) {
+      return hal::operations_result<std::string>();
+    }
+    path_buf[max_path - 1] = '\0';
+    std::string path = std::string(path_buf);
+    return path;
+  }
+
+  virtual hal::operations_result<std::string>
+  getDebugIPlayoutPath()
+  {
+    if(!m_ops->mGetDebugIPlayoutPath)
+      return hal::operations_result<std::string>();
+
+    const size_t maxLen = 512;
+    char path[maxLen];
+    if(m_ops->mGetDebugIPlayoutPath(m_handle, path, maxLen)) {
+      return hal::operations_result<std::string>();
+    }
+    path[maxLen - 1] = '\0';
+    std::string pathStr(path);
+    return pathStr;
+  }
+
+  virtual hal::operations_result<int>
+  getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+  {
+    if(!m_ops->mGetTraceBufferInfo)
+      return hal::operations_result<int>();
+    return m_ops->mGetTraceBufferInfo(m_handle, nSamples, traceSamples, traceBufSz);
+  }
+
+  hal::operations_result<int>
+  readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+  {
+    if(!m_ops->mReadTraceData)
+      return hal::operations_result<int>();
+    return m_ops->mReadTraceData(m_handle, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
+  }
+
+  hal::operations_result<void>
+  getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+  {
+    if(!m_ops->mGetDebugIpLayout) {
+      return hal::operations_result<void>();
+    }
+    m_ops->mGetDebugIpLayout(m_handle, buffer, size, size_ret);
+    return hal::operations_result<void>(0);
+  }
+
+
+
+
 };
 
 }} // hal2,xrt

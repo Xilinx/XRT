@@ -1,0 +1,75 @@
+#!/bin/sh
+
+#
+# UBUNTU NOTE
+# -----------
+# 1. When downgrading (say from 2.3.0 to 2.2.0) then prerm of 2.3.0 is run
+#    followed by postinst of 2.2.0. The prerm is invoked with "upgrade 2.2.0"
+#    argument and postinst is invoked with "configure 2.3.0" argument.
+# 2. When upgrading (say from 2.2.0 to 2.3.0) then prerm of 2.2.0 is run
+#    followed by postinst of 2.3.0. The prerm is invoked with "upgrade 2.3.0"
+#    argument and postinst is invoked with "configure 2.2.0" argument.
+# 3. When re-installing (say from 2.2.0 to 2.2.0) then prerm of 2.2.0 is run
+#    followed by postinst of 2.2.0. The prerm is invoked with "upgrade 2.2.0"
+#    argument and postinst is invoked with "configure 2.2.0" argument.
+#
+# RHEL/CentOS NOTE
+# ----------------
+# 1. When downgrading (say from 2.3.0 to 2.2.0) then oddly postinst of 2.2.0
+#    is run first followed by prerm of 2.3.0. The postinst is invoked with
+#    "2" and prerm is invoked with "1".
+# 2. When upgrading (say from 2.2.0 to 2.3.0) then prerm of 2.2.0 is NOT run
+#    but postinst of 2.3.0 is run. The postinst is invoked with "2" argument.
+# 3. When re-installing (say from 2.2.0 to 2.2.0) then prerm is NOT run but
+#    and postinst of 2.2.0 is run. The postinst is invoked with "2" argument.
+
+rmmodules()
+{
+    find /lib/modules -type f -name zocl.ko -delete
+    find /lib/modules -type f -name zocl.ko.kz -delete
+    find /lib/modules -type f -name zocl.ko.xz -delete
+    depmod -A
+}
+
+installdir=/usr
+systemddir=/etc/systemd/system
+
+echo "Unloading old XRT Linux kernel modules"
+rmmod zocl
+XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
+for OLD in $XRT_VERSION_STRING_OLD; do
+    echo "Unregistering old XRT Linux kernel module sources $OLD from dkms"
+    dkms remove -m xrt -v $OLD --all
+    break
+done
+rmmodules
+
+echo "Invoking DKMS common.postinst for xrt"
+/usr/lib/dkms/common.postinst xrt @XRT_VERSION_STRING@ "" "" $2
+if [ $? -eq 0 ]; then
+    echo "Finished DKMS common.postinst"
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/zocl/10-zocl.rules /etc/udev/rules.d
+
+    echo "Loading new XRT Linux kernel modules"
+    udevadm control --reload-rules
+    modprobe zocl
+    udevadm trigger
+fi
+
+if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@ |grep installed`" ]; then
+    echo "****************************************************************"
+    echo "* DKMS failed to install XRT drivers."
+    echo "* Please check if kernel development headers are installed for OS variant used."
+    echo "* "
+    echo "* Check build logs in /var/lib/dkms/xrt/@XRT_VERSION_STRING@"
+    echo "****************************************************************"
+fi
+
+if [ ! -e /etc/OpenCL/vendors/xilinx.icd ]; then
+    echo "INFO: Creating ICD entry for Xilinx Platform"
+    mkdir -p /etc/OpenCL/vendors
+    echo "libxilinxopencl.so" > /etc/OpenCL/vendors/xilinx.icd
+    chmod -R 755 /etc/OpenCL
+fi
+
+exit 0

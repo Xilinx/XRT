@@ -16,7 +16,17 @@
 #ifndef xocl_api_icd_ocl_icd_bindings_h_
 #define xocl_api_icd_ocl_icd_bindings_h_
 
-#include <ocl_icd.h>
+#ifndef CL_TARGET_OPENCL_VERSION
+# define CL_TARGET_OPENCL_VERSION 200
+#endif
+
+#ifdef _WIN32
+# define NOMINMAX
+# include "windows/icd_dispatch.h"
+using _cl_icd_dispatch = KHRicdVendorDispatchRec;
+#else
+# include <ocl_icd.h>
+#endif
 extern const _cl_icd_dispatch cl_icd_dispatch;
 
 #endif

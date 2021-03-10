@@ -1,0 +1,398 @@
+/**
+ * Copyright (C) 2016-2018 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+syntax = "proto2";
+
+message call_packet_info {
+    required fixed64 size = 1;
+    optional fixed32 xcl_api = 2;
+}
+message response_packet_info {
+    required fixed64 size = 1;
+    optional fixed32 xcl_api = 2;
+}
+
+//setenvironment
+message xclSetEnvironment_call {
+  message namevaluepair{
+       optional string name = 1;
+       optional string value = 2;
+  }
+  repeated namevaluepair environment = 3;
+}
+
+message xclSetEnvironment_response {
+     optional bool ack = 1;
+}
+
+//---------------------------------------------
+//xclLoadBitstream
+
+message xclLoadBitstream_call {
+  required bytes xmlfile = 1;
+  required bytes dlopenfilename = 2;
+  required bytes devicename = 3 ;
+  required bytes devicedirectory = 4 ;
+  required bytes binarydirectory = 5 ;
+  required bool verbose = 6;
+  message ddrbank {
+    optional uint64 size = 7;
+  }
+  repeated ddrbank ddrbanks = 8;
+}
+
+message xclLoadBitstream_response {
+     required bool ack = 1;
+}
+
+//xclAllocDeviceBuffer
+message xclAllocDeviceBuffer_call {
+     required uint64 ddraddress = 1;
+     required uint64 size = 2;
+     optional bool peertopeer = 3;
+}
+
+message xclAllocDeviceBuffer_response {
+     required bool ack = 1;
+     optional string filename = 2;
+}
+
+//xclFreeDeviceBuffer
+message xclFreeDeviceBuffer_call {
+     required uint64 ddraddress = 1;
+}
+
+message xclFreeDeviceBuffer_response {
+     required bool ack = 1;
+}
+
+//---------------------------------------------
+//xclClose
+message xclClose_call {
+     optional bytes xclDeviceHandle = 2;
+     optional bool closeall = 3;
+}
+
+message xclClose_response {
+     required bool valid = 1;
+}
+//---------------------------------------------
+//xclCopyBufferHost2Device
+message xclCopyBufferHost2Device_call {
+     required bytes xclDeviceHandle = 2;
+     required uint64 dest = 3;
+     required bytes src = 4;
+     required uint64 size = 5;
+     required uint64 seek = 6;
+     optional uint32 space = 7;
+}
+
+message xclCopyBufferHost2Device_response {
+     required uint64 size = 1;
+}
+//---------------------------------------------
+//xclCopyBufferDevice2Host
+message xclCopyBufferDevice2Host_call {
+     required bytes xclDeviceHandle = 2;
+     required bytes dest = 3;
+     required uint64 src = 4;
+     required uint64 size = 5;
+     required uint64 skip = 6;
+     optional uint32 space = 7;
+}
+
+message xclCopyBufferDevice2Host_response {
+     required uint64 size = 1;
+     required bytes dest = 2;
+}
+//---------------------------------------------
+//xclWriteAddrSpaceDeviceRam
+message xclWriteAddrSpaceDeviceRam_call {
+     //required bytes xcl_api = 1;
+     required uint64 addr = 2;
+     required uint32 size = 3;
+     required bytes data = 4;
+}
+
+message xclWriteAddrSpaceDeviceRam_response {
+     required bool valid = 1;
+}
+
+//xclWriteAddrKernelCtrl
+message xclWriteAddrKernelCtrl_call {
+     //required bytes xcl_api = 1;
+     required uint64 addr = 2;
+     required uint32 size = 3;
+     required bytes data = 4;
+     message kernelInfo {
+       optional uint64 addr = 1;
+       optional uint32 size = 2;
+       optional string name = 3;
+     }
+     repeated kernelInfo kernel_info = 5;
+}
+
+message xclWriteAddrKernelCtrl_response {
+     required bool valid = 1;
+}
+//---------------------------------------------
+//xclReadAddrSpaceDeviceRam
+message xclReadAddrSpaceDeviceRam_call {
+     //required bytes xcl_api = 1;
+     required uint64 addr = 2;
+     required uint32 size = 3;
+     optional bytes data = 4;
+}
+
+message xclReadAddrSpaceDeviceRam_response {
+     required bool valid = 1;
+     optional bytes data = 2;
+}
+//xclReadAddrKernelCtrl
+message xclReadAddrKernelCtrl_call {
+     //required bytes xcl_api = 1;
+     required uint64 addr = 2;
+     required uint32 size = 3;
+     optional bytes data = 4;
+}
+
+message xclReadAddrKernelCtrl_response {
+     required bool valid = 1;
+     optional bytes data = 2;
+}
+
+//---------------------------------------------
+//xclPerfMonReadCounters
+message xclPerfMonReadCounters_call {
+     required string slotname = 1;
+     optional bool accel = 2;
+}
+
+message xclPerfMonReadCounters_response {
+     optional uint32 wr_byte_count = 1;
+     optional uint32 wr_trans_count = 2;
+     optional uint32 total_wr_latency = 3;
+     optional uint32 rd_byte_count = 4;
+     optional uint32 rd_trans_count = 5;
+     optional uint32 total_rd_latency = 6;
+}
+
+//------------------Trace--------------
+//xclPerfMonGetTraceCount
+message xclPerfMonGetTraceCount_call {
+     optional bool ack = 1;
+     optional string slotname = 2;
+     optional bool accel = 3;
+}
+
+message xclPerfMonGetTraceCount_response {
+     optional uint32 no_of_samples = 1;
+}
+
+//---------------------------------------------
+//xclPerfMonReadTrace
+message xclPerfMonReadTrace_call {
+     optional bool ack = 1;
+     optional string slotname = 2;
+     optional bool accel = 3;
+}
+
+message xclPerfMonReadTrace_response {
+   message events {
+       optional uint32 awlen = 1;
+       optional uint32 arlen = 2;
+       optional uint32 eventflags = 3;
+       optional uint32 timestamp = 4;
+       optional uint64 host_timestamp = 5;
+       optional uint32 rd_bytes = 6;
+       optional uint32 wr_bytes = 7;
+    }
+     repeated events output_data = 8;
+}
+
+//DDR Serializing
+message ddr_mem_msg {
+  required bytes data = 1;
+  optional uint64 size = 2;
+  optional bytes strb_data = 3;
+  optional uint64 fullsize = 4;
+}
+
+//xclGetDeviceTimestamp
+message xclGetDeviceTimestamp_call {
+     optional bool ack = 1;
+}
+
+message xclGetDeviceTimestamp_response {
+     required uint64 device_timestamp = 1;
+}
+
+message xclReadBusStatus_call {
+     optional int32 slot_n = 1;
+}
+
+message xclReadBusStatus_response {
+     optional uint64 uncomplete_rd_cycles = 1;
+     optional uint64 uncomplete_wr_cycles = 2;
+     optional uint64 idle_bus_cycles = 3;
+     optional uint64 uncomplete_rd_id = 4;
+     optional uint64 uncomplete_wr_id = 5;
+}
+
+message xclGetDebugMessages_call {
+  optional bool ack = 1;
+  optional bool force = 2;
+}
+
+message xclGetDebugMessages_response {
+     optional bytes display_msgs = 1;
+     optional bytes log_msgs = 2;
+     optional bytes stop_msgs = 3;
+}
+//P2P support
+// xclImportBO
+message xclImportBO_call {
+  optional string dst_filename = 1;
+  optional uint64 offset = 2;
+  optional uint64 size = 3;
+}
+
+message xclImportBO_response {
+  optional bool ack = 1;
+}
+
+// xclCopyBO
+message xclCopyBO_call {
+  optional uint64 src_handle = 1;
+  optional string dst_filename = 2;
+  optional uint64 size = 3;
+  optional uint64 src_offset = 4;
+  optional uint64 dst_offset = 5;
+}
+
+message xclCopyBO_response {
+  optional bool ack = 1;
+}
+
+//QDMA SUPPORT
+// xclCreateQueue
+message xclCreateQueue_call {
+  optional bool   write     = 1;
+  optional uint32	type      = 2;
+	optional uint32	state     = 3;
+	optional uint32	route     = 4;
+  optional uint64 flow      = 5;
+  optional uint32 qsize     = 6;
+  optional uint32 desc_size = 7;
+  optional uint64 flags     = 8;
+}
+
+message xclCreateQueue_response {
+  optional uint64 q_handle = 1;
+}
+
+// xclWriteQueue
+message xclWriteQueue_call {
+  optional uint64 q_handle = 1;
+  optional bytes src = 2;
+  optional uint64 size = 3;
+  optional uint64 req = 4;
+  optional bool nonblocking = 5;
+  optional bool eot = 6;
+}
+
+message xclWriteQueue_response {
+  optional uint64 written_size = 1;
+}
+
+// xclReadQueue
+message xclReadQueue_call {
+  optional uint64 q_handle = 1;
+  optional bytes dest = 2;
+  optional uint64 size = 3;
+  optional uint64 req = 4;
+  optional bool nonblocking = 5;
+  optional bool eot = 6;
+}
+
+message xclReadQueue_response {
+  optional bytes dest = 1;
+  optional uint64 size = 2;
+}
+
+// xclPollCompletion
+message xclPollCompletion_call {
+  optional uint64 req = 1;
+}
+
+message xclPollCompletion_response {
+  message request {
+    optional bytes dest = 1;
+    optional uint64 size = 2;
+  }
+  repeated request fullrequest = 3 ;
+}
+
+// xclDestroyQueue
+message xclDestroyQueue_call {
+  optional uint64 q_handle =1;
+}
+
+message xclDestroyQueue_response {
+  optional bool success =1;
+}
+
+//instanceArgNumToFlowId
+message xclSetupInstance_call {
+  optional uint64 route = 1 ;
+  message argflowpair {
+       optional uint64 arg = 2;
+       optional uint64 flow = 3;
+       optional string tag = 4;
+  }
+  repeated argflowpair setup = 5;
+}
+
+message xclSetupInstance_response {
+  optional bool success =1;
+}
+
+//messages for SSPM IP
+message xclPerfMonReadCounters_Streaming_call {
+  required string slotname = 1;
+}
+
+message xclPerfMonReadCounters_Streaming_response {
+  optional uint64 str_num_tranx = 7;
+  optional uint64 str_data_bytes = 8;
+  optional uint64 str_busy_cycles = 9;
+  optional uint64 str_stall_cycles = 10;
+  optional uint64 str_starve_cycles = 11;
+}
+
+message xclPerfMonReadTrace_Streaming_call {
+  optional bool ack = 1;
+  optional string slotname = 2;
+}
+
+message xclPerfMonReadTrace_Streaming_response {
+  message events {
+       optional uint32 eventflags = 3;
+       optional uint32 timestamp = 4;
+       optional uint64 host_timestamp = 5;
+  }
+  repeated events output_data = 8;
+}

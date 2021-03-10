@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/command_queue.h"
@@ -25,9 +25,45 @@
 #include "detail/command_queue.h"
 #include "detail/memory.h"
 #include "detail/event.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
+
+inline size_t
+origin_in_bytes(const size_t* origin,
+                size_t        row_pitch,
+                size_t        slice_pitch)
+{
+  return origin[2] * slice_pitch
+       + origin[1] * row_pitch
+       + origin[0];
+}
+
+static void
+setIfZero(size_t& src_row_pitch,
+          size_t& src_slice_pitch,
+          size_t& dst_row_pitch,
+          size_t& dst_slice_pitch,
+          const size_t* region)
+{
+  // If src_row_pitch is 0, src_row_pitch is computed as region[0].
+  if (!src_row_pitch)
+    src_row_pitch = region[0];
+
+  // If src_slice_pitch is 0, src_slice_pitch is computed as region[1]
+  // * src_row_pitch.
+  if (!src_slice_pitch)
+    src_slice_pitch = region[1]*src_row_pitch;
+
+  // If dst_row_pitch is 0, dst_row_pitch is computed as region[0].
+  if (!dst_row_pitch)
+    dst_row_pitch = region[0];
+
+  // If dst_slice_pitch is 0, dst_slice_pitch is computed as region[1]
+  // * dst_row_pitch.
+  if (!dst_slice_pitch)
+    dst_slice_pitch = region[1]*dst_row_pitch;
+}
 
 static void
 validOrError(cl_command_queue     command_queue ,
@@ -80,19 +116,19 @@ clEnqueueReadBufferRect(cl_command_queue     command_queue ,
                          const cl_event *     event_wait_list ,
                          cl_event *           event )
 {
+  setIfZero(buffer_row_pitch,buffer_slice_pitch,host_row_pitch,host_slice_pitch,region);
+
   validOrError(command_queue,buffer,blocking
                ,buffer_origin,host_origin,region
                ,buffer_row_pitch,buffer_slice_pitch,host_row_pitch,host_slice_pitch
                ,ptr,num_events_in_wait_list ,event_wait_list,event);
 
-  size_t buffer_origin_in_bytes = 
-    buffer_origin[2]*buffer_slice_pitch+
-    buffer_origin[1]*buffer_row_pitch+
-    buffer_origin[0];
-  size_t host_origin_in_bytes = 
-    host_origin[2]*host_slice_pitch+
-    host_origin[1]*host_row_pitch+
-    host_origin[0];
+  size_t buffer_origin_in_bytes = origin_in_bytes(buffer_origin,
+                                                  buffer_row_pitch,
+                                                  buffer_slice_pitch);
+
+  size_t host_origin_in_bytes = origin_in_bytes(host_origin,host_row_pitch,
+                                                host_slice_pitch);
 
   //allocate and aggregate event
   if(event) {
@@ -111,7 +147,7 @@ clEnqueueReadBufferRect(cl_command_queue     command_queue ,
 
   // Now the event is running, this should be hard_event and handle asynchronously
   auto device = xocl::xocl(command_queue)->get_device();
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
   auto boh = xocl::xocl(buffer)->get_buffer_object_or_error(device);
   void* host_ptr = xdevice->map(boh);
   
@@ -159,13 +195,14 @@ clEnqueueReadBufferRect(cl_command_queue     command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueReadBufferRect
       (command_queue,buffer,blocking,buffer_origin,host_origin,region
        ,buffer_row_pitch,buffer_slice_pitch
        ,host_row_pitch,host_slice_pitch
        ,ptr,num_events_in_wait_list,event_wait_list,event);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get_code();
   }

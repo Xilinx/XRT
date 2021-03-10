@@ -24,7 +24,7 @@ static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xcl
 	return -1;
     }
 
-    std::cout << "DSA = " << deviceInfo.mName << "\n";
+    std::cout << "Shell = " << deviceInfo.mName << "\n";
     std::cout << "Index = " << deviceIndex << "\n";
     std::cout << "PCIe = GEN" << deviceInfo.mPCIeLinkSpeed << " x " << deviceInfo.mPCIeLinkWidth << "\n";
     std::cout << "OCL Frequency = " << deviceInfo.mOCLFrequency[0] << " MHz" << "\n";

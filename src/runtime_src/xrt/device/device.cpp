@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,16 +13,16 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #include "device.h"
 
 #include "xrt/util/task.h"
 #include "xrt/util/event.h"
+#include "xrt/scheduler/command.h"
 
 #include <future>
 #include <cstring> // for std::memset
 
-namespace xrt {
+namespace xrt_xocl {
 
 std::ostream&
 device::
@@ -31,6 +31,12 @@ printDeviceInfo(std::ostream& ostr) const
   return m_hal->printDeviceInfo(ostr);
 }
 
+void
+device::
+close()
+{
+  purge_device_command_freelist(this); // command.h
+  m_hal->close();
+}
+
 } // xrt
-
-

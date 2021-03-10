@@ -21,7 +21,7 @@
 #include "xocl/core/error.h"
 #include "detail/kernel.h"
 #include "api.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
@@ -52,13 +52,13 @@ validOrError(cl_kernel                 kernel,
   // kernel.
   if(param_name==CL_KERNEL_GLOBAL_WORK_SIZE &&
      (device && getDeviceType(device)!=CL_DEVICE_TYPE_CUSTOM) &&
-     (kernel && !xocl(kernel)->is_built_in())
+     (!xocl(kernel)->is_built_in())
     )
-    throw error(CL_INVALID_VALUE);
-  
+    throw error(CL_INVALID_VALUE, "CL_KERNEL_GLOBAL_WORK_SIZE is not valid for device and kernel");
+
 }
 
-static cl_int 
+static cl_int
 clGetKernelWorkGroupInfo(cl_kernel                 kernel,
                          cl_device_id              device,
                          cl_kernel_work_group_info param_name,
@@ -72,7 +72,7 @@ clGetKernelWorkGroupInfo(cl_kernel                 kernel,
 
   switch(param_name) {
   case CL_KERNEL_GLOBAL_WORK_SIZE:
-    throw error(-20,"Not implemented");
+    throw error(CL_XILINX_UNIMPLEMENTED,"Not implemented");
     break;
   case CL_KERNEL_WORK_GROUP_SIZE:
     buffer.as<size_t>() = xocl::xocl(kernel)->get_wg_size();
@@ -84,13 +84,13 @@ clGetKernelWorkGroupInfo(cl_kernel                 kernel,
     buffer.as<cl_ulong>() = 0;
     break;
   case CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE:
-    throw error(-20,"Not implemented");
+    throw error(CL_XILINX_UNIMPLEMENTED,"Not implemented");
     break;
   case CL_KERNEL_PRIVATE_MEM_SIZE:
     buffer.as<cl_ulong>() = 0;
     break;
   default:
-    throw error(CL_INVALID_VALUE);
+    throw error(CL_INVALID_VALUE, "Invalid param_name");
     break;
   }
 
@@ -110,6 +110,7 @@ clGetKernelWorkGroupInfo(cl_kernel                 kernel,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::
       clGetKernelWorkGroupInfo
       (kernel, device, param_name, param_value_size, param_value, param_value_size_ret);
@@ -123,5 +124,3 @@ clGetKernelWorkGroupInfo(cl_kernel                 kernel,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

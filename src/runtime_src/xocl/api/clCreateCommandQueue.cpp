@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,19 +14,17 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/core/command_queue.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "xocl/core/error.h"
-#include "xrt/util/memory.h"
 #include "detail/context.h"
 #include "detail/device.h"
 #include "detail/command_queue.h"
 
-#include "plugin/xdp/profile.h"
-
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
@@ -53,7 +51,7 @@ clCreateCommandQueue(cl_context                  context,
   validOrError(context,device,properties);
 
   auto command_queue =
-    xrt::make_unique<xocl::command_queue>(xocl::xocl(context), xocl::xocl(device), properties);
+    std::make_unique<xocl::command_queue>(xocl::xocl(context), xocl::xocl(device), properties);
   xocl::assign(errcode_ret,CL_SUCCESS);
   return command_queue.release();
 }
@@ -69,10 +67,11 @@ clCreateCommandQueue(cl_context                  context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateCommandQueue
       (context, device, properties, errcode_ret);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     if (errcode_ret)
       *errcode_ret = ex.get();

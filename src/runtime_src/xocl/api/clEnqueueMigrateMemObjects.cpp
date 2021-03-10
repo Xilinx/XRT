@@ -16,15 +16,14 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/event.h"
-
 #include "enqueue.h"
 #include "detail/event.h"
 #include "detail/memory.h"
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -60,8 +59,8 @@ validOrError(cl_command_queue        command_queue ,
     throw error(CL_INVALID_VALUE,"No mem objects specified");
 
   // CL_INVALID_MEM_OBJECT if any of the memory objects in mem_objs is
-  // not a valid memory object.
-  detail::memory::validOrError({mem_objects,mem_objects+num_mem_objects});
+  // not a valid memory object for migration.
+  detail::memory::validOrErrorWithHostBuffer({mem_objects,mem_objects+num_mem_objects});
 
   // CL_INVALID_VALUE if flags is not 0 or is not any of the values
   // described in the table above.
@@ -95,8 +94,9 @@ clEnqueueMigrateMemObjects(cl_command_queue        command_queue ,
     (command_queue,CL_COMMAND_MIGRATE_MEM_OBJECTS,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_migrate_memobjects,num_mem_objects,mem_objects,flags);
-  xocl::profile::set_event_action
-    (uevent.get(),xocl::profile::action_migrate,num_mem_objects,mem_objects,flags);
+  xocl::profile::set_event_action(uevent.get(), xocl::profile::action_migrate, num_mem_objects > 0 ? mem_objects[0] : nullptr, flags);
+  xocl::profile::counters::set_event_action(uevent.get(), xocl::profile::counter_action_migrate, num_mem_objects, mem_objects, flags) ;
+  xocl::lop::set_event_action(uevent.get(), xocl::lop::action_migrate, flags);
   xocl::appdebug::set_event_action
     (uevent.get(),xocl::appdebug::action_migrate,num_mem_objects,mem_objects,flags);
 
@@ -118,6 +118,7 @@ clEnqueueMigrateMemObjects(cl_command_queue        command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueMigrateMemObjects
       (command_queue,num_mem_objects,mem_objects,flags,num_events_in_wait_list,event_wait_list,event_parameter);
   }
@@ -130,5 +131,3 @@ clEnqueueMigrateMemObjects(cl_command_queue        command_queue ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

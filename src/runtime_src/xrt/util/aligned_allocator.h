@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,12 +21,14 @@
 #include <cstdlib>
 #include <new>
 
-namespace xrt {
+#include "core/common/memalign.h"
+
+namespace xrt_xocl {
 
 /**
  * Aligned allocator for use with std containers
  *
- * std::vector<int,xrt::aligned_allocator<int,4096>> vec;
+ * std::vector<int,xrt_xocl::aligned_allocator<int,4096>> vec;
  * auto data = vec.data();
  * assert((data % 4096)==0);
  */
@@ -49,7 +51,7 @@ struct aligned_allocator
   T* allocate(std::size_t num)
   {
     void* ptr = nullptr;
-    if (posix_memalign(&ptr,Align,num*sizeof(T)))
+    if (xrt_core::posix_memalign(&ptr,Align,num*sizeof(T)))
       throw std::bad_alloc();
     return reinterpret_cast<T*>(ptr);
   }

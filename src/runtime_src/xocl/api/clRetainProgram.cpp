@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,14 +14,12 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 #include "xocl/config.h"
 #include "xocl/core/program.h"
 #include "detail/program.h"
-
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -49,9 +47,10 @@ clRetainProgram(cl_program program)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clRetainProgram(program);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get_code();
   }
@@ -60,5 +59,3 @@ clRetainProgram(cl_program program)
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,7 @@
  * under the License.
  */
 
-//Copyright 2017 Xilinx, Inc. All rights reserved.
+//Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/object.h"
@@ -25,7 +25,7 @@
 #include "enqueue.h"
 #include <iostream>
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
@@ -108,12 +108,13 @@ clEnqueueSVMMap(cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::
       clEnqueueSVMMap
       (command_queue,blocking_map,map_flags,svm_ptr,size,
        num_events_in_wait_list,event_wait_list, event);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get_code();
   }

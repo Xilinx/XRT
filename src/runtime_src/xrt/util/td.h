@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,7 +18,7 @@
 #define xrt_util_td_h_
 
 // Debug type deducer
-namespace xrt { namespace td {
+namespace xrt_xocl { namespace td {
 
 template <typename T>
 struct TD;

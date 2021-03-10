@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,13 +20,20 @@
 #include "xocl/core/object.h"
 #include "xocl/core/refcount.h"
 #include "xocl/core/property.h"
-
 #include "xocl/xclbin/xclbin.h"
-
 #include "xrt/device/device.h"
 
-#include <unistd.h>
+#include "core/common/memalign.h"
+#include "core/common/unistd.h"
+#include "core/common/api/bo.h"
+#include "core/include/experimental/xrt_bo.h"
+
 #include <map>
+
+#ifdef _WIN32
+#pragma warning( push )
+#pragma warning ( disable : 4245 )
+#endif
 
 namespace xocl {
 
@@ -37,10 +44,11 @@ class memory : public refcount, public _cl_mem
   using memory_flags_type  = property_object<cl_mem_flags>;
   using memory_extension_flags_type = property_object<unsigned int>;
   using memidx_bitmask_type = xclbin::memidx_bitmask_type;
+  using connidx_type = xclbin::connidx_type;
+  using memidx_type = xclbin::memidx_type;
 
 protected:
-  using buffer_object_handle = xrt::device::BufferObjectHandle;
-  using pipe_property_type = property_object<cl_pipe_attributes>;
+  using buffer_object_handle = xrt_xocl::device::buffer_object_handle;
   using buffer_object_map_type = std::map<const device*,buffer_object_handle>;
   using bomap_type = std::map<const device*,buffer_object_handle>;
   using bomap_value_type = bomap_type::value_type;
@@ -76,22 +84,39 @@ public:
     return m_ext_flags;
   }
 
-  const memory_extension_flags_type
-  add_ext_flags(memory_extension_flags_type flags)
+  void
+  set_ext_flags(memory_extension_flags_type flags)
   {
-    return m_ext_flags |= flags;
+    m_ext_flags = flags;
   }
+
+  /**
+   * @return
+   *  The memory bank index used by this buffer, or -1 if unassigned.
+   */
+  memidx_type
+  get_memidx() const
+  {
+    return m_memidx;
+  }
+
+  memidx_type
+  get_ext_memidx(const xclbin& xclbin) const;
+
+  /**
+   * Record that this buffer is used as argument to kernel at argidx
+   *
+   * @return
+   *   true if the {kernel,argidx} was not previously recorded,
+   *   false otherwise
+   */
+  bool
+  set_kernel_argidx(const kernel* kernel, unsigned int argidx);
 
   void
-  add_ext_kernel(const kernel* kernel)
+  set_ext_kernel(const kernel* kernel)
   {
     m_ext_kernel = kernel;
-  }
-
-  const kernel*
-  get_ext_kernel()
-  {
-    return m_ext_kernel;
   }
 
   context*
@@ -106,6 +131,30 @@ public:
     return get_sub_buffer_parent() != nullptr;
   }
 
+  bool
+  is_device_memory_only() const
+  {
+    return m_flags & CL_MEM_HOST_NO_ACCESS;
+  }
+
+  bool
+  is_device_memory_only_p2p() const
+  {
+    return m_ext_flags & XCL_MEM_EXT_P2P_BUFFER;
+  }
+
+  bool
+  is_host_only() const
+  {
+    return m_ext_flags & XCL_MEM_EXT_HOST_ONLY;
+  }
+
+  bool
+  no_host_memory() const
+  {
+    return is_device_memory_only() || is_device_memory_only_p2p();
+  }
+
   // Derived classes accessors
   // May be structured differently when _xcl_mem is eliminated
   virtual size_t
@@ -114,26 +163,6 @@ public:
     throw std::runtime_error("get_size on bad object");
   }
 
-  /**
-   * Get set of memory indicies where this memory object is allocated
-   *
-   * @param device
-   *   Device to check allocation on
-   * @return bitmask identifying matching memory, or 0 if not
-   *   allocated on device.
-   */
-  virtual memidx_bitmask_type
-  get_memidx(const device* d) const;
-
-  /**
-   * Get memory index of DDR bank where this memory object is allocated
-   * if owning context has one device only.
-   *
-   * @return bitmask identifying matching memory banks, or 0 if not
-   *   allocated on device or there are multiple devices in context.
-   */
-  virtual memidx_bitmask_type
-  get_memidx() const;
 
   /**
    * Get the address and DDR bank where this memory object is allocated
@@ -154,6 +183,18 @@ public:
   is_aligned() const
   {
     throw std::runtime_error("is_aligned called on bad object");
+  }
+
+  virtual bool
+  need_extra_sync() const
+  {
+    throw std::runtime_error("need_extra_sync called on bad object");
+  }
+
+  virtual void
+  set_extra_sync()
+  {
+    throw std::runtime_error("set_extra_sync called on bad object");
   }
 
   virtual cl_mem_object_type
@@ -232,18 +273,6 @@ public:
     throw std::runtime_error("set_image_slice_pitch called on bad object");
   }
 
-  virtual void*
-  get_pipe_host_ptr() const
-  {
-    throw std::runtime_error("get_pipe_host_ptr called on bad object");
-  }
-
-  virtual const pipe_property_type
-  get_pipe_properties() const
-  {
-    throw std::runtime_error("get_pipe_properties called on bad object");
-  }
-
   virtual cl_uint
   get_pipe_packet_size() const
   {
@@ -282,7 +311,7 @@ public:
    *   true or throws runtime error
    */
   virtual void
-  update_buffer_object_map(device* device, buffer_object_handle boh);
+  update_buffer_object_map(const device* device, buffer_object_handle boh);
 
 
   /**
@@ -294,21 +323,20 @@ public:
    *
    * @param device
    *   The device object that creates the buffer object
+   * @param subidx
+   *   The memory bank index required by sub-buffer
    * @return
    *   The buffer object
+   *
+   * The sub-buffer index is used when allocation of this boh is
+   * originating from a sub-buffer allocation.  It means that the
+   * sub-buffer is used as a kernel argument with the 'subidx'
+   * conectitivy.  The parent buffer is the one that is physically
+   * allocated and it must be allocated in the bank indicated by 
+   * the sub buffer.
    */
   virtual buffer_object_handle
-  get_buffer_object(device* device);
-
-  /**
-   * Get or create the device buffer object for kernel and argument
-   *
-   * This function requires that the context in which the buffer is
-   * created has exactly one device.  CUs memory connection must
-   * match for all CUs associated with argument kernel.
-   */
-  buffer_object_handle
-  get_buffer_object(kernel* kernel, unsigned long argidx);
+  get_buffer_object(device* device, memidx_type subidx=-1);
 
   /**
    * Get the buffer object on argument device or error out if none
@@ -358,14 +386,6 @@ public:
    */
   buffer_object_handle
   try_get_buffer_object_or_error(const device* device) const;
-
-  /**
-   * Get buffer object or create with arguments.
-   *
-   * Used for progvar memory objects exclusively.
-   */
-  virtual buffer_object_handle
-  get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memoryIndex);
 
   /**
    * Check if buffer is resident on any device
@@ -434,14 +454,28 @@ public:
    *
    * Callbacks are called in arbitrary order
    */
-  static void register_constructor_callbacks(memory_callback_type&& aCallback);
+  XRT_XOCL_EXPORT
+  static void
+  register_constructor_callbacks(memory_callback_type&& aCallback);
 
   /**
    * Register callback function for memory destruction
    *
    * Callbacks are called in arbitrary order
    */
-  static void register_destructor_callbacks(memory_callback_type&& aCallback);
+  XRT_XOCL_EXPORT
+  static void
+  register_destructor_callbacks(memory_callback_type&& aCallback);
+
+private:
+  memidx_type
+  get_memidx_nolock(const device* d, memidx_type subidx=-1) const;
+
+  memidx_type
+  get_ext_memidx_nolock(const xclbin& xclbin) const;
+
+  memidx_type
+  update_memidx_nolock(const device* device, const buffer_object_handle& boh);
 
 private:
   unsigned int m_uid = 0;
@@ -453,6 +487,13 @@ private:
   memory_extension_flags_type m_ext_flags {0};
   const kernel* m_ext_kernel {nullptr};
 
+  // Record that this buffer is used as argument to kernel,argidx
+  std::vector<std::pair<const kernel*,unsigned int>> m_karg;
+
+  // Assigned memory bank index for this object.  Affects behavior of
+  // device side buffer allocation.
+  mutable memidx_type m_memidx = -1;
+
   // List of dtor callback functions. On heap to avoid
   // allocation unless needed.
   std::unique_ptr<std::vector<std::function<void()>>> m_dtor_notify;
@@ -460,6 +501,7 @@ private:
   mutable std::mutex m_boh_mutex;
   bomap_type m_bomap;
   std::vector<const device*> m_resident;
+  connidx_type m_connidx = -1;
 };
 
 class buffer : public memory
@@ -469,13 +511,13 @@ public:
     : memory(ctx,flags) ,m_size(sz), m_host_ptr(host_ptr)
   {
     // device is unknown so alignment requirement has to be hardwired
-    const size_t alignment = getpagesize();
+    const size_t alignment = xrt_core::bo::alignment();
 
     if (flags & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))
       // allocate sufficiently aligned memory and reassign m_host_ptr
-      if (posix_memalign(&m_host_ptr,alignment,sz))
-        throw error(CL_MEM_OBJECT_ALLOCATION_FAILURE);
-    if (flags & CL_MEM_COPY_HOST_PTR)
+      if (xrt_core::posix_memalign(&m_host_ptr,alignment,sz))
+        throw error(CL_MEM_OBJECT_ALLOCATION_FAILURE,"Could not allocate host ptr");
+    if (flags & CL_MEM_COPY_HOST_PTR && host_ptr)
       std::memcpy(m_host_ptr,host_ptr,sz);
 
     m_aligned = (reinterpret_cast<uintptr_t>(m_host_ptr) % alignment)==0;
@@ -511,7 +553,20 @@ public:
     return m_size;
   }
 
+  virtual void
+  set_extra_sync()
+  {
+    m_extra_sync = true;
+  }
+
+  virtual bool
+  need_extra_sync() const
+  {
+    return m_extra_sync;
+  }
+
 private:
+  bool m_extra_sync = false;
   bool m_aligned = false;
   size_t m_size = 0;
   void* m_host_ptr = nullptr;
@@ -677,12 +732,8 @@ public:
     m_slice_pitch = pitch;
   }
 
-
   virtual buffer_object_handle
   get_buffer_object(device* device);
-
-  virtual buffer_object_handle
-  get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memoryIndex);
 
 private:
 
@@ -716,7 +767,6 @@ private:
  */
 class pipe : public memory
 {
-  using pipe_property_type = memory::pipe_property_type;
 public:
   pipe(context* ctx,cl_mem_flags flags, cl_uint packet_size, cl_uint max_packets)
     : memory(ctx,flags), m_packet_size(packet_size), m_max_packets(max_packets)
@@ -734,18 +784,6 @@ public:
     return CL_MEM_OBJECT_PIPE;
   }
 
-  virtual void*
-  get_pipe_host_ptr() const
-  {
-    return m_host_ptr;
-  }
-
-  virtual const pipe_property_type
-  get_pipe_properties() const
-  {
-    return m_props;
-  }
-
   virtual cl_uint
   get_pipe_packet_size() const
   {
@@ -759,12 +797,59 @@ public:
   }
 
 private:
-  pipe_property_type m_props;
   cl_uint m_packet_size = 0;
   cl_uint m_max_packets = 0;
   void* m_host_ptr = nullptr;
 };
 
+inline const void*
+get_host_ptr(cl_mem_flags flags, const void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->host_ptr
+    : host_ptr;
+}
+
+inline void*
+get_host_ptr(cl_mem_flags flags, void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<cl_mem_ext_ptr_t*>(host_ptr)->host_ptr
+    : host_ptr;
+}
+
+inline unsigned int
+get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->flags
+    : 0;
+}
+
+inline cl_kernel
+get_xlnx_ext_kernel(cl_mem_flags flags, const void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->kernel
+    : 0;
+}
+
+inline unsigned int
+get_xlnx_ext_argidx(cl_mem_flags flags, const void* host_ptr)
+{
+  return get_xlnx_ext_flags(flags,host_ptr) & 0xffffff;
+}
+
+inline unsigned int
+get_ocl_flags(cl_mem_flags flags)
+{
+  return ( flags & ~(CL_MEM_EXT_PTR_XILINX) );
+}
+
 } // xocl
+
+#ifdef _WIN32
+#pragma warning( pop )
+#endif
 
 #endif

@@ -20,10 +20,35 @@
  * debug action with the cl_event
  */
 #include "xocl/core/event.h"
+#include "core/common/dlfcn.h"
+#include "core/common/module_loader.h"
 #include "plugin/xdp/appdebug.h"
 
 namespace xocl {
 namespace appdebug {
+
+  void load_xdp_app_debug()
+  {
+    static xrt_core::module_loader app_debug_loader("xdp_appdebug_plugin",
+						    register_appdebug_functions,
+						    nullptr) ;
+  }
+
+  void register_appdebug_functions(void* handle)
+  {
+    typedef void (*xdpInitType)() ;
+    
+    auto initFunc = (xdpInitType)(xrt_core::dlsym(handle, "initAppDebug")) ;
+    if (!initFunc)
+    {
+      std::string errMsg = "Failed to initialize XDP application debug library, 'initAppdebug' symbol not found.\n";
+      const char* dlMsg = xrt_core::dlerror() ;
+      if (dlMsg != nullptr) errMsg += dlMsg ;
+      throw std::runtime_error(errMsg.c_str()) ;
+    }
+
+    initFunc() ;
+  }
 
 /*
  * callback functions called from within action_ lambdas
@@ -143,7 +168,7 @@ action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migrat
 }
 
 action_debug_type
-action_ndrange_migrate(cl_event event, cl_kernel kernel)
+action_ndrange_migrate(cl_event, cl_kernel kernel)
 {
   return [kernel](xocl::event* event) {
     if (cb_action_ndrange_migrate)
@@ -152,7 +177,7 @@ action_ndrange_migrate(cl_event event, cl_kernel kernel)
 }
 
 action_debug_type
-action_ndrange(cl_event event, cl_kernel kernel)
+action_ndrange(cl_event, cl_kernel kernel)
 {
   return [kernel](xocl::event* event) {
     if (cb_action_ndrange_migrate)
@@ -189,5 +214,3 @@ action_readwrite_image(cl_mem image,const size_t* origin,const size_t* region, s
 
 }//appdebug
 }//xocl
-
-

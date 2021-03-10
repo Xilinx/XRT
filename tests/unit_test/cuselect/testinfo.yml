@@ -1,0 +1,34 @@
+#template_tql < $XTC_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: soeren
+user:
+  allowed_test_modes: [hw]
+  excl_platforms: [xilinx_v350-es1_xdma_201920_1, xilinx_u200_qdma_201910_1, xilinx_u200_qdma_201920_1, xilinx_u250_qdma_201910_1, xilinx_u250_qdma_201920_1, xilinx_u280_xdma_201920_1, xilinx_u50_xdma_201920_1, xilinx_u50_xdma_201920_2, xilinx_samsung_U2x4_201920_1, xilinx_samsung_u2x4_201920_2, xilinx_u250_qep_201910_1, xilinx_u50_xdma_gen3x16_201920_3, xilinx_u280_xdma_201920_3, xilinx_u200_xdma_201920_1, xilinx_u200_xdma_201830_2]
+  force_makefile: "--force"
+  host_args: {all: cuselect.xclbin}
+  host_cflags: ' -DDSA64'
+  host_exe: host.exe
+  host_src: main.cpp
+  kernels:
+  - {cflags: {all: ' -I.'}, file: vadd.xo, ksrc: vadd.cl, name: vadd, type: C}
+  name: cuselect
+  xclbins:
+  - files: 'vadd.xo '
+    kernels:
+    - cus: [vadd_1, vadd_2, vadd_3, vadd_4, vadd_5, vadd_6, vadd_7, vadd_8]
+      name: vadd
+      num_cus: 8
+    lflags: {all: ' --sp vadd_1.A:DDR[0] --sp vadd_1.B:DDR[1] --sp vadd_1.C:DDR[2] --sp
+      vadd_1.D:DDR[3] --sp vadd_2.A:DDR[0] --sp vadd_2.B:DDR[1] --sp vadd_2.C:DDR[2]
+      --sp vadd_2.D:DDR[3] --sp vadd_3.A:DDR[1] --sp vadd_3.B:DDR[2] --sp vadd_3.C:DDR[3]
+      --sp vadd_3.D:DDR[0] --sp vadd_4.A:DDR[1] --sp vadd_4.B:DDR[2] --sp vadd_4.C:DDR[3]
+      --sp vadd_4.D:DDR[0] --sp vadd_5.A:DDR[2] --sp vadd_5.B:DDR[3] --sp vadd_5.C:DDR[0]
+      --sp vadd_5.D:DDR[1] --sp vadd_6.A:DDR[2] --sp vadd_6.B:DDR[3] --sp vadd_6.C:DDR[0]
+      --sp vadd_6.D:DDR[1] --sp vadd_7.A:DDR[3] --sp vadd_7.B:DDR[0] --sp vadd_7.C:DDR[1]
+      --sp vadd_7.D:DDR[2] --sp vadd_8.A:DDR[3] --sp vadd_8.B:DDR[0] --sp vadd_8.C:DDR[1]
+      --sp vadd_8.D:DDR[2]'}
+    name: cuselect.xclbin
+  labels:
+    test_type: ['regression']
+  sdx_type: [sdx_fast]

@@ -16,7 +16,6 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/range.h"
 #include "xocl/core/error.h"
@@ -26,7 +25,9 @@
 #include "detail/device.h"
 
 #include "api.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -98,7 +99,7 @@ validOrError(cl_context            context ,
       if (!val)
         throw error(CL_LINKER_NOT_AVAILABLE,"linker not available for device");
     });
-  
+
   // CL_LINK_PROGRAM_FAILURE if there is a failure to link the
   // compiled binaries and/or libraries.
 
@@ -107,9 +108,9 @@ validOrError(cl_context            context ,
 
   // CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources
   // required by the OpenCL implementation on the host.
-} 
+}
 
-static cl_program 
+static cl_program
 clLinkProgram(cl_context            context ,
               cl_uint               num_devices ,
               const cl_device_id *  device_list ,
@@ -143,6 +144,7 @@ clLinkProgram(cl_context            context ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clLinkProgram
       (context, num_devices, device_list,options,num_input_programs,
        input_programs,pfn_notify,user_data,errcode_ret);
@@ -157,5 +159,3 @@ clLinkProgram(cl_context            context ,
   }
   return nullptr;
 }
-
-

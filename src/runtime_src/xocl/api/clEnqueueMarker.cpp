@@ -18,15 +18,20 @@
 
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/event.h"
+#include "xocl/core/command_queue.h"
 #include "detail/command_queue.h"
 
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 #include "plugin/xdp/appdebug.h"
 
+#include <CL/opencl.h>
 #include <vector>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
 namespace xocl {
 
@@ -82,6 +87,7 @@ clEnqueueMarker(cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueMarker
       (command_queue,event_parameter);
   }
@@ -94,5 +100,3 @@ clEnqueueMarker(cl_command_queue command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

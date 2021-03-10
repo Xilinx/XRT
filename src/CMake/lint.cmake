@@ -1,27 +1,15 @@
-find_program(CPPCHECK cppcheck)
 
-include(ProcessorCount)
-ProcessorCount(JOBS)
-if (JOBS EQUAL 0)
-   set(JOBS 1)
-endif ()
+# Clang Tidy ia integrated into CMake since 3.7.2 and is automatically run if CMAKE_CXX_CLANG_TIDY
+# is set. We currently rely on a global .clang-tidy placed inside "src" directory that is automatically
+# found by clang-tidy. In future we should refine the checks run for specific directories using
+# custom .clang-tidy config files in those directories.
 
-if (NOT CPPCHECK)
-  message (WARNING "-- cppcheck not found, C++11 static code analysis disabled")
-else ()
-  add_custom_target(
-    cppcheck
-    COMMAND ${CPPCHECK}
-    -j ${JOBS}
-    -v
-    -D__x86_64__
-    -Dlinux
-    -UCL_USE_DEPRECATED_OPENCL_1_0_APIS
-    -UCL_USE_DEPRECATED_OPENCL_1_1_APIS
-    --template=gcc --enable=style
-    --language=c++
-    --std=c++11
-    --platform=native
-    --project=compile_commands.json
-    )
-endif ()
+IF((${CMAKE_VERSION} VERSION_GREATER "3.7.2") AND (XRT_CLANG_TIDY STREQUAL "ON"))
+  find_program(CLANG_TIDY clang-tidy)
+  if(NOT CLANG_TIDY)
+    message(FATAL_ERROR "clang-tidy not found, static analysis disabled")
+  else()
+    message("-- Enabling clang-tidy")
+    set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
+  endif()
+endif()

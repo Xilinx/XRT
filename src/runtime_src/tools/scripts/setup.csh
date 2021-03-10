@@ -15,7 +15,7 @@ set called=(`\lsof +p $$ |\grep setup.csh`)
 
 # look for the right cmd component that contains setup.csh
 foreach x ($called)
-    if ( $x =~ *setup.csh ) then
+    if ( "$x" =~ *setup.csh ) then
         set script_path=`readlink -f $x`
         set xrt_dir=`dirname $script_path`
     endif
@@ -29,17 +29,17 @@ if ( $xrt_dir !~ */opt/xilinx/xrt ) then
 endif
 
 set OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
-set OSREL=`lsb_release -r |awk -F: '{print tolower($2)}' |tr -d ' \t'`
+set OSREL=`lsb_release -r |awk -F: '{print tolower($2)}' |tr -d ' \t' | awk -F. '{print $1*100+$2}'`
 
 if ( "$OSDIST" =~ "ubuntu" ) then
-    if ( "$OSREL" != "16.04" && "$OSREL" != "18.04" ) then
+    if ( $OSREL < 1604 ) then
         echo "ERROR: Ubuntu release version must be 16.04 or later"
         exit 1
     endif
 endif
 
 if ( "$OSDIST" =~ centos  || "$OSDIST" =~ redhat* ) then
-    if ( "$OSREL" !~ 7.4* && "$OSREL" !~ 7.5* ) then
+    if ( $OSREL < 704 ) then
         echo "ERROR: Centos or RHEL release version must be 7.4 or later"
         exit 1
     endif
@@ -59,6 +59,17 @@ else
    setenv PATH $XILINX_XRT/bin:$PATH
 endif
 
-echo "XILINX_XRT      : $XILINX_XRT"
-echo "PATH            : $PATH"
-echo "LD_LIBRARY_PATH : $LD_LIBRARY_PATH"
+if ( ! $?PYTHONPATH ) then
+    setenv PYTHONPATH $XILINX_XRT/python
+else
+    setenv PYTHONPATH $XILINX_XRT/python:$PYTHONPATH
+endif
+
+# To use the newest version of the XRT tools, either uncomment or set 
+# the following environment variable in your profile:
+#   setenv XRT_TOOLS_NEXTGEN true
+
+echo "XILINX_XRT        : $XILINX_XRT"
+echo "PATH              : $PATH"
+echo "LD_LIBRARY_PATH   : $LD_LIBRARY_PATH"
+echo "PYTHONPATH        : $PYTHONPATH"

@@ -21,7 +21,7 @@
 
 #include "detail/platform.h"
 
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
@@ -36,7 +36,7 @@ validOrError(cl_uint          num_entries,
   detail::platform::validOrError(num_entries,platforms);
 }
 
-static cl_int 
+static cl_int
 clGetPlatformIDs(cl_uint          num_entries,
                  cl_platform_id * platforms,
                  cl_uint *        num_platforms)
@@ -44,7 +44,7 @@ clGetPlatformIDs(cl_uint          num_entries,
   validOrError(num_entries,platforms,num_platforms);
 
   auto platform = get_global_platform();
-  if (num_entries)
+  if (num_entries && platforms)
     platforms[0] = platform;
   if (num_platforms)
     *num_platforms = platform ? 1 : 0;
@@ -72,6 +72,7 @@ clGetPlatformIDs(cl_uint          num_entries,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetPlatformIDs
       (num_entries, platforms, num_platforms);
   }
@@ -114,5 +115,3 @@ clIcdGetPlatformIDsKHR(cl_uint          num_entries,
   assert(num_entries && platforms);
   return platforms[0] ? CL_SUCCESS : CL_PLATFORM_NOT_FOUND_KHR;
 }
-
-

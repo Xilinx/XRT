@@ -1,0 +1,8 @@
+PACKAGE_NAME="xrt-zocl"
+PACKAGE_VERSION="@XRT_VERSION_STRING@"
+MAKE[0]="cd driver/zocl; make -j KERNEL_SRC=${kernel_source_dir}; cd ../.."
+CLEAN="cd driver/zocl; make clean KERNEL_SRC=${kernel_source_dir}; cd ../.."
+BUILT_MODULE_NAME[0]="zocl"
+BUILT_MODULE_LOCATION[0]="driver/zocl"
+DEST_MODULE_LOCATION[0]="/kernel/extras"
+AUTOINSTALL="yes"

@@ -1,288 +1,257 @@
-// Copyright (C) 2018 Xilinx Inc.
-// All rights reserved.
-// Author: sonals
-
-#include <getopt.h>
+/**
+ * Copyright (C) 2018-2020 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+#include <map>
 #include <string>
 #include <cstring>
-#include <sys/mman.h>
-#include <time.h>
-#include <uuid/uuid.h>
+#include <chrono>
 
-// driver includes
 #include "ert.h"
 
-// host_src includes
-#include "xclhal2.h"
-#include "xclbin.h"
+#include <spawn.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-// lowlevel common include
-#include "utils.h"
 
-#include "xhello_hw.h"
+#include "experimental/xrt_device.h"
+#include "experimental/xrt_kernel.h"
+#include "experimental/xrt_bo.h"
+
+namespace {
+
+static const std::map<ert_cmd_state, std::string> ert_cmd_codes = {
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_NEW, "ERT_CMD_STATE_NEW"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_QUEUED, "ERT_CMD_STATE_QUEUED"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_RUNNING, "ERT_CMD_STATE_RUNNING"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_COMPLETED, "ERT_CMD_STATE_COMPLETED"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_ERROR, "ERT_CMD_STATE_ERROR"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_ABORT, "ERT_CMD_STATE_ABORT"),
+};
 
 /**
- * Runs an OpenCL kernel which writes known 16 integers into a 64 byte buffer. Does not use OpenCL
- * runtime but directly exercises the HAL driver API.
+ * @return
+ *   nanoseconds since first call
+ */
+static unsigned long
+time_ns()
+{
+  static auto zero = std::chrono::high_resolution_clock::now();
+  auto now = std::chrono::high_resolution_clock::now();
+  auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
+  return integral_duration;
+}
+
+/**
+ * Simple time guard to accumulate scoped time
+ */
+class time_guard
+{
+  unsigned long zero = 0;
+  unsigned long& tally;
+public:
+  time_guard(unsigned long& t)
+    : zero(time_ns()), tally(t)
+  {}
+
+  ~time_guard()
+  {
+    tally += time_ns() - zero;
+  }
+};
+
+static inline std::ostream&
+stamp(std::ostream& os) {
+
+  const auto timenow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  std::string st(std::ctime(&timenow));
+  st.pop_back();
+  os << '[' << getpid() << "] (" << st << "): ";
+  return os;
+}
+
+int run_children(int argc, char *argv[], char *envp[], unsigned count)
+{
+    const char *path = argv[0];
+    char buf[8];
+    buf[0] = '\0';
+    argv[0] = buf;
+    pid_t pids[count];
+    int result = 0;
+    int wpid = 0;
+    int wstatus = 0;
+    for (unsigned i=0; i<count; i++)
+        result += posix_spawn(&pids[i], path, 0, 0, argv, envp);
+
+    while ((wpid = wait(&wstatus)) > 0);
+    return result;
+}
+
+}
+
+
+/**
+ * Testcase to demostrate XRT's multiprocess support.
+ * Runs multiple processes each exercising the same shared hello world kernel in loop
  */
 
-#define ARRAY_SIZE 20
-////////////////////////////////////////////////////////////////////////////////
-
-#define LENGTH (20)
+static const unsigned LOOP = 16;
+static const unsigned CHILDREN = 8;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-const static struct option long_options[] = {
-    {"hal_driver",      required_argument, 0, 's'},
-    {"bitstream",       required_argument, 0, 'k'},
-    {"hal_logfile",     required_argument, 0, 'l'},
-    {"device",          required_argument, 0, 'd'},
-    {"num of elments",  required_argument, 0, 'n'},
-    {"verbose",         no_argument,       0, 'v'},
-    {"help",            no_argument,       0, 'h'},
-    {0, 0, 0, 0}
-};
+int runChildren(int argc, char *argv[], char *envp[], unsigned count);
 
 static const char gold[] = "Hello World\n";
 
-static void printHelp()
+static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
-    std::cout << "  -s <hal_driver>\n";
     std::cout << "  -k <bitstream>\n";
-    std::cout << "  -l <hal_logfile>\n";
     std::cout << "  -d <index>\n";
-    std::cout << "  -n <num of elements, default is 16>\n";
+    std::cout << "  -r <num of runs, default is 16>\n";
     std::cout << "  -v\n";
     std::cout << "  -h\n\n";
-    std::cout << "* If HAL driver is not specified, application will try to find the HAL driver\n";
-    std::cout << "  using XILINX_OPENCL and XCL_PLATFORM environment variables\n";
     std::cout << "* Bitstream is required\n";
-    std::cout << "* HAL logfile is optional but useful for capturing messages from HAL driver\n";
+}
+
+static void
+run(const xrt::device& device, const xrt::uuid& uuid, size_t n_runs, bool verbose)
+{
+  const size_t size = 1024;
+  auto kernel = xrt::kernel(device, uuid.get(), "hello");
+
+  std::vector<xrt::bo> bos;
+  std::vector<xrt::run> runs;
+
+  for (size_t i=0; i<n_runs; ++i) {
+    auto bo = xrt::bo(device, size, kernel.group_id(0));
+    auto bo_data = bo.map<char*>();
+    std::fill(bo_data, bo_data + size, 0);
+    bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, size, 0);
+    bos.push_back(std::move(bo));
+  }
+
+  for (size_t i=0; i<n_runs; ++i) {
+    auto run = kernel(bos[i]);
+    runs.push_back(std::move(run));
+    stamp(std::cout) << "Submit execute(" << i << ")" << std::endl;
+  }
+  
+  size_t count = runs.size();
+  auto start = time_ns();
+  
+  while (count && (time_ns() - start) * 10e-9 < 30) {
+    int run_idx = 0;
+    for (auto& run : runs) {
+      auto state = run.wait(1000);
+      switch (state) {
+      case ERT_CMD_STATE_COMPLETED:
+      case ERT_CMD_STATE_ERROR:
+      case ERT_CMD_STATE_ABORT:
+        stamp(std::cout) << "Done execute(" << run_idx << ") "
+                         << ert_cmd_codes.find(static_cast<ert_cmd_state>(state))->second << std::endl;
+        --count;
+        break;
+      default:
+        break;
+      }
+      ++run_idx;
+    }
+  }
+
+  stamp(std::cout) << "wait time in (" << (time_ns() - start) * 10e-6 << "ms)\n";
+
+  if (count)
+    throw std::runtime_error("Could not finish all kernel runs in 30 secs");
 }
 
 
-class xclBO {
-    unsigned bo;
-    char *ptr;
-};
-
-
-static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, size_t n_elements)
+int
+run(int argc, char** argv, char *envp[])
 {
-    const int size = 1024;
-    std::vector<std::pair<unsigned, void*>> dataBO(n_elements, std::pair<unsigned, void*>(0xffffffff, nullptr));
-    std::vector<std::pair<unsigned, void*>> cmdBO(n_elements, std::pair<unsigned, void*>(0xffffffff, nullptr));
+  if (argc < 3) {
+    usage();
+    return 1;
+  }
 
-    try {
-        int result = 0;
-        for (auto &bo : dataBO) {
-            bo.first = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM, 0x0);
-            bo.second = xclMapBO(handle, bo.first, true);
-            std::memset(bo.second, 0, size);
-            result += xclSyncBO(handle, bo.first, XCL_BO_SYNC_BO_TO_DEVICE, size, 0);
-        }
+  std::string xclbin_fnm;
+  bool verbose = false;
+  unsigned int device_index = 0;
+  unsigned int num_runs = LOOP;
+  unsigned int child = CHILDREN;
 
-        if (result) {
-            throw std::runtime_error("data BO failure");
-        }
-
-
-        for (auto &bo : cmdBO) {
-            bo.first = xclAllocBO(handle, 4096, xclBOKind(0), (1<<31));
-            bo.second = xclMapBO(handle, bo.first, true);
-            std::memset(bo.second, 0, 4096);
-            ert_start_kernel_cmd *ecmd = reinterpret_cast<ert_start_kernel_cmd*>(bo.second);
-            auto rsz = (XHELLO_CONTROL_ADDR_BUF_R_DATA/4+2) + 1; // regmap array size
-            std::memset(ecmd,0,(sizeof *ecmd) + rsz);
-            ecmd->state = ERT_CMD_STATE_NEW;
-            ecmd->opcode = ERT_START_CU;
-            ecmd->count = 1 + rsz;
-            ecmd->cu_mask = 0x1;
-            ecmd->data[XHELLO_CONTROL_ADDR_AP_CTRL] = 0x1; // ap_start
-            xclBOProperties p;
-            const uint64_t paddr = xclGetBOProperties(handle, bo.first, &p) ? p.paddr : 0xfffffffffffffff;
-            ecmd->data[XHELLO_CONTROL_ADDR_BUF_R_DATA] = paddr;
-        }
-
-        for (auto &bo : cmdBO) {
-            result += xclExecBuf(handle, bo.first);
-        }
-
-        if (result) {
-            throw std::runtime_error("cmd BO failure");
-        }
-
-        for (std::vector<std::pair<unsigned, void*>>::iterator iter = cmdBO.begin(); iter < cmdBO.end(); iter++) {
-            const ert_start_kernel_cmd *ecmd = reinterpret_cast<ert_start_kernel_cmd*>(iter->second);
-            switch (ecmd->state) {
-            case ERT_CMD_STATE_COMPLETED:
-            case ERT_CMD_STATE_ERROR:
-            case ERT_CMD_STATE_ABORT:
-                munmap(iter->second, 4096);
-                xclFreeBO(handle, iter->first);
-                cmdBO.erase(iter);
-            }
-            xclExecWait(handle, 1000);
-        }
-
-        for (auto &bo : dataBO) {
-            result += xclSyncBO(handle, bo.first, XCL_BO_SYNC_BO_FROM_DEVICE, size, 0);
-            size_t cmdresult = std::memcmp(bo.second, gold, sizeof(gold));
-        }
+  std::vector<std::string> args(argv+1,argv+argc);
+  std::string cur;
+  for (auto& arg : args) {
+    if (arg == "-h") {
+      usage();
+      return 1;
     }
-    catch (std::exception &ex) {
-        return 1;
+    else if (arg == "-v") {
+      verbose = true;
+      continue;
     }
-    return 0;
+
+    if (arg[0] == '-') {
+      cur = arg;
+      continue;
+    }
+
+    if (cur == "-k")
+      xclbin_fnm = arg;
+    else if (cur == "-d")
+      device_index = std::stoi(arg);
+    else if (cur == "-r")
+      num_runs = std::stoi(arg);
+    else
+      throw std::runtime_error("Unknown option value " + cur + " " + arg);
+  }
+
+  if (xclbin_fnm.empty())
+    throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
+
+  auto device = xrt::device(device_index);
+  auto uuid = device.load_xclbin(xclbin_fnm);
+
+  if (std::strlen(argv[0]))
+    return run_children(argc, argv, envp, child);
+
+  run(device, uuid, num_runs, verbose);
+
+  stamp(std::cout) << "PASSED TEST\n";
+  return 0;
 }
 
-static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, size_t n_elements)
+int
+main(int argc, char** argv, char *envp[])
 {
-
-    uuid_t xclbinId;
-    uuid_parse("58c06b8c-c882-41ff-9ec5-116571d1d179", xclbinId);
-    xclOpenContext(handle, xclbinId, 0, true);
-
-    //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, 1024, xclBOKind(0), (1<<31));
-    void* execData = xclMapBO(handle, execHandle, true);
-
-    std::cout << "Construct the exe buf cmd to confire FPGA" << std::endl;
-    //construct the exec buffer cmd to configure.
-    {
-        auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
-
-        std::memset(ecmd, 0, 1024);
-        ecmd->state = ERT_CMD_STATE_NEW;
-        ecmd->opcode = ERT_CONFIGURE;
-
-        ecmd->slot_size = 1024;
-        ecmd->num_cus = 1;
-        ecmd->cu_shift = 16;
-        ecmd->cu_base_addr = cu_base_addr;
-
-        ecmd->ert = 1;
-        if (ecmd->ert) {
-            ecmd->cu_dma = 1;
-            ecmd->cu_isr = 1;
-        }
-
-        // CU -> base address mapping
-        ecmd->data[0] = cu_base_addr;
-        ecmd->count = 5 + ecmd->num_cus;
-    }
-
-    std::cout << "Send the exec command and configure FPGA (ERT)" << std::endl;
-    //Send the command.
-    if(xclExecBuf(handle, execHandle)) {
-        std::cout << "Unable to issue xclExecBuf" << std::endl;
-        return 1;
-    }
-
-    std::cout << "Wait until the command finish" << std::endl;
-    //Wait on the command finish
-    while (xclExecWait(handle,1000) == 0);
-    xclCloseContext(handle, xclbinId, 0);
-    return 0;
-}
-
-
-int main(int argc, char** argv)
-{
-    std::string sharedLibrary;
-    std::string bitstreamFile;
-    std::string halLogfile;
-    size_t alignment = 128;
-    int option_index = 0;
-    unsigned index = 0;
-    unsigned cu_index = 0;
-    bool verbose = false;
-    bool ert = false;
-    size_t n_elements = 16;
-    int c;
-    //findSharedLibrary(sharedLibrary);
-
-    while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:vh", long_options, &option_index)) != -1)
-    {
-	switch (c)
-	{
-        case 0:
-            if (long_options[option_index].flag != 0)
-                break;
-        case 1:
-            ert = true;
-            break;
-        case 's':
-            sharedLibrary = optarg;
-            break;
-        case 'k':
-            bitstreamFile = optarg;
-            break;
-        case 'l':
-            halLogfile = optarg;
-            break;
-        case 'a':
-            alignment = std::atoi(optarg);
-            break;
-        case 'd':
-            index = std::atoi(optarg);
-            break;
-        case 'c':
-            cu_index = std::atoi(optarg);
-            break;
-        case 'h':
-            printHelp();
-            return 0;
-        case 'v':
-            verbose = true;
-            break;
-        default:
-            printHelp();
-            return -1;
-	}
-    }
-
-    (void)verbose;
-
-    if (bitstreamFile.size() == 0) {
-        std::cout << "FAILED TEST\n";
-    	std::cout << "No bitstream specified\n";
-    	return -1;
-    }
-
-    if (halLogfile.size()) {
-        std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
-    }
-
-    std::cout << "HAL driver = " << sharedLibrary << "\n";
-    std::cout << "Host buffer alignment = " << alignment << " bytes\n";
-    std::cout << "Compiled kernel = " << bitstreamFile << "\n";
-
-
-    try {
-        xclDeviceHandle handle;
-    	uint64_t cu_base_addr = 0;
-    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr)) {
-            return 1;
-        }
-
-        if (runKernelLoop(handle, cu_base_addr, verbose, n_elements)) {
-            return 1;
-        }
-
-    }
-    catch (std::exception const& e)
-    {
-        std::cout << "Exception: " << e.what() << "\n";
-        std::cout << "FAILED TEST\n";
-        return 1;
-    }
-
+  try {
+    auto ret = run(argc, argv, envp);
     std::cout << "PASSED TEST\n";
-    return 0;
+    return ret;
+  }
+  catch (std::exception const& e) {
+    std::cout << "Exception: " << e.what() << "\n";
+    std::cout << "FAILED TEST\n";
+    return 1;
+  }
+
+  std::cout << "PASSED TEST\n";
+  return 0;
 }

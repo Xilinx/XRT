@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #include "event.h"
 #include "context.h"
 #include "command_queue.h"
@@ -24,11 +23,15 @@
 #include <algorithm>
 #include <cstdlib>
 
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+#endif
+
 namespace xocl { namespace detail {
 
 namespace event {
 
-void 
+void
 validOrError(cl_context ctx, cl_uint num_events, const cl_event* event_list, bool check_status)
 {
   if (!num_events && !event_list)
@@ -48,7 +51,7 @@ validOrError(cl_context ctx, cl_uint num_events, const cl_event* event_list, boo
 
       if (xocl(ev)->get_context() != ctx)
         throw error(CL_INVALID_CONTEXT,"event context mismatch");
-      
+
       if (check_status && xocl(ev)->get_status() < 0)
         throw error(CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST,"bad status for event");
     };
@@ -64,7 +67,7 @@ validOrError(const cl_event ev)
     throw error(CL_INVALID_EVENT,"event is nullptr");
 }
 
-void 
+void
 validOrError(cl_command_queue cq, cl_uint num_events, const cl_event* event_list, bool check_status)
 {
   command_queue::validOrError(cq);
@@ -73,7 +76,7 @@ validOrError(cl_command_queue cq, cl_uint num_events, const cl_event* event_list
   validOrError(xocl(cq)->get_context(),num_events,event_list,check_status);
 }
 
-void 
+void
 validOrError(cl_uint num_events, const cl_event* event_list,bool check_status)
 {
   if (!num_events && !event_list)
@@ -84,5 +87,3 @@ validOrError(cl_uint num_events, const cl_event* event_list,bool check_status)
 } // event
 
 }} // detail,xocl
-
-

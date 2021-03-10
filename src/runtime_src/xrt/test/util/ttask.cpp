@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -49,14 +49,14 @@ struct API
 
 BOOST_AUTO_TEST_CASE( test_task1 )
 {
-  xrt::task::queue queue;
+  xrt_xocl::task::queue queue;
   std::vector<std::thread> workers;
-  workers.push_back(std::thread(xrt::task::worker,std::ref(queue)));
-  workers.push_back(std::thread(xrt::task::worker,std::ref(queue)));
+  workers.push_back(std::thread(xrt_xocl::task::worker,std::ref(queue)));
+  workers.push_back(std::thread(xrt_xocl::task::worker,std::ref(queue)));
 
   {
     // create task from free function with args
-    auto tev = xrt::task::createF(queue,&sleepy_waiter,1000);
+    auto tev = xrt_xocl::task::createF(queue,&sleepy_waiter,1000);
     BOOST_CHECK_EQUAL(tev.ready(),false);
     BOOST_CHECK_EQUAL(tev.get(),1000);
 
@@ -74,26 +74,26 @@ BOOST_AUTO_TEST_CASE( test_task1 )
   {
     // create task from member function with args
     API api;
-    auto tev = xrt::task::createM(queue,&API::foo,api,100,'a');
+    auto tev = xrt_xocl::task::createM(queue,&API::foo,api,100,'a');
     BOOST_CHECK_EQUAL(tev.get(),100);
   }
 
   {
     // create task from free function without args
-    auto tev = xrt::task::createF(queue,&noargs);
+    auto tev = xrt_xocl::task::createF(queue,&noargs);
     BOOST_CHECK_EQUAL(tev.get(),true);
   }
 
   {
     // create task from member function without args
     API api;
-    auto tev = xrt::task::createM(queue,&API::noargs,api);
+    auto tev = xrt_xocl::task::createM(queue,&API::noargs,api);
     BOOST_CHECK_EQUAL(tev.get(),true);
   }
 
   {
     // test exception when calling get() twice
-    auto tev = xrt::task::createF(queue,&sleepy_waiter,1);
+    auto tev = xrt_xocl::task::createF(queue,&sleepy_waiter,1);
     BOOST_CHECK_EQUAL(tev.get(),1);
     bool exception=false;
     try {

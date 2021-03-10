@@ -59,7 +59,7 @@ class param_buffer
         return nullptr;
 
       if (b.m_buffer && b.m_size < sz * sizeof(T))
-        throw error(CL_INVALID_VALUE);
+        throw error(CL_INVALID_VALUE, "Insufficient param value size");
       auto buffer = static_cast<T*>(b.m_buffer);
       b.m_buffer = (buffer + sz);
       b.m_size -= sz * sizeof(T);
@@ -195,8 +195,14 @@ class param_buffer
       {
         size_t l = r.size();
         auto buffer = allocator<T>::get(b,l);
-        if (buffer)
+        if (buffer) {
+#ifndef _WIN32
           std::copy(r.begin(),r.end(),buffer);
+#else
+          for (auto v : r)
+            *buffer++ = v;
+#endif
+        }
         return l*sizeof(T);
       }
     };

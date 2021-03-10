@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,7 @@
  * under the License.
  */
 
-//Copyright 2017 Xilinx, Inc. All rights reserved.
+//Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/object.h"
@@ -25,7 +25,7 @@
 #include "enqueue.h"
 #include <iostream>
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
@@ -41,9 +41,12 @@ validOrError(cl_command_queue command_queue,
   if(!config::api_checks())
     return;
 
-  detail::command_queue::validOrError(command_queue); 
+  detail::command_queue::validOrError(command_queue);
   detail::memory::validOrError(buffer,map_flags,offset,size);
   detail::event::validOrError(command_queue,num_events_in_wait_list,event_wait_list);
+
+  if ((xocl(buffer)->get_flags() & CL_MEM_WRITE_ONLY) && map_flags == CL_MAP_WRITE)
+    throw error(CL_MAP_FAILURE,"Map CL_MEM_WRITE_ONLY buffer for write is undefined");
 
   auto ctx1 = xocl(command_queue)->get_context();
   if (ctx1 != xocl(buffer)->get_context())
@@ -55,7 +58,7 @@ validOrError(cl_command_queue command_queue,
 static void*
 clEnqueueMapBuffer(cl_command_queue command_queue,
                    cl_mem           buffer,
-                   cl_bool          blocking_map, 
+                   cl_bool          blocking_map,
                    cl_map_flags     map_flags,
                    size_t           offset,
                    size_t           size,
@@ -70,7 +73,8 @@ clEnqueueMapBuffer(cl_command_queue command_queue,
 
   void* result = nullptr;
   enqueue::set_event_action(uevent.get(),enqueue::action_map_buffer,uevent.get(),buffer,map_flags,offset,size,&result);
-  profile::set_event_action(uevent.get(),profile::action_map,buffer,map_flags);
+  profile::set_event_action(uevent.get(), profile::action_map, buffer, map_flags);
+  xocl::profile::counters::set_event_action(uevent.get(), xocl::profile::counter_action_map, buffer, map_flags);
   xocl::appdebug::set_event_action(uevent.get(),xocl::appdebug::action_map,buffer,map_flags);
 
   uevent->queue();
@@ -88,7 +92,7 @@ clEnqueueMapBuffer(cl_command_queue command_queue,
 void*
 clEnqueueMapBuffer(cl_command_queue command_queue,
                    cl_mem           buffer,
-                   cl_bool          blocking_map, 
+                   cl_bool          blocking_map,
                    cl_map_flags     map_flags,
                    size_t           offset,
                    size_t           size,
@@ -99,12 +103,13 @@ clEnqueueMapBuffer(cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::
       clEnqueueMapBuffer
       (command_queue,buffer,blocking_map,map_flags,offset,size,
        num_events_in_wait_list,event_wait_list, event_parameter,errcode_ret);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,ex.get_code());
     return nullptr;
@@ -114,9 +119,4 @@ clEnqueueMapBuffer(cl_command_queue command_queue,
     xocl::assign(errcode_ret,CL_OUT_OF_HOST_MEMORY);
     return nullptr;
   }
-  return CL_SUCCESS;
 }
-
-
-
-

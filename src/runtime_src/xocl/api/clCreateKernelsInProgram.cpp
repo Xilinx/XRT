@@ -15,19 +15,19 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/kernel.h"
 #include "xocl/core/program.h"
 #include "xocl/core/error.h"
 
 #include "detail/program.h"
 #include "api.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
-static void 
+static void
 validOrError(cl_program      program ,
              cl_uint         num_kernels ,
              cl_kernel *     kernels ,
@@ -38,7 +38,7 @@ validOrError(cl_program      program ,
 
   // CL_INVALID_PROGRAM if program is not a valid program object.
   detail::program::validOrError(program);
-  
+
   // CL_INVALID_PROGRAM_EXECUTABLE if there is no successfully built
   // executable for any device in program.
   detail::program::validExecutableOrError(program);
@@ -47,7 +47,7 @@ validOrError(cl_program      program ,
   // than the number of kernels in program.
   if (kernels && (xocl::xocl(program)->get_num_kernels()>num_kernels))
     throw xocl::error(CL_INVALID_VALUE,"num_kernels less than number of kernels in program");
-  
+
   // CL_OUT_OF_RESOURCES if there is a failure to allocate resources required by the OpenCL implementation on the device.
   // CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources required by the OpenCL implementation on the host.
 }
@@ -82,6 +82,7 @@ clCreateKernelsInProgram(cl_program      program ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateKernelsInProgram
       (program,num_kernels,kernels,num_kernels_ret);
   }
@@ -94,5 +95,3 @@ clCreateKernelsInProgram(cl_program      program ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

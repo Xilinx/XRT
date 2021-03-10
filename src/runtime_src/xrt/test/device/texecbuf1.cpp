@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,15 +19,15 @@
 
 #include "xrt/device/device.h"
 #include "xrt/scheduler/command.h"
-using namespace xrt::test;
+using namespace xrt_xocl::test;
 
 namespace {
 
 static void
-configure_scheduler(xrt::device* device)
+configure_scheduler(xrt_xocl::device* device)
 {
   // create command object
-  xrt::command configure(device,xrt::command::opcode_type::configure);
+  xrt_xocl::command configure(device,xrt_xocl::command::opcode_type::configure);
   
   // create a configure command
   auto& packet = configure.get_packet();
@@ -37,17 +37,17 @@ configure_scheduler(xrt::device* device)
   packet[4] = 0x1800000;  // cu_base_addr;
 
   auto& features = packet[5];
-  if (xrt::config::get_ert())
+  if (xrt_xocl::config::get_ert())
     features |= 0x1;
-  if (xrt::config::get_ert_polling())
+  if (xrt_xocl::config::get_ert_polling())
     features |= 0x2;
-  if (xrt::config::get_ert_cudma())
+  if (xrt_xocl::config::get_ert_cudma())
     features |= 0x4;
-  if (xrt::config::get_ert_cuisr())
+  if (xrt_xocl::config::get_ert_cuisr())
     features |= 0x8;
-  if (xrt::config::get_ert_cqint())
+  if (xrt_xocl::config::get_ert_cqint())
     features |= 0x10;
-  if (xrt::config::get_timeline_trace())
+  if (xrt_xocl::config::get_timeline_trace())
     features |= 0x20;
 
   std::cout << "features: " << std::hex << features << std::dec << "\n";
@@ -64,18 +64,18 @@ configure_scheduler(xrt::device* device)
 }
 
 static void
-run_bin_hello_wg(xrt::device* device, size_t count)
+run_bin_hello_wg(xrt_xocl::device* device, size_t count)
 {
   // create output buffer
   auto boh = device->alloc(20*sizeof(char));
   if (device->getDeviceAddr(boh)!=0x0)
     throw std::runtime_error("device memory address is not 0x0");
 
-  std::vector<xrt::command> cmds;
+  std::vector<xrt_xocl::command> cmds;
 
   while (count--) {
     // create command object
-    cmds.emplace_back(device,xrt::command::opcode_type::start_kernel);
+    cmds.emplace_back(device,xrt_xocl::command::opcode_type::start_kernel);
     auto& start_kernel = cmds.back();
 
     auto& packet = start_kernel.get_packet();
@@ -103,7 +103,7 @@ run_bin_hello_wg(xrt::device* device, size_t count)
 }
 
 static void
-execwait(xrt::device* device)
+execwait(xrt_xocl::device* device)
 {
   while (1) {
     std::cout << "calling exec_wait\n";
@@ -119,10 +119,10 @@ BOOST_AUTO_TEST_SUITE(test_execbuf1)
 
 BOOST_AUTO_TEST_CASE(xbuf1)
 {
-  auto pred = [](const xrt::hal::device& hal) {
+  auto pred = [](const xrt_xocl::hal::device& hal) {
     return (hal.getDriverLibraryName().find("xclgemdrv")!=std::string::npos);
   };
-  auto devices = xrt::test::loadDevices(pred);
+  auto devices = xrt_xocl::test::loadDevices(pred);
   
   for (auto& device : devices) {
     device.open();
@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE(xbuf1)
     catch (const std::exception& ex) {
       std::cout << ex.what() << "\n";
     }
-    xrt::purge_command_freelist();
+    xrt_xocl::purge_command_freelist();
     device.close();
   }
 

@@ -18,49 +18,74 @@
 #define _XMA_API_
 
 #include "xmaplugin.h"
-#include "lib/xmacfg.h"
-#include "lib/xmaconnect.h"
-#include "lib/xmahw.h"
-#include "lib/xmares.h"
+#include "lib/xmahw_lib.h"
 #include "lib/xmalogger.h"
+#include <atomic>
+#include <list>
+#include <unordered_map>
+#include <thread>
+#include <mutex>
+
+typedef struct XmaLogMsg
+{
+    XmaLogLevelType level;
+    std::string msg;
+
+  XmaLogMsg() {
+    level = XMA_DEBUG_LOG;
+  }
+} XmaLogMsg;
 
 typedef struct XmaSingleton
 {
-    XmaSystemCfg      systemcfg;
     XmaHwCfg          hwcfg;
-    XmaConnect        connections[MAX_CONNECTION_ENTRIES];
-    XmaLogger         logger;
-    XmaDecoderPlugin  decodercfg[MAX_PLUGINS];
-    XmaEncoderPlugin  encodercfg[MAX_PLUGINS];
-    XmaScalerPlugin   scalercfg[MAX_PLUGINS];
-    XmaFilterPlugin   filtercfg[MAX_PLUGINS];
-    XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
-    XmaResources      shm_res_cfg;
-    bool              shm_freed;
+    bool              xma_initialized;
+    uint32_t          cpu_mode;
+    std::mutex            m_mutex;
+    std::atomic<uint32_t> num_decoders;
+    std::atomic<uint32_t> num_encoders;
+    std::atomic<uint32_t> num_scalers;
+    std::atomic<uint32_t> num_filters;
+    std::atomic<uint32_t> num_kernels;
+    std::atomic<uint32_t> num_admins;
+    std::atomic<uint32_t> num_of_sessions;
+    std::vector<XmaSession> all_sessions_vec;// XMASessions
+    std::list<XmaLogMsg>   log_msg_list;
+    std::atomic<bool> log_msg_list_locked;
+    std::atomic<uint32_t> num_execbos;
+
+    std::atomic<bool> xma_exit;
+    std::thread       xma_thread1;
+    std::thread       xma_thread2;
+
+    uint32_t          reserved[4];
+
+  XmaSingleton() {
+    xma_initialized = false;
+    num_decoders = 0;
+    num_encoders = 0;
+    num_scalers = 0;
+    num_filters = 0;
+    num_kernels = 0;
+    num_admins = 0;
+    num_execbos = XMA_NUM_EXECBO_DEFAULT;
+    num_of_sessions = 0;
+    log_msg_list_locked = false;
+    xma_exit = false;
+    cpu_mode = 0;
+  }
 } XmaSingleton;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void xma_exit(void);
 
-/**
- */
-int32_t xma_scaler_plugins_load(XmaSystemCfg      *systemcfg,
-                                XmaScalerPlugin   *scalers);
 
-/**
- */
-int32_t xma_enc_plugins_load(XmaSystemCfg      *systemcfg,
-                             XmaEncoderPlugin  *encoders);
-/**
- */
-int32_t xma_dec_plugins_load(XmaSystemCfg      *systemcfg,
-                             XmaDecoderPlugin  *decoders);
+/** @} */
+#ifdef __cplusplus
+}
+#endif
 
-/**
- */
-int32_t xma_filter_plugins_load(XmaSystemCfg      *systemcfg,
-                             XmaFilterPlugin      *filters);
-/**
- */
-int32_t xma_kernel_plugins_load(XmaSystemCfg      *systemcfg,
-                                XmaKernelPlugin   *kernels);
 #endif

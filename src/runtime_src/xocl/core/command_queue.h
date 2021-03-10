@@ -17,6 +17,7 @@
 #ifndef xocl_core_command_queue_h_
 #define xocl_core_command_queue_h_
 
+#include "xocl/config.h"
 #include "xocl/core/object.h"
 #include "xocl/core/refcount.h"
 #include "xocl/core/property.h"
@@ -182,6 +183,7 @@ public:
    *
    * Callbacks are called in arbitrary order
    */
+  XRT_XOCL_EXPORT
   static void
   register_constructor_callbacks(commandqueue_callback_type&& aCallback);
 
@@ -190,6 +192,7 @@ public:
    *
    * Callbacks are called in arbitrary order
    */
+  XRT_XOCL_EXPORT
   static void
   register_destructor_callbacks(commandqueue_callback_type&& aCallback);
 

@@ -43,14 +43,15 @@ const uint32_t cl_image_type[] = {
   CL_HALF_FLOAT, CL_FLOAT
 };
 
-xlnx_image_type get_image_supported_format(const cl_image_format* fmt, cl_mem_flags flags) {
+xlnx_image_type
+get_image_supported_format(const cl_image_format* fmt, cl_mem_flags) {
     //TODO: flags is not used currently.
     const uint32_t order = fmt->image_channel_order;
     const uint32_t type = fmt->image_channel_data_type;
     xlnx_image_type supported_type = xlnx_image_type::XLNX_UNSUPPORTED_FORMAT;
     //For now all xilinx hardware maps to xlnx_image_type::XLNX_ALL_FORMATS
     switch (order) {
-	case CL_R: 
+	case CL_R:
 	    switch (type) {
 		case CL_UNORM_INT8:
 		case CL_UNORM_INT16:
@@ -155,5 +156,3 @@ xlnx_image_type get_image_supported_format(const cl_image_format* fmt, cl_mem_fl
 
 
 #endif
-
-

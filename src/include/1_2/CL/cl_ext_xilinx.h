@@ -27,7 +27,7 @@
  ******************************************************************************/
 
 /*
- * Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * Copyright (C) 2018-2020, Xilinx Inc - All rights reserved
  */
 
 #ifndef __CL_EXT_XILINX_H
@@ -41,9 +41,15 @@
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 
 // Do *not* include cl_ext.h from this directory
-#include_next <CL/cl_ext.h>
+#ifndef _WIN32
+# include_next <CL/cl_ext.h>
+#else
+# pragma warning( push )
+# pragma warning( disable : 4201 )
+# include <../include/CL/cl_ext.h>
+#endif
 
-#include "stream.h"
+#include "xstream.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,17 +86,17 @@ extern "C" {
 typedef struct cl_mem_ext_ptr_t {
   union {
     struct { // legacy layout
-      unsigned int flags;   // Top 8 bits reserved.
+      unsigned int flags;   // Top 8 bits reserved for XCL_MEM_EXT flags
       void *obj;
       void *param;
     };
     struct { // interpreted legcy bank assignment
-      unsigned int banks;   // Top 8 bits reserved.
+      unsigned int banks;   // Top 8 bits reserved for XCL_MEM_EXT flags
       void *host_ptr;
       void *unused1;        // nullptr required
     };
     struct { // interpreted kernel arg assignment
-      unsigned int argidx;
+      unsigned int argidx;  // Top 8 bits reserved for XCL_MEM_EXT flags
       void *host_ptr_;      // use as host_ptr
       cl_kernel kernel;
     };
@@ -102,20 +108,10 @@ typedef struct cl_mem_ext_ptr_t {
 
 #define CL_XILINX_UNIMPLEMENTED  -20
 
-/* New flags for cl_queue */
-#define CL_QUEUE_DPDK                               (1 << 31)
-
 #define CL_MEM_REGISTER_MAP                         (1 << 27)
 #ifdef PMD_OCL
 # define CL_REGISTER_MAP CL_MEM_REGISTER_MAP
 #endif
-/* Delay device side buffer allocation for progvars */
-#define CL_MEM_PROGVAR                              (1 << 28)
-/* New cl_mem flags for DPDK Buffer integration */
-#define CL_MEM_RTE_MBUF_READ_ONLY                   (1 << 29)
-#define CL_MEM_RTE_MBUF_WRITE_ONLY                  (1 << 30)
-
-#define CL_PIPE_ATTRIBUTE_DPDK_ID                   (1 << 31)
 
 /* Additional cl_device_partition_property */
 #define CL_DEVICE_PARTITION_BY_CONNECTIVITY         (1 << 31)
@@ -138,7 +134,7 @@ clSetCommandQueueProperty(cl_command_queue command_queue,
  * CL_INVALID_VALUE     : if address is nullptr
  * CL_INVALID_VALUE     : if sz is different from sizeof(uintptr_tr)
  */
-extern cl_int
+extern CL_API_ENTRY cl_int CL_API_CALL
 xclGetMemObjDeviceAddress(cl_mem mem,
                           cl_device_id device,
                           size_t sz,
@@ -152,7 +148,7 @@ xclGetMemObjDeviceAddress(cl_mem mem,
  *                        or if unable to obtain FD from exporting device
  * CL_INVALID_VALUE     : if fd is nullptr
  */
-extern cl_int
+extern CL_API_ENTRY cl_int CL_API_CALL
 xclGetMemObjectFd(cl_mem mem,
                   int* fd); /* returned fd */
 
@@ -168,25 +164,13 @@ xclGetMemObjectFd(cl_mem mem,
  *                        if context is nullptr,
  *                        if mem address of variable for cl_mem pointer is nullptr.
  */
-extern cl_int
+extern CL_API_ENTRY cl_int CL_API_CALL
 xclGetMemObjectFromFd(cl_context context,
                       cl_device_id deviceid,
                       cl_mem_flags flags,
                       int fd,
                       cl_mem* mem);
 
-
-
-extern cl_int
-xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
-                     cl_mem              src_buffer,
-                     cl_mem              dst_buffer,
-                     size_t              src_offset,
-                     size_t              dst_offset,
-                     size_t              size,
-                     cl_uint             num_events_in_wait_list,
-                     const cl_event *    event_wait_list,
-                     cl_event *          event_parameter);
 
 /*----
  *
@@ -196,12 +180,42 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
  */
 
 /**
- * cl_stream_flags. Type of the stream , eg set to CL_STREAM_READ_ONLY for
+ * cl_stream_flags. Type of the stream , eg set to XCL_STREAM_READ_ONLY for
  * read only. Used in clCreateStream()
+ *
+ * This flag specifies that the stream object is a read-only stream
+ * object when used inside a kernel.  Writing to a buffer or image object
+ * created with CL_STREAM_READ_ONLY inside a kernel is undefined.
  */
 typedef uint64_t cl_stream_flags;
-#define CL_STREAM_READ_ONLY			    (1 << 0)
-#define CL_STREAM_WRITE_ONLY                        (1 << 1)
+#ifdef __GNUC__
+# define CL_STREAM_READ_ONLY                        _Pragma ("GCC warning \"CL_STREAM_READ_ONLY deprecated, please use XCL_STREAM_WRITE_ONLY\"") (1 << 0)
+# define CL_STREAM_WRITE_ONLY                       _Pragma ("GCC warning \"CL_STREAM_WRITE_ONLY deprecated, please use XCL_STREAM_READ_ONLY\"") (1 << 1)
+# define CL_STREAM_POLLING                          _Pragma ("GCC warning \"CL_STREAM_POLLING deprecated, please use XCL_STREAM_POLLING\"") (1 << 2)
+#else
+# define CL_STREAM_READ_ONLY                        (1 << 0)
+# define CL_STREAM_WRITE_ONLY                       (1 << 1)
+# define CL_STREAM_POLLING                          (1 << 2)
+#endif
+
+/**
+ * This flag specifies that the stream object is a read-only stream
+ * object when used inside a kernel.  Writing to a stream
+ * created with CL_STREAM_READ_ONLY inside a kernel is undefined.
+ */
+#define XCL_STREAM_READ_ONLY                        (1 << 1)
+
+/**
+ * This flag specifies that the stream object will be written but not
+ * read by a kernel.  Reading from a stream object created with
+ * CL_STREAM_WRITE_ONLY inside a kernel is undefined.
+ */
+#define XCL_STREAM_WRITE_ONLY                       (1 << 0)
+
+/**
+ * Unused
+ */
+#define XCL_STREAM_POLLING                          (1 << 2)
 
 /**
  * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used
@@ -222,6 +236,7 @@ typedef uint32_t cl_stream_attributes;
 #define CL_STREAM_NONBLOCKING                       (1 << 2)
 #define CL_STREAM_SILENT                            (1 << 3)
 
+typedef stream_opt_type              cl_stream_opt_type;
 typedef stream_xfer_req_type         cl_stream_xfer_req_type;
 typedef streams_poll_req_completions cl_streams_poll_req_completions;
 typedef stream_xfer_req              cl_stream_xfer_req;
@@ -254,40 +269,32 @@ clReleaseStream(cl_stream /*stream*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
  * clWriteStream - write data to stream
- * @device_id : The device
  * @stream    : The stream
  * @ptr       : The ptr to write from.
- * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
  * @req_type  : The write request type.
  * errcode_ret: The return value eg CL_SUCCESS
  * Return a cl_int
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clWriteStream(cl_device_id    /* device_id*/,
-	cl_stream             /* stream*/,
+clWriteStream(cl_stream             /* stream*/,
 	const void *          /* ptr */,
-	size_t                /* offset */,
 	size_t                /* size */,
 	cl_stream_xfer_req*   /* attributes */,
 	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
  * clReadStream - write data to stream
- * @device_id : The device
  * @stream    : The stream
  * @ptr       : The ptr to write from.
- * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
  * @req_type  : The read request type.
  * errcode_ret: The return value eg CL_SUCCESS
  * Return a cl_int.
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clReadStream(cl_device_id     /* device_id*/,
-	     cl_stream             /* stream*/,
+clReadStream(cl_stream             /* stream*/,
 	     void *                /* ptr */,
-	     size_t                /* offset */,
 	     size_t                /* size */,
 	     cl_stream_xfer_req*   /* attributes */,
 	     cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
@@ -329,13 +336,40 @@ clPollStreams(cl_device_id /*device*/,
 	cl_int /*timeout in ms*/,
 	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
+/* clPollStream - Poll a single stream on a device for completion.
+ * @stream                : The stream
+ * @completions           : Completions array
+ * @min_num_completions   : Minimum number of completions requested
+ * @max_num_completions   : Maximum number of completions requested
+ * @actual_num_completions: Actual number of completions returned.
+ * @timeout               : Timeout in milliseconds (ms)
+ * @errcode_ret :         : The return value eg CL_SUCCESS
+ * Return a cl_int.
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clPollStream(cl_stream             /* stream*/,
+       	cl_streams_poll_req_completions* /*completions*/,
+	cl_int  /*min_num_completion*/,
+	cl_int  /*max_num_completion*/,
+	cl_int* /*actual num_completion*/,
+	cl_int /*timeout in ms*/,
+	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/* clSetStreamOpt -Set stream options.
+ * @stream                : The stream
+ * @option                : the option type
+ * @val                   : the option value
+ * @errcode_ret :         : The return value eg CL_SUCCESS
+ * Return a cl_int.
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clSetStreamOpt(cl_stream             /* stream*/,
+	cl_stream_opt_type  /*option_type*/,
+	cl_int  /*option_value*/,
+	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 //End QDMA APIs
 
-typedef struct _cl_mem * rte_mbuf;
-typedef struct _cl_pipe * cl_pipe;
-
 // incorrectly placed in cl.h
-typedef cl_uint cl_pipe_attributes;
 typedef struct _cl_image_filler_xilinx {
     cl_uint                 t0;
     cl_uint                 t1;
@@ -343,57 +377,66 @@ typedef struct _cl_image_filler_xilinx {
     cl_uint                 t3;
 } cl_image_fillier_xilinx;
 
-/* New flag RTE_MBUF_READ_ONLY or RTE_MBUF_WRITE_ONLY
- * OpenCL runtime will use rte_eth_rx_queue_setup to create DPDK RX Ring. The API will return cl_pipe object.
- * OpenCL runtime will use rte_eth_tx_queue_setup to create DPDK TX Ring. The API will return cl_pipe object.
+/*
+ * Low level access to XRT device for use with xrt++
  */
-extern CL_API_ENTRY cl_pipe CL_API_CALL
-    clCreateHostPipe(cl_device_id device,
-	    cl_mem_flags flags,
-	    cl_uint packet_size,
-	    cl_uint max_packets,
-	    const cl_pipe_attributes *attributes, //TODO: properties?
-	    cl_int *errcode_ret) CL_API_SUFFIX__VERSION_1_0;
+struct xrt_device;
+extern CL_API_ENTRY struct xrt_device*
+xclGetXrtDevice(cl_device_id device,
+                cl_int* errcode);
 
-/* OpenCL runtime will use rte_eth_tx_burst to send the buffers to TX queue.
- * The API will return count of buffers successfully sent. The API would bind the buffers
- * to descriptors in the TX Ring
+/**
+ * Return information about the compute units of a kernel
+ *
+ * @kernel
+ *   Kernel object being queried for compute unit.
+ * @cuid
+ *   Compute unit id within @kernel object [0..numcus[
+ *   The CU id must be less that number of CUs as retrieved per
+ *   CL_KERNEL_COMPUTE_UNIT_COUNT with clGetKernelInfo.
+ * @param_name
+ *   Information to query (see list below)
+ * @param_value_size
+ *   Number of bytes of memory in @param_value.
+ *   Size must >= size of return type.
+ * @param_value
+ *   Pointer to memory where result is returned.
+ *   Ignored if NULL.
+ * @param_value_size_ret
+ *   Actual size in bytes of data copied to @param_value.
+ *   Ignored if NULL.
+ *
+ * @XCL_COMPUTE_UNIT_NAME
+ * @type: char[]
+ * @return: name of compute unit
+ *
+ * @XCL_COMPUTE_UNIT_INDEX:
+ * @type: cl_uint
+ * @return: XRT scheduler index of compute unit
+ *
+ * @XCL_COMPUTE_UNIT_BASE_ADDRESS:
+ * @type: size_t
+ * @return: Base address of compute unit
+ *
+ * @XCL_COMPUTE_UNIT_CONNECTIONS:
+ * @type: cl_ulong
+ * @return: Memory connection for each compute unit argument.
+ *  Number of arguments are retrieved per CL_KERNEL_NUM_ARGS
+ *  with clGetKernelInfo
  */
-extern CL_API_ENTRY cl_uint CL_API_CALL
-    clWritePipeBuffers(cl_command_queue command_queue,
-	    cl_pipe pipe,
-	    rte_mbuf** buf,
-	    cl_uint count,
-	    cl_int* errcode_ret) CL_API_SUFFIX__VERSION_1_0;
-
-/* OpenCL runtime will use rte_eth_rx_burst to receive buffers from RX queue.
- * The API will return count of buffers received. The API would unbind the buffers
- * from the descriptors in the RX Ring.
- */
-extern CL_API_ENTRY cl_uint CL_API_CALL
-    clReadPipeBuffers(cl_command_queue command_queue,
-	    cl_pipe pipe,
-	    rte_mbuf** buf,
-	    cl_uint count,
-	    cl_int* errcode_ret) CL_API_SUFFIX__VERSION_1_0;
-
-/*Use rte_pktmbuf_alloc to allocate a buffer from the same mempool used by the pipe.
- * This buffer is not yet bound to any descriptor in the RX/TX queue referred to by the pipe.
- */
-extern CL_API_ENTRY rte_mbuf* CL_API_CALL
-    clAcquirePipeBuffer(cl_command_queue command_queue,
-	    cl_pipe pipe,
-	    cl_int* errcode_ret) CL_API_SUFFIX__VERSION_1_0;
-
-
-/*Use rte_pktmbuf_free to return a buffer to the same mempool used by the pipe.
- * This buffer should not be bound to any descriptor in the RX/TX queue referred to by the pipe.
- */
+typedef cl_uint xcl_compute_unit_info;
 extern CL_API_ENTRY cl_int CL_API_CALL
-    clReleasePipeBuffer(cl_command_queue command_queue,
-	    cl_pipe pipe,
-	    rte_mbuf* buf) CL_API_SUFFIX__VERSION_1_0;
+xclGetComputeUnitInfo(cl_kernel             kernel,
+                      cl_uint               cu_id,
+                      xcl_compute_unit_info param_name,
+                      size_t                param_value_size,
+                      void *                param_value,
+                      size_t *              param_value_size_ret );
 
+#define XCL_COMPUTE_UNIT_NAME         0x1320 // name of CU
+#define XCL_COMPUTE_UNIT_INDEX        0x1321 // scheduler index of CU
+#define XCL_COMPUTE_UNIT_CONNECTIONS  0x1322 // connectivity
+#define XCL_COMPUTE_UNIT_BASE_ADDRESS 0x1323 // base address
 
 /*
   Host Accessible Program Scope Globals
@@ -413,20 +456,76 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 #define XCL_MEM_LEGACY                  0x0
 #define XCL_MEM_TOPOLOGY                (1<<31)
 #define XCL_MEM_EXT_P2P_BUFFER          (1<<30)
+#define XCL_MEM_EXT_HOST_ONLY           (1<<29)
 
-//cl_program_info
-//accepted by the <flags> paramete of clGetProrgamInfo
-#define CL_PROGRAM_BUFFERS_XILINX       0x1180
-
-// cl_kernel_info
+/**
+ * clGetKernelInfo() - kernel information
+ *
+ * @CL_KERNEL_COMPUTE_UNIT_COUNT
+ * @type: cl_uint
+ * @return: Number of compute units associated with this kernel object
+ *
+ * @CL_KERNEL_INSTANCE_BASE_ADDRESS
+ * @type: size_t[]
+ * @return: The base address of the compute units of this kernel object
+ */
 #define CL_KERNEL_COMPUTE_UNIT_COUNT    0x1300
 #define CL_KERNEL_INSTANCE_BASE_ADDRESS 0x1301
 
-// cl_mem_info
+/**
+ * clGetKernelArgInfo() - kernel argument information
+ *
+ * @CL_KERNEL_ARG_OFFSET
+ * @type: size_t
+ * Return: Address offset for specified kernel argument.
+ * The returned offset is relative to the base address of
+ * a compute unit associated with the kernel.
+ */
+#define CL_KERNEL_ARG_OFFSET            0x1320
+
+/**
+ * clGetMemObjectInfo() - Memory object information
+ *
+ * @CL_MEM_BANK
+ * @type: int
+ * Return: The memory index associated with this global
+ * memory object.
+ */
 #define CL_MEM_BANK                     0x1109
 
-// cl_program_build_info (CR962714)
-#define CL_PROGRAM_TARGET_TYPE          0x1190
+/**
+ * clGetProgramBuildInfo() - (CR962714)
+ *
+ * @CL_PROGRAM_TARGET_TYPE
+ * @type: cl_program_target_type (see below)
+ * Return: The target type for this program
+ */
+#define CL_PROGRAM_TARGET_TYPE          0x1110
+
+/**
+ * clGetDeviceInfo()
+ *
+ * @CL_DEVICE_PCIE_BDF
+ * @type: char[]
+ * Return: The BDF if this device is a PCIe
+ *
+ * @CL_DEVICE_HANDLE
+ * @type: void*
+ * Return: The underlying device handle for use with low
+ * level XRT APIs (xrt.h)
+ * 
+ * @CL_DEVICE_NODMA
+ * @type: cl_bool
+ * Return: True if underlying device is NODMA
+ *
+ * @CL_DEVICE_KDMA_COUNT
+ * @type: cl_uint
+ * Return: Number of kernel DMA blocks supported by device
+ */
+#define CL_DEVICE_PCIE_BDF              0x1120  // BUS/DEVICE/FUNCTION
+#define CL_DEVICE_HANDLE                0x1121  // XRT device handle
+#define CL_DEVICE_NODMA                 0x1122  // NODMA device check
+#define CL_DEVICE_KDMA_COUNT            0x1123  // KDMA blocks
 
 // valid target types (CR962714)
 typedef cl_uint cl_program_target_type;
@@ -435,9 +534,18 @@ typedef cl_uint cl_program_target_type;
 #define CL_PROGRAM_TARGET_TYPE_SW_EMU   0x2
 #define CL_PROGRAM_TARGET_TYPE_HW_EMU   0x4
 
+// K2K kernel argument sentinel
+// XCL_HW_STREAM is a global sentinel value that XRT knows to
+// represent an argument transferred via a hardware stream connection.
+// Such arguments require no direct software intervention.
+#define XCL_HW_STREAM NULL
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef _WIN32
+# pragma warning( pop )
 #endif
 
 #endif

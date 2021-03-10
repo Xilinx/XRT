@@ -24,7 +24,11 @@
 #include "detail/device.h"
 
 #include <limits>
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
 namespace xocl {
 
@@ -119,9 +123,9 @@ clGetDeviceInfo(cl_device_id   device,
     buffer.as<cl_uint>() = 64;
     break;
   case CL_DEVICE_MAX_MEM_ALLOC_SIZE:
-    buffer.as<cl_ulong>() = 
+    buffer.as<cl_ulong>() =
 #ifdef __x86_64__
-      512*1024*1024; //512 MB
+      4ULL *1024*1024*1024; // 4GB
 #else
       128*1024*1024; //128 MB
 #endif
@@ -163,7 +167,7 @@ clGetDeviceInfo(cl_device_id   device,
     buffer.as<size_t>() = 2048;
     break;
   case CL_DEVICE_MEM_BASE_ADDR_ALIGN:
-    buffer.as<cl_uint>() = 4096 << 3; // 32768
+    buffer.as<cl_uint>() = xocl(device)->get_alignment() << 3;  // in bits
     break;
   case CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE:
     buffer.as<cl_uint>() = 128;
@@ -184,7 +188,7 @@ clGetDeviceInfo(cl_device_id   device,
     buffer.as<cl_ulong>() = 0;
     break;
   case CL_DEVICE_GLOBAL_MEM_SIZE:
-    buffer.as<cl_ulong>() = xdevice->get_xrt_device()->getDdrSize();
+    buffer.as<cl_ulong>() = xdevice->get_xdevice()->getDdrSize();
     break;
   case CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE:
     buffer.as<cl_ulong>() = 4*1024*1024;
@@ -223,11 +227,10 @@ clGetDeviceInfo(cl_device_id   device,
     buffer.as<cl_device_exec_capabilities>() = CL_EXEC_KERNEL;
     break;
   case CL_DEVICE_QUEUE_PROPERTIES:
-    buffer.as<cl_command_queue_properties>() = 
+    buffer.as<cl_command_queue_properties>() =
       (
-       CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE 
+       CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
        | CL_QUEUE_PROFILING_ENABLE
-       | CL_QUEUE_DPDK
      );
     break;
   case CL_DEVICE_BUILT_IN_KERNELS:
@@ -271,14 +274,14 @@ clGetDeviceInfo(cl_device_id   device,
     buffer.as<cl_uint>() = xdevice->get_num_cus();
     break;
   case CL_DEVICE_PARTITION_PROPERTIES:
-    buffer.as<cl_device_partition_property>() = 
+    buffer.as<cl_device_partition_property>() =
       xocl::get_range(std::initializer_list<cl_device_partition_property>({0,0,0,0}));
     break;
   case CL_DEVICE_PARTITION_AFFINITY_DOMAIN:
     buffer.as<cl_device_affinity_domain>() = 0;
     break;
   case CL_DEVICE_PARTITION_TYPE:
-    buffer.as<cl_device_partition_property>() = 
+    buffer.as<cl_device_partition_property>() =
       xocl::get_range(std::initializer_list<cl_device_partition_property>({0,0,0,0}));
     break;
   case CL_DEVICE_REFERENCE_COUNT:
@@ -297,8 +300,20 @@ clGetDeviceInfo(cl_device_id   device,
   case CL_DEVICE_SVM_CAPABILITIES:
     buffer.as<cl_device_svm_capabilities>() = CL_DEVICE_SVM_COARSE_GRAIN_BUFFER;
     break;
+  case CL_DEVICE_PCIE_BDF:
+    buffer.as<char>() = xdevice->get_bdf();
+    break;
+  case CL_DEVICE_HANDLE:
+    buffer.as<void*>() = xdevice->get_handle();
+    break;
+  case CL_DEVICE_NODMA:
+    buffer.as<cl_bool>() = xdevice->is_nodma();
+    break;
+  case CL_DEVICE_KDMA_COUNT:
+    buffer.as<cl_uint>() = static_cast<cl_uint>(xdevice->get_num_cdmas());
+    break;
   default:
-    return CL_INVALID_VALUE;
+    throw error(CL_INVALID_VALUE,"clGetDeviceInfo: invalid param_name");
     break;
   }
   return CL_SUCCESS;
@@ -330,6 +345,7 @@ clGetDeviceInfo(cl_device_id    device,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetDeviceInfo
       (device, param_name, param_value_size,param_value, param_value_size_ret);
   }
@@ -342,5 +358,3 @@ clGetDeviceInfo(cl_device_id    device,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

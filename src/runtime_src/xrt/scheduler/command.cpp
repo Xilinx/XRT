@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,13 +15,14 @@
  */
 
 #include "command.h"
+#include "scheduler.h"
 
 #include <map>
 #include <vector>
 
 namespace {
 
-using buffer_type = xrt::device::ExecBufferObjectHandle;
+using buffer_type = xrt_xocl::device::execbuffer_object_handle;
 static std::mutex s_mutex;
 
 // Static destruction logic to prevent double purging.
@@ -33,7 +34,7 @@ static std::mutex s_mutex;
 static bool s_purged = false;
 
 struct X {
-  std::map<xrt::device*,std::vector<buffer_type>> freelist;
+  std::map<xrt_xocl::device*,std::vector<buffer_type>> freelist;
   X() {}
   ~X() { s_purged = true; }
 };
@@ -41,7 +42,7 @@ struct X {
 static X sx;
 
 static buffer_type
-get_buffer(xrt::device* device,size_t sz)
+get_buffer(xrt_xocl::device* device,size_t sz)
 {
   std::lock_guard<std::mutex> lk(s_mutex);
 
@@ -59,7 +60,7 @@ get_buffer(xrt::device* device,size_t sz)
 }
 
 static void
-free_buffer(xrt::device* device,buffer_type bo)
+free_buffer(xrt_xocl::device* device,buffer_type bo)
 {
   std::lock_guard<std::mutex> lk(s_mutex);
   s_purged=false;
@@ -68,7 +69,7 @@ free_buffer(xrt::device* device,buffer_type bo)
 
 } // namespace
 
-namespace xrt {
+namespace xrt_xocl {
 
 // Purge exec buffer freelist during static destruction.
 // Not safe to call outside of static descruction, can't lock
@@ -85,8 +86,18 @@ purge_command_freelist()
   s_purged = true;
 }
 
+// Purge command list for specific device
+// This function is called when the device is closed
+void
+purge_device_command_freelist(xrt_xocl::device* device)
+{
+  auto itr = sx.freelist.find(device);
+  if (itr != sx.freelist.end())
+    (*itr).second.clear();
+}
+
 command::
-command(xrt::device* device, ert_cmd_opcode opcode)
+command(xrt_xocl::device* device, ert_cmd_opcode opcode)
   : m_device(device)
   , m_exec_bo(get_buffer(m_device,regmap_size*sizeof(value_type)))
   , m_packet(m_device->map(m_exec_bo))
@@ -100,9 +111,8 @@ command(xrt::device* device, ert_cmd_opcode opcode)
   auto epacket = get_ert_cmd<ert_packet*>();
   epacket->state = ERT_CMD_STATE_NEW; // new command
   epacket->opcode = opcode & 0x1F; // [4:0]
-  epacket->type = opcode >> 5;     // [9:5]
 
-  XRT_DEBUG(std::cout,"xrt::command::command(",m_uid,")\n");
+  XRT_DEBUG(std::cout,"xrt_xocl::command::command(",m_uid,")\n");
 
 }
 
@@ -119,10 +129,23 @@ command::
 ~command()
 {
   if (m_exec_bo) {
-    XRT_DEBUG(std::cout,"xrt::command::~command(",m_uid,")\n");
+    XRT_DEBUG(std::cout,"xrt_xocl::command::~command(",m_uid,")\n");
     m_device->unmap(m_exec_bo);
     free_buffer(m_device,m_exec_bo);
   }
+}
+
+void
+command::
+execute()
+{
+  // command objects can be reused outside constructor
+  // reset state
+  auto epacket = get_ert_cmd<ert_packet*>();
+  epacket->state = ERT_CMD_STATE_NEW;
+
+  m_done=false;
+  xrt_xocl::scheduler::schedule(get_ptr());
 }
 
 } // xrt

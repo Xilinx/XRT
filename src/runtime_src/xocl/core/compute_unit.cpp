@@ -19,63 +19,35 @@
 #include "range.h"
 #include "device.h"
 #include "program.h"
+
+#include "core/common/xclbin_parser.h"
+
 #include <algorithm>
 #include <iostream>
-
-namespace {
-
-static size_t
-get_base_addr(const xocl::xclbin::symbol* symbol, const std::string& kinst)
-{
-  using inst_type = xocl::xclbin::symbol::instance;
-  auto itr = range_find(symbol->instances,[&kinst](const inst_type& inst){return inst.name==kinst;});
-  if (itr==symbol->instances.end())
-    throw std::runtime_error
-      ("internal error: kernel instance '" + kinst + "' not found in kernel '" + symbol->name + "'");
-  auto port = (*itr).port;
-  auto controlport = symbol->controlport;
-  std::transform(port.begin(), port.end(), port.begin(), ::tolower);
-  std::transform(controlport.begin(), controlport.end(), controlport.begin(), ::tolower);
-  if (port != controlport)
-    throw std::runtime_error
-      ("internal error: kernel instance '" 
-       + kinst + "' in kernel '" 
-       + symbol->name + "' doesn't match control port '" 
-       + symbol->controlport + "' != '" + port + "'");
-  return (*itr).base;
-}
-
-} // namespace
+#include <limits>
 
 namespace xocl {
 
 compute_unit::
-compute_unit(const xclbin::symbol* s, const std::string& n, device* d)
-  : m_symbol(s), m_name(n), m_device(d), m_address(get_base_addr(m_symbol,m_name))
+compute_unit(const xclbin::symbol* s, const std::string& n, size_t base, size_t idx, const device* d)
+  : m_symbol(s), m_name(n), m_device(d), m_address(base), m_index(idx)
+  , m_control(xrt_core::xclbin::get_cu_control(d->get_axlf_section<const ::ip_layout*>(IP_LAYOUT),base))
 {
   static unsigned int count = 0;
   m_uid = count++;
 
-  // This should be reworked to not compute every time
-  auto xclbin = d->get_xclbin();
-  auto cu2addr = xclbin.cu_base_address_map();
-  auto itr = std::find(cu2addr.begin(),cu2addr.end(),m_address);
-  if (itr==cu2addr.end())
-    throw std::runtime_error("Internal error  constructing compute unit");
-  m_index = std::distance(cu2addr.begin(),itr);
-
-  XOCL_DEBUGF("xocl::compute_unit::compute_unit(%d) name(%s) index(%d) address(0x%x)\n",m_uid,m_name.c_str(),m_index,m_address);
+  XOCL_DEBUGF("xocl::compute_unit::compute_unit(%d) name(%s) index(%zu) address(0x%x)\n",m_uid,m_name.c_str(),m_index,m_address);
 }
 
 compute_unit::
-~compute_unit() 
+~compute_unit()
 {
   XOCL_DEBUG(std::cout,"xocl::compute_unit::~compute_unit(",m_uid,")\n");
 }
 
 xclbin::memidx_bitmask_type
 compute_unit::
-get_memidx(unsigned int argidx) const
+get_memidx_nolock(unsigned int argidx) const
 {
   auto itr = m_memidx_mask.find(argidx);
   if (itr == m_memidx_mask.end()) {
@@ -87,8 +59,18 @@ get_memidx(unsigned int argidx) const
 
 xclbin::memidx_bitmask_type
 compute_unit::
+get_memidx(unsigned int argidx) const
+{
+  std::lock_guard<std::mutex> lk(m_mutex);
+  return get_memidx_nolock(argidx);
+}
+
+xclbin::memidx_bitmask_type
+compute_unit::
 get_memidx_intersect() const
 {
+  std::lock_guard<std::mutex> lk(m_mutex);
+
   if (cached)
     return m_memidx;
 
@@ -100,7 +82,7 @@ get_memidx_intersect() const
     if (arg.atype!=xclbin::symbol::arg::argtype::indexed)
       continue;
     if (arg.address_qualifier==1 || arg.address_qualifier==2) // global or constant
-      m_memidx &= get_memidx(argidx);
+      m_memidx &= get_memidx_nolock(argidx);
     ++argidx;
   }
 
@@ -115,5 +97,31 @@ get_memidx_union() const
   return xclbin.cu_address_to_memidx(m_address);
 }
 
-} // xocl
+std::unique_ptr<compute_unit>
+compute_unit::
+create(const xclbin::symbol* symbol, const xclbin::symbol::instance& inst,
+       const device* device, const std::vector<uint64_t>& cu2addr)
+{
+  auto itr = std::find(cu2addr.begin(),cu2addr.end(),inst.base);
 
+  // streaming CUs have bogus inst.base in XML meta data and will not
+  // be found in cu2addr.  Here we rely on the sorted cu2addr having
+  // the streaming / unused CUs at the end and we just arbitrarily
+  // give the compute unit the index of the last entry in the array.
+  size_t idx = itr!=cu2addr.end()
+    ? std::distance(cu2addr.begin(),itr)
+    : cu2addr.size()-1;  // unused cus are pushed to end
+
+  // streaming CUs have a bogus / unused base address, the address
+  // doesn't matter we just use max, which corresponds to the sort
+  // order in cu2addr.
+  size_t addr = itr!=cu2addr.end()
+    ? (*itr)
+    : std::numeric_limits<size_t>::max(); // addr doesn't matter
+
+  // Unfortunately make_unique can't access private ctor
+  // return std::make_unique<compute_unit>(symbol,inst.name,inst.base,idx,device);
+  return std::unique_ptr<compute_unit>(new compute_unit(symbol,inst.name,addr,idx,device));
+}
+
+} // xocl

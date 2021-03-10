@@ -1,56 +1,42 @@
+.. _system_requirements.rst:
+
 System Requirements
 -------------------
 
-Host Platform
-~~~~~~~~~~~~~
+Host Platform for PCIe Accelerator Cards
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. x86_64
 2. AARCH64
 3. PPC64LE
 
-Xilinx Accelerator Card
-~~~~~~~~~~~~~~~~~~~~~~~
+Supported Xilinx® Accelerator Cards are listed in :ref:`platforms.rst`.
 
-1. VCU1525 (xilinx_vcu1525_dynamic_5_1)
-2. KCU1500 (xilinx_kcu1500_dynamic_5_0)
-3. AWS F1 (xilinx_aws-vu9p-f1_dynamic_5_0)
 
-Software Platform
-~~~~~~~~~~~~~~~~~
+XRT Software Stack for PCIe Accelerator Cards
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-XRT and OpenCL runtime require Linux kernel 3.10 and GCC with C++11 features. The stack has been tested on RHEL/CentOS 7.4 and Ubuntu 16.04.4 LTS. CentOS/RHEL 7.4 requires additional steps to get C++11 tool set. Detailed dependencies and instructions are below.
+XRT software stack requires Linux kernel 3.10+. 
 
-CentOS/RHEL 7.4
-...............
+The XRT software stack is tested on RHEL/CentOS and Ubuntu. 
+For the detailed list of supported OS, please refer to the specific release versions of `UG1451 XRT Release Notes <https://www.xilinx.com/search/site-keyword-search.html#q=ug1451>`_. 
 
-Please install *EPEL 7* by following instructions at https://fedoraproject.org/wiki/EPEL
+XRT is needed on both application development and deployment environments. 
 
-Then install required packages using the provided script ``src/runtime_src/tools/scripts/xrtdeps.sh``
+To install XRT on the host, please refer to page :ref:`install.rst` for dependencies installation steps and XRT installation steps.
 
-Installing C++11 build tools on CentOS 7.X
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+To build a custom XRT package, please refer to page :ref:`build.rst` for dependencies installation steps and building steps.
 
-::
+XRT Software Stack for Embedded Platforms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
- sudo yum install centos-release-scl (CentOS)
- sudo yum install devtoolset-6
+XRT software stack requires Linux kernel 3.10+. XRT for embedded platforms is tested with PetaLinux.
 
-Installing C++11 build tools on RHEL 7.X
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+XRT needs to be installed on the development environment (rootfs or sysroot) and deployment environment (rootfs) of embedded platforms.
 
-::
+If embedded processor native compile is to be used, XRT, xrt-dev and GCC needs to be installed on the target embedded system rootfs.
 
- sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
- sudo yum install devtoolset-6
+If application is developed on a server with cross compiling technique, XRT needs to be installed into sysroot. The application can be cross compiled against the sysroot. 
+XRT for server is not required on the cross compile server.
 
-Switching to C++11 build environment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-::
-
- scl enable devtoolset-6 bash
-
-Ubuntu 16.04.4 LTS
-..................
-
-Install required packages using the provided script ``src/runtime_src/tools/scripts/xrtdeps.sh``
+The embedded platform for deployment should have XRT and ZOCL installed. For details about building embedded platforms please refer to :ref:`yocto.rst`.

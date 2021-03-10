@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -59,6 +59,7 @@ public:
   using action_enqueue_type = std::function<void (event*)>;
   using action_profile_type = std::function<void (event*, cl_int, const std::string&)>;
   using action_debug_type = std::function<void (event*)>;
+  using action_lop_type = std::function<void (event*, cl_int)>;
 
   event(command_queue* cq, context* ctx, cl_command_type cmd);
   event(command_queue* cq, context* ctx, cl_command_type cmd, cl_uint num_deps, const cl_event* deps);
@@ -133,8 +134,24 @@ public:
   /*virtual*/ void
   set_profile_action(event::action_profile_type&& action)
   {
-    if (xrt::config::get_profile())
+    if (xrt_xocl::config::get_timeline_trace() ||
+	xrt_xocl::config::get_opencl_trace())
       m_profile_action = std::move(action);
+  }
+
+  void
+  set_profile_counter_action(event::action_profile_type&& action)
+  {
+    if (xrt_xocl::config::get_profile() ||
+	xrt_xocl::config::get_opencl_summary())
+      m_profile_counter_action = std::move(action) ;
+  }
+
+  void
+  set_lop_action(event::action_lop_type&& action)
+  {
+    if (xrt_xocl::config::get_lop_trace())
+      m_lop_action = std::move(action);
   }
 
   /**
@@ -151,6 +168,21 @@ public:
     if (m_profile_action)
       m_profile_action(this,status,cuname);
   }
+
+  void
+  trigger_profile_counter_action(cl_int status, const std::string& cuname = "")
+  {
+    if (m_profile_counter_action)
+      m_profile_counter_action(this, status, cuname) ;
+  }
+
+  void
+  trigger_lop_action(cl_int status)
+  {
+    if (m_lop_action)
+      m_lop_action(this, status);
+  }
+
   /**
    * This is valid only with event_with_debugging
    */
@@ -381,14 +413,18 @@ public:
    *
    * Callbacks are called in arbitrary order
    */
-  static void register_constructor_callbacks(event_callback_type&& aCallback);
+  XRT_XOCL_EXPORT
+  static void
+  register_constructor_callbacks(event_callback_type&& aCallback);
 
   /**
    * Register callback function for event destruction
    *
    * Callbacks are called in arbitrary order
    */
-  static void register_destructor_callbacks(event_callback_type&& aCallback);
+  XRT_XOCL_EXPORT
+  static void
+  register_destructor_callbacks(event_callback_type&& aCallback);
 
 protected:
   /**
@@ -415,7 +451,7 @@ private:
    * Check if this event chains argument event
    */
   bool
-  chains(const event* ev) const;
+  chains_nolock(const event* ev) const;
 
   /**
    * Check if this event depends on argument event
@@ -502,6 +538,8 @@ private:
   // move to event_with_profiling when logging of
   // profile data is controlled by command queue
   action_profile_type m_profile_action;
+  action_profile_type m_profile_counter_action;
+  action_lop_type m_lop_action;
 
   // execution context, probably should create some derived class
   std::unique_ptr<execution_context> m_execution_context;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/command_queue.h"
@@ -27,7 +27,7 @@
 #include "detail/memory.h"
 #include "detail/event.h"
 #include "detail/context.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
@@ -113,7 +113,7 @@ clEnqueueWriteBufferRect(cl_command_queue     command_queue ,
 
   // Now the event is running, this should be hard_event and handle asynchronously
   auto device = xocl::xocl(command_queue)->get_device();
-  auto xdevice = device->get_xrt_device();
+  auto xdevice = device->get_xdevice();
   auto boh = xocl::xocl(buffer)->get_buffer_object_or_error(device);
   void* host_ptr = xdevice->map(boh);
   
@@ -161,13 +161,14 @@ clEnqueueWriteBufferRect(cl_command_queue     command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueWriteBufferRect
       (command_queue,buffer,blocking,buffer_origin,host_origin,region
        ,buffer_row_pitch,buffer_slice_pitch
        ,host_row_pitch,host_slice_pitch
        ,ptr,num_events_in_wait_list,event_wait_list,event);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get_code();
   }

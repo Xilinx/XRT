@@ -31,9 +31,11 @@
 #define TYPESIZE                            512
 #define TYPE                                uint16
 #define TYPEISVECTOR                        1
+#define THROUGHPUT_CHK                      16000
 
 const size_t typesize = TYPESIZE;
 const int runmode = RUNMODE;
+int threshold = THROUGHPUT_CHK;
 
 //expected throughput for test
 //width,runmode
@@ -158,6 +160,11 @@ int opencl_setup(const char *xclbinfilename, cl_platform_id *platform_id,
             *device_id = devices[i];
             device_found = 1;
             std::printf("Selected %s as the target device\n", cl_device_name);
+            //u280 (or u50, u2) has lower single-bank bandwidth 
+            if(strstr(cl_device_name, "u280")!=NULL ||
+                strstr(cl_device_name, "u50")!=NULL ||
+                strstr(cl_device_name, "samsung")!=NULL)
+                threshold = 12000;
         }
     }
 
@@ -587,9 +594,12 @@ int main(int argc, char** argv)
     }
     std::printf ("Maximum throughput: %f MB/s\n",max_V);
 
-    if (max_V < 40000) {
-        std::printf("ERROR: Throughput is less than expected value of 40 GB/sec\n");
+    if (max_V < threshold) {
+        std::printf("ERROR: Throughput is less than expected value of %d GB/sec\n", threshold/1000);
         exit(1);
+    }
+    else {
+        std::printf("TEST PASSED\n");
     }
 
     return EXIT_SUCCESS;

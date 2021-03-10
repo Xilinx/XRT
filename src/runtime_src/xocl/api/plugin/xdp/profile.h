@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,6 +13,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
+#if 0
 
 #ifndef xocl_api_profile_h
 #define xocl_api_profile_h
@@ -31,9 +33,9 @@
 #include <utility>
 #include <string>
 
-namespace xocl { 
+struct axlf;
 
-class xclbin;
+namespace xocl { 
 
 namespace profile {
 
@@ -44,28 +46,31 @@ using cb_action_ndrange_type = std::function<void (xocl::event* event,cl_int sta
                                                    std::string kname, std::string xname, size_t workGroupSize,
                                                    const size_t* globalWorkDim, const size_t* localWorkDim, unsigned int programId)>;
 using cb_action_read_type = std::function<void (xocl::event* event,cl_int status, cl_mem buffer, size_t size,
-                                          uint64_t address, const std::string& bank)>;
+                                          uint64_t address, const std::string& bank, size_t user_offset, size_t user_size, bool entire_buffer)>;
 using cb_action_map_type = std::function<void (xocl::event* event,cl_int status, cl_mem buffer, size_t size,
                                                uint64_t address, const std::string& bank, cl_map_flags map_flags)>;
 using cb_action_write_type = std::function<void (xocl::event* event,cl_int status, cl_mem buffer, size_t size,
-                                               uint64_t address, const std::string& bank)>;
+                                           uint64_t address, const std::string& bank, size_t user_offset, size_t user_size, bool entire_buffer)>;
 using cb_action_unmap_type = std::function<void (xocl::event* event,cl_int status, cl_mem buffer, size_t size,
                                                  uint64_t address, const std::string& bank)>;
 using cb_action_ndrange_migrate_type = std::function <void (xocl::event* event,cl_int status, cl_mem mem0,
                                                       size_t totalSize, uint64_t address, const std::string & bank)>;
 using cb_action_migrate_type = std::function< void (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSize, uint64_t address,
                                                     const std::string & bank, cl_mem_migration_flags flags)>;
+using cb_action_copy_type = std::function< void (xocl::event* event, cl_int status, cl_mem src_buffer, cl_mem dst_buffer,
+                                                 bool same_device, size_t size, uint64_t srcAddress, const std::string& srcBank,
+                                                 uint64_t dstAddress, const std::string& dstBank)>;
 
 /*
  * callback function types for function logging, dependency ...
  */
 
-using cb_log_function_start_type = std::function<void(const char* functionName, long long queueAddress)>;
-using cb_log_function_end_type = std::function<void(const char* functionName, long long queueAddress)>;
+using cb_log_function_start_type = std::function<void(const char* functionName, long long queueAddress, unsigned int functionID)>;
+using cb_log_function_end_type = std::function<void(const char* functionName, long long queueAddress, unsigned int functionID)>;
 using cb_log_dependencies_type = std::function<void(xocl::event* event,  cl_uint num_deps, const cl_event* deps)>;
 using cb_add_to_active_devices_type = std::function<void (const std::string& device_name)>;
 using cb_set_kernel_clock_freq_type = std::function<void(const std::string& device_name, unsigned int freq)>;
-using cb_reset_type = std::function<void(const xocl::xclbin&)>;
+using cb_reset_type = std::function<void(const axlf*)>;
 using cb_init_type = std::function<void(void)>;
 
 /*
@@ -80,79 +85,77 @@ using cb_end_device_profiling_type = std::function<void(void)>;
 /*
  * callback registration functions called from profile
 */
-void register_cb_action_ndrange (cb_action_ndrange_type&& cb);
-void register_cb_action_read  (cb_action_read_type&& cb);
-void register_cb_action_map (cb_action_map_type&& cb);
-void register_cb_action_write (cb_action_write_type&& cb);
-void register_cb_action_unmap (cb_action_unmap_type&& cb);
-void register_cb_action_ndrange_migrate (cb_action_ndrange_migrate_type&& cb);
-void register_cb_action_migrate (cb_action_migrate_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_ndrange (cb_action_ndrange_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_read  (cb_action_read_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_map (cb_action_map_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_write (cb_action_write_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_unmap (cb_action_unmap_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_ndrange_migrate (cb_action_ndrange_migrate_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_migrate (cb_action_migrate_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_copy (cb_action_copy_type&& cb);
 
-void register_cb_log_function_start (cb_log_function_start_type&& cb);
-void register_cb_log_function_end (cb_log_function_end_type&& cb);
-void register_cb_log_dependencies(cb_log_dependencies_type && cb);
-void register_cb_add_to_active_devices(cb_add_to_active_devices_type&& cb);
-void register_cb_set_kernel_clock_freq (cb_set_kernel_clock_freq_type&& cb);
-void register_cb_reset(cb_reset_type && cb);
-void register_cb_init (cb_init_type && cb);
+XRT_XOCL_EXPORT void register_cb_log_function_start (cb_log_function_start_type&& cb);
+XRT_XOCL_EXPORT void register_cb_log_function_end (cb_log_function_end_type&& cb);
+XRT_XOCL_EXPORT void register_cb_log_dependencies(cb_log_dependencies_type && cb);
+XRT_XOCL_EXPORT void register_cb_add_to_active_devices(cb_add_to_active_devices_type&& cb);
+XRT_XOCL_EXPORT void register_cb_set_kernel_clock_freq (cb_set_kernel_clock_freq_type&& cb);
+XRT_XOCL_EXPORT void register_cb_reset(cb_reset_type && cb);
+XRT_XOCL_EXPORT void register_cb_init (cb_init_type && cb);
 
+XRT_XOCL_EXPORT void register_cb_get_device_trace (cb_get_device_trace_type&& cb);
+XRT_XOCL_EXPORT void register_cb_get_device_counters (cb_get_device_counters_type&& cb);
+XRT_XOCL_EXPORT void register_cb_start_device_profiling (cb_start_device_profiling_type&& cb);
+XRT_XOCL_EXPORT void register_cb_reset_device_profiling (cb_reset_device_profiling_type&& cb);
+XRT_XOCL_EXPORT void register_cb_end_device_profiling (cb_end_device_profiling_type&& cb);
 
-void register_cb_get_device_trace (cb_get_device_trace_type&& cb);
-void register_cb_get_device_counters (cb_get_device_counters_type&& cb);
-void register_cb_start_device_profiling (cb_start_device_profiling_type&& cb);
-void register_cb_reset_device_profiling (cb_reset_device_profiling_type&& cb);
-void register_cb_end_device_profiling (cb_end_device_profiling_type&& cb);
+XRT_XOCL_EXPORT void get_address_bank(cl_mem buffer, uint64_t &address, int &bank);
+XRT_XOCL_EXPORT bool is_same_device(cl_mem buffer1, cl_mem buffer2);
 
-void get_address_bank(cl_mem buffer, uint64_t &address, int &bank);
-
-std::string
+XRT_XOCL_EXPORT std::string
 get_event_string(xocl::event* currEvent);
 
-std::string
+XRT_XOCL_EXPORT std::string
 get_event_dependencies_string(xocl::event* currEvent);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_ndrange(cl_event event,cl_kernel kernel);
 
-xocl::event::action_profile_type
-action_read(cl_mem buffer);
+XRT_XOCL_EXPORT xocl::event::action_profile_type
+action_read(cl_mem buffer, size_t offset, size_t size, bool entire_buffer);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_map(cl_mem buffer,cl_map_flags map_flags);
 
-xocl::event::action_profile_type
-action_write(cl_mem buffer);
+XRT_XOCL_EXPORT xocl::event::action_profile_type
+action_write(cl_mem buffer, size_t offset, size_t size, bool entire_buffer);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_unmap(cl_mem buffer);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_ndrange_migrate(cl_event event, cl_kernel kernel);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migration_flags flags);
+
+XRT_XOCL_EXPORT xocl::event::action_profile_type
+action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size, bool same_device);
 
 template <typename F, typename ...Args>
 inline void
 set_event_action(xocl::event* event, F&& f, Args&&... args)
 {
-  // if profiling is off, then avoid creating the lambdas
-#if 0 // For the time being, to preserve old log profile data behavior, 
-      // always store the profile action, see comments in xocl/core/event.h
-  if (!event->get_command_queue()->is_profiling_enabled())
-    return;
-#endif
-
-  event->set_profile_action(f(std::forward<Args>(args)...));
+  if (xrt_xocl::config::get_profile())
+    event->set_profile_action(f(std::forward<Args>(args)...));
 }
 
-void
+XRT_XOCL_EXPORT void
 log(xocl::event* event, cl_int status);
 
-void
+XRT_XOCL_EXPORT void
 log(xocl::event* event, cl_int status, const std::string& cuname);
 
-void
+XRT_XOCL_EXPORT void
 log_dependencies (xocl::event* event,  cl_uint num_deps, const cl_event* deps);
 
 struct function_call_logger
@@ -161,38 +164,40 @@ struct function_call_logger
   function_call_logger(const char* function, long long address);
   ~function_call_logger();
 
+  static std::atomic <unsigned int> m_funcid_global;
+  unsigned int m_funcid;
   const char* m_name = nullptr;
   long long m_address = 0;
 };
 
-void
+XRT_XOCL_EXPORT void
 add_to_active_devices(const std::string& device_name);
 
-void
+XRT_XOCL_EXPORT void
 set_kernel_clock_freq(const std::string& device_name, unsigned int freq);
 
-void
-reset(const xocl::xclbin& xclbin);
+XRT_XOCL_EXPORT void
+reset(const axlf* xclbin);
 
 /**
  * Initialize profiling (was RTSignleton::instance() blah blah
  */
-void 
+XRT_XOCL_EXPORT void 
 init();
 
-void
+XRT_XOCL_EXPORT void
 get_device_trace (bool forceReadTrace);
 
-void
+XRT_XOCL_EXPORT void
 get_device_counters (bool firstReadAfterProgram, bool forceReadCounters);
 
-void
+XRT_XOCL_EXPORT void
 start_device_profiling(size_t numComputeUnits);
 
-void
+XRT_XOCL_EXPORT void
 reset_device_profiling();
 
-void
+XRT_XOCL_EXPORT void
 end_device_profiling();
 
 }} // profile,xocl
@@ -203,3 +208,4 @@ end_device_profiling();
 #endif
 
 
+#endif

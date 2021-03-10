@@ -17,6 +17,7 @@
 #ifndef xocl_api_detail_platform_h_
 #define xocl_api_detail_platform_h_
 
+#include "xocl/config.h"
 #include "CL/cl.h"
 
 namespace xocl { namespace detail {
@@ -34,5 +35,3 @@ validOrError(cl_uint num_entries, const cl_platform_id* platforms);
 }} // detail,xocl
 
 #endif
-
-

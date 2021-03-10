@@ -16,12 +16,12 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/event.h"
 #include "detail/event.h"
+#include "plugin/xdp/profile_v2.h"
 
-#include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -74,6 +74,7 @@ clSetUserEventStatus(cl_event    event ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clSetUserEventStatus(event,execution_status);
   }
   catch (const xocl::error& ex) {
@@ -85,5 +86,3 @@ clSetUserEventStatus(cl_event    event ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

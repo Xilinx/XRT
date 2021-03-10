@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,10 +17,11 @@
 #ifndef xrt_scheduler_h_
 #define xrt_scheduler_h_
 
+#include "xrt/config.h"
 #include "xrt/scheduler/command.h"
 #include <vector>
 
-namespace xrt { 
+namespace xrt_xocl {
 
 using command_type = std::shared_ptr<command>;
 
@@ -29,56 +30,27 @@ using command_type = std::shared_ptr<command>;
  */
 namespace sws {
 
-/**
- * Start the scheduler.
- *
- * @throws exception if already started
- */
+void
+schedule(const command_type& cmd);
+
 void
 start();
 
-/**
- * Stop the scheduler if it is running.
- */
 void
 stop();
 
+XRT_EXPORT
 void
-init(xrt::device* device, size_t slot_size, size_t num_cus, size_t cu_offset, size_t cu_base_addr, const std::vector<uint32_t>& cu_addr_map);
-
-/**
- * Schedule a command for execution
- */
-void 
-schedule(const command_type& cmd);
+init(xrt_xocl::device* device);
 
 } // sws
 
 /**
  * Embedded command scheduling
  */
-namespace mbs {
-
-void 
-schedule(const command_type& cmd);
-
-void
-start();
-
-void
-stop();
-
-void
-init(xrt::device* device, size_t slot_size, bool cu_usr,  size_t num_cus, size_t cu_offset, size_t cu_base_addr, const std::vector<uint32_t>& cu_addr_map);
-
-} // mbs
-
-/**
- * Embedded command scheduling
- */
 namespace kds {
 
-void 
+void
 schedule(const command_type& cmd);
 
 void
@@ -88,7 +60,7 @@ void
 stop();
 
 void
-init(xrt::device* device, size_t slot_size, bool cu_isr, size_t num_cus, size_t cu_offset, size_t cu_base_addr, const std::vector<uint32_t>& cu_addr_map);
+init(xrt_xocl::device* device);
 
 } // kds
 
@@ -96,17 +68,21 @@ namespace scheduler {
 /**
  * Schedule a command for execution on either sws or mbs
  */
-void 
+XRT_EXPORT
+void
 schedule(const command_type& cmd);
 
+XRT_EXPORT
 void
 start();
 
+XRT_EXPORT
 void
 stop();
 
+XRT_EXPORT
 void
-init(xrt::device* device, size_t slot_size, bool cu_isr,size_t num_cus, size_t cu_offset, size_t cu_base_addr, const std::vector<uint32_t>& cu_addr_map);
+init(xrt_xocl::device* device);
 
 } // scheduler
 

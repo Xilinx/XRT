@@ -1,2 +1,0 @@
-git p4 clone --use-client-spec --destination=$PWD //Rodin/REL/2018.2/src/products/sdx/ocl/src
-git remote add origin https://gitenterprise.xilinx.com/sonals/SDAccelTry1.git

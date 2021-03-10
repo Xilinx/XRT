@@ -23,7 +23,7 @@ namespace xocl { namespace detail {
 
 namespace program {
 
-void 
+void
 validOrError(cl_program program)
 {
   // CL_INVALID_PROGRAM if program is not a valid program object.
@@ -38,9 +38,19 @@ validExecutableOrError(const cl_program program)
   // executable for any device in program.
   auto xp = xocl(program);
   auto dr = xp->get_device_range();
+#ifndef _WIN32
   auto itr = std::find_if(dr.begin(),dr.end(),
-                          [xp](const device* dev) 
+                          [xp](const device* dev)
                           {return xp->get_build_status(dev)==CL_BUILD_SUCCESS; });
+#else
+  auto itr = dr.begin();
+  auto end = dr.end();
+  for (; itr != end; ++itr) {
+    auto dev = (*itr);
+    if (xp->get_build_status(dev)==CL_BUILD_SUCCESS)
+      break;
+  }
+#endif
   if (itr == dr.end())
     throw error(CL_INVALID_PROGRAM_EXECUTABLE,"no executable for program");
 }
@@ -48,6 +58,3 @@ validExecutableOrError(const cl_program program)
 } // program
 
 }} // detail,xocl
-
-
-

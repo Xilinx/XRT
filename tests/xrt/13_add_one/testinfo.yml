@@ -1,0 +1,25 @@
+#template_tql < $XTC_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: haeseung
+user:
+  allowed_test_modes: [hw]
+  force_makefile: "--force"
+  host_args: {all: -k kernel.xclbin}
+  host_cflags: ' -g -std=c++14 -Wall -fmessage-length=0 -D_GLIBCXX_USE_CXX11_ABI=0 -I${HOST_SRC_PATH} -I${XILINX_XRT}/include -L${XILINX_XRT}/lib -Wl,-rpath-link,${XILINX_XRT}/lib -lstdc++ -ldl -luuid -lpthread -lrt -lxrt_coreutil '
+  ignore_default_host_cflags: 1
+  host_exe: host.exe
+  host_src: main.cpp
+  kernels:
+  - {cflags: {add: ' -I.'}, file: addone.xo, ksrc: kernel.cl, name: addone, type: C}
+  name: 13_add_one
+  xclbins:
+  - files: 'addone.xo '
+    kernels:
+    - cus: [addone]
+      name: addone
+      num_cus: 1
+    name: kernel.xclbin
+  labels:
+    test_type: ['regression']
+  sdx_type: [sdx_fast]

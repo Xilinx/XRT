@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE( test_clEnqueueMapBuffer1 )
   ocl_sw_emulation ocl;
   cl_int err = CL_SUCCESS;
 
-  // Allocate unaligned (for xrt::device) buffer to force allocation
+  // Allocate unaligned (for xrt_xocl::device) buffer to force allocation
   // of separate host buffer in backing buffer object
   const size_t sz = 5;
   std::unique_ptr<char[]> storage(new char[sz]); 
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE( test_clEnqueueMapBuffer2 )
   ocl_sw_emulation ocl;
   cl_int err = CL_SUCCESS;
 
-  // Allocate aligned (for xrt::device) buffer to force allocation
+  // Allocate aligned (for xrt_xocl::device) buffer to force allocation
   // of separate host buffer in backing buffer object
   const size_t sz = 5;
   auto deleter = [](void* v) { free(v); };

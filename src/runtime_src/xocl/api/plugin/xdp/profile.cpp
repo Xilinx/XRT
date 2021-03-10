@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,6 +13,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
+#if 0
 
 /**
  * This file contains the API for adapting the mixed xcl/xocl
@@ -38,6 +40,7 @@
 #include <map>
 #include <sstream>
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/appdebug.h"
 
 namespace {
 
@@ -65,6 +68,7 @@ cb_action_write_type cb_action_write;
 cb_action_unmap_type cb_action_unmap ;
 cb_action_ndrange_migrate_type cb_action_ndrange_migrate;
 cb_action_migrate_type cb_action_migrate;
+cb_action_copy_type cb_action_copy;
 
 /*
  * callback functions called for function logging and dependencies...
@@ -117,6 +121,10 @@ void register_cb_action_ndrange_migrate (cb_action_ndrange_migrate_type&& cb)
 void register_cb_action_migrate (cb_action_migrate_type&& cb)
 {
   cb_action_migrate = std::move(cb);
+}
+void register_cb_action_copy (cb_action_copy_type&& cb)
+{
+  cb_action_copy = std::move(cb);
 }
 
 void register_cb_log_function_start (cb_log_function_start_type&& cb)
@@ -184,14 +192,20 @@ void
 log(xocl::event* event, cl_int status)
 {
   if (!s_exiting)
+  {
     event->trigger_profile_action(status,"");
+    event->trigger_lop_action(status);
+  }
 }
 
 void
 log(xocl::event* event, cl_int status, const std::string& cuname)
 {
   if (!s_exiting)
+  {
     event->trigger_profile_action(status,cuname);
+    event->trigger_lop_action(status);
+  }
 }
 
 void
@@ -204,16 +218,41 @@ log_dependencies (xocl::event* event,  cl_uint num_deps, const cl_event* deps)
 // Attempt to get DDR physical address and bank number
 void get_address_bank(cl_mem buffer, uint64_t &address, std::string &bank)
 {
+  address = 0;
+  bank = "Unknown";
   try {
-    auto xoclMem = xocl::xocl(buffer);
-    xoclMem->try_get_address_bank(address, bank);
+    if (auto xmem=xocl::xocl(buffer))
+      xmem->try_get_address_bank(address, bank);
     return;
   }
-  catch (const xocl::error& ex) {
-    // cannot get address/bank
-    address = 0;
-    bank = "Unknown";
+  catch (const xocl::error&) {
   }
+}
+
+// Attempt to find if two buffers are resident on the same device
+bool is_same_device(cl_mem buffer1, cl_mem buffer2)
+{
+  try {
+    auto xmem1 = xocl::xocl(buffer1);
+    auto xmem2 = xocl::xocl(buffer2);
+
+    if (xmem1 && xmem2) {
+      auto device1 = xmem1->get_resident_device();
+      auto device2 = xmem2->get_resident_device();
+      //std::cout << "xmem1 resident device = " << device1 << std::endl;
+      //std::cout << "xmem2 resident device = " << device2 << std::endl;
+
+      // TODO: what do we do if one of them is not resident yet?
+      if ((device1 == 0) || (device2 == 0))
+        return true;
+
+      return (device1 == device2);
+    }
+  }
+  catch (const xocl::error&) {
+  }
+
+  return true;
 }
 
 xocl::event::action_profile_type
@@ -242,23 +281,23 @@ action_ndrange(cl_event event, cl_kernel kernel)
   std::string xname = xclbin.project_name();
   std::string kname  = xocl::xocl(kernel)->get_name();
 
-  return [kernel,kname,xname,workGroupSize,globalWorkDim,localWorkDim,programId](xocl::event* event,cl_int status,const std::string& cu_name) {
+  return [kernel,kname,xname,workGroupSize,globalWorkDim,localWorkDim,programId](xocl::event* ev,cl_int status,const std::string& cu_name) {
     if (cb_action_ndrange)
-      cb_action_ndrange(event, status, cu_name, kernel, kname, xname, workGroupSize, globalWorkDim, localWorkDim, programId);
+      cb_action_ndrange(ev, status, cu_name, kernel, kname, xname, workGroupSize, globalWorkDim, localWorkDim, programId);
   };
 }
 
 xocl::event::action_profile_type
-action_read(cl_mem buffer)
+action_read(cl_mem buffer, size_t user_offset, size_t user_size, bool entire_buffer)
 {
   std::string bank;
   uint64_t address;
   get_address_bank(buffer, address, bank);
   auto size = xocl::xocl(buffer)->get_size();
 
-  return [buffer,size,address,bank](xocl::event* event,cl_int status, const std::string&) {
+  return [buffer,size,address,bank,user_offset,user_size,entire_buffer](xocl::event* event,cl_int status, const std::string&) {
     if (cb_action_read)
-      cb_action_read(event, status, buffer, size, address, bank);
+      cb_action_read(event, status, buffer, size, address, bank, entire_buffer, user_size, user_offset);
   };
 }
 
@@ -277,16 +316,16 @@ action_map(cl_mem buffer,cl_map_flags map_flags)
 }
 
 xocl::event::action_profile_type
-action_write(cl_mem buffer)
+action_write(cl_mem buffer, size_t user_offset, size_t user_size, bool entire_buffer)
 {
   std::string bank;
   uint64_t address;
   get_address_bank(buffer, address, bank);
   auto size = xocl::xocl(buffer)->get_size();
 
-  return [buffer,size,address,bank](xocl::event* event,cl_int status,const std::string&) {
+  return [buffer,size,address,bank,user_offset,user_size,entire_buffer](xocl::event* event,cl_int status, const std::string&) {
     if (cb_action_write)
-      cb_action_write(event, status, buffer, size, address, bank);
+      cb_action_write(event, status, buffer, size, address, bank, entire_buffer, user_size, user_offset);
   };
 }
 
@@ -316,13 +355,10 @@ action_ndrange_migrate(cl_event event, cl_kernel kernel)
   auto device = command_queue->get_device();
 
   // Calculate total size and grab first address & bank
-  // NOTE: argument must be: NOT a progvar, NOT write only, and NOT resident
-  for (auto& arg : xocl::xocl(kernel)->get_argument_range()) {
+  // NOTE: argument must be: NOT write only, and NOT resident
+  for (auto& arg : xocl::xocl(kernel)->get_xargument_range()) {
     if (auto mem = arg->get_memory_object()) {
-      if (arg->is_progvar() && arg->get_address_qualifier()==CL_KERNEL_ARG_ADDRESS_GLOBAL)
-        // DO NOTHING: progvars are not transfered
-        continue;
-      else if (mem->is_resident(device))
+      if (mem->is_resident(device))
         continue;
       else if (!(mem->get_flags() & (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS))) {
         if (totalSize == 0) {
@@ -335,9 +371,9 @@ action_ndrange_migrate(cl_event event, cl_kernel kernel)
     }
   }
 
-  return [mem0,totalSize,address,bank](xocl::event* event,cl_int status,const std::string&) {
+  return [mem0,totalSize,address,bank](xocl::event* ev,cl_int status,const std::string&) {
     if (cb_action_ndrange_migrate)
-      cb_action_ndrange_migrate(event, status, mem0, totalSize, address, bank);
+      cb_action_ndrange_migrate(ev, status, mem0, totalSize, address, bank);
   };
 }
 
@@ -352,9 +388,24 @@ action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migrat
   std::string bank;
   uint64_t address;
   get_address_bank(mem0, address, bank);
+  // create bank by appending all memory resources
+  // memory resources aren't guaranteed to be contiguous
+  bank.clear();
+  std::string sep = "-";
 
   size_t totalSize = 0;
   for (auto mem : xocl::get_range(mem_objects,mem_objects+num_mem_objects)) {
+    std::string mem_bank;
+    uint64_t mem_addr;
+    get_address_bank(mem, mem_addr, mem_bank);
+    auto found = bank.find(mem_bank);
+    if (found == std::string::npos) {
+      if (bank.empty())
+        bank = mem_bank;
+      else
+        bank += sep + mem_bank;
+    }
+    mem_bank.clear();
     totalSize += xocl::xocl(mem)->get_size();
   }
 
@@ -364,11 +415,34 @@ action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migrat
   };
 }
 
+xocl::event::action_profile_type
+action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size, bool same_device)
+{
+  std::string srcBank;
+  uint64_t srcAddress;
+  get_address_bank(src_buffer, srcAddress, srcBank);
+  srcAddress += src_offset;
+
+  std::string dstBank;
+  uint64_t dstAddress;
+  get_address_bank(dst_buffer, dstAddress, dstBank);
+  dstAddress += dst_offset;
+
+  // NOTE: this is not reliable here since one or both buffers may not be resident yet when this starts
+  // For now, have the action caller tell us if it's CDMA (same_device=true) or P2P (same_device=false)
+  //bool same_device = is_same_device(src_buffer, dst_buffer);
+
+  return [src_buffer,dst_buffer,same_device,size,srcAddress,srcBank,dstAddress,dstBank](xocl::event* event,cl_int status,const std::string&) {
+  if (cb_action_copy)
+    cb_action_copy(event, status, src_buffer, dst_buffer, same_device, size, srcAddress, srcBank, dstAddress, dstBank);
+  };
+}
+
 function_call_logger::
 function_call_logger(const char* function)
   : function_call_logger(function,0)
 {}
-  
+
 function_call_logger::
 function_call_logger(const char* function, long long address)
   : m_name(function), m_address(address)
@@ -379,21 +453,31 @@ function_call_logger(const char* function, long long address)
   //This call here should occur just once per application run
   if (!s_load_xdp) {
     s_load_xdp = true;
-    if (xrt::config::get_app_debug() || xrt::config::get_profile()) {
-      xrt::hal::load_xdp();
+    if (xrt_xocl::config::get_profile()) {
+      xrt_xocl::hal::load_xdp();
     }
+#ifdef _WIN32
+    // Application debug not supported on Windows
+#else
+    if (xrt_xocl::config::get_app_debug()) {
+      xocl::appdebug::load_xdp_app_debug() ;
+    }
+#endif
   }
 
+  m_funcid = m_funcid_global++;
   if (cb_log_function_start)
-    cb_log_function_start(m_name, m_address);
+    cb_log_function_start(m_name, m_address, m_funcid);
 }
 
 function_call_logger::
 ~function_call_logger()
 {
   if (cb_log_function_end)
-    cb_log_function_end(m_name, m_address);
+    cb_log_function_end(m_name, m_address, m_funcid);
 }
+
+std::atomic <unsigned int>  function_call_logger::m_funcid_global(0);
 
 void add_to_active_devices(const std::string& device_name)
 {
@@ -409,7 +493,7 @@ set_kernel_clock_freq(const std::string& device_name, unsigned int freq)
 }
 
 void
-reset(const xocl::xclbin& xclbin)
+reset(const axlf* xclbin)
 {
   if (cb_reset)
     cb_reset(xclbin);
@@ -459,4 +543,4 @@ void end_device_profiling()
 
 }}
 
-
+#endif

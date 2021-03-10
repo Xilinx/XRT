@@ -15,24 +15,20 @@
  */
 
 // Copyright 2015 Xilinx, Inc. All rights reserved.
-
-
 #ifndef __XILINX_RT_PRINTF_H
 #define __XILINX_RT_PRINTF_H
 
+#include "rt_printf_impl.h"
+#include <CL/opencl.h>
 #include <iostream>
 #include <vector>
 #include <map>
 #include <string>
-// #include <stdint.h>
-
-#include <CL/opencl.h>
-#include "rt_printf_impl.h"
 
 /////////////////////////////////////////////////////////////////////////
-// rt_printf.h 
+// rt_printf.h
 //
-// SDAccel Printf Manager - accepts print buffers and string tables from 
+// SDAccel Printf Manager - accepts print buffers and string tables from
 // workgroup completion events. Sends printf output to stdout at
 // periodic times from the event scheduler thread.
 /////////////////////////////////////////////////////////////////////////
@@ -68,5 +64,3 @@ bool isPrintfDebugMode();
 } // namespace XCL
 
 #endif
-
-

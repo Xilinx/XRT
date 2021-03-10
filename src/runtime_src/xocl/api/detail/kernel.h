@@ -17,6 +17,7 @@
 #ifndef xocl_api_detail_kernel_h_
 #define xocl_api_detail_kernel_h_
 
+#include "xocl/config.h"
 #include "CL/cl.h"
 
 namespace xocl { namespace detail {
@@ -37,5 +38,3 @@ validOrError(const cl_device_id device, const cl_kernel kernel);
 }} // detail,xocl
 
 #endif
-
-

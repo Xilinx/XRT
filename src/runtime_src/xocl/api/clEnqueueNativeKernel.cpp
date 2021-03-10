@@ -16,19 +16,18 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
-
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
 static void
 validOrError(cl_command_queue   command_queue ,
-             void (*user_func)(void *), 
+             void (*user_func)(void *),
              void *             args ,
-             size_t             cb_args , 
+             size_t             cb_args ,
              cl_uint            num_mem_objects ,
              const cl_mem *     mem_list ,
              const void **      args_mem_loc ,
@@ -57,7 +56,7 @@ validOrError(cl_command_queue   command_queue ,
 
   // CL_INVALID_VALUE if num_mem_objects = 0 and mem_list or
   // args_mem_loc are not NULL.
-  
+
   // CL_INVALID_OPERATION if the device associated with command_queue
   // cannot execute the native kernel.
 
@@ -92,9 +91,9 @@ validOrError(cl_command_queue   command_queue ,
 
 cl_int
 clEnqueueNativeKernel(cl_command_queue   command_queue ,
-					  void (*user_func)(void *), 
+					  void (*user_func)(void *),
                       void *             args ,
-                      size_t             cb_args , 
+                      size_t             cb_args ,
                       cl_uint            num_mem_objects ,
                       const cl_mem *     mem_list ,
                       const void **      args_mem_loc ,
@@ -104,16 +103,16 @@ clEnqueueNativeKernel(cl_command_queue   command_queue ,
 {
   validOrError(command_queue,user_func,args,cb_args,num_mem_objects,mem_list,args_mem_loc,
                num_events_in_wait_list,event_wait_list,event);
-  throw error(CL_XILINX_UNIMPLEMENTED);
+  throw error(CL_XILINX_UNIMPLEMENTED, "Not implemented");
 }
 
 } // xocl
 
 cl_int
 clEnqueueNativeKernel(cl_command_queue   command_queue ,
-		      void               (*user_func)(void *), 
+		      void               (*user_func)(void *),
                       void *             args ,
-                      size_t             cb_args , 
+                      size_t             cb_args ,
                       cl_uint            num_mem_objects ,
                       const cl_mem *     mem_list ,
                       const void **      args_mem_loc ,
@@ -123,6 +122,7 @@ clEnqueueNativeKernel(cl_command_queue   command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueNativeKernel
       (command_queue,user_func,args,cb_args,num_mem_objects,mem_list,args_mem_loc,
        num_events_in_wait_list,event_wait_list,event);
@@ -136,6 +136,3 @@ clEnqueueNativeKernel(cl_command_queue   command_queue ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
-

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,28 +17,20 @@
 #ifndef xrt_message_h_
 #define xrt_message_h_
 
+#include "core/common/message.h"
 #include <string>
 
-namespace xrt { namespace message {
+namespace xrt_xocl { namespace message {
 
-//modeled based on syslog severity. 
-enum class severity_level : unsigned short 
+using namespace xrt_core::message;
+
+inline void
+send(severity_level l, const char* msg)
 {
- ALERT,
- CRITICAL,
- DEBUG,
- EMERGENCY,
- ERROR,
- INFO,
- INTERNAL,
- NOTICE,
- WARNING
+  send(l,"XRT",msg);
 };
 
-void 
-send(severity_level l, const char* msg);
-
-inline void 
+inline void
 send(severity_level l, const std::string& msg)
 {
   send(l,msg.c_str());
@@ -47,6 +39,3 @@ send(severity_level l, const std::string& msg)
 }} // message,xrt
 
 #endif
-
-
-

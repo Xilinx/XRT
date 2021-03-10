@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,186 +14,176 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
-
-
-#include <getopt.h>
 #include <iostream>
 #include <stdexcept>
 #include <string>
-#include <cstring>
-#include <sys/mman.h>
+#include <vector>
+#include <cstdlib>
 
-// host_src includes
-#include "xclhal2.h"
-#include "xclbin.h"
-
-// lowlevel common include
-
-#include "utils.h"
-
-#include <fstream>
-
-static const int DATA_SIZE = 1024;
-
-
-
+#include "experimental/xrt_device.h"
+#include "experimental/xrt_kernel.h"
+#include "experimental/xrt_bo.h"
+#include "experimental/xrt_ini.h"
 /**
  * Trivial loopback example which runs OpenCL loopback kernel. Does not use OpenCL
  * runtime but directly exercises the XRT driver API.
  */
 
 
-const static struct option long_options[] = {
-    {"bitstream",       required_argument, 0, 'k'},
-    {"hal_logfile",     required_argument, 0, 'l'},
-    {"alignment",       required_argument, 0, 'a'},
-    {"cu_index",        required_argument, 0, 'c'},
-    {"device",          required_argument, 0, 'd'},
-    {"verbose",         no_argument,       0, 'v'},
-    {"help",            no_argument,       0, 'h'},
-    // enable embedded runtime
-    {"ert",             no_argument,       0, '1'},
-    {0, 0, 0, 0}
-};
-
-static void printHelp()
+static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
-    std::cout << "  -l <hal_logfile>\n";
-    std::cout << "  -a <alignment>\n";
-    std::cout << "  -d <device_index>\n";
-    std::cout << "  -c <cu_index>\n";
+    std::cout << "  -d <bdf | device_index>\n";
+    std::cout << "  -c <name of compute unit in xclbin>\n";
     std::cout << "  -v\n";
     std::cout << "  -h\n\n";
     std::cout << "";
-    std::cout << "  [--ert] enable embedded runtime (default: false)\n";
-    std::cout << "";
-    std::cout << "* If HAL driver is not specified, application will try to find the HAL driver\n";
-    std::cout << "  using XILINX_OPENCL and XCL_PLATFORM environment variables\n";
     std::cout << "* Bitstream is required\n";
-    std::cout << "* HAL logfile is optional but useful for capturing messages from HAL driver\n";
+    std::cout << "* Name of compute unit from loaded xclbin is required\n";
+}
+
+static void
+sync_test(const xrt::device& device, int32_t grpidx)
+{
+  std::string testVector =  "hello\nthis is Xilinx sync BO read write test\n:-)\n";
+  const size_t data_size = testVector.size();
+
+  auto bo = xrt::bo(device, data_size, 0, grpidx);
+  auto bo_data = bo.map<char*>();
+  std::copy_n(testVector.begin(), data_size, bo_data);
+  bo.sync(XCL_BO_SYNC_BO_TO_DEVICE , data_size , 0);
+  bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE , data_size, 0);
+  if (!std::equal(testVector.begin(), testVector.end(), bo_data))
+    throw std::runtime_error("Value read back from sync bo does not match value written");
+}
+
+static void
+copy_test(const xrt::device& device, size_t bytes, int32_t grpidx)
+{
+  auto bo1 = xrt::bo(device, bytes, 0, grpidx);
+  auto bo1_data = bo1.map<char*>();
+  std::generate_n(bo1_data, bytes, []() { return std::rand() % 256; });
+  
+  bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE , bytes , 0);
+
+  auto bo2 = xrt::bo(device, bytes, 0, grpidx);
+  bo2.copy(bo1, bytes);
+  bo2.sync(XCL_BO_SYNC_BO_FROM_DEVICE , bytes, 0);
+  auto bo2_data = bo2.map<char*>();
+  if (!std::equal(bo1_data, bo1_data + bytes, bo2_data))
+    throw std::runtime_error("Value read back from copy bo does not match value written");
+}
+
+static void
+register_test(const xrt::kernel& kernel, int argno)
+{
+  try {
+    auto offset = kernel.offset(argno);
+    // Throws unless Runtime.rw_shared=true
+    // Note, that xclbin must also be loaded with rw_shared=true
+    auto val = kernel.read_register(offset);
+    std::cout << "value at 0x" << std::hex << offset << " = 0x" << val << std::dec << "\n";
+  }
+  catch (const std::exception& ex) {
+    std::cout << "Expected failure reading kernel register (" << ex.what() << ")\n";
+  }      
+}
+
+static void
+ini_test(bool failure_expected = false)
+{
+  try {
+    xrt::ini::set("Runtime.verbosity", 5);
+    xrt::ini::set("Runtime.runtime_log", "console");
+    xrt::ini::set("Runtime.exclusive_cu_context", true);
+  }
+  catch (const std::exception& ex) {
+    if (!failure_expected)
+      throw;
+
+    std::cout << "Expected failure setting configuration options (" << ex.what() << ")\n";
+  }
+}
+
+int run(int argc, char** argv)
+{
+  if (argc < 3) {
+    usage();
+    return 1;
+  }
+
+  std::string xclbin_fnm;
+  std::string cu_name = "dummy";
+  bool verbose = false;
+  std::string device_index = "0";
+
+  std::vector<std::string> args(argv+1,argv+argc);
+  std::string cur;
+  for (auto& arg : args) {
+    if (arg == "-h") {
+      usage();
+      return 1;
+    }
+    else if (arg == "-v") {
+      verbose = true;
+      continue;
+    }
+
+    if (arg[0] == '-') {
+      cur = arg;
+      continue;
+    }
+
+    if (cur == "-k")
+      xclbin_fnm = arg;
+    else if (cur == "-d")
+      device_index = arg;
+    else if (cur == "-c")
+      cu_name = arg;
+    else
+      throw std::runtime_error("Unknown option value " + cur + " " + arg);
+  }
+
+  if (xclbin_fnm.empty())
+    throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
+
+  // Configuration options can be change before accessed
+  ini_test();
+  
+  auto device = xrt::device(device_index);
+  auto uuid = device.load_xclbin(xclbin_fnm);
+  auto kernel = xrt::kernel(device, uuid, cu_name);
+  auto grpidx = kernel.group_id(0);
+
+  sync_test(device, grpidx);
+  copy_test(device, 4096, grpidx);
+
+  // Copy through host not 64 byte aligned
+  copy_test(device, 40, grpidx);
+
+  // Test of kernel.read_register (expected failure)
+  register_test(kernel, 0);
+
+  // Make sure configuration options cannot be changed now
+  ini_test(true); // expected failure caught
+
+  return 0;
 }
 
 int main(int argc, char** argv)
 {
-    std::string sharedLibrary;
-    std::string bitstreamFile;
-    std::string halLogfile;
-    size_t alignment = 128;
-    int option_index = 0;
-    unsigned index = 0;
-    unsigned cu_index = 0;
-    bool verbose = false;
-    //bool ert = false;
-    int c;
-    while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:vh", long_options, &option_index)) != -1)
-    {
-	switch (c)
-	{
-	    case 0:
-		if (long_options[option_index].flag != 0)
-		    break;
-	    case 1:
-		//ert = true;
-		break;
-	    case 'k':
-		bitstreamFile = optarg;
-		break;
-	    case 'l':
-		halLogfile = optarg;
-		break;
-	    case 'a':
-		alignment = std::atoi(optarg);
-		break;
-	    case 'd':
-		index = std::atoi(optarg);
-		break;
-	    case 'c':
-		cu_index = std::atoi(optarg);
-		break;
-	    case 'h':
-		printHelp();
-		return 0;
-	    case 'v':
-		verbose = true;
-		break;
-	    default:
-		printHelp();
-		return -1;
-	}
-    }
-
-    (void)verbose;
-
-    if (bitstreamFile.size() == 0) {
-	std::cout << "FAILED TEST\n";
-	std::cout << "No bitstream specified\n";
-	return -1;
-    }
-
-    if (halLogfile.size()) {
-	std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
-    }
-
-    std::cout << "HAL driver = " << sharedLibrary << "\n";
-    std::cout << "Host buffer alignment = " << alignment << " bytes\n";
-    std::cout << "Compiled kernel = " << bitstreamFile << "\n" << std::endl;
-
-    try 
-    {
-	xclDeviceHandle handle;
-	uint64_t cu_base_addr = 0;
-	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr))
-	    return 1;
-
-    unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, 0x0);
-    unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, 0x0);
-    char* bo1 = (char*)xclMapBO(handle, boHandle1, true);
-    memset(bo1, 0, DATA_SIZE);
-    std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
-    std::strcpy(bo1, testVector.c_str());
-
-    if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_TO_DEVICE , DATA_SIZE,0))
-        return 1;
-
-
-    xclBOProperties p;
-    uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
-    uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
-
-    if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
-        return 1;
-
-	//Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
-    //void* execData = xclMapBO(handle, execHandle, true);
-
-	//Get the output;
-	if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE , DATA_SIZE, false))
-	    return 1;
-        char* bo2 = (char*)xclMapBO(handle, boHandle1, false);
-
-       if (std::memcmp(bo2, bo1, DATA_SIZE)) {
-           std::cout << "FAILED TEST\n";
-           std::cout << "Value read back does not match value written\n";
-           return 1;
-          }
-         munmap(bo1, DATA_SIZE);
-         munmap(bo2, DATA_SIZE);
-         xclFreeBO(handle,boHandle1);
-         xclFreeBO(handle,boHandle2);
-         xclFreeBO(handle,execHandle);
-
-    }
-    catch (std::exception const& e)
-    {
-	std::cout << "Exception: " << e.what() << "\n";
-	std::cout << "FAILED TEST\n";
-	return 1;
-    }
-
+  try {
+    auto ret = run(argc, argv);
     std::cout << "PASSED TEST\n";
-    return 0;
+    return ret;
+  }
+  catch (std::exception const& e) {
+    std::cout << "Exception: " << e.what() << "\n";
+    std::cout << "FAILED TEST\n";
+    return 1;
+  }
+
+  std::cout << "PASSED TEST\n";
+  return 0;
 }

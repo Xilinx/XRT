@@ -1,7 +1,7 @@
 add_custom_target(
   tags
   COMMAND ${CTAGS}
-  --project compile_commands.json
+  --root ${CMAKE_SOURCE_DIR}
   --etags
   -f TAGS
   )

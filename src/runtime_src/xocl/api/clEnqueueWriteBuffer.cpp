@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+// Copyright 2017-2020 Xilinx, Inc. All rights reserved.
 
 #include "xocl/config.h"
 #include "xocl/core/command_queue.h"
@@ -28,7 +28,7 @@
 #include "detail/event.h"
 #include "detail/context.h"
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 
 namespace xocl {
 
@@ -58,11 +58,6 @@ validOrError(cl_command_queue   command_queue,
   if((xocl::xocl(buffer)->get_flags() & CL_MEM_HOST_READ_ONLY) ||
      (xocl::xocl(buffer)->get_flags() & CL_MEM_HOST_NO_ACCESS))
     throw xocl::error(CL_INVALID_OPERATION,"buffer flags do not allow writing");
-
-#ifdef PMD_OCL
-  if (!(xocl(command_queue)->get_properties() & CL_QUEUE_DPDK))
-    throw error(CL_INVALID_COMMAND_QUEUE,"Queue must be a CL_QUEUE_DPDK queue");
-#endif
 
   // CL_INVALID_OPERATION if CL_MEM_REGISTER_MAP and not a blocking read
   if ((xocl(buffer)->get_flags() & CL_MEM_REGISTER_MAP) && !blocking)
@@ -102,7 +97,9 @@ clEnqueueWriteBuffer(cl_command_queue   command_queue,
   auto uevent = xocl::create_hard_event
     (command_queue,CL_COMMAND_WRITE_BUFFER,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action(uevent.get(),xocl::enqueue::action_write_buffer,buffer,offset,size,ptr);
-  xocl::profile::set_event_action(uevent.get(),xocl::profile::action_write,buffer);
+  xocl::profile::set_event_action(uevent.get(), xocl::profile::action_write, buffer);
+  xocl::profile::counters::set_event_action(uevent.get(), xocl::profile::counter_action_write, buffer) ;
+  xocl::lop::set_event_action(uevent.get(), xocl::lop::action_write);
   xocl::appdebug::set_event_action(uevent.get(),xocl::appdebug::action_readwrite,buffer,offset,size,ptr);
  
   uevent->queue();
@@ -147,10 +144,11 @@ clEnqueueWriteBuffer(cl_command_queue   command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueWriteBuffer
       (command_queue,buffer,blocking,offset,size,ptr,num_events_in_wait_list,event_wait_list,event_parameter);
   }
-  catch (const xrt::error& ex) {
+  catch (const xrt_xocl::error& ex) {
     xocl::send_exception_message(ex.what());
     return ex.get_code();
   }

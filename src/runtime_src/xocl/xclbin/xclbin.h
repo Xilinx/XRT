@@ -17,10 +17,10 @@
 #ifndef runtime_src_xocl_xclbin_h_
 #define runtime_src_xocl_xclbin_h_
 
-#include "driver/include/xclbin.h" // definition of binary structs
-
-#include "xocl/core/refcount.h"
-#include "xclbin/binary.h"
+#include "xocl/config.h"
+#include "core/include/xclbin.h" // definition of binary structs
+#include "core/common/device.h"
+#include "core/common/uuid.h"
 
 #include <map>
 #include <string>
@@ -34,54 +34,19 @@ namespace xocl {
 class device;
 class kernel;
 
-/**
- * xocl::xclbin is a class that encapsulates the meta data of a binary
- * xclbin file (::xclbin::binary).  The binary file format must have
- * no meta data xml dependencies.
- *
- *   runtime/xocl/xclbin                runtime/xclbin
- *       xml-parsing                        binary
- *     [xocl::xclbin] <>------------ [ ::xclbin::binary ]
- *           ^                             ^       ^
- *           |                             |       |
- *          uses                          uses    uses
- *           |                             |       |
- *         [xocl]                        [xrt]    [hal]
- *
- */
 class xclbin
 {
-  struct impl;
-  std::shared_ptr<impl> m_impl;
-
-  impl*
-  impl_or_error() const;
-
 public:
   using addr_type = uint64_t;
-  //Max 64 mem banks for now.
-  using memidx_bitmask_type = std::bitset<64>;
+  // Max 256 memory indicies for now. This number must be >= to number
+  // of mem_topology.m_count.  Unfortunately it is a compile time constant.
+  // A better solution must be found (boost::dynamic_bitset<>???)
   using memidx_type = int32_t;
+  using connidx_type = int32_t;
+  static constexpr memidx_type max_banks = 256;
+  using memidx_bitmask_type = std::bitset<max_banks>;
 
   enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
-
-  struct clocks
-  {
-    std::string region_name;
-    std::string clock_name;
-    unsigned int frequency;
-
-    clocks(std::string&& rn,std::string&& cn,unsigned int f)
-    : region_name(std::move(rn)), clock_name(std::move(cn)), frequency(f)
-    {}
-  };
-
-  struct profiler
-  {
-    using slot_type = std::tuple<int, std::string, std::string>; // index, cuname, type
-    std::vector<slot_type> slots;
-    std::string name;
-  };
 
   // A symbol captures all data required to construct an xocl::kernel
   // object.  It is associated with all kernel objects in the xclbin.
@@ -90,7 +55,7 @@ public:
   {
     // Wrap data associated with a kernel argument
     struct arg {
-      enum class argtype { indexed, printf, progvar, rtinfo };
+      enum class argtype { indexed, printf, rtinfo };
       std::string name;
       size_t address_qualifier;
       std::string id;
@@ -102,41 +67,27 @@ public:
       size_t hostsize;
       std::string type;
       size_t memsize;
-      size_t baseaddr;      // progvar base addr
-      std::string linkage;  // progvar linkage per meminst
       argtype atype;        // optimization to avoid repeated string cmp
       symbol* host;
-
-      /**
-       * Convert kernel arg data to string per type of argument
-       *
-       * @param data
-       *   Kernel argument data to convert to string
-       */
-      std::string get_string_value (const unsigned char*) const;
     };
 
     // Wrap data associated with kernel instances
     struct instance {
       std::string name;   // inst name
       size_t base;        // base addr
-      std::string port;   // port name
     };
 
     std::map<uint32_t,std::string> stringtable;
 
     std::string name;                // name of kernel
     unsigned int uid;                // unique id for this symbol, some symbols have same name??
-    std::string dsaname;             // name of dsa
     std::string attributes;          // attributes as per .cl file
     std::string hash;                // kernel conformance hash
-    std::string controlport;         // kernel axi slave control port
     size_t workgroupsize = 0;
     size_t compileworkgroupsize[3] = {0};   //
     size_t maxworkgroupsize[3] = {0};// xilinx extension
     std::vector<arg> arguments;      // the args of this kernel
     std::vector<instance> instances; // the kernel instances
-    bool cu_interrupt = false;       // cu have interrupt support
     target_type target;              // xclbin target
   };
 
@@ -144,46 +95,31 @@ public:
   xclbin();
 
   /**
-   * The underlying binary type that represents the raw
-   * binary xclbin file per xclBin structs.
+   * xclbin() - construct xclbin meta data
    */
-  // implicit
-  xclbin(std::vector<char>&& xb);
-  xclbin(xclbin&& rhs);
-
-  xclbin(const xclbin& rhs);
-  ~xclbin();
-
-  xclbin&
-  operator=(const xclbin& rhs);
+  xclbin(const xrt_core::device* core_device, const xrt_core::uuid& uuid);
 
   bool
-  operator==(const xclbin& rhs) const;
+  operator==(const xclbin& rhs) const
+  {
+    return m_impl == rhs.m_impl;
+  }
+ 
+  operator bool() const
+  {
+    return m_impl != nullptr;
+  }
 
   /**
-   * Access the raw binary xclbin
-   *
-   * The binary type API conforms to the xclBin struct interface
+   * Get uuid of xclbin
    */
-  using binary_type = ::xclbin::binary;
-  binary_type
-  binary() const;
-
-  /**
-   * Get dsa name
-   */
-  std::string
-  dsa_name() const;
-
-  /**
-   * Check if unified platform
-   */
-  bool
-  is_unified() const;
+  xrt_core::uuid
+  uuid() const;
 
   /**
    * Access the project name per xml meta data
    */
+  XRT_XOCL_EXPORT
   std::string
   project_name() const;
 
@@ -192,24 +128,6 @@ public:
    */
   target_type
   target() const;
-
-  /**
-   * Access the kernel clocks per OCL region
-   *
-   * This is meta data extraction
-   */
-  using kernel_clocks_type = std::vector<clocks>;
-  kernel_clocks_type
-  kernel_clocks();
-
-  /**
-   * Access the system clocks per OCL region
-   *
-   * This is meta data extraction
-   */
-  using system_clocks_type = std::vector<clocks>;
-  system_clocks_type
-  system_clocks();
 
   /**
    * Number of kernels
@@ -233,13 +151,6 @@ public:
   kernel_symbols() const;
 
   /**
-   * @return
-   *   Size (in bytes) of largest kernel register map in the xclbin
-   */
-  size_t
-  kernel_max_regmap_size() const;
-
-  /**
    * Get kernel with specified name.
    *
    * The lifetime of the returned object is tied to the lifetime
@@ -252,65 +163,10 @@ public:
   lookup_kernel(const std::string& name) const;
 
   /**
-   * Get the list of profilers
-   *
-   * @return
-   *  Vector of profiler struct objects constructed from the xclbin meta data.
-   */
-  using profilers_type = std::vector<profiler>;
-  profilers_type
-  profilers() const;
-
-  /**
-   * Get the clock frequency sections in xclbin
-   */
-  const clock_freq_topology*
-  get_clk_freq_topology() const;
-
-  /**
    * Get the mem topology section in xclbin
    */
   const mem_topology*
   get_mem_topology() const;
-
-  /**
-   * Get the CU base offset
-   *
-   * CU addresses are sequential and separated  by a fixed size
-   * The starting address is the base offset and may differ from
-   * xclbin to xclbin
-   *
-   * @return
-   *   Base address of CU address space.
-   */
-  size_t
-  cu_base_offset() const;
-
-  /**
-   * Get the CU address space size
-   *
-   * @return
-   *   Size of cu addressspace in power of 2
-   */
-  size_t
-  cu_size() const;
-
-  /**
-   * Check if all CUs support completion interrupt
-   *
-   * @return
-   *   True if completion interrupt supported by all CUs, false otherwise
-   */
-  bool
-  cu_interrupt() const;
-
-  /**
-   * Get a sorted address map of all CUs in this xclbin
-   *
-   * The map is sorted in order of increasing base addresses.
-   */
-  std::vector<uint32_t>
-  cu_base_address_map() const;
 
   /**
    * Get memory connection indeces for CU argument at specified index
@@ -364,6 +220,7 @@ public:
    * @return
    *   Tag name for memory idx
    */
+  XRT_XOCL_EXPORT
   std::string
   memidx_to_banktag(memidx_type memidx) const;
 
@@ -374,11 +231,16 @@ public:
        Kernel name to  retrieve the memory index for
    * @param arg
        Index of arg to retrieve the memory index for
+   * @param conn
+   *   Index into the connectivity section allocated.
    * @return
    *   Memory idx
    */
   memidx_type
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg);
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg, connidx_type& conn);
+
+  void
+  clear_connection(connidx_type index);
 
   /**
    * Get the memory index with the specified tag.
@@ -391,14 +253,13 @@ public:
   memidx_type
   banktag_to_memidx(const std::string& tag) const;
 
-  ////////////////////////////////////////////////////////////////
-  // Conformance helpers
-  ////////////////////////////////////////////////////////////////
-  unsigned int
-  conformance_rename_kernel(const std::string& hash);
+private:
+  struct impl;
+  std::shared_ptr<impl> m_impl;
 
-  std::vector<std::string>
-  conformance_kernel_hashes() const;
+  impl*
+  impl_or_error() const;
+
 };
 
 } // xocl
