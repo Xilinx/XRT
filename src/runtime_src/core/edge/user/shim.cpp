@@ -1545,13 +1545,20 @@ xclProbe()
   version.date_len = 128;
 
   int result = ioctl(fd, DRM_IOCTL_VERSION, &version);
-  if (result)
-    return 0;
+  if (result) {
+    result = 0;
+    goto out;
+  }
 
   result = std::strncmp(version.name, "zocl", 4);
-  close(fd);
 
-  return (result == 0) ? 1 : 0;
+  result = ((result == 0) ? 1 : 0);
+out:
+  close(fd);
+  delete []version.name;
+  delete []version.desc;
+  delete []version.date;
+  return result;
 }
 #endif
 
