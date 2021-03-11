@@ -248,7 +248,7 @@ namespace xdp {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
 
         for (auto& perfCounter : perfCounters)
-          perfCounters->release();
+          perfCounter->release();
         continue;
       }
 
@@ -290,7 +290,7 @@ namespace xdp {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
         
         for (auto& perfCounter : perfCounters)
-          perfCounters->release();
+          perfCounter->release();
         continue;
       }
       perfCounters.clear();

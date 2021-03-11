@@ -35,6 +35,7 @@
 
 #define NUM_CORE_COUNTERS   4
 #define NUM_MEMORY_COUNTERS 2
+#define BASE_MEMORY_COUNTER 128
 
 namespace xdp {
 
@@ -113,11 +114,9 @@ namespace xdp {
     auto aieArray = drv->getAieArray();
     if (!aieArray)
       return runtimeCounters;
-    if (!(db->getStaticInfo().isDeviceReady(deviceId)))
-      return runtimeCounters;
 
     auto Aie = aieArray->getDevInst();
-    auto aieDevice = std::make_shared<xaiefal::XAieDev>(Aie, true);
+    AieRscDevice = std::make_shared<xaiefal::XAieDev>(Aie, true);
 	  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
     // Get AIE clock frequency
@@ -224,8 +223,8 @@ namespace xdp {
         auto col = tile.col;
         auto row = tile.row;
         // NOTE: resource manager requires absolute row number
-        auto& core = aieDevice->tile(col, row + 1).core();
-        auto& memory = aieDevice->tile(col, row + 1).mem();
+        auto& core = AieRscDevice->tile(col, row + 1).core();
+        auto& memory = AieRscDevice->tile(col, row + 1).mem();
 
         for (int i=0; i < startEvents.size(); ++i) {
           // Request counter from resource manager
@@ -242,9 +241,20 @@ namespace xdp {
           mPerfCounters.push_back(perfCounter);
           int counterNum = i;
 
+          auto mod = isCore ? XAIE_CORE_MOD : XAIE_MEM_MOD;
+          auto loc = XAie_TileLoc(col, row + 1);
+          uint8_t phyStartEvent = 0;
+          uint8_t phyEndEvent = 0;
+          XAie_EventLogicalToPhysicalConv(Aie, loc, mod, startEvents.at(i), &phyStartEvent);
+          XAie_EventLogicalToPhysicalConv(Aie, loc, mod, endEvents.at(i), &phyEndEvent);
+          if (!isCore) {
+            phyStartEvent += BASE_MEMORY_COUNTER;
+            phyEndEvent += BASE_MEMORY_COUNTER;
+          }
+
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, counterNum, 
-              startEvents.at(i), endEvents.at(i), resetEvent, clockFreqMhz, moduleName, counterName);
+              phyStartEvent, phyEndEvent, resetEvent, clockFreqMhz, moduleName, counterName);
           counterId++;
           numCounters++;
         }

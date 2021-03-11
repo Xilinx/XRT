@@ -293,6 +293,7 @@ namespace xdp {
     devInfo->addXclbin(currentXclbin) ;
 
     if (!initializeProfileMonitors(devInfo, device)) return ;
+    devInfo->isReady = true;
   }
 
   // Return true if we should reset the device information.
