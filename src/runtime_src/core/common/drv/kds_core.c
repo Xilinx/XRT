@@ -355,7 +355,16 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		ret = kds_scu_config(&kds->scu_mgmt, xcmd);
 		if (ret)
 			return ret;
-		break;
+		mutex_lock(&ert->lock);
+		if (!ert->sk_configured)
+			ert->submit(ert, xcmd);
+		else {
+			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+			xcmd->cb.free(xcmd);
+		}
+		ert->sk_configured = 1;
+		mutex_unlock(&ert->lock);
+		return 0;
 	case OP_GET_STAT:
 		if (!kds->scu_mgmt.num_cus) {
 			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
@@ -951,8 +960,10 @@ int kds_cfg_update(struct kds_sched *kds)
 		}
 	}
 
-	if (kds->ert)
+	if (kds->ert) {
 		kds->ert->configured = 0;
+		kds->ert->sk_configured = 0;
+	}
 
 	return ret;
 }
