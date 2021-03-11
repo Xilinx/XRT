@@ -14,14 +14,13 @@
  * under the License.
  */
 
-#include "plugin/xdp/plugin_loader.h"
-#include "plugin/xdp/hal_profile.h"
-#include "plugin/xdp/hal_device_offload.h"
-#include "plugin/xdp/aie_profile.h"
-#include "plugin/xdp/noc_profile.h"
-//#include "plugin/xdp/power_profile.h"
-#include "plugin/xdp/aie_trace.h"
-#include "plugin/xdp/vart_profile.h"
+#include "plugin_loader.h"
+#include "hal_profile.h"
+#include "hal_device_offload.h"
+#include "aie_profile.h"
+#include "noc_profile.h"
+#include "aie_trace.h"
+#include "vart_profile.h"
 
 #include "core/common/config_reader.h"
 

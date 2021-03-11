@@ -22,7 +22,7 @@ namespace device_offload {
   std::function<void (void*)> update_device_cb ;
   std::function<void (void*)> flush_device_cb ;
  
-  void register_hal_device_offload_functions(void* handle) 
+  void register_functions(void* handle) 
   {
     typedef void (*ftype)(void*) ;
     update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateDeviceHAL")) ;

@@ -36,7 +36,7 @@ namespace trace {
   std::function<void (void*)> flush_device_cb;
   std::function<void (void*)> finish_flush_device_cb;
 
-  void register_aie_trace_callbacks(void* handle)
+  void register_callbacks(void* handle)
   {
     typedef void (*ftype)(void*) ;
     update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDevice")) ;
@@ -49,11 +49,11 @@ namespace trace {
     if (xrt_core::dlerror() != NULL) finish_flush_device_cb = nullptr ;
   }
 
-  void aie_trace_warning_function()
+  void warning_function()
   {
   }
 
-  int aie_trace_error_function()
+  int error_function()
   {
     return 0 ;
   }
