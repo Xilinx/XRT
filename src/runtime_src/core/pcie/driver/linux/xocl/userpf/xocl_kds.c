@@ -301,7 +301,7 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
  * [1  ]      : number of cq slots
  * [1  ]      : number of cus
  * [#numcus]  : cu execution stats (number of executions)
- * [#numcus]  : cu status (1: running, 0: idle)
+ * [#numcus]  : cu status (1: running, 0: idle, -1: crashed)
  * [#slots]   : command queue slot status
  *
  * Old ERT populates
@@ -316,6 +316,13 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	int num_scu = kds->scu_mgmt.num_cus;
 	int off_idx;
 	int i;
+	
+	/* TODO: For CU stat command, there are few things to refine.
+	 * 1. Define size of the command
+	 * 2. Define CU status enum/macro in a header file
+	 * 	a. xocl/zocl/MB/RPU/xbutil can shared
+	 * 	b. parser helper function if need
+	 */
 
 	/* New KDS handle FPGA CU statistic on host not ERT */
 	if (ecmd->data[0] != 0x51a10000)
@@ -331,10 +338,21 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	/* off_idx points to PS kernel status */
 	off_idx += num_scu + num_cu;
 	for (i = 0; i < num_scu; i++) {
-		if (ecmd->data[off_idx + i])
+		int status = (int)(ecmd->data[off_idx + i]);
+
+		switch (status) {
+		case 1:
 			kds->scu_mgmt.status[i] = CU_AP_START;
-		else
+			break;
+		case 0:
 			kds->scu_mgmt.status[i] = CU_AP_IDLE;
+			break;
+		case -1:
+			kds->scu_mgmt.status[i] = CU_AP_CRASHED;
+			break;
+		default:
+			kds->scu_mgmt.status[i] = 0;
+		}
 	}
 	mutex_unlock(&kds->scu_mgmt.lock);
 }
