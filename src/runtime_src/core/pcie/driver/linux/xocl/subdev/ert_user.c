@@ -568,7 +568,7 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 	bool ert_poll = cfg->dataflow;
 
 	BUG_ON(cmd_opcode(ecmd) != OP_CONFIG);
-	BUG_ON(!ert || !cfg->ert);
+	BUG_ON(!ert);
 
 	if (ecmd->status != KDS_COMPLETED)
 		return;
@@ -952,7 +952,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	bool ert_poll = cfg->dataflow;
 	unsigned int ert_num_slots = 0;
 
-	BUG_ON(!ert || !cfg->ert);
+	BUG_ON(!ert);
 
 	if (cmd_opcode(ecmd) != OP_CONFIG)
 		return -EINVAL;
@@ -1024,7 +1024,8 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	// xclbin while ERT asynchronous configure is running.
 	//exec->configure_active = true;
 
-	ERTUSER_INFO(ert_user, "scheduler config dataflow(%d), cudma(%d), cuisr(%d)\n"
+	ERTUSER_INFO(ert_user, "scheduler config ert(%d), dataflow(%d), cudma(%d), cuisr(%d)\n"
+ 		 , cfg->ert
 		 , cfg->dataflow
 		 , cfg->cu_dma ? 1 : 0
 		 , cfg->cu_isr ? 1 : 0);
