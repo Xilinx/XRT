@@ -8,6 +8,7 @@
 
 #include "xilutil.hpp"
 #include "xrt.h"
+#include "experimental/xrt-next.h"
 #include "ert.h"
 #include "xclbin.h"
 
@@ -30,8 +31,15 @@ typedef struct task_args {
     Clock::time_point end;
 } arg_t;
 
+struct krnl_info {
+    std::string     name;
+    bool            new_style;
+    int             cu_idx;
+};
+
 bool verbose = false;
 barrier barrier;
+struct krnl_info krnl = {"hello", false};
 
 static void usage(char *prog)
 {
@@ -102,6 +110,8 @@ double runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& 
 void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>> &cmds,
         int bank, int expected_cmds)
 {
+    int rsz;
+
     for (int i = 0; i < expected_cmds; i++) {
         task_info cmd;
         cmd.boh = xclAllocBO(handle, 20, 0, bank);
@@ -131,10 +141,16 @@ void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info
             break;
         }
 
-        int rsz = 19;
+        if (krnl.new_style)
+            /* Old style kernel has 1 argument */
+            rsz = 7;
+        else
+            /* Old style kernel has 7 arguments */
+            rsz = 19;
+
         cmd.ecmd->opcode = ERT_START_CU;
         cmd.ecmd->count = rsz;
-        cmd.ecmd->cu_mask = 0x1;
+        cmd.ecmd->cu_mask = 0x1 << krnl.cu_idx;
         cmd.ecmd->data[rsz - 3] = boh_addr;
         cmd.ecmd->data[rsz - 2] = boh_addr >> 32;
 
@@ -238,7 +254,20 @@ void runTestThread(arg_t &arg)
         }
     }
 
-    if (xclOpenContext(handle, uuid, 0, true))
+    // CU name shoue be "hello:hello_1" or "verify:verify_1"
+    std::string cu_name = krnl.name + ":" + krnl.name + "_1";
+    krnl.cu_idx = xclIPName2Index(handle, cu_name.c_str());
+    if (krnl.cu_idx < 0) {
+        // Try verify:verify_1
+        krnl.name = "verify";
+        krnl.new_style = true;
+        cu_name = krnl.name + ":" + krnl.name + "_1";
+        krnl.cu_idx = xclIPName2Index(handle, cu_name.c_str());
+        if (krnl.cu_idx < 0)
+            throw std::runtime_error(cu_name + " not found");
+    }
+
+    if (xclOpenContext(handle, uuid, krnl.cu_idx, true))
         throw std::runtime_error("Cound not open context");
 
     fillCmdVector(handle, cmds, bank, arg.queueLength);
@@ -255,7 +284,7 @@ void runTestThread(arg_t &arg)
         xclFreeBO(handle, cmd->exec_bo);
     }
 
-    xclCloseContext(handle, uuid, 0);
+    xclCloseContext(handle, uuid, krnl.cu_idx);
 }
 
 int testMultiThreads(int dev_id, std::string &xclbin_fn, int threadNumber, int queueLength, unsigned int total)

@@ -635,6 +635,9 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 				--ert_user->num_rq;
 				continue;
 			}
+		}  else if (cmd_opcode(ecmd) == OP_START || cmd_opcode(ecmd) == OP_START_SK) {
+			if (ert_user->ctrl_busy || !ert_user->config)
+				return 0;
 		}
 
 		if (ert20_acquire_slot(ert_user, ecmd) == no_index) {
@@ -822,8 +825,6 @@ int ert_user_thread(void *data)
 		if (ert_user->bad_state)
 			break;
 
-		if (ert_user->num_rq)
-			continue;
 		/* ert polling mode goes to sleep only if it doesn't have to poll
 		 * submitted queue to check the completion
 		 * ert interrupt mode goes to sleep if there is no cmd to be submitted

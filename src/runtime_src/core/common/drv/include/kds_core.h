@@ -124,6 +124,7 @@ struct kds_ert {
 	void (* submit)(struct kds_ert *ert, struct kds_command *xcmd);
 	struct mutex		  lock;
 	int			  configured;
+	int			  sk_configured;
 };
 
 struct plram_info {
