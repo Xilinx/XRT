@@ -644,6 +644,11 @@ ert_pre_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 	case OP_START:
 	case OP_START_SK:
 		BUG_ON(ert_user->ctrl_busy);
+#if KERNEL_VERSION(5, 4, 0) > LINUX_VERSION_CODE
+		__attribute__ ((fallthrough));
+#else
+		__attribute__ ((__fallthrough__));
+#endif
 	case OP_CLK_CALIB:
 	case OP_CONFIG_SK:
 	case OP_GET_STAT:
