@@ -19,50 +19,52 @@
 #include "core/common/dlfcn.h"
 #include <iostream>
 
-namespace xdpaieprofile {
-
-  void load_xdp_aie_plugin()
+namespace xdp {
+namespace aie {
+namespace profile {
+  void load()
   {
 #ifdef XRT_ENABLE_AIE
     static xrt_core::module_loader xdp_aie_loader("xdp_aie_plugin",
-						    register_aie_callbacks,
-						    warning_aie_callbacks);
+						    register_callbacks,
+						    warning_callbacks);
 #endif
   }
-  std::function<void (void*)> update_aie_device_cb;
-  std::function<void (void*)> end_aie_ctr_poll_cb;
+  std::function<void (void*)> update_device_cb;
+  std::function<void (void*)> end_poll_cb;
 
-  void register_aie_callbacks(void* handle)
+  void register_callbacks(void* handle)
   {
     typedef void (*ftype)(void*) ;
 
-    update_aie_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIECtrDevice")) ;
-    if (xrt_core::dlerror() != NULL) update_aie_device_cb = nullptr ;
+    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIECtrDevice")) ;
+    if (xrt_core::dlerror() != NULL) update_device_cb = nullptr ;
 
-    end_aie_ctr_poll_cb = (ftype)(xrt_core::dlsym(handle, "endAIECtrPoll")) ;
-    if (xrt_core::dlerror() != NULL) end_aie_ctr_poll_cb = nullptr ;
+    end_poll_cb = (ftype)(xrt_core::dlsym(handle, "endAIECtrPoll")) ;
+    if (xrt_core::dlerror() != NULL) end_poll_cb = nullptr ;
   }
 
-  void warning_aie_callbacks()
+  void warning_callbacks()
   {
     // No warnings for AIE profiling
   }
 
-} // end namespace xdpaieprofile
+} // end namespace profile
 
-namespace xdpaiectr {
-
-  void update_aie_device(void* handle)
+namespace ctr {
+  void update_device(void* handle)
   {
-    if (xdpaieprofile::update_aie_device_cb != nullptr) {
-      xdpaieprofile::update_aie_device_cb(handle) ;
+    if (profile::update_device_cb != nullptr) {
+      profile::update_device_cb(handle) ;
     }
   }
 
-  void end_aie_ctr_poll(void* handle)
+  void end_poll(void* handle)
   {
-    if (xdpaieprofile::end_aie_ctr_poll_cb != nullptr) {
-      xdpaieprofile::end_aie_ctr_poll_cb(handle) ;
+    if (profile::end_poll_cb != nullptr) {
+      profile::end_poll_cb(handle) ;
     }
   }
-}
+} // end namespace ctr
+} // end namespace aie
+} // end namespace xdp

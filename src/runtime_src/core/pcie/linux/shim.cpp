@@ -2340,8 +2340,8 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         return -EINVAL;
     }
 
-    xdphal::flush_device(handle) ;
-    xdpaie::flush_aie_device(handle) ;
+    xdp::hal::flush_device(handle) ;
+    xdp::aie::flush_device(handle) ;
 
 #ifdef DISABLE_DOWNLOAD_XCLBIN
     int ret = 0;
@@ -2353,8 +2353,8 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
 
-      xdphal::update_device(handle) ;
-      xdpaie::update_aie_device(handle);
+      xdp::hal::update_device(handle) ;
+      xdp::aie::update_device(handle);
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       //scheduler::init can not be skipped even for same_xclbin

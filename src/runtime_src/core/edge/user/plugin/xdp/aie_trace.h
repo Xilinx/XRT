@@ -17,21 +17,21 @@
 #ifndef XDP_AIE_TRACE_H
 #define XDP_AIE_TRACE_H
 
-namespace xdpaietrace {
+namespace xdp {
+namespace aie {
+  void update_device(void* handle);
+  void flush_device(void* handle);
+  void finish_flush_device(void* handle);
 
-  void load_xdp_aie_trace_plugin();
-  void register_aie_trace_callbacks(void* handle);
-  void aie_trace_warning_function();
-  int  aie_trace_error_function();
+namespace trace {
+  void load();
+  void register_callbacks(void* handle);
+  void warning_function();
+  int  error_function();
 
-} // end namespace xdpaietrace
-
-namespace xdpaie {
-    
-  void update_aie_device(void* handle);
-  void flush_aie_device(void* handle);
-  void finish_flush_aie_device(void* handle);
-}
+} // end namespace trace
+} // end namespace aie
+} // end namespace xdp
 
 #endif
 

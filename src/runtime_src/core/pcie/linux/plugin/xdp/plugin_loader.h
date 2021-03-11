@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,30 +14,15 @@
  * under the License.
  */
 
-#include "plugin/xdp/power_profile.h"
-#include "core/common/module_loader.h"
+#ifndef HAL_HW_PLUGIN_LOADER_DOT_H
+#define HAL_HW_PLUGIN_LOADER_DOT_H
 
 namespace xdp {
-namespace power {
-namespace profile {
+namespace hal_hw_plugins {
 
-  void load()
-  {
-    static xrt_core::module_loader xdp_power_loader("xdp_power_plugin",
-						    register_callbacks,
-						    warning_callbacks) ;
-  }
+  bool load();
 
-  void register_callbacks(void* /*handle*/)
-  {
-    // No callbacks in power profiling.  The plugin is always active
-  }
-
-  void warning_callbacks()
-  {
-    // No warnings for power profiling
-  }
-
-} // end namespace profile
-} // end namespace power
+} // end namespace hal_hw_plugins
 } // end namespace xdp
+
+#endif
