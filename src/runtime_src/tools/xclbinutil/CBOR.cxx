@@ -55,7 +55,7 @@ std::string
 XclBinUtilities::encode_major_type(const MajorTypes majorType,
                                    const uint64_t count) 
 {
-  XUtil::TRACE((boost::format("CBOR: [Encode] %s(%d), Count: %d") % enum_to_string(majorType) % static_cast<uint8_t>(majorType) % count).str());
+  XUtil::TRACE((boost::format("CBOR: [Encode] %s(%d), Count: %d") % enum_to_string(majorType) % static_cast<unsigned int>(majorType) % count).str());
 
   // This method doesn't support Primitive types
   if (majorType == MajorTypes::primitives)
@@ -73,25 +73,25 @@ XclBinUtilities::encode_major_type(const MajorTypes majorType,
   if (count <= MAX_TINY_SIZE) {                              // -- Encode Tiny (bits 5 - 1)
     byte_array[0] |= static_cast<uint8_t>(count & 0x1F);
   } else {                                                  // -- Byte encoding
-    uint8_t num_bytes = 8;        // Assume 64 bits
+    uint8_t num_bytes = 3;         // Assume 64 bits
 
     if (count <= 0xffffffff)       // Less than 32 bits
-      num_bytes = 4;
-
-    if (count <= 0xffff)           // Less than 16 bits
       num_bytes = 2;
 
-    if (count <= 0xff)             // Less than 8 bits
+    if (count <= 0xffff)           // Less than 16 bits
       num_bytes = 1;
+
+    if (count <= 0xff)             // Less than 8 bits
+      num_bytes = 0;
 
     // Encode extended payload flags (bits 5 & 4)
     byte_array[0] |= 0x18;
 
     // Encode extended payload size
-    byte_array[0] |= (num_bytes - 1);
+    byte_array[0] |= num_bytes;
 
     // Encode the count size (big endian)
-    for (uint8_t shiftCount = num_bytes; shiftCount != 0; shiftCount--)
+    for (uint8_t shiftCount = 1 << num_bytes; shiftCount != 0; shiftCount--)
       byte_array.push_back(static_cast<uint8_t>((count >> ((shiftCount - 1) * 8)) & 0xff));
   }
 

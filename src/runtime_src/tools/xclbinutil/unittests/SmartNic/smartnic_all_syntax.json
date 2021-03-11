@@ -69,7 +69,7 @@
                 ],
                 "address_mapping": {
                     "offset": "1024",
-                    "aperture_size_bytes": "1024"
+                    "aperture_size_bytes": "8388608"
                 },
                 "setup": {
                     "ebpf": "0BDFF1DE05A94A6FB5739B8E6CB034A1B9AFE8A4F05147B3AC9F763A60A500C7"
