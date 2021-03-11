@@ -183,10 +183,6 @@ namespace xdp {
       metricSet = defaultSet;
     }
 
-    // Get vector of pre-defined metrics for this set
-    auto& coreEvents          = coreEventSets[metricSet];
-    auto& memoryEvents        = memoryEventSets[metricSet];
-
     // Capture all tiles across all graphs
     // NOTE: future releases will support the specification of tile subsets
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
@@ -197,6 +193,7 @@ namespace xdp {
       std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
     }
 
+    // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
     int numTileMemoryTraceEvents[NUM_MEMORY_TRACE_EVENTS+1] = {0};
     std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> perfCounters;
@@ -208,6 +205,15 @@ namespace xdp {
       // NOTE: resource manager requires absolute row number
       auto& core   = aieDevice->tile(col, row + 1).core();
       auto& memory = aieDevice->tile(col, row + 1).mem();
+
+      // Get vector of pre-defined metrics for this set
+      // NOTE: these are local copies as we are adding tile/counter-specific events
+      EventVector coreEvents;
+      EventVector memoryEvents;
+      std::copy(coreEventSets[metricSet].begin(), coreEventSets[metricSet].end(), 
+                back_inserter(coreEvents));
+      std::copy(memoryEventSets[metricSet].begin(), memoryEventSets[metricSet].end(), 
+                back_inserter(memoryEvents));
 
       //
       // 1. Reserve and start core module counters
@@ -302,6 +308,8 @@ namespace xdp {
           if (ret != XAIE_OK) break;
           numTraceEvents++;
         }
+        
+        coreEvents.clear();
         numTileCoreTraceEvents[numTraceEvents]++;
 
         std::stringstream msg;
@@ -335,6 +343,8 @@ namespace xdp {
           if (ret != XAIE_OK) break;
           numTraceEvents++;
         }
+
+        memoryEvents.clear();
         numTileMemoryTraceEvents[numTraceEvents]++;
 
         std::stringstream msg;
