@@ -259,11 +259,9 @@ namespace xdp {
           numCounters++;
         }
 
-        if (numCounters == 0) {
-          std::stringstream msg;
-          msg << "Unable to reserve profile counters for AIE tile (" << col << "," << row << ").";
-          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
-        }
+        std::stringstream msg;
+        msg << "Reserved " << numCounters " counters for profiling AIE tile (" << col << "," << row << ").";
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
       }
       
