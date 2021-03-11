@@ -313,7 +313,7 @@ namespace xdp {
         numTileCoreTraceEvents[numTraceEvents]++;
 
         std::stringstream msg;
-        msg << "Reserved " << numTraceEvents " core trace events for AIE tile (" << col << "," << row << ").";
+        msg << "Reserved " << numTraceEvents << " core trace events for AIE tile (" << col << "," << row << ").";
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
         // Set overall start/end for trace capture
@@ -348,7 +348,7 @@ namespace xdp {
         numTileMemoryTraceEvents[numTraceEvents]++;
 
         std::stringstream msg;
-        msg << "Reserved " << numTraceEvents " memory trace events for AIE tile (" << col << "," << row << ").";
+        msg << "Reserved " << numTraceEvents << " memory trace events for AIE tile (" << col << "," << row << ").";
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
         // Set overall start/end for trace capture

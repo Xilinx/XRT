@@ -270,7 +270,7 @@ namespace xdp {
         }
 
         std::stringstream msg;
-        msg << "Reserved " << numCounters " counters for profiling AIE tile (" << col << "," << row << ").";
+        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," << row << ").";
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
       }
