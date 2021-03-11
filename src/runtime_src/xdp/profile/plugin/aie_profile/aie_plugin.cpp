@@ -206,6 +206,16 @@ namespace xdp {
         }
       }
 
+      // Report tiles (debug only)
+      {
+        std::stringstream msg;
+        msg << "Tiles used for AIE " << moduleName << " profile counters: ";
+        for (auto& tile : tiles) {
+          msg << "(" << tile.col << "," << tile.row << "), ";
+        }
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+      }
+
       // Get vector of pre-defined metrics for this set
       auto startEvents = isCore ? mCoreStartEvents[metricSet] : mMemoryStartEvents[metricSet];
       auto endEvents   = isCore ?   mCoreEndEvents[metricSet] :   mMemoryEndEvents[metricSet];
@@ -266,14 +276,16 @@ namespace xdp {
       }
       
       // Report counters reserved per tile
-      std::stringstream msg;
-      msg << "AIE profile counters reserved in " << moduleName << " modules - ";
-      for (int n=0; n <= NUM_COUNTERS; ++n) {
-        if (numTileCounters[n] == 0) continue;
-        msg << n << ": " << numTileCounters[n] << " tiles";
-        if (n != NUM_COUNTERS) msg << ", ";
+      {
+        std::stringstream msg;
+        msg << "AIE profile counters reserved in " << moduleName << " modules - ";
+        for (int n=0; n <= NUM_COUNTERS; ++n) {
+          if (numTileCounters[n] == 0) continue;
+          msg << n << ": " << numTileCounters[n] << " tiles";
+          if (n != NUM_COUNTERS) msg << ", ";
+        }
+        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
       }
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
 
       runtimeCounters = true;
     } // for module
