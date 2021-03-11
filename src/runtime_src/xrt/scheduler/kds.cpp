@@ -163,7 +163,7 @@ monitor_loop(const xrt_xocl::device* device)
         return;
 
       // Finer wait
-      while (device->exec_wait(1000)==0) ;
+      // while (submitted_cmds.empty() && device->exec_wait(1000)==0) ;
 
       std::lock_guard<std::mutex> lk(s_mutex);
       auto end = submitted_cmds.end();
