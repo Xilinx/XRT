@@ -68,7 +68,6 @@ get_driver_config(const pt::ptree& aie_meta)
 adf::graph_config
 get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 {
-    std::cout << "here3" << std::endl;
     adf::graph_config graph_config;
 
   for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
@@ -77,7 +76,7 @@ get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 
     graph_config.id = graph.second.get<int>("id");
     graph_config.name = graph.second.get<std::string>("name");
-    
+
     int count = 0;
     for (auto& node : graph.second.get_child("core_columns")) {
       graph_config.coreColumns.push_back(std::stoul(node.second.data()));
@@ -85,7 +84,7 @@ get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
     }
 
     int num_tiles = count;
-    
+
     count = 0;
     for (auto& node : graph.second.get_child("core_rows"))
     {
@@ -127,7 +126,7 @@ get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
     throw_if_error(count < num_tiles,"multirate_triggers < num_tiles");
 
   }
-  std::cout << "here4" << std::endl;
+
   return graph_config;
 }
 
@@ -153,7 +152,7 @@ get_rtp(const pt::ptree& aie_meta, int graph_id)
   for (auto& rtp_node : aie_meta.get_child("aie_metadata.RTPs")) {
     if (rtp_node.second.get<int>("graph_id") != graph_id)
       continue;
-    
+
     adf::rtp_config rtp;
     rtp.portId = rtp_node.second.get<int>("port_id");
     rtp.aliasId = rtp_node.second.get<int>("alias_id");
@@ -219,7 +218,7 @@ std::unordered_map<std::string, adf::gmio_config>
 get_gmios(const pt::ptree& aie_meta)
 {
   std::unordered_map<std::string, adf::gmio_config> gmios;
-  
+
   for (auto& gmio_node : aie_meta.get_child("aie_metadata.GMIOs")) {
     adf::gmio_config gmio;
 

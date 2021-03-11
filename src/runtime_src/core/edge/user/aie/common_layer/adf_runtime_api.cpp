@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2020 Xilinx, Inc
+* Copyright (C) 2021 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
 * not use this file except in compliance with the License. A copy of the
@@ -23,10 +23,12 @@
 
 extern "C"
 {
-    #include "xaiengine.h"
+#include "xaiengine.h"
 }
 
-namespace adf {
+namespace adf
+{
+
 /********************************* Statics & Constants *********************************/
 
 static constexpr short INVALID_TILE_COORD = 0xFF;
@@ -35,11 +37,6 @@ static constexpr int ACQ_WRITE = 0;
 static constexpr int ACQ_READ = 1;
 static constexpr int REL_READ = 1;
 static constexpr int REL_WRITE = 0;
-
-static constexpr int AIE_ML_REL_WRITE = -1;
-static constexpr int AIE_ML_ASYNC_REL = 1;
-static constexpr int AIE_ML_ASYNC_ACQ = -1; //negative lock value -> acquire_greater_equal
-static constexpr int AIE_ML_ASYNC_ACQ_FIRST_TIME = 0;
 
 static constexpr unsigned LOCK_TIMEOUT = 0x7FFFFFFF;
 
@@ -57,32 +54,19 @@ err_code config_manager::initialize(XAie_DevInst* devInst, size_t num_reserved_r
     {
         if(!devInst)
             return errorMsg(err_code::internal_error, "ERROR: config_manager::initialize: Cannot initialize device instance.");
-        
+
         s_pDevInst = devInst;
         s_num_reserved_rows = num_reserved_rows;
         s_broadcast_enable_core = broadcast_enable_core;
-
-        /*
-        Resources::AIE::initialize(s_pDevInst->NumCols, s_pDevInst->NumRows - 1);
-        
-        debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "config_manager::initialize: initialized Resources::AIE: " << (int)s_pDevInst->NumCols << " columns, " << (int)(s_pDevInst->NumRows - 1) << " AIE rows").str());
-        
-        if (s_pDevInst->EccStatus == XAIE_ENABLE)
-        {
-            if (Resources::AIE::reservePerformanceCounterEccScrubbing())
-                debugMsg("config_manager::initialize: reserved performance counter in core module for ECC Scrubbing");
-            else
-                return errorMsg(err_code::internal_error, "ERROR: config_manager::initialize: failed to reserve performance counter in core module for ECC Scrubbing");
-        }*/
-        
         s_bInitialized = true;
     }
     return err_code::ok;
-}    
+}
 
 /************************************ graph_api ************************************/
 
-graph_api::graph_api(const graph_config* pConfig) : pGraphConfig(pConfig), isConfigured(false), isRunning(false), startTime(0)
+graph_api::graph_api(const graph_config* pConfig)
+    : pGraphConfig(pConfig), isConfigured(false), isRunning(false), startTime(0)
 {}
 
 err_code graph_api::configure()
@@ -91,7 +75,9 @@ err_code graph_api::configure()
         return errorMsg(err_code::internal_error, "ERROR: adf::graph_api::configure: Invalid graph configuration.");
 
     int numCores = pGraphConfig->coreColumns.size();
-    if (pGraphConfig->coreRows.size() != numCores || pGraphConfig->iterMemAddrs.size() != numCores || pGraphConfig->triggered.size() != numCores || pGraphConfig->iterMemColumns.size() != numCores || pGraphConfig->iterMemRows.size() != numCores)
+    if (pGraphConfig->coreRows.size() != numCores || pGraphConfig->iterMemAddrs.size() != numCores
+        || pGraphConfig->triggered.size() != numCores || pGraphConfig->iterMemColumns.size() != numCores
+        || pGraphConfig->iterMemRows.size() != numCores)
         return errorMsg(err_code::internal_error, "ERROR: adf::graph_api::configure: inconsistent number of cores.");
 
     coreTiles.resize(numCores);
@@ -118,24 +104,24 @@ err_code graph_api::run()
     // Record a snapshot of the graph cores startup/enable time
     if (numCores)
         driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, coreTiles[0], XAIE_CORE_MOD, (u64*)(&startTime));
-    
+
     infoMsg("Enabling core(s) of graph " + pGraphConfig->name);
-    
+
     if (config_manager::s_broadcast_enable_core)
     {
         for (int i = 0; i < numCores; i++)
         {
-            //Set Enable_Event bits in http://cervino-doc/r2p16/tile_links/xregdb_me_tile_doc.html#tile_core___Enable_Events to 113
+            //Set Enable_Event bits to 113
             //XAie_CoreConfigureEnableEvent(config_managers_pDevInst, coreTiles[i], XAIE_EVENT_BROADCAST_7_CORE);
             XAie_Write32(config_manager::s_pDevInst, (_XAie_GetTileAddr(config_manager::s_pDevInst, coreTiles[i].Row, coreTiles[i].Col) + 0x00032008), 0x4472);
         }
 
-        //Trigger event 113 in shim_tile at column 0 by writing to http://cervino-doc/r2p16/tile_links/xregdb_me_pl_tile_doc.html#pl_module___Event_Generate
+        //Trigger event 113 in shim_tile at column 0 by writing to Event_Generate
         XAie_EventGenerate(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, XAIE_EVENT_BROADCAST_A_6_PL);
 
         for (int i = 0; i < numCores; i++)
         {
-            //Set Enable_Event bits in http://cervino-doc/r2p16/tile_links/xregdb_me_tile_doc.html#tile_core___Enable_Events to 0
+            //Set Enable_Event bits to 0
             //if (XAie_Read32(config_manager::s_pDevInst, (_XAie_GetTileAddr(config_manager::s_pDevInst, coreTiles[i].Row, coreTiles[i].Col) +  0x00032004) & 0x0001) == 1)
             //XAie_CoreConfigureEnableEvent(config_manager::s_pDevInst, coreTiles[i], XAIE_EVENT_NONE_CORE);
             XAie_Write32(config_manager::s_pDevInst, (_XAie_GetTileAddr(config_manager::s_pDevInst, coreTiles[i].Row, coreTiles[i].Col) + 0x00032008), 0x4400);
@@ -147,29 +133,12 @@ err_code graph_api::run()
             driverStatus |= XAie_CoreEnable(config_manager::s_pDevInst, coreTiles[i]);
     }
 
-#ifdef ENABLE_LARGE_PROGRAM
-    // BG: Manage Program Memory
-    for (int i = 0; i < coreTiles.size(); i++)
-    {
-        u8 DebugStatusBit = 0;
-        while (AieRC::XAIE_OK != XAie_CoreReadDebugStatusBit(config_manager::s_pDevInst, coreTiles[i], &DebugStatusBit)) {}
-        infoMsg("Debug Status is enabled... Core is halted due to debug event 0");
-        u32 pmAddr = 0;
-        if (AieRC::XAIE_OK == XAie_GetProgMemAddr(config_manager::s_pDevInst, coreTiles[i], &pmAddr))
-            infoMsg(static_cast<std::stringstream &&>(std::stringstream() << "Current PM addr = " << std::hex << pmAddr << std::dec).str());
-        infoMsg("Enable the user event to resume the core");
-        if (AieRC::XAIE_OK != XAie_EventGenerate(config_manager::s_pDevInst, coreTiles[i], XAIE_CORE_MOD, XAIE_EVENT_USER_EVENT_0_CORE))
-            errorMsg(err_code::aie_driver_error, "Enabling user event to resume core failed");
-    }
-#endif
-    
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::run: AIE driver error.");
-    
+
     isRunning = true;  // Set graph enable after enabling all cores
     return err_code::ok;
 }
-
 
 err_code graph_api::run(int iterations)
 {
@@ -184,13 +153,12 @@ err_code graph_api::run(int iterations)
     int numCores = coreTiles.size();
     for (int i = 0; i < numCores; i++)
         driverStatus |= XAie_DataMemWrWord(config_manager::s_pDevInst, iterMemTiles[i], pGraphConfig->iterMemAddrs[i], (u32)iterations);
-    
+
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::run: AIE driver error.");
 
     return run();
 }
-
 
 err_code graph_api::wait()
 {
@@ -198,7 +166,7 @@ err_code graph_api::wait()
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::wait: graph is not configured.");
 
     int driverStatus = AieRC::XAIE_OK; //0
-    
+
     infoMsg("Waiting for core(s) of graph " + pGraphConfig->name + " to finish execution ...");
 
     int numCores = coreTiles.size();
@@ -206,8 +174,9 @@ err_code graph_api::wait()
     {
         if (!pGraphConfig->triggered[i])
         {
-            while (XAie_CoreWaitForDone(config_manager::s_pDevInst, coreTiles[i], 0) == XAIE_CORE_STATUS_TIMEOUT) {} // Default timeout is 500us. The timeout is counted on AIE clock. So even for a simple test-case this API call returns with error code XAIE_CORE_STATUS_TIMEOUT. 
-
+            // Default timeout is 500us. The timeout is counted on AIE clock.
+            // So even for a simple test-case this API call returns with error code XAIE_CORE_STATUS_TIMEOUT.
+            while (XAie_CoreWaitForDone(config_manager::s_pDevInst, coreTiles[i], 0) == XAIE_CORE_STATUS_TIMEOUT) {}
             driverStatus |= XAie_CoreDisable(config_manager::s_pDevInst, coreTiles[i]);
         }
     }
@@ -216,11 +185,10 @@ err_code graph_api::wait()
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::wait: AIE driver error.");
 
     infoMsg("core(s) are done executing");
-    
+
     isRunning = false;
     return err_code::ok;
-}    
-
+}
 
 err_code graph_api::wait(unsigned long long cycleTimeout)
 {
@@ -229,10 +197,10 @@ err_code graph_api::wait(unsigned long long cycleTimeout)
 
     int driverStatus = AieRC::XAIE_OK; //0
 
-    // XAie_WaitCycles API note says - "CycleCnt has an upper limit of 0xFFFFFFFFFFFF or 300 trillion* cycles to prevent overflow". As per Dishita Vashi - "There is a possibility of unsigned integer 64 bit overflow for variable EndVal i.e. StartVal + CycleCnt. If we limit the CycleCnt value we can avoid that. I have set an upper bound of 0x0xffff-ffff-ffff which is 300 trillion cycles or 3 days at 1GHz which is a very high upper bound for wait cycles." (CR-1066349)
+    // CycleCnt has an upper limit of 0xFFFFFFFFFFFF or 300 trillion* cycles to prevent overflow
     if(cycleTimeout > 0xFFFFFFFFFFFF)
         return errorMsg(err_code::user_error, "ERROR: adf::graph::wait: Max cycle timeout value can be 0xFFFFFFFFFFFF.");
-    
+
     infoMsg("Waiting for core(s) of graph " + pGraphConfig->name + " to complete " + std::to_string(cycleTimeout) + " cycles ...");
 
     int numCores = coreTiles.size();
@@ -251,14 +219,13 @@ err_code graph_api::wait(unsigned long long cycleTimeout)
 
     for (int i = 0; i < numCores; i++)
         driverStatus |= XAie_CoreDisable (config_manager::s_pDevInst, coreTiles[i]);
-    
+
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::wait: AIE driver error.");
-    
+
     isRunning = false;
     return err_code::ok;
 }
-
 
 err_code graph_api::resume()
 {
@@ -266,7 +233,7 @@ err_code graph_api::resume()
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::resume: graph is not configured.");
 
     int driverStatus = AieRC::XAIE_OK; //0
- 
+
     infoMsg("Re-enabling unfinished core(s) of graph " + pGraphConfig->name);
 
     int numCores = coreTiles.size();
@@ -283,31 +250,22 @@ err_code graph_api::resume()
 
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::resume: AIE driver error.");
-    
+
     return err_code::ok;
 }
 
-
 err_code graph_api::end()
 {
-    // see https://confluence.xilinx.com/pages/viewpageattachments.action?pageId=100660646&sortBy=date&highlight=GraphRunResetProblemSolution.pptx&&preview=/100660646/182332415/GraphRunResetProblemSolution.pptx
-    // this is to:
-    // 1) wait for the done() inside the outer while loop in core main()
-    // 2) set the end signal in sync_buffer[0] (which is 4 byte before iteration address)
-    // 3) enable the core to let it continue to the next PC, which will evaluate "if (sync_buffer[2] > 0) break;" and breaks out of outer while loop
-    // 4) wait for the done() inserted by single core compiler at the end of main() program
-    // 5) disable core after the final done()
-    
     if (!isConfigured)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::end: graph is not configured.");
 
     int driverStatus = AieRC::XAIE_OK; //0
 
     bool isRunningBefore = isRunning;
-    err_code ret = wait(); //wait core done. //wait() sets isRunning to false    
+    err_code ret = wait(); //wait core done. //wait() sets isRunning to false
     if (ret != err_code::ok)
         return ret;
-    
+
     int numCores = coreTiles.size();
     for (int i = 0; i < numCores; i++)
     {
@@ -315,11 +273,11 @@ err_code graph_api::end()
         if (isRunningBefore && !pGraphConfig->triggered[i])
         {
             driverStatus |= XAie_DataMemWrWord(config_manager::s_pDevInst, iterMemTiles[i], pGraphConfig->iterMemAddrs[i] - 4, (u32)1);
-
             driverStatus |= XAie_CoreEnable(config_manager::s_pDevInst, coreTiles[i]);
 
-            while (XAie_CoreWaitForDone(config_manager::s_pDevInst, coreTiles[i], 0) == XAIE_CORE_STATUS_TIMEOUT) {} // Default timeout is 500us. The timeout is counted on AIE clock. So even for a simple test-case this API call returns with error code XAIE_CORE_STATUS_TIMEOUT.
-
+            // Default timeout is 500us. The timeout is counted on AIE clock.
+            // So even for a simple test-case this API call returns with error code XAIE_CORE_STATUS_TIMEOUT.
+            while (XAie_CoreWaitForDone(config_manager::s_pDevInst, coreTiles[i], 0) == XAIE_CORE_STATUS_TIMEOUT) {}
             driverStatus |= XAie_CoreDisable(config_manager::s_pDevInst, coreTiles[i]);
         }
     }
@@ -330,7 +288,6 @@ err_code graph_api::end()
     return err_code::ok;
 }
 
-
 err_code graph_api::end(unsigned long long cycleTimeout)
 {
     if (!isConfigured)
@@ -338,17 +295,18 @@ err_code graph_api::end(unsigned long long cycleTimeout)
 
     int driverStatus = AieRC::XAIE_OK; //0
 
-    err_code ret = wait(cycleTimeout);    
+    err_code ret = wait(cycleTimeout);
     if (ret != err_code::ok)
         return ret;
-    
+
     int numCores = iterMemTiles.size();
+    //set the end signal in sync_buffer[0] (which is 4 byte before iteration address)
     for (int i = 0; i < numCores; i++)
-        driverStatus |= XAie_DataMemWrWord(config_manager::s_pDevInst, iterMemTiles[i], pGraphConfig->iterMemAddrs[i] - 4, (u32)1); //set the end signal in sync_buffer[0] (which is 4 byte before iteration address)
-    
+        driverStatus |= XAie_DataMemWrWord(config_manager::s_pDevInst, iterMemTiles[i], pGraphConfig->iterMemAddrs[i] - 4, (u32)1);
+
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::end: AIE driver error.");
-    
+
     return err_code::ok;
 }
 
@@ -359,7 +317,8 @@ err_code checkRTPConfigForUpdate(const rtp_config* pRTPConfig, const graph_confi
 
     //error checking: does this port belong to the graph
     if (pRTPConfig->graphId != pGraphConfig->id)
-        return errorMsg(err_code::user_error, "ERROR: adf::graph::update: RTP port " + pRTPConfig->portName + " does not belong to graph " + pGraphConfig->name + ".");
+        return errorMsg(err_code::user_error, "ERROR: adf::graph::update: RTP port " + pRTPConfig->portName
+            + " does not belong to graph " + pGraphConfig->name + ".");
 
     // error checking: direction
     if (!pRTPConfig->isInput)
@@ -367,7 +326,8 @@ err_code checkRTPConfigForUpdate(const rtp_config* pRTPConfig, const graph_confi
 
     // error checking: size
     if (numBytes != pRTPConfig->numBytes)
-        return errorMsg(err_code::user_error, "ERROR: adf::graph::update parameter size " + std::to_string(numBytes) + " is inconsistent with RTP port " + pRTPConfig->portName + " size " + std::to_string(pRTPConfig->numBytes) + ".");
+        return errorMsg(err_code::user_error, "ERROR: adf::graph::update parameter size " + std::to_string(numBytes)
+            + " is inconsistent with RTP port " + pRTPConfig->portName + " size " + std::to_string(pRTPConfig->numBytes) + ".");
 
     // error checking: connected RTP port
     if (pRTPConfig->isConnect)
@@ -394,13 +354,13 @@ err_code checkRTPConfigForUpdate(const rtp_config* pRTPConfig, const graph_confi
 err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, size_t numBytes)
 {
     ///////////////////////////// Error Checking //////////////////////////////
-    
+
     err_code ret = checkRTPConfigForUpdate(pRTPConfig, pGraphConfig, numBytes, isRunning);
     if (ret != err_code::ok)
         return ret;
-    
+
     ///////////////////////////// Configuration //////////////////////////////
-    
+
     size_t numReservedRows = config_manager::s_num_reserved_rows;
     XAie_LocType selectorTile = XAie_TileLoc(pRTPConfig->selectorColumn, pRTPConfig->selectorRow + numReservedRows + 1);
     XAie_LocType pingTile = XAie_TileLoc(pRTPConfig->pingColumn, pRTPConfig->pingRow + numReservedRows + 1);
@@ -409,9 +369,8 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
     // Do NOT lock async RTP when graph is suspended; otherwise, it may deadlock. We don't support synchronous RTP in suspended mode
     bool bAcquireLock = !(pRTPConfig->isAsync && !isRunning);
 
-    //https://confluence.xilinx.com/display/XSW/2020.2+Cardano+AIE2#id-2020.2CardanoAIE2-RTP_AIE1_AIE2
-    int8_t acquireVal = (pRTPConfig->isAsync ? XAIE_LOCK_WITH_NO_VALUE : ACQ_WRITE); //AIE1
-    int8_t releaseVal = REL_READ; //AIE1
+    int8_t acquireVal = (pRTPConfig->isAsync ? XAIE_LOCK_WITH_NO_VALUE : ACQ_WRITE); //Versal
+    int8_t releaseVal = REL_READ; //Versal
 
     ///////////////////////////// RTP update operation //////////////////////////////
 
@@ -422,7 +381,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
     // sync ports acquire selector lock for WRITE, async ports acquire selector lock unconditionally
     if (pRTPConfig->hasLock && bAcquireLock)
         driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, acquireVal), LOCK_TIMEOUT);
-    
+
     // Read the selector value
     u32 selector;
     driverStatus |= XAie_DataMemRdWord(config_manager::s_pDevInst, selectorTile, pRTPConfig->selectorAddr, ((u32*)&selector));
@@ -433,7 +392,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
         // sync ports acquire buffer lock for WRITE, async ports acquire buffer lock unconditionally
         if (pRTPConfig->hasLock && bAcquireLock)
             driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, acquireVal), LOCK_TIMEOUT);
-        
+
         driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pongTile, pRTPConfig->pongAddr, pValue, numBytes);
     }
     else //ping
@@ -451,10 +410,13 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
     if (pRTPConfig->hasLock)
     {
         // release selector and buffer locks for ME
-        // still need to release async RTP selector lock FOR_READ even when the graph is suspended; otherwise, the ME side may deadlock in acquiring selector lock FOR_READ
+        // still need to release async RTP selector lock FOR_READ even when the graph is suspended;
+        // otherwise, the ME side may deadlock in acquiring selector lock FOR_READ
         driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, releaseVal), LOCK_TIMEOUT);
 
-        // still need to release async RTP buffer lock FOR_READ even when the graph is suspended; otherwise, the AIE side may deadlock in acquiring buffer lock FOR_READ (note that there is one selector lock but two buffer locks)
+        // still need to release async RTP buffer lock FOR_READ even when the graph is suspended;
+        // otherwise, the AIE side may deadlock in acquiring buffer lock FOR_READ
+        // (note that there is one selector lock but two buffer locks)
         if (selector == 1) //pong
             driverStatus |= XAie_LockRelease(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, releaseVal), LOCK_TIMEOUT);
         else //ping
@@ -463,7 +425,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
 
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::update: XAieTile_LockAcquire timeout or AIE driver error.");
-    
+
     return err_code::ok;
 }
 
@@ -474,7 +436,8 @@ err_code checkRTPConfigForRead(const rtp_config* pRTPConfig, const graph_config*
 
     //error checking: does this port belong to the graph
     if (pRTPConfig->graphId != pGraphConfig->id)
-        return errorMsg(err_code::user_error, "ERROR: adf::graph::read: RTP port " + pRTPConfig->portName + " does not belong to graph " + pGraphConfig->name + ".");
+        return errorMsg(err_code::user_error, "ERROR: adf::graph::read: RTP port " + pRTPConfig->portName
+            + " does not belong to graph " + pGraphConfig->name + ".");
 
     // error checking: direction
     if (pRTPConfig->isInput)
@@ -482,7 +445,8 @@ err_code checkRTPConfigForRead(const rtp_config* pRTPConfig, const graph_config*
 
     // error checking: size
     if (numBytes != pRTPConfig->numBytes)
-        return errorMsg(err_code::user_error, "ERROR: adf::graph::read parameter size " + std::to_string(numBytes) + " is inconsistent with RTP port " + pRTPConfig->portName + " size " + std::to_string(pRTPConfig->numBytes) + ".");
+        return errorMsg(err_code::user_error, "ERROR: adf::graph::read parameter size " + std::to_string(numBytes)
+            + " is inconsistent with RTP port " + pRTPConfig->portName + " size " + std::to_string(pRTPConfig->numBytes) + ".");
 
     // error checking: connected RTP port
     if (pRTPConfig->isConnect)
@@ -498,16 +462,15 @@ err_code graph_api::read(const rtp_config* pRTPConfig, void* pValue, size_t numB
     err_code ret = checkRTPConfigForRead(pRTPConfig, pGraphConfig, numBytes);
     if (ret != err_code::ok)
         return ret;
-    
+
     ///////////////////////////// Configuration //////////////////////////////
-    
+
     // Do NOT lock async RTP when graph is suspended; otherwise, it may deadlock. We don't support synchronous RTP in suspended mode
     bool bHasAndAcquireLock = !(pRTPConfig->isAsync && !isRunning) && pRTPConfig->hasLock;
 
-    //https://confluence.xilinx.com/display/XSW/2020.2+Cardano+AIE2#id-2020.2CardanoAIE2-RTP_AIE1_AIE2
-    int8_t acquireVal = ACQ_READ; //AIE1
-    int8_t releaseVal = (pRTPConfig->isAsync ? REL_READ : REL_WRITE); //AIE1
-    
+    int8_t acquireVal = ACQ_READ; //Versal
+    int8_t releaseVal = (pRTPConfig->isAsync ? REL_READ : REL_WRITE); //Versal
+
     size_t numReservedRows = config_manager::s_num_reserved_rows;
     XAie_LocType selectorTile = XAie_TileLoc(pRTPConfig->selectorColumn, pRTPConfig->selectorRow + numReservedRows + 1);
     XAie_LocType pingTile = XAie_TileLoc(pRTPConfig->pingColumn, pRTPConfig->pingRow + numReservedRows + 1);
@@ -521,7 +484,7 @@ err_code graph_api::read(const rtp_config* pRTPConfig, void* pValue, size_t numB
 
     if (bHasAndAcquireLock)
     {
-        // synchronous RTP acquires lock for READ, async RTP requiring first-time sync acquires lock for READ 
+        // synchronous RTP acquires lock for READ, async RTP requiring first-time sync acquires lock for READ
         driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, selectorTile, XAie_LockInit(pRTPConfig->selectorLockId, acquireVal), LOCK_TIMEOUT);
     }
 
@@ -561,7 +524,7 @@ err_code graph_api::read(const rtp_config* pRTPConfig, void* pValue, size_t numB
 
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::read: XAieTile_LockAcquire timeout or AIE driver error.");
-    
+
      return err_code::ok;
 }
 
@@ -592,17 +555,16 @@ err_code gmio_api::configure()
     if (pGMIOConfig->type == gmio_config::gm2aie || pGMIOConfig->type == gmio_config::aie2gm)
     {
         int driverStatus = AieRC::XAIE_OK; //0
-        gmioTileLoc = XAie_TileLoc(pGMIOConfig->shimColumn, 0);            
+        gmioTileLoc = XAie_TileLoc(pGMIOConfig->shimColumn, 0);
         driverStatus |= XAie_DmaDescInit(config_manager::s_pDevInst, &shimDmaInst, gmioTileLoc);
-        driverStatus |= XAie_DmaChannelEnable(config_manager::s_pDevInst, gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM)); //enable shim DMA channel, need to start first so the status is correct
-        
+        //enable shim DMA channel, need to start first so the status is correct
+        driverStatus |= XAie_DmaChannelEnable(config_manager::s_pDevInst, gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM));
         driverStatus |= XAie_DmaGetMaxQueueSize(config_manager::s_pDevInst, gmioTileLoc, &dmaStartQMaxSize);
-        
+
         //decide 4 BD numbers to use for this GMIO based on channel number (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
         for (int j = 0; j < dmaStartQMaxSize; j++)
         {
             int bdNum = pGMIOConfig->channelNum * dmaStartQMaxSize + j;
-
             availableBDs.push(bdNum);
 
             //set AXI burst length, this won't change during runtime
@@ -615,76 +577,58 @@ err_code gmio_api::configure()
     }
     else
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::gmio_api::configure: GM - PL connection is not supported in GMIO AIE API.");
-    
+
     isConfigured = true;
     return err_code::ok;
 }
-
 
 err_code gmio_api::enqueueBD(uint64_t address, size_t size)
 {
     if (!isConfigured)
         return errorMsg(err_code::internal_error, "ERROR: adf::gmio_api::enqueueBD: GMIO is not configured.");
-    
-    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "gmio_api::enqueueBD: (id " << pGMIOConfig->id << ") available number of BDs " << availableBDs.size()).str());
-    
+
     int driverStatus = XAIE_OK; //0
-        
+
     //wait for available BD
     while (availableBDs.empty())
     {
         u8 numPendingBDs = 0;
         driverStatus |= XAie_DmaGetPendingBdCount(config_manager::s_pDevInst, gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), &numPendingBDs);
-        
+
         int numBDCompleted = dmaStartQMaxSize - numPendingBDs;
-        
         //move completed BDs from enqueuedBDs to availableBDs
         for (int i = 0; i < numBDCompleted; i++)
         {
-            size_t bdNumber = frontAndPop(enqueuedBDs);           
+            size_t bdNumber = frontAndPop(enqueuedBDs);
             availableBDs.push(bdNumber);
         }
     }
-    
-    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "gmio_api::enqueneBD: (id " << pGMIOConfig->id << ") available number of BDs " << availableBDs.size()).str());
-    
+
     //get an available BD
     size_t bdNumber = frontAndPop(availableBDs);
 
     //set up BD
-    //FIXME round up transaction_size to 32-bit word (4 byte)
-    //FIXME transaction size < burst length (4,6,8) * burst size (16 bytes)
     driverStatus |= XAie_DmaSetAddrLen(&shimDmaInst, (u64)address, (u32)size);
-    
-    //set up lock for BD.
-    //According to Zachary Dickman, in ME RTL implementation, if lock is set, shim DMA channel will wait until AXI-MM acknowledgement before moving to the next BD.
-    //If lock is not set, shim DMA channel will move to the next BD as soon as the last AXI-MM transaction goes out.
-    //According to Herve, NoC DDR controller will send back "early acknowledgement" to shim DMA, it means the AXI-MM transaction is enqueued in NoC DDR controller.
-    //To ensure read (PS reads from DDR) after write (ME writes to DDR) or write (PS writes to DDR) after read (ME reads from DDR), as long as PS AXI-MM request enters NoC DDR controller after ME AXI-MM request, the order is guaranteed.
-    //As a result, for PS program, to ensure read after write, lock is set by default.
-    //However, it prevents shim DMA channel to work on the next BD at the earlies possible state, and potentially reduce performance.
-    //For Alpha 6, lock is set to ensure correctness but at the cost of less performance.
-    
-        driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
-    
+    driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
     driverStatus |= XAie_DmaEnableBd(&shimDmaInst);
-    
+
     //write BD
     driverStatus |= XAie_DmaWriteBd(config_manager::s_pDevInst, &shimDmaInst, gmioTileLoc, bdNumber);
-    
+
     //enqueue BD
     driverStatus |= XAie_DmaChannelPushBdToQueue(config_manager::s_pDevInst, gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
     enqueuedBDs.push(bdNumber);
 
-    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "gmio_api::enqueueBD: (id " << pGMIOConfig->id << ") enqueue BD num " << bdNumber << " to shim DMA channel " << pGMIOConfig->channelNum << ", DDR address " << std::hex << address << ", transaction size " << std::dec << size).str());
-    
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "gmio_api::enqueueBD: (id "
+        << pGMIOConfig->id << ") enqueue BD num " << bdNumber << " to shim DMA channel " << pGMIOConfig->channelNum
+        << ", DDR address " << std::hex << address << ", transaction size " << std::dec << size).str());
+
     // Update status after using AIE driver
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::gmio_api::enqueueBD: AIE driver error.");
-    
+
     return err_code::ok;
 }
-
 
 err_code gmio_api::wait()
 {

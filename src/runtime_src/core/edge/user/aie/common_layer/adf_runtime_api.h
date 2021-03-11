@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2020 Xilinx, Inc
+* Copyright (C) 2021 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
 * not use this file except in compliance with the License. A copy of the
@@ -89,7 +89,7 @@ public:
     err_code wait();
 
 private:
-    /// GMIO shim DMA physical configuration compiled by the AIE compiler 
+    /// GMIO shim DMA physical configuration compiled by the AIE compiler
     const gmio_config* pGMIOConfig;
 
     /// C_RTS Shim DMA to where this GMIO object is mapped

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  * Author(s): Larry Liu
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
@@ -70,15 +70,15 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
     if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
         throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
     devInst = &DevInst;
-    adf::config_manager::initialize(devInst, driver_config.reserved_num_rows, false); //FIXME handle broadcast enable cores
-    
+    adf::config_manager::initialize(devInst, driver_config.reserved_num_rows, false);
+
     /* Initialize PLIO metadata */
     for (auto& plio : xrt_core::edge::aie::get_plios(device.get()))
         plios.emplace_back(std::move(plio));
 
     /* Initialize graph GMIO metadata */
     gmios = xrt_core::edge::aie::get_old_gmios(device.get());
-    
+
     /* Initialize gmio api instances */
     gmio_configs = xrt_core::edge::aie::get_gmios(device.get());
     for (auto config_itr = gmio_configs.begin(); config_itr != gmio_configs.end(); config_itr++)
@@ -113,11 +113,11 @@ sync_bo(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t s
 {
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
-  
+
   auto gmio_itr = gmio_apis.find(gmioName);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
-  
+
   auto gmio_config_itr = gmio_configs.find(gmioName);
   if (gmio_config_itr == gmio_configs.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
@@ -136,11 +136,11 @@ sync_bo_nb(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_
   auto gmio_itr = gmio_apis.find(gmioName);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
-  
+
   auto gmio_config_itr = gmio_configs.find(gmioName);
   if (gmio_config_itr == gmio_configs.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
-  
+
   submit_sync_bo(bo, gmio_itr->second, gmio_config_itr->second, dir, size, offset);
 }
 
@@ -154,8 +154,8 @@ wait_gmio(const std::string& gmioName)
   auto gmio_itr = gmio_apis.find(gmioName);
   if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
-    
-  gmio_itr->second->wait();  
+
+  gmio_itr->second->wait();
 }
 
 void
@@ -177,10 +177,10 @@ submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio_api, adf::gmio_
 
   if (size & XAIEDMA_SHIM_TXFER_LEN32_MASK != 0)
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
-    
+
   BD bd;
   prepare_bd(bd, bo);
-#ifndef __AIESIM__  
+#ifndef __AIESIM__
   gmio_api->enqueueBD((uint64_t)bd.vaddr + offset, size);
 #else
   gmio_api->enqueueBD((uint64_t)bo.address() + offset, size);

@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2020 Xilinx, Inc
+* Copyright (C) 2021 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
 * not use this file except in compliance with the License. A copy of the
@@ -63,7 +63,8 @@ struct rtp_config
     bool isConnect;
     size_t numBytes;
     bool isPL;
-    bool hasLock; //for graph::update to connected async input RTP, if the connection is within a core, there may not be a lock
+    //for graph::update to connected async input RTP, if the connection is within a core, there may not be a lock
+    bool hasLock;
     short selectorColumn;
     short selectorRow;
     size_t selectorAddr;
@@ -96,7 +97,8 @@ struct gmio_config
     short channelNum;
     /// Shim stream switch port id (slave: gm-->me, master: me-->gm)
     short streamId;
-    /// For type == gm2me or type == me2gm, burstLength is the burst length for the AXI-MM transfer (4 or 8 or 16 in C_RTS API). The burst length in bytes is burstLength * 16 bytes (128-bit aligned).
+    /// For type == gm2aie or type == aie2gm, burstLength is the burst length for the AXI-MM transfer 
+    /// (4 or 8 or 16 in C_RTS API). The burst length in bytes is burstLength * 16 bytes (128-bit aligned).
     /// For type == gm2pl or type == pl2gm, burstLength is the burst length in bytes.
     short burstLength;
 };
@@ -112,7 +114,7 @@ struct kernel_config
 
 struct dma_config
 {
-    ///DMA object   
+    ///DMA object
     short column;
     short row;
     std::vector<int> hierarchicalGraphIds;

@@ -73,13 +73,13 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t uuid, const std::
 #endif
     access_mode = am;
 
-    /* Initialize graph tile metadata */   
+    /* Initialize graph tile metadata */
     graph_config = xrt_core::edge::aie::get_graph(device.get(), name);
 
 
     /* Initialize graph rtp metadata */
     rtps = xrt_core::edge::aie::get_rtp(device.get(), graph_config.id);
-    
+
     pAIEConfigAPI = std::make_shared<adf::graph_api>(&graph_config);
     pAIEConfigAPI->configure();
 
@@ -149,7 +149,7 @@ run()
 {
     if (access_mode == xrt::graph::access_mode::shared)
         throw xrt_core::error(-EPERM, "Shared context can not run graph");
-    
+
     if (state != graph_state::stop && state != graph_state::reset)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is already running or has ended");
 
@@ -164,7 +164,7 @@ run(int iterations)
 {
     if (access_mode == xrt::graph::access_mode::shared)
         throw xrt_core::error(-EPERM, "Shared context can not run graph");
-    
+
     if (state != graph_state::stop && state != graph_state::reset)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is already running or has ended");
 
@@ -179,7 +179,7 @@ wait_done(int timeout_ms)
 {
     if (access_mode == xrt::graph::access_mode::shared)
         throw xrt_core::error(-EPERM, "Shared context can not wait on graph");
-    
+
     if (state == graph_state::stop)
       return;
 
@@ -233,7 +233,7 @@ wait()
 {
     if (access_mode == xrt::graph::access_mode::shared)
         throw xrt_core::error(-EPERM, "Shared context can not wait on graph");
-    
+
     if (state == graph_state::stop)
         return;
 
@@ -251,7 +251,7 @@ wait(uint64_t cycle)
 {
     if (access_mode == xrt::graph::access_mode::shared)
         throw xrt_core::error(-EPERM, "Shared context can not wait on graph");
-    
+
     if (state == graph_state::suspend)
         return;
 
@@ -269,7 +269,7 @@ suspend()
 {
     if (access_mode == xrt::graph::access_mode::shared)
         throw xrt_core::error(-EPERM, "Shared context can not suspend graph");
-    
+
     if (state != graph_state::running)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running, cannot suspend");
 
@@ -287,7 +287,7 @@ resume()
 {
     if (access_mode == xrt::graph::access_mode::shared)
         throw xrt_core::error(-EPERM, "Shared context can not resume on graph");
-    
+
     if (state != graph_state::suspend)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not suspended (wait(cycle)), cannot resume");
 
@@ -302,7 +302,7 @@ end()
 {
     if (access_mode == xrt::graph::access_mode::shared)
         throw xrt_core::error(-EPERM, "Shared context can not end graph");
-    
+
     if (state != graph_state::running && state != graph_state::stop)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running or stop, cannot end");
 
@@ -317,7 +317,7 @@ end(uint64_t cycle)
 {
     if (access_mode == xrt::graph::access_mode::shared)
         throw xrt_core::error(-EPERM, "Shared context can not end graph");
-    
+
     if (state != graph_state::running && state != graph_state::suspend)
         throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running or suspended, cannot end(cycle_timeout)");
 
@@ -335,13 +335,13 @@ update_rtp(const std::string& port, const char* buffer, size_t size)
     if (it == rtps.end())
       throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP port '" + port + "' not found");
     auto& rtp = it->second;
-    
+
     if (access_mode == xrt::graph::access_mode::shared && !rtp.isAsync)
         throw xrt_core::error(-EPERM, "Shared context can not update sync RTP");
-    
+
     if (rtp.isPL)
       throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP port '" + port + "' is not AIE RTP");
-    
+
     pAIEConfigAPI->update(&rtp, (const void*)buffer, size);
 }
 
@@ -356,7 +356,7 @@ read_rtp(const std::string& port, char* buffer, size_t size)
 
     if (rtp.isPL)
       throw xrt_core::error(-EINVAL, "Can't read graph '" + name + "': RTP port '" + port + "' is not AIE RTP");
-    
+
     pAIEConfigAPI->read(&rtp, (void*)buffer, size);
 }
 
