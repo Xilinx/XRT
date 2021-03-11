@@ -187,15 +187,13 @@ struct job_type
     // Verify result
     char hbuf[LENGTH] = {0};
     throw_if_error(clEnqueueReadBuffer(m_queue,m_mem,CL_TRUE,0,sizeof(char)*LENGTH,hbuf,0,nullptr,nullptr),"failed to read");
-    debug::printf("job[%d] daddr(0x%p) result = %s\n",id,m_bo_dev_addr,hbuf);
+    debug::printf("job[%d] daddr(%p) result = %s\n",id,m_bo_dev_addr,hbuf);
   }
 };
 
 static int
 run_kernel(cl_context context, cl_device_id device, cl_command_queue queue, xrt_device* xdev, uint32_t cuidx, size_t cuaddr)
 {
-  xrtcpp::acquire_cu_context(xdev,cuidx);
-
   // create jobs
   std::vector<job_type> jobs;
   jobs.reserve(num_jobs);
@@ -217,8 +215,6 @@ run_kernel(cl_context context, cl_device_id device, cl_command_queue queue, xrt_
 
   for (auto& t : workers)
     t.join();
-
-  xrtcpp::release_cu_context(xdev,cuidx);
 
   for (auto& j : jobs)
     std::cout << "job[" << j.id << "] runs(" << j.runs << ")\n";

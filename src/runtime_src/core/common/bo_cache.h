@@ -54,8 +54,8 @@ private:
   std::mutex mCacheMutex;
 
 public:
- bo_cache(xclDeviceHandle handle, unsigned int max_size)
-   : mDevice(get_userpf_device(handle)), mCacheMaxSize(max_size)
+  bo_cache(xclDeviceHandle handle, unsigned int max_size)
+    : mDevice(get_userpf_device(handle)), mCacheMaxSize(max_size)
   {}
 
   ~bo_cache()
