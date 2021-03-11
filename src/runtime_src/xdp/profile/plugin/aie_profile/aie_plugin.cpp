@@ -116,7 +116,7 @@ namespace xdp {
       return runtimeCounters;
 
     auto Aie = aieArray->getDevInst();
-    AieRscDevice = std::make_shared<xaiefal::XAieDev>(Aie, true);
+    AieRscDevice = std::make_shared<xaiefal::XAieDev>(Aie, false);
 	  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
     // Get AIE clock frequency

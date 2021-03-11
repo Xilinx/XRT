@@ -149,7 +149,7 @@ namespace xdp {
     if (!aieArray)
       return;
     auto Aie = aieArray->getDevInst();
-    auto aieDevice = std::make_shared<xaiefal::XAieDev>(Aie, true);
+    auto aieDevice = std::make_shared<xaiefal::XAieDev>(Aie, false);
 
     // Get AIE tiles and metric set
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
