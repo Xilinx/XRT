@@ -118,6 +118,7 @@ def run_xbmgmt(cmdline):
         print(out.decode("utf-8"))
     if err:
         print(err.decode("utf-8"))
+    return p.returncode
 
 #do pcie node remove and rescan
 def run_pcie(cmdline):
@@ -206,9 +207,13 @@ def main():
             run_pcie("echo 2 > " + os.path.join(rootDir, buddy_user, "shutdown"))
         #2
         print("sc flash...")
-        run_xbmgmt([xbmgmt, "flash", "--sc_firmware", "--path", args.path, "--card", mgmt, "--no_cardlevel"])
+        retcode = run_xbmgmt([xbmgmt, "flash", "--sc_firmware", "--path", args.path, "--card", mgmt, "--no_cardlevel"])
+        return retcode
     except Exception as e:
         print(e)
 
 if __name__ == "__main__":
-    main()
+    if main() == 0:
+        print("SC flash PASSED")
+        exit(0)
+    exit(1)
