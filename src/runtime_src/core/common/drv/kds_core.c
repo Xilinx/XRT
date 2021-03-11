@@ -928,6 +928,10 @@ int kds_cfg_update(struct kds_sched *kds)
 	int ret = 0;
 	int i;
 
+	/* kds_scu_config would ignore if name is NOT empty */
+	for (i = 0; i < MAX_CUS; ++i)
+		kds->scu_mgmt.name[i][0] = 0;
+
 	kds->scu_mgmt.num_cus = 0;
 
 	/* Update PLRAM CU */
