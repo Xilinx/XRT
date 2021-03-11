@@ -41,12 +41,18 @@ int main(int argc, char** argv) {
 
   std::string test_path = argv[1];
 
-  std::string b_file = "/verify.xclbin";
+  std::string b_file = "/transcode.xclbin";
   std::string binaryFile = test_path + b_file;
   std::ifstream infile(binaryFile);
   if (!infile.good()) {
-    std::cout << "NOT SUPPORTED" << std::endl;
-    return EOPNOTSUPP;
+    /* fall back mode to check whether verify.xclbin present or not */
+    b_file = "/verify.xclbin";
+    binaryFile = test_path + b_file;
+    std::ifstream infile(binaryFile);
+    if (!infile.good()) {
+      std::cout << "NOT SUPPORTED" << std::endl;
+      return EOPNOTSUPP;
+    }
   }
 
   auto devices = xcl::get_xil_devices();
