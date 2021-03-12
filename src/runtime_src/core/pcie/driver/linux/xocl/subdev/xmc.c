@@ -296,12 +296,19 @@ enum sc_mode {
 #define	XMC_PKT_OWNER_MASK			(1 << 5)
 #define	XMC_PKT_ERR_MASK			(1 << 26)
 
-#define	XMC_HOST_MSG_NO_ERR			0x00
-#define	XMC_HOST_MSG_BAD_OPCODE_ERR		0x01
-#define	XMC_HOST_MSG_UNKNOWN_ERR		0x02
-#define	XMC_HOST_MSG_MSP432_MODE_ERR		0x03
-#define	XMC_HOST_MSG_MSP432_FW_LENGTH_ERR	0x04
-#define	XMC_HOST_MSG_BRD_INFO_MISSING_ERR	0x05
+enum xmc_error_code {
+	XMC_HOST_MSG_NO_ERR			= 0x0,
+	XMC_HOST_MSG_BAD_OPCODE_ERR		= 0x1,
+	XMC_HOST_MSG_BRD_INFO_MISSING_ERR	= 0x2,
+	XMC_HOST_MSG_LENGTH_ERR			= 0x3,
+	XMC_HOST_MSG_SAT_FW_WRITE_FAIL		= 0x4,
+	XMC_HOST_MSG_SAT_FW_UPDATE_FAIL		= 0x5,
+	XMC_HOST_MSG_SAT_FW_LOAD_FAIL		= 0x6,
+	XMC_HOST_MSG_SAT_FW_ERASE_FAIL		= 0x7,
+	XMC_HOST_MSG_DR_CMD_FAIL		= 0x8,
+	XMC_HOST_MSG_CSDR_FAILED		= 0x9,
+	XMC_HOST_QSFP_FAIL			= 0xA,
+};
 
 struct xmc_heartbeat_err_code {
 	u32 xhe_error		: 16;
@@ -316,15 +323,23 @@ enum xmc_xhe_error {
 };
 
 enum xmc_packet_op {
-	XPO_UNKNOWN = 0,
-	XPO_MSP432_SEC_START,
-	XPO_MSP432_SEC_DATA,
-	XPO_MSP432_IMAGE_END,
-	XPO_BOARD_INFO,
-	XPO_MSP432_ERASE_FW,
-	XPO_DR_FREEZE,
-	XPO_DR_FREE,
-	XPO_XCLBIN_DATA,
+	XPO_UNKNOWN 			= 0x0,
+	XPO_MSP432_SEC_START 		= 0x1,
+	XPO_MSP432_SEC_DATA 		= 0x2,
+	XPO_MSP432_IMAGE_END 		= 0x3,
+	XPO_BOARD_INFO			= 0x4,
+	XPO_MSP432_ERASE_FW 		= 0x5,
+	XPO_DR_FREEZE			= 0x6,
+	XPO_DR_FREE			= 0x7,
+	XPO_XCLBIN_DATA			= 0x8,
+	XPO_FIRST_CSDR			= 0x9,
+	XPO_ADDITIONAL_CSDR		= 0xA,
+	XPO_QSFP_DIAG_READ		= 0xB,
+	XPO_QSFP_CONTROL_WRITE		= 0xC,
+	XPO_QSFP_LOW_SPEED_IO_READ	= 0xD,
+	XPO_QSFP_LOW_SPEED_IO_WRITE	= 0xE,
+	XPO_QSFP_I2C_READ		= 0xF,
+	XPO_QSFP_I2C_WRITE		= 0x10,
 };
 
 /* Make sure hdr is multiple of u32 */
@@ -347,18 +362,6 @@ struct xmc_pkt_hdr {
 #define XMC_BDINFO_ENTRY_LEN		32
 #define XMC_BDINFO_MAC_LEN		6
 
-#define CMC_OP_READ_QSFP_DIAGNOSTICS            0xB
-#define CMC_OP_WRITE_QSFP_CONTROL               0xC
-#define CMC_OP_READ_QSFP_VALIDATE_LOW_SPEED_IO  0xD
-#define CMC_OP_WRITE_QSFP_VALIDATE_LOW_SPEED_IO 0xE
-
-#define CMC_OP_READ_QSFP_MAXLEN		128 /* In bytes */
-#define CMC_OP_WRITE_QSFP_MAXLEN	13
-#define CMC_OP_IO_CONTROL_MAXLEN	1
-
-#define CMC_OP_QSFP_DIAG_OFFSET 	0x14
-#define CMC_OP_QSFP_IO_OFFSET           0x8
-
 #define BDINFO_MAC_DYNAMIC              0x4B
 
 struct xmc_pkt_image_end_op {
@@ -377,20 +380,22 @@ struct xmc_pkt_sector_data_op {
 
 struct xmc_pkt_qsfp_diag_read_op {
 	u32 port;
-	u32 upper_page;
-	u32 lower_page;
-	u32 data_size;
-	u8 data[1];
-};
-
-struct xmc_pkt_qsfp_diag_write_op {
-	u32 port;
+	u32 page;
+	u32 level;
 	u32 data_size;
 	u8 data[1];
 };
 
 struct xmc_pkt_qsfp_io_rw_op {
 	u32 port;
+	u8 data[1];
+};
+
+struct xmc_pkt_qsfp_byte_rw_op {
+	u32 port;
+	u32 page;
+	u32 level;
+	u32 offset;
 	u8 data[1];
 };
 
@@ -402,10 +407,24 @@ struct xmc_pkt {
 		struct xmc_pkt_sector_start_op sector_start;
 		struct xmc_pkt_sector_data_op sector_data;
 		struct xmc_pkt_qsfp_diag_read_op qsfp_diag_r;
-		struct xmc_pkt_qsfp_diag_write_op qsfp_diag_w;
 		struct xmc_pkt_qsfp_io_rw_op qsfp_io;
+		struct xmc_pkt_qsfp_byte_rw_op qsfp_byte;
 	};
 };
+
+/* QSFP related macros */
+#define CMC_OP_READ_QSFP_MAXLEN		128 /* In bytes */
+#define CMC_OP_WRITE_QSFP_MAXLEN	13
+#define CMC_OP_IO_CONTROL_MAXLEN	1
+
+#define CMC_QSFP_DIAG_DATA_OFFSET \
+	(sizeof(struct xmc_pkt_hdr) + offsetof(struct xmc_pkt_qsfp_diag_read_op, data))
+
+#define CMC_QSFP_BYTE_DATA_OFFSET \
+	(sizeof(struct xmc_pkt_hdr) + offsetof(struct xmc_pkt_qsfp_byte_rw_op, data))
+
+#define CMC_QSFP_IO_DATA_OFFSET \
+	(sizeof(struct xmc_pkt_hdr) + offsetof(struct xmc_pkt_qsfp_io_rw_op, data))
 
 enum board_info_key {
 	BDINFO_SN = 0x21,
@@ -501,10 +520,13 @@ static bool scaling_condition_check(struct xocl_xmc *xmc);
 static const struct file_operations xmc_fops;
 static void clock_status_check(struct platform_device *pdev, bool *latched);
 static void xmc_get_serial_num(struct platform_device *pdev);
-static ssize_t xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count, int lp, int up);
-static ssize_t xmc_qsfp_write(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count);
+
+static ssize_t xmc_qsfp_diag_read(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page, int level);
+static ssize_t xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page, int level);
+static ssize_t xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page, int level);
 static ssize_t xmc_qsfp_io_read(struct xocl_xmc *xmc, int port, char *buffer,
 	loff_t off, size_t count);
 static ssize_t xmc_qsfp_io_write(struct xocl_xmc *xmc, int port, char *buffer,
@@ -1648,6 +1670,7 @@ static ssize_t cache_expire_secs_store(struct device *dev,
 	if (kstrtou64(buf, 10, &val) == -EINVAL || val > 10) {
 		xocl_err(&to_platform_device(dev)->dev,
 			"usage: echo [0 ~ 10] > cache_expire_secs");
+		mutex_unlock(&xmc->xmc_lock);
 		return -EINVAL;
 	}
 
@@ -2629,21 +2652,29 @@ static struct bin_attribute bin_dimm_temp_by_mem_topology_attr = {
  * preprocessor magic for qsfp name pattern:
  * The following sysfs node will be created.
  *
- * qsfp0_control	(write only)
- * qsfp0_io_config	(read, write)
- * qsfp0_lower_page0	(read only)
- * qsfp0_upper_page0	(read only)
- * qsfp0_upper_page1	(read only)
- * qsfp0_upper_page2	(read only)
- * qsfp0_upper_page3	(read only)
+ * qsfp0_io_config		(read, write)
+ * qsfp0_lower_page0		(read only)
+ * qsfp0_upper_page0		(read only)
+ * qsfp0_upper_page1		(read only)
+ * qsfp0_upper_page2		(read only)
+ * qsfp0_upper_page3		(read only)
+ * qsfp0_i2c_lower_page0	(read, write)
+ * qsfp0_i2c_upper_page0	(read, write)
+ * qsfp0_i2c_upper_page1	(read, write)
+ * qsfp0_i2c_upper_page2	(read, write)
+ * qsfp0_i2c_upper_page3	(read, write)
  * ...
- * qsfp3_control 	(write only)
- * qsfp3_io_config 	(read, write)
- * qsfp3_lower_page0	(read only)
- * qsfp3_upper_page0	(read only)
- * qsfp3_upper_page1	(read only)
- * qsfp3_upper_page2	(read only)
- * qsfp3_upper_page3	(read only)
+ * qsfp3_io_config 		(read, write)
+ * qsfp3_lower_page0		(read only)
+ * qsfp3_upper_page0		(read only)
+ * qsfp3_upper_page1		(read only)
+ * qsfp3_upper_page2		(read only)
+ * qsfp3_upper_page3		(read only)
+ * qsfp3_i2c_lower_page0	(read, write)
+ * qsfp3_i2c_upper_page0	(read, write)
+ * qsfp3_i2c_upper_page1	(read, write)
+ * qsfp3_i2c_upper_page2	(read, write)
+ * qsfp3_i2c_upper_page3	(read, write)
  */
 
 /* qsfp_diag, e.g qsfp3_upper_page3 */
@@ -2652,13 +2683,13 @@ xmc_qsfp_lower_read(struct xocl_xmc *xmc, int port, char *buffer,
 	loff_t off, size_t count, int pg)
 {
 	BUG_ON(pg != 0);
-	return xmc_qsfp_read(xmc, port, buffer, off, count, 0, pg);
+	return xmc_qsfp_diag_read(xmc, port, buffer, off, count, pg, 0);
 }
 static ssize_t
 xmc_qsfp_upper_read(struct xocl_xmc *xmc, int port, char *buffer,
 	loff_t off, size_t count, int pg)
 {
-	return xmc_qsfp_read(xmc, port, buffer, off, count, 1, pg);
+	return xmc_qsfp_diag_read(xmc, port, buffer, off, count, pg, 1);
 }
 
 #define QSFP_READ(PORT, level, pg) 						\
@@ -2701,35 +2732,91 @@ QSFP_BIN_ATTR(3);
 	&bin_attr_qsfp##PORT##_upper_page2, \
 	&bin_attr_qsfp##PORT##_upper_page3 \
 
-/* qsfp_control, e.g. qsfp0_control */
-#define QSFP_CONTROL(PORT) 							\
-static ssize_t qsfp##PORT##_control_write(                                      \
+/*
+ * qsfp_i2c read,write
+ */
+static ssize_t
+xmc_qsfp_lower_i2c_read(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page)
+{
+	BUG_ON(page != 0);
+	return xmc_qsfp_i2c_read(xmc, port, buffer, off, count, page, 0);
+}
+static ssize_t
+xmc_qsfp_lower_i2c_write(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page)
+{
+	BUG_ON(page != 0);
+	return xmc_qsfp_i2c_write(xmc, port, buffer, off, count, page, 0);
+}
+static ssize_t
+xmc_qsfp_upper_i2c_read(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page)
+{
+	return xmc_qsfp_i2c_read(xmc, port, buffer, off, count, page, 1);
+}
+static ssize_t
+xmc_qsfp_upper_i2c_write(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page)
+{
+	return xmc_qsfp_i2c_write(xmc, port, buffer, off, count, page, 1);
+}
+#define QSFP_I2C_PORT_PAGE(PORT, LEVEL, PAGE, RW)				\
+static ssize_t qsfp##PORT##_##LEVEL##_page##PAGE##_i2c_##RW(                    \
 	struct file *filp, struct kobject *kobj, 	                        \
 	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
 {                                                                               \
 	struct xocl_xmc *xmc =                                                  \
 		dev_get_drvdata(container_of(kobj, struct device, kobj));       \
-	return xmc_qsfp_write(xmc, PORT, buffer, off, count);                   \
+	return xmc_qsfp_##LEVEL##_i2c_##RW(xmc, PORT, buffer, off, count, PAGE);\
 }
 
-QSFP_CONTROL(0)
-QSFP_CONTROL(1)
-QSFP_CONTROL(2)
-QSFP_CONTROL(3)
+#define QSFP_I2C_PORT(PORT) \
+	QSFP_I2C_PORT_PAGE(PORT, lower, 0, read) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 0, read) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 1, read)	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 2, read) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 3, read) 	\
+	QSFP_I2C_PORT_PAGE(PORT, lower, 0, write) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 0, write) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 1, write) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 2, write) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 3, write)
 
-#define QSFP_CONTROL_ATTR(PORT)                                                 \
-static struct bin_attribute bin_attr_qsfp##PORT##_control = {                   \
+QSFP_I2C_PORT(0)
+QSFP_I2C_PORT(1)
+QSFP_I2C_PORT(2)
+QSFP_I2C_PORT(3)
+
+#define QSFP_I2C_ATTR_PAGE(PORT, PAGE)                                          \
+static struct bin_attribute bin_attr_qsfp##PORT##_i2c_##PAGE = {              \
 	.attr = {                                                               \
-		.name = "qsfp" #PORT "_control",                                \
-		.mode = 0200                                                    \
+		.name = "qsfp" #PORT "_i2c_" #PAGE,	                        \
+		.mode = 0600                                                    \
 	},                                                                      \
-	.write = qsfp##PORT##_control_write,                                    \
+	.read = qsfp##PORT##_##PAGE##_i2c_read,                                 \
+	.write = qsfp##PORT##_##PAGE##_i2c_write,                               \
 	.size = 0                                                               \
 };
-QSFP_CONTROL_ATTR(0);
-QSFP_CONTROL_ATTR(1);
-QSFP_CONTROL_ATTR(2);
-QSFP_CONTROL_ATTR(3);
+
+#define QSFP_I2C_ATTR(PORT) \
+	QSFP_I2C_ATTR_PAGE(PORT, lower_page0) \
+	QSFP_I2C_ATTR_PAGE(PORT, upper_page0) \
+	QSFP_I2C_ATTR_PAGE(PORT, upper_page1) \
+	QSFP_I2C_ATTR_PAGE(PORT, upper_page2) \
+	QSFP_I2C_ATTR_PAGE(PORT, upper_page3)
+
+QSFP_I2C_ATTR(0);
+QSFP_I2C_ATTR(1);
+QSFP_I2C_ATTR(2);
+QSFP_I2C_ATTR(3);
+
+#define QSFP_I2C(PORT) \
+	&bin_attr_qsfp##PORT##_i2c_lower_page0, \
+	&bin_attr_qsfp##PORT##_i2c_upper_page0, \
+	&bin_attr_qsfp##PORT##_i2c_upper_page1, \
+	&bin_attr_qsfp##PORT##_i2c_upper_page2, \
+	&bin_attr_qsfp##PORT##_i2c_upper_page3 \
 
 /* qsfp_io_conifg, e.g. qsfp0_io_config */
 #define QSFP_IO_CONFIG_READ(PORT) \
@@ -2764,7 +2851,7 @@ QSFP_IO_CONFIG_WRITE(3);
 #define QSFP_IO_CONFIG_ATTR(PORT)                                               \
 static struct bin_attribute bin_attr_qsfp##PORT##_io_config = {                 \
 	.attr = {                                                               \
-		.name = "qsfp" #PORT "_io_config",                           \
+		.name = "qsfp" #PORT "_io_config",	                        \
 		.mode = 0600                                                    \
 	},                                                                      \
 	.read = qsfp##PORT##_io_config_read,                                    \
@@ -2782,10 +2869,10 @@ static struct bin_attribute *xmc_bin_attrs[] = {
 	QSFP_DIAG(1),
 	QSFP_DIAG(2),
 	QSFP_DIAG(3),
-	&bin_attr_qsfp0_control,
-	&bin_attr_qsfp1_control,
-	&bin_attr_qsfp2_control,
-	&bin_attr_qsfp3_control,
+	QSFP_I2C(0),
+	QSFP_I2C(1),
+	QSFP_I2C(2),
+	QSFP_I2C(3),
 	&bin_attr_qsfp0_io_config,
 	&bin_attr_qsfp1_io_config,
 	&bin_attr_qsfp2_io_config,
@@ -4729,7 +4816,7 @@ xmc_qsfp_io_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_
 	mutex_lock(&xmc->mbx_lock);
 
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = CMC_OP_READ_QSFP_VALIDATE_LOW_SPEED_IO;
+	xmc->mbx_pkt.hdr.op = XPO_QSFP_LOW_SPEED_IO_READ;
 	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_io_rw_op);
 	xmc->mbx_pkt.qsfp_io.port = port;
 	ret = xmc_send_pkt(xmc);
@@ -4745,7 +4832,7 @@ xmc_qsfp_io_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_
 
 	if (xmc->base_addrs[IO_REG]) {
 		((u8 *)buffer)[0] = ioread8(xmc->base_addrs[IO_REG] +
-			xmc->mbx_offset + CMC_OP_QSFP_IO_OFFSET);
+			xmc->mbx_offset + CMC_QSFP_IO_DATA_OFFSET);
 	}
 	mutex_unlock(&xmc->mbx_lock);
 
@@ -4767,13 +4854,13 @@ xmc_qsfp_io_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 	if (count > CMC_OP_IO_CONTROL_MAXLEN) {
 		xocl_err(&xmc->pdev->dev, "cannot write more than %d bytes",
 			CMC_OP_IO_CONTROL_MAXLEN);
-		return 0;
+		return -EINVAL;
 	}
 
 	mutex_lock(&xmc->mbx_lock);
 
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = CMC_OP_WRITE_QSFP_VALIDATE_LOW_SPEED_IO;
+	xmc->mbx_pkt.hdr.op = XPO_QSFP_LOW_SPEED_IO_WRITE;
 	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_io_rw_op);
 	xmc->mbx_pkt.qsfp_io.port = port;
 	memcpy(xmc->mbx_pkt.qsfp_io.data, buffer, count);
@@ -4789,8 +4876,8 @@ xmc_qsfp_io_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 }
 
 static ssize_t
-xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
-	int lp, int up)
+xmc_qsfp_diag_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
+	int page, int level)
 {
 	u32 data_size = 0;
 	int ret = 0;
@@ -4805,11 +4892,11 @@ xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t c
 	mutex_lock(&xmc->mbx_lock);
 
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = CMC_OP_READ_QSFP_DIAGNOSTICS;
+	xmc->mbx_pkt.hdr.op = XPO_QSFP_DIAG_READ;
 	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_diag_read_op);
 	xmc->mbx_pkt.qsfp_diag_r.port = port;
-	xmc->mbx_pkt.qsfp_diag_r.upper_page = up;
-	xmc->mbx_pkt.qsfp_diag_r.lower_page = lp;
+	xmc->mbx_pkt.qsfp_diag_r.page = page;
+	xmc->mbx_pkt.qsfp_diag_r.level = level;
 	ret = xmc_send_pkt(xmc);
 	if (ret) {
 		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
@@ -4840,7 +4927,7 @@ xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t c
 
 	if (xmc->base_addrs[IO_REG]) {
 		xocl_memcpy_fromio(buffer, xmc->base_addrs[IO_REG] +
-			xmc->mbx_offset + CMC_OP_QSFP_DIAG_OFFSET, data_size);
+			xmc->mbx_offset + CMC_QSFP_DIAG_DATA_OFFSET, data_size);
 	}
 
 	mutex_unlock(&xmc->mbx_lock);
@@ -4851,7 +4938,59 @@ out:
 }
 
 static ssize_t
-xmc_qsfp_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count)
+xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
+	int page, int level)
+{
+	u32 data_size = 0;
+	int ret = 0;
+
+	if (!xmc_qsfp_supported(xmc))
+		return 0;
+
+	/* exit after reading enough data */
+	if (off >= CMC_OP_READ_QSFP_MAXLEN)
+		return 0;
+
+	mutex_lock(&xmc->mbx_lock);
+
+	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
+	xmc->mbx_pkt.hdr.op = XPO_QSFP_I2C_READ;
+	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_byte_rw_op);
+	xmc->mbx_pkt.qsfp_byte.port = port;
+	xmc->mbx_pkt.qsfp_byte.page = page;
+	xmc->mbx_pkt.qsfp_byte.level = level;
+	xmc->mbx_pkt.qsfp_byte.offset = off / sizeof(u32);
+	ret = xmc_send_pkt(xmc);
+	if (ret) {
+		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
+		goto out;
+	}
+
+	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_byte_rw_op);
+	ret = xmc_recv_pkt(xmc);
+	if (ret) {
+		xocl_info(&xmc->pdev->dev, "recv pkt ret %d", ret);
+		goto out;
+	}
+
+	if (xmc->base_addrs[IO_REG]) {
+		data_size = sizeof(u32);
+		xocl_memcpy_fromio(buffer, xmc->base_addrs[IO_REG] +
+			xmc->mbx_offset + CMC_QSFP_BYTE_DATA_OFFSET, data_size);
+
+		xocl_dbg(&xmc->pdev->dev, "off %lld, buffer 0x%x", off, buffer[0]);
+	}
+
+	mutex_unlock(&xmc->mbx_lock);
+	return data_size;
+out:
+	mutex_unlock(&xmc->mbx_lock);
+	return 0;
+}
+
+static inline ssize_t
+xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
+	int page, int level)
 {
 	int ret = 0;
 	size_t max_data_size;
@@ -4860,9 +4999,7 @@ xmc_qsfp_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t 
 		return 0;
 
 	max_data_size = XMC_PKT_MAX_PAYLOAD_SZ * sizeof(u32) -
-		offsetof(struct xmc_pkt_qsfp_diag_write_op, data);
-	if (max_data_size > CMC_OP_WRITE_QSFP_MAXLEN)
-		max_data_size = CMC_OP_WRITE_QSFP_MAXLEN;
+		offsetof(struct xmc_pkt_qsfp_byte_rw_op, data);
 
 	if (count > max_data_size) {
 		xocl_err(&xmc->pdev->dev, "cannot write more then %ld bytes",
@@ -4873,12 +5010,17 @@ xmc_qsfp_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t 
 	mutex_lock(&xmc->mbx_lock);
 
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = CMC_OP_WRITE_QSFP_CONTROL;
+	xmc->mbx_pkt.hdr.op = XPO_QSFP_I2C_WRITE;
 	xmc->mbx_pkt.hdr.payload_sz =
-		offsetof(struct xmc_pkt_qsfp_diag_write_op, data) + count;
-	xmc->mbx_pkt.qsfp_diag_w.port = port;
-	xmc->mbx_pkt.qsfp_diag_w.data_size = (u32)count;
-	memcpy(xmc->mbx_pkt.qsfp_diag_w.data, buffer, count);
+		offsetof(struct xmc_pkt_qsfp_byte_rw_op, data) + count;
+	xmc->mbx_pkt.qsfp_byte.port = port;
+	xmc->mbx_pkt.qsfp_byte.page = page;
+	xmc->mbx_pkt.qsfp_byte.level = level;
+	xmc->mbx_pkt.qsfp_byte.offset = off / sizeof(u32);
+	memcpy(xmc->mbx_pkt.qsfp_byte.data, buffer, count);
+
+	xocl_dbg(&xmc->pdev->dev, "off %lld, count %ld\n", off, count);
+
 	ret = xmc_send_pkt(xmc);
 	if (ret)
 		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
