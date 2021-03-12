@@ -159,15 +159,12 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 	int i, j;
 
 	scmd = (struct ert_configure_sk_cmd *)xcmd->execbuf;
+	mutex_lock(&scu_mgmt->lock);
 	for (i = 0; i < scmd->num_image; i++) {
 		struct config_sk_image *cp = &scmd->image[i];
 
 		for (j = 0; j < cp->num_cus; j++) {
 			int scu_idx = j + cp->start_cuidx;
-
-			/* TODO: Why continue? */
-			if (strlen(scu_mgmt->name[scu_idx]) > 0)
-				continue;
 
 			/*
 			 * TODO: Need consider size limit of the name.
@@ -181,6 +178,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 			scu_mgmt->usage[i] = 0;
 		}
 	}
+	mutex_unlock(&scu_mgmt->lock);
 
 	return 0;
 }
@@ -875,10 +873,6 @@ void kds_reset(struct kds_sched *kds)
 	kds->bad_state = 0;
 	kds->ert_disable = true;
 	kds->ini_disable = false;
-
-	/* TODO: Do we still need this in new KDS? */
-	for (idx = 0; idx < MAX_CUS; ++idx)
-		kds->scu_mgmt.name[idx][0] = 0;
 }
 
 static int kds_fa_assign_plram(struct kds_sched *kds)
