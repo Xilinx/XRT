@@ -623,10 +623,8 @@ namespace xdp {
         } else {
           devInfo->loadedXclbins.back()->noTraceASMs.push_back(mon);
         }
-	// Also add it to the list of all ASM monitors
-	devInfo->loadedXclbins.back()->asmList.push_back(mon) ;
-      } else if (debugIpData->m_type == TRACE_S2MM) {
-	devInfo->loadedXclbins.back()->usesTs2mm = true ;
+        // Also add it to the list of all ASM monitors
+        devInfo->loadedXclbins.back()->asmList.push_back(mon) ;
       } else if(debugIpData->m_type == AXI_NOC) {
         uint8_t readTrafficClass  = debugIpData->m_properties >> 2;
         uint8_t writeTrafficClass = debugIpData->m_properties & 0x3;
@@ -636,8 +634,11 @@ namespace xdp {
         devInfo->loadedXclbins.back()->nocList.push_back(mon);
         // nocList in xdp::DeviceIntf is sorted; Is that required here?
       } else if(debugIpData->m_type == TRACE_S2MM && (debugIpData->m_properties & 0x1)) {
+        // TS2MM IP for AIE PLIO trace offload
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
         devInfo->loadedXclbins.back()->numTracePLIO++;
+      } else if (debugIpData->m_type == TRACE_S2MM) { // TS2MM IP for PL trace offload
+        devInfo->loadedXclbins.back()->usesTs2mm = true ;
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }
