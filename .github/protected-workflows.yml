@@ -1,7 +1,7 @@
 events:
   pull_request:
     - trustOrgMembers: true
-    - trustAnyone: false
+    - trustAnyone: true
       paths:
       	disallowed:
           - ".github/**"
