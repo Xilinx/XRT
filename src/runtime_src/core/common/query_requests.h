@@ -171,6 +171,7 @@ enum class key_type
   mac_addr_first,
   mac_addr_list,
   oem_id,
+  xmc_board_info,
 
   firewall_detect_level,
   firewall_status,
@@ -1845,6 +1846,15 @@ struct oem_id : request
   using result_type = std::string;
   static const key_type key = key_type::oem_id;
   static const char* name() { return "oem_id"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_board_info : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::xmc_board_info;
 
   virtual boost::any
   get(const device*) const = 0;

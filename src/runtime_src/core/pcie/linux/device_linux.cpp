@@ -517,6 +517,7 @@ initialize_query_table()
   emplace_sysfs_get<query::mac_contiguous_num>                 ("xmc", "mac_contiguous_num");
   emplace_sysfs_get<query::mac_addr_first>                     ("xmc", "mac_addr_first");
   emplace_sysfs_get<query::oem_id>                             ("xmc", "xmc_oem_id");
+  emplace_sysfs_get<query::xmc_board_info>                     ("xmc", "board_info_raw");
   emplace_func0_request<query::xmc_qspi_status,                qspi_status>();
   emplace_func0_request<query::mac_addr_list,                  mac_addr_list>();
 

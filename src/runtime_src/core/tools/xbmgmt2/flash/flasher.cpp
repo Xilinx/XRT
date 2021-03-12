@@ -159,7 +159,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
 
 int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
 {
-    XMC_Flasher flasher(m_device->get_device_id());
+    xrt_tools::XMC_Flasher flasher(m_device->get_device_id());
     const std::string e = flasher.probingErrMsg();
 
     if (!e.empty())
@@ -192,7 +192,7 @@ std::string int2PowerString(unsigned int lvl)
 int Flasher::getBoardInfo(BoardInfo& board)
 {
     std::map<char, std::vector<char>> info;
-    XMC_Flasher flasher(m_device->get_device_id());
+    xrt_tools::XMC_Flasher flasher(m_device->get_device_id());
 
     if (!flasher.probingErrMsg().empty())
     {
