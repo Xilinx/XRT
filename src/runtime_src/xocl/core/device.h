@@ -23,7 +23,6 @@
 #include "xocl/core/compute_unit.h"
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/device/device.h"
-#include "xrt/scheduler/command.h"
 #include "core/common/unistd.h"
 #include "core/common/scope_guard.h"
 
@@ -40,7 +39,6 @@ public:
   using compute_unit_vector_type = std::vector<compute_unit_type>;
   using compute_unit_range = compute_unit_vector_type;
   using compute_unit_iterator = compute_unit_vector_type::const_iterator;
-  using cmd_type = std::shared_ptr<xrt_xocl::command>;
   using memidx_type = xclbin::memidx_type;
   using connidx_type = xclbin::connidx_type;
 

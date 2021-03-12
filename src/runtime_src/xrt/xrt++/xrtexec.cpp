@@ -15,7 +15,11 @@
  */
 #include "xrtexec.hpp"
 #include "xrt/device/device.h"
-#include "xrt/scheduler/command.h"
+#include "core/common/bo_cache.h"
+#include "core/common/api/command.h"
+#include "core/common/api/exec.h"
+
+#include <functional>
 
 namespace xrtcpp {
 
@@ -75,21 +79,127 @@ get_device_handle(const xrt_device* device)
   return xdevice->get_xcl_handle();
 }
 
+
 namespace exec {
 
-struct command::impl : xrt_xocl::command
+using execbuf_type = xrt_core::bo_cache::cmd_bo<ert_packet>;
+static std::mutex s_mutex;
+static std::map<const xrt_xocl::device*, std::unique_ptr<xrt_core::bo_cache>> s_ebocache;
+
+static execbuf_type
+create_exec_buf(xrt_xocl::device* device)
+{
+  auto itr = s_ebocache.find(device);
+  if (itr == s_ebocache.end()) {
+    auto at_close = [] (const xrt_xocl::device* device) {
+      s_ebocache.erase(device);
+    };
+    xrt_core::exec::init(device->get_core_device().get());
+    device->add_close_callback(std::bind(at_close, device));
+    s_ebocache.emplace(device, std::make_unique<xrt_core::bo_cache>(device->get_xcl_handle(), 128));
+  }
+  
+  return s_ebocache[device]->alloc<ert_packet>();
+}
+
+static void
+release_exec_buf(const xrt_xocl::device* device, execbuf_type& ebo)
+{
+  s_ebocache[device]->release(ebo);
+}
+  
+struct command::impl : xrt_core::command
 {
   impl(xrt_xocl::device* device, ert_cmd_opcode opcode)
-    : xrt_xocl::command(device,opcode)
-      //    , ecmd(get_ert_cmd<ert_packet*>())
+    : m_device(device)
+    , m_execbuf(create_exec_buf(m_device))
+    , ert_pkt(reinterpret_cast<ert_packet*>(m_execbuf.second))
   {
-    ert_pkt = get_ert_cmd<ert_packet*>();
+    ert_pkt->state = ERT_CMD_STATE_NEW;
+    ert_pkt->opcode = opcode & 0x1F; // [4:0]
   }
 
+  ~impl()
+  {
+    release_exec_buf(m_device, m_execbuf);
+  }
+
+  xrt_xocl::device* m_device;
+  execbuf_type m_execbuf;      // underlying execution buffer
+  bool m_done = true;
+
+  mutable std::mutex m_mutex;
+  mutable std::condition_variable m_exec_done;
+
   union {
+    uint32_t* data;
     ert_packet* ert_pkt;
     ert_start_kernel_cmd* ert_cu;
   };
+
+  uint32_t
+  operator[] (int idx) const
+  {
+    return data[idx];
+  }
+
+  uint32_t&
+  operator[] (int idx)
+  {
+    return data[idx];
+  }
+
+  void
+  run()
+  {
+    {
+      std::lock_guard<std::mutex> lk(m_mutex);
+      if (!m_done)
+        throw std::runtime_error("bad command state, can't launch");
+      m_done = false;
+    }
+
+    xrt_core::exec::unmanaged_start(this);
+  }
+
+  ert_cmd_state
+  wait() const
+  {
+    xrt_core::exec::unmanaged_wait(this);
+    return static_cast<ert_cmd_state>(ert_pkt->state);
+  }
+  
+  ////////////////////////////////////////////////////////////////
+  // Implement xrt_core::command API
+  ////////////////////////////////////////////////////////////////
+  virtual ert_packet*
+  get_ert_packet() const
+  {
+    return ert_pkt;
+  }
+
+  virtual xrt_core::device*
+  get_device() const
+  {
+    return m_device->get_core_device().get();
+  }
+
+  virtual xclBufferHandle
+  get_exec_bo() const
+  {
+    return m_execbuf.first;
+  }
+
+  virtual void
+  notify(ert_cmd_state s)
+  {
+    if (s< ERT_CMD_STATE_COMPLETED)
+      return;
+
+    std::lock_guard<std::mutex> lk(m_mutex);
+    m_done = true;
+  }
+  
 };
 
 command::
@@ -101,7 +211,8 @@ void
 command::
 execute()
 {
-  m_impl->execute();
+  m_impl->ert_pkt->state = ERT_CMD_STATE_NEW;
+  m_impl->run();
 }
 
 void
@@ -115,7 +226,10 @@ bool
 command::
 completed() const
 {
-  return m_impl->completed();
+  if (m_impl->m_done)
+    return true;
+
+  return (m_impl->m_done = (state() >= ERT_CMD_STATE_COMPLETED));
 }
 
 ert_cmd_state
