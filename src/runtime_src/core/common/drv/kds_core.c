@@ -192,6 +192,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 	int i, j;
 
 	scmd = (struct ert_configure_sk_cmd *)xcmd->execbuf;
+	mutex_lock(&scu_mgmt->lock);
 	for (i = 0; i < scmd->num_image; i++) {
 		struct config_sk_image *cp = &scmd->image[i];
 
@@ -214,6 +215,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 			scu_mgmt->usage[i] = 0;
 		}
 	}
+	mutex_unlock(&scu_mgmt->lock);
 
 	return 0;
 }
@@ -927,6 +929,12 @@ int kds_cfg_update(struct kds_sched *kds)
 	struct xrt_cu *xcu;
 	int ret = 0;
 	int i;
+
+	/* kds_scu_config would ignore if name is NOT empty */
+	mutex_lock(&kds->scu_mgmt.lock);
+	for (i = 0; i < MAX_CUS; ++i)
+		kds->scu_mgmt.name[i][0] = 0;
+	mutex_unlock(&kds->scu_mgmt.lock);
 
 	kds->scu_mgmt.num_cus = 0;
 
