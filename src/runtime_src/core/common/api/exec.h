@@ -17,13 +17,14 @@
 #ifndef xrt_core_exec_h_
 #define xrt_core_exec_h_
 
+#include "core/common/config.h"
 #include <vector>
 #include <memory>
 
 namespace xrt_core {
 
 class device;
-class command;  
+class command;
 
 /**
  * Software command scheduling
@@ -92,6 +93,7 @@ managed_start(command* cmd);
 // wait for command completion.  This function starts / schedules
 // argument command for exectution but doesn't manage completion.  The
 // command must be checked for completion manually.
+XRT_CORE_COMMON_EXPORT
 void
 unmanaged_start(command* cmd);
 
@@ -99,6 +101,7 @@ unmanaged_start(command* cmd);
 // called in poll mode (unmanaged) scheduling, and is safe to call in
 // push mode.  The function provides a thread safe interface to
 // exec_waq and by passes execution monitor used in managed execution
+XRT_CORE_COMMON_EXPORT
 void
 unmanaged_wait(const command* cmd);
 
@@ -108,6 +111,7 @@ start();
 void
 stop();
 
+XRT_CORE_COMMON_EXPORT
 void
 init(xrt_core::device* device);
 
