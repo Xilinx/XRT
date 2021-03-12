@@ -233,6 +233,10 @@ int zocl_aie_graph_free_context(struct drm_zocl_dev *dev, u32 gid,
 		struct sched_client_ctx *client);
 void zocl_aie_graph_free_context_all(struct drm_zocl_dev *zdev,
 		struct sched_client_ctx *client);
+int zocl_aie_alloc_context(struct drm_zocl_dev *zdev, u32 ctx_code,
+		struct sched_client_ctx *client);
+int zocl_aie_free_context(struct drm_zocl_dev *zdev,
+		struct sched_client_ctx *client);
 
 int zocl_inject_error(struct drm_zocl_dev *zdev, void *data,
 		struct drm_file *filp);

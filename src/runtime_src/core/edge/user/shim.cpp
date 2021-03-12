@@ -1521,6 +1521,58 @@ closeGraphContext(unsigned int graphId)
   return ret ? -errno : ret;
 }
 
+int
+shim::
+openAIEContext(const uuid_t xclbinId, xrt::aie::access_mode am)
+{
+  unsigned int flags;
+  int ret;
+
+  switch (am) {
+
+  case xrt::aie::access_mode::exclusive:
+    flags = ZOCL_CTX_EXCLUSIVE;
+    break;
+
+  case xrt::aie::access_mode::primary:
+    flags = ZOCL_CTX_PRIMARY;
+    break;
+
+  case xrt::aie::access_mode::shared:
+    flags = ZOCL_CTX_SHARED;
+    break;
+
+  default:
+    return -EINVAL;
+  }
+
+  drm_zocl_ctx ctx = {0};
+  ctx.uuid_ptr = reinterpret_cast<uint64_t>(xclbinId);
+  ctx.uuid_size = sizeof (uuid_t) * sizeof (char);
+  ctx.flags = flags;
+  ctx.op = ZOCL_CTX_OP_ALLOC_AIE_CTX;
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret ? -errno : ret;
+}
+
+int
+shim::
+closeAIEContext(const uuid_t xclbinId)
+{
+  unsigned int flags;
+  int ret;
+
+  drm_zocl_ctx ctx = {0};
+  ctx.uuid_ptr = reinterpret_cast<uint64_t>(xclbinId);
+  ctx.uuid_size = sizeof (uuid_t) * sizeof (char);
+  ctx.op = ZOCL_CTX_OP_FREE_AIE_CTX;
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret ? -errno : ret;
+}
+
+
 #endif
 
 } // end namespace ZYNQ

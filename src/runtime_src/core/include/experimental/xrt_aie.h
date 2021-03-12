@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  * Author(s): Larry Liu
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
@@ -28,6 +28,8 @@
 #ifdef __cplusplus
 
 namespace xrt { namespace aie {
+
+enum class access_mode : uint8_t { exclusive = 0, primary = 1, shared = 2, none = 3 };
 
 class device : public xrt::device
 {
@@ -112,6 +114,68 @@ public:
 extern "C" {
 
 #endif
+
+/**
+ * xrtAIEOpenExclusive() - Open an AIE context with exclusive mode
+ *
+ * @handle:          Handle to the device
+ * @xclbinUUID:      UUID of the xclbin withe specified AIE
+ *
+ * Return:          0 on success, or appropriate error number.
+ *
+ * There are three supported AIE context
+ * 1) exclusive: Can fully access AIE array. At any time, there can be only
+ *               one exclusive context. If an exclusive context is opened,
+ *               no other context can be opened.
+ * 2) primary:   Can fully access AIE array. At any time, there can be only
+ *               one primary context. If a primary context is opened, only
+ *               shared context can be opened by other process.
+ * 3) shared:    Can do non-disruptive acc on AIE (monitor, stateless
+ *               operation, etc.). There can be multiple shared context
+ *               at the same time.
+ *
+ * Note: If application does not call xrtAIEOpenXXX explicitly, by default,
+ *       it will try to acquire primary context when it tries to access AIE
+ *       array through XRT APIs.
+ */
+int
+xrtAIEOpenExclusive(xrtDeviceHandle handle, const xuid_t xclbinUUID);
+
+/**
+ * xrtAIEOpenPrimary() - Open an AIE context with primary mode
+ *
+ * @handle:          Handle to the device
+ * @xclbinUUID:      UUID of the xclbin withe specified AIE
+ *
+ * Return:          0 on success, or appropriate error number.
+ */
+int
+xrtAIEOpenPrimary(xrtDeviceHandle handle, const xuid_t xclbinUUID);
+
+/**
+ * xrtAIEOpenShared() - Open an AIE context with shared mode
+ *
+ * @handle:          Handle to the device
+ * @xclbinUUID:      UUID of the xclbin withe specified AIE
+ *
+ * Return:          0 on success, or appropriate error number.
+ */
+int
+xrtAIEOpenShared(xrtDeviceHandle handle, const xuid_t xclbinUUID);
+
+/**
+ * xrtAIEOpenPrimary() - Close AIE context
+ *
+ * @handle:          Handle to the device
+ * @xclbinUUID:      UUID of the xclbin withe specified AIE
+ *
+ * Return:          0 on success, or appropriate error number.
+ *
+ * Note: After close context, any access to AIE, we will try to acquire
+ *       primary context by default.
+ */
+int
+xrtAIECloseContext(xrtDeviceHandle handle, const xuid_t xclbinUUID);
 
 /**
  * xrtAIESyncBO() - Transfer data between DDR and Shim DMA channel

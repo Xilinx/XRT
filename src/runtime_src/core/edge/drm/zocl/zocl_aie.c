@@ -472,7 +472,7 @@ zocl_aie_graph_alloc_context(struct drm_zocl_dev *zdev, u32 gid, u32 ctx_code,
 				 * exclusive context or;
 				 * We request exclusive context but
 				 * this graph has been opened with
-				 * non-excluxive context
+				 * non-exclusive context
 				 */
 				DRM_ERROR("Graph %d only one exclusive context can be opened.\n",
 				    gid);
@@ -560,6 +560,85 @@ zocl_aie_graph_free_context_all(struct drm_zocl_dev *zdev,
 	}
 
 	spin_unlock_irqrestore(&client->graph_list_lock, flags);
+}
+
+int
+zocl_aie_alloc_context(struct drm_zocl_dev *zdev, u32 ctx_code,
+	struct sched_client_ctx *client)
+{
+	struct list_head *cptr;
+	struct sched_client_ctx *ctx;
+	unsigned long ctx_flags;
+	int ret;
+
+	spin_lock_irqsave(&zdev->exec->ctx_list_lock, ctx_flags);
+
+	if (client->aie_ctx != ZOCL_CTX_NOOPS) {
+		DRM_ERROR("Changing AIE context is not supported.\n");
+		ret = -EBUSY;
+		goto out;
+	}
+
+	list_for_each(cptr, &zdev->exec->ctx_list) {
+		ctx = list_entry(cptr, struct sched_client_ctx, link);
+
+		if (ctx == client || ctx->aie_ctx == ZOCL_CTX_NOOPS)
+			continue;
+
+		if (ctx->aie_ctx == ZOCL_CTX_EXCLUSIVE ||
+		    ctx_code == ZOCL_CTX_EXCLUSIVE) {
+			/*
+			 * This AIE array has been allocated exclusive
+			 * context or;
+			 * We request exclusive context but this AIE array
+			 * has been allocated with non-exclusive context
+			 */
+			DRM_ERROR("Only one exclusive AIE context can be allocated.\n");
+			ret = -EBUSY;
+			goto out;
+		}
+
+		if (ctx->aie_ctx == ZOCL_CTX_PRIMARY &&
+		    ctx_code != ZOCL_CTX_SHARED) {
+			/*
+			 * This AIE array has been allocated primary context
+			 * but the request is not shared context
+			 */
+			DRM_ERROR("Primary AIE context has been allocated.\n");
+			ret = -EBUSY;
+			goto out;
+		}
+	}
+
+	client->aie_ctx = ctx_code;
+
+	spin_unlock_irqrestore(&zdev->exec->ctx_list_lock, ctx_flags);
+	return 0;
+
+out:
+	spin_unlock_irqrestore(&zdev->exec->ctx_list_lock, ctx_flags);
+	return ret;
+}
+
+int
+zocl_aie_free_context(struct drm_zocl_dev *zdev,
+	struct sched_client_ctx *client)
+{
+	unsigned long ctx_flags;
+
+	spin_lock_irqsave(&zdev->exec->ctx_list_lock, ctx_flags);
+
+	if (client->aie_ctx == ZOCL_CTX_NOOPS) {
+		DRM_ERROR("No AIE context has been allocated.\n");
+		spin_unlock_irqrestore(&zdev->exec->ctx_list_lock, ctx_flags);
+		return -EINVAL;
+	}
+
+	client->aie_ctx = ZOCL_CTX_NOOPS;
+
+	spin_unlock_irqrestore(&zdev->exec->ctx_list_lock, ctx_flags);
+
+	return 0;
 }
 
 int

@@ -145,6 +145,8 @@ public:
   int resetAIEArray(drm_zocl_aie_reset &reset);
   int openGraphContext(const uuid_t xclbinId, unsigned int graphId, xrt::graph::access_mode am);
   int closeGraphContext(unsigned int graphId);
+  int openAIEContext(const uuid_t xclbinId, xrt::aie::access_mode am);
+  int closeAIEContext(const uuid_t xclbinId);
 #endif
 
 private:

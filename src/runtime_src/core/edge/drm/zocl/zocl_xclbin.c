@@ -942,6 +942,61 @@ zocl_graph_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 	return ret;
 }
 
+static int
+zocl_aie_alloc_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client, bool is_alloc)
+{
+	xuid_t *zdev_xuid, *ctx_xuid;
+	u32 flags = ctx->flags;
+	int ret;
+
+	mutex_lock(&zdev->zdev_xclbin_lock);
+
+	ctx_xuid = vmalloc(ctx->uuid_size);
+	if (!ctx_xuid) {
+		mutex_unlock(&zdev->zdev_xclbin_lock);
+		return -ENOMEM;
+	}
+
+	ret = copy_from_user(ctx_xuid, (void *)(uintptr_t)ctx->uuid_ptr,
+	    ctx->uuid_size);
+	if (ret)
+		goto out;
+
+	zdev_xuid = (xuid_t *)zdev->zdev_xclbin->zx_uuid;
+
+	if (!zdev_xuid || !uuid_equal(zdev_xuid, ctx_xuid)) {
+		DRM_ERROR("try to allocate/free AIE CTX with wrong xclbin %pUB",
+		    ctx_xuid);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (is_alloc)
+		ret = zocl_aie_alloc_context(zdev, flags, client);
+	else
+		ret = zocl_aie_free_context(zdev, client);
+
+out:
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+	vfree(ctx_xuid);
+	return ret;
+}
+
+int
+zocl_aie_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	return zocl_aie_alloc_free_ctx(zdev, ctx, client, true);
+}
+
+int
+zocl_aie_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	return zocl_aie_alloc_free_ctx(zdev, ctx, client, false);
+}
+
 /* TODO: remove this once new KDS is ready */
 int
 zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
