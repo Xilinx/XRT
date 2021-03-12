@@ -105,6 +105,30 @@ printf(const char* format,...)
 
 }
 
+namespace error {
+
+static std::mutex mutex;
+static std::exception_ptr exception_ptr;
+
+void
+handle_thread_exception(const std::exception& ex)
+{
+  std::lock_guard<std::mutex> lk(mutex);
+  std::cout << "Thread failed with : " << ex.what() << "\n";
+  if (!exception_ptr)
+    exception_ptr = std::current_exception();
+}
+
+void
+rethrow_if_error()
+{
+  if (exception_ptr)
+    std::rethrow_exception(exception_ptr);
+}
+  
+}
+  
+
 // Configure number of jobs to run
 static const size_t num_jobs = 10;
 
@@ -164,30 +188,36 @@ struct job_type
   void
   run()
   {
-    while (!stop) {
-      m_cmd.clear();
-      for (uint32_t offset = 0x10; offset < XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA; offset += 4)
-        m_cmd.add(offset,0);
-      m_cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA,m_bo_dev_addr); // low
-      m_cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA+4,(m_bo_dev_addr >> 32) & 0xFFFFFFFF); // high part of a
-      m_cmd.add_cu(m_cuidx);
-      //m_cmd.add_ctx(0);
-      m_cmd.execute();
-      m_cmd.wait();
-      assert(m_cmd.state() == ERT_CMD_STATE_COMPLETED);
+    try {
+      while (!stop) {
+        m_cmd.clear();
+        for (uint32_t offset = 0x10; offset < XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA; offset += 4)
+          m_cmd.add(offset,0);
+        m_cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA,m_bo_dev_addr); // low
+        m_cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA+4,(m_bo_dev_addr >> 32) & 0xFFFFFFFF); // high part of a
+        m_cmd.add_cu(m_cuidx);
+        //m_cmd.add_ctx(0);
+        m_cmd.execute();
+        m_cmd.wait();
+        assert(m_cmd.state() == ERT_CMD_STATE_COMPLETED);
 
-      // execute same command again demo completed() API busy wait
-      int count = 0;
-      m_cmd.execute();
-      while (!m_cmd.completed()) ++count;
+        // execute same command again demo completed() API busy wait
+        int count = 0;
+        m_cmd.execute();
+        while (!m_cmd.completed()) ++count;
 
-      runs += 2;
+        runs += 2;
+      }
+
+      // Verify result
+      char hbuf[LENGTH] = {0};
+      throw_if_error(clEnqueueReadBuffer(m_queue,m_mem,CL_TRUE,0,sizeof(char)*LENGTH,hbuf,0,nullptr,nullptr),"failed to read");
+      debug::printf("job[%d] daddr(%p) result = %s\n",id,m_bo_dev_addr,hbuf);
     }
-
-    // Verify result
-    char hbuf[LENGTH] = {0};
-    throw_if_error(clEnqueueReadBuffer(m_queue,m_mem,CL_TRUE,0,sizeof(char)*LENGTH,hbuf,0,nullptr,nullptr),"failed to read");
-    debug::printf("job[%d] daddr(%p) result = %s\n",id,m_bo_dev_addr,hbuf);
+    catch (const std::exception& ex) {
+      error::handle_thread_exception(ex);
+      return;
+    }
   }
 };
 
@@ -218,6 +248,8 @@ run_kernel(cl_context context, cl_device_id device, cl_command_queue queue, xrt_
 
   for (auto& j : jobs)
     std::cout << "job[" << j.id << "] runs(" << j.runs << ")\n";
+
+  error::rethrow_if_error();
 
   return 0;
 }
