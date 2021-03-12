@@ -4941,15 +4941,16 @@ static ssize_t
 xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
 	int page, int level)
 {
-	u32 data_size = 0;
+	/* current protocl only support one byte */
+	u32 data_size = sizeof(u8);
 	int ret = 0;
 
 	if (!xmc_qsfp_supported(xmc))
 		return 0;
 
-	/* exit after reading enough data */
-	if (off >= CMC_OP_READ_QSFP_MAXLEN)
-		return 0;
+	/* we don't limit the offset for reading */
+	xocl_dbg(&xmc->pdev->dev, "%s off %lld count %ld port %d, page %d, level %d\n",
+		__func__, off, count, port, page, level);
 
 	mutex_lock(&xmc->mbx_lock);
 
@@ -4959,7 +4960,7 @@ xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 	xmc->mbx_pkt.qsfp_byte.port = port;
 	xmc->mbx_pkt.qsfp_byte.page = page;
 	xmc->mbx_pkt.qsfp_byte.level = level;
-	xmc->mbx_pkt.qsfp_byte.offset = off / sizeof(u32);
+	xmc->mbx_pkt.qsfp_byte.offset = off / data_size;
 	ret = xmc_send_pkt(xmc);
 	if (ret) {
 		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
@@ -4974,11 +4975,10 @@ xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 	}
 
 	if (xmc->base_addrs[IO_REG]) {
-		data_size = sizeof(u32);
-		xocl_memcpy_fromio(buffer, xmc->base_addrs[IO_REG] +
-			xmc->mbx_offset + CMC_QSFP_BYTE_DATA_OFFSET, data_size);
+		((u8 *)buffer)[0] = ioread8(xmc->base_addrs[IO_REG] +
+			xmc->mbx_offset + CMC_QSFP_BYTE_DATA_OFFSET);
 
-		xocl_dbg(&xmc->pdev->dev, "off %lld, buffer 0x%x", off, buffer[0]);
+		xocl_dbg(&xmc->pdev->dev, "buffer 0x%x", buffer[0]);
 	}
 
 	mutex_unlock(&xmc->mbx_lock);
@@ -4994,14 +4994,21 @@ xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, siz
 {
 	int ret = 0;
 	size_t max_data_size;
+	/* current protocl only support one byte */
+	u32 data_size = sizeof(u8);
 
 	if (!xmc_qsfp_supported(xmc))
 		return 0;
 
+	/* we don't limit the offset for reading */
+	xocl_dbg(&xmc->pdev->dev, "%s off %lld count %ld port %d, page %d, level %d\n",
+		__func__, off, count, port, page, level);
+
 	max_data_size = XMC_PKT_MAX_PAYLOAD_SZ * sizeof(u32) -
 		offsetof(struct xmc_pkt_qsfp_byte_rw_op, data);
 
-	if (count > max_data_size) {
+	/* Sanity check payload size */
+	if (data_size > max_data_size) {
 		xocl_err(&xmc->pdev->dev, "cannot write more then %ld bytes",
 			max_data_size);
 		return -EINVAL;
@@ -5016,16 +5023,16 @@ xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, siz
 	xmc->mbx_pkt.qsfp_byte.port = port;
 	xmc->mbx_pkt.qsfp_byte.page = page;
 	xmc->mbx_pkt.qsfp_byte.level = level;
-	xmc->mbx_pkt.qsfp_byte.offset = off / sizeof(u32);
-	memcpy(xmc->mbx_pkt.qsfp_byte.data, buffer, count);
+	xmc->mbx_pkt.qsfp_byte.offset = off / data_size;
+	memcpy(xmc->mbx_pkt.qsfp_byte.data, buffer, data_size);
 
-	xocl_dbg(&xmc->pdev->dev, "off %lld, count %ld\n", off, count);
+	xocl_dbg(&xmc->pdev->dev, "write 0x%x\n", buffer[0]);
 
 	ret = xmc_send_pkt(xmc);
 	if (ret)
 		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
 	else
-		ret = count;
+		ret = data_size;
 
 	mutex_unlock(&xmc->mbx_lock);
 
