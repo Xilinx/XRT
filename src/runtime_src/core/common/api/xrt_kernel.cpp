@@ -1456,6 +1456,10 @@ class run_impl
       : data(reinterpret_cast<uint8_t*>(d))
     {}
 
+    virtual
+    ~arg_setter()
+    {}
+
     virtual void
     set_arg_value(const argument& arg, const arg_range<uint8_t>& value) = 0;
 

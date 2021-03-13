@@ -126,7 +126,7 @@ struct command::impl : xrt_core::command
 
   xrt_xocl::device* m_device;
   execbuf_type m_execbuf;      // underlying execution buffer
-  bool m_done = true;
+  mutable bool m_done = true;
 
   mutable std::mutex m_mutex;
   mutable std::condition_variable m_exec_done;
@@ -168,7 +168,17 @@ struct command::impl : xrt_core::command
     xrt_core::exec::unmanaged_wait(this);
     return static_cast<ert_cmd_state>(ert_pkt->state);
   }
-  
+
+  bool
+  completed() const
+  {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    if (m_done)
+      return true;
+
+    return (m_done = (ert_pkt->state >= ERT_CMD_STATE_COMPLETED));
+  }
+
   ////////////////////////////////////////////////////////////////
   // Implement xrt_core::command API
   ////////////////////////////////////////////////////////////////
@@ -226,10 +236,7 @@ bool
 command::
 completed() const
 {
-  if (m_impl->m_done)
-    return true;
-
-  return (m_impl->m_done = (state() >= ERT_CMD_STATE_COMPLETED));
+  return m_impl->completed();
 }
 
 ert_cmd_state
