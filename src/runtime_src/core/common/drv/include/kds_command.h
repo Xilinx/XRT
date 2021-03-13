@@ -84,6 +84,7 @@ struct kds_command {
 	 * of execbuf when notifying host
 	 */
 	u32			*execbuf;
+	u32			*u_execbuf;
 	void			*gem_obj;
 	/* to notify inkernel exec completion */
 	struct in_kernel_cb	*inkern_cb;

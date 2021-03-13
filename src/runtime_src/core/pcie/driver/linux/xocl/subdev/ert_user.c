@@ -505,7 +505,7 @@ ert_get_return(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 		return;
 
 	slot_addr = ecmd->slot_idx * slot_size;
-	xocl_memcpy_fromio(ecmd->xcmd->execbuf, ert_user->cq_base + slot_addr, size);
+	xocl_memcpy_fromio(ecmd->xcmd->u_execbuf, ert_user->cq_base + slot_addr, size);
 }
 
 static inline bool ert_special_cmd(struct ert_user_command *ecmd)
