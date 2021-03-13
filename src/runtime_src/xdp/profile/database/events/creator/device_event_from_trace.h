@@ -56,6 +56,13 @@ class DeviceEventCreatorFromTrace
   void trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp);
   double convertDeviceToHostTimestamp(uint64_t deviceTimestamp);
 
+  // Helper functions
+  void addAMEvent() ;
+  void addAIMEvent(xclTraceResults& trace, double hostTimestamp) ;
+  void addASMEvent() ;
+
+  void addKernelDataTransferEvent(VTFEventType ty, xclTraceResults& trace, uint32_t slot, int32_t cuId, double hostTimestamp) ;
+
   public :
   XDP_EXPORT DeviceEventCreatorFromTrace(uint64_t devId);
   ~DeviceEventCreatorFromTrace() {}
