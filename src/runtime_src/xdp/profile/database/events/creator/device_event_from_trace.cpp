@@ -88,14 +88,14 @@ namespace xdp {
       VTFEvent* matchingStart = db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, ty);
       if (nullptr == matchingStart) {
         // We need to add a dummy start event for this observed end event
-	memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
-	memEvent->setDeviceTimestamp(trace.Timestamp);
-	db->getDynamicInfo().addEvent(memEvent);
-	db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
-	matchingStart = memEvent;
+        memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
+        memEvent->setDeviceTimestamp(trace.Timestamp);
+        db->getDynamicInfo().addEvent(memEvent);
+        db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
+        matchingStart = memEvent;
 
         // Also, progress time so the end is after the start
-	hostTimestamp += halfCycleTimeInMs;
+        hostTimestamp += halfCycleTimeInMs;
       } else if (trace.Reserved == 1) {
         // We have a matching start, so we need to end it
         if (matchingStart->getTimestamp() == hostTimestamp) {
@@ -110,14 +110,14 @@ namespace xdp {
           db->getDynamicInfo().addEvent(memEvent);
 
           // Now create the dummy start
-	  memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
+          memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
           memEvent->setDeviceTimestamp(trace.Timestamp);
           db->getDynamicInfo().addEvent(memEvent);
           db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
           matchingStart = memEvent;
           // Also, progress time so the end is after the start
           hostTimestamp += halfCycleTimeInMs;
-	}
+        }
       }
 
       // The true end event we observed
