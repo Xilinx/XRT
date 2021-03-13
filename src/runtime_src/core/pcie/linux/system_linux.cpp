@@ -196,11 +196,9 @@ get_total_devices(bool is_user) const
 
 void
 system_linux::
-scan_devices(bool verbose, bool json) const
+scan_devices(bool, bool) const
 {
   std::cout << "TO-DO: scan_devices\n";
-  verbose = verbose;
-  json = json;
 }
 
 std::shared_ptr<device>
@@ -232,9 +230,8 @@ program_plp(const device* dev, const std::vector<char> &buffer) const
 {
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = dev->file_open("icap", O_WRONLY);
-    unsigned int ret = buffer.size();
-    ret = write(fd.get(), buffer.data(), buffer.size());
-    if (ret != buffer.size())
+    auto ret = write(fd.get(), buffer.data(), buffer.size());
+    if (static_cast<size_t>(ret) != buffer.size())
       throw xrt_core::error("Write plp to icap subdev failed");
 
   } catch (const std::exception& e) {
