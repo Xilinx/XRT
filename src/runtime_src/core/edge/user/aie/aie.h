@@ -93,13 +93,13 @@ public:
     XAie_DevInst *getDevInst();
 
     void
-    openContext(const xrt_core::device* device, const uuid_t xclbin_uuid, xrt::aie::access_mode am);
+    open_context(const xrt_core::device* device, const uuid_t xclbin_uuid, xrt::aie::access_mode am);
 
     void
-    closeContext(const xrt_core::device* device, const uuid_t xclbin_uuid);
+    close_context(const xrt_core::device* device, const uuid_t xclbin_uuid);
 
     bool
-    isContextSet();
+    is_context_set();
 
     void
     sync_bo(xrt::bo& bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);

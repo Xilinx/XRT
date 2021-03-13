@@ -109,7 +109,7 @@ XAie_DevInst* Aie::getDevInst()
 
 void
 Aie::
-openContext(const xrt_core::device* device, const uuid_t xclbin_uuid, xrt::aie::access_mode am)
+open_context(const xrt_core::device* device, const uuid_t xclbin_uuid, xrt::aie::access_mode am)
 {
 #ifndef __AIESIM__
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
@@ -124,7 +124,7 @@ openContext(const xrt_core::device* device, const uuid_t xclbin_uuid, xrt::aie::
 
 void
 Aie::
-closeContext(const xrt_core::device* device, const uuid_t xclbin_uuid)
+close_context(const xrt_core::device* device, const uuid_t xclbin_uuid)
 {
 #ifndef __AIESIM__
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
@@ -139,7 +139,7 @@ closeContext(const xrt_core::device* device, const uuid_t xclbin_uuid)
 
 bool
 Aie::
-isContextSet()
+is_context_set()
 {
   return (access_mode != xrt::aie::access_mode::none);
 }

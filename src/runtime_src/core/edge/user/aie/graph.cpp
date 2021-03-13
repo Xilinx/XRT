@@ -505,7 +505,7 @@ xclAIEOpenContext(xclDeviceHandle handle, const uuid_t xclbin_uuid, xrt::aie::ac
   auto aieArray = getAieArray();
 #endif
 
-  aieArray->openContext(device.get(), xclbin_uuid, am);
+  aieArray->open_context(device.get(), xclbin_uuid, am);
 }
 
 void
@@ -522,7 +522,7 @@ xclAIECloseContext(xclDeviceHandle handle, const uuid_t xclbin_uuid)
   auto aieArray = getAieArray();
 #endif
 
-  aieArray->closeContext(device.get(), xclbin_uuid);
+  aieArray->close_context(device.get(), xclbin_uuid);
 }
 
 void
@@ -539,9 +539,9 @@ xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xcl
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->isContextSet()) {
+  if (!aieArray->is_context_set()) {
     auto uuid = device->get_xclbin_uuid();
-    aieArray->openContext(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
   }
 
   auto bosize = bo.size();
@@ -566,9 +566,9 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum x
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->isContextSet()) {
+  if (!aieArray->is_context_set()) {
     auto uuid = device->get_xclbin_uuid();
-    aieArray->openContext(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
   }
 
   auto bosize = bo.size();
@@ -593,9 +593,9 @@ xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->isContextSet()) {
+  if (!aieArray->is_context_set()) {
     auto uuid = device->get_xclbin_uuid();
-    aieArray->openContext(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
   }
 
   aieArray->wait_gmio(gmioName);
@@ -612,9 +612,9 @@ xclResetAieArray(xclDeviceHandle handle)
     throw xrt_core::error(-EINVAL, "No AIE presented");
   auto aieArray = drv->getAieArray();
 
-  if (!aieArray->isContextSet()) {
+  if (!aieArray->is_context_set()) {
     auto uuid = device->get_xclbin_uuid();
-    aieArray->openContext(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
   }
 
   aieArray->reset(device.get());
@@ -638,9 +638,9 @@ xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, con
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->isContextSet()) {
+  if (!aieArray->is_context_set()) {
     auto uuid = device->get_xclbin_uuid();
-    aieArray->openContext(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
   }
 
   return aieArray->start_profiling(option, value_or_empty(port1Name), value_or_empty(port2Name), value);
@@ -661,9 +661,9 @@ xclReadProfiling(xclDeviceHandle handle, int phdl)
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->isContextSet()) {
+  if (!aieArray->is_context_set()) {
     auto uuid = device->get_xclbin_uuid();
-    aieArray->openContext(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
   }
 
   return aieArray->read_profiling(phdl);
@@ -684,9 +684,9 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->isContextSet()) {
+  if (!aieArray->is_context_set()) {
     auto uuid = device->get_xclbin_uuid();
-    aieArray->openContext(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
   }
 
   return aieArray->stop_profiling(phdl);
