@@ -457,7 +457,6 @@ struct mailbox {
 	char			mbx_comm_id[XCL_COMM_ID_SIZE];
 	uint32_t		mbx_proto_ver;
 
-	bool			mbx_peer_dead;
 	uint64_t		mbx_opened;
 	uint32_t		mbx_state;
 
@@ -752,12 +751,7 @@ void timeout_msg(struct mailbox_channel *ch)
 	if (msg) {
 		if (msg->mbm_ttl == 0) {
 			MBX_WARN(mbx, "found outstanding msg time'd out");
-			if (!mbx->mbx_peer_dead) {
-				MBX_WARN(mbx, "peer becomes dead");
-				mailbox_dump_debug(mbx);
-				/* Peer is not active any more. */
-				mbx->mbx_peer_dead = true;
-			}
+			mailbox_dump_debug(mbx);
 			mutex_lock(&ch->sw_chan_mutex);
 			cleanup_sw_ch(ch);
 			atomic_dec_if_positive(&ch->sw_num_pending_msg);
@@ -880,10 +874,6 @@ static void chan_worker(struct work_struct *work)
 			 * outstanding msg so that it will not timeout.
 			 */
 			outstanding_msg_ttl_reset(ch);
-			if (mbx->mbx_peer_dead) {
-				MBX_INFO(mbx, "peer becomes active");
-				mbx->mbx_peer_dead = false;
-			}
 		}
 
 		handle_timer_event(ch);
@@ -1925,10 +1915,6 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	MBX_INFO(mbx, "sending request: %d via %s",
 		((struct xcl_mailbox_req *)req)->req, (sw_ch ? "SW" : "HW"));
 
-	/* If peer is not alive, no point sending req and waiting for resp. */
-	if (mbx->mbx_peer_dead)
-		return -ENOTCONN;
-
 	if (cb) {
 		reqmsg = alloc_msg(NULL, reqlen);
 		if (reqmsg)
@@ -2373,7 +2359,6 @@ static int mailbox_start(struct mailbox *mbx)
 
 	mbx->mbx_req_cnt = 0;
 	mbx->mbx_req_sz = 0;
-	mbx->mbx_peer_dead = false;
 	mbx->mbx_opened = 0;
 	mbx->mbx_prot_ver = XCL_MB_PROTOCOL_VER;
 	mbx->mbx_req_stop = false;
