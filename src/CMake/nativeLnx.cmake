@@ -59,10 +59,12 @@ execute_process(COMMAND ${UNAME} -r
 # Static linking creates and installs static tools and libraries. The
 # static libraries have system boost dependencies which must be
 # resolved in final target.  The tools (currently xbutil2 and xbmgmt2)
-# will be statically linked.
+# will be statically linked.  Enabled only for ubuntu.
 option(XRT_STATIC_BUILD "Enable static building of XRT" OFF)
-if (DEFINED ENV{XRT_STATIC_BUILD})
-  CMAKE_MINIMUM_REQUIRED(VERSION 3.16.0)
+if ( (${CMAKE_VERSION} VERSION_GREATER "3.16.0")
+    AND (${XRT_NATIVE_BUILD} STREQUAL "yes")
+    AND (${LINUX_FLAVOR} MATCHES "^(Ubuntu)")
+    )
   message("-- Enabling static artifacts of XRT")
   set(XRT_STATIC_BUILD ON)
 endif()
