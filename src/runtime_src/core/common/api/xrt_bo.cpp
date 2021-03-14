@@ -384,7 +384,11 @@ public:
 
   ~buffer_kbuf()
   {
-    device->unmap_bo(handle, hbuf);
+    try {
+      device->unmap_bo(handle, hbuf);
+    }
+    catch (...) {
+    }
   }
 
   virtual void*
@@ -409,7 +413,11 @@ public:
 
   ~buffer_import()
   {
-    device->unmap_bo(handle, hbuf);
+    try {
+      device->unmap_bo(handle, hbuf);
+    }
+    catch (...) {
+    }
   }
 
   virtual bool
