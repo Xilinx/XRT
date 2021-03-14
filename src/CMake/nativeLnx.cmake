@@ -61,8 +61,7 @@ execute_process(COMMAND ${UNAME} -r
 # resolved in final target.  The tools (currently xbutil2 and xbmgmt2)
 # will be statically linked.
 option(XRT_STATIC_BUILD "Enable static building of XRT" OFF)
-if (DEFINED ENV{XRT_STATIC_BUILD})
-  CMAKE_MINIMUM_REQUIRED(VERSION 3.16.0)
+if ( (${CMAKE_VERSION} VERSION_GREATER "3.16.0") AND (${XRT_NATIVE_BUILD} STREQUAL "yes") )
   message("-- Enabling static artifacts of XRT")
   set(XRT_STATIC_BUILD ON)
 endif()

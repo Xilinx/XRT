@@ -46,6 +46,10 @@ add_library(xrt++ SHARED
   ${XRT_XRT_ALL_SRC}
   )
 
+add_library(xrt++_static STATIC
+  ${XRT_XRT_ALL_SRC}
+  )
+
 target_link_libraries(xrt++
   PRIVATE
   xrt_coreutil
@@ -62,7 +66,7 @@ install(TARGETS xrt++
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install(TARGETS xrt++
+install(TARGETS xrt++ xrt++_static
   EXPORT xrt-dev-targets
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
