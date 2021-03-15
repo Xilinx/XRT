@@ -22,8 +22,6 @@ static bool cb_valid() {
   return cb != nullptr ;
 }
 
-  //static bool hal_plugins_loaded = false ;
-
 CallLogger::CallLogger(uint64_t id)
            : m_local_idcode(id)
 {
