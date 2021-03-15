@@ -76,7 +76,6 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t uuid, const std::
     /* Initialize graph tile metadata */
     graph_config = xrt_core::edge::aie::get_graph(device.get(), name);
 
-
     /* Initialize graph rtp metadata */
     rtps = xrt_core::edge::aie::get_rtp(device.get(), graph_config.id);
 

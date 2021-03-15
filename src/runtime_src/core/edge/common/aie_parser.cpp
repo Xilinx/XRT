@@ -50,25 +50,25 @@ read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
 adf::driver_config
 get_driver_config(const pt::ptree& aie_meta)
 {
-    adf::driver_config driver_config;
-    driver_config.hw_gen = aie_meta.get<uint8_t>("aie_metadata.driver_config.hw_gen");
-    driver_config.base_address = aie_meta.get<uint64_t>("aie_metadata.driver_config.base_address");
-    driver_config.column_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.column_shift");
-    driver_config.row_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.row_shift");
-    driver_config.num_columns = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_columns");
-    driver_config.num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_rows");
-    driver_config.shim_row = aie_meta.get<uint8_t>("aie_metadata.driver_config.shim_row");
-    driver_config.reserved_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_row_start");
-    driver_config.reserved_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows");
-    driver_config.aie_tile_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_row_start");
-    driver_config.aie_tile_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_num_rows");
-    return driver_config;
+  adf::driver_config driver_config;
+  driver_config.hw_gen = aie_meta.get<uint8_t>("aie_metadata.driver_config.hw_gen");
+  driver_config.base_address = aie_meta.get<uint64_t>("aie_metadata.driver_config.base_address");
+  driver_config.column_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.column_shift");
+  driver_config.row_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.row_shift");
+  driver_config.num_columns = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_columns");
+  driver_config.num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_rows");
+  driver_config.shim_row = aie_meta.get<uint8_t>("aie_metadata.driver_config.shim_row");
+  driver_config.reserved_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_row_start");
+  driver_config.reserved_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows");
+  driver_config.aie_tile_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_row_start");
+  driver_config.aie_tile_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_num_rows");
+  return driver_config;
 }
 
 adf::graph_config
 get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 {
-    adf::graph_config graph_config;
+  adf::graph_config graph_config;
 
   for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
     if (graph.second.get<std::string>("name") != graph_name)
@@ -86,40 +86,35 @@ get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
     int num_tiles = count;
 
     count = 0;
-    for (auto& node : graph.second.get_child("core_rows"))
-    {
+    for (auto& node : graph.second.get_child("core_rows")) {
       graph_config.coreRows.push_back(std::stoul(node.second.data()));
       count++;
     }
     throw_if_error(count < num_tiles,"core_rows < num_tiles");
 
     count = 0;
-    for (auto& node : graph.second.get_child("iteration_memory_columns"))
-    {
+    for (auto& node : graph.second.get_child("iteration_memory_columns")) {
       graph_config.iterMemColumns.push_back(std::stoul(node.second.data()));
       count++;
     }
     throw_if_error(count < num_tiles,"iteration_memory_columns < num_tiles");
 
     count = 0;
-    for (auto& node : graph.second.get_child("iteration_memory_rows"))
-    {
+    for (auto& node : graph.second.get_child("iteration_memory_rows")) {
       graph_config.iterMemRows.push_back(std::stoul(node.second.data()));
       count++;
     }
     throw_if_error(count < num_tiles,"iteration_memory_rows < num_tiles");
 
     count = 0;
-    for (auto& node : graph.second.get_child("iteration_memory_addresses"))
-    {
+    for (auto& node : graph.second.get_child("iteration_memory_addresses")) {
       graph_config.iterMemAddrs.push_back(std::stoul(node.second.data()));
       count++;
     }
     throw_if_error(count < num_tiles,"iteration_memory_addresses < num_tiles");
 
     count = 0;
-    for (auto& node : graph.second.get_child("multirate_triggers"))
-    {
+    for (auto& node : graph.second.get_child("multirate_triggers")) {
       graph_config.triggered.push_back(node.second.data() == "true");
       count++;
     }

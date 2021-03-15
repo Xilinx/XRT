@@ -97,7 +97,7 @@ struct gmio_config
     short channelNum;
     /// Shim stream switch port id (slave: gm-->me, master: me-->gm)
     short streamId;
-    /// For type == gm2aie or type == aie2gm, burstLength is the burst length for the AXI-MM transfer 
+    /// For type == gm2aie or type == aie2gm, burstLength is the burst length for the AXI-MM transfer
     /// (4 or 8 or 16 in C_RTS API). The burst length in bytes is burstLength * 16 bytes (128-bit aligned).
     /// For type == gm2pl or type == pl2gm, burstLength is the burst length in bytes.
     short burstLength;

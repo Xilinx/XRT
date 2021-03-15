@@ -50,9 +50,9 @@ bool config_manager::s_broadcast_enable_core = false;
 
 err_code config_manager::initialize(XAie_DevInst* devInst, size_t num_reserved_rows, bool broadcast_enable_core)
 {
-    if(!s_bInitialized)
+    if (!s_bInitialized)
     {
-        if(!devInst)
+        if (!devInst)
             return errorMsg(err_code::internal_error, "ERROR: config_manager::initialize: Cannot initialize device instance.");
 
         s_pDevInst = devInst;
@@ -112,7 +112,6 @@ err_code graph_api::run()
         for (int i = 0; i < numCores; i++)
         {
             //Set Enable_Event bits to 113
-            //XAie_CoreConfigureEnableEvent(config_managers_pDevInst, coreTiles[i], XAIE_EVENT_BROADCAST_7_CORE);
             XAie_Write32(config_manager::s_pDevInst, (_XAie_GetTileAddr(config_manager::s_pDevInst, coreTiles[i].Row, coreTiles[i].Col) + 0x00032008), 0x4472);
         }
 
@@ -122,8 +121,6 @@ err_code graph_api::run()
         for (int i = 0; i < numCores; i++)
         {
             //Set Enable_Event bits to 0
-            //if (XAie_Read32(config_manager::s_pDevInst, (_XAie_GetTileAddr(config_manager::s_pDevInst, coreTiles[i].Row, coreTiles[i].Col) +  0x00032004) & 0x0001) == 1)
-            //XAie_CoreConfigureEnableEvent(config_manager::s_pDevInst, coreTiles[i], XAIE_EVENT_NONE_CORE);
             XAie_Write32(config_manager::s_pDevInst, (_XAie_GetTileAddr(config_manager::s_pDevInst, coreTiles[i].Row, coreTiles[i].Col) + 0x00032008), 0x4400);
         }
     }
@@ -198,7 +195,7 @@ err_code graph_api::wait(unsigned long long cycleTimeout)
     int driverStatus = AieRC::XAIE_OK; //0
 
     // CycleCnt has an upper limit of 0xFFFFFFFFFFFF or 300 trillion* cycles to prevent overflow
-    if(cycleTimeout > 0xFFFFFFFFFFFF)
+    if (cycleTimeout > 0xFFFFFFFFFFFF)
         return errorMsg(err_code::user_error, "ERROR: adf::graph::wait: Max cycle timeout value can be 0xFFFFFFFFFFFF.");
 
     infoMsg("Waiting for core(s) of graph " + pGraphConfig->name + " to complete " + std::to_string(cycleTimeout) + " cycles ...");
@@ -393,7 +390,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
         if (pRTPConfig->hasLock && bAcquireLock)
             driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, acquireVal), LOCK_TIMEOUT);
 
-        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pongTile, pRTPConfig->pongAddr, pValue, numBytes);
+        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pongTile, pRTPConfig->pongAddr, const_cast<void*>(pValue), numBytes);
     }
     else //ping
     {
@@ -401,7 +398,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
         if (pRTPConfig->hasLock && bAcquireLock)
             driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pingTile, XAie_LockInit(pRTPConfig->pingLockId, acquireVal), LOCK_TIMEOUT);
 
-        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pingTile, pRTPConfig->pingAddr, pValue, numBytes);
+        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pingTile, pRTPConfig->pingAddr, const_cast<void*>(pValue), numBytes);
     }
 
     // write the new selector value
