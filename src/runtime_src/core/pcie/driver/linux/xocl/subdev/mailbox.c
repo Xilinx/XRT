@@ -204,7 +204,7 @@
 #include <linux/sched/clock.h>
 #endif
 
-int mailbox_no_intr;
+int mailbox_no_intr = 1;
 module_param(mailbox_no_intr, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(mailbox_no_intr,
 	"Disable mailbox interrupt and do timer-driven msg passing");
@@ -238,7 +238,7 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define	MBX_DBG(mbx, fmt, arg...)	\
 	xocl_dbg(&mbx->mbx_pdev->dev, fmt "\n", ##arg)
 
-#define	MAILBOX_TIMER		(HZ / 50) /* in jiffies */
+#define	MAILBOX_TIMER		(HZ / 10) /* in jiffies */
 #define	MAILBOX_SEC2TIMER(s)	((s) * HZ / MAILBOX_TIMER)
 #define	MSG_RX_DEFAULT_TTL	20UL	/* in seconds */
 #define	MSG_HW_TX_DEFAULT_TTL	2UL	/* in seconds */
@@ -457,7 +457,6 @@ struct mailbox {
 	char			mbx_comm_id[XCL_COMM_ID_SIZE];
 	uint32_t		mbx_proto_ver;
 
-	bool			mbx_peer_dead;
 	uint64_t		mbx_opened;
 	uint32_t		mbx_state;
 
@@ -752,12 +751,7 @@ void timeout_msg(struct mailbox_channel *ch)
 	if (msg) {
 		if (msg->mbm_ttl == 0) {
 			MBX_WARN(mbx, "found outstanding msg time'd out");
-			if (!mbx->mbx_peer_dead) {
-				MBX_WARN(mbx, "peer becomes dead");
-				mailbox_dump_debug(mbx);
-				/* Peer is not active any more. */
-				mbx->mbx_peer_dead = true;
-			}
+			mailbox_dump_debug(mbx);
 			mutex_lock(&ch->sw_chan_mutex);
 			cleanup_sw_ch(ch);
 			atomic_dec_if_positive(&ch->sw_num_pending_msg);
@@ -799,15 +793,90 @@ void timeout_msg(struct mailbox_channel *ch)
 	}
 }
 
-static void chann_worker(struct work_struct *work)
+static void msg_timer_on(struct mailbox_msg *msg, u32 ttl)
+{
+	/* Set to default ttl if not provided. */
+	if (ttl == 0) {
+		if (is_rx_msg(msg)) {
+			ttl = MSG_RX_DEFAULT_TTL;
+		} else if (msg->mbm_chan_sw) {
+			/*
+			 * Time spent for s/w mailbox tx includes,
+			 * 1. several ctx
+			 * 2. memory copy xclbin from kernel to user
+			 * So 6s should be long enough for xclbin allowed
+			 */
+			ttl = MSG_SW_TX_DEFAULT_TTL;
+		} else {
+			/*
+			 * For h/w mailbox, we set ttl of one pkt and reset it
+			 * for each new pkt being sent. The whole msg will be
+			 * discard once a single pkt is timed out
+			 */
+			ttl = MSG_HW_TX_DEFAULT_TTL;
+		}
+	}
+
+	msg->mbm_ttl = MAILBOX_SEC2TIMER(ttl);
+}
+
+/*
+ * Reset TTL for outstanding msg. Next portion of the msg is expected to
+ * arrive or go out before it times out.
+ */
+static void outstanding_msg_ttl_reset(struct mailbox_channel *ch)
+{
+	struct mailbox_msg *msg = ch->mbc_cur_msg;
+
+	if (!msg)
+		return;
+
+	/* outstanding msg will time out if no progress is made within 1 second. */
+	msg_timer_on(msg, 1);
+}
+
+static void handle_timer_event(struct mailbox_channel *ch)
+{
+	if (!test_bit(MBXCS_BIT_TICK, &ch->mbc_state))
+		return;
+	timeout_msg(ch);
+	clear_bit(MBXCS_BIT_TICK, &ch->mbc_state);
+}
+
+static void chan_worker(struct work_struct *work)
 {
 	struct mailbox_channel *ch =
 		container_of(work, struct mailbox_channel, mbc_work);
+	struct mailbox *mbx = ch->mbc_parent;
+	bool progress;
 
 	while (!test_bit(MBXCS_BIT_STOP, &ch->mbc_state)) {
-		wait_for_completion_interruptible(&ch->mbc_worker);
-		/* poll before clear interrupt to avoid too many interrupts */
-		while (ch->mbc_tran(ch));
+		if (ch->mbc_cur_msg) {
+			/*
+			 * Fast poll (500 ~ 1000/s) when we have outstanding msg.
+			 * This will not last long since outstanding msg will
+			 * be removed shortly either because we finish processing
+			 * it or it's time'd out.
+			 */
+			usleep_range(1000, 2000);
+		} else {
+			/*
+			 * Wait for next poll triggered by intr or timer, which should
+			 * happen much less frequently.
+			 */
+			wait_for_completion_interruptible(&ch->mbc_worker);
+		}
+
+		progress = ch->mbc_tran(ch);
+		if (progress) {
+			/*
+			 * We just made some progress, reset timeout value for
+			 * outstanding msg so that it will not timeout.
+			 */
+			outstanding_msg_ttl_reset(ch);
+		}
+
+		handle_timer_event(ch);
 	}
 }
 
@@ -998,7 +1067,7 @@ static int chan_init(struct mailbox *mbx, enum mailbox_chan_type type,
 		chan_fini(ch);
 		return -ENOMEM;
 	}
-	INIT_WORK(&ch->mbc_work, chann_worker);
+	INIT_WORK(&ch->mbc_work, chan_worker);
 
 	/* Kick off channel thread, all initialization should be done by now. */
 	queue_work(ch->mbc_wq, &ch->mbc_work);
@@ -1149,11 +1218,6 @@ static void dequeue_rx_msg(struct mailbox_channel *ch,
 	struct mailbox_msg *msg = NULL;
 	int err = 0;
 
-	if (mbx->mbx_peer_dead) {
-		MBX_INFO(mbx, "peer becomes active");
-		mbx->mbx_peer_dead = false;
-	}
-
 	if (ch->mbc_cur_msg)
 		return;
 
@@ -1188,6 +1252,9 @@ static void dequeue_rx_msg(struct mailbox_channel *ch,
 		chan_msg_done(ch, err);
 }
 
+/*
+ * Return TRUE if we did receive some good data, otherwise, FALSE.
+ */
 static bool do_sw_rx(struct mailbox_channel *ch)
 {
 	u32 flags = 0;
@@ -1239,12 +1306,15 @@ static bool do_sw_rx(struct mailbox_channel *ch)
 	return true;
 }
 
+/*
+ * Return TRUE if we did receive some good data, otherwise, FALSE.
+ */
 static bool do_hw_rx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
 	struct mailbox_pkt *pkt = &ch->mbc_packet;
 	u32 type;
-	bool eom = false, read_hw = false;
+	bool eom = false, read_hw = false, recvd = false;
 	u32 st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
 
 	mailbox_dbg_collect(mbx, MAILBOX_RCV_POLL_REC);
@@ -1260,7 +1330,7 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 		if (mbx->mbx_req_cnt > 0)
 			complete(&mbx->mbx_comp);
 		mutex_unlock(&mbx->mbx_lock);
-		return false;
+		return recvd;
 	}
 
 	/*
@@ -1276,7 +1346,7 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 	 */
 	if (!chan_recv_pkt(ch)) {
 		reset_pkt(pkt);
-		return false;
+		return recvd;
 	}
 	type = pkt->hdr.type & PKT_TYPE_MASK;
 	eom = ((pkt->hdr.type & PKT_TYPE_MSG_END) != 0);
@@ -1286,7 +1356,7 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 		(void) memcpy(&mbx->mbx_tst_pkt, &ch->mbc_packet,
 			sizeof(struct mailbox_pkt));
 		reset_pkt(pkt);
-		return true;
+		break;
 	case PKT_MSG_START:
 		if (ch->mbc_cur_msg) {
 			MBX_WARN(mbx, "Received partial msg (id 0x%llx)\n",
@@ -1313,39 +1383,33 @@ static bool do_hw_rx(struct mailbox_channel *ch)
 	default:
 		MBX_WARN(mbx, "invalid mailbox pkt type: %d\n", type);
 		reset_pkt(pkt);
-		return true;
 	}
 
 	if (valid_pkt(pkt)) {
 		int err = chan_pkt2msg(ch);
+
 		if (err || eom)
 			chan_msg_done(ch, err);
+		recvd = true;
 	}
 
-	return true;
-}
-
-static void handle_timer_event(struct mailbox_channel *ch)
-{
-	if (!test_bit(MBXCS_BIT_TICK, &ch->mbc_state))
-		return;
-	timeout_msg(ch);
-	clear_bit(MBXCS_BIT_TICK, &ch->mbc_state);
+	return recvd;
 }
 
 /*
  * Worker for RX channel.
+ * Return TRUE if we did receive some good data, otherwise, FALSE.
  */
 static bool chan_do_rx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
-	bool recvd = false;
-	recvd = do_sw_rx(ch);
-	if (!MB_SW_ONLY(mbx))
-		recvd = do_hw_rx(ch);
-	handle_timer_event(ch);
+	bool recvd_sw = false, recvd_hw = false;
 
-	return recvd;
+	recvd_sw = do_sw_rx(ch);
+	if (!MB_SW_ONLY(mbx))
+		recvd_hw = do_hw_rx(ch);
+
+	return recvd_sw || recvd_hw;
 }
 
 static void chan_msg2pkt(struct mailbox_channel *ch)
@@ -1422,39 +1486,9 @@ static void do_hw_tx(struct mailbox_channel *ch)
 	chan_send_pkt(ch);
 }
 
-static void msg_timer_on(struct mailbox_msg *msg, u32 ttl)
-{
-	/* Set to default ttl if not provided. */
-	if (ttl == 0) {
-		if (is_rx_msg(msg)) {
-			ttl = MSG_RX_DEFAULT_TTL;
-		} else if (msg->mbm_chan_sw) {
-			/*
-			 * Time spent for s/w mailbox tx includes,
-			 * 1. several ctx
-			 * 2. memory copy xclbin from kernel to user
-			 * So 6s should be long enough for xclbin allowed
-			 */
-			ttl = MSG_SW_TX_DEFAULT_TTL;
-		} else {
-			/*
-			 * For h/w mailbox, we set ttl of one pkt and reset it
-			 * for each new pkt being sent. The whole msg will be
-			 * discard once a single pkt is timed out
-			 */
-			ttl = MSG_HW_TX_DEFAULT_TTL;
-		}
-	}
-
-	msg->mbm_ttl = MAILBOX_SEC2TIMER(ttl);
-}
-
 /* Prepare outstanding msg for sending outgoing msg. */
 static void dequeue_tx_msg(struct mailbox_channel *ch)
 {
-	if (ch->mbc_cur_msg)
-		return;
-
 	ch->mbc_cur_msg = chan_msg_dequeue(ch, INVALID_MSG_ID);
 	if (!ch->mbc_cur_msg)
 		return;
@@ -1486,41 +1520,41 @@ static bool is_tx_chan_ready(struct mailbox_channel *ch)
 
 /*
  * Worker for TX channel.
+ * Return TRUE if we did send some data, otherwise, FALSE.
  */
 static bool chan_do_tx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
 	bool chan_ready = is_tx_chan_ready(ch);
+	bool sent = false;
+
+	if (!chan_ready)
+		return sent; /* Channel is not empty, nothing can be sent. */
 
 	/* Finished sending a whole msg, call it done. */
-	if (chan_ready && ch->mbc_cur_msg &&
-		(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done))
+	if (ch->mbc_cur_msg && (ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done))
 		chan_msg_done(ch, 0);
 
-	dequeue_tx_msg(ch);
+	if (!ch->mbc_cur_msg)
+		dequeue_tx_msg(ch);
 
 	/* Send the next pkg out. */
-	if (chan_ready) {
-		if (ch->mbc_cur_msg) {
-			/* Sending msg. */
-			if (ch->mbc_cur_msg->mbm_chan_sw || MB_SW_ONLY(mbx))
-				do_sw_tx(ch);
-			else
-				do_hw_tx(ch);
-			/* reset timer */
-			msg_timer_on(ch->mbc_cur_msg, 0);
-		} else if (valid_pkt(&mbx->mbx_tst_pkt) && !(MB_SW_ONLY(mbx))) {
-			/* Sending test pkt. */
-			(void) memcpy(&ch->mbc_packet, &mbx->mbx_tst_pkt,
-				sizeof(struct mailbox_pkt));
-			reset_pkt(&mbx->mbx_tst_pkt);
-			chan_send_pkt(ch);
-		}
+	if (ch->mbc_cur_msg) {
+		sent = true;
+		/* Sending msg. */
+		if (ch->mbc_cur_msg->mbm_chan_sw || MB_SW_ONLY(mbx))
+			do_sw_tx(ch);
+		else
+			do_hw_tx(ch);
+	} else if (valid_pkt(&mbx->mbx_tst_pkt) && !(MB_SW_ONLY(mbx))) {
+		/* Sending test pkt. */
+		(void) memcpy(&ch->mbc_packet, &mbx->mbx_tst_pkt,
+			sizeof(struct mailbox_pkt));
+		reset_pkt(&mbx->mbx_tst_pkt);
+		chan_send_pkt(ch);
 	}
 
-	handle_timer_event(ch);
-
-	return (chan_ready && ch->mbc_cur_msg);
+	return sent;
 }
 
 static int mailbox_connect_status(struct platform_device *pdev)
@@ -1880,10 +1914,6 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 
 	MBX_INFO(mbx, "sending request: %d via %s",
 		((struct xcl_mailbox_req *)req)->req, (sw_ch ? "SW" : "HW"));
-
-	/* If peer is not alive, no point sending req and waiting for resp. */
-	if (mbx->mbx_peer_dead)
-		return -ENOTCONN;
 
 	if (cb) {
 		reqmsg = alloc_msg(NULL, reqlen);
@@ -2329,7 +2359,6 @@ static int mailbox_start(struct mailbox *mbx)
 
 	mbx->mbx_req_cnt = 0;
 	mbx->mbx_req_sz = 0;
-	mbx->mbx_peer_dead = false;
 	mbx->mbx_opened = 0;
 	mbx->mbx_prot_ver = XCL_MB_PROTOCOL_VER;
 	mbx->mbx_req_stop = false;
