@@ -401,8 +401,9 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	}
 }
 
-static bool is_valid_execbuf(struct xocl_dev *xdev, struct drm_xocl_bo *xobj,
-			     struct ert_packet *ecmd)
+static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
+				     struct drm_xocl_bo *xobj,
+				     struct ert_packet *ecmd)
 {
 	struct ert_packet *orig;
 	int pkg_size;
@@ -481,7 +482,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	}
 
 	/* If xobj contain a validate command, ecmd would be a copy */
-	if (!is_valid_execbuf(xdev, xobj, ecmd)) {
+	if (!copy_and_validate_execbuf(xdev, xobj, ecmd)) {
 		userpf_err(xdev, "Invalid command\n");
 		ret = -EINVAL;
 		goto out;
