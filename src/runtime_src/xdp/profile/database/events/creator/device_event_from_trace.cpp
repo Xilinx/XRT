@@ -42,10 +42,6 @@ namespace xdp {
     asmLastTrans.resize((db->getStaticInfo()).getNumASM(deviceId, xclbin)) ;
   }
 
-  void DeviceEventCreatorFromTrace::addAMEvent()
-  {
-  }
-
   void DeviceEventCreatorFromTrace::addAIMEvent(xclTraceResults& trace,
                                                 double hostTimestamp)
   {
@@ -62,10 +58,6 @@ namespace xdp {
     VTFEventType ty = (trace.TraceID & 1) ? KERNEL_WRITE : KERNEL_READ ;
 
     addKernelDataTransferEvent(ty, trace, slot, cuId, hostTimestamp);
-  }
-
-  void DeviceEventCreatorFromTrace::addASMEvent()
-  {
   }
 
   void
