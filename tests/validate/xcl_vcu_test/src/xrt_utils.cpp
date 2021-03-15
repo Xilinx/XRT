@@ -29,7 +29,6 @@
 }
 
 #undef DEBUG_XRT_UTILS
-
 #ifdef DEBUG_XRT_UTILS
 #define DEBUG_PRINT(...) {\
   do {\
@@ -217,7 +216,8 @@ download_xclbin (const char *bit, unsigned deviceIndex, int *cu_index,
       continue;
 
     std::string k_name = reinterpret_cast<const char*>(layout->m_ip_data[i].m_name);
-    if (k_name.find("decoder") != std::string::npos) {
+    //if (k_name.find("decoder") != std::string::npos) {
+    if (k_name.find("encoder") != std::string::npos) {
       DEBUG_PRINT ("index = %d, kernel name = %s, base_addr = %lx", i,
           layout->m_ip_data[i].m_name, layout->m_ip_data[i].m_base_address);
 

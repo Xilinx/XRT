@@ -17,9 +17,11 @@
 #include "xcl2.hpp"
 #include <algorithm>
 #include <vector>
-#include "plugin_dec.h"
+#include "plugin_common.h"
+#include "input_out_frame_dump.h"
 
-#define TEST_INSTANCE_ID 1
+#define VCU_SK_DECODER_ID 1
+#define VCU_SK_ENCODER_ID 32
 
 int main(int argc, char** argv) {
   if (argc < 2) {
@@ -84,7 +86,18 @@ int main(int argc, char** argv) {
   }
 
   // Harcoding the number of processes/instances 
-  int ret = vcu_dec_test(binaryFile.c_str(), TEST_INSTANCE_ID, device_index);
+  int ret = vcu_dec_test(binaryFile.c_str(), VCU_SK_DECODER_ID, device_index);
+  if (ret == FALSE) {
+    std::cout << "TEST FAILED\n";
+    return EXIT_FAILURE;
+  }
+  else if (ret == NOTSUPP) {
+    std::cout << "NOT SUPPORTED\n" << std::endl;
+    return EOPNOTSUPP;
+  }
+
+  // Harcoding the number of processes/instances 
+  ret = vcu_enc_test(binaryFile.c_str(), VCU_SK_ENCODER_ID, device_index);
   if (ret == FALSE) {
     std::cout << "TEST FAILED\n";
     return EXIT_FAILURE;
@@ -95,5 +108,6 @@ int main(int argc, char** argv) {
   }
 
   std::cout << "TEST PASSED\n";
+
   return 0;
 }
