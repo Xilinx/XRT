@@ -474,8 +474,8 @@ void warning_callbacks()
 void load()
 {
   static xrt_core::module_loader xdp_hal_loader("xdp_hal_plugin",
-						register_callbacks,
-						warning_callbacks) ;
+                                                register_callbacks,
+                                                warning_callbacks) ;
 }
 
 } // end namespace hal
