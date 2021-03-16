@@ -550,8 +550,13 @@ namespace xdp {
 	// For every compute unit in the xclbin
 	for (auto cuInfo : xclbin->cus)
 	{
-	  // This info is the same for every execution call
 	  uint64_t amSlotID = (uint64_t)((cuInfo.second)->getAccelMon()) ;
+
+    // Stats don't make sense if runtime or executions = 0
+    if ((values.CuBusyCycles[amSlotID] == 0) || (values.CuExecCount[amSlotID] == 0))
+      continue;
+
+    // This info is the same for every execution call
 	  std::string cuName = (cuInfo.second)->getName() ;
 	  std::string kernelName = (cuInfo.second)->getKernelName() ;
 	  std::string cuLocalDimensions = (cuInfo.second)->getDim() ;

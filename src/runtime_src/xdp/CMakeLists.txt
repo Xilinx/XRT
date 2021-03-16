@@ -341,35 +341,28 @@ set_target_properties(xdp_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} 
 set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_power_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-# AI Engine plugin is Edge only
+# AI Engine plugins are Edge only
 if (DEFINED XRT_AIE_BUILD)
-  add_library(xdp_aie_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
-  add_dependencies(xdp_aie_plugin xdp_core xrt_core)
-  target_link_libraries(xdp_aie_plugin PRIVATE xdp_core xrt_core metal xaiengine)
-  set_target_properties(xdp_aie_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+  # AIE Profile plugin
+  add_library(xdp_aie_profile_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
+  add_dependencies(xdp_aie_profile_plugin xdp_core xrt_core)
+  target_link_libraries(xdp_aie_profile_plugin PRIVATE xdp_core xrt_core metal xaiengine)
+  set_target_properties(xdp_aie_profile_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-  install (TARGETS xdp_aie_plugin
+  install (TARGETS xdp_aie_profile_plugin
+    LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
+  )
+
+  # AIE Trace plugin
+  add_library(xdp_aie_trace_plugin MODULE ${XRT_XDP_AIE_TRACE_PLUGIN_FILES})
+  add_dependencies(xdp_aie_trace_plugin xdp_core xrt_core)
+  target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core metal xaiengine)
+  set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+
+  install (TARGETS xdp_aie_trace_plugin
     LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
   )
 endif()
-
-# Build AIE Trace plugin
-add_library(xdp_aie_trace_plugin MODULE ${XRT_XDP_AIE_TRACE_PLUGIN_FILES})
-add_dependencies(xdp_aie_trace_plugin xdp_core xrt_core)
-
-if (DEFINED XRT_AIE_BUILD)
-  # GMIO flow is supported for Edge only
-  target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core metal xaiengine)
-else()
-  target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core)
-endif()
-
-set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
-
-install (TARGETS xdp_aie_trace_plugin
-  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
-)
-# end of Build AIE Trace plugin
 
 install (TARGETS xdp_debug_plugin
                  xdp_appdebug_plugin
