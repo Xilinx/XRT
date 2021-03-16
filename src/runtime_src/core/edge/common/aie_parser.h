@@ -19,6 +19,8 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include "../user/aie/common_layer/adf_api_config.h"
 
 namespace xrt_core {
 
@@ -27,26 +29,22 @@ class device;
 namespace edge { namespace aie {
 
 const int NON_EXIST_ID = -1;
-
-struct tile_type
-{
-  uint16_t row;
-  uint16_t col;
-  uint16_t itr_mem_row;
-  uint16_t itr_mem_col;
-  uint64_t itr_mem_addr;
-
-  bool     is_trigger;
-};
+/**
+ * get_driver_config() - get driver configuration from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+adf::driver_config
+get_driver_config(const xrt_core::device* device);
 
 /**
- * get_tiles() - get tile data from xclbin AIE metadata
+ * get_graph() - get tile data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
  * @graph: name of graph to extract tile data for
  */
-std::vector<tile_type>
-get_tiles(const xrt_core::device* device, const std::string& graph_name);
+adf::graph_config
+get_graph(const xrt_core::device* device, const std::string& graph_name);
 
 /**
  * get_graph_id() - get graph id from xclbin AIE metadata
@@ -58,39 +56,13 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name);
 int
 get_graph_id(const xrt_core::device* device, const std::string& graph_name);
 
-struct rtp_type
-{
-  std::string     name;
-
-  uint16_t        selector_row;
-  uint16_t        selector_col;
-  uint16_t        selector_lock_id;
-  uint64_t        selector_addr;
-
-  uint16_t        ping_row;
-  uint16_t        ping_col;
-  uint16_t        ping_lock_id;
-  uint64_t        ping_addr;
-
-  uint16_t        pong_row;
-  uint16_t        pong_col;
-  uint16_t        pong_lock_id;
-  uint64_t        pong_addr;
-
-  bool            is_plrtp;
-  bool            is_input;
-  bool            is_async;
-  bool            is_connected;
-  bool            require_lock;
-};
-
 /**
  * get_rtp() - get rtp data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
  */
-std::vector<rtp_type>
-get_rtp(const xrt_core::device* device);
+std::unordered_map<std::string, adf::rtp_config>
+get_rtp(const xrt_core::device* device, int graph_id);
 
 struct gmio_type
 {
@@ -104,12 +76,15 @@ struct gmio_type
   uint16_t        burst_len;
 };
 
+std::vector<gmio_type>
+get_old_gmios(const xrt_core::device* device);
+
 /**
  * get_gmios() - get gmio data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
  */
-std::vector<gmio_type>
+std::unordered_map<std::string, adf::gmio_config>
 get_gmios(const xrt_core::device* device);
 
 struct plio_type

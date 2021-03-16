@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  * Author(s): Larry Liu
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
@@ -28,21 +28,11 @@
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_aie.h"
 #include "AIEResources.h"
+#include "common_layer/adf_api_config.h"
+#include "common_layer/adf_runtime_api.h"
 extern "C" {
 #include <xaiengine.h>
 }
-
-#define HW_GEN                        XAIE_DEV_GEN_AIE
-#define XAIE_NUM_ROWS                 9
-#define XAIE_NUM_COLS                 50
-#define XAIE_BASE_ADDR                0x20000000000
-#define XAIE_COL_SHIFT                23
-#define XAIE_ROW_SHIFT                18
-#define XAIE_SHIM_ROW                 0
-#define XAIE_RESERVED_TILE_ROW_START  0
-#define XAIE_RESERVED_TILE_NUM_ROWS   0
-#define XAIE_AIE_TILE_ROW_START       1
-#define XAIE_AIE_TILE_NUM_ROWS        8
 
 //#define XAIEGBL_NOC_DMASTA_STARTQ_MAX 4
 #define XAIEDMA_SHIM_MAX_NUM_CHANNELS 4
@@ -94,8 +84,10 @@ public:
     std::vector<ShimDMA> shim_dma;   // shim DMA
 
     /* This is the collections of gmios that are used. */
-    std::vector<gmio_type> gmios;
+    std::unordered_map<std::string, adf::gmio_config> gmio_configs;
+    std::unordered_map<std::string, std::shared_ptr<adf::gmio_api>> gmio_apis;
 
+    std::vector<gmio_type> gmios;
     std::vector<plio_type> plios;
 
     XAie_DevInst *getDevInst();
@@ -136,11 +128,7 @@ private:
     std::vector<EventRecord> eventRecords;
 
     void
-    submit_sync_bo(xrt::bo& bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset);
-
-    /* Wait for all the BD transfers for a given channel */
-    void
-    wait_sync_bo(ShimDMA *dmap, uint32_t chan, XAie_LocType& tile, XAie_DmaDirection gmdir, uint32_t timeout);
+    submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio, adf::gmio_config& gmio_config, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     void
     get_profiling_config(const std::string& port_name, XAie_LocType& out_shim_tile, XAie_StrmPortIntf& out_mode, uint8_t& out_stream_id);
@@ -156,26 +144,6 @@ private:
 
     int
     start_profiling_event_count(const std::string& port_name);
-};
-
-struct BD_scope {
-  BD bd;
-  Aie* aie;
-
-  BD_scope(const BD& bd_in, Aie* host)
-    : bd(bd_in), aie(host)
-  {}
-
-  ~BD_scope()
-  {
-    aie->clear_bd(bd);
-  }
-
-  BD&
-  get()
-  {
-    return bd;
-  }
 };
 
 }
