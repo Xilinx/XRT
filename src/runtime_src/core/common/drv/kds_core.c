@@ -868,8 +868,6 @@ int kds_fini_ert(struct kds_sched *kds)
 
 void kds_reset(struct kds_sched *kds)
 {
-	int idx;
-
 	kds->bad_state = 0;
 	kds->ert_disable = true;
 	kds->ini_disable = false;

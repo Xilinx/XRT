@@ -657,6 +657,7 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
   std::memset(ecmd, 0, bo_size);
   ecmd->opcode = opcode;
   ecmd->type = ERT_CTRL;
+  ecmd->count = 5;
 
   if (xclExecBuf(handle,boh)) {
       logger(_ptTest, "Error", "Couldn't map BO");
