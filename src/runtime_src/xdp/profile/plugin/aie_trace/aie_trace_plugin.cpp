@@ -117,7 +117,6 @@ namespace xdp {
     // NOTE: reset events are dependent on actual profile counter reserved
     memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                  XAIE_EVENT_TRUE_MEM};
     memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                  XAIE_EVENT_NONE_MEM};
-    memoryCounterResetEvents = {XAIE_EVENT_PERF_CNT_0_MEM,            XAIE_EVENT_PERF_CNT_1_MEM};
     memoryCounterEventValues = {1020, 1040400};
   }
 
@@ -231,11 +230,10 @@ namespace xdp {
 
         // Set reset event based on counter number
         // NOTE: store events for later use in trace
-        XAie_LocType currLoc;
-        XAie_ModuleType currModule;
-				uint32_t currNumber;
-        perfCounter->getRscId(currLoc, currModule, currNumber);
-        auto counterEvent = coreCounterResetEvents.at(currNumber);
+        XAie_Events counterEvent;
+        XAie_ModuleType mod = XAIE_CORE_MOD;
+        perfCounter->getCounterEvent(mod, counterEvent);
+
         perfCounter->changeRstEvent(XAIE_CORE_MOD, counterEvent);
         coreEvents.push_back(counterEvent);
 
@@ -261,11 +259,10 @@ namespace xdp {
         perfCounter->changeThreshold( memoryCounterEventValues.at(i) );
         
         // Set reset event based on counter number
-        XAie_LocType currLoc;
-        XAie_ModuleType currModule;
-				uint32_t currNumber;
-        perfCounter->getRscId(currLoc, currModule, currNumber);
-        auto counterEvent = memoryCounterResetEvents.at(currNumber);
+        XAie_Events counterEvent;
+        XAie_ModuleType mod = XAIE_MEM_MOD;
+        perfCounter->getCounterEvent(mod, counterEvent);
+
         perfCounter->changeRstEvent(XAIE_MEM_MOD, counterEvent);
         memoryEvents.push_back(counterEvent);
 
@@ -289,14 +286,22 @@ namespace xdp {
           perfCounter->release();
         return;
       }
-      
+
+      // Uncomment this to print verbose fal messages
+      //xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
+
       //
       // 3. Configure Core Tracing Events
       //
       // TODO: Configure group or combo events where applicable
       {
         auto coreTrace = core.traceControl();
-        auto ret = coreTrace->reserve();
+        // Set overall start/end for trace capture
+        // Wendy said this should be done first
+        auto ret = coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
+        if (ret != XAIE_OK) break;
+
+        ret = coreTrace->reserve();
         if (ret != XAIE_OK) break;
 
         int numTraceEvents = 0;
@@ -316,8 +321,6 @@ namespace xdp {
         msg << "Reserved " << numTraceEvents << " core trace events for AIE tile (" << col << "," << row << ").";
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
-        // Set overall start/end for trace capture
-        ret = coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
         if (ret != XAIE_OK) break;
         ret = coreTrace->setMode(XAIE_TRACE_EVENT_TIME);
         if (ret != XAIE_OK) break;
@@ -331,7 +334,12 @@ namespace xdp {
       // TODO: Configure group or combo events where applicable
       {
         auto memoryTrace = memory.traceControl();
-        auto ret = memoryTrace->reserve();
+        // Set overall start/end for trace capture
+        // Wendy said this should be done first
+        auto ret = memoryTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
+        if (ret != XAIE_OK) break;
+
+        ret = memoryTrace->reserve();
         if (ret != XAIE_OK) break;
         
         int numTraceEvents = 0;
@@ -351,9 +359,6 @@ namespace xdp {
         msg << "Reserved " << numTraceEvents << " memory trace events for AIE tile (" << col << "," << row << ").";
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
-        // Set overall start/end for trace capture
-        // NOTE: since these are core events, they are broadcast by the resource manager
-        ret = memoryTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
         if (ret != XAIE_OK) break;
         ret = memoryTrace->setMode(XAIE_TRACE_EVENT_TIME);
         if (ret != XAIE_OK) break;
