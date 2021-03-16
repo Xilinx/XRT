@@ -205,7 +205,7 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
         //soft kernels to follow hardware kernels. so soft kenrel index will start after hardware kernels
         auto soft_kernels = xrt_core::xclbin::get_softkernels(xclbin);
         for (auto& sk: soft_kernels) {
-            if (num_soft_kernels + sk.ninst == MAX_XILINX_SOFT_KERNELS) {
+            if (num_soft_kernels + sk.ninst > MAX_XILINX_SOFT_KERNELS) {
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d soft kernels per device ", MAX_XILINX_SOFT_KERNELS);
                 throw std::runtime_error("XMA supports max of only " + std::to_string(MAX_XILINX_SOFT_KERNELS) + " soft kernels per device");
             }
