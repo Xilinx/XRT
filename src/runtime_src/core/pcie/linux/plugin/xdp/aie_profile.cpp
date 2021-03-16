@@ -17,23 +17,27 @@
 #include "plugin/xdp/aie_profile.h"
 #include "core/common/module_loader.h"
 
-namespace xdpaieprofile {
+namespace xdp {
+namespace aie {
+namespace profile {
 
-  void load_xdp_aie_plugin()
+  void load()
   {
     static xrt_core::module_loader xdp_aie_loader("xdp_aie_plugin",
-						    register_aie_callbacks,
-						    warning_aie_callbacks);
+						    register_callbacks,
+						    warning_callbacks);
   }
 
-  void register_aie_callbacks(void* /*handle*/)
+  void register_callbacks(void* /*handle*/)
   {
     // No callbacks in AIE profiling. The plugin is always active.
   }
 
-  void warning_aie_callbacks()
+  void warning_callbacks()
   {
     // No warnings for AIE profiling
   }
 
-} // end namespace xdpaieprofile
+} // end namespace profile
+} // end namespace aie
+} // end namespace xdp

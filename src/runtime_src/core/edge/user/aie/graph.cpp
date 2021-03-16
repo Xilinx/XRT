@@ -913,8 +913,8 @@ xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, con
 
 #ifndef __AIESIM__
 #ifndef __HWEM__
-    xdpaie::finish_flush_aie_device(handle) ;
-    xdpaiectr::end_aie_ctr_poll(handle);
+    xdp::aie::finish_flush_device(handle) ;
+    xdp::aie::ctr::end_poll(handle);
 #endif
 #endif
 
@@ -937,8 +937,8 @@ xclReadProfiling(xclDeviceHandle handle, int phdl)
 
 #ifndef __AIESIM__
 #ifndef __HWEM__
-    xdpaie::finish_flush_aie_device(handle) ;
-    xdpaiectr::end_aie_ctr_poll(handle);
+    xdp::aie::finish_flush_device(handle) ;
+    xdp::aie::ctr::end_poll(handle);
 #endif
 #endif
 
@@ -961,8 +961,8 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
 
 #ifndef __AIESIM__
 #ifndef __HWEM__
-    xdpaie::finish_flush_aie_device(handle) ;
-    xdpaiectr::end_aie_ctr_poll(handle);
+    xdp::aie::finish_flush_device(handle) ;
+    xdp::aie::ctr::end_poll(handle);
 #endif
 #endif
 

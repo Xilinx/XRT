@@ -126,8 +126,8 @@ shim::
   xclLog(XRT_INFO, "%s", __func__);
 
 //  xdphal::finish_flush_device(handle) ;
-  xdpaie::finish_flush_aie_device(this) ;
-  xdpaiectr::end_aie_ctr_poll(this);
+  xdp::aie::finish_flush_device(this) ;
+  xdp::aie::ctr::end_poll(this);
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -1767,8 +1767,8 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
 #ifndef __HWEM__
-    xdphal::flush_device(handle) ;
-    xdpaie::flush_aie_device(handle) ;
+    xdp::hal::flush_device(handle) ;
+    xdp::aie::flush_device(handle) ;
 #endif
 
 
@@ -1809,9 +1809,9 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     }
 
 #ifndef __HWEM__
-    xdphal::update_device(handle) ;
-    xdpaie::update_aie_device(handle);
-    xdpaiectr::update_aie_device(handle);
+    xdp::hal::update_device(handle) ;
+    xdp::aie::update_device(handle);
+    xdp::aie::ctr::update_device(handle);
 
     START_DEVICE_PROFILING_CB(handle);
 #endif

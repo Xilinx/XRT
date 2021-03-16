@@ -17,12 +17,16 @@
 #ifndef POWER_PROFILE_DOT_H
 #define POWER_PROFILE_DOT_H
 
-namespace xdppowerprofile {
+namespace xdp {
+namespace power {
+namespace profile {
 
-  void load_xdp_power_plugin() ;
-  void register_power_callbacks(void* handle) ;
-  void warning_power_callbacks() ;
+  void load() ;
+  void register_callbacks(void* handle) ;
+  void warning_callbacks() ;
 
-} // end namespace xdppowerprofile
+} // end namespace profile
+} // end namespace power
+} // end namespace xdp
 
 #endif
