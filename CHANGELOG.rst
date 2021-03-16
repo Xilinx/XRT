@@ -25,6 +25,8 @@ Removed
 
 Added
 .....
+* Implementation of OpenCL changed to use native XRT APIs.  This change can trigger detection of errors in OpenCL applications that were not previously reported.  For example, if applicaton code attempts to do read-before-write from device memory, an error is now propagated to application and reported as a sync BO error.
+* Various bugfixes
 
 Removed
 .......
