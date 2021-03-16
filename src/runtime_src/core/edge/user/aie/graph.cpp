@@ -492,37 +492,18 @@ xclGraphReadRTP(xclGraphHandle ghdl, const char* port, char* buffer, size_t size
 }
 
 void
-xclAIEOpenContext(xclDeviceHandle handle, const uuid_t xclbin_uuid, xrt::aie::access_mode am)
+xclAIEOpenContext(xclDeviceHandle handle, xrt::aie::access_mode am)
 {
 #ifndef __AIESIM__
   auto device = xrt_core::get_userpf_device(handle);
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-  if (!drv->isAieRegistered())
-    throw xrt_core::error(-EINVAL, "No AIE presented");
-  auto aieArray = drv->getAieArray();
-#else
-  auto aieArray = getAieArray();
+  int ret = drv->openAIEContext(am);
+  if (ret)
+    throw xrt_core::error(ret, "Fail to open AIE context");
+
+  drv->setAIEAccessMode(am);
 #endif
-
-  aieArray->open_context(device.get(), xclbin_uuid, am);
-}
-
-void
-xclAIECloseContext(xclDeviceHandle handle, const uuid_t xclbin_uuid)
-{
-#ifndef __AIESIM__
-  auto device = xrt_core::get_userpf_device(handle);
-  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
-
-  if (!drv->isAieRegistered())
-    throw xrt_core::error(-EINVAL, "No AIE presented");
-  auto aieArray = drv->getAieArray();
-#else
-  auto aieArray = getAieArray();
-#endif
-
-  aieArray->close_context(device.get(), xclbin_uuid);
 }
 
 void
@@ -540,8 +521,7 @@ xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xcl
 #endif
 
   if (!aieArray->is_context_set()) {
-    auto uuid = device->get_xclbin_uuid();
-    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
   }
 
   auto bosize = bo.size();
@@ -567,8 +547,7 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum x
 #endif
 
   if (!aieArray->is_context_set()) {
-    auto uuid = device->get_xclbin_uuid();
-    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
   }
 
   auto bosize = bo.size();
@@ -594,8 +573,7 @@ xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 #endif
 
   if (!aieArray->is_context_set()) {
-    auto uuid = device->get_xclbin_uuid();
-    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
   }
 
   aieArray->wait_gmio(gmioName);
@@ -613,8 +591,7 @@ xclResetAieArray(xclDeviceHandle handle)
   auto aieArray = drv->getAieArray();
 
   if (!aieArray->is_context_set()) {
-    auto uuid = device->get_xclbin_uuid();
-    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
   }
 
   aieArray->reset(device.get());
@@ -639,8 +616,7 @@ xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, con
 #endif
 
   if (!aieArray->is_context_set()) {
-    auto uuid = device->get_xclbin_uuid();
-    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
   }
 
   return aieArray->start_profiling(option, value_or_empty(port1Name), value_or_empty(port2Name), value);
@@ -662,8 +638,7 @@ xclReadProfiling(xclDeviceHandle handle, int phdl)
 #endif
 
   if (!aieArray->is_context_set()) {
-    auto uuid = device->get_xclbin_uuid();
-    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
   }
 
   return aieArray->read_profiling(phdl);
@@ -685,8 +660,7 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
 #endif
 
   if (!aieArray->is_context_set()) {
-    auto uuid = device->get_xclbin_uuid();
-    aieArray->open_context(device.get(), uuid.get(), xrt::aie::access_mode::primary);
+    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
   }
 
   return aieArray->stop_profiling(phdl);
@@ -887,27 +861,10 @@ xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size
 }
 
 int
-xclAIEOpenContext(xclDeviceHandle handle, const uuid_t xclbin_uuid, xrt::aie::access_mode am)
+xclAIEOpenContext(xclDeviceHandle handle, xrt::aie::access_mode am)
 {
   try {
-    api::xclAIEOpenContext(handle, xclbin_uuid, am);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -1;
-  }
-}
-
-int
-xclAIECloseContext(xclDeviceHandle handle, const uuid_t xclbin_uuid)
-{
-  try {
-    api::xclAIECloseContext(handle, xclbin_uuid);
+    api::xclAIEOpenContext(handle, am);
     return 0;
   }
   catch (const xrt_core::error& ex) {

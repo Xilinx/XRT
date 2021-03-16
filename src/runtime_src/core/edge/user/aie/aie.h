@@ -93,10 +93,7 @@ public:
     XAie_DevInst *getDevInst();
 
     void
-    open_context(const xrt_core::device* device, const uuid_t xclbin_uuid, xrt::aie::access_mode am);
-
-    void
-    close_context(const xrt_core::device* device, const uuid_t xclbin_uuid);
+    open_context(const xrt_core::device* device, xrt::aie::access_mode am);
 
     bool
     is_context_set();

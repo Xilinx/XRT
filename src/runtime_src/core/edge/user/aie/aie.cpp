@@ -63,6 +63,8 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
         throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd");
     fd = aiefd.fd;
 
+    access_mode = drv->getAIEAccessMode();
+
     ConfigPtr.PartProp.Handle = fd;
 #endif
 
@@ -109,31 +111,21 @@ XAie_DevInst* Aie::getDevInst()
 
 void
 Aie::
-open_context(const xrt_core::device* device, const uuid_t xclbin_uuid, xrt::aie::access_mode am)
+open_context(const xrt_core::device* device, xrt::aie::access_mode am)
 {
 #ifndef __AIESIM__
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-  int ret = drv->openAIEContext(xclbin_uuid, am);
+  auto current_am = drv->getAIEAccessMode();
+  if (current_am != xrt::aie::access_mode::none)
+    throw xrt_core::error(-EBUSY, "Can not change current AIE access mode");
+
+  int ret = drv->openAIEContext(am);
   if (ret)
       throw xrt_core::error(ret, "Fail to open AIE context");
 
+  drv->setAIEAccessMode(am);
   access_mode = am;
-#endif
-}
-
-void
-Aie::
-close_context(const xrt_core::device* device, const uuid_t xclbin_uuid)
-{
-#ifndef __AIESIM__
-  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
-
-  int ret = drv->closeAIEContext(xclbin_uuid);
-  if (ret)
-      throw xrt_core::error(ret, "Fail to close AIE context");
-
-  access_mode = xrt::aie::access_mode::none;
 #endif
 }
 

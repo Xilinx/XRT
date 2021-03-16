@@ -116,11 +116,9 @@ extern "C" {
 #endif
 
 /**
- * xrtAIEOpenExclusive() - Open an AIE context with exclusive mode
+ * xrtAIEOpen() - Open a device with AIE and obtain its handle
  *
- * @handle:          Handle to the device
- * @xclbinUUID:      UUID of the xclbin withe specified AIE
- *
+ * @index:          Device index
  * Return:          0 on success, or appropriate error number.
  *
  * There are three supported AIE context
@@ -134,48 +132,36 @@ extern "C" {
  *               operation, etc.). There can be multiple shared context
  *               at the same time.
  *
- * Note: If application does not call xrtAIEOpenXXX explicitly, by default,
- *       it will try to acquire primary context when it tries to access AIE
- *       array through XRT APIs.
+ * This API will open AIE device with primary access.
+ *
+ * Note: If application does not call xrtAIEDeviceOpenXXX to obtain device
+ *       handle, by default, we will try to acquire primary context when
+ *       it tries to access AIE array through XRT APIs.
  */
-int
-xrtAIEOpenExclusive(xrtDeviceHandle handle, const xuid_t xclbinUUID);
+xrtDeviceHandle
+xrtAIEDeviceOpen(unsigned int index);
 
 /**
- * xrtAIEOpenPrimary() - Open an AIE context with primary mode
+ * xrtAIEOpenExclusive() - Open a device with AIE and obtain its handle
  *
- * @handle:          Handle to the device
- * @xclbinUUID:      UUID of the xclbin withe specified AIE
- *
+ * @index:          Device index
  * Return:          0 on success, or appropriate error number.
+ *
+ * This API will open AIE device with exclusive access.
  */
-int
-xrtAIEOpenPrimary(xrtDeviceHandle handle, const xuid_t xclbinUUID);
+xrtDeviceHandle
+xrtAIEDeviceOpenExclusive(unsigned int index);
 
 /**
- * xrtAIEOpenShared() - Open an AIE context with shared mode
+ * xrtAIEOpenShared() - Open a device with AIE and obtain its handle
  *
- * @handle:          Handle to the device
- * @xclbinUUID:      UUID of the xclbin withe specified AIE
- *
- * Return:          0 on success, or appropriate error number.
- */
-int
-xrtAIEOpenShared(xrtDeviceHandle handle, const xuid_t xclbinUUID);
-
-/**
- * xrtAIEOpenPrimary() - Close AIE context
- *
- * @handle:          Handle to the device
- * @xclbinUUID:      UUID of the xclbin withe specified AIE
- *
+ * @index:          Device index
  * Return:          0 on success, or appropriate error number.
  *
- * Note: After close context, any access to AIE, we will try to acquire
- *       primary context by default.
+ * This API will open AIE device with shared access.
  */
-int
-xrtAIECloseContext(xrtDeviceHandle handle, const xuid_t xclbinUUID);
+xrtDeviceHandle
+xrtAIEDeviceOpenShared(unsigned int index);
 
 /**
  * xrtAIESyncBO() - Transfer data between DDR and Shim DMA channel

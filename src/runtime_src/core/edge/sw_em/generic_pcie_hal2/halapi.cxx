@@ -776,13 +776,7 @@ xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size
 }
 
 int
-xclAIEOpenContext(xclDeviceHandle handle, const uuid_t xclbin_uuid, xrt::aie::access_mode am)
-{
-  return 0;
-}
-
-int
-xclAIECloseContext(xclDeviceHandle handle, const uuid_t xclbin_uuid)
+xclAIEOpenContext(xclDeviceHandle handle, xrt::aie::access_mode am)
 {
   return 0;
 }

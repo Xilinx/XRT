@@ -1523,7 +1523,7 @@ closeGraphContext(unsigned int graphId)
 
 int
 shim::
-openAIEContext(const uuid_t xclbinId, xrt::aie::access_mode am)
+openAIEContext(xrt::aie::access_mode am)
 {
   unsigned int flags;
   int ret;
@@ -1547,8 +1547,6 @@ openAIEContext(const uuid_t xclbinId, xrt::aie::access_mode am)
   }
 
   drm_zocl_ctx ctx = {0};
-  ctx.uuid_ptr = reinterpret_cast<uint64_t>(xclbinId);
-  ctx.uuid_size = sizeof (uuid_t) * sizeof (char);
   ctx.flags = flags;
   ctx.op = ZOCL_CTX_OP_ALLOC_AIE_CTX;
 
@@ -1556,22 +1554,19 @@ openAIEContext(const uuid_t xclbinId, xrt::aie::access_mode am)
   return ret ? -errno : ret;
 }
 
-int
+xrt::aie::access_mode
 shim::
-closeAIEContext(const uuid_t xclbinId)
+getAIEAccessMode()
 {
-  unsigned int flags;
-  int ret;
-
-  drm_zocl_ctx ctx = {0};
-  ctx.uuid_ptr = reinterpret_cast<uint64_t>(xclbinId);
-  ctx.uuid_size = sizeof (uuid_t) * sizeof (char);
-  ctx.op = ZOCL_CTX_OP_FREE_AIE_CTX;
-
-  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
-  return ret ? -errno : ret;
+  return access_mode;
 }
 
+void
+shim::
+setAIEAccessMode(xrt::aie::access_mode am)
+{
+  access_mode = am;
+}
 
 #endif
 

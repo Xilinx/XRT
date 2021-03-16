@@ -158,17 +158,10 @@ close_graph(xrtGraphHandle hdl)
 }
 
 static void
-open_aie_context(xrtDeviceHandle dhdl, const uuid_t xclbin_uuid, xrt::aie::access_mode am)
+open_aie_context(xrtDeviceHandle dhdl, xrt::aie::access_mode am)
 {
   auto device = xrt_core::device_int::get_core_device(dhdl);
-  device->open_aie_context(xclbin_uuid, am);
-}
-
-static void
-close_aie_context(xrtDeviceHandle dhdl, const uuid_t xclbin_uuid)
-{
-  auto device = xrt_core::device_int::get_core_device(dhdl);
-  device->close_aie_context(xclbin_uuid);
+  device->open_aie_context(am);
 }
 
 static void
@@ -553,72 +546,61 @@ xrtGraphReadRTP(xrtGraphHandle graph_hdl, const char* port, char* buffer, size_t
   }
 }
 
-int
-xrtAIEOpenExclusive(xrtDeviceHandle handle, const uuid_t xclbin_uuid)
+xrtDeviceHandle
+xrtAIEDeviceOpen(unsigned int index)
 {
   try {
-    open_aie_context(handle, xclbin_uuid, xrt::aie::access_mode::exclusive);
-    return 0;
+    auto handle = xrtDeviceOpen(index);
+    open_aie_context(handle, xrt::aie::access_mode::primary);
+    return handle;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
+    errno = 0;
   }
+  return nullptr;
 }
 
-int
-xrtAIEOpenPrimary(xrtDeviceHandle handle, const uuid_t xclbin_uuid)
+xrtDeviceHandle
+xrtAIEDeviceOpenExclusive(unsigned int index)
 {
   try {
-    open_aie_context(handle, xclbin_uuid, xrt::aie::access_mode::primary);
-    return 0;
+    auto handle = xrtDeviceOpen(index);
+    open_aie_context(handle, xrt::aie::access_mode::exclusive);
+    return handle;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
+    errno = 0;
   }
+  return nullptr;
 }
 
-int
-xrtAIEOpenShared(xrtDeviceHandle handle, const uuid_t xclbin_uuid)
+xrtDeviceHandle
+xrtAIEDeviceOpenShared(unsigned int index)
 {
   try {
-    open_aie_context(handle, xclbin_uuid, xrt::aie::access_mode::shared);
-    return 0;
+    auto handle = xrtDeviceOpen(index);
+    open_aie_context(handle, xrt::aie::access_mode::shared);
+    return handle;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
+    errno = 0;
   }
-}
-
-int
-xrtAIECloseContext(xrtDeviceHandle handle, const uuid_t xclbin_uuid)
-{
-  try {
-    close_aie_context(handle, xclbin_uuid);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get();
-  }
-  catch (const std::exception& ex) {
-    send_exception_message(ex.what());
-    return -1;
-  }
+  return nullptr;
 }
 
 int
