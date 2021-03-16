@@ -22,11 +22,14 @@ static bool cb_valid() {
   return cb != nullptr ;
 }
 
+static bool hal_plugins_loaded = false ;
+
 CallLogger::CallLogger(uint64_t id)
            : m_local_idcode(id)
 {
-  static bool hal_plugins_loaded = xdp::hal_hw_plugins::load() ;
   if (hal_plugins_loaded) return ;
+  hal_plugins_loaded = true ;
+  xdp::hal_hw_plugins::load() ;
 }
 
 CallLogger::~CallLogger()
