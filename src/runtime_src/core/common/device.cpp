@@ -154,6 +154,10 @@ get_axlf_section(axlf_section_kind section, const uuid& xclbin_id) const
 {
   if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
     throw std::runtime_error("xclbin id mismatch");
+
+  if (!m_xclbin)
+    return {nullptr, 0};
+
   return xrt_core::xclbin_int::get_axlf_section(m_xclbin, section);
 }
 

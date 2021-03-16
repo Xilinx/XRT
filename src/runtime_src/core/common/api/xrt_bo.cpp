@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -254,6 +254,12 @@ public:
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",  fmt.str());
     }
 
+    // special case sw emulation on imported buffers
+    if (is_sw_emulation() && (is_imported() || src->is_imported())) {
+      device->copy_bo(get_xcl_handle(), src->get_xcl_handle(), sz, dst_offset, src_offset);
+      return;
+    }
+      
     // revert to copying through host
     copy_through_host(src, sz, src_offset, dst_offset);
   }
