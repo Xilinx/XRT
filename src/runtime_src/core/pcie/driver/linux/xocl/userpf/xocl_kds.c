@@ -466,7 +466,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	}
 
 	/* An exec buf bo is at least 1 PAGE.
-	 * This is enought to carry metadata for any execbuf command struct.
+	 * This is enough to carry metadata for any execbuf command struct.
 	 * It is safe to make the assumption and validate will be simpler.
 	 */
 	if (xobj->base.size < PAGE_SIZE) {
@@ -474,14 +474,14 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		ret = -EINVAL;
 		goto out;
 	}
- 
+
 	ecmd = kzalloc(xobj->base.size, GFP_KERNEL);
 	if (!ecmd) {
 		ret = -ENOMEM;
 		goto out;
 	}
 
-	/* If xobj contain a validate command, ecmd would be a copy */
+	/* If xobj contain a valid command, ecmd would be a copy */
 	if (!copy_and_validate_execbuf(xdev, xobj, ecmd)) {
 		userpf_err(xdev, "Invalid command\n");
 		ret = -EINVAL;
