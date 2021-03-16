@@ -69,6 +69,10 @@ struct request
   get(const device*, modifier, const std::string&) const
   { throw std::runtime_error("query does not support modifier"); }
 
+  virtual boost::any
+  get(const device*, const boost::any&, const boost::any&, const boost::any&) const
+  { throw std::runtime_error("query does not support three argunents"); }
+
   virtual void
   put(const device*, const boost::any&) const
   { throw std::runtime_error("query update does not support one argument"); }

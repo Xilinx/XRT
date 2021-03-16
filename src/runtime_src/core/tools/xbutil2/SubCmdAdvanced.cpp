@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "SubCmdAdvanced.h"
 #include "OO_MemRead.h"
+#include "OO_AieRegRead.h"
 #include "OO_MemWrite.h"
 #include "OO_P2P.h"
 #include "XBReport.h"
@@ -76,6 +77,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   subOptionOptions.emplace_back(std::make_shared<OO_MemRead>("read-mem"));
   subOptionOptions.emplace_back(std::make_shared<OO_MemWrite>("write-mem"));
   subOptionOptions.emplace_back(std::make_shared<OO_P2P>("p2p"));
+  subOptionOptions.emplace_back(std::make_shared<OO_AieRegRead>("read-aie-reg"));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 

@@ -111,6 +111,9 @@ public:
     read_profiling(int phdl);
 
     void
+    read_core_reg(int row, int col, std::string regName, uint32_t* value);
+
+    void
     stop_profiling(int phdl);
 
     void
@@ -122,6 +125,7 @@ public:
 private:
     int numCols;
     int fd;
+    static std::map<std::string , uint32_t> regmap;
 
     XAie_DevInst* devInst;         // AIE Device Instance
 

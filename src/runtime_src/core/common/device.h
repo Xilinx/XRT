@@ -212,6 +212,10 @@ public:
   void
   register_axlf(const axlf*);
 
+  XRT_CORE_COMMON_EXPORT
+  bool
+  is_register_axlf();
+
   /**
    * get_xclbin_uuid() - Get uuid of currently loaded xclbin
    */

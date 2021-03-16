@@ -294,6 +294,10 @@ XCL_DRIVER_DLLESPEC
 int
 xclErrorClear(xclDeviceHandle handle);
 
+XCL_DRIVER_DLLESPEC
+int
+xclReadAieReg(xclDeviceHandle handle, int row, int col, const char* regName, uint32_t* value);
+
 #ifdef __cplusplus
 }
 #endif

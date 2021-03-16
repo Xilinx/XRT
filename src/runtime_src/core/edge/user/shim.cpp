@@ -1757,6 +1757,29 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 }
 
 int
+xclReadAieReg(xclDeviceHandle handle, int row, int col,const char* regName, uint32_t* value) {
+  try {
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+#ifdef XRT_ENABLE_AIE
+    drv->registerAieArray();
+    if (!drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+    auto aieArray = drv->getAieArray();
+    aieArray->read_core_reg(row,col,regName,value);
+#endif
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -EINVAL;
+  }
+  return 0;
+}
+
+int
 xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
 #ifndef __HWEM__

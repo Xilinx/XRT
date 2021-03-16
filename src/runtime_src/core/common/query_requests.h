@@ -202,6 +202,7 @@ enum class key_type
   shared_host_mem,
 
   aie_metadata,
+  aie_reg_read,
   graph_status,
   mailbox_metrics,
 
@@ -634,6 +635,15 @@ struct aie_metadata : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct aie_reg_read : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::aie_reg_read;
+
+  virtual boost::any
+  get(const device*, const boost::any&, const boost::any&, const boost::any&) const = 0;
 };
 
 struct graph_status : request

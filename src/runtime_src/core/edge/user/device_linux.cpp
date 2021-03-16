@@ -159,6 +159,20 @@ struct kds_cu_info
   }
 };
 
+struct aie_reg_read
+{
+  using result_type = query::aie_reg_read::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& row, const boost::any& col, const boost::any& v)
+  {
+    auto edev = get_edgedev(device);
+    uint32_t val;
+    xclReadAieReg(device->get_device_handle(), boost::any_cast<int>(row),boost::any_cast<int>(col),boost::any_cast<std::string>(v).c_str(),&val);
+    return val;
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -236,6 +250,17 @@ struct function0_get : QueryRequestType
   }
 };
 
+template <typename QueryRequestType, typename Getter>
+struct function3_get : QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device, const boost::any& row, const boost::any& col, const boost::any& v) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, row, col, v);
+  }
+};
+
 template <typename QueryRequestType>
 static void
 emplace_sysfs_get(const char* entry)
@@ -252,6 +277,14 @@ emplace_func0_request()
   query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
 }
 
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func3_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function3_get<QueryRequestType, Getter>>());
+}
+
 static void
 initialize_query_table()
 {
@@ -265,6 +298,7 @@ initialize_query_table()
 
   emplace_func0_request<query::clock_freqs_mhz,         devInfo>();
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
+  emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
  
   emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
