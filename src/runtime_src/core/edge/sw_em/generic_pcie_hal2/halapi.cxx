@@ -776,6 +776,12 @@ xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size
 }
 
 int
+xclAIEOpenContext(xclDeviceHandle handle, xrt::aie::access_mode am)
+{
+  return 0;
+}
+
+int
 xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   return 0;

@@ -93,6 +93,12 @@ public:
     XAie_DevInst *getDevInst();
 
     void
+    open_context(const xrt_core::device* device, xrt::aie::access_mode am);
+
+    bool
+    is_context_set();
+
+    void
     sync_bo(xrt::bo& bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     void
@@ -122,6 +128,7 @@ public:
 private:
     int numCols;
     int fd;
+    xrt::aie::access_mode access_mode = xrt::aie::access_mode::none;
 
     XAie_DevInst* devInst;         // AIE Device Instance
 

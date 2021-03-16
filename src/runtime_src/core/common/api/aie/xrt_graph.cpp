@@ -158,6 +158,13 @@ close_graph(xrtGraphHandle hdl)
 }
 
 static void
+open_aie_context(xrtDeviceHandle dhdl, xrt::aie::access_mode am)
+{
+  auto device = xrt_core::device_int::get_core_device(dhdl);
+  device->open_aie_context(am);
+}
+
+static void
 sync_aie_bo(xrtDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   auto device = xrt_core::device_int::get_core_device(dhdl);
@@ -537,6 +544,63 @@ xrtGraphReadRTP(xrtGraphHandle graph_hdl, const char* port, char* buffer, size_t
     send_exception_message(ex.what());
     return -1;
   }
+}
+
+xrtDeviceHandle
+xrtAIEDeviceOpen(unsigned int index)
+{
+  try {
+    auto handle = xrtDeviceOpen(index);
+    open_aie_context(handle, xrt::aie::access_mode::primary);
+    return handle;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
+}
+
+xrtDeviceHandle
+xrtAIEDeviceOpenExclusive(unsigned int index)
+{
+  try {
+    auto handle = xrtDeviceOpen(index);
+    open_aie_context(handle, xrt::aie::access_mode::exclusive);
+    return handle;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
+}
+
+xrtDeviceHandle
+xrtAIEDeviceOpenShared(unsigned int index)
+{
+  try {
+    auto handle = xrtDeviceOpen(index);
+    open_aie_context(handle, xrt::aie::access_mode::shared);
+    return handle;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
 }
 
 int

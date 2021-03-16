@@ -18,9 +18,10 @@
 #define core_common_ishim_h
 
 #include "xrt.h"
+#include "experimental/xrt_aie.h"
+#include "experimental/xrt_bo.h"
 #include "experimental/xrt_graph.h"
 #include "experimental/xrt-next.h"
-#include "experimental/xrt_bo.h"
 #include "xcl_graph.h"
 #include "error.h"
 #include <stdexcept>
@@ -145,6 +146,9 @@ struct ishim
 
   virtual void
   read_graph_rtp(xclGraphHandle handle, const char* port, char* buffer, size_t size) = 0;
+
+  virtual void
+  open_aie_context(xrt::aie::access_mode) = 0;
 
   virtual void
   sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
@@ -448,6 +452,13 @@ struct shim : public DeviceType
   {
     if (auto ret = xclGraphReadRTP(handle, port, buffer, size))
       throw error(ret, "fail to read graph rtp");
+  }
+
+  virtual void
+  open_aie_context(xrt::aie::access_mode am)
+  {
+    if (auto ret = xclAIEOpenContext(DeviceType::get_device_handle(), am))
+      throw error(ret, "fail to open aie context");
   }
 
   virtual void

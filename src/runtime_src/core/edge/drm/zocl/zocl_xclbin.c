@@ -942,6 +942,22 @@ zocl_graph_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 	return ret;
 }
 
+int
+zocl_aie_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	u32 flags = ctx->flags;
+
+	return zocl_aie_alloc_context(zdev, flags, client);
+}
+
+int
+zocl_aie_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	return zocl_aie_free_context(zdev, client);
+}
+
 /* TODO: remove this once new KDS is ready */
 int
 zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
