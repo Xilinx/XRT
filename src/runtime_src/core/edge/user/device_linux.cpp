@@ -20,6 +20,7 @@
 
 #include "xrt.h"
 #include "zynq_dev.h"
+#include "aie_sys.h"
 
 #include <string>
 #include <memory>
@@ -143,6 +144,47 @@ struct devInfo
     default:
       throw query::no_such_key(key);
     }
+  }
+};
+
+struct aieCoreInfo
+{
+  using result_type = query::aie_core_info::result_type;
+  static result_type
+  get(const xrt_core::device* device,key_type key)
+  {
+    boost::property_tree::ptree pt;
+    boost::property_tree::ptree ptarray;
+    //TODO: get max row and column for aie_metadata
+    for(int i =0;i<50;i++)
+      for(int j =0;j<8;j++)
+        ptarray.push_back(std::make_pair(std::to_string(i)+"_"+std::to_string(j), aie_sys_parser::aie_sys_read(i,j,"/sys/class/aie/aiepart_0_50"))); 
+    pt.add_child("aie_core",ptarray);
+    std::ostringstream oss;
+    boost::property_tree::write_json(oss, pt);
+
+    std::string inifile_text = oss.str();
+    return inifile_text;
+  }
+};
+
+struct aieShimInfo
+{
+  using result_type = query::aie_shim_info::result_type;
+  static result_type
+  get(const xrt_core::device* device,key_type key)
+  {
+    boost::property_tree::ptree pt;
+    boost::property_tree::ptree ptarray;
+    //TODO: get max column for aie_metadata
+    for(int i=0;i<50;i++) {
+      ptarray.push_back(std::make_pair("", aie_sys_parser::aie_sys_read(i,0,"/sys/class/aie/aiepart_0_50"))); 
+    }
+    pt.add_child("aie_shim",ptarray);
+    std::ostringstream oss;
+    boost::property_tree::write_json(oss, pt);
+    std::string inifile_text = oss.str();
+    return inifile_text;
   }
 };
 
@@ -401,6 +443,8 @@ initialize_query_table()
   emplace_func0_request<query::rom_time_since_epoch,    devInfo>();
 
   emplace_func0_request<query::clock_freqs_mhz,         devInfo>();
+  emplace_func0_request<query::aie_core_info,		aieCoreInfo>();
+  emplace_func0_request<query::aie_shim_info,		aieShimInfo>();
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
 

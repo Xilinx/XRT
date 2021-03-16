@@ -102,6 +102,8 @@ enum class key_type
 
   dna_serial_num,
   clock_freqs_mhz,
+  aie_core_info,
+  aie_shim_info,
   idcode,
   data_retention,
   sec_level,
@@ -1010,6 +1012,24 @@ struct dna_serial_num : request
   {
     return value;
   }
+};
+
+struct aie_core_info : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::aie_core_info;
+  
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct aie_shim_info : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::aie_shim_info;
+  
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct clock_freqs_mhz : request
