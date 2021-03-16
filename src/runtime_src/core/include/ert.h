@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2019-2020, Xilinx Inc
+ *  Copyright (C) 2019-2021, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -64,6 +64,10 @@
     ((struct ert_start_copybo_cmd *)(pkg))
 #define to_cfg_sk_pkg(pkg) \
     ((struct ert_configure_sk_cmd *)(pkg))
+#define to_init_krnl_pkg(pkg) \
+    ((struct ert_init_kernel_cmd *)(pkg))
+#define to_validate_pkg(pkg) \
+    ((struct ert_validate_cmd *)(pkg))
 
 /**
  * struct ert_packet: ERT generic packet format
@@ -126,9 +130,9 @@ struct ert_start_kernel_cmd {
   /* payload */
   union {
     uint32_t cu_mask;          /* mandatory cu mask */
-    int32_t return_code;      /* return code from soft kernel*/
+    int32_t return_code;       /* return code from soft kernel*/
   };
-  uint32_t data[1];          /* count-1 number of words */
+  uint32_t data[1];            /* count-1 number of words */
 };
 
 /**
@@ -264,21 +268,31 @@ struct ert_configure_cmd {
   uint32_t data[1];
 };
 
+/*
+ * Note: We need to put maximum 128 soft kernel image
+ *       in one config command (1024 DWs including header).
+ *       So each one needs to be smaller than 8 DWs.
+ *
+ * @start_cuidx:     start index of compute units of each image
+ * @num_cus:         number of compute units of each image
+ * @sk_name:         symbol name of soft kernel of each image
+ */
+struct config_sk_image {
+  uint32_t start_cuidx;
+  uint32_t num_cus;
+  uint32_t sk_name[5];
+};
+
 /**
  * struct ert_configure_sk_cmd: ERT configure soft kernel command format
  *
  * @state:           [3-0] current state of a command
- * @count:           [22-12] number of words in payload (13 DWords)
+ * @count:           [22-12] number of words in payload
  * @opcode:          [27-23] 1, opcode for configure
  * @type:            [31-27] 0, type of configure
  *
- * @start_cuidx:     start index of compute units
- * @sk_type:         type of soft kernel.
- * @num_cus:         number of compute units in program
- * @sk_size:         size in bytes of soft kernel image
- * @sk_name:         symbol name of soft kernel
- * @sk_addr:         soft kernel image's physical address (little endian)
- */
+ * @num_image:       number of images
+*/
 struct ert_configure_sk_cmd {
   union {
     struct {
@@ -292,12 +306,8 @@ struct ert_configure_sk_cmd {
   };
 
   /* payload */
-  uint32_t start_cuidx:16;
-  uint32_t sk_type:16;
-  uint32_t num_cus;
-  uint32_t sk_size;		/* soft kernel size */
-  uint32_t sk_name[8];		/* soft kernel name */
-  uint64_t sk_addr;
+  uint32_t num_image;
+  struct config_sk_image image[1];
 };
 
 /**
@@ -344,6 +354,28 @@ struct ert_abort_cmd {
     };
     uint32_t header;
   };
+};
+
+/**
+ * struct ert_validate_cmd: ERT BIST command format.
+ *
+ */
+struct ert_validate_cmd {
+  union {
+    struct {
+      uint32_t state:4;          /* [3-0]   */
+      uint32_t custom:8;         /* [11-4]  */
+      uint32_t count:11;         /* [22-12] */
+      uint32_t opcode:5;         /* [27-23] */
+      uint32_t type:4;           /* [31-27] */
+    };
+    uint32_t header;
+  };
+  uint32_t timestamp;
+  uint32_t cq_read_single;
+  uint32_t cq_write_single;
+  uint32_t cu_read_single;
+  uint32_t cu_write_single;
 };
 
 /**
@@ -408,6 +440,8 @@ enum ert_cmd_opcode {
   ERT_SK_UNCONFIG   = 10,
   ERT_INIT_CU       = 11,
   ERT_START_FA      = 12,
+  ERT_CLK_CALIB     = 13,
+  ERT_MB_VALIDATE   = 14,
 };
 
 /**
@@ -636,6 +670,13 @@ uint32_t ert_base_addr = 0;
 #define ERT_INTC_CU_96_127_IAR            (ERT_INTC_CU_96_127_ADDR + 0x0C) /* acknowledge */
 #define ERT_INTC_CU_96_127_MER            (ERT_INTC_CU_96_127_ADDR + 0x1C) /* master enable */
 
+
+#if defined(ERT_BUILD_V30)
+# define ERT_CLK_COUNTER_ADDR              0x1F70000
+#else
+# define ERT_CLK_COUNTER_ADDR              0x0
+#endif
+
 /*
 * Used in driver and user space code
 * Upper limit on number of dependencies in execBuf waitlist
@@ -682,6 +723,70 @@ static inline uint64_t
 ert_copybo_size(struct ert_start_copybo_cmd *pkt)
 {
   return pkt->size;
+}
+
+static inline bool
+ert_valid_opcode(struct ert_packet *pkt)
+{
+  struct ert_start_kernel_cmd *skcmd;
+  struct ert_init_kernel_cmd *ikcmd;
+  struct ert_start_copybo_cmd *sccmd;
+  struct ert_configure_cmd *ccmd;
+  struct ert_configure_sk_cmd *cscmd;
+  struct ert_validate_cmd *vcmd;
+  bool valid;
+
+  switch (pkt->opcode) {
+  case ERT_START_CU:
+  case ERT_EXEC_WRITE:
+    skcmd = to_start_krnl_pkg(pkt);
+    /* 1 cu mask + 4 control registers */
+    valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 4);
+    break;
+  case ERT_START_FA:
+    skcmd = to_start_krnl_pkg(pkt);
+    /* 1 cu mask */
+    valid = (skcmd->count >= skcmd->extra_cu_masks + 1);
+    break;
+  case ERT_SK_START:
+    skcmd = to_start_krnl_pkg(pkt);
+    /* 1 cu mask + 1 control word */
+    valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 1);
+    break;
+  case ERT_CONFIGURE:
+    ccmd = to_cfg_pkg(pkt);
+    /* 5 mandatory fields in struct */
+    valid = (ccmd->count >= 5 + ccmd->num_cus);
+    break;
+  case ERT_START_COPYBO:
+    sccmd = to_copybo_pkg(pkt);
+    valid = (sccmd->count == 16);
+    break;
+  case ERT_INIT_CU:
+    ikcmd = to_init_krnl_pkg(pkt);
+    /* 9 mandatory words in struct + 4 control registers */
+    valid = (ikcmd->count >= ikcmd->extra_cu_masks + 9 + 4);
+    break;
+  case ERT_SK_CONFIG:
+    cscmd = to_cfg_sk_pkg(pkt);
+    valid = (cscmd->count == sizeof(struct config_sk_image) * cscmd->num_image / 4 + 1);
+    break;
+  case ERT_CLK_CALIB:
+  case ERT_MB_VALIDATE:
+    vcmd = to_validate_pkg(pkt);
+    valid = (vcmd->count == 5);
+    break;
+  case ERT_CU_STAT: /* TODO: Rules to validate? */
+  case ERT_EXIT:
+  case ERT_ABORT:
+    valid = true;
+    break;
+  case ERT_SK_UNCONFIG: /* NOTE: obsolete */
+  default:
+    valid = false;
+  }
+
+  return valid;
 }
 
 #ifdef __GNUC__

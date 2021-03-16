@@ -22,7 +22,7 @@
 
 class ReportCu : public Report {
  public:
-  ReportCu() : Report("compute_units", "Information of the compute units", true /*deviceRequired*/) { /*empty*/ };
+  ReportCu() : Report("compute-units", "Information of the compute units", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:

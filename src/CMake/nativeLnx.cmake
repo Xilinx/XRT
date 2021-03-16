@@ -54,20 +54,37 @@ execute_process(COMMAND ${LSB_RELEASE} -rs
 execute_process(COMMAND ${UNAME} -r
   OUTPUT_VARIABLE LINUX_KERNEL_VERSION
   OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+  )
+
+# Static linking creates and installs static tools and libraries. The
+# static libraries have system boost dependencies which must be
+# resolved in final target.  The tools (currently xbutil2 and xbmgmt2)
+# will be statically linked.  Enabled only for ubuntu.
+option(XRT_STATIC_BUILD "Enable static building of XRT" OFF)
+if ( (${CMAKE_VERSION} VERSION_GREATER "3.16.0")
+    AND (${XRT_NATIVE_BUILD} STREQUAL "yes")
+    AND (${LINUX_FLAVOR} MATCHES "^(Ubuntu)")
+    )
+  message("-- Enabling static artifacts of XRT")
+  set(XRT_STATIC_BUILD ON)
+endif()
 
 # --- Boost ---
 #set(Boost_DEBUG 1)
 
+# Support building XRT with local build of Boost libraries. In
+# particular the script runtime_src/tools/script/boost.sh downloads
+# and builds static Boost libraries compiled with fPIC so that they
+# can be used to resolve symbols in XRT dynamic libraries.
 if (DEFINED ENV{XRT_BOOST_INSTALL})
   set(XRT_BOOST_INSTALL $ENV{XRT_BOOST_INSTALL})
   set(Boost_USE_STATIC_LIBS ON)
-  find_package(Boost 
+  find_package(Boost
     HINTS $ENV{XRT_BOOST_INSTALL}
-    REQUIRED COMPONENTS system filesystem)
+    REQUIRED COMPONENTS system filesystem program_options)
 else()
   find_package(Boost 
-    REQUIRED COMPONENTS system filesystem)
+    REQUIRED COMPONENTS system filesystem program_options)
 endif()
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
 
@@ -91,21 +108,14 @@ set (XRT_VALIDATE_DIR          "${XRT_INSTALL_DIR}/test")
 set (XRT_NAMELINK_ONLY NAMELINK_ONLY)
 set (XRT_NAMELINK_SKIP NAMELINK_SKIP)
 
-
 # Define RPATH for embedding in libraries and executables.  This allows
 # package creation to automatically determine dependencies.
 # RPATH relative to location of binary:
 #  bin/../lib, lib/xrt/module/../.., bin/unwrapped/../../lib
+# Note, that in order to disable RPATH insertion for a specific
+# target (say a static executable), use
+#  set_target_properties(<target> PROPERTIES INSTALL_RPATH "")
 SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib${LIB_SUFFFIX}:$ORIGIN/../..:$ORIGIN/../../lib${LIB_SUFFIX}")
-
-# --- Release: OpenCL extension headers ---
-set(XRT_CL_EXT_SRC
-  include/1_2/CL/cl_ext_xilinx.h
-  include/1_2/CL/cl_ext.h)
-install (FILES ${XRT_CL_EXT_SRC}
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL
-  COMPONENT ${XRT_DEV_COMPONENT}
-)
 
 # --- Release: eula ---
 file(GLOB XRT_EULA
@@ -124,6 +134,9 @@ include (CMake/ccache.cmake)
 
 message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR}) (Kernel ${LINUX_KERNEL_VERSION})")
 message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
+
+# --- Lint ---
+include (CMake/lint.cmake)
 
 add_subdirectory(runtime_src)
 
@@ -155,9 +168,6 @@ message("-- XRT version: ${XRT_VERSION_STRING}")
 
 # -- CPack
 include (CMake/cpackLin.cmake)
-
-# --- Lint ---
-include (CMake/lint.cmake)
 
 set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
 

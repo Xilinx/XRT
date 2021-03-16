@@ -84,10 +84,12 @@
 #define	XMC_12V_AUX1_REG                0x2C0
 #define	XMC_VCCINT_TEMP_REG             0x2CC
 #define	XMC_3V3_AUX_I_REG               0x2F0
+#define	XMC_HEARTBEAT_REG               0x2FC
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
 #define	XMC_STATUS2_REG			0x30C
+#define	XMC_HEARTBEAT_ERR_CODE_REG	0x310
 #define	XMC_VCC1V2_I_REG                0x314
 #define	XMC_V12_IN_I_REG                0x320
 #define	XMC_V12_IN_AUX0_I_REG           0x32C
@@ -106,6 +108,7 @@
 #define	XMC_CLK_THROTTLING_TEMP_MGMT_REG	 0xB28
 #define	XMC_CLK_THROTTLING_TEMP_MGMT_REG_OVRD_MASK 0xFF
 #define	XMC_CLK_THROTTLING_TEMP_MGMT_REG_TEMP_OVRD_EN (1 << 31)
+#define	XMC_QSPI_STATUS_REG		0xC48
 #define	XMC_CORE_VERSION_REG		0xC4C
 #define	XMC_OEM_ID_REG                  0xC50
 #define	XMC_HOST_POWER_THRESHOLD_BASE_REG	0xE68
@@ -146,6 +149,7 @@
 #define	VALID_ID			0x74736574
 #define	XMC_CORE_SUPPORT_NOTUPGRADABLE	0x0c010004
 #define	XMC_CORE_SUPPORT_SENSOR_READY	0x0c010002
+#define	XMC_CORE_SUPPORT_HEARTBEAT	0x0c01001B
 #define	GPIO_RESET			0x0
 #define	GPIO_ENABLED			0x1
 #define	SENSOR_DATA_READY_MASK 		0x1
@@ -292,23 +296,50 @@ enum sc_mode {
 #define	XMC_PKT_OWNER_MASK			(1 << 5)
 #define	XMC_PKT_ERR_MASK			(1 << 26)
 
-#define	XMC_HOST_MSG_NO_ERR			0x00
-#define	XMC_HOST_MSG_BAD_OPCODE_ERR		0x01
-#define	XMC_HOST_MSG_UNKNOWN_ERR		0x02
-#define	XMC_HOST_MSG_MSP432_MODE_ERR		0x03
-#define	XMC_HOST_MSG_MSP432_FW_LENGTH_ERR	0x04
-#define	XMC_HOST_MSG_BRD_INFO_MISSING_ERR	0x05
+enum xmc_error_code {
+	XMC_HOST_MSG_NO_ERR			= 0x0,
+	XMC_HOST_MSG_BAD_OPCODE_ERR		= 0x1,
+	XMC_HOST_MSG_BRD_INFO_MISSING_ERR	= 0x2,
+	XMC_HOST_MSG_LENGTH_ERR			= 0x3,
+	XMC_HOST_MSG_SAT_FW_WRITE_FAIL		= 0x4,
+	XMC_HOST_MSG_SAT_FW_UPDATE_FAIL		= 0x5,
+	XMC_HOST_MSG_SAT_FW_LOAD_FAIL		= 0x6,
+	XMC_HOST_MSG_SAT_FW_ERASE_FAIL		= 0x7,
+	XMC_HOST_MSG_DR_CMD_FAIL		= 0x8,
+	XMC_HOST_MSG_CSDR_FAILED		= 0x9,
+	XMC_HOST_QSFP_FAIL			= 0xA,
+};
+
+struct xmc_heartbeat_err_code {
+	u32 xhe_error		: 16;
+	u32 xhe_last_sensor_id	: 8;
+	u32 xhe_sensor_no	: 8;
+};
+
+enum xmc_xhe_error {
+	XHE_NO_ERR = 0,
+	XHE_SINGLE_ERR = 1,
+	XHE_MULTI_ERR = 2,
+};
 
 enum xmc_packet_op {
-	XPO_UNKNOWN = 0,
-	XPO_MSP432_SEC_START,
-	XPO_MSP432_SEC_DATA,
-	XPO_MSP432_IMAGE_END,
-	XPO_BOARD_INFO,
-	XPO_MSP432_ERASE_FW,
-	XPO_DR_FREEZE,
-	XPO_DR_FREE,
-	XPO_XCLBIN_DATA,
+	XPO_UNKNOWN 			= 0x0,
+	XPO_MSP432_SEC_START 		= 0x1,
+	XPO_MSP432_SEC_DATA 		= 0x2,
+	XPO_MSP432_IMAGE_END 		= 0x3,
+	XPO_BOARD_INFO			= 0x4,
+	XPO_MSP432_ERASE_FW 		= 0x5,
+	XPO_DR_FREEZE			= 0x6,
+	XPO_DR_FREE			= 0x7,
+	XPO_XCLBIN_DATA			= 0x8,
+	XPO_FIRST_CSDR			= 0x9,
+	XPO_ADDITIONAL_CSDR		= 0xA,
+	XPO_QSFP_DIAG_READ		= 0xB,
+	XPO_QSFP_CONTROL_WRITE		= 0xC,
+	XPO_QSFP_LOW_SPEED_IO_READ	= 0xD,
+	XPO_QSFP_LOW_SPEED_IO_WRITE	= 0xE,
+	XPO_QSFP_I2C_READ		= 0xF,
+	XPO_QSFP_I2C_WRITE		= 0x10,
 };
 
 /* Make sure hdr is multiple of u32 */
@@ -331,18 +362,6 @@ struct xmc_pkt_hdr {
 #define XMC_BDINFO_ENTRY_LEN		32
 #define XMC_BDINFO_MAC_LEN		6
 
-#define CMC_OP_READ_QSFP_DIAGNOSTICS            0xB
-#define CMC_OP_WRITE_QSFP_CONTROL               0xC
-#define CMC_OP_READ_QSFP_VALIDATE_LOW_SPEED_IO  0xD
-#define CMC_OP_WRITE_QSFP_VALIDATE_LOW_SPEED_IO 0xE
-
-#define CMC_OP_READ_QSFP_MAXLEN		128 /* In bytes */
-#define CMC_OP_WRITE_QSFP_MAXLEN	13
-#define CMC_OP_IO_CONTROL_MAXLEN	1
-
-#define CMC_OP_QSFP_DIAG_OFFSET 	0x14
-#define CMC_OP_QSFP_IO_OFFSET           0x8
-
 #define BDINFO_MAC_DYNAMIC              0x4B
 
 struct xmc_pkt_image_end_op {
@@ -361,20 +380,22 @@ struct xmc_pkt_sector_data_op {
 
 struct xmc_pkt_qsfp_diag_read_op {
 	u32 port;
-	u32 upper_page;
-	u32 lower_page;
-	u32 data_size;
-	u8 data[1];
-};
-
-struct xmc_pkt_qsfp_diag_write_op {
-	u32 port;
+	u32 page;
+	u32 level;
 	u32 data_size;
 	u8 data[1];
 };
 
 struct xmc_pkt_qsfp_io_rw_op {
 	u32 port;
+	u8 data[1];
+};
+
+struct xmc_pkt_qsfp_byte_rw_op {
+	u32 port;
+	u32 page;
+	u32 level;
+	u32 offset;
 	u8 data[1];
 };
 
@@ -386,10 +407,24 @@ struct xmc_pkt {
 		struct xmc_pkt_sector_start_op sector_start;
 		struct xmc_pkt_sector_data_op sector_data;
 		struct xmc_pkt_qsfp_diag_read_op qsfp_diag_r;
-		struct xmc_pkt_qsfp_diag_write_op qsfp_diag_w;
 		struct xmc_pkt_qsfp_io_rw_op qsfp_io;
+		struct xmc_pkt_qsfp_byte_rw_op qsfp_byte;
 	};
 };
+
+/* QSFP related macros */
+#define CMC_OP_READ_QSFP_MAXLEN		128 /* In bytes */
+#define CMC_OP_WRITE_QSFP_MAXLEN	13
+#define CMC_OP_IO_CONTROL_MAXLEN	1
+
+#define CMC_QSFP_DIAG_DATA_OFFSET \
+	(sizeof(struct xmc_pkt_hdr) + offsetof(struct xmc_pkt_qsfp_diag_read_op, data))
+
+#define CMC_QSFP_BYTE_DATA_OFFSET \
+	(sizeof(struct xmc_pkt_hdr) + offsetof(struct xmc_pkt_qsfp_byte_rw_op, data))
+
+#define CMC_QSFP_IO_DATA_OFFSET \
+	(sizeof(struct xmc_pkt_hdr) + offsetof(struct xmc_pkt_qsfp_io_rw_op, data))
 
 enum board_info_key {
 	BDINFO_SN = 0x21,
@@ -439,7 +474,11 @@ struct xocl_xmc {
 	u64			cache_expire_secs;
 	struct xcl_sensor	*cache;
 	ktime_t			cache_expires;
+	ktime_t			bdinfo_retry;
 	u32			sc_presence;
+	u32			heartbeat_count;
+	u64			heartbeat_time;
+	bool			heartbeat_stall;
 
 	/* XMC mailbox support. */
 	struct mutex		mbx_lock;
@@ -479,13 +518,15 @@ static int xmc_load_board_info(struct xocl_xmc *xmc);
 static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags);
 static bool scaling_condition_check(struct xocl_xmc *xmc);
 static const struct file_operations xmc_fops;
-static bool is_sc_fixed(struct xocl_xmc *xmc);
 static void clock_status_check(struct platform_device *pdev, bool *latched);
 static void xmc_get_serial_num(struct platform_device *pdev);
-static ssize_t xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count, int lp, int up);
-static ssize_t xmc_qsfp_write(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count);
+
+static ssize_t xmc_qsfp_diag_read(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page, int level);
+static ssize_t xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page, int level);
+static ssize_t xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page, int level);
 static ssize_t xmc_qsfp_io_read(struct xocl_xmc *xmc, int port, char *buffer,
 	loff_t off, size_t count);
 static ssize_t xmc_qsfp_io_write(struct xocl_xmc *xmc, int port, char *buffer,
@@ -572,7 +613,7 @@ static void safe_read_from_peer(struct xocl_xmc *xmc,
 }
 
 static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
-	u32 *val, enum sensor_val_kind val_kind)
+	void *val, enum sensor_val_kind val_kind)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 
@@ -732,7 +773,19 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			READ_SENSOR(xmc, XMC_VCCRAM_REG, val, val_kind);
 			break;
 		case XMC_POWER_WARN:
-			READ_SENSOR(xmc, XMC_POWER_WARN_REG, val, val_kind);
+			safe_read32(xmc, XMC_POWER_WARN_REG, val);
+			break;
+		case XMC_QSPI_STATUS:
+			safe_read32(xmc, XMC_QSPI_STATUS_REG, val);
+			break;
+		case XMC_HEARTBEAT_COUNT:
+			safe_read32(xmc, XMC_HEARTBEAT_REG, val);
+			break;
+		case XMC_HEARTBEAT_ERR_TIME:
+			*(u64 *)val = xmc->heartbeat_time;	
+			break;
+		case XMC_HEARTBEAT_ERR_CODE:
+			safe_read32(xmc, XMC_HEARTBEAT_ERR_CODE_REG, val);
 			break;
 		default:
 			break;
@@ -742,160 +795,172 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 
 		switch (kind) {
 		case DIMM0_TEMP:
-			*val = xmc->cache->dimm_temp0;
+			*(u32 *)val = xmc->cache->dimm_temp0;
 			break;
 		case DIMM1_TEMP:
-			*val = xmc->cache->dimm_temp1;
+			*(u32 *)val = xmc->cache->dimm_temp1;
 			break;
 		case DIMM2_TEMP:
-			*val = xmc->cache->dimm_temp2;
+			*(u32 *)val = xmc->cache->dimm_temp2;
 			break;
 		case DIMM3_TEMP:
-			*val = xmc->cache->dimm_temp3;
+			*(u32 *)val = xmc->cache->dimm_temp3;
 			break;
 		case FPGA_TEMP:
-			*val = xmc->cache->fpga_temp;
+			*(u32 *)val = xmc->cache->fpga_temp;
 			break;
 		case VOL_12V_PEX:
-			*val = xmc->cache->vol_12v_pex;
+			*(u32 *)val = xmc->cache->vol_12v_pex;
 			break;
 		case VOL_12V_AUX:
-			*val = xmc->cache->vol_12v_aux;
+			*(u32 *)val = xmc->cache->vol_12v_aux;
 			break;
 		case CUR_12V_PEX:
-			*val = xmc->cache->cur_12v_pex;
+			*(u32 *)val = xmc->cache->cur_12v_pex;
 			break;
 		case CUR_12V_AUX:
-			*val = xmc->cache->cur_12v_aux;
+			*(u32 *)val = xmc->cache->cur_12v_aux;
 			break;
 		case SE98_TEMP0:
-			*val = xmc->cache->se98_temp0;
+			*(u32 *)val = xmc->cache->se98_temp0;
 			break;
 		case SE98_TEMP1:
-			*val = xmc->cache->se98_temp1;
+			*(u32 *)val = xmc->cache->se98_temp1;
 			break;
 		case SE98_TEMP2:
-			*val = xmc->cache->se98_temp2;
+			*(u32 *)val = xmc->cache->se98_temp2;
 			break;
 		case FAN_TEMP:
-			*val = xmc->cache->fan_temp;
+			*(u32 *)val = xmc->cache->fan_temp;
 			break;
 		case FAN_RPM:
-			*val = xmc->cache->fan_rpm;
+			*(u32 *)val = xmc->cache->fan_rpm;
 			break;
 		case VOL_3V3_PEX:
-			*val = xmc->cache->vol_3v3_pex;
+			*(u32 *)val = xmc->cache->vol_3v3_pex;
 			break;
 		case VOL_3V3_AUX:
-			*val = xmc->cache->vol_3v3_aux;
+			*(u32 *)val = xmc->cache->vol_3v3_aux;
 			break;
 		case CUR_3V3_AUX:
-			*val = xmc->cache->cur_3v3_aux;
+			*(u32 *)val = xmc->cache->cur_3v3_aux;
 			break;
 		case VPP_BTM:
-			*val = xmc->cache->ddr_vpp_btm;
+			*(u32 *)val = xmc->cache->ddr_vpp_btm;
 			break;
 		case VPP_TOP:
-			*val = xmc->cache->ddr_vpp_top;
+			*(u32 *)val = xmc->cache->ddr_vpp_top;
 			break;
 		case VOL_5V5_SYS:
-			*val = xmc->cache->sys_5v5;
+			*(u32 *)val = xmc->cache->sys_5v5;
 			break;
 		case VOL_1V2_TOP:
-			*val = xmc->cache->top_1v2;
+			*(u32 *)val = xmc->cache->top_1v2;
 			break;
 		case VOL_1V2_BTM:
-			*val = xmc->cache->vcc1v2_btm;
+			*(u32 *)val = xmc->cache->vcc1v2_btm;
 			break;
 		case VOL_1V8:
-			*val = xmc->cache->vol_1v8;
+			*(u32 *)val = xmc->cache->vol_1v8;
 			break;
 		case VCC_0V9A:
-			*val = xmc->cache->mgt0v9avcc;
+			*(u32 *)val = xmc->cache->mgt0v9avcc;
 			break;
 		case VOL_12V_SW:
-			*val = xmc->cache->vol_12v_sw;
+			*(u32 *)val = xmc->cache->vol_12v_sw;
 			break;
 		case VTT_MGTA:
-			*val = xmc->cache->mgtavtt;
+			*(u32 *)val = xmc->cache->mgtavtt;
 			break;
 		case VOL_VCC_INT:
-			*val = xmc->cache->vccint_vol;
+			*(u32 *)val = xmc->cache->vccint_vol;
 			break;
 		case CUR_VCC_INT:
-			*val = xmc->cache->vccint_curr;
+			*(u32 *)val = xmc->cache->vccint_curr;
 			break;
 		case HBM_TEMP:
-			*val = xmc->cache->hbm_temp0;
+			*(u32 *)val = xmc->cache->hbm_temp0;
 			break;
 		case CAGE_TEMP0:
-			*val = xmc->cache->cage_temp0;
+			*(u32 *)val = xmc->cache->cage_temp0;
 			break;
 		case CAGE_TEMP1:
-			*val = xmc->cache->cage_temp1;
+			*(u32 *)val = xmc->cache->cage_temp1;
 			break;
 		case CAGE_TEMP2:
-			*val = xmc->cache->cage_temp2;
+			*(u32 *)val = xmc->cache->cage_temp2;
 			break;
 		case CAGE_TEMP3:
-			*val = xmc->cache->cage_temp3;
+			*(u32 *)val = xmc->cache->cage_temp3;
 			break;
 		case VCC_0V85:
-			*val = xmc->cache->vol_0v85;
+			*(u32 *)val = xmc->cache->vol_0v85;
 			break;
 		case VOL_VCC_3V3:
-			*val = xmc->cache->vol_3v3_vcc;
+			*(u32 *)val = xmc->cache->vol_3v3_vcc;
 			break;
 		case CUR_3V3_PEX:
-			*val = xmc->cache->cur_3v3_pex;
+			*(u32 *)val = xmc->cache->cur_3v3_pex;
 			break;
 		case CUR_VCC_0V85:
-			*val = xmc->cache->cur_0v85;
+			*(u32 *)val = xmc->cache->cur_0v85;
 			break;
 		case VOL_HBM_1V2:
-			*val = xmc->cache->vol_1v2_hbm;
+			*(u32 *)val = xmc->cache->vol_1v2_hbm;
 			break;
 		case VOL_VPP_2V5:
-			*val = xmc->cache->vol_2v5_vpp;
+			*(u32 *)val = xmc->cache->vol_2v5_vpp;
 			break;
 		case VOL_VCCINT_BRAM:
-			*val = xmc->cache->vccint_bram;
+			*(u32 *)val = xmc->cache->vccint_bram;
 			break;
 		case XMC_VER:
-			*val = xmc->cache->version;
+			*(u32 *)val = xmc->cache->version;
 			break;
 		case XMC_OEM_ID:
-			*val = xmc->cache->oem_id;
+			*(u32 *)val = xmc->cache->oem_id;
 			break;
 		case XMC_VCCINT_TEMP:
-			*val = xmc->cache->vccint_temp;
+			*(u32 *)val = xmc->cache->vccint_temp;
 			break;
 		case XMC_12V_AUX1:
-			*val = xmc->cache->vol_12v_aux1;
+			*(u32 *)val = xmc->cache->vol_12v_aux1;
 			break;
 		case XMC_VCC1V2_I:
-			*val = xmc->cache->vol_vcc1v2_i;
+			*(u32 *)val = xmc->cache->vol_vcc1v2_i;
 			break;
 		case XMC_V12_IN_I:
-			*val = xmc->cache->vol_v12_in_i;
+			*(u32 *)val = xmc->cache->vol_v12_in_i;
 			break;
 		case XMC_V12_IN_AUX0_I:
-			*val = xmc->cache->vol_v12_in_aux0_i;
+			*(u32 *)val = xmc->cache->vol_v12_in_aux0_i;
 			break;
 		case XMC_V12_IN_AUX1_I:
-			*val = xmc->cache->vol_v12_in_aux1_i;
+			*(u32 *)val = xmc->cache->vol_v12_in_aux1_i;
 			break;
 		case XMC_VCCAUX:
-			*val = xmc->cache->vol_vccaux;
+			*(u32 *)val = xmc->cache->vol_vccaux;
 			break;
 		case XMC_VCCAUX_PMC:
-			*val = xmc->cache->vol_vccaux_pmc;
+			*(u32 *)val = xmc->cache->vol_vccaux_pmc;
 			break;
 		case XMC_VCCRAM:
-			*val = xmc->cache->vol_vccram;
+			*(u32 *)val = xmc->cache->vol_vccram;
 			break;
 		case XMC_POWER_WARN:
-			*val = xmc->cache->power_warn;
+			*(u32 *)val = xmc->cache->power_warn;
+			break;
+		case XMC_QSPI_STATUS:
+			*(u32 *)val = xmc->cache->qspi_status;
+			break;
+		case XMC_HEARTBEAT_COUNT:
+			*(u32 *)val = xmc->cache->heartbeat_count;
+			break;
+		case XMC_HEARTBEAT_ERR_TIME:
+			*(u64 *)val = xmc->cache->heartbeat_err_time;
+			break;
+		case XMC_HEARTBEAT_ERR_CODE:
+			*(u32 *)val = xmc->cache->heartbeat_err_code;
 			break;
 		default:
 			break;
@@ -1003,8 +1068,6 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 		}
 
 	} else {
-		
-		read_bdinfo_from_peer(pdev);
 		if (!xmc->bdinfo_raw)
 			return;
 
@@ -1168,6 +1231,10 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_sensor(pdev, XMC_VCCAUX_PMC, &sensors->vol_vccaux_pmc, SENSOR_INS);
 		xmc_sensor(pdev, XMC_VCCRAM, &sensors->vol_vccram, SENSOR_INS);
 		xmc_sensor(pdev, XMC_POWER_WARN, &sensors->power_warn, SENSOR_INS);
+		xmc_sensor(pdev, XMC_QSPI_STATUS, &sensors->qspi_status, SENSOR_INS);
+		xmc_sensor(pdev, XMC_HEARTBEAT_COUNT, &sensors->heartbeat_count, SENSOR_INS);
+		xmc_sensor(pdev, XMC_HEARTBEAT_ERR_TIME, &sensors->heartbeat_err_time, SENSOR_INS);
+		xmc_sensor(pdev, XMC_HEARTBEAT_ERR_CODE, &sensors->heartbeat_err_code, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
@@ -1392,6 +1459,27 @@ SENSOR_SYSFS_NODE(xmc_vccaux, XMC_VCCAUX);
 SENSOR_SYSFS_NODE(xmc_vccaux_pmc, XMC_VCCAUX_PMC);
 SENSOR_SYSFS_NODE(xmc_vccram, XMC_VCCRAM);
 SENSOR_SYSFS_NODE(xmc_power_warn, XMC_POWER_WARN);
+SENSOR_SYSFS_NODE(xmc_qspi_status, XMC_QSPI_STATUS);
+SENSOR_SYSFS_NODE(xmc_heartbeat_count, XMC_HEARTBEAT_COUNT);
+SENSOR_SYSFS_NODE_FORMAT(xmc_heartbeat_err_code, XMC_HEARTBEAT_ERR_CODE, "0x%x\n");
+
+static ssize_t xmc_heartbeat_err_time_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u64 val = 0;
+	xmc_sensor(xmc->pdev, XMC_HEARTBEAT_ERR_TIME, &val, SENSOR_INS);
+	return sprintf(buf, "%llu\n", val);
+}
+static DEVICE_ATTR_RO(xmc_heartbeat_err_time);
+
+static ssize_t xmc_heartbeat_stall_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", xmc->heartbeat_stall);
+}
+static DEVICE_ATTR_RO(xmc_heartbeat_stall);
 
 static ssize_t xmc_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -1477,7 +1565,12 @@ static DEVICE_ATTR_RO(core_version);
 	&dev_attr_xmc_vccaux.attr,					\
 	&dev_attr_xmc_vccaux_pmc.attr,					\
 	&dev_attr_xmc_vccram.attr,					\
-	&dev_attr_xmc_power_warn.attr
+	&dev_attr_xmc_power_warn.attr,					\
+	&dev_attr_xmc_heartbeat_count.attr,				\
+	&dev_attr_xmc_heartbeat_err_code.attr,				\
+	&dev_attr_xmc_heartbeat_err_time.attr,				\
+	&dev_attr_xmc_heartbeat_stall.attr,				\
+	&dev_attr_xmc_qspi_status.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -1577,6 +1670,7 @@ static ssize_t cache_expire_secs_store(struct device *dev,
 	if (kstrtou64(buf, 10, &val) == -EINVAL || val > 10) {
 		xocl_err(&to_platform_device(dev)->dev,
 			"usage: echo [0 ~ 10] > cache_expire_secs");
+		mutex_unlock(&xmc->xmc_lock);
 		return -EINVAL;
 	}
 
@@ -1724,6 +1818,31 @@ static bool is_scaling_enabled(struct xocl_xmc *xmc)
 
 	reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
 	if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE)
+		return true;
+
+	return false;
+}
+
+static bool is_heartbeat_supported(struct xocl_xmc *xmc)
+{
+	u32 xmc_core_version;
+
+	safe_read32(xmc, XMC_CORE_VERSION_REG, &xmc_core_version);
+	return xmc_core_version >= XMC_CORE_SUPPORT_HEARTBEAT;
+}
+
+static bool is_sc_fixed(struct xocl_xmc *xmc)
+{
+	struct xmc_status status;
+	u32 xmc_core_version;
+
+	safe_read32(xmc, XMC_CORE_VERSION_REG, &xmc_core_version);
+	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+
+	if (xmc_core_version >= XMC_CORE_SUPPORT_NOTUPGRADABLE &&
+	    !status.invalid_sc &&
+	    (status.sc_mode == XMC_SC_BSL_MODE_SYNCED_SC_NOT_UPGRADABLE ||
+	     status.sc_mode == XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE))
 		return true;
 
 	return false;
@@ -2062,7 +2181,7 @@ static ssize_t scaling_governor_show(struct device *dev,
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 mode;
-	char val[20];
+	char val[20] = { 0 };
 	bool cs_en;
 
 	cs_en = scaling_condition_check(xmc);
@@ -2533,21 +2652,29 @@ static struct bin_attribute bin_dimm_temp_by_mem_topology_attr = {
  * preprocessor magic for qsfp name pattern:
  * The following sysfs node will be created.
  *
- * qsfp0_control	(write only)
- * qsfp0_io_config	(read, write)
- * qsfp0_lower_page0	(read only)
- * qsfp0_upper_page0	(read only)
- * qsfp0_upper_page1	(read only)
- * qsfp0_upper_page2	(read only)
- * qsfp0_upper_page3	(read only)
+ * qsfp0_io_config		(read, write)
+ * qsfp0_lower_page0		(read only)
+ * qsfp0_upper_page0		(read only)
+ * qsfp0_upper_page1		(read only)
+ * qsfp0_upper_page2		(read only)
+ * qsfp0_upper_page3		(read only)
+ * qsfp0_i2c_lower_page0	(read, write)
+ * qsfp0_i2c_upper_page0	(read, write)
+ * qsfp0_i2c_upper_page1	(read, write)
+ * qsfp0_i2c_upper_page2	(read, write)
+ * qsfp0_i2c_upper_page3	(read, write)
  * ...
- * qsfp3_control 	(write only)
- * qsfp3_io_config 	(read, write)
- * qsfp3_lower_page0	(read only)
- * qsfp3_upper_page0	(read only)
- * qsfp3_upper_page1	(read only)
- * qsfp3_upper_page2	(read only)
- * qsfp3_upper_page3	(read only)
+ * qsfp3_io_config 		(read, write)
+ * qsfp3_lower_page0		(read only)
+ * qsfp3_upper_page0		(read only)
+ * qsfp3_upper_page1		(read only)
+ * qsfp3_upper_page2		(read only)
+ * qsfp3_upper_page3		(read only)
+ * qsfp3_i2c_lower_page0	(read, write)
+ * qsfp3_i2c_upper_page0	(read, write)
+ * qsfp3_i2c_upper_page1	(read, write)
+ * qsfp3_i2c_upper_page2	(read, write)
+ * qsfp3_i2c_upper_page3	(read, write)
  */
 
 /* qsfp_diag, e.g qsfp3_upper_page3 */
@@ -2556,13 +2683,13 @@ xmc_qsfp_lower_read(struct xocl_xmc *xmc, int port, char *buffer,
 	loff_t off, size_t count, int pg)
 {
 	BUG_ON(pg != 0);
-	return xmc_qsfp_read(xmc, port, buffer, off, count, 0, pg);
+	return xmc_qsfp_diag_read(xmc, port, buffer, off, count, pg, 0);
 }
 static ssize_t
 xmc_qsfp_upper_read(struct xocl_xmc *xmc, int port, char *buffer,
 	loff_t off, size_t count, int pg)
 {
-	return xmc_qsfp_read(xmc, port, buffer, off, count, 1, pg);
+	return xmc_qsfp_diag_read(xmc, port, buffer, off, count, pg, 1);
 }
 
 #define QSFP_READ(PORT, level, pg) 						\
@@ -2605,35 +2732,91 @@ QSFP_BIN_ATTR(3);
 	&bin_attr_qsfp##PORT##_upper_page2, \
 	&bin_attr_qsfp##PORT##_upper_page3 \
 
-/* qsfp_control, e.g. qsfp0_control */
-#define QSFP_CONTROL(PORT) 							\
-static ssize_t qsfp##PORT##_control_write(                                      \
+/*
+ * qsfp_i2c read,write
+ */
+static ssize_t
+xmc_qsfp_lower_i2c_read(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page)
+{
+	BUG_ON(page != 0);
+	return xmc_qsfp_i2c_read(xmc, port, buffer, off, count, page, 0);
+}
+static ssize_t
+xmc_qsfp_lower_i2c_write(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page)
+{
+	BUG_ON(page != 0);
+	return xmc_qsfp_i2c_write(xmc, port, buffer, off, count, page, 0);
+}
+static ssize_t
+xmc_qsfp_upper_i2c_read(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page)
+{
+	return xmc_qsfp_i2c_read(xmc, port, buffer, off, count, page, 1);
+}
+static ssize_t
+xmc_qsfp_upper_i2c_write(struct xocl_xmc *xmc, int port, char *buffer,
+	loff_t off, size_t count, int page)
+{
+	return xmc_qsfp_i2c_write(xmc, port, buffer, off, count, page, 1);
+}
+#define QSFP_I2C_PORT_PAGE(PORT, LEVEL, PAGE, RW)				\
+static ssize_t qsfp##PORT##_##LEVEL##_page##PAGE##_i2c_##RW(                    \
 	struct file *filp, struct kobject *kobj, 	                        \
 	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
 {                                                                               \
 	struct xocl_xmc *xmc =                                                  \
 		dev_get_drvdata(container_of(kobj, struct device, kobj));       \
-	return xmc_qsfp_write(xmc, PORT, buffer, off, count);                   \
+	return xmc_qsfp_##LEVEL##_i2c_##RW(xmc, PORT, buffer, off, count, PAGE);\
 }
 
-QSFP_CONTROL(0)
-QSFP_CONTROL(1)
-QSFP_CONTROL(2)
-QSFP_CONTROL(3)
+#define QSFP_I2C_PORT(PORT) \
+	QSFP_I2C_PORT_PAGE(PORT, lower, 0, read) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 0, read) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 1, read)	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 2, read) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 3, read) 	\
+	QSFP_I2C_PORT_PAGE(PORT, lower, 0, write) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 0, write) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 1, write) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 2, write) 	\
+	QSFP_I2C_PORT_PAGE(PORT, upper, 3, write)
 
-#define QSFP_CONTROL_ATTR(PORT)                                                 \
-static struct bin_attribute bin_attr_qsfp##PORT##_control = {                   \
+QSFP_I2C_PORT(0)
+QSFP_I2C_PORT(1)
+QSFP_I2C_PORT(2)
+QSFP_I2C_PORT(3)
+
+#define QSFP_I2C_ATTR_PAGE(PORT, PAGE)                                          \
+static struct bin_attribute bin_attr_qsfp##PORT##_i2c_##PAGE = {              \
 	.attr = {                                                               \
-		.name = "qsfp" #PORT "_control",                                \
-		.mode = 0200                                                    \
+		.name = "qsfp" #PORT "_i2c_" #PAGE,	                        \
+		.mode = 0600                                                    \
 	},                                                                      \
-	.write = qsfp##PORT##_control_write,                                    \
+	.read = qsfp##PORT##_##PAGE##_i2c_read,                                 \
+	.write = qsfp##PORT##_##PAGE##_i2c_write,                               \
 	.size = 0                                                               \
 };
-QSFP_CONTROL_ATTR(0);
-QSFP_CONTROL_ATTR(1);
-QSFP_CONTROL_ATTR(2);
-QSFP_CONTROL_ATTR(3);
+
+#define QSFP_I2C_ATTR(PORT) \
+	QSFP_I2C_ATTR_PAGE(PORT, lower_page0) \
+	QSFP_I2C_ATTR_PAGE(PORT, upper_page0) \
+	QSFP_I2C_ATTR_PAGE(PORT, upper_page1) \
+	QSFP_I2C_ATTR_PAGE(PORT, upper_page2) \
+	QSFP_I2C_ATTR_PAGE(PORT, upper_page3)
+
+QSFP_I2C_ATTR(0);
+QSFP_I2C_ATTR(1);
+QSFP_I2C_ATTR(2);
+QSFP_I2C_ATTR(3);
+
+#define QSFP_I2C(PORT) \
+	&bin_attr_qsfp##PORT##_i2c_lower_page0, \
+	&bin_attr_qsfp##PORT##_i2c_upper_page0, \
+	&bin_attr_qsfp##PORT##_i2c_upper_page1, \
+	&bin_attr_qsfp##PORT##_i2c_upper_page2, \
+	&bin_attr_qsfp##PORT##_i2c_upper_page3 \
 
 /* qsfp_io_conifg, e.g. qsfp0_io_config */
 #define QSFP_IO_CONFIG_READ(PORT) \
@@ -2668,7 +2851,7 @@ QSFP_IO_CONFIG_WRITE(3);
 #define QSFP_IO_CONFIG_ATTR(PORT)                                               \
 static struct bin_attribute bin_attr_qsfp##PORT##_io_config = {                 \
 	.attr = {                                                               \
-		.name = "qsfp" #PORT "_io_config",                           \
+		.name = "qsfp" #PORT "_io_config",	                        \
 		.mode = 0600                                                    \
 	},                                                                      \
 	.read = qsfp##PORT##_io_config_read,                                    \
@@ -2686,10 +2869,10 @@ static struct bin_attribute *xmc_bin_attrs[] = {
 	QSFP_DIAG(1),
 	QSFP_DIAG(2),
 	QSFP_DIAG(3),
-	&bin_attr_qsfp0_control,
-	&bin_attr_qsfp1_control,
-	&bin_attr_qsfp2_control,
-	&bin_attr_qsfp3_control,
+	QSFP_I2C(0),
+	QSFP_I2C(1),
+	QSFP_I2C(2),
+	QSFP_I2C(3),
 	&bin_attr_qsfp0_io_config,
 	&bin_attr_qsfp1_io_config,
 	&bin_attr_qsfp2_io_config,
@@ -3685,6 +3868,56 @@ fail:
 	return err;
 }
 
+static inline char*
+xmc_get_heartbeat_reason(enum xmc_xhe_error error_code)
+{
+	switch (error_code) {
+	case XHE_NO_ERR:
+		return "NO_ERR";
+	case XHE_SINGLE_ERR:
+		return "SINGLE_SENSOR_UPDATE_ERR";
+	case XHE_MULTI_ERR:
+		return "MULTIPLE_SENSOR_UPDATE_ERR";
+	default:
+		return "UNDEFINED_ERR";
+	}
+}
+
+static void sensor_status_check(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	struct xmc_heartbeat_err_code err_code = { 0 };
+	XOCL_TIMESPEC time;
+	u32 val;
+	
+	if (!is_heartbeat_supported(xmc))
+		return;
+
+	safe_read32(xmc, XMC_HEARTBEAT_REG, &val);
+	if (val != xmc->heartbeat_count) {
+		if (xmc->heartbeat_stall) {
+			xmc->heartbeat_stall = false;
+			xocl_info(&xmc->pdev->dev, "CMC sensor update resumed.");
+		}
+		xmc->heartbeat_count = val;
+		return;
+	}
+
+	/* cmc heartbeat count is stall, reporting */
+	if (xmc->heartbeat_stall)
+		return;
+
+	xmc->heartbeat_stall = true;
+	XOCL_GETTIME(&time);
+	xmc->heartbeat_time = (u64)time.tv_sec;
+	safe_read32(xmc, XMC_HEARTBEAT_ERR_CODE_REG, (u32 *)&err_code);
+
+	xocl_warn(&xmc->pdev->dev, "%s(0x%x), last sensor id: 0x%x, sensor number: %d",
+		xmc_get_heartbeat_reason(err_code.xhe_error), *(u32 *)&err_code,
+		err_code.xhe_last_sensor_id,
+		err_code.xhe_sensor_no);
+}
+
 static int xmc_offline(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
@@ -3739,6 +3972,7 @@ static struct xocl_mb_funcs xmc_ops = {
 	.xmc_access             = xmc_access,
 	.clock_status		= clock_status_check,
 	.get_serial_num		= xmc_get_serial_num,
+	.sensor_status		= sensor_status_check,
 };
 
 static void xmc_unload_board_info(struct xocl_xmc *xmc)
@@ -3844,6 +4078,16 @@ static int xmc_mapio_by_name(struct xocl_xmc *xmc, struct resource *res)
 	xmc->range[id] = res->end - res->start + 1;
 
 	return 0;
+}
+
+static void inline xmc_enable_sensor_heartbeat(struct xocl_xmc *xmc)
+{
+
+	if (!is_heartbeat_supported(xmc))
+		return;
+
+	xmc->heartbeat_stall = false;
+	safe_read32(xmc, XMC_HEARTBEAT_REG, &xmc->heartbeat_count);
 }
 
 static int xmc_probe(struct platform_device *pdev)
@@ -3973,6 +4217,8 @@ static int xmc_probe(struct platform_device *pdev)
 		}
 	}
 
+	xmc_enable_sensor_heartbeat(xmc);
+
 	err = mgmt_sysfs_create_xmc(pdev);
 	if (err) {
 		xocl_err(&pdev->dev, "Create sysfs failed, err %d", err);
@@ -4085,7 +4331,7 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 	 * we need check and update the mbx offset.
 	 */
 	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
-	if (!val) {
+	if (!val || val == 0xdeadfa11) {
 		xocl_err(&xmc->pdev->dev, "CMC mailbox is not ready");
 		return -EIO;
 	}
@@ -4179,23 +4425,6 @@ static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 	return false;
 }
 
-static bool is_sc_fixed(struct xocl_xmc *xmc)
-{
-	struct xmc_status status;
-	u32 xmc_core_version;
-
-	safe_read32(xmc, XMC_CORE_VERSION_REG, &xmc_core_version);
-	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
-
-	if (xmc_core_version >= XMC_CORE_SUPPORT_NOTUPGRADABLE &&
-	    !status.invalid_sc &&
-	    (status.sc_mode == XMC_SC_BSL_MODE_SYNCED_SC_NOT_UPGRADABLE ||
-	     status.sc_mode == XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE))
-		return true;
-
-	return false;
-}
-
 static int smartnic_cmc_access(struct platform_device *pdev,
 	enum xocl_xmc_flags flags)
 {
@@ -4263,7 +4492,6 @@ static void clock_status_check(struct platform_device *pdev, bool *latched)
 		}
 	}
 }
-
 
 static void xmc_get_serial_num(struct platform_device *pdev)
 {
@@ -4414,14 +4642,38 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		vfree(bdinfo_raw);
 	} else {
 
+		ktime_t now = ktime_get_boottime();
 		if (xmc->bdinfo_loaded &&
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
 			return 0;
-		} else {
-			vfree(xmc->bdinfo_raw);
-			xmc->bdinfo_raw = NULL;
 		}
+
+		/*
+		 * If bdinfo is not loaded, probably something uncommon has
+		 * happened. keep trying load boardinfo through mailbox doesn't
+		 * make sense. In this case, we limit the interval of load
+		 * boardinfo to 1s by default
+		 */
+		if (ktime_compare(now, xmc->bdinfo_retry) < 0)
+			return 0;
+		xmc->bdinfo_retry = ktime_add(now,
+			ktime_set(xmc->cache_expire_secs, 0));
+
+		vfree(xmc->bdinfo_raw);
+		xmc->bdinfo_raw = NULL;
+
+		/*
+		 * If boardinfo can't be read out, it is likely either PF
+		 * mailbox or the CMC mailbox timed out, don't try to read
+		 * it again and again in this same context, othereise, the
+		 * xocl driver may be considered as hang (120s no response)
+		 * defined by
+		 * /proc/sys/kernel/hung_task_timeout_secs"
+		 */
+		read_bdinfo_from_peer(xmc->pdev);
+		if (!xmc->bdinfo_raw)
+			return -EINVAL;
 
 		xmc_bdinfo(xmc->pdev, SER_NUM, (u32 *)xmc->serial_num);
 		xmc_bdinfo(xmc->pdev, MAC_ADDR0, (u32 *)xmc->mac_addr0);
@@ -4564,7 +4816,7 @@ xmc_qsfp_io_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_
 	mutex_lock(&xmc->mbx_lock);
 
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = CMC_OP_READ_QSFP_VALIDATE_LOW_SPEED_IO;
+	xmc->mbx_pkt.hdr.op = XPO_QSFP_LOW_SPEED_IO_READ;
 	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_io_rw_op);
 	xmc->mbx_pkt.qsfp_io.port = port;
 	ret = xmc_send_pkt(xmc);
@@ -4580,7 +4832,7 @@ xmc_qsfp_io_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_
 
 	if (xmc->base_addrs[IO_REG]) {
 		((u8 *)buffer)[0] = ioread8(xmc->base_addrs[IO_REG] +
-			xmc->mbx_offset + CMC_OP_QSFP_IO_OFFSET);
+			xmc->mbx_offset + CMC_QSFP_IO_DATA_OFFSET);
 	}
 	mutex_unlock(&xmc->mbx_lock);
 
@@ -4602,13 +4854,13 @@ xmc_qsfp_io_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 	if (count > CMC_OP_IO_CONTROL_MAXLEN) {
 		xocl_err(&xmc->pdev->dev, "cannot write more than %d bytes",
 			CMC_OP_IO_CONTROL_MAXLEN);
-		return 0;
+		return -EINVAL;
 	}
 
 	mutex_lock(&xmc->mbx_lock);
 
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = CMC_OP_WRITE_QSFP_VALIDATE_LOW_SPEED_IO;
+	xmc->mbx_pkt.hdr.op = XPO_QSFP_LOW_SPEED_IO_WRITE;
 	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_io_rw_op);
 	xmc->mbx_pkt.qsfp_io.port = port;
 	memcpy(xmc->mbx_pkt.qsfp_io.data, buffer, count);
@@ -4624,8 +4876,8 @@ xmc_qsfp_io_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 }
 
 static ssize_t
-xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
-	int lp, int up)
+xmc_qsfp_diag_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
+	int page, int level)
 {
 	u32 data_size = 0;
 	int ret = 0;
@@ -4640,11 +4892,11 @@ xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t c
 	mutex_lock(&xmc->mbx_lock);
 
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = CMC_OP_READ_QSFP_DIAGNOSTICS;
+	xmc->mbx_pkt.hdr.op = XPO_QSFP_DIAG_READ;
 	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_diag_read_op);
 	xmc->mbx_pkt.qsfp_diag_r.port = port;
-	xmc->mbx_pkt.qsfp_diag_r.upper_page = up;
-	xmc->mbx_pkt.qsfp_diag_r.lower_page = lp;
+	xmc->mbx_pkt.qsfp_diag_r.page = page;
+	xmc->mbx_pkt.qsfp_diag_r.level = level;
 	ret = xmc_send_pkt(xmc);
 	if (ret) {
 		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
@@ -4675,7 +4927,7 @@ xmc_qsfp_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t c
 
 	if (xmc->base_addrs[IO_REG]) {
 		xocl_memcpy_fromio(buffer, xmc->base_addrs[IO_REG] +
-			xmc->mbx_offset + CMC_OP_QSFP_DIAG_OFFSET, data_size);
+			xmc->mbx_offset + CMC_QSFP_DIAG_DATA_OFFSET, data_size);
 	}
 
 	mutex_unlock(&xmc->mbx_lock);
@@ -4686,20 +4938,77 @@ out:
 }
 
 static ssize_t
-xmc_qsfp_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count)
+xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
+	int page, int level)
 {
+	/* current protocl only support one byte */
+	u32 data_size = sizeof(u8);
 	int ret = 0;
-	size_t max_data_size;
 
 	if (!xmc_qsfp_supported(xmc))
 		return 0;
 
-	max_data_size = XMC_PKT_MAX_PAYLOAD_SZ * sizeof(u32) -
-		offsetof(struct xmc_pkt_qsfp_diag_write_op, data);
-	if (max_data_size > CMC_OP_WRITE_QSFP_MAXLEN)
-		max_data_size = CMC_OP_WRITE_QSFP_MAXLEN;
+	/* we don't limit the offset for reading */
+	xocl_dbg(&xmc->pdev->dev, "%s off %lld count %ld port %d, page %d, level %d\n",
+		__func__, off, count, port, page, level);
 
-	if (count > max_data_size) {
+	mutex_lock(&xmc->mbx_lock);
+
+	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
+	xmc->mbx_pkt.hdr.op = XPO_QSFP_I2C_READ;
+	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_byte_rw_op);
+	xmc->mbx_pkt.qsfp_byte.port = port;
+	xmc->mbx_pkt.qsfp_byte.page = page;
+	xmc->mbx_pkt.qsfp_byte.level = level;
+	xmc->mbx_pkt.qsfp_byte.offset = off / data_size;
+	ret = xmc_send_pkt(xmc);
+	if (ret) {
+		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
+		goto out;
+	}
+
+	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_qsfp_byte_rw_op);
+	ret = xmc_recv_pkt(xmc);
+	if (ret) {
+		xocl_info(&xmc->pdev->dev, "recv pkt ret %d", ret);
+		goto out;
+	}
+
+	if (xmc->base_addrs[IO_REG]) {
+		((u8 *)buffer)[0] = ioread8(xmc->base_addrs[IO_REG] +
+			xmc->mbx_offset + CMC_QSFP_BYTE_DATA_OFFSET);
+
+		xocl_dbg(&xmc->pdev->dev, "buffer 0x%x", buffer[0]);
+	}
+
+	mutex_unlock(&xmc->mbx_lock);
+	return data_size;
+out:
+	mutex_unlock(&xmc->mbx_lock);
+	return 0;
+}
+
+static inline ssize_t
+xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
+	int page, int level)
+{
+	int ret = 0;
+	size_t max_data_size;
+	/* current protocl only support one byte */
+	u32 data_size = sizeof(u8);
+
+	if (!xmc_qsfp_supported(xmc))
+		return 0;
+
+	/* we don't limit the offset for reading */
+	xocl_dbg(&xmc->pdev->dev, "%s off %lld count %ld port %d, page %d, level %d\n",
+		__func__, off, count, port, page, level);
+
+	max_data_size = XMC_PKT_MAX_PAYLOAD_SZ * sizeof(u32) -
+		offsetof(struct xmc_pkt_qsfp_byte_rw_op, data);
+
+	/* Sanity check payload size */
+	if (data_size > max_data_size) {
 		xocl_err(&xmc->pdev->dev, "cannot write more then %ld bytes",
 			max_data_size);
 		return -EINVAL;
@@ -4708,17 +5017,22 @@ xmc_qsfp_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t 
 	mutex_lock(&xmc->mbx_lock);
 
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = CMC_OP_WRITE_QSFP_CONTROL;
+	xmc->mbx_pkt.hdr.op = XPO_QSFP_I2C_WRITE;
 	xmc->mbx_pkt.hdr.payload_sz =
-		offsetof(struct xmc_pkt_qsfp_diag_write_op, data) + count;
-	xmc->mbx_pkt.qsfp_diag_w.port = port;
-	xmc->mbx_pkt.qsfp_diag_w.data_size = (u32)count;
-	memcpy(xmc->mbx_pkt.qsfp_diag_w.data, buffer, count);
+		offsetof(struct xmc_pkt_qsfp_byte_rw_op, data) + count;
+	xmc->mbx_pkt.qsfp_byte.port = port;
+	xmc->mbx_pkt.qsfp_byte.page = page;
+	xmc->mbx_pkt.qsfp_byte.level = level;
+	xmc->mbx_pkt.qsfp_byte.offset = off / data_size;
+	memcpy(xmc->mbx_pkt.qsfp_byte.data, buffer, data_size);
+
+	xocl_dbg(&xmc->pdev->dev, "write 0x%x\n", buffer[0]);
+
 	ret = xmc_send_pkt(xmc);
 	if (ret)
 		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
 	else
-		ret = count;
+		ret = data_size;
 
 	mutex_unlock(&xmc->mbx_lock);
 

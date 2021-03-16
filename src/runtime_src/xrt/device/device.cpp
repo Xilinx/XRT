@@ -17,7 +17,6 @@
 
 #include "xrt/util/task.h"
 #include "xrt/util/event.h"
-#include "xrt/scheduler/command.h"
 
 #include <future>
 #include <cstring> // for std::memset
@@ -35,7 +34,12 @@ void
 device::
 close()
 {
-  purge_device_command_freelist(this); // command.h
+  if (!m_close_callbacks.empty()) {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    for (auto& cb : m_close_callbacks)
+      cb();
+  }
+
   m_hal->close();
 }
 

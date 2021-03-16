@@ -91,6 +91,10 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_data_retention(xclDeviceHandle hdl, uint32_t* value);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_pcie_info(xclDeviceHandle hdl, XCLMGMT_IOC_DEVICE_PCI_INFO* value);
+
 } // mgmtpf
 
 #endif

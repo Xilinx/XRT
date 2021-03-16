@@ -317,7 +317,7 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 //	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
 	struct platform_device  *pdev = p2p->pdev;
 	struct device *dev = &pdev->dev;
-	struct resource res;
+	struct resource res = { 0 };
 	struct percpu_ref *pref = &chk->xpmc_percpu_ref;
 	int ret = 0;
 

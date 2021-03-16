@@ -22,6 +22,7 @@
 
 // For HAL applications
 #include "core/common/xrt_profiling.h"
+#include "core/common/message.h"
 
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
 
@@ -82,6 +83,7 @@ namespace xdp {
       //  do a final flush of our devices, then write
       //  all of our writers, then finally unregister ourselves
       //  from the database.
+
       for (auto o : offloaders)
       {
         auto offloader = std::get<0>(o.second) ;
@@ -98,11 +100,21 @@ namespace xdp {
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         }
 
+	if (offloader->continuous_offload())
+        {
+	  offloader->stop_offload() ;
+	}
+	else
+	{
+	  offloader->read_trace() ;
+	  offloader->read_trace_end() ;
+	}
       }
-      for (auto w : writers)
-      {
-        w->write(false) ;
-      }
+
+      // Also, store away the counter results
+      readCounters() ;
+
+      XDPPlugin::endWrite(false);
       db->unregisterPlugin(this) ;
     }
 
@@ -137,8 +149,20 @@ namespace xdp {
 
     if (offloaders.find(deviceId) != offloaders.end())
     {
-      std::get<0>(offloaders[deviceId])->read_trace() ;
-    }    
+      auto offloader = std::get<0>(offloaders[deviceId]) ;
+      if (offloader->continuous_offload())
+      {
+	offloader->stop_offload() ;
+      }
+      else
+      {
+	offloader->read_trace() ;
+      }
+    }
+    readCounters() ;
+
+    clearOffloader(deviceId) ;
+    (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(deviceId) ;
   }
 
   void HALDeviceOffloadPlugin::updateDevice(void* userHandle)
@@ -159,6 +183,18 @@ namespace xdp {
     void* ownedHandle = deviceIdToHandle[deviceId] ;
   
     clearOffloader(deviceId); 
+
+    if (!(db->getStaticInfo()).validXclbin(userHandle)) {
+      std::string msg =
+	"Device profiling is only supported on xclbins built using " ;
+      msg += std::to_string((db->getStaticInfo()).earliestSupportedToolVersion()) ;
+      msg += " tools or later.  To enable device profiling please rebuild." ;
+
+      xrt_core::message::send(xrt_core::message::severity_level::warning,
+			      "XRT",
+			      msg) ;
+      return ;
+    }
     
     // Update the static database with all the information that
     //  will be needed later
@@ -181,7 +217,7 @@ namespace xdp {
         devInterface->setDevice(new HalDevice(ownedHandle)) ;
         devInterface->readDebugIPlayout() ;      
       }
-      catch(std::exception& e)
+      catch(std::exception& /*e*/)
       {
         // Read debug IP layout could throw an exception
         delete devInterface ;
@@ -198,6 +234,12 @@ namespace xdp {
     configureCtx(deviceId, devInterface) ;
 
     devInterface->clockTraining() ;
+    devInterface->startCounters() ;
+
+    // Once the device has been set up, add additional information to 
+    //  the static database
+    (db->getStaticInfo()).setMaxReadBW(deviceId, devInterface->getMaxBwRead()) ;
+    (db->getStaticInfo()).setMaxWriteBW(deviceId, devInterface->getMaxBwWrite());
   }
   
 } // end namespace xdp

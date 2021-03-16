@@ -2,18 +2,31 @@
 #include "ParameterSectionData.h"
 #include "XclBinClass.h"
 
+#include "globals.h"
+#include <boost/filesystem.hpp>
+
 TEST(Serialization, ReadXclbin_2018_2) {
    XclBin xclBin;
   
-   xclBin.readXclBinBinary("unittests/test_data/sample_1_2018.2.xclbin", false /* bMigrateForward */);
+   // Get the file of interest
+   boost::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
+   sampleXclbin /= "sample_1_2018.2.xclbin";
+
+   xclBin.readXclBinBinary(sampleXclbin.string(), false /* bMigrateForward */);
 }
 
 TEST(Serialization, ReadWriteReadXclbin) {
    XclBin xclBin;
   
-   xclBin.readXclBinBinary("unittests/test_data/sample_1_2018.2.xclbin", false /* bMigrateForward */);
-   xclBin.writeXclBinBinary("unittests/ReadWriteReadXclbin.xclbin", true /* Skip UUID insertion */);
+   // Get the file of interest
+   boost::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
+   sampleXclbin /= ("sample_1_2018.2.xclbin");
+  
+   xclBin.readXclBinBinary(sampleXclbin.string(), false /* bMigrateForward */);
+
+
+   xclBin.writeXclBinBinary("ReadWriteReadXclbin.xclbin", true /* Skip UUID insertion */);
 
    XclBin xclBin2;
-   xclBin2.readXclBinBinary("unittests/ReadWriteReadXclbin.xclbin", false /* bMigrateForward */);
+   xclBin2.readXclBinBinary("ReadWriteReadXclbin.xclbin", false /* bMigrateForward */);
 }

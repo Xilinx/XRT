@@ -56,6 +56,14 @@ XRT_CORE_COMMON_EXPORT
 bool
 is_imported(const xrt::bo& bo);
 
+XRT_CORE_COMMON_EXPORT
+bool
+is_aligned_ptr(const void* ptr);
+
+XRT_CORE_COMMON_EXPORT
+size_t
+alignment();
+
 }} // namespace bo, xrt_core
 
 #endif

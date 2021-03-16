@@ -244,7 +244,7 @@ static int xclmgmt_get_buddy_cb(struct device *dev, void *data)
 	 */
 	if (!src_xdev || !dev || to_pci_dev(dev)->vendor != 0x10ee ||
 	   	XOCL_DEV_ID(to_pci_dev(dev)) ==
-		XOCL_DEV_ID(src_xdev->core.pdev) ||
+		XOCL_DEV_ID(src_xdev->core.pdev) || !dev->driver ||
 		strcmp(dev->driver->name, "xclmgmt")) 
 		return 0;
 
@@ -369,6 +369,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	xocl_thread_start(lro);
 
 	xocl_clear_pci_errors(lro);
+	store_pcie_link_info(lro);
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
 	else if (!force)

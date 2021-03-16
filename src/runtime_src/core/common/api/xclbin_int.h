@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -24,26 +24,25 @@
 namespace xrt_core {
 namespace xclbin_int {
 
-/**
- * is_valid_or_error() - Returns the validity of the xrtXclbinHandle handle.
- *
- * @handle:        Xclbin handle
- *
- * Throws if @handle is invalid
- */
+// is_valid_or_error() - Throw if invalid handle
 void
 is_valid_or_error(xrtXclbinHandle handle);
 
-/**
- * get_xclbin_data() - Returns the data of the xrtXclbinHandle handle.
- *
- * @handle:        Xclbin handle
- * Return:         Data of the @handle
- *
- * Throws if @handle is invalid.
- */
-const std::vector<char>&
-get_xclbin_data(xrtXclbinHandle handle);
+// get_axlf() - Retrieve complete axlf from handle
+const axlf*
+get_axlf(xrtXclbinHandle);
+
+// get_xclbin() - Convert handle to object
+xrt::xclbin
+get_xclbin(xrtXclbinHandle);
+
+// get_axlf_section() - Retrieve specified section
+std::pair<const char*, size_t>
+get_axlf_section(const xrt::xclbin& xclbin, axlf_section_kind kind);
+
+// read_xclbin() - Read specified xclbin file 
+std::vector<char>
+read_xclbin(const std::string& fnm);
 
 } //xclbin_int
 }; // xrt_core

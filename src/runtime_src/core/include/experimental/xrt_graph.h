@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  * Author(s): Larry Liu
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
@@ -44,6 +44,8 @@ class graph_impl;
 class graph
 {
 public:
+  enum class access_mode : uint8_t { exclusive = 0, primary = 1, shared = 2 };
+
   /**
    * graph() - Constructor from a device, xclbin and graph name
    *
@@ -215,9 +217,41 @@ extern "C" {
  *
  * An xclbin with the specified graph must have been loaded prior
  * to calling this function.
+ *
+ * The graph is opened with primary access by default. Fails if the
+ * graph is already opened with exclusive or primary access.
  */
 xrtGraphHandle
 xrtGraphOpen(xrtDeviceHandle handle, const xuid_t xclbinUUID, const char *graphName);
+
+/**
+ * xrtGraphOpenExclusive() - Open a graph and obtain its handle.
+ *
+ * @handle:       Handle to the device with the graph.
+ * @xclbinUUID:   UUID of the xclbin with the specified graph.
+ * @graphNmae:    The name of graph to be open.
+ * Return:        Handle to representing the graph. NULL for error.
+ *
+ * Same as @xrtGraphOpen(), but opens graph with exclusive access.
+ * Fails if the graph is already opened with exclusive, primary or
+ * shared access.
+ */
+xrtGraphHandle
+xrtGraphOpenExclusive(xrtDeviceHandle handle, const xuid_t xclbinUUID, const char *graphName);
+
+/**
+ * xrtGraphOpenShared() - Open a graph and obtain its handle.
+ *
+ * @handle:       Handle to the device with the graph.
+ * @xclbinUUID:   UUID of the xclbin with the specified graph.
+ * @graphNmae:    The name of graph to be open.
+ * Return:        Handle to representing the graph. NULL for error.
+ *
+ * Same as @xrtGraphOpen(), but opens graph with shared access.
+ * Fails if the graph is already opened with exclusive access.
+ */
+xrtGraphHandle
+xrtGraphOpenShared(xrtDeviceHandle handle, const xuid_t xclbinUUID, const char *graphName);
 
 /**
  * xrtGraphClose() - Close an open graph.

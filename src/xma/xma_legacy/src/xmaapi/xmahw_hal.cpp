@@ -79,10 +79,10 @@ int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *buffer)
 {
     int rc;
 
-    printf("load_xclbin_to_device handle = %p\n", dev_handle);
+    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "load_xclbin to device\n");
     rc = xclLoadXclBin(dev_handle, (const xclBin*)buffer);
     if (rc != 0)
-        printf("xclLoadXclBin failed rc=%d\n", rc);
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "load_xclbin failed. rc=%d\n", rc);
 
     return rc;
 }

@@ -98,10 +98,11 @@
 	#define XOCL_USEC tv_usec
 #endif
 
-/* drm_gem_object_put_unlocked and drm_gem_object_get were introduced with Linux
- * 4.12 and backported to Red Hat 7.5.
+/*
+ * drm_gem_object_put_unlocked and drm_gem_object_get were introduced with Linux
+ * 4.12 and backported to Red Hat 7.5. drm_gem_object_put_unlocked is gone since 5.9.
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
 	#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put
 	#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_get
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
@@ -216,7 +217,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define xocl_warn(dev, fmt, args...)			\
 	dev_warn(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_info(dev, fmt, args...)			\
-	dev_info(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
+	dev_printk(KERN_DEBUG, PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_dbg(dev, fmt, args...)			\
 	dev_dbg(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 
@@ -841,6 +842,7 @@ struct xocl_mb_funcs {
 	int (*xmc_access)(struct platform_device *pdev, enum xocl_xmc_flags flags);
 	void (*clock_status)(struct platform_device *pdev, bool *latched);
 	void (*get_serial_num)(struct platform_device *pdev);
+	void (*sensor_status)(struct platform_device *pdev);
 };
 
 #define	MB_DEV(xdev)		\
@@ -876,6 +878,9 @@ struct xocl_mb_funcs {
 
 #define xocl_xmc_get_serial_num(xdev)		\
 	(MB_CB(xdev, get_serial_num) ? MB_OPS(xdev)->get_serial_num(MB_DEV(xdev)) : -ENODEV)
+
+#define xocl_xmc_sensor_status(xdev)		\
+	(MB_CB(xdev, sensor_status) ? MB_OPS(xdev)->sensor_status(MB_DEV(xdev)) : -ENODEV)
 /* ERT FW callbacks */
 #define ERT_DEV(xdev)							\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, XOCL_MB_ERT).pldev
@@ -942,6 +947,8 @@ struct xocl_ps_funcs {
 #define	xocl_ps_check_healthy(xdev)			\
 	(PS_CB(xdev, check_healthy) ? PS_OPS(xdev)->check_healthy(PS_DEV(xdev)) : true)
 
+#define xocl_ps_sched_on(xdev)	\
+	(!xocl_mb_sched_on(xdev) && (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)))
 
 /* dna callbacks */
 struct xocl_dna_funcs {
@@ -1096,12 +1103,17 @@ enum data_kind {
 	MAC_CONT_NUM,
 	MAC_ADDR_FIRST,
 	XMC_POWER_WARN,
+	XMC_QSPI_STATUS,
+	XMC_HEARTBEAT_COUNT,
+	XMC_HEARTBEAT_ERR_TIME,
+	XMC_HEARTBEAT_ERR_CODE,
 };
 
 enum mb_kind {
 	DAEMON_STATE,
 	CHAN_STATE,
 	CHAN_SWITCH,
+	CHAN_DISABLE,
 	COMM_ID,
 	VERSION,
 };
@@ -1264,6 +1276,7 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid);
+	bool (*ocl_bitstream_is_locked)(struct platform_device *pdev);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
 	int (*get_xclbin_metadata)(struct platform_device *pdev,
@@ -1327,6 +1340,10 @@ enum {
 	(ICAP_CB(xdev, ocl_unlock_bitstream) ?				\
 	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid) :	\
 	-ENODEV)
+#define	xocl_icap_bitstream_is_locked(xdev)			\
+	(ICAP_CB(xdev, ocl_bitstream_is_locked) ?			\
+	ICAP_OPS(xdev)->ocl_bitstream_is_locked(ICAP_DEV(xdev)) :	\
+	-ENODEV)
 #define xocl_icap_refresh_addrs(xdev)					\
 	(ICAP_CB(xdev, refresh_addrs) ?					\
 	ICAP_OPS(xdev)->refresh_addrs(ICAP_DEV(xdev)) : NULL)
@@ -1361,6 +1378,8 @@ enum {
 	(xocl_icap_get_xclbin_metadata(xdev, CONNECTIVITY_AXLF, (void **)&conn))
 #define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
 	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
+#define XOCL_GET_PS_KERNEL(xdev, ps_kernel)						\
+	(xocl_icap_get_xclbin_metadata(xdev, SOFT_KERNEL, (void **)&ps_kernel))
 
 
 #define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
@@ -1372,6 +1391,8 @@ enum {
 #define XOCL_PUT_CONNECTIVITY(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_XCLBIN_ID(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_PS_KERNEL(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 
 #define XOCL_IS_DDR_USED(topo, ddr) 			\
@@ -1696,6 +1717,7 @@ struct xocl_ert_versal_funcs {
 struct xocl_ert_user_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (* configured)(struct platform_device *pdev);
+	int32_t (* gpio_cfg)(struct platform_device *pdev, enum ert_gpio_cfg type);
 };
 #define	ERT_USER_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).pldev
 #define ERT_USER_OPS(xdev)  \
@@ -1707,38 +1729,26 @@ struct xocl_ert_user_funcs {
 	(ERT_USER_CB(xdev, configured) ? \
 	 ERT_USER_OPS(xdev)->configured(ERT_USER_DEV(xdev)) : \
 	 -ENODEV)
+#define xocl_ert_user_mb_wakeup(xdev) \
+	(ERT_USER_CB(xdev, gpio_cfg) ? \
+	 ERT_USER_OPS(xdev)->gpio_cfg(ERT_USER_DEV(xdev), MB_WAKEUP) : \
+	 -ENODEV)
+#define xocl_ert_user_mb_sleep(xdev) \
+	(ERT_USER_CB(xdev, gpio_cfg) ? \
+	 ERT_USER_OPS(xdev)->gpio_cfg(ERT_USER_DEV(xdev), MB_SLEEP) : \
+	 -ENODEV)
+#define xocl_ert_user_cu_intr_cfg(xdev) \
+	(ERT_USER_CB(xdev, gpio_cfg) ? \
+	 ERT_USER_OPS(xdev)->gpio_cfg(ERT_USER_DEV(xdev), INTR_TO_CU) : \
+	 -ENODEV)
+#define xocl_ert_user_ert_intr_cfg(xdev) \
+	(ERT_USER_CB(xdev, gpio_cfg) ? \
+	 ERT_USER_OPS(xdev)->gpio_cfg(ERT_USER_DEV(xdev), INTR_TO_ERT) : \
+	 -ENODEV)
 
-struct xocl_ert_30_funcs {
-	struct xocl_subdev_funcs common_funcs;
-	int (* configured)(struct platform_device *pdev);
-	uint32_t (* gpio_cfg)(struct platform_device *pdev, enum ert_gpio_cfg type);
-};
-#define	ERT_30_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_30).pldev
-#define ERT_30_OPS(xdev)  \
-	((struct xocl_ert_30_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ERT_30).ops)
-#define ERT_30_CB(xdev, cb)  \
-	(ERT_30_DEV(xdev) && ERT_30_OPS(xdev) && ERT_30_OPS(xdev)->cb)
+#define xocl_ert_on(xdev) \
+	(xocl_mb_sched_on(xdev) || xocl_ps_sched_on(xdev))
 
-#define xocl_ert_30_configured(xdev) \
-	(ERT_30_CB(xdev, configured) ? \
-	 ERT_30_OPS(xdev)->configured(ERT_30_DEV(xdev)) : \
-	 -ENODEV)
-#define xocl_ert_30_mb_wakeup(xdev) \
-	(ERT_30_CB(xdev, gpio_cfg) ? \
-	 ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), MB_WAKEUP) : \
-	 -ENODEV)
-#define xocl_ert_30_mb_sleep(xdev) \
-	(ERT_30_CB(xdev, gpio_cfg) ? \
-	 ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), MB_SLEEP) : \
-	 -ENODEV)
-#define xocl_ert_30_cu_intr_cfg(xdev) \
-	(ERT_30_CB(xdev, gpio_cfg) ? \
-	 ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), INTR_TO_CU) : \
-	 -ENODEV)
-#define xocl_ert_30_ert_intr_cfg(xdev) \
-	(ERT_30_CB(xdev, gpio_cfg) ? \
-	 ERT_30_OPS(xdev)->gpio_cfg(ERT_30_DEV(xdev), INTR_TO_ERT) : \
-	 -ENODEV)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -2275,9 +2285,6 @@ void xocl_fini_msix_xdma(void);
 
 int __init xocl_init_ert_user(void);
 void xocl_fini_ert_user(void);
-
-int __init xocl_init_ert_30(void);
-void xocl_fini_ert_30(void);
 
 int __init xocl_init_ert_versal(void);
 void xocl_fini_ert_versal(void);

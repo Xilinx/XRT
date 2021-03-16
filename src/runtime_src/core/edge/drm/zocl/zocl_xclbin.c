@@ -2,7 +2,7 @@
 /*
  * MPSoC based OpenCL accelerators Compute Units.
  *
- * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    David Zhang <davidzha@xilinx.com>
@@ -15,6 +15,7 @@
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_aie.h"
+#include "zocl_sk.h"
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
@@ -77,10 +78,10 @@ zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length)
 	}
 
 	/* Freeze PR ISOLATION IP for bitstream download */
-	iowrite32(0x0, map);
+	iowrite32(zdev->pr_isolation_freeze, map);
 	err = zocl_fpga_mgr_load(zdev, buffer, length, FPGA_MGR_PARTIAL_RECONFIG);
 	/* Unfreeze PR ISOLATION IP */
-	iowrite32(0x3, map);
+	iowrite32(zdev->pr_isolation_unfreeze, map);
 
 	iounmap(map);
 	return err;
@@ -127,6 +128,73 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 		/* 0 is for full bitstream */
 		return zocl_fpga_mgr_load(zdev, buffer, length, 0);
 	}
+}
+
+static int
+zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
+{
+	struct axlf_section_header *header = NULL;
+	char *xclbin = (char *)axlf;
+	struct soft_krnl *sk = zdev->soft_kernel;
+	int count, sec_idx = 0, scu_idx = 0;
+	int i, ret;
+
+	if (!sk) {
+		DRM_ERROR("%s Failed: no softkernel support\n", __func__);
+		return -ENODEV;
+	}
+
+	mutex_lock(&sk->sk_lock);
+	for (i = 0; i < sk->sk_nimg; i++)
+		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&sk->sk_img[i].si_bo->gem_base);
+	kfree(sk->sk_img);
+	sk->sk_nimg = 0;
+	sk->sk_img = NULL;
+	mutex_unlock(&sk->sk_lock);
+
+	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
+	if (count == 0)
+		return 0;
+
+	mutex_lock(&sk->sk_lock);
+
+	sk->sk_nimg = count;
+	sk->sk_img = kzalloc(sizeof(struct scu_image) * count, GFP_KERNEL);
+
+	header = xrt_xclbin_get_section_hdr_next(axlf, SOFT_KERNEL, header);
+	while (header) {
+		struct soft_kernel *sp =
+		    (struct soft_kernel *)&xclbin[header->m_sectionOffset];
+		char *begin = (char *)sp;
+		struct scu_image *sip = &sk->sk_img[sec_idx++];
+
+		sip->si_start = scu_idx;
+		sip->si_end = scu_idx + sp->m_num_instances - 1;
+
+		sip->si_bo = zocl_drm_create_bo(zdev->ddev, sp->m_image_size,
+		    ZOCL_BO_FLAGS_CMA);
+		if (IS_ERR(sip->si_bo)) {
+			ret = PTR_ERR(sip->si_bo);
+			DRM_ERROR("%s Failed to allocate BO: %d\n",
+			    __func__, ret);
+			mutex_unlock(&sk->sk_lock);
+			return ret;
+		}
+
+		sip->si_bo->flags = ZOCL_BO_FLAGS_CMA;
+		sip->si_bohdl = -1;
+		memcpy(sip->si_bo->cma_base.vaddr, begin + sp->m_image_offset,
+		    sp->m_image_size);
+
+		scu_idx += sp->m_num_instances;
+
+		header = xrt_xclbin_get_section_hdr_next(axlf, SOFT_KERNEL,
+		    header);
+	}
+
+	mutex_unlock(&sk->sk_lock);
+
+	return 0;
 }
 
 static int
@@ -368,6 +436,7 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	size_t num_of_sections;
 	uint64_t size = 0;
 	int ret = 0;
+	int count;
 
 	if (memcmp(axlf_head->m_magic, "xclbin2", 8)) {
 		DRM_INFO("Invalid xclbin magic string");
@@ -398,12 +467,25 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 
 	size = zocl_offsetof_sect(BITSTREAM_PARTIAL_PDI, &section_buffer,
 	    axlf, xclbin);
-	if (size > 0)
+	if (size > 0) {
 		ret = zocl_load_partial(zdev, section_buffer, size);
+		if (ret)
+			goto out;
+	}
 
 	size = zocl_offsetof_sect(PDI, &section_buffer, axlf, xclbin);
-	if (size > 0)
+	if (size > 0) {
 		ret = zocl_load_partial(zdev, section_buffer, size);
+		if (ret)
+			goto out;
+	}
+
+	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
+	if (count > 0) {
+		ret = zocl_load_pskernel(zdev, axlf);
+		if (ret)
+			goto out;
+	}
 
 	/* preserve uuid, avoid double download */
 	zocl_xclbin_set_uuid(zdev, &axlf_head->m_header.uuid);
@@ -556,6 +638,18 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 			ret = -EBUSY;
 			goto out0;
 		}
+	} else {
+		/* 1. We locked &zdev->zdev_xclbin_lock so that no new contexts
+		 * can be opened and/or closed
+		 * 2. A opened context would lock bitstream and hold it.
+		 * 3. If all contexts are closed, new kds would make sure all
+		 * relative exec BO are released
+		 */
+		if (zocl_xclbin_refcount(zdev) > 0) {
+			DRM_ERROR("Current xclbin is in-use, can't change");
+			ret = -EBUSY;
+			goto out0;
+		}
 	}
 
 	/* uuid is null means first time load xclbin */
@@ -606,11 +700,11 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
 		if (ret)
 			goto out0;
-	} else if (axlf_obj->za_flags == DRM_ZOCL_PLATFORM_FLAT && 
-		   axlf_head.m_header.m_mode == XCLBIN_FLAT && 
+	} else if (axlf_obj->za_flags == DRM_ZOCL_PLATFORM_FLAT &&
+		   axlf_head.m_header.m_mode == XCLBIN_FLAT &&
 		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
 		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
-		/* 
+		/*
 		 * Load full bitstream, enabled in xrt runtime config
 		 * and xclbin has full bitstream and its not hw emulation
 		 */
@@ -791,6 +885,58 @@ int zocl_unlock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id)
 
 	mutex_lock(&zdev->zdev_xclbin_lock);
 	ret = zocl_xclbin_release(zdev, id);
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+
+	return ret;
+}
+
+int
+zocl_graph_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	xuid_t *zdev_xuid, *ctx_xuid;
+	u32 gid = ctx->graph_id;
+	u32 flags = ctx->flags;
+	int ret;
+
+	mutex_lock(&zdev->zdev_xclbin_lock);
+
+	ctx_xuid = vmalloc(ctx->uuid_size);
+	if (!ctx_xuid) {
+		mutex_unlock(&zdev->zdev_xclbin_lock);
+		return -ENOMEM;
+	}
+
+	ret = copy_from_user(ctx_xuid, (void *)(uintptr_t)ctx->uuid_ptr,
+	    ctx->uuid_size);
+	if (ret)
+		goto out;
+
+	zdev_xuid = (xuid_t *)zdev->zdev_xclbin->zx_uuid;
+
+	if (!zdev_xuid || !uuid_equal(zdev_xuid, ctx_xuid)) {
+		DRM_ERROR("try to allocate Graph CTX with wrong xclbin %pUB",
+		    ctx_xuid);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = zocl_aie_graph_alloc_context(zdev, gid, flags, client);
+out:
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+	vfree(ctx_xuid);
+	return ret;
+}
+
+int
+zocl_graph_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	u32 gid = ctx->graph_id;
+	int ret;
+
+	mutex_lock(&zdev->zdev_xclbin_lock);
+	ret = zocl_aie_graph_free_context(zdev, gid, client);
 	mutex_unlock(&zdev->zdev_xclbin_lock);
 
 	return ret;
@@ -1019,6 +1165,9 @@ zocl_xclbin_cus_support_intr(struct drm_zocl_dev *zdev)
 
 	for (i = 0; i < zdev->ip->m_count; ++i) {
 		ip = &zdev->ip->m_ip_data[i];
+		if (xclbin_protocol(ip->properties) == AP_CTRL_NONE) {
+			continue;
+		}
 		if (!(ip->properties & 0x1)) {
 			return false;
 		}

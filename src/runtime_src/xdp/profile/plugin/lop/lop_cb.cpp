@@ -28,7 +28,7 @@ namespace xdp {
 
   static void lop_cb_log_function_start(const char* functionName,
 					long long queueAddress,
-					unsigned int functionID)
+					unsigned long long int functionID)
   {
     // Since these are OpenCL level events, we must use the OpenCL
     //  level time functions to get the proper value of time zero.
@@ -50,7 +50,7 @@ namespace xdp {
 
   static void lop_cb_log_function_end(const char* functionName,
 				      long long queueAddress,
-				      unsigned int functionID)
+				      unsigned long long int functionID)
   {
     double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
@@ -71,7 +71,8 @@ namespace xdp {
     VPDatabase* db = lopPluginInstance.getDatabase() ;
     
     uint64_t start = 0 ;
-    if (!isStart) start = (db->getDynamicInfo()).matchingStart(XRTEventId) ;
+    uint64_t lopEventId = LOP_EVENT_MASK | (uint64_t)(XRTEventId) ;
+    if (!isStart) start = (db->getDynamicInfo()).matchingStart(lopEventId) ;
 
     VTFEvent* event = new LOPBufferTransfer(start,
 					    timestamp,
@@ -79,7 +80,7 @@ namespace xdp {
 
     (db->getDynamicInfo()).addEvent(event) ;
     if (isStart)
-      (db->getDynamicInfo()).markStart(XRTEventId, event->getEventId()) ;
+      (db->getDynamicInfo()).markStart(lopEventId, event->getEventId()) ;
   }
 
   static void lop_write(unsigned int XRTEventId, bool isStart)
@@ -88,15 +89,15 @@ namespace xdp {
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
     uint64_t start = 0 ;
-
-    if (!isStart) start = (db->getDynamicInfo()).matchingStart(XRTEventId) ;
+    uint64_t lopEventId = LOP_EVENT_MASK | (uint64_t)(XRTEventId) ;
+    if (!isStart) start = (db->getDynamicInfo()).matchingStart(lopEventId) ;
 
     VTFEvent* event = new LOPBufferTransfer(start,
 					    timestamp,
 					    LOP_WRITE_BUFFER) ;
     (db->getDynamicInfo()).addEvent(event) ;
     if (isStart)
-      (db->getDynamicInfo()).markStart(XRTEventId, event->getEventId()) ;
+      (db->getDynamicInfo()).markStart(lopEventId, event->getEventId()) ;
   }
 
   static void lop_kernel_enqueue(unsigned int XRTEventId, bool isStart)
@@ -105,14 +106,14 @@ namespace xdp {
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
     uint64_t start = 0 ;
-
-    if (!isStart) start = (db->getDynamicInfo()).matchingStart(XRTEventId) ;
+    uint64_t lopEventId = LOP_EVENT_MASK | (uint64_t)(XRTEventId) ;
+    if (!isStart) start = (db->getDynamicInfo()).matchingStart(lopEventId) ;
 
     VTFEvent* event = new LOPKernelEnqueue(start, timestamp) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
     if (isStart)
-      (db->getDynamicInfo()).markStart(XRTEventId, event->getEventId()) ;
+      (db->getDynamicInfo()).markStart(lopEventId, event->getEventId()) ;
   }
 
 } // end namespace xdp
@@ -124,14 +125,14 @@ namespace xdp {
 
 extern "C"
 void lop_function_start(const char* functionName, long long queueAddress,
-			unsigned int functionID)
+			unsigned long long int functionID)
 {
   xdp::lop_cb_log_function_start(functionName, queueAddress, functionID) ;
 }
 
 extern "C"
 void lop_function_end(const char* functionName, long long queueAddress,
-		      unsigned int functionID)
+		      unsigned long long int functionID)
 {
   xdp::lop_cb_log_function_end(functionName, queueAddress, functionID) ;
 }

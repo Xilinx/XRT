@@ -202,14 +202,14 @@ get_stall_trace()
 inline bool
 get_timeline_trace()
 {
-  static bool value = get_profile() && detail::get_bool_value("Debug.timeline_trace",false);
+  static bool value = detail::get_bool_value("Debug.timeline_trace",false);
   return value;
 }
 
 inline bool
 get_continuous_trace()
 {
-  static bool value = get_profile() && detail::get_bool_value("Debug.continuous_trace",false);
+  static bool value = detail::get_bool_value("Debug.continuous_trace",false);
   return value;
 }
 
@@ -217,6 +217,13 @@ inline unsigned int
 get_continuous_trace_interval_ms()
 {
   static unsigned int value = detail::get_uint_value("Debug.continuous_trace_interval_ms",10);
+  return value;
+}
+
+inline unsigned int
+get_trace_dump_interval_s()
+{
+  static unsigned int value = detail::get_uint_value("Debug.trace_dump_interval_s",5);
   return value;
 }
 
@@ -242,9 +249,41 @@ get_profile_api()
 }
 
 inline bool
-get_xrt_profile()
+get_xrt_trace()
 {
-  static bool value = detail::get_bool_value("Debug.xrt_profile", false);
+  static bool value = detail::get_bool_value("Debug.xrt_trace", false);
+  return value;
+}
+
+inline bool
+get_native_xrt_trace()
+{
+  // Temporarily disabling
+  return false;
+  /*
+  static bool value = detail::get_bool_value("Debug.native_xrt_trace", false);
+  return value;
+  */
+}
+
+inline bool
+get_opencl_trace()
+{
+  static bool value = detail::get_bool_value("Debug.opencl_trace", false);
+  return value;
+}
+
+inline bool
+get_opencl_summary()
+{
+  static bool value = detail::get_bool_value("Debug.opencl_summary", false);
+  return value;
+}
+
+inline bool
+get_opencl_device_counter()
+{
+  static bool value = (get_profile()) ? true : detail::get_bool_value("Debug.opencl_device_counter", false);
   return value;
 }
 
@@ -474,6 +513,13 @@ inline bool
 get_feature_toggle(const std::string& feature)
 {
   return detail::get_bool_value(feature.c_str(),false);
+}
+
+inline unsigned int
+get_noop_completion_delay_us()
+{
+  static unsigned int delay = detail::get_uint_value("Runtime.noop_completion_delay_us", 0);
+  return delay;
 }
 
 /**

@@ -729,3 +729,122 @@ mtx.unlock();
   xclSetupInstance_SET_PROTO_RESPONSE(); \
   FREE_BUFFERS();
 
+//-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-XRT Graph Api's-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
+//-----------xclGraphInit-----------------
+#define xclGraphInit_SET_PROTOMESSAGE(func_name,graphhandle,graphname) \
+    c_msg.set_gh(graphhandle); \
+    c_msg.set_graphname((char*)graphname);
+
+#define xclGraphInit_SET_PROTO_RESPONSE() \
+    ack = r_msg.ack();  
+    
+#define xclGraphInit_RETURN()\
+    //return size;
+
+#define xclGraphInit_RPC_CALL(func_name,graphhandle,graphname) \
+    RPC_PROLOGUE(func_name); \
+    xclGraphInit_SET_PROTOMESSAGE(func_name,graphhandle,graphname); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclGraphInit_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclGraphInit_RETURN();
+
+//-----------xclGraphRun-----------------
+#define xclGraphRun_SET_PROTOMESSAGE(func_name,graphhandle,iterations) \
+    c_msg.set_gh(graphhandle); \
+    c_msg.set_iterations(iterations);
+
+#define xclGraphRun_SET_PROTO_RESPONSE() \
+    ack = r_msg.ack();  
+
+#define xclGraphRun_RETURN()\
+    //return size;
+
+#define xclGraphRun_RPC_CALL(func_name,graphhandle,iterations) \
+    RPC_PROLOGUE(func_name); \
+    xclGraphRun_SET_PROTOMESSAGE(func_name,graphhandle,iterations); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclGraphRun_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclGraphRun_RETURN();
+
+//-----------xclGraphWait-----------------
+#define xclGraphWait_SET_PROTOMESSAGE(func_name,graphhandle) \
+    c_msg.set_gh(graphhandle);
+
+#define xclGraphWait_SET_PROTO_RESPONSE() \
+    ack = r_msg.ack();  
+
+#define xclGraphWait_RETURN()\
+    //return size;
+
+#define xclGraphWait_RPC_CALL(func_name,graphhandle) \
+    RPC_PROLOGUE(func_name); \
+    xclGraphWait_SET_PROTOMESSAGE(func_name,graphhandle); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclGraphWait_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclGraphWait_RETURN();
+
+//-----------xclGraphEnd-----------------
+#define xclGraphEnd_SET_PROTOMESSAGE(func_name,graphhandle) \
+    c_msg.set_gh(graphhandle);
+
+#define xclGraphEnd_SET_PROTO_RESPONSE() \
+    ack = r_msg.ack();  
+
+#define xclGraphEnd_RETURN()\
+    //return size;
+
+#define xclGraphEnd_RPC_CALL(func_name,graphhandle) \
+    RPC_PROLOGUE(func_name); \
+    xclGraphEnd_SET_PROTOMESSAGE(func_name,graphhandle); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclGraphEnd_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclGraphEnd_RETURN();
+
+//-----------xclGraphUpdateRTP-----------------
+#define xclGraphUpdateRTP_SET_PROTOMESSAGE(func_name,graphhandle,portname,buffer,size) \
+    c_msg.set_gh(graphhandle); \
+    c_msg.set_portname((char*)portname); \
+    c_msg.set_buffer((char*)buffer,size); \
+    c_msg.set_size(size);
+
+#define xclGraphUpdateRTP_SET_PROTO_RESPONSE() \
+ //   uint64_t ret = r_msg.size();
+
+
+#define xclGraphUpdateRTP_RETURN() \
+   // return ret;
+
+#define xclGraphUpdateRTP_RPC_CALL(func_name,graphhandle,portname,buffer,size) \
+    RPC_PROLOGUE(func_name); \
+    xclGraphUpdateRTP_SET_PROTOMESSAGE(func_name,graphhandle,portname,buffer,size); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclGraphUpdateRTP_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclGraphUpdateRTP_RETURN();
+
+//-----------xclGraphReadRTP-----------------
+#define xclGraphReadRTP_SET_PROTOMESSAGE(func_name,graphhandle,portname,buffer,size) \
+    c_msg.set_gh(graphhandle); \
+    c_msg.set_portname((char*)portname); \
+    c_msg.set_buffer((char*)buffer,size); \
+    c_msg.set_size(size);
+
+#define xclGraphReadRTP_SET_PROTO_RESPONSE(c_buffer) \
+    uint64_t ret = r_msg.size();\
+    memcpy(c_buffer,r_msg.buffer().c_str(),ret);
+
+
+#define xclGraphReadRTP_RETURN() \
+    //return ret;
+
+#define xclGraphReadRTP_RPC_CALL(func_name,graphhandle,portname,buffer,size) \
+    RPC_PROLOGUE(func_name); \
+    xclGraphReadRTP_SET_PROTOMESSAGE(func_name,graphhandle,portname,buffer,size); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclGraphReadRTP_SET_PROTO_RESPONSE(buffer); \
+    FREE_BUFFERS(); \
+    xclGraphReadRTP_RETURN();

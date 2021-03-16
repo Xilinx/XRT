@@ -18,7 +18,7 @@
 #include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 #include "xocl/core/device.h"
 #include <CL/opencl.h>
 
@@ -61,6 +61,7 @@ clWriteStream(cl_stream           stream,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clWriteStream
       (stream,ptr,size,attributes,errcode_ret);
   }

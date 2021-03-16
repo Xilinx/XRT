@@ -875,7 +875,12 @@ done:
  *   4) wait for hbm calibration done
  *
  * Note:
- * Violate this flow will cause random firewall trip.
+ * 1) Violate this flow will cause random firewall trip.
+ * 2) Flat shell: gating logic is not available on these shells.
+ *    - So, do not call axigate freeze/free apis for these shells or,
+ *    ignore axigate return value -ENODEV for flat shell
+ *    - Update clock freqs even when axigate returns ENODEV error for flat
+ *    shell.
  */
 static int clock_ocl_freqscaling(struct clock *clock, bool force, int level)
 {
@@ -887,6 +892,7 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force, int level)
 		curr[i] = clock_get_freq_impl(clock, i);
 
 	err = clock_freeze_axi_gate(clock, level);
+	err = (err == -ENODEV) ? 0 : err;
 	if (!err) {
 		err = clock_ocl_freqscaling_impl(clock, force, curr, level);
 		clock_free_axi_gate(clock, level);
@@ -1376,9 +1382,10 @@ static int clock_remove(struct platform_device *pdev)
 	mutex_destroy(&clock->clock_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, clock);
 
 	CLOCK_INFO(clock, "successfully removed Clock subdev");
+	devm_kfree(&pdev->dev, clock);
+
 	return 0;
 }
 

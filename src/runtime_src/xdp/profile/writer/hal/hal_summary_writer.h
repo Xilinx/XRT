@@ -29,7 +29,7 @@ namespace xdp {
     HALSummaryWriter(const char* filename) ;
     ~HALSummaryWriter() ;
 
-    virtual void write(bool openNewFile) ;
+    virtual bool write(bool openNewFile) ;
   } ;
 }
 

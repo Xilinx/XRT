@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <limits>
 #include <bitset>
+#include <cstring>
 
 // version is a git hash passed in from build script
 // default for builds that bypass build script
@@ -84,6 +85,7 @@ ert_assert(const char* file, long line, const char* function, const char* expr, 
 #else
 # define CTRL_DEBUG(msg)
 # define CTRL_DEBUGF(format,...)
+# define DMSGF(format,...)
 #endif
 
 #ifdef ERT_HW_EMU
@@ -235,6 +237,24 @@ struct slot_info
   size_type regmap_size = 0;
 };
 
+struct mb_validation
+{
+  value_type place_holder = 0;
+
+  value_type timestamp = 0;
+
+  value_type cq_read_single = 0;
+
+  value_type cq_write_single = 0;
+
+  value_type cu_read_single = 0;
+
+  value_type cu_write_single = 0;
+
+};
+
+static mb_validation mb_bist;
+
 // Fixed sized map from slot_idx -> slot info
 static slot_info command_slots[max_slots];
 
@@ -243,6 +263,9 @@ static size_type cu_slot_usage[max_cus];
 
 // Fixed sized map from cu_idx -> number of times executed
 static size_type cu_usage[max_cus];
+
+// Cached cmd queue header to avoid expensive IO read
+static value_type slot_cache[max_slots];
 
 // Bitmask indicating status of CUs. (0) idle, (1) running.
 // Only 'num_cus' lower bits are used
@@ -255,6 +278,7 @@ static bitset_type cu_ready;
 static bitset_type cu_done;
 // Bitmask for interrupt enabled CUs.  (0) no interrupt (1) enabled
 static bitset_type cu_interrupt_mask;
+
 #ifndef ERT_HW_EMU
 /**
  * Utility to read a 32 bit value from any axi-lite peripheral
@@ -382,6 +406,13 @@ idx_to_mask(size_type idx, size_type mask_idx)
     : 0;
 }
 
+
+static value_type
+read_clk_counter(void)
+{
+  return read_reg(ERT_CLK_COUNTER_ADDR);
+}
+
 // scope guard for disabling interrupts
 struct disable_interrupt_guard
 {
@@ -469,6 +500,7 @@ setup()
 
     // Clear command queue headers memory
     write_reg(slot.slot_addr,0x0);
+    slot_cache[i] = 0;
   }
 
   // Clear CSR  (COR so read)
@@ -625,9 +657,23 @@ configure_cu(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
 {
   // write register map, starting at base + 0x10
   // 0x4, 0x8, 0xc used for interrupt, which is initialized in setup
+#ifdef ERT_HW_EMU
   for (size_type idx = 4; idx < regmap_size; ++idx)
     write_reg(cu_addr + (idx << 2), read_reg(regmap_addr + (idx << 2)));
+#else
+  uint32_t *addr_ptr = (uint32_t *)(uintptr_t)cu_addr;
+  uint32_t *regmap_ptr = (uint32_t *)(uintptr_t)regmap_addr;
 
+  /* We know for-loop is 2% slower than memcpy().
+   * But unstable behavior are observed when using memcpy().
+   * Sometimes, it does not fully configure all registers.
+   * We failed to find a stable pattern to use memcpy().
+   * Don't waste your life to it again.
+   */
+  //memcpy(addr_ptr+4, regmap_ptr+4, (regmap_size-4)<<2);
+  for (size_type i = 4; i < regmap_size; ++i)
+    *(addr_ptr + i) = *(regmap_ptr + i);
+#endif
   // start kernel at base + 0x0
   write_reg(cu_addr, 0x1);
 }
@@ -742,6 +788,67 @@ check_cu(size_type cu_idx)
   return true;
 }
 
+static inline void
+command_queue_fetch(size_type slot_idx)
+{
+  auto& slot = command_slots[slot_idx];
+  value_type slot_addr = slot.slot_addr;
+  auto val = read_reg(slot_addr);
+ 
+  if (val & AP_START) {
+    write_reg(slot_addr,0x0);// clear command queue
+    if (echo) {
+      notify_host(slot_idx);
+      return;
+    }
+
+    slot_cache[slot_idx] = val;
+    addr_type addr = cu_section_addr(slot_addr);
+    slot.cu_idx = read_reg(addr);
+    slot.header_value = val;
+    slot.regmap_addr = regmap_section_addr(val,slot_addr);
+    slot.regmap_size = regmap_size(val);
+  }
+}
+
+static inline void
+cu_state_check(size_type slot_idx)
+{
+  auto& slot = command_slots[slot_idx];
+
+  // check this CU if done
+  if (cu_status[slot.cu_idx]) {
+    auto cuvalue = read_reg(cu_idx_to_addr(slot.cu_idx));
+    if (cuvalue & (AP_DONE)) {
+      auto cu_slot = cu_slot_usage[slot.cu_idx];
+
+      write_reg(cu_idx_to_addr(slot.cu_idx), AP_CONTINUE);
+      notify_host(cu_slot);
+      cu_status[slot.cu_idx] = !cu_status[slot.cu_idx];// now cu is available for next cmd
+      slot_cache[cu_slot] = 0; // This slot have been submitted and completed, free it
+    }
+  }
+}
+
+static inline void
+cu_execution(size_type slot_idx)
+{
+  auto& slot = command_slots[slot_idx];
+
+  if (!cu_status[slot.cu_idx]) {
+    if (slot_cache[slot_idx] & AP_START) {
+
+      if (slot.opcode==ERT_EXEC_WRITE) // Out of order configuration
+        configure_cu_ooo(cu_idx_to_addr(slot.cu_idx),slot.regmap_addr,slot.regmap_size);
+      else
+        configure_cu(cu_idx_to_addr(slot.cu_idx),slot.regmap_addr,slot.regmap_size);
+
+      cu_status[slot.cu_idx] = !cu_status[slot.cu_idx];
+      set_cu_info(slot.cu_idx,slot_idx); // record which slot cu associated with
+
+    }
+  }
+}
 /**
  * Configure MB and peripherals
  *
@@ -918,6 +1025,69 @@ abort_mb(size_type slot_idx)
   return true;
 }
 
+static inline void 
+repetition_write(addr_type addr, value_type loop_cnt)
+{
+  while (loop_cnt--)
+    write_reg(addr, 0x0);
+}
+
+static inline void 
+repetition_read(addr_type addr, value_type loop_cnt)
+{
+  while (loop_cnt--)
+    read_reg(addr);
+}
+
+static bool
+validate_mb(value_type slot_idx)
+{
+  auto& slot = command_slots[slot_idx];
+  value_type start_t, end_t, cnt = 1024;
+  void *addr_ptr = (void *)(uintptr_t)(slot.slot_addr);
+
+  start_t = read_clk_counter();
+  repetition_read(slot.slot_addr, cnt);
+  end_t = read_clk_counter();
+  mb_bist.cq_read_single = (end_t-start_t)/cnt;
+   
+  start_t = read_clk_counter();
+  repetition_write(slot.slot_addr, cnt);
+  end_t = read_clk_counter();
+  mb_bist.cq_write_single = (end_t-start_t)/cnt;
+
+  start_t = read_clk_counter();
+  repetition_read(cu_idx_to_addr(0), cnt);
+  end_t = read_clk_counter();
+  mb_bist.cu_read_single = (end_t-start_t)/cnt;
+
+  start_t = read_clk_counter();
+  repetition_write(cu_idx_to_addr(0), cnt);
+  end_t = read_clk_counter();
+  mb_bist.cu_write_single = (end_t-start_t)/cnt; 
+
+  slot.header_value = (slot.header_value & ~0xF) | 0x4;
+
+  memcpy(addr_ptr, &mb_bist, sizeof(struct mb_validation));
+  notify_host(slot_idx);
+  return true;
+}
+
+static bool
+clock_calib_mb(value_type slot_idx)
+{
+  auto& slot = command_slots[slot_idx];
+  void *addr_ptr = (void *)(uintptr_t)(slot.slot_addr);
+
+  mb_bist.timestamp = read_clk_counter();
+
+  slot.header_value = (slot.header_value & ~0xF) | 0x4;
+  memcpy(addr_ptr, &mb_bist, sizeof(struct mb_validation));
+  notify_host(slot_idx);
+  return true;
+}
+
+
 /**
  * Process special command.
  *
@@ -937,6 +1107,10 @@ process_special_command(value_type opcode, size_type slot_idx)
     return exit_mb(slot_idx);
   if (opcode==ERT_ABORT)
     return abort_mb(slot_idx);
+  if (opcode==ERT_CLK_CALIB)
+    return clock_calib_mb(slot_idx);
+  if (opcode==ERT_MB_VALIDATE)
+    return validate_mb(slot_idx);
   return false;
 }
 
@@ -1094,6 +1268,21 @@ scheduler_v30_loop()
 #ifdef ERT_HW_EMU
       reg_access_wait();
 #endif
+      if (polling && slot_idx>0 && kds_30) {
+
+        if (!slot_cache[slot_idx])
+            command_queue_fetch(slot_idx);
+
+        // we have nothing else to do
+        if (!slot_cache[slot_idx])
+          continue;
+
+        cu_state_check(slot_idx);
+
+        cu_execution(slot_idx);
+        
+        continue;
+      }
 
       // In dataflow mode ERT is polling CUs for completion after
       // host has started CU or acknowleged completion.  Ctrl cmds
@@ -1121,61 +1310,8 @@ scheduler_v30_loop()
           continue;
 
         cu_status[cuidx] = !cu_status[cuidx]; // disable polling until host re-enables
-
         // wake up host
         notify_host(slot_idx);
-        continue;
-      }
-
-      if (polling && slot_idx>0 && kds_30) {
-
-        addr_type addr = cu_section_addr(slot.slot_addr);
-        slot.cu_idx = read_reg(addr);
-        if (!cu_status[slot.cu_idx]) {
-          auto cqvalue = read_reg(slot.slot_addr);
-
-          if (cqvalue & (AP_START)) {
-             write_reg(slot.slot_addr,0x0); // clear
-            if (echo) {
-              // clear command queue
-              notify_host(slot_idx);
-              continue;              
-            }
-
-            slot_submitted[slot_idx] = !slot_submitted[slot_idx];
-            // kick start kernel
-            slot.header_value = cqvalue;
-            slot.regmap_addr = regmap_section_addr(slot.header_value,slot.slot_addr);
-            slot.regmap_size = regmap_size(slot.header_value);
-
-            if (slot.opcode==ERT_EXEC_WRITE)
-              // Out of order configuration
-              configure_cu_ooo(cu_idx_to_addr(slot.cu_idx),slot.regmap_addr,slot.regmap_size);
-            else
-              configure_cu(cu_idx_to_addr(slot.cu_idx),slot.regmap_addr,slot.regmap_size);
-
-            cu_status[slot.cu_idx] = !cu_status[slot.cu_idx]; // enable polling of this CU
-            set_cu_info(slot.cu_idx,slot_idx); // record which slot cu associated with
-
-          }
-        }
-
-        if (!cu_status[slot.cu_idx] || !slot_submitted[slot_idx])
-          continue; // CU is not used
-
-        auto cuvalue = read_reg(cu_idx_to_addr(slot.cu_idx));
-        if (!(cuvalue & (AP_DONE)))
-          continue;
-
-        slot_submitted[slot_idx] = !slot_submitted[slot_idx];
-        cu_status[slot.cu_idx] = !cu_status[slot.cu_idx]; // disable polling until host re-enables
-
-        // wake up host
-        notify_host(slot_idx);
-
-        write_reg(cu_idx_to_addr(slot.cu_idx), AP_CONTINUE);
-        write_reg(cu_idx_to_addr(slot.cu_idx)+0xC, 0x1);
-
         continue;
       }
 

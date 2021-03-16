@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 #include "ParameterSectionData.h"
 #include "XclBinClass.h"
+#include "globals.h"
+
+
+#include <boost/filesystem.hpp>
 
 TEST(RemoveSection, RemoveBitstream) {
    XclBin xclBin;
@@ -10,7 +14,11 @@ TEST(RemoveSection, RemoveBitstream) {
    enum axlf_section_kind _eKind;
    Section::translateSectionKindStrToKind(sSection, _eKind);
 
-   xclBin.readXclBinBinary("unittests/test_data/sample_1_2018.2.xclbin", false /* bMigrateForward */);
+   // Get the file of interest
+   boost::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
+   sampleXclbin /= "sample_1_2018.2.xclbin";
+
+   xclBin.readXclBinBinary(sampleXclbin.string(), false /* bMigrateForward */);
 
    // Check to see if section exists
    const Section * pSection = xclBin.findSection(_eKind);

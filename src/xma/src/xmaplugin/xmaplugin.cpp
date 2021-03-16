@@ -328,6 +328,7 @@ xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
     }
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
     //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    xclUnmapBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, b_obj.data);
     xclFreeBO(b_obj_priv->dev_handle, b_obj_priv->boHandle);
     b_obj_priv->dummy = nullptr;
     b_obj_priv->size = -1;
@@ -970,15 +971,6 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
                 cmd.cmd_finished = true;
             } else {
                 all_done = false;
-
-                if (itr_tmp1->second.cmd_id2 != cmd.cmd_id2) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-2");
-                    return XMA_ERROR;
-                }
-                if (itr_tmp1->second.cu_id != cmd.cu_index) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-3");
-                    return XMA_ERROR;
-                }
             }
 
             if (cmd.do_not_use1 != s_handle.session_signature) {
@@ -993,8 +985,7 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
         } else if (!all_done) {
             if (g_xma_singleton->cpu_mode == XMA_CPU_MODE1) {
                 std::unique_lock<std::mutex> lk(priv1->m_mutex);
-                priv1->work_item_done_1plus.wait(lk);
-                lk.unlock();
+                priv1->kernel_done_or_free.wait(lk);
             } else if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
                 std::this_thread::yield();
             } else {

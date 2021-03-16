@@ -3,7 +3,7 @@
  * Compute unit execution, interrupt management and
  * client context core data structures.
  *
- * Copyright (C) 2017-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2017-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -76,6 +76,8 @@ struct sched_ops;
  * @abort: Flag to indicate that this context has detached from user space
  * @shcus: CUs shared reserved by this context
  * @excus: CUs exclusively reserved by this context
+ * @graph_list: Graphs that this client opens are added to this list.
+ * @graph_list_lock: Graph list lock.
  */
 struct sched_client_ctx {
 	struct list_head   link;
@@ -87,6 +89,9 @@ struct sched_client_ctx {
 	unsigned int	   abort;
 	DECLARE_BITMAP(shcus, MAX_CU_NUM);
 	DECLARE_BITMAP(excus, MAX_CU_NUM);
+
+	struct list_head   graph_list;
+	spinlock_t         graph_list_lock;
 };
 #define CLIENT_NUM_CU_CTX(client) ((client)->num_cus)
 

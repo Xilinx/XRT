@@ -39,6 +39,10 @@
 
 #define RENDER_NM       "renderD"
 #define DEV_TIMEOUT	90 // seconds
+#define MGMT_DRV_V1	"xclmgmt"
+#define USER_DRV_V1	"xocl"
+#define MGMT_DRV_V2	"xrt-mgmt"
+#define USER_DRV_V2	"xrt-user"
 
 namespace {
 
@@ -372,12 +376,12 @@ static bool is_in_use(std::vector<std::shared_ptr<pci_device>>& vec)
 
 static bool is_drv_v2(const std::string& driver)
 {
-  return ((driver.compare("xmgmt") == 0) || (driver.compare("xuser") == 0));
+  return ((driver.compare(MGMT_DRV_V2) == 0) || (driver.compare(USER_DRV_V2) == 0));
 }
 
 static bool is_drv_mgmt(const std::string& driver)
 {
-  return ((driver.compare("xmgmt") == 0) || (driver.compare("xclmgmt") == 0));
+  return ((driver.compare(MGMT_DRV_V1) == 0) || (driver.compare(MGMT_DRV_V2) == 0));
 }
 
 void
@@ -945,10 +949,10 @@ public:
     user_list.clear();
     mgmt_list.clear();
 
-    rescan_nolock("xclmgmt");
-    rescan_nolock("xocl");
-    rescan_nolock("xmgmt");
-    rescan_nolock("xuser");
+    rescan_nolock(MGMT_DRV_V1);
+    rescan_nolock(USER_DRV_V1);
+    rescan_nolock(MGMT_DRV_V2);
+    rescan_nolock(USER_DRV_V1);
   }
 
   size_t
@@ -1080,7 +1084,7 @@ get_axlf_section(const std::string& filename, int kind, std::shared_ptr<char>& b
   }
   // Reread axlf from dsabin file, including all sections headers.
   // Sanity check for number of sections coming from user input file
-  if (a.m_header.m_numSections > 10000)
+  if (a.m_header.m_numSections > XCLBIN_MAX_NUM_SECTION)
     return -EINVAL;
 
   sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);

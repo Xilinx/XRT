@@ -244,6 +244,18 @@ namespace hwemu {
     xocl_cu::xocl_cu(HwEmShim* dev)
     {
         this->xdevice = dev;
+        this->error = false;
+        this->idx = 0;
+        this->uid = 0;
+        this->control = 0;
+        this->dataflow = 0;
+        this->base = 0;
+        this->addr = 0;
+        this->polladdr = 0;
+        this->ap_check = 0;
+        this->ctrlreg = 0;
+        this->done_cnt = 0;
+        this->run_cnt = 0;
     }
 
     void xocl_cu::cu_init(unsigned int idx, uint64_t base, uint64_t addr, uint64_t polladdr)
@@ -251,11 +263,11 @@ namespace hwemu {
         this->error = false;
         this->idx = idx;
         this->control = (addr & 0x7); // bits [2-0]
-        this->dataflow = (addr & 0x7) == AP_CHAIN;
+        this->dataflow = (addr & 0x7) == AP_CTRL_CHAIN;
         this->base = base;
         this->addr = addr & ~0xff;  // clear encoded handshake and context
         this->polladdr = polladdr;
-        this->ap_check = (control == AP_CHAIN) ? (AP_DONE) : (AP_DONE | AP_IDLE);
+        this->ap_check = (control == AP_CTRL_CHAIN) ? (AP_DONE) : (AP_DONE | AP_IDLE);
         this->ctrlreg = 0;
         this->done_cnt = 0;
         this->run_cnt = 0;
@@ -274,7 +286,7 @@ namespace hwemu {
 
     bool xocl_cu::cu_dataflow()
     {
-        return (control == AP_CHAIN);
+        return (control == AP_CTRL_CHAIN);
     }
 
     bool xocl_cu::cu_valid()
@@ -427,15 +439,15 @@ namespace hwemu {
 
         // in ert poll mode request ERT to poll CU
         if (polladdr) {
-            SCHED_DEBUGF("+ @0x%lx\n", this->cu_polladdr());
+            SCHED_DEBUGF("polladdr  @0x%lx\n", this->cu_polladdr());
             iowrite32(AP_START, polladdr);
         }
 
         cu_cmdq.push(xcmd);
         ++run_cnt;
         	
-        //SCHED_DEBUGF("<- %s cu(%d) started xcmd(%lu) done(%d) run(%d)\n",
-//		     __func__, xcu->idx, xcmd->uid, xcu->done_cnt, xcu->run_cnt);
+        SCHED_DEBUGF("<- %s cu(%d) started xcmd(%lu) done(%d) run(%d) ctrlreg(%d)\n",
+		     __func__, idx, xcmd->uid, done_cnt, run_cnt, ctrlreg);
 
         return true;
     }
@@ -477,6 +489,14 @@ namespace hwemu {
         this->num_slots = 0;
         this->slot_size = 0;
         this->cq_intr = false;
+        this->uid = 0;
+        this->cq_size = 0;
+        this->ctrl_busy = false;
+        this->version = 0;
+        uint32_t idx;
+        for (idx = 0; idx < MAX_SLOTS; ++idx) {
+            this->command_queue[idx] = NULL;
+        }
     }
 
     xocl_ert::~xocl_ert()
@@ -1151,19 +1171,20 @@ namespace hwemu {
      */
     int exec_core::exec_execute_copybo_cmd(xocl_cmd *xcmd)
     {
+#if 0
         SCHED_DEBUGF("-> %s\n", __func__);
         int ret = 0;
         assert(false);
-#if 0
         struct ert_start_copybo_cmd *ecmd = xcmd->ert_cp;
         struct drm_file *filp = (struct drm_file *)ecmd->arg;
         struct drm_device *ddev = filp->minor->dev;
 
         SCHED_DEBUGF("-> %s(%d,%lu)\n", __func__, this->uid, xcmd->uid);
         ret = xocl_copy_import_bo(ddev, filp, ecmd);
-#endif
         SCHED_DEBUGF("<- %s\n", __func__);
         return ret == 0 ? 0 : 1;
+#endif
+        return 0;
     }
 
     /*
@@ -1730,7 +1751,7 @@ namespace hwemu {
         uint32_t total = 0;
         uint32_t prev = 0;
 
-        //SCHED_PRINTF("-> %s first_cu(%d) start_cu(%d)\n", __func__, first_cu, start_cu);
+        SCHED_DEBUGF("-> %s first_cu(%d) start_cu(%d)\n", __func__, first_cu, start_cu);
 
         do {
             prev = total;
@@ -1797,9 +1818,11 @@ namespace hwemu {
                 break;
         }
 
-        this->pending_cu_queue[cuidx].push(xcmd);
-        xcmd->set_cu(cuidx);
-        ++this->cu_load_count[cuidx];
+        if (cuidx < MAX_CUS) {
+          this->pending_cu_queue[cuidx].push(xcmd);
+          xcmd->set_cu(cuidx);
+          ++this->cu_load_count[cuidx];
+        }
         SCHED_DEBUGF("<- %s cuidx(%d) load(%d)\n", __func__, cuidx, this->cu_load_count[cuidx]);
         return true;
     }
@@ -1944,6 +1967,8 @@ namespace hwemu {
                 --this->num_running_cmds;
                 iter = this->running_cmd_queue.erase(iter);
                 exec_cmd_free(xcmd); 
+            } else {
+                iter++;
             }
         }
         SCHED_DEBUGF("<- %s\n", __func__);
@@ -1997,6 +2022,7 @@ namespace hwemu {
             scheduler_thread->join(); //! Wait untill scheduler_thread exits
         }
 
+        delete exec;
         SCHED_DEBUGF("scheduler_thread exited\n");
     }
 
@@ -2184,7 +2210,7 @@ namespace hwemu {
         xcmd->set_state(ERT_CMD_STATE_NEW);
 
         {
-            std::lock_guard<std::mutex> lk(pending_cmds_mutex);
+            //std::lock_guard<std::mutex> lk(pending_cmds_mutex);
             pending_cmds.push_back(xcmd);
         }
 
@@ -2196,6 +2222,62 @@ namespace hwemu {
         return 0;
     }
 
+    int xocl_scheduler::convert_execbuf(xocl_cmd* xcmd)
+    {
+        struct ert_start_copybo_cmd *scmd = xcmd->ert_cp;
+
+        /* CU style commands must specify CU type */
+        if (scmd->opcode == ERT_START_CU || scmd->opcode == ERT_EXEC_WRITE)
+            scmd->type = ERT_CU;
+
+        /* Only convert COPYBO cmd for now. */
+        if (scmd->opcode != ERT_START_COPYBO)
+            return 0;
+
+        size_t sz = ert_copybo_size(scmd);
+
+        size_t src_off = ert_copybo_src_offset(scmd);
+        xclemulation::drm_xocl_bo* s_bo = device->xclGetBoByHandle(scmd->src_bo_hdl);
+
+        size_t dst_off = ert_copybo_dst_offset(scmd);
+        xclemulation::drm_xocl_bo* d_bo = device->xclGetBoByHandle(scmd->dst_bo_hdl);
+
+        if(!s_bo && !d_bo)
+            return -EINVAL;
+
+        uint64_t src_addr = -1; 
+        uint64_t dst_addr = -1; 
+        if(s_bo)
+            src_addr = s_bo->base;
+        if(d_bo)
+            dst_addr = d_bo->base;
+
+        if (( !s_bo || !d_bo || device->isImported(scmd->src_bo_hdl) || device->isImported(scmd->dst_bo_hdl)) )
+        {
+            int ret =  device->xclCopyBO(scmd->dst_bo_hdl, scmd->src_bo_hdl , sz , dst_off, src_off);
+            scmd->type = ERT_KDS_LOCAL;
+            return ret;
+        }
+
+        /* Both BOs are local, copy via KDMA CU */
+        if (exec->num_cdma == 0)
+            return -EINVAL;
+
+        if ((dst_addr + dst_off) % KDMA_BLOCK_SIZE ||
+                (src_addr + src_off) % KDMA_BLOCK_SIZE ||
+                sz % KDMA_BLOCK_SIZE)
+            return -EINVAL;
+
+        ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz / KDMA_BLOCK_SIZE);
+
+        for (unsigned int i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+            scmd->cu_mask[i / 32] |= 1 << (i % 32);
+
+        scmd->opcode = ERT_START_CU;
+        scmd->type = ERT_CU;
+
+        return 0;
+    }
 
     /**
      * add_bo_cmd() - Add a new buffer object command to pending list
@@ -2212,6 +2294,7 @@ namespace hwemu {
      */
     int xocl_scheduler::add_bo_cmd(xclemulation::drm_xocl_bo *buf)
     {
+        std::lock_guard<std::mutex> lk(pending_cmds_mutex);
         //! Get the command from boost object pool
         xocl_cmd *xcmd = cmd_pool.construct();
 
@@ -2221,6 +2304,10 @@ namespace hwemu {
         SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
 
         xcmd->bo_init(buf);
+        if(convert_execbuf(xcmd)) {
+            SCHED_DEBUGF("<- %s ret(1) opcode(%d) type(%d)\n", __func__, xcmd->opcode(), xcmd->type());
+            return 1;
+        }
 
         if (add_xcmd(xcmd)) {
             SCHED_DEBUGF("<- %s ret(1) opcode(%d) type(%d)\n", __func__, xcmd->opcode(), xcmd->type());

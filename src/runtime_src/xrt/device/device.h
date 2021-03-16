@@ -46,6 +46,7 @@ namespace xrt_xocl {
 class device : public xrt_device
 {
 public:
+  using callback_function_type = std::function<void()>;
   using verbosity_level = hal::verbosity_level;
   using buffer_object_handle = hal::buffer_object_handle;
   using execbuffer_object_handle = hal::execbuffer_object_handle;
@@ -89,6 +90,13 @@ public:
   get_core_device() const
   {
     return m_hal->get_core_device();
+  }
+
+  void
+  add_close_callback(callback_function_type fcn)
+  {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    m_close_callbacks.push_back(fcn);
   }
 
   /**
@@ -535,12 +543,12 @@ public:
 private:
   void retain(const buffer_object_handle& bo)
   {
-    std::lock_guard<std::mutex> buflk(m_buffers_mutex);
+    std::lock_guard<std::mutex> buflk(m_mutex);
     m_buffers.push_back(bo);
   }
   void release(const buffer_object_handle& bo)
   {
-    std::lock_guard<std::mutex> buflk(m_buffers_mutex);
+    std::lock_guard<std::mutex> buflk(m_mutex);
     auto itr = std::find_if(m_buffers.begin(),m_buffers.end(),
                             [&bo](const buffer_object_handle& boh) {
                               return bo == boh;
@@ -855,7 +863,8 @@ private:
 
   std::unique_ptr<hal::device> m_hal;
   std::vector<buffer_object_handle> m_buffers;
-  mutable std::mutex m_buffers_mutex;
+  std::vector<callback_function_type> m_close_callbacks;
+  mutable std::mutex m_mutex;
   xrt_xocl::uuid m_uuid;
   bool m_setup_done;
 };

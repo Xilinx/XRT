@@ -808,15 +808,6 @@ DeviceIntf::~DeviceIntf()
     ifs.close();
 #endif
 
-    auto sorter = [] (const ProfileIP* lhs, const ProfileIP* rhs)
-    {
-      return lhs->getMIndex() < rhs->getMIndex();
-    };
-    std::sort(mAimList.begin(), mAimList.end(), sorter);
-    std::sort(mAmList.begin(), mAmList.end(), sorter);
-    std::sort(mAsmList.begin(), mAsmList.end(), sorter);
-    std::sort(nocList.begin(), nocList.end(), sorter);
-
 #if 0
     for(auto mon : mAimList) {
         mon->showProperties();
@@ -906,6 +897,7 @@ DeviceIntf::~DeviceIntf()
     if (!addr)
       return nullptr;
     mDevice->sync(bufHandle, bytes, offset, xdp::Device::direction::DEVICE2HOST);
+    mDevice->unmap(bufHandle);
     return static_cast<char*>(addr) + offset;
   }
 

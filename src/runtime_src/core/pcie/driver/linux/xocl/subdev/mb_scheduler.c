@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2018-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Soren Soe <soren.soe@xilinx.com>
@@ -1787,6 +1787,8 @@ struct exec_core {
 	bool		           cq_interrupt;
 	bool		           configure_active;
 	bool		           configured;
+	bool		           scu_configure_active;
+	bool		           scu_configured;
 	bool		           stopped;
 	bool		           flush;
 	/* WORKAROUND: allow xclRegWrite/xclRegRead access shared CU */
@@ -1942,6 +1944,18 @@ exec_cfg(struct exec_core *exec)
 {
 }
 
+static int
+exec_scu_cfg_cmd(struct exec_core *exec)
+{
+	if (exec->scu_configured) {
+		DRM_INFO("scu is already configured for this device\n");
+		return 1;
+	}
+
+	exec->scu_configure_active = true;
+
+	return 0;
+}
 
 /*
  * to be automated
@@ -2140,6 +2154,8 @@ exec_reset(struct exec_core *exec, const xuid_t *xclbin_id)
 	exec->cq_interrupt = false;
 	exec->configure_active = false;
 	exec->configured = false;
+	exec->scu_configure_active = false;
+	exec->scu_configured = false;
 	exec->stopped = false;
 	exec->flush = false;
 	exec->ops = &penguin_ops;
@@ -2422,6 +2438,12 @@ exec_finish_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return 0;
 	}
 
+	if (cmd_opcode(xcmd) == ERT_SK_CONFIG) {
+		exec->scu_configured = true;
+		exec->scu_configure_active = false;
+		return 0;
+	}
+
 	if (cmd_opcode(xcmd) != ERT_CU_STAT)
 		return 0;
 
@@ -2532,7 +2554,7 @@ exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
 		if (xert) {
 			uint32_t slot_addr = xcmd->slot_idx * xert->slot_size;
 			struct ert_start_kernel_cmd *pkt = xcmd->ert_cu;
-			struct ert_start_kernel_cmd tmp_pkt;
+			struct ert_start_kernel_cmd tmp_pkt = { 0 };
 			xocl_memcpy_fromio((void*)&tmp_pkt.header, xert->cq_base + slot_addr, 2 * sizeof(u32));
 			cmd_state = tmp_pkt.state;
 			/* Possible to upgrade XRT on host without changing zocl on PS */
@@ -3137,6 +3159,14 @@ exec_submit_ctrl_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	// configure command should configure kds succesfully or be abandoned
 	if (cmd_opcode(xcmd) == ERT_CONFIGURE && (exec->configure_active || exec_cfg_cmd(exec, xcmd))) {
+		cmd_set_state(xcmd, ERT_CMD_STATE_ERROR);
+		exec_abort_cmd(exec, xcmd);
+		SCHED_DEBUGF("<- %s returns false\n", __func__);
+		return false;
+	}
+
+	if (cmd_opcode(xcmd) == ERT_SK_CONFIG &&
+	    (exec->scu_configure_active || exec_scu_cfg_cmd(exec))) {
 		cmd_set_state(xcmd, ERT_CMD_STATE_ERROR);
 		exec_abort_cmd(exec, xcmd);
 		SCHED_DEBUGF("<- %s returns false\n", __func__);
@@ -4269,9 +4299,9 @@ static int config_scu(struct platform_device *pdev,
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	struct xocl_ert *xert = exec_is_ert(exec) ? exec->ert : NULL;
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-	int i;
+	int i, j;
 
-	if (scmd->opcode != ERT_SK_CONFIG && scmd->opcode != ERT_SK_UNCONFIG)
+	if (scmd->opcode != ERT_SK_CONFIG)
 		return 0;
 
 	if (!xert) {//ini of ert=false is checked here; KDS mode is not allowed
@@ -4279,29 +4309,22 @@ static int config_scu(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	if (scmd->start_cuidx + scmd->num_cus > MAX_CUS) {
-		userpf_err(xdev, "beyond max scu %d, start %d, num %d",
-			MAX_CUS, scmd->start_cuidx, scmd->num_cus);
-		return -EINVAL;
-	}
+	for (i = 0; i < scmd->num_image; i++) {
+		struct config_sk_image *cp = &scmd->image[i];
 
-	for (i = scmd->start_cuidx; i < scmd->start_cuidx + scmd->num_cus;
-	    i++) {
-		if (scmd->opcode == ERT_SK_CONFIG) {
+		for (j = cp->start_cuidx; j < cp->start_cuidx + cp->num_cus;
+		    j++) {
 			char scu_name[32];
-			if (strlen(xert->scu_name[i]) > 0)
+
+			if (strlen(xert->scu_name[j]) > 0)
 				continue;
 			exec->num_sk_cus++;
-			/* Add "scu_idx#" suffix to identify softkernel */
-			strncpy(scu_name, (char *)scmd->sk_name,
+
+			/* Add "scu_idx#" suffix to identify PS kernel */
+			strncpy(scu_name, ((char *)cp->sk_name),
 				sizeof(xert->scu_name[0]) - 8);
-			snprintf(xert->scu_name[i], 32, "%s:scu_%d",
-				scu_name, i);
-		} else {
-			if (strlen(xert->scu_name[i]) == 0)
-				continue;
-			exec->num_sk_cus--;
-			xert->scu_name[i][0] = 0;
+			snprintf(xert->scu_name[j], 32, "%s:scu_%d",
+				scu_name, j);
 		}
 	}
 
@@ -4614,6 +4637,8 @@ reconfig(struct platform_device *pdev)
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	exec->configure_active = false;
 	exec->configured = false;
+	exec->scu_configure_active = false;
+	exec->scu_configured = false;
 	return 0;
 }
 
@@ -4841,7 +4866,6 @@ kds_numcdmas_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(kds_numcdmas);
 
-
 static ssize_t
 kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -4849,79 +4873,130 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	struct xocl_ert *xert = exec_is_ert(exec) ? exec->ert : NULL;
 	unsigned int idx = 0;
 	ssize_t sz = 0;
+	ssize_t sz_tmp = 0;
 	int32_t cu_status = -1;
+	char *tembuf;
+	bool truncated = false;
+
+	/*
+	 * Allocate a temporary buffer to prevent custat exceed PAGE_SIZE.
+	 * 3 PAGE_SIZE is big enough to hold maximum 128 CUs + 128 SCUs
+	 */
+	tembuf = vzalloc(PAGE_SIZE * 3);
+	if (!tembuf)
+		return 0;
 
 	// No need to lock exec, cu stats are computed and cached.
 	// Even if xclbin is swapped, the data reflects the xclbin on
 	// which is was computed above.
 	for (idx = 0; idx < exec->num_cus; ++idx) {
-		sz += sprintf(buf+sz, "CU[@0x%x] : %d status : %d\n",
+		sz += sprintf(tembuf+sz, "CU[@0x%x] : %d status : %d\n",
 		    exec_cu_base_addr(exec, idx),
 		    xert ? ert_cu_usage(xert, idx) : exec_cu_usage(exec, idx),
 		    exec_cu_status(exec, idx));
 	}
 
 	if (xert) {
-		/* soft kernel CUs */
+		/* PS kernel CUs */
 		for (;idx < (exec->num_cus + exec->num_sk_cus); ++idx) {
 			cu_status = ert_cu_status(xert, idx);
 			if (!cu_status)
 				cu_status = AP_IDLE;
-			sz += sprintf(buf+sz, "CU[@0x0] : %d status : %d name : %s\n",
+			sz_tmp = sz;
+			sz += sprintf(tembuf+sz, "CU[@0x0] : %d status : %d\n",
 				      ert_cu_usage(xert, idx),
-				      cu_status,
-				      xert->scu_name[idx - exec->num_cus]);
+				      cu_status);
+
+			if (sz >= PAGE_SIZE) {
+				sz = sz_tmp;
+				truncated = true;
+				goto out;
+			}
 		}
 	}
 
-	sz += sprintf(buf+sz, "KDS number of pending commands: %d\n", exec_num_pending(exec));
-
-	if (!xert) {
-		sz += sprintf(buf+sz, "KDS number of running commands: %d\n", exec_num_running(exec));
+	sz_tmp = sz;
+	sz += sprintf(tembuf+sz, "KDS number of pending commands: %d\n", exec_num_pending(exec));
+	if (sz >= PAGE_SIZE) {
+		sz = sz_tmp;
+		truncated = true;
 		goto out;
 	}
 
-	sz += sprintf(buf+sz, "CQ usage : {");
-	for (idx = 0; idx < xert->num_slots; ++idx)
-		sz += sprintf(buf+sz, "%s%d", (idx > 0 ? "," : ""), ert_cq_slot_usage(xert, idx));
-	sz += sprintf(buf+sz, "}\n");
+	if (!xert) {
+		sz += sprintf(tembuf+sz, "KDS number of running commands: %d\n", exec_num_running(exec));
+		goto out;
+	}
 
-	sz += sprintf(buf+sz, "CQ mirror state : {");
+	sz_tmp = sz;
+	sz += sprintf(tembuf+sz, "CQ usage : {");
+	for (idx = 0; idx < xert->num_slots; ++idx)
+		sz += sprintf(tembuf+sz, "%s%d", (idx > 0 ? "," : ""), ert_cq_slot_usage(xert, idx));
+	sz += sprintf(tembuf+sz, "}\n");
+	if (sz >= PAGE_SIZE) {
+		sz = sz_tmp;
+		truncated = true;
+		goto out;
+	}
+
+	sz_tmp = sz;
+	sz += sprintf(tembuf+sz, "CQ mirror state : {");
 	for (idx = 0; idx < xert->num_slots; ++idx) {
 		if (idx == 0) { // ctrl slot should be ignored
-			sz += sprintf(buf+sz, "-");
+			sz += sprintf(tembuf+sz, "-");
 			continue;
 		}
-		sz += sprintf(buf+sz, ",%d", ert_cq_slot_busy(xert, idx));
+		sz += sprintf(tembuf+sz, ",%d", ert_cq_slot_busy(xert, idx));
 	}
-	sz += sprintf(buf+sz, "}\n");
+	sz += sprintf(tembuf+sz, "}\n");
+	if (sz >= PAGE_SIZE) {
+		sz = sz_tmp;
+		truncated = true;
+		goto out;
+	}
 
-	sz += sprintf(buf+sz, "ERT scheduler version : 0x%x\n", ert_version(xert));
-	sz += sprintf(buf+sz, "ERT number of submitted commands: %d\n", exec_num_running(exec));
-	sz += sprintf(buf+sz, "ERT scheduler CU state : {");
+	sz_tmp = sz;
+	sz += sprintf(tembuf+sz, "ERT scheduler version : 0x%x\n", ert_version(xert));
+	sz += sprintf(tembuf+sz, "ERT number of submitted commands: %d\n", exec_num_running(exec));
+	sz += sprintf(tembuf+sz, "ERT scheduler CU state : {");
 	for (idx = 0; idx < exec->num_cus + exec->num_sk_cus; ++idx) {
 		if (idx > 0)
-			sz += sprintf(buf+sz, ",");
+			sz += sprintf(tembuf+sz, ",");
 		cu_status = ert_cu_status(xert, idx);
 		if (!cu_status)
 			cu_status = AP_IDLE;
-		sz += sprintf(buf+sz, "%d", cu_status);
+		sz += sprintf(tembuf+sz, "%d", cu_status);
 	}
 
-	sz += sprintf(buf+sz, "}\nERT scheduler CQ state : {");
+	sz += sprintf(tembuf+sz, "}\nERT scheduler CQ state : {");
 	for (idx = 0; idx < xert->num_slots; ++idx) {
 		if (idx == 0) { // ctrl slot should be ignored
-			sz += sprintf(buf+sz, "-");
+			sz += sprintf(tembuf+sz, "-");
 			continue;
 		}
-		sz += sprintf(buf+sz, ",%d", ert_cq_slot_status(xert, idx));
+		sz += sprintf(tembuf+sz, ",%d", ert_cq_slot_status(xert, idx));
 	}
-	sz += sprintf(buf+sz, "}\n");
+	sz += sprintf(tembuf+sz, "}\n");
+	if (sz >= PAGE_SIZE) {
+		sz = sz_tmp;
+		truncated = true;
+		goto out;
+	}
 
 out:
-	if (sz)
-		buf[sz++] = 0;
+	tembuf[sz++] = 0;
+	if (sz >= (ssize_t)PAGE_SIZE) {
+		sz = PAGE_SIZE - 30; /* save truncated CU status */
+		truncated = true;
+	}
+	if (truncated) {
+		sz += sprintf(tembuf+sz, "\n.. TRUNCATED ..\n");
+		tembuf[sz++] = 0;
+	}
+	tembuf[PAGE_SIZE-1] = 0;
+	memcpy(buf, tembuf, PAGE_SIZE);
 
+	vfree(tembuf);
 	return sz;
 }
 static DEVICE_ATTR_RO(kds_custat);

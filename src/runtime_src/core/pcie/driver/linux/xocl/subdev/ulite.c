@@ -226,7 +226,7 @@ static void ulite_worker(struct uart_port *port)
 		busy |= ulite_transmit(port, stat);
 		spin_unlock_irqrestore(&port->lock, flags);
 		n++;
-	} while (busy);
+	} while (busy && !kthread_should_stop());
 
 	/* work done? */
 	if (n > 1)
@@ -326,8 +326,8 @@ static void ulite_shutdown(struct uart_port *port)
 	struct uartlite_data *pdata = port->private_data;
 
 	mutex_lock(&pdata->lock);
-	atomic_dec_if_positive(&pdata->console_opened);
 	if (atomic_read(&pdata->console_opened)) {
+		atomic_dec_if_positive(&pdata->console_opened);
 		(void)kthread_stop(pdata->thread);
 		pdata->thread = NULL;
 	}

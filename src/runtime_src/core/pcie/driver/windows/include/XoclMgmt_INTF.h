@@ -1,5 +1,5 @@
-/*++
- *  Copyright (C) 2018-2019, Xilinx Inc.  All rights reserved.
+﻿/*
+ *  Copyright (C) 2018-2021, Xilinx Inc.  All rights reserved.
  *
  *  Author(s):
  *  Arpit Patel <arpitp@xilinx.com>
@@ -21,7 +21,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- --*/
+ */
 #pragma once
 #include "xclfeatures.h"
 #include "xclbin.h"
@@ -30,7 +30,7 @@
 //
 // Xilinx driver interface GUID
 //
-DEFINE_GUID (GUID_XILINX_PF_INTERFACE,
+DEFINE_GUID(GUID_XILINX_PF_INTERFACE,
     0xd5bf220b, 0xf9c4, 0x415d, 0xbf, 0xac, 0x8, 0x6e, 0xbd, 0x65, 0x3f, 0x8f);
 
 #define XCLMGMT_REG_NAME               L"Xclmgmt"
@@ -56,6 +56,8 @@ enum XCLMGMT_IOC_TYPES {
     XCLMGMT_IOC_GET_UUID_INFO,
     XCLMGMT_IOC_SET_DATA_RETENTION,
     XCLMGMT_IOC_GET_DATA_RETENTION,
+    XCLMGMT_IOC_PRP_FORCE_ICAP_PROGRAM_AXLF,
+    XCLMGMT_IOC_GET_DEVICE_PCI_INFO,
     XCLMGMT_IOC_MAX
 };
 
@@ -91,8 +93,10 @@ enum XCLMGMT_IOC_TYPES {
 #define XCLMGMT_OID_SET_DATA_RETENTION CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_SET_DATA_RETENTION, METHOD_BUFFERED, FILE_ANY_ACCESS)
 /*Get data retention value*/
 #define XCLMGMT_OID_GET_DATA_RETENTION CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_GET_DATA_RETENTION, METHOD_BUFFERED, FILE_ANY_ACCESS)
-
-
+/* IOC_PRP_FORCE_ICAP_PROGRAM_AXLF provides  struct xclmgmt_ioc_bitstream_axlf as input, and plp download status as output, force program PRP region */
+#define XCLMGMT_OID_PRP_FORCE_ICAP_PROGRAM_AXLF CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_PRP_FORCE_ICAP_PROGRAM_AXLF, METHOD_BUFFERED, FILE_ANY_ACCESS)
+/* IOC_GET_DEVICE_PCI_INFO gets the device-specific info */
+#define XCLMGMT_OID_GET_DEVICE_PCI_INFO     CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_GET_DEVICE_PCI_INFO, METHOD_BUFFERED, FILE_ANY_ACCESS)
 //
 // Struct for XCLMGMT_OID_GET_DEVICE_INFO IOCTL
 // MAC address is a 48-bit formatted string - "aa:bb:cc:dd:ee:ff"
@@ -146,8 +150,13 @@ typedef struct sysmon_info {
     UINT32 vcc_bram_max;
 }SYSMON_INFO, *PSYSMON_INFO;
 
-typedef struct xclmgmt_ioc_device_info {
+/* Structure available for golden */
+typedef struct xclmgmt_ioc_device_pci_info {
     PCIE_CONFIG_INFO pcie_info;
+}XCLMGMT_IOC_DEVICE_PCI_INFO, *PXCLMGMT_IOC_DEVICE_PCI_INFO;
+
+/* Structure not available for golden */
+typedef struct xclmgmt_ioc_device_info {
     DRIVER_VERSION   version;
     ULONGLONG        feature_id;
     ULONGLONG        time_stamp;
@@ -159,7 +168,7 @@ typedef struct xclmgmt_ioc_device_info {
     UINT32           ocl_frequency[XCLMGMT_NUM_SUPPORTED_CLOCKS];
     bool             mig_calibration[4];
     USHORT           num_clocks;
-	ULONGLONG        xmc_offset;
+    ULONGLONG        xmc_offset;
     struct FeatureRomHeader rom_hdr;
 }XCLMGMT_IOC_DEVICE_INFO, *PXCLMGMT_IOC_DEVICE_INFO;
 

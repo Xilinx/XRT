@@ -66,4 +66,11 @@
 #define xclQdma2HostInterrupt_n 36
 #define xclDmaVersion_n 37
 
+#define xclGraphInit_n 38
+#define xclGraphRun_n 39
+#define xclGraphWait_n 40
+#define xclGraphEnd_n 41
+#define xclGraphUpdateRTP_n 42
+#define xclGraphReadRTP_n 43
+
 #endif

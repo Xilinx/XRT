@@ -19,7 +19,7 @@
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "xocl/core/device.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 #include <CL/opencl.h>
 
 //To access make_unique<>. TODO
@@ -55,6 +55,7 @@ clCreateStreamBuffer(cl_device_id device,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateStreamBuffer
       (device,size,errcode_ret);
   }

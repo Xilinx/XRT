@@ -301,7 +301,7 @@ class xprintQueue (gdb.Command, infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print (e.message)
+			print (e)
 			return
 
 		if arg == "":
@@ -341,7 +341,7 @@ class xprintEvent (gdb.Command, infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print (e.message)
+			print (e)
 			return
 		if arg == "" :
 			print ("No event argument specified")
@@ -358,7 +358,7 @@ class xprintMem (gdb.Command,infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print (e.message)
+			print (e)
 			return
 
 		if arg == "":
@@ -392,7 +392,7 @@ class xprintKernel (gdb.Command,infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print (e.message)
+			print (e)
 			return
 
 		if arg == "":
@@ -428,7 +428,7 @@ class xprintAll (gdb.Command,infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print (e.message)
+			print (e)
 			return
 		all_queues.invoke(arg,from_tty)
 		print ("");
@@ -473,7 +473,7 @@ class xprintJSONQueue (gdb.Command, infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print ("\"error\": \"{}\"".format (e.message))
+			print ("\"error\": \"{}\"".format (e))
 			return
 
 		if arg == "":
@@ -519,7 +519,7 @@ class xprintJSONMem (gdb.Command,infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print ("\"error\": \"{}\"".format (e.message))
+			print ("\"error\": \"{}\"".format (e))
 			return
 
 		if arg == "":
@@ -562,7 +562,7 @@ class xprintJSONAll (gdb.Command,infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print ("\"error\": \"{}\"".format(e.message))
+			print ("\"error\": \"{}\"".format(e))
 			print ("}")
 			return
 

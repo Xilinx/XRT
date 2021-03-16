@@ -81,16 +81,39 @@ stop()
     sws::stop();
 }
 
-/**
- * Schedule a command for execution on either sws or kds
- */
+
+// Schedule a command for execution on either sws or kds. Use push
+// execution, meaning host will be notified of command completion
 void
-schedule(command* cmd)
+managed_start(command* cmd)
 {
   if (kds_enabled())
-    kds::schedule(cmd);
+    kds::managed_start(cmd);
   else
-    sws::schedule(cmd);
+    sws::managed_start(cmd);
+}
+
+// Schedule a command for execution on either sws or kds. Use poll
+// execution, meaning host must explicitly call unmanaged_wait() to
+// wait for command completion
+void
+unmanaged_start(command* cmd)
+{
+  if (kds_enabled())
+    kds::unmanaged_start(cmd);
+  else
+    sws::unmanaged_start(cmd);
+}
+
+// Wait for a command to complete execution.  This function must be
+// called in poll mode scheduling, and is safe to call in push mode.
+void
+unmanaged_wait(const command* cmd)
+{
+  if (kds_enabled())
+    kds::unmanaged_wait(cmd);
+  else
+    sws::unmanaged_wait(cmd);
 }
 
 void

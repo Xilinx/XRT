@@ -83,14 +83,15 @@ get_installed_partitions(std::string interface_uuid)
     // Find the UUID that it exposes for other partitions
     for(unsigned int j = 1; j < installedDSA.uuids.size(); j++){
       //check if the interface UUID is resolution of BLP
-      if(interface_uuid.compare(installedDSA.uuids[j]) == 0)
+      if(interface_uuid.compare(installedDSA.uuids[j]) != 0)
         continue;
       pt_plp.put("interface-uuid", XBU::string_to_UUID(installedDSA.uuids[j]));
     }
     pt_plp.put("file", installedDSA.file);
-    std::cout << std::endl;
 
-    pt_plps.push_back( std::make_pair("", pt_plp) );
+    //if the partition doesn't resolve the passed in BLP, don't add it to the list
+    if(!pt_plp.get<std::string>("interface-uuid", "").empty())
+      pt_plps.push_back( std::make_pair("", pt_plp) );
   }
   return pt_plps;
 }
@@ -111,20 +112,21 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   pt_platform.put("hardware.serial_num", info.mSerialNum);
 
   //Flashable partition running on FPGA
+
   std::vector<std::string> logic_uuids, interface_uuids;
-  // the vectors are being populated by empty strings when uuids are not available on windows
-  // this needs to be fixed when the concept of multiple uuids comes into play
-  // Workaround: if the uuid is empty, remove clear the vector
+  // the vectors are being populated by empty strings which need to be removed
   try {
     logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
-    if (!logic_uuids.empty() && logic_uuids.front().empty())
-      logic_uuids.clear();
-    } catch (...) {}
+    logic_uuids.erase(
+      std::remove_if(logic_uuids.begin(), logic_uuids.end(),	
+                      [](const std::string& s) { return s.empty(); }), logic_uuids.end());
+  } catch (...) {}
   try {
     interface_uuids = xrt_core::device_query<xrt_core::query::interface_uuids>(device);
-    if (!interface_uuids.empty() && interface_uuids.front().empty())
-      interface_uuids.clear();
-    } catch (...) {}
+    interface_uuids.erase(
+      std::remove_if(interface_uuids.begin(), interface_uuids.end(),	
+                  [](const std::string& s) { return s.empty(); }), interface_uuids.end());
+  } catch (...) {}
   
   
   boost::property_tree::ptree pt_current_shell;
@@ -156,7 +158,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
 
   std::string sc_ver;
   try {
-    sc_ver = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(device);
+    sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(device);
   } catch (...) {}
   if(sc_ver.empty())
     sc_ver = info.mBMCVer;
@@ -215,9 +217,6 @@ ReportPlatform::writeReport( const xrt_core::device * device,
 {
   boost::property_tree::ptree pt;
   getPropertyTreeInternal(device, pt);
-
-  output << boost::format("%s : [%s]\n") % "Device" % pt.get<std::string>("platform.bdf");
-  output << std::endl;
 
   output << "Flash properties\n";
   output << fmtBasic % "Type" % pt.get<std::string>("platform.flash_type", "N/A");

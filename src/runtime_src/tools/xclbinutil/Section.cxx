@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2020 Xilinx, Inc
+ * Copyright (C) 2018 - 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -388,6 +388,18 @@ Section::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   XUtil::TRACE_PrintTree("Payload", _ptSection);
   std::string errMsg = XUtil::format("ERROR: Section '%s' (%d) missing payload parser.", getSectionKindAsString().c_str(), (unsigned int)getSectionKind());
   throw std::runtime_error(errMsg);
+}
+
+void 
+Section::setPathAndName(const std::string& _pathAndName)
+{
+  m_pathAndName = _pathAndName;
+}
+
+const std::string &
+Section::getPathAndName() const
+{
+  return m_pathAndName;
 }
 
 

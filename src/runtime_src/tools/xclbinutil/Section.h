@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2018 - 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -91,6 +91,8 @@ class Section {
   void getPayload(boost::property_tree::ptree& _pt) const;
   void purgeBuffers();
   void setName(const std::string &_sSectionName);
+  void setPathAndName(const std::string& _pathAndName);
+  const std::string &getPathAndName() const;
 
  protected:
   // Child class option to create an JSON metadata
@@ -115,6 +117,8 @@ class Section {
   char* m_pBuffer;
   unsigned int m_bufferSize;
   std::string m_name;
+
+  std::string m_pathAndName;
 
  private:
   static std::map<enum axlf_section_kind, std::string> m_mapIdToName;

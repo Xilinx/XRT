@@ -1,5 +1,5 @@
-/**
- * Copyright (C) 2019 Xilinx, Inc
+/*
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,6 +18,7 @@
 #define core_common_ishim_h
 
 #include "xrt.h"
+#include "experimental/xrt_graph.h"
 #include "experimental/xrt-next.h"
 #include "experimental/xrt_bo.h"
 #include "xcl_graph.h"
@@ -97,7 +98,7 @@ struct ishim
   exec_wait(int timeout_ms) const = 0;
 
   virtual void
-  load_xclbin(const struct axlf*) = 0;
+  load_axlf(const axlf*) = 0;
 
   virtual void
   reclock(const uint16_t* target_freq_mhz) = 0;
@@ -110,7 +111,7 @@ struct ishim
 
 #ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
-  open_graph(const xuid_t, const char*) = 0;
+  open_graph(const xuid_t, const char*, xrt::graph::access_mode am) = 0;
 
   virtual void
   close_graph(xclGraphHandle handle) = 0;
@@ -338,7 +339,7 @@ struct shim : public DeviceType
   }
 
   virtual void
-  load_xclbin(const struct axlf* buffer)
+  load_axlf(const axlf* buffer)
   {
     if (auto ret = xclLoadXclBin(DeviceType::get_device_handle(), buffer))
       throw error(ret, "failed to load xclbin");
@@ -367,9 +368,9 @@ struct shim : public DeviceType
 
 #ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
-  open_graph(const xuid_t uuid, const char *gname)
+  open_graph(const xuid_t uuid, const char *gname, xrt::graph::access_mode am)
   {
-    if (auto ghdl = xclGraphOpen(DeviceType::get_device_handle(), uuid, gname))
+    if (auto ghdl = xclGraphOpen(DeviceType::get_device_handle(), uuid, gname, am))
       return ghdl;
 
     throw std::runtime_error("failed to open graph");

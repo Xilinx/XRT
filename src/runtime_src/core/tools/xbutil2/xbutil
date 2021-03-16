@@ -1,5 +1,14 @@
 #!/bin/bash
 
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (C) 2020-2021 Xilinx, Inc.
+#
+# xbutil loader which automatically switches between classic and next
+# generation xbutil utility. The current default is classic xbutil tool.
+#
+
 # -- Detect a Windows environment and automatically switch to the .bat file
 if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   trap "" INT
@@ -7,13 +16,126 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   exit $?
 fi
 
+DEFAULT=xbutil
+XBUTIL=xbutil
+XBUTIL2=xbutil2
+
 # Working variables
 XRT_PROG=xbutil
 
+# Table to resolve validate sub-command based on switch passed to validate
+declare -A VALOPT=( \
+        ["--device"]="XBUTIL2" \
+        ["--format"]="XBUTIL2" \
+        ["--run"]="XBUTIL2" \
+        ["--output"]="XBUTIL2" \
+        ["--help"]="XBUTIL2" \
+        ["-d"]="DEVICE" \
+        ["-f"]="XBUTIL2" \
+        ["-r"]="XBUTIL2" \
+        ["-o"]="XBUTIL2" \
+        ["-h"]="XBUTIL2" \
+    )
+
+# Table to resolve reset sub-command based on switch passed to reset
+#declare -A RSTOPT=( \
+#        ["--device"]="XBUTIL2" \
+#        ["--type"]="XBUTIL2" \
+#        ["--help"]="XBUTIL2" \
+#        ["-d"]="DEVICE" \
+#        ["-r"]="XBUTIL2" \
+#        ["-h"]="XBUTIL2" \
+#    )
+
+# Switch to the table above once xbutil reset is implemented by the
+# next generation tool. For now redirect all reset requests to classic
+# tool
+
+declare -A RSTOPT=( \
+        ["--device"]="XBUTIL" \
+        ["--type"]="XBUTIL" \
+        ["--help"]="XBUTIL" \
+        ["-d"]="XBUTIL" \
+        ["-r"]="XBUTIL" \
+        ["-h"]="XBUTIL" \
+    )
+
+# Table to resolve program sub-command based on switch passed to program
+declare -A PROGOPT=( \
+        ["-p"]="XBUTIL" \
+        ["--user"]="XBUTIL2" \
+        ["-u"]="XBUTIL2" \
+        ["--device"]="XBUTIL2" \
+        ["--help"]="XBUTIL2" \
+        ["-d"]="DEVICE" \
+        ["-h"]="XBUTIL2" \
+    )
+
+# In the following table "reset", "program" and "validate" point to a second
+# table by name. Note that reset, program and validate are valid both for
+# classic and next generation tool and hence requires a second lookup to resolve
+# between xbutil and xbutil2
+declare -A COMMANDS=( \
+        ["help"]="XBUTIL" \
+        ["version"]="XBUTIL" \
+        ["--version"]="XBUTIL" \
+        ["program"]="PROGOPT" \
+        ["clock"]="XBUTIL" \
+        ["boot"]="XBUTIL" \
+        ["query"]="XBUTIL" \
+        ["dump"]="XBUTIL" \
+        ["run"]="XBUTIL" \
+        ["fan"]="XBUTIL" \
+        ["dmatest"]="XBUTIL" \
+        ["list"]="XBUTIL" \
+        ["scan"]="XBUTIL" \
+        ["mem"]="XBUTIL" \
+        ["dd"]="XBUTIL" \
+        ["status"]="XBUTIL" \
+        ["m2mtest"]="XBUTIL" \
+        ["flash"]="XBUTIL" \
+        ["validate"]="VALOPT" \
+        ["top"]="XBUTIL" \
+        ["reset"]="RSTOPT" \
+        ["p2p"]="XBUTIL" \
+        ["host_mem"]="XBUTIL" \
+        ["scheduler"]="XBUTIL" \
+        ["examine"]="XBUTIL2" \
+        ["advanced"]="XBUTIL2" \
+        ["--help"]="XBUTIL2" \
+        ["--verbose"]="XBUTIL2" \
+        ["--batch"]="XBUTIL2" \
+        ["-h"]="XBUTIL2" \
+        ["-v"]="XBUTIL2" \
+        ["-b"]="XBUTIL2" \
+    )
+
+INTRE='^[0-9]+$'
+
+
+function parse_device_arg() {
+    local RESULT="DEFAULT"
+    case $1 in
+	XBUTIL)
+	    RESULT="XBUTIL"
+	    ;;
+	XBUTIL2)
+	    RESULT="XBUTIL2"
+	    ;;
+	DEVICE)
+	    if [[ -n $2 ]] && [[ $2 =~ ${INTRE} ]]; then
+		RESULT="XBUTIL"
+	    elif [[ -n $2 ]]; then
+		RESULT="XBUTIL2"
+	    fi
+	    ;;
+    esac
+    PROG=${RESULT}
+}
 # Determine which version of xbutil should be used
 # Check to see environment variable is NOT set
-if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then 
-  XRT_PROG=xbutil
+if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then
+    XRT_PROG=xbutil
 elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
      XRT_PROG=xbutil2
 fi
@@ -22,20 +144,68 @@ fi
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
-  case "$1" in
-    # Indicates that the new version of xbutil (e.g., xbutil2) should be used
-    -new|--new)
-      XRT_PROG=xbutil2
-      shift
-      ;;
-    # Copy the options the remaining options
-    *)
-      XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
-      XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
-      shift
-      ;;
-  esac
+    case "$1" in
+	# Indicates that the new version of xbutil (e.g., xbutil2) should be used
+	-new|--new)
+	    XRT_PROG=xbutil2
+	    shift
+	    ;;
+	# Copy the options the remaining options
+	*)
+	    XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
+	    XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
+	    shift
+	    ;;
+    esac
 done
+
+# If user did not specify -new/--new then attempt to determine if user
+# wants to use classic or new by peeking inside the command line
+# Ideally with bash 'nameref' the case/esac would not be necessary and
+# we should be able to deref in one step using helper declaration like
+# declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+# However RHEL 7.X still uses bash 4.2 which does not support nameref :-(
+
+if [ ${XRT_PROG} == "xbutil" ]; then
+    PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+    case ${PROG} in
+	XBUTIL | XBUTIL2)
+	;;
+	RSTOPT)
+	    # We have an ambiguous sub-command, use the next token/switch to
+	    # disambiguate by a second look up
+	    PROG="DEFAULT"
+	    if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
+		PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+		parse_device_arg ${PROG} ${XRTWRAP_PROG_ARGS[2]}
+	    fi
+	    ;;
+	PROGOPT)
+	    # We have an ambiguous sub-command, use the next token/switch to
+	    # disambiguate by a second look up
+	    PROG="DEFAULT"
+	    if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
+		PROG=${PROGOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+		parse_device_arg ${PROG} ${XRTWRAP_PROG_ARGS[2]}
+	    fi
+	    ;;
+	VALOPT)
+	    # We have an ambiguous sub-command, use the next token/switch to
+	    # disambiguate by a second look up
+	    PROG="DEFAULT"
+	    if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
+		PROG=${VALOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+		parse_device_arg ${PROG} ${XRTWRAP_PROG_ARGS[2]}
+	    fi
+	    ;;
+	*)
+	    # Bogus sub-command which failed lookup
+	    PROG="DEFAULT"
+	    ;;
+    esac
+    # Get named reference to the value pointed by the string returned
+    XRT_PROG=${!PROG}
+fi
 
 # Friendly message
 if [ ${XRT_PROG} == "xbutil2" ]; then

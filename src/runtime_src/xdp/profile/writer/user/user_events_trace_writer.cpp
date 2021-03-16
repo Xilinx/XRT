@@ -25,7 +25,7 @@ namespace xdp {
 
   UserEventsTraceWriter::UserEventsTraceWriter(const char* filename) :
     VPTraceWriter(filename,
-		  "1.0",
+		  "1.1",
 		  getCurrentDateTime(),
 		  9 /* ns */),
     bucketId(1)
@@ -39,6 +39,7 @@ namespace xdp {
   void UserEventsTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
+    fout << "TraceID," << traceID << std::endl;
   }
 
   void UserEventsTraceWriter::writeStructure()
@@ -77,7 +78,7 @@ namespace xdp {
     // No dependencies in user events
   }
 
-  void UserEventsTraceWriter::write(bool openNewFile)
+  bool UserEventsTraceWriter::write(bool openNewFile)
   {
     writeHeader() ;
     fout << std::endl ;
@@ -90,6 +91,8 @@ namespace xdp {
     writeDependencies() ;
 
     if (openNewFile) switchFiles() ;
+
+    return true;
   }
 
 } // end namespace xdp

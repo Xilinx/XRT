@@ -21,6 +21,7 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_error.h"
 
+#include "native_profile.h"
 #include "device_int.h"
 #include "error_int.h"
 #include "core/common/error.h"
@@ -166,6 +167,18 @@ error_time_to_string(xrtErrorTime time)
   return std::to_string(time);
 }
 
+// Necessary for disambiguating the make_shared call in the profiling_wrapper
+static std::shared_ptr<xrt::error_impl>
+alloc_error_from_device(const xrt_core::device* device, xrtErrorClass ecl)
+{
+  return std::make_shared<xrt::error_impl>(device, ecl);
+}
+
+static std::shared_ptr<xrt::error_impl>
+alloc_error_from_code(xrtErrorCode ecode, xrtErrorTime timestamp)
+{
+  return std::make_shared<xrt::error_impl>(ecode, timestamp) ;
+}
 
 } // namespace
 
@@ -242,35 +255,42 @@ namespace xrt {
 
 error::
 error(const xrt::device& device, xrtErrorClass ecl)
-  : handle(std::make_shared<error_impl>(device.get_handle().get(), ecl))
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::error",
+           alloc_error_from_device, device.get_handle().get(), ecl))
 {}
 
 error::
 error(xrtErrorCode code, xrtErrorTime timestamp)
-  : handle(std::make_shared<error_impl>(code, timestamp))
+  : handle(xdp::native::profiling_wrapper(__func__, "xrt::error",
+	   alloc_error_from_code, code, timestamp))
 {}
 
 xrtErrorTime
 error::
 get_timestamp() const
 {
-  return handle->get_timestamp();
+  return xdp::native::profiling_wrapper(__func__, "xrt::error", [this]{
+    return handle->get_timestamp();
+  });
 }
 
 xrtErrorCode
 error::
 get_error_code() const
 {
-  return handle->get_error_code();
+  return xdp::native::profiling_wrapper(__func__, "xrt::error", [this]{
+    return handle->get_error_code();
+  });
 }
 
 std::string
 error::
 to_string() const
 {
-  return handle->to_string();
+  return xdp::native::profiling_wrapper(__func__, "xrt::error", [this]{
+    return handle->to_string();
+  });
 }
-
 
 } // namespace xrt
 
@@ -281,10 +301,13 @@ int
 xrtErrorGetLast(xrtDeviceHandle dhdl, xrtErrorClass ecl, xrtErrorCode* error, uint64_t* timestamp)
 {
   try {
-    auto handle = xrt::error_impl(xrt_core::device_int::get_core_device(dhdl).get(), ecl);
-    *error = handle.get_error_code();
-    *timestamp = handle.get_timestamp();
-    return 0;
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [dhdl, ecl, error, timestamp]{
+      auto handle = xrt::error_impl(xrt_core::device_int::get_core_device(dhdl).get(), ecl);
+      *error = handle.get_error_code();
+      *timestamp = handle.get_timestamp();
+      return 0;
+    });
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -301,19 +324,22 @@ int
 xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, size_t* out_len)
 {
   try {
-    auto str = error_code_to_string(error);
+    return xdp::native::profiling_wrapper(__func__, nullptr,
+    [error, out, len, out_len]{
+      auto str = error_code_to_string(error);
 
-    if (out_len)
-      *out_len = str.size() + 1;
+      if (out_len)
+        *out_len = str.size() + 1;
 
-    if (!out)
+      if (!out)
+        return 0;
+
+      auto cp_len = std::min(len-1, str.size());
+      std::strncpy(out, str.c_str(), cp_len);
+      out[cp_len] = 0;
+
       return 0;
-
-    auto cp_len = std::min(len-1, str.size());
-    std::strncpy(out, str.c_str(), cp_len);
-    out[cp_len] = 0;
-
-    return 0;
+    });
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());

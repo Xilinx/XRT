@@ -21,7 +21,6 @@
 #include "xocl/core/kernel.h"
 #include "xocl/core/compute_unit.h"
 
-#include "xrt/scheduler/command.h"
 #include "core/include/xclbin.h"
 #include <mutex>
 #include <array>

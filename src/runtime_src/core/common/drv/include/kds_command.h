@@ -20,15 +20,20 @@
 #define KEY_VAL 1
 
 enum kds_opcode {
-	OP_CONFIG = 0,
+	OP_NONE = 0,
+	OP_CONFIG,
 	OP_START,
 	OP_CONFIG_SK, /* TODO: There is a plan to remove softkernel config and unconfig command */
 	OP_START_SK,
+	OP_CLK_CALIB,
+	OP_VALIDATE,
+	OP_GET_STAT,
 };
 
 enum kds_status {
-	KDS_COMPLETED	= 0,
-	KDS_ERROR	= 1,
+	KDS_NEW = 0,
+	KDS_COMPLETED,
+	KDS_ERROR,
 	KDS_ABORT,
 	KDS_TIMEOUT,
 };
@@ -45,6 +50,9 @@ struct in_kernel_cb {
 	void *data;
 };
 
+/* Default cu index of a command */
+#define NO_INDEX -1
+
 /**
  * struct kds_command: KDS command struct
  * @client: the client that the command belongs to
@@ -52,7 +60,8 @@ struct in_kernel_cb {
  */
 struct kds_command {
 	struct kds_client	*client;
-	u32			cu_idx;
+	int			 status;
+	int			 cu_idx;
 	u32			 type;
 	u32			 opcode;
 	struct list_head	 list;
@@ -66,11 +75,16 @@ struct kds_command {
 	u32			 num_mask;
 	u32			 payload_type;
 	u64			 start;
+	void			*priv;
+
+	unsigned int		 tick;
+
 	struct kds_cmd_ops	 cb;
 	/* execbuf is used to update the header
 	 * of execbuf when notifying host
 	 */
 	u32			*execbuf;
+	u32			*u_execbuf;
 	void			*gem_obj;
 	/* to notify inkernel exec completion */
 	struct in_kernel_cb	*inkern_cb;

@@ -2,7 +2,7 @@
 /*
  * A GEM style CMA backed memory manager for ZynQ based OpenCL accelerators.
  *
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -278,19 +278,25 @@ struct drm_zocl_info_cu {
 enum drm_zocl_ctx_code {
 	ZOCL_CTX_OP_ALLOC_CTX = 0,
 	ZOCL_CTX_OP_FREE_CTX,
-	ZOCL_CTX_OP_OPEN_GCU_FD
+	ZOCL_CTX_OP_OPEN_GCU_FD,
+	ZOCL_CTX_OP_ALLOC_GRAPH_CTX,
+	ZOCL_CTX_OP_FREE_GRAPH_CTX
 };
 
 #define	ZOCL_CTX_NOOPS		0
 #define	ZOCL_CTX_SHARED		(1 << 0)
 #define	ZOCL_CTX_EXCLUSIVE	(1 << 1)
 #define	ZOCL_CTX_VERBOSE	(1 << 2)
+#define	ZOCL_CTX_PRIMARY	(1 << 3)
 #define	ZOCL_CTX_VIRT_CU_INDEX	0xffffffff
 
 struct drm_zocl_ctx {
 	uint64_t uuid_ptr;
 	uint64_t uuid_size;
-	uint32_t cu_index;
+	union {
+		uint32_t cu_index;
+		uint32_t graph_id;
+	};
 	uint32_t flags;
 	// unused, in future it would return context id
 	uint32_t handle;
@@ -389,9 +395,9 @@ struct kernel_info {
  **/
 struct drm_zocl_axlf {
 	struct axlf 	*za_xclbin_ptr;
-	uint32_t         za_flags;
-	int	             za_ksize;
-	char			*za_kernels;
+	uint32_t	za_flags;
+	int		za_ksize;
+	char		*za_kernels;
 };
 
 #define	ZOCL_MAX_NAME_LENGTH		32
@@ -408,14 +414,14 @@ struct drm_zocl_axlf {
  * @size         : size in bytes of soft kernel image
  * @paddr        : soft kernel image's physical address (little endian)
  * @name         : symbol name of soft kernel
+ * @bohdl        : BO to hold soft kernel image
  */
 struct drm_zocl_sk_getcmd {
 	uint32_t	opcode;
 	uint32_t	start_cuidx;
 	uint32_t	cu_nums;
-	size_t		size;
-	uint64_t	paddr;
 	char		name[ZOCL_MAX_NAME_LENGTH];
+	uint32_t	bohdl;
 };
 
 enum aie_info_code {

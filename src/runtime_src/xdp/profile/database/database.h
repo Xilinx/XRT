@@ -40,7 +40,7 @@ namespace xdp {
   {
   public:
     // For messages sent to specific plugins
-    enum MessageType { } ;
+    enum MessageType { READ_COUNTERS } ;
 
   private:
     // The information stored in the database will be separated into 

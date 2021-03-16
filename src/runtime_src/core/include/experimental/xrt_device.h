@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -21,9 +21,11 @@
 #include "xrt.h"
 #include "experimental/xrt_uuid.h"
 #include "experimental/xrt_xclbin.h"
+#include "experimental/detail/param_traits.h"
 
 #ifdef __cplusplus
 # include <memory>
+# include <boost/any.hpp> // std::any c++17
 #endif
 
 /**
@@ -39,6 +41,37 @@ class device;
 
 namespace xrt {
 
+namespace info {
+
+/**    
+ * @enum info::device - device information parameters.
+ *
+ *
+ * Use with \ref xrt::device::get_info() to retrieve properties of the
+ * device.  The type of the device properties is compile time defined
+ * with param traits.
+ */
+enum class device : unsigned int {
+  name,
+  bdf,
+  kdma,
+  max_clock_frequency_mhz,
+  m2m,
+  nodma,
+};
+
+/**
+ * Return type for xrt::device::get_info()
+ */
+XRT_INFO_PARAM_TRAITS(device::name, std::string);
+XRT_INFO_PARAM_TRAITS(device::bdf, std::string);
+XRT_INFO_PARAM_TRAITS(device::kdma, std::uint32_t);
+XRT_INFO_PARAM_TRAITS(device::max_clock_frequency_mhz, unsigned long);
+XRT_INFO_PARAM_TRAITS(device::m2m, bool);
+XRT_INFO_PARAM_TRAITS(device::nodma, bool);
+
+} // info
+  
 class device
 {
 public:
@@ -49,18 +82,37 @@ public:
   {}
 
   /**
-   * device() - Constructor with user host buffer and flags
+   * device() - Constructor from device index
    *
    * @param didx
    *  Device index
+   *
+   * Throws if no device is found matching the specified index.
    */
   XCL_DRIVER_DLLESPEC
   explicit
   device(unsigned int didx);
 
+  /**
+   * device() - Constructor from string
+   *
+   * @param str
+   *  String identifying the device to open.  
+   *
+   * If the string is in BDF format it matched against devices
+   * installed on the system.  Otherwise the string is assumed
+   * to be a device index.
+   * 
+   * Throws if string format is invalid or no matching device is
+   * found.
+   */
+  XCL_DRIVER_DLLESPEC
+  explicit
+  device(const std::string& bdf);
+
   /// @cond
   /**
-   * device() - Constructor with user host buffer and flags
+   * device() - Constructor from device index
    *
    * @param didx
    *  Device index
@@ -115,6 +167,25 @@ public:
   operator=(device&& rhs) = default;
 
   /**
+   * get_info() - Retrieve device parameter information
+   *
+   * This function is templated on the enumeration value as defined in
+   * the enumeration xrt::info::device.
+   *
+   * The return type of the parameter is based on the instantiated
+   * param_traits for the given param enumeration supplied as template
+   * argument, see namespace xrt::info
+   */
+  template <info::device param>
+  typename info::param_traits<info::device, param>::return_type
+  get_info() const
+  {
+    return boost::any_cast<
+      typename info::param_traits<info::device, param>::return_type  
+    >(get_info(param));
+  }
+
+  /**
    * load_xclbin() - Load an xclbin 
    *
    * @param xclbin
@@ -124,7 +195,7 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   uuid
-  load_xclbin(const struct axlf* xclbin);
+  load_xclbin(const axlf* xclbin);
 
   /**
    * load_xclbin() - Read and load an xclbin file
@@ -207,11 +278,8 @@ public:
     return handle;
   }
 
-  void
-  reset()
-  {
-    handle.reset();
-  }
+  XCL_DRIVER_DLLESPEC void
+  reset();
 
   explicit
   operator bool() const
@@ -224,6 +292,10 @@ private:
   XCL_DRIVER_DLLESPEC
   std::pair<const char*, size_t>
   get_xclbin_section(axlf_section_kind section, const uuid& uuid) const;
+
+  XCL_DRIVER_DLLESPEC
+  boost::any
+  get_info(info::device param) const;
 
 private:
   std::shared_ptr<xrt_core::device> handle;
@@ -244,6 +316,16 @@ extern "C" {
 XCL_DRIVER_DLLESPEC
 xrtDeviceHandle
 xrtDeviceOpen(unsigned int index);
+
+/**
+ * xrtDeviceOpenByBDF() - Open a device and obtain its handle
+ *
+ * @bdf:           PCIe BDF identifying the device to open
+ * Return:         Handle representing the opened device, or nullptr on error
+ */
+XCL_DRIVER_DLLESPEC
+xrtDeviceHandle
+xrtDeviceOpenByBDF(const char* bdf);
 
 /**
  * xrtDeviceOpenFromXcl() - Open a device from a shim xclDeviceHandle
@@ -280,7 +362,7 @@ xrtDeviceClose(xrtDeviceHandle dhdl);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin);
+xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const axlf* xclbin);
 
 /**
  * xrtDeviceLoadXclbinFile() - Read and load an xclbin file

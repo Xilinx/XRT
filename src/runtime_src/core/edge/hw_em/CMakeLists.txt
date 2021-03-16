@@ -1,6 +1,7 @@
 set(EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}")
 set(COMMON_EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../user")
 set(AIE_HW_EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../user/aie")
+set(AIE_HW_EM_CL_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../user/aie/common_layer")
 
 include_directories(
   ${EM_SRC_DIR}
@@ -23,6 +24,8 @@ file(GLOB XRT_CORE_EDGE_USER_AIE_HW_EM_FILES
   "${AIE_HW_EM_SRC_DIR}/*.h"
   "${AIE_HW_EM_SRC_DIR}/*.cpp"
   "${AIE_HW_EM_SRC_DIR}/*.c"
+  "${AIE_HW_EM_CL_SRC_DIR}/*.h"
+  "${AIE_HW_EM_CL_SRC_DIR}/*.cpp"
   )
 
 if (DEFINED XRT_AIE_BUILD)

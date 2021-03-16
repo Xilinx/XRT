@@ -5,6 +5,9 @@ ENABLE_TESTING()
 
 SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
+# Include supporting CMake functions
+include(CMake/unitTestSupport.cmake)
+
 # Exported interface into XRT for include from implemenation
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src
@@ -49,9 +52,10 @@ set (XRT_DEV_COMPONENT "xrt")
 
 set (XRT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
+# Version adjusted to 2.11 after u30 branch creation
 set(XRT_VERSION_RELEASE 202110)
 SET(XRT_VERSION_MAJOR 2)
-SET(XRT_VERSION_MINOR 9)
+SET(XRT_VERSION_MINOR 11)
 
 if (DEFINED ENV{XRT_VERSION_PATCH})
   SET(XRT_VERSION_PATCH $ENV{XRT_VERSION_PATCH})

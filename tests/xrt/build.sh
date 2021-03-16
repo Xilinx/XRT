@@ -111,7 +111,7 @@ if [[ $nocmake == 0 ]]; then
   if [[ $WSL == 0 ]]; then
       $CMAKE -DCMAKE_BUILD_TYPE=Debug -DXILINX_XRT=$XILINX_XRT $SRCDIR
   else
-      $CMAKE -G "Visual Studio 15 2017 Win64" -DCMAKE_BUILD_TYPE=Debug -DXILINX_XRT=$XILINX_XRT $SRCDIR
+      $CMAKE -G "Visual Studio 15 2017 Win64" -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Debug -DXILINX_XRT=$XILINX_XRT $SRCDIR
   fi
 fi
 $CMAKE --build . --config Debug --target install

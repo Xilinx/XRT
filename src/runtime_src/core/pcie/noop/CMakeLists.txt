@@ -33,6 +33,7 @@ set_target_properties(xrt_noop PROPERTIES VERSION ${XRT_VERSION_STRING}
 target_link_libraries(xrt_noop
   PRIVATE
   xrt_coreutil
+  pthread
   )
 
 install(TARGETS xrt_noop
@@ -42,7 +43,7 @@ install(TARGETS xrt_noop
 )
 
 install(TARGETS xrt_noop
-  EXPORT xrt-targets-dev
+  EXPORT xrt-dev-targets
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )

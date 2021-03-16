@@ -16,8 +16,7 @@
 #include "xocl/config.h"
 #include "detail/platform.h"
 #include "xocl/core/platform.h"
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 #include <CL/cl_ext_xilinx.h>
 #include <map>
 

@@ -24,8 +24,7 @@
 #include "detail/device.h"
 
 #include <limits>
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 
 #ifdef _WIN32
 # pragma warning ( disable : 4267 )
@@ -309,6 +308,9 @@ clGetDeviceInfo(cl_device_id   device,
     break;
   case CL_DEVICE_NODMA:
     buffer.as<cl_bool>() = xdevice->is_nodma();
+    break;
+  case CL_DEVICE_KDMA_COUNT:
+    buffer.as<cl_uint>() = static_cast<cl_uint>(xdevice->get_num_cdmas());
     break;
   default:
     throw error(CL_INVALID_VALUE,"clGetDeviceInfo: invalid param_name");

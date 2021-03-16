@@ -25,8 +25,7 @@
 #include "detail/context.h"
 
 #include "api.h"
-#include "plugin/xdp/profile.h"
-#include "plugin/xdp/lop.h"
+#include "plugin/xdp/profile_v2.h"
 
 
 namespace xocl {

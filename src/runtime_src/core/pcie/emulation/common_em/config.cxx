@@ -189,6 +189,13 @@ namespace xclemulation{
         } else {
           setenv("HW_EM_DISABLE_LATENCY", "true", true);
         }
+      } else if (name == "enable_memory_persistence" || name == "ENABLE_MEMORY_PERSISTENCE") {
+        bool val = getBoolValue(value, false);
+        if (val) {
+          setenv("HWEMU_MEMORY_PERSISTENCE", "true", true);
+        } else {
+          setenv("HWEMU_MEMORY_PERSISTENCE", "false", true);
+        }
       }
       else if (name == "wcfg_file_path") {
         setWcfgFilePath(value);

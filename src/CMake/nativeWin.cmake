@@ -24,7 +24,7 @@ INCLUDE (FindBoost)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost
-  REQUIRED COMPONENTS system filesystem)
+  REQUIRED COMPONENTS system filesystem program_options)
 
 # Boost_VERSION_STRING is not working properly, use our own macro
 set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})
@@ -40,16 +40,6 @@ set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")
 set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
 set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib")
-
-# --- Release: OpenCL extension headers ---
-set(XRT_CL_EXT_SRC
-  include/1_2/CL/cl_ext_xilinx.h
-  include/1_2/CL/cl_ext.h)
-install (FILES ${XRT_CL_EXT_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL)
-message("-- XRT CL extension header files")
-foreach (header ${XRT_CL_EXT_SRC})
-  message("-- ${header}")
-endforeach()
 
 # --- Release: eula ---
 file(GLOB XRT_EULA

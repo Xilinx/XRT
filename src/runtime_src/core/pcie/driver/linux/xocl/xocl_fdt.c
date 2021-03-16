@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2018-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -429,25 +429,11 @@ static struct xocl_subdev_map subdev_map[] = {
 		.dev_name = XOCL_ERT_USER,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_ERT_CQ_USER, .regmap_name = PROP_ERT_CQ},
+			{.res_name = NODE_ERT_CFG_GPIO},
 			{.res_name = NODE_ERT_CQ_USER, .regmap_name = PROP_ERT_LEGACY},
 			{NULL},
 		},
 		.required_ip = 1,
-		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
-		.build_priv_data = ert_build_priv,
-		.devinfo_cb = NULL,
-		.max_level = XOCL_SUBDEV_LEVEL_PRP,
- 	},
-	{
-		.id = XOCL_SUBDEV_ERT_30,
-		.dev_name = XOCL_ERT_30,
-		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_ERT_CFG_GPIO},
-			{.res_name = NODE_ERT_CQ_USER, .regmap_name = PROP_ERT_CQ},
-			{.res_name = NODE_ERT_CQ_USER, .regmap_name = PROP_ERT_LEGACY},
-			{NULL},
-		},
-		.required_ip = 2,
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
@@ -661,7 +647,6 @@ static struct xocl_subdev_map subdev_map[] = {
 		.dev_name = XOCL_IORES2,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = RESNAME_MEMCALIB},
-			{.res_name = RESNAME_KDMA},
 			{.res_name = RESNAME_DDR4_RESET_GATE},
 			{NULL},
 		},
@@ -678,7 +663,6 @@ static struct xocl_subdev_map subdev_map[] = {
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = RESNAME_PCIEMON},
 			{.res_name = RESNAME_MEMCALIB},
-			{.res_name = RESNAME_KDMA},
 			{.res_name = RESNAME_DDR4_RESET_GATE},
 			{.res_name = RESNAME_ICAP_RESET},
 			{NULL},
@@ -737,20 +721,19 @@ static struct xocl_subdev_map subdev_map[] = {
 		.devinfo_cb = NULL,
 		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
-#if 0
 	{
 		.id = XOCL_SUBDEV_XFER_VERSAL,
 		.dev_name = XOCL_XFER_VERSAL,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_FPGA_CONFIG, .regmap_name = PROP_PDI_CONFIG},
+			{.res_name = NODE_FPGA_CONFIG_01, .regmap_name = PROP_PDI_CONFIG},
 			{NULL},
 		},
 		.required_ip = 1,
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
-#endif
 	{
 		.id = XOCL_SUBDEV_ICAP,
 		.dev_name = XOCL_ICAP,
@@ -1225,7 +1208,7 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 	 *  if platform is NULL, just use name to compare;
 	 *  if platform is available, use name + platform to compare;
 	 */
-	for (i = 0; i < ip_num; i++) {
+	for (i = 0; i < ip_num; i++, ip++) {
 		if (ip->name && strlen(ipname) > 0 && !ip->used &&
 		    ip->level >= min_level && ip->level <= max_level &&
 		    !strncmp(ip->name, ipname, strlen(ipname))) {
@@ -1236,7 +1219,6 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 			else
 				break;
 		}
-		ip++;
 	}
 	if (i == ip_num)
 		return 0;
@@ -1784,11 +1766,17 @@ const struct axlf_section_header *xocl_axlf_section_header(
 {
 	const struct axlf_section_header	*hdr = NULL;
 	int	i;
+	u32 num_sect = top->m_header.m_numSections;
 
 	xocl_xdev_info(xdev_hdl,
 		"trying to find section header for axlf section %d", kind);
 
-	for (i = 0; i < top->m_header.m_numSections; i++) {
+	if (num_sect > XCLBIN_MAX_NUM_SECTION) {
+		xocl_xdev_err(xdev_hdl, "too many sections: %d", num_sect);
+		return NULL;
+	}
+
+	for (i = 0; i < num_sect; i++) {
 		xocl_xdev_info(xdev_hdl, "saw section header: %d",
 			top->m_sections[i].m_sectionKind);
 		if (top->m_sections[i].m_sectionKind == kind) {

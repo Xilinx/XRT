@@ -77,7 +77,6 @@ int _main(int argc, char* argv[])
 
   std::string xclbin_fn = argv[2];
 
-  printf("The system has %d device(s)\n", xclProbe());
   auto device = xrt::device(0);
   auto uuid = device.load_xclbin(xclbin_fn);
 

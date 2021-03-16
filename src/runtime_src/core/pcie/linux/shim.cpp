@@ -38,6 +38,7 @@
 
 #include "xclbin.h"
 #include "ert.h"
+#include "shim_int.h"
 
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 
@@ -1421,6 +1422,28 @@ int shim::xclLoadAxlf(const axlf *buffer)
         off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
     }
 
+    /* To make download xclbin and configure KDS/ERT as an atomic operation. */
+    axlf_obj.kds_cfg.ert = xrt_core::config::get_ert();
+    axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
+    axlf_obj.kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
+    axlf_obj.kds_cfg.cu_isr = xrt_core::config::get_ert_cuisr() && xrt_core::xclbin::get_cuisr(buffer);
+    axlf_obj.kds_cfg.cq_int = xrt_core::config::get_ert_cqint();
+    axlf_obj.kds_cfg.dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow") || xrt_core::xclbin::get_dataflow(buffer);
+    axlf_obj.kds_cfg.rw_shared = xrt_core::config::get_rw_shared();
+
+    /* TODO: In scheduler.cpp init() function, it use get_ert_slots(void) to get slot size.
+     * But we cannot do this here, since the xclbin is not registered.
+     * Currently, emulation flow use get_ert_slots() as well.
+     * We will consider how to better determine slot size in new kds.
+     */
+    //axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots().second;
+    auto xml_hdr = xrt_core::xclbin::get_axlf_section(buffer, EMBEDDED_METADATA);
+    if (!xml_hdr)
+        throw std::runtime_error("No xml metadata in xclbin");
+    auto xml_size = xml_hdr->m_sectionSize;
+    auto xml_data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) + xml_hdr->m_sectionOffset);
+    axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots(xml_data, xml_size).second;
+
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
     if(ret)
         return -errno;
@@ -1448,12 +1471,12 @@ int shim::xclExportBO(unsigned int boHandle)
     drm_prime_handle info = {boHandle, DRM_RDWR, -1};
     int result = mDev->ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
     if (result) {
-        xrt_logmsg(XRT_WARNING, "XRT", "%s: DRM prime handle to fd failed with DRM_RDWR. Trying default flags.", __func__);
+        xrt_logmsg(XRT_WARNING, "%s: DRM prime handle to fd failed with DRM_RDWR. Trying default flags.", __func__);
         info.flags = 0;
         result = ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
     }
 
-    xrt_logmsg(XRT_DEBUG, "XRT", "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
+    xrt_logmsg(XRT_DEBUG, "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
     return !result ? info.fd : result;
 }
 
@@ -1506,7 +1529,7 @@ int shim::xclGetSectionInfo(void* section_info, size_t * section_size,
     std::vector<char> buf;
     mDev->sysfs_get("icap", entry, err, buf);
     if (!err.empty()) {
-        xrt_logmsg(XRT_ERROR, "%s: %s", __func__, err);
+        xrt_logmsg(XRT_ERROR, "%s: %s", __func__, err.c_str());
         return -EINVAL;
     }
 
@@ -2269,6 +2292,22 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
     }
 
     return static_cast<xclDeviceHandle>(handle);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+
+  return nullptr;
+}
+
+xclDeviceHandle
+xclOpenByBDF(const char *bdf)
+{
+  try {
+    return xclOpen(xrt_core::pcie_linux::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());

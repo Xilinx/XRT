@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver XCLBIN parser
  *
- * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2020-2021 Xilinx, Inc.
  *
  * Authors: David Zhang <davidzha@xilinx.com>
  */
@@ -94,10 +94,36 @@ static int versal_xclbin_post_download(xdev_handle_t xdev, void *args)
 	return ret;
 }
 
+static int mpsoc_xclbin_pre_download(xdev_handle_t xdev, void *args)
+{
+	return 0;
+}
+
+static int mpsoc_xclbin_download(xdev_handle_t xdev, void *args)
+{
+	struct xclbin_arg *arg = (struct xclbin_arg *)args;
+	int ret;
+
+	ret = xocl_xfer_versal_download_axlf(xdev, arg->xclbin);
+
+	return ret;
+}
+
+static int mpsoc_xclbin_post_download(xdev_handle_t xdev, void *args)
+{
+	return 0;
+}
+
 static struct xocl_xclbin_ops versal_ops = {
 	.xclbin_pre_download 	= versal_xclbin_pre_download,
 	.xclbin_download 	= versal_xclbin_download,
 	.xclbin_post_download 	= versal_xclbin_post_download,
+};
+
+static struct xocl_xclbin_ops mpsoc_ops = {
+	.xclbin_pre_download 	= mpsoc_xclbin_pre_download,
+	.xclbin_download 	= mpsoc_xclbin_download,
+	.xclbin_post_download 	= mpsoc_xclbin_post_download,
 };
 
 #if 0
@@ -137,7 +163,7 @@ static int xocl_xclbin_download_impl(xdev_handle_t xdev, const void *xclbin,
 		.xclbin = (struct axlf *)xclbin,
 		.num_dev = 0,
 	};
-	int ret = 0;	
+	int ret = 0;
 
 	/* Step1: call pre download callback */
 	if (ops->xclbin_pre_download) {
@@ -160,7 +186,7 @@ static int xocl_xclbin_download_impl(xdev_handle_t xdev, const void *xclbin,
 		ret = ops->xclbin_post_download(xdev, &args);
 	}
 
-done:	
+done:
 	return ret;
 }
 
@@ -168,7 +194,15 @@ int xocl_xclbin_download(xdev_handle_t xdev, const void *xclbin)
 {
 	if (XOCL_DSA_IS_VERSAL(xdev))
 		return xocl_xclbin_download_impl(xdev, xclbin, &versal_ops);
-	else
+	else {
+		int rval;
 		/* TODO: return xocl_xclbin_download_impl(xdev, xclbin, &icap_ops); */
-		return xocl_icap_download_axlf(xdev, xclbin);
+		rval = xocl_icap_download_axlf(xdev, xclbin);
+		if (!rval && XOCL_DSA_IS_MPSOC(xdev)) {
+			return xocl_xclbin_download_impl(xdev, xclbin,
+			    &mpsoc_ops);
+		}
+
+		return rval;
+	}
 }

@@ -327,6 +327,31 @@ failed:
 	return ret;
 }
 
+/*
+ * Reset command should support following cases
+ * case 1) When device is not in ready state
+ *  - xbutil should not send any request to the xocl.
+ *  - It should just return fail status from userspace itself
+ * case 2) When device is ready & device offline status is true
+ *  - Need to check when we hit this case
+ * case 3) When device is ready & online
+ *  a) If xocl unable to communicate to mgmt/mpd
+ *     - xocl should reenable all the sub-devices and mark the device online/ready.
+ *  b) If reset Channel is disabled
+ *     - xocl should reenable all the sub-devices and mark the device online/ready.
+ *  c) Reset is issued to mpd, but mpd doesn’t have serial number of requested device
+ *     - MPD returns E_EMPTY serial number error code to xocl
+ *     - xocl should reenable all the sub-devices and mark the device online/ready.
+ *  d) Reset is issued to mgmt/mpd, but mgmt/mpd unable to reset properly
+ *     - xocl gets a ESHUTDOWN response from mgmt/mpd,
+ *     - xocl assumes that reset is successful,
+ *     - xbutil waits on the device ready state in a loop.
+ *     - xbutil reset would be in waiting state forever.
+ *     - Need to handle this case to exit xbutil reset gracefully.
+ *  e) Reset is issued to mgmt/mpd, but mgmt/mpd reset properly
+ *     - xocl gets a ESHUTDOWN response from mgmt/mpd,
+ *     - Device becomes ready and xbutil reset successful.
+ */
 int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 {
 	int ret = 0, mbret = 0;
@@ -364,10 +389,26 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 		if (flag & XOCL_RESET_NO)
 			return 0;
 
-		xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
+		mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 			&ret, &resplen, NULL, NULL, 0, 6);
+		/*
+		 * Check the return values mbret & ret (mpd (peer) side response) and confirm
+		 * reset request success.
+		 * MPD acknowledge the reset request with below responses, and it can be
+		 * read from ret variable.
+		 *  -E_EMPTY_SN (2040): indicates that MPD doesn't have serial number associated
+		 *  with this device. So, aborting the reset request. This case hits
+		 *  when vm boots & it is ready before the mgmt side is ready.
+		 *  -ESHUTDOWN (108): indicates that MPD forwards reset requests to mgmt
+		 *  successfully.
+		 */
+		if (mbret || (ret && ret != -ESHUTDOWN)) {
+			userpf_err(xdev, "reset request failed, mbret: %d, peer resp: %d",
+					   mbret, ret);
+			xocl_reset_notify(xdev->core.pdev, false);
+			xocl_drvinst_set_offline(xdev->core.drm, false);
+		}
 		/* userpf will back online till receiving mgmtpf notification */
-
 		return 0;
 	}
 
@@ -449,7 +490,7 @@ static int xocl_get_buddy_cb(struct device *dev, void *data)
 	 */
 	if (!src_xdev || !dev || to_pci_dev(dev)->vendor != 0x10ee ||
 	   	XOCL_DEV_ID(to_pci_dev(dev)) ==
-		XOCL_DEV_ID(src_xdev->core.pdev) ||
+		XOCL_DEV_ID(src_xdev->core.pdev) || !dev->driver ||
 		strcmp(dev->driver->name, "xocl")) 
 		return 0;
 
@@ -570,6 +611,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 		NULL, NULL, 0, 0);
 	(void) xocl_mailbox_set(xdev, CHAN_STATE, resp->conn_flags);
 	(void) xocl_mailbox_set(xdev, CHAN_SWITCH, resp->chan_switch);
+	(void) xocl_mailbox_set(xdev, CHAN_DISABLE, resp->chan_disable);
 	(void) xocl_mailbox_set(xdev, COMM_ID, (u64)(uintptr_t)resp->comm_id);
 
 	/*
@@ -770,6 +812,8 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	size_t offset = 0;
 	bool offline = false;
 	int ret = 0;
+
+	store_pcie_link_info(xdev);
 
 	ret = xocl_drvinst_get_offline(xdev->core.drm, &offline);
 	if (ret == -ENODEV || offline) {
@@ -985,7 +1029,6 @@ static int identify_bar_by_dts(struct xocl_dev *xdev)
 	struct pci_dev *pdev = xdev->core.pdev;
 	int ret;
 	int bar_id;
-	int i;
 	resource_size_t bar_len;
 
 	BUG_ON(!XOCL_DEV_HAS_DEVICE_TREE(xdev));
@@ -1610,16 +1653,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "failed to init drm mm");
 		goto failed;
 	}
-	ret = xocl_init_sysfs(xdev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to init sysfs");
-		goto failed;
-	}
-	ret = xocl_init_persist_sysfs(xdev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to init persist sysfs");
-		goto failed;
-	}
 
 	/* Launch the mailbox server. */
 	ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
@@ -1636,6 +1669,25 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	/* store link width & speed stats */
 	store_pcie_link_info(xdev);
+
+	/*
+	 * sysfs has to be the last thing to init because xbutil
+	 * relies it to report if the card is ready. Driver should
+	 * only announce ready after syncing metadata and creating
+	 * all subdevices
+	 */
+	ret = xocl_init_sysfs(xdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to init sysfs");
+		goto failed;
+	}
+	ret = xocl_init_persist_sysfs(xdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to init persist sysfs");
+		goto failed;
+	}
+
+	xocl_drvinst_set_offline(xdev, false);
 
 	return 0;
 
@@ -1734,7 +1786,6 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_lapc,
 	xocl_init_msix_xdma,
 	xocl_init_ert_user,
-	xocl_init_ert_30,
 	xocl_init_ert_versal,
 	xocl_init_m2m,
 };
@@ -1772,7 +1823,6 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_lapc,
 	xocl_fini_msix_xdma,
 	xocl_fini_ert_user,
-	xocl_fini_ert_30,
 	xocl_fini_ert_versal,
 	xocl_fini_m2m,
 	/* Remove intc sub-device after CU/ERT sub-devices */

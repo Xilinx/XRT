@@ -172,7 +172,7 @@ namespace xclcpuemhal2 {
     unsigned int size = regmap_size(xcmd);
     uint32_t *regmap = cmd_regmap(xcmd);
     //unsigned int idx;
-
+    regmap[0] = 0;
     mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr , (void*)(regmap), size*4);
    /* for (idx = 4; idx < size; ++idx)
     {

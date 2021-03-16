@@ -23,10 +23,15 @@
 #include <vector>
 #include <fstream>
 #include <functional>
+#include <memory>
+#include <atomic>
 
 #include "xdp/profile/database/events/vtf_event.h"
 
 #include "xdp/config.h"
+#include "core/common/uuid.h"
+
+#include "core/include/xclperf.h"
 
 namespace xdp {
 
@@ -65,7 +70,8 @@ namespace xdp {
     //  will come in sequential order.  For this, we can use 
     //  a simple vector.  For low overhead profiling, we can provide
     //  capability to have this be preallocated.
-    std::vector<VTFEvent*> hostEvents ;
+    //std::vector<VTFEvent*> hostEvents ;
+    std::multimap<double, VTFEvent*> hostEvents ;
 
     // Every device will have its own set of events.  Since the actual
     //  hardware might shuffle the order of events we have to make sure
@@ -81,14 +87,27 @@ namespace xdp {
 
     // A unique event id for every event added to the database.
     //  It starts with 1 so we can use 0 as an indicator of NULL
-    uint64_t eventId ;
+    std::atomic<uint64_t> eventId ;
 
     // Data structure for matching start events with end events, 
     //  as in API calls.  This will match a function ID to event IDs.
     std::map<uint64_t, uint64_t> startMap ;
 
+    // Data structure mapping function IDs of user level ranges to
+    //  the label and tooltip
+    std::map<uint64_t, std::tuple<const char*, const char*, uint64_t>> userMap ;
+
     // For device events
     std::map<uint64_t, std::list<VTFEvent*>> deviceEventStartMap;
+
+    // Each device will have dynamically updated counter values.
+    std::map<std::pair<uint64_t, xrt_core::uuid>, xclCounterResults> deviceCounters ;
+
+    // For dependencies in OpenCL, we will have to store a mapping of
+    //  every OpenCL ID to an eventID.  This is a mapping from
+    //  OpenCL event IDs to XDP event IDs.
+    std::map<uint64_t, std::pair<uint64_t, uint64_t>> openclEventMap ;
+    std::map<uint64_t, std::vector<uint64_t>> dependencyMap ;
 
     // For AIE Trace events
     std::map<uint64_t, AIETraceDataVector> aieTraceData;
@@ -101,9 +120,20 @@ namespace xdp {
 
     // Since events can be logged from multiple threads simultaneously,
     //  we have to maintain exclusivity
-    std::mutex dbLock ;
+    std::mutex aieLock ;
+    std::mutex powerLock ;
+    std::mutex nocLock ;
+    std::mutex ctrLock ;
 
-    std::map<uint64_t, uint64_t> traceIDMap;
+    // Event loggers and filters
+    std::mutex deviceEventsLock ;
+    std::mutex hostEventsLock ;
+
+    // Trace parser states and other metadata data structures
+    std::mutex deviceLock ;
+    std::mutex hostLock ;
+
+    //std::map<uint64_t, uint64_t> traceIDMap;
 
     void addHostEvent(VTFEvent* event) ;
     void addDeviceEvent(uint64_t deviceId, VTFEvent* event) ;
@@ -112,12 +142,21 @@ namespace xdp {
     XDP_EXPORT VPDynamicDatabase(VPDatabase* d) ;
     XDP_EXPORT ~VPDynamicDatabase() ;
 
+    // For multiple xclbin designs
+    XDP_EXPORT void markXclbinEnd(uint64_t deviceId) ;
+
     // Add an event in sorted order in the database
     XDP_EXPORT void addEvent(VTFEvent* event) ;
 
     // For API events, find the event id of the start event for an end event
     XDP_EXPORT void markStart(uint64_t functionID, uint64_t eventID) ;
     XDP_EXPORT uint64_t matchingStart(uint64_t functionID) ;
+
+    // For user level events, find the label and tooltip associated
+    XDP_EXPORT void markRange(uint64_t functionID,
+			      std::pair<const char*, const char*> desc,
+			      uint64_t startTimestamp) ;
+    XDP_EXPORT std::tuple<const char*, const char*, uint64_t> matchingRange(uint64_t functionID) ;
 
     // For Device Events, find matching start for end event
     XDP_EXPORT void markDeviceEventStart(uint64_t slotID, VTFEvent* event);
@@ -129,12 +168,35 @@ namespace xdp {
     // A function that iterates on the dynamic events and returns
     //  events based upon the filter passed in
     XDP_EXPORT std::vector<VTFEvent*> filterEvents(std::function<bool(VTFEvent*)> filter);
+    XDP_EXPORT std::vector<VTFEvent*> filterHostEvents(std::function<bool(VTFEvent*)> filter);
 
     XDP_EXPORT std::vector<VTFEvent*> getHostEvents();
     XDP_EXPORT std::vector<VTFEvent*> getDeviceEvents(uint64_t deviceId);
+    // Erase events from db and transfer ownership to caller
+    XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> filterEraseHostEvents(std::function<bool(VTFEvent*)> filter);
+    XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> getEraseDeviceEvents(uint64_t deviceId);
+
+    XDP_EXPORT bool deviceEventsExist(uint64_t deviceId);
+    XDP_EXPORT bool hostEventsExist(std::function<bool(VTFEvent*)> filter);
+
+    XDP_EXPORT void setCounterResults(uint64_t deviceId,
+				      xrt_core::uuid uuid,
+				      xclCounterResults& values) ;
+    XDP_EXPORT xclCounterResults getCounterResults(uint64_t deviceId,
+						   xrt_core::uuid uuid) ;
 
     // Functions that dump large portions of the database
     XDP_EXPORT void dumpStringTable(std::ofstream& fout) ;
+
+    // OpenCL mappings and dependencies
+    XDP_EXPORT void addOpenCLMapping(uint64_t openclID, uint64_t eventID, uint64_t startID) ;
+    XDP_EXPORT std::pair<uint64_t, uint64_t>
+    lookupOpenCLMapping(uint64_t openclID) ;
+
+    XDP_EXPORT void addDependencies(uint64_t eventID,
+				    const std::vector<uint64_t>& openclIDs) ;
+    XDP_EXPORT void addDependency(uint64_t id, uint64_t dependency) ;
+    XDP_EXPORT std::map<uint64_t, std::vector<uint64_t>> getDependencyMap() ;
 
     // Add and get AIE Trace Data Buffer 
     XDP_EXPORT void addAIETraceData(uint64_t deviceId, uint64_t strmIndex, void* buffer, uint64_t bufferSz);

@@ -570,6 +570,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 		subdev->ops = NULL;
 		return -EAGAIN;
 	}
+	xocl_drvinst_set_offline(platform_get_drvdata(subdev->pldev), false);
 	xocl_lock_xdev(xdev_hdl);
 	subdev->hold = false;
 	subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
@@ -1652,9 +1653,6 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 			sdev_info->res = NULL;
 			sdev_info->num_res = 0;
 		} else if (sdev_info->id == XOCL_SUBDEV_INTC && kds_mode == 0) {
-			sdev_info->res = NULL;
-			sdev_info->num_res = 0;
-		} else if (sdev_info->id == XOCL_SUBDEV_ERT_30 && kds_mode == 0) {
 			sdev_info->res = NULL;
 			sdev_info->num_res = 0;
 		} else if (sdev_info->id == XOCL_SUBDEV_ERT_USER && kds_mode == 0) {

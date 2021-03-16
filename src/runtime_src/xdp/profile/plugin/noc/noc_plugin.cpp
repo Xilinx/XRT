@@ -88,10 +88,11 @@ namespace xdp {
 
       // Iterate over all devices
       for (auto device : mDevices) {
+        XclbinInfo* currentXclbin = db->getStaticInfo().getCurrentlyLoadedXclbin(index);
         // Iterate over all NOC NMUs
-        auto numNOC = db->getStaticInfo().getNumNOC(index);
+        auto numNOC = db->getStaticInfo().getNumNOC(index, currentXclbin);
         for (uint64_t n=0; n < numNOC; n++) {
-          auto noc = db->getStaticInfo().getNOC(index, n);
+          auto noc = db->getStaticInfo().getNOC(index, currentXclbin, n);
 
           // Name = <master>-<NMU cell>-<read QoS>-<write QoS>-<NPI freq>-<AIE freq>
           std::vector<std::string> result; 

@@ -16,7 +16,7 @@
 #include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 #include <CL/opencl.h>
 
 // Copyright 2018-2020 Xilinx, Inc. All rights reserved.
@@ -41,6 +41,7 @@ clReleaseStream(cl_stream stream) CL_API_SUFFIX__VERSION_1_0
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clReleaseStream(stream);
   }
   catch (const xrt_xocl::error& ex) {

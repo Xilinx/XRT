@@ -14,22 +14,28 @@
  * Cound not avoid coupling xclbin.h
  */
 #include "xclbin.h"
+#include "ps_kernel.h"
 
+#ifdef KDS_VERBOSE
 #define print_ecmd_info(ecmd) \
 do {\
 	int i;\
-	printk("%s: ecmd header 0x%x\n", __func__, ecmd->header);\
-	for (i = 0; i < ecmd->count; i++) {\
-		printk("%s: ecmd data[%d] 0x%x\n", __func__, i, ecmd->data[i]);\
+	struct ert_packet *packet = (struct ert_packet *)ecmd;\
+	printk("%s: ecmd header 0x%x\n", __func__, packet->header);\
+	for (i = 0; i < packet->count; i++) {\
+		printk("%s: ecmd data[%d] 0x%x\n", __func__, i, packet->data[i]);\
 	}\
 } while(0)
+#else
+#define print_ecmd_info(ecmd)
+#endif
 
 void xocl_describe(const struct drm_xocl_bo *xobj);
 
-int kds_mode = 0;
+int kds_mode = 1;
 module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(kds_mode,
-		 "enable new KDS (0 = disable (default), 1 = enable)");
+		 "enable new KDS (0 = disable, 1 = enable (default))");
 
 /* kds_echo also impact mb_scheduler.c, keep this as global.
  * Let's move it to struct kds_sched in the future.
@@ -199,7 +205,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		uuid = vzalloc(sizeof(*uuid));
 		if (!uuid) {
 			ret = -ENOMEM;
-			goto out;
+			goto out1;
 		}
 		uuid_copy(uuid, &args->xclbin_id);
 		client->xclbin_id = uuid;
@@ -211,12 +217,14 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	xocl_ctx_to_info(args, &info);
 	ret = kds_add_context(&XDEV(xdev)->kds, client, &info);
 
-out:
+out1:
+	/* If client still has no opened context at this point */
 	if (!client->num_ctx) {
 		vfree(client->xclbin_id);
 		client->xclbin_id = NULL;
 		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
 	}
+out:
 	mutex_unlock(&client->lock);
 	return ret;
 }
@@ -285,21 +293,103 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 	return ret;
 }
 
+/**
+ * New ERT populates:
+ * [1  ]      : header
+ * [1  ]      : custat version
+ * [1  ]      : ert git version
+ * [1  ]      : number of cq slots
+ * [1  ]      : number of cus
+ * [#numcus]  : cu execution stats (number of executions)
+ * [#numcus]  : cu status (1: running, 0: idle, -1: crashed)
+ * [#slots]   : command queue slot status
+ *
+ * Old ERT populates
+ * [1  ]      : header
+ * [#numcus]  : cu execution stats (number of executions)
+ */
+static inline void read_ert_stat(struct kds_command *xcmd)
+{
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
+	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
+	int num_cu  = kds->cu_mgmt.num_cus;
+	int num_scu = kds->scu_mgmt.num_cus;
+	int off_idx;
+	int i;
+	
+	/* TODO: For CU stat command, there are few things to refine.
+	 * 1. Define size of the command
+	 * 2. Define CU status enum/macro in a header file
+	 * 	a. xocl/zocl/MB/RPU/xbutil can shared
+	 * 	b. parser helper function if need
+	 */
+
+	/* New KDS handle FPGA CU statistic on host not ERT */
+	if (ecmd->data[0] != 0x51a10000)
+		return;
+
+	/* Only need PS kernel info, which is after FPGA CUs */
+	mutex_lock(&kds->scu_mgmt.lock);
+	/* Skip header and FPGA CU stats. off_idx points to PS kernel stats */
+	off_idx = 4 + num_cu;
+	for (i = 0; i < num_scu; i++)
+		kds->scu_mgmt.usage[i] = ecmd->data[off_idx + i];
+
+	/* off_idx points to PS kernel status */
+	off_idx += num_scu + num_cu;
+	for (i = 0; i < num_scu; i++) {
+		int status = (int)(ecmd->data[off_idx + i]);
+
+		switch (status) {
+		case 1:
+			kds->scu_mgmt.status[i] = CU_AP_START;
+			break;
+		case 0:
+			kds->scu_mgmt.status[i] = CU_AP_IDLE;
+			break;
+		case -1:
+			kds->scu_mgmt.status[i] = CU_AP_CRASHED;
+			break;
+		default:
+			kds->scu_mgmt.status[i] = 0;
+		}
+	}
+	mutex_unlock(&kds->scu_mgmt.lock);
+}
+
 static void notify_execbuf(struct kds_command *xcmd, int status)
 {
 	struct kds_client *client = xcmd->client;
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
 
-	if (status == KDS_COMPLETED)
-		ecmd->state = ERT_CMD_STATE_COMPLETED;
-	else if (status == KDS_ERROR)
-		ecmd->state = ERT_CMD_STATE_ERROR;
-	else if (status == KDS_TIMEOUT)
-		ecmd->state = ERT_CMD_STATE_TIMEOUT;
-	else if (status == KDS_ABORT)
-		ecmd->state = ERT_CMD_STATE_ABORT;
+	if (xcmd->opcode == OP_START_SK) {
+		/* For PS kernel get cmd state and return_code */
+		struct ert_start_kernel_cmd *scmd;
+
+		scmd = (struct ert_start_kernel_cmd *)ecmd;
+		if (scmd->state < ERT_CMD_STATE_COMPLETED)
+			/* It is old shell, return code is missing */
+			scmd->return_code = -ENODATA;
+		status = scmd->state;
+	} else {
+		if (xcmd->opcode == OP_GET_STAT)
+			read_ert_stat(xcmd);
+
+		if (status == KDS_COMPLETED)
+			ecmd->state = ERT_CMD_STATE_COMPLETED;
+		else if (status == KDS_ERROR)
+			ecmd->state = ERT_CMD_STATE_ERROR;
+		else if (status == KDS_TIMEOUT)
+			ecmd->state = ERT_CMD_STATE_TIMEOUT;
+		else if (status == KDS_ABORT)
+			ecmd->state = ERT_CMD_STATE_ABORT;
+	}
 
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
+	kfree(xcmd->execbuf);
+
+	if (xcmd->cu_idx >= 0)
+		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
 		int error = (status == ERT_CMD_STATE_COMPLETED)?0:-EFAULT;
@@ -309,6 +399,34 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		atomic_inc(&client->event);
 		wake_up_interruptible(&client->waitq);
 	}
+}
+
+static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
+				     struct drm_xocl_bo *xobj,
+				     struct ert_packet *ecmd)
+{
+	struct ert_packet *orig;
+	int pkg_size;
+	bool op_valid;
+
+	orig = (struct ert_packet *)xobj->vmapping;
+	orig->state = ERT_CMD_STATE_NEW;
+	ecmd->header = orig->header;
+
+	pkg_size = sizeof(ecmd->header) + ecmd->count * sizeof(u32);
+	if (xobj->base.size < pkg_size) {
+		userpf_err(xdev, "payload size bigger than exec buf\n");
+		return false;
+	}
+
+	memcpy(ecmd->data, orig->data, ecmd->count * sizeof(u32));
+
+	/* opcode specific validation */
+	op_valid = ert_valid_opcode(ecmd);
+	if (!op_valid)
+		userpf_err(xdev, "opcode(%d) is invalid\n", ecmd->opcode);
+
+	return op_valid;
 }
 
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
@@ -321,10 +439,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct drm_xocl_bo *xobj;
 	struct ert_packet *ecmd;
 	struct kds_command *xcmd;
-	struct kds_cu_mgmt *cu_mgmt;
-	u32 cdma_addr;
 	int ret = 0;
-	int i;
 
 	if (!client->xclbin_id) {
 		userpf_err(xdev, "The client has no opening context\n");
@@ -344,14 +459,35 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	}
 
 	xobj = to_xocl_bo(obj);
+
 	if (!xocl_bo_execbuf(xobj)) {
+		userpf_err(xdev, "Command buffer is not exec buf\n");
+		return false;
+	}
+
+	/* An exec buf bo is at least 1 PAGE.
+	 * This is enough to carry metadata for any execbuf command struct.
+	 * It is safe to make the assumption and validate will be simpler.
+	 */
+	if (xobj->base.size < PAGE_SIZE) {
+		userpf_err(xdev, "exec buf is too small\n");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	ecmd = (struct ert_packet *)xobj->vmapping;
+	ecmd = kzalloc(xobj->base.size, GFP_KERNEL);
+	if (!ecmd) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
-	ecmd->state = ERT_CMD_STATE_NEW;
+	/* If xobj contain a valid command, ecmd would be a copy */
+	if (!copy_and_validate_execbuf(xdev, xobj, ecmd)) {
+		userpf_err(xdev, "Invalid command\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* only the user command knows the real size of the payload.
 	 * count is more than enough!
 	 */
@@ -362,10 +498,14 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		goto out;
 	}
 	xcmd->cb.free = kds_free_command;
+	xcmd->cb.notify_host = notify_execbuf;
+	/* xcmd->execbuf points to kernel space copy */
+	xcmd->execbuf = (u32 *)ecmd;
+	/* xcmd->u_execbuf points to user's original for write back/notice */
+	xcmd->u_execbuf = xobj->vmapping;
+	xcmd->gem_obj = obj;
 
-#if 0
 	print_ecmd_info(ecmd);
-#endif
 
 	/* xcmd->type is the only thing determine who to handle this command.
 	 * If ERT is supported, use ERT as default handler.
@@ -378,31 +518,14 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 
 	switch (ecmd->opcode) {
 	case ERT_CONFIGURE:
-		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
-
-		/* Special handle for m2m cu :( */
-		cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
-		i = cu_mgmt->num_cus - cu_mgmt->num_cdma;
-		while (i < cu_mgmt->num_cus) {
-			cdma_addr = cu_mgmt->xcus[i]->info.addr;
-			to_cfg_pkg(ecmd)->data[i] = cdma_addr;
-			to_cfg_pkg(ecmd)->count++;
-			to_cfg_pkg(ecmd)->num_cus++;
-			i++;
-		}
-
-		/* Before scheduler config options are removed from xrt.ini */
-		if (XDEV(xdev)->kds.ini_disable)
-			break;
-
-		if (to_cfg_pkg(ecmd)->ert && XDEV(xdev)->kds.ert) {
-			XDEV(xdev)->kds.ert_disable = false;
-			xcmd->type = KDS_ERT;
-		} else {
-			XDEV(xdev)->kds.ert_disable = true;
-			xcmd->type = KDS_CU;
-		}
-		break;
+	case ERT_SK_CONFIG:
+		/* All configure commands are moved to xclbin download flow.
+		 * We can safely ignore user's config command and directly
+		 * return complete.
+		 */
+		xcmd->status = KDS_COMPLETED;
+		xcmd->cb.notify_host(xcmd, xcmd->status);
+		goto out1;
 	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
@@ -413,28 +536,33 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		break;
 	case ERT_START_COPYBO:
 		ret = copybo_ecmd2xcmd(xdev, filp, to_copybo_pkg(ecmd), xcmd);
-		if (ret) {
-			xcmd->cb.free(xcmd);
-			return (ret < 0)? ret : 0;
-		}
+		if (ret > 0) {
+			ret = 0;
+			goto out1;
+		} else if (ret < 0)
+			goto out1;
+
 		break;
-	case ERT_SK_CONFIG:
-	case ERT_SK_UNCONFIG:
 	case ERT_SK_START:
 		ret = sk_ecmd2xcmd(xdev, ecmd, xcmd);
-		if (ret) {
-			xcmd->cb.free(xcmd);
-			goto out;
-		}
+		if (ret)
+			goto out1;
+		break;
+	case ERT_CLK_CALIB:
+		xcmd->opcode = OP_CLK_CALIB;
+		break;
+	case ERT_MB_VALIDATE:
+		xcmd->opcode = OP_VALIDATE;
+		break;
+	case ERT_CU_STAT:
+		xcmd->opcode = OP_GET_STAT;
+		xcmd->priv = &XDEV(xdev)->kds;
 		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");
-		xcmd->cb.free(xcmd);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out1;
 	}
-
-	xcmd->cb.notify_host = notify_execbuf;
-	xcmd->gem_obj = obj;
 
 	if (in_kernel) {
 		struct drm_xocl_execbuf_cb *args_cb =
@@ -444,9 +572,8 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			xcmd->inkern_cb = kzalloc(sizeof(struct in_kernel_cb),
 								GFP_KERNEL);
 			if (!xcmd->inkern_cb) {
-				xcmd->cb.free(xcmd);
 				ret = -ENOMEM;
-				goto out;
+				goto out1;
 			}
 			xcmd->inkern_cb->func = (void (*)(unsigned long, int))
 						args_cb->cb_func;
@@ -454,10 +581,19 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		}
 	}
 
-	/* Now, we could forget execbuf */
+	/* If add command returns failed, KDS core would take care of
+	 * xcmd and put gem object while notify host.
+	 */
 	ret = kds_add_command(&XDEV(xdev)->kds, xcmd);
 
+	return ret;
+
+out1:
+	xcmd->cb.free(xcmd);
 out:
+	/* Don't forget to put gem object if error happen */
+	if (ret < 0)
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 	return ret;
 }
 
@@ -527,7 +663,12 @@ int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 
 	switch (op) {
 	case DRM_XOCL_CTX:
+		/* Open/close context would lock/unlock bitstream.
+		 * This and download xclbin are mutually exclusive.
+		 */
+		mutex_lock(&xdev->dev_lock);
 		ret = xocl_context_ioctl(xdev, data, filp);
+		mutex_unlock(&xdev->dev_lock);
 		break;
 	case DRM_XOCL_EXECBUF:
 		ret = xocl_command_ioctl(xdev, data, filp, false);
@@ -704,7 +845,223 @@ done:
 	return ret;
 }
 
-int xocl_kds_update(struct xocl_dev *xdev)
+static void xocl_cfg_notify(struct kds_command *xcmd, int status)
+{
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
+
+	if (status == KDS_COMPLETED)
+		ecmd->state = ERT_CMD_STATE_COMPLETED;
+	else if (status == KDS_ERROR)
+		ecmd->state = ERT_CMD_STATE_ERROR;
+	else if (status == KDS_TIMEOUT)
+		ecmd->state = ERT_CMD_STATE_TIMEOUT;
+	else if (status == KDS_ABORT)
+		ecmd->state = ERT_CMD_STATE_ABORT;
+
+	complete(&kds->comp);
+}
+
+/* Construct ERT config command and wait for completion */
+static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
+			struct ert_packet *pkg, struct drm_xocl_kds *cfg)
+{
+	struct kds_command *xcmd;
+	struct ert_configure_cmd *ecmd = to_cfg_pkg(pkg);
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	int num_cu = kds_get_cu_total(kds);
+	u32 base_addr = 0xFFFFFFFF;
+	int ret = 0;
+	int i;
+
+	/* Don't send config command if ERT doesn't present */
+	if (!kds->ert)
+		return 0;
+
+	/* Fill header */
+	ecmd->state = ERT_CMD_STATE_NEW;
+	ecmd->opcode = ERT_CONFIGURE;
+	ecmd->type = ERT_CTRL;
+	ecmd->count = 5 + num_cu;
+
+	ecmd->num_cus	= num_cu;
+	ecmd->cu_shift	= 16;
+	ecmd->slot_size	= cfg->slot_size;
+	ecmd->ert	= cfg->ert;
+	ecmd->polling	= cfg->polling;
+	ecmd->cu_dma	= cfg->cu_dma;
+	ecmd->cu_isr	= cfg->cu_isr;
+	ecmd->cq_int	= cfg->cq_int;
+	ecmd->dataflow	= cfg->dataflow;
+	ecmd->rw_shared	= cfg->rw_shared;
+
+	/* Fill CU address */
+	for (i = 0; i < num_cu; i++) {
+		u32 cu_addr;
+		u32 proto;
+
+		cu_addr = kds_get_cu_addr(kds, i);
+		if (base_addr > cu_addr)
+			base_addr = cu_addr;
+
+		/* encode handshaking control in lower unused address bits [2-0] */
+		proto = kds_get_cu_proto(kds, i);
+		cu_addr |= proto;
+		ecmd->data[i] = cu_addr;
+	}
+	ecmd->cu_base_addr = base_addr;
+
+	xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
+	if (!xcmd) {
+		userpf_err(xdev, "Failed to alloc xcmd\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+	xcmd->cb.free = kds_free_command;
+
+	print_ecmd_info(ecmd);
+
+	xcmd->type = KDS_ERT;
+	cfg_ecmd2xcmd(ecmd, xcmd);
+	xcmd->cb.notify_host = xocl_cfg_notify;
+	xcmd->priv = kds;
+
+	ret = kds_submit_cmd_and_wait(kds, xcmd);
+	if (ret)
+		goto out;
+
+	if (ecmd->state > ERT_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Cfg command state %d", ecmd->state);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	WARN_ON(ecmd->state != ERT_CMD_STATE_COMPLETED);
+
+	/* If xrt.ini is not disabled, let it determines ERT enable/disable */
+	if (!kds->ini_disable)
+		kds->ert_disable = cfg->ert ? false : true;
+
+	userpf_info(xdev, "Cfg command completed");
+
+out:
+	return ret;
+}
+
+/* Construct PS kernel config command and wait for completion */
+static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
+			    struct ert_packet *pkg)
+{
+	struct kds_command *xcmd;
+	struct ert_configure_sk_cmd *ecmd = to_cfg_sk_pkg(pkg);
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct ps_kernel_node *ps_kernel = NULL;
+	struct config_sk_image *image;
+	struct ps_kernel_data *scu_data;
+	u32 start_cuidx = 0;
+	u32 img_idx = 0;
+	int ret = 0;
+	int i;
+
+	XOCL_GET_PS_KERNEL(xdev, ps_kernel);
+
+	if (!ps_kernel)
+		goto out;
+
+	/* Clear header */
+	ecmd->header = 0;
+
+	/* Fill PS kernel config command */
+	ecmd->state = ERT_CMD_STATE_NEW;
+	ecmd->opcode = ERT_SK_CONFIG;
+	ecmd->type = ERT_CTRL;
+	ecmd->num_image = ps_kernel->pkn_count;
+	ecmd->count = 1 + ecmd->num_image * sizeof(*image) / 4;
+
+	for (i = 0; i < ecmd->num_image; i++) {
+		image = &ecmd->image[img_idx];
+		scu_data = &ps_kernel->pkn_data[img_idx];
+
+		image->start_cuidx = start_cuidx;
+		image->num_cus = scu_data->pkd_num_instances;
+		strncpy((char *)image->sk_name, scu_data->pkd_sym_name,
+			PS_KERNEL_NAME_LENGTH - 1);
+		((char *)image->sk_name)[PS_KERNEL_NAME_LENGTH - 1] = 0;
+
+		start_cuidx += image->num_cus;
+		img_idx++;
+	}
+
+	xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
+	if (!xcmd) {
+		userpf_err(xdev, "Failed to alloc xcmd\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+	xcmd->cb.free = kds_free_command;
+
+	print_ecmd_info(ecmd);
+
+	xcmd->type = KDS_ERT;
+	ret = sk_ecmd2xcmd(xdev, (struct ert_packet *)ecmd, xcmd);
+	if (ret) {
+		xcmd->cb.free(xcmd);
+		goto out;
+	}
+
+	xcmd->cb.notify_host = xocl_cfg_notify;
+	xcmd->priv = kds;
+
+	ret = kds_submit_cmd_and_wait(kds, xcmd);
+	if (ret)
+		goto out;
+
+	if (ecmd->state > ERT_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "PS kernel cfg command state %d", ecmd->state);
+		ret = -EINVAL;
+	} else
+		userpf_info(xdev, "PS kernel cfg command completed");
+
+out:
+	XOCL_PUT_PS_KERNEL(xdev);
+	return ret;
+}
+
+static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
+{
+	struct kds_client *client;
+	struct ert_packet *ecmd;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	pid_t pid = pid_nr(get_pid(task_pid(current)));
+	int ret = 0;
+
+	/* TODO: Use hard code size is not ideal. Let's refine this later */
+	ecmd = vzalloc(0x1000);
+	if (!ecmd)
+		return -ENOMEM;
+
+	client = kds_get_client(kds, pid);
+	BUG_ON(!client);
+
+	ret = xocl_cfg_cmd(xdev, client, ecmd, &cfg);
+	if (ret) {
+		userpf_err(xdev, "ERT config command failed");
+		goto out;
+	}
+
+	ret = xocl_scu_cfg_cmd(xdev, client, ecmd);
+	if (ret)
+		userpf_err(xdev, "PS kernel config failed");
+
+out:
+	vfree(ecmd);
+	return ret;
+}
+
+/* The xocl_kds_update function sould be called after xclbin is
+ * downloaded. Do not use this function in other place.
+ */
+int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
 	int ret = 0;
 
@@ -713,7 +1070,7 @@ int xocl_kds_update(struct xocl_dev *xdev)
 	 *
 	 * So, please make sure this is called after subdev init.
 	 */
-	if (xocl_ert_30_ert_intr_cfg(xdev) == -ENODEV) {
+	if (xocl_ert_user_ert_intr_cfg(xdev) == -ENODEV) {
 		userpf_info(xdev, "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
 	} else {
@@ -724,10 +1081,22 @@ int xocl_kds_update(struct xocl_dev *xdev)
 	xocl_kds_fa_clear(xdev);
 
 	ret = xocl_detect_fa_plram(xdev);
-	if (ret)
-		return ret;
+	if (ret) {
+		userpf_info(xdev, "Detect FA plram failed, ret %d", ret);
+		goto out;
+	}
 
 	/* By default, use ERT */
 	XDEV(xdev)->kds.cu_intr = 0;
-	return kds_cfg_update(&XDEV(xdev)->kds);
+	ret = kds_cfg_update(&XDEV(xdev)->kds);
+	if (ret) {
+		userpf_info(xdev, "KDS configure update failed, ret %d", ret);
+		goto out;
+	}
+
+	/* Construct and send configure command */
+	ret = xocl_config_ert(xdev, cfg);
+
+out:
+	return ret;
 }
