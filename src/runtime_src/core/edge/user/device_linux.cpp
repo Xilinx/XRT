@@ -19,6 +19,7 @@
 #include "core/common/query_requests.h"
 
 #include "xrt.h"
+#include "xcl_aie.h"
 #include "zynq_dev.h"
 
 #include <string>

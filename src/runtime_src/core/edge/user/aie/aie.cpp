@@ -637,20 +637,19 @@ Aie::
 read_core_reg(int row, int col, std::string regName, uint32_t* value)
 {
 #ifndef __AIESIM__
+    if(!devInst)
+        throw xrt_core::error(-EINVAL,"invalid aie object");
+
     row+=1;
+    if(row <= 0 && row >= XAIE_NUM_ROWS && col < 0 && col >= XAIE_NUM_COLS)
+        throw xrt_core::error(-EINVAL,"invalid row or column");
+
     auto it = regmap.find(regName);
     if (it == regmap.end())
         throw xrt_core::error(-EINVAL,"invalid register");
-    if(row > 0 && row <= XAIE_NUM_ROWS && col >= 0 && col < XAIE_NUM_COLS) {
-        if(devInst) {
-            if(XAie_Read32(devInst,it->second + _XAie_GetTileAddr(devInst,row,col),value)) {
-                throw xrt_core::error(-EINVAL,"error reading register");
-            }
-        } else {
-            throw xrt_core::error(-EINVAL,"invalid aie object");
-        }
-   } else
-       throw xrt_core::error(-EINVAL,"invalid row or column");
+
+    if(XAie_Read32(devInst,it->second + _XAie_GetTileAddr(devInst,row,col),value))
+        throw xrt_core::error(-EINVAL,"error reading register");
 #endif
 }
 

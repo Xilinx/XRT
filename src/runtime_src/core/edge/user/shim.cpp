@@ -27,6 +27,7 @@
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
 #include "core/common/error.h"
+#include "core/include/xcl_aie.h"
 
 #include <cerrno>
 #include <iostream>
