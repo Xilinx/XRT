@@ -243,6 +243,8 @@ namespace xdp {
 
     // Since the host code can be multithreaded, we must protect 
     //  the data
+    std::mutex readsLock ;
+    std::mutex writesLock ;
     std::mutex dbLock ;
 
     // Helper functions for OpenCL

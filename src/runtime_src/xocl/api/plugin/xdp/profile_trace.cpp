@@ -639,7 +639,7 @@ namespace xocl {
 
       return [mem0](xocl::event* e, cl_int status, const std::string&)
 	     {
-	       if (xdp::opencl_trace::write_cb) return ;
+	       if (!xdp::opencl_trace::write_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
 		 // Before we cross over to XDP, collect all the 
