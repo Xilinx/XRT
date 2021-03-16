@@ -337,6 +337,8 @@ namespace xdp {
 					 uint64_t address,
 					 uint64_t commandQueueId)
   {
+    std::lock_guard<std::mutex> lock(readsLock) ;
+
     std::pair<uint64_t, uint64_t> identifier = 
       std::make_pair(contextId, deviceId) ;
     
@@ -367,6 +369,8 @@ namespace xdp {
 					  uint64_t address,
 					  uint64_t commandQueueId)
   {
+    std::lock_guard<std::mutex> lock(writesLock) ;
+
     std::pair<uint64_t, uint64_t> identifier = 
       std::make_pair(contextId, deviceId) ;
     
