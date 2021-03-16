@@ -118,6 +118,7 @@ aie_sys_read(int col,int row, const std::string& path) {
     std::vector<std::string> data;
     std::string err_msg;
     boost::property_tree::ptree pt;
+    path = path+"/"+std::to_string(col)+"_"+std::to_string(row);
     for(auto tag:tags) {
         std::ifstream ifile(path+"/"+tag);
         if(ifile.is_open()) {
