@@ -40,14 +40,14 @@ add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
 
 # Determine what functionality should be added
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  target_compile_definitions(${XBMGMT2_NAME}
-    PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
+  target_compile_definitions(${XBMGMT2_NAME} PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
 endif()
 
 # Static build is a Linux / Ubuntu option only
 if (XRT_STATIC_BUILD)
   add_executable(${XBMGMT2_NAME}_static ${XBMGMT_V2_SRCS})
   target_link_options(${XBMGMT2_NAME}_static PRIVATE "-static")
+  target_compile_definitions(${XBMGMT2_NAME}_static PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
   # Bypass FindBoost versions and just link explicitly with boost libraries
   # The -static link option will pick the static libraries. 
   target_link_libraries(${XBMGMT2_NAME}_static

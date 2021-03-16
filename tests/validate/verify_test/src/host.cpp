@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2020 Xilinx, Inc
+* Copyright (C) 2020-2021 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
 * not use this file except in compliance with the License. A copy of the
@@ -32,10 +32,12 @@ int main(int argc, char** argv) {
     // Switches
     //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
     parser.addSwitch("--device", "-d", "device id", "0");
+    parser.addSwitch("--kernel", "-k", "kernel name", "verify");
     parser.parse(argc, argv);
 
     // Read settings
     std::string dev_id = parser.value("device");
+    std::string krnl_name = parser.value("kernel");
 
     std::string test_path = argv[1];
 
@@ -104,7 +106,7 @@ int main(int argc, char** argv) {
         std::cout << "Failed to program device with xclbin file!\n";
     } else {
         std::cout << "Device program successful!\n";
-        OCL_CHECK(err, krnl_verify = cl::Kernel(program, "verify", &err));
+        OCL_CHECK(err, krnl_verify = cl::Kernel(program, krnl_name.c_str(), &err));
     }
 
     OCL_CHECK(err, cl::Buffer d_buf(context, CL_MEM_WRITE_ONLY, sizeof(char) * LENGTH, nullptr, &err));
