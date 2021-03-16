@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,7 +22,7 @@
 #include <boost/filesystem/path.hpp>
 
 #ifdef _WIN32
-# pragma warning ( disable : 4996 4706 )
+# pragma warning ( disable : 4996 4706 4505 )
 #endif
 
 namespace hal = xrt_xocl::hal;
@@ -133,6 +133,7 @@ is_noop_emulation()
 static void
 createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int count=0)
 {
+#ifndef XRT_STATIC_BUILD
   auto delHandle = [](void* handle) {
     xrt_core::dlclose(handle);
   };
@@ -167,6 +168,11 @@ createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int
     else
       throw std::runtime_error("HAL version " + std::to_string(version) + " not supported");
   }
+#else
+  if (count || (count = xclProbe()))
+    hal2::createDevices(devices, dll, nullptr, count);
+#endif
+
 }
 
 } // namespace
@@ -187,7 +193,7 @@ hal::device_list
 loadDevices()
 {
   hal::device_list devices;
-
+#ifndef XRT_STATIC_BUILD
   // xrt
   bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
 
@@ -241,12 +247,15 @@ loadDevices()
 
   if (xrt.empty())
     throw std::runtime_error("XILINX_XRT must be set");
+#else
+  createHalDevices(devices, "shim");
+#endif
 
   return devices;
 }
 
 
-// Call to load_xdp comes from function_logger once per application run if 
+// Call to load_xdp comes from function_logger once per application run if
 //  profile is enabled.
 void
 load_xdp()

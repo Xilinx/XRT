@@ -47,6 +47,7 @@ endif()
 # Static build is a Linux / Ubuntu option only
 if (XRT_STATIC_BUILD)
   add_executable(${XBUTIL2_NAME}_static ${XBUTIL_V2_SRCS})
+  target_compile_definitions(${XBUTIL2_NAME}_static PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
   target_link_options(${XBUTIL2_NAME}_static PRIVATE "-static")
   # Bypass FindBoost versions and just link explicitly with boost libraries
   # The -static link option will pick the static libraries.

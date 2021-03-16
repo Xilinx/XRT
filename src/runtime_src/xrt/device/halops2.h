@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -61,8 +61,8 @@ private:
   typedef xclBufferHandle (*allocBOFuncType) (xclDeviceHandle handle, size_t size, int unused, unsigned int flags);
   typedef xclBufferHandle (*allocUserPtrBOFuncType) (xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags);
 
-  typedef xclBufferHandle (*importBOFuncType)(xclDeviceHandle handle, int fd, unsigned int flags);
-  typedef int (*exportBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle);
+  typedef xclBufferHandle (*importBOFuncType)(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned int flags);
+  typedef xclBufferExportHandle (*exportBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle);
   typedef int (*getBOPropertiesFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOProperties*);
   typedef int (*execBOFuncType)(xclDeviceHandle handle, xclBufferHandle cmdBO);
   typedef int (*execWaitFuncType)(xclDeviceHandle handle, int timeoutMS);
@@ -85,7 +85,7 @@ private:
                                    const void *hostBuf, size_t size);
   typedef size_t (* readFuncType)(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
                                   void *hostbuf, size_t size);
-  typedef size_t (* unmgdPreadFuncType)(xclDeviceHandle handle, unsigned int flags, void *buf, size_t count, uint64_t offset);
+  typedef ssize_t (* unmgdPreadFuncType)(xclDeviceHandle handle, unsigned int flags, void *buf, size_t count, uint64_t offset);
 
   typedef int (* lockDeviceFuncType)(xclDeviceHandle handle);
   typedef int (* unlockDeviceFuncType)(xclDeviceHandle handle);
@@ -145,7 +145,7 @@ private:
 
   typedef int (*xclGetTraceBufferInfoFuncType)(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   typedef int (*xclReadTraceDataFuncType)(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
- 
+
 private:
   const std::string mFileName;
   const void *mDriverHandle;
