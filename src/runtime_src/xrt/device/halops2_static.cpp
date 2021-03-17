@@ -81,6 +81,10 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mGetDebugIpLayout(0)
   ,mGetNumLiveProcesses(0)
   ,mGetSysfsPath(0)
+  ,mGetSubdevPath(0)
+  ,mGetDebugIPlayoutPath(0)
+  ,mGetTraceBufferInfo(0)
+  ,mReadTraceData(0)
 {
   mProbe = &xclProbe;
   mOpen = &xclOpen;
