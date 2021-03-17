@@ -1582,22 +1582,26 @@ xclProbe()
   if (fd < 0) {
     return 0;
   }
+  std::vector<char> name(128,0);
+  std::vector<char> desc(512,0);
+  std::vector<char> date(128,0);
   drm_version version;
   std::memset(&version, 0, sizeof(version));
-  version.name = new char[128];
+  version.name = name.data();
   version.name_len = 128;
-  version.desc = new char[512];
+  version.desc = desc.data();
   version.desc_len = 512;
-  version.date = new char[128];
+  version.date = date.data();
   version.date_len = 128;
 
   int result = ioctl(fd, DRM_IOCTL_VERSION, &version);
-  if (result)
+  if (result) {
+    close(fd);
     return 0;
+  }
 
   result = std::strncmp(version.name, "zocl", 4);
   close(fd);
-
   return (result == 0) ? 1 : 0;
 }
 #endif
