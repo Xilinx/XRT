@@ -114,6 +114,7 @@ load_xclbin(const xrt::xclbin& xclbin)
   }
   catch (const std::exception&) {
     m_xclbin = {};
+    throw;
   }
 }
 
