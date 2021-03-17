@@ -952,7 +952,7 @@ public:
     rescan_nolock(MGMT_DRV_V1);
     rescan_nolock(USER_DRV_V1);
     rescan_nolock(MGMT_DRV_V2);
-    rescan_nolock(USER_DRV_V1);
+    rescan_nolock(USER_DRV_V2);
   }
 
   size_t
