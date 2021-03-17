@@ -2637,7 +2637,8 @@ struct xocl_subdev_map {
 		.subdev_info = RES_MGMT_VSEC,                           \
 		.subdev_num  = ARRAY_SIZE(RES_MGMT_VSEC),               \
 		.flash_type  = FLASH_TYPE_SPI,                          \
-		.board_name  = "u26z"                                   \
+		.board_name  = "u26z",                                  \
+		.vbnv = "xilinx_u26z"	                          				\
 	}
 
 #define XOCL_BOARD_U30_USER_RAPTOR2                                     \
