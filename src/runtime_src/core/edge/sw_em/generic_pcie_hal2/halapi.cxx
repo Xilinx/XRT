@@ -707,12 +707,41 @@ int xclIPName2Index(xclDeviceHandle handle, const char *name)
 void*
 xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph, xrt::graph::access_mode am)
 {
-  return nullptr;
+  try {
+    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+    xclGraphHandle graphHandle = new xclcpuemhal2::GraphType(drv, graph);
+    if (graphHandle) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)graphHandle;
+      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+      if (drv) {
+        drv->xrtGraphInit(graphHandle);
+      }
+      else {
+        delete ghPtr;
+        ghPtr = nullptr;
+        return XRT_NULL_HANDLE;
+      }
+    }
+    return graphHandle;
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
 }
 
 void
 xclGraphClose(xclGraphHandle ghl)
 {
+  try {
+    if (ghl) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)ghl;
+      delete ghPtr;
+    }
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
 }
 
 int
@@ -730,19 +759,64 @@ xclGraphTimeStamp(xclGraphHandle ghl)
 int
 xclGraphRun(xclGraphHandle gh, int iterations)
 {
-  return 0;
+  try {
+    if (gh) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+      return drv ? drv->xrtGraphRun(gh, iterations) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
 xclGraphWaitDone(xclGraphHandle gh, int timeoutMilliSec)
 {
-  return 0;
+  try {
+    if (gh) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+      return drv ? drv->xrtGraphWait(gh) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
 xclGraphWait(xclGraphHandle gh, uint64_t cycle)
 {
-  return 0;
+  try {
+    if (gh) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+      return drv ? drv->xrtGraphWait(gh) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
@@ -760,19 +834,64 @@ xclGraphResume(xclGraphHandle gh)
 int
 xclGraphEnd(xclGraphHandle gh, uint64_t cycle)
 {
-  return 0;
+  try {
+    if (gh) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+      return drv ? drv->xrtGraphEnd(gh) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
 xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, size_t size)
 {
-  return 0;
+  try {
+    if (ghdl) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)ghdl;
+      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+      return drv ? drv->xrtGraphUpdateRTP(ghdl, port, buffer, size) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
 xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size)
 {
-  return 0;
+  try {
+    if (ghdl) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)ghdl;
+      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+      return drv ? drv->xrtGraphReadRTP(ghdl, port, buffer, size) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int

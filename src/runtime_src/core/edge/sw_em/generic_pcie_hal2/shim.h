@@ -92,6 +92,7 @@ namespace xclcpuemhal2 {
       //Configuration
       void xclOpen(const char* logfileName);
       int xclLoadXclBin(const xclBin *buffer);
+      int xclLoadXclBinNewFlow(const xclBin *buffer);
       //int xclLoadBitstream(const char *fileName);
       int xclUpgradeFirmware(const char *fileName);
       int xclBootFPGA();
@@ -166,6 +167,90 @@ namespace xclcpuemhal2 {
       }
       struct exec_core* getExecCore() { return mCore; }
       SWScheduler* getScheduler() { return mSWSch; }
+      //******************************* XRT Graph API's **************************************************//
+      /**
+      * xrtGraphInit() - Initialize graph 
+      *
+      * @gh:             Handle to graph previously opened with xrtGraphOpen.
+      * Return:          0 on success, -1 on error
+      *
+      * Note: Run by enable tiles and disable tile reset
+      */
+      int
+        xrtGraphInit(void * gh);
+      
+      /**
+      * xrtGraphRun() - Start a graph execution
+      *
+      * @gh:             Handle to graph previously opened with xrtGraphOpen.
+      * @iterations:     The run iteration to update to graph. 0 for infinite.
+      * Return:          0 on success, -1 on error
+      *
+      * Note: Run by enable tiles and disable tile reset
+      */
+      int
+        xrtGraphRun(void * gh, uint32_t iterations);
+
+      /**
+      * xrtGraphWait() -  Wait a given AIE cycle since the last xrtGraphRun and
+      *                   then stop the graph. If cycle is 0, busy wait until graph
+      *                   is done. If graph already run more than the given
+      *                   cycle, stop the graph immediateley.
+      *
+      * @gh:              Handle to graph previously opened with xrtGraphOpen.
+      *
+      * Return:          0 on success, -1 on error.
+      *
+      * Note: This API with non-zero AIE cycle is for graph that is running
+      * forever or graph that has multi-rate core(s).
+      */
+      int
+        xrtGraphWait(void * gh);          
+
+      /**
+      * xrtGraphEnd() - Wait a given AIE cycle since the last xrtGraphRun and
+      *                 then end the graph. busy wait until graph
+      *                 is done before end the graph. If graph already run more
+      *                 than the given cycle, stop the graph immediately and end it.
+      *
+      * @gh:              Handle to graph previously opened with xrtGraphOpen.      
+      *
+      * Return:          0 on success, -1 on timeout.
+      *
+      * Note: This API with non-zero AIE cycle is for graph that is running
+      * forever or graph that has multi-rate core(s).
+      */
+      int
+        xrtGraphEnd(void * gh);
+
+      /**
+      * xrtGraphUpdateRTP() - Update RTP value of port with hierarchical name
+      *
+      * @gh:              Handle to graph previously opened with xrtGraphOpen.
+      * @hierPathPort:    hierarchial name of RTP port.
+      * @buffer:          pointer to the RTP value.
+      * @size:            size in bytes of the RTP value.
+      *
+      * Return:          0 on success, -1 on error.
+      */
+      int
+        xrtGraphUpdateRTP(void * gh, const char *hierPathPort, const char *buffer, size_t size);
+
+      /**
+      * xrtGraphUpdateRTP() - Read RTP value of port with hierarchical name
+      *
+      * @gh:              Handle to graph previously opened with xrtGraphOpen.
+      * @hierPathPort:    hierarchial name of RTP port.
+      * @buffer:          pointer to the buffer that RTP value is copied to.
+      * @size:            size in bytes of the RTP value.
+      *
+      * Return:          0 on success, -1 on error.
+      *
+      * Note: Caller is reponsible for allocating enough memory for RTP value
+      *       being copied to.
+      */
+      int
+        xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size);
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;
@@ -245,8 +330,46 @@ namespace xclcpuemhal2 {
       exec_core* mCore;
       SWScheduler* mSWSch;
       bool mIsKdsSwEmu;
+      bool mIsSwEmuNewFlow;
   };
 
+  class GraphType {
+    // Core device to which the graph belongs.  The core device
+    // has been loaded with an xclbin from which meta data can
+    // be extracted
+  public:
+    GraphType(xclcpuemhal2::CpuemShim* handle, const char* graph) {
+      _deviceHandle = handle;
+      //_xclbin_uuid = xclbin_uuid;
+      _graph = graph;
+      graphHandle = mGraphHandle++;
+      _state = graph_state::stop;
+      _name = "";
+      _startTime= 0;
+    }
+    xclcpuemhal2::CpuemShim*  getDeviceHandle() {  return _deviceHandle;  }
+    const char*  getGraphName() { return _graph; }
+    unsigned int  getGraphHandle() { return graphHandle; }
+  private: 
+    xclcpuemhal2::CpuemShim*  _deviceHandle;
+    //const uuid_t _xclbin_uuid;
+    const char* _graph;
+    unsigned int graphHandle;
+    enum class graph_state : unsigned short
+    {
+      stop = 0,
+      reset = 1,
+      running = 2,
+      suspend = 3,
+      end = 4,
+    };
+    graph_state _state;
+    std::string _name;
+    uint64_t _startTime;  
+    /* This is the collections of rtps that are used. */
+    std::vector<std::string> rtps;
+    static unsigned int mGraphHandle;
+  };
   extern std::map<unsigned int, CpuemShim*> devices;
 }
 

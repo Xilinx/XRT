@@ -438,7 +438,7 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
-    return NULL;
+    return nullptr;
   return drv->xclMapBO(boHandle, write);
 }
 
@@ -668,10 +668,14 @@ xrtGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph
   if (graphHandle) {
     auto ghPtr = (xclcpuemhal2::GraphType*)graphHandle;
     auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
-    if (drv)
+      if (drv) {
       drv->xrtGraphInit(graphHandle);
-    else
+      }
+      else {
+        delete ghPtr;
+        ghPtr = nullptr;
       return XRT_NULL_HANDLE;
+      }
   }
   return graphHandle; 
   }
