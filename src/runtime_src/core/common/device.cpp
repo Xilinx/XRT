@@ -148,13 +148,6 @@ register_axlf(const axlf* top)
   }
 }
 
-bool
-device::
-is_register_axlf()
-{
-  return ((m_xclbin)? true:false);
-}
-
 std::pair<const char*, size_t>
 device::
 get_axlf_section(axlf_section_kind section, const uuid& xclbin_id) const

@@ -27,7 +27,6 @@
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
 #include "core/common/error.h"
-#include "core/include/xcl_aie.h"
 
 #include <cerrno>
 #include <iostream>
@@ -1755,29 +1754,6 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
   if (!drv)
     return -EINVAL;
   return drv->xclImportBO(fd, flags);
-}
-
-int
-xclReadAieReg(xclDeviceHandle handle, int row, int col,const char* regName, uint32_t* value) {
-  try {
-    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-#ifdef XRT_ENABLE_AIE
-    drv->registerAieArray();
-    if (!drv->isAieRegistered())
-      throw xrt_core::error(-EINVAL, "No AIE presented");
-    auto aieArray = drv->getAieArray();
-    aieArray->read_core_reg(row,col,regName,value);
-#endif
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -EINVAL;
-  }
-  return 0;
 }
 
 int
