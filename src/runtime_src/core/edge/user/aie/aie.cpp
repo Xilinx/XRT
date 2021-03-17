@@ -72,7 +72,6 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
     devInst = &DevInst;
     adf::config_manager::initialize(devInst, driver_config.reserved_num_rows, false);
 
-    auto core_device = xrt_core::get_userpf_device(device->get_device_handle());
     /* Initialize PLIO metadata */
     for (auto& plio : xrt_core::edge::aie::get_plios(device.get()))
         plios.emplace_back(std::move(plio));
