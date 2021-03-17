@@ -23,6 +23,7 @@
 #include <vector>
 #include <string>
 #include <list>
+#include <memory>
 
 #include "xdp/config.h"
 #include "xdp/profile/device/device_intf.h"
@@ -105,6 +106,77 @@ namespace xdp {
         burstLength(len)
     {}
   };
+
+  /*
+   * AIE Config Writer Classes
+   */
+  class aie_cfg_counter
+  {
+    public:
+      uint32_t start_event = 0;
+      uint32_t stop_event = 0;
+      uint32_t reset_event = 0;
+      uint32_t event_value = 0;
+      uint32_t counter_value = 0;
+  };
+
+  class aie_cfg_base
+  {
+    public:
+      uint32_t packet_type = 0;
+      uint32_t packet_id = 0;
+      uint32_t start_event = 28;
+      uint32_t stop_event = 29;
+      uint32_t traced_events[8] = {0};
+      std::map<uint32_t, uint32_t> group_event_config = {};
+      uint32_t combo_event_input[4] = {0};
+      uint32_t combo_event_control[3] = {0};
+      uint32_t broadcast_mask_south = 65535;
+      uint32_t broadcast_mask_north = 65535;
+      uint32_t broadcast_mask_west = 65535;
+      uint32_t broadcast_mask_east = 65535;
+      uint32_t internal_events_broadcast[16] = {0};
+      std::vector<aie_cfg_counter> pc;
+
+      aie_cfg_base(uint32_t count) : pc(count) {};
+  };
+
+class aie_cfg_core : public aie_cfg_base
+{
+  public:
+    uint32_t trace_mode = 1;
+    std::string port_trace = "null";
+    aie_cfg_core() : aie_cfg_base(4)
+    {
+      group_event_config = {
+        {2 ,  0},
+        {15,  0},
+        {22,  0},
+        {32,  0},
+        {46,  0},
+        {47,  0},
+        {73,  0},
+        {106, 0},
+        {123, 0}
+      };
+    };
+};
+
+class aie_cfg_memory : public aie_cfg_base
+{
+  public:
+    aie_cfg_memory() : aie_cfg_base(2) {};
+};
+
+class aie_cfg_tile
+{
+  public:
+    uint32_t column;
+    uint32_t row;
+    aie_cfg_core core_trace_config;
+    aie_cfg_memory memory_trace_config;
+    aie_cfg_tile(uint32_t r, uint32_t c) : row(r), column(c) {}
+};
 
   class ComputeUnitInstance
   {
@@ -289,6 +361,8 @@ namespace xdp {
     std::vector<AIECounter*>   aieList;
     std::vector<TraceGMIO*>    gmioList;
 
+    std::vector<std::unique_ptr<aie_cfg_tile>>   aieCfgList;
+
     XclbinInfo* currentXclbin() {
       if (loadedXclbins.size() <= 0)
 	return nullptr ;
@@ -450,11 +524,14 @@ namespace xdp {
 
     ~DeviceInfo();
     void addTraceGMIO(uint32_t i, uint16_t col, uint16_t num, uint16_t stream,
-		      uint16_t len) ;
+          uint16_t len) ;
     void addAIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num,
-		       uint8_t start, uint8_t end, uint8_t reset,
-		       double freq, const std::string& mod,
-		       const std::string& aieName) ;
+           uint8_t start, uint8_t end, uint8_t reset,
+           double freq, const std::string& mod,
+           const std::string& aieName) ;
+    void addAIECfgTile(std::unique_ptr<aie_cfg_tile>& tile) {
+      aieCfgList.push_back(std::move(tile));
+    }
   };
 
   class VPStaticDatabase
@@ -535,7 +612,7 @@ namespace xdp {
       { return softwareEmulationCUCounts ; }
     inline void addSoftwareEmulationCUInstance(const std::string& kernelName) {
       if (softwareEmulationCUCounts.find(kernelName) ==
-	  softwareEmulationCUCounts.end())
+softwareEmulationCUCounts.end())
 	softwareEmulationCUCounts[kernelName] = 1 ;
       else
 	softwareEmulationCUCounts[kernelName] += 1 ;
@@ -853,6 +930,12 @@ namespace xdp {
       return deviceInfo[deviceId]->aieList[idx];
     }
 
+    inline std::vector<std::unique_ptr<aie_cfg_tile>>&
+      getAIECfgTiles(uint64_t deviceId)
+    {
+      return deviceInfo[deviceId]->aieCfgList;
+    }
+
     inline TraceGMIO* getTraceGMIO(uint64_t deviceId, uint64_t idx)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -861,23 +944,30 @@ namespace xdp {
     }
 
     inline void addTraceGMIO(uint64_t deviceId, uint32_t i, uint16_t col,
-			     uint16_t num, uint16_t stream, uint16_t len)
+           uint16_t num, uint16_t stream, uint16_t len)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end())
-	return ;
+  return ;
       deviceInfo[deviceId]->addTraceGMIO(i, col, num, stream, len);
     }
 
     inline void addAIECounter(uint64_t deviceId, uint32_t i, uint16_t col,
-			      uint16_t r, uint8_t num, uint8_t start,
-			      uint8_t end, uint8_t reset, double freq,
-			      const std::string& mod,
-			      const std::string& aieName)
+            uint16_t r, uint8_t num, uint8_t start,
+            uint8_t end, uint8_t reset, double freq,
+            const std::string& mod,
+            const std::string& aieName)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end())
 	return ;
       deviceInfo[deviceId]->addAIECounter(i, col, r, num, start, end, reset,
-					  freq, mod, aieName) ;
+		freq, mod, aieName) ;
+    }
+
+    inline void addAIECfgTile(uint64_t deviceId, std::unique_ptr<aie_cfg_tile>& tile)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+        return ;
+      deviceInfo[deviceId]->addAIECfgTile(tile) ;
     }
 
     // Includes only User Space AIM enabled for trace, but no shell AIM
@@ -993,7 +1083,7 @@ namespace xdp {
     XDP_EXPORT void addKDMACount(void* dev, uint16_t numKDMAs) ;
 
     XDP_EXPORT void addOpenedFile(const std::string& name, 
-				  const std::string& type) ;
+          const std::string& type) ;
     XDP_EXPORT void addEnqueuedKernel(const std::string& identifier) ;
   } ;
 
