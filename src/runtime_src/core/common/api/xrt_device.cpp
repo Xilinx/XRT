@@ -415,6 +415,26 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 }
 
 int
+xrtDeviceLoadXclbinUUID(xrtDeviceHandle dhdl, const xuid_t uuid)
+{
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [dhdl, uuid]{
+      auto device = get_device(dhdl);
+      device->load_xclbin(uuid);
+      return 0;
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return (errno = ex.get());
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return (errno = 0);
+  }
+}
+
+int
 xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
 {
   try {

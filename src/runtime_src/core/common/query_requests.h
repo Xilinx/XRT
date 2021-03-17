@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -78,6 +78,7 @@ enum class key_type
   kds_mode,
   kds_cu_stat,
   kds_scu_stat,
+  xclbin_full,
 
   xmc_version,
   xmc_board_name,
@@ -622,6 +623,15 @@ struct mem_topology_raw : request
 {
   using result_type = std::vector<char>;
   static const key_type key = key_type::mem_topology_raw;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xclbin_full : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::xclbin_full;
 
   virtual boost::any
   get(const device*) const = 0;

@@ -941,3 +941,10 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
 {
   return 0;
 }
+
+int
+xclLoadXclBinMeta(xclDeviceHandle handle, const xclBin *buffer)
+{
+  return 0;
+}
+

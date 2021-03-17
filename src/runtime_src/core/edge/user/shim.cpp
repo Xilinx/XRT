@@ -1807,8 +1807,8 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
   return drv->xclImportBO(fd, flags);
 }
 
-int
-xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
+static int
+xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 {
 #ifndef __HWEM__
   LOAD_XCLBIN_CB ;
@@ -1822,12 +1822,14 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xdp::aie::flush_device(handle) ;
 #endif
 
+    int ret;
+    if (!meta) {
+      ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+      if (ret) {
+        printf("Load Xclbin Failed\n");
 
-    auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
-    if (ret) {
-      printf("Load Xclbin Failed\n");
-
-      return ret;
+        return ret;
+      }
     }
     auto core_device = xrt_core::get_userpf_device(handle);
 
@@ -1876,6 +1878,18 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xrt_core::send_exception_message(ex.what());
     return 1;
   }
+}
+
+int
+xclLoadXclBinMeta(xclDeviceHandle handle, const xclBin *buffer)
+{
+  return xclLoadXclBinImpl(handle, buffer, true);
+}
+
+int
+xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
+{
+  return xclLoadXclBinImpl(handle, buffer, false);
 }
 
 size_t

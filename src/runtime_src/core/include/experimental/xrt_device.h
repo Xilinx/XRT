@@ -395,6 +395,21 @@ int
 xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl);
 
 /**
+ * xrtDeviceLoadXclbinHandle() - load an xclbin from an xrt::xclbin handle
+ *
+ * @dhdl:       Handle to device previously opened with xrtDeviceOpen
+ * @uuid:       uuid_t struct of xclbin id
+ * Return:      0 on success, error otherwise
+ *
+ * This function reads the xclbin id already loaded in the system and
+ * comapres it with the input uuid. If they match, load the cached
+ * xclbin metadata into caller's process. Otherwise returns error.
+ */
+XCL_DRIVER_DLLESPEC
+int
+xrtDeviceLoadXclbinUUID(xrtDeviceHandle dhdl, const xuid_t uuid);
+
+/**
  * xrtDeviceGetXclbinUUID() - Get UUID of xclbin image loaded on device
  *
  * @dhdl:   Handle to device previously opened with xrtDeviceOpen

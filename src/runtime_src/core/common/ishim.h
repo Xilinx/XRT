@@ -170,6 +170,9 @@ struct ishim
 
   virtual void
   stop_profiling(int phdl) = 0;
+
+  virtual void
+  load_axlf_meta(const axlf*) = 0;
 #endif
 };
 
@@ -508,6 +511,12 @@ struct shim : public DeviceType
       throw error(ret, "fail to wait gmio");
   }
 
+  virtual void
+  load_axlf_meta(const axlf* buffer)
+  {
+    if (auto ret = xclLoadXclBinMeta(DeviceType::get_device_handle(), buffer))
+      throw error(ret, "failed to load xclbin");
+  }
 #endif
 };
 
