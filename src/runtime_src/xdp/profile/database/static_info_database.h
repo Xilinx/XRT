@@ -175,7 +175,7 @@ class aie_cfg_tile
     uint32_t row;
     aie_cfg_core core_trace_config;
     aie_cfg_memory memory_trace_config;
-    aie_cfg_tile(uint32_t r, uint32_t c) : row(r), column(c) {}
+    aie_cfg_tile(uint32_t c, uint32_t r) : column(c), row(r) {}
 };
 
   class ComputeUnitInstance

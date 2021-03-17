@@ -18,6 +18,7 @@
 
 #include "xdp/profile/plugin/aie_trace/aie_trace_plugin.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
+#include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 
 #include "core/common/xrt_profiling.h"
 #include "core/edge/user/shim.h"
@@ -32,6 +33,7 @@
 #include "core/common/message.h"
 #include <iostream>
 #include <boost/algorithm/string.hpp>
+#include <memory>
 
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/common/aie_parser.h"
@@ -139,7 +141,7 @@ namespace xdp {
     }
   }
 
-  void AieTracePlugin::setMetrics(void* handle)
+  void AieTracePlugin::setMetrics(uint64_t deviceId, void* handle)
   {
     auto drv = ZYNQ::shim::handleCheck(handle);
     if (!drv)
@@ -205,6 +207,9 @@ namespace xdp {
       auto& core   = aieDevice->tile(col, row + 1).core();
       auto& memory = aieDevice->tile(col, row + 1).mem();
 
+      // AIE config object for this tile
+      auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row);
+
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
       EventVector coreEvents;
@@ -242,6 +247,14 @@ namespace xdp {
 
         perfCounters.push_back(perfCounter);
         numCoreCounters++;
+
+        // Update config file
+        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
+        auto& cfg = cfgTile->core_trace_config.pc[idx];
+        cfg.start_event = coreCounterStartEvents[i];
+        cfg.stop_event = coreCounterEndEvents[i];
+        cfg.reset_event = counterEvent;
+        cfg.event_value = coreCounterEventValues[i];
       }
 
       //
@@ -257,7 +270,7 @@ namespace xdp {
         if (ret != XAIE_OK) break;
 
         perfCounter->changeThreshold( memoryCounterEventValues.at(i) );
-        
+
         // Set reset event based on counter number
         XAie_Events counterEvent;
         XAie_ModuleType mod = XAIE_MEM_MOD;
@@ -271,6 +284,14 @@ namespace xdp {
 
         perfCounters.push_back(perfCounter);
         numMemoryCounters++;
+
+        // Update config file
+        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
+        auto& cfg = cfgTile->memory_trace_config.pc[idx];
+        cfg.start_event = memoryCounterStartEvents[i];
+        cfg.stop_event = memoryCounterEndEvents[i];
+        cfg.reset_event = counterEvent;
+        cfg.event_value = memoryCounterEventValues[i];
       }
 
       // Catch when counters cannot be reserved: report, release, and return
@@ -312,7 +333,14 @@ namespace xdp {
           ret = coreTrace->setTraceEvent(slot, coreEvents[i]);
           if (ret != XAIE_OK) break;
           numTraceEvents++;
+
+          // Update config file
+          // Todo : Update broadcast mask and events
+          cfgTile->core_trace_config.traced_events[slot] = coreEvents[i];
         }
+        // Update config file
+        cfgTile->core_trace_config.start_event = coreTraceStartEvent;
+        cfgTile->core_trace_config.stop_event = coreTraceEndEvent;
         
         coreEvents.clear();
         numTileCoreTraceEvents[numTraceEvents]++;
@@ -341,7 +369,7 @@ namespace xdp {
 
         ret = memoryTrace->reserve();
         if (ret != XAIE_OK) break;
-        
+
         int numTraceEvents = 0;
         for (int i=0; i < memoryEvents.size(); i++) {
           uint8_t slot;
@@ -350,7 +378,15 @@ namespace xdp {
           ret = memoryTrace->setTraceEvent(slot, memoryEvents[i]);
           if (ret != XAIE_OK) break;
           numTraceEvents++;
+
+          // Update config file
+          // Todo : Update broadcast mask and events
+          cfgTile->memory_trace_config.traced_events[slot] = memoryEvents[i];
         }
+        // Update config file
+        // Get this from broadcast ID
+        cfgTile->memory_trace_config.start_event = coreTraceStartEvent;
+        cfgTile->memory_trace_config.stop_event = coreTraceEndEvent;
 
         memoryEvents.clear();
         numTileMemoryTraceEvents[numTraceEvents]++;
@@ -365,7 +401,10 @@ namespace xdp {
         ret = memoryTrace->start();
         if (ret != XAIE_OK) break;
       }
-    }
+
+      // Do not access cfgTile after this
+      (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
+    } // For tiles
     perfCounters.clear();
 
     // Report trace events reserved per tile
@@ -431,7 +470,7 @@ namespace xdp {
     }
 
 #ifdef XRT_ENABLE_AIE
-    setMetrics(handle);
+    setMetrics(deviceId, handle);
 
     if (!(db->getStaticInfo()).isGMIORead(deviceId)) {
       // Update the AIE specific portion of the device

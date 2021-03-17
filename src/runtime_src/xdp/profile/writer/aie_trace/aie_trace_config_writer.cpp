@@ -19,8 +19,6 @@
 #include "aie_trace_config_writer.h"
 #include "xdp/profile/database/database.h"
 
-namespace xdp_bpt = xdp::boost::property_tree;
-
 namespace xdp {
 
   AieTraceConfigWriter::AieTraceConfigWriter(const char* filename,
@@ -230,8 +228,8 @@ namespace xdp {
 
     EventTraceConfigs.push_back(std::make_pair("", EventTraceConfigs_C));
     pt.add_child("EventTraceConfigs", EventTraceConfigs);
-    bpt::write_json(std::cout, pt);
-    xdp_bpt::write_jsonEx("aie.json", pt);
+    //bpt::write_json(std::cout, pt);
+    write_jsonEx(getcurrentFileName(), pt);
   }
 
 }

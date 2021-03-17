@@ -38,16 +38,16 @@ namespace xdp {
     AieTraceConfigWriter(const char* filename, const char* d, uint64_t index) ;
     ~AieTraceConfigWriter() ;
 
-    virtual void write(bool openNewFile) ;
-  } ;
-
-  namespace boost { namespace property_tree {
-
+  private:
   inline void write_jsonEx(const std::string& path, const bpt::ptree& ptree)
   {
     std::ostringstream oss;
     bpt::write_json(oss, ptree);
-    std::regex reg("\\\"([0-9]+\\.{0,1}[0-9]*)\\\"(?!\\:)");
+
+    // Patterns matching "12" "null" "100.0"
+    //Patterns ignored "12":  "100.0":
+    std::regex reg("\\\"(([0-9]+\\.{0,1}[0-9]*)|(null))\\\"(?!\\:)");
+    //std::regex reg("\\\"([0-9]+\\.{0,1}[0-9]*)\\\"(?!\\:)");
     //std::regex reg("\\\"([0-9]+\\.{0,1}[0-9]*)\\\"");
     std::string result = std::regex_replace(oss.str(), reg, "$1");
 
@@ -57,7 +57,9 @@ namespace xdp {
     file.close();
   }
 
-} } // End boost::property_tree
+  virtual void write(bool openNewFile) ;
+  } ;
+
 
 } // end namespace xdp
 

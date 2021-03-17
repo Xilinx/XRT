@@ -52,7 +52,7 @@ namespace xdp {
       virtual void writeAll(bool openNewFiles);
 
     private:
-      void setMetrics(void* handle);
+      void setMetrics(uint64_t deviceId, void* handle);
 
     private:
       // Trace Runtime Status
