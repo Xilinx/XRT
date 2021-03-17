@@ -29,27 +29,33 @@
 
 namespace qr = xrt_core::query;
 
-boost::property_tree::ptree
-populate_aie_shim(const xrt_core::device * device, const std::string& desc)
+inline void
+addnode(std::string str, std::string nodestr,boost::property_tree::ptree& oshim, boost::property_tree::ptree& ishim)
 {
-  boost::property_tree::ptree pt;
-  std::string aie_data;
-  std::vector<std::string> graph_status;
-  pt.put("description", desc);
-  boost::property_tree::ptree tile_array;
-  boost::property_tree::ptree _pt;
+  int count = 0;
   boost::property_tree::ptree empty_pt;
+  for (auto& node: oshim.get_child(str, empty_pt)) {
+    ishim.put(nodestr+std::to_string(count++), node.second.data());
+  }
+}
+
+void
+populate_aie_shim(const xrt_core::device * device, const std::string& desc, boost::property_tree::ptree& pt)
+{
+  pt.put("description", desc);
+  boost::property_tree::ptree _pt;
 
   try {
-    aie_data = xrt_core::device_query<qr::aie_shim_info>(device);
+  std::string aie_data = xrt_core::device_query<qr::aie_shim_info>(device);
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, _pt);
   } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
-    return pt;
+    return;
   }
 
   try {
+    boost::property_tree::ptree tile_array;
     for (auto& as: _pt.get_child("aie_shim")) {
       boost::property_tree::ptree& oshim = as.second;
       boost::property_tree::ptree ishim;
@@ -60,6 +66,7 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc)
       ishim.put("row", row);
       int count = 0;
 
+      boost::property_tree::ptree empty_pt;
       for (auto& node: oshim.get_child("dma.Channel_status.MM2S", empty_pt)) {
         ishim.put("dma.channel_status.mm2s.channel_"+std::to_string(count++), node.second.data());
       }
@@ -72,59 +79,35 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc)
       count = 0;
       std::string mode;
       for (auto& node: oshim.get_child("dma.Mode.MM2S", empty_pt)) {
-        mode = mode+(mode.empty()?"":", ")+node.second.data();
+        mode +=(mode.empty()?"":", ")+node.second.data();
       }
+
       if(!mode.empty())
         ishim.put("dma.mode.mm2s", mode);
+
       mode.clear();
       for (auto& node: oshim.get_child("dma.Mode.S2MM", empty_pt)) {
-        mode = mode+(mode.empty()?"":", ")+node.second.data();
+        mode +=(mode.empty()?"":", ")+node.second.data();
       }
+
       if(!mode.empty())
         ishim.put("dma.mode.s2mm", mode);
 
-      count = 0;
-      for (auto& node: oshim.get_child("dma.Queue_size.MM2S", empty_pt)) {
-        ishim.put("dma.queue_size.mm2s.channel_"+std::to_string(count++), node.second.data());
-      }
-      count = 0;
-      for (auto& node: oshim.get_child("dma.Queue_size.S2MM", empty_pt)) {
-        ishim.put("dma.queue_size.s2mm.channel_"+std::to_string(count++), node.second.data());
-      }
-
-      count = 0;
-      for (auto& node: oshim.get_child("dma.Queue_status.MM2S", empty_pt)) {
-        ishim.put("dma.queue_status.mm2s.channel_"+std::to_string(count++), node.second.data());
-      }
-      count = 0;
-      for (auto& node: oshim.get_child("dma.Queue_status.S2MM", empty_pt)) {
-        ishim.put("dma.queue_status.s2mm.channel_"+std::to_string(count++), node.second.data());
-      }
-
-      count = 0;
-      for (auto& node: oshim.get_child("dma.Current_BD.MM2S", empty_pt)) {
-        ishim.put("dma.current_bd.mm2s.channel_"+std::to_string(count++), node.second.data());
-      }
-      count = 0;
-      for (auto& node: oshim.get_child("dma.Current_BD.S2MM", empty_pt)) {
-        ishim.put("dma.current_bd.s2mm.channel_"+std::to_string(count++), node.second.data());
-      }
-
-      count = 0;
-      for (auto& node: oshim.get_child("dma.Lock_ID.MM2S", empty_pt)) {
-        ishim.put("dma.lock_id.mm2s.channel_"+std::to_string(count++), node.second.data());
-      }
-      count = 0;
-      for (auto& node: oshim.get_child("dma.Lock_ID.S2MM", empty_pt)) {
-        ishim.put("dma.lock_id.s2mm.channel_"+std::to_string(count++), node.second.data());
-      }
+      addnode("dma.Queue_size.MM2S", "dma.queue_size.mm2s.channel_", oshim, ishim);
+      addnode("dma.Queue_size.S2MM", "dma.queue_size.s2mm.channel_", oshim, ishim);
+      addnode("dma.Queue_status.MM2S", "dma.queue_status.mm2s.channel_", oshim, ishim);
+      addnode("dma.Queue_status.S2MM", "dma.queue_status.s2mm.channel_", oshim, ishim);
+      addnode("dma.Current_BD.MM2S", "dma.current_bd.mm2s.channel_", oshim, ishim);
+      addnode("dma.Current_BD.S2MM", "dma.current_bd.s2mm.channel_", oshim, ishim);
+      addnode("dma.Lock_ID.MM2S", "dma.lock_id.mm2s.channel_", oshim, ishim);
+      addnode("dma.Lock_ID.S2MM", "dma.lock_id.s2mm.channel_", oshim, ishim);
 
       count = 0;
       boost::property_tree::ptree lockarray;
       for (auto& node: oshim.get_child("lock")) {
         std::string val;
         for (auto& l: node.second)
-          val = val+(val.empty()?"":", ")+l.second.data();
+          val +=(val.empty()?"":", ")+l.second.data();
         if(!val.empty())
           ishim.put("lock."+node.first, val);
       }
@@ -132,7 +115,7 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc)
       for (auto& node: oshim.get_child("errors.PL_module", empty_pt)) {
         std::string val;
         for (auto& l: node.second)
-          val = val+(val.empty()?"":", ")+l.second.data();
+          val +=(val.empty()?"":", ")+l.second.data();
         if(!val.empty())
           ishim.put("errors.pl_module."+node.first, val);
       }
@@ -140,7 +123,7 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc)
       for (auto& node: oshim.get_child("errors.Core_module", empty_pt)) {
         std::string val;
         for (auto& l: node.second)
-          val = val+(val.empty()?"":", ")+l.second.data();
+          val +=(val.empty()?"":", ")+l.second.data();
         if(!val.empty())
           ishim.put("errors.core_module."+node.first, val);
       }
@@ -148,7 +131,7 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc)
       for (auto& node: oshim.get_child("errors.Memory_module", empty_pt)) {
         std::string val;
         for (auto& l: node.second)
-          val = val+(val.empty()?"":", ")+l.second.data();
+          val +=(val.empty()?"":", ")+l.second.data();
         if(!val.empty())
           ishim.put("errors.memory_module."+node.first, val);
       }
@@ -156,7 +139,7 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc)
       for (auto& node: oshim.get_child("event", empty_pt)) {
         std::string val;
         for (auto& l: node.second)
-          val = val+(val.empty()?"":", ")+l.second.data();
+          val +=(val.empty()?"":", ")+l.second.data();
         if(!val.empty())
           ishim.put("event."+node.first, val);
       }
@@ -164,7 +147,7 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc)
       for (auto& node: oshim.get_child("event.Memory_module", empty_pt)) {
         std::string val;
         for (auto& l: node.second)
-          val = val+(val.empty()?"":", ")+l.second.data();
+          val +=(val.empty()?"":", ")+l.second.data();
         if(!val.empty())
           ishim.put("event.memory_module."+node.first, val);
       }
@@ -172,19 +155,19 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc)
       for (auto& node: oshim.get_child("event.Core_module", empty_pt)) {
         std::string val;
         for (auto& l: node.second)
-          val = val+(val.empty()?"":", ")+l.second.data();
+          val +=(val.empty()?"":", ")+l.second.data();
         if(!val.empty())
           ishim.put("event.core_module."+node.first, val);
       }
 
       tile_array.push_back(std::make_pair("tile"+std::to_string(col),ishim));
     }
-      pt.add_child("tiles",tile_array);
+    pt.add_child("tiles",tile_array);
   } catch (const std::exception& ex){
     pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE shim"));
   }
 
-  return pt;
+  //return pt;
 }
 
 void
@@ -200,7 +183,9 @@ void
 ReportAieShim::getPropertyTree20202(const xrt_core::device * _pDevice, 
                                 boost::property_tree::ptree &_pt) const
 {
-  _pt.add_child("aie_shim_status", populate_aie_shim(_pDevice, "Aie_Shim_Status"));
+  boost::property_tree::ptree pt;
+  populate_aie_shim(_pDevice, "Aie_Shim_Status", pt);
+  _pt.add_child("aie_shim_status", pt);
 }
 
 void 

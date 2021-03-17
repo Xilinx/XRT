@@ -55,15 +55,22 @@ graph_status_to_string(int status) {
   }
 }
 
+inline void
+addnode(std::string str, std::string nodestr,boost::property_tree::ptree& oshim, boost::property_tree::ptree& ishim)
+{
+  int count = 0;
+  boost::property_tree::ptree empty_pt;
+  for (auto& node: oshim.get_child(str, empty_pt)) {
+    ishim.put(nodestr+std::to_string(count++), node.second.data());
+  }
+}
+
 void
 populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& tile, int row, int col)
 {
-  boost::property_tree::ptree pt;
-  std::string aie_data;
-  std::vector<std::string> graph_status;
-  boost::property_tree::ptree tile_array;
-  boost::property_tree::ptree empty_pt;
   try {
+    boost::property_tree::ptree pt;
+    boost::property_tree::ptree empty_pt;
     pt =  _pt.get_child("aie_core."+std::to_string(col)+"_"+std::to_string(row));
     tile.put("column", pt.get<uint32_t>("col"));
     tile.put("row", pt.get<uint32_t>("row"));
@@ -77,10 +84,13 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
 
     for (auto& node: pt.get_child("core.PC", empty_pt))
       tile.put("core.program_counter", node.second.data());
+
     for (auto& node: pt.get_child("core.LR", empty_pt))
       tile.put("core.link_register", node.second.data());
+
     for (auto& node: pt.get_child("core.SP", empty_pt))
       tile.put("core.stack_pointer", node.second.data());
+
     for (auto& node: pt.get_child("dma.Channel_status.MM2S", empty_pt)) {
       tile.put("dma.channel_status.mm2s.channel_"+std::to_string(count++), node.second.data());
     }
@@ -93,55 +103,36 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
     count = 0;
     std::string mode;
     for (auto& node: pt.get_child("dma.Mode.MM2S", empty_pt)) {
-      mode = mode+(mode.empty()?"":", ")+node.second.data();
-    }
-    if(!mode.empty())
-      tile.put("dma.mode.mm2s", mode);
-    mode.clear();
-    for (auto& node: pt.get_child("dma.Mode.S2MM", empty_pt)) {
-      mode = mode+(mode.empty()?"":", ")+node.second.data();
-    }
-    if(!mode.empty())
-      tile.put("dma.mode.s2mm", mode);
-    count = 0;
-    for (auto& node: pt.get_child("dma.Queue_size.MM2S", empty_pt)) {
-      tile.put("dma.queue_size.mm2s.channel_"+std::to_string(count++), node.second.data());
-    }
-    count = 0;
-    for (auto& node: pt.get_child("dma.Queue_size.S2MM", empty_pt)) {
-      tile.put("dma.queue_size.s2mm.channel_"+std::to_string(count++), node.second.data());
-    }
-    count = 0;
-    for (auto& node: pt.get_child("dma.Queue_status.MM2S", empty_pt)) {
-      tile.put("dma.queue_status.mm2s.channel_"+std::to_string(count++), node.second.data());
-    }
-    count = 0;
-    for (auto& node: pt.get_child("dma.Queue_status.S2MM", empty_pt)) {
-      tile.put("dma.queue_status.s2mm.channel_"+std::to_string(count++), node.second.data());
+      mode += (mode.empty()?"":", ")+node.second.data();
     }
 
-    count = 0;
-    for (auto& node: pt.get_child("dma.Current_BD.MM2S", empty_pt)) {
-      tile.put("dma.current_bd.mm2s.channel_"+std::to_string(count++), node.second.data());
+    if(!mode.empty())
+      tile.put("dma.mode.mm2s", mode);
+
+    mode.clear();
+    for (auto& node: pt.get_child("dma.Mode.S2MM", empty_pt)) {
+      mode += (mode.empty()?"":", ")+node.second.data();
     }
-    count = 0;
-    for (auto& node: pt.get_child("dma.Current_BD.S2MM", empty_pt)) {
-      tile.put("dma.current_bd.s2mm.channel_"+std::to_string(count++), node.second.data());
-    }
-    count = 0;
-    for (auto& node: pt.get_child("dma.Lock_ID.MM2S", empty_pt)) {
-      tile.put("dma.lock_id.mm2s.channel_"+std::to_string(count++), node.second.data());
-    }
-    count = 0;
-    for (auto& node: pt.get_child("dma.Lock_ID.S2MM", empty_pt)) {
-      tile.put("dma.lock_id.s2mm.channel_"+std::to_string(count++), node.second.data());
-    }
+
+    if(!mode.empty())
+      tile.put("dma.mode.s2mm", mode);
+
+
+    addnode("dma.Queue_size.MM2S", "dma.queue_size.mm2s.channel_", pt, tile);
+    addnode("dma.Queue_size.S2MM", "dma.queue_size.s2mm.channel_", pt, tile);
+    addnode("dma.Queue_status.MM2S", "dma.queue_status.mm2s.channel_", pt, tile);
+    addnode("dma.Queue_status.S2MM", "dma.queue_status.s2mm.channel_", pt, tile);
+    addnode("dma.Current_BD.MM2S", "dma.current_bd.mm2s.channel_", pt, tile);
+    addnode("dma.Current_BD.S2MM", "dma.current_bd.s2mm.channel_", pt, tile);
+    addnode("dma.Lock_ID.MM2S", "dma.lock_id.mm2s.channel_", pt, tile);
+    addnode("dma.Lock_ID.S2MM", "dma.lock_id.s2mm.channel_", pt, tile);
+
     count = 0;
     boost::property_tree::ptree lockarray;
     for (auto& node: pt.get_child("lock")) {
       std::string val;
       for (auto& l: node.second)
-        val = val+(val.empty()?"":", ")+l.second.data();
+        val +=(val.empty()?"":", ")+l.second.data();
       if(!val.empty())
         tile.put("lock."+node.first, val);
     }
@@ -149,7 +140,7 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
     for (auto& node: pt.get_child("errors.PL_module", empty_pt)) {
       std::string val;
       for (auto& l: node.second)
-        val = val+(val.empty()?"":", ")+l.second.data();
+        val +=(val.empty()?"":", ")+l.second.data();
       if(!val.empty())
         tile.put("errors.pl_module."+node.first, val);
     }
@@ -157,21 +148,23 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
     for (auto& node: pt.get_child("errors.Core_module", empty_pt)) {
       std::string val;
       for (auto& l: node.second)
-        val = val+(val.empty()?"":", ")+l.second.data();
+        val +=(val.empty()?"":", ")+l.second.data();
       if(!val.empty())
         tile.put("errors.core_module."+node.first, val);
     }
+
     for (auto& node: pt.get_child("errors.Memory_module", empty_pt)) {
       std::string val;
       for (auto& l: node.second)
-        val = val+(val.empty()?"":", ")+l.second.data();
+        val +=(val.empty()?"":", ")+l.second.data();
       if(!val.empty())
         tile.put("errors.memory_module."+node.first, val);
     }
+
     for (auto& node: pt.get_child("event", empty_pt)) {
       std::string val;
       for (auto& l: node.second)
-        val = val+(val.empty()?"":", ")+l.second.data();
+        val +=(val.empty()?"":", ")+l.second.data();
       if(!val.empty())
         tile.put("event."+node.first, val);
     }
@@ -179,7 +172,7 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
     for (auto& node: pt.get_child("event.Memory_module", empty_pt)) {
       std::string val;
       for (auto& l: node.second)
-        val = val+(val.empty()?"":", ")+l.second.data();
+        val +=(val.empty()?"":", ")+l.second.data();
       if(!val.empty())
         tile.put("event.memory_module."+node.first, val);
     }
@@ -187,7 +180,7 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
     for (auto& node: pt.get_child("event.Core_module", empty_pt)) {
       std::string val;
       for (auto& l: node.second)
-        val = val+(val.empty()?"":", ")+l.second.data();
+        val +=(val.empty()?"":", ")+l.second.data();
       if(!val.empty())
         tile.put("event.core_module."+node.first, val);
     }
