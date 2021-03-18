@@ -437,7 +437,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct drm_xocl_execbuf *args = data;
 	struct drm_gem_object *obj;
 	struct drm_xocl_bo *xobj;
-	struct ert_packet *ecmd;
+	struct ert_packet *ecmd = NULL;
 	struct kds_command *xcmd;
 	int ret = 0;
 
@@ -592,8 +592,10 @@ out1:
 	xcmd->cb.free(xcmd);
 out:
 	/* Don't forget to put gem object if error happen */
-	if (ret < 0)
+	if (ret < 0) {
+		kfree(ecmd);
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+	}
 	return ret;
 }
 
