@@ -22,13 +22,16 @@
 #include "system_swemu.h"
 #include "xclbin.h"
 #include "core/common/xclbin_parser.h"
+#include "pllauncher_defines.h"
 #include <errno.h>
 #include <unistd.h>
+#include <boost/property_tree/xml_parser.hpp>
 
 namespace xclcpuemhal2 {
 
   std::map<unsigned int, CpuemShim*> devices;
   unsigned int CpuemShim::mBufferCount = 0;
+  unsigned int GraphType::mGraphHandle = 0;
   std::map<int, std::tuple<std::string,int,void*> > CpuemShim::mFdToFileNameMap;
   bool CpuemShim::mFirstBinary = true;
   const unsigned CpuemShim::TAG = 0X586C0C6C; // XL OpenCL X->58(ASCII), L->6C(ASCII), O->0 C->C L->6C(ASCII);
@@ -38,6 +41,123 @@ namespace xclcpuemhal2 {
   const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
+
+  bool isRemotePortMapped = false;
+  void * remotePortMappedPointer = NULL;
+  namespace pt = boost::property_tree;
+
+  bool initRemotePortMap()
+  {
+    int fd;
+    unsigned addr;//, page_addr , page_offset;
+    unsigned page_size = sysconf(_SC_PAGESIZE);
+
+    fd = open("/dev/mem", O_RDWR);
+    if (fd < 1) {
+      std::cout << "Unable to open /dev/mem file" << std::endl;
+      exit(-1);
+    }
+
+#if defined(CONFIG_ARM64)
+    addr = PL_RP_MP_ALLOCATED_ADD;
+#else
+    addr = PL_RP_ALLOCATED_ADD;
+#endif
+
+    addr = 0xa4000000;// Temp. fix
+
+    //page_addr = (addr & ~(page_size - 1));
+    //page_offset = addr - page_addr;
+
+    remotePortMappedPointer = mmap(NULL, page_size, PROT_READ | PROT_WRITE,
+      MAP_SHARED, fd, (addr & ~(page_size - 1)));
+
+    if (remotePortMappedPointer == MAP_FAILED) {
+      std::cout << "Remote Port mapping to address " << addr << " Failed" << std::endl;
+      exit(-1);
+    }
+    xclcpuemhal2::isRemotePortMapped = true;
+    return true;
+  }
+
+  bool validateXclBin(const xclBin *header, std::string &xclBinName)
+  {
+    char *bitstreambin = reinterpret_cast<char*> (const_cast<xclBin*> (header));
+    //int result = 0; Not used. Removed to get rid of compiler warning, and probably a Coverity CID.
+    ssize_t zipFileSize = 0;
+    ssize_t xmlFileSize = 0;
+    ssize_t debugFileSize = 0;
+    ssize_t memTopologySize = 0;
+    char* xmlFile = nullptr;
+
+    if ((!std::memcmp(bitstreambin, "xclbin0", 7)) || (!std::memcmp(bitstreambin, "xclbin1", 7)))
+    {
+      return false;
+    }
+    else if (!std::memcmp(bitstreambin, "xclbin2", 7))
+    {
+      auto top = reinterpret_cast<const axlf*>(header);
+      if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
+        xmlFileSize = sec->m_sectionSize;
+        xmlFile = new char[xmlFileSize];
+        memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
+      }
+    }
+    else
+    {
+      return false;
+    }
+
+    if (!xmlFile)
+    {
+      return false;
+    }
+
+    pt::ptree xml_project;
+    std::string sXmlFile;
+    sXmlFile.assign(xmlFile, xmlFileSize);
+    std::stringstream xml_stream;
+    xml_stream << sXmlFile;
+    pt::read_xml(xml_stream, xml_project);
+
+    // iterate platforms
+    int count = 0;
+    for (auto& xml_platform : xml_project.get_child("project"))
+    {
+      if (xml_platform.first != "platform")
+        continue;
+      if (++count > 1)
+      {
+        //Give error and return from here
+      }
+    }
+
+    // iterate devices
+    count = 0;
+    for (auto& xml_device : xml_project.get_child("project.platform"))
+    {
+      if (xml_device.first != "device")
+        continue;
+      if (++count > 1)
+      {
+        //Give error and return from here
+      }
+    }
+
+    // iterate cores
+    count = 0;
+    for (auto& xml_core : xml_project.get_child("project.platform.device"))
+    {
+      if (xml_core.first != "core")
+        continue;
+      if (++count > 1)
+      {
+        //Give error and return from here
+      }
+    }
+    xclBinName = xml_project.get<std::string>("project.<xmlattr>.name", "");
+    return true;
+  }
 
   CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader)
     :mTag(TAG)
@@ -87,6 +207,8 @@ namespace xclcpuemhal2 {
     bUnified = _unified;
     bXPR = _xpr;
     mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
+    char* swEmuVar = getenv("SWEMU_NEW_FLOW");
+    mIsSwEmuNewFlow = (swEmuVar && strcmp("1", swEmuVar) == 0) ? true : false;
   }
 
   size_t CpuemShim::alloc_void(size_t new_size)
@@ -462,7 +584,10 @@ namespace xclcpuemhal2 {
   }
 
   int CpuemShim::xclLoadXclBin(const xclBin *header)
-  {
+  {    
+    if (mIsSwEmuNewFlow){
+      return xclLoadXclBinNewFlow(header);
+    }
     if(mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
 
     std::string xmlFile = "" ;
@@ -497,6 +622,12 @@ namespace xclcpuemhal2 {
     if(header)
     {
       resetProgram();
+      std::string logFilePath = xrt_core::config::get_hal_logging();
+      if (!logFilePath.empty()) {
+        mLogStream.open(logFilePath);
+        mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
+        mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+      }
 
     if( mFirstBinary )
     {
@@ -508,9 +639,13 @@ namespace xclcpuemhal2 {
       //parse header
       char *sharedlib = nullptr;
       int sharedliblength = 0;
-      char* memTopology = nullptr;
-      ssize_t memTopologySize = 0;
-
+      std::unique_ptr<char[]> memTopology;
+      size_t memTopologySize = 0;
+      std::unique_ptr<char[]> emuData;
+      size_t emuDataSize = 0;
+      std::unique_ptr<char[]> connectvitybuf;
+      ssize_t connectvitybufsize = 0;
+     
       //check header
       if (!memcmp(xclbininmemory, "xclbin0", 8))
       {
@@ -528,8 +663,20 @@ namespace xclcpuemhal2 {
         }
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY)) {
           memTopologySize = sec->m_sectionSize;
-          memTopology = new char[memTopologySize];
-          memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);
+          memTopology = std::unique_ptr<char[]>(new char[memTopologySize]);
+          memcpy(memTopology.get(), xclbininmemory + sec->m_sectionOffset, memTopologySize);
+        }
+        //Extract EMULATION_DATA from XCLBIN       
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, EMULATION_DATA)) {
+          emuDataSize = sec->m_sectionSize;
+          emuData = std::unique_ptr<char[]>(new char[emuDataSize]);
+          memcpy(emuData.get(), xclbininmemory + sec->m_sectionOffset, emuDataSize);
+        }
+	      //Extract CONNECTIVITY section from XCLBIN       
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, CONNECTIVITY)) {
+          connectvitybufsize = sec->m_sectionSize;
+          connectvitybuf = std::unique_ptr<char[]>(new char[connectvitybufsize]);
+          memcpy(connectvitybuf.get(), xclbininmemory + sec->m_sectionOffset, connectvitybufsize);
         }
       }
       else
@@ -566,30 +713,32 @@ namespace xclcpuemhal2 {
         if( !fp )
         {
           if(mLogStream.is_open()) mLogStream << __func__ << " failed to create temporary dlopen file" << std::endl;
-
-          if(memTopology)
-          {
-            delete []memTopology;
-            memTopology = NULL;
-          }
           return -1;
         }
         fwrite(sharedlib,sharedliblength,1,fp);
         fflush(fp);
         fclose(fp);
       }
-      if(memTopology)
+      if (memTopology && connectvitybuf)
       {
-        const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology));
-        if(m_mem)
+        auto m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology.get()));
+        auto m_conn = (reinterpret_cast<const ::connectivity*>(connectvitybuf.get()));
+        if (m_mem && m_conn)
         {
-          uint64_t argNum = 0;
+          //uint64_t argNum = 0;
           uint64_t prev_instanceBaseAddr = ULLONG_MAX;
           std::map<uint64_t, std::pair<uint64_t,std::string> > argFlowIdMap;
-          for (int32_t i=0; i<m_mem->m_count; ++i)
+          for (int32_t conn_idx = 0; conn_idx<m_conn->m_count; ++conn_idx)
           {
-            uint64_t flow_id =m_mem->m_mem_data[i].flow_id;//base address + flow_id combo
+            int32_t memdata_idx = m_conn->m_connection[conn_idx].mem_data_index;
+            if (memdata_idx >(m_mem->m_count - 1))
+              return -1;
+            uint64_t route_id = m_mem->m_mem_data[memdata_idx].route_id;
+            uint64_t arg_id = m_conn->m_connection[conn_idx].arg_index;
+            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo 
             uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
+            if (mLogStream.is_open())
+              mLogStream << __func__ << " flow_id : " << flow_id << " route_id : " << route_id << " inst addr : " << instanceBaseAddr << " arg_id : " << arg_id << std::endl;
             if(prev_instanceBaseAddr != ULLONG_MAX && instanceBaseAddr != prev_instanceBaseAddr)
             {
               //RPC CALL
@@ -600,17 +749,18 @@ namespace xclcpuemhal2 {
                 mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr <<" success "<< success << std::endl;
 
               argFlowIdMap.clear();
-              argNum = 0;
+              //argNum = 0;
             }
-            if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
+            if(m_mem->m_mem_data[memdata_idx].m_type == MEM_TYPE::MEM_STREAMING)
             {
-              std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag));
+              std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[memdata_idx].m_tag));
               std::pair<uint64_t,std::string> mPair;
               mPair.first  = flow_id;
               mPair.second = m_tag;
-              argFlowIdMap[argNum] = mPair;
+              argFlowIdMap[arg_id] = mPair;
+              //argFlowIdMap[argNum] = mPair;
             }
-            argNum++;
+            //argNum++;
             prev_instanceBaseAddr = instanceBaseAddr;
           }
           bool success = false;
@@ -619,8 +769,208 @@ namespace xclcpuemhal2 {
           if(mLogStream.is_open())
             mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr <<" success "<< success << std::endl;
         }
-        delete []memTopology;
-        memTopology = NULL;
+      }
+      if (mIsKdsSwEmu)
+      {
+        mCore = new exec_core;
+        mSWSch = new SWScheduler(this);
+        mSWSch->init_scheduler_thread();
+      }
+
+      //Extract EMULATION_DATA from XCLBIN
+      if (emuData && (emuDataSize > 1)) {
+        std::string emuDataFilePath = binaryDirectory + "/emuDataFile";
+        std::ofstream os(emuDataFilePath);
+        os.write(emuData.get(), emuDataSize);
+        std::cout << "emuDataFilePath : " << emuDataFilePath << std::endl;
+        systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, std::to_string(__LINE__));
+        systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
+      }
+
+      bool ack = true;
+      bool verbose = false;
+      if(mLogStream.is_open())
+        verbose = true;
+      xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose);
+      if(!ack)
+        return -1;
+    }
+    return 0;
+  }
+
+  int CpuemShim::xclLoadXclBinNewFlow(const xclBin *header)
+  {
+    if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
+    std::string xclBinName = "";
+    if (!xclcpuemhal2::isRemotePortMapped) {
+      xclcpuemhal2::initRemotePortMap();
+    }
+    if (!xclcpuemhal2::validateXclBin(header, xclBinName)) {
+      printf("ERROR:Xclbin validation failed\n");
+      return 1;
+    }
+    xclBinName = xclBinName + ".xclbin";
+    if (mLogStream.is_open()) mLogStream << " validateXclBin done :  " << xclBinName << std::endl;
+    //Send the LoadXclBin
+    PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
+    cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
+    cmd->addArg(xclBinName.c_str());
+    uint32_t length;
+    uint8_t* buff = cmd->generateBuffer(&length);
+    for (unsigned int i = 0; i < length; i += 4) {
+      uint32_t copySize = (length - i) > 4 ? 4 : length - i;
+      memcpy(((char*)(xclcpuemhal2::remotePortMappedPointer)) + i, buff + i, copySize);
+    }
+    //Send the end of packet
+    char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
+    memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);
+    if (mLogStream.is_open()) mLogStream << " sendXclbintoPllauncher done :  " << xclBinName << std::endl;
+
+
+    std::string xmlFile = "";
+    /*int result = dumpXML(header, xmlFile);
+    if (result != 0) return result;*/
+
+    // Before we spawn off the child process, we must determine
+    //  if the process will be debuggable or not.  We get that
+    //  by checking to see if there is a DEBUG_DATA section in
+    //  the xclbin file.  Note, this only works with xclbin2
+    //  files.  Also, the GUI can overwrite this by setting an
+    //  environment variable
+    bool debuggable = false;
+    if (getenv("ENABLE_KERNEL_DEBUG") != nullptr &&
+      strcmp("true", getenv("ENABLE_KERNEL_DEBUG")) == 0)
+    {
+      char* xclbininmemory =
+        reinterpret_cast<char*>(const_cast<xclBin*>(header));
+      if (!memcmp(xclbininmemory, "xclbin2", 7))
+      {
+        auto top = reinterpret_cast<const axlf*>(header);
+        auto sec = xclbin::get_axlf_section(top, DEBUG_DATA);
+        if (sec)
+        {
+          debuggable = true;
+        }
+      }
+    }
+
+    std::string binaryDirectory("");
+    //launchDeviceProcess(debuggable, binaryDirectory);
+    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::CREATE);
+    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
+    std::stringstream ss1;
+    ss1 << deviceDirectory << "/binary_" << binaryCounter;
+    binaryDirectory = ss1.str();
+    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
+    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
+    binaryCounter++;
+
+    if (!sock)
+      sock = new unix_socket;
+
+    if (header)
+    {
+      resetProgram();
+      std::string logFilePath = xrt_core::config::get_hal_logging();
+      if (!logFilePath.empty()) {
+        mLogStream.open(logFilePath);
+        mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
+        mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+      }
+
+      if (mFirstBinary)
+        mFirstBinary = false;
+      char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (header));
+      //parse header
+      std::unique_ptr<char[]> memTopology;
+      size_t memTopologySize = 0;
+      std::unique_ptr<char[]> connectvitybuf;
+      ssize_t connectvitybufsize = 0;
+
+      //check header
+      if (!memcmp(xclbininmemory, "xclbin0", 8))
+      {
+        if (mLogStream.is_open())
+        {
+          mLogStream << __func__ << " invalid XCLBIN header " << std::endl;
+        }
+        return -1;
+      }
+      else if (!memcmp(xclbininmemory, "xclbin2", 7)) {
+        auto top = reinterpret_cast<const axlf*>(header);
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY)) {
+          memTopologySize = sec->m_sectionSize;
+          memTopology = std::unique_ptr<char[]>(new char[memTopologySize]);
+          memcpy(memTopology.get(), xclbininmemory + sec->m_sectionOffset, memTopologySize);
+        }
+        //Extract CONNECTIVITY section from XCLBIN       
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, CONNECTIVITY)) {
+          connectvitybufsize = sec->m_sectionSize;
+          connectvitybuf = std::unique_ptr<char[]>(new char[connectvitybufsize]);
+          memcpy(connectvitybuf.get(), xclbininmemory + sec->m_sectionOffset, connectvitybufsize);
+        }
+      }
+      else
+      {
+        if (mLogStream.is_open())
+        {
+          mLogStream << __func__ << " invalid XCLBIN header " << std::endl;
+          mLogStream << __func__ << " header " << xclbininmemory[0] << xclbininmemory[1] << xclbininmemory[2] << xclbininmemory[3] <<
+            xclbininmemory[4] << xclbininmemory[5] << std::endl;
+        }
+        return -1;
+      }
+
+      if (memTopology && connectvitybuf)
+      {
+        auto m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology.get()));
+        auto m_conn = (reinterpret_cast<const ::connectivity*>(connectvitybuf.get()));
+        if (m_mem && m_conn)
+        {
+          //uint64_t argNum = 0;
+          uint64_t prev_instanceBaseAddr = ULLONG_MAX;
+          std::map<uint64_t, std::pair<uint64_t, std::string> > argFlowIdMap;
+          for (int32_t conn_idx = 0; conn_idx<m_conn->m_count; ++conn_idx)
+          {
+            int32_t memdata_idx = m_conn->m_connection[conn_idx].mem_data_index;
+            if (memdata_idx >(m_mem->m_count - 1))
+              return -1;
+            uint64_t route_id = m_mem->m_mem_data[memdata_idx].route_id;
+            uint64_t arg_id = m_conn->m_connection[conn_idx].arg_index;
+            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo 
+            uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
+            if (mLogStream.is_open())
+              mLogStream << __func__ << " flow_id : " << flow_id << " route_id : " << route_id << " inst addr : " << instanceBaseAddr << " arg_id : " << arg_id << std::endl;
+            if (prev_instanceBaseAddr != ULLONG_MAX && instanceBaseAddr != prev_instanceBaseAddr)
+            {
+              //RPC CALL
+              bool success = false;
+              xclSetupInstance_RPC_CALL(xclSetupInstance, prev_instanceBaseAddr, argFlowIdMap);
+
+              if (mLogStream.is_open())
+                mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr << " success " << success << std::endl;
+
+              argFlowIdMap.clear();
+              //argNum = 0;
+            }
+            if (m_mem->m_mem_data[memdata_idx].m_type == MEM_TYPE::MEM_STREAMING)
+            {
+              std::string m_tag(reinterpret_cast<const char*>(m_mem->m_mem_data[memdata_idx].m_tag));
+              std::pair<uint64_t, std::string> mPair;
+              mPair.first = flow_id;
+              mPair.second = m_tag;
+              argFlowIdMap[arg_id] = mPair;
+              //argFlowIdMap[argNum] = mPair;
+            }
+            //argNum++;
+            prev_instanceBaseAddr = instanceBaseAddr;
+          }
+          bool success = false;
+          xclSetupInstance_RPC_CALL(xclSetupInstance, prev_instanceBaseAddr, argFlowIdMap);
+
+          if (mLogStream.is_open())
+            mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr << " success " << success << std::endl;
+        }
       }
       if (mIsKdsSwEmu)
       {
@@ -630,10 +980,10 @@ namespace xclcpuemhal2 {
       }
       bool ack = true;
       bool verbose = false;
-      if(mLogStream.is_open())
+      if (mLogStream.is_open())
         verbose = true;
-      xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose);
-      if(!ack)
+      xclLoadBitstream_RPC_CALL(xclLoadBitstream, xmlFile, "", deviceDirectory, binaryDirectory, verbose);
+      if (!ack)
         return -1;
     }
     return 0;
@@ -1100,10 +1450,15 @@ namespace xclcpuemhal2 {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
       mLogStream.close();
     }
-
-    if (mLogStream.is_open())
-    {
-      mLogStream.close();
+    //Tell the Pllauncher to close
+    if (xclcpuemhal2::isRemotePortMapped) {
+      auto cmd = std::make_unique<PLLAUNCHER::OclCommand>();
+      cmd->setCommand(PLLAUNCHER::PL_OCL_XRESET_ID);
+      uint32_t iLength;
+      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), (char*)cmd->generateBuffer(&iLength), iLength);
+      //Send the end of packet
+      char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
+      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);
     }
   }
 
@@ -1850,5 +2205,138 @@ int CpuemShim::xclIPName2Index(const char *name)
   return xclemulation::getIPName2Index(name, buffer.first);
 }
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
+
+/******************************* XRT Graph API's **************************************************/
+/**
+* xrtGraphInit() - Initialize  graph
+*/
+int CpuemShim::xrtGraphInit(void * gh) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  auto graphname = ghPtr->getGraphName();
+  xclGraphInit_RPC_CALL(xclGraphInit, graphhandle, graphname);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphRun() - Start a graph execution
+*/
+int CpuemShim::xrtGraphRun(void * gh, uint32_t iterations) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphRun_RPC_CALL(xclGraphRun, graphhandle, iterations);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphWait() -  Wait a given AIE cycle since the last xrtGraphRun and
+*                   then stop the graph. If cycle is 0, busy wait until graph
+*                   is done. If graph already run more than the given
+*                   cycle, stop the graph immediateley.
+*/
+int CpuemShim::xrtGraphWait(void * gh) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphWait_RPC_CALL(xclGraphWait, graphhandle);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphEnd() - Wait a given AIE cycle since the last xrtGraphRun and
+*                 then end the graph. If cycle is 0, busy wait until graph
+*                 is done before end the graph. If graph already run more
+*                 than the given cycle, stop the graph immediately and end it.
+*
+* @gh:              Handle to graph previously opened with xrtGraphOpen.
+* @cycle:           AIE cycle should wait since last xrtGraphRun. 0 for
+*                   wait until graph is done.
+*
+* Return:          0 on success, -1 on timeout.
+*
+* Note: This API with non-zero AIE cycle is for graph that is running
+* forever or graph that has multi-rate core(s).
+*/
+int CpuemShim::xrtGraphEnd(void * gh) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphEnd_RPC_CALL(xclGraphEnd, graphhandle);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphUpdateRTP() - Update RTP value of port with hierarchical name
+*
+* @gh:              Handle to graph previously opened with xrtGraphOpen.
+* @hierPathPort:    hierarchial name of RTP port.
+* @buffer:          pointer to the RTP value.
+* @size:            size in bytes of the RTP value.
+*
+* Return:          0 on success, -1 on error.
+*/
+int CpuemShim::xrtGraphUpdateRTP(void * gh, const char *hierPathPort, const char *buffer, size_t size) {
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphUpdateRTP_RPC_CALL(xclGraphUpdateRTP, graphhandle, hierPathPort, buffer, size);
+  PRINTENDFUNC
+    return 0;
+}
+
+/**
+* xrtGraphUpdateRTP() - Read RTP value of port with hierarchical name
+*
+* @gh:              Handle to graph previously opened with xrtGraphOpen.
+* @hierPathPort:    hierarchial name of RTP port.
+* @buffer:          pointer to the buffer that RTP value is copied to.
+* @size:            size in bytes of the RTP value.
+*
+* Return:          0 on success, -1 on error.
+*
+* Note: Caller is reponsible for allocating enough memory for RTP value
+*       being copied to.
+*/
+int CpuemShim::xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size) {
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphReadRTP_RPC_CALL(xclGraphReadRTP, graphhandle, hierPathPort, buffer, size);
+  PRINTENDFUNC
+    return 0;
+}
+/******************************* XRT Graph API's End here**************************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }
