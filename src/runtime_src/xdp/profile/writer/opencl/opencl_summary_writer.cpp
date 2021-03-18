@@ -174,7 +174,7 @@ namespace xdp {
     {
       std::stringstream setting ;
       setting << "XRT_INI_SETTING,debug_mode,"
-	      << xrt_core::config::get_launch_waveform() ;
+	      << xrt_core::config::get_debug_mode() ;
       iniSettings.push_back(setting.str()) ;
     }
     {

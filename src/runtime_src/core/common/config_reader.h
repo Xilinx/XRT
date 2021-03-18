@@ -580,6 +580,13 @@ get_launch_waveform()
 }
 
 inline std::string
+get_debug_mode()
+{
+  static std::string value = detail::get_string_value("Emulation.debug_mode", "off");
+  return value ;
+}
+
+inline std::string
 get_kernel_channel_info()
 {
   static std::string value = detail::get_string_value("Runtime.kernel_channels","");

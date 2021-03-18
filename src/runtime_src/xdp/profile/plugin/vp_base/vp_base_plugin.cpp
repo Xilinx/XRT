@@ -23,6 +23,7 @@
 #include "xdp/profile/database/database.h"
 
 #include "core/common/time.h"
+#include "core/common/config_reader.h"
 
 #ifdef _WIN32
 #pragma warning(disable : 4996)
@@ -52,9 +53,12 @@ namespace xdp {
     if (waveformSetup) return ;
     waveformSetup = true ;
 
+    std::string debug_mode = xrt_core::config::get_debug_mode() ;
+    bool copy_happens = (debug_mode == "gui" || debug_mode == "batch") ;
+
     // For hardware emulation flows, check to see if there is a wdb and wcfg
     char* wdbFile = getenv("VITIS_WAVEFORM_WDB_FILENAME") ;
-    if (wdbFile != nullptr) {
+    if (wdbFile != nullptr && copy_happens) {
       (db->getStaticInfo()).addOpenedFile(wdbFile, "WAVEFORM_DATABASE") ;
 
       // Also the wcfg

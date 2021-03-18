@@ -63,8 +63,11 @@ namespace xdp {
   {
     XDPPlugin::emulationSetup() ;
 
+    std::string debug_mode = xrt_core::config::get_debug_mode() ;
+    bool copy_happens = (debug_mode == "gui" || debug_mode == "batch") ;
+
     char* internalsTrace = getenv("VITIS_KERNEL_TRACE_FILENAME") ;
-    if (internalsTrace != nullptr) {
+    if (internalsTrace != nullptr && copy_happens) {
       (db->getStaticInfo()).addOpenedFile(internalsTrace, "KERNEL_TRACE") ;
     }
   }
