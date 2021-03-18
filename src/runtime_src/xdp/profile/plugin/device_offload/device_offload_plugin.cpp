@@ -192,15 +192,44 @@ namespace xdp {
     bool enable_device_trace = xrt_core::config::get_timeline_trace() ||
       xrt_core::config::get_data_transfer_trace() != "off" ;
 
+    // We start the thread manually because of race conditions
     DeviceTraceOffload* offloader = 
       new DeviceTraceOffload(devInterface, logger,
                              continuous_trace_interval_ms, // offload_sleep_ms,
                              trace_buffer_size,            // trbuf_size,
-                             continuous_trace,             // start_thread
+                             false,                       // start_thread
                              enable_device_trace);
 
-    bool init_successful = offloader->read_trace_init() ;
-    if (!init_successful) {
+    bool init_successful = offloader->read_trace_init(m_enable_circular_buffer) ;
+
+    if (init_successful) {
+      offloader->train_clock();
+      /* Trace FIFO is usually very small (8k,16k etc)
+       *  Hence enable Continuous clock training by default
+       *  ONLY for Trace Offload to DDR Memory
+       */
+      if (continuous_trace)
+        offloader->start_offload(OffloadThreadType::TRACE);
+      else if (devInterface->hasTs2mm())
+        offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
+
+      /* If unable to use circular buffer then throw warning
+       */
+      if (devInterface->hasTs2mm() && continuous_trace && m_enable_circular_buffer) {
+        auto tdma = devInterface->getTs2mm();
+        if (tdma->supportsCircBuf()) {
+          uint64_t min_offload_rate = 0;
+          uint64_t requested_offload_rate = 0;
+          bool using_circ_buf = offloader->using_circular_buffer(min_offload_rate, requested_offload_rate);
+          if (!using_circ_buf) {
+            std::string msg = std::string(TS2MM_WARN_MSG_CIRC_BUF)
+                            + " Minimum required offload rate (bytes per second) : " + std::to_string(min_offload_rate)
+                            + " Requested offload rate : " + std::to_string(requested_offload_rate);
+            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+          }
+        }
+      }
+    } else {
       if (devInterface->hasTs2mm()) {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ;
       }
@@ -208,6 +237,7 @@ namespace xdp {
       delete logger ;
       return ;
     }
+
     offloaders[deviceId] = std::make_tuple(offloader, logger, devInterface) ;
   }
   

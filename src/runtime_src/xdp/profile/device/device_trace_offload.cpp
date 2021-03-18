@@ -134,6 +134,10 @@ void DeviceTraceOffload::read_trace_fifo()
   debug_stream
     << "DeviceTraceOffload::read_trace_fifo " << std::endl;
 
+  // Disable using fifo as circular buffer
+  if (m_trbuf_full)
+    return;
+
   uint32_t num_packets = 0;
 
 #ifndef _WIN32
@@ -309,16 +313,14 @@ bool DeviceTraceOffload::init_s2mm(bool circ_buf)
   }
 
   // Check if allocated buffer and sleep interval can keep up with offload
-  if (dev_intf->hasTs2mm()) {
-    auto tdma = dev_intf->getTs2mm();
-    if (tdma->supportsCircBuf() && circ_buf) {
-      if (sleep_interval_ms != 0) {
-        m_circ_buf_cur_rate = m_trbuf_alloc_sz * (1000 / sleep_interval_ms);
-        if (m_circ_buf_cur_rate >= m_circ_buf_min_rate)
-          m_use_circ_buf = true;
-      } else {
+  auto tdma = dev_intf->getTs2mm();
+  if (tdma->supportsCircBuf() && circ_buf) {
+    if (sleep_interval_ms != 0) {
+      m_circ_buf_cur_rate = m_trbuf_alloc_sz * (1000 / sleep_interval_ms);
+      if (m_circ_buf_cur_rate >= m_circ_buf_min_rate)
         m_use_circ_buf = true;
-      }
+    } else {
+      m_use_circ_buf = true;
     }
   }
 
