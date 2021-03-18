@@ -9,6 +9,7 @@ if (NOT WIN32)
 endif()
 
 set(XRT_XRT_DEVICE_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/device")
+set(XRT_XRT_SCHED_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/scheduler")
 set(XRT_XRT_UTIL_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/util")
 set(XRT_XRT_CPP_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/xrt++")
 
@@ -19,6 +20,7 @@ file(GLOB XRT_XRT_ALL_SRC_SHARED
   "${XRT_XRT_DEVICE_DIR}/halops2.cpp"
   "${XRT_XRT_UTIL_DIR}/*.cpp"
   "${XRT_XRT_CPP_DIR}/*.cpp"
+  "${XRT_XRT_SCHED_DIR}/*.cpp"
   )
 
 file(GLOB XRT_XRT_ALL_SRC_STATIC
@@ -28,6 +30,7 @@ file(GLOB XRT_XRT_ALL_SRC_STATIC
   "${XRT_XRT_DEVICE_DIR}/halops2_static.cpp"
   "${XRT_XRT_UTIL_DIR}/*.cpp"
   "${XRT_XRT_CPP_DIR}/*.cpp"
+  "${XRT_XRT_SCHED_DIR}/*.cpp"
   )
 
 add_compile_options("-DXRT_SOURCE")
