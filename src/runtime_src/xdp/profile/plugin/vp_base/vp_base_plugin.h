@@ -84,6 +84,7 @@ namespace xdp {
     XDP_EXPORT virtual void broadcast(VPDatabase::MessageType msg,
 				      void* blob = nullptr) ;
 
+    XDP_EXPORT
     static unsigned int get_trace_dump_int_s ();
   } ;
 
