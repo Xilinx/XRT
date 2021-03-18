@@ -4230,6 +4230,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);
 
 	mutex_unlock(&icap->icap_lock);
+	xrt_xclbin_free_header(&bit_header);
 
 	return len;
 
