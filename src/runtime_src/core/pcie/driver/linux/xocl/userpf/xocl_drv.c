@@ -623,12 +623,9 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	userpf_info(xdev, "ch_state 0x%llx, ret %d\n", resp->conn_flags, ret);
 
 done:
-	if (!kaddr)
-		kfree(kaddr);
-	if (!mb_req)
-		vfree(mb_req);
-	if (!resp)
-		vfree(resp);
+	kfree(kaddr);
+	vfree(mb_req);
+	vfree(resp);
 }
 
 int xocl_reclock(struct xocl_dev *xdev, void *data)
