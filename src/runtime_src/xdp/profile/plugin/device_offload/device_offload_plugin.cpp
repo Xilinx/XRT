@@ -203,13 +203,18 @@ namespace xdp {
     if (init_successful) {
       offloader->train_clock();
       /* Trace FIFO is usually very small (8k,16k etc)
-       *  Hence enable Continuous clock training by default
-       *  ONLY for Trace Offload to DDR Memory
+       *  Hence enable Continuous clock training/Trace
+       *  ONLY for Offload to DDR Memory
        */
+      if (devInterface->hasTs2mm()) {
       if (continuous_trace)
         offloader->start_offload(OffloadThreadType::TRACE);
-      else if (devInterface->hasTs2mm())
+      else
         offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
+      } else {
+        if (continuous_trace)
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", CONTINUOUS_OFFLOAD_WARN_MSG_FIFO);
+      }
 
       /* If unable to use circular buffer then throw warning
        */

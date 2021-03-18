@@ -54,6 +54,7 @@ Recommended settings are : 'coarse' option for data transfer trace and no stall 
 
 #define CONTINUOUS_OFFLOAD_WARN_MSG_DEVICE "Continuous offload is currently only supported on one device. Disabling this option."
 #define CONTINUOUS_OFFLOAD_WARN_MSG_FLOW   "Continuous offload is currently only supported on system flow. Disabling this option."
+#define CONTINUOUS_OFFLOAD_WARN_MSG_FIFO   "Continuous offload is currently not supported in FIFO trace offload. Disabling this option."
 
 #define TS2MM_WARN_MSG_BUFSIZE_BIG    "Trace Buffer size is too big. The maximum size of 4095M will be used."
 #define TS2MM_WARN_MSG_BUFSIZE_SMALL  "Trace Buffer size is too small. The minimum size of 8K will be used."
