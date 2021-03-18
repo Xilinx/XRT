@@ -109,25 +109,31 @@ err_code graph_api::run()
 
     if (config_manager::s_broadcast_enable_core)
     {
+        XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
         for (int i = 0; i < numCores; i++)
         {
             //Set Enable_Event bits to 113
             XAie_Write32(config_manager::s_pDevInst, (_XAie_GetTileAddr(config_manager::s_pDevInst, coreTiles[i].Row, coreTiles[i].Col) + 0x00032008), 0x4472);
         }
+        XAie_SubmitTransaction(config_manager::s_pDevInst, nullptr);
 
         //Trigger event 113 in shim_tile at column 0 by writing to Event_Generate
         XAie_EventGenerate(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, XAIE_EVENT_BROADCAST_A_6_PL);
 
+        XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
         for (int i = 0; i < numCores; i++)
         {
             //Set Enable_Event bits to 0
             XAie_Write32(config_manager::s_pDevInst, (_XAie_GetTileAddr(config_manager::s_pDevInst, coreTiles[i].Row, coreTiles[i].Col) + 0x00032008), 0x4400);
         }
+        XAie_SubmitTransaction(config_manager::s_pDevInst, nullptr);
     }
     else
     {
+        XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
         for (int i = 0; i < numCores; i++)
             driverStatus |= XAie_CoreEnable(config_manager::s_pDevInst, coreTiles[i]);
+        XAie_SubmitTransaction(config_manager::s_pDevInst, nullptr);
     }
 
     if (driverStatus != AieRC::XAIE_OK)
@@ -148,8 +154,10 @@ err_code graph_api::run(int iterations)
     infoMsg("Set iterations for the core(s) of graph " + pGraphConfig->name);
 
     int numCores = coreTiles.size();
+    XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
     for (int i = 0; i < numCores; i++)
         driverStatus |= XAie_DataMemWrWord(config_manager::s_pDevInst, iterMemTiles[i], pGraphConfig->iterMemAddrs[i], (u32)iterations);
+    XAie_SubmitTransaction(config_manager::s_pDevInst, nullptr);
 
     if (driverStatus != AieRC::XAIE_OK)
         return errorMsg(err_code::aie_driver_error, "ERROR: adf::graph::run: AIE driver error.");
