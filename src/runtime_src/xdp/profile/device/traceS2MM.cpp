@@ -219,7 +219,7 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
     return count;
 
   count -= n;
-  for (uint64_t i=0; i < count; i++) {
+  for (uint64_t i=0; i <= count; i++) {
     for (uint64_t j=i; j < i + n; j++) {
       if (!((arr[j] >> 63) & 0x1))
         break;
