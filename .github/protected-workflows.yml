@@ -12,6 +12,10 @@ events:
       paths:
       	allowed:
           - "**/**"
+  push:
+    trustAnyone: true
 
 anyEvent:
-  trustAnyone: true
+  trustAnyone: false
+  trustCollaborators: false
+  trustedUserNames: []
