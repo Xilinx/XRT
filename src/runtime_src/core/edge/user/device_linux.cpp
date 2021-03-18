@@ -181,14 +181,14 @@ struct aie_reg_read
   get(const xrt_core::device* device, key_type key, const boost::any& r, const boost::any& c, const boost::any& reg)
   {
     auto dev = get_edgedev(device);
-    uint32_t val;
+    uint32_t val = 0;
     auto row = boost::any_cast<int>(r);
     auto col = boost::any_cast<int>(c);
     auto v = boost::any_cast<std::string>(reg);
-    
+ 
 #ifdef XRT_ENABLE_AIE
 #ifndef __AIESIM__
-    std::map<std::string , uint32_t> regmap = {
+    std::map<std::string, uint32_t> regmap = {
       {"Core_R0", 0x00030000},
       {"Core_R1", 0x00030010},
       {"Core_R2", 0x00030020},
@@ -525,21 +525,20 @@ struct aie_reg_read
       {"Stream_Switch_Slave_Mem_Trace_Slot3", 0x0003F3AC},
       {"Stream_Switch_Event_Port_Selection_0", 0x0003FF00},
       {"Stream_Switch_Event_Port_Selection_1", 0x0003FF04} };
- 
 
   std::string err;
   std::string value;
   dev->sysfs_get("aie_metadata", err, value);
   if (!err.empty())
-    throw xrt_core::error(-EINVAL, err);
+    throw xrt_core::error(-EINVAL, err + ", aie xclbin not loaded");
   std::stringstream ss(value);
   boost::property_tree::ptree pt;
   boost::property_tree::read_json(ss, pt);
-   
+
   int mKernelFD = open("/dev/dri/renderD128", O_RDWR);
-  if (!mKernelFD) {
-    throw xrt_core::error(-EINVAL, " Cannot open /dev/dri/renderD128");
-  }
+  if (!mKernelFD)
+    throw xrt_core::error(-EINVAL, "Cannot open /dev/dri/renderD128");
+
   XAie_DevInst* devInst;         // AIE Device Instance
 
   XAie_SetupConfig(ConfigPtr,
@@ -561,10 +560,9 @@ struct aie_reg_read
   drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };
   int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd) ? -errno : 0;
   if (ret)
-    throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd Please load the xclbin");
-  int fd = aiefd.fd;
+    throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd");
 
-  ConfigPtr.PartProp.Handle = fd;
+  ConfigPtr.PartProp.Handle = aiefd.fd;
 
   AieRC rc;
   XAie_InstDeclare(DevInst, &ConfigPtr);
@@ -572,19 +570,22 @@ struct aie_reg_read
     throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
   devInst = &DevInst;
   if(!devInst)
-    throw xrt_core::error(-EINVAL,"invalid aie object");
+    throw xrt_core::error(-EINVAL, "invalid aie object");
 
   row+=1;
   // TODO: get max row and column form aie_metadata
-  if(row <= 0 && row >= 9 && col < 0 && col >= 50)
-    throw xrt_core::error(-EINVAL,"invalid row or column");
+  int max_row = pt.get<uint8_t>("aie_metadata.driver_config.num_rows");
+  int max_col = pt.get<uint8_t>("aie_metadata.driver_config.num_columns");
+  if(row <= 0 && row >= max_row && col < 0 && col >= max_col)
+    throw xrt_core::error(-EINVAL, "invalid row or column");
   auto it = regmap.find(v);
   if (it == regmap.end())
-    throw xrt_core::error(-EINVAL,"invalid register");
+    throw xrt_core::error(-EINVAL, "invalid register");
 
-  if(XAie_Read32(devInst,it->second + _XAie_GetTileAddr(devInst,row,col),&val))
-    throw xrt_core::error(-EINVAL,"error reading register");
-    
+  rc = XAie_Read32(devInst,it->second + _XAie_GetTileAddr(devInst,row,col),&val);
+  if(rc != XAIE_OK)
+    throw xrt_core::error(-EINVAL, "error reading register");
+
 #endif
 #endif
     return val;
@@ -717,7 +718,7 @@ initialize_query_table()
   emplace_func0_request<query::clock_freqs_mhz,         devInfo>();
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
- 
+
   emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
   emplace_sysfs_get<query::ip_layout_raw>             ("ip_layout");
@@ -778,9 +779,9 @@ write(uint64_t offset, const void* buf, uint64_t len) const
 }
 
 
-void 
+void
 device_linux::
-reset(query::reset_type key) const 
+reset(query::reset_type key) const
 {
   switch(key.get_key()) {
   case query::reset_key::hot:
