@@ -88,8 +88,13 @@ namespace xdp {
       {
         auto offloader = std::get<0>(o.second) ;
 
-        offloader->read_trace() ;
-        offloader->read_trace_end() ;
+        if(offloader->continuous_offload()) {
+          offloader->stop_offload();
+        } else {
+          offloader->read_trace();
+          offloader->read_trace_end();
+        }
+
         if(offloader->trace_buffer_full()) {
           std::string msg;
           if(offloader->has_ts2mm()) {
@@ -99,16 +104,6 @@ namespace xdp {
           } 
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         }
-
-	if (offloader->continuous_offload())
-        {
-	  offloader->stop_offload() ;
-	}
-	else
-	{
-	  offloader->read_trace() ;
-	  offloader->read_trace_end() ;
-	}
       }
 
       // Also, store away the counter results
