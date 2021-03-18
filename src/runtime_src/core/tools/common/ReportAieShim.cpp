@@ -203,7 +203,6 @@ ReportAieShim::writeReport(const xrt_core::device * _pDevice,
   try {
     int count = 0;
     for (auto& tile: _pt.get_child("aie_shim_status.tiles")) {
-      boost::property_tree::ptree& t = tile.second;
       _output << boost::format("Tile[%2d]\n") % count;
       _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
       _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
