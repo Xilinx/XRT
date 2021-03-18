@@ -1,12 +1,11 @@
 events:
   pull_request:
-      # Authorize Org members regardless of what paths were changed.
-    - trustOrgMembers: true
     - trustedUserNames: 
         - "abalasa"
-      # Exteremly important. Only certain users should be able to change this file.
+    # Exteremly important. Only certain users should be able to change this file.
     - trustAnyone: false
       paths:
       	disallowed:
           - ".github/**"
           - ".github/protected-workflows.yml"
+          - "**/**"
