@@ -83,7 +83,6 @@ namespace xdp {
         memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
         memEvent->setDeviceTimestamp(trace.Timestamp);
         db->getDynamicInfo().addEvent(memEvent);
-        db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
         matchingStart = memEvent;
 
         // Also, progress time so the end is after the start
@@ -105,7 +104,6 @@ namespace xdp {
           memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
           memEvent->setDeviceTimestamp(trace.Timestamp);
           db->getDynamicInfo().addEvent(memEvent);
-          db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
           matchingStart = memEvent;
           // Also, progress time so the end is after the start
           hostTimestamp += halfCycleTimeInMs;
