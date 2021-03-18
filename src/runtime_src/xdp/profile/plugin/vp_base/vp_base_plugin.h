@@ -62,6 +62,7 @@ namespace xdp {
     // If there is something that is common amongst all plugins when
     //  dealing with emulation flows.
     XDP_EXPORT virtual void emulationSetup() ;
+    XDP_EXPORT bool emulationFilesCopied() ;
 
     XDP_EXPORT void startWriteThread(unsigned int interval, std::string type);
     XDP_EXPORT void endWrite(bool openNewFiles);

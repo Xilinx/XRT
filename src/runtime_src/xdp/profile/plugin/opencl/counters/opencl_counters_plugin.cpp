@@ -22,8 +22,6 @@
 #include "xdp/profile/plugin/opencl/counters/opencl_counters_plugin.h"
 #include "xdp/profile/writer/opencl/opencl_summary_writer.h"
 
-#include "core/common/config_reader.h"
-
 #ifdef _WIN32
 /* Disable warning for use of std::getenv */
 #pragma warning (disable : 4996)
@@ -61,14 +59,10 @@ namespace xdp {
 
   void OpenCLCountersProfilingPlugin::emulationSetup()
   {
-    XDPPlugin::emulationSetup() 
-;
-
-    std::string debug_mode = xrt_core::config::get_debug_mode() ;
-    bool copy_happens = (debug_mode == "gui" || debug_mode == "batch") ;
+    XDPPlugin::emulationSetup() ;
 
     char* internalsSummary = getenv("VITIS_KERNEL_PROFILE_FILENAME") ;
-    if (internalsSummary != nullptr && copy_happens) {
+    if (internalsSummary != nullptr && emulationFilesCopied()) {
       (db->getStaticInfo()).addOpenedFile(internalsSummary, "KERNEL_PROFILE");
     }
   }

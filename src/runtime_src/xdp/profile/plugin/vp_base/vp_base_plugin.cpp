@@ -53,12 +53,9 @@ namespace xdp {
     if (waveformSetup) return ;
     waveformSetup = true ;
 
-    std::string debug_mode = xrt_core::config::get_debug_mode() ;
-    bool copy_happens = (debug_mode == "gui" || debug_mode == "batch") ;
-
     // For hardware emulation flows, check to see if there is a wdb and wcfg
     char* wdbFile = getenv("VITIS_WAVEFORM_WDB_FILENAME") ;
-    if (wdbFile != nullptr && copy_happens) {
+    if (wdbFile != nullptr && emulationFilesCopied()) {
       (db->getStaticInfo()).addOpenedFile(wdbFile, "WAVEFORM_DATABASE") ;
 
       // Also the wcfg
@@ -67,6 +64,16 @@ namespace xdp {
       configName += ".wcfg" ;
       (db->getStaticInfo()).addOpenedFile(configName, "WAVEFORM_CONFIGURATION");
     }
+  }
+
+  bool XDPPlugin::emulationFilesCopied()
+  {
+    // In hardware emulation, the WDB, WCFG, and kernel internal files
+    // are only copied if debug_mode is gui or batch.
+    static bool copyHappened =
+      (xrt_core::config::get_debug_mode() == "gui" ||
+       xrt_core::config::get_debug_mode() == "batch");
+    return copyHappened ;
   }
 
   void XDPPlugin::writeAll(bool openNewFiles)
