@@ -15,6 +15,7 @@
  */
 
 #include "aie_sys_parser.h"
+#include <boost/format.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 std::fstream aie_sys_parser::sysfs_open_path(const std::string& path,
@@ -66,21 +67,21 @@ aie_sys_parser::addrecursive(const int col, const int row, const std::string& ta
     std::size_t found = line.find_first_of(":|, ");
     while (found!=std::string::npos) {
         switch(line[found]) {
-            case ':':	{ // ':' 58
+            case ':':	{
                 end_index = found;
                 if(!n.empty())
                     n += ".";
                 n += line.substr(start_index, (end_index-start_index));
                 break;
                 }
-            case '|':	{ //'|' 124
+            case '|':	{
                 end_index = found;
                 boost::property_tree::ptree v;
                 v.put("", line.substr(start_index, (end_index-start_index)));
                 value.push_back(std::make_pair("",v));
                 break;
                 }
-            case ',':	{ // ',' 44
+            case ',':	{
                 end_index = found;
                 boost::property_tree::ptree v;
                 v.put("", line.substr(start_index, (end_index-start_index)));
@@ -90,7 +91,7 @@ aie_sys_parser::addrecursive(const int col, const int row, const std::string& ta
                 n = n.substr(0, n.rfind("."));
                 break;
                 }
-            case ' ':	{ //space 32
+            case ' ':	{
                 start_index++;
                 break;
                 }
@@ -115,7 +116,7 @@ aie_sys_parser::aie_sys_read(const int col,const int row)
         std::ifstream ifile(sysfs_root+std::to_string(col)+"_"+std::to_string(row)+"/"+tag);
         if(ifile.is_open()) {
             sysfs_get(sysfs_root+std::to_string(col)+"_"+std::to_string(row)+"/"+tag,data);
-            for(auto line:data)
+            for(auto& line:data)
                 addrecursive(col,row,tag,line,pt);
         }
     }
@@ -124,7 +125,7 @@ aie_sys_parser::aie_sys_read(const int col,const int row)
 
 aie_sys_parser *aie_sys_parser::get_parser()
 {
-    //TODO: get partitin id from xclbin but its not supported currently.
+    //TODO: get partition id from xclbin but its not supported currently.
     static aie_sys_parser dev("/sys/class/aie/aiepart_0_50/");
     return &dev;
 }
