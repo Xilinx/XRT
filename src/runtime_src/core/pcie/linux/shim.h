@@ -181,8 +181,7 @@ private:
      * Mapped CU register space for xclRegRead/Write(). We support at most
      * 128 CUs and each map is of 64k bytes.
      */
-    std::vector<uint32_t*> mCuMaps;
-    const size_t mCuMapSize = 64 * 1024;
+    std::vector<std::pair<uint32_t*, uint32_t>> mCuMaps;
     std::mutex mCuMapLock;
 
     bool zeroOutDDR();

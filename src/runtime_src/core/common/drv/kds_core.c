@@ -701,6 +701,42 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 	return 0;
 }
 
+int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
+		    int idx, unsigned long size, u32 *addrp)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+
+	BUG_ON(!mutex_is_locked(&client->lock));
+	/* client has opening context. xclbin should be locked */
+	if (!client->xclbin_id) {
+		kds_err(client, "client has no opening context\n");
+		return -EINVAL;
+	}
+
+	if (idx >= cu_mgmt->num_cus) {
+		kds_err(client, "cu(%d) out of range\n", idx);
+		return -EINVAL;
+	}
+
+	if (!test_bit(idx, client->cu_bitmap)) {
+		kds_err(client, "cu(%d) isn't reserved\n", idx);
+		return -EINVAL;
+	}
+
+	mutex_lock(&cu_mgmt->lock);
+	/* WORKAROUND: If rw_shared is true, allow map shared CU */
+	if (!cu_mgmt->rw_shared && !(cu_mgmt->cu_refs[idx] & CU_EXCLU_MASK)) {
+		kds_err(client, "cu(%d) isn't exclusively reserved\n", idx);
+		mutex_unlock(&cu_mgmt->lock);
+		return -EINVAL;
+	}
+	mutex_unlock(&cu_mgmt->lock);
+
+	*addrp = kds_get_cu_addr(kds, idx);
+
+	return 0;
+}
+
 static inline void
 insert_cu(struct kds_cu_mgmt *cu_mgmt, int i, struct xrt_cu *xcu)
 {

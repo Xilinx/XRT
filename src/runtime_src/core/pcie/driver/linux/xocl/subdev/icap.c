@@ -1521,6 +1521,7 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 	for (i = 0; i < ip_layout->m_count; ++i) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
 		struct ip_data *ip = &ip_layout->m_ip_data[i];
+		struct kernel_info *krnl_info;
 
 		if (ip->m_type != IP_KERNEL)
 			continue;
@@ -1542,15 +1543,22 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		strncpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
 		info.iname[sizeof(info.kname)-1] = '\0';
 
+		krnl_info = xocl_query_kernel(xdev, info.kname);
+		if (!krnl_info) {
+			ICAP_WARN(icap, "%s has no metadata. Skip", kname);
+			continue;
+		}
+
 		info.inst_idx = i;
 		info.addr = ip->m_base_address;
+		info.size = krnl_info->range;
 		info.num_res = subdev_info.num_res;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
 		info.protocol = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
 		info.intr_id = (ip->properties & IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
 
-		subdev_info.res[0].start += ip->m_base_address;
-		subdev_info.res[0].end += ip->m_base_address;
+		subdev_info.res[0].start = ip->m_base_address;
+		subdev_info.res[0].end = ip->m_base_address + info.size - 1;
 		subdev_info.priv_data = &info;
 		subdev_info.data_len = sizeof(info);
 		subdev_info.override_idx = info.inst_idx;

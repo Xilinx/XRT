@@ -134,6 +134,28 @@ name_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(name);
 
+static ssize_t
+base_paddr_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu_info *info = &cu->base.info;
+
+	return sprintf(buf, "0x%llx\n", info->addr);
+}
+static DEVICE_ATTR_RO(base_paddr);
+
+static ssize_t
+size_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu_info *info = &cu->base.info;
+
+	return sprintf(buf, "%ld\n", info->size);
+}
+static DEVICE_ATTR_RO(size);
+
 static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
@@ -141,6 +163,8 @@ static struct attribute *cu_attrs[] = {
 	&dev_attr_poll_interval.attr,
 	&dev_attr_busy_threshold.attr,
 	&dev_attr_name.attr,
+	&dev_attr_base_paddr.attr,
+	&dev_attr_size.attr,
 	NULL,
 };
 
