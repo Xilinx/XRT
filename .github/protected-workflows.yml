@@ -1,4 +1,7 @@
 events:
+  push:
+    trustAnyone: true
+
   pull_request:
     # Exteremly important. Only certain users should be able to change this file.
     - trustAnyone: false
@@ -12,5 +15,3 @@ events:
       paths:
         allowed:
           - "**/**"
-  push:
-    trustAnyone: true
