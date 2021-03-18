@@ -82,6 +82,18 @@ if (DEFINED ENV{XRT_BOOST_INSTALL})
   find_package(Boost
     HINTS $ENV{XRT_BOOST_INSTALL}
     REQUIRED COMPONENTS system filesystem program_options)
+
+  # A bug in FindBoost maybe?  Doesn't set Boost_LIBRARY_DIRS when
+  # Boost install has only static libraries. For static tool linking
+  # this variable is needed in order for linker to locate the static
+  # libraries.  Another bug in FindBoost fails to find static
+  # libraries when shared ones are present too.
+  if (Boost_FOUND AND "${Boost_LIBRARY_DIRS}" STREQUAL "")
+    set (Boost_LIBRARY_DIRS $ENV{XRT_BOOST_INSTALL}/lib)
+  endif()
+
+  # Some later versions of boost spews warnings form property_tree
+  add_compile_options("-DBOOST_BIND_GLOBAL_PLACEHOLDERS")
 else()
   find_package(Boost 
     REQUIRED COMPONENTS system filesystem program_options)
