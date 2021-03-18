@@ -88,8 +88,8 @@ namespace xdp {
     is_write_thread_active = true;
     while (writeCondWaitFor(std::chrono::seconds(interval))) {
       for (auto w : writers) {
-        w->write(true) ;
-        (db->getStaticInfo()).addOpenedFile(w->getcurrentFileName().c_str(), type) ;
+        if (w->write(true))
+          (db->getStaticInfo()).addOpenedFile(w->getcurrentFileName().c_str(), type) ;
       }
     }
 

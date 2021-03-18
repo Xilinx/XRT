@@ -477,6 +477,10 @@ install()
         apt install -y "${UB_LIST[@]}"
     fi
 
+    if [ $FLAVOR == "ubuntu" ] && [ $MAJOR == 20 ]; then
+	apt install clang-tidy
+    fi
+
     # Enable EPEL on CentOS/RHEL
     if [ $FLAVOR == "centos" ]; then
         prep_centos

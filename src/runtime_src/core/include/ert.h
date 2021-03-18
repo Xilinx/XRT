@@ -64,6 +64,10 @@
     ((struct ert_start_copybo_cmd *)(pkg))
 #define to_cfg_sk_pkg(pkg) \
     ((struct ert_configure_sk_cmd *)(pkg))
+#define to_init_krnl_pkg(pkg) \
+    ((struct ert_init_kernel_cmd *)(pkg))
+#define to_validate_pkg(pkg) \
+    ((struct ert_validate_cmd *)(pkg))
 
 /**
  * struct ert_packet: ERT generic packet format
@@ -352,14 +356,16 @@ struct ert_abort_cmd {
   };
 };
 
-
-
+/**
+ * struct ert_validate_cmd: ERT BIST command format.
+ *
+ */
 struct ert_validate_cmd {
   union {
     struct {
       uint32_t state:4;          /* [3-0]   */
-      uint32_t unused:11;        /* [14-4]  */
-      uint32_t idx:8;            /* [22-15] */
+      uint32_t custom:8;         /* [11-4]  */
+      uint32_t count:11;         /* [22-12] */
       uint32_t opcode:5;         /* [27-23] */
       uint32_t type:4;           /* [31-27] */
     };
@@ -717,6 +723,70 @@ static inline uint64_t
 ert_copybo_size(struct ert_start_copybo_cmd *pkt)
 {
   return pkt->size;
+}
+
+static inline bool
+ert_valid_opcode(struct ert_packet *pkt)
+{
+  struct ert_start_kernel_cmd *skcmd;
+  struct ert_init_kernel_cmd *ikcmd;
+  struct ert_start_copybo_cmd *sccmd;
+  struct ert_configure_cmd *ccmd;
+  struct ert_configure_sk_cmd *cscmd;
+  struct ert_validate_cmd *vcmd;
+  bool valid;
+
+  switch (pkt->opcode) {
+  case ERT_START_CU:
+  case ERT_EXEC_WRITE:
+    skcmd = to_start_krnl_pkg(pkt);
+    /* 1 cu mask + 4 control registers */
+    valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 4);
+    break;
+  case ERT_START_FA:
+    skcmd = to_start_krnl_pkg(pkt);
+    /* 1 cu mask */
+    valid = (skcmd->count >= skcmd->extra_cu_masks + 1);
+    break;
+  case ERT_SK_START:
+    skcmd = to_start_krnl_pkg(pkt);
+    /* 1 cu mask + 1 control word */
+    valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 1);
+    break;
+  case ERT_CONFIGURE:
+    ccmd = to_cfg_pkg(pkt);
+    /* 5 mandatory fields in struct */
+    valid = (ccmd->count >= 5 + ccmd->num_cus);
+    break;
+  case ERT_START_COPYBO:
+    sccmd = to_copybo_pkg(pkt);
+    valid = (sccmd->count == 16);
+    break;
+  case ERT_INIT_CU:
+    ikcmd = to_init_krnl_pkg(pkt);
+    /* 9 mandatory words in struct + 4 control registers */
+    valid = (ikcmd->count >= ikcmd->extra_cu_masks + 9 + 4);
+    break;
+  case ERT_SK_CONFIG:
+    cscmd = to_cfg_sk_pkg(pkt);
+    valid = (cscmd->count == sizeof(struct config_sk_image) * cscmd->num_image / 4 + 1);
+    break;
+  case ERT_CLK_CALIB:
+  case ERT_MB_VALIDATE:
+    vcmd = to_validate_pkg(pkt);
+    valid = (vcmd->count == 5);
+    break;
+  case ERT_CU_STAT: /* TODO: Rules to validate? */
+  case ERT_EXIT:
+  case ERT_ABORT:
+    valid = true;
+    break;
+  case ERT_SK_UNCONFIG: /* NOTE: obsolete */
+  default:
+    valid = false;
+  }
+
+  return valid;
 }
 
 #ifdef __GNUC__

@@ -32,7 +32,7 @@ namespace xdp {
     PowerProfilingWriter(const char* filename, const char* d, uint64_t index) ;
     ~PowerProfilingWriter() ;
 
-    virtual void write(bool openNewFile) ;
+    virtual bool write(bool openNewFile) ;
   } ;
 
 } // end namespace xdp

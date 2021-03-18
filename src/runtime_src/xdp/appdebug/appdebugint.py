@@ -132,7 +132,7 @@ class xstatusSPMInfo (gdb.Command,infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print (e.message)
+			print (e)
 			return
 		obj_spm.invoke(arg, 0)
 xstatusSPMInfo()
@@ -145,7 +145,7 @@ class xstatusSSPMInfo (gdb.Command,infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print (e.message)
+			print (e)
 			return
 		obj_sspm.invoke(arg, 0)
 xstatusSSPMInfo()
@@ -159,7 +159,7 @@ class xstatusSAMInfo (gdb.Command,infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print (e.message)
+			print (e)
 			return
 		obj_sam.invoke(arg, 0)
 xstatusSAMInfo()
@@ -173,7 +173,7 @@ class xstatusLAPCInfo (gdb.Command,infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print (e.message)
+			print (e)
 			return
 		obj_lapc.invoke(arg, 0)
 xstatusLAPCInfo()
@@ -187,7 +187,7 @@ class xstatusAllInfo (gdb.Command,infCallUtil):
 		try:
 			self.check_app_debug_enabled()
 		except ValueError as e:
-			print (e.message)
+			print (e)
 			return
 		obj_spm.invoke(arg, 0)
 		obj_sspm.invoke(arg, 0)

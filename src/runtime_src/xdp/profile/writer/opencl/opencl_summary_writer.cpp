@@ -1516,10 +1516,9 @@ namespace xdp {
 	 << "Count" << ","
 	 << std::endl ;
 
-    std::map<const char*, uint64_t>& counts = (db->getStats()).getEventCounts();
+    std::map<std::string, uint64_t>& counts = (db->getStats()).getEventCounts();
     for (auto iter : counts) {
-      const char* label = (iter.first == nullptr) ? " " : iter.first ;
-      fout << label       << ","
+      fout << iter.first  << ","
 	   << iter.second << ","
 	   << std::endl ;
     }
@@ -1580,7 +1579,7 @@ namespace xdp {
     } 
   }
 
-  void OpenCLSummaryWriter::write(bool openNewFile)
+  bool OpenCLSummaryWriter::write(bool openNewFile)
   {
     writeHeader() ;                                 fout << std::endl ;
     writeAPICallSummary() ;                         fout << std::endl ;
@@ -1612,6 +1611,7 @@ namespace xdp {
     {
       switchFiles() ;
     }
+    return true;
   }
 
   void OpenCLSummaryWriter::guidanceDeviceExecTime(OpenCLSummaryWriter* t)

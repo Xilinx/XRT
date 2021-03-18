@@ -42,6 +42,84 @@ namespace xdp {
     asmLastTrans.resize((db->getStaticInfo()).getNumASM(deviceId, xclbin)) ;
   }
 
+  void DeviceEventCreatorFromTrace::addAIMEvent(xclTraceResults& trace,
+                                                double hostTimestamp)
+  {
+    uint32_t slot = trace.TraceID / 2 ;
+    Monitor* mon = db->getStaticInfo().getAIMonitor(deviceId, xclbin, slot);
+    if (!mon) {
+      // In hardware emulation, there might be monitors inserted that
+      //  don't show up in the debug ip layout.  These are added for
+      //  their own debugging purposes and we should ignore any packets
+      //  we see from them
+      return ;
+    }
+    int32_t cuId = mon->cuIndex ;
+    VTFEventType ty = (trace.TraceID & 1) ? KERNEL_WRITE : KERNEL_READ ;
+
+    addKernelDataTransferEvent(ty, trace, slot, cuId, hostTimestamp);
+  }
+
+  void
+  DeviceEventCreatorFromTrace::
+  addKernelDataTransferEvent(VTFEventType ty,
+                             xclTraceResults& trace,
+                             uint32_t slot,
+                             int32_t cuId,
+                             double hostTimestamp)
+  {
+    DeviceMemoryAccess* memEvent = nullptr;
+    double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
+
+    if (trace.EventType == XCL_PERF_MON_START_EVENT) {
+      memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId) ;
+      memEvent->setDeviceTimestamp(trace.Timestamp) ;
+      db->getDynamicInfo().addEvent(memEvent) ;
+      db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
+    } else if (trace.EventType == XCL_PERF_MON_END_EVENT) {
+      VTFEvent* matchingStart = db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, ty);
+      if (nullptr == matchingStart) {
+        // We need to add a dummy start event for this observed end event
+        memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
+        memEvent->setDeviceTimestamp(trace.Timestamp);
+        db->getDynamicInfo().addEvent(memEvent);
+        db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
+        matchingStart = memEvent;
+
+        // Also, progress time so the end is after the start
+        hostTimestamp += halfCycleTimeInMs;
+      } else if (trace.Reserved == 1) {
+        // We have a matching start, so we need to end it
+        if (matchingStart->getTimestamp() == hostTimestamp) {
+          // All we have to do is push time forward and let this end event
+          //  match the start we found
+          hostTimestamp += halfCycleTimeInMs;
+	} else {
+          // The times are different, so we need to end the matching start
+          //  and then create an additional pulse
+          memEvent = new DeviceMemoryAccess(matchingStart->getEventId(), hostTimestamp, ty, deviceId, slot, cuId);
+          memEvent->setDeviceTimestamp(trace.Timestamp) ;
+          db->getDynamicInfo().addEvent(memEvent);
+
+          // Now create the dummy start
+          memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
+          memEvent->setDeviceTimestamp(trace.Timestamp);
+          db->getDynamicInfo().addEvent(memEvent);
+          db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
+          matchingStart = memEvent;
+          // Also, progress time so the end is after the start
+          hostTimestamp += halfCycleTimeInMs;
+        }
+      }
+
+      // The true end event we observed
+      memEvent = new DeviceMemoryAccess(matchingStart->getEventId(), hostTimestamp, ty, deviceId, slot, cuId);
+      memEvent->setDeviceTimestamp(trace.Timestamp);
+      db->getDynamicInfo().addEvent(memEvent);
+      aimLastTrans[slot] = trace.Timestamp;
+    }
+  }
+
   void DeviceEventCreatorFromTrace::createDeviceEvents(xclTraceResultsVector& traceVector)
   {
     // Create Device Events and log them : do what is done in TraceParser::logTrace
@@ -178,85 +256,7 @@ namespace xdp {
         amLastTrans[s] = timestamp;
       } // AMPacket
       else if(AIMPacket) {
-        DeviceMemoryAccess* memEvent = nullptr;
-        if(!(trace.TraceID & 1)) { // read packet
-          s = trace.TraceID/2;
-
-          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, xclbin, s);
-	  if (!mon) {
-	    // In hardware emulation, there might be monitors inserted
-	    //  that don't show up in the debug ip layout.  These are added
-	    //  for their own debugging purposes and we should ignore any
-	    //  packets we see from them.
-	    continue ;
-	  }
-          int32_t  cuId = mon->cuIndex;
-
-          // KERNEL_READ
-          if(trace.EventType == XCL_PERF_MON_START_EVENT) {
-            memEvent = new DeviceMemoryAccess(0, hostTimestamp, KERNEL_READ, deviceId, s, cuId);
-            memEvent->setDeviceTimestamp(timestamp); 
-            db->getDynamicInfo().addEvent(memEvent);
-            db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
-          } else if(trace.EventType == XCL_PERF_MON_END_EVENT) {
-            // may have to log start and end both
-            // technically matching start can have ID 0, but for now assume matchingStart=0 means no start found. So log both start and end
-            VTFEvent* matchingStart = db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, KERNEL_READ);
-            if(nullptr == matchingStart || trace.Reserved == 1) {
-              // add dummy start event
-              memEvent = new DeviceMemoryAccess(0, hostTimestamp, KERNEL_READ, deviceId, s, cuId);
-              memEvent->setDeviceTimestamp(timestamp); 
-              db->getDynamicInfo().addEvent(memEvent);
-              db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
-              matchingStart = memEvent;
-              hostTimestamp += halfCycleTimeInMs;
-            }
-            // add end event
-            memEvent = new DeviceMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_READ, deviceId, s, cuId);
-            memEvent->setDeviceTimestamp(timestamp); 
-            db->getDynamicInfo().addEvent(memEvent);
-            aimLastTrans[s] = timestamp;
-//            memEvent->setBurstLength(timestamp - ((DeviceMemoryAccess*)matchingStart)->getDeviceTimestamp() + 1);
-          }
-        } else if(trace.TraceID & 1) {
-          // KERNEL_WRITE
-          s = trace.TraceID/2;
-
-          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, xclbin, s);
-	  if (!mon) {
-	    // In hardware emulation, there might be monitors inserted
-	    //  that don't show up in the debug ip layout.  These are added
-	    //  for their own debugging purposes and we should ignore any
-	    //  packets we see from them.
-	    continue ;
-	  }
-          int32_t  cuId = mon->cuIndex;
-
-          if(trace.EventType == XCL_PERF_MON_START_EVENT) {
-            memEvent = new DeviceMemoryAccess(0, hostTimestamp, KERNEL_WRITE, deviceId, s, cuId);
-            memEvent->setDeviceTimestamp(timestamp); 
-            db->getDynamicInfo().addEvent(memEvent);
-            db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
-          } else if(trace.EventType == XCL_PERF_MON_END_EVENT) {
-            // may have to log start and end both
-            VTFEvent* matchingStart = db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, KERNEL_WRITE);
-            if(nullptr == matchingStart || trace.Reserved == 1) {
-              // add dummy start event
-              memEvent = new DeviceMemoryAccess(0, hostTimestamp, KERNEL_WRITE, deviceId, s, cuId);
-              memEvent->setDeviceTimestamp(timestamp); 
-              db->getDynamicInfo().addEvent(memEvent);
-              db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
-              matchingStart = memEvent;
-              hostTimestamp += halfCycleTimeInMs;
-            }
-            // add end event
-            memEvent = new DeviceMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_WRITE, deviceId, s, cuId);
-            memEvent->setDeviceTimestamp(timestamp); 
-            db->getDynamicInfo().addEvent(memEvent);
-            aimLastTrans[s] = timestamp;
-//            memEvent->setBurstLength(timestamp - ((DeviceMemoryAccess*)matchingStart)->getDeviceTimestamp() + 1);
-          }
-        }
+        addAIMEvent(trace, hostTimestamp) ;
       } // AIMPacket
       else if(ASMPacket) {
         s = trace.TraceID - MIN_TRACE_ID_ASM;

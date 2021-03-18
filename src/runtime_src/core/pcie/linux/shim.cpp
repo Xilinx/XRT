@@ -1471,12 +1471,12 @@ int shim::xclExportBO(unsigned int boHandle)
     drm_prime_handle info = {boHandle, DRM_RDWR, -1};
     int result = mDev->ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
     if (result) {
-        xrt_logmsg(XRT_WARNING, "XRT", "%s: DRM prime handle to fd failed with DRM_RDWR. Trying default flags.", __func__);
+        xrt_logmsg(XRT_WARNING, "%s: DRM prime handle to fd failed with DRM_RDWR. Trying default flags.", __func__);
         info.flags = 0;
         result = ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
     }
 
-    xrt_logmsg(XRT_DEBUG, "XRT", "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
+    xrt_logmsg(XRT_DEBUG, "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
     return !result ? info.fd : result;
 }
 
@@ -1529,7 +1529,7 @@ int shim::xclGetSectionInfo(void* section_info, size_t * section_size,
     std::vector<char> buf;
     mDev->sysfs_get("icap", entry, err, buf);
     if (!err.empty()) {
-        xrt_logmsg(XRT_ERROR, "%s: %s", __func__, err);
+        xrt_logmsg(XRT_ERROR, "%s: %s", __func__, err.c_str());
         return -EINVAL;
     }
 
@@ -2340,8 +2340,8 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         return -EINVAL;
     }
 
-    xdphal::flush_device(handle) ;
-    xdpaie::flush_aie_device(handle) ;
+    xdp::hal::flush_device(handle) ;
+    xdp::aie::flush_device(handle) ;
 
 #ifdef DISABLE_DOWNLOAD_XCLBIN
     int ret = 0;
@@ -2353,8 +2353,8 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
 
-      xdphal::update_device(handle) ;
-      xdpaie::update_aie_device(handle);
+      xdp::hal::update_device(handle) ;
+      xdp::aie::update_device(handle);
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       //scheduler::init can not be skipped even for same_xclbin

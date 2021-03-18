@@ -38,7 +38,7 @@ namespace xdp {
   {    
   }
 
-  void NOCProfilingWriter::write(bool openNewFile)
+  bool NOCProfilingWriter::write(bool openNewFile)
   {
     // Write header #1
     fout << "Target device: " << mDeviceName << std::endl;
@@ -115,6 +115,7 @@ namespace xdp {
       }
       fout << std::endl;
     }
+    return true;
   }
 
 } // end namespace xdp

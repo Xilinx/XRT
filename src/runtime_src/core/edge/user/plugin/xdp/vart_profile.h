@@ -17,12 +17,16 @@
 #ifndef VART_PROFILE_DOT_H
 #define VART_PROFILE_DOT_H
 
-namespace xdpvartprofile {
+namespace xdp {
+namespace vart {
+namespace profile {
 
-  void load_xdp_vart_plugin();
-  void register_vart_callbacks(void* handle);
-  void warning_vart_callbacks();
+  void load();
+  void register_callbacks(void* handle);
+  void warning_callbacks();
 
-} // end namespace xdpvartprofile
+} // end namespace profile
+} // end namespace vart
+} // end namespace xdp
 
 #endif

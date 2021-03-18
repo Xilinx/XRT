@@ -107,13 +107,13 @@ shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
   , mCuMaps(128, nullptr)
 {
   if (logfileName != nullptr)
-    xclLog(XRT_WARNING, "XRT", "%s: logfileName is no longer supported", __func__);
+    xclLog(XRT_WARNING, "%s: logfileName is no longer supported", __func__);
 
-  xclLog(XRT_INFO, "XRT", "%s", __func__);
+  xclLog(XRT_INFO, "%s", __func__);
 
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
   if (!mKernelFD) {
-    xclLog(XRT_ERROR, "XRT", "%s: Cannot open /dev/dri/renderD128", __func__);
+    xclLog(XRT_ERROR, "%s: Cannot open /dev/dri/renderD128", __func__);
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
@@ -123,11 +123,11 @@ shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
 shim::
 ~shim()
 {
-  xclLog(XRT_INFO, "XRT", "%s", __func__);
+  xclLog(XRT_INFO, "%s", __func__);
 
 //  xdphal::finish_flush_device(handle) ;
-  xdpaie::finish_flush_aie_device(this) ;
-  xdpaiectr::end_aie_ctr_poll(this);
+  xdp::aie::finish_flush_device(this) ;
+  xdp::aie::ctr::end_poll(this);
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -168,13 +168,13 @@ mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets)
         drm_zocl_info_cu info = {offset_it->first, -1, -1};
         int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
         if (result) {
-          xclLog(XRT_ERROR, "XRT", "%s: Failed to find CU info 0x%lx", __func__, offset_it->first);
+          xclLog(XRT_ERROR, "%s: Failed to find CU info 0x%lx", __func__, offset_it->first);
           return -errno;
         }
         size_t psize = getpagesize();
         ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*psize);
         if (ptr == MAP_FAILED) {
-          xclLog(XRT_ERROR, "XRT", "%s: Map failed for aperture 0x%lx, size 0x%lx", __func__, offset_it->first, offset_it->second);
+          xclLog(XRT_ERROR, "%s: Map failed for aperture 0x%lx, size 0x%lx", __func__, offset_it->first, offset_it->second);
           return -1;
         }
         mKernelControl.insert(it, std::pair<uint64_t, uint32_t *>(offset_it->first, (uint32_t *)ptr));
@@ -219,7 +219,7 @@ getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy_addr, uint64_t&
   }
 
   if (!vaddr)
-    xclLog(XRT_ERROR, "XRT", "%s: Could not found the mapped address. Check if XCLBIN is loaded.", __func__);
+    xclLog(XRT_ERROR, "%s: Could not found the mapped address. Check if XCLBIN is loaded.", __func__);
 
   // If could not found the phy_addr in the mapping table, return will be NULL.
   return vaddr;
@@ -237,13 +237,13 @@ xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t siz
   void *vaddr = NULL;
 
   if (!hostBuf) {
-    xclLog(XRT_ERROR, "XRT", "%s: Invalid hostBuf.", __func__);
+    xclLog(XRT_ERROR, "%s: Invalid hostBuf.", __func__);
     return -1;
   }
 
   vaddr = getVirtAddressOfApture(space, offset, off);
   if (!vaddr) {
-    xclLog(XRT_ERROR, "XRT", "%s: Invalid offset.", __func__);
+    xclLog(XRT_ERROR, "%s: Invalid offset.", __func__);
     return -1;
   }
 
@@ -260,13 +260,13 @@ xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
   void *vaddr = NULL;
 
   if (!hostBuf) {
-    xclLog(XRT_ERROR, "XRT", "%s: Invalid hostBuf.", __func__);
+    xclLog(XRT_ERROR, "%s: Invalid hostBuf.", __func__);
     return -1;
   }
 
   vaddr = getVirtAddressOfApture(space, offset, off);
   if (!vaddr) {
-    xclLog(XRT_ERROR, "XRT", "%s: Invalid offset.", __func__);
+    xclLog(XRT_ERROR, "%s: Invalid offset.", __func__);
     return -1;
   }
 
@@ -282,8 +282,8 @@ xclAllocBO(size_t size, int unused, unsigned flags)
   drm_zocl_create_bo info = { size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CREATE_BO, &info);
 
-  xclLog(XRT_DEBUG, "XRT", "%s: size %ld, flags 0x%x", __func__, size, flags);
-  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
+  xclLog(XRT_DEBUG, "%s: size %ld, flags 0x%x", __func__, size, flags);
+  xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
   return info.handle;
 }
@@ -296,8 +296,8 @@ xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
   drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
 
-  xclLog(XRT_DEBUG, "XRT", "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, flags);
-  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
+  xclLog(XRT_DEBUG, "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, flags);
+  xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
   return info.handle;
 }
@@ -309,8 +309,8 @@ xclGetHostBO(uint64_t paddr, size_t size)
   drm_zocl_host_bo info = {paddr, size, 0xffffffff};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_GET_HOST_BO, &info);
 
-  xclLog(XRT_DEBUG, "XRT", "%s: paddr 0x%lx, size %ld", __func__, paddr, size);
-  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
+  xclLog(XRT_DEBUG, "%s: paddr 0x%lx, size %ld", __func__, paddr, size);
+  xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
   return info.handle;
 }
@@ -322,7 +322,7 @@ xclFreeBO(unsigned int boHandle)
   drm_gem_close closeInfo = {boHandle, 0};
   int result = ioctl(mKernelFD, DRM_IOCTL_GEM_CLOSE, &closeInfo);
 
-  xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, ioctl return %d", __func__, boHandle, result);
+  xclLog(XRT_DEBUG, "%s: boHandle %d, ioctl return %d", __func__, boHandle, result);
 }
 
 int
@@ -332,8 +332,8 @@ xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek)
   drm_zocl_pwrite_bo pwriteInfo = { boHandle, 0, seek, size, reinterpret_cast<uint64_t>(src) };
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PWRITE_BO, &pwriteInfo);
 
-  xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, src %p, size %ld, seek %ld", __func__, boHandle, src, size, seek);
-  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
+  xclLog(XRT_DEBUG, "%s: boHandle %d, src %p, size %ld, seek %ld", __func__, boHandle, src, size, seek);
+  xclLog(XRT_INFO, "%s: ioctl return %d", __func__, result);
 
   return result ? -errno : result;
 }
@@ -345,8 +345,8 @@ xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip)
   drm_zocl_pread_bo preadInfo = { boHandle, 0, skip, size, reinterpret_cast<uint64_t>(dst) };
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PREAD_BO, &preadInfo);
 
-  xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, dst %p, size %ld, skip %ld", __func__, boHandle, dst, size, skip);
-  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
+  xclLog(XRT_DEBUG, "%s: boHandle %d, dst %p, size %ld, skip %ld", __func__, boHandle, dst, size, skip);
+  xclLog(XRT_INFO, "%s: ioctl return %d", __func__, result);
 
   return result ? -errno : result;
 }
@@ -361,14 +361,14 @@ xclMapBO(unsigned int boHandle, bool write)
   drm_zocl_map_bo mapInfo = { boHandle, 0, 0 };
   result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_MAP_BO, &mapInfo);
   if (result) {
-    xclLog(XRT_ERROR, "XRT", "%s: ZOCL_MAP_BO ioctl return %d", __func__, result);
+    xclLog(XRT_ERROR, "%s: ZOCL_MAP_BO ioctl return %d", __func__, result);
     return NULL;
   }
 
   void *ptr = mmap(0, info.size, (write ?(PROT_READ|PROT_WRITE) : PROT_READ ),
                    MAP_SHARED, mKernelFD, mapInfo.offset);
 
-  xclLog(XRT_INFO, "XRT", "%s: mmap return %p", __func__, ptr);
+  xclLog(XRT_INFO, "%s: mmap return %p", __func__, ptr);
 
   return ptr;
 }
@@ -439,8 +439,8 @@ xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t off
   drm_zocl_sync_bo syncInfo = { boHandle, zocl_dir, offset, size };
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SYNC_BO, &syncInfo);
 
-  xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, dir %d, size %ld, offset %ld", __func__, boHandle, dir, size, offset);
-  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
+  xclLog(XRT_DEBUG, "%s: boHandle %d, dir %d, size %ld, offset %ld", __func__, boHandle, dir, size, offset);
+  xclLog(XRT_INFO, "%s: ioctl return %d", __func__, result);
 
   return result ? -errno : result;
 }
@@ -474,7 +474,7 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
     ret = -EINVAL;
   mCmdBOCache->release<ert_start_copybo_cmd>(bo);
 #endif
-  xclLog(XRT_INFO, "XRT", "%s: return %d", __func__, ret);
+  xclLog(XRT_INFO, "%s: return %d", __func__, ret);
   return ret;
 }
 
@@ -490,7 +490,7 @@ xclLoadXclBin(const xclBin *buffer)
   if (!ret && !xrt_core::xclbin::is_pdi_only(top))
     mKernelClockFreq = xrt_core::xclbin::get_kernel_freq(top);
 
-  xclLog(XRT_INFO, "XRT", "%s: return %d", __func__, ret);
+  xclLog(XRT_INFO, "%s: return %d", __func__, ret);
   return ret;
 }
 #endif
@@ -576,7 +576,7 @@ xclLoadAxlf(const axlf *buffer)
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
-  xclLog(XRT_INFO, "XRT", "%s: flags 0x%x, return %d", __func__, flags, ret);
+  xclLog(XRT_INFO, "%s: flags 0x%x, return %d", __func__, flags, ret);
   return ret ? -errno : ret;
 }
 
@@ -588,12 +588,12 @@ xclExportBO(unsigned int boHandle)
   // Since Linux 4.6, drm_prime_handle_to_fd_ioctl respects O_RDWR.
   int result = ioctl(mKernelFD, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
   if (result) {
-    xclLog(XRT_WARNING, "XRT", "%s: DRM prime handle to fd faied with DRM_RDWR. Try default flags.", __func__);
+    xclLog(XRT_WARNING, "%s: DRM prime handle to fd faied with DRM_RDWR. Try default flags.", __func__);
     info.flags = 0;
     result = ioctl(mKernelFD, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
   }
 
-  xclLog(XRT_INFO, "XRT", "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
+  xclLog(XRT_INFO, "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
 
   return !result ? info.fd : result;
 }
@@ -605,10 +605,10 @@ xclImportBO(int fd, unsigned flags)
   drm_prime_handle info = {0xffffffff, flags, fd};
   int result = ioctl(mKernelFD, DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
   if (result) {
-    xclLog(XRT_ERROR, "XRT", "%s: FD to handle IOCTL failed", __func__);
+    xclLog(XRT_ERROR, "%s: FD to handle IOCTL failed", __func__);
   }
 
-  xclLog(XRT_INFO, "XRT", "%s: fd %d, flags %x, ioctl return %d, bo handle %d", __func__, fd, flags, result, info.handle);
+  xclLog(XRT_INFO, "%s: fd %d, flags %x, ioctl return %d, bo handle %d", __func__, fd, flags, result, info.handle);
 
   return !result ? info.handle : 0xffffffff;
 }
@@ -624,7 +624,7 @@ xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
   properties->size   = info.size;
   properties->paddr  = info.paddr;
 
-  xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, size %x, paddr 0x%lx", __func__, boHandle, info.size, info.paddr);
+  xclLog(XRT_DEBUG, "%s: boHandle %d, size %x, paddr 0x%lx", __func__, boHandle, info.size, info.paddr);
 
   return result ? -errno : result;
 }
@@ -660,9 +660,9 @@ xclExecBuf(unsigned int cmdBO)
 {
   drm_zocl_execbuf exec = {0, cmdBO};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_EXECBUF, &exec);
-  xclLog(XRT_DEBUG, "XRT", "%s: cmdBO handle %d, ioctl return %d", __func__, cmdBO, result);
+  xclLog(XRT_DEBUG, "%s: cmdBO handle %d, ioctl return %d", __func__, cmdBO, result);
   if (result == -EDEADLK)
-      xclLog(XRT_ERROR, "XRT", "CU might hang, please reset device");
+      xclLog(XRT_ERROR, "CU might hang, please reset device");
   return result ? -errno : result;
 }
 
@@ -834,14 +834,12 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
   unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
   int ret;
 
-  drm_zocl_ctx ctx = {
-    .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
-    .uuid_size = sizeof (uuid_t) * sizeof (char),
-    .cu_index = ipIndex,
-    .flags = flags,
-    .handle = 0,
-    .op = ZOCL_CTX_OP_ALLOC_CTX,
-  };
+  drm_zocl_ctx ctx = {0};
+  ctx.uuid_ptr = reinterpret_cast<uint64_t>(xclbinId);
+  ctx.uuid_size = sizeof (uuid_t) * sizeof (char);
+  ctx.cu_index = ipIndex;
+  ctx.flags = flags;
+  ctx.op = ZOCL_CTX_OP_ALLOC_CTX;
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
   return ret ? -errno : ret;
@@ -863,14 +861,11 @@ xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
     }
   }
 
-  drm_zocl_ctx ctx = {
-    .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
-    .uuid_size = sizeof (uuid_t) * sizeof (char),
-    .cu_index = ipIndex,
-    .flags = 0,
-    .handle = 0,
-    .op = ZOCL_CTX_OP_FREE_CTX,
-  };
+  drm_zocl_ctx ctx = {0};
+  ctx.uuid_ptr = reinterpret_cast<uint64_t>(xclbinId);
+  ctx.uuid_size = sizeof (uuid_t) * sizeof (char);
+  ctx.cu_index = ipIndex;
+  ctx.op = ZOCL_CTX_OP_FREE_CTX;
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
   return ret ? -errno : ret;
@@ -883,11 +878,11 @@ xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
   std::lock_guard<std::mutex> l(mCuMapLock);
 
   if (ipIndex >= mCuMaps.size()) {
-    xclLog(XRT_ERROR, "XRT", "%s: invalid CU index: %d", __func__, ipIndex);
+    xclLog(XRT_ERROR, "%s: invalid CU index: %d", __func__, ipIndex);
     return -EINVAL;
   }
   if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
-    xclLog(XRT_ERROR, "XRT", "%s: invalid CU offset: %d", __func__, offset);
+    xclLog(XRT_ERROR, "%s: invalid CU offset: %d", __func__, offset);
     return -EINVAL;
   }
 
@@ -902,7 +897,7 @@ xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 
   uint32_t *cumap = mCuMaps[ipIndex];
   if (cumap == nullptr) {
-    xclLog(XRT_ERROR, "XRT", "%s: can't map CU: %d", __func__, ipIndex);
+    xclLog(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
     return -EINVAL;
   }
 
@@ -937,7 +932,7 @@ xclIPName2Index(const char *name)
 
   mDev->sysfs_get("ip_layout", errmsg, buf);
   if (!errmsg.empty()) {
-    xclLog(XRT_ERROR, "XRT", "can't read ip_layout sysfs node: %s",
+    xclLog(XRT_ERROR, "can't read ip_layout sysfs node: %s",
            errmsg.c_str());
     return -EINVAL;
   }
@@ -946,7 +941,7 @@ xclIPName2Index(const char *name)
 
   const ip_layout *map = (ip_layout *)buf.data();
   if(map->m_count < 0) {
-    xclLog(XRT_ERROR, "XRT", "invalid ip_layout sysfs node content");
+    xclLog(XRT_ERROR, "invalid ip_layout sysfs node content");
     return -EINVAL;
   }
 
@@ -968,7 +963,7 @@ xclIPName2Index(const char *name)
   std::vector<std::string> custat;
   mDev->sysfs_get("kds_custat", errmsg, custat);
   if (!errmsg.empty()) {
-    xclLog(XRT_ERROR, "XRT", "can't read kds_custat sysfs node: %s",
+    xclLog(XRT_ERROR, "can't read kds_custat sysfs node: %s",
            errmsg.c_str());
     return -EINVAL;
   }
@@ -995,16 +990,12 @@ xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags)
 {
   int ret;
 
-  drm_zocl_ctx ctx = {
-    .uuid_ptr = 0,
-    .uuid_size = 0,
-    .cu_index = ipIndex,
-    .flags = flags,
-    .handle = 0,
-    .op = ZOCL_CTX_OP_OPEN_GCU_FD,
-  };
+  drm_zocl_ctx ctx = {0};
+  ctx.cu_index = ipIndex;
+  ctx.flags = flags;
+  ctx.op = ZOCL_CTX_OP_OPEN_GCU_FD;
 
-  xclLog(XRT_DEBUG, "XRT", "%s: IP index %d, flags 0x%x", __func__, ipIndex, flags);
+  xclLog(XRT_DEBUG, "%s: IP index %d, flags 0x%x", __func__, ipIndex, flags);
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
   return (ret < 0) ? -errno : ret;
 }
@@ -1013,7 +1004,7 @@ int
 shim::
 xclCloseIPInterruptNotify(int fd)
 {
-  xclLog(XRT_DEBUG, "XRT", "%s: fd %d", __func__, fd);
+  xclLog(XRT_DEBUG, "%s: fd %d", __func__, fd);
   close(fd);
   return 0;
 }
@@ -1479,6 +1470,104 @@ resetAIEArray(drm_zocl_aie_reset &reset)
 {
   return ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_RESET, &reset) ? -errno : 0;
 }
+
+int
+shim::
+openGraphContext(const uuid_t xclbinId, unsigned int graphId, xrt::graph::access_mode am)
+{
+  unsigned int flags;
+  int ret;
+
+  switch (am) {
+
+  case xrt::graph::access_mode::exclusive:
+    flags = ZOCL_CTX_EXCLUSIVE;
+    break;
+
+  case xrt::graph::access_mode::primary:
+    flags = ZOCL_CTX_PRIMARY;
+    break;
+
+  case xrt::graph::access_mode::shared:
+    flags = ZOCL_CTX_SHARED;
+    break;
+
+  default:
+    return -EINVAL;
+  }
+
+  drm_zocl_ctx ctx = {0};
+  ctx.uuid_ptr = reinterpret_cast<uint64_t>(xclbinId);
+  ctx.uuid_size = sizeof (uuid_t) * sizeof (char);
+  ctx.graph_id = graphId;
+  ctx.flags = flags;
+  ctx.op = ZOCL_CTX_OP_ALLOC_GRAPH_CTX;
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret ? -errno : ret;
+}
+
+int
+shim::
+closeGraphContext(unsigned int graphId)
+{
+  int ret;
+
+  drm_zocl_ctx ctx = {0};
+  ctx.graph_id = graphId;
+  ctx.op = ZOCL_CTX_OP_FREE_GRAPH_CTX;
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret ? -errno : ret;
+}
+
+int
+shim::
+openAIEContext(xrt::aie::access_mode am)
+{
+  unsigned int flags;
+  int ret;
+
+  switch (am) {
+
+  case xrt::aie::access_mode::exclusive:
+    flags = ZOCL_CTX_EXCLUSIVE;
+    break;
+
+  case xrt::aie::access_mode::primary:
+    flags = ZOCL_CTX_PRIMARY;
+    break;
+
+  case xrt::aie::access_mode::shared:
+    flags = ZOCL_CTX_SHARED;
+    break;
+
+  default:
+    return -EINVAL;
+  }
+
+  drm_zocl_ctx ctx = {0};
+  ctx.flags = flags;
+  ctx.op = ZOCL_CTX_OP_ALLOC_AIE_CTX;
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret ? -errno : ret;
+}
+
+xrt::aie::access_mode
+shim::
+getAIEAccessMode()
+{
+  return access_mode;
+}
+
+void
+shim::
+setAIEAccessMode(xrt::aie::access_mode am)
+{
+  access_mode = am;
+}
+
 #endif
 
 } // end namespace ZYNQ
@@ -1493,22 +1582,26 @@ xclProbe()
   if (fd < 0) {
     return 0;
   }
+  std::vector<char> name(128,0);
+  std::vector<char> desc(512,0);
+  std::vector<char> date(128,0);
   drm_version version;
   std::memset(&version, 0, sizeof(version));
-  version.name = new char[128];
+  version.name = name.data();
   version.name_len = 128;
-  version.desc = new char[512];
+  version.desc = desc.data();
   version.desc_len = 512;
-  version.date = new char[128];
+  version.date = date.data();
   version.date_len = 128;
 
   int result = ioctl(fd, DRM_IOCTL_VERSION, &version);
-  if (result)
+  if (result) {
+    close(fd);
     return 0;
+  }
 
   result = std::strncmp(version.name, "zocl", 4);
   close(fd);
-
   return (result == 0) ? 1 : 0;
 }
 #endif
@@ -1725,8 +1818,8 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
 #ifndef __HWEM__
-    xdphal::flush_device(handle) ;
-    xdpaie::flush_aie_device(handle) ;
+    xdp::hal::flush_device(handle) ;
+    xdp::aie::flush_device(handle) ;
 #endif
 
 
@@ -1767,9 +1860,9 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     }
 
 #ifndef __HWEM__
-    xdphal::update_device(handle) ;
-    xdpaie::update_aie_device(handle);
-    xdpaiectr::update_aie_device(handle);
+    xdp::hal::update_device(handle) ;
+    xdp::aie::update_device(handle);
+    xdp::aie::ctr::update_device(handle);
 
     START_DEVICE_PROFILING_CB(handle);
 #endif

@@ -30,7 +30,7 @@ namespace xdp {
                        uint64_t deviceIndex);
     ~NOCProfilingWriter();
 
-    virtual void write(bool openNewFile);
+    virtual bool write(bool openNewFile);
     
   private:
     double mSamplePeriod;

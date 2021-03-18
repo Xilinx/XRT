@@ -17,23 +17,27 @@
 #include "plugin/xdp/power_profile.h"
 #include "core/common/module_loader.h"
 
-namespace xdppowerprofile {
+namespace xdp {
+namespace power {
+namespace profile {
 
-  void load_xdp_power_plugin()
+  void load()
   {
     static xrt_core::module_loader xdp_power_loader("xdp_power_plugin",
-						    register_power_callbacks,
-						    warning_power_callbacks) ;
+						    register_callbacks,
+						    warning_callbacks) ;
   }
 
-  void register_power_callbacks(void* /*handle*/)
+  void register_callbacks(void* /*handle*/)
   {
     // No callbacks in power profiling.  The plugin is always active
   }
 
-  void warning_power_callbacks()
+  void warning_callbacks()
   {
     // No warnings for power profiling
   }
 
-} // end namespace xdppowerprofile
+} // end namespace profile
+} // end namespace power
+} // end namespace xdp

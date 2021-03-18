@@ -98,9 +98,7 @@ clEnqueueReadBuffer(cl_command_queue   command_queue,
   xocl::enqueue::set_event_action(uevent.get(),xocl::enqueue::action_read_buffer,buffer,offset,size,ptr);
   xocl::profile::set_event_action(uevent.get(), xocl::profile::action_read, buffer) ;
   xocl::profile::counters::set_event_action(uevent.get(), xocl::profile::counter_action_read, buffer) ;
-#ifndef _WIN32
   xocl::lop::set_event_action(uevent.get(), xocl::lop::action_read);
-#endif
   xocl::appdebug::set_event_action(uevent.get(),xocl::appdebug::action_readwrite,buffer,offset,size,ptr);
  
   uevent->queue();

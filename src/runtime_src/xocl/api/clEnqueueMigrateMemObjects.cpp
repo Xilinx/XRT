@@ -96,9 +96,7 @@ clEnqueueMigrateMemObjects(cl_command_queue        command_queue ,
     (uevent.get(),xocl::enqueue::action_migrate_memobjects,num_mem_objects,mem_objects,flags);
   xocl::profile::set_event_action(uevent.get(), xocl::profile::action_migrate, num_mem_objects > 0 ? mem_objects[0] : nullptr, flags);
   xocl::profile::counters::set_event_action(uevent.get(), xocl::profile::counter_action_migrate, num_mem_objects, mem_objects, flags) ;
-#ifndef _WIN32
   xocl::lop::set_event_action(uevent.get(), xocl::lop::action_migrate, flags);
-#endif
   xocl::appdebug::set_event_action
     (uevent.get(),xocl::appdebug::action_migrate,num_mem_objects,mem_objects,flags);
 

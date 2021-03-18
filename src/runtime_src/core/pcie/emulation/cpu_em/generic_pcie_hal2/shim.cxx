@@ -525,10 +525,13 @@ namespace xclcpuemhal2 {
       //parse header
       char *sharedlib = nullptr;
       int sharedliblength = 0;
-      char* memTopology = nullptr;
-      size_t memTopologySize = 0;
-      char* emuData = nullptr;
+      std::unique_ptr<char[]> memTopology;
+      size_t memTopologySize = 0;    
+      std::unique_ptr<char[]> emuData;
       size_t emuDataSize = 0;
+      std::unique_ptr<char[]> connectvitybuf;
+      ssize_t connectvitybufsize = 0;
+     
       //check header
       if (!memcmp(xclbininmemory, "xclbin0", 8))
       {
@@ -545,15 +548,21 @@ namespace xclcpuemhal2 {
           sharedliblength = sec->m_sectionSize;
         }
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY)) {
-          memTopologySize = sec->m_sectionSize;
-          memTopology = new char[memTopologySize];
-          memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);
+          memTopologySize = sec->m_sectionSize;        
+          memTopology = std::unique_ptr<char[]>(new char[memTopologySize]);
+          memcpy(memTopology.get(), xclbininmemory + sec->m_sectionOffset, memTopologySize);
         }
         //Extract EMULATION_DATA from XCLBIN       
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, EMULATION_DATA)) {
-          emuDataSize = sec->m_sectionSize;
-          emuData = new char[emuDataSize];
-          memcpy(emuData, xclbininmemory + sec->m_sectionOffset, emuDataSize);
+          emuDataSize = sec->m_sectionSize;        
+          emuData = std::unique_ptr<char[]>(new char[emuDataSize]);
+          memcpy(emuData.get(), xclbininmemory + sec->m_sectionOffset, emuDataSize);
+        }
+	      //Extract CONNECTIVITY section from XCLBIN       
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, CONNECTIVITY)) {
+          connectvitybufsize = sec->m_sectionSize;       
+          connectvitybuf = std::unique_ptr<char[]>(new char[connectvitybufsize]);
+          memcpy(connectvitybuf.get(), xclbininmemory + sec->m_sectionOffset, connectvitybufsize);
         }
       }
       else
@@ -590,30 +599,32 @@ namespace xclcpuemhal2 {
         if( !fp )
         {
           if(mLogStream.is_open()) mLogStream << __func__ << " failed to create temporary dlopen file" << std::endl;
-
-          if(memTopology)
-          {
-            delete []memTopology;
-            memTopology = NULL;
-          }
           return -1;
         }
         fwrite(sharedlib,sharedliblength,1,fp);
         fflush(fp);
         fclose(fp);
       }
-      if(memTopology)
+      if (memTopology && connectvitybuf)
       {
-        const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology));
-        if(m_mem)
+        auto m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology.get()));
+        auto m_conn = (reinterpret_cast<const ::connectivity*>(connectvitybuf.get()));
+        if (m_mem && m_conn)
         {
-          uint64_t argNum = 0;
+          //uint64_t argNum = 0;
           uint64_t prev_instanceBaseAddr = ULLONG_MAX;
           std::map<uint64_t, std::pair<uint64_t,std::string> > argFlowIdMap;
-          for (int32_t i=0; i<m_mem->m_count; ++i)
+          for (int32_t conn_idx = 0; conn_idx<m_conn->m_count; ++conn_idx)
           {
-            uint64_t flow_id =m_mem->m_mem_data[i].flow_id;//base address + flow_id combo
+            int32_t memdata_idx = m_conn->m_connection[conn_idx].mem_data_index;
+            if (memdata_idx >(m_mem->m_count - 1))
+              return -1;
+            uint64_t route_id = m_mem->m_mem_data[memdata_idx].route_id;
+            uint64_t arg_id = m_conn->m_connection[conn_idx].arg_index;
+            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo 
             uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
+            if (mLogStream.is_open())
+              mLogStream << __func__ << " flow_id : " << flow_id << " route_id : " << route_id << " inst addr : " << instanceBaseAddr << " arg_id : " << arg_id << std::endl;
             if(prev_instanceBaseAddr != ULLONG_MAX && instanceBaseAddr != prev_instanceBaseAddr)
             {
               //RPC CALL
@@ -624,17 +635,18 @@ namespace xclcpuemhal2 {
                 mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr <<" success "<< success << std::endl;
 
               argFlowIdMap.clear();
-              argNum = 0;
+              //argNum = 0;
             }
-            if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
+            if(m_mem->m_mem_data[memdata_idx].m_type == MEM_TYPE::MEM_STREAMING)
             {
-              std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag));
+              std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[memdata_idx].m_tag));
               std::pair<uint64_t,std::string> mPair;
               mPair.first  = flow_id;
               mPair.second = m_tag;
-              argFlowIdMap[argNum] = mPair;
+              argFlowIdMap[arg_id] = mPair;
+              //argFlowIdMap[argNum] = mPair;
             }
-            argNum++;
+            //argNum++;
             prev_instanceBaseAddr = instanceBaseAddr;
           }
           bool success = false;
@@ -643,8 +655,6 @@ namespace xclcpuemhal2 {
           if(mLogStream.is_open())
             mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr <<" success "<< success << std::endl;
         }
-        delete []memTopology;
-        memTopology = NULL;
       }
 
       //check xclbin version with vivado tool version
@@ -658,22 +668,13 @@ namespace xclcpuemhal2 {
       }
 
       //Extract EMULATION_DATA from XCLBIN
-      if ((emuData != nullptr) && (emuDataSize > 1)) {
-        std::unique_ptr<char[]> emuDataFileName(new char[1024]);
-#ifndef _WINDOWS
-        // TODO: Windows build support
-        // getpid is defined in unistd.h
-        std::sprintf(emuDataFileName.get(), "%s/emuDataFile", binaryDirectory.c_str());
-#endif
-        std::ofstream os(emuDataFileName.get());
-        os.write(emuData, emuDataSize);
-        os.close();
-        std::string emuDataFilePath(emuDataFileName.get());
-        systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, boost::lexical_cast<std::string>(__LINE__));
-        systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
-        
-        delete[]emuData;
-        emuData = NULL;
+      if (emuData && (emuDataSize > 1)) {
+        std::string emuDataFilePath = binaryDirectory + "/emuDataFile";
+        std::ofstream os(emuDataFilePath);
+        os.write(emuData.get(), emuDataSize);             
+        std::cout << "emuDataFilePath : " << emuDataFilePath << std::endl;
+        systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, std::to_string(__LINE__));
+        systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
       }
 
       bool ack = true;

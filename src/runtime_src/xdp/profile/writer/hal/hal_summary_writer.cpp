@@ -28,7 +28,7 @@ namespace xdp {
   {
   }
 
-  void HALSummaryWriter::write(bool openNewFile)
+  bool HALSummaryWriter::write(bool openNewFile)
   {
     fout << "Call Count" << std::endl ;
     (db->getStats()).dumpCallCount(fout) ;
@@ -37,6 +37,7 @@ namespace xdp {
     (db->getStats()).dumpHALMemory(fout) ;
 
     if (openNewFile) switchFiles() ;
+    return true;
   }
   
 }

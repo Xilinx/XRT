@@ -185,7 +185,7 @@ namespace xdp {
              std::vector<std::pair<double, double>>> callCount ;
 
     // **** User Level Event Statistics ****
-    std::map<const char*, uint64_t> eventCounts ;
+    std::map<std::string, uint64_t> eventCounts ;
     std::map<std::pair<const char*, const char*>, uint64_t> rangeCounts ;
     std::map<std::pair<const char*, const char*>, uint64_t> minRangeDurations ;
     std::map<std::pair<const char*, const char*>, uint64_t> maxRangeDurations ;
@@ -243,6 +243,8 @@ namespace xdp {
 
     // Since the host code can be multithreaded, we must protect 
     //  the data
+    std::mutex readsLock ;
+    std::mutex writesLock ;
     std::mutex dbLock ;
 
     // Helper functions for OpenCL
@@ -318,7 +320,7 @@ namespace xdp {
     XDP_EXPORT void addEventCount(const char* label);
     XDP_EXPORT void addRangeCount(std::pair<const char*, const char*> desc);
     XDP_EXPORT void recordRangeDuration(std::pair<const char*, const char*> desc, uint64_t duration) ;
-    inline std::map<const char*, uint64_t>& getEventCounts()
+    inline std::map<std::string, uint64_t>& getEventCounts()
       { return eventCounts; }
     inline std::map<std::pair<const char*, const char*>, uint64_t>&
     getRangeCounts()

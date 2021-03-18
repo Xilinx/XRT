@@ -17,12 +17,16 @@
 #ifndef AIE_PROFILE_DOT_H
 #define AIE_PROFILE_DOT_H
 
-namespace xdpaieprofile {
+namespace xdp {
+namespace aie {
+namespace profile {
 
-  void load_xdp_aie_plugin();
-  void register_aie_callbacks(void* handle);
-  void warning_aie_callbacks();
+  void load();
+  void register_callbacks(void* handle);
+  void warning_callbacks();
 
-} // end namespace xdpaieprofile
+} // end namespace profile
+} // end namespace aie
+} // end namespace xdp
 
 #endif

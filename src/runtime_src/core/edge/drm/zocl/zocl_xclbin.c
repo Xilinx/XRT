@@ -78,10 +78,10 @@ zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length)
 	}
 
 	/* Freeze PR ISOLATION IP for bitstream download */
-	iowrite32(0x0, map);
+	iowrite32(zdev->pr_isolation_freeze, map);
 	err = zocl_fpga_mgr_load(zdev, buffer, length, FPGA_MGR_PARTIAL_RECONFIG);
 	/* Unfreeze PR ISOLATION IP */
-	iowrite32(0x3, map);
+	iowrite32(zdev->pr_isolation_unfreeze, map);
 
 	iounmap(map);
 	return err;
@@ -888,6 +888,74 @@ int zocl_unlock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id)
 	mutex_unlock(&zdev->zdev_xclbin_lock);
 
 	return ret;
+}
+
+int
+zocl_graph_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	xuid_t *zdev_xuid, *ctx_xuid;
+	u32 gid = ctx->graph_id;
+	u32 flags = ctx->flags;
+	int ret;
+
+	mutex_lock(&zdev->zdev_xclbin_lock);
+
+	ctx_xuid = vmalloc(ctx->uuid_size);
+	if (!ctx_xuid) {
+		mutex_unlock(&zdev->zdev_xclbin_lock);
+		return -ENOMEM;
+	}
+
+	ret = copy_from_user(ctx_xuid, (void *)(uintptr_t)ctx->uuid_ptr,
+	    ctx->uuid_size);
+	if (ret)
+		goto out;
+
+	zdev_xuid = (xuid_t *)zdev->zdev_xclbin->zx_uuid;
+
+	if (!zdev_xuid || !uuid_equal(zdev_xuid, ctx_xuid)) {
+		DRM_ERROR("try to allocate Graph CTX with wrong xclbin %pUB",
+		    ctx_xuid);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = zocl_aie_graph_alloc_context(zdev, gid, flags, client);
+out:
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+	vfree(ctx_xuid);
+	return ret;
+}
+
+int
+zocl_graph_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	u32 gid = ctx->graph_id;
+	int ret;
+
+	mutex_lock(&zdev->zdev_xclbin_lock);
+	ret = zocl_aie_graph_free_context(zdev, gid, client);
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+
+	return ret;
+}
+
+int
+zocl_aie_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	u32 flags = ctx->flags;
+
+	return zocl_aie_alloc_context(zdev, flags, client);
+}
+
+int
+zocl_aie_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	return zocl_aie_free_context(zdev, client);
 }
 
 /* TODO: remove this once new KDS is ready */

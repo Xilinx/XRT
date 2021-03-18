@@ -396,3 +396,85 @@ message xclPerfMonReadTrace_Streaming_response {
   }
   repeated events output_data = 8;
 }
+
+//Added these messages for supporting Interrupts and Slave interfaces
+message xclSlaveReadReq_call {
+     required uint64 addr = 1;
+     required uint32 size = 2;
+}
+message xclSlaveReadReq_response {
+     required bool valid = 1;
+     required bytes data = 2;
+}
+message xclSlaveWriteReq_call {
+     required uint64 addr = 1;
+     required uint32 size = 2;
+     required bytes data = 3;
+}
+message xclSlaveWriteReq_response {
+     required bool valid = 1;
+}
+message xclInterruptOccured_call {
+     required uint32 interrupt_line = 1;
+}
+message xclInterruptOccured_response {
+     required bool valid = 1;
+}
+//----------------calls for XRT Graph API's--------------------------
+
+//xclGraphInit
+message xclGraphInit_call {
+  required uint32 gh = 2;
+  required bytes  graphname = 3;
+}
+message xclGraphInit_response {
+     required bool ack = 1;
+}
+
+//xclGraphRun
+message xclGraphRun_call {
+  required uint32 gh = 2;
+  required uint32 iterations = 3 ;
+}
+message xclGraphRun_response {
+     required bool ack = 1;
+}
+
+//xclGraphWait
+message xclGraphWait_call {
+  required uint32 gh = 2;  
+}
+message xclGraphWait_response {
+     required bool ack = 1;
+}
+
+//xclGraphEnd
+message xclGraphEnd_call {
+  required uint32 gh = 2;  
+}
+message xclGraphEnd_response {
+     required bool ack = 1;
+}
+
+//xclGraphUpdateRTP
+message xclGraphUpdateRTP_call {
+  required uint32 gh = 2;  
+  required bytes  portname = 3;
+  required bytes  buffer = 4;
+  required uint64 size = 5;
+}
+message xclGraphUpdateRTP_response {
+     required uint64 size = 1;
+}
+
+//xclGraphReadRTP
+message xclGraphReadRTP_call {
+  required uint32 gh = 2;  
+  required bytes  portname = 3;
+  required bytes  buffer = 4;
+  required uint64 size = 5;
+}
+message xclGraphReadRTP_response {
+     required uint64 size = 1;
+     required bytes buffer = 2;
+}

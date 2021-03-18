@@ -47,7 +47,8 @@ namespace xdp {
   void HALDeviceTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "XRT  Version," << xrtVersion  << std::endl
+    fout << "TraceID," << traceID << std::endl
+         << "XRT  Version," << xrtVersion  << std::endl
          << "Tool Version," << toolVersion << std::endl
          << "Platform," << (db->getStaticInfo()).getDeviceName(deviceId) << std::endl
          << "Target,System Run" << std::endl;    // hardcoded for now
@@ -249,7 +250,7 @@ namespace xdp {
     // No dependencies in device events
   }
 
-  void HALDeviceTraceWriter::write(bool openNewFile)
+  bool HALDeviceTraceWriter::write(bool openNewFile)
   {
     writeHeader() ;
     fout << std::endl ;
@@ -263,6 +264,7 @@ namespace xdp {
     fout << std::endl ;
 
     if (openNewFile) switchFiles() ;
+    return true;
   }
 
 } // end namespace xdp

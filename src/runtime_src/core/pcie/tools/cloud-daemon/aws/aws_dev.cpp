@@ -475,38 +475,32 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
 #else
     int retVal = 0;
     axlf *axlfbuffer = reinterpret_cast<axlf*>(const_cast<xclBin*> (buffer));
-    fpga_mgmt_image_info orig_info;
     char* afi_id = get_afi_from_axlf(axlfbuffer);
+    union fpga_mgmt_load_local_image_options opt;
 
     if (!afi_id)
         return -EINVAL;
 
-    std::memset(&orig_info, 0, sizeof(struct fpga_mgmt_image_info));
-    fpga_mgmt_describe_local_image(mBoardNumber, &orig_info, 0);
-    
-    if (checkAndSkipReload(afi_id, &orig_info)) {
-        // force data retention option
-        union fpga_mgmt_load_local_image_options opt;
-        fpga_mgmt_init_load_local_image_options(&opt);
-        opt.flags = FPGA_CMD_DRAM_DATA_RETENTION;
-        opt.afi_id = afi_id;
-        opt.slot_id = mBoardNumber;
-        retVal = fpga_mgmt_load_local_image_with_options(&opt);
-        if (retVal == FPGA_ERR_DRAM_DATA_RETENTION_NOT_POSSIBLE ||
-            retVal == FPGA_ERR_DRAM_DATA_RETENTION_FAILED ||
-            retVal == FPGA_ERR_DRAM_DATA_RETENTION_SETUP_FAILED) {
-            std::cout << "INFO: Could not load AFI for data retention, code: " << retVal 
-                      << " - Loading in classic mode." << std::endl;
-            retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
-        }
-        // check retVal from image load
-        if (retVal) {
-            std::cout << "Failed to load AFI, error: " << retVal << std::endl;
-            return -retVal;
-        }
-        retVal = sleepUntilLoaded( std::string(afi_id) );
+    // force data retention option
+    fpga_mgmt_init_load_local_image_options(&opt);
+    opt.flags = FPGA_CMD_DRAM_DATA_RETENTION;
+    opt.afi_id = afi_id;
+    opt.slot_id = mBoardNumber;
+    retVal = fpga_mgmt_load_local_image_with_options(&opt);
+    if (retVal == FPGA_ERR_DRAM_DATA_RETENTION_NOT_POSSIBLE ||
+        retVal == FPGA_ERR_DRAM_DATA_RETENTION_FAILED ||
+        retVal == FPGA_ERR_DRAM_DATA_RETENTION_SETUP_FAILED) {
+        std::cout << "INFO: Could not load AFI for data retention, code: " << retVal 
+                  << " - Loading in classic mode." << std::endl;
+        retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
     }
-    return retVal;
+    // check retVal from image load
+    if (retVal) {
+        std::cout << "Failed to load AFI, error: " << retVal << std::endl;
+        return -retVal;
+    }
+
+    return sleepUntilLoaded( std::string(afi_id) );
 #endif
 }
 
@@ -710,49 +704,6 @@ int AwsDev::sleepUntilLoaded( const std::string &afi )
         }
     }
     return 0;
-}
-
-int AwsDev::checkAndSkipReload( char *afi_id, fpga_mgmt_image_info *orig_info )
-{
-    if( (orig_info->status == FPGA_STATUS_LOADED) && !std::strcmp(orig_info->ids.afi_id, afi_id) ) {
-        std::cout << "This AFI already loaded. Skip reload!" << std::endl;
-        int result = 0;
-        //existing afi matched.
-        uint16_t status = 0;
-        result = fpga_mgmt_get_vDIP_status(mBoardNumber, &status);
-        if(result) {
-            std::cout << "Error: can not get virtual DIP Switch state" << std::endl;
-            return result;
-        }
-        //Set bit 0 to 1
-        status |=  (1 << 0);
-        result = fpga_mgmt_set_vDIP(mBoardNumber, status);
-        if(result) {
-            std::cout << "Error trying to set virtual DIP Switch" << std::endl;
-            return result;
-        }
-        std::this_thread::sleep_for(std::chrono::microseconds(250));
-        //pulse the changes in.
-        result = fpga_mgmt_get_vDIP_status(mBoardNumber, &status);
-        if(result) {
-            std::cout << "Error: can not get virtual DIP Switch state" << std::endl;
-            return result;
-        }
-        //Set bit 0 to 0
-        status &=  ~(1 << 0);
-        result = fpga_mgmt_set_vDIP(mBoardNumber, status);
-        if(result) {
-            std::cout << "Error trying to set virtual DIP Switch" << std::endl;
-            return result;
-        }
-        std::this_thread::sleep_for(std::chrono::microseconds(250));
-        
-        std::cout << "Successfully skipped reloading of local image." << std::endl;
-        return result;
-    } else {
-        std::cout << "AFI not yet loaded, proceed to download." << std::endl;
-        return 1;
-    }
 }
 
 char *AwsDev::get_afi_from_axlf(const axlf *buffer)

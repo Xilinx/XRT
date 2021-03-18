@@ -47,7 +47,7 @@ namespace xdp {
     } else if(xdp::getFlowMode() == xdp::HW_EMU) {
       targetRun = "Hardware Emulation";
     }
-    fout << "TraceID," << deviceId << std::endl
+    fout << "TraceID," << traceID << std::endl
          << "XRT  Version," << xrtVersion  << std::endl
          << "Tool Version," << toolVersion << std::endl
          << "Platform," << (db->getStaticInfo()).getDeviceName(deviceId) << std::endl
@@ -355,8 +355,17 @@ namespace xdp {
     // No dependencies in device events
   }
 
-  void DeviceTraceWriter::write(bool openNewFile)
+  bool DeviceTraceWriter::traceEventsExist()
   {
+    return (db->getDynamicInfo()).deviceEventsExist(deviceId);
+  }
+
+  bool DeviceTraceWriter::write(bool openNewFile)
+  {
+    if (openNewFile && !traceEventsExist()) {
+      return false;
+    }
+
     initialize() ;
 
     writeHeader() ;
@@ -371,6 +380,7 @@ namespace xdp {
     fout << std::endl ;
 
     if (openNewFile) switchFiles() ;
+    return true;
   }
 
   void DeviceTraceWriter::initialize()

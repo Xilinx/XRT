@@ -1,19 +1,13 @@
+#include "plugin/xdp/plugin_loader.h"
 #include "plugin/xdp/hal_profile.h"
-#include "plugin/xdp/hal_device_offload.h"
-#include "plugin/xdp/aie_profile.h"
-#include "plugin/xdp/noc_profile.h"
-#include "plugin/xdp/power_profile.h"
-#include "plugin/xdp/aie_trace.h"
-#include "plugin/xdp/vart_profile.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
-#include "core/common/config_reader.h"
-#include "core/common/message.h"
 #include "core/common/dlfcn.h"
 
 namespace bfs = boost::filesystem;
 
-namespace xdphal {
+namespace xdp {
+namespace hal {
 
 std::function<void(unsigned, void*)> cb ;
 
@@ -27,37 +21,8 @@ CallLogger::CallLogger(uint64_t id)
            : m_local_idcode(id)
 {
   if (hal_plugins_loaded) return ;
-
   hal_plugins_loaded = true ;
-
-  // This hook is responsible for loading all of the HAL level plugins
-  if (xrt_core::config::get_xrt_trace()) {
-    load_xdp_plugin_library(nullptr) ;
-  }
-
-  if (xrt_core::config::get_data_transfer_trace() != "off") {
-    xdphaldeviceoffload::load_xdp_hal_device_offload() ;
-  }
-
-  if (xrt_core::config::get_aie_profile()) {
-    xdpaieprofile::load_xdp_aie_plugin() ;
-  }
-
-  if (xrt_core::config::get_noc_profile()) {
-    xdpnocprofile::load_xdp_noc_plugin() ;
-  }
-
-  if (xrt_core::config::get_power_profile()) {
-    xdppowerprofile::load_xdp_power_plugin() ;
-  }
-
-  if (xrt_core::config::get_aie_trace()) {
-    xdpaietrace::load_xdp_aie_trace_plugin() ;
-  }
-
-  if (xrt_core::config::get_vitis_ai_profile()) {
-    xdpvartprofile::load_xdp_vart_plugin() ;
-  }
+  xdp::hal_hw_plugins::load() ;
 }
 
 CallLogger::~CallLogger()
@@ -490,7 +455,7 @@ LoadXclbinCallLogger::~LoadXclbinCallLogger()
 }
 
   // The registration function
-  void register_hal_callbacks(void* handle)
+  void register_callbacks(void* handle)
   {
     typedef void(*ftype)(unsigned, void*) ;
     cb = (ftype)(xrt_core::dlsym(handle, "hal_level_xdp_cb_func")) ;
@@ -498,22 +463,16 @@ LoadXclbinCallLogger::~LoadXclbinCallLogger()
   }
 
   // The warning function
-  void warning_hal_callbacks()
+  void warning_callbacks()
   {
-    if(xrt_core::config::get_profile()) {
-      // "profile=true" is also set. This enables OpenCL based flow for profiling. 
-      // Currently, mix of OpenCL and HAL based profiling is not supported.
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                std::string("Both profile=true and xrt_profile=true set in xrt.ini config. Currently, these flows are not supported to work together."));
-      return;
-    }
   }
 
-void load_xdp_plugin_library(HalPluginConfig* )
-{
-  static xrt_core::module_loader xdp_hal_loader("xdp_hal_plugin",
-						register_hal_callbacks,
-						warning_hal_callbacks) ;
-}
+  void load()
+  {
+    static xrt_core::module_loader xdp_hal_loader("xdp_hal_plugin",
+                                                  register_callbacks,
+                                                  warning_callbacks) ;
+  }
 
-}
+} // end namespace hal
+} // end namespace xdp

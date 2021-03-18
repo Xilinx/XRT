@@ -91,7 +91,7 @@ namespace xdp {
     XDP_EXPORT OpenCLSummaryWriter(const char* filename) ;
     XDP_EXPORT ~OpenCLSummaryWriter() ;
 
-    XDP_EXPORT virtual void write(bool openNewFile) ;
+    XDP_EXPORT virtual bool write(bool openNewFile) ;
   } ;
 
 } // end namespace xdp

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  * Author(s): Larry Liu
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
@@ -28,6 +28,8 @@
 #ifdef __cplusplus
 
 namespace xrt { namespace aie {
+
+enum class access_mode : uint8_t { exclusive = 0, primary = 1, shared = 2, none = 3 };
 
 class device : public xrt::device
 {
@@ -112,6 +114,54 @@ public:
 extern "C" {
 
 #endif
+
+/**
+ * xrtAIEOpen() - Open a device with AIE and obtain its handle
+ *
+ * @index:          Device index
+ * Return:          0 on success, or appropriate error number.
+ *
+ * There are three supported AIE context
+ * 1) exclusive: Can fully access AIE array. At any time, there can be only
+ *               one exclusive context. If an exclusive context is opened,
+ *               no other context can be opened.
+ * 2) primary:   Can fully access AIE array. At any time, there can be only
+ *               one primary context. If a primary context is opened, only
+ *               shared context can be opened by other process.
+ * 3) shared:    Can do non-disruptive acc on AIE (monitor, stateless
+ *               operation, etc.). There can be multiple shared context
+ *               at the same time.
+ *
+ * This API will open AIE device with primary access.
+ *
+ * Note: If application does not call xrtAIEDeviceOpenXXX to obtain device
+ *       handle, by default, we will try to acquire primary context when
+ *       it tries to access AIE array through XRT APIs.
+ */
+xrtDeviceHandle
+xrtAIEDeviceOpen(unsigned int index);
+
+/**
+ * xrtAIEOpenExclusive() - Open a device with AIE and obtain its handle
+ *
+ * @index:          Device index
+ * Return:          0 on success, or appropriate error number.
+ *
+ * This API will open AIE device with exclusive access.
+ */
+xrtDeviceHandle
+xrtAIEDeviceOpenExclusive(unsigned int index);
+
+/**
+ * xrtAIEOpenShared() - Open a device with AIE and obtain its handle
+ *
+ * @index:          Device index
+ * Return:          0 on success, or appropriate error number.
+ *
+ * This API will open AIE device with shared access.
+ */
+xrtDeviceHandle
+xrtAIEDeviceOpenShared(unsigned int index);
 
 /**
  * xrtAIESyncBO() - Transfer data between DDR and Shim DMA channel

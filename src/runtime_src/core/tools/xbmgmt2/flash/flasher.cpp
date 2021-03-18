@@ -121,7 +121,17 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     }
     case QSPIPS:
     {
-        std::cout << "ERROR: QSPIPS mode is no longer supported." << std::endl;
+        XQSPIPS_Flasher xqspi_ps(m_device);
+        if (primary == nullptr)
+        {
+            retVal = xqspi_ps.revertToMFG();
+        }
+        else
+        {
+	    if(secondary != nullptr)
+            	std::cout << "Warning: QSPIPS mode does not support secondary file." << std::endl;
+            retVal = xqspi_ps.xclUpgradeFirmware(*primary);
+        }
         break;
     }
     case OSPIVERSAL:
@@ -196,6 +206,8 @@ int Flasher::getBoardInfo(BoardInfo& board)
 
     std::string unassigned_mac = "FF:FF:FF:FF:FF:FF";
     board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
+    if (flasher.fixedSC())
+        board.mBMCVer += "(FIXED)";
     board.mConfigMode = info.find(BDINFO_CONFIG_MODE) != info.end() ?
         info[BDINFO_CONFIG_MODE][0] : '\0';
     board.mFanPresence = info.find(BDINFO_FAN_PRESENCE) != info.end() ?

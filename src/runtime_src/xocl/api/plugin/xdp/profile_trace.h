@@ -20,6 +20,18 @@
 #include "xocl/core/device.h"
 #include "xocl/core/event.h"
 
+namespace xdp {
+
+namespace opencl_trace {
+  void load() ;
+} // end namespace opencl_trace
+
+namespace device_offload {
+  void load() ;
+} // end namespace device_offload
+
+} // end namespace xdp
+
 namespace xocl {
   namespace profile {
 

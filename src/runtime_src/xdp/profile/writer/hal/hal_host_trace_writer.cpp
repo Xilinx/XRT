@@ -36,7 +36,8 @@ namespace xdp {
   void HALHostTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "XRT  Version," << xrtVersion  << std::endl
+    fout << "TraceID," << traceID << std::endl
+         << "XRT  Version," << xrtVersion  << std::endl
          << "Tool Version," << toolVersion << std::endl;
 
     //fout << "Profiled Application," << xdp::WriterI::getCurrentExecutableName() << std::endl; // check
@@ -98,7 +99,7 @@ namespace xdp {
     // No dependencies in HAL events
   }
 
-  void HALHostTraceWriter::write(bool openNewFile)
+  bool HALHostTraceWriter::write(bool openNewFile)
   {
     writeHeader() ;
     fout << std::endl ;
@@ -112,6 +113,7 @@ namespace xdp {
     fout << std::endl ;
 
     if (openNewFile) switchFiles() ;
+    return true;
   }
 
 }

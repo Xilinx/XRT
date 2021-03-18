@@ -282,7 +282,9 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     static const std::map<std::string, std::string> test_map = {
       { "22_verify.py",             "validate.exe"    },
       { "23_bandwidth.py",          "kernel_bw.exe"   },
-      { "host_mem_23_bandwidth.py", "slavebridge.exe" }
+      { "host_mem_23_bandwidth.py", "slavebridge.exe" },
+      { "xcl_vcu_test.exe",         "xcl_vcu_test.exe"},
+      { "xcl_iops_test.exe",        "xcl_iops_test.exe"}
     };
         
     if (test_map.find(py) == test_map.end()) {
@@ -310,13 +312,13 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     if (exit_code == EOPNOTSUPP) {
       _ptTest.put("status", "skipped");
     }
-    else if (exit_code == EXIT_FAILURE) {
+    else if (exit_code == EXIT_SUCCESS) {
+      _ptTest.put("status", "passed");
+    }
+    else {
       logger(_ptTest, "Error", os_stdout.str());
       logger(_ptTest, "Error", os_stderr.str());
       _ptTest.put("status", "failed");
-    }
-    else {
-      _ptTest.put("status", "passed");
     }
   }
   else {
@@ -334,8 +336,12 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
 
     std::vector<std::string> args = { "-k", xclbinPath, 
                                       "-d", std::to_string(_dev.get()->get_device_id()) };
-    
-    int exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
+    int exit_code;    
+    if (py.find(".exe")!=std::string::npos)
+      exit_code = XBU::runScript("", xrtTestCasePath, args, os_stdout, os_stderr);
+    else
+      exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
+
     if (exit_code == EOPNOTSUPP) {
       _ptTest.put("status", "skipped");
     }
@@ -355,6 +361,13 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     if (st != std::string::npos) {
       size_t end = os_stdout.str().find("\n", st);
       logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
+    }
+  }
+
+  if (py.compare("xcl_iops_test.exe") == 0) {
+    auto st = os_stdout.str().find("IOPS:");
+    if (st != std::string::npos) {
+      logger(_ptTest, "Details", os_stdout.str().substr(st));
     }
   }
 }
@@ -644,6 +657,7 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
   std::memset(ecmd, 0, bo_size);
   ecmd->opcode = opcode;
   ecmd->type = ERT_CTRL;
+  ecmd->count = 5;
 
   if (xclExecBuf(handle,boh)) {
       logger(_ptTest, "Error", "Couldn't map BO");
@@ -789,7 +803,7 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
     logger(_ptTest, "Warning", "SC firmware misatch");
     logger(_ptTest, "Warning", boost::str(boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.")
-                                          % sc_ver % exp_sc_ver % "Please use xbmgmt --new status to check the installed shell"));
+                                          % sc_ver % exp_sc_ver % "Please use xbmgmt examine to check the installed shell"));
   }
   _ptTest.put("status", "passed");
 }
@@ -1032,21 +1046,39 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
   if (!ert_validate(_dev, _dev->get_device_handle(), _ptTest))
     _ptTest.put("status", "failed");
 
+  runTestCase(_dev, "xcl_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
 
   _ptTest.put("status", "passed");
-
 }
 
+/*
+ * TEST #11
+ */
+void
+vcuKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+  runTestCase(_dev, "xcl_vcu_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+/*
+ * TEST #12
+ */
+void
+iopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+    runTestCase(_dev, "xcl_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
 
 /*
 * helper function to initialize test info
 */
 static boost::property_tree::ptree
-create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin) {
+create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin, bool is_explicit = false) {
   boost::property_tree::ptree _ptTest;
   _ptTest.put("name", name);
   _ptTest.put("description", desc);
   _ptTest.put("xclbin", xclbin);
+  _ptTest.put("explicit", is_explicit);
   return _ptTest;
 }
 
@@ -1064,11 +1096,13 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("SC version", "Check if SC firmware is up-to-date", ""), scVersionTest },
   { create_init_test("Verify kernel", "Run 'Hello World' kernel test", "verify.xclbin"), verifyKernelTest },
   { create_init_test("DMA", "Run dma test", "verify.xclbin"), dmaTest },
+  { create_init_test("iops", "Run xcl_iops test", "verify.xclbin"), iopsTest },
   { create_init_test("Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
   { create_init_test("Peer to peer bar", "Run P2P test", "bandwidth.xclbin"), p2pTest },
   { create_init_test("Memory to memory DMA", "Run M2M test", "bandwidth.xclbin"), m2mTest },
   { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
-  { create_init_test("bist", "Run BIST test", "verify.xclbin"), bistTest }
+  { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
+  { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest }
 };
 
 /*
@@ -1243,7 +1277,7 @@ run_tests_on_devices( xrt_core::device_collection &deviceCollection,
 
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("validate",
-             "Validates the basic shell accelleration functionality")
+             "Validates the basic shell acceleration functionality")
 {
   const std::string longDescription = "Validates the given card by executing the platform's validate executable.";
   setLongDescription(longDescription);
@@ -1398,6 +1432,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   for (unsigned index = 0; index < testSuite.size(); ++index) {
     if (testsToRun[0] == "all") {
+      if(testSuite[index].ptTest.get<bool>("explicit"))
+        continue;
       testObjectsToRun.push_back(&testSuite[index]);
       continue;
     }

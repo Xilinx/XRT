@@ -21,11 +21,11 @@
 //  linked in.  XRT should call them directly.
 extern "C" 
 void lop_function_start(const char* functionName, long long queueAddress, 
-			unsigned int functionID);
+			unsigned long long int functionID);
 
 extern "C"
 void lop_function_end(const char* functionName, long long queueAddress,
-		      unsigned int functionID);
+		      unsigned long long int functionID);
 
 extern "C"
 void lop_read(unsigned int XRTEventId, bool isStart) ;

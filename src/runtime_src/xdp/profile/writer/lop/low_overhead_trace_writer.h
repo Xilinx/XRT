@@ -36,6 +36,7 @@ namespace xdp {
     int enqueueBucket ;
 
     void setupBuckets() ;
+    bool traceEventsExist();
 
     void writeHumanReadableHeader() ;
     void writeHumanReadableStructure() ;
@@ -62,7 +63,7 @@ namespace xdp {
     LowOverheadTraceWriter(const char* filename) ;
     ~LowOverheadTraceWriter() ;
 
-    virtual void write(bool openNewFile) ;
+    virtual bool write(bool openNewFile) ;
   } ;
 
 }

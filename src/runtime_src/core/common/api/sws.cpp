@@ -867,7 +867,7 @@ start()
   if (s_running)
     throw std::runtime_error("software command scheduler is already started");
 
-  s_scheduler_thread = std::move(xrt_core::thread(scheduler_loop));
+  s_scheduler_thread = xrt_core::thread(scheduler_loop);
   s_running = true;
 }
 
