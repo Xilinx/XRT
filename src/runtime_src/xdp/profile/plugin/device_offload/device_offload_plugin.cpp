@@ -82,7 +82,7 @@ namespace {
 namespace xdp {
 
   DeviceOffloadPlugin::DeviceOffloadPlugin() :
-    XDPPlugin(), continuous_trace(false), continuous_trace_interval_ms(10), trace_dump_int_s(5)
+    XDPPlugin(), continuous_trace(false), continuous_trace_interval_ms(10)
   {
     active = db->claimDeviceOffloadOwnership() ;
     if (!active) return ; 
@@ -93,8 +93,6 @@ namespace xdp {
     continuous_trace = xrt_core::config::get_continuous_trace() ;
     continuous_trace_interval_ms = 
       xrt_core::config::get_continuous_trace_interval_ms() ;
-    trace_dump_int_s =
-      xrt_core::config::get_trace_dump_interval_s();
   }
 
   DeviceOffloadPlugin::~DeviceOffloadPlugin()
@@ -125,9 +123,9 @@ namespace xdp {
 
     (db->getStaticInfo()).addOpenedFile(filename.c_str(), "VP_TRACE") ;
 
-    if (continuous_trace) {
-      XDPPlugin::startWriteThread(trace_dump_int_s, "VP_TRACE");
-    }
+    if (continuous_trace)
+      XDPPlugin::startWriteThread(XDPPlugin::get_trace_dump_int_s(), "VP_TRACE");
+
   }
 
   void DeviceOffloadPlugin::configureDataflow(uint64_t deviceId,

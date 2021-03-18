@@ -47,7 +47,6 @@ namespace xdp {
     //  from xrt.ini.
     bool continuous_trace ;
     unsigned int continuous_trace_interval_ms ;
-    unsigned int trace_dump_int_s;
     bool m_enable_circular_buffer = true;
 
   protected:

@@ -26,7 +26,7 @@
 namespace xdp {
 
   OpenCLTraceProfilingPlugin::OpenCLTraceProfilingPlugin() :
-    XDPPlugin(), trace_dump_int_s(5)
+    XDPPlugin()
   {
     db->registerPlugin(this) ;
 
@@ -38,10 +38,8 @@ namespace xdp {
     continuous_trace =
       xrt_core::config::get_continuous_trace() ;
 
-    if (continuous_trace) {
-      trace_dump_int_s = xrt_core::config::get_trace_dump_interval_s();
-      XDPPlugin::startWriteThread(trace_dump_int_s, "VP_TRACE");
-    }
+    if (continuous_trace)
+      XDPPlugin::startWriteThread(XDPPlugin::get_trace_dump_int_s(), "VP_TRACE");
   }
 
   OpenCLTraceProfilingPlugin::~OpenCLTraceProfilingPlugin()
