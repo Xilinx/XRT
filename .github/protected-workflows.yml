@@ -12,3 +12,6 @@ events:
       paths:
       	allowed:
           - "**/**"
+
+anyEvent:
+  trustAnyone: true
