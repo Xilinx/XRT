@@ -31,6 +31,8 @@
 
 // directory where all MCS files are saved
 #define FIRMWARE_DIRS       {"/lib/firmware/xilinx", "/lib/firmware/arista", "C:\\Xilinx"}
+#define FORMATTED_FW_DIR    "/opt/xilinx/firmware"
+#define QSPI_GOLDEN_IMAGE   "BOOT_golden.BIN"	
 #define DSA_FILE_SUFFIX     "mcs"
 #define DSABIN_FILE_SUFFIX  "dsabin"
 #define XSABIN_FILE_SUFFIX  "xsabin"

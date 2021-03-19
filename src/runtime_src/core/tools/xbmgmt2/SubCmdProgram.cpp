@@ -662,16 +662,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   // -- process "revert-to-golden" option ---------------------------------------
   if(revertToGolden) {
     XBU::verbose("Sub command: --revert-to-golden");
+    bool has_reset = false;
 
     std::vector<Flasher> flasher_list;
     for (const auto & dev : deviceCollection) {
-      // Hack: u30 doesn't support factory reset yet
-      if(xrt_core::device_query<xrt_core::query::interface_uuids>(dev).empty()) {
-        std::cout << "****************************************************\n";
-        std::cout << "Factory reset is currently not supported on U30.\n";
-        std::cout << "****************************************************\n\n";
-        return;
-      }
       //collect information of all the cards that will be reset
       Flasher flasher(dev->get_device_id());
       if(!flasher.isValid()) {
@@ -688,10 +682,14 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       return;
     
     for(auto& f : flasher_list) {
-      f.upgradeFirmware("", nullptr, nullptr);
-      std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "] is reset successfully." ;
+      if (!f.upgradeFirmware("", nullptr, nullptr)) {
+        std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "] is reset successfully." ;
+        has_reset = true;
+      }
     }
 
+    if (!has_reset)
+      return;
     std::cout << "****************************************************\n";
     std::cout << "Cold reboot machine to load the new image on card(s).\n";
     std::cout << "****************************************************\n";
