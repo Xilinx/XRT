@@ -179,7 +179,7 @@ private:
 
     /*
      * Mapped CU register space for xclRegRead/Write(). We support at most
-     * 128 CUs and each map is of 64k bytes.
+     * 128 CUs and each CU map is a pair <address, size>.
      */
     std::vector<std::pair<uint32_t*, uint32_t>> mCuMaps;
     std::mutex mCuMapLock;
