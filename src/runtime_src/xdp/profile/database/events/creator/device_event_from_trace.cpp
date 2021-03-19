@@ -384,75 +384,63 @@ namespace xdp {
     }
 
     // Find unfinished ASM events
-    for(uint64_t asmIndex = 0; asmIndex < asmLastTrans.size(); ++asmIndex) {
+    for(uint64_t asmIndex = 0; asmIndex < (db->getStaticInfo()).getNumASM(deviceId, xclbin); ++asmIndex) {
       uint64_t asmTraceID = asmIndex + MIN_TRACE_ID_ASM;
       Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, asmIndex);
       if(!mon) {
         continue;
       }
       int32_t  cuId = mon->cuIndex;
-      if(-1 == cuId) {
-        continue; // Floating ASM, not attached to a CU. So cannot approximate stream end event based on CU execution end
-      }
-      ComputeUnitInstance* cu = db->getStaticInfo().getCU(deviceId, cuId);
-      if(nullptr == cu) {
-        continue;
-      }
-      int32_t amId = cu->getAccelMon();
-      if(-1 == amId) {
-        // For free-running kernel CU, there is no AM attached
-        continue;
-      }
-      uint64_t cuLastTimestamp  = amLastTrans[amId];
-      uint64_t asmStartTimestamp = 0, asmAppxEndTimestamp = 0, asmAppxLastTransTimeStamp = 0;
-      double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
-
-      VTFEventType streamEventType;
-      VTFEvent* matchingStart = nullptr;
-      DeviceStreamAccess* strmEvent = nullptr;
-
-
-      uint32_t findUnfinishedEvent = 3;
-      while(findUnfinishedEvent) {
-        switch(findUnfinishedEvent) {
-          case 1 :
-          default:
-          {
-            // Stream Transaction
-            streamEventType = (mon->isRead) ? KERNEL_STREAM_READ : KERNEL_STREAM_WRITE;
-            break;
-          }
-          case 2 :
-          {
-            // Stream Stall
-            streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STALL : KERNEL_STREAM_WRITE_STALL;
-            break;
-          }
-          case 3 :
-          {
-            // Stream Starve
-            streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STARVE : KERNEL_STREAM_WRITE_STARVE;
-            break;
-          }
+      int32_t  amId = -1;
+      uint64_t cuLastTimestamp = 0, asmAppxLastTransTimeStamp = 0;
+      if(-1 != cuId) {
+        ComputeUnitInstance* cu = db->getStaticInfo().getCU(deviceId, cuId);
+        if(cu) {
+          amId = cu->getAccelMon();
         }
-        matchingStart = db->getDynamicInfo().matchingDeviceEventStart(asmTraceID, streamEventType);
-        while(matchingStart) {
-          asmStartTimestamp = (dynamic_cast<VTFDeviceEvent*>(matchingStart))->getDeviceTimestamp();
-          asmAppxEndTimestamp = (asmStartTimestamp < cuLastTimestamp) ? cuLastTimestamp : (asmStartTimestamp + halfCycleTimeInMs);
-          asmAppxLastTransTimeStamp = (asmAppxLastTransTimeStamp < asmAppxEndTimestamp) ? asmAppxEndTimestamp : asmAppxLastTransTimeStamp;
-          
-          // Add approximate end event
-          strmEvent = new DeviceStreamAccess(matchingStart->getEventId(), convertDeviceToHostTimestamp(asmAppxEndTimestamp),
-                                                               streamEventType, deviceId, asmIndex, cuId);
-          strmEvent->setDeviceTimestamp(asmAppxEndTimestamp);
-          db->getDynamicInfo().addEvent(strmEvent);
-  
-          matchingStart = db->getDynamicInfo().matchingDeviceEventStart(asmTraceID, streamEventType);
+        if(-1 != amId) {
+          cuLastTimestamp  = amLastTrans[amId];
         }
-        findUnfinishedEvent--;
       }
+
+      VTFEventType streamEventType = (mon->isRead) ? KERNEL_STREAM_READ : KERNEL_STREAM_WRITE;
+      addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp);
+
+      streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STALL : KERNEL_STREAM_WRITE_STALL;
+      addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp);
+
+      streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STARVE : KERNEL_STREAM_WRITE_STARVE;
+      addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp);
 
       asmLastTrans[asmIndex] = asmAppxLastTransTimeStamp;
+    }
+  }
+
+  void DeviceEventCreatorFromTrace::addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType, 
+                                                                 int32_t cuId, int32_t  amId, uint64_t cuLastTimestamp,
+                                                                 uint64_t &asmAppxLastTransTimeStamp)
+  {
+    uint64_t asmStartTimestamp = 0, asmAppxEndTimestamp = 0;
+    double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
+
+    VTFEvent* matchingStart = db->getDynamicInfo().matchingDeviceEventStart(asmTraceID, streamEventType);
+    while(matchingStart) {
+      asmStartTimestamp = (dynamic_cast<VTFDeviceEvent*>(matchingStart))->getDeviceTimestamp();
+      if(-1 == amId) {
+        // For floating ASM i.e. ASM not attached to any CU or for ASMs attached to free running CUs which don't have AM attached
+        asmAppxEndTimestamp = asmStartTimestamp + halfCycleTimeInMs;
+      } else {
+        asmAppxEndTimestamp = (asmStartTimestamp < cuLastTimestamp) ? cuLastTimestamp : (asmStartTimestamp + halfCycleTimeInMs);
+      }
+      asmAppxLastTransTimeStamp = (asmAppxLastTransTimeStamp < asmAppxEndTimestamp) ? asmAppxEndTimestamp : asmAppxLastTransTimeStamp;
+      
+      // Add approximate end event
+      DeviceStreamAccess* strmEvent = new DeviceStreamAccess(matchingStart->getEventId(), convertDeviceToHostTimestamp(asmAppxEndTimestamp),
+                                                           streamEventType, deviceId, asmIndex, cuId);
+      strmEvent->setDeviceTimestamp(asmAppxEndTimestamp);
+      db->getDynamicInfo().addEvent(strmEvent);
+
+      matchingStart = db->getDynamicInfo().matchingDeviceEventStart(asmTraceID, streamEventType);
     }
   }
 
