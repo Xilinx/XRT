@@ -551,7 +551,7 @@ shim(unsigned index)
   , mStallProfilingNumberSlots(0)
   , mStreamProfilingNumberSlots(0)
   , mCmdBOCache(nullptr)
-  , mCuMaps(128, nullptr)
+  , mCuMaps(128, std::make_pair<uint32_t*, uint32_t>(nullptr, 0))
 {
   init(index);
 }
@@ -651,8 +651,8 @@ shim::~shim()
     dev_fini();
 
     for (auto p : mCuMaps) {
-        if (p)
-            (void) munmap(p, mCuMapSize);
+        if (p.first)
+            (void) munmap(p.first, p.second);
     }
 }
 
@@ -1403,6 +1403,7 @@ int shim::xclLoadAxlf(const axlf *buffer)
         std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
         krnl->name[sizeof(krnl->name)-1] = '\0';
         krnl->anums = kernel.args.size();
+        krnl->range = kernel.range;
 
         int ai = 0;
         for (auto& arg : kernel.args) {
@@ -1736,10 +1737,10 @@ int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 
     if (ipIndex < mCuMaps.size()) {
 	    // Make sure no MMIO register space access when CU is released.
-	    uint32_t *p = mCuMaps[ipIndex];
+	    uint32_t *p = mCuMaps[ipIndex].first;
 	    if (p) {
-		(void) munmap(p, mCuMapSize);
-		mCuMaps[ipIndex] = nullptr;
+		(void) munmap(p, mCuMaps[ipIndex].second);
+		mCuMaps[ipIndex] = std::make_pair<uint32_t*, uint32_t>(nullptr, 0);
 	    }
     }
 
@@ -2174,27 +2175,40 @@ int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info)
 
 int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
+    std::string errmsg;
+    std::string cu_subdev;
+    uint32_t size;
     std::lock_guard<std::mutex> l(mCuMapLock);
 
     if (ipIndex >= mCuMaps.size()) {
         xrt_logmsg(XRT_ERROR, "%s: invalid CU index: %d", __func__, ipIndex);
         return -EINVAL;
     }
-    if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
-        xrt_logmsg(XRT_ERROR, "%s: invalid CU offset: %d", __func__, offset);
+
+    cu_subdev = "CU[" + std::to_string(ipIndex) + "]";
+    mDev->sysfs_get<uint32_t>(cu_subdev, "size", errmsg, size, 0);
+    if (size <= 0) {
+        xrt_logmsg(XRT_ERROR, "%s: incorrect cu size %d", __func__, size);
         return -EINVAL;
     }
 
-    if (mCuMaps[ipIndex] == nullptr) {
-        void *p = mDev->mmap(mUserHandle, mCuMapSize,
-            PROT_READ | PROT_WRITE, MAP_SHARED, (ipIndex + 1) * getpagesize());
-        if (p != MAP_FAILED)
-            mCuMaps[ipIndex] = (uint32_t *)p;
+    if (mCuMaps[ipIndex].first == nullptr) {
+        void *p = mDev->mmap(mUserHandle, size, PROT_READ | PROT_WRITE,
+                             MAP_SHARED, (ipIndex + 1) * getpagesize());
+        if (p != MAP_FAILED) {
+            mCuMaps[ipIndex].first = (uint32_t *)p;
+            mCuMaps[ipIndex].second = size;
+        }
     }
 
-    uint32_t *cumap = mCuMaps[ipIndex];
+    uint32_t *cumap = mCuMaps[ipIndex].first;
     if (cumap == nullptr) {
         xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
+        return -EINVAL;
+    }
+
+    if (offset >= mCuMaps[ipIndex].second || (offset & (sizeof(uint32_t) - 1)) != 0) {
+        xrt_logmsg(XRT_ERROR, "%s: invalid CU offset: %d", __func__, offset);
         return -EINVAL;
     }
 

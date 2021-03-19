@@ -201,6 +201,7 @@ struct xrt_cu_info {
 	int			 cu_idx;
 	int			 inst_idx;
 	u64			 addr;
+	size_t			 size;
 	u32			 protocol;
 	u32			 intr_id;
 	u32			 is_m2m;
