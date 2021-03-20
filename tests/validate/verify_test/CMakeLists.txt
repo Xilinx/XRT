@@ -45,7 +45,11 @@ if (XRT_STATIC_BUILD)
     ../common/includes/cmdparser/cmdlineparser.cpp
     ../common/includes/logger/logger.cpp src/host.cpp
     )
-  target_link_options(${TESTNAME_STATIC} PRIVATE "-static")
+  # Specify path directory with boost static libraries. The boost link dir
+  # should be same as the one used to build XRT. In most case this is the
+  # default /usr/lib, but if XRT was built with -with-static-boost, then
+  # the libraries cannot be located without specified the link path.
+  target_link_options(${TESTNAME_STATIC} PRIVATE "-static" "-L${Boost_LIBRARY_DIRS}")
   target_link_libraries(${TESTNAME_STATIC}
     PRIVATE
     # force linking of whole archive to enable static globals

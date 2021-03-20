@@ -42,7 +42,14 @@
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
 #ifndef NO_BOOST_PROCESS
-#include <boost/process.hpp>
+# ifdef __GNUC__
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wunused-result"
+# endif
+# include <boost/process.hpp>
+# ifdef __GNUC__
+#  pragma GCC diagnostic pop
+# endif
 #endif
 
 // System - Include Files
