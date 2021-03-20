@@ -120,10 +120,10 @@ namespace xdp {
     }
   }
 
-  void DeviceEventCreatorFromTrace::createDeviceEvents(xclTraceResultsVector& traceVector)
+  void DeviceEventCreatorFromTrace::createDeviceEvents(xclTraceResultsVector2& traceVector)
   {
     // Create Device Events and log them : do what is done in TraceParser::logTrace
-    if(traceVector.mLength == 0)
+    if(traceVector.size() == 0)
       return;
 
     if(!VPDatabase::alive()) {
@@ -133,8 +133,8 @@ namespace xdp {
     uint64_t timestamp = 0;
     double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
 
-    for(unsigned int i=0; i < traceVector.mLength; i++) {
-      auto& trace = traceVector.mArray[i];
+    for(unsigned int i=0; i < traceVector.size(); i++) {
+      auto& trace = traceVector[i];
       
       timestamp = trace.Timestamp;
 

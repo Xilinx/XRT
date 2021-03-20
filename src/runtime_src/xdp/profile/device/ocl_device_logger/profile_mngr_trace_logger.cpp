@@ -43,4 +43,14 @@ void TraceLoggerUsingProfileMngr::endProcessTraceData(xclTraceResultsVector& tra
   profileMngr->logDeviceTrace(deviceName, binaryName, XCL_PERF_MON_MEMORY, traceVector, true);
 }
 
+void TraceLoggerUsingProfileMngr::processTraceData2(xclTraceResultsVector2&)
+{
+  // Do nothing
+}
+
+void TraceLoggerUsingProfileMngr::endProcessTraceData2(xclTraceResultsVector2&)
+{
+  // Do nothing
+}
+
 }

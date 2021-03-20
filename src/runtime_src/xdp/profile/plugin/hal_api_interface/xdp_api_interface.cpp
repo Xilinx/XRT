@@ -114,7 +114,7 @@ namespace xdp {
 
   void HALAPIInterface::readTrace()
   {
-    xclTraceResultsVector traceVector;
+    xclTraceResultsVector2 traceVector;
     for(auto itr : devices) {
       itr.second->readTrace(traceVector);
     }

@@ -41,6 +41,10 @@ public:
   virtual void processTraceData(xclTraceResultsVector& traceVector);
   XDP_EXPORT
   virtual void endProcessTraceData(xclTraceResultsVector& traceVector);
+  XDP_EXPORT
+  virtual void processTraceData2(xclTraceResultsVector2& traceVector);
+  XDP_EXPORT
+  virtual void endProcessTraceData2(xclTraceResultsVector2& traceVector);
 
   const std::string& getDeviceName() { return deviceName; } 
 };

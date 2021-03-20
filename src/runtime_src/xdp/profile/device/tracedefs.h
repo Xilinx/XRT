@@ -46,7 +46,10 @@
 //8KB
 #define TS2MM_MIN_BUF_SIZE      0x2000
 
-#define FIFO_WARN_MSG "Trace FIFO is full because of too many events. Timeline trace could be incomplete. \
+// Read data only if it's more than 1KB unless forced
+#define TS2MM_MIN_READ_SIZE      0x400
+
+#define FIFO_WARN_MSG "Trace FIFO is    full because of too many events. Timeline trace could be incomplete. \
 Please use 'coarse' option for data transfer trace or turn off Stall profiling"
 
 #define CONTINUOUS_OFFLOAD_WARN_MSG_STALLS "Enabling stalls with 'continuous_trace' and trace FIFO isn't advisable. Timeline trace could be incorrect. \
