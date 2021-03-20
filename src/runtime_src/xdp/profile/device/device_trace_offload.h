@@ -147,6 +147,9 @@ private:
     // 100 mb of trace per second
     uint64_t m_circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
     uint64_t m_circ_buf_cur_rate = 0;
+
+    // Used to check read precondition in ts2mm
+    uint64_t m_wordcount_old = 0;
 };
 
 }
