@@ -874,8 +874,10 @@ DeviceIntf::~DeviceIntf()
   size_t DeviceIntf::allocTraceBuf(uint64_t sz ,uint8_t memIdx)
   {
     auto bufHandle = mDevice->alloc(sz, memIdx);
+    if (bufHandle) {
     // Can't read a buffer xrt hasn't written to
-    mDevice->sync(bufHandle, sz, 0, xdp::Device::direction::HOST2DEVICE);
+      mDevice->sync(bufHandle, sz, 0, xdp::Device::direction::HOST2DEVICE);
+    }
     return bufHandle;
   }
 
