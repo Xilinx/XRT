@@ -199,7 +199,7 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
   auto wordcount = dev_intf->getWordCountTs2mm();
   auto bytes_written = (wordcount - m_wordcount_old) * TRACE_PACKET_SIZE;
 
-  // Don't read data if there's less than 1k trace
+  // Don't read data if there's less than 512B trace
   if (!force && (bytes_written < TS2MM_MIN_READ_SIZE)) {
     debug_stream
       << "Skipping trace read. Amount of data: " << bytes_written << std::endl;
