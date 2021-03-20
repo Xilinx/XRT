@@ -1,17 +1,18 @@
 /**
- * Copyright (C) 2021 Licensed under the Apache License, Version
- * 2.0 (the "License"). You may not use this file except in
- * compliance with the License. A copy of the License is located
- * at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+* Copyright (C) 2021 Xilinx, Inc
+*
+* Licensed under the Apache License, Version 2.0 (the "License"). You may
+* not use this file except in compliance with the License. A copy of the
+* License is located at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+* License for the specific language governing permissions and limitations
+* under the License.
+*/
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -38,22 +39,21 @@ OO_AieRegRead::OO_AieRegRead( const std::string &_longName, bool _isHidden )
     , m_device("")
     , m_row(0)
     , m_col(0)
-    , m_regName("")
+    , m_reg("")
     , m_help(false)
 {
   m_optionsDescription.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-//    ("output,o", boost::program_options::value<decltype(m_outputFile)>(&m_outputFile), "Output file")
-    ("row", boost::program_options::value<decltype(m_row)>(&m_row)->required(), "Row of core tile")
-    ("col", boost::program_options::value<decltype(m_col)>(&m_col)->required(), "col of core tile")
-    ("regName", boost::program_options::value<decltype(m_regName)>(&m_regName)->required(), "register name or core tile")
-    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("row", po::value<decltype(m_row)>(&m_row)->required(), "Row of core tile")
+    ("col", po::value<decltype(m_col)>(&m_col)->required(), "Column of core tile")
+    ("reg", po::value<decltype(m_reg)>(&m_reg)->required(), "Register name to read from core tile")
+    ("help,h", po::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_positionalOptions.
     add("row", 1 /* max_count */).
     add("col", 1 /* max_count */).
-    add("regName", 1 /* max_count */)
+    add("reg", 1 /* max_count */)
   ;
 }
 
@@ -108,8 +108,8 @@ OO_AieRegRead::execute(const SubCmdOptions& _options) const
 
   for (auto& device : deviceCollection) {
     try {
-      uint32_t val = xrt_core::device_query<qr::aie_reg_read>(device, m_row, m_col, m_regName);
-      std::cout << boost::format("Register %s Value of Row:%d col:%d is 0x%08x\n") % m_regName.c_str() % m_row %  m_col % val;
+      uint32_t val = xrt_core::device_query<qr::aie_reg_read>(device, m_row, m_col, m_reg);
+      std::cout << boost::format("Register %s Value of Row:%d Column:%d is 0x%08x\n") % m_reg.c_str() % m_row %  m_col % val;
     } catch (const std::exception& e){
       std::cerr << boost::format("ERROR: %s\n") % e.what();
     }

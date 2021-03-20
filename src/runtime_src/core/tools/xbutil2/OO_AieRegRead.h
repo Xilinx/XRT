@@ -30,7 +30,7 @@ class OO_AieRegRead : public OptionOptions {
    std::string m_device;
    int m_row;
    int m_col;
-   std::string m_regName;
+   std::string m_reg;
    bool m_help;
 };
 
