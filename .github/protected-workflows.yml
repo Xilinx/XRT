@@ -4,7 +4,7 @@ events:
 
   pull_request:
     # Exteremly important. Only certain users should be able to change this file.
-    - trustAnyone: false
+    - trustAnyone: true
       paths:
         disallowed:
           - ".github/**"
