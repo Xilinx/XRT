@@ -3,15 +3,13 @@ events:
     trustAnyone: true
 
   pull_request:
+    - trustedUserNames: 
+        - "abalasa"
+
     # Exteremly important. Only certain users should be able to change this file.
     - trustAnyone: true
       paths:
         disallowed:
           - ".github/**"
           - ".github/protected-workflows.yml"
-          - "**/**"
-    - trustedUserNames: 
-        - "abalasa"
-      paths:
-        allowed:
           - "**/**"
