@@ -915,13 +915,43 @@ xclResetAIEArray(xclDeviceHandle handle)
 int
 xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  return 0;
+  try { 
+    if (handle) {
+      xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+      return drv ? drv->xrtSyncBOAIENB(bo, gmioName, dir, size, offset) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+  return -1;
 }
 
 int
 xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 {
-  return 0;
+  try {
+    if (handle) {
+      xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+      return drv ? drv->xrtGMIOWait(gmioName) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+  return -1;
 }
 
 int
