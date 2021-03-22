@@ -77,6 +77,7 @@ public:
     int upgradeBMCFirmware(firmwareImage* bmc);
     bool isValid(void) { return mDev != nullptr; }
 
+    std::string getQspiGolden();
     std::string sGetDBDF();
     std::string sGetFlashType() { return std::string( getFlasherTypeText( getFlashType() ) ); }
     DSAInfo getOnBoardDSA();
