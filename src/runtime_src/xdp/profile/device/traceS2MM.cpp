@@ -271,7 +271,7 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector2& 
         isClockTrain = (i < 8 && !mclockTrainingdone);
       }
 
-      xclTraceResults result;
+      xclTraceResults result = {};
       if (isClockTrain) {
         parsePacketClockTrain(currentPacket, mPacketFirstTs, mModulus, result);
         tvindex  = (mModulus == 3) ? tvindex + 1 : tvindex;
