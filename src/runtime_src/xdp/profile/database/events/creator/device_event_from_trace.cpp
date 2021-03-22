@@ -19,6 +19,8 @@
 #include "xdp/profile/database/events/creator/device_event_from_trace.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
+#include "core/common/message.h"
+
 namespace xdp {
 
   DeviceEventCreatorFromTrace::DeviceEventCreatorFromTrace(uint64_t devId)
@@ -372,7 +374,8 @@ namespace xdp {
       if(0 == cuLastTimestamp) {
         continue; // nothing to do? what about unmatched start?
       }
-      // Warning : "Incomplete CU profile trace detected. Timeline trace will have approximate CU End."
+      const char* msg = "Incomplete CU profile trace detected. Timeline trace will have approximate CU End.";
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
 
       // end event
       cuStarts[amIndex].pop_front();
@@ -384,6 +387,7 @@ namespace xdp {
     }
 
     // Find unfinished ASM events
+    bool unfinishedASMevents = false;
     for(uint64_t asmIndex = 0; asmIndex < (db->getStaticInfo()).getNumASM(deviceId, xclbin); ++asmIndex) {
       uint64_t asmTraceID = asmIndex + MIN_TRACE_ID_ASM;
       Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, asmIndex);
@@ -404,38 +408,47 @@ namespace xdp {
       }
 
       VTFEventType streamEventType = (mon->isRead) ? KERNEL_STREAM_READ : KERNEL_STREAM_WRITE;
-      addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp);
+      addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp, unfinishedASMevents);
 
       streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STALL : KERNEL_STREAM_WRITE_STALL;
-      addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp);
+      addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp, unfinishedASMevents);
 
       streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STARVE : KERNEL_STREAM_WRITE_STARVE;
-      addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp);
+      addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp, unfinishedASMevents);
 
       asmLastTrans[asmIndex] = asmAppxLastTransTimeStamp;
+    }
+
+    if(unfinishedASMevents) {
+      const char* msg = "Found unfinished events on Stream connections. Adding approximate ends for Stream Activity/Stall/Starve on timeine trace.";
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
     }
   }
 
   void DeviceEventCreatorFromTrace::addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType, 
                                                                  int32_t cuId, int32_t  amId, uint64_t cuLastTimestamp,
-                                                                 uint64_t &asmAppxLastTransTimeStamp)
+                                                                 uint64_t &asmAppxLastTransTimeStamp, bool &unfinishedASMevents)
   {
     uint64_t asmStartTimestamp = 0, asmAppxEndTimestamp = 0;
-    double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
+    double   asmAppxEndHostTimestamp = 0;
+    double   halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
 
     VTFEvent* matchingStart = db->getDynamicInfo().matchingDeviceEventStart(asmTraceID, streamEventType);
     while(matchingStart) {
+      unfinishedASMevents = true;
       asmStartTimestamp = (dynamic_cast<VTFDeviceEvent*>(matchingStart))->getDeviceTimestamp();
       if(-1 == amId) {
         // For floating ASM i.e. ASM not attached to any CU or for ASMs attached to free running CUs which don't have AM attached
-        asmAppxEndTimestamp = asmStartTimestamp + halfCycleTimeInMs;
+        asmAppxEndTimestamp = asmStartTimestamp;
+        asmAppxEndHostTimestamp = convertDeviceToHostTimestamp(asmStartTimestamp) + halfCycleTimeInMs;
       } else {
-        asmAppxEndTimestamp = (asmStartTimestamp < cuLastTimestamp) ? cuLastTimestamp : (asmStartTimestamp + halfCycleTimeInMs);
+        asmAppxEndTimestamp = (asmStartTimestamp < cuLastTimestamp) ? cuLastTimestamp : asmStartTimestamp;
+        asmAppxEndHostTimestamp = (asmStartTimestamp < cuLastTimestamp) ? convertDeviceToHostTimestamp(cuLastTimestamp) : (convertDeviceToHostTimestamp(asmStartTimestamp) + halfCycleTimeInMs);
       }
       asmAppxLastTransTimeStamp = (asmAppxLastTransTimeStamp < asmAppxEndTimestamp) ? asmAppxEndTimestamp : asmAppxLastTransTimeStamp;
-      
+
       // Add approximate end event
-      DeviceStreamAccess* strmEvent = new DeviceStreamAccess(matchingStart->getEventId(), convertDeviceToHostTimestamp(asmAppxEndTimestamp),
+      DeviceStreamAccess* strmEvent = new DeviceStreamAccess(matchingStart->getEventId(), asmAppxEndHostTimestamp,
                                                            streamEventType, deviceId, asmIndex, cuId);
       strmEvent->setDeviceTimestamp(asmAppxEndTimestamp);
       db->getDynamicInfo().addEvent(strmEvent);
