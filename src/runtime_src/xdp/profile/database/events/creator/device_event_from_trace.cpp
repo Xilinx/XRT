@@ -1,4 +1,4 @@
-/**
+m**
  * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -420,7 +420,7 @@ namespace xdp {
     }
 
     if(unfinishedASMevents) {
-      const char* msg = "Found unfinished events on Stream connections. Adding approximate ends for Stream Activity/Stall/Starve on timeine trace.";
+      const char* msg = "Found unfinished events on Stream connections. Adding approximate ends for Stream Activity/Stall/Starve on timeline trace.";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
     }
   }
