@@ -35,6 +35,9 @@ namespace xdp {
   {
   private:
     // Continuous write functionality
+    static unsigned int trace_dump_int_s;
+    static bool trace_int_cached;
+
     std::atomic<bool> is_write_thread_active;
     std::thread write_thread;
     // Trace dump thread control
@@ -80,6 +83,9 @@ namespace xdp {
     //  this function
     XDP_EXPORT virtual void broadcast(VPDatabase::MessageType msg,
 				      void* blob = nullptr) ;
+
+    XDP_EXPORT
+    static unsigned int get_trace_dump_int_s ();
   } ;
 
 }

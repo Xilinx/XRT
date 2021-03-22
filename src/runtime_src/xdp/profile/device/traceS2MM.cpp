@@ -259,7 +259,7 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
     for (auto i = idx; i < count; i++) {
       auto currentPacket = pos[i];
       if (!currentPacket)
-        return;
+        break;
       // Poor man's reset
       if (i == 0 && !mPacketFirstTs)
         mPacketFirstTs = currentPacket & 0x1FFFFFFFFFFF;
