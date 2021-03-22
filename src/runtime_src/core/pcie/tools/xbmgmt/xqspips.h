@@ -43,7 +43,9 @@ class XQSPIPS_Flasher
 public:
     XQSPIPS_Flasher(std::shared_ptr<pcidev::pci_device> dev);
     ~XQSPIPS_Flasher();
-    int revertToMFG();
+    void program(std::istream& binStream, unsigned base = 0);
+    int verify(std::istream& binStream, unsigned base = 0, bool quiet = false);
+    int revertToMFG(std::istream& binStream);
     int xclUpgradeFirmware(std::istream& binStream);
 
 private:

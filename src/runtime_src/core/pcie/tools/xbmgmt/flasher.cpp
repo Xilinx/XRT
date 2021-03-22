@@ -19,6 +19,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#include <boost/algorithm/string.hpp>
+#include "boost/filesystem.hpp"
 #include "flasher.h"
 #include "core/pcie/linux/scan.h"
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
@@ -128,7 +130,14 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         XQSPIPS_Flasher xqspi_ps(mDev);
         if (primary == nullptr)
         {
-            retVal = xqspi_ps.revertToMFG();
+            std::string golden_file = getQspiGolden();
+            if (golden_file.empty()) {
+                std::cout << "ERROR: Doesn't find golden in base pkg" << std::endl;
+                return -ECANCELED;
+            }
+            std::shared_ptr<firmwareImage> golden_image;
+            golden_image = std::make_shared<firmwareImage>(golden_file.c_str(), MCS_FIRMWARE_PRIMARY);
+            retVal = xqspi_ps.revertToMFG(*golden_image);
         }
         else
         {
@@ -424,6 +433,48 @@ DSAInfo Flasher::getOnBoardDSA()
         bmc = DSAInfo::UNKNOWN; // BMC not ready, set it to an invalid version string
 
     return DSAInfo(vbnv, ts, uuid, bmc);
+}
+
+/*
+ * For card with qspi flash like u30, u25, the golden image is supposed to
+ * be flashed at offset 96MB when the card is shipped. however, for some
+ * historical reason, the golden on some board is flashed at offset 0. As
+ * a result, the default revert_to_golden, which erases 0-96MB will brick the
+ * board. To avoid that, before revert_to_golden, flasher will check whether
+ * there is golden at 96MB. To do that, the base pkg will also install the
+ * golden file at, eg 
+ * /opt/xilinx/firmware/u30/gen3x4/base/data/BOOT_golden.BIN
+ * then flasher will compare the contents on flash at 96MB with the file to
+ * see whether the golden is there.
+ * Note: xrt doesn't support flash golden. and once the card is shipped with
+ * golden, we assume all versions of shell pkg have same golden -- new pkg
+ * just installs the golden at same location
+ * If the golden file is not found on disk, or the golden image is not found 
+ * at 96MB, we don't do revert_to_golden.
+ */
+std::string Flasher::getQspiGolden()
+{
+    std::string err;
+    std::string board_name;
+    mDev->sysfs_get("", "board_name", err, board_name);
+    if (!err.empty()) 
+        return "";
+    
+    if (board_name.empty())
+        return "";
+
+    std::string start = FORMATTED_FW_DIR;
+    start += "/";
+    start += board_name;
+    boost::filesystem::recursive_directory_iterator dir(start), end;
+    while (dir != end) {
+        std::string fn = dir->path().filename().string();
+        if (!fn.compare(QSPI_GOLDEN_IMAGE)) {
+            return dir->path().string();
+        }
+        dir++;
+    }
+    return "";
 }
 
 std::string Flasher::sGetDBDF()
