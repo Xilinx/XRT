@@ -452,7 +452,7 @@ int XQSPIPS_Flasher::verify(std::istream& binStream, unsigned base)
     bool verified = true;
 
     binStream.seekg(0, binStream.end);
-    total_size = binStream.tellg();
+    total_size = static_cast<int>(binStream.tellg());
     binStream.seekg(0, binStream.beg);
 
 #if SAVE_FILE
