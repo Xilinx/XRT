@@ -530,7 +530,7 @@ int XQSPIPS_Flasher::revertToMFG(std::istream& binStream)
     enterOrExitFourBytesMode(ENTER_4B);
 
     if (verify(binStream, GOLDEN_BASE)) {
-	    std::cout << "[ERROR]: Doesn't find valid golden on flash !!" << std::endl;
+	    std::cout << "[ERROR]: Doesn't find valid golden on flash. Can't revert to golden" << std::endl;
 	    return -ECANCELED;
     }
 

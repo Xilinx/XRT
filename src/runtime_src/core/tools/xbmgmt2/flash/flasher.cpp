@@ -128,7 +128,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         {
             std::string golden_file = getQspiGolden();
             if (golden_file.empty()) {
-                std::cout << "ERROR: Doesn't find golden in base pkg" << std::endl;
+                std::cout << "ERROR: Golden image not found in base package. Can't revert to golden" << std::endl;
                 return -ECANCELED;
             }
             std::shared_ptr<firmwareImage> golden_image;
