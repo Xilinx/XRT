@@ -46,7 +46,7 @@ endif()
 # Static build is a Linux / Ubuntu option only
 if (XRT_STATIC_BUILD)
   add_executable(${XBMGMT2_NAME}_static ${XBMGMT_V2_SRCS})
-  target_link_options(${XBMGMT2_NAME}_static PRIVATE "-static")
+  target_link_options(${XBMGMT2_NAME}_static PRIVATE "-static" "-L${Boost_LIBRARY_DIRS}")
   target_compile_definitions(${XBMGMT2_NAME}_static PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
   # Bypass FindBoost versions and just link explicitly with boost libraries
   # The -static link option will pick the static libraries. 

@@ -34,6 +34,11 @@ namespace plugins {
       xocl::appdebug::load_xdp_app_debug() ;
     }
 
+    if (xrt_core::config::get_data_transfer_trace() != "off" ||
+        xrt_core::config::get_opencl_device_counter()) {
+      xdp::device_offload::load() ;
+    }
+
     if (xrt_core::config::get_profile() ||
         xrt_core::config::get_opencl_summary()) {
       xocl::profile::load_xdp_opencl_counters() ;
@@ -46,11 +51,6 @@ namespace plugins {
 
     if (xrt_core::config::get_lop_trace()) {
       xdp::lop::load() ;
-    }
-
-    if (xrt_core::config::get_data_transfer_trace() != "off" ||
-        xrt_core::config::get_opencl_device_counter()) {
-      xdp::device_offload::load() ;
     }
 
     // Deprecation warnings specific to the .ini flags
