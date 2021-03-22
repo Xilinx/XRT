@@ -57,6 +57,10 @@ add_library(xilinxopencl SHARED
   ${XRT_XOCL_API_DIR}/icd/windows/xilinxopencl.def
   )
 
+add_library(xilinxopencl_static STATIC
+  $<TARGET_OBJECTS:xocl>
+  )
+
 target_link_libraries(xilinxopencl
   PRIVATE
   xrt++
@@ -67,16 +71,17 @@ target_link_libraries(xilinxopencl
 
 else ()
 
-add_library(xilinxopencl SHARED
-  $<TARGET_OBJECTS:xocl>
-  )
+add_library(xilinxopencl SHARED $<TARGET_OBJECTS:xocl>)
+add_library(xilinxopencl_static STATIC $<TARGET_OBJECTS:xocl>)
 
 # Attach to the user's linker flags
 set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
 set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,defs")
 
-set_target_properties(xilinxopencl
-  PROPERTIES LINKER_LANGUAGE CXX
+set_target_properties(xilinxopencl PROPERTIES
+  LINKER_LANGUAGE CXX
+  VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION}
   )
 
 target_link_libraries(xilinxopencl
@@ -106,8 +111,8 @@ install(TARGETS xilinxopencl
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install(TARGETS xilinxopencl
-  EXPORT xrt-targets-dev
+install(TARGETS xilinxopencl xilinxopencl_static
+  EXPORT xrt-dev-targets
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )
