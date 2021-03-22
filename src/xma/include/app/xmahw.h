@@ -33,6 +33,17 @@ typedef struct XmaHwSession
     uint32_t         reserved[4];
 } XmaHwSession;
 
+enum xma_cmd_state {
+  QUEUED = 1, //Submitted to XMA -> XRT
+  COMPLETED = 2, //Cmd has finished
+  ERROR = 3, //XMA or XRT error during submission of cmd
+  ABORT = 4, //XRT aborted the cmd; CU may or may not have received the cmd
+  TIMEOUT = 5, //XMA or XRT timeout waiting for cmd to finish
+  PSK_ERROR = 6, //PS Kernel cmd completed but with error return code
+  PSK_CRASHED = 7, //PS kernel has crashed
+  MAX // Always the last one
+};
+
 
 #ifdef __cplusplus
 }

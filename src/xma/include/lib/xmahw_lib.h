@@ -69,12 +69,16 @@ typedef struct XmaCUCmdObjPrivate
     int32_t   cu_id;
     int32_t   execbo_id;
     bool      cmd_finished;
+    xma_cmd_state cmd_state;
+    int32_t     return_code;
 
   XmaCUCmdObjPrivate() {
     cmd_id2 = 0;
     cu_id = -1;
     execbo_id = -1;
     cmd_finished = false;
+    cmd_state = xma_cmd_state::MAX;
+    return_code = 0;
   }
 } XmaCUCmdObjPrivate;
 
