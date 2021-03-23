@@ -21,6 +21,11 @@
 
 #include "core/common/message.h"
 
+#ifdef _WIN32
+#pragma warning (disable : 4244)
+/* Disable warnings for conversion from uint32_t to uint16_t */
+#endif
+
 namespace xdp {
 
   DeviceEventCreatorFromTrace::DeviceEventCreatorFromTrace(uint64_t devId)
