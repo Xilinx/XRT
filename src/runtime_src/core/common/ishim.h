@@ -237,7 +237,7 @@ struct shim : public DeviceType
     if (ehdl == XRT_NULL_BO_EXPORT)
       throw system_error(EINVAL, "Unable to export BO");
     if (ehdl < 0) // system error code
-      throw system_error(ehdl, "Unable to export BO");
+      throw system_error(ENODEV, "Unable to export BO");
     return ehdl;
   }
 
@@ -248,7 +248,7 @@ struct shim : public DeviceType
     if (ihdl == XRT_NULL_BO)
       throw system_error(EINVAL, "unable to import BO");
     if (ihdl < 0) // system error code
-      throw system_error(ihdl, "unable to import BO");
+      throw system_error(ENODEV, "unable to import BO");
     return ihdl;
   }
 
