@@ -61,6 +61,17 @@ constexpr std::uint64_t signature = 0xF42F1F8F4F2F1F0F;
 /* Forward declaration */
 typedef struct XmaHwDevice XmaHwDevice;
 
+enum class xma_cmd_state_priv: std::int32_t {
+  QUEUED = 1, //Submitted to XMA -> XRT
+  COMPLETED = 2, //Cmd has finished
+  ERROR = 3, //XMA or XRT error during submission of cmd
+  ABORT = 4, //XRT aborted the cmd; CU may or may not have received the cmd
+  TIMEOUT = 5, //XMA or XRT timeout waiting for cmd to finish
+  PSK_ERROR = 6, //PS Kernel cmd completed but with error return code
+  PSK_CRASHED = 7, //PS kernel has crashed
+  MAX = 8 // Always the last one
+};
+
 typedef struct XmaCUCmdObjPrivate
 {
     //uint32_t cmd_id1;//Serial roll-over counter;
@@ -69,7 +80,7 @@ typedef struct XmaCUCmdObjPrivate
     int32_t   cu_id;
     int32_t   execbo_id;
     bool      cmd_finished;
-    xma_cmd_state cmd_state;
+    xma_cmd_state_priv cmd_state;
     int32_t     return_code;
 
   XmaCUCmdObjPrivate() {
@@ -77,7 +88,7 @@ typedef struct XmaCUCmdObjPrivate
     cu_id = -1;
     execbo_id = -1;
     cmd_finished = false;
-    cmd_state = xma_cmd_state::MAX;
+    cmd_state = xma_cmd_state_priv::MAX;
     return_code = 0;
   }
 } XmaCUCmdObjPrivate;
