@@ -90,9 +90,9 @@ update_shell(unsigned int index, const std::string& primary, const std::string& 
   }
   
   if (flasher.upgradeFirmware("", pri.get(), sec.get()) != 0)
-    throw xrt_core::error("Failed to update shell");
+    throw xrt_core::error("Failed to update base");
   
-  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
+  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base is updated successfully.";
 }
 
 /*
@@ -104,7 +104,7 @@ update_shell(unsigned int index, const std::string& flashType,
 {
   if (!flashType.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
-        "Overriding flash mode is not recommended.\nYou may damage your card with this option.");
+        "Overriding flash mode is not recommended.\nYou may damage your device with this option.");
   }
 
   Flasher flasher(index);
@@ -112,7 +112,7 @@ update_shell(unsigned int index, const std::string& flashType,
     throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
   if (primary.empty())
-    throw xrt_core::error("Shell not specified");
+    throw xrt_core::error("Base not specified");
 
   auto pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
   if (pri->fail())
@@ -126,11 +126,11 @@ update_shell(unsigned int index, const std::string& flashType,
   }
 
   if (flasher.upgradeFirmware(flashType, pri.get(), sec.get()) != 0)
-    throw xrt_core::error("Failed to update shell");
+    throw xrt_core::error("Failed to update base");
   
-  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
+  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base is updated successfully.";
   std::cout << "****************************************************\n";
-  std::cout << "Cold reboot machine to load the new image on card.\n";
+  std::cout << "Cold reboot machine to load the new image on device.\n";
   std::cout << "****************************************************\n";
 }
 
@@ -287,7 +287,7 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
   std::stringstream action_list;
   for (const auto & device : deviceCollection) {
     if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.shell"))
-      action_list << boost::format("  [%s] : Program shell (FLASH) image\n") % _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf");
+      action_list << boost::format("  [%s] : Program base (FLASH) image\n") % _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf");
     if (!_pt.get<bool>(std::to_string(device->get_device_id())+".platform.status.sc"))
       action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf");
   }
@@ -334,13 +334,13 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
   }
 
   if (!same_bmc) {
-    std::cout << "Updating SC firmware on card[" << flasher.sGetDBDF() <<
+    std::cout << "Updating SC firmware on device[" << flasher.sGetDBDF() <<
       "]" << std::endl;
     update_SC(boardIdx, candidate.file);
   }
 
   if (!same_dsa) {
-    std::cout << boost::format("[%s] : Updating shell\n") % flasher.sGetDBDF();
+    std::cout << boost::format("[%s] : Updating base\n") % flasher.sGetDBDF();
     update_shell(boardIdx, candidate.file, candidate.file);
     reboot = true;
   }
@@ -352,7 +352,7 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
 }
 
 /* 
- * Update shell and sc firmware on the card automatically
+ * Update shell and sc firmware on the device automatically
  */
 static void 
 auto_flash(xrt_core::device_collection& deviceCollection, bool force) 
@@ -407,27 +407,27 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   }
   std::cout << "----------------------------------------------------\n";
   std::cout << "Report\n";
-  //report status of cards
+  //report status of devices
   std::cout << report_status.str();
   if (boardsToUpdate.size() == 0) {
-    std::cout << "\nCard(s) up-to-date and do not need to be flashed." << std::endl;
+    std::cout << "\nDevice(s) up-to-date and do not need to be flashed." << std::endl;
     return;
   }
 
   if (success != 0) {
-    std::cout << "\n" << success << " Card(s) flashed successfully." << std::endl; 
+    std::cout << "\n" << success << " device(s) flashed successfully." << std::endl; 
   } else {
-    std::cout << "\nNo cards were flashed." << std::endl; 
+    std::cout << "\nNo devices were flashed." << std::endl; 
   }
 
   if (needreboot) {
     std::cout << "****************************************************\n";
-    std::cout << "Cold reboot machine to load the new image on card(s).\n";
+    std::cout << "Cold reboot machine to load the new image on device(s).\n";
     std::cout << "****************************************************\n";
   }
 
   if (success != boardsToUpdate.size()) {
-    std::cout << "WARNING:" << boardsToUpdate.size()-success << " Card(s) not flashed. " << std::endl;
+    std::cout << "WARNING:" << boardsToUpdate.size()-success << " Device(s) not flashed. " << std::endl;
   }
 }
 
@@ -448,7 +448,7 @@ program_plp(const xrt_core::device* dev, const std::string& partition)
   stream.read(buffer.data(), total_size);
 
   xrt_core::program_plp(dev, buffer);
-  std::cout << "Programmed PLP successfully" << std::endl;
+  std::cout << "Programmed shell successfully" << std::endl;
 }
 
 static std::vector<std::string>
@@ -472,12 +472,12 @@ find_flash_image_paths(const std::vector<std::string> image_list)
 
     //error-handling
     if(multiple_shells == 0) 
-      throw xrt_core::error("Specified shell not found on the system");
+      throw xrt_core::error("Specified base not found on the system");
     
     //if multiple shells with the same vbnv are installed on the system, we don't want to 
     //blindly update the device. in this case, the user needs to specify the complete path
     if(multiple_shells > 1) 
-      throw xrt_core::error("Specified shell matched mutiple installed shells. Please specify the full path.");
+      throw xrt_core::error("Specified base matched mutiple installed bases. Please specify the full path.");
 
     return path;
   };
@@ -589,7 +589,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(boost::str(boost::format("  Update: %s") % update));
+  XBU::verbose(boost::str(boost::format("  Base: %s") % update));
 
   // -- process "device" option -----------------------------------------------
   //enforce device specification
@@ -622,7 +622,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   if(force) {
     //force is a sub-option of update
     if(update.empty())
-      throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --update --force'");
+      throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base --force'");
   }
 
   // TODO: Added mutually exclusive code for image, update, and revert-to-golden action.
@@ -630,7 +630,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   if(!image.empty()) {
     //image is a sub-option of update
     if(update.empty())
-      throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --update --image='/path/to/flash_image' OR shell_name");
+      throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base --image='/path/to/flash_image' OR shell_name");
     //allow only 1 device to be manually flashed at a time
     if(deviceCollection.size() != 1)
       throw xrt_core::error("Please specify a single device to be flashed");
@@ -641,12 +641,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     auto image_paths = find_flash_image_paths(image);
     if(!XBU::can_proceed())
       return;
-    update_shell(deviceCollection.front()->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
+    for (const auto & dev : deviceCollection)
+      update_shell(dev->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
     return;
   }
 
   if (!update.empty()) {
-    XBU::verbose("Sub command: --update");
+    XBU::verbose("Sub command: --base");
     std::string empty = "";
     if(update.compare("all") == 0)
       auto_flash(deviceCollection, force);
@@ -666,13 +667,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     std::vector<Flasher> flasher_list;
     for (const auto & dev : deviceCollection) {
-      //collect information of all the cards that will be reset
+      //collect information of all the devices that will be reset
       Flasher flasher(dev->get_device_id());
       if(!flasher.isValid()) {
         xrt_core::error(boost::str(boost::format("%d is an invalid index") % dev->get_device_id()));
         continue;
       }
-      std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting card [" 
+      std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting device [" 
         % flasher.sGetDBDF() % "] back to factory mode.";
       flasher_list.push_back(flasher);
     }
@@ -691,15 +692,15 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     if (!has_reset)
       return;
     std::cout << "****************************************************\n";
-    std::cout << "Cold reboot machine to load the new image on card(s).\n";
+    std::cout << "Cold reboot machine to load the new image on device(s).\n";
     std::cout << "****************************************************\n";
     return;
   }
 
   // -- process "plp" option ---------------------------------------
   if(!plp.empty()) {
-    XBU::verbose(boost::str(boost::format("  plp: %s") % plp));
-    //only 1 card and name
+    XBU::verbose(boost::str(boost::format("  shell: %s") % plp));
+    //only 1 device and name
     if(deviceCollection.size() > 1)
       throw xrt_core::error("Please specify a single device");
     auto dev = deviceCollection.front();
@@ -717,7 +718,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     DSAInfo dsa(plp);
     //TO_DO: add a report for plp before asking permission to proceed. Replace following 2 lines
-    std::cout << "Programming PLP on Card [" << flasher.sGetDBDF() << "]..." << std::endl;
+    std::cout << "Programming shell on device [" << flasher.sGetDBDF() << "]..." << std::endl;
     std::cout << "Partition file: " << dsa.file << std::endl;
     
     //ask user's permission
@@ -734,7 +735,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   // -- process "user" option ---------------------------------------
   if(!xclbin.empty()) {
     XBU::verbose(boost::str(boost::format("  xclbin: %s") % xclbin));
-    //only 1 card and name
+    //only 1 device and name
     if(deviceCollection.size() > 1)
       throw xrt_core::error("Please specify a single device");
     auto dev = deviceCollection.front();
