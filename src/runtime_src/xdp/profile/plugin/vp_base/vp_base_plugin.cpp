@@ -21,7 +21,9 @@
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 #include "xdp/profile/database/database.h"
-
+#include "xdp/profile/device/tracedefs.h"
+#include "core/common/config_reader.h"
+#include "core/common/message.h"
 #include "core/common/time.h"
 
 #ifdef _WIN32
@@ -30,6 +32,22 @@
 #endif
 
 namespace xdp {
+
+  unsigned int XDPPlugin::trace_dump_int_s = 5;
+  bool XDPPlugin::trace_int_cached = false;
+
+  unsigned int XDPPlugin::get_trace_dump_int_s()
+  {
+      if (!trace_int_cached) {
+        trace_dump_int_s = xrt_core::config::get_trace_dump_interval_s();
+        if (trace_dump_int_s < MIN_TRACE_DUMP_INTERVAL_S) {
+          trace_dump_int_s = MIN_TRACE_DUMP_INTERVAL_S;
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TRACE_DUMP_INTERVAL_WARN_MSG);
+        }
+        trace_int_cached = true;
+      }
+      return trace_dump_int_s;
+  }
 
   XDPPlugin::XDPPlugin() : db(VPDatabase::Instance())
   {

@@ -848,3 +848,44 @@ mtx.unlock();
     xclGraphReadRTP_SET_PROTO_RESPONSE(buffer); \
     FREE_BUFFERS(); \
     xclGraphReadRTP_RETURN();
+
+//-----------xclSyncBOAIENB-----------------
+#define xclSyncBOAIENB_SET_PROTOMESSAGE(func_name,gmioname,dir,size,offset,boh) \
+    c_msg.set_gmioname((char*)gmioname); \
+    c_msg.set_dir(dir); \
+    c_msg.set_size(size); \
+    c_msg.set_offset(offset); \
+    c_msg.set_boh(boh);
+
+#define xclSyncBOAIENB_SET_PROTO_RESPONSE() \
+     ack = r_msg.ack(); 
+
+
+#define xclSyncBOAIENB_RETURN() \
+   // return ret;
+
+#define xclSyncBOAIENB_RPC_CALL(func_name,gmioname,dir,size,offset,boh) \
+    RPC_PROLOGUE(func_name); \
+    xclSyncBOAIENB_SET_PROTOMESSAGE(func_name,gmioname,dir,size,offset,boh); \
+    SERIALIZE_AND_SEND_MSG(func_name); \
+    xclSyncBOAIENB_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclSyncBOAIENB_RETURN();
+
+//-----------xclGMIOWait-----------------
+#define xclGMIOWait_SET_PROTOMESSAGE(func_name,gmioname) \
+    c_msg.set_gmioname((char*)gmioname);
+
+#define xclGMIOWait_SET_PROTO_RESPONSE() \
+    ack = r_msg.ack();  
+
+#define xclGMIOWait_RETURN()\
+    //return size;
+
+#define xclGMIOWait_RPC_CALL(func_name,gmioname) \
+    RPC_PROLOGUE(func_name); \
+    xclGMIOWait_SET_PROTOMESSAGE(func_name,gmioname); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclGMIOWait_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclGMIOWait_RETURN();

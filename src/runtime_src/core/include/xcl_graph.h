@@ -84,4 +84,8 @@ xclReadProfiling(xclDeviceHandle handle, int phdl);
 
 int
 xclStopProfiling(xclDeviceHandle handle, int phdl);
+
+int
+xclLoadXclBinMeta(xclDeviceHandle handle, const xclBin *buffer);
+
 #endif

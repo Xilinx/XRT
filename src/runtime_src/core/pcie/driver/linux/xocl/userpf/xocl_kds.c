@@ -437,7 +437,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct drm_xocl_execbuf *args = data;
 	struct drm_gem_object *obj;
 	struct drm_xocl_bo *xobj;
-	struct ert_packet *ecmd;
+	struct ert_packet *ecmd = NULL;
 	struct kds_command *xcmd;
 	int ret = 0;
 
@@ -592,8 +592,10 @@ out1:
 	xcmd->cb.free(xcmd);
 out:
 	/* Don't forget to put gem object if error happen */
-	if (ret < 0)
+	if (ret < 0) {
+		kfree(ecmd);
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+	}
 	return ret;
 }
 
@@ -726,10 +728,16 @@ int xocl_kds_reconfig(struct xocl_dev *xdev)
 }
 
 int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
-		     void *drm_filp, u32 *addrp)
+		     struct drm_file *filp, unsigned long size, u32 *addrp)
 {
-	/* plact holder */
-	return 0;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client = filp->driver_priv;
+	int ret;
+
+	mutex_lock(&client->lock);
+	ret = kds_map_cu_addr(kds, client, cu_idx, size, addrp);
+	mutex_unlock(&client->lock);
+	return ret;
 }
 
 u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist)
@@ -894,6 +902,7 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	ecmd->cq_int	= cfg->cq_int;
 	ecmd->dataflow	= cfg->dataflow;
 	ecmd->rw_shared	= cfg->rw_shared;
+	kds->cu_mgmt.rw_shared = cfg->rw_shared;
 
 	/* Fill CU address */
 	for (i = 0; i < num_cu; i++) {

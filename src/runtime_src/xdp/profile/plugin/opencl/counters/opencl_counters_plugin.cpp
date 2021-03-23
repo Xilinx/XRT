@@ -36,6 +36,11 @@ namespace xdp {
     writers.push_back(new OpenCLSummaryWriter("opencl_summary.csv")) ;
     (db->getStaticInfo()).addOpenedFile("opencl_summary.csv", "PROFILE_SUMMARY") ;
 
+    // If the OpenCL device offload plugin isn't already loaded, this
+    //  call will load the HAL device offload plugin and it will take
+    //  control of the offload.  Since there is OpenCL information we want
+    //  we should make sure the counters plugin is loaded after the
+    //  OpenCL device offload plugin when applicable.
     platform = xocl::get_shared_platform() ;
   }
 

@@ -48,7 +48,7 @@ endif()
 if (XRT_STATIC_BUILD)
   add_executable(${XBUTIL2_NAME}_static ${XBUTIL_V2_SRCS})
   target_compile_definitions(${XBUTIL2_NAME}_static PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
-  target_link_options(${XBUTIL2_NAME}_static PRIVATE "-static")
+  target_link_options(${XBUTIL2_NAME}_static PRIVATE "-static" "-L${Boost_LIBRARY_DIRS}")
   # Bypass FindBoost versions and just link explicitly with boost libraries
   # The -static link option will pick the static libraries.
   target_link_libraries(${XBUTIL2_NAME}_static

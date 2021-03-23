@@ -501,11 +501,16 @@ out:
 
 static int
 zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
-			char __user *xclbin)
+			char __user *xclbin, struct sched_client_ctx *client)
 {
 	uint64_t size;
 	char *pdi_buf = NULL;
 	int ret;
+
+	if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
+		DRM_ERROR("%s Shared context can not load xclbin", __func__);
+		return -EPERM;
+	}
 
 	size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
 	if (size == 0)
@@ -558,6 +563,38 @@ is_aie_only(struct axlf *axlf)
 	return (axlf->m_header.m_actionMask & AM_LOAD_AIE);
 }
 
+/*
+ * Cache the xclbin blob so that it can be shared by processes.
+ *
+ * Note: currently, we only cache xclbin blob for AIE only xclbin to
+ *       support AIE multi-processes. For AIE only xclbin, we load
+ *       the PDI to AIE even it has been loaded. But if a process is
+ *       using UUID to load xclbin metatdata, we don't load PDI to AIE.
+ *       So that a shared AIE context can load AIE metadata without
+ *       reload the hardware and can do non-destructive operations.
+ */
+static int
+zocl_cache_xclbin(struct drm_zocl_dev *zdev, struct axlf *axlf,
+		char __user *xclbin_ptr)
+{
+	int ret;
+	size_t size = axlf->m_header.m_length;
+
+	zdev->axlf = vmalloc(size);
+	if (!zdev->axlf)
+		return -ENOMEM;
+
+	ret = copy_from_user(zdev->axlf, xclbin_ptr, size);
+	if (ret) {
+		vfree(zdev->axlf);
+		return ret;
+	}
+
+	zdev->axlf_size = size;
+
+	return 0;
+}
+
 int
 zocl_xclbin_refcount(struct drm_zocl_dev *zdev)
 {
@@ -567,7 +604,8 @@ zocl_xclbin_refcount(struct drm_zocl_dev *zdev)
 }
 
 int
-zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
+zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
+	struct sched_client_ctx *client)
 {
 	struct axlf axlf_head;
 	struct axlf *axlf = NULL;
@@ -621,11 +659,14 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head.m_header.uuid)) {
 		if (is_aie_only(axlf)) {
-			ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
+			ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin,
+			    client);
 			if (ret)
 				DRM_WARN("read xclbin: fail to load AIE");
-			else
+			else {
 				zocl_create_aie(zdev, axlf);
+				zocl_cache_xclbin(zdev, axlf, xclbin);
+			}
 		} else {
 			DRM_INFO("%s The XCLBIN already loaded", __func__);
 		}
@@ -697,9 +738,11 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 				goto out0;
 		}
 	} else if (is_aie_only(axlf)) {
-		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
+		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, client);
 		if (ret)
 			goto out0;
+
+		zocl_cache_xclbin(zdev, axlf, xclbin);
 	} else if (axlf_obj->za_flags == DRM_ZOCL_PLATFORM_FLAT &&
 		   axlf_head.m_header.m_mode == XCLBIN_FLAT &&
 		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
@@ -717,8 +760,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	/* zocl_read_sect return size of section when successfully find it */
 	size = zocl_read_sect(IP_LAYOUT, &zdev->ip, axlf, xclbin);
 	if (size <= 0) {
-		if (size != 0)
+		if (size != 0) {
+			ret = size;
 			goto out0;
+		}
 	} else if (sizeof_section(zdev->ip, m_ip_data) != size) {
 		ret = -EINVAL;
 		goto out0;
@@ -727,8 +772,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	/* Populating DEBUG_IP_LAYOUT sections */
 	size = zocl_read_sect(DEBUG_IP_LAYOUT, &zdev->debug_ip, axlf, xclbin);
 	if (size <= 0) {
-		if (size != 0)
+		if (size != 0) {
+			ret = size;
 			goto out0;
+		}
 	} else if (sizeof_section(zdev->debug_ip, m_debug_ip_data) != size) {
 		ret = -EINVAL;
 		goto out0;
@@ -771,6 +818,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	/* Populating AIE_METADATA sections */
 	size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
 	if (size < 0) {
+		ret = size;
 		goto out0;
 	}
 	zdev->aie_data.size = size;
@@ -778,8 +826,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	/* Populating CONNECTIVITY sections */
 	size = zocl_read_sect(CONNECTIVITY, &zdev->connectivity, axlf, xclbin);
 	if (size <= 0) {
-		if (size != 0)
+		if (size != 0) {
+			ret = size;
 			goto out0;
+		}
 	} else if (sizeof_section(zdev->connectivity, m_connection) != size) {
 		ret = -EINVAL;
 		goto out0;
@@ -788,8 +838,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	/* Populating MEM_TOPOLOGY sections */
 	size = zocl_read_sect(MEM_TOPOLOGY, &zdev->topology, axlf, xclbin);
 	if (size <= 0) {
-		if (size != 0)
+		if (size != 0) {
+			ret = size;
 			goto out0;
+		}
 	} else if (sizeof_section(zdev->topology, m_mem_data) != size) {
 		ret = -EINVAL;
 		goto out0;
@@ -809,8 +861,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 out0:
 	write_unlock(&zdev->attr_rwlock);
-	if (size < 0)
-		ret = size;
 	vfree(axlf);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
 	return ret;
