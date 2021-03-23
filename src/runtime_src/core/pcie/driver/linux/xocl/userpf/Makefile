@@ -53,6 +53,7 @@ xocl-y := \
 	../xocl_thread.o \
 	../xocl_fdt.o \
 	../xocl_xclbin.o \
+	../xocl_debug.o \
 	../subdev/xdma.o \
 	../subdev/qdma.o \
 	../subdev/qdma4.o \

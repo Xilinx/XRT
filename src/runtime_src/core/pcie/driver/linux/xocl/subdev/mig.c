@@ -445,6 +445,7 @@ static int mig_probe(struct platform_device *pdev)
 {
 	struct xocl_mig *mig;
 	struct resource *res;
+	void *priv;
 	int err, i;
 
 	mig = devm_kzalloc(&pdev->dev, sizeof(*mig), GFP_KERNEL);
@@ -453,8 +454,9 @@ static int mig_probe(struct platform_device *pdev)
 
 	mig->mig_dev = &pdev->dev;
 
-	memcpy(&mig->mig_label, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct xocl_mig_label));
-
+	priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (priv)
+		memcpy(&mig->mig_label, priv, sizeof(struct xocl_mig_label));
 
 	if (!strncasecmp(mig->mig_label.tag, "DDR", 3)) {
 		mig->type = DRAM_ECC;
