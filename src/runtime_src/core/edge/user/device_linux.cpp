@@ -147,28 +147,54 @@ struct dev_info
   }
 };
 
-struct aie_core_info
+struct aie_metadata {
+  static void
+  read_aie_metadata(const xrt_core::device* device, uint32_t &row, uint32_t &col)
+  {
+    std::string err;
+    std::string value;
+    const static std::string AIE_TAG = "aie_metadata";
+    const uint32_t major = 1;
+    const uint32_t minor = 0;
+    const uint32_t patch = 0;
+    
+    auto dev = get_edgedev(device);
+
+    dev->sysfs_get(AIE_TAG, err, value);
+    if (!err.empty())
+      throw xrt_core::error(-EINVAL, err);
+
+    std::stringstream ss(value);
+    boost::property_tree::ptree pt; 
+    boost::property_tree::read_json(ss, pt);
+
+    if(pt.get<uint32_t>("schema_version.major") != major ||
+       pt.get<uint32_t>("schema_version.minor") != minor ||
+       pt.get<uint32_t>("schema_version.patch") != patch )
+      throw xrt_core::error(-EINVAL, boost::str(boost::format("Aie Metadata major:minor:patch [%d:%d:%d] version are not matching")
+                                                             % pt.get<uint32_t>("schema_version.major")
+                                                             % pt.get<uint32_t>("schema_version.minor")
+                                                             % pt.get<uint32_t>("schema_version.patch")));
+    col = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
+    row = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
+  }
+};
+
+struct aie_core_info : aie_metadata
 {
   using result_type = query::aie_core_info::result_type;
   static result_type
   get(const xrt_core::device* device,key_type key)
   {
-    std::string err;
-    std::string value;
-    auto dev = get_edgedev(device);
-    dev->sysfs_get("aie_metadata", err, value);
-    if (!err.empty())
-      throw xrt_core::error(-EINVAL, err);
-    std::stringstream ss(value);
-    boost::property_tree::ptree aie_pt; 
-    boost::property_tree::read_json(ss, aie_pt);
-
     boost::property_tree::ptree ptarray;
-    auto max_col = aie_pt.get<uint8_t>("aie_metadata.driver_config.num_columns");
-    auto max_row = aie_pt.get<uint8_t>("aie_metadata.driver_config.num_rows");
+    uint32_t max_col, max_row;
+
+    read_aie_metadata(device, max_row, max_col);
+
     for(int i=0;i<max_col;i++)
       for(int j=0; j<(max_row-1);j++)
-        ptarray.push_back(std::make_pair(std::to_string(i)+"_"+std::to_string(j), aie_sys_parser::get_parser()->aie_sys_read(i,(j+1)))); 
+        ptarray.push_back(std::make_pair(std::to_string(i)+"_"+std::to_string(j),
+                          aie_sys_parser::get_parser()->aie_sys_read(i,(j+1)))); 
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_core",ptarray);
@@ -180,24 +206,17 @@ struct aie_core_info
   }
 };
 
-struct aie_shim_info
+struct aie_shim_info : aie_metadata
 {
   using result_type = query::aie_shim_info::result_type;
   static result_type
   get(const xrt_core::device* device,key_type key)
   {
-    std::string err;
-    std::string value;
-    auto dev = get_edgedev(device);
-    dev->sysfs_get("aie_metadata", err, value);
-    if (!err.empty())
-      throw xrt_core::error(-EINVAL, err);
-    std::stringstream ss(value);
-    boost::property_tree::ptree aie_pt; 
-    boost::property_tree::read_json(ss, aie_pt);
-
     boost::property_tree::ptree ptarray;
-    auto max_col = aie_pt.get<uint8_t>("aie_metadata.driver_config.num_columns");
+    uint32_t max_col, max_row;
+
+    read_aie_metadata(device, max_row, max_col);
+
     for(int i=0;i<max_col;i++) {
       ptarray.push_back(std::make_pair("", aie_sys_parser::get_parser()->aie_sys_read(i,0))); 
     }

@@ -16,10 +16,11 @@
 
 #include "aie_sys_parser.h"
 #include <boost/format.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 std::fstream aie_sys_parser::sysfs_open_path(const std::string& path,
-    bool write, bool binary)
+                                             bool write, bool binary)
 {   
     std::fstream fs;
     std::ios::openmode mode = write ? std::ios::out : std::ios::in;
@@ -40,20 +41,52 @@ std::fstream aie_sys_parser::sysfs_open_path(const std::string& path,
 }
 
 std::fstream aie_sys_parser::sysfs_open(const std::string& entry,
-    bool write, bool binary)
+                                        bool write, bool binary)
 {
     return sysfs_open_path(entry, write, binary);
 }
 
 void aie_sys_parser::sysfs_get(const std::string& entry, std::vector<std::string>& sv)
 {
-    std::fstream fs = sysfs_open(entry, false, false);
     sv.clear();
+    std::fstream fs = sysfs_open(entry, false, false);
     std::string line;
     while (std::getline(fs, line))
         sv.push_back(line);
 }
 
+/*
+ Parser input for tile 23,0:
+ Status: core_status0|core_status1
+ PC: 0x12345678
+ LR: 0x45678901
+ SP: 0x78901234
+
+ output:
+ {
+    "aie_core": {
+        "23_0": {
+            "col": "23",
+            "row": "0",
+            "core": {
+                "Status": [
+                    "core_status0",
+                    "core_status1"
+                ],
+                "PC": [
+                    "0x12345678"
+                ],
+                "LR": [
+                    "0x45678901"
+                ],
+                "SP": [
+                    "0x78901234"
+                ]
+            }
+        }
+    }
+} 
+*/
 void
 aie_sys_parser::addrecursive(const int col, const int row, const std::string& tag, const std::string& line,
     boost::property_tree::ptree &pt)
@@ -109,7 +142,7 @@ aie_sys_parser::addrecursive(const int col, const int row, const std::string& ta
 boost::property_tree::ptree
 aie_sys_parser::aie_sys_read(const int col,const int row)
 {
-    std::vector<std::string> tags{"core","dma","lock","errors","event"};
+    const static std::vector<std::string> tags{"core","dma","lock","errors","event"};
     std::vector<std::string> data;
     boost::property_tree::ptree pt;
     for(auto& tag:tags) {

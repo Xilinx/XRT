@@ -24,13 +24,11 @@
 class aie_sys_parser {
 
 private:
-    std::fstream sysfs_open_path(const std::string& path, bool write,
-        bool binary);
-    std::fstream sysfs_open(const std::string& entry, bool write,
-         bool binary);
+    std::fstream sysfs_open_path(const std::string& path, bool write, bool binary);
+    std::fstream sysfs_open(const std::string& entry, bool write, bool binary);
     void sysfs_get(const std::string& entry, std::vector<std::string>& sv);
     void addrecursive(const int col, const int row, const std::string& tag, const std::string& line,
-        boost::property_tree::ptree &pt);
+                      boost::property_tree::ptree &pt);
 
     std::string sysfs_root;
     aie_sys_parser(const std::string& sysfs_base);

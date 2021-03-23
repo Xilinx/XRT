@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2020 Xilinx, Inc
+  Copyright (C) 2021 Xilinx, Inc
  
   Licensed under the Apache License, Version 2.0 (the "License"). You may
   not use this file except in compliance with the License. A copy of the
@@ -22,23 +22,138 @@
 #include <boost/optional/optional.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#define fmt4(x) boost::format("    %-22s: " x "\n")
-#define fmt8(x) boost::format("        %-22s: " x "\n")
-#define fmt12(x) boost::format("            %-22s: " x "\n")
-#define fmt16(x) boost::format("                %-22s: " x "\n")
+#define fmt4(x) boost::format("%4s%-22s: " x "\n") % " "
+#define fmt8(x) boost::format("%8s%-22s: " x "\n") % " "
+#define fmt12(x) boost::format("%12s%-22s: " x "\n") % " "
+#define fmt16(x) boost::format("%16s%-22s: " x "\n") % " "
+
 
 namespace qr = xrt_core::query;
 
-inline void
-addnode(std::string str, std::string nodestr,boost::property_tree::ptree& oshim, boost::property_tree::ptree& ishim)
+static void
+addnode(std::string search_str, std::string node_str,boost::property_tree::ptree& input_pt, boost::property_tree::ptree& output_pt)
 {
   int count = 0;
   boost::property_tree::ptree empty_pt;
-  for (auto& node: oshim.get_child(str, empty_pt)) {
-    ishim.put(nodestr+std::to_string(count++), node.second.data());
+  for (auto& node: input_pt.get_child(search_str, empty_pt)) {
+    output_pt.put(node_str+std::to_string(count++), node.second.data());
   }
 }
 
+static void
+addnodelist(std::string search_str, std::string node_str,boost::property_tree::ptree& input_pt, boost::property_tree::ptree& output_pt)
+{
+  for (auto& node: input_pt.get_child(search_str)) {
+    std::string val;
+    for (auto& value: node.second)
+      val +=(val.empty()?"":", ")+ value.second.data();
+    if(!val.empty())
+      output_pt.put(node_str + node.first, val);
+  }
+}
+
+/*
+{
+    "aie_shim": {
+        "0_0": {
+            "col": "0",
+            "row": "0",
+            "dma": {
+                "Channel_status": {
+                    "MM2S": [
+                        "Running"
+                    ],
+                    "S2MM": [
+                        "Stalled_on_lock"
+                    ]
+                },
+                "Mode": {
+                    "MM2S": [
+                        "A_B"
+                    ],
+                    "S2MM": [
+                        "FIFO",
+                        "Packet_Switching"
+                    ]
+                },
+                "Queue_size": {
+                    "MM2S": [
+                        "2"
+                    ],
+                    "S2MM": [
+                        "3"
+                    ]
+                },
+                "Queue_status": {
+                    "MM2S": [
+                        "channel0_overflow"
+                    ],
+                    "S2MM": [
+                        "channel0_overflow"
+                    ]
+                },
+                "Current_BD": {
+                    "MM2S": [
+                        "3"
+                    ],
+                    "S2MM": [
+                        "2"
+                    ]
+                },
+                "Lock_ID": {
+                    "MM2S": [
+                        "1"
+                    ],
+                    "S2MM": [
+                        "2"
+                    ]
+                }
+            },
+            "lock": {
+                "lock0": [
+                    "Acquired_for_read"
+                ],
+                "lock1": [
+                    "Acquired_for_write"
+                ]
+            },
+            "errors": {
+                "Core_module": {
+                    "Bus": [
+                        "AXI-MM_slave_error"
+                    ]
+                },
+                "Memory_module": {
+                    "ECC": [
+                        "DM_ECC_error_scrub_2-bit",
+                        "DM_ECC_error_2-bit"
+                    ]
+                },
+                "PL_module": {
+                    "DMA": [
+                        "DMA_S2MM_0_error",
+                        "DMA_MM2S_1_error"
+                    ]
+                }
+            },
+            "event": {
+                "Core_module": [
+                    "Perf_Cnt0",
+                    "PC_0",
+                    "Memory_Stall"
+                ],
+                "Memory_module": [
+                    "Lock_0_Acquired",
+                    "DMA_S2MM_0_go_to_idle"
+                ],
+                "PL_module": [
+                    "DMA_S2MM_0_Error",
+                    "Lock_0_Acquired"
+                ]
+            }
+        },
+        ....
+*/
 void
 populate_aie_shim(const xrt_core::device * device, const std::string& desc, boost::property_tree::ptree& pt)
 {
@@ -102,64 +217,11 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc, boos
       addnode("dma.Lock_ID.MM2S", "dma.lock_id.mm2s.channel_", oshim, ishim);
       addnode("dma.Lock_ID.S2MM", "dma.lock_id.s2mm.channel_", oshim, ishim);
 
-      count = 0;
-      boost::property_tree::ptree lockarray;
-      for (auto& node: oshim.get_child("lock")) {
-        std::string val;
-        for (auto& l: node.second)
-          val +=(val.empty()?"":", ")+l.second.data();
-        if(!val.empty())
-          ishim.put("lock."+node.first, val);
-      }
-
-      for (auto& node: oshim.get_child("errors.PL_module", empty_pt)) {
-        std::string val;
-        for (auto& l: node.second)
-          val +=(val.empty()?"":", ")+l.second.data();
-        if(!val.empty())
-          ishim.put("errors.pl_module."+node.first, val);
-      }
-
-      for (auto& node: oshim.get_child("errors.Core_module", empty_pt)) {
-        std::string val;
-        for (auto& l: node.second)
-          val +=(val.empty()?"":", ")+l.second.data();
-        if(!val.empty())
-          ishim.put("errors.core_module."+node.first, val);
-      }
-
-      for (auto& node: oshim.get_child("errors.Memory_module", empty_pt)) {
-        std::string val;
-        for (auto& l: node.second)
-          val +=(val.empty()?"":", ")+l.second.data();
-        if(!val.empty())
-          ishim.put("errors.memory_module."+node.first, val);
-      }
-
-      for (auto& node: oshim.get_child("event", empty_pt)) {
-        std::string val;
-        for (auto& l: node.second)
-          val +=(val.empty()?"":", ")+l.second.data();
-        if(!val.empty())
-          ishim.put("event."+node.first, val);
-      }
-
-      for (auto& node: oshim.get_child("event.Memory_module", empty_pt)) {
-        std::string val;
-        for (auto& l: node.second)
-          val +=(val.empty()?"":", ")+l.second.data();
-        if(!val.empty())
-          ishim.put("event.memory_module."+node.first, val);
-      }
-
-      for (auto& node: oshim.get_child("event.Core_module", empty_pt)) {
-        std::string val;
-        for (auto& l: node.second)
-          val +=(val.empty()?"":", ")+l.second.data();
-        if(!val.empty())
-          ishim.put("event.core_module."+node.first, val);
-      }
-
+      addnodelist("lock", "lock.", oshim, ishim);
+      addnodelist("errors.PL_module", "errors.pl_module.", oshim, ishim);
+      addnodelist("errors.Core_module", "errors.core_module.", oshim, ishim);
+      addnodelist("errors.Memory_module", "errors.memory_module.", oshim, ishim);
+      addnodelist("event", "event.", oshim, ishim);
       tile_array.push_back(std::make_pair("tile"+std::to_string(col),ishim));
     }
     pt.add_child("tiles",tile_array);
@@ -203,7 +265,7 @@ ReportAieShim::writeReport(const xrt_core::device * _pDevice,
   try {
     int count = 0;
     for (auto& tile: _pt.get_child("aie_shim_status.tiles")) {
-      _output << boost::format("Tile[%2d]\n") % count;
+      _output << boost::format("Tile[%2d]\n") % count++;
       _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
       _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
       if(tile.second.find("dma") != tile.second.not_found()) {
@@ -211,109 +273,108 @@ ReportAieShim::writeReport(const xrt_core::device * _pDevice,
         _output << boost::format("        %s:\n") % "Channel Status";
 
         _output << boost::format("            %s:\n") % "MM2S";
-        for(auto& n : tile.second.get_child("dma.channel_status.mm2s")) {
-          _output << fmt16("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("dma.channel_status.mm2s")) {
+          _output << fmt16("%s") % node.first % node.second.data();
         }
 
         _output << boost::format("            %s:\n") % "S2MM";
-        for(auto& n : tile.second.get_child("dma.channel_status.s2mm")) {
-          _output << fmt16("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("dma.channel_status.s2mm")) {
+          _output << fmt16("%s") % node.first % node.second.data();
         }
 
         _output << boost::format("        %s:\n") % "Mode";
 
-        for(auto& n : tile.second.get_child("dma.mode")) {
-          _output << fmt12("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("dma.mode")) {
+          _output << fmt12("%s") % node.first % node.second.data();
         }
 
         _output << boost::format("        %s:\n") % "Queue Size";
 
         _output << boost::format("            %s:\n") % "MM2S";
-        for(auto& n : tile.second.get_child("dma.queue_size.mm2s")) {
-          _output << fmt16("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("dma.queue_size.mm2s")) {
+          _output << fmt16("%s") % node.first % node.second.data();
         }
 
         _output << boost::format("            %s:\n") % "S2MM";
-        for(auto& n : tile.second.get_child("dma.queue_size.s2mm")) {
-          _output << fmt16("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("dma.queue_size.s2mm")) {
+          _output << fmt16("%s") % node.first % node.second.data();
         }
 
         _output << boost::format("        %s:\n") % "Queue Status";
 
         _output << boost::format("            %s:\n") % "MM2S";
-        for(auto& n : tile.second.get_child("dma.queue_status.mm2s")) {
-          _output << fmt16("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("dma.queue_status.mm2s")) {
+          _output << fmt16("%s") % node.first % node.second.data();
         }
 
         _output << boost::format("            %s:\n") % "S2MM";
-        for(auto& n : tile.second.get_child("dma.queue_status.s2mm")) {
-          _output << fmt16("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("dma.queue_status.s2mm")) {
+          _output << fmt16("%s") % node.first % node.second.data();
         }
 
         _output << boost::format("        %s:\n") % "Current BD";
 
         _output << boost::format("            %s:\n") % "MM2S";
-        for(auto& n : tile.second.get_child("dma.current_bd.mm2s")) {
-          _output << fmt16("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("dma.current_bd.mm2s")) {
+          _output << fmt16("%s") % node.first % node.second.data();
         }
 
         _output << boost::format("            %s:\n") % "S2MM";
-        for(auto& n : tile.second.get_child("dma.current_bd.s2mm")) {
-          _output << fmt16("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("dma.current_bd.s2mm")) {
+          _output << fmt16("%s") % node.first % node.second.data();
         }
 
         _output << boost::format("        %s:\n") % "Lock ID";
 
         _output << boost::format("            %s:\n") % "MM2S";
-        for(auto& n : tile.second.get_child("dma.lock_id.mm2s")) {
-          _output << fmt16("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("dma.lock_id.mm2s")) {
+          _output << fmt16("%s") % node.first % node.second.data();
         }
 
         _output << boost::format("            %s:\n") % "S2MM";
-        for(auto& n : tile.second.get_child("dma.lock_id.s2mm")) {
-          _output << fmt16("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("dma.lock_id.s2mm")) {
+          _output << fmt16("%s") % node.first % node.second.data();
         }
       } 
 
       if(tile.second.find("lock") != tile.second.not_found()) {
         _output << boost::format("    %s:\n") % "Lock";
-        for(auto& n : tile.second.get_child("lock",empty_ptree)) {
-          _output << fmt8("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("lock",empty_ptree)) {
+          _output << fmt8("%s") % node.first % node.second.data();
         }
       }
 
       if(tile.second.find("errors") != tile.second.not_found()) {
         _output << boost::format("    %s:\n") % "Errors";
-        int c = 0;
-        for(auto& n : tile.second.get_child("errors.pl_module",empty_ptree)) {
-          if(c == 0)
+        bool isfirst = true;
+        for(auto& node : tile.second.get_child("errors.pl_module",empty_ptree)) {
+          if(isfirst)
             _output << boost::format("        %s:\n") % "PL Module";
-          _output << fmt12("%s") % n.first % n.second.data();
-          c++;
+          _output << fmt12("%s") % node.first % node.second.data();
+          isfirst = false;
         }
-        c = 0;
-        for(auto& n : tile.second.get_child("errors.core_module",empty_ptree)) {
-          if(c == 0)
+        isfirst = true;
+        for(auto& node : tile.second.get_child("errors.core_module",empty_ptree)) {
+          if(isfirst)
             _output << boost::format("        %s:\n") % "Core Module";
-          _output << fmt12("%s") % n.first % n.second.data();
-          c++;
+          _output << fmt12("%s") % node.first % node.second.data();
+          isfirst = false;
         }
-        c = 0;
-        for(auto& n : tile.second.get_child("errors.memory_module",empty_ptree)) {
-          if(c == 0)
+        isfirst = true;
+        for(auto& node : tile.second.get_child("errors.memory_module",empty_ptree)) {
+          if(isfirst)
             _output << boost::format("        %s:\n") % "Memory Module";
-          _output << fmt12("%s") % n.first % n.second.data();
-          c++;
+          _output << fmt12("%s") % node.first % node.second.data();
+          isfirst = false;
         }
       }
 
       if(tile.second.find("event") != tile.second.not_found()) {
         _output << boost::format("    %s:\n") % "Event";
-        for(auto& n : tile.second.get_child("event",empty_ptree)) {
-          _output << fmt12("%s") % n.first % n.second.data();
+        for(auto& node : tile.second.get_child("event",empty_ptree)) {
+          _output << fmt12("%s") % node.first % node.second.data();
         }
       }
-      count++;
     } 
   } catch(std::exception const& e) {
     _output <<  e.what() << std::endl;
