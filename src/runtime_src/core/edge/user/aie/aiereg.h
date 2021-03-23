@@ -20,8 +20,11 @@
 #include <string>
 #include <map>
 
-const static
-std::map<std::string , uint32_t> regmap = {
+typedef std::map<std::string, uint32_t> register_map;
+const register_map* get_aie_register_map() 
+{
+  const static
+  register_map regmap = {
       {"Core_R0", 0x00030000},
       {"Core_R1", 0x00030010},
       {"Core_R2", 0x00030020},
@@ -359,4 +362,6 @@ std::map<std::string , uint32_t> regmap = {
       {"Stream_Switch_Event_Port_Selection_0", 0x0003FF00},
       {"Stream_Switch_Event_Port_Selection_1", 0x0003FF04} };
 
+  return &regmap;
+}
 #endif

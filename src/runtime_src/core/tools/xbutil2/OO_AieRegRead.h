@@ -28,8 +28,8 @@ class OO_AieRegRead : public OptionOptions {
 
  private:
    std::string m_device;
-   int m_row;
-   int m_col;
+   uint32_t m_row;
+   uint32_t m_col;
    std::string m_reg;
    bool m_help;
 };

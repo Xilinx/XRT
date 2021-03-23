@@ -183,23 +183,37 @@ struct aie_reg_read
   {
     auto dev = get_edgedev(device);
     uint32_t val = 0;
-    auto row = boost::any_cast<int>(r);
-    auto col = boost::any_cast<int>(c);
+    auto row = boost::any_cast<uint32_t>(r);
+    auto col = boost::any_cast<uint32_t>(c);
     auto v = boost::any_cast<std::string>(reg);
  
 #ifdef XRT_ENABLE_AIE
 #ifndef __AIESIM__
   const static std::string AIE_TAG = "aie_metadata";
   const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
+  const uint32_t major = 1;
+  const uint32_t minor = 0;
+  const uint32_t patch = 0;
 
   std::string err;
   std::string value;
+
+  // Reading the aie_metadata sysfs.
   dev->sysfs_get(AIE_TAG, err, value);
   if (!err.empty())
-    throw xrt_core::error(-EINVAL, err + ", aie xclbin not loaded");
+    throw xrt_core::error(-EINVAL, err + ", The loading xclbin acceleration image doesn't use the Artificial "
+                                  + "Intelligent Engines (AIE). No action will be performed.");
   std::stringstream ss(value);
   boost::property_tree::ptree pt;
   boost::property_tree::read_json(ss, pt);
+
+  if(pt.get<uint32_t>("schema_version.major") != major ||
+     pt.get<uint32_t>("schema_version.minor") != minor ||
+     pt.get<uint32_t>("schema_version.patch") != patch )
+    throw xrt_core::error(-EINVAL, boost::str(boost::format("Aie Metadata major:minor:patch [%d:%d:%d] version are not matching")
+                                                             % pt.get<uint32_t>("schema_version.major")
+                                                             % pt.get<uint32_t>("schema_version.minor")
+                                                             % pt.get<uint32_t>("schema_version.patch")));
 
   int mKernelFD = open(ZOCL_DEVICE.c_str(), O_RDWR);
   if (!mKernelFD)
@@ -220,32 +234,37 @@ struct aie_reg_read
     pt.get<uint8_t>("aie_metadata.driver_config.aie_tile_row_start"),
     pt.get<uint8_t>("aie_metadata.driver_config.aie_tile_num_rows"));
 
-  /* TODO get partition id and uid from XCLBIN or PDI, currently not supported*/
+  /* TODO get aie partition id and uid from XCLBIN or PDI, currently not supported*/
   uint32_t partition_id = 1;
   uint32_t uid = 0;
   drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };
-  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd) ? -errno : 0;
-  if (ret)
-    throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd");
+  if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FD, &aiefd))
+    throw xrt_core::error(-errno, "Create AIE failed. Can not get AIE fd");
 
   ConfigPtr.PartProp.Handle = aiefd.fd;
 
   AieRC rc;
   XAie_InstDeclare(DevInst, &ConfigPtr);
   if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
-    throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
+    throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration, error: " + std::to_string(rc));
+
   devInst = &DevInst;
   if(!devInst)
     throw xrt_core::error(-EINVAL, "Invalid aie object");
 
+  //As 0th row is shim row and core tile rows starts from 1
   row+=1;
   auto max_row = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
   auto max_col = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
-  if((row <= 0) && (row >= max_row) && (col < 0) && (col >= max_col))
-    throw xrt_core::error(-EINVAL, "Invalid row or column");
+  if ((row <= 0) || (row >= max_row))
+    throw xrt_core::error(-EINVAL, boost::str(boost::format("Invalid row, Row should be in range [0,%u]") % (max_row-2)));
 
-  auto it = regmap.find(v);
-  if (it == regmap.end())
+  if ((col < 0) || (col >= max_col))
+    throw xrt_core::error(-EINVAL, boost::str(boost::format("Invalid column, Column should be in range [0,%u]") % (max_col-1)));
+
+  const std::map<std::string, uint32_t> *regmap = get_aie_register_map();
+  auto it = regmap->find(v);
+  if (it == regmap->end())
     throw xrt_core::error(-EINVAL, "Invalid register");
 
   rc = XAie_Read32(devInst, it->second + _XAie_GetTileAddr(devInst,row,col), &val);

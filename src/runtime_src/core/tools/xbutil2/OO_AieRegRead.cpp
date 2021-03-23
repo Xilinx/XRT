@@ -26,6 +26,7 @@ namespace XBU = XBUtilities;
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/format.hpp>
+
 namespace po = boost::program_options;
 namespace qr = xrt_core::query;
 
@@ -35,7 +36,7 @@ namespace qr = xrt_core::query;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_AieRegRead::OO_AieRegRead( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Read from the given memory address" )
+    : OptionOptions(_longName, _isHidden, "Read given aie register from given row and column" )
     , m_device("")
     , m_row(0)
     , m_col(0)
