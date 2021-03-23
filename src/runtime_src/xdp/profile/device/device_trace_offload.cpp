@@ -145,7 +145,7 @@ void DeviceTraceOffload::read_trace_fifo(bool)
 #endif
     m_trace_vector.clear();
     dev_intf->readTrace(m_trace_vector);
-    deviceTraceLogger->processTraceData2(m_trace_vector);
+    deviceTraceLogger->processTraceData(m_trace_vector);
     num_packets += static_cast<uint32_t>(m_trace_vector.size());
 #ifndef _WIN32
   } while (m_trace_vector.size() != 0);
@@ -188,7 +188,7 @@ void DeviceTraceOffload::read_trace_end()
   // Trace logger will clear it's state and add approximations 
   // for pending events
   m_trace_vector.clear();
-  deviceTraceLogger->endProcessTraceData2(m_trace_vector);
+  deviceTraceLogger->endProcessTraceData(m_trace_vector);
   if (dev_intf->hasTs2mm()) {
     reset_s2mm();
     m_initialized = false;
@@ -227,7 +227,7 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
     return;
 
   dev_intf->parseTraceData(host_buf, nBytes, m_trace_vector);
-  deviceTraceLogger->processTraceData2(m_trace_vector);
+  deviceTraceLogger->processTraceData(m_trace_vector);
   m_trace_vector.clear();
 
   if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false) {

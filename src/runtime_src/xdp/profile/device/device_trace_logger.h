@@ -29,11 +29,8 @@ public:
   DeviceTraceLogger() {}
   virtual ~DeviceTraceLogger() {}
 
-  virtual void processTraceData(xclTraceResultsVector& traceVector) = 0; 
-  virtual void endProcessTraceData(xclTraceResultsVector& traceVector) = 0;
-
-  virtual void processTraceData2(std::vector<xclTraceResults>& traceVector) = 0; 
-  virtual void endProcessTraceData2(std::vector<xclTraceResults>& traceVector) = 0; 
+  virtual void processTraceData(std::vector<xclTraceResults>& traceVector) = 0;
+  virtual void endProcessTraceData(std::vector<xclTraceResults>& traceVector) = 0;
 };
 
 }
