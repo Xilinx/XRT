@@ -768,13 +768,13 @@ namespace xclhwemhal2 {
 
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
-	  if (simulatorType == "xsim") {
+	        if (simulatorType == "xsim") {
             cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
             << " --protoinst " << protoFileName;
             launcherArgs = launcherArgs + cmdLineOption.str();
-	  } else {
-	    writeNewSimulateScript(sim_path, simulatorType);
-	  }
+	        } else {
+	          writeNewSimulateScript(sim_path, simulatorType);
+	        }
         }
 
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
@@ -836,9 +836,10 @@ namespace xclhwemhal2 {
           setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
           setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
         }
-
-        setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
-        setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
+         
+        // Commented to set these when DEBUG MODE is set OFF/off
+        //setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
+        //setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
 
       if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
@@ -883,8 +884,9 @@ namespace xclhwemhal2 {
               setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
             }
 
-            setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
-            setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
+            // Commented to set these when DEBUG_MODE is set to GDB
+            //setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
+            //setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
           }
           else {
             std::string dMsg;
