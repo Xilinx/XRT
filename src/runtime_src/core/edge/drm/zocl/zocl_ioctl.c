@@ -41,10 +41,11 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_axlf *axlf_obj = data;
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
+	struct sched_client_ctx *client = filp->driver_priv;
 	int ret;
 
 	mutex_lock(&zdev->zdev_xclbin_lock);
-	ret = zocl_xclbin_read_axlf(zdev, axlf_obj);
+	ret = zocl_xclbin_read_axlf(zdev, axlf_obj, client);
 	mutex_unlock(&zdev->zdev_xclbin_lock);
 
 	return ret;

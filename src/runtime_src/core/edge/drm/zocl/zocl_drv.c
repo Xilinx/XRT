@@ -77,6 +77,11 @@ void zocl_free_sections(struct drm_zocl_dev *zdev)
 		vfree(zdev->topology);
 		CLEAR(zdev->topology);
 	}
+	if (zdev->axlf) {
+		vfree(zdev->axlf);
+		CLEAR(zdev->axlf);
+		zdev->axlf_size = 0;
+	}
 }
 
 #if KERNEL_VERSION(5, 3, 0) <= LINUX_VERSION_CODE
