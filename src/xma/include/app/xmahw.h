@@ -33,7 +33,7 @@ typedef struct XmaHwSession
     uint32_t         reserved[4];
 } XmaHwSession;
 
-enum xma_cmd_state {
+enum XmaCmdState {
   XMA_CMD_STATE_QUEUED = 1, //Submitted to XMA -> XRT
   XMA_CMD_STATE_COMPLETED = 2, //Cmd has finished
   XMA_CMD_STATE_ERROR = 3, //XMA or XRT error during submission of cmd
