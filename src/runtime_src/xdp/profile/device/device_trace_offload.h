@@ -111,7 +111,7 @@ protected:
 private:
     DeviceTraceLogger* deviceTraceLogger;
 
-    xclTraceResultsVector2 m_trace_vector = {};
+    std::vector<xclTraceResults> m_trace_vector = {};
     std::function<void(bool)> m_read_trace;
     size_t m_trbuf = 0;
     uint64_t m_trbuf_sz = 0;

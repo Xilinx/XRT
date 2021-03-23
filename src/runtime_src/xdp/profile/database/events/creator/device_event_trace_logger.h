@@ -39,9 +39,9 @@ public:
   XDP_EXPORT
   virtual void endProcessTraceData(xclTraceResultsVector& traceVector);
   XDP_EXPORT
-  virtual void processTraceData2(xclTraceResultsVector2& traceVector);
+  virtual void processTraceData2(std::vector<xclTraceResults>& traceVector);
   XDP_EXPORT
-  virtual void endProcessTraceData2(xclTraceResultsVector2& traceVector);
+  virtual void endProcessTraceData2(std::vector<xclTraceResults>& traceVector);
 };
 
 }

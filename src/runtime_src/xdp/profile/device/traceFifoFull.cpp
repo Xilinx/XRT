@@ -61,7 +61,7 @@ uint32_t TraceFifoFull::getMaxNumTraceSamples()
     return TRACE_NUMBER_SAMPLES;
 }
 
-uint32_t TraceFifoFull::readTrace(xclTraceResultsVector2& traceVector, uint32_t nSamples)
+uint32_t TraceFifoFull::readTrace(std::vector<xclTraceResults>& traceVector, uint32_t nSamples)
 {
     if(out_stream)
       (*out_stream) << " TraceFifoFull::readTrace " << std::endl;
@@ -93,7 +93,7 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector2& traceVector, uint32_t 
     return 0;
 }
 
-void TraceFifoFull::processTraceData(xclTraceResultsVector2& traceVector,uint32_t numSamples, void* data, uint32_t /*wordsPerSample*/)
+void TraceFifoFull::processTraceData(std::vector<xclTraceResults>& traceVector,uint32_t numSamples, void* data, uint32_t /*wordsPerSample*/)
 {
     xclTraceResults results = {};
     int mod = 0;

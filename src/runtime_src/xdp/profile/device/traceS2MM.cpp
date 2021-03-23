@@ -230,7 +230,7 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
   return count;
 }
 
-void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector2& traceVector)
+void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector)
 {
     if(out_stream)
         (*out_stream) << " TraceS2MM::parseTraceBuf " << std::endl;

@@ -66,7 +66,7 @@ class DeviceEventCreatorFromTrace
   XDP_EXPORT DeviceEventCreatorFromTrace(uint64_t devId);
   ~DeviceEventCreatorFromTrace() {}
 
-  XDP_EXPORT void createDeviceEvents(xclTraceResultsVector2& traceVector);
+  XDP_EXPORT void createDeviceEvents(std::vector<xclTraceResults>& traceVector);
   XDP_EXPORT void end();
 };
 

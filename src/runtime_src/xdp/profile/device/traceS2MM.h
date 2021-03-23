@@ -71,7 +71,7 @@ public:
     virtual void showStatus();	// ??
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
-    void parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector2& traceVector);
+    void parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector);
 
     void setTraceFormat(uint32_t tf) { mTraceFormat = tf; }
     bool supportsCircBuf() { return major_version >= 1 && minor_version > 0;}

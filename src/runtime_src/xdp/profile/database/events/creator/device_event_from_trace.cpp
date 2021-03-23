@@ -118,7 +118,7 @@ namespace xdp {
     }
   }
 
-  void DeviceEventCreatorFromTrace::createDeviceEvents(xclTraceResultsVector2& traceVector)
+  void DeviceEventCreatorFromTrace::createDeviceEvents(std::vector<xclTraceResults>& traceVector)
   {
     // Create Device Events and log them : do what is done in TraceParser::logTrace
     if(traceVector.size() == 0)
