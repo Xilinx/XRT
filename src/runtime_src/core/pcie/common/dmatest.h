@@ -86,8 +86,9 @@ namespace xcldev {
             }
 
             auto len = ((e - b) < count) ? 1 : (e - b)/count;
+            const auto ajust_e = b + len * count;
             std::vector<std::future<int>> threads;
-            while (b < e) {
+            while (b < ajust_e) {
                 threads.push_back(std::async(std::launch::async, &DMARunner::runSyncWorker, this, b, b + len, dir));
                 b += len;
             }
