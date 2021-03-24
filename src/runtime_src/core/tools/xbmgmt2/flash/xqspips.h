@@ -42,7 +42,9 @@ class XQSPIPS_Flasher
 public:
     XQSPIPS_Flasher(std::shared_ptr<xrt_core::device> dev);
     ~XQSPIPS_Flasher();
-    int revertToMFG();
+    void program(std::istream& binStream, unsigned base = 0);
+    int verify(std::istream& binStream, unsigned base = 0);
+    int revertToMFG(std::istream& binStream);
     int xclUpgradeFirmware(std::istream& binStream);
 
 private:
