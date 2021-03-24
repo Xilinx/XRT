@@ -884,11 +884,9 @@ xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 
@@ -907,11 +905,9 @@ xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGro
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }
@@ -929,11 +925,9 @@ xrtBOSubAlloc(xrtBufferHandle phdl, size_t sz, size_t offset)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }
@@ -950,11 +944,9 @@ xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }
@@ -969,11 +961,9 @@ xrtBOExport(xrtBufferHandle bhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return XRT_NULL_BO_EXPORT;
 }
@@ -989,11 +979,11 @@ xrtBOFree(xrtBufferHandle bhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return errno = ex.get();
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return errno = 0;
+    return -1;
   }
 }
 
@@ -1007,11 +997,9 @@ xrtBOSize(xrtBufferHandle bhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return 0;
 }
@@ -1029,11 +1017,11 @@ xrtBOSync(xrtBufferHandle bhdl, xclBOSyncDirection dir, size_t size, size_t offs
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return errno = ex.get();
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return errno = 0;
+    return -1;
   }
 }
 
@@ -1047,11 +1035,9 @@ xrtBOMap(xrtBufferHandle bhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }
@@ -1068,11 +1054,11 @@ xrtBOWrite(xrtBufferHandle bhdl, const void* src, size_t size, size_t seek)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return errno = ex.get();
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return errno = 0;
+    return -1;
   }
 }
 
@@ -1088,11 +1074,11 @@ xrtBORead(xrtBufferHandle bhdl, void* dst, size_t size, size_t skip)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return errno = ex.get();
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return errno = 0;
+    return -1;
   }
 }
 
@@ -1110,11 +1096,11 @@ xrtBOCopy(xrtBufferHandle dhdl, xrtBufferHandle shdl, size_t sz, size_t dst_offs
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return errno = ex.get();
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return errno = 0;
+    return -1;
   }
 }
 
@@ -1129,10 +1115,10 @@ xrtBOAddress(xrtBufferHandle bhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return static_cast<uint64_t>(errno = ex.get());
+    return std::numeric_limits<uint64_t>::max();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return static_cast<uint64_t>(errno = 0);
+    return std::numeric_limits<uint64_t>::max();
   }
 }

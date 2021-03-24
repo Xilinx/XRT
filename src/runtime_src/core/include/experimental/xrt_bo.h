@@ -463,7 +463,7 @@ extern "C" {
  * @size:          Size of buffer
  * @flags:         Specify type of buffer
  * @grp:           Specify bank information
- * Return:         xrtBufferHandle on success or NULL with errno set
+ * Return:         xrtBufferHandle on success or NULL
  */
 XCL_DRIVER_DLLESPEC
 xrtBufferHandle
@@ -476,7 +476,7 @@ xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
  * @size:          Size of buffer
  * @flags:         Specify type of buffer
  * @grp:           Specify bank information
- * Return:         xrtBufferHandle on success or NULL with errno set
+ * Return:         xrtBufferHandle on success or NULL
  */
 XCL_DRIVER_DLLESPEC
 xrtBufferHandle
@@ -514,7 +514,7 @@ xrtBOExport(xrtBufferHandle bhdl);
  * @parent:        Parent buffer handle
  * @size:          Size of sub buffer 
  * @offset:        Offset into parent buffer
- * Return:         xrtBufferHandle on success or NULL with errno set
+ * Return:         xrtBufferHandle on success or NULL
  */
 XCL_DRIVER_DLLESPEC
 xrtBufferHandle
@@ -544,7 +544,7 @@ xrtBOSize(xrtBufferHandle bhdl);
  * xrtBOAddr() - Get the physical address of this buffer
  *
  * @bhdl:         Buffer handle
- * Return:        Device address of this BO
+ * Return:        Device address of this BO, or LLONG_MAX on error
  */
 XCL_DRIVER_DLLESPEC
 uint64_t
@@ -557,7 +557,7 @@ xrtBOAddress(xrtBufferHandle bhdl);
  * @dir:           To device or from device
  * @size:          Size of data to synchronize
  * @offset:        Offset within the BO
- * Return:         0 on success or standard errno
+ * Return:         0 on success or error
  *
  * Synchronize the buffer contents between host and device. Depending
  * on the memory model this may require DMA to/from device or CPU
@@ -571,7 +571,7 @@ xrtBOSync(xrtBufferHandle bhdl, enum xclBOSyncDirection dir, size_t size, size_t
  * xrtBOMap() - Memory map BO into user's address space
  *
  * @bhdl:       Buffer handle
- * Return:      Memory mapped buffer, or NULL on error with errno set
+ * Return:      Memory mapped buffer, or NULL on error
  *
  * Map the contents of the buffer object into host memory.  The buffer
  * object is unmapped when freed.

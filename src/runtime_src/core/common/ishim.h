@@ -194,14 +194,14 @@ struct shim : public DeviceType
   open_context(const xuid_t xclbin_uuid , unsigned int ip_index, bool shared)
   {
     if (auto ret = xclOpenContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index, shared))
-      throw error(ret, "failed to open ip context");
+      throw system_error(ret, "failed to open ip context");
   }
 
   virtual void
   close_context(const xuid_t xclbin_uuid, unsigned int ip_index)
   {
     if (auto ret = xclCloseContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index))
-      throw error(ret, "failed to close ip context");
+      throw system_error(ret, "failed to close ip context");
   }
 
   virtual xclBufferHandle
@@ -235,30 +235,35 @@ struct shim : public DeviceType
   {
     auto ehdl = xclExportBO(DeviceType::get_device_handle(), bo);
     if (ehdl == XRT_NULL_BO_EXPORT)
-      throw std::runtime_error("Unable to export BO");
+      throw system_error(EINVAL, "Unable to export BO");
+    if (ehdl < 0) // system error code
+      throw system_error(ENODEV, "Unable to export BO");
     return ehdl;
   }
 
   virtual xclBufferHandle
   import_bo(xclBufferExportHandle ehdl)
   {
-    if (auto bo = xclImportBO(DeviceType::get_device_handle(), ehdl, 0))
-      return bo;
-    throw std::runtime_error("unable to import BO");
+    auto ihdl = xclImportBO(DeviceType::get_device_handle(), ehdl, 0);
+    if (ihdl == XRT_NULL_BO)
+      throw system_error(EINVAL, "unable to import BO");
+    if (ihdl < 0) // system error code
+      throw system_error(ENODEV, "unable to import BO");
+    return ihdl;
   }
 
   virtual void
   copy_bo(xclBufferHandle dst, xclBufferHandle src, size_t size, size_t dst_offset, size_t src_offset)
   {
     if (auto err = xclCopyBO(DeviceType::get_device_handle(), dst, src, size, dst_offset, src_offset))
-      throw std::runtime_error("unable to copy BO");
+      throw system_error(err, "unable to copy BO");
   }
 
   virtual void
   sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset)
   {
     if (auto err = xclSyncBO(DeviceType::get_device_handle(), bo, dir, size, offset))
-      throw std::runtime_error("unable to sync BO");
+      throw system_error(err, "unable to sync BO");
   }
 
   virtual void*
@@ -266,35 +271,35 @@ struct shim : public DeviceType
   {
     if (auto mapped = xclMapBO(DeviceType::get_device_handle(), bo, write))
       return mapped;
-    throw std::runtime_error("could not map BO");
+    throw system_error(EINVAL, "could not map BO");
   }
 
   virtual void
   unmap_bo(xclBufferHandle bo, void* addr)
   {
     if (auto ret = xclUnmapBO(DeviceType::get_device_handle(), bo, addr))
-      throw error(ret, "failed to unmap BO");
+      throw system_error(ret, "failed to unmap BO");
   }
 
   virtual void
   get_bo_properties(xclBufferHandle bo, struct xclBOProperties *properties) const
   {
     if (auto ret = xclGetBOProperties(DeviceType::get_device_handle(), bo, properties))
-      throw error(ret, "failed to get BO properties");
+      throw system_error(ret, "failed to get BO properties");
   }
 
   virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const
   {
     if (auto ret = xclRegRead(DeviceType::get_device_handle(), ipidx, offset, data))
-      throw error(ret, "failed to read ip(" + std::to_string(ipidx) + ")");
+      throw system_error(ret, "failed to read ip(" + std::to_string(ipidx) + ")");
   }
 
   virtual void
   reg_write(uint32_t ipidx, uint32_t offset, uint32_t data)
   {
     if (auto ret = xclRegWrite(DeviceType::get_device_handle(), ipidx, offset, data))
-      throw error(ret, "failed to write ip(" + std::to_string(ipidx) + ")");
+      throw system_error(ret, "failed to write ip(" + std::to_string(ipidx) + ")");
   }
 
 #ifdef __GNUC__
@@ -305,14 +310,14 @@ struct shim : public DeviceType
   xread(uint64_t offset, void* buffer, size_t size) const
   {
     if (size != xclRead(DeviceType::get_device_handle(), XCL_ADDR_KERNEL_CTRL, offset, buffer, size))
-      throw error(1, "failed to read at address (" + std::to_string(offset) + ")");
+      throw system_error(-1, "failed to read at address (" + std::to_string(offset) + ")");
   }
 
   virtual void
   xwrite(uint64_t offset, const void* buffer, size_t size)
   {
     if (size != xclWrite(DeviceType::get_device_handle(), XCL_ADDR_KERNEL_CTRL, offset, buffer, size))
-      throw error(1, "failed to write to address (" + std::to_string(offset) + ")");
+      throw system_error(-1, "failed to write to address (" + std::to_string(offset) + ")");
   }
 #ifdef __GNUC__
 # pragma GCC diagnostic pop
@@ -322,21 +327,21 @@ struct shim : public DeviceType
   unmgd_pread(void* buffer, size_t size, uint64_t offset)
   {
     if (auto ret = xclUnmgdPread(DeviceType::get_device_handle(), 0, buffer, size, offset))
-      throw error(static_cast<int>(ret), "failed to read at address (" + std::to_string(offset) + ")");
+      throw system_error(static_cast<int>(ret), "failed to read at address (" + std::to_string(offset) + ")");
   }
 
   virtual void
   unmgd_pwrite(const void* buffer, size_t size, uint64_t offset)
   {
     if (auto ret = xclUnmgdPwrite(DeviceType::get_device_handle(), 0, buffer, size, offset))
-      throw error(static_cast<int>(ret), "failed to write to address (" + std::to_string(offset) + ")");
+      throw system_error(static_cast<int>(ret), "failed to write to address (" + std::to_string(offset) + ")");
   }
 
   virtual void
   exec_buf(xclBufferHandle bo)
   {
     if (auto ret = xclExecBuf(DeviceType::get_device_handle(), bo))
-      throw error(ret, "failed to launch execution buffer");
+      throw system_error(ret, "failed to launch execution buffer");
   }
 
   virtual int
@@ -349,28 +354,28 @@ struct shim : public DeviceType
   load_axlf(const axlf* buffer)
   {
     if (auto ret = xclLoadXclBin(DeviceType::get_device_handle(), buffer))
-      throw error(ret, "failed to load xclbin");
+      throw system_error(ret, "failed to load xclbin");
   }
 
   virtual void
   reclock(const uint16_t* target_freq_mhz)
   {
     if (auto ret = xclReClock2(DeviceType::get_device_handle(), 0, target_freq_mhz))
-      throw error(ret, "failed to reclock specified clock");
+      throw system_error(ret, "failed to reclock specified clock");
   }
 
   virtual void
   p2p_enable(bool force)
   {
     if (auto ret = xclP2pEnable(DeviceType::get_device_handle(), true, force))
-      throw error(ret, "failed to enable p2p");
+      throw system_error(ret, "failed to enable p2p");
   }
 
   virtual void
   p2p_disable(bool force)
   {
     if (auto ret = xclP2pEnable(DeviceType::get_device_handle(), false, force))
-      throw error(ret, "failed to disable p2p");
+      throw system_error(ret, "failed to disable p2p");
   }
 
 #ifdef XRT_ENABLE_AIE
@@ -380,7 +385,7 @@ struct shim : public DeviceType
     if (auto ghdl = xclGraphOpen(DeviceType::get_device_handle(), uuid, gname, am))
       return ghdl;
 
-    throw std::runtime_error("failed to open graph");
+    throw system_error(EINVAL, "failed to open graph");
   }
 
   virtual void
@@ -393,7 +398,7 @@ struct shim : public DeviceType
   reset_graph(xclGraphHandle handle)
   {
     if (auto ret = xclGraphReset(handle))
-      throw error(ret, "fail to reset graph");
+      throw system_error(ret, "fail to reset graph");
   }
 
   virtual uint64_t
@@ -406,7 +411,7 @@ struct shim : public DeviceType
   run_graph(xclGraphHandle handle, int iterations)
   {
     if (auto ret = xclGraphRun(handle, iterations))
-      throw error(ret, "fail to run graph");
+      throw system_error(ret, "fail to run graph");
   }
 
   virtual int
@@ -419,42 +424,42 @@ struct shim : public DeviceType
   wait_graph(xclGraphHandle handle, uint64_t cycle)
   {
     if (auto ret = xclGraphWait(handle, cycle))
-      throw error(ret, "fail to wait graph");
+      throw system_error(ret, "fail to wait graph");
   }
 
   virtual void
   suspend_graph(xclGraphHandle handle)
   {
     if (auto ret = xclGraphSuspend(handle))
-      throw error(ret, "fail to suspend graph");
+      throw system_error(ret, "fail to suspend graph");
   }
 
   virtual void
   resume_graph(xclGraphHandle handle)
   {
     if (auto ret = xclGraphResume(handle))
-      throw error(ret, "fail to resume graph");
+      throw system_error(ret, "fail to resume graph");
   }
 
   virtual void
   end_graph(xclGraphHandle handle, uint64_t cycle)
   {
     if (auto ret = xclGraphEnd(handle, cycle))
-      throw error(ret, "fail to end graph");
+      throw system_error(ret, "fail to end graph");
   }
 
   virtual void
   update_graph_rtp(xclGraphHandle handle, const char* port, const char* buffer, size_t size)
   {
     if (auto ret = xclGraphUpdateRTP(handle, port, buffer, size))
-      throw error(ret, "fail to update graph rtp");
+      throw system_error(ret, "fail to update graph rtp");
   }
 
   virtual void
   read_graph_rtp(xclGraphHandle handle, const char* port, char* buffer, size_t size)
   {
     if (auto ret = xclGraphReadRTP(handle, port, buffer, size))
-      throw error(ret, "fail to read graph rtp");
+      throw system_error(ret, "fail to read graph rtp");
   }
 
   virtual void
@@ -468,28 +473,28 @@ struct shim : public DeviceType
   sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
   {
     if (auto ret = xclSyncBOAIE(DeviceType::get_device_handle(), bo, gmioName, dir, size, offset))
-      throw error(ret, "fail to sync aie bo");
+      throw system_error(ret, "fail to sync aie bo");
   }
 
   virtual void
   reset_aie()
   {
     if (auto ret = xclResetAIEArray(DeviceType::get_device_handle()))
-      throw error(ret, "fail to reset aie");
+      throw system_error(ret, "fail to reset aie");
   }
 
   virtual void
   sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
   {
     if (auto ret = xclSyncBOAIENB(DeviceType::get_device_handle(), bo, gmioName, dir, size, offset))
-      throw error(ret, "fail to sync aie non-blocking bo");
+      throw system_error(ret, "fail to sync aie non-blocking bo");
   }
 
   virtual void
   wait_gmio(const char *gmioName)
   {
     if (auto ret = xclGMIOWait(DeviceType::get_device_handle(), gmioName))
-      throw error(ret, "fail to wait gmio");
+      throw system_error(ret, "fail to wait gmio");
   }
 
   virtual int
@@ -508,14 +513,14 @@ struct shim : public DeviceType
   stop_profiling(int phdl)
   {
     if (auto ret = xclStopProfiling(DeviceType::get_device_handle(), phdl))
-      throw error(ret, "fail to wait gmio");
+      throw system_error(ret, "fail to wait gmio");
   }
 
   virtual void
   load_axlf_meta(const axlf* buffer)
   {
     if (auto ret = xclLoadXclBinMeta(DeviceType::get_device_handle(), buffer))
-      throw error(ret, "failed to load xclbin");
+      throw system_error(ret, "failed to load xclbin");
   }
 #endif
 };
