@@ -22,10 +22,9 @@
 namespace xdp {
 
   AieTraceConfigWriter::AieTraceConfigWriter(const char* filename,
-               const char* d,
                uint64_t index,
                std::string m) :
-    VPWriter(filename), deviceName(d), deviceIndex(index), traceMetricString(m)
+    VPWriter(filename), deviceIndex(index), traceMetricString(m)
   {
   }
 

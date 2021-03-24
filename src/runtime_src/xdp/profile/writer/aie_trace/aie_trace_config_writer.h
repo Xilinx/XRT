@@ -32,11 +32,10 @@ namespace xdp {
   class AieTraceConfigWriter : public VPWriter
   {
   private:
-    std::string deviceName ;
     std::string traceMetricString ;
     uint64_t deviceIndex ;
   public:
-    AieTraceConfigWriter(const char* filename, const char* d, uint64_t index, std::string m) ;
+    AieTraceConfigWriter(const char* filename, uint64_t index, std::string m) ;
     ~AieTraceConfigWriter() ;
 
   private:

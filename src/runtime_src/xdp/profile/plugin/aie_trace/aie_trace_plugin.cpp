@@ -190,6 +190,9 @@ namespace xdp {
       metricSet = defaultSet;
     }
 
+    writers.push_back(new AieTraceConfigWriter("aie_event_runtime_config.json",
+                                                deviceId, metricSet));
+
     // Capture all tiles across all graphs
     // NOTE: future releases will support the specification of tile subsets
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
