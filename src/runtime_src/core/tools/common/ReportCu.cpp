@@ -22,13 +22,7 @@
 #include "core/common/device.h"
 #include "core/common/utils.h"
 
-#include "core/pcie/linux/shim.h"
-#include "xrt.h"
-
 namespace qr = xrt_core::query;
-
-/* exposed by shim */
-int xclUpdateSchedulerStat(xclDeviceHandle);
 
 enum class cu_type {
   PL,
@@ -86,8 +80,7 @@ schedulerUpdateStat(xrt_core::device *device)
     auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), -1); };
     xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
     
-    auto hdl = device->get_device_handle();
-    xclUpdateSchedulerStat(hdl);
+    device->update_scheduler_status();
   }
   catch (const std::exception&) {
     // xclbin_lock failed, safe to ignore
