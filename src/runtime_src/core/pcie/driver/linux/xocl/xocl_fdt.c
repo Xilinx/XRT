@@ -1885,3 +1885,61 @@ const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
 
 	return fw_ver;
 }
+
+bool xocl_fdt_get_freq_cnt_eps(xdev_handle_t xdev_hdl, void *blob,
+                               struct clock_counter_info *clk_counter)
+{
+	int offset = 0;
+	const char *ipname = NULL;
+	const u64 *prop;
+	const u32 *bar_idx;
+	int bar;
+	bool found_k1 = false, found_k2 = false;
+
+	if (!blob)
+		return false;
+
+	bar_idx = fdt_getprop(blob, offset, PROP_BAR_IDX, NULL);
+	bar = bar_idx ? ntohl(*bar_idx) : 0;
+
+	for (offset = fdt_next_node(blob, -1, NULL);
+		offset >= 0;
+		offset = fdt_next_node(blob, offset, NULL)) {
+		ipname = fdt_get_name(blob, offset, NULL);
+		if (ipname && strncmp(ipname, NODE_CLKFREQ_K1,
+		    strlen(NODE_CLKFREQ_K1)) == 0) {
+			prop = fdt_getprop(blob, offset, PROP_IO_OFFSET, NULL);
+			if (!prop)
+				continue;
+
+			clk_counter[CCT_K1].start = be64_to_cpu(prop[0]) +
+				pci_resource_start(XDEV(xdev_hdl)->pdev, bar);
+			clk_counter[CCT_K1].end = clk_counter[CCT_K1].start +
+				be64_to_cpu(prop[1]) - 1;
+			clk_counter[CCT_K1].size = clk_counter[CCT_K1].end -
+				clk_counter[CCT_K1].start + 1;
+			found_k1 = true;
+		}
+		if (ipname && strncmp(ipname, NODE_CLKFREQ_K2,
+		    strlen(NODE_CLKFREQ_K2)) == 0) {
+			prop = fdt_getprop(blob, offset, PROP_IO_OFFSET, NULL);
+			if (!prop)
+				continue;
+
+			clk_counter[CCT_K2].start = be64_to_cpu(prop[0]) +
+				pci_resource_start(XDEV(xdev_hdl)->pdev, bar);
+			clk_counter[CCT_K2].end = clk_counter[CCT_K2].start +
+				be64_to_cpu(prop[1]) - 1;
+			clk_counter[CCT_K2].size = clk_counter[CCT_K2].end -
+				clk_counter[CCT_K2].start + 1;
+			found_k2 = true;
+		}
+	}
+
+	if (!(found_k1 || found_k2)) {
+		xocl_xdev_err(xdev_hdl, "clock counter end points(ep_freq_cnt_aclk_kernel_*) not found in xclbin");
+		return false;
+	}
+
+	return true;
+}

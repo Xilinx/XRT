@@ -2145,6 +2145,7 @@ static int icap_probe_urpdev_by_id(struct platform_device *pdev,
 
 static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool sref)
 {
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int err = 0;
 	bool retention = ((icap->data_retention & 0x1) == 0x1) && sref;
 
@@ -2182,7 +2183,7 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool s
 	} else {
 		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
 		ICAP_INFO(icap, "xclbin is generated for flat shell, dont need to program the bitstream ");
-		err = xocl_clock_freq_rescaling(xocl_get_xdev(icap->icap_pdev), true);
+		err = xocl_clock_freq_rescaling(xdev, true);
 		if (err)
 			ICAP_ERR(icap, "not able to configure clocks, err: %d", err);
 	}
@@ -2204,6 +2205,20 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool s
 		err = icap_refresh_clock_freq(icap, xclbin);
 		if (err)
 			ICAP_ERR(icap, "not able to refresh clock freq");
+	} else if (err == -EEXIST) {
+		/* Try locating the ep_freq_cnt_aclk_kernel_* endpoints in xclbin
+		 * On u2 raptor2 shells (1RP or 2RP or 0RP), these endpoints are
+		 * available in ULP (i.e. in xclbin) but not in BLP+PLP
+		 */
+		const struct axlf_section_header *header = NULL;
+		header = xrt_xclbin_get_section_hdr(xclbin, PARTITION_METADATA);
+		if (header) {
+			struct clock_counter_info clk_counter[CCT_NUM] = { {0} };
+			bool present = xocl_fdt_get_freq_cnt_eps(xdev,
+					(char *)xclbin + header->m_sectionOffset, clk_counter);
+			if (present)
+				xocl_clock_reconfig_counters(xdev, clk_counter);
+		}
 	}
 
 	icap_calib(icap, retention);
