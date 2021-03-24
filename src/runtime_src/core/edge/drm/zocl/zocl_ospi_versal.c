@@ -203,7 +203,7 @@ static int zocl_ov_recieve(struct zocl_ov_dev *ov)
 
 		len += ov->size;
 		if ((len / 1000000) > next) {
-			ov_dbg(ov->pdev, "%d M", len / 1000000);
+			ov_info(ov->pdev, "%d M", len / 1000000);
 			next++;
 		}
 
