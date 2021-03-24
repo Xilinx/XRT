@@ -34,7 +34,7 @@
 //#define MAX_PLUGINS             32//32 encoders+32 decoders+...
 
 #define XMA_LIB_MAIN_VER        2020
-#define XMA_LIB_SUB_VER         1
+#define XMA_LIB_SUB_VER         3
 
 #define XMA_NUM_EXECBO_DEFAULT  4//KDS fixed for wait_count check
 #define XMA_NUM_EXECBO_MODE2    1
