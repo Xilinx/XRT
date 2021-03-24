@@ -2211,14 +2211,11 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool s
 		const struct axlf_section_header *header = NULL;
 		header = xrt_xclbin_get_section_hdr(xclbin, PARTITION_METADATA);
 		if (header) {
-			struct clock_counter_info *clk_counter;
-			clk_counter = (struct clock_counter_info *) vzalloc(CCT_NUM *
-											sizeof(struct clock_counter_info));
+			struct clock_counter_info clk_counter[CCT_NUM];
 			bool present = xocl_fdt_get_freq_cnt_eps(xdev,
 					(char *)xclbin + header->m_sectionOffset, clk_counter);
 			if (present)
 				xocl_clock_reconfig_counters(xdev, clk_counter);
-			vfree(clk_counter);
 		}
 	}
 

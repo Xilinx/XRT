@@ -1897,7 +1897,7 @@ bool xocl_fdt_get_freq_cnt_eps(xdev_handle_t xdev_hdl, void *blob,
 	bool found_k1 = false, found_k2 = false;
 
 	if (!blob)
-		return NULL;
+		return false;
 
 	bar_idx = fdt_getprop(blob, offset, PROP_BAR_IDX, NULL);
 	bar = bar_idx ? ntohl(*bar_idx) : 0;
