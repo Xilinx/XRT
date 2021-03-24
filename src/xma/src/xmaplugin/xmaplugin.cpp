@@ -479,6 +479,8 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     cmd_obj_error.cmd_id1 = 0;
     cmd_obj_error.cmd_id2 = 0;
     cmd_obj_error.cmd_finished = false;
+    cmd_obj_error.cmd_state = XmaCmdState::XMA_CMD_STATE_MAX;
+    cmd_obj_error.return_code = 0;
     cmd_obj_error.cu_index = -1;
     cmd_obj_error.do_not_use1 = nullptr;
 
@@ -632,6 +634,8 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     cmd_obj.cmd_id1 = 0;
     cmd_obj.cmd_id2 = 0;
     cmd_obj.cmd_finished = false;
+    cmd_obj.cmd_state = XmaCmdState::XMA_CMD_STATE_MAX;
+    cmd_obj.return_code = 0;
     cmd_obj.cu_index = kernel_tmp1->cu_index;
     cmd_obj.do_not_use1 = s_handle.session_signature;
 
@@ -686,6 +690,8 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     cmd_obj_error.cmd_id1 = 0;
     cmd_obj_error.cmd_id2 = 0;
     cmd_obj_error.cmd_finished = false;
+    cmd_obj_error.cmd_state = XmaCmdState::XMA_CMD_STATE_MAX;
+    cmd_obj_error.return_code = 0;
     cmd_obj_error.cu_index = -1;
     cmd_obj_error.do_not_use1 = nullptr;
 
@@ -858,6 +864,8 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     cmd_obj.cmd_id1 = 0;
     cmd_obj.cmd_id2 = 0;
     cmd_obj.cmd_finished = false;
+    cmd_obj.cmd_state = XmaCmdState::XMA_CMD_STATE_MAX;
+    cmd_obj.return_code = 0;
     cmd_obj.cu_index = kernel_tmp1->cu_index;
     cmd_obj.do_not_use1 = s_handle.session_signature;
 
