@@ -1545,13 +1545,15 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 
 		krnl_info = xocl_query_kernel(xdev, info.kname);
 		if (!krnl_info) {
-			ICAP_WARN(icap, "%s has no metadata. Skip", kname);
-			continue;
+			ICAP_WARN(icap, "%s has no metadata.", kname);
 		}
 
 		info.inst_idx = i;
 		info.addr = ip->m_base_address;
-		info.size = krnl_info->range;
+		/* For some special purpose CU, there is no xml krnl info.
+		 * Use hard coding range 64KB for those CUs.
+		 */
+		info.size = (krnl_info) ? krnl_info->range : 0x10000;
 		info.num_res = subdev_info.num_res;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
 		info.protocol = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
