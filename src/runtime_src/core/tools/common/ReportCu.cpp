@@ -80,8 +80,8 @@ schedulerUpdateStat(xrt_core::device *device)
   try {
     // lock xclbin
     auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
-    device->open_context(uuid.get(), static_cast<unsigned int>(-1), true);
-    auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), static_cast<unsigned int>(-1)); };
+    device->open_context(uuid.get(), std::numeric_limits<unsigned int>::max(), true);
+    auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), std::numeric_limits<unsigned int>::max()); };
     xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
     
     device->update_scheduler_status();
