@@ -532,6 +532,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	if (XDEV(xdev)->kernels != NULL) {
 		vfree(XDEV(xdev)->kernels);
 		XDEV(xdev)->kernels = NULL;
+		XDEV(xdev)->ksize = 0;
 	}
 
 	/* There is a corner case.
