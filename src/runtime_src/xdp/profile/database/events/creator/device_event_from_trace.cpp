@@ -100,7 +100,7 @@ namespace xdp {
           // All we have to do is push time forward and let this end event
           //  match the start we found
           hostTimestamp += halfCycleTimeInMs;
-	} else {
+        } else {
           // The times are different, so we need to end the matching start
           //  and then create an additional pulse
           memEvent = new DeviceMemoryAccess(matchingStart->getEventId(), hostTimestamp, ty, deviceId, slot, cuId);
@@ -125,10 +125,10 @@ namespace xdp {
     }
   }
 
-  void DeviceEventCreatorFromTrace::createDeviceEvents(xclTraceResultsVector& traceVector)
+  void DeviceEventCreatorFromTrace::createDeviceEvents(std::vector<xclTraceResults>& traceVector)
   {
     // Create Device Events and log them : do what is done in TraceParser::logTrace
-    if(traceVector.mLength == 0)
+    if(traceVector.size() == 0)
       return;
 
     if(!VPDatabase::alive()) {
@@ -138,12 +138,8 @@ namespace xdp {
     uint64_t timestamp = 0;
     double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
 
-    for(unsigned int i=0; i < traceVector.mLength; i++) {
-      auto& trace = traceVector.mArray[i];
-      
+    for (auto& trace : traceVector) {
       timestamp = trace.Timestamp;
-
-      // assign EVENT_TYPE
 
       if (trace.isClockTrain) {
         trainDeviceHostTimestamps(timestamp, trace.HostTimestamp);
@@ -168,13 +164,13 @@ namespace xdp {
         uint32_t stallExtEvent = trace.TraceID & XAM_TRACE_STALL_EXT_MASK;
 
         Monitor* mon  = db->getStaticInfo().getAMonitor(deviceId, xclbin, s);
-	if (!mon) {
-	  // In hardware emulation, there might be monitors inserted
-	  //  that don't show up in the debug ip layout.  These are added
-	  //  for their own debugging purposes and we should ignore any
-	  //  packets we see from them.
-	  continue ;
-	}
+        if (!mon) {
+          // In hardware emulation, there might be monitors inserted
+          //  that don't show up in the debug ip layout.  These are added
+          //  for their own debugging purposes and we should ignore any
+          //  packets we see from them.
+          continue ;
+        }
         int32_t  cuId = mon->cuIndex;
         
         if(cuEvent) {
@@ -192,7 +188,7 @@ namespace xdp {
             event = new KernelEvent(e->getEventId(), hostTimestamp, KERNEL, deviceId, s, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
-	    (db->getStats()).setLastKernelEndTime(hostTimestamp) ;
+            (db->getStats()).setLastKernelEndTime(hostTimestamp) ;
           } else {
             // start event
             event = new KernelEvent(0, hostTimestamp, KERNEL, deviceId, s, cuId);
@@ -203,8 +199,8 @@ namespace xdp {
             if(1 == cuStarts[s].size()) {
               traceIDs[s] = 0;	// When current CU starts, reset stall status
             }
-	    if (db->getStats().getFirstKernelStartTime() == 0.0)
-	      (db->getStats()).setFirstKernelStartTime(hostTimestamp) ;
+            if (db->getStats().getFirstKernelStartTime() == 0.0)
+              (db->getStats()).setFirstKernelStartTime(hostTimestamp) ;
           }
         }
  
@@ -267,13 +263,13 @@ namespace xdp {
         s = trace.TraceID - MIN_TRACE_ID_ASM;
 
         Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, s);
-	if (!mon) {
-	  // In hardware emulation, there might be monitors inserted
-	  //  that don't show up in the debug ip layout.  These are added
-	  //  for their own debugging purposes and we should ignore any
-	  //  packets we see from them.
-	  continue ;
-	}
+        if (!mon) {
+          // In hardware emulation, there might be monitors inserted
+          //  that don't show up in the debug ip layout.  These are added
+          //  for their own debugging purposes and we should ignore any
+          //  packets we see from them.
+          continue ;
+        }
         int32_t  cuId = mon->cuIndex;
 
         bool isSingle    = trace.EventFlags & 0x10;

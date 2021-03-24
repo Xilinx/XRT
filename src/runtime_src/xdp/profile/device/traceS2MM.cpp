@@ -230,14 +230,14 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
   return count;
 }
 
-void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector)
+void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector)
 {
     if(out_stream)
         (*out_stream) << " TraceS2MM::parseTraceBuf " << std::endl;
 
     uint32_t packetSizeBytes = 8;
     uint32_t tvindex = 0;
-    traceVector.mLength = 0;
+    traceVector.clear();
 
     uint64_t count = size / packetSizeBytes;
     if (count > MAX_TRACE_NUMBER_SAMPLES) {
@@ -271,17 +271,17 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
         isClockTrain = (i < 8 && !mclockTrainingdone);
       }
 
+      xclTraceResults result = {};
       if (isClockTrain) {
-        parsePacketClockTrain(currentPacket, mPacketFirstTs, mModulus, traceVector.mArray[tvindex]);
+        parsePacketClockTrain(currentPacket, mPacketFirstTs, mModulus, result);
         tvindex  = (mModulus == 3) ? tvindex + 1 : tvindex;
         mModulus = (mModulus == 3) ? 0 : mModulus+ 1;
       }
       else {
-        parsePacket(currentPacket, mPacketFirstTs, traceVector.mArray[tvindex++]);
+        parsePacket(currentPacket, mPacketFirstTs, result);
       }
+      traceVector.push_back(result);
 
-
-      traceVector.mLength = tvindex;
     } // For i < count
     mclockTrainingdone = true;
 }

@@ -38,9 +38,9 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
 {
   // Select appropriate reader
   if(has_fifo()) {
-    m_read_trace = std::bind(&DeviceTraceOffload::read_trace_fifo, this);
+    m_read_trace = std::bind(&DeviceTraceOffload::read_trace_fifo, this, std::placeholders::_1);
   } else {
-    m_read_trace = std::bind(&DeviceTraceOffload::read_trace_s2mm, this);
+    m_read_trace = std::bind(&DeviceTraceOffload::read_trace_s2mm, this, std::placeholders::_1);
   }
 
   m_prev_clk_train_time = std::chrono::system_clock::now();
@@ -65,12 +65,12 @@ void DeviceTraceOffload::offload_device_continuous()
 
   while (should_continue()) {
     train_clock();
-    m_read_trace();
+    m_read_trace(false);
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
   }
 
-  // Do a final read
-  m_read_trace();
+  // Do a final forced read
+  m_read_trace(true);
   read_trace_end();
 }
 
@@ -129,7 +129,7 @@ void DeviceTraceOffload::train_clock()
   m_force_clk_train = false;
 }
 
-void DeviceTraceOffload::read_trace_fifo()
+void DeviceTraceOffload::read_trace_fifo(bool)
 {
   debug_stream
     << "DeviceTraceOffload::read_trace_fifo " << std::endl;
@@ -143,12 +143,12 @@ void DeviceTraceOffload::read_trace_fifo()
 #ifndef _WIN32
   do {
 #endif
-    m_trace_vector = {};
+    m_trace_vector.clear();
     dev_intf->readTrace(m_trace_vector);
     deviceTraceLogger->processTraceData(m_trace_vector);
-    num_packets += m_trace_vector.mLength;
+    num_packets += static_cast<uint32_t>(m_trace_vector.size());
 #ifndef _WIN32
-  } while (m_trace_vector.mLength != 0);
+  } while (m_trace_vector.size() != 0);
 #endif
 
   // Check if fifo is full
@@ -187,7 +187,7 @@ void DeviceTraceOffload::read_trace_end()
 {
   // Trace logger will clear it's state and add approximations 
   // for pending events
-  m_trace_vector = {};
+  m_trace_vector.clear();
   deviceTraceLogger->endProcessTraceData(m_trace_vector);
   if (dev_intf->hasTs2mm()) {
     reset_s2mm();
@@ -195,43 +195,25 @@ void DeviceTraceOffload::read_trace_end()
   }
 }
 
-void DeviceTraceOffload::read_trace_s2mm()
+void DeviceTraceOffload::read_trace_s2mm(bool force)
 {
   debug_stream
     << "DeviceTraceOffload::read_trace_s2mm " << std::endl;
 
-  config_s2mm_reader(dev_intf->getWordCountTs2mm());
-  while (1) {
-    auto bytes = read_trace_s2mm_partial();
-    deviceTraceLogger->processTraceData(m_trace_vector);
-    m_trace_vector = {};
+  auto wordcount = dev_intf->getWordCountTs2mm();
+  auto bytes_written = (wordcount - m_wordcount_old) * TRACE_PACKET_SIZE;
 
-    if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false) {
-      m_trbuf_full = true;
-
-      // Send warning message
-      const char* msg = "Trace buffer is full. Device trace could be incomplete.";
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
-    }
-
-    if (bytes != m_trbuf_chunk_sz)
-      break;
+  // Don't read data if there's less than 512B trace
+  if (!force && (bytes_written < TS2MM_MIN_READ_SIZE)) {
+    debug_stream
+      << "Skipping trace read. Amount of data: " << bytes_written << std::endl;
+    return;
   }
-}
+  // There's enough data available
+  m_wordcount_old = wordcount;
 
-uint64_t DeviceTraceOffload::read_trace_s2mm_partial()
-{
-  if (m_trbuf_offset >= m_trbuf_sz)
-    return 0;
-
-  uint64_t nBytes = m_trbuf_chunk_sz;
-
-  if ((m_trbuf_offset + m_trbuf_chunk_sz) > m_trbuf_sz)
-    nBytes = m_trbuf_sz - m_trbuf_offset;
-
-  debug_stream
-    << "DeviceTraceOffload::read_trace_s2mm_partial "
-    <<"Reading " << nBytes << " bytes " << std::endl;
+  config_s2mm_reader(wordcount);
+  uint64_t nBytes = m_trbuf_sz - m_trbuf_offset;
 
   auto start = std::chrono::steady_clock::now();
   void* host_buf = dev_intf->syncTraceBuf( m_trbuf, m_trbuf_offset, nBytes);
@@ -241,12 +223,19 @@ uint64_t DeviceTraceOffload::read_trace_s2mm_partial()
     << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
     << " µs" << std::endl;
 
-  if (host_buf) {
-    dev_intf->parseTraceData(host_buf, nBytes, m_trace_vector);
-    m_trbuf_offset += nBytes;
-    return nBytes;
+  if (!host_buf)
+    return;
+
+  dev_intf->parseTraceData(host_buf, nBytes, m_trace_vector);
+  deviceTraceLogger->processTraceData(m_trace_vector);
+  m_trace_vector.clear();
+
+  if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false) {
+    m_trbuf_full = true;
+    // Send warning message
+    const char* msg = "Trace buffer is full. Device trace could be incomplete.";
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
   }
-  return 0;
 }
 
 void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)

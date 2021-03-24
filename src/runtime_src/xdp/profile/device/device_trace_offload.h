@@ -28,6 +28,7 @@
 #include "core/include/xclperf.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
 
@@ -83,7 +84,7 @@ public:
       return dev_intf->hasTs2mm();
     };
     void read_trace() {
-      m_read_trace();
+      m_read_trace(true);
     };
     DeviceTraceLogger* getDeviceTraceLogger() {
       return deviceTraceLogger;
@@ -110,8 +111,8 @@ protected:
 private:
     DeviceTraceLogger* deviceTraceLogger;
 
-    xclTraceResultsVector m_trace_vector = {};
-    std::function<void()> m_read_trace;
+    std::vector<xclTraceResults> m_trace_vector = {};
+    std::function<void(bool)> m_read_trace;
     size_t m_trbuf = 0;
     uint64_t m_trbuf_sz = 0;
     uint64_t m_trbuf_offset = 0;
@@ -123,8 +124,8 @@ protected:
     bool m_debug = false; /* Enable Output stream for log */
 
 private:
-    void read_trace_fifo();
-    void read_trace_s2mm();
+    void read_trace_fifo(bool force=true);
+    void read_trace_s2mm(bool force=true);
     uint64_t read_trace_s2mm_partial();
     void config_s2mm_reader(uint64_t wordCount);
     bool init_s2mm(bool circ_buf);
@@ -146,6 +147,9 @@ private:
     // 100 mb of trace per second
     uint64_t m_circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
     uint64_t m_circ_buf_cur_rate = 0;
+
+    // Used to check read precondition in ts2mm
+    uint64_t m_wordcount_old = 0;
 };
 
 }

@@ -61,7 +61,7 @@ uint32_t TraceFifoFull::getMaxNumTraceSamples()
     return TRACE_NUMBER_SAMPLES;
 }
 
-uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t nSamples)
+uint32_t TraceFifoFull::readTrace(std::vector<xclTraceResults>& traceVector, uint32_t nSamples)
 {
     if(out_stream)
       (*out_stream) << " TraceFifoFull::readTrace " << std::endl;
@@ -82,7 +82,6 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
      * will be different from the already calculated "numSamples".
      */
     getDevice()->getTraceBufferInfo(numSamples, traceSamples /*actual no. of samples for specific device*/, traceBufSz);
-    traceVector.mLength = traceSamples;
 
     uint32_t *traceBuf = new uint32_t[traceBufSz];
     uint32_t wordsPerSample = 1;
@@ -94,12 +93,11 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
     return 0;
 }
 
-void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t numSamples, void* data, uint32_t /*wordsPerSample*/)
+void TraceFifoFull::processTraceData(std::vector<xclTraceResults>& traceVector,uint32_t numSamples, void* data, uint32_t /*wordsPerSample*/)
 {
     xclTraceResults results = {};
     int mod = 0;
     unsigned int clockWordIndex = 7;
-    unsigned int idx = 0;
     for (uint32_t i = 0; i < numSamples; i++) {
 
       // Old method has issues with emulation trace
@@ -147,7 +145,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
                           << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
           }
           results.isClockTrain = 1 ;
-          traceVector.mArray[idx++] = results;    // save result
+          traceVector.push_back(results);    // save result
           memset(&results, 0, sizeof(xclTraceResults));
         }
         mod = (mod == 3) ? 0 : mod + 1;
@@ -166,7 +164,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
       results.isClockTrain = 0 ;
 
-      traceVector.mArray[idx++] = results;   // save result
+      traceVector.push_back(results);   // save result
 
       if(out_stream) {
         static uint64_t previousTimestamp = 0;
@@ -187,7 +185,6 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       }
       memset(&results, 0, sizeof(xclTraceResults));
     }
-    traceVector.mLength = idx;
     mclockTrainingdone = true;
 }
 
