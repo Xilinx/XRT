@@ -23,8 +23,9 @@ namespace xdp {
 
   AieTraceConfigWriter::AieTraceConfigWriter(const char* filename,
                const char* d,
-               uint64_t index) :
-    VPWriter(filename), deviceName(d), deviceIndex(index)
+               uint64_t index,
+               std::string m) :
+    VPWriter(filename), deviceName(d), deviceIndex(index), traceMetricString(m)
   {
   }
 
@@ -38,7 +39,7 @@ namespace xdp {
     bpt::ptree EventTraceConfigs_C, EventTraceConfigs;
 
     EventTraceConfigs_C.put("datacorrelation", 1);
-    EventTraceConfigs_C.put("event_trace_name", "runtime");
+    EventTraceConfigs_C.put("event_trace_name", traceMetricString);
     EventTraceConfigs_C.put("timestamp", 0);
 
     bpt::ptree TraceConfig;
@@ -75,9 +76,17 @@ namespace xdp {
 
       {
         bpt::ptree group_event_config;
-        for (const auto& kv : tile->core_trace_config.group_event_config) {
-          group_event_config.put(std::to_string(kv.first), kv.second);
+        auto& map = tile->core_trace_config.group_event_config;
+
+        if (!map.empty()) {
+          for (const auto& kv : map) {
+            group_event_config.put(std::to_string(kv.first), kv.second);
+          }
+        } else {
+          // Dummy Value
+          group_event_config.put("123","0");
         }
+
         core_trace_config.add_child("group_event_config", group_event_config);
       }
 
@@ -156,9 +165,17 @@ namespace xdp {
 
       {
         bpt::ptree group_event_config;
-        for (const auto& kv : tile->memory_trace_config.group_event_config) {
-          group_event_config.put(std::to_string(kv.first), kv.second);
+        auto& map = tile->memory_trace_config.group_event_config;
+
+        if (!map.empty()) {
+          for (const auto& kv : map) {
+            group_event_config.put(std::to_string(kv.first), kv.second);
+          }
+        } else {
+          // Dummy Value
+          group_event_config.put("123","0");
         }
+
         memory_trace_config.add_child("group_event_config", group_event_config);
       }
 

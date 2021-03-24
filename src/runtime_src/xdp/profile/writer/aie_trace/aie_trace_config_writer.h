@@ -33,9 +33,10 @@ namespace xdp {
   {
   private:
     std::string deviceName ;
+    std::string traceMetricString ;
     uint64_t deviceIndex ;
   public:
-    AieTraceConfigWriter(const char* filename, const char* d, uint64_t index) ;
+    AieTraceConfigWriter(const char* filename, const char* d, uint64_t index, std::string m) ;
     ~AieTraceConfigWriter() ;
 
   private:
@@ -44,9 +45,9 @@ namespace xdp {
     std::ostringstream oss;
     bpt::write_json(oss, ptree);
 
-    // Patterns matching "12" "null" "100.0"
+    // Patterns matching "12" "null" "100.0" ""
     //Patterns ignored "12":  "100.0":
-    std::regex reg("\\\"(([0-9]+\\.{0,1}[0-9]*)|(null))\\\"(?!\\:)");
+    std::regex reg("\\\"(([0-9]+\\.{0,1}[0-9]*)|(null)|())\\\"(?!\\:)");
     //std::regex reg("\\\"([0-9]+\\.{0,1}[0-9]*)\\\"(?!\\:)");
     //std::regex reg("\\\"([0-9]+\\.{0,1}[0-9]*)\\\"");
     std::string result = std::regex_replace(oss.str(), reg, "$1");
