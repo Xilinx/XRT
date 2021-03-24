@@ -439,19 +439,6 @@ static struct xocl_subdev_map subdev_map[] = {
 		.devinfo_cb = NULL,
 		.max_level = XOCL_SUBDEV_LEVEL_PRP,
  	},
-	{
-		.id = XOCL_SUBDEV_ERT_VERSAL,
-		.dev_name = XOCL_ERT_VERSAL,
-		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_ERT_CQ_USER, .regmap_name = PROP_VERSAL_CQ},
-			{NULL},
-		},
-		.required_ip = 1,
-		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
-		.build_priv_data = NULL,
-		.devinfo_cb = NULL,
-		.max_level = XOCL_SUBDEV_LEVEL_PRP,
- 	},
  	{
 		.id = XOCL_SUBDEV_MB_SCHEDULER,
 		.dev_name = XOCL_MB_SCHEDULER,
