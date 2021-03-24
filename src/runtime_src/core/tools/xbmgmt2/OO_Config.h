@@ -26,7 +26,7 @@ class OO_Config : public OptionOptions {
   virtual void execute( const SubCmdOptions &_options ) const;
 
  public:
-  OO_Config(const std::string &_longName, bool _isHidden = false);
+  OO_Config(const std::string &_longName, bool _isHidden = true);
 
  private:
   std::vector<std::string> m_devices;
