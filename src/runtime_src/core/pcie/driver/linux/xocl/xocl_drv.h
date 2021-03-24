@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -1157,6 +1157,18 @@ struct xocl_mailbox_funcs {
 	(MAILBOX_READY(xdev, get) ? MAILBOX_OPS(xdev)->get(MAILBOX_DEV(xdev), \
 	kind, data) : -ENODEV)
 
+enum CLOCK_COUNTER_TYPE {
+        CCT_K1 = 0,
+        CCT_K2 = 1,
+        CCT_NUM = 2,
+};
+
+struct clock_counter_info {
+        size_t start;
+        size_t end;
+        size_t size;
+};
+
 struct xocl_clock_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*get_freq)(struct platform_device *pdev, unsigned int region,
@@ -1171,6 +1183,7 @@ struct xocl_clock_funcs {
 	int (*freq_scaling_by_topo)(struct platform_device *pdev,
 		struct clock_freq_topology *topo, int verify);
 	int (*clock_status)(struct platform_device *pdev, bool *latched);
+	void (*reconfig_counters)(struct platform_device *pdev, struct clock_counter_info *clk_counter);
 	uint64_t (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
 #define CLOCK_DEV_INFO(xdev, idx)					\
@@ -1199,6 +1212,13 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	(__idx >= 0 ? (CLOCK_DEV_INFO(xdev, __idx).level) : -ENODEV); 	\
 })
 
+#define	xocl_clock_reconfig_counters(xdev, clk_counter)			\
+({ \
+	int __idx = xocl_clock_ops_level(xdev);					\
+	(CLOCK_CB(xdev, __idx, reconfig_counters) ?				\
+	CLOCK_OPS(xdev, __idx)->reconfig_counters(CLOCK_DEV(xdev, __idx),	\
+	clk_counter) : -ENODEV); \
+})
 #define	xocl_clock_freq_rescaling(xdev, force)					\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);					\
@@ -2128,6 +2148,7 @@ const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 			     char *name, int *lenp);
 int xocl_fdt_unblock_ip(xdev_handle_t xdev_hdl, void *blob);
 const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
+bool xocl_fdt_get_freq_cnt_eps(xdev_handle_t xdev_hdl, void *blob, struct clock_counter_info *clk_counter);
 
 /* init functions */
 int __init xocl_init_userpf(void);
