@@ -567,18 +567,20 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		ret = zocl_load_partial(zdev, section_buffer, size);
 		break;
 	case PARTITION_METADATA:
-		if(zdev->partial_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_PR) {
+		if (zdev->partial_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_PR) {
 			err = of_overlay_remove(&zdev->partial_overlay_id);
 			if (err < 0) {
 				DRM_WARN("Failed to delete rm overlay (err=%d)\n", err);
-				return err;
+				ret = err;
+				goto OUT;
 			}
 			zdev->partial_overlay_id = -1;
-		} else if(zdev->full_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_FLAT){
+		} else if (zdev->full_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_FLAT) {
 			err = of_overlay_remove_all();
 			if (err < 0) {
 				DRM_WARN("Failed to delete static overlay (err=%d)\n", err);
-				return err;
+				ret = err;
+				goto OUT;
 			}
 			zdev->partial_overlay_id = -1;
 			zdev->full_overlay_id = -1;
@@ -586,21 +588,25 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 
 		bsize = zocl_read_sect(BITSTREAM, &bsection_buffer, axlf, xclbin);
 		bo = zocl_drm_create_bo(zdev->ddev, bsize, ZOCL_BO_FLAGS_CMA);
-		if (IS_ERR(bo))
-			return -1;
-		vaddr = bo->cma_base.vaddr;	
+		if (IS_ERR(bo)) {
+			vfree(bsection_buffer);
+			ret = -1;
+			goto OUT;
+		}
+		vaddr = bo->cma_base.vaddr;
 		memcpy(vaddr,bsection_buffer,bsize);
 
-		zdev->fpga_mgr->dmabuf = drm_gem_prime_export(&bo->gem_base,0);
+		zdev->fpga_mgr->dmabuf = drm_gem_prime_export(&bo->gem_base, 0);
 		err = of_overlay_fdt_apply((void *)section_buffer, size, &id);
 		if (err < 0) {
 			DRM_WARN("Failed to create overlay (err=%d)\n", err);
 			zdev->fpga_mgr->dmabuf = NULL;
 			zocl_drm_free_bo(bo);
-			return err;
+			vfree(bsection_buffer);
+			ret = err;
 		}
 
-		if(axlf->m_header.m_mode == XCLBIN_PR)
+		if (axlf->m_header.m_mode == XCLBIN_PR)
 			zdev->partial_overlay_id = id;
 		else
 			zdev->full_overlay_id = id;
@@ -611,6 +617,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	default:
 		DRM_WARN("Unsupported load type %d", kind);
 	}
+OUT:
 	vfree(section_buffer);
 
 	return ret;
@@ -728,14 +735,14 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 	zocl_free_sections(zdev);
 
-	if(zocl_check_sect(PARTITION_METADATA, axlf) &&
+	if (zocl_check_sect(PARTITION_METADATA, axlf) &&
 	    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
 	    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
 		/*
- 		 * Perform dtbo overlay for both static and rm region
- 		 * axlf should have dtbo in PARTITION_METADATA section and
- 		 * bitstream in BITSTREAM section.
- 		 */ 
+		 * Perform dtbo overlay for both static and rm region
+		 * axlf should have dtbo in PARTITION_METADATA section and
+		 * bitstream in BITSTREAM section.
+		 */ 
 		ret = zocl_load_sect(zdev, axlf, xclbin, PARTITION_METADATA);
 		if (ret)
 			goto out0;
