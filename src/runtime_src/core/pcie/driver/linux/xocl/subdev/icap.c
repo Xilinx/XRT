@@ -2211,7 +2211,7 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool s
 		const struct axlf_section_header *header = NULL;
 		header = xrt_xclbin_get_section_hdr(xclbin, PARTITION_METADATA);
 		if (header) {
-			struct clock_counter_info clk_counter[CCT_NUM];
+			struct clock_counter_info clk_counter[CCT_NUM] = { {0} };
 			bool present = xocl_fdt_get_freq_cnt_eps(xdev,
 					(char *)xclbin + header->m_sectionOffset, clk_counter);
 			if (present)
