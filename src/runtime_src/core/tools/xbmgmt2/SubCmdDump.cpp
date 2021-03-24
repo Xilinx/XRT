@@ -80,8 +80,8 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("flash,f", boost::program_options::bool_switch(&flash), "Dumps the output of programmed system image.")
     ("config,c", boost::program_options::bool_switch(&config), "Dumps the output of system configuration.")
+    ("flash,f", boost::program_options::bool_switch(&flash), "Dumps the output of programmed system image.")
     ("output,o", boost::program_options::value<decltype(output)>(&output), "Direct the output to the given file")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
@@ -118,8 +118,11 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   for (auto & str : devices)
     XBU::verbose(std::string(" ") + str);
 
-  if(devices.empty())
-    throw xrt_core::error("Please specify a single device using --device option");
+  if(devices.empty()) {
+    std::cerr << "ERROR: Please specify a single device using --device option" << "\n\n";
+    printHelp(commonOptions, hiddenOptions);
+    return;
+  }
 
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
@@ -136,28 +139,43 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   }
 
   // enforce 1 device specification
-  if(deviceCollection.size() != 1)
-    throw xrt_core::error("Please specify a single device. Multiple devices are not supported");
+  if(deviceCollection.size() != 1) {
+    std::cerr << "ERROR: Please specify a single device. Multiple devices are not supported" << "\n\n";
+    printHelp(commonOptions, hiddenOptions);
+    return;
+  }
 
   // -- process "output" option -----------------------------------------------
   // Output file
   XBU::verbose("Option: output: " + output);
   
-  if (output.empty())
-    throw xrt_core::error("Please specify an output file using --output option");
-  if (!output.empty() && boost::filesystem::exists(output)) 
-    throw xrt_core::error((boost::format("Output file already exists: '%s'") % output).str());
+  if (output.empty()) {
+    std::cerr << "ERROR: Please specify an output file using --output option" << "\n\n";
+    printHelp(commonOptions, hiddenOptions);
+    return;
+  }
+  if (!output.empty() && boost::filesystem::exists(output)) {
+    std::cerr << boost::format("Output file already exists: '%s'") % output << "\n\n";
+    return;
+  }
     
   std::ofstream fOutput;
   fOutput.open(output, std::ios::out | std::ios::binary);
-  if (!fOutput.is_open()) 
-    throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % output).str());
+  if (!fOutput.is_open()) {
+    std::cerr << boost::format("ERROR: Unable to open the file '%s' for writing.") % output << "\n\n";
+    return;
+  }
 
   //decide the contents of the dump file
   if(flash)
     flash_dump(fOutput);
   else if (config)
     config_dump(fOutput);
+  else {
+    std::cerr << "ERROR: Please specify a valid option to determine the type of dump" << "\n\n";
+    printHelp(commonOptions, hiddenOptions);
+    return;
+  }
 
   fOutput.close();
 }

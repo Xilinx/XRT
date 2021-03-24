@@ -32,7 +32,6 @@ class OO_LoadConfig : public OptionOptions {
   std::vector<std::string> m_devices;
   bool m_help;
   std::string m_path;
-  bool m_show;
 };
 
 #endif

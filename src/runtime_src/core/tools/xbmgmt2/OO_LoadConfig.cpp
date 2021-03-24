@@ -41,13 +41,11 @@ OO_LoadConfig::OO_LoadConfig( const std::string &_longName, bool _isHidden)
     , m_devices({})
     , m_help(false)
     , m_path("")
-    , m_show(false)
 
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("input", boost::program_options::value<decltype(m_path)>(&m_path),"INI file with the memory configuration")
-    ("showx,s", boost::program_options::bool_switch(&m_show), "Show the current memory configurations")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
@@ -87,8 +85,10 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
   }
 
   // -- process "device" option -----------------------------------------------
-  if(m_devices.empty())
-    throw xrt_core::error("Please specify a single device using --device option");
+  if(m_devices.empty()) {
+    std::cerr << "ERROR: Please specify a single device using --device option" << "\n\n";
+    return;
+  }
 
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
@@ -105,16 +105,26 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
   }
 
   // enforce 1 device specification
-  if(deviceCollection.size() != 1)
-    throw xrt_core::error("Please specify a single deviceMultiple devices are not supported");
+  if(deviceCollection.size() != 1) {
+    std::cerr << "ERROR: Please specify a single device. Multiple devices are not supported" << "\n\n";
+    printHelp();
+    return;
+  }
 
   // -- process "input" option -----------------------------------------------
-  if (m_path.empty())
-    throw xrt_core::error("Please specify an input file");
-  if (!boost::filesystem::exists(m_path)) 
-    throw xrt_core::error((boost::format("Input file does not exist: '%s'") % m_path).str());
-  if(boost::filesystem::extension(m_path).compare(".ini") != 0)
-    throw xrt_core::error((boost::format("Input file should be an INI file: '%s'") % m_path).str());
+  if (m_path.empty()) {
+    std::cerr << "ERROR: Please specify an input file" << "\n\n";
+    printHelp();
+    return;
+  }
+  if (!boost::filesystem::exists(m_path)) {
+    std::cerr << boost::format("ERROR: Input file does not exist: '%s'") % m_path << "\n\n";
+    return;
+  }
+  if(boost::filesystem::extension(m_path).compare(".ini") != 0) {
+    std::cerr << boost::format("ERROR: Input file should be an INI file: '%s'") % m_path << "\n\n";
+    return;
+  }
 
   //TO_DO: parse the INI file
 }
