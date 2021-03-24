@@ -22,6 +22,10 @@
 #include "core/common/device.h"
 #include "core/common/utils.h"
 
+#ifdef _WIN32
+#pragma warning(disable : 4996) //getenv
+#endif
+
 namespace qr = xrt_core::query;
 
 enum class cu_type {
@@ -76,8 +80,8 @@ schedulerUpdateStat(xrt_core::device *device)
   try {
     // lock xclbin
     auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
-    device->open_context(uuid.get(), -1, true);
-    auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), -1); };
+    device->open_context(uuid.get(), static_cast<unsigned int>(-1), true);
+    auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), static_cast<unsigned int>(-1)); };
     xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
     
     device->update_scheduler_status();
