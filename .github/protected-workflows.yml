@@ -13,4 +13,3 @@ events:
         disallowed:
           - ".github/**"
           - ".github/protected-workflows.yml"
-          - "**/**"
