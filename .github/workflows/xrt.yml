@@ -1,4 +1,4 @@
-name: XRT Build/Install Test CI
+name: XRT Build/Test CI
 
 # Configures trigger:
 # This workflow will be triggered on a pull request created for Master branch 
