@@ -5,6 +5,7 @@ events:
   pull_request:
     - trustedUserNames: 
         - "abalasa"
+        - "apurvadixit"
 
     # Exteremly important. Only certain users should be able to change this file.
     - trustAnyone: true
