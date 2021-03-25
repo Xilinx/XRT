@@ -679,9 +679,11 @@ namespace xclcpuemhal2 {
 
       bool ack = true;
       bool verbose = false;
+      char* usrPtr = nullptr;
+      uint64_t dsize = 0;
       if(mLogStream.is_open())
         verbose = true;
-      xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose);
+      xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose, usrPtr, dsize, usrPtr, dsize, usrPtr, dsize);
       if(!ack)
         return -1;
     }
@@ -705,11 +707,13 @@ namespace xclcpuemhal2 {
     launchDeviceProcess(false,binaryDirectory);
     std::string xmlFile("");
     std::string tempdlopenfilename("");
+    char* usrPtr = nullptr;
+    uint64_t dsize = 0;
     SHIM_UNUSED bool ack = true;
     bool verbose = false;
     if(mLogStream.is_open())
       verbose = true;
-    xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose);
+    xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose, usrPtr, dsize, usrPtr, dsize, usrPtr, dsize);
   }
 
   uint64_t CpuemShim::xclAllocDeviceBuffer(size_t size)

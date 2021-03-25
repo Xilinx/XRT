@@ -19,7 +19,7 @@
 
 #include "unix_socket.h"
 
-unix_socket::unix_socket()
+unix_socket::unix_socket(bool bStart)
 {
   server_started = false;
   fd = -1;
@@ -40,7 +40,7 @@ unix_socket::unix_socket()
     name = "/tmp/xcl_socket";
   }
 
-  if (getenv("SWEMU_NEW_FLOW") != nullptr && strcmp("1", getenv("SWEMU_NEW_FLOW")) == 0) {
+  if (bStart) {
       start_inet_server(300, true);
   }
   else {

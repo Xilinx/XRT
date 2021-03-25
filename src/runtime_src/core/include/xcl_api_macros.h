@@ -82,13 +82,19 @@ mtx.unlock();
     xclSetEnvironment_RETURN();
 
 
-#define xclLoadBitstream_SET_PROTOMESSAGE(func_name,xmlfile,dlopenfilename,deviceDirectory,binaryDirectory,verbose) \
+#define xclLoadBitstream_SET_PROTOMESSAGE(func_name,xmlfile,dlopenfilename,deviceDirectory,binaryDirectory,verbose,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize) \
   c_msg.set_xmlfile(xmlfile); \
   c_msg.set_dlopenfilename(dlopenfilename); \
   c_msg.set_devicename(mDeviceInfo.mName); \
   c_msg.set_devicedirectory(deviceDirectory); \
   c_msg.set_binarydirectory(binaryDirectory); \
   c_msg.set_verbose(verbose); \
+  c_msg.set_xmlbuff((char*)xmlbuff,xmlbuffsize); \
+  c_msg.set_xmlbuffsize(xmlbuffsize); \
+  c_msg.set_sharedbin((char*)sharedbin,sharedbinsize); \
+  c_msg.set_sharedbinsize(sharedbinsize); \
+  c_msg.set_emuldata((char*)emuldata,emuldatasize); \
+  c_msg.set_emuldatasize(emuldatasize); \
   for (auto i : mDdrBanks) \
   { \
     const uint64_t bankSize = i.ddrSize; \
@@ -103,9 +109,9 @@ mtx.unlock();
 #define xclLoadBitstream_RETURN()\
     //return size;
 
-#define xclLoadBitstream_RPC_CALL(func_name,xmlfile,dlopenfilename,deviceDirectory,binaryDirectory,verbose) \
+#define xclLoadBitstream_RPC_CALL(func_name,xmlfile,dlopenfilename,deviceDirectory,binaryDirectory,verbose,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize) \
     RPC_PROLOGUE(func_name); \
-    xclLoadBitstream_SET_PROTOMESSAGE(func_name,xmlfile,dlopenfilename,deviceDirectory,binaryDirectory,verbose); \
+    xclLoadBitstream_SET_PROTOMESSAGE(func_name,xmlfile,dlopenfilename,deviceDirectory,binaryDirectory,verbose,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclLoadBitstream_SET_PROTO_RESPONSE(); \
     FREE_BUFFERS(); \

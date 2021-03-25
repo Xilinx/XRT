@@ -48,10 +48,16 @@ message xclLoadBitstream_call {
   required bytes devicedirectory = 4 ;
   required bytes binarydirectory = 5 ;
   required bool verbose = 6;
+  required bytes xmlbuff = 7;
+  required uint64 xmlbuffsize = 8;
+  required bytes sharedbin = 9;
+  required uint64 sharedbinsize = 10;
+  required bytes emuldata = 11;
+  required uint64 emuldatasize = 12;
   message ddrbank {
-    optional uint64 size = 7;
+    optional uint64 size = 13;
   }
-  repeated ddrbank ddrbanks = 8;
+  repeated ddrbank ddrbanks = 14;
 }
 
 message xclLoadBitstream_response {
@@ -477,4 +483,24 @@ message xclGraphReadRTP_call {
 message xclGraphReadRTP_response {
      required uint64 size = 1;
      required bytes buffer = 2;
+}
+
+//xclSyncBOAIENB
+message xclSyncBOAIENB_call {
+     required bytes gmioname = 2;
+	 required uint32 dir  = 3;
+     required uint64 size = 4;
+     required uint64 offset = 5;
+	 required uint64 boh = 6;
+}
+message xclSyncBOAIENB_response {
+     required bool ack = 1;
+}
+
+//xclGraphEnd
+message xclGMIOWait_call {
+  required bytes gmioname = 2;  
+}
+message xclGMIOWait_response {
+     required bool ack = 1;
 }

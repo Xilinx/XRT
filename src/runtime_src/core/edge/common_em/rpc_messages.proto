@@ -48,10 +48,16 @@ message xclLoadBitstream_call {
   required bytes devicedirectory = 4 ;
   required bytes binarydirectory = 5 ;
   required bool verbose = 6;
+  required bytes xmlbuff = 7;
+  required uint64 xmlbuffsize = 8;
+  required bytes sharedbin = 9;
+  required uint64 sharedbinsize = 10;
+  required bytes emuldata = 11;
+  required uint64 emuldatasize = 12;
   message ddrbank {
-    optional uint64 size = 7;
+    optional uint64 size = 13;
   }
-  repeated ddrbank ddrbanks = 8;
+  repeated ddrbank ddrbanks = 14;
 }
 
 message xclLoadBitstream_response {
