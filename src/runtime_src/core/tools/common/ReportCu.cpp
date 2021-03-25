@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,10 +21,6 @@
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
 #include "core/common/utils.h"
-
-#ifdef _WIN32
-#pragma warning(disable : 4996) //getenv
-#endif
 
 namespace qr = xrt_core::query;
 
@@ -94,8 +90,7 @@ schedulerUpdateStat(xrt_core::device *device)
 boost::property_tree::ptree
 populate_cus(const xrt_core::device *device)
 {
-  if (!std::getenv("XCL_SKIP_CU_READ"))
-    schedulerUpdateStat(const_cast<xrt_core::device *>(device));
+  schedulerUpdateStat(const_cast<xrt_core::device *>(device));
   boost::property_tree::ptree pt;
   std::vector<char> ip_buf;
   std::vector<std::tuple<uint64_t, uint32_t, uint32_t>> cu_stats; // tuple <base_addr, usage, status>
@@ -139,8 +134,7 @@ populate_cus(const xrt_core::device *device)
 boost::property_tree::ptree
 populate_cus_new(const xrt_core::device *device)
 {
-  if (!std::getenv("XCL_SKIP_CU_READ"))
-    schedulerUpdateStat(const_cast<xrt_core::device *>(device));
+  schedulerUpdateStat(const_cast<xrt_core::device *>(device));
   
   boost::property_tree::ptree pt;
   using cu_data_type = qr::kds_cu_stat::data_type;
