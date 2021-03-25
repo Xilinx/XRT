@@ -198,7 +198,7 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	return 0;
 }
 
-static int
+static uint64_t 
 zocl_check_sect(enum axlf_section_kind kind, struct axlf *axlf_full)
 {
 	uint64_t offset;
@@ -207,8 +207,6 @@ zocl_check_sect(enum axlf_section_kind kind, struct axlf *axlf_full)
 
 	err = xrt_xclbin_section_info(axlf_full, kind, &offset, &size);
 	if (err) {
-		DRM_WARN("get section %s err: %d ",
-		    xrt_xclbin_kind_to_string(kind), err);
 		return 0;
 	}
 
@@ -572,7 +570,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 			if (err < 0) {
 				DRM_WARN("Failed to delete rm overlay (err=%d)\n", err);
 				ret = err;
-				goto OUT;
+				goto out;
 			}
 			zdev->partial_overlay_id = -1;
 		} else if (zdev->full_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_FLAT) {
@@ -580,7 +578,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 			if (err < 0) {
 				DRM_WARN("Failed to delete static overlay (err=%d)\n", err);
 				ret = err;
-				goto OUT;
+				goto out;
 			}
 			zdev->partial_overlay_id = -1;
 			zdev->full_overlay_id = -1;
@@ -590,8 +588,8 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		bo = zocl_drm_create_bo(zdev->ddev, bsize, ZOCL_BO_FLAGS_CMA);
 		if (IS_ERR(bo)) {
 			vfree(bsection_buffer);
-			ret = -1;
-			goto OUT;
+			ret = PTR_ERR(bo);
+			goto out;
 		}
 		vaddr = bo->cma_base.vaddr;
 		memcpy(vaddr,bsection_buffer,bsize);
@@ -604,6 +602,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 			zocl_drm_free_bo(bo);
 			vfree(bsection_buffer);
 			ret = err;
+			goto out;
 		}
 
 		if (axlf->m_header.m_mode == XCLBIN_PR)
@@ -617,7 +616,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	default:
 		DRM_WARN("Unsupported load type %d", kind);
 	}
-OUT:
+out:
 	vfree(section_buffer);
 
 	return ret;
