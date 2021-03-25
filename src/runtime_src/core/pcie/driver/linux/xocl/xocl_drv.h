@@ -1721,12 +1721,29 @@ struct xocl_intc_funcs {
 	 INTC_OPS(xdev)->csr_write32(INTC_DEV(xdev), val, off) : \
 	 -ENODEV)
 
-enum ert_gpio_cfg {
-	INTR_TO_ERT,
-	INTR_TO_CU,
-	MB_WAKEUP,
-	MB_SLEEP,
-	MB_STATUS,
+
+struct ert_user_status {
+	uint32_t enable:1;       /* [0]   */
+	uint32_t configured:1;   /* [1]   */
+	uint32_t reserved:30;    /* [31-2] */
+};
+
+struct cu_status {
+	uint32_t state:8;        /* [7-0]  */
+	uint32_t reserved:23;    /* [31-8] */
+};
+
+struct ert_user_capability {
+	uint32_t cu_intr:1;      /* [0]    */
+	uint32_t reserved:31;    /* [31-2] */
+};
+
+struct ert_cu_bulletin {
+	union {
+		struct ert_user_status sta;
+		struct cu_status cu_sta;
+	};
+	struct ert_user_capability cap;
 };
 
 struct xocl_ert_versal_funcs {
@@ -1736,34 +1753,28 @@ struct xocl_ert_versal_funcs {
 
 struct xocl_ert_user_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	int (* configured)(struct platform_device *pdev);
-	int32_t (* gpio_cfg)(struct platform_device *pdev, enum ert_gpio_cfg type);
+	int (* bulletin)(struct platform_device *pdev, struct ert_cu_bulletin *brd);
+	int (* enable)(struct platform_device *pdev, bool enable);
 };
+
 #define	ERT_USER_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).pldev
 #define ERT_USER_OPS(xdev)  \
 	((struct xocl_ert_user_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).ops)
 #define ERT_USER_CB(xdev, cb)  \
 	(ERT_USER_DEV(xdev) && ERT_USER_OPS(xdev) && ERT_USER_OPS(xdev)->cb)
 
-#define xocl_ert_user_configured(xdev) \
-	(ERT_USER_CB(xdev, configured) ? \
-	 ERT_USER_OPS(xdev)->configured(ERT_USER_DEV(xdev)) : \
+#define xocl_ert_user_bulletin(xdev, brd) \
+	(ERT_USER_CB(xdev, bulletin) ? \
+	 ERT_USER_OPS(xdev)->bulletin(ERT_USER_DEV(xdev), brd) : \
 	 -ENODEV)
-#define xocl_ert_user_mb_wakeup(xdev) \
-	(ERT_USER_CB(xdev, gpio_cfg) ? \
-	 ERT_USER_OPS(xdev)->gpio_cfg(ERT_USER_DEV(xdev), MB_WAKEUP) : \
+
+#define xocl_ert_user_enable(xdev) \
+	(ERT_USER_CB(xdev, enable) ? \
+	 ERT_USER_OPS(xdev)->enable(ERT_USER_DEV(xdev), true) : \
 	 -ENODEV)
-#define xocl_ert_user_mb_sleep(xdev) \
-	(ERT_USER_CB(xdev, gpio_cfg) ? \
-	 ERT_USER_OPS(xdev)->gpio_cfg(ERT_USER_DEV(xdev), MB_SLEEP) : \
-	 -ENODEV)
-#define xocl_ert_user_cu_intr_cfg(xdev) \
-	(ERT_USER_CB(xdev, gpio_cfg) ? \
-	 ERT_USER_OPS(xdev)->gpio_cfg(ERT_USER_DEV(xdev), INTR_TO_CU) : \
-	 -ENODEV)
-#define xocl_ert_user_ert_intr_cfg(xdev) \
-	(ERT_USER_CB(xdev, gpio_cfg) ? \
-	 ERT_USER_OPS(xdev)->gpio_cfg(ERT_USER_DEV(xdev), INTR_TO_ERT) : \
+#define xocl_ert_user_disable(xdev) \
+	(ERT_USER_CB(xdev, enable) ? \
+	 ERT_USER_OPS(xdev)->enable(ERT_USER_DEV(xdev), false) : \
 	 -ENODEV)
 
 #define xocl_ert_on(xdev) \

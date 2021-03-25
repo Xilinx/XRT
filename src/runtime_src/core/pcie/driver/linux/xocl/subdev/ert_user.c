@@ -54,13 +54,18 @@
 #ifdef SCHED_VERBOSE
 #define	ERTUSER_ERR(ert_user, fmt, arg...)	\
 	xocl_err(ert_user->dev, fmt "", ##arg)
+#define	ERTUSER_WARN(ert_user, fmt, arg...)	\
+	xocl_warn(ert_user->dev, fmt "", ##arg)	
 #define	ERTUSER_INFO(ert_user, fmt, arg...)	\
 	xocl_info(ert_user->dev, fmt "", ##arg)	
 #define	ERTUSER_DBG(ert_user, fmt, arg...)	\
 	xocl_info(ert_user->dev, fmt "", ##arg)
+
 #else
 #define	ERTUSER_ERR(ert_user, fmt, arg...)	\
 	xocl_err(ert_user->dev, fmt "", ##arg)
+#define	ERTUSER_WARN(ert_user, fmt, arg...)	\
+	xocl_warn(ert_user->dev, fmt "", ##arg)	
 #define	ERTUSER_INFO(ert_user, fmt, arg...)	\
 	xocl_info(ert_user->dev, fmt "", ##arg)	
 #define	ERTUSER_DBG(ert_user, fmt, arg...)
@@ -76,6 +81,14 @@
 })
 
 extern int kds_echo;
+
+enum ert_gpio_cfg {
+	INTR_TO_ERT,
+	INTR_TO_CU,
+	MB_WAKEUP,
+	MB_SLEEP,
+	MB_STATUS,
+};
 
 struct ert_user_event {
 	struct mutex		  lock;
@@ -336,7 +349,7 @@ static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg
 	int i;
 
 	if (!ert_user->cfg_gpio) {
-		ERTUSER_ERR(ert_user, "%s ERT config gpio not found\n", __func__);
+		ERTUSER_WARN(ert_user, "%s ERT config gpio not found\n", __func__);
 		return -ENODEV;
 	}
 	mutex_lock(&ert_user->lock);
@@ -382,16 +395,39 @@ static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg
 	return ret;
 }
 
-static int ert_user_configured(struct platform_device *pdev)
+static int ert_user_bulletin(struct platform_device *pdev, struct ert_cu_bulletin *brd)
 {
 	struct xocl_ert_user *ert_user = platform_get_drvdata(pdev);
+	int ret = 0;
 
-	return ert_user->is_configured;
+	if (!brd)
+		return -EINVAL;
+
+	brd->sta.configured = ert_user->is_configured;
+	brd->cap.cu_intr = ert_user->cfg_gpio ? 1 : 0;
+
+	return ret;
 }
 
+static int ert_user_enable(struct platform_device *pdev, bool enable)
+{
+	int ret = 0;
+
+	if (enable) {
+		ert_user_gpio_cfg(pdev, MB_WAKEUP);
+		ert_user_gpio_cfg(pdev, INTR_TO_ERT);
+	} else {
+		ert_user_gpio_cfg(pdev, MB_SLEEP);
+		ert_user_gpio_cfg(pdev, INTR_TO_CU);
+	}
+
+	return ret;
+}
+
+
 static struct xocl_ert_user_funcs ert_user_ops = {
-	.gpio_cfg = ert_user_gpio_cfg,
-	.configured = ert_user_configured,
+	.bulletin = ert_user_bulletin,
+	.enable = ert_user_enable,
 };
 
 
