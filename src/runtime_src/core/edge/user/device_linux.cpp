@@ -183,9 +183,9 @@ struct aie_reg_read
   {
     auto dev = get_edgedev(device);
     uint32_t val = 0;
-    auto row = boost::any_cast<uint32_t>(r);
-    auto col = boost::any_cast<uint32_t>(c);
-    auto v = boost::any_cast<std::string>(reg);
+    const auto row = boost::any_cast<uint32_t>(r) + 1; // // Get the row value and add one since the rows actually start at 1 not zero.
+    const auto col = boost::any_cast<uint32_t>(c);
+    const auto v = boost::any_cast<std::string>(reg);
  
 #ifdef XRT_ENABLE_AIE
 #ifndef __AIESIM__
@@ -252,8 +252,6 @@ struct aie_reg_read
   if(!devInst)
     throw xrt_core::error(-EINVAL, "Invalid aie object");
 
-  //As 0th row is shim row and core tile rows starts from 1
-  row+=1;
   auto max_row = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
   auto max_col = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
   if ((row <= 0) || (row >= max_row))
@@ -262,14 +260,15 @@ struct aie_reg_read
   if ((col < 0) || (col >= max_col))
     throw xrt_core::error(-EINVAL, boost::str(boost::format("Invalid column, Column should be in range [0,%u]") % (max_col-1)));
 
-  const std::map<std::string, uint32_t> *regmap = get_aie_register_map();
-  auto it = regmap->find(v);
-  if (it == regmap->end())
+  const std::map<std::string, uint32_t> &regmap = get_aie_register_map();
+  auto it = regmap.find(v);
+  if (it == regmap.end())
     throw xrt_core::error(-EINVAL, "Invalid register");
 
   rc = XAie_Read32(devInst, it->second + _XAie_GetTileAddr(devInst,row,col), &val);
   if(rc != XAIE_OK)
-    throw xrt_core::error(-EINVAL, "Error reading register");
+    throw xrt_core::error(-EINVAL, boost::str(boost::format("Error reading register '%s' (0x%8x) for AIE[%u:%u]")
+                                                            % v.c_str() % it->second % col % (row-1)));
 
 #endif
 #endif

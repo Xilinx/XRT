@@ -32,6 +32,7 @@ class OO_AieRegRead : public OptionOptions {
    uint32_t m_col;
    std::string m_reg;
    bool m_help;
+   const static std::vector<std::string> regmap;
 };
 
 #endif

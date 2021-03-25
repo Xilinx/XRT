@@ -20,8 +20,8 @@
 #include <string>
 #include <map>
 
-typedef std::map<std::string, uint32_t> register_map;
-const register_map* get_aie_register_map() 
+using register_map = std::map<std::string, uint32_t>;
+const register_map& get_aie_register_map() 
 {
   const static
   register_map regmap = {
@@ -362,6 +362,6 @@ const register_map* get_aie_register_map()
       {"Stream_Switch_Event_Port_Selection_0", 0x0003FF00},
       {"Stream_Switch_Event_Port_Selection_1", 0x0003FF04} };
 
-  return &regmap;
+  return regmap;
 }
 #endif
