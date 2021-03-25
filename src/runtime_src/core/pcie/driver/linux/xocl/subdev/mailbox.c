@@ -651,7 +651,7 @@ static void chan_config_timer(struct mailbox_channel *ch)
 	mutex_lock(&ch->mbc_mutex);
 
 	if (test_bit(MBXCS_BIT_POLL_MODE, &ch->mbc_state)) {
-		on = true;
+		on = false;
 	} else {
 		list_for_each_safe(pos, n, &ch->mbc_msgs) {
 			msg = list_entry(pos, struct mailbox_msg, mbm_list);
@@ -864,7 +864,12 @@ static void chan_worker(struct work_struct *work)
 			 * Wait for next poll triggered by intr or timer, which should
 			 * happen much less frequently.
 			 */
-			wait_for_completion_interruptible(&ch->mbc_worker);
+			if (test_bit(MBXCS_BIT_POLL_MODE, &ch->mbc_state)) {
+				/* with polling mode, sleep up to 25ms to poll again */
+				usleep_range(20000, 25000);
+			} else {
+				wait_for_completion_interruptible(&ch->mbc_worker);
+			}
 		}
 
 		progress = ch->mbc_tran(ch);
