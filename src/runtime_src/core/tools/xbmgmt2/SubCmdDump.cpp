@@ -34,7 +34,7 @@ namespace po = boost::program_options;
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 static void
-flash_dump(std::ofstream& fOutput)
+flash_dump(std::ofstream& /*fOutput*/)
 {
   XBU::verbose("Option: flash");
   // Sample output:
@@ -46,7 +46,7 @@ flash_dump(std::ofstream& fOutput)
 }
 
 static void
-config_dump(std::ofstream& fOutput)
+config_dump(std::ofstream& /*fOutput*/)
 {
   XBU::verbose("Option: config");
   //TO-DO
