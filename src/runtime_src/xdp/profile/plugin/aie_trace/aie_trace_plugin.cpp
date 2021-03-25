@@ -383,9 +383,6 @@ namespace xdp {
         int numTraceEvents = 0;
         uint32_t bcMask = 0;
         uint32_t bcBit = 0x1;
-        // For now assume we get the slot
-        // TODO: Wendy needs to provide this
-        int slot = 0;
         // Configure cross module events
         for (int i=0; i < memoryCrossEvents.size(); i++) {
           auto TraceE = memory.traceEvent();
@@ -404,7 +401,11 @@ namespace xdp {
           numTraceEvents++;
 
           // Update config file
-          cfgTile->memory_trace_config.traced_events[slot++] = memoryCrossEvents[i];
+          uint32_t S = 0;
+          XAie_LocType L;
+          XAie_ModuleType M;
+          TraceE->getRscId(L, M, S);
+          cfgTile->memory_trace_config.traced_events[S] = memoryCrossEvents[i];
           cfgTile->memory_trace_config.internal_events_broadcast[bcId] = bcIdToEvent(bcId);
         }
         // Configure same module events
@@ -417,8 +418,13 @@ namespace xdp {
           ret = TraceE->start();
           if (ret != XAIE_OK) break;
           numTraceEvents++;
+
           // Update config file
-          cfgTile->memory_trace_config.traced_events[slot++] = memoryEvents[i];
+          uint32_t S = 0;
+          XAie_LocType L;
+          XAie_ModuleType M;
+          TraceE->getRscId(L, M, S);
+          cfgTile->memory_trace_config.traced_events[S] = memoryEvents[i];
         }
         // Update config file
         // Odd absolute rows change east mask end even row change west mask

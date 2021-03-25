@@ -274,7 +274,7 @@ namespace xdp {
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
       }
-      
+
       // Report counters reserved per tile
       {
         std::stringstream msg;
