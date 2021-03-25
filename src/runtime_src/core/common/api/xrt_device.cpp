@@ -305,11 +305,9 @@ xrtDeviceOpen(unsigned int index)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }
@@ -324,11 +322,9 @@ xrtDeviceOpenByBDF(const char* bdf)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }
@@ -344,11 +340,11 @@ xrtDeviceClose(xrtDeviceHandle dhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return (errno = ex.get());
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return (errno = 0);
+    return -1;
   }
 }
 
@@ -365,11 +361,11 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const axlf* top)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return (errno = ex.get());
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return (errno = 0);
+    return -1;
   }
 }
 
@@ -386,11 +382,11 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return (errno = ex.get());
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return (errno = 0);
+    return -1;
   }
 }
 
@@ -406,11 +402,31 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return (errno = ex.get());
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return (errno = 0);
+    return -1;
+  }
+}
+
+int
+xrtDeviceLoadXclbinUUID(xrtDeviceHandle dhdl, const xuid_t uuid)
+{
+  try {
+    return xdp::native::profiling_wrapper(__func__, nullptr, [dhdl, uuid]{
+      auto device = get_device(dhdl);
+      device->load_xclbin(uuid);
+      return 0;
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
   }
 }
 
@@ -446,11 +462,9 @@ xrtDeviceToXclDevice(xrtDeviceHandle dhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }
@@ -465,18 +479,16 @@ xrtDeviceOpenFromXcl(xclDeviceHandle dhdl)
       // Only one xrt unmanaged device per xclDeviceHandle
       // xrtDeviceClose removes the handle from the cache
       if (device_cache.count(device.get()))
-        throw xrt_core::error(-EINVAL, "Handle is already in use");
+        throw xrt_core::error(EINVAL, "Handle is already in use");
       device_cache[device.get()] = device;
       return device.get();
     });
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }

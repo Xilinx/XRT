@@ -802,30 +802,34 @@ namespace xclcpuemhal2 {
   {
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
     std::string xclBinName = "";
-    if (!xclcpuemhal2::isRemotePortMapped) {
-      xclcpuemhal2::initRemotePortMap();
-    }
-    if (!xclcpuemhal2::validateXclBin(header, xclBinName)) {
-      printf("ERROR:Xclbin validation failed\n");
-      return 1;
-    }
-    xclBinName = xclBinName + ".xclbin";
-    if (mLogStream.is_open()) mLogStream << " validateXclBin done :  " << xclBinName << std::endl;
-    //Send the LoadXclBin
-    PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
-    cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
-    cmd->addArg(xclBinName.c_str());
-    uint32_t length;
-    uint8_t* buff = cmd->generateBuffer(&length);
-    for (unsigned int i = 0; i < length; i += 4) {
-      uint32_t copySize = (length - i) > 4 ? 4 : length - i;
-      memcpy(((char*)(xclcpuemhal2::remotePortMappedPointer)) + i, buff + i, copySize);
-    }
-    //Send the end of packet
-    char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
-    memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);
-    if (mLogStream.is_open()) mLogStream << " sendXclbintoPllauncher done :  " << xclBinName << std::endl;
 
+    bool simDontRun = xclemulation::config::getInstance()->isDontRun();
+    if (!simDontRun) {
+      if (!xclcpuemhal2::isRemotePortMapped) {
+        xclcpuemhal2::initRemotePortMap();
+      }
+
+      if (!xclcpuemhal2::validateXclBin(header, xclBinName)) {
+        printf("ERROR:Xclbin validation failed\n");
+        return 1;
+      }
+      xclBinName = xclBinName + ".xclbin";
+      if (mLogStream.is_open()) mLogStream << " validateXclBin done :  " << xclBinName << std::endl;
+      //Send the LoadXclBin
+      PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
+      cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
+      cmd->addArg(xclBinName.c_str());
+      uint32_t length;
+      uint8_t* buff = cmd->generateBuffer(&length);
+      for (unsigned int i = 0; i < length; i += 4) {
+        uint32_t copySize = (length - i) > 4 ? 4 : length - i;
+        memcpy(((char*)(xclcpuemhal2::remotePortMappedPointer)) + i, buff + i, copySize);
+      }
+      //Send the end of packet
+      char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
+      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);
+      if (mLogStream.is_open()) mLogStream << " sendXclbintoPllauncher done :  " << xclBinName << std::endl;
+    }
 
     std::string xmlFile = "";
     /*int result = dumpXML(header, xmlFile);
@@ -1315,7 +1319,6 @@ namespace xclcpuemhal2 {
         systemUtil::makeSystemCall(debugFilePath, systemUtil::systemOperation::COPY,destPath);
       }
     }
-
   }
   void CpuemShim::resetProgram(bool callingFromClose)
   {
@@ -2337,6 +2340,62 @@ int CpuemShim::xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer
   PRINTENDFUNC
     return 0;
 }
+
+
+/**
+* xrtSyncBOAIENB() - Transfer data between DDR and Shim DMA channel
+*
+* @bo:           BO obj.
+* @gmioName:        GMIO port name
+* @dir:             GM to AIE or AIE to GM
+* @size:            Size of data to synchronize
+* @offset:          Offset within the BO
+*
+* Return:          0 on success, or appropriate error number.
+*
+* Synchronize the buffer contents between GMIO and AIE.
+* Note: Upon return, the synchronization is submitted or error out
+*/
+
+int CpuemShim::xrtSyncBOAIENB(xrt::bo& bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  bool ack = false;
+  if (!gmioname)
+    return -1;
+
+  if (mLogStream.is_open())
+    mLogStream << __func__ << ", bo.address() " << bo.address() << std::endl; 
+
+  auto boBase = bo.address();
+  xclSyncBOAIENB_RPC_CALL(xclSyncBOAIENB, gmioname, dir, size, offset, boBase);
+  if (!ack) {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+
+/**
+* xrtGMIOWait() - Wait a shim DMA channel to be idle for a given GMIO port
+*
+* @gmioName:        GMIO port name
+*
+* Return:          0 on success, or appropriate error number.
+*/
+int CpuemShim::xrtGMIOWait(const char *gmioname)
+{
+  bool ack = false;
+  if (!gmioname)
+    return -1;
+  xclGMIOWait_RPC_CALL(xclGMIOWait, gmioname);
+  if (!ack) {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
 /******************************* XRT Graph API's End here**************************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }

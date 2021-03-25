@@ -20,6 +20,7 @@
 
 #include <stdexcept>
 #include "profile_ip_access.h"
+#include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
 
@@ -70,7 +71,7 @@ public:
     virtual void showStatus();	// ??
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
-    void parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector);
+    void parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector);
 
     void setTraceFormat(uint32_t tf) { mTraceFormat = tf; }
     bool supportsCircBuf() { return major_version >= 1 && minor_version > 0;}

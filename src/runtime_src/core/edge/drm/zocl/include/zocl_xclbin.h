@@ -29,7 +29,7 @@ int zocl_unlock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id);
 
 int zocl_xclbin_refcount(struct drm_zocl_dev *zdev);
 int zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev,
-	struct drm_zocl_axlf *axlf_obj);
+	struct drm_zocl_axlf *axlf_obj, struct sched_client_ctx *client);
 int zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data);
 
 bool zocl_xclbin_accel_adapter(int kds_mask);

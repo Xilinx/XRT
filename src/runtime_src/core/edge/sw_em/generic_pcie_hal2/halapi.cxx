@@ -658,12 +658,14 @@ int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIn
 // Restricted read/write on IP register space
 int xclRegWrite(xclDeviceHandle, uint32_t, uint32_t, uint32_t)
 {
-  return 1;
+  std::cerr << "ERROR: xclRegWrite/xclRegRead calls not supported for sw emulation." << std::endl;
+  return -1;
 }
 
 int xclRegRead(xclDeviceHandle, uint32_t, uint32_t, uint32_t*)
 {
-  return 1;
+  std::cerr << "ERROR: xclRegWrite/xclRegRead calls not supported for sw emulation." << std::endl;
+  return -1;
 }
 
 int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
@@ -915,13 +917,43 @@ xclResetAIEArray(xclDeviceHandle handle)
 int
 xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  return 0;
+  try { 
+    if (handle) {
+      xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+      return drv ? drv->xrtSyncBOAIENB(bo, gmioName, dir, size, offset) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+  return -1;
 }
 
 int
 xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 {
-  return 0;
+  try {
+    if (handle) {
+      xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+      return drv ? drv->xrtGMIOWait(gmioName) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+  return -1;
 }
 
 int
@@ -941,3 +973,10 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
 {
   return 0;
 }
+
+int
+xclLoadXclBinMeta(xclDeviceHandle handle, const xclBin *buffer)
+{
+  return 0;
+}
+

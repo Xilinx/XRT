@@ -131,6 +131,7 @@ enum kdscommand {
     KDS_CU_INTERRUPT = 0x0,
     KDS_TEST,
     KDS_ARGS,
+    KDS_SHOW,
 };
 
 enum class cu_stat : unsigned short {

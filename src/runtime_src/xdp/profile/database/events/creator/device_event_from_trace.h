@@ -22,6 +22,7 @@
 #include<vector>
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/device_events.h"
+#include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
 
@@ -69,7 +70,7 @@ class DeviceEventCreatorFromTrace
   XDP_EXPORT DeviceEventCreatorFromTrace(uint64_t devId);
   ~DeviceEventCreatorFromTrace() {}
 
-  XDP_EXPORT void createDeviceEvents(xclTraceResultsVector& traceVector);
+  XDP_EXPORT void createDeviceEvents(std::vector<xclTraceResults>& traceVector);
   XDP_EXPORT void end();
 };
 

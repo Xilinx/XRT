@@ -18,6 +18,7 @@
 #define _XDP_PROFILE_DEVICE_BASE_TRACE_LOGGER_H
 
 #include "core/include/xclperf.h"
+#include <vector>
 
 namespace xdp {
 
@@ -28,8 +29,8 @@ public:
   DeviceTraceLogger() {}
   virtual ~DeviceTraceLogger() {}
 
-  virtual void processTraceData(xclTraceResultsVector& traceVector) = 0; 
-  virtual void endProcessTraceData(xclTraceResultsVector& traceVector) = 0; 
+  virtual void processTraceData(std::vector<xclTraceResults>& traceVector) = 0;
+  virtual void endProcessTraceData(std::vector<xclTraceResults>& traceVector) = 0;
 };
 
 }

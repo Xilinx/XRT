@@ -359,11 +359,13 @@ struct argument_info {
  * struct kernel_info - Kernel information
  *
  * @name:	kernel name
+ * @range:	kernel register range
  * @anums:	number of argument
  * @args:	argument array
  */
 struct kernel_info {
 	char			 name[64];
+	uint32_t		 range;
 	int			 anums;
 	struct argument_info	 args[];
 };

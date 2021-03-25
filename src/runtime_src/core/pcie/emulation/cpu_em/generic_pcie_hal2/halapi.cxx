@@ -606,12 +606,14 @@ int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIn
 // Restricted read/write on IP register space
 int xclRegWrite(xclDeviceHandle, uint32_t, uint32_t, uint32_t)
 {
-  return 1;
+  std::cerr << "ERROR: xclRegWrite/xclRegRead calls not supported for sw emulation." << std::endl;
+  return -1;
 }
 
 int xclRegRead(xclDeviceHandle, uint32_t, uint32_t, uint32_t*)
 {
-  return 1;
+  std::cerr << "ERROR: xclRegWrite/xclRegRead calls not supported for sw emulation." << std::endl;
+  return -1;
 }
 
 int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)

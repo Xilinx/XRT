@@ -251,6 +251,34 @@ namespace xclcpuemhal2 {
       */
       int
         xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size);
+
+      /**
+      * xrtSyncBOAIENB() - Transfer data between DDR and Shim DMA channel
+      *
+      * @bo:           BO obj.
+      * @gmioName:        GMIO port name
+      * @dir:             GM to AIE or AIE to GM
+      * @size:            Size of data to synchronize
+      * @offset:          Offset within the BO
+      *
+      * Return:          0 on success, or appropriate error number.
+      *
+      * Synchronize the buffer contents between GMIO and AIE.
+      * Note: Upon return, the synchronization is submitted or error out
+      */
+      int
+        xrtSyncBOAIENB(xrt::bo& bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset);
+
+      /**
+      * xrtGMIOWait() - Wait a shim DMA channel to be idle for a given GMIO port
+      *
+      * @gmioName:        GMIO port name
+      *
+      * Return:          0 on success, or appropriate error number.
+      */
+      int
+        xrtGMIOWait(const char *gmioname);
+
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;

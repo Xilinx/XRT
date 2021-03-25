@@ -592,6 +592,37 @@ get_kernel_freq(const axlf* top)
   return kernel_clk_freq;
 }
 
+size_t
+get_kernel_range(const char* xml_data, size_t xml_size, const std::string& kname)
+{
+  size_t kernel_range = 0x10000; //default kernel range is 64KB
+
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
+    if (xml_kernel.first != "kernel")
+      continue;
+    if (xml_kernel.second.get<std::string>("<xmlattr>.name") != kname)
+      continue;
+
+    for (auto& xml_port : xml_kernel.second) {
+      if (xml_port.first != "port")
+        continue;
+
+      /* one AXI slave port per kernel */
+      if (xml_port.second.get<std::string>("<xmlattr>.mode") == "slave") {
+        kernel_range = convert(xml_port.second.get<std::string>("<xmlattr>.range"));
+        break;
+      }
+    }
+  }
+
+  return kernel_range;
+}
+
 std::vector<kernel_argument>
 get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& kname)
 {
@@ -673,7 +704,8 @@ get_kernels(const char* xml_data, size_t xml_size)
   auto knames = get_kernel_names(xml_data, xml_size);
   for (auto& kname : get_kernel_names(xml_data, xml_size)) {
     kernels.emplace_back
-      (kernel_object{kname,get_kernel_arguments(xml_data, xml_size, kname)});
+      (kernel_object{kname,get_kernel_arguments(xml_data, xml_size, kname),
+                     get_kernel_range(xml_data, xml_size, kname)});
   }
 
   return kernels;

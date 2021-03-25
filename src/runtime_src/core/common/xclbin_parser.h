@@ -50,6 +50,7 @@ struct kernel_object
 {
   std::string name;
   std::vector<kernel_argument> args;
+  size_t range;
 };
 
 /**

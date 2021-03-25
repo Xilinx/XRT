@@ -200,6 +200,10 @@ public:
   void
   load_xclbin(const xrt::xclbin& xclbin);
 
+  XRT_CORE_COMMON_EXPORT
+  void
+  load_xclbin(const uuid& xclbin_id);
+
   /**
    * register_axlf() - Callback from shim after AXLF succesfully loaded
    *
