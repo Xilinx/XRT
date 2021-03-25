@@ -1,7 +1,4 @@
 events:
-  push:
-    trustAnyone: true
-
   pull_request:
     - trustedUserNames: 
         - "abalasa"
