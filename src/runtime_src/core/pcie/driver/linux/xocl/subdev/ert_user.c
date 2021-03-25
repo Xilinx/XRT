@@ -1091,7 +1091,7 @@ static void ert_intc_enable(struct xocl_ert_user *ert_user, bool enable){
 	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
 
 	if (XOCL_DSA_IS_VERSAL(xdev)) {
-		if (enable == true)
+		if (enable)
 			xocl_mailbox_versal_request_intr(xdev, ert_versal_isr, ert_user)
 		else
 			xocl_mailbox_versal_free_intr(xdev);
