@@ -238,14 +238,22 @@ namespace xdp {
 
         for (int i=0; i < startEvents.size(); ++i) {
           // Request counter from resource manager
-          auto perfCounter = isCore ? core.perfCounter() : memory.perfCounter();
-
-	        auto ret = perfCounter->initialize(moduleType, startEvents.at(i),
-                                             moduleType, endEvents.at(i));
-	        if (ret != XAIE_OK) break;
-	        ret = perfCounter->reserve();
+          // NOTE: Resource manager does not currently support configuring group stalls,
+          //       so for that case, we need to use the extended class XAieStallCycles.
+          xaiefal::XAiePerfCounter perfCounter;
+          if (startEvents.at(i) == XAIE_EVENT_GROUP_CORE_STALL_CORE) {
+            perfCounter = core.stallCycles();
+          }
+          else {
+            perfCounter = isCore ? core.perfCounter() : memory.perfCounter();
+            auto ret1 = perfCounter->initialize(moduleType, startEvents.at(i),
+                                                moduleType, endEvents.at(i));
+            if (ret1 != XAIE_OK) break;
+          }
+	        
+          auto ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
-	        ret = perfCounter->start();
+          ret = perfCounter->start();
           if (ret != XAIE_OK) break;
 
           mPerfCounters.push_back(perfCounter);
