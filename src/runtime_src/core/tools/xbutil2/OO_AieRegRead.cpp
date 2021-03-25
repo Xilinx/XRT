@@ -397,9 +397,9 @@ OO_AieRegRead::OO_AieRegRead( const std::string &_longName, bool _isHidden )
   ;
 
   std::string extended_help = "Registers supported:";
-  for (int i=0; i<regmap.size(); i++) {
-      extended_help += boost::str(boost::format("\n  %s") % regmap[i].c_str());
-  }
+  auto size = regmap.size();
+  for (auto i = 0; i < size; i++)
+    extended_help += boost::str(boost::format("\n  %s") % regmap[i].c_str());
 
   setExtendedHelp(extended_help);
 }
