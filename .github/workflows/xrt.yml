@@ -1,8 +1,7 @@
 name: XRT Build/Install Test CI
 
 # Configures trigger:
-# This workflow will be triggered on either a pull request created for Master branch or 
-# When a change is merged to master branch
+# This workflow will be triggered on a pull request created for Master branch 
 on:
   pull_request: 
     branches: [ master ]
