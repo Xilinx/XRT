@@ -41,6 +41,7 @@
 
 #define NUM_CORE_TRACE_EVENTS   8
 #define NUM_MEMORY_TRACE_EVENTS 8
+#define CORE_BROADCAST_EVENT_BASE 107
 
 namespace xdp {
 
@@ -141,6 +142,11 @@ namespace xdp {
     }
   }
 
+  uint32_t AieTracePlugin::bcIdToEvent(int bcId)
+  {
+    return bcId + CORE_BROADCAST_EVENT_BASE;
+  }
+
   void AieTracePlugin::setMetrics(uint64_t deviceId, void* handle)
   {
     auto drv = ZYNQ::shim::handleCheck(handle);
@@ -184,6 +190,9 @@ namespace xdp {
       metricSet = defaultSet;
     }
 
+    writers.push_back(new AieTraceConfigWriter("aie_event_runtime_config.json",
+                                                deviceId, metricSet));
+
     // Capture all tiles across all graphs
     // NOTE: future releases will support the specification of tile subsets
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
@@ -213,11 +222,12 @@ namespace xdp {
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
       EventVector coreEvents;
+      EventVector memoryCrossEvents;
       EventVector memoryEvents;
       std::copy(coreEventSets[metricSet].begin(), coreEventSets[metricSet].end(), 
                 back_inserter(coreEvents));
       std::copy(memoryEventSets[metricSet].begin(), memoryEventSets[metricSet].end(), 
-                back_inserter(memoryEvents));
+                back_inserter(memoryCrossEvents));
 
       //
       // 1. Reserve and start core module counters
@@ -371,22 +381,60 @@ namespace xdp {
         if (ret != XAIE_OK) break;
 
         int numTraceEvents = 0;
-        for (int i=0; i < memoryEvents.size(); i++) {
-          uint8_t slot;
-          ret = memoryTrace->reserveTraceSlot(slot);
+        uint32_t bcMask = 0;
+        uint32_t bcBit = 0x1;
+        // Configure cross module events
+        for (int i=0; i < memoryCrossEvents.size(); i++) {
+          auto TraceE = memory.traceEvent();
+          TraceE->setEvent(XAIE_CORE_MOD, memoryCrossEvents[i]);
           if (ret != XAIE_OK) break;
-          ret = memoryTrace->setTraceEvent(slot, memoryEvents[i]);
+          auto ret = TraceE->reserve();
+          if (ret != XAIE_OK) break;
+
+          int bcId = TraceE->getBc();
+          if (ret != -EINVAL) break;
+          bcMask |= (bcBit << bcId);
+
+          ret = TraceE->start();
+          if (ret != XAIE_OK) break;
+
+          numTraceEvents++;
+
+          // Update config file
+          uint32_t S = 0;
+          XAie_LocType L;
+          XAie_ModuleType M;
+          TraceE->getRscId(L, M, S);
+          cfgTile->memory_trace_config.traced_events[S] = memoryCrossEvents[i];
+          cfgTile->memory_trace_config.internal_events_broadcast[bcId] = bcIdToEvent(bcId);
+        }
+        // Configure same module events
+        for (int i=0; i < memoryEvents.size(); i++) {
+          auto TraceE = memory.traceEvent();
+          TraceE->setEvent(XAIE_CORE_MOD, memoryCrossEvents[i]);
+          if (ret != XAIE_OK) break;
+          auto ret = TraceE->reserve();
+          if (ret != XAIE_OK) break;
+          ret = TraceE->start();
           if (ret != XAIE_OK) break;
           numTraceEvents++;
 
           // Update config file
-          // Todo : Update broadcast mask and events
-          cfgTile->memory_trace_config.traced_events[slot] = memoryEvents[i];
+          uint32_t S = 0;
+          XAie_LocType L;
+          XAie_ModuleType M;
+          TraceE->getRscId(L, M, S);
+          cfgTile->memory_trace_config.traced_events[S] = memoryEvents[i];
         }
         // Update config file
-        // Get this from broadcast ID
-        cfgTile->memory_trace_config.start_event = coreTraceStartEvent;
-        cfgTile->memory_trace_config.stop_event = coreTraceEndEvent;
+        // Odd absolute rows change east mask end even row change west mask
+        if ( (row + 1) % 2 ) {
+          cfgTile->memory_trace_config.broadcast_mask_east = bcMask;
+        } else {
+          cfgTile->memory_trace_config.broadcast_mask_west = bcMask;
+        }
+        cfgTile->memory_trace_config.start_event = memoryTrace->getStartBc();
+        cfgTile->memory_trace_config.stop_event = memoryTrace->getStopBc();
 
         memoryEvents.clear();
         numTileMemoryTraceEvents[numTraceEvents]++;
