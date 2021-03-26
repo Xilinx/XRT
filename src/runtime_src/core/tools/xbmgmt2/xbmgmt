@@ -55,6 +55,7 @@ declare -A COMMANDS=( \
         ["hotplug"]="XBMGMT" \
         ["examine"]="XBMGMT2" \
         ["program"]="XBMGMT2" \
+        ["dump"]="XBMGMT2" \
         ["advanced"]="XBMGMT2" \
         ["--help"]="XBMGMT2" \
         ["--verbose"]="XBMGMT2" \
