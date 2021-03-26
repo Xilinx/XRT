@@ -232,6 +232,9 @@ ert_return_size(struct ert_user_command *ecmd, int max_size)
 	case OP_GET_STAT:
 		ret = max_size;
 		break;
+	case OP_START_SK:
+		ret = 2 * sizeof(u32);
+		break;
 	default:
 		ret = 0;
 	};
