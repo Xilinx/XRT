@@ -395,9 +395,10 @@ namespace xclcpuemhal2 {
           }
         }
         char *xilinxVivadoEnvvar = getenv("XILINX_VIVADO");
-        if(xilinxVivadoEnvvar)
+        if(xilinxVivadoEnvvar && vitisInstallEnvvar)
         {
           std::string sHlsBinDir = xilinxVivadoEnvvar;
+          std::string sVitisBinDir = vitisInstallEnvvar;
           std::string sLdLibs("");
           std::string DS("/");
           std::string sPlatform("lnx64");
@@ -411,10 +412,11 @@ namespace xclcpuemhal2 {
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "opencv"   + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";         
           sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
-          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS;
+          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
+          sLdLibs += sVitisBinDir + DS + "lib" + DS + "lnx64.o" + DS;
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
-
+        
         if (xilinxInstall.empty()) {
            std::cerr << "ERROR : [SW-EM 10] Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
            exit(1);
