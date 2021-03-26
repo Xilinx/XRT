@@ -22,6 +22,8 @@
 #define	ERT_STATE_GOOD		0x1
 #define	ERT_STATE_BAD		0x2
 
+#define CQ_STATUS_OFFSET	(ERT_CQ_STATUS_REGISTER_ADDR - ERT_CSR_ADDR)
+
 //#define	SCHED_VERBOSE	1
 
 #ifdef SCHED_VERBOSE
@@ -229,6 +231,9 @@ ert_return_size(struct ert_user_command *ecmd, int max_size)
 	switch (cmd_opcode(ecmd)) {
 	case OP_GET_STAT:
 		ret = max_size;
+		break;
+	case OP_START_SK:
+		ret = 2 * sizeof(u32);
 		break;
 	default:
 		ret = 0;
@@ -616,6 +621,7 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 	u32 slot_addr = 0, i;
 	struct ert_packet *epkt = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
+	u32 mask_idx, cq_int_addr, mask;
 
 	if (!ert_user->num_rq)
 		return 0;
@@ -682,15 +688,14 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 
 			iowrite32(epkt->header, ert_user->cq_base + slot_addr);
 		}
-		if (ert_user->cq_intr) {
-			u32 mask_idx = mask_idx32(ecmd->slot_idx);
-			u32 cq_int_addr = (mask_idx << 2);
-			u32 mask = 1 << idx_in_mask32(ecmd->slot_idx, mask_idx);
 
-			ERTUSER_DBG(ert_user, "++ mb_submit writes slot mask 0x%x to CQ_INT register at addr 0x%x\n",
-					mask, cq_int_addr);
-			xocl_intc_ert_write32(xdev, mask, cq_int_addr);
-		}
+		mask_idx = mask_idx32(ecmd->slot_idx);
+		cq_int_addr = CQ_STATUS_OFFSET + (mask_idx << 2);
+		mask = 1 << idx_in_mask32(ecmd->slot_idx, mask_idx);
+
+		ERTUSER_DBG(ert_user, "++ mb_submit writes slot mask 0x%x to CQ_INT register at addr 0x%x\n",
+				mask, cq_int_addr);
+		xocl_intc_ert_write32(xdev, mask, cq_int_addr);
 	}
 
 	return 1;
