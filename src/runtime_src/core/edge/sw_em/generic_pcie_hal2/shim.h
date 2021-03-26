@@ -63,6 +63,7 @@ namespace xclcpuemhal2 {
   private:
       // Helper functions - added for kernel debug
       int dumpXML(const xclBin* header, std::string& fileLocation) ;
+      bool isAieEnabled(const xclBin* header);
       bool parseIni(unsigned int& debugPort) ;
       static std::map<std::string, std::string> mEnvironmentNameValueMap;
   public:
@@ -358,7 +359,7 @@ namespace xclcpuemhal2 {
       exec_core* mCore;
       SWScheduler* mSWSch;
       bool mIsKdsSwEmu;
-      bool mIsSwEmuNewFlow;
+   
   };
 
   class GraphType {
