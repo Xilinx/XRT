@@ -367,7 +367,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   if (py.compare("xcl_iops_test.exe") == 0) {
     auto st = os_stdout.str().find("IOPS:");
     if (st != std::string::npos) {
-      logger(_ptTest, "Details", os_stdout.str().substr(st));
+      size_t end = os_stdout.str().find("\n", st);
+      logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
     }
   }
 }
