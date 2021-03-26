@@ -134,9 +134,11 @@ namespace xma_core {
 
     int32_t check_plugin_version(int32_t plugin_main_ver, int32_t plugin_sub_ver) {
         if ((plugin_main_ver == XMA_LIB_MAIN_VER && plugin_sub_ver < XMA_LIB_SUB_VER) || plugin_main_ver < XMA_LIB_MAIN_VER) {
+            xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Invalid plugin version. Expected plugin version is: %d.%d", XMA_LIB_MAIN_VER, XMA_LIB_SUB_VER);
             return -1;
         }
         if ((plugin_main_ver == XMA_LIB_MAIN_VER && plugin_sub_ver > XMA_LIB_SUB_VER) || plugin_main_ver > XMA_LIB_MAIN_VER) {
+            xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Invalid plugin version. Expected plugin version is: %d.%d", XMA_LIB_MAIN_VER, XMA_LIB_SUB_VER);
             return -2;
         }
         return XMA_SUCCESS;
