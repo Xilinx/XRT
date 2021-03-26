@@ -640,10 +640,13 @@ struct aie_metadata : request
 struct aie_reg_read : request
 {
   using result_type = uint32_t;
+  using row_type = uint32_t;
+  using col_type = uint32_t;
+  using reg_type = std::string;
   static const key_type key = key_type::aie_reg_read;
 
   virtual boost::any
-  get(const device*, const boost::any&, const boost::any&, const boost::any&) const = 0;
+  get(const device*, const boost::any& row, const boost::any& col, const boost::any& reg) const = 0;
 };
 
 struct graph_status : request

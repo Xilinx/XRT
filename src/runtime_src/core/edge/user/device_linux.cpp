@@ -183,9 +183,10 @@ struct aie_reg_read
   {
     auto dev = get_edgedev(device);
     uint32_t val = 0;
-    const auto row = boost::any_cast<uint32_t>(r) + 1; // // Get the row value and add one since the rows actually start at 1 not zero.
-    const auto col = boost::any_cast<uint32_t>(c);
-    const auto v = boost::any_cast<std::string>(reg);
+    // Get the row value and add one since the rows actually start at 1 not zero.
+    const auto row = boost::any_cast<query::aie_reg_read::row_type>(r) + 1;
+    const auto col = boost::any_cast<query::aie_reg_read::col_type>(c);
+    const auto v = boost::any_cast<query::aie_reg_read::reg_type>(reg);
  
 #ifdef XRT_ENABLE_AIE
 #ifndef __AIESIM__
@@ -357,10 +358,10 @@ template <typename QueryRequestType, typename Getter>
 struct function3_get : QueryRequestType
 {
   boost::any
-  get(const xrt_core::device* device, const boost::any& row, const boost::any& col, const boost::any& v) const
+  get(const xrt_core::device* device, const boost::any& arg1, const boost::any& arg2, const boost::any& arg3) const
   {
     auto k = QueryRequestType::key;
-    return Getter::get(device, k, row, col, v);
+    return Getter::get(device, k, arg1, arg2, arg3);
   }
 };
 
