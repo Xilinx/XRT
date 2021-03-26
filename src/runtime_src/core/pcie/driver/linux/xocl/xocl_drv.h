@@ -2318,9 +2318,6 @@ void xocl_fini_msix_xdma(void);
 int __init xocl_init_ert_user(void);
 void xocl_fini_ert_user(void);
 
-int __init xocl_init_ert_versal(void);
-void xocl_fini_ert_versal(void);
-
 int __init xocl_init_pcie_firewall(void);
 void xocl_fini_pcie_firewall(void);
 

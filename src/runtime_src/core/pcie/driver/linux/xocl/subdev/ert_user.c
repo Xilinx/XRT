@@ -799,6 +799,60 @@ mask_idx32(unsigned int idx)
 }
 
 static irqreturn_t
+ert_versal_isr(void *arg)
+{
+	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)arg;
+	xdev_handle_t xdev;
+	struct ert_user_command *ecmd;
+
+	BUG_ON(!ert_user);
+
+	ERTUSER_DBG(ert_user, "-> %s\n", __func__);
+	xdev = xocl_get_xdev(ert_user->pdev);
+
+	if (!ert_user->polling_mode) {
+		u32 slots[ERT_MAX_SLOTS];
+		u32 cnt = 0;
+		int slot;
+		int i;
+
+		while (!(xocl_mailbox_versal_get(xdev, &slot)))
+			slots[cnt++] = slot;
+
+		if (!cnt)
+			return IRQ_HANDLED;
+
+		for (i = 0; i < cnt; i++) {
+			slot = slots[i];
+			ERTUSER_DBG(ert_user, "[%s] slot: %d\n", __func__, slot);
+			ecmd = ert_user->submit_queue[slot];
+			if (ecmd) {
+				ecmd->completed = true;
+			} else {
+				ERTUSER_ERR(ert_user, "not in submitted queue %d\n", slot);
+			}
+		}
+
+		up(&ert_user->sem);
+		/* wake up all scheduler ... currently one only */
+#if 0
+		if (xs->stop)
+			return;
+
+		if (xs->reset) {
+			SCHED_DEBUG("scheduler is resetting after timeout\n");
+			scheduler_reset(xs);
+		}
+#endif
+	} else {
+		ERTUSER_DBG(ert_user, "unhandled isr \r\n");
+		return IRQ_NONE;
+	}
+	ERTUSER_DBG(ert_user, "<- %s\n", __func__);
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t
 ert_user_isr(int irq, void *arg)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)arg;
@@ -1071,6 +1125,14 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 static void ert_intc_enable(struct xocl_ert_user *ert_user, bool enable){
 	uint32_t i;
 	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
+
+	if (XOCL_DSA_IS_VERSAL(xdev)) {
+		if (enable)
+			xocl_mailbox_versal_request_intr(xdev, ert_versal_isr, ert_user);
+		else
+			xocl_mailbox_versal_free_intr(xdev);
+		return;
+	}
 
 	for (i = 0; i < ert_user->num_slots; i++) {
 		if (enable) {
