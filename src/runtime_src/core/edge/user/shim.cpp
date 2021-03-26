@@ -537,6 +537,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_kernels = NULL,
     };
 
+  std::vector<char> krnl_binary;
   if (!xrt_core::xclbin::is_pdi_only(buffer)) {
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
     /* Calculate size of kernels */
@@ -545,7 +546,7 @@ xclLoadAxlf(const axlf *buffer)
     }
 
     /* Check PCIe's shim.cpp for details of kernels binary */
-    std::vector<char> krnl_binary(axlf_obj.za_ksize);
+    krnl_binary.resize(axlf_obj.za_ksize);
     axlf_obj.za_kernels = krnl_binary.data();
     for (auto& kernel : kernels) {
       auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.za_kernels + off);

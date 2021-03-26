@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -165,6 +165,14 @@ int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		break;
 	case ZOCL_CTX_OP_FREE_CTX:
 		ret = zocl_del_context(zdev, client, args);
+		break;
+
+	/* TODO will support AIE context on new kds later */
+	case ZOCL_CTX_OP_ALLOC_GRAPH_CTX:
+	case ZOCL_CTX_OP_FREE_GRAPH_CTX:
+	case ZOCL_CTX_OP_ALLOC_AIE_CTX:
+	case ZOCL_CTX_OP_FREE_AIE_CTX:
+		ret = 0;
 		break;
 	default:
 		ret = -EINVAL;
@@ -364,6 +372,8 @@ static void zocl_detect_fa_plram(struct drm_zocl_dev *zdev)
 
 	/* Detect Fast adapter */
 	ip_layout = zdev->ip;
+	if (!ip_layout)
+		return;
 
 	for (i = 0; i < ip_layout->m_count; ++i) {
 		struct ip_data *ip = &ip_layout->m_ip_data[i];
@@ -406,6 +416,7 @@ static void zocl_detect_fa_plram(struct drm_zocl_dev *zdev)
 int zocl_kds_update(struct drm_zocl_dev *zdev)
 {
 	struct drm_zocl_bo *bo = NULL;
+	int i;
 
 	if (zdev->kds.plram.bo) {
 		bo = zdev->kds.plram.bo;
@@ -419,5 +430,20 @@ int zocl_kds_update(struct drm_zocl_dev *zdev)
 
 	zocl_detect_fa_plram(zdev);
 	zdev->kds.cu_intr = 0;
+
+	for (i = 0; i < zdev->kds.cu_mgmt.num_cus; i++) {
+		struct xrt_cu *xcu;
+		int apt_idx;
+
+		xcu = zdev->kds.cu_mgmt.xcus[i];
+		apt_idx = get_apt_index_by_addr(zdev, xcu->info.addr); 
+		if (apt_idx < 0) {
+			DRM_ERROR("CU address %llx is not found in XCLBIN\n",
+			    xcu->info.addr);
+			return apt_idx;
+		}
+		update_cu_idx_in_apt(zdev, apt_idx, i);
+	}
+
 	return kds_cfg_update(&zdev->kds);
 }
