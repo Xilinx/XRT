@@ -302,7 +302,7 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
  */
 static inline void read_ert_stat(struct kds_command *xcmd)
 {
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
 	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
 	int num_cu  = kds->cu_mgmt.num_cus;
 	int num_scu = kds->scu_mgmt.num_cus;
@@ -352,7 +352,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 static void notify_execbuf(struct kds_command *xcmd, int status)
 {
 	struct kds_client *client = xcmd->client;
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
 
 	if (xcmd->opcode == OP_START_SK) {
 		/* For PS kernel get cmd state and return_code */
@@ -378,6 +378,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	}
 
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
+	kfree(xcmd->execbuf);
 
 	if (xcmd->inkern_cb) {
 		int error = (status == KDS_COMPLETED)?0:-EFAULT;
@@ -389,6 +390,34 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	}
 }
 
+static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
+				      struct drm_xocl_bo *xobj,
+				      struct ert_packet *ecmd)
+{
+	struct ert_packet *orig;
+	int pkg_size;
+	bool op_valid;
+
+	orig = (struct ert_packet *)xobj->vmapping;
+	orig->state = ERT_CMD_STATE_NEW;
+	ecmd->header = orig->header;
+
+	pkg_size = sizeof(ecmd->header) + ecmd->count * sizeof(u32);
+	if (xobj->base.size < pkg_size) {
+		userpf_err(xdev, "payload size bigger than exec buf\n");
+		return false;
+	}
+
+	memcpy(ecmd->data, orig->data, ecmd->count * sizeof(u32));
+
+	/* opcode specific validation */
+	op_valid = ert_valid_opcode(ecmd);
+	if (!op_valid)
+		userpf_err(xdev, "opcode(%d) is invalid\n", ecmd->opcode);
+
+	return op_valid;
+}
+
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			      struct drm_file *filp, bool in_kernel)
 {
@@ -397,7 +426,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct drm_xocl_execbuf *args = data;
 	struct drm_gem_object *obj;
 	struct drm_xocl_bo *xobj;
-	struct ert_packet *ecmd;
+	struct ert_packet *ecmd = NULL;
 	struct kds_command *xcmd;
 	struct kds_cu_mgmt *cu_mgmt;
 	u32 cdma_addr;
@@ -423,13 +452,34 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 
 	xobj = to_xocl_bo(obj);
 	if (!xocl_bo_execbuf(xobj)) {
+		userpf_err(xdev, "Command buffer is not exec buf\n");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	ecmd = (struct ert_packet *)xobj->vmapping;
+	/* An exec buf bo is at least 1 PAGE.
+	 * This is enough to carry metadata for any execbuf command struct.
+	 * It is safe to make the assumption and validate will be simpler.
+	 */
+	if (xobj->base.size < PAGE_SIZE) {
+		userpf_err(xdev, "exec buf is too small\n");
+		ret = -EINVAL;
+		goto out;
+	}
 
-	ecmd->state = ERT_CMD_STATE_NEW;
+	ecmd = kzalloc(xobj->base.size, GFP_KERNEL);
+	if (!ecmd) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	/* If xobj contain a valid command, ecmd would be a copy */
+	if (!copy_and_validate_execbuf(xdev, xobj, ecmd)) {
+		userpf_err(xdev, "Invalid command\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* only the user command knows the real size of the payload.
 	 * count is more than enough!
 	 */
@@ -440,6 +490,13 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		goto out;
 	}
 	xcmd->cb.free = kds_free_command;
+	xcmd->cb.notify_host = notify_execbuf;
+	/* xcmd->execbuf points to kernel space copy */
+	xcmd->execbuf = (u32 *)ecmd;
+	/* xcmd->u_execbuf points to user's original for write
+	 * back/notice */
+	xcmd->u_execbuf = xobj->vmapping;
+	xcmd->gem_obj = obj;
 
 #if 0
 	print_ecmd_info(ecmd);
@@ -492,18 +549,17 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	case ERT_START_COPYBO:
 		ret = copybo_ecmd2xcmd(xdev, filp, to_copybo_pkg(ecmd), xcmd);
 		if (ret) {
-			xcmd->cb.free(xcmd);
-			return (ret < 0)? ret : 0;
+			if (ret > 0)
+				ret = 0;
+			goto out1;
 		}
 		break;
 	case ERT_SK_CONFIG:
 	case ERT_SK_UNCONFIG:
 	case ERT_SK_START:
 		ret = sk_ecmd2xcmd(xdev, ecmd, xcmd);
-		if (ret) {
-			xcmd->cb.free(xcmd);
-			goto out;
-		}
+		if (ret)
+			goto out1;
 		break;
 	case ERT_CU_STAT:
 		xcmd->execbuf = (u32 *)ecmd;
@@ -512,12 +568,9 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");
-		xcmd->cb.free(xcmd);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out1;
 	}
-
-	xcmd->cb.notify_host = notify_execbuf;
-	xcmd->gem_obj = obj;
 
 	if (in_kernel) {
 		struct drm_xocl_execbuf_cb *args_cb =
@@ -527,9 +580,8 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			xcmd->inkern_cb = kzalloc(sizeof(struct in_kernel_cb),
 								GFP_KERNEL);
 			if (!xcmd->inkern_cb) {
-				xcmd->cb.free(xcmd);
 				ret = -ENOMEM;
-				goto out;
+				goto out1;
 			}
 			xcmd->inkern_cb->func = (void (*)(unsigned long, int))
 						args_cb->cb_func;
@@ -539,8 +591,15 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 
 	/* Now, we could forget execbuf */
 	ret = kds_add_command(&XDEV(xdev)->kds, xcmd);
+	return ret;
 
+out1:
+	xcmd->cb.free(xcmd);
 out:
+	if (ret < 0) {
+		kfree(ecmd);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+	}
 	return ret;
 }
 
