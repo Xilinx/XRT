@@ -279,6 +279,7 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	/* TODO figure out the partition id and uid from xclbin or PDI */
 	req.partition_id = 1;
 	req.uid = 0;
+	req.meta_data = 0;
 
 	if (zdev->aie->aie_dev) {
 		DRM_INFO("Partition %d already requested\n",
