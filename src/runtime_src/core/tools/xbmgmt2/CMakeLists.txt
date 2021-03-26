@@ -17,9 +17,8 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "SubCmdReset.cpp"
   "SubCmdExamine.cpp"
   "SubCmdAdvanced.cpp"
-  "OO_Clock.cpp"
-  "OO_Config.cpp"
-  "OO_NIFD.cpp"
+  "SubCmdDump.cpp"
+  "OO_*.cpp"
   "Report*.cpp"
   "flash/*.cpp"
 )
