@@ -642,11 +642,14 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 				continue;
 			}
 		}  else if (cmd_opcode(ecmd) == OP_START || cmd_opcode(ecmd) == OP_START_SK) {
-			if (ert_user->ctrl_busy || !ert_user->config)
+			if (ert_user->ctrl_busy || !ert_user->config) {
+				schedule();
 				return 0;
+			}
 		}
 
 		if (ert20_acquire_slot(ert_user, ecmd) == no_index) {
+			schedule();
 			ERTUSER_DBG(ert_user, "%s not slot available\n", __func__);
 			return 0;
 		}
