@@ -336,7 +336,8 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
 
 static bool isDualQSPI(xrt_core::device *dev) {
     auto deviceID = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
-    return (deviceID == 0xE987 || deviceID == 0x6987 || deviceID == 0xD030);
+    return (deviceID == 0xE987 || deviceID == 0x6987 || deviceID == 0xD030 ||
+            deviceID == 0xF987);
 }
 
 unsigned int XSPI_Flasher::getSector(unsigned int address) {
