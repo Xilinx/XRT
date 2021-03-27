@@ -21,8 +21,11 @@
 namespace XBU = XBUtilities;
 
 #include "core/common/query_requests.h"
+#include "flash/flasher.h"
 
 // 3rd Party Library - Include Files
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
@@ -34,7 +37,7 @@ namespace po = boost::program_options;
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 static void
-flash_dump(std::ofstream& /*fOutput*/)
+flash_dump(const std::string& output, const std::shared_ptr<xrt_core::device>& _dev)
 {
   XBU::verbose("Option: flash");
   // Sample output:
@@ -42,14 +45,42 @@ flash_dump(std::ofstream& /*fOutput*/)
   //   Flash Size: 0x222 (Mbits)  
   //   <Progress Bar>
 
-  // TO-DO
+  Flasher flasher(_dev->get_device_id());
+  if(!flasher.isValid()) {
+    xrt_core::error(boost::str(boost::format("%d is an invalid index") % _dev->get_device_id()));
+    return;
+  }
+  flasher.readBack(output);
 }
 
+/*
+ * so far, we only support the following configs
+ * [Device]
+ * mailbox_channel_disable = xxx
+ * mailbox_channel_switch = xxx
+ * cahce_xclbin = xxx
+ */
 static void
-config_dump(std::ofstream& /*fOutput*/)
+config_dump(const std::string& output, std::shared_ptr<xrt_core::device>& _dev)
 {
   XBU::verbose("Option: config");
-  //TO-DO
+
+  if(boost::filesystem::extension(output).compare(".ini") != 0) {
+    std::cerr << boost::format("ERROR: output file should be an INI file: '%s'") % output << "\n\n";
+    return;
+  }
+
+  boost::property_tree::ptree m_tree;
+
+  m_tree.put("Device.mailbox_channel_disable",
+    xrt_core::device_query<xrt_core::query::config_mailbox_channel_disable>(_dev));
+  m_tree.put("Device.mailbox_channel_switch",
+    xrt_core::device_query<xrt_core::query::config_mailbox_channel_switch>(_dev));
+  m_tree.put("Device.cache_xclbin",
+    xrt_core::device_query<xrt_core::query::cache_xclbin>(_dev));
+
+  boost::property_tree::ini_parser::write_ini(output, m_tree);
+  std::cout << "config has been dumped to " << output << std::endl;
 }
 
 SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
@@ -159,23 +190,15 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
     return;
   }
     
-  std::ofstream fOutput;
-  fOutput.open(output, std::ios::out | std::ios::binary);
-  if (!fOutput.is_open()) {
-    std::cerr << boost::format("ERROR: Unable to open the file '%s' for writing.") % output << "\n\n";
-    return;
-  }
-
   //decide the contents of the dump file
   if(flash)
-    flash_dump(fOutput);
+    flash_dump(output, deviceCollection[0]);
   else if (config)
-    config_dump(fOutput);
+    config_dump(output, deviceCollection[0]);
   else {
     std::cerr << "ERROR: Please specify a valid option to determine the type of dump" << "\n\n";
     printHelp(commonOptions, hiddenOptions);
     return;
   }
 
-  fOutput.close();
 }

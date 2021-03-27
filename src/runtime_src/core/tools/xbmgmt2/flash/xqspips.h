@@ -24,6 +24,7 @@
 
 const static int PAGE_SIZE = 256;
 const static int PAGE_8K   = 8192;
+const static int FLASH_SIZE = 0x8000000; //128MB
 
 class XQSPIPS_Flasher
 {
@@ -44,6 +45,7 @@ public:
     ~XQSPIPS_Flasher();
     void program(std::istream& binStream, unsigned base = 0);
     int verify(std::istream& binStream, unsigned base = 0);
+    void readBack(const std::string& output, unsigned base = 0, unsigned total_size = FLASH_SIZE);
     int revertToMFG(std::istream& binStream);
     int xclUpgradeFirmware(std::istream& binStream);
 

@@ -506,6 +506,48 @@ int XQSPIPS_Flasher::verify(std::istream& binStream, unsigned base)
     return mismatched;
 }
 
+void XQSPIPS_Flasher::readBack(const std::string& output, unsigned base, unsigned total_size)
+{
+    int remain = 0;
+    int pages = 0;
+    unsigned addr = 0;
+    unsigned size = 0;
+    int beatCount = 0;
+
+    std::ofstream of_flash;
+    of_flash.open(output, std::ofstream::out);
+    if (!of_flash.is_open()) {
+        std::cout << "[ERROR]: Could not open " << output << std::endl;
+        return;
+    }
+
+    std::cout << "Output file: " << output << std::endl;
+    std::cout << "Flash size: " << total_size << std::endl;
+
+    remain = total_size % PAGE_SIZE;
+    pages = total_size / PAGE_SIZE;
+
+    beatCount = 0;
+    XBU::ProgressBar read_flash("reading flash back", static_cast<unsigned int>(pages), XBU::is_esc_enabled(), std::cout);
+    for (int page = 0; page <= pages; page++) {
+        read_flash.update(beatCount++);
+
+        addr = page * PAGE_SIZE;
+        if (page != pages)
+            size = PAGE_SIZE;
+        else
+            size = remain;
+
+        readFlash(base + addr, size);
+
+        for (unsigned i = 0; i < size; i++)
+            of_flash << mReadBuffer[i];
+    }
+    read_flash.finish(true, "Flash read back");
+
+    of_flash.close();
+}
+
 int XQSPIPS_Flasher::revertToMFG(std::istream& binStream)
 {
     initQSpiPS();

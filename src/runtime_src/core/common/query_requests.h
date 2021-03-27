@@ -206,6 +206,10 @@ enum class key_type
   graph_status,
   mailbox_metrics,
 
+  config_mailbox_channel_disable,
+  config_mailbox_channel_switch,
+  cache_xclbin,
+
   clock_timestamp,
   ert_sleep,
   ert_cq_write,
@@ -2161,6 +2165,48 @@ struct mailbox_metrics : request
   {
     return value;
   }
+};
+
+struct config_mailbox_channel_disable : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::config_mailbox_channel_disable;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct config_mailbox_channel_switch : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::config_mailbox_channel_switch;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct cache_xclbin : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::cache_xclbin;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
 };
 
 struct ert_sleep : request

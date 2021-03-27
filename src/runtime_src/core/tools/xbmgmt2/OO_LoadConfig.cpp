@@ -21,6 +21,8 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
@@ -126,5 +128,44 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  //TO_DO: parse the INI file
+  try {
+    for (auto& t : deviceCollection)  
+      loadconfig(t);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    return;
+  }
+}
+
+/*
+ * so far, we only support the following configs
+ * [Device]
+ * mailbox_channel_disable = xxx
+ * mailbox_channel_switch = xxx
+ * cahce_xclbin = xxx
+ */
+void
+OO_LoadConfig::loadconfig(const std::shared_ptr<xrt_core::device>& _dev) const
+{
+  boost::property_tree::ptree m_tree;
+  boost::property_tree::ini_parser::read_ini(m_path, m_tree);
+
+  for (auto& it : m_tree) {
+    if (it.first.compare("Device"))
+      continue;
+    for (auto& key : it.second) {
+      if (!key.first.compare("mailbox_channel_disable"))
+        xrt_core::device_update<xrt_core::query::config_mailbox_channel_disable>(
+          _dev.get(), key.second.get_value<std::string>());
+      if (!key.first.compare("mailbox_channel_switch"))
+        xrt_core::device_update<xrt_core::query::config_mailbox_channel_switch>(
+          _dev.get(), key.second.get_value<std::string>());
+      if (!key.first.compare("cache_xclbin"))
+        xrt_core::device_update<xrt_core::query::cache_xclbin>(
+          _dev.get(), key.second.get_value<std::string>());
+    }
+  }
+
+  std::cout << "config has been successfully loaded" << std::endl;
 }
