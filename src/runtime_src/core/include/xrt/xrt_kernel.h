@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -20,9 +20,9 @@
 
 #include "ert.h"
 #include "xrt.h"
-#include "experimental/xrt_bo.h"
-#include "experimental/xrt_device.h"
-#include "experimental/xrt_uuid.h"
+#include "xrt/xrt_bo.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_uuid.h"
 
 #ifdef __cplusplus
 # include "experimental/xrt_enqueue.h"

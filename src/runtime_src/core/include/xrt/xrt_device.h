@@ -19,11 +19,11 @@
 #define _XRT_DEVICE_H_
 
 #include "xrt.h"
-#include "experimental/xrt_uuid.h"
+#include "xrt/xrt_uuid.h"
 #include "experimental/xrt_xclbin.h"
-#include "experimental/detail/param_traits.h"
 
 #ifdef __cplusplus
+# include "xrt/detail/param_traits.h"
 # include <memory>
 # include <boost/any.hpp> // std::any c++17
 #endif
