@@ -18,40 +18,6 @@
 #include <time.h>
 #include "plugin_dec.h"
 #include "xrt_utils.h"
-#include "input_out_frame_dump.h"
-
-#define RETRY_COUNT 100
-
-#undef DEBUG_VCU_DECODER
-#define ERROR_PRINT(...) {\
-  do {\
-    printf("[%s:%d] ERROR[DECODER] : ",__func__, __LINE__);\
-    printf(__VA_ARGS__);\
-    printf("\n");\
-  } while(0);\
-}
-
-#ifdef DEBUG_VCU_DECODER
-#define INFO_PRINT(...) {\
-  do {\
-    printf("[%s:%d] INFO[DECODER] : ",__func__, __LINE__);\
-    printf(__VA_ARGS__);\
-    printf("\n");\
-  } while(0);\
-}
-
-#define DEBUG_PRINT(...) {\
-  do {\
-    printf("[%s:%d] DEBUG[DECODER] : ",__func__, __LINE__);\
-    printf(__VA_ARGS__);\
-    printf("\n");\
-  } while(0);\
-}
-#else
-#define DEBUG_PRINT(...) ((void)0)
-#define INFO_PRINT(...) ((void)0)
-#endif
-
 
 static void xvcudec_free_internal_buffers (XrtIvas_XVCUDec * dec);
 
@@ -1052,13 +1018,13 @@ xvcudec_set_format (XrtIvas_XVCUDec * dec)
 }
 
 static int
-xrt_validate_output(uint8_t *out_buffer, uint32_t out_size)
+xrt_validate_decoder(uint8_t *out_buffer, uint32_t out_size)
 {
   uint8_t *exp_buffer = NULL;
   uint32_t exp_size = 0;
 
-  exp_buffer = (uint8_t *)&expected_out_frame;
-  exp_size = sizeof (expected_out_frame);
+  exp_buffer = (uint8_t *)&decoder_output_buf;
+  exp_size = decoder_output_buf_len;
 
   if (out_size != exp_size)
     return FALSE;
@@ -1075,7 +1041,6 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   static XrtFlowReturn fret = XRT_FLOW_ERROR;
   int iret = FALSE;
   uint8_t *in_buffer = NULL;
-  uint32_t in_size = 0;
   uint8_t *out_buffer = NULL;
   uint32_t out_size = 0;
 
@@ -1087,9 +1052,8 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   }
 
   /* Get the input buffer array from the file */
-  in_buffer = (uint8_t *)&input_frame;
-  in_size = sizeof (input_frame);
-  dec->input_buf_size = in_size;
+  in_buffer = (uint8_t *)&decoder_input_buf;
+  dec->input_buf_size = decoder_input_buf_len;
 
   /* Initialize xrt and open device */
   iret = xvcudec_open (dec, xclbin_path, sk_idx, dev_idx);
@@ -1107,7 +1071,7 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   DEBUG_PRINT ("Decoder initialization is done Succesfully\n");
 
   /* Prepare and send the input frame buffer */
-  fret = gstivas_xvcudec_handle_frame (dec, (uint8_t *)in_buffer, in_size);
+  fret = gstivas_xvcudec_handle_frame (dec, (uint8_t *)in_buffer, dec->input_buf_size);
   if (fret != XRT_FLOW_OK) {
     ERROR_PRINT ("VCU send command failed!!\n");
     iret = FALSE;
@@ -1140,9 +1104,10 @@ int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx)
   gstivas_xvcudec_close(dec);
 
   /* Validate Results */ 
-  iret = xrt_validate_output(out_buffer, out_size);
+  iret = xrt_validate_decoder(out_buffer, out_size);
   if (iret == FALSE) {
-    INFO_PRINT ("Test validation failed!!\n");
+    ERROR_PRINT ("Test validation failed!!\n");
+    goto error;
   }
     
   INFO_PRINT ("Test validation passed!!\n");

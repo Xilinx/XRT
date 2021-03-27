@@ -1,40 +1,14 @@
-#ifndef __DUMMY_PLUGIN_DEC_H__
-#define __DUMMY_PLUGIN_DEC_H__
+#ifndef _XRT_XVCUDEC_H_
+#define _XRT_XVCUDEC_H_
 
 #include <stdint.h>
+#include "plugin_common.h"
 #include "xrt_utils.h"
 
-#define XCLBIN_PATH "/usr/local/lib/aws.xclbin"
-static const int ERT_CMD_SIZE = 4096;
-#define int int 
-#define TRUE 0
-#define FALSE -1
-#define NOTSUPP 1
-#define MAX_IBUFFS 2
-#define MEM_BANK 0
-#define OUT_MEM_SIZE 3342336 // GST Specific
-
-#define ERT_CMD_DATA_LEN 1024
-#define CMD_EXEC_TIMEOUT 1000
-#define FRM_BUF_POOL_SIZE 50
-#define MAX_OUT_INFOS 25
-
-enum cmd_type
-{
-  VCU_PREINIT = 0,
-  VCU_INIT,
-  VCU_PUSH,
-  VCU_RECEIVE,
-  VCU_FLUSH,
-  VCU_DEINIT,
-};
-
-typedef enum _XrtFlowReturn
-{
-  XRT_FLOW_OK = 0,
-  XRT_FLOW_EOS,
-  XRT_FLOW_ERROR,
-} XrtFlowReturn;
+extern unsigned char decoder_input_buf[];
+extern unsigned int decoder_input_buf_len;
+extern unsigned char decoder_output_buf[];
+extern unsigned int decoder_output_buf_len;
 
 typedef struct _XlnxOutputBuffer
 {
@@ -128,7 +102,5 @@ typedef struct _XrtIvas_XVCUDec
   int sk_cur_idx;
   int dev_index;
 } XrtIvas_XVCUDec;
-
-int vcu_dec_test(const char *xclbin_path, int sk_idx, int dev_idx);
 
 #endif
