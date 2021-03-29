@@ -1283,7 +1283,7 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
     : SubCmd("validate",
              "Validates the basic shell acceleration functionality")
 {
-  const std::string longDescription = "Validates the given card by executing the platform's validate executable.";
+  const std::string longDescription = "Validates the given device by executing the platform's validate executable.";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);

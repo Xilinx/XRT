@@ -10,7 +10,6 @@ endif()
 # Include the generated header files (e.g., version.h)
 include_directories(${CMAKE_BINARY_DIR}/gen)
 
-
 # ==-- x c l b i n u t i l --==================================================
 
 set(XCLBINUTIL_NAME "xclbinutil")

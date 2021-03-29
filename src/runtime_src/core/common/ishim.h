@@ -26,6 +26,9 @@
 #include "error.h"
 #include <stdexcept>
 
+// Internal shim function forward declarations
+int xclUpdateSchedulerStat(xclDeviceHandle handle);
+
 namespace xrt_core {
 
 /**
@@ -109,6 +112,9 @@ struct ishim
 
   virtual void
   p2p_disable(bool force) = 0;
+  
+  virtual
+  void update_scheduler_status() = 0;
 
 #ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
@@ -376,6 +382,13 @@ struct shim : public DeviceType
   {
     if (auto ret = xclP2pEnable(DeviceType::get_device_handle(), false, force))
       throw system_error(ret, "failed to disable p2p");
+  }
+
+  virtual void
+  update_scheduler_status()
+  {
+    if (auto ret = xclUpdateSchedulerStat(DeviceType::get_device_handle()))
+      throw error(ret, "failed to update scheduler status");
   }
 
 #ifdef XRT_ENABLE_AIE
