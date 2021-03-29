@@ -56,25 +56,20 @@ graph_status_to_string(int status) {
 }
 
 static void
-addnode(std::string search_str, std::string node_str,boost::property_tree::ptree& input_pt, boost::property_tree::ptree& output_pt)
-{
-  int count = 0;
-  boost::property_tree::ptree empty_pt;
-  for (auto& node: input_pt.get_child(search_str, empty_pt)) {
-    output_pt.put(node_str+std::to_string(count++), node.second.data());
-  }
-}
-
-static void
 addnodelist(std::string search_str, std::string node_str,boost::property_tree::ptree& input_pt, boost::property_tree::ptree& output_pt)
 {
+  boost::property_tree::ptree pt_array;
   for (auto& node: input_pt.get_child(search_str)) {
+    boost::property_tree::ptree pt;
     std::string val;
     for (auto& value: node.second)
       val +=(val.empty()?"":", ")+ value.second.data();
-    if(!val.empty())
-      output_pt.put(node_str + node.first, val);
+
+    pt.put("name", node.first);
+    pt.put("value", val);
+    pt_array.push_back(std::make_pair("", pt));
   }
+  output_pt.add_child(node_str, pt_array);
 }
 
 /*
@@ -220,15 +215,6 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
     for (auto& node: pt.get_child("core.SP", empty_pt))
       tile.put("core.stack_pointer", node.second.data());
 
-    for (auto& node: pt.get_child("dma.Channel_status.MM2S", empty_pt)) {
-      tile.put("dma.channel_status.mm2s.channel_"+std::to_string(count++), node.second.data());
-    }
-
-    count = 0;
-    for (auto& node: pt.get_child("dma.Channel_status.S2MM", empty_pt)) {
-      tile.put("dma.channel_status.s2mm.channel_"+std::to_string(count++), node.second.data());
-    }
-
     count = 0;
     std::string mode;
     for (auto& node: pt.get_child("dma.Mode.MM2S", empty_pt)) {
@@ -236,7 +222,7 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
     }
 
     if(!mode.empty())
-      tile.put("dma.mode.mm2s", mode);
+      tile.put("dma.mm2s.mode", mode);
 
     mode.clear();
     for (auto& node: pt.get_child("dma.Mode.S2MM", empty_pt)) {
@@ -244,23 +230,73 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
     }
 
     if(!mode.empty())
-      tile.put("dma.mode.s2mm", mode);
+      tile.put("dma.s2mm.mode", mode);
 
+    boost::property_tree::ptree mm2s_array;
+    auto queue_size = pt.get_child("dma.Queue_size.MM2S").begin();
+    auto queue_status = pt.get_child("dma.Queue_status.MM2S").begin();
+    auto current_bd = pt.get_child("dma.Current_BD.MM2S").begin();
+    auto lock_id = pt.get_child("dma.Lock_ID.MM2S").begin();
+    int id = 0;
+    for (auto& node : pt.get_child("dma.Channel_status.MM2S")) {
+      boost::property_tree::ptree channel;
+      channel.put("id", id);
+      channel.put("channel_status", node.second.data());
+      channel.put("queue_size", queue_size->second.data());
+      channel.put("queue_status", queue_status->second.data());
+      channel.put("current_bd", current_bd->second.data());
+      channel.put("lock_id", lock_id->second.data());
+      queue_size++;
+      queue_status++;
+      current_bd++;
+      lock_id++;
+      mm2s_array.push_back(std::make_pair("", channel));
+    }
+    tile.add_child("dma.mm2s.channel", mm2s_array);
 
-    addnode("dma.Queue_size.MM2S", "dma.queue_size.mm2s.channel_", pt, tile);
-    addnode("dma.Queue_size.S2MM", "dma.queue_size.s2mm.channel_", pt, tile);
-    addnode("dma.Queue_status.MM2S", "dma.queue_status.mm2s.channel_", pt, tile);
-    addnode("dma.Queue_status.S2MM", "dma.queue_status.s2mm.channel_", pt, tile);
-    addnode("dma.Current_BD.MM2S", "dma.current_bd.mm2s.channel_", pt, tile);
-    addnode("dma.Current_BD.S2MM", "dma.current_bd.s2mm.channel_", pt, tile);
-    addnode("dma.Lock_ID.MM2S", "dma.lock_id.mm2s.channel_", pt, tile);
-    addnode("dma.Lock_ID.S2MM", "dma.lock_id.s2mm.channel_", pt, tile);
+    boost::property_tree::ptree s2mm_array;
+    queue_size = pt.get_child("dma.Queue_size.S2MM").begin();
+    queue_status = pt.get_child("dma.Queue_status.S2MM").begin();
+    current_bd = pt.get_child("dma.Current_BD.S2MM").begin();
+    lock_id = pt.get_child("dma.Lock_ID.S2MM").begin();
+    id = 0;
+    for (auto& node : pt.get_child("dma.Channel_status.S2MM")) {
+      boost::property_tree::ptree channel;
+      channel.put("id", id);
+      channel.put("channel_status", node.second.data());
+      channel.put("queue_size", queue_size->second.data());
+      channel.put("queue_status", queue_status->second.data());
+      channel.put("current_bd", current_bd->second.data());
+      channel.put("lock_id", lock_id->second.data());
+      queue_size++;
+      queue_status++;
+      current_bd++;
+      lock_id++;
+      s2mm_array.push_back(std::make_pair("", channel));
+    }
+    tile.add_child("dma.s2mm.channel", s2mm_array);
 
-    addnodelist("lock", "lock.", pt, tile);
-    addnodelist("errors.PL_module", "errors.pl_module.", pt, tile);
-    addnodelist("errors.Core_module", "errors.core_module.", pt, tile);
-    addnodelist("errors.Memory_module", "errors.memory_module.", pt, tile);
-    addnodelist("event", "event.", pt, tile);
+    boost::property_tree::ptree module_array;
+    for (auto& node : pt.get_child("errors", empty_pt)) {
+      boost::property_tree::ptree module;
+      module.put("module",node.first);
+      boost::property_tree::ptree type_array;
+      for (auto& type : node.second) {
+        boost::property_tree::ptree enode;
+        enode.put("name",type.first);
+        std::string val;
+        for (auto& value: type.second)
+          val +=(val.empty()?"":", ")+ value.second.data();
+        enode.put("value", val);
+        type_array.push_back(std::make_pair("", enode));
+      }
+      module.add_child("error", type_array);
+      module_array.push_back(std::make_pair("", module));
+    }
+    tile.add_child("errors", module_array);
+
+    addnodelist("lock", "lock", pt, tile);
+    addnodelist("event", "event", pt, tile);
   } catch (const std::exception& ex){
     tile.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE core"));
   }
@@ -542,124 +578,75 @@ ReportAie::writeReport(const xrt_core::device * _pDevice,
       _output << std::endl;
       count = 0;
       for (auto& tile : graph.get_child("tile")) {
-      _output << boost::format("Core [%2d]\n") % count++;
-      _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
-      _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
+        _output << boost::format("Core [%2d]\n") % count++;
+        _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
+        _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
 
-      _output << boost::format("    %s:\n") % "Core";
-      _output << fmt8("%s") % "Status" % tile.second.get<std::string>("core.status");
-      _output << fmt8("%s") % "Program Counter" % tile.second.get<std::string>("core.program_counter");
-      _output << fmt8("%s") % "Link Register" % tile.second.get<std::string>("core.link_register");
-      _output << fmt8("%s") % "Stack Pointer" % tile.second.get<std::string>("core.stack_pointer");
-      if(tile.second.find("dma") != tile.second.not_found()) {
-        _output << boost::format("    %s:\n") % "DMA";
-        _output << boost::format("        %s:\n") % "Channel Status";
+        _output << boost::format("    %s:\n") % "Core";
+        _output << fmt8("%s") % "Status" % tile.second.get<std::string>("core.status");
+        _output << fmt8("%s") % "Program Counter" % tile.second.get<std::string>("core.program_counter");
+        _output << fmt8("%s") % "Link Register" % tile.second.get<std::string>("core.link_register");
+        _output << fmt8("%s") % "Stack Pointer" % tile.second.get<std::string>("core.stack_pointer");
+        if(tile.second.find("dma") != tile.second.not_found()) {
+          _output << boost::format("    %s:\n") % "DMA";
+          _output << boost::format("        %s:\n") % "MM2S";
+          _output << fmt12("%s") % "Mode" % tile.second.get<std::string>("dma.mm2s.mode");
 
-        _output << boost::format("            %s:\n") % "MM2S";
-        for(auto& node : tile.second.get_child("dma.channel_status.mm2s")) {
-          _output << fmt16("%s") % node.first % node.second.data();
+          _output << boost::format("            %s:\n") % "Channel";
+          for(auto& node : tile.second.get_child("dma.mm2s.channel")) {
+            _output << fmt16("%s") % "Id" % node.second.get<std::string>("id");
+            _output << fmt16("%s") % "Channel Status" % node.second.get<std::string>("channel_status");
+            _output << fmt16("%s") % "Queue Size" % node.second.get<std::string>("queue_size");
+            _output << fmt16("%s") % "Queue Status" % node.second.get<std::string>("queue_status");
+            _output << fmt16("%s") % "Current BD" % node.second.get<std::string>("current_bd");
+            _output << fmt16("%s") % "Lock ID" % node.second.get<std::string>("lock_id");
+            _output << std::endl;
+          }
+
+          _output << boost::format("        %s:\n") % "S2MM";
+          _output << fmt12("%s") % "Mode" % tile.second.get<std::string>("dma.s2mm.mode");
+
+          _output << boost::format("            %s:\n") % "Channel";
+          for(auto& node : tile.second.get_child("dma.s2mm.channel")) {
+            _output << fmt16("%s") % "Id" % node.second.get<std::string>("id");
+            _output << fmt16("%s") % "Channel Status" % node.second.get<std::string>("channel_status");
+            _output << fmt16("%s") % "Queue Size" % node.second.get<std::string>("queue_size");
+            _output << fmt16("%s") % "Queue Status" % node.second.get<std::string>("queue_status");
+            _output << fmt16("%s") % "Current BD" % node.second.get<std::string>("current_bd");
+            _output << fmt16("%s") % "Lock ID" % node.second.get<std::string>("lock_id");
+            _output << std::endl;
+          }
+        } 
+
+        if(tile.second.find("lock") != tile.second.not_found()) {
+          _output << boost::format("    %s:\n") % "LocK";
+          for(auto& node : tile.second.get_child("lock",empty_ptree)) {
+            _output << fmt8("%s")  % node.second.get<std::string>("name")
+                                   % node.second.get<std::string>("value");
+          }
+          _output << std::endl;
         }
 
-        _output << boost::format("            %s:\n") % "S2MM";
-        for(auto& node : tile.second.get_child("dma.channel_status.s2mm")) {
-          _output << fmt16("%s") % node.first % node.second.data();
+        if(tile.second.find("errors") != tile.second.not_found()) {
+          _output << boost::format("    %s:\n") % "Errors";
+          for(auto& node : tile.second.get_child("errors",empty_ptree)) {
+            _output << boost::format("        %s:\n") % node.second.get<std::string>("module");
+            for(auto& enode : node.second.get_child("error",empty_ptree)) {
+              _output << fmt12("%s")  % enode.second.get<std::string>("name")
+                                     % enode.second.get<std::string>("value");
+            }
+          }
+          _output << std::endl;
         }
 
-        _output << boost::format("        %s:\n") % "Mode";
-
-        for(auto& node : tile.second.get_child("dma.mode")) {
-          _output << fmt16("%s") % node.first % node.second.data();
+        if(tile.second.find("event") != tile.second.not_found()) {
+          _output << boost::format("    %s:\n") % "Event";
+          for(auto& node : tile.second.get_child("event",empty_ptree)) {
+            _output << fmt8("%s")  % node.second.get<std::string>("name")
+                                   % node.second.get<std::string>("value");
+          }
+          _output << std::endl;
         }
-
-        _output << boost::format("        %s:\n") % "Queue Size";
-
-        _output << boost::format("            %s:\n") % "MM2S";
-        for(auto& node : tile.second.get_child("dma.queue_size.mm2s")) {
-          _output << fmt16("%s") % node.first % node.second.data();
-        }
-
-        _output << boost::format("            %s:\n") % "S2MM";
-        for(auto& node : tile.second.get_child("dma.queue_size.s2mm")) {
-          _output << fmt16("%s") % node.first % node.second.data();
-        }
-
-        _output << boost::format("        %s:\n") % "Queue Status";
-
-        _output << boost::format("            %s:\n") % "MM2S";
-        for(auto& node : tile.second.get_child("dma.queue_status.mm2s")) {
-          _output << fmt16("%s") % node.first % node.second.data();
-        }
-
-        _output << boost::format("            %s:\n") % "S2MM";
-        for(auto& node : tile.second.get_child("dma.queue_status.s2mm")) {
-          _output << fmt16("%s")  % node.first % node.second.data();
-        }
-
-        _output << boost::format("        %s:\n") % "Current BD";
-
-        _output << boost::format("            %s:\n") % "MM2S";
-        for(auto& node : tile.second.get_child("dma.current_bd.mm2s")) {
-          _output << fmt16("%s") % node.first % node.second.data();
-        }
-
-        _output << boost::format("            %s:\n") % "S2MM";
-        for(auto& node : tile.second.get_child("dma.current_bd.s2mm")) {
-          _output << fmt16("%s") % node.first % node.second.data();
-        }
-
-        _output << boost::format("        %s:\n") % "Lock ID";
-
-        _output << boost::format("            %s:\n") % "MM2S";
-        for(auto& node : tile.second.get_child("dma.lock_id.mm2s")) {
-          _output << fmt16("%s")  % node.first % node.second.data();
-        }
-
-        _output << boost::format("            %s:\n") % "S2MM";
-        for(auto& node : tile.second.get_child("dma.lock_id.s2mm")) {
-          _output << fmt16("%s")  % node.first % node.second.data();
-        }
-      } 
-
-      if(tile.second.find("lock") != tile.second.not_found()) {
-        _output << boost::format("    %s:\n") % "LocK";
-        for(auto& node : tile.second.get_child("lock",empty_ptree)) {
-          _output << fmt8("%s")  % node.first % node.second.data();
-        }
-      }
-
-      if(tile.second.find("errors") != tile.second.not_found()) {
-        _output << boost::format("    %s:\n") % "Errors";
-        bool isfirst = true;
-        for(auto& node : tile.second.get_child("errors.pl_module",empty_ptree)) {
-          if(isfirst)
-            _output << boost::format("        %s:\n") % "PL Module";
-          _output << fmt12("%s") % node.first % node.second.data();
-          isfirst = false;
-        }
-
-        isfirst = true;
-        for(auto& node : tile.second.get_child("errors.core_module",empty_ptree)) {
-          if(isfirst)
-            _output << boost::format("        %s:\n") % "Core Module";
-          _output << fmt12("%s") % node.first % node.second.data();
-          isfirst = false;
-        }
-
-        isfirst = true;
-        for(auto& node : tile.second.get_child("errors.memory_module",empty_ptree)) {
-          if(isfirst)
-            _output << boost::format("        %s:\n") % "Memory Module";
-          _output << fmt12("%s") % node.first % node.second.data();
-          isfirst = false;
-        }
-      }
-
-      if(tile.second.find("event") != tile.second.not_found()) {
-        _output << boost::format("    %s:\n") % "Event";
-        for(auto& node : tile.second.get_child("event",empty_ptree)) {
-          _output << fmt12("%s") % node.first % node.second.data();
-        }
-      }
       }
       _output << boost::format("    %s\n") % "Pl Kernel Instances in Graph:";
       for (auto& node : graph.get_child("pl_kernel")) {
