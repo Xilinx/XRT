@@ -22,9 +22,8 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 
-const static int PAGE_SIZE = 256;
-const static int PAGE_8K   = 8192;
-const static int FLASH_SIZE = 0x8000000; //128MB
+const static unsigned int PAGE_SIZE = 256;
+const static unsigned int PAGE_8K   = 8192;
 
 class XQSPIPS_Flasher
 {
@@ -43,9 +42,10 @@ class XQSPIPS_Flasher
 public:
     XQSPIPS_Flasher(std::shared_ptr<xrt_core::device> dev);
     ~XQSPIPS_Flasher();
+    unsigned int getFlashSize();
     void program(std::istream& binStream, unsigned base = 0);
     int verify(std::istream& binStream, unsigned base = 0);
-    void readBack(const std::string& output, unsigned base = 0, unsigned total_size = FLASH_SIZE);
+    void readBack(const std::string& output, unsigned base = 0);
     int revertToMFG(std::istream& binStream);
     int xclUpgradeFirmware(std::istream& binStream);
 

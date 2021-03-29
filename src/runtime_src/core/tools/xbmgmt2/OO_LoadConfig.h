@@ -33,7 +33,6 @@ class OO_LoadConfig : public OptionOptions {
   std::vector<std::string> m_devices;
   bool m_help;
   std::string m_path;
-  void loadconfig(const std::shared_ptr<xrt_core::device>& _dev) const;
 };
 
 #endif

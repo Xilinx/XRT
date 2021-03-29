@@ -37,9 +37,8 @@ namespace po = boost::program_options;
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 static void
-flash_dump(const std::string& output, const std::shared_ptr<xrt_core::device>& _dev)
+flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string output)
 {
-  XBU::verbose("Option: flash");
   // Sample output:
   //   Output file: foo.bin
   //   Flash Size: 0x222 (Mbits)  
@@ -54,32 +53,32 @@ flash_dump(const std::string& output, const std::shared_ptr<xrt_core::device>& _
 }
 
 /*
- * so far, we only support the following configs
+ * so far, we only support the following configs, eg
  * [Device]
- * mailbox_channel_disable = xxx
- * mailbox_channel_switch = xxx
- * cahce_xclbin = xxx
+ * mailbox_channel_disable = 0x100
+ * mailbox_channel_switch = 0
+ * cahce_xclbin = 0
  */
 static void
-config_dump(const std::string& output, std::shared_ptr<xrt_core::device>& _dev)
+config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string output)
 {
-  XBU::verbose("Option: config");
-
   if(boost::filesystem::extension(output).compare(".ini") != 0) {
     std::cerr << boost::format("ERROR: output file should be an INI file: '%s'") % output << "\n\n";
     return;
   }
 
-  boost::property_tree::ptree m_tree;
+  boost::property_tree::ptree PtRoot;
 
-  m_tree.put("Device.mailbox_channel_disable",
+  boost::property_tree::ptree child;
+  child.put("mailbox_channel_disable",
     xrt_core::device_query<xrt_core::query::config_mailbox_channel_disable>(_dev));
-  m_tree.put("Device.mailbox_channel_switch",
+  child.put("mailbox_channel_switch",
     xrt_core::device_query<xrt_core::query::config_mailbox_channel_switch>(_dev));
-  m_tree.put("Device.cache_xclbin",
+  child.put("cache_xclbin",
     xrt_core::device_query<xrt_core::query::cache_xclbin>(_dev));
+  PtRoot.put_child("Device", child);
 
-  boost::property_tree::ini_parser::write_ini(output, m_tree);
+  boost::property_tree::ini_parser::write_ini(output, PtRoot);
   std::cout << "config has been dumped to " << output << std::endl;
 }
 
@@ -176,6 +175,8 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
     return;
   }
 
+  std::shared_ptr<xrt_core::device>& workingDevice = deviceCollection[0];
+
   // -- process "output" option -----------------------------------------------
   // Output file
   XBU::verbose("Option: output: " + output);
@@ -191,14 +192,16 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   }
     
   //decide the contents of the dump file
-  if(flash)
-    flash_dump(output, deviceCollection[0]);
-  else if (config)
-    config_dump(output, deviceCollection[0]);
-  else {
-    std::cerr << "ERROR: Please specify a valid option to determine the type of dump" << "\n\n";
-    printHelp(commonOptions, hiddenOptions);
+  if(flash) {
+    flash_dump(workingDevice, output);
     return;
   }
+  if (config) {
+    config_dump(workingDevice, output);
+    return;
+  }
+
+  std::cerr << "ERROR: Please specify a valid option to determine the type of dump" << "\n\n";
+  printHelp(commonOptions, hiddenOptions);
 
 }
