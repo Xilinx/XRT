@@ -32,6 +32,7 @@ file(GLOB XCLBINUTIL_FILES
   "ParameterSectionData.cxx"
   "Section.cxx"     # Note: Due to linking dependency issue, this entry needs to be before the other sections
   "Section*.cxx"
+  "Resources*.cxx"
   "XclBinClass.cxx"
   "XclBinSignature.cxx"
   "XclBinUtilities.cxx"
@@ -64,14 +65,19 @@ if(NOT WIN32)
   # Python is currently not installed on Edge builds
   if (${XRT_NATIVE_BUILD} STREQUAL "yes")
     # -- Test Signing of the xclbin image using a CER formatted certificate
-    xrt_add_test("signing_xclbin_CER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinCER.py")
+    xrt_add_test("signing-xclbin_CER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinCER.py")
 
     # -- Test Signing of the xclbin image using a DER formatted certificate
-    xrt_add_test("signing_xclbin_DER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinDER.py")
+    xrt_add_test("signing-xclbin_DER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinDER.py")
 
-    # -- Test SmartNic Section
+    # -- Test SmartNic
+    # Test: SmartNic Syntax
     set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic")
-    xrt_add_test("smartnic" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic/SectionSmartNicSchema.py ${TEST_OPTIONS}")
+    xrt_add_test("smartnic-syntax" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic/SectionSmartNicSyntax.py ${TEST_OPTIONS}")
+
+    # Test: SmartNic Schema
+    set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic")
+    xrt_add_test("smartnic-format" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic/SectionSmartNicFormat.py ${TEST_OPTIONS}")
   endif()
 endif()
 

@@ -117,6 +117,7 @@ XclBinUtilities::encode_text_string(const std::string& text_string)
 {
   std::string encodeBuf = encode_major_type(MajorTypes::text_string, text_string.length());
   encodeBuf += text_string;
+  XUtil::TRACE(std::string("CBOR: [Encode] Text String: '") + text_string + "'");
 
   return encodeBuf;
 }
