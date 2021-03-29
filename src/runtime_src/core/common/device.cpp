@@ -122,27 +122,21 @@ void
 device::
 load_xclbin(const uuid& xclbin_id)
 {
-  try {
-    auto uuid_loaded = get_xclbin_uuid();
-    if (uuid_compare(uuid_loaded.get(), xclbin_id.get()))
-      throw error(-ENODEV, "specified xclbin is not loaded");
+  auto uuid_loaded = get_xclbin_uuid();
+  if (uuid_compare(uuid_loaded.get(), xclbin_id.get()))
+    throw error(ENODEV, "specified xclbin is not loaded");
 
 #ifdef XRT_ENABLE_AIE
-    auto xclbin_full = xrt_core::device_query<xrt_core::query::xclbin_full>(this);
-    if (xclbin_full.empty())
-      throw error(-ENODEV, "no cached xclbin data");
+  auto xclbin_full = xrt_core::device_query<xrt_core::query::xclbin_full>(this);
+  if (xclbin_full.empty())
+    throw error(ENODEV, "no cached xclbin data");
 
-    const axlf* top = reinterpret_cast<axlf *>(xclbin_full.data());
-    m_xclbin = xrt::xclbin{top};
-    load_axlf_meta(m_xclbin.get_axlf());
+  const axlf* top = reinterpret_cast<axlf *>(xclbin_full.data());
+  load_axlf_meta(m_xclbin.get_axlf());
+  m_xclbin = xrt::xclbin{top};
 #else
-    throw error(-ENOTSUP, "load xclbin by uuid is not supported");
+  throw error(ENOTSUP, "load xclbin by uuid is not supported");
 #endif
-  }
-  catch (const std::exception&) {
-    m_xclbin = {};
-    throw;
-  }
 }
 
 // This function is called after an axlf has been succesfully loaded
@@ -181,7 +175,7 @@ device::
 get_axlf_section(axlf_section_kind section, const uuid& xclbin_id) const
 {
   if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
-    throw std::runtime_error("xclbin id mismatch");
+    throw error(EINVAL, "xclbin id mismatch");
 
   if (!m_xclbin)
     return {nullptr, 0};
@@ -196,7 +190,7 @@ get_axlf_section_or_error(axlf_section_kind section, const uuid& xclbin_id) cons
   auto ret = get_axlf_section(section, xclbin_id);
   if (ret.first != nullptr)
     return ret;
-  throw std::runtime_error("no such xclbin section");
+  throw error(EINVAL, "no such xclbin section");
 }
 
 const std::vector<size_t>&
@@ -204,7 +198,7 @@ device::
 get_memidx_encoding(const uuid& xclbin_id) const
 {
   if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
-    throw std::runtime_error("xclbin id mismatch");
+    throw error(EINVAL, "xclbin id mismatch");
   return m_memidx_encoding;
 }
 
@@ -220,7 +214,7 @@ get_ert_slots(const char* xml_data, size_t xml_size) const
   if (auto size = config::get_ert_slotsize()) {
     // 128 slots max (4 status registers)
     if ((cq_size / size) > max_slots)
-      throw std::runtime_error("invalid slot size '" + std::to_string(size) + "' in xrt.ini");
+      throw error(EINVAL, "invalid slot size '" + std::to_string(size) + "' in xrt.ini");
     return std::make_pair(cq_size/size, size);
   }
 
@@ -252,7 +246,7 @@ get_ert_slots() const
 {
   auto xml =  get_axlf_section(EMBEDDED_METADATA);
   if (!xml.first)
-    throw std::runtime_error("No xml metadata in xclbin");
+    throw error(EINVAL, "No xml metadata in xclbin");
   return get_ert_slots(xml.first, xml.second);
 }
 

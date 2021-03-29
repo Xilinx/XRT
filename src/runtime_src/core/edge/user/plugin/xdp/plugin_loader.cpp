@@ -21,6 +21,7 @@
 #include "noc_profile.h"
 #include "aie_trace.h"
 #include "vart_profile.h"
+#include "sc_profile.h"
 
 #include "core/common/config_reader.h"
 
@@ -52,6 +53,10 @@ bool load()
     xdp::power::profile::load() ;
   }
 #endif 
+
+  if (xrt_core::config::get_sc_profile()) {
+    xdp::sc::profile::load();
+  }
 
   if (xrt_core::config::get_aie_trace()) {
     xdp::aie::trace::load() ;

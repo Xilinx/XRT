@@ -156,9 +156,8 @@ searchSSV2Xclbin(const std::string& logic_uuid,
 		  ++iter;
     }
   }
-  logger(_ptTest, "Error", boost::str(boost::format("Failed to find xclbin in %s") % fw_dir));
-  logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-  _ptTest.put("status", "failed");
+  logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation") % xclbin));
+  _ptTest.put("status", "skipped");
   return "";
 }
 
@@ -189,6 +188,14 @@ searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std
 {
   const std::string dsapath("/opt/xilinx/dsa/");
   const std::string xsapath(getXsaPath(vendor));
+
+  if(!boost::filesystem::is_directory(dsapath) || !boost::filesystem::is_directory(xsapath)) {
+    logger(_ptTest, "Error", boost::str(boost::format("Failed to find '%s' or '%s'") % dsapath % xsapath));
+    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+    _ptTest.put("status", "failed");
+    return "";
+  }
+
   //create possible xclbin paths
   std::string xsaXclbinPath = xsapath + dev_name + "/test/" + xclbin;
   std::string dsaXclbinPath = dsapath + dev_name + "/test/" + xclbin;
@@ -201,10 +208,8 @@ searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std
     return dsaXclbinPath;
   }
 
-  logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s or %s") % xsaXclbinPath % dsaXclbinPath));
-  logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-
-  _ptTest.put("status", "failed");
+  logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation") % xclbin));
+  _ptTest.put("status", "skipped");
   return "";
 }
 
@@ -248,7 +253,6 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.  
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
   if(!logic_uuid.empty() && !boost::filesystem::exists(xclbinPath)) {
-    //if bandwidth xclbin isn't present, skip the test
     logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
     _ptTest.put("status", "skipped");
     return;
@@ -257,8 +261,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   //check if xclbin is present
   if(xclbinPath.empty()) {
     if(xclbin.compare("bandwidth.xclbin") == 0) {
-      //if bandwidth xclbin isn't present, skip the test
-      logger(_ptTest, "Details", "Bandwidth xclbin not available. Skipping validation.");
+      //if an xclbin isn't present, skip the test
       _ptTest.put("status", "skipped");
     }
     return;
@@ -367,7 +370,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   if (py.compare("xcl_iops_test.exe") == 0) {
     auto st = os_stdout.str().find("IOPS:");
     if (st != std::string::npos) {
-      logger(_ptTest, "Details", os_stdout.str().substr(st));
+      size_t end = os_stdout.str().find("\n", st);
+      logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
     }
   }
 }
@@ -1279,7 +1283,7 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
     : SubCmd("validate",
              "Validates the basic shell acceleration functionality")
 {
-  const std::string longDescription = "Validates the given card by executing the platform's validate executable.";
+  const std::string longDescription = "Validates the given device by executing the platform's validate executable.";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);

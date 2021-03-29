@@ -56,6 +56,17 @@ int32_t create_bo(xclDeviceHandle dev_handle, XmaBufferObj& b_obj, uint32_t size
     return XMA_SUCCESS;
 }
 
+// Initialize cmd obj with default values
+void cmd_obj_default(XmaCUCmdObj& cmd_obj) {
+    cmd_obj.cmd_id1 = 0;
+    cmd_obj.cmd_id2 = 0;
+    cmd_obj.cmd_finished = false;
+    cmd_obj.cmd_state = XmaCmdState::XMA_CMD_STATE_MAX;
+    cmd_obj.return_code = 0;
+    cmd_obj.cu_index = -1;
+    cmd_obj.do_not_use1 = nullptr;
+}
+
 XmaBufferObj
 xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t* return_code)
 {
@@ -476,11 +487,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
                                  int32_t*   return_code)
 {
     XmaCUCmdObj cmd_obj_error;
-    cmd_obj_error.cmd_id1 = 0;
-    cmd_obj_error.cmd_id2 = 0;
-    cmd_obj_error.cmd_finished = false;
-    cmd_obj_error.cu_index = -1;
-    cmd_obj_error.do_not_use1 = nullptr;
+    cmd_obj_default(cmd_obj_error);
 
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.");
@@ -629,9 +636,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     priv1->last_execbo_handle = priv1->kernel_execbos[bo_idx].handle;
 
     XmaCUCmdObj cmd_obj;
-    cmd_obj.cmd_id1 = 0;
-    cmd_obj.cmd_id2 = 0;
-    cmd_obj.cmd_finished = false;
+    cmd_obj_default(cmd_obj);
     cmd_obj.cu_index = kernel_tmp1->cu_index;
     cmd_obj.do_not_use1 = s_handle.session_signature;
 
@@ -683,11 +688,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
                                  int32_t*   return_code)
 {
     XmaCUCmdObj cmd_obj_error;
-    cmd_obj_error.cmd_id1 = 0;
-    cmd_obj_error.cmd_id2 = 0;
-    cmd_obj_error.cmd_finished = false;
-    cmd_obj_error.cu_index = -1;
-    cmd_obj_error.do_not_use1 = nullptr;
+    cmd_obj_default(cmd_obj_error);
 
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. XMASession is corrupted.");
@@ -855,9 +856,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     priv1->last_execbo_handle = priv1->kernel_execbos[bo_idx].handle;
 
     XmaCUCmdObj cmd_obj;
-    cmd_obj.cmd_id1 = 0;
-    cmd_obj.cmd_id2 = 0;
-    cmd_obj.cmd_finished = false;
+    cmd_obj_default(cmd_obj);
     cmd_obj.cu_index = kernel_tmp1->cu_index;
     cmd_obj.do_not_use1 = s_handle.session_signature;
 

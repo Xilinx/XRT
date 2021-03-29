@@ -22,6 +22,7 @@
 #include "plugin/xdp/power_profile.h"
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/vart_profile.h"
+#include "plugin/xdp/sc_profile.h"
 
 #include "core/common/config_reader.h"
 
@@ -53,6 +54,10 @@ bool load()
 
   if (xrt_core::config::get_aie_trace()) {
     xdp::aie::trace::load() ;
+  }
+
+  if (xrt_core::config::get_sc_profile()) {
+    xdp::sc::profile::load() ;
   }
 
   if (xrt_core::config::get_vitis_ai_profile()) {

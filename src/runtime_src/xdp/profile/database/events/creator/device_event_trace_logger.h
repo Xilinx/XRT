@@ -35,9 +35,9 @@ public:
   virtual ~TraceLoggerCreatingDeviceEvents();
 
   XDP_EXPORT
-  virtual void processTraceData(xclTraceResultsVector& traceVector); 
+  virtual void processTraceData(std::vector<xclTraceResults>& traceVector);
   XDP_EXPORT
-  virtual void endProcessTraceData(xclTraceResultsVector& traceVector); 
+  virtual void endProcessTraceData(std::vector<xclTraceResults>& traceVector);
 };
 
 }

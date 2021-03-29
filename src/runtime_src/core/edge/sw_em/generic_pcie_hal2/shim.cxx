@@ -207,8 +207,6 @@ namespace xclcpuemhal2 {
     bUnified = _unified;
     bXPR = _xpr;
     mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
-    char* swEmuVar = getenv("SWEMU_NEW_FLOW");
-    mIsSwEmuNewFlow = (swEmuVar && strcmp("1", swEmuVar) == 0) ? true : false;
   }
 
   size_t CpuemShim::alloc_void(size_t new_size)
@@ -585,7 +583,7 @@ namespace xclcpuemhal2 {
 
   int CpuemShim::xclLoadXclBin(const xclBin *header)
   {    
-    if (mIsSwEmuNewFlow){
+    if (isAieEnabled(header)){
       return xclLoadXclBinNewFlow(header);
     }
     if(mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
@@ -798,6 +796,43 @@ namespace xclcpuemhal2 {
     return 0;
   }
 
+  bool CpuemShim::isAieEnabled(const xclBin* header)
+  {
+    bool aieFlag = false;
+    if (!header) return false; // We didn't dump it, but this isn't an error
+    char* xclbininmemory = reinterpret_cast<char*>(const_cast<xclBin*>(header));
+
+    if (memcmp(xclbininmemory, "xclbin0", 8) == 0) {
+      if (mLogStream.is_open())
+      {
+        mLogStream << __func__ << " unsupported Legacy XCLBIN header " << std::endl;
+      }
+      return false;
+    }
+    else if (memcmp(xclbininmemory, "xclbin2", 7) == 0)
+    {
+      auto top = reinterpret_cast<const axlf*>(header);
+      //Chech AIE_METADATA available in XCLBIN
+      if (auto sec = xclbin::get_axlf_section(top, AIE_METADATA)) {
+        if (mLogStream.is_open())
+        {
+          mLogStream << __func__ << "AIE_METADATA is available in XCLBIN  " << std::endl;
+        }
+        aieFlag = true;
+      }
+    }
+    else
+    {
+      // This was not a valid xclbin file
+      if (mLogStream.is_open())
+      {
+        mLogStream << __func__ << " invalid XCLBIN header " << std::endl;
+      }
+      return false;
+    }
+    return aieFlag;
+  }
+
   int CpuemShim::xclLoadXclBinNewFlow(const xclBin *header)
   {
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
@@ -832,9 +867,6 @@ namespace xclcpuemhal2 {
     }
 
     std::string xmlFile = "";
-    /*int result = dumpXML(header, xmlFile);
-    if (result != 0) return result;*/
-
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
     //  by checking to see if there is a DEBUG_DATA section in
@@ -870,7 +902,7 @@ namespace xclcpuemhal2 {
     binaryCounter++;
 
     if (!sock)
-      sock = new unix_socket;
+      sock = new unix_socket(true);
 
     if (header)
     {
@@ -890,7 +922,13 @@ namespace xclcpuemhal2 {
       size_t memTopologySize = 0;
       std::unique_ptr<char[]> connectvitybuf;
       ssize_t connectvitybufsize = 0;
-
+      char* xmlbuff = nullptr;
+      size_t xmllength = 0;
+      char *sharedlib = nullptr;
+      size_t sharedliblength = 0;
+      char* emuData;
+      size_t emuDataSize = 0;
+    
       //check header
       if (!memcmp(xclbininmemory, "xclbin0", 8))
       {
@@ -901,7 +939,7 @@ namespace xclcpuemhal2 {
         return -1;
       }
       else if (!memcmp(xclbininmemory, "xclbin2", 7)) {
-        auto top = reinterpret_cast<const axlf*>(header);
+        auto top = reinterpret_cast<const axlf*>(header);        
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY)) {
           memTopologySize = sec->m_sectionSize;
           memTopology = std::unique_ptr<char[]>(new char[memTopologySize]);
@@ -912,6 +950,21 @@ namespace xclcpuemhal2 {
           connectvitybufsize = sec->m_sectionSize;
           connectvitybuf = std::unique_ptr<char[]>(new char[connectvitybufsize]);
           memcpy(connectvitybuf.get(), xclbininmemory + sec->m_sectionOffset, connectvitybufsize);
+        }
+        //Extract BITSTREAM from XCLBIN  
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, BITSTREAM)) {
+          sharedlib = xclbininmemory + sec->m_sectionOffset;
+          sharedliblength = sec->m_sectionSize;
+        }
+        //Extract EMULATION_DATA from XCLBIN       
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, EMULATION_DATA)) {          
+          emuData = xclbininmemory + sec->m_sectionOffset;
+          emuDataSize = sec->m_sectionSize;
+        }
+        //Extract EMBEDDED_METADATA from XCLBIN
+        if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
+          xmlbuff = xclbininmemory + sec->m_sectionOffset;
+          xmllength = sec->m_sectionSize;
         }
       }
       else
@@ -982,11 +1035,23 @@ namespace xclcpuemhal2 {
         mSWSch = new SWScheduler(this);
         mSWSch->init_scheduler_thread();
       }
+      //Send xclbin content i.e. sharedlib, xclbin xml, emudata over tcp sockets. its scoped call
+      {
+        bool keepdirc = xclemulation::config::getInstance()->isKeepRunDirEnabled() ? true : false;
+        bool ack = true;
+        xclLoadXclbinContent_RPC_CALL(xclLoadXclbinContent, xmlbuff, xmllength, sharedlib, sharedliblength, emuData, emuDataSize, keepdirc);
+        if (!ack) {
+          std::cerr << "xclLoadXclbinContent_RPC_CALL falied" << std::endl;
+          return -1;
+        }
+      }
+
       bool ack = true;
       bool verbose = false;
+      std::string tempdlopenfilename("");
       if (mLogStream.is_open())
         verbose = true;
-      xclLoadBitstream_RPC_CALL(xclLoadBitstream, xmlFile, "", deviceDirectory, binaryDirectory, verbose);
+      xclLoadBitstream_RPC_CALL(xclLoadBitstream, xmlFile, tempdlopenfilename, deviceDirectory, binaryDirectory, verbose);
       if (!ack)
         return -1;
     }

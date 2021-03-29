@@ -889,3 +889,27 @@ mtx.unlock();
     xclGMIOWait_SET_PROTO_RESPONSE(); \
     FREE_BUFFERS(); \
     xclGMIOWait_RETURN();
+
+//-----------xclLoadXclbinContent-----------------
+#define xclLoadXclbinContent_SET_PROTOMESSAGE(func_name,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize,keepdir) \
+    c_msg.set_xmlbuff((char*)xmlbuff,xmlbuffsize); \
+    c_msg.set_xmlbuffsize(xmlbuffsize); \
+    c_msg.set_sharedbin((char*)sharedbin,sharedbinsize); \
+    c_msg.set_sharedbinsize(sharedbinsize); \
+    c_msg.set_emuldata((char*)emuldata,emuldatasize); \
+    c_msg.set_emuldatasize(emuldatasize); \
+    c_msg.set_keepdir(keepdir);
+
+#define xclLoadXclbinContent_SET_PROTO_RESPONSE() \
+    ack = r_msg.ack();  
+
+#define xclLoadXclbinContent_RETURN()\
+    //return size;
+
+#define xclLoadXclbinContent_RPC_CALL(func_name,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize,keepdir) \
+    RPC_PROLOGUE(func_name); \
+    xclLoadXclbinContent_SET_PROTOMESSAGE(func_name,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize,keepdir); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclLoadXclbinContent_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclLoadXclbinContent_RETURN();

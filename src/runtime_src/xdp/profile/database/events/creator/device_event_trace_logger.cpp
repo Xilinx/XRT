@@ -31,12 +31,12 @@ TraceLoggerCreatingDeviceEvents::~TraceLoggerCreatingDeviceEvents()
   delete deviceEventCreator;
 }
 
-void TraceLoggerCreatingDeviceEvents::processTraceData(xclTraceResultsVector& traceVector)
+void TraceLoggerCreatingDeviceEvents::processTraceData(std::vector<xclTraceResults>& traceVector)
 {
   deviceEventCreator->createDeviceEvents(traceVector);
 }
 
-void TraceLoggerCreatingDeviceEvents::endProcessTraceData(xclTraceResultsVector& traceVector)
+void TraceLoggerCreatingDeviceEvents::endProcessTraceData(std::vector<xclTraceResults>& traceVector)
 {
   (void)traceVector;
   deviceEventCreator->end();

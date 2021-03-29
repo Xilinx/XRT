@@ -199,6 +199,7 @@ int main(int argc, char *argv[])
 {
   try {
     _main(argc, argv);
+    std::cout << "TEST PASSED" << std::endl;
     return EXIT_SUCCESS;
   }
   catch (const std::exception& ex) {

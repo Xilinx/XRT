@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: David Zhang <davidzha@xilinx.com>
  *
@@ -958,6 +958,23 @@ done:
 	return err;
 }
 
+static void clock_freq_reconfig_counters(struct platform_device *pdev,
+                                         struct clock_counter_info *clk_counter)
+{
+	struct clock *clock = platform_get_drvdata(pdev);
+
+	mutex_lock(&clock->clock_lock);
+	if (clk_counter[CCT_K1].start)
+		clock->clock_freq_counters[CCT_K1] =
+			ioremap_nocache(clk_counter[CCT_K1].start,
+						clk_counter[CCT_K1].size);
+	if (clk_counter[CCT_K2].start)
+		clock->clock_freq_counters[CCT_K2] =
+			ioremap_nocache(clk_counter[CCT_K2].start,
+						clk_counter[CCT_K2].size);
+	mutex_unlock(&clock->clock_lock);
+}
+
 static int clock_freq_rescaling(struct platform_device *pdev, bool force)
 {
 	struct clock *clock = platform_get_drvdata(pdev);
@@ -1366,6 +1383,7 @@ static struct xocl_clock_funcs clock_ops = {
 	.freq_scaling_by_topo = clock_freq_scaling_by_topo,
 	.clock_status = clock_status_check,
 	.get_data = clock_get_data,
+	.reconfig_counters = clock_freq_reconfig_counters,
 };
 
 static int clock_remove(struct platform_device *pdev)

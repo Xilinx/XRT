@@ -54,13 +54,18 @@
 #ifdef SCHED_VERBOSE
 #define	ERTUSER_ERR(ert_user, fmt, arg...)	\
 	xocl_err(ert_user->dev, fmt "", ##arg)
+#define	ERTUSER_WARN(ert_user, fmt, arg...)	\
+	xocl_warn(ert_user->dev, fmt "", ##arg)	
 #define	ERTUSER_INFO(ert_user, fmt, arg...)	\
 	xocl_info(ert_user->dev, fmt "", ##arg)	
 #define	ERTUSER_DBG(ert_user, fmt, arg...)	\
 	xocl_info(ert_user->dev, fmt "", ##arg)
+
 #else
 #define	ERTUSER_ERR(ert_user, fmt, arg...)	\
 	xocl_err(ert_user->dev, fmt "", ##arg)
+#define	ERTUSER_WARN(ert_user, fmt, arg...)	\
+	xocl_warn(ert_user->dev, fmt "", ##arg)	
 #define	ERTUSER_INFO(ert_user, fmt, arg...)	\
 	xocl_info(ert_user->dev, fmt "", ##arg)	
 #define	ERTUSER_DBG(ert_user, fmt, arg...)
@@ -76,6 +81,14 @@
 })
 
 extern int kds_echo;
+
+enum ert_gpio_cfg {
+	INTR_TO_ERT,
+	INTR_TO_CU,
+	MB_WAKEUP,
+	MB_SLEEP,
+	MB_STATUS,
+};
 
 struct ert_user_event {
 	struct mutex		  lock;
@@ -336,7 +349,7 @@ static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg
 	int i;
 
 	if (!ert_user->cfg_gpio) {
-		ERTUSER_ERR(ert_user, "%s ERT config gpio not found\n", __func__);
+		ERTUSER_WARN(ert_user, "%s ERT config gpio not found\n", __func__);
 		return -ENODEV;
 	}
 	mutex_lock(&ert_user->lock);
@@ -382,16 +395,39 @@ static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg
 	return ret;
 }
 
-static int ert_user_configured(struct platform_device *pdev)
+static int ert_user_bulletin(struct platform_device *pdev, struct ert_cu_bulletin *brd)
 {
 	struct xocl_ert_user *ert_user = platform_get_drvdata(pdev);
+	int ret = 0;
 
-	return ert_user->is_configured;
+	if (!brd)
+		return -EINVAL;
+
+	brd->sta.configured = ert_user->is_configured;
+	brd->cap.cu_intr = ert_user->cfg_gpio ? 1 : 0;
+
+	return ret;
 }
 
+static int ert_user_enable(struct platform_device *pdev, bool enable)
+{
+	int ret = 0;
+
+	if (enable) {
+		ert_user_gpio_cfg(pdev, MB_WAKEUP);
+		ert_user_gpio_cfg(pdev, INTR_TO_ERT);
+	} else {
+		ert_user_gpio_cfg(pdev, MB_SLEEP);
+		ert_user_gpio_cfg(pdev, INTR_TO_CU);
+	}
+
+	return ret;
+}
+
+
 static struct xocl_ert_user_funcs ert_user_ops = {
-	.gpio_cfg = ert_user_gpio_cfg,
-	.configured = ert_user_configured,
+	.bulletin = ert_user_bulletin,
+	.enable = ert_user_enable,
 };
 
 
@@ -763,6 +799,60 @@ mask_idx32(unsigned int idx)
 }
 
 static irqreturn_t
+ert_versal_isr(void *arg)
+{
+	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)arg;
+	xdev_handle_t xdev;
+	struct ert_user_command *ecmd;
+
+	BUG_ON(!ert_user);
+
+	ERTUSER_DBG(ert_user, "-> %s\n", __func__);
+	xdev = xocl_get_xdev(ert_user->pdev);
+
+	if (!ert_user->polling_mode) {
+		u32 slots[ERT_MAX_SLOTS];
+		u32 cnt = 0;
+		int slot;
+		int i;
+
+		while (!(xocl_mailbox_versal_get(xdev, &slot)))
+			slots[cnt++] = slot;
+
+		if (!cnt)
+			return IRQ_HANDLED;
+
+		for (i = 0; i < cnt; i++) {
+			slot = slots[i];
+			ERTUSER_DBG(ert_user, "[%s] slot: %d\n", __func__, slot);
+			ecmd = ert_user->submit_queue[slot];
+			if (ecmd) {
+				ecmd->completed = true;
+			} else {
+				ERTUSER_ERR(ert_user, "not in submitted queue %d\n", slot);
+			}
+		}
+
+		up(&ert_user->sem);
+		/* wake up all scheduler ... currently one only */
+#if 0
+		if (xs->stop)
+			return;
+
+		if (xs->reset) {
+			SCHED_DEBUG("scheduler is resetting after timeout\n");
+			scheduler_reset(xs);
+		}
+#endif
+	} else {
+		ERTUSER_DBG(ert_user, "unhandled isr \r\n");
+		return IRQ_NONE;
+	}
+	ERTUSER_DBG(ert_user, "<- %s\n", __func__);
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t
 ert_user_isr(int irq, void *arg)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)arg;
@@ -1035,6 +1125,14 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 static void ert_intc_enable(struct xocl_ert_user *ert_user, bool enable){
 	uint32_t i;
 	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
+
+	if (XOCL_DSA_IS_VERSAL(xdev)) {
+		if (enable)
+			xocl_mailbox_versal_request_intr(xdev, ert_versal_isr, ert_user);
+		else
+			xocl_mailbox_versal_free_intr(xdev);
+		return;
+	}
 
 	for (i = 0; i < ert_user->num_slots; i++) {
 		if (enable) {
