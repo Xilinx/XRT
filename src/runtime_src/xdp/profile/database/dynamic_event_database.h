@@ -66,12 +66,13 @@ namespace xdp {
     typedef std::map<double, std::string> CounterNames ;
 
   private:
-    // For host events, we are guaranteed that all of the timestamps
-    //  will come in sequential order.  For this, we can use 
-    //  a simple vector.  For low overhead profiling, we can provide
-    //  capability to have this be preallocated.
-    //std::vector<VTFEvent*> hostEvents ;
+    // For sorted host events, we need a multimap because multithreaded
+    //  applications can create unsorted events
     std::multimap<double, VTFEvent*> hostEvents ;
+
+    // For host events that we don't care about sorting, we can just store
+    //  in a simple vector
+    std::vector<VTFEvent*> unsortedHostEvents ;
 
     // Every device will have its own set of events.  Since the actual
     //  hardware might shuffle the order of events we have to make sure
@@ -128,6 +129,7 @@ namespace xdp {
     // Event loggers and filters
     std::mutex deviceEventsLock ;
     std::mutex hostEventsLock ;
+    std::mutex unsortedEventsLock ;
 
     // Trace parser states and other metadata data structures
     std::mutex deviceLock ;
@@ -147,6 +149,9 @@ namespace xdp {
 
     // Add an event in sorted order in the database
     XDP_EXPORT void addEvent(VTFEvent* event) ;
+
+    // Add an event to the database to be sorted later when we write
+    XDP_EXPORT void addUnsortedEvent(VTFEvent* event) ;
 
     // For API events, find the event id of the start event for an end event
     XDP_EXPORT void markStart(uint64_t functionID, uint64_t eventID) ;
@@ -174,7 +179,9 @@ namespace xdp {
     XDP_EXPORT std::vector<VTFEvent*> getDeviceEvents(uint64_t deviceId);
     // Erase events from db and transfer ownership to caller
     XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> filterEraseHostEvents(std::function<bool(VTFEvent*)> filter);
+    XDP_EXPORT std::vector<VTFEvent*> filterEraseUnsortedHostEvents(std::function<bool(VTFEvent*)> filter);
     XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> getEraseDeviceEvents(uint64_t deviceId);
+
 
     XDP_EXPORT bool deviceEventsExist(uint64_t deviceId);
     XDP_EXPORT bool hostEventsExist(std::function<bool(VTFEvent*)> filter);
