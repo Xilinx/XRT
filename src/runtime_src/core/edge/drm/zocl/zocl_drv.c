@@ -877,6 +877,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 		zdev->res_start = res->start;
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
+		//ert_hw is present only for PCIe + PS devices (ex: U30,VCK5000
+		//Dont enable new kds for those devices
+		kds_mode = 0;
 	}
 
 	subdev = zocl_find_pdev("reset_ps");
