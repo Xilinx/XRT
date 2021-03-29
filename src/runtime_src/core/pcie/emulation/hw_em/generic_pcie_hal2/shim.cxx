@@ -251,7 +251,7 @@ namespace xclhwemhal2 {
   {
     std::string simPath = getSimPath();
     std::string content = loadFileContentsToString(simPath + "/simulate.log");
-	parseHLSPrintf(simPath);
+    parseHLSPrintf(simPath);
     if (content.find("// ERROR!!! DEADLOCK DETECTED ") != std::string::npos) {
       size_t first = content.find("// ERROR!!! DEADLOCK DETECTED");
       size_t last = content.find("detected!", first);
