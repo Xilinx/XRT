@@ -290,7 +290,7 @@ int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
     if ((ret = sendPkt(false)) != 0){
         if(ret == XMC_HOST_MSG_BRD_INFO_MISSING_ERR)
         {
-            std::cout << "Unable to get card info, need to upgrade firmware"
+            std::cout << "Unable to get device info, need to upgrade firmware"
                 << std::endl;
         }
         return ret;

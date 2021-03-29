@@ -245,7 +245,7 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
 {
     auto dev = xrt_core::get_mgmtpf_device(index);
     if(dev == nullptr) {
-        std::cout << "ERROR: Invalid card index:" << index << std::endl;
+        std::cout << "ERROR: Invalid device index:" << index << std::endl;
         return;
     }
 
