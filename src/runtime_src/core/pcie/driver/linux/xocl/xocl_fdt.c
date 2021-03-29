@@ -1738,6 +1738,8 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 	void *temp;
 	int j;
 
+	*priv_data = NULL;
+	*data_len = 0;
 	for (j = 0; j < ARRAY_SIZE(subdev_map); j++) {
 		map_p = &subdev_map[j];
 		if (map_p->id == subdev->info.id &&
@@ -1751,8 +1753,6 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 		return -EFAULT;
 	}
 
-	*priv_data = NULL;
-	*data_len = 0;
 	if (map_p->build_priv_data) {
 		temp = map_p->build_priv_data(xdev_hdl, subdev, data_len);
 		if (temp)
