@@ -265,12 +265,8 @@ get_xrt_trace()
 inline bool
 get_native_xrt_trace()
 {
-  // Temporarily disabling
-  return false;
-  /*
   static bool value = detail::get_bool_value("Debug.native_xrt_trace", false);
   return value;
-  */
 }
 
 inline bool

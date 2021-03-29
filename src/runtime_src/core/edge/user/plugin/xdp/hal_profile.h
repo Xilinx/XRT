@@ -231,6 +231,8 @@ class CloseContextCallLogger : public CallLogger
 void load();
 void register_callbacks(void* handle) ;
 void warning_callbacks() ;
+int error_function() ;
+
 
 } // end namespace hal
 } // end namespace xdp

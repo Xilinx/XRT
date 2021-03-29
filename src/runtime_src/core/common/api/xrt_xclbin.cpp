@@ -958,7 +958,7 @@ xrtXclbinHandle
 xrtXclbinAllocFilename(const char* filename)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [filename]{
+    return xdp::native::profiling_wrapper(__func__, [filename]{
       auto xclbin = std::make_shared<xrt::xclbin_full>(filename);
       auto handle = xclbin.get();
       xclbins.emplace(handle, std::move(xclbin));
@@ -978,7 +978,7 @@ xrtXclbinHandle
 xrtXclbinAllocRawData(const char* data, int size)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [data, size]{
+    return xdp::native::profiling_wrapper(__func__, [data, size]{
       std::vector<char> raw_data(data, data + size);
       auto xclbin = std::make_shared<xrt::xclbin_full>(raw_data);
       auto handle = xclbin.get();
@@ -999,7 +999,7 @@ int
 xrtXclbinFreeHandle(xrtXclbinHandle handle)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [handle]{
+    return xdp::native::profiling_wrapper(__func__, [handle]{
       free_xclbin(handle);
       return 0;
     });
@@ -1019,7 +1019,7 @@ int
 xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [handle, name, size, ret_size]{
       auto xclbin = get_xclbin(handle);
       const std::string& xsaname = xclbin->get_xsa_name();
@@ -1046,7 +1046,7 @@ int
 xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [handle, ret_uuid]{
+    return xdp::native::profiling_wrapper(__func__, [handle, ret_uuid]{
       auto xclbin = get_xclbin(handle);
       auto result = xclbin->get_uuid();
       uuid_copy(ret_uuid, result.get());
@@ -1067,7 +1067,7 @@ int
 xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [handle, data, size, ret_size]{
       auto xclbin = get_xclbin(handle);
       auto& result = xclbin->get_data();
@@ -1100,7 +1100,7 @@ int
 xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [dhdl, out]{
+    return xdp::native::profiling_wrapper(__func__, [dhdl, out]{
       auto device = xrt_core::get_userpf_device(dhdl);
       auto uuid = device->get_xclbin_uuid();
       uuid_copy(out, uuid.get());

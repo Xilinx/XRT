@@ -24,41 +24,37 @@ namespace xdp {
 
   static NativeProfilingPlugin nativePluginInstance ;
 
-  static void native_function_start(const char* functionName, uint64_t functionID)
-  {
-    uint64_t timestamp = xrt_core::time_ns() ;
-    VPDatabase* db = nativePluginInstance.getDatabase() ;
-
-    VTFEvent* event = new NativeAPICall(0,
-					static_cast<double>(timestamp),
-					(db->getDynamicInfo()).addString(functionName)) ;
-    (db->getDynamicInfo()).addEvent(event);
-    (db->getDynamicInfo()).markStart(functionID, event->getEventId()) ;
-  }
-
-  static void native_function_end(const char* functionName, uint64_t functionID)
-  {
-    uint64_t timestamp = xrt_core::time_ns() ;
-    VPDatabase* db = nativePluginInstance.getDatabase() ;
-
-    uint64_t start = (db->getDynamicInfo()).matchingStart(functionID) ;
-
-    VTFEvent* event = new NativeAPICall(start,
-					static_cast<double>(timestamp),
-					(db->getDynamicInfo()).addString(functionName)) ;
-    (db->getDynamicInfo()).addEvent(event) ;
-  }
-
 } // end namespace xdp
 
 extern "C"
 void native_function_start(const char* functionName, unsigned long long int functionID)
 {
-  xdp::native_function_start(functionName, static_cast<uint64_t>(functionID)) ;
+  // Don't include the profiling overhead in the time that we show.
+  //  That means there will be "empty gaps" in the timeline trace when
+  //  the profiling overhead exists.
+  xdp::VPDatabase* db = xdp::nativePluginInstance.getDatabase() ;
+
+  xdp::VTFEvent* event =
+    new xdp::NativeAPICall(0,
+                           0,
+                           (db->getDynamicInfo()).addString(functionName)) ;
+  (db->getDynamicInfo()).addUnsortedEvent(event);
+  (db->getDynamicInfo()).markStart(static_cast<uint64_t>(functionID), event->getEventId()) ;
+
+  event->setTimestamp(static_cast<double>(xrt_core::time_ns())) ;
 }
 
 extern "C"
-void native_function_end(const char* functionName, unsigned long long int functionID)
+void native_function_end(const char* functionName, unsigned long long int functionID, unsigned long long int timestamp)
 {
-  xdp::native_function_end(functionName, static_cast<uint64_t>(functionID)) ;
+  xdp::VPDatabase* db = xdp::nativePluginInstance.getDatabase() ;
+
+  uint64_t start =
+    (db->getDynamicInfo()).matchingStart(static_cast<uint64_t>(functionID)) ;
+
+  xdp::VTFEvent* event =
+    new xdp::NativeAPICall(start,
+                           static_cast<double>(timestamp),
+                           (db->getDynamicInfo()).addString(functionName)) ;
+  (db->getDynamicInfo()).addUnsortedEvent(event) ;
 }

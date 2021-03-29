@@ -255,13 +255,13 @@ namespace xrt {
 
 error::
 error(const xrt::device& device, xrtErrorClass ecl)
-  : handle(xdp::native::profiling_wrapper(__func__, "xrt::error",
+  : handle(xdp::native::profiling_wrapper("xrt::error::error",
            alloc_error_from_device, device.get_handle().get(), ecl))
 {}
 
 error::
 error(xrtErrorCode code, xrtErrorTime timestamp)
-  : handle(xdp::native::profiling_wrapper(__func__, "xrt::error",
+  : handle(xdp::native::profiling_wrapper("xrt::error::error",
 	   alloc_error_from_code, code, timestamp))
 {}
 
@@ -269,7 +269,7 @@ xrtErrorTime
 error::
 get_timestamp() const
 {
-  return xdp::native::profiling_wrapper(__func__, "xrt::error", [this]{
+  return xdp::native::profiling_wrapper("xrt::error::get_timestamp", [this]{
     return handle->get_timestamp();
   });
 }
@@ -278,7 +278,7 @@ xrtErrorCode
 error::
 get_error_code() const
 {
-  return xdp::native::profiling_wrapper(__func__, "xrt::error", [this]{
+  return xdp::native::profiling_wrapper("xrt::error::get_error_code", [this]{
     return handle->get_error_code();
   });
 }
@@ -287,7 +287,7 @@ std::string
 error::
 to_string() const
 {
-  return xdp::native::profiling_wrapper(__func__, "xrt::error", [this]{
+  return xdp::native::profiling_wrapper("xrt::error::to_string", [this]{
     return handle->to_string();
   });
 }
@@ -301,7 +301,7 @@ int
 xrtErrorGetLast(xrtDeviceHandle dhdl, xrtErrorClass ecl, xrtErrorCode* error, uint64_t* timestamp)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [dhdl, ecl, error, timestamp]{
       auto handle = xrt::error_impl(xrt_core::device_int::get_core_device(dhdl).get(), ecl);
       *error = handle.get_error_code();
@@ -323,7 +323,7 @@ int
 xrtErrorGetString(xrtDeviceHandle, xrtErrorCode error, char* out, size_t len, size_t* out_len)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [error, out, len, out_len]{
       auto str = error_code_to_string(error);
 
