@@ -553,7 +553,7 @@ public:
             }
 
             tokenizer::iterator tok_it = tokens.begin();
-            scu_idx = std::stoi(std::string(*tok_it++));
+            cu_idx = std::stoi(std::string(*tok_it++));
             name = std::string(*tok_it++);
             paddr = std::stoull(std::string(*tok_it++), nullptr, radix);
             status = std::stoul(std::string(*tok_it++), nullptr, radix);
@@ -564,7 +564,7 @@ public:
             ptCu.put( "base_address", paddr );
             ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
-            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(scu_idx)), ptCu );
+            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(cu_idx)), ptCu );
         }
 
         // PS kernel info
@@ -588,7 +588,7 @@ public:
             status = std::stoul(std::string(*tok_it++), nullptr, radix);
             usage = std::stoul(std::string(*tok_it++));
             // TODO: Let's avoid this special handling for PS kernel name
-            name = name + ":scu_" + std::to_string(cu_idx);
+            name = name + ":scu_" + std::to_string(scu_idx);
 
             boost::property_tree::ptree ptCu;
             ptCu.put( "name",         name );
