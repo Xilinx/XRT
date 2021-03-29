@@ -153,12 +153,12 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
  */
 static bool load_config(const std::shared_ptr<xrt_core::device>& _dev, const std::string path)
 {
-  boost::property_tree::ptree PtRoot;
-  boost::property_tree::ini_parser::read_ini(path, PtRoot);
+  boost::property_tree::ptree ptRoot;
+  boost::property_tree::ini_parser::read_ini(path, ptRoot);
   static boost::property_tree::ptree emptyTree;
 
   const boost::property_tree::ptree PtDevice =
-    PtRoot.get_child("Device", emptyTree);
+    ptRoot.get_child("Device", emptyTree);
 
   if (PtDevice.empty()) {
     std::cerr << boost::format("ERROR: No [Device] section in the config file\n");
@@ -176,7 +176,7 @@ static bool load_config(const std::shared_ptr<xrt_core::device>& _dev, const std
       xrt_core::device_update<xrt_core::query::cache_xclbin>(
         _dev.get(), key.second.get_value<std::string>());
     else
-      std::cerr << boost::format("WARN: '%s' is not a supported config entry\n") % key.first;   
+      std::cerr << boost::format("WARNING: '%s' is not a supported config entry\n") % key.first;   
   }
 
   return true;
