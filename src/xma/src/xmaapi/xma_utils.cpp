@@ -565,6 +565,22 @@ int32_t check_all_execbo(XmaSession s_handle) {
                         cu_cmd->state = ERT_CMD_STATE_MAX;
                         priv1->CU_cmds.erase(ebo.cu_cmd_id1);
                         priv1->num_cu_cmds--;
+                    } else if (cu_cmd->state == ERT_CMD_STATE_SKERROR) {
+                        //If PS Kernel error, add cmd obj to CU_error_cmds map; Right now this is only for PS Kernels
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, PS Kernel error code: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), cu_cmd->return_code);
+                        if (s_handle.session_type < XMA_ADMIN) {
+                            priv1->kernel_complete_count++;
+                            priv1->kernel_complete_total++;
+                        }
+                        notify_execbo_is_free = true;
+                        ebo.in_use = false;
+                        cu_cmd->state = ERT_CMD_STATE_MAX;
+                        auto itr_tmp1 = priv1->CU_error_cmds.emplace(ebo.cu_cmd_id1, std::move(priv1->CU_cmds[ebo.cu_cmd_id1]));
+                        priv1->CU_cmds.erase(ebo.cu_cmd_id1);
+                        itr_tmp1.first->second.cmd_finished = true;
+                        itr_tmp1.first->second.return_code = cu_cmd->return_code;
+                        itr_tmp1.first->second.cmd_state = xma_cmd_state::psk_error;
+                        priv1->num_cu_cmds--;
                     } else if (cu_cmd->state == ERT_CMD_STATE_ERROR ||
                     	       cu_cmd->state == ERT_CMD_STATE_ABORT ||
                     	       cu_cmd->state == ERT_CMD_STATE_TIMEOUT ||
