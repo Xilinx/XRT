@@ -295,8 +295,8 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
     }
     tile.add_child("errors", module_array);
 
-    addnodelist("lock", "lock", pt, tile);
-    addnodelist("event", "event", pt, tile);
+    addnodelist("lock", "locks", pt, tile);
+    addnodelist("event", "events", pt, tile);
   } catch (const std::exception& ex){
     tile.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE core"));
   }
@@ -618,9 +618,9 @@ ReportAie::writeReport(const xrt_core::device * _pDevice,
           }
         } 
 
-        if(tile.second.find("lock") != tile.second.not_found()) {
-          _output << boost::format("    %s:\n") % "LocK";
-          for(auto& node : tile.second.get_child("lock",empty_ptree)) {
+        if(tile.second.find("locks") != tile.second.not_found()) {
+          _output << boost::format("    %s:\n") % "Locks";
+          for(auto& node : tile.second.get_child("locks",empty_ptree)) {
             _output << fmt8("%s")  % node.second.get<std::string>("name")
                                    % node.second.get<std::string>("value");
           }
@@ -639,9 +639,9 @@ ReportAie::writeReport(const xrt_core::device * _pDevice,
           _output << std::endl;
         }
 
-        if(tile.second.find("event") != tile.second.not_found()) {
-          _output << boost::format("    %s:\n") % "Event";
-          for(auto& node : tile.second.get_child("event",empty_ptree)) {
+        if(tile.second.find("events") != tile.second.not_found()) {
+          _output << boost::format("    %s:\n") % "Events";
+          for(auto& node : tile.second.get_child("events",empty_ptree)) {
             _output << fmt8("%s")  % node.second.get<std::string>("name")
                                    % node.second.get<std::string>("value");
           }

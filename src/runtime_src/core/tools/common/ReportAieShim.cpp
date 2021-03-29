@@ -237,7 +237,7 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc, boos
       }
       ishim.add_child("dma.s2mm.channel", s2mm_array);
 
-      addnodelist("lock", "lock", oshim, ishim);
+      addnodelist("lock", "locks", oshim, ishim);
       boost::property_tree::ptree module_array;
       for (auto& node : oshim.get_child("errors", empty_pt)) {
         boost::property_tree::ptree module;
@@ -257,7 +257,7 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc, boos
       }
       ishim.add_child("errors", module_array);
 
-      addnodelist("event", "event", oshim, ishim);
+      addnodelist("event", "events", oshim, ishim);
       tile_array.push_back(std::make_pair("tile"+std::to_string(col),ishim));
     }
     pt.add_child("tiles",tile_array);
@@ -335,9 +335,9 @@ ReportAieShim::writeReport(const xrt_core::device * _pDevice,
         }
       } 
 
-      if(tile.second.find("lock") != tile.second.not_found()) {
-        _output << boost::format("    %s:\n") % "LocK";
-        for(auto& node : tile.second.get_child("lock",empty_ptree)) {
+      if(tile.second.find("locks") != tile.second.not_found()) {
+        _output << boost::format("    %s:\n") % "Locks";
+        for(auto& node : tile.second.get_child("locks",empty_ptree)) {
           _output << fmt8("%s")  % node.second.get<std::string>("name")
                                  % node.second.get<std::string>("value");
         }
@@ -356,9 +356,9 @@ ReportAieShim::writeReport(const xrt_core::device * _pDevice,
         _output << std::endl;
       }
 
-      if(tile.second.find("event") != tile.second.not_found()) {
-        _output << boost::format("    %s:\n") % "Event";
-        for(auto& node : tile.second.get_child("event",empty_ptree)) {
+      if(tile.second.find("events") != tile.second.not_found()) {
+        _output << boost::format("    %s:\n") % "Events";
+        for(auto& node : tile.second.get_child("events",empty_ptree)) {
           _output << fmt8("%s")  % node.second.get<std::string>("name")
                                  % node.second.get<std::string>("value");
         }
