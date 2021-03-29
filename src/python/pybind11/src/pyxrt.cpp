@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -87,14 +87,14 @@ py::class_<xrt::device>(m, "device")
  */
 py::class_<xrt::run>(m, "run")
    .def(py::init<>())
-   .def(py::init<const xrt::kernel &>()) 
+   .def(py::init<const xrt::kernel &>())
    .def("start", &xrt::run::start)
    .def("set_arg", [](xrt::run & r, int i, xrt::bo & item){
        r.set_arg(i, item);
      })
    .def("set_arg", [](xrt::run & r, int i, int & item){
        r.set_arg<int&>(i, item);
-     })  
+     })
    .def("wait", [](xrt::run & r) {
        r.wait();
      })
@@ -105,27 +105,27 @@ py::class_<xrt::run>(m, "run")
 py::class_<xrt::kernel>(m, "kernel")
     .def(py::init([](xrt::device d, const py::array_t<unsigned char> u, const std::string & n, bool e){
         return new xrt::kernel(d, (const unsigned char*) u.request().ptr, n, e);
-	}),	
+	}),
 	py::arg(""),
 	py::arg(""),
-	py::arg(""),	
+	py::arg(""),
 	py::arg("exclusive")=false)
-  .def("__call__", [](xrt::kernel & k, py::args args) -> xrt::run {    
+  .def("__call__", [](xrt::kernel & k, py::args args) -> xrt::run {
 	int i =0;
 	xrt::run r(k);
-	
+
 	for (auto item : args) {
-	  try 
+	  try
 	    { r.set_arg(i, item.cast<xrt::bo>()); }
 	  catch (std::exception e) {  }
-	  
-	  try 
+
+	  try
 	    { r.set_arg<int>(i, item.cast<int>()); }
 	  catch (std::exception e) {  }
-	  
+
 	  i++;
 	}
-	
+
 	r.start();
 	return r;
     })
@@ -140,26 +140,36 @@ py::class_<xrt::kernel>(m, "kernel")
  * XRT:: BO
  *
  */
-py::class_<xrt::bo>(m, "bo")
-    .def(py::init<xrt::device,size_t,xrt::buffer_flags,xrt::memory_group>())
+py::class_<xrt::bo> pybo(m, "bo");
+
+py::enum_<xrt::bo::flags>(pybo, "")
+    .value("normal", xrt::bo::flags::normal)
+    .value("cacheable", xrt::bo::flags::cacheable)
+    .value("device_only", xrt::bo::flags::device_only)
+    .value("host_only", xrt::bo::flags::host_only)
+    .value("p2p", xrt::bo::flags::p2p)
+    .value("svm", xrt::bo::flags::svm)
+    .export_values();
+
+pybo.def(py::init<xrt::device, size_t, xrt::bo::flags, xrt::memory_group>())
     .def(py::init<xrt::bo, size_t, size_t>())
     .def("write", ([](xrt::bo &b, py::buffer pyb, size_t seek)  {
-	  py::buffer_info info = pyb.request();
-	  b.write(info.ptr, info.itemsize * info.size , seek);
-    }))
+                       py::buffer_info info = pyb.request();
+                       b.write(info.ptr, info.itemsize * info.size , seek);
+                   }))
     .def("read", ([](xrt::bo &b, size_t size, size_t skip) {
-	  int nitems = size/sizeof(int);
-	  py::array_t<int> result = py::array_t<int>(nitems);
-	  
-	  py::buffer_info bufinfo = result.request();
-	  int* bufptr = (int*) bufinfo.ptr;
-	  b.read(bufptr, size, skip);
-	  return result;
-     }))
-  .def("sync", ([](xrt::bo &b, xclBOSyncDirection dir, size_t size, size_t offset)  {	
-	b.sync(dir, size, offset);
-      }))
-  .def("size", &xrt::bo::size)
-  .def("address", &xrt::bo::address)
+                      int nitems = size/sizeof(int);
+                      py::array_t<int> result = py::array_t<int>(nitems);
+
+                      py::buffer_info bufinfo = result.request();
+                      int* bufptr = (int*) bufinfo.ptr;
+                      b.read(bufptr, size, skip);
+                      return result;
+                  }))
+    .def("sync", ([](xrt::bo &b, xclBOSyncDirection dir, size_t size, size_t offset)  {
+                      b.sync(dir, size, offset);
+                  }))
+    .def("size", &xrt::bo::size)
+    .def("address", &xrt::bo::address)
     ;
 }
