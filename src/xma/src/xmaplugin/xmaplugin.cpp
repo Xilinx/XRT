@@ -1243,6 +1243,14 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
     return XMA_ERROR;
 }
 
+int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, int32_t num_cu_objs, uint32_t* num_cu_errors)
+{
+    //TODO
+    if (num_cu_errors)
+        *num_cu_errors = num_cu_objs;
+
+    return XMA_ERROR;
+}
 int32_t xma_plg_channel_id(XmaSession s_handle) {
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_channel_id failed. XMASession is corrupted.");
