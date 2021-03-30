@@ -89,10 +89,21 @@ namespace xdp {
 
     db->registerPlugin(this) ;
 
-    // Get the profiling continuous offload options from xrt.ini    
-    continuous_trace = xrt_core::config::get_continuous_trace() ;
-    continuous_trace_interval_ms = 
-      xrt_core::config::get_continuous_trace_interval_ms() ;
+    // Get the profiling continuous offload options from xrt.ini
+    //  Device offload continuous offload and dumping is only supported
+    //  for hardware, not emulation
+    if (getFlowMode() == HW) {
+      continuous_trace = xrt_core::config::get_continuous_trace() ;
+      continuous_trace_interval_ms =
+        xrt_core::config::get_continuous_trace_interval_ms() ;
+    }
+    else {
+      if (xrt_core::config::get_continuous_trace()) {
+	xrt_core::message::send(xrt_core::message::severity_level::warning,
+                                "XRT",
+                                "Continuous offload and dumping of device data is not supported in emulation and has been disabled.");
+      }
+    }
   }
 
   DeviceOffloadPlugin::~DeviceOffloadPlugin()
