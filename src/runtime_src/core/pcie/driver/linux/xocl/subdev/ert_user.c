@@ -498,7 +498,7 @@ ert20_acquire_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd
 		set_bit(0, ert_user->slot_status);
 
 		if (ert_user->ctrl_busy) {
-			ERTUSER_ERR(ert_user, "ctrl slot is busy\n");
+			ERTUSER_DBG(ert_user, "ctrl slot is busy\n");
 			return -1;
 		}
 		ert_user->ctrl_busy = true;
