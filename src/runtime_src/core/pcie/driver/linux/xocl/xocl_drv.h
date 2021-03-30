@@ -1097,6 +1097,7 @@ enum data_kind {
 	MAC_ADDR_FIRST,
 	XMC_POWER_WARN,
 	XMC_QSPI_STATUS,
+	XMC_VCCINT_VCU_0V9,
 };
 
 enum mb_kind {
