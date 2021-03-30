@@ -98,6 +98,7 @@
 #define	XMC_VCCAUX_PMC_REG              0x350
 #define	XMC_VCCRAM_REG                  0x35C
 #define	XMC_POWER_WARN_REG              0x370
+#define	XMC_VCCINT_VCU_0V9_REG          0x380
 #define	XMC_HOST_NEW_FEATURE_REG1	0xB20
 #define	XMC_HOST_NEW_FEATURE_REG1_SC_NO_CS (1 << 30)
 #define	XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT (1 << 29)
@@ -787,6 +788,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case XMC_HEARTBEAT_ERR_CODE:
 			safe_read32(xmc, XMC_HEARTBEAT_ERR_CODE_REG, val);
 			break;
+		case XMC_VCCINT_VCU_0V9:
+			READ_SENSOR(xmc, XMC_VCCINT_VCU_0V9_REG, val, val_kind);
+			break;
 		default:
 			break;
 		}
@@ -961,6 +965,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			break;
 		case XMC_HEARTBEAT_ERR_CODE:
 			*(u32 *)val = xmc->cache->heartbeat_err_code;
+			break;
+		case XMC_VCCINT_VCU_0V9:
+			*(u32 *)val = xmc->cache->vccint_vcu_0v9;
 			break;
 		default:
 			break;
@@ -1235,6 +1242,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_sensor(pdev, XMC_HEARTBEAT_COUNT, &sensors->heartbeat_count, SENSOR_INS);
 		xmc_sensor(pdev, XMC_HEARTBEAT_ERR_TIME, &sensors->heartbeat_err_time, SENSOR_INS);
 		xmc_sensor(pdev, XMC_HEARTBEAT_ERR_CODE, &sensors->heartbeat_err_code, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VCCINT_VCU_0V9, &sensors->vccint_vcu_0v9, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
@@ -1462,6 +1470,7 @@ SENSOR_SYSFS_NODE(xmc_power_warn, XMC_POWER_WARN);
 SENSOR_SYSFS_NODE(xmc_qspi_status, XMC_QSPI_STATUS);
 SENSOR_SYSFS_NODE(xmc_heartbeat_count, XMC_HEARTBEAT_COUNT);
 SENSOR_SYSFS_NODE_FORMAT(xmc_heartbeat_err_code, XMC_HEARTBEAT_ERR_CODE, "0x%x\n");
+SENSOR_SYSFS_NODE(xmc_vccint_vcu_0v9, XMC_VCCINT_VCU_0V9);
 
 static ssize_t xmc_heartbeat_err_time_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -1566,6 +1575,7 @@ static DEVICE_ATTR_RO(core_version);
 	&dev_attr_xmc_vccaux_pmc.attr,					\
 	&dev_attr_xmc_vccram.attr,					\
 	&dev_attr_xmc_power_warn.attr,					\
+	&dev_attr_xmc_vccint_vcu_0v9.attr,					\
 	&dev_attr_xmc_heartbeat_count.attr,				\
 	&dev_attr_xmc_heartbeat_err_code.attr,				\
 	&dev_attr_xmc_heartbeat_err_time.attr,				\
