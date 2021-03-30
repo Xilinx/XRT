@@ -1112,7 +1112,7 @@ public:
                      m0v85, mgt0v9avcc, m12v_sw, mgtavtt, vccint_vol, vccint_curr, m3v3_pex_curr, m0v85_curr, m3v3_vcc_vol,
                      hbm_1v2_vol, vpp2v5_vol, vccint_bram_vol, m12v_pex_vol, m12v_aux_curr, m12v_pex_curr, m12v_aux_vol,
                      vol_12v_aux1, vol_vcc1v2_i, vol_v12_in_i, vol_v12_in_aux0_i, vol_v12_in_aux1_i, vol_vccaux,
-                     vol_vccaux_pmc, vol_vccram, m3v3_aux_cur, power_warn;
+                     vol_vccaux_pmc, vol_vccram, m3v3_aux_cur, power_warn, vccint_vcu_0v9;
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_vol",    m12v_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_curr",   m12v_pex_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_vol",    m12v_aux_vol);
@@ -1147,6 +1147,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccaux_pmc",      vol_vccaux_pmc);
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccram",          vol_vccram);
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_power_warn",      power_warn);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccint_vcu_0v9",  vccint_vcu_0v9);
         sensor_tree::put( "board.physical.electrical.12v_pex.voltage",         m12v_pex_vol );
         sensor_tree::put( "board.physical.electrical.12v_pex.current",         m12v_pex_curr );
         sensor_tree::put( "board.physical.electrical.12v_aux.voltage",         m12v_aux_vol );
@@ -1183,6 +1184,7 @@ public:
         sensor_tree::put( "board.physical.electrical.vccaux_pmc.voltage",      vol_vccaux_pmc);
         sensor_tree::put( "board.physical.electrical.vccram.voltage",          vol_vccram);
         sensor_tree::put( "board.physical.electrical.power_warn.current",      power_warn);
+        sensor_tree::put( "board.physical.electrical.vccint_vcu_0v9.current",  vccint_vcu_0v9);
 
         // physical.power
         sensor_tree::put( "board.physical.power", static_cast<unsigned>(sysfs_power()));
@@ -1477,9 +1479,10 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux_pmc.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccram.voltage"  ) << std::endl;
-        ostr << std::setw(16) << "3V3 AUX CURR" << std::setw(16) << "POWER WARN" << std::setw(16) << std::endl;
+        ostr << std::setw(16) << "3V3 AUX CURR" << std::setw(16) << "POWER WARN" << std::setw(16) << "VCCINT VCU 0V9" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_aux.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.power_warn.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint_vcu_0v9.current" )
              <<  std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
