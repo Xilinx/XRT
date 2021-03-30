@@ -90,8 +90,8 @@ void IOCtlAIETraceS2MM::reset()
   ioctl(driver_FD, TR_S2MM_IOC_RESET);
 
   mPacketFirstTs = 0;
-  mPartialTs = 0;
   mModulus = 0;
+  partialResult = {} ;
   mclockTrainingdone = false;
 }
 

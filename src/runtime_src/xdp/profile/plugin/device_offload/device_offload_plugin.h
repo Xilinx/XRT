@@ -69,6 +69,7 @@ namespace xdp {
     XDP_EXPORT void configureCtx(uint64_t deviceId, DeviceIntf* devInterface) ;
     XDP_EXPORT void addOffloader(uint64_t deviceId, DeviceIntf* devInterface) ;
     XDP_EXPORT void configureTraceIP(DeviceIntf* devInterface) ;
+    XDP_EXPORT void startContinuousThreads(uint64_t deviceId) ;
 
     XDP_EXPORT void readCounters() ;
 

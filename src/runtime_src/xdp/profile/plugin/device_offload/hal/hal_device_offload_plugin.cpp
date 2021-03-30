@@ -229,6 +229,7 @@ namespace xdp {
     configureCtx(deviceId, devInterface) ;
 
     devInterface->clockTraining() ;
+    startContinuousThreads(deviceId) ;
     devInterface->startCounters() ;
 
     // Once the device has been set up, add additional information to 
