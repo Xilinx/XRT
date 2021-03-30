@@ -1329,13 +1329,52 @@ static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd)
 	return;
 }
 
+
+static inline bool ert_user_thread_sleep_condition(struct xocl_ert_user *ert_user)
+{
+	bool ret = false;
+	bool polling_sleep = false, intr_sleep = false, no_event = false
+	, no_completed_cmd = false, no_submmited_cmd = false
+	, cant_submit = false, cant_submit_start = false, cant_submit_ctrl = false
+	, no_need_to_fetch_new_cmd = false, no_need_to_fetch_start_cmd = false, no_need_to_fetch_ctrl_cmd = false;
+
+
+	/* When ert_thread should go to sleep to save CPU usage
+	 * 1. There is no event to be processed
+	 * 2. We don't have to process command when
+	 *    a. We can't submit cmd if we don't have cmd in running queue or submitted queue is full
+	 *    b. There is no cmd in pending queue or we still have cmds in running queue
+	 *    c. There is no cmd in completed queue
+	 * 3. We are not in polling mode and there is no cmd in submitted queue
+	 */  
+
+	no_completed_cmd = !ert_user->cq.num;
+
+	cant_submit_start = (!ert_user->rq.num) || (ert_user->sq.num == (ert_user->num_slots-1));
+	cant_submit_ctrl = (!ert_user->rq_ctrl.num) || (ert_user->sq.num == 1);
+	cant_submit = cant_submit_start && cant_submit_ctrl;
+
+	no_need_to_fetch_start_cmd = ert_user->rq.num !=0 || !ert_user->pq.num;
+	no_need_to_fetch_ctrl_cmd = ert_user->rq_ctrl.num !=0 || !ert_user->pq_ctrl.num;
+	no_need_to_fetch_new_cmd = no_need_to_fetch_ctrl_cmd && no_need_to_fetch_start_cmd;
+
+	no_submmited_cmd = !ert_user->sq.num;
+
+	polling_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && no_submmited_cmd;
+	intr_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && cant_submit;
+
+	no_event = first_event_client_or_null(ert_user) == NULL;
+
+
+	ret = no_event && ((ert_user->polling_mode && polling_sleep) || (!ert_user->polling_mode && intr_sleep));
+
+	return ret;
+}
+
 int ert_user_thread(void *data)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)data;
  	int ret = 0;
-	bool polling_sleep = false, intr_sleep = false, no_completed_cmd = false, no_submmited_cmd = false,
-		cant_submit = false, no_need_to_fetch_new_cmd = false, no_event = false,
-		no_need_to_fetch_start_cmd = false, no_need_to_fetch_ctrl_cmd = false;
 
 	mod_timer(&ert_user->timer, jiffies + ERT_TIMER);
 
@@ -1363,35 +1402,10 @@ int ert_user_thread(void *data)
 
 		process_ert_cq(ert_user);
 
-
-		/* When ert_thread should go to sleep to save CPU usage
-		 * 1. There is no event to be processed
-		 * 2. We don't have to process command when
-		 *    a. We can't submit cmd if we don't have cmd in running queue or submitted queue is full
-		 *    b. There is no cmd in pending queue or we still have cmds in running queue
-		 *    c. There is no cmd in completed queue
-		 * 3. We are not in polling mode and there is no cmd in submitted queue
-		 */  
-
-		no_completed_cmd = !ert_user->cq.num;
-		cant_submit = (!ert_user->rq.num && !ert_user->rq_ctrl.num) || (ert_user->sq.num == (ert_user->num_slots-1));
-		no_need_to_fetch_start_cmd = ert_user->rq.num !=0 || !ert_user->pq.num;
-		no_need_to_fetch_ctrl_cmd = ert_user->rq_ctrl.num !=0 || !ert_user->pq_ctrl.num;
-		no_need_to_fetch_new_cmd = no_need_to_fetch_ctrl_cmd && no_need_to_fetch_start_cmd;
-		no_submmited_cmd = !ert_user->sq.num;
-
-		polling_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && no_submmited_cmd;
-		intr_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && cant_submit;
-
-		no_event = first_event_client_or_null(ert_user) == NULL;
-
 		/* If any event occured, we should drain all the related commands ASAP
 		 * It only goes to sleep if there is no event
 		 */
-		if (ert_user->polling_mode && no_event && polling_sleep) {
-			if (down_interruptible(&ert_user->sem))
-				ret = -ERESTARTSYS;
-		} else if (!ert_user->polling_mode && no_event && intr_sleep) {
+		if (ert_user_thread_sleep_condition(ert_user)) {
 			if (down_interruptible(&ert_user->sem))
 				ret = -ERESTARTSYS;
 		}
