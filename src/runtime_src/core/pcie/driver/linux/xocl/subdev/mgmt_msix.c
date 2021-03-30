@@ -48,7 +48,7 @@ struct xocl_mgmt_msix {
 
 	int			max_user_intr;
 	struct mgmt_msix_irq		*user_msix_table;
-	struct mutex		user_msix_table_lock;
+	spinlock_t		user_msix_table_lock;
 
 	struct xocl_msix_privdata *privdata;
 };
@@ -56,6 +56,7 @@ struct xocl_mgmt_msix {
 static int user_intr_config(struct platform_device *pdev, u32 intr, bool en)
 {
 	struct xocl_mgmt_msix *mgmt_msix;
+	unsigned long flags;
 
 	mgmt_msix = platform_get_drvdata(pdev);
 
@@ -67,7 +68,7 @@ static int user_intr_config(struct platform_device *pdev, u32 intr, bool en)
 
 	xocl_info(&pdev->dev, "configure intr at 0x%lx",
 			(unsigned long)mgmt_msix->base);
-	mutex_lock(&mgmt_msix->user_msix_table_lock);
+	spin_lock_irqsave(&mgmt_msix->user_msix_table_lock, flags);
 	if (mgmt_msix->user_msix_table[intr].enabled == en)
 		goto end;
 
@@ -79,7 +80,7 @@ static int user_intr_config(struct platform_device *pdev, u32 intr, bool en)
 
 	mgmt_msix->user_msix_table[intr].enabled = en;
 end:
-	mutex_unlock(&mgmt_msix->user_msix_table_lock);
+	spin_unlock_irqrestore(&mgmt_msix->user_msix_table_lock, flags);
 
 	return 0;
 }
@@ -88,6 +89,7 @@ static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 {
 	struct xocl_mgmt_msix *mgmt_msix;
 	struct xocl_dev_core *core;
+	unsigned long flags;
 	u32 vec;
 	int ret = 0;
 
@@ -96,7 +98,7 @@ static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 	if (intr >= mgmt_msix->max_user_intr)
 		return -EINVAL;
 
-	mutex_lock(&mgmt_msix->user_msix_table_lock);
+	spin_lock_irqsave(&mgmt_msix->user_msix_table_lock, flags);
 	if (!mgmt_msix->user_msix_table[intr].in_use) {
 		ret = -EINVAL;
 		goto failed;
@@ -116,7 +118,7 @@ static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 	xocl_info(&pdev->dev, "intr %d unreg success, start vec %d",
 		intr, mgmt_msix->msix_user_start_vector);
 failed:
-	mutex_unlock(&mgmt_msix->user_msix_table_lock);
+	spin_unlock_irqrestore(&mgmt_msix->user_msix_table_lock, flags);
 
 	return ret;
 }
@@ -126,6 +128,7 @@ static int user_intr_register(struct platform_device *pdev, u32 intr,
 {
 	struct xocl_mgmt_msix *mgmt_msix;
 	struct xocl_dev_core *core;
+	unsigned long flags;
 	u32 vec;
 	int ret;
 
@@ -134,7 +137,7 @@ static int user_intr_register(struct platform_device *pdev, u32 intr,
 	if (intr >= mgmt_msix->max_user_intr)
 		return -EINVAL;
 
-	mutex_lock(&mgmt_msix->user_msix_table_lock);
+	spin_lock_irqsave(&mgmt_msix->user_msix_table_lock, flags);
 	if (mgmt_msix->user_msix_table[intr].in_use) {
 		xocl_err(&pdev->dev, "IRQ %d is in use", intr);
 		ret = -EPERM;
@@ -162,7 +165,7 @@ static int user_intr_register(struct platform_device *pdev, u32 intr,
 		       intr, mgmt_msix->msix_user_start_vector);
 
 failed:
-	mutex_unlock(&mgmt_msix->user_msix_table_lock);
+	spin_unlock_irqrestore(&mgmt_msix->user_msix_table_lock, flags);
 
 	return ret;
 }
@@ -298,7 +301,7 @@ static int mgmt_msix_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto failed;
 	}
-	mutex_init(&mgmt_msix->user_msix_table_lock);
+	spin_lock_init(&mgmt_msix->user_msix_table_lock);
 
 	platform_set_drvdata(pdev, mgmt_msix);
 
@@ -344,8 +347,6 @@ static int mgmt_msix_remove(struct platform_device *pdev)
 	}
 
 	pci_disable_msix(XDEV(xdev)->pdev);
-
-	mutex_destroy(&mgmt_msix->user_msix_table_lock);
 
 	devm_kfree(&pdev->dev, mgmt_msix->user_msix_table);
 	platform_set_drvdata(pdev, NULL);
