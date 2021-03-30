@@ -29,13 +29,13 @@
 namespace XclBinUtilities {
 
 enum class DType {
-  UNKNOWN,
-  INTEGER,
-  TEXT_STRING,
-  BYTE_STRING,
-  HEX_BYTE_STRING,
-  BYTE_FILE,
-  ENUMERATION,
+  unknown,
+  integer,
+  text_string,
+  byte_string,
+  hex_byte_string,
+  byte_file,
+  enumeration,
 };
 
 using KeyTypePair = std::pair<std::string, DType>;
@@ -47,12 +47,11 @@ void read_cbor(std::istream& istr, rapidjson::Document& doc);
 
 void TRACE_PrintTree(const std::string& msg, const rapidjson::Document& doc);
 
-void validate_against_schema(const std::string & nodeName, const rapidjson::Document & doc, const std::string & schema);
 void collect_key_types(const std::string & jsonSchema, KeyTypeCollection & key_type_collection);
 
 std::string get_dtype_str(DType data_type);
 DType get_expected_type( const std::string& scope, const XclBinUtilities::KeyTypeCollection& keyTypeCollection);
-
+void validate_against_schema(const std::string & nodeName, const rapidjson::Document & doc, const std::string & schema);
 
 };
 #endif

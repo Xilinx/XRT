@@ -161,7 +161,7 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
 
       // Look "forward" to see if this dictionary contains the node of interest
       std::string currentScope = scope + "::" + itr->name.GetString();
-      if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::BYTE_FILE) 
+      if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::byte_file) 
         renameCollection.push_back(std::string(itr->name.GetString()));
 
       readAndTransposeByteFiles_recursive(scope + "::" + itr->name.GetString(), itr, keyTypeCollection, allocator, relativeFromDir);
@@ -187,7 +187,7 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
 
         // Look "forward" to see if this dictionary contains the node of interest
         std::string currentScope = scope + "[]" + itr2->name.GetString();
-        if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::BYTE_FILE) 
+        if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::byte_file) 
           renameCollection.push_back(std::string(itr2->name.GetString()));
 
         readAndTransposeByteFiles_recursive(scope + "[]" + itr2->name.GetString(), itr2, keyTypeCollection, allocator, relativeFromDir);
@@ -204,7 +204,7 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
   // End point String
   if (itrObject->value.IsString()) {
     // Do we have a match
-    if (get_expected_type(scope, keyTypeCollection) != XUtil::DType::BYTE_FILE) 
+    if (get_expected_type(scope, keyTypeCollection) != XUtil::DType::byte_file) 
       return;  
 
     // Read file image from disk

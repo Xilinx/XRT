@@ -29,8 +29,6 @@
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
-#include <rapidjson/schema.h>
-
 
 namespace XUtil = XclBinUtilities;
 
@@ -38,30 +36,30 @@ std::string
 XclBinUtilities::get_dtype_str(DType data_type)
 {
   switch (data_type) {
-    case DType::UNKNOWN:
-      return "UNKNOWN";
+    case DType::unknown:
+      return "unknown";
 
-    case DType::INTEGER:
-      return "INTEGER";
+    case DType::integer:
+      return "integer";
 
-    case DType::TEXT_STRING:
-      return "TEXT_STRING";
+    case DType::text_string:
+      return "text_string";
 
-    case DType::BYTE_STRING:
-      return "BYTE_STRING";
+    case DType::byte_string:
+      return "byte_string";
 
-    case DType::HEX_BYTE_STRING:
-      return "HEX_BYTE_STRING";
+    case DType::hex_byte_string:
+      return "hex_byte_string";
 
-    case DType::BYTE_FILE:
-      return "BYTE_FILE";
+    case DType::byte_file:
+      return "byte_file";
 
-    case DType::ENUMERATION:
-      return "ENUMERATION";
+    case DType::enumeration:
+      return "enumeration";
   }
 
   // Code will never get here, but unfortunately some compilers don't know that
-  return "UNKNOWN";
+  throw std::runtime_error("Error: Unknown DType enumeration value.");
 }
 
 
@@ -96,7 +94,7 @@ XclBinUtilities::get_expected_type( const std::string& scope,
 
   // No mapping
   if (it == keyTypeCollection.end())
-    return XUtil::DType::UNKNOWN;
+    return XUtil::DType::unknown;
 
   // Return back the expected mapping
   return it->second;
@@ -140,7 +138,7 @@ void recursive_transformation(const std::string& scope,
     const std::string& workingString = itrObject->value.GetString();
 
     // Integer
-    if (mappingType == XUtil::DType::INTEGER) {
+    if (mappingType == XUtil::DType::integer) {
 
       // Determine if this is a negative value
       auto negativeCount = std::count(workingString.begin(), workingString.end(), '-');
@@ -220,7 +218,7 @@ recursive_write_cbor(const std::string& scope,
   // Serialize the string
   if (attribute.IsString()) {
     XUtil::DType mappingType = get_expected_type(scope, keyTypeCollection);
-    if (mappingType == XUtil::DType::HEX_BYTE_STRING) {
+    if (mappingType == XUtil::DType::hex_byte_string) {
       std::string hexString = attribute.GetString();
       buffer << XUtil::encode_byte_string(boost::algorithm::unhex(hexString));
     } else
@@ -362,6 +360,20 @@ XclBinUtilities::read_cbor(std::istream& istr,
   }
 }
 
+// Some Linux OSs packages of rapidjson don't support schema validation
+#ifndef ENABLE_JSON_SCHEMA_VALIDATION
+
+void
+XclBinUtilities::validate_against_schema( const std::string &, 
+                                          const rapidjson::Document &, 
+                                          const std::string &)
+{
+  std::cout << "Info: JSON Schema Validation is not support with this version of software.";
+}
+
+#else
+#include <rapidjson/schema.h>
+
 void 
 XclBinUtilities::validate_against_schema(const std::string &nodeName, const rapidjson::Document & doc, const std::string & schema)
 {
@@ -375,30 +387,31 @@ XclBinUtilities::validate_against_schema(const std::string &nodeName, const rapi
   rapidjson::SchemaValidator validator(schemaDoc);
 
   // Valid the given JSON file
-  if (!doc.Accept(validator)) {
-    // The JSON image is invalid according to the schema
-    rapidjson::StringBuffer sb;
-    validator.GetInvalidSchemaPointer().StringifyUriFragment(sb);
-    
-    std::ostringstream buf;
-    buf << "Error: JSON schema violation" << std::endl;
-    boost::format simpleFormat("  %-22s: %s\n");
-    buf << simpleFormat % "JSON Node" % nodeName;
-    buf << simpleFormat % "Schema violation rule" % sb.GetString();
-    buf << simpleFormat % "Violation type" % validator.GetInvalidSchemaKeyword();
-
-    sb.Clear();
-    validator.GetInvalidDocumentPointer().StringifyUriFragment(sb);
-    buf << simpleFormat % "JSON document path" % sb.GetString();
-
-    XUtil::TRACE(boost::str(boost::format("Schema:\n %s") % schema));
-    XUtil::TRACE_PrintTree("JSON", doc);
-    throw std::runtime_error(buf.str());
+  if (doc.Accept(validator)) {
+    XUtil::TRACE("JSON syntax successfully validated against the schema.");
+    return;
   }
 
-  XUtil::TRACE("JSON syntax successfully validated against the schema.");
-}
+  // The JSON image is invalid according to the schema
+  rapidjson::StringBuffer sb;
+  validator.GetInvalidSchemaPointer().StringifyUriFragment(sb);
+    
+  std::ostringstream buf;
+  buf << "Error: JSON schema violation" << std::endl;
+  boost::format simpleFormat("  %-22s: %s\n");
+  buf << simpleFormat % "JSON Node" % nodeName;
+  buf << simpleFormat % "Schema violation rule" % sb.GetString();
+  buf << simpleFormat % "Violation type" % validator.GetInvalidSchemaKeyword();
 
+  sb.Clear();
+  validator.GetInvalidDocumentPointer().StringifyUriFragment(sb);
+  buf << simpleFormat % "JSON document path" % sb.GetString();
+
+  XUtil::TRACE(boost::str(boost::format("Schema:\n %s") % schema));
+  XUtil::TRACE_PrintTree("JSON", doc);
+  throw std::runtime_error(buf.str());
+}
+#endif
 
 static void recursive_collect_properties( const std::string& scope, rapidjson::Value::MemberIterator itrObject, XclBinUtilities::KeyTypeCollection& keyTypeCollection);
 static void recursive_collect_array( const std::string& scope, rapidjson::Value::MemberIterator itrObject, XclBinUtilities::KeyTypeCollection& keyTypeCollection);
@@ -460,7 +473,7 @@ void recursive_collect_properties( const std::string& scope,
     
   // -- integer --
   if (std::string("integer") == typeItr->value.GetString()) 
-    return keyTypeCollection.emplace_back(scope, XUtil::DType::INTEGER);
+    return keyTypeCollection.emplace_back(scope, XUtil::DType::integer);
 
   // -- string --
   if (std::string("string") == typeItr->value.GetString()) {
@@ -470,15 +483,15 @@ void recursive_collect_properties( const std::string& scope,
 
     //-- hex-encoded_string --
     if (std::string("hex-encoded") == cborTypeItr->value.GetString()) 
-      return keyTypeCollection.emplace_back(scope, XUtil::DType::HEX_BYTE_STRING);
+      return keyTypeCollection.emplace_back(scope, XUtil::DType::hex_byte_string);
   
     //-- byte file on disk --
     if (std::string("file-image") == cborTypeItr->value.GetString()) 
-      return keyTypeCollection.emplace_back(scope, XUtil::DType::BYTE_FILE);
+      return keyTypeCollection.emplace_back(scope, XUtil::DType::byte_file);
   
     //-- enumeration --
     if (std::string("enum-encoded") == cborTypeItr->value.GetString()) 
-      return keyTypeCollection.emplace_back(scope, XUtil::DType::ENUMERATION);
+      return keyTypeCollection.emplace_back(scope, XUtil::DType::enumeration);
   
     return;
   }

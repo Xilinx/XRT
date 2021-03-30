@@ -6,10 +6,15 @@ if(NOT WIN32)
   endif()
 endif()
 
+# Windows support coming soon
+if(NOT WIN32)   
+  find_package(RapidJSON REQUIRED)
+endif()
+
+
 # -----------------------------------------------------------------------------
 # Include the generated header files (e.g., version.h)
 include_directories(${CMAKE_BINARY_DIR}/gen)
-
 
 # ==-- x c l b i n u t i l --==================================================
 
@@ -51,6 +56,14 @@ add_executable(${XCLBINUTIL_NAME} ${XCLBINUTIL_SRCS})
 if(NOT WIN32)
   target_link_libraries(${XCLBINUTIL_NAME} PRIVATE crypto)
 endif()
+
+# Add compile definitions
+if(NOT WIN32)
+   if(${RapidJSON_VERSION_MAJOR} GREATER_EQUAL 1)
+     target_compile_definitions(${XCLBINUTIL_NAME} PRIVATE ENABLE_JSON_SCHEMA_VALIDATION)
+   endif()
+endif()
+
 
 target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES})
 
@@ -105,7 +118,11 @@ if (GTEST_FOUND)
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE Boost::filesystem Boost::program_options Boost::system )
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE ${GTEST_BOTH_LIBRARIES})
   else()
-    target_link_libraries(xclbintest PRIVATE ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread crypto)
+    target_link_libraries(${UNIT_TEST_NAME} PRIVATE ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread crypto)
+
+    if(${RapidJSON_VERSION_MAJOR} GREATER_EQUAL 1)
+      target_compile_definitions(${UNIT_TEST_NAME} PRIVATE ENABLE_JSON_SCHEMA_VALIDATION)
+    endif()
   endif()
 
   # Add the test 
