@@ -2,8 +2,8 @@ find_package(PythonLibs REQUIRED)
 find_package(pybind11 REQUIRED)
 
 if(PYTHONLIBS_FOUND)
-  message("-- Python libs version ${PYTHONLIBS_VERSION_STRING}")
-  message("-- Python include dir ${PYTHON_INCLUDE_PATH}")
+  message("-- Python libs version: ${PYTHONLIBS_VERSION_STRING}")
+  message("-- PYTHON_INCLUDE_PATH ${PYTHON_INCLUDE_PATH}")
 
   INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
   pybind11_add_module(pyxrt src/pyxrt.cpp)
