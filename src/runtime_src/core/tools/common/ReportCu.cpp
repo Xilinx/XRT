@@ -163,7 +163,14 @@ populate_cus_new(const xrt_core::device *device)
   boost::property_tree::ptree pscu_list;
   for (auto& stat : scu_stats) {
     boost::property_tree::ptree ptCu;
-    ptCu.put( "name",           stat.name);
+    std::string scu_name = stat.name;
+    auto found = scu_name.rfind("scu");
+    if (found > 0) {
+        std::string scu_i = scu_name.substr(found + 3);
+        scu_name = scu_name.substr(0, found - 1);
+        scu_name.append(scu_i);
+    }
+    ptCu.put( "name",           scu_name);
     ptCu.put( "base_address",   "0x0");
     ptCu.put( "usage",          stat.usages);
     ptCu.put( "type", enum_to_str(cu_type::PS));
@@ -249,15 +256,9 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
       if(cu.get<std::string>("type").compare("PS") != 0)
         continue;
       std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
-      std::string scu_name = cu.get<std::string>("name");
-      auto found = scu_name.rfind("scu");
-      std::string scu_i = scu_name.substr(found + 3);
-      scu_name = scu_name.substr(0, found - 1);
-      scu_name.append(scu_i);
-
       uint32_t status_val = std::stoul(cu_status, nullptr, 16);
       _output << cuFmt % index++ %
-	      scu_name % cu.get<std::string>("base_address") %
+	      cu.get<std::string>("name") % cu.get<std::string>("base_address") %
 	      cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val);
     }
   }
