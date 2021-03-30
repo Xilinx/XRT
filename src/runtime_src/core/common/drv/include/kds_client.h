@@ -50,6 +50,11 @@ struct kds_client {
 	void			 *xclbin_id;
 	int			  num_ctx;
 	int			  virt_cu_ref;
+
+	struct list_head          graph_list;
+	spinlock_t                graph_list_lock;
+	u32                       aie_ctx;
+
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
 	/* Per client statistics. Use percpu variable for two reasons
 	 * 1. no lock is need while modifying these counters

@@ -238,6 +238,15 @@ int zocl_aie_alloc_context(struct drm_zocl_dev *zdev, u32 ctx_code,
 		struct sched_client_ctx *client);
 int zocl_aie_free_context(struct drm_zocl_dev *zdev,
 		struct sched_client_ctx *client);
+int zocl_aie_kds_add_graph_context(struct drm_zocl_dev *zdev, u32 gid,
+	        u32 ctx_code, struct kds_client *client);
+int zocl_aie_kds_del_graph_context(struct drm_zocl_dev *zdev, u32 gid,
+	        struct kds_client *client);
+void zocl_aie_kds_del_graph_context_all(struct kds_client *client);
+int zocl_aie_kds_add_context(struct drm_zocl_dev *zdev, u32 ctx_code,
+	struct kds_client *client);
+int zocl_aie_kds_del_context(struct drm_zocl_dev *zdev,
+	struct kds_client *client);
 
 int zocl_inject_error(struct drm_zocl_dev *zdev, void *data,
 		struct drm_file *filp);
