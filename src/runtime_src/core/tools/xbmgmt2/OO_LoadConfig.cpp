@@ -35,7 +35,7 @@ namespace po = boost::program_options;
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
-static bool load_config(const std::shared_ptr<xrt_core::device>& _dev, const std::string path);
+static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std::string path);
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -132,11 +132,11 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
   }
 
   try {
-    if (load_config(workingDevice, m_path))
-      std::cout << "config has been successfully loaded" << std::endl;
+    load_config(workingDevice, m_path);
+    std::cout << "config has been successfully loaded" << std::endl;
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    std::cout << boost::format("ERROR: %s\n") % e.what();
     return;
   }
 }
@@ -151,7 +151,7 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
  * [Daemon]
  * host_ip = x.x.x.x
  */
-static bool load_config(const std::shared_ptr<xrt_core::device>& _dev, const std::string path)
+static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std::string path)
 {
   boost::property_tree::ptree ptRoot;
   boost::property_tree::ini_parser::read_ini(path, ptRoot);
@@ -160,24 +160,22 @@ static bool load_config(const std::shared_ptr<xrt_core::device>& _dev, const std
   const boost::property_tree::ptree PtDevice =
     ptRoot.get_child("Device", emptyTree);
 
-  if (PtDevice.empty()) {
-    std::cerr << boost::format("ERROR: No [Device] section in the config file\n");
-    return false;
-  }
+  if (PtDevice.empty())
+    throw std::runtime_error("No [Device] section in the config file");
 
   for (auto& key : PtDevice) {
-    if (!key.first.compare("mailbox_channel_disable"))
-      xrt_core::device_update<xrt_core::query::config_mailbox_channel_disable>(
-        _dev.get(), key.second.get_value<std::string>());
-    else if (!key.first.compare("mailbox_channel_switch"))
-      xrt_core::device_update<xrt_core::query::config_mailbox_channel_switch>(
-        _dev.get(), key.second.get_value<std::string>());
-    else if (!key.first.compare("cache_xclbin"))
-      xrt_core::device_update<xrt_core::query::cache_xclbin>(
-        _dev.get(), key.second.get_value<std::string>());
-    else
-      std::cerr << boost::format("WARNING: '%s' is not a supported config entry\n") % key.first;   
+    if (!key.first.compare("mailbox_channel_disable")) {
+      xrt_core::device_update<xrt_core::query::config_mailbox_channel_disable>(_dev.get(), key.second.get_value<std::string>());
+      continue;
+    }
+    if (!key.first.compare("mailbox_channel_switch")) {
+      xrt_core::device_update<xrt_core::query::config_mailbox_channel_switch>(_dev.get(), key.second.get_value<std::string>());
+      continue;
+    }
+    if (!key.first.compare("cache_xclbin")) {
+      xrt_core::device_update<xrt_core::query::cache_xclbin>(_dev.get(), key.second.get_value<std::string>());
+      continue;
+    }
+    throw std::runtime_error(boost::str(boost::format("'%s' is not a supported config entry") % key.first));
   }
-
-  return true;
 }

@@ -389,9 +389,9 @@ void XQSPIPS_Flasher::program(std::istream& binStream, unsigned base)
     binStream.seekg(0, binStream.beg);
 
     const unsigned int pages = total_size / PAGE_SIZE;
-    const unsigned remain = total_size % PAGE_SIZE;
-    unsigned addr = 0;
-    unsigned size = 0;
+    const unsigned int remain = total_size % PAGE_SIZE;
+    unsigned int addr = 0;
+    unsigned int size = 0;
 
 #if defined(_DEBUG)
     std::cout << "Verify earse flash" << std::endl;
@@ -401,7 +401,7 @@ void XQSPIPS_Flasher::program(std::istream& binStream, unsigned base)
         size = page != pages ? PAGE_SIZE : remain;
 
         readFlash(base + addr, size);
-        for (unsigned i = 0; i < size; i++) {
+        for (unsigned int i = 0; i < size; i++) {
             if (0xFF != mReadBuffer[i]) {
                 mismatched = 1;
             }
@@ -462,7 +462,7 @@ int XQSPIPS_Flasher::verify(std::istream& binStream, unsigned base)
         readFlash(base + addr, size);
 
         mismatched = 0;
-        for (unsigned i = 0; i < size; i++) {
+        for (unsigned int i = 0; i < size; i++) {
 #if SAVE_FILE
             of_flash << mReadBuffer[i];
 #endif
@@ -490,7 +490,7 @@ unsigned int XQSPIPS_Flasher::getFlashSize()
     return 0x8000000; //hard-code as 128MB so far
 }
 
-void XQSPIPS_Flasher::readBack(const std::string& output, unsigned base)
+void XQSPIPS_Flasher::readBack(const std::string& output, unsigned int base)
 {
     std::ofstream of_flash;
     of_flash.open(output, std::ofstream::out);
@@ -1478,8 +1478,8 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int)
     enterOrExitFourBytesMode(ENTER_4B);
 
     std::cout << ">>> Testing simple read and write <<<" << std::endl;
-    unsigned addr = 0;
-    unsigned size = 0;
+    unsigned int addr = 0;
+    unsigned int size = 0;
     // Write/Read 16K + 100 bytes
     //int total_size = 16 * 1024 + 100;
     unsigned int total_size = 300;
@@ -1495,10 +1495,7 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int)
     std::cout << ">>>>>> Write " << std::endl;
     for (unsigned int page = 0; page <= pages; page++) {
         addr = page * PAGE_SIZE;
-        if (page != pages)
-            size = PAGE_SIZE;
-        else
-            size = remain;
+	size = page != pages ? PAGE_SIZE : remain;
 
         for (unsigned i = 0; i < size; i++) {
             mWriteBuffer[i] = (uint8_t)i;
@@ -1507,16 +1504,10 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int)
         writeFlash(addr, size);
     }
 
-    remain = total_size % 256;
-    pages = total_size / 256;
-
     std::cout << ">>>>>> Verify data" << std::endl;
     for (unsigned int page = 0; page <= pages; page++) {
-        addr = page * 256;
-        if (page != pages)
-            size = 256;
-        else
-            size = remain;
+        addr = page * PAGE_SIZE;
+	size = page != pages ? PAGE_SIZE : remain;
 
         readFlash(addr, size);
 

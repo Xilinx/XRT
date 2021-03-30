@@ -70,12 +70,9 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
   boost::property_tree::ptree ptRoot;
 
   boost::property_tree::ptree child;
-  child.put("mailbox_channel_disable",
-    xrt_core::device_query<xrt_core::query::config_mailbox_channel_disable>(_dev));
-  child.put("mailbox_channel_switch",
-    xrt_core::device_query<xrt_core::query::config_mailbox_channel_switch>(_dev));
-  child.put("cache_xclbin",
-    xrt_core::device_query<xrt_core::query::cache_xclbin>(_dev));
+  child.put("mailbox_channel_disable", xrt_core::device_query<xrt_core::query::config_mailbox_channel_disable>(_dev));
+  child.put("mailbox_channel_switch", xrt_core::device_query<xrt_core::query::config_mailbox_channel_switch>(_dev));
+  child.put("cache_xclbin", xrt_core::device_query<xrt_core::query::cache_xclbin>(_dev));
   ptRoot.put_child("Device", child);
 
   boost::property_tree::ini_parser::write_ini(output, ptRoot);
