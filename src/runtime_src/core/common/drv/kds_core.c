@@ -550,10 +550,7 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 	ret = wait_for_completion_interruptible(&kds->comp);
 	if (ret == -ERESTARTSYS && !kds->ert_disable) {
 		kds->ert->abort(kds->ert, client, NO_INDEX);
-		do {
-			kds_info(xcmd->client, "Command not finished");
-			msleep(500);
-		} while (ecmd->state < ERT_CMD_STATE_COMPLETED);
+		wait_for_completion(&kds->comp);
 		bad_state = kds->ert->abort_done(kds->ert, client, NO_INDEX);
 		if (bad_state)
 			kds->bad_state = 1;
