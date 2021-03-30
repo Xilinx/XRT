@@ -612,6 +612,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 
 		zdev->fpga_mgr->dmabuf = NULL;
 		zocl_drm_free_bo(bo);
+		vfree(bsection_buffer);
 		break;
 	default:
 		DRM_WARN("Unsupported load type %d", kind);
