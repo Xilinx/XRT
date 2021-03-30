@@ -200,15 +200,8 @@ get_plio(const pt::ptree& aie_meta)
 double
 get_clock_freq_mhz(const pt::ptree& aie_meta)
 {
-  double clockFreqMhz = 1000.0;
-
-  // Grab DeviceData section; if not found, return default
   auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
-  if (!dev_node)
-    return clockFreqMhz;
-
-  // Grab clock frequency
-  clockFreqMhz = dev_node.get<double>("AIEFrequency");
+  double clockFreqMhz = dev_node.get<double>("AIEFrequency");
   return clockFreqMhz;
 }
 
@@ -223,8 +216,7 @@ get_profile_counter(const pt::ptree& aie_meta)
     return counters;
 
   // First grab clock frequency
-  auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
-  auto clockFreqMhz = dev_node.get<double>("AIEFrequency");
+  auto clockFreqMhz = get_clock_freq_mhz(aie_meta);
 
   // Now parse all counters
   for (auto const &counter_node : counterTree.get()) {
