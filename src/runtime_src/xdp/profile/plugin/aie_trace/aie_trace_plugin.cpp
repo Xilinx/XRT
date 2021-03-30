@@ -190,8 +190,10 @@ namespace xdp {
       metricSet = defaultSet;
     }
 
-    writers.push_back(new AieTraceConfigWriter("aie_event_runtime_config.json",
+    std::string config_file = "aie_event_runtime_config.json";
+    writers.push_back(new AieTraceConfigWriter(config_file.c_str(),
                                                 deviceId, metricSet));
+    (db->getStaticInfo()).addOpenedFile(config_file, "AIE_EVENT_RUNTIME_CONFIG");
 
     // Capture all tiles across all graphs
     // NOTE: future releases will support the specification of tile subsets
