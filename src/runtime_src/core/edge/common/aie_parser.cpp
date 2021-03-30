@@ -202,13 +202,12 @@ get_clock_freq_mhz(const pt::ptree& aie_meta)
 {
   double clockFreqMhz = 1000.0;
 
-  // If counters not found, then return default value
-  auto counterTree = aie_meta.get_child_optional("aie_metadata.PerformanceCounter");
-  if (!counterTree)
+  // Grab DeviceData section; if not found, return default
+  auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+  if (!dev_node)
     return clockFreqMhz;
 
   // Grab clock frequency
-  auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
   clockFreqMhz = dev_node.get<double>("AIEFrequency");
   return clockFreqMhz;
 }
