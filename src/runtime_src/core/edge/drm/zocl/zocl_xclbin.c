@@ -198,21 +198,6 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	return 0;
 }
 
-static uint64_t 
-zocl_check_sect(enum axlf_section_kind kind, struct axlf *axlf_full)
-{
-	uint64_t offset;
-	uint64_t size;
-	int err = 0;
-
-	err = xrt_xclbin_section_info(axlf_full, kind, &offset, &size);
-	if (err) {
-		return 0;
-	}
-
-	return size;
-}
-
 static int
 zocl_offsetof_sect(enum axlf_section_kind kind, void *sect,
 		struct axlf *axlf_full, char __user *xclbin_ptr)
@@ -585,6 +570,11 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		}
 
 		bsize = zocl_read_sect(BITSTREAM, &bsection_buffer, axlf, xclbin);
+		if (bsize == 0) {
+			ret = 0;
+			goto out;
+		}
+
 		bo = zocl_drm_create_bo(zdev->ddev, bsize, ZOCL_BO_FLAGS_CMA);
 		if (IS_ERR(bo)) {
 			vfree(bsection_buffer);
@@ -735,7 +725,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 	zocl_free_sections(zdev);
 
-	if (zocl_check_sect(PARTITION_METADATA, axlf) &&
+	if (xrt_xclbin_get_section_num(axlf, PARTITION_METADATA) &&
 	    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
 	    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
 		/*
