@@ -18,6 +18,7 @@ set(XRT_HEADER_SRC
 
 install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR} COMPONENT ${XRT_DEV_COMPONENT})
 
+add_subdirectory(xrt)
 add_subdirectory(experimental)
 add_subdirectory(deprecated)
 if(WIN32)

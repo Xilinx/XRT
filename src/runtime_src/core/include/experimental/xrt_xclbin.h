@@ -20,8 +20,8 @@
 
 #include "xrt.h"
 #include "xclbin.h"
-#include "experimental/xrt_uuid.h"
-#include "experimental/detail/pimpl.h"
+#include "xrt/xrt_uuid.h"
+#include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
 # include <utility>

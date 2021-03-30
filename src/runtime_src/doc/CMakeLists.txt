@@ -6,9 +6,9 @@ set(DOC_TOC_DIR            "${CMAKE_CURRENT_BINARY_DIR}/toc")
 file(GLOB XRT_MGMT_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/include/mgmt-ioctl.h)
 file(GLOB XRT_XOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/include/xocl_ioctl.h)
 file(GLOB XRT_ZOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/edge/include/zynq_ioctl.h)
-file(GLOB XRT_DEVICE_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_device.h)
-file(GLOB XRT_BO_H         ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_bo.h)
-file(GLOB XRT_KERNEL_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_kernel.h)
+file(GLOB XRT_DEVICE_H     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_device.h)
+file(GLOB XRT_BO_H         ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_bo.h)
+file(GLOB XRT_KERNEL_H     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_kernel.h)
 file(GLOB XRT_XCLBIN_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h)
 file(GLOB XRT_INI_H        ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ini.h)
 file(GLOB XRT_XRT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/xrt.h)
@@ -46,9 +46,9 @@ if (NOT DOXYGEN_EXECUTABLE)
     )
 else()
   set(XRT_CPP_APIS
-    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_device.h
-    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_bo.h
-    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_kernel.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_device.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_bo.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_kernel.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ini.h
     )
