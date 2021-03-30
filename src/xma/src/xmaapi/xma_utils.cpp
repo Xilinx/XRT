@@ -82,7 +82,7 @@ namespace xma_core {
         ddr_index = INVALID_M1;
         if (kernel_info->soft_kernel) {
             if (req_ddr_index != 0) {
-                xma_logmsg(XMA_WARNING_LOG, prefix.c_str(), "XMA session with soft_kernel only allows ddr bank of zero");
+                xma_logmsg(XMA_DEBUG_LOG, prefix.c_str(), "XMA session with soft_kernel only allows ddr bank of zero. Ignoring non-zero bank input");
             }
             //Only allow ddr_bank == 0;
             ddr_index = 0;
