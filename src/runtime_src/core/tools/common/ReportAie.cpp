@@ -198,7 +198,7 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
     pt =  _pt.get_child("aie_core."+std::to_string(col)+"_"+std::to_string(row));
     tile.put("column", pt.get<uint32_t>("col"));
     tile.put("row", pt.get<uint32_t>("row"));
-    int count = 0;
+
     std::string status;
     for (auto& node: pt.get_child("core.Status", empty_pt)) {
       status +=(status.empty()?"":", ")+node.second.data();
@@ -215,7 +215,6 @@ populate_aie_core(boost::property_tree::ptree _pt,boost::property_tree::ptree& t
     for (auto& node: pt.get_child("core.SP", empty_pt))
       tile.put("core.stack_pointer", node.second.data());
 
-    count = 0;
     std::string mode;
     for (auto& node: pt.get_child("dma.Mode.MM2S", empty_pt)) {
       mode += (mode.empty()?"":", ")+node.second.data();

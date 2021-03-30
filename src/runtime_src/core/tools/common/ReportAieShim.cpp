@@ -174,7 +174,6 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc, boos
       
       ishim.put("column", col);
       ishim.put("row", row);
-      int count = 0;
 
       std::string mode;
       boost::property_tree::ptree empty_pt;
@@ -192,7 +191,7 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc, boos
 
       if(!mode.empty())
         ishim.put("dma.s2mm.mode", mode);
-//---------------------------------------------
+
       boost::property_tree::ptree mm2s_array;
       auto queue_size = oshim.get_child("dma.Queue_size.MM2S").begin();
       auto queue_status = oshim.get_child("dma.Queue_status.MM2S").begin();
@@ -265,7 +264,6 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc, boos
     pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE shim"));
   }
 
-  //return pt;
 }
 
 void
