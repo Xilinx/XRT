@@ -225,7 +225,7 @@ done:
 }
 
 int
-zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf)
+zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res)
 {
 	uint64_t offset;
 	uint64_t size;
@@ -279,7 +279,7 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	/* TODO figure out the partition id and uid from xclbin or PDI */
 	req.partition_id = 1;
 	req.uid = 0;
-	req.meta_data = 0;
+	req.meta_data = (u64)aie_res;
 
 	if (zdev->aie->aie_dev) {
 		DRM_INFO("Partition %d already requested\n",

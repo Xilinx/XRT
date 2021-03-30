@@ -614,6 +614,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	size_t size_of_header;
 	size_t num_of_sections;
 	void *kernels;
+	void *aie_res = 0;
 	uint64_t size = 0;
 	int ret = 0;
 
@@ -656,6 +657,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	write_lock(&zdev->attr_rwlock);
 
+	/*
+	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
+	 * such a section.
+	 */
+	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
+
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head.m_header.uuid)) {
 		if (is_aie_only(axlf)) {
@@ -664,7 +671,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			if (ret)
 				DRM_WARN("read xclbin: fail to load AIE");
 			else {
-				zocl_create_aie(zdev, axlf);
+				zocl_create_aie(zdev, axlf, aie_res);
 				zocl_cache_xclbin(zdev, axlf, xclbin);
 			}
 		} else {
@@ -852,7 +859,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zocl_init_mem(zdev, zdev->topology);
 
 	/* Createing AIE Partition */
-	zocl_create_aie(zdev, axlf);
+	zocl_create_aie(zdev, axlf, aie_res);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.
@@ -862,6 +869,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 out0:
 	write_unlock(&zdev->attr_rwlock);
+	vfree(aie_res);
 	vfree(axlf);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
 	return ret;
