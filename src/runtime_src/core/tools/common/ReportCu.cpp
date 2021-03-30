@@ -163,7 +163,14 @@ populate_cus_new(const xrt_core::device *device)
   boost::property_tree::ptree pscu_list;
   for (auto& stat : scu_stats) {
     boost::property_tree::ptree ptCu;
-    ptCu.put( "name",           stat.name);
+    std::string scu_name = stat.name;
+    auto found = scu_name.rfind("scu");
+    if (found > 0) {
+        std::string scu_i = scu_name.substr(found + 3);
+        scu_name = scu_name.substr(0, found - 1);
+        scu_name.append(scu_i);
+    }
+    ptCu.put( "name",           scu_name);
     ptCu.put( "base_address",   "0x0");
     ptCu.put( "usage",          stat.usages);
     ptCu.put( "type", enum_to_str(cu_type::PS));
