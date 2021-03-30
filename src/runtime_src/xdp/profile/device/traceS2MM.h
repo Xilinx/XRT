@@ -85,7 +85,7 @@ private:
     void write32(uint64_t offset, uint32_t val);
 
 protected:
-    void parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result);
+    void parsePacketClockTrain(uint64_t packet);
     void parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result);
     uint64_t seekClockTraining(uint64_t* arr, uint64_t count);
 
@@ -93,7 +93,11 @@ protected:
     uint64_t mPacketFirstTs = 0;
     bool mclockTrainingdone = false;
     uint32_t mModulus = 0;
-    uint64_t mPartialTs = 0;
+
+    // Since clock training packets can be interspersed with other packets,
+    //  we need to keep track of what we see until we see all four 
+    //  clock training packets
+    xclTraceResults partialResult = {};
 };
 
 } //  xdp
