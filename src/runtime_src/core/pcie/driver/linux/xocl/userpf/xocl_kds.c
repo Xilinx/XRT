@@ -26,7 +26,7 @@ do {\
 
 void xocl_describe(const struct drm_xocl_bo *xobj);
 
-int kds_mode = 0;
+int kds_mode = 1;
 module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(kds_mode,
 		 "enable new KDS (0 = disable (default), 1 = enable)");
