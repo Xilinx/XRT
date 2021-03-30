@@ -200,39 +200,7 @@ namespace xdp {
 
     bool init_successful = offloader->read_trace_init(m_enable_circular_buffer) ;
 
-    if (init_successful) {
-      offloader->train_clock();
-      /* Trace FIFO is usually very small (8k,16k etc)
-       *  Hence enable Continuous clock training/Trace
-       *  ONLY for Offload to DDR Memory
-       */
-      if (devInterface->hasTs2mm()) {
-      if (continuous_trace)
-        offloader->start_offload(OffloadThreadType::TRACE);
-      else
-        offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
-      } else {
-        if (continuous_trace)
-          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", CONTINUOUS_OFFLOAD_WARN_MSG_FIFO);
-      }
-
-      /* If unable to use circular buffer then throw warning
-       */
-      if (devInterface->hasTs2mm() && continuous_trace && m_enable_circular_buffer) {
-        auto tdma = devInterface->getTs2mm();
-        if (tdma->supportsCircBuf()) {
-          uint64_t min_offload_rate = 0;
-          uint64_t requested_offload_rate = 0;
-          bool using_circ_buf = offloader->using_circular_buffer(min_offload_rate, requested_offload_rate);
-          if (!using_circ_buf) {
-            std::string msg = std::string(TS2MM_WARN_MSG_CIRC_BUF)
-                            + " Minimum required offload rate (bytes per second) : " + std::to_string(min_offload_rate)
-                            + " Requested offload rate : " + std::to_string(requested_offload_rate);
-            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-          }
-        }
-      }
-    } else {
+    if (!init_successful) {
       if (devInterface->hasTs2mm()) {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ;
       }
@@ -242,6 +210,56 @@ namespace xdp {
     }
 
     offloaders[deviceId] = std::make_tuple(offloader, logger, devInterface) ;
+  }
+
+  void DeviceOffloadPlugin::startContinuousThreads(uint64_t deviceId)
+  {
+    if (!active) return ;
+    if (offloaders.find(deviceId) == offloaders.end()) return ;
+
+    DeviceData& data = offloaders[deviceId] ;
+    auto offloader = std::get<0>(data) ;
+    auto devInterface = std::get<2>(data) ;
+    if (offloader == nullptr) return ;
+
+    offloader->train_clock();
+    // Trace FIFO is usually very small (8k,16k etc)
+    //  Hence enable Continuous clock training/Trace
+    //  ONLY for Offload to DDR Memory
+    if (!(devInterface->hasTs2mm())) {
+      if (continuous_trace) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning,
+                                "XRT", CONTINUOUS_OFFLOAD_WARN_MSG_FIFO);
+      }
+      return ;
+    }
+
+    // We have TS2MM
+    if (continuous_trace) {
+      offloader->start_offload(OffloadThreadType::TRACE);
+      if (m_enable_circular_buffer) {
+        auto tdma = devInterface->getTs2mm() ;
+        if (tdma->supportsCircBuf()) {
+          uint64_t min_offload_rate = 0 ;
+          uint64_t requested_offload_rate = 0 ;
+          bool use_circ_buf =
+            offloader->using_circular_buffer(min_offload_rate,
+                                             requested_offload_rate);
+          if (!use_circ_buf) {
+            std::string msg = std::string(TS2MM_WARN_MSG_CIRC_BUF) +
+              " Minimum required offload rate (bytes per second) : " +
+              std::to_string(min_offload_rate) +
+              " Requested offload rate : " +
+              std::to_string(requested_offload_rate);
+            xrt_core::message::send(xrt_core::message::severity_level::warning,
+                                    "XRT", msg);
+	  }
+	}
+      }
+    }
+    else {
+      offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
+    }
   }
   
   void DeviceOffloadPlugin::configureTraceIP(DeviceIntf* devInterface)
