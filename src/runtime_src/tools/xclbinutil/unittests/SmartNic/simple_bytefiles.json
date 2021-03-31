@@ -1,0 +1,24 @@
+{
+    "smartnic": {
+        "schema_version": {
+            "major": "5",
+            "minor": "1",
+            "patch": "2"
+        },
+        "extensions": [
+            {
+                "setup": {
+                    "ebpf_file": "dummy_bytefile.txt"
+                },
+                "cam_instances": [
+                    {
+                        "name": "foo_my_cam_instance_1",
+                        "id": "0",
+                        "config_file": "dummy_bytefile.txt",
+                        "driver_index": "0"
+                    }
+                ]
+            }
+        ]
+    }
+}

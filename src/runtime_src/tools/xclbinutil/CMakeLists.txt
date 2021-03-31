@@ -6,6 +6,16 @@ if(NOT WIN32)
   endif()
 endif()
 
+# Windows support coming soon
+if(NOT WIN32)   
+  # On Ubuntu 16.04 CMake support is limited
+  if ((${LINUX_FLAVOR} STREQUAL "Ubuntu") AND (${LINUX_VERSION} STREQUAL "16.04"))
+    set(RapidJSON_VERSION_MAJOR 0)
+  else()
+    find_package(RapidJSON REQUIRED)
+  endif()
+endif()
+
 # -----------------------------------------------------------------------------
 # Include the generated header files (e.g., version.h)
 include_directories(${CMAKE_BINARY_DIR}/gen)
@@ -31,6 +41,7 @@ file(GLOB XCLBINUTIL_FILES
   "ParameterSectionData.cxx"
   "Section.cxx"     # Note: Due to linking dependency issue, this entry needs to be before the other sections
   "Section*.cxx"
+  "Resources*.cxx"
   "XclBinClass.cxx"
   "XclBinSignature.cxx"
   "XclBinUtilities.cxx"
@@ -50,6 +61,14 @@ if(NOT WIN32)
   target_link_libraries(${XCLBINUTIL_NAME} PRIVATE crypto)
 endif()
 
+# Add compile definitions
+if(NOT WIN32)
+   if(${RapidJSON_VERSION_MAJOR} GREATER 0)
+     target_compile_definitions(${XCLBINUTIL_NAME} PRIVATE ENABLE_JSON_SCHEMA_VALIDATION)
+   endif()
+endif()
+
+
 target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES})
 
 install (TARGETS ${XCLBINUTIL_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
@@ -63,14 +82,19 @@ if(NOT WIN32)
   # Python is currently not installed on Edge builds
   if (${XRT_NATIVE_BUILD} STREQUAL "yes")
     # -- Test Signing of the xclbin image using a CER formatted certificate
-    xrt_add_test("signing_xclbin_CER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinCER.py")
+    xrt_add_test("signing-xclbin_CER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinCER.py")
 
     # -- Test Signing of the xclbin image using a DER formatted certificate
-    xrt_add_test("signing_xclbin_DER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinDER.py")
+    xrt_add_test("signing-xclbin_DER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinDER.py")
 
-    # -- Test SmartNic Section
+    # -- Test SmartNic
+    # Test: SmartNic Syntax
     set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic")
-    xrt_add_test("smartnic" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic/SectionSmartNicSchema.py ${TEST_OPTIONS}")
+    xrt_add_test("smartnic-syntax" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic/SectionSmartNicSyntax.py ${TEST_OPTIONS}")
+
+    # Test: SmartNic Schema
+    set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic")
+    xrt_add_test("smartnic-format" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic/SectionSmartNicFormat.py ${TEST_OPTIONS}")
   endif()
 endif()
 
@@ -98,7 +122,11 @@ if (GTEST_FOUND)
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE Boost::filesystem Boost::program_options Boost::system )
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE ${GTEST_BOTH_LIBRARIES})
   else()
-    target_link_libraries(xclbintest PRIVATE ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread crypto)
+    target_link_libraries(${UNIT_TEST_NAME} PRIVATE ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread crypto)
+
+    if(${RapidJSON_VERSION_MAJOR} GREATER_EQUAL 1)
+      target_compile_definitions(${UNIT_TEST_NAME} PRIVATE ENABLE_JSON_SCHEMA_VALIDATION)
+    endif()
   endif()
 
   # Add the test 
