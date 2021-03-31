@@ -21,6 +21,8 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
@@ -33,6 +35,7 @@ namespace po = boost::program_options;
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
+static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std::string path);
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -111,6 +114,8 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
     return;
   }
 
+  std::shared_ptr<xrt_core::device>& workingDevice = deviceCollection[0];
+
   // -- process "input" option -----------------------------------------------
   if (m_path.empty()) {
     std::cerr << "ERROR: Please specify an input file" << "\n\n";
@@ -126,5 +131,51 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  //TO_DO: parse the INI file
+  try {
+    load_config(workingDevice, m_path);
+    std::cout << "config has been successfully loaded" << std::endl;
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cout << boost::format("ERROR: %s\n") % e.what();
+    return;
+  }
+}
+
+/*
+ * so far, we only support the following configs, eg.
+ * [Device]
+ * mailbox_channel_disable = 0x120
+ * mailbox_channel_switch = 0
+ * cahce_xclbin = 0
+ * we may support in the future, like,
+ * [Daemon]
+ * host_ip = x.x.x.x
+ */
+static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std::string path)
+{
+  boost::property_tree::ptree ptRoot;
+  boost::property_tree::ini_parser::read_ini(path, ptRoot);
+  static boost::property_tree::ptree emptyTree;
+
+  const boost::property_tree::ptree PtDevice =
+    ptRoot.get_child("Device", emptyTree);
+
+  if (PtDevice.empty())
+    throw std::runtime_error("No [Device] section in the config file");
+
+  for (auto& key : PtDevice) {
+    if (!key.first.compare("mailbox_channel_disable")) {
+      xrt_core::device_update<xrt_core::query::config_mailbox_channel_disable>(_dev.get(), key.second.get_value<std::string>());
+      continue;
+    }
+    if (!key.first.compare("mailbox_channel_switch")) {
+      xrt_core::device_update<xrt_core::query::config_mailbox_channel_switch>(_dev.get(), key.second.get_value<std::string>());
+      continue;
+    }
+    if (!key.first.compare("cache_xclbin")) {
+      xrt_core::device_update<xrt_core::query::cache_xclbin>(_dev.get(), key.second.get_value<std::string>());
+      continue;
+    }
+    throw std::runtime_error(boost::str(boost::format("'%s' is not a supported config entry") % key.first));
+  }
 }
