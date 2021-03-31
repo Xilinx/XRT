@@ -135,8 +135,6 @@ populate_cus(const xrt_core::device *device)
 int 
 getPSKernels(std::vector<ps_kernel_data> &psKernels, const xrt_core::device *device)
 {
-  std::string errmsg;
-
   std::vector<char> buf = xrt_core::device_query<xrt_core::query::ps_kernel>(device);
   const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
   if(map->pkn_count < 0)
