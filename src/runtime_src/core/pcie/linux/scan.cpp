@@ -820,7 +820,7 @@ public:
   }
   std::string get_subdev_path(const std::string& subdev, uint32_t idx)
   {
-    std::string path("/dev/xfpga/");
+    std::string path("/dev/xrt/");
     path += sysfs_name;
     path += "/";
     try {
