@@ -32,7 +32,7 @@ namespace xdp {
   {    
   }
 
-  void AieTraceConfigWriter::write(bool openNewFile)
+  bool AieTraceConfigWriter::write(bool openNewFile)
   {
     bpt::ptree pt;
     bpt::ptree EventTraceConfigs_C, EventTraceConfigs;
@@ -246,6 +246,7 @@ namespace xdp {
     pt.add_child("EventTraceConfigs", EventTraceConfigs);
     //bpt::write_json(std::cout, pt);
     write_jsonEx(getcurrentFileName(), pt);
+    return true;
   }
 
 }
