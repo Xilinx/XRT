@@ -564,6 +564,9 @@ namespace xdp {
         deviceIntf->readDebugIPlayout();
       } catch(std::exception& e) {
         // Read debug IP layout could throw an exception
+        std::stringstream msg;
+        msg << "Unable to read debug IP layout for device " << deviceId << ": " << e.what();
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
         delete deviceIntf;
         return;
       }
@@ -581,6 +584,10 @@ namespace xdp {
                             "" /*xrtVersion*/,
                             "" /*toolVersion*/));
       (db->getStaticInfo()).addOpenedFile(fileName, "AIE_EVENT_TRACE");
+
+      std::stringstream msg;
+      msg << "Creating AIE trace file " << fileName << " for device " << deviceId;
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
     }
 
     // Create AIE Trace Offloader
