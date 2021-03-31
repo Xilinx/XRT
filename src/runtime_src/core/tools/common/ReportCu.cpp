@@ -135,17 +135,17 @@ populate_cus(const xrt_core::device *device)
 int 
 getPSKernels(std::vector<ps_kernel_data> &psKernels, const xrt_core::device *device)
 {
-    std::string errmsg;
+  std::string errmsg;
 
-    std::vector<char> buf = xrt_core::device_query<xrt_core::query::ps_kernel>(device);
-    const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
-    if(map->pkn_count < 0)
-        return -EINVAL;
+  std::vector<char> buf = xrt_core::device_query<xrt_core::query::ps_kernel>(device);
+  const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
+  if(map->pkn_count < 0)
+    return -EINVAL;
 
-    for (unsigned int i = 0; i < map->pkn_count; i++)
-        psKernels.emplace_back(map->pkn_data[i]);
+  for (unsigned int i = 0; i < map->pkn_count; i++)
+    psKernels.emplace_back(map->pkn_data[i]);
 
-    return 0;
+  return 0;
 }
 
 boost::property_tree::ptree
@@ -179,8 +179,8 @@ populate_cus_new(const xrt_core::device *device)
 
   std::vector<ps_kernel_data> psKernels;
   if (getPSKernels(psKernels, device) < 0) {
-      std::cout << "WARNING: 'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.\n";
-      return pt;
+    std::cout << "WARNING: 'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.\n";
+    return pt;
   }
 
   uint32_t psk_inst = 0;
@@ -190,11 +190,14 @@ populate_cus_new(const xrt_core::device *device)
     boost::property_tree::ptree ptCu;
     std::string scu_name = "Illegal";
     if (psk_inst >= psKernels.size()) {
-      scu_name = stat.name; //This means something is wrong
+      scu_name = stat.name; 
+      //This means something is wrong
+      //scu_name e.g. kernel_vcu_encoder:scu_34
     } else {
       scu_name = psKernels.at(psk_inst).pkd_sym_name;
       scu_name.append("_");
       scu_name.append(std::to_string(num_scu));
+      //scu_name e.g. kernel_vcu_encoder_2
     }
     ptCu.put( "name",           scu_name);
     ptCu.put( "base_address",   "0x0");
@@ -208,8 +211,9 @@ populate_cus_new(const xrt_core::device *device)
     }
     num_scu++;
     if (num_scu == psKernels.at(psk_inst).pkd_num_instances) {
-        num_scu = 0;
-        psk_inst++;
+      //Handled all instances of a PS Kernel, so next is a new PS Kernel
+      num_scu = 0;
+      psk_inst++;
     }
   }
 
