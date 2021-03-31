@@ -28,6 +28,7 @@
 namespace {
 
 namespace pt = boost::property_tree;
+using tile_type = xrt_core::edge::aie::tile_type;
 using gmio_type = xrt_core::edge::aie::gmio_type;
 using plio_type = xrt_core::edge::aie::plio_type;
 using counter_type = xrt_core::edge::aie::counter_type;
