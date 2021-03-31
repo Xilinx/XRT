@@ -3,6 +3,7 @@
 import sys
 import traceback
 import uuid
+import numpy
 # found in PYTHONPATH
 import pyxrt
 
@@ -19,7 +20,7 @@ def runKernel(opt):
     elem_num = 4096
     size = ctypes.sizeof(ctypes.c_int) * elem_num
 
-    obj = pyxrt.bo(d, size, pyxrt.bo.normal, simple.group_id(0))
+    obj = pyxrt.bo(d, size, pyxrt.bo.normal, swizzle.group_id(0))
 
     buf = obj.map()
     ctypes.memset(buf, 0, size)
