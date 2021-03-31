@@ -166,6 +166,7 @@ namespace xdp {
     // For Device Events, find matching start for end event
     XDP_EXPORT void markDeviceEventStart(uint64_t slotID, VTFEvent* event);
     XDP_EXPORT VTFEvent* matchingDeviceEventStart(uint64_t slotID, VTFEventType type);
+    XDP_EXPORT bool hasMatchingDeviceEventStart(uint64_t traceID, VTFEventType type);
 
     // A lookup into the string table
     XDP_EXPORT uint64_t addString(const std::string& value) ;

@@ -62,6 +62,11 @@ class DeviceEventCreatorFromTrace
 
   void addKernelDataTransferEvent(VTFEventType ty, xclTraceResults& trace, uint32_t slot, int32_t cuId, double hostTimestamp) ;
 
+  void addApproximateCUEndEvents();
+  void addApproximateDataTransferEvents();
+  void addApproximateStreamEndEvents();
+
+  void addApproximateDataTransferEvent(VTFEventType type, uint64_t aimTraceID, int32_t amId, int32_t cuId);
   void addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType,
                                     int32_t cuId, int32_t  amId, uint64_t cuLastTimestamp,
                                     uint64_t &asmAppxLastTransTimeStamp, bool &unfinishedASMevents);
