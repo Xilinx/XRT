@@ -128,7 +128,7 @@ namespace xdp {
 
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d) :
     db(d), runSummary(nullptr), systemDiagram(""),
-    softwareEmulationDeviceName("")
+    traceBufferSize(""), softwareEmulationDeviceName("")
   {
 #ifdef _WIN32
     pid = _getpid() ;

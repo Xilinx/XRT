@@ -47,6 +47,7 @@
 #include "tracedefs.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
+#include "xdp/profile/database/database.h"
 
 #include <iostream>
 #include <cstdio>
@@ -99,13 +100,15 @@ uint32_t GetDeviceTraceBufferSize(uint32_t property)
 
 // Get the user-specified trace buffer size by parsing
 // settings from xrt.ini
-uint64_t GetTS2MMBufSize(bool isAIETrace)
+uint64_t GetTS2MMBufSize(bool isAIETrace, VPDatabase* db)
 {
   std::string size_str = isAIETrace ?
                          xrt_core::config::get_aie_trace_buffer_size() :
                          xrt_core::config::get_trace_buffer_size();
   std::smatch pieces_match;
   
+  if (db && !isAIETrace) db->getStaticInfo().setTraceBufferSize(size_str);
+
   // Default is 1M
   uint64_t bytes = TS2MM_DEF_BUF_SIZE;
   // Regex can parse values like : "1024M" "1G" "8192k"
@@ -124,17 +127,21 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
     } catch (const std::exception& ) {
       // User specified number cannot be parsed
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
+      if (db && !isAIETrace) db->getStaticInfo().setTraceBufferSize("1M");
     }
   } else {
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
+    if (db && !isAIETrace) db->getStaticInfo().setTraceBufferSize("1M");
   }
   if (bytes > TS2MM_MAX_BUF_SIZE) {
     bytes = TS2MM_MAX_BUF_SIZE;
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_BIG);
+    if (db && !isAIETrace) db->getStaticInfo().setTraceBufferSize("4095M");
   }
   if (bytes < TS2MM_MIN_BUF_SIZE) {
     bytes = TS2MM_MIN_BUF_SIZE;
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_SMALL);
+    if (db && !isAIETrace) db->getStaticInfo().setTraceBufferSize("8K");
   }
   return bytes;
 }

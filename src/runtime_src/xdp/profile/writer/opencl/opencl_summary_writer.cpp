@@ -24,12 +24,14 @@
 #include <tuple>
 #include <limits>
 #include <sstream>
+#include <regex>
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/statistics_database.h"
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/opencl/opencl_summary_writer.h"
+#include "xdp/profile/device/tracedefs.h"
 
 #include "core/common/system.h"
 #include "core/common/time.h"
@@ -39,6 +41,47 @@
 /* Disable warning for use of localtime */
 #pragma warning(disable : 4996)
 #endif
+
+// Anonymous namespace for helper functions
+namespace {
+  // In the case where the user has not done device offload, but still
+  //  has an xrt.ini value set for trace_buffer_size, perform the same
+  //  parsing as in device_intf.cpp 
+  std::string parseTraceBufferSize() {
+
+    std::string size = xrt_core::config::get_trace_buffer_size() ;
+    std::smatch pieces_match ;
+    const std::regex size_regex("\\s*([0-9]+)\\s*(K|k|M|m|G|g|)\\s*");
+
+    uint64_t bytes = TS2MM_DEF_BUF_SIZE;
+    if (std::regex_match(size, pieces_match, size_regex)) {
+      try {
+        if (pieces_match[2] == "K" || pieces_match[2] == "k") {
+          bytes = std::stoull(pieces_match[1]) * 1024;
+        } else if (pieces_match[2] == "M" || pieces_match[2] == "m") {
+          bytes = std::stoull(pieces_match[1]) * 1024 * 1024;
+        } else if (pieces_match[2] == "G" || pieces_match[2] == "g") {
+          bytes = std::stoull(pieces_match[1]) * 1024 * 1024 * 1024;
+        } else {
+          bytes = std::stoull(pieces_match[1]);
+        }
+      } catch (const std::exception& ) {
+        // User specified number cannot be parsed
+        return "1M" ;
+      }
+    }
+    else {
+      return "1M" ;
+    }
+    if (bytes > TS2MM_MAX_BUF_SIZE) {
+      return "4095M" ;
+    }
+    if (bytes < TS2MM_MIN_BUF_SIZE) {
+      return "8K" ;
+    }
+    return size ;
+  }
+}
 
 namespace xdp {
 
@@ -143,8 +186,14 @@ namespace xdp {
     }
     {
       std::stringstream setting ;
-      setting << "XRT_INI_SETTING,trace_buffer_size,"
-	      << xrt_core::config::get_trace_buffer_size() ;
+      setting << "XRT_INI_SETTING,trace_buffer_size," ;
+      std::string size = db->getStaticInfo().getTraceBufferSize() ;
+      if (size == "") {
+	// We'll have to parse it ourselves and see what the value would 
+        //  have been, but we shouldn't throw any warnings.
+        size = parseTraceBufferSize();
+      }
+      setting << size ;
       iniSettings.push_back(setting.str()) ;
     }
     {

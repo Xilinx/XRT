@@ -479,6 +479,7 @@ namespace xdp {
     std::set<uint64_t> commandQueueAddresses ;
     std::set<std::string> enqueuedKernels ; 
     std::map<uint64_t, uint64_t> contextIdToNumDevices ;
+    std::string traceBufferSize ;
 
     // For OpenCL software emulation, we need a tiny bit of device info
     std::string softwareEmulationDeviceName ; 
@@ -520,6 +521,9 @@ namespace xdp {
     inline uint64_t getApplicationStartTime() { return applicationStartTime ; }
     inline void setApplicationStartTime(uint64_t t)
       { applicationStartTime = t ; }
+    inline std::string getTraceBufferSize() { return traceBufferSize ; }
+    inline void setTraceBufferSize(const std::string& size)
+      { traceBufferSize = size ; }
     inline std::vector<std::pair<std::string, std::string>>& getOpenedFiles() 
       { return openedFiles ; }
     inline std::string getSystemDiagram() { return systemDiagram ; }
