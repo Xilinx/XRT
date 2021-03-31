@@ -21,7 +21,6 @@
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
 #include "core/common/utils.h"
-#include "core/pcie/linux/scan.h"
 #include "ps_kernel.h"
 
 namespace qr = xrt_core::query;
@@ -137,16 +136,8 @@ int
 getPSKernels(std::vector<ps_kernel_data> &psKernels, const xrt_core::device *device)
 {
     std::string errmsg;
-    std::vector<char> buf;
 
-    pcidev::get_dev(device->get_device_id())->sysfs_get("icap", "ps_kernel", errmsg, buf);
-    if (!errmsg.empty()) {
-        std::cout << errmsg << std::endl;
-        return -EINVAL;
-    }
-    if (buf.empty())
-        return 0;
-
+    std::vector<char> buf = xrt_core::device_query<xrt_core::query::ps_kernel>(device);
     const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
     if(map->pkn_count < 0)
         return -EINVAL;
