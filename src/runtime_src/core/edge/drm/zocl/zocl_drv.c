@@ -930,6 +930,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	}
 	DRM_INFO("PR Isolation addr 0x%llx", zdev->pr_isolation_addr);
 
+	zdev->partial_overlay_id = -1;
+	zdev->full_overlay_id  = -1;
+
 	/* Initialzie IOMMU */
 	if (iommu_present(&platform_bus_type)) {
 		/*
