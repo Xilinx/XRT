@@ -59,10 +59,12 @@ execute_process(COMMAND ${UNAME} -r
 # Static linking creates and installs static tools and libraries. The
 # static libraries have system boost dependencies which must be
 # resolved in final target.  The tools (currently xbutil2 and xbmgmt2)
-# will be statically linked.
+# will be statically linked.  Enabled only for ubuntu.
 option(XRT_STATIC_BUILD "Enable static building of XRT" OFF)
-if (DEFINED ENV{XRT_STATIC_BUILD})
-  CMAKE_MINIMUM_REQUIRED(VERSION 3.16.0)
+if ( (${CMAKE_VERSION} VERSION_GREATER "3.16.0")
+    AND (${XRT_NATIVE_BUILD} STREQUAL "yes")
+    AND (${LINUX_FLAVOR} MATCHES "^(Ubuntu)")
+    )
   message("-- Enabling static artifacts of XRT")
   set(XRT_STATIC_BUILD ON)
 endif()
@@ -80,6 +82,18 @@ if (DEFINED ENV{XRT_BOOST_INSTALL})
   find_package(Boost
     HINTS $ENV{XRT_BOOST_INSTALL}
     REQUIRED COMPONENTS system filesystem program_options)
+
+  # A bug in FindBoost maybe?  Doesn't set Boost_LIBRARY_DIRS when
+  # Boost install has only static libraries. For static tool linking
+  # this variable is needed in order for linker to locate the static
+  # libraries.  Another bug in FindBoost fails to find static
+  # libraries when shared ones are present too.
+  if (Boost_FOUND AND "${Boost_LIBRARY_DIRS}" STREQUAL "")
+    set (Boost_LIBRARY_DIRS $ENV{XRT_BOOST_INSTALL}/lib)
+  endif()
+
+  # Some later versions of boost spews warnings form property_tree
+  add_compile_options("-DBOOST_BIND_GLOBAL_PLACEHOLDERS")
 else()
   find_package(Boost 
     REQUIRED COMPONENTS system filesystem program_options)

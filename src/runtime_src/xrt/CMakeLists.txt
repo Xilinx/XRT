@@ -9,41 +9,44 @@ if (NOT WIN32)
 endif()
 
 set(XRT_XRT_DEVICE_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/device")
-set(XRT_XRT_SCHED_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/scheduler")
 set(XRT_XRT_UTIL_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/util")
 set(XRT_XRT_CPP_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/xrt++")
 
-file(GLOB XRT_XRT_DEVICE_FILES
-  "${XRT_XRT_DEVICE_DIR}/*.h"
-  "${XRT_XRT_DEVICE_DIR}/*.cpp"
-  )
-
-file(GLOB XRT_XRT_SCHED_FILES
-  "${XRT_XRT_SCHED_DIR}/*.h"
-  "${XRT_XRT_SCHED_DIR}/*.cpp"
-  )
-
-file(GLOB XRT_XRT_UTIL_FILES
-  "${XRT_XRT_UTIL_DIR}/*.h"
+file(GLOB XRT_XRT_ALL_SRC_SHARED
+  "${XRT_XRT_DEVICE_DIR}/device.cpp"
+  "${XRT_XRT_DEVICE_DIR}/hal.cpp"
+  "${XRT_XRT_DEVICE_DIR}/hal2.cpp"
+  "${XRT_XRT_DEVICE_DIR}/halops2.cpp"
   "${XRT_XRT_UTIL_DIR}/*.cpp"
-  )
-
-file(GLOB XRT_XRT_CPP_FILES
-  "${XRT_XRT_CPP_DIR}/*.hpp"
   "${XRT_XRT_CPP_DIR}/*.cpp"
   )
 
-set(XRT_XRT_ALL_SRC
-  ${XRT_XRT_DEVICE_FILES}
-  ${XRT_XRT_SCHED_FILES}
-  ${XRT_XRT_UTIL_FILES}
-  ${XRT_XRT_CPP_FILES}
+file(GLOB XRT_XRT_ALL_SRC_STATIC
+  "${XRT_XRT_DEVICE_DIR}/device.cpp"
+  "${XRT_XRT_DEVICE_DIR}/hal_static.cpp"
+  "${XRT_XRT_DEVICE_DIR}/hal2.cpp"
+  "${XRT_XRT_DEVICE_DIR}/halops2_static.cpp"
+  "${XRT_XRT_UTIL_DIR}/*.cpp"
+  "${XRT_XRT_CPP_DIR}/*.cpp"
   )
 
 add_compile_options("-DXRT_SOURCE")
 
+if (NOT WIN32)
+set_source_files_properties(${XRT_XRT_DEVICE_DIR}/halops2_static.cpp PROPERTIES
+  COMPILE_FLAGS -Wno-deprecated-declarations
+  )
+set_source_files_properties(${XRT_XRT_DEVICE_DIR}/hal_static.cpp PROPERTIES
+  COMPILE_FLAGS -Wno-unused
+  )
+endif()
+
 add_library(xrt++ SHARED
-  ${XRT_XRT_ALL_SRC}
+  ${XRT_XRT_ALL_SRC_SHARED}
+  )
+
+add_library(xrt++_static STATIC
+  ${XRT_XRT_ALL_SRC_STATIC}
   )
 
 target_link_libraries(xrt++
@@ -62,7 +65,7 @@ install(TARGETS xrt++
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install(TARGETS xrt++
+install(TARGETS xrt++ xrt++_static
   EXPORT xrt-dev-targets
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}

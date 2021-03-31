@@ -17,20 +17,19 @@
 #ifndef HAL_DEVICE_OFFLOAD_DOT_H
 #define HAL_DEVICE_OFFLOAD_DOT_H
 
-namespace xdphaldeviceoffload {
-
-  void load_xdp_hal_device_offload() ;
-  void register_hal_device_offload_functions(void* handle) ;
-  void hal_device_offload_warning_function() ;
-  int  hal_device_offload_error_function();
-
-} // end xdphaldeviceoffload
-
-namespace xdphal {
-
+namespace xdp {
+namespace hal {
   void flush_device(void* handle) ;
   void update_device(void* handle) ;
 
-} // end namespace xdphal
+namespace device_offload {
+  void load() ;
+  void register_functions(void* handle) ;
+  void warning_function() ;
+  int  error_function();
+
+} // end namespace device_offload
+} // end namespace hal
+} // end namespace xdp
 
 #endif

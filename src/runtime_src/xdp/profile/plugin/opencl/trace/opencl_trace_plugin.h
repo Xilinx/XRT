@@ -25,7 +25,6 @@ namespace xdp {
   {
   private:
     bool continuous_trace ;
-    unsigned int trace_dump_int_s;
 
   protected:
     virtual void emulationSetup() ;

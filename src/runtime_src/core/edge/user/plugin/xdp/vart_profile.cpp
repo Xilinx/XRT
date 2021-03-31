@@ -17,23 +17,27 @@
 #include "vart_profile.h"
 #include "core/common/module_loader.h"
 
-namespace xdpvartprofile {
+namespace xdp {
+namespace vart {
+namespace profile {
 
-  void load_xdp_vart_plugin()
+  void load()
   {
     static xrt_core::module_loader xdp_vart_loader("xdp_vart_plugin",
-						    register_vart_callbacks,
-						    warning_vart_callbacks) ;
+						    register_callbacks,
+						    warning_callbacks) ;
   }
 
-  void register_vart_callbacks(void* /*handle*/)
+  void register_callbacks(void* /*handle*/)
   {
     // No callbacks in VART profiling. The plugin is always active.
   }
 
-  void warning_vart_callbacks()
+  void warning_callbacks()
   {
     // No warnings for VART profiling
   }
 
-} // end namespace xdpvartprofile
+} // end namespace profile
+} // end namespace vart
+} // end namespace xdp

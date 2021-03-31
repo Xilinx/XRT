@@ -17,12 +17,14 @@
 #ifndef NOC_PROFILE_DOT_H
 #define NOC_PROFILE_DOT_H
 
-namespace xdpnocprofile {
-
-  void load_xdp_noc_plugin();
-  void register_noc_callbacks(void* handle);
-  void warning_noc_callbacks();
-
-} // end namespace xdpnocprofile
+namespace xdp {
+namespace noc {
+namespace profile {
+  void load();
+  void register_callbacks(void* handle);
+  void warning_callbacks();
+} // end namespace profile
+} // end namespace noc
+} // end namespace xdp
 
 #endif

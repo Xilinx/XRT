@@ -92,10 +92,11 @@ namespace xdp {
     XDP_EXPORT virtual ~VTFEvent() ;
 
     // Getters and Setters
-    inline double       getTimestamp()   const { return timestamp ; }
-    inline uint64_t     getEventId()           { return id ; } 
-    inline void         setEventId(uint64_t i) { id = i ; }
-    inline VTFEventType getEventType()         { return type; }
+    inline double       getTimestamp()    const { return timestamp ; }
+    inline void         setTimestamp(double ts) { timestamp = ts ; }
+    inline uint64_t     getEventId()            { return id ; }
+    inline void         setEventId(uint64_t i)  { id = i ; }
+    inline VTFEventType getEventType()          { return type; }
 
     // Functions that can be used as filters
     virtual bool isUserEvent()       { return false ; }

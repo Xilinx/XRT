@@ -1072,7 +1072,7 @@ print_and_out:
  * [1  ]      : number of cq slots
  * [1  ]      : number of cus
  * [#numcus]  : cu execution stats (number of executions)
- * [#numcus]  : cu status (1: running, 0: idle)
+ * [#numcus]  : cu status (1: running, 0: idle, -1: crashed)
  * [#slots]   : command queue slot status
  */
 static void

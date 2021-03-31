@@ -16,9 +16,9 @@
 
 // driver includes
 #include "xrt.h"
-#include "experimental/xrt_kernel.h"
+#include "xrt/xrt_kernel.h"
 #include "experimental/xrt_xclbin.h"
-#include "experimental/xrt_device.h"
+#include "xrt/xrt_device.h"
 #include "xclbin.h"
 
 #include <fstream>

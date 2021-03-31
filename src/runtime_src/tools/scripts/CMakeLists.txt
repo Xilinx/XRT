@@ -8,7 +8,6 @@ set(XRT_LOADER_SCRIPTS
   loader)
 
 set (XRT_SCRIPTS
-  xrtdeps.sh
   plp_program.sh)
 
 set(XBRESET

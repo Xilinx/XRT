@@ -159,15 +159,12 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 	int i, j;
 
 	scmd = (struct ert_configure_sk_cmd *)xcmd->execbuf;
+	mutex_lock(&scu_mgmt->lock);
 	for (i = 0; i < scmd->num_image; i++) {
 		struct config_sk_image *cp = &scmd->image[i];
 
 		for (j = 0; j < cp->num_cus; j++) {
 			int scu_idx = j + cp->start_cuidx;
-
-			/* TODO: Why continue? */
-			if (strlen(scu_mgmt->name[scu_idx]) > 0)
-				continue;
 
 			/*
 			 * TODO: Need consider size limit of the name.
@@ -181,6 +178,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 			scu_mgmt->usage[i] = 0;
 		}
 	}
+	mutex_unlock(&scu_mgmt->lock);
 
 	return 0;
 }
@@ -552,10 +550,7 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 	ret = wait_for_completion_interruptible(&kds->comp);
 	if (ret == -ERESTARTSYS && !kds->ert_disable) {
 		kds->ert->abort(kds->ert, client, NO_INDEX);
-		do {
-			kds_info(xcmd->client, "Command not finished");
-			msleep(500);
-		} while (ecmd->state < ERT_CMD_STATE_COMPLETED);
+		wait_for_completion(&kds->comp);
 		bad_state = kds->ert->abort_done(kds->ert, client, NO_INDEX);
 		if (bad_state)
 			kds->bad_state = 1;
@@ -700,6 +695,42 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 	--client->num_ctx;
 	kds_info(client, "Client pid(%d) del context CU(0x%x)",
 		 pid_nr(client->pid), cu_idx);
+	return 0;
+}
+
+int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
+		    int idx, unsigned long size, u32 *addrp)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+
+	BUG_ON(!mutex_is_locked(&client->lock));
+	/* client has opening context. xclbin should be locked */
+	if (!client->xclbin_id) {
+		kds_err(client, "client has no opening context\n");
+		return -EINVAL;
+	}
+
+	if (idx >= cu_mgmt->num_cus) {
+		kds_err(client, "cu(%d) out of range\n", idx);
+		return -EINVAL;
+	}
+
+	if (!test_bit(idx, client->cu_bitmap)) {
+		kds_err(client, "cu(%d) isn't reserved\n", idx);
+		return -EINVAL;
+	}
+
+	mutex_lock(&cu_mgmt->lock);
+	/* WORKAROUND: If rw_shared is true, allow map shared CU */
+	if (!cu_mgmt->rw_shared && !(cu_mgmt->cu_refs[idx] & CU_EXCLU_MASK)) {
+		kds_err(client, "cu(%d) isn't exclusively reserved\n", idx);
+		mutex_unlock(&cu_mgmt->lock);
+		return -EINVAL;
+	}
+	mutex_unlock(&cu_mgmt->lock);
+
+	*addrp = kds_get_cu_addr(kds, idx);
+
 	return 0;
 }
 
@@ -870,15 +901,9 @@ int kds_fini_ert(struct kds_sched *kds)
 
 void kds_reset(struct kds_sched *kds)
 {
-	int idx;
-
 	kds->bad_state = 0;
 	kds->ert_disable = true;
 	kds->ini_disable = false;
-
-	/* TODO: Do we still need this in new KDS? */
-	for (idx = 0; idx < MAX_CUS; ++idx)
-		kds->scu_mgmt.name[idx][0] = 0;
 }
 
 static int kds_fa_assign_plram(struct kds_sched *kds)

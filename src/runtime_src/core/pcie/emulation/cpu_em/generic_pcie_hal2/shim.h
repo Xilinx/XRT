@@ -352,6 +352,9 @@ namespace xclcpuemhal2 {
       //_xclbin_uuid = xclbin_uuid;
       _graph = graph;
       graphHandle = mGraphHandle++;
+      _state = graph_state::stop;
+      _name = "";
+      _startTime= 0;
     }
     xclcpuemhal2::CpuemShim*  getDeviceHandle() {  return _deviceHandle;  }
     const char*  getGraphName() { return _graph; }

@@ -20,6 +20,7 @@
 
 #include <stdexcept>
 #include "profile_ip_access.h"
+#include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
 
@@ -70,7 +71,7 @@ public:
     virtual void showStatus();	// ??
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
-    void parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector);
+    void parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector);
 
     void setTraceFormat(uint32_t tf) { mTraceFormat = tf; }
     bool supportsCircBuf() { return major_version >= 1 && minor_version > 0;}
@@ -84,7 +85,7 @@ private:
     void write32(uint64_t offset, uint32_t val);
 
 protected:
-    void parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result);
+    void parsePacketClockTrain(uint64_t packet);
     void parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result);
     uint64_t seekClockTraining(uint64_t* arr, uint64_t count);
 
@@ -92,7 +93,11 @@ protected:
     uint64_t mPacketFirstTs = 0;
     bool mclockTrainingdone = false;
     uint32_t mModulus = 0;
-    uint64_t mPartialTs = 0;
+
+    // Since clock training packets can be interspersed with other packets,
+    //  we need to keep track of what we see until we see all four 
+    //  clock training packets
+    xclTraceResults partialResult = {};
 };
 
 } //  xdp

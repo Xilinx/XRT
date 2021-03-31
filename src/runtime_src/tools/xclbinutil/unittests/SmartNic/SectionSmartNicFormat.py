@@ -35,11 +35,12 @@ def main():
 
   step = "1) Read in the JSON file, write out the CBOR image, and write out the JSON-to-CBOR-to-JSON file"
 
-  inputJSON = os.path.join(args.resource_dir, "smartnic_all_syntax.json")
-  outputJSON = "smartnic_all_syntax_output.json"
-  outputCBOR = "smartnic_all_syntax_output.cbor"
+  inputJSON = os.path.join(args.resource_dir, "smartnic_all_format.json")
 
-  cmd = [xclbinutil, "--add-section", "SMARTNIC:JSON:"+inputJSON, "--dump-section", "SMARTNIC:RAW:"+outputCBOR, "--dump-section", "SMARTNIC:JSON:"+outputJSON, "--force"]
+  outputJSON = "smartnic_all_format_output.json"
+  outputCBOR = "smartnic_all_format_output.cbor"
+
+  cmd = [xclbinutil, "--add-section", "SMARTNIC:JSON:" + inputJSON, "--dump-section", "SMARTNIC:RAW:" + outputCBOR, "--dump-section", "SMARTNIC:JSON:" + outputJSON, "--force"]
   execCmd(step, cmd)
 
   # Validate that the round trip files are identical
@@ -105,8 +106,14 @@ def jsonFileCompare(file1, file2):
 
       raise Exception("Error: The two files are not the same")
 
+def testDivider():
+  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
+
 def execCmd(pretty_name, cmd):
+  testDivider()
   print(pretty_name)
+  testDivider()
   cmdLine = ' '.join(cmd)
   print(cmdLine)
   proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

@@ -57,6 +57,8 @@
 #define CU_AP_READY	(0x1 << 3)
 #define CU_AP_CONTINUE	(0x1 << 4)
 #define CU_AP_RESET	(0x1 << 5)
+/* Special macro(s) which not defined by HLS CU */
+#define CU_AP_CRASHED	(0xFFFFFFFF)
 
 #define CU_INTR_DONE  0x1
 #define CU_INTR_READY 0x2
@@ -199,6 +201,7 @@ struct xrt_cu_info {
 	int			 cu_idx;
 	int			 inst_idx;
 	u64			 addr;
+	size_t			 size;
 	u32			 protocol;
 	u32			 intr_id;
 	u32			 is_m2m;

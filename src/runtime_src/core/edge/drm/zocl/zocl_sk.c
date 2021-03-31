@@ -248,8 +248,11 @@ zocl_fini_soft_kernel(struct drm_device *drm)
 		sk->sk_cu[cu_idx] = NULL;
 	}
 
-	for (i = 0; i < sk->sk_nimg; i++)
+	for (i = 0; i < sk->sk_nimg; i++) {
+		if (IS_ERR(&sk->sk_img[i].si_bo))
+			continue;
 		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&sk->sk_img[i].si_bo->gem_base);
+	}
 	kfree(sk->sk_img);
 
 	mutex_unlock(&sk->sk_lock);

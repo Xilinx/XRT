@@ -109,20 +109,20 @@ namespace xdp {
   }
 
   void DeviceInfo::addTraceGMIO(uint32_t id, uint16_t col, uint16_t num,
-				uint16_t stream, uint16_t len)
+                                uint16_t stream, uint16_t len)
   {
     TraceGMIO* traceGmio = new TraceGMIO(id, col, num, stream, len);
     gmioList.push_back(traceGmio);
   }
 
   void DeviceInfo::addAIECounter(uint32_t i, uint16_t col, uint16_t r,
-				 uint8_t num, uint8_t start, uint8_t end,
-				 uint8_t reset, double freq,
-				 const std::string& mod,
-				 const std::string& aieName)
+                                 uint8_t num, uint8_t start, uint8_t end,
+                                 uint8_t reset, double freq,
+                                 const std::string& mod,
+                                 const std::string& aieName)
   {
       AIECounter* aie = new AIECounter(i, col, r, num, start, end,
-				       reset, freq, mod, aieName);
+                                       reset, freq, mod, aieName);
       aieList.push_back(aie);
   }
 
@@ -170,10 +170,10 @@ namespace xdp {
       boost::property_tree::read_json(ss, pt);
 
       std::string version =
-	pt.get<std::string>("build_metadata.xclbin.generated_by.version", "") ;
+        pt.get<std::string>("build_metadata.xclbin.generated_by.version", "") ;
 
       if (version == "" || version.find(".") == std::string::npos)
-	return false ;
+        return false ;
 
       // The stod function handles strings that have one decimal point
       //  or multiple decimal points and return only the major number
@@ -217,7 +217,7 @@ namespace xdp {
       if ((device.second)->loadedXclbins.size() <= 0) continue ;
       for (auto cu : (device.second)->loadedXclbins.back()->cus)
       {
-	if ((cu.second)->stallEnabled()) return true ;
+        if ((cu.second)->stallEnabled()) return true ;
       }
     }
     return false ;
@@ -241,7 +241,7 @@ namespace xdp {
     // We need to update the device, but if we had an xclbin previously loaded
     //  then we need to mark it
     if ((deviceInfo.find(deviceId) != deviceInfo.end()) &&
-	deviceInfo[deviceId]->loadedXclbins.size() >= 1) {
+        deviceInfo[deviceId]->loadedXclbins.size() >= 1) {
       (db->getDynamicInfo()).markXclbinEnd(deviceId) ;
     }
 
@@ -271,7 +271,7 @@ namespace xdp {
         if(clk->m_type != CT_DATA) {
           continue;
         }
-	currentXclbin->clockRateMHz = clk->m_freq_Mhz ;
+        currentXclbin->clockRateMHz = clk->m_freq_Mhz ;
       }
     } else {
       currentXclbin->clockRateMHz = 300;
@@ -292,7 +292,8 @@ namespace xdp {
 
     devInfo->addXclbin(currentXclbin) ;
 
-    if (!initializeProfileMonitors(devInfo, device)) return ;
+    initializeProfileMonitors(devInfo, device);
+    devInfo->isReady = true;
   }
 
   // Return true if we should reset the device information.
@@ -306,8 +307,8 @@ namespace xdp {
       DeviceInfo *devInfo = itr->second;
       // Are we attempting to load the same xclbin multiple times?
       if (devInfo->loadedXclbins.size() > 0 &&
-	  device->get_xclbin_uuid() == devInfo->loadedXclbins.back()->uuid) {
-	return false ;
+          device->get_xclbin_uuid() == devInfo->loadedXclbins.back()->uuid) {
+        return false ;
       }
     }
     return true;
@@ -456,16 +457,16 @@ namespace xdp {
       std::string z ;
 
       try {
-	auto workGroupSz = kernel.second.get_child("compileWorkGroupSize");
-	x = workGroupSz.get<std::string>("<xmlattr>.x", "");
-	y = workGroupSz.get<std::string>("<xmlattr>.y", "");
-	z = workGroupSz.get<std::string>("<xmlattr>.z", "");
+        auto workGroupSz = kernel.second.get_child("compileWorkGroupSize");
+        x = workGroupSz.get<std::string>("<xmlattr>.x", "");
+        y = workGroupSz.get<std::string>("<xmlattr>.y", "");
+        z = workGroupSz.get<std::string>("<xmlattr>.z", "");
       } catch (...) {
-	// RTL kernels might not have this information, so if the fetch
-	//  fails default to 1:1:1
-	x = "1" ;
-	y = "1" ;
-	z = "1" ;
+        // RTL kernels might not have this information, so if the fetch
+        //  fails default to 1:1:1
+        x = "1" ;
+        y = "1" ;
+        z = "1" ;
       }
 
       // Find the ComputeUnitInstance
@@ -510,8 +511,8 @@ namespace xdp {
             } else {
               devInfo->loadedXclbins.back()->noTraceAMs.push_back(mon);
             }
-	    // Also add it to the list of all AMs
-	    devInfo->loadedXclbins.back()->amList.push_back(mon);
+            // Also add it to the list of all AMs
+            devInfo->loadedXclbins.back()->amList.push_back(mon);
             if(debugIpData->m_properties & XAM_STALL_PROPERTY_MASK) {
               cuObj->setStallEnabled(true);
             }
@@ -560,8 +561,8 @@ namespace xdp {
         } else {
           devInfo->loadedXclbins.back()->noTraceAIMs.push_back(mon);
         }
-	// Also add it to the list of all AIMs
-	devInfo->loadedXclbins.back()->aimList.push_back(mon) ;
+        // Also add it to the list of all AIMs
+        devInfo->loadedXclbins.back()->aimList.push_back(mon) ;
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
         size_t pos = name.find('/');
@@ -655,7 +656,7 @@ namespace xdp {
   }
 
   void VPStaticDatabase::addOpenedFile(const std::string& name,
-				       const std::string& type)
+                                       const std::string& type)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 

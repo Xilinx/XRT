@@ -28,8 +28,6 @@
 namespace {
 
 namespace pt = boost::property_tree;
-using tile_type = xrt_core::edge::aie::tile_type;
-using rtp_type = xrt_core::edge::aie::rtp_type;
 using gmio_type = xrt_core::edge::aie::gmio_type;
 using plio_type = xrt_core::edge::aie::plio_type;
 using counter_type = xrt_core::edge::aie::counter_type;
@@ -49,51 +47,82 @@ read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
   pt::read_json(aie_stream,aie_project);
 }
 
-std::vector<tile_type>
-get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
+adf::driver_config
+get_driver_config(const pt::ptree& aie_meta)
 {
-  std::vector<tile_type> tiles;
+  adf::driver_config driver_config;
+  driver_config.hw_gen = aie_meta.get<uint8_t>("aie_metadata.driver_config.hw_gen");
+  driver_config.base_address = aie_meta.get<uint64_t>("aie_metadata.driver_config.base_address");
+  driver_config.column_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.column_shift");
+  driver_config.row_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.row_shift");
+  driver_config.num_columns = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_columns");
+  driver_config.num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_rows");
+  driver_config.shim_row = aie_meta.get<uint8_t>("aie_metadata.driver_config.shim_row");
+  driver_config.reserved_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_row_start");
+  driver_config.reserved_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows");
+  driver_config.aie_tile_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_row_start");
+  driver_config.aie_tile_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_num_rows");
+  return driver_config;
+}
+
+adf::graph_config
+get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
+{
+  adf::graph_config graph_config;
 
   for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
     if (graph.second.get<std::string>("name") != graph_name)
       continue;
 
+    graph_config.id = graph.second.get<int>("id");
+    graph_config.name = graph.second.get<std::string>("name");
+
     int count = 0;
     for (auto& node : graph.second.get_child("core_columns")) {
-      tiles.push_back(tile_type());
-      auto& t = tiles.at(count++);
-      t.col = std::stoul(node.second.data());
+      graph_config.coreColumns.push_back(std::stoul(node.second.data()));
+      count++;
     }
 
     int num_tiles = count;
+
     count = 0;
-    for (auto& node : graph.second.get_child("core_rows"))
-      tiles.at(count++).row = std::stoul(node.second.data());
+    for (auto& node : graph.second.get_child("core_rows")) {
+      graph_config.coreRows.push_back(std::stoul(node.second.data()));
+      count++;
+    }
     throw_if_error(count < num_tiles,"core_rows < num_tiles");
 
     count = 0;
-    for (auto& node : graph.second.get_child("iteration_memory_columns"))
-      tiles.at(count++).itr_mem_col = std::stoul(node.second.data());
+    for (auto& node : graph.second.get_child("iteration_memory_columns")) {
+      graph_config.iterMemColumns.push_back(std::stoul(node.second.data()));
+      count++;
+    }
     throw_if_error(count < num_tiles,"iteration_memory_columns < num_tiles");
 
     count = 0;
-    for (auto& node : graph.second.get_child("iteration_memory_rows"))
-      tiles.at(count++).itr_mem_row = std::stoul(node.second.data());
+    for (auto& node : graph.second.get_child("iteration_memory_rows")) {
+      graph_config.iterMemRows.push_back(std::stoul(node.second.data()));
+      count++;
+    }
     throw_if_error(count < num_tiles,"iteration_memory_rows < num_tiles");
 
     count = 0;
-    for (auto& node : graph.second.get_child("iteration_memory_addresses"))
-      tiles.at(count++).itr_mem_addr = std::stoul(node.second.data());
+    for (auto& node : graph.second.get_child("iteration_memory_addresses")) {
+      graph_config.iterMemAddrs.push_back(std::stoul(node.second.data()));
+      count++;
+    }
     throw_if_error(count < num_tiles,"iteration_memory_addresses < num_tiles");
 
     count = 0;
-    for (auto& node : graph.second.get_child("multirate_triggers"))
-      tiles.at(count++).is_trigger = (node.second.data() == "true");
+    for (auto& node : graph.second.get_child("multirate_triggers")) {
+      graph_config.triggered.push_back(node.second.data() == "true");
+      count++;
+    }
     throw_if_error(count < num_tiles,"multirate_triggers < num_tiles");
 
   }
 
-  return tiles;
+  return graph_config;
 }
 
 int
@@ -110,44 +139,51 @@ get_graph_id(const pt::ptree& aie_meta, const std::string& graph_name)
   return -1;
 }
 
-std::vector<rtp_type>
-get_rtp(const pt::ptree& aie_meta)
+std::unordered_map<std::string, adf::rtp_config>
+get_rtp(const pt::ptree& aie_meta, int graph_id)
 {
-  std::vector<rtp_type> rtps;
+  std::unordered_map<std::string, adf::rtp_config> rtps;
 
   for (auto& rtp_node : aie_meta.get_child("aie_metadata.RTPs")) {
-    rtp_type rtp;
+    if (rtp_node.second.get<int>("graph_id") != graph_id)
+      continue;
 
-    rtp.name = rtp_node.second.get<std::string>("port_name");
-    rtp.selector_row = rtp_node.second.get<uint16_t>("selector_row");
-    rtp.selector_col = rtp_node.second.get<uint16_t>("selector_column");
-    rtp.selector_lock_id = rtp_node.second.get<uint16_t>("selector_lock_id");
-    rtp.selector_addr = rtp_node.second.get<uint64_t>("selector_address");
+    adf::rtp_config rtp;
+    rtp.portId = rtp_node.second.get<int>("port_id");
+    rtp.aliasId = rtp_node.second.get<int>("alias_id");
+    rtp.portName = rtp_node.second.get<std::string>("port_name");
+    rtp.aliasName = rtp_node.second.get<std::string>("alias_name");
+    rtp.graphId = rtp_node.second.get<int>("graph_id");
+    rtp.numBytes = rtp_node.second.get<size_t>("number_of_bytes");
+    rtp.selectorRow = rtp_node.second.get<short>("selector_row");
+    rtp.selectorColumn = rtp_node.second.get<short>("selector_column");
+    rtp.selectorLockId = rtp_node.second.get<unsigned short>("selector_lock_id");
+    rtp.selectorAddr = rtp_node.second.get<size_t>("selector_address");
 
-    rtp.ping_row = rtp_node.second.get<uint16_t>("ping_buffer_row");
-    rtp.ping_col = rtp_node.second.get<uint16_t>("ping_buffer_column");
-    rtp.ping_lock_id = rtp_node.second.get<uint16_t>("ping_buffer_lock_id");
-    rtp.ping_addr = rtp_node.second.get<uint64_t>("ping_buffer_address");
+    rtp.pingRow = rtp_node.second.get<short>("ping_buffer_row");
+    rtp.pingColumn = rtp_node.second.get<short>("ping_buffer_column");
+    rtp.pingLockId = rtp_node.second.get<unsigned short>("ping_buffer_lock_id");
+    rtp.pingAddr = rtp_node.second.get<size_t>("ping_buffer_address");
 
-    rtp.pong_row = rtp_node.second.get<uint16_t>("pong_buffer_row");
-    rtp.pong_col = rtp_node.second.get<uint16_t>("pong_buffer_column");
-    rtp.pong_lock_id = rtp_node.second.get<uint16_t>("pong_buffer_lock_id");
-    rtp.pong_addr = rtp_node.second.get<uint64_t>("pong_buffer_address");
+    rtp.pongRow = rtp_node.second.get<short>("pong_buffer_row");
+    rtp.pongColumn = rtp_node.second.get<short>("pong_buffer_column");
+    rtp.pongLockId = rtp_node.second.get<unsigned short>("pong_buffer_lock_id");
+    rtp.pongAddr = rtp_node.second.get<size_t>("pong_buffer_address");
 
-    rtp.is_plrtp = rtp_node.second.get<bool>("is_PL_RTP");
-    rtp.is_input = rtp_node.second.get<bool>("is_input");
-    rtp.is_async = rtp_node.second.get<bool>("is_asynchronous");
-    rtp.is_connected = rtp_node.second.get<bool>("is_connected");
-    rtp.require_lock = rtp_node.second.get<bool>("requires_lock");
+    rtp.isPL = rtp_node.second.get<bool>("is_PL_RTP");
+    rtp.isInput = rtp_node.second.get<bool>("is_input");
+    rtp.isAsync = rtp_node.second.get<bool>("is_asynchronous");
+    rtp.isConnect = rtp_node.second.get<bool>("is_connected");
+    rtp.hasLock = rtp_node.second.get<bool>("requires_lock");
 
-    rtps.emplace_back(std::move(rtp));
+    rtps[rtp.portName] = rtp;
   }
 
   return rtps;
 }
 
 std::vector<gmio_type>
-get_gmio(const pt::ptree& aie_meta)
+get_old_gmio(const pt::ptree& aie_meta)
 {
   std::vector<gmio_type> gmios;
 
@@ -168,6 +204,34 @@ get_gmio(const pt::ptree& aie_meta)
     gmio.burst_len = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
 
     gmios.emplace_back(std::move(gmio));
+  }
+
+  return gmios;
+}
+
+std::unordered_map<std::string, adf::gmio_config>
+get_gmios(const pt::ptree& aie_meta)
+{
+  std::unordered_map<std::string, adf::gmio_config> gmios;
+
+  for (auto& gmio_node : aie_meta.get_child("aie_metadata.GMIOs")) {
+    adf::gmio_config gmio;
+
+    // Only get AIE GMIO type, 0: GM->AIE; 1: AIE->GM
+    auto type = (adf::gmio_config::gmio_type)gmio_node.second.get<uint16_t>("type");
+    if (type != adf::gmio_config::gm2aie && type != adf::gmio_config::aie2gm)
+      continue;
+
+    gmio.id = gmio_node.second.get<int>("id");
+    gmio.name = gmio_node.second.get<std::string>("name");
+    gmio.logicalName = gmio_node.second.get<std::string>("logical_name");
+    gmio.type = type;
+    gmio.shimColumn = gmio_node.second.get<short>("shim_column");
+    gmio.channelNum = gmio_node.second.get<short>("channel_number");
+    gmio.streamId = gmio_node.second.get<short>("stream_id");
+    gmio.burstLength = gmio_node.second.get<short>("burst_length_in_16byte");
+
+    gmios[gmio.name] = gmio;
   }
 
   return gmios;
@@ -265,16 +329,28 @@ get_trace_gmio(const pt::ptree& aie_meta)
 
 namespace xrt_core { namespace edge { namespace aie {
 
-std::vector<tile_type>
-get_tiles(const xrt_core::device* device, const std::string& graph_name)
+adf::driver_config
+get_driver_config(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::vector<tile_type>();
+    return adf::driver_config();
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_tiles(aie_meta, graph_name);
+  return ::get_driver_config(aie_meta);
+}
+
+adf::graph_config
+get_graph(const xrt_core::device* device, const std::string& graph_name)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return adf::graph_config();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_graph(aie_meta, graph_name);
 }
 
 int
@@ -289,20 +365,20 @@ get_graph_id(const xrt_core::device* device, const std::string& graph_name)
   return ::get_graph_id(aie_meta, graph_name);
 }
 
-std::vector<rtp_type>
-get_rtp(const xrt_core::device* device)
+std::unordered_map<std::string, adf::rtp_config>
+get_rtp(const xrt_core::device* device, int graph_id)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::vector<rtp_type>();
+    return std::unordered_map<std::string, adf::rtp_config>();
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_rtp(aie_meta);
+  return ::get_rtp(aie_meta, graph_id);
 }
 
 std::vector<gmio_type>
-get_gmios(const xrt_core::device* device)
+get_old_gmios(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
@@ -310,7 +386,19 @@ get_gmios(const xrt_core::device* device)
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_gmio(aie_meta);
+  return ::get_old_gmio(aie_meta);
+}
+
+std::unordered_map<std::string, adf::gmio_config>
+get_gmios(const xrt_core::device* device)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return std::unordered_map<std::string, adf::gmio_config>();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_gmios(aie_meta);
 }
 
 std::vector<plio_type>

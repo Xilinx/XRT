@@ -28,6 +28,10 @@ int zocl_graph_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
         struct sched_client_ctx *client);
 int zocl_graph_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
         struct sched_client_ctx *client);
+int zocl_aie_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client);
+int zocl_aie_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client);
 
 /*
  * read_axlf and ctx should be protected by zdev_xclbin_lock exclusively.
@@ -37,10 +41,11 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_axlf *axlf_obj = data;
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
+	struct sched_client_ctx *client = filp->driver_priv;
 	int ret;
 
 	mutex_lock(&zdev->zdev_xclbin_lock);
-	ret = zocl_xclbin_read_axlf(zdev, axlf_obj);
+	ret = zocl_xclbin_read_axlf(zdev, axlf_obj, client);
 	mutex_unlock(&zdev->zdev_xclbin_lock);
 
 	return ret;
@@ -86,6 +91,12 @@ zocl_ctx_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 
 	case ZOCL_CTX_OP_FREE_GRAPH_CTX:
 		return zocl_graph_free_ctx(zdev, args, filp->driver_priv);
+
+	case ZOCL_CTX_OP_ALLOC_AIE_CTX:
+		return zocl_aie_alloc_ctx(zdev, args, filp->driver_priv);
+
+	case ZOCL_CTX_OP_FREE_AIE_CTX:
+		return zocl_aie_free_ctx(zdev, args, filp->driver_priv);
 
 	default:
 		break;

@@ -298,13 +298,10 @@ kds_interrupt_store(struct device *dev, struct device_attribute *da,
 	if (kds->cu_intr == cu_intr)
 		goto done;
 
-	if (cu_intr) {
-		xocl_ert_user_mb_sleep(xdev);
-		xocl_ert_user_cu_intr_cfg(xdev);
-	} else {
-		xocl_ert_user_mb_wakeup(xdev);
-		xocl_ert_user_ert_intr_cfg(xdev);
-	}
+	if (cu_intr)
+		xocl_ert_user_disable(xdev);
+	else
+		xocl_ert_user_enable(xdev);
 
 	kds->cu_intr = cu_intr;
 	kds_cfg_update(&XDEV(xdev)->kds);

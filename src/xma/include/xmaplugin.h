@@ -208,6 +208,24 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
 int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_in_ms);
 
 /**
+ * xma_plg_work_item_return_code() - This function gets return code of completed cu cmds
+ * previously submitted via xma_plg_schedule_work_item().  If any
+ * cu cmd hasn't completed yet, this function
+ * returns an error.
+ *
+ * @s_handle:      The session handle associated with this plugin instance
+ * @cmd_obj_array: An array of command objects
+ * @num_cu_objs: Num of cu cmd objects in above array of command objects
+ * @num_cu_errors: Num of cu cmd objects which have error codes i.e negative return code
+ *
+ * RETURN:         XMA_SUCCESS on success
+ *
+ * XMA_ERROR if a cu cmd has not completed yet
+ *
+ */
+int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, int32_t num_cu_objs, uint32_t* num_cu_errors);
+
+/**
  * xma_plg_schedule_work_item_with_args() - This function schedules a request to the XRT
  * scheduler for execution of a kernel based on the supplied kernel register map
  * Work items are processed

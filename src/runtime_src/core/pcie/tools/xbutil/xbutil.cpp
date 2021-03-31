@@ -2369,6 +2369,7 @@ int xcldev::xclScheduler(int argc, char *argv[])
         {"cu_intr", required_argument, 0, xcldev::KDS_CU_INTERRUPT},
         {"test", required_argument, 0, xcldev::KDS_TEST},
         {"args", required_argument, 0, xcldev::KDS_ARGS},
+        {"show", no_argument, 0, xcldev::KDS_SHOW},
         {0, 0, 0, 0}
     };
     const char* short_opts = "d:e:k:";
@@ -2378,6 +2379,7 @@ int xcldev::xclScheduler(int argc, char *argv[])
     int kds_echo = -1;
     int ert_disable = -1;
     int cu_intr = -1;
+    int kds_show = -1;
     std::string test;
     std::string args;
 
@@ -2413,10 +2415,25 @@ int xcldev::xclScheduler(int argc, char *argv[])
         case xcldev::KDS_ARGS:
             args = optarg;
             break;
+        case xcldev::KDS_SHOW:
+            kds_show = 1;
+            break;
         default:
             /* This is hidden command, silently exit */
             return -EINVAL;
         }
+    }
+
+    if (kds_show) {
+            std::string value;
+
+            pcidev::get_dev(index)->sysfs_get( "", "ert_disable", errmsg, value);
+            std::cout << "Device[" << index << "] ert_disable: " << value << std::endl;
+
+            pcidev::get_dev(index)->sysfs_get( "", "kds_interrupt", errmsg, value);
+            std::cout << "Device[" << index << "] interrupt mode: " << value << std::endl;
+
+            return 0;
     }
 
     if (kds_echo != -1) {

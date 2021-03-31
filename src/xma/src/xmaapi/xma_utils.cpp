@@ -82,7 +82,7 @@ namespace xma_core {
         ddr_index = INVALID_M1;
         if (kernel_info->soft_kernel) {
             if (req_ddr_index != 0) {
-                xma_logmsg(XMA_WARNING_LOG, prefix.c_str(), "XMA session with soft_kernel only allows ddr bank of zero");
+                xma_logmsg(XMA_DEBUG_LOG, prefix.c_str(), "XMA session with soft_kernel only allows ddr bank of zero. Ignoring non-zero bank input");
             }
             //Only allow ddr_bank == 0;
             ddr_index = 0;
@@ -134,9 +134,11 @@ namespace xma_core {
 
     int32_t check_plugin_version(int32_t plugin_main_ver, int32_t plugin_sub_ver) {
         if ((plugin_main_ver == XMA_LIB_MAIN_VER && plugin_sub_ver < XMA_LIB_SUB_VER) || plugin_main_ver < XMA_LIB_MAIN_VER) {
+            xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Invalid plugin version. Expected plugin version is: %d.%d", XMA_LIB_MAIN_VER, XMA_LIB_SUB_VER);
             return -1;
         }
         if ((plugin_main_ver == XMA_LIB_MAIN_VER && plugin_sub_ver > XMA_LIB_SUB_VER) || plugin_main_ver > XMA_LIB_MAIN_VER) {
+            xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Invalid plugin version. Expected plugin version is: %d.%d", XMA_LIB_MAIN_VER, XMA_LIB_SUB_VER);
             return -2;
         }
         return XMA_SUCCESS;
@@ -562,6 +564,22 @@ int32_t check_all_execbo(XmaSession s_handle) {
                         ebo.in_use = false;
                         cu_cmd->state = ERT_CMD_STATE_MAX;
                         priv1->CU_cmds.erase(ebo.cu_cmd_id1);
+                        priv1->num_cu_cmds--;
+                    } else if (cu_cmd->state == ERT_CMD_STATE_SKERROR) {
+                        //If PS Kernel error, add cmd obj to CU_error_cmds map; Right now this is only for PS Kernels
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, PS Kernel error code: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), cu_cmd->return_code);
+                        if (s_handle.session_type < XMA_ADMIN) {
+                            priv1->kernel_complete_count++;
+                            priv1->kernel_complete_total++;
+                        }
+                        notify_execbo_is_free = true;
+                        ebo.in_use = false;
+                        cu_cmd->state = ERT_CMD_STATE_MAX;
+                        auto itr_tmp1 = priv1->CU_error_cmds.emplace(ebo.cu_cmd_id1, std::move(priv1->CU_cmds[ebo.cu_cmd_id1]));
+                        priv1->CU_cmds.erase(ebo.cu_cmd_id1);
+                        itr_tmp1.first->second.cmd_finished = true;
+                        itr_tmp1.first->second.return_code = cu_cmd->return_code;
+                        itr_tmp1.first->second.cmd_state = xma_cmd_state::psk_error;
                         priv1->num_cu_cmds--;
                     } else if (cu_cmd->state == ERT_CMD_STATE_ERROR ||
                     	       cu_cmd->state == ERT_CMD_STATE_ABORT ||

@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: Larry Liu <yliu@xilinx.com>
  *
@@ -107,11 +107,16 @@ struct xfer_versal {
 /*
  * If return 0, we get the expected status.
  * If return -1, the status is set to FAIL.
+ *
+ * @timeout_ms fail if status is not set within timeout(ms)
  */
-static inline int wait_for_status(struct xfer_versal *xv, u8 status)
+static inline int wait_for_status(struct xfer_versal *xv, u8 status,
+		u32 timeout_ms)
 {
 	struct pdi_packet *pkt;
 	u32 header;
+	u32 wait_count = timeout_ms * 100; /* check every 10 us */
+	u32 count = 0;
 
 	pkt = (struct pdi_packet *)&header;
 	for (;;) {
@@ -120,6 +125,11 @@ static inline int wait_for_status(struct xfer_versal *xv, u8 status)
 			return 0;
 		if (pkt->pkt_status == XRT_XFR_PKT_STATUS_FAIL)
 			return -1;
+		udelay(10);
+		if (++count > wait_count) {
+			XV_ERR(xv, "Timeout, packet header is %x", header);
+			return -ETIMEDOUT;
+		}
 	}
 }
 
@@ -169,7 +179,7 @@ static inline void write_data(u32 *addr, u32 *data, size_t sz)
 }
 
 static ssize_t xfer_versal_transfer(struct xfer_versal *xv, const char *data,
-		size_t data_len, u8 flags)
+		size_t data_len, u8 flags, u32 timeout_s)
 {
 	ssize_t len = 0, ret;
 	ssize_t remain = data_len;
@@ -178,10 +188,12 @@ static ssize_t xfer_versal_transfer(struct xfer_versal *xv, const char *data,
 	struct pdi_packet pkt;
 	int mod;
 	int next = 0;
+	int count_t = 0;
 
 	pkt_size = xv->xv_data_size;
 
-	XV_INFO(xv, "start writting data_len: %lu", data_len);
+	XV_INFO(xv, "start writting data_len: %lu, timeout: %us",
+	    data_len, timeout_s);
 
 	while (len < data_len) {
 		tran_size = (remain > pkt_size) ? pkt_size : remain;
@@ -222,8 +234,12 @@ static ssize_t xfer_versal_transfer(struct xfer_versal *xv, const char *data,
 		/* Give up CPU to avoid taking too much CPU cycles */
 		schedule();
 
-		/* wait until the data is fetched by device side */
-		if (wait_for_status(xv, XRT_XFR_PKT_STATUS_IDLE)) {
+		/*
+		 * Wait until the data is fetched by device side
+		 * Set timeout to one second. It should be sufficient
+		 * for device to fetch 32K or 64K data.
+		 */
+		if (wait_for_status(xv, XRT_XFR_PKT_STATUS_IDLE, 1000)) {
 			ret = -EIO;
 			XV_ERR(xv, "Data transfer error");
 			goto done;
@@ -247,6 +263,11 @@ static ssize_t xfer_versal_transfer(struct xfer_versal *xv, const char *data,
 			break;
 
 		msleep(XFER_VERSAL_TIMER_INTERVAL);
+		if (++count_t > timeout_s * 1000 / XFER_VERSAL_TIMER_INTERVAL) {
+			XV_ERR(xv, "Data handle timeout");
+			ret = -ETIMEDOUT;
+			goto done;
+		}
 	}
 
 	XV_INFO(xv, "Data transfer is completed");
@@ -281,7 +302,7 @@ static ssize_t xfer_versal_write(struct file *filp, const char __user *udata,
 	xv->xv_inuse = true;
 	mutex_unlock(&xv->xv_lock);
 
-	if (wait_for_status(xv, XRT_XFR_PKT_STATUS_IDLE)) {
+	if (wait_for_status(xv, XRT_XFR_PKT_STATUS_IDLE, 1000)) {
 		XV_ERR(xv, "OSPI device is not in proper state");
 		ret = -EIO;
 		goto done;
@@ -300,7 +321,9 @@ static ssize_t xfer_versal_write(struct file *filp, const char __user *udata,
 		goto done;
 	}
 
-	ret = xfer_versal_transfer(xv, kdata, data_len, XRT_XFR_PKT_FLAGS_PDI);
+	/* Set timeout 1MB per 30 seconds for flash operation on device side */
+	ret = xfer_versal_transfer(xv, kdata, data_len, XRT_XFR_PKT_FLAGS_PDI,
+	    data_len / 1024 / 1024 * 30);
 
 done:
 	mutex_lock(&xv->xv_lock);
@@ -338,8 +361,9 @@ static int xfer_versal_download_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
+	/* Set timeout 1MB per 2 seconds for loading xclbin and ps kernel */
 	ret = xfer_versal_transfer(xv, u_xclbin, xclbin_len,
-	    XRT_XFR_PKT_FLAGS_XCLBIN);
+	    XRT_XFR_PKT_FLAGS_XCLBIN, xclbin_len / 1024 / 1024 * 2);
 	ret = ret == xclbin_len ? 0 : -EIO;
 
 done:

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -78,6 +78,7 @@ enum class key_type
   kds_mode,
   kds_cu_stat,
   kds_scu_stat,
+  xclbin_full,
 
   xmc_version,
   xmc_board_name,
@@ -202,8 +203,13 @@ enum class key_type
   shared_host_mem,
 
   aie_metadata,
+  aie_reg_read,
   graph_status,
   mailbox_metrics,
+
+  config_mailbox_channel_disable,
+  config_mailbox_channel_switch,
+  cache_xclbin,
 
   clock_timestamp,
   ert_sleep,
@@ -627,6 +633,15 @@ struct mem_topology_raw : request
   get(const device*) const = 0;
 };
 
+struct xclbin_full : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::xclbin_full;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct aie_metadata : request
 {
   using result_type = std::string;
@@ -634,6 +649,18 @@ struct aie_metadata : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct aie_reg_read : request
+{
+  using result_type = uint32_t;
+  using row_type = uint32_t;
+  using col_type = uint32_t;
+  using reg_type = std::string;
+  static const key_type key = key_type::aie_reg_read;
+
+  virtual boost::any
+  get(const device*, const boost::any& row, const boost::any& col, const boost::any& reg) const = 0;
 };
 
 struct graph_status : request
@@ -2151,6 +2178,48 @@ struct mailbox_metrics : request
   {
     return value;
   }
+};
+
+struct config_mailbox_channel_disable : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::config_mailbox_channel_disable;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct config_mailbox_channel_switch : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::config_mailbox_channel_switch;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct cache_xclbin : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::cache_xclbin;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
 };
 
 struct ert_sleep : request

@@ -473,10 +473,13 @@ public:
   static std::shared_ptr<ip_context>
   open_virtual_cu(xrt_core::device* device, const xrt::uuid& xclbin_id)
   {
-    static std::weak_ptr<ip_context> vctx;
-    auto ipctx = vctx.lock();
+    static std::mutex mutex;
+    static std::map<xrt_core::device*, std::weak_ptr<ip_context>> dev2vip;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto& vip = dev2vip[device];
+    auto ipctx = vip.lock();
     if (!ipctx)
-      vctx = ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id));
+      vip = ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id));
     return ipctx;
   }
 
@@ -1453,6 +1456,10 @@ class run_impl
       : data(reinterpret_cast<uint8_t*>(d))
     {}
 
+    virtual
+    ~arg_setter()
+    {}
+
     virtual void
     set_arg_value(const argument& arg, const arg_range<uint8_t>& value) = 0;
 
@@ -2228,7 +2235,7 @@ namespace xrt {
 
 run::
 run(const kernel& krnl)
-  : handle(xdp::native::profiling_wrapper(__func__, "xrt::run",
+  : handle(xdp::native::profiling_wrapper("xrt::run::run",
 					alloc_run, krnl.get_handle()))
 {}
 
@@ -2236,7 +2243,7 @@ void
 run::
 start()
 {
-  xdp::native::profiling_wrapper(__func__, "xrt::run", [this]{
+  xdp::native::profiling_wrapper("xrt::run::start", [this]{
     handle->start();
   });
 }
@@ -2245,7 +2252,7 @@ ert_cmd_state
 run::
 wait(const std::chrono::milliseconds& timeout_ms) const
 {
-  return xdp::native::profiling_wrapper(__func__, "xrt::run",
+  return xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait(timeout_ms);
     });
@@ -2255,7 +2262,7 @@ ert_cmd_state
 run::
 state() const
 {
-  return xdp::native::profiling_wrapper(__func__, "xrt::run", [this]{
+  return xdp::native::profiling_wrapper("xrt::run::state", [this]{
     return handle->state();
   });
 }
@@ -2312,7 +2319,7 @@ void
 run::
 set_event(const std::shared_ptr<event_impl>& event) const
 {
-  xdp::native::profiling_wrapper(__func__, "xrt::run", [this, &event]{
+  xdp::native::profiling_wrapper("xrt::run::set_event", [this, &event]{
     handle->set_event(event);
   });
 }
@@ -2321,20 +2328,20 @@ ert_packet*
 run::
 get_ert_packet() const
 {
-  return xdp::native::profiling_wrapper(__func__, "xrt::run", [this]{
+  return xdp::native::profiling_wrapper("xrt::run::get_ert_packet", [this]{
     return handle->get_ert_packet();
   });
 }
 
 kernel::
 kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
-  : handle(xdp::native::profiling_wrapper(__func__, "xrt::kernel",
+  : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
 	   alloc_kernel, get_device(xdev), xclbin_id, name, mode))
 {}
 
 kernel::
 kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
-  : handle(xdp::native::profiling_wrapper(__func__, "xrt::kernel",
+  : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
 	   alloc_kernel, get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode))
 {}
 
@@ -2342,7 +2349,7 @@ uint32_t
 kernel::
 read_register(uint32_t offset) const
 {
-  return xdp::native::profiling_wrapper(__func__, "xrt::kernel", [this, offset]{
+  return xdp::native::profiling_wrapper("xrt::kernel::read_register", [this, offset]{
     return handle->read_register(offset);
   });
 }
@@ -2351,7 +2358,7 @@ void
 kernel::
 write_register(uint32_t offset, uint32_t data)
 {
-  xdp::native::profiling_wrapper(__func__, "xrt::kernel", [this, offset, data]{
+  xdp::native::profiling_wrapper("xrt::kernel::write_register", [this, offset, data]{
     handle->write_register(offset, data);
   });
 }
@@ -2361,7 +2368,7 @@ int
 kernel::
 group_id(int argno) const
 {
-  return xdp::native::profiling_wrapper(__func__, "xrt::kernel", [this, argno]{
+  return xdp::native::profiling_wrapper("xrt::kernel::group_id", [this, argno]{
     return handle->group_id(argno);
   });
 }
@@ -2370,7 +2377,7 @@ uint32_t
 kernel::
 offset(int argno) const
 {
-  return xdp::native::profiling_wrapper(__func__, "xrt::kernel", [this, argno]{
+  return xdp::native::profiling_wrapper("xrt::kernel::offset", [this, argno]{
     return handle->arg_offset(argno);
   });
 }
@@ -2384,7 +2391,7 @@ xrtKernelHandle
 xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [dhdl, xclbin_uuid, name]{
       return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::shared);
     });
@@ -2399,7 +2406,7 @@ xrtKernelHandle
 xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [dhdl, xclbin_uuid, name]{
       return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::exclusive);
     });
@@ -2414,7 +2421,7 @@ int
 xrtKernelClose(xrtKernelHandle khdl)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [khdl]{
+    return xdp::native::profiling_wrapper(__func__, [khdl]{
       api::xrtKernelClose(khdl);
       return 0;
     });
@@ -2433,7 +2440,7 @@ xrtRunHandle
 xrtRunOpen(xrtKernelHandle khdl)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [khdl]{
+    return xdp::native::profiling_wrapper(__func__, [khdl]{
       return api::xrtRunOpen(khdl);
     });
   }
@@ -2447,7 +2454,7 @@ int
 xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [khdl, argno]{
+    return xdp::native::profiling_wrapper(__func__, [khdl, argno]{
       return get_kernel(khdl)->group_id(argno);
     });
   }
@@ -2465,7 +2472,7 @@ uint32_t
 xrtKernelArgOffset(xrtKernelHandle khdl, int argno)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [khdl, argno]{
+    return xdp::native::profiling_wrapper(__func__, [khdl, argno]{
       return get_kernel(khdl)->arg_offset(argno);
     });
   }
@@ -2483,7 +2490,7 @@ int
 xrtKernelReadRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t* datap)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [khdl, offset, datap]{
       *datap = get_kernel(khdl)->read_register(offset);
       return 0;
@@ -2503,7 +2510,7 @@ int
 xrtKernelWriteRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t data)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [khdl, offset, data]{
       get_kernel(khdl)->write_register(offset, data);
       return 0;
@@ -2526,7 +2533,7 @@ xrtKernelRun(xrtKernelHandle khdl, ...)
     std::va_list args;
     std::va_list* argptr = &args ;
     va_start(args, khdl);
-    auto result = xdp::native::profiling_wrapper(__func__, nullptr,
+    auto result = xdp::native::profiling_wrapper(__func__,
     [khdl, argptr]{
       auto handle = xrtRunOpen(khdl);
       auto run = get_run(handle);
@@ -2547,7 +2554,7 @@ int
 xrtRunClose(xrtRunHandle rhdl)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
+    return xdp::native::profiling_wrapper(__func__, [rhdl]{
       api::xrtRunClose(rhdl);
       return 0;
     });
@@ -2566,7 +2573,7 @@ ert_cmd_state
 xrtRunState(xrtRunHandle rhdl)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
+    return xdp::native::profiling_wrapper(__func__, [rhdl]{
       return api::xrtRunState(rhdl);
     });
   }
@@ -2580,7 +2587,7 @@ ert_cmd_state
 xrtRunWait(xrtRunHandle rhdl)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
+    return xdp::native::profiling_wrapper(__func__, [rhdl]{
       return api::xrtRunWait(rhdl, 0);
     });
   }
@@ -2594,7 +2601,7 @@ ert_cmd_state
 xrtRunWaitFor(xrtRunHandle rhdl, unsigned int timeout_ms)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl, timeout_ms]{
+    return xdp::native::profiling_wrapper(__func__, [rhdl, timeout_ms]{
       return api::xrtRunWait(rhdl, timeout_ms);
     });
   }
@@ -2610,7 +2617,7 @@ xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
                   void* data)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [rhdl, state, pfn_state_notify, data]{
       api::xrtRunSetCallback(rhdl, state, pfn_state_notify, data);
       return 0;
@@ -2630,7 +2637,7 @@ int
 xrtRunStart(xrtRunHandle rhdl)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [rhdl]{
+    return xdp::native::profiling_wrapper(__func__, [rhdl]{
       api::xrtRunStart(rhdl);
       return 0;
     });
@@ -2652,7 +2659,7 @@ xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
     std::va_list args;
     std::va_list* argptr = &args;
     va_start(args, index);
-    auto result = xdp::native::profiling_wrapper(__func__, nullptr,
+    auto result = xdp::native::profiling_wrapper(__func__,
     [rhdl, index, argptr]{
       auto upd = get_run_update(rhdl);
       upd->update_arg_at_index(index, argptr);
@@ -2675,7 +2682,7 @@ int
 xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [rhdl, index, value, bytes]{
       auto upd = get_run_update(rhdl);
       upd->update_arg_at_index(index, value, bytes);
@@ -2699,7 +2706,7 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
     std::va_list args;
     std::va_list* argptr = &args ;
     va_start(args, index);
-    auto result = xdp::native::profiling_wrapper(__func__, nullptr,
+    auto result = xdp::native::profiling_wrapper(__func__,
     [rhdl, index, argptr]{
       auto run = get_run(rhdl);
       run->set_arg_at_index(index, argptr);
@@ -2722,7 +2729,7 @@ int
 xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [rhdl, index, value, bytes]{
       auto run = get_run(rhdl);
       run->set_arg_at_index(index, value, bytes);
@@ -2743,7 +2750,7 @@ int
 xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [rhdl, index, value, bytes]{
       auto run = get_run(rhdl);
       run->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
@@ -2763,7 +2770,7 @@ xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
 void
 xrtRunGetArgVPP(xrt::run run, int index, void* value, size_t bytes)
 {
-  xdp::native::profiling_wrapper(__func__, nullptr, [run, index, value, bytes]{
+  xdp::native::profiling_wrapper(__func__, [run, index, value, bytes]{
     const auto& rimpl = run.get_handle();
     rimpl->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
   });

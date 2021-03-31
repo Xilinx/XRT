@@ -182,6 +182,8 @@ typedef struct XmaCUCmdObj
 {
     int32_t     cu_index;
     bool        cmd_finished;
+    XmaCmdState cmd_state;
+    int32_t     return_code;
 
     //Below is private area
     uint32_t    cmd_id1;

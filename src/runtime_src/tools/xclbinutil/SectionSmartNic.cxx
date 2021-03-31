@@ -23,6 +23,7 @@
 #include "XclBinUtilities.h"
 #include "CBOR.h"
 #include "RapidJsonUtilities.h"
+#include "ResourcesSmartNic.h"
 
 namespace XUtil = XclBinUtilities;
 
@@ -36,12 +37,6 @@ namespace XUtil = XclBinUtilities;
 #include <rapidjson/writer.h>
 
 #include <fstream>
-
-
-// TODO: Insert JSON Schema here as a string literal
-//static std::string foo = R"~~~~(
-//This is a test
-//)~~~~";
 
 // Static Variables / Classes
 SectionSmartNic::_init SectionSmartNic::_initializer;
@@ -128,169 +123,153 @@ read_file_into_buffer(const std::string& fileName,
 }
 
 static
+void rename_file_node(const std::string & fileNodeName, 
+                      rapidjson::Value &value,
+                      rapidjson::Document::AllocatorType& allocator)
+{
+  // Remove the subname (e.g., _file) from the existing key
+  const static std::string removeSubName = "_file";
+
+  std::string newKey = fileNodeName;              
+  auto index = newKey.find(removeSubName); 
+  if (index == std::string::npos)
+     return;
+
+  newKey.replace(index, removeSubName.size(), "");
+
+  XUtil::TRACE(boost::str(boost::format("Renaming node '%s' to '%s'") % fileNodeName % newKey));
+
+  // Rename keys by swapping their values
+  rapidjson::Value::MemberIterator itrOldKey = value.FindMember(fileNodeName.c_str());
+  value.AddMember(rapidjson::Value(newKey.c_str(), allocator).Move(), itrOldKey->value, allocator);
+  value.RemoveMember(fileNodeName.c_str());
+}
+
+static
 void
 readAndTransposeByteFiles_recursive(const std::string& scope,
-                                    rapidjson::Value& aValue,
-                                    std::vector<std::string>& byteFileEntries,
+                                    rapidjson::Value::MemberIterator itrObject,
+                                    const XclBinUtilities::KeyTypeCollection& keyTypeCollection,
                                     rapidjson::Document::AllocatorType& allocator,
                                     const std::string& relativeFromDir) {
-  XUtil::TRACE((boost::format("-- Scope: %s") % scope).str());
+  XUtil::TRACE((boost::format("BScope: %s") % scope).str());
 
   // A dictionary
-  if (aValue.IsObject()) {
+  if (itrObject->value.IsObject()) {
     std::vector<std::string> renameCollection;
-    for (rapidjson::Value::MemberIterator itr = aValue.MemberBegin(); itr != aValue.MemberEnd(); ++itr) {
-      std::string currentScope = scope + "::" + itr->name.GetString();
-      // Do we have a match
-      if (std::find(byteFileEntries.begin(), byteFileEntries.end(), currentScope) != byteFileEntries.end()) {
-        std::string myString = itr->name.GetString();
-        renameCollection.push_back(myString);
-      }
+    for (rapidjson::Value::MemberIterator itr = itrObject->value.MemberBegin(); itr != itrObject->value.MemberEnd(); ++itr) {
 
-      readAndTransposeByteFiles_recursive(currentScope, itr->value, byteFileEntries, allocator, relativeFromDir);
+      // Look "forward" to see if this dictionary contains the node of interest
+      std::string currentScope = scope + "::" + itr->name.GetString();
+      if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::byte_file) 
+        renameCollection.push_back(std::string(itr->name.GetString()));
+
+      readAndTransposeByteFiles_recursive(scope + "::" + itr->name.GetString(), itr, keyTypeCollection, allocator, relativeFromDir);
     }
 
     // Now that we are out of that "nasty" Iterator loop, rename the updated keys.
-    // TODO: Refactor code to have the new file name be data driven
-    for (const std::string& oldKey : renameCollection) {
-      const static std::string removeSubName = "_file";
-      std::string newKey = oldKey;
-      auto index = newKey.find(removeSubName);
-      if (index == std::string::npos)
-        continue;
-      newKey.replace(index, removeSubName.size(), "");
+    for (const std::string& oldFileNodeName : renameCollection)
+      rename_file_node(oldFileNodeName, itrObject->value, allocator);
 
-      // Now rename keys by swapping their values
-      rapidjson::Value::MemberIterator itrOldKey = aValue.FindMember(oldKey.c_str());
-      aValue.AddMember(rapidjson::Value(newKey.c_str(), allocator).Move(), itrOldKey->value, allocator);
-      aValue.RemoveMember(oldKey.c_str());
-    }
-
-    return;  // -- Return --
+    return;
   }
 
   // An array
-  if (aValue.IsArray()) {
-    for (auto itr = aValue.Begin(); itr != aValue.End(); ++itr) {
-      if (itr->IsObject())
-        readAndTransposeByteFiles_recursive(scope + "[]", *itr, byteFileEntries, allocator, relativeFromDir);
+  if (itrObject->value.IsArray()) {
+    for (auto itr = itrObject->value.Begin(); itr != itrObject->value.End(); ++itr) {
+      std::vector<std::string> renameCollection;
+      rapidjson::Value& attribute = *itr;
+
+      if (!attribute.IsObject()) 
+        continue;
+
+      for (auto itr2 = attribute.MemberBegin(); itr2 != attribute.MemberEnd(); ++itr2) {
+
+        // Look "forward" to see if this dictionary contains the node of interest
+        std::string currentScope = scope + "[]" + itr2->name.GetString();
+        if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::byte_file) 
+          renameCollection.push_back(std::string(itr2->name.GetString()));
+
+        readAndTransposeByteFiles_recursive(scope + "[]" + itr2->name.GetString(), itr2, keyTypeCollection, allocator, relativeFromDir);
+      }
+
+      // Now that we are out of that "nasty" Iterator loop, rename the updated keys.
+      for (const std::string& oldFileNodeName : renameCollection)
+        rename_file_node(oldFileNodeName, attribute, allocator);
     }
-    return;  // -- Return --
+
+    return;  
   }
 
   // End point String
-  if (aValue.IsString()) {
+  if (itrObject->value.IsString()) {
     // Do we have a match
-    if (std::find(byteFileEntries.begin(), byteFileEntries.end(), scope) == byteFileEntries.end())
-      return;  // -- Return --
+    if (get_expected_type(scope, keyTypeCollection) != XUtil::DType::byte_file) 
+      return;  
 
+    // Read file image from disk
     std::vector<char> buffer;
-    read_file_into_buffer(aValue.GetString(), relativeFromDir, buffer);
+    read_file_into_buffer(itrObject->value.GetString(), relativeFromDir, buffer);
 
     // Convert the binary data to hex and re-add
     std::string byteString(buffer.data(), buffer.size());
     byteString = boost::algorithm::hex(byteString);
-    aValue.SetString(byteString.data(), byteString.size(), allocator);
+    itrObject->value.SetString(byteString.data(), byteString.size(), allocator);
 
-    return;    // -- Return --
+    return;  
   }
 }
 
 
 static void
 readAndTransposeByteFiles(rapidjson::Document& doc,
-                          std::vector<std::string>& byteFileEntries,
+                          const XclBinUtilities::KeyTypeCollection& keyTypeCollection,
                           const std::string& dirRelativeFrom) {
-  readAndTransposeByteFiles_recursive("", doc, byteFileEntries, doc.GetAllocator(), dirRelativeFrom);
+  if (!doc.IsObject())
+    return;
+
+  for (auto itr = doc.MemberBegin(); itr != doc.MemberEnd(); ++itr)
+    readAndTransposeByteFiles_recursive(std::string("#") + itr->name.GetString(), itr, keyTypeCollection, doc.GetAllocator(), dirRelativeFrom);
+
 }
 
 void
 SectionSmartNic::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
                                  std::ostringstream& _buf) const {
+  const std::string nodeName = "smartnic";
+
   XUtil::TRACE("");
   XUtil::TRACE("SmartNic : Marshalling From JSON");
 
-  // -- Get the JSON tree associated with the SmartNic section
-  const boost::property_tree::ptree& ptSmartNic = _ptSection.get_child("smartnic");
+  // -- Retrieve only the JSON tree associated with the SmartNic section
+  boost::property_tree::ptree ptSmartNic = _ptSection.get_child(nodeName);
 
   // -- Convert from a boost property tree to a rapidjson document
   std::ostringstream buf;
   boost::property_tree::write_json(buf, ptSmartNic, false);
 
   rapidjson::Document document;
-  const std::string& bufString = buf.str();
-  document.Parse(bufString.c_str());
+  if (document.Parse(buf.str().c_str()).HasParseError()) {
+    throw std::runtime_error("Error: The 'smartnic' JSON format is not valid JSON.");
+  }
 
-  XUtil::TRACE_PrintTree("SmartNic: Pre-RapidJson Transform", document);
+  // -- Transform the JSON elements to their expected primitive value
+  XUtil::KeyTypeCollection keyTypeCollection;
+  XUtil::collect_key_types(getSmartNicSchema(), keyTypeCollection);
 
-  // -- Transform JSON elements back to their primitive values (from strings)
-  // Temporary collection until functionality is added to enable this data
-  // to be obtained from the JSON schema
-  static const XUtil::KeyTypeCollection m_keyTypeCollection = {
-    { "schema_version::major",                               XUtil::DType_INTEGER },
-    { "schema_version::minor",                               XUtil::DType_INTEGER },
-    { "schema_version::patch",                               XUtil::DType_INTEGER },
-    { "extensions[]version_info::minor",                     XUtil::DType_INTEGER },
-    { "extensions[]version_info::patch",                     XUtil::DType_INTEGER },
-    { "extensions[]cam_instances::id",                       XUtil::DType_INTEGER },
-    { "extensions[]cam_instances::base_address",             XUtil::DType_INTEGER },
-    { "extensions[]cam_instances::driver_index",             XUtil::DType_INTEGER },
-    { "extensions[]address_mapping::offset",                 XUtil::DType_INTEGER },
-    { "extensions[]address_mapping::aperture_size_bytes",    XUtil::DType_INTEGER },
-    { "extensions[]messages[]id",                            XUtil::DType_INTEGER },
-    { "extensions[]messages[]param_size_bytes",              XUtil::DType_INTEGER },
-    { "extensions[]resource_classes[]max_count",             XUtil::DType_INTEGER },
-    { "extensions[]resource_classes[]memory_size_bytes",     XUtil::DType_INTEGER },
-    { "extensions[]global_memory_size_bytes",                XUtil::DType_INTEGER },
-    { "extensions[]per_handle_memory_size_bytes",            XUtil::DType_INTEGER },
-    { "softhub_connections[]version",                        XUtil::DType_INTEGER },
-    { "softhub_connections[]id",                             XUtil::DType_INTEGER },
-    { "cam_drivers[]compatible_version",                     XUtil::DType_INTEGER },
-  };
-  XUtil::transform_to_primatives(document, m_keyTypeCollection);
+  XUtil::transform_to_primatives(document, keyTypeCollection);
 
-  XUtil::TRACE_PrintTree("SmartNic: Post-RapidJson Transform", document);
+  // -- Validate the smartnic schema
+  XUtil::validate_against_schema(nodeName, document, getSmartNicSchema());
 
-  // TODO: Insert JSON schema checking here
-
-  // Temporary collection until functionality is added to enable this data
-  // to be obtained from the JSON schema
-  std::vector<std::string> byteFileEntries = {
-    "::extensions[]::cam_instances::config_file",
-    "::extensions[]::setup::ebpf_file",
-    "::extensions[]::background_proc::ebpf_file",
-    "::extensions[]::tear_down::ebpf_file",
-    "::extensions[]::messages[]::ebpf_file",
-    "::extensions[]::resource_classes[]::dtor_file",
-    "::cam_drivers[]::driver_file",
-    "::cam_drivers[]::signature_file",
-  };
-
-  // Read in the byte code
+  // -- Read in the byte code
   boost::filesystem::path p(getPathAndName());
   std::string fromRelativeDir = p.parent_path().string();
-  readAndTransposeByteFiles(document, byteFileEntries, fromRelativeDir);
+  readAndTransposeByteFiles(document, keyTypeCollection, fromRelativeDir);
 
-  XUtil::TRACE_PrintTree("SmartNic: ReadByte-RapidJson Transform", document);
-
-  // Write the CBOR image
-  // Temporary collection until functionality is added to enable this data
-  // to be obtained from the JSON schema
-  static const XUtil::KeyTypeCollection m_encodeKeyTypeCollection = {
-    { "extensions[]::version_info::uuid",                    XUtil::DType_BYTE_STRING },
-    { "extensions[]::features",                              XUtil::DType_BYTE_STRING },
-    { "extensions[]::cam_instances::config",                 XUtil::DType_BYTE_STRING },
-    { "extensions[]::setup::ebpf",                           XUtil::DType_BYTE_STRING },
-    { "extensions[]::background_proc::ebpf",                 XUtil::DType_BYTE_STRING },
-    { "extensions[]::tear_down::ebpf",                       XUtil::DType_BYTE_STRING },
-    { "extensions[]::messages[]::ebpf",                      XUtil::DType_BYTE_STRING },
-    { "extensions[]::resource_classes[]::dtor",              XUtil::DType_BYTE_STRING },
-    { "cam_drivers[]::driver",                               XUtil::DType_BYTE_STRING },
-    { "cam_drivers[]::signature",                            XUtil::DType_BYTE_STRING },
-  };
-
+  // -- Create the cbor buffer
   std::ostringstream buffer;
-  XUtil::write_cbor(document, m_encodeKeyTypeCollection, buffer);
+  XUtil::write_cbor(document, keyTypeCollection, buffer);
 
   // Write the contents to given output stream
   std::string aString = buffer.str();

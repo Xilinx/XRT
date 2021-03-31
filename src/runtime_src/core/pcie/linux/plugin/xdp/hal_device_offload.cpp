@@ -6,21 +6,23 @@
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
 
-namespace xdphaldeviceoffload {
+namespace xdp {
+namespace hal {
+namespace device_offload {
 
-  void load_xdp_hal_device_offload()
+  void load()
   {
     static xrt_core::module_loader
       xdp_hal_device_offload_loader("xdp_hal_device_offload_plugin",
-                                    register_hal_device_offload_functions,
-                                    hal_device_offload_warning_function,
-                                    hal_device_offload_error_function);
+                                    register_functions,
+                                    warning_function,
+                                    error_function);
   }
 
   std::function<void (void*)> update_device_cb ;
   std::function<void (void*)> flush_device_cb ;
  
-  void register_hal_device_offload_functions(void* handle) 
+  void register_functions(void* handle)
   {
     typedef void (*ftype)(void*) ;
     update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateDeviceHAL")) ;
@@ -30,37 +32,33 @@ namespace xdphaldeviceoffload {
     if (xrt_core::dlerror() != NULL) flush_device_cb = nullptr ;
   }
 
-  void hal_device_offload_warning_function()
+  void warning_function()
   {
     // No warnings at this level
   }
 
-  int hal_device_offload_error_function()
+  int error_function()
   {
-    if(xrt_core::config::get_profile() || xrt_core::config::get_timeline_trace()) {
-      // OpenCL profiling and/or trace is enabled in xrt.ini config. So, disable HAL Device Trace Offload as both of these flows are not supported together.
-      return 1;
-    }
     return 0 ;
   }
 
-} // end namespace xdphaldeviceoffload
-
-namespace xdphal {
+} // end namespace device_offload
 
   void flush_device(void* handle)
   {
-    if (xdphaldeviceoffload::flush_device_cb != nullptr)
+    if (device_offload::flush_device_cb != nullptr)
     {
-      xdphaldeviceoffload::flush_device_cb(handle) ;
+      device_offload::flush_device_cb(handle) ;
     }
   }
 
   void update_device(void* handle)
   {
-    if (xdphaldeviceoffload::update_device_cb != nullptr)
+    if (device_offload::update_device_cb != nullptr)
     {
-      xdphaldeviceoffload::update_device_cb(handle) ;
+      device_offload::update_device_cb(handle) ;
     }
   }
-}
+} // end namespace hal
+} // end namespace xdp
+

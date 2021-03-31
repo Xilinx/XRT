@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -70,9 +70,27 @@ get_cu_status(uint32_t cu_status)
   return pt;
 }
 
+static void
+schedulerUpdateStat(xrt_core::device *device)
+{
+  try {
+    // lock xclbin
+    auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
+    device->open_context(uuid.get(), std::numeric_limits<unsigned int>::max(), true);
+    auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), std::numeric_limits<unsigned int>::max()); };
+    xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
+    
+    device->update_scheduler_status();
+  }
+  catch (const std::exception&) {
+    // xclbin_lock failed, safe to ignore
+  }
+}
+
 boost::property_tree::ptree
 populate_cus(const xrt_core::device *device)
 {
+  schedulerUpdateStat(const_cast<xrt_core::device *>(device));
   boost::property_tree::ptree pt;
   std::vector<char> ip_buf;
   std::vector<std::tuple<uint64_t, uint32_t, uint32_t>> cu_stats; // tuple <base_addr, usage, status>
@@ -116,6 +134,8 @@ populate_cus(const xrt_core::device *device)
 boost::property_tree::ptree
 populate_cus_new(const xrt_core::device *device)
 {
+  schedulerUpdateStat(const_cast<xrt_core::device *>(device));
+  
   boost::property_tree::ptree pt;
   using cu_data_type = qr::kds_cu_stat::data_type;
   using scu_data_type = qr::kds_scu_stat::data_type;
@@ -143,7 +163,14 @@ populate_cus_new(const xrt_core::device *device)
   boost::property_tree::ptree pscu_list;
   for (auto& stat : scu_stats) {
     boost::property_tree::ptree ptCu;
-    ptCu.put( "name",           stat.name);
+    std::string scu_name = stat.name;
+    auto found = scu_name.rfind("scu");
+    if (found > 0) {
+        std::string scu_i = scu_name.substr(found + 3);
+        scu_name = scu_name.substr(0, found - 1);
+        scu_name.append(scu_i);
+    }
+    ptCu.put( "name",           scu_name);
     ptCu.put( "base_address",   "0x0");
     ptCu.put( "usage",          stat.usages);
     ptCu.put( "type", enum_to_str(cu_type::PS));
