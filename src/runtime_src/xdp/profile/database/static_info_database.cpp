@@ -283,16 +283,15 @@ namespace xdp {
 
     if (!setXclbinName(currentXclbin, device)) {
       // If there is no SYSTEM_METADATA section, use a default name
-      currentXclbin->name = "default.xclbin" ;
+      currentXclbin->name = "default.xclbin";
     }
     if (!initializeComputeUnits(currentXclbin, device)) {
-      delete currentXclbin ;
-      return ;
+      delete currentXclbin;
+      return;
     }
 
-    devInfo->addXclbin(currentXclbin) ;
-
-    if (!initializeProfileMonitors(devInfo, device)) return ;
+    devInfo->addXclbin(currentXclbin);
+    initializeProfileMonitors(devInfo, device);
     devInfo->isReady = true;
   }
 
@@ -497,6 +496,11 @@ namespace xdp {
       std::string name(debugIpData->m_name);
       int32_t cuId  = -1;
       ComputeUnitInstance* cuObj = nullptr;
+
+      std::stringstream msg;
+      msg << "Initializing profile monitor " << i << ": type = " << debugIpData->m_type << ", name = " << name << ", index = " << index;
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
+
       // find CU
       if(debugIpData->m_type == ACCEL_MONITOR) {
         for(auto cu : devInfo->loadedXclbins.back()->cus) {
