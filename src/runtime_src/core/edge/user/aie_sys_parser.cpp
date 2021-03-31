@@ -63,9 +63,7 @@ void aie_sys_parser::sysfs_get(const std::string& entry, std::vector<std::string
  SP: 0x78901234
 
  output:
- {
-    "aie_core": {
-        "23_0": {
+        {
             "col": "23",
             "row": "0",
             "core": {
@@ -84,8 +82,9 @@ void aie_sys_parser::sysfs_get(const std::string& entry, std::vector<std::string
                 ]
             }
         }
-    }
-} 
+
+Function parse the above input content for given row and column and generate above Json for that.
+Input is in non-standard format, where ':', '|', and "," are the delimiters.
 */
 void
 aie_sys_parser::addrecursive(const int col, const int row, const std::string& tag, const std::string& line,
@@ -139,6 +138,10 @@ aie_sys_parser::addrecursive(const int col, const int row, const std::string& ta
     pt.add_child(n.c_str(), value);
 }
 
+/*
+ * Function checks for core, dma, lock, event, errors sysfs for given row and column aie tile.
+ * If present, reads and parse the content of each sysfs.
+ */
 boost::property_tree::ptree
 aie_sys_parser::aie_sys_read(const int col,const int row)
 {

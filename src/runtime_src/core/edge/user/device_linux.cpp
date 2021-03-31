@@ -148,6 +148,7 @@ struct dev_info
 };
 
 struct aie_metadata {
+  /* Function to read aie_metadata sysfs, and parse max rows and max columns from it. */
   static void
   read_aie_metadata(const xrt_core::device* device, uint32_t &row, uint32_t &col)
   {
@@ -187,10 +188,11 @@ struct aie_core_info : aie_metadata
   get(const xrt_core::device* device,key_type key)
   {
     boost::property_tree::ptree ptarray;
-    uint32_t max_col, max_row;
+    uint32_t max_col = 0, max_row = 0;
 
     read_aie_metadata(device, max_row, max_col);
 
+    /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */ 
     for(int i=0;i<max_col;i++)
       for(int j=0; j<(max_row-1);j++)
         ptarray.push_back(std::make_pair(std::to_string(i)+"_"+std::to_string(j),
@@ -213,10 +215,11 @@ struct aie_shim_info : aie_metadata
   get(const xrt_core::device* device,key_type key)
   {
     boost::property_tree::ptree ptarray;
-    uint32_t max_col, max_row;
+    uint32_t max_col = 0, max_row = 0;
 
     read_aie_metadata(device, max_row, max_col);
 
+    /* Loop all shim tiles and collect all dma, events, errors, locks status */
     for(int i=0;i<max_col;i++) {
       ptarray.push_back(std::make_pair("", aie_sys_parser::get_parser()->aie_sys_read(i,0))); 
     }
