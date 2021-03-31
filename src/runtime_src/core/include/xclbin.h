@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2015-2020, Xilinx Inc
+ *  Copyright (C) 2015-2021, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -171,6 +171,7 @@ extern "C" {
         ASK_GROUP_TOPOLOGY     = 26,
         ASK_GROUP_CONNECTIVITY = 27,
         SMARTNIC               = 28,
+        AIE_RESOURCES          = 29,
     };
 
     enum MEM_TYPE {

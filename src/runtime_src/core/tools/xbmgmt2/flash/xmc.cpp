@@ -290,7 +290,7 @@ int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
     if ((ret = sendPkt(false)) != 0){
         if(ret == XMC_HOST_MSG_BRD_INFO_MISSING_ERR)
         {
-            std::cout << "Unable to get card info, need to upgrade firmware"
+            std::cout << "Unable to get device info, need to upgrade firmware"
                 << std::endl;
         }
         return ret;
@@ -537,7 +537,7 @@ bool XMC_Flasher::isXMCReady()
 
 bool XMC_Flasher::isBMCReady()
 {
-    bool bmcReady = (BMC_MODE() == 0x1);
+    bool bmcReady = (BMC_MODE() == 0x1) || (BMC_MODE() == 0x5);
 
     if (!bmcReady) {
         auto format = xrt_core::utils::ios_restore(std::cout);
@@ -556,3 +556,16 @@ bool XMC_Flasher::hasSC()
     } catch (...) {}
     return sc_presence;
 }
+
+bool XMC_Flasher::fixedSC()
+{
+    bool is_sc_fixed = false;
+    std::string errmsg;
+
+    try {
+        is_sc_fixed = xrt_core::device_query<xrt_core::query::is_sc_fixed>(m_device);
+    } catch (...) {}
+
+    return is_sc_fixed;
+}
+

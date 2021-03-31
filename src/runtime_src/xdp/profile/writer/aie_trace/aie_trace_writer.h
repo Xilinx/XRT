@@ -54,7 +54,7 @@ namespace xdp {
 		   const std::string& toolV);
     ~AIETraceWriter();
 
-    virtual void write(bool openNewFile);
+    virtual bool write(bool openNewFile);
   };
 
 }

@@ -42,7 +42,14 @@
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
 #ifndef NO_BOOST_PROCESS
-#include <boost/process.hpp>
+# ifdef __GNUC__
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wunused-result"
+# endif
+# include <boost/process.hpp>
+# ifdef __GNUC__
+#  pragma GCC diagnostic pop
+# endif
 #endif
 
 // System - Include Files
@@ -174,19 +181,14 @@ findEnvPath(const std::string & env)
   boost::filesystem::path absPath;
   if(env.compare("python") == 0) {
     // Find the python executable
-    absPath = boost::process::search_path("py");  
+    absPath = boost::process::search_path("py");
+    // Find python3 path on linux
     if (absPath.string().empty()) 
-      absPath = boost::process::search_path("python");   
+      absPath = boost::process::search_path("python3");   
 
     if (absPath.string().empty()) 
       throw std::runtime_error("Error: Python executable not found in search path.");
   }
-  else {
-    absPath = boost::process::search_path("sh");
-    if (absPath.string().empty()) 
-      throw std::runtime_error("Error: Shell environment not found.");
-  }
-
   return absPath;
 }
 

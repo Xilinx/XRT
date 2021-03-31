@@ -38,6 +38,7 @@ namespace xdp {
     std::map<std::string, int> enqueueBuckets ;
 
     void setupBuckets() ;
+    bool traceEventsExist();
 
     // A helper function to collapse dependency chains when some events
     //  are missing.
@@ -68,7 +69,7 @@ namespace xdp {
     OpenCLTraceWriter(const char* filename) ;
     ~OpenCLTraceWriter() ;
 
-    virtual void write(bool openNewFile) ;
+    virtual bool write(bool openNewFile) ;
   } ;
 
 }

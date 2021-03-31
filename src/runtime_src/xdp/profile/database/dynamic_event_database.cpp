@@ -80,6 +80,14 @@ namespace xdp {
     //hostEvents.push_back(event) ;
   }
 
+  void VPDynamicDatabase::addUnsortedEvent(VTFEvent* event)
+  {
+    std::lock_guard<std::mutex> lock(unsortedEventsLock) ;
+    event->setEventId(eventId++) ;
+
+    unsortedHostEvents.push_back(event) ;
+  }
+
   void VPDynamicDatabase::addDeviceEvent(uint64_t deviceId, VTFEvent* event)
   {
     std::lock_guard<std::mutex> lock(deviceEventsLock) ;
@@ -222,9 +230,31 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(hostEventsLock) ;
     std::vector<std::unique_ptr<VTFEvent>> collected ;
 
-    for (auto it=hostEvents.begin(); it!=hostEvents.end(); it++) {
-      if (filter(it->second)) collected.emplace_back(it->second);
-      hostEvents.erase(it);
+    for (auto it=hostEvents.begin(); it!=hostEvents.end();) {
+      if (filter(it->second)) {
+        collected.emplace_back(it->second);
+        it = hostEvents.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    return collected ;
+  }
+
+  std::vector<VTFEvent*>
+  VPDynamicDatabase::
+  filterEraseUnsortedHostEvents(std::function<bool(VTFEvent*)> filter)
+  {
+    std::lock_guard<std::mutex> lock(unsortedEventsLock);
+    std::vector<VTFEvent*> collected ;
+
+    for (auto it=unsortedHostEvents.begin(); it!=unsortedHostEvents.end();){
+      if (filter(*it)) {
+        collected.emplace_back(*it);
+        it = unsortedHostEvents.erase(it);
+      } else {
+        ++it ;
+      }
     }
     return collected ;
   }
@@ -237,6 +267,22 @@ namespace xdp {
       events.push_back(e.second);
     }
     return events;
+  }
+
+  bool VPDynamicDatabase::hostEventsExist(std::function<bool(VTFEvent*)> filter)
+  {
+    std::lock_guard<std::mutex> lock(hostEventsLock) ;
+    for (auto it=hostEvents.begin(); it!=hostEvents.end(); it++) {
+      if (filter(it->second))
+        return true;
+    }
+    return false;
+  }
+
+  bool VPDynamicDatabase::deviceEventsExist(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceEventsLock) ;
+    return !(deviceEvents[deviceId].empty());
   }
 
   std::vector<VTFEvent*> VPDynamicDatabase::getDeviceEvents(uint64_t deviceId)
@@ -259,9 +305,9 @@ namespace xdp {
       return events;
     }
     auto& mmap = deviceEvents[deviceId];
-    for (auto it=mmap.begin(); it!=mmap.end(); it++) {
+    for (auto it=mmap.begin(); it!=mmap.end();) {
       events.emplace_back(it->second);
-      mmap.erase(it);
+      it = mmap.erase(it);
     }
     return events;
   }

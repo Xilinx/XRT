@@ -189,8 +189,11 @@ struct xcl_sensor {
 	uint32_t vol_vccram;
 	uint32_t power_warn;
 	uint32_t qspi_status;
+	uint32_t heartbeat_count;
+	uint64_t heartbeat_err_time;
+	uint32_t heartbeat_err_code;
+	uint32_t vccint_vcu_0v9;
 };
-
 /**
  * struct xcl_hwicap - Data structure used to fetch ICAP group
  */

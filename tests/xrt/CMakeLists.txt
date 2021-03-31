@@ -14,6 +14,9 @@ find_package(XRT)
 set(xrt_core_LIBRARY XRT::xrt_core)
 set(xrt_coreutil_LIBRARY XRT::xrt_coreutil)
 set(xrt_xilinxopencl_LIBRARY XRT::xilinxopencl)
+set(xrt_core_static_LIBRARY XRT::xrt_core_static)
+set(xrt_coreutil_static_LIBRARY XRT::xrt_coreutil_static)
+set(xrt_xilinxopencl_static_LIBRARY XRT::xilinxopencl_static)
 
 if (DEFINED ENV{XCL_EMULATION_MODE})
   set(MODE $ENV{XCL_EMULATION_MODE})
@@ -22,14 +25,18 @@ if (DEFINED ENV{XCL_EMULATION_MODE})
   message("=============== XRT_CORE_LIB=${xrt_core_LIBRARY}")
 endif()
 
+include_directories(${XRT_INCLUDE_DIRS})
+
 if (NOT WIN32)
 find_library(uuid_LIBRARY
   NAMES uuid)
 message("uuid_LIBRARY=${uuid_LIBRARY}")
-endif (NOT WIN32)
+else()
+set(BOOST_ROOT C:/Xilinx/XRT/ext)
+find_package(Boost)
+include_directories(${Boost_INCLUDE_DIRS})
+endif(NOT WIN32)
 
-# need to export from package
-include_directories(${XILINX_XRT}/include)
 
 if (NOT DEFINED ${INSTALL_DIR})
   set(INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/${CMAKE_SYSTEM_NAME}/${CMAKE_BUILD_TYPE}/${MODE}")

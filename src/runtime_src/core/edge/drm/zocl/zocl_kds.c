@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -25,7 +25,7 @@ do {\
 	}\
 } while(0)
 
-int kds_mode = 0;
+int kds_mode = 1;
 module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(kds_mode,
 		 "enable new KDS (0 = disable (default), 1 = enable)");
@@ -152,6 +152,74 @@ out:
 	return ret;
 }
 
+static int
+zocl_add_graph_context(struct drm_zocl_dev *zdev, struct kds_client *client,
+		struct drm_zocl_ctx *args)
+{
+	void *uuid_ptr = (void *)(uintptr_t)args->uuid_ptr;
+	xuid_t *xclbin_id;
+	uuid_t *ctx_id;
+	u32 gid = args->graph_id;
+	u32 flags = args->flags;
+	int ret;
+
+	ctx_id = vmalloc(sizeof(uuid_t));
+	if (!ctx_id)
+		return -ENOMEM;
+
+	ret = copy_from_user(ctx_id, uuid_ptr, sizeof(uuid_t));
+	if (ret)
+		goto out;
+
+	mutex_lock(&zdev->zdev_xclbin_lock);
+	xclbin_id = (xuid_t *)zocl_xclbin_get_uuid(zdev);
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+
+	mutex_lock(&client->lock);
+	if (!uuid_equal(ctx_id, xclbin_id)) {
+		DRM_ERROR("try to allocate Graph CTX with wrong xclbin %pUB",
+		    ctx_id);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = zocl_aie_kds_add_graph_context(zdev, gid, flags, client);
+out:
+	mutex_unlock(&client->lock);
+	vfree(ctx_id);
+	return ret;
+}
+
+static int
+zocl_del_graph_context(struct drm_zocl_dev *zdev, struct kds_client *client,
+		struct drm_zocl_ctx *args)
+{
+	u32 gid = args->graph_id;
+	int ret;
+
+	mutex_lock(&client->lock);
+	ret = zocl_aie_kds_del_graph_context(zdev, gid, client);
+	mutex_unlock(&client->lock);
+
+	return 0;
+}
+
+static int
+zocl_add_aie_context(struct drm_zocl_dev *zdev, struct kds_client *client,
+		struct drm_zocl_ctx *args)
+{
+	u32 flags = args->flags;
+
+	return zocl_aie_kds_add_context(zdev, flags, client);
+}
+
+static int
+zocl_del_aie_context(struct drm_zocl_dev *zdev, struct kds_client *client,
+		struct drm_zocl_ctx *args)
+{
+	return zocl_aie_kds_del_context(zdev, client);
+}
+
 int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp)
 {
@@ -165,6 +233,18 @@ int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		break;
 	case ZOCL_CTX_OP_FREE_CTX:
 		ret = zocl_del_context(zdev, client, args);
+		break;
+	case ZOCL_CTX_OP_ALLOC_GRAPH_CTX:
+		ret = zocl_add_graph_context(zdev, client, args);
+		break;
+	case ZOCL_CTX_OP_FREE_GRAPH_CTX:
+		ret = zocl_del_graph_context(zdev, client, args);
+		break;
+	case ZOCL_CTX_OP_ALLOC_AIE_CTX:
+		ret = zocl_add_aie_context(zdev, client, args);
+		break;
+	case ZOCL_CTX_OP_FREE_AIE_CTX:
+		ret = zocl_del_aie_context(zdev, client, args);
 		break;
 	default:
 		ret = -EINVAL;
@@ -301,6 +381,8 @@ int zocl_create_client(struct drm_zocl_dev *zdev, void **priv)
 		kfree(client);
 		goto out;
 	}
+	INIT_LIST_HEAD(&client->graph_list);
+	spin_lock_init(&client->graph_list_lock);
 	*priv = client;
 
 out:
@@ -323,6 +405,7 @@ void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv)
 	/* kds_fini_client should released resources hold by the client.
 	 * release xclbin_id and unlock bitstream if needed.
 	 */
+	zocl_aie_kds_del_graph_context_all(client);
 	kds_fini_client(kds, client);
 	if (client->xclbin_id) {
 		(void) zocl_unlock_bitstream(zdev, client->xclbin_id);
@@ -364,6 +447,8 @@ static void zocl_detect_fa_plram(struct drm_zocl_dev *zdev)
 
 	/* Detect Fast adapter */
 	ip_layout = zdev->ip;
+	if (!ip_layout)
+		return;
 
 	for (i = 0; i < ip_layout->m_count; ++i) {
 		struct ip_data *ip = &ip_layout->m_ip_data[i];
@@ -406,6 +491,7 @@ static void zocl_detect_fa_plram(struct drm_zocl_dev *zdev)
 int zocl_kds_update(struct drm_zocl_dev *zdev)
 {
 	struct drm_zocl_bo *bo = NULL;
+	int i;
 
 	if (zdev->kds.plram.bo) {
 		bo = zdev->kds.plram.bo;
@@ -419,5 +505,20 @@ int zocl_kds_update(struct drm_zocl_dev *zdev)
 
 	zocl_detect_fa_plram(zdev);
 	zdev->kds.cu_intr = 0;
+
+	for (i = 0; i < zdev->kds.cu_mgmt.num_cus; i++) {
+		struct xrt_cu *xcu;
+		int apt_idx;
+
+		xcu = zdev->kds.cu_mgmt.xcus[i];
+		apt_idx = get_apt_index_by_addr(zdev, xcu->info.addr); 
+		if (apt_idx < 0) {
+			DRM_ERROR("CU address %llx is not found in XCLBIN\n",
+			    xcu->info.addr);
+			return apt_idx;
+		}
+		update_cu_idx_in_apt(zdev, apt_idx, i);
+	}
+
 	return kds_cfg_update(&zdev->kds);
 }

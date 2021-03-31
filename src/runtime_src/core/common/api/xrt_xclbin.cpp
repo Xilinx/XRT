@@ -30,6 +30,8 @@
 
 #include "core/include/xclbin.h"
 
+#include "native_profile.h"
+
 #include <fstream>
 #include <set>
 #include <vector>
@@ -57,6 +59,7 @@ static axlf_section_kind kinds[] = {
   BUILD_METADATA
 };
 
+XRT_CORE_UNUSED
 static bool
 is_sw_emulation()
 {
@@ -526,7 +529,7 @@ class xclbin_full : public xclbin_impl
 
     m_uuid = uuid(m_top->m_header.uuid); 
     
-    const ::ip_layout* ip_layout = nullptr;
+    XRT_CORE_UNUSED const ::ip_layout* ip_layout = nullptr;
 
     for (auto kind : kinds) {
       auto hdr = xrt_core::xclbin::get_axlf_section(m_top, kind);
@@ -534,7 +537,7 @@ class xclbin_full : public xclbin_impl
       // software emulation xclbin does not have all sections
       // create the necessary ones.  important that ip_layout is
       // before connectivity which needs ip_layout
-      if (!hdr && is_sw_emulation()) {
+      if (!hdr && is_sw_emulation() && !xrt_core::config::get_feature_toggle("Runtime.vitis715")) {
         auto data = xrt_core::xclbin::swemu::get_axlf_section(m_top, ip_layout, kind);
         if (!data.empty()) {
           auto pos = m_axlf_sections.emplace(kind, std::move(data));
@@ -956,18 +959,18 @@ xrtXclbinHandle
 xrtXclbinAllocFilename(const char* filename)
 {
   try {
-    auto xclbin = std::make_shared<xrt::xclbin_full>(filename);
-    auto handle = xclbin.get();
-    xclbins.emplace(handle, std::move(xclbin));
-    return handle;
+    return xdp::native::profiling_wrapper(__func__, [filename]{
+      auto xclbin = std::make_shared<xrt::xclbin_full>(filename);
+      auto handle = xclbin.get();
+      xclbins.emplace(handle, std::move(xclbin));
+      return handle;
+    });
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }
@@ -976,19 +979,19 @@ xrtXclbinHandle
 xrtXclbinAllocRawData(const char* data, int size)
 {
   try {
-    std::vector<char> raw_data(data, data + size);
-    auto xclbin = std::make_shared<xrt::xclbin_full>(raw_data);
-    auto handle = xclbin.get();
-    xclbins.emplace(handle, std::move(xclbin));
-    return handle;
+    return xdp::native::profiling_wrapper(__func__, [data, size]{
+      std::vector<char> raw_data(data, data + size);
+      auto xclbin = std::make_shared<xrt::xclbin_full>(raw_data);
+      auto handle = xclbin.get();
+      xclbins.emplace(handle, std::move(xclbin));
+      return handle;
+    });
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    errno = 0;
   }
   return nullptr;
 }
@@ -997,8 +1000,10 @@ int
 xrtXclbinFreeHandle(xrtXclbinHandle handle)
 {
   try {
-    free_xclbin(handle);
-    return 0;
+    return xdp::native::profiling_wrapper(__func__, [handle]{
+      free_xclbin(handle);
+      return 0;
+    });
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -1015,27 +1020,26 @@ int
 xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
 {
   try {
-    auto xclbin = get_xclbin(handle);
-    const std::string& xsaname = xclbin->get_xsa_name();
-    // populate ret_size if memory is allocated
-    if (ret_size)
-      *ret_size = xsaname.size();
-    // populate name if memory is allocated
-    if (name)
-      std::strncpy(name, xsaname.c_str(), size);
-    return 0;
+    return xdp::native::profiling_wrapper(__func__,
+    [handle, name, size, ret_size]{
+      auto xclbin = get_xclbin(handle);
+      const std::string& xsaname = xclbin->get_xsa_name();
+      // populate ret_size if memory is allocated
+      if (ret_size)
+        *ret_size = xsaname.size();
+      // populate name if memory is allocated
+      if (name)
+        std::strncpy(name, xsaname.c_str(), size);
+      return 0;
+    });
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    // Set errno globally
-    errno = ex.get();
     return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    // Set errno globally
-    errno = 0;
-    return 0;
+    return -1;
   }
 }
 
@@ -1043,22 +1047,20 @@ int
 xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
 {
   try {
-    auto xclbin = get_xclbin(handle);
-    auto result = xclbin->get_uuid();
-    uuid_copy(ret_uuid, result.get());
-    return 0;
+    return xdp::native::profiling_wrapper(__func__, [handle, ret_uuid]{
+      auto xclbin = get_xclbin(handle);
+      auto result = xclbin->get_uuid();
+      uuid_copy(ret_uuid, result.get());
+      return 0;
+    });
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    // Set errno globally
-    errno = ex.get();
     return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    // Set errno globally
-    errno = 0;
-    return 0;
+    return -1;
   }
 }
 
@@ -1066,30 +1068,29 @@ int
 xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
 {
   try {
-    auto xclbin = get_xclbin(handle);
-    auto& result = xclbin->get_data();
-    int result_size = result.size();
-    // populate ret_size if memory is allocated
-    if (ret_size)
-      *ret_size = result_size;
-    // populate data if memory is allocated
-    if (data) {
-      auto size_tmp = std::min(size,result_size);
-      std::memcpy(data, result.data(), size_tmp);
-    }
-    return 0;
+    return xdp::native::profiling_wrapper(__func__,
+    [handle, data, size, ret_size]{
+      auto xclbin = get_xclbin(handle);
+      auto& result = xclbin->get_data();
+      int result_size = result.size();
+      // populate ret_size if memory is allocated
+      if (ret_size)
+        *ret_size = result_size;
+      // populate data if memory is allocated
+      if (data) {
+        auto size_tmp = std::min(size,result_size);
+        std::memcpy(data, result.data(), size_tmp);
+      }
+      return 0;
+    });
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    // Set errno globally
-    errno = ex.get();
     return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    // Set errno globally
-    errno = 0;
-    return 0;
+    return -1;
   }
 }
 
@@ -1100,10 +1101,12 @@ int
 xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
 {
   try {
-    auto device = xrt_core::get_userpf_device(dhdl);
-    auto uuid = device->get_xclbin_uuid();
-    uuid_copy(out, uuid.get());
-    return 0;
+    return xdp::native::profiling_wrapper(__func__, [dhdl, out]{
+      auto device = xrt_core::get_userpf_device(dhdl);
+      auto uuid = device->get_xclbin_uuid();
+      uuid_copy(out, uuid.get());
+      return 0;
+    });
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());

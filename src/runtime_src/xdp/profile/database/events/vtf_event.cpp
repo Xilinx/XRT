@@ -154,6 +154,9 @@ namespace xdp {
     case HAL_API_CALL:
       humanReadable ? (fout << "API_CALL") : (fout << API_CALL) ;
       break ;
+    case NATIVE_API_CALL:
+      humanReadable ? (fout << "API_CALL") : (fout << API_CALL) ;
+      break ;
     default:
       humanReadable ? (fout << "UNKNOWN") : (fout << -1) ;
       break ;

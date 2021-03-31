@@ -21,6 +21,7 @@ file(GLOB EM_SRC_FILES
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
 add_library(sw_emu_objects OBJECT ${EM_SRC_FILES})
+add_dependencies(sw_emu_objects pcie_emulation_generated_code)
 
 set(CURR_SOURCE "")
 add_library(xrt_swemu SHARED ${CURR_SOURCE}
@@ -49,7 +50,7 @@ install (TARGETS xrt_swemu
 )
 
 install (TARGETS xrt_swemu
-  EXPORT xrt-targets-dev
+  EXPORT xrt-dev-targets
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )

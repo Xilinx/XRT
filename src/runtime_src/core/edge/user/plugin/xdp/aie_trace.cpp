@@ -20,68 +20,66 @@
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
 
-namespace xdpaietrace {
+namespace xdp {
+namespace aie {
+namespace trace {
 
-  void load_xdp_aie_trace_plugin()
+  void load()
   {
     static xrt_core::module_loader xdp_aie_trace_loader("xdp_aie_trace_plugin",
-                                                        register_aie_trace_callbacks,
-                                                        aie_trace_warning_function,
-                                                        aie_trace_error_function);
+                                                        register_callbacks,
+                                                        warning_function,
+                                                        error_function);
   }
 
-  std::function<void (void*)> update_aie_device_cb;
-  std::function<void (void*)> flush_aie_device_cb;
-  std::function<void (void*)> finish_flush_aie_device_cb;
+  std::function<void (void*)> update_device_cb;
+  std::function<void (void*)> flush_device_cb;
+  std::function<void (void*)> finish_flush_device_cb;
 
-  void register_aie_trace_callbacks(void* handle)
+  void register_callbacks(void* handle)
   {
     typedef void (*ftype)(void*) ;
-    update_aie_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDevice")) ;
-    if (xrt_core::dlerror() != NULL) update_aie_device_cb = nullptr ;
+    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDevice")) ;
+    if (xrt_core::dlerror() != NULL) update_device_cb = nullptr ;
 
-    flush_aie_device_cb = (ftype)(xrt_core::dlsym(handle, "flushAIEDevice")) ;
-    if (xrt_core::dlerror() != NULL) flush_aie_device_cb = nullptr ;
+    flush_device_cb = (ftype)(xrt_core::dlsym(handle, "flushAIEDevice")) ;
+    if (xrt_core::dlerror() != NULL) flush_device_cb = nullptr ;
 
-    finish_flush_aie_device_cb = (ftype)(xrt_core::dlsym(handle, "finishFlushAIEDevice")) ;
-    if (xrt_core::dlerror() != NULL) finish_flush_aie_device_cb = nullptr ;
+    finish_flush_device_cb = (ftype)(xrt_core::dlsym(handle, "finishFlushAIEDevice")) ;
+    if (xrt_core::dlerror() != NULL) finish_flush_device_cb = nullptr ;
   }
 
-  void aie_trace_warning_function()
+  void warning_function()
   {
   }
 
-  int aie_trace_error_function()
+  int error_function()
   {
-    if(xrt_core::config::get_profile() || xrt_core::config::get_timeline_trace()) {
-      // OpenCL profiling and/or trace is enabled in xrt.ini config. So, disable AIE Trace Offload as both of these flows are not supported together.
-      return 1;
-    }
     return 0 ;
   }
 
-} // end namespace xdpaietrace
+} // end namespace trace
 
-namespace xdpaie {
-
-  void update_aie_device(void* handle)
+  void update_device(void* handle)
   {
-    if (xdpaietrace::update_aie_device_cb != nullptr) {
-      xdpaietrace::update_aie_device_cb(handle) ;
+    if (trace::update_device_cb != nullptr) {
+      trace::update_device_cb(handle) ;
     }
   }
 
-  void flush_aie_device(void* handle)
+  void flush_device(void* handle)
   {
-    if (xdpaietrace::flush_aie_device_cb != nullptr) {
-      xdpaietrace::flush_aie_device_cb(handle) ;
+    if (trace::flush_device_cb != nullptr) {
+      trace::flush_device_cb(handle) ;
     }
   }
 
-  void finish_flush_aie_device(void* handle)
+  void finish_flush_device(void* handle)
   {
-    if (xdpaietrace::finish_flush_aie_device_cb != nullptr) {
-      xdpaietrace::finish_flush_aie_device_cb(handle) ;
+    if (trace::finish_flush_device_cb != nullptr) {
+      trace::finish_flush_device_cb(handle) ;
     }
   }
-}
+
+} // end namespace aie
+} // end namespace xdp

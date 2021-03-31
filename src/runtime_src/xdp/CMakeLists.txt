@@ -43,6 +43,8 @@ set(XRT_XDP_PROFILE_HAL_DEVICE_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/devi
 set(XRT_XDP_PROFILE_XRT_DEVICE_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/xrt_device")
 set(XRT_XDP_PROFILE_LOP_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/lop")
 set(XRT_XDP_PROFILE_LOP_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/lop")
+set(XRT_XDP_PROFILE_NATIVE_PLUGIN_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/native")
+set(XRT_XDP_PROFILE_NATIVE_WRITER_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/native")
 set(XRT_XDP_PROFILE_OPENCL_TRACE_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/opencl/trace")
 set(XRT_XDP_PROFILE_OPENCL_TRACE_WRITER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/opencl")
 set(XRT_XDP_PROFILE_OPENCL_COUNTERS_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/opencl/counters")
@@ -58,6 +60,7 @@ set(XRT_XDP_AIE_TRACE_PLUGIN_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/pl
 set(XRT_XDP_AIE_TRACE_WRITER_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/aie_trace")
 set(XRT_XDP_POWER_PROFILE_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/power")
 set(XRT_XDP_POWER_PROFILE_WRITER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/power")
+set(XRT_XDP_SYSTEM_COMPILER_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/system_compiler")
 
 # Files for the new xdp core
 set(XRT_XDP_PROFILE_BASE_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/vp_base")
@@ -176,6 +179,13 @@ file(GLOB XRT_XDP_PROFILE_LOP_PLUGIN_FILES
   "${XRT_XDP_PROFILE_LOP_WRITER_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_PROFILE_NATIVE_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_NATIVE_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_NATIVE_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_NATIVE_WRITER_DIR}/*.h"
+  "${XRT_XDP_PROFILE_NATIVE_WRITER_DIR}/*.cpp"
+  )
+
 file(GLOB XRT_XDP_PROFILE_OPENCL_TRACE_PLUGIN_FILES
   "${XRT_XDP_PROFILE_OPENCL_TRACE_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_OPENCL_TRACE_PLUGIN_DIR}/*.cpp"
@@ -226,6 +236,11 @@ file(GLOB XRT_XDP_POWER_PROFILE_PLUGIN_FILES
   "${XRT_XDP_POWER_PROFILE_WRITER_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_SYSTEM_COMPILER_PLUGIN_FILES
+  "${XRT_XDP_SYSTEM_COMPILER_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_SYSTEM_COMPILER_PLUGIN_DIR}/*.cpp"
+  )
+
 file(GLOB XRT_XDP_AIE_TRACE_PLUGIN_FILES
   "${XRT_XDP_PROFILE_DEVICE_AIE_TRACE_DIR}/*.h"
   "${XRT_XDP_PROFILE_DEVICE_AIE_TRACE_DIR}/*.cpp"
@@ -270,6 +285,7 @@ install (TARGETS xdp_core
 add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
 add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
 add_library(xdp_lop_plugin MODULE ${XRT_XDP_PROFILE_LOP_PLUGIN_FILES})
+add_library(xdp_native_plugin MODULE ${XRT_XDP_PROFILE_NATIVE_PLUGIN_FILES})
 add_library(xdp_opencl_trace_plugin MODULE ${XRT_XDP_PROFILE_OPENCL_TRACE_PLUGIN_FILES})
 add_library(xdp_opencl_counters_plugin MODULE ${XRT_XDP_PROFILE_OPENCL_COUNTERS_PLUGIN_FILES})
 add_library(xdp_user_plugin MODULE ${XRT_XDP_PROFILE_USER_PLUGIN_FILES})
@@ -279,6 +295,7 @@ add_library(xdp_hal_device_offload_plugin MODULE ${XRT_XDP_HAL_PROFILE_DEVICE_OF
 add_dependencies(xdp_hal_plugin xdp_core xrt_core xrt_coreutil)
 add_dependencies(xdp_hal_api_interface_plugin xdp_core xrt_core xrt_coreutil)
 add_dependencies(xdp_lop_plugin xdp_core xrt_coreutil)
+add_dependencies(xdp_native_plugin xdp_core xrt_coreutil)
 add_dependencies(xdp_opencl_trace_plugin xdp_core xrt_coreutil)
 add_dependencies(xdp_opencl_counters_plugin xdp_core xrt_coreutil xilinxopencl)
 add_dependencies(xdp_user_plugin xdp_core xrt_coreutil)
@@ -288,6 +305,7 @@ add_dependencies(xdp_hal_device_offload_plugin xdp_core xrt_core xrt_coreutil)
 target_link_libraries(xdp_hal_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
 target_link_libraries(xdp_hal_api_interface_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
 target_link_libraries(xdp_lop_plugin PRIVATE xdp_core xrt_coreutil)
+target_link_libraries(xdp_native_plugin PRIVATE xdp_core xrt_coreutil)
 target_link_libraries(xdp_opencl_trace_plugin PRIVATE xdp_core xrt_coreutil)
 target_link_libraries(xdp_opencl_counters_plugin PRIVATE xdp_core xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_user_plugin PRIVATE xdp_core xrt_coreutil)
@@ -297,6 +315,7 @@ target_link_libraries(xdp_hal_device_offload_plugin PRIVATE xdp_core xrt_core xr
 set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_lop_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+set_target_properties(xdp_native_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_opencl_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_opencl_counters_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_user_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -306,6 +325,7 @@ set_target_properties(xdp_hal_device_offload_plugin PROPERTIES VERSION ${XRT_VER
 install (TARGETS xdp_hal_plugin
                  xdp_hal_api_interface_plugin
                  xdp_lop_plugin
+		 xdp_native_plugin
                  xdp_opencl_trace_plugin
                  xdp_opencl_counters_plugin
                  xdp_user_plugin
@@ -320,18 +340,21 @@ if (NOT WIN32)
 add_library(xdp_debug_plugin MODULE ${XRT_XDP_DEBUG_FILES})
 add_library(xdp_appdebug_plugin MODULE ${XRT_XDP_APPDEBUG_FILES})
 add_library(xdp_power_plugin MODULE ${XRT_XDP_POWER_PROFILE_PLUGIN_FILES})
+add_library(xdp_system_compiler_plugin MODULE ${XRT_XDP_SYSTEM_COMPILER_PLUGIN_FILES})
 add_library(xdp_noc_plugin MODULE ${XRT_XDP_PROFILE_NOC_PLUGIN_FILES})
 add_library(xdp_vart_plugin MODULE ${XRT_XDP_PROFILE_VART_PLUGIN_FILES})
 
 add_dependencies(xdp_debug_plugin xrt_coreutil xilinxopencl)
 add_dependencies(xdp_appdebug_plugin xrt_coreutil xilinxopencl)
 add_dependencies(xdp_power_plugin xdp_core xrt_core)
+add_dependencies(xdp_system_compiler_plugin xdp_core)
 add_dependencies(xdp_noc_plugin xdp_core xrt_core)
 add_dependencies(xdp_vart_plugin xdp_core xrt_core)
 
 target_link_libraries(xdp_debug_plugin PRIVATE xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_appdebug_plugin PRIVATE xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_power_plugin PRIVATE xdp_core xrt_core)
+target_link_libraries(xdp_system_compiler_plugin xdp_core)
 target_link_libraries(xdp_noc_plugin PRIVATE xdp_core xrt_core)
 target_link_libraries(xdp_vart_plugin PRIVATE xdp_core xrt_core)
 
@@ -340,6 +363,7 @@ set_target_properties(xdp_vart_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} S
 set_target_properties(xdp_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_power_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+set_target_properties(xdp_system_compiler_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 # AI Engine plugins are Edge only
 if (DEFINED XRT_AIE_BUILD)
@@ -367,6 +391,7 @@ endif()
 install (TARGETS xdp_debug_plugin
                  xdp_appdebug_plugin
                  xdp_power_plugin
+                 xdp_system_compiler_plugin
                  xdp_noc_plugin
                  xdp_vart_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module

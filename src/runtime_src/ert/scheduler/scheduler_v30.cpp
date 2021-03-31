@@ -251,12 +251,6 @@ struct mb_validation
 
   value_type cu_write_single = 0;
 
-  value_type memcpy_128 = 0;
-
-  value_type memcpy_512 = 0;
-
-  value_type irq_latency = 0;
-
 };
 
 static mb_validation mb_bist;
@@ -284,8 +278,6 @@ static bitset_type cu_ready;
 static bitset_type cu_done;
 // Bitmask for interrupt enabled CUs.  (0) no interrupt (1) enabled
 static bitset_type cu_interrupt_mask;
-
-static value_type memcpy_test_dummy[128];
 
 #ifndef ERT_HW_EMU
 /**
@@ -672,7 +664,15 @@ configure_cu(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
   uint32_t *addr_ptr = (uint32_t *)(uintptr_t)cu_addr;
   uint32_t *regmap_ptr = (uint32_t *)(uintptr_t)regmap_addr;
 
-  memcpy(addr_ptr+4, regmap_ptr+4, (regmap_size-4)<<2);
+  /* We know for-loop is 2% slower than memcpy().
+   * But unstable behavior are observed when using memcpy().
+   * Sometimes, it does not fully configure all registers.
+   * We failed to find a stable pattern to use memcpy().
+   * Don't waste your life to it again.
+   */
+  //memcpy(addr_ptr+4, regmap_ptr+4, (regmap_size-4)<<2);
+  for (size_type i = 4; i < regmap_size; ++i)
+    *(addr_ptr + i) = *(regmap_ptr + i);
 #endif
   // start kernel at base + 0x0
   write_reg(cu_addr, 0x1);
@@ -1045,16 +1045,6 @@ validate_mb(value_type slot_idx)
   auto& slot = command_slots[slot_idx];
   value_type start_t, end_t, cnt = 1024;
   void *addr_ptr = (void *)(uintptr_t)(slot.slot_addr);
-
-  start_t = read_clk_counter();
-  memcpy(memcpy_test_dummy, addr_ptr, 128);
-  end_t = read_clk_counter();
-  mb_bist.memcpy_128 =  end_t-start_t;
-
-  start_t = read_clk_counter();
-  memcpy(memcpy_test_dummy, addr_ptr, 512);
-  end_t = read_clk_counter();
-  mb_bist.memcpy_512 =  end_t-start_t;
 
   start_t = read_clk_counter();
   repetition_read(slot.slot_addr, cnt);

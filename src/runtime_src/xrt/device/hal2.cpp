@@ -310,6 +310,8 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     flags = xrt::bo::flags::device_only;
   else if (domain == Domain::XRT_HOST_ONLY_MEM)
     flags = xrt::bo::flags::host_only;
+  else if (domain == Domain::XRT_DEVICE_RAM && is_nodma())
+    flags = xrt::bo::flags::normal;
 
   auto bo = userptr
     ? xrt::bo{m_handle, userptr, sz, flags, static_cast<xrt::memory_group>(memory_index)}

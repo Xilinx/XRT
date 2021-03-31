@@ -23,6 +23,7 @@
 
 #include "xspi.h"
 #include "xospiversal.h"
+#include "xqspips.h"
 #include "xmc.h"
 #include "firmware_image.h"
 #include "xclfeatures.h"
@@ -68,8 +69,10 @@ public:
     Flasher(unsigned int index);
     int upgradeFirmware(const std::string& typeStr, firmwareImage* primary, firmwareImage* secondary);
     int upgradeBMCFirmware(firmwareImage* bmc);
+    void readBack(const std::string& output);
     bool isValid(void) { return m_device != nullptr; }
 
+    std::string getQspiGolden();
     std::string sGetDBDF();
     std::string sGetFlashType() { return std::string( getFlasherTypeText( getFlashType() ) ); }
     DSAInfo getOnBoardDSA();

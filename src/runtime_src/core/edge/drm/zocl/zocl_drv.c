@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -76,6 +76,11 @@ void zocl_free_sections(struct drm_zocl_dev *zdev)
 	if (zdev->topology) {
 		vfree(zdev->topology);
 		CLEAR(zdev->topology);
+	}
+	if (zdev->axlf) {
+		vfree(zdev->axlf);
+		CLEAR(zdev->axlf);
+		zdev->axlf_size = 0;
 	}
 }
 
@@ -578,6 +583,8 @@ static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 		atomic_set(&fpriv->outstanding_execs, 0);
 		fpriv->abort = false;
 		fpriv->pid = get_pid(task_pid(current));
+		INIT_LIST_HEAD(&fpriv->graph_list);
+		spin_lock_init(&fpriv->graph_list_lock);
 		zocl_track_ctx(dev, fpriv);
 		DRM_INFO("Pid %d opened device\n", pid_nr(task_tgid(current)));
 	}
@@ -620,6 +627,9 @@ static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 			zocl_cu_status_print(&zdev->exec->zcu[i]);
 		}
 	}
+
+	/* Release graph context */
+	zocl_aie_graph_free_context_all(zdev, client);
 
 	put_pid(client->pid);
 	client->pid = NULL;
@@ -867,6 +877,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 		zdev->res_start = res->start;
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
+		//ert_hw is present only for PCIe + PS devices (ex: U30,VCK5000
+		//Dont enable new kds for those devices
+		kds_mode = 0;
 	}
 
 	subdev = zocl_find_pdev("reset_ps");
@@ -896,9 +909,16 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	}
 
 	if (ZOCL_PLATFORM_ARM64) {
+		zdev->pr_isolation_freeze = 0x0;
+		zdev->pr_isolation_unfreeze = 0x3;
 		if (of_property_read_u64(pdev->dev.of_node,
 		    "xlnx,pr-isolation-addr", &zdev->pr_isolation_addr))
 			zdev->pr_isolation_addr = 0;
+		if (of_property_read_bool(pdev->dev.of_node,
+		    "xlnx,pr-decoupler")) {
+			zdev->pr_isolation_freeze = 0x1;
+			zdev->pr_isolation_unfreeze = 0x0;
+		}
 	} else {
 		u32 prop_addr = 0;
 
@@ -909,6 +929,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 			zdev->pr_isolation_addr = prop_addr;
 	}
 	DRM_INFO("PR Isolation addr 0x%llx", zdev->pr_isolation_addr);
+
+	zdev->partial_overlay_id = -1;
+	zdev->full_overlay_id  = -1;
 
 	/* Initialzie IOMMU */
 	if (iommu_present(&platform_bus_type)) {

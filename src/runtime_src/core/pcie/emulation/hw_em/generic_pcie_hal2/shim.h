@@ -215,11 +215,13 @@ using addr_type = uint64_t;
       static const unsigned CONTROL_AP_IDLE;
       static const unsigned CONTROL_AP_CONTINUE;
       static const unsigned REG_BUFF_SIZE;
+      static const unsigned M2M_KERNEL_ARGS_SIZE;
 
       bool isUnified()               { return bUnified; }
       void setUnified(bool _unified) { bUnified = _unified; }
 
       bool isMBSchedulerEnabled();
+      uint64_t getM2MAddress();
       uint64_t getErtCmdQAddress();
       uint64_t getErtBaseAddress();
       int deviceQuery(key_type queryKey);
@@ -274,7 +276,8 @@ using addr_type = uint64_t;
       void writeStringIntoFile(const std::string& path, const std::string& content);
       std::string modifyContent(const std::string& simulatorName, std::string& content);
       void writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName);
-      void constructQueryTable();     
+      void constructQueryTable();
+      void parseHLSPrintf(const std::string& simPath);	  
       void parseSimulateLog();
       void setSimPath(std::string simPath) { sim_path = simPath; }
       std::string getSimPath () { return sim_path; }

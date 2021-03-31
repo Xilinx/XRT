@@ -34,27 +34,34 @@ usage()
 {
     echo "Usage: build.sh [options]"
     echo
-    echo "[-help]                    List this help"
-    echo "[clean|-clean]             Remove build directories"
-    echo "[-dbg]                     Build debug library only (default)"
-    echo "[-opt]                     Build optimized library only (default)"
-    echo "[-edge]                    Build edge of x64.  Turns off opt and dbg"
-    echo "[-nocmake]                 Skip CMake call"
-    echo "[-noctest]                 Skip unit tests"
-    echo "[-docs]                    Enable documentation generation with sphinx"
-    echo "[-j <n>]                   Compile parallel (default: system cores)"
-    echo "[-ccache]                  Build using RDI's compile cache"
-    echo "[-toolchain <file>]        Extra toolchain file to configure CMake"
-    echo "[-driver]                  Include building driver code"
-    echo "[-checkpatch]              Run checkpatch.pl on driver code"
-    echo "[-verbose]                 Turn on verbosity when compiling"
-    echo "[-ertfw <dir>]             Path to directory with pre-built ert firmware (default: build the firmware)"
+    echo "[-help]                     List this help"
+    echo "[clean|-clean]              Remove build directories"
+    echo "[-dbg]                      Build debug library only (default)"
+    echo "[-opt]                      Build optimized library only (default)"
+    echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
+    echo "[-nocmake]                  Skip CMake call"
+    echo "[-noctest]                  Skip unit tests"
+    echo "[-with-static-boost <boost> Build binaries using static linking of boost from specified boost install"
+    echo "[-clangtidy]                Run clang-tidy as part of build"
+    echo "[-docs]                     Enable documentation generation with sphinx"
+    echo "[-j <n>]                    Compile parallel (default: system cores)"
+    echo "[-ccache]                   Build using RDI's compile cache"
+    echo "[-toolchain <file>]         Extra toolchain file to configure CMake"
+    echo "[-driver]                   Include building driver code"
+    echo "[-checkpatch]               Run checkpatch.pl on driver code"
+    echo "[-verbose]                  Turn on verbosity when compiling"
+    echo "[-ertfw <dir>]              Path to directory with pre-built ert firmware (default: build the firmware)"
     echo ""
     echo "ERT firmware is built if and only if MicroBlaze gcc compiler can be located."
     echo "When compiler is not accesible, use -ertfw to specify path to directory with"
     echo "pre-built ert fw to include in XRT packages"
     echo ""
     echo "Compile caching is enabled with '-ccache' but requires access to internal network."
+    echo
+    echo "Linking of XRT with static boost, resolves all boost references in XRT binaries."
+    echo "The specified install of boost must be compiled with -fPIC.  The script "
+    echo "src/runtime_src/tools/script/boost.sh can be used to download and build boost"
+    echo "for use with the '-with-static-boost' option."
 
     exit 1
 }
@@ -64,7 +71,7 @@ ccache=0
 docs=0
 verbose=""
 driver=0
-clangtidy=0
+clangtidy="OFF"
 checkpatch=0
 jcore=$CORE
 opt=1
@@ -73,6 +80,7 @@ edge=0
 nocmake=0
 nobuild=0
 noctest=0
+static_boost=""
 ertfw=""
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -141,11 +149,16 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -clangtidy)
-            clangtidy=1
+            clangtidy="ON"
             shift
             ;;
         -verbose)
             verbose="VERBOSE=1"
+            shift
+            ;;
+        -with-static-boost)
+            shift
+            static_boost=$1
             shift
             ;;
         *)
@@ -187,6 +200,19 @@ if [[ ! -z $ertfw ]]; then
     export XRT_FIRMWARE_DIR=$ertfw
 fi
 
+if [[ ! -z $static_boost ]]; then
+    echo "export XRT_BOOST_INSTALL=$static_boost"
+    export XRT_BOOST_INSTALL=$static_boost
+fi
+
+if [[ ! -z ${XRT_BOOST_INSTALL:+x} ]]; then
+    if [[ ! -d ${XRT_BOOST_INSTALL}/include ]] || [[ ! -d ${XRT_BOOST_INSTALL}/lib ]]; then
+        echo "Incomplete boost install specified, please use runtime_src/tools/script/boost.sh"
+        exit 1
+    fi
+    echo "Linking XRT binaries with static boost libraries"
+fi
+
 # we pick microblaze toolchain from Vitis install
 if [[ -z ${XILINX_VITIS:+x} ]]; then
     export XILINX_VITIS=/proj/xbuilds/2019.2_released/installs/lin64/Vitis/2019.2
@@ -196,8 +222,8 @@ if [[ $dbg == 1 ]]; then
   mkdir -p $debug_dir
   cd $debug_dir
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
+	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src"
+	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src
   fi
 
   echo "make -j $jcore $verbose DESTDIR=$PWD install"
@@ -213,8 +239,8 @@ if [[ $opt == 1 ]]; then
   mkdir -p $release_dir
   cd $release_dir
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
+	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src"
+	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src
   fi
 
   if [[ $nobuild == 0 ]]; then
@@ -236,8 +262,8 @@ if [[ $opt == 1 ]]; then
   if [[ $driver == 1 ]]; then
     unset CC
     unset CXX
-    echo "make -C usr/src/xrt-2.10.0/driver/xocl"
-    make -C usr/src/xrt-2.10.0/driver/xocl
+    echo "make -C usr/src/xrt-2.11.0/driver/xocl"
+    make -C usr/src/xrt-2.11.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then
 	# I know this is dirty as it messes up the source directory with build artifacts but this is the
 	# quickest way to enable native zocl build in Travis CI environment for aarch64
@@ -260,16 +286,11 @@ if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
   time make -j $jcore $verbose DESTDIR=$PWD
   cd $BUILDDIR
 fi
-    
-    
-if [[ $clangtidy == 1 ]]; then
-    echo "make clang-tidy"
-    make clang-tidy
-fi
+
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.10.0/driver`
+    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.11.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
     XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`

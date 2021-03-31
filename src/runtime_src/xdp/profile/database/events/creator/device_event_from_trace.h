@@ -22,6 +22,7 @@
 #include<vector>
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/device_events.h"
+#include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
 
@@ -56,11 +57,20 @@ class DeviceEventCreatorFromTrace
   void trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp);
   double convertDeviceToHostTimestamp(uint64_t deviceTimestamp);
 
+  // Helper functions
+  void addAIMEvent(xclTraceResults& trace, double hostTimestamp) ;
+
+  void addKernelDataTransferEvent(VTFEventType ty, xclTraceResults& trace, uint32_t slot, int32_t cuId, double hostTimestamp) ;
+
+  void addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType,
+                                    int32_t cuId, int32_t  amId, uint64_t cuLastTimestamp,
+                                    uint64_t &asmAppxLastTransTimeStamp, bool &unfinishedASMevents);
+
   public :
   XDP_EXPORT DeviceEventCreatorFromTrace(uint64_t devId);
   ~DeviceEventCreatorFromTrace() {}
 
-  XDP_EXPORT void createDeviceEvents(xclTraceResultsVector& traceVector);
+  XDP_EXPORT void createDeviceEvents(std::vector<xclTraceResults>& traceVector);
   XDP_EXPORT void end();
 };
 

@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -102,6 +102,8 @@
 #else
 	#define ZOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
 #endif
+
+struct sched_client_ctx;
 
 struct drm_zocl_exec_metadata {
 	enum drm_zocl_execbuf_state state;
@@ -221,10 +223,30 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 		int count, uint32_t bank);
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
-int zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf);
+int zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf,
+		void *aie_res);
 void zocl_destroy_aie(struct drm_zocl_dev *zdev);
 int zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data);
 int zocl_aie_reset(struct drm_zocl_dev *zdev);
+int zocl_aie_graph_alloc_context(struct drm_zocl_dev *dev, u32 gid,
+		u32 ctx_code, struct sched_client_ctx *client);
+int zocl_aie_graph_free_context(struct drm_zocl_dev *dev, u32 gid,
+		struct sched_client_ctx *client);
+void zocl_aie_graph_free_context_all(struct drm_zocl_dev *zdev,
+		struct sched_client_ctx *client);
+int zocl_aie_alloc_context(struct drm_zocl_dev *zdev, u32 ctx_code,
+		struct sched_client_ctx *client);
+int zocl_aie_free_context(struct drm_zocl_dev *zdev,
+		struct sched_client_ctx *client);
+int zocl_aie_kds_add_graph_context(struct drm_zocl_dev *zdev, u32 gid,
+	        u32 ctx_code, struct kds_client *client);
+int zocl_aie_kds_del_graph_context(struct drm_zocl_dev *zdev, u32 gid,
+	        struct kds_client *client);
+void zocl_aie_kds_del_graph_context_all(struct kds_client *client);
+int zocl_aie_kds_add_context(struct drm_zocl_dev *zdev, u32 ctx_code,
+	struct kds_client *client);
+int zocl_aie_kds_del_context(struct drm_zocl_dev *zdev,
+	struct kds_client *client);
 
 int zocl_inject_error(struct drm_zocl_dev *zdev, void *data,
 		struct drm_file *filp);

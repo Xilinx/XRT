@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -119,6 +119,8 @@ struct drm_zocl_dev {
 	struct debug_ip_layout	*debug_ip;
 	struct connectivity	*connectivity;
 	struct addr_aperture	*apertures;
+	struct axlf             *axlf;
+	size_t                   axlf_size;
 	struct aie_metadata	 aie_data;
 	unsigned int		 num_apts;
 
@@ -149,6 +151,10 @@ struct drm_zocl_dev {
 	struct zocl_error	zdev_error;
 	struct zocl_aie		*aie;
 	struct zocl_watchdog_dev *watchdog;
+	u16			pr_isolation_freeze;
+	u16			pr_isolation_unfreeze;
+	int 			partial_overlay_id;
+	int			full_overlay_id;
 };
 
 int zocl_kds_update(struct drm_zocl_dev *zdev);

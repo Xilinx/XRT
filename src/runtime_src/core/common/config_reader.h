@@ -136,6 +136,13 @@ get_profile()
 }
 
 inline bool
+get_sc_profile()
+{
+  static bool value = detail::get_bool_value("Debug.sc_profile", false);
+  return value ;
+}
+
+inline bool
 get_container()
 {
   static bool value = detail::get_bool_value("Debug.container",false);
@@ -252,6 +259,13 @@ inline bool
 get_xrt_trace()
 {
   static bool value = detail::get_bool_value("Debug.xrt_trace", false);
+  return value;
+}
+
+inline bool
+get_native_xrt_trace()
+{
+  static bool value = detail::get_bool_value("Debug.native_xrt_trace", false);
   return value;
 }
 

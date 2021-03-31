@@ -33,7 +33,7 @@ namespace xdp {
   {    
   }
 
-  void AIEProfilingWriter::write(bool openNewFile)
+  bool AIEProfilingWriter::write(bool openNewFile)
   {
     // Grab AIE clock freq from first counter in metadata
     // NOTE: Assumed the same for all tiles
@@ -64,6 +64,7 @@ namespace xdp {
       }
       fout << std::endl;
     }
+    return true;
   }
 
 } // end namespace xdp

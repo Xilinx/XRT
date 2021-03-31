@@ -216,7 +216,7 @@ int xocl_kds_stop(struct xocl_dev *xdev);
 int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id);
 int xocl_kds_reconfig(struct xocl_dev *xdev);
 int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
-		     void *drm_filp, u32 *addrp);
+		     struct drm_file *filp, unsigned long size, u32 *addrp);
 u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist);
 int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds kds_cfg);
 

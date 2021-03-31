@@ -23,6 +23,7 @@
 #include <iostream>
 #include "profile_ip_access.h"
 #include "core/include/xclperf.h"
+#include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
 
@@ -63,7 +64,7 @@ public:
 
     uint32_t getNumTraceSamples(/* need type */);
     uint32_t getMaxNumTraceSamples();
-    uint32_t readTrace(xclTraceResultsVector& traceVector, uint32_t nSamples);
+    uint32_t readTrace(std::vector<xclTraceResults>& traceVector, uint32_t nSamples);
 
     size_t reset();
     void setTraceFormat(uint32_t tf) { mTraceFormat = tf; }
@@ -76,7 +77,7 @@ private:
     uint8_t major_version;
     uint8_t minor_version;
 
-    void processTraceData(xclTraceResultsVector& traceVector, uint32_t numSamples, void* data, uint32_t wordsPerSample);
+    void processTraceData(std::vector<xclTraceResults>& traceVector, uint32_t numSamples, void* data, uint32_t wordsPerSample);
 
     bool mclockTrainingdone = false;
     uint64_t mfirstTimestamp = 0;

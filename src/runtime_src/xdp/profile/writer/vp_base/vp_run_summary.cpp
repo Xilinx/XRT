@@ -45,7 +45,7 @@ namespace xdp {
     // Don't actually do anything
   }
 
-  void VPRunSummaryWriter::write(bool /*openNewFile*/)
+  bool VPRunSummaryWriter::write(bool /*openNewFile*/)
   {
     // Ignore openNewFile
     
@@ -53,7 +53,7 @@ namespace xdp {
     //  we dump
     refreshFile() ;
 
-    if (!fout) return ;
+    if (!fout) return false;
 
     // Collect all the files that have been created in this host execution
     //  run and dump their information in the run summary file
@@ -61,7 +61,7 @@ namespace xdp {
       (db->getStaticInfo()).getOpenedFiles() ;
 
     // If there are no files, don't dump anything
-    if (files.empty()) return ; 
+    if (files.empty()) return false; 
 
     boost::property_tree::ptree ptRunSummary ;
     {
@@ -106,6 +106,7 @@ namespace xdp {
     }
 
     boost::property_tree::write_json(fout, ptRunSummary, true) ;
+    return true;
   }
 
 } // end namespace xdp

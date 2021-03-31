@@ -131,6 +131,7 @@ enum kdscommand {
     KDS_CU_INTERRUPT = 0x0,
     KDS_TEST,
     KDS_ARGS,
+    KDS_SHOW,
 };
 
 enum class cu_stat : unsigned short {
@@ -508,7 +509,7 @@ public:
             ptCu.put( "base_address", 0 );
             ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
-            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
+            sensor_tree::add_child( std::string("board.ps_compute_unit." + std::to_string(i)), ptCu );
 
             num_scu++;
             if (num_scu == psKernels.at(psk_inst).pkd_num_instances) {
@@ -533,7 +534,7 @@ public:
         uint32_t usage = 0;
         uint32_t status = 0;
         int cu_idx = 0;
-        int off_idx = 0;
+        int scu_idx = 0;
         int radix = 16;
 
         // The kds_custat_raw is printing in formatted string of each line
@@ -566,9 +567,6 @@ public:
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(cu_idx)), ptCu );
         }
 
-        // Count PS kernel index in the sensor_tree with offset
-        off_idx = cu_idx;
-
         // PS kernel info
         // The kds_scustat_raw is printing in formatted string of each line
         // Format: "%d,%s,0x%x,%u"
@@ -585,19 +583,19 @@ public:
             }
 
             tokenizer::iterator tok_it = tokens.begin();
-            cu_idx = std::stoi(std::string(*tok_it++));
+            scu_idx = std::stoi(std::string(*tok_it++));
             name = std::string(*tok_it++);
             status = std::stoul(std::string(*tok_it++), nullptr, radix);
             usage = std::stoul(std::string(*tok_it++));
             // TODO: Let's avoid this special handling for PS kernel name
-            name = name + ":scu_" + std::to_string(cu_idx);
+            name = name + ":scu_" + std::to_string(scu_idx);
 
             boost::property_tree::ptree ptCu;
             ptCu.put( "name",         name );
             ptCu.put( "base_address", 0 );
             ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
-            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(off_idx + cu_idx)), ptCu );
+            sensor_tree::add_child( std::string("board.ps_compute_unit." + std::to_string(scu_idx)), ptCu );
         }
 
         return 0;
@@ -926,6 +924,29 @@ public:
             // eat the exception, probably bad path
         }
 
+        try {
+          for (auto& v : sensor_tree::get_child( "board.ps_compute_unit" )) {
+            int index = std::stoi(v.first);
+            if( index >= 0 ) {
+              std::string cu_s, cu_ba;
+              for (auto& subv : v.second) {
+                if( subv.first == "base_address" ) {
+                  auto addr = subv.second.get_value<uint64_t>();
+                  cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
+                } else if( subv.first == "usage" ) {
+                  cu_s = subv.second.get_value<std::string>();
+                }
+              }
+
+              ss << "SCU[@" << std::hex << cu_ba
+                   << "] : "<< cu_s << std::endl;
+            }
+          }
+        }
+        catch( std::exception const& e) {
+            // eat the exception, probably bad path
+        }
+
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
     }
@@ -1091,7 +1112,7 @@ public:
                      m0v85, mgt0v9avcc, m12v_sw, mgtavtt, vccint_vol, vccint_curr, m3v3_pex_curr, m0v85_curr, m3v3_vcc_vol,
                      hbm_1v2_vol, vpp2v5_vol, vccint_bram_vol, m12v_pex_vol, m12v_aux_curr, m12v_pex_curr, m12v_aux_vol,
                      vol_12v_aux1, vol_vcc1v2_i, vol_v12_in_i, vol_v12_in_aux0_i, vol_v12_in_aux1_i, vol_vccaux,
-                     vol_vccaux_pmc, vol_vccram, m3v3_aux_cur, power_warn;
+                     vol_vccaux_pmc, vol_vccram, m3v3_aux_cur, power_warn, vccint_vcu_0v9;
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_vol",    m12v_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_curr",   m12v_pex_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_vol",    m12v_aux_vol);
@@ -1126,6 +1147,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccaux_pmc",      vol_vccaux_pmc);
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccram",          vol_vccram);
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_power_warn",      power_warn);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccint_vcu_0v9",  vccint_vcu_0v9);
         sensor_tree::put( "board.physical.electrical.12v_pex.voltage",         m12v_pex_vol );
         sensor_tree::put( "board.physical.electrical.12v_pex.current",         m12v_pex_curr );
         sensor_tree::put( "board.physical.electrical.12v_aux.voltage",         m12v_aux_vol );
@@ -1162,6 +1184,7 @@ public:
         sensor_tree::put( "board.physical.electrical.vccaux_pmc.voltage",      vol_vccaux_pmc);
         sensor_tree::put( "board.physical.electrical.vccram.voltage",          vol_vccram);
         sensor_tree::put( "board.physical.electrical.power_warn.current",      power_warn);
+        sensor_tree::put( "board.physical.electrical.vccint_vcu_0v9.current",  vccint_vcu_0v9);
 
         // physical.power
         sensor_tree::put( "board.physical.power", static_cast<unsigned>(sysfs_power()));
@@ -1456,9 +1479,10 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux_pmc.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccram.voltage"  ) << std::endl;
-        ostr << std::setw(16) << "3V3 AUX CURR" << std::setw(16) << "POWER WARN" << std::setw(16) << std::endl;
+        ostr << std::setw(16) << "3V3 AUX CURR" << std::setw(16) << "POWER WARN" << std::setw(16) << "VCCINT VCU 0V9" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_aux.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.power_warn.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint_vcu_0v9.current" )
              <<  std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
@@ -1638,7 +1662,6 @@ public:
              << std::setw(14) << "Usage" << std::endl;
 
         try {
-          uint32_t scu_index = 0;
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
@@ -1657,24 +1680,48 @@ public:
                 }
               }
               int cu_i = xclIPName2Index(m_handle, cu_n.c_str());
-              if (cu_i < 0) {
-                std::size_t found = cu_n.rfind("scu");
-                if (found != std::string::npos) {
-                  auto scu_i = std::stoi(cu_n.substr(found + 4));
-                  cu_n = cu_n.substr(0, found - 1);
-                  cu_n.append("_");
-                  cu_n.append(std::to_string(scu_i));
-                  ostr << "SCU[" << std::right << std::setw(2) << std::dec << scu_index << "]: ";
-                  scu_index++;
-                } else
-                  ostr << "CU: ";
-              } else
+              if (cu_i < 0)
+                ostr << "CU: ";
+              else
                 ostr << "CU[" << std::right << std::setw(3) << cu_i << "]: ";
 
               ostr << std::left << std::setw(32) << cu_n
                    << "@" << std::setw(18) << cu_ba
                    << std::setw(14) << cu_s 
                    << std::setw(14) << cu_u << std::endl;
+            }
+          }
+          
+          uint32_t scu_index = 0;
+          for (auto& v : sensor_tree::get_child( "board.ps_compute_unit" )) {
+            int index = std::stoi(v.first);
+            if( index >= 0 ) {
+              std::string scu_n, scu_s, scu_ba, scu_u;
+              for (auto& subv : v.second) {
+                if( subv.first == "name" ) {
+                  scu_n = subv.second.get_value<std::string>();
+                } else if( subv.first == "base_address" ) {
+                  auto addr = subv.second.get_value<uint64_t>();
+                  scu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
+                } else if( subv.first == "status" ) {
+                  scu_s = subv.second.get_value<std::string>();
+                } else if( subv.first == "usage" ) {
+                  auto usage = subv.second.get_value<uint32_t>();
+                  scu_u = (usage == (uint32_t)-1) ? "N/A" : sensor_tree::pretty<uint32_t>(usage, "N/A");
+                }
+              }
+              auto found = scu_n.rfind("scu");
+              auto scu_i = std::stoi(scu_n.substr(found + 4));
+              scu_n = scu_n.substr(0, found - 1);
+              scu_n.append("_");
+              scu_n.append(std::to_string(scu_i));
+              ostr << "SCU[" << std::right << std::setw(2) << std::dec << scu_index << "]: ";
+              scu_index++;
+
+              ostr << std::left << std::setw(32) << scu_n
+                   << "@" << std::setw(18) << scu_ba
+                   << std::setw(14) << scu_s 
+                   << std::setw(14) << scu_u << std::endl;
             }
           }
         }
@@ -1861,7 +1908,7 @@ public:
         }
 
         for(int32_t i = 0; i < map->m_count; i++) {
-            if(map->m_mem_data[i].m_type == MEM_STREAMING)
+            if(map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION)
                 continue;
 
             if(isHostMem(map->m_mem_data[i].m_tag))

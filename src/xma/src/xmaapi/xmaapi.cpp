@@ -304,6 +304,19 @@ void xma_get_session_cmd_load() {
     xma_core::utils::get_session_cmd_load();
 }
 
+//Return num of xilinx devices on x86 host
+int32_t xma_num_devices() {
+    int32_t ret = XMA_ERROR;
+    if (!g_xma_singleton->xma_initialized) {
+        ret = xma_core::utils::load_libxrt();
+        if (ret == XMA_ERROR) {
+            std::cout << "XMA FATAL: Unable to load XRT library" << std::endl;
+            return XMA_ERROR;
+        }
+    }
+    return xclProbe();
+}
+
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
     int32_t ret;
@@ -409,26 +422,11 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     g_xma_singleton->cpu_mode = xrt_core::config::get_xma_cpu_mode();
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA CPU Mode is: %d", g_xma_singleton->cpu_mode);
 
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Init signal and exit handlers\n");
-    ret = std::atexit(xma_exit);
-    if (ret) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Error initalizing XMA\n");
-        for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
-            hw_device.kernels.clear();
-        }
-        g_xma_singleton->hwcfg.devices.clear();
-        g_xma_singleton->hwcfg.num_devices = -1;
-
-        return XMA_ERROR;
-    }
-
     g_xma_singleton->xma_thread1 = std::thread(xma_thread1);
     g_xma_singleton->xma_thread2 = std::thread(xma_thread2);
     //Detach threads to let them run independently
     g_xma_singleton->xma_thread1.detach();
     g_xma_singleton->xma_thread2.detach();
-
-    xma_init_sighandlers();
 
     g_xma_singleton->xma_initialized = true;
     return XMA_SUCCESS;

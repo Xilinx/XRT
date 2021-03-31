@@ -28,6 +28,8 @@
 #include <cstring>
 #include <cstdarg>
 #include "boost/format.hpp"
+#include <boost/algorithm/string.hpp>
+#include "boost/filesystem.hpp"
 
 
 #define INVALID_ID      0xffff
@@ -121,7 +123,24 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     }
     case QSPIPS:
     {
-        std::cout << "ERROR: QSPIPS mode is no longer supported." << std::endl;
+        XQSPIPS_Flasher xqspi_ps(m_device);
+        if (primary == nullptr)
+        {
+            std::string golden_file = getQspiGolden();
+            if (golden_file.empty()) {
+                std::cout << "ERROR: Golden image not found in base package. Can't revert to golden" << std::endl;
+                return -ECANCELED;
+            }
+            std::shared_ptr<firmwareImage> golden_image;
+            golden_image = std::make_shared<firmwareImage>(golden_file.c_str(), MCS_FIRMWARE_PRIMARY);
+            retVal = xqspi_ps.revertToMFG(*golden_image);
+        }
+        else
+        {
+	    if(secondary != nullptr)
+            	std::cout << "Warning: QSPIPS mode does not support secondary file." << std::endl;
+            retVal = xqspi_ps.xclUpgradeFirmware(*primary);
+        }
         break;
     }
     case OSPIVERSAL:
@@ -156,6 +175,32 @@ int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
         throw xrt_core::error(e);
 
     return flasher.xclUpgradeFirmware(*bmc);
+}
+
+/*
+ * readback from flash and save in the file specified
+ * only qspi_ps is supported currently
+ */
+void Flasher::readBack(const std::string& output)
+{
+    E_FlasherType type = getFlashType("");
+
+    switch(type)
+    {
+    case QSPIPS:
+    {
+        XQSPIPS_Flasher xqspi_ps(m_device);
+        xqspi_ps.readBack(output);
+        return;
+    }
+    case SPI:
+    case OSPIVERSAL:
+        std::cout << "ERROR: flash read back is not supported" << std::endl;
+        return;
+    default:
+        std::cout << "ERROR: flash type is not supported" << std::endl;
+        return;
+    }
 }
 
 std::string charVec2String(std::vector<char>& v)
@@ -196,6 +241,8 @@ int Flasher::getBoardInfo(BoardInfo& board)
 
     std::string unassigned_mac = "FF:FF:FF:FF:FF:FF";
     board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
+    if (flasher.fixedSC())
+        board.mBMCVer += "(FIXED)";
     board.mConfigMode = info.find(BDINFO_CONFIG_MODE) != info.end() ?
         info[BDINFO_CONFIG_MODE][0] : '\0';
     board.mFanPresence = info.find(BDINFO_FAN_PRESENCE) != info.end() ?
@@ -224,7 +271,7 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
 {
     auto dev = xrt_core::get_mgmtpf_device(index);
     if(dev == nullptr) {
-        std::cout << "ERROR: Invalid card index:" << index << std::endl;
+        std::cout << "ERROR: Invalid device index:" << index << std::endl;
         return;
     }
 
@@ -367,6 +414,43 @@ DSAInfo Flasher::getOnBoardDSA()
         bmc = "UNKNOWN"; // BMC not ready, set it to an invalid version string
 
     return DSAInfo(vbnv, ts, uuid, bmc);
+}
+
+/*
+ * For card with qspi flash like u30, u25, the golden image is supposed to
+ * be flashed at offset 96MB when the card is shipped. however, for some
+ * historical reason, the golden on some board is flashed at offset 0. As
+ * a result, the default revert_to_golden, which erases 0-96MB will brick the
+ * board. To avoid that, before revert_to_golden, flasher will check whether
+ * there is golden at 96MB. To do that, the base pkg will also install the
+ * golden file at, eg 
+ * /opt/xilinx/firmware/u30/gen3x4/base/data/BOOT_golden.BIN
+ * then flasher will compare the contents on flash at 96MB with the file to
+ * see whether the golden is there.
+ * Note: xrt doesn't support flash golden. and once the card is shipped with
+ * golden, we assume all versions of shell pkg have same golden -- new pkg
+ * just installs the golden at same location
+ * If the golden file is not found on disk, or the golden image is not found 
+ * at 96MB, we don't do revert_to_golden.
+ */
+std::string Flasher::getQspiGolden()
+{
+    std::string board_name = xrt_core::device_query<xrt_core::query::board_name>(m_device);
+    if (board_name.empty())
+        return "";
+
+    std::string start = FORMATTED_FW_DIR;
+    start += "/";
+    start += board_name;
+    boost::filesystem::recursive_directory_iterator dir(start), end;
+    while (dir != end) {
+        std::string fn = dir->path().filename().string();
+        if (!fn.compare(QSPI_GOLDEN_IMAGE)) {
+            return dir->path().string();
+        }
+        dir++;
+    }
+    return "";
 }
 
 std::string Flasher::sGetDBDF()

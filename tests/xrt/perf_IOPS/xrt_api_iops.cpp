@@ -3,9 +3,9 @@
 #include <vector>
 #include <chrono>
 
-#include "experimental/xrt_device.h"
-#include "experimental/xrt_bo.h"
-#include "experimental/xrt_kernel.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_bo.h"
+#include "xrt/xrt_kernel.h"
 
 void usage()
 {

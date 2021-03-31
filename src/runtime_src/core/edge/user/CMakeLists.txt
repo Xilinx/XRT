@@ -10,6 +10,8 @@ if (DEFINED XRT_AIE_BUILD)
     "aie/*.h"
     "aie/*.cpp"
     "aie/*.c"
+    "aie/common_layer/*.h"
+    "aie/common_layer/*.cpp"
   )
 
   set(CMAKE_CXX_FLAGS "-DXAIE_DEBUG ${CMAKE_CXX_FLAGS}")

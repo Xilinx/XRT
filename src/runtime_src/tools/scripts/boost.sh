@@ -5,7 +5,9 @@ usage()
     echo "Usage: boost.sh [options] [<version>]"
     echo ""
     echo "Linux only script to pull a release version of Boost and "
-    echo "build it locally for use with XRT"
+    echo "build it locally for use with XRT.  This script builds"
+    echo "static Boost link libraries compiled with -fPIC such that"
+    echo "XRT shared libraries can link with static boost."
     echo ""
     echo "Version defaults to boost-1.71.0"
     echo ""
@@ -120,7 +122,15 @@ if [[ $nobuild == 0 ]]; then
     fi
 
     ./bootstrap.sh > /dev/null
-    ./b2 -a -d+2 cxxflags="-std=gnu++14 -fPIC" -j6 install --prefix=$install --build-type=complete address-model=64 architecture=x86 link=static threading=multi --with-filesystem --with-program_options --with-system --layout=tagged 
+    ./b2 -a -d+2 cxxflags="-std=gnu++14 -fPIC" -j6 install --prefix=$install link=static --with-filesystem --with-program_options --with-system --layout=tagged
+
+    # copy _mt-x64.a to .a, to faciliate linking with -lboost_<lib>
+    for f in $(find $install/lib -type f -name *-mt-x64.a); do
+        cp $f ${f//-mt-x64/}
+    done
+    for f in $(find $install/lib -type f -name *-mt-a64.a); do
+        cp $f ${f//-mt-a64/}
+    done
 
     cd $here
     echo "Boost installed in $prefix"
@@ -128,5 +138,5 @@ fi
 echo ""
 echo "Use local build of Boost with XRT:"
 echo "% <xrt>/build.sh -clean"
-echo "% env XRT_BOOST_INSTALL=$install <xrt>/build.sh ..."
+echo "% <xrt>/build.sh -with-static-boost $install ..."
 

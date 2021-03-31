@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -24,6 +24,15 @@ extern int kds_mode;
 int zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 		    struct sched_client_ctx *client);
 
+int zocl_graph_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client);
+int zocl_graph_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client);
+int zocl_aie_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client);
+int zocl_aie_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client);
+
 /*
  * read_axlf and ctx should be protected by zdev_xclbin_lock exclusively.
  */
@@ -32,10 +41,11 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_axlf *axlf_obj = data;
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
+	struct sched_client_ctx *client = filp->driver_priv;
 	int ret;
 
 	mutex_lock(&zdev->zdev_xclbin_lock);
-	ret = zocl_xclbin_read_axlf(zdev, axlf_obj);
+	ret = zocl_xclbin_read_axlf(zdev, axlf_obj, client);
 	mutex_unlock(&zdev->zdev_xclbin_lock);
 
 	return ret;
@@ -71,9 +81,25 @@ zocl_ctx_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 		return ret;
 	}
 
-	if (args->op == ZOCL_CTX_OP_OPEN_GCU_FD) {
-		ret = zocl_open_gcu(zdev, args, filp->driver_priv);
-		return ret;
+	switch (args->op) {
+
+	case ZOCL_CTX_OP_OPEN_GCU_FD:
+		return zocl_open_gcu(zdev, args, filp->driver_priv);
+
+	case ZOCL_CTX_OP_ALLOC_GRAPH_CTX:
+		return zocl_graph_alloc_ctx(zdev, args, filp->driver_priv);
+
+	case ZOCL_CTX_OP_FREE_GRAPH_CTX:
+		return zocl_graph_free_ctx(zdev, args, filp->driver_priv);
+
+	case ZOCL_CTX_OP_ALLOC_AIE_CTX:
+		return zocl_aie_alloc_ctx(zdev, args, filp->driver_priv);
+
+	case ZOCL_CTX_OP_FREE_AIE_CTX:
+		return zocl_aie_free_ctx(zdev, args, filp->driver_priv);
+
+	default:
+		break;
 	}
 
 	mutex_lock(&zdev->zdev_xclbin_lock);

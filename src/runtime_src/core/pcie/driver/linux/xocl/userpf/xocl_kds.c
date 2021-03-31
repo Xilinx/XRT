@@ -32,10 +32,10 @@ do {\
 
 void xocl_describe(const struct drm_xocl_bo *xobj);
 
-int kds_mode = 0;
+int kds_mode = 1;
 module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(kds_mode,
-		 "enable new KDS (0 = disable (default), 1 = enable)");
+		 "enable new KDS (0 = disable, 1 = enable (default))");
 
 /* kds_echo also impact mb_scheduler.c, keep this as global.
  * Let's move it to struct kds_sched in the future.
@@ -301,7 +301,7 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
  * [1  ]      : number of cq slots
  * [1  ]      : number of cus
  * [#numcus]  : cu execution stats (number of executions)
- * [#numcus]  : cu status (1: running, 0: idle)
+ * [#numcus]  : cu status (1: running, 0: idle, -1: crashed)
  * [#slots]   : command queue slot status
  *
  * Old ERT populates
@@ -310,12 +310,19 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
  */
 static inline void read_ert_stat(struct kds_command *xcmd)
 {
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
 	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
 	int num_cu  = kds->cu_mgmt.num_cus;
 	int num_scu = kds->scu_mgmt.num_cus;
 	int off_idx;
 	int i;
+	
+	/* TODO: For CU stat command, there are few things to refine.
+	 * 1. Define size of the command
+	 * 2. Define CU status enum/macro in a header file
+	 * 	a. xocl/zocl/MB/RPU/xbutil can shared
+	 * 	b. parser helper function if need
+	 */
 
 	/* New KDS handle FPGA CU statistic on host not ERT */
 	if (ecmd->data[0] != 0x51a10000)
@@ -331,10 +338,21 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	/* off_idx points to PS kernel status */
 	off_idx += num_scu + num_cu;
 	for (i = 0; i < num_scu; i++) {
-		if (ecmd->data[off_idx + i])
+		int status = (int)(ecmd->data[off_idx + i]);
+
+		switch (status) {
+		case 1:
 			kds->scu_mgmt.status[i] = CU_AP_START;
-		else
+			break;
+		case 0:
 			kds->scu_mgmt.status[i] = CU_AP_IDLE;
+			break;
+		case -1:
+			kds->scu_mgmt.status[i] = CU_AP_CRASHED;
+			break;
+		default:
+			kds->scu_mgmt.status[i] = 0;
+		}
 	}
 	mutex_unlock(&kds->scu_mgmt.lock);
 }
@@ -342,7 +360,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 static void notify_execbuf(struct kds_command *xcmd, int status)
 {
 	struct kds_client *client = xcmd->client;
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
 
 	if (xcmd->opcode == OP_START_SK) {
 		/* For PS kernel get cmd state and return_code */
@@ -352,19 +370,23 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		if (scmd->state < ERT_CMD_STATE_COMPLETED)
 			/* It is old shell, return code is missing */
 			scmd->return_code = -ENODATA;
-	} else if (xcmd->opcode == OP_GET_STAT)
-		read_ert_stat(xcmd);
+		status = scmd->state;
+	} else {
+		if (xcmd->opcode == OP_GET_STAT)
+			read_ert_stat(xcmd);
 
-	if (status == KDS_COMPLETED)
-		ecmd->state = ERT_CMD_STATE_COMPLETED;
-	else if (status == KDS_ERROR)
-		ecmd->state = ERT_CMD_STATE_ERROR;
-	else if (status == KDS_TIMEOUT)
-		ecmd->state = ERT_CMD_STATE_TIMEOUT;
-	else if (status == KDS_ABORT)
-		ecmd->state = ERT_CMD_STATE_ABORT;
+		if (status == KDS_COMPLETED)
+			ecmd->state = ERT_CMD_STATE_COMPLETED;
+		else if (status == KDS_ERROR)
+			ecmd->state = ERT_CMD_STATE_ERROR;
+		else if (status == KDS_TIMEOUT)
+			ecmd->state = ERT_CMD_STATE_TIMEOUT;
+		else if (status == KDS_ABORT)
+			ecmd->state = ERT_CMD_STATE_ABORT;
+	}
 
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
+	kfree(xcmd->execbuf);
 
 	if (xcmd->cu_idx >= 0)
 		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
@@ -379,6 +401,34 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	}
 }
 
+static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
+				     struct drm_xocl_bo *xobj,
+				     struct ert_packet *ecmd)
+{
+	struct ert_packet *orig;
+	int pkg_size;
+	bool op_valid;
+
+	orig = (struct ert_packet *)xobj->vmapping;
+	orig->state = ERT_CMD_STATE_NEW;
+	ecmd->header = orig->header;
+
+	pkg_size = sizeof(ecmd->header) + ecmd->count * sizeof(u32);
+	if (xobj->base.size < pkg_size) {
+		userpf_err(xdev, "payload size bigger than exec buf\n");
+		return false;
+	}
+
+	memcpy(ecmd->data, orig->data, ecmd->count * sizeof(u32));
+
+	/* opcode specific validation */
+	op_valid = ert_valid_opcode(ecmd);
+	if (!op_valid)
+		userpf_err(xdev, "opcode(%d) is invalid\n", ecmd->opcode);
+
+	return op_valid;
+}
+
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			      struct drm_file *filp, bool in_kernel)
 {
@@ -387,7 +437,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct drm_xocl_execbuf *args = data;
 	struct drm_gem_object *obj;
 	struct drm_xocl_bo *xobj;
-	struct ert_packet *ecmd;
+	struct ert_packet *ecmd = NULL;
 	struct kds_command *xcmd;
 	int ret = 0;
 
@@ -409,14 +459,35 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	}
 
 	xobj = to_xocl_bo(obj);
+
 	if (!xocl_bo_execbuf(xobj)) {
+		userpf_err(xdev, "Command buffer is not exec buf\n");
+		return false;
+	}
+
+	/* An exec buf bo is at least 1 PAGE.
+	 * This is enough to carry metadata for any execbuf command struct.
+	 * It is safe to make the assumption and validate will be simpler.
+	 */
+	if (xobj->base.size < PAGE_SIZE) {
+		userpf_err(xdev, "exec buf is too small\n");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	ecmd = (struct ert_packet *)xobj->vmapping;
+	ecmd = kzalloc(xobj->base.size, GFP_KERNEL);
+	if (!ecmd) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
-	ecmd->state = ERT_CMD_STATE_NEW;
+	/* If xobj contain a valid command, ecmd would be a copy */
+	if (!copy_and_validate_execbuf(xdev, xobj, ecmd)) {
+		userpf_err(xdev, "Invalid command\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* only the user command knows the real size of the payload.
 	 * count is more than enough!
 	 */
@@ -428,7 +499,10 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	}
 	xcmd->cb.free = kds_free_command;
 	xcmd->cb.notify_host = notify_execbuf;
+	/* xcmd->execbuf points to kernel space copy */
 	xcmd->execbuf = (u32 *)ecmd;
+	/* xcmd->u_execbuf points to user's original for write back/notice */
+	xcmd->u_execbuf = xobj->vmapping;
 	xcmd->gem_obj = obj;
 
 	print_ecmd_info(ecmd);
@@ -518,8 +592,10 @@ out1:
 	xcmd->cb.free(xcmd);
 out:
 	/* Don't forget to put gem object if error happen */
-	if (ret < 0)
-		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
+	if (ret < 0) {
+		kfree(ecmd);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+	}
 	return ret;
 }
 
@@ -652,10 +728,16 @@ int xocl_kds_reconfig(struct xocl_dev *xdev)
 }
 
 int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
-		     void *drm_filp, u32 *addrp)
+		     struct drm_file *filp, unsigned long size, u32 *addrp)
 {
-	/* plact holder */
-	return 0;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client = filp->driver_priv;
+	int ret;
+
+	mutex_lock(&client->lock);
+	ret = kds_map_cu_addr(kds, client, cu_idx, size, addrp);
+	mutex_unlock(&client->lock);
+	return ret;
 }
 
 u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist)
@@ -820,6 +902,7 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	ecmd->cq_int	= cfg->cq_int;
 	ecmd->dataflow	= cfg->dataflow;
 	ecmd->rw_shared	= cfg->rw_shared;
+	kds->cu_mgmt.rw_shared = cfg->rw_shared;
 
 	/* Fill CU address */
 	for (i = 0; i < num_cu; i++) {
@@ -910,9 +993,9 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 
 		image->start_cuidx = start_cuidx;
 		image->num_cus = scu_data->pkd_num_instances;
-		image->sk_name[4] = 0;
 		strncpy((char *)image->sk_name, scu_data->pkd_sym_name,
-			PS_KERNEL_NAME_LENGTH);
+			PS_KERNEL_NAME_LENGTH - 1);
+		((char *)image->sk_name)[PS_KERNEL_NAME_LENGTH - 1] = 0;
 
 		start_cuidx += image->num_cus;
 		img_idx++;
@@ -962,7 +1045,7 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	int ret = 0;
 
 	/* TODO: Use hard code size is not ideal. Let's refine this later */
-	ecmd = vmalloc(0x1000);
+	ecmd = vzalloc(0x1000);
 	if (!ecmd)
 		return -ENOMEM;
 
@@ -990,13 +1073,16 @@ out:
 int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
 	int ret = 0;
+	struct ert_cu_bulletin brd = {0};
 
+	ret = xocl_ert_user_bulletin(xdev, &brd);
 	/* Detect if ERT subsystem is able to support CU to host interrupt
 	 * This support is added since ERT ver3.0
 	 *
 	 * So, please make sure this is called after subdev init.
 	 */
-	if (xocl_ert_user_ert_intr_cfg(xdev) == -ENODEV) {
+	if (ret == -ENODEV || !brd.cap.cu_intr) {
+		ret = 0;
 		userpf_info(xdev, "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
 	} else {

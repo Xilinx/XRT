@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  * Author(s): Larry Liu
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
@@ -23,6 +23,9 @@
 #include "xrt.h"
 #include "core/edge/common/aie_parser.h"
 #include "core/common/device.h"
+#include "experimental/xrt_graph.h"
+#include "common_layer/adf_api_config.h"
+#include "common_layer/adf_runtime_api.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -34,10 +37,7 @@ namespace zynqaie {
 class graph_type
 {
 public:
-    using tile_type = xrt_core::edge::aie::tile_type;
-    using rtp_type = xrt_core::edge::aie::rtp_type;
-
-    graph_type(std::shared_ptr<xrt_core::device> device, const uuid_t xclbin_uuid, const std::string& name);
+    graph_type(std::shared_ptr<xrt_core::device> device, const uuid_t xclbin_uuid, const std::string& name, xrt::graph::access_mode);
     ~graph_type();
 
     void
@@ -103,15 +103,15 @@ private:
       end = 4,
     };
 
+    int id;
     graph_state state;
     std::string name;
-    uint64_t startTime;
+    xrt::graph::access_mode access_mode;
 
     /**
      * This is the pointer to the AIE array where the AIE part of
      * the graph resides. The Aie is an obect that holds the whole
      * AIE resources, configurations etc.
-     * TODO it should be initialized when we load XCLBIN?
      */
     Aie* aieArray;
 
@@ -120,10 +120,10 @@ private:
      * A tile is represented by a pair of number <col, row>
      * It represents the tile position in the AIE array.
      */
-    std::vector<tile_type> tiles;
-
+    adf::graph_config graph_config;
+    std::shared_ptr<adf::graph_api> pAIEConfigAPI;
     /* This is the collections of rtps that are used. */
-    std::unordered_map<std::string, rtp_type> rtps;
+    std::unordered_map<std::string, adf::rtp_config> rtps;
 };
 
 }

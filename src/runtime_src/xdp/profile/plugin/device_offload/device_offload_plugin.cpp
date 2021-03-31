@@ -82,19 +82,28 @@ namespace {
 namespace xdp {
 
   DeviceOffloadPlugin::DeviceOffloadPlugin() :
-    XDPPlugin(), continuous_trace(false), continuous_trace_interval_ms(10), trace_dump_int_s(5)
+    XDPPlugin(), continuous_trace(false), continuous_trace_interval_ms(10)
   {
     active = db->claimDeviceOffloadOwnership() ;
     if (!active) return ; 
 
     db->registerPlugin(this) ;
 
-    // Get the profiling continuous offload options from xrt.ini    
-    continuous_trace = xrt_core::config::get_continuous_trace() ;
-    continuous_trace_interval_ms = 
-      xrt_core::config::get_continuous_trace_interval_ms() ;
-    trace_dump_int_s =
-      xrt_core::config::get_trace_dump_interval_s();
+    // Get the profiling continuous offload options from xrt.ini
+    //  Device offload continuous offload and dumping is only supported
+    //  for hardware, not emulation
+    if (getFlowMode() == HW) {
+      continuous_trace = xrt_core::config::get_continuous_trace() ;
+      continuous_trace_interval_ms =
+        xrt_core::config::get_continuous_trace_interval_ms() ;
+    }
+    else {
+      if (xrt_core::config::get_continuous_trace()) {
+	xrt_core::message::send(xrt_core::message::severity_level::warning,
+                                "XRT",
+                                "Continuous offload and dumping of device data is not supported in emulation and has been disabled.");
+      }
+    }
   }
 
   DeviceOffloadPlugin::~DeviceOffloadPlugin()
@@ -108,7 +117,7 @@ namespace xdp {
     uint64_t deviceId = db->addDevice(sysfsPath) ;
 
     // When adding a device, also add a writer to dump the information
-    std::string version = "1.0" ;
+    std::string version = "1.1" ;
     std::string creationTime = xdp::getCurrentDateTime() ;
     std::string xrtVersion   = xdp::getXRTVersion() ;
     std::string toolVersion  = xdp::getToolVersion() ;
@@ -125,9 +134,9 @@ namespace xdp {
 
     (db->getStaticInfo()).addOpenedFile(filename.c_str(), "VP_TRACE") ;
 
-    if (continuous_trace) {
-      XDPPlugin::startWriteThread(trace_dump_int_s, "VP_TRACE");
-    }
+    if (continuous_trace)
+      XDPPlugin::startWriteThread(XDPPlugin::get_trace_dump_int_s(), "VP_TRACE");
+
   }
 
   void DeviceOffloadPlugin::configureDataflow(uint64_t deviceId,
@@ -192,14 +201,16 @@ namespace xdp {
     bool enable_device_trace = xrt_core::config::get_timeline_trace() ||
       xrt_core::config::get_data_transfer_trace() != "off" ;
 
+    // We start the thread manually because of race conditions
     DeviceTraceOffload* offloader = 
       new DeviceTraceOffload(devInterface, logger,
                              continuous_trace_interval_ms, // offload_sleep_ms,
                              trace_buffer_size,            // trbuf_size,
-                             continuous_trace,             // start_thread
+                             false,                       // start_thread
                              enable_device_trace);
 
-    bool init_successful = offloader->read_trace_init() ;
+    bool init_successful = offloader->read_trace_init(m_enable_circular_buffer) ;
+
     if (!init_successful) {
       if (devInterface->hasTs2mm()) {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ;
@@ -208,7 +219,58 @@ namespace xdp {
       delete logger ;
       return ;
     }
+
     offloaders[deviceId] = std::make_tuple(offloader, logger, devInterface) ;
+  }
+
+  void DeviceOffloadPlugin::startContinuousThreads(uint64_t deviceId)
+  {
+    if (!active) return ;
+    if (offloaders.find(deviceId) == offloaders.end()) return ;
+
+    DeviceData& data = offloaders[deviceId] ;
+    auto offloader = std::get<0>(data) ;
+    auto devInterface = std::get<2>(data) ;
+    if (offloader == nullptr) return ;
+
+    offloader->train_clock();
+    // Trace FIFO is usually very small (8k,16k etc)
+    //  Hence enable Continuous clock training/Trace
+    //  ONLY for Offload to DDR Memory
+    if (!(devInterface->hasTs2mm())) {
+      if (continuous_trace) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning,
+                                "XRT", CONTINUOUS_OFFLOAD_WARN_MSG_FIFO);
+      }
+      return ;
+    }
+
+    // We have TS2MM
+    if (continuous_trace) {
+      offloader->start_offload(OffloadThreadType::TRACE);
+      if (m_enable_circular_buffer) {
+        auto tdma = devInterface->getTs2mm() ;
+        if (tdma->supportsCircBuf()) {
+          uint64_t min_offload_rate = 0 ;
+          uint64_t requested_offload_rate = 0 ;
+          bool use_circ_buf =
+            offloader->using_circular_buffer(min_offload_rate,
+                                             requested_offload_rate);
+          if (!use_circ_buf) {
+            std::string msg = std::string(TS2MM_WARN_MSG_CIRC_BUF) +
+              " Minimum required offload rate (bytes per second) : " +
+              std::to_string(min_offload_rate) +
+              " Requested offload rate : " +
+              std::to_string(requested_offload_rate);
+            xrt_core::message::send(xrt_core::message::severity_level::warning,
+                                    "XRT", msg);
+	  }
+	}
+      }
+    }
+    else {
+      offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
+    }
   }
   
   void DeviceOffloadPlugin::configureTraceIP(DeviceIntf* devInterface)

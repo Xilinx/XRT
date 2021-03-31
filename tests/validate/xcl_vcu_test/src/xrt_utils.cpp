@@ -15,8 +15,10 @@
  */
 
 /* Update of this file by the user is not encouraged */
+#include <string>
 #include <assert.h>
 #include "xrt_utils.h"
+#include "experimental/xrt-next.h"
 
 #define ERROR_PRINT(...) {\
   do {\
@@ -123,7 +125,7 @@ get_axlf_section2 (const struct axlf *top, enum axlf_section_kind kind)
 }
 
 int
-download_xclbin (const char *bit, unsigned deviceIndex, const char *halLog,
+download_xclbin (const char *bit, unsigned deviceIndex, int *cu_index,
     xclDeviceHandle * handle, uuid_t * xclbinId)
 {
   struct xclDeviceInfo2 deviceInfo;
@@ -135,13 +137,14 @@ download_xclbin (const char *bit, unsigned deviceIndex, const char *halLog,
   const struct axlf_section_header *ip = NULL;
   struct ip_layout *layout = NULL;
   int i;
+  int iret = -1;
 
   if (deviceIndex >= xclProbe ()) {
     ERROR_PRINT ("Device index not found");
-    return -1;
+    return iret;
   }
 
-  *handle = xclOpen (deviceIndex, halLog, XCL_INFO);
+  *handle = xclOpen (deviceIndex, NULL, XCL_INFO);
 
   if (xclGetDeviceInfo2 (*handle, &deviceInfo)) {
     ERROR_PRINT ("Device information not found");
@@ -185,7 +188,7 @@ download_xclbin (const char *bit, unsigned deviceIndex, const char *halLog,
   header = (char *) calloc (1, size);
   if (header == NULL) {
     ERROR_PRINT ("failed to allocate memory");
-    return -1;
+    return iret;
   }
 
   if (fread (header, sizeof (char), size, fptr) != size) {
@@ -212,8 +215,26 @@ download_xclbin (const char *bit, unsigned deviceIndex, const char *halLog,
   for (i = 0; i < layout->m_count; ++i) {
     if (layout->m_ip_data[i].m_type != IP_KERNEL)
       continue;
-    DEBUG_PRINT ("index = %d, kernel name = %s, base_addr = %lx", i,
-        layout->m_ip_data[i].m_name, layout->m_ip_data[i].m_base_address);
+
+    std::string k_name = reinterpret_cast<const char*>(layout->m_ip_data[i].m_name);
+    if (k_name.find("decoder") != std::string::npos) {
+      DEBUG_PRINT ("index = %d, kernel name = %s, base_addr = %lx", i,
+          layout->m_ip_data[i].m_name, layout->m_ip_data[i].m_base_address);
+
+      *cu_index = xclIPName2Index(*handle, k_name.c_str());
+      if (*cu_index < 0) {
+        DEBUG_PRINT ("Invalid compute unit");
+        iret = 1;
+        goto error;
+      }
+      break;
+    }
+  }
+
+  if (i == layout->m_count) {
+    DEBUG_PRINT ("No decoder compute unit found");
+    iret = 1;
+    goto error;
   }
 
   uuid_copy (*xclbinId, top->m_header.uuid);
@@ -227,7 +248,7 @@ error:
   if (fptr)
     fclose (fptr);
   xclClose (*handle);
-  return -1;
+  return iret;
 }
 
 int

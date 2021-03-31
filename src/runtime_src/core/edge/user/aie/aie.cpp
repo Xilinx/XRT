@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  * Author(s): Larry Liu
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
@@ -36,11 +36,20 @@ XAie_InstDeclare(DevInst, &ConfigPtr);   // Declare global device instance
 
 Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 {
-    XAie_SetupConfig(ConfigPtr, HW_GEN, XAIE_BASE_ADDR, XAIE_COL_SHIFT,
-        XAIE_ROW_SHIFT, XAIE_NUM_COLS, XAIE_NUM_ROWS,
-        XAIE_SHIM_ROW, XAIE_RESERVED_TILE_ROW_START,
-        XAIE_RESERVED_TILE_NUM_ROWS, XAIE_AIE_TILE_ROW_START,
-        XAIE_AIE_TILE_NUM_ROWS);
+    adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
+
+    XAie_SetupConfig(ConfigPtr,
+        driver_config.hw_gen,
+        driver_config.base_address,
+        driver_config.column_shift,
+        driver_config.row_shift,
+        driver_config.num_columns,
+        driver_config.num_rows,
+        driver_config.shim_row,
+        driver_config.reserved_row_start,
+        driver_config.reserved_num_rows,
+        driver_config.aie_tile_row_start,
+        driver_config.aie_tile_num_rows);
 
 #ifndef __AIESIM__
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
@@ -54,6 +63,8 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
         throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd");
     fd = aiefd.fd;
 
+    access_mode = drv->getAIEAccessMode();
+
     ConfigPtr.PartProp.Handle = fd;
 #endif
 
@@ -61,57 +72,25 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
     if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
         throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
     devInst = &DevInst;
+    adf::config_manager::initialize(devInst, driver_config.reserved_num_rows, false);
 
     /* Initialize PLIO metadata */
     for (auto& plio : xrt_core::edge::aie::get_plios(device.get()))
         plios.emplace_back(std::move(plio));
 
     /* Initialize graph GMIO metadata */
-    for (auto& gmio : xrt_core::edge::aie::get_gmios(device.get()))
-        gmios.emplace_back(std::move(gmio));
+    gmios = xrt_core::edge::aie::get_old_gmios(device.get());
 
-    /*
-     * Initialize AIE shim DMA on column base if there is one for
-     * this column.
-     */
-    numCols = XAIE_NUM_COLS;
-    shim_dma.resize(numCols);
-    for (auto& gmio : gmios) {
-        if (gmio.shim_col > numCols)
-            throw xrt_core::error(-EINVAL, "GMIO " + gmio.name + " shim column " + std::to_string(gmio.shim_col) + " does not exist");
-
-        auto dma = &shim_dma.at(gmio.shim_col);
-        XAie_LocType shimTile = XAie_TileLoc(gmio.shim_col, 0);
-
-        if (!dma->configured) {
-            XAie_DmaDescInit(devInst, &(dma->desc), shimTile);
-            dma->configured = true;
-        }
-
-        auto chan = gmio.channel_number;
-        /* type 0: GM->AIE; type 1: AIE->GM */
-        XAie_DmaDirection dir = gmio.type == 0 ? DMA_MM2S : DMA_S2MM;
-        uint8_t pch = CONVERT_LCHANL_TO_PCHANL(chan);
-        XAie_DmaChannelEnable(devInst, shimTile, pch, dir);
-        XAie_DmaSetAxi(&(dma->desc), 0, gmio.burst_len, 0, 0, 0);
-
-        XAie_DmaGetMaxQueueSize(devInst, shimTile, &(dma->maxqSize));
-        for (int i = 0; i < dma->maxqSize; ++i) {
-            /*
-             * 16 BDs are allocated to 4 channels.
-             * Channel0: BD0~BD3
-             * Channel1: BD4~BD7
-             * Channel2: BD8~BD11
-             * Channel3: BD12~BD15
-             */
-            int bd_num = chan * dma->maxqSize + i;
-            BD bd;
-            bd.bd_num = bd_num;
-            dma->dma_chan[chan].idle_bds.push(bd);
-        }
+    /* Initialize gmio api instances */
+    gmio_configs = xrt_core::edge::aie::get_gmios(device.get());
+    for (auto config_itr = gmio_configs.begin(); config_itr != gmio_configs.end(); config_itr++)
+    {
+        auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second);
+        p_gmio_api->configure();
+        gmio_apis[config_itr->first] = p_gmio_api;
     }
 
-    Resources::AIE::initialize(XAIE_NUM_COLS, XAIE_NUM_ROWS);
+    Resources::AIE::initialize(driver_config.num_columns, driver_config.aie_tile_num_rows);
 }
 
 Aie::~Aie()
@@ -132,25 +111,51 @@ XAie_DevInst* Aie::getDevInst()
 
 void
 Aie::
+open_context(const xrt_core::device* device, xrt::aie::access_mode am)
+{
+#ifndef __AIESIM__
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+  auto current_am = drv->getAIEAccessMode();
+  if (current_am != xrt::aie::access_mode::none)
+    throw xrt_core::error(-EBUSY, "Can not change current AIE access mode");
+
+  int ret = drv->openAIEContext(am);
+  if (ret)
+      throw xrt_core::error(ret, "Fail to open AIE context");
+
+  drv->setAIEAccessMode(am);
+  access_mode = am;
+#endif
+}
+
+bool
+Aie::
+is_context_set()
+{
+  return (access_mode != xrt::aie::access_mode::none);
+}
+
+void
+Aie::
 sync_bo(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
 
-  auto gmio = std::find_if(gmios.begin(), gmios.end(),
-            [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't sync BO");
 
-  if (gmio == gmios.end())
+  auto gmio_itr = gmio_apis.find(gmioName);
+  if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
-  submit_sync_bo(bo, gmio, dir, size, offset);
+  auto gmio_config_itr = gmio_configs.find(gmioName);
+  if (gmio_config_itr == gmio_configs.end())
+    throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
-  ShimDMA *dmap = &shim_dma.at(gmio->shim_col);
-  auto chan = gmio->channel_number;
-  auto shim_tile = XAie_TileLoc(gmio->shim_col, 0);
-  XAie_DmaDirection gmdir = gmio->type == 0 ? DMA_MM2S : DMA_S2MM;
-
-  wait_sync_bo(dmap, chan, shim_tile, gmdir, 0);
+  submit_sync_bo(bo, gmio_itr->second, gmio_config_itr->second, dir, size, offset);
+  gmio_itr->second->wait();
 }
 
 void
@@ -160,13 +165,18 @@ sync_bo_nb(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
 
-  auto gmio = std::find_if(gmios.begin(), gmios.end(),
-            [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't sync BO");
 
-  if (gmio == gmios.end())
+  auto gmio_itr = gmio_apis.find(gmioName);
+  if (gmio_itr == gmio_apis.end())
     throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
-  submit_sync_bo(bo, gmio, dir, size, offset);
+  auto gmio_config_itr = gmio_configs.find(gmioName);
+  if (gmio_config_itr == gmio_configs.end())
+    throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
+
+  submit_sync_bo(bo, gmio_itr->second, gmio_config_itr->second, dir, size, offset);
 }
 
 void
@@ -176,31 +186,27 @@ wait_gmio(const std::string& gmioName)
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't wait GMIO: AIE is not initialized");
 
-  auto gmio = std::find_if(gmios.begin(), gmios.end(),
-            [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't wait gmio");
 
-  if (gmio == gmios.end())
-    throw xrt_core::error(-EINVAL, "Can't wait GMIO: GMIO name not found");
+  auto gmio_itr = gmio_apis.find(gmioName);
+  if (gmio_itr == gmio_apis.end())
+    throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
 
-  ShimDMA *dmap = &shim_dma.at(gmio->shim_col);
-  auto chan = gmio->channel_number;
-  auto shim_tile = XAie_TileLoc(gmio->shim_col, 0);
-  XAie_DmaDirection gmdir = gmio->type == 0 ? DMA_MM2S : DMA_S2MM;
-
-  wait_sync_bo(dmap, chan, shim_tile, gmdir, 0);
+  gmio_itr->second->wait();
 }
 
 void
 Aie::
-submit_sync_bo(xrt::bo& bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset)
+submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio_api, adf::gmio_config& gmio_config, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   switch (dir) {
   case XCL_BO_SYNC_BO_GMIO_TO_AIE:
-    if (gmio->type != 0)
+    if (gmio_config.type != 0)
       throw xrt_core::error(-EINVAL, "Sync BO direction does not match GMIO type");
     break;
   case XCL_BO_SYNC_BO_AIE_TO_GMIO:
-    if (gmio->type != 1)
+    if (gmio_config.type != 1)
       throw xrt_core::error(-EINVAL, "Sync BO direction does not match GMIO type");
     break;
   default:
@@ -210,64 +216,14 @@ submit_sync_bo(xrt::bo& bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSy
   if (size & XAIEDMA_SHIM_TXFER_LEN32_MASK != 0)
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
 
-  ShimDMA *dmap = &shim_dma.at(gmio->shim_col);
-  auto chan = gmio->channel_number;
-  auto shim_tile = XAie_TileLoc(gmio->shim_col, 0);
-  XAie_DmaDirection gmdir = gmio->type == 0 ? DMA_MM2S : DMA_S2MM;
-  uint32_t pchan = CONVERT_LCHANL_TO_PCHANL(chan);
-
-  /* Find a free BD. Busy wait until we get one. */
-  while (dmap->dma_chan[chan].idle_bds.empty()) {
-    uint8_t npend;
-    XAie_DmaGetPendingBdCount(devInst, shim_tile, pchan, gmdir, &npend);
-
-    int num_comp = dmap->maxqSize - npend;
-
-    /* Pending BD is completed by order per Shim DMA spec. */
-    for (int i = 0; i < num_comp; ++i) {
-      BD bd = dmap->dma_chan[chan].pend_bds.front();
-      dmap->dma_chan[chan].pend_bds.pop();
-      dmap->dma_chan[chan].idle_bds.push(bd);
-    }
-  }
-
-  BD_scope bd_scope(dmap->dma_chan[chan].idle_bds.front(), this);
-  auto& bd = bd_scope.get();
-  dmap->dma_chan[chan].idle_bds.pop();
+  BD bd;
   prepare_bd(bd, bo);
-
 #ifndef __AIESIM__
-  XAie_DmaSetAddrLen(&(dmap->desc), (uint64_t)(bd.vaddr + offset), size);
+  gmio_api->enqueueBD((uint64_t)bd.vaddr + offset, size);
 #else
-  XAie_DmaSetAddrLen(&(dmap->desc), (uint64_t)(bo.address() + offset), size);
+  gmio_api->enqueueBD((uint64_t)bo.address() + offset, size);
 #endif
-
-  /* Set BD lock */
-  auto acq_lock = XAie_LockInit(bd.bd_num, XAIE_LOCK_WITH_NO_VALUE);
-  auto rel_lock = XAie_LockInit(bd.bd_num, XAIE_LOCK_WITH_NO_VALUE);
-  XAie_DmaSetLock(&(dmap->desc), acq_lock, rel_lock);
-
-  XAie_DmaEnableBd(&(dmap->desc));
-
-  /* Write BD */
-  XAie_DmaWriteBd(devInst, &(dmap->desc), shim_tile, bd.bd_num);
-
-  /* Enqueue BD */
-  XAie_DmaChannelPushBdToQueue(devInst, shim_tile, pchan, gmdir, bd.bd_num);
-  dmap->dma_chan[chan].pend_bds.push(bd);
-}
-
-void
-Aie::
-wait_sync_bo(ShimDMA *dmap, uint32_t chan, XAie_LocType& tile, XAie_DmaDirection gmdir, uint32_t timeout)
-{
-  while (XAie_DmaWaitForDone(devInst, tile, CONVERT_LCHANL_TO_PCHANL(chan), gmdir, timeout) != XAIE_OK);
-
-  while (!dmap->dma_chan[chan].pend_bds.empty()) {
-    BD bd = dmap->dma_chan[chan].pend_bds.front();
-    dmap->dma_chan[chan].pend_bds.pop();
-    dmap->dma_chan[chan].idle_bds.push(bd);
-  }
+  clear_bd(bd);
 }
 
 void
@@ -310,21 +266,24 @@ Aie::
 reset(const xrt_core::device* device)
 {
 #ifndef __AIESIM__
-    if (!devInst)
-        throw xrt_core::error(-EINVAL, "Can't Reset AIE: AIE is not initialized");
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Can't Reset AIE: AIE is not initialized");
 
-    XAie_Finish(devInst);
-    devInst = nullptr;
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't reset AIE");
 
-    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+  XAie_Finish(devInst);
+  devInst = nullptr;
 
-    /* TODO get partition id and uid from XCLBIN or PDI */
-    uint32_t partition_id = 1;
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-    drm_zocl_aie_reset reset = { partition_id };
-    int ret = drv->resetAIEArray(reset);
-    if (ret)
-        throw xrt_core::error(ret, "Fail to reset AIE Array");
+  /* TODO get partition id and uid from XCLBIN or PDI */
+  uint32_t partition_id = 1;
+
+  drm_zocl_aie_reset reset = { partition_id };
+  int ret = drv->resetAIEArray(reset);
+  if (ret)
+    throw xrt_core::error(ret, "Fail to reset AIE Array");
 #endif
 }
 
@@ -334,6 +293,9 @@ start_profiling(int option, const std::string& port1_name, const std::string& po
 {
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Start profiling fails: AIE is not initialized");
+
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't do profiling");
 
   switch (option) {
 
@@ -358,6 +320,9 @@ uint64_t
 Aie::
 read_profiling(int phdl)
 {
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't do profiling");
+
   uint64_t value = 0;
 
   std::vector<Resources::AcquiredResource>& acquiredResourcesForThisHandle = eventRecords[phdl].acquiredResources;
@@ -377,6 +342,9 @@ void
 Aie::
 stop_profiling(int phdl)
 {
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't do profiling");
+
   if (phdl < eventRecords.size() && eventRecords[phdl].option >= 0) {
     std::vector<Resources::AcquiredResource>& acquiredResourcesForThisHandle = eventRecords[phdl].acquiredResources;
     for (int i = 0; i < acquiredResourcesForThisHandle.size(); i++) {

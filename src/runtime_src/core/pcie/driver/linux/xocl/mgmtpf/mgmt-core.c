@@ -514,6 +514,8 @@ static int health_check_cb(void *data)
 	if (!health_check)
 		return 0;
 
+	(void) xocl_xmc_sensor_status(lro);
+
 	(void) xocl_clock_status(lro, &latched);
 
 	/*

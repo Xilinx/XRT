@@ -30,7 +30,6 @@ class error_impl;
 class error
 {
 public:
-
   /**
    * error() -  Constructor for last asynchronous error of a class
    *
@@ -46,7 +45,7 @@ public:
    * @ecl:       Error code
    * @timestamp: Time stamp
    *
-   * Allow construction of error from manually retrieved
+   * Allow construction of error object from manually retrieved
    * error code and timestamp
    */
   XCL_DRIVER_DLLESPEC

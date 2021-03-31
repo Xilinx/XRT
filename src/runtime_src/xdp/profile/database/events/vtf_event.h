@@ -69,6 +69,7 @@ namespace xdp {
     // XRT host level events
     API_CALL             = 50,
     HAL_API_CALL         = 51,
+    NATIVE_API_CALL      = 52,
   } ;
 
   class VTFEvent
@@ -91,16 +92,18 @@ namespace xdp {
     XDP_EXPORT virtual ~VTFEvent() ;
 
     // Getters and Setters
-    inline double       getTimestamp()   const { return timestamp ; }
-    inline uint64_t     getEventId()           { return id ; } 
-    inline void         setEventId(uint64_t i) { id = i ; }
-    inline VTFEventType getEventType()         { return type; }
+    inline double       getTimestamp()    const { return timestamp ; }
+    inline void         setTimestamp(double ts) { timestamp = ts ; }
+    inline uint64_t     getEventId()            { return id ; }
+    inline void         setEventId(uint64_t i)  { id = i ; }
+    inline VTFEventType getEventType()          { return type; }
 
     // Functions that can be used as filters
-    virtual bool isUserEvent()   { return false ; }
-    virtual bool isOpenCLAPI()   { return false ; } 
-    virtual bool isHALAPI()      { return false ; }
-    virtual bool isHostEvent()   { return false ; }
+    virtual bool isUserEvent()       { return false ; }
+    virtual bool isOpenCLAPI()       { return false ; } 
+    virtual bool isHALAPI()          { return false ; }
+    virtual bool isHostEvent()       { return false ; }
+    virtual bool isNativeHostEvent() { return false ; } 
     virtual bool isOpenCLHostEvent()
       { return type == READ_BUFFER  || type == READ_BUFFER_P2P  ||
                type == WRITE_BUFFER || type == WRITE_BUFFER_P2P ||
