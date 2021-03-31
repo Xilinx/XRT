@@ -548,6 +548,15 @@ initialize_query_table()
   emplace_sysfs_get<query::shared_host_mem>                  ("address_translator", "host_mem_size");
   emplace_sysfs_get<query::cpu_affinity>                     ("", "local_cpulist");
   emplace_sysfs_get<query::mailbox_metrics>                  ("mailbox", "recv_metrics");
+  emplace_sysfs_get<query::clock_timestamp>                  ("ert_user", "clock_timestamp");
+  emplace_sysfs_getput<query::ert_sleep>                     ("ert_user", "mb_sleep");
+  emplace_sysfs_get<query::ert_cq_read>                      ("ert_user", "cq_read_cnt");
+  emplace_sysfs_get<query::ert_cq_write>                     ("ert_user", "cq_write_cnt");
+  emplace_sysfs_get<query::ert_cu_read>                      ("ert_user", "cu_read_cnt");
+  emplace_sysfs_get<query::ert_cu_write>                     ("ert_user", "cu_write_cnt");
+  emplace_sysfs_getput<query::config_mailbox_channel_disable> ("", "config_mailbox_channel_disable");
+  emplace_sysfs_getput<query::config_mailbox_channel_switch> ("", "config_mailbox_channel_switch");
+  emplace_sysfs_getput<query::cache_xclbin>                  ("", "cache_xclbin");
 
   emplace_sysfs_get<query::kds_mode>                         ("", "kds_mode");
   emplace_func0_request<query::kds_cu_stat,                  kds_cu_stat>();

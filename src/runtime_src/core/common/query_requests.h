@@ -204,8 +204,19 @@ enum class key_type
   aie_metadata,
   graph_status,
   mailbox_metrics,
-  noop
 
+  config_mailbox_channel_disable,
+  config_mailbox_channel_switch,
+  cache_xclbin,
+
+  clock_timestamp,
+  ert_sleep,
+  ert_cq_write,
+  ert_cq_read,
+  ert_cu_write,
+  ert_cu_read,
+
+  noop
 };
 
 class no_such_key : public std::exception
@@ -2122,6 +2133,15 @@ struct shared_host_mem : request
 
 };
 
+struct clock_timestamp : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::clock_timestamp;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct mailbox_metrics : request
 {
   using result_type = std::vector<std::string>;
@@ -2136,6 +2156,99 @@ struct mailbox_metrics : request
   {
     return value;
   }
+};
+
+struct config_mailbox_channel_disable : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::config_mailbox_channel_disable;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct config_mailbox_channel_switch : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::config_mailbox_channel_switch;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct cache_xclbin : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::cache_xclbin;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct ert_sleep : request
+{
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::ert_sleep;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+};
+
+struct ert_cq_read : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cq_read;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct ert_cq_write : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cq_write;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct ert_cu_read : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cu_read;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct ert_cu_write : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_cu_write;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct noop : request
