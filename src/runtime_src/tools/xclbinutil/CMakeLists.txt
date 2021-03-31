@@ -8,16 +8,13 @@ endif()
 
 # Windows support coming soon
 if(NOT WIN32)   
-  message (STATUS "  LINUX FLAVOR : ${LINUX_FLAVOR}")
-  message (STATUS "  LINUX VERSION: ${LINUX_VERSION}")
   # On Ubuntu 16.04 CMake support is limited
-  if (((${LINUX_FLAVOR} EQUALS "Ubuntu") AND (${LINUX_VERSION} VERSION_EQUAL 16.04)) OR (${XRT_NATIVE_BUILD} STREQUAL "no"))
+  if ((${LINUX_FLAVOR} STREQUAL "Ubuntu") AND (${LINUX_VERSION} STREQUAL "16.04"))
     set(RapidJSON_VERSION_MAJOR 0)
   else()
     find_package(RapidJSON REQUIRED)
   endif()
 endif()
-
 
 # -----------------------------------------------------------------------------
 # Include the generated header files (e.g., version.h)
