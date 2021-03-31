@@ -298,11 +298,17 @@ namespace xdp {
         numMemoryCounters++;
 
         // Update config file
+        auto loc = XAie_TileLoc(col, row + 1);
+        uint8_t phyEvent = 0;
         int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
+
         auto& cfg = cfgTile->memory_trace_config.pc[idx];
-        cfg.start_event = memoryCounterStartEvents[i];
-        cfg.stop_event = memoryCounterEndEvents[i];
-        cfg.reset_event = counterEvent;
+        XAie_EventLogicalToPhysicalConv(Aie, loc, mod, memoryCounterStartEvents[i], &phyEvent);
+        cfg.start_event = static_cast<uint32_t>(phyEvent);
+        XAie_EventLogicalToPhysicalConv(Aie, loc, mod, memoryCounterEndEvents[i], &phyEvent);
+        cfg.stop_event = static_cast<uint32_t>(phyEvent);
+        XAie_EventLogicalToPhysicalConv(Aie, loc, mod, counterEvent, &phyEvent);
+        cfg.reset_event = static_cast<uint32_t>(phyEvent);
         cfg.event_value = memoryCounterEventValues[i];
       }
 
@@ -383,10 +389,10 @@ namespace xdp {
         if (ret != XAIE_OK) break;
 
         int numTraceEvents = 0;
-        uint32_t bcMask = 0;
-        uint32_t bcBit = 0x1;
+        uint32_t coreToMemBcMask = 0;
         // Configure cross module events
         for (int i=0; i < memoryCrossEvents.size(); i++) {
+          uint32_t bcBit = 0x1;
           auto TraceE = memory.traceEvent();
           TraceE->setEvent(XAIE_CORE_MOD, memoryCrossEvents[i]);
           if (ret != XAIE_OK) break;
@@ -394,8 +400,8 @@ namespace xdp {
           if (ret != XAIE_OK) break;
 
           int bcId = TraceE->getBc();
-          if (ret != -EINVAL) break;
-          bcMask |= (bcBit << bcId);
+          if (ret != XAIE_OK) break;
+          coreToMemBcMask |= (bcBit << bcId);
 
           ret = TraceE->start();
           if (ret != XAIE_OK) break;
@@ -407,13 +413,12 @@ namespace xdp {
           XAie_LocType L;
           XAie_ModuleType M;
           TraceE->getRscId(L, M, S);
-          cfgTile->memory_trace_config.traced_events[S] = memoryCrossEvents[i];
-          cfgTile->memory_trace_config.internal_events_broadcast[bcId] = bcIdToEvent(bcId);
-        }
+          cfgTile->memory_trace_config.traced_events[S] = bcIdToEvent(bcId);
+          cfgTile->core_trace_config.internal_events_broadcast[bcId] = bcIdToEvent(bcId);
         // Configure same module events
         for (int i=0; i < memoryEvents.size(); i++) {
           auto TraceE = memory.traceEvent();
-          TraceE->setEvent(XAIE_CORE_MOD, memoryCrossEvents[i]);
+          TraceE->setEvent(XAIE_MEM_MOD, memoryEvents[i]);
           if (ret != XAIE_OK) break;
           auto ret = TraceE->reserve();
           if (ret != XAIE_OK) break;
@@ -422,21 +427,27 @@ namespace xdp {
           numTraceEvents++;
 
           // Update config file
+          // Get Trace slot
           uint32_t S = 0;
           XAie_LocType L;
           XAie_ModuleType M;
           TraceE->getRscId(L, M, S);
-          cfgTile->memory_trace_config.traced_events[S] = memoryEvents[i];
-        }
+          // Get Physical event
+          auto mod = XAIE_MEM_MOD;
+          auto loc = XAie_TileLoc(col, row + 1);
+          uint8_t phyEvent = 0;
+          XAie_EventLogicalToPhysicalConv(Aie, loc, mod, memoryEvents[i], &phyEvent);
+
+          cfgTile->memory_trace_config.traced_events[S] = static_cast<uint32_t>(phyEvent);
         // Update config file
         // Odd absolute rows change east mask end even row change west mask
         if ( (row + 1) % 2 ) {
-          cfgTile->memory_trace_config.broadcast_mask_east = bcMask;
+          cfgTile->core_trace_config.broadcast_mask_east = coreToMemBcMask;
         } else {
-          cfgTile->memory_trace_config.broadcast_mask_west = bcMask;
+          cfgTile->core_trace_config.broadcast_mask_west = coreToMemBcMask;
         }
-        cfgTile->memory_trace_config.start_event = memoryTrace->getStartBc();
-        cfgTile->memory_trace_config.stop_event = memoryTrace->getStopBc();
+        cfgTile->memory_trace_config.start_event = bcIdToEvent(memoryTrace->getStartBc());
+        cfgTile->memory_trace_config.stop_event = bcIdToEvent(memoryTrace->getStopBc());
 
         memoryEvents.clear();
         numTileMemoryTraceEvents[numTraceEvents]++;
