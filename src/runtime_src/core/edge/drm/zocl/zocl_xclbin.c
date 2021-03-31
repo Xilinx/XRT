@@ -146,8 +146,11 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	}
 
 	mutex_lock(&sk->sk_lock);
-	for (i = 0; i < sk->sk_nimg; i++)
+	for (i = 0; i < sk->sk_nimg; i++) {
+		if (IS_ERR(&sk->sk_img[i].si_bo))
+			continue;
 		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&sk->sk_img[i].si_bo->gem_base);
+	}
 	kfree(sk->sk_img);
 	sk->sk_nimg = 0;
 	sk->sk_img = NULL;
@@ -171,13 +174,17 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 
 		sip->si_start = scu_idx;
 		sip->si_end = scu_idx + sp->m_num_instances - 1;
+		if (sip->si_end >= MAX_SOFT_KERNEL) {
+			DRM_ERROR("PS CU number exceeds %d\n", MAX_SOFT_KERNEL);
+			mutex_unlock(&sk->sk_lock);
+			return -EINVAL;
+		}
 
 		sip->si_bo = zocl_drm_create_bo(zdev->ddev, sp->m_image_size,
 		    ZOCL_BO_FLAGS_CMA);
 		if (IS_ERR(sip->si_bo)) {
 			ret = PTR_ERR(sip->si_bo);
-			DRM_ERROR("%s Failed to allocate BO: %d\n",
-			    __func__, ret);
+			DRM_ERROR("Failed to allocate BO: %d\n", ret);
 			mutex_unlock(&sk->sk_lock);
 			return ret;
 		}
