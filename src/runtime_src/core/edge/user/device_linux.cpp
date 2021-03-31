@@ -16,16 +16,18 @@
 
 
 #include "device_linux.h"
-#include "core/common/query_requests.h"
-
 #include "xrt.h"
 #include "zynq_dev.h"
 #include "aie_sys_parser.h"
 
-#include <string>
-#include <memory>
-#include <iostream>
+#include "core/common/query_requests.h"
+
 #include <map>
+#include <memory>
+#include <string>
+
+#include <unistd.h>
+
 #include <boost/format.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -572,6 +574,37 @@ reset(query::reset_type key) const
   default:
     throw error(-ENODEV, "invalid argument");
   }
+}
+
+
+////////////////////////////////////////////////////////////////
+// Custom IP interrupt handling
+////////////////////////////////////////////////////////////////
+void
+device_linux::
+enable_ip_interrupt(xclInterruptNotifyHandle handle)
+{
+  int enable = 1;
+  if (::write(handle, &enable, sizeof(enable)) == -1)
+    throw error(errno, "enable_ip_interrupt failed POSIX write");
+}
+
+void
+device_linux::
+disable_ip_interrupt(xclInterruptNotifyHandle handle)
+{
+  int disable = 1;
+  if (::write(handle, &disable, sizeof(disable)) == -1)
+    throw error(errno, "disable_ip_interrupt failed POSIX write");
+}
+
+void
+device_linux::
+wait_ip_interrupt(xclInterruptNotifyHandle handle)
+{
+  int pending = 0;
+  if (::read(handle, &pending, sizeof(pending)) == -1)
+    throw error(errno, "wait_ip_interrupt failed POSIX read");
 }
 
 } // xrt_core
