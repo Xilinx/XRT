@@ -63,7 +63,7 @@ endif()
 
 # Add compile definitions
 if(NOT WIN32)
-   if(${RapidJSON_VERSION_MAJOR} GREATER_EQUAL 1)
+   if(${RapidJSON_VERSION_MAJOR} GREATER 0)
      target_compile_definitions(${XCLBINUTIL_NAME} PRIVATE ENABLE_JSON_SCHEMA_VALIDATION)
    endif()
 endif()
