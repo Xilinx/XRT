@@ -53,7 +53,7 @@ namespace xdp {
 
     private:
       void setMetrics(uint64_t deviceId, void* handle);
-      uint32_t bcIdToEvent(int bcId);
+      inline uint32_t bcIdToEvent(int bcId);
 
     private:
       // Trace Runtime Status

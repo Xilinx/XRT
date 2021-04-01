@@ -142,7 +142,7 @@ namespace xdp {
     }
   }
 
-  uint32_t AieTracePlugin::bcIdToEvent(int bcId)
+  inline uint32_t AieTracePlugin::bcIdToEvent(int bcId)
   {
     return bcId + CORE_BROADCAST_EVENT_BASE;
   }
@@ -378,6 +378,7 @@ namespace xdp {
       // 4. Configure Memory Tracing Events
       //
       // TODO: Configure group or combo events where applicable
+      uint32_t coreToMemBcMask = 0;
       {
         auto memoryTrace = memory.traceControl();
         // Set overall start/end for trace capture
@@ -389,7 +390,6 @@ namespace xdp {
         if (ret != XAIE_OK) break;
 
         int numTraceEvents = 0;
-        uint32_t coreToMemBcMask = 0;
         // Configure cross module events
         for (int i=0; i < memoryCrossEvents.size(); i++) {
           uint32_t bcBit = 0x1;
@@ -414,7 +414,12 @@ namespace xdp {
           XAie_ModuleType M;
           TraceE->getRscId(L, M, S);
           cfgTile->memory_trace_config.traced_events[S] = bcIdToEvent(bcId);
-          cfgTile->core_trace_config.internal_events_broadcast[bcId] = bcIdToEvent(bcId);
+          auto mod = XAIE_CORE_MOD;
+          auto loc = XAie_TileLoc(col, row + 1);
+          uint8_t phyEvent = 0;
+          XAie_EventLogicalToPhysicalConv(Aie, loc, mod, memoryCrossEvents[i], &phyEvent);
+          cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
+        }
         // Configure same module events
         for (int i=0; i < memoryEvents.size(); i++) {
           auto TraceE = memory.traceEvent();
@@ -437,17 +442,35 @@ namespace xdp {
           auto loc = XAie_TileLoc(col, row + 1);
           uint8_t phyEvent = 0;
           XAie_EventLogicalToPhysicalConv(Aie, loc, mod, memoryEvents[i], &phyEvent);
-
           cfgTile->memory_trace_config.traced_events[S] = static_cast<uint32_t>(phyEvent);
+        }
         // Update config file
+        {
+          // Add Memory module trace control events
+          uint32_t bcBit = 0x1;
+          auto bcId = memoryTrace->getStartBc();
+          coreToMemBcMask |= (bcBit << bcId);
+          auto mod = XAIE_CORE_MOD;
+          auto loc = XAie_TileLoc(col, row + 1);
+          uint8_t phyEvent = 0;
+          XAie_EventLogicalToPhysicalConv(Aie, loc, mod, coreTraceStartEvent, &phyEvent);
+          cfgTile->memory_trace_config.start_event = bcIdToEvent(bcId);
+          cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
+
+          bcBit = 0x1;
+          bcId = memoryTrace->getStopBc();
+          coreToMemBcMask |= (bcBit << bcId);
+          XAie_EventLogicalToPhysicalConv(Aie, loc, mod, coreTraceEndEvent, &phyEvent);
+          cfgTile->memory_trace_config.stop_event = bcIdToEvent(bcId);
+          cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
+        }
         // Odd absolute rows change east mask end even row change west mask
-        if ( (row + 1) % 2 ) {
+        if ((row + 1) % 2) {
           cfgTile->core_trace_config.broadcast_mask_east = coreToMemBcMask;
         } else {
           cfgTile->core_trace_config.broadcast_mask_west = coreToMemBcMask;
         }
-        cfgTile->memory_trace_config.start_event = bcIdToEvent(memoryTrace->getStartBc());
-        cfgTile->memory_trace_config.stop_event = bcIdToEvent(memoryTrace->getStopBc());
+        // Done update config file
 
         memoryEvents.clear();
         numTileMemoryTraceEvents[numTraceEvents]++;

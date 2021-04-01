@@ -59,8 +59,10 @@ void NOC::parseName(std::string name)
   mCellName        = (result.size() > 1) ? result[1] : "";
   mReadQos         = (result.size() > 2) ? std::stoull(result[2]) : 0;
   mWriteQos        = (result.size() > 3) ? std::stoull(result[3]) : 0;
-  mNpiClockFreqMhz = (result.size() > 4) ? std::stod(result[4]) : 299.997009;
-  mAieClockFreqMhz = (result.size() > 5) ? std::stod(result[5]) : 1000.0;
+  mNpiClockFreqMhz = 299.997009;
+  mAieClockFreqMhz = 1000.0;
+  //mNpiClockFreqMhz = (result.size() > 4) ? std::stod(result[4]) : 299.997009;
+  //mAieClockFreqMhz = (result.size() > 5) ? std::stod(result[5]) : 1000.0;
 }
 
 inline void NOC::write32(uint64_t offset, uint32_t val)
