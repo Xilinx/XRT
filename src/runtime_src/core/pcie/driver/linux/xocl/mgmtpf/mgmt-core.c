@@ -504,6 +504,13 @@ static void check_pcie_link_toggle(struct xclmgmt_dev *lro, int clear)
 }
 
 
+static int xocl_check_firewall(struct xclmgmt_dev *lro, int *level)
+{
+	return (AF_CB(lro, check_firewall)) ?
+		xocl_af_check(lro, level) :
+		xocl_xgq_check_firewall(lro);
+}
+
 static int health_check_cb(void *data)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
@@ -538,7 +545,7 @@ static int health_check_cb(void *data)
 	 * it possibly still has chance to read clock and
 	 * sensor information etc.
 	 */
-	tripped = xocl_af_check(lro, NULL);
+	tripped = xocl_check_firewall(lro, NULL);
 
 reset:
 	if (latched || tripped) {
@@ -1520,6 +1527,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_pmc,
 	xocl_init_icap_controller,
 	xocl_init_pcie_firewall,
+	xocl_init_xgq,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1554,6 +1562,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_pmc,
 	xocl_fini_icap_controller,
 	xocl_fini_pcie_firewall,
+	xocl_fini_xgq,
 };
 
 static int __init xclmgmt_init(void)

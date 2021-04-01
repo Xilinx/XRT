@@ -58,6 +58,13 @@ enum xrt_cmd_opcode {
 	XRT_CMD_OP_CONFIGURE		= 0x1,
 	XRT_CMD_OP_CONFIGURE_PS_KERNEL	= 0x2,
 
+	XRT_CMD_OP_GET_LOG_PAGE		= 0x8,
+
+	XRT_CMD_OP_DOWNLOAD_PDI		= 0xa,
+	XRT_CMD_OP_FIREWALL		= 0xb,
+	XRT_CMD_OP_CLOCK		= 0xc,
+	XRT_CMD_OP_VMC			= 0xd,
+
 	XRT_CMD_OP_START_PL_CUIDX	= 0x100,
 	XRT_CMD_OP_START_PL_CUIDX_INDIR	= 0x101,
 
@@ -68,11 +75,23 @@ enum xrt_cmd_opcode {
 enum xrt_cmd_addr_type {
 	XRT_CMD_ADD_TYPE_DEVICE		= 0x0,
 	XRT_CMD_ADD_TYPE_SLAVEBRIDGE	= 0x1,
+	XRT_CMD_ADD_TYPE_HOST_MEM	= 0x2,
+	XRT_CMD_ADD_TYPE_AP_OFFSET	= 0x3,
 };
+
+#define XRT_SQ_CMD_NEW 1
 
 enum xrt_cmd_state {
 	XRT_CMD_STATE_COMPLETED		= 0x0,
 	XRT_CMD_STATE_ERROR		= 0x1,
+};
+
+enum xrt_cmd_page_id {
+	XRT_CMD_PAGE_ID_HEALTH		= 0x0,
+	XRT_CMD_PAGE_ID_ERROR_INFO	= 0x1,
+	XRT_CMD_PAGE_ID_PROFIL		= 0x2,
+	XRT_CMD_PAGE_ID_DEBUG		= 0x3,
+	XRT_CMD_PAGE_ID_SENSOR		= 0x4,
 };
 
 /*
@@ -163,7 +182,7 @@ struct xrt_com_queue_entry {
  *
  * @address:	XCLBIN address
  * @size:	XCLBIN size in Byte
- * @addr_type:	Address tyep
+ * @addr_type:	Address type
  *
  * This command is used to load XCLBIN to device through XGQ.
  * This is an indirect command that XCLBIN blob's address is
@@ -234,6 +253,45 @@ struct xrt_cmd_exit_ert {
 			uint16_t rsvd;
 		};
 		uint32_t header[2]; // NOLINT
+	};
+};
+
+struct xrt_cmd_sq_hdr {
+	uint32_t opcode:16; /* [15-0]   */
+	uint32_t count:15;  /* [30-16] */
+	uint32_t state:1;   /* [31] */
+	uint16_t cid;
+	uint16_t rsvd;
+};
+
+struct xrt_cmd_log_payload {
+	uint64_t address;
+	uint32_t size;
+	uint32_t pid:16;
+	uint32_t addr_type:4;
+	uint32_t rsvd1:12;
+};
+
+struct xrt_cmd_clock_payload {
+	uint32_t ocl_region;
+	uint32_t num_clock;
+	uint8_t  ocl_target_freq[4];
+};
+
+struct xrt_cmd_data_payload {
+	uint64_t address;
+	uint32_t size;
+	uint32_t addr_type:4;
+	uint32_t rsvd1:28;
+	uint32_t pad1;
+};
+
+struct xrt_cmd_sq {
+	struct xrt_cmd_sq_hdr hdr;
+	union {
+		struct xrt_cmd_log_payload 	log_payload;
+		struct xrt_cmd_clock_payload 	clock_payload;
+		struct xrt_cmd_data_payload 	data_payload;
 	};
 };
 

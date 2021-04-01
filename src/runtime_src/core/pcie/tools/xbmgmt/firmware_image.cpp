@@ -741,7 +741,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                 in.seekg(flashSection->m_sectionOffset + flashMeta.m_image_offset);
                 in.read(mBuf, bufsize);
             }
-            else if (pdiSection) {
+	    else if (pdiSection) {
                 if (type != MCS_FIRMWARE_PRIMARY)
                 {
                     this->setstate(failbit);

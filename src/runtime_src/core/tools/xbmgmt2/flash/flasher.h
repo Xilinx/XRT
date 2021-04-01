@@ -23,6 +23,7 @@
 
 #include "xspi.h"
 #include "xospiversal.h"
+#include "xgq.h"
 #include "xqspips.h"
 #include "xmc.h"
 #include "firmware_image.h"
@@ -88,6 +89,7 @@ private:
         QSPIPS,
         OSPIVERSAL,
         QSPIVERSAL,
+        OSPI_XGQ,
     };
     const char *E_FlasherTypeStrings[4] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }

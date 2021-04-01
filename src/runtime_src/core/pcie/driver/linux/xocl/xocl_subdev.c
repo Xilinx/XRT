@@ -1655,7 +1655,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			if (ret)
 				return ret;
 			break;
-		case XOCL_VSEC_FLASH_TYPE_VERSAL:
+		case XOCL_VSEC_FLASH_TYPE_XFER_VERSAL:
 			xocl_xdev_dbg(xdev,
 			    "VSEC VERSAL FLASH RES Start 0x%llx, bar %d",
 			    offset, bar);
@@ -1667,6 +1667,26 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			memcpy(((struct xocl_flash_privdata *)
 			    (subdev_info.priv_data))->flash_type,
 			    FLASH_TYPE_OSPI_VERSAL, strlen(FLASH_TYPE_OSPI_VERSAL));
+
+			ret = xocl_subdev_create_vsec_impl(xdev, &subdev_info,
+				offset, bar);
+
+			if (ret)
+				return ret;
+			break;
+		case XOCL_VSEC_FLASH_TYPE_XGQ:
+			/*TODO: VSEC definition is TBD, we now get res from metadata */
+			xocl_xdev_dbg(xdev,
+			    "VSEC XGQ FLASH RES Start 0x%llx, bar %d",
+			    offset, bar);
+
+			/* set devinfo to xfer versal */
+			subdev_info.id = XOCL_SUBDEV_XGQ;
+			subdev_info.name = XOCL_XGQ;
+			subdev_info.res[0].name = XOCL_XGQ;
+			memcpy(((struct xocl_flash_privdata *)
+			    (subdev_info.priv_data))->flash_type,
+			    FLASH_TYPE_OSPI_XGQ, strlen(FLASH_TYPE_OSPI_XGQ));
 
 			ret = xocl_subdev_create_vsec_impl(xdev, &subdev_info,
 				offset, bar);
