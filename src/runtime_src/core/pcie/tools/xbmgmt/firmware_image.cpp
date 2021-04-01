@@ -714,6 +714,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
             const axlf_section_header* flashSection = xclbin::get_axlf_section(ap, ASK_FLASH);
             const axlf_section_header* pdiSection = xclbin::get_axlf_section(ap, PDI);
             if (flashSection) {
+		std::cout << "if ask " << std::endl;
                 //So far, there is only one type in FLASH section.
                 //Just blindly load that section. Add more checks later.
 
@@ -740,8 +741,8 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                 mBuf = new char[bufsize];
                 in.seekg(flashSection->m_sectionOffset + flashMeta.m_image_offset);
                 in.read(mBuf, bufsize);
-            }
-            else if (pdiSection) {
+            } else if (pdiSection) {
+		std::cout << "else pdi " << std::endl;
                 if (type != MCS_FIRMWARE_PRIMARY)
                 {
                     this->setstate(failbit);
@@ -765,6 +766,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                 in.seekg(pdiSection->m_sectionOffset);
                 in.read(mBuf, bufsize);
             } else {
+		std::cout << "else " << std::endl;
                 // Obtain MCS section header.
                 const axlf_section_header* mcsSection = xclbin::get_axlf_section(ap, MCS);
                 if (mcsSection == nullptr)

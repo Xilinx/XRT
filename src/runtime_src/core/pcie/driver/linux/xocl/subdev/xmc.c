@@ -1280,6 +1280,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 
 static uint64_t xmc_get_power(struct platform_device *pdev, enum sensor_val_kind kind)
 {
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 	u32 v_pex, v_aux, v_3v3, c_pex, c_aux, c_3v3;
 	u64 val = 0;
 
@@ -1289,6 +1290,10 @@ static uint64_t xmc_get_power(struct platform_device *pdev, enum sensor_val_kind
 	xmc_sensor(pdev, CUR_12V_AUX, &c_aux, kind);
 	xmc_sensor(pdev, VOL_3V3_PEX, &v_3v3, kind);
 	xmc_sensor(pdev, CUR_3V3_PEX, &c_3v3, kind);
+
+	xocl_dbg(&xmc->pdev->dev, "v_pex %d, c_pex %d, v_aux %d, "
+		"c_aux %d, v_3v3 %d, c_3v3 %d",
+		v_pex, c_pex, v_aux, c_aux, v_3v3, c_3v3);
 
 	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux + (u64)v_3v3 * c_3v3;
 

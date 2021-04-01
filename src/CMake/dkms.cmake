@@ -63,6 +63,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/xocl_xclbin.h
   xocl/xocl_debug.c
   xocl/xocl_test.c
+  xocl/xocl_xgq_plat.h
   xocl/userpf/common.h
   xocl/userpf/xocl_bo.c
   xocl/userpf/xocl_bo.h
@@ -247,6 +248,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/pcie_firewall.c
   xocl/subdev/command_queue.c
   xocl/subdev/cfg_gpio.c
+  xocl/subdev/xgq.c
   xocl/Makefile
   )
 
@@ -272,6 +274,7 @@ SET (XRT_DKMS_CORE_INCLUDES
   include/xrt_error_code.h
   include/xrt_mem.h
   include/xgq_cmd.h
+  include/xgq_impl.h
   )
 
 SET (XRT_DKMS_COMMON_XRT_DRV

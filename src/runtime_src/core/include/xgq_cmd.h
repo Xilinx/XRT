@@ -163,7 +163,7 @@ struct xrt_com_queue_entry {
  *
  * @address:	XCLBIN address
  * @size:	XCLBIN size in Byte
- * @addr_type:	Address tyep
+ * @addr_type:	Address type
  *
  * This command is used to load XCLBIN to device through XGQ.
  * This is an indirect command that XCLBIN blob's address is

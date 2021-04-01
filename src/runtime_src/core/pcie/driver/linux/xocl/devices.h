@@ -79,6 +79,7 @@ enum {
 #define	FLASH_TYPE_QSPIPS_X4_SINGLE	"qspi_ps_x4_single"
 #define	FLASH_TYPE_OSPI_VERSAL	"ospi_versal"
 #define	FLASH_TYPE_QSPI_VERSAL	"qspi_versal"
+#define	FLASH_TYPE_OSPI_XGQ	"ospi_xgq"
 
 #define XOCL_SUBDEV_MAX_RES		32
 #define XOCL_SUBDEV_RES_NAME_LEN	64
@@ -270,6 +271,7 @@ enum {
 #define	XOCL_ACCEL_DEADLOCK_DETECTOR	"accel_deadlock"
 #define	XOCL_CFG_GPIO		"ert_cfg_gpio"
 #define	XOCL_COMMAND_QUEUE	"command_queue"
+#define	XOCL_XGQ		"xgq"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -325,6 +327,7 @@ enum subdev_id {
 	XOCL_SUBDEV_ACCEL_DEADLOCK_DETECTOR,
 	XOCL_SUBDEV_CFG_GPIO,
 	XOCL_SUBDEV_COMMAND_QUEUE,
+	XOCL_SUBDEV_XGQ,
 	XOCL_SUBDEV_NUM
 };
 

@@ -338,10 +338,11 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_PLATFORM_INFO     0x52
 #define XOCL_VSEC_MAILBOX           0x53
 
-#define XOCL_VSEC_FLASH_TYPE_SPI_IP	0x0
-#define XOCL_VSEC_FLASH_TYPE_SPI_REG	0x1
-#define XOCL_VSEC_FLASH_TYPE_QSPI	0x2
-#define XOCL_VSEC_FLASH_TYPE_VERSAL	0x3
+#define XOCL_VSEC_FLASH_TYPE_SPI_IP		0x0
+#define XOCL_VSEC_FLASH_TYPE_SPI_REG		0x1
+#define XOCL_VSEC_FLASH_TYPE_QSPI		0x2
+#define XOCL_VSEC_FLASH_TYPE_XFER_VERSAL	0x3
+#define XOCL_VSEC_FLASH_TYPE_XGQ		0x4
 
 #define XOCL_VSEC_PLAT_RECOVERY     0x0
 #define XOCL_VSEC_PLAT_1RP          0x1
@@ -2103,6 +2104,25 @@ struct xocl_pmc_funcs {
 #define	xocl_pmc_enable_reset(xdev) \
 	(PMC_CB(xdev) ? PMC_OPS(xdev)->enable_reset(PMC_DEV(xdev)) : -ENODEV)
 
+struct xocl_xgq_funcs {
+	int (*xgq_load_xclbin)(struct platform_device *pdev,
+		const void __user *arg);
+	int (*xgq_check_firewall)(struct platform_device *pdev);
+};
+#define	XGQ_DEV(xdev)					\
+	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 		\
+	SUBDEV(xdev, XOCL_SUBDEV_XGQ)->pldev : NULL)
+#define	XGQ_OPS(xdev)					\
+	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 		\
+	(struct xocl_xgq_funcs *)SUBDEV(xdev, XOCL_SUBDEV_XGQ)->ops : NULL)
+#define	XGQ_CB(xdev)	(XGQ_DEV(xdev) && XGQ_OPS(xdev))
+#define	xocl_xgq_download_axlf(xdev, xclbin)		\
+	(XGQ_CB(xdev) ?					\
+	XGQ_OPS(xdev)->xgq_load_xclbin(XGQ_DEV(xdev), xclbin) : -ENODEV)
+#define	xocl_xgq_check_firewall(xdev)		\
+	(XGQ_CB(xdev) ?					\
+	XGQ_OPS(xdev)->xgq_check_firewall(XGQ_DEV(xdev)) : -ENODEV)
+
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
 #define XOCL_MSG_SUBDEV_DATA_LEN	(512 * 1024)
@@ -2588,4 +2608,6 @@ void xocl_fini_command_queue(void);
 int __init xocl_init_config_gpio(void);
 void xocl_fini_config_gpio(void);
 
+int __init xocl_init_xgq(void);
+void xocl_fini_xgq(void);
 #endif

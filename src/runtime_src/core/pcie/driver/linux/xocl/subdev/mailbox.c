@@ -1995,7 +1995,6 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	reqmsg->mbm_req_id = (uintptr_t)reqmsg->mbm_data;
 	reqmsg->mbm_flags |= XCL_MB_REQ_FLAG_REQUEST;
 	reqmsg->mbm_timeout_in_sec = tx_ttl;
-
 	respmsg = alloc_msg(resp, *resplen);
 	if (!respmsg)
 		goto fail;

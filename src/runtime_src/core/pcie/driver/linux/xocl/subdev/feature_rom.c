@@ -502,7 +502,7 @@ static int load_firmware_from_disk(struct platform_device *pdev, char **fw_buf,
 	}
 
 	err = get_vendor_firmware_dir(vendor, vendor_fw_dir, sizeof(vendor_fw_dir));
-    // Failure returns -E2BIG
+	// Failure returns -E2BIG
 	if (err < 0)
 		return err;
 
@@ -556,10 +556,12 @@ static int load_firmware(struct platform_device *pdev, char **fw, size_t *len)
 		return ret;
 	}
 
+	/*
 	if (!is_valid_firmware(pdev, buf, size)) {
 		vfree(buf);
 		return -EINVAL;
 	}
+	*/
 
 	*fw = buf;
 	*len = size;

@@ -123,6 +123,26 @@ static int mpsoc_xclbin_post_download(xdev_handle_t xdev, void *args)
 	return 0;
 }
 
+static int xgq_xclbin_pre_download(xdev_handle_t xdev, void *args)
+{
+	return 0;
+}
+
+static int xgq_xclbin_download(xdev_handle_t xdev, void *args)
+{
+	struct xclbin_arg *arg = (struct xclbin_arg *)args;
+	int ret;
+
+	ret = xocl_xgq_download_axlf(xdev, arg->xclbin);
+
+	return ret;
+}
+
+static int xgq_xclbin_post_download(xdev_handle_t xdev, void *args)
+{
+	return 0;
+}
+
 static struct xocl_xclbin_ops versal_ops = {
 	.xclbin_pre_download 	= versal_xclbin_pre_download,
 	.xclbin_download 	= versal_xclbin_download,
@@ -133,6 +153,12 @@ static struct xocl_xclbin_ops mpsoc_ops = {
 	.xclbin_pre_download 	= mpsoc_xclbin_pre_download,
 	.xclbin_download 	= mpsoc_xclbin_download,
 	.xclbin_post_download 	= mpsoc_xclbin_post_download,
+};
+
+static struct xocl_xclbin_ops xgq_ops = {
+	.xclbin_pre_download 	= xgq_xclbin_pre_download,
+	.xclbin_download 	= xgq_xclbin_download,
+	.xclbin_post_download 	= xgq_xclbin_post_download,
 };
 
 #if 0
@@ -201,21 +227,25 @@ done:
 
 int xocl_xclbin_download(xdev_handle_t xdev, const void *xclbin)
 {
-	if (XOCL_DSA_IS_VERSAL(xdev))
-		return xocl_xclbin_download_impl(xdev, xclbin, &versal_ops);
-	else {
+	int rval = 0;
+
+	if (XOCL_DSA_IS_VERSAL(xdev)) {
+		rval = xocl_xclbin_download_impl(xdev, xclbin, &xgq_ops);
+		/* Legacy shell doesn't have xgq resources */
+		if (rval == -ENODEV)
+			return xocl_xclbin_download_impl(xdev, xclbin, &versal_ops);
+	} else {
 		/*
 		 * TODO:
 		 * return xocl_xclbin_download_impl(xdev, xclbin, &icap_ops);
 		 */
-		int rval = 0;
 		rval = xocl_icap_download_axlf(xdev, xclbin);
 		if (!rval && XOCL_DSA_IS_MPSOC(xdev))
 			rval = xocl_xclbin_download_impl(xdev, xclbin, &mpsoc_ops);
 
 		if (rval)
 			xocl_icap_clean_bitstream(xdev);
-
-		return rval;
 	}
+
+	return rval;
 }

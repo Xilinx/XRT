@@ -111,6 +111,10 @@
 #define NODE_ICAP_CONTROLLER "ep_iprog_ctrl_00"
 #define NODE_PCIE "pcie"
 #define NODE_BARS "bars"
+/*TODO: we may have more ep_names to define, will have final name */
+#define NODE_XGQ_SQ_BASE "ep_temp_xgq_m2r_00"
+#define NODE_XGQ_CQ_BASE "ep_temp_xgq_r2m_00"
+#define NODE_XGQ_RING_BASE "ep_temp_shared_mgmt_00"
 
 #define PROP_BARM_CTRL "axi_bram_ctrl"
 #define PROP_HWICAP "axi_hwicap"
