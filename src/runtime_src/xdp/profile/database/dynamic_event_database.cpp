@@ -134,6 +134,20 @@ namespace xdp {
     return startEvent;
   }
 
+  bool VPDynamicDatabase::hasMatchingDeviceEventStart(uint64_t traceID,
+                                                      VTFEventType type)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+    if (deviceEventStartMap.find(traceID) == deviceEventStartMap.end())
+      return false ;
+    auto& lst = deviceEventStartMap[traceID] ;
+    for (auto e: lst) {
+      if (e->getEventType() == type)
+        return true ;
+    }
+    return false ;
+  }
+
   void VPDynamicDatabase::markStart(uint64_t functionID, uint64_t eventID)
   {
     std::lock_guard<std::mutex> lock(hostLock) ;

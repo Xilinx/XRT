@@ -79,6 +79,21 @@ namespace xdp {
     double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
 
     if (trace.EventType == XCL_PERF_MON_START_EVENT) {
+      // If we see two starts in a row of the same type on the same slot,
+      //  then we must have dropped an end packet.  Add a dummy end packet
+      //  here.
+      if (db->getDynamicInfo().hasMatchingDeviceEventStart(trace.TraceID, ty)){
+        VTFEvent* matchingStart =
+          db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, ty);
+        memEvent =
+          new DeviceMemoryAccess(matchingStart->getEventId(),
+                                 hostTimestamp - halfCycleTimeInMs,
+                                 ty, deviceId, slot, cuId);
+        memEvent->setDeviceTimestamp(trace.Timestamp);
+        db->getDynamicInfo().addEvent(memEvent);
+        aimLastTrans[slot] = trace.Timestamp;
+      }
+
       memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId) ;
       memEvent->setDeviceTimestamp(trace.Timestamp) ;
       db->getDynamicInfo().addEvent(memEvent) ;
@@ -316,7 +331,7 @@ namespace xdp {
     }
   }
 
-  void DeviceEventCreatorFromTrace::end()
+  void DeviceEventCreatorFromTrace::addApproximateCUEndEvents()
   {
     for(uint32_t amIndex = 0; amIndex < cuStarts.size(); ++amIndex) {
       if(cuStarts[amIndex].empty()) {
@@ -384,7 +399,86 @@ namespace xdp {
       event->setDeviceTimestamp(cuLastTimestamp);
       db->getDynamicInfo().addEvent(event); 
     }
+  }
 
+  void DeviceEventCreatorFromTrace::addApproximateDataTransferEvent(VTFEventType type, uint64_t aimTraceID, int32_t amId, int32_t cuId)
+  {
+    VTFEvent* startEvent =
+      db->getDynamicInfo().matchingDeviceEventStart(aimTraceID, type);
+    if (!startEvent)
+      return ;
+
+    uint64_t transStartTimestamp = 0 ;
+    uint64_t transApproxEndTimestamp = 0 ;
+    uint64_t transApproxEndHostTimestamp = 0 ;
+
+    VTFDeviceEvent* deviceStartEvent=dynamic_cast<VTFDeviceEvent*>(startEvent);
+    if (!deviceStartEvent)
+      return ;
+
+    const double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
+
+    transStartTimestamp = deviceStartEvent->getDeviceTimestamp();
+    if (amId == -1) {
+      // This is a floating AIM monitor not attached to any particular CU.
+      transApproxEndTimestamp = transStartTimestamp ;
+      transApproxEndHostTimestamp = convertDeviceToHostTimestamp(transStartTimestamp) + halfCycleTimeInMs ;
+    }
+    else {
+      // Check the last known transaction on the CU to approximate the end
+      uint64_t cuLastTimestamp  = amLastTrans[amId];
+      if (transStartTimestamp < cuLastTimestamp) {
+        transApproxEndTimestamp = cuLastTimestamp ;
+        transApproxEndHostTimestamp = convertDeviceToHostTimestamp(cuLastTimestamp);
+      }
+      else {
+        transApproxEndTimestamp = transStartTimestamp ;
+        transApproxEndHostTimestamp = convertDeviceToHostTimestamp(transStartTimestamp) + halfCycleTimeInMs ;
+      }
+    }
+    // Add approximate end event
+    DeviceMemoryAccess* endEvent =
+      new DeviceMemoryAccess(startEvent->getEventId(),
+                             transApproxEndHostTimestamp,
+                             type,
+                             deviceId,
+                             amId,
+                             cuId);
+    endEvent->setDeviceTimestamp(transApproxEndTimestamp);
+    db->getDynamicInfo().addEvent(endEvent);
+  }
+
+  void DeviceEventCreatorFromTrace::addApproximateDataTransferEvents()
+  {
+    // Go through all of our AIMs.  If any of them have any outstanding
+    //  reads or writes, then finish them based on the last CU execution time.
+    for (uint64_t aimIndex = 0 ;
+         aimIndex < (db->getStaticInfo()).getNumAIM(deviceId, xclbin) ;
+         ++aimIndex) {
+
+      uint64_t aimTraceID = aimIndex + MIN_TRACE_ID_AIM ;
+      Monitor* mon =
+        db->getStaticInfo().getAIMonitor(deviceId, xclbin, aimIndex);
+      if (!mon)
+        continue;
+
+      int32_t cuId = mon->cuIndex ;
+      int32_t amId = -1 ;
+
+      if (cuId != -1) {
+        ComputeUnitInstance* cu = db->getStaticInfo().getCU(deviceId, cuId);
+        if (cu) {
+          amId = cu->getAccelMon();
+        }
+      }
+
+      addApproximateDataTransferEvent(KERNEL_READ, aimTraceID, amId, cuId) ;
+      addApproximateDataTransferEvent(KERNEL_WRITE, aimTraceID, amId, cuId) ;
+    }
+  }
+
+  void DeviceEventCreatorFromTrace::addApproximateStreamEndEvents()
+  {
     // Find unfinished ASM events
     bool unfinishedASMevents = false;
     for(uint64_t asmIndex = 0; asmIndex < (db->getStaticInfo()).getNumASM(deviceId, xclbin); ++asmIndex) {
@@ -422,6 +516,13 @@ namespace xdp {
       const char* msg = "Found unfinished events on Stream connections. Adding approximate ends for Stream Activity/Stall/Starve on timeline trace.";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
     }
+  }
+
+  void DeviceEventCreatorFromTrace::end()
+  {
+    addApproximateCUEndEvents();
+    addApproximateDataTransferEvents();
+    addApproximateStreamEndEvents();
   }
 
   void DeviceEventCreatorFromTrace::addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType, 
