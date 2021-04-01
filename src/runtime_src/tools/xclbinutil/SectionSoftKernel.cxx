@@ -231,8 +231,8 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
     // DRC Check checking to see if the maximum symbol name length has been violated
     static const unsigned int MAX_SYMBOL_NAME_LENGTH = 19;
     if (sValue.length() > MAX_SYMBOL_NAME_LENGTH) {
-      const std::string errMsg = boost::str(boost::format("ERROR: The given symbol name '%s' (length %d) exceeds the maximum support length of %d characters.") 
-                                            % sValue % sValue.length() % MAX_SYMBOL_NAME_LENGTH);
+      const std::string errMsg = (boost::format("ERROR: The given symbol name '%s' (length %d) exceeds the maximum support length of %d characters.") 
+                                            % sValue % sValue.length() % MAX_SYMBOL_NAME_LENGTH).str();
       throw std::runtime_error(errMsg);
     }
   }
