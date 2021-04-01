@@ -237,6 +237,8 @@ MODULE_PARM_DESC(mailbox_no_intr,
 	xocl_info(&mbx->mbx_pdev->dev, fmt "\n", ##arg)
 #define	MBX_DBG(mbx, fmt, arg...)	\
 	xocl_dbg(&mbx->mbx_pdev->dev, fmt "\n", ##arg)
+#define	MBX_VERBOSE(mbx, fmt, arg...)	\
+	xocl_verbose(&mbx->mbx_pdev->dev, fmt "\n", ##arg)
 
 #define	MAILBOX_TIMER		(HZ / 10) /* in jiffies */
 #define	MAILBOX_SEC2TIMER(s)	((s) * HZ / MAILBOX_TIMER)
@@ -498,7 +500,7 @@ static inline u32 mailbox_reg_rd(struct mailbox *mbx, u32 *reg)
 	u32 val = ioread32(reg);
 
 #ifdef	MAILBOX_REG_DEBUG
-	MBX_DBG(mbx, "REG_RD(%s)=0x%x", reg2name(mbx, reg), val);
+	MBX_VERBOSE(mbx, "REG_RD(%s)=0x%x", reg2name(mbx, reg), val);
 #endif
 	return val;
 }
@@ -506,7 +508,7 @@ static inline u32 mailbox_reg_rd(struct mailbox *mbx, u32 *reg)
 static inline void mailbox_reg_wr(struct mailbox *mbx, u32 *reg, u32 val)
 {
 #ifdef	MAILBOX_REG_DEBUG
-	MBX_DBG(mbx, "REG_WR(%s, 0x%x)", reg2name(mbx, reg), val);
+	MBX_VERBOSE(mbx, "REG_WR(%s, 0x%x)", reg2name(mbx, reg), val);
 #endif
 	iowrite32(val, reg);
 }
@@ -603,7 +605,7 @@ irqreturn_t mailbox_isr(int irq, void *arg)
 	struct mailbox *mbx = (struct mailbox *)arg;
 	u32 is = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_is);
 
-	MBX_DBG(mbx, "intr status: 0x%x", is);
+	MBX_VERBOSE(mbx, "intr status: 0x%x", is);
 
 	mailbox_dbg_collect(mbx, MAILBOX_INTR_REC);
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_is, FLAG_STI | FLAG_RTI);
@@ -632,7 +634,7 @@ static void chan_timer(struct timer_list *t)
 	struct mailbox_channel *ch = from_timer(ch, t, mbc_timer);
 #endif
 
-	MBX_DBG(ch->mbc_parent, "%s tick", ch_name(ch));
+	MBX_VERBOSE(ch->mbc_parent, "%s tick", ch_name(ch));
 
 	set_bit(MBXCS_BIT_TICK, &ch->mbc_state);
 	complete(&ch->mbc_worker);
@@ -670,7 +672,7 @@ static void chan_config_timer(struct mailbox_channel *ch)
 			del_timer_sync(&ch->mbc_timer);
 	}
 
-	MBX_DBG(mbx, "%s timer is %s", ch_name(ch), on ? "on" : "off");
+	MBX_VERBOSE(mbx, "%s timer is %s", ch_name(ch), on ? "on" : "off");
 	mutex_unlock(&ch->mbc_mutex);
 }
 
@@ -684,7 +686,7 @@ static void msg_done(struct mailbox_msg *msg, int err)
 	struct mailbox_channel *ch = msg->mbm_ch;
 	struct mailbox *mbx = ch->mbc_parent;
 
-	MBX_DBG(ch->mbc_parent, "%s finishing msg id=0x%llx err=%d",
+	MBX_VERBOSE(ch->mbc_parent, "%s finishing msg id=0x%llx err=%d",
 		ch_name(ch), msg->mbm_req_id, err);
 
 	msg->mbm_error = err;
@@ -847,7 +849,6 @@ static void chan_worker(struct work_struct *work)
 {
 	struct mailbox_channel *ch =
 		container_of(work, struct mailbox_channel, mbc_work);
-	struct mailbox *mbx = ch->mbc_parent;
 	bool progress;
 
 	while (!test_bit(MBXCS_BIT_STOP, &ch->mbc_state)) {
@@ -898,7 +899,7 @@ static int chan_msg_enqueue(struct mailbox_channel *ch, struct mailbox_msg *msg)
 {
 	int rv = 0;
 
-	MBX_DBG(ch->mbc_parent, "%s enqueuing msg, id=0x%llx\n",
+	MBX_VERBOSE(ch->mbc_parent, "%s enqueuing msg, id=0x%llx\n",
 		ch_name(ch), msg->mbm_req_id);
 
 	if (msg->mbm_req_id == INVALID_MSG_ID) {
@@ -946,7 +947,7 @@ static struct mailbox_msg *chan_msg_dequeue(struct mailbox_channel *ch,
 	}
 
 	if (msg) {
-		MBX_DBG(ch->mbc_parent, "%s dequeued msg, id=0x%llx\n",
+		MBX_VERBOSE(ch->mbc_parent, "%s dequeued msg, id=0x%llx\n",
 			ch_name(ch), msg->mbm_req_id);
 		list_del(&msg->mbm_list);
 	}
@@ -1146,7 +1147,7 @@ static bool chan_recv_pkt(struct mailbox_channel *ch)
 	if ((mailbox_chk_err(mbx) & STATUS_EMPTY) != 0)
 		reset_pkt(pkt);
 	else
-		MBX_DBG(mbx, "received pkt: type=0x%x", pkt->hdr.type);
+		MBX_VERBOSE(mbx, "received pkt: type=0x%x", pkt->hdr.type);
 
 	mbx->mbx_recv_raw_bytes += (PACKET_SIZE << 2);
 	return check_recv_pkt_rate(mbx);
@@ -1160,7 +1161,7 @@ static void chan_send_pkt(struct mailbox_channel *ch)
 
 	BUG_ON(!valid_pkt(pkt));
 
-	MBX_DBG(mbx, "sending pkt: type=0x%x", pkt->hdr.type);
+	MBX_VERBOSE(mbx, "sending pkt: type=0x%x", pkt->hdr.type);
 
 	mailbox_dbg_collect(mbx, MAILBOX_SND_REC);
 	/* Pushing a packet into HW. */
@@ -1998,7 +1999,7 @@ int mailbox_post_notify(struct platform_device *pdev, void *buf, size_t len)
 		return -EFAULT;
 	/* No checking for peer's liveness for posted msgs. */
 
-	MBX_DBG(mbx, "posting request: %d via %s",
+	MBX_VERBOSE(mbx, "posting request: %d via %s",
 		((struct xcl_mailbox_req *)buf)->req, sw_ch ? "SW" : "HW");
 
 	msg = alloc_msg(NULL, len);
@@ -2658,7 +2659,7 @@ static uint mailbox_poll(struct file *file, poll_table *wait)
 
 	poll_wait(file, &ch->sw_chan_wq, wait);
 	counter = atomic_read(&ch->sw_num_pending_msg);
-	MBX_DBG(mbx, "mailbox_poll: %d", counter);
+	MBX_VERBOSE(mbx, "mailbox_poll: %d", counter);
 	if (counter == 0)
 		return 0;
 	return POLLIN;

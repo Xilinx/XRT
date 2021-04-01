@@ -46,6 +46,7 @@ xclmgmt-y := \
 	../xocl_thread.o \
 	../xocl_fdt.o \
 	../xocl_xclbin.o \
+	../xocl_debug.o \
 	../subdev/sysmon.o \
 	../subdev/feature_rom.o \
 	../subdev/microblaze.o \

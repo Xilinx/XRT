@@ -518,6 +518,7 @@ static int mem_hbm_probe(struct platform_device *pdev)
 {
 	struct xocl_mem_hbm *mem_hbm;
 	struct resource *res;
+	void *priv;
 	int err, digit_len, idx, i;
 	char *left_parentness = NULL, *right_parentness = NULL, temp[4];
 
@@ -527,7 +528,9 @@ static int mem_hbm_probe(struct platform_device *pdev)
 
 	mem_hbm->mem_hbm_dev = &pdev->dev;
 
-	memcpy(&mem_hbm->label, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct xocl_mig_label));
+	priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (priv)
+		memcpy(&mem_hbm->label, priv, sizeof(struct xocl_mig_label));
 
 	if (!strncasecmp(mem_hbm->label.tag, "HBM", 3)) {
 		left_parentness = strstr(mem_hbm->label.tag, "[");

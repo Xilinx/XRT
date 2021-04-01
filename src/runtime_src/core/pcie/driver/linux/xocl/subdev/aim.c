@@ -273,6 +273,7 @@ static int aim_probe(struct platform_device *pdev)
 {
 	struct xocl_aim *aim;
 	struct resource *res;
+	void *priv;
 	int err = 0;
 
 	aim = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_aim));
@@ -281,7 +282,9 @@ static int aim_probe(struct platform_device *pdev)
 
 	aim->dev = &pdev->dev;
 
-	memcpy(&aim->data, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct debug_ip_data));
+	priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (priv)
+		memcpy(&aim->data, priv, sizeof(struct debug_ip_data));
 
 	platform_set_drvdata(pdev, aim);
 	mutex_init(&aim->lock);

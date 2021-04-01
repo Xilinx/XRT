@@ -103,6 +103,7 @@ static int spc_probe(struct platform_device *pdev)
 {
 	struct xocl_spc *spc;
 	struct resource *res;
+	void *priv;
 	int err = 0;
 
 	spc = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_spc));
@@ -111,7 +112,9 @@ static int spc_probe(struct platform_device *pdev)
 
 	spc->dev = &pdev->dev;
 
-	memcpy(&spc->data, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct debug_ip_data));
+	priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (priv)
+		memcpy(&spc->data, priv, sizeof(struct debug_ip_data));
 
 	platform_set_drvdata(pdev, spc);
 	mutex_init(&spc->lock);

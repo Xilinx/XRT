@@ -57,7 +57,7 @@ static void *msix_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	if (fdt_node_check_compatible(blob, node, "qdma_msix"))
 		return NULL;
 
-	msix_priv = vzalloc(sizeof(*msix_priv));
+	msix_priv = xocl_subdev_priv_alloc(sizeof(*msix_priv));
 	if (!msix_priv)
 		return NULL;
 	msix_priv->start = 0;
@@ -79,7 +79,7 @@ static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
         if (!blob)
                 return NULL;
 
-	priv_data = vzalloc(sizeof(*priv_data));
+	priv_data = xocl_subdev_priv_alloc(sizeof(*priv_data));
 	if (!priv_data) {
 		*len = 0;
 		return NULL;
@@ -128,7 +128,7 @@ static void *rom_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 		goto failed;
 	}
 
-	priv_data = vmalloc(proplen);
+	priv_data = xocl_subdev_priv_alloc(proplen);
 	if (!priv_data)
 		goto failed;
 
@@ -174,7 +174,7 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	BUG_ON(strlen(flash_type) + 1 > sizeof(flash_priv->flash_type));
 	proplen = sizeof(struct xocl_flash_privdata);
 
-	flash_priv = vzalloc(sizeof(*flash_priv));
+	flash_priv = xocl_subdev_priv_alloc(sizeof(*flash_priv));
 	if (!flash_priv)
 		return NULL;
 
@@ -196,7 +196,7 @@ static void *xmc_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	if (!blob)
 		return NULL;
 
-	xmc_priv = vzalloc(sizeof(*xmc_priv));
+	xmc_priv = xocl_subdev_priv_alloc(sizeof(*xmc_priv));
 	if (!xmc_priv)
 		return NULL;
 
@@ -236,7 +236,7 @@ static void *p2p_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	if (node >= 0)
 		return NULL;
 
-	p2p_priv = vzalloc(sizeof(*p2p_priv));
+	p2p_priv = xocl_subdev_priv_alloc(sizeof(*p2p_priv));
 	if (!p2p_priv)
 		return NULL;
 
@@ -257,7 +257,7 @@ static void *icap_cntrl_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t 
 	if (!blob)
 		return NULL;
 
-	priv = vzalloc(sizeof(*priv));
+	priv = xocl_subdev_priv_alloc(sizeof(*priv));
 	if (!priv)
 		return NULL;
 
@@ -1043,7 +1043,7 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 	/* Get PF index */
 	pfnum = fdt_getprop(blob, off, PROP_PF_NUM, NULL);
 	if (!pfnum) {
-		xocl_xdev_info(xdev_hdl,
+		xocl_xdev_err(xdev_hdl,
 			"IP %s, PF index not found", ip->name);
 		return -EINVAL;
 	}
@@ -1227,11 +1227,11 @@ static void xocl_fdt_dump_subdev(xdev_handle_t xdev_hdl,
 {
 	int i;
 
-	xocl_xdev_info(xdev_hdl, "Device %s, PF%d, level %d",
+	xocl_xdev_dbg(xdev_hdl, "Device %s, PF%d, level %d",
 		subdev->info.name, subdev->pf, subdev->info.level);
 
 	for (i = 0; i < subdev->info.num_res; i++) {
-		xocl_xdev_info(xdev_hdl, "Res%d: %s %pR", i,
+		xocl_xdev_dbg(xdev_hdl, "Res%d: %s %pR", i,
 			subdev->info.res[i].name, &subdev->info.res[i]);
 	}
 }
@@ -1565,7 +1565,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 	}
 
 	if (vbnv && strlen(vbnv) > 0) {
-		xocl_xdev_info(xdev_hdl, "Board VBNV: %s", vbnv);
+		xocl_xdev_dbg(xdev_hdl, "Board VBNV: %s", vbnv);
 		ret = xocl_fdt_add_pair(xdev_hdl, output_blob, "vbnv", vbnv,
 			strlen(vbnv) + 1);
 		if (ret) {
@@ -1719,11 +1719,14 @@ int xocl_fdt_path_offset(xdev_handle_t xdev_hdl, void *blob, const char *path)
 }
 
 int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
-	void **priv_data, size_t *data_len)
+	struct xocl_subdev_priv **priv_data, size_t *data_len)
 {
 	struct xocl_subdev_map  *map_p;
+	void *temp;
 	int j;
 
+	*priv_data = NULL;
+	*data_len = 0;
 	for (j = 0; j < ARRAY_SIZE(subdev_map); j++) {
 		map_p = &subdev_map[j];
 		if (map_p->id == subdev->info.id &&
@@ -1737,11 +1740,11 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 		return -EFAULT;
 	}
 
-	if (!map_p->build_priv_data) {
-		*priv_data = NULL;
-		*data_len = 0;
-	} else
-		*priv_data = map_p->build_priv_data(xdev_hdl, subdev, data_len);
+	if (map_p->build_priv_data) {
+		temp = map_p->build_priv_data(xdev_hdl, subdev, data_len);
+		if (temp)
+			*priv_data = temp - offsetof(struct xocl_subdev_priv, data);
+	}
 
 
 	return 0;
@@ -1755,7 +1758,7 @@ const struct axlf_section_header *xocl_axlf_section_header(
 	int	i;
 	u32 num_sect = top->m_header.m_numSections;
 
-	xocl_xdev_info(xdev_hdl,
+	xocl_xdev_dbg(xdev_hdl,
 		"trying to find section header for axlf section %d", kind);
 
 	if (num_sect > XCLBIN_MAX_NUM_SECTION) {
@@ -1764,7 +1767,7 @@ const struct axlf_section_header *xocl_axlf_section_header(
 	}
 
 	for (i = 0; i < num_sect; i++) {
-		xocl_xdev_info(xdev_hdl, "saw section header: %d",
+		xocl_xdev_dbg(xdev_hdl, "saw section header: %d",
 			top->m_sections[i].m_sectionKind);
 		if (top->m_sections[i].m_sectionKind == kind) {
 			hdr = &top->m_sections[i];
@@ -1778,11 +1781,11 @@ const struct axlf_section_header *xocl_axlf_section_header(
 			xocl_xdev_err(xdev_hdl, "found section is invalid");
 			hdr = NULL;
 		} else
-			xocl_xdev_info(xdev_hdl,
+			xocl_xdev_dbg(xdev_hdl,
 				"header offset: %llu, size: %llu",
 				hdr->m_sectionOffset, hdr->m_sectionSize);
 	} else
-		xocl_xdev_info(xdev_hdl, "skip section header %d",
+		xocl_xdev_dbg(xdev_hdl, "skip section header %d",
 				kind);
 
 	return hdr;
@@ -1862,10 +1865,10 @@ const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
 		}
 	}
 	if (fw_ver) {
-		xocl_xdev_info(xdev_hdl, "Load embedded scheduler firmware %s", fw_ver);
+		xocl_xdev_dbg(xdev_hdl, "Load embedded scheduler firmware %s", fw_ver);
 		/* if firmware_branch_name is "legacy", XRT loads the sched.bin */
 		if (!strcmp(fw_ver, "legacy")) {
-			xocl_xdev_info(xdev_hdl, "Firmware branch name is legacy. Loading default sched.bin");
+			xocl_xdev_dbg(xdev_hdl, "Firmware branch name is legacy. Loading default sched.bin");
 			return NULL;
 		}
 	}
