@@ -722,7 +722,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		vfree(axlf);
 		return -EFAULT;
 	}
-
 	write_lock(&zdev->attr_rwlock);
 
 	/*
@@ -893,16 +892,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		zdev->kernels = kernels;
 	}
 
-	if (kds_mode == 1) {
-		subdev_destroy_cu(zdev);
-		ret = zocl_create_cu(zdev);
-		if (ret)
-			goto out0;
-		ret = zocl_kds_update(zdev);
-		if (ret)
-			goto out0;
-	}
-
 	/* Populating AIE_METADATA sections */
 	size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
 	if (size < 0) {
@@ -935,6 +924,18 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		goto out0;
 	}
 
+	write_unlock(&zdev->attr_rwlock);
+
+	if (kds_mode == 1) {
+		subdev_destroy_cu(zdev);
+		ret = zocl_create_cu(zdev);
+		if (ret)
+			goto out0;
+		ret = zocl_kds_update(zdev);
+		if (ret)
+			goto out0;
+	}
+
 	zocl_clear_mem(zdev);
 	zocl_init_mem(zdev, zdev->topology);
 
@@ -948,7 +949,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zocl_xclbin_set_uuid(zdev, &axlf_head.m_header.uuid);
 
 out0:
-	write_unlock(&zdev->attr_rwlock);
 	vfree(aie_res);
 	vfree(axlf);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
