@@ -561,6 +561,7 @@ initialize_query_table()
   emplace_sysfs_get<query::kds_mode>                         ("", "kds_mode");
   emplace_func0_request<query::kds_cu_stat,                  kds_cu_stat>();
   emplace_func0_request<query::kds_scu_stat,                 kds_scu_stat>();
+  emplace_sysfs_get<query::ps_kernel>                        ("icap", "ps_kernel");
 
   emplace_func0_request<query::pcie_bdf,                     bdf>();
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();

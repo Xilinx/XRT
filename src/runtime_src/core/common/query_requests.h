@@ -78,6 +78,7 @@ enum class key_type
   kds_mode,
   kds_cu_stat,
   kds_scu_stat,
+  ps_kernel,
   xclbin_full,
 
   xmc_version,
@@ -712,6 +713,15 @@ struct kds_cu_stat : request
   using result_type = std::vector<struct data>;
   using data_type = struct data;
   static const key_type key = key_type::kds_cu_stat;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct ps_kernel : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::ps_kernel;
 
   virtual boost::any
   get(const device*) const = 0;
