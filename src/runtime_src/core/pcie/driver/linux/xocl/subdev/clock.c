@@ -1177,7 +1177,7 @@ static int clock_status_check(struct platform_device *pdev, bool *latched)
 		if (ucs_status_ch1->shutdown_clocks_latched) {
 			CLOCK_ERR(clock, "Critical temperature or power event, "
 			    "kernel clocks have been stopped, run "
-			    "'xbutil valiate -q' to continue. "
+			    "'xbutil validate -q' to continue. "
 			    "See AR 73398 for more details.");
 			/* explicitly indicate reset should be latched */
 			*latched = true;
