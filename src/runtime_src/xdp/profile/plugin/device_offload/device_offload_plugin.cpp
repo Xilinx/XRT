@@ -177,7 +177,7 @@ namespace xdp {
 
     // If offload via memory is requested, make sure the size requested
     //  fits inside the chosen memory resource.
-    uint64_t trace_buffer_size = GetTS2MMBufSize(false, db) ;
+    uint64_t trace_buffer_size = db->getStaticInfo().getTraceBufferBytes(false, true);
     if (devInterface->hasTs2mm()) {
       Memory* memory = (db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex());
       if(nullptr == memory) {

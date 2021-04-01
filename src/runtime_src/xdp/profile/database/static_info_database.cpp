@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <regex>
 
 #ifdef _WIN32
 #include <process.h>
@@ -40,11 +41,13 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/device/tracedefs.h"
 
 #include "core/include/xclbin.h"
 #include "core/include/xclperf.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+
 
 #define XAM_STALL_PROPERTY_MASK        0x4
 #define XMON_TRACE_PROPERTY_MASK       0x1
@@ -128,7 +131,9 @@ namespace xdp {
 
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d) :
     db(d), runSummary(nullptr), systemDiagram(""),
-    traceBufferSize(""), softwareEmulationDeviceName("")
+    traceBufferSize(""), traceBufferBytes(0),
+    aieTraceBufferSize(""), aieTraceBufferBytes(0),
+    softwareEmulationDeviceName("")
   {
 #ifdef _WIN32
     pid = _getpid() ;
@@ -187,6 +192,103 @@ namespace xdp {
 
     // If the build section does not exist, then this is not a valid xclbin
     return false ;
+  }
+
+  void VPStaticDatabase::parseTraceBufferOption(bool isAIETrace,
+                                                bool throwWarnings)
+  {
+    std::string size_str = isAIETrace ?
+                         xrt_core::config::get_aie_trace_buffer_size() :
+                         xrt_core::config::get_trace_buffer_size();
+    std::smatch pieces_match;
+
+    // Default is 1M
+    uint64_t bytes = TS2MM_DEF_BUF_SIZE;
+    // Regex can parse values like : "1024M" "1G" "8192k"
+    const std::regex size_regex("\\s*([0-9]+)\\s*(K|k|M|m|G|g|)\\s*");
+    if (std::regex_match(size_str, pieces_match, size_regex)) {
+      try {
+        if (pieces_match[2] == "K" || pieces_match[2] == "k") {
+          bytes = std::stoull(pieces_match[1]) * 1024;
+        } else if (pieces_match[2] == "M" || pieces_match[2] == "m") {
+          bytes = std::stoull(pieces_match[1]) * 1024 * 1024;
+        } else if (pieces_match[2] == "G" || pieces_match[2] == "g") {
+          bytes = std::stoull(pieces_match[1]) * 1024 * 1024 * 1024;
+        } else {
+          bytes = std::stoull(pieces_match[1]);
+        }
+      }
+      catch (const std::exception& ) {
+        // User specified number cannot be parsed
+	if (throwWarnings)
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
+        size_str = "1M" ;
+      }
+    }
+    else {
+      if (throwWarnings)
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
+      size_str = "1M" ;
+    }
+    if (bytes > TS2MM_MAX_BUF_SIZE) {
+      bytes = TS2MM_MAX_BUF_SIZE;
+      if (throwWarnings)
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_BIG);
+      size_str = "4095M" ;
+    }
+    if (bytes < TS2MM_MIN_BUF_SIZE) {
+      bytes = TS2MM_MIN_BUF_SIZE;
+      if (throwWarnings)
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_SMALL);
+      size_str = "8K" ;
+    }
+
+    if (isAIETrace) {
+      aieTraceBufferSize = size_str ;
+      aieTraceBufferBytes = bytes ;
+    }
+    else {
+      traceBufferSize = size_str ;
+      traceBufferBytes = bytes ;
+    }
+  }
+
+  std::string VPStaticDatabase::getTraceBufferSize(bool isAIETrace,
+                                                   bool throwWarnings)
+  {
+    if (isAIETrace) {
+      if (aieTraceBufferSize != "")
+        return aieTraceBufferSize ;
+
+      parseTraceBufferOption(true, throwWarnings) ;
+      return aieTraceBufferSize ;
+    }
+    else {
+      if (traceBufferSize != "")
+        return traceBufferSize;
+
+      parseTraceBufferOption(false, throwWarnings) ;
+      return traceBufferSize ;
+    }
+  }
+
+  uint64_t VPStaticDatabase::getTraceBufferBytes(bool isAIETrace,
+                                                 bool throwWarnings)
+  {
+    if (isAIETrace) {
+      if (aieTraceBufferBytes != 0)
+        return aieTraceBufferBytes ;
+
+      parseTraceBufferOption(true, throwWarnings);
+      return aieTraceBufferBytes ;
+    }
+    else {
+      if (traceBufferBytes != 0)
+        return traceBufferBytes ;
+
+      parseTraceBufferOption(false, throwWarnings);
+      return traceBufferBytes ;
+    }
   }
 
   std::vector<std::string> VPStaticDatabase::getDeviceNames()

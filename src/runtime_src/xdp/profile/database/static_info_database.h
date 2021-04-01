@@ -480,6 +480,9 @@ namespace xdp {
     std::set<std::string> enqueuedKernels ; 
     std::map<uint64_t, uint64_t> contextIdToNumDevices ;
     std::string traceBufferSize ;
+    uint64_t traceBufferBytes ;
+    std::string aieTraceBufferSize ;
+    uint64_t aieTraceBufferBytes ;
 
     // For OpenCL software emulation, we need a tiny bit of device info
     std::string softwareEmulationDeviceName ; 
@@ -509,6 +512,8 @@ namespace xdp {
     bool initializeComputeUnits(XclbinInfo*, const std::shared_ptr<xrt_core::device>&);
     bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
 
+    void parseTraceBufferOption(bool isAIETrace, bool throwWarnings);
+
   public:
     VPStaticDatabase(VPDatabase* d) ;
     ~VPStaticDatabase() ;
@@ -521,9 +526,10 @@ namespace xdp {
     inline uint64_t getApplicationStartTime() { return applicationStartTime ; }
     inline void setApplicationStartTime(uint64_t t)
       { applicationStartTime = t ; }
-    inline std::string getTraceBufferSize() { return traceBufferSize ; }
     inline void setTraceBufferSize(const std::string& size)
       { traceBufferSize = size ; }
+    XDP_EXPORT std::string getTraceBufferSize(bool isAIETrace, bool throwWarnings);
+    XDP_EXPORT uint64_t getTraceBufferBytes(bool isAIETrace, bool throwWarnings);
     inline std::vector<std::pair<std::string, std::string>>& getOpenedFiles() 
       { return openedFiles ; }
     inline std::string getSystemDiagram() { return systemDiagram ; }

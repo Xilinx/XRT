@@ -152,7 +152,7 @@ namespace xdp {
     }
 
     // Create AIE Trace Offloader
-    uint64_t aieTraceBufSz = GetTS2MMBufSize(true /*isAIETrace*/);
+    uint64_t aieTraceBufSz = db->getStaticInfo().getTraceBufferBytes(true, true);
     bool     isPLIO = ((db->getStaticInfo()).getNumTracePLIO(deviceId)) ? true : false;
 
 #if 0
