@@ -218,6 +218,8 @@ namespace xdp {
       auto& core   = aieDevice->tile(col, row + 1).core();
       auto& memory = aieDevice->tile(col, row + 1).mem();
 
+      auto loc = XAie_TileLoc(col, row + 1);
+
       // AIE config object for this tile
       auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row);
 
@@ -235,10 +237,11 @@ namespace xdp {
       // 1. Reserve and start core module counters
       //
       int numCoreCounters = 0;
+      XAie_ModuleType mod = XAIE_CORE_MOD;
       for (int i=0; i < coreCounterStartEvents.size(); ++i) {
         auto perfCounter = core.perfCounter();
-        auto ret = perfCounter->initialize(XAIE_CORE_MOD, coreCounterStartEvents.at(i),
-                                           XAIE_CORE_MOD, coreCounterEndEvents.at(i));
+        auto ret = perfCounter->initialize(mod, coreCounterStartEvents.at(i),
+                                           mod, coreCounterEndEvents.at(i));
         if (ret != XAIE_OK) break;
         ret = perfCounter->reserve();
         if (ret != XAIE_OK) break;
@@ -248,10 +251,9 @@ namespace xdp {
         // Set reset event based on counter number
         // NOTE: store events for later use in trace
         XAie_Events counterEvent;
-        XAie_ModuleType mod = XAIE_CORE_MOD;
         perfCounter->getCounterEvent(mod, counterEvent);
 
-        perfCounter->changeRstEvent(XAIE_CORE_MOD, counterEvent);
+        perfCounter->changeRstEvent(mod, counterEvent);
         coreEvents.push_back(counterEvent);
 
         ret = perfCounter->start();
@@ -261,11 +263,15 @@ namespace xdp {
         numCoreCounters++;
 
         // Update config file
+        uint8_t phyEvent = 0;
         int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
         auto& cfg = cfgTile->core_trace_config.pc[idx];
-        cfg.start_event = coreCounterStartEvents[i];
-        cfg.stop_event = coreCounterEndEvents[i];
-        cfg.reset_event = counterEvent;
+        XAie_EventLogicalToPhysicalConv(Aie, loc, mod, coreCounterStartEvents[i], &phyEvent);
+        cfg.start_event = phyEvent;
+        XAie_EventLogicalToPhysicalConv(Aie, loc, mod, coreCounterEndEvents[i], &phyEvent);
+        cfg.stop_event = phyEvent;
+        XAie_EventLogicalToPhysicalConv(Aie, loc, mod, counterEvent, &phyEvent);
+        cfg.reset_event = phyEvent;
         cfg.event_value = coreCounterEventValues[i];
       }
 
@@ -275,8 +281,9 @@ namespace xdp {
       int numMemoryCounters = 0;
       for (int i=0; i < memoryCounterStartEvents.size(); ++i) {
         auto perfCounter = memory.perfCounter();
-        auto ret = perfCounter->initialize(XAIE_MEM_MOD, memoryCounterStartEvents.at(i),
-                                           XAIE_MEM_MOD, memoryCounterEndEvents.at(i));
+        XAie_ModuleType mod = XAIE_MEM_MOD;
+        auto ret = perfCounter->initialize(mod, memoryCounterStartEvents.at(i),
+                                           mod, memoryCounterEndEvents.at(i));
         if (ret != XAIE_OK) break;
         ret = perfCounter->reserve();
         if (ret != XAIE_OK) break;
@@ -285,10 +292,9 @@ namespace xdp {
 
         // Set reset event based on counter number
         XAie_Events counterEvent;
-        XAie_ModuleType mod = XAIE_MEM_MOD;
         perfCounter->getCounterEvent(mod, counterEvent);
 
-        perfCounter->changeRstEvent(XAIE_MEM_MOD, counterEvent);
+        perfCounter->changeRstEvent(mod, counterEvent);
         memoryEvents.push_back(counterEvent);
 
         ret = perfCounter->start();
@@ -298,17 +304,15 @@ namespace xdp {
         numMemoryCounters++;
 
         // Update config file
-        auto loc = XAie_TileLoc(col, row + 1);
         uint8_t phyEvent = 0;
         int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
-
         auto& cfg = cfgTile->memory_trace_config.pc[idx];
         XAie_EventLogicalToPhysicalConv(Aie, loc, mod, memoryCounterStartEvents[i], &phyEvent);
-        cfg.start_event = static_cast<uint32_t>(phyEvent);
+        cfg.start_event = phyEvent;
         XAie_EventLogicalToPhysicalConv(Aie, loc, mod, memoryCounterEndEvents[i], &phyEvent);
-        cfg.stop_event = static_cast<uint32_t>(phyEvent);
+        cfg.stop_event = phyEvent;
         XAie_EventLogicalToPhysicalConv(Aie, loc, mod, counterEvent, &phyEvent);
-        cfg.reset_event = static_cast<uint32_t>(phyEvent);
+        cfg.reset_event = phyEvent;
         cfg.event_value = memoryCounterEventValues[i];
       }
 
@@ -334,6 +338,8 @@ namespace xdp {
       //
       // TODO: Configure group or combo events where applicable
       {
+        XAie_ModuleType mod = XAIE_CORE_MOD;
+        uint8_t phyEvent = 0;
         auto coreTrace = core.traceControl();
         // Set overall start/end for trace capture
         // Wendy said this should be done first
@@ -353,12 +359,14 @@ namespace xdp {
           numTraceEvents++;
 
           // Update config file
-          // Todo : Update broadcast mask and events
-          cfgTile->core_trace_config.traced_events[slot] = coreEvents[i];
+          XAie_EventLogicalToPhysicalConv(Aie, loc, mod, coreEvents[i], &phyEvent);
+          cfgTile->core_trace_config.traced_events[slot] = phyEvent;
         }
         // Update config file
-        cfgTile->core_trace_config.start_event = coreTraceStartEvent;
-        cfgTile->core_trace_config.stop_event = coreTraceEndEvent;
+        XAie_EventLogicalToPhysicalConv(Aie, loc, mod, coreTraceStartEvent, &phyEvent);
+        cfgTile->core_trace_config.start_event = phyEvent;
+        XAie_EventLogicalToPhysicalConv(Aie, loc, mod, coreTraceEndEvent, &phyEvent);
+        cfgTile->core_trace_config.stop_event = phyEvent;
         
         coreEvents.clear();
         numTileCoreTraceEvents[numTraceEvents]++;
@@ -415,7 +423,6 @@ namespace xdp {
           TraceE->getRscId(L, M, S);
           cfgTile->memory_trace_config.traced_events[S] = bcIdToEvent(bcId);
           auto mod = XAIE_CORE_MOD;
-          auto loc = XAie_TileLoc(col, row + 1);
           uint8_t phyEvent = 0;
           XAie_EventLogicalToPhysicalConv(Aie, loc, mod, memoryCrossEvents[i], &phyEvent);
           cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
@@ -439,10 +446,9 @@ namespace xdp {
           TraceE->getRscId(L, M, S);
           // Get Physical event
           auto mod = XAIE_MEM_MOD;
-          auto loc = XAie_TileLoc(col, row + 1);
           uint8_t phyEvent = 0;
           XAie_EventLogicalToPhysicalConv(Aie, loc, mod, memoryEvents[i], &phyEvent);
-          cfgTile->memory_trace_config.traced_events[S] = static_cast<uint32_t>(phyEvent);
+          cfgTile->memory_trace_config.traced_events[S] = phyEvent;
         }
         // Update config file
         {
@@ -451,7 +457,6 @@ namespace xdp {
           auto bcId = memoryTrace->getStartBc();
           coreToMemBcMask |= (bcBit << bcId);
           auto mod = XAIE_CORE_MOD;
-          auto loc = XAie_TileLoc(col, row + 1);
           uint8_t phyEvent = 0;
           XAie_EventLogicalToPhysicalConv(Aie, loc, mod, coreTraceStartEvent, &phyEvent);
           cfgTile->memory_trace_config.start_event = bcIdToEvent(bcId);
