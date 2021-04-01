@@ -23,15 +23,15 @@ def runKernel(opt):
     obj = pyxrt.bo(d, size, pyxrt.bo.normal, swizzle.group_id(0))
 
     buf = obj.map()
-    ctypes.memset(buf, 0, size)
-    bo_arr = ctypes.cast(buf, ctypes.POINTER(ctypes.c_int))
+#    ctypes.memset(buf, 0, size)
+#    bo_arr = ctypes.cast(buf, ctypes.POINTER(ctypes.c_int))
 
     # Compute golden values
     reference = []
 
     for idx in range(elem_num):
         remainder = idx % 4
-        bo_arr[idx] = idx
+        buf[idx] = idx
         if remainder == 0:
             reference.append(idx+2)
         if remainder == 1:
@@ -65,7 +65,7 @@ def runKernel(opt):
 
     print("Compare the FPGA results with golden data")
     for idx in range(elem_num):
-        assert(bo_arr[idx] == reference[idx])
+        assert(buf[idx] == reference[idx])
 
     return 0
 

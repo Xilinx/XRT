@@ -164,7 +164,13 @@ pybo.def(py::init<xrt::device, size_t, xrt::bo::flags, xrt::memory_group>())
     .def("sync", ([](xrt::bo &b, xclBOSyncDirection dir, size_t size, size_t offset)  {
                       b.sync(dir, size, offset);
                   }))
-    .def("map", static_cast<void *(xrt::bo::*)()>(&xrt::bo::map))
+    .def("map", ([](xrt::bo &b)  {
+                     py::buffer_info info(b.map(),
+                                          sizeof(unsigned int),
+                                          py::format_descriptor<unsigned int>::format(),
+                                          b.size()/sizeof(unsigned int));
+                     return py::memoryview(info);
+                  }))
     .def("size", &xrt::bo::size)
     .def("address", &xrt::bo::address)
     ;
