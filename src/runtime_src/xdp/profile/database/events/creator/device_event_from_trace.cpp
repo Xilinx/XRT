@@ -91,6 +91,7 @@ namespace xdp {
                                  ty, deviceId, slot, cuId);
         memEvent->setDeviceTimestamp(trace.Timestamp);
         db->getDynamicInfo().addEvent(memEvent);
+        aimLastTrans[slot] = trace.Timestamp;
       }
 
       memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId) ;
