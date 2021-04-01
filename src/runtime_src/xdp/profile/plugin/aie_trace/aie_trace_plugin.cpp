@@ -57,9 +57,9 @@ namespace xdp {
     //
     // **** Core Module Trace ****
     // functions: "traced_events": [35, 36, 7, 8, 0, 0, 0, 0]
-    // functions_partial_stalls: "traced_events": [35, 36, 24, 25, 26, 7, 8, 0]
-    // functions_all_stalls: "traced_events": [35, 36, 23, 24, 25, 26, 7, 8]
-    // all: "traced_events": [35, 36, 23, 24, 25, 26, 7, 8]
+    // functions_partial_stalls: "traced_events": [35, 36, 7, 8, 0, 0, 0, 0]
+    // functions_all_stalls: "traced_events": [35, 36, 7, 8, 0, 0, 0, 0]
+    // all: "traced_events": [35, 36, 7, 8, 0, 0, 0, 0]
     //      "group_event_config": {
     //          "2": 0,
     //          "15": 0,
@@ -67,22 +67,16 @@ namespace xdp {
     //          "32": 12,
     //          "46": 0,
     //          "47": 0,
-    //          "73": 0,
+    //          "73": 8738,
     //          "106": 0,
     //          "123": 0
     //      },
     // NOTE: these are supplemented with counter events as those are dependent on counter #
     coreEventSets = {
       {"functions",                {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
-      {"functions_partial_stalls", {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
-                                    XAIE_EVENT_STREAM_STALL_CORE, 
-                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}},
-      {"functions_all_stalls",     {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
-                                    XAIE_EVENT_MEMORY_STALL_CORE,     XAIE_EVENT_STREAM_STALL_CORE, 
-                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}},
-      {"all",                      {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
-                                    XAIE_EVENT_MEMORY_STALL_CORE,     XAIE_EVENT_STREAM_STALL_CORE, 
-                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}}
+      {"functions_partial_stalls", {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
+      {"functions_all_stalls",     {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
+      {"all",                      {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}}
     };
 
     // These are also broadcast to memory module
@@ -93,7 +87,7 @@ namespace xdp {
     // functions: "traced_events": [120, 119, 5, 6, 0, 0, 0, 0]
     // functions_partial_stalls: "traced_events": [120, 119, 118, 117, 116, 5, 6, 0]
     // functions_all_stalls: "traced_events": [120, 119, 118, 117, 116, 115, 5, 6]
-    // all: "traced_events": [120, 119, 5, 6, 0, 0, 0, 0]
+    // all: "traced_events": [120, 119, 118, 117, 116, 115, 5, 6]
     //
     // NOTE: core events listed here are broadcast by the resource manager
     // NOTE: these are supplemented with counter events as those are dependent on counter #
@@ -221,7 +215,7 @@ namespace xdp {
       auto loc = XAie_TileLoc(col, row + 1);
 
       // AIE config object for this tile
-      auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row);
+      auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row + 1);
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
@@ -427,6 +421,7 @@ namespace xdp {
           XAie_EventLogicalToPhysicalConv(Aie, loc, mod, memoryCrossEvents[i], &phyEvent);
           cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
         }
+
         // Configure same module events
         for (int i=0; i < memoryEvents.size(); i++) {
           auto TraceE = memory.traceEvent();
@@ -450,6 +445,7 @@ namespace xdp {
           XAie_EventLogicalToPhysicalConv(Aie, loc, mod, memoryEvents[i], &phyEvent);
           cfgTile->memory_trace_config.traced_events[S] = phyEvent;
         }
+
         // Update config file
         {
           // Add Memory module trace control events
@@ -469,6 +465,7 @@ namespace xdp {
           cfgTile->memory_trace_config.stop_event = bcIdToEvent(bcId);
           cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
         }
+
         // Odd absolute rows change east mask end even row change west mask
         if ((row + 1) % 2) {
           cfgTile->core_trace_config.broadcast_mask_east = coreToMemBcMask;
