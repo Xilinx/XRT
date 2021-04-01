@@ -462,13 +462,13 @@ namespace xdp {
         continue;
 
       int32_t cuId = mon->cuIndex ;
-      if (cuId == -1)
-        continue ;
       int32_t amId = -1 ;
 
-      ComputeUnitInstance* cu = db->getStaticInfo().getCU(deviceId, cuId);
-      if (cu) {
-        amId = cu->getAccelMon();
+      if (cuId != -1) {
+        ComputeUnitInstance* cu = db->getStaticInfo().getCU(deviceId, cuId);
+        if (cu) {
+          amId = cu->getAccelMon();
+        }
       }
 
       addApproximateDataTransferEvent(KERNEL_READ, aimTraceID, amId, cuId) ;
