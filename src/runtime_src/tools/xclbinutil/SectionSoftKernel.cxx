@@ -20,6 +20,7 @@
 namespace XUtil = XclBinUtilities;
 
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 // Disable windows compiler warnings
