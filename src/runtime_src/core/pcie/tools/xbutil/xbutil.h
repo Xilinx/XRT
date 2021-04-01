@@ -572,6 +572,14 @@ public:
         // Format: "%d,%s,0x%x,%u"
         // Using comma as separator.
         pcidev::get_dev(m_idx)->sysfs_get("", "kds_scustat_raw", errmsg, custat);
+        std::vector<ps_kernel_data> psKernels;
+        if (getPSKernels(psKernels) < 0) {
+            std::cout << "WARNING: 'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.\n";
+            return 0;
+        }
+
+        uint32_t psk_inst = 0;
+        uint32_t num_scu = 0;
         for (auto& line : custat) {
             boost::char_separator<char> sep(",");
 
@@ -588,7 +596,8 @@ public:
             status = std::stoul(std::string(*tok_it++), nullptr, radix);
             usage = std::stoul(std::string(*tok_it++));
             // TODO: Let's avoid this special handling for PS kernel name
-            name = name + ":scu_" + std::to_string(scu_idx);
+            //name = name + ":scu_" + std::to_string(scu_idx);
+            name += ":scu_" + std::to_string(num_scu); //Append instance number for each PS Kernel
 
             boost::property_tree::ptree ptCu;
             ptCu.put( "name",         name );
@@ -596,6 +605,15 @@ public:
             ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.ps_compute_unit." + std::to_string(scu_idx)), ptCu );
+
+            if (psk_inst >= psKernels.size())
+                continue;
+            num_scu++;
+            if (num_scu == psKernels.at(psk_inst).pkd_num_instances) {
+                //Reset instance num of new PS Kernel
+                num_scu = 0;
+                psk_inst++;
+            }
         }
 
         return 0;
