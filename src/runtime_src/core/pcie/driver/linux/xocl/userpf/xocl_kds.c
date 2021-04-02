@@ -529,6 +529,9 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
+	case ERT_EXEC_WRITE:
+		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		break;
 	case ERT_START_FA:
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		/* ERT doesn't support Fast adapter command */
