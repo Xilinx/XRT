@@ -427,7 +427,7 @@ namespace xdp {
 
     uint64_t transStartTimestamp = 0 ;
     uint64_t transApproxEndTimestamp = 0 ;
-    uint64_t transApproxEndHostTimestamp = 0 ;
+    double transApproxEndHostTimestamp = 0 ;
 
     VTFDeviceEvent* deviceStartEvent=dynamic_cast<VTFDeviceEvent*>(startEvent);
     if (!deviceStartEvent)
