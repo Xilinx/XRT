@@ -948,10 +948,15 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zdev->zdev_xclbin->zx_refcnt = 0;
 	zocl_xclbin_set_uuid(zdev, &axlf_head.m_header.uuid);
 
-out0:
 	vfree(aie_res);
 	vfree(axlf);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
+	return ret;
+
+out0:
+	write_unlock(&zdev->attr_rwlock);
+	vfree(aie_res);
+	vfree(axlf);
 	return ret;
 }
 
