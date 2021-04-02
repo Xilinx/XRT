@@ -738,10 +738,14 @@ ert_valid_opcode(struct ert_packet *pkt)
 
   switch (pkt->opcode) {
   case ERT_START_CU:
+    skcmd = to_start_krnl_pkg(pkt);
+    /* 1 cu mask + 4 registers */
+    valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 4);
+    break;
   case ERT_EXEC_WRITE:
     skcmd = to_start_krnl_pkg(pkt);
-    /* 1 cu mask + 4 control registers */
-    valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 4);
+    /* 1 cu mask + 6 registers */
+    valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 6);
     break;
   case ERT_START_FA:
     skcmd = to_start_krnl_pkg(pkt);

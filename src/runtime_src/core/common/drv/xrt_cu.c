@@ -210,7 +210,7 @@ static inline int process_rq(struct xrt_cu *xcu)
 		return 0;
 
 	/* if successfully get credit, you must start cu */
-	xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, 0);
+	xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, xcmd->payload_type);
 	xrt_cu_start(xcu);
 
 	dst_q = &xcu->sq;
