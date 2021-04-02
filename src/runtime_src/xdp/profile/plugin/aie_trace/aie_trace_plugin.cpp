@@ -371,7 +371,10 @@ namespace xdp {
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 
         if (ret != XAIE_OK) break;
-        ret = coreTrace->setMode(XAIE_TRACE_EVENT_TIME);
+        ret = coreTrace->setMode(XAIE_TRACE_EVENT_PC);
+        if (ret != XAIE_OK) break;
+        XAie_Packet  pkt = {0, 0};
+        ret = coreTrace->setPkt(pkt);
         if (ret != XAIE_OK) break;
         ret = coreTrace->start();
         if (ret != XAIE_OK) break;
@@ -484,6 +487,9 @@ namespace xdp {
 
         if (ret != XAIE_OK) break;
         ret = memoryTrace->setMode(XAIE_TRACE_EVENT_TIME);
+        if (ret != XAIE_OK) break;
+        XAie_Packet  pkt = {0, 1};
+        ret = memoryTrace->setPkt(pkt);
         if (ret != XAIE_OK) break;
         ret = memoryTrace->start();
         if (ret != XAIE_OK) break;
