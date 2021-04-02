@@ -57,14 +57,25 @@ class DeviceEventCreatorFromTrace
   void trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp);
   double convertDeviceToHostTimestamp(uint64_t deviceTimestamp);
 
-  // Helper functions
+  // Functions for adding a specific type of device event
+  void addAMEvent(xclTraceResults& trace, double hostTimestamp);
   void addAIMEvent(xclTraceResults& trace, double hostTimestamp) ;
 
-  void addKernelDataTransferEvent(VTFEventType ty, xclTraceResults& trace, uint32_t slot, int32_t cuId, double hostTimestamp) ;
+  void addCUEvent(xclTraceResults& trace, double hostTimestamp,
+                  uint32_t s, uint64_t monTraceID, int32_t cuId);
+  void addStallEvent(xclTraceResults& trace, double hostTimestamp,
+                     uint32_t s, uint64_t monTraceID, int32_t cuId,
+                     VTFEventType type, uint64_t mask) ;
+  void addKernelDataTransferEvent(VTFEventType ty, xclTraceResults& trace,
+                                  uint32_t slot, int32_t cuId,
+                                  double hostTimestamp) ;
 
+  // Functions for handling dropped device packets
   void addApproximateCUEndEvents();
-  void addApproximateDataTransferEvents();
+  void addApproximateDataTransferEndEvents();
+  void addApproximateDataTransferEndEvents(int32_t cuId);
   void addApproximateStreamEndEvents();
+  void addApproximateStallEndEvents(xclTraceResults& trace, double hostTimestamp, uint32_t s, uint64_t monTraceID, int32_t cuId);
 
   void addApproximateDataTransferEvent(VTFEventType type, uint64_t aimTraceID, int32_t amId, int32_t cuId);
   void addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType,
