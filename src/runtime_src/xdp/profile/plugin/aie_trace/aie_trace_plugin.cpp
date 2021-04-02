@@ -314,6 +314,7 @@ namespace xdp {
         XAie_EventLogicalToPhysicalConv(Aie, loc, mod, counterEvent, &phyEvent);
         cfg.reset_event = phyEvent;
         cfg.event_value = memoryCounterEventValues[i];
+        cfgTile->memory_trace_config.packet_type=1;
       }
 
       // Catch when counters cannot be reserved: report, release, and return
