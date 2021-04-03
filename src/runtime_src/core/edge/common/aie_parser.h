@@ -49,14 +49,6 @@ adf::driver_config
 get_driver_config(const xrt_core::device* device);
 
 /**
- * get_graphs() - get graph names from xclbin AIE metadata
- *
- * @device: device with loaded meta data
- */
-std::vector<std::string>
-get_graphs(const xrt_core::device* device);
-
-/**
  * get_graph() - get tile data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
@@ -75,6 +67,14 @@ get_graph(const xrt_core::device* device, const std::string& graph_name);
  */
 int
 get_graph_id(const xrt_core::device* device, const std::string& graph_name);
+
+/**
+ * get_graphs() - get graph names from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+std::vector<std::string>
+get_graphs(const xrt_core::device* device);
 
 /**
  * get_tiles() - get tile data from xclbin AIE metadata

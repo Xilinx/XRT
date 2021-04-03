@@ -66,19 +66,6 @@ get_driver_config(const pt::ptree& aie_meta)
   return driver_config;
 }
 
-std::vector<std::string>
-get_graphs(const pt::ptree& aie_meta)
-{
-  std::vector<std::string> graphs;
-
-  for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
-    std::string graphName = graph.second.get<std::string>("name");
-    graphs.push_back(graphName);
-  }
-
-  return graphs;
-}
-
 adf::graph_config
 get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 {
@@ -151,6 +138,19 @@ get_graph_id(const pt::ptree& aie_meta, const std::string& graph_name)
   }
 
   return -1;
+}
+
+std::vector<std::string>
+get_graphs(const pt::ptree& aie_meta)
+{
+  std::vector<std::string> graphs;
+
+  for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
+    std::string graphName = graph.second.get<std::string>("name");
+    graphs.push_back(graphName);
+  }
+
+  return graphs;
 }
 
 std::vector<tile_type>
@@ -397,16 +397,16 @@ get_trace_gmio(const pt::ptree& aie_meta)
 
 namespace xrt_core { namespace edge { namespace aie {
 
-std::vector<std::string>
-get_graphs(const xrt_core::device* device)
+adf::driver_config
+get_driver_config(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::vector<std::string>();
+    return adf::driver_config();
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_graphs(aie_meta);
+  return ::get_driver_config(aie_meta);
 }
 
 adf::graph_config
@@ -433,6 +433,18 @@ get_graph_id(const xrt_core::device* device, const std::string& graph_name)
   return ::get_graph_id(aie_meta, graph_name);
 }
 
+std::vector<std::string>
+get_graphs(const xrt_core::device* device)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return std::vector<std::string>();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_graphs(aie_meta);
+}
+
 std::vector<tile_type>
 get_tiles(const xrt_core::device* device, const std::string& graph_name)
 {
@@ -443,18 +455,6 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name)
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_tiles(aie_meta, graph_name);
-}
-
-adf::driver_config
-get_driver_config(const xrt_core::device* device)
-{
-  auto data = device->get_axlf_section(AIE_METADATA);
-  if (!data.first || !data.second)
-    return adf::driver_config();
-
-  pt::ptree aie_meta;
-  read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_driver_config(aie_meta);
 }
 
 std::unordered_map<std::string, adf::rtp_config>
