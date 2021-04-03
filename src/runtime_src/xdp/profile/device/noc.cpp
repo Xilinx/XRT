@@ -54,11 +54,11 @@ void NOC::parseName(std::string name)
   std::vector<std::string> result; 
   boost::split(result, name, boost::is_any_of("-"));
   
-  try {mMasterName = result.at(0);} catch {mMasterName = "";}
-  try {mCellName = result.at(1);} catch {mCellName = "";}
-  try {mReadQos = std::stoull(result.at(2));} catch {mReadQos = 0;}
-  try {mWriteQos = std::stoull(result.at(3));} catch {mWriteQos = 0;}
-  try {mNpiClockFreqMhz = std::stod(result.at(4));} catch {mNpiClockFreqMhz = 299.997009;}
+  try {mMasterName = result.at(0);} catch (...) {mMasterName = "";}
+  try {mCellName = result.at(1);} catch (...) {mCellName = "";}
+  try {mReadQos = std::stoull(result.at(2));} catch (...) {mReadQos = 0;}
+  try {mWriteQos = std::stoull(result.at(3));} catch (...) {mWriteQos = 0;}
+  try {mNpiClockFreqMhz = std::stod(result.at(4));} catch (...) {mNpiClockFreqMhz = 299.997009;}
 }
 
 inline void NOC::write32(uint64_t offset, uint32_t val)
