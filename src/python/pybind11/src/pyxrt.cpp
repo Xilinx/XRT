@@ -165,11 +165,28 @@ pybo.def(py::init<xrt::device, size_t, xrt::bo::flags, xrt::memory_group>())
                       b.sync(dir, size, offset);
                   }))
     .def("map", ([](xrt::bo &b)  {
-                     py::buffer_info info(b.map(),
+                     // memoryview ctos has a bug where it uses c_str() of info.format directly
+                     // which leads to stale pointer since info goes out of scope. Here we are
+                     // creating info as static so it is persistent and hence format string
+                     // remains live. We reuse info object by updating ptr and length for each
+                     // new bo.
+                     static py::buffer_info info(b.map(),
                                           sizeof(unsigned int),
                                           py::format_descriptor<unsigned int>::format(),
-                                          b.size()/sizeof(unsigned int));
+                                          1,
+                                          {b.size()/sizeof(unsigned int)},
+                                          {sizeof(unsigned int)});
+                     info.ptr = b.map();
+                     info.shape[0] = b.size()/sizeof(unsigned int);
                      return py::memoryview(info);
+                     /*
+                     return py::memoryview::from_buffer(b.map(),
+                                                        sizeof(unsigned int),
+                                                        py::format_descriptor<unsigned int>::format(),
+                                                        1,
+                                                        {b.size()/sizeof(unsigned int)},
+                                                        false);
+                     */
                   }))
     .def("size", &xrt::bo::size)
     .def("address", &xrt::bo::address)
