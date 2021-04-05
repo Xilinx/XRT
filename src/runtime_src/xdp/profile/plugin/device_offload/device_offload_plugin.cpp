@@ -96,7 +96,7 @@ namespace xdp {
       continuous_trace = xrt_core::config::get_continuous_trace() ;
       continuous_trace_interval_ms =
         xrt_core::config::get_continuous_trace_interval_ms() ;
-      m_enable_circular_buffer = continuous_trace ? true : false;
+      m_enable_circular_buffer = continuous_trace;
     }
     else {
       if (xrt_core::config::get_continuous_trace()) {
