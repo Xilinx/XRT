@@ -333,7 +333,6 @@ namespace xdp {
             strmEvent = new DeviceStreamAccess(0, hostTimestamp, streamEventType, deviceId, s, cuId);
             strmEvent->setDeviceTimestamp(timestamp); 
             db->getDynamicInfo().addEvent(strmEvent);
-            db->getDynamicInfo().markDeviceEventStart(trace.TraceID, strmEvent);
             matchingStart = strmEvent;
             hostTimestamp += halfCycleTimeInMs;
           }
