@@ -1273,6 +1273,7 @@ int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_
 
     std::vector<XmaCUCmdObj> cmd_vector(cmd_obj_array, cmd_obj_array+num_cu_objs);
     uint32_t num_errors = 0;
+    uint32_t tmp_index = 0;
     for (auto& cmd: cmd_vector) {
         if (cmd.do_not_use1 != s_handle.session_signature) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-1");
@@ -1291,15 +1292,16 @@ int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. CU cmd has not finished yet. Return code must be checked only after the command has finished", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             return XMA_ERROR;
         }
-        cmd.cmd_finished = true;
-        cmd.return_code = 0;
-        cmd.cmd_state = static_cast<XmaCmdState>(xma_cmd_state::completed);
+        cmd_obj_array[tmp_index].cmd_finished = true;
+        cmd_obj_array[tmp_index].return_code = 0;
+        cmd_obj_array[tmp_index].cmd_state = static_cast<XmaCmdState>(xma_cmd_state::completed);
         auto itr_tmp2 = priv1->CU_error_cmds.find(cmd.cmd_id1);
         if (itr_tmp2 != priv1->CU_error_cmds.end()) {
             num_errors++;
-            cmd.return_code = itr_tmp2->second.return_code;
-            cmd.cmd_state = static_cast<XmaCmdState>(itr_tmp2->second.cmd_state);
+            cmd_obj_array[tmp_index].return_code = itr_tmp2->second.return_code;
+            cmd_obj_array[tmp_index].cmd_state = static_cast<XmaCmdState>(itr_tmp2->second.cmd_state);
         }
+        tmp_index++;
     }
 
     if (num_cu_errors)
