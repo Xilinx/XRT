@@ -359,7 +359,7 @@ namespace xclcpuemhal2 {
       exec_core* mCore;
       SWScheduler* mSWSch;
       bool mIsKdsSwEmu;
-   
+      bool mIsAieEnabled;   
   };
 
   class GraphType {
