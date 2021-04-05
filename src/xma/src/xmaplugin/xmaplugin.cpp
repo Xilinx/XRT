@@ -1271,9 +1271,10 @@ int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_
         return XMA_ERROR;
     }
 
-    std::vector<XmaCUCmdObj> cmd_vector(cmd_obj_array, cmd_obj_array+num_cu_objs);
+    XmaCUCmdObj* cmd_end = cmd_obj_array+num_cu_objs;
     uint32_t num_errors = 0;
-    for (auto& cmd: cmd_vector) {
+    for (auto itr = cmd_obj_array; itr < cmd_end; ++itr) {
+        auto& cmd = *itr;
         if (cmd.do_not_use1 != s_handle.session_signature) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-1");
             return XMA_ERROR;
