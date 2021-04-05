@@ -73,6 +73,10 @@ int32_t xma_get_default_ddr_index(int32_t dev_index, int32_t cu_index, char* cu_
 }
 
 void xma_thread1() {
+    std::promise<bool> p;
+    g_xma_singleton->thread1_future = p.get_future();
+    p.set_value_at_thread_exit(true);
+
     bool expected = false;
     bool desired = true;
     std::list<XmaLogMsg> list1;
@@ -249,6 +253,10 @@ void xma_thread1() {
 }
 
 void xma_thread2() {
+    std::promise<bool> p;
+    g_xma_singleton->thread2_future = p.get_future();
+    p.set_value_at_thread_exit(true);
+
     bool expected = false;
     bool desired = true;
     int32_t session_index = 0;
