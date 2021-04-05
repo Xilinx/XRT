@@ -722,6 +722,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		vfree(axlf);
 		return -EFAULT;
 	}
+
+	/* After this lock till unlock is an atomic context */ 
 	write_lock(&zdev->attr_rwlock);
 
 	/*
@@ -924,18 +926,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		goto out0;
 	}
 
-	write_unlock(&zdev->attr_rwlock);
-
-	if (kds_mode == 1) {
-		subdev_destroy_cu(zdev);
-		ret = zocl_create_cu(zdev);
-		if (ret)
-			goto out0;
-		ret = zocl_kds_update(zdev);
-		if (ret)
-			goto out0;
-	}
-
 	zocl_clear_mem(zdev);
 	zocl_init_mem(zdev, zdev->topology);
 
@@ -948,13 +938,22 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zdev->zdev_xclbin->zx_refcnt = 0;
 	zocl_xclbin_set_uuid(zdev, &axlf_head.m_header.uuid);
 
-	vfree(aie_res);
-	vfree(axlf);
-	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
-	return ret;
-
 out0:
 	write_unlock(&zdev->attr_rwlock);
+	/* out of the atomic context */ 
+
+	/* Creating kernel thread, hence need to call this outside of the atomic context */
+	if (!ret && kds_mode == 1) {
+		subdev_destroy_cu(zdev);
+		ret = zocl_create_cu(zdev);
+		if (ret)
+			goto out1;
+		ret = zocl_kds_update(zdev);
+		if (ret)
+			goto out1;
+	}
+
+out1:
 	vfree(aie_res);
 	vfree(axlf);
 	return ret;
