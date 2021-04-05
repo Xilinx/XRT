@@ -261,6 +261,7 @@ namespace xdp {
           xrt_core::config::get_stall_trace()  != "off")) {
       configureTraceIP(devInterface);
       devInterface->clockTraining() ;
+      startContinuousThreads(deviceId) ;
     }
     if(getFlowMode() == HW_EMU) {
       configureTraceIP(devInterface);

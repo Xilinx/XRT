@@ -45,7 +45,7 @@ namespace po = boost::program_options;
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
 static const ReportCollection fullReportCollection = {
   // Common reports
-    std::make_shared<ReportHost>(),
+    std::make_shared<ReportHost>(false),
     std::make_shared<ReportPlatform>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS

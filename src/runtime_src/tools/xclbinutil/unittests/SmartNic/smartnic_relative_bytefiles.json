@@ -100,7 +100,7 @@
                 "per_handle_memory_size_bytes": "16"
             }
         ],
-        "softhub_connections": [
+        "softhubs": [
             {
                 "version": "2",
                 "id": "1"

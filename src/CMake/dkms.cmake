@@ -56,6 +56,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/xocl_fdt.h
   xocl/xocl_xclbin.c
   xocl/xocl_xclbin.h
+  xocl/xocl_debug.c
   xocl/xocl_test.c
   xocl/userpf/common.h
   xocl/userpf/xocl_bo.c

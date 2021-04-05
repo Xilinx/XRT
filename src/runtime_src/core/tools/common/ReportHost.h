@@ -21,8 +21,10 @@
 #include "Report.h"
 
 class ReportHost: public Report {
+ private:
+  bool m_is_user;
  public:
-  ReportHost() : Report("host", "Host information", false /*device required*/) { /*empty*/ };
+  ReportHost(bool is_user = true) : Report("host", "Host information", false /*device required*/) { /*empty*/ m_is_user = is_user;};
 
  // Child methods that need to be implemented
  public:

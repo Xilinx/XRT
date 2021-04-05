@@ -1,0 +1,24 @@
+{
+    "smartnic": {
+        "schema_version": {
+            "major": "5",
+            "minor": "1",
+            "patch": "2"
+        },
+        "extensions": [
+            {
+                "setup": {
+                    "ebpf": "44756D6D7920427974652046696C650A"
+                },
+                "cam_instances": [
+                    {
+                        "name": "foo_my_cam_instance_1",
+                        "id": "0",
+                        "config": "44756D6D7920427974652046696C650A",
+                        "driver_index": "0"
+                    }
+                ]
+            }
+        ]
+    }
+}

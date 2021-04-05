@@ -153,6 +153,8 @@ struct drm_zocl_dev {
 	struct zocl_watchdog_dev *watchdog;
 	u16			pr_isolation_freeze;
 	u16			pr_isolation_unfreeze;
+	int 			partial_overlay_id;
+	int			full_overlay_id;
 };
 
 int zocl_kds_update(struct drm_zocl_dev *zdev);

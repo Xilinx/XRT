@@ -14,7 +14,7 @@ import json
 #       and classes have been defined and the syntax validated
 def main():
   # -- Configure the argument parser
-  parser = argparse.ArgumentParser(formatter_class=RawDescriptionHelpFormatter, description='description:\n  Unit test wrapper for the SmartNic section')
+  parser = argparse.ArgumentParser(formatter_class=RawDescriptionHelpFormatter, description='description:\n  Unit test wrapper for the SoftKernel section')
   parser.add_argument('--resource-dir', nargs='?', default=".", help='directory containing data to be used by this unit test')
   args = parser.parse_args()
 
@@ -33,46 +33,35 @@ def main():
 
   # ---------------------------------------------------------------------------
 
-  step = "1) Read in the JSON file, write out the CBOR image, and write out the JSON-to-CBOR-to-JSON file"
+  step = "1) Read in a soft kernel and its metadata"
 
-  inputJSON = os.path.join(args.resource_dir, "smartnic_all_syntax.json")
-  outputJSON = "smartnic_all_syntax_output.json"
-  outputCBOR = "smartnic_all_syntax_output.cbor"
+  inputJSON = os.path.join(args.resource_dir, "softkernel.rtd")
+  inputKernel = os.path.join(args.resource_dir, "softkernel.so")
+  softKernelName = "my_kernel"
 
-  cmd = [xclbinutil, "--add-section", "SMARTNIC:JSON:"+inputJSON, "--dump-section", "SMARTNIC:RAW:"+outputCBOR, "--dump-section", "SMARTNIC:JSON:"+outputJSON, "--force"]
+  cmd = [xclbinutil, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-OBJ:RAW:" + inputKernel, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-METADATA:JSON:" + inputJSON]
   execCmd(step, cmd)
-
-  # Validate that the round trip files are identical
-  jsonFileCompare(inputJSON, outputJSON)
 
   # ---------------------------------------------------------------------------
 
-  step = "2) Read in the byte files, merge them into the in memory CBOR image, write out the CBOR image, and write out the JSON-to-CBOR-to-JSON file"
-  inputJSON = os.path.join(args.resource_dir, "smartnic_relative_bytefiles.json")
-  outputJSON = "smartnic_relative_bytefiles_output.json"
-  outputCBOR = "smartnic_relative_bytefiles_output.cbor"
-  expectedJSON = os.path.join(args.resource_dir,"smartnic_relative_bytefiles_expected.json")
-  
-  cmd = [xclbinutil, "--add-section", "SMARTNIC:JSON:"+inputJSON, "--dump-section", "SMARTNIC:RAW:"+outputCBOR, "--dump-section", "SMARTNIC:JSON:"+outputJSON, "--force"]
-  execCmd(step, cmd)
+  step = "2) Read in a soft kernel and its metadata where the symbol name is 1 character too long"
 
-  # Validate that the output file matches expectation
-  jsonFileCompare(expectedJSON, outputJSON)
+  inputJSON = os.path.join(args.resource_dir, "softkernel_longname.rtd")
+  inputKernel = os.path.join(args.resource_dir, "softkernel.so")
+  softKernelName = "my_kernel"
+
+  cmd = [xclbinutil, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-OBJ:RAW:" + inputKernel, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-METADATA:JSON:" + inputJSON]
+
+  try:
+    print("Note: Testing for an excessive symbol name length (expecting an error)")
+    execCmd(step, cmd)
+  except:
+    print("Test passed - Exception raised")
+  else:
+    raise Exception("Error: Long symbol name accepted.  DRC check did not trip.")
 
 
   # ---------------------------------------------------------------------------
-
-  step = "3) Read in a raw cbor image and validate it against the expected JSON image."
-  inputCBOR = os.path.join(args.resource_dir, "cbor_image.raw")
-  outputJSON = "cbor_image.json"
-  expectedJSON = os.path.join(args.resource_dir,"cbor_image_expected.json")
-
-  cmd = [xclbinutil, "--add-section", "SMARTNIC:RAW:"+inputCBOR, "--dump-section", "SMARTNIC:JSON:"+outputJSON, "--force"]
-  execCmd(step, cmd)
-
-  # Validate that the output file matches expectation
-  jsonFileCompare(expectedJSON, outputJSON)
-
 
   # If the code gets this far, all is good.
   return False
@@ -105,8 +94,14 @@ def jsonFileCompare(file1, file2):
 
       raise Exception("Error: The two files are not the same")
 
+def testDivider():
+  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
+
 def execCmd(pretty_name, cmd):
+  testDivider()
   print(pretty_name)
+  testDivider()
   cmdLine = ' '.join(cmd)
   print(cmdLine)
   proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

@@ -1834,6 +1834,12 @@ static int __init xocl_init(void)
 		goto err_class_create;
 	}
 
+	ret = xocl_debug_init();
+	if (ret) {
+		pr_err("failed to init debug");
+		goto failed;
+	}
+
 	for (i = 0; i < ARRAY_SIZE(xocl_drv_reg_funcs); ++i) {
 		ret = xocl_drv_reg_funcs[i]();
 		if (ret)
@@ -1863,6 +1869,8 @@ static void __exit xocl_exit(void)
 
 	for (i = ARRAY_SIZE(xocl_drv_unreg_funcs) - 1; i >= 0; i--)
 		xocl_drv_unreg_funcs[i]();
+
+	xocl_debug_fini();
 
 	class_destroy(xrt_class);
 }

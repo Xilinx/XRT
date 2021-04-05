@@ -12,6 +12,7 @@
  */
 
 #include <linux/fpga/fpga-mgr.h>
+#include <linux/of.h>
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_aie.h"
@@ -145,8 +146,11 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	}
 
 	mutex_lock(&sk->sk_lock);
-	for (i = 0; i < sk->sk_nimg; i++)
+	for (i = 0; i < sk->sk_nimg; i++) {
+		if (IS_ERR(&sk->sk_img[i].si_bo))
+			continue;
 		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&sk->sk_img[i].si_bo->gem_base);
+	}
 	kfree(sk->sk_img);
 	sk->sk_nimg = 0;
 	sk->sk_img = NULL;
@@ -170,13 +174,17 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 
 		sip->si_start = scu_idx;
 		sip->si_end = scu_idx + sp->m_num_instances - 1;
+		if (sip->si_end >= MAX_SOFT_KERNEL) {
+			DRM_ERROR("PS CU number exceeds %d\n", MAX_SOFT_KERNEL);
+			mutex_unlock(&sk->sk_lock);
+			return -EINVAL;
+		}
 
 		sip->si_bo = zocl_drm_create_bo(zdev->ddev, sp->m_image_size,
 		    ZOCL_BO_FLAGS_CMA);
 		if (IS_ERR(sip->si_bo)) {
 			ret = PTR_ERR(sip->si_bo);
-			DRM_ERROR("%s Failed to allocate BO: %d\n",
-			    __func__, ret);
+			DRM_ERROR("Failed to allocate BO: %d\n", ret);
 			mutex_unlock(&sk->sk_lock);
 			return ret;
 		}
@@ -534,8 +542,12 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	char __user *xclbin, enum axlf_section_kind kind)
 {
 	uint64_t size = 0;
+	uint64_t bsize = 0;
 	char *section_buffer = NULL;
-	int ret = 0;
+	char *bsection_buffer = NULL;
+	char *vaddr = NULL;
+	struct drm_zocl_bo *bo;
+	int ret = 0, id, err;
 
 	size = zocl_read_sect(kind, &section_buffer, axlf, xclbin);
 	if (size == 0)
@@ -549,9 +561,65 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	case BITSTREAM_PARTIAL_PDI:
 		ret = zocl_load_partial(zdev, section_buffer, size);
 		break;
+	case PARTITION_METADATA:
+		if (zdev->partial_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_PR) {
+			err = of_overlay_remove(&zdev->partial_overlay_id);
+			if (err < 0) {
+				DRM_WARN("Failed to delete rm overlay (err=%d)\n", err);
+				ret = err;
+				goto out;
+			}
+			zdev->partial_overlay_id = -1;
+		} else if (zdev->full_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_FLAT) {
+			err = of_overlay_remove_all();
+			if (err < 0) {
+				DRM_WARN("Failed to delete static overlay (err=%d)\n", err);
+				ret = err;
+				goto out;
+			}
+			zdev->partial_overlay_id = -1;
+			zdev->full_overlay_id = -1;
+		}
+
+		bsize = zocl_read_sect(BITSTREAM, &bsection_buffer, axlf, xclbin);
+		if (bsize == 0) {
+			ret = 0;
+			goto out;
+		}
+
+		bo = zocl_drm_create_bo(zdev->ddev, bsize, ZOCL_BO_FLAGS_CMA);
+		if (IS_ERR(bo)) {
+			vfree(bsection_buffer);
+			ret = PTR_ERR(bo);
+			goto out;
+		}
+		vaddr = bo->cma_base.vaddr;
+		memcpy(vaddr,bsection_buffer,bsize);
+
+		zdev->fpga_mgr->dmabuf = drm_gem_prime_export(&bo->gem_base, 0);
+		err = of_overlay_fdt_apply((void *)section_buffer, size, &id);
+		if (err < 0) {
+			DRM_WARN("Failed to create overlay (err=%d)\n", err);
+			zdev->fpga_mgr->dmabuf = NULL;
+			zocl_drm_free_bo(bo);
+			vfree(bsection_buffer);
+			ret = err;
+			goto out;
+		}
+
+		if (axlf->m_header.m_mode == XCLBIN_PR)
+			zdev->partial_overlay_id = id;
+		else
+			zdev->full_overlay_id = id;
+
+		zdev->fpga_mgr->dmabuf = NULL;
+		zocl_drm_free_bo(bo);
+		vfree(bsection_buffer);
+		break;
 	default:
 		DRM_WARN("Unsupported load type %d", kind);
 	}
+out:
 	vfree(section_buffer);
 
 	return ret;
@@ -614,6 +682,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	size_t size_of_header;
 	size_t num_of_sections;
 	void *kernels;
+	void *aie_res = 0;
 	uint64_t size = 0;
 	int ret = 0;
 
@@ -656,6 +725,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	write_lock(&zdev->attr_rwlock);
 
+	/*
+	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
+	 * such a section.
+	 */
+	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
+
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head.m_header.uuid)) {
 		if (is_aie_only(axlf)) {
@@ -664,7 +739,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			if (ret)
 				DRM_WARN("read xclbin: fail to load AIE");
 			else {
-				zocl_create_aie(zdev, axlf);
+				zocl_create_aie(zdev, axlf, aie_res);
 				zocl_cache_xclbin(zdev, axlf, xclbin);
 			}
 		} else {
@@ -705,8 +780,20 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	zocl_free_sections(zdev);
 
+	if (xrt_xclbin_get_section_num(axlf, PARTITION_METADATA) &&
+	    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
+	    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
+		/*
+		 * Perform dtbo overlay for both static and rm region
+		 * axlf should have dtbo in PARTITION_METADATA section and
+		 * bitstream in BITSTREAM section.
+		 */ 
+		ret = zocl_load_sect(zdev, axlf, xclbin, PARTITION_METADATA);
+		if (ret)
+			goto out0;
+
+	} else if (zdev->pr_isolation_addr) {
 	/* For PR support platform, device-tree has configured addr */
-	if (zdev->pr_isolation_addr) {
 		if (axlf_head.m_header.m_mode != XCLBIN_PR &&
 		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
 		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
@@ -852,7 +939,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zocl_init_mem(zdev, zdev->topology);
 
 	/* Createing AIE Partition */
-	zocl_create_aie(zdev, axlf);
+	zocl_create_aie(zdev, axlf, aie_res);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.
@@ -862,6 +949,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 out0:
 	write_unlock(&zdev->attr_rwlock);
+	vfree(aie_res);
 	vfree(axlf);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
 	return ret;

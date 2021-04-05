@@ -18,6 +18,7 @@
 #define __OOLoadConfig_h_
 
 #include "tools/common/OptionOptions.h"
+#include "core/common/query_requests.h"
 
 #include <vector>
 
