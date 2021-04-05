@@ -22,7 +22,7 @@ def runKernel(opt):
 
     obj = pyxrt.bo(d, size, pyxrt.bo.normal, swizzle.group_id(0))
 
-    buf = obj.map()
+    buf = numpy.asarray(obj.map())
 #    ctypes.memset(buf, 0, size)
 #    bo_arr = ctypes.cast(buf, ctypes.POINTER(ctypes.c_int))
 
@@ -47,19 +47,19 @@ def runKernel(opt):
     # Create a run object without starting kernel
     run = pyxrt.run(swizzle);
 
-    global_dim = [size / 4, 0]; # int4 vector count global range
+    global_dim = [size // 4, 0]; # int4 vector count global range
     local_dim = [16, 0]; # int4 vector count global range
-    group_size = global_dim[0] / local_dim[0];
+    group_size = global_dim[0] // local_dim[0];
 
     # Run swizzle with 16 (local[0]) elements at a time
     # Each element is an int4 (sizeof(int) * 4 bytes)
     # Create sub buffer to offset kernel argument in parent buffer
-    local_size_bytes = local[0] * sizeof(int) * 4;
+    local_size_bytes = local_dim[0] * ctypes.sizeof(ctypes.c_int) * 4;
     for id in range(group_size):
         subobj = pyxrt.bo(obj, local_size_bytes, local_size_bytes * id)
         run.set_arg(0, subobj)
         run.start()
-        run.wait()
+        run.wait(5)
 
     obj.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, size, 0)
 
