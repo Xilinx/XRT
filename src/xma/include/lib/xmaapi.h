@@ -25,6 +25,8 @@
 #include <unordered_map>
 #include <thread>
 #include <mutex>
+#include <future>
+#include <chrono>
 
 typedef struct XmaLogMsg
 {
@@ -57,6 +59,8 @@ typedef struct XmaSingleton
     std::atomic<bool> xma_exit;
     std::thread       xma_thread1;
     std::thread       xma_thread2;
+    std::future<bool> thread1_future;
+    std::future<bool> thread2_future;
 
     uint32_t          reserved[4];
 
@@ -73,6 +77,22 @@ typedef struct XmaSingleton
     log_msg_list_locked = false;
     xma_exit = false;
     cpu_mode = 0;
+  }
+
+  ~XmaSingleton() {
+    try {
+      xma_exit = true;
+      if (xma_initialized) {
+        try {
+          if (thread1_future.valid())
+            thread1_future.wait_for(std::chrono::milliseconds(400));
+        } catch (...) {}
+        try {
+          if (thread2_future.valid())
+            thread2_future.wait_for(std::chrono::milliseconds(400));
+        } catch (...) {}
+      }
+    } catch (...) {}
   }
 } XmaSingleton;
 
