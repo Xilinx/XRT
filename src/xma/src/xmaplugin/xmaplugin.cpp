@@ -1274,7 +1274,7 @@ int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_
     XmaCUCmdObj* cmd_end = cmd_obj_array+num_cu_objs;
     uint32_t num_errors = 0;
     for (auto itr = cmd_obj_array; itr < cmd_end; ++itr) {
-	auto& cmd = *itr;
+        auto& cmd = *itr;
         if (cmd.do_not_use1 != s_handle.session_signature) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-1");
             return XMA_ERROR;
