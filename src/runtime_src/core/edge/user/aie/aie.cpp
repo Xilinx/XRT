@@ -72,9 +72,7 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
     if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
         throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
     devInst = &DevInst;
-
-    adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-    adf::config_manager::initialize(devInst, driver_config.reserved_num_rows, aiecompiler_options.broadcast_enable_core);
+    adf::config_manager::initialize(devInst, driver_config.reserved_num_rows, false);
 
     /* Initialize PLIO metadata */
     for (auto& plio : xrt_core::edge::aie::get_plios(device.get()))

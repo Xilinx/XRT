@@ -38,14 +38,6 @@ adf::driver_config
 get_driver_config(const xrt_core::device* device);
 
 /**
- * get_aiecompiler_options() - get compiler options from xclbin AIE metadata
- *
- * @device: device with loaded meta data
- */
-adf::aiecompiler_options
-get_aiecompiler_options(const xrt_core::device* device);
-
-/**
  * get_graph() - get tile data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
