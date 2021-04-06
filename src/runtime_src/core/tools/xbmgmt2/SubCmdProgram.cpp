@@ -300,14 +300,12 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
 }
 
 static void 
-isSameShellOrSC(DSAInfo& candidate, DSAInfo& current, bool *same_dsa, bool *same_bmc)
+isSameShellOrSC(const DSAInfo& candidate, const DSAInfo& current, bool& same_dsa, bool& same_bmc)
 {
-    if (!current.name.empty()) {
-        *same_dsa = ((candidate.name == current.name) &&
-            candidate.matchId(current));
-        *same_bmc = (current.bmcVerIsFixed() ||
-            (candidate.bmcVer == current.bmcVer));
-    }
+  if (!current.dsaname().empty()) {
+    same_dsa = ((candidate.dsaname() == current.dsaname()) && candidate.matchId(current));
+    same_bmc = (current.bmcVerIsFixed() || (candidate.bmc_ver() == current.bmc_ver()));
+  }
 }
 
 /* 
@@ -324,7 +322,7 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
   bool same_dsa = false;
   bool same_bmc = false;
   DSAInfo current = flasher.getOnBoardDSA();
-  isSameShellOrSC(candidate, current, &same_dsa, &same_bmc);
+  isSameShellOrSC(candidate, current, same_dsa, same_bmc);
 
   // Always update Arista devices
   if (candidate.vendor_id == ARISTA_ID)
