@@ -35,9 +35,18 @@ public:
     : std::system_error(std::abs(ec), cat, what)
   {}
   
+  system_error(std::errc ec, const std::error_category& cat, const std::string& what = "")
+    : std::system_error(static_cast<int>(ec), cat, what)
+  {}
+
   explicit
   system_error(int ec, const std::string& what = "")
     : system_error(ec, std::system_category(), what)
+  {}
+
+  explicit
+  system_error(std::errc ec, const std::string& what = "")
+    : system_error(static_cast<int>(ec), std::system_category(), what)
   {}
 
   // Retrive underlying code for return plain error code
@@ -72,6 +81,11 @@ public:
   generic_error(int ec, const std::string& what = "")
     : system_error(std::abs(ec), std::generic_category(), what)
   {}
+
+  explicit
+  generic_error(std::errc ec, const std::string& what = "")
+    : system_error(ec, std::generic_category(), what)
+  {}
 };
 
 // User space error with POSIX error code
@@ -82,6 +96,11 @@ public:
   explicit
   error(int ec, const std::string& what = "")
     : generic_error(std::abs(ec), what)
+  {}
+
+  explicit
+    error(std::errc ec, const std::string& what = "")
+    : generic_error(ec, what)
   {}
 
   explicit

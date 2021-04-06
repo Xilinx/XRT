@@ -12,6 +12,9 @@ target_link_libraries(xrtxx PRIVATE ${xrt_coreutil_LIBRARY})
 add_executable(xrtxx-mt xrtxx-mt.cpp)
 target_link_libraries(xrtxx-mt PRIVATE ${xrt_coreutil_LIBRARY})
 
+add_executable(xrtxx-ip xrtxx-ip.cpp)
+target_link_libraries(xrtxx-ip PRIVATE ${xrt_coreutil_LIBRARY})
+
 add_executable(ocl ocl.cpp)
 target_link_libraries(ocl PRIVATE ${xrt_xilinxopencl_LIBRARY})
 if (WIN32)
@@ -35,10 +38,11 @@ if (NOT WIN32)
   target_link_libraries(xrtx PRIVATE ${uuid_LIBRARY} pthread)
   target_link_libraries(xrtxx PRIVATE ${uuid_LIBRARY} pthread)
   target_link_libraries(xrtxx-mt PRIVATE ${uuid_LIBRARY} pthread)
+  target_link_libraries(xrtxx-ip PRIVATE ${uuid_LIBRARY} pthread)
   target_link_libraries(ocl PRIVATE pthread)
 endif(NOT WIN32)
 
-install(TARGETS xrt xrtx xrtxx xrtxx-mt ocl
+install(TARGETS xrt xrtx xrtxx xrtxx-mt xrtxx-ip ocl
   RUNTIME DESTINATION ${INSTALL_DIR}/${TESTNAME})
 
 add_custom_command(

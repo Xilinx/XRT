@@ -112,9 +112,35 @@ struct ishim
 
   virtual void
   p2p_disable(bool force) = 0;
-  
+
   virtual
   void update_scheduler_status() = 0;
+
+  ////////////////////////////////////////////////////////////////
+  // Interfaces for custom IP interrupt handling
+  // Implemented explicitly by concrete shim device class
+  // 2021.1: Only supported for edge shim
+  ////////////////////////////////////////////////////////////////
+  virtual xclInterruptNotifyHandle
+  open_ip_interrupt_notify(unsigned int)
+  { throw xrt_core::error(std::errc::not_supported,"open_ip_interrupt_notify()"); }
+
+  virtual void
+  close_ip_interrupt_notify(xclInterruptNotifyHandle)
+  { throw xrt_core::error(std::errc::not_supported,"close_ip_interrupt_notify()"); }
+
+  virtual void
+  enable_ip_interrupt(xclInterruptNotifyHandle)
+  { throw xrt_core::error(std::errc::not_supported,"enable_ip_interrupt()"); }
+
+  virtual void
+  disable_ip_interrupt(xclInterruptNotifyHandle)
+  { throw xrt_core::error(std::errc::not_supported,"disable_ip_interrupt()"); }
+
+  virtual void
+  wait_ip_interrupt(xclInterruptNotifyHandle)
+  { throw xrt_core::error(std::errc::not_supported,"wait_ip_interrupt()"); }
+  ////////////////////////////////////////////////////////////////
 
 #ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
