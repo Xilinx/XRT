@@ -942,7 +942,7 @@ out0:
 	write_unlock(&zdev->attr_rwlock);
 	/* out of the atomic context */ 
 
-	/* Creating kernel thread, hence need to call this outside of the atomic context */
+	/* Invoking kernel thread (kthread), hence need to call this outside of the atomic context */
 	if (!ret && kds_mode == 1) {
 		subdev_destroy_cu(zdev);
 		ret = zocl_create_cu(zdev);
@@ -956,6 +956,7 @@ out0:
 out1:
 	vfree(aie_res);
 	vfree(axlf);
+	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
 	return ret;
 }
 
