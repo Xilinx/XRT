@@ -65,6 +65,14 @@ get_driver_config(const pt::ptree& aie_meta)
   return driver_config;
 }
 
+adf::aiecompiler_options
+get_aiecompiler_options(const pt::ptree& aie_meta)
+{
+    adf::aiecompiler_options aiecompiler_options;
+    aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
+    return aiecompiler_options;
+}
+
 adf::graph_config
 get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 {
@@ -339,6 +347,18 @@ get_driver_config(const xrt_core::device* device)
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_driver_config(aie_meta);
+}
+
+adf::aiecompiler_options
+get_aiecompiler_options(const xrt_core::device* device)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return adf::aiecompiler_options();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_aiecompiler_options(aie_meta);
 }
 
 adf::graph_config
