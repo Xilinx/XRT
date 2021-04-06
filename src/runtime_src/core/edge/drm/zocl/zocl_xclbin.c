@@ -727,6 +727,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		return -EFAULT;
 	}
 
+	/* After this lock till unlock is an atomic context */ 
 	write_lock(&zdev->attr_rwlock);
 
 	/*
@@ -900,16 +901,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		zdev->kernels = kernels;
 	}
 
-	if (kds_mode == 1) {
-		subdev_destroy_cu(zdev);
-		ret = zocl_create_cu(zdev);
-		if (ret)
-			goto out0;
-		ret = zocl_kds_update(zdev);
-		if (ret)
-			goto out0;
-	}
-
 	/* Populating AIE_METADATA sections */
 	size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
 	if (size < 0) {
@@ -956,6 +947,20 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 out0:
 	write_unlock(&zdev->attr_rwlock);
+	/* out of the atomic context */ 
+
+	/* Invoking kernel thread (kthread), hence need to call this outside of the atomic context */
+	if (!ret && kds_mode == 1) {
+		subdev_destroy_cu(zdev);
+		ret = zocl_create_cu(zdev);
+		if (ret)
+			goto out1;
+		ret = zocl_kds_update(zdev);
+		if (ret)
+			goto out1;
+	}
+
+out1:
 	vfree(aie_res);
 	vfree(axlf);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
