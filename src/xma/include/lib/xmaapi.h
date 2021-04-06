@@ -100,8 +100,6 @@ typedef struct XmaSingleton
 extern "C" {
 #endif
 
-void xma_exit(void);
-
 
 /** @} */
 #ifdef __cplusplus

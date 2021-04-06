@@ -52,6 +52,7 @@ extern "C" {
 */
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms);
 int32_t xma_num_devices(); //Return num of xilinx devices on x86 host
+void xma_exit(void); //Use to ensure graceful exit of xma application
 
 int32_t xma_get_default_ddr_index(int32_t dev_index, int32_t cu_index, char* cu_name);
 
