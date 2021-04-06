@@ -65,6 +65,14 @@ get_driver_config(const pt::ptree& aie_meta)
   return driver_config;
 }
 
+adf::aiecompiler_options
+get_aiecompiler_options(const pt::ptree& aie_meta)
+{
+    adf::aiecompiler_options aiecompiler_options;
+    aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
+    return aiecompiler_options;
+}
+
 adf::graph_config
 get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 {
