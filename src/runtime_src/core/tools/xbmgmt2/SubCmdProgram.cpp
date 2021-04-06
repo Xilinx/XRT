@@ -299,6 +299,15 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
 
 }
 
+static void 
+isSameShellOrSC(const DSAInfo& candidate, const DSAInfo& current, bool& same_dsa, bool& same_bmc)
+{
+  if (!current.dsaname().empty()) {
+    same_dsa = ((candidate.dsaname() == current.dsaname()) && candidate.matchId(current));
+    same_bmc = (current.bmcVerIsFixed() || (candidate.bmc_ver() == current.bmc_ver()));
+  }
+}
+
 /* 
  * Flash shell and sc firmware
  * Helper method for auto_flash
@@ -313,21 +322,19 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
   bool same_dsa = false;
   bool same_bmc = false;
   DSAInfo current = flasher.getOnBoardDSA();
-  if (!current.name.empty()) {
-    same_dsa = (candidate.name == current.name &&
-      candidate.matchId(current));
+  isSameShellOrSC(candidate, current, same_dsa, same_bmc);
 
-    // Always update Arista devices
-    if (candidate.vendor_id == ARISTA_ID)
-        same_dsa = false;
+  // Always update Arista devices
+  if (candidate.vendor_id == ARISTA_ID)
+    same_dsa = false;
 
-    // getOnBoardDSA() returns an empty bmcVer in the case there is no SC,
-    // so do not update
-    if (current.bmcVer.empty())
-        same_bmc = true;
-    else
-        same_bmc = (candidate.bmcVer == current.bmcVer);
-  }
+  // getOnBoardDSA() returns an empty bmcVer in the case there is no SC,
+  // so do not update
+  if (current.bmcVer.empty())
+    same_bmc = true;
+  else
+    same_bmc = (candidate.bmcVer == current.bmcVer);
+  
   if (same_dsa && same_bmc) {
     std::cout << "update not needed" << std::endl;
     return 0;
@@ -336,12 +343,20 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
   if (!same_bmc) {
     std::cout << "Updating SC firmware on device[" << flasher.sGetDBDF() <<
       "]" << std::endl;
-    update_SC(boardIdx, candidate.file);
+    try {
+      update_SC(boardIdx, candidate.file);
+    } catch (const xrt_core::error& e) {
+      std::cout << "NOTE: Skipping SC flash. " << e.what() << std:: endl;
+    }
   }
 
   if (!same_dsa) {
     std::cout << boost::format("[%s] : Updating base\n") % flasher.sGetDBDF();
-    update_shell(boardIdx, candidate.file, candidate.file);
+    try {
+      update_shell(boardIdx, candidate.file, candidate.file);
+    } catch (const xrt_core::error& e) {
+      std::cout << "NOTE: " << e.what() << std:: endl;
+    }
     reboot = true;
   }
 
