@@ -1826,7 +1826,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 
 static int __init xocl_init(void)
 {
-	int		ret, i;
+	int		ret, i = 0;
 
 	xrt_class = class_create(THIS_MODULE, "xrt_user");
 	if (IS_ERR(xrt_class)) {
