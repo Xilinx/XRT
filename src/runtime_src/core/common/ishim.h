@@ -116,6 +116,9 @@ struct ishim
   virtual
   void update_scheduler_status() = 0;
 
+  virtual void
+  user_reset(xclResetKind kind) = 0;
+
 #ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
   open_graph(const xuid_t, const char*, xrt::graph::access_mode am) = 0;
@@ -389,6 +392,24 @@ struct shim : public DeviceType
   {
     if (auto ret = xclUpdateSchedulerStat(DeviceType::get_device_handle()))
       throw error(ret, "failed to update scheduler status");
+  }
+
+  virtual void
+  user_reset(xclResetKind kind)
+  {
+    // NOTE: xclResetDevice is a deprecated public API and has been moved to deprecated/xrt.h
+    // However, we can still use it internally
+    // Until the API and the deprecation is removed, we have to use the pragmas
+
+    #ifdef __GNUC__
+    # pragma GCC diagnostic push
+    # pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    #endif
+    if (auto ret = xclResetDevice(DeviceType::get_device_handle(), kind))
+      throw error(ret, "failed to reset device");
+    #ifdef __GNUC__
+    # pragma GCC diagnostic pop
+    #endif
   }
 
 #ifdef XRT_ENABLE_AIE

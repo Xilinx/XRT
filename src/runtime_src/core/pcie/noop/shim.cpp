@@ -677,3 +677,9 @@ xclUpdateSchedulerStat(xclDeviceHandle handle)
 {
   return 1; // -ENOSYS;
 }
+
+int 
+xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+{
+  return 1; // -ENOSYS;
+}

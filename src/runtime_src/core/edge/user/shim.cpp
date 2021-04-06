@@ -2429,6 +2429,12 @@ xclUpdateSchedulerStat(xclDeviceHandle handle)
   return 1; // -ENOSYS;
 }
 
+int 
+xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+{
+  return -ENOSYS;
+}
+
 int
 xclErrorInject(xclDeviceHandle handle, uint16_t num, uint16_t driver, uint16_t severity, uint16_t module, uint16_t eclass)
 {
