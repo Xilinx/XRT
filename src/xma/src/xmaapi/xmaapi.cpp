@@ -24,7 +24,6 @@
 #include "lib/xmaapi.h"
 #include "lib/xmalimits_lib.h"
 //#include "lib/xmahw_hal.h"
-#include "lib/xmasignal.h"
 #include "lib/xmalogger.h"
 #include "app/xma_utils.hpp"
 #include "lib/xma_utils.hpp"
@@ -73,6 +72,10 @@ int32_t xma_get_default_ddr_index(int32_t dev_index, int32_t cu_index, char* cu_
 }
 
 void xma_thread1() {
+    std::promise<bool> p;
+    g_xma_singleton->thread1_future = p.get_future();
+    p.set_value_at_thread_exit(true);
+
     bool expected = false;
     bool desired = true;
     std::list<XmaLogMsg> list1;
@@ -249,6 +252,10 @@ void xma_thread1() {
 }
 
 void xma_thread2() {
+    std::promise<bool> p;
+    g_xma_singleton->thread2_future = p.get_future();
+    p.set_value_at_thread_exit(true);
+
     bool expected = false;
     bool desired = true;
     int32_t session_index = 0;
@@ -434,8 +441,20 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 
 void xma_exit(void)
 {
-    if (g_xma_singleton) {
-        g_xma_singleton->xma_exit = true;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    try {
+        if (g_xma_singleton) {
+            g_xma_singleton->xma_exit = true;
+            if (g_xma_singleton->xma_initialized) {
+                try {
+                    if (g_xma_singleton->thread1_future.valid())
+                        g_xma_singleton->thread1_future.wait();
+                } catch (...) {}
+                try {
+                    if (g_xma_singleton->thread2_future.valid())
+                        g_xma_singleton->thread2_future.wait();
+                } catch (...) {}
+            }
+        }
+    } catch (...) {}
 }
+
