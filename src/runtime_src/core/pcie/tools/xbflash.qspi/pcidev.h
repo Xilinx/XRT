@@ -28,7 +28,7 @@ namespace pcidev {
 class pci_device
 {
 public:
-  pci_device(const std::string& sysfs, int ubar, size_t flash_off);
+  pci_device(const std::string& sysfs, int ubar, size_t flash_off, std::string flash_type = "");
   ~pci_device();
   int pcieBarRead(uint64_t offset, void *buf, uint64_t len);
   int pcieBarWrite(uint64_t offset, const void *buf, uint64_t len);
@@ -36,6 +36,7 @@ public:
   void close(int devhdl);
   size_t get_flash_offset() { return flash_offset; }
   int get_flash_bar_index() { return user_bar_index; }
+  std::string get_flash_type() { return flash_type_str; };
 
 private:
   uint16_t domain =           INVALID_ID;
@@ -49,6 +50,7 @@ private:
   int user_bar_index;
   size_t user_bar_size;
   size_t flash_offset;
+  std::string flash_type_str;
 };
 
 } // namespace pcidev
