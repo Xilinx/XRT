@@ -24,7 +24,6 @@
 #include "lib/xmaapi.h"
 #include "lib/xmalimits_lib.h"
 //#include "lib/xmahw_hal.h"
-#include "lib/xmasignal.h"
 #include "lib/xmalogger.h"
 #include "app/xma_utils.hpp"
 #include "lib/xma_utils.hpp"
@@ -442,8 +441,20 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 
 void xma_exit(void)
 {
-    if (g_xma_singleton) {
-        g_xma_singleton->xma_exit = true;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    try {
+        if (g_xma_singleton) {
+            g_xma_singleton->xma_exit = true;
+            if (g_xma_singleton->xma_initialized) {
+                try {
+                    if (g_xma_singleton->thread1_future.valid())
+                        g_xma_singleton->thread1_future.wait();
+                } catch (...) {}
+                try {
+                    if (g_xma_singleton->thread2_future.valid())
+                        g_xma_singleton->thread2_future.wait();
+                } catch (...) {}
+            }
+        }
+    } catch (...) {}
 }
+
