@@ -21,6 +21,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
 #include "core/common/utils.h"
+#include "ps_kernel.h"
 
 namespace qr = xrt_core::query;
 
@@ -131,6 +132,20 @@ populate_cus(const xrt_core::device *device)
   return pt;
 }
 
+int 
+getPSKernels(std::vector<ps_kernel_data> &psKernels, const xrt_core::device *device)
+{
+  std::vector<char> buf = xrt_core::device_query<xrt_core::query::ps_kernel>(device);
+  const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
+  if(map->pkn_count < 0)
+    return -EINVAL;
+
+  for (unsigned int i = 0; i < map->pkn_count; i++)
+    psKernels.emplace_back(map->pkn_data[i]);
+
+  return 0;
+}
+
 boost::property_tree::ptree
 populate_cus_new(const xrt_core::device *device)
 {
@@ -160,15 +175,27 @@ populate_cus_new(const xrt_core::device *device)
     pt.push_back(std::make_pair("", ptCu));
   }
 
+  std::vector<ps_kernel_data> psKernels;
+  if (getPSKernels(psKernels, device) < 0) {
+    std::cout << "WARNING: 'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.\n";
+    return pt;
+  }
+
+  uint32_t psk_inst = 0;
+  uint32_t num_scu = 0;
   boost::property_tree::ptree pscu_list;
   for (auto& stat : scu_stats) {
     boost::property_tree::ptree ptCu;
-    std::string scu_name = stat.name;
-    auto found = scu_name.rfind("scu");
-    if (found > 0) {
-        std::string scu_i = scu_name.substr(found + 3);
-        scu_name = scu_name.substr(0, found - 1);
-        scu_name.append(scu_i);
+    std::string scu_name = "Illegal";
+    if (psk_inst >= psKernels.size()) {
+      scu_name = stat.name; 
+      //This means something is wrong
+      //scu_name e.g. kernel_vcu_encoder:scu_34
+    } else {
+      scu_name = psKernels.at(psk_inst).pkd_sym_name;
+      scu_name.append("_");
+      scu_name.append(std::to_string(num_scu));
+      //scu_name e.g. kernel_vcu_encoder_2
     }
     ptCu.put( "name",           scu_name);
     ptCu.put( "base_address",   "0x0");
@@ -176,6 +203,16 @@ populate_cus_new(const xrt_core::device *device)
     ptCu.put( "type", enum_to_str(cu_type::PS));
     ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
     pt.push_back(std::make_pair("", ptCu));
+
+    if (psk_inst >= psKernels.size()) {
+      continue;
+    }
+    num_scu++;
+    if (num_scu == psKernels.at(psk_inst).pkd_num_instances) {
+      //Handled all instances of a PS Kernel, so next is a new PS Kernel
+      num_scu = 0;
+      psk_inst++;
+    }
   }
 
   return pt;
