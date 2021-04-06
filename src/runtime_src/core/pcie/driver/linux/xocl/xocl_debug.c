@@ -328,31 +328,29 @@ int xocl_debug_unreg(unsigned long hdl)
 
 int xocl_debug_register(struct xocl_dbg_reg *reg)
 {
-	struct xrt_debug_mod *mod, *tmp_mod;
+	struct xrt_debug_mod *mod = NULL, *tmp_mod;
 	int ret = 0;
 
 	reg->hdl = 0;
 
 	if (!reg->name) {
 		pr_err("%s invalid arguments", __func__);
-		ret = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
 	mod = kzalloc(sizeof(*mod), GFP_KERNEL);
-	if (!mod) {
-		ret = -ENOMEM;
-		goto out;
-	}
+	if (!mod)
+		return -ENOMEM;
 
 	snprintf(mod->name, sizeof(mod->name), "%s:%u", reg->name, reg->inst);
 
 	mutex_lock(&xrt_debug.mod_lock);
 	list_for_each_entry(tmp_mod, &xrt_debug.mod_list, link) {
 		if (!strncmp(tmp_mod->name, mod->name, sizeof(mod->name))) {
+			mutex_unlock(&xrt_debug.mod_lock);
 			pr_err("already registed");
 			ret = -EEXIST;
-			goto out;
+			goto fail;
 		}
 	}
 
@@ -363,8 +361,12 @@ int xocl_debug_register(struct xocl_dbg_reg *reg)
 	list_add(&mod->link, &xrt_debug.mod_list);
 	reg->hdl = (unsigned long)mod;
 
-out:
 	mutex_unlock(&xrt_debug.mod_lock);
+
+	return 0;
+
+fail:
+	kfree(mod);
 
 	return ret;
 }
