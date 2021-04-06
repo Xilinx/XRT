@@ -1076,7 +1076,7 @@ out:
 int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
 	int ret = 0;
-	struct ert_cu_bulletin brd = {0};
+	struct ert_cu_bulletin brd;
 
 	ret = xocl_ert_user_bulletin(xdev, &brd);
 	/* Detect if ERT subsystem is able to support CU to host interrupt
