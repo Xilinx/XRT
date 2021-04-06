@@ -17,17 +17,14 @@ set(XBFLASH_COMPONENT "xbflash")
 add_executable(${XBFLASH_NAME} ${XBFLASH_QSPI_SRC})
 add_executable(${XBFLASH_NAME_NEW} ${XBFLASH_QSPI_SRC})
 if (XRT_STATIC_BUILD)
-    target_link_options(${XBFLASH_NAME} PRIVATE "-static")
     target_link_options(${XBFLASH_NAME_NEW} PRIVATE "-static")
 endif()
 
-set_target_properties(${XBFLASH_NAME} PROPERTIES INSTALL_RPATH "")
 set_target_properties(${XBFLASH_NAME_NEW} PROPERTIES INSTALL_RPATH "")
 install (
 TARGETS ${XBFLASH_NAME} 
 RUNTIME 
-DESTINATION ${XBFLASH_INSTALL_DEST} 
-COMPONENT ${XBFLASH_COMPONENT})
+DESTINATION ${XRT_INSTALL_DIR}/bin)
 
 install (
 TARGETS ${XBFLASH_NAME_NEW} 
