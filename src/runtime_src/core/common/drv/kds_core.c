@@ -538,7 +538,6 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 
 int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 {
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 	struct kds_client *client = xcmd->client;
 	int bad_state;
 	int ret = 0;
