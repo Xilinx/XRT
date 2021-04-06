@@ -122,9 +122,9 @@ err_code graph_api::run()
 
         // Waiting for 250 cycles to reset the core enable event
         unsigned long long StartTime, CurrentTime = 0;
-        driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, coreTiles[0], XAIE_CORE_MOD, (u64*)(&StartTime));
+        driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, (u64*)(&StartTime));
         do {
-            driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, coreTiles[0], XAIE_CORE_MOD, (u64*)(&CurrentTime));
+            driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, (u64*)(&CurrentTime));
         } while ((CurrentTime - StartTime) <= 250);
 
         XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
