@@ -1526,7 +1526,7 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		if (ip->m_type != IP_KERNEL)
 			continue;
 
-		if (ip->m_base_address == 0xFFFFFFFF)
+		if ((~ip->m_base_address) == 0)
 			continue;
 
 		memset(&info, 0, sizeof(info));
