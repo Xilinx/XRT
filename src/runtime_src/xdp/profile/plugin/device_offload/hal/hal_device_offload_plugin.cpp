@@ -94,16 +94,7 @@ namespace xdp {
           offloader->read_trace();
           offloader->read_trace_end();
         }
-
-        if(offloader->trace_buffer_full()) {
-          std::string msg;
-          if(offloader->has_ts2mm()) {
-            msg = TS2MM_WARN_MSG_BUF_FULL;
-          } else {
-            msg = FIFO_WARN_MSG;
-          } 
-          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-        }
+        printTraceWarns(offloader);
       }
 
       // Also, store away the counter results
