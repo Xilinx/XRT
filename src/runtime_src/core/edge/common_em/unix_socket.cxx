@@ -133,7 +133,7 @@ void unix_socket::start_inet_server(double timeout_insec, bool fatal_error)
     perror("binding stream socket");
     exit(1);
   }
-  printf("server :Bind completed\n");
+  //printf("server :Bind completed\n");
   // This listen() call tells the socket to listen to the incoming connections.
   // The listen() function places all incoming connection into a backlog queue
   // until accept() call accepts the connection.
@@ -141,7 +141,7 @@ void unix_socket::start_inet_server(double timeout_insec, bool fatal_error)
 
   int status = listen(sock, 5);
   (void)status; // For Coverity
-  printf("server :listen completed\n");
+  //printf("server :listen completed\n");
 
   //wait for the timeout. Exit from the process if simulation process is not connected
   fd_set rfds;
@@ -177,7 +177,6 @@ void unix_socket::start_inet_server(double timeout_insec, bool fatal_error)
     exit(1);
   }
   else {
-    std::cout << "Connected to device process" << std::endl;
     server_started = true;
   }
   return;
