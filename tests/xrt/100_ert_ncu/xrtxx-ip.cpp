@@ -178,10 +178,8 @@ struct job_type
     auto interrupt = ip.create_interrupt_notify();
 
     while (1) {
-      interrupt.enable();
       ip.write_register(0, AP_START);
       ++runs;
-
       interrupt.wait();
 
       if (stop)
