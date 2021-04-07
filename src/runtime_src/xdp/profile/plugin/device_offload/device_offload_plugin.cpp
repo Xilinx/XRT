@@ -136,8 +136,7 @@ namespace xdp {
     (db->getStaticInfo()).addOpenedFile(filename.c_str(), "VP_TRACE") ;
 
     if (continuous_trace)
-      XDPPlugin::startWriteThread(XDPPlugin::get_trace_dump_int_s(), "VP_TRACE");
-
+      XDPPlugin::startWriteThread(XDPPlugin::get_trace_file_dump_int_s(), "VP_TRACE");
   }
 
   void DeviceOffloadPlugin::configureDataflow(uint64_t deviceId,
