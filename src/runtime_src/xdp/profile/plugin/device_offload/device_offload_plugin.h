@@ -47,7 +47,7 @@ namespace xdp {
     //  from xrt.ini.
     bool continuous_trace ;
     unsigned int continuous_trace_interval_ms ;
-    bool m_enable_circular_buffer = true;
+    bool m_enable_circular_buffer = false;
 
   protected:
     // This is used to determine if each plugin instance
@@ -72,6 +72,7 @@ namespace xdp {
     XDP_EXPORT void startContinuousThreads(uint64_t deviceId) ;
 
     XDP_EXPORT void readCounters() ;
+    XDP_EXPORT void printTraceWarns(DeviceTraceOffload* offloader) ;
 
   public:
     XDP_EXPORT DeviceOffloadPlugin() ;

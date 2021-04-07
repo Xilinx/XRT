@@ -96,6 +96,7 @@ namespace xdp {
       continuous_trace = xrt_core::config::get_continuous_trace() ;
       continuous_trace_interval_ms =
         xrt_core::config::get_continuous_trace_interval_ms() ;
+      m_enable_circular_buffer = continuous_trace;
     }
     else {
       if (xrt_core::config::get_continuous_trace()) {
@@ -198,16 +199,12 @@ namespace xdp {
     TraceLoggerCreatingDeviceEvents* logger = 
       new TraceLoggerCreatingDeviceEvents(deviceId) ;
 
-    bool enable_device_trace = xrt_core::config::get_timeline_trace() ||
-      xrt_core::config::get_data_transfer_trace() != "off" ;
-
     // We start the thread manually because of race conditions
     DeviceTraceOffload* offloader = 
       new DeviceTraceOffload(devInterface, logger,
                              continuous_trace_interval_ms, // offload_sleep_ms,
                              trace_buffer_size,            // trbuf_size,
-                             false,                       // start_thread
-                             enable_device_trace);
+                             false);
 
     bool init_successful = offloader->read_trace_init(m_enable_circular_buffer) ;
 
@@ -341,12 +338,25 @@ namespace xdp {
       {
         offloader->read_trace() ;
       }
+      printTraceWarns(offloader);
     }
 
     // Also, store away the counter results
     readCounters() ;
 
     XDPPlugin::endWrite(openNewFiles);
+  }
+
+  void DeviceOffloadPlugin::printTraceWarns(DeviceTraceOffload* offloader)
+  {
+    if (!(getFlowMode() == HW))
+      return;
+
+    if (offloader->has_fifo() && offloader->trace_buffer_full())
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", FIFO_WARN_MSG);
+
+    if (offloader->has_ts2mm() && offloader->trace_buffer_full())
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUF_FULL);
   }
 
   void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)

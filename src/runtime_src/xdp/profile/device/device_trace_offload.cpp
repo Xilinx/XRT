@@ -19,18 +19,14 @@
 #include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_trace_logger.h"
 
-#include "core/common/message.h"
-
 namespace xdp {
 
 DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
                                        DeviceTraceLogger* dTraceLogger,
                                        uint64_t sleep_interval_ms,
                                        uint64_t trbuf_sz,
-                                       bool start_thread,
-                                       bool e_trace)
+                                       bool start_thread)
                    : continuous(start_thread),
-                     enable_trace(e_trace),
                      sleep_interval_ms(sleep_interval_ms),
                      m_trbuf_alloc_sz(trbuf_sz),
                      dev_intf(dInt),
@@ -156,14 +152,8 @@ void DeviceTraceOffload::read_trace_fifo(bool)
     auto property = dev_intf->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
     auto fifo_size = GetDeviceTraceBufferSize(property);
 
-    if (num_packets >= fifo_size && enable_trace) {
+    if (num_packets >= fifo_size)
       m_trbuf_full = true;
-
-      // Send warning message
-      const char* msg = "Trace FIFO is full because of too many events. Device trace could be incomplete. Please use 'coarse' option for data_transfer_trace or turn off Stall profiling";
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-
-    }
 
   }
 }
@@ -230,12 +220,8 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
   deviceTraceLogger->processTraceData(m_trace_vector);
   m_trace_vector.clear();
 
-  if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false) {
+  if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false)
     m_trbuf_full = true;
-    // Send warning message
-    const char* msg = "Trace buffer is full. Device trace could be incomplete.";
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
-  }
 }
 
 void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)

@@ -132,6 +132,7 @@ namespace xdp {
             offloader->read_trace() ;
             offloader->read_trace_end() ;
           }
+          printTraceWarns(offloader);
           readCounters() ;
         }
       }
@@ -177,6 +178,7 @@ namespace xdp {
         offloader->read_trace() ;
         offloader->read_trace_end() ;
       }
+      printTraceWarns(offloader);
     }
     readCounters() ;
 
