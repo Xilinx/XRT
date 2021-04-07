@@ -90,6 +90,8 @@ namespace xdp {
 
         if(offloader->continuous_offload()) {
           offloader->stop_offload();
+          // To avoid a race condition, wait until the thread is stopped
+          while (offloader->get_status() != OffloadThreadStatus::STOPPED) ;
         } else {
           offloader->read_trace();
           offloader->read_trace_end();

@@ -24,10 +24,8 @@ namespace xdp {
 DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
                                        DeviceTraceLogger* dTraceLogger,
                                        uint64_t sleep_interval_ms,
-                                       uint64_t trbuf_sz,
-                                       bool start_thread)
-                   : continuous(start_thread),
-                     sleep_interval_ms(sleep_interval_ms),
+                                       uint64_t trbuf_sz)
+                   : sleep_interval_ms(sleep_interval_ms),
                      m_trbuf_alloc_sz(trbuf_sz),
                      dev_intf(dInt),
                      deviceTraceLogger(dTraceLogger)
@@ -40,10 +38,6 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
   }
 
   m_prev_clk_train_time = std::chrono::system_clock::now();
-
-  if (start_thread) {
-    start_offload(OffloadThreadType::TRACE);
-  }
 }
 
 DeviceTraceOffload::~DeviceTraceOffload()
@@ -68,6 +62,8 @@ void DeviceTraceOffload::offload_device_continuous()
   // Do a final forced read
   m_read_trace(true);
   read_trace_end();
+
+  status = OffloadThreadStatus::STOPPED;
 }
 
 void DeviceTraceOffload::train_clock_continuous()
@@ -76,6 +72,8 @@ void DeviceTraceOffload::train_clock_continuous()
     train_clock();
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
   }
+
+  status = OffloadThreadStatus::STOPPED;
 }
 
 bool DeviceTraceOffload::should_continue()
