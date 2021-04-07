@@ -68,11 +68,26 @@ namespace xdp {
         return ;
       }
 
+      // Execution time = (end time) - (start time)
+      auto startTimeEvent = cuStarts[s].front();
+      auto startTime = convertDeviceToHostTimestamp(startTimeEvent->getDeviceTimestamp());
+      auto executionTime = hostTimestamp - startTime;
+
       cuStarts[s].pop_front();
       event = new KernelEvent(e->getEventId(), hostTimestamp, KERNEL, deviceId, s, cuId);
       event->setDeviceTimestamp(trace.Timestamp);
       db->getDynamicInfo().addEvent(event);
       (db->getStats()).setLastKernelEndTime(hostTimestamp) ;
+
+      // Log a CU execution in our statistics database
+      // NOTE: At this stage, we don't know the global work size, so let's
+      //       leave it to the database to fill that in.
+      auto cu = db->getStaticInfo().getCU(deviceId, cuId);
+      (db->getStats()).logComputeUnitExecution(cu->getName(),
+                                               cu->getKernelName(),
+                                               cu->getDim(),
+                                               "",
+                                               executionTime);
     }
     else {
       // start event
