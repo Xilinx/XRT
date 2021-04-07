@@ -16,6 +16,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
+#include "xrt.h"
 #include "SubCmdReset.h"
 #include "core/common/query_requests.h"
 #include "tools/common/XBUtilities.h"
@@ -45,7 +46,39 @@ pretty_print_action_list(xrt_core::device_collection& deviceCollection, xrt_core
 static void
 reset_device(std::shared_ptr<xrt_core::device> dev, xrt_core::query::reset_type reset)
 {
-  dev->reset(reset);
+  if (xrt_core::device_query<xrt_core::query::rom_vbnv>(dev).find("_u30_") != std::string::npos) {
+    /*
+     * u30 reset relies on working SC and SN info. SN is read and saved
+     * when FPGA is ready. so even if there is firewall trip now, we expect
+     * to be able to get S/N again
+     * Having SN info available also implies there is a working SC
+     */
+    std::string sn;
+    try {
+      sn = xrt_core::device_query<xrt_core::query::xmc_serial_num>(dev);
+    } catch (std::exception& ex) {
+      std::cerr << "ERROR:" << ex.what() << std::endl;
+      return;
+    }
+    if (sn.empty()) {
+      std::cerr << "Reset relies on S/N, but S/N can't be read from SC" << std::endl;
+      std::cout << boost::format("Reset failed on Device[%s]\n") 
+        % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
+      return;
+    }
+    std::cout << "Card level reset. This will reset all FPGAs on the card." << std::endl;
+  }
+  //xocl reset is done through ioctl 
+  if(reset.get_key() == xrt_core::query::reset_key::user) {
+    try {
+      dev->user_reset(XCL_USER_RESET);
+    } catch(const xrt_core::error& e) {
+      std::cerr << "ERROR: " << e.what() << std::endl;
+    }
+  }
+  else
+    dev->reset(reset);
+  
   std::cout << boost::format("Successfully reset Device[%s]\n") 
     % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
 }
@@ -64,7 +97,7 @@ SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary
 
 void
 supported(std::string resetType) {
-  std::vector<std::string> vec { "hot", "aie" };
+  std::vector<std::string> vec { "user", "aie" };
   std::vector<std::string>::iterator it;
   it = std::find (vec.begin(), vec.end(), resetType); 
   if (it == vec.end()) {
@@ -80,14 +113,14 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   XBU::verbose("SubCommand: reset");
   // -- Retrieve and parse the subcommand options -----------------------------
   std::vector<std::string> devices = {"all"};
-  std::string resetType = "hot"; //default val
+  std::string resetType = "user"; //default val
   bool help = false;
 
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
     ("type,r", boost::program_options::value<decltype(resetType)>(&resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
-                                                                       "  hot          - Hot reset (default)\n"
+                                                                       "  user         - Hot reset (default)\n"
                                                                        "  aie          - Reset Aie array\n"
                                                                        /*"  kernel       - Kernel communication links\n"*/
                                                                        /*"  scheduler    - Scheduler\n"*/
