@@ -122,10 +122,10 @@ class ip_impl
     unsigned int idx;      // index of ip per driver
     const ip_data* ip;
     uint64_t address;      // base address of ip
-    uint64_t size;         // address range of ip
+    uint64_t size;         // address range of ip, To-Be-Computed
 
     ip_context(std::shared_ptr<xrt_core::device> dev, const xrt::uuid& xid, const std::string& nm)
-      : device(std::move(dev)), xclbin_uuid(xid)
+      : device(std::move(dev)), xclbin_uuid(xid), size(64_kb)
     {
       auto ip_section = device->get_axlf_section(IP_LAYOUT, xclbin_uuid);
       if (!ip_section.first)
@@ -136,7 +136,7 @@ class ip_impl
       if (ips.empty())
         throw xrt_core::error(EINVAL, "No IP matching '" + nm + "'");
       if (ips.size() > 1)
-        throw xrt_core::error(EINVAL, "More than one P matching '" + nm + "'");
+        throw xrt_core::error(EINVAL, "More than one IP matching '" + nm + "'");
 
       ip = ips.front();
 
@@ -170,7 +170,7 @@ class ip_impl
     uint64_t
     get_size() const
     {
-      return 64_kb;  // TODO compute
+      return size;
     }
   };
 
