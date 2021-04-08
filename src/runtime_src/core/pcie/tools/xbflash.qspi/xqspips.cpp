@@ -238,17 +238,6 @@ XQSPIPS_Flasher::XQSPIPS_Flasher(pcidev::pci_device *dev)
     }
 
     mBusWidth = 2;
-    if (typeStr.find("x2") != std::string::npos) {
-        int value;
-        // This is a special register in the U30 shell.
-        // Because U30 supports x2 and x4 buswidth. Default: x2.
-        // SC could configure it. U30 firmware would set this register.
-        // TODO: Find a better solution if need.
-        mDev->pcieBarRead(0x11000C, &value, 4);
-        mBusWidth = (value >> 16) & 0x7;
-        if (mBusWidth != 4)
-            mBusWidth = 2;
-    }
 }
 
 /**
