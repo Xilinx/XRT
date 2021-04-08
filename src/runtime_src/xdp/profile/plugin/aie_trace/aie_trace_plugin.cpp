@@ -317,11 +317,20 @@ namespace xdp {
         std::stringstream msg;
         msg << "Unable to reserve " << coreCounterStartEvents.size() << " core counters"
             << " and " << memoryCounterStartEvents.size() << " memory counters"
-            << " for AIE tile (" << col << "," << row << ") required for trace.";
+            << " for AIE tile (" << col << "," << row + 1 << ") required for trace.";
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
-        
-        for (auto& perfCounter : perfCounters)
-          perfCounter->release();
+
+        // Release current tile counters and return
+        for (int i=0; i < numMemoryCounters; i++) {
+          perfCounters.back()->stop();
+          perfCounters.back()->release();
+          perfCounters.pop_back();
+        }
+        for (int i=0; i < numCoreCounters; i++) {
+          perfCounters.back()->stop();
+          perfCounters.back()->release();
+          perfCounters.pop_back();
+        }
         return;
       }
 
