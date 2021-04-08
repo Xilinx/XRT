@@ -294,7 +294,7 @@ namespace xdp {
           msg << n << ": " << numTileCounters[n] << " tiles";
           if (n != NUM_COUNTERS) msg << ", ";
 
-          (db->getStaticInfo()).addAIECounterResources(n, numTileCounters[n]);
+          (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n]);
         }
         xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
       }
@@ -369,7 +369,7 @@ namespace xdp {
         double timestamp = xrt_core::time_ns() / 1.0e6;
         db->getDynamicInfo().addAIESample(index, timestamp, values);
       }
-      
+
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));     
     }
   }

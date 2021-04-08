@@ -990,6 +990,24 @@ class aie_cfg_tile
                 freq, mod, aieName) ;
     }
 
+    inline void addAIECounterResources(uint64_t deviceId, uint32_t numCounters, uint32_t numTiles) {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+        return ;
+      deviceInfo[deviceId]->addAIECounterResources(numCounters, numTiles) ;
+    }
+    
+    inline void addAIECoreEventResources(uint64_t deviceId, uint32_t numEvents, uint32_t numTiles) {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+        return ;
+      deviceInfo[deviceId]->addAIECoreEventResources(numEvents, numTiles) ;
+    }
+    
+    inline void addAIEMemoryEventResources(uint64_t deviceId, uint32_t numEvents, uint32_t numTiles) {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+        return ;
+      deviceInfo[deviceId]->addAIEMemoryEventResources(numEvents, numTiles) ;
+    }
+
     inline void addAIECfgTile(uint64_t deviceId, std::unique_ptr<aie_cfg_tile>& tile)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end())
