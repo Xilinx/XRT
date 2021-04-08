@@ -538,7 +538,6 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 
 int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 {
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 	struct kds_client *client = xcmd->client;
 	int bad_state;
 	int ret = 0;
@@ -550,10 +549,7 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 	ret = wait_for_completion_interruptible(&kds->comp);
 	if (ret == -ERESTARTSYS && !kds->ert_disable) {
 		kds->ert->abort(kds->ert, client, NO_INDEX);
-		do {
-			kds_info(xcmd->client, "Command not finished");
-			msleep(500);
-		} while (ecmd->state < ERT_CMD_STATE_COMPLETED);
+		wait_for_completion(&kds->comp);
 		bad_state = kds->ert->abort_done(kds->ert, client, NO_INDEX);
 		if (bad_state)
 			kds->bad_state = 1;
@@ -1120,6 +1116,30 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	 */
 	xcmd->isize = (ecmd->count - xcmd->num_mask - 4) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
+	xcmd->payload_type = REGMAP;
+	ecmd->type = ERT_CU;
+}
+
+void exec_write_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+			  struct kds_command *xcmd)
+{
+	xcmd->opcode = OP_START;
+
+	xcmd->execbuf = (u32 *)ecmd;
+
+	xcmd->cu_mask[0] = ecmd->cu_mask;
+	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
+	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+
+	/* Copy resigter map into info and isize is the size of info in bytes.
+	 *
+	 * Based on ert.h, ecmd->count is the number of words following header.
+	 * In ert_start_kernel_cmd, the CU register map size is
+	 * (count - (1 + extra_cu_masks)) and skip 6 words for exec_write cmd.
+	 */
+	xcmd->isize = (ecmd->count - xcmd->num_mask - 6) * sizeof(u32);
+	memcpy(xcmd->info, &ecmd->data[6 + ecmd->extra_cu_masks], xcmd->isize);
+	xcmd->payload_type = KEY_VAL;
 	ecmd->type = ERT_CU;
 }
 

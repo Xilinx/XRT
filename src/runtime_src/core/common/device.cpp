@@ -132,8 +132,15 @@ load_xclbin(const uuid& xclbin_id)
     throw error(ENODEV, "no cached xclbin data");
 
   const axlf* top = reinterpret_cast<axlf *>(xclbin_full.data());
-  load_axlf_meta(m_xclbin.get_axlf());
-  m_xclbin = xrt::xclbin{top};
+  try {
+    // set before register_axlf is called via load_axlf_meta
+    m_xclbin = xrt::xclbin{top};  
+    load_axlf_meta(m_xclbin.get_axlf());
+  }
+  catch (const std::exception&) {
+    m_xclbin = {};
+    throw;
+  }
 #else
   throw error(ENOTSUP, "load xclbin by uuid is not supported");
 #endif

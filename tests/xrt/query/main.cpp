@@ -18,7 +18,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "experimental/xrt_device.h"
+#include "xrt/xrt_device.h"
 
 /**
  * Exercise all xrt::info::device query parameters as defined in

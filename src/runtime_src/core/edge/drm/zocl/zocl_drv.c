@@ -877,6 +877,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 		zdev->res_start = res->start;
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
+		//ert_hw is present only for PCIe + PS devices (ex: U30,VCK5000
+		//Dont enable new kds for those devices
+		kds_mode = 0;
 	}
 
 	subdev = zocl_find_pdev("reset_ps");
@@ -926,6 +929,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 			zdev->pr_isolation_addr = prop_addr;
 	}
 	DRM_INFO("PR Isolation addr 0x%llx", zdev->pr_isolation_addr);
+
+	zdev->partial_overlay_id = -1;
+	zdev->full_overlay_id  = -1;
 
 	/* Initialzie IOMMU */
 	if (iommu_present(&platform_bus_type)) {

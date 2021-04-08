@@ -33,7 +33,7 @@ typedef struct XmaHwSession
     uint32_t         reserved[4];
 } XmaHwSession;
 
-enum XmaCmdState {
+typedef enum {
   XMA_CMD_STATE_QUEUED = 1, //Submitted to XMA -> XRT
   XMA_CMD_STATE_COMPLETED = 2, //Cmd has finished
   XMA_CMD_STATE_ERROR = 3, //XMA or XRT error during submission of cmd
@@ -42,7 +42,7 @@ enum XmaCmdState {
   XMA_CMD_STATE_PSK_ERROR = 6, //PS Kernel cmd completed but with error return code
   XMA_CMD_STATE_PSK_CRASHED = 7, //PS kernel has crashed
   XMA_CMD_STATE_MAX = 8 // Always the last one
-};
+} XmaCmdState;
 
 
 #ifdef __cplusplus

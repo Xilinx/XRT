@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +21,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
 #include "core/common/utils.h"
+#include "ps_kernel.h"
 
 namespace qr = xrt_core::query;
 
@@ -70,9 +71,27 @@ get_cu_status(uint32_t cu_status)
   return pt;
 }
 
+static void
+schedulerUpdateStat(xrt_core::device *device)
+{
+  try {
+    // lock xclbin
+    auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
+    device->open_context(uuid.get(), std::numeric_limits<unsigned int>::max(), true);
+    auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), std::numeric_limits<unsigned int>::max()); };
+    xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
+    
+    device->update_scheduler_status();
+  }
+  catch (const std::exception&) {
+    // xclbin_lock failed, safe to ignore
+  }
+}
+
 boost::property_tree::ptree
 populate_cus(const xrt_core::device *device)
 {
+  schedulerUpdateStat(const_cast<xrt_core::device *>(device));
   boost::property_tree::ptree pt;
   std::vector<char> ip_buf;
   std::vector<std::tuple<uint64_t, uint32_t, uint32_t>> cu_stats; // tuple <base_addr, usage, status>
@@ -113,9 +132,27 @@ populate_cus(const xrt_core::device *device)
   return pt;
 }
 
+int 
+getPSKernels(std::vector<ps_kernel_data> &psKernels, const xrt_core::device *device)
+{
+  std::vector<char> buf = xrt_core::device_query<xrt_core::query::ps_kernel>(device);
+  if (buf.empty())
+    return 0;
+  const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
+  if(map->pkn_count < 0)
+    return -EINVAL;
+
+  for (unsigned int i = 0; i < map->pkn_count; i++)
+    psKernels.emplace_back(map->pkn_data[i]);
+
+  return 0;
+}
+
 boost::property_tree::ptree
 populate_cus_new(const xrt_core::device *device)
 {
+  schedulerUpdateStat(const_cast<xrt_core::device *>(device));
+  
   boost::property_tree::ptree pt;
   using cu_data_type = qr::kds_cu_stat::data_type;
   using scu_data_type = qr::kds_scu_stat::data_type;
@@ -140,15 +177,44 @@ populate_cus_new(const xrt_core::device *device)
     pt.push_back(std::make_pair("", ptCu));
   }
 
+  std::vector<ps_kernel_data> psKernels;
+  if (getPSKernels(psKernels, device) < 0) {
+    std::cout << "WARNING: 'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.\n";
+    return pt;
+  }
+
+  uint32_t psk_inst = 0;
+  uint32_t num_scu = 0;
   boost::property_tree::ptree pscu_list;
   for (auto& stat : scu_stats) {
     boost::property_tree::ptree ptCu;
-    ptCu.put( "name",           stat.name);
+    std::string scu_name = "Illegal";
+    if (psk_inst >= psKernels.size()) {
+      scu_name = stat.name; 
+      //This means something is wrong
+      //scu_name e.g. kernel_vcu_encoder:scu_34
+    } else {
+      scu_name = psKernels.at(psk_inst).pkd_sym_name;
+      scu_name.append("_");
+      scu_name.append(std::to_string(num_scu));
+      //scu_name e.g. kernel_vcu_encoder_2
+    }
+    ptCu.put( "name",           scu_name);
     ptCu.put( "base_address",   "0x0");
     ptCu.put( "usage",          stat.usages);
     ptCu.put( "type", enum_to_str(cu_type::PS));
     ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
     pt.push_back(std::make_pair("", ptCu));
+
+    if (psk_inst >= psKernels.size()) {
+      continue;
+    }
+    num_scu++;
+    if (num_scu == psKernels.at(psk_inst).pkd_num_instances) {
+      //Handled all instances of a PS Kernel, so next is a new PS Kernel
+      num_scu = 0;
+      psk_inst++;
+    }
   }
 
   return pt;

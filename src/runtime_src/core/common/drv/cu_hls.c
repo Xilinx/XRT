@@ -83,8 +83,21 @@ static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
 		return;
 
 	num_reg = sz / sizeof(u32);
-	for (i = 0; i < num_reg; ++i)
-		cu_write32(cu_hls, ARGS + i * 4, data[i]);
+	switch (type) {
+	case REGMAP:
+		/* Write register map, starting at base_addr + 0x10 (byte) */
+		for (i = 0; i < num_reg; ++i)
+			cu_write32(cu_hls, ARGS + i * 4, data[i]);
+		break;
+	case KEY_VAL:
+		/* Use {offset, value} pairs to configure CU
+		 * data[i]: register offset
+		 * data[i + 1]: value
+		 */
+		for (i = 0; i < num_reg; i += 2)
+			cu_write32(cu_hls, data[i], data[i + 1]);
+		break;
+	}
 }
 
 static void cu_hls_start(void *core)

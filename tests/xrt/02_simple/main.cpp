@@ -20,9 +20,9 @@
 #include <cstring>
 
 // XRT includes
-#include "experimental/xrt_device.h"
-#include "experimental/xrt_kernel.h"
-#include "experimental/xrt_bo.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_kernel.h"
+#include "xrt/xrt_bo.h"
 
 // This value is shared with worgroup size in kernel.cl
 static const int COUNT = 1024;

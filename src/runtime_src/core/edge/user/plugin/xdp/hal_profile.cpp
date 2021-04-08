@@ -474,11 +474,23 @@ void warning_callbacks()
 {
 }
 
+int error_function()
+{
+  if (xrt_core::config::get_native_xrt_trace()) {
+    xrt_core::message::send(xrt_core::message::severity_level::warning,
+                            "XRT",
+                            "Enabling both Native XRT and HAL level trace is not currently supported.  Only Native XRT tracing will be enabled");
+    return 1;
+  }
+  return 0 ;
+}
+
 void load()
 {
   static xrt_core::module_loader xdp_hal_loader("xdp_hal_plugin",
                                                 register_callbacks,
-                                                warning_callbacks) ;
+                                                warning_callbacks,
+                                                error_function) ;
 }
 
 } // end namespace hal

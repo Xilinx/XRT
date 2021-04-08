@@ -37,6 +37,11 @@ struct driver_config
     uint8_t aie_tile_num_rows;
 };
 
+struct aiecompiler_options
+{
+    bool broadcast_enable_core;
+};
+
 struct graph_config
 {
     int id;

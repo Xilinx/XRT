@@ -53,6 +53,7 @@ xocl-y := \
 	../xocl_thread.o \
 	../xocl_fdt.o \
 	../xocl_xclbin.o \
+	../xocl_debug.o \
 	../subdev/xdma.o \
 	../subdev/qdma.o \
 	../subdev/qdma4.o \
@@ -88,7 +89,6 @@ xocl-y := \
 	../subdev/version_ctrl.o \
 	../subdev/msix_xdma.o \
 	../subdev/ert_user.o \
-	../subdev/ert_versal.o \
 	$(xocl_lib-y)	\
 	$(drv_common-y) \
 	xocl_drv.o	\

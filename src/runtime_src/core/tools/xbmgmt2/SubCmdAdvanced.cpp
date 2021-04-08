@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "SubCmdAdvanced.h"
 #include "OO_Config.h"
+#include "OO_LoadConfig.h"
 
 #include "common/system.h"
 #include "common/device.h"
@@ -71,6 +72,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   // -- Define the supporting option options ----
   SubOptionOptions subOptionOptions;
   subOptionOptions.emplace_back(std::make_shared<OO_Config>("config"));
+  subOptionOptions.emplace_back(std::make_shared<OO_LoadConfig>("load-config"));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 

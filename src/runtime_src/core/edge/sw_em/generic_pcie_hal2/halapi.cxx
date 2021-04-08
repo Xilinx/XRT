@@ -594,6 +594,12 @@ xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
   return -ENOSYS;
 }
 
+int
+xclUpdateSchedulerStat(xclDeviceHandle handle)
+{
+  return -ENOSYS;
+}
+
 /*
  * API to get number of live processes.
  * Applicable only for System Flow as it supports Multiple processes on same device.

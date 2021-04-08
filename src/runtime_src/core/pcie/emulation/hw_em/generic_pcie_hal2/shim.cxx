@@ -233,10 +233,25 @@ namespace xclhwemhal2 {
     systemUtil::makeSystemCall(filePath, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
   }
   
+  void HwEmShim::parseHLSPrintf(const std::string& simPath)
+  {
+    std::ifstream ifs(simPath + "/simulate.log");
+    std::string word = "HLS_PRINT";
+    std::string line;
+    while( getline(ifs, line ))
+    {
+      size_t pos = line.find(word);
+      if ( pos != std::string::npos) {
+        logMessage(line, 0);
+      }
+    }	  
+  }
+  
   void HwEmShim::parseSimulateLog ()
   {
     std::string simPath = getSimPath();
     std::string content = loadFileContentsToString(simPath + "/simulate.log");
+    parseHLSPrintf(simPath);
     if (content.find("// ERROR!!! DEADLOCK DETECTED ") != std::string::npos) {
       size_t first = content.find("// ERROR!!! DEADLOCK DETECTED");
       size_t last = content.find("detected!", first);
@@ -425,7 +440,7 @@ namespace xclhwemhal2 {
       HwEmShim::mDebugLogStream.open(xclemulation::getEmDebugLogFile(),std::ofstream::out);
       if(xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
-        std::string initMsg ="INFO: [HW-EMU 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. The flow uses approximate models for DDR memory and interconnect and hence the performance data generated is approximate.";
+        std::string initMsg ="INFO: [HW-EMU 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. The flow uses approximate models for Global memories and interconnect and hence the performance data generated is approximate.";
         logMessage(initMsg);
       }
       mFirstBinary = false;

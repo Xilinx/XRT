@@ -529,6 +529,9 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
+	case ERT_EXEC_WRITE:
+		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		break;
 	case ERT_START_FA:
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		/* ERT doesn't support Fast adapter command */
@@ -1073,13 +1076,16 @@ out:
 int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
 	int ret = 0;
+	struct ert_cu_bulletin brd;
 
+	ret = xocl_ert_user_bulletin(xdev, &brd);
 	/* Detect if ERT subsystem is able to support CU to host interrupt
 	 * This support is added since ERT ver3.0
 	 *
 	 * So, please make sure this is called after subdev init.
 	 */
-	if (xocl_ert_user_ert_intr_cfg(xdev) == -ENODEV) {
+	if (ret == -ENODEV || !brd.cap.cu_intr) {
+		ret = 0;
 		userpf_info(xdev, "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
 	} else {

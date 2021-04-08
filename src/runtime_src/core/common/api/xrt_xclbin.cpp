@@ -59,6 +59,7 @@ static axlf_section_kind kinds[] = {
   BUILD_METADATA
 };
 
+XRT_CORE_UNUSED
 static bool
 is_sw_emulation()
 {
@@ -528,7 +529,7 @@ class xclbin_full : public xclbin_impl
 
     m_uuid = uuid(m_top->m_header.uuid); 
     
-    const ::ip_layout* ip_layout = nullptr;
+    XRT_CORE_UNUSED const ::ip_layout* ip_layout = nullptr;
 
     for (auto kind : kinds) {
       auto hdr = xrt_core::xclbin::get_axlf_section(m_top, kind);
@@ -536,7 +537,7 @@ class xclbin_full : public xclbin_impl
       // software emulation xclbin does not have all sections
       // create the necessary ones.  important that ip_layout is
       // before connectivity which needs ip_layout
-      if (!hdr && is_sw_emulation()) {
+      if (!hdr && is_sw_emulation() && !xrt_core::config::get_feature_toggle("Runtime.vitis715")) {
         auto data = xrt_core::xclbin::swemu::get_axlf_section(m_top, ip_layout, kind);
         if (!data.empty()) {
           auto pos = m_axlf_sections.emplace(kind, std::move(data));
@@ -958,7 +959,7 @@ xrtXclbinHandle
 xrtXclbinAllocFilename(const char* filename)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [filename]{
+    return xdp::native::profiling_wrapper(__func__, [filename]{
       auto xclbin = std::make_shared<xrt::xclbin_full>(filename);
       auto handle = xclbin.get();
       xclbins.emplace(handle, std::move(xclbin));
@@ -978,7 +979,7 @@ xrtXclbinHandle
 xrtXclbinAllocRawData(const char* data, int size)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [data, size]{
+    return xdp::native::profiling_wrapper(__func__, [data, size]{
       std::vector<char> raw_data(data, data + size);
       auto xclbin = std::make_shared<xrt::xclbin_full>(raw_data);
       auto handle = xclbin.get();
@@ -999,7 +1000,7 @@ int
 xrtXclbinFreeHandle(xrtXclbinHandle handle)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [handle]{
+    return xdp::native::profiling_wrapper(__func__, [handle]{
       free_xclbin(handle);
       return 0;
     });
@@ -1019,7 +1020,7 @@ int
 xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [handle, name, size, ret_size]{
       auto xclbin = get_xclbin(handle);
       const std::string& xsaname = xclbin->get_xsa_name();
@@ -1046,7 +1047,7 @@ int
 xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [handle, ret_uuid]{
+    return xdp::native::profiling_wrapper(__func__, [handle, ret_uuid]{
       auto xclbin = get_xclbin(handle);
       auto result = xclbin->get_uuid();
       uuid_copy(ret_uuid, result.get());
@@ -1067,7 +1068,7 @@ int
 xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr,
+    return xdp::native::profiling_wrapper(__func__,
     [handle, data, size, ret_size]{
       auto xclbin = get_xclbin(handle);
       auto& result = xclbin->get_data();
@@ -1100,7 +1101,7 @@ int
 xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__, nullptr, [dhdl, out]{
+    return xdp::native::profiling_wrapper(__func__, [dhdl, out]{
       auto device = xrt_core::get_userpf_device(dhdl);
       auto uuid = device->get_xclbin_uuid();
       uuid_copy(out, uuid.get());

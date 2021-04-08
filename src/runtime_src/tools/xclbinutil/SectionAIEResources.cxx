@@ -1,6 +1,5 @@
-/*
- * Copyright (C) 2018, Xilinx Inc - All rights reserved
- * Xilinx SDAccel Media Accelerator API
+/**
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,8 +14,9 @@
  * under the License.
  */
 
-#ifndef _XMA_SIG_
-#define _XMA_SIG_
-void xma_signal_hdlr(int signum);
-void xma_init_sighandlers(void);
-#endif
+#include "SectionAIEResources.h"
+
+// Static Variables / Classes
+SectionAIEResources::_init SectionAIEResources::_initializer;
+
+

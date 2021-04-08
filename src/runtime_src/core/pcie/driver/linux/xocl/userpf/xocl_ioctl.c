@@ -588,8 +588,12 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		xocl_p2p_refresh_rbar(xdev);
 
 	/* The finial step is to update KDS configuration */
-	if (!err && kds_mode)
+	if (!err && kds_mode) {
 		err = xocl_kds_update(xdev, axlf_ptr->kds_cfg);
+		if (err) {
+			xocl_icap_clean_bitstream(xdev);
+		}
+	}
 
 done:
 	if (size < 0)

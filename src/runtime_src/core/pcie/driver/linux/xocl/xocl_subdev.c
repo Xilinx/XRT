@@ -124,7 +124,7 @@ static int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 	}
 
 	if (subdev->state != XOCL_SUBDEV_STATE_UNINIT) {
-		xocl_xdev_info(xdev_hdl, "subdev is in-use");
+		xocl_xdev_dbg(xdev_hdl, "subdev is in-use");
 		return -EEXIST;
 	}
 
@@ -316,6 +316,8 @@ static void __xocl_platform_device_unreg(xdev_handle_t xdev_hdl,
 		xocl_p2p_release_resource(xdev_hdl, res);
 		i++;
 	}
+
+	xocl_debug_unreg(XOCL_SUBDEV_DBG_HDL(&pldev->dev));
 	platform_device_unregister(pldev);
 }
 
@@ -364,7 +366,8 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	struct xocl_subdev *subdev)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
-	void *priv_data = NULL;
+	struct xocl_subdev_priv *priv_data = NULL;
+	struct xocl_dbg_reg reg = { 0 };
 	size_t data_len = 0;
 	char devname[64];
 	int retval = 0, i, bar_idx;
@@ -377,7 +380,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	else
 		snprintf(devname, sizeof(devname) - 1, "%s%s",
 			subdev->info.name, SUBDEV_SUFFIX);
-	xocl_xdev_info(xdev_hdl, "creating subdev %s multi %d level %d",
+	xocl_xdev_dbg(xdev_hdl, "creating subdev %s multi %d level %d",
 		devname, subdev->info.multi_inst, subdev->info.level);
 
 	subdev->pldev = platform_device_alloc(devname, subdev->inst);
@@ -427,7 +430,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 			 * resource tree.
 			 */
 			res[i].parent = &(core->pdev->resource[bar_idx]);
-			xocl_xdev_info(xdev_hdl, "resource %pR", &res[i]);
+			xocl_xdev_dbg(xdev_hdl, "resource %pR", &res[i]);
 		}
 
 		retval = platform_device_add_resources(subdev->pldev,
@@ -436,17 +439,6 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 			xocl_xdev_err(xdev_hdl, "failed to add res");
 			goto error;
 		}
-	}
-
-	if (subdev->info.data_len > 0) {
-		priv_data = vzalloc(subdev->info.data_len);
-		if (!priv_data) {
-			retval = -ENOMEM;
-			goto error;
-		}
-		memcpy(priv_data, subdev->info.priv_data,
-				subdev->info.data_len);
-		data_len = subdev->info.data_len;
 	}
 
 	if (subdev->info.dyn_ip > 0) {
@@ -458,13 +450,31 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 		}
 	}
 
-	if (priv_data) {
-		retval = platform_device_add_data(subdev->pldev, priv_data,
-			data_len);
-		if (retval) {
-			xocl_xdev_err(xdev_hdl, "failed to add data");
+	if (!priv_data) {
+		priv_data = vzalloc(subdev->info.data_len + sizeof(*priv_data));
+		if (!priv_data) {
+			retval = -ENOMEM;
 			goto error;
 		}
+		data_len = subdev->info.data_len;
+		if (data_len)
+			memcpy(priv_data->data, subdev->info.priv_data, data_len);
+	}
+
+	reg.name = subdev->info.name;
+	reg.inst = subdev->inst;
+	reg.dev = &subdev->pldev->dev;
+	retval = xocl_debug_register(&reg);
+	if (retval)
+		goto error;
+	priv_data->debug_hdl = reg.hdl;
+	priv_data->data_sz = data_len;
+
+	retval = platform_device_add_data(subdev->pldev, priv_data,
+			sizeof(*priv_data) + data_len);
+	if (retval) {
+		xocl_xdev_err(xdev_hdl, "failed to add data");
+		goto error;
 	}
 
 	subdev->pldev->dev.parent = &core->pdev->dev;
@@ -476,6 +486,9 @@ error:
 		vfree(priv_data);
 
 	if (retval && subdev->pldev) {
+		if (reg.hdl)
+			xocl_debug_unreg(reg.hdl);
+
 		platform_device_put(subdev->pldev);
 		subdev->pldev = NULL;
 	}
@@ -576,12 +589,12 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
 	retval = xocl_subdev_cdev_create(subdev->pldev, subdev);
 	if (retval) {
-		xocl_xdev_info(xdev_hdl, "failed to create cdev subdev %s, %d",
+		xocl_xdev_err(xdev_hdl, "failed to create cdev subdev %s, %d",
 			dev_name(&subdev->pldev->dev), retval);
 		goto error;
 	}
 
-	xocl_xdev_info(xdev_hdl, "subdev %s inst %d is active",
+	xocl_xdev_dbg(xdev_hdl, "subdev %s inst %d is active",
 			dev_name(&subdev->pldev->dev), subdev->inst);
 
 	return 0;
@@ -950,7 +963,7 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 
 	if (subdev->state < XOCL_SUBDEV_STATE_ACTIVE) {
 		if (subdev->state != XOCL_SUBDEV_STATE_UNINIT) {
-			xocl_xdev_info(xdev_hdl, "%s, already offline",
+			xocl_xdev_dbg(xdev_hdl, "%s, already offline",
 				subdev->info.name);
 		}
 		goto done;
@@ -979,7 +992,7 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 		if (!ret)
 			subdev->state = XOCL_SUBDEV_STATE_OFFLINE;
 	} else {
-		xocl_xdev_info(xdev_hdl, "release driver %s",
+		xocl_xdev_dbg(xdev_hdl, "release driver %s",
 				subdev->info.name);
 		pldev = subdev->pldev;
 		device_release_driver(&subdev->pldev->dev);
@@ -1007,7 +1020,7 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 		return 0;
 
 	if (subdev->state > XOCL_SUBDEV_STATE_OFFLINE) {
-		xocl_xdev_info(xdev_hdl, "%s, already online",
+		xocl_xdev_dbg(xdev_hdl, "%s, already online",
 			subdev->info.name);
 		return 0;
 	}
@@ -1514,7 +1527,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			/* fall through */
 		case XOCL_VSEC_FLASH_TYPE_SPI_IP:
 		case XOCL_VSEC_FLASH_TYPE_SPI_REG:
-			xocl_xdev_info(xdev,
+			xocl_xdev_dbg(xdev,
 			    "VSEC FLASH RES Start 0x%llx, bar %d, type 0x%x",
 			    offset, bar, vtype);
 
@@ -1525,7 +1538,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 				return ret;
 			break;
 		case XOCL_VSEC_FLASH_TYPE_VERSAL:
-			xocl_xdev_info(xdev,
+			xocl_xdev_dbg(xdev,
 			    "VSEC VERSAL FLASH RES Start 0x%llx, bar %d",
 			    offset, bar);
 
@@ -1544,7 +1557,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 				return ret;
 			break;
 		default:
-			xocl_xdev_info(xdev, "Unsupport flash type 0x%x", vtype);
+			xocl_xdev_err(xdev, "Unsupport flash type 0x%x", vtype);
 			break;
 		}
 	}
@@ -1553,7 +1566,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 	if (!ret) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MAILBOX_VSEC;
 
-		xocl_xdev_info(xdev,
+		xocl_xdev_dbg(xdev,
 			"VSEC MAILBOX RES Start 0x%llx, bar %d",
 			 offset, bar);
 
@@ -1909,7 +1922,7 @@ int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout)
 		msleep(1);
 	}
 
-	xocl_info(&pdev->dev, "waiting for %d ms", i);
+	xocl_dbg(&pdev->dev, "waiting for %d ms", i);
 	if (i == timeout) 
 		return -ETIME;
 

@@ -18,7 +18,7 @@ include_directories(
   ${BOOST_SYSTEM_INCLUDE_DIRS}
   )
 
-add_custom_target(generated_code DEPENDS ${ProtoSources} ${ProtoHeaders})
+add_custom_target(edge_emulation_generated_code DEPENDS ${ProtoSources} ${ProtoHeaders})
 file(GLOB COMMON_EM_SRC_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/*.cxx"
@@ -32,7 +32,7 @@ add_library(common_em STATIC ${CURR_SOURCE}
   $<TARGET_OBJECTS:common_em_objects>
   )
 
-add_dependencies(common_em generated_code)
+add_dependencies(common_em edge_emulation_generated_code)
 
 set_target_properties(common_em PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})

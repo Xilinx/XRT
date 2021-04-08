@@ -64,8 +64,13 @@ public:
     ~DSAInfo();
 
     bool matchId(const std::string& id) const;
-    bool matchId(DSAInfo& dsa) const;
+    bool matchId(const DSAInfo& dsa) const;
     bool matchIntId(std::string& id) const;
+    bool bmcVerIsFixed() const;
+
+    //getters
+    std::string dsaname() const { return name; };
+    std::string bmc_ver() const { return bmcVer; };
 };
 
 std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa);

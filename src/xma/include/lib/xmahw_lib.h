@@ -163,6 +163,7 @@ typedef struct XmaHwSessionPrivate
     void            *dev_handle;
     XmaHwKernel     *kernel_info;
     //For execbo:
+    std::unordered_map<uint32_t, XmaCUCmdObjPrivate> CU_error_cmds;//CU Cmds with negative (error) return code
     std::atomic<uint32_t>  kernel_complete_count;
     std::atomic<uint32_t>  kernel_complete_total;
     XmaHwDevice     *device;

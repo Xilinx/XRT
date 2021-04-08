@@ -22,9 +22,9 @@
 #include <chrono>
 
 #include "xrt.h"
-#include "experimental/xrt_uuid.h"
-#include "experimental/xrt_bo.h"
-#include "experimental/xrt_device.h"
+#include "xrt/xrt_uuid.h"
+#include "xrt/xrt_bo.h"
+#include "xrt/xrt_device.h"
 
 typedef void *xrtGraphHandle;
 

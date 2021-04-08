@@ -498,3 +498,18 @@ message xclGMIOWait_call {
 message xclGMIOWait_response {
      required bool ack = 1;
 }
+
+//xclLoadXclbinContent
+message xclLoadXclbinContent_call {  
+  required bytes xmlbuff = 2;
+  required uint64 xmlbuffsize = 3;
+  required bytes sharedbin = 4;
+  required uint64 sharedbinsize = 5;
+  required bytes emuldata = 6;
+  required uint64 emuldatasize = 7;
+  required bool keepdir = 8;
+}
+
+message xclLoadXclbinContent_response {
+     required bool ack = 1;
+}

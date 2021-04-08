@@ -45,7 +45,7 @@ public:
     bool server_started;
     void set_name(std::string &sock_name) { name = sock_name;}
     std::string get_name() { return name;}
-    unix_socket();
+    unix_socket(bool bStart = false);
     ~unix_socket()
     {
        server_started = false;

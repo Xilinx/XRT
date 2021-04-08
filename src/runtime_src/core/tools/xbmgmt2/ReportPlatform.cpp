@@ -60,7 +60,7 @@ same_shell(const std::string& vbnv, const std::string& id,
 static bool 
 same_sc(const std::string& sc, const DSAInfo& installed) 
 {
-  return ((sc.empty()) || (installed.bmcVer == sc));
+  return ((sc.empty()) || (installed.bmcVer == sc) || (sc.find("FIXED") != std::string::npos));
 }
 
 /*

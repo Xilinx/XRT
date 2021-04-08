@@ -58,13 +58,16 @@ if (DEFINED ENV{XRT_BOOST_INSTALL})
     set (Boost_LIBRARY_DIRS $ENV{XRT_BOOST_INSTALL}/lib)
   endif()
 
-  # Some later versions of boost spews warnings form property_tree
-  add_compile_options("-DBOOST_BIND_GLOBAL_PLACEHOLDERS")
 else()
   find_package(Boost 
     REQUIRED COMPONENTS system filesystem program_options)
 endif()
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
+
+# Some later versions of boost spews warnings form property_tree
+# Default embedded boost is 1.74.0 which does spew warnings so
+# making this defined global
+add_compile_options("-DBOOST_BIND_GLOBAL_PLACEHOLDERS")
 
 # Boost_VERSION_STRING is not working properly, use our own macro
 set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})

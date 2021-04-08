@@ -478,3 +478,38 @@ message xclGraphReadRTP_response {
      required uint64 size = 1;
      required bytes buffer = 2;
 }
+
+//xclSyncBOAIENB
+message xclSyncBOAIENB_call {
+     required bytes gmioname = 2;
+	 required uint32 dir  = 3;
+     required uint64 size = 4;
+     required uint64 offset = 5;
+	 required uint64 boh = 6;
+}
+message xclSyncBOAIENB_response {
+     required bool ack = 1;
+}
+
+//xclGraphEnd
+message xclGMIOWait_call {
+  required bytes gmioname = 2;  
+}
+message xclGMIOWait_response {
+     required bool ack = 1;
+}
+
+//xclLoadXclbinContent
+message xclLoadXclbinContent_call {  
+  required bytes xmlbuff = 2;
+  required uint64 xmlbuffsize = 3;
+  required bytes sharedbin = 4;
+  required uint64 sharedbinsize = 5;
+  required bytes emuldata = 6;
+  required uint64 emuldatasize = 7;
+  required bool keepdir = 8;
+}
+
+message xclLoadXclbinContent_response {
+     required bool ack = 1;
+}

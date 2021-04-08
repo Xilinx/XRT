@@ -8,9 +8,9 @@
 #include "cmdlineparser.h"
 
 #include "xilutil.hpp"
-#include "experimental/xrt_device.h"
-#include "experimental/xrt_bo.h"
-#include "experimental/xrt_kernel.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_bo.h"
+#include "xrt/xrt_kernel.h"
 
 using ms_t = std::chrono::microseconds;
 using Clock = std::chrono::high_resolution_clock;
@@ -199,6 +199,7 @@ int main(int argc, char *argv[])
 {
   try {
     _main(argc, argv);
+    std::cout << "TEST PASSED" << std::endl;
     return EXIT_SUCCESS;
   }
   catch (const std::exception& ex) {
