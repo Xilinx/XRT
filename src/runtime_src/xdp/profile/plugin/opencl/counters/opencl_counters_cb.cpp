@@ -135,11 +135,11 @@ namespace xdp {
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
 
-    if (getFlowMode() == HW_EMU)
-    {
-      timestamp =
-        openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
-    }
+    //if (getFlowMode() == HW_EMU)
+    //{
+    //  timestamp =
+    //    openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
+    //}
 
     std::tuple<std::string, std::string, std::string> combinedName =
       std::make_tuple(cuName, localWorkGroup, globalWorkGroup) ;
