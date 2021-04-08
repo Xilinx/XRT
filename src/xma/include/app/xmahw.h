@@ -17,6 +17,8 @@
 #ifndef _XMA_HW_H_
 #define _XMA_HW_H_
 
+#include <assert.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -43,6 +45,7 @@ typedef enum {
   XMA_CMD_STATE_PSK_CRASHED = 7, //PS kernel has crashed
   XMA_CMD_STATE_MAX = 8 // Always the last one
 } XmaCmdState;
+static_assert(sizeof(XmaCmdState) <= 4, "XmaCmdState size must be less than 5 bytes");
 
 
 #ifdef __cplusplus

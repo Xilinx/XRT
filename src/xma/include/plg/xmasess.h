@@ -183,21 +183,16 @@ typedef struct XmaCUCmdObj
     int32_t     cu_index;
     bool        cmd_finished;
 
-    //Below is private area
-    uint32_t    cmd_id1;
-    int32_t     cmd_id2;
+    union {
+      uint32_t    cmd_id1;
+      int32_t return_code;       /* return code from soft kernel*/
+    };
+    union {
+      int32_t     cmd_id2;
+      XmaCmdState cmd_state;
+    };
     void        *do_not_use1;
 } XmaCUCmdObj;
-
-typedef struct XmaCUCmdReturnCode
-{
-    XmaCUCmdObj*  cmd_obj;//Pointer to cmd object
-    int32_t       return_code;/* return code from ps / soft kernel after cmd completion */
-    XmaCmdState   cmd_state;
-    int32_t       reserved[4];//For future use
-} XmaCUCmdReturnCode;
-
-
 
 /**
  * is_xma_decoder() - Determine if XmaSession is a member of XmaDecoderSession

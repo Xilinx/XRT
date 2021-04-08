@@ -215,7 +215,6 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_in_ms);
  *
  * @s_handle:      The session handle associated with this plugin instance
  * @cmd_obj_array: An array of command objects
- * @cmd_return array: An array of command objects to get return code in
  * @num_cu_objs: Num of cu cmd objects in above array of command objects
  * @num_cu_errors: Num of cu cmd objects which have error codes i.e negative return code
  *
@@ -224,7 +223,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_in_ms);
  * XMA_ERROR if a cu cmd has not completed yet
  *
  */
-int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, XmaCUCmdReturnCode* cmd_return, int32_t num_cu_objs, uint32_t* num_cu_errors);
+int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, int32_t num_cu_objs, uint32_t* num_cu_errors);
 
 /**
  * xma_plg_schedule_work_item_with_args() - This function schedules a request to the XRT

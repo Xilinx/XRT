@@ -1241,7 +1241,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
     return XMA_ERROR;
 }
 
-int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, XmaCUCmdReturnCode* cmd_return, int32_t num_cu_objs, uint32_t* num_cu_errors)
+int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, int32_t num_cu_objs, uint32_t* num_cu_errors)
 {
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_cu_cmd_status failed. XMASession is corrupted.");
@@ -1271,10 +1271,8 @@ int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_
 
     XmaCUCmdObj* cmd_end = cmd_obj_array+num_cu_objs;
     uint32_t num_errors = 0;
-    auto itr_ret = cmd_return;
-    for (auto itr_cmd = cmd_obj_array; itr_cmd < cmd_end; ++itr_cmd, ++itr_ret) {
-        auto& cmd = *itr_cmd;
-        auto& cmd_ret = *itr_ret;
+    for (auto itr = cmd_obj_array; itr < cmd_end; ++itr) {
+        auto& cmd = *itr;
         if (cmd.do_not_use1 != s_handle.session_signature) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-1");
             return XMA_ERROR;
@@ -1293,14 +1291,14 @@ int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_
             return XMA_ERROR;
         }
         cmd.cmd_finished = true;
-        cmd_ret.cmd_obj = itr_cmd;
-        cmd_ret.return_code = 0;
-        cmd_ret.cmd_state = static_cast<XmaCmdState>(xma_cmd_state::completed);
+        cmd.return_code = 0;
+        cmd.cmd_state = static_cast<XmaCmdState>(xma_cmd_state::completed);
+        cmd.do_not_use1 = nullptr;
         auto itr_tmp2 = priv1->CU_error_cmds.find(cmd.cmd_id1);
         if (itr_tmp2 != priv1->CU_error_cmds.end()) {
             num_errors++;
-            cmd_ret.return_code = itr_tmp2->second.return_code;
-            cmd_ret.cmd_state = static_cast<XmaCmdState>(itr_tmp2->second.cmd_state);
+            cmd.return_code = itr_tmp2->second.return_code;
+            cmd.cmd_state = static_cast<XmaCmdState>(itr_tmp2->second.cmd_state);
         }
     }
 
