@@ -42,9 +42,6 @@ namespace lop {
 
   // A function that outputs any warnings based upon status and configuration
   void warning_function() ;
-
-  // Check and warn if opencl/timeline trace are enabled
-  int error_function();
   
   // Every OpenCL API we are interested in will have an instance
   //  of this class constructed at the start
