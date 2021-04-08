@@ -1,5 +1,5 @@
 find_package(PythonLibs REQUIRED)
-find_package(pybind11 REQUIRED)
+find_package(pybind11 REQUIRED PATHS "/usr/local/lib/python${PythonLibs_VERSION_MAJOR}.${PythonLibs_VERSION_MINOR}")
 
 if(PYTHONLIBS_FOUND)
   message("-- Python libs version: ${PYTHONLIBS_VERSION_STRING}")
