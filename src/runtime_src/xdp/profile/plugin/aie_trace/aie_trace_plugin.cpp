@@ -508,6 +508,8 @@ namespace xdp {
         if (numTileCoreTraceEvents[n] == 0) continue;
         msg << n << ": " << numTileCoreTraceEvents[n] << " tiles";
         if (n != NUM_CORE_TRACE_EVENTS) msg << ", ";
+
+        (db->getStaticInfo()).addAIECoreEventResources(n, numTileCoreTraceEvents[n]);
       }
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
     }
@@ -518,6 +520,8 @@ namespace xdp {
         if (numTileMemoryTraceEvents[n] == 0) continue;
         msg << n << ": " << numTileMemoryTraceEvents[n] << " tiles";
         if (n != NUM_MEMORY_TRACE_EVENTS) msg << ", ";
+
+        (db->getStaticInfo()).addAIEMemoryEventResources(n, numTileMemoryTraceEvents[n]);
       }
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
     }

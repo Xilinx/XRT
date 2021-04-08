@@ -233,7 +233,7 @@ namespace xdp {
         auto col = tile.col;
         auto row = tile.row;
         // NOTE: resource manager requires absolute row number
-        auto& core = AieRscDevice->tile(col, row + 1).core();
+        auto& core   = AieRscDevice->tile(col, row + 1).core();
         auto& memory = AieRscDevice->tile(col, row + 1).mem();
 
         for (int i=0; i < startEvents.size(); ++i) {
@@ -293,6 +293,8 @@ namespace xdp {
           if (numTileCounters[n] == 0) continue;
           msg << n << ": " << numTileCounters[n] << " tiles";
           if (n != NUM_COUNTERS) msg << ", ";
+
+          (db->getStaticInfo()).addAIECounterResources(n, numTileCounters[n]);
         }
         xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
       }
@@ -321,7 +323,11 @@ namespace xdp {
       if (!aieArray)
         continue;
 
-      // Iterate over all AIE Counters
+      uint32_t prevColumn = 0;
+      uint32_t prevRow = 0;
+      uint64_t timerValue = 0;
+
+      // Iterate over all AIE Counters & Timers
       auto numCounters = db->getStaticInfo().getNumAIECounter(index);
       for (uint64_t c=0; c < numCounters; c++) {
         auto aie = db->getStaticInfo().getAIECounter(index, c);
@@ -350,10 +356,20 @@ namespace xdp {
         }
         values.push_back(counterValue);
 
+        // Read tile timer (once per tile to minimize overhead)
+        if ((aie->column != prevColumn) && (aie->row != prevRow)) {
+          prevColumn = aie->column;
+          prevRow = aie->row;
+          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row + 1);
+          XAie_ReadTimer(aieArray->getDevInst(), tileLocation, XAIE_CORE_MOD, &timerValue);
+        }
+        values.push_back(timerValue);
+
         // Get timestamp in milliseconds
         double timestamp = xrt_core::time_ns() / 1.0e6;
         db->getDynamicInfo().addAIESample(index, timestamp, values);
       }
+      
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));     
     }
   }

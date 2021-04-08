@@ -78,6 +78,8 @@ namespace xdp {
     guidanceRules.push_back(guidanceBufferTxActiveTimeMs) ;
     guidanceRules.push_back(guidanceApplicationRunTimeMs) ;
     guidanceRules.push_back(guidanceTotalKernelRunTimeMs) ;
+    guidanceRules.push_back(guidanceAieProfileCounters) ;
+    guidanceRules.push_back(guidanceAieTraceEvents) ;
 
     // One of our guidance rules requires us to output the xrt.ini settings.
     //  Since they rely on static variables that may be destroyed by
@@ -2224,6 +2226,45 @@ namespace xdp {
 	      << (lastKernelEndTime - firstKernelStartTime)
 	      << ","
 	      << std::endl ;
+  }
+
+  void OpenCLSummaryWriter::guidanceAieProfileCounters(OpenCLSummaryWriter* t)
+  {
+    auto infos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    for (auto device : infos)
+    {
+      auto& counters = (t->db->getStaticInfo()).getAIECounterResources(device->deviceId) ;
+      for (auto const& counter : counters)
+      {
+        (t->fout) << "AIE_COUNTER_RESOURCES" << ","
+	                << counter.first << ","
+	                << counter.second << ","
+	                << std::endl ;
+      }
+    }
+  }
+  
+  void OpenCLSummaryWriter::guidanceAieTraceEvents(OpenCLSummaryWriter* t)
+  {
+    auto infos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    for (auto device : infos)
+    {
+      auto& coreEvents = (t->db->getStaticInfo()).getAIECoreEventResources(device->deviceId) ;
+      for (auto const& coreEvent : coreEvents) {
+        (t->fout) << "AIE_CORE_EVENT_RESOURCES" << ","
+	                << coreEvent.first << ","
+	                << coreEvent.second << ","
+	                << std::endl ;
+      }
+
+      auto& memoryEvents = (t->db->getStaticInfo()).getAIEMemoryEventResources(device->deviceId) ;
+      for (auto const& memoryEvent : memoryEvents) {
+        (t->fout) << "AIE_MEMORY_EVENT_RESOURCES" << ","
+	                << memoryEvent.first << ","
+	                << memoryEvent.second << ","
+	                << std::endl ;
+      }
+    }
   }
 
 } // end namespace xdp

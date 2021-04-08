@@ -51,6 +51,7 @@ namespace xdp {
          << "end"          << ","
          << "reset"        << ","
          << "value"        << ","
+         << "timer"        << ","
          << std::endl;
 
     // Write all data elements
