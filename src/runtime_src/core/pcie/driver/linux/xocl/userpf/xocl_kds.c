@@ -819,6 +819,12 @@ static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 
 	base_addr = mem_topo->m_mem_data[mem_idx].m_base_address;
 	size = mem_topo->m_mem_data[mem_idx].m_size * 1024;
+	/* Fast adapter could connect to any memory (DDR, PLRAM, HBM etc.).
+	 * A portion of memory would be reserved for descriptors.
+	 * Reserve entire memory if its size is smaller than FA_MEM_MAX_SIZE
+	 */
+	if (size > FA_MEM_MAX_SIZE)
+		size = FA_MEM_MAX_SIZE;
 	ret = xocl_p2p_get_bar_paddr(xdev, base_addr, size, &bar_paddr);
 	if (ret) {
 		userpf_err(xdev, "Cannot get p2p BAR address");
@@ -843,6 +849,9 @@ static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 		ret = -ENOMEM;
 		goto done;
 	}
+
+	userpf_info(xdev, "fast adapter memory on bank(%d), size 0x%llx",
+		   mem_idx, size);
 
 	XDEV(xdev)->kds.plram.bo = bo;
 	XDEV(xdev)->kds.plram.bar_paddr = bar_paddr;

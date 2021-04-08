@@ -97,6 +97,8 @@ struct kds_ert {
 	bool (* abort_done)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
 };
 
+/* Fast adapter memory info */
+#define FA_MEM_MAX_SIZE 128 * 1024
 struct plram_info {
 	/* This is use for free bo, do not use it in shared code */
 	void		       *bo;
