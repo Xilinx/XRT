@@ -121,6 +121,13 @@ namespace xdp {
                                          const char* globalWorkGroup,
                                          bool isStart)
   {
+    // Log the execution of a compute unit
+    // NOTE: This is only valid for SW emulation. For HW and HW emulation, only the
+    // scheduler knows which CU gets the job. For those flows, we need to get the
+    // CU execution times from trace as read from accelerator monitors on the device. 
+    if (getFlowMode() != SW_EMU)
+      return;
+
     static std::map<std::tuple<std::string, std::string, std::string>, 
                     uint64_t> storedTimestamps ;
     static std::mutex timestampLock ;
@@ -147,17 +154,11 @@ namespace xdp {
       auto executionTime = timestamp - storedTimestamps[combinedName] ;
       storedTimestamps.erase(combinedName) ;
 
-      // Log the execution of this CU
-      // NOTE: This is only valid for SW emulation. For HW and HW emulation, only the
-      // scheduler knows which CU gets the job. For those flows, we need to get the
-      // CU execution times from trace as read from accelerator monitors on the device. 
-      if (getFlowMode() == SW_EMU) {
-        (db->getStats()).logComputeUnitExecution(cuName,
-                                                 kernelName,
-                                                 localWorkGroup,
-                                                 globalWorkGroup,
-                                                 executionTime);
-      }
+      (db->getStats()).logComputeUnitExecution(cuName,
+                                               kernelName,
+                                               localWorkGroup,
+                                               globalWorkGroup,
+                                               executionTime);
     }
   }
 
