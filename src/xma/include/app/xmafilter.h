@@ -73,9 +73,9 @@ typedef struct XmaFilterProperties
     XmaFilterPortProperties  input;
     /** output data port instance */
     XmaFilterPortProperties  output;
-    XmaFilterPortProperties  outputs[MAX_FILTER_OUTPUTS];
+    //XmaFilterPortProperties  outputs[MAX_FILTER_OUTPUTS]; //TODO later when ABI canc change
     /** number of actual filter outputs */
-    int32_t                   num_outputs;
+    //int32_t                   num_outputs; //TODO later when ABI canc change
     /* user-defineable properties */
     /** array of custom parameters for port */
     XmaParameter             *params;
