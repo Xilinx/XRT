@@ -1116,9 +1116,18 @@ static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int test_idx,
                        size_t testSuiteSize, std::ostream & _ostream, const std::string& bdf)
 {
-  std::string test_desc = boost::str(boost::format("%d/%d Test #%d [%s]") % test_idx % testSuiteSize % test_idx % bdf);
-  _ostream << boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name");
-  _ostream << boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description");
+  if(test.get<std::string>("status").compare("skipped") != 0) {
+    std::string test_desc = boost::str(boost::format("Test %d/%d [%s]") % test_idx % testSuiteSize % bdf);
+    _ostream << boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name");
+    if(XBU::getVerbose())
+      XBU::message(boost::str(boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
+  }
+  else if(XBU::getVerbose()) {
+    std::string test_desc = boost::str(boost::format("Test %d/%d [%s]") % test_idx % testSuiteSize % bdf);
+    XBU::message(boost::str(boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name")));
+    XBU::message(boost::str(boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
+  }
+    
 }
 
 /*
@@ -1134,15 +1143,32 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   bool warn = false;
   bool error = false;
 
+  // if supported and details/error/warning: ostr
+  // if supported and xclbin/testcase: verbose
+  // if not supported: verbose
+  auto redirect_log = [&](std::string tag, std::string log_str) {
+    std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
+    if(boost::iequals(_status, "skipped") || std::find(verbose_tags.begin(), verbose_tags.end(), "tag") != verbose_tags.end()) {
+      if(XBU::getVerbose())
+        XBU::message(log_str, false, _ostream);
+      else
+        return;
+    }
+    else
+      _ostream << log_str;
+  };
+
   try {
     for (const auto& dict : test.get_child("log")) {
       for (const auto& kv : dict.second) {
         if (kv.first.compare(prev_tag)) {
           prev_tag = kv.first;
-          _ostream<< boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>();
+          // _ostream << boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>();
+          redirect_log(kv.first, boost::str(boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>()));
         }
         else
-          _ostream<< boost::format("    %-24s  %s\n") % "\0" % kv.second.get_value<std::string>();
+          redirect_log(kv.first, boost::str(boost::format("    %-24s  %s\n") % "\0" % kv.second.get_value<std::string>()));
+          // _ostream << boost::format("    %-24s  %s\n") % "\0" % kv.second.get_value<std::string>();
 
         if (boost::iequals(kv.first, "warning"))
           warn = true;
@@ -1164,9 +1190,10 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   }
 
   boost::to_upper(_status);
-  _ostream << boost::format("    %-24s:") % "Test Status" << EscapeCodes::fgcolor(color).string() << boost::format(" [%s]\n") % _status
-            << EscapeCodes::fgcolor::reset();
-  _ostream << "-------------------------------------------------------------------------------" << std::endl;
+  redirect_log("", boost::str(boost::format("    %-24s: [%s]") % "Test Status" % _status));
+  // _ostream << boost::format("    %-24s:") % "Test Status" << EscapeCodes::fgcolor(color).string() << boost::format(" [%s]\n") % _status
+  //           << EscapeCodes::fgcolor::reset();
+  _ostream << EscapeCodes::fgcolor(color).string() <<"-------------------------------------------------------------------------------"<<EscapeCodes::fgcolor::reset() << std::endl;
 }
 
 /*
@@ -1225,16 +1252,20 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device,
   for (TestCollection * testPtr : testObjectsToRun) {
     boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
 
-    if(schemaVersion == Report::SchemaVersion::text) {
-      auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-      pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
-    }
+    // if(schemaVersion == Report::SchemaVersion::text) {
+    //   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+    //   pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
+    // }
 
     testPtr->testHandle(device, ptTest);
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
-    if(schemaVersion == Report::SchemaVersion::text)
+    if(schemaVersion == Report::SchemaVersion::text) {
+      auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+      pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
       pretty_print_test_run(ptTest, status, _ostream);
+    }
+      
 
     // If a test fails, exit immediately
     if(status == test_status::failed) {

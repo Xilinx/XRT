@@ -5,7 +5,7 @@ if(NOT WIN32)
     find_package(PythonInterp REQUIRED)
   endif()
 endif()
-
+RETURN()
 # Windows support coming soon
 if(NOT WIN32)   
   # On Ubuntu 16.04 CMake support is limited
