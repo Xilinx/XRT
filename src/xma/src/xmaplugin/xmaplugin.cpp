@@ -29,6 +29,7 @@
 #include <chrono>
 using namespace std;
 
+static_assert(sizeof(XmaCmdState) <= sizeof(int32_t), "XmaCmdState size must be <= sizeof int32_t");
 #define XMAPLUGIN_MOD "xmapluginlib"
 
 extern XmaSingleton *g_xma_singleton;
