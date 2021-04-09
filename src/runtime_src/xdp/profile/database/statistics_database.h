@@ -198,6 +198,7 @@ namespace xdp {
 
     // **** OpenCL Statistics ****
     // Statistics on kernel enqueues and executions
+    std::map<std::string, std::string> kernelGlobalWorkGroups ;
     std::map<std::string, TimeStatistics> kernelExecutionStats ;
     std::map<std::string, uint64_t> maxExecutions ; // per kernel
     std::map<std::string, std::vector<std::string>> bufferInfo ;
@@ -296,8 +297,8 @@ namespace xdp {
     { 
       if (maxExecutions.find(kernelName) == maxExecutions.end())
       {
-	maxExecutions[kernelName] = num ;
-	return ;
+        maxExecutions[kernelName] = num ;
+        return ;
       }
       if (num > maxExecutions[kernelName]) maxExecutions[kernelName] = num ;
     }
@@ -337,46 +338,47 @@ namespace xdp {
 
     // Logging Functions
     XDP_EXPORT void logFunctionCallStart(const std::string& name, 
-					 double timestamp) ;
+                                         double timestamp) ;
     XDP_EXPORT void logFunctionCallEnd(const std::string& name, 
-				       double timestamp) ;
+                                       double timestamp) ;
 
     XDP_EXPORT void logMemoryTransfer(uint64_t deviceId, 
-				      DeviceMemoryStatistics::ChannelType channelType,
-				      size_t byteCount) ;
+                                      DeviceMemoryStatistics::ChannelType channelType,
+                                      size_t byteCount) ;
 
     // OpenCL level statistic logging
     XDP_EXPORT void logDeviceActiveTime(const std::string& deviceName,
-					uint64_t startTime,
-					uint64_t endTime) ;
+                                        uint64_t startTime,
+                                        uint64_t endTime) ;
     XDP_EXPORT void logKernelExecution(const std::string& kernelName, 
-				       uint64_t executionTime,
-				       uint64_t kernelInstanceAddress,
-				       uint64_t contextId,
-				       uint64_t commandQueueId,
-				       const std::string& deviceName,
-				       uint64_t startTime,
-				       const std::string& globalWorkSize,
-				       const std::string& localWorkSize,
-				       const char** buffers,
-				       uint64_t numBuffers) ;
+                                       uint64_t executionTime,
+                                       uint64_t kernelInstanceAddress,
+                                       uint64_t contextId,
+                                       uint64_t commandQueueId,
+                                       const std::string& deviceName,
+                                       uint64_t startTime,
+                                       const std::string& globalWorkSize,
+                                       const std::string& localWorkSize,
+                                       const char** buffers,
+                                       uint64_t numBuffers) ;
     XDP_EXPORT void logComputeUnitExecution(const std::string& computeUnitName,
-					    const std::string& localWorkGroup,
-					    const std::string& globalWorkGroup,
-					    uint64_t executionTime) ;
+                                            const std::string& kernelName,
+                                            const std::string& localWorkGroup,
+                                            const std::string& globalWorkGroup,
+                                            uint64_t executionTime) ;
     XDP_EXPORT void logHostRead(uint64_t contextId, uint64_t deviceId,
-				uint64_t size, uint64_t startTime,
-				uint64_t transferTime,
-				uint64_t address,
-				uint64_t commandQueueId) ;
+                                uint64_t size, uint64_t startTime,
+                                uint64_t transferTime,
+                                uint64_t address,
+                                uint64_t commandQueueId) ;
     XDP_EXPORT void logHostWrite(uint64_t contextId, uint64_t deviceId,
-				 uint64_t size, uint64_t startTime,
-				 uint64_t transferTime,
-				 uint64_t address,
-				 uint64_t commandQueueId) ;
+                                 uint64_t size, uint64_t startTime,
+                                 uint64_t transferTime,
+                                 uint64_t address,
+                                 uint64_t commandQueueId) ;
 
     XDP_EXPORT void updateCounters(uint64_t deviceId, 
-				   xclCounterResults& counters) ;
+                                   xclCounterResults& counters) ;
     XDP_EXPORT void updateCounters(xclCounterResults& counters) ;
 
     // Getters and setters on statistical information
