@@ -29,6 +29,7 @@
 #include <chrono>
 using namespace std;
 
+static_assert(sizeof(XmaCmdState) <= sizeof(int32_t), "XmaCmdState size must be <= sizeof int32_t");
 #define XMAPLUGIN_MOD "xmapluginlib"
 
 extern XmaSingleton *g_xma_singleton;
@@ -61,8 +62,6 @@ void cmd_obj_default(XmaCUCmdObj& cmd_obj) {
     cmd_obj.cmd_id1 = 0;
     cmd_obj.cmd_id2 = 0;
     cmd_obj.cmd_finished = false;
-    cmd_obj.cmd_state = XmaCmdState::XMA_CMD_STATE_MAX;
-    cmd_obj.return_code = 0;
     cmd_obj.cu_index = -1;
     cmd_obj.do_not_use1 = nullptr;
 }
@@ -1295,6 +1294,7 @@ int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_
         cmd.cmd_finished = true;
         cmd.return_code = 0;
         cmd.cmd_state = static_cast<XmaCmdState>(xma_cmd_state::completed);
+        cmd.do_not_use1 = nullptr;
         auto itr_tmp2 = priv1->CU_error_cmds.find(cmd.cmd_id1);
         if (itr_tmp2 != priv1->CU_error_cmds.end()) {
             num_errors++;
