@@ -428,15 +428,15 @@ void zocl_fini_sched(struct drm_zocl_dev *zdev)
 {
 	struct drm_zocl_bo *bo = NULL;
 
-	bo = zdev->kds.plram.bo;
+	bo = zdev->kds.cmdmem.bo;
 	if (bo)
 		zocl_drm_free_bo(bo);
-	zdev->kds.plram.bo = NULL;
+	zdev->kds.cmdmem.bo = NULL;
 
 	kds_fini_sched(&zdev->kds);
 }
 
-static void zocl_detect_fa_plram(struct drm_zocl_dev *zdev)
+static void zocl_detect_fa_cmdmem(struct drm_zocl_dev *zdev)
 {
 	struct ip_layout    *ip_layout = NULL;
 	struct drm_zocl_bo *bo = NULL;
@@ -483,11 +483,11 @@ static void zocl_detect_fa_plram(struct drm_zocl_dev *zdev)
 	base_addr = (uint64_t)bo->cma_base.paddr;	
 	vaddr = bo->cma_base.vaddr;	
 
-	zdev->kds.plram.bo = bo;
-	zdev->kds.plram.bar_paddr = bar_paddr;
-	zdev->kds.plram.dev_paddr = base_addr;
-	zdev->kds.plram.vaddr = vaddr;
-	zdev->kds.plram.size = size;
+	zdev->kds.cmdmem.bo = bo;
+	zdev->kds.cmdmem.bar_paddr = bar_paddr;
+	zdev->kds.cmdmem.dev_paddr = base_addr;
+	zdev->kds.cmdmem.vaddr = vaddr;
+	zdev->kds.cmdmem.size = size;
 }
 
 int zocl_kds_update(struct drm_zocl_dev *zdev)
@@ -495,17 +495,17 @@ int zocl_kds_update(struct drm_zocl_dev *zdev)
 	struct drm_zocl_bo *bo = NULL;
 	int i;
 
-	if (zdev->kds.plram.bo) {
-		bo = zdev->kds.plram.bo;
+	if (zdev->kds.cmdmem.bo) {
+		bo = zdev->kds.cmdmem.bo;
 		zocl_drm_free_bo(bo);
-		zdev->kds.plram.bo = NULL;
-		zdev->kds.plram.bar_paddr = 0;
-		zdev->kds.plram.dev_paddr = 0;
-		zdev->kds.plram.vaddr = 0;
-		zdev->kds.plram.size = 0;
+		zdev->kds.cmdmem.bo = NULL;
+		zdev->kds.cmdmem.bar_paddr = 0;
+		zdev->kds.cmdmem.dev_paddr = 0;
+		zdev->kds.cmdmem.vaddr = 0;
+		zdev->kds.cmdmem.size = 0;
 	}
 
-	zocl_detect_fa_plram(zdev);
+	zocl_detect_fa_cmdmem(zdev);
 	zdev->kds.cu_intr = 0;
 
 	for (i = 0; i < zdev->kds.cu_mgmt.num_cus; i++) {

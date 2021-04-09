@@ -10,7 +10,7 @@
 #include <linux/workqueue.h>
 #include "common.h"
 #include "kds_core.h"
-/* Need detect fast adapter and find out plram
+/* Need detect fast adapter and find out cmdmem
  * Cound not avoid coupling xclbin.h
  */
 #include "xclbin.h"
@@ -46,15 +46,15 @@ static void xocl_kds_fa_clear(struct xocl_dev *xdev)
 {
 	struct drm_xocl_bo *bo = NULL;
 
-	if (XDEV(xdev)->kds.plram.bo) {
-		bo = XDEV(xdev)->kds.plram.bo;
-		iounmap(XDEV(xdev)->kds.plram.vaddr);
+	if (XDEV(xdev)->kds.cmdmem.bo) {
+		bo = XDEV(xdev)->kds.cmdmem.bo;
+		iounmap(XDEV(xdev)->kds.cmdmem.vaddr);
 		xocl_drm_free_bo(&bo->base);
-		XDEV(xdev)->kds.plram.bo = NULL;
-		XDEV(xdev)->kds.plram.bar_paddr = 0;
-		XDEV(xdev)->kds.plram.dev_paddr = 0;
-		XDEV(xdev)->kds.plram.vaddr = 0;
-		XDEV(xdev)->kds.plram.size = 0;
+		XDEV(xdev)->kds.cmdmem.bo = NULL;
+		XDEV(xdev)->kds.cmdmem.bar_paddr = 0;
+		XDEV(xdev)->kds.cmdmem.dev_paddr = 0;
+		XDEV(xdev)->kds.cmdmem.vaddr = 0;
+		XDEV(xdev)->kds.cmdmem.size = 0;
 	}
 }
 
@@ -697,9 +697,9 @@ void xocl_fini_sched(struct xocl_dev *xdev)
 {
 	struct drm_xocl_bo *bo = NULL;
 
-	bo = XDEV(xdev)->kds.plram.bo;
+	bo = XDEV(xdev)->kds.cmdmem.bo;
 	if (bo) {
-		iounmap(XDEV(xdev)->kds.plram.vaddr);
+		iounmap(XDEV(xdev)->kds.cmdmem.vaddr);
 		xocl_drm_free_bo(&bo->base);
 	}
 
@@ -758,7 +758,7 @@ static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index)
 	XOCL_GET_CONNECTIVITY(xdev, conn);
 
 	if (conn) {
-		/* The "last" argument of fast adapter would connect to plram */
+		/* The "last" argument of fast adapter would connect to cmdmem */
 		for (i = 0; i < conn->m_count; ++i) {
 			struct connection *connect = &conn->m_connection[i];
 			if (connect->m_ip_layout_index != ip_index)
@@ -776,7 +776,7 @@ static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index)
 	return mem_data_idx;
 }
 
-static int xocl_detect_fa_plram(struct xocl_dev *xdev)
+static int xocl_detect_fa_cmdmem(struct xocl_dev *xdev)
 {
 	struct ip_layout    *ip_layout = NULL;
 	struct mem_topology *mem_topo = NULL;
@@ -789,7 +789,7 @@ static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 	ulong bar_paddr = 0;
 	int ret = 0;
 
-	/* Detect Fast adapter and descriptor plram
+	/* Detect Fast adapter and descriptor cmdmem
 	 * Assume only one PLRAM would be used for descriptor
 	 */
 	XOCL_GET_IP_LAYOUT(xdev, ip_layout);
@@ -809,7 +809,7 @@ static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 		if (prot != FAST_ADAPTER)
 			continue;
 
-		/* TODO: consider if we could support multiple plram */
+		/* TODO: consider if we could support multiple cmdmem */
 		mem_idx = xocl_kds_get_mem_idx(xdev, i);
 		break;
 	}
@@ -819,6 +819,12 @@ static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 
 	base_addr = mem_topo->m_mem_data[mem_idx].m_base_address;
 	size = mem_topo->m_mem_data[mem_idx].m_size * 1024;
+	/* Fast adapter could connect to any memory (DDR, PLRAM, HBM etc.).
+	 * A portion of memory would be reserved for descriptors.
+	 * Reserve entire memory if its size is smaller than FA_MEM_MAX_SIZE
+	 */
+	if (size > FA_MEM_MAX_SIZE)
+		size = FA_MEM_MAX_SIZE;
 	ret = xocl_p2p_get_bar_paddr(xdev, base_addr, size, &bar_paddr);
 	if (ret) {
 		userpf_err(xdev, "Cannot get p2p BAR address");
@@ -844,11 +850,14 @@ static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 		goto done;
 	}
 
-	XDEV(xdev)->kds.plram.bo = bo;
-	XDEV(xdev)->kds.plram.bar_paddr = bar_paddr;
-	XDEV(xdev)->kds.plram.dev_paddr = base_addr;
-	XDEV(xdev)->kds.plram.vaddr = vaddr;
-	XDEV(xdev)->kds.plram.size = size;
+	userpf_info(xdev, "fast adapter memory on bank(%d), size 0x%llx",
+		   mem_idx, size);
+
+	XDEV(xdev)->kds.cmdmem.bo = bo;
+	XDEV(xdev)->kds.cmdmem.bar_paddr = bar_paddr;
+	XDEV(xdev)->kds.cmdmem.dev_paddr = base_addr;
+	XDEV(xdev)->kds.cmdmem.vaddr = vaddr;
+	XDEV(xdev)->kds.cmdmem.size = size;
 
 done:
 	XOCL_PUT_MEM_TOPOLOGY(xdev);
@@ -1095,9 +1104,9 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 
 	xocl_kds_fa_clear(xdev);
 
-	ret = xocl_detect_fa_plram(xdev);
+	ret = xocl_detect_fa_cmdmem(xdev);
 	if (ret) {
-		userpf_info(xdev, "Detect FA plram failed, ret %d", ret);
+		userpf_info(xdev, "Detect FA cmdmem failed, ret %d", ret);
 		goto out;
 	}
 

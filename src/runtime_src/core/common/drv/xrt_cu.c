@@ -510,8 +510,8 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 
 /*
  * If KDS has to manage PLRAM resources, we should come up with a better design.
- * Ideally, CU subdevice should request for plram resource instead of KDS assign
- * plram resource to CU.
+ * Ideally, CU subdevice should request for cmdmem resource instead of KDS assign
+ * cmdmem resource to CU.
  * Or, another solution is to let KDS create CU subdevice indtead of
  * icap/zocl_xclbin.
  */
@@ -553,7 +553,7 @@ int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr,
 	u32 slot_size;
 
 	if (bar == 0) {
-		cu_fa->plram = NULL;
+		cu_fa->cmdmem = NULL;
 		cu_fa->paddr = 0;
 		cu_fa->slot_sz = 0;
 		cu_fa->num_slots = 0;
@@ -562,7 +562,7 @@ int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr,
 
 	slot_size = cu_fa_get_desc_size(xcu);
 
-	cu_fa->plram = vaddr;
+	cu_fa->cmdmem = vaddr;
 	cu_fa->paddr = dev;
 	cu_fa->slot_sz = slot_size;
 	cu_fa->num_slots = num_slots;

@@ -97,7 +97,9 @@ struct kds_ert {
 	bool (* abort_done)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
 };
 
-struct plram_info {
+/* Fast adapter memory info */
+#define FA_MEM_MAX_SIZE 128 * 1024
+struct cmdmem_info {
 	/* This is use for free bo, do not use it in shared code */
 	void		       *bo;
 	u64			bar_paddr;
@@ -131,7 +133,7 @@ struct kds_sched {
 	bool			ert_disable;
 	u32			cu_intr_cap;
 	u32			cu_intr;
-	struct plram_info	plram;
+	struct cmdmem_info	cmdmem;
 	struct completion	comp;
 };
 

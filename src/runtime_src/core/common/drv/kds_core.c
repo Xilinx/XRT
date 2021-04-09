@@ -905,7 +905,7 @@ void kds_reset(struct kds_sched *kds)
 	kds->ini_disable = false;
 }
 
-static int kds_fa_assign_plram(struct kds_sched *kds)
+static int kds_fa_assign_cmdmem(struct kds_sched *kds)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	u32 total_sz = 0;
@@ -928,14 +928,14 @@ static int kds_fa_assign_plram(struct kds_sched *kds)
 
 	total_sz = round_up_to_next_power2(total_sz);
 
-	if (kds->plram.size < total_sz)
+	if (kds->cmdmem.size < total_sz)
 		return -EINVAL;
 
-	num_slots = kds->plram.size / total_sz;
+	num_slots = kds->cmdmem.size / total_sz;
 
-	bar_addr = kds->plram.bar_paddr;
-	dev_addr = kds->plram.dev_paddr;
-	vaddr = kds->plram.vaddr;
+	bar_addr = kds->cmdmem.bar_paddr;
+	dev_addr = kds->cmdmem.dev_paddr;
+	vaddr = kds->cmdmem.vaddr;
 	for (i = 0; i < cu_mgmt->num_cus; i++) {
 		if (!xrt_is_fa(cu_mgmt->xcus[i], &size))
 			continue;
@@ -962,8 +962,8 @@ int kds_cfg_update(struct kds_sched *kds)
 	kds->scu_mgmt.num_cus = 0;
 
 	/* Update PLRAM CU */
-	if (kds->plram.dev_paddr) {
-		ret = kds_fa_assign_plram(kds);
+	if (kds->cmdmem.dev_paddr) {
+		ret = kds_fa_assign_cmdmem(kds);
 		if (ret)
 			return -EINVAL;
 		/* ERT doesn't understand Fast adapter
