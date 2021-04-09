@@ -1,13 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
 # Signing xclbin images are currently only support on Linux
+
 if(NOT WIN32)
   find_package(OpenSSL REQUIRED)
   if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-    find_package(PythonInterp REQUIRED)
+    # Cannot use find_package(PythonInterp REQUIRED) as it pollutes the
+    # global space and later causes failure with find_package(pybind11 ...)
+    # in src/python/pybind11/CMakeLists.txt
+    find_program(PYTHON_EXECUTABLE python3)
   endif()
 endif()
 
 # Windows support coming soon
-if(NOT WIN32)   
+if(NOT WIN32)
   # On Ubuntu 16.04 CMake support is limited
   if ((${LINUX_FLAVOR} STREQUAL "Ubuntu") AND (${LINUX_VERSION} STREQUAL "16.04"))
     set(RapidJSON_VERSION_MAJOR 0)
@@ -134,7 +139,7 @@ if (GTEST_FOUND)
     endif()
   endif()
 
-  # Add the test 
+  # Add the test
   set(TEST_EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/${UNIT_TEST_NAME}")
   set(TEST_OPTIONS "--quiet --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/test_data")
   xrt_add_test(${UNIT_TEST_NAME} "${TEST_EXECUTABLE}" "${TEST_OPTIONS}")

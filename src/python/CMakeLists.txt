@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 add_subdirectory(pybind11)
 
 install(FILES xrt_binding.py    DESTINATION ${PY_INSTALL_DIR})
