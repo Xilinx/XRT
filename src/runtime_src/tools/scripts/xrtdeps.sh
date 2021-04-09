@@ -518,8 +518,9 @@ install()
         ${SUDO} zypper install -y "${SUSE_LIST[@]}"
     fi
 
-    # Install pybind11 for building the XRT python bindings
-    pip3 install pybind11
+    # Install/upgrade pybind11 for building the XRT python bindings
+    # We need 2.6.0 minimum version
+    pip3 install -U pybind11
 }
 
 update_package_list
