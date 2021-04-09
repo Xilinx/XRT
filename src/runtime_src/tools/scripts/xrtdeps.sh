@@ -93,6 +93,7 @@ rh_package_list()
      protobuf-devel \
      python3 \
      python3-pip \
+     python3-devel \
      rapidjson-devel \
      rpm-build \
      strace \
@@ -185,6 +186,7 @@ ub_package_list()
      pkg-config \
      protobuf-compiler \
      python3 \
+     libpython3-dev \
      python3-breathe \
      python3-pip \
      python3-sphinx \

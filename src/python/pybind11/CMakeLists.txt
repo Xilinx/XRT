@@ -5,7 +5,13 @@ string(REPLACE "." ";" PYTHONLIBS_VERSION_LIST ${PYTHONLIBS_VERSION_STRING})
 list(GET PYTHONLIBS_VERSION_LIST 0 PYTHONLIBS_VERSION_MAJOR)
 list(GET PYTHONLIBS_VERSION_LIST 1 PYTHONLIBS_VERSION_MINOR)
 
-find_package(pybind11 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/dist-packages")
+if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
+  SET(PKGDIR "dist-packages")
+elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora|SUSE)")
+  SET(PKGDIR "site-packages")
+endif(${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
+
+find_package(pybind11 2.6.0 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}")
 
 if (PythonLibs_FOUND AND pybind11_FOUND)
   message("-- Python libs version: ${PYTHONLIBS_VERSION_STRING}")
