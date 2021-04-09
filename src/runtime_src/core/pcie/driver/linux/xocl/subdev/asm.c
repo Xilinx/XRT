@@ -187,6 +187,7 @@ static int asm_probe(struct platform_device *pdev)
 	struct xocl_asm *xocl_asm;
 	struct resource *res;
 	int err = 0;
+	void *priv;
 
 	xocl_asm = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_asm));
 	if (!xocl_asm)
@@ -194,7 +195,9 @@ static int asm_probe(struct platform_device *pdev)
 
 	xocl_asm->dev = &pdev->dev;
 
-	memcpy(&xocl_asm->data, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct debug_ip_data));
+	priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (priv)
+		memcpy(&xocl_asm->data, priv, sizeof(struct debug_ip_data));
 
 	platform_set_drvdata(pdev, xocl_asm);
 	mutex_init(&xocl_asm->lock);

@@ -1,6 +1,5 @@
-/*
- * Copyright (C) 2018, Xilinx Inc - All rights reserved
- * Xilinx SDAccel Media Accelerator API
+/**
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,8 +14,17 @@
  * under the License.
  */
 
-#ifndef _XMA_SIG_
-#define _XMA_SIG_
-void xma_signal_hdlr(int signum);
-void xma_init_sighandlers(void);
+#ifndef __ResourcesSmartNic_h_
+#define __ResourcesSmartNic_h_
+
+// ----------------------- I N C L U D E S -----------------------------------
+
+// #includes here - please keep these to a bare minimum!
+#include <string>
+
+// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
+// Forward declarations - use these instead whenever possible...
+
+const std::string & getSmartNicSchema();
+
 #endif

@@ -529,6 +529,9 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
+	case ERT_EXEC_WRITE:
+		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		break;
 	case ERT_START_FA:
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		/* ERT doesn't support Fast adapter command */
@@ -1073,7 +1076,7 @@ out:
 int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
 	int ret = 0;
-	struct ert_cu_bulletin brd = {0};
+	struct ert_cu_bulletin brd;
 
 	ret = xocl_ert_user_bulletin(xdev, &brd);
 	/* Detect if ERT subsystem is able to support CU to host interrupt

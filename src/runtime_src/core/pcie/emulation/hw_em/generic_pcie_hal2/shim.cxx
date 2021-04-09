@@ -440,7 +440,7 @@ namespace xclhwemhal2 {
       HwEmShim::mDebugLogStream.open(xclemulation::getEmDebugLogFile(),std::ofstream::out);
       if(xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
-        std::string initMsg ="INFO: [HW-EMU 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. The flow uses approximate models for DDR memory and interconnect and hence the performance data generated is approximate.";
+        std::string initMsg ="INFO: [HW-EMU 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. The flow uses approximate models for Global memories and interconnect and hence the performance data generated is approximate.";
         logMessage(initMsg);
       }
       mFirstBinary = false;

@@ -286,12 +286,12 @@ static bool verify_timestamp(struct platform_device *pdev, u64 timestamp)
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
-	xocl_info(&pdev->dev, "Shell timestamp: 0x%llx",
+	xocl_dbg(&pdev->dev, "Shell timestamp: 0x%llx",
 		rom->header.TimeSinceEpoch);
-	xocl_info(&pdev->dev, "Verify timestamp: 0x%llx", timestamp);
+	xocl_dbg(&pdev->dev, "Verify timestamp: 0x%llx", timestamp);
 
 	if (strlen(rom->uuid) > 0) {
-		xocl_info(&pdev->dev, "2RP platform, skip timestamp check");
+		xocl_dbg(&pdev->dev, "2RP platform, skip timestamp check");
 		return true;
 	}
 
@@ -403,11 +403,11 @@ static int load_firmware_from_flash(struct platform_device *pdev,
 	char *buf = NULL;
 	struct flash_data_ident id = { {0} };
 
-	xocl_info(&pdev->dev, "try loading fw from flash");
+	xocl_dbg(&pdev->dev, "try loading fw from flash");
 
 	ret = xocl_flash_get_size(xdev, &flash_size);
 	if (ret == -ENODEV) {
-		xocl_info(&pdev->dev,
+		xocl_dbg(&pdev->dev,
 			"no flash subdev");
 		return ret;
 	} else if (flash_size == 0) {
@@ -429,12 +429,12 @@ static int load_firmware_from_flash(struct platform_device *pdev,
 	if (strncmp(id.fdi_magic, XRT_DATA_MAGIC, magiclen)) {
 		char tmp[sizeof(id.fdi_magic) + 1] = { 0 };
 		memcpy(tmp, id.fdi_magic, magiclen);
-		xocl_info(&pdev->dev, "ignore meta data, bad magic: %s", tmp);
+		xocl_dbg(&pdev->dev, "ignore meta data, bad magic: %s", tmp);
 		return -ENOENT;
 	}
 
 	if (id.fdi_version != 0) {
-		xocl_info(&pdev->dev,
+		xocl_dbg(&pdev->dev,
 			"flash meta data version is not supported: %d",
 			id.fdi_version);
 		return -EOPNOTSUPP;
@@ -455,7 +455,7 @@ static int load_firmware_from_flash(struct platform_device *pdev,
 		ret = -EINVAL;
 	}
 
-	xocl_info(&pdev->dev, "found meta data of %d bytes @0x%x",
+	xocl_dbg(&pdev->dev, "found meta data of %d bytes @0x%x",
 		header.fdh_data_len, header.fdh_data_offset);
 	*fw_buf = buf;
 	*fw_len = header.fdh_data_len;
@@ -505,13 +505,13 @@ static int load_firmware_from_disk(struct platform_device *pdev, char **fw_buf,
 			vendor_fw_dir, vendor, deviceid, subdevice, timestamp, suffix);
 	}
 
-	xocl_info(&pdev->dev, "try loading fw: %s", fw_name);
+	xocl_dbg(&pdev->dev, "try loading fw: %s", fw_name);
 	err = request_firmware(&fw, fw_name, &pcidev->dev);
 	if (err && !is_multi_rp(rom)) {
 		snprintf(fw_name, sizeof(fw_name),
 			"%s/%04x-%04x-%04x-%016llx.%s",
 			vendor_fw_dir, vendor, (deviceid + 1), subdevice, timestamp, suffix);
-		xocl_info(&pdev->dev, "try loading fw: %s", fw_name);
+		xocl_dbg(&pdev->dev, "try loading fw: %s", fw_name);
 		err = request_firmware(&fw, fw_name, &pcidev->dev);
 	}
 	if (err)
@@ -541,7 +541,7 @@ static int load_firmware(struct platform_device *pdev, char **fw, size_t *len)
 	if (ret)
 		ret = load_firmware_from_flash(pdev, &buf, &size);
 	if (ret) {
-		xocl_info(&pdev->dev, "can't load firmware, give up");
+		xocl_err(&pdev->dev, "can't load firmware, give up");
 		return ret;
 	}
 
@@ -587,7 +587,7 @@ static int get_header_from_peer(struct feature_rom *rom)
 
 	memcpy(&rom->header, header, sizeof(*header));
 
-	xocl_xdev_info(xdev, "Searching CDMA in dtb.");
+	xocl_xdev_dbg(xdev, "Searching CDMA in dtb.");
 	offset = xocl_fdt_path_offset(xdev, XDEV(xdev)->fdt_blob,
 				      "/" NODE_ENDPOINTS "/" RESNAME_KDMA);
 	if (offset < 0)
@@ -604,7 +604,7 @@ static int get_header_from_peer(struct feature_rom *rom)
 	memset(rom->header.CDMABaseAddress, 0,
 	       sizeof(rom->header.CDMABaseAddress));
 	rom->header.CDMABaseAddress[0] = (uint32_t)res.start;
-	xocl_xdev_info(xdev, "CDMA is on, CU offset: 0x%x",
+	xocl_xdev_dbg(xdev, "CDMA is on, CU offset: 0x%x",
 		       rom->header.CDMABaseAddress[0]);
 
 	return 0;
@@ -628,7 +628,7 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 	if (XDEV(xdev)->fdt_blob) {
 		vbnv = fdt_getprop(XDEV(xdev)->fdt_blob, 0, "vbnv", NULL);
 		if (vbnv) {
-			xocl_xdev_info(xdev, "found vbnv prop, %s", vbnv);
+			xocl_xdev_dbg(xdev, "found vbnv prop, %s", vbnv);
 			strncpy(header->VBNVName, vbnv,
 				sizeof(header->VBNVName) - 1);
 			for (i = 0; i < strlen(header->VBNVName); i++)
@@ -638,18 +638,18 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 		}
 	}
 
-	xocl_xdev_info(xdev, "Searching ERT and CMC in dtb.");
+	xocl_xdev_dbg(xdev, "Searching ERT and CMC in dtb.");
 	ret = xocl_subdev_get_resource(xdev, NODE_CMC_FW_MEM,
 			IORESOURCE_MEM, &res);
 	if (!ret) {
-		xocl_xdev_info(xdev, "CMC is on");
+		xocl_xdev_dbg(xdev, "CMC is on");
 		header->FeatureBitMap |= BOARD_MGMT_ENBLD;
 	}
 
 	ret = xocl_subdev_get_resource(xdev, NODE_ERT_FW_MEM,
 			IORESOURCE_MEM, &res);
 	if (!ret) {
-		xocl_xdev_info(xdev, "ERT is on");
+		xocl_xdev_dbg(xdev, "ERT is on");
 		header->FeatureBitMap |= MB_SCHEDULER;
 	}
 
@@ -665,7 +665,7 @@ static int get_header_from_dtb(struct feature_rom *rom)
 	    i -= 4, j += 8) {
 		sprintf(&rom->uuid[j], "%08x", ioread32(rom->base + i));
 	}
-	xocl_info(&rom->pdev->dev, "UUID %s", rom->uuid);
+	xocl_dbg(&rom->pdev->dev, "UUID %s", rom->uuid);
 
 	return init_rom_by_dtb(rom);
 }
@@ -684,7 +684,7 @@ static int get_header_from_vsec(struct feature_rom *rom)
 	}
 
 	offset += pci_resource_start(XDEV(xdev)->pdev, bar);
-	xocl_xdev_info(xdev, "Mapping uuid at offset 0x%llx", offset);
+	xocl_xdev_dbg(xdev, "Mapping uuid at offset 0x%llx", offset);
 	rom->base = ioremap_nocache(offset, PAGE_SIZE);
 	rom->uuid_len = 32;
 
@@ -703,7 +703,7 @@ static int get_header_from_iomem(struct feature_rom *rom)
 		vendor = XOCL_PL_TO_PCI_DEV(pdev)->vendor;
 		did = XOCL_PL_TO_PCI_DEV(pdev)->device;
 		if (vendor == 0x1d0f && (did == 0x1042 || did == 0xf010)) { // MAGIC, we should define elsewhere
-			xocl_info(&pdev->dev,
+			xocl_dbg(&pdev->dev,
 				"Found AWS VU9P Device without featureROM");
 			/*
  			 * This is AWS device. Fill the FeatureROM struct.
@@ -762,7 +762,7 @@ static int feature_rom_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL) {
-		xocl_info(&pdev->dev, "Get header from VSEC");
+		xocl_dbg(&pdev->dev, "Get header from VSEC");
 		ret = get_header_from_vsec(rom);
 		if (ret)
 			(void)get_header_from_peer(rom);
@@ -812,19 +812,19 @@ static int feature_rom_probe(struct platform_device *pdev)
 	}
 
 	tmp = rom->header.EntryPointString;
-	xocl_info(&pdev->dev, "ROM magic : %c%c%c%c",
+	xocl_dbg(&pdev->dev, "ROM magic : %c%c%c%c",
 		tmp[0], tmp[1], tmp[2], tmp[3]);
-	xocl_info(&pdev->dev, "VBNV: %s", rom->header.VBNVName);
-	xocl_info(&pdev->dev, "DDR channel count : %d",
+	xocl_dbg(&pdev->dev, "VBNV: %s", rom->header.VBNVName);
+	xocl_dbg(&pdev->dev, "DDR channel count : %d",
 		rom->header.DDRChannelCount);
-	xocl_info(&pdev->dev, "DDR channel size: %d GB",
+	xocl_dbg(&pdev->dev, "DDR channel size: %d GB",
 		rom->header.DDRChannelSize);
-	xocl_info(&pdev->dev, "Major Version: %d", rom->header.MajorVersion);
-	xocl_info(&pdev->dev, "Minor Version: %d", rom->header.MinorVersion);
-	xocl_info(&pdev->dev, "IPBuildID: %u", rom->header.IPBuildID);
-	xocl_info(&pdev->dev, "TimeSinceEpoch: %llx",
+	xocl_dbg(&pdev->dev, "Major Version: %d", rom->header.MajorVersion);
+	xocl_dbg(&pdev->dev, "Minor Version: %d", rom->header.MinorVersion);
+	xocl_dbg(&pdev->dev, "IPBuildID: %u", rom->header.IPBuildID);
+	xocl_dbg(&pdev->dev, "TimeSinceEpoch: %llx",
 		rom->header.TimeSinceEpoch);
-	xocl_info(&pdev->dev, "FeatureBitMap: %llx", rom->header.FeatureBitMap);
+	xocl_dbg(&pdev->dev, "FeatureBitMap: %llx", rom->header.FeatureBitMap);
 
 	return 0;
 
@@ -840,7 +840,7 @@ static int feature_rom_remove(struct platform_device *pdev)
 {
 	struct feature_rom *rom;
 
-	xocl_info(&pdev->dev, "Remove feature rom");
+	xocl_dbg(&pdev->dev, "Remove feature rom");
 	rom = platform_get_drvdata(pdev);
 	if (!rom) {
 		xocl_err(&pdev->dev, "driver data is NULL");

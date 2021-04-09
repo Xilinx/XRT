@@ -96,6 +96,11 @@ struct ert_user_event {
 	int			  state;
 };
 
+struct ert_user_queue {
+	struct list_head	head;
+	uint32_t 		num;
+};
+
 struct ert_user_command {
 	struct kds_command *xcmd;
 	struct list_head    list;
@@ -124,9 +129,10 @@ struct xocl_ert_user {
 	DECLARE_BITMAP(slot_status, ERT_MAX_SLOTS);
 	struct xocl_ert_sched_privdata ert_cfg_priv;
 
-	struct list_head	pq;
+	struct ert_user_queue	pq;
+	struct ert_user_queue	pq_ctrl;
+
 	spinlock_t		pq_lock;
-	u32			num_pq;
 	/*
 	 * Pending Q is used in thread that is submitting CU cmds.
 	 * Other Qs are used in thread that is completing them.
@@ -136,17 +142,17 @@ struct xocl_ert_user {
 	 */
 	u64			padding[16];
 	/* run queue */
-	struct list_head	rq;
-	u32			num_rq;
+	struct ert_user_queue	rq;
+	struct ert_user_queue	rq_ctrl;
+
 
 	struct semaphore	sem;
 	/* submitted queue */
-	struct list_head	sq;
+	struct ert_user_queue	sq;
 	struct ert_user_command	*submit_queue[ERT_MAX_SLOTS];
-	u32			num_sq;
 
-	struct list_head	cq;
-	u32			num_cq;
+	struct ert_user_queue	cq;
+
 	u32			stop;
 	bool			bad_state;
 
@@ -187,8 +193,8 @@ static ssize_t snap_shot_show(struct device *dev,
 {
 	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
 
-	return sprintf(buf, "pending:%d, running:%d, submit:%d complete:%d\n", ert_user->num_pq, ert_user->num_rq, ert_user->num_sq
-		,ert_user->num_cq);
+	return sprintf(buf, "pq:%d pq_ctrl:%d,  rq:%d, rq_ctrl:%d, sq:%d cq:%d\n", ert_user->pq.num, ert_user->pq_ctrl.num, ert_user->rq.num
+		,ert_user->rq_ctrl.num, ert_user->sq.num, ert_user->cq.num);
 }
 
 static DEVICE_ATTR_RO(snap_shot);
@@ -712,13 +718,13 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 	struct kds_command *xcmd;
 	struct ert_user_command *ecmd;
 
-	if (!ert_user->num_cq)
+	if (!ert_user->cq.num)
 		return;
 
 	ERTUSER_DBG(ert_user, "-> %s\n", __func__);
 
-	while (ert_user->num_cq) {
-		ecmd = list_first_entry(&ert_user->cq, struct ert_user_command, list);
+	while (ert_user->cq.num) {
+		ecmd = list_first_entry(&ert_user->cq.head, struct ert_user_command, list);
 		list_del(&ecmd->list);
 		xcmd = ecmd->xcmd;
 		ert_post_process(ert_user, ecmd);
@@ -726,7 +732,7 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 		xcmd->cb.notify_host(xcmd, ecmd->status);
 		xcmd->cb.free(xcmd);
 		ert_user_free_cmd(ecmd);
-		--ert_user->num_cq;
+		--ert_user->cq.num;
 	}
 
 	ERTUSER_DBG(ert_user, "<- %s\n", __func__);
@@ -744,12 +750,12 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 	struct kds_client *ev_client = NULL;
 	unsigned int tick;
 
-	if (!ert_user->num_sq)
+	if (!ert_user->sq.num)
 		return;
 
 	ev_client = first_event_client_or_null(ert_user);
 
-	list_for_each_entry_safe(ecmd, next, &ert_user->sq, list) {
+	list_for_each_entry_safe(ecmd, next, &ert_user->sq.head, list) {
 		xcmd = ecmd->xcmd;
 		if (ecmd->completed) {
 			ert_get_return(ert_user, ecmd);
@@ -777,9 +783,9 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 			continue;
 
 		ERTUSER_DBG(ert_user, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
-		list_move_tail(&ecmd->list, &ert_user->cq);
-		--ert_user->num_sq;
-		++ert_user->num_cq;
+		list_move_tail(&ecmd->list, &ert_user->cq.head);
+		--ert_user->sq.num;
+		++ert_user->cq.num;
 		ert_user->submit_queue[ecmd->slot_idx] = NULL;
 
 	}
@@ -908,7 +914,7 @@ static inline void process_ert_sq_polling(struct xocl_ert_user *ert_user)
 	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
 	unsigned int tick;
 
-	if (!ert_user->num_sq)
+	if (!ert_user->sq.num)
 		return;
 
 	for (section_idx = 0; section_idx < 4; ++section_idx) {
@@ -929,9 +935,9 @@ static inline void process_ert_sq_polling(struct xocl_ert_user *ert_user)
 					ecmd->completed = true;
 					ecmd->status = KDS_COMPLETED;
 					ERTUSER_DBG(ert_user, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
-					list_move_tail(&ecmd->list, &ert_user->cq);
-					--ert_user->num_sq;
-					++ert_user->num_cq;
+					list_move_tail(&ecmd->list, &ert_user->cq.head);
+					--ert_user->sq.num;
+					++ert_user->cq.num;
 					ert_user->submit_queue[cmd_idx] = NULL;
 				} else
 					ERTUSER_DBG(ert_user, "ERR: submit queue slot is empty\n");
@@ -969,9 +975,9 @@ static inline void process_ert_sq_polling(struct xocl_ert_user *ert_user)
 		ert_user->bad_state = true;
 
 		ERTUSER_DBG(ert_user, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
-		list_move_tail(&ecmd->list, &ert_user->cq);
-		--ert_user->num_sq;
-		++ert_user->num_cq;
+		list_move_tail(&ecmd->list, &ert_user->cq.head);
+		--ert_user->sq.num;
+		++ert_user->cq.num;
 		ert_user->submit_queue[slot_idx] = NULL;
 	}
 
@@ -1018,10 +1024,11 @@ ert_acquire_slot(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 		set_bit(0, ert_user->slot_status);
 
 		if (ert_user->ctrl_busy) {
-			ERTUSER_ERR(ert_user, "ctrl slot is busy\n");
+			ERTUSER_DBG(ert_user, "ctrl slot is busy\n");
 			return -1;
 		}
-		ert_user->ctrl_busy = true;
+		if (cmd_opcode(ecmd) != OP_GET_STAT)
+			ert_user->ctrl_busy = true;
 		return (ecmd->slot_idx = 0);
 	}
 
@@ -1148,11 +1155,12 @@ static void ert_intc_enable(struct xocl_ert_user *ert_user, bool enable){
 /**
  * process_ert_rq() - Process run queue
  * @ert_user: Target XRT ERT
+ * @rq: Target running queue
  *
  * Return: return 0 if run queue is empty or no available slot
  *	   Otherwise, return 1
  */
-static inline int process_ert_rq(struct xocl_ert_user *ert_user)
+static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user_queue *rq)
 {
 	struct ert_user_command *ecmd, *next;
 	u32 slot_addr = 0;
@@ -1161,28 +1169,28 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 	struct kds_client *ev_client = NULL;
 	u32 mask_idx, cq_int_addr, mask;
 
-	if (!ert_user->num_rq)
+	if (!rq->num)
 		return 0;
 
 	ev_client = first_event_client_or_null(ert_user);
-	list_for_each_entry_safe(ecmd, next, &ert_user->rq, list) {
+	list_for_each_entry_safe(ecmd, next, &rq->head, list) {
 		struct kds_command *xcmd = ecmd->xcmd;
 
 		if (unlikely(ert_user->bad_state || (ev_client == xcmd->client))) {
 			ERTUSER_ERR(ert_user, "%s abort\n", __func__);
 			ecmd->status = KDS_ERROR;
-			list_move_tail(&ecmd->list, &ert_user->cq);
-			--ert_user->num_rq;
-			++ert_user->num_cq;
+			list_move_tail(&ecmd->list, &ert_user->cq.head);
+			--rq->num;
+			++ert_user->cq.num;
 			continue;
 		}
 
 		if (ert_pre_process(ert_user, ecmd)) {
 			ERTUSER_ERR(ert_user, "%s bad cmd, opcode: %d\n", __func__, cmd_opcode(ecmd));
 			ecmd->status = KDS_ABORT;
-			list_move_tail(&ecmd->list, &ert_user->cq);
-			--ert_user->num_rq;
-			++ert_user->num_cq;
+			list_move_tail(&ecmd->list, &ert_user->cq.head);
+			--rq->num;
+			++ert_user->cq.num;
 			continue;
 		}
 
@@ -1198,10 +1206,10 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 		slot_addr = ecmd->slot_idx * (ert_user->cq_range/ert_user->num_slots);
 
 		/* Hardware could be pretty fast, add to sq before touch the CQ_status or cmd queue*/
-		list_move_tail(&ecmd->list, &ert_user->sq);
+		list_move_tail(&ecmd->list, &ert_user->sq.head);
 		ert_user->submit_queue[ecmd->slot_idx] = ecmd;
-		--ert_user->num_rq;
-		++ert_user->num_sq;
+		--rq->num;
+		++ert_user->sq.num;
 
 		ERTUSER_DBG(ert_user, "%s slot_addr %x\n", __func__, slot_addr);
 		if (kds_echo) {
@@ -1247,13 +1255,15 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 }
 
 /**
- * process_ert_rq() - Process pending queue
+ * process_ert_pq() - Process pending queue
  * @ert_user: Target XRT ERT
+ * @pq: Target pending queue
+ * @rq: Target running queue
  *
  * Move all of the pending queue commands to the tail of run queue
  * and re-initialized pending queue
  */
-static inline void process_ert_pq(struct xocl_ert_user *ert_user)
+static inline void process_ert_pq(struct xocl_ert_user *ert_user, struct ert_user_queue *pq, struct ert_user_queue *rq)
 {
 	unsigned long flags;
 
@@ -1261,13 +1271,14 @@ static inline void process_ert_pq(struct xocl_ert_user *ert_user)
 	 * The idea is to reduce the possibility of conflict on lock.
 	 * Need to check pending command number again after lock.
 	 */
-	if (!ert_user->num_pq)
+	if (!pq->num)
 		return;
+
 	spin_lock_irqsave(&ert_user->pq_lock, flags);
-	if (ert_user->num_pq) {
-		list_splice_tail_init(&ert_user->pq, &ert_user->rq);
-		ert_user->num_rq += ert_user->num_pq;
-		ert_user->num_pq = 0;
+	if (pq->num) {
+		list_splice_tail_init(&pq->head, &rq->head);
+		rq->num += pq->num;
+		pq->num = 0;
 	}
 	spin_unlock_irqrestore(&ert_user->pq_lock, flags);
 }
@@ -1290,9 +1301,23 @@ static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd)
 
 	ERTUSER_DBG(ert_user, "->%s ecmd %llx\n", __func__, (u64)ecmd);
 	spin_lock_irqsave(&ert_user->pq_lock, flags);
-	list_add_tail(&ecmd->list, &ert_user->pq);
-	++ert_user->num_pq;
-	first_command = (ert_user->num_pq == 1);
+	switch (cmd_opcode(ecmd)) {
+	case OP_START:
+	case OP_START_SK:
+		list_add_tail(&ecmd->list, &ert_user->pq.head);
+		++ert_user->pq.num;
+		break;
+	case OP_CLK_CALIB:
+	case OP_CONFIG_SK:
+	case OP_GET_STAT:
+	case OP_VALIDATE:
+	case OP_CONFIG:
+	default:
+		list_add_tail(&ecmd->list, &ert_user->pq_ctrl.head);
+		++ert_user->pq_ctrl.num;
+		break;
+	}
+	first_command = ((ert_user->pq.num + ert_user->pq_ctrl.num) == 1);
 	spin_unlock_irqrestore(&ert_user->pq_lock, flags);
 	/* Add command to pending queue
 	 * wakeup service thread if it is the first command
@@ -1304,13 +1329,52 @@ static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd)
 	return;
 }
 
+
+static inline bool ert_user_thread_sleep_condition(struct xocl_ert_user *ert_user)
+{
+	bool ret = false;
+	bool polling_sleep = false, intr_sleep = false, no_event = false
+	, no_completed_cmd = false, no_submmited_cmd = false
+	, cant_submit = false, cant_submit_start = false, cant_submit_ctrl = false
+	, no_need_to_fetch_new_cmd = false, no_need_to_fetch_start_cmd = false, no_need_to_fetch_ctrl_cmd = false;
+
+
+	/* When ert_thread should go to sleep to save CPU usage
+	 * 1. There is no event to be processed
+	 * 2. We don't have to process command when
+	 *    a. We can't submit cmd if we don't have cmd in running queue or submitted queue is full
+	 *    b. There is no cmd in pending queue or we still have cmds in running queue
+	 *    c. There is no cmd in completed queue
+	 * 3. We are not in polling mode and there is no cmd in submitted queue
+	 */  
+
+	no_completed_cmd = !ert_user->cq.num;
+
+	cant_submit_start = (!ert_user->rq.num) || (ert_user->sq.num == (ert_user->num_slots-1));
+	cant_submit_ctrl = (!ert_user->rq_ctrl.num) || (ert_user->sq.num == 1);
+	cant_submit = cant_submit_start && cant_submit_ctrl;
+
+	no_need_to_fetch_start_cmd = ert_user->rq.num !=0 || !ert_user->pq.num;
+	no_need_to_fetch_ctrl_cmd = ert_user->rq_ctrl.num !=0 || !ert_user->pq_ctrl.num;
+	no_need_to_fetch_new_cmd = no_need_to_fetch_ctrl_cmd && no_need_to_fetch_start_cmd;
+
+	no_submmited_cmd = !ert_user->sq.num;
+
+	polling_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && no_submmited_cmd;
+	intr_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && cant_submit;
+
+	no_event = first_event_client_or_null(ert_user) == NULL;
+
+
+	ret = no_event && ((ert_user->polling_mode && polling_sleep) || (!ert_user->polling_mode && intr_sleep));
+
+	return ret;
+}
+
 int ert_user_thread(void *data)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)data;
  	int ret = 0;
-	bool polling_sleep = false, intr_sleep = false, no_completed_cmd = false, no_submmited_cmd = false,
-		cant_submit = false, no_need_to_fetch_new_cmd = false, no_event = false;
-
 
 	mod_timer(&ert_user->timer, jiffies + ERT_TIMER);
 
@@ -1319,7 +1383,10 @@ int ert_user_thread(void *data)
 		 * This is why we call continue here. This is important to make
 		 * CU busy, especially CU has hardware queue.
 		 */
-		if (process_ert_rq(ert_user))
+		if (process_ert_rq(ert_user, &ert_user->rq_ctrl))
+			continue;
+
+		if (process_ert_rq(ert_user, &ert_user->rq))
 			continue;
 		/* process completed queue before submitted queue, for
 		 * two reasons:
@@ -1335,38 +1402,16 @@ int ert_user_thread(void *data)
 
 		process_ert_cq(ert_user);
 
-
-		/* When ert_thread should go to sleep to save CPU usage
-		 * 1. There is no event to be processed
-		 * 2. We don't have to process command when
-		 *    a. We can't submit cmd if we don't have cmd in running queue or submitted queue is full
-		 *    b. There is no cmd in pending queue or we still have cmds in running queue
-		 *    c. There is no cmd in completed queue
-		 * 3. We are not in polling mode and there is no cmd in submitted queue
-		 */  
-
-		no_completed_cmd = !ert_user->num_cq;
-		cant_submit = !ert_user->num_rq || (ert_user->num_sq == (ert_user->num_slots-1));
-		no_need_to_fetch_new_cmd = ert_user->num_rq !=0 || !ert_user->num_pq;
-		no_submmited_cmd = !ert_user->num_sq;
-
-		polling_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && no_submmited_cmd;
-		intr_sleep = no_completed_cmd && no_need_to_fetch_new_cmd && cant_submit;
-
-		no_event = first_event_client_or_null(ert_user) == NULL;
-
 		/* If any event occured, we should drain all the related commands ASAP
 		 * It only goes to sleep if there is no event
 		 */
-		if (ert_user->polling_mode && no_event && polling_sleep) {
-			if (down_interruptible(&ert_user->sem))
-				ret = -ERESTARTSYS;
-		} else if (!ert_user->polling_mode && no_event && intr_sleep) {
+		if (ert_user_thread_sleep_condition(ert_user)) {
 			if (down_interruptible(&ert_user->sem))
 				ret = -ERESTARTSYS;
 		}
 
-		process_ert_pq(ert_user);
+		process_ert_pq(ert_user, &ert_user->pq, &ert_user->rq);
+		process_ert_pq(ert_user, &ert_user->pq_ctrl, &ert_user->rq_ctrl);
 	}
 	del_timer_sync(&ert_user->timer);
 
@@ -1495,14 +1540,16 @@ static int ert_user_probe(struct platform_device *pdev)
 	ert_user->dev = &pdev->dev;
 	ert_user->pdev = pdev;
 	/* Initialize pending queue and lock */
-	INIT_LIST_HEAD(&ert_user->pq);
+	INIT_LIST_HEAD(&ert_user->pq.head);
+	INIT_LIST_HEAD(&ert_user->pq_ctrl.head);
 	spin_lock_init(&ert_user->pq_lock);
 	/* Initialize run queue */
-	INIT_LIST_HEAD(&ert_user->rq);
+	INIT_LIST_HEAD(&ert_user->rq.head);
+	INIT_LIST_HEAD(&ert_user->rq_ctrl.head);
 
 	/* Initialize completed queue */
-	INIT_LIST_HEAD(&ert_user->cq);
-	INIT_LIST_HEAD(&ert_user->sq);
+	INIT_LIST_HEAD(&ert_user->cq.head);
+	INIT_LIST_HEAD(&ert_user->sq.head);
 
 	mutex_init(&ert_user->ev_lock);
 	INIT_LIST_HEAD(&ert_user->events);

@@ -78,6 +78,7 @@ enum class key_type
   kds_mode,
   kds_cu_stat,
   kds_scu_stat,
+  ps_kernel,
   xclbin_full,
 
   xmc_version,
@@ -101,6 +102,8 @@ enum class key_type
 
   dna_serial_num,
   clock_freqs_mhz,
+  aie_core_info,
+  aie_shim_info,
   idcode,
   data_retention,
   sec_level,
@@ -204,8 +207,13 @@ enum class key_type
   shared_host_mem,
 
   aie_metadata,
+  aie_reg_read,
   graph_status,
   mailbox_metrics,
+
+  config_mailbox_channel_disable,
+  config_mailbox_channel_switch,
+  cache_xclbin,
 
   clock_timestamp,
   ert_sleep,
@@ -647,6 +655,18 @@ struct aie_metadata : request
   get(const device*) const = 0;
 };
 
+struct aie_reg_read : request
+{
+  using result_type = uint32_t;
+  using row_type = uint32_t;
+  using col_type = uint32_t;
+  using reg_type = std::string;
+  static const key_type key = key_type::aie_reg_read;
+
+  virtual boost::any
+  get(const device*, const boost::any& row, const boost::any& col, const boost::any& reg) const = 0;
+};
+
 struct graph_status : request
 {
   using result_type = std::vector<std::string>;
@@ -696,6 +716,15 @@ struct kds_cu_stat : request
   using result_type = std::vector<struct data>;
   using data_type = struct data;
   static const key_type key = key_type::kds_cu_stat;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct ps_kernel : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::ps_kernel;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -984,6 +1013,24 @@ struct dna_serial_num : request
   {
     return value;
   }
+};
+
+struct aie_core_info : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::aie_core_info;
+  
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct aie_shim_info : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::aie_shim_info;
+  
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct clock_freqs_mhz : request
@@ -2177,6 +2224,48 @@ struct mailbox_metrics : request
   {
     return value;
   }
+};
+
+struct config_mailbox_channel_disable : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::config_mailbox_channel_disable;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct config_mailbox_channel_switch : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::config_mailbox_channel_switch;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct cache_xclbin : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::cache_xclbin;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
 };
 
 struct ert_sleep : request

@@ -127,6 +127,7 @@ private:
     bool isXMCReady();
     bool isBMCReady();
     bool hasSC();
+    bool hasXMC();
 };
 
 #endif

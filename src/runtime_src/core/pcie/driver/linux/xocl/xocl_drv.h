@@ -217,9 +217,23 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define xocl_warn(dev, fmt, args...)			\
 	dev_warn(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_info(dev, fmt, args...)			\
-	dev_printk(KERN_DEBUG, PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
+	do {						\
+		dev_printk(KERN_DEBUG, PDEV(dev), "%s %llx %s: "fmt,	\
+			   PNAME(dev), (u64)dev, __func__, ##args);	\
+		xocl_dbg_trace(XOCL_SUBDEV_DBG_HDL(dev), XRT_TRACE_LEVEL_INFO,\
+			       "%s %s %llx %s: "fmt"\n", PNAME(dev),	\
+			       dev_name(dev), (u64)dev, __func__, ##args);\
+	} while (0)
+
 #define xocl_dbg(dev, fmt, args...)			\
-	dev_dbg(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
+	xocl_dbg_trace(XOCL_SUBDEV_DBG_HDL(dev), XRT_TRACE_LEVEL_INFO,	\
+		       "%s %s %llx %s: "fmt"\n", PNAME(dev),	\
+		       dev_name(dev), (u64)dev, __func__, ##args)
+
+#define xocl_verbose(dev, fmt, args...)			\
+	xocl_dbg_trace(XOCL_SUBDEV_DBG_HDL(dev), XRT_TRACE_LEVEL_VERBOSE,\
+		       "%s %s %llx %s: "fmt"\n", PNAME(dev),		\
+		       dev_name(dev), (u64)dev, __func__, ##args)
 
 #define xocl_xdev_info(xdev, fmt, args...)		\
 	xocl_info(XDEV2DEV(xdev), fmt, ##args)
@@ -371,8 +385,30 @@ struct xocl_drv_private {
 	char			*cdev_name;
 };
 
+struct xocl_subdev_priv {
+	unsigned long		debug_hdl;
+	u32			data_sz;
+	u64			data[1];
+};
+
+#define _PRIV(dev)	((struct xocl_subdev_priv *)dev_get_platdata(dev))
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
-	(dev_get_platdata(dev))
+	(void *)((_PRIV(dev) && _PRIV(dev)->data_sz) ? _PRIV(dev)->data : NULL)
+
+#define XOCL_SUBDEV_DBG_HDL(dev)				\
+	(((dev)->bus == &platform_bus_type && dev_get_platdata(dev)) ?	\
+	((struct xocl_subdev_priv *)dev_get_platdata(dev))->debug_hdl : 0)
+
+static inline void *xocl_subdev_priv_alloc(u32 size)
+{
+	struct xocl_subdev_priv *priv;
+
+	priv = vzalloc(sizeof(*priv) + size);
+	if (!priv)
+		return NULL;
+
+	return priv->data;
+}
 
 typedef	void *xdev_handle_t;
 
@@ -2136,7 +2172,7 @@ int xocl_fdt_unlink_node(xdev_handle_t xdev_hdl, void *node);
 int xocl_fdt_overlay(void *fdt, int target, void *fdto, int node, int pf,
 		int part_level);
 int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
-		void **priv_data,  size_t *data_len);
+		struct xocl_subdev_priv **priv_data,  size_t *data_len);
 int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob);
 int xocl_fdt_get_p2pbar(xdev_handle_t xdev_hdl, void *blob);
 long xocl_fdt_get_p2pbar_len(xdev_handle_t xdev_hdl, void *blob);
@@ -2161,6 +2197,28 @@ const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 int xocl_fdt_unblock_ip(xdev_handle_t xdev_hdl, void *blob);
 const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
 bool xocl_fdt_get_freq_cnt_eps(xdev_handle_t xdev_hdl, void *blob, struct clock_counter_info *clk_counter);
+
+/* debug functions */
+struct xocl_dbg_reg {
+	const char	*name;
+	u32		inst;
+	struct device	*dev;
+
+	unsigned long	hdl; /* output arg: debug mod hdl */
+};
+
+enum {
+	XRT_TRACE_LEVEL_DIS = 0,
+	XRT_TRACE_LEVEL_INFO = 1,
+	XRT_TRACE_LEVEL_VERBOSE,
+};
+
+int xocl_debug_init(void);
+void xocl_debug_fini(void);
+int xocl_debug_register(struct xocl_dbg_reg *reg);
+int xocl_debug_unreg(unsigned long hdl);
+void xocl_dbg_trace(unsigned long hdl, u32 level, const char *fmt, ...);
+
 
 /* init functions */
 int __init xocl_init_userpf(void);

@@ -122,6 +122,7 @@ static int lapc_probe(struct platform_device *pdev)
 {
 	struct xocl_lapc *lapc;
 	struct resource *res;
+	void *priv;
 	int err = 0;
 
 	lapc = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_lapc));
@@ -130,7 +131,9 @@ static int lapc_probe(struct platform_device *pdev)
 
 	lapc->dev = &pdev->dev;
 
-	memcpy(&lapc->data, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct debug_ip_data));
+	priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (priv)
+		memcpy(&lapc->data, priv, sizeof(struct debug_ip_data));
 
 	platform_set_drvdata(pdev, lapc);
 	mutex_init(&lapc->lock);
