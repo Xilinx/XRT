@@ -44,6 +44,7 @@ typedef enum {
   XMA_CMD_STATE_MAX = 8 // Always the last one
 } XmaCmdState;
 
+
 #ifdef __cplusplus
 }
 #endif
