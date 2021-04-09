@@ -47,12 +47,11 @@ static void
 reset_device(std::shared_ptr<xrt_core::device> dev, xrt_core::query::reset_type reset)
 {
   if (xrt_core::device_query<xrt_core::query::rom_vbnv>(dev).find("_u30_") != std::string::npos) {
-    /*
-     * u30 reset relies on working SC and SN info. SN is read and saved
-     * when FPGA is ready. so even if there is firewall trip now, we expect
-     * to be able to get S/N again
-     * Having SN info available also implies there is a working SC
-     */
+    // u30 reset relies on working SC and SN info. SN is read and saved
+    // when FPGA is ready. so even if there is firewall trip now, we expect
+    // to be able to get S/N again
+    // Having SN info available also implies there is a working SC
+
     std::string sn;
     try {
       sn = xrt_core::device_query<xrt_core::query::xmc_serial_num>(dev);
@@ -74,6 +73,7 @@ reset_device(std::shared_ptr<xrt_core::device> dev, xrt_core::query::reset_type 
       dev->user_reset(XCL_USER_RESET);
     } catch(const xrt_core::error& e) {
       std::cerr << "ERROR: " << e.what() << std::endl;
+      return;
     }
   }
   else
@@ -113,7 +113,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   XBU::verbose("SubCommand: reset");
   // -- Retrieve and parse the subcommand options -----------------------------
   std::vector<std::string> devices = {"all"};
-  std::string resetType = "user"; //default val
+  std::string resetType = "user";
   bool help = false;
 
   po::options_description commonOptions("Common Options");
