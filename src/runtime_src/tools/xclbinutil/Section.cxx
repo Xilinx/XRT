@@ -237,7 +237,7 @@ Section::initXclBinSectionHeader(axlf_section_header& _sectionHeader) {
 }
 
 void
-Section::writeXclBinSectionBuffer(std::fstream& _ostream) const
+Section::writeXclBinSectionBuffer(std::ostream& _ostream) const
 {
   if ((m_pBuffer == nullptr) ||
       (m_bufferSize == 0)) {
@@ -519,7 +519,7 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
 
 
 void 
-Section::dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) const
+Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) const
 {
   switch (_eFormatType) {
   case FT_RAW:

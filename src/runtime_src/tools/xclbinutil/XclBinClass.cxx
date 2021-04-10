@@ -214,7 +214,7 @@ XclBin::addHeaderMirrorData(boost::property_tree::ptree& _pt_header) {
 
 
 void
-XclBin::writeXclBinBinaryHeader(std::fstream& _ostream, boost::property_tree::ptree& _mirroredData) {
+XclBin::writeXclBinBinaryHeader(std::ostream& _ostream, boost::property_tree::ptree& _mirroredData) {
   // Write the header (minus the section header array)
   XUtil::TRACE("Writing xclbin binary header");
   _ostream.write((char*)&m_xclBinHeader, sizeof(axlf) - sizeof(axlf_section_header));
@@ -229,7 +229,7 @@ XclBin::writeXclBinBinaryHeader(std::fstream& _ostream, boost::property_tree::pt
 
 
 void
-XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::ptree& _mirroredData) {
+XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::ptree& _mirroredData) {
   // Nothing to write
   if (m_sections.empty()) {
     return;
@@ -316,7 +316,7 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
 
 
 void
-XclBin::writeXclBinBinaryMirrorData(std::fstream& _ostream,
+XclBin::writeXclBinBinaryMirrorData(std::ostream& _ostream,
                                     const boost::property_tree::ptree& _mirroredData) const {
   _ostream << MIRROR_DATA_START;
   boost::property_tree::write_json(_ostream, _mirroredData, false /*Pretty print*/);
@@ -585,6 +585,23 @@ XclBin::addSection(Section* _pSection) {
 
   m_sections.push_back(_pSection);
   m_xclBinHeader.m_header.m_numSections = (uint32_t) m_sections.size();
+}
+
+void 
+XclBin::addReplaceSection(ParameterSectionData &_PSD)
+{
+  enum axlf_section_kind eKind;
+  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
+    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  // Determine if the section exists, if so remove it
+  const Section *pSection = findSection(eKind);
+  if (pSection != nullptr) 
+    removeSection(_PSD.getSectionName());
+
+  addSection(_PSD);
 }
 
 void 

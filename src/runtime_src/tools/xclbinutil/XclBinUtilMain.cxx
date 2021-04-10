@@ -159,6 +159,7 @@ int main_(int argc, const char** argv) {
 
   std::vector<std::string> sectionsToReplace;
   std::vector<std::string> sectionsToAdd;
+  std::vector<std::string> sectionsToAddReplace;
   std::vector<std::string> sectionsToRemove;
   std::vector<std::string> sectionsToDump;
   std::vector<std::string> sectionsToAppend;
@@ -187,8 +188,9 @@ int main_(int argc, const char** argv) {
 
       ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
 
-      ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove.")
       ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
+      ("add-replace-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAddReplace)->multitoken(), "Section name to add or replace.  Format: <section>:<format>:<file>")
+      ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove.")
       ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:<format>:<file>")
       ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionsToReplace)->multitoken(), "Section to replace. ")
 
@@ -477,6 +479,12 @@ int main_(int argc, const char** argv) {
   // -- Remove Sections --
   for (auto section : sectionsToRemove) 
     xclBin.removeSection(section);
+
+   // -- Add or Replace Sections --
+  for (auto section : sectionsToAddReplace) {
+    ParameterSectionData psd(section);
+    xclBin.addReplaceSection( psd );
+  }
 
   // -- Replace Sections --
   for (auto section : sectionsToReplace) {

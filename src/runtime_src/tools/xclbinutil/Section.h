@@ -82,10 +82,10 @@ class Section {
   bool getSubPayload(std::ostringstream &_buf, const std::string _sSubSection, enum Section::FormatType _eFormatType) const;
   void readSubPayload(std::fstream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType);
   virtual void initXclBinSectionHeader(axlf_section_header& _sectionHeader);
-  virtual void writeXclBinSectionBuffer(std::fstream& _ostream) const;
+  virtual void writeXclBinSectionBuffer(std::ostream& _ostream) const;
   virtual void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo);
 
-  void dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) const;
+  void dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) const;
   void dumpSubSection(std::fstream& _ostream, std::string _sSubSection, enum FormatType _eFormatType) const;
 
   void getPayload(boost::property_tree::ptree& _pt) const;
