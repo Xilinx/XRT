@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2020 Xilinx, Inc
+ * Copyright (C) 2018-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -365,6 +365,11 @@ int main_(int argc, const char** argv) {
     }
 
     for (auto section : sectionsToAdd) {
+      ParameterSectionData psd(section);
+      inputFiles.push_back(psd.getFile());
+    }
+
+    for (auto section : sectionsToAddReplace) {
       ParameterSectionData psd(section);
       inputFiles.push_back(psd.getFile());
     }
