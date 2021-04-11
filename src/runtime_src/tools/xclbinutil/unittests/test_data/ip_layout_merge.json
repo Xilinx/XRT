@@ -1,0 +1,16 @@
+{
+    "ip_layout": {
+        "m_count": "1",
+        "m_ip_data": [
+            {
+                "m_type": "IP_KERNEL",
+                "properties": "0x0",
+                "m_int_enable": "1",
+                "m_interrupt_id": "0",
+                "m_ip_control": "AP_CTRL_HS",
+                "m_base_address": "0xFF00000",
+                "m_name": "rtl_krnl_vsub_const:rtl_krnl_vsub_const_1"
+            }
+        ]
+    }
+}

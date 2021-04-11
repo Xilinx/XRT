@@ -160,6 +160,7 @@ int main_(int argc, const char** argv) {
   std::vector<std::string> sectionsToReplace;
   std::vector<std::string> sectionsToAdd;
   std::vector<std::string> sectionsToAddReplace;
+  std::vector<std::string> sectionsToAddMerge;
   std::vector<std::string> sectionsToRemove;
   std::vector<std::string> sectionsToDump;
   std::vector<std::string> sectionsToAppend;
@@ -190,6 +191,7 @@ int main_(int argc, const char** argv) {
 
       ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
       ("add-replace-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAddReplace)->multitoken(), "Section name to add or replace.  Format: <section>:<format>:<file>")
+      ("add-merge-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAddMerge)->multitoken(), "Section name to add or merge.  Format: <section>:<format>:<file>")
       ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove.")
       ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:<format>:<file>")
       ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionsToReplace)->multitoken(), "Section to replace. ")
@@ -374,6 +376,11 @@ int main_(int argc, const char** argv) {
       inputFiles.push_back(psd.getFile());
     }
 
+    for (auto section : sectionsToAddMerge) {
+      ParameterSectionData psd(section);
+      inputFiles.push_back(psd.getFile());
+    }
+
     for (auto section : sectionsToReplace ) {
       ParameterSectionData psd(section);
       inputFiles.push_back(psd.getFile());
@@ -485,7 +492,7 @@ int main_(int argc, const char** argv) {
   for (auto section : sectionsToRemove) 
     xclBin.removeSection(section);
 
-   // -- Add or Replace Sections --
+  // -- Add or Replace Sections --
   for (auto section : sectionsToAddReplace) {
     ParameterSectionData psd(section);
     xclBin.addReplaceSection( psd );
@@ -506,6 +513,12 @@ int main_(int argc, const char** argv) {
     } else {
       xclBin.addSection(psd);
     }
+  }
+
+  // -- Add or Merge Sections --
+  for (auto section : sectionsToAddMerge) {
+    ParameterSectionData psd(section);
+    xclBin.addMergeSection( psd );
   }
 
   // -- Append to Sections --

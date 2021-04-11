@@ -54,6 +54,7 @@ class Section {
   static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind, const std::string _sIndexName = "");
   static bool translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind);
   static bool getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind);
+  static std::string getJSONOfKind(enum axlf_section_kind _eKind);
   static enum FormatType getFormatType(const std::string _sFormatType);
   static bool supportsSubSections(enum axlf_section_kind &_eKind);
   static bool supportsSectionIndex(enum axlf_section_kind &_eKind);
@@ -125,6 +126,7 @@ class Section {
   static std::map<std::string, enum axlf_section_kind> m_mapNameToId;
   static std::map<enum axlf_section_kind, Section_factory> m_mapIdToCtor;
   static std::map<std::string, enum axlf_section_kind> m_mapJSONNameToKind;
+  static std::map<enum axlf_section_kind, std::string> m_mapKindToJSONName;
   static std::map<enum axlf_section_kind, bool> m_mapIdToSubSectionSupport;
   static std::map<enum axlf_section_kind, bool> m_mapIdToSectionIndexSupport;
 

@@ -37,6 +37,7 @@ std::map<enum axlf_section_kind, std::string> Section::m_mapIdToName;
 std::map<std::string, enum axlf_section_kind> Section::m_mapNameToId;
 std::map<enum axlf_section_kind, Section::Section_factory> Section::m_mapIdToCtor;
 std::map<std::string, enum axlf_section_kind> Section::m_mapJSONNameToKind;
+std::map<enum axlf_section_kind, std::string> Section::m_mapKindToJSONName;
 std::map<enum axlf_section_kind, bool> Section::m_mapIdToSubSectionSupport;
 std::map<enum axlf_section_kind, bool> Section::m_mapIdToSectionIndexSupport;
 
@@ -115,6 +116,9 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
 
   
   // At this point we know we are good, lets initialize the arrays
+  // TODO: These mappings are no longer scalable. 
+  //       Please refactor to a cleaner solution at the next earliest possibility.
+  m_mapKindToJSONName[_eKind] = _sHeaderJSONName;
   m_mapIdToName[_eKind] = _sKindStr;
   m_mapNameToId[_sKindStr] = _eKind;
   m_mapIdToCtor[_eKind] = _Section_factory;
@@ -185,6 +189,10 @@ Section::getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eK
   return true;
 }
 
+std::string
+Section::getJSONOfKind(enum axlf_section_kind _eKind) {
+  return m_mapKindToJSONName[_eKind];
+}
 
 Section*
 Section::createSectionObjectOfKind( enum axlf_section_kind _eKind, 
