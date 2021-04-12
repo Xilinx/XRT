@@ -23,6 +23,7 @@
 #include <vector>
 #include <string>
 #include <list>
+#include <memory> // for unique_ptr
 
 #include "xdp/config.h"
 #include "xdp/profile/device/device_intf.h"
