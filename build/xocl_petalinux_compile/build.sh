@@ -66,35 +66,38 @@ install_recipes()
     cp $BUILDDIR/xocl_git.bb $XOCL_BB
     grep "inherit externalsrc" $XOCL_BB
     if [ $? != 0 ]; then
-        echo "inherit externalsrc" >> $XOCL_BB
-        echo "EXTERNALSRC = \"$BUILDDIR/driver_code/driver/xocl\"" >> $XOCL_BB
-        echo "EXTERNALSRC_BUILD = \"$BUILDDIR/driver_code/driver/xocl\"" >> $XOCL_BB
-        echo 'PACKAGE_CLASSES = "package_rpm"' >> $XOCL_BB
-        echo 'PV = "202110.2.11.0"' >> $XOCL_BB
-        echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XOCL_BB
-        echo 'LIC_FILES_CHKSUM = "file://LICENSE;md5=b234ee4d69f5fce4486a80fdaf4a4263"' >> $XOCL_BB
-        echo 'do_install() {' >> $XOCL_BB
-        echo '    install -d ${D}${base_libdir}/modules/${KERNEL_VERSION}/extra' >> $XOCL_BB
-        echo '    install -d ${D}${sysconfdir}/udev/rules.d' >> $XOCL_BB
-        echo '    install -m 555 -g root -o root ${B}/userpf/xocl.ko ${D}${base_libdir}/modules/${KERNEL_VERSION}/extra/xocl.ko' >> $XOCL_BB
-        echo '    install -m 555 -g root -o root ${B}/mgmtpf/xclmgmt.ko ${D}${base_libdir}/modules/${KERNEL_VERSION}/extra/xclmgmt.ko' >> $XOCL_BB
-        echo '    install -m 644 -g root -o root ${B}/userpf/99-xocl.rules ${D}${sysconfdir}/udev/rules.d/99-xocl.rules' >> $XOCL_BB
-        echo '    install -m 644 -g root -o root ${B}/mgmtpf/99-xclmgmt.rules ${D}${sysconfdir}/udev/rules.d/99-xclmgmt.rules' >> $XOCL_BB
-        echo '}' >> $XOCL_BB
-        echo 'FILES_${PN} += "${base_libdir}/modules/${KERNEL_VERSION}/extra/xocl.ko"' >> $XOCL_BB
-        echo 'FILES_${PN} += "${base_libdir}/modules/${KERNEL_VERSION}/extra/xclmgmt.ko"' >> $XOCL_BB
-        echo 'FILES_${PN} += "${sysconfdir}/udev/rules.d/99-xocl.rules"' >> $XOCL_BB
-        echo 'FILES_${PN} += "${sysconfdir}/udev/rules.d/99-xclmgmt.rules"' >> $XOCL_BB
-        echo 'pkg_postinst_ontarget_${PN}() {' >> $XOCL_BB
-        echo '  echo "Unloading old XRT Linux kernel modules"' >> $XOCL_BB
-        echo '  ( rmmod xocl || true ) > /dev/null 2>&1' >> $XOCL_BB
-        echo '  ( rmmod xclmgmt || true ) > /dev/null 2>&1' >> $XOCL_BB
-        echo '  echo "Loading new XRT Linux kernel modules"' >> $XOCL_BB
-        echo '  udevadm control --reload-rules' >> $XOCL_BB
-        echo '  modprobe xocl' >> $XOCL_BB
-        echo '  modprobe xclmgmt' >> $XOCL_BB
-        echo '  udevadm trigger' >> $XOCL_BB
-        echo '}' >> $XOCL_BB
+cat << EOF >> $XOCL_BB
+inherit externalsrc
+EXTERNALSRC = "/scratch/XRT/build/xocl_petalinux_compile/driver_code/driver/xocl"
+EXTERNALSRC_BUILD = "/scratch/XRT/build/xocl_petalinux_compile/driver_code/driver/xocl"
+PACKAGE_CLASSES = "package_rpm"
+PV = "202110.2.11.0"
+LICENSE = "GPLv2 & Apache-2.0"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=b234ee4d69f5fce4486a80fdaf4a4263"
+do_install() {
+    install -d \${D}\${base_libdir}/modules/\${KERNEL_VERSION}/extra
+    install -d \${D}\${sysconfdir}/udev/rules.d
+    install -m 555 -g root -o root \${B}/userpf/xocl.ko \${D}\${base_libdir}/modules/\${KERNEL_VERSION}/extra/xocl.ko
+    install -m 555 -g root -o root \${B}/mgmtpf/xclmgmt.ko \${D}\${base_libdir}/modules/\${KERNEL_VERSION}/extra/xclmgmt.ko
+    install -m 644 -g root -o root \${B}/userpf/99-xocl.rules \${D}\${sysconfdir}/udev/rules.d/99-xocl.rules
+    install -m 644 -g root -o root \${B}/mgmtpf/99-xclmgmt.rules \${D}\${sysconfdir}/udev/rules.d/99-xclmgmt.rules
+}
+FILES_\${PN} += "\${base_libdir}/modules/\${KERNEL_VERSION}/extra/xocl.ko"
+FILES_\${PN} += "\${base_libdir}/modules/\${KERNEL_VERSION}/extra/xclmgmt.ko"
+FILES_\${PN} += "\${sysconfdir}/udev/rules.d/99-xocl.rules"
+FILES_\${PN} += "\${sysconfdir}/udev/rules.d/99-xclmgmt.rules"
+pkg_postinst_\${PN}() {
+  #!/bin/sh -e
+  echo "Unloading old XRT Linux kernel modules"
+  ( rmmod xocl || true ) > /dev/null 2>&1
+  ( rmmod xclmgmt || true ) > /dev/null 2>&1
+  echo "Loading new XRT Linux kernel modules"
+  udevadm control --reload-rules
+  modprobe xocl
+  modprobe xclmgmt
+  udevadm trigger
+}
+EOF
     fi
     eval "$SAVED_OPTIONS_LOCAL"
 }
@@ -102,21 +105,21 @@ install_recipes()
 
 while [ $# -gt 0 ]; do
   case $1 in
-    -help )
+    -help | --help )
       usage_and_exit 0
       ;;
-    -aarch )
+    -aarch | --aarch )
       shift
       AARCH=$1
       ;;
-    -setup )
+    -setup | --setup )
       shift
       SETTINGS_FILE=$1
       ;;
-    -clean | clean )
+    -clean | --clean | clean )
       clean=1
       ;;
-    -cache )
+    -cache | --cache )
       shift
       SSTATE_CACHE=$1
       ;;
@@ -167,7 +170,7 @@ elif [[ $AARCH = $versal_dir ]]; then
     PETA_BSP="$PETALINUX/../../bsp/internal/versal/versal-rootfs-common-v$PETALINUX_VER-final.bsp"
     YOCTO_MACHINE="versal-generic"
 else
-    error "$AARCH not exist, please provide correct aarch value aarch32/aarch64/versal"
+    error "aarch option is not valid, please provide correct aarch value aarch32/aarch64/versal"
 fi
 
 # Sanity Check
