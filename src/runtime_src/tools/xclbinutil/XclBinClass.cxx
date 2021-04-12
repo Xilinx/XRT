@@ -591,10 +591,7 @@ void
 XclBin::addReplaceSection(ParameterSectionData &_PSD)
 {
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind); 
 
   // Determine if the section exists, if so remove it
   const Section *pSection = findSection(eKind);
@@ -632,10 +629,7 @@ void
 XclBin::addMergeSection(ParameterSectionData & _PSD)
 {
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   if (_PSD.getFormatType() != Section::FT_JSON) {
     std::string errMsg = "ERROR: Adding or merging of sections are only supported with the JSON format.";
@@ -752,10 +746,7 @@ XclBin::removeSection(const std::string & _sSectionToRemove)
 
   enum axlf_section_kind _eKind;
   
-  if (Section::translateSectionKindStrToKind(sectionName, _eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", sectionName.c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(sectionName, _eKind);
 
   if ((Section::supportsSectionIndex(_eKind) == true) && 
       (sectionIndexName.empty())) {
@@ -794,10 +785,7 @@ void
 XclBin::replaceSection(ParameterSectionData &_PSD)
 {
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   Section *pSection = findSection(eKind);
   if (pSection == nullptr) {
@@ -898,10 +886,7 @@ XclBin::addSubSection(ParameterSectionData &_PSD)
 
   // Get the section kind
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name for the command: %s", _PSD.getSectionName().c_str(), _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   // See if the section support sub-sections
   if (Section::supportsSubSections(eKind) == false) {
@@ -990,10 +975,7 @@ XclBin::addSection(ParameterSectionData &_PSD)
 
   // Get the section kind
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   // Open the file to be read.
   std::string sSectionFileName = _PSD.getFile();
@@ -1222,10 +1204,7 @@ XclBin::dumpSubSection(ParameterSectionData &_PSD)
 
   // Get the section kind
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name for the command: %s", _PSD.getSectionName().c_str(), _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   // See if the section support sub-sections
   if (Section::supportsSubSections(eKind) == false) {
@@ -1285,10 +1264,7 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
   }
 
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   const Section *pSection = findSection(eKind);
   if (pSection == nullptr) {

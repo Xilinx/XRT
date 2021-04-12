@@ -126,14 +126,14 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
   m_mapIdToSectionIndexSupport[_eKind] = _bSupportsIndexing;
 }
 
-bool
-Section::translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind)
+void
+Section::translateSectionKindStrToKind(const std::string & sKind, enum axlf_section_kind & eKind)
 {
-  if (m_mapNameToId.find(_sKindStr) == m_mapNameToId.end()) {
-    return false;   
+  if (m_mapNameToId.find(sKind) == m_mapNameToId.end()) {
+    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", sKind.c_str());
+    throw std::runtime_error(errMsg);
   }
-  _eKind = m_mapNameToId[_sKindStr];
-  return true;
+  eKind = m_mapNameToId[sKind];
 }
 
 bool

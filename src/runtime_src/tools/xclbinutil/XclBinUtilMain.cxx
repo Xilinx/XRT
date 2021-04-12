@@ -354,39 +354,36 @@ int main_(int argc, const char** argv) {
   // Check to see if there any file conflicts
   std::vector< std::string> inputFiles;
   {
-    if (!sInputFile.empty()) {
-       inputFiles.push_back(sInputFile);
-    }
+    if (!sInputFile.empty()) 
+      inputFiles.push_back(sInputFile);
 
-    if (!sCertificate.empty()) {
-       inputFiles.push_back(sCertificate);
-    }
+    if (!sCertificate.empty()) 
+      inputFiles.push_back(sCertificate);
 
-    if (!sPrivateKey.empty()) {
-       inputFiles.push_back(sPrivateKey);
-    }
+    if (!sPrivateKey.empty()) 
+      inputFiles.push_back(sPrivateKey);
 
-    for (auto section : sectionsToAdd) {
+    for (const auto &section : sectionsToAdd) {
       ParameterSectionData psd(section);
       inputFiles.push_back(psd.getFile());
     }
 
-    for (auto section : sectionsToAddReplace) {
+    for (const auto &section : sectionsToAddReplace) {
       ParameterSectionData psd(section);
       inputFiles.push_back(psd.getFile());
     }
 
-    for (auto section : sectionsToAddMerge) {
+    for (const auto &section : sectionsToAddMerge) {
       ParameterSectionData psd(section);
       inputFiles.push_back(psd.getFile());
     }
 
-    for (auto section : sectionsToReplace ) {
+    for (const auto &section : sectionsToReplace ) {
       ParameterSectionData psd(section);
       inputFiles.push_back(psd.getFile());
     }
 
-    for (auto section : sectionsToAppend) {
+    for (const auto & section : sectionsToAppend) {
       ParameterSectionData psd(section);
       inputFiles.push_back(psd.getFile());
     }

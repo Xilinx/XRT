@@ -52,7 +52,7 @@ class Section {
  public:
   static void getKinds(std::vector< std::string > & kinds);
   static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind, const std::string _sIndexName = "");
-  static bool translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind);
+  static void translateSectionKindStrToKind(const std::string & sKind, enum axlf_section_kind & eKind);
   static bool getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind);
   static std::string getJSONOfKind(enum axlf_section_kind _eKind);
   static enum FormatType getFormatType(const std::string _sFormatType);

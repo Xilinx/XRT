@@ -4,6 +4,9 @@
 #include <gtest/gtest.h>
 #include <boost/filesystem.hpp>
 
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
 // Simple Add Test
 TEST(AddSection, AddClearingBitstream) {
    XclBin xclBin;
@@ -140,15 +143,21 @@ TEST(AddSection, AddMergeIPLayout) {
    pSection->dumpContents(oDumpFile, Section::FT_JSON);
 
    // Validate the JSON images on disk
-   std::ifstream ioutput(outputFile);
    std::stringstream obuffer;
-   obuffer << ioutput.rdbuf();
-   
+   {
+      boost::property_tree::ptree ptOutput;
+      boost::property_tree::read_json(outputFile, ptOutput);
+      boost::property_tree::write_json(obuffer, ptOutput);
+   }
+
    boost::filesystem::path ip_layoutMergeExpect(TestUtilities::getResourceDir());
    ip_layoutMergeExpect /= "ip_layout_merged_expected.json";
-   std::ifstream iexpected(ip_layoutMergeExpect.string());
    std::stringstream ebuffer;
-   ebuffer << iexpected.rdbuf();
+   {
+      boost::property_tree::ptree ptExpected;
+      boost::property_tree::read_json(ip_layoutMergeExpect.string(), ptExpected);
+      boost::property_tree::write_json(ebuffer, ptExpected);
+   }
 
    ASSERT_TRUE(obuffer.str().compare(ebuffer.str()) == 0) 
       << "Unexpected JSON file produced." <<  std::endl 
