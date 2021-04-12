@@ -260,6 +260,7 @@ namespace xdp {
             mPerfCounters.push_back(perfCounter);
           }
 	        
+          // Convert enums to physical event IDs for reporting purposes
           int counterNum = i;
           auto mod = isCore ? XAIE_CORE_MOD : XAIE_MEM_MOD;
           auto loc = XAie_TileLoc(col, row + 1);
