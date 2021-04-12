@@ -11,7 +11,7 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora|SUSE)")
   SET(PKGDIR "site-packages")
 endif(${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
 
-find_package(pybind11 2.6.0 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}")
+find_package(pybind11 2.6.0 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
 
 if (PythonLibs_FOUND AND pybind11_FOUND)
   message("-- Python libs version: ${PYTHONLIBS_VERSION_STRING}")
