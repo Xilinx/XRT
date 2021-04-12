@@ -209,7 +209,6 @@ err_code graph_api::wait(unsigned long long cycleTimeout)
 
     int driverStatus = AieRC::XAIE_OK; //0
 
-    // CycleCnt has an upper limit of 0xFFFFFFFFFFFF or 300 trillion* cycles to prevent overflow
     if (cycleTimeout > 0xFFFFFFFFFFFF)
         return errorMsg(err_code::user_error, "ERROR: adf::graph::wait: Max cycle timeout value can be 0xFFFFFFFFFFFF.");
 
@@ -405,7 +404,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
         if (pRTPConfig->hasLock && bAcquireLock)
             driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, acquireVal), LOCK_TIMEOUT);
 
-        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pongTile, pRTPConfig->pongAddr, const_cast<void*>(pValue), numBytes);
+        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pongTile, pRTPConfig->pongAddr, pValue, numBytes);
     }
     else //ping
     {
@@ -413,7 +412,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
         if (pRTPConfig->hasLock && bAcquireLock)
             driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pingTile, XAie_LockInit(pRTPConfig->pingLockId, acquireVal), LOCK_TIMEOUT);
 
-        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pingTile, pRTPConfig->pingAddr, const_cast<void*>(pValue), numBytes);
+        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pingTile, pRTPConfig->pingAddr, pValue, numBytes);
     }
 
     // write the new selector value
@@ -621,7 +620,9 @@ err_code gmio_api::enqueueBD(uint64_t address, size_t size)
 
     //set up BD
     driverStatus |= XAie_DmaSetAddrLen(&shimDmaInst, (u64)address, (u32)size);
+
     driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
+
     driverStatus |= XAie_DmaEnableBd(&shimDmaInst);
 
     //write BD

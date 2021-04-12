@@ -72,21 +72,6 @@ get_graph_id(const xrt_core::device* device, const std::string& graph_name);
 std::unordered_map<std::string, adf::rtp_config>
 get_rtp(const xrt_core::device* device, int graph_id);
 
-struct gmio_type
-{
-  std::string     name;
-
-  uint32_t        id;
-  uint16_t        type;
-  uint16_t        shim_col;
-  uint16_t        channel_number;
-  uint16_t        stream_id;
-  uint16_t        burst_len;
-};
-
-std::vector<gmio_type>
-get_old_gmios(const xrt_core::device* device);
-
 /**
  * get_gmios() - get gmio data from xclbin AIE metadata
  *
@@ -95,23 +80,12 @@ get_old_gmios(const xrt_core::device* device);
 std::unordered_map<std::string, adf::gmio_config>
 get_gmios(const xrt_core::device* device);
 
-struct plio_type
-{
-  std::string     name;
-  std::string     logical_name;
-
-  uint32_t        id;
-  uint16_t        shim_col;
-  uint16_t        stream_id;
-  bool            is_master;
-};
-
 /**
  * get_plios() - get plio data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
  */
-std::vector<plio_type>
+std::unordered_map<std::string, adf::plio_config>
 get_plios(const xrt_core::device* device);
 
 struct counter_type
@@ -135,6 +109,18 @@ struct counter_type
  */
 std::vector<counter_type>
 get_profile_counters(const xrt_core::device* device);
+
+struct gmio_type
+{
+  std::string     name;
+
+  uint32_t        id;
+  uint16_t        type;
+  uint16_t        shim_col;
+  uint16_t        channel_number;
+  uint16_t        stream_id;
+  uint16_t        burst_len;
+};
 
 /**
  * get_trace_gmios() - get trace gmio data from xclbin AIE metadata
