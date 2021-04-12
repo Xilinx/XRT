@@ -32,14 +32,14 @@ mtx.unlock();
     AQUIRE_MUTEX()
 
 #define SERIALIZE_AND_SEND_MSG(func_name)\
-     unsigned c_len = c_msg.ByteSizeLong(); \
+    auto c_len = c_msg.ByteSizeLong(); \
     buf_size = alloc_void(c_len); \
     bool rv = c_msg.SerializeToArray(buf,c_len); \
     if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
     \
     ci_msg.set_size(c_len); \
     ci_msg.set_xcl_api(func_name##_n); \
-    unsigned ci_len = ci_msg.ByteSizeLong(); \
+    auto ci_len = ci_msg.ByteSizeLong(); \
     rv = ci_msg.SerializeToArray(ci_buf,ci_len); \
     if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
     \
