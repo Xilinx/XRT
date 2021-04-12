@@ -52,8 +52,9 @@ class Section {
  public:
   static void getKinds(std::vector< std::string > & kinds);
   static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind, const std::string _sIndexName = "");
-  static bool translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind);
+  static void translateSectionKindStrToKind(const std::string & sKind, enum axlf_section_kind & eKind);
   static bool getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind);
+  static std::string getJSONOfKind(enum axlf_section_kind _eKind);
   static enum FormatType getFormatType(const std::string _sFormatType);
   static bool supportsSubSections(enum axlf_section_kind &_eKind);
   static bool supportsSectionIndex(enum axlf_section_kind &_eKind);
@@ -82,10 +83,10 @@ class Section {
   bool getSubPayload(std::ostringstream &_buf, const std::string _sSubSection, enum Section::FormatType _eFormatType) const;
   void readSubPayload(std::fstream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType);
   virtual void initXclBinSectionHeader(axlf_section_header& _sectionHeader);
-  virtual void writeXclBinSectionBuffer(std::fstream& _ostream) const;
+  virtual void writeXclBinSectionBuffer(std::ostream& _ostream) const;
   virtual void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo);
 
-  void dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) const;
+  void dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) const;
   void dumpSubSection(std::fstream& _ostream, std::string _sSubSection, enum FormatType _eFormatType) const;
 
   void getPayload(boost::property_tree::ptree& _pt) const;
@@ -125,6 +126,7 @@ class Section {
   static std::map<std::string, enum axlf_section_kind> m_mapNameToId;
   static std::map<enum axlf_section_kind, Section_factory> m_mapIdToCtor;
   static std::map<std::string, enum axlf_section_kind> m_mapJSONNameToKind;
+  static std::map<enum axlf_section_kind, std::string> m_mapKindToJSONName;
   static std::map<enum axlf_section_kind, bool> m_mapIdToSubSectionSupport;
   static std::map<enum axlf_section_kind, bool> m_mapIdToSectionIndexSupport;
 

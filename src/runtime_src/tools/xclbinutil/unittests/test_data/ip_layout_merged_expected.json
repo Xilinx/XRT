@@ -1,0 +1,23 @@
+{
+    "ip_layout": {
+        "m_count": "2",
+        "m_ip_data": [
+            {
+                "m_type": "IP_KERNEL",
+                "m_int_enable": "1",
+                "m_interrupt_id": "0",
+                "m_ip_control": "AP_CTRL_HS",
+                "m_base_address": "0x1e00000",
+                "m_name": "rtl_krnl_vadd_const:rtl_krnl_vadd_const_1"
+            },
+            {
+                "m_type": "IP_KERNEL",
+                "m_int_enable": "0",
+                "m_interrupt_id": "0",
+                "m_ip_control": "AP_CTRL_HS",
+                "m_base_address": "0xff00000",
+                "m_name": "rtl_krnl_vsub_const:rtl_krnl_vsub_const_1"
+            }
+        ]
+    }
+}
