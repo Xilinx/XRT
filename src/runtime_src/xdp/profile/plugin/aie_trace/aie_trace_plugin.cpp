@@ -154,8 +154,11 @@ namespace xdp {
 
     // Get AIE tiles and metric set
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
-    if (metricsStr.empty())
+    if (metricsStr.empty()) {
+      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. If metrics were not specified at compile-time, then AIE event trace will not be available.");
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
       return;
+    }
 
     std::vector<std::string> vec;
     boost::split(vec, metricsStr, boost::is_any_of(":"));

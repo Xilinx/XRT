@@ -220,7 +220,6 @@ namespace xdp {
       auto startEvents = isCore ? mCoreStartEvents[metricSet] : mMemoryStartEvents[metricSet];
       auto endEvents   = isCore ?   mCoreEndEvents[metricSet] :   mMemoryEndEvents[metricSet];
 
-      // Iterate over tiles and metrics to configure all desired counters
       uint8_t resetEvent = 0;
       int counterId = 0;
       auto moduleType = isCore ? XAIE_CORE_MOD : XAIE_MEM_MOD;
@@ -228,6 +227,7 @@ namespace xdp {
       int NUM_COUNTERS = isCore ? NUM_CORE_COUNTERS : NUM_MEMORY_COUNTERS;
       int numTileCounters[NUM_COUNTERS+1] = {0};
 
+      // Iterate over tiles and metrics to configure all desired counters
       for (auto& tile : tiles) {
         int numCounters = 0;
         auto col = tile.col;
@@ -273,6 +273,7 @@ namespace xdp {
             phyEndEvent += BASE_MEMORY_COUNTER;
           }
 
+          // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, counterNum, 
               phyStartEvent, phyEndEvent, resetEvent, clockFreqMhz, moduleName, counterName);
