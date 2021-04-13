@@ -156,5 +156,5 @@ In XRT Native APIs the ``xrt::bo`` object should be created with the flag ``XCL_
 
 Follow coding guideline as dictated below
 
-      - Do not create buffer using the user pointer (in OpenCL ``CL_MEM_USE_HOST_PTR``), rather let XRT create the buffer and map the buffer object to the user-space for read/write operation.
+      - Insted of creating buffer using the user pointer (in OpenCL ``CL_MEM_USE_HOST_PTR``) let XRT to allocate the buffer as shown in the above code examples. The host code should map the buffer object to the user-space for read/write operation.
       - Regular OpenCL data transfer APIs (OpenCL: ``clEnqueueMigramemObjects``/``clEnqueueWriteBuffer``, XRT Native API: ``xrt::bo::sync()``) should be used. Though these API will not do any DMA operation, but they are used for Cache Invalidate/Flush as the application works on the Cache memory.
