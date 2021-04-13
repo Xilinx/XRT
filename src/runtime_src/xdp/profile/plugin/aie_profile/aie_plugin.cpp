@@ -30,9 +30,6 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "core/edge/common/aie_parser.h"
-#include "core/edge/user/aie/AIEResources.h"
-
 #define NUM_CORE_COUNTERS   4
 #define NUM_MEMORY_COUNTERS 2
 #define BASE_MEMORY_COUNTER 128
