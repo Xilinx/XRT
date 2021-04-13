@@ -132,8 +132,8 @@ Assuming the platform supported maximum host memory is 16GB, the following outpu
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-OpenCL Host code Guideline
---------------------------
+Host code Guideline
+-------------------
 
 XRT OpenCL introduces a new buffer extension Flag ``XCL_MEM_EXT_HOST_ONLY`` that should be used to denote a Host-only buffer
 
@@ -147,10 +147,14 @@ XRT OpenCL introduces a new buffer extension Flag ``XCL_MEM_EXT_HOST_ONLY`` that
     cl::Buffer buffer_in (context,CL_MEM_READ_ONLY |CL_MEM_EXT_PTR_XILINX, size, &host_buffer_ext);
     cl::Buffer buffer_out(context,CL_MEM_WRITE_ONLY |CL_MEM_EXT_PTR_XILINX, size, &host_buffer_ext);
 
+In XRT Native APIs the ``xrt::bo`` object should be created with the flag ``XCL_BO_FLAGS_HOST_ONLY`` as shown in the example below
+
+.. code-block:: c++
+
+    auto buffer_in  = xrt::bo(device, size,XCL_BO_FLAGS_HOST_ONLY,kernel.group_id(0)); 
+    auto buffer_out = xrt::bo(device, size,XCL_BO_FLAGS_HOST_ONLY,kernel.group_id(1)); 
 
 Follow coding guideline as dictated below
 
-      - Use ``XCL_MEM_EXT_HOST_ONLY`` extension for Buffer declaration (as per the above example)
-      - Do not use ``CL_MEM_USE_HOST_PTR`` for creating a host-only buffer
-      - Buffer should mapped to the user-space ``clEnqueueMapBuffer`` for Read/Write
-      - Regular OpenCL data transfer APIs ``clEnqueueMigramemObjects``, ``clEnqueueWriteBuffer`` etc should be used. Though these API will not do any DMA operation, but they are used for Cache Invalidate/Flush as the application works on the Cache memory.
+      - Do not create buffer using the user pointer (in OpenCL ``CL_MEM_USE_HOST_PTR``), rather let XRT create the buffer and map the buffer object to the user-space for read/write operation.
+      - Regular OpenCL data transfer APIs (OpenCL: ``clEnqueueMigramemObjects``/``clEnqueueWriteBuffer``, XRT Native API: ``xrt::bo::sync()``) should be used. Though these API will not do any DMA operation, but they are used for Cache Invalidate/Flush as the application works on the Cache memory.
