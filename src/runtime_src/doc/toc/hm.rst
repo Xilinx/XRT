@@ -3,7 +3,7 @@
 Host Memory Access
 ==================
 
-Some of the recent Alveo cards support direct host memory access by the kernel(s) to read/write data directly from/to the host memory. Unlike the XDMA data transfer, this data transfer mechanism does not utilize global memories (DDR, HBM, PLRAM ,etc) on the card. This feature provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.
+Some of the recent Alveo cards support direct host memory access by the kernel(s) to read/write data directly from/to the host memory. Unlike the XDMA data transfer, this data transfer mechanism does not utilize global memories (DDR, HBM, PLRAM, etc) on the card. This feature provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.
 
 
 Kernel Compilation
@@ -26,7 +26,7 @@ To enable host memory access functionality the following settings are required f
 Hugepage Requirement
 ~~~~~~~~~~~~~~~~~~~~
 
-If the kernel requirement of the host memory is more than 1GB, XRT allocates multiple Hugepages from the host memory. These hugepages are internally remapped (inside the FPGA shell) so that kernel can see a large contiguous bank like memory.
+If the kernel requirement of the host memory is more than 1GB, XRT allocates multiple Hugepages from the host memory. These hugepages are internally remapped (inside the FPGA shell) so that kernel can see a large contiguous bank-like memory.
 
 
 **Steps required to enable Hugepages (Linux)**
@@ -81,7 +81,7 @@ Irrespective of the Hugepages settings, ``xbutil host_mem`` command must be used
 Maximum Host memory supported by the platform
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the platform supporting the host memory access feature we can observe the following two data from a ``xbutil query`` output
+For the platform supporting the host memory access feature, we can observe the following two data from the ``xbutil query`` output
 
      - **Max HOST_MEM**: The maximum host memory supported by the platform.
      - **HOST_MEM size**: The host memory specified for this card (by ``xbutil host_mem``)
@@ -156,5 +156,5 @@ In XRT Native APIs the ``xrt::bo`` object should be created with the flag ``XCL_
 
 Also ensure to follow coding guideline as stated below
 
-      - Let XRT to allocate the buffer as shown in the above code examples. Do not create buffer from a already created user-space memory. The host code should map the buffer object to the user-space for read/write operation.
-      - Regular data transfer APIs (OpenCL: ``clEnqueueMigramemObjects``/``clEnqueueWriteBuffer``, XRT Native API: ``xrt::bo::sync()``) should be used. Though these API will not do any DMA operation, but they are used for Cache Invalidate/Flush as the application works on the Cache memory.
+      - Let XRT allocate the buffer as shown in the above code examples. Do not create a buffer from an already created user-space memory. The host code should map the buffer object to the user-space for read/write operation.
+      - Regular data transfer APIs (OpenCL: ``clEnqueueMigramemObjects``/``clEnqueueWriteBuffer``, XRT Native API: ``xrt::bo::sync()``) should be used. Though these API will not do any DMA operation, they are used for Cache Invalidate/Flush as the application works on the Cache memory.
