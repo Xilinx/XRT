@@ -81,7 +81,7 @@ Irrespective of the Hugepages settings, ``xbutil host_mem`` command must be used
 Maximum Host memory supported by the platform
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the platform supporting Slave-Bridge we can observe the following two data from a ``xbutil query`` output
+For the platform supporting the host memory access feature we can observe the following two data from a ``xbutil query`` output
 
      - **Max HOST_MEM**: The maximum host memory supported by the platform.
      - **HOST_MEM size**: The host memory specified for this card (by ``xbutil host_mem``)
