@@ -16,6 +16,7 @@
 
 #include <vector>
 #include <thread>
+#include <iostream>
 
 #define XDP_SOURCE
 
@@ -47,14 +48,14 @@ namespace xdp {
     // Standard case: Insert in sorted order
     bool inserted = false ;
     for (std::list<BufferTransferStats>::iterator iter = topHostReads.begin() ;
-	 iter != topHostReads.end() ;
-	 ++iter)
+         iter != topHostReads.end() ;
+         ++iter)
     {
       if (transfer.getDuration() > (*iter).getDuration())
       {
-	topHostReads.insert(iter, transfer) ;
-	inserted = true ;
-	break ;
+        topHostReads.insert(iter, transfer) ;
+        inserted = true ;
+        break ;
       }
     }
 
@@ -83,14 +84,14 @@ namespace xdp {
     // Standard case: Insert in sorted order
     bool inserted = false ;
     for (std::list<BufferTransferStats>::iterator iter = topHostWrites.begin() ;
-	 iter != topHostWrites.end() ;
-	 ++iter)
+         iter != topHostWrites.end() ;
+         ++iter)
     {
       if (transfer.getDuration() > (*iter).getDuration())
       {
-	topHostWrites.insert(iter, transfer) ;
-	inserted = true ;
-	break ;
+        topHostWrites.insert(iter, transfer) ;
+        inserted = true ;
+        break ;
       }
     }
 
@@ -119,14 +120,14 @@ namespace xdp {
     // Standard case: Insert in sorted order
     bool inserted = false ;
     for (std::list<KernelExecutionStats>::iterator iter = topKernelExecutions.begin() ;
-	 iter != topKernelExecutions.end() ;
-	 ++iter)
+         iter != topKernelExecutions.end() ;
+         ++iter)
     {
       if (exec.duration > (*iter).duration)
       {
-	topKernelExecutions.insert(iter, exec) ;
-	inserted = true ;
-	break ;
+        topKernelExecutions.insert(iter, exec) ;
+        inserted = true ;
+        break ;
       }
     }
 
@@ -197,15 +198,15 @@ namespace xdp {
     }
     else {
       if (duration < minRangeDurations[desc])
-	minRangeDurations[desc] = duration ;
+        minRangeDurations[desc] = duration ;
       if (duration > maxRangeDurations[desc])
-	maxRangeDurations[desc] = duration ;
+        maxRangeDurations[desc] = duration ;
       totalRangeDurations[desc] += duration ;
     }
   }
 
   void VPStatisticsDatabase::logFunctionCallStart(const std::string& name,
-						  double timestamp)
+                                                  double timestamp)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
@@ -229,7 +230,7 @@ namespace xdp {
   }
 
   void VPStatisticsDatabase::logFunctionCallEnd(const std::string& name,
-						 double timestamp)
+                                                 double timestamp)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
@@ -240,8 +241,8 @@ namespace xdp {
   }
 
   void VPStatisticsDatabase::logMemoryTransfer(uint64_t deviceId,
-						DeviceMemoryStatistics::ChannelType channelNum,
-						size_t count)
+                                                DeviceMemoryStatistics::ChannelType channelNum,
+                                                size_t count)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
     
@@ -256,13 +257,13 @@ namespace xdp {
   }
 
   void VPStatisticsDatabase::logDeviceActiveTime(const std::string& deviceName,
-						 uint64_t startTime,
-						 uint64_t endTime)
+                                                 uint64_t startTime,
+                                                 uint64_t endTime)
   {
     if (deviceActiveTimes.find(deviceName) == deviceActiveTimes.end())
     {
       std::pair<uint64_t, uint64_t> execution =
-	std::make_pair(startTime, endTime) ;
+        std::make_pair(startTime, endTime) ;
       deviceActiveTimes[deviceName] = execution ;
     }
     else
@@ -273,16 +274,16 @@ namespace xdp {
   }
 
   void VPStatisticsDatabase::logKernelExecution(const std::string& kernelName,
-						uint64_t executionTime,
-						uint64_t kernelInstanceAddress,
-						uint64_t contextId,
-						uint64_t commandQueueId,
-						const std::string& deviceName,
-						uint64_t startTime,
-						const std::string& globalWorkSize,
-						const std::string& localWorkSize,
-						const char** buffers,
-						uint64_t numBuffers)
+                                                uint64_t executionTime,
+                                                uint64_t kernelInstanceAddress,
+                                                uint64_t contextId,
+                                                uint64_t commandQueueId,
+                                                const std::string& deviceName,
+                                                uint64_t startTime,
+                                                const std::string& globalWorkSize,
+                                                const std::string& localWorkSize,
+                                                const char** buffers,
+                                                uint64_t numBuffers)
   {
     if (kernelExecutionStats.find(kernelName) == kernelExecutionStats.end())
     {
@@ -290,6 +291,7 @@ namespace xdp {
       kernelExecutionStats[kernelName] = blank ;
     }
     (kernelExecutionStats[kernelName]).update(executionTime) ;
+    kernelGlobalWorkGroups[kernelName] = globalWorkSize ;
 
     // Also keep track of top kernel executions
     KernelExecutionStats exec ;
@@ -309,19 +311,28 @@ namespace xdp {
       std::vector<std::string> blank ;
       bufferInfo[kernelName] = blank ;
       for (uint64_t i = 0 ; i < numBuffers ; ++i) {
-	std::string convert = buffers[i] ;
-	bufferInfo[kernelName].push_back(convert) ;
+        std::string convert = buffers[i] ;
+        bufferInfo[kernelName].push_back(convert) ;
       }
     }
   }
 
   void VPStatisticsDatabase::logComputeUnitExecution(const std::string& computeUnitName,
-						     const std::string& localWorkGroup,
-						     const std::string& globalWorkGroup,
-						     uint64_t executionTime)
+                                                     const std::string& kernelName,
+                                                     const std::string& localWorkGroup,
+                                                     const std::string& globalWorkGroup,
+                                                     uint64_t executionTime)
   {
+    // If global work size is not known, then we need to get it from the latest enqueue 
+    // of the associated kernel.
+    std::string globalWork = globalWorkGroup;
+    if (globalWorkGroup.empty()) {
+      auto globalIter = kernelGlobalWorkGroups.find(kernelName);
+      globalWork = (globalIter != kernelGlobalWorkGroups.end()) ? globalIter->second : localWorkGroup;
+    }
+
     std::tuple<std::string, std::string, std::string> combinedName =
-      std::make_tuple(computeUnitName, localWorkGroup, globalWorkGroup) ;
+      std::make_tuple(computeUnitName, localWorkGroup, globalWork) ;
 
     if (computeUnitExecutionStats.find(combinedName) == computeUnitExecutionStats.end())
     {
@@ -332,10 +343,10 @@ namespace xdp {
   }
 
   void VPStatisticsDatabase::logHostRead(uint64_t contextId, uint64_t deviceId,
-					 uint64_t size, uint64_t startTime,
-					 uint64_t transferTime,
-					 uint64_t address,
-					 uint64_t commandQueueId)
+                                         uint64_t size, uint64_t startTime,
+                                         uint64_t transferTime,
+                                         uint64_t address,
+                                         uint64_t commandQueueId)
   {
     std::lock_guard<std::mutex> lock(readsLock) ;
 
@@ -364,10 +375,10 @@ namespace xdp {
   }
 
   void VPStatisticsDatabase::logHostWrite(uint64_t contextId, uint64_t deviceId,
-					  uint64_t size, uint64_t startTime,
-					  uint64_t transferTime,
-					  uint64_t address,
-					  uint64_t commandQueueId)
+                                          uint64_t size, uint64_t startTime,
+                                          uint64_t transferTime,
+                                          uint64_t address,
+                                          uint64_t commandQueueId)
   {
     std::lock_guard<std::mutex> lock(writesLock) ;
 
@@ -396,7 +407,7 @@ namespace xdp {
   }
 
   void VPStatisticsDatabase::updateCounters(uint64_t /*deviceId*/,
-					     xclCounterResults& /*counters*/)
+                                             xclCounterResults& /*counters*/)
   {
   }
 
@@ -420,11 +431,11 @@ namespace xdp {
     {
       if (counts.find(c.first.first) == counts.end())
       {
-	counts[c.first.first] = c.second.size() ;
+        counts[c.first.first] = c.second.size() ;
       }
       else
       {
-	counts[c.first.first] += c.second.size() ;
+        counts[c.first.first] += c.second.size() ;
       }
     }
 
@@ -442,37 +453,37 @@ namespace xdp {
       fout << "Device " << i << std::endl ;
 
       fout << "\tUnmanaged Reads: " 
-	   << m.second.channels[0].transactionCount
-	   << " transactions, "
-	   << m.second.channels[0].totalByteCount
-	   << " bytes transferred" << std::endl ;
+           << m.second.channels[0].transactionCount
+           << " transactions, "
+           << m.second.channels[0].totalByteCount
+           << " bytes transferred" << std::endl ;
       fout << "\tUnmanaged Writes: " 
-	   << m.second.channels[1].transactionCount
-	   << " transactions, "
-	   << m.second.channels[1].totalByteCount
-	   << " bytes transferred" << std::endl ;
+           << m.second.channels[1].transactionCount
+           << " transactions, "
+           << m.second.channels[1].totalByteCount
+           << " bytes transferred" << std::endl ;
 
       fout << "\txclRead: " 
-	   << m.second.channels[2].transactionCount
-	   << " transactions, "
-	   << m.second.channels[2].totalByteCount
-	   << " bytes transferred" << std::endl ;
+           << m.second.channels[2].transactionCount
+           << " transactions, "
+           << m.second.channels[2].totalByteCount
+           << " bytes transferred" << std::endl ;
       fout << "\txclWrite: " 
-	   << m.second.channels[3].transactionCount
-	   << " transactions, "
-	   << m.second.channels[3].totalByteCount
-	   << " bytes transferred" << std::endl ;
+           << m.second.channels[3].transactionCount
+           << " transactions, "
+           << m.second.channels[3].totalByteCount
+           << " bytes transferred" << std::endl ;
      
       fout << "\treadBuffer: " 
-	   << m.second.channels[4].transactionCount
-	   << " transactions, "
-	   << m.second.channels[4].totalByteCount
-	   << " bytes transferred" << std::endl ;
+           << m.second.channels[4].transactionCount
+           << " transactions, "
+           << m.second.channels[4].totalByteCount
+           << " bytes transferred" << std::endl ;
       fout << "\twriteBuffer: " 
-	   << m.second.channels[5].transactionCount
-	   << " transactions, "
-	   << m.second.channels[5].totalByteCount
-	   << " bytes transferred" << std::endl ;
+           << m.second.channels[5].transactionCount
+           << " transactions, "
+           << m.second.channels[5].totalByteCount
+           << " bytes transferred" << std::endl ;
     }
   }
 

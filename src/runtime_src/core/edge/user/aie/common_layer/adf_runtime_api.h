@@ -16,27 +16,19 @@
 
 #pragma once
 
-#include "errno.h"
 #include "adf_api_config.h"
+#include "adf_api_message.h"
 
-#include <string>
 #include <queue>
+#include <vector>
 
 extern "C"
 {
-    #include "xaiengine/xaiegbl.h"
+#include "xaiengine/xaiegbl.h"
 }
 
 namespace adf
 {
-
-enum class err_code : int
-{
-    ok = 0,
-    user_error = EINVAL,
-    internal_error = ENOTSUP,
-    aie_driver_error = EIO
-};
 
 class config_manager
 {
@@ -49,7 +41,6 @@ public:
     static size_t s_num_reserved_rows;
     static bool s_broadcast_enable_core;
 };
-
 
 class graph_api
 {

@@ -27,6 +27,11 @@
 #include "xdp/config.h"
 
 #include "core/common/device.h"
+#include "xaiefal/xaiefal.hpp"
+
+extern "C" {
+#include <xaiengine.h>
+}
 
 namespace xdp {
 
@@ -42,17 +47,30 @@ namespace xdp {
     void endPollforDevice(void* handle);
 
   private:
+    void getPollingInterval();
+    bool setMetrics(uint64_t deviceId, void* handle);
+
     void pollAIECounters(uint32_t index, void* handle);
     void endPoll();
 
   private:
-    // AIE profiling uses its own thread
-    unsigned int mPollingInterval;
-
-    std::map<void*,std::atomic<bool>> thread_ctrl_map;
-    std::map<void*,std::thread> thread_map;
-
     uint32_t mIndex = 0;
+    uint32_t mPollingInterval;
+
+    std::map<void*,std::atomic<bool>> mThreadCtrlMap;
+    std::map<void*,std::thread> mThreadMap;
+
+    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
+
+    std::set<std::string> mCoreMetricSets;
+    std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
+    std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
+    std::map<std::string, std::vector<int>> broadcastCoreConfig;
+
+    std::set<std::string> mMemoryMetricSets;
+    std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
+    std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
+    std::shared_ptr<xaiefal::XAieDev> AieRscDevice;
   };
 
 } // end namespace xdp

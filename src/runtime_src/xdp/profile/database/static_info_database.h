@@ -23,6 +23,7 @@
 #include <vector>
 #include <string>
 #include <list>
+#include <memory> // for unique_ptr
 
 #include "xdp/config.h"
 #include "xdp/profile/device/device_intf.h"
@@ -105,6 +106,77 @@ namespace xdp {
         burstLength(len)
     {}
   };
+
+  /*
+   * AIE Config Writer Classes
+   */
+  class aie_cfg_counter
+  {
+    public:
+      uint32_t start_event = 0;
+      uint32_t stop_event = 0;
+      uint32_t reset_event = 0;
+      uint32_t event_value = 0;
+      uint32_t counter_value = 0;
+  };
+
+  class aie_cfg_base
+  {
+    public:
+      uint32_t packet_type = 0;
+      uint32_t packet_id = 0;
+      uint32_t start_event = 28;
+      uint32_t stop_event = 29;
+      uint32_t traced_events[8] = {0};
+      std::map<uint32_t, uint32_t> group_event_config = {};
+      uint32_t combo_event_input[4] = {0};
+      uint32_t combo_event_control[3] = {0};
+      uint32_t broadcast_mask_south = 65535;
+      uint32_t broadcast_mask_north = 65535;
+      uint32_t broadcast_mask_west = 65535;
+      uint32_t broadcast_mask_east = 65535;
+      uint32_t internal_events_broadcast[16] = {0};
+      std::vector<aie_cfg_counter> pc;
+
+      aie_cfg_base(uint32_t count) : pc(count) {};
+  };
+
+class aie_cfg_core : public aie_cfg_base
+{
+  public:
+    uint32_t trace_mode = 1;
+    std::string port_trace = "null";
+    aie_cfg_core() : aie_cfg_base(4)
+    {
+      group_event_config = {
+        {2 ,  0},
+        {15,  0},
+        {22,  0},
+        {32,  0},
+        {46,  0},
+        {47,  0},
+        {73,  0},
+        {106, 0},
+        {123, 0}
+      };
+    };
+};
+
+class aie_cfg_memory : public aie_cfg_base
+{
+  public:
+    aie_cfg_memory() : aie_cfg_base(2) {};
+};
+
+class aie_cfg_tile
+{
+  public:
+    uint32_t column;
+    uint32_t row;
+    aie_cfg_core core_trace_config;
+    aie_cfg_memory memory_trace_config;
+    aie_cfg_tile(uint32_t c, uint32_t r) : column(c), row(r) {}
+};
 
   class ComputeUnitInstance
   {
@@ -218,22 +290,21 @@ namespace xdp {
     std::vector<Monitor*>  noTraceAIMs;
     std::vector<Monitor*>  noTraceASMs;
 
-    // These contain all of the instances.  This is necessary for counters.
+    // These contain all of the instances. This is necessary for counters.
     std::vector<Monitor*> aimList;
     std::vector<Monitor*> amList;
     std::vector<Monitor*> asmList;
+    std::vector<Monitor*> nocList;
 
     uint32_t numTracePLIO = 0;
 
-    std::vector<Monitor*>      nocList;
-
     ~XclbinInfo() {
       for (auto& i : cus) {
-	delete i.second ;
+        delete i.second ;
       }
       cus.clear() ;
       for (auto& i : memoryInfo) {
-	delete i.second ;
+        delete i.second ;
       }
       memoryInfo.clear() ;
 
@@ -249,15 +320,15 @@ namespace xdp {
 
       // Delete the monitors using the all inclusive monitor list
       for(auto& i : amList) {
-	delete i;
+        delete i;
       }
       amList.clear();
       for(auto& i : aimList) {
-	delete i;
+        delete i;
       }
       aimList.clear();
       for(auto& i : asmList) {
-	delete i;
+        delete i;
       }
       asmList.clear();
 
@@ -286,91 +357,95 @@ namespace xdp {
 
     // ****** Information specific to the currently loaded XCLBIN ******
 
-    std::vector<AIECounter*>   aieList;
-    std::vector<TraceGMIO*>    gmioList;
+    std::vector<AIECounter*>     aieList;
+    std::vector<TraceGMIO*>      gmioList;
+    std::map<uint32_t, uint32_t> aieCountersMap;
+    std::map<uint32_t, uint32_t> aieCoreEventsMap;
+    std::map<uint32_t, uint32_t> aieMemoryEventsMap;
+    std::vector<std::unique_ptr<aie_cfg_tile>> aieCfgList;
 
     XclbinInfo* currentXclbin() {
       if (loadedXclbins.size() <= 0)
-	return nullptr ;
+        return nullptr ;
       return loadedXclbins.back() ;
     }
 
     void addXclbin(XclbinInfo* xclbin) {
       if (loadedXclbins.size() > 0) {
-	if (loadedXclbins.back()->deviceIntf != nullptr) {
-	  delete loadedXclbins.back()->deviceIntf ;
-	  loadedXclbins.back()->deviceIntf = nullptr ;
-	}
+        if (loadedXclbins.back()->deviceIntf != nullptr) {
+          delete loadedXclbins.back()->deviceIntf ;
+          loadedXclbins.back()->deviceIntf = nullptr ;
+        }
       }
       loadedXclbins.push_back(xclbin) ;
     }
 
     bool hasFloatingAIM(XclbinInfo* xclbin) {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return bin->hasFloatingAIM ;
+        if (bin == xclbin) return bin->hasFloatingAIM ;
       }
       return false ;
     }
 
     bool hasFloatingASM(XclbinInfo* xclbin) {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return bin->hasFloatingASM ;
+        if (bin == xclbin) return bin->hasFloatingASM ;
       }
       return false ;
     }
 
     inline uint64_t getNumAM(XclbinInfo* xclbin) {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return bin->amMap.size() ;
+        if (bin == xclbin) return bin->amMap.size() ;
       }
       return 0 ;
     }
 
     inline uint64_t getNumAIM(XclbinInfo* xclbin) {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return bin->aimMap.size() ;
+        if (bin == xclbin) return bin->aimMap.size() ;
       }
       return 0 ;
     }
 
     inline uint64_t getNumASM(XclbinInfo* xclbin) {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return bin->asmMap.size() ;
+        if (bin == xclbin) return bin->asmMap.size() ;
       }
       return 0 ;
     }
 
     inline uint64_t getNumNOC(XclbinInfo* xclbin) {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return bin->nocList.size() ;
+        if (bin == xclbin) return bin->nocList.size() ;
       }
       return 0 ;
     }
 
     inline Monitor* getAMonitor(XclbinInfo* xclbin, uint64_t slotID) {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return bin->amMap[slotID] ;
+        if (bin == xclbin) return bin->amMap[slotID] ;
       }
       return nullptr ;
     }
 
     inline Monitor* getAIMonitor(XclbinInfo* xclbin, uint64_t slotID) {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return bin->aimMap[slotID] ;
+        if (bin == xclbin) return bin->aimMap[slotID] ;
       }
       return nullptr ;
     }
 
     inline Monitor* getASMonitor(XclbinInfo* xclbin, uint64_t slotID) {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return bin->asmMap[slotID] ;
+        if (bin == xclbin) return bin->asmMap[slotID] ;
       }
       return nullptr ;
     }
 
     inline Monitor* getNOC(XclbinInfo* xclbin, uint64_t idx) {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return bin->nocList[idx] ;
+        if (bin == xclbin) return bin->nocList[idx] ;
       }
       return nullptr ;
     }
@@ -379,7 +454,7 @@ namespace xdp {
     inline std::map<uint64_t, Monitor*>* getAIMonitors(XclbinInfo* xclbin)
     {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return &(bin->aimMap) ;
+        if (bin == xclbin) return &(bin->aimMap) ;
       }
       return nullptr ;
     }
@@ -388,14 +463,14 @@ namespace xdp {
     inline std::map<uint64_t, Monitor*>* getASMonitors(XclbinInfo* xclbin)
     {
       for (auto bin : loadedXclbins) {
-	if (bin == xclbin) return &(bin->asmMap) ;
+        if (bin == xclbin) return &(bin->asmMap) ;
       }
       return nullptr ;
     }
 
     inline xrt_core::uuid currentXclbinUUID() {
       if (loadedXclbins.size() <= 0)
-	return xrt_core::uuid() ;
+        return xrt_core::uuid() ;
       return loadedXclbins.back()->uuid ; 
     }
 
@@ -404,13 +479,12 @@ namespace xdp {
     }
 
     void cleanCurrentXclbinInfo() {
-
       for(auto i : aieList) {
-	delete i;
+        delete i;
       }
       aieList.clear();
       for(auto i : gmioList) {
-	delete i;
+        delete i;
       }
       gmioList.clear();
     }
@@ -420,8 +494,8 @@ namespace xdp {
         return false;
       }
       for (auto aim : currentXclbin()->aimList) {
-	if (aim->name.find("Host to Device") != std::string::npos)
-	  return true ;
+        if (aim->name.find("Host to Device") != std::string::npos)
+          return true ;
       }
       return false ;
     }
@@ -431,8 +505,8 @@ namespace xdp {
         return false;
       }
       for (auto aim : currentXclbin()->aimList) {
-	if (aim->name.find("Peer to Peer") != std::string::npos)
-	  return true ;
+        if (aim->name.find("Peer to Peer") != std::string::npos)
+          return true ;
       }
       return false ;
     }
@@ -442,19 +516,32 @@ namespace xdp {
         return false;
       }
       for (auto aim : currentXclbin()->aimList) {
-	if (aim->name.find("Memory to Memory") != std::string::npos)
-	  return true ;
+        if (aim->name.find("Memory to Memory") != std::string::npos)
+          return true ;
       }
       return false ;
     }
 
     ~DeviceInfo();
+
     void addTraceGMIO(uint32_t i, uint16_t col, uint16_t num, uint16_t stream,
-		      uint16_t len) ;
+          uint16_t len) ;
     void addAIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num,
-		       uint8_t start, uint8_t end, uint8_t reset,
-		       double freq, const std::string& mod,
-		       const std::string& aieName) ;
+           uint8_t start, uint8_t end, uint8_t reset,
+           double freq, const std::string& mod,
+           const std::string& aieName) ;
+    void addAIECounterResources(uint32_t numCounters, uint32_t numTiles) {
+      aieCountersMap[numCounters] = numTiles;
+    }
+    void addAIECoreEventResources(uint32_t numEvents, uint32_t numTiles) {
+      aieCoreEventsMap[numEvents] = numTiles;
+    }
+    void addAIEMemoryEventResources(uint32_t numEvents, uint32_t numTiles) {
+      aieMemoryEventsMap[numEvents] = numTiles;
+    }
+    void addAIECfgTile(std::unique_ptr<aie_cfg_tile>& tile) {
+      aieCfgList.push_back(std::move(tile));
+    }
   };
 
   class VPStaticDatabase
@@ -534,11 +621,10 @@ namespace xdp {
     inline std::map<std::string, uint64_t> getSoftwareEmulationCUCounts()
       { return softwareEmulationCUCounts ; }
     inline void addSoftwareEmulationCUInstance(const std::string& kernelName) {
-      if (softwareEmulationCUCounts.find(kernelName) ==
-	  softwareEmulationCUCounts.end())
-	softwareEmulationCUCounts[kernelName] = 1 ;
+      if (softwareEmulationCUCounts.find(kernelName) == softwareEmulationCUCounts.end())
+        softwareEmulationCUCounts[kernelName] = 1 ;
       else
-	softwareEmulationCUCounts[kernelName] += 1 ;
+        softwareEmulationCUCounts[kernelName] += 1 ;
     }
     inline std::map<std::string, bool>& getSoftwareEmulationMemUsage()
       { return softwareEmulationMemUsage ;}
@@ -555,7 +641,7 @@ namespace xdp {
     inline uint64_t getNumDevices(uint64_t contextId)
     {
       if (contextIdToNumDevices.find(contextId) == contextIdToNumDevices.end())
-	return 0 ;
+        return 0 ;
       return contextIdToNumDevices[contextId] ;
     }
 
@@ -569,19 +655,19 @@ namespace xdp {
     inline XclbinInfo* getCurrentlyLoadedXclbin(uint64_t deviceId)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end())
-	return nullptr ;
+        return nullptr ;
       return deviceInfo[deviceId]->currentXclbin() ;
     }
 
     inline void deleteCurrentlyUsedDeviceInterface(uint64_t deviceId)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end())
-	return ;
+        return ;
       XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
       if (!xclbin) return ;
       if (xclbin->deviceIntf) {
-	delete xclbin->deviceIntf ;
-	xclbin->deviceIntf = nullptr ;
+        delete xclbin->deviceIntf ;
+        xclbin->deviceIntf = nullptr ;
       }
     }
 
@@ -625,7 +711,7 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 300; 
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
-	return 300 ;
+        return 300 ;
       return deviceInfo[deviceId]->loadedXclbins.back()->clockRateMHz;
       //return deviceInfo[deviceId]->clockRateMHz;
     }
@@ -648,7 +734,7 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return; 
       if (deviceInfo[deviceId]->currentXclbin() == nullptr)
-	return ;
+        return ;
       deviceInfo[deviceId]->currentXclbin()->deviceIntf = devIntf ;
     }
 
@@ -657,7 +743,7 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       if (deviceInfo[deviceId]->currentXclbin() == nullptr)
-	return nullptr;
+        return nullptr;
       return deviceInfo[deviceId]->currentXclbin()->deviceIntf; 
     }
 
@@ -710,15 +796,15 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return std::string(""); 
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
-	return std::string("") ;
+        return std::string("") ;
       return deviceInfo[deviceId]->loadedXclbins.back()->name; 
       //return deviceInfo[deviceId]->loadedXclbin; 
     }
 
     std::vector<XclbinInfo*> getLoadedXclbins(uint64_t deviceId) {
       if (deviceInfo.find(deviceId) == deviceInfo.end()) {
-	std::vector<XclbinInfo*> blank ;
-	return blank ;
+        std::vector<XclbinInfo*> blank ;
+        return blank ;
       }
       return deviceInfo[deviceId]->getLoadedXclbins() ;
     }
@@ -728,7 +814,7 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
-	return nullptr ;
+        return nullptr ;
       return deviceInfo[deviceId]->loadedXclbins.back()->cus[cuId] ;
       //return deviceInfo[deviceId]->cus[cuId];
     }
@@ -738,7 +824,7 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
-	return nullptr ;
+        return nullptr ;
       return &(deviceInfo[deviceId]->loadedXclbins.back()->cus) ;
       //return &(deviceInfo[deviceId]->cus);
     }
@@ -748,7 +834,7 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
-	return nullptr ;
+        return nullptr ;
       return &(deviceInfo[deviceId]->loadedXclbins.back()->memoryInfo) ;
       //return &(deviceInfo[deviceId]->memoryInfo);
     }
@@ -758,7 +844,7 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
-	return nullptr ;
+        return nullptr ;
       return deviceInfo[deviceId]->loadedXclbins.back()->memoryInfo[memId] ;
       //return deviceInfo[deviceId]->memoryInfo[memId];
     }
@@ -853,6 +939,30 @@ namespace xdp {
       return deviceInfo[deviceId]->aieList[idx];
     }
 
+    inline std::map<uint32_t, uint32_t>&
+    getAIECounterResources(uint64_t deviceId)
+    {
+      return deviceInfo[deviceId]->aieCountersMap;
+    }
+
+    inline std::map<uint32_t, uint32_t>&
+    getAIECoreEventResources(uint64_t deviceId)
+    {
+      return deviceInfo[deviceId]->aieCoreEventsMap;
+    }
+
+    inline std::map<uint32_t, uint32_t>&
+    getAIEMemoryEventResources(uint64_t deviceId)
+    {
+      return deviceInfo[deviceId]->aieMemoryEventsMap;
+    }
+
+    inline std::vector<std::unique_ptr<aie_cfg_tile>>&
+      getAIECfgTiles(uint64_t deviceId)
+    {
+      return deviceInfo[deviceId]->aieCfgList;
+    }
+
     inline TraceGMIO* getTraceGMIO(uint64_t deviceId, uint64_t idx)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -861,23 +971,48 @@ namespace xdp {
     }
 
     inline void addTraceGMIO(uint64_t deviceId, uint32_t i, uint16_t col,
-			     uint16_t num, uint16_t stream, uint16_t len)
+           uint16_t num, uint16_t stream, uint16_t len)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end())
-	return ;
+  return ;
       deviceInfo[deviceId]->addTraceGMIO(i, col, num, stream, len);
     }
 
     inline void addAIECounter(uint64_t deviceId, uint32_t i, uint16_t col,
-			      uint16_t r, uint8_t num, uint8_t start,
-			      uint8_t end, uint8_t reset, double freq,
-			      const std::string& mod,
-			      const std::string& aieName)
+            uint16_t r, uint8_t num, uint8_t start,
+            uint8_t end, uint8_t reset, double freq,
+            const std::string& mod,
+            const std::string& aieName)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end())
-	return ;
+        return ;
       deviceInfo[deviceId]->addAIECounter(i, col, r, num, start, end, reset,
-					  freq, mod, aieName) ;
+                freq, mod, aieName) ;
+    }
+
+    inline void addAIECounterResources(uint64_t deviceId, uint32_t numCounters, uint32_t numTiles) {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+        return ;
+      deviceInfo[deviceId]->addAIECounterResources(numCounters, numTiles) ;
+    }
+    
+    inline void addAIECoreEventResources(uint64_t deviceId, uint32_t numEvents, uint32_t numTiles) {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+        return ;
+      deviceInfo[deviceId]->addAIECoreEventResources(numEvents, numTiles) ;
+    }
+    
+    inline void addAIEMemoryEventResources(uint64_t deviceId, uint32_t numEvents, uint32_t numTiles) {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+        return ;
+      deviceInfo[deviceId]->addAIEMemoryEventResources(numEvents, numTiles) ;
+    }
+
+    inline void addAIECfgTile(uint64_t deviceId, std::unique_ptr<aie_cfg_tile>& tile)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+        return ;
+      deviceInfo[deviceId]->addAIECfgTile(tile) ;
     }
 
     // Includes only User Space AIM enabled for trace, but no shell AIM
@@ -901,7 +1036,7 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
-	return ;
+        return ;
 
       size_t count = 0;
       /* User space AM in sorted order of their slotIds.
@@ -928,7 +1063,7 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
-	return ;
+        return ;
 
       size_t count = 0;
       /* User space AM in sorted order of their slotIds.
@@ -993,7 +1128,7 @@ namespace xdp {
     XDP_EXPORT void addKDMACount(void* dev, uint16_t numKDMAs) ;
 
     XDP_EXPORT void addOpenedFile(const std::string& name, 
-				  const std::string& type) ;
+          const std::string& type) ;
     XDP_EXPORT void addEnqueuedKernel(const std::string& identifier) ;
   } ;
 

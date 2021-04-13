@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2020 Xilinx, Inc
+ * Copyright (C) 2018-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -214,7 +214,7 @@ XclBin::addHeaderMirrorData(boost::property_tree::ptree& _pt_header) {
 
 
 void
-XclBin::writeXclBinBinaryHeader(std::fstream& _ostream, boost::property_tree::ptree& _mirroredData) {
+XclBin::writeXclBinBinaryHeader(std::ostream& _ostream, boost::property_tree::ptree& _mirroredData) {
   // Write the header (minus the section header array)
   XUtil::TRACE("Writing xclbin binary header");
   _ostream.write((char*)&m_xclBinHeader, sizeof(axlf) - sizeof(axlf_section_header));
@@ -229,7 +229,7 @@ XclBin::writeXclBinBinaryHeader(std::fstream& _ostream, boost::property_tree::pt
 
 
 void
-XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::ptree& _mirroredData) {
+XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::ptree& _mirroredData) {
   // Nothing to write
   if (m_sections.empty()) {
     return;
@@ -316,7 +316,7 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
 
 
 void
-XclBin::writeXclBinBinaryMirrorData(std::fstream& _ostream,
+XclBin::writeXclBinBinaryMirrorData(std::ostream& _ostream,
                                     const boost::property_tree::ptree& _mirroredData) const {
   _ostream << MIRROR_DATA_START;
   boost::property_tree::write_json(_ostream, _mirroredData, false /*Pretty print*/);
@@ -588,6 +588,98 @@ XclBin::addSection(Section* _pSection) {
 }
 
 void 
+XclBin::addReplaceSection(ParameterSectionData &_PSD)
+{
+  enum axlf_section_kind eKind;
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind); 
+
+  // Determine if the section exists, if so remove it
+  const Section *pSection = findSection(eKind);
+  if (pSection != nullptr) 
+    removeSection(_PSD.getSectionName());
+
+  addSection(_PSD);
+}
+
+static void
+readJSONFile(const std::string & filename, boost::property_tree::ptree &pt)
+{
+  // Initilize return variables
+  pt.clear();
+
+  // Open the file
+  std::fstream fs;
+  fs.open(filename, std::ifstream::in | std::ifstream::binary);
+  if (!fs.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for reading: " + filename;
+    throw std::runtime_error(errMsg);
+  }
+
+  // Read in the JSON file
+  try {
+    boost::property_tree::read_json(fs, pt);
+  } catch (boost::property_tree::json_parser_error &e) {
+    std::string errMsg = XUtil::format("ERROR: Parsing the file '%s' on line %d: %s", filename.c_str(), e.line(), e.message().c_str());
+    throw std::runtime_error(errMsg);
+  }
+}
+
+
+void 
+XclBin::addMergeSection(ParameterSectionData & _PSD)
+{
+  enum axlf_section_kind eKind;
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
+
+  if (_PSD.getFormatType() != Section::FT_JSON) {
+    std::string errMsg = "ERROR: Adding or merging of sections are only supported with the JSON format.";
+    throw std::runtime_error(errMsg);
+  }
+
+  // Determine if the section exists, in not, then add it.
+  Section *pSection = findSection(eKind);
+  if (pSection == nullptr) {
+    addSection(_PSD);
+    return;
+  }
+
+  // Section exists, then merge with it
+ 
+  // Read in the JSON to merge
+  boost::property_tree::ptree ptAll;
+  readJSONFile(_PSD.getFile(), ptAll);
+
+  // Find the section of interest
+  const std::string jsonNodeName = Section::getJSONOfKind(eKind);
+  const boost::property_tree::ptree ptEmpty;
+  const boost::property_tree::ptree & ptMerge = ptAll.get_child(jsonNodeName, ptEmpty);
+
+  if (ptMerge.empty()) {
+    std::string errMsg = XUtil::format("ERROR: Nothing to add for the section '%s'\n.Either the JSON node name '%s' is missing or the contents of this node is empty.", 
+                                       _PSD.getSectionName().c_str(), jsonNodeName.c_str()).c_str();
+    throw std::runtime_error(errMsg);
+  }
+
+  // Get the current section data
+  boost::property_tree::ptree ptPayload;
+  pSection->getPayload(ptPayload);
+
+  // Merge the sections 
+  pSection->appendToSectionMetadata(ptMerge, ptPayload);
+
+  // Store the resulting merger
+  pSection->purgeBuffers();
+  pSection->readJSONSectionImage(ptPayload);
+
+  // Report our success 
+  XUtil::QUIET("");
+  XUtil::QUIET(XUtil::format("Section: '%s'(%d) merged successfully with\nFile: '%s'", 
+                             pSection->getSectionKindAsString().c_str(), 
+                             pSection->getSectionKind(),
+                             _PSD.getFile().c_str()));
+}
+
+void 
 XclBin::removeSection(const Section* _pSection)
 {
   // Error check
@@ -654,10 +746,7 @@ XclBin::removeSection(const std::string & _sSectionToRemove)
 
   enum axlf_section_kind _eKind;
   
-  if (Section::translateSectionKindStrToKind(sectionName, _eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", sectionName.c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(sectionName, _eKind);
 
   if ((Section::supportsSectionIndex(_eKind) == true) && 
       (sectionIndexName.empty())) {
@@ -696,10 +785,7 @@ void
 XclBin::replaceSection(ParameterSectionData &_PSD)
 {
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   Section *pSection = findSection(eKind);
   if (pSection == nullptr) {
@@ -800,10 +886,7 @@ XclBin::addSubSection(ParameterSectionData &_PSD)
 
   // Get the section kind
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name for the command: %s", _PSD.getSectionName().c_str(), _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   // See if the section support sub-sections
   if (Section::supportsSubSections(eKind) == false) {
@@ -892,10 +975,7 @@ XclBin::addSection(ParameterSectionData &_PSD)
 
   // Get the section kind
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   // Open the file to be read.
   std::string sSectionFileName = _PSD.getFile();
@@ -1053,25 +1133,11 @@ XclBin::appendSections(ParameterSectionData &_PSD)
     throw std::runtime_error(errMsg);
   }
 
-  std::string sJSONFileName = _PSD.getFile();
-
-  std::fstream fs;
-  fs.open(sJSONFileName, std::ifstream::in | std::ifstream::binary);
-  if (!fs.is_open()) {
-    std::string errMsg = "ERROR: Unable to open the file for reading: " + sJSONFileName;
-    throw std::runtime_error(errMsg);
-  }
-
-  //  Add a new element to the collection and parse the JSON file
-  XUtil::TRACE("Reading JSON File: '" + sJSONFileName + '"');
+  // Read in the boost property tree
   boost::property_tree::ptree pt;
-  try {
-    boost::property_tree::read_json(fs, pt);
-  } catch (boost::property_tree::json_parser_error &e) {
-    std::string errMsg = XUtil::format("ERROR: Parsing the file '%s' on line %d: %s", sJSONFileName.c_str(), e.line(), e.message().c_str());
-    throw std::runtime_error(errMsg);
-  }
-  
+  const std::string sJSONFileName = _PSD.getFile();
+  readJSONFile(sJSONFileName, pt);
+
   XUtil::TRACE("Examining the property tree from the JSON's file: '" + sJSONFileName + "'");
   XUtil::TRACE("Property Tree: Root");
   XUtil::TRACE_PrintTree("Root", pt);
@@ -1138,10 +1204,7 @@ XclBin::dumpSubSection(ParameterSectionData &_PSD)
 
   // Get the section kind
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name for the command: %s", _PSD.getSectionName().c_str(), _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   // See if the section support sub-sections
   if (Section::supportsSubSections(eKind) == false) {
@@ -1201,10 +1264,7 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
   }
 
   enum axlf_section_kind eKind;
-  if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
+  Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   const Section *pSection = findSection(eKind);
   if (pSection == nullptr) {

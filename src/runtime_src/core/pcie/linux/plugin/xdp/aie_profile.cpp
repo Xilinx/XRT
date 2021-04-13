@@ -23,7 +23,7 @@ namespace profile {
 
   void load()
   {
-    static xrt_core::module_loader xdp_aie_loader("xdp_aie_plugin",
+    static xrt_core::module_loader xdp_aie_loader("xdp_aie_profile_plugin",
 						    register_callbacks,
 						    warning_callbacks);
   }

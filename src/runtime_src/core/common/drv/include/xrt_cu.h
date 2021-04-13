@@ -418,7 +418,7 @@ typedef struct {
 #define to_cu_fa(core) ((struct xrt_cu_fa *)(core))
 struct xrt_cu_fa {
 	void __iomem		*vaddr;
-	void __iomem		*plram;
+	void __iomem		*cmdmem;
 	u64			 paddr;
 	u32			 slot_sz;
 	u32			 num_slots;

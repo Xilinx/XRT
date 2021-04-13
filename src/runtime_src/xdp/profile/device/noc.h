@@ -67,7 +67,6 @@ public:
     virtual uint64_t getReadQos()          {return mReadQos;}
     virtual uint64_t getWriteQos()         {return mWriteQos;}
     virtual double getNpiClockFreqMhz()    {return mNpiClockFreqMhz;}
-    virtual double getAieClockFreqMhz()    {return mAieClockFreqMhz;}
     virtual std::string getMasterName()    {return mMasterName;}
     virtual std::string getCellName()      {return mCellName;}
     
@@ -84,7 +83,6 @@ private:
     uint64_t mReadQos;
     uint64_t mWriteQos;
     double mNpiClockFreqMhz;
-    double mAieClockFreqMhz;
     std::string mMasterName;
     std::string mCellName;
 };
