@@ -28,6 +28,7 @@
 
 // Internal shim function forward declarations
 int xclUpdateSchedulerStat(xclDeviceHandle handle);
+int _xclResetDevice(xclDeviceHandle handle, xclResetKind kind);
 
 namespace xrt_core {
 
@@ -423,19 +424,8 @@ struct shim : public DeviceType
   virtual void
   user_reset(xclResetKind kind)
   {
-    // NOTE: xclResetDevice is a deprecated public API and has been moved to deprecated/xrt.h
-    // However, we can still use it internally
-    // Until the API and the deprecation is removed, we have to use the pragmas
-
-    #ifdef __GNUC__
-    # pragma GCC diagnostic push
-    # pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    #endif
-    if (auto ret = xclResetDevice(DeviceType::get_device_handle(), kind))
+    if (auto ret = _xclResetDevice(DeviceType::get_device_handle(), kind))
       throw error(ret, "failed to reset device");
-    #ifdef __GNUC__
-    # pragma GCC diagnostic pop
-    #endif
   }
 
 #ifdef XRT_ENABLE_AIE

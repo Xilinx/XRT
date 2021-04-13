@@ -601,7 +601,7 @@ xclUpdateSchedulerStat(xclDeviceHandle handle)
 }
 
 int 
-xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+_xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return -ENOSYS;
 }

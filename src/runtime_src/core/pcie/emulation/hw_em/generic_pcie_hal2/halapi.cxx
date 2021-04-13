@@ -548,6 +548,12 @@ xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
   return -ENOSYS;
 }
 
+int 
+_xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+{
+  return -ENOSYS;
+}
+
 int
 xclUpdateSchedulerStat(xclDeviceHandle handle)
 {

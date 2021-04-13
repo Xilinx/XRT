@@ -2155,7 +2155,7 @@ xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* 
 }
 
 int
-xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+_xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return 0;
 }

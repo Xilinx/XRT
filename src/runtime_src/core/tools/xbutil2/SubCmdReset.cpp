@@ -53,31 +53,14 @@ reset_device(std::shared_ptr<xrt_core::device> dev, xrt_core::query::reset_type 
     // Having SN info available also implies there is a working SC
 
     std::string sn;
-    try {
-      sn = xrt_core::device_query<xrt_core::query::xmc_serial_num>(dev);
-    } catch (std::exception& ex) {
-      std::cerr << "ERROR:" << ex.what() << std::endl;
-      return;
-    }
+    sn = xrt_core::device_query<xrt_core::query::xmc_serial_num>(dev);
     if (sn.empty()) {
-      std::cerr << "Reset relies on S/N, but S/N can't be read from SC" << std::endl;
-      std::cout << boost::format("Reset failed on Device[%s]\n") 
-        % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
-      return;
+      throw xrt_core::error(-EINVAL,"Reset relies on S/N, but S/N can't be read from SC");
     }
     std::cout << "Card level reset. This will reset all FPGAs on the card." << std::endl;
   }
   //xocl reset is done through ioctl 
-  if(reset.get_key() == xrt_core::query::reset_key::user) {
-    try {
-      dev->user_reset(XCL_USER_RESET);
-    } catch(const xrt_core::error& e) {
-      std::cerr << "ERROR: " << e.what() << std::endl;
-      return;
-    }
-  }
-  else
-    dev->reset(reset);
+  dev->user_reset(XCL_USER_RESET);
   
   std::cout << boost::format("Successfully reset Device[%s]\n") 
     % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
@@ -97,7 +80,7 @@ SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary
 
 void
 supported(std::string resetType) {
-  std::vector<std::string> vec { "user", "aie" };
+  std::vector<std::string> vec { "user" };
   std::vector<std::string>::iterator it;
   it = std::find (vec.begin(), vec.end(), resetType); 
   if (it == vec.end()) {
@@ -107,8 +90,6 @@ supported(std::string resetType) {
 
 void
 SubCmdReset::execute(const SubCmdOptions& _options) const
-// Reference Command:  reset [-d card]
-
 {
   XBU::verbose("SubCommand: reset");
   // -- Retrieve and parse the subcommand options -----------------------------
@@ -121,7 +102,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
     ("type,r", boost::program_options::value<decltype(resetType)>(&resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
                                                                        "  user         - Hot reset (default)\n"
-                                                                       "  aie          - Reset Aie array\n"
+                                                                       /*"  aie          - Reset Aie array\n"*/
                                                                        /*"  kernel       - Kernel communication links\n"*/
                                                                        /*"  scheduler    - Scheduler\n"*/
                                                                        /*"  clear-fabric - Clears the accleration fabric with the\n"*/
@@ -178,7 +159,17 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
 
   //perform reset actions
   for (const auto & dev : deviceCollection) {
-    reset_device(dev, type);
+    try {
+      reset_device(dev, type);
+    } catch(const xrt_core::error& e) {
+      std::cerr << "ERROR: " << e.what() << std::endl;
+      std::cout << boost::format("Reset failed on Device[%s]\n") 
+        % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
+    } catch (std::exception& ex) {
+      std::cerr << "ERROR:" << ex.what() << std::endl;
+      std::cout << boost::format("Reset failed on Device[%s]\n") 
+        % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
+    }
   }
 
   return;
