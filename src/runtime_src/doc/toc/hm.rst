@@ -3,19 +3,18 @@
 Host Memory Access
 ==================
 
-The recent Alveo cards supports direct host memory access by the kernel(s) to read and write data directly from/to the Host Memory. Unlike the XDMA data transfer, this data transfer mechanism does not utlize global memories (DDR, HBM, PLRAM ,etc) on the card. Slave-Bridge provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.
+The recent Alveo cards supports direct host memory access by the kernel(s) to read and write data directly from/to the host memory. Unlike the XDMA data transfer, this data transfer mechanism does not utlize global memories (DDR, HBM, PLRAM ,etc) on the card. This feature provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.
 
 
 Kernel Compilation
 ------------------
 
-Use the following V++ configuration option to connect a kernel AXI-Master Port to Slave-Bridge IP.
+Use the following V++ configuration option to configure kernel port's connectivity to allow drive data through the AXI bridge to the host memory.
 
 .. code-block:: bash
 
    [connectivity]
    ## Syntax
-   ##sp=<cu_name>.<axi_master_port>:HOST[0]
    sp=my_kernel_1.m_axi_gmem:HOST[0]
 
 
@@ -27,7 +26,7 @@ To enable host memory access functionality the following settings are required f
 Hugepage Requirement
 ~~~~~~~~~~~~~~~~~~~~
 
-If the kernel requirement of the Host Memory is more than 1GB, XRT allocates multiple Hugepages from the host memory. These Hugepages are internally remapped (inside the FPGA shell) so that kernel can see a large contiguous bank like memory.
+If the kernel requirement of the host memory is more than 1GB, XRT allocates multiple Hugepages from the host memory. These hugepages are internally remapped (inside the FPGA shell) so that kernel can see a large contiguous bank like memory.
 
 
 **Steps required to enable Hugepages (Linux)**
