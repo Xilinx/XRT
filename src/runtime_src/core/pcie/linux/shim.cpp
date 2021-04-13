@@ -2233,8 +2233,31 @@ int shim::xclIPName2Index(const char *name)
 {
     std::string errmsg;
     std::vector<char> buf;
+    uint32_t kds_mode = 0;
     const uint64_t bad_addr = 0xffffffffffffffff;
 
+    kds_mode = xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice);
+    /* In new kds, driver determines CU index */
+    if (kds_mode) {
+        std::vector<xrt_core::query::kds_cu_stat::data_type> custats;
+
+        custats = xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice);
+
+        if (custats.empty())
+            return -ENOENT;
+
+        for (auto& stat : custats) {
+            if (stat.name != name)
+                continue;
+
+            return stat.index;
+        }
+
+        xrt_logmsg(XRT_ERROR, "%s not found", name);
+        return -ENOENT;
+    }
+
+    /* Old kds is enabled */
     mDev->sysfs_get("icap", "ip_layout", errmsg, buf);
     if (!errmsg.empty()) {
         xrt_logmsg(XRT_ERROR, "can't read ip_layout sysfs node: %s",
