@@ -28,6 +28,7 @@
 namespace {
 
 namespace pt = boost::property_tree;
+using tile_type = xrt_core::edge::aie::tile_type;
 using gmio_type = xrt_core::edge::aie::gmio_type;
 using counter_type = xrt_core::edge::aie::counter_type;
 
@@ -146,6 +147,66 @@ get_graph_id(const pt::ptree& aie_meta, const std::string& graph_name)
   return -1;
 }
 
+std::vector<std::string>
+get_graphs(const pt::ptree& aie_meta)
+{
+  std::vector<std::string> graphs;
+
+  for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
+    std::string graphName = graph.second.get<std::string>("name");
+    graphs.push_back(graphName);
+  }
+
+  return graphs;
+}
+
+std::vector<tile_type>
+get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
+{
+  std::vector<tile_type> tiles;
+
+  for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
+    if (graph.second.get<std::string>("name") != graph_name)
+      continue;
+
+    int count = 0;
+    for (auto& node : graph.second.get_child("core_columns")) {
+      tiles.push_back(tile_type());
+      auto& t = tiles.at(count++);
+      t.col = std::stoul(node.second.data());
+    }
+
+    int num_tiles = count;
+    count = 0;
+    for (auto& node : graph.second.get_child("core_rows"))
+      tiles.at(count++).row = std::stoul(node.second.data());
+    throw_if_error(count < num_tiles,"core_rows < num_tiles");
+
+    count = 0;
+    for (auto& node : graph.second.get_child("iteration_memory_columns"))
+      tiles.at(count++).itr_mem_col = std::stoul(node.second.data());
+    throw_if_error(count < num_tiles,"iteration_memory_columns < num_tiles");
+
+    count = 0;
+    for (auto& node : graph.second.get_child("iteration_memory_rows"))
+      tiles.at(count++).itr_mem_row = std::stoul(node.second.data());
+    throw_if_error(count < num_tiles,"iteration_memory_rows < num_tiles");
+
+    count = 0;
+    for (auto& node : graph.second.get_child("iteration_memory_addresses"))
+      tiles.at(count++).itr_mem_addr = std::stoul(node.second.data());
+    throw_if_error(count < num_tiles,"iteration_memory_addresses < num_tiles");
+
+    count = 0;
+    for (auto& node : graph.second.get_child("multirate_triggers"))
+      tiles.at(count++).is_trigger = (node.second.data() == "true");
+    throw_if_error(count < num_tiles,"multirate_triggers < num_tiles");
+
+  }
+
+  return tiles;
+}
+
 std::unordered_map<std::string, adf::rtp_config>
 get_rtp(const pt::ptree& aie_meta, int graph_id)
 {
@@ -238,6 +299,14 @@ get_plios(const pt::ptree& aie_meta)
   return plios;
 }
 
+double
+get_clock_freq_mhz(const pt::ptree& aie_meta)
+{
+  auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+  double clockFreqMhz = dev_node.get<double>("AIEFrequency");
+  return clockFreqMhz;
+}
+
 std::vector<counter_type>
 get_profile_counter(const pt::ptree& aie_meta)
 {
@@ -249,8 +318,7 @@ get_profile_counter(const pt::ptree& aie_meta)
     return counters;
 
   // First grab clock frequency
-  auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
-  auto clockFreqMhz = dev_node.get<double>("AIEFrequency");
+  auto clockFreqMhz = get_clock_freq_mhz(aie_meta);
 
   // Now parse all counters
   for (auto const &counter_node : counterTree.get()) {
@@ -353,6 +421,30 @@ get_graph_id(const xrt_core::device* device, const std::string& graph_name)
   return ::get_graph_id(aie_meta, graph_name);
 }
 
+std::vector<std::string>
+get_graphs(const xrt_core::device* device)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return std::vector<std::string>();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_graphs(aie_meta);
+}
+
+std::vector<tile_type>
+get_tiles(const xrt_core::device* device, const std::string& graph_name)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return std::vector<tile_type>();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_tiles(aie_meta, graph_name);
+}
+
 std::unordered_map<std::string, adf::rtp_config>
 get_rtp(const xrt_core::device* device, int graph_id)
 {
@@ -387,6 +479,18 @@ get_plios(const xrt_core::device* device)
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_plios(aie_meta);
+}
+
+double
+get_clock_freq_mhz(const xrt_core::device* device)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return 1000.0;
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_clock_freq_mhz(aie_meta);
 }
 
 std::vector<counter_type>

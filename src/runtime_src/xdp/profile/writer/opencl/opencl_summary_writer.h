@@ -62,6 +62,8 @@ namespace xdp {
     static void guidanceBufferTxActiveTimeMs(OpenCLSummaryWriter* t) ;
     static void guidanceApplicationRunTimeMs(OpenCLSummaryWriter* t) ;
     static void guidanceTotalKernelRunTimeMs(OpenCLSummaryWriter* t) ;
+    static void guidanceAieProfileCounters(OpenCLSummaryWriter* t) ;
+    static void guidanceAieTraceEvents(OpenCLSummaryWriter* t) ;
 
     // Generate the specific header for profile summary
     void writeHeader() ;

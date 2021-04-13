@@ -28,7 +28,18 @@ class device;
 
 namespace edge { namespace aie {
 
+struct tile_type
+{
+  uint16_t row;
+  uint16_t col;
+  uint16_t itr_mem_row;
+  uint16_t itr_mem_col;
+  uint64_t itr_mem_addr;
+  bool     is_trigger;
+};
+
 const int NON_EXIST_ID = -1;
+
 /**
  * get_driver_config() - get driver configuration from xclbin AIE metadata
  *
@@ -49,7 +60,8 @@ get_aiecompiler_options(const xrt_core::device* device);
  * get_graph() - get tile data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
- * @graph: name of graph to extract tile data for
+ * @graph_name: name of graph to extract tile data for
+ * Return: Graph config of given graph name
  */
 adf::graph_config
 get_graph(const xrt_core::device* device, const std::string& graph_name);
@@ -63,6 +75,24 @@ get_graph(const xrt_core::device* device, const std::string& graph_name);
  */
 int
 get_graph_id(const xrt_core::device* device, const std::string& graph_name);
+
+/**
+ * get_graphs() - get graph names from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+std::vector<std::string>
+get_graphs(const xrt_core::device* device);
+
+/**
+ * get_tiles() - get tile data from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ * @graph_name: name of graph to extract tile data for
+ * Return: vector of used tiles in given graph name 
+ */
+std::vector<tile_type>
+get_tiles(const xrt_core::device* device, const std::string& graph_name);
 
 /**
  * get_rtp() - get rtp data from xclbin AIE metadata
@@ -101,6 +131,14 @@ struct counter_type
   std::string     module;
   std::string     name;
 };
+
+/**
+ * get_clock_freq_mhz() - get clock frequency from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+double
+get_clock_freq_mhz(const xrt_core::device* device);
 
 /**
  * get_profile_counters() - get counter data from xclbin AIE metadata

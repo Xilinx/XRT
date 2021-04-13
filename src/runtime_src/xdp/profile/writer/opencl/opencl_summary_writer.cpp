@@ -78,6 +78,8 @@ namespace xdp {
     guidanceRules.push_back(guidanceBufferTxActiveTimeMs) ;
     guidanceRules.push_back(guidanceApplicationRunTimeMs) ;
     guidanceRules.push_back(guidanceTotalKernelRunTimeMs) ;
+    guidanceRules.push_back(guidanceAieProfileCounters) ;
+    guidanceRules.push_back(guidanceAieTraceEvents) ;
 
     // One of our guidance rules requires us to output the xrt.ini settings.
     //  Since they rely on static variables that may be destroyed by
@@ -191,6 +193,12 @@ namespace xdp {
     }
     {
       std::stringstream setting ;
+      setting << "XRT_INI_SETTING,aie_trace_metrics,"
+	      << xrt_core::config::get_aie_trace_metrics() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
       setting << "XRT_INI_SETTING,aie_profile,"
 	      << xrt_core::config::get_aie_profile() ;
       iniSettings.push_back(setting.str()) ;
@@ -199,6 +207,18 @@ namespace xdp {
       std::stringstream setting ;
       setting << "XRT_INI_SETTING,aie_profile_interval_us,"
 	      << xrt_core::config::get_aie_profile_interval_us() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,aie_profile_core_metrics,"
+	      << xrt_core::config::get_aie_profile_core_metrics() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,aie_profile_memory_metrics,"
+	      << xrt_core::config::get_aie_profile_memory_metrics() ;
       iniSettings.push_back(setting.str()) ;
     }
     {
@@ -532,8 +552,13 @@ namespace xdp {
 	// For every compute unit in the xclbin
 	for (auto cuInfo : xclbin->cus)
 	{
-	  // This info is the same for every execution call
 	  uint64_t amSlotID = (uint64_t)((cuInfo.second)->getAccelMon()) ;
+
+    // Stats don't make sense if runtime or executions = 0
+    if ((values.CuBusyCycles[amSlotID] == 0) || (values.CuExecCount[amSlotID] == 0))
+      continue;
+
+    // This info is the same for every execution call
 	  std::string cuName = (cuInfo.second)->getName() ;
 	  std::string kernelName = (cuInfo.second)->getKernelName() ;
 	  std::string cuLocalDimensions = (cuInfo.second)->getDim() ;
@@ -2201,6 +2226,45 @@ namespace xdp {
 	      << (lastKernelEndTime - firstKernelStartTime)
 	      << ","
 	      << std::endl ;
+  }
+
+  void OpenCLSummaryWriter::guidanceAieProfileCounters(OpenCLSummaryWriter* t)
+  {
+    auto infos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    for (auto device : infos)
+    {
+      auto& counters = (t->db->getStaticInfo()).getAIECounterResources(device->deviceId) ;
+      for (auto const& counter : counters)
+      {
+        (t->fout) << "AIE_COUNTER_RESOURCES" << ","
+	                << counter.first << ","
+	                << counter.second << ","
+	                << std::endl ;
+      }
+    }
+  }
+  
+  void OpenCLSummaryWriter::guidanceAieTraceEvents(OpenCLSummaryWriter* t)
+  {
+    auto infos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    for (auto device : infos)
+    {
+      auto& coreEvents = (t->db->getStaticInfo()).getAIECoreEventResources(device->deviceId) ;
+      for (auto const& coreEvent : coreEvents) {
+        (t->fout) << "AIE_CORE_EVENT_RESOURCES" << ","
+	                << coreEvent.first << ","
+	                << coreEvent.second << ","
+	                << std::endl ;
+      }
+
+      auto& memoryEvents = (t->db->getStaticInfo()).getAIEMemoryEventResources(device->deviceId) ;
+      for (auto const& memoryEvent : memoryEvents) {
+        (t->fout) << "AIE_MEMORY_EVENT_RESOURCES" << ","
+	                << memoryEvent.first << ","
+	                << memoryEvent.second << ","
+	                << std::endl ;
+      }
+    }
   }
 
 } // end namespace xdp

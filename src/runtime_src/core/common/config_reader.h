@@ -297,6 +297,27 @@ get_aie_trace()
   return value;
 }
 
+inline std::string
+get_aie_trace_metrics()
+{
+  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_core_metrics()
+{
+  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "heat_map");
+  return value;
+}
+
+inline std::string
+get_aie_profile_memory_metrics()
+{
+  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "dma_locks");
+  return value;
+}
+
 inline bool
 get_lop_trace()
 {
