@@ -175,9 +175,9 @@ namespace xclcpuemhal2 {
     mCore = nullptr;
     mSWSch = nullptr;
 
-    ci_buf = malloc(ci_msg.ByteSize());
+    ci_buf = malloc(ci_msg.ByteSizeLong());
     ri_msg.set_size(0);
-    ri_buf = malloc(ri_msg.ByteSize());
+    ri_buf = malloc(ri_msg.ByteSizeLong());
     buf = nullptr;
     buf_size = 0;
 
