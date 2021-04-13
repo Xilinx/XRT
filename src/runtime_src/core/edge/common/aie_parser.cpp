@@ -29,7 +29,6 @@ namespace {
 
 namespace pt = boost::property_tree;
 using gmio_type = xrt_core::edge::aie::gmio_type;
-using plio_type = xrt_core::edge::aie::plio_type;
 using counter_type = xrt_core::edge::aie::counter_type;
 
 inline void
@@ -72,7 +71,7 @@ get_aiecompiler_options(const pt::ptree& aie_meta)
     aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
     return aiecompiler_options;
 }
-
+  
 adf::graph_config
 get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 {
@@ -155,7 +154,7 @@ get_rtp(const pt::ptree& aie_meta, int graph_id)
   for (auto& rtp_node : aie_meta.get_child("aie_metadata.RTPs")) {
     if (rtp_node.second.get<int>("graph_id") != graph_id)
       continue;
-
+    
     adf::rtp_config rtp;
     rtp.portId = rtp_node.second.get<int>("port_id");
     rtp.aliasId = rtp_node.second.get<int>("alias_id");
@@ -190,33 +189,6 @@ get_rtp(const pt::ptree& aie_meta, int graph_id)
   return rtps;
 }
 
-std::vector<gmio_type>
-get_old_gmio(const pt::ptree& aie_meta)
-{
-  std::vector<gmio_type> gmios;
-
-  for (auto& gmio_node : aie_meta.get_child("aie_metadata.GMIOs")) {
-    gmio_type gmio;
-
-    // Only get AIE GMIO type, 0: GM->AIE; 1: AIE->GM
-    auto type = gmio_node.second.get<uint16_t>("type");
-    if (type != 0 && type != 1)
-      continue;
-
-    gmio.id = gmio_node.second.get<uint32_t>("id");
-    gmio.name = gmio_node.second.get<std::string>("name");
-    gmio.type = type;
-    gmio.shim_col = gmio_node.second.get<uint16_t>("shim_column");
-    gmio.channel_number = gmio_node.second.get<uint16_t>("channel_number");
-    gmio.stream_id = gmio_node.second.get<uint16_t>("stream_id");
-    gmio.burst_len = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
-
-    gmios.emplace_back(std::move(gmio));
-  }
-
-  return gmios;
-}
-
 std::unordered_map<std::string, adf::gmio_config>
 get_gmios(const pt::ptree& aie_meta)
 {
@@ -245,26 +217,22 @@ get_gmios(const pt::ptree& aie_meta)
   return gmios;
 }
 
-std::vector<plio_type>
-get_plio(const pt::ptree& aie_meta)
+std::unordered_map<std::string, adf::plio_config>
+get_plios(const pt::ptree& aie_meta)
 {
-  auto plio_nodes = aie_meta.get_child_optional("aie_metadata.PLIOs");
-  if (!plio_nodes)
-    return {};
-
-  std::vector<plio_type> plios;
+  std::unordered_map<std::string, adf::plio_config> plios;
 
   for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
-    plio_type plio;
+    adf::plio_config plio;
 
     plio.id = plio_node.second.get<uint32_t>("id");
     plio.name = plio_node.second.get<std::string>("name");
-    plio.logical_name = plio_node.second.get<std::string>("logical_name");
-    plio.shim_col = plio_node.second.get<uint16_t>("shim_column");
-    plio.stream_id = plio_node.second.get<uint16_t>("stream_id");
-    plio.is_master = plio_node.second.get<bool>("slaveOrMaster");
+    plio.logicalName = plio_node.second.get<std::string>("logical_name");
+    plio.shimColumn = plio_node.second.get<uint16_t>("shim_column");
+    plio.streamId = plio_node.second.get<uint16_t>("stream_id");
+    plio.slaveOrMaster = plio_node.second.get<bool>("slaveOrMaster");
 
-    plios.emplace_back(std::move(plio));
+    plios[plio.name] = plio;
   }
 
   return plios;
@@ -397,18 +365,6 @@ get_rtp(const xrt_core::device* device, int graph_id)
   return ::get_rtp(aie_meta, graph_id);
 }
 
-std::vector<gmio_type>
-get_old_gmios(const xrt_core::device* device)
-{
-  auto data = device->get_axlf_section(AIE_METADATA);
-  if (!data.first || !data.second)
-    return std::vector<gmio_type>();
-
-  pt::ptree aie_meta;
-  read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_old_gmio(aie_meta);
-}
-
 std::unordered_map<std::string, adf::gmio_config>
 get_gmios(const xrt_core::device* device)
 {
@@ -421,16 +377,16 @@ get_gmios(const xrt_core::device* device)
   return ::get_gmios(aie_meta);
 }
 
-std::vector<plio_type>
+std::unordered_map<std::string, adf::plio_config>
 get_plios(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::vector<plio_type>();
+    return std::unordered_map<std::string, adf::plio_config>();
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_plio(aie_meta);
+  return ::get_plios(aie_meta);
 }
 
 std::vector<counter_type>
