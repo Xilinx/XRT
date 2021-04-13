@@ -374,6 +374,8 @@ struct mailbox_channel {
 	uint64_t		sw_chan_msg_flags;
 
 	atomic_t		sw_num_pending_msg;
+
+	u64			polling_count;
 };
 
 enum {
@@ -389,6 +391,8 @@ struct mailbox_dbg_rec {
 	u32		mir_is_reg;
 	u32		mir_ip_reg;
 	u64		mir_count;
+	u64		mir_tx_poll_cnt;
+	u64		mir_rx_poll_cnt;
 };
 
 enum {
@@ -555,12 +559,13 @@ static void mailbox_dump_debug(struct mailbox *mbx)
 		nsec = do_div(ts, 1000000000);
 		last_ts = rec[idx].mir_ts_last;
 		last_nsec = do_div(last_ts, 1000000000);
-		MBX_INFO(mbx, "%s [%5lu.%06lu] - [%5lu.%06lu], is 0x%x, st 0x%x, ip 0x%x, count %lld",
+		MBX_INFO(mbx, "%s [%5lu.%06lu] - [%5lu.%06lu], is 0x%x, st 0x%x, ip 0x%x, count %lld, tx_poll %lld, rx_poll %lld",
 			mailbox_dbg_type_str[rec[idx].mir_type],
 			(unsigned long)ts, nsec / 1000,
 			(unsigned long)last_ts, last_nsec / 1000,
 			rec[idx].mir_is_reg, rec[idx].mir_st_reg,
-			rec[idx].mir_ip_reg, rec[idx].mir_count);
+			rec[idx].mir_ip_reg, rec[idx].mir_count,
+			rec[idx].mir_tx_poll_cnt, rec[idx].mir_rx_poll_cnt);
 		idx++;
 		idx %= MAX_RECS;
 	}
@@ -586,6 +591,8 @@ static void mailbox_dbg_collect(struct mailbox *mbx, int rec_type)
 	    rec->mir_st_reg == st && rec->mir_ip_reg == ip) {
 		rec->mir_ts_last = local_clock();
 		rec->mir_count++;
+		rec->mir_tx_poll_cnt = mbx->mbx_tx.polling_count;
+		rec->mir_rx_poll_cnt = mbx->mbx_rx.polling_count;
 		return;
 	}
 	mbx->mbx_cur_rec++;
@@ -598,6 +605,8 @@ static void mailbox_dbg_collect(struct mailbox *mbx, int rec_type)
 	rec->mir_st_reg = st;
 	rec->mir_ip_reg = ip;
 	rec->mir_count = 0;
+	rec->mir_tx_poll_cnt = mbx->mbx_tx.polling_count;
+	rec->mir_rx_poll_cnt = mbx->mbx_rx.polling_count;
 }
 
 irqreturn_t mailbox_isr(int irq, void *arg)
@@ -636,6 +645,7 @@ static void chan_timer(struct timer_list *t)
 
 	MBX_VERBOSE(ch->mbc_parent, "%s tick", ch_name(ch));
 
+	ch->polling_count++;
 	set_bit(MBXCS_BIT_TICK, &ch->mbc_state);
 	complete(&ch->mbc_worker);
 
@@ -1025,6 +1035,7 @@ static void chan_fini(struct mailbox_channel *ch)
 	mutex_destroy(&ch->mbc_mutex);
 	mutex_destroy(&ch->sw_chan_mutex);
 	ch->mbc_parent = NULL;
+	ch->mbc_timer_on = false;
 }
 
 static int chan_init(struct mailbox *mbx, enum mailbox_chan_type type,
