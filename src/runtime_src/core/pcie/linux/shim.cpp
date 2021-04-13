@@ -2565,10 +2565,10 @@ int xclUnlockDevice(xclDeviceHandle handle)
 
 int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
-    return _xclResetDevice(handle, kind);
+    return xclInternalResetDevice(handle, kind);
 }
 
-int _xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+int xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
     // NOTE: until xclResetDevice is made completely internal,
     // this wrapper is being used to limit the pragma use to this file

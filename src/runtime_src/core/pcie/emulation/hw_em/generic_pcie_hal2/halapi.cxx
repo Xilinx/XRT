@@ -549,7 +549,7 @@ xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 }
 
 int 
-_xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return -ENOSYS;
 }

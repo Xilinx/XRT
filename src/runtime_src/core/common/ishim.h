@@ -28,7 +28,7 @@
 
 // Internal shim function forward declarations
 int xclUpdateSchedulerStat(xclDeviceHandle handle);
-int _xclResetDevice(xclDeviceHandle handle, xclResetKind kind);
+int xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind);
 
 namespace xrt_core {
 
@@ -424,7 +424,7 @@ struct shim : public DeviceType
   virtual void
   user_reset(xclResetKind kind)
   {
-    if (auto ret = _xclResetDevice(DeviceType::get_device_handle(), kind))
+    if (auto ret = xclInternalResetDevice(DeviceType::get_device_handle(), kind))
       throw error(ret, "failed to reset device");
   }
 
