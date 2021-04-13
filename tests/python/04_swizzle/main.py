@@ -1,5 +1,11 @@
 #!/usr/bin/python3
 
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (C) 2019-2021 Xilinx, Inc
+#
+
 import sys
 import traceback
 import uuid
@@ -15,16 +21,13 @@ def runKernel(opt):
     d = pyxrt.device(opt.index)
     uuid = d.load_xclbin(opt.bitstreamFile)
     # Instantiate vectorswizzle
-    swizzle = pyxrt.kernel(d, uuid.get(), "vectorswizzle")
+    swizzle = pyxrt.kernel(d, uuid, "vectorswizzle")
 
     elem_num = 4096
     size = ctypes.sizeof(ctypes.c_int) * elem_num
 
     obj = pyxrt.bo(d, size, pyxrt.bo.normal, swizzle.group_id(0))
-
     buf = numpy.asarray(obj.map())
-#    ctypes.memset(buf, 0, size)
-#    bo_arr = ctypes.cast(buf, ctypes.POINTER(ctypes.c_int))
 
     # Compute golden values
     reference = []
@@ -84,7 +87,6 @@ def main(args):
         traceback.print_exc(file=sys.stdout)
         print("FAILED TEST")
         return 1
-
 
 if __name__ == "__main__":
     result = main(sys.argv)

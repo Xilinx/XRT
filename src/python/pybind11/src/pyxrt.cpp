@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
+/* SPDX-License-Identifier: Apache-2.0 */
 
 /**
  * Pybind11 module for XRT C++ APIs
@@ -20,11 +20,16 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 
+// C++11 includes
+#include <mutex>
+#include <thread>
+
 namespace py = pybind11;
 
 PYBIND11_MODULE(pyxrt, m) {
 m.doc() = "Pybind11 module for XRT";
 
+static std::mutex pybo_map_mutex;
 /*
  *
  * Constants and Enums
@@ -60,14 +65,6 @@ py::enum_<ert_cmd_state>(m, "ert_cmd_state")
  */
 py::class_<xrt::uuid>(m, "uuid")
     .def(py::init<char *>())
-    .def("get", [](xrt::uuid & u) {
-                    py::array_t<unsigned char> result = py::array_t<unsigned char>(16);
-                    py::buffer_info bufinfo = result.request();
-                    unsigned char* bufptr = (unsigned char*) bufinfo.ptr;
-                    memcpy(bufptr,u.get(),16);
-                    return result;
-                }
-        )
     .def("to_string", &xrt::uuid::to_string);
 
 
@@ -181,22 +178,29 @@ pybo.def(py::init<xrt::device, size_t, xrt::bo::flags, xrt::memory_group>())
                       * To resolve this we are creating buffer_info as static object so the
                       * format string is persistent. We reuse info object by updating ptr and
                       * length for each new bo.
+                      * Once the bug is resolved we should use py::memoryview::from_buffer()
                       */
                      static py::buffer_info info(b.map(),
-                                          sizeof(unsigned int),
-                                          py::format_descriptor<unsigned int>::format(),
+                                          sizeof(char),
+                                          py::format_descriptor<char>::format(),
                                           1,
-                                          {b.size()/sizeof(unsigned int)},
-                                          {sizeof(unsigned int)});
+                                          {b.size()/sizeof(char)},
+                                          {sizeof(char)});
+                     /*
+                      * Since we are using the same info object after customization to contruct
+                      * all memoryview objects we need to serialize the operation to protect
+                      * from concurrent calls from multiple threads.
+                      */
+                     const std::lock_guard<std::mutex> lock(pybo_map_mutex);
                      info.ptr = b.map();
                      info.shape[0] = b.size()/sizeof(unsigned int);
                      return py::memoryview(info);
                      /*
                      return py::memoryview::from_buffer(b.map(),
-                                                        sizeof(unsigned int),
-                                                        py::format_descriptor<unsigned int>::format(),
+                                                        sizeof(char),
+                                                        py::format_descriptor<char>::format(),
                                                         1,
-                                                        {b.size()/sizeof(unsigned int)},
+                                                        {b.size()/sizeof(char)},
                                                         false);
                      */
                   }))
