@@ -3,7 +3,7 @@
 Host Memory Access
 ==================
 
-Some of the recent Alveo cards support direct host memory access by the kernel(s) to read/write data directly from/to the host memory. Unlike the XDMA data transfer, this data transfer mechanism does not utlize global memories (DDR, HBM, PLRAM ,etc) on the card. This feature provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.
+Some of the recent Alveo cards support direct host memory access by the kernel(s) to read/write data directly from/to the host memory. Unlike the XDMA data transfer, this data transfer mechanism does not utilize global memories (DDR, HBM, PLRAM ,etc) on the card. This feature provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.
 
 
 Kernel Compilation
