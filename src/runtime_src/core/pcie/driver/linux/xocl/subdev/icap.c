@@ -2642,7 +2642,11 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 	struct icap *icap = platform_get_drvdata(pdev);
 	int ref = 0, err = 0;
 
-	BUG_ON(uuid_is_null(id));
+	/* ioctl arg might be passed in with NULL uuid */
+	if (uuid_is_null(id)) {
+		ICAP_WARN(icap, "NULL uuid.");
+		return -EINVAL;
+	}
 
 	err = icap_xclbin_rd_lock(icap);
 	if (err) {

@@ -27,9 +27,9 @@
 #include "core/edge/common/aie_parser.h"
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_aie.h"
-#include "AIEResources.h"
 #include "common_layer/adf_api_config.h"
 #include "common_layer/adf_runtime_api.h"
+#include "common_layer/adf_profiling_api.h"
 extern "C" {
 #include <xaiengine.h>
 }
@@ -70,14 +70,11 @@ struct ShimDMA {
 
 struct EventRecord {
     int option;
-    std::vector<Resources::AcquiredResource> acquiredResources;
+    std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquiredResources;
 };
 
 class Aie {
 public:
-    using gmio_type = xrt_core::edge::aie::gmio_type;
-    using plio_type = xrt_core::edge::aie::plio_type;
-
     ~Aie();
     Aie(const std::shared_ptr<xrt_core::device>& device);
 
@@ -87,8 +84,7 @@ public:
     std::unordered_map<std::string, adf::gmio_config> gmio_configs;
     std::unordered_map<std::string, std::shared_ptr<adf::gmio_api>> gmio_apis;
 
-    std::vector<gmio_type> gmios;
-    std::vector<plio_type> plios;
+    std::unordered_map<std::string, adf::plio_config> plio_configs;
 
     XAie_DevInst *getDevInst();
 
@@ -137,8 +133,8 @@ private:
     void
     submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio, adf::gmio_config& gmio_config, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
-    void
-    get_profiling_config(const std::string& port_name, XAie_LocType& out_shim_tile, XAie_StrmPortIntf& out_mode, uint8_t& out_stream_id);
+    adf::shim_config
+    get_shim_config(const std::string& port_name);
 
     int
     start_profiling_run_idle(const std::string& port_name);

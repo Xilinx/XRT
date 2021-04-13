@@ -30,40 +30,41 @@ void log_function_call_end(const char* functionName) ;
 
 extern "C"
 void log_kernel_execution(const char* kernelName,
-			  bool isStart,
-			  unsigned long long int kernelInstanceAddress,
-			  unsigned long long int contextId,
-			  unsigned long long int commandQueueId,
-			  const char* deviceName,
-			  const char* globalWorkSize,
-			  const char* localWorkSize,
-			  const char** buffers,
-			  unsigned long long int numBuffers) ;
+                          bool isStart,
+                          unsigned long long int kernelInstanceAddress,
+                          unsigned long long int contextId,
+                          unsigned long long int commandQueueId,
+                          const char* deviceName,
+                          const char* globalWorkSize,
+                          const char* localWorkSize,
+                          const char** buffers,
+                          unsigned long long int numBuffers) ;
 
 extern "C"
 void log_compute_unit_execution(const char* cuName,
-				const char* localWorkGroupConfiguration,
-				const char* globalWorkGroupConfiguration,
-				bool isStart) ;
+                                const char* kernelName,
+                                const char* localWorkGroup,
+                                const char* globalWorkGroup,
+                                bool isStart) ;
 
 extern "C"
 void counter_action_read(unsigned long long int contextId,
-			 unsigned long long int numDevices,
-			 const char* deviceName,
-			 unsigned long long int size,
-			 bool isStart,
-			 bool isP2P,
-			 unsigned long long int address,
-			 unsigned long long int commandQueueId) ;
+                         unsigned long long int numDevices,
+                         const char* deviceName,
+                         unsigned long long int size,
+                         bool isStart,
+                         bool isP2P,
+                         unsigned long long int address,
+                         unsigned long long int commandQueueId) ;
 
 extern "C"
 void counter_action_write(unsigned long long int contextId,
-			  const char* deviceName,
-			  unsigned long long int size,
-			  bool isStart,
-			  bool isP2P,
-			  unsigned long long int address,
-			  unsigned long long int commandQueueId) ;
+                          const char* deviceName,
+                          unsigned long long int size,
+                          bool isStart,
+                          bool isP2P,
+                          unsigned long long int address,
+                          unsigned long long int commandQueueId) ;
 
 extern "C"
 void counter_mark_objects_released() ;

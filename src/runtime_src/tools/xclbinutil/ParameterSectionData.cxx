@@ -144,10 +144,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
 
     // Is the section name is valid
     enum axlf_section_kind eKind;
-    if (Section::translateSectionKindStrToKind(m_section, eKind) == false) {
-      std::string errMsg = XUtil::format("Error: Section '%s' isn't a valid section name.", m_section.c_str());
-      throw std::runtime_error(errMsg);
-    }
+    Section::translateSectionKindStrToKind(m_section, eKind);
 
     // Does the section support subsections
     if (!m_subSection.empty() && (Section::supportsSubSections(eKind) == false)) {

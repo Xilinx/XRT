@@ -206,9 +206,8 @@ namespace xdp {
     // We start the thread manually because of race conditions
     DeviceTraceOffload* offloader = 
       new DeviceTraceOffload(devInterface, logger,
-                             trace_buffer_offload_interval_ms, // offload_sleep_ms,
-                             trace_buffer_size,            // trbuf_size,
-                             false);
+                             trace_buffer_offload_interval_ms, // offload_sleep_ms
+                             trace_buffer_size);           // trbuf_size
 
     bool init_successful = offloader->read_trace_init(m_enable_circular_buffer) ;
 
@@ -249,6 +248,7 @@ namespace xdp {
     // We have TS2MM
     if (continuous_trace) {
       offloader->start_offload(OffloadThreadType::TRACE);
+      offloader->set_continuous();
       if (m_enable_circular_buffer) {
         auto tdma = devInterface->getTs2mm() ;
         if (tdma->supportsCircBuf()) {

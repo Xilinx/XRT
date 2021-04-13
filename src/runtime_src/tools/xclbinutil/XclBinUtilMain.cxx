@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2020 Xilinx, Inc
+ * Copyright (C) 2018-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -159,6 +159,8 @@ int main_(int argc, const char** argv) {
 
   std::vector<std::string> sectionsToReplace;
   std::vector<std::string> sectionsToAdd;
+  std::vector<std::string> sectionsToAddReplace;
+  std::vector<std::string> sectionsToAddMerge;
   std::vector<std::string> sectionsToRemove;
   std::vector<std::string> sectionsToDump;
   std::vector<std::string> sectionsToAppend;
@@ -187,8 +189,10 @@ int main_(int argc, const char** argv) {
 
       ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
 
-      ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove.")
       ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
+      ("add-replace-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAddReplace)->multitoken(), "Section name to add or replace.  Format: <section>:<format>:<file>")
+      ("add-merge-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAddMerge)->multitoken(), "Section name to add or merge.  Format: <section>:<format>:<file>")
+      ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove.")
       ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:<format>:<file>")
       ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionsToReplace)->multitoken(), "Section to replace. ")
 
@@ -350,29 +354,36 @@ int main_(int argc, const char** argv) {
   // Check to see if there any file conflicts
   std::vector< std::string> inputFiles;
   {
-    if (!sInputFile.empty()) {
-       inputFiles.push_back(sInputFile);
-    }
+    if (!sInputFile.empty()) 
+      inputFiles.push_back(sInputFile);
 
-    if (!sCertificate.empty()) {
-       inputFiles.push_back(sCertificate);
-    }
+    if (!sCertificate.empty()) 
+      inputFiles.push_back(sCertificate);
 
-    if (!sPrivateKey.empty()) {
-       inputFiles.push_back(sPrivateKey);
-    }
+    if (!sPrivateKey.empty()) 
+      inputFiles.push_back(sPrivateKey);
 
-    for (auto section : sectionsToAdd) {
+    for (const auto &section : sectionsToAdd) {
       ParameterSectionData psd(section);
       inputFiles.push_back(psd.getFile());
     }
 
-    for (auto section : sectionsToReplace ) {
+    for (const auto &section : sectionsToAddReplace) {
       ParameterSectionData psd(section);
       inputFiles.push_back(psd.getFile());
     }
 
-    for (auto section : sectionsToAppend) {
+    for (const auto &section : sectionsToAddMerge) {
+      ParameterSectionData psd(section);
+      inputFiles.push_back(psd.getFile());
+    }
+
+    for (const auto &section : sectionsToReplace ) {
+      ParameterSectionData psd(section);
+      inputFiles.push_back(psd.getFile());
+    }
+
+    for (const auto & section : sectionsToAppend) {
       ParameterSectionData psd(section);
       inputFiles.push_back(psd.getFile());
     }
@@ -478,6 +489,12 @@ int main_(int argc, const char** argv) {
   for (auto section : sectionsToRemove) 
     xclBin.removeSection(section);
 
+  // -- Add or Replace Sections --
+  for (auto section : sectionsToAddReplace) {
+    ParameterSectionData psd(section);
+    xclBin.addReplaceSection( psd );
+  }
+
   // -- Replace Sections --
   for (auto section : sectionsToReplace) {
     ParameterSectionData psd(section);
@@ -493,6 +510,12 @@ int main_(int argc, const char** argv) {
     } else {
       xclBin.addSection(psd);
     }
+  }
+
+  // -- Add or Merge Sections --
+  for (auto section : sectionsToAddMerge) {
+    ParameterSectionData psd(section);
+    xclBin.addMergeSection( psd );
   }
 
   // -- Append to Sections --

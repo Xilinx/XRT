@@ -46,7 +46,6 @@ struct graph_config
 {
     int id;
     std::string name;
-
     std::vector<short> coreColumns;
     std::vector<short> coreRows;
     /// Core iteration memory address
