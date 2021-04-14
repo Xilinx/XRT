@@ -270,7 +270,6 @@ static int
 gst_ivas_xvcuenc_open (XrtIvas_XVCUEnc *enc, const char *xclbin_path, int sk_idx, int dev_idx)
 {
   XrtIvas_XVCUEncPrivate *priv = NULL;
-  unsigned dev_index = enc->dev_index;
   int bret = FALSE;
   int cu_index = 0;
   
@@ -291,7 +290,7 @@ gst_ivas_xvcuenc_open (XrtIvas_XVCUEnc *enc, const char *xclbin_path, int sk_idx
 
   enc->priv = priv;
 
-  if (bret = download_xclbin (enc->xclbin_path, dev_index, &cu_index, &(priv->xcl_handle),
+  if (bret = download_xclbin (enc->xclbin_path, enc->dev_index, &cu_index, &(priv->xcl_handle),
           &(priv->xclbinId))) {
     if (bret < 0) 
       ERROR_PRINT ("failed to download xclbin %s]", enc->xclbin_path);
