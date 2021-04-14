@@ -530,13 +530,11 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		if (XDEV(xdev)->kds.ini_disable)
 			break;
 
-		if (to_cfg_pkg(ecmd)->ert && XDEV(xdev)->kds.ert) {
+		if (to_cfg_pkg(ecmd)->ert && XDEV(xdev)->kds.ert)
 			XDEV(xdev)->kds.ert_disable = false;
-			xcmd->type = KDS_ERT;
-		} else {
+		else
 			XDEV(xdev)->kds.ert_disable = true;
-			xcmd->type = KDS_CU;
-		}
+		xcmd->type = KDS_ERT;
 		break;
 	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
