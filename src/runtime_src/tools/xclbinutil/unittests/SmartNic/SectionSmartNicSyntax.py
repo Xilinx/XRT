@@ -32,15 +32,14 @@ def main():
   print ("Starting test")
 
   # ---------------------------------------------------------------------------
-#  step = "1) Read in a validate JSON file and validate it against the schema"
-#
-#  inputJSON = os.path.join(args.resource_dir, "smartnic_full_validate_syntax.json")
-#
-#  cmd = [xclbinutil, "--add-section", "SMARTNIC:JSON:" + inputJSON]
-#  execCmd(step, cmd)
+  step = "1) Read in a validate JSON file and validate it against the schema"
+
+  inputJSON = os.path.join(args.resource_dir, "smartnic_full_validate_syntax.json")
+
+  cmd = [xclbinutil, "--add-section", "SMARTNIC:JSON:" + inputJSON]
+  execCmd(step, cmd)
 
   # ---------------------------------------------------------------------------
-
   step = "2) Read in a byte file and validate it was transformed correctly"
 
   inputJSON = os.path.join(args.resource_dir, "simple_bytefiles.json")
@@ -48,8 +47,50 @@ def main():
   expectedJSON = os.path.join(args.resource_dir,"simple_bytefiles_expected.json")
 
 
-  cmd = [xclbinutil, "--add-section", "SMARTNIC:JSON:" + inputJSON, "--dump-section", "SMARTNIC:JSON:" + outputJSON, "--force", "--trace"]
+  cmd = [xclbinutil, "--add-section", "SMARTNIC:JSON:" + inputJSON, "--dump-section", "SMARTNIC:JSON:" + outputJSON, "--force"]
   execCmd(step, cmd)
+
+  # Validate that the output file matches expectation
+  jsonFileCompare(expectedJSON, outputJSON)
+
+  # ---------------------------------------------------------------------------
+  step = "3a) Merging Validation : Adding v++ linker contents to the xclbin"
+
+  vppLinkerJSON = os.path.join(args.resource_dir, "vpp_linker.json")
+  vppLinkerXclbin = "vpp_linker.xclbin"
+
+  cmd = [xclbinutil, "--add-merge-section", "SMARTNIC:JSON:" + vppLinkerJSON, "--output", vppLinkerXclbin, "--force"]
+  execCmd(step, cmd)
+
+  # ...........................................................................
+  step = "3b) Merging Validation : Merging Extension Metadata"
+
+  extensionJSON = os.path.join(args.resource_dir, "extension.json")
+  vppPackerXclbin1 = "vpp_packager1.xclbin"
+
+  cmd = [xclbinutil, "--input", vppLinkerXclbin, "--add-merge-section", "SMARTNIC:JSON:" + extensionJSON, "--output", vppPackerXclbin1, "--force"]
+  execCmd(step, cmd)
+
+  # ...........................................................................
+  step = "3c) Merging Validation : Merging Softhub metadata"
+
+  softhubJSON = os.path.join(args.resource_dir, "softhub.json")
+  vppPackerXclbin2 = "vpp_packager2.xclbin"
+
+  cmd = [xclbinutil, "--input", vppPackerXclbin1, "--add-merge-section", "SMARTNIC:JSON:" + softhubJSON, "--output", vppPackerXclbin2, "--force"]
+  execCmd(step, cmd)
+
+  # ...........................................................................
+  step = "3d) Merging Validation : Merging eBPF"
+
+  ebpfJSON = os.path.join(args.resource_dir, "eBPF.json")
+  expectedJSON = os.path.join(args.resource_dir,"vitis_merged_expected.json")
+  vppPackerXclbin3 = "vpp_packager3.xclbin"
+  outputJSON = "vitis_merged_output.json"
+
+  cmd = [xclbinutil, "--input", vppPackerXclbin2, "--add-merge-section", "SMARTNIC:JSON:" + ebpfJSON, "--dump-section", "SMARTNIC:JSON:" + outputJSON, "--output", vppPackerXclbin3, "--force"]
+  execCmd(step, cmd)
+
 
   # Validate that the output file matches expectation
   jsonFileCompare(expectedJSON, outputJSON)

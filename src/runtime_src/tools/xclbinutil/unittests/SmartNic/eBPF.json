@@ -1,0 +1,68 @@
+{
+	"version": {
+		"major": 1,
+		"minor": 0,
+		"patch": 0
+	},
+
+	"smartnic": {
+		"schema_version": {
+			"major": 1,
+			"minor": 0,
+			"patch": 0
+		},
+		"extensions": [{
+				"instance_name": "plugin_1:instance_1",
+
+				"setup": {
+					"ebpf_file": "dummy_bytefile.txt"
+				},
+				"background_proc": {
+					"ebpf": "7E5025DF471543F6867244D1F869AFC57E5025DF471543F6867244D1F869AFC5"
+				},
+				"tear_down": {
+					"ebpf_file": "dummy_bytefile.txt"
+				},
+				"messages": [{
+					"id": 0,
+					"name": "my message",
+					"param_size_bytes": 3,
+					"ebpf_file": "dummy_bytefile.txt"
+				}],
+				"resource_classes": [{
+					"name": "My resource",
+					"description": "This is my resource",
+					"max_count": 2,
+					"memory_size_bytes": 256,
+					"dtor_file": "dummy_bytefile.txt"
+				}]
+			},
+			{
+				"instance_name": "plugin_2:instance_1",
+
+				"setup": {
+					"ebpf_file": "dummy_bytefile.txt"
+				},
+				"background_proc": {
+					"ebpf": "25DF471543F6867244D1F869AFC57E5025DF471543F6867244D1F869AFC5ABDF"
+				},
+				"tear_down": {
+					"ebpf_file": "dummy_bytefile.txt"
+				},
+				"messages": [{
+					"id": 0,
+					"name": "my message",
+					"param_size_bytes": 4,
+					"ebpf_file": "dummy_bytefile.txt"
+				}],
+				"resource_classes": [{
+					"name": "My resource",
+					"description": "This is my resource",
+					"max_count": 4,
+					"memory_size_bytes": 256,
+					"dtor_file": "dummy_bytefile.txt"
+				}]
+			}
+		]
+    }
+}

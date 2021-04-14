@@ -1,0 +1,41 @@
+{
+	"version": {
+		"major": 1,
+		"minor": 0,
+		"patch": 0
+	},
+	"smartnic": {
+		"schema_version": {
+			"major": 1,
+			"minor": 0,
+			"patch": 0
+		},
+		"extensions": [{
+				"instance_name": "plugin_1:instance_1",
+				"cam_instances": [{
+					"name": "foo_my_cam_instance_1",
+					"id": 0,
+					"config": "8E66D3D94B354472AC95030EB88E9844CE88AD344DA749E0A3352E313B394B07",
+					"base_address": 1245
+				}],
+				"address_mapping": {
+					"offset": 1024,
+					"aperture_size_bytes": 1024
+				}
+			},
+			{
+				"instance_name": "plugin_2:instance_1",
+				"cam_instances": [{
+					"name": "foo_my_cam_instance_2",
+					"id": 0,
+					"config": "D3D94B354472AC95030EB88E9844CE88AD344DA749E0A3352E313B394B07",
+					"base_address": 5678
+				}],
+				"address_mapping": {
+					"offset": 2048,
+					"aperture_size_bytes": 1024
+				}
+			}
+		]
+	}
+}
