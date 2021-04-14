@@ -44,7 +44,7 @@ pretty_print_action_list(xrt_core::device_collection& deviceCollection, xrt_core
 }
 
 static void
-reset_device(std::shared_ptr<xrt_core::device> dev, xrt_core::query::reset_type reset)
+reset_device(xrt_core::device* dev, xrt_core::query::reset_type reset)
 {
   if (xrt_core::device_query<xrt_core::query::rom_vbnv>(dev).find("_u30_") != std::string::npos) {
     // u30 reset relies on working SC and SN info. SN is read and saved
@@ -160,7 +160,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   //perform reset actions
   for (const auto & dev : deviceCollection) {
     try {
-      reset_device(dev, type);
+      reset_device(dev.get(), type);
     } catch(const xrt_core::error& e) {
       std::cerr << "ERROR: " << e.what() << std::endl;
       std::cout << boost::format("Reset failed on Device[%s]\n") 
