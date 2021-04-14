@@ -21,21 +21,21 @@ The XRT native API supports both C and C++ flavor of APIs. For general host code
 
 The C++ Class objects used for the APIs are 
 
-+---------------+---------------+
-|               |   C++ Class   |  
-+===============+===============+
-|   Device      | xrt::device   |  
-+---------------+---------------+
-|   XCLBIN      | xrt::xclbin   |  
-+---------------+---------------+
-|   Buffer      | xrt::bo       |  
-+---------------+---------------+
-|   Kernel      | xrt::kernel   |  
-+---------------+---------------+
-|   Run         | xrt::run      |  
-+---------------+---------------+
-|   Graph       | xrt::graph    |  
-+---------------+---------------+
++---------------+-------------------+
+|               |   C++ Class       |  
++===============+===================+
+|   Device      | ``xrt::device``   |  
++---------------+-------------------+
+|   XCLBIN      | ``xrt::xclbin``   |  
++---------------+-------------------+
+|   Buffer      | ``xrt::bo``       |  
++---------------+-------------------+
+|   Kernel      | ``xrt::kernel``   |  
++---------------+-------------------+
+|   Run         | ``xrt::run``      |  
++---------------+-------------------+
+|   Graph       | ``xrt::graph``    |  
++---------------+-------------------+
 
 All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/xrt/`` directory. In the user host code, it is sufficient to include ``"xrt/xrt_kernel.h"`` and ``"xrt/xrt_aie.h"`` (when using Graph APIs) to access all the APIs related to these data structure.
 
@@ -65,42 +65,7 @@ Device and XCLBIN class provide fundamental infrastructure-related interfaces. T
     - Load compiled kernel binary (or XCLBIN) onto the device 
 
 
-Example C API based code  
-
-.. code:: c
-      :number-lines: 10
-           
-           xrtDeviceHandle device = xrtDeviceOpen(0);
-       
-           xrtXclbinHandle xclbin = xrtXclbinAllocFilename("kernel.xclbin");
-       
-           xrtDeviceLoadXclbinHandle(device,xclbin);
-           ..............
-           ..............
-           xrtDeviceClose(device);
-
-       
-
-The above code block shows
-      
-      - Opening the device (enumerated as 0) and get device handle ``xrtDeviceHandle`` (line 10)
-          
-          - Device indices are enumerated as 0,1,2 and can be observed by ``xbutil scan``
-          
-          .. code::
-               
-               >>xbutil scan
-               INFO: Found total 2 card(s), 2 are usable
-               .............
-               [0] 0000:b3:00.1 xilinx_u250_gen3x16_base_1 user(inst=129)
-               [1] 0000:65:00.1 xilinx_u50_gen3x16_base_1 user(inst=128)
-
-      - Opening the XCLBIN from the filename and get an XCLBIN handle ``xrtXclbinHandle`` (line 12)
-      - Loading the XCLBIN onto the Device by using the XCLBIN handle by API ``xrtDeviceLoadXclbinHandle`` (line 14)
-      - Closing the device handle at the end of the application (line 19)
-      
-
-**C++**: The equivalent C++ API based code
+The most simple code to load a XCLBIN as below  
 
 .. code:: c++
       :number-lines: 10
@@ -108,13 +73,14 @@ The above code block shows
            unsigned int dev_index = 0;
            auto device = xrt::device(dev_index);
            auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
+
        
 The above code block shows
 
-    - The ``xrt::device`` class's constructor is used to open the device
+    - The ``xrt::device`` class's constructor is used to open the device (enumerated as 0)
     - The member function ``xrt::device::load_xclbin`` is used to load the XCLBIN from the filename. 
     - The member function ``xrt::device::load_xclbin`` returns the XCLBIN UUID, which is required to open the kernel (refer the Kernel Section). 
-
+    
 
 Buffers
 -------
@@ -130,31 +96,32 @@ Buffers are primarily used to transfer the data between the host and the device.
 1. Buffer allocation and deallocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-XRT APIs provides API for
+The C++ inteface for buffers as below
    
-      - ``xrtBOAlloc``: Allocates a buffer object 4K aligned, the API must be called with appropriate flags. 
-      - ``xrtBOAllocUserPtr``: Allocates a buffer object using pointer provided by the user. The user pointer must be aligned to 4K boundary. 
-      - ``xrtBOFree``: Deallocates the allocated buffer. 
+The class constructor ``xrt::bo`` is mainly used to allocates a buffer object 4K align. By default a regular buffer is created (optionally the user can creates other types of buffer by providing a flag). 
 
-.. code:: c
+.. code:: c++
       :number-lines: 15
            
-           xrtMemoryGroup bank_grp_idx_0 = xrtKernelArgGroupId(kernel, 0);
-           xrtMemoryGroup bank_grp_idx_1 = xrtKernelArgGroupId(kernel, 1);
+           auto bank_grp_idx_0 = kernel.group_id(0);
+           auto bank_grp_idx_1 = kernel.group_id(1);
+    
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes,bank_grp_idx_0);
+           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_1);
 
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
-           xrtBufferHandle output_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_1);
+In the above code ``xrt::bo`` buffer objects are created using the class's constructor. As no special flags are used a regular buffer will be created.  The second argument specifies the buffer size. The third argument should be used to specify enumerated Memory Bank to specify the location on the device where the buffer should be allocated. 
 
-           ....
-           ....
-           xrtBOFree(input_buffer);
-           xrtBOFree(output_buffer);
 
-   
-The above code block shows 
 
-    - Buffer allocation API ``xrtBOAlloc`` at lines 15,16
-    - Buffer deallocation API ``xrtBOFree`` at lines 23,24 
+Nonetheless, the available buffer flags for ``xrt::bo`` are described using ``enum class`` argument with the following enumerator values
+
+        - ``xrt::bo::flags::normal``: Default, Regular Buffer
+        - ``xrt::bo::flags::device_only``: Device only Buffer (meant to be used only by the kernel).
+        - ``xrt::bo::flags::host_only``: Host Only Buffer (buffer resides in the host memory directly transferred to/from the kernel)
+        - ``xrt::bo::flags::p2p``: P2P Buffer, buffer for NVMe transfer  
+        - ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).
+
+
     
 The various arguments of the API ``xrtBOAlloc`` are
 
@@ -173,22 +140,6 @@ The various arguments of the API ``xrtBOAlloc`` are
 
 **C++**: The equivalent C++ API based code
 
-.. code:: c++
-      :number-lines: 15
-           
-           auto bank_grp_idx_0 = kernel.group_id(0);
-           auto bank_grp_idx_1 = kernel.group_id(1);
-    
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes,bank_grp_idx_0);
-           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_1);
-
-In the above code ``xrt::bo`` buffer objects are created using the class's constructor. Note the buffer flag is not used as constructor by default created regular buffer. Nonetheless, the available buffer flags for ``xrt::bo`` are described using ``enum class`` argument with the following enumerator values
-
-        - ``xrt::bo::flags::normal``: Default, Regular Buffer
-        - ``xrt::bo::flags::device_only``: Device only Buffer (meant to be used only by the kernel).
-        - ``xrt::bo::flags::host_only``: Host Only Buffer (buffer resides in the host memory directly transferred to/from the kernel)
-        - ``xrt::bo::flags::p2p``: P2P Buffer, buffer for NVMe transfer  
-        - ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).
 
 
 
