@@ -16,34 +16,34 @@ Example g++ command
     g++ -g -std=c++14 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o host.exe host.cpp -lxrt_coreutil -pthread
 
 
-The XRT native API supports both C and C++ flavor of objects and APIs. However, for general host code development C++ based APIs are recommended. The Doxygen generated documentation for the C and C++ API interfaces can be find in `<./xrt_native.main.rst>`_. This documentation only describes the C++ based APIs. For C API it is advised to refer the doxygen file only. 
+The XRT native API supports both C and C++ flavor of APIs. For general host code development C++ based APIs are recommended. For this reason this document only describes the C++ based API interface. The full C and C++ API documentation (generated based on The Doxygen) can be found in `<./xrt_native.main.rst>`_.
 
 
-  C API interface:
+The C++ Class objects used for the APIs are 
 
-+---------------+---------------+-------------------+
-|               |   C++ Class   |  C Type (Handle)  |
-+===============+===============+===================+
-|   Device      | xrt::device   |  xrtDeviceHandle  |
-+---------------+---------------+-------------------+
-|   XCLBIN      | xrt::xclbin   |  xrtXclbinHandle  |
-+---------------+---------------+-------------------+
-|   Buffer      | xrt::bo       |  xrtBufferHandle  |
-+---------------+---------------+-------------------+
-|   Kernel      | xrt::kernel   |  xrtKernelHandle  |
-+---------------+---------------+-------------------+
-|   Run         | xrt::run      |  xrtRunHandle     |
-+---------------+---------------+-------------------+
-|   Graph       | TBD           |  xrtGraphHandle   |
-+---------------+---------------+-------------------+
++---------------+---------------+
+|               |   C++ Class   |  
++===============+===============+
+|   Device      | xrt::device   |  
++---------------+---------------+
+|   XCLBIN      | xrt::xclbin   |  
++---------------+---------------+
+|   Buffer      | xrt::bo       |  
++---------------+---------------+
+|   Kernel      | xrt::kernel   |  
++---------------+---------------+
+|   Run         | xrt::run      |  
++---------------+---------------+
+|   Graph       | xrt::graph    |  
++---------------+---------------+
 
-All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/experimental/`` directory. In the user host code, it is sufficient to include ``"experimental/xrt_kernel.h"`` and ``"experimental/xrt_aie.h"`` (when using Graph APIs) to access all the APIs related to these data structure.
+All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/xrt/`` directory. In the user host code, it is sufficient to include ``"xrt/xrt_kernel.h"`` and ``"xrt/xrt_aie.h"`` (when using Graph APIs) to access all the APIs related to these data structure.
 
 .. code:: c
       :number-lines: 5
            
-           #include "experimental/xrt_kernel.h"
-           #include "experimental/xrt_aie.h"
+           #include "xrt/xrt_kernel.h"
+           #include "xrt/xrt_aie.h"
 
 
 The common host code flow using the above data structures is as below
@@ -51,7 +51,7 @@ The common host code flow using the above data structures is as below
       - Open Xilinx **Device** and Load the **XCLBIN**
       - Set up the **Buffers** that are used to transfer the data between the host and the device
       - Use the Buffer APIs for the data transfer between host and device (before and after the kernel execution).
-      - Use **Kernel** and **Run** handle/objects to offload and manage the compute-intensive tasks running on FPGA. 
+      - Use **Kernel** and **Run** objects to offload and manage the compute-intensive tasks running on FPGA. 
        
       
 Below we will walk through the common API usage to accomplish the above tasks. 
