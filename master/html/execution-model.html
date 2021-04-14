@@ -359,7 +359,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -505,7 +505,7 @@
 <div class="section" id="xocl">
 <h3>xocl<a class="headerlink" href="#xocl" title="Permalink to this headline">¶</a></h3>
 <p>Xilinx® PCIe platforms like Alveo PCIe cards support various memory topologies which can be dynamically loaded as part of FPGA image loading step. This means from one FPGA image to another the device may expose one or more memory controllers where each memory controller has its own memory address range. We use Linux <em>drm_mm</em> for allocation of memory and Linux <em>drm_gem</em> framework for mmap handling. Since ordinarily our device memory is not exposed to host CPU (except when we enable PCIe peer-to-peer feature) we use host memory pages to back device memory for mmap support. For syncing between device memory and host memory pages XDMA/QDMA PCIe memory mapped DMA engine is used. Users call sync ioctl to effect DMA in requested direction.</p>
-<p>xocl also supports PCIe Slave Bridge where it handles pinning of host memory and programming the Address Remapper tables. Section <a class="reference internal" href="sb.html#sb-rst"><span class="std std-ref">PCIe Slave-Bridge (SB)</span></a> provides more information.</p>
+<p>xocl also supports PCIe Slave Bridge where it handles pinning of host memory and programming the Address Remapper tables. Section <span class="xref std std-ref">sb.rst</span> provides more information.</p>
 </div>
 <div class="section" id="zocl">
 <h3>zocl<a class="headerlink" href="#zocl" title="Permalink to this headline">¶</a></h3>
@@ -569,7 +569,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 11, 2021.
+        Last updated on April 14, 2021.
       </span>
 
     </p>

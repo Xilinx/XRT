@@ -347,7 +347,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -545,13 +545,13 @@ path to the user compiled image loaded on User partition. The Firewalls in contr
 paths protect the Shell from un-trusted User partition. For example if a slave in DFX has a
 bug or is malicious the appropriate firewall will step in and protect the Shell from the
 failing slave as soon as a non compliant AXI transaction is placed on AXI bus.</p>
-<p>Newer revisions of shell have a feature called <a class="reference internal" href="sb.html#sb-rst"><span class="std std-ref">PCIe Slave-Bridge (SB)</span></a> which provides direct access to host
+<p>Newer revisions of shell have a feature called <span class="xref std std-ref">sb.rst</span> which provides direct access to host
 memory from kernels in the User partition. With this feature kernels can initiate PCIe burst
 transfers from PF1 without direct access to PCIe bus. AXI Firewall (SI) in reverse direction protects
 PCIe from non-compliant transfers.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Features <a class="reference internal" href="sb.html#sb-rst"><span class="std std-ref">PCIe Slave-Bridge (SB)</span></a> and <a class="reference internal" href="p2p.html#p2p-rst"><span class="std std-ref">PCIe Peer-to-Peer (P2P)</span></a> are not available in all shells.</p>
+<p>Features <span class="xref std std-ref">sb.rst</span> and <a class="reference internal" href="p2p.html#p2p-rst"><span class="std std-ref">PCIe Peer-to-Peer (P2P)</span></a> are not available in all shells.</p>
 </div>
 <p>For more information on firewall protection see <a class="reference internal" href="#firewall">Firewall</a> section below.</p>
 <p>For shell update see <a class="reference internal" href="#shell-update">Shell Update</a> section below.</p>
@@ -878,7 +878,7 @@ API and a <em>wait for exec completion</em> API. These operations are exposed as
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 11, 2021.
+        Last updated on April 14, 2021.
       </span>
 
     </p>

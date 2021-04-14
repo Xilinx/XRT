@@ -347,7 +347,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -876,6 +876,7 @@ xclbin image</p></td>
 <p><strong>Definition</strong></p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct kernel_info {
   char name;
+  uint32_t range;
   int anums;
   struct argument_info args;
 };
@@ -884,6 +885,8 @@ xclbin image</p></td>
 <p><strong>Members</strong></p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>kernel name</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">range</span></code></dt><dd><p>kernel register range</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">anums</span></code></dt><dd><p>number of argument</p>
 </dd>
@@ -1308,7 +1311,7 @@ for automatic event dependency handling by ERT</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 11, 2021.
+        Last updated on April 14, 2021.
       </span>
 
     </p>
