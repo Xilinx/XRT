@@ -2149,7 +2149,7 @@ xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* 
 }
 
 int
-xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+_xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return 0;
 }
@@ -2421,6 +2421,12 @@ int
 xclUpdateSchedulerStat(xclDeviceHandle handle)
 {
   return 1; // -ENOSYS;
+}
+
+int 
+xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+{
+  return -ENOSYS;
 }
 
 int

@@ -28,6 +28,7 @@
 
 // Internal shim function forward declarations
 int xclUpdateSchedulerStat(xclDeviceHandle handle);
+int xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind);
 
 namespace xrt_core {
 
@@ -115,6 +116,9 @@ struct ishim
 
   virtual
   void update_scheduler_status() = 0;
+
+  virtual void
+  user_reset(xclResetKind kind) = 0;
 
   ////////////////////////////////////////////////////////////////
   // Interfaces for custom IP interrupt handling
@@ -415,6 +419,13 @@ struct shim : public DeviceType
   {
     if (auto ret = xclUpdateSchedulerStat(DeviceType::get_device_handle()))
       throw error(ret, "failed to update scheduler status");
+  }
+
+  virtual void
+  user_reset(xclResetKind kind)
+  {
+    if (auto ret = xclInternalResetDevice(DeviceType::get_device_handle(), kind))
+      throw error(ret, "failed to reset device");
   }
 
 #ifdef XRT_ENABLE_AIE
