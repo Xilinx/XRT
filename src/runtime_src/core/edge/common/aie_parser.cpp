@@ -72,7 +72,7 @@ get_aiecompiler_options(const pt::ptree& aie_meta)
     aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
     return aiecompiler_options;
 }
-  
+
 adf::graph_config
 get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 {
@@ -215,7 +215,7 @@ get_rtp(const pt::ptree& aie_meta, int graph_id)
   for (auto& rtp_node : aie_meta.get_child("aie_metadata.RTPs")) {
     if (rtp_node.second.get<int>("graph_id") != graph_id)
       continue;
-    
+
     adf::rtp_config rtp;
     rtp.portId = rtp_node.second.get<int>("port_id");
     rtp.aliasId = rtp_node.second.get<int>("alias_id");
