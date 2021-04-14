@@ -24,6 +24,7 @@
 #include <string>
 #include <memory>
 #include <map>
+#include <iostream>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
@@ -47,6 +48,7 @@ namespace XBUtilities {
    *                  false - disable verbosity (default)
    */
   void setVerbose(bool _bVerbose);
+  bool getVerbose();
   void setTrace(bool _bVerbose);
 
   void setShowHidden(bool _bShowHidden);
@@ -55,9 +57,9 @@ namespace XBUtilities {
   void disable_escape_codes( bool _disable );
   bool is_esc_enabled();  
 
-  void message_(MessageType _eMT, const std::string& _msg, bool _endl = true);
+  void message_(MessageType _eMT, const std::string& _msg, bool _endl = true, std::ostream & _ostream = std::cout);
 
-  void message(const std::string& _msg, bool _endl = true); 
+  void message(const std::string& _msg, bool _endl = true, std::ostream & _ostream = std::cout); 
   void info(const std::string& _msg, bool _endl = true);
   void warning(const std::string& _msg, bool _endl = true);
   void error(const std::string& _msg, bool _endl = true);

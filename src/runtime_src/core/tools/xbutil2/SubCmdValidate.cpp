@@ -1116,9 +1116,18 @@ static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int test_idx,
                        size_t testSuiteSize, std::ostream & _ostream, const std::string& bdf)
 {
-  std::string test_desc = boost::str(boost::format("%d/%d Test #%d [%s]") % test_idx % testSuiteSize % test_idx % bdf);
-  _ostream << boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name");
-  _ostream << boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description");
+  if(test.get<std::string>("status", "").compare("skipped") != 0) {
+    std::string test_desc = boost::str(boost::format("Test %d/%d [%s]") % test_idx % testSuiteSize % bdf);
+    _ostream << boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name");
+    if(XBU::getVerbose())
+      XBU::message(boost::str(boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
+  }
+  else if(XBU::getVerbose()) {
+    std::string test_desc = boost::str(boost::format("Test %d/%d [%s]") % test_idx % testSuiteSize % bdf);
+    XBU::message(boost::str(boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name")));
+    XBU::message(boost::str(boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
+  }
+    
 }
 
 /*
@@ -1130,20 +1139,33 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
 {
   std::string _status = test.get<std::string>("status");
   std::string prev_tag = "";
-  auto color = EscapeCodes::FGC_PASS;
   bool warn = false;
   bool error = false;
+
+  // if supported and details/error/warning: ostr
+  // if supported and xclbin/testcase: verbose
+  // if not supported: verbose
+  auto redirect_log = [&](std::string tag, std::string log_str) {
+    std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
+    if(boost::iequals(_status, "skipped") || std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end()) {
+      if(XBU::getVerbose())
+        XBU::message(log_str, false, _ostream);
+      else
+        return;
+    }
+    else
+      _ostream << log_str;
+  };
 
   try {
     for (const auto& dict : test.get_child("log")) {
       for (const auto& kv : dict.second) {
         if (kv.first.compare(prev_tag)) {
           prev_tag = kv.first;
-          _ostream<< boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>();
+          redirect_log(kv.first, boost::str(boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>()));
         }
         else
-          _ostream<< boost::format("    %-24s  %s\n") % "\0" % kv.second.get_value<std::string>();
-
+          redirect_log(kv.first, boost::str(boost::format("    %-24s  %s\n") % "\0" % kv.second.get_value<std::string>()));
         if (boost::iequals(kv.first, "warning"))
           warn = true;
         else if (boost::iequals(kv.first, "error"))
@@ -1154,19 +1176,16 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   catch(...) {}
 
   if(error) {
-    color = EscapeCodes::FGC_FAIL;
     status = test_status::failed;
   }
   else if(warn) {
     _status.append(" with warnings");
-    color = EscapeCodes::FGC_WARN;
     status = test_status::warning;
   }
 
   boost::to_upper(_status);
-  _ostream << boost::format("    %-24s:") % "Test Status" << EscapeCodes::fgcolor(color).string() << boost::format(" [%s]\n") % _status
-            << EscapeCodes::fgcolor::reset();
-  _ostream << "-------------------------------------------------------------------------------" << std::endl;
+  redirect_log("", boost::str(boost::format("    %-24s: [%s]\n") % "Test Status" % _status));
+  redirect_log("", "-------------------------------------------------------------------------------\n");
 }
 
 /*
@@ -1201,7 +1220,8 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::proper
     _ostream << boost::format("Validate device[%s]\n") % _ptTree.get<std::string>("device_id");
     _ostream << boost::format("%-20s: %s\n") % "Platform" % _ptTree.get<std::string>("platform");
     _ostream << boost::format("%-20s: %s\n") % "SC Version" % _ptTree.get<std::string>("sc_version");
-    _ostream << boost::format("%-20s: %s\n\n") % "Platform ID" % _ptTree.get<std::string>("platform_id");
+    _ostream << boost::format("%-20s: %s\n") % "Platform ID" % _ptTree.get<std::string>("platform_id");
+    _ostream << "-------------------------------------------------------------------------------\n";
   }
 }
 
@@ -1225,16 +1245,29 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device,
   for (TestCollection * testPtr : testObjectsToRun) {
     boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
 
+    // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
+    // we need to print the test description before running the test
+    auto is_black_box_test = [ptTest]() {
+      std::vector<std::string> black_box_tests = {"Verify kernel", "Bandwidth kernel", "iops", "vcu"};
+      auto test = ptTest.get<std::string>("name");
+      return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
+    };
     if(schemaVersion == Report::SchemaVersion::text) {
       auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-      pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
+      if(is_black_box_test())
+        pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
     }
 
     testPtr->testHandle(device, ptTest);
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
-    if(schemaVersion == Report::SchemaVersion::text)
+    if(schemaVersion == Report::SchemaVersion::text) {
+      auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+      if(!is_black_box_test()) 
+        pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
       pretty_print_test_run(ptTest, status, _ostream);
+    }
+      
 
     // If a test fails, exit immediately
     if(status == test_status::failed) {
