@@ -1148,41 +1148,9 @@ int vcu_enc_test(const char *xclbin_path, int sk_idx, int dev_idx)
     goto error;
   }
 
-#if 0
-  /* Read from input file for encoder input frame */
-  {
-    FILE* pFile;
-    /* Now, we read the file and get its information. */
-    pFile = fopen("encoder_input.txt","rb");
-
-    int xrt_in_size = 3342336;
-    /* Reserve memory for your readed buffer */
-    char* readedBuffer = (char *)malloc(xrt_in_size);
-
-    /* POSIX.1-2008 way */
-    if (clock_gettime(CLOCK_REALTIME, &tms)) {
-      return -1;
-    }
-
-    if (pFile){
-      fread(readedBuffer, xrt_in_size, 1, pFile);
-      puts("Readed from file!");
-    }
-    else{
-      puts("Something wrong reading from File.\n");
-      goto error;
-    }
-
-    in_buffer = (uint8_t *)readedBuffer;
-    in_size = xrt_in_size;
-    enc->input_buf_size = in_size;
-  }
-
-#else
   /* Get the input buffer array from the file */
   in_buffer = (uint8_t *)&decoder_output_buf;
   enc->input_buf_size = decoder_output_buf_len;
-#endif
 
   /* Initialize xrt and open device */
   iret = gst_ivas_xvcuenc_open (enc, xclbin_path, sk_idx, dev_idx);
