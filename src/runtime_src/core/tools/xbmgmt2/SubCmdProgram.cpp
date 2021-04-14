@@ -352,11 +352,7 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
 
   if (!same_dsa) {
     std::cout << boost::format("[%s] : Updating base\n") % flasher.sGetDBDF();
-    try {
-      update_shell(boardIdx, candidate.file, candidate.file);
-    } catch (const xrt_core::error& e) {
-      std::cout << "NOTE: " << e.what() << std:: endl;
-    }
+    update_shell(boardIdx, candidate.file, candidate.file);
     reboot = true;
   }
 
