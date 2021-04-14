@@ -843,18 +843,7 @@ namespace xclhwemhal2 {
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
         setSimPath(sim_path);
-        std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
-
-        std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
-        if (boost::filesystem::exists(waveformDebugfilePath) != false) {
-          setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
-          setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
-        }
-         
-        // Commented to set these when DEBUG MODE is set OFF/off
-        //setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
-        //setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
 
       if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
