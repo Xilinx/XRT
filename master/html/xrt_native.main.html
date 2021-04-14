@@ -347,7 +347,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -2109,6 +2109,24 @@ caller.  The xrt::xclbin object must contain the complete axlf
 structure.</p>
 <dl class="c function">
 <dt>
+<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xrtDeviceLoadXclbinUUID (xrtDeviceHandle dhdl, const xuid_t uuid)</code></dt>
+<dd><p>load an xclbin from an xrt::xclbin handle</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt><dd><p>Handle to device previously opened with xrtDeviceOpen</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">xuid_t</span> <span class="pre">uuid</span></code></dt><dd><p>uuid_t struct of xclbin id</p>
+</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, error otherwise</p>
+<p>This function reads the xclbin id already loaded in the system and
+comapres it with the input uuid. If they match, load the cached
+xclbin metadata into caller’s process. Otherwise returns error.</p>
+<dl class="c function">
+<dt>
 <code class="sig-name descname">XCL_DRIVER_DLLESPEC int xrtDeviceGetXclbinUUID (xrtDeviceHandle dhdl, xuid_t out)</code></dt>
 <dd><p>Get UUID of xclbin image loaded on device</p>
 </dd></dl>
@@ -2294,7 +2312,7 @@ Otherwise, the the content of this value will be populated.</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
-<p>xrtBufferHandle on success or NULL with errno set</p>
+<p>xrtBufferHandle on success or NULL</p>
 <dl class="c function">
 <dt>
 <code class="sig-name descname">XCL_DRIVER_DLLESPEC xrtBufferHandle xrtBOAlloc (xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp)</code></dt>
@@ -2313,7 +2331,7 @@ Otherwise, the the content of this value will be populated.</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
-<p>xrtBufferHandle on success or NULL with errno set</p>
+<p>xrtBufferHandle on success or NULL</p>
 <dl class="c function">
 <dt>
 <code class="sig-name descname">XCL_DRIVER_DLLESPEC xrtBufferHandle xrtBOImport (xrtDeviceHandle dhdl, xclBufferExportHandle ehdl)</code></dt>
@@ -2361,7 +2379,7 @@ process or another process.</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
-<p>xrtBufferHandle on success or NULL with errno set</p>
+<p>xrtBufferHandle on success or NULL</p>
 <dl class="c function">
 <dt>
 <code class="sig-name descname">XCL_DRIVER_DLLESPEC int xrtBOFree (xrtBufferHandle bhdl)</code></dt>
@@ -2400,7 +2418,7 @@ process or another process.</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
-<p>Device address of this BO</p>
+<p>Device address of this BO, or LLONG_MAX on error</p>
 <dl class="c function">
 <dt>
 <code class="sig-name descname">XCL_DRIVER_DLLESPEC int xrtBOSync (xrtBufferHandle bhdl, enum xclBOSyncDirection dir, size_t size, size_t offset)</code></dt>
@@ -2419,7 +2437,7 @@ process or another process.</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
-<p>0 on success or standard errno</p>
+<p>0 on success or error</p>
 <p>Synchronize the buffer contents between host and device. Depending
 on the memory model this may require DMA to/from device or CPU
 cache flushing/invalidation</p>
@@ -2435,7 +2453,7 @@ cache flushing/invalidation</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
-<p>Memory mapped buffer, or NULL on error with errno set</p>
+<p>Memory mapped buffer, or NULL on error</p>
 <p>Map the contents of the buffer object into host memory.  The buffer
 object is unmapped when freed.</p>
 <dl class="c function">
@@ -2867,7 +2885,7 @@ Support states are: ERT_CMD_STATE_COMPLETED (to be extended)</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 11, 2021.
+        Last updated on April 14, 2021.
       </span>
 
     </p>

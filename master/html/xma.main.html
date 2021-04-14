@@ -347,7 +347,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -629,6 +629,26 @@ int32_t <code class="sig-name descname">xma_plg_is_work_item_done</code><span cl
 <p>XMA_SUCCESS on success</p>
 <p>XMA_ERROR on timeout</p>
 <dl class="c function">
+<dt id="c.xma_plg_work_item_return_code">
+int32_t <code class="sig-name descname">xma_plg_work_item_return_code</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em>, XmaCUCmdObj *<em>cmd_obj_array</em>, int32_t <em>num_cu_objs</em>, uint32_t *<em>num_cu_errors</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_work_item_return_code" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>This function gets return code of completed cu cmds previously submitted via <a class="reference internal" href="#c.xma_plg_schedule_work_item" title="xma_plg_schedule_work_item"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item()</span></code></a>. If any cu cmd hasn’t completed yet, this function returns an error.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaCUCmdObj</span> <span class="pre">*</span> <span class="pre">cmd_obj_array</span></code></dt><dd><p>An array of command objects</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">num_cu_objs</span></code></dt><dd><p>Num of cu cmd objects in above array of command objects</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">*</span> <span class="pre">num_cu_errors</span></code></dt><dd><p>Num of cu cmd objects which have error codes i.e negative return code</p>
+</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>XMA_SUCCESS on success</p>
+<p>XMA_ERROR if a cu cmd has not completed yet</p>
+<dl class="c function">
 <dt id="c.xma_plg_schedule_work_item">
 XmaCUCmdObj <code class="sig-name descname">xma_plg_schedule_work_item</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em>, void *<em>regmap</em>, int32_t <em>regmap_size</em>, int32_t *<em>return_code</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_schedule_work_item" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>This function schedules a request to the XRT scheduler for execution of a kernel based on the supplied kernel register map Work items are processed in FIFO order. For dataflow kernels with channels work items for a given channel are processed in FIFO order. After calling <code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item_with_args()</span></code> one or more times, the caller can invoke <a class="reference internal" href="#c.xma_plg_is_work_item_done" title="xma_plg_is_work_item_done"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_is_work_item_done()</span></code></a> to wait for one item of work to complete. pointer to regamp contains aruments to be supplied to kernel regmap must start from offset 0 of register map of a kernel</p>
@@ -696,7 +716,7 @@ void *<code class="sig-name descname">xma_plg_get_dev_handle</code><span class="
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 11, 2021.
+        Last updated on April 14, 2021.
       </span>
 
     </p>

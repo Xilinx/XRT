@@ -347,7 +347,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -668,6 +668,22 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 <dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
 </dd>
 </dl>
+<dl class="c type">
+<dt>
+<code class="sig-name descname">struct ert_validate_cmd</code></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_validate_cmd {
+  union {unnamed_union};
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
+</dd>
+</dl>
 <dl class="c function">
 <dt>
 <code class="sig-name descname">ERT_WORD_SIZE ()</code></dt>
@@ -837,7 +853,7 @@ MB(W)</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 11, 2021.
+        Last updated on April 14, 2021.
       </span>
 
     </p>

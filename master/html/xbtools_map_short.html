@@ -347,7 +347,7 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sb.html">PCIe Slave-Bridge (SB)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
@@ -635,27 +635,32 @@ New</p></th>
 <td><p><code class="docutils literal notranslate"><span class="pre">--path</span> <span class="pre">&lt;xclbin</span> <span class="pre">w/</span> <span class="pre">path&gt;</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">--user</span> <span class="pre">&lt;xclbin</span> <span class="pre">w/</span> <span class="pre">path&gt;</span></code></p></td>
 </tr>
-<tr class="row-even"><td></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scan</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">examine</span></code></p></td>
+<td></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--report</span> <span class="pre">host</span></code></p></td>
+</tr>
+<tr class="row-odd"><td></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">examine</span></code></p></td>
 <td></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td></td>
+<tr class="row-even"><td></td>
 <td></td>
 <td></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">--report</span> <span class="pre">&lt;list&gt;</span></code></p></td>
 </tr>
-<tr class="row-even"><td></td>
+<tr class="row-odd"><td></td>
 <td></td>
 <td></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">&lt;type&gt;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td></td>
+<tr class="row-even"><td></td>
 <td></td>
 <td></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">--output</span> <span class="pre">&lt;file&gt;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reset</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">reset</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">reset</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
@@ -694,7 +699,7 @@ New</p></th>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 11, 2021.
+        Last updated on April 14, 2021.
       </span>
 
     </p>
