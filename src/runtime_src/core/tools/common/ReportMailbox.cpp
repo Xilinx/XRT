@@ -94,9 +94,15 @@ ReportMailbox::writeReport(const xrt_core::device * device,
 {
   boost::property_tree::ptree pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(device, pt);
+  try {
+    getPropertyTreeInternal(device, pt);
+  } catch (...) {}
 
   output << "Mailbox\n";
+  if (pt.empty()) {
+    output << "  Information unavailable" << std::endl; 
+    return;
+  }
   boost::property_tree::ptree& mailbox = pt.get_child("mailbox.requests", empty_ptree);
   output << boost::format("  %-22s : %s Bytes\n") % "Total bytes received" % pt.get<std::string>("mailbox.raw_bytes");
   for(auto& kv : mailbox) {
