@@ -103,6 +103,12 @@ XBUtilities::setVerbose(bool _bVerbose)
     verbose("Enabling Verbosity");
 }
 
+bool 
+XBUtilities::getVerbose()
+{
+  return m_bVerbose;
+}
+
 void
 XBUtilities::setTrace(bool _bTrace)
 {
@@ -145,7 +151,7 @@ XBUtilities::is_esc_enabled() {
 
 
 void
-XBUtilities::message_(MessageType _eMT, const std::string& _msg, bool _endl)
+XBUtilities::message_(MessageType _eMT, const std::string& _msg, bool _endl, std::ostream & _ostream)
 {
   static std::map<MessageType, std::string> msgPrefix = {
     { MT_MESSAGE, "" },
@@ -173,17 +179,17 @@ XBUtilities::message_(MessageType _eMT, const std::string& _msg, bool _endl)
       return;
   }
 
-  std::cout << msgPrefix[_eMT] << _msg;
+  _ostream << msgPrefix[_eMT] << _msg;
 
   if (_endl == true) {
-    std::cout << std::endl;
+    _ostream << std::endl;
   }
 }
 
 void
-XBUtilities::message(const std::string& _msg, bool _endl)
+XBUtilities::message(const std::string& _msg, bool _endl, std::ostream & _ostream)
 {
-  message_(MT_MESSAGE, _msg, _endl);
+  message_(MT_MESSAGE, _msg, _endl, _ostream);
 }
 
 void

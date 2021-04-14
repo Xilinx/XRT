@@ -100,7 +100,6 @@ void  main_(int argc, char** argv,
 
   // Check to see if help was requested and no command was found
   if (vm.count("subCmd") == 0) {
-    std::cerr << "ERROR: " << "Please specify a valid command" << std::endl << std::endl;
     XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, _subCmds);
     return;
   }
@@ -108,11 +107,6 @@ void  main_(int argc, char** argv,
   // -- Now see if there is a command to work with
   // Get the command of choice
   std::string sCommand = vm["subCmd"].as<std::string>();
-
-  if (sCommand == "help") {
-    XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, _subCmds);
-    return;
-  }
 
   // Search for the subcommand (case sensitive)
   std::shared_ptr<SubCmd> subCommand;
