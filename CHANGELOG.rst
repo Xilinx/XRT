@@ -7,10 +7,18 @@ XRT ChangeLog
 Added
 .....
 * Stable native XRT APIs (xrt::device, xrt::kernel, xrt::bo, xrt::uuid) promoted to ``include/xrt/`` folder.
-* New xrt::xclbin experimental API for xclbin introspection at run-time.
-* New xrt::ip experimental API for register and user interrupt access of custom IPs.
-* API error are propagated as std::system_error exceptions with POSIX error code
-* Software emulation support for native XRT APIs   
+* New xrt::xclbin experimental C++ API for xclbin introspection at run-time.
+* New xrt::ip experimental C++ API for register and user interrupt access of custom IPs.
+* API errors are propagated as std::system_error exceptions with POSIX error code.
+* Software emulation support for native XRT APIs.
+* XRT AIE/Graph C++ API and AIE multi-process support.
+* Enhanced the security, debuggability, stability of  PS (soft) kernel.  
+
+  * Remove the PS kernel binary configuration from user function and fully integrate the loading binary procedure with xclbin downloading.  
+  * Host side can read PS kernel name, status, number of runs with XRT utility. 
+  * Host code can get the PS kernel status and return value
+  
+* XRT driver debug trace support through debugfs ``/sys/kernel/debug/xclmgmt/...`` and ``/sys/kernel/debug/xocl/...``
 
 Removed
 .......
