@@ -125,8 +125,15 @@ int main(int argc, char** argv) {
     }
 
     double max_throughput = 0;
+    char* env_reps_cnt = getenv("XRT_VALIDATE_ITER_CNT");
+    int reps = 10000;
+    if (env_reps_cnt) {
+        reps = atoi(env_reps_cnt);
+        std::cout << "INFO : we found command line argument “XRT_VALIDATE_ITER_CNT”=" << reps
+                  << " and using the same for kernel iteration.\n";
+    }
+    
     for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
-        unsigned int reps = 1000;
         unsigned int DATA_SIZE = i;
 
         if (xcl::is_emulation()) {
