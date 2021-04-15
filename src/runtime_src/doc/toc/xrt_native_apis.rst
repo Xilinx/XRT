@@ -3,7 +3,7 @@
 XRT Native APIs
 ===============
 
-From 2020.2 release XRT provides a new XRT API set in C, C++, and Python flavor. This document introduces the usability of C and C++ APIs.
+From 2020.2 release XRT provides a new XRT API set in C, C++, and Python flavor. 
 
 To use the native XRT APIs, the host application must link with the **xrt_coreutil** library. 
 Compiling host code with XRT native C++ API requires C++ standard with -std=c++14 or newer. 
@@ -65,7 +65,7 @@ Device and XCLBIN class provide fundamental infrastructure-related interfaces. T
     - Load compiled kernel binary (or XCLBIN) onto the device 
 
 
-The most simple code to load a XCLBIN as below  
+The simplest code to load a XCLBIN as below  
 
 .. code:: c++
       :number-lines: 10
@@ -109,11 +109,17 @@ The class constructor ``xrt::bo`` is mainly used to allocates a buffer object 4K
            auto input_buffer = xrt::bo(device, buffer_size_in_bytes,bank_grp_idx_0);
            auto output_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_1);
 
-In the above code ``xrt::bo`` buffer objects are created using the class's constructor. As no special flags are used a regular buffer will be created.  The second argument specifies the buffer size. The third argument should be used to specify enumerated Memory Bank to specify the location on the device where the buffer should be allocated. 
+In the above code ``xrt::bo`` buffer objects are created using the class's constructor. Please note the following 
 
+  - As no special flags are used a regular buffer will be created.  
+  - The second argument specifies the buffer size. 
+  - The third argument should be used to specify enumerated Memory Bank index to specify the memory location where the buffer should be allocated. In this example, ``xrt::kernel::group_id()`` member function is used to pass the memory bank index where the corresponding kernel arguments are (in the above example argument 0 and 1) connected. Instead of using ``xrt::kernel::group_id()`` member function, the direct memory bank index (as observed in ``xbutil examine --report memory``) can be used as well. 
+  
+  
+Creating special Buffers
+************************
 
-
-Nonetheless, the available buffer flags for ``xrt::bo`` are described using ``enum class`` argument with the following enumerator values
+The ``xrt::bo()`` constructors accepts multiple other buffer flags those are described using ``enum class`` argument with the following enumerator values
 
         - ``xrt::bo::flags::normal``: Default, Regular Buffer
         - ``xrt::bo::flags::device_only``: Device only Buffer (meant to be used only by the kernel).
@@ -121,26 +127,32 @@ Nonetheless, the available buffer flags for ``xrt::bo`` are described using ``en
         - ``xrt::bo::flags::p2p``: P2P Buffer, buffer for NVMe transfer  
         - ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).
 
+The below example shows creating a P2P buffer on a device memory bank connected to the argument 3 of the kernel. 
 
-    
-The various arguments of the API ``xrtBOAlloc`` are
+.. code:: c++
+      :number-lines: 15
+           
+           auto p2p_buffer = xrt::bo(device, buffer_size_in_byte,xrt::bo::flags::p2p, kernel.group_id(3));
 
-    - Argument 1: The device on which the buffer should be allocated 
-    - Argument 2: The size (in bytes) of the buffer
-    - Argument 3: ``xrtBufferFlags``: Used to specify the buffer type, most commonly used types are
-       
-        - ``XRT_BO_FLAGS_NONE``: Regular Buffer
-        - ``XRT_BO_FLAGS_DEV_ONLY``: Device only Buffer (meant to be used only by the kernel). 
-        - ``XRT_BO_FLAGS_HOST_ONLY``: Host Only Buffer (buffers reside in the host memory directly transferred to/from the kernel)
-        - ``XRT_BO_FLAGS_P2P``: P2P Buffer, buffer for NVMe transfer
-        - ``XRT_BO_FLAGS_CACHEABLE``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform). 
-        
-    - Argument 4:  ``xrtMemoryGroup``: Enumerated Memory Bank to specify the location on the device where the buffer should be allocated. The ``xrtMemoryGroup`` is obtained by the API ``xrtKernelArgGroupId`` as shown in line 15 (for more details of this API refer to the Kernel section).   
-    
+  
+Creating Buffers from the user pointer
+**************************************
 
-**C++**: The equivalent C++ API based code
+The ``xrt::bo()`` constructor can also be called using pointer provided by the user. The user pointer must be aligned to 4K boundary.
 
-
+.. code:: c++
+      :number-lines: 15
+           
+           // Host Memory pointer aligned to 4K boundary
+           int *host_ptr;
+           posix_memalign(&host_ptr,4096,MAX_LENGTH*sizeof(int)); 
+ 
+           // Sample example filling the allocated host memory       
+           for(int i=0; i<MAX_LENGTH; i++) {
+           host_ptr[i] = i;  // whatever 
+           }
+           
+           auto mybuf = xrt::bo (device, host_ptr, MAX_LENGTH*sizeof(int), kernel.group_id(3)); 
 
 
 2. Data transfer using Buffers
@@ -158,48 +170,22 @@ I. Data transfer between host and device by Buffer read/write API
 
 To transfer the data from the host to the device, the user first needs to update the host-side buffer backing pointer followed by a DMA transfer to the device. 
 
-The following C APIs are used for the above tasks
-
-    1. ``xrtBOWrite``  
-    2. ``xrtBOSync`` with flag ``XCL_BO_SYNC_BO_TO_DEVICE``
-    
-In C++, ``xrt::bo`` class has following member functions for the same functionality
+   
+The ``xrt::bo`` class has following member functions for the same functionality
 
     1. ``xrt::bo::write``
     2. ``xrt::bo::sync`` with flag ``XCL_BO_SYNC_BO_TO_DEVICE``
 
 To transfer the data from the device to the host, the steps are reverse, the user first needs to do a DMA transfer from the device followed by the reading data from the host-side buffer backing pointer. 
 
-The following C APIs are used for the above tasks
 
-     1. ``xrtBOSync`` with flag ``XCL_BO_SYNC_BO_FROM_DEVICE``
-     2. ``xrtBORead``
-
-In C++ the corresponding ``xrt::bo`` class's member functions are
+The corresponding ``xrt::bo`` class's member functions are
 
     1. ``xrt::bo::sync`` with flag ``XCL_BO_SYNC_BO_FROM_DEVICE``
     2. ``xrt::bo::read``
 
 
 Code example of transferring data from the host to the device
-
-.. code:: c
-      :number-lines: 20
-           
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
-
-           // Prepare the input data
-           int buff_data[data_size];
-           for (int i=0; i<data_size; ++i) {
-               buff_data[i] = i;
-           }
-    
-           xrtBOWrite(input_buffer,buff_data,data_size*sizeof(int),0);
-           xrtSyncBO(input_buffer,XCL_BO_SYNC_BO_TO_DEVICE, data_size*sizeof(int),0);
-    
-
-**C++**: The equivalent C++ API based code
-
 
 .. code:: c++
       :number-lines: 20    
@@ -220,23 +206,9 @@ Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has ov
 II. Data transfer between host and device by Buffer map API
 ***********************************************************
 
-The API ``xrtBOMap`` (C++: ``xrt::bo::map``) allows mapping the host-side buffer backing pointer to a user pointer. The host code can subsequently exercise the user pointer for the data reads and writes. However, after writing to the mapped pointer (or before reading from the mapped pointer) the API ``xrtBOSync`` (C++: ``xrt::bo::sync``) should be used with direction flag for the DMA operation. 
+The API ``xrt::bo::map()`` allows mapping the host-side buffer backing pointer to a user pointer. The host code can subsequently exercise the user pointer for the data reads and writes. However, after writing to the mapped pointer (or before reading from the mapped pointer) the API ``xrt::bo::sync()`` should be used with direction flag for the DMA operation. 
 
 Code example of transferring data from the host to the device by this approach
-
-.. code:: c
-      :number-lines: 20
-           
-           xrtBufferHandle input_buffer = xrtBOAlloc(device, buffer_size_in_bytes, XRT_BO_FLAGS_NONE, bank_grp_idx_0);
-           int* input_buffer_mapped = (int*)xrtBOMap(input_buffer);
-
-           for (int i=0;i<data_size;++i) {
-               input_buffer_mappped[i] = i;
-           }
-
-           xrtBOSync(input_buffer, XCL_BO_SYNC_BO_TO_DEVICE, buffer_size_in_bytes, 0);
-    
-**C++**: The equivalent C++ API based code
 
 .. code:: c++
       :number-lines: 20
@@ -254,19 +226,7 @@ Code example of transferring data from the host to the device by this approach
 III. Data transfer between the buffers by copy API
 **************************************************
 
-XRT provides ``xrtBOCopy`` (C++: ``xrt::bo::copy``) API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in :ref:`m2m.rst`). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host). 
-
-API Example in C, all arguments are self-explanatory
-
-.. code:: c
-      :number-lines: 25
-           
-           size_t dst_buffer_offset = 0;
-           size_t src_buffer_offset = 0;
-           xrtBOCopy(dst_buffer, src_buffer, size_of_copy, dst_buffer_offset, src_buffer_offset);
-
-
-**C++**: The equivalent C++ API based code
+XRT provides ``xrt::bo::copy()`` API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in :ref:`m2m.rst`). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host). 
 
 .. code:: c++
       :number-lines: 25
@@ -274,7 +234,7 @@ API Example in C, all arguments are self-explanatory
            
            dst_buffer.copy(src_buffer, copy_size_in_bytes);
 
-The API ``xrt::bo::copy`` also has overloaded version to provide a different offset than 0 for both the source and the destination buffer. 
+The API ``xrt::bo::copy()`` also has overloaded version to provide a different offset than 0 for both the source and the destination buffer. 
 
 3. Miscellaneous other Buffer APIs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -286,26 +246,11 @@ DMA-BUF API
 
 XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes. 
 
-   - ``xrtBOExport`` (C++: ``xrt::bo::export_buffer``): Export the buffer to an exported buffer handle
-   - ``xrtBOImport`` (C++: ``xrt::bo`` constructor) : Allocate a BO imported from exported buffer handle
+   - ``xrt::bo::export_buffer()``: Export the buffer to an exported buffer handle
+   - ``xrt::bo()`` constructor : Allocate a BO imported from exported buffer handle
 
 
 Consider the situation of exporting buffer from device 1 to device 2. 
-
-.. code:: c
-      :number-lines: 18
-           
-           xclBufferExportHandle buffer_exported = xrtBOExport(buffer_device_1);
-           xrtBufferHandle buffer_device_2 = xrtBOImport(device_2, buffer_exported);
-
-In the above example
-
-       - The buffer buffer_device_1 is a buffer allocated on device 1
-       - buffer_device_1 is exported to an ``xclBufferExportHandle`` by API ``xrtBOExport``
-       - The exported buffer of type ``xclBufferExportHandle`` is imported to device 2 by API ``xrtBOImport``
-
-
-**C++**: The equivalent C++ API based code
 
 .. code:: c++
       :number-lines: 18
@@ -324,25 +269,9 @@ In the above example
 Sub-buffer support
 ******************
 
-The API ``xrtBOSubAlloc`` (C++: supported by an ``xrt::bo`` class constructor) allocates a sub-buffer from a parent buffer by specifying a start offset and the size. 
+The ``xrt::bo`` class constructor can also be used to allocate a sub-buffer from a parent buffer by specifying a start offset and the size. 
 
 In the example below a sub-buffer is created from a parent buffer of size 4 bytes staring from its offset 0 
-
-.. code:: c
-      :number-lines: 18
-           
-           xrtBufferHandle parent_buffer; 
-           xrtBufferHandle sub_buffer; 
-     
-           size_t sub_buffer_size = 4; 
-           size_t sub_buffer_offset = 0; 
-     
-           sub_buffer = xrtBOSubAlloc(parent_buffer, sub_buffer_size, sub_buffer_offset);
-
-
-**C++**: The equivalent C++ API based code
-
-In C++ a sub-buffer is created by using the xrt::bo class's constructor using the parent buffer, size, and offset as parameters. 
 
 .. code:: c++ 
       :number-lines: 18
@@ -356,23 +285,23 @@ In C++ a sub-buffer is created by using the xrt::bo class's constructor using th
 Buffer information
 ******************
 
-XRT provides few other APIs to obtain information related to the buffer. 
+XRT provides few other API Class member functions to obtain information related to the buffer. 
 
-   - ``xrtBOSize`` (C++: member function ``xrt::bo::size``): Size of the buffer
-   - ``xrtBOAddr`` (C++: member function ``xrt::bo::address``) : Physical address of the buffer
+   - The member function ``xrt::bo::size()``: Size of the buffer
+   - The member function ``xrt::bo::address()`` : Physical address of the buffer
 
 
 
 Kernel and Run
 --------------
 
-The XRT kernel APIs support creating of kernel handle (or object in C++) from currently loaded xclbin.  The kernel handle is used to execute the kernel function on the hardware instance (Compute Unit or CU) of the kernel.  
+To execute a kernel on a device, first a kernel class object has to be created from currently loaded xclbin.  The kernel object can used to execute the kernel function on the hardware instance (Compute Unit or CU) of the kernel.  
 
-A Run handle/object represents an execution of the kernel. Upon finishing the kernel execution, the Run handle/object can be reused to invoke the same kernel function if desired. 
+A Run object represents an execution of the kernel. Upon finishing the kernel execution, the Run object can be reused to invoke the same kernel function if desired. 
 
 The following topics are discussed below
 
-       - Obtaining kernel handle/object from XCLBIN
+       - Obtaining kernel object from XCLBIN
        - Getting the bank group index of a kernel argument
        - Reading and write CU mapped registers
        - Execution of kernel and dealing with the associated run
@@ -382,65 +311,37 @@ The following topics are discussed below
 Obtaining kernel handle/object from XCLBIN
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The kernel handle (or object) is created from the device, XCLBIN UUID and the kernel name. 
-
-.. code:: c
-      :number-lines: 35
-           
-           xuid_t xclbin_uuid;
-           xrtXclbinGetUUID(xclbin,xclbin_uuid);
-
-           xrtKernelHandle kernel = xrtPLKernelOpen(device, xclbin_uuid, "kernel_name");
-           ....
-           ....
-           xrtKernelClose(kernel);
-
-
-In the above code example
- 
-      - The UUID of the XCLBIN is retrieved by the API ``xrtXclbinGetUUID`` 
-      - The kernel is created by the API ``xrtPLKernelOpen``
-      - The kernel is closed by the API ``xrtKernelClose``
-
-**Note**: For the kernel with more than 1 CU, a kernel handle (or object) should represent all the CUs having identical interface connectivity. If all the CUs of the kernel are not having identical connectivity, the specific CU name(s) should be used to obtain a kernel handle (or object) to represent the subset of CUs with identical connectivity. Otherwise XRT will do this selection internally to select a group of CUs and discard the rest of the CUs (discarded CUs are not used during the execution of a kernel).  
-
-As an example, assume a kernel name is foo having 3 CUs foo_1, foo_2, foo_3. The CUs foo_1 and foo_2 are connected to DDR bank 0, but the CU foo_3 is connected to DDR bank 1. 
-
-       - Opening kernel handle for foo_1 and foo_2 (as they have identical interface connection)
-       
-         .. code:: c
-               :number-lines: 35
-                  
-                    cu_group_1 = xrtPLKernelOpen(device, xclbin_uuid, "foo:{foo_1,foo_2}");     
-   
-       - Opening kernel handle for foo_3
-          
-         .. code:: c
-               :number-lines: 35
-                  
-                    cu_group_2 = xrtPLKernelOpen(device, xclbin_uuid, "foo:{foo_3}");     
-
-
-
-**C++**: In C++, ``xrt::kernel`` object can be created from the constructor of ``xrt::kernel`` class. 
+The kernel object is created from the device, XCLBIN UUID and the kernel name using ``xrt::kernel()`` constructor as shown below
 
 .. code:: c++
       :number-lines: 35
           
            auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
            auto krnl = xrt::kernel(device, xclbin_uuid, name); 
+
+**Note**: For the kernel with more than 1 CU, a kernel handle (or object) should represent all the CUs having identical interface connectivity. If all the CUs of the kernel are not having identical connectivity, the specific CU name(s) should be used to obtain a kernel handle (or object) to represent the subset of CUs with identical connectivity. Otherwise XRT will do this selection internally to select a group of CUs and discard the rest of the CUs (discarded CUs are not used during the execution of a kernel).  
+
+As an example, assume a kernel name is foo having 3 CUs foo_1, foo_2, foo_3. The CUs foo_1 and foo_2 are connected to DDR bank 0, but the CU foo_3 is connected to DDR bank 1. 
+
+       - Opening kernel object for foo_1 and foo_2 (as they have identical interface connection)
+       
+         .. code:: c
+               :number-lines: 35
+                  
+                    krnl_obj_1_2 = xrt::kernel(device, xclbin_uuid, "foo:{foo_1,foo_2}");     
+   
+       - Opening kernel object for foo_3
+          
+         .. code:: c
+               :number-lines: 35
+                  
+                    krnl_obj_3 = xrt::kernel(device, xclbin_uuid, "foo:{foo_3}");     
+
       
 Exclusive access of the kernel's CU
 ***********************************
   
-The API ``xrtPLKernelOpen`` opens a kernel's CU in a shared mode so that the CU can be shared with the other processes. In some cases, it is required to open the CU in exclusive mode (for example, when it is required to read/write CU mapped register). Exclusive CU opening fails if the CU is already opened in either shared or exclusive access. 
-
-.. code:: c
-      :number-lines: 39
-     
-           xrtKernelHandle kernel = xrtPLKernelOpenExclusive(device, xclbin_uuid, "name");
-
-**C++**: In C++, ``xrt::kernel`` constructor can be called with an additional ``enum class`` argument to access the kernel in exclusive mode. The enumerator values are: 
+By default, ``xrt::kernel()`` opens a kernel's CU in a shared mode so that the CU can be shared with the other processes. In some cases, it is required to open the CU in exclusive mode (for example, when it is required to read/write CU mapped register). Exclusive CU opening fails if the CU is already opened in either shared or exclusive access. To open a CU in exclusive mode the ``xrt::kernel`` constructor can be called with an additional ``enum class`` argument. The enumerator values are: 
 
      - ``xrt::kernel::cu_access_mode::shared`` (default ``xrt::kernel`` constructor argument)
      - ``xrt::kernel::cu_access_mode::exclusive`` 
@@ -455,17 +356,10 @@ The API ``xrtPLKernelOpen`` opens a kernel's CU in a shared mode so that the CU 
 Getting bank group index of the kernel argument
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-We have seen in the Buffer creation section that it is required to provide the buffer location during the buffer creation. XRT provides an API ``xrtKernelArgGroupId`` (C++: ``xrt::kernel::group_id``) that returns the bank index (ID) of a specific argument of the kernel. This ID is used as the last argument of ``xclAllocBO`` (in C++ with ``xrt::bo`` constructor) API to create the buffer on the same memory bank. 
+We have seen in the Buffer creation section that it is required to provide the buffer location during the buffer creation. The member function ``xrt::kernel::group_id()`` returns the memory bank index (or id) of a specific argument of the kernel. This id is passed as a parameter of ``xrt::bo()`` constructor to create the buffer on the same memory bank. 
 
 
-Let us review the example below where the buffer is allocated for the kernel's first (argument index 0) by using this API
-
-.. code:: c
-      :number-lines: 39
-           
-           xrtMemoryGroup idx_0 = xrtKernelArgGroupId(kernel, 0); // bank index of 0th argument
-           xrtBufferHandle a = xrtBOAlloc(device, data_size*sizeof(int), XRT_BO_FLAGS_NONE, idx_0);
-
+Let us review the example below where the buffer is allocated for the kernel's first (argument index 0) argument. 
 
 .. code:: c++
       :number-lines: 15
@@ -474,41 +368,20 @@ Let us review the example below where the buffer is allocated for the kernel's f
 
 
 
-The API fails if the kernel bank index is ambiguous. For example, the kernel has multiple CU with different connectivity for that argument. In those cases, it is required to create a kernel object/handle with specific a CU (or group of CUs with identical connectivity). 
+If the kernel bank index is ambiguous then ``kernel.group_id()`` returns the last memory bank index in the list it maintains. This is the case when the kernel has multiple CU with different connectivity for that argument. For example, let's assume a kernel argument (argument 0) is connected to memory bank 0, 1, 2 (for 3 CUs), then kernel.group_id(0) will return the last index from the group {0,1,2}, i.e. 2. As a result the buffer is created on the memory bank 2, so the buffer cannot be used for the CU0 and CU1.  
 
+However, if the kernel object is created for a specific CU (by using the ``{kernel_name:{cu_name(s)}}`` for xrt::kernel consturctor) then the user can use their desired CU as they create in the host code. 
 
    
 Reading and write CU mapped registers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To read and write from the AXI-Lite register space corresponding to a CU, the CU must be opened in exclusive mode (in shared mode, multiple processes can access the CU's address space, hence it is unsafe if they are trying to access/change registers at the same time leading to a potential race behavior). The required APIs for kernel register read and write are
+To read and write from the AXI-Lite register space corresponding to a CU, the CU must be opened in exclusive mode (in shared mode, multiple processes can access the CU's address space, hence it is unsafe if they are trying to access/change registers at the same time leading to a potential race behavior). The required member functions from the ``xrt::kernel`` class are
   
-    - ``xrtKernelReadRegister`` (C++: member function ``xrt::kernel::read_register``)
-    - ``xrtKernelWriteRegiste`` (C++: member function ``xrt::kernel::write_register``)
+    -  ``xrt::kernel::read_register``
+    -  ``xrt::kernel::write_register``
 
-.. code:: c
-      :number-lines: 35
-         
-           int read_data; 
-           int write_data = 7; 
-              
-           xrtKernelHandle kernel = xrtPLKernelOpenExclusive(device, xclbin_uuid, "foo:{foo_1}");
-              
-           xrtKernelReadRegister(kernel,READ_OFFSET,&read_data);
-           xrtKernelWriteRegister(kernel,WRITE_OFFSET,write_data); 
-              
-           xrtKernelClose(kernel);
-
-
-In the above code block
-
-              - The CU named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
-              - The Register Read/Write operation is performed. 
-              - Closed the kernel
-              
-**C++**: The equivalent C++ API example
-
-.. code:: c
+.. code:: c++
       :number-lines: 35
        
            int read_data; 
@@ -518,7 +391,11 @@ In the above code block
 
            read_data = kernel.read_register(READ_OFFSET);
            kernel.write_register(WRITE_OFFSET,write_data); 
-              
+
+In the above code block
+
+              - The CU named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
+              - The Register Read/Write operation is performed. 
               
 Obtaining the argument offset
 *****************************
@@ -536,19 +413,8 @@ The register read/write access APIs use the register offset as shown in the abov
     
 
 
-However, XRT also provides APIs to obtain the register offset for CU arguments. In the below example C API ``xrtKernelArgOffset`` is used to obtain offset of third argument of the CU ``foo:foo_1``.  
+The member function to obtain the register offset for CU arguments. In the below example C API ``xrtKernelArgOffset`` is used to obtain offset of third argument of the CU ``foo:foo_1``.  
 
-
-.. code:: c
-      :number-lines: 38
-
-           // Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively) 
-           
-           xrtKernelHandle kernel = xrtPLKernelOpenExclusive(device, xclbin_uuid, "foo:{foo_1}");
-           uint32_t arg_c_offset = xrtKernelArgOffset(kernel, 2);
- 
-
-**C++**: The equivalent C++ API example
 
 .. code:: c++
       :number-lines: 38
