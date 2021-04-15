@@ -928,21 +928,9 @@ int
 shim::
 xclIPName2Index(const char *name)
 {
-  std::string errmsg;
-  std::vector<char> buf;
-  uint32_t kds_mode = 0;
-  const uint64_t bad_addr = 0xffffffffffffffff;
-
-  kds_mode = xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice);
   /* In new kds, driver determines CU index */
-  if (kds_mode) {
-    std::vector<xrt_core::query::kds_cu_stat::data_type> custats;
-
-    custats = xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice);
-    if (custats.empty())
-      return -ENOENT;
-
-    for (auto& stat : custats) {
+  if (xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice)) {
+    for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice)) {
       if (stat.name != name)
         continue;
 
@@ -952,6 +940,11 @@ xclIPName2Index(const char *name)
     xclLog(XRT_ERROR, "%s not found", name);
     return -ENOENT;
   }
+
+  /* Old kds is enabled */
+  std::string errmsg;
+  std::vector<char> buf;
+  const uint64_t bad_addr = 0xffffffffffffffff;
 
   mDev->sysfs_get("ip_layout", errmsg, buf);
   if (!errmsg.empty()) {

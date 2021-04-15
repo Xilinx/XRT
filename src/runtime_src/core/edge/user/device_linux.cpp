@@ -258,6 +258,10 @@ struct kds_cu_stat
       throw std::runtime_error(errmsg);
 
     result_type cuStats;
+    // stats e.g.
+    // 0,vadd:vadd_1,0x1400000,0x4,0
+    // 1,vadd:vadd_2,0x1500000,0x4,0
+    // 2,mult:mult_1,0x1800000,0x4,0
     for (auto& line : stats) {
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
@@ -266,7 +270,7 @@ struct kds_cu_stat
         throw std::runtime_error("CU statistic sysfs node corrupted");
 
       data_type data;
-      const int radix = 16;
+      constexpr int radix = 16;
       tokenizer::iterator tok_it = tokens.begin();
       data.index     = std::stoi(std::string(*tok_it++));
       data.name      = std::string(*tok_it++);
@@ -274,7 +278,7 @@ struct kds_cu_stat
       data.status    = std::stoul(std::string(*tok_it++), nullptr, radix);
       data.usages    = std::stoul(std::string(*tok_it++));
 
-      cuStats.push_back(data);
+      cuStats.push_back(std::move(data));
     }
 
     return cuStats;
