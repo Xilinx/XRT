@@ -129,7 +129,7 @@ if (GTEST_FOUND)
   else()
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread crypto)
 
-    if(${RapidJSON_VERSION_MAJOR} GREATER_EQUAL 1)
+    if(NOT (${RapidJSON_VERSION_MAJOR} EQUAL 0))
       target_compile_definitions(${UNIT_TEST_NAME} PRIVATE ENABLE_JSON_SCHEMA_VALIDATION)
     endif()
   endif()
