@@ -25,15 +25,14 @@ from utils_binding import *
 
 def runKernel(opt):
     d = pyxrt.device(opt.index)
-    uuid = d.load_xclbin(opt.bitstreamFile)
+    xbin = pyxrt.xclbin(opt.bitstreamFile)
+    uuid = d.load_xclbin(xbin)
+
+    iplist = xbin.get_ips()
 
     rule = re.compile("hello*")
-    name = list(filter(lambda val: rule.match, opt.kernels))[0]
+    name = list(filter(lambda val: rule.match(val.get_name()), iplist))[0]
     hello = pyxrt.kernel(d, uuid, name)
-
-    grpid = xrtKernelArgGroupId(khandle, 0)
-    if grpid < 0:
-        raise RuntimeError("failed to find BO group ID: %d" % grpid)
 
     boHandle1 = pyxrt.bo(d, opt.DATA_SIZE, pyxrt.bo.normal, hello.group_id(0))
     buf1 = numpy.asarray(boHandle1.map())

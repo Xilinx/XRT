@@ -14,17 +14,21 @@
 #include "experimental/xrt_device.h"
 #include "experimental/xrt_kernel.h"
 #include "experimental/xrt_bo.h"
+#include "experimental/xrt_xclbin.h"
 
 // Pybind11 includes
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
+#include <pybind11/stl_bind.h>
 
 // C++11 includes
 #include <mutex>
 #include <thread>
 
 namespace py = pybind11;
+
+PYBIND11_MAKE_OPAQUE(std::vector<xrt::xclbin::ip>);
 
 PYBIND11_MODULE(pyxrt, m) {
 m.doc() = "Pybind11 module for XRT";
@@ -70,7 +74,7 @@ py::class_<xrt::uuid>(m, "uuid")
 
 /*
  *
- * XRT::Device
+ * xrt::device
  *
  */
 py::class_<xrt::device>(m, "device")
@@ -79,11 +83,14 @@ py::class_<xrt::device>(m, "device")
     .def("load_xclbin", [](xrt::device & d, const std::string& xclbin) {
                             return d.load_xclbin(xclbin);
                         })
+    .def("load_xclbin", [](xrt::device & d, const xrt::xclbin& xclbin) {
+                            return d.load_xclbin(xclbin);
+                        })
     .def("get_xclbin_uuid", &xrt::device::get_xclbin_uuid);
 
 /*
  *
- * XRT::Kernel
+ * xrt::kernel
  *
  */
 py::class_<xrt::run>(m, "run")
@@ -136,7 +143,7 @@ py::class_<xrt::kernel>(m, "kernel")
 
 /*
  *
- * XRT:: BO
+ * xrt::bo
  *
  */
 py::class_<xrt::bo> pybo(m, "bo");
@@ -169,42 +176,39 @@ pybo.def(py::init<xrt::device, size_t, xrt::bo::flags, xrt::memory_group>())
                       b.sync(dir, size, offset);
                   }))
     .def("map", ([](xrt::bo &b)  {
-                     /*
-                      * memoryview ctor has a bug where it uses c_str() of info.format directly
-                      * which leads to stale pointer since info goes out of scope. See the
-                      * following code snipet from memoryview contructor in ptypes.h:
-                      * buf.format = const_cast<char *>(info.format.c_str());
-                      *
-                      * To resolve this we are creating buffer_info as static object so the
-                      * format string is persistent. We reuse info object by updating ptr and
-                      * length for each new bo.
-                      * Once the bug is resolved we should use py::memoryview::from_buffer()
-                      */
-                     static py::buffer_info info(b.map(),
-                                          sizeof(char),
-                                          py::format_descriptor<char>::format(),
-                                          1,
-                                          {b.size()/sizeof(char)},
-                                          {sizeof(char)});
-                     /*
-                      * Since we are using the same info object after customization to contruct
-                      * all memoryview objects we need to serialize the operation to protect
-                      * from concurrent calls from multiple threads.
-                      */
-                     const std::lock_guard<std::mutex> lock(pybo_map_mutex);
-                     info.ptr = b.map();
-                     info.shape[0] = b.size()/sizeof(unsigned int);
-                     return py::memoryview(info);
-                     /*
-                     return py::memoryview::from_buffer(b.map(),
-                                                        sizeof(char),
-                                                        py::format_descriptor<char>::format(),
-                                                        1,
-                                                        {b.size()/sizeof(char)},
-                                                        false);
-                     */
+                     return py::memoryview::from_memory(b.map(), b.size());
                   }))
     .def("size", &xrt::bo::size)
     .def("address", &xrt::bo::address)
     ;
+
+/*
+ *
+ * xrt::xclbin::ip
+ *
+ */
+py::class_<xrt::xclbin> pyxclbin(m, "xclbin");
+py::class_<xrt::xclbin::ip> pyxclbinip(pyxclbin, "xclbinip");
+py::bind_vector<std::vector<xrt::xclbin::ip>>(m, "xclbinip_vector");
+
+
+pyxclbinip.def(py::init<>())
+    .def("get_name", &xrt::xclbin::ip::get_name);
+
+/*
+ *
+ * xrt::xclbin::ip
+ *
+ */
+
+pyxclbin.def(py::init<>())
+    .def(py::init([](const std::string &filename) {
+                      return new xrt::xclbin(filename);
+                  }))
+    .def(py::init([](const axlf* top) {
+                      return new xrt::xclbin(top);
+                  }))
+    .def("get_ips", &xrt::xclbin::get_ips)
+    .def("get_xsa_name", &xrt::xclbin::get_xsa_name)
+    .def("get_uuid", &xrt::xclbin::get_uuid);
 }
