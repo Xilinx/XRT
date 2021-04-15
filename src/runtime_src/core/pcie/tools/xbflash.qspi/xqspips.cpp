@@ -589,7 +589,7 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream, unsigned offset
     binStream.seekg(0, binStream.beg);
 
     std::cout << "INFO: ***BOOT.BIN has " << total_size << " bytes" << std::endl;
-    if (total_size + offset >= FLASH_SIZE) {
+    if (total_size + offset > FLASH_SIZE) {
         std::cout << "[ERROR]: Invalid argument" << std::endl;
         exit(-EINVAL);
     }
