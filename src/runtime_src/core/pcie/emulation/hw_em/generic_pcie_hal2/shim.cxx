@@ -3721,7 +3721,7 @@ bool HwEmShim::device2xrt_rd_trans_cb(unsigned long int addr, void* const data_p
       unsigned char* finalOsAddress = (unsigned char*)startOSAddress + (addr - baseAddress);
 
       if ((addr + size) > (baseAddress + buf_size)) {
-        std::string dMsg = "ERROR: [HW-EMU 24] Slave Bridge - Accessing the invalid address range which is not within the boundary. Valid address range is "
+        std::string dMsg = "ERROR: [HW-EMU 24] Host Memory - Accessing the invalid address range which is not within the boundary. Valid address range is "
           + std::to_string(baseAddress) + " - " + std::to_string(baseAddress + buf_size) + ". Whereas requested address range is " + std::to_string(addr) + " - " + std::to_string(addr+size);
         logMessage(dMsg, 0);
 
@@ -3767,7 +3767,7 @@ bool HwEmShim::device2xrt_wr_trans_cb(unsigned long int addr, void const* data_p
       unsigned char* finalOsAddress = (unsigned char*)startOSAddress + (addr - baseAddress);
 
       if ((addr + size) > (baseAddress + buf_size)) {
-        std::string dMsg = "ERROR: [HW-EMU 25] Slave Bridge - Accessing the invalid address range which is not within the boundary. Valid address range is "
+        std::string dMsg = "ERROR: [HW-EMU 25] Host Memory - Accessing the invalid address range which is not within the boundary. Valid address range is "
           + std::to_string(baseAddress) + " - " + std::to_string(baseAddress + buf_size) + ". Whereas requested address range is " + std::to_string(addr) + " - " + std::to_string(addr + size);
         logMessage(dMsg, 0);
 
