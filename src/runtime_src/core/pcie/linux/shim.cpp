@@ -2231,6 +2231,20 @@ int shim::xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data)
 
 int shim::xclIPName2Index(const char *name)
 {
+    /* In new kds, driver determines CU index */
+    if (xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice)) {
+        for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice)) {
+            if (stat.name != name)
+                continue;
+
+            return stat.index;
+        }
+
+        xrt_logmsg(XRT_ERROR, "%s not found", name);
+        return -ENOENT;
+    }
+
+    /* Old kds is enabled */
     std::string errmsg;
     std::vector<char> buf;
     const uint64_t bad_addr = 0xffffffffffffffff;
