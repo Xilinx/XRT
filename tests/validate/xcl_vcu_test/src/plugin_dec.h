@@ -76,6 +76,7 @@ typedef struct _XrtIvas_XVCUDecPrivate
   xrt_buffer *dec_out_bufs_handle;
   uint64_t timestamp; /* get current time when sending PREINIT command */
   int init_done;
+  int cu_idx;
   int flush_done;          /* to make sure FLUSH cmd issued to softkernel while exiting */
   int deinit_done;
   uint32_t num_out_bufs;

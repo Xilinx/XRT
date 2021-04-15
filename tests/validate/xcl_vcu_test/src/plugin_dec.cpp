@@ -237,7 +237,7 @@ gstivas_xvcudec_close (XrtIvas_XVCUDec *dec)
   xvcudec_free_internal_buffers (dec);
 
   /* Close XRT context */
-  xclCloseContext (priv->xcl_handle, priv->xclbinId, 0);
+  xclCloseContext (priv->xcl_handle, priv->xclbinId, priv->cu_idx);
   xclClose (priv->xcl_handle);
 
   if (priv)
@@ -918,7 +918,9 @@ xrt_initialization (XrtIvas_XVCUDec *dec)
     return NOTSUPP;
   }
 
-  if (xclOpenContext (priv->xcl_handle, priv->xclbinId, cu_index, true)) {
+  priv->cu_idx = cu_index;
+
+  if (xclOpenContext (priv->xcl_handle, priv->xclbinId, priv->cu_idx, true)) {
     ERROR_PRINT ("failed to get xclOpenContext...\n");
     return iret;
   }
