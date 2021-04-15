@@ -6,6 +6,11 @@ XRT ChangeLog
 
 Added
 .....
+* Stable native XRT APIs (xrt::device, xrt::kernel, xrt::bo, xrt::uuid) promoted to ``include/xrt/`` folder.
+* New xrt::xclbin experimental API for xclbin introspection at run-time.
+* New xrt::ip experimental API for register and user interrupt access of custom IPs.
+* API error are propagated as std::system_error exceptions with POSIX error code
+* Software emulation support for native XRT APIs   
 
 Removed
 .......
@@ -42,7 +47,7 @@ Added
 * HBM grouping support has been added which allows contiguous banks to be merged into a single group allowing for larger buffer size.
 * Support for AIE graph has been added. New AIE APIs are split into AIE array/shim level APIs in ``xrt_aie.h`` and graph level APIs in ``xrt_graph.h``. AIE APIs are moved to ``libxrt_coreutil.so`` from ``libxrt_core.so``.
 * pybind11 based Python wrappers have been added for native XRT C++ APIs.
-* Support for PCIe Slave Bridge has been added which allows user kernels to directly read/write host memory.
+* Support for PCIe Host Memory has been added which allows user kernels to directly read/write host memory.
 * Support for data driven *two stage* platforms have been added.
 * Slimmed down XRT RPM/DEB package dependencies. XRT package does not depend on other **dev/devel** packages anymore.
 * Enabled LPDDR for edge platforms
