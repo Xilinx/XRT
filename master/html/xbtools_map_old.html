@@ -57,9 +57,7 @@
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="XRT Setup for Embedded Flow" href="yocto.html" />
-    <link rel="prev" title="Xbmgmt Next Generation" href="xbmgmt2.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -378,17 +376,13 @@
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Legacy to new map</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#xbutil">xbutil</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xbmgmt">xbmgmt</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -413,9 +407,9 @@
             
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
-				  <li class="toctree-l1"><a href="_sources/xbtools_map_short.rst.txt"
+				  <li class="toctree-l1"><a href="_sources/xbtools_map_old.rst.txt"
 						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xbtools_map_short.rst"
+					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xbtools_map_old.rst"
 						   rel="nofollow">View on GitHub</a></li>						
 				</ul>
           
@@ -467,7 +461,7 @@
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/xbtools_map_short.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/xbtools_map_old.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -482,22 +476,16 @@
             
   <div class="section" id="legacy-to-new-map">
 <span id="xbtools-map-rst"></span><h1>Legacy to new map<a class="headerlink" href="#legacy-to-new-map" title="Permalink to this headline">¶</a></h1>
-<p>This document maps the legacy <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands to the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands. It lists out the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> calls that replace the existing calls. A few points:</p>
-<blockquote>
-<div><ol class="arabic simple">
-<li><p>The new utilities are complete redesign and architecture, hence there may not be exact 1-to-1 mapping.</p></li>
-<li><p>The help menus (<code class="docutils literal notranslate"><span class="pre">--help</span></code>) of these new utilities have also been improved and are highly descriptive with regards to both the commands and options. Please refer to them as needed.</p></li>
-<li><p>The new command opions have both short and long format, for example <code class="docutils literal notranslate"><span class="pre">-d</span></code> or <code class="docutils literal notranslate"><span class="pre">--device</span></code>. In the table below, only the longer option format is used.</p></li>
-</ol>
-</div></blockquote>
+<p>This document maps the legacy <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands to the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands. It lists out the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> calls that replace the existing calls.</p>
+<p>Note: The new utilities are complete redesign and architecture, hence there may not be exact 1-to-1 mapping. However, help menus of these new utilities are also very descriptive so please refer to them whenever needed.</p>
 <div class="section" id="xbutil">
-<h2>xbutil<a class="headerlink" href="#xbutil" title="Permalink to this headline">¶</a></h2>
+<h2>Xbutil<a class="headerlink" href="#xbutil" title="Permalink to this headline">¶</a></h2>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 19%" />
-<col style="width: 19%" />
+<col style="width: 21%" />
+<col style="width: 21%" />
 <col style="width: 30%" />
-<col style="width: 32%" />
+<col style="width: 28%" />
 </colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Subcommand
@@ -511,87 +499,158 @@ New</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reset</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">reset</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
+<tr class="row-even"><td><p>reset</p></td>
+<td><p>reset</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">validate</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">validate</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
-</tr>
-<tr class="row-even"><td></td>
-<td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">-q</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">quick</span></code></p></td>
-</tr>
-<tr class="row-odd"><td></td>
-<td></td>
-<td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">&lt;testname&gt;</span></code></p></td>
+<tr class="row-odd"><td><p>validate</p></td>
+<td><p>validate</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
 </tr>
 <tr class="row-even"><td></td>
 <td></td>
-<td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">&lt;type&gt;</span></code></p></td>
+<td><p>-q</p></td>
+<td><p>–run quick</p></td>
 </tr>
 <tr class="row-odd"><td></td>
 <td></td>
-<td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--output</span> <span class="pre">&lt;file&gt;</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scan</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">examine</span></code></p></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">query</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">examine</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
+<td><p>(N/A)</p></td>
+<td><p>–run
+&lt;testname&gt;</p></td>
 </tr>
 <tr class="row-even"><td></td>
 <td></td>
+<td><p>(N/A)</p></td>
+<td><p>–format</p></td>
+</tr>
+<tr class="row-odd"><td></td>
 <td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--report</span> <span class="pre">&lt;list&gt;</span></code></p></td>
+<td><p>(N/A)</p></td>
+<td><p>–output</p></td>
+</tr>
+<tr class="row-even"><td><p>scan</p></td>
+<td><p>examine</p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p>query</p></td>
+<td><p>examine</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>(N/A)</p></td>
+<td><p>–report all</p></td>
 </tr>
 <tr class="row-odd"><td></td>
 <td></td>
 <td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--output</span> <span class="pre">&lt;file&gt;</span></code></p></td>
+<td><p>–report
+&lt;lists&gt;</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dump</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">examine</span></code></p></td>
+<tr class="row-even"><td></td>
 <td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">&lt;type&gt;</span></code></p></td>
+<td><p>(N/A)</p></td>
+<td><p>–output</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">top</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">top</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
+<tr class="row-odd"><td><p>dump</p></td>
+<td><p>examine</p></td>
+<td><p>(N/A)</p></td>
+<td><p>–format</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">program</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">program</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
+<tr class="row-even"><td><p>top</p></td>
+<td><p>top</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
 </tr>
-<tr class="row-odd"><td></td>
+<tr class="row-odd"><td><p>program</p></td>
+<td><p>program</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-even"><td></td>
 <td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">&lt;xclbin&gt;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--user</span> <span class="pre">&lt;xclbin&gt;</span></code></p></td>
+<td><p>-p &lt;xclbin&gt;</p></td>
+<td><p>–user
+&lt;xclbin&gt;</p></td>
+</tr>
+<tr class="row-odd"><td><p>p2p</p></td>
+<td><p>advanced</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>–enable,
+–disable,
+–validate</p></td>
+<td><p>–p2p
+&lt;ENABLE,
+DISABLE,
+VALIDATE&gt;</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="misc-subcommands">
+<h3>Misc subcommands<a class="headerlink" href="#misc-subcommands" title="Permalink to this headline">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 31%" />
+<col style="width: 69%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Subcommand
+Legacy</p></th>
+<th class="head"><p>Subcommand
+New</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>clock</p></td>
+<td><p>Obsoleted</p></td>
+</tr>
+<tr class="row-odd"><td><p>dmatest</p></td>
+<td><p>validate –run DMA</p></td>
+</tr>
+<tr class="row-even"><td><p>m2mtest</p></td>
+<td><p>validate –run “Memory to memory DMA”</p></td>
+</tr>
+<tr class="row-odd"><td><p>version</p></td>
+<td><p>examine</p></td>
+</tr>
+<tr class="row-even"><td><p>status</p></td>
+<td><p>examine -r debug-ip-status</p></td>
+</tr>
+<tr class="row-odd"><td><p>mem –read</p></td>
+<td><p>advanced –read-mem</p></td>
+</tr>
+<tr class="row-even"><td><p>mem –write</p></td>
+<td><p>advanced –write-mem</p></td>
+</tr>
+<tr class="row-odd"><td><p>host_mem</p></td>
+<td><p>Under construction</p></td>
 </tr>
 </tbody>
 </table>
 </div>
+</div>
 <div class="section" id="xbmgmt">
-<h2>xbmgmt<a class="headerlink" href="#xbmgmt" title="Permalink to this headline">¶</a></h2>
+<h2>Xbmgmt<a class="headerlink" href="#xbmgmt" title="Permalink to this headline">¶</a></h2>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 15%" />
-<col style="width: 13%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 29%" />
 <col style="width: 32%" />
-<col style="width: 40%" />
 </colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Subcommand
@@ -605,68 +664,103 @@ New</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">flash</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">program</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
+<tr class="row-even"><td><p>flash</p></td>
+<td><p>program</p></td>
+<td><p>-d &lt;device_id&gt;
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
 </tr>
 <tr class="row-odd"><td></td>
 <td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--update</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--base</span></code></p></td>
+<td><p>–update</p></td>
+<td><p>–base</p></td>
 </tr>
 <tr class="row-even"><td></td>
 <td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--update</span> <span class="pre">--shell</span> <span class="pre">&lt;name&gt;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--base</span> <span class="pre">--image</span> <span class="pre">&lt;name</span> <span class="pre">w/</span> <span class="pre">path&gt;</span></code></p></td>
+<td><p>–update
+–shell &lt;name&gt;</p></td>
+<td><p>N/A</p></td>
 </tr>
 <tr class="row-odd"><td></td>
 <td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--factory_reset</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--revert-to-golden</span></code></p></td>
+<td><p>–factory_reset</p></td>
+<td><p>–revert-to-golden</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">partition</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">program</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
+<tr class="row-even"><td><p>partition</p></td>
+<td><p>program</p></td>
+<td><p>–name &lt;name&gt;</p></td>
+<td><p>–shell &lt;name&gt;</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td></td>
+<td><p>–path &lt;&gt;</p></td>
+<td><p>–user &lt;&gt;</p></td>
+</tr>
+<tr class="row-even"><td><p>(N/A)</p></td>
+<td><p>examine</p></td>
+<td><p>N/A</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
 </tr>
 <tr class="row-odd"><td></td>
 <td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--path</span> <span class="pre">&lt;xclbin</span> <span class="pre">w/</span> <span class="pre">path&gt;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--user</span> <span class="pre">&lt;xclbin</span> <span class="pre">w/</span> <span class="pre">path&gt;</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scan</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">examine</span></code></p></td>
-<td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--report</span> <span class="pre">host</span></code></p></td>
-</tr>
-<tr class="row-odd"><td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">examine</span></code></p></td>
-<td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>–report all</p></td>
 </tr>
 <tr class="row-even"><td></td>
 <td></td>
-<td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--report</span> <span class="pre">&lt;list&gt;</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>–report &lt;list&gt;</p></td>
 </tr>
 <tr class="row-odd"><td></td>
 <td></td>
-<td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">&lt;type&gt;</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>–format</p></td>
 </tr>
 <tr class="row-even"><td></td>
 <td></td>
-<td></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--output</span> <span class="pre">&lt;file&gt;</span></code></p></td>
+<td><p>N/A</p></td>
+<td><p>–output</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">reset</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">reset</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></p></td>
+<tr class="row-odd"><td><p>reset</p></td>
+<td><p>reset</p></td>
+<td><p>-d &lt;device_id&gt;,
+-d &lt;bdf&gt;</p></td>
+<td><p>-d &lt;bdf&gt;</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td></td>
+<td><p>N/A</p></td>
+<td><p>–type &lt;type&gt;</p></td>
 </tr>
 </tbody>
 </table>
+<div class="section" id="id1">
+<h3>Misc subcommands<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 53%" />
+<col style="width: 47%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Subcommand
+Legacy</p></th>
+<th class="head"><p>Subcommand
+New</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>flash –scan</p></td>
+<td><p>examine</p></td>
+</tr>
+<tr class="row-odd"><td><p>partition –scan</p></td>
+<td><p>examine</p></td>
+</tr>
+<tr class="row-even"><td><p>version</p></td>
+<td><p>examine -r host</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 </div>
 
@@ -684,22 +778,13 @@ New</p></th>
 	  
 	  <!-- Sphinx Page Footer block -->
   
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="yocto.html" class="btn btn-neutral float-right" title="XRT Setup for Embedded Flow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="xbmgmt2.html" class="btn btn-neutral float-left" title="Xbmgmt Next Generation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
-    </div>
-  
 
   <hr/>
 
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on April 14, 2021.
+        Last updated on April 16, 2021.
       </span>
 
     </p>
