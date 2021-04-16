@@ -2,7 +2,7 @@ find_program(COVBUILD /tools/batonroot/coverity/8.7.0/cov-analysis-8.7.0/bin/cov
 
 
 if (NOT COVBUILD)
-  message (WARNING "-- coverity not found")
+  message (STATUS "Coverity tool not found and will be skipped")
 else ()
 
   set(COVBIN /tools/batonroot/coverity/8.7.0/cov-analysis-8.7.0/bin)
