@@ -8,7 +8,6 @@
 
 import sys
 import traceback
-import uuid
 import numpy
 # found in PYTHONPATH
 import pyxrt

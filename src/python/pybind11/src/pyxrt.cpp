@@ -168,12 +168,9 @@ pybo.def(py::init<xrt::device, size_t, xrt::bo::flags, xrt::memory_group>())
                        b.write(info.ptr, info.itemsize * info.size , seek);
                    }))
     .def("read", ([](xrt::bo &b, size_t size, size_t skip) {
-                      int nitems = size/sizeof(int);
-                      py::array_t<int> result = py::array_t<int>(nitems);
-
+                      py::array_t<char> result = py::array_t<char>(size);
                       py::buffer_info bufinfo = result.request();
-                      int* bufptr = (int*) bufinfo.ptr;
-                      b.read(bufptr, size, skip);
+                      b.read(bufinfo.ptr, size, skip);
                       return result;
                   }))
     .def("sync", ([](xrt::bo &b, xclBOSyncDirection dir, size_t size, size_t offset)  {

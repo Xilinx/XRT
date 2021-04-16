@@ -34,10 +34,13 @@ def runKernel(opt):
     ip = list(filter(lambda val: rule.match(val.get_name()), iplist))[0]
     hello = pyxrt.kernel(d, uuid, ip.get_name(), pyxrt.kernel.shared)
 
+    zeros = bytearray(opt.DATA_SIZE)
     boHandle1 = pyxrt.bo(d, opt.DATA_SIZE, pyxrt.bo.normal, hello.group_id(0))
+    boHandle1.write(zeros, 0)
     buf1 = boHandle1.map()
 
     boHandle2 = pyxrt.bo(d, opt.DATA_SIZE, pyxrt.bo.normal, hello.group_id(0))
+    boHandle2.write(zeros, 0)
     buf2 = boHandle2.map()
 
     boHandle1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
