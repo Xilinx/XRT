@@ -31,20 +31,20 @@ def runKernel(opt):
     iplist = xbin.get_ips()
 
     rule = re.compile("hello*")
-    name = list(filter(lambda val: rule.match(val.get_name()), iplist))[0]
-    hello = pyxrt.kernel(d, uuid, name)
+    ip = list(filter(lambda val: rule.match(val.get_name()), iplist))[0]
+    hello = pyxrt.kernel(d, uuid, ip.get_name(), pyxrt.kernel.shared)
 
     boHandle1 = pyxrt.bo(d, opt.DATA_SIZE, pyxrt.bo.normal, hello.group_id(0))
-    buf1 = numpy.asarray(boHandle1.map())
+    buf1 = boHandle1.map()
 
     boHandle2 = pyxrt.bo(d, opt.DATA_SIZE, pyxrt.bo.normal, hello.group_id(0))
-    buf2 = numpy.asarray(boHandle2.map())
+    buf2 = boHandle2.map()
 
     boHandle1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
     boHandle2.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
 
-    print("Original string = [%s]" % buf1[:64].decode("utf-8"))
-    print("Original string = [%s]" % buf2[:64].decode("utf-8"))
+    print("Original string = [%s]" % buf1[:64].tobytes())
+    print("Original string = [%s]" % buf2[:64].tobytes())
 
     print("Issue kernel start requests")
     run1 = hello(boHandle1)
@@ -58,12 +58,13 @@ def runKernel(opt):
     boHandle1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
     boHandle2.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
 
-    result1 = buf1[:len("Hello World")]
-    result2 = buf2[:len("Hello World")]
-    print("Result string = [%s]" % result1.decode("utf-8"))
-    print("Result string = [%s]" % result2.decode("utf-8"))
-    assert(result1.decode("utf-8") == "Hello World"), "Incorrect output from kernel"
-    assert(result2.decode("utf-8") == "Hello World"), "Incorrect output from kernel"
+    golden = memoryview(b'Hello World')
+    result1 = buf1[:len(golden)]
+    result2 = buf2[:len(golden)]
+    print("Result string = [%s]" % result1.tobytes())
+    print("Result string = [%s]" % result2.tobytes())
+    assert(result1 == golden), "Incorrect output from kernel"
+    assert(result2 == golden), "Incorrect output from kernel"
 
 def main(args):
     opt = Options()

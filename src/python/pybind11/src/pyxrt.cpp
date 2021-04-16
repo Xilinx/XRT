@@ -33,7 +33,6 @@ PYBIND11_MAKE_OPAQUE(std::vector<xrt::xclbin::ip>);
 PYBIND11_MODULE(pyxrt, m) {
 m.doc() = "Pybind11 module for XRT";
 
-static std::mutex pybo_map_mutex;
 /*
  *
  * Constants and Enums
@@ -109,14 +108,19 @@ py::class_<xrt::run>(m, "run")
     .def("state", &xrt::run::state)
     .def("add_callback", &xrt::run::add_callback);
 
-py::class_<xrt::kernel>(m, "kernel")
-    .def(py::init([](xrt::device d, const py::array_t<unsigned char> u, const std::string & n, bool e){
-                      return new xrt::kernel(d, (const unsigned char*) u.request().ptr, n, e);
-                  }),
-	py::arg(""),
-	py::arg(""),
-	py::arg(""),
-	py::arg("exclusive")=false)
+py::class_<xrt::kernel> pyker(m, "kernel");
+
+py::enum_<xrt::kernel::cu_access_mode>(pyker, "cu_access_mode")
+    .value("exclusive", xrt::kernel::cu_access_mode::exclusive)
+    .value("shared", xrt::kernel::cu_access_mode::shared)
+    .value("none", xrt::kernel::cu_access_mode::none)
+    .export_values();
+
+
+pyker.def(py::init([](const xrt::device& d, const xrt::uuid& u, const std::string& n,
+                      xrt::kernel::cu_access_mode m) {
+                       return new xrt::kernel(d, u, n, m);
+                   }))
     .def("__call__", [](xrt::kernel & k, py::args args) -> xrt::run {
                          int i =0;
                          xrt::run r(k);
@@ -148,7 +152,7 @@ py::class_<xrt::kernel>(m, "kernel")
  */
 py::class_<xrt::bo> pybo(m, "bo");
 
-py::enum_<xrt::bo::flags>(pybo, "")
+py::enum_<xrt::bo::flags>(pybo, "flags")
     .value("normal", xrt::bo::flags::normal)
     .value("cacheable", xrt::bo::flags::cacheable)
     .value("device_only", xrt::bo::flags::device_only)
