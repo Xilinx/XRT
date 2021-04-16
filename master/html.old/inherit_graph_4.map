@@ -1,7 +1,0 @@
-<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node2" href="$classxrt_1_1xclbin.html" title="xrt::xclbin represents an xclbin, provides APIs for inspection it. " alt="" coords="129,5,207,32"/>
-<area shape="rect" id="node3" href="$classxrt_1_1xclbin_1_1arg.html" title="class arg &#45; xrt::xclbin::arg represents a compute unit argument " alt="" coords="115,56,221,83"/>
-<area shape="rect" id="node4" href="$classxrt_1_1xclbin_1_1ip.html" title="xrt::xclbin::ip represents a IP in an xclbin. " alt="" coords="119,107,217,133"/>
-<area shape="rect" id="node5" href="$classxrt_1_1xclbin_1_1kernel.html" title="xrt::xclbin::kernel" alt="" coords="107,157,229,184"/>
-<area shape="rect" id="node6" href="$classxrt_1_1xclbin_1_1mem.html" title="xrt::xclbin::mem represents a physical device memory bank " alt="" coords="110,208,226,235"/>
-</map>
