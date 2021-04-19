@@ -297,7 +297,7 @@ public:
 static std::map<const xrt_core::device*, std::unique_ptr<kds_device>> kds_devices;
 
 // Get or create kds_device object from core device
-kds_device*
+static kds_device*
 get_kds_device(xrt_core::device* device)
 {
   auto itr = kds_devices.find(device);
@@ -310,7 +310,7 @@ get_kds_device(xrt_core::device* device)
 
 // Get or existing kds_device object from core device.  Throw if
 // kds_device object does not exist (internal error).
-kds_device*
+static kds_device*
 get_kds_device_or_error(const xrt_core::device* device)
 {
   auto itr = kds_devices.find(device);
@@ -321,7 +321,7 @@ get_kds_device_or_error(const xrt_core::device* device)
 
 // Get kds_device from command object.  Throws if kds_device
 // doesn't exist
-kds_device*
+static kds_device*
 get_kds_device(const xrt_core::command* cmd)
 {
   return get_kds_device_or_error(cmd->get_device());
@@ -376,7 +376,10 @@ start()
 
 void
 stop()
-{}
+{
+  kds_devices.clear();
+}
+
 
 // Create and initialize a kds_device object from a core device.
 void
