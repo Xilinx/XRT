@@ -59,10 +59,18 @@ namespace xclcpuemhal2 {
     ci_msg.set_xcl_api(0);
     mCore = nullptr;
     mSWSch = nullptr;
-  
+
+#if GOOGLE_PROTOBUF_VERSION < 3006001
     ci_buf = malloc(ci_msg.ByteSize());
+#else
+    ci_buf = malloc(ci_msg.ByteSizeLong());
+#endif
     ri_msg.set_size(0);
+#if GOOGLE_PROTOBUF_VERSION < 3006001
     ri_buf = malloc(ri_msg.ByteSize());
+#else
+    ri_buf = malloc(ri_msg.ByteSizeLong());
+#endif
     buf = nullptr;
     buf_size = 0;
 
