@@ -348,7 +348,8 @@ int xocl_debug_register(struct xocl_dbg_reg *reg)
 	list_for_each_entry(tmp_mod, &xrt_debug.mod_list, link) {
 		if (!strncmp(tmp_mod->name, mod->name, sizeof(mod->name))) {
 			mutex_unlock(&xrt_debug.mod_lock);
-			pr_err("already registed");
+			reg->hdl = (unsigned long)mod;
+			pr_err("already registered");
 			ret = -EEXIST;
 			goto fail;
 		}
