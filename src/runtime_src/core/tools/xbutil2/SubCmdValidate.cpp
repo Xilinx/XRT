@@ -1195,12 +1195,151 @@ static void
 print_status(test_status status, std::ostream & _ostream)
 {
   if (status == test_status::failed)
-    _ostream<< "Validation failed";
+    _ostream<< "Device validation failed";
   else
-    _ostream << "Validation completed";
+    _ostream << "Device validated successfully";
   if (status == test_status::warning)
     _ostream<< ", but with warnings";
-  _ostream<< std::endl;
+  _ostream<< std::endl <<std::endl;
+}
+
+/*
+ * helper function for pretty_print_test_summary()
+ * return: true if a "warning" is found
+ */
+static bool
+warning_found(const auto& log_dict, std::ostringstream& warning_summary, 
+                std::string test_name, std::string bdf, std::string platform, bool& dev_with_warn)
+{
+  for (const auto& kv : log_dict) {
+    if (boost::iequals(kv.first, "warning")) {
+      if(!dev_with_warn) {
+        warning_summary << boost::format("  - [%s] : %s : Tests(s): %s") % bdf % platform % test_name;
+        dev_with_warn = true; 
+        return true;
+      }
+      else {
+        warning_summary << ", " << test_name;
+      }
+    }
+  }
+  return false;
+}
+
+/*
+ * helper method for pretty_print_test_summary()
+ * return: true if test failed
+ */
+static bool
+parse_test_info(boost::property_tree::ptree& pt_device_test, std::ostringstream& skipped_summary,
+                  std::ostringstream& failed_summary, std::ostringstream& warning_summary, 
+                  std::string bdf, std::string platform, bool& dev_with_skipped, 
+                  bool& dev_with_warn, int& success_devices)
+{
+  if(boost::iequals(pt_device_test.get<std::string>("status"), "skipped")) {
+    if(!dev_with_skipped) {
+      skipped_summary << boost::format("  - [%s] : %s : Test(s): %s") % bdf % platform % pt_device_test.get<std::string>("name");
+      dev_with_skipped = true;
+    }
+    else
+      skipped_summary << ", " << pt_device_test.get<std::string>("name");
+    return false;
+  }
+  if(boost::iequals(pt_device_test.get<std::string>("status"), "failed")) {
+    if(dev_with_warn) 
+      success_devices--;
+    failed_summary << boost::format("  - [%s] : %s : First failure: %s\n") % bdf % platform % pt_device_test.get<std::string>("name");
+    return true;
+  }
+  try {
+    for (const auto& dict : pt_device_test.get_child("log")) {
+      //break the loop as soon as the first instance of "warning" is found  
+      if(warning_found(dict.second, warning_summary, pt_device_test.get<std::string>("name"), bdf, platform, dev_with_warn)) 
+        break;
+    }
+  }
+  catch(...) { }
+  return false;
+}
+
+/*
+ * print test summary
+ */
+static void
+pretty_print_test_summary(const boost::property_tree::ptree& test, std::ostream & _ostream)
+{
+  //local variables to capture device counts
+  int total_devices = 0, success_devices = 0, warning_devices = 0, failed_devices = 0;
+  //local variables to create summary strings
+  std::ostringstream success_summary;
+  std::ostringstream failed_summary;
+  std::ostringstream warning_summary;
+  std::ostringstream skipped_summary;
+  boost::property_tree::ptree empty_ptree;
+
+  boost::property_tree::ptree pt_devices = test.get_child("logical_devices", empty_ptree);
+  for(auto& kd : pt_devices) { //traverse devices
+    total_devices++;
+    boost::property_tree::ptree pt_dev = kd.second;
+    boost::property_tree::ptree pt_device_tests = kd.second.get_child("tests");
+    bool dev_with_warning = false, dev_with_skipped = false, dev_failed = false;
+    
+    for(auto& kt : pt_device_tests) { //traverse a device's tests
+      auto bdf = pt_dev.get<std::string>("device_id");
+      auto platform = pt_dev.get<std::string>("platform");
+      dev_failed = parse_test_info(kt.second, skipped_summary, failed_summary, warning_summary, bdf, platform, 
+          dev_with_skipped, dev_with_warning, success_devices);
+    }
+
+    //increment device counts based on the test status and reset bool values
+    if(dev_with_warning) {
+      warning_devices++; 
+      warning_summary << "\n";
+      dev_with_warning = false;
+    } else if(dev_failed) {
+      failed_devices++;
+      dev_failed = false;
+    } else if(dev_with_skipped) {
+      skipped_summary << "\n";
+      dev_with_skipped = false;
+    }
+    else {
+      success_devices++;
+      success_summary << boost::format("  - [%s] : %s\n") % pt_dev.get<std::string>("device_id") 
+                          % pt_dev.get<std::string>("platform");
+    }
+  }
+
+  //print the summary based on teh information collected from the json
+  std::cout << "=========================================" << std::endl;
+  std::cout << "Validation Summary" << std::endl;
+  std::cout << "=========================================" << std::endl;
+
+  std::cout << boost::format("%d device(s) were found\n") % total_devices;
+  std::cout << boost::format("%d device(s) validated successfully\n") % (success_devices+warning_devices);
+  std::cout << boost::format("%d device(s) had exceptions during validation\n\n") % failed_devices;
+
+  if(!success_summary.str().empty()) {
+    std::cout << boost::format("Validated successully [%d device(s)]\n") % success_devices;
+    std::cout << success_summary.str() << std::endl;
+  }
+  
+  if(!failed_summary.str().empty()) {
+    std::cout << boost::format("Validation exceptions [%d device(s)]\n") % failed_devices;
+    std::cout << failed_summary.str() << std::endl;
+  }
+
+  if(!warning_summary.str().empty()) {
+    std::cout << boost::format("Warnings produced during test [%d device(s)] (Note: Tests successfully validated)\n") 
+                    % warning_devices;
+    std::cout << warning_summary.str() << std::endl;
+  }
+  
+  // print unsupported test only if verbose is specified
+  if(!skipped_summary.str().empty() && XBU::getVerbose()) {
+    XBU::message("Unsupported tests", true, std::cout);
+    XBU::message(skipped_summary.str(), true, std::cout);
+  }
 }
 
 /*
@@ -1298,6 +1437,8 @@ run_tests_on_devices( xrt_core::device_collection &deviceCollection,
   }
 
   ptDevCollectionTestSuite.put_child("logical_devices", ptDeviceTested);
+  if(schemaVersion ==  Report::SchemaVersion::text)
+    pretty_print_test_summary(ptDevCollectionTestSuite, _ostream);
 
   if(schemaVersion !=  Report::SchemaVersion::text) {
     std::stringstream ss;
@@ -1305,7 +1446,6 @@ run_tests_on_devices( xrt_core::device_collection &deviceCollection,
     _ostream << ss.str() << std::endl;
   }
 }
-
 
 }
 //end anonymous namespace
@@ -1346,7 +1486,6 @@ getTestNameDescriptions(bool addAdditionOptions)
 
 void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
-
 {
   XBU::verbose("SubCommand: validate");
 
