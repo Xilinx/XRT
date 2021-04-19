@@ -303,7 +303,7 @@ failed:
 }
 
 static void __xocl_platform_device_unreg(xdev_handle_t xdev_hdl,
-	struct platform_device *pldev)
+	struct platform_device *pldev, int state)
 {
 	int i = 0;
 	struct resource *res;
@@ -318,6 +318,10 @@ static void __xocl_platform_device_unreg(xdev_handle_t xdev_hdl,
 	}
 
 	xocl_debug_unreg(XOCL_SUBDEV_DBG_HDL(&pldev->dev));
+	if (state == XOCL_SUBDEV_STATE_INIT) {
+			platform_device_put(pldev);
+			return;
+	}
 	platform_device_unregister(pldev);
 }
 
@@ -353,7 +357,7 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 			/* fall through */
 		case XOCL_SUBDEV_STATE_ADDED:
 		default:
-			__xocl_platform_device_unreg(xdev_hdl, pldev);
+			__xocl_platform_device_unreg(xdev_hdl, pldev, state);
 		}
 		xocl_lock_xdev(xdev_hdl);
 		subdev->hold = false;
@@ -550,8 +554,6 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 
 	retval = platform_device_add(subdev->pldev);
 	if (retval) {
-		platform_device_put(subdev->pldev);
-		subdev->pldev = NULL;
 		xocl_lock_xdev(xdev_hdl);
 		subdev->hold = false;
 		xocl_xdev_err(xdev_hdl, "failed to add device");
@@ -998,7 +1000,7 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 		device_release_driver(&subdev->pldev->dev);
 		subdev->ops = NULL;
 		subdev->pldev = NULL;
-		__xocl_platform_device_unreg(xdev_hdl, pldev);
+		__xocl_platform_device_unreg(xdev_hdl, pldev, subdev->state);
 		subdev->state = XOCL_SUBDEV_STATE_INIT;
 	}
 	xocl_lock_xdev(xdev_hdl);
