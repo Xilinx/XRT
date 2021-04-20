@@ -259,6 +259,7 @@ SET (XRT_DKMS_CORE_INCLUDES
   include/xclfeatures.h
   include/xclbin.h
   include/xclerr.h
+  include/xrt_error_code.h
   include/xrt_mem.h
   )
 

@@ -66,6 +66,7 @@ SET (XRT_DKMS_AWS_CORE_INCLUDES
   include/xclfeatures.h
   include/xclbin.h
   include/xclerr.h
+  include/xrt_error_code.h
   )
 
 foreach (DKMS_FILE ${XRT_DKMS_AWS_DRIVER_SRCS})
