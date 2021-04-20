@@ -49,6 +49,36 @@ namespace xdp {
     asmLastTrans.resize((db->getStaticInfo()).getNumASM(deviceId, xclbin)) ;
   }
 
+  void DeviceEventCreatorFromTrace::addCUEndEvent(double hostTimestamp,
+                                                  uint64_t deviceTimestamp,
+                                                  uint32_t s,
+                                                  int32_t cuId)
+  {
+    // In addition to creating the event, we must log statistics
+
+    // Execution time = (end time) - (start time)
+    auto startTimeEvent = cuStarts[s].front();
+    auto startTime = convertDeviceToHostTimestamp(startTimeEvent->getDeviceTimestamp());
+    auto executionTime = hostTimestamp - startTime;
+
+    cuStarts[s].pop_front();
+    auto event = new KernelEvent(startTimeEvent->getEventId(),
+                                 hostTimestamp, KERNEL, deviceId, s, cuId);
+    event->setDeviceTimestamp(deviceTimestamp);
+    db->getDynamicInfo().addEvent(event);
+    (db->getStats()).setLastKernelEndTime(hostTimestamp) ;
+
+    // Log a CU execution in our statistics database
+    // NOTE: At this stage, we don't know the global work size, so let's
+    //       leave it to the database to fill that in.
+    auto cu = db->getStaticInfo().getCU(deviceId, cuId);
+    (db->getStats()).logComputeUnitExecution(cu->getName(),
+                                             cu->getKernelName(),
+                                             cu->getDim(),
+                                             "",
+                                             executionTime);
+  }
+
   void DeviceEventCreatorFromTrace::addCUEvent(xclTraceResults& trace,
                                                double hostTimestamp,
                                                uint32_t s,
@@ -68,26 +98,7 @@ namespace xdp {
         return ;
       }
 
-      // Execution time = (end time) - (start time)
-      auto startTimeEvent = cuStarts[s].front();
-      auto startTime = convertDeviceToHostTimestamp(startTimeEvent->getDeviceTimestamp());
-      auto executionTime = hostTimestamp - startTime;
-
-      cuStarts[s].pop_front();
-      event = new KernelEvent(e->getEventId(), hostTimestamp, KERNEL, deviceId, s, cuId);
-      event->setDeviceTimestamp(trace.Timestamp);
-      db->getDynamicInfo().addEvent(event);
-      (db->getStats()).setLastKernelEndTime(hostTimestamp) ;
-
-      // Log a CU execution in our statistics database
-      // NOTE: At this stage, we don't know the global work size, so let's
-      //       leave it to the database to fill that in.
-      auto cu = db->getStaticInfo().getCU(deviceId, cuId);
-      (db->getStats()).logComputeUnitExecution(cu->getName(),
-                                               cu->getKernelName(),
-                                               cu->getDim(),
-                                               "",
-                                               executionTime);
+      addCUEndEvent(hostTimestamp, trace.Timestamp, s, cuId) ;
     }
     else {
       // start event
@@ -373,7 +384,6 @@ namespace xdp {
       // start end must have created already
       // check if the memory ports on current cu has any event
 
-      VTFDeviceEvent* cuStartEvent = cuStarts[amIndex].front();
       uint64_t cuLastTimestamp  = amLastTrans[amIndex];
 
       // get CU Id for the current slot
@@ -423,12 +433,8 @@ namespace xdp {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
 
       // end event
-      cuStarts[amIndex].pop_front();
-      
       double hostTimestamp = convertDeviceToHostTimestamp(cuLastTimestamp);
-      KernelEvent* event = new KernelEvent(cuStartEvent->getEventId(), hostTimestamp, KERNEL, deviceId, amIndex, cuId);
-      event->setDeviceTimestamp(cuLastTimestamp);
-      db->getDynamicInfo().addEvent(event); 
+      addCUEndEvent(hostTimestamp, cuLastTimestamp, amIndex, cuId) ;
     }
   }
 

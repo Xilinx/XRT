@@ -370,6 +370,10 @@ namespace xdp {
         readCounters() ;
       }
       break ;
+    case VPDatabase::READ_TRACE:
+      {
+        readTrace() ;
+      }
     default:
       break ;
     }
