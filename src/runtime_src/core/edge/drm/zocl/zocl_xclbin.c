@@ -383,6 +383,7 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 		switch (info.protocol) {
 		case CTRL_HS:
 		case CTRL_CHAIN:
+		case CTRL_NONE:
 			info.model = XCU_HLS;
 			break;
 		case CTRL_FA:
