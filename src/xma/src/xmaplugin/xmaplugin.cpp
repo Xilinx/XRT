@@ -29,6 +29,7 @@
 #include <chrono>
 using namespace std;
 
+static_assert(sizeof(XmaCmdState) <= sizeof(int32_t), "XmaCmdState size must be <= sizeof int32_t");
 #define XMAPLUGIN_MOD "xmapluginlib"
 
 extern XmaSingleton *g_xma_singleton;
@@ -54,6 +55,15 @@ int32_t create_bo(xclDeviceHandle dev_handle, XmaBufferObj& b_obj, uint32_t size
         b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
     }
     return XMA_SUCCESS;
+}
+
+// Initialize cmd obj with default values
+void cmd_obj_default(XmaCUCmdObj& cmd_obj) {
+    cmd_obj.cmd_id1 = 0;
+    cmd_obj.cmd_id2 = 0;
+    cmd_obj.cmd_finished = false;
+    cmd_obj.cu_index = -1;
+    cmd_obj.do_not_use1 = nullptr;
 }
 
 XmaBufferObj
@@ -476,11 +486,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
                                  int32_t*   return_code)
 {
     XmaCUCmdObj cmd_obj_error;
-    cmd_obj_error.cmd_id1 = 0;
-    cmd_obj_error.cmd_id2 = 0;
-    cmd_obj_error.cmd_finished = false;
-    cmd_obj_error.cu_index = -1;
-    cmd_obj_error.do_not_use1 = nullptr;
+    cmd_obj_default(cmd_obj_error);
 
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.");
@@ -629,9 +635,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     priv1->last_execbo_handle = priv1->kernel_execbos[bo_idx].handle;
 
     XmaCUCmdObj cmd_obj;
-    cmd_obj.cmd_id1 = 0;
-    cmd_obj.cmd_id2 = 0;
-    cmd_obj.cmd_finished = false;
+    cmd_obj_default(cmd_obj);
     cmd_obj.cu_index = kernel_tmp1->cu_index;
     cmd_obj.do_not_use1 = s_handle.session_signature;
 
@@ -683,11 +687,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
                                  int32_t*   return_code)
 {
     XmaCUCmdObj cmd_obj_error;
-    cmd_obj_error.cmd_id1 = 0;
-    cmd_obj_error.cmd_id2 = 0;
-    cmd_obj_error.cmd_finished = false;
-    cmd_obj_error.cu_index = -1;
-    cmd_obj_error.do_not_use1 = nullptr;
+    cmd_obj_default(cmd_obj_error);
 
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. XMASession is corrupted.");
@@ -855,9 +855,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     priv1->last_execbo_handle = priv1->kernel_execbos[bo_idx].handle;
 
     XmaCUCmdObj cmd_obj;
-    cmd_obj.cmd_id1 = 0;
-    cmd_obj.cmd_id2 = 0;
-    cmd_obj.cmd_finished = false;
+    cmd_obj_default(cmd_obj);
     cmd_obj.cu_index = kernel_tmp1->cu_index;
     cmd_obj.do_not_use1 = s_handle.session_signature;
 
@@ -1242,6 +1240,73 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
     }
     xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. CU cmd is still pending. Cu might be stuck", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
     return XMA_ERROR;
+}
+
+int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, int32_t num_cu_objs, uint32_t* num_cu_errors)
+{
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_cu_cmd_status failed. XMASession is corrupted.");
+        return XMA_ERROR;
+    }
+    XmaHwSessionPrivate *priv1 = reinterpret_cast<XmaHwSessionPrivate*>(s_handle.hw_session.private_do_not_use);
+
+    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    XmaHwDevice *dev_tmp1 = priv1->device;
+    if (dev_tmp1 == nullptr) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL-1");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_type != XMA_ADMIN && kernel_tmp1 == nullptr) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL-2");
+        return XMA_ERROR;
+    }
+
+    if (cmd_obj_array == nullptr) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is NULL");
+        return XMA_ERROR;
+    }
+    if (num_cu_objs <= 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "num_cu_objs of %d is invalid", num_cu_objs);
+        return XMA_ERROR;
+    }
+
+    XmaCUCmdObj* cmd_end = cmd_obj_array+num_cu_objs;
+    uint32_t num_errors = 0;
+    for (auto itr = cmd_obj_array; itr < cmd_end; ++itr) {
+        auto& cmd = *itr;
+        if (cmd.do_not_use1 != s_handle.session_signature) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-1");
+            return XMA_ERROR;
+        }
+        if (s_handle.session_type < XMA_ADMIN && cmd.cu_index != kernel_tmp1->cu_index) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-2");
+            return XMA_ERROR;
+        }
+        if (cmd.cmd_id1 == 0 || cmd.cu_index == -1) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj is invalid. Schedule_command may have  failed");
+            return XMA_ERROR;
+        }
+        auto itr_tmp1 = priv1->CU_cmds.find(cmd.cmd_id1);
+        if (itr_tmp1 != priv1->CU_cmds.end()) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. CU cmd has not finished yet. Return code must be checked only after the command has finished", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
+            return XMA_ERROR;
+        }
+        cmd.cmd_finished = true;
+        cmd.return_code = 0;
+        cmd.cmd_state = static_cast<XmaCmdState>(xma_cmd_state::completed);
+        cmd.do_not_use1 = nullptr;
+        auto itr_tmp2 = priv1->CU_error_cmds.find(cmd.cmd_id1);
+        if (itr_tmp2 != priv1->CU_error_cmds.end()) {
+            num_errors++;
+            cmd.return_code = itr_tmp2->second.return_code;
+            cmd.cmd_state = static_cast<XmaCmdState>(itr_tmp2->second.cmd_state);
+        }
+    }
+
+    if (num_cu_errors)
+        *num_cu_errors = num_errors;
+
+    return XMA_SUCCESS;
 }
 
 int32_t xma_plg_channel_id(XmaSession s_handle) {

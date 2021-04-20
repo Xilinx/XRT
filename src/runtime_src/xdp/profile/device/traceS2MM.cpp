@@ -90,8 +90,8 @@ void TraceS2MM::reset()
     write32(TS2MM_RST, 0x0);
 
     mPacketFirstTs = 0;
-    mPartialTs = 0;
     mModulus = 0;
+    partialResult = {} ;
     mclockTrainingdone = false;
 }
 
@@ -145,32 +145,27 @@ void TraceS2MM::showStatus()
     (*outputStream) << "INFO circular buf: " << reg_read << std::dec << std::endl;
 }
 
-inline void TraceS2MM::parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result)
+inline void TraceS2MM::parsePacketClockTrain(uint64_t packet)
 {
     if (out_stream)
         (*out_stream) << " TraceS2MM::parsePacketClockTrain " << std::endl;
 
-    uint64_t tsmask = 0x1FFFFFFFFFFF;
-    if (mod == 0) {
+    static const uint64_t tsmask = 0x1FFFFFFFFFFF;
+    if (mModulus == 0) {
       uint64_t timestamp = packet & tsmask;
-      if (timestamp >= firstTimestamp)
-        result.Timestamp = timestamp - firstTimestamp;
+      if (timestamp >= mPacketFirstTs)
+        partialResult.Timestamp = timestamp - mPacketFirstTs;
       else
-        result.Timestamp = timestamp + (tsmask - firstTimestamp);
-      result.isClockTrain = 1 ;
+        partialResult.Timestamp = timestamp + (tsmask - mPacketFirstTs);
+      partialResult.isClockTrain = 1 ;
     }
 
-    mPartialTs = mPartialTs | (((packet >> 45) & 0xFFFF) << (16 * mod));
+    partialResult.HostTimestamp |= (((packet >> 45) & 0xFFFF) << (16 * mModulus));
 
-    if (mod == 3) {
-      result.HostTimestamp = mPartialTs;
-      mPartialTs = 0;
-
-      if (out_stream) {
-        (*out_stream) << std::hex << "Clock Training sample : "
-        << result.HostTimestamp << " " << result.Timestamp
+    if (mModulus == 3 && out_stream) {
+      (*out_stream) << std::hex << "Clock Training sample : "
+        << partialResult.HostTimestamp << " " << partialResult.Timestamp
         << std::dec << std::endl;
-      }
     }
 }
 
@@ -230,19 +225,15 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
   return count;
 }
 
-void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector)
+void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector)
 {
     if(out_stream)
         (*out_stream) << " TraceS2MM::parseTraceBuf " << std::endl;
 
     uint32_t packetSizeBytes = 8;
-    uint32_t tvindex = 0;
-    traceVector.mLength = 0;
+    traceVector.clear();
 
     uint64_t count = size / packetSizeBytes;
-    if (count > MAX_TRACE_NUMBER_SAMPLES) {
-      count = MAX_TRACE_NUMBER_SAMPLES;
-    }
     auto pos = static_cast<uint64_t*>(buf);
 
     /*
@@ -259,7 +250,7 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
     for (auto i = idx; i < count; i++) {
       auto currentPacket = pos[i];
       if (!currentPacket)
-        return;
+        break;
       // Poor man's reset
       if (i == 0 && !mPacketFirstTs)
         mPacketFirstTs = currentPacket & 0x1FFFFFFFFFFF;
@@ -272,16 +263,22 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
       }
 
       if (isClockTrain) {
-        parsePacketClockTrain(currentPacket, mPacketFirstTs, mModulus, traceVector.mArray[tvindex]);
-        tvindex  = (mModulus == 3) ? tvindex + 1 : tvindex;
-        mModulus = (mModulus == 3) ? 0 : mModulus+ 1;
+        parsePacketClockTrain(currentPacket);
+        if (mModulus == 3) {
+          mModulus = 0 ;
+          traceVector.push_back(partialResult) ;
+          partialResult = {} ;
+        }
+        else {
+          mModulus = mModulus + 1 ;
+	}
       }
       else {
-        parsePacket(currentPacket, mPacketFirstTs, traceVector.mArray[tvindex++]);
+        xclTraceResults result = {};
+        parsePacket(currentPacket, mPacketFirstTs, result);
+        traceVector.push_back(result);
       }
 
-
-      traceVector.mLength = tvindex;
     } // For i < count
     mclockTrainingdone = true;
 }

@@ -31,6 +31,8 @@
 
 // directory where all MCS files are saved
 #define FIRMWARE_DIRS       {"/lib/firmware/xilinx", "/lib/firmware/arista", "C:\\Xilinx"}
+#define FORMATTED_FW_DIR    "/opt/xilinx/firmware"
+#define QSPI_GOLDEN_IMAGE   "BOOT_golden.BIN"	
 #define DSA_FILE_SUFFIX     "mcs"
 #define DSABIN_FILE_SUFFIX  "dsabin"
 #define XSABIN_FILE_SUFFIX  "xsabin"
@@ -62,8 +64,13 @@ public:
     ~DSAInfo();
 
     bool matchId(const std::string& id) const;
-    bool matchId(DSAInfo& dsa) const;
+    bool matchId(const DSAInfo& dsa) const;
     bool matchIntId(std::string& id) const;
+    bool bmcVerIsFixed() const;
+
+    //getters
+    std::string dsaname() const { return name; };
+    std::string bmc_ver() const { return bmcVer; };
 };
 
 std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa);

@@ -17,6 +17,7 @@
 #ifndef EDGE_DEVICE_LINUX_H
 #define EDGE_DEVICE_LINUX_H
 
+#include "xrt.h"
 #include "core/common/ishim.h"
 #include "core/edge/common/device_edge.h"
 
@@ -35,6 +36,32 @@ public:
   virtual void read(uint64_t addr, void* buf, uint64_t len) const;
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
   virtual void reset(const query::reset_type) const;
+
+  ////////////////////////////////////////////////////////////////
+  // Custom ip interrupt handling
+  // Redefined from xrt_core::ishim
+  ////////////////////////////////////////////////////////////////
+  virtual xclInterruptNotifyHandle
+  open_ip_interrupt_notify(unsigned int ip_index)
+  {
+    return xclOpenIPInterruptNotify(get_device_handle(), ip_index, 0);
+  }
+  
+  virtual void
+  close_ip_interrupt_notify(xclInterruptNotifyHandle handle)
+  {
+    xclCloseIPInterruptNotify(get_device_handle(), handle);
+  }
+
+  virtual void
+  enable_ip_interrupt(xclInterruptNotifyHandle);
+
+  virtual void
+  disable_ip_interrupt(xclInterruptNotifyHandle);
+
+  virtual void
+  wait_ip_interrupt(xclInterruptNotifyHandle);
+  ////////////////////////////////////////////////////////////////
 
 private:
   // Private look up function for concrete query::request

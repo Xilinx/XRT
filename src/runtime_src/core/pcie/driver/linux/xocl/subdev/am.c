@@ -260,6 +260,7 @@ static int am_probe(struct platform_device *pdev)
 	struct xocl_am *am;
 	struct resource *res;
 	int err = 0;
+	void *priv;
 
 	am = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_am));
 	if (!am)
@@ -267,7 +268,9 @@ static int am_probe(struct platform_device *pdev)
 
 	am->dev = &pdev->dev;
 
-	memcpy(&am->data, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct debug_ip_data));
+	priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (priv)
+		memcpy(&am->data, priv, sizeof(struct debug_ip_data));
 
 	platform_set_drvdata(pdev, am);
 	mutex_init(&am->lock);

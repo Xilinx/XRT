@@ -50,15 +50,15 @@ namespace xdp {
   }
 
   static void log_kernel_execution(const char* kernelName,
-				   bool isStart,
-				   uint64_t kernelInstanceAddress,
-				   uint64_t contextId,
-				   uint64_t commandQueueId,
-				   const char* deviceName,
-				   const char* globalWorkSize,
-				   const char* localWorkSize,
-				   const char** buffers,
-				   uint64_t numBuffers)
+                                   bool isStart,
+                                   uint64_t kernelInstanceAddress,
+                                   uint64_t contextId,
+                                   uint64_t commandQueueId,
+                                   const char* deviceName,
+                                   const char* globalWorkSize,
+                                   const char* localWorkSize,
+                                   const char** buffers,
+                                   uint64_t numBuffers)
   {
     static std::map<std::string, std::queue<uint64_t> > storedTimestamps ;
     static std::mutex timestampLock ;
@@ -69,7 +69,7 @@ namespace xdp {
     if (getFlowMode() == HW_EMU)
     {
       timestamp =
-	openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
+        openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
     }
 
     // Since we don't have device information in software emulation,
@@ -86,15 +86,15 @@ namespace xdp {
       
       // Also, for guidance, keep track of the total number of concurrent
       (db->getStats()).logMaxExecutions(kernelName,
-					storedTimestamps[kernelName].size()) ;
+                                        storedTimestamps[kernelName].size()) ;
     }
     else
     {
       if (storedTimestamps[kernelName].size() <= 0)
       {
-	// There are times we get ends with no corresponding starts.
-	//  We can just ignore them.
-	return ; 
+        // There are times we get ends with no corresponding starts.
+        //  We can just ignore them.
+        return ; 
       }
       uint64_t startTime = storedTimestamps[kernelName].front() ;
       (storedTimestamps[kernelName]).pop() ;
@@ -102,36 +102,44 @@ namespace xdp {
 
       (db->getStats()).logDeviceActiveTime(deviceName, startTime, timestamp) ;
       (db->getStats()).logKernelExecution(kernelName,
-					  executionTime,
-					  kernelInstanceAddress,
-					  contextId,
-					  commandQueueId,
-					  deviceName,
-					  startTime,
-					  globalWorkSize,
-					  localWorkSize,
-					  buffers,
-					  numBuffers) ;
+                                          executionTime,
+                                          kernelInstanceAddress,
+                                          contextId,
+                                          commandQueueId,
+                                          deviceName,
+                                          startTime,
+                                          globalWorkSize,
+                                          localWorkSize,
+                                          buffers,
+                                          numBuffers) ;
     }
   }
 
   static void log_compute_unit_execution(const char* cuName,
-					 const char* localWorkGroup,
-					 const char* globalWorkGroup,
-					 bool isStart)
+                                         const char* kernelName,
+                                         const char* localWorkGroup,
+                                         const char* globalWorkGroup,
+                                         bool isStart)
   {
+    // Log the execution of a compute unit
+    // NOTE: This is only valid for SW emulation. For HW and HW emulation, only the
+    // scheduler knows which CU gets the job. For those flows, we need to get the
+    // CU execution times from trace as read from accelerator monitors on the device. 
+    if (getFlowMode() != SW_EMU)
+      return;
+
     static std::map<std::tuple<std::string, std::string, std::string>, 
-		    uint64_t> storedTimestamps ;
+                    uint64_t> storedTimestamps ;
     static std::mutex timestampLock ;
 
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
 
-    if (getFlowMode() == HW_EMU)
-    {
-      timestamp =
-	openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
-    }
+    //if (getFlowMode() == HW_EMU)
+    //{
+    //  timestamp =
+    //    openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
+    //}
 
     std::tuple<std::string, std::string, std::string> combinedName =
       std::make_tuple(cuName, localWorkGroup, globalWorkGroup) ;
@@ -147,20 +155,21 @@ namespace xdp {
       storedTimestamps.erase(combinedName) ;
 
       (db->getStats()).logComputeUnitExecution(cuName,
-					       localWorkGroup,
-					       globalWorkGroup,
-					       executionTime) ;
+                                               kernelName,
+                                               localWorkGroup,
+                                               globalWorkGroup,
+                                               executionTime);
     }
   }
 
   static void counter_action_read(uint64_t contextId,
-				  uint64_t numDevices,
-				  const char* deviceName,
-				  uint64_t size,
-				  bool isStart,
-				  bool isP2P,
-				  uint64_t address,
-				  uint64_t commandQueueId)
+                                  uint64_t numDevices,
+                                  const char* deviceName,
+                                  uint64_t size,
+                                  bool isStart,
+                                  bool isP2P,
+                                  uint64_t address,
+                                  uint64_t commandQueueId)
   {
     static std::map<std::pair<uint64_t, std::string>, uint64_t> 
       storedTimestamps ;
@@ -203,12 +212,12 @@ namespace xdp {
   }
 
   static void counter_action_write(uint64_t contextId,
-				   const char* deviceName,
-				   uint64_t size,
-				   bool isStart,
-				   bool isP2P,
-				   uint64_t address,
-				   uint64_t commandQueueId)
+                                   const char* deviceName,
+                                   uint64_t size,
+                                   bool isStart,
+                                   bool isP2P,
+                                   uint64_t address,
+                                   uint64_t commandQueueId)
   {
     static std::map<std::pair<uint64_t, std::string>, uint64_t> 
       storedTimestamps ;
@@ -260,12 +269,12 @@ namespace xdp {
 
 extern "C"
 void log_function_call_start(const char* functionName,
-			     unsigned long long int queueAddress,
-			     bool isOOO)
+                             unsigned long long int queueAddress,
+                             bool isOOO)
 {
   xdp::log_function_call_start(functionName,
-			       static_cast<uint64_t>(queueAddress),
-			       isOOO) ;
+                               static_cast<uint64_t>(queueAddress),
+                               isOOO) ;
 }
 
 extern "C"
@@ -276,76 +285,78 @@ void log_function_call_end(const char* functionName)
 
 extern "C"
 void log_kernel_execution(const char* kernelName,
-			  bool isStart,
-			  unsigned long long int kernelInstanceId,
-			  unsigned long long int contextId,
-			  unsigned long long int commandQueueId,
-			  const char* deviceName,
-			  const char* globalWorkSize,
-			  const char* localWorkSize,
-			  const char** buffers,
-			  unsigned long long int numBuffers)
+                          bool isStart,
+                          unsigned long long int kernelInstanceId,
+                          unsigned long long int contextId,
+                          unsigned long long int commandQueueId,
+                          const char* deviceName,
+                          const char* globalWorkSize,
+                          const char* localWorkSize,
+                          const char** buffers,
+                          unsigned long long int numBuffers)
 {
   xdp::log_kernel_execution(kernelName,
-			    isStart,
-			    static_cast<uint64_t>(kernelInstanceId),
-			    static_cast<uint64_t>(contextId),
-			    static_cast<uint64_t>(commandQueueId),
-			    deviceName,
-			    globalWorkSize,
-			    localWorkSize,
-			    buffers,
-			    static_cast<uint64_t>(numBuffers)) ;
+                            isStart,
+                            static_cast<uint64_t>(kernelInstanceId),
+                            static_cast<uint64_t>(contextId),
+                            static_cast<uint64_t>(commandQueueId),
+                            deviceName,
+                            globalWorkSize,
+                            localWorkSize,
+                            buffers,
+                            static_cast<uint64_t>(numBuffers)) ;
 }
 
 extern "C"
 void log_compute_unit_execution(const char* cuName,
-				const char* localWorkGroupConfiguration,
-				const char* globalWorkGroupConfiguration,
-				bool isStart)
+                                const char* kernelName,
+                                const char* localWorkGroupConfiguration,
+                                const char* globalWorkGroupConfiguration,
+                                bool isStart)
 {
   xdp::log_compute_unit_execution(cuName,
-				  localWorkGroupConfiguration,
-				  globalWorkGroupConfiguration,
-				  isStart) ;
+                                  kernelName,
+                                  localWorkGroupConfiguration,
+                                  globalWorkGroupConfiguration,
+                                  isStart) ;
 }
 
 extern "C"
 void counter_action_read(unsigned long long int contextId,
-			 unsigned long long int numDevices,
-			 const char* deviceName,
-			 unsigned long long int size,
-			 bool isStart,
-			 bool isP2P,
-			 unsigned long long int address,
-			 unsigned long long int commandQueueId)
+                         unsigned long long int numDevices,
+                         const char* deviceName,
+                         unsigned long long int size,
+                         bool isStart,
+                         bool isP2P,
+                         unsigned long long int address,
+                         unsigned long long int commandQueueId)
 {
   xdp::counter_action_read(static_cast<uint64_t>(contextId),
-			   static_cast<uint64_t>(numDevices),
-			   deviceName,
-			   static_cast<uint64_t>(size),
-			   isStart,
-			   isP2P,
-			   static_cast<uint64_t>(address),
-			   static_cast<uint64_t>(commandQueueId));
+                           static_cast<uint64_t>(numDevices),
+                           deviceName,
+                           static_cast<uint64_t>(size),
+                           isStart,
+                           isP2P,
+                           static_cast<uint64_t>(address),
+                           static_cast<uint64_t>(commandQueueId));
 }
 
 extern "C"
 void counter_action_write(unsigned long long int contextId,
-			  const char* deviceName,
-			  unsigned long long int size,
-			  bool isStart,
-			  bool isP2P,
-			  unsigned long long int address,
-			  unsigned long long int commandQueueId)
+                          const char* deviceName,
+                          unsigned long long int size,
+                          bool isStart,
+                          bool isP2P,
+                          unsigned long long int address,
+                          unsigned long long int commandQueueId)
 {
   xdp::counter_action_write(static_cast<uint64_t>(contextId),
-			    deviceName,
-			    static_cast<uint64_t>(size),
-			    isStart,
-			    isP2P,
-			    static_cast<uint64_t>(address),
-			    static_cast<uint64_t>(commandQueueId));
+                            deviceName,
+                            static_cast<uint64_t>(size),
+                            isStart,
+                            isP2P,
+                            static_cast<uint64_t>(address),
+                            static_cast<uint64_t>(commandQueueId));
 }
 
 extern "C"

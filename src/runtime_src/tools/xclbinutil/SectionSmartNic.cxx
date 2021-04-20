@@ -23,6 +23,7 @@
 #include "XclBinUtilities.h"
 #include "CBOR.h"
 #include "RapidJsonUtilities.h"
+#include "ResourcesSmartNic.h"
 
 namespace XUtil = XclBinUtilities;
 
@@ -36,12 +37,6 @@ namespace XUtil = XclBinUtilities;
 #include <rapidjson/writer.h>
 
 #include <fstream>
-
-
-// TODO: Insert JSON Schema here as a string literal
-//static std::string foo = R"~~~~(
-//This is a test
-//)~~~~";
 
 // Static Variables / Classes
 SectionSmartNic::_init SectionSmartNic::_initializer;
@@ -128,169 +123,153 @@ read_file_into_buffer(const std::string& fileName,
 }
 
 static
+void rename_file_node(const std::string & fileNodeName, 
+                      rapidjson::Value &value,
+                      rapidjson::Document::AllocatorType& allocator)
+{
+  // Remove the subname (e.g., _file) from the existing key
+  const static std::string removeSubName = "_file";
+
+  std::string newKey = fileNodeName;              
+  auto index = newKey.find(removeSubName); 
+  if (index == std::string::npos)
+     return;
+
+  newKey.replace(index, removeSubName.size(), "");
+
+  XUtil::TRACE(boost::str(boost::format("Renaming node '%s' to '%s'") % fileNodeName % newKey));
+
+  // Rename keys by swapping their values
+  rapidjson::Value::MemberIterator itrOldKey = value.FindMember(fileNodeName.c_str());
+  value.AddMember(rapidjson::Value(newKey.c_str(), allocator).Move(), itrOldKey->value, allocator);
+  value.RemoveMember(fileNodeName.c_str());
+}
+
+static
 void
 readAndTransposeByteFiles_recursive(const std::string& scope,
-                                    rapidjson::Value& aValue,
-                                    std::vector<std::string>& byteFileEntries,
+                                    rapidjson::Value::MemberIterator itrObject,
+                                    const XclBinUtilities::KeyTypeCollection& keyTypeCollection,
                                     rapidjson::Document::AllocatorType& allocator,
                                     const std::string& relativeFromDir) {
-  XUtil::TRACE((boost::format("-- Scope: %s") % scope).str());
+  XUtil::TRACE((boost::format("BScope: %s") % scope).str());
 
   // A dictionary
-  if (aValue.IsObject()) {
+  if (itrObject->value.IsObject()) {
     std::vector<std::string> renameCollection;
-    for (rapidjson::Value::MemberIterator itr = aValue.MemberBegin(); itr != aValue.MemberEnd(); ++itr) {
-      std::string currentScope = scope + "::" + itr->name.GetString();
-      // Do we have a match
-      if (std::find(byteFileEntries.begin(), byteFileEntries.end(), currentScope) != byteFileEntries.end()) {
-        std::string myString = itr->name.GetString();
-        renameCollection.push_back(myString);
-      }
+    for (rapidjson::Value::MemberIterator itr = itrObject->value.MemberBegin(); itr != itrObject->value.MemberEnd(); ++itr) {
 
-      readAndTransposeByteFiles_recursive(currentScope, itr->value, byteFileEntries, allocator, relativeFromDir);
+      // Look "forward" to see if this dictionary contains the node of interest
+      std::string currentScope = scope + "::" + itr->name.GetString();
+      if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::byte_file) 
+        renameCollection.push_back(std::string(itr->name.GetString()));
+
+      readAndTransposeByteFiles_recursive(scope + "::" + itr->name.GetString(), itr, keyTypeCollection, allocator, relativeFromDir);
     }
 
     // Now that we are out of that "nasty" Iterator loop, rename the updated keys.
-    // TODO: Refactor code to have the new file name be data driven
-    for (const std::string& oldKey : renameCollection) {
-      const static std::string removeSubName = "_file";
-      std::string newKey = oldKey;
-      auto index = newKey.find(removeSubName);
-      if (index == std::string::npos)
-        continue;
-      newKey.replace(index, removeSubName.size(), "");
+    for (const std::string& oldFileNodeName : renameCollection)
+      rename_file_node(oldFileNodeName, itrObject->value, allocator);
 
-      // Now rename keys by swapping their values
-      rapidjson::Value::MemberIterator itrOldKey = aValue.FindMember(oldKey.c_str());
-      aValue.AddMember(rapidjson::Value(newKey.c_str(), allocator).Move(), itrOldKey->value, allocator);
-      aValue.RemoveMember(oldKey.c_str());
-    }
-
-    return;  // -- Return --
+    return;
   }
 
   // An array
-  if (aValue.IsArray()) {
-    for (auto itr = aValue.Begin(); itr != aValue.End(); ++itr) {
-      if (itr->IsObject())
-        readAndTransposeByteFiles_recursive(scope + "[]", *itr, byteFileEntries, allocator, relativeFromDir);
+  if (itrObject->value.IsArray()) {
+    for (auto itr = itrObject->value.Begin(); itr != itrObject->value.End(); ++itr) {
+      std::vector<std::string> renameCollection;
+      rapidjson::Value& attribute = *itr;
+
+      if (!attribute.IsObject()) 
+        continue;
+
+      for (auto itr2 = attribute.MemberBegin(); itr2 != attribute.MemberEnd(); ++itr2) {
+
+        // Look "forward" to see if this dictionary contains the node of interest
+        std::string currentScope = scope + "[]" + itr2->name.GetString();
+        if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::byte_file) 
+          renameCollection.push_back(std::string(itr2->name.GetString()));
+
+        readAndTransposeByteFiles_recursive(scope + "[]" + itr2->name.GetString(), itr2, keyTypeCollection, allocator, relativeFromDir);
+      }
+
+      // Now that we are out of that "nasty" Iterator loop, rename the updated keys.
+      for (const std::string& oldFileNodeName : renameCollection)
+        rename_file_node(oldFileNodeName, attribute, allocator);
     }
-    return;  // -- Return --
+
+    return;  
   }
 
   // End point String
-  if (aValue.IsString()) {
+  if (itrObject->value.IsString()) {
     // Do we have a match
-    if (std::find(byteFileEntries.begin(), byteFileEntries.end(), scope) == byteFileEntries.end())
-      return;  // -- Return --
+    if (get_expected_type(scope, keyTypeCollection) != XUtil::DType::byte_file) 
+      return;  
 
+    // Read file image from disk
     std::vector<char> buffer;
-    read_file_into_buffer(aValue.GetString(), relativeFromDir, buffer);
+    read_file_into_buffer(itrObject->value.GetString(), relativeFromDir, buffer);
 
     // Convert the binary data to hex and re-add
     std::string byteString(buffer.data(), buffer.size());
     byteString = boost::algorithm::hex(byteString);
-    aValue.SetString(byteString.data(), byteString.size(), allocator);
+    itrObject->value.SetString(byteString.data(), byteString.size(), allocator);
 
-    return;    // -- Return --
+    return;  
   }
 }
 
 
 static void
 readAndTransposeByteFiles(rapidjson::Document& doc,
-                          std::vector<std::string>& byteFileEntries,
+                          const XclBinUtilities::KeyTypeCollection& keyTypeCollection,
                           const std::string& dirRelativeFrom) {
-  readAndTransposeByteFiles_recursive("", doc, byteFileEntries, doc.GetAllocator(), dirRelativeFrom);
+  if (!doc.IsObject())
+    return;
+
+  for (auto itr = doc.MemberBegin(); itr != doc.MemberEnd(); ++itr)
+    readAndTransposeByteFiles_recursive(std::string("#") + itr->name.GetString(), itr, keyTypeCollection, doc.GetAllocator(), dirRelativeFrom);
+
 }
 
 void
 SectionSmartNic::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
                                  std::ostringstream& _buf) const {
+  const std::string nodeName = "smartnic";
+
   XUtil::TRACE("");
   XUtil::TRACE("SmartNic : Marshalling From JSON");
 
-  // -- Get the JSON tree associated with the SmartNic section
-  const boost::property_tree::ptree& ptSmartNic = _ptSection.get_child("smartnic");
+  // -- Retrieve only the JSON tree associated with the SmartNic section
+  boost::property_tree::ptree ptSmartNic = _ptSection.get_child(nodeName);
 
   // -- Convert from a boost property tree to a rapidjson document
   std::ostringstream buf;
   boost::property_tree::write_json(buf, ptSmartNic, false);
 
   rapidjson::Document document;
-  const std::string& bufString = buf.str();
-  document.Parse(bufString.c_str());
+  if (document.Parse(buf.str().c_str()).HasParseError()) {
+    throw std::runtime_error("Error: The 'smartnic' JSON format is not valid JSON.");
+  }
 
-  XUtil::TRACE_PrintTree("SmartNic: Pre-RapidJson Transform", document);
+  // -- Transform the JSON elements to their expected primitive value
+  XUtil::KeyTypeCollection keyTypeCollection;
+  XUtil::collect_key_types(getSmartNicSchema(), keyTypeCollection);
 
-  // -- Transform JSON elements back to their primitive values (from strings)
-  // Temporary collection until functionality is added to enable this data
-  // to be obtained from the JSON schema
-  static const XUtil::KeyTypeCollection m_keyTypeCollection = {
-    { "schema_version::major",                               XUtil::DType_INTEGER },
-    { "schema_version::minor",                               XUtil::DType_INTEGER },
-    { "schema_version::patch",                               XUtil::DType_INTEGER },
-    { "extensions[]version_info::minor",                     XUtil::DType_INTEGER },
-    { "extensions[]version_info::patch",                     XUtil::DType_INTEGER },
-    { "extensions[]cam_instances::id",                       XUtil::DType_INTEGER },
-    { "extensions[]cam_instances::base_address",             XUtil::DType_INTEGER },
-    { "extensions[]cam_instances::driver_index",             XUtil::DType_INTEGER },
-    { "extensions[]address_mapping::offset",                 XUtil::DType_INTEGER },
-    { "extensions[]address_mapping::aperture_size_bytes",    XUtil::DType_INTEGER },
-    { "extensions[]messages[]id",                            XUtil::DType_INTEGER },
-    { "extensions[]messages[]param_size_bytes",              XUtil::DType_INTEGER },
-    { "extensions[]resource_classes[]max_count",             XUtil::DType_INTEGER },
-    { "extensions[]resource_classes[]memory_size_bytes",     XUtil::DType_INTEGER },
-    { "extensions[]global_memory_size_bytes",                XUtil::DType_INTEGER },
-    { "extensions[]per_handle_memory_size_bytes",            XUtil::DType_INTEGER },
-    { "softhub_connections[]version",                        XUtil::DType_INTEGER },
-    { "softhub_connections[]id",                             XUtil::DType_INTEGER },
-    { "cam_drivers[]compatible_version",                     XUtil::DType_INTEGER },
-  };
-  XUtil::transform_to_primatives(document, m_keyTypeCollection);
+  XUtil::transform_to_primatives(document, keyTypeCollection);
 
-  XUtil::TRACE_PrintTree("SmartNic: Post-RapidJson Transform", document);
+  // -- Validate the smartnic schema
+  XUtil::validate_against_schema(nodeName, document, getSmartNicSchema());
 
-  // TODO: Insert JSON schema checking here
-
-  // Temporary collection until functionality is added to enable this data
-  // to be obtained from the JSON schema
-  std::vector<std::string> byteFileEntries = {
-    "::extensions[]::cam_instances::config_file",
-    "::extensions[]::setup::ebpf_file",
-    "::extensions[]::background_proc::ebpf_file",
-    "::extensions[]::tear_down::ebpf_file",
-    "::extensions[]::messages[]::ebpf_file",
-    "::extensions[]::resource_classes[]::dtor_file",
-    "::cam_drivers[]::driver_file",
-    "::cam_drivers[]::signature_file",
-  };
-
-  // Read in the byte code
+  // -- Read in the byte code
   boost::filesystem::path p(getPathAndName());
   std::string fromRelativeDir = p.parent_path().string();
-  readAndTransposeByteFiles(document, byteFileEntries, fromRelativeDir);
+  readAndTransposeByteFiles(document, keyTypeCollection, fromRelativeDir);
 
-  XUtil::TRACE_PrintTree("SmartNic: ReadByte-RapidJson Transform", document);
-
-  // Write the CBOR image
-  // Temporary collection until functionality is added to enable this data
-  // to be obtained from the JSON schema
-  static const XUtil::KeyTypeCollection m_encodeKeyTypeCollection = {
-    { "extensions[]::version_info::uuid",                    XUtil::DType_BYTE_STRING },
-    { "extensions[]::features",                              XUtil::DType_BYTE_STRING },
-    { "extensions[]::cam_instances::config",                 XUtil::DType_BYTE_STRING },
-    { "extensions[]::setup::ebpf",                           XUtil::DType_BYTE_STRING },
-    { "extensions[]::background_proc::ebpf",                 XUtil::DType_BYTE_STRING },
-    { "extensions[]::tear_down::ebpf",                       XUtil::DType_BYTE_STRING },
-    { "extensions[]::messages[]::ebpf",                      XUtil::DType_BYTE_STRING },
-    { "extensions[]::resource_classes[]::dtor",              XUtil::DType_BYTE_STRING },
-    { "cam_drivers[]::driver",                               XUtil::DType_BYTE_STRING },
-    { "cam_drivers[]::signature",                            XUtil::DType_BYTE_STRING },
-  };
-
+  // -- Create the cbor buffer
   std::ostringstream buffer;
-  XUtil::write_cbor(document, m_encodeKeyTypeCollection, buffer);
+  XUtil::write_cbor(document, keyTypeCollection, buffer);
 
   // Write the contents to given output stream
   std::string aString = buffer.str();
@@ -299,10 +278,255 @@ SectionSmartNic::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
 
 
+/**
+ * Compares two given property trees to validate that they are the same.
+ * 
+ * @param primary - Primary property tree
+ * @param secondary - Secondary property tree
+ */
+static void 
+validateGenericTree( const boost::property_tree::ptree & primary,
+                     const boost::property_tree::ptree & secondary) {
+  if (primary.size() != secondary.size())
+    throw std::runtime_error("Error: Size mismatch.");
+
+  // If there are no more child graphs, then we are at a graph end node
+  if (primary.empty()) {
+    XUtil::TRACE(XUtil::format("  Primary Data   : '%s'", primary.data().c_str()).c_str());
+    XUtil::TRACE(XUtil::format("  Secondary Data : '%s'", secondary.data().c_str()).c_str());
+
+    if (primary.data() != secondary.data()) 
+      throw std::runtime_error(std::string("Error: Data mismatch: P('") + primary.data() + "); S('" + secondary.data() + "')");
+
+    return;
+  }
+
+  // Compare the keys (order independent)
+  for (const auto &it: primary) {
+    const std::string & key = it.first;
+    XUtil::TRACE(XUtil::format("Examining node: '%s'", key.c_str()).c_str());
+    
+    const boost::property_tree::ptree &ptSecondary = secondary.get_child(key);
+    validateGenericTree(it.second, ptSecondary);
+  }
+}
+
+// Call back function signature used when traversing the property trees
+using node_sig_ptr=std::function<void (boost::property_tree::ptree &, const boost::property_tree::ptree &)>;
+
+// Graph node to call back function
+using NodeCallBackFuncs=std::map<std::string, node_sig_ptr>;
+
+
+/**
+ * Used to traverse a node array.
+ * 
+ * @param nodeName The primary node name of the array
+ * @param key      Optional key value that is used to determine array item uniqueness
+ * @param ptParent Parent property_tree
+ * @param ptAppend Data to append
+ * @param nodeCallBackFuncs
+ *                 Call back functions for various nodes
+ */
+static void 
+merge_node_array( const std::string &nodeName, const std::string &key,boost::property_tree::ptree &ptParent,
+                  const boost::property_tree::ptree &ptAppend, const NodeCallBackFuncs &nodeCallBackFuncs);
+
+static void
+info_node( boost::property_tree::ptree &ptParent, 
+           const boost::property_tree::ptree &ptAppend) {
+  static const NodeCallBackFuncs emptyCallBackNodes;
+  merge_node_array("info", "", ptParent, ptAppend, emptyCallBackNodes);
+}
+
+static void
+cam_instances_node( boost::property_tree::ptree &ptParent, 
+                    const boost::property_tree::ptree &ptAppend) {
+  static const NodeCallBackFuncs emptyCallBackNodes;
+  merge_node_array("cam_instances", "name", ptParent, ptAppend, emptyCallBackNodes);
+}
+
+static void 
+messages_node( boost::property_tree::ptree & ptParent, 
+               const boost::property_tree::ptree &ptAppend) {
+  static const NodeCallBackFuncs emptyCallBackNodes;
+  merge_node_array("messages", "name", ptParent, ptAppend, emptyCallBackNodes);
+}
+
+static void 
+resource_classes_node( boost::property_tree::ptree & ptParent, 
+                       const boost::property_tree::ptree & ptAppend) {
+  static const NodeCallBackFuncs emptyCallBackNodes;
+  merge_node_array("resource_classes", "name", ptParent, ptAppend, emptyCallBackNodes);
+}
+
+static void 
+merge_node( boost::property_tree::ptree &ptParent,
+            const std::string &appendPath,
+            const boost::property_tree::ptree &ptAppend,
+            const NodeCallBackFuncs &nodeCallBackFuncs) {
+  XUtil::TRACE(XUtil::format("Current append path: '%s'", appendPath.c_str()).c_str());
+
+  // Are we at a graph end node
+  if (!appendPath.empty() && ptAppend.empty()) {
+    // Check to see if data already exists, if so validate that it isn't changing
+    const std::string & parentValue = ptParent.get<std::string>(appendPath,"");
+    const std::string & appendValue = ptAppend.data();
+
+    if (!parentValue.empty()) {
+      // Check to see if the data is the same, if not produce an error
+      if (parentValue.compare(appendValue) != 0) {
+        std::string errMsg = XUtil::format("Error: The JSON path's '%s' existing value is not the same as the value being merged.\n"
+                                           "Existing value    : '%s'\n"
+                                           "Value being merged: '%s'", appendPath.c_str(), parentValue.c_str(), appendValue.c_str());
+        throw std::runtime_error(errMsg);
+      }
+    } else {
+      // Entry does not exist add it
+      ptParent.put(appendPath, ptAppend.data());
+    }
+    return;
+  }
+
+  // Merge the node metadata
+  for(const auto &item : ptAppend) {
+    // Encode the current path using boost's determinator (e.g., '.')
+    const std::string currentPath = appendPath + (appendPath.empty() ? "" : ".") + item.first;
+
+    // Check to see if this node has a callback function, if so call it.
+    auto itr = nodeCallBackFuncs.find(currentPath);
+    if (itr!= nodeCallBackFuncs.end()) {
+      // Create a parent node if one doesn't exist 
+      if (!appendPath.empty() && (ptParent.count(appendPath) == 0)) {  
+        boost::property_tree::ptree ptEmpty;
+        ptParent.add_child(appendPath, ptEmpty);
+      }
+
+      // Call the helper function
+      itr->second(ptParent.get_child(appendPath), item.second);
+      continue;
+    }
+
+    // No call back function, this is a generic node
+    merge_node(ptParent, currentPath, item.second, nodeCallBackFuncs);
+  }
+}
+  
+static void 
+merge_node_array( const std::string &nodeName, 
+                  const std::string &key,
+                  boost::property_tree::ptree &ptParent,
+                  const boost::property_tree::ptree &ptAppend,
+                  const NodeCallBackFuncs &nodeCallBackFuncs) {
+   // Extract the node array into a vector of child property trees
+   std::vector<boost::property_tree::ptree> workingNodeArray = XUtil::as_vector<boost::property_tree::ptree>(ptParent, nodeName);
+
+   // Remove this entry.  It will be added later.
+   ptParent.erase(nodeName);
+
+   // Merge the new data into the extensions node
+   for (const auto & item : ptAppend) {
+     bool entryMerged = false;
+
+     // Check to see if a key is needed, if so, used it to find the correct unique entry 
+     if (!key.empty()) {
+       const std::string & keyValue = item.second.get<std::string>(key, "");
+       if (keyValue.empty()) {
+         const std::string errMsg = XUtil::format("Error: Missing key '%s' entry.", key.c_str());
+         throw std::runtime_error(errMsg);
+       }
+
+       // Look for an existing entry that matches the key value (if used0
+       for (auto & entry : workingNodeArray) {
+         if (keyValue == entry.get<std::string>(key, "")) {
+           merge_node(entry, "", item.second, nodeCallBackFuncs);
+           entryMerged = true;
+           break;
+         }
+       }
+     }
+
+     // No match, add it to the array
+     if (entryMerged == false) {
+       XUtil::TRACE("New append item.  Adding it to the end of the array.");
+       workingNodeArray.push_back(item.second);
+     }
+   }
+
+   // Rebuild the node array and add it back into the property tree
+   boost::property_tree::ptree ptArrayNode;
+   for (auto & nodeEntry : workingNodeArray) 
+     ptArrayNode.push_back(std::make_pair("", nodeEntry));   // Used to make an array of objects
+
+   ptParent.add_child(nodeName, ptArrayNode);
+}
+
+
+
 void
-SectionSmartNic::appendToSectionMetadata(const boost::property_tree::ptree& /*_ptAppendData*/,
-                                         boost::property_tree::ptree& /*_ptToAppendTo*/) {
-  throw std::runtime_error("Error: appendToSectionMetadata() not implemented....yet.");
+SectionSmartNic::appendToSectionMetadata( const boost::property_tree::ptree& _ptAppendData,
+                                          boost::property_tree::ptree& _ptToAppendTo) {
+  XUtil::TRACE_PrintTree("To Append To", _ptToAppendTo);
+  XUtil::TRACE_PrintTree("Append data", _ptAppendData);
+
+  // Should not happen, but we should double check just in case of a future change :^)
+  if (_ptToAppendTo.count("smartnic") == 0) 
+    throw std::runtime_error("Internal Error: SmartNic destination node not present.");
+
+  boost::property_tree::ptree & ptSmartNic = _ptToAppendTo.get_child("smartnic");
+
+  // Examine the data to be merged
+  boost::property_tree::ptree ptEmpty;           // Empty property tree
+  for (const auto & it : _ptAppendData) {
+    const std::string & sectionName = it.first;
+    XUtil::TRACE("");
+    XUtil::TRACE("Found Section: '" + sectionName + "'");
+
+    // -- Node: extensions
+    if (sectionName == "extensions") {
+      try {
+        // Call back functions and their nodes that they are associated with
+        static NodeCallBackFuncs extensionCallBackNodes = {
+            { "info", info_node },
+            { "cam_instances", cam_instances_node },
+            { "messages", messages_node },
+            { "resource_classes", resource_classes_node }
+          };
+
+        merge_node_array("extensions", "instance_name", ptSmartNic, it.second, extensionCallBackNodes);
+
+      } catch (std::exception &e ) {
+        std::string msg = e.what();
+        std::cerr << e.what() << std::endl;
+        throw std::runtime_error("Error: Merging of the 'extension' node failed.");
+      }
+      continue;
+    }
+
+    // -- Node: softhubs
+    if (sectionName == "softhubs") {
+      static const NodeCallBackFuncs emptyCallBackNodes;
+      merge_node_array("softhubs", "id", ptSmartNic, it.second, emptyCallBackNodes);
+      continue;
+    }
+
+    // -- Node: schema_version
+    if (sectionName == "schema_version") {
+      try {
+        validateGenericTree(it.second, ptSmartNic.get_child("schema_version"));
+      } catch (std::exception &e ) {
+        std::string msg = e.what();
+        std::cerr << e.what() << std::endl;
+        throw std::runtime_error("Error: Validating node 'schema_versions'");
+      }
+      continue;
+    }
+
+    // -- Node: <not known>
+    throw std::runtime_error(std::string("Error: Unknown node in merging file: '") + sectionName + "'");
+  }
+
+  XUtil::TRACE_PrintTree("Final Merge", _ptToAppendTo);
 }
 
 #endif

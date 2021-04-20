@@ -126,12 +126,15 @@ namespace xdp {
           if (offloader->continuous_offload())
           {
             offloader->stop_offload() ;
+            // To avoid a race condition, wait until the offloader has stopped
+            while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
           }
           else
           {
             offloader->read_trace() ;
             offloader->read_trace_end() ;
           }
+          printTraceWarns(offloader);
           readCounters() ;
         }
       }
@@ -177,6 +180,7 @@ namespace xdp {
         offloader->read_trace() ;
         offloader->read_trace_end() ;
       }
+      printTraceWarns(offloader);
     }
     readCounters() ;
 
@@ -261,6 +265,7 @@ namespace xdp {
           xrt_core::config::get_stall_trace()  != "off")) {
       configureTraceIP(devInterface);
       devInterface->clockTraining() ;
+      startContinuousThreads(deviceId) ;
     }
     if(getFlowMode() == HW_EMU) {
       configureTraceIP(devInterface);

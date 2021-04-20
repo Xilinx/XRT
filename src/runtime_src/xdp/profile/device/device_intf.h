@@ -125,7 +125,7 @@ class DeviceIntf {
     XDP_EXPORT
     size_t stopTrace();
     XDP_EXPORT
-    size_t readTrace(xclTraceResultsVector& traceVector);
+    size_t readTrace(std::vector<xclTraceResults>& traceVector);
 
     /** Trace S2MM Management
      */
@@ -147,7 +147,7 @@ class DeviceIntf {
     XDP_EXPORT
     uint8_t  getTS2MmMemIndex();
     XDP_EXPORT
-    void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector);
+    void parseTraceData(void* traceData, uint64_t bytes, std::vector<xclTraceResults>& traceVector);
 
     XDP_EXPORT
     void resetAIETs2mm(uint64_t index);

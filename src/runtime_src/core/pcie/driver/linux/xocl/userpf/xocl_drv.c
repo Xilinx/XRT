@@ -623,12 +623,9 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	userpf_info(xdev, "ch_state 0x%llx, ret %d\n", resp->conn_flags, ret);
 
 done:
-	if (!kaddr)
-		kfree(kaddr);
-	if (!mb_req)
-		vfree(mb_req);
-	if (!resp)
-		vfree(resp);
+	kfree(kaddr);
+	vfree(mb_req);
+	vfree(resp);
 }
 
 int xocl_reclock(struct xocl_dev *xdev, void *data)
@@ -1786,7 +1783,6 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_lapc,
 	xocl_init_msix_xdma,
 	xocl_init_ert_user,
-	xocl_init_ert_versal,
 	xocl_init_m2m,
 };
 
@@ -1823,7 +1819,6 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_lapc,
 	xocl_fini_msix_xdma,
 	xocl_fini_ert_user,
-	xocl_fini_ert_versal,
 	xocl_fini_m2m,
 	/* Remove intc sub-device after CU/ERT sub-devices */
 	xocl_fini_intc,
@@ -1831,12 +1826,18 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 
 static int __init xocl_init(void)
 {
-	int		ret, i;
+	int		ret, i = 0;
 
 	xrt_class = class_create(THIS_MODULE, "xrt_user");
 	if (IS_ERR(xrt_class)) {
 		ret = PTR_ERR(xrt_class);
 		goto err_class_create;
+	}
+
+	ret = xocl_debug_init();
+	if (ret) {
+		pr_err("failed to init debug");
+		goto failed;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(xocl_drv_reg_funcs); ++i) {
@@ -1868,6 +1869,8 @@ static void __exit xocl_exit(void)
 
 	for (i = ARRAY_SIZE(xocl_drv_unreg_funcs) - 1; i >= 0; i--)
 		xocl_drv_unreg_funcs[i]();
+
+	xocl_debug_fini();
 
 	class_destroy(xrt_class);
 }

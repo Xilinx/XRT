@@ -514,6 +514,7 @@ initialize_query_table()
   emplace_sysfs_get<query::hbm_1v2_millivolts>                 ("xmc", "xmc_hbm_1v2_vol");
   emplace_sysfs_get<query::v2v5_vpp_millivolts>                ("xmc", "xmc_vpp2v5_vol");
   emplace_sysfs_get<query::int_vcc_io_millivolts>              ("xmc", "xmc_vccint_bram_vol");
+  emplace_sysfs_get<query::v0v9_int_vcc_vcu_millivolts>        ("xmc", "xmc_vccint_vcu_0v9");
   emplace_sysfs_get<query::mac_contiguous_num>                 ("xmc", "mac_contiguous_num");
   emplace_sysfs_get<query::mac_addr_first>                     ("xmc", "mac_addr_first");
   emplace_sysfs_get<query::oem_id>                             ("xmc", "xmc_oem_id");
@@ -554,10 +555,14 @@ initialize_query_table()
   emplace_sysfs_get<query::ert_cq_write>                     ("ert_user", "cq_write_cnt");
   emplace_sysfs_get<query::ert_cu_read>                      ("ert_user", "cu_read_cnt");
   emplace_sysfs_get<query::ert_cu_write>                     ("ert_user", "cu_write_cnt");
+  emplace_sysfs_getput<query::config_mailbox_channel_disable> ("", "config_mailbox_channel_disable");
+  emplace_sysfs_getput<query::config_mailbox_channel_switch> ("", "config_mailbox_channel_switch");
+  emplace_sysfs_getput<query::cache_xclbin>                  ("", "cache_xclbin");
 
   emplace_sysfs_get<query::kds_mode>                         ("", "kds_mode");
   emplace_func0_request<query::kds_cu_stat,                  kds_cu_stat>();
   emplace_func0_request<query::kds_scu_stat,                 kds_scu_stat>();
+  emplace_sysfs_get<query::ps_kernel>                        ("icap", "ps_kernel");
 
   emplace_func0_request<query::pcie_bdf,                     bdf>();
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();

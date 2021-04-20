@@ -21,6 +21,8 @@
 #ifndef _XCL_COMMON_GRAPH_H_
 #define _XCL_COMMON_GRAPH_H_
 
+#include "experimental/xrt_graph.h"
+
 typedef void * xclGraphHandle;
 
 xclGraphHandle
@@ -60,6 +62,9 @@ int
 xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size);
 
 int
+xclAIEOpenContext(xclDeviceHandle handle, xrt::aie::access_mode am);
+
+int
 xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
 int
@@ -79,4 +84,8 @@ xclReadProfiling(xclDeviceHandle handle, int phdl);
 
 int
 xclStopProfiling(xclDeviceHandle handle, int phdl);
+
+int
+xclLoadXclBinMeta(xclDeviceHandle handle, const xclBin *buffer);
+
 #endif

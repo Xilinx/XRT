@@ -17,23 +17,27 @@
 #include "noc_profile.h"
 #include "core/common/module_loader.h"
 
-namespace xdpnocprofile {
+namespace xdp {
+namespace noc {
+namespace profile {
 
-  void load_xdp_noc_plugin()
+  void load()
   {
     static xrt_core::module_loader xdp_noc_loader("xdp_noc_plugin",
-						    register_noc_callbacks,
-						    warning_noc_callbacks);
+						  register_callbacks,
+						  warning_callbacks);
   }
 
-  void register_noc_callbacks(void* /*handle*/)
+  void register_callbacks(void* /*handle*/)
   {
     // No callbacks in NOC profiling. The plugin is always active.
   }
 
-  void warning_noc_callbacks()
+  void warning_callbacks()
   {
     // No warnings for NOC profiling
   }
 
-} // end namespace xdpnocprofile
+} // end namespace profile
+} // end namespace noc
+} // end namespace xdp

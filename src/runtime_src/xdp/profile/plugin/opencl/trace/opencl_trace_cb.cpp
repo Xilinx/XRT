@@ -127,6 +127,12 @@ namespace xdp {
     
     if (!isStart) start = (db->getDynamicInfo()).matchingStart(id) ;
 
+    // On the OpenCL side, NDRange Migrate might generate buffer transfer
+    //  complete events with a buffer size of 0 that don't have corresponding
+    //  start events.  Don't keep track of these.
+    if (!isStart && start == 0 && bufferSize == 0)
+      return ;
+
     VTFEvent* event = 
       new OpenCLBufferTransfer(start,
 			       timestamp,

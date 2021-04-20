@@ -196,11 +196,9 @@ get_total_devices(bool is_user) const
 
 void
 system_linux::
-scan_devices(bool verbose, bool json) const
+scan_devices(bool, bool) const
 {
   std::cout << "TO-DO: scan_devices\n";
-  verbose = verbose;
-  json = json;
 }
 
 std::shared_ptr<device>
@@ -232,10 +230,9 @@ program_plp(const device* dev, const std::vector<char> &buffer) const
 {
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = dev->file_open("icap", O_WRONLY);
-    unsigned int ret = buffer.size();
-    ret = write(fd.get(), buffer.data(), buffer.size());
-    if (ret != buffer.size())
-      throw xrt_core::error("Write plp to icap subdev failed");
+    auto ret = write(fd.get(), buffer.data(), buffer.size());
+    if (static_cast<size_t>(ret) != buffer.size())
+      throw xrt_core::error(EINVAL, "Write plp to icap subdev failed");
 
   } catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), "XBMGMT");
@@ -251,7 +248,7 @@ program_plp(const device* dev, const std::vector<char> &buffer) const
   while (!is_complete && retry_count++ < program_timeout_sec) {
     is_complete = xrt_core::query::rp_program_status::to_bool(xrt_core::device_query<xrt_core::query::rp_program_status>(dev));
     if (retry_count == program_timeout_sec)
-      throw xrt_core::error("PLP programmming timed out");
+      throw xrt_core::error(ETIMEDOUT, "PLP programmming timed out");
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }

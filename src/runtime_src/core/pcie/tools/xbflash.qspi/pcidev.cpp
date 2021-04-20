@@ -84,12 +84,12 @@ open(const std::string& subdev, int flag)
 }
 
 pci_device::
-pci_device(const std::string& sysfs, int ubar, size_t flash_off)
-  : user_bar_index(ubar), flash_offset(flash_off)
+pci_device(const std::string& sysfs, int ubar, size_t flash_off, std::string flash_type)
+  : user_bar_index(ubar), flash_offset(flash_off), flash_type_str(flash_type)
 {
   uint16_t dom = 0, b, d, f;
-  if((sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &dom, &b, &d, &f) < 4) &&
-    (sscanf(sysfs.c_str(), "%hx:%hx.%hx", &b, &d, &f) < 3))
+  if (sscanf(sysfs.c_str(), "%hx:%hx.%hx", &b, &d, &f) < 3 &&
+    sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &dom, &b, &d, &f) < 4)
     throw std::runtime_error("Couldn't parse entry name " + sysfs);
 
   domain = dom;
@@ -173,11 +173,8 @@ pcieBarRead(uint64_t offset, void* buf, uint64_t len)
   if (user_bar_map == MAP_FAILED) {
     int ret = map_usr_bar();
     if (ret) {
-      std::cout << "Failed to map in PCIE BAR."
-                << " Either the card specified does not exist,"
-                << " or secure boot may have been enabled on this system and"
-                << " can't be supported by this utiltity." << std::endl;
-      return ret;
+      std::cout << "Failed to map in PCIE BAR. Does the card specified exist?" << std::endl;
+      throw;
     }
   }
   (void) wordcopy(buf, user_bar_map + offset, len);

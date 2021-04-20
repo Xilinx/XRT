@@ -34,6 +34,11 @@ namespace plugins {
       xocl::appdebug::load_xdp_app_debug() ;
     }
 
+    if (xrt_core::config::get_data_transfer_trace() != "off" ||
+        xrt_core::config::get_opencl_device_counter()) {
+      xdp::device_offload::load() ;
+    }
+
     if (xrt_core::config::get_profile() ||
         xrt_core::config::get_opencl_summary()) {
       xocl::profile::load_xdp_opencl_counters() ;
@@ -48,11 +53,6 @@ namespace plugins {
       xdp::lop::load() ;
     }
 
-    if (xrt_core::config::get_data_transfer_trace() != "off" ||
-        xrt_core::config::get_opencl_device_counter()) {
-      xdp::device_offload::load() ;
-    }
-
     // Deprecation warnings specific to the .ini flags
     if (xrt_core::config::get_profile()) {
       std::string message = "\"profile\" configuration in xrt.ini will be deprecated in the next release.  Please user \"opencl_summary=true\" to enable OpenCL profiling and \"opencl_device_counter=true\" for device counter data in OpenCL profile summary." ;
@@ -62,6 +62,12 @@ namespace plugins {
 
     if (xrt_core::config::get_timeline_trace()) {
       std::string message = "\"timeline_trace\" configuration in xrt.ini will be deprecated in the next release.  Please use \"opencl_trace=true\" to enable OpenCL trace." ;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                              message) ;
+    }
+
+    if (xrt_core::config::get_continuous_trace_interval_ms() != 10) {
+      std::string message = "\"continuous_trace_interval_ms\" configuration in xrt.ini will be deprecated in the next release.  Please use \"trace_buffer_offload_interval_ms\" to control trace offload interval." ;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
                               message) ;
     }

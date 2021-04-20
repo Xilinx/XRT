@@ -23,6 +23,13 @@
 #include <sys/stat.h>
 #include <boost/algorithm/string.hpp>
 #include <iostream>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <sys/mman.h>
 
 #include "system_utils.h"
 #include "em_defines.h"
@@ -32,12 +39,13 @@ class unix_socket {
   private:
     int fd;
     void start_server(const std::string sk_desc);
+    void start_inet_server(double timeout_insec, bool fatal_error);
     std::string name;
 public:
     bool server_started;
     void set_name(std::string &sock_name) { name = sock_name;}
     std::string get_name() { return name;}
-    unix_socket();
+    unix_socket(bool bStart = false);
     ~unix_socket()
     {
        server_started = false;

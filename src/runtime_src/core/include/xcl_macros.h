@@ -72,5 +72,8 @@
 #define xclGraphEnd_n 41
 #define xclGraphUpdateRTP_n 42
 #define xclGraphReadRTP_n 43
+#define xclSyncBOAIENB_n 44
+#define xclGMIOWait_n 45
+#define xclLoadXclbinContent_n 46
 
 #endif

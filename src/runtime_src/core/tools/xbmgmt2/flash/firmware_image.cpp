@@ -403,7 +403,7 @@ bool DSAInfo::matchIntId(std::string &id) const
     return false;
 }
 
-bool DSAInfo::matchId(DSAInfo& dsa) const
+bool DSAInfo::matchId(const DSAInfo& dsa) const
 {
     if (uuids.size() != dsa.uuids.size())
         return false;
@@ -417,6 +417,11 @@ bool DSAInfo::matchId(DSAInfo& dsa) const
         return true;
     }
     return false;
+}
+
+bool DSAInfo::bmcVerIsFixed() const 
+{
+	return (bmcVer.find("FIXED") != std::string::npos);
 }
 
 std::vector<DSAInfo> firmwareImage::getIntalledDSAs()

@@ -84,6 +84,7 @@ struct kds_command {
 	 * of execbuf when notifying host
 	 */
 	u32			*execbuf;
+	u32			*u_execbuf;
 	void			*gem_obj;
 	/* to notify inkernel exec completion */
 	struct in_kernel_cb	*inkern_cb;
@@ -93,6 +94,8 @@ struct kds_command {
 void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 		   struct kds_command *xcmd);
 void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+			  struct kds_command *xcmd);
+void exec_write_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd);
 void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			struct kds_command *xcmd);

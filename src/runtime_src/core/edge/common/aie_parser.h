@@ -19,14 +19,14 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include "../user/aie/common_layer/adf_api_config.h"
 
 namespace xrt_core {
 
 class device;
 
 namespace edge { namespace aie {
-
-const int NON_EXIST_ID = -1;
 
 struct tile_type
 {
@@ -35,18 +35,36 @@ struct tile_type
   uint16_t itr_mem_row;
   uint16_t itr_mem_col;
   uint64_t itr_mem_addr;
-
   bool     is_trigger;
 };
 
+const int NON_EXIST_ID = -1;
+
 /**
- * get_tiles() - get tile data from xclbin AIE metadata
+ * get_driver_config() - get driver configuration from xclbin AIE metadata
  *
  * @device: device with loaded meta data
- * @graph: name of graph to extract tile data for
  */
-std::vector<tile_type>
-get_tiles(const xrt_core::device* device, const std::string& graph_name);
+adf::driver_config
+get_driver_config(const xrt_core::device* device);
+
+/**
+ * get_aiecompiler_options() - get compiler options from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+adf::aiecompiler_options
+get_aiecompiler_options(const xrt_core::device* device);
+
+/**
+ * get_graph() - get tile data from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ * @graph_name: name of graph to extract tile data for
+ * Return: Graph config of given graph name
+ */
+adf::graph_config
+get_graph(const xrt_core::device* device, const std::string& graph_name);
 
 /**
  * get_graph_id() - get graph id from xclbin AIE metadata
@@ -58,77 +76,46 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name);
 int
 get_graph_id(const xrt_core::device* device, const std::string& graph_name);
 
-struct rtp_type
-{
-  std::string     name;
+/**
+ * get_graphs() - get graph names from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+std::vector<std::string>
+get_graphs(const xrt_core::device* device);
 
-  uint16_t        selector_row;
-  uint16_t        selector_col;
-  uint16_t        selector_lock_id;
-  uint64_t        selector_addr;
-
-  uint16_t        ping_row;
-  uint16_t        ping_col;
-  uint16_t        ping_lock_id;
-  uint64_t        ping_addr;
-
-  uint16_t        pong_row;
-  uint16_t        pong_col;
-  uint16_t        pong_lock_id;
-  uint64_t        pong_addr;
-
-  bool            is_plrtp;
-  bool            is_input;
-  bool            is_async;
-  bool            is_connected;
-  bool            require_lock;
-};
+/**
+ * get_tiles() - get tile data from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ * @graph_name: name of graph to extract tile data for
+ * Return: vector of used tiles in given graph name 
+ */
+std::vector<tile_type>
+get_tiles(const xrt_core::device* device, const std::string& graph_name);
 
 /**
  * get_rtp() - get rtp data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
  */
-std::vector<rtp_type>
-get_rtp(const xrt_core::device* device);
-
-struct gmio_type
-{
-  std::string     name;
-
-  uint32_t        id;
-  uint16_t        type;
-  uint16_t        shim_col;
-  uint16_t        channel_number;
-  uint16_t        stream_id;
-  uint16_t        burst_len;
-};
+std::unordered_map<std::string, adf::rtp_config>
+get_rtp(const xrt_core::device* device, int graph_id);
 
 /**
  * get_gmios() - get gmio data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
  */
-std::vector<gmio_type>
+std::unordered_map<std::string, adf::gmio_config>
 get_gmios(const xrt_core::device* device);
-
-struct plio_type
-{
-  std::string     name;
-  std::string     logical_name;
-
-  uint32_t        id;
-  uint16_t        shim_col;
-  uint16_t        stream_id;
-  bool            is_master;
-};
 
 /**
  * get_plios() - get plio data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
  */
-std::vector<plio_type>
+std::unordered_map<std::string, adf::plio_config>
 get_plios(const xrt_core::device* device);
 
 struct counter_type
@@ -146,12 +133,32 @@ struct counter_type
 };
 
 /**
+ * get_clock_freq_mhz() - get clock frequency from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+double
+get_clock_freq_mhz(const xrt_core::device* device);
+
+/**
  * get_profile_counters() - get counter data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
  */
 std::vector<counter_type>
 get_profile_counters(const xrt_core::device* device);
+
+struct gmio_type
+{
+  std::string     name;
+
+  uint32_t        id;
+  uint16_t        type;
+  uint16_t        shim_col;
+  uint16_t        channel_number;
+  uint16_t        stream_id;
+  uint16_t        burst_len;
+};
 
 /**
  * get_trace_gmios() - get trace gmio data from xclbin AIE metadata

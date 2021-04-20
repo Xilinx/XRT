@@ -159,15 +159,12 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 	int i, j;
 
 	scmd = (struct ert_configure_sk_cmd *)xcmd->execbuf;
+	mutex_lock(&scu_mgmt->lock);
 	for (i = 0; i < scmd->num_image; i++) {
 		struct config_sk_image *cp = &scmd->image[i];
 
 		for (j = 0; j < cp->num_cus; j++) {
 			int scu_idx = j + cp->start_cuidx;
-
-			/* TODO: Why continue? */
-			if (strlen(scu_mgmt->name[scu_idx]) > 0)
-				continue;
 
 			/*
 			 * TODO: Need consider size limit of the name.
@@ -181,6 +178,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 			scu_mgmt->usage[i] = 0;
 		}
 	}
+	mutex_unlock(&scu_mgmt->lock);
 
 	return 0;
 }
@@ -540,7 +538,6 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 
 int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 {
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 	struct kds_client *client = xcmd->client;
 	int bad_state;
 	int ret = 0;
@@ -552,10 +549,7 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 	ret = wait_for_completion_interruptible(&kds->comp);
 	if (ret == -ERESTARTSYS && !kds->ert_disable) {
 		kds->ert->abort(kds->ert, client, NO_INDEX);
-		do {
-			kds_info(xcmd->client, "Command not finished");
-			msleep(500);
-		} while (ecmd->state < ERT_CMD_STATE_COMPLETED);
+		wait_for_completion(&kds->comp);
 		bad_state = kds->ert->abort_done(kds->ert, client, NO_INDEX);
 		if (bad_state)
 			kds->bad_state = 1;
@@ -700,6 +694,42 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 	--client->num_ctx;
 	kds_info(client, "Client pid(%d) del context CU(0x%x)",
 		 pid_nr(client->pid), cu_idx);
+	return 0;
+}
+
+int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
+		    int idx, unsigned long size, u32 *addrp)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+
+	BUG_ON(!mutex_is_locked(&client->lock));
+	/* client has opening context. xclbin should be locked */
+	if (!client->xclbin_id) {
+		kds_err(client, "client has no opening context\n");
+		return -EINVAL;
+	}
+
+	if (idx >= cu_mgmt->num_cus) {
+		kds_err(client, "cu(%d) out of range\n", idx);
+		return -EINVAL;
+	}
+
+	if (!test_bit(idx, client->cu_bitmap)) {
+		kds_err(client, "cu(%d) isn't reserved\n", idx);
+		return -EINVAL;
+	}
+
+	mutex_lock(&cu_mgmt->lock);
+	/* WORKAROUND: If rw_shared is true, allow map shared CU */
+	if (!cu_mgmt->rw_shared && !(cu_mgmt->cu_refs[idx] & CU_EXCLU_MASK)) {
+		kds_err(client, "cu(%d) isn't exclusively reserved\n", idx);
+		mutex_unlock(&cu_mgmt->lock);
+		return -EINVAL;
+	}
+	mutex_unlock(&cu_mgmt->lock);
+
+	*addrp = kds_get_cu_addr(kds, idx);
+
 	return 0;
 }
 
@@ -870,18 +900,12 @@ int kds_fini_ert(struct kds_sched *kds)
 
 void kds_reset(struct kds_sched *kds)
 {
-	int idx;
-
 	kds->bad_state = 0;
 	kds->ert_disable = true;
 	kds->ini_disable = false;
-
-	/* TODO: Do we still need this in new KDS? */
-	for (idx = 0; idx < MAX_CUS; ++idx)
-		kds->scu_mgmt.name[idx][0] = 0;
 }
 
-static int kds_fa_assign_plram(struct kds_sched *kds)
+static int kds_fa_assign_cmdmem(struct kds_sched *kds)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	u32 total_sz = 0;
@@ -904,14 +928,14 @@ static int kds_fa_assign_plram(struct kds_sched *kds)
 
 	total_sz = round_up_to_next_power2(total_sz);
 
-	if (kds->plram.size < total_sz)
+	if (kds->cmdmem.size < total_sz)
 		return -EINVAL;
 
-	num_slots = kds->plram.size / total_sz;
+	num_slots = kds->cmdmem.size / total_sz;
 
-	bar_addr = kds->plram.bar_paddr;
-	dev_addr = kds->plram.dev_paddr;
-	vaddr = kds->plram.vaddr;
+	bar_addr = kds->cmdmem.bar_paddr;
+	dev_addr = kds->cmdmem.dev_paddr;
+	vaddr = kds->cmdmem.vaddr;
 	for (i = 0; i < cu_mgmt->num_cus; i++) {
 		if (!xrt_is_fa(cu_mgmt->xcus[i], &size))
 			continue;
@@ -938,8 +962,8 @@ int kds_cfg_update(struct kds_sched *kds)
 	kds->scu_mgmt.num_cus = 0;
 
 	/* Update PLRAM CU */
-	if (kds->plram.dev_paddr) {
-		ret = kds_fa_assign_plram(kds);
+	if (kds->cmdmem.dev_paddr) {
+		ret = kds_fa_assign_cmdmem(kds);
 		if (ret)
 			return -EINVAL;
 		/* ERT doesn't understand Fast adapter
@@ -1092,6 +1116,30 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	 */
 	xcmd->isize = (ecmd->count - xcmd->num_mask - 4) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
+	xcmd->payload_type = REGMAP;
+	ecmd->type = ERT_CU;
+}
+
+void exec_write_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+			  struct kds_command *xcmd)
+{
+	xcmd->opcode = OP_START;
+
+	xcmd->execbuf = (u32 *)ecmd;
+
+	xcmd->cu_mask[0] = ecmd->cu_mask;
+	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
+	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+
+	/* Copy resigter map into info and isize is the size of info in bytes.
+	 *
+	 * Based on ert.h, ecmd->count is the number of words following header.
+	 * In ert_start_kernel_cmd, the CU register map size is
+	 * (count - (1 + extra_cu_masks)) and skip 6 words for exec_write cmd.
+	 */
+	xcmd->isize = (ecmd->count - xcmd->num_mask - 6) * sizeof(u32);
+	memcpy(xcmd->info, &ecmd->data[6 + ecmd->extra_cu_masks], xcmd->isize);
+	xcmd->payload_type = KEY_VAL;
 	ecmd->type = ERT_CU;
 }
 

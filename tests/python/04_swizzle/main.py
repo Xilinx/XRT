@@ -1,41 +1,39 @@
 #!/usr/bin/python3
 
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (C) 2019-2021 Xilinx, Inc
+#
+
 import sys
-import uuid
-from xrt_binding import * # found in PYTHONPATH
+import traceback
+import numpy
+# found in PYTHONPATH
+import pyxrt
+
 sys.path.append('../') # utils_binding.py
 from utils_binding import *
 
-XVECTORSWIZZLE_CONTROL_ADDR_AP_CTRL = 0x00
-XVECTORSWIZZLE_CONTROL_ADDR_GIE = 0x04
-XVECTORSWIZZLE_CONTROL_ADDR_IER = 0x08
-XVECTORSWIZZLE_CONTROL_ADDR_ISR = 0x0c
-XVECTORSWIZZLE_CONTROL_ADDR_GROUP_ID_X_DATA = 0x10
-XVECTORSWIZZLE_CONTROL_BITS_GROUP_ID_X_DATA = 32
-XVECTORSWIZZLE_CONTROL_ADDR_GROUP_ID_Y_DATA = 0x18
-XVECTORSWIZZLE_CONTROL_BITS_GROUP_ID_Y_DATA = 32
-XVECTORSWIZZLE_CONTROL_ADDR_GROUP_ID_Z_DATA = 0x20
-XVECTORSWIZZLE_CONTROL_BITS_GROUP_ID_Z_DATA = 32
-XVECTORSWIZZLE_CONTROL_ADDR_GLOBAL_OFFSET_X_DATA = 0x28
-XVECTORSWIZZLE_CONTROL_BITS_GLOBAL_OFFSET_X_DATA = 32
-XVECTORSWIZZLE_CONTROL_ADDR_GLOBAL_OFFSET_Y_DATA = 0x30
-XVECTORSWIZZLE_CONTROL_BITS_GLOBAL_OFFSET_Y_DATA = 32
-XVECTORSWIZZLE_CONTROL_ADDR_GLOBAL_OFFSET_Z_DATA = 0x38
-XVECTORSWIZZLE_CONTROL_BITS_GLOBAL_OFFSET_Z_DATA = 32
-XVECTORSWIZZLE_CONTROL_ADDR_A_DATA = 0x40
-
 def runKernel(opt):
+    result = 0
+    d = pyxrt.device(opt.index)
+    uuid = d.load_xclbin(opt.bitstreamFile)
+    # Instantiate vectorswizzle
+    swizzle = pyxrt.kernel(d, uuid, "vectorswizzle")
+
     elem_num = 4096
-    DATA_SIZE = ctypes.sizeof(ctypes.c_int) * elem_num
-    boHandle = xclAllocBO(opt.handle, DATA_SIZE, 0, opt.first_mem)
-    bo = xclMapBO(opt.handle, boHandle, True)
-    ctypes.memset(bo, 0, DATA_SIZE)
-    bo_arr = ctypes.cast(bo, ctypes.POINTER(ctypes.c_int))
+    size = ctypes.sizeof(ctypes.c_int) * elem_num
+
+    obj = pyxrt.bo(d, size, pyxrt.bo.normal, swizzle.group_id(0))
+    buf = numpy.asarray(obj.map())
+
+    # Compute golden values
     reference = []
 
     for idx in range(elem_num):
         remainder = idx % 4
-        bo_arr[idx] = idx
+        buf[idx] = idx
         if remainder == 0:
             reference.append(idx+2)
         if remainder == 1:
@@ -45,108 +43,50 @@ def runKernel(opt):
         if remainder == 3:
             reference.append(idx-2)
 
-    if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0):
-        return 1
 
-    p = xclBOProperties()
-    bodevAddr = p.paddr if not (xclGetBOProperties(opt.handle, boHandle, p)) else -1
+    obj.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, size, 0)
 
-    if bodevAddr is -1:
-        return 1
+    # Create a run object without starting kernel
+    run = pyxrt.run(swizzle);
 
-    # Allocate the exec_bo
-    execHandle = xclAllocBO(opt.handle, DATA_SIZE, 0, (1 << 31))
-    execData = xclMapBO(opt.handle, execHandle, True)  # returns mmap()
-
-    print("Construct the exec command to run the kernel on FPGA")
-
-    xclOpenContext(opt.handle, opt.xuuid, 0, True)
-    # construct the exec buffer cmd to start the kernel
-    start_cmd = ert_start_kernel_cmd.from_buffer(execData.contents)
-    rsz = (XVECTORSWIZZLE_CONTROL_ADDR_A_DATA / 4 + 1) + 1  # regmap array size
-    ctypes.memset(execData.contents, 0, ctypes.sizeof(ert_start_kernel_cmd) + rsz*4)
-    start_cmd.m_uert.m_start_cmd_struct.state = 1  # ERT_CMD_STATE_NEW
-    start_cmd.m_uert.m_start_cmd_struct.opcode = 0  # ERT_START_CU
-    start_cmd.m_uert.m_start_cmd_struct.count = 1 + rsz
-    start_cmd.cu_mask = 0x1
-
-    # Prepare kernel reg map
-    new_data = (ctypes.c_uint32 * rsz).from_buffer(execData.contents, 8)
-    new_data[XVECTORSWIZZLE_CONTROL_ADDR_AP_CTRL] = 0x0 # ap_start
-    new_data[XVECTORSWIZZLE_CONTROL_ADDR_GROUP_ID_X_DATA/4] = 0x0 # group id
-    new_data[XVECTORSWIZZLE_CONTROL_ADDR_A_DATA / 4] = bodevAddr
-    new_data[XVECTORSWIZZLE_CONTROL_ADDR_A_DATA / 4 + 1] = (bodevAddr >> 32) & 0xFFFFFFFF # s1 buffer
-
-    global_dim = [DATA_SIZE / 4, 0]; # int4 vector count global range
+    global_dim = [size // 4, 0]; # int4 vector count global range
     local_dim = [16, 0]; # int4 vector count global range
-    groupSize = global_dim[0] / local_dim[0];
+    group_size = global_dim[0] // local_dim[0];
 
-    if opt.verbose == 1:
-        print("Global range: %d " % global_dim[0])
-        print("Group size  : %d " % local_dim[0])
-        print("Starting kernel...\n")
+    # Run swizzle with 16 (local[0]) elements at a time
+    # Each element is an int4 (sizeof(int) * 4 bytes)
+    # Create sub buffer to offset kernel argument in parent buffer
+    local_size_bytes = local_dim[0] * ctypes.sizeof(ctypes.c_int) * 4;
+    for id in range(group_size):
+        subobj = pyxrt.bo(obj, local_size_bytes, local_size_bytes * id)
+        run.set_arg(0, subobj)
+        run.start()
+        state = run.state()
+        state = run.wait(5)
 
+    obj.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, size, 0)
 
-    for id in range(groupSize):
-        if opt.verbose == 1:
-            print("group id = %d" % id)
-
-        new_data[XVECTORSWIZZLE_CONTROL_ADDR_AP_CTRL] = 0x0 # ap_start
-        new_data[XVECTORSWIZZLE_CONTROL_ADDR_GROUP_ID_X_DATA/4] = id # group id
-
-        # Execute the command
-        if xclExecBuf(opt.handle, execHandle):
-            print("Unable to issue xclExecBuf")
-            return 1
-
-        if opt.verbose == 1:
-            print("Wait until the command finish")
-
-        while xclExecWait(opt.handle, 1000) == 0:
-            print(".")
-
-    # get the output xclSyncBO
-    print("Get the output data from the device")
-    if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0):
-        return 1
-
-    fail = 0
     print("Compare the FPGA results with golden data")
     for idx in range(elem_num):
-        if bo_arr[idx] != reference[idx]:
-            fail = 1
-            print("FAIL: Results mismatch at [%d] fpga= %d, cpu= %d" % (idx, bo_arr[idx], reference[idx]))
-            break
+        assert(buf[idx] == reference[idx])
 
-    xclCloseContext(opt.handle, opt.xuuid, 0)
-    xclFreeBO(opt.handle, execHandle)
-    xclFreeBO(opt.handle, boHandle)
-
-    return fail
+    return 0
 
 def main(args):
     opt = Options()
     Options.getOptions(opt, args)
 
     try:
-        if initXRT(opt):
-            xclClose(opt.handle)
-            return 1
-        if opt.first_mem < 0:
-            xclClose(opt.handle)
-            return 1
-        if runKernel(opt):
-            xclClose(opt.handle)
-            return 1
+        runKernel(opt)
+        print("PASSED TEST")
+        return 0
 
     except Exception as exp:
-        print("Exception: ")
         print(exp)  # prints the err
+        traceback.print_exc(file=sys.stdout)
         print("FAILED TEST")
-        sys.exit()
-
-    print("PASSED TEST")
-
+        return 1
 
 if __name__ == "__main__":
-    main(sys.argv)
+    result = main(sys.argv)
+    sys.exit(result)

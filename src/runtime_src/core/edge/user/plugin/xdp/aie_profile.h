@@ -17,17 +17,21 @@
 #ifndef AIE_PROFILE_DOT_H
 #define AIE_PROFILE_DOT_H
 
-namespace xdpaieprofile {
+namespace xdp {
+namespace aie {
 
-  void load_xdp_aie_plugin();
-  void register_aie_callbacks(void* handle);
-  void warning_aie_callbacks();
+namespace profile {
+  void load();
+  void register_callbacks(void* handle);
+  void warning_callbacks();
+} // end namespace profile
 
-} // end namespace xdpaieprofile
+namespace ctr {
+  void update_device(void* handle);
+  void end_poll(void* handle);
+} // end namespace ctr
 
-namespace xdpaiectr {
-  void update_aie_device(void* handle);
-  void end_aie_ctr_poll(void* handle);
-}
+} // end namespace aie
+} // end namespace xdp
 
 #endif

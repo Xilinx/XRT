@@ -7,6 +7,7 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt_enqueue.h
   xrt_error.h
   xrt_ini.h
+  xrt_ip.h
   xrt_kernel.h
   xrt_profile.h
   xrt_uuid.h
@@ -15,9 +16,3 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xclbin-util.h)
 
 install (FILES ${XRT_EXPERIMENTAL_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/experimental COMPONENT ${XRT_DEV_COMPONENT})
-
-set(XRT_EXPERIMENTAL_DETAIL_HEADER_SRC
-  detail/param_traits.h
-  detail/pimpl.h)
-  
-install (FILES ${XRT_EXPERIMENTAL_DETAIL_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/experimental/detail COMPONENT ${XRT_DEV_COMPONENT})

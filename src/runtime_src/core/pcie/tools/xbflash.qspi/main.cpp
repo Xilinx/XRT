@@ -31,6 +31,7 @@
 
 #include "pcidev.h"
 #include "xspi.h"
+#include "xqspips.h"
 #include "firmware_image.h"
 
 const option flash_opts[] = {
@@ -54,6 +55,48 @@ const option reset_opts[] = {
     { "dual-flash", no_argument, nullptr, '3' },
     { "bar", required_argument, nullptr, '4' },
     { "bar-offset", required_argument, nullptr, '5' },
+    { nullptr, 0, nullptr, 0 },
+};
+
+const option qspips_erase_opts[] = {
+    // Key option to identify flash operation, must be 0
+    { "qspips-erase", no_argument, nullptr, '0' },
+
+    { "card", required_argument, nullptr, '1' },
+    { "offset", required_argument, nullptr, '2' },
+    { "length", required_argument, nullptr, '3' },
+    { "flash-type", required_argument, nullptr, '4' },
+    { "bar", required_argument, nullptr, '5' },
+    { "bar-offset", required_argument, nullptr, '6' },
+    { "force", no_argument, nullptr, '7' },
+    { nullptr, 0, nullptr, 0 },
+};
+
+const option qspips_flash_opts[] = {
+    // Key option to identify flash operation, must be 0
+    { "qspips-flash", no_argument, nullptr, '0' },
+
+    { "card", required_argument, nullptr, '1' },
+    { "input", required_argument, nullptr, '2' },
+    { "offset", required_argument, nullptr, '3' },
+    { "flash-type", required_argument, nullptr, '4' },
+    { "bar", required_argument, nullptr, '5' },
+    { "bar-offset", required_argument, nullptr, '6' },
+    { "force", no_argument, nullptr, '7' },
+    { nullptr, 0, nullptr, 0 },
+};
+
+const option qspips_readback_opts[] = {
+    // Key option to identify flash operation, must be 0
+    { "qspips-read", no_argument, nullptr, '0' },
+
+    { "card", required_argument, nullptr, '1' },
+    { "output", required_argument, nullptr, '2' },
+    { "offset", required_argument, nullptr, '3' },
+    { "length", required_argument, nullptr, '4' },
+    { "flash-type", required_argument, nullptr, '5' },
+    { "bar", required_argument, nullptr, '6' },
+    { "bar-offset", required_argument, nullptr, '7' },
     { nullptr, 0, nullptr, 0 },
 };
 
@@ -116,23 +159,54 @@ static void printHelp(const char *fname)
 
     std::cout << "Usage: " << std::endl;
 
-    std::cout << basename(tmp)
-        << " --primary <MCS-path>"
-        << " [--secondary <MCS-path>]"
-        << " --card <BDF>"
-        << " [--force]"
-        << " [--bar <BAR-index-for-QSPI>]"
-        << " [--bar-offset <BAR-offset-for-QSPI>]"
-        << std::endl;
+    std::cout << basename(tmp) << " [options]" << std::endl;
+    std::cout << "\nOptions:" << std::endl;
 
-    std::cout << basename(tmp)
-        << " --factory-reset"
-        << " [--dual-flash]"
-        << " --card <BDF>"
-        << " [--force]"
-        << " [--bar <BAR-index-for-QSPI>]"
-        << " [--bar-offset <BAR-offset-for-QSPI>]"
-        << std::endl;
+    std::cout << "\n\"SPI flash\"\n";
+    std::cout << "  --primary, <MCS-path>, must be 1st option\n";
+    std::cout << "  [--secondary <MCS-path>], default is empty\n";
+    std::cout << "  --card <BDF>\n";
+    std::cout << "  [--force, yes for prompt]\n";
+    std::cout << "  [--bar <BAR-index-for-QSPI>], default is 0\n";
+    std::cout << "  [--bar-offset <BAR-offset-for-QSPI>], default is 0x40000\n";
+
+    std::cout << "\n\"SPI factory-reset\"\n";
+    std::cout << "  --factory-reset, must be 1st option\n";
+    std::cout << "  [--dual-flash]\n";
+    std::cout << "  --card <BDF>\n";
+    std::cout << "  [--force, yes for prompt]\n";
+    std::cout << "  [--bar <BAR-index-for-QSPI>], default is 0\n";
+    std::cout << "  [--bar-offset <BAR-offset-for-QSPI>], default is 0x40000\n";
+
+    std::cout << "\n\"QSPIPS erase\"\n";
+    std::cout << "  --qspips-erase, must be 1st option\n";
+    std::cout << "  --card <BDF>\n";
+    std::cout << "  [--offset <offset-on-flash-to-start-with>], default is 0\n";
+    std::cout << "  [--length <length-to-read>], default is 96MB\n";
+    std::cout << "  [--flash-type <qspips-flash-type>], default is qspi_ps_x2_single\n";
+    std::cout << "  [--bar <BAR-index-for-QSPIPS>], default is 0\n";
+    std::cout << "  [--bar-offset <BAR-offset-for-QSPIPS>], default is 0x40000\n";
+    std::cout << "  [--force, yes for prompt]\n";
+
+    std::cout << "\n\"QSPIPS flash\"\n";
+    std::cout << "  --qspips-flash, must be 1st option\n";
+    std::cout << "  --input <path-to-qspips-BOOT-BIN-file>\n";
+    std::cout << "  --card <BDF>\n";
+    std::cout << "  [--offset <offset-on-flash-to-start-with>], default is 0\n";
+    std::cout << "  [--flash-type <qspips-flash-type>], default is qspi_ps_x2_single\n";
+    std::cout << "  [--bar <BAR-index-for-QSPIPS>], default is 0\n";
+    std::cout << "  [--bar-offset <BAR-offset-for-QSPIPS>], default is 0x40000\n";
+    std::cout << "  [--force, yes for prompt]\n";
+
+    std::cout << "\n\"QSPIPS read back\"\n";
+    std::cout << "  --qspips-read, must be 1st option\n";
+    std::cout << "  --output <output-file-to-save-read-contents>\n";
+    std::cout << "  --card <BDF>\n";
+    std::cout << "  [--offset <offset-on-flash-to-start-with>], default is 0\n";
+    std::cout << "  [--length <length-to-read>], default is 128MB\n";
+    std::cout << "  [--flash-type <qspips-flash-type>], default is qspi_ps_x2_single\n";
+    std::cout << "  [--bar <BAR-index-for-QSPIPS>], default is 0\n";
+    std::cout << "  [--bar-offset <BAR-offset-for-QSPIPS>], default is 0x40000\n";
 }
 
 int reset(int argc, char *argv[])
@@ -266,6 +340,201 @@ int flash(int argc, char *argv[])
     return ret;
 }
 
+int qspips_erase(int argc, char *argv[])
+{
+    std::string bdf;
+    const char *fname = argv[0];
+    int bar = 0;
+    size_t baroff = INVALID_OFFSET;
+    std::string flash_type;
+    size_t offset = 0, len = GOLDEN_BASE;
+    bool force = false;
+
+    sudoOrDie();
+
+    while (true) {
+        const auto opt = getopt_long(argc, argv, "", qspips_erase_opts, nullptr);
+        if (opt == -1)
+            break;
+
+        switch (opt) {
+        case '0':
+            break;
+        case '1':
+            bdf = std::string(optarg);
+            break;
+        case '2':
+            offset = std::stoi(optarg, nullptr, 0);
+            break;
+        case '3':
+            len = std::stoi(optarg, nullptr, 0);
+            break;
+        case '4':
+            flash_type = std::string(optarg);
+            break;
+        case '5':
+            bar = std::stoi(optarg);
+            break;
+        case '6':
+            baroff = std::stoi(optarg, nullptr, 0);
+            break;
+        case '7':
+            force = true;
+            break;
+        default:
+            printHelp(fname);
+            return -EINVAL;
+        }
+    }
+    if (bdf.empty()) {
+            printHelp(fname);
+            return -EINVAL;
+    }
+
+    std::cout << "About to erase flash"
+        << " [0x" << std::hex << offset << ",0x" << offset+len 
+        << "] on card " << bdf << std::endl;
+
+    if (offset + len > GOLDEN_BASE)
+        std::cout << "\nThis might erase golden image if there is !!\n" << std::endl;
+
+    if (!force && !canProceed())
+        return -ECANCELED;
+
+    pcidev::pci_device dev(bdf, bar, baroff, flash_type);
+    XQSPIPS_Flasher qspips(&dev);
+
+    return qspips.xclErase(offset, len);
+}
+
+int qspips_flash(int argc, char *argv[])
+{
+    std::string bdf;
+    const char *fname = argv[0];
+    int bar = 0;
+    size_t baroff = INVALID_OFFSET;
+    size_t offset = 0;
+    std::string flash_type;
+    std::string bin_file;
+    bool force = false;
+
+    sudoOrDie();
+
+    while (true) {
+        const auto opt = getopt_long(argc, argv, "", qspips_flash_opts, nullptr);
+        if (opt == -1)
+            break;
+
+        switch (opt) {
+        case '0':
+            break;
+        case '1':
+            bdf = std::string(optarg);
+            break;
+        case '2':    
+            bin_file = std::string(optarg);
+            break;
+        case '3':
+            offset = std::stoi(optarg, nullptr, 0);
+            break;
+        case '4':
+            flash_type = std::string(optarg);
+            break;
+        case '5':
+            bar = std::stoi(optarg);
+            break;
+        case '6':
+            baroff = std::stoi(optarg, nullptr, 0);
+            break;
+        case '7':
+            force = true;
+            break;
+        default:
+            printHelp(fname);
+            return -EINVAL;
+        }
+    }
+    if (bdf.empty() || bin_file.empty()) {
+            printHelp(fname);
+            return -EINVAL;
+    }
+
+    firmwareImage bin(bin_file.c_str());
+    if (bin.fail())
+            return -EINVAL;
+    std::cout
+        << "About to program flash on card " << bdf << " at offset 0x" << std::hex << offset << std::dec << std::endl;
+
+    if (!force && !canProceed())
+        return -ECANCELED;
+
+    pcidev::pci_device dev(bdf, bar, baroff, flash_type);
+    XQSPIPS_Flasher qspips(&dev);
+
+    return qspips.xclUpgradeFirmware(bin, offset);
+}
+
+int qspips_readback(int argc, char *argv[])
+{
+    std::string bdf;
+    const char *fname = argv[0];
+    int bar = 0;
+    size_t baroff = INVALID_OFFSET;
+    size_t offset = 0, len = FLASH_SIZE;
+    std::string flash_type;
+    std::string output;
+
+    sudoOrDie();
+
+    while (true) {
+        const auto opt = getopt_long(argc, argv, "", qspips_readback_opts, nullptr);
+        if (opt == -1)
+            break;
+
+        switch (opt) {
+        case '0':
+            break;
+        case '1':
+            bdf = std::string(optarg);
+            break;
+        case '2':
+            output = std::string(optarg);
+            break;
+        case '3':
+            offset = std::stoi(optarg, nullptr, 0);
+            break;
+        case '4':
+            len = std::stoi(optarg, nullptr, 0);
+            break;
+        case '5':
+            flash_type = std::string(optarg);
+            break;
+        case '6':
+            bar = std::stoi(optarg);
+            break;
+        case '7':
+            baroff = std::stoi(optarg, nullptr, 0);
+            break;
+        default:
+            printHelp(fname);
+            return -EINVAL;
+        }
+    }
+    if (bdf.empty() || output.empty()) {
+            printHelp(fname);
+            return -EINVAL;
+    }
+
+    std::cout << "Read out flash"
+        << " [0x" << std::hex << offset << ",0x" << offset+len 
+        << "] on card " << bdf << " to " << output << std::dec << std::endl;
+
+    pcidev::pci_device dev(bdf, bar, baroff, flash_type);
+    XQSPIPS_Flasher qspips(&dev);
+
+    return qspips.xclReadBack(output, offset, len);
+}
+
 int main(int argc, char *argv[])
 {
     try {
@@ -274,6 +543,16 @@ int main(int argc, char *argv[])
 
         if (is_op(flash_opts, argc, argv))
             return flash(argc, argv);
+
+        if (is_op(qspips_erase_opts, argc, argv))
+            return qspips_erase(argc, argv);
+
+        if (is_op(qspips_flash_opts, argc, argv))
+            return qspips_flash(argc, argv);
+
+        if (is_op(qspips_readback_opts, argc, argv))
+            return qspips_readback(argc, argv);
+
     } catch (const std::exception& ex) {
         std::cout << "Failed to flash: " << ex.what() << std::endl;
         return -EINVAL;

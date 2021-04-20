@@ -80,6 +80,14 @@ namespace xdp {
     //hostEvents.push_back(event) ;
   }
 
+  void VPDynamicDatabase::addUnsortedEvent(VTFEvent* event)
+  {
+    std::lock_guard<std::mutex> lock(unsortedEventsLock) ;
+    event->setEventId(eventId++) ;
+
+    unsortedHostEvents.push_back(event) ;
+  }
+
   void VPDynamicDatabase::addDeviceEvent(uint64_t deviceId, VTFEvent* event)
   {
     std::lock_guard<std::mutex> lock(deviceEventsLock) ;
@@ -124,6 +132,20 @@ namespace xdp {
       }
     }
     return startEvent;
+  }
+
+  bool VPDynamicDatabase::hasMatchingDeviceEventStart(uint64_t traceID,
+                                                      VTFEventType type)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+    if (deviceEventStartMap.find(traceID) == deviceEventStartMap.end())
+      return false ;
+    auto& lst = deviceEventStartMap[traceID] ;
+    for (auto e: lst) {
+      if (e->getEventType() == type)
+        return true ;
+    }
+    return false ;
   }
 
   void VPDynamicDatabase::markStart(uint64_t functionID, uint64_t eventID)
@@ -228,6 +250,24 @@ namespace xdp {
         it = hostEvents.erase(it);
       } else {
         ++it;
+      }
+    }
+    return collected ;
+  }
+
+  std::vector<VTFEvent*>
+  VPDynamicDatabase::
+  filterEraseUnsortedHostEvents(std::function<bool(VTFEvent*)> filter)
+  {
+    std::lock_guard<std::mutex> lock(unsortedEventsLock);
+    std::vector<VTFEvent*> collected ;
+
+    for (auto it=unsortedHostEvents.begin(); it!=unsortedHostEvents.end();){
+      if (filter(*it)) {
+        collected.emplace_back(*it);
+        it = unsortedHostEvents.erase(it);
+      } else {
+        ++it ;
       }
     }
     return collected ;

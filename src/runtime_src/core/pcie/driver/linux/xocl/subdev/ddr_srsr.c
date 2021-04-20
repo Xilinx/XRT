@@ -326,6 +326,7 @@ static int xocl_ddr_srsr_remove(struct platform_device *pdev)
 	if (xocl_ddr_srsr->base)
 		iounmap(xocl_ddr_srsr->base);
 
+	vfree(xocl_ddr_srsr->calib_cache);
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, xocl_ddr_srsr);
 

@@ -26,6 +26,7 @@
 #include "core/include/xcl_perfmon_parameters.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
+#include "core/common/query_requests.h"
 #include "core/common/error.h"
 
 #include <cerrno>
@@ -126,8 +127,8 @@ shim::
   xclLog(XRT_INFO, "%s", __func__);
 
 //  xdphal::finish_flush_device(handle) ;
-  xdpaie::finish_flush_aie_device(this) ;
-  xdpaiectr::end_aie_ctr_poll(this);
+  xdp::aie::finish_flush_device(this) ;
+  xdp::aie::ctr::end_poll(this);
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -537,6 +538,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_kernels = NULL,
     };
 
+  std::vector<char> krnl_binary;
   if (!xrt_core::xclbin::is_pdi_only(buffer)) {
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
     /* Calculate size of kernels */
@@ -545,7 +547,7 @@ xclLoadAxlf(const axlf *buffer)
     }
 
     /* Check PCIe's shim.cpp for details of kernels binary */
-    std::vector<char> krnl_binary(axlf_obj.za_ksize);
+    krnl_binary.resize(axlf_obj.za_ksize);
     axlf_obj.za_kernels = krnl_binary.data();
     for (auto& kernel : kernels) {
       auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.za_kernels + off);
@@ -926,6 +928,20 @@ int
 shim::
 xclIPName2Index(const char *name)
 {
+  /* In new kds, driver determines CU index */
+  if (xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice)) {
+    for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice)) {
+      if (stat.name != name)
+        continue;
+
+      return stat.index;
+    }
+
+    xclLog(XRT_ERROR, "%s not found", name);
+    return -ENOENT;
+  }
+
+  /* Old kds is enabled */
   std::string errmsg;
   std::vector<char> buf;
   const uint64_t bad_addr = 0xffffffffffffffff;
@@ -937,7 +953,10 @@ xclIPName2Index(const char *name)
     return -EINVAL;
   }
   if (buf.empty())
+  {
+    xclLog(XRT_ERROR, "ip_layout sysfs node is empty");
     return -ENOENT;
+  }
 
   const ip_layout *map = (ip_layout *)buf.data();
   if(map->m_count < 0) {
@@ -956,32 +975,23 @@ xclIPName2Index(const char *name)
   }
 
   if (i == map->m_count)
+  {
+    xclLog(XRT_ERROR, "no ip with %s found in ip_layout", name);
     return -ENOENT;
+  }
+
   if (addr == bad_addr)
     return -EINVAL;
 
-  std::vector<std::string> custat;
-  mDev->sysfs_get("kds_custat", errmsg, custat);
-  if (!errmsg.empty()) {
-    xclLog(XRT_ERROR, "can't read kds_custat sysfs node: %s",
-           errmsg.c_str());
-    return -EINVAL;
+  auto cus = xrt_core::xclbin::get_cus(map);
+  auto itr = std::find(cus.begin(), cus.end(), addr);
+  if (itr == cus.end())
+  {
+    xclLog(XRT_ERROR, "no cu with 0x%lx found", addr);
+    return -ENOENT;
   }
+  return std::distance(cus.begin(),itr);
 
-  uint32_t idx = 0;
-  for (auto& line : custat) {
-    // convert and compare parsed hex address CU[@0x[0-9]+]
-    size_t pos = line.find("0x");
-    if (pos == std::string::npos)
-      continue;
-    if (static_cast<unsigned long>(addr) ==
-        std::stoul(line.substr(pos).c_str(), 0, 16)) {
-      return idx;
-    }
-    ++idx;
-  }
-
-  return -ENOENT;
 }
 
 int
@@ -1521,6 +1531,53 @@ closeGraphContext(unsigned int graphId)
   return ret ? -errno : ret;
 }
 
+int
+shim::
+openAIEContext(xrt::aie::access_mode am)
+{
+  unsigned int flags;
+  int ret;
+
+  switch (am) {
+
+  case xrt::aie::access_mode::exclusive:
+    flags = ZOCL_CTX_EXCLUSIVE;
+    break;
+
+  case xrt::aie::access_mode::primary:
+    flags = ZOCL_CTX_PRIMARY;
+    break;
+
+  case xrt::aie::access_mode::shared:
+    flags = ZOCL_CTX_SHARED;
+    break;
+
+  default:
+    return -EINVAL;
+  }
+
+  drm_zocl_ctx ctx = {0};
+  ctx.flags = flags;
+  ctx.op = ZOCL_CTX_OP_ALLOC_AIE_CTX;
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret ? -errno : ret;
+}
+
+xrt::aie::access_mode
+shim::
+getAIEAccessMode()
+{
+  return access_mode;
+}
+
+void
+shim::
+setAIEAccessMode(xrt::aie::access_mode am)
+{
+  access_mode = am;
+}
+
 #endif
 
 } // end namespace ZYNQ
@@ -1535,22 +1592,26 @@ xclProbe()
   if (fd < 0) {
     return 0;
   }
+  std::vector<char> name(128,0);
+  std::vector<char> desc(512,0);
+  std::vector<char> date(128,0);
   drm_version version;
   std::memset(&version, 0, sizeof(version));
-  version.name = new char[128];
+  version.name = name.data();
   version.name_len = 128;
-  version.desc = new char[512];
+  version.desc = desc.data();
   version.desc_len = 512;
-  version.date = new char[128];
+  version.date = date.data();
   version.date_len = 128;
 
   int result = ioctl(fd, DRM_IOCTL_VERSION, &version);
-  if (result)
+  if (result) {
+    close(fd);
     return 0;
+  }
 
   result = std::strncmp(version.name, "zocl", 4);
   close(fd);
-
   return (result == 0) ? 1 : 0;
 }
 #endif
@@ -1756,8 +1817,8 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
   return drv->xclImportBO(fd, flags);
 }
 
-int
-xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
+static int
+xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 {
 #ifndef __HWEM__
   LOAD_XCLBIN_CB ;
@@ -1767,16 +1828,18 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
 #ifndef __HWEM__
-    xdphal::flush_device(handle) ;
-    xdpaie::flush_aie_device(handle) ;
+    xdp::hal::flush_device(handle) ;
+    xdp::aie::flush_device(handle) ;
 #endif
 
+    int ret;
+    if (!meta) {
+      ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+      if (ret) {
+        printf("Load Xclbin Failed\n");
 
-    auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
-    if (ret) {
-      printf("Load Xclbin Failed\n");
-
-      return ret;
+        return ret;
+      }
     }
     auto core_device = xrt_core::get_userpf_device(handle);
 
@@ -1809,9 +1872,9 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     }
 
 #ifndef __HWEM__
-    xdphal::update_device(handle) ;
-    xdpaie::update_aie_device(handle);
-    xdpaiectr::update_aie_device(handle);
+    xdp::hal::update_device(handle) ;
+    xdp::aie::update_device(handle);
+    xdp::aie::ctr::update_device(handle);
 
     START_DEVICE_PROFILING_CB(handle);
 #endif
@@ -1825,6 +1888,18 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xrt_core::send_exception_message(ex.what());
     return 1;
   }
+}
+
+int
+xclLoadXclBinMeta(xclDeviceHandle handle, const xclBin *buffer)
+{
+  return xclLoadXclBinImpl(handle, buffer, true);
+}
+
+int
+xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
+{
+  return xclLoadXclBinImpl(handle, buffer, false);
 }
 
 size_t
@@ -2089,7 +2164,7 @@ xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* 
 }
 
 int
-xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+_xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return 0;
 }
@@ -2355,6 +2430,24 @@ int
 xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
   return 1; // -ENOSYS;
+}
+
+int
+xclUpdateSchedulerStat(xclDeviceHandle handle)
+{
+  return 1; // -ENOSYS;
+}
+
+int 
+xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+{
+  return -ENOSYS;
+}
+
+int
+xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
+{
+  return -ENOSYS;
 }
 
 int

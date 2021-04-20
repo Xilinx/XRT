@@ -1,7 +1,7 @@
 This directory contains low level XRT tests.
 
 The tests are implemented using XRT native APIs
-https://confluence.xilinx.com/display/XSW/XRT+Native+APIs#XRTNativeAPIs-C++DeviceAPIs
+https://xilinx.github.io/XRT/master/html/xrt_native_apis.html
 
 A bash script ``build.sh`` in this directory is provided to bootstrap
 the build.  The script can be used both on Linux and on Windows under
@@ -55,22 +55,25 @@ readme.txt
 ├── testinfo.yml
 └── xclbin.mk
 
-# Same tests implemented using OpenCL (ocl.cpp), XRT shim (xrt.cpp)
+# Same test implemented using OpenCL (ocl.cpp), XRT shim (xrt.cpp)
 # XRT kernel APIs and shim APIs (xrtx.cpp), XRT native APIs (xrtxx.cpp)
+# Demonstration of custom IP control using xrt::ip (xrtxx-ip.cpp)
 # Performance test running multiple jobs concurrently on 1 to 8 CUs
 # for specified number of seconds.  Report completed jobs at end.
-100_ert_ncu
+100_ert_ncu/
 ├── CMakeLists.txt
 ├── kernel.cl
-├── main.cpp
-├── ocl.cpp
+├── Makefile
+├── ocl.cpp          # OpenCL
 ├── readme.txt
 ├── testinfo.yml
 ├── xaddone_hw_64.h
 ├── xclbin.mk
-├── xrt.cpp
-├── xrtx.cpp
-└── xrtxx.cpp
+├── xrt.cpp          # XCL shim
+├── xrtx.cpp         # XRT kernel APIs + XCL shim
+├── xrtxx.cpp        # XRT native APIs exclusively
+├── xrtxx-ip.cpp     # XRT native APIs demo xrt::ip
+└── xrtxx-mt.cpp     # XRT native APIs thread safe validation of xrt::run::wait()
 
 # Multi-process test case
 102_multiproc_verify
@@ -101,3 +104,18 @@ readme.txt
 ├── main.cpp
 ├── xclbin.mk
 └── testinfo.yml
+
+# Demo of xclbin introspection using xrt::xclbin
+56_xclbin/
+├── CMakeLists.txt
+├── kernel.cl
+├── main.cpp
+├── Makefile
+├── testinfo.yml
+└── xclbin.mk
+
+# Demo of xrt::info query
+# Example of how to use xrt::device::get_info
+query/
+├── CMakeLists.txt
+└── main.cpp

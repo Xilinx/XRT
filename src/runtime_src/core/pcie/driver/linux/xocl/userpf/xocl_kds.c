@@ -10,7 +10,7 @@
 #include <linux/workqueue.h>
 #include "common.h"
 #include "kds_core.h"
-/* Need detect fast adapter and find out plram
+/* Need detect fast adapter and find out cmdmem
  * Cound not avoid coupling xclbin.h
  */
 #include "xclbin.h"
@@ -46,15 +46,15 @@ static void xocl_kds_fa_clear(struct xocl_dev *xdev)
 {
 	struct drm_xocl_bo *bo = NULL;
 
-	if (XDEV(xdev)->kds.plram.bo) {
-		bo = XDEV(xdev)->kds.plram.bo;
-		iounmap(XDEV(xdev)->kds.plram.vaddr);
+	if (XDEV(xdev)->kds.cmdmem.bo) {
+		bo = XDEV(xdev)->kds.cmdmem.bo;
+		iounmap(XDEV(xdev)->kds.cmdmem.vaddr);
 		xocl_drm_free_bo(&bo->base);
-		XDEV(xdev)->kds.plram.bo = NULL;
-		XDEV(xdev)->kds.plram.bar_paddr = 0;
-		XDEV(xdev)->kds.plram.dev_paddr = 0;
-		XDEV(xdev)->kds.plram.vaddr = 0;
-		XDEV(xdev)->kds.plram.size = 0;
+		XDEV(xdev)->kds.cmdmem.bo = NULL;
+		XDEV(xdev)->kds.cmdmem.bar_paddr = 0;
+		XDEV(xdev)->kds.cmdmem.dev_paddr = 0;
+		XDEV(xdev)->kds.cmdmem.vaddr = 0;
+		XDEV(xdev)->kds.cmdmem.size = 0;
 	}
 }
 
@@ -301,7 +301,7 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
  * [1  ]      : number of cq slots
  * [1  ]      : number of cus
  * [#numcus]  : cu execution stats (number of executions)
- * [#numcus]  : cu status (1: running, 0: idle)
+ * [#numcus]  : cu status (1: running, 0: idle, -1: crashed)
  * [#slots]   : command queue slot status
  *
  * Old ERT populates
@@ -310,12 +310,19 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
  */
 static inline void read_ert_stat(struct kds_command *xcmd)
 {
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
 	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
 	int num_cu  = kds->cu_mgmt.num_cus;
 	int num_scu = kds->scu_mgmt.num_cus;
 	int off_idx;
 	int i;
+	
+	/* TODO: For CU stat command, there are few things to refine.
+	 * 1. Define size of the command
+	 * 2. Define CU status enum/macro in a header file
+	 * 	a. xocl/zocl/MB/RPU/xbutil can shared
+	 * 	b. parser helper function if need
+	 */
 
 	/* New KDS handle FPGA CU statistic on host not ERT */
 	if (ecmd->data[0] != 0x51a10000)
@@ -331,10 +338,21 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	/* off_idx points to PS kernel status */
 	off_idx += num_scu + num_cu;
 	for (i = 0; i < num_scu; i++) {
-		if (ecmd->data[off_idx + i])
+		int status = (int)(ecmd->data[off_idx + i]);
+
+		switch (status) {
+		case 1:
 			kds->scu_mgmt.status[i] = CU_AP_START;
-		else
+			break;
+		case 0:
 			kds->scu_mgmt.status[i] = CU_AP_IDLE;
+			break;
+		case -1:
+			kds->scu_mgmt.status[i] = CU_AP_CRASHED;
+			break;
+		default:
+			kds->scu_mgmt.status[i] = 0;
+		}
 	}
 	mutex_unlock(&kds->scu_mgmt.lock);
 }
@@ -342,7 +360,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 static void notify_execbuf(struct kds_command *xcmd, int status)
 {
 	struct kds_client *client = xcmd->client;
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
 
 	if (xcmd->opcode == OP_START_SK) {
 		/* For PS kernel get cmd state and return_code */
@@ -368,6 +386,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	}
 
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
+	kfree(xcmd->execbuf);
 
 	if (xcmd->cu_idx >= 0)
 		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
@@ -382,6 +401,34 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	}
 }
 
+static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
+				     struct drm_xocl_bo *xobj,
+				     struct ert_packet *ecmd)
+{
+	struct ert_packet *orig;
+	int pkg_size;
+	bool op_valid;
+
+	orig = (struct ert_packet *)xobj->vmapping;
+	orig->state = ERT_CMD_STATE_NEW;
+	ecmd->header = orig->header;
+
+	pkg_size = sizeof(ecmd->header) + ecmd->count * sizeof(u32);
+	if (xobj->base.size < pkg_size) {
+		userpf_err(xdev, "payload size bigger than exec buf\n");
+		return false;
+	}
+
+	memcpy(ecmd->data, orig->data, ecmd->count * sizeof(u32));
+
+	/* opcode specific validation */
+	op_valid = ert_valid_opcode(ecmd);
+	if (!op_valid)
+		userpf_err(xdev, "opcode(%d) is invalid\n", ecmd->opcode);
+
+	return op_valid;
+}
+
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			      struct drm_file *filp, bool in_kernel)
 {
@@ -390,7 +437,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct drm_xocl_execbuf *args = data;
 	struct drm_gem_object *obj;
 	struct drm_xocl_bo *xobj;
-	struct ert_packet *ecmd;
+	struct ert_packet *ecmd = NULL;
 	struct kds_command *xcmd;
 	int ret = 0;
 
@@ -412,14 +459,35 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	}
 
 	xobj = to_xocl_bo(obj);
+
 	if (!xocl_bo_execbuf(xobj)) {
+		userpf_err(xdev, "Command buffer is not exec buf\n");
+		return false;
+	}
+
+	/* An exec buf bo is at least 1 PAGE.
+	 * This is enough to carry metadata for any execbuf command struct.
+	 * It is safe to make the assumption and validate will be simpler.
+	 */
+	if (xobj->base.size < PAGE_SIZE) {
+		userpf_err(xdev, "exec buf is too small\n");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	ecmd = (struct ert_packet *)xobj->vmapping;
+	ecmd = kzalloc(xobj->base.size, GFP_KERNEL);
+	if (!ecmd) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
-	ecmd->state = ERT_CMD_STATE_NEW;
+	/* If xobj contain a valid command, ecmd would be a copy */
+	if (!copy_and_validate_execbuf(xdev, xobj, ecmd)) {
+		userpf_err(xdev, "Invalid command\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* only the user command knows the real size of the payload.
 	 * count is more than enough!
 	 */
@@ -431,7 +499,10 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	}
 	xcmd->cb.free = kds_free_command;
 	xcmd->cb.notify_host = notify_execbuf;
+	/* xcmd->execbuf points to kernel space copy */
 	xcmd->execbuf = (u32 *)ecmd;
+	/* xcmd->u_execbuf points to user's original for write back/notice */
+	xcmd->u_execbuf = xobj->vmapping;
 	xcmd->gem_obj = obj;
 
 	print_ecmd_info(ecmd);
@@ -457,6 +528,9 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		goto out1;
 	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		break;
+	case ERT_EXEC_WRITE:
+		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_START_FA:
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
@@ -521,8 +595,10 @@ out1:
 	xcmd->cb.free(xcmd);
 out:
 	/* Don't forget to put gem object if error happen */
-	if (ret < 0)
+	if (ret < 0) {
+		kfree(ecmd);
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
+	}
 	return ret;
 }
 
@@ -621,9 +697,9 @@ void xocl_fini_sched(struct xocl_dev *xdev)
 {
 	struct drm_xocl_bo *bo = NULL;
 
-	bo = XDEV(xdev)->kds.plram.bo;
+	bo = XDEV(xdev)->kds.cmdmem.bo;
 	if (bo) {
-		iounmap(XDEV(xdev)->kds.plram.vaddr);
+		iounmap(XDEV(xdev)->kds.cmdmem.vaddr);
 		xocl_drm_free_bo(&bo->base);
 	}
 
@@ -655,10 +731,16 @@ int xocl_kds_reconfig(struct xocl_dev *xdev)
 }
 
 int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
-		     void *drm_filp, u32 *addrp)
+		     struct drm_file *filp, unsigned long size, u32 *addrp)
 {
-	/* plact holder */
-	return 0;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client = filp->driver_priv;
+	int ret;
+
+	mutex_lock(&client->lock);
+	ret = kds_map_cu_addr(kds, client, cu_idx, size, addrp);
+	mutex_unlock(&client->lock);
+	return ret;
 }
 
 u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist)
@@ -676,7 +758,7 @@ static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index)
 	XOCL_GET_CONNECTIVITY(xdev, conn);
 
 	if (conn) {
-		/* The "last" argument of fast adapter would connect to plram */
+		/* The "last" argument of fast adapter would connect to cmdmem */
 		for (i = 0; i < conn->m_count; ++i) {
 			struct connection *connect = &conn->m_connection[i];
 			if (connect->m_ip_layout_index != ip_index)
@@ -694,7 +776,7 @@ static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index)
 	return mem_data_idx;
 }
 
-static int xocl_detect_fa_plram(struct xocl_dev *xdev)
+static int xocl_detect_fa_cmdmem(struct xocl_dev *xdev)
 {
 	struct ip_layout    *ip_layout = NULL;
 	struct mem_topology *mem_topo = NULL;
@@ -707,7 +789,7 @@ static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 	ulong bar_paddr = 0;
 	int ret = 0;
 
-	/* Detect Fast adapter and descriptor plram
+	/* Detect Fast adapter and descriptor cmdmem
 	 * Assume only one PLRAM would be used for descriptor
 	 */
 	XOCL_GET_IP_LAYOUT(xdev, ip_layout);
@@ -727,7 +809,7 @@ static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 		if (prot != FAST_ADAPTER)
 			continue;
 
-		/* TODO: consider if we could support multiple plram */
+		/* TODO: consider if we could support multiple cmdmem */
 		mem_idx = xocl_kds_get_mem_idx(xdev, i);
 		break;
 	}
@@ -737,6 +819,12 @@ static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 
 	base_addr = mem_topo->m_mem_data[mem_idx].m_base_address;
 	size = mem_topo->m_mem_data[mem_idx].m_size * 1024;
+	/* Fast adapter could connect to any memory (DDR, PLRAM, HBM etc.).
+	 * A portion of memory would be reserved for descriptors.
+	 * Reserve entire memory if its size is smaller than FA_MEM_MAX_SIZE
+	 */
+	if (size > FA_MEM_MAX_SIZE)
+		size = FA_MEM_MAX_SIZE;
 	ret = xocl_p2p_get_bar_paddr(xdev, base_addr, size, &bar_paddr);
 	if (ret) {
 		userpf_err(xdev, "Cannot get p2p BAR address");
@@ -762,11 +850,14 @@ static int xocl_detect_fa_plram(struct xocl_dev *xdev)
 		goto done;
 	}
 
-	XDEV(xdev)->kds.plram.bo = bo;
-	XDEV(xdev)->kds.plram.bar_paddr = bar_paddr;
-	XDEV(xdev)->kds.plram.dev_paddr = base_addr;
-	XDEV(xdev)->kds.plram.vaddr = vaddr;
-	XDEV(xdev)->kds.plram.size = size;
+	userpf_info(xdev, "fast adapter memory on bank(%d), size 0x%llx",
+		   mem_idx, size);
+
+	XDEV(xdev)->kds.cmdmem.bo = bo;
+	XDEV(xdev)->kds.cmdmem.bar_paddr = bar_paddr;
+	XDEV(xdev)->kds.cmdmem.dev_paddr = base_addr;
+	XDEV(xdev)->kds.cmdmem.vaddr = vaddr;
+	XDEV(xdev)->kds.cmdmem.size = size;
 
 done:
 	XOCL_PUT_MEM_TOPOLOGY(xdev);
@@ -823,6 +914,7 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	ecmd->cq_int	= cfg->cq_int;
 	ecmd->dataflow	= cfg->dataflow;
 	ecmd->rw_shared	= cfg->rw_shared;
+	kds->cu_mgmt.rw_shared = cfg->rw_shared;
 
 	/* Fill CU address */
 	for (i = 0; i < num_cu; i++) {
@@ -965,7 +1057,7 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	int ret = 0;
 
 	/* TODO: Use hard code size is not ideal. Let's refine this later */
-	ecmd = vmalloc(0x1000);
+	ecmd = vzalloc(0x1000);
 	if (!ecmd)
 		return -ENOMEM;
 
@@ -993,13 +1085,16 @@ out:
 int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
 	int ret = 0;
+	struct ert_cu_bulletin brd;
 
+	ret = xocl_ert_user_bulletin(xdev, &brd);
 	/* Detect if ERT subsystem is able to support CU to host interrupt
 	 * This support is added since ERT ver3.0
 	 *
 	 * So, please make sure this is called after subdev init.
 	 */
-	if (xocl_ert_user_ert_intr_cfg(xdev) == -ENODEV) {
+	if (ret == -ENODEV || !brd.cap.cu_intr) {
+		ret = 0;
 		userpf_info(xdev, "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
 	} else {
@@ -1009,9 +1104,9 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 
 	xocl_kds_fa_clear(xdev);
 
-	ret = xocl_detect_fa_plram(xdev);
+	ret = xocl_detect_fa_cmdmem(xdev);
 	if (ret) {
-		userpf_info(xdev, "Detect FA plram failed, ret %d", ret);
+		userpf_info(xdev, "Detect FA cmdmem failed, ret %d", ret);
 		goto out;
 	}
 

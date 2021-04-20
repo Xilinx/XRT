@@ -131,6 +131,7 @@ enum kdscommand {
     KDS_CU_INTERRUPT = 0x0,
     KDS_TEST,
     KDS_ARGS,
+    KDS_SHOW,
 };
 
 enum class cu_stat : unsigned short {
@@ -552,7 +553,7 @@ public:
             }
 
             tokenizer::iterator tok_it = tokens.begin();
-            scu_idx = std::stoi(std::string(*tok_it++));
+            cu_idx = std::stoi(std::string(*tok_it++));
             name = std::string(*tok_it++);
             paddr = std::stoull(std::string(*tok_it++), nullptr, radix);
             status = std::stoul(std::string(*tok_it++), nullptr, radix);
@@ -563,7 +564,7 @@ public:
             ptCu.put( "base_address", paddr );
             ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
-            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(scu_idx)), ptCu );
+            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(cu_idx)), ptCu );
         }
 
         // PS kernel info
@@ -571,6 +572,14 @@ public:
         // Format: "%d,%s,0x%x,%u"
         // Using comma as separator.
         pcidev::get_dev(m_idx)->sysfs_get("", "kds_scustat_raw", errmsg, custat);
+        std::vector<ps_kernel_data> psKernels;
+        if (getPSKernels(psKernels) < 0) {
+            std::cout << "WARNING: 'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.\n";
+            return 0;
+        }
+
+        uint32_t psk_inst = 0;
+        uint32_t num_scu = 0;
         for (auto& line : custat) {
             boost::char_separator<char> sep(",");
 
@@ -587,7 +596,8 @@ public:
             status = std::stoul(std::string(*tok_it++), nullptr, radix);
             usage = std::stoul(std::string(*tok_it++));
             // TODO: Let's avoid this special handling for PS kernel name
-            name = name + ":scu_" + std::to_string(cu_idx);
+            //name = name + ":scu_" + std::to_string(scu_idx);
+            name += ":scu_" + std::to_string(num_scu); //Append instance number for each PS Kernel
 
             boost::property_tree::ptree ptCu;
             ptCu.put( "name",         name );
@@ -595,6 +605,15 @@ public:
             ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.ps_compute_unit." + std::to_string(scu_idx)), ptCu );
+
+            if (psk_inst >= psKernels.size())
+                continue;
+            num_scu++;
+            if (num_scu == psKernels.at(psk_inst).pkd_num_instances) {
+                //Reset instance num of new PS Kernel
+                num_scu = 0;
+                psk_inst++;
+            }
         }
 
         return 0;
@@ -1111,7 +1130,7 @@ public:
                      m0v85, mgt0v9avcc, m12v_sw, mgtavtt, vccint_vol, vccint_curr, m3v3_pex_curr, m0v85_curr, m3v3_vcc_vol,
                      hbm_1v2_vol, vpp2v5_vol, vccint_bram_vol, m12v_pex_vol, m12v_aux_curr, m12v_pex_curr, m12v_aux_vol,
                      vol_12v_aux1, vol_vcc1v2_i, vol_v12_in_i, vol_v12_in_aux0_i, vol_v12_in_aux1_i, vol_vccaux,
-                     vol_vccaux_pmc, vol_vccram, m3v3_aux_cur, power_warn;
+                     vol_vccaux_pmc, vol_vccram, m3v3_aux_cur, power_warn, vccint_vcu_0v9;
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_vol",    m12v_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_curr",   m12v_pex_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_vol",    m12v_aux_vol);
@@ -1146,6 +1165,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccaux_pmc",      vol_vccaux_pmc);
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccram",          vol_vccram);
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_power_warn",      power_warn);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccint_vcu_0v9",  vccint_vcu_0v9);
         sensor_tree::put( "board.physical.electrical.12v_pex.voltage",         m12v_pex_vol );
         sensor_tree::put( "board.physical.electrical.12v_pex.current",         m12v_pex_curr );
         sensor_tree::put( "board.physical.electrical.12v_aux.voltage",         m12v_aux_vol );
@@ -1182,6 +1202,7 @@ public:
         sensor_tree::put( "board.physical.electrical.vccaux_pmc.voltage",      vol_vccaux_pmc);
         sensor_tree::put( "board.physical.electrical.vccram.voltage",          vol_vccram);
         sensor_tree::put( "board.physical.electrical.power_warn.current",      power_warn);
+        sensor_tree::put( "board.physical.electrical.vccint_vcu_0v9.current",  vccint_vcu_0v9);
 
         // physical.power
         sensor_tree::put( "board.physical.power", static_cast<unsigned>(sysfs_power()));
@@ -1476,9 +1497,10 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux_pmc.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccram.voltage"  ) << std::endl;
-        ostr << std::setw(16) << "3V3 AUX CURR" << std::setw(16) << "POWER WARN" << std::setw(16) << std::endl;
+        ostr << std::setw(16) << "3V3 AUX CURR" << std::setw(16) << "POWER WARN" << std::setw(16) << "VCCINT VCU 0V9" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_aux.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.power_warn.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint_vcu_0v9.current" )
              <<  std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";

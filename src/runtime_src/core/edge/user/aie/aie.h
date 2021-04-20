@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  * Author(s): Larry Liu
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
@@ -27,22 +27,12 @@
 #include "core/edge/common/aie_parser.h"
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_aie.h"
-#include "AIEResources.h"
+#include "common_layer/adf_api_config.h"
+#include "common_layer/adf_runtime_api.h"
+#include "common_layer/adf_profiling_api.h"
 extern "C" {
 #include <xaiengine.h>
 }
-
-#define HW_GEN                        XAIE_DEV_GEN_AIE
-#define XAIE_NUM_ROWS                 9
-#define XAIE_NUM_COLS                 50
-#define XAIE_BASE_ADDR                0x20000000000
-#define XAIE_COL_SHIFT                23
-#define XAIE_ROW_SHIFT                18
-#define XAIE_SHIM_ROW                 0
-#define XAIE_RESERVED_TILE_ROW_START  0
-#define XAIE_RESERVED_TILE_NUM_ROWS   0
-#define XAIE_AIE_TILE_ROW_START       1
-#define XAIE_AIE_TILE_NUM_ROWS        8
 
 //#define XAIEGBL_NOC_DMASTA_STARTQ_MAX 4
 #define XAIEDMA_SHIM_MAX_NUM_CHANNELS 4
@@ -80,25 +70,29 @@ struct ShimDMA {
 
 struct EventRecord {
     int option;
-    std::vector<Resources::AcquiredResource> acquiredResources;
+    std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquiredResources;
 };
 
 class Aie {
 public:
-    using gmio_type = xrt_core::edge::aie::gmio_type;
-    using plio_type = xrt_core::edge::aie::plio_type;
-
     ~Aie();
     Aie(const std::shared_ptr<xrt_core::device>& device);
 
     std::vector<ShimDMA> shim_dma;   // shim DMA
 
     /* This is the collections of gmios that are used. */
-    std::vector<gmio_type> gmios;
+    std::unordered_map<std::string, adf::gmio_config> gmio_configs;
+    std::unordered_map<std::string, std::shared_ptr<adf::gmio_api>> gmio_apis;
 
-    std::vector<plio_type> plios;
+    std::unordered_map<std::string, adf::plio_config> plio_configs;
 
     XAie_DevInst *getDevInst();
+
+    void
+    open_context(const xrt_core::device* device, xrt::aie::access_mode am);
+
+    bool
+    is_context_set();
 
     void
     sync_bo(xrt::bo& bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
@@ -130,20 +124,17 @@ public:
 private:
     int numCols;
     int fd;
+    xrt::aie::access_mode access_mode = xrt::aie::access_mode::none;
 
     XAie_DevInst* devInst;         // AIE Device Instance
 
     std::vector<EventRecord> eventRecords;
 
     void
-    submit_sync_bo(xrt::bo& bo, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size, size_t offset);
+    submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio, adf::gmio_config& gmio_config, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
-    /* Wait for all the BD transfers for a given channel */
-    void
-    wait_sync_bo(ShimDMA *dmap, uint32_t chan, XAie_LocType& tile, XAie_DmaDirection gmdir, uint32_t timeout);
-
-    void
-    get_profiling_config(const std::string& port_name, XAie_LocType& out_shim_tile, XAie_StrmPortIntf& out_mode, uint8_t& out_stream_id);
+    adf::shim_config
+    get_shim_config(const std::string& port_name);
 
     int
     start_profiling_run_idle(const std::string& port_name);
@@ -156,26 +147,6 @@ private:
 
     int
     start_profiling_event_count(const std::string& port_name);
-};
-
-struct BD_scope {
-  BD bd;
-  Aie* aie;
-
-  BD_scope(const BD& bd_in, Aie* host)
-    : bd(bd_in), aie(host)
-  {}
-
-  ~BD_scope()
-  {
-    aie->clear_bd(bd);
-  }
-
-  BD&
-  get()
-  {
-    return bd;
-  }
 };
 
 }

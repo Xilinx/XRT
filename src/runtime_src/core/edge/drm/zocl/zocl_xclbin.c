@@ -12,6 +12,7 @@
  */
 
 #include <linux/fpga/fpga-mgr.h>
+#include <linux/of.h>
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_aie.h"
@@ -145,8 +146,11 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	}
 
 	mutex_lock(&sk->sk_lock);
-	for (i = 0; i < sk->sk_nimg; i++)
+	for (i = 0; i < sk->sk_nimg; i++) {
+		if (IS_ERR(&sk->sk_img[i].si_bo))
+			continue;
 		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&sk->sk_img[i].si_bo->gem_base);
+	}
 	kfree(sk->sk_img);
 	sk->sk_nimg = 0;
 	sk->sk_img = NULL;
@@ -170,13 +174,17 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 
 		sip->si_start = scu_idx;
 		sip->si_end = scu_idx + sp->m_num_instances - 1;
+		if (sip->si_end >= MAX_SOFT_KERNEL) {
+			DRM_ERROR("PS CU number exceeds %d\n", MAX_SOFT_KERNEL);
+			mutex_unlock(&sk->sk_lock);
+			return -EINVAL;
+		}
 
 		sip->si_bo = zocl_drm_create_bo(zdev->ddev, sp->m_image_size,
 		    ZOCL_BO_FLAGS_CMA);
 		if (IS_ERR(sip->si_bo)) {
 			ret = PTR_ERR(sip->si_bo);
-			DRM_ERROR("%s Failed to allocate BO: %d\n",
-			    __func__, ret);
+			DRM_ERROR("Failed to allocate BO: %d\n", ret);
 			mutex_unlock(&sk->sk_lock);
 			return ret;
 		}
@@ -501,11 +509,16 @@ out:
 
 static int
 zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
-			char __user *xclbin)
+			char __user *xclbin, struct sched_client_ctx *client)
 {
 	uint64_t size;
 	char *pdi_buf = NULL;
 	int ret;
+
+	if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
+		DRM_ERROR("%s Shared context can not load xclbin", __func__);
+		return -EPERM;
+	}
 
 	size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
 	if (size == 0)
@@ -544,9 +557,73 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	case BITSTREAM_PARTIAL_PDI:
 		ret = zocl_load_partial(zdev, section_buffer, size);
 		break;
+#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
+	case PARTITION_METADATA: {
+		int id = -1, err = 0;
+		char *bsection_buffer = NULL;
+		char *vaddr = NULL;
+		struct drm_zocl_bo *bo;
+		uint64_t bsize = 0;
+		if (zdev->partial_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_PR) {
+			err = of_overlay_remove(&zdev->partial_overlay_id);
+			if (err < 0) {
+				DRM_WARN("Failed to delete rm overlay (err=%d)\n", err);
+				ret = err;
+				break;
+			}
+			zdev->partial_overlay_id = -1;
+		} else if (zdev->full_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_FLAT) {
+			err = of_overlay_remove_all();
+			if (err < 0) {
+				DRM_WARN("Failed to delete static overlay (err=%d)\n", err);
+				ret = err;
+				break;
+			}
+			zdev->partial_overlay_id = -1;
+			zdev->full_overlay_id = -1;
+		}
+
+		bsize = zocl_read_sect(BITSTREAM, &bsection_buffer, axlf, xclbin);
+		if (bsize == 0) {
+			ret = 0;
+			break;
+		}
+
+		bo = zocl_drm_create_bo(zdev->ddev, bsize, ZOCL_BO_FLAGS_CMA);
+		if (IS_ERR(bo)) {
+			vfree(bsection_buffer);
+			ret = PTR_ERR(bo);
+			break;
+		}
+		vaddr = bo->cma_base.vaddr;
+		memcpy(vaddr,bsection_buffer,bsize);
+
+		zdev->fpga_mgr->dmabuf = drm_gem_prime_export(&bo->gem_base, 0);
+		err = of_overlay_fdt_apply((void *)section_buffer, size, &id);
+		if (err < 0) {
+			DRM_WARN("Failed to create overlay (err=%d)\n", err);
+			zdev->fpga_mgr->dmabuf = NULL;
+			zocl_drm_free_bo(bo);
+			vfree(bsection_buffer);
+			ret = err;
+			break;
+		}
+
+		if (axlf->m_header.m_mode == XCLBIN_PR)
+			zdev->partial_overlay_id = id;
+		else
+			zdev->full_overlay_id = id;
+
+		zdev->fpga_mgr->dmabuf = NULL;
+		zocl_drm_free_bo(bo);
+		vfree(bsection_buffer);
+		break;
+		}
+#endif
 	default:
 		DRM_WARN("Unsupported load type %d", kind);
 	}
+
 	vfree(section_buffer);
 
 	return ret;
@@ -558,6 +635,38 @@ is_aie_only(struct axlf *axlf)
 	return (axlf->m_header.m_actionMask & AM_LOAD_AIE);
 }
 
+/*
+ * Cache the xclbin blob so that it can be shared by processes.
+ *
+ * Note: currently, we only cache xclbin blob for AIE only xclbin to
+ *       support AIE multi-processes. For AIE only xclbin, we load
+ *       the PDI to AIE even it has been loaded. But if a process is
+ *       using UUID to load xclbin metatdata, we don't load PDI to AIE.
+ *       So that a shared AIE context can load AIE metadata without
+ *       reload the hardware and can do non-destructive operations.
+ */
+static int
+zocl_cache_xclbin(struct drm_zocl_dev *zdev, struct axlf *axlf,
+		char __user *xclbin_ptr)
+{
+	int ret;
+	size_t size = axlf->m_header.m_length;
+
+	zdev->axlf = vmalloc(size);
+	if (!zdev->axlf)
+		return -ENOMEM;
+
+	ret = copy_from_user(zdev->axlf, xclbin_ptr, size);
+	if (ret) {
+		vfree(zdev->axlf);
+		return ret;
+	}
+
+	zdev->axlf_size = size;
+
+	return 0;
+}
+
 int
 zocl_xclbin_refcount(struct drm_zocl_dev *zdev)
 {
@@ -567,7 +676,8 @@ zocl_xclbin_refcount(struct drm_zocl_dev *zdev)
 }
 
 int
-zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
+zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
+	struct sched_client_ctx *client)
 {
 	struct axlf axlf_head;
 	struct axlf *axlf = NULL;
@@ -576,6 +686,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	size_t size_of_header;
 	size_t num_of_sections;
 	void *kernels;
+	void *aie_res = 0;
 	uint64_t size = 0;
 	int ret = 0;
 
@@ -616,16 +727,26 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		return -EFAULT;
 	}
 
+	/* After this lock till unlock is an atomic context */ 
 	write_lock(&zdev->attr_rwlock);
+
+	/*
+	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
+	 * such a section.
+	 */
+	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
 
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head.m_header.uuid)) {
 		if (is_aie_only(axlf)) {
-			ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
+			ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin,
+			    client);
 			if (ret)
 				DRM_WARN("read xclbin: fail to load AIE");
-			else
-				zocl_create_aie(zdev, axlf);
+			else {
+				zocl_create_aie(zdev, axlf, aie_res);
+				zocl_cache_xclbin(zdev, axlf, xclbin);
+			}
 		} else {
 			DRM_INFO("%s The XCLBIN already loaded", __func__);
 		}
@@ -664,8 +785,23 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 	zocl_free_sections(zdev);
 
-	/* For PR support platform, device-tree has configured addr */
+#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
+	if (xrt_xclbin_get_section_num(axlf, PARTITION_METADATA) &&
+	    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
+	    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
+		/*
+		 * Perform dtbo overlay for both static and rm region
+		 * axlf should have dtbo in PARTITION_METADATA section and
+		 * bitstream in BITSTREAM section.
+		 */ 
+		ret = zocl_load_sect(zdev, axlf, xclbin, PARTITION_METADATA);
+		if (ret)
+			goto out0;
+
+	} else
+#endif
 	if (zdev->pr_isolation_addr) {
+	/* For PR support platform, device-tree has configured addr */
 		if (axlf_head.m_header.m_mode != XCLBIN_PR &&
 		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
 		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
@@ -697,9 +833,11 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 				goto out0;
 		}
 	} else if (is_aie_only(axlf)) {
-		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
+		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, client);
 		if (ret)
 			goto out0;
+
+		zocl_cache_xclbin(zdev, axlf, xclbin);
 	} else if (axlf_obj->za_flags == DRM_ZOCL_PLATFORM_FLAT &&
 		   axlf_head.m_header.m_mode == XCLBIN_FLAT &&
 		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
@@ -717,8 +855,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	/* zocl_read_sect return size of section when successfully find it */
 	size = zocl_read_sect(IP_LAYOUT, &zdev->ip, axlf, xclbin);
 	if (size <= 0) {
-		if (size != 0)
+		if (size != 0) {
+			ret = size;
 			goto out0;
+		}
 	} else if (sizeof_section(zdev->ip, m_ip_data) != size) {
 		ret = -EINVAL;
 		goto out0;
@@ -727,8 +867,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	/* Populating DEBUG_IP_LAYOUT sections */
 	size = zocl_read_sect(DEBUG_IP_LAYOUT, &zdev->debug_ip, axlf, xclbin);
 	if (size <= 0) {
-		if (size != 0)
+		if (size != 0) {
+			ret = size;
 			goto out0;
+		}
 	} else if (sizeof_section(zdev->debug_ip, m_debug_ip_data) != size) {
 		ret = -EINVAL;
 		goto out0;
@@ -741,6 +883,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	if (zdev->kernels != NULL) {
 		vfree(zdev->kernels);
 		zdev->kernels = NULL;
+		zdev->ksize = 0;
 	}
 
 	if (axlf_obj->za_ksize > 0) {
@@ -758,19 +901,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		zdev->kernels = kernels;
 	}
 
-	if (kds_mode == 1) {
-		subdev_destroy_cu(zdev);
-		ret = zocl_create_cu(zdev);
-		if (ret)
-			goto out0;
-		ret = zocl_kds_update(zdev);
-		if (ret)
-			goto out0;
-	}
-
 	/* Populating AIE_METADATA sections */
 	size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
 	if (size < 0) {
+		ret = size;
 		goto out0;
 	}
 	zdev->aie_data.size = size;
@@ -778,8 +912,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	/* Populating CONNECTIVITY sections */
 	size = zocl_read_sect(CONNECTIVITY, &zdev->connectivity, axlf, xclbin);
 	if (size <= 0) {
-		if (size != 0)
+		if (size != 0) {
+			ret = size;
 			goto out0;
+		}
 	} else if (sizeof_section(zdev->connectivity, m_connection) != size) {
 		ret = -EINVAL;
 		goto out0;
@@ -788,8 +924,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	/* Populating MEM_TOPOLOGY sections */
 	size = zocl_read_sect(MEM_TOPOLOGY, &zdev->topology, axlf, xclbin);
 	if (size <= 0) {
-		if (size != 0)
+		if (size != 0) {
+			ret = size;
 			goto out0;
+		}
 	} else if (sizeof_section(zdev->topology, m_mem_data) != size) {
 		ret = -EINVAL;
 		goto out0;
@@ -799,7 +937,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	zocl_init_mem(zdev, zdev->topology);
 
 	/* Createing AIE Partition */
-	zocl_create_aie(zdev, axlf);
+	zocl_create_aie(zdev, axlf, aie_res);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.
@@ -809,8 +947,21 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 out0:
 	write_unlock(&zdev->attr_rwlock);
-	if (size < 0)
-		ret = size;
+	/* out of the atomic context */ 
+
+	/* Invoking kernel thread (kthread), hence need to call this outside of the atomic context */
+	if (!ret && kds_mode == 1) {
+		subdev_destroy_cu(zdev);
+		ret = zocl_create_cu(zdev);
+		if (ret)
+			goto out1;
+		ret = zocl_kds_update(zdev);
+		if (ret)
+			goto out1;
+	}
+
+out1:
+	vfree(aie_res);
 	vfree(axlf);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
 	return ret;
@@ -940,6 +1091,22 @@ zocl_graph_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 	mutex_unlock(&zdev->zdev_xclbin_lock);
 
 	return ret;
+}
+
+int
+zocl_aie_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	u32 flags = ctx->flags;
+
+	return zocl_aie_alloc_context(zdev, flags, client);
+}
+
+int
+zocl_aie_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client)
+{
+	return zocl_aie_free_context(zdev, client);
 }
 
 /* TODO: remove this once new KDS is ready */

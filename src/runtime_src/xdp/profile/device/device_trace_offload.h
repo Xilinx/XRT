@@ -28,6 +28,7 @@
 #include "core/include/xclperf.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
 
@@ -52,14 +53,15 @@ class DeviceTraceOffload {
 public:
     XDP_EXPORT
     DeviceTraceOffload(DeviceIntf* dInt, DeviceTraceLogger* dTraceLogger,
-                       uint64_t offload_sleep_ms, uint64_t trbuf_sz,
-                       bool start_thread = true, bool e_trace = true);
+                       uint64_t offload_sleep_ms, uint64_t trbuf_sz);
     XDP_EXPORT
     virtual ~DeviceTraceOffload();
     XDP_EXPORT
     void start_offload(OffloadThreadType type);
     XDP_EXPORT
     void stop_offload();
+
+    inline OffloadThreadStatus get_status() { return status ; }
 
 public:
     XDP_EXPORT
@@ -83,7 +85,7 @@ public:
       return dev_intf->hasTs2mm();
     };
     void read_trace() {
-      m_read_trace();
+      m_read_trace(true);
     };
     DeviceTraceLogger* getDeviceTraceLogger() {
       return deviceTraceLogger;
@@ -95,13 +97,13 @@ public:
       return m_use_circ_buf;
     };
     inline bool continuous_offload() { return continuous ; }
+    inline void set_continuous(bool value = true) { continuous = value ; }
 
 private:
     std::mutex status_lock;
     OffloadThreadStatus status = OffloadThreadStatus::IDLE;
     std::thread offload_thread;
     bool continuous = false ;
-    bool enable_trace = true ;
 
     uint64_t sleep_interval_ms;
     uint64_t m_trbuf_alloc_sz;
@@ -110,8 +112,8 @@ protected:
 private:
     DeviceTraceLogger* deviceTraceLogger;
 
-    xclTraceResultsVector m_trace_vector = {};
-    std::function<void()> m_read_trace;
+    std::vector<xclTraceResults> m_trace_vector = {};
+    std::function<void(bool)> m_read_trace;
     size_t m_trbuf = 0;
     uint64_t m_trbuf_sz = 0;
     uint64_t m_trbuf_offset = 0;
@@ -123,8 +125,8 @@ protected:
     bool m_debug = false; /* Enable Output stream for log */
 
 private:
-    void read_trace_fifo();
-    void read_trace_s2mm();
+    void read_trace_fifo(bool force=true);
+    void read_trace_s2mm(bool force=true);
     uint64_t read_trace_s2mm_partial();
     void config_s2mm_reader(uint64_t wordCount);
     bool init_s2mm(bool circ_buf);
@@ -146,6 +148,9 @@ private:
     // 100 mb of trace per second
     uint64_t m_circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
     uint64_t m_circ_buf_cur_rate = 0;
+
+    // Used to check read precondition in ts2mm
+    uint64_t m_wordcount_old = 0;
 };
 
 }

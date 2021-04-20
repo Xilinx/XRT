@@ -40,20 +40,19 @@ class api_call_logger
 {
  private:
   uint64_t m_funcid ;
-  const char* m_name = nullptr ;
-  const char* m_type = nullptr ;
+  const char* m_fullname = nullptr ;
+
  public:
-  api_call_logger(const char* function, const char* type = nullptr) ;
+  api_call_logger(const char* function) ;
   ~api_call_logger() ;
 } ;
 
 template <typename Callable, typename ...Args>
 auto
-profiling_wrapper(const char* function, const char* type,
-                  Callable&& f, Args&&...args)
+profiling_wrapper(const char* function, Callable&& f, Args&&...args)
 {
   if (xrt_core::config::get_native_xrt_trace()) {
-    api_call_logger log_object(function, type) ;
+    api_call_logger log_object(function) ;
     return f(std::forward<Args>(args)...) ;
   }
   return f(std::forward<Args>(args)...) ;

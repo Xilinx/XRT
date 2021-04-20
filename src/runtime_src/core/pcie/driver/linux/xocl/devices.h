@@ -261,7 +261,6 @@ enum {
 #define	XOCL_VERSION_CTRL	"version_control"
 #define	XOCL_MSIX_XDMA		"msix_xdma"
 #define	XOCL_ERT_USER		"ert_user"
-#define	XOCL_ERT_VERSAL		"ert_versal"
 #define	XOCL_M2M		"m2m"
 #define	XOCL_PCIE_FIREWALL	"pcie_firewall"
 
@@ -2637,7 +2636,8 @@ struct xocl_subdev_map {
 		.subdev_info = RES_MGMT_VSEC,                           \
 		.subdev_num  = ARRAY_SIZE(RES_MGMT_VSEC),               \
 		.flash_type  = FLASH_TYPE_SPI,                          \
-		.board_name  = "u26z"                                   \
+		.board_name  = "u26z",                                  \
+		.vbnv = "xilinx_u26z"	                          				\
 	}
 
 #define XOCL_BOARD_U30_USER_RAPTOR2                                     \
@@ -3340,6 +3340,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_6A8F) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0078, PCI_ANY_ID, MGMT_XBB_DSA52) },  \
 	{ XOCL_PCI_DEVID(0x10EE, 0xE987, PCI_ANY_ID, XBB_MFG("samsung")) },\
+	{ XOCL_PCI_DEVID(0x10EE, 0xF987, PCI_ANY_ID, XBB_MFG("samsung_efuse")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD000, PCI_ANY_ID, XBB_MFG("u200")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD004, PCI_ANY_ID, XBB_MFG("u250")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD008, PCI_ANY_ID, XBB_MFG("u280-es1")) }, \

@@ -501,7 +501,7 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Read all values from APM trace AXI stream FIFOs
-  size_t DeviceIntf::readTrace(xclTraceResultsVector& traceVector)
+  size_t DeviceIntf::readTrace(std::vector<xclTraceResults>& traceVector)
   {
     if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id()
@@ -509,7 +509,6 @@ DeviceIntf::~DeviceIntf()
                 << ", Reading device trace stream..." << std::endl;
     }
 
-    traceVector.mLength = 0;
     if (!mIsDeviceProfiling || !mFifoRead)
    	  return 0;
 
@@ -875,8 +874,10 @@ DeviceIntf::~DeviceIntf()
   size_t DeviceIntf::allocTraceBuf(uint64_t sz ,uint8_t memIdx)
   {
     auto bufHandle = mDevice->alloc(sz, memIdx);
+    if (bufHandle) {
     // Can't read a buffer xrt hasn't written to
-    mDevice->sync(bufHandle, sz, 0, xdp::Device::direction::HOST2DEVICE);
+      mDevice->sync(bufHandle, sz, 0, xdp::Device::direction::HOST2DEVICE);
+    }
     return bufHandle;
   }
 
@@ -939,7 +940,7 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Parse trace buffer data after reading from FIFO or DDR
-  void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector)
+  void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, std::vector<xclTraceResults>& traceVector)
   {
     if(mPlTraceDma) {
       mPlTraceDma->parseTraceBuf(traceData, bytes, traceVector);

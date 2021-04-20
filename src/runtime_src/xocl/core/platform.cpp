@@ -19,7 +19,7 @@
 #include "debug.h"
 
 #include "xocl/xclbin/xclbin.h"
-#include "xrt/scheduler/scheduler.h"
+#include "core/common/api/exec.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
@@ -111,13 +111,6 @@ platform()
       dev->release();
     }
   }
-
-  try {
-    xrt_xocl::scheduler::start();
-  }
-  catch(const std::exception&) {
-    throw error(CL_OUT_OF_HOST_MEMORY,"failed to allocate platform event_scheduler");
-  }
 }
 
 platform::
@@ -125,7 +118,10 @@ platform::
 {
   XOCL_DEBUG(std::cout,"xocl::platform::~platform(",m_uid,")\n");
   try {
-    xrt_xocl::scheduler::stop();
+    // static global destruction
+    // synchronize with execution monitor thread which
+    // may be in the process of notifying completed events
+    xrt_core::exec::stop();
     g_platform = nullptr;
   }
   catch (const std::exception& ex) {

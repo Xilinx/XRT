@@ -22,7 +22,6 @@
 
 #include "xocl/api/plugin/xdp/debug.h"
 #include "xocl/xclbin/xclbin.h"
-#include "xrt/scheduler/scheduler.h"
 #include "xrt/util/config_reader.h"
 
 #include "core/common/api/bo.h"
@@ -180,17 +179,6 @@ is_emulation_mode()
 {
   static bool val = is_sw_emulation() || is_hw_emulation();
   return val;
-}
-
-static void
-init_scheduler(xocl::device* device)
-{
-  auto program = device->get_program();
-
-  if (!program)
-    throw xocl::error(CL_INVALID_PROGRAM,"Cannot initialize MBS before program is loadded");
-
-  xrt_xocl::scheduler::init(device->get_xdevice());
 }
 
 }
@@ -1006,8 +994,6 @@ load_program(program* program)
 
   // In order to use virtual CUs (KDMA) we must open a virtual context
   m_xdevice->acquire_cu_context(-1,true);
-
-  init_scheduler(this);
 }
 
 void

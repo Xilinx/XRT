@@ -156,9 +156,8 @@ searchSSV2Xclbin(const std::string& logic_uuid,
 		  ++iter;
     }
   }
-  logger(_ptTest, "Error", boost::str(boost::format("Failed to find xclbin in %s") % fw_dir));
-  logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-  _ptTest.put("status", "failed");
+  logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation") % xclbin));
+  _ptTest.put("status", "skipped");
   return "";
 }
 
@@ -189,6 +188,14 @@ searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std
 {
   const std::string dsapath("/opt/xilinx/dsa/");
   const std::string xsapath(getXsaPath(vendor));
+
+  if(!boost::filesystem::is_directory(dsapath) || !boost::filesystem::is_directory(xsapath)) {
+    logger(_ptTest, "Error", boost::str(boost::format("Failed to find '%s' or '%s'") % dsapath % xsapath));
+    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+    _ptTest.put("status", "failed");
+    return "";
+  }
+
   //create possible xclbin paths
   std::string xsaXclbinPath = xsapath + dev_name + "/test/" + xclbin;
   std::string dsaXclbinPath = dsapath + dev_name + "/test/" + xclbin;
@@ -201,10 +208,8 @@ searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std
     return dsaXclbinPath;
   }
 
-  logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s or %s") % xsaXclbinPath % dsaXclbinPath));
-  logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-
-  _ptTest.put("status", "failed");
+  logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation") % xclbin));
+  _ptTest.put("status", "skipped");
   return "";
 }
 
@@ -248,7 +253,6 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.  
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
   if(!logic_uuid.empty() && !boost::filesystem::exists(xclbinPath)) {
-    //if bandwidth xclbin isn't present, skip the test
     logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
     _ptTest.put("status", "skipped");
     return;
@@ -257,8 +261,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   //check if xclbin is present
   if(xclbinPath.empty()) {
     if(xclbin.compare("bandwidth.xclbin") == 0) {
-      //if bandwidth xclbin isn't present, skip the test
-      logger(_ptTest, "Details", "Bandwidth xclbin not available. Skipping validation.");
+      //if an xclbin isn't present, skip the test
       _ptTest.put("status", "skipped");
     }
     return;
@@ -367,7 +370,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
   if (py.compare("xcl_iops_test.exe") == 0) {
     auto st = os_stdout.str().find("IOPS:");
     if (st != std::string::npos) {
-      logger(_ptTest, "Details", os_stdout.str().substr(st));
+      size_t end = os_stdout.str().find("\n", st);
+      logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
     }
   }
 }
@@ -657,6 +661,7 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
   std::memset(ecmd, 0, bo_size);
   ecmd->opcode = opcode;
   ecmd->type = ERT_CTRL;
+  ecmd->count = 5;
 
   if (xclExecBuf(handle,boh)) {
       logger(_ptTest, "Error", "Couldn't map BO");
@@ -1045,9 +1050,9 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
   if (!ert_validate(_dev, _dev->get_device_handle(), _ptTest))
     _ptTest.put("status", "failed");
 
+  runTestCase(_dev, "xcl_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
 
   _ptTest.put("status", "passed");
-
 }
 
 /*
@@ -1099,9 +1104,9 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
   { create_init_test("Peer to peer bar", "Run P2P test", "bandwidth.xclbin"), p2pTest },
   { create_init_test("Memory to memory DMA", "Run M2M test", "bandwidth.xclbin"), m2mTest },
-  { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
+  { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
-  { create_init_test("vcu", "Run decoder test", "verify.xclbin"), vcuKernelTest }
+  { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest }
 };
 
 /*
@@ -1111,9 +1116,18 @@ static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int test_idx,
                        size_t testSuiteSize, std::ostream & _ostream, const std::string& bdf)
 {
-  std::string test_desc = boost::str(boost::format("%d/%d Test #%d [%s]") % test_idx % testSuiteSize % test_idx % bdf);
-  _ostream << boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name");
-  _ostream << boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description");
+  if(test.get<std::string>("status", "").compare("skipped") != 0) {
+    std::string test_desc = boost::str(boost::format("Test %d/%d [%s]") % test_idx % testSuiteSize % bdf);
+    _ostream << boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name");
+    if(XBU::getVerbose())
+      XBU::message(boost::str(boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
+  }
+  else if(XBU::getVerbose()) {
+    std::string test_desc = boost::str(boost::format("Test %d/%d [%s]") % test_idx % testSuiteSize % bdf);
+    XBU::message(boost::str(boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name")));
+    XBU::message(boost::str(boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
+  }
+    
 }
 
 /*
@@ -1125,20 +1139,33 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
 {
   std::string _status = test.get<std::string>("status");
   std::string prev_tag = "";
-  auto color = EscapeCodes::FGC_PASS;
   bool warn = false;
   bool error = false;
+
+  // if supported and details/error/warning: ostr
+  // if supported and xclbin/testcase: verbose
+  // if not supported: verbose
+  auto redirect_log = [&](std::string tag, std::string log_str) {
+    std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
+    if(boost::iequals(_status, "skipped") || std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end()) {
+      if(XBU::getVerbose())
+        XBU::message(log_str, false, _ostream);
+      else
+        return;
+    }
+    else
+      _ostream << log_str;
+  };
 
   try {
     for (const auto& dict : test.get_child("log")) {
       for (const auto& kv : dict.second) {
         if (kv.first.compare(prev_tag)) {
           prev_tag = kv.first;
-          _ostream<< boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>();
+          redirect_log(kv.first, boost::str(boost::format("    %-24s: %s\n") % kv.first % kv.second.get_value<std::string>()));
         }
         else
-          _ostream<< boost::format("    %-24s  %s\n") % "\0" % kv.second.get_value<std::string>();
-
+          redirect_log(kv.first, boost::str(boost::format("    %-24s  %s\n") % "\0" % kv.second.get_value<std::string>()));
         if (boost::iequals(kv.first, "warning"))
           warn = true;
         else if (boost::iequals(kv.first, "error"))
@@ -1149,19 +1176,16 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   catch(...) {}
 
   if(error) {
-    color = EscapeCodes::FGC_FAIL;
     status = test_status::failed;
   }
   else if(warn) {
     _status.append(" with warnings");
-    color = EscapeCodes::FGC_WARN;
     status = test_status::warning;
   }
 
   boost::to_upper(_status);
-  _ostream << boost::format("    %-24s:") % "Test Status" << EscapeCodes::fgcolor(color).string() << boost::format(" [%s]\n") % _status
-            << EscapeCodes::fgcolor::reset();
-  _ostream << "-------------------------------------------------------------------------------" << std::endl;
+  redirect_log("", boost::str(boost::format("    %-24s: [%s]\n") % "Test Status" % _status));
+  redirect_log("", "-------------------------------------------------------------------------------\n");
 }
 
 /*
@@ -1196,7 +1220,8 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::proper
     _ostream << boost::format("Validate device[%s]\n") % _ptTree.get<std::string>("device_id");
     _ostream << boost::format("%-20s: %s\n") % "Platform" % _ptTree.get<std::string>("platform");
     _ostream << boost::format("%-20s: %s\n") % "SC Version" % _ptTree.get<std::string>("sc_version");
-    _ostream << boost::format("%-20s: %s\n\n") % "Platform ID" % _ptTree.get<std::string>("platform_id");
+    _ostream << boost::format("%-20s: %s\n") % "Platform ID" % _ptTree.get<std::string>("platform_id");
+    _ostream << "-------------------------------------------------------------------------------\n";
   }
 }
 
@@ -1220,16 +1245,29 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device,
   for (TestCollection * testPtr : testObjectsToRun) {
     boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
 
+    // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
+    // we need to print the test description before running the test
+    auto is_black_box_test = [ptTest]() {
+      std::vector<std::string> black_box_tests = {"Verify kernel", "Bandwidth kernel", "iops", "vcu"};
+      auto test = ptTest.get<std::string>("name");
+      return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
+    };
     if(schemaVersion == Report::SchemaVersion::text) {
       auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-      pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
+      if(is_black_box_test())
+        pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
     }
 
     testPtr->testHandle(device, ptTest);
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
-    if(schemaVersion == Report::SchemaVersion::text)
+    if(schemaVersion == Report::SchemaVersion::text) {
+      auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+      if(!is_black_box_test()) 
+        pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
       pretty_print_test_run(ptTest, status, _ostream);
+    }
+      
 
     // If a test fails, exit immediately
     if(status == test_status::failed) {
@@ -1278,7 +1316,7 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
     : SubCmd("validate",
              "Validates the basic shell acceleration functionality")
 {
-  const std::string longDescription = "Validates the given card by executing the platform's validate executable.";
+  const std::string longDescription = "Validates the given device by executing the platform's validate executable.";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);

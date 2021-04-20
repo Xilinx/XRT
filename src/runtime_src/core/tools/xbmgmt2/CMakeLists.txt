@@ -17,9 +17,8 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "SubCmdReset.cpp"
   "SubCmdExamine.cpp"
   "SubCmdAdvanced.cpp"
-  "OO_Clock.cpp"
-  "OO_Config.cpp"
-  "OO_NIFD.cpp"
+  "SubCmdDump.cpp"
+  "OO_*.cpp"
   "Report*.cpp"
   "flash/*.cpp"
 )
@@ -40,35 +39,39 @@ add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
 
 # Determine what functionality should be added
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  target_compile_definitions(${XBMGMT2_NAME}
-    PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
+  target_compile_definitions(${XBMGMT2_NAME} PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
 endif()
 
 # Static build is a Linux / Ubuntu option only
 if (XRT_STATIC_BUILD)
-  target_link_options(${XBMGMT2_NAME} PRIVATE "-static")
+  add_executable(${XBMGMT2_NAME}_static ${XBMGMT_V2_SRCS})
+  target_link_options(${XBMGMT2_NAME}_static PRIVATE "-static" "-L${Boost_LIBRARY_DIRS}")
+  target_compile_definitions(${XBMGMT2_NAME}_static PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
   # Bypass FindBoost versions and just link explicitly with boost libraries
   # The -static link option will pick the static libraries. 
-  target_link_libraries(${XBMGMT2_NAME}
+  target_link_libraries(${XBMGMT2_NAME}_static
     PRIVATE
     xrt_core_static
     xrt_coreutil_static
     boost_system
     boost_filesystem
     boost_program_options
-    -Wl,--whole-archive -lrt -lpthread -Wl,--no-whole-archive
+    -Wl,--whole-archive rt pthread -Wl,--no-whole-archive
+    uuid
+    dl
   )
-  set_target_properties(${XBMGMT2_NAME} PROPERTIES INSTALL_RPATH "")
-else()
-  target_link_libraries(${XBMGMT2_NAME}
-    PRIVATE
-    xrt_core
-    xrt_coreutil
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_PROGRAM_OPTIONS_LIBRARY}
-  )
+  set_target_properties(${XBMGMT2_NAME}_static PROPERTIES INSTALL_RPATH "")
+  install(TARGETS ${XBMGMT2_NAME}_static RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 endif()
+
+target_link_libraries(${XBMGMT2_NAME}
+  PRIVATE
+  xrt_core
+  xrt_coreutil
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
+  ${Boost_PROGRAM_OPTIONS_LIBRARY}
+  )
   
 # Add the supporting libraries
 if(WIN32)

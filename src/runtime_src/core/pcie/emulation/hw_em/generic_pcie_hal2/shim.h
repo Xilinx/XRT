@@ -276,7 +276,8 @@ using addr_type = uint64_t;
       void writeStringIntoFile(const std::string& path, const std::string& content);
       std::string modifyContent(const std::string& simulatorName, std::string& content);
       void writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName);
-      void constructQueryTable();     
+      void constructQueryTable();
+      void parseHLSPrintf(const std::string& simPath);	  
       void parseSimulateLog();
       void setSimPath(std::string simPath) { sim_path = simPath; }
       std::string getSimPath () { return sim_path; }

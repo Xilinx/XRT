@@ -1,0 +1,18 @@
+{
+	"version": {
+		"major": 1,
+		"minor": 0,
+		"patch": 0
+	},
+	"smartnic": {
+		"schema_version": {
+			"major": 1,
+			"minor": 0,
+			"patch": 0
+		},
+		"softhubs": [{
+			"version": 1,
+			"id": 1
+		}]
+	}
+}

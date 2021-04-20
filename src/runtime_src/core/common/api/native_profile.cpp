@@ -20,21 +20,7 @@
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 #include "core/common/dlfcn.h"
-
-// Anonymous namespace for helper functions
-namespace {
-
-static std::string full_name(const char* type, const char* function)
-{
-  if (type == nullptr) return function ;
-  
-  std::string combined = type ;
-  combined += "::" ;
-  combined += function ;
-  return combined ;
-}
-
-} // end anonymous namespace
+#include "core/common/time.h"
 
 namespace xdp {
 namespace native {
@@ -48,7 +34,7 @@ bool load()
 }
 
 std::function<void (const char*, unsigned long long int)> function_start_cb ;
-std::function<void (const char*, unsigned long long int)> function_end_cb ;
+std::function<void (const char*, unsigned long long int, unsigned long long int)> function_end_cb ;
   
 void register_functions(void* handle)
 {
@@ -58,7 +44,8 @@ void register_functions(void* handle)
   if (xrt_core::dlerror() != nullptr)
     function_start_cb = nullptr ;
 
-  function_end_cb = (ftype)(xrt_core::dlsym(handle, "native_function_end")) ;
+  typedef void (*etype)(const char*, unsigned long long int, unsigned long long int);
+  function_end_cb = (etype)(xrt_core::dlsym(handle, "native_function_end")) ;
   if (xrt_core::dlerror() != nullptr)
     function_end_cb = nullptr ;
 }
@@ -67,8 +54,8 @@ void warning_function()
 {}
 
 api_call_logger::
-api_call_logger(const char* function, const char* type)
-  : m_funcid(0), m_name(function), m_type(type)
+api_call_logger(const char* function)
+  : m_funcid(0), m_fullname(function)
 {
   // Since all api_call_logger objects exist inside the profiling_wrapper
   // we don't need to check the config reader here (it's done already)
@@ -76,21 +63,18 @@ api_call_logger(const char* function, const char* type)
 
   if (function_start_cb && s_load_native) {
     m_funcid = xrt_core::utils::issue_id() ;
-    if (m_type != nullptr)
-      function_start_cb(full_name(m_type, m_name).c_str(), m_funcid) ;
-    else
-      function_start_cb(m_name, m_funcid) ;
+    function_start_cb(m_fullname, m_funcid) ;
   }
 }
 
 api_call_logger::
 ~api_call_logger()
 {
+  unsigned long long int timestamp =
+    static_cast<unsigned long long int>(xrt_core::time_ns());
+
   if (function_end_cb) {
-    if (m_type != nullptr)
-      function_end_cb(full_name(m_type, m_name).c_str(), m_funcid) ;
-    else
-      function_end_cb(m_name, m_funcid) ;
+    function_end_cb(m_fullname, m_funcid, timestamp) ;
   }
 }
 

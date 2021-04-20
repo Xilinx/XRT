@@ -31,28 +31,55 @@ mtx.unlock();
     func_name##_response r_msg; \
     AQUIRE_MUTEX()
 
-#define SERIALIZE_AND_SEND_MSG(func_name)\
-     unsigned c_len = c_msg.ByteSize(); \
-    buf_size = alloc_void(c_len); \
-    bool rv = c_msg.SerializeToArray(buf,c_len); \
+#if GOOGLE_PROTOBUF_VERSION < 3006001
+// Use the deprecated 32 bit version of the size
+#define SERIALIZE_AND_SEND_MSG(func_name)                               \
+    auto c_len = c_msg.ByteSize();                                      \
+    buf_size = alloc_void(c_len);                                       \
+    bool rv = c_msg.SerializeToArray(buf,c_len);                        \
     if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
-    \
-    ci_msg.set_size(c_len); \
-    ci_msg.set_xcl_api(func_name##_n); \
-    unsigned ci_len = ci_msg.ByteSize(); \
-    rv = ci_msg.SerializeToArray(ci_buf,ci_len); \
+                                                                        \
+    ci_msg.set_size(c_len);                                             \
+    ci_msg.set_xcl_api(func_name##_n);                                  \
+    auto ci_len = ci_msg.ByteSize();                                    \
+    rv = ci_msg.SerializeToArray(ci_buf,ci_len);                        \
     if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
-    \
-    _s_inst->sk_write(ci_buf,ci_len); \
-    _s_inst->sk_write(buf,c_len); \
-    \
-    _s_inst->sk_read(ri_buf,ri_msg.ByteSize()); \
-    rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSize()); \
-    assert(true == rv);\
-    buf_size = alloc_void(ri_msg.size()); \
-    _s_inst->sk_read(buf,ri_msg.size()); \
-    rv = r_msg.ParseFromArray(buf,ri_msg.size()); \
-    assert(true == rv);\
+                                                                        \
+    _s_inst->sk_write(ci_buf,ci_len);                                   \
+    _s_inst->sk_write(buf,c_len);                                       \
+                                                                        \
+    _s_inst->sk_read(ri_buf,ri_msg.ByteSize());                         \
+    rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSize());               \
+    assert(true == rv);                                                 \
+    buf_size = alloc_void(ri_msg.size());                               \
+    _s_inst->sk_read(buf,ri_msg.size());                                \
+    rv = r_msg.ParseFromArray(buf,ri_msg.size());                       \
+    assert(true == rv);
+#else
+// More recent protoc handles 64 bit size objects and the 32 bit version is deprecated
+#define SERIALIZE_AND_SEND_MSG(func_name)                               \
+    auto c_len = c_msg.ByteSizeLong();                                  \
+    buf_size = alloc_void(c_len);                                       \
+    bool rv = c_msg.SerializeToArray(buf,c_len);                        \
+    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+                                                                        \
+    ci_msg.set_size(c_len);                                             \
+    ci_msg.set_xcl_api(func_name##_n);                                  \
+    auto ci_len = ci_msg.ByteSizeLong();                                \
+    rv = ci_msg.SerializeToArray(ci_buf,ci_len);                        \
+    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+                                                                        \
+    _s_inst->sk_write(ci_buf,ci_len);                                   \
+    _s_inst->sk_write(buf,c_len);                                       \
+                                                                        \
+    _s_inst->sk_read(ri_buf,ri_msg.ByteSizeLong());                     \
+    rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSizeLong());           \
+    assert(true == rv);                                                 \
+    buf_size = alloc_void(ri_msg.size());                               \
+    _s_inst->sk_read(buf,ri_msg.size());                                \
+    rv = r_msg.ParseFromArray(buf,ri_msg.size());                       \
+    assert(true == rv);
+#endif
 
 //RELEASE BUFFER MEMORIES
 #define FREE_BUFFERS() \
@@ -848,3 +875,68 @@ mtx.unlock();
     xclGraphReadRTP_SET_PROTO_RESPONSE(buffer); \
     FREE_BUFFERS(); \
     xclGraphReadRTP_RETURN();
+
+//-----------xclSyncBOAIENB-----------------
+#define xclSyncBOAIENB_SET_PROTOMESSAGE(func_name,gmioname,dir,size,offset,boh) \
+    c_msg.set_gmioname((char*)gmioname); \
+    c_msg.set_dir(dir); \
+    c_msg.set_size(size); \
+    c_msg.set_offset(offset); \
+    c_msg.set_boh(boh);
+
+#define xclSyncBOAIENB_SET_PROTO_RESPONSE() \
+     ack = r_msg.ack(); 
+
+
+#define xclSyncBOAIENB_RETURN() \
+   // return ret;
+
+#define xclSyncBOAIENB_RPC_CALL(func_name,gmioname,dir,size,offset,boh) \
+    RPC_PROLOGUE(func_name); \
+    xclSyncBOAIENB_SET_PROTOMESSAGE(func_name,gmioname,dir,size,offset,boh); \
+    SERIALIZE_AND_SEND_MSG(func_name); \
+    xclSyncBOAIENB_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclSyncBOAIENB_RETURN();
+
+//-----------xclGMIOWait-----------------
+#define xclGMIOWait_SET_PROTOMESSAGE(func_name,gmioname) \
+    c_msg.set_gmioname((char*)gmioname);
+
+#define xclGMIOWait_SET_PROTO_RESPONSE() \
+    ack = r_msg.ack();  
+
+#define xclGMIOWait_RETURN()\
+    //return size;
+
+#define xclGMIOWait_RPC_CALL(func_name,gmioname) \
+    RPC_PROLOGUE(func_name); \
+    xclGMIOWait_SET_PROTOMESSAGE(func_name,gmioname); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclGMIOWait_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclGMIOWait_RETURN();
+
+//-----------xclLoadXclbinContent-----------------
+#define xclLoadXclbinContent_SET_PROTOMESSAGE(func_name,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize,keepdir) \
+    c_msg.set_xmlbuff((char*)xmlbuff,xmlbuffsize); \
+    c_msg.set_xmlbuffsize(xmlbuffsize); \
+    c_msg.set_sharedbin((char*)sharedbin,sharedbinsize); \
+    c_msg.set_sharedbinsize(sharedbinsize); \
+    c_msg.set_emuldata((char*)emuldata,emuldatasize); \
+    c_msg.set_emuldatasize(emuldatasize); \
+    c_msg.set_keepdir(keepdir);
+
+#define xclLoadXclbinContent_SET_PROTO_RESPONSE() \
+    ack = r_msg.ack();  
+
+#define xclLoadXclbinContent_RETURN()\
+    //return size;
+
+#define xclLoadXclbinContent_RPC_CALL(func_name,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize,keepdir) \
+    RPC_PROLOGUE(func_name); \
+    xclLoadXclbinContent_SET_PROTOMESSAGE(func_name,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize,keepdir); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclLoadXclbinContent_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclLoadXclbinContent_RETURN();

@@ -262,17 +262,6 @@ XQSPIPS_Flasher::XQSPIPS_Flasher(std::shared_ptr<xrt_core::device> dev)
     }
 
     mBusWidth = 2;
-    if (typeStr.find("x2") != std::string::npos) {
-        int value;
-        // This is a special register in the U30 shell.
-        // Because U30 supports x2 and x4 buswidth. Default: x2.
-        // SC could configure it. U30 firmware would set this register.
-        // TODO: Find a better solution if need.
-        mDev->read(0x11000C, &value, 4);
-        mBusWidth = (value >> 16) & 0x7;
-        if (mBusWidth != 4)
-            mBusWidth = 2;
-    }
 }
 
 /**
@@ -382,7 +371,152 @@ bool XQSPIPS_Flasher::waitTxEmpty()
     return false;
 }
 
-int XQSPIPS_Flasher::revertToMFG(void)
+void XQSPIPS_Flasher::program(std::istream& binStream, unsigned base)
+{
+    binStream.seekg(0, binStream.end);
+    const unsigned int total_size = static_cast<int>(binStream.tellg());
+    binStream.seekg(0, binStream.beg);
+
+    const unsigned int pages = total_size / PAGE_SIZE;
+    const unsigned int remain = total_size % PAGE_SIZE;
+    unsigned int addr = 0;
+    unsigned int size = 0;
+
+#if defined(_DEBUG)
+    std::cout << "Verify earse flash" << std::endl;
+    int mismatched = 0;
+    for (unsigned int page = 0; page <= pages; page++) {
+        addr = page * PAGE_SIZE;
+        size = page != pages ? PAGE_SIZE : remain;
+
+        readFlash(base + addr, size);
+        for (unsigned int i = 0; i < size; i++) {
+            if (0xFF != mReadBuffer[i]) {
+                mismatched = 1;
+            }
+        }
+
+        if (mismatched) {
+            std::cout << "Erase failed at page " << page << std::endl;
+            mismatched = 0;
+        }
+
+    }
+#endif
+
+    int beatCount = 0;
+    XBU::ProgressBar program_flash("Programming flash", static_cast<unsigned int>(pages), XBU::is_esc_enabled(), std::cout);
+    for (unsigned int page = 0; page <= pages; page++) {
+        program_flash.update(beatCount++);
+
+        addr = page * PAGE_SIZE;
+        size = page != pages ? PAGE_SIZE : remain;
+
+        binStream.read((char *)mWriteBuffer, size);
+        writeFlash(base + addr, size);
+    }
+    program_flash.finish(true, "Flash programmed");
+}
+
+int XQSPIPS_Flasher::verify(std::istream& binStream, unsigned base)
+{
+    binStream.seekg(0, binStream.end);
+    const unsigned int total_size = static_cast<int>(binStream.tellg());
+    binStream.seekg(0, binStream.beg);
+
+#if SAVE_FILE
+    std::ofstream of_flash;
+    of_flash.open("/tmp/BOOT.BIN", std::ofstream::out);
+    if (!of_flash.is_open()) {
+        std::cout << "Could not open /tmp/BOOT.BIN" << std::endl;
+        return false;
+    }
+#endif
+
+    const unsigned int remain = total_size % PAGE_SIZE;
+    const unsigned int pages = total_size / PAGE_SIZE;
+
+    int mismatched = 0;
+    bool verified = true;
+    int beatCount = 0;
+    XBU::ProgressBar verify_flash("Verifying flash", static_cast<unsigned int>(pages), XBU::is_esc_enabled(), std::cout);
+    for (unsigned int page = 0; page <= pages; page++) {
+        verify_flash.update(beatCount++);
+
+        unsigned int addr = page * PAGE_SIZE;
+        unsigned int size = page != pages ? PAGE_SIZE : remain;
+
+        binStream.read((char *)mWriteBuffer, size);
+
+        readFlash(base + addr, size);
+
+        mismatched = 0;
+        for (unsigned int i = 0; i < size; i++) {
+#if SAVE_FILE
+            of_flash << mReadBuffer[i];
+#endif
+            if (mWriteBuffer[i] != mReadBuffer[i]) {
+                mismatched = 1;
+                break;
+            }
+        }
+        if (mismatched) {
+            verified = false;
+            break;
+        }
+    }
+    verify_flash.finish(verified, "Flash verified");
+
+#if SAVE_FILE
+    of_flash.close();
+#endif
+
+    return mismatched;
+}
+
+unsigned int XQSPIPS_Flasher::getFlashSize()
+{
+    return 0x8000000; //hard-code as 128MB so far
+}
+
+void XQSPIPS_Flasher::readBack(const std::string& output, unsigned int base)
+{
+    std::ofstream of_flash;
+    of_flash.open(output, std::ofstream::out);
+    if (!of_flash.is_open()) {
+        std::cout << "[ERROR]: Could not open " << output << std::endl;
+        return;
+    }
+
+    const unsigned int total_size = getFlashSize();
+    std::cout << "Output file: " << output << std::endl;
+    std::cout << "Flash size: " << total_size << std::endl;
+
+    /*
+     * Flash is read/write no larger than PAGE_SIZE
+     */
+    const unsigned int remain = total_size % PAGE_SIZE;
+    const unsigned int pages = total_size / PAGE_SIZE;
+
+    int beatCount = 0;
+    XBU::ProgressBar read_flash("Reading flash back", static_cast<unsigned int>(pages), XBU::is_esc_enabled(), std::cout);
+    for (unsigned int page = 0; page <= pages; page++) {
+        read_flash.update(beatCount++);
+
+        unsigned int addr = page * PAGE_SIZE;
+        unsigned int size = page != pages ? PAGE_SIZE : remain;
+
+        readFlash(base + addr, size);
+
+        for (unsigned int i = 0; i < size; i++)
+            of_flash << mReadBuffer[i];
+    }
+    read_flash.finish(true, "Flash read back");
+
+    of_flash.close();
+}
+
+int XQSPIPS_Flasher::revertToMFG(std::istream& binStream)
 {
     initQSpiPS();
 
@@ -405,6 +539,11 @@ int XQSPIPS_Flasher::revertToMFG(void)
     /* Use 4 bytes address mode */
     enterOrExitFourBytesMode(ENTER_4B);
 
+    if (verify(binStream, GOLDEN_BASE)) {
+	    std::cout << "[ERROR]: Factory reset not supported. No Golden image found on flash." << std::endl;
+	    return -ECANCELED;
+    }
+
     // Sectoer size is defined by SECTOR_SIZE
     eraseSector(0, GOLDEN_BASE);
     
@@ -413,13 +552,7 @@ int XQSPIPS_Flasher::revertToMFG(void)
 
 int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
 {
-    int total_size = 0;
-    int remain = 0;
-    int pages = 0;
-    unsigned addr = 0;
-    unsigned size = 0;
-    int beatCount = 0;
-    int mismatched = 0;
+    unsigned int total_size = 0;
 
     binStream.seekg(0, binStream.end);
     total_size = static_cast<int>(binStream.tellg());
@@ -461,98 +594,8 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
     eraseSector(0, GOLDEN_BASE);
     //eraseBulk();
 
-    pages = total_size / PAGE_SIZE;
-    remain = total_size % PAGE_SIZE;
-
-#if defined(_DEBUG)
-    std::cout << "Verify earse flash" << std::endl;
-    for (int page = 0; page <= pages; page++) {
-        addr = page * PAGE_SIZE;
-        if (page != pages)
-            size = PAGE_SIZE;
-        else
-            size = remain;
-
-        readFlash(addr, size);
-        for (unsigned i = 0; i < size; i++) {
-            if (0xFF != mReadBuffer[i]) {
-                mismatched = 1;
-            }
-        }
-
-        if (mismatched) {
-            std::cout << "Erase failed at page " << page << std::endl;
-            mismatched = 0;
-        }
-
-    }
-#endif
-
-    beatCount = 0;
-    XBU::ProgressBar program_flash("Programming flash", static_cast<unsigned int>(pages), XBU::is_esc_enabled(), std::cout);
-    for (int page = 0; page <= pages; page++) {
-        program_flash.update(beatCount++);
-        // if (beatCount % 4000 == 0) {
-        //     std::cout << "." << std::flush;
-        // }
-
-        addr = page * PAGE_SIZE;
-        if (page != pages)
-            size = PAGE_SIZE;
-        else
-            size = remain;
-
-        binStream.read((char *)mWriteBuffer, size);
-        writeFlash(addr, size);
-    }
-    program_flash.finish(true, "Flash programmed");
-
-    /* Verify (just for debug) */
-    binStream.seekg(0, binStream.beg);
-
-#if SAVE_FILE
-    std::ofstream of_flash;
-    of_flash.open("/tmp/BOOT.BIN", std::ofstream::out);
-    if (!of_flash.is_open()) {
-        std::cout << "Could not open /tmp/BOOT.BIN" << std::endl;
-        return false;
-    }
-#endif
-
-    remain = total_size % PAGE_SIZE;
-    pages = total_size / PAGE_SIZE;
-
-    beatCount = 0;
-    XBU::ProgressBar verify_flash("Verifying flash", static_cast<unsigned int>(pages), XBU::is_esc_enabled(), std::cout);
-    for (int page = 0; page <= pages; page++) {
-        verify_flash.update(beatCount++);
-
-        addr = page * PAGE_SIZE;
-        if (page != pages)
-            size = PAGE_SIZE;
-        else
-            size = remain;
-
-        binStream.read((char *)mWriteBuffer, size);
-
-        readFlash(addr, size);
-
-        mismatched = 0;
-        for (unsigned i = 0; i < size; i++) {
-#if SAVE_FILE
-            of_flash << mReadBuffer[i];
-#endif
-            if (mWriteBuffer[i] != mReadBuffer[i])
-                mismatched = 1;
-        }
-        if (mismatched)
-            verify_flash.finish(false, boost::str(boost::format("Mismatch found at %d page\n") % page));
-    }
-    verify_flash.finish(true, "Flash verified");
-
-#if SAVE_FILE
-    of_flash.close();
-#endif
+    program(binStream);
+    verify(binStream);
 
     enterOrExitFourBytesMode(EXIT_4B);
 
@@ -1424,14 +1467,14 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int)
     enterOrExitFourBytesMode(ENTER_4B);
 
     std::cout << ">>> Testing simple read and write <<<" << std::endl;
-    unsigned addr = 0;
-    unsigned size = 0;
+    unsigned int addr = 0;
+    unsigned int size = 0;
     // Write/Read 16K + 100 bytes
     //int total_size = 16 * 1024 + 100;
-    int total_size = 300;
+    unsigned int total_size = 300;
 
-    int remain = total_size % PAGE_SIZE;
-    int pages = total_size / PAGE_SIZE;
+    unsigned int remain = total_size % PAGE_SIZE;
+    unsigned int pages = total_size / PAGE_SIZE;
 
     std::cout << "Write " << total_size << " bytes" << std::endl;
 
@@ -1439,12 +1482,9 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int)
     //eraseBulk();
 
     std::cout << ">>>>>> Write " << std::endl;
-    for (int page = 0; page <= pages; page++) {
+    for (unsigned int page = 0; page <= pages; page++) {
         addr = page * PAGE_SIZE;
-        if (page != pages)
-            size = PAGE_SIZE;
-        else
-            size = remain;
+	size = page != pages ? PAGE_SIZE : remain;
 
         for (unsigned i = 0; i < size; i++) {
             mWriteBuffer[i] = (uint8_t)i;
@@ -1453,16 +1493,10 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int)
         writeFlash(addr, size);
     }
 
-    remain = total_size % 256;
-    pages = total_size / 256;
-
     std::cout << ">>>>>> Verify data" << std::endl;
-    for (int page = 0; page <= pages; page++) {
-        addr = page * 256;
-        if (page != pages)
-            size = 256;
-        else
-            size = remain;
+    for (unsigned int page = 0; page <= pages; page++) {
+        addr = page * PAGE_SIZE;
+	size = page != pages ? PAGE_SIZE : remain;
 
         readFlash(addr, size);
 

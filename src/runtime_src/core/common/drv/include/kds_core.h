@@ -75,6 +75,7 @@ struct kds_cu_mgmt {
 	u32			  cu_intr[MAX_CUS];
 	u32			  cu_refs[MAX_CUS];
 	struct cu_stats __percpu *cu_stats;
+	int			  rw_shared;
 };
 
 #define cu_stat_read(cu_mgmt, field) \
@@ -96,7 +97,9 @@ struct kds_ert {
 	bool (* abort_done)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
 };
 
-struct plram_info {
+/* Fast adapter memory info */
+#define FA_MEM_MAX_SIZE 128 * 1024
+struct cmdmem_info {
 	/* This is use for free bo, do not use it in shared code */
 	void		       *bo;
 	u64			bar_paddr;
@@ -130,7 +133,7 @@ struct kds_sched {
 	bool			ert_disable;
 	u32			cu_intr_cap;
 	u32			cu_intr;
-	struct plram_info	plram;
+	struct cmdmem_info	cmdmem;
 	struct completion	comp;
 };
 
@@ -155,6 +158,8 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info);
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info);
+int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
+		    int idx, unsigned long size, u32 *addrp);
 int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd);
 /* Use this function in xclbin download flow for config commands */
 int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd);

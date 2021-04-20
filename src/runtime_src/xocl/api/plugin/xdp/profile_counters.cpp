@@ -35,75 +35,76 @@ namespace xocl {
     // All of the function pointers that will be dynamically linked to
     //  callback functions on the XDP plugin side
     std::function<void (const char*,
-			unsigned long long int,
-			bool)> counter_function_start_cb ;
+                        unsigned long long int,
+                        bool)> counter_function_start_cb ;
     std::function<void (const char*)> counter_function_end_cb ;
     std::function<void (const char*,
-			bool,
-			unsigned long long int,
-			unsigned long long int,
-			unsigned long long int,
-			const char*,
-			const char*,
-			const char*,
-			const char**,
-			unsigned long long int)> counter_kernel_execution_cb ;
+                        bool,
+                        unsigned long long int,
+                        unsigned long long int,
+                        unsigned long long int,
+                        const char*,
+                        const char*,
+                        const char*,
+                        const char**,
+                        unsigned long long int)> counter_kernel_execution_cb ;
     std::function<void (const char*,
-			const char*,
-			const char*,
-			bool)> counter_cu_execution_cb ;
+                        const char*,
+                        const char*,
+                        const char*,
+                        bool)> counter_cu_execution_cb ;
     std::function<void (unsigned long long int,
-			unsigned long long int,
-			const char*,
-			unsigned long long int,
-			bool,
-			bool,
-			unsigned long long int,
-			unsigned long long int)> counter_action_read_cb ;
+                        unsigned long long int,
+                        const char*,
+                        unsigned long long int,
+                        bool,
+                        bool,
+                        unsigned long long int,
+                        unsigned long long int)> counter_action_read_cb ;
     std::function<void (unsigned long long int,
-			const char*,
-			unsigned long long int,
-			bool,
-			bool,
-			unsigned long long int,
-			unsigned long long int)> counter_action_write_cb ;
+                        const char*,
+                        unsigned long long int,
+                        bool,
+                        bool,
+                        unsigned long long int,
+                        unsigned long long int)> counter_action_write_cb ;
     std::function<void ()> counter_mark_objects_released_cb ;
 
     void register_opencl_counters_functions(void* handle)
     {
       typedef void (*stype)(const char*, unsigned long long int, bool) ;
       counter_function_start_cb = 
-	(stype)(xrt_core::dlsym(handle, "log_function_call_start")) ;
+        (stype)(xrt_core::dlsym(handle, "log_function_call_start")) ;
       if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
       
       typedef void (*etype)(const char*) ;
       counter_function_end_cb = 
-	(etype)(xrt_core::dlsym(handle, "log_function_call_end")) ;
+        (etype)(xrt_core::dlsym(handle, "log_function_call_end")) ;
       if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
       
       typedef void (*ktype)(const char*, bool, unsigned long long int, unsigned long long int, unsigned long long int, const char* ,const char*, const char*, const char**, unsigned long long int) ;
       counter_kernel_execution_cb =
-	(ktype)(xrt_core::dlsym(handle, "log_kernel_execution")) ;
+        (ktype)(xrt_core::dlsym(handle, "log_kernel_execution")) ;
       if (xrt_core::dlerror() != NULL) counter_kernel_execution_cb = nullptr ;
       
-      typedef void (*cuetype)(const char*, const char*, const char*, bool) ;
+      typedef void (*cuetype)(const char*, const char*, const char*, const char*, bool) ;
       counter_cu_execution_cb =
-	(cuetype)(xrt_core::dlsym(handle, "log_compute_unit_execution")) ;
+        (cuetype)(xrt_core::dlsym(handle, "log_compute_unit_execution")) ;
       if (xrt_core::dlerror() != NULL) counter_cu_execution_cb = nullptr ;
       
       typedef void (*atype)(unsigned long long int, unsigned long long int, const char*, unsigned long long int, bool, bool, unsigned long long int, unsigned long long int) ;
       counter_action_read_cb =
-	(atype)(xrt_core::dlsym(handle, "counter_action_read")) ;
+        (atype)(xrt_core::dlsym(handle, "counter_action_read")) ;
       if (xrt_core::dlerror() != NULL) counter_action_read_cb = nullptr ;
       
       typedef void (*wtype)(unsigned long long int, const char*, unsigned long long int, bool, bool, unsigned long long int, unsigned long long int) ;
       counter_action_write_cb =
-	(wtype)(xrt_core::dlsym(handle, "counter_action_write")) ;
+        (wtype)(xrt_core::dlsym(handle, "counter_action_write")) ;
       if (xrt_core::dlerror() != NULL) counter_action_write_cb = nullptr ;
 
       typedef void (*vtype)() ;
       counter_mark_objects_released_cb =
-	(vtype)(xrt_core::dlsym(handle, "counter_mark_objects_released")) ;
+        (vtype)(xrt_core::dlsym(handle, "counter_mark_objects_released")) ;
       if (xrt_core::dlerror() != NULL) counter_mark_objects_released_cb = nullptr ;
 
       // For logging counter information for compute unit executions
@@ -118,9 +119,9 @@ namespace xocl {
     void load_xdp_opencl_counters()
     {
       static xrt_core::module_loader
-	opencl_trace_loader("xdp_opencl_counters_plugin",
-			    register_opencl_counters_functions,
-			    opencl_counters_warning_function) ;
+        opencl_trace_loader("xdp_opencl_counters_plugin",
+                            register_opencl_counters_functions,
+                            opencl_counters_warning_function) ;
     }
     
   } // end namespace profile
@@ -138,7 +139,7 @@ namespace {
     auto& cumask = xrt_core::kernel_int::get_cumask(run) ;
     for (size_t bit = 0; bit < cumask.size(); ++bit)
       if (cumask.test(bit))
-	return static_cast<unsigned int>(bit);
+        return static_cast<unsigned int>(bit);
     return 0 ;
   }
 
@@ -148,7 +149,7 @@ namespace {
     std::string bank = "Unknown" ;
     try {
       if (auto xmem = xocl::xocl(buffer))
-	xmem->try_get_address_bank(address, bank) ;
+        xmem->try_get_address_bank(address, bank) ;
     }
     catch (const xocl::error&)
     {
@@ -166,7 +167,7 @@ namespace xocl {
     // These are the functions on the XOCL side that gets called when
     //  execution contexts start and stop
     void log_cu_start(const xocl::execution_context* ctx,
-		      const xrt::run& run)
+                      const xrt::run& run)
     {
       if (!counter_cu_execution_cb) return ;
 
@@ -175,149 +176,150 @@ namespace xocl {
       auto cu = ctx->get_event()->get_command_queue()->get_device()->get_compute_unit(cuIndex) ;
       if (cu)
       {
-	auto localDim = ctx->get_local_work_size() ;
-	auto globalDim = ctx->get_global_work_size() ;
-	
-	std::string localWorkgroupSize = 
-	  std::to_string(localDim[0]) + ":" +
-	  std::to_string(localDim[1]) + ":" +
-	  std::to_string(localDim[2]) ;
+        auto localDim = ctx->get_local_work_size() ;
+        auto globalDim = ctx->get_global_work_size() ;
+        
+        std::string localWorkgroupSize = 
+          std::to_string(localDim[0]) + ":" +
+          std::to_string(localDim[1]) + ":" +
+          std::to_string(localDim[2]) ;
 
-	std::string globalWorkgroupSize = 
-	  std::to_string(globalDim[0]) + ":" +
-	  std::to_string(globalDim[1]) + ":" +
-	  std::to_string(globalDim[2]) ;
+        std::string globalWorkgroupSize = 
+          std::to_string(globalDim[0]) + ":" +
+          std::to_string(globalDim[1]) + ":" +
+          std::to_string(globalDim[2]) ;
 
-	counter_cu_execution_cb(cu->get_name().c_str(),
-				localWorkgroupSize.c_str(),
-				globalWorkgroupSize.c_str(),
-				true) ;
+        counter_cu_execution_cb(cu->get_name().c_str(),
+                                cu->get_kernel_name().c_str(),
+                                localWorkgroupSize.c_str(),
+                                globalWorkgroupSize.c_str(),
+                                true) ;
       }
     }
     
     void log_cu_end(const xocl::execution_context* ctx,
-		    const xrt::run& run)
+                    const xrt::run& run)
     {
+      if (!counter_cu_execution_cb) return ;
+
       // Check for software emulation logging of compute unit ends as well
-      if (counter_cu_execution_cb)
+      unsigned int cuIndex = get_cu_index(run) ;
+      auto cu = ctx->get_event()->get_command_queue()->get_device()->get_compute_unit(cuIndex) ;
+      if (cu)
       {
-	unsigned int cuIndex = get_cu_index(run) ;
-	auto cu = ctx->get_event()->get_command_queue()->get_device()->get_compute_unit(cuIndex) ;
-	if (cu)
-	{
-	  auto localDim = ctx->get_local_work_size() ;
-	  auto globalDim = ctx->get_global_work_size() ;
+        auto localDim = ctx->get_local_work_size() ;
+        auto globalDim = ctx->get_global_work_size() ;
 
-	  std::string localWorkgroupSize = 
-	  std::to_string(localDim[0]) + ":" +
-	  std::to_string(localDim[1]) + ":" +
-	  std::to_string(localDim[2]) ;
+        std::string localWorkgroupSize = 
+          std::to_string(localDim[0]) + ":" +
+          std::to_string(localDim[1]) + ":" +
+          std::to_string(localDim[2]) ;
 
-	  std::string globalWorkgroupSize = 
-	    std::to_string(globalDim[0]) + ":" +
-	    std::to_string(globalDim[1]) + ":" +
-	    std::to_string(globalDim[2]) ;
+        std::string globalWorkgroupSize = 
+          std::to_string(globalDim[0]) + ":" +
+          std::to_string(globalDim[1]) + ":" +
+          std::to_string(globalDim[2]) ;
 
-	  counter_cu_execution_cb(cu->get_name().c_str(),
-				  localWorkgroupSize.c_str(),
-				  globalWorkgroupSize.c_str(),
-				  false) ;
-	}
+        counter_cu_execution_cb(cu->get_name().c_str(),
+                                cu->get_kernel_name().c_str(),
+                                localWorkgroupSize.c_str(),
+                                globalWorkgroupSize.c_str(),
+                                false) ;
       }
     }
 
     void mark_objects_released()
     {
       if (counter_mark_objects_released_cb)
-	counter_mark_objects_released_cb() ;
+        counter_mark_objects_released_cb() ;
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
     counter_action_read(cl_mem buffer)
     {
       return [buffer](xocl::event* e, cl_int status, const std::string&) 
-	     {
-	       if (!counter_action_read_cb) return ;
-	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+             {
+               if (!counter_action_read_cb) return ;
+               if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
-	       auto queue = e->get_command_queue() ;
-	       uint64_t contextId = e->get_context()->get_uid() ;
-	       uint64_t numDevices = e->get_context()->num_devices() ;
-	       std::string deviceName = queue->get_device()->get_name() ;
+               auto queue = e->get_command_queue() ;
+               uint64_t contextId = e->get_context()->get_uid() ;
+               uint64_t numDevices = e->get_context()->num_devices() ;
+               std::string deviceName = queue->get_device()->get_name() ;
 
-	       auto xmem = xocl::xocl(buffer) ;
-	       auto ext_flags = xmem->get_ext_flags() ;
-	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+               auto xmem = xocl::xocl(buffer) ;
+               auto ext_flags = xmem->get_ext_flags() ;
+               bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
-	       uint64_t address = get_memory_address(buffer) ;
+               uint64_t address = get_memory_address(buffer) ;
 
-	       // I'm logging numDevices here because it has to be logged
-	       //  somewhere, although it really doesn't make much sense here
+               // I'm logging numDevices here because it has to be logged
+               //  somewhere, although it really doesn't make much sense here
 
-	       if (status == CL_RUNNING)
-	       {
-		 counter_action_read_cb(contextId,
-					numDevices,
-					deviceName.c_str(),
-					0,
-					true,
-					isP2P,
-					address,
-				        static_cast<uint64_t>(queue->get_uid()));
-	       }
-	       else if (status == CL_COMPLETE)
-	       {
-		 counter_action_read_cb(contextId,
-					numDevices,
-					deviceName.c_str(),
-					xmem->get_size(),
-					false,
-					isP2P,
-					address,
-					static_cast<uint64_t>(queue->get_uid())) ;
-	       }
-	     } ;
+               if (status == CL_RUNNING)
+               {
+                 counter_action_read_cb(contextId,
+                                        numDevices,
+                                        deviceName.c_str(),
+                                        0,
+                                        true,
+                                        isP2P,
+                                        address,
+                                        static_cast<uint64_t>(queue->get_uid()));
+               }
+               else if (status == CL_COMPLETE)
+               {
+                 counter_action_read_cb(contextId,
+                                        numDevices,
+                                        deviceName.c_str(),
+                                        xmem->get_size(),
+                                        false,
+                                        isP2P,
+                                        address,
+                                        static_cast<uint64_t>(queue->get_uid())) ;
+               }
+             } ;
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
     counter_action_write(cl_mem buffer)
     {
       return [buffer](xocl::event* e, cl_int status, const std::string&) 
-	     {
-	       if (!counter_action_write_cb) return ;
-	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+             {
+               if (!counter_action_write_cb) return ;
+               if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
-	       auto queue = e->get_command_queue() ;
-	       uint64_t contextId = e->get_context()->get_uid() ;
-	       std::string deviceName = queue->get_device()->get_name() ;
+               auto queue = e->get_command_queue() ;
+               uint64_t contextId = e->get_context()->get_uid() ;
+               std::string deviceName = queue->get_device()->get_name() ;
 
-	       auto xmem = xocl::xocl(buffer) ;
-	       auto ext_flags = xmem->get_ext_flags() ;
-	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+               auto xmem = xocl::xocl(buffer) ;
+               auto ext_flags = xmem->get_ext_flags() ;
+               bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
-	       uint64_t address = get_memory_address(buffer) ;
+               uint64_t address = get_memory_address(buffer) ;
 
-	       if (status == CL_RUNNING)
-	       {
-		 counter_action_write_cb(contextId,
-					 deviceName.c_str(),
-					 0,
-					 true,
-					 isP2P,
-					 address,
-					 static_cast<uint64_t>(queue->get_uid()));
-	       }
-	       else if (status == CL_COMPLETE)
-	       {
-		 counter_action_write_cb(contextId,
-					 deviceName.c_str(),
-					 xmem->get_size(),
-					 false,
-					 isP2P,
-					 address,
-					 static_cast<uint64_t>(queue->get_uid())) ;
-	       }
-	     } ;
+               if (status == CL_RUNNING)
+               {
+                 counter_action_write_cb(contextId,
+                                         deviceName.c_str(),
+                                         0,
+                                         true,
+                                         isP2P,
+                                         address,
+                                         static_cast<uint64_t>(queue->get_uid()));
+               }
+               else if (status == CL_COMPLETE)
+               {
+                 counter_action_write_cb(contextId,
+                                         deviceName.c_str(),
+                                         xmem->get_size(),
+                                         false,
+                                         isP2P,
+                                         address,
+                                         static_cast<uint64_t>(queue->get_uid())) ;
+               }
+             } ;
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
@@ -326,99 +328,99 @@ namespace xocl {
       // Don't do anything for this migration
       if (flags & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED)
       {
-	return [](xocl::event*, cl_int, const std::string&) { } ;
+        return [](xocl::event*, cl_int, const std::string&) { } ;
       }
 
       cl_mem buffer = num_mem_objects > 0 ? mem_objects[0] : nullptr ;
       size_t totalSize = 0 ;
       for (auto mem : xocl::get_range(mem_objects, mem_objects+num_mem_objects))
       {
-	totalSize += xocl::xocl(mem)->get_size() ;
+        totalSize += xocl::xocl(mem)->get_size() ;
       }
 
       // Migrate actions could be either a read or a write.
       if (flags & CL_MIGRATE_MEM_OBJECT_HOST)
       {
-	// Read
-	return [buffer, totalSize](xocl::event* e, cl_int status, const std::string&)
-	       {
-		 if (!counter_action_read_cb) return ;
-		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+        // Read
+        return [buffer, totalSize](xocl::event* e, cl_int status, const std::string&)
+               {
+                 if (!counter_action_read_cb) return ;
+                 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
-		 auto queue = e->get_command_queue() ;
-		 uint64_t contextId = e->get_context()->get_uid() ;
-		 uint64_t numDevices = e->get_context()->num_devices() ;
-		 std::string deviceName = queue->get_device()->get_name() ;
+                 auto queue = e->get_command_queue() ;
+                 uint64_t contextId = e->get_context()->get_uid() ;
+                 uint64_t numDevices = e->get_context()->num_devices() ;
+                 std::string deviceName = queue->get_device()->get_name() ;
 
-		 auto xmem = xocl::xocl(buffer) ;
-		 auto ext_flags = xmem->get_ext_flags() ;
-		 bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+                 auto xmem = xocl::xocl(buffer) ;
+                 auto ext_flags = xmem->get_ext_flags() ;
+                 bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
-		 uint64_t address = get_memory_address(buffer) ;
+                 uint64_t address = get_memory_address(buffer) ;
 
-		 if (status == CL_RUNNING)
-		 {
-		   counter_action_read_cb(contextId,
-					  numDevices,
-					  deviceName.c_str(),
-					  0,
-					  true,
-					  isP2P,
-					  address,
-					  static_cast<uint64_t>(queue->get_uid()));
-		 }
-		 else if (status == CL_COMPLETE)
-		 {
-		   counter_action_read_cb(contextId,
-					  numDevices,
-					  deviceName.c_str(),
-					  totalSize,
-					  false,
-					  isP2P,
-					  address,
-					  static_cast<uint64_t>(queue->get_uid())) ;
-		 }
-	       } ;
+                 if (status == CL_RUNNING)
+                 {
+                   counter_action_read_cb(contextId,
+                                          numDevices,
+                                          deviceName.c_str(),
+                                          0,
+                                          true,
+                                          isP2P,
+                                          address,
+                                          static_cast<uint64_t>(queue->get_uid()));
+                 }
+                 else if (status == CL_COMPLETE)
+                 {
+                   counter_action_read_cb(contextId,
+                                          numDevices,
+                                          deviceName.c_str(),
+                                          totalSize,
+                                          false,
+                                          isP2P,
+                                          address,
+                                          static_cast<uint64_t>(queue->get_uid())) ;
+                 }
+               } ;
       }
       else
       {
-	// Write
-	return [buffer, totalSize](xocl::event* e, cl_int status, const std::string&)
-	       {
-		 if (!counter_action_write_cb) return ;
-		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+        // Write
+        return [buffer, totalSize](xocl::event* e, cl_int status, const std::string&)
+               {
+                 if (!counter_action_write_cb) return ;
+                 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
-		 auto queue = e->get_command_queue() ;
-		 uint64_t contextId = e->get_context()->get_uid() ;
-		 std::string deviceName = queue->get_device()->get_name() ;
+                 auto queue = e->get_command_queue() ;
+                 uint64_t contextId = e->get_context()->get_uid() ;
+                 std::string deviceName = queue->get_device()->get_name() ;
 
-		 auto xmem = xocl::xocl(buffer) ;
-		 auto ext_flags = xmem->get_ext_flags() ;
-		 bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+                 auto xmem = xocl::xocl(buffer) ;
+                 auto ext_flags = xmem->get_ext_flags() ;
+                 bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
-		 uint64_t address = get_memory_address(buffer) ;
+                 uint64_t address = get_memory_address(buffer) ;
 
-		 if (status == CL_RUNNING)
-		 {
-		   counter_action_write_cb(contextId,
-					   deviceName.c_str(),
-					   0,
-					   true,
-					   isP2P,
-					   address,
-					   static_cast<uint64_t>(queue->get_uid()));
-		 }
-		 else if (status == CL_COMPLETE)
-		 {
-		   counter_action_write_cb(contextId,
-					   deviceName.c_str(),
-					   totalSize,
-					   false,
-					   isP2P,
-					   address,
-					   static_cast<uint64_t>(queue->get_uid())) ;
-		 }
-	       } ;
+                 if (status == CL_RUNNING)
+                 {
+                   counter_action_write_cb(contextId,
+                                           deviceName.c_str(),
+                                           0,
+                                           true,
+                                           isP2P,
+                                           address,
+                                           static_cast<uint64_t>(queue->get_uid()));
+                 }
+                 else if (status == CL_COMPLETE)
+                 {
+                   counter_action_write_cb(contextId,
+                                           deviceName.c_str(),
+                                           totalSize,
+                                           false,
+                                           isP2P,
+                                           address,
+                                           static_cast<uint64_t>(queue->get_uid())) ;
+                 }
+               } ;
       }
     }
 
@@ -426,102 +428,102 @@ namespace xocl {
     counter_action_ndrange(cl_kernel kernel)
     {
       return [kernel](xocl::event* e, cl_int status, const std::string&)
-	     {
-	       if (!counter_kernel_execution_cb) return ;
-	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+             {
+               if (!counter_kernel_execution_cb) return ;
+               if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
-	       auto xkernel = xocl::xocl(kernel) ;
-	       std::string kernelName = xkernel->get_name() ;
+               auto xkernel = xocl::xocl(kernel) ;
+               std::string kernelName = xkernel->get_name() ;
 
-	       if (status == CL_RUNNING)
-	       {
-		 // The extra information is only used when an end event
-		 //  happens, so don't spend the overhead in this branch
-		 counter_kernel_execution_cb(kernelName.c_str(), true,
-					     0,
-					     0,
-					     0,
-					     "",
-					     "",
-					     "",
-					     nullptr,
-					     0) ;
-	       }
-	       else if (status == CL_COMPLETE)
-	       {
-		 auto xevent = xocl::xocl(e) ;
-		 auto queue = xevent->get_command_queue() ;
-		 uint64_t contextId = e->get_context()->get_uid() ;
-		 std::string deviceName = queue->get_device()->get_name() ;
+               if (status == CL_RUNNING)
+               {
+                 // The extra information is only used when an end event
+                 //  happens, so don't spend the overhead in this branch
+                 counter_kernel_execution_cb(kernelName.c_str(), true,
+                                             0,
+                                             0,
+                                             0,
+                                             "",
+                                             "",
+                                             "",
+                                             nullptr,
+                                             0) ;
+               }
+               else if (status == CL_COMPLETE)
+               {
+                 auto xevent = xocl::xocl(e) ;
+                 auto queue = xevent->get_command_queue() ;
+                 uint64_t contextId = e->get_context()->get_uid() ;
+                 std::string deviceName = queue->get_device()->get_name() ;
 
-		 auto localDim = e->get_execution_context()->get_local_work_size() ;
-		 auto globalDim = e->get_execution_context()->get_global_work_size() ;
-	
-		 std::string localWorkgroupSize = 
-		   std::to_string(localDim[0]) + ":" +
-		   std::to_string(localDim[1]) + ":" +
-		   std::to_string(localDim[2]) ;
+                 auto localDim = e->get_execution_context()->get_local_work_size() ;
+                 auto globalDim = e->get_execution_context()->get_global_work_size() ;
+        
+                 std::string localWorkgroupSize = 
+                   std::to_string(localDim[0]) + ":" +
+                   std::to_string(localDim[1]) + ":" +
+                   std::to_string(localDim[2]) ;
 
-		 std::string globalWorkgroupSize = 
-		   std::to_string(globalDim[0]) + ":" +
-		   std::to_string(globalDim[1]) + ":" +
-		   std::to_string(globalDim[2]) ;
+                 std::string globalWorkgroupSize = 
+                   std::to_string(globalDim[0]) + ":" +
+                   std::to_string(globalDim[1]) + ":" +
+                   std::to_string(globalDim[2]) ;
 
-		 // For buffer guidance, create strings for each
-		 //  argument mapped to memory
-		 std::vector<std::string> memoryInfo ;
-		 auto device = queue->get_device() ;
+                 // For buffer guidance, create strings for each
+                 //  argument mapped to memory
+                 std::vector<std::string> memoryInfo ;
+                 auto device = queue->get_device() ;
 
-		 for (auto& arg : xkernel->get_xargument_range()) {
-		   try {
-		     xocl::memory* mem = arg->get_memory_object() ;
-		     if (!mem) continue ;
+                 for (auto& arg : xkernel->get_xargument_range()) {
+                   try {
+                     xocl::memory* mem = arg->get_memory_object() ;
+                     if (!mem) continue ;
 
-		     auto mem_id = mem->get_memidx() ;
-		     std::string mem_tag =
-		       device->get_xclbin().memidx_to_banktag(mem_id) ;
-		     if (mem_tag.rfind("bank", 0) == 0)
-		       mem_tag = "DDR[" + mem_tag.substr(4,4) + "]" ;
+                     auto mem_id = mem->get_memidx() ;
+                     std::string mem_tag =
+                       device->get_xclbin().memidx_to_banktag(mem_id) ;
+                     if (mem_tag.rfind("bank", 0) == 0)
+                       mem_tag = "DDR[" + mem_tag.substr(4,4) + "]" ;
 
-		     std::string bufferInfo = "" ;
-		     bufferInfo += kernelName ;
-		     bufferInfo += "|" ;
-		     bufferInfo += arg->get_name() ;
-		     bufferInfo += "|" ;
-		     bufferInfo += mem_tag ;
-		     bufferInfo += "|" ;
-		     bufferInfo += std::to_string(mem->is_aligned()) ;
-		     bufferInfo += "," ;
-		     bufferInfo += std::to_string(mem->get_size()) ;
-		     
-		     memoryInfo.push_back(bufferInfo) ;
-		   } catch (...) {
-		     continue ;
-		   }
-		 }
+                     std::string bufferInfo = "" ;
+                     bufferInfo += kernelName ;
+                     bufferInfo += "|" ;
+                     bufferInfo += arg->get_name() ;
+                     bufferInfo += "|" ;
+                     bufferInfo += mem_tag ;
+                     bufferInfo += "|" ;
+                     bufferInfo += std::to_string(mem->is_aligned()) ;
+                     bufferInfo += "," ;
+                     bufferInfo += std::to_string(mem->get_size()) ;
+                     
+                     memoryInfo.push_back(bufferInfo) ;
+                   } catch (...) {
+                     continue ;
+                   }
+                 }
 
-		 // Convert to C-style so we can pass to the plugin cleanly
-		 const char** buffers = nullptr ;
-		 if (memoryInfo.size() != 0) {
-		   buffers = new const char*[memoryInfo.size()] ;
-		   for (uint64_t i = 0 ; i < memoryInfo.size() ; ++i) {
-		     buffers[i] = memoryInfo[i].c_str() ;
-		   }
-		 }
+                 // Convert to C-style so we can pass to the plugin cleanly
+                 const char** buffers = nullptr ;
+                 if (memoryInfo.size() != 0) {
+                   buffers = new const char*[memoryInfo.size()] ;
+                   for (uint64_t i = 0 ; i < memoryInfo.size() ; ++i) {
+                     buffers[i] = memoryInfo[i].c_str() ;
+                   }
+                 }
 
-		 counter_kernel_execution_cb(kernelName.c_str(), false,
-					     reinterpret_cast<uint64_t>(kernel),
-					     contextId,
-					     static_cast<uint64_t>(queue->get_uid()),
-					     deviceName.c_str(),
-					     globalWorkgroupSize.c_str(),
-					     localWorkgroupSize.c_str(),
-					     buffers,
-					     memoryInfo.size()) ;
+                 counter_kernel_execution_cb(kernelName.c_str(), false,
+                                             reinterpret_cast<uint64_t>(kernel),
+                                             contextId,
+                                             static_cast<uint64_t>(queue->get_uid()),
+                                             deviceName.c_str(),
+                                             globalWorkgroupSize.c_str(),
+                                             localWorkgroupSize.c_str(),
+                                             buffers,
+                                             memoryInfo.size()) ;
 
-		 if (buffers != nullptr) delete [] buffers ;
-	       }
-	     } ;
+                 if (buffers != nullptr) delete [] buffers ;
+               }
+             } ;
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
@@ -539,163 +541,163 @@ namespace xocl {
       // See how many of the arguments will be migrated and mark them
       for (auto& arg : xkernel->get_xargument_range())
       {
-	if (auto mem = arg->get_memory_object())
-	{
-	  /*
-	  if (arg->is_progvar() && 
-	      arg->get_address_qualifier() == CL_KERNEL_ARG_ADDRESS_GLOBAL)
-	    continue ;
-	  else 
-	  */
-	  if (mem->is_resident(device))
-	    continue ;
-	  else if (!(mem->get_flags() & 
-		     (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS)))
-	  {
-	    mem0 = mem ;
-	    totalSize += xocl::xocl(mem)->get_size() ;
-	  }
-	}
+        if (auto mem = arg->get_memory_object())
+        {
+          /*
+          if (arg->is_progvar() && 
+              arg->get_address_qualifier() == CL_KERNEL_ARG_ADDRESS_GLOBAL)
+            continue ;
+          else 
+          */
+          if (mem->is_resident(device))
+            continue ;
+          else if (!(mem->get_flags() & 
+                     (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS)))
+          {
+            mem0 = mem ;
+            totalSize += xocl::xocl(mem)->get_size() ;
+          }
+        }
       }
       
       if (mem0 == nullptr)
       {
-	return [](xocl::event*, cl_int, const std::string&)
-	       {
-	       } ;
+        return [](xocl::event*, cl_int, const std::string&)
+               {
+               } ;
       }
 
       return [mem0, totalSize](xocl::event* e, cl_int status, const std::string&) 
-	     {
-	       if (!counter_action_write_cb) return ;
-	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+             {
+               if (!counter_action_write_cb) return ;
+               if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
-	       auto queue = e->get_command_queue() ;
-	       uint64_t contextId = e->get_context()->get_uid() ;
-	       std::string deviceName = queue->get_device()->get_name() ;
+               auto queue = e->get_command_queue() ;
+               uint64_t contextId = e->get_context()->get_uid() ;
+               std::string deviceName = queue->get_device()->get_name() ;
 
-	       auto xmem = xocl::xocl(mem0) ;
-	       auto ext_flags = xmem->get_ext_flags() ;
-	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+               auto xmem = xocl::xocl(mem0) ;
+               auto ext_flags = xmem->get_ext_flags() ;
+               bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
-	       uint64_t address = get_memory_address(mem0) ;
+               uint64_t address = get_memory_address(mem0) ;
 
-	       if (status == CL_RUNNING)
-	       {
-		 counter_action_write_cb(contextId,
-					 deviceName.c_str(),
-					 0,
-					 true,
-					 isP2P,
-					 address,
-					 static_cast<uint64_t>(queue->get_uid()));
-	       }
-	       else if (status == CL_COMPLETE)
-	       {
-		 counter_action_write_cb(contextId,
-					 deviceName.c_str(),
-					 totalSize,
-					 false,
-					 isP2P,
-					 address,
-					 static_cast<uint64_t>(queue->get_uid())) ;
-	       }
-	     } ;
+               if (status == CL_RUNNING)
+               {
+                 counter_action_write_cb(contextId,
+                                         deviceName.c_str(),
+                                         0,
+                                         true,
+                                         isP2P,
+                                         address,
+                                         static_cast<uint64_t>(queue->get_uid()));
+               }
+               else if (status == CL_COMPLETE)
+               {
+                 counter_action_write_cb(contextId,
+                                         deviceName.c_str(),
+                                         totalSize,
+                                         false,
+                                         isP2P,
+                                         address,
+                                         static_cast<uint64_t>(queue->get_uid())) ;
+               }
+             } ;
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
     counter_action_map(cl_mem buffer, cl_map_flags flags)
     {
       return [buffer, flags](xocl::event* e, cl_int status, const std::string&)
-	{
-	  if (!counter_action_read_cb) return ;
-	  if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+        {
+          if (!counter_action_read_cb) return ;
+          if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
-	  // Ignore if mapping an invalidated region
-	  if (flags & CL_MAP_WRITE_INVALIDATE_REGION) return ;
+          // Ignore if mapping an invalidated region
+          if (flags & CL_MAP_WRITE_INVALIDATE_REGION) return ;
 
-	  // If the buffer is not resident on device, don't record this
-	  auto xmem = xocl::xocl(buffer) ;
-	  auto queue = e->get_command_queue() ;
-	  auto device = queue->get_device() ;
-	  if (!(xmem->is_resident(device))) return ;
+          // If the buffer is not resident on device, don't record this
+          auto xmem = xocl::xocl(buffer) ;
+          auto queue = e->get_command_queue() ;
+          auto device = queue->get_device() ;
+          if (!(xmem->is_resident(device))) return ;
 
-	  uint64_t contextId = e->get_context()->get_uid() ;
-	  uint64_t numDevices = e->get_context()->num_devices() ;
-	  std::string deviceName = device->get_name() ;
+          uint64_t contextId = e->get_context()->get_uid() ;
+          uint64_t numDevices = e->get_context()->num_devices() ;
+          std::string deviceName = device->get_name() ;
 
-	  auto ext_flags = xmem->get_ext_flags() ;
-	  bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+          auto ext_flags = xmem->get_ext_flags() ;
+          bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
-	  uint64_t address = get_memory_address(buffer) ;
+          uint64_t address = get_memory_address(buffer) ;
 
-	  if (status == CL_RUNNING) {
-	    counter_action_read_cb(contextId,
-				   numDevices,
-				   deviceName.c_str(),
-				   0,
-				   true,
-				   isP2P,
-				   address,
-				   static_cast<uint64_t>(queue->get_uid()));
-	  }
-	  else if (status == CL_COMPLETE) {
-	    counter_action_read_cb(contextId,
-				   numDevices,
-				   deviceName.c_str(),
-				   xmem->get_size(),
-				   false,
-				   isP2P,
-				   address,
-				   static_cast<uint64_t>(queue->get_uid())) ;
-	  }
-	} ;
+          if (status == CL_RUNNING) {
+            counter_action_read_cb(contextId,
+                                   numDevices,
+                                   deviceName.c_str(),
+                                   0,
+                                   true,
+                                   isP2P,
+                                   address,
+                                   static_cast<uint64_t>(queue->get_uid()));
+          }
+          else if (status == CL_COMPLETE) {
+            counter_action_read_cb(contextId,
+                                   numDevices,
+                                   deviceName.c_str(),
+                                   xmem->get_size(),
+                                   false,
+                                   isP2P,
+                                   address,
+                                   static_cast<uint64_t>(queue->get_uid())) ;
+          }
+        } ;
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
     counter_action_unmap(cl_mem buffer)
     {
       return [buffer](xocl::event* e, cl_int status, const std::string&)
-	{
-	  if (!counter_action_write_cb) return ;
-	  if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+        {
+          if (!counter_action_write_cb) return ;
+          if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
-	  auto xmem = xocl::xocl(buffer) ;
+          auto xmem = xocl::xocl(buffer) ;
 
-	  // If P2P transfer, don't record this transfer
-	  if (xmem->no_host_memory()) return ;
+          // If P2P transfer, don't record this transfer
+          if (xmem->no_host_memory()) return ;
 
-	  // If the buffer is not resident on device, don't record this
-	  auto queue = e->get_command_queue() ;
-	  auto device = queue->get_device() ;
-	  if (!(xmem->is_resident(device))) return ;
+          // If the buffer is not resident on device, don't record this
+          auto queue = e->get_command_queue() ;
+          auto device = queue->get_device() ;
+          if (!(xmem->is_resident(device))) return ;
 
-	  uint64_t contextId = e->get_context()->get_uid() ;
-	  std::string deviceName = device->get_name() ;
-	  auto ext_flags = xmem->get_ext_flags() ;
-	  bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+          uint64_t contextId = e->get_context()->get_uid() ;
+          std::string deviceName = device->get_name() ;
+          auto ext_flags = xmem->get_ext_flags() ;
+          bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
 
-	  uint64_t address = get_memory_address(buffer) ;
+          uint64_t address = get_memory_address(buffer) ;
 
-	  if (status == CL_RUNNING) {
-	    counter_action_write_cb(contextId,
-				    deviceName.c_str(),
-				    0,
-				    true,
-				    isP2P,
-				    address,
-				    static_cast<uint64_t>(queue->get_uid()));
-	  }
-	  else if (status == CL_COMPLETE) {
-	    counter_action_write_cb(contextId,
-				    deviceName.c_str(),
-				    xmem->get_size(),
-				    false,
-				    isP2P,
-				    address,
-				    static_cast<uint64_t>(queue->get_uid())) ;
-	  }
-	} ;
+          if (status == CL_RUNNING) {
+            counter_action_write_cb(contextId,
+                                    deviceName.c_str(),
+                                    0,
+                                    true,
+                                    isP2P,
+                                    address,
+                                    static_cast<uint64_t>(queue->get_uid()));
+          }
+          else if (status == CL_COMPLETE) {
+            counter_action_write_cb(contextId,
+                                    deviceName.c_str(),
+                                    xmem->get_size(),
+                                    false,
+                                    isP2P,
+                                    address,
+                                    static_cast<uint64_t>(queue->get_uid())) ;
+          }
+        } ;
     }
   } // end namespace profile
 } // end namespace xocl

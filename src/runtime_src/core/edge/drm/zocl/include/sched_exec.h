@@ -78,6 +78,7 @@ struct sched_ops;
  * @excus: CUs exclusively reserved by this context
  * @graph_list: Graphs that this client opens are added to this list.
  * @graph_list_lock: Graph list lock.
+ * @aie_ctx: The AIE context acquired.
  */
 struct sched_client_ctx {
 	struct list_head   link;
@@ -92,6 +93,7 @@ struct sched_client_ctx {
 
 	struct list_head   graph_list;
 	spinlock_t         graph_list_lock;
+	u32                aie_ctx;
 };
 #define CLIENT_NUM_CU_CTX(client) ((client)->num_cus)
 

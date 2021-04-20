@@ -31,8 +31,7 @@ NOC::NOC(Device* handle, uint64_t index, debug_ip_data* data)
       mWriteTrafficClass(0),
       mReadQos(0),
       mWriteQos(0),
-      mNpiClockFreqMhz(299.997009),
-      mAieClockFreqMhz(1000.0)
+      mNpiClockFreqMhz(299.997009)
 {
   if (data) {
     mMajorVersion = data->m_major;
@@ -51,16 +50,15 @@ void NOC::parseProperties(uint8_t properties)
 
 void NOC::parseName(std::string name)
 {
-  // Name = <master>-<NMU cell>-<read QoS>-<write QoS>-<NPI freq>-<AIE freq>
+  // Name = <master>-<NMU cell>-<read QoS>-<write QoS>-<NPI freq>
   std::vector<std::string> result; 
   boost::split(result, name, boost::is_any_of("-"));
   
-  mMasterName      = (result.size() > 0) ? result[0] : "";
-  mCellName        = (result.size() > 1) ? result[1] : "";
-  mReadQos         = (result.size() > 2) ? std::stoull(result[2]) : 0;
-  mWriteQos        = (result.size() > 3) ? std::stoull(result[3]) : 0;
-  mNpiClockFreqMhz = (result.size() > 4) ? std::stod(result[4]) : 299.997009;
-  mAieClockFreqMhz = (result.size() > 5) ? std::stod(result[5]) : 1000.0;
+  try {mMasterName = result.at(0);} catch (...) {mMasterName = "";}
+  try {mCellName = result.at(1);} catch (...) {mCellName = "";}
+  try {mReadQos = std::stoull(result.at(2));} catch (...) {mReadQos = 0;}
+  try {mWriteQos = std::stoull(result.at(3));} catch (...) {mWriteQos = 0;}
+  try {mNpiClockFreqMhz = std::stod(result.at(4));} catch (...) {mNpiClockFreqMhz = 299.997009;}
 }
 
 inline void NOC::write32(uint64_t offset, uint32_t val)

@@ -36,7 +36,8 @@ enum class reset_key {
   ert = 3,
   ecc = 4,
   soft_kernel = 5,
-  aie = 6
+  aie = 6,
+  user = 7
 };
 
 class reset_type {

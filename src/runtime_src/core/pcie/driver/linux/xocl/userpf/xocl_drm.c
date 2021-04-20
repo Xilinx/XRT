@@ -139,15 +139,16 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 		u32 cu_addr;
 		u32 cu_idx = vma->vm_pgoff - 1;
 
-		if (vsize > 64 * 1024) {
-			userpf_err(xdev,
-				"bad size (0x%lx) for native CU mmap", vsize);
-			return -EINVAL;
-		}
 		if (kds_mode)
-			ret = xocl_cu_map_addr(xdev, cu_idx, priv, &cu_addr);
-		else
+			ret = xocl_cu_map_addr(xdev, cu_idx, priv, vsize, &cu_addr);
+		else {
+			if (vsize > 64 * 1024) {
+				userpf_err(xdev,
+					   "bad size (0x%lx) for native CU mmap", vsize);
+				return -EINVAL;
+			}
 			ret = xocl_exec_cu_map_addr(xdev, cu_idx, priv, &cu_addr);
+		}
 		if (ret != 0)
 			return ret;
 		res_start += cu_addr;

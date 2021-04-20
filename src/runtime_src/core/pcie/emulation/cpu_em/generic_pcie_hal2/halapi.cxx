@@ -438,7 +438,7 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
-    return NULL;
+    return nullptr;
   return drv->xclMapBO(boHandle, write);
 }
 
@@ -606,12 +606,14 @@ int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIn
 // Restricted read/write on IP register space
 int xclRegWrite(xclDeviceHandle, uint32_t, uint32_t, uint32_t)
 {
-  return 1;
+  std::cerr << "ERROR: xclRegWrite/xclRegRead calls not supported for sw emulation." << std::endl;
+  return -1;
 }
 
 int xclRegRead(xclDeviceHandle, uint32_t, uint32_t, uint32_t*)
 {
-  return 1;
+  std::cerr << "ERROR: xclRegWrite/xclRegRead calls not supported for sw emulation." << std::endl;
+  return -1;
 }
 
 int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
@@ -649,6 +651,18 @@ xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
   return -ENOSYS;
 }
 
+int 
+xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
+{
+  return -ENOSYS;
+}
+
+int
+xclUpdateSchedulerStat(xclDeviceHandle handle)
+{
+  return -ENOSYS;
+}
+
 //Get CU index from IP_LAYOUT section for corresponding kernel name
 int xclIPName2Index(xclDeviceHandle handle, const char *name)
 {
@@ -668,10 +682,14 @@ xrtGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph
   if (graphHandle) {
     auto ghPtr = (xclcpuemhal2::GraphType*)graphHandle;
     auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
-    if (drv)
+      if (drv) {
       drv->xrtGraphInit(graphHandle);
-    else
+      }
+      else {
+        delete ghPtr;
+        ghPtr = nullptr;
       return XRT_NULL_HANDLE;
+      }
   }
   return graphHandle; 
   }

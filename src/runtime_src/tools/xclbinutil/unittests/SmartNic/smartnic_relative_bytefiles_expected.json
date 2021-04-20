@@ -62,7 +62,7 @@
                     {
                         "name": "foo_my_cam_instance_1",
                         "id": "0",
-                        "config_file": "dummy_bytefile.txt",
+                        "config": "44756D6D7920427974652046696C650A",
                         "driver_index": "0"
                     }
                 ],
@@ -100,7 +100,7 @@
                 "per_handle_memory_size_bytes": "16"
             }
         ],
-        "softhub_connections": [
+        "softhubs": [
             {
                 "version": "2",
                 "id": "1"
