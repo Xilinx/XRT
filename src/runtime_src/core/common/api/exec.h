@@ -108,6 +108,7 @@ unmanaged_wait(const command* cmd);
 void
 start();
 
+XRT_CORE_COMMON_EXPORT
 void
 stop();
 
