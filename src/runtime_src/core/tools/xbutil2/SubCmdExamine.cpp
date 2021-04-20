@@ -199,7 +199,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    printHelp(commonOptions, hiddenOptions);
     return;
   }
   catch (const std::runtime_error& e) {
