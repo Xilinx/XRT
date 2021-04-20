@@ -101,7 +101,7 @@ struct xclErrorStatus {
 struct xclErrorLast {
 	xrtErrorCode	err_code;	/* 64 bits; XRT error code */
 	xrtErrorTime	ts;		/* 64 bits; timestamp */
-        unsigned        pid;            /* 32 bits; pid associated with error, if available */
+	unsigned        pid;            /* 32 bits; pid associated with error, if available */
 };
 
 struct xocl_errors {
