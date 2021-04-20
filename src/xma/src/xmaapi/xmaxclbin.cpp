@@ -173,7 +173,7 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
                         temp_ip_layout.max_channel_id = (uint32_t)max_channel_id;
                     } else {
                         if (max_channel_id == -1) {
-                            xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. Use kernel_channels xrt.ini setting to enable handling of channel_id by XMA. Treatng it as legacy dataflow kernel and channels to be managed by host app and plugins ", temp_ip_layout.kernel_name.c_str());
+                            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. Use kernel_channels xrt.ini setting to enable handling of channel_id by XMA. Treatng it as legacy dataflow kernel and channels to be managed by host app and plugins ", temp_ip_layout.kernel_name.c_str());
                         } else if (max_channel_id == -2) {
                             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel.  xrt.ini kernel_channels setting has incorrect format. setting found is: %s ", temp_ip_layout.kernel_name.c_str(), kernel_channels_info.c_str());
                             throw std::runtime_error("Incorrect dataflow kernel ini setting");
