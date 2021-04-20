@@ -33,20 +33,20 @@
 
 namespace xdp {
 
-  unsigned int XDPPlugin::trace_dump_int_s = 5;
+  unsigned int XDPPlugin::trace_file_dump_int_s = 5;
   bool XDPPlugin::trace_int_cached = false;
 
-  unsigned int XDPPlugin::get_trace_dump_int_s()
+  unsigned int XDPPlugin::get_trace_file_dump_int_s()
   {
       if (!trace_int_cached) {
-        trace_dump_int_s = xrt_core::config::get_trace_dump_interval_s();
-        if (trace_dump_int_s < MIN_TRACE_DUMP_INTERVAL_S) {
-          trace_dump_int_s = MIN_TRACE_DUMP_INTERVAL_S;
+        trace_file_dump_int_s = xrt_core::config::get_trace_file_dump_interval_s();
+        if (trace_file_dump_int_s < MIN_TRACE_DUMP_INTERVAL_S) {
+          trace_file_dump_int_s = MIN_TRACE_DUMP_INTERVAL_S;
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TRACE_DUMP_INTERVAL_WARN_MSG);
         }
         trace_int_cached = true;
       }
-      return trace_dump_int_s;
+      return trace_file_dump_int_s;
   }
 
   XDPPlugin::XDPPlugin() : db(VPDatabase::Instance())

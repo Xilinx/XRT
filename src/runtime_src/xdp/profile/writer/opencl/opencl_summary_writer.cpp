@@ -169,6 +169,12 @@ namespace xdp {
     }
     {
       std::stringstream setting ;
+      setting << "XRT_INI_SETTING,trace_buffer_offload_interval_ms,"
+	      << xrt_core::config::get_trace_buffer_offload_interval_ms() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
       setting << "XRT_INI_SETTING,lop_trace,"
 	      << xrt_core::config::get_lop_trace() ;
       iniSettings.push_back(setting.str()) ;

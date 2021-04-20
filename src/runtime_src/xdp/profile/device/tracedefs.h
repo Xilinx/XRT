@@ -72,6 +72,8 @@ Recommended settings are : 'coarse' option for data transfer trace and no stall 
 buffer size and/or reduce continuous trace interval."
 
 #define MIN_TRACE_DUMP_INTERVAL_S 1
-#define TRACE_DUMP_INTERVAL_WARN_MSG "Setting trace dump interval to minimum supported value of 1 second."
+#define TRACE_DUMP_INTERVAL_WARN_MSG "Setting trace file dump interval to minimum supported value of 1 second."
+
+#define DEFAULT_TRACE_OFFLOAD_INTERVAL_MS 10
 
 #endif
