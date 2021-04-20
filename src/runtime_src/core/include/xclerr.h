@@ -39,6 +39,10 @@
 #ifndef XCLERR_H_
 #define XCLERR_H_
 
+#include "xrt_error_code.h"
+
+#define	XOCL_ERROR_CAPACITY	16
+
 /**
  * enum xclFirewallID - AXI Firewall IDs used to identify individual AXI Firewalls
  *
@@ -86,6 +90,24 @@ struct xclErrorStatus {
         struct xclAXIErrorStatus mAXIErrorStatus[8];
         struct xclPCIErrorStatus mPCIErrorStatus;
         unsigned mFirewallLevel;
+};
+
+/**
+ * struct xclErrorLast - Container for all last(latest) error records
+ * Only one entry in error array per error class xrtErrorClass
+ * A xrtErrorModule may produce multiple classes of errors
+ * xrtErrorCode (64 bits) = ErrorNum + Driver + Severity + Module + Class
+ */
+struct xclErrorLast {
+	xrtErrorCode	err_code;	/* 64 bits; XRT error code */
+	xrtErrorTime	ts;		/* 64 bits; timestamp */
+        unsigned        pid;            /* 32 bits; pid associated with error, if available */
+};
+
+struct xocl_errors {
+	int		num_err;	/* number of errors recorded */
+	int		cap;		/* capacity of current error array */
+	struct xclErrorLast *errors;	/* error array pointer */
 };
 
 #endif /* XCLERR_H_ */
