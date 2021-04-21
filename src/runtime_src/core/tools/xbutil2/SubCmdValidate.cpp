@@ -1308,7 +1308,7 @@ run_tests_on_devices( xrt_core::device_collection &deviceCollection,
 }
 
 static
-std::string quote_name(const std::string name)
+std::string quote_name(const std::string & name)
 {
   if (name.find(' ') == std::string::npos)
     return name;
