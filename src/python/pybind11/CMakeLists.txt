@@ -1,40 +1,32 @@
-project(pyxrt)
-CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
+# SPDX-License-Identifier: Apache-2.0
 
-find_package(pybind11 REQUIRED)
+find_package(PythonLibs 3.4.0)
+if (PythonLibs_FOUND)
+  message("-- Python libs version: ${PYTHONLIBS_VERSION_STRING}")
+  message("-- PYTHON_INCLUDE_PATH ${PYTHON_INCLUDE_PATH}")
+  string(REPLACE "." ";" PYTHONLIBS_VERSION_LIST ${PYTHONLIBS_VERSION_STRING})
+  list(GET PYTHONLIBS_VERSION_LIST 0 PYTHONLIBS_VERSION_MAJOR)
+  list(GET PYTHONLIBS_VERSION_LIST 1 PYTHONLIBS_VERSION_MINOR)
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_VERBOSE_MAKEFILE ON)
-set(XILINX_XRT $ENV{XILINX_XRT})
-set(XRT_CORE_LIBRARY xrt_core)
-set(MODE hw)
+  if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
+    SET(PKGDIR "dist-packages")
+  elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora|SUSE)")
+    SET(PKGDIR "site-packages")
+  endif(${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
 
-if (DEFINED ENV{XCL_EMULATION_MODE})
-  set(MODE $ENV{XCL_EMULATION_MODE})
-  string(REPLACE "_" "" XCL_EMU_SUFFIX ${MODE})
-  set(XRT_CORE_LIBRARY xrt_${XCL_EMU_SUFFIX})
-  message("=============== XRT_CORE_LIB=${XRT_CORE_LIBRARY}")
-endif()
+  find_package(pybind11 2.6.0 PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
+endif(PythonLibs_FOUND)
 
-find_library(xrt_coreutil_LIBRARY
-  NAMES xrt_coreutil
-  HINTS "${XILINX_XRT}/lib")
-message("xrt_coreutil_LIBRARY=${xrt_coreutil_LIBRARY}")
+if (pybind11_FOUND)
+  INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
+  pybind11_add_module(pyxrt src/pyxrt.cpp)
+  target_link_libraries(pyxrt PRIVATE xrt_coreutil uuid pthread)
 
-find_library(xrt_xilinxopencl_LIBRARY
-  NAMES xilinxopencl
-  HINTS "${XILINX_XRT}/lib")
-message("xrt_xilinxopencl_LIBRARY=${xrt_xilinxopencl_LIBRARY}")
+  install(TARGETS pyxrt
+    EXPORT xrt-targets
+    LIBRARY DESTINATION ${PY_INSTALL_DIR} ${XRT_NAMELINK_SKIP}
+    )
 
-if (NOT WIN32)
-find_library(uuid_LIBRARY
-  NAMES uuid)
-message("uuid_LIBRARY=${uuid_LIBRARY}")
-endif (NOT WIN32)
-
-include_directories(${XILINX_XRT}/include)
-
-pybind11_add_module(pyxrt src/pyxrt.cpp)
-target_link_libraries(pyxrt PRIVATE ${xrt_coreutil_LIBRARY})
-target_link_libraries(pyxrt PRIVATE ${uuid_LIBRARY} pthread)
+else(pybind11_FOUND)
+  message(WARNING "-- pybind11 or python3 libs not found, pybind11 support disabled")
+endif(pybind11_FOUND)

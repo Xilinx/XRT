@@ -234,6 +234,10 @@ static ssize_t xfer_versal_transfer(struct xfer_versal *xv, const char *data,
 		/* Give up CPU to avoid taking too much CPU cycles */
 		schedule();
 
+		/* We don't need to wait for IDLE status for last packet */
+		if (pkt.pkt_flags & XRT_XFR_PKT_FLAGS_LAST)
+			continue;
+
 		/*
 		 * Wait until the data is fetched by device side
 		 * Set timeout to one second. It should be sufficient

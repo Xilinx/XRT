@@ -35,7 +35,7 @@ namespace xdp {
   {
   private:
     // Continuous write functionality
-    static unsigned int trace_dump_int_s;
+    static unsigned int trace_file_dump_int_s;
     static bool trace_int_cached;
 
     std::atomic<bool> is_write_thread_active;
@@ -85,7 +85,7 @@ namespace xdp {
 				      void* blob = nullptr) ;
 
     XDP_EXPORT
-    static unsigned int get_trace_dump_int_s ();
+    static unsigned int get_trace_file_dump_int_s ();
   } ;
 
 }

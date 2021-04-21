@@ -19,19 +19,13 @@
 #include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_trace_logger.h"
 
-#include "core/common/message.h"
-
 namespace xdp {
 
 DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
                                        DeviceTraceLogger* dTraceLogger,
                                        uint64_t sleep_interval_ms,
-                                       uint64_t trbuf_sz,
-                                       bool start_thread,
-                                       bool e_trace)
-                   : continuous(start_thread),
-                     enable_trace(e_trace),
-                     sleep_interval_ms(sleep_interval_ms),
+                                       uint64_t trbuf_sz)
+                   : sleep_interval_ms(sleep_interval_ms),
                      m_trbuf_alloc_sz(trbuf_sz),
                      dev_intf(dInt),
                      deviceTraceLogger(dTraceLogger)
@@ -44,10 +38,6 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
   }
 
   m_prev_clk_train_time = std::chrono::system_clock::now();
-
-  if (start_thread) {
-    start_offload(OffloadThreadType::TRACE);
-  }
 }
 
 DeviceTraceOffload::~DeviceTraceOffload()
@@ -72,6 +62,8 @@ void DeviceTraceOffload::offload_device_continuous()
   // Do a final forced read
   m_read_trace(true);
   read_trace_end();
+
+  status = OffloadThreadStatus::STOPPED;
 }
 
 void DeviceTraceOffload::train_clock_continuous()
@@ -80,6 +72,8 @@ void DeviceTraceOffload::train_clock_continuous()
     train_clock();
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
   }
+
+  status = OffloadThreadStatus::STOPPED;
 }
 
 bool DeviceTraceOffload::should_continue()
@@ -156,14 +150,8 @@ void DeviceTraceOffload::read_trace_fifo(bool)
     auto property = dev_intf->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
     auto fifo_size = GetDeviceTraceBufferSize(property);
 
-    if (num_packets >= fifo_size && enable_trace) {
+    if (num_packets >= fifo_size)
       m_trbuf_full = true;
-
-      // Send warning message
-      const char* msg = "Trace FIFO is full because of too many events. Device trace could be incomplete. Please use 'coarse' option for data_transfer_trace or turn off Stall profiling";
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-
-    }
 
   }
 }
@@ -230,12 +218,8 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
   deviceTraceLogger->processTraceData(m_trace_vector);
   m_trace_vector.clear();
 
-  if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false) {
+  if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false)
     m_trbuf_full = true;
-    // Send warning message
-    const char* msg = "Trace buffer is full. Device trace could be incomplete.";
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
-  }
 }
 
 void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)

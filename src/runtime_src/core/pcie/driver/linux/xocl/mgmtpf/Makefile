@@ -46,6 +46,7 @@ xclmgmt-y := \
 	../xocl_thread.o \
 	../xocl_fdt.o \
 	../xocl_xclbin.o \
+	../xocl_debug.o \
 	../subdev/sysmon.o \
 	../subdev/feature_rom.o \
 	../subdev/microblaze.o \
@@ -87,7 +88,7 @@ xclmgmt-y := \
 xclmgmt-y += $(libfdt-y)
 
 CONFIG_MODULE_SIG=n
-KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 
 PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
@@ -107,10 +108,10 @@ ccflags-y += $(ccflags-m)
 
 all:
 	echo $(PWD)
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules
 
 install: all
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules_install
+	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules_install
 	depmod -a
 	install -m 644 99-xclmgmt.rules /etc/udev/rules.d
 	-rmmod -s xclmgmt || true

@@ -283,15 +283,14 @@ namespace xdp {
 
     if (!setXclbinName(currentXclbin, device)) {
       // If there is no SYSTEM_METADATA section, use a default name
-      currentXclbin->name = "default.xclbin" ;
+      currentXclbin->name = "default.xclbin";
     }
     if (!initializeComputeUnits(currentXclbin, device)) {
-      delete currentXclbin ;
-      return ;
+      delete currentXclbin;
+      return;
     }
 
-    devInfo->addXclbin(currentXclbin) ;
-
+    devInfo->addXclbin(currentXclbin);
     initializeProfileMonitors(devInfo, device);
     devInfo->isReady = true;
   }
@@ -497,6 +496,11 @@ namespace xdp {
       std::string name(debugIpData->m_name);
       int32_t cuId  = -1;
       ComputeUnitInstance* cuObj = nullptr;
+
+      std::stringstream msg;
+      msg << "Initializing profile monitor " << i << ": type = " << debugIpData->m_type << ", name = " << name << ", index = " << index;
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
+
       // find CU
       if(debugIpData->m_type == ACCEL_MONITOR) {
         for(auto cu : devInfo->loadedXclbins.back()->cus) {
@@ -634,14 +638,15 @@ namespace xdp {
                           readTrafficClass, writeTrafficClass);
         devInfo->loadedXclbins.back()->nocList.push_back(mon);
         // nocList in xdp::DeviceIntf is sorted; Is that required here?
-      } else if(debugIpData->m_type == TRACE_S2MM && (debugIpData->m_properties & 0x1)) {
-        // TS2MM IP for AIE PLIO trace offload
-//        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
-        devInfo->loadedXclbins.back()->numTracePLIO++;
-      } else if (debugIpData->m_type == TRACE_S2MM) { // TS2MM IP for PL trace offload
-        devInfo->loadedXclbins.back()->usesTs2mm = true ;
+      } else if (debugIpData->m_type == TRACE_S2MM) { 
+        // TS2MM IP for either AIE PLIO or PL trace offload
+        if (debugIpData->m_properties & 0x1)
+          devInfo->loadedXclbins.back()->numTracePLIO++;
+        else
+          devInfo->loadedXclbins.back()->usesTs2mm = true;
       } else {
-//        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
+        // Do nothing since not recognized
+        // mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }
     }
 

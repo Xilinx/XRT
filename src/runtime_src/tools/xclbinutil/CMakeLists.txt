@@ -1,13 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
 # Signing xclbin images are currently only support on Linux
+
 if(NOT WIN32)
   find_package(OpenSSL REQUIRED)
   if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-    find_package(PythonInterp REQUIRED)
+    # Cannot use find_package(PythonInterp REQUIRED) as it pollutes the
+    # global space and later causes failure with find_package(pybind11 ...)
+    # in src/python/pybind11/CMakeLists.txt
+    find_program(PYTHON_EXECUTABLE python3)
   endif()
 endif()
 
 # Windows support coming soon
-if(NOT WIN32)   
+if(NOT WIN32)
   # On Ubuntu 16.04 CMake support is limited
   if ((${LINUX_FLAVOR} STREQUAL "Ubuntu") AND (${LINUX_VERSION} STREQUAL "16.04"))
     set(RapidJSON_VERSION_MAJOR 0)
@@ -95,7 +100,12 @@ if(NOT WIN32)
     # Test: SmartNic Schema
     set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic")
     xrt_add_test("smartnic-format" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic/SectionSmartNicFormat.py ${TEST_OPTIONS}")
-  endif()
+
+    # -- SoftKernel
+    set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SoftKernel")
+    xrt_add_test("softkernel" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SoftKernel/SectionSoftKernel.py ${TEST_OPTIONS}")
+
+    endif()
 endif()
 
 
@@ -124,12 +134,12 @@ if (GTEST_FOUND)
   else()
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread crypto)
 
-    if(${RapidJSON_VERSION_MAJOR} GREATER_EQUAL 1)
+    if(NOT (${RapidJSON_VERSION_MAJOR} EQUAL 0))
       target_compile_definitions(${UNIT_TEST_NAME} PRIVATE ENABLE_JSON_SCHEMA_VALIDATION)
     endif()
   endif()
 
-  # Add the test 
+  # Add the test
   set(TEST_EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/${UNIT_TEST_NAME}")
   set(TEST_OPTIONS "--quiet --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/test_data")
   xrt_add_test(${UNIT_TEST_NAME} "${TEST_EXECUTABLE}" "${TEST_OPTIONS}")

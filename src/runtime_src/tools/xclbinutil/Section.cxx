@@ -37,6 +37,7 @@ std::map<enum axlf_section_kind, std::string> Section::m_mapIdToName;
 std::map<std::string, enum axlf_section_kind> Section::m_mapNameToId;
 std::map<enum axlf_section_kind, Section::Section_factory> Section::m_mapIdToCtor;
 std::map<std::string, enum axlf_section_kind> Section::m_mapJSONNameToKind;
+std::map<enum axlf_section_kind, std::string> Section::m_mapKindToJSONName;
 std::map<enum axlf_section_kind, bool> Section::m_mapIdToSubSectionSupport;
 std::map<enum axlf_section_kind, bool> Section::m_mapIdToSectionIndexSupport;
 
@@ -115,6 +116,9 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
 
   
   // At this point we know we are good, lets initialize the arrays
+  // TODO: These mappings are no longer scalable. 
+  //       Please refactor to a cleaner solution at the next earliest possibility.
+  m_mapKindToJSONName[_eKind] = _sHeaderJSONName;
   m_mapIdToName[_eKind] = _sKindStr;
   m_mapNameToId[_sKindStr] = _eKind;
   m_mapIdToCtor[_eKind] = _Section_factory;
@@ -122,14 +126,14 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
   m_mapIdToSectionIndexSupport[_eKind] = _bSupportsIndexing;
 }
 
-bool
-Section::translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind)
+void
+Section::translateSectionKindStrToKind(const std::string & sKind, enum axlf_section_kind & eKind)
 {
-  if (m_mapNameToId.find(_sKindStr) == m_mapNameToId.end()) {
-    return false;   
+  if (m_mapNameToId.find(sKind) == m_mapNameToId.end()) {
+    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", sKind.c_str());
+    throw std::runtime_error(errMsg);
   }
-  _eKind = m_mapNameToId[_sKindStr];
-  return true;
+  eKind = m_mapNameToId[sKind];
 }
 
 bool
@@ -185,6 +189,10 @@ Section::getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eK
   return true;
 }
 
+std::string
+Section::getJSONOfKind(enum axlf_section_kind _eKind) {
+  return m_mapKindToJSONName[_eKind];
+}
 
 Section*
 Section::createSectionObjectOfKind( enum axlf_section_kind _eKind, 
@@ -237,7 +245,7 @@ Section::initXclBinSectionHeader(axlf_section_header& _sectionHeader) {
 }
 
 void
-Section::writeXclBinSectionBuffer(std::fstream& _ostream) const
+Section::writeXclBinSectionBuffer(std::ostream& _ostream) const
 {
   if ((m_pBuffer == nullptr) ||
       (m_bufferSize == 0)) {
@@ -519,7 +527,7 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
 
 
 void 
-Section::dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) const
+Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) const
 {
   switch (_eFormatType) {
   case FT_RAW:

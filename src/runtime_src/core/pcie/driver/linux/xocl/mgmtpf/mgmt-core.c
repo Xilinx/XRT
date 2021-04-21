@@ -1536,6 +1536,12 @@ static int __init xclmgmt_init(void)
 	if (IS_ERR(xrt_class))
 		return PTR_ERR(xrt_class);
 
+	res = xocl_debug_init();
+	if (res) {
+		pr_err("failed to init debug");
+		goto alloc_err;
+	}
+
 	res = alloc_chrdev_region(&xclmgmt_devnode, 0,
 				  XOCL_MAX_DEVICES, DRV_NAME);
 	if (res)
@@ -1578,6 +1584,7 @@ static void xclmgmt_exit(void)
 
 	/* unregister this driver from the PCI bus driver */
 	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
+	xocl_debug_fini();
 	class_destroy(xrt_class);
 }
 

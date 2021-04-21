@@ -1,0 +1,201 @@
+{
+    "smartnic": {
+        "schema_version": {
+            "major": "1",
+            "minor": "0",
+            "patch": "0"
+        },
+        "softhubs": [
+            {
+                "version": "1",
+                "id": "1"
+            }
+        ],
+        "extensions": [
+            {
+                "instance_name": "plugin_1:instance_1",
+                "cam_instances": [
+                    {
+                        "name": "foo_my_cam_instance_1",
+                        "id": "0",
+                        "config": "8E66D3D94B354472AC95030EB88E9844CE88AD344DA749E0A3352E313B394B07",
+                        "base_address": "1245"
+                    }
+                ],
+                "address_mapping": {
+                    "offset": "1024",
+                    "aperture_size_bytes": "1024"
+                },
+                "version_info": {
+                    "uuid": "474273F130A84802BAFE0B1349D273C9",
+                    "minor": "0",
+                    "patch": "2"
+                },
+                "global_memory_size_bytes": "125",
+                "per_handle_memory_size_bytes": "125",
+                "info": [
+                    {
+                        "title": "My Special Plugin"
+                    },
+                    {
+                        "creator": "Xilinx Engineer"
+                    },
+                    {
+                        "subject": "Demo"
+                    },
+                    {
+                        "description": "This is a special demo plugin"
+                    },
+                    {
+                        "publisher": "Xilinx"
+                    },
+                    {
+                        "date": "1997-07-16T19:20:30.45+01:00"
+                    },
+                    {
+                        "type": "Networking accelerator"
+                    },
+                    {
+                        "format": "SmartNIC plugin"
+                    },
+                    {
+                        "identifier": "6511BA546-32A"
+                    },
+                    {
+                        "source": "Special Company"
+                    },
+                    {
+                        "language": "de-CH-1901"
+                    },
+                    {
+                        "relation": "Networking"
+                    },
+                    {
+                        "coverage": "Security"
+                    },
+                    {
+                        "rights": "Xilinx Copyright 2021"
+                    }
+                ],
+                "features": "01",
+                "setup": {
+                    "ebpf": "44756D6D7920427974652046696C650A"
+                },
+                "background_proc": {
+                    "ebpf": "7E5025DF471543F6867244D1F869AFC57E5025DF471543F6867244D1F869AFC5"
+                },
+                "tear_down": {
+                    "ebpf": "44756D6D7920427974652046696C650A"
+                },
+                "messages": [
+                    {
+                        "id": "0",
+                        "name": "my message",
+                        "param_size_bytes": "3",
+                        "ebpf": "44756D6D7920427974652046696C650A"
+                    }
+                ],
+                "resource_classes": [
+                    {
+                        "name": "My resource",
+                        "description": "This is my resource",
+                        "max_count": "2",
+                        "memory_size_bytes": "256",
+                        "dtor": "44756D6D7920427974652046696C650A"
+                    }
+                ]
+            },
+            {
+                "instance_name": "plugin_2:instance_1",
+                "cam_instances": [
+                    {
+                        "name": "foo_my_cam_instance_2",
+                        "id": "0",
+                        "config": "D3D94B354472AC95030EB88E9844CE88AD344DA749E0A3352E313B394B07",
+                        "base_address": "5678"
+                    }
+                ],
+                "address_mapping": {
+                    "offset": "2048",
+                    "aperture_size_bytes": "1024"
+                },
+                "version_info": {
+                    "uuid": "4BA402B066864876A82064DCF62575AA",
+                    "minor": "0",
+                    "patch": "2"
+                },
+                "info": [
+                    {
+                        "title": "My Special Plugin"
+                    },
+                    {
+                        "creator": "Xilinx Engineer"
+                    },
+                    {
+                        "subject": "Demo"
+                    },
+                    {
+                        "description": "This is a 2nd special demo plugin"
+                    },
+                    {
+                        "publisher": "Xilinx"
+                    },
+                    {
+                        "date": "1997-07-16T19:20:30.45+01:00"
+                    },
+                    {
+                        "type": "Networking accelerator"
+                    },
+                    {
+                        "format": "SmartNIC plugin"
+                    },
+                    {
+                        "identifier": "6511BA546-32A"
+                    },
+                    {
+                        "source": "Special Company"
+                    },
+                    {
+                        "language": "de-CH-1901"
+                    },
+                    {
+                        "relation": "Networking"
+                    },
+                    {
+                        "coverage": "Security"
+                    },
+                    {
+                        "rights": "Xilinx Copyright 2021"
+                    }
+                ],
+                "features": "04",
+                "setup": {
+                    "ebpf": "44756D6D7920427974652046696C650A"
+                },
+                "background_proc": {
+                    "ebpf": "25DF471543F6867244D1F869AFC57E5025DF471543F6867244D1F869AFC5ABDF"
+                },
+                "tear_down": {
+                    "ebpf": "44756D6D7920427974652046696C650A"
+                },
+                "messages": [
+                    {
+                        "id": "0",
+                        "name": "my message",
+                        "param_size_bytes": "4",
+                        "ebpf": "44756D6D7920427974652046696C650A"
+                    }
+                ],
+                "resource_classes": [
+                    {
+                        "name": "My resource",
+                        "description": "This is my resource",
+                        "max_count": "4",
+                        "memory_size_bytes": "256",
+                        "dtor": "44756D6D7920427974652046696C650A"
+                    }
+                ]
+            }
+        ]
+    }
+}

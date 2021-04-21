@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2020 Xilinx, Inc
+ * Copyright (C) 2018-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -47,6 +47,8 @@ class XclBin {
   void writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion);
   void removeSection(const std::string & _sSectionToRemove);
   void addSection(ParameterSectionData &_PSD);
+  void addReplaceSection(ParameterSectionData &_PSD);
+  void addMergeSection(ParameterSectionData &_PSD);
   void addSections(ParameterSectionData &_PSD);
   void appendSections(ParameterSectionData &_PSD);
   void replaceSection(ParameterSectionData &_PSD);
@@ -72,7 +74,7 @@ class XclBin {
   void findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptree& _mirrorData) const;
   void readXclBinaryMirrorImage(std::fstream& _istream, const boost::property_tree::ptree& _mirrorData);
 
-  void writeXclBinBinaryMirrorData(std::fstream& _ostream, const boost::property_tree::ptree& _mirroredData) const;
+  void writeXclBinBinaryMirrorData(std::ostream& _ostream, const boost::property_tree::ptree& _mirroredData) const;
 
   void addHeaderMirrorData(boost::property_tree::ptree& _pt_header);
 
@@ -89,8 +91,8 @@ class XclBin {
  private:
   void readXclBinHeader(const boost::property_tree::ptree& _ptHeader, struct axlf& _axlfHeader);
   void readXclBinSection(std::fstream& _istream, const boost::property_tree::ptree& _ptSection);
-  void writeXclBinBinaryHeader(std::fstream& _ostream, boost::property_tree::ptree& _mirroredData);
-  void writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::ptree& _mirroredData);
+  void writeXclBinBinaryHeader(std::ostream& _ostream, boost::property_tree::ptree& _mirroredData);
+  void writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::ptree& _mirroredData);
 
 
  protected:

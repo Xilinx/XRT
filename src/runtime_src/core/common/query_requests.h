@@ -78,6 +78,7 @@ enum class key_type
   kds_mode,
   kds_cu_stat,
   kds_scu_stat,
+  ps_kernel,
   xclbin_full,
 
   xmc_version,
@@ -101,6 +102,8 @@ enum class key_type
 
   dna_serial_num,
   clock_freqs_mhz,
+  aie_core_info,
+  aie_shim_info,
   idcode,
   data_retention,
   sec_level,
@@ -168,6 +171,7 @@ enum class key_type
   vcc_aux_pmc_millivolts,
   vcc_ram_millivolts,
   int_vcc_io_millivolts,
+  v0v9_int_vcc_vcu_millivolts,
   mac_contiguous_num,
   mac_addr_first,
   mac_addr_list,
@@ -717,6 +721,15 @@ struct kds_cu_stat : request
   get(const device*) const = 0;
 };
 
+struct ps_kernel : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::ps_kernel;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct kds_scu_stat : request
 {
   struct data {
@@ -1000,6 +1013,24 @@ struct dna_serial_num : request
   {
     return value;
   }
+};
+
+struct aie_core_info : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::aie_core_info;
+  
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct aie_shim_info : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::aie_shim_info;
+  
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct clock_freqs_mhz : request
@@ -1826,6 +1857,21 @@ struct int_vcc_io_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::int_vcc_io_millivolts;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct v0v9_int_vcc_vcu_millivolts : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::v0v9_int_vcc_vcu_millivolts;
 
   virtual boost::any
   get(const device*) const = 0;

@@ -530,6 +530,9 @@ namespace xdp {
       mTraceThreadEn = xrt_xocl::config::get_continuous_trace();
       if (mTraceThreadEn) {
         mTraceReadIntMs = xrt_xocl::config::get_continuous_trace_interval_ms();
+        auto newInt = xrt_xocl::config::get_trace_buffer_offload_interval_ms();
+        if (newInt != DEFAULT_TRACE_OFFLOAD_INTERVAL_MS)
+          mTraceReadIntMs = newInt;
       } else {
         // Faster clock training causes problems with long designs
         // 500ms is good enough for continous clock training

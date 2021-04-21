@@ -175,9 +175,17 @@ namespace xclcpuemhal2 {
     mCore = nullptr;
     mSWSch = nullptr;
 
+#if GOOGLE_PROTOBUF_VERSION < 3006001
     ci_buf = malloc(ci_msg.ByteSize());
+#else
+    ci_buf = malloc(ci_msg.ByteSizeLong());
+#endif
     ri_msg.set_size(0);
+#if GOOGLE_PROTOBUF_VERSION < 3006001
     ri_buf = malloc(ri_msg.ByteSize());
+#else
+    ri_buf = malloc(ri_msg.ByteSizeLong());
+#endif
     buf = nullptr;
     buf_size = 0;
 
@@ -207,6 +215,7 @@ namespace xclcpuemhal2 {
     bUnified = _unified;
     bXPR = _xpr;
     mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
+    mIsAieEnabled = false;
   }
 
   size_t CpuemShim::alloc_void(size_t new_size)
@@ -584,6 +593,7 @@ namespace xclcpuemhal2 {
   int CpuemShim::xclLoadXclBin(const xclBin *header)
   {    
     if (isAieEnabled(header)){
+      mIsAieEnabled = true;
       return xclLoadXclBinNewFlow(header);
     }
     if(mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
@@ -908,7 +918,7 @@ namespace xclcpuemhal2 {
     {
       resetProgram();
       std::string logFilePath = xrt_core::config::get_hal_logging();
-      if (!logFilePath.empty()) {
+      if (!mLogStream.is_open() && !logFilePath.empty()) {
         mLogStream.open(logFilePath);
         mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
         mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
@@ -1337,7 +1347,7 @@ namespace xclcpuemhal2 {
     xclemulation::config::getInstance()->populateEnvironmentSetup(mEnvironmentNameValueMap);
 
     std::string logFilePath = (logfileName && (logfileName[0] != '\0')) ? logfileName : xrt_core::config::get_hal_logging();
-    if (!logFilePath.empty()) {
+    if (!mLogStream.is_open() && !logFilePath.empty()) {
       mLogStream.open(logFilePath);
       mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
@@ -1470,7 +1480,7 @@ namespace xclcpuemhal2 {
 
     int status = 0;
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
-    if(!simDontRun)
+    if(!simDontRun && !mIsAieEnabled)
       while (-1 == waitpid(0, &status, 0));
 
     systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);

@@ -3340,6 +3340,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_6A8F) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0078, PCI_ANY_ID, MGMT_XBB_DSA52) },  \
 	{ XOCL_PCI_DEVID(0x10EE, 0xE987, PCI_ANY_ID, XBB_MFG("samsung")) },\
+	{ XOCL_PCI_DEVID(0x10EE, 0xF987, PCI_ANY_ID, XBB_MFG("samsung_efuse")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD000, PCI_ANY_ID, XBB_MFG("u200")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD004, PCI_ANY_ID, XBB_MFG("u250")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD008, PCI_ANY_ID, XBB_MFG("u280-es1")) }, \
@@ -3478,6 +3479,14 @@ struct xocl_subdev_map {
 	{ 0x10EE, 0x6988, PCI_ANY_ID,					\
 		.vbnv = "xilinx_u2",					\
 		.priv_data = &XOCL_BOARD_U2_USER_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x513C, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u30",					\
+		.priv_data = &XOCL_BOARD_U30_MGMT_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x513D, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u30",					\
+		.priv_data = &XOCL_BOARD_U30_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 }
 
 #endif

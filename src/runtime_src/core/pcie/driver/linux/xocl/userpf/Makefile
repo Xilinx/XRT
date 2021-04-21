@@ -53,6 +53,7 @@ xocl-y := \
 	../xocl_thread.o \
 	../xocl_fdt.o \
 	../xocl_xclbin.o \
+	../xocl_debug.o \
 	../subdev/xdma.o \
 	../subdev/qdma.o \
 	../subdev/qdma4.o \
@@ -102,7 +103,7 @@ xocl-y += $(libfdt-y)
 xocl-y += $(drv_common-y)
 
 CONFIG_MODULE_SIG=n
-KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 
 PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
@@ -119,10 +120,10 @@ endif
 
 all:
 	@echo $(PWD)
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules
 
 install: all
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules_install
+	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules_install
 	depmod -a
 	install -m 644 99-xocl.rules /etc/udev/rules.d
 	-rmmod -s xocl || true

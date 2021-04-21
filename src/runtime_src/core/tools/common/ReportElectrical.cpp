@@ -143,6 +143,8 @@ ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice,
     populate_sensor<qr::vcc_aux_pmc_millivolts, qr::noop>(_pDevice, "vcc_aux_pmc", "Vcc Auxillary Pmc")));
   sensor_array.push_back(std::make_pair("", 
     populate_sensor<qr::vcc_ram_millivolts, qr::noop>(_pDevice, "vcc_ram", "Vcc Ram")));
+  sensor_array.push_back(std::make_pair("", 
+    populate_sensor<qr::v0v9_int_vcc_vcu_millivolts, qr::noop>(_pDevice, "0v9_vccint_vcu", "0.9 Volts Vcc Vcu")));
   
   pt.add_child("power_rails", sensor_array);
 

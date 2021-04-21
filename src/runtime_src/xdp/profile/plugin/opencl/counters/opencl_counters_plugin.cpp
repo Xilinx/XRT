@@ -52,8 +52,9 @@ namespace xdp {
       //  so be sure to account for any peculiarities here.
       emulationSetup() ;
 
-      // Before writing, make sure that counters are read.
+      // Before writing, make sure that counters are read and trace is processed
       db->broadcast(VPDatabase::READ_COUNTERS, nullptr) ;
+      db->broadcast(VPDatabase::READ_TRACE, nullptr) ;
       for (auto w : writers)
       {
 	w->write(false) ;

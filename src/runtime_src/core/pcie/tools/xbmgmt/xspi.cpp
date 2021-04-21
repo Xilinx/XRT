@@ -312,7 +312,8 @@ static bool isDualQSPI(pcidev::pci_device *dev) {
         exit(-EINVAL);
     }
 
-    return (deviceID == 0xE987 || deviceID == 0x6987 || deviceID == 0xD030);
+    return (deviceID == 0xE987 || deviceID == 0x6987 || deviceID == 0xD030 ||
+            deviceID == 0xF987);
 }
 
 unsigned XSPI_Flasher::getSector(unsigned address) {

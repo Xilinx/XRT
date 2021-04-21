@@ -83,8 +83,21 @@ static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
 		return;
 
 	num_reg = sz / sizeof(u32);
-	for (i = 0; i < num_reg; ++i)
-		cu_write32(cu_hls, ARGS + i * 4, data[i]);
+	switch (type) {
+	case REGMAP:
+		/* Write register map, starting at base_addr + 0x10 (byte) */
+		for (i = 0; i < num_reg; ++i)
+			cu_write32(cu_hls, ARGS + i * 4, data[i]);
+		break;
+	case KEY_VAL:
+		/* Use {offset, value} pairs to configure CU
+		 * data[i]: register offset
+		 * data[i + 1]: value
+		 */
+		for (i = 0; i < num_reg; i += 2)
+			cu_write32(cu_hls, data[i], data[i + 1]);
+		break;
+	}
 }
 
 static void cu_hls_start(void *core)
@@ -331,7 +344,6 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 	core->done = 0;
 	core->ready = 0;
 
-	xcu->status = cu_read32(core, CTRL);
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_hls_funcs;
 
@@ -339,6 +351,14 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 	xcu->interval_min = 2;
 	xcu->interval_max = 5;
 
+	/* No control and interrupt registers in ap_ctrl_none protocol.
+	 * In this case, return here for creating CU sub-dev. No need to setup
+	 * CU thread and queues.
+	 */
+	if (xcu->info.protocol == CTRL_NONE)
+		return  0;
+
+	xcu->status = cu_read32(core, CTRL);
 	err = xrt_cu_init(xcu);
 	if (err)
 		return err;

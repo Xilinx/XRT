@@ -18,6 +18,11 @@
 #define AIE_TRACE_PLUGIN_H
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xaiefal/xaiefal.hpp"
+
+extern "C" {
+#include <xaiengine.h>
+}
 
 namespace xdp {
 
@@ -27,17 +32,6 @@ namespace xdp {
 
   class AieTracePlugin : public XDPPlugin
   {
-
-    private:
-      std::vector<void*> deviceHandles;
-      std::map<uint64_t, void*> deviceIdToHandle;
-
-      typedef std::tuple<AIETraceOffload*, 
-                         AIETraceLogger*,
-                         DeviceIntf*> AIEData;
-
-      std::map<uint32_t, AIEData>  aieOffloaders;
-
     public:
       XDP_EXPORT
       AieTracePlugin();
@@ -56,6 +50,46 @@ namespace xdp {
 
       XDP_EXPORT
       virtual void writeAll(bool openNewFiles);
+
+    private:
+      void setMetrics(uint64_t deviceId, void* handle);
+      inline uint32_t bcIdToEvent(int bcId);
+
+    private:
+      // Trace Runtime Status
+      AieRC mConfigStatus = XAIE_OK;
+
+      std::vector<void*> deviceHandles;
+      std::map<uint64_t, void*> deviceIdToHandle;
+
+      typedef std::tuple<AIETraceOffload*, 
+                         AIETraceLogger*,
+                         DeviceIntf*> AIEData;
+
+      std::map<uint32_t, AIEData>  aieOffloaders;
+
+      // Types
+      typedef XAie_Events            EventType;
+      typedef std::vector<EventType> EventVector;
+      typedef std::vector<uint32_t>  ValueVector;
+
+      // Trace metrics      
+      std::set<std::string> metricSets;
+      std::map<std::string, EventVector> coreEventSets;
+      std::map<std::string, EventVector> memoryEventSets;
+
+      // Counter metrics (same for all sets)
+      EventType   coreTraceStartEvent;
+      EventType   coreTraceEndEvent;
+      EventVector coreCounterStartEvents;
+      EventVector coreCounterEndEvents;
+      EventVector coreCounterResetEvents;
+      ValueVector coreCounterEventValues;
+
+      EventVector memoryCounterStartEvents;
+      EventVector memoryCounterEndEvents;
+      EventVector memoryCounterResetEvents;
+      ValueVector memoryCounterEventValues;
   };
     
 }   

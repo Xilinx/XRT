@@ -17,7 +17,7 @@
 #ifndef DEVICE_EDGE_H
 #define DEVICE_EDGE_H
 
-#include "common/device.h"
+#include "core/common/device.h"
 
 namespace xrt_core {
 

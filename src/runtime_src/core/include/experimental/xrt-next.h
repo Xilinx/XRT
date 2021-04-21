@@ -20,6 +20,20 @@
 
 #include "../xrt.h"
 
+/*
+ * typedef xclInterruptNotifyHandle
+ *
+ * Implementation specific type representing an interrupt notify handle
+ * that is used by xclOpen/CloseIPInterruptNotify()
+ */  
+#ifdef _WIN32
+typedef void* xclInterruptNotifyHandle;
+# define XCL_NULL_INTC_HANDLE INVALID_HANDLE_VALUE
+#else
+typedef int xclInterruptNotifyHandle;
+# define XCL_NULL_INTC_HANDLE -1
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -232,39 +246,31 @@ int
 xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t data);
 
 /**
- * xclIPName2Index() - Obtain IP index by IP name
- *
- * @handle:        Device handle
- * @ipName:        IP name. usually "<kernel name>:<instance name>"
- * Return:         IP index or appropriate error number
- *
- * xclIPName2Index() should be used to obtain unique index of IP as understood by other XRT APIs
- * like xclOpenContext().
- *
- */
-XCL_DRIVER_DLLESPEC
-int
-xclIPName2Index(xclDeviceHandle handle, const char *ipName);
-
-/**
  * xclOpenIPInterruptNotify() - Open a fd for IP interrupt notify
  *
  * @handle:     Device handle
  * @ipIndex:    IP index
  * @flags:      flags for the fd
- * Return:      fd or appropriate error number
+ * Return:      Interrupt notify handle
  *
- * Caller should own an exclusive context on the IP obtained via xclOpenContext()
- * Support for non managed IP. This is the proper way to support custom IPs which doesn't compliant with supported control protocol.
- * This API would open a file descriptor used for CU interrupt notification. The usage is similar to open a UIO device.
- * Caller could use standard read/poll/select system call to wait for IP interrupts.
- * Once this API was called, xclExecBuf() could not be used to schedule this specific IP.
- * The expectation is the caller performing any necessary actions to make it work.
+ * Caller should own an exclusive context on the IP obtained via
+ * xclOpenContext()
  *
- * Note: the IP irq would be disable after this is called. Caller could manually enable the interrupt by write().
+ * Support for non managed IP. This is the proper way to support
+ * custom IPs which doesn't compliant with supported control protocol.
+ *
+ * This API would open a handle used for CU interrupt
+ * notification. The usage is similar to open a UIO device.  Caller
+ * could use standard read/poll/select system call to wait for IP
+ * interrupts.  Once this API was called, xclExecBuf() could not be
+ * used to schedule this specific IP.  The expectation is the caller
+ * performing any necessary actions to make it work.
+ *
+ * Note: the IP irq would be disable after this is called. Caller
+ * could manually enable the interrupt by write().
  */
 XCL_DRIVER_DLLESPEC
-int
+xclInterruptNotifyHandle
 xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, unsigned int flags);
 
 /**

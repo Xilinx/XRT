@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 PROJECT(XRT)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.5.0)
 

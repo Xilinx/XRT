@@ -26,6 +26,7 @@
 #include "core/include/xcl_perfmon_parameters.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
+#include "core/common/query_requests.h"
 #include "core/common/error.h"
 
 #include <cerrno>
@@ -927,6 +928,20 @@ int
 shim::
 xclIPName2Index(const char *name)
 {
+  /* In new kds, driver determines CU index */
+  if (xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice)) {
+    for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice)) {
+      if (stat.name != name)
+        continue;
+
+      return stat.index;
+    }
+
+    xclLog(XRT_ERROR, "%s not found", name);
+    return -ENOENT;
+  }
+
+  /* Old kds is enabled */
   std::string errmsg;
   std::vector<char> buf;
   const uint64_t bad_addr = 0xffffffffffffffff;
@@ -938,7 +953,10 @@ xclIPName2Index(const char *name)
     return -EINVAL;
   }
   if (buf.empty())
+  {
+    xclLog(XRT_ERROR, "ip_layout sysfs node is empty");
     return -ENOENT;
+  }
 
   const ip_layout *map = (ip_layout *)buf.data();
   if(map->m_count < 0) {
@@ -957,32 +975,23 @@ xclIPName2Index(const char *name)
   }
 
   if (i == map->m_count)
+  {
+    xclLog(XRT_ERROR, "no ip with %s found in ip_layout", name);
     return -ENOENT;
+  }
+
   if (addr == bad_addr)
     return -EINVAL;
 
-  std::vector<std::string> custat;
-  mDev->sysfs_get("kds_custat", errmsg, custat);
-  if (!errmsg.empty()) {
-    xclLog(XRT_ERROR, "can't read kds_custat sysfs node: %s",
-           errmsg.c_str());
-    return -EINVAL;
+  auto cus = xrt_core::xclbin::get_cus(map);
+  auto itr = std::find(cus.begin(), cus.end(), addr);
+  if (itr == cus.end())
+  {
+    xclLog(XRT_ERROR, "no cu with 0x%lx found", addr);
+    return -ENOENT;
   }
+  return std::distance(cus.begin(),itr);
 
-  uint32_t idx = 0;
-  for (auto& line : custat) {
-    // convert and compare parsed hex address CU[@0x[0-9]+]
-    size_t pos = line.find("0x");
-    if (pos == std::string::npos)
-      continue;
-    if (static_cast<unsigned long>(addr) ==
-        std::stoul(line.substr(pos).c_str(), 0, 16)) {
-      return idx;
-    }
-    ++idx;
-  }
-
-  return -ENOENT;
 }
 
 int
@@ -2155,7 +2164,7 @@ xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* 
 }
 
 int
-xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+_xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return 0;
 }
@@ -2427,6 +2436,18 @@ int
 xclUpdateSchedulerStat(xclDeviceHandle handle)
 {
   return 1; // -ENOSYS;
+}
+
+int 
+xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
+{
+  return -ENOSYS;
+}
+
+int
+xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
+{
+  return -ENOSYS;
 }
 
 int

@@ -228,9 +228,16 @@ get_continuous_trace_interval_ms()
 }
 
 inline unsigned int
-get_trace_dump_interval_s()
+get_trace_buffer_offload_interval_ms()
 {
-  static unsigned int value = detail::get_uint_value("Debug.trace_dump_interval_s",5);
+  static unsigned int value = detail::get_uint_value("Debug.trace_buffer_offload_interval_ms",10);
+  return value;
+}
+
+inline unsigned int
+get_trace_file_dump_interval_s()
+{
+  static unsigned int value = detail::get_uint_value("Debug.trace_file_dump_interval_s",5);
   return value;
 }
 
@@ -294,6 +301,27 @@ inline bool
 get_aie_trace()
 {
   static bool value = detail::get_bool_value("Debug.aie_trace", false);
+  return value;
+}
+
+inline std::string
+get_aie_trace_metrics()
+{
+  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_core_metrics()
+{
+  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "heat_map");
+  return value;
+}
+
+inline std::string
+get_aie_profile_memory_metrics()
+{
+  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "dma_locks");
   return value;
 }
 

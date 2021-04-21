@@ -3,7 +3,9 @@
 # XRT_VERSION_STRING
 # LINUX_KERNEL_VERSION
 
-set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
+if (NOT DEFINED XRT_DKMS_INSTALL_DIR)
+  set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
+endif()
 set (XRT_DKMS_INSTALL_DRIVER_DIR "${XRT_DKMS_INSTALL_DIR}/driver")
 
 message("-- XRT DRIVER SRC BASE DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR}")
@@ -56,6 +58,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/xocl_fdt.h
   xocl/xocl_xclbin.c
   xocl/xocl_xclbin.h
+  xocl/xocl_debug.c
   xocl/xocl_test.c
   xocl/userpf/common.h
   xocl/userpf/xocl_bo.c

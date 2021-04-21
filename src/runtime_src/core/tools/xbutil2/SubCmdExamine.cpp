@@ -44,6 +44,7 @@ namespace po = boost::program_options;
 #include "tools/common/ReportElectrical.h"
 #include "tools/common/ReportMechanical.h"
 #include "tools/common/ReportAie.h"
+#include "tools/common/ReportAieShim.h"
 #include "tools/common/ReportMemory.h"
 #include "tools/common/ReportThermal.h"
 #include "tools/common/ReportAsyncError.h"
@@ -56,6 +57,7 @@ namespace po = boost::program_options;
   static ReportCollection fullReportCollection = {
   // Common reports
     std::make_shared<ReportAie>(),
+    std::make_shared<ReportAieShim>(),
     std::make_shared<ReportMemory>(),
     std::make_shared<ReportHost>(),
     std::make_shared<ReportCu>(),

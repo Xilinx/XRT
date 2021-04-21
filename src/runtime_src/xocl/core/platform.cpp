@@ -19,6 +19,7 @@
 #include "debug.h"
 
 #include "xocl/xclbin/xclbin.h"
+#include "core/common/api/exec.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
@@ -117,6 +118,10 @@ platform::
 {
   XOCL_DEBUG(std::cout,"xocl::platform::~platform(",m_uid,")\n");
   try {
+    // static global destruction
+    // synchronize with execution monitor thread which
+    // may be in the process of notifying completed events
+    xrt_core::exec::stop();
     g_platform = nullptr;
   }
   catch (const std::exception& ex) {

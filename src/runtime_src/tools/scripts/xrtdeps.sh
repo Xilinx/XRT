@@ -93,6 +93,7 @@ rh_package_list()
      protobuf-devel \
      python3 \
      python3-pip \
+     python3-devel \
      rapidjson-devel \
      rpm-build \
      strace \
@@ -185,6 +186,7 @@ ub_package_list()
      pkg-config \
      protobuf-compiler \
      python3 \
+     libpython3-dev \
      python3-breathe \
      python3-pip \
      python3-sphinx \
@@ -516,8 +518,9 @@ install()
         ${SUDO} zypper install -y "${SUSE_LIST[@]}"
     fi
 
-    # Install pybind11 for building the XRT python bindings
-    pip3 install pybind11
+    # Install/upgrade pybind11 for building the XRT python bindings
+    # We need 2.6.0 minimum version
+    pip3 install -U pybind11
 }
 
 update_package_list

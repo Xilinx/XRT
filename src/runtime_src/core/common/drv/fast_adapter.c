@@ -79,12 +79,12 @@ static int cu_fa_peek_credit(void *core)
 static void cu_fa_configure(void *core, u32 *data, size_t sz, int type)
 {
 	struct xrt_cu_fa *cu_fa = core;
-	u32 *slot = cu_fa->plram + cu_fa->head_slot;
+	u32 *slot = cu_fa->cmdmem + cu_fa->head_slot;
 
-	/* avoid plram is not update properly */
-	WARN_ON(!cu_fa->plram);
+	/* in case cmdmem is not update properly */
+	WARN_ON(!cu_fa->cmdmem);
 
-	if (kds_echo || !cu_fa->plram)
+	if (kds_echo || !cu_fa->cmdmem)
 		return;
 
 	/* move commands to device quickly is the key of performance */
@@ -103,7 +103,7 @@ static void cu_fa_start(void *core)
 
 	cu_fa->run_cnts++;
 
-	if (kds_echo || !cu_fa->plram)
+	if (kds_echo || !cu_fa->cmdmem)
 		return;
 
 	/* The MSW of descriptor is fixed */
@@ -127,7 +127,7 @@ static void cu_fa_check(void *core, struct xcu_status *status)
 	u32 task_count;
 	u32 done = 0;
 
-	if (kds_echo || !cu_fa->plram) {
+	if (kds_echo || !cu_fa->cmdmem) {
 		cu_fa->run_cnts--;
 		status->num_done = 1;
 		status->num_ready = 1;
@@ -234,7 +234,7 @@ int xrt_cu_fa_init(struct xrt_cu *xcu)
 	 * Maybe in the future, we could initial all of the CU resource at this
 	 * place. Now, this is just to note that below variables will initial
 	 * when xclbin download finished and kds get update.
-	 *   core->plram
+	 *   core->cmdmem
 	 *   core->paddr
 	 *   core->head_slot
 	 *   core->num_slots

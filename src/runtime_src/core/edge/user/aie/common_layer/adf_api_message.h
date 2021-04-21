@@ -16,18 +16,23 @@
 
 #pragma once
 
-#include "core/common/error.h"
+#include "errno.h"
+#include <string>
 
-adf::err_code errorMsg(adf::err_code code, std::string msg)
+namespace adf
 {
-    throw xrt_core::error(-((int)code), msg);
-    return code;
+enum class err_code : int
+{
+    ok = 0,
+    user_error = EINVAL,
+    internal_error = ENOTSUP,
+    aie_driver_error = EIO,
+    resource_unavailable = EAGAIN
+};
 }
 
-void debugMsg(std::string msg)
-{
-}
+adf::err_code errorMsg(adf::err_code code, std::string msg);
 
-void infoMsg(std::string msg)
-{
-}
+void debugMsg(std::string msg);
+
+void infoMsg(std::string msg);

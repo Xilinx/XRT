@@ -237,6 +237,11 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	}
 
 out:
+	if (xrt_cu_get_protocol(cu_mgmt->xcus[index]) == CTRL_NONE) {
+		kds_err(client, "Cannot submit command to ap_ctrl_none CU");
+		return -EINVAL;
+	}
+
 	cu_stat_inc(cu_mgmt, usage[index]);
 	client_stat_inc(client, s_cnt[index]);
 	xcmd->cu_idx = index;
@@ -538,7 +543,6 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 
 int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 {
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 	struct kds_client *client = xcmd->client;
 	int bad_state;
 	int ret = 0;
@@ -906,7 +910,7 @@ void kds_reset(struct kds_sched *kds)
 	kds->ini_disable = false;
 }
 
-static int kds_fa_assign_plram(struct kds_sched *kds)
+static int kds_fa_assign_cmdmem(struct kds_sched *kds)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	u32 total_sz = 0;
@@ -929,14 +933,14 @@ static int kds_fa_assign_plram(struct kds_sched *kds)
 
 	total_sz = round_up_to_next_power2(total_sz);
 
-	if (kds->plram.size < total_sz)
+	if (kds->cmdmem.size < total_sz)
 		return -EINVAL;
 
-	num_slots = kds->plram.size / total_sz;
+	num_slots = kds->cmdmem.size / total_sz;
 
-	bar_addr = kds->plram.bar_paddr;
-	dev_addr = kds->plram.dev_paddr;
-	vaddr = kds->plram.vaddr;
+	bar_addr = kds->cmdmem.bar_paddr;
+	dev_addr = kds->cmdmem.dev_paddr;
+	vaddr = kds->cmdmem.vaddr;
 	for (i = 0; i < cu_mgmt->num_cus; i++) {
 		if (!xrt_is_fa(cu_mgmt->xcus[i], &size))
 			continue;
@@ -963,8 +967,8 @@ int kds_cfg_update(struct kds_sched *kds)
 	kds->scu_mgmt.num_cus = 0;
 
 	/* Update PLRAM CU */
-	if (kds->plram.dev_paddr) {
-		ret = kds_fa_assign_plram(kds);
+	if (kds->cmdmem.dev_paddr) {
+		ret = kds_fa_assign_cmdmem(kds);
 		if (ret)
 			return -EINVAL;
 		/* ERT doesn't understand Fast adapter
@@ -1117,6 +1121,30 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	 */
 	xcmd->isize = (ecmd->count - xcmd->num_mask - 4) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[4 + ecmd->extra_cu_masks], xcmd->isize);
+	xcmd->payload_type = REGMAP;
+	ecmd->type = ERT_CU;
+}
+
+void exec_write_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+			  struct kds_command *xcmd)
+{
+	xcmd->opcode = OP_START;
+
+	xcmd->execbuf = (u32 *)ecmd;
+
+	xcmd->cu_mask[0] = ecmd->cu_mask;
+	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
+	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+
+	/* Copy resigter map into info and isize is the size of info in bytes.
+	 *
+	 * Based on ert.h, ecmd->count is the number of words following header.
+	 * In ert_start_kernel_cmd, the CU register map size is
+	 * (count - (1 + extra_cu_masks)) and skip 6 words for exec_write cmd.
+	 */
+	xcmd->isize = (ecmd->count - xcmd->num_mask - 6) * sizeof(u32);
+	memcpy(xcmd->info, &ecmd->data[6 + ecmd->extra_cu_masks], xcmd->isize);
+	xcmd->payload_type = KEY_VAL;
 	ecmd->type = ERT_CU;
 }
 

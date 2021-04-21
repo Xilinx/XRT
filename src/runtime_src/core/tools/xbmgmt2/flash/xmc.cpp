@@ -72,7 +72,9 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
     mPktBufOffset = 0;
     mPkt = {};
 
-    std::string err;
+    if (!hasXMC())
+        return;
+    
     bool is_mfg = false;
     is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(m_device);
     if (!is_mfg) {
@@ -84,11 +86,11 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
             mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
             return;
         }
-
-        try {
-            mRegBase = xrt_core::device_query<xrt_core::query::xmc_reg_base>(m_device);
-        } catch (...) {}
     }
+    
+    try {
+        mRegBase = xrt_core::device_query<xrt_core::query::xmc_reg_base>(m_device);
+    } catch (...) {}
     if (mRegBase == 0)
         mRegBase = XMC_REG_BASE;
 
@@ -546,6 +548,17 @@ bool XMC_Flasher::isBMCReady()
     }
 
     return bmcReady;
+}
+
+bool XMC_Flasher::hasXMC()
+{
+  bool xmc_presence = false;
+  try {
+    xrt_core::device_query<xrt_core::query::xmc_sc_presence>(m_device);
+    xmc_presence = true;
+  }
+  catch (...) { }
+  return xmc_presence;
 }
 
 bool XMC_Flasher::hasSC()

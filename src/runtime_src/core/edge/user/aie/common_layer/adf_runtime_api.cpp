@@ -112,19 +112,26 @@ err_code graph_api::run()
         XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
         for (int i = 0; i < numCores; i++)
         {
-            //Set Enable_Event bits to 113
-            XAie_Write32(config_manager::s_pDevInst, (_XAie_GetTileAddr(config_manager::s_pDevInst, coreTiles[i].Row, coreTiles[i].Col) + 0x00032008), 0x4472);
+            //Set Enable_Event to XAIE_EVENT_BROADCAST_7_CORE. The resources have been acquired by aiecompiler.
+            XAie_CoreConfigureEnableEvent(config_manager::s_pDevInst, coreTiles[i], XAIE_EVENT_BROADCAST_7_CORE);
         }
         XAie_SubmitTransaction(config_manager::s_pDevInst, nullptr);
 
-        //Trigger event 113 in shim_tile at column 0 by writing to Event_Generate
-        XAie_EventGenerate(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, XAIE_EVENT_BROADCAST_A_6_PL);
+        //Trigger event XAIE_EVENT_BROADCAST_A_8_PL in shim_tile at column 0 by writing to Event_Generate. The resources have been acquired by aiecompiler.
+        XAie_EventGenerate(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, XAIE_EVENT_BROADCAST_A_8_PL);
+
+        // Waiting for 250 cycles to reset the core enable event
+        unsigned long long StartTime, CurrentTime = 0;
+        driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, (u64*)(&StartTime));
+        do {
+            driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, (u64*)(&CurrentTime));
+        } while ((CurrentTime - StartTime) <= 250);
 
         XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
         for (int i = 0; i < numCores; i++)
         {
-            //Set Enable_Event bits to 0
-            XAie_Write32(config_manager::s_pDevInst, (_XAie_GetTileAddr(config_manager::s_pDevInst, coreTiles[i].Row, coreTiles[i].Col) + 0x00032008), 0x4400);
+            //Set Enable_Event to 0
+            XAie_CoreConfigureEnableEvent(config_manager::s_pDevInst, coreTiles[i], XAIE_EVENT_NONE_CORE);
         }
         XAie_SubmitTransaction(config_manager::s_pDevInst, nullptr);
     }
@@ -202,7 +209,6 @@ err_code graph_api::wait(unsigned long long cycleTimeout)
 
     int driverStatus = AieRC::XAIE_OK; //0
 
-    // CycleCnt has an upper limit of 0xFFFFFFFFFFFF or 300 trillion* cycles to prevent overflow
     if (cycleTimeout > 0xFFFFFFFFFFFF)
         return errorMsg(err_code::user_error, "ERROR: adf::graph::wait: Max cycle timeout value can be 0xFFFFFFFFFFFF.");
 
@@ -398,7 +404,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
         if (pRTPConfig->hasLock && bAcquireLock)
             driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pongTile, XAie_LockInit(pRTPConfig->pongLockId, acquireVal), LOCK_TIMEOUT);
 
-        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pongTile, pRTPConfig->pongAddr, const_cast<void*>(pValue), numBytes);
+        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pongTile, pRTPConfig->pongAddr, pValue, numBytes);
     }
     else //ping
     {
@@ -406,7 +412,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
         if (pRTPConfig->hasLock && bAcquireLock)
             driverStatus |= XAie_LockAcquire(config_manager::s_pDevInst, pingTile, XAie_LockInit(pRTPConfig->pingLockId, acquireVal), LOCK_TIMEOUT);
 
-        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pingTile, pRTPConfig->pingAddr, const_cast<void*>(pValue), numBytes);
+        driverStatus |= XAie_DataMemBlockWrite(config_manager::s_pDevInst, pingTile, pRTPConfig->pingAddr, pValue, numBytes);
     }
 
     // write the new selector value
@@ -614,7 +620,9 @@ err_code gmio_api::enqueueBD(uint64_t address, size_t size)
 
     //set up BD
     driverStatus |= XAie_DmaSetAddrLen(&shimDmaInst, (u64)address, (u32)size);
+
     driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
+
     driverStatus |= XAie_DmaEnableBd(&shimDmaInst);
 
     //write BD

@@ -4495,7 +4495,7 @@ static void clock_status_check(struct platform_device *pdev, bool *latched)
 		if (status & 0x1) {
 			xocl_err(&pdev->dev, "Critical temperature event, "
 					"kernel clocks have been stopped, run "
-					"'xbutil valiate -q' to continue. "
+					"'xbutil validate -q' to continue. "
 					"See AR 73398 for more details.");
 			/* explicitly indicate reset should be latched */
 			*latched = true;
@@ -4629,10 +4629,11 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 			BDINFO_NAME, xmc->bd_name);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,
 			BDINFO_BMC_VER, xmc->bmc_ver);
-		if (!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION)) {
+		if (!strcmp(xmc->exp_bmc_ver, NONE_BMC_VERSION) ||
+                is_sc_fixed(xmc)) {
 			/*
-			 * No SC image is needed, set expect to be
-			 * the same as current.
+			 * No SC image is needed, or SC is beyond control of XRT, 
+			 * set expect to be the same as current.
 			 */
 			xmc_set_board_info(bdinfo_raw, bd_info_sz,
 				BDINFO_BMC_VER, xmc->exp_bmc_ver);

@@ -66,8 +66,6 @@
 #include "../xocl_drv.h"
 #include "../userpf/common.h"
 
-//#define SCHED_VERBOSE
-
 /* This is for performance test purpose.
  * Use this with regular ap_ctrl_hs CUs and KDS mode.
  * It is by default disabled.
@@ -84,22 +82,14 @@ extern int kds_mode;
 	int i;								\
 	u32 *data = (u32 *)packet;					\
 	for (i = 0; i < size; ++i)					    \
-		DRM_INFO("packet(0x%p) data[%d] = 0x%x\n", data, i, data[i]); \
+		xocl_dbg_trace(debug_hdl, XRT_TRACE_LEVEL_VERBOSE,	\
+			       "packet(0x%p) data[%d] = 0x%x\n", data, i, data[i]); \
 })
 
-#ifdef SCHED_VERBOSE
-# define SCHED_DEBUG(msg) DRM_INFO(msg)
-# define SCHED_DEBUGF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
-# define SCHED_PRINTF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
-# define SCHED_DEBUG_PACKET(packet, size) sched_debug_packet(packet, size)
-# define SCHED_PRINT_PACKET(packet, size) sched_debug_packet(packet, size)
-#else
-# define SCHED_DEBUG(msg)
-# define SCHED_DEBUGF(format, ...)
-# define SCHED_PRINTF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
-# define SCHED_DEBUG_PACKET(packet, size)
-# define SCHED_PRINT_PACKET(packet, size) sched_debug_packet(packet, size)
-#endif
+#define SCHED_DEBUG(msg) xocl_dbg_trace(debug_hdl, XRT_TRACE_LEVEL_VERBOSE, msg)
+#define SCHED_DEBUGF(format, ...) xocl_dbg_trace(debug_hdl, XRT_TRACE_LEVEL_VERBOSE, format, ##__VA_ARGS__)
+#define SCHED_PRINTF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
+#define SCHED_DEBUG_PACKET(packet, size) sched_debug_packet(packet, size)
 
 #define csr_read32(base, r_off)			\
 	ioread32((base) + (r_off) - ERT_CSR_ADDR)
@@ -118,6 +108,7 @@ static xuid_t uuid_null = NULL_UUID_LE;
 
 /* constants */
 static const unsigned int no_index = -1;
+static unsigned long debug_hdl;
 
 /* FFA	handling */
 static const u32 AP_START    = 0x1;
@@ -2242,7 +2233,7 @@ static irqreturn_t
 versal_isr(void *arg)
 {
 	struct exec_core *exec = (struct exec_core *)arg;
-	SCHED_DEBUGF("-> %s %d\n", __func__, irq);
+	SCHED_DEBUGF("-> %s\n", __func__);
 
 	if (exec) {
 		if (!exec->polling_mode)
@@ -3875,12 +3866,12 @@ static void client_release_implicit_cus(struct exec_core *exec,
 {
 	int i;
 
-	SCHED_DEBUGF("-> %s", __func__);
+	SCHED_DEBUGF("-> %s\n", __func__);
 	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++) {
 		SCHED_DEBUGF("+ cu(%d)", i);
 		clear_bit(i, client->cu_bitmap);
 	}
-	SCHED_DEBUGF("<- %s", __func__);
+	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
 static void
@@ -5127,7 +5118,20 @@ static struct platform_driver	mb_scheduler_driver = {
 
 int __init xocl_init_mb_scheduler(void)
 {
-	return platform_driver_register(&mb_scheduler_driver);
+	struct xocl_dbg_reg reg = { .name = XOCL_DEVNAME(XOCL_MB_SCHEDULER) };
+	int ret;
+
+	ret = xocl_debug_register(&reg);
+	if (ret)
+		return ret;
+
+	debug_hdl = reg.hdl;
+
+	ret = platform_driver_register(&mb_scheduler_driver);
+	if (ret)
+		xocl_debug_unreg(debug_hdl);
+
+	return ret;
 }
 
 void xocl_fini_mb_scheduler(void)
@@ -5135,4 +5139,6 @@ void xocl_fini_mb_scheduler(void)
 	SCHED_DEBUGF("-> %s\n", __func__);
 	platform_driver_unregister(&mb_scheduler_driver);
 	SCHED_DEBUGF("<- %s\n", __func__);
+
+	xocl_debug_unreg(debug_hdl);
 }

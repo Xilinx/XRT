@@ -35,11 +35,10 @@ ReportFirewall::getPropertyTree20202( const xrt_core::device * _pDevice,
 {
   boost::property_tree::ptree pt;
   pt.put("Description","Firewall Information");
-
   pt.put("firewall_level", xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));
   pt.put("firewall_status", boost::format("0x%x") % xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));
   pt.put("status", xrt_core::utils::parse_firewall_status(static_cast<unsigned int>(xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice))));
-  // There can only be 1 root node
+    // There can only be 1 root node
   _pt.add_child("firewall", pt);
 }
 
@@ -51,9 +50,15 @@ ReportFirewall::writeReport(const xrt_core::device * _pDevice,
 {
   boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(_pDevice, _pt);
+  try {
+    getPropertyTreeInternal(_pDevice, _pt);
+  } catch (...) {}
 
   _output << "Firewall\n";
+  if (_pt.empty()) {
+    _output << "  Information unavailable" << std::endl; 
+    return;
+  }
   _output << boost::format("  %s %d: %s %s\n\n") % "Level" % _pt.get<std::string>("firewall.firewall_level") 
               % _pt.get<std::string>("firewall.firewall_status") % _pt.get<std::string>("firewall.status");
 
