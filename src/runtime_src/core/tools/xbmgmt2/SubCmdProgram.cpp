@@ -559,7 +559,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                          "  SC    - Satellite controller"*/)
     ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
-    ("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")
+    /*("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")*/
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Control (MSP432) will not be reverted for a golden image does not exist.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
@@ -642,9 +642,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     //image is a sub-option of update
     if(update.empty())
       throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base --image='/path/to/flash_image' OR shell_name");
-    //allow only 1 device to be manually flashed at a time
-    if(deviceCollection.size() != 1)
-      throw xrt_core::error("Please specify a single device to be flashed");
     //we support only 2 flash images atm
     if(image.size() > 2)
       throw xrt_core::error("Please specify either 1 or 2 flash images");
@@ -764,7 +761,12 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     
     auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
     std::cout << "Downloading xclbin on device [" << bdf << "]..." << std::endl;
-    dev->xclmgmt_load_xclbin(xclbin_buffer.data());
+    try {
+      dev->xclmgmt_load_xclbin(xclbin_buffer.data());
+    } catch (xrt_core::error& e) {
+      std::cout << "ERROR: " << e.what() << std::endl;
+      return;
+    }
     std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;
 
     return;
