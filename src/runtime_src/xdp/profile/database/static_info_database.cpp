@@ -498,7 +498,7 @@ namespace xdp {
       ComputeUnitInstance* cuObj = nullptr;
 
       std::stringstream msg;
-      msg << "Initializing profile monitor " << i << ": type = " << debugIpData->m_type << ", name = " << name << ", index = " << index;
+      msg << "Initializing profile monitor " << i << ": name = " << name << ", index = " << index;
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
 
       // find CU

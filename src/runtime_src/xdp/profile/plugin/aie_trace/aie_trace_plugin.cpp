@@ -25,7 +25,6 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
-//#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
@@ -34,10 +33,6 @@
 #include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <memory>
-
-#ifdef XRT_ENABLE_AIE
-#include "core/edge/common/aie_parser.h"
-#endif
 
 #define NUM_CORE_TRACE_EVENTS   8
 #define NUM_MEMORY_TRACE_EVENTS 8
@@ -82,7 +77,7 @@ namespace xdp {
     // These are also broadcast to memory module
     coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
     coreTraceEndEvent   = XAIE_EVENT_DISABLED_CORE;
-
+    
     // **** Memory Module Trace ****
     // functions: "traced_events": [120, 119, 5, 6, 0, 0, 0, 0]
     // functions_partial_stalls: "traced_events": [120, 119, 118, 117, 116, 5, 6, 0]
@@ -167,7 +162,11 @@ namespace xdp {
       boost::replace_all(vec.at(i), "{", "");
       boost::replace_all(vec.at(i), "}", "");
     }
-    
+
+    // If requested, turn on debug fal messages
+    if (xrt_core::config::get_verbosity() >= (uint32_t)xrt_core::message::severity_level::debug)
+      xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
+
     // Determine specification type based on vector size:
     //   * Size = 1: All tiles
     //     * aie_trace_metrics = <functions|functions_partial_stalls|functions_all_stalls|all>
@@ -187,10 +186,10 @@ namespace xdp {
       metricSet = defaultSet;
     }
 
-    std::string config_file = "aie_event_runtime_config.json";
-    writers.push_back(new AieTraceConfigWriter(config_file.c_str(),
+    std::string configFile = "aie_event_runtime_config.json";
+    writers.push_back(new AieTraceConfigWriter(configFile.c_str(),
                                                 deviceId, metricSet));
-    (db->getStaticInfo()).addOpenedFile(config_file, "AIE_EVENT_RUNTIME_CONFIG");
+    (db->getStaticInfo()).addOpenedFile(configFile, "AIE_EVENT_RUNTIME_CONFIG");
 
     // Capture all tiles across all graphs
     // NOTE: future releases will support the specification of tile subsets
@@ -205,7 +204,6 @@ namespace xdp {
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
     int numTileMemoryTraceEvents[NUM_MEMORY_TRACE_EVENTS+1] = {0};
-    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> perfCounters;
 
     // Iterate over all used/specified tiles
     for (auto& tile : tiles) {
@@ -256,7 +254,8 @@ namespace xdp {
         ret = perfCounter->start();
         if (ret != XAIE_OK) break;
 
-        perfCounters.push_back(perfCounter);
+        coreCounterTiles.push_back(tile);
+        coreCounters.push_back(perfCounter);
         numCoreCounters++;
 
         // Update config file
@@ -297,7 +296,7 @@ namespace xdp {
         ret = perfCounter->start();
         if (ret != XAIE_OK) break;
 
-        perfCounters.push_back(perfCounter);
+        memoryCounters.push_back(perfCounter);
         numMemoryCounters++;
 
         // Update config file
@@ -325,20 +324,18 @@ namespace xdp {
 
         // Release current tile counters and return
         for (int i=0; i < numMemoryCounters; i++) {
-          perfCounters.back()->stop();
-          perfCounters.back()->release();
-          perfCounters.pop_back();
+          memoryCounters.back()->stop();
+          memoryCounters.back()->release();
+          memoryCounters.pop_back();
         }
         for (int i=0; i < numCoreCounters; i++) {
-          perfCounters.back()->stop();
-          perfCounters.back()->release();
-          perfCounters.pop_back();
+          coreCounters.back()->stop();
+          coreCounters.back()->release();
+          coreCounters.pop_back();
+          coreCounterTiles.pop_back();
         }
         return;
       }
-
-      // Uncomment this to print verbose fal messages
-      //xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
 
       //
       // 3. Configure Core Tracing Events
@@ -510,7 +507,6 @@ namespace xdp {
       // Do not access cfgTile after this
       (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
     } // For tiles
-    perfCounters.clear();
 
     // Report trace events reserved per tile
     {
@@ -578,7 +574,7 @@ namespace xdp {
       }
     }
 
-#ifdef XRT_ENABLE_AIE
+    // Set metrics for counters and trace events 
     setMetrics(deviceId, handle);
 
     if (!(db->getStaticInfo()).isGMIORead(deviceId)) {
@@ -592,7 +588,6 @@ namespace xdp {
       }
       (db->getStaticInfo()).setIsGMIORead(deviceId, true);
     }
-#endif
 
     uint64_t numAIETraceOutput = (db->getStaticInfo()).getNumAIETraceStream(deviceId);
     if (numAIETraceOutput == 0) {
@@ -608,7 +603,6 @@ namespace xdp {
       deviceIntf = new DeviceIntf();
       try {
         deviceIntf->setDevice(new HalDevice(handle));
-//        deviceIntf->setDevice(new HalDevice(ownedHandle));
         deviceIntf->readDebugIPlayout();
       } catch(std::exception& e) {
         // Read debug IP layout could throw an exception
@@ -680,6 +674,64 @@ namespace xdp {
     aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf);
   }
 
+  void AieTracePlugin::setFlushMetrics(uint64_t deviceId, void* handle)
+  {
+    auto drv = ZYNQ::shim::handleCheck(handle);
+    if (!drv)
+      return;
+    auto aieArray = drv->getAieArray();
+    if (!aieArray)
+      return;
+    auto Aie = aieArray->getDevInst();
+    auto aieDevice = std::make_shared<xaiefal::XAieDev>(Aie, false);
+
+    // New start & end events for trace control and counters
+    coreTraceStartEvent = XAIE_EVENT_TIMER_SYNC_CORE;
+	  coreTraceEndEvent   = XAIE_EVENT_TIMER_VALUE_REACHED_CORE;
+
+    // Timer trigger value: 300* 1020*1020 = 312,120,000 = 0x129A92C0
+    // NOTES: Each packet has 7 payload words (one word: 32bits)
+    //        We need 64 packets, so we need 7 * 64 = 448 words.
+    //        Existing counters generates 1.5 words for every perf counter 2 triggers.
+    //        Thus, 300 (299 exactly,, but 300 would have no harm) perf 2 counter events.
+    uint32_t timerTrigValueLow  = 0x92C0;
+    uint32_t timerTrigValueHigh = 0x129A;
+
+    uint32_t prevCol = 0;
+    uint32_t prevRow = 0;
+
+    // Reconfigure profile counters
+    for (int i=0; i < coreCounters.size(); ++i) {
+      std::cout << "Modifying counter " << i << std::endl;
+
+      // For every counter, change start/stop events
+      auto& counter = coreCounters.at(i);
+      counter->changeStartEvent(XAIE_CORE_MOD, coreTraceStartEvent);
+      counter->changeStopEvent(XAIE_CORE_MOD,  coreTraceEndEvent);
+      //counter->initialize(XAIE_CORE_MOD, coreTraceStartEvent,
+      //                    XAIE_CORE_MOD, coreTraceEndEvent);
+
+      auto& tile = coreCounterTiles.at(i);
+      auto  col  = tile.col;
+      auto  row  = tile.row;
+
+      // For every tile, change trace start/stop and timer
+      if ((col != prevCol) || (row != prevRow)) {
+        std::cout << "Modifying control and timer for tile (" << col << "," << row << ")" << std::endl;
+        prevCol        = col;
+        prevRow        = row;
+        auto& core     = aieDevice->tile(col, row + 1).core();
+        auto coreTrace = core.traceControl();
+        coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
+
+        XAie_LocType tileLocation = XAie_TileLoc(col, row + 1);
+        XAie_SetTimerTrigEventVal(Aie, tileLocation, XAIE_CORE_MOD,
+                                  timerTrigValueLow, timerTrigValueHigh);
+        XAie_ResetTimer(Aie, tileLocation, XAIE_CORE_MOD);
+      }
+    }
+  }
+
   void AieTracePlugin::flushAIEDevice(void* handle)
   {
     char pathBuf[512];
@@ -708,6 +760,11 @@ namespace xdp {
     if(deviceIdToHandle[deviceId] != handle) {
       return;
     }
+
+    // Set metrics which flushes the trace 
+    // NOTE: The data mover uses a burst length of 256, so we need 64 more 
+    // dummy packets to ensure all trace gets written to DDR.
+    setFlushMetrics(deviceId, handle);
 
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
       auto offloader = std::get<0>(aieOffloaders[deviceId]);
