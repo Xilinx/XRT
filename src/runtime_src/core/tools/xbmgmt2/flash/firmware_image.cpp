@@ -430,7 +430,10 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
     // Obtain installed DSA info.
     std::vector<boost::filesystem::path> fw_dirs(FIRMWARE_DIRS);
     for (auto& root : fw_dirs) {
-        if (!boost::filesystem::exists(root) || !boost::filesystem::is_directory(root))
+        if (!boost::filesystem::exists(root))
+            continue;
+
+        if (!boost::filesystem::is_directory(root))
             continue;
 
         boost::filesystem::recursive_directory_iterator end_iter;
