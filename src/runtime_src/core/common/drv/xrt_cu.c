@@ -573,6 +573,11 @@ int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr,
 	return 0;
 }
 
+int xrt_cu_get_protocol(struct xrt_cu *xcu)
+{
+	return xcu->info.protocol;
+}
+
 int xrt_cu_init(struct xrt_cu *xcu)
 {
 	int err = 0;
