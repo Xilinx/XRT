@@ -3479,6 +3479,14 @@ struct xocl_subdev_map {
 	{ 0x10EE, 0x6988, PCI_ANY_ID,					\
 		.vbnv = "xilinx_u2",					\
 		.priv_data = &XOCL_BOARD_U2_USER_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x513C, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u30",					\
+		.priv_data = &XOCL_BOARD_U30_MGMT_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x513D, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u30",					\
+		.priv_data = &XOCL_BOARD_U30_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 }
 
 #endif
