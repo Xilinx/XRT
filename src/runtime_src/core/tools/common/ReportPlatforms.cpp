@@ -68,7 +68,7 @@ mac_addresses(const xrt_core::device * dev)
     auto mac_addr = xrt_core::device_query<qr::mac_addr_list>(dev);
     for (const auto& a : mac_addr) {
       boost::property_tree::ptree addr;
-      if (a.compare("FF:FF:FF:FF:FF:FF") != 0) {
+      if (a.empty() || a.compare("FF:FF:FF:FF:FF:FF") != 0) {
         addr.add("address", a);
         ptree.push_back(std::make_pair("", addr));
       }
