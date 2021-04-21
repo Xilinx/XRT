@@ -116,34 +116,37 @@ namespace xdp {
       //  do a final flush of our devices, then write
       //  all of our writers, then finally unregister ourselves
       //  from the database.
-      for (auto o : offloaders)
-      {
-        uint64_t deviceId = o.first ;
-
-        if (deviceIdsToBeFlushed.find(deviceId) != deviceIdsToBeFlushed.end())
-        {
-          auto offloader = std::get<0>(o.second) ;
-          if (offloader->continuous_offload())
-          {
-            offloader->stop_offload() ;
-            // To avoid a race condition, wait until the offloader has stopped
-            while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
-          }
-          else
-          {
-            offloader->read_trace() ;
-            offloader->read_trace_end() ;
-          }
-          printTraceWarns(offloader);
-          readCounters() ;
-        }
-      }
-
+      readTrace() ;
+      readCounters() ;
       XDPPlugin::endWrite(false);
       db->unregisterPlugin(this) ;
     } // If db alive
     clearOffloaders();
+  }
 
+  void OpenCLDeviceOffloadPlugin::readTrace()
+  {
+    if (!active) return ;
+    if (getFlowMode() == SW_EMU) return ;
+
+    for (auto o : offloaders) {
+      uint64_t deviceId = o.first ;
+      if (deviceIdsToBeFlushed.find(deviceId) != deviceIdsToBeFlushed.end()) {
+        deviceIdsToBeFlushed.erase(deviceId) ;
+
+        auto offloader = std::get<0>(o.second) ;
+        if (offloader->continuous_offload()) {
+          offloader->stop_offload() ;
+          // To avoid a race condition, wait until the offloader has stopped
+          while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
+        }
+        else {
+          offloader->read_trace() ;
+          offloader->read_trace_end() ;
+        }
+        printTraceWarns(offloader);
+      }
+    }
   }
 
   void OpenCLDeviceOffloadPlugin::writeAll(bool openNewFiles)

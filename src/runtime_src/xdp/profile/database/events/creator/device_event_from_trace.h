@@ -70,6 +70,9 @@ class DeviceEventCreatorFromTrace
                                   uint32_t slot, int32_t cuId,
                                   double hostTimestamp) ;
 
+  void addCUEndEvent(double hostTimestamp, uint64_t deviceTimestamp,
+                     uint32_t s, int32_t cuId);
+
   // Functions for handling dropped device packets
   void addApproximateCUEndEvents();
   void addApproximateDataTransferEndEvents();

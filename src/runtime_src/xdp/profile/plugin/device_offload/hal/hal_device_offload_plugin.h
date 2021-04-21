@@ -40,6 +40,8 @@ namespace xdp {
     std::vector<void*> deviceHandles ;
     std::map<uint64_t, void*> deviceIdToHandle ;
 
+    XDP_EXPORT virtual void readTrace() ;
+
   public:
     XDP_EXPORT HALDeviceOffloadPlugin() ;
     XDP_EXPORT ~HALDeviceOffloadPlugin() ;

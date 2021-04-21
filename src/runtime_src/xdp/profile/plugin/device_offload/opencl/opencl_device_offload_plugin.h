@@ -44,6 +44,8 @@ namespace xdp {
     void updateOpenCLInfo(uint64_t deviceId) ;
     void updateSWEmulationGuidance() ;
 
+    XDP_EXPORT virtual void readTrace() ;
+
   public:
     XDP_EXPORT OpenCLDeviceOffloadPlugin() ;
     XDP_EXPORT ~OpenCLDeviceOffloadPlugin() ;
