@@ -182,7 +182,7 @@ ReportPlatforms::writeReport( const xrt_core::device * dev,
       output << "Clocks\n";
     for(auto& kc : clocks) {
       boost::property_tree::ptree& pt_clock = kc.second;
-      output << boost::format("    %-20s : %s MHz\n") % pt_clock.get<std::string>("description") % pt_clock.get<std::string>("freq_mhz");
+      output << boost::format("  %-20s : %s MHz\n") % pt_clock.get<std::string>("description") % pt_clock.get<std::string>("freq_mhz");
     }
 
     boost::property_tree::ptree& macs = pt_platform.get_child("macs", empty_ptree);
@@ -190,7 +190,7 @@ ReportPlatforms::writeReport( const xrt_core::device * dev,
       output << "Mac Addresses\n";
     for(auto& km : macs) {
       boost::property_tree::ptree& pt_mac = km.second;
-      output << boost::format("    %-20s : %s\n") % "" % pt_mac.get<std::string>("address");
+      output << boost::format("  %-20s : %s\n") % "" % pt_mac.get<std::string>("address");
     }
   }
   
