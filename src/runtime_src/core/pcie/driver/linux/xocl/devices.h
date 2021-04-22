@@ -3331,6 +3331,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5028, PCI_ANY_ID, MGMT_VERSAL) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5044, PCI_ANY_ID, MGMT_VERSAL) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5048, PCI_ANY_ID, VERSAL_MGMT_RAPTOR2) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5078, PCI_ANY_ID, VERSAL_MGMT_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5050, PCI_ANY_ID, MGMT_U25) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x504E, PCI_ANY_ID, U26Z_MGMT_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5058, PCI_ANY_ID, U55N_MGMT_RAPTOR2) },\
@@ -3407,6 +3408,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5029, PCI_ANY_ID, USER_XDMA_VERSAL) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5045, PCI_ANY_ID, USER_XDMA_VERSAL) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5049, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0x5079, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }, \
 	{ XOCL_PCI_DEVID(0x3475, 0x5011, PCI_ANY_ID, USER_ARISTA_LB2_QDMA) }
 
 #define XOCL_DSA_VBNV_MAP						\
@@ -3462,6 +3464,14 @@ struct xocl_subdev_map {
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5045, PCI_ANY_ID,					\
 		.vbnv = "xilinx_vck5000-es1",				\
+		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5078, PCI_ANY_ID,					\
+		.vbnv = "xilinx_v65",					\
+		.priv_data = &XOCL_BOARD_VERSAL_MGMT_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5079, PCI_ANY_ID,					\
+		.vbnv = "xilinx_v65",					\
 		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5050, PCI_ANY_ID,                                   \
