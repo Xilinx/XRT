@@ -1328,7 +1328,7 @@ void smart_tab_format( const unsigned int max_length,
   }
 
   // Add a comma
-  unsigned int current_index = formatted_lines.size() - 1;
+  unsigned int current_index = static_cast<unsigned int>(formatted_lines.size()) - 1;
   formatted_lines[current_index] += ", ";
 
   // Determine if we need to add the new_entry to the existing or new line
