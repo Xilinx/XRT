@@ -627,8 +627,7 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 
 	ert_user->num_slots = ert_user->cq_range / cfg->slot_size;
 
-	// Adjust slot size for ert poll mode
-	if (ert_poll)
+	if (ert_user->num_slots > MAX_CUS)
 		ert_user->num_slots = MAX_CUS;
 
 	if (ert_full && cfg->cu_dma && ert_user->num_slots > 32) {
@@ -1083,8 +1082,8 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 
 	ert_num_slots = ert_user->cq_range / cfg->slot_size;
 
-	if (ert_poll)
-		// Adjust slot size for ert poll mode
+	if (ert_num_slots > MAX_CUS)
+		// Adjust slot number to 128 maximum 
 		ert_num_slots = MAX_CUS;
 
 	if (ert_full && cfg->cu_dma && ert_num_slots > 32) {
