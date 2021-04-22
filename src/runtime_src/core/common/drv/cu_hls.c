@@ -374,7 +374,8 @@ void xrt_cu_hls_fini(struct xrt_cu *xcu)
 {
 	struct xrt_cu_hls *core = xcu->core;
 
-	xrt_cu_fini(xcu);
+	if (xcu->info.protocol != CTRL_NONE)
+		xrt_cu_fini(xcu);
 
 	if (xcu->core) {
 		if (core->vaddr)
