@@ -536,7 +536,7 @@ XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
       pairs.first += "\'";     
     }
 
-    maxStringLength = std::max<unsigned int>(maxStringLength, pairs.first.length());
+    maxStringLength = std::max<unsigned int>(maxStringLength, static_cast<unsigned int>(pairs.first.length()));
   }
 
   const unsigned int indention = maxStringLength + 5;  // New line indention after the '-' character (5 extra spaces)
