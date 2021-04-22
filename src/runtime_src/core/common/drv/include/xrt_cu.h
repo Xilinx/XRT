@@ -181,7 +181,7 @@ enum arg_dir {
 };
 
 struct xrt_cu_arg {
-	char	name[32];
+	char	name[64];
 	u32	offset;
 	u32	size;
 	u32	dir;
