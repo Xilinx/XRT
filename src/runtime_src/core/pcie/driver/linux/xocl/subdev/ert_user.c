@@ -637,13 +637,6 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 		ert_user->num_slots = 32;
 	}
 
-	ert_user->polling_mode = cfg->polling;
-
-	if (ert_user->polling_mode)
-		ert_intc_enable(ert_user, false);
-	else
-		ert_intc_enable(ert_user, true);
-
 	ERTUSER_INFO(ert_user, "scheduler config ert completed, polling_mode(%d), slots(%d)\n"
 		 , ert_user->polling_mode
 		 , ert_user->num_slots);
@@ -1111,6 +1104,13 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	cfg->dmsg = ert_user->ert_dmsg;
 	cfg->echo = ert_user->echo;
 	cfg->intr = ert_user->intr;
+
+	ert_user->polling_mode = cfg->polling;
+
+	if (ert_user->polling_mode)
+		ert_intc_enable(ert_user, false);
+	else
+		ert_intc_enable(ert_user, true);
 
 	// The KDS side of of the scheduler is now configured.  If ERT is
 	// enabled, then the configure command will be started asynchronously
